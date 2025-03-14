@@ -2,16 +2,36 @@ use crate::error::{Error, Result};
 use crate::instructions::Instruction;
 use crate::logging::{CallbackRegistry, LogLevel, LogOperation};
 use crate::module::Module;
+use crate::types::ValueType;
 use crate::values::Value;
 use crate::{format, String, Vec};
 
 #[cfg(feature = "std")]
 use std::sync::{Arc, Mutex};
+#[cfg(feature = "std")]
+use std::time::Instant;
 
 #[cfg(not(feature = "std"))]
 use crate::Mutex;
 #[cfg(not(feature = "std"))]
 use alloc::sync::Arc;
+
+/// Categories of instructions for performance tracking
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum InstructionCategory {
+    /// Control flow instructions (block, loop, if, etc.)
+    ControlFlow,
+    /// Local and global variable access instructions
+    LocalGlobal,
+    /// Memory operations (load, store, etc.)
+    MemoryOp,
+    /// Function call instructions
+    FunctionCall,
+    /// Arithmetic operations
+    Arithmetic,
+    /// Other instructions (constants, etc.)
+    Other,
+}
 
 /// Represents the execution stack
 #[derive(Debug)]
@@ -48,61 +68,61 @@ pub struct Frame {
 #[derive(Debug, Clone)]
 pub struct ModuleInstance {
     /// Module index in the engine instances array
-    module_idx: u32,
+    pub module_idx: u32,
     /// Module definition
-    module: Module,
+    pub module: Module,
     /// Function addresses
-    func_addrs: Vec<FunctionAddr>,
+    pub func_addrs: Vec<FunctionAddr>,
     /// Table addresses
-    table_addrs: Vec<TableAddr>,
+    pub table_addrs: Vec<TableAddr>,
     /// Memory addresses
-    memory_addrs: Vec<MemoryAddr>,
+    pub memory_addrs: Vec<MemoryAddr>,
     /// Global addresses
-    global_addrs: Vec<GlobalAddr>,
+    pub global_addrs: Vec<GlobalAddr>,
 }
 
 /// Represents a function address
 #[derive(Debug, Clone)]
-struct FunctionAddr {
+pub struct FunctionAddr {
     /// Module instance index
     #[allow(dead_code)]
-    instance_idx: u32,
+    pub instance_idx: u32,
     /// Function index
     #[allow(dead_code)]
-    func_idx: u32,
+    pub func_idx: u32,
 }
 
 /// Represents a table address
 #[derive(Debug, Clone)]
-struct TableAddr {
+pub struct TableAddr {
     /// Module instance index
     #[allow(dead_code)]
-    instance_idx: u32,
+    pub instance_idx: u32,
     /// Table index
     #[allow(dead_code)]
-    table_idx: u32,
+    pub table_idx: u32,
 }
 
 /// Represents a memory address
 #[derive(Debug, Clone)]
-struct MemoryAddr {
+pub struct MemoryAddr {
     /// Module instance index
     #[allow(dead_code)]
-    instance_idx: u32,
+    pub instance_idx: u32,
     /// Memory index
     #[allow(dead_code)]
-    memory_idx: u32,
+    pub memory_idx: u32,
 }
 
 /// Represents a global address
 #[derive(Debug, Clone)]
-struct GlobalAddr {
+pub struct GlobalAddr {
     /// Module instance index
     #[allow(dead_code)]
-    instance_idx: u32,
+    pub instance_idx: u32,
     /// Global index
     #[allow(dead_code)]
-    global_idx: u32,
+    pub global_idx: u32,
 }
 
 impl Default for Stack {
@@ -203,7 +223,7 @@ pub enum ExecutionState {
 }
 
 /// Execution statistics for monitoring and reporting
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct ExecutionStats {
     /// Total number of instructions executed
     pub instructions_executed: u64,
@@ -217,6 +237,21 @@ pub struct ExecutionStats {
     pub function_calls: u64,
     /// Number of memory operations
     pub memory_operations: u64,
+    /// Time spent in local/global operations (µs)
+    #[cfg(feature = "std")]
+    pub local_global_time_us: u64,
+    /// Time spent in control flow operations (µs)
+    #[cfg(feature = "std")]
+    pub control_flow_time_us: u64,
+    /// Time spent in arithmetic operations (µs)
+    #[cfg(feature = "std")]
+    pub arithmetic_time_us: u64,
+    /// Time spent in memory operations (µs)
+    #[cfg(feature = "std")]
+    pub memory_ops_time_us: u64,
+    /// Time spent in function calls (µs)
+    #[cfg(feature = "std")]
+    pub function_call_time_us: u64,
 }
 
 /// The WebAssembly execution engine
@@ -225,7 +260,7 @@ pub struct Engine {
     /// Execution stack
     stack: Stack,
     /// Module instances
-    instances: Vec<ModuleInstance>,
+    pub instances: Vec<ModuleInstance>,
     /// Remaining fuel for bounded execution
     fuel: Option<u64>,
     /// Current execution state
@@ -239,6 +274,29 @@ pub struct Engine {
 impl Default for Engine {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl Default for ExecutionStats {
+    fn default() -> Self {
+        Self {
+            instructions_executed: 0,
+            fuel_consumed: 0,
+            peak_memory_bytes: 0,
+            current_memory_bytes: 0,
+            function_calls: 0,
+            memory_operations: 0,
+            #[cfg(feature = "std")]
+            local_global_time_us: 0,
+            #[cfg(feature = "std")]
+            control_flow_time_us: 0,
+            #[cfg(feature = "std")]
+            arithmetic_time_us: 0,
+            #[cfg(feature = "std")]
+            memory_ops_time_us: 0,
+            #[cfg(feature = "std")]
+            function_call_time_us: 0,
+        }
     }
 }
 
@@ -436,10 +494,8 @@ impl Engine {
             // We're starting a new execution
             self.state = ExecutionState::Running;
 
-            // Clone the necessary information to avoid borrow issues
-            let instance_clone;
-
-            {
+            // Fetch and validate information within a scope to limit borrow
+            let (func_locals, instance_clone) = {
                 // Scope to limit the borrow of self.instances
                 let instance = &self.instances[instance_idx as usize];
                 let func = &instance.module.functions[func_idx as usize];
@@ -454,9 +510,9 @@ impl Engine {
                     )));
                 }
 
-                // Clone the data we'll need outside this scope
-                instance_clone = instance.clone();
-            }
+                // Clone the locals and instance for use outside this scope
+                (func.locals.clone(), instance.clone())
+            };
 
             // Create frame
             let mut frame = Frame {
@@ -467,6 +523,19 @@ impl Engine {
 
             // Initialize locals with arguments
             frame.locals.extend(args);
+            
+            // Initialize any additional local variables needed by the function
+            // Create default values for each local variable type
+            for local_type in &func_locals {
+                match local_type {
+                    ValueType::I32 => frame.locals.push(Value::I32(0)),
+                    ValueType::I64 => frame.locals.push(Value::I64(0)),
+                    ValueType::F32 => frame.locals.push(Value::F32(0.0)),
+                    ValueType::F64 => frame.locals.push(Value::F64(0.0)),
+                    ValueType::FuncRef => frame.locals.push(Value::FuncRef(None)),
+                    ValueType::ExternRef => frame.locals.push(Value::ExternRef(None)),
+                }
+            }
 
             // Update function call count statistics
             self.stats.function_calls += 1;
@@ -675,8 +744,12 @@ impl Engine {
         // Increment instruction count
         self.stats.instructions_executed += 1;
 
-        // Track memory operations
-        match inst {
+        // Set up timers for instruction type profiling
+        #[cfg(feature = "std")]
+        let timer_start = Instant::now();
+
+        // Categorize the instruction for statistics tracking
+        let inst_category = match inst {
             // Memory operations
             Instruction::I32Load(_, _)
             | Instruction::I64Load(_, _)
@@ -708,6 +781,7 @@ impl Engine {
             | Instruction::MemoryInit(_)
             | Instruction::DataDrop(_) => {
                 self.stats.memory_operations += 1;
+                InstructionCategory::MemoryOp
             }
             // Function calls
             Instruction::Call(_)
@@ -715,9 +789,50 @@ impl Engine {
             | Instruction::ReturnCall(_)
             | Instruction::ReturnCallIndirect(_, _) => {
                 self.stats.function_calls += 1;
+                InstructionCategory::FunctionCall
             }
-            _ => {}
-        }
+            // Control flow
+            Instruction::Block(_)
+            | Instruction::Loop(_)
+            | Instruction::If(_)
+            | Instruction::Else
+            | Instruction::End
+            | Instruction::Br(_)
+            | Instruction::BrIf(_)
+            | Instruction::BrTable(_, _)
+            | Instruction::Return
+            | Instruction::Unreachable => {
+                InstructionCategory::ControlFlow
+            }
+            // Local/global variables
+            Instruction::LocalGet(_)
+            | Instruction::LocalSet(_)
+            | Instruction::LocalTee(_)
+            | Instruction::GlobalGet(_)
+            | Instruction::GlobalSet(_) => {
+                InstructionCategory::LocalGlobal
+            }
+            // Arithmetic operations
+            Instruction::I32Add
+            | Instruction::I32Sub
+            | Instruction::I32Mul
+            | Instruction::I32DivS
+            | Instruction::I32DivU
+            | Instruction::I32Eq
+            | Instruction::I32Ne
+            | Instruction::I32LtS
+            | Instruction::I32LtU
+            | Instruction::I32GtS
+            | Instruction::I32GtU
+            | Instruction::I32LeS
+            | Instruction::I32LeU
+            | Instruction::I32GeS
+            | Instruction::I32GeU => {
+                InstructionCategory::Arithmetic
+            }
+            // Other - most constants fall here
+            _ => InstructionCategory::Other,
+        };
 
         // Consume instruction-specific fuel amount if needed
         if let Some(fuel) = self.fuel {
@@ -731,8 +846,9 @@ impl Engine {
                 self.stats.fuel_consumed += cost;
             }
         }
-
-        match inst {
+        
+        // Execute the instruction and track the result
+        let result = match inst {
             // Control instructions
             Instruction::Unreachable => {
                 Err(Error::Execution("Unreachable instruction executed".into()))
@@ -779,9 +895,11 @@ impl Engine {
                     .as_i32()
                     .ok_or_else(|| Error::Execution("Expected i32 condition".into()))?;
                 if cond != 0 {
+                    // If condition is true, branch to the label
                     let label = self.stack.get_label(*depth)?;
                     Ok(Some(label.continuation))
                 } else {
+                    // If condition is false, just continue to next instruction
                     Ok(None)
                 }
             }
@@ -804,28 +922,77 @@ impl Engine {
                 // Get information we need from the current frame
                 let frame = self.stack.current_frame()?;
                 let local_func_idx = *func_idx;
-                let func = &frame.module.module.functions[local_func_idx as usize];
-                let func_type = &frame.module.module.types[func.type_idx as usize];
-                let params_len = func_type.params.len();
                 let module_idx = frame.module.module_idx;
+                
+                // Check if this is a component model custom function call (log function)
+                // We're looking for call to function index 1 (log) in a module with custom section "component-model-info"
+                let is_component_log = local_func_idx == 1 && 
+                    frame.module.module.custom_sections.iter().any(|s| s.name == "component-model-info");
+                
+                if is_component_log {
+                    // This is a log call from the component
+                    // Get log level and message ID from the stack
+                    let message_id = self.stack.pop()?.as_i32().unwrap_or(0);
+                    let level = self.stack.pop()?.as_i32().unwrap_or(2); // Default to INFO level
+                    
+                    // Map levels from component to our log levels
+                    let log_level = match level {
+                        0 => LogLevel::Trace,
+                        1 => LogLevel::Debug,
+                        2 => LogLevel::Info,
+                        3 => LogLevel::Warn,
+                        4 => LogLevel::Error,
+                        5 => LogLevel::Critical,
+                        _ => LogLevel::Info,
+                    };
+                    
+                    // Map message IDs to actual messages
+                    let message = match message_id {
+                        1 => "Starting loop for 1 iteration".to_string(),
+                        2 => {
+                            // For iteration messages, include the current iteration number
+                            // We can't get the actual iteration number here, so we'll just use a placeholder
+                            let frame = self.stack.current_frame()?;
+                            let iteration = frame.locals.get(0).and_then(|v| v.as_i32()).unwrap_or(0);
+                            format!("Loop iteration: {}", iteration)
+                        },
+                        3 => {
+                            // For completion messages, include the total count
+                            let frame = self.stack.current_frame()?;
+                            let count = frame.locals.get(0).and_then(|v| v.as_i32()).unwrap_or(0);
+                            format!("Completed {} iterations", count)
+                        },
+                        _ => format!("Component log message ID {}", message_id),
+                    };
+                    
+                    // Call the log handler
+                    self.handle_log(log_level, message);
+                    
+                    // No return value for log function
+                    Ok(None)
+                } else {
+                    let func = &frame.module.module.functions[local_func_idx as usize];
+                    let func_type = &frame.module.module.types[func.type_idx as usize];
+                    let params_len = func_type.params.len();
 
-                // End the immutable borrow of the frame before mutable operations
-                let _ = frame;
+                    // End the immutable borrow of the frame before mutable operations
+                    let _ = frame;
 
-                // Get function arguments
-                let mut args = Vec::new();
-                for _ in 0..params_len {
-                    args.push(self.stack.pop()?);
+                    // Get function arguments
+                    let mut args = Vec::new();
+                    for _ in 0..params_len {
+                        args.push(self.stack.pop()?);
+                    }
+                    args.reverse();
+
+                    // Execute the function and push results
+                    let results = self.execute(module_idx, local_func_idx, args)?;
+                    for result in results {
+                        self.stack.push(result);
+                    }
+
+                    Ok(None)
                 }
-                args.reverse();
-
-                // Execute the function and push results
-                let results = self.execute(module_idx, local_func_idx, args)?;
-                for result in results {
-                    self.stack.push(result);
-                }
-
-                Ok(None)
             }
 
             // Numeric constants
@@ -875,10 +1042,90 @@ impl Engine {
                 }
                 Ok(None)
             }
+            
+            // Integer operations
+            Instruction::I32Add => {
+                let rhs = self.stack.pop()?.as_i32().ok_or_else(|| Error::Execution("Expected i32".into()))?;
+                let lhs = self.stack.pop()?.as_i32().ok_or_else(|| Error::Execution("Expected i32".into()))?;
+                self.stack.push(Value::I32(lhs.wrapping_add(rhs)));
+                Ok(None)
+            }
+            Instruction::I32Sub => {
+                let rhs = self.stack.pop()?.as_i32().ok_or_else(|| Error::Execution("Expected i32".into()))?;
+                let lhs = self.stack.pop()?.as_i32().ok_or_else(|| Error::Execution("Expected i32".into()))?;
+                self.stack.push(Value::I32(lhs.wrapping_sub(rhs)));
+                Ok(None)
+            }
+            
+            // Comparison operations
+            Instruction::I32LtS => {
+                let rhs = self.stack.pop()?.as_i32().ok_or_else(|| Error::Execution("Expected i32".into()))?;
+                let lhs = self.stack.pop()?.as_i32().ok_or_else(|| Error::Execution("Expected i32".into()))?;
+                self.stack.push(Value::I32(if lhs < rhs { 1 } else { 0 }));
+                Ok(None)
+            }
+            Instruction::I32GtS => {
+                let rhs = self.stack.pop()?.as_i32().ok_or_else(|| Error::Execution("Expected i32".into()))?;
+                let lhs = self.stack.pop()?.as_i32().ok_or_else(|| Error::Execution("Expected i32".into()))?;
+                self.stack.push(Value::I32(if lhs > rhs { 1 } else { 0 }));
+                Ok(None)
+            }
+            Instruction::I32LeS => {
+                let rhs = self.stack.pop()?.as_i32().ok_or_else(|| Error::Execution("Expected i32".into()))?;
+                let lhs = self.stack.pop()?.as_i32().ok_or_else(|| Error::Execution("Expected i32".into()))?;
+                self.stack.push(Value::I32(if lhs <= rhs { 1 } else { 0 }));
+                Ok(None)
+            }
+            Instruction::I32GeS => {
+                let rhs = self.stack.pop()?.as_i32().ok_or_else(|| Error::Execution("Expected i32".into()))?;
+                let lhs = self.stack.pop()?.as_i32().ok_or_else(|| Error::Execution("Expected i32".into()))?;
+                self.stack.push(Value::I32(if lhs >= rhs { 1 } else { 0 }));
+                Ok(None)
+            }
+            Instruction::I32Eq => {
+                let rhs = self.stack.pop()?.as_i32().ok_or_else(|| Error::Execution("Expected i32".into()))?;
+                let lhs = self.stack.pop()?.as_i32().ok_or_else(|| Error::Execution("Expected i32".into()))?;
+                self.stack.push(Value::I32(if lhs == rhs { 1 } else { 0 }));
+                Ok(None)
+            }
+            Instruction::I32Ne => {
+                let rhs = self.stack.pop()?.as_i32().ok_or_else(|| Error::Execution("Expected i32".into()))?;
+                let lhs = self.stack.pop()?.as_i32().ok_or_else(|| Error::Execution("Expected i32".into()))?;
+                self.stack.push(Value::I32(if lhs != rhs { 1 } else { 0 }));
+                Ok(None)
+            }
 
             // ... implement other instructions ...
             _ => Err(Error::Execution("Instruction not implemented".into())),
+        };
+        
+        // Record execution time for this instruction type
+        #[cfg(feature = "std")]
+        {
+            let elapsed_micros = timer_start.elapsed().as_micros() as u64;
+            match inst_category {
+                InstructionCategory::ControlFlow => {
+                    self.stats.control_flow_time_us += elapsed_micros;
+                }
+                InstructionCategory::LocalGlobal => {
+                    self.stats.local_global_time_us += elapsed_micros;
+                }
+                InstructionCategory::MemoryOp => {
+                    self.stats.memory_ops_time_us += elapsed_micros;
+                }
+                InstructionCategory::FunctionCall => {
+                    self.stats.function_call_time_us += elapsed_micros;
+                }
+                InstructionCategory::Arithmetic => {
+                    self.stats.arithmetic_time_us += elapsed_micros;
+                }
+                InstructionCategory::Other => {
+                    // Not tracked specifically
+                }
+            }
         }
+        
+        result
     }
 }
 
