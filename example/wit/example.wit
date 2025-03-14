@@ -15,7 +15,9 @@ interface example {
     // Mock logging function for demonstration
     log: func(level: level, message: string);
 
-    // Main function - returns an integer
+    // Main function that runs a loop for 100 iterations
+    // and logs the counter for each iteration
+    // Returns the total number of iterations completed
     hello: func() -> s32;
 }
 
