@@ -8,7 +8,7 @@ Functional Requirements
 
 .. req:: Resumable Interpreter
    :id: REQ_001
-   :status: planned
+   :status: implemented
    
    The interpreter shall be resumable, allowing operation with fuel or other implementations of bounded run-time that require the interpreter to be halted and later resumed as if it was not halted.
 
@@ -20,7 +20,7 @@ Functional Requirements
 
 .. req:: Bounded Execution
    :id: REQ_003
-   :status: planned
+   :status: implemented
    
    The interpreter shall yield back control flow eventually, allowing users to call the interpreter with a bound and expect a result in a finite amount of time or bytecode operations, even if the bytecode itself never finishes execution.
 
@@ -75,14 +75,14 @@ Low-Level Functional Requirements
 
 .. req:: No Standard Library
    :id: REQ_006
-   :status: partial
+   :status: implemented
    :links: REQ_002
    
    The interpreter shall be implemented in no_std Rust, only relying on functionality provided by no_std to enable execution on bare environments where no operating system is available.
 
 .. req:: Fuel Mechanism
    :id: REQ_007
-   :status: planned
+   :status: implemented
    :links: REQ_003
    
    The interpreter shall support fuel bounded execution, where each bytecode instruction is associated with a specific amount of fuel consumed during execution.
@@ -165,7 +165,7 @@ Observability Requirements
 
 .. req:: Coverage Measurement
    :id: REQ_013
-   :status: planned
+   :status: partial
    :links: REQ_012
    
    The instrumentation shall enable the measurement of:
