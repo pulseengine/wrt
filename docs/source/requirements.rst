@@ -45,7 +45,7 @@ Functional Requirements
 
 .. req:: WASI Logging Support
    :id: REQ_015
-   :status: planned
+   :status: partial
    
    The interpreter shall implement the WASI logging API as specified in the wasi-logging proposal, providing:
    - Support for all defined log levels (Error, Warn, Info, Debug, Trace)
@@ -75,7 +75,7 @@ Low-Level Functional Requirements
 
 .. req:: No Standard Library
    :id: REQ_006
-   :status: planned
+   :status: partial
    :links: REQ_002
    
    The interpreter shall be implemented in no_std Rust, only relying on functionality provided by no_std to enable execution on bare environments where no operating system is available.
@@ -96,7 +96,7 @@ Low-Level Functional Requirements
 
 .. req:: WebAssembly Core Implementation
    :id: REQ_018
-   :status: planned
+   :status: partial
    :links: REQ_014
    
    The interpreter shall implement the WebAssembly Core specification, including:
@@ -111,7 +111,7 @@ Low-Level Functional Requirements
 
 .. req:: Component Model Implementation
    :id: REQ_019
-   :status: planned
+   :status: partial
    :links: REQ_014
    
    The interpreter shall implement the Component Model specification, including:
@@ -128,7 +128,7 @@ Dependency Requirements
 
 .. req:: Logging Support
    :id: REQ_009
-   :status: planned
+   :status: implemented
    
    The interpreter shall have an optional dependency on the ``log`` crate version ``0.4.22`` for observability and debugging purposes.
 
@@ -140,13 +140,13 @@ Dependency Requirements
 
 .. req:: Rust Version
    :id: REQ_011
-   :status: planned
+   :status: implemented
    
    The interpreter shall compile on Rust ``1.76.0`` and later versions.
 
 .. req:: Component Model Tools
    :id: REQ_020
-   :status: planned
+   :status: partial
    :links: REQ_014
    
    The interpreter shall use the following tools for Component Model development:
@@ -159,7 +159,7 @@ Observability Requirements
 
 .. req:: Instrumentation Support
    :id: REQ_012
-   :status: planned
+   :status: partial
    
    The interpreter shall implement means for instrumentation to support certification evidence generation, debugging, and run-time monitoring.
 
