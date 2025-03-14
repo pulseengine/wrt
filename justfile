@@ -15,11 +15,11 @@ build-wrtd:
     cargo build -p wrtd
 
 # Build the example module (debug mode)
-build-example:
+build-example: setup-rust-targets
     cargo build -p example --target wasm32-wasip2
 
 # Build the example module in release mode (optimized for size)
-build-example-release:
+build-example-release: setup-rust-targets
     # Build with standard release optimizations
     cargo build -p example --target wasm32-wasip2 --release
 
@@ -32,9 +32,23 @@ link-example-release:
     ln -sf "../target/wasm32-wasip2/release/example.wasm" example/hello-world.wasm
 
 # ----------------- Test Commands -----------------
+# 
+# Testing is split into different categories:
+# - test-wrt: Core library tests
+# - test-wrtd: Command line tool tests
+# - test-example: Example WebAssembly module tests
+# - test-docs: Documentation tests
+# - test-wrtd-*: Various wrtd functionality tests
+#
+# For testing wrtd with different parameters, use:
+# - just test-wrtd-example "--fuel 50 --stats"
+# - just test-wrtd-fuel 200
+# - just test-wrtd-stats
+# - just test-wrtd-help
+# - just test-wrtd-all
 
 # Run tests for all crates
-test: test-wrt test-wrtd test-example test-docs test-wrtd-example
+test: setup-rust-targets test-wrt test-wrtd test-example test-docs test-wrtd-all
 
 # Run code coverage tests
 coverage:
@@ -95,11 +109,41 @@ run-example-release: build-example-release link-example-release
     wc -c example/hello-world.wasm
 
 # Test wrtd with the example component (release mode)
-test-wrtd-example: build-example-release link-example-release build-wrtd
-    # Execute the example with wrtd
-    ./target/debug/wrtd example/hello-world.wasm --call hello
+# Additional arguments can be passed with e.g. `just test-wrtd-example "--fuel 100 --stats"`
+test-wrtd-example *ARGS="--call hello": setup-rust-targets build-example-release link-example-release build-wrtd
+    # Execute the example with wrtd, passing any additional arguments
+    ./target/debug/wrtd example/hello-world.wasm {{ARGS}}
     # Report the size of the WebAssembly file
     wc -c example/hello-world.wasm
+
+# Test wrtd with fuel-bounded execution and statistics
+test-wrtd-fuel FUEL="100": (test-wrtd-example "--call hello --fuel " + FUEL + " --stats")
+    # The fuel test has already been executed by the dependency
+
+# Test wrtd with statistics output
+test-wrtd-stats: (test-wrtd-example "--call hello --stats")
+    # The stats test has already been executed by the dependency
+
+# Test wrtd with both fuel and statistics
+test-wrtd-fuel-stats FUEL="100": (test-wrtd-example "--call hello --fuel " + FUEL + " --stats")
+    # The fuel+stats test has already been executed by the dependency
+
+# Test wrtd without any function call (should show available functions)
+test-wrtd-no-call: (test-wrtd-example "")
+    # The no-call test has already been executed by the dependency
+
+# Test wrtd with help output
+test-wrtd-help: build-wrtd
+    ./target/debug/wrtd --help
+
+# Test wrtd version output
+test-wrtd-version: build-wrtd
+    ./target/debug/wrtd --version
+
+# Comprehensive test of wrtd with all major options
+# This runs all the test commands defined above to verify different wrtd features
+# Usage: just test-wrtd-all
+test-wrtd-all: test-wrtd-example test-wrtd-fuel test-wrtd-stats test-wrtd-help test-wrtd-version test-wrtd-no-call
 
 # ----------------- Code Quality Commands -----------------
 
@@ -172,12 +216,30 @@ clean:
     rm -f example/hello-world.wasm
     rm -rf docs/_build
 
-# Install required tools for development
-setup: setup-hooks
-    rustup target add wasm32-wasip2
-    cargo install wasmtime-cli
-    cargo install wasm-tools
+# Install rust targets required for the project
+setup-rust-targets:
+    rustup target add wasm32-wasip2 || rustup target add wasm32-wasip2
+
+# Install WebAssembly tools (wasmtime, wasm-tools)
+setup-wasm-tools:
+    cargo install wasmtime-cli --locked
+    cargo install wasm-tools --locked
+
+# Install Python dependencies
+setup-python-deps:
     pip install -r docs/requirements.txt
+
+# Install required tools for development (local development)
+setup: setup-hooks setup-rust-targets setup-wasm-tools setup-python-deps
+    @echo "✅ All development tools installed successfully."
+
+# Setup for CI environments (without hooks)
+setup-ci: setup-rust-targets setup-wasm-tools setup-python-deps
+    @echo "✅ CI environment setup completed."
+    
+# Minimal setup for CI that only installs necessary Rust targets
+setup-ci-minimal: setup-rust-targets
+    @echo "✅ Minimal CI environment setup completed (Rust targets only)."
 
 # Install git hooks to enforce checks before commit/push
 setup-hooks:
