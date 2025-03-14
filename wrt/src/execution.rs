@@ -171,6 +171,28 @@ impl Stack {
     }
 }
 
+/// Execution state for resumable execution
+#[derive(Debug, Clone, PartialEq)]
+pub enum ExecutionState {
+    /// Initial state, not executing
+    Idle,
+    /// Currently executing
+    Running,
+    /// Execution paused due to fuel exhaustion
+    Paused {
+        /// Instance index
+        instance_idx: u32,
+        /// Function index
+        func_idx: u32,
+        /// Program counter
+        pc: usize,
+        /// Expected return values count
+        expected_results: usize,
+    },
+    /// Execution complete
+    Finished,
+}
+
 /// The WebAssembly execution engine
 #[derive(Debug)]
 pub struct Engine {
@@ -178,11 +200,113 @@ pub struct Engine {
     stack: Stack,
     /// Module instances
     instances: Vec<ModuleInstance>,
+    /// Remaining fuel for bounded execution
+    fuel: Option<u64>,
+    /// Current execution state
+    state: ExecutionState,
 }
 
 impl Default for Engine {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::instructions::Instruction;
+    use crate::module::Module;
+    use crate::types::{FuncType, ValueType};
+    use crate::values::Value;
+    use crate::Vec;
+    
+    #[cfg(feature = "std")]
+    use std::vec;
+    #[cfg(not(feature = "std"))]
+    use alloc::vec;
+
+    #[test]
+    fn test_fuel_bounded_execution() {
+        // Create a simple module with a single function
+        let mut module = Module::new();
+        
+        // Add a simple function type (no params, returns an i32)
+        module.types.push(FuncType {
+            params: vec![],
+            results: vec![ValueType::I32],
+        });
+        
+        // Add a function that executes a large number of instructions
+        let mut instructions = Vec::new();
+        for _ in 0..100 {
+            instructions.push(Instruction::Nop);
+        }
+        // At the end, push a constant value as the result
+        instructions.push(Instruction::I32Const(42));
+        
+        // Add the function to the module
+        module.functions.push(crate::module::Function {
+            type_idx: 0,
+            locals: vec![],
+            body: instructions,
+        });
+        
+        // Create an engine with a fuel limit
+        let mut engine = Engine::new();
+        engine.instantiate(module).unwrap();
+        
+        // Test with unlimited fuel
+        let result = engine.execute(0, 0, vec![]).unwrap();
+        assert_eq!(result, vec![Value::I32(42)]);
+        
+        // Create a new module for the limited fuel test
+        let mut limited_module = Module::new();
+        
+        // Add the same function type and instructions
+        limited_module.types.push(FuncType {
+            params: vec![],
+            results: vec![ValueType::I32],
+        });
+        
+        // Add a function that executes a large number of instructions
+        let mut instructions = Vec::new();
+        for _ in 0..100 {
+            instructions.push(Instruction::Nop);
+        }
+        // At the end, push a constant value as the result
+        instructions.push(Instruction::I32Const(42));
+        
+        // Add the function to the module
+        limited_module.functions.push(crate::module::Function {
+            type_idx: 0,
+            locals: vec![],
+            body: instructions,
+        });
+        
+        // Reset the engine
+        let mut engine = Engine::new();
+        engine.instantiate(limited_module).unwrap();
+        
+        // Test with limited fuel
+        engine.set_fuel(Some(10)); // Only enough for 10 instructions
+        let result = engine.execute(0, 0, vec![]);
+        
+        // Should fail with FuelExhausted error
+        assert!(matches!(result, Err(Error::FuelExhausted)));
+        
+        // Check the state
+        assert!(matches!(engine.state(), ExecutionState::Paused { .. }));
+        
+        // Add more fuel and resume
+        engine.set_fuel(Some(200)); // Plenty of fuel to finish
+        let result = engine.resume().unwrap();
+        
+        // Should complete execution
+        assert_eq!(result, vec![Value::I32(42)]);
+        
+        // Check the state
+        assert_eq!(*engine.state(), ExecutionState::Finished);
     }
 }
 
@@ -192,7 +316,36 @@ impl Engine {
         Self {
             stack: Stack::new(),
             instances: Vec::new(),
+            fuel: None, // No fuel limit by default
+            state: ExecutionState::Idle,
         }
+    }
+    
+    /// Sets the fuel limit for bounded execution
+    /// 
+    /// # Parameters
+    /// 
+    /// * `fuel` - The amount of fuel to set, or None for unbounded execution
+    pub fn set_fuel(&mut self, fuel: Option<u64>) {
+        self.fuel = fuel;
+    }
+    
+    /// Returns the current amount of remaining fuel
+    /// 
+    /// # Returns
+    /// 
+    /// The remaining fuel, or None if unbounded
+    pub fn remaining_fuel(&self) -> Option<u64> {
+        self.fuel
+    }
+    
+    /// Returns the current execution state
+    /// 
+    /// # Returns
+    /// 
+    /// The current state of the engine
+    pub fn state(&self) -> &ExecutionState {
+        &self.state
     }
 
     /// Instantiates a module
@@ -265,59 +418,101 @@ impl Engine {
         Ok(())
     }
 
-    /// Executes a function
+    /// Executes a function with fuel-bounded execution
     pub fn execute(
         &mut self,
         instance_idx: u32,
         func_idx: u32,
         args: Vec<Value>,
     ) -> Result<Vec<Value>> {
-        // Clone the necessary information to avoid borrow issues
-        let instance_clone;
-        let func_clone;
-        let func_type_clone;
+        // Check if we're resuming a paused execution
+        let start_pc = if let ExecutionState::Paused { pc, .. } = self.state {
+            // We're resuming from a paused state
+            pc
+        } else {
+            // We're starting a new execution
+            self.state = ExecutionState::Running;
+            
+            // Clone the necessary information to avoid borrow issues
+            let instance_clone;
 
-        {
-            // Scope to limit the borrow of self.instances
+            {
+                // Scope to limit the borrow of self.instances
+                let instance = &self.instances[instance_idx as usize];
+                let func = &instance.module.functions[func_idx as usize];
+                let func_type = &instance.module.types[func.type_idx as usize];
+
+                // Check argument count
+                if args.len() != func_type.params.len() {
+                    return Err(Error::Execution(format!(
+                        "Expected {} arguments, got {}",
+                        func_type.params.len(),
+                        args.len()
+                    )));
+                }
+
+                // Clone the data we'll need outside this scope
+                instance_clone = instance.clone();
+            }
+
+            // Create frame
+            let mut frame = Frame {
+                func_idx,
+                locals: Vec::new(),
+                module: instance_clone,
+            };
+
+            // Initialize locals with arguments
+            frame.locals.extend(args);
+
+            // Push frame
+            self.stack.push_frame(frame);
+            
+            // Start from the beginning
+            0
+        };
+
+        // Get the function clone
+        let func_clone = {
+            let instance = &self.instances[instance_idx as usize];
+            instance.module.functions[func_idx as usize].clone()
+        };
+
+        // Get expected results count
+        let expected_results = {
             let instance = &self.instances[instance_idx as usize];
             let func = &instance.module.functions[func_idx as usize];
             let func_type = &instance.module.types[func.type_idx as usize];
-
-            // Check argument count
-            if args.len() != func_type.params.len() {
-                return Err(Error::Execution(format!(
-                    "Expected {} arguments, got {}",
-                    func_type.params.len(),
-                    args.len()
-                )));
-            }
-
-            // Clone the data we'll need outside this scope
-            instance_clone = instance.clone();
-            func_clone = func.clone();
-            func_type_clone = func_type.clone();
-        }
-
-        // Create frame
-        let mut frame = Frame {
-            func_idx,
-            locals: Vec::new(),
-            module: instance_clone,
+            func_type.results.len()
         };
 
-        // Initialize locals with arguments
-        frame.locals.extend(args);
-
-        // Push frame
-        self.stack.push_frame(frame);
-
-        // Execute function body using the cloned data
-        let mut pc = 0;
+        // Execute function body with fuel limitation
+        let mut pc = start_pc;
         while pc < func_clone.body.len() {
+            // Check if we have fuel
+            if let Some(fuel) = self.fuel {
+                if fuel == 0 {
+                    // Out of fuel, pause execution
+                    self.state = ExecutionState::Paused {
+                        instance_idx,
+                        func_idx,
+                        pc,
+                        expected_results,
+                    };
+                    return Err(Error::FuelExhausted);
+                }
+                
+                // Fuel is consumed in execute_instruction based on instruction type
+            }
+            
+            // Execute the instruction
             match self.execute_instruction(&func_clone.body[pc], pc) {
                 Ok(Some(new_pc)) => pc = new_pc,
                 Ok(None) => pc += 1,
-                Err(e) => return Err(e),
+                Err(e) => {
+                    self.state = ExecutionState::Idle;
+                    return Err(e);
+                }
             }
         }
 
@@ -326,16 +521,123 @@ impl Engine {
 
         // Return results
         let mut results = Vec::new();
-        for _ in 0..func_type_clone.results.len() {
+        for _ in 0..expected_results {
             results.push(self.stack.pop()?);
         }
         results.reverse();
 
+        // Mark execution as finished
+        self.state = ExecutionState::Finished;
+
         Ok(results)
+    }
+    
+    /// Resumes a paused execution
+    /// 
+    /// # Returns
+    /// 
+    /// The results of the function call if execution completes, or an error if out of fuel again
+    pub fn resume(&mut self) -> Result<Vec<Value>> {
+        if let ExecutionState::Paused { instance_idx, func_idx, .. } = self.state.clone() {
+            // Resume execution with empty args since we're already set up
+            self.execute(instance_idx, func_idx, Vec::new())
+        } else {
+            Err(Error::Execution("Cannot resume: not in paused state".into()))
+        }
+    }
+
+    /// Calculates the fuel cost for a given instruction
+    fn instruction_cost(&self, inst: &Instruction) -> u64 {
+        match inst {
+            // Control instructions - more expensive
+            Instruction::Call(_) => 10,
+            Instruction::CallIndirect(_, _) => 15,
+            Instruction::ReturnCall(_) => 10,
+            Instruction::ReturnCallIndirect(_, _) => 15,
+            Instruction::Return => 5,
+            Instruction::Br(_) | Instruction::BrIf(_) | Instruction::BrTable(_, _) => 4,
+            Instruction::If(_) => 3,
+            Instruction::Block(_) | Instruction::Loop(_) => 2,
+            
+            // Memory instructions - more expensive
+            Instruction::I32Load(_, _) | Instruction::I64Load(_, _) | 
+            Instruction::F32Load(_, _) | Instruction::F64Load(_, _) |
+            Instruction::I32Load8S(_, _) | Instruction::I32Load8U(_, _) |
+            Instruction::I32Load16S(_, _) | Instruction::I32Load16U(_, _) |
+            Instruction::I64Load8S(_, _) | Instruction::I64Load8U(_, _) |
+            Instruction::I64Load16S(_, _) | Instruction::I64Load16U(_, _) |
+            Instruction::I64Load32S(_, _) | Instruction::I64Load32U(_, _) => 8,
+            
+            Instruction::I32Store(_, _) | Instruction::I64Store(_, _) |
+            Instruction::F32Store(_, _) | Instruction::F64Store(_, _) |
+            Instruction::I32Store8(_, _) | Instruction::I32Store16(_, _) |
+            Instruction::I64Store8(_, _) | Instruction::I64Store16(_, _) |
+            Instruction::I64Store32(_, _) => 8,
+            
+            Instruction::MemoryGrow => 20,
+            Instruction::MemorySize => 3,
+            Instruction::MemoryFill => 10,
+            Instruction::MemoryCopy => 10,
+            Instruction::MemoryInit(_) => 10,
+            Instruction::DataDrop(_) => 5,
+            
+            // Table instructions
+            Instruction::TableGet(_) | Instruction::TableSet(_) => 3,
+            Instruction::TableSize(_) => 3,
+            Instruction::TableGrow(_) => 10,
+            Instruction::TableFill(_) => 8,
+            Instruction::TableCopy(_, _) => 8,
+            Instruction::TableInit(_, _) => 8,
+            Instruction::ElemDrop(_) => 3,
+            
+            // Basic instructions - cheaper
+            Instruction::I32Const(_) | Instruction::I64Const(_) |
+            Instruction::F32Const(_) | Instruction::F64Const(_) => 1,
+            Instruction::Nop => 1,
+            Instruction::Drop => 1,
+            Instruction::Select | Instruction::SelectTyped(_) => 2,
+            Instruction::LocalGet(_) | Instruction::LocalSet(_) | Instruction::LocalTee(_) => 2,
+            Instruction::GlobalGet(_) | Instruction::GlobalSet(_) => 3,
+            
+            // Numeric instructions - medium cost
+            Instruction::I32Eqz | Instruction::I64Eqz => 2,
+            
+            // Comparison operations
+            Instruction::I32Eq | Instruction::I32Ne | 
+            Instruction::I32LtS | Instruction::I32LtU | 
+            Instruction::I32GtS | Instruction::I32GtU |
+            Instruction::I32LeS | Instruction::I32LeU |
+            Instruction::I32GeS | Instruction::I32GeU |
+            Instruction::I64Eq | Instruction::I64Ne |
+            Instruction::I64LtS | Instruction::I64LtU |
+            Instruction::I64GtS | Instruction::I64GtU |
+            Instruction::I64LeS | Instruction::I64LeU |
+            Instruction::I64GeS | Instruction::I64GeU |
+            Instruction::F32Eq | Instruction::F32Ne |
+            Instruction::F32Lt | Instruction::F32Gt |
+            Instruction::F32Le | Instruction::F32Ge |
+            Instruction::F64Eq | Instruction::F64Ne |
+            Instruction::F64Lt | Instruction::F64Gt |
+            Instruction::F64Le | Instruction::F64Ge => 2,
+            
+            // Default for other instructions
+            _ => 1,
+        }
     }
 
     /// Executes a single instruction
     fn execute_instruction(&mut self, inst: &Instruction, pc: usize) -> Result<Option<usize>> {
+        // Consume instruction-specific fuel amount if needed
+        if let Some(fuel) = self.fuel {
+            let cost = self.instruction_cost(inst);
+            if fuel < cost {
+                // Not enough fuel for this instruction
+                self.fuel = Some(0); // Set to 0 to trigger out-of-fuel error on next check
+            } else {
+                self.fuel = Some(fuel - cost);
+            }
+        }
+        
         match inst {
             // Control instructions
             Instruction::Unreachable => {
@@ -431,6 +733,55 @@ impl Engine {
 
                 Ok(None)
             }
+            
+            // Numeric constants
+            Instruction::I32Const(value) => {
+                self.stack.push(Value::I32(*value));
+                Ok(None)
+            }
+            Instruction::I64Const(value) => {
+                self.stack.push(Value::I64(*value));
+                Ok(None)
+            }
+            Instruction::F32Const(value) => {
+                self.stack.push(Value::F32(*value));
+                Ok(None)
+            }
+            Instruction::F64Const(value) => {
+                self.stack.push(Value::F64(*value));
+                Ok(None)
+            }
+            
+            // Variable access
+            Instruction::LocalGet(idx) => {
+                let frame = self.stack.current_frame()?;
+                let local = frame
+                    .locals
+                    .get(*idx as usize)
+                    .ok_or_else(|| Error::Execution(format!("Local {} not found", idx)))?
+                    .clone();
+                self.stack.push(local);
+                Ok(None)
+            }
+            Instruction::LocalSet(idx) => {
+                let value = self.stack.pop()?;
+                let frame = self.stack.current_frame()?;
+                let idx = *idx as usize;
+                if idx >= frame.locals.len() {
+                    return Err(Error::Execution(format!("Local {} out of bounds", idx)));
+                }
+                // Can't borrow mutably while borrowing immutably, so we need to drop the frame ref
+                let _ = frame;
+                
+                // Now get a mutable reference to the current frame
+                if let Some(frame) = self.stack.frames.last_mut() {
+                    frame.locals[idx] = value;
+                } else {
+                    return Err(Error::Execution("No active frame for local set".into()));
+                }
+                Ok(None)
+            }
+            
             // ... implement other instructions ...
             _ => Err(Error::Execution("Instruction not implemented".into())),
         }

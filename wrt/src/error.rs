@@ -23,6 +23,10 @@ pub enum Error {
     /// Represents errors that occur during the execution of a WebAssembly module,
     /// such as out-of-bounds memory access, stack overflow, or type mismatches.
     Execution(String),
+    
+    /// Represents that execution has paused due to fuel exhaustion.
+    /// This is not a true error but a signal that execution can be resumed.
+    FuelExhausted,
 
     /// Represents input/output errors, typically when reading from or writing to
     /// a file system or other I/O operations.
@@ -47,6 +51,7 @@ impl fmt::Display for Error {
         match self {
             Error::Validation(msg) => write!(f, "Validation error: {}", msg),
             Error::Execution(msg) => write!(f, "Execution error: {}", msg),
+            Error::FuelExhausted => write!(f, "Execution paused: out of fuel"),
             Error::IO(msg) => write!(f, "IO error: {}", msg),
             Error::Parse(msg) => write!(f, "Parse error: {}", msg),
             Error::Component(msg) => write!(f, "Component error: {}", msg),
