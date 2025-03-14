@@ -3,6 +3,20 @@ use crate::instructions::Instruction;
 use crate::types::*;
 use crate::{format, String, Vec};
 
+// Constants for section codes
+const SECTION_CUSTOM: u8 = 0;
+const SECTION_TYPE: u8 = 1;
+const SECTION_IMPORT: u8 = 2;
+const SECTION_FUNCTION: u8 = 3;
+const SECTION_TABLE: u8 = 4;
+const SECTION_MEMORY: u8 = 5;
+const SECTION_GLOBAL: u8 = 6;
+const SECTION_EXPORT: u8 = 7;
+const SECTION_START: u8 = 8;
+const SECTION_ELEMENT: u8 = 9;
+const SECTION_CODE: u8 = 10;
+const SECTION_DATA: u8 = 11;
+
 /// Represents a WebAssembly module
 #[derive(Debug, Clone)]
 pub struct Module {
@@ -26,6 +40,8 @@ pub struct Module {
     pub start: Option<u32>,
     /// Custom sections
     pub custom_sections: Vec<CustomSection>,
+    /// Exports (functions, tables, memories, and globals)
+    pub exports: Vec<Export>,
 }
 
 /// Represents an import in a WebAssembly module
@@ -81,6 +97,30 @@ pub struct CustomSection {
     pub data: Vec<u8>,
 }
 
+/// Export kind
+#[derive(Debug, Clone, PartialEq)]
+pub enum ExportKind {
+    /// Function export
+    Function,
+    /// Table export
+    Table,
+    /// Memory export
+    Memory,
+    /// Global export
+    Global,
+}
+
+/// Represents an export in a WebAssembly module
+#[derive(Debug, Clone)]
+pub struct Export {
+    /// Export name
+    pub name: String,
+    /// Export kind
+    pub kind: ExportKind,
+    /// Export index
+    pub index: u32,
+}
+
 impl Default for Module {
     fn default() -> Self {
         Self::new()
@@ -101,6 +141,7 @@ impl Module {
             data: Vec::new(),
             start: None,
             custom_sections: Vec::new(),
+            exports: Vec::new(),
         }
     }
 
@@ -114,33 +155,116 @@ impl Module {
     ///
     /// The loaded module, or an error if the binary is invalid
     pub fn load_from_binary(&self, bytes: &[u8]) -> Result<Self> {
-        // This is a placeholder implementation
-        // In a real implementation, we would parse the WebAssembly binary
-
-        // For now, just check that it starts with the WebAssembly magic number
-        if bytes.len() < 8 || bytes[0..4] != [0x00, 0x61, 0x73, 0x6D] {
-            return Err(Error::Parse("Invalid WebAssembly binary format".into()));
+        // First, verify the WebAssembly magic number and version
+        if bytes.len() < 8 {
+            return Err(Error::Parse("WebAssembly binary too short".into()));
         }
 
-        // Create a minimal module for demonstration
+        // Check magic number: \0asm
+        if bytes[0..4] != [0x00, 0x61, 0x73, 0x6D] {
+            return Err(Error::Parse("Invalid WebAssembly magic number".into()));
+        }
+
+        // Check version: currently 1
+        if bytes[4..8] != [0x01, 0x00, 0x00, 0x00] {
+            return Err(Error::Parse(format!(
+                "Unsupported WebAssembly version: {:?}",
+                &bytes[4..8]
+            )));
+        }
+
         let mut module = Module::new();
+        let mut cursor = 8; // Start parsing after magic number and version
 
-        // Add a simple function type (no params, returns an i32)
-        let mut results = Vec::new();
-        results.push(ValueType::I32);
-        module.types.push(FuncType {
-            params: Vec::new(),
-            results,
-        });
+        // Parse sections until we reach the end of the binary
+        while cursor < bytes.len() {
+            // Read section code
+            let section_code = bytes[cursor];
+            cursor += 1;
 
-        // Add a simple function that returns 42
-        let mut body = Vec::new();
-        body.push(Instruction::I32Const(42));
-        module.functions.push(Function {
-            type_idx: 0,
-            locals: Vec::new(),
-            body,
-        });
+            // Read section size (LEB128 encoded)
+            let (section_size, bytes_read) = read_leb128_u32(&bytes[cursor..])?;
+            cursor += bytes_read;
+
+            // Read section contents
+            let section_end = cursor + section_size as usize;
+            if section_end > bytes.len() {
+                return Err(Error::Parse("Section extends beyond end of file".into()));
+            }
+
+            let section_bytes = &bytes[cursor..section_end];
+
+            // Parse section based on its code
+            match section_code {
+                // Type Section (1)
+                1 => parse_type_section(&mut module, section_bytes)?,
+
+                // Import Section (2)
+                2 => parse_import_section(&mut module, section_bytes)?,
+
+                // Function Section (3)
+                3 => parse_function_section(&mut module, section_bytes)?,
+
+                // Table Section (4)
+                4 => parse_table_section(&mut module, section_bytes)?,
+
+                // Memory Section (5)
+                5 => parse_memory_section(&mut module, section_bytes)?,
+
+                // Global Section (6)
+                6 => parse_global_section(&mut module, section_bytes)?,
+
+                // Export Section (7)
+                7 => parse_export_section(&mut module, section_bytes)?,
+
+                // Start Section (8)
+                8 => parse_start_section(&mut module, section_bytes)?,
+
+                // Element Section (9)
+                9 => parse_element_section(&mut module, section_bytes)?,
+
+                // Code Section (10)
+                10 => parse_code_section(&mut module, section_bytes)?,
+
+                // Data Section (11)
+                11 => parse_data_section(&mut module, section_bytes)?,
+
+                // Custom Section (0) or unknown section
+                _ => {
+                    // We can skip custom sections for now
+                    if section_code != 0 {
+                        // Unknown section - in strict mode we could return an error
+                        // but for now we'll just log and continue
+                    }
+                }
+            }
+
+            cursor = section_end;
+        }
+
+        // Create a simple function that returns 42 if no functions exist
+        // This is temporary until we complete the full parser implementation
+        if module.functions.is_empty() {
+            // Add a simple function type (no params, returns an i32)
+            let mut results = Vec::new();
+            results.push(ValueType::I32);
+            module.types.push(FuncType {
+                params: Vec::new(),
+                results,
+            });
+
+            // Add a simple function that returns 42
+            let mut body = Vec::new();
+            body.push(Instruction::I32Const(42));
+            module.functions.push(Function {
+                type_idx: 0,
+                locals: Vec::new(),
+                body,
+            });
+        }
+
+        // Validate the module
+        module.validate()?;
 
         Ok(module)
     }
@@ -238,4 +362,346 @@ impl Module {
 
         Ok(())
     }
+}
+
+/// Read an unsigned LEB128 encoded 32-bit integer from a byte slice
+///
+/// Returns the decoded value and the number of bytes read
+fn read_leb128_u32(bytes: &[u8]) -> Result<(u32, usize)> {
+    let mut result: u32 = 0;
+    let mut shift: u32 = 0;
+    let mut position: usize = 0;
+    let mut byte: u8;
+
+    loop {
+        if position >= bytes.len() {
+            return Err(Error::Parse("Unexpected end of LEB128 sequence".into()));
+        }
+
+        byte = bytes[position];
+        position += 1;
+
+        // Check for overflow
+        if shift >= 32 {
+            return Err(Error::Parse("LEB128 value overflow".into()));
+        }
+
+        // Add the current byte's bits to the result
+        result |= ((byte & 0x7F) as u32) << shift;
+        shift += 7;
+
+        // If the high bit is not set, we're done
+        if (byte & 0x80) == 0 {
+            break;
+        }
+    }
+
+    Ok((result, position))
+}
+
+/// Read a signed LEB128 encoded 32-bit integer from a byte slice
+fn read_leb128_i32(bytes: &[u8]) -> Result<(i32, usize)> {
+    let mut result: i32 = 0;
+    let mut shift: u32 = 0;
+    let mut position: usize = 0;
+    let mut byte: u8;
+    let mut sign_bit_set: bool = false;
+
+    loop {
+        if position >= bytes.len() {
+            return Err(Error::Parse("Unexpected end of LEB128 sequence".into()));
+        }
+
+        byte = bytes[position];
+        position += 1;
+
+        // Check for overflow
+        if shift >= 32 {
+            return Err(Error::Parse("LEB128 value overflow".into()));
+        }
+
+        // Add the current byte's bits to the result
+        result |= ((byte & 0x7F) as i32) << shift;
+        shift += 7;
+
+        // If this is the last byte, check if the sign bit is set
+        if (byte & 0x80) == 0 {
+            // Sign bit is the most significant bit of the last byte's lower 7 bits
+            if shift < 32 && (byte & 0x40) != 0 {
+                sign_bit_set = true;
+            }
+            break;
+        }
+    }
+
+    // Apply sign extension if the sign bit was set
+    if sign_bit_set && shift < 32 {
+        result |= -1 << shift;
+    }
+
+    Ok((result, position))
+}
+
+/// Parse a WebAssembly value type from a byte
+fn parse_value_type(byte: u8) -> Result<ValueType> {
+    match byte {
+        0x7F => Ok(ValueType::I32),
+        0x7E => Ok(ValueType::I64),
+        0x7D => Ok(ValueType::F32),
+        0x7C => Ok(ValueType::F64),
+        0x70 => Ok(ValueType::FuncRef),
+        0x6F => Ok(ValueType::ExternRef),
+        _ => Err(Error::Parse(format!("Invalid value type: 0x{:x}", byte))),
+    }
+}
+
+/// Helper function to parse a vector of items from a byte slice
+///
+/// This function parses a vector where the first element is the vector length (LEB128 encoded)
+/// followed by the vector elements which are parsed using the provided parse_item function.
+fn parse_vector<T, F>(bytes: &[u8], mut parse_item: F) -> Result<(Vec<T>, usize)>
+where
+    F: FnMut(&[u8]) -> Result<(T, usize)>,
+{
+    let mut cursor = 0;
+
+    // Read vector length
+    let (length, bytes_read) = read_leb128_u32(&bytes[cursor..])?;
+    cursor += bytes_read;
+
+    let mut result = Vec::with_capacity(length as usize);
+
+    // Parse each item
+    for _ in 0..length {
+        let (item, bytes_read) = parse_item(&bytes[cursor..])?;
+        cursor += bytes_read;
+        result.push(item);
+    }
+
+    Ok((result, cursor))
+}
+
+/// Parse a WebAssembly string from a byte slice
+fn parse_name(bytes: &[u8]) -> Result<(String, usize)> {
+    let mut cursor = 0;
+
+    // Read string length
+    let (length, bytes_read) = read_leb128_u32(&bytes[cursor..])?;
+    cursor += bytes_read;
+
+    // Check if we have enough bytes for the string
+    if cursor + length as usize > bytes.len() {
+        return Err(Error::Parse("String extends beyond end of section".into()));
+    }
+
+    // Read string bytes
+    let name_bytes = &bytes[cursor..cursor + length as usize];
+    cursor += length as usize;
+
+    // Convert to UTF-8 string
+    let name = String::from_utf8(name_bytes.to_vec())
+        .map_err(|_| Error::Parse("Invalid UTF-8 in name".into()))?;
+
+    Ok((name, cursor))
+}
+
+/// Parse the type section (section code 1)
+fn parse_type_section(module: &mut Module, bytes: &[u8]) -> Result<()> {
+    let mut cursor = 0;
+
+    // Read the number of types
+    let (count, bytes_read) = read_leb128_u32(&bytes[cursor..])?;
+    cursor += bytes_read;
+
+    for _ in 0..count {
+        // Each type is a function type (0x60) followed by params and results
+        if cursor >= bytes.len() {
+            return Err(Error::Parse("Unexpected end of type section".into()));
+        }
+
+        // Check for function type marker
+        if bytes[cursor] != 0x60 {
+            return Err(Error::Parse(format!(
+                "Invalid function type marker: 0x{:x}",
+                bytes[cursor]
+            )));
+        }
+        cursor += 1;
+
+        // Parse parameter types
+        let (params, bytes_read) = parse_vector(&bytes[cursor..], |param_bytes| {
+            if param_bytes.is_empty() {
+                return Err(Error::Parse("Unexpected end of parameter types".into()));
+            }
+
+            let value_type = parse_value_type(param_bytes[0])?;
+            Ok((value_type, 1))
+        })?;
+        cursor += bytes_read;
+
+        // Parse result types
+        let (results, bytes_read) = parse_vector(&bytes[cursor..], |result_bytes| {
+            if result_bytes.is_empty() {
+                return Err(Error::Parse("Unexpected end of result types".into()));
+            }
+
+            let value_type = parse_value_type(result_bytes[0])?;
+            Ok((value_type, 1))
+        })?;
+        cursor += bytes_read;
+
+        // Add the function type to the module
+        module.types.push(FuncType { params, results });
+    }
+
+    Ok(())
+}
+
+// Placeholder implementations for other section parsers
+// These will be implemented in future updates
+
+/// Parse the import section (section code 2)
+fn parse_import_section(_module: &mut Module, _bytes: &[u8]) -> Result<()> {
+    // Placeholder - will parse imports in a future update
+    Ok(())
+}
+
+/// Parse the function section (section code 3)
+fn parse_function_section(_module: &mut Module, _bytes: &[u8]) -> Result<()> {
+    // Placeholder - will parse function type indices in a future update
+    Ok(())
+}
+
+/// Parse the table section (section code 4)
+fn parse_table_section(_module: &mut Module, _bytes: &[u8]) -> Result<()> {
+    // Placeholder - will parse table definitions in a future update
+    Ok(())
+}
+
+/// Parse the memory section (section code 5)
+fn parse_memory_section(module: &mut Module, bytes: &[u8]) -> Result<()> {
+    let mut cursor = 0;
+
+    // Read the number of memories
+    let (count, bytes_read) = read_leb128_u32(&bytes[cursor..])?;
+    cursor += bytes_read;
+
+    // WebAssembly 1.0 only allows a single memory
+    if count > 1 {
+        return Err(Error::Parse("Too many memories in module".into()));
+    }
+
+    for _ in 0..count {
+        // Parse memory type
+        // Memory limits consists of a flags byte and initial size
+        if cursor + 1 > bytes.len() {
+            return Err(Error::Parse("Unexpected end of memory section".into()));
+        }
+
+        let flags = bytes[cursor];
+        cursor += 1;
+
+        // Read initial size
+        let (initial, bytes_read) = read_leb128_u32(&bytes[cursor..])?;
+        cursor += bytes_read;
+
+        // If the max flag is set, read max size
+        let maximum = if (flags & 0x01) != 0 {
+            let (max, bytes_read) = read_leb128_u32(&bytes[cursor..])?;
+            cursor += bytes_read;
+            Some(max)
+        } else {
+            None
+        };
+
+        // Add the memory to the module
+        module.memories.push(MemoryType {
+            min: initial,
+            max: maximum,
+        });
+    }
+
+    Ok(())
+}
+
+/// Parse the global section (section code 6)
+fn parse_global_section(_module: &mut Module, _bytes: &[u8]) -> Result<()> {
+    // Placeholder - will parse global definitions in a future update
+    Ok(())
+}
+
+/// Parse the export section (section code 7)
+fn parse_export_section(module: &mut Module, bytes: &[u8]) -> Result<()> {
+    let mut cursor = 0;
+
+    // Read the number of exports
+    let (count, bytes_read) = read_leb128_u32(&bytes[cursor..])?;
+    cursor += bytes_read;
+
+    for _ in 0..count {
+        // Parse export name
+        let (name, bytes_read) = parse_name(&bytes[cursor..])?;
+        cursor += bytes_read;
+
+        // Parse export kind
+        if cursor >= bytes.len() {
+            return Err(Error::Parse("Unexpected end of export section".into()));
+        }
+
+        let kind = match bytes[cursor] {
+            0x00 => ExportKind::Function,
+            0x01 => ExportKind::Table,
+            0x02 => ExportKind::Memory,
+            0x03 => ExportKind::Global,
+            _ => {
+                return Err(Error::Parse(format!(
+                    "Invalid export kind: 0x{:x}",
+                    bytes[cursor]
+                )))
+            }
+        };
+        cursor += 1;
+
+        // Parse export index
+        let (index, bytes_read) = read_leb128_u32(&bytes[cursor..])?;
+        cursor += bytes_read;
+
+        // Add the export to the module
+        module.exports.push(Export { name, kind, index });
+    }
+
+    Ok(())
+}
+
+/// Parse the start section (section code 8)
+fn parse_start_section(module: &mut Module, bytes: &[u8]) -> Result<()> {
+    if bytes.is_empty() {
+        return Err(Error::Parse("Empty start section".into()));
+    }
+
+    // Start section contains a single function index
+    let (start_idx, _) = read_leb128_u32(bytes)?;
+
+    // Set the start function index
+    module.start = Some(start_idx);
+
+    Ok(())
+}
+
+/// Parse the element section (section code 9)
+fn parse_element_section(_module: &mut Module, _bytes: &[u8]) -> Result<()> {
+    // Placeholder - will parse element segments in a future update
+    Ok(())
+}
+
+/// Parse the code section (section code 10)
+fn parse_code_section(_module: &mut Module, _bytes: &[u8]) -> Result<()> {
+    // Placeholder - will parse function bodies in a future update
+    Ok(())
+}
+
+/// Parse the data section (section code 11)
+fn parse_data_section(_module: &mut Module, _bytes: &[u8]) -> Result<()> {
+    // Placeholder - will parse data segments in a future update
+    Ok(())
 }
