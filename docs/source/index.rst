@@ -1,5 +1,5 @@
 Welcome to WRT's documentation!
-==============================
+================================
 
 .. toctree::
    :maxdepth: 2
@@ -23,7 +23,7 @@ WRT is a Rust workbench project that implements a complete WebAssembly runtime w
 The project follows strict requirements for safety, performance, and portability, making it suitable for embedded systems and safety-critical applications.
 
 Key Features:
-------------
+-------------
 
 - **WebAssembly Core Implementation**: Complete implementation of the WebAssembly Core specification
 - **Component Model Support**: Full implementation of WebAssembly Component Model Preview 2, including resource types and interface types

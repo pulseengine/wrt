@@ -205,6 +205,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r docs/requirements.txt
           just docs-html
+          just check-docs
       - name: Build Rust API docs
         run: cargo doc --no-deps
 

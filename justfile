@@ -54,6 +54,11 @@ test-docs:
     # Note: Currently allowing warnings (remove -n flag later when docs are fixed)
     {{sphinx_build}} -M html "{{sphinx_source}}" "{{sphinx_build_dir}}" {{sphinx_opts}} -n
 
+# Strict documentation check (fail on warnings)
+check-docs:
+    # Verify documentation builds with zero warnings
+    {{sphinx_build}} -M html "{{sphinx_source}}" "{{sphinx_build_dir}}" {{sphinx_opts}} -W
+
 # Run the example module with wasmtime
 run-example: build-example link-example
     wasmtime run --wasm component-model example/hello-world.wasm || echo "Success! Module is a valid component that exports the example:hello/example interface with hello function returning 42"
@@ -89,7 +94,7 @@ check-udeps:
     cargo +nightly udeps -p wrt -p wrtd --all-targets || echo "Note: Criterion is allowed as an unused dev-dependency for future benchmarks"
 
 # Run all checks (format, clippy, tests, imports, udeps, docs)
-check-all: check test check-imports check-udeps test-docs
+check-all: check test check-imports check-udeps check-docs
 
 # Pre-commit check to run before committing changes
 pre-commit: check-all
