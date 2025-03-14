@@ -12,3 +12,6 @@ tracing-subscriber = { workspace = true, features = ["json"] }
 anyhow = { workspace = true }
 clap = { version = "4.5.32", features = ["derive"] }
 
+[lints.rust]
+unexpected_cfgs = { level = "allow", check-cfg = ['cfg(test)'] }
+
