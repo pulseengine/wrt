@@ -86,7 +86,7 @@ pub use global::{Global, Globals};
 pub use instructions::{BlockType, Instruction};
 pub use logging::{CallbackRegistry, LogLevel, LogOperation};
 pub use memory::Memory;
-pub use module::Module;
+pub use module::{ExportKind, Module};
 pub use table::Table;
 pub use types::{
     ComponentType, ExternType, FuncType, GlobalType, MemoryType, TableType, ValueType,

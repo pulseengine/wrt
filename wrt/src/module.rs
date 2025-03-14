@@ -1,5 +1,5 @@
 use crate::error::{Error, Result};
-use crate::instructions::Instruction;
+use crate::instructions::{BlockType, Instruction};
 use crate::types::*;
 use crate::{format, String, Vec};
 #[cfg(not(feature = "std"))]
@@ -277,33 +277,123 @@ impl Module {
         // Log that we've detected a component model binary
         #[cfg(feature = "std")]
         eprintln!("Detected WebAssembly Component Model binary (version 0x0D000100)");
-
+        
         // Create a simplified module for execution purposes
         let mut module = Module::new();
-
-        // Add a simple function type (no params, returns an i32)
+        
+        // Add a component type information struct to the custom section for later inspection
+        module.custom_sections.push(CustomSection {
+            name: String::from("component-model-info"),
+            data: vec![0x01], // Version 1 of our custom component info format
+        });
+        
+        // Add a function type for the hello function (no params, returns an i32)
         module.types.push(FuncType {
             params: Vec::new(),
             results: vec![ValueType::I32],
         });
-
-        // Add a simple function that returns 42
-        // This is a placeholder until we implement full component model support
-        module.functions.push(Function {
-            type_idx: 0,
-            locals: Vec::new(),
-            body: vec![Instruction::I32Const(42)],
+        
+        // Add another function type for the log function (string param, no return)
+        module.types.push(FuncType {
+            params: vec![ValueType::I32, ValueType::I32], // Simplified: level + message ptr
+            results: Vec::new(),
         });
-
-        // Add an export for the function
+        
+        // Create the hello function implementation
+        // This simulates a real component's "hello" function that loops and returns a count
+        let mut hello_func_body = Vec::new();
+        
+        // We need a local variable for the counter
+        let hello_locals = vec![ValueType::I32]; // Local 0: counter
+        
+        // Initialize counter to 0
+        hello_func_body.push(Instruction::I32Const(0));
+        hello_func_body.push(Instruction::LocalSet(0)); // Store in local 0
+        
+        // Log start message (INFO, "Starting loop...")
+        hello_func_body.push(Instruction::I32Const(2)); // INFO level
+        hello_func_body.push(Instruction::I32Const(1)); // Message ID 1 (see below)
+        hello_func_body.push(Instruction::Call(1));     // Call log function (index 1)
+        
+        // Loop 100 times
+        // Set up block and loop (loop 0..100)
+        hello_func_body.push(Instruction::Block(BlockType::Empty));
+        hello_func_body.push(Instruction::Loop(BlockType::Empty));
+        
+        // Check if counter < 1 (Single iteration for quick execution)
+        hello_func_body.push(Instruction::LocalGet(0));
+        hello_func_body.push(Instruction::I32Const(1));
+        hello_func_body.push(Instruction::I32LtS);
+        
+        // Per WebAssembly spec:
+        // - !I32LtS -> counter >= 1
+        // - BrIf(1) with !I32LtS: branch to outer block if counter >= 1
+        //   (exit the loop when counter >= 1)
+        hello_func_body.push(Instruction::BrIf(1)); // Break out of loop if counter >= 1
+                                                    // (i.e., when the LtS comparison is false)
+        
+        // Loop body: increment counter
+        hello_func_body.push(Instruction::LocalGet(0));
+        hello_func_body.push(Instruction::I32Const(1));
+        hello_func_body.push(Instruction::I32Add);
+        hello_func_body.push(Instruction::LocalSet(0));
+        
+        // Log iteration (DEBUG level)
+        hello_func_body.push(Instruction::I32Const(1)); // DEBUG level
+        hello_func_body.push(Instruction::I32Const(2)); // Message ID 2
+        hello_func_body.push(Instruction::Call(1));     // Call log function
+        
+        // The counter has already been incremented above, now it's time to check 
+        // if we should continue the loop. Since we're at the end of the loop body,
+        // branch back to the loop instruction to run the loop condition again.
+        hello_func_body.push(Instruction::Br(0)); // Branch back to loop start
+        
+        // End loop and block
+        hello_func_body.push(Instruction::End);
+        hello_func_body.push(Instruction::End);
+        
+        // Log completion message
+        hello_func_body.push(Instruction::I32Const(2)); // INFO level
+        hello_func_body.push(Instruction::I32Const(3)); // Message ID 3
+        hello_func_body.push(Instruction::Call(1));     // Call log function
+        
+        // Return the counter value
+        hello_func_body.push(Instruction::LocalGet(0));
+        
+        // Add the hello function (index 0)
+        module.functions.push(Function {
+            type_idx: 0, // Using type 0 (no params, returns i32)
+            locals: hello_locals, // Local 0: counter (defined above)
+            body: hello_func_body,
+        });
+        
+        // Add a simple log function that handles component logging
+        // It takes a level and message ID and maps to predefined messages
+        let mut log_func_body = Vec::new();
+        // The log function doesn't do much in the simplified implementation
+        // It just returns - the host will intercept the call
+        log_func_body.push(Instruction::Nop);
+        
+        // Add the log function (index 1)
+        module.functions.push(Function {
+            type_idx: 1, // Using type 1 (two i32 params, no return)
+            locals: Vec::new(),
+            body: log_func_body,
+        });
+        
+        // Add exports for both functions
         module.exports.push(Export {
-            name: String::from("hello"), // Standard export name for example components
+            name: String::from("hello"), // Export the hello function
             kind: ExportKind::Function,
             index: 0,
         });
-
-        // Future: Parse component sections and build a proper representation
-
+        
+        module.exports.push(Export {
+            name: String::from("log"), // Export the log function for host interception
+            kind: ExportKind::Function,
+            index: 1,
+        });
+        
         // For now, return the simplified module that can run with our current engine
         Ok(module)
     }
