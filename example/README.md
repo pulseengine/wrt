@@ -14,6 +14,7 @@ This example demonstrates basic WebAssembly Component Model functionality:
 ## Prerequisites
 
 You'll need:
+
 1. Rust with the `wasm32-wasip2` target
 2. wasm-tools for verifying components
 3. `just` command runner (optional)
@@ -143,4 +144,4 @@ The project includes a `justfile` with various development commands:
 - `just check` - Run code style checks
 - `just clean` - Clean all build artifacts
 
-See `just --list` for all available commands. 
+See `just --list` for all available commands.

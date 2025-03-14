@@ -14,7 +14,7 @@ WRT is a pure Rust implementation of a WebAssembly runtime that supports both th
 
 ## Project Structure
 
-- `wrt/` - Core WebAssembly runtime library 
+- `wrt/` - Core WebAssembly runtime library
 - `wrtd/` - WebAssembly Runtime Daemon for executing modules
 - `example/` - Example Component Model implementation
 - `docs/` - Documentation including requirements and specifications
@@ -151,11 +151,13 @@ The project follows these guidelines:
 WRT uses two documentation systems:
 
 1. **Rust API Documentation**: Generated with `cargo doc`
+
    ```bash
    cargo doc --open
    ```
 
 2. **Requirements and Specifications**: Using Sphinx with sphinx-needs
+
    ```bash
    just docs-html
    # Documentation will be available in docs/_build/html
@@ -173,4 +175,4 @@ This project includes GitHub Actions workflows that automatically run on pull re
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details. 
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
