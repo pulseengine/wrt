@@ -34,6 +34,36 @@ This is a work-in-progress WebAssembly runtime implementation. The codebase need
   - Convert between u32 and usize explicitly when working with Rust memory
 - Break cyclic references with Box<T> for recursive types
 
+## Commit Message Guidelines
+
+Use the Conventional Commits format for all commit messages:
+
+```
+<type>(<scope>): <short summary>
+
+<detailed description>
+
+<footer>
+```
+
+Types:
+- `feat`: A new feature
+- `fix`: A bug fix
+- `docs`: Documentation changes
+- `style`: Code style changes (formatting, indentation)
+- `refactor`: Code refactoring without functionality changes
+- `perf`: Performance improvements
+- `test`: Adding or modifying tests
+- `chore`: Routine tasks, maintenance, tooling changes
+- `ci`: Changes to CI configuration and scripts
+- `build`: Changes to build system or dependencies
+
+Examples:
+- `feat(execution): implement fuel-bounded execution`
+- `fix(memory): correct address boundary checking`
+- `docs(api): add examples for module instantiation`
+- `test(component): add test cases for component linking`
+
 ## Documentation Guidelines
 
 All public API must be documented thoroughly using doc comments (`///`). Documentation should follow this pattern:
