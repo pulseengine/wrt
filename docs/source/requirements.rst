@@ -4,7 +4,7 @@ Requirements
 This section contains the requirements for the WRT project.
 
 Functional Requirements
----------------------
+-----------------------
 
 .. req:: Resumable Interpreter
    :id: REQ_001
@@ -64,7 +64,7 @@ Functional Requirements
    - Generic fallback implementation for other platforms
 
 Low-Level Functional Requirements
---------------------------------
+---------------------------------
 
 .. req:: Stackless Implementation
    :id: REQ_005
@@ -124,7 +124,7 @@ Low-Level Functional Requirements
    - Resource lifetime management
 
 Dependency Requirements
----------------------
+-----------------------
 
 .. req:: Logging Support
    :id: REQ_009
@@ -155,7 +155,7 @@ Dependency Requirements
    - wit-component >= 0.12.0 for component model binary format handling
 
 Observability Requirements
-------------------------
+--------------------------
 
 .. req:: Instrumentation Support
    :id: REQ_012
@@ -175,14 +175,14 @@ Observability Requirements
    - Modified condition/decision coverage (DO-178C DAL-A)
 
 Implementation Status
--------------------
+---------------------
 
 .. needtable::
    :columns: id;title;status
    :filter: type == 'req'
 
 Requirement Relationships
------------------------
+-------------------------
 
 .. needflow::
-   :filter: id in ['REQ_001', 'REQ_002', 'REQ_003', 'REQ_004', 'REQ_005', 'REQ_006', 'REQ_007', 'REQ_008', 'REQ_009', 'REQ_010', 'REQ_011', 'REQ_012', 'REQ_013', 'REQ_014', 'REQ_015', 'REQ_016', 'REQ_017', 'REQ_018', 'REQ_019', 'REQ_020'] 
+   :filter: id in ['REQ_001', 'REQ_002', 'REQ_003', 'REQ_004', 'REQ_005', 'REQ_006', 'REQ_007', 'REQ_008', 'REQ_009', 'REQ_010', 'REQ_011', 'REQ_012', 'REQ_013', 'REQ_014', 'REQ_015', 'REQ_016', 'REQ_017', 'REQ_018', 'REQ_019', 'REQ_020']

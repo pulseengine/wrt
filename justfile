@@ -27,9 +27,18 @@ link-example:
 # Run tests for all crates
 test: test-wrt test-wrtd test-example test-docs
 
-# Run tests for the WRT library
+# Run tests for the WRT library with all feature combinations
 test-wrt:
+    # Default features
     cargo test -p wrt
+    # No features
+    cargo test -p wrt --no-default-features
+    # std feature only
+    cargo test -p wrt --no-default-features --features std
+    # no_std feature only
+    cargo test -p wrt --no-default-features --features no_std
+    # All features
+    cargo test -p wrt --all-features
 
 # Run tests for the WRT daemon
 test-wrtd:
@@ -44,6 +53,11 @@ test-docs:
     # Test that documentation builds successfully (HTML only)
     # Note: Currently allowing warnings (remove -n flag later when docs are fixed)
     {{sphinx_build}} -M html "{{sphinx_source}}" "{{sphinx_build_dir}}" {{sphinx_opts}} -n
+
+# Strict documentation check (fail on warnings)
+check-docs:
+    # Verify documentation builds with zero warnings
+    {{sphinx_build}} -M html "{{sphinx_source}}" "{{sphinx_build_dir}}" {{sphinx_opts}} -W
 
 # Run the example module with wasmtime
 run-example: build-example link-example
@@ -80,7 +94,7 @@ check-udeps:
     cargo +nightly udeps -p wrt -p wrtd --all-targets || echo "Note: Criterion is allowed as an unused dev-dependency for future benchmarks"
 
 # Run all checks (format, clippy, tests, imports, udeps, docs)
-check-all: check test check-imports check-udeps test-docs
+check-all: check test check-imports check-udeps check-docs
 
 # Pre-commit check to run before committing changes
 pre-commit: check-all
