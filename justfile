@@ -25,7 +25,7 @@ link-example:
 # ----------------- Test Commands -----------------
 
 # Run tests for all crates
-test: test-wrt test-wrtd test-example test-docs
+test: test-wrt test-wrtd test-example test-docs test-wrtd-example
 
 # Run tests for the WRT library with all feature combinations
 test-wrt:
@@ -63,6 +63,11 @@ check-docs:
 run-example: build-example link-example
     wasmtime run --wasm component-model example/hello-world.wasm || echo "Success! Module is a valid component that exports the example:hello/example interface with hello function returning 42"
 
+# Test wrtd with the example component
+test-wrtd-example: build-example link-example build-wrtd
+    # Execute the example with wrtd
+    ./target/debug/wrtd example/hello-world.wasm --call hello
+
 # ----------------- Code Quality Commands -----------------
 
 # Format all Rust code
@@ -94,7 +99,7 @@ check-udeps:
     cargo +nightly udeps -p wrt -p wrtd --all-targets || echo "Note: Criterion is allowed as an unused dev-dependency for future benchmarks"
 
 # Run all checks (format, clippy, tests, imports, udeps, docs)
-check-all: check test check-imports check-udeps check-docs
+check-all: check test check-imports check-udeps check-docs test-wrtd-example
 
 # Pre-commit check to run before committing changes
 pre-commit: check-all
