@@ -43,6 +43,26 @@ Functional Requirements
    - Custom section handling
    - Component model binary format parsing
 
+.. req:: Component Model Binary Format
+   :id: REQ_021
+   :status: partial
+   :links: REQ_014
+   
+   The interpreter shall strictly implement the WebAssembly Component Model binary format as specified in 
+   the official WebAssembly Component Model specification at 
+   https://github.com/WebAssembly/component-model/blob/main/design/mvp/Binary.md, including:
+   
+   - Magic bytes (0x00, 0x61, 0x73, 0x6D) followed by version (0x0D, 0x00, 0x01, 0x00)
+   - Component sections with proper section IDs
+   - Type section encoding with canonical type representation
+   - Import section handling with component, instance, and function imports
+   - Core module sections including validation and embedding
+   - Component instances section with proper instance creation
+   - Export section with named exports and index references
+   - Component custom sections for metadata and tooling
+   - Canonical ABI encoding/decoding for interface values
+   - LEB128 encoding for integers and field counts
+
 .. req:: WASI Logging Support
    :id: REQ_015
    :status: partial
