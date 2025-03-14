@@ -242,104 +242,6 @@ impl Default for Engine {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::instructions::Instruction;
-    use crate::module::Module;
-    use crate::types::{FuncType, ValueType};
-    use crate::values::Value;
-    use crate::Vec;
-
-    #[cfg(not(feature = "std"))]
-    use alloc::vec;
-    #[cfg(feature = "std")]
-    use std::vec;
-
-    #[test]
-    fn test_fuel_bounded_execution() {
-        // Create a simple module with a single function
-        let mut module = Module::new();
-
-        // Add a simple function type (no params, returns an i32)
-        module.types.push(FuncType {
-            params: vec![],
-            results: vec![ValueType::I32],
-        });
-
-        // Add a function that executes a large number of instructions
-        let mut instructions = Vec::new();
-        for _ in 0..100 {
-            instructions.push(Instruction::Nop);
-        }
-        // At the end, push a constant value as the result
-        instructions.push(Instruction::I32Const(42));
-
-        // Add the function to the module
-        module.functions.push(crate::module::Function {
-            type_idx: 0,
-            locals: vec![],
-            body: instructions,
-        });
-
-        // Create an engine with a fuel limit
-        let mut engine = Engine::new();
-        engine.instantiate(module).unwrap();
-
-        // Test with unlimited fuel
-        let result = engine.execute(0, 0, vec![]).unwrap();
-        assert_eq!(result, vec![Value::I32(42)]);
-
-        // Create a new module for the limited fuel test
-        let mut limited_module = Module::new();
-
-        // Add the same function type and instructions
-        limited_module.types.push(FuncType {
-            params: vec![],
-            results: vec![ValueType::I32],
-        });
-
-        // Add a function that executes a large number of instructions
-        let mut instructions = Vec::new();
-        for _ in 0..100 {
-            instructions.push(Instruction::Nop);
-        }
-        // At the end, push a constant value as the result
-        instructions.push(Instruction::I32Const(42));
-
-        // Add the function to the module
-        limited_module.functions.push(crate::module::Function {
-            type_idx: 0,
-            locals: vec![],
-            body: instructions,
-        });
-
-        // Reset the engine
-        let mut engine = Engine::new();
-        engine.instantiate(limited_module).unwrap();
-
-        // Test with limited fuel
-        engine.set_fuel(Some(10)); // Only enough for 10 instructions
-        let result = engine.execute(0, 0, vec![]);
-
-        // Should fail with FuelExhausted error
-        assert!(matches!(result, Err(Error::FuelExhausted)));
-
-        // Check the state
-        assert!(matches!(engine.state(), ExecutionState::Paused { .. }));
-
-        // Add more fuel and resume
-        engine.set_fuel(Some(200)); // Plenty of fuel to finish
-        let result = engine.resume().unwrap();
-
-        // Should complete execution
-        assert_eq!(result, vec![Value::I32(42)]);
-
-        // Check the state
-        assert_eq!(*engine.state(), ExecutionState::Finished);
-    }
-}
-
 impl Engine {
     /// Creates a new execution engine
     pub fn new() -> Self {
@@ -977,5 +879,103 @@ impl Engine {
             // ... implement other instructions ...
             _ => Err(Error::Execution("Instruction not implemented".into())),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::instructions::Instruction;
+    use crate::module::Module;
+    use crate::types::{FuncType, ValueType};
+    use crate::values::Value;
+    use crate::Vec;
+
+    #[cfg(not(feature = "std"))]
+    use alloc::vec;
+    #[cfg(feature = "std")]
+    use std::vec;
+
+    #[test]
+    fn test_fuel_bounded_execution() {
+        // Create a simple module with a single function
+        let mut module = Module::new();
+
+        // Add a simple function type (no params, returns an i32)
+        module.types.push(FuncType {
+            params: vec![],
+            results: vec![ValueType::I32],
+        });
+
+        // Add a function that executes a large number of instructions
+        let mut instructions = Vec::new();
+        for _ in 0..100 {
+            instructions.push(Instruction::Nop);
+        }
+        // At the end, push a constant value as the result
+        instructions.push(Instruction::I32Const(42));
+
+        // Add the function to the module
+        module.functions.push(crate::module::Function {
+            type_idx: 0,
+            locals: vec![],
+            body: instructions,
+        });
+
+        // Create an engine with a fuel limit
+        let mut engine = Engine::new();
+        engine.instantiate(module).unwrap();
+
+        // Test with unlimited fuel
+        let result = engine.execute(0, 0, vec![]).unwrap();
+        assert_eq!(result, vec![Value::I32(42)]);
+
+        // Create a new module for the limited fuel test
+        let mut limited_module = Module::new();
+
+        // Add the same function type and instructions
+        limited_module.types.push(FuncType {
+            params: vec![],
+            results: vec![ValueType::I32],
+        });
+
+        // Add a function that executes a large number of instructions
+        let mut instructions = Vec::new();
+        for _ in 0..100 {
+            instructions.push(Instruction::Nop);
+        }
+        // At the end, push a constant value as the result
+        instructions.push(Instruction::I32Const(42));
+
+        // Add the function to the module
+        limited_module.functions.push(crate::module::Function {
+            type_idx: 0,
+            locals: vec![],
+            body: instructions,
+        });
+
+        // Reset the engine
+        let mut engine = Engine::new();
+        engine.instantiate(limited_module).unwrap();
+
+        // Test with limited fuel
+        engine.set_fuel(Some(10)); // Only enough for 10 instructions
+        let result = engine.execute(0, 0, vec![]);
+
+        // Should fail with FuelExhausted error
+        assert!(matches!(result, Err(Error::FuelExhausted)));
+
+        // Check the state
+        assert!(matches!(engine.state(), ExecutionState::Paused { .. }));
+
+        // Add more fuel and resume
+        engine.set_fuel(Some(200)); // Plenty of fuel to finish
+        let result = engine.resume().unwrap();
+
+        // Should complete execution
+        assert_eq!(result, vec![Value::I32(42)]);
+
+        // Check the state
+        assert_eq!(*engine.state(), ExecutionState::Finished);
     }
 }
