@@ -277,7 +277,6 @@ impl Default for Engine {
     }
 }
 
-
 impl Engine {
     /// Creates a new execution engine
     pub fn new() -> Self {
@@ -727,7 +726,7 @@ impl Engine {
         let timer_start = Instant::now();
 
         // Categorize the instruction for statistics tracking
-        let inst_category = match inst {
+        let _inst_category = match inst {
             // Memory operations
             Instruction::I32Load(_, _)
             | Instruction::I64Load(_, _)
@@ -1145,7 +1144,7 @@ impl Engine {
         #[cfg(feature = "std")]
         {
             let elapsed_micros = timer_start.elapsed().as_micros() as u64;
-            match inst_category {
+            match _inst_category {
                 InstructionCategory::ControlFlow => {
                     self.stats.control_flow_time_us += elapsed_micros;
                 }
