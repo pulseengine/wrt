@@ -220,23 +220,23 @@ mod tests {
     use crate::types::{FuncType, ValueType};
     use crate::values::Value;
     use crate::Vec;
-    
-    #[cfg(feature = "std")]
-    use std::vec;
+
     #[cfg(not(feature = "std"))]
     use alloc::vec;
+    #[cfg(feature = "std")]
+    use std::vec;
 
     #[test]
     fn test_fuel_bounded_execution() {
         // Create a simple module with a single function
         let mut module = Module::new();
-        
+
         // Add a simple function type (no params, returns an i32)
         module.types.push(FuncType {
             params: vec![],
             results: vec![ValueType::I32],
         });
-        
+
         // Add a function that executes a large number of instructions
         let mut instructions = Vec::new();
         for _ in 0..100 {
@@ -244,31 +244,31 @@ mod tests {
         }
         // At the end, push a constant value as the result
         instructions.push(Instruction::I32Const(42));
-        
+
         // Add the function to the module
         module.functions.push(crate::module::Function {
             type_idx: 0,
             locals: vec![],
             body: instructions,
         });
-        
+
         // Create an engine with a fuel limit
         let mut engine = Engine::new();
         engine.instantiate(module).unwrap();
-        
+
         // Test with unlimited fuel
         let result = engine.execute(0, 0, vec![]).unwrap();
         assert_eq!(result, vec![Value::I32(42)]);
-        
+
         // Create a new module for the limited fuel test
         let mut limited_module = Module::new();
-        
+
         // Add the same function type and instructions
         limited_module.types.push(FuncType {
             params: vec![],
             results: vec![ValueType::I32],
         });
-        
+
         // Add a function that executes a large number of instructions
         let mut instructions = Vec::new();
         for _ in 0..100 {
@@ -276,35 +276,35 @@ mod tests {
         }
         // At the end, push a constant value as the result
         instructions.push(Instruction::I32Const(42));
-        
+
         // Add the function to the module
         limited_module.functions.push(crate::module::Function {
             type_idx: 0,
             locals: vec![],
             body: instructions,
         });
-        
+
         // Reset the engine
         let mut engine = Engine::new();
         engine.instantiate(limited_module).unwrap();
-        
+
         // Test with limited fuel
         engine.set_fuel(Some(10)); // Only enough for 10 instructions
         let result = engine.execute(0, 0, vec![]);
-        
+
         // Should fail with FuelExhausted error
         assert!(matches!(result, Err(Error::FuelExhausted)));
-        
+
         // Check the state
         assert!(matches!(engine.state(), ExecutionState::Paused { .. }));
-        
+
         // Add more fuel and resume
         engine.set_fuel(Some(200)); // Plenty of fuel to finish
         let result = engine.resume().unwrap();
-        
+
         // Should complete execution
         assert_eq!(result, vec![Value::I32(42)]);
-        
+
         // Check the state
         assert_eq!(*engine.state(), ExecutionState::Finished);
     }
@@ -320,29 +320,29 @@ impl Engine {
             state: ExecutionState::Idle,
         }
     }
-    
+
     /// Sets the fuel limit for bounded execution
-    /// 
+    ///
     /// # Parameters
-    /// 
+    ///
     /// * `fuel` - The amount of fuel to set, or None for unbounded execution
     pub fn set_fuel(&mut self, fuel: Option<u64>) {
         self.fuel = fuel;
     }
-    
+
     /// Returns the current amount of remaining fuel
-    /// 
+    ///
     /// # Returns
-    /// 
+    ///
     /// The remaining fuel, or None if unbounded
     pub fn remaining_fuel(&self) -> Option<u64> {
         self.fuel
     }
-    
+
     /// Returns the current execution state
-    /// 
+    ///
     /// # Returns
-    /// 
+    ///
     /// The current state of the engine
     pub fn state(&self) -> &ExecutionState {
         &self.state
@@ -432,7 +432,7 @@ impl Engine {
         } else {
             // We're starting a new execution
             self.state = ExecutionState::Running;
-            
+
             // Clone the necessary information to avoid borrow issues
             let instance_clone;
 
@@ -467,7 +467,7 @@ impl Engine {
 
             // Push frame
             self.stack.push_frame(frame);
-            
+
             // Start from the beginning
             0
         };
@@ -501,10 +501,10 @@ impl Engine {
                     };
                     return Err(Error::FuelExhausted);
                 }
-                
+
                 // Fuel is consumed in execute_instruction based on instruction type
             }
-            
+
             // Execute the instruction
             match self.execute_instruction(&func_clone.body[pc], pc) {
                 Ok(Some(new_pc)) => pc = new_pc,
@@ -531,18 +531,25 @@ impl Engine {
 
         Ok(results)
     }
-    
+
     /// Resumes a paused execution
-    /// 
+    ///
     /// # Returns
-    /// 
+    ///
     /// The results of the function call if execution completes, or an error if out of fuel again
     pub fn resume(&mut self) -> Result<Vec<Value>> {
-        if let ExecutionState::Paused { instance_idx, func_idx, .. } = self.state.clone() {
+        if let ExecutionState::Paused {
+            instance_idx,
+            func_idx,
+            ..
+        } = self.state.clone()
+        {
             // Resume execution with empty args since we're already set up
             self.execute(instance_idx, func_idx, Vec::new())
         } else {
-            Err(Error::Execution("Cannot resume: not in paused state".into()))
+            Err(Error::Execution(
+                "Cannot resume: not in paused state".into(),
+            ))
         }
     }
 
@@ -558,29 +565,40 @@ impl Engine {
             Instruction::Br(_) | Instruction::BrIf(_) | Instruction::BrTable(_, _) => 4,
             Instruction::If(_) => 3,
             Instruction::Block(_) | Instruction::Loop(_) => 2,
-            
+
             // Memory instructions - more expensive
-            Instruction::I32Load(_, _) | Instruction::I64Load(_, _) | 
-            Instruction::F32Load(_, _) | Instruction::F64Load(_, _) |
-            Instruction::I32Load8S(_, _) | Instruction::I32Load8U(_, _) |
-            Instruction::I32Load16S(_, _) | Instruction::I32Load16U(_, _) |
-            Instruction::I64Load8S(_, _) | Instruction::I64Load8U(_, _) |
-            Instruction::I64Load16S(_, _) | Instruction::I64Load16U(_, _) |
-            Instruction::I64Load32S(_, _) | Instruction::I64Load32U(_, _) => 8,
-            
-            Instruction::I32Store(_, _) | Instruction::I64Store(_, _) |
-            Instruction::F32Store(_, _) | Instruction::F64Store(_, _) |
-            Instruction::I32Store8(_, _) | Instruction::I32Store16(_, _) |
-            Instruction::I64Store8(_, _) | Instruction::I64Store16(_, _) |
-            Instruction::I64Store32(_, _) => 8,
-            
+            Instruction::I32Load(_, _)
+            | Instruction::I64Load(_, _)
+            | Instruction::F32Load(_, _)
+            | Instruction::F64Load(_, _)
+            | Instruction::I32Load8S(_, _)
+            | Instruction::I32Load8U(_, _)
+            | Instruction::I32Load16S(_, _)
+            | Instruction::I32Load16U(_, _)
+            | Instruction::I64Load8S(_, _)
+            | Instruction::I64Load8U(_, _)
+            | Instruction::I64Load16S(_, _)
+            | Instruction::I64Load16U(_, _)
+            | Instruction::I64Load32S(_, _)
+            | Instruction::I64Load32U(_, _) => 8,
+
+            Instruction::I32Store(_, _)
+            | Instruction::I64Store(_, _)
+            | Instruction::F32Store(_, _)
+            | Instruction::F64Store(_, _)
+            | Instruction::I32Store8(_, _)
+            | Instruction::I32Store16(_, _)
+            | Instruction::I64Store8(_, _)
+            | Instruction::I64Store16(_, _)
+            | Instruction::I64Store32(_, _) => 8,
+
             Instruction::MemoryGrow => 20,
             Instruction::MemorySize => 3,
             Instruction::MemoryFill => 10,
             Instruction::MemoryCopy => 10,
             Instruction::MemoryInit(_) => 10,
             Instruction::DataDrop(_) => 5,
-            
+
             // Table instructions
             Instruction::TableGet(_) | Instruction::TableSet(_) => 3,
             Instruction::TableSize(_) => 3,
@@ -589,37 +607,55 @@ impl Engine {
             Instruction::TableCopy(_, _) => 8,
             Instruction::TableInit(_, _) => 8,
             Instruction::ElemDrop(_) => 3,
-            
+
             // Basic instructions - cheaper
-            Instruction::I32Const(_) | Instruction::I64Const(_) |
-            Instruction::F32Const(_) | Instruction::F64Const(_) => 1,
+            Instruction::I32Const(_)
+            | Instruction::I64Const(_)
+            | Instruction::F32Const(_)
+            | Instruction::F64Const(_) => 1,
             Instruction::Nop => 1,
             Instruction::Drop => 1,
             Instruction::Select | Instruction::SelectTyped(_) => 2,
             Instruction::LocalGet(_) | Instruction::LocalSet(_) | Instruction::LocalTee(_) => 2,
             Instruction::GlobalGet(_) | Instruction::GlobalSet(_) => 3,
-            
+
             // Numeric instructions - medium cost
             Instruction::I32Eqz | Instruction::I64Eqz => 2,
-            
+
             // Comparison operations
-            Instruction::I32Eq | Instruction::I32Ne | 
-            Instruction::I32LtS | Instruction::I32LtU | 
-            Instruction::I32GtS | Instruction::I32GtU |
-            Instruction::I32LeS | Instruction::I32LeU |
-            Instruction::I32GeS | Instruction::I32GeU |
-            Instruction::I64Eq | Instruction::I64Ne |
-            Instruction::I64LtS | Instruction::I64LtU |
-            Instruction::I64GtS | Instruction::I64GtU |
-            Instruction::I64LeS | Instruction::I64LeU |
-            Instruction::I64GeS | Instruction::I64GeU |
-            Instruction::F32Eq | Instruction::F32Ne |
-            Instruction::F32Lt | Instruction::F32Gt |
-            Instruction::F32Le | Instruction::F32Ge |
-            Instruction::F64Eq | Instruction::F64Ne |
-            Instruction::F64Lt | Instruction::F64Gt |
-            Instruction::F64Le | Instruction::F64Ge => 2,
-            
+            Instruction::I32Eq
+            | Instruction::I32Ne
+            | Instruction::I32LtS
+            | Instruction::I32LtU
+            | Instruction::I32GtS
+            | Instruction::I32GtU
+            | Instruction::I32LeS
+            | Instruction::I32LeU
+            | Instruction::I32GeS
+            | Instruction::I32GeU
+            | Instruction::I64Eq
+            | Instruction::I64Ne
+            | Instruction::I64LtS
+            | Instruction::I64LtU
+            | Instruction::I64GtS
+            | Instruction::I64GtU
+            | Instruction::I64LeS
+            | Instruction::I64LeU
+            | Instruction::I64GeS
+            | Instruction::I64GeU
+            | Instruction::F32Eq
+            | Instruction::F32Ne
+            | Instruction::F32Lt
+            | Instruction::F32Gt
+            | Instruction::F32Le
+            | Instruction::F32Ge
+            | Instruction::F64Eq
+            | Instruction::F64Ne
+            | Instruction::F64Lt
+            | Instruction::F64Gt
+            | Instruction::F64Le
+            | Instruction::F64Ge => 2,
+
             // Default for other instructions
             _ => 1,
         }
@@ -637,7 +673,7 @@ impl Engine {
                 self.fuel = Some(fuel - cost);
             }
         }
-        
+
         match inst {
             // Control instructions
             Instruction::Unreachable => {
@@ -733,7 +769,7 @@ impl Engine {
 
                 Ok(None)
             }
-            
+
             // Numeric constants
             Instruction::I32Const(value) => {
                 self.stack.push(Value::I32(*value));
@@ -751,7 +787,7 @@ impl Engine {
                 self.stack.push(Value::F64(*value));
                 Ok(None)
             }
-            
+
             // Variable access
             Instruction::LocalGet(idx) => {
                 let frame = self.stack.current_frame()?;
@@ -772,7 +808,7 @@ impl Engine {
                 }
                 // Can't borrow mutably while borrowing immutably, so we need to drop the frame ref
                 let _ = frame;
-                
+
                 // Now get a mutable reference to the current frame
                 if let Some(frame) = self.stack.frames.last_mut() {
                     frame.locals[idx] = value;
@@ -781,7 +817,7 @@ impl Engine {
                 }
                 Ok(None)
             }
-            
+
             // ... implement other instructions ...
             _ => Err(Error::Execution("Instruction not implemented".into())),
         }

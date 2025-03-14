@@ -23,7 +23,7 @@ pub enum Error {
     /// Represents errors that occur during the execution of a WebAssembly module,
     /// such as out-of-bounds memory access, stack overflow, or type mismatches.
     Execution(String),
-    
+
     /// Represents that execution has paused due to fuel exhaustion.
     /// This is not a true error but a signal that execution can be resumed.
     FuelExhausted,

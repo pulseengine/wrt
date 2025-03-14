@@ -88,9 +88,9 @@ fn main() -> Result<()> {
 fn load_component_from_bytes(bytes: &[u8]) -> Result<MockComponent> {
     // This is a simplified implementation that doesn't use the actual Component
     // In a real implementation, we would parse the WebAssembly binary and create a proper Component
-    
+
     info!("Creating mock component with 'hello' and 'log' functions");
-    
+
     // Create a mock component that simulates having 'hello' and 'log' functions
     // from the example:hello/example interface
     let component = MockComponent {
@@ -102,9 +102,12 @@ fn load_component_from_bytes(bytes: &[u8]) -> Result<MockComponent> {
         ],
         has_logging: true,
     };
-    
+
     info!("Component loaded successfully (mocked)");
-    info!("Loaded component contains {} bytes of WebAssembly code", bytes.len());
+    info!(
+        "Loaded component contains {} bytes of WebAssembly code",
+        bytes.len()
+    );
     Ok(component)
 }
 
@@ -123,28 +126,30 @@ fn call_mock_function(component: &MockComponent, function_name: &str) -> Result<
     for (name, return_values) in &component.functions {
         if name == function_name {
             info!("Executing function: {}", function_name);
-            
+
             // If this is the hello function, simulate the component's internal behavior
             if name == "hello" && component.has_logging {
                 // The hello function in the component would call the log function with INFO level
                 // Simulate this call and handle it in the runtime
                 handle_component_log("info", "Hello from WebAssembly via WIT logging!");
-                
+
                 // Also explain what's happening
-                debug!("Component 'hello' function called 'log' function with INFO level and message");
+                debug!(
+                    "Component 'hello' function called 'log' function with INFO level and message"
+                );
             }
-            
+
             // If this is the log function being called directly, handle it
             if name == "log" {
                 // We're not handling the actual log function parameters in this mock,
                 // but in a real implementation, we would extract the level and message
                 debug!("Log function called directly (parameters not handled in this mock)");
             }
-            
+
             return Ok(return_values.clone());
         }
     }
-    
+
     error!("Function '{}' not found in component", function_name);
     Err(anyhow::anyhow!("Function '{}' not found", function_name))
 }
