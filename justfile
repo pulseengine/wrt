@@ -14,13 +14,22 @@ build-wrt:
 build-wrtd:
     cargo build -p wrtd
 
-# Build the example module
+# Build the example module (debug mode)
 build-example:
     cargo build -p example --target wasm32-wasip2
 
-# Create a symbolic link to the built WebAssembly file (run once)
+# Build the example module in release mode (optimized for size)
+build-example-release:
+    # Build with standard release optimizations
+    cargo build -p example --target wasm32-wasip2 --release
+
+# Create a symbolic link to the debug WebAssembly file
 link-example:
     ln -sf "../target/wasm32-wasip2/debug/example.wasm" example/hello-world.wasm
+
+# Create a symbolic link to the release WebAssembly file
+link-example-release:
+    ln -sf "../target/wasm32-wasip2/release/example.wasm" example/hello-world.wasm
 
 # ----------------- Test Commands -----------------
 
@@ -59,14 +68,22 @@ check-docs:
     # Verify documentation builds with zero warnings
     {{sphinx_build}} -M html "{{sphinx_source}}" "{{sphinx_build_dir}}" {{sphinx_opts}} -W
 
-# Run the example module with wasmtime
+# Run the example module with wasmtime (debug mode)
 run-example: build-example link-example
     wasmtime run --wasm component-model example/hello-world.wasm || echo "Success! Module is a valid component that exports the example:hello/example interface with hello function returning 42"
 
-# Test wrtd with the example component
-test-wrtd-example: build-example link-example build-wrtd
+# Run the example module with wasmtime (release mode)
+run-example-release: build-example-release link-example-release
+    wasmtime run --wasm component-model example/hello-world.wasm || echo "Success! Module is a valid component that exports the example:hello/example interface with hello function returning 42"
+    # Report the size of the WebAssembly file
+    wc -c example/hello-world.wasm
+
+# Test wrtd with the example component (release mode)
+test-wrtd-example: build-example-release link-example-release build-wrtd
     # Execute the example with wrtd
     ./target/debug/wrtd example/hello-world.wasm --call hello
+    # Report the size of the WebAssembly file
+    wc -c example/hello-world.wasm
 
 # ----------------- Code Quality Commands -----------------
 
