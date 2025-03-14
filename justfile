@@ -173,11 +173,19 @@ clean:
     rm -rf docs/_build
 
 # Install required tools for development
-setup:
+setup: setup-hooks
     rustup target add wasm32-wasip2
     cargo install wasmtime-cli
     cargo install wasm-tools
     pip install -r docs/requirements.txt
+
+# Install git hooks to enforce checks before commit/push
+setup-hooks:
+    @echo "Setting up Git hooks..."
+    cp .githooks/pre-commit .git/hooks/pre-commit
+    cp .githooks/pre-push .git/hooks/pre-push
+    chmod +x .git/hooks/pre-commit .git/hooks/pre-push
+    @echo "Git hooks installed successfully. Checks will run automatically before each commit and push."
 
 # Show help
 help:
