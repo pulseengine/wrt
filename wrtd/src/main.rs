@@ -38,7 +38,7 @@ use anyhow::{Context, Result};
 use clap::Parser;
 use tracing::{debug, error, info, warn, Level};
 use tracing_subscriber::fmt::format::FmtSpan;
-use wrt::{Engine, Value};
+use wrt::{Engine, LogLevel, Value};
 
 /// WebAssembly Runtime Daemon CLI arguments
 #[derive(Parser, Debug)]
@@ -91,6 +91,16 @@ fn main() -> Result<()> {
     // Create a WebAssembly engine and module from the bytes
     info!("Initializing WebAssembly engine");
     let mut engine = Engine::new();
+
+    // Register the log handler to handle component logging
+    engine.register_log_handler(|log_op| {
+        // Convert WRT log level to tracing level
+        let level_str = log_op.level.as_str();
+        let message = log_op.message;
+
+        // Pass to the handle_component_log function
+        handle_component_log(level_str, &message);
+    });
 
     // Apply fuel limit if specified
     if let Some(fuel) = args.fuel {
@@ -176,6 +186,19 @@ fn main() -> Result<()> {
 fn execute_mock_component(bytes: &[u8], function_name: Option<&str>) -> Result<()> {
     info!("Creating mock component with 'hello' and 'log' functions");
 
+    // Create a WebAssembly engine with logging support
+    let engine = Engine::new();
+
+    // Register the log handler to handle component logging
+    engine.register_log_handler(|log_op| {
+        // Convert WRT log level to tracing level
+        let level_str = log_op.level.as_str();
+        let message = log_op.message;
+
+        // Pass to the handle_component_log function
+        handle_component_log(level_str, &message);
+    });
+
     // Create a mock component that simulates having 'hello' and 'log' functions
     let component = MockComponent {
         functions: vec![
@@ -184,7 +207,7 @@ fn execute_mock_component(bytes: &[u8], function_name: Option<&str>) -> Result<(
             // The log function doesn't return any values
             ("log".to_string(), vec![]),
         ],
-        has_logging: true,
+        engine,
     };
 
     info!("Component loaded successfully (mocked)");
@@ -210,8 +233,8 @@ fn execute_mock_component(bytes: &[u8], function_name: Option<&str>) -> Result<(
 struct MockComponent {
     /// Functions in the component with their return values
     functions: Vec<(String, Vec<Value>)>,
-    /// If this component implements the log function
-    has_logging: bool,
+    /// Engine for logging and other operations
+    engine: Engine,
 }
 
 /// Calls a function on a mock component
@@ -222,15 +245,28 @@ fn call_mock_function(component: &MockComponent, function_name: &str) -> Result<
             info!("Executing function: {}", function_name);
 
             // If this is the hello function, simulate the component's internal behavior
-            if name == "hello" && component.has_logging {
+            if name == "hello" {
                 // The hello function in the component would call the log function with INFO level
-                // Simulate this call and handle it in the runtime
-                handle_component_log("info", "Hello from WebAssembly via WIT logging!");
+                // Use the engine's logging mechanism to log the message
+                component.engine.handle_log(
+                    LogLevel::Info,
+                    "Starting loop for 100 iterations".to_string(),
+                );
+
+                // Simulate loop iterations with logging
+                for i in 0..5 {
+                    component
+                        .engine
+                        .handle_log(LogLevel::Debug, format!("Loop iteration: {}", i + 1));
+                }
+
+                // Log completion
+                component
+                    .engine
+                    .handle_log(LogLevel::Info, format!("Completed {} iterations", 5));
 
                 // Also explain what's happening
-                debug!(
-                    "Component 'hello' function called 'log' function with INFO level and message"
-                );
+                debug!("Component 'hello' function executed with logging");
             }
 
             // If this is the log function being called directly, handle it
@@ -238,6 +274,11 @@ fn call_mock_function(component: &MockComponent, function_name: &str) -> Result<
                 // We're not handling the actual log function parameters in this mock,
                 // but in a real implementation, we would extract the level and message
                 debug!("Log function called directly (parameters not handled in this mock)");
+
+                // Log a test message
+                component
+                    .engine
+                    .handle_log(LogLevel::Info, "Direct log function call".to_string());
             }
 
             return Ok(return_values.clone());
@@ -251,14 +292,15 @@ fn call_mock_function(component: &MockComponent, function_name: &str) -> Result<
 /// Handles a log call from a component by mapping it to the appropriate tracing level
 fn handle_component_log(level: &str, message: &str) {
     // Map the level from the component to the appropriate tracing level
-    match level.to_lowercase().as_str() {
-        "trace" => tracing::trace!("[Component] {}", message),
-        "debug" => tracing::debug!("[Component] {}", message),
-        "info" => tracing::info!("[Component] {}", message),
-        "warn" => tracing::warn!("[Component] {}", message),
-        "error" => tracing::error!("[Component] {}", message),
-        "critical" => tracing::error!("[Component CRITICAL] {}", message),
-        _ => tracing::info!("[Component unknown level] {}", message),
+    let log_level = LogLevel::from_string_or_default(level);
+
+    match log_level {
+        LogLevel::Trace => tracing::trace!("[Component] {}", message),
+        LogLevel::Debug => tracing::debug!("[Component] {}", message),
+        LogLevel::Info => tracing::info!("[Component] {}", message),
+        LogLevel::Warn => tracing::warn!("[Component] {}", message),
+        LogLevel::Error => tracing::error!("[Component] {}", message),
+        LogLevel::Critical => tracing::error!("[Component CRITICAL] {}", message),
     }
 }
 

@@ -2,20 +2,8 @@ use crate::error::{Error, Result};
 use crate::instructions::Instruction;
 use crate::types::*;
 use crate::{format, String, Vec};
-
-// Constants for section codes
-const SECTION_CUSTOM: u8 = 0;
-const SECTION_TYPE: u8 = 1;
-const SECTION_IMPORT: u8 = 2;
-const SECTION_FUNCTION: u8 = 3;
-const SECTION_TABLE: u8 = 4;
-const SECTION_MEMORY: u8 = 5;
-const SECTION_GLOBAL: u8 = 6;
-const SECTION_EXPORT: u8 = 7;
-const SECTION_START: u8 = 8;
-const SECTION_ELEMENT: u8 = 9;
-const SECTION_CODE: u8 = 10;
-const SECTION_DATA: u8 = 11;
+#[cfg(not(feature = "std"))]
+use alloc::vec;
 
 /// Represents a WebAssembly module
 #[derive(Debug, Clone)]
@@ -246,20 +234,16 @@ impl Module {
         // This is temporary until we complete the full parser implementation
         if module.functions.is_empty() {
             // Add a simple function type (no params, returns an i32)
-            let mut results = Vec::new();
-            results.push(ValueType::I32);
             module.types.push(FuncType {
                 params: Vec::new(),
-                results,
+                results: vec![ValueType::I32],
             });
 
             // Add a simple function that returns 42
-            let mut body = Vec::new();
-            body.push(Instruction::I32Const(42));
             module.functions.push(Function {
                 type_idx: 0,
                 locals: Vec::new(),
-                body,
+                body: vec![Instruction::I32Const(42)],
             });
         }
 
@@ -394,49 +378,6 @@ fn read_leb128_u32(bytes: &[u8]) -> Result<(u32, usize)> {
         if (byte & 0x80) == 0 {
             break;
         }
-    }
-
-    Ok((result, position))
-}
-
-/// Read a signed LEB128 encoded 32-bit integer from a byte slice
-fn read_leb128_i32(bytes: &[u8]) -> Result<(i32, usize)> {
-    let mut result: i32 = 0;
-    let mut shift: u32 = 0;
-    let mut position: usize = 0;
-    let mut byte: u8;
-    let mut sign_bit_set: bool = false;
-
-    loop {
-        if position >= bytes.len() {
-            return Err(Error::Parse("Unexpected end of LEB128 sequence".into()));
-        }
-
-        byte = bytes[position];
-        position += 1;
-
-        // Check for overflow
-        if shift >= 32 {
-            return Err(Error::Parse("LEB128 value overflow".into()));
-        }
-
-        // Add the current byte's bits to the result
-        result |= ((byte & 0x7F) as i32) << shift;
-        shift += 7;
-
-        // If this is the last byte, check if the sign bit is set
-        if (byte & 0x80) == 0 {
-            // Sign bit is the most significant bit of the last byte's lower 7 bits
-            if shift < 32 && (byte & 0x40) != 0 {
-                sign_bit_set = true;
-            }
-            break;
-        }
-    }
-
-    // Apply sign extension if the sign bit was set
-    if sign_bit_set && shift < 32 {
-        result |= -1 << shift;
     }
 
     Ok((result, position))
