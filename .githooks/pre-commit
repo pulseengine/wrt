@@ -1,0 +1,27 @@
+#\!/bin/bash
+
+# Pre-commit hook to run WRT checks before allowing a commit
+
+echo "Running pre-commit checks..."
+
+# Run the check command from justfile
+just check
+
+# Check exit code
+if [ $? -ne 0 ]; then
+    echo "Error: Code checks failed. Please fix the issues before committing."
+    echo "You can run 'just check' to see the errors in detail."
+    exit 1
+fi
+
+# Run tests
+just test-wrt
+
+# Check exit code
+if [ $? -ne 0 ]; then
+    echo "Error: Tests failed. Please fix the failing tests before committing."
+    exit 1
+fi
+
+echo "Pre-commit checks passed successfully\!"
+exit 0
