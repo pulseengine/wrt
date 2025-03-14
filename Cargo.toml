@@ -20,4 +20,4 @@ tokio = { version = "1.36", features = ["full"] }
 thiserror = "1.0"
 bytemuck = { version = "1.14", features = ["derive"] }
 wit-bindgen = "0.12.0"
-wit-component = "0.12.0" 
+wit-component = "0.14.7" 
