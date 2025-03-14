@@ -369,10 +369,9 @@ impl Module {
 
         // Add a simple log function that handles component logging
         // It takes a level and message ID and maps to predefined messages
-        let mut log_func_body = Vec::new();
         // The log function doesn't do much in the simplified implementation
         // It just returns - the host will intercept the call
-        log_func_body.push(Instruction::Nop);
+        let log_func_body = vec![Instruction::Nop];
 
         // Add the log function (index 1)
         module.functions.push(Function {

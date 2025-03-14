@@ -223,7 +223,7 @@ pub enum ExecutionState {
 }
 
 /// Execution statistics for monitoring and reporting
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct ExecutionStats {
     /// Total number of instructions executed
     pub instructions_executed: u64,
@@ -277,28 +277,6 @@ impl Default for Engine {
     }
 }
 
-impl Default for ExecutionStats {
-    fn default() -> Self {
-        Self {
-            instructions_executed: 0,
-            fuel_consumed: 0,
-            peak_memory_bytes: 0,
-            current_memory_bytes: 0,
-            function_calls: 0,
-            memory_operations: 0,
-            #[cfg(feature = "std")]
-            local_global_time_us: 0,
-            #[cfg(feature = "std")]
-            control_flow_time_us: 0,
-            #[cfg(feature = "std")]
-            arithmetic_time_us: 0,
-            #[cfg(feature = "std")]
-            memory_ops_time_us: 0,
-            #[cfg(feature = "std")]
-            function_call_time_us: 0,
-        }
-    }
-}
 
 impl Engine {
     /// Creates a new execution engine
@@ -953,13 +931,13 @@ impl Engine {
                             // We can't get the actual iteration number here, so we'll just use a placeholder
                             let frame = self.stack.current_frame()?;
                             let iteration =
-                                frame.locals.get(0).and_then(|v| v.as_i32()).unwrap_or(0);
+                                frame.locals.first().and_then(|v| v.as_i32()).unwrap_or(0);
                             format!("Loop iteration: {}", iteration)
                         }
                         3 => {
                             // For completion messages, include the total count
                             let frame = self.stack.current_frame()?;
-                            let count = frame.locals.get(0).and_then(|v| v.as_i32()).unwrap_or(0);
+                            let count = frame.locals.first().and_then(|v| v.as_i32()).unwrap_or(0);
                             format!("Completed {} iterations", count)
                         }
                         _ => format!("Component log message ID {}", message_id),
