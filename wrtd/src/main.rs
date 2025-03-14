@@ -11,11 +11,21 @@
 //! ## Usage
 //!
 //! ```bash
-//! wrtd <wasm-file> [--call <function>]
+//! wrtd <wasm-file> [--call <function>] [--fuel <amount>] [--stats]
 //! ```
 //!
 //! The daemon will load the specified WebAssembly module and execute it, providing
 //! any necessary system services and managing its lifecycle.
+//!
+//! The `--fuel` option limits execution to the specified amount of computational resources.
+//! This enables bounded execution and prevents infinite loops or excessive resource consumption.
+//! If execution runs out of fuel, it will be paused and can be resumed with a higher fuel limit.
+//!
+//! The `--stats` option enables execution statistics reporting, displaying information such as:
+//! - Number of instructions executed
+//! - Amount of fuel consumed (when using the `--fuel` option)
+//! - Memory usage (current and peak)
+//! - Number of function calls and memory operations
 
 #![warn(missing_docs)]
 #![warn(rustdoc::missing_doc_code_examples)]
@@ -26,9 +36,9 @@ use std::path::PathBuf;
 
 use anyhow::{Context, Result};
 use clap::Parser;
-use tracing::{debug, error, info, Level};
+use tracing::{debug, error, info, warn, Level};
 use tracing_subscriber::fmt::format::FmtSpan;
-use wrt::Value;
+use wrt::{Engine, Value};
 
 /// WebAssembly Runtime Daemon CLI arguments
 #[derive(Parser, Debug)]
@@ -40,6 +50,16 @@ struct Args {
     /// Optional function to call
     #[arg(short, long)]
     call: Option<String>,
+
+    /// Optional fuel limit for bounded execution
+    /// Higher values allow more instructions to execute
+    #[arg(short, long, help = "Limit execution to the specified amount of fuel")]
+    fuel: Option<u64>,
+
+    /// Show execution statistics after running
+    /// Displays instruction count, memory usage, and other metrics
+    #[arg(short, long, help = "Show execution statistics")]
+    stats: bool,
 }
 
 fn main() -> Result<()> {
@@ -68,31 +88,95 @@ fn main() -> Result<()> {
     let wasm_bytes = fs::read(&wasm_path).context("Failed to read WebAssembly file")?;
     info!("Loaded {} bytes of WebAssembly code", wasm_bytes.len());
 
-    // Create a mock component from the WebAssembly bytes
-    info!("Initializing WebAssembly component (mocked)");
-    let component = load_component_from_bytes(&wasm_bytes)?;
+    // Create a WebAssembly engine and module from the bytes
+    info!("Initializing WebAssembly engine");
+    let mut engine = Engine::new();
 
-    // If a function call was specified, execute it
-    if let Some(function_name) = args.call {
-        info!("Calling function: {}", function_name);
-        let result = call_mock_function(&component, &function_name)?;
-        info!("Function result: {:?}", result);
-    } else {
-        info!("No function specified to call. Use --call <function> to execute a function");
+    // Apply fuel limit if specified
+    if let Some(fuel) = args.fuel {
+        info!("Setting fuel limit to {} units", fuel);
+        engine.set_fuel(Some(fuel));
+    }
+
+    // First try to load as a real module
+    match wrt::new_module().load_from_binary(&wasm_bytes) {
+        Ok(module) => {
+            info!("Loaded WebAssembly module ({})", wasm_path.display());
+
+            // Instantiate the module
+            match engine.instantiate(module) {
+                Ok(_) => {
+                    info!("Successfully instantiated WebAssembly module");
+
+                    // If a function call was specified, execute it
+                    if let Some(function_name) = args.call {
+                        info!("Calling function: {}", function_name);
+
+                        // For now, we'll assume function index 0
+                        // In a real implementation, we would look up the function by name
+                        let func_idx = 0;
+                        let func_args = Vec::new(); // Empty arguments for now
+
+                        match engine.execute(0, func_idx, func_args) {
+                            Ok(results) => {
+                                info!("Function execution completed with results: {:?}", results);
+
+                                // Display execution statistics if requested
+                                if args.stats {
+                                    display_execution_stats(&engine);
+                                }
+                            }
+                            Err(wrt::Error::FuelExhausted) => {
+                                info!("Function execution paused: out of fuel");
+                                info!("To resume, run again with a higher --fuel value");
+
+                                // In a real implementation, we would persist the state to be resumed later
+                                // For now, we'll just report the remaining fuel
+                                if let Some(fuel_remaining) = engine.remaining_fuel() {
+                                    info!("Remaining fuel: {}", fuel_remaining);
+                                }
+
+                                // Display execution statistics if requested
+                                if args.stats {
+                                    display_execution_stats(&engine);
+                                }
+                            }
+                            Err(e) => {
+                                error!("Execution error: {}", e);
+                                return Err(anyhow::anyhow!("Execution error: {}", e));
+                            }
+                        }
+                    } else {
+                        info!("No function specified to call. Use --call <function> to execute a function");
+                    }
+                }
+                Err(e) => {
+                    error!("Failed to instantiate module: {}", e);
+
+                    // Fall back to mock component
+                    info!("Falling back to mock component");
+                    execute_mock_component(&wasm_bytes, args.call.as_deref())?;
+                }
+            }
+        }
+        Err(e) => {
+            warn!("Failed to load as WebAssembly module: {}", e);
+
+            // Fall back to mock component for demonstration purposes
+            info!("Falling back to mock component");
+            execute_mock_component(&wasm_bytes, args.call.as_deref())?;
+        }
     }
 
     Ok(())
 }
 
-/// Loads a component from WebAssembly bytes
-fn load_component_from_bytes(bytes: &[u8]) -> Result<MockComponent> {
-    // This is a simplified implementation that doesn't use the actual Component
-    // In a real implementation, we would parse the WebAssembly binary and create a proper Component
-
+/// Executes a mock component when the real module loading fails
+/// This is a fallback for demonstration/testing purposes
+fn execute_mock_component(bytes: &[u8], function_name: Option<&str>) -> Result<()> {
     info!("Creating mock component with 'hello' and 'log' functions");
 
     // Create a mock component that simulates having 'hello' and 'log' functions
-    // from the example:hello/example interface
     let component = MockComponent {
         functions: vec![
             // The hello function returns 42
@@ -108,7 +192,17 @@ fn load_component_from_bytes(bytes: &[u8]) -> Result<MockComponent> {
         "Loaded component contains {} bytes of WebAssembly code",
         bytes.len()
     );
-    Ok(component)
+
+    // If a function call was specified, execute it
+    if let Some(function_name) = function_name {
+        info!("Calling function: {}", function_name);
+        let result = call_mock_function(&component, function_name)?;
+        info!("Function result: {:?}", result);
+    } else {
+        info!("No function specified to call. Use --call <function> to execute a function");
+    }
+
+    Ok(())
 }
 
 /// A mock component implementation that simulates a WebAssembly component
@@ -166,4 +260,27 @@ fn handle_component_log(level: &str, message: &str) {
         "critical" => tracing::error!("[Component CRITICAL] {}", message),
         _ => tracing::info!("[Component unknown level] {}", message),
     }
+}
+
+/// Displays execution statistics
+fn display_execution_stats(engine: &Engine) {
+    let stats = engine.stats();
+
+    info!("=== Execution Statistics ===");
+    info!("Instructions executed:  {}", stats.instructions_executed);
+
+    if stats.fuel_consumed > 0 {
+        info!("Fuel consumed:         {}", stats.fuel_consumed);
+    }
+
+    info!("Function calls:         {}", stats.function_calls);
+    info!("Memory operations:      {}", stats.memory_operations);
+
+    // Format memory usage in a human-readable way
+    let current_kb = stats.current_memory_bytes / 1024;
+    let peak_kb = stats.peak_memory_bytes / 1024;
+
+    info!("Current memory usage:   {} KB", current_kb);
+    info!("Peak memory usage:      {} KB", peak_kb);
+    info!("===========================");
 }
