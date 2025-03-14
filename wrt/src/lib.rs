@@ -70,7 +70,7 @@ mod values;
 // Public exports
 pub use component::{Component, Host, InstanceValue};
 pub use error::{Error, Result};
-pub use execution::{Engine, Stack};
+pub use execution::{Engine, ExecutionStats, Stack};
 pub use global::{Global, Globals};
 pub use instructions::{BlockType, Instruction};
 pub use memory::Memory;

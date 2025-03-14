@@ -193,6 +193,23 @@ pub enum ExecutionState {
     Finished,
 }
 
+/// Execution statistics for monitoring and reporting
+#[derive(Debug, Clone, Default)]
+pub struct ExecutionStats {
+    /// Total number of instructions executed
+    pub instructions_executed: u64,
+    /// Total amount of fuel consumed
+    pub fuel_consumed: u64,
+    /// Peak memory usage in bytes
+    pub peak_memory_bytes: usize,
+    /// Current memory usage in bytes
+    pub current_memory_bytes: usize,
+    /// Number of function calls
+    pub function_calls: u64,
+    /// Number of memory operations
+    pub memory_operations: u64,
+}
+
 /// The WebAssembly execution engine
 #[derive(Debug)]
 pub struct Engine {
@@ -204,6 +221,8 @@ pub struct Engine {
     fuel: Option<u64>,
     /// Current execution state
     state: ExecutionState,
+    /// Execution statistics
+    stats: ExecutionStats,
 }
 
 impl Default for Engine {
@@ -318,6 +337,7 @@ impl Engine {
             instances: Vec::new(),
             fuel: None, // No fuel limit by default
             state: ExecutionState::Idle,
+            stats: ExecutionStats::default(),
         }
     }
 
@@ -346,6 +366,45 @@ impl Engine {
     /// The current state of the engine
     pub fn state(&self) -> &ExecutionState {
         &self.state
+    }
+
+    /// Returns the current execution statistics
+    ///
+    /// # Returns
+    ///
+    /// Statistics about the execution including instruction count and memory usage
+    pub fn stats(&self) -> &ExecutionStats {
+        &self.stats
+    }
+
+    /// Resets the execution statistics
+    pub fn reset_stats(&mut self) {
+        self.stats = ExecutionStats::default();
+    }
+
+    /// Updates memory usage statistics for all memory instances
+    fn update_memory_stats(&mut self) -> Result<()> {
+        let mut total_memory = 0;
+
+        // Sum up memory from all instances
+        for instance in &self.instances {
+            for _memory_addr in &instance.memory_addrs {
+                // In a real implementation, we would get the actual memory size
+                // For now, we'll estimate based on what we know
+
+                // Assume each memory has at least 1 page (64 KB) and some may have grown
+                let instance_memory = crate::memory::PAGE_SIZE; // Minimum 1 page (64KB)
+                total_memory += instance_memory;
+            }
+        }
+
+        // Track current memory usage and update peak if needed
+        self.stats.current_memory_bytes = total_memory;
+        if total_memory > self.stats.peak_memory_bytes {
+            self.stats.peak_memory_bytes = total_memory;
+        }
+
+        Ok(())
     }
 
     /// Instantiates a module
@@ -425,6 +484,11 @@ impl Engine {
         func_idx: u32,
         args: Vec<Value>,
     ) -> Result<Vec<Value>> {
+        // If we're starting a new execution, reset statistics
+        if !matches!(self.state, ExecutionState::Paused { .. }) {
+            self.reset_stats();
+        }
+
         // Check if we're resuming a paused execution
         let start_pc = if let ExecutionState::Paused { pc, .. } = self.state {
             // We're resuming from a paused state
@@ -464,6 +528,9 @@ impl Engine {
 
             // Initialize locals with arguments
             frame.locals.extend(args);
+
+            // Update function call count statistics
+            self.stats.function_calls += 1;
 
             // Push frame
             self.stack.push_frame(frame);
@@ -528,6 +595,9 @@ impl Engine {
 
         // Mark execution as finished
         self.state = ExecutionState::Finished;
+
+        // Update memory usage statistics
+        self.update_memory_stats()?;
 
         Ok(results)
     }
@@ -663,6 +733,53 @@ impl Engine {
 
     /// Executes a single instruction
     fn execute_instruction(&mut self, inst: &Instruction, pc: usize) -> Result<Option<usize>> {
+        // Increment instruction count
+        self.stats.instructions_executed += 1;
+
+        // Track memory operations
+        match inst {
+            // Memory operations
+            Instruction::I32Load(_, _)
+            | Instruction::I64Load(_, _)
+            | Instruction::F32Load(_, _)
+            | Instruction::F64Load(_, _)
+            | Instruction::I32Load8S(_, _)
+            | Instruction::I32Load8U(_, _)
+            | Instruction::I32Load16S(_, _)
+            | Instruction::I32Load16U(_, _)
+            | Instruction::I64Load8S(_, _)
+            | Instruction::I64Load8U(_, _)
+            | Instruction::I64Load16S(_, _)
+            | Instruction::I64Load16U(_, _)
+            | Instruction::I64Load32S(_, _)
+            | Instruction::I64Load32U(_, _)
+            | Instruction::I32Store(_, _)
+            | Instruction::I64Store(_, _)
+            | Instruction::F32Store(_, _)
+            | Instruction::F64Store(_, _)
+            | Instruction::I32Store8(_, _)
+            | Instruction::I32Store16(_, _)
+            | Instruction::I64Store8(_, _)
+            | Instruction::I64Store16(_, _)
+            | Instruction::I64Store32(_, _)
+            | Instruction::MemoryGrow
+            | Instruction::MemorySize
+            | Instruction::MemoryFill
+            | Instruction::MemoryCopy
+            | Instruction::MemoryInit(_)
+            | Instruction::DataDrop(_) => {
+                self.stats.memory_operations += 1;
+            }
+            // Function calls
+            Instruction::Call(_)
+            | Instruction::CallIndirect(_, _)
+            | Instruction::ReturnCall(_)
+            | Instruction::ReturnCallIndirect(_, _) => {
+                self.stats.function_calls += 1;
+            }
+            _ => {}
+        }
+
         // Consume instruction-specific fuel amount if needed
         if let Some(fuel) = self.fuel {
             let cost = self.instruction_cost(inst);
@@ -671,6 +788,8 @@ impl Engine {
                 self.fuel = Some(0); // Set to 0 to trigger out-of-fuel error on next check
             } else {
                 self.fuel = Some(fuel - cost);
+                // Track fuel consumption
+                self.stats.fuel_consumed += cost;
             }
         }
 
