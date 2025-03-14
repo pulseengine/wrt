@@ -55,6 +55,13 @@ jobs:
           override: true
       - name: Install just
         run: cargo install just --locked
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r docs/requirements.txt
       - name: Run tests
         run: just test
 
@@ -146,46 +153,10 @@ jobs:
       - name: Build Rust API docs
         run: cargo doc --no-deps
 
-  check-all:
-    name: Comprehensive Check
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: nightly
-          override: false
-      - name: Install just
-        run: cargo install just --locked
-      - name: Install cargo-udeps
-        run: cargo install cargo-udeps --locked
-      - uses: actions/setup-python@v4
-        with:
-          python-version: '3.x'
-      - name: Install Python dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r docs/requirements.txt
-      - name: Run all checks
-        run: just check-all
-        env:
-          # Disable error documentation checks for now
-          CLIPPY_DENY_WARNINGS: false
+# The comprehensive check job has been removed as it duplicates the existing
+# jobs: check, test, style (with check-imports), udeps, and docs.
+# Each of those individual jobs runs its own specific check,
+# making this combined job redundant.
 
   audit:
     name: Security Audit
