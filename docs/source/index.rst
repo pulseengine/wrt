@@ -31,4 +31,11 @@ Key Features:
 - **Safety Features**: Stackless design, bounded execution, and state migration capabilities
 - **Certification Support**: Comprehensive instrumentation for safety-critical applications
 
-For detailed requirements and their relationships, see the :doc:`requirements` section. 
+For detailed requirements and their relationships, see the :doc:`requirements` section.
+
+Rust API Documentation
+---------------------
+
+The automatically-generated Rust API documentation can be accessed `here <./api/wrt/index.html>`_.
+This documentation is generated from doc comments in the source code and provides detailed information
+about the public interfaces, types, and functions available in the WRT crate.
