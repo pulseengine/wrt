@@ -23,13 +23,6 @@ build-example-release: setup-rust-targets
     # Build with standard release optimizations
     cargo build -p example --target wasm32-wasip2 --release
 
-# Create a symbolic link to the debug WebAssembly file
-link-example:
-    ln -sf "../target/wasm32-wasip2/debug/example.wasm" example/hello-world.wasm
-
-# Create a symbolic link to the release WebAssembly file
-link-example-release:
-    ln -sf "../target/wasm32-wasip2/release/example.wasm" example/hello-world.wasm
 
 # ----------------- Test Commands -----------------
 # 
@@ -99,22 +92,22 @@ check-docs:
     {{sphinx_build}} -M html "{{sphinx_source}}" "{{sphinx_build_dir}}" {{sphinx_opts}} -W
 
 # Run the example module with wasmtime (debug mode)
-run-example: build-example link-example
-    wasmtime run --wasm component-model example/hello-world.wasm || echo "Success! Module is a valid component that exports the example:hello/example interface with hello function returning 42"
+run-example: build-example 
+    wasmtime run --wasm component-model target/wasm32-wasip2/debug/example.wasm || echo "Success! Module is a valid component that exports the example:hello/example interface with hello function returning 42"
 
 # Run the example module with wasmtime (release mode)
-run-example-release: build-example-release link-example-release
-    wasmtime run --wasm component-model example/hello-world.wasm || echo "Success! Module is a valid component that exports the example:hello/example interface with hello function returning 42"
+run-example-release: build-example-release 
+    wasmtime run --wasm component-model target/wasm32-wasip2/release/example.wasm || echo "Success! Module is a valid component that exports the example:hello/example interface with hello function returning 42"
     # Report the size of the WebAssembly file
     wc -c example/hello-world.wasm
 
 # Test wrtd with the example component (release mode)
 # Additional arguments can be passed with e.g. `just test-wrtd-example "--fuel 100 --stats"`
-test-wrtd-example *ARGS="--call hello": setup-rust-targets build-example-release link-example-release build-wrtd
+test-wrtd-example *ARGS="--call hello": setup-rust-targets build-example-release build-wrtd
     # Execute the example with wrtd, passing any additional arguments
-    ./target/debug/wrtd example/hello-world.wasm {{ARGS}}
+    ./target/debug/wrtd {{ARGS}} ./target/wasm32-wasip2/release/example.wasm  
     # Report the size of the WebAssembly file
-    wc -c example/hello-world.wasm
+    wc -c ./target/wasm32-wasip2/release/example.wasm
 
 # Test wrtd with fuel-bounded execution and statistics
 test-wrtd-fuel FUEL="100": (test-wrtd-example "--call hello --fuel " + FUEL + " --stats")

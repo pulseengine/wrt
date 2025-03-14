@@ -108,7 +108,7 @@ fn main() -> Result<()> {
         engine.set_fuel(Some(fuel));
     }
 
-    // First try to load as a real module
+    // Try to load the WebAssembly file (supports both core modules and component model)
     match wrt::new_module().load_from_binary(&wasm_bytes) {
         Ok(module) => {
             info!("Loaded WebAssembly module ({})", wasm_path.display());
