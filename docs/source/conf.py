@@ -13,6 +13,7 @@ extensions = [
     'sphinx.ext.napoleon',
     'sphinx_needs',
     'myst_parser',
+    'sphinxcontrib.plantuml',
 ]
 
 templates_path = ['_templates']
@@ -22,6 +23,10 @@ html_theme = 'sphinx_rtd_theme'
 html_static_path = ['_static']
 
 # Sphinx-needs configuration
+
+# PlantUML configuration
+plantuml = 'java -jar /usr/local/bin/plantuml.jar'
+plantuml_output_format = 'svg'
 needs_types = [
     dict(directive="req", title="Requirement", prefix="R_", color="#BFD8D2", style="node"),
     dict(directive="spec", title="Specification", prefix="S_", color="#FEDCD2", style="node"),
