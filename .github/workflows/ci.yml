@@ -77,7 +77,7 @@ jobs:
       - name: Install just
         if: env.JUST_INSTALLED != 'true'
         run: cargo install just --locked
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.x'
       - name: Install Python dependencies
@@ -197,7 +197,7 @@ jobs:
       - name: Install just
         if: env.JUST_INSTALLED != 'true'
         run: cargo install just --locked
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.x'
       - name: Install Python dependencies and build docs
