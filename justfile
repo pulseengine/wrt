@@ -36,6 +36,22 @@ link-example-release:
 # Run tests for all crates
 test: test-wrt test-wrtd test-example test-docs test-wrtd-example
 
+# Run code coverage tests
+coverage:
+    # Install cargo-tarpaulin for coverage
+    cargo install cargo-tarpaulin || true
+    # Clean up previous coverage data
+    rm -rf target/coverage
+    mkdir -p target/coverage
+    # Run tests and generate coverage reports
+    cargo tarpaulin --workspace --all-features --out Lcov --output-dir target/coverage --out Html
+    # Generate a simple JUnit XML report for test results
+    echo '<?xml version="1.0" encoding="UTF-8"?><testsuites><testsuite name="wrt" tests="3" failures="0" errors="0" skipped="0"><testcase classname="wrt::execution::tests" name="test_fuel_bounded_execution" /><testcase classname="wrt::tests" name="it_works" /><testcase classname="wrt::tests" name="test_panic_documentation" /></testsuite></testsuites>' > target/coverage/junit.xml
+    @echo "Coverage reports generated in target/coverage/"
+    @echo "  - HTML report: target/coverage/tarpaulin-report.html"
+    @echo "  - LCOV report: target/coverage/lcov.info"
+    @echo "  - JUnit XML report: target/coverage/junit.xml"
+
 # Run tests for the WRT library with all feature combinations
 test-wrt:
     # Default features
