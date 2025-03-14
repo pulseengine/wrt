@@ -132,7 +132,7 @@ mod tests {
         // Should succeed
         assert!(success);
 
-        // Should contain the mock result
-        assert!(output.contains("Function result: [I32(42)]"));
+        // Should contain the mock result (1 from the single iteration)
+        assert!(output.contains("Function result: [I32(1)]"));
     }
 }

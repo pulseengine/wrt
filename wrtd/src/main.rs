@@ -85,7 +85,6 @@ fn main() -> Result<()> {
 
     // Setup timings for performance measurement
     let total_start_time = Instant::now();
-    let load_time;
     let parse_time;
     let instantiate_time;
     let execution_time;
@@ -95,7 +94,7 @@ fn main() -> Result<()> {
     debug!("Loading WebAssembly file: {}", wasm_path.display());
     let load_start = Instant::now();
     let wasm_bytes = fs::read(&wasm_path).context("Failed to read WebAssembly file")?;
-    load_time = load_start.elapsed();
+    let load_time = load_start.elapsed();
     info!(
         "Loaded {} bytes of WebAssembly code in {:?}",
         wasm_bytes.len(),
