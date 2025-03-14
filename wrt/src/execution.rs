@@ -4,7 +4,7 @@ use crate::logging::{CallbackRegistry, LogLevel, LogOperation};
 use crate::module::Module;
 use crate::types::ValueType;
 use crate::values::Value;
-use crate::{format, String, Vec};
+use crate::{format, String, ToString, Vec};
 
 #[cfg(feature = "std")]
 use std::sync::{Arc, Mutex};
@@ -523,7 +523,7 @@ impl Engine {
 
             // Initialize locals with arguments
             frame.locals.extend(args);
-            
+
             // Initialize any additional local variables needed by the function
             // Create default values for each local variable type
             for local_type in &func_locals {
@@ -801,17 +801,13 @@ impl Engine {
             | Instruction::BrIf(_)
             | Instruction::BrTable(_, _)
             | Instruction::Return
-            | Instruction::Unreachable => {
-                InstructionCategory::ControlFlow
-            }
+            | Instruction::Unreachable => InstructionCategory::ControlFlow,
             // Local/global variables
             Instruction::LocalGet(_)
             | Instruction::LocalSet(_)
             | Instruction::LocalTee(_)
             | Instruction::GlobalGet(_)
-            | Instruction::GlobalSet(_) => {
-                InstructionCategory::LocalGlobal
-            }
+            | Instruction::GlobalSet(_) => InstructionCategory::LocalGlobal,
             // Arithmetic operations
             Instruction::I32Add
             | Instruction::I32Sub
@@ -827,9 +823,7 @@ impl Engine {
             | Instruction::I32LeS
             | Instruction::I32LeU
             | Instruction::I32GeS
-            | Instruction::I32GeU => {
-                InstructionCategory::Arithmetic
-            }
+            | Instruction::I32GeU => InstructionCategory::Arithmetic,
             // Other - most constants fall here
             _ => InstructionCategory::Other,
         };
@@ -846,7 +840,7 @@ impl Engine {
                 self.stats.fuel_consumed += cost;
             }
         }
-        
+
         // Execute the instruction and track the result
         let result = match inst {
             // Control instructions
@@ -923,18 +917,23 @@ impl Engine {
                 let frame = self.stack.current_frame()?;
                 let local_func_idx = *func_idx;
                 let module_idx = frame.module.module_idx;
-                
+
                 // Check if this is a component model custom function call (log function)
                 // We're looking for call to function index 1 (log) in a module with custom section "component-model-info"
-                let is_component_log = local_func_idx == 1 && 
-                    frame.module.module.custom_sections.iter().any(|s| s.name == "component-model-info");
-                
+                let is_component_log = local_func_idx == 1
+                    && frame
+                        .module
+                        .module
+                        .custom_sections
+                        .iter()
+                        .any(|s| s.name == "component-model-info");
+
                 if is_component_log {
                     // This is a log call from the component
                     // Get log level and message ID from the stack
                     let message_id = self.stack.pop()?.as_i32().unwrap_or(0);
                     let level = self.stack.pop()?.as_i32().unwrap_or(2); // Default to INFO level
-                    
+
                     // Map levels from component to our log levels
                     let log_level = match level {
                         0 => LogLevel::Trace,
@@ -945,7 +944,7 @@ impl Engine {
                         5 => LogLevel::Critical,
                         _ => LogLevel::Info,
                     };
-                    
+
                     // Map message IDs to actual messages
                     let message = match message_id {
                         1 => "Starting loop for 1 iteration".to_string(),
@@ -953,21 +952,22 @@ impl Engine {
                             // For iteration messages, include the current iteration number
                             // We can't get the actual iteration number here, so we'll just use a placeholder
                             let frame = self.stack.current_frame()?;
-                            let iteration = frame.locals.get(0).and_then(|v| v.as_i32()).unwrap_or(0);
+                            let iteration =
+                                frame.locals.get(0).and_then(|v| v.as_i32()).unwrap_or(0);
                             format!("Loop iteration: {}", iteration)
-                        },
+                        }
                         3 => {
                             // For completion messages, include the total count
                             let frame = self.stack.current_frame()?;
                             let count = frame.locals.get(0).and_then(|v| v.as_i32()).unwrap_or(0);
                             format!("Completed {} iterations", count)
-                        },
+                        }
                         _ => format!("Component log message ID {}", message_id),
                     };
-                    
+
                     // Call the log handler
                     self.handle_log(log_level, message);
-                    
+
                     // No return value for log function
                     Ok(None)
                 } else {
@@ -1042,55 +1042,119 @@ impl Engine {
                 }
                 Ok(None)
             }
-            
+
             // Integer operations
             Instruction::I32Add => {
-                let rhs = self.stack.pop()?.as_i32().ok_or_else(|| Error::Execution("Expected i32".into()))?;
-                let lhs = self.stack.pop()?.as_i32().ok_or_else(|| Error::Execution("Expected i32".into()))?;
+                let rhs = self
+                    .stack
+                    .pop()?
+                    .as_i32()
+                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
+                let lhs = self
+                    .stack
+                    .pop()?
+                    .as_i32()
+                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
                 self.stack.push(Value::I32(lhs.wrapping_add(rhs)));
                 Ok(None)
             }
             Instruction::I32Sub => {
-                let rhs = self.stack.pop()?.as_i32().ok_or_else(|| Error::Execution("Expected i32".into()))?;
-                let lhs = self.stack.pop()?.as_i32().ok_or_else(|| Error::Execution("Expected i32".into()))?;
+                let rhs = self
+                    .stack
+                    .pop()?
+                    .as_i32()
+                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
+                let lhs = self
+                    .stack
+                    .pop()?
+                    .as_i32()
+                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
                 self.stack.push(Value::I32(lhs.wrapping_sub(rhs)));
                 Ok(None)
             }
-            
+
             // Comparison operations
             Instruction::I32LtS => {
-                let rhs = self.stack.pop()?.as_i32().ok_or_else(|| Error::Execution("Expected i32".into()))?;
-                let lhs = self.stack.pop()?.as_i32().ok_or_else(|| Error::Execution("Expected i32".into()))?;
+                let rhs = self
+                    .stack
+                    .pop()?
+                    .as_i32()
+                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
+                let lhs = self
+                    .stack
+                    .pop()?
+                    .as_i32()
+                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
                 self.stack.push(Value::I32(if lhs < rhs { 1 } else { 0 }));
                 Ok(None)
             }
             Instruction::I32GtS => {
-                let rhs = self.stack.pop()?.as_i32().ok_or_else(|| Error::Execution("Expected i32".into()))?;
-                let lhs = self.stack.pop()?.as_i32().ok_or_else(|| Error::Execution("Expected i32".into()))?;
+                let rhs = self
+                    .stack
+                    .pop()?
+                    .as_i32()
+                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
+                let lhs = self
+                    .stack
+                    .pop()?
+                    .as_i32()
+                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
                 self.stack.push(Value::I32(if lhs > rhs { 1 } else { 0 }));
                 Ok(None)
             }
             Instruction::I32LeS => {
-                let rhs = self.stack.pop()?.as_i32().ok_or_else(|| Error::Execution("Expected i32".into()))?;
-                let lhs = self.stack.pop()?.as_i32().ok_or_else(|| Error::Execution("Expected i32".into()))?;
+                let rhs = self
+                    .stack
+                    .pop()?
+                    .as_i32()
+                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
+                let lhs = self
+                    .stack
+                    .pop()?
+                    .as_i32()
+                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
                 self.stack.push(Value::I32(if lhs <= rhs { 1 } else { 0 }));
                 Ok(None)
             }
             Instruction::I32GeS => {
-                let rhs = self.stack.pop()?.as_i32().ok_or_else(|| Error::Execution("Expected i32".into()))?;
-                let lhs = self.stack.pop()?.as_i32().ok_or_else(|| Error::Execution("Expected i32".into()))?;
+                let rhs = self
+                    .stack
+                    .pop()?
+                    .as_i32()
+                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
+                let lhs = self
+                    .stack
+                    .pop()?
+                    .as_i32()
+                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
                 self.stack.push(Value::I32(if lhs >= rhs { 1 } else { 0 }));
                 Ok(None)
             }
             Instruction::I32Eq => {
-                let rhs = self.stack.pop()?.as_i32().ok_or_else(|| Error::Execution("Expected i32".into()))?;
-                let lhs = self.stack.pop()?.as_i32().ok_or_else(|| Error::Execution("Expected i32".into()))?;
+                let rhs = self
+                    .stack
+                    .pop()?
+                    .as_i32()
+                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
+                let lhs = self
+                    .stack
+                    .pop()?
+                    .as_i32()
+                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
                 self.stack.push(Value::I32(if lhs == rhs { 1 } else { 0 }));
                 Ok(None)
             }
             Instruction::I32Ne => {
-                let rhs = self.stack.pop()?.as_i32().ok_or_else(|| Error::Execution("Expected i32".into()))?;
-                let lhs = self.stack.pop()?.as_i32().ok_or_else(|| Error::Execution("Expected i32".into()))?;
+                let rhs = self
+                    .stack
+                    .pop()?
+                    .as_i32()
+                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
+                let lhs = self
+                    .stack
+                    .pop()?
+                    .as_i32()
+                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
                 self.stack.push(Value::I32(if lhs != rhs { 1 } else { 0 }));
                 Ok(None)
             }
@@ -1098,7 +1162,7 @@ impl Engine {
             // ... implement other instructions ...
             _ => Err(Error::Execution("Instruction not implemented".into())),
         };
-        
+
         // Record execution time for this instruction type
         #[cfg(feature = "std")]
         {
@@ -1124,7 +1188,7 @@ impl Engine {
                 }
             }
         }
-        
+
         result
     }
 }

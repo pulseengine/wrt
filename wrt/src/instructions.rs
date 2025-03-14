@@ -286,19 +286,19 @@ pub enum Instruction {
 
     /// Test if one 32-bit integer is greater than or equal to another (unsigned)
     I32GeU,
-    
+
     /// Add two 32-bit integers
     I32Add,
-    
+
     /// Subtract one 32-bit integer from another
     I32Sub,
-    
+
     /// Multiply two 32-bit integers
     I32Mul,
-    
+
     /// Divide two 32-bit integers (signed)
     I32DivS,
-    
+
     /// Divide two 32-bit integers (unsigned)
     I32DivU,
 
