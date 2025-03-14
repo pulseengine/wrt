@@ -56,8 +56,10 @@ pub struct ModuleInstance {
 #[derive(Debug, Clone)]
 struct FunctionAddr {
     /// Module instance index
+    #[allow(dead_code)]
     instance_idx: u32,
     /// Function index
+    #[allow(dead_code)]
     func_idx: u32,
 }
 
@@ -65,8 +67,10 @@ struct FunctionAddr {
 #[derive(Debug, Clone)]
 struct TableAddr {
     /// Module instance index
+    #[allow(dead_code)]
     instance_idx: u32,
     /// Table index
+    #[allow(dead_code)]
     table_idx: u32,
 }
 
@@ -74,8 +78,10 @@ struct TableAddr {
 #[derive(Debug, Clone)]
 struct MemoryAddr {
     /// Module instance index
+    #[allow(dead_code)]
     instance_idx: u32,
     /// Memory index
+    #[allow(dead_code)]
     memory_idx: u32,
 }
 
@@ -83,8 +89,10 @@ struct MemoryAddr {
 #[derive(Debug, Clone)]
 struct GlobalAddr {
     /// Module instance index
+    #[allow(dead_code)]
     instance_idx: u32,
     /// Global index
+    #[allow(dead_code)]
     global_idx: u32,
 }
 

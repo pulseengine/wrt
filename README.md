@@ -1,5 +1,7 @@
 # WRT - WebAssembly Runtime
 
+[![Rust CI](https://github.com/avrabe/wrt/actions/workflows/ci.yml/badge.svg)](https://github.com/avrabe/wrt/actions/workflows/ci.yml)
+
 WRT is a pure Rust implementation of a WebAssembly runtime that supports both the core WebAssembly specification and the WebAssembly Component Model. The project provides both a library (`wrt`) for embedding the runtime in Rust applications and a standalone daemon (`wrtd`) for executing WebAssembly modules.
 
 ## Features

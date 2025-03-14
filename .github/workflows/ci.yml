@@ -29,7 +29,18 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
+      - name: Check if just is available
+        id: check-just
+        run: |
+          if command -v just &> /dev/null; then
+            echo "JUST_INSTALLED=true" >> $GITHUB_ENV
+            echo "Just is already installed"
+          else
+            echo "JUST_INSTALLED=false" >> $GITHUB_ENV
+            echo "Just needs to be installed"
+          fi
       - name: Install just
+        if: env.JUST_INSTALLED != 'true'
         run: cargo install just --locked
       - name: Run cargo check
         run: just check
@@ -53,7 +64,18 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
+      - name: Check if just is available
+        id: check-just
+        run: |
+          if command -v just &> /dev/null; then
+            echo "JUST_INSTALLED=true" >> $GITHUB_ENV
+            echo "Just is already installed"
+          else
+            echo "JUST_INSTALLED=false" >> $GITHUB_ENV
+            echo "Just needs to be installed"
+          fi
       - name: Install just
+        if: env.JUST_INSTALLED != 'true'
         run: cargo install just --locked
       - uses: actions/setup-python@v4
         with:
@@ -85,7 +107,18 @@ jobs:
           toolchain: stable
           override: true
           components: clippy
+      - name: Check if just is available
+        id: check-just
+        run: |
+          if command -v just &> /dev/null; then
+            echo "JUST_INSTALLED=true" >> $GITHUB_ENV
+            echo "Just is already installed"
+          else
+            echo "JUST_INSTALLED=false" >> $GITHUB_ENV
+            echo "Just needs to be installed"
+          fi
       - name: Install just
+        if: env.JUST_INSTALLED != 'true'
         run: cargo install just --locked
       - name: Check code style and organization
         run: |
@@ -114,7 +147,18 @@ jobs:
           profile: minimal
           toolchain: nightly
           override: true
+      - name: Check if just is available
+        id: check-just
+        run: |
+          if command -v just &> /dev/null; then
+            echo "JUST_INSTALLED=true" >> $GITHUB_ENV
+            echo "Just is already installed"
+          else
+            echo "JUST_INSTALLED=false" >> $GITHUB_ENV
+            echo "Just needs to be installed"
+          fi
       - name: Install just
+        if: env.JUST_INSTALLED != 'true'
         run: cargo install just --locked
       - name: Install cargo-udeps
         run: cargo install cargo-udeps --locked
@@ -140,7 +184,18 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
+      - name: Check if just is available
+        id: check-just
+        run: |
+          if command -v just &> /dev/null; then
+            echo "JUST_INSTALLED=true" >> $GITHUB_ENV
+            echo "Just is already installed"
+          else
+            echo "JUST_INSTALLED=false" >> $GITHUB_ENV
+            echo "Just needs to be installed"
+          fi
       - name: Install just
+        if: env.JUST_INSTALLED != 'true'
         run: cargo install just --locked
       - uses: actions/setup-python@v4
         with:

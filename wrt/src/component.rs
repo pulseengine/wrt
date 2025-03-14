@@ -18,6 +18,7 @@ pub struct Component {
     /// Component imports
     imports: Vec<Import>,
     /// Component instances
+    #[allow(dead_code)]
     instances: Vec<InstanceValue>,
 }
 
@@ -212,6 +213,7 @@ impl Component {
     }
 
     /// Handles a function call from the host
+    #[allow(dead_code)]
     fn handle_function_call(&self, name: &str, args: &[Value]) -> Result<Vec<Value>> {
         // Find the export
         let export = self.get_export(name)?;

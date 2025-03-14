@@ -27,9 +27,18 @@ link-example:
 # Run tests for all crates
 test: test-wrt test-wrtd test-example test-docs
 
-# Run tests for the WRT library
+# Run tests for the WRT library with all feature combinations
 test-wrt:
+    # Default features
     cargo test -p wrt
+    # No features
+    cargo test -p wrt --no-default-features
+    # std feature only
+    cargo test -p wrt --no-default-features --features std
+    # no_std feature only
+    cargo test -p wrt --no-default-features --features no_std
+    # All features
+    cargo test -p wrt --all-features
 
 # Run tests for the WRT daemon
 test-wrtd:
