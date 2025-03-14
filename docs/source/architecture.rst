@@ -12,9 +12,17 @@ WRT is a WebAssembly runtime implementation with a focus on bounded execution, b
    :id: SPEC_001
    :links: REQ_001, REQ_003, REQ_014, REQ_018
    
-   .. uml:: _static/system_components.puml
-      :alt: WRT System Components
-      :width: 100%
+   .. raw:: html
+
+      <!-- UML diagram of system components would be displayed here.
+      The source file is located at _static/system_components.puml -->
+      
+      <div class="admonition note">
+        <p class="admonition-title">System Component Diagram</p>
+        <p>A diagram showing the WRT system components including Core Runtime, 
+        Component Model, and WASI interfaces would be displayed here.</p>
+        <p>The diagram source is preserved in <code>_static/system_components.puml</code>.</p>
+      </div>
 
    The WRT system is comprised of the following main components:
    
@@ -33,9 +41,17 @@ The core runtime is responsible for executing WebAssembly instructions and manag
    :id: SPEC_006
    :links: REQ_001, REQ_003, REQ_007
    
-   .. uml:: _static/component_flow.puml
-      :alt: WRT Execution Flow
-      :width: 100%
+   .. raw:: html
+
+      <!-- UML sequence diagram of component flow would be displayed here.
+      The source file is located at _static/component_flow.puml -->
+      
+      <div class="admonition note">
+        <p class="admonition-title">Execution Flow Diagram</p>
+        <p>A sequence diagram showing the bounded execution flow between 
+        WRTD CLI, Engine, Module, Stack, and other components would be displayed here.</p>
+        <p>The diagram source is preserved in <code>_static/component_flow.puml</code>.</p>
+      </div>
    
    The execution flow demonstrates the bounded execution model, showing how the WRTD CLI interacts with the Engine and how the fuel-based execution can be paused when fuel is exhausted.
 
