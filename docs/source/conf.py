@@ -13,7 +13,7 @@ extensions = [
     'sphinx.ext.napoleon',
     'sphinx_needs',
     'myst_parser',
-    # 'sphinxcontrib.plantuml',  # Temporarily disabled until properly configured
+    'sphinxcontrib.plantuml',
 ]
 
 templates_path = ['_templates']
@@ -22,14 +22,12 @@ exclude_patterns = []
 html_theme = 'sphinx_rtd_theme'
 html_static_path = ['_static']
 
-# Sphinx-needs configuration
-
 # PlantUML configuration
-# The docs will build without generating diagrams for now,
-# but the .puml files are preserved in the repository
-# To enable diagram generation, uncomment and configure:
-# plantuml = 'plantuml'
-# plantuml_output_format = 'svg'
+# Using the installed plantuml executable
+plantuml = 'plantuml'
+plantuml_output_format = 'svg'
+
+# Sphinx-needs configuration
 needs_types = [
     dict(directive="req", title="Requirement", prefix="R_", color="#BFD8D2", style="node"),
     dict(directive="spec", title="Specification", prefix="S_", color="#FEDCD2", style="node"),

@@ -193,6 +193,10 @@ sphinx_build_dir := "docs/_build"
 # Build HTML documentation
 docs-html:
     {{sphinx_build}} -M html "{{sphinx_source}}" "{{sphinx_build_dir}}" {{sphinx_opts}}
+    
+# Build HTML documentation with PlantUML diagrams
+docs-with-diagrams: setup-plantuml
+    {{sphinx_build}} -M html "{{sphinx_source}}" "{{sphinx_build_dir}}" {{sphinx_opts}}
 
 # Build PDF documentation (requires LaTeX installation)
 docs-pdf:
@@ -203,6 +207,7 @@ docs-pdf:
 docs: docs-html
     @echo "Documentation built successfully. HTML documentation available in docs/_build/html."
     @echo "To build PDF documentation, run 'just docs-pdf' (requires LaTeX installation)."
+    @echo "To build documentation with PlantUML diagrams, run 'just docs-with-diagrams' (requires Java and PlantUML)."
 
 # Show Sphinx documentation help
 docs-help:
@@ -228,13 +233,46 @@ setup-wasm-tools:
 # Install Python dependencies
 setup-python-deps:
     pip install -r docs/requirements.txt
+    pip install sphinxcontrib-plantuml
+
+# Install PlantUML (requires Java)
+setup-plantuml:
+    #!/usr/bin/env bash
+    if ! command -v plantuml &> /dev/null; then
+        echo "Installing PlantUML..."
+        if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+            # Linux installation
+            sudo apt-get update && sudo apt-get install -y plantuml
+        elif [[ "$OSTYPE" == "darwin"* ]]; then
+            # macOS installation with Homebrew
+            if command -v brew &> /dev/null; then
+                brew install plantuml
+            else
+                echo "Homebrew not found. Please install homebrew first or install plantuml manually."
+                echo "Visit: https://plantuml.com/starting"
+                exit 1
+            fi
+        else
+            echo "Unsupported OS. Please install plantuml manually."
+            echo "Visit: https://plantuml.com/starting"
+            exit 1
+        fi
+    else
+        echo "PlantUML is already installed."
+    fi
+    
+    # Check if Java is installed (required for PlantUML)
+    if ! command -v java &> /dev/null; then
+        echo "Java is required for PlantUML but not found. Please install Java."
+        exit 1
+    fi
 
 # Install required tools for development (local development)
-setup: setup-hooks setup-rust-targets setup-wasm-tools setup-python-deps
+setup: setup-hooks setup-rust-targets setup-wasm-tools setup-python-deps setup-plantuml
     @echo "✅ All development tools installed successfully."
 
 # Setup for CI environments (without hooks)
-setup-ci: setup-rust-targets setup-wasm-tools setup-python-deps
+setup-ci: setup-rust-targets setup-wasm-tools setup-python-deps setup-plantuml
     @echo "✅ CI environment setup completed."
     
 # Minimal setup for CI that only installs necessary Rust targets
