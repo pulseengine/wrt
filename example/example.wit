@@ -1,9 +1,27 @@
 package example:hello;
 
-interface greeter {
-    hello: func() -> string;
+// Define all interfaces in a common namespace
+interface example {
+    // Logging levels available for debugging
+    enum level {
+        trace,
+        debug,
+        info,
+        warn,
+        error,
+        critical,
+    }
+
+    // Mock logging function for demonstration
+    log: func(level: level, message: string);
+
+    // Main function that runs a loop for 100 iterations
+    // and logs the counter for each iteration
+    // Returns the total number of iterations completed
+    hello: func() -> s32;
 }
 
+// Define our world
 world hello {
-    export greeter;
+    export example;
 } 
