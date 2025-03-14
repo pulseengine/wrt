@@ -1,0 +1,5 @@
+# Enable additional lints
+warn-on-all-wildcard-imports = true
+
+# Documentation style
+doc-valid-idents = ["WebAssembly", "WASI"]

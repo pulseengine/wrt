@@ -1,0 +1,15 @@
+[package]
+name = "example"
+version = "0.1.0"
+edition = "2021"
+license.workspace = true
+description = "Example WebAssembly Module using WASI logging"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+wit-bindgen = { workspace = true, features = ["realloc"] }
+
+[build-dependencies]
+wit-component = { workspace = true } 

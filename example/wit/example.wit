@@ -1,0 +1,25 @@
+package example:hello;
+
+// Define all interfaces in a common namespace
+interface example {
+    // Logging levels available for debugging
+    enum level {
+        trace,
+        debug,
+        info,
+        warn,
+        error,
+        critical,
+    }
+
+    // Mock logging function for demonstration
+    log: func(level: level, message: string);
+
+    // Main function - returns an integer
+    hello: func() -> s32;
+}
+
+// Define our world
+world hello {
+    export example;
+} 

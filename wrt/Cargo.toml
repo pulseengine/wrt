@@ -1,0 +1,24 @@
+[package]
+name = "wrt"
+version = "0.1.0"
+edition = "2021"
+license.workspace = true
+description = "WebAssembly Runtime Library"
+
+[dependencies]
+# No dependencies required
+
+[lib]
+name = "wrt"
+path = "src/lib.rs"
+
+[dev-dependencies]
+criterion = "0.5"
+
+[package.metadata.cargo-udeps.ignore]
+dev-dependencies = ["criterion"]
+
+[features]
+default = []
+std = []
+no_std = []
