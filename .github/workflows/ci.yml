@@ -214,6 +214,56 @@ jobs:
 # Each of those individual jobs runs its own specific check,
 # making this combined job redundant.
 
+  coverage:
+    name: Code Coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+          components: llvm-tools-preview
+      - name: Check if just is available
+        id: check-just
+        run: |
+          if command -v just &> /dev/null; then
+            echo "JUST_INSTALLED=true" >> $GITHUB_ENV
+            echo "Just is already installed"
+          else
+            echo "JUST_INSTALLED=false" >> $GITHUB_ENV
+            echo "Just needs to be installed"
+          fi
+      - name: Install just
+        if: env.JUST_INSTALLED != 'true'
+        run: cargo install just --locked
+      - name: Install cargo-tarpaulin
+        run: cargo install cargo-tarpaulin --locked
+      - name: Run coverage tests
+        run: just coverage
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          file: target/coverage/lcov.info
+          fail_ci_if_error: true
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/test-results-action@v1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          file: target/coverage/junit.xml
+
   audit:
     name: Security Audit
     runs-on: ubuntu-latest

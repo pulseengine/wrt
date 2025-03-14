@@ -1,6 +1,7 @@
 # WRT - WebAssembly Runtime
 
 [![Rust CI](https://github.com/avrabe/wrt/actions/workflows/ci.yml/badge.svg)](https://github.com/avrabe/wrt/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/avrabe/wrt/graph/badge.svg?token=angh0LQdpK)](https://codecov.io/gh/avrabe/wrt)
 
 WRT is a pure Rust implementation of a WebAssembly runtime that supports both the core WebAssembly specification and the WebAssembly Component Model. The project provides both a library (`wrt`) for embedding the runtime in Rust applications and a standalone daemon (`wrtd`) for executing WebAssembly modules.
 
@@ -119,6 +120,9 @@ just build
 # Run tests
 just test
 
+# Generate code coverage report
+just coverage      # Creates HTML report at target/coverage/html/index.html
+
 # Code quality checks
 just check
 just check-imports  # Check import organization
@@ -169,6 +173,7 @@ This project includes GitHub Actions workflows that automatically run on pull re
 
 - Build and test checks
 - Code style enforcement
+- Code coverage reporting (with Codecov integration)
 - Documentation generation
 - Security audit
 - Unused dependency detection
