@@ -6,6 +6,7 @@ Welcome to WRT's documentation!
    :caption: Contents:
 
    requirements
+   architecture
    api
 
 Overview

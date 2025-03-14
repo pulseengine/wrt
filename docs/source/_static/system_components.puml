@@ -1,0 +1,46 @@
+@startuml
+
+package "WRT System" {
+  [WRTD CLI] as CLI
+
+  package "WRT Core Library" {
+    package "Core Runtime" {
+      [Engine] as Engine
+      [Module] as Module 
+      [Memory] as Memory
+      [Stack] as Stack
+      [Instructions] as Instructions
+      [Validation] as Validation
+      [Execution] as Execution
+      
+      Engine --> Module
+      Engine --> Memory
+      Engine --> Stack
+      Engine --> Execution
+      Module --> Validation
+      Execution --> Instructions
+    }
+    
+    package "Component Model" {
+      [Component] as Component
+      [Interface Types] as InterfaceTypes
+      [Resource Types] as ResourceTypes
+      
+      Component --> InterfaceTypes
+      Component --> ResourceTypes
+    }
+    
+    package "WASI Implementation" {
+      [Logging] as Logging
+      [Platform Backends] as Backends
+      
+      Logging --> Backends
+    }
+  }
+  
+  CLI --> Engine
+  CLI --> Component
+  CLI --> Logging
+}
+
+@enduml
