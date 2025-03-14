@@ -29,8 +29,8 @@ impl exports::example::hello::example::Guest for HelloComponent {
 
         let mut count = 0;
 
-        // Loop for 100 iterations, logging each step
-        for i in 0..100 {
+        // Loop for 5 iterations, logging each step
+        for i in 0..5 {
             count += 1;
 
             // Log the current iteration number

@@ -8,6 +8,13 @@ description = "Example WebAssembly Module using WASI logging"
 [lib]
 crate-type = ["cdylib"]
 
+# Set default target to wasm32-wasip2
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+panic = "abort"
+
 [dependencies]
 wit-bindgen = { workspace = true, features = ["realloc"] }
 

@@ -89,14 +89,18 @@ fn main() -> Result<()> {
     let parse_time;
     let instantiate_time;
     let execution_time;
-    
+
     // Read the WebAssembly file
     let wasm_path = PathBuf::from(&args.wasm_file);
     debug!("Loading WebAssembly file: {}", wasm_path.display());
     let load_start = Instant::now();
     let wasm_bytes = fs::read(&wasm_path).context("Failed to read WebAssembly file")?;
     load_time = load_start.elapsed();
-    info!("Loaded {} bytes of WebAssembly code in {:?}", wasm_bytes.len(), load_time);
+    info!(
+        "Loaded {} bytes of WebAssembly code in {:?}",
+        wasm_bytes.len(),
+        load_time
+    );
 
     // Create a WebAssembly engine and module from the bytes
     info!("Initializing WebAssembly engine");
@@ -123,14 +127,21 @@ fn main() -> Result<()> {
     match wrt::new_module().load_from_binary(&wasm_bytes) {
         Ok(module) => {
             parse_time = parse_start.elapsed();
-            info!("Loaded WebAssembly module ({}) in {:?}", wasm_path.display(), parse_time);
+            info!(
+                "Loaded WebAssembly module ({}) in {:?}",
+                wasm_path.display(),
+                parse_time
+            );
 
             // Instantiate the module
             let inst_start = Instant::now();
             match engine.instantiate(module) {
                 Ok(_) => {
                     instantiate_time = inst_start.elapsed();
-                    info!("Successfully instantiated WebAssembly module in {:?}", instantiate_time);
+                    info!(
+                        "Successfully instantiated WebAssembly module in {:?}",
+                        instantiate_time
+                    );
 
                     // If a function call was specified, execute it
                     if let Some(function_name) = args.call {
@@ -140,54 +151,92 @@ fn main() -> Result<()> {
                         let module_instance = &engine.instances[0];
                         let mut func_idx = 0; // Default to function index 0
                         let mut is_found = false;
-                        
+
                         // Check if this is a component model module
-                        let is_component = module_instance.module.custom_sections.iter().any(|s| s.name == "component-model-info");
-                        
+                        let is_component = module_instance
+                            .module
+                            .custom_sections
+                            .iter()
+                            .any(|s| s.name == "component-model-info");
+
                         info!("Module exports:");
                         for export in &module_instance.module.exports {
                             info!("  - {} ({:?})", export.name, export.kind);
-                            if export.name == function_name && matches!(export.kind, ExportKind::Function) {
+                            if export.name == function_name
+                                && matches!(export.kind, ExportKind::Function)
+                            {
                                 func_idx = export.index;
                                 is_found = true;
-                                info!("Found export '{}' at function index {}", function_name, func_idx);
+                                info!(
+                                    "Found export '{}' at function index {}",
+                                    function_name, func_idx
+                                );
                             }
                         }
-                        
+
                         if is_component {
                             info!("Detected WebAssembly Component Model module");
                         }
-                        
+
                         if !is_found {
-                            warn!("Export '{}' not found, using function index {}", function_name, func_idx);
+                            warn!(
+                                "Export '{}' not found, using function index {}",
+                                function_name, func_idx
+                            );
                         }
-                        
+
                         let func_args = Vec::new(); // Empty arguments for now
 
                         let exec_start = Instant::now();
                         match engine.execute(0, func_idx, func_args) {
                             Ok(results) => {
                                 execution_time = exec_start.elapsed();
-                                info!("Function execution completed in {:?} with results: {:?}", execution_time, results);
+                                info!(
+                                    "Function execution completed in {:?} with results: {:?}",
+                                    execution_time, results
+                                );
 
                                 // Display execution statistics if requested
                                 if args.stats {
                                     display_execution_stats(&engine);
                                 }
-                                
+
                                 // Display detailed timing breakdown
                                 let total_duration = total_start_time.elapsed();
                                 info!("=== Performance Timing ===");
                                 info!("Total runtime: {:?}", total_duration);
-                                info!("File loading: {:?} ({:.2}%)", load_time, (load_time.as_secs_f64() / total_duration.as_secs_f64()) * 100.0);
-                                info!("Module parsing: {:?} ({:.2}%)", parse_time, (parse_time.as_secs_f64() / total_duration.as_secs_f64()) * 100.0);
-                                info!("Module instantiation: {:?} ({:.2}%)", instantiate_time, (instantiate_time.as_secs_f64() / total_duration.as_secs_f64()) * 100.0);
-                                info!("Function execution: {:?} ({:.2}%)", execution_time, (execution_time.as_secs_f64() / total_duration.as_secs_f64()) * 100.0);
+                                info!(
+                                    "File loading: {:?} ({:.2}%)",
+                                    load_time,
+                                    (load_time.as_secs_f64() / total_duration.as_secs_f64())
+                                        * 100.0
+                                );
+                                info!(
+                                    "Module parsing: {:?} ({:.2}%)",
+                                    parse_time,
+                                    (parse_time.as_secs_f64() / total_duration.as_secs_f64())
+                                        * 100.0
+                                );
+                                info!(
+                                    "Module instantiation: {:?} ({:.2}%)",
+                                    instantiate_time,
+                                    (instantiate_time.as_secs_f64() / total_duration.as_secs_f64())
+                                        * 100.0
+                                );
+                                info!(
+                                    "Function execution: {:?} ({:.2}%)",
+                                    execution_time,
+                                    (execution_time.as_secs_f64() / total_duration.as_secs_f64())
+                                        * 100.0
+                                );
                                 info!("===========================");
                             }
                             Err(wrt::Error::FuelExhausted) => {
                                 execution_time = exec_start.elapsed();
-                                info!("Function execution paused after {:?}: out of fuel", execution_time);
+                                info!(
+                                    "Function execution paused after {:?}: out of fuel",
+                                    execution_time
+                                );
                                 info!("To resume, run again with a higher --fuel value");
 
                                 // In a real implementation, we would persist the state to be resumed later
@@ -299,15 +348,14 @@ fn call_mock_function(component: &MockComponent, function_name: &str) -> Result<
             if name == "hello" {
                 // The hello function in the component would call the log function with INFO level
                 // Use the engine's logging mechanism to log the message
-                component.engine.handle_log(
-                    LogLevel::Info,
-                    "Starting loop for 1 iteration".to_string(),
-                );
+                component
+                    .engine
+                    .handle_log(LogLevel::Info, "Starting loop for 1 iteration".to_string());
 
                 // Simulate loop iterations with logging
                 let iterations = 1; // Match our improved component implementation
                 let mut count = 0;
-                
+
                 for i in 0..iterations {
                     count += 1;
                     component
@@ -322,7 +370,7 @@ fn call_mock_function(component: &MockComponent, function_name: &str) -> Result<
 
                 // Also explain what's happening
                 debug!("Component 'hello' function executed with logging");
-                
+
                 // Return the actual count instead of fixed 42
                 return Ok(vec![Value::I32(count)]);
             }
@@ -382,34 +430,46 @@ fn display_execution_stats(engine: &Engine) {
 
     info!("Current memory usage:   {} KB", current_kb);
     info!("Peak memory usage:      {} KB", peak_kb);
-    
+
     // Display time breakdowns if available
     #[cfg(feature = "std")]
     {
         // Calculate total measured time in microseconds
-        let total_time = stats.local_global_time_us + stats.control_flow_time_us + 
-                         stats.arithmetic_time_us + stats.memory_ops_time_us + 
-                         stats.function_call_time_us;
-        
+        let total_time = stats.local_global_time_us
+            + stats.control_flow_time_us
+            + stats.arithmetic_time_us
+            + stats.memory_ops_time_us
+            + stats.function_call_time_us;
+
         if total_time > 0 {
             info!("Time breakdown:");
-            info!("  Local/Global ops:    {} µs ({:.1}%)", 
-                 stats.local_global_time_us, 
-                 (stats.local_global_time_us as f64 / total_time as f64) * 100.0);
-            info!("  Control flow:        {} µs ({:.1}%)", 
-                 stats.control_flow_time_us, 
-                 (stats.control_flow_time_us as f64 / total_time as f64) * 100.0);
-            info!("  Arithmetic ops:      {} µs ({:.1}%)", 
-                 stats.arithmetic_time_us, 
-                 (stats.arithmetic_time_us as f64 / total_time as f64) * 100.0);
-            info!("  Memory operations:   {} µs ({:.1}%)", 
-                 stats.memory_ops_time_us, 
-                 (stats.memory_ops_time_us as f64 / total_time as f64) * 100.0);
-            info!("  Function calls:      {} µs ({:.1}%)", 
-                 stats.function_call_time_us, 
-                 (stats.function_call_time_us as f64 / total_time as f64) * 100.0);
+            info!(
+                "  Local/Global ops:    {} µs ({:.1}%)",
+                stats.local_global_time_us,
+                (stats.local_global_time_us as f64 / total_time as f64) * 100.0
+            );
+            info!(
+                "  Control flow:        {} µs ({:.1}%)",
+                stats.control_flow_time_us,
+                (stats.control_flow_time_us as f64 / total_time as f64) * 100.0
+            );
+            info!(
+                "  Arithmetic ops:      {} µs ({:.1}%)",
+                stats.arithmetic_time_us,
+                (stats.arithmetic_time_us as f64 / total_time as f64) * 100.0
+            );
+            info!(
+                "  Memory operations:   {} µs ({:.1}%)",
+                stats.memory_ops_time_us,
+                (stats.memory_ops_time_us as f64 / total_time as f64) * 100.0
+            );
+            info!(
+                "  Function calls:      {} µs ({:.1}%)",
+                stats.function_call_time_us,
+                (stats.function_call_time_us as f64 / total_time as f64) * 100.0
+            );
         }
     }
-    
+
     info!("===========================");
 }
