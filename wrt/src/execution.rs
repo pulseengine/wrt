@@ -1,8 +1,17 @@
 use crate::error::{Error, Result};
 use crate::instructions::Instruction;
+use crate::logging::{CallbackRegistry, LogLevel, LogOperation};
 use crate::module::Module;
 use crate::values::Value;
-use crate::{format, Vec};
+use crate::{format, String, Vec};
+
+#[cfg(feature = "std")]
+use std::sync::{Arc, Mutex};
+
+#[cfg(not(feature = "std"))]
+use crate::Mutex;
+#[cfg(not(feature = "std"))]
+use alloc::sync::Arc;
 
 /// Represents the execution stack
 #[derive(Debug)]
@@ -223,6 +232,8 @@ pub struct Engine {
     state: ExecutionState,
     /// Execution statistics
     stats: ExecutionStats,
+    /// Callback registry for host functions (logging, etc.)
+    callbacks: Arc<Mutex<CallbackRegistry>>,
 }
 
 impl Default for Engine {
@@ -338,6 +349,32 @@ impl Engine {
             fuel: None, // No fuel limit by default
             state: ExecutionState::Idle,
             stats: ExecutionStats::default(),
+            callbacks: Arc::new(Mutex::new(CallbackRegistry::new())),
+        }
+    }
+
+    /// Get the callback registry
+    pub fn callbacks(&self) -> Arc<Mutex<CallbackRegistry>> {
+        self.callbacks.clone()
+    }
+
+    /// Register a log handler
+    pub fn register_log_handler<F>(&self, handler: F)
+    where
+        F: Fn(LogOperation) + Send + Sync + 'static,
+    {
+        if let Ok(mut callbacks) = self.callbacks.lock() {
+            callbacks.register_log_handler(handler);
+        }
+    }
+
+    /// Handle a log operation from a WebAssembly component
+    pub fn handle_log(&self, level: LogLevel, message: String) {
+        if let Ok(callbacks) = self.callbacks.lock() {
+            if callbacks.has_log_handler() {
+                let operation = LogOperation::new(level, message);
+                callbacks.handle_log(operation);
+            }
         }
     }
 

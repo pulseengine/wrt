@@ -24,8 +24,12 @@ pub use std::format;
 #[cfg(feature = "std")]
 pub use std::string::{String, ToString};
 #[cfg(feature = "std")]
+pub use std::sync::Mutex;
+#[cfg(feature = "std")]
 pub use std::vec::{self, Vec};
 
+#[cfg(not(feature = "std"))]
+pub use crate::sync::Mutex;
 #[cfg(not(feature = "std"))]
 pub use alloc::boxed::Box;
 #[cfg(not(feature = "std"))]
@@ -67,12 +71,20 @@ mod types;
 /// Module for WebAssembly runtime values
 mod values;
 
+/// Module for WebAssembly logging functionality
+mod logging;
+
+/// Module for synchronization primitives in no_std environment
+#[cfg(not(feature = "std"))]
+mod sync;
+
 // Public exports
 pub use component::{Component, Host, InstanceValue};
 pub use error::{Error, Result};
 pub use execution::{Engine, ExecutionStats, Stack};
 pub use global::{Global, Globals};
 pub use instructions::{BlockType, Instruction};
+pub use logging::{CallbackRegistry, LogLevel, LogOperation};
 pub use memory::Memory;
 pub use module::Module;
 pub use table::Table;
