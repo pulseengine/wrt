@@ -11,8 +11,16 @@ env:
 
 jobs:
   check:
-    name: Check
-    runs-on: ubuntu-latest
+    name: Check (${{ matrix.os }})
+    strategy:
+      fail-fast: false  # Don't stop all jobs if one fails
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - os: windows-latest
+            continue-on-error: true  # Allow Windows to fail without stopping the workflow
+    runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.continue-on-error || false }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/cache@v4
@@ -29,8 +37,9 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
-      - name: Check if just is available
-        id: check-just
+      - name: Check if just is available (Unix)
+        if: runner.os != 'Windows'
+        id: check-just-unix
         run: |
           if command -v just &> /dev/null; then
             echo "JUST_INSTALLED=true" >> $GITHUB_ENV
@@ -39,6 +48,18 @@ jobs:
             echo "JUST_INSTALLED=false" >> $GITHUB_ENV
             echo "Just needs to be installed"
           fi
+      - name: Check if just is available (Windows)
+        if: runner.os == 'Windows'
+        id: check-just-windows
+        shell: powershell
+        run: |
+          if (Get-Command just -ErrorAction SilentlyContinue) {
+            echo "JUST_INSTALLED=true" | Out-File -FilePath $env:GITHUB_ENV -Append
+            echo "Just is already installed"
+          } else {
+            echo "JUST_INSTALLED=false" | Out-File -FilePath $env:GITHUB_ENV -Append
+            echo "Just needs to be installed"
+          }
       - name: Install just
         if: env.JUST_INSTALLED != 'true'
         run: cargo install just --locked
@@ -48,8 +69,16 @@ jobs:
         run: just check
 
   test:
-    name: Test Suite
-    runs-on: ubuntu-latest
+    name: Test Suite (${{ matrix.os }})
+    strategy:
+      fail-fast: false  # Don't stop all jobs if one fails
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - os: windows-latest
+            continue-on-error: true  # Allow Windows to fail without stopping the workflow
+    runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.continue-on-error || false }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/cache@v4
@@ -66,8 +95,9 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
-      - name: Check if just is available
-        id: check-just
+      - name: Check if just is available (Unix)
+        if: runner.os != 'Windows'
+        id: check-just-unix
         run: |
           if command -v just &> /dev/null; then
             echo "JUST_INSTALLED=true" >> $GITHUB_ENV
@@ -76,6 +106,18 @@ jobs:
             echo "JUST_INSTALLED=false" >> $GITHUB_ENV
             echo "Just needs to be installed"
           fi
+      - name: Check if just is available (Windows)
+        if: runner.os == 'Windows'
+        id: check-just-windows
+        shell: powershell
+        run: |
+          if (Get-Command just -ErrorAction SilentlyContinue) {
+            echo "JUST_INSTALLED=true" | Out-File -FilePath $env:GITHUB_ENV -Append
+            echo "Just is already installed"
+          } else {
+            echo "JUST_INSTALLED=false" | Out-File -FilePath $env:GITHUB_ENV -Append
+            echo "Just needs to be installed"
+          }
       - name: Install just
         if: env.JUST_INSTALLED != 'true'
         run: cargo install just --locked
@@ -92,8 +134,16 @@ jobs:
         run: just test
 
   style:
-    name: Code Style and Organization
-    runs-on: ubuntu-latest
+    name: Code Style and Organization (${{ matrix.os }})
+    strategy:
+      fail-fast: false  # Don't stop all jobs if one fails
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - os: windows-latest
+            continue-on-error: true  # Allow Windows to fail without stopping the workflow
+    runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.continue-on-error || false }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/cache@v4
@@ -111,8 +161,9 @@ jobs:
           toolchain: stable
           override: true
           components: clippy
-      - name: Check if just is available
-        id: check-just
+      - name: Check if just is available (Unix)
+        if: runner.os != 'Windows'
+        id: check-just-unix
         run: |
           if command -v just &> /dev/null; then
             echo "JUST_INSTALLED=true" >> $GITHUB_ENV
@@ -121,22 +172,43 @@ jobs:
             echo "JUST_INSTALLED=false" >> $GITHUB_ENV
             echo "Just needs to be installed"
           fi
+      - name: Check if just is available (Windows)
+        if: runner.os == 'Windows'
+        id: check-just-windows
+        shell: powershell
+        run: |
+          if (Get-Command just -ErrorAction SilentlyContinue) {
+            echo "JUST_INSTALLED=true" | Out-File -FilePath $env:GITHUB_ENV -Append
+            echo "Just is already installed"
+          } else {
+            echo "JUST_INSTALLED=false" | Out-File -FilePath $env:GITHUB_ENV -Append
+            echo "Just needs to be installed"
+          }
       - name: Install just
         if: env.JUST_INSTALLED != 'true'
         run: cargo install just --locked
       - name: Setup Rust targets
         run: just setup-ci-minimal
-      - name: Check code style and organization
-        run: |
-          just check
-          just check-imports
+      - name: Check code style
+        run: just check
         env:
           # Disable error documentation checks for now
           CLIPPY_DENY_WARNINGS: false
+      - name: Check imports (Unix only)
+        if: runner.os != 'Windows'
+        run: just check-imports
           
   udeps:
-    name: Unused Dependencies
-    runs-on: ubuntu-latest
+    name: Unused Dependencies (${{ matrix.os }})
+    strategy:
+      fail-fast: false  # Don't stop all jobs if one fails
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - os: windows-latest
+            continue-on-error: true  # Allow Windows to fail without stopping the workflow
+    runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.continue-on-error || false }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/cache@v4
@@ -153,8 +225,9 @@ jobs:
           profile: minimal
           toolchain: nightly
           override: true
-      - name: Check if just is available
-        id: check-just
+      - name: Check if just is available (Unix)
+        if: runner.os != 'Windows'
+        id: check-just-unix
         run: |
           if command -v just &> /dev/null; then
             echo "JUST_INSTALLED=true" >> $GITHUB_ENV
@@ -163,6 +236,18 @@ jobs:
             echo "JUST_INSTALLED=false" >> $GITHUB_ENV
             echo "Just needs to be installed"
           fi
+      - name: Check if just is available (Windows)
+        if: runner.os == 'Windows'
+        id: check-just-windows
+        shell: powershell
+        run: |
+          if (Get-Command just -ErrorAction SilentlyContinue) {
+            echo "JUST_INSTALLED=true" | Out-File -FilePath $env:GITHUB_ENV -Append
+            echo "Just is already installed"
+          } else {
+            echo "JUST_INSTALLED=false" | Out-File -FilePath $env:GITHUB_ENV -Append
+            echo "Just needs to be installed"
+          }
       - name: Install just
         if: env.JUST_INSTALLED != 'true'
         run: cargo install just --locked
@@ -172,8 +257,16 @@ jobs:
         run: just check-udeps
 
   docs:
-    name: Documentation
-    runs-on: ubuntu-latest
+    name: Documentation (${{ matrix.os }})
+    strategy:
+      fail-fast: false  # Don't stop all jobs if one fails
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - os: windows-latest
+            continue-on-error: true  # Allow Windows to fail without stopping the workflow
+    runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.continue-on-error || false }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/cache@v4
@@ -190,8 +283,9 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
-      - name: Check if just is available
-        id: check-just
+      - name: Check if just is available (Unix)
+        if: runner.os != 'Windows'
+        id: check-just-unix
         run: |
           if command -v just &> /dev/null; then
             echo "JUST_INSTALLED=true" >> $GITHUB_ENV
@@ -200,6 +294,18 @@ jobs:
             echo "JUST_INSTALLED=false" >> $GITHUB_ENV
             echo "Just needs to be installed"
           fi
+      - name: Check if just is available (Windows)
+        if: runner.os == 'Windows'
+        id: check-just-windows
+        shell: powershell
+        run: |
+          if (Get-Command just -ErrorAction SilentlyContinue) {
+            echo "JUST_INSTALLED=true" | Out-File -FilePath $env:GITHUB_ENV -Append
+            echo "Just is already installed"
+          } else {
+            echo "JUST_INSTALLED=false" | Out-File -FilePath $env:GITHUB_ENV -Append
+            echo "Just needs to be installed"
+          }
       - name: Install just
         if: env.JUST_INSTALLED != 'true'
         run: cargo install just --locked
@@ -219,11 +325,7 @@ jobs:
       - name: Build Rust API docs
         run: cargo doc --no-deps
 
-# The comprehensive check job has been removed as it duplicates the existing
-# jobs: check, test, style (with check-imports), udeps, and docs.
-# Each of those individual jobs runs its own specific check,
-# making this combined job redundant.
-
+# Coverage job is still Linux-only as tarpaulin only supports Linux
   coverage:
     name: Code Coverage
     runs-on: ubuntu-latest
@@ -277,8 +379,16 @@ jobs:
           file: target/coverage/junit.xml
 
   audit:
-    name: Security Audit
-    runs-on: ubuntu-latest
+    name: Security Audit (${{ matrix.os }})
+    strategy:
+      fail-fast: false  # Don't stop all jobs if one fails
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - os: windows-latest
+            continue-on-error: true  # Allow Windows to fail without stopping the workflow
+    runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.continue-on-error || false }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions-rs/audit-check@v1
