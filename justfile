@@ -103,22 +103,22 @@ run-example-release: build-example-release
 
 # Test wrtd with the example component (release mode)
 # Additional arguments can be passed with e.g. `just test-wrtd-example "--fuel 100 --stats"`
-test-wrtd-example *ARGS="--call hello": setup-rust-targets build-example-release build-wrtd
+test-wrtd-example *ARGS="--call example:hello/example#hello": setup-rust-targets build-example-release build-wrtd
     # Execute the example with wrtd, passing any additional arguments
     ./target/debug/wrtd {{ARGS}} ./target/wasm32-wasip2/release/example.wasm  
     # Report the size of the WebAssembly file
     wc -c ./target/wasm32-wasip2/release/example.wasm
 
 # Test wrtd with fuel-bounded execution and statistics
-test-wrtd-fuel FUEL="100": (test-wrtd-example "--call hello --fuel " + FUEL + " --stats")
+test-wrtd-fuel FUEL="100": (test-wrtd-example "--call example:hello/example#hello --fuel " + FUEL + " --stats")
     # The fuel test has already been executed by the dependency
 
 # Test wrtd with statistics output
-test-wrtd-stats: (test-wrtd-example "--call hello --stats")
+test-wrtd-stats: (test-wrtd-example "--call example:hello/example#hello --stats")
     # The stats test has already been executed by the dependency
 
 # Test wrtd with both fuel and statistics
-test-wrtd-fuel-stats FUEL="100": (test-wrtd-example "--call hello --fuel " + FUEL + " --stats")
+test-wrtd-fuel-stats FUEL="100": (test-wrtd-example "--call example:hello/example#hello --fuel " + FUEL + " --stats")
     # The fuel+stats test has already been executed by the dependency
 
 # Test wrtd without any function call (should show available functions)
