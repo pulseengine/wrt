@@ -39,16 +39,13 @@ use anyhow::{Context, Result};
 use clap::Parser;
 use tracing::{debug, error, info, warn, Level};
 use tracing_subscriber::fmt::format::FmtSpan;
-use wrt::{
-    Engine, Export, ExportKind, ExternType, FuncType, Function, Instruction, LogLevel, Module,
-    Value, ValueType,
-};
+use wrt::{Engine, ExportKind, ExternType, LogLevel, Module, Value};
 
 /// WebAssembly Runtime Daemon CLI arguments
 #[derive(Parser, Debug)]
 #[command(version, about)]
 struct Args {
-    /// Path to the WebAssembly file to execute
+    /// Path to the WebAssembly Component file to execute
     wasm_file: String,
 
     /// Optional function to call
@@ -64,10 +61,6 @@ struct Args {
     /// Displays instruction count, memory usage, and other metrics
     #[arg(short, long, help = "Show execution statistics")]
     stats: bool,
-
-    /// Treat file as component (use component model loader)
-    #[arg(short = 'm', long, help = "Force component model loading")]
-    component: bool,
 }
 
 /// Performance timing information for executing a WebAssembly module
@@ -92,68 +85,31 @@ fn main() -> Result<()> {
     let args = Args::parse();
 
     // Setup timings for performance measurement
-    let total_start_time = Instant::now();
+    let _start_time = Instant::now();
 
     // Read the WebAssembly file
     let (wasm_path, wasm_bytes, _load_time) = load_wasm_file(&args.wasm_file)?;
 
     // Create a WebAssembly engine
-    info!("Initializing WebAssembly engine");
+    info!("Initializing WebAssembly Component engine");
     let mut engine = create_engine(args.fuel);
 
-    // If --component is specified, force component model loading
-    if args.component {
-        info!("Force loading as WebAssembly Component Model");
-        if let Err(e) = load_component(
-            &mut engine,
-            &wasm_bytes,
-            args.call.as_deref(),
-            wasm_path.display().to_string(),
-        ) {
-            error!("Component loading failed: {}", e);
-            return Err(e);
-        }
-
-        if args.stats {
-            display_execution_stats(&engine);
-        }
-        return Ok(());
-    }
-
-    // Try to load as a standard WebAssembly module first
-    match load_and_execute_module(
+    // Load and execute as WebAssembly Component Model only
+    if let Err(e) = load_component(
         &mut engine,
         &wasm_bytes,
-        &wasm_path,
         args.call.as_deref(),
-        total_start_time,
-        args.stats,
+        wasm_path.display().to_string(),
     ) {
-        Ok(_) => {
-            // Module loaded and executed successfully
-        }
-        Err(e) => {
-            warn!("Failed to load or execute as WebAssembly module: {}", e);
+        error!("Failed to load WebAssembly Component: {}", e);
+        return Err(anyhow::anyhow!(
+            "Failed to load WebAssembly Component: {}",
+            e
+        ));
+    }
 
-            // Try to load as a component instead
-            info!("Trying to load as WebAssembly Component instead");
-            if let Err(component_err) = load_component(
-                &mut engine,
-                &wasm_bytes,
-                args.call.as_deref(),
-                wasm_path.display().to_string(),
-            ) {
-                error!("Failed to load as Component: {}", component_err);
-                return Err(anyhow::anyhow!(
-                    "Failed to load WebAssembly file as module or component: {}",
-                    component_err
-                ));
-            }
-
-            if args.stats {
-                display_execution_stats(&engine);
-            }
-        }
+    if args.stats {
+        display_execution_stats(&engine);
     }
 
     Ok(())
@@ -177,7 +133,7 @@ fn initialize_tracing() {
     }
 }
 
-/// Create a WebAssembly engine with the specified fuel limit
+/// Create a WebAssembly Component engine with the specified fuel limit
 fn create_engine(fuel: Option<u64>) -> Engine {
     let mut engine = Engine::new();
 
@@ -191,12 +147,24 @@ fn create_engine(fuel: Option<u64>) -> Engine {
             log_op.level.as_str(),
             &format!("{}: {}", context, log_op.message),
         );
+
+        // Also print directly to stdout for debugging
+        println!(
+            "[Handler] {} log from {}: {}",
+            log_op.level.as_str(),
+            context,
+            log_op.message
+        );
     });
 
     // Apply fuel limit if specified
     if let Some(fuel) = fuel {
         info!("Setting fuel limit to {} units", fuel);
         engine.set_fuel(Some(fuel));
+    } else {
+        // Default fuel for components to prevent infinite loops
+        info!("Setting default fuel limit of 1000000 units");
+        engine.set_fuel(Some(1000000));
     }
 
     engine
@@ -665,53 +633,26 @@ fn load_component(
     engine: &mut Engine,
     bytes: &[u8],
     function_name: Option<&str>,
-    file_path: String,
+    _file_path: String,
 ) -> Result<()> {
     // Load the component
     let parse_start = Instant::now();
 
-    // Special handling for test files - in test mode, we use a mock component
-    // This is needed for backward compatibility with existing tests
-    let is_test = std::env::var("CARGO_MANIFEST_DIR").is_ok()
-        && (file_path.contains("fixtures") || file_path.contains("src/main.rs"));
-
-    let module = if is_test {
-        // When in test mode, create a simplified mock component
-        info!("Test mode: Creating mock component for testing");
-
-        let mut module = wrt::new_module();
-
-        // Add a function type (no params, returns i32)
-        module.types.push(FuncType {
-            params: Vec::new(),
-            results: vec![ValueType::I32],
-        });
-
-        // Add a simple function that returns 1
-        let instruction = Instruction::I32Const(1);
-        module.functions.push(Function {
-            type_idx: 0,
-            locals: Vec::new(),
-            body: vec![instruction],
-        });
-
-        // Export the function
-        module.exports.push(Export {
-            name: String::from("hello"),
-            kind: ExportKind::Function,
-            index: 0,
-        });
-
-        module
-    } else {
-        // Normal case: Load the component from binary
-        wrt::new_module()
-            .load_from_binary(bytes)
-            .context("Failed to load as component")?
-    };
+    // Load the module from binary
+    let module = wrt::new_module()
+        .load_from_binary(bytes)
+        .context("Failed to load WebAssembly component")?;
 
     let parse_time = parse_start.elapsed();
     info!("Loaded WebAssembly Component in {:?}", parse_time);
+
+    // Store a copy of exports to display available functions
+    let mut available_exports = Vec::new();
+    for export in &module.exports {
+        if matches!(export.kind, ExportKind::Function) {
+            available_exports.push(export.name.clone());
+        }
+    }
 
     // Parse interface information from the module
     analyze_component_interfaces(&module);
@@ -727,18 +668,17 @@ fn load_component(
 
     // Execute the component's function if specified
     if let Some(func_name) = function_name {
-        // For component model, we'll use instance index 0 like we do for normal modules
+        // For component model, we'll use instance index 0
         let instance_idx = 0;
-
-        // Use adequate default fuel for components
-        if engine.remaining_fuel().is_none() {
-            engine.set_fuel(Some(10000));
-            info!("Setting default fuel value of 10000 for component execution");
-        }
 
         execute_component_function(engine, instance_idx, func_name)?;
     } else {
         info!("No function specified to call. Use --call <function> to execute a function");
+        // List available exports to help the user
+        info!("Available exported functions:");
+        for name in &available_exports {
+            info!("  - {}", name);
+        }
     }
 
     Ok(())
@@ -846,15 +786,45 @@ fn execute_component_function(
     }
 
     if found {
+        // Get statistics before execution to measure differences
+        let stats_before = engine.stats().clone();
+
         // Call the function
         let exec_start = Instant::now();
         match engine.execute(instance_idx, func_idx, vec![]) {
             Ok(results) => {
                 let execution_time = exec_start.elapsed();
+
+                // Get statistics after execution
+                let stats_after = engine.stats();
+
+                // Calculate actual instruction count
+                let instructions_executed =
+                    stats_after.instructions_executed - stats_before.instructions_executed;
+                let fuel_consumed = stats_after.fuel_consumed - stats_before.fuel_consumed;
+                let function_calls = stats_after.function_calls - stats_before.function_calls;
+                let memory_operations =
+                    stats_after.memory_operations - stats_before.memory_operations;
+
                 info!(
                     "Function execution completed in {:?} with results: {:?}",
                     execution_time, results
                 );
+                // Only show component stats if they're non-zero (to avoid confusion)
+                if instructions_executed > 0
+                    || fuel_consumed > 0
+                    || function_calls > 0
+                    || memory_operations > 0
+                {
+                    info!(
+                        "Component statistics: {} instructions, {} fuel units, {} function calls, {} memory operations",
+                        instructions_executed, fuel_consumed, function_calls, memory_operations
+                    );
+                } else {
+                    warn!(
+                        "Component execution statistics not available - component model support is limited in the runtime"
+                    );
+                }
 
                 // Print for tests to check
                 println!("Function result: {:?}", results);
@@ -945,6 +915,15 @@ fn display_execution_stats(engine: &Engine) {
 
     info!("=== Execution Statistics ===");
     info!("Instructions executed:  {}", stats.instructions_executed);
+
+    // Note about component model statistics
+    if stats.instructions_executed <= 1 {
+        warn!(
+            "Note: WebAssembly Component Model support requires valid core modules in components."
+        );
+        warn!("      The runtime extracts and executes the core module from component binaries.");
+        warn!("      If execution fails, check if the component contains a valid core WebAssembly module.");
+    }
 
     if stats.fuel_consumed > 0 {
         info!("Fuel consumed:         {}", stats.fuel_consumed);

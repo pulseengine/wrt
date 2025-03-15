@@ -302,6 +302,36 @@ pub enum Instruction {
     /// Divide two 32-bit integers (unsigned)
     I32DivU,
 
+    /// Remainder of dividing two 32-bit integers (signed)
+    I32RemS,
+
+    /// Remainder of dividing two 32-bit integers (unsigned)
+    I32RemU,
+
+    /// Bitwise AND of two 32-bit integers
+    I32And,
+
+    /// Bitwise OR of two 32-bit integers
+    I32Or,
+
+    /// Bitwise XOR of two 32-bit integers
+    I32Xor,
+
+    /// Shift a 32-bit integer left
+    I32Shl,
+
+    /// Shift a 32-bit integer right (signed)
+    I32ShrS,
+
+    /// Shift a 32-bit integer right (unsigned)
+    I32ShrU,
+
+    /// Rotate a 32-bit integer left
+    I32Rotl,
+
+    /// Rotate a 32-bit integer right
+    I32Rotr,
+
     /// Test if a 64-bit integer is equal to zero
     I64Eqz,
 
@@ -334,6 +364,51 @@ pub enum Instruction {
 
     /// Test if one 64-bit integer is greater than or equal to another (unsigned)
     I64GeU,
+
+    /// Add two 64-bit integers
+    I64Add,
+
+    /// Subtract one 64-bit integer from another
+    I64Sub,
+
+    /// Multiply two 64-bit integers
+    I64Mul,
+
+    /// Divide two 64-bit integers (signed)
+    I64DivS,
+
+    /// Divide two 64-bit integers (unsigned)
+    I64DivU,
+
+    /// Remainder of dividing two 64-bit integers (signed)
+    I64RemS,
+
+    /// Remainder of dividing two 64-bit integers (unsigned)
+    I64RemU,
+
+    /// Bitwise AND of two 64-bit integers
+    I64And,
+
+    /// Bitwise OR of two 64-bit integers
+    I64Or,
+
+    /// Bitwise XOR of two 64-bit integers
+    I64Xor,
+
+    /// Shift a 64-bit integer left
+    I64Shl,
+
+    /// Shift a 64-bit integer right (signed)
+    I64ShrS,
+
+    /// Shift a 64-bit integer right (unsigned)
+    I64ShrU,
+
+    /// Rotate a 64-bit integer left
+    I64Rotl,
+
+    /// Rotate a 64-bit integer right
+    I64Rotr,
 
     /// Test if two 32-bit floats are equal
     F32Eq,
@@ -370,6 +445,183 @@ pub enum Instruction {
 
     /// Test if one 64-bit float is greater than or equal to another
     F64Ge,
+
+    /// F32 absolute value
+    F32Abs,
+
+    /// F32 negate
+    F32Neg,
+
+    /// F32 ceiling operation
+    F32Ceil,
+
+    /// F32 floor operation
+    F32Floor,
+
+    /// F32 truncate operation
+    F32Trunc,
+
+    /// F32 nearest integer operation
+    F32Nearest,
+
+    /// F32 square root
+    F32Sqrt,
+
+    /// F32 addition
+    F32Add,
+
+    /// F32 subtraction
+    F32Sub,
+
+    /// F32 multiplication
+    F32Mul,
+
+    /// F32 division
+    F32Div,
+
+    /// F32 minimum
+    F32Min,
+
+    /// F32 maximum
+    F32Max,
+
+    /// F32 copysign
+    F32Copysign,
+
+    /// F64 absolute value
+    F64Abs,
+
+    /// F64 negate
+    F64Neg,
+
+    /// F64 ceiling operation
+    F64Ceil,
+
+    /// F64 floor operation
+    F64Floor,
+
+    /// F64 truncate operation
+    F64Trunc,
+
+    /// F64 nearest integer operation
+    F64Nearest,
+
+    /// F64 square root
+    F64Sqrt,
+
+    /// F64 addition
+    F64Add,
+
+    /// F64 subtraction
+    F64Sub,
+
+    /// F64 multiplication
+    F64Mul,
+
+    /// F64 division
+    F64Div,
+
+    /// F64 minimum
+    F64Min,
+
+    /// F64 maximum
+    F64Max,
+
+    /// F64 copysign
+    F64Copysign,
+
+    /// Convert i64 to i32 by wrapping
+    I32WrapI64,
+
+    /// Convert f32 to i32 (signed)
+    I32TruncF32S,
+
+    /// Convert f32 to i32 (unsigned)
+    I32TruncF32U,
+
+    /// Convert f64 to i32 (signed)
+    I32TruncF64S,
+
+    /// Convert f64 to i32 (unsigned)
+    I32TruncF64U,
+
+    /// Extend i32 to i64 (signed)
+    I64ExtendI32S,
+
+    /// Extend i32 to i64 (unsigned)
+    I64ExtendI32U,
+
+    /// Convert f32 to i64 (signed)
+    I64TruncF32S,
+
+    /// Convert f32 to i64 (unsigned)
+    I64TruncF32U,
+
+    /// Convert f64 to i64 (signed)
+    I64TruncF64S,
+
+    /// Convert f64 to i64 (unsigned)
+    I64TruncF64U,
+
+    /// Convert i32 to f32 (signed)
+    F32ConvertI32S,
+
+    /// Convert i32 to f32 (unsigned)
+    F32ConvertI32U,
+
+    /// Convert i64 to f32 (signed)
+    F32ConvertI64S,
+
+    /// Convert i64 to f32 (unsigned)
+    F32ConvertI64U,
+
+    /// Demote f64 to f32
+    F32DemoteF64,
+
+    /// Convert i32 to f64 (signed)
+    F64ConvertI32S,
+
+    /// Convert i32 to f64 (unsigned)
+    F64ConvertI32U,
+
+    /// Convert i64 to f64 (signed)
+    F64ConvertI64S,
+
+    /// Convert i64 to f64 (unsigned)
+    F64ConvertI64U,
+
+    /// Promote f32 to f64
+    F64PromoteF32,
+
+    /// Reinterpret f32 as i32
+    I32ReinterpretF32,
+
+    /// Reinterpret f64 as i64
+    I64ReinterpretF64,
+
+    /// Reinterpret i32 as f32
+    F32ReinterpretI32,
+
+    /// Reinterpret i64 as f64
+    F64ReinterpretI64,
+
+    /// Count leading zeros in an i32
+    I32Clz,
+
+    /// Count trailing zeros in an i32
+    I32Ctz,
+
+    /// Count number of bits set to 1 in an i32
+    I32Popcnt,
+
+    /// Count leading zeros in an i64
+    I64Clz,
+
+    /// Count trailing zeros in an i64
+    I64Ctz,
+
+    /// Count number of bits set to 1 in an i64
+    I64Popcnt,
 }
 
 /// Represents the type signature of a WebAssembly block structure.
