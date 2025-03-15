@@ -2,7 +2,7 @@ use crate::error::{Error, Result};
 use crate::instructions::Instruction;
 use crate::logging::{CallbackRegistry, LogLevel, LogOperation};
 use crate::module::Module;
-use crate::types::ValueType;
+use crate::types::{ExternType, ValueType};
 use crate::values::Value;
 use crate::{format, String, ToString, Vec};
 
@@ -472,10 +472,43 @@ impl Engine {
             self.state = ExecutionState::Running;
 
             // Fetch and validate information within a scope to limit borrow
-            let (func_locals, instance_clone) = {
+            let (func_locals, instance_clone, _func_type) = {
                 // Scope to limit the borrow of self.instances
                 let instance = &self.instances[instance_idx as usize];
-                let func = &instance.module.functions[func_idx as usize];
+
+                // Determine if this is an imported function
+                let import_count = instance
+                    .module
+                    .imports
+                    .iter()
+                    .filter(|import| matches!(import.ty, ExternType::Function(_)))
+                    .count();
+
+                // Adjust function index for imports
+                let actual_func_idx = if func_idx < import_count as u32 {
+                    // This is an imported function
+                    return Err(Error::Execution(format!(
+                        "Imported function at index {} cannot be called directly: {}.{}",
+                        func_idx,
+                        instance.module.imports[func_idx as usize].module,
+                        instance.module.imports[func_idx as usize].name
+                    )));
+                } else {
+                    // This is a regular function, adjust index to skip imports
+                    func_idx - import_count as u32
+                };
+
+                // Verify function index is valid
+                if actual_func_idx as usize >= instance.module.functions.len() {
+                    return Err(Error::Execution(format!(
+                        "Function index {} out of bounds (max: {})",
+                        actual_func_idx,
+                        instance.module.functions.len()
+                    )));
+                }
+
+                // Get the function and its type
+                let func = &instance.module.functions[actual_func_idx as usize];
                 let func_type = &instance.module.types[func.type_idx as usize];
 
                 // Check argument count
@@ -487,8 +520,8 @@ impl Engine {
                     )));
                 }
 
-                // Clone the locals and instance for use outside this scope
-                (func.locals.clone(), instance.clone())
+                // Clone the locals, function type, and instance for use outside this scope
+                (func.locals.clone(), instance.clone(), func_type.clone())
             };
 
             // Create frame
@@ -524,18 +557,43 @@ impl Engine {
             0
         };
 
-        // Get the function clone
-        let func_clone = {
+        // Get the function clone and expected results
+        let (func_clone, expected_results) = {
             let instance = &self.instances[instance_idx as usize];
-            instance.module.functions[func_idx as usize].clone()
-        };
 
-        // Get expected results count
-        let expected_results = {
-            let instance = &self.instances[instance_idx as usize];
-            let func = &instance.module.functions[func_idx as usize];
+            // Determine if this is an imported function
+            let import_count = instance
+                .module
+                .imports
+                .iter()
+                .filter(|import| matches!(import.ty, ExternType::Function(_)))
+                .count();
+
+            // Adjust function index for imports
+            let actual_func_idx = if func_idx < import_count as u32 {
+                // We should not reach here because we already checked and returned an error above
+                return Err(Error::Execution(
+                    "Trying to execute an imported function".into(),
+                ));
+            } else {
+                // This is a regular function, adjust index to skip imports
+                func_idx - import_count as u32
+            };
+
+            // Verify function index is valid
+            if actual_func_idx as usize >= instance.module.functions.len() {
+                return Err(Error::Execution(format!(
+                    "Function index {} out of bounds (max: {})",
+                    actual_func_idx,
+                    instance.module.functions.len()
+                )));
+            }
+
+            // Get the function and its result count
+            let func = &instance.module.functions[actual_func_idx as usize];
             let func_type = &instance.module.types[func.type_idx as usize];
-            func_type.results.len()
+
+            (func.clone(), func_type.results.len())
         };
 
         // Execute function body with fuel limitation
@@ -895,6 +953,49 @@ impl Engine {
                 let local_func_idx = *func_idx;
                 let module_idx = frame.module.module_idx;
 
+                // Count imported functions that may affect the function index
+                let import_count = frame
+                    .module
+                    .module
+                    .imports
+                    .iter()
+                    .filter(|import| matches!(import.ty, ExternType::Function(_)))
+                    .count() as u32;
+
+                // Check if we're calling an imported function
+                let is_imported = local_func_idx < import_count;
+
+                // Check if this is an imported function call
+                if is_imported {
+                    let import = &frame.module.module.imports[local_func_idx as usize];
+
+                    // Special handling for the "env.print" function
+                    if import.module == "env" && import.name == "print" {
+                        // Get the parameter (expected to be an i32)
+                        let param = self.stack.pop()?;
+                        let value = param.as_i32().unwrap_or(0);
+
+                        // Print the value to the log and to stderr for debug purposes
+                        self.handle_log(
+                            LogLevel::Info,
+                            format!("[Host function] env.print called with argument: {}", value),
+                        );
+
+                        // Also print to stderr directly for debugging
+                        #[cfg(feature = "std")]
+                        eprintln!("[Host function] env.print called with argument: {}", value);
+
+                        // Return without error for successful imported function execution
+                        return Ok(None);
+                    }
+
+                    // For other imported functions, we will report they are not supported
+                    return Err(Error::Execution(format!(
+                        "Cannot call unsupported imported function at index {}: {}.{}",
+                        local_func_idx, import.module, import.name
+                    )));
+                }
+
                 // Check if this is a component model custom function call (log function)
                 // We're looking for call to function index 1 (log) in a module with custom section "component-model-info"
                 let is_component_log = local_func_idx == 1
@@ -948,7 +1049,20 @@ impl Engine {
                     // No return value for log function
                     Ok(None)
                 } else {
-                    let func = &frame.module.module.functions[local_func_idx as usize];
+                    // Adjust the function index to account for imported functions
+                    let adjusted_func_idx = local_func_idx - import_count;
+
+                    // Verify the adjusted index is valid
+                    if adjusted_func_idx as usize >= frame.module.module.functions.len() {
+                        return Err(Error::Execution(format!(
+                            "Function index {} (adjusted to {}) out of bounds (max: {})",
+                            local_func_idx,
+                            adjusted_func_idx,
+                            frame.module.module.functions.len()
+                        )));
+                    }
+
+                    let func = &frame.module.module.functions[adjusted_func_idx as usize];
                     let func_type = &frame.module.module.types[func.type_idx as usize];
                     let params_len = func_type.params.len();
 

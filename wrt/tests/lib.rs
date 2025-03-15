@@ -197,6 +197,65 @@ mod tests {
         assert!(module.validate().is_ok());
     }
 
+    #[test]
+    fn test_module_imports() {
+        let mut module = new_module();
+
+        // Add a function type for the import
+        module.types.push(FuncType {
+            params: vec![ValueType::I32, ValueType::I32],
+            results: vec![ValueType::I32],
+        });
+
+        // Add a function import
+        module.imports.push(Import {
+            module: "env".to_string(),
+            name: "add".to_string(),
+            ty: ExternType::Function(module.types[0].clone()),
+        });
+
+        // Add a memory import
+        module.imports.push(Import {
+            module: "env".to_string(),
+            name: "memory".to_string(),
+            ty: ExternType::Memory(MemoryType {
+                min: 1,
+                max: Some(2),
+            }),
+        });
+
+        // Verify imports were added correctly
+        assert_eq!(module.imports.len(), 2);
+
+        // Check function import
+        let func_import = &module.imports[0];
+        assert_eq!(func_import.module, "env");
+        assert_eq!(func_import.name, "add");
+        if let ExternType::Function(func_type) = &func_import.ty {
+            assert_eq!(func_type.params.len(), 2);
+            assert_eq!(func_type.params[0], ValueType::I32);
+            assert_eq!(func_type.params[1], ValueType::I32);
+            assert_eq!(func_type.results.len(), 1);
+            assert_eq!(func_type.results[0], ValueType::I32);
+        } else {
+            panic!("Expected function import type");
+        }
+
+        // Check memory import
+        let mem_import = &module.imports[1];
+        assert_eq!(mem_import.module, "env");
+        assert_eq!(mem_import.name, "memory");
+        if let ExternType::Memory(mem_type) = &mem_import.ty {
+            assert_eq!(mem_type.min, 1);
+            assert_eq!(mem_type.max, Some(2));
+        } else {
+            panic!("Expected memory import type");
+        }
+
+        // Validate module with imports
+        assert!(module.validate().is_ok());
+    }
+
     // Logging Tests
     #[test]
     fn test_logging_system() {
