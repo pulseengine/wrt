@@ -88,7 +88,7 @@ Low-Level Functional Requirements
 
 .. req:: Stackless Implementation
    :id: REQ_005
-   :status: planned
+   :status: implemented
    :links: REQ_001
    
    The interpreter shall be stackless, storing the stack of the interpreted bytecode in a traditional data structure rather than using function calls in the host environment.

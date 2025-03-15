@@ -166,6 +166,9 @@ check-imports:
 
 # Check for unused dependencies
 check-udeps:
+    # Install cargo-udeps if not already installed, or update it
+    cargo install cargo-udeps --locked --force || true
+    # Run the unused dependencies check
     cargo +nightly udeps -p wrt -p wrtd --all-targets || echo "Note: Criterion is allowed as an unused dev-dependency for future benchmarks"
 
 # Run all checks (format, clippy, tests, imports, udeps, docs, wat files)
@@ -189,18 +192,41 @@ docs-html:
     
 # Build HTML documentation with PlantUML diagrams
 docs-with-diagrams: setup-plantuml
+    #!/usr/bin/env bash
+    # Set PLANTUML_PATH environment variable
+    if command -v plantuml &> /dev/null; then
+        export PLANTUML_PATH="$(which plantuml)"
+        echo "Using PlantUML from: $PLANTUML_PATH"
+    else
+        echo "WARNING: PlantUML not found in PATH. Using default 'plantuml' command."
+    fi
+    
+    # First clean any previous diagrams
+    echo "Cleaning previous diagram build artifacts..."
+    rm -rf "{{sphinx_build_dir}}/html/_images/plantuml-*" "{{sphinx_build_dir}}/html/_plantuml" || true
+    
+    # Build with PlantUML diagrams
+    echo "Building documentation with PlantUML diagrams..."
     {{sphinx_build}} -M html "{{sphinx_source}}" "{{sphinx_build_dir}}" {{sphinx_opts}}
+    
+    # Confirm diagrams were generated
+    DIAGRAM_COUNT=$(find "{{sphinx_build_dir}}/html/_images" -name "plantuml-*" | wc -l)
+    echo "Generated $DIAGRAM_COUNT PlantUML diagrams"
+    
+    if [ "$DIAGRAM_COUNT" -eq 0 ]; then
+        echo "WARNING: No PlantUML diagrams were generated. There might be an issue with the PlantUML setup."
+        echo "Check that your .puml files are properly formatted and the PlantUML executable is available."
+    fi
 
 # Build PDF documentation (requires LaTeX installation)
 docs-pdf:
     {{sphinx_build}} -M latex "{{sphinx_source}}" "{{sphinx_build_dir}}" {{sphinx_opts}}
     @echo "LaTeX files generated in docs/_build/latex. Run 'make' in that directory to build PDF (requires LaTeX installation)."
 
-# Build all documentation formats (HTML only by default)
-docs: docs-html
+# Build all documentation formats (HTML with diagrams by default)
+docs: docs-with-diagrams
     @echo "Documentation built successfully. HTML documentation available in docs/_build/html."
     @echo "To build PDF documentation, run 'just docs-pdf' (requires LaTeX installation)."
-    @echo "To build documentation with PlantUML diagrams, run 'just docs-with-diagrams' (requires Java and PlantUML)."
 
 # Show Sphinx documentation help
 docs-help:
@@ -211,9 +237,9 @@ docs-help:
 # Convert a single WAT file to WASM
 convert-wat-to-wasm WAT_FILE:
     #!/usr/bin/env bash
-    # Check if wat2wasm is installed
-    if ! command -v wat2wasm &> /dev/null; then
-        echo "Error: wat2wasm not found. Please run 'just setup-wasm-tools' to install it."
+    # Check if wasm-tools is installed
+    if ! command -v wasm-tools &> /dev/null; then
+        echo "Error: wasm-tools not found. Please run 'just setup-wasm-tools' to install it."
         exit 1
     fi
     # Check if file exists
@@ -226,51 +252,150 @@ convert-wat-to-wasm WAT_FILE:
     DIRNAME=$(dirname "{{WAT_FILE}}")
     WASM_FILE="${DIRNAME}/${BASENAME}.wasm"
     echo "Converting {{WAT_FILE}} to ${WASM_FILE}..."
-    wat2wasm "{{WAT_FILE}}" -o "${WASM_FILE}"
+    wasm-tools parse -o "${WASM_FILE}" "{{WAT_FILE}}"
     echo "Conversion successful: ${WASM_FILE}"
 
 # Build all WAT files in examples directory
 build-wat-files:
     #!/usr/bin/env bash
-    # Find all WAT files
-    WAT_FILES=$(find examples -name "*.wat")
-    if [ -z "$WAT_FILES" ]; then
-        echo "No WAT files found in examples directory."
-        exit 0
+    
+    # Check if wasm-tools is installed (preferred method for cross-platform)
+    if ! command -v wasm-tools &> /dev/null; then
+        echo "Error: wasm-tools not found. Please run 'just setup-wasm-tools' to install it."
+        exit 1
     fi
-    # Convert each file
-    for WAT_FILE in $WAT_FILES; do
-        BASENAME=$(basename "$WAT_FILE" .wat)
-        DIRNAME=$(dirname "$WAT_FILE")
-        WASM_FILE="${DIRNAME}/${BASENAME}.wasm"
+    
+    # Cross-platform file finding
+    if [[ "$OSTYPE" == "msys"* || "$OSTYPE" == "cygwin"* || "$OSTYPE" == "win"* ]]; then
+        # Windows-specific handling (using dir /b /s)
+        echo "Detecting WAT files on Windows system..."
+        # Use a temporary file to store the list of WAT files
+        TEMP_FILE=$(mktemp)
         
-        # Check if WAT file is newer than WASM file or WASM file doesn't exist
-        if [ ! -f "$WASM_FILE" ] || [ "$WAT_FILE" -nt "$WASM_FILE" ]; then
-            echo "Converting $WAT_FILE to $WASM_FILE..."
-            wat2wasm "$WAT_FILE" -o "$WASM_FILE"
-        else
-            echo "Skipping $WAT_FILE (WASM file is up to date)"
+        # Use Windows dir command to find .wat files and save to temp file
+        cmd.exe /c "dir /b /s examples\*.wat" > "$TEMP_FILE" 2>/dev/null
+        
+        # Check if any WAT files were found
+        if [ ! -s "$TEMP_FILE" ]; then
+            echo "No WAT files found in examples directory."
+            rm -f "$TEMP_FILE"
+            exit 0
         fi
-    done
+        
+        # Process each file
+        while IFS= read -r WAT_FILE; do
+            # Convert Windows paths to Unix-style for WSL compatibility
+            WAT_FILE=$(echo "$WAT_FILE" | tr '\\' '/')
+            BASENAME=$(basename "$WAT_FILE" .wat)
+            DIRNAME=$(dirname "$WAT_FILE")
+            WASM_FILE="${DIRNAME}/${BASENAME}.wasm"
+            
+            # Check if WAT file is newer than WASM file or WASM file doesn't exist
+            if [ ! -f "$WASM_FILE" ] || [ "$WAT_FILE" -nt "$WASM_FILE" ]; then
+                echo "Converting $WAT_FILE to $WASM_FILE..."
+                wasm-tools parse -o "$WASM_FILE" "$WAT_FILE"
+            else
+                echo "Skipping $WAT_FILE (WASM file is up to date)"
+            fi
+        done < "$TEMP_FILE"
+        
+        # Clean up the temporary file
+        rm -f "$TEMP_FILE"
+    else
+        # Unix-like systems (Linux, macOS) - use find
+        echo "Detecting WAT files on Unix-like system..."
+        WAT_FILES=$(find examples -name "*.wat")
+        
+        if [ -z "$WAT_FILES" ]; then
+            echo "No WAT files found in examples directory."
+            exit 0
+        fi
+        
+        # Convert each file
+        for WAT_FILE in $WAT_FILES; do
+            BASENAME=$(basename "$WAT_FILE" .wat)
+            DIRNAME=$(dirname "$WAT_FILE")
+            WASM_FILE="${DIRNAME}/${BASENAME}.wasm"
+            
+            # Check if WAT file is newer than WASM file or WASM file doesn't exist
+            if [ ! -f "$WASM_FILE" ] || [ "$WAT_FILE" -nt "$WASM_FILE" ]; then
+                echo "Converting $WAT_FILE to $WASM_FILE..."
+                wasm-tools parse -o "$WASM_FILE" "$WAT_FILE"
+            else
+                echo "Skipping $WAT_FILE (WASM file is up to date)"
+            fi
+        done
+    fi
+    
     echo "All WAT files built successfully."
 
 # Check if all WAT files are properly converted to WASM
 check-wat-files:
     #!/usr/bin/env bash
-    # Find all WAT files
-    WAT_FILES=$(find examples -name "*.wat")
+    # Check if wasm-tools is installed (we now use wasm-tools for WAT conversion)
+    if ! command -v wasm-tools &> /dev/null; then
+        echo "Error: wasm-tools not found. Please run 'just setup-wasm-tools' to install it."
+        exit 1
+    fi
+    
     NEEDS_REBUILD=0
-    # Check each file
-    for WAT_FILE in $WAT_FILES; do
-        BASENAME=$(basename "$WAT_FILE" .wat)
-        DIRNAME=$(dirname "$WAT_FILE")
-        WASM_FILE="${DIRNAME}/${BASENAME}.wasm"
+    
+    # Cross-platform file finding
+    if [[ "$OSTYPE" == "msys"* || "$OSTYPE" == "cygwin"* || "$OSTYPE" == "win"* ]]; then
+        # Windows-specific handling
+        echo "Checking WAT files on Windows system..."
+        # Use a temporary file to store the list of WAT files
+        TEMP_FILE=$(mktemp)
         
-        if [ ! -f "$WASM_FILE" ] || [ "$WAT_FILE" -nt "$WASM_FILE" ]; then
-            echo "WARNING: WASM file needs to be rebuilt: $WASM_FILE"
-            NEEDS_REBUILD=1
+        # Use Windows dir command to find .wat files
+        cmd.exe /c "dir /b /s examples\*.wat" > "$TEMP_FILE" 2>/dev/null
+        
+        # Check if any WAT files were found
+        if [ ! -s "$TEMP_FILE" ]; then
+            echo "No WAT files found in examples directory."
+            rm -f "$TEMP_FILE"
+            exit 0
         fi
-    done
+        
+        # Process each file
+        while IFS= read -r WAT_FILE; do
+            # Convert Windows paths to Unix-style for WSL compatibility
+            WAT_FILE=$(echo "$WAT_FILE" | tr '\\' '/')
+            BASENAME=$(basename "$WAT_FILE" .wat)
+            DIRNAME=$(dirname "$WAT_FILE")
+            WASM_FILE="${DIRNAME}/${BASENAME}.wasm"
+            
+            if [ ! -f "$WASM_FILE" ] || [ "$WAT_FILE" -nt "$WASM_FILE" ]; then
+                echo "WARNING: WASM file needs to be rebuilt: $WASM_FILE"
+                NEEDS_REBUILD=1
+            fi
+        done < "$TEMP_FILE"
+        
+        # Clean up the temporary file
+        rm -f "$TEMP_FILE"
+    else
+        # Unix-like systems (Linux, macOS)
+        echo "Checking WAT files on Unix-like system..."
+        WAT_FILES=$(find examples -name "*.wat")
+        
+        if [ -z "$WAT_FILES" ]; then
+            echo "No WAT files found in examples directory."
+            exit 0
+        fi
+        
+        # Check each file
+        for WAT_FILE in $WAT_FILES; do
+            BASENAME=$(basename "$WAT_FILE" .wat)
+            DIRNAME=$(dirname "$WAT_FILE")
+            WASM_FILE="${DIRNAME}/${BASENAME}.wasm"
+            
+            if [ ! -f "$WASM_FILE" ] || [ "$WAT_FILE" -nt "$WASM_FILE" ]; then
+                echo "WARNING: WASM file needs to be rebuilt: $WASM_FILE"
+                NEEDS_REBUILD=1
+            fi
+        done
+    fi
+    
     if [ $NEEDS_REBUILD -eq 1 ]; then
         echo "Some WASM files need to be rebuilt. Run 'just build-wat-files' to update them."
         exit 1
@@ -292,32 +417,89 @@ clean:
 setup-rust-targets:
     rustup target add wasm32-wasip2 || rustup target add wasm32-wasip2
 
-# Install WebAssembly tools (wasmtime, wasm-tools, wat2wasm)
+# Install WebAssembly tools (wasmtime, wasm-tools)
 setup-wasm-tools:
     #!/usr/bin/env bash
+    
+    # First install essential tools using cargo (works on all platforms)
+    echo "Installing wasmtime-cli and wasm-tools using cargo..."
     cargo install wasmtime-cli --locked
     cargo install wasm-tools --locked
-    # Install WABT tools if not already installed (contains wat2wasm)
+    
+    # Verify installation of required tools
+    echo "Verifying WebAssembly tools installation..."
+    
+    # Check if wasmtime is available
+    if command -v wasmtime &> /dev/null; then
+        echo "✓ wasmtime is installed: $(wasmtime --version)"
+    else
+        echo "✗ wasmtime installation failed. Please install manually."
+        exit 1
+    fi
+    
+    # Check if wasm-tools is available - this is now our primary tool for WAT/WASM conversion
+    if command -v wasm-tools &> /dev/null; then
+        echo "✓ wasm-tools is installed: $(wasm-tools --version)"
+    else
+        echo "✗ wasm-tools installation failed. Please install manually."
+        exit 1
+    fi
+    
+    echo "Required WebAssembly tools are successfully installed."
+    
+    # Optionally install WABT for more tools if they're not already present
     if ! command -v wat2wasm &> /dev/null; then
-        echo "Installing WABT tools (contains wat2wasm)..."
-        if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-            # Linux installation
-            sudo apt-get update && sudo apt-get install -y wabt
-        elif [[ "$OSTYPE" == "darwin"* ]]; then
-            # macOS installation with Homebrew
-            if command -v brew &> /dev/null; then
-                brew install wabt
+        echo "Note: Additional WABT tools (e.g., wat2wasm) are not required but can be useful."
+        echo "Would you like to install the WABT toolkit as well? (y/N)"
+        read -r INSTALL_WABT
+        
+        if [[ "$INSTALL_WABT" == "y" || "$INSTALL_WABT" == "Y" ]]; then
+            echo "Installing WABT tools..."
+            
+            if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+                # Linux installation
+                echo "Detected Linux system, using apt-get to install wabt..."
+                sudo apt-get update && sudo apt-get install -y wabt
+                
+            elif [[ "$OSTYPE" == "darwin"* ]]; then
+                # macOS installation with Homebrew
+                echo "Detected macOS system..."
+                if command -v brew &> /dev/null; then
+                    echo "Using Homebrew to install wabt..."
+                    brew install wabt
+                else
+                    echo "Homebrew not found. Skipping WABT installation."
+                fi
+                
+            elif [[ "$OSTYPE" == "msys"* || "$OSTYPE" == "cygwin"* || "$OSTYPE" == "win"* ]]; then
+                # Windows installation
+                echo "Detected Windows system..."
+                
+                # Check if chocolatey is installed
+                if command -v choco &> /dev/null; then
+                    echo "Using Chocolatey to install wabt..."
+                    choco install wabt -y
+                else
+                    echo "Chocolatey not found. Skipping WABT installation."
+                fi
             else
-                echo "Homebrew not found. Please install manually."
-                echo "Visit: https://github.com/WebAssembly/wabt"
-                exit 1
+                echo "Unsupported OS for automatic WABT installation. Skipping."
+            fi
+            
+            # Check if wat2wasm is now available
+            if command -v wat2wasm &> /dev/null; then
+                echo "✓ WABT tools (wat2wasm) successfully installed: $(wat2wasm --version)"
+            else
+                echo "✗ WABT tools installation failed, but this is optional."
             fi
         else
-            echo "Unsupported OS. Please install WABT manually."
-            echo "Visit: https://github.com/WebAssembly/wabt"
-            exit 1
+            echo "Skipping WABT installation. wasm-tools will be used for WAT/WASM conversion."
         fi
+    else
+        echo "✓ WABT tools (wat2wasm) are already installed: $(wat2wasm --version)"
     fi
+    
+    echo "WebAssembly toolchain setup complete!"
 
 # Install Python dependencies
 setup-python-deps:
@@ -332,15 +514,25 @@ setup-plantuml:
         if [[ "$OSTYPE" == "linux-gnu"* ]]; then
             # Linux installation
             sudo apt-get update && sudo apt-get install -y plantuml
+            # Set path for Linux
+            export PLANTUML_PATH="$(which plantuml)"
         elif [[ "$OSTYPE" == "darwin"* ]]; then
             # macOS installation with Homebrew
             if command -v brew &> /dev/null; then
                 brew install plantuml
+                # Set path for macOS
+                export PLANTUML_PATH="$(which plantuml)"
             else
                 echo "Homebrew not found. Please install homebrew first or install plantuml manually."
                 echo "Visit: https://plantuml.com/starting"
                 exit 1
             fi
+        elif [[ "$OSTYPE" == "msys"* || "$OSTYPE" == "cygwin"* || "$OSTYPE" == "win"* ]]; then
+            # Windows installation
+            echo "For Windows, please download PlantUML jar manually from https://plantuml.com/download"
+            echo "Then set PLANTUML_PATH environment variable to the jar file path"
+            echo "Example: set PLANTUML_PATH=C:\\path\\to\\plantuml.jar"
+            exit 1
         else
             echo "Unsupported OS. Please install plantuml manually."
             echo "Visit: https://plantuml.com/starting"
@@ -348,6 +540,8 @@ setup-plantuml:
         fi
     else
         echo "PlantUML is already installed."
+        # Set path for installed PlantUML
+        export PLANTUML_PATH="$(which plantuml)"
     fi
     
     # Check if Java is installed (required for PlantUML)
@@ -355,6 +549,14 @@ setup-plantuml:
         echo "Java is required for PlantUML but not found. Please install Java."
         exit 1
     fi
+    
+    # Verify PlantUML is working by testing a simple diagram
+    echo -e "@startuml\nBob -> Alice : hello\n@enduml" > /tmp/test.puml
+    if ! plantuml /tmp/test.puml; then
+        echo "WARNING: PlantUML installation test failed. Please verify your installation."
+        exit 1
+    fi
+    echo "PlantUML test successful!"
 
 # Install required tools for development (local development)
 setup: setup-hooks setup-rust-targets setup-wasm-tools setup-python-deps setup-plantuml
