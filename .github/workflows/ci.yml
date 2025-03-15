@@ -314,11 +314,37 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r docs/requirements.txt
-      - name: Setup Rust targets
-        run: just setup-ci-minimal
-      - name: Build docs
+      # Install Java for PlantUML
+      - name: Set up JDK
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      # Install PlantUML and other dependencies
+      - name: Setup Rust targets and dependencies
         run: |
-          just docs-html
+          just setup-ci-minimal
+          # Install PlantUML on Linux
+          if [ "$RUNNER_OS" == "Linux" ]; then
+            sudo apt-get update
+            sudo apt-get install -y plantuml
+          # Install PlantUML on macOS
+          elif [ "$RUNNER_OS" == "macOS" ]; then
+            brew install plantuml
+          # Install PlantUML on Windows
+          elif [ "$RUNNER_OS" == "Windows" ]; then
+            # Download and extract PlantUML JAR
+            mkdir -p $HOME/plantuml
+            curl -L https://github.com/plantuml/plantuml/releases/download/v1.2023.13/plantuml-1.2023.13.jar -o $HOME/plantuml/plantuml.jar
+            echo "#!/bin/sh" > $HOME/plantuml/plantuml
+            echo "java -jar $HOME/plantuml/plantuml.jar \"\$@\"" >> $HOME/plantuml/plantuml
+            chmod +x $HOME/plantuml/plantuml
+            echo "$HOME/plantuml" >> $GITHUB_PATH
+          fi
+        shell: bash
+      - name: Build docs with diagrams
+        run: |
+          just docs-with-diagrams
           just check-docs
       - name: Build Rust API docs
         run: cargo doc --no-deps
