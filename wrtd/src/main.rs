@@ -39,7 +39,7 @@ use anyhow::{Context, Result};
 use clap::Parser;
 use tracing::{debug, error, info, warn, Level};
 use tracing_subscriber::fmt::format::FmtSpan;
-use wrt::{Engine, ExportKind, LogLevel, Value};
+use wrt::{Engine, ExportKind, ExternType, LogLevel, Value};
 
 /// WebAssembly Runtime Daemon CLI arguments
 #[derive(Parser, Debug)]
@@ -158,9 +158,179 @@ fn main() -> Result<()> {
                             .iter()
                             .any(|s| s.name == "component-model-info");
 
+                        // Display module imports
+                        if !module_instance.module.imports.is_empty() {
+                            info!("Module imports:");
+                            for import in &module_instance.module.imports {
+                                let import_desc = match &import.ty {
+                                    wrt::ExternType::Function(func_type) => {
+                                        let params = func_type
+                                            .params
+                                            .iter()
+                                            .map(|p| p.to_string())
+                                            .collect::<Vec<_>>()
+                                            .join(", ");
+
+                                        let results = func_type
+                                            .results
+                                            .iter()
+                                            .map(|r| r.to_string())
+                                            .collect::<Vec<_>>()
+                                            .join(", ");
+
+                                        format!(
+                                            "Function(params: [{}], results: [{}])",
+                                            params, results
+                                        )
+                                    }
+                                    wrt::ExternType::Table(table) => {
+                                        format!(
+                                            "Table({:?}, min: {}, max: {:?})",
+                                            table.element_type, table.min, table.max
+                                        )
+                                    }
+                                    wrt::ExternType::Memory(mem) => {
+                                        format!("Memory(min: {}, max: {:?})", mem.min, mem.max)
+                                    }
+                                    wrt::ExternType::Global(global) => {
+                                        format!(
+                                            "Global({:?}, mutable: {})",
+                                            global.content_type, global.mutable
+                                        )
+                                    }
+                                };
+
+                                info!("  - {}.{} -> {}", import.module, import.name, import_desc);
+                            }
+                        }
+
+                        // Display module exports
                         info!("Module exports:");
                         for export in &module_instance.module.exports {
                             info!("  - {} ({:?})", export.name, export.kind);
+
+                            if matches!(export.kind, ExportKind::Function) {
+                                // Get more details about the exported function type
+                                let type_info = match export.index {
+                                    // For imported functions that are exported
+                                    idx if idx < module_instance.module.imports.len() as u32 => {
+                                        let import = &module_instance.module.imports[idx as usize];
+                                        if let wrt::ExternType::Function(func_type) = &import.ty {
+                                            let params = func_type
+                                                .params
+                                                .iter()
+                                                .map(|p| p.to_string())
+                                                .collect::<Vec<_>>()
+                                                .join(", ");
+
+                                            let results = func_type
+                                                .results
+                                                .iter()
+                                                .map(|r| r.to_string())
+                                                .collect::<Vec<_>>()
+                                                .join(", ");
+
+                                            format!(" (Re-export of imported function. Type: params: [{}], results: [{}])", 
+                                                params, results)
+                                        } else {
+                                            String::from(" (Re-export of unknown import type)")
+                                        }
+                                    }
+                                    // For normal functions
+                                    idx => {
+                                        // Account for imports in the function index calculation
+                                        let import_func_count = module_instance
+                                            .module
+                                            .imports
+                                            .iter()
+                                            .filter(|import| {
+                                                matches!(import.ty, wrt::ExternType::Function(_))
+                                            })
+                                            .count()
+                                            as u32;
+
+                                        let adjusted_idx =
+                                            idx.checked_sub(import_func_count).unwrap_or(idx);
+
+                                        if adjusted_idx as usize
+                                            >= module_instance.module.functions.len()
+                                        {
+                                            format!(" (Invalid function index: {})", adjusted_idx)
+                                        } else {
+                                            let func = &module_instance.module.functions
+                                                [adjusted_idx as usize];
+                                            let func_type = &module_instance.module.types
+                                                [func.type_idx as usize];
+
+                                            let params = func_type
+                                                .params
+                                                .iter()
+                                                .map(|p| p.to_string())
+                                                .collect::<Vec<_>>()
+                                                .join(", ");
+
+                                            let results = func_type
+                                                .results
+                                                .iter()
+                                                .map(|r| r.to_string())
+                                                .collect::<Vec<_>>()
+                                                .join(", ");
+
+                                            format!(
+                                                " (Type: params: [{}], results: [{}])",
+                                                params, results
+                                            )
+                                        }
+                                    }
+                                };
+
+                                info!("    Type info: {}", type_info);
+
+                                // If this is a function, show its contents
+                                if matches!(export.kind, ExportKind::Function) {
+                                    let import_func_count = module_instance
+                                        .module
+                                        .imports
+                                        .iter()
+                                        .filter(|import| {
+                                            matches!(import.ty, ExternType::Function(_))
+                                        })
+                                        .count();
+
+                                    let adjusted_idx = export.index as usize;
+
+                                    if adjusted_idx >= import_func_count
+                                        && (adjusted_idx - import_func_count)
+                                            < module_instance.module.functions.len()
+                                    {
+                                        let func_idx = adjusted_idx - import_func_count;
+                                        let func = &module_instance.module.functions[func_idx];
+
+                                        info!("    Function details:");
+                                        info!("      - Type index: {}", func.type_idx);
+                                        info!("      - Locals: {} variables", func.locals.len());
+                                        info!("      - Body: {} instructions", func.body.len());
+
+                                        // Display a preview of the function body (first few instructions)
+                                        if !func.body.is_empty() {
+                                            let preview_count = std::cmp::min(5, func.body.len());
+                                            info!("      - Instruction preview:");
+                                            for (i, instr) in
+                                                func.body.iter().take(preview_count).enumerate()
+                                            {
+                                                info!("        {}. {:?}", i, instr);
+                                            }
+                                            if func.body.len() > preview_count {
+                                                info!(
+                                                    "        ... and {} more instructions",
+                                                    func.body.len() - preview_count
+                                                );
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
                             if export.name == function_name
                                 && matches!(export.kind, ExportKind::Function)
                             {
@@ -184,9 +354,160 @@ fn main() -> Result<()> {
                             );
                         }
 
-                        let func_args = Vec::new(); // Empty arguments for now
+                        // Create arguments based on function type
+                        let mut func_args = Vec::new();
+
+                        // Get function type to determine what arguments are needed
+                        let expected_args = {
+                            // First, get comprehensive info on the function we want to call
+                            info!(
+                                "Looking up function signature for '{}' (index {})",
+                                function_name, func_idx
+                            );
+
+                            // Count number of imported functions
+                            let import_func_count = module_instance
+                                .module
+                                .imports
+                                .iter()
+                                .filter(|import| matches!(import.ty, ExternType::Function(_)))
+                                .count();
+                            info!("Module has {} imported functions", import_func_count);
+
+                            // First check if the function name is explicitly exported
+                            if let Some(export) = module_instance
+                                .module
+                                .exports
+                                .iter()
+                                .find(|e| e.name == function_name)
+                            {
+                                if matches!(export.kind, ExportKind::Function) {
+                                    // Update the function index to use the export's index
+                                    info!(
+                                        "Found function '{}' as export with index {}",
+                                        function_name, export.index
+                                    );
+                                    func_idx = export.index;
+
+                                    if (export.index as usize) < import_func_count {
+                                        // It's a re-export of an imported function
+                                        let import_idx = export.index as usize;
+                                        if let ExternType::Function(func_type) =
+                                            &module_instance.module.imports[import_idx].ty
+                                        {
+                                            info!("Function is a re-export of imported function at index {}", import_idx);
+                                            info!(
+                                                "Function type: params: {}, results: {}",
+                                                func_type.params.len(),
+                                                func_type.results.len()
+                                            );
+                                            func_type.params.len()
+                                        } else {
+                                            info!("Export refers to non-function import");
+                                            0
+                                        }
+                                    } else {
+                                        // It's a regular function, but we need to adjust the index
+                                        let adjusted_idx =
+                                            (export.index as usize) - import_func_count;
+
+                                        info!(
+                                            "Function is a regular function with adjusted index {}",
+                                            adjusted_idx
+                                        );
+
+                                        if adjusted_idx < module_instance.module.functions.len() {
+                                            let func =
+                                                &module_instance.module.functions[adjusted_idx];
+                                            let func_type = &module_instance.module.types
+                                                [func.type_idx as usize];
+                                            info!(
+                                                "Function type_idx: {}, params: {}, results: {}",
+                                                func.type_idx,
+                                                func_type.params.len(),
+                                                func_type.results.len()
+                                            );
+                                            func_type.params.len()
+                                        } else {
+                                            info!("Adjusted index {} is out of bounds (module has {} functions)",
+                                                  adjusted_idx, module_instance.module.functions.len());
+                                            0
+                                        }
+                                    }
+                                } else {
+                                    info!("Export '{}' is not a function", function_name);
+                                    0
+                                }
+                            } else {
+                                // Function name not found as export, try using the raw function index
+                                info!(
+                                    "No export found with name '{}', using raw function index {}",
+                                    function_name, func_idx
+                                );
+
+                                if (func_idx as usize) < import_func_count {
+                                    // It's an imported function
+                                    if let ExternType::Function(func_type) =
+                                        &module_instance.module.imports[func_idx as usize].ty
+                                    {
+                                        info!(
+                                            "Function is an imported function at index {}",
+                                            func_idx
+                                        );
+                                        info!(
+                                            "Function type: params: {}, results: {}",
+                                            func_type.params.len(),
+                                            func_type.results.len()
+                                        );
+                                        func_type.params.len()
+                                    } else {
+                                        info!("Import at index {} is not a function", func_idx);
+                                        0
+                                    }
+                                } else {
+                                    // It's a regular function with adjusted index
+                                    let adjusted_idx = (func_idx as usize) - import_func_count;
+
+                                    info!("Function is at adjusted index {}", adjusted_idx);
+
+                                    if adjusted_idx < module_instance.module.functions.len() {
+                                        let func = &module_instance.module.functions[adjusted_idx];
+                                        let func_type =
+                                            &module_instance.module.types[func.type_idx as usize];
+                                        info!(
+                                            "Function type_idx: {}, params: {}, results: {}",
+                                            func.type_idx,
+                                            func_type.params.len(),
+                                            func_type.results.len()
+                                        );
+                                        func_type.params.len()
+                                    } else {
+                                        info!("Adjusted index {} is out of bounds (module has {} functions)",
+                                              adjusted_idx, module_instance.module.functions.len());
+                                        0
+                                    }
+                                }
+                            }
+                        };
+
+                        // For testing purposes, provide default arguments (zeros) for each parameter
+                        for _ in 0..expected_args {
+                            func_args.push(Value::I32(42)); // Default argument value for testing
+                        }
+
+                        if expected_args > 0 {
+                            info!(
+                                "Adding {} default arguments (value: 42) for function call",
+                                expected_args
+                            );
+                        }
 
                         let exec_start = Instant::now();
+                        info!(
+                            "Executing function with {} arguments: {:?}",
+                            func_args.len(),
+                            func_args
+                        );
                         match engine.execute(0, func_idx, func_args) {
                             Ok(results) => {
                                 execution_time = exec_start.elapsed();
@@ -399,14 +720,26 @@ fn handle_component_log(level: &str, message: &str) {
     // Map the level from the component to the appropriate tracing level
     let log_level = LogLevel::from_string_or_default(level);
 
+    // Determine the message prefix based on content
+    let prefix = if message.starts_with("[Host function]") {
+        // This is from an imported host function
+        "" // No additional prefix since it already has one
+    } else {
+        // This is from a component
+        "[Component] "
+    };
+
     match log_level {
-        LogLevel::Trace => tracing::trace!("[Component] {}", message),
-        LogLevel::Debug => tracing::debug!("[Component] {}", message),
-        LogLevel::Info => tracing::info!("[Component] {}", message),
-        LogLevel::Warn => tracing::warn!("[Component] {}", message),
-        LogLevel::Error => tracing::error!("[Component] {}", message),
-        LogLevel::Critical => tracing::error!("[Component CRITICAL] {}", message),
+        LogLevel::Trace => tracing::trace!("{}{}", prefix, message),
+        LogLevel::Debug => tracing::debug!("{}{}", prefix, message),
+        LogLevel::Info => tracing::info!("{}{}", prefix, message),
+        LogLevel::Warn => tracing::warn!("{}{}", prefix, message),
+        LogLevel::Error => tracing::error!("{}{}", prefix, message),
+        LogLevel::Critical => tracing::error!("{}CRITICAL: {}", prefix, message),
     }
+
+    // Also print to standard output for easier debugging during development
+    println!("[LOG] {}{}: {}", prefix, level, message);
 }
 
 /// Displays execution statistics
