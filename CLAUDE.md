@@ -1,5 +1,12 @@
 # WRT (WebAssembly Runtime) Project Guidelines
 
+## Important Rules
+- NEVER create hardcoded examples in the runtime code. Real implementations should parse or process actual external files.
+- NEVER add dummy or simulated implementations except in dedicated test modules.
+- Any example code MUST be in the `example/` directory or test files, not in the runtime implementation.
+- The runtime should be able to execute real WebAssembly modules without special-casing specific files.
+- Only use placeholders when absolutely necessary and clearly document them.
+
 ## Project Status
 This is a work-in-progress WebAssembly runtime implementation. The codebase needs fixes before it will build:
 1. Fix missing `format!` and `vec!` macro imports in no_std context

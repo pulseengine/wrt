@@ -63,7 +63,7 @@ struct Args {
     stats: bool,
 
     /// Treat file as component (use component model loader)
-    #[arg(short, long, help = "Force component model loading")]
+    #[arg(short = 'm', long, help = "Force component model loading")]
     component: bool,
 }
 
@@ -180,7 +180,14 @@ fn create_engine(fuel: Option<u64>) -> Engine {
 
     // Register the log handler to handle component logging
     engine.register_log_handler(|log_op| {
-        handle_component_log(log_op.level.as_str(), &log_op.message);
+        // Get context from the component_id if available, otherwise use a default
+        let context = log_op.component_id.as_deref().unwrap_or("component");
+
+        // Handle the log operation with proper context included
+        handle_component_log(
+            log_op.level.as_str(),
+            &format!("{}: {}", context, log_op.message),
+        );
     });
 
     // Apply fuel limit if specified
@@ -387,8 +394,10 @@ fn display_module_imports(module: &Module) {
 #[derive(Clone)]
 struct ExportEntry {
     /// Name of the export
+    #[allow(dead_code)]
     name: String,
     /// Kind of the export (Function, Table, Memory, Global)
+    #[allow(dead_code)]
     kind: ExportKind,
     /// Index of the exported item
     index: u32,
@@ -679,6 +688,13 @@ fn load_component(
     if let Some(func_name) = function_name {
         // For component model, we'll use instance index 0 like we do for normal modules
         let instance_idx = 0;
+
+        // Use adequate default fuel for components
+        if engine.remaining_fuel().is_none() {
+            engine.set_fuel(Some(10000));
+            info!("Setting default fuel value of 10000 for component execution");
+        }
+
         execute_component_function(engine, instance_idx, func_name)?;
     } else {
         info!("No function specified to call. Use --call <function> to execute a function");
@@ -841,7 +857,7 @@ fn handle_component_log(level: &str, message: &str) {
         LogLevel::Critical => tracing::error!("{}CRITICAL: {}", prefix, message),
     }
 
-    // Also print to standard output for easier debugging during development
+    // Also print to standard output for easier debugging during development - show full message
     println!("[LOG] {}{}: {}", prefix, level, message);
 }
 
