@@ -1,10 +1,10 @@
 Software Architecture
-====================
+=====================
 
 This chapter describes the software architecture of the WRT system. The architecture is designed to meet the requirements specified in the :doc:`requirements` section.
 
 System Overview
---------------
+---------------
 
 WRT is a WebAssembly runtime implementation with a focus on bounded execution, bare-metal support, and component model capabilities. The architecture is organized into several key subsystems:
 
@@ -25,7 +25,7 @@ WRT is a WebAssembly runtime implementation with a focus on bounded execution, b
 
 
 Core Runtime Architecture
-------------------------
+-------------------------
 
 The core runtime is responsible for executing WebAssembly instructions and managing the WebAssembly execution environment.
 
@@ -161,7 +161,7 @@ The Component Model subsystem implements the WebAssembly Component Model Preview
    The implementation handles all standard interface types including records, variants, enums, flags, and resources.
 
 Logging Subsystem
-----------------
+-----------------
 
 The logging subsystem implements the WASI logging API and provides platform-specific backends.
 
@@ -217,7 +217,7 @@ The logging subsystem implements the WASI logging API and provides platform-spec
    - ``LogOperation::with_component(level, message, component_id)`` - Creates a log operation with component context
 
 CLI (WRTD) Architecture
-----------------------
+-----------------------
 
 The WRTD command-line interface provides a user-friendly way to execute WebAssembly modules and components.
 
@@ -252,7 +252,7 @@ The WRTD command-line interface provides a user-friendly way to execute WebAssem
    - ``--stats`` - Show execution statistics
 
 Development Status
------------------
+------------------
 
 The current implementation status of the WRT architecture is as follows:
 

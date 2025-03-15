@@ -1,5 +1,4 @@
 @startuml
-!theme plain
 skinparam sequenceMessageAlign center
 
 title WRT Logging Flow
