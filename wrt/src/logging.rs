@@ -113,11 +113,15 @@ impl LogOperation {
     }
 
     /// Create a new log operation with a component ID
-    pub fn with_component(level: LogLevel, message: String, component_id: String) -> Self {
+    pub fn with_component<S1: Into<String>, S2: Into<String>>(
+        level: LogLevel,
+        message: S1,
+        component_id: S2,
+    ) -> Self {
         Self {
             level,
-            message,
-            component_id: Some(component_id),
+            message: message.into(),
+            component_id: Some(component_id.into()),
         }
     }
 }

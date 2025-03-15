@@ -27,17 +27,17 @@ impl exports::example::hello::example::Guest for HelloComponent {
         logging::log(
             logging::Level::Info,
             "example",
-            "Starting loop for 5 iterations",
+            "#2 Starting loop for 10 iterations",
         );
 
         let mut count = 0;
 
         // Loop for 5 iterations, logging each step
-        for i in 0..5 {
+        for i in 0..10 {
             count += 1;
 
             // Log the current iteration number using a pre-formatted message
-            let message = format!("Loop iteration: {}", i + 1);
+            let message = format!("#1 Loop iteration: {}", i + 1);
             logging::log(logging::Level::Debug, "example", &message);
 
             // Add some operations to consume more fuel

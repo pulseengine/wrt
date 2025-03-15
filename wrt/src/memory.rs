@@ -1,6 +1,6 @@
 use crate::error::{Error, Result};
 use crate::types::*;
-use crate::Vec;
+use crate::{String, Vec};
 #[cfg(not(feature = "std"))]
 use alloc::vec;
 #[cfg(feature = "std")]
@@ -15,7 +15,7 @@ pub struct Memory {
     /// Memory type
     mem_type: MemoryType,
     /// Memory data
-    data: Vec<u8>,
+    pub data: Vec<u8>,
 }
 
 impl Memory {
@@ -200,6 +200,26 @@ impl Memory {
             return Err(Error::Execution("Memory access out of bounds".into()));
         }
         Ok(())
+    }
+
+    /// Reads a WebAssembly string (ptr, len) from memory
+    ///
+    /// # Parameters
+    ///
+    /// * `addr` - The address of the string pointer
+    ///
+    /// # Returns
+    ///
+    /// The UTF-8 string read from memory, or an error if the string is invalid or out of bounds
+    pub fn read_wasm_string(&self, ptr: u32, len: u32) -> Result<String> {
+        // Read the string bytes from memory
+        let bytes = self.read_bytes(ptr, len as usize)?;
+
+        // Convert bytes to UTF-8 string
+        let string = String::from_utf8(bytes.to_vec())
+            .map_err(|_| Error::Execution("Invalid UTF-8 string in WebAssembly memory".into()))?;
+
+        Ok(string)
     }
 }
 
