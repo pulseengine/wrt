@@ -14,7 +14,7 @@ use std::fmt;
 /// let err = Error::Validation("Invalid type".to_string());
 /// assert!(err.to_string().contains("Validation error"));
 /// ```
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Error {
     /// Represents validation errors that occur when a WebAssembly module
     /// fails to meet the WebAssembly specification requirements.
