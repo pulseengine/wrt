@@ -315,41 +315,22 @@ impl Module {
         hello_func_body.push(Instruction::I32Const(1)); // Message ID 1 (see below)
         hello_func_body.push(Instruction::Call(1)); // Call log function (index 1)
 
-        // Loop 100 times
-        // Set up block and loop (loop 0..100)
+        // Simplified approach: use a block with conditional branch
+        // This is more predictable than loop instruction for our simple case
         hello_func_body.push(Instruction::Block(BlockType::Empty));
-        hello_func_body.push(Instruction::Loop(BlockType::Empty));
-
-        // Check if counter < 1 (Single iteration for quick execution)
-        hello_func_body.push(Instruction::LocalGet(0));
-        hello_func_body.push(Instruction::I32Const(1));
-        hello_func_body.push(Instruction::I32LtS);
-
-        // Per WebAssembly spec:
-        // - !I32LtS -> counter >= 1
-        // - BrIf(1) with !I32LtS: branch to outer block if counter >= 1
-        //   (exit the loop when counter >= 1)
-        hello_func_body.push(Instruction::BrIf(1)); // Break out of loop if counter >= 1
-                                                    // (i.e., when the LtS comparison is false)
-
-        // Loop body: increment counter
-        hello_func_body.push(Instruction::LocalGet(0));
-        hello_func_body.push(Instruction::I32Const(1));
-        hello_func_body.push(Instruction::I32Add);
-        hello_func_body.push(Instruction::LocalSet(0));
 
         // Log iteration (DEBUG level)
         hello_func_body.push(Instruction::I32Const(1)); // DEBUG level
         hello_func_body.push(Instruction::I32Const(2)); // Message ID 2
         hello_func_body.push(Instruction::Call(1)); // Call log function
 
-        // The counter has already been incremented above, now it's time to check
-        // if we should continue the loop. Since we're at the end of the loop body,
-        // branch back to the loop instruction to run the loop condition again.
-        hello_func_body.push(Instruction::Br(0)); // Branch back to loop start
+        // Increment counter (just once)
+        hello_func_body.push(Instruction::LocalGet(0));
+        hello_func_body.push(Instruction::I32Const(1));
+        hello_func_body.push(Instruction::I32Add);
+        hello_func_body.push(Instruction::LocalSet(0));
 
-        // End loop and block
-        hello_func_body.push(Instruction::End);
+        // End the block - no loops or branches needed for single iteration
         hello_func_body.push(Instruction::End);
 
         // Log completion message
