@@ -251,8 +251,6 @@ jobs:
       - name: Install just
         if: env.JUST_INSTALLED != 'true'
         run: cargo install just --locked
-      - name: Install cargo-udeps
-        run: cargo install cargo-udeps --locked
       - name: Check for unused dependencies
         run: just check-udeps
 
