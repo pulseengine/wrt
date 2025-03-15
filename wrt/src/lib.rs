@@ -62,6 +62,9 @@ mod memory;
 /// Module for WebAssembly module definitions
 mod module;
 
+/// Module for stackless WebAssembly execution
+mod stackless;
+
 /// Module for WebAssembly table
 mod table;
 
@@ -87,6 +90,7 @@ pub use instructions::{BlockType, Instruction};
 pub use logging::{CallbackRegistry, LogLevel, LogOperation};
 pub use memory::Memory;
 pub use module::{Export, ExportKind, Function, Import, Module};
+pub use stackless::{ExecutionState, StacklessEngine, StacklessStack};
 pub use table::Table;
 pub use types::{
     ComponentType, ExternType, FuncType, GlobalType, MemoryType, TableType, ValueType,
@@ -102,6 +106,15 @@ pub const COMPONENT_VERSION: &str = "0.1.0";
 /// Creates a new WebAssembly engine
 pub fn new_engine() -> Engine {
     Engine::new()
+}
+
+/// Creates a new stackless WebAssembly engine
+///
+/// The stackless engine uses a state machine approach instead of recursion,
+/// making it suitable for environments with limited stack space and for no_std contexts.
+/// It also supports fuel-bounded execution for controlled resource usage.
+pub fn new_stackless_engine() -> StacklessEngine {
+    StacklessEngine::new()
 }
 
 /// Creates a new WebAssembly module
