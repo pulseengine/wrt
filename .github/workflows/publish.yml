@@ -55,7 +55,7 @@ jobs:
         run: cargo install just --locked
           
       - name: Build Sphinx documentation
-        run: just docs-html
+        run: just docs-with-diagrams
         
       - name: Setup Rust and build API docs
         uses: actions-rs/toolchain@v1
