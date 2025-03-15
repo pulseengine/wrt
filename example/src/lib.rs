@@ -1,30 +1,33 @@
-// Simplified example with logging capability
+// Example using WASI logging imports
 
 // Generate bindings from the WIT file
 wit_bindgen::generate!({
+    // Specify the path to our WIT directory
     path: "wit",
+
+    // Define the world we're implementing
     world: "hello",
+
+    // Specify which interfaces we're exporting
     exports: {
         "example:hello/example": HelloComponent,
     },
 });
 
+// Import the generated logging functions
+use example::hello::logging;
+
 struct HelloComponent;
 
 // Implement the example interface
 impl exports::example::hello::example::Guest for HelloComponent {
-    // Log a message to demonstrate logging capability
-    fn log(level: exports::example::hello::example::Level, message: String) {
-        // In a real component, this would be implemented by the host
-        println!("[{:?}] {}", level, message);
-    }
-
-    // Our main hello function with a loop that runs 100 iterations
+    // Our main hello function that runs a loop for several iterations
     fn hello() -> i32 {
-        // Log a message using our own logging function
-        Self::log(
-            exports::example::hello::example::Level::Info,
-            "Starting loop for 100 iterations".to_string(),
+        // Log a message using the imported WASI logging function
+        logging::log(
+            logging::Level::Info,
+            "example",
+            "Starting loop for 5 iterations",
         );
 
         let mut count = 0;
@@ -33,11 +36,9 @@ impl exports::example::hello::example::Guest for HelloComponent {
         for i in 0..5 {
             count += 1;
 
-            // Log the current iteration number
-            Self::log(
-                exports::example::hello::example::Level::Debug,
-                format!("Loop iteration: {}", i + 1),
-            );
+            // Log the current iteration number using a pre-formatted message
+            let message = format!("Loop iteration: {}", i + 1);
+            logging::log(logging::Level::Debug, "example", &message);
 
             // Add some operations to consume more fuel
             let mut _sum = 0;
@@ -47,10 +48,8 @@ impl exports::example::hello::example::Guest for HelloComponent {
         }
 
         // Log completion message
-        Self::log(
-            exports::example::hello::example::Level::Info,
-            format!("Completed {} iterations", count),
-        );
+        let final_message = format!("Completed {} iterations", count);
+        logging::log(logging::Level::Info, "example", &final_message);
 
         // Return total iterations
         count

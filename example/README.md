@@ -1,147 +1,44 @@
-# WRT Example with Component Model
+# WRT Example Using WASI Logging
 
-This is a WebAssembly Component that implements a simple logging interface. It exports a `hello` function that logs a message and returns an integer.
+This WebAssembly Component demonstrates how to import and use the standard WASI logging interface.
 
-## Component Model
+## Component Model Features
 
-This example demonstrates basic WebAssembly Component Model functionality:
+This example showcases:
+- Importing WASI logging interface
+- Defining interfaces with WIT (WebAssembly Interface Types)
+- Component model implementation using wit-bindgen
+- WASI Preview 2 target usage
 
-1. Defining an interface with WIT (WebAssembly Interface Types)
-2. Implementing a component using wit-bindgen
-3. Building for the WASI Preview 2 target
-4. Generating valid component model WebAssembly
-
-## Prerequisites
-
-You'll need:
-
-1. Rust with the `wasm32-wasip2` target
-2. wasm-tools for verifying components
-3. `just` command runner (optional)
-
-## Quick Start
-
-The easiest way to get started is to use the `just` command runner:
+## Building
 
 ```bash
-# Install just (if you haven't already)
-cargo install just
-
-# Install required tools
-rustup target add wasm32-wasip2
-cargo install wasm-tools
-
-# Build the example
-just build-example
-```
-
-## Manual Build
-
-If you prefer to build manually:
-
-```bash
-# Install required tools
+# Install prerequisites
 rustup target add wasm32-wasip2
 
-# Build the module
+# Build the component
 cargo build -p example --target wasm32-wasip2
-
-# Copy the component
-cp target/wasm32-wasip2/debug/example.wasm example/hello-world.wasm
 ```
 
-## Verification
+## Structure
 
-You can verify the component's structure using wasm-tools:
+The example consists of:
+- `example.wit` - Defines interfaces and imports WASI logging
+- `src/lib.rs` - Implements the component using the imported logging
+- Example logs messages at different levels during execution
 
-```bash
-# Install wasm-tools
-cargo install wasm-tools
-
-# Validate the component
-wasm-tools validate --features=component-model example/hello-world.wasm
-
-# View the interface definitions
-wasm-tools component wit example/hello-world.wasm
-```
-
-## Implementation Details
-
-This example defines a WIT interface:
+## WIT Structure
 
 ```wit
-interface example {
-    // Log levels
-    enum level {
-        trace, debug, info, warn, error, critical,
-    }
+// Import logging interface
+import logging;
 
-    // Mock logging function
-    log: func(level: level, message: string);
-
-    // Main function
-    hello: func() -> s32;
-}
+// Export our main interface
+export example;
 ```
 
-And implements it with wit-bindgen:
+The component imports the logging interface and calls it from Rust code whenever it needs to log information. The hello function runs a loop and logs information at each iteration, demonstrating how to use the imported logging functionality.
 
-```rust
-impl exports::example::hello::example::Guest for HelloComponent {
-    // Log a message
-    fn log(level: exports::example::hello::example::Level, message: String) {
-        println!("[{:?}] {}", level, message);
-    }
+## Testing with WRT
 
-    // Main hello function
-    fn hello() -> i32 {
-        Self::log(
-            exports::example::hello::example::Level::Info,
-            "Hello from WebAssembly!".to_string()
-        );
-        
-        // Return value
-        42
-    }
-}
-```
-
-## Using with WRT
-
-This example can be loaded into the WRT runtime:
-
-```rust
-use wrt::{Module, Engine};
-
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Create a new WRT engine with component model support
-    let mut engine = wrt::new_engine();
-    
-    // Load the WebAssembly component
-    let wasm_bytes = std::fs::read("example/hello-world.wasm")?;
-    let module = Module::from_bytes(&wasm_bytes)?;
-    
-    // Instantiate the component
-    let instance = engine.instantiate(&module)?;
-    
-    // Call the "hello" function from the example interface
-    let results = engine.invoke_export(&instance, "example:hello/example", "hello", &[])?;
-    
-    // Print the results - should be 42
-    println!("Result: {:?}", results);
-    
-    Ok(())
-}
-```
-
-## Development
-
-The project includes a `justfile` with various development commands:
-
-- `just build` - Build all crates
-- `just test` - Run all tests
-- `just fmt` - Format all Rust code
-- `just check` - Run code style checks
-- `just clean` - Clean all build artifacts
-
-See `just --list` for all available commands.
+To use this example with WRT, you must provide an implementation for the imported logging interface when instantiating the component.

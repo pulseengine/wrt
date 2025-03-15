@@ -1,20 +1,12 @@
 package example:hello;
 
-// Define all interfaces in a common namespace
+/// Import the wasi:logging interface
+interface imports {
+    use wasi:logging/logging.{level, log};
+}
+
+// Define our main component interface
 interface example {
-    // Logging levels available for debugging
-    enum level {
-        trace,
-        debug,
-        info,
-        warn,
-        error,
-        critical,
-    }
-
-    // Mock logging function for demonstration
-    log: func(level: level, message: string);
-
     // Main function that runs a loop for 100 iterations
     // and logs the counter for each iteration
     // Returns the total number of iterations completed
@@ -23,5 +15,6 @@ interface example {
 
 // Define our world
 world hello {
+    import wasi:logging/logging;
     export example;
-} 
+}
