@@ -3,8 +3,8 @@ default: build
 
 # ----------------- Build Commands -----------------
 
-# Build all crates
-build: build-wrt build-wrtd build-example
+# Build all crates and WAT files
+build: build-wrt build-wrtd build-example build-wat-files
 
 # Build the core WRT library
 build-wrt:
@@ -168,8 +168,8 @@ check-imports:
 check-udeps:
     cargo +nightly udeps -p wrt -p wrtd --all-targets || echo "Note: Criterion is allowed as an unused dev-dependency for future benchmarks"
 
-# Run all checks (format, clippy, tests, imports, udeps, docs)
-check-all: check test check-imports check-udeps check-docs test-wrtd-example
+# Run all checks (format, clippy, tests, imports, udeps, docs, wat files)
+check-all: check test check-imports check-udeps check-docs test-wrtd-example check-wat-files
 
 # Pre-commit check to run before committing changes
 pre-commit: check-all
@@ -206,6 +206,78 @@ docs: docs-html
 docs-help:
     {{sphinx_build}} -M help "{{sphinx_source}}" "{{sphinx_build_dir}}" {{sphinx_opts}}
 
+# ----------------- WebAssembly WAT/WASM Commands -----------------
+
+# Convert a single WAT file to WASM
+convert-wat-to-wasm WAT_FILE:
+    #!/usr/bin/env bash
+    # Check if wat2wasm is installed
+    if ! command -v wat2wasm &> /dev/null; then
+        echo "Error: wat2wasm not found. Please run 'just setup-wasm-tools' to install it."
+        exit 1
+    fi
+    # Check if file exists
+    if [ ! -f "{{WAT_FILE}}" ]; then
+        echo "Error: WAT file not found: {{WAT_FILE}}"
+        exit 1
+    fi
+    # Extract basename
+    BASENAME=$(basename "{{WAT_FILE}}" .wat)
+    DIRNAME=$(dirname "{{WAT_FILE}}")
+    WASM_FILE="${DIRNAME}/${BASENAME}.wasm"
+    echo "Converting {{WAT_FILE}} to ${WASM_FILE}..."
+    wat2wasm "{{WAT_FILE}}" -o "${WASM_FILE}"
+    echo "Conversion successful: ${WASM_FILE}"
+
+# Build all WAT files in examples directory
+build-wat-files:
+    #!/usr/bin/env bash
+    # Find all WAT files
+    WAT_FILES=$(find examples -name "*.wat")
+    if [ -z "$WAT_FILES" ]; then
+        echo "No WAT files found in examples directory."
+        exit 0
+    fi
+    # Convert each file
+    for WAT_FILE in $WAT_FILES; do
+        BASENAME=$(basename "$WAT_FILE" .wat)
+        DIRNAME=$(dirname "$WAT_FILE")
+        WASM_FILE="${DIRNAME}/${BASENAME}.wasm"
+        
+        # Check if WAT file is newer than WASM file or WASM file doesn't exist
+        if [ ! -f "$WASM_FILE" ] || [ "$WAT_FILE" -nt "$WASM_FILE" ]; then
+            echo "Converting $WAT_FILE to $WASM_FILE..."
+            wat2wasm "$WAT_FILE" -o "$WASM_FILE"
+        else
+            echo "Skipping $WAT_FILE (WASM file is up to date)"
+        fi
+    done
+    echo "All WAT files built successfully."
+
+# Check if all WAT files are properly converted to WASM
+check-wat-files:
+    #!/usr/bin/env bash
+    # Find all WAT files
+    WAT_FILES=$(find examples -name "*.wat")
+    NEEDS_REBUILD=0
+    # Check each file
+    for WAT_FILE in $WAT_FILES; do
+        BASENAME=$(basename "$WAT_FILE" .wat)
+        DIRNAME=$(dirname "$WAT_FILE")
+        WASM_FILE="${DIRNAME}/${BASENAME}.wasm"
+        
+        if [ ! -f "$WASM_FILE" ] || [ "$WAT_FILE" -nt "$WASM_FILE" ]; then
+            echo "WARNING: WASM file needs to be rebuilt: $WASM_FILE"
+            NEEDS_REBUILD=1
+        fi
+    done
+    if [ $NEEDS_REBUILD -eq 1 ]; then
+        echo "Some WASM files need to be rebuilt. Run 'just build-wat-files' to update them."
+        exit 1
+    else
+        echo "All WAT files are properly converted to WASM."
+    fi
+
 # ----------------- Utility Commands -----------------
 
 # Clean all build artifacts
@@ -213,15 +285,39 @@ clean:
     cargo clean
     rm -f example/hello-world.wasm
     rm -rf docs/_build
+    # Also clean generated WASM files
+    find examples -name "*.wasm" -type f -delete
 
 # Install rust targets required for the project
 setup-rust-targets:
     rustup target add wasm32-wasip2 || rustup target add wasm32-wasip2
 
-# Install WebAssembly tools (wasmtime, wasm-tools)
+# Install WebAssembly tools (wasmtime, wasm-tools, wat2wasm)
 setup-wasm-tools:
+    #!/usr/bin/env bash
     cargo install wasmtime-cli --locked
     cargo install wasm-tools --locked
+    # Install WABT tools if not already installed (contains wat2wasm)
+    if ! command -v wat2wasm &> /dev/null; then
+        echo "Installing WABT tools (contains wat2wasm)..."
+        if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+            # Linux installation
+            sudo apt-get update && sudo apt-get install -y wabt
+        elif [[ "$OSTYPE" == "darwin"* ]]; then
+            # macOS installation with Homebrew
+            if command -v brew &> /dev/null; then
+                brew install wabt
+            else
+                echo "Homebrew not found. Please install manually."
+                echo "Visit: https://github.com/WebAssembly/wabt"
+                exit 1
+            fi
+        else
+            echo "Unsupported OS. Please install WABT manually."
+            echo "Visit: https://github.com/WebAssembly/wabt"
+            exit 1
+        fi
+    fi
 
 # Install Python dependencies
 setup-python-deps:
@@ -267,10 +363,14 @@ setup: setup-hooks setup-rust-targets setup-wasm-tools setup-python-deps setup-p
 # Setup for CI environments (without hooks)
 setup-ci: setup-rust-targets setup-wasm-tools setup-python-deps setup-plantuml
     @echo "✅ CI environment setup completed."
+    @echo "Building any WAT files to WASM..."
+    just build-wat-files
     
-# Minimal setup for CI that only installs necessary Rust targets
-setup-ci-minimal: setup-rust-targets
-    @echo "✅ Minimal CI environment setup completed (Rust targets only)."
+# Minimal setup for CI that only installs necessary Rust targets and WASM tools
+setup-ci-minimal: setup-rust-targets setup-wasm-tools
+    @echo "Building any WAT files to WASM..."
+    just build-wat-files
+    @echo "✅ Minimal CI environment setup completed (Rust targets and WASM tools)."
 
 # Install git hooks to enforce checks before commit/push
 setup-hooks:

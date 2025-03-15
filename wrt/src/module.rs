@@ -627,14 +627,191 @@ fn parse_type_section(module: &mut Module, bytes: &[u8]) -> Result<()> {
 // These will be implemented in future updates
 
 /// Parse the import section (section code 2)
-fn parse_import_section(_module: &mut Module, _bytes: &[u8]) -> Result<()> {
-    // Placeholder - will parse imports in a future update
+fn parse_import_section(module: &mut Module, bytes: &[u8]) -> Result<()> {
+    let mut cursor = 0;
+
+    // Read the number of imports
+    let (count, bytes_read) = read_leb128_u32(&bytes[cursor..])?;
+    cursor += bytes_read;
+
+    for _ in 0..count {
+        // Parse module name
+        let (module_name, bytes_read) = parse_name(&bytes[cursor..])?;
+        cursor += bytes_read;
+
+        // Parse import name
+        let (import_name, bytes_read) = parse_name(&bytes[cursor..])?;
+        cursor += bytes_read;
+
+        // Check if we've reached the end of the section
+        if cursor >= bytes.len() {
+            return Err(Error::Parse("Unexpected end of import section".into()));
+        }
+
+        // Parse import kind and type
+        let import_type = match bytes[cursor] {
+            // Function import (0x00)
+            0x00 => {
+                cursor += 1;
+                if cursor >= bytes.len() {
+                    return Err(Error::Parse("Unexpected end of function import".into()));
+                }
+
+                // Read function type index
+                let (type_idx, bytes_read) = read_leb128_u32(&bytes[cursor..])?;
+                cursor += bytes_read;
+
+                // Check type index validity
+                if type_idx as usize >= module.types.len() {
+                    return Err(Error::Validation(format!(
+                        "Import references invalid type index: {}",
+                        type_idx
+                    )));
+                }
+
+                // Create function type reference
+                let func_type = module.types[type_idx as usize].clone();
+                ExternType::Function(func_type)
+            }
+
+            // Table import (0x01)
+            0x01 => {
+                cursor += 1;
+                if cursor >= bytes.len() {
+                    return Err(Error::Parse("Unexpected end of table import".into()));
+                }
+
+                // Parse element type
+                let elem_type = match bytes[cursor] {
+                    0x70 => ValueType::FuncRef,
+                    0x6F => ValueType::ExternRef,
+                    _ => {
+                        return Err(Error::Parse(format!(
+                            "Invalid element type: 0x{:x}",
+                            bytes[cursor]
+                        )))
+                    }
+                };
+                cursor += 1;
+
+                // Parse table limits
+                let limits_flag = bytes[cursor];
+                cursor += 1;
+
+                let (min, bytes_read) = read_leb128_u32(&bytes[cursor..])?;
+                cursor += bytes_read;
+
+                let max = if (limits_flag & 0x01) != 0 {
+                    let (max, bytes_read) = read_leb128_u32(&bytes[cursor..])?;
+                    cursor += bytes_read;
+                    Some(max)
+                } else {
+                    None
+                };
+
+                ExternType::Table(TableType {
+                    element_type: elem_type,
+                    min,
+                    max,
+                })
+            }
+
+            // Memory import (0x02)
+            0x02 => {
+                cursor += 1;
+
+                // Parse memory limits
+                let limits_flag = bytes[cursor];
+                cursor += 1;
+
+                let (min, bytes_read) = read_leb128_u32(&bytes[cursor..])?;
+                cursor += bytes_read;
+
+                let max = if (limits_flag & 0x01) != 0 {
+                    let (max, bytes_read) = read_leb128_u32(&bytes[cursor..])?;
+                    cursor += bytes_read;
+                    Some(max)
+                } else {
+                    None
+                };
+
+                ExternType::Memory(MemoryType { min, max })
+            }
+
+            // Global import (0x03)
+            0x03 => {
+                cursor += 1;
+
+                // Parse value type
+                if cursor >= bytes.len() {
+                    return Err(Error::Parse("Unexpected end of global import".into()));
+                }
+                let value_type = parse_value_type(bytes[cursor])?;
+                cursor += 1;
+
+                // Parse mutability
+                if cursor >= bytes.len() {
+                    return Err(Error::Parse("Unexpected end of global import".into()));
+                }
+                let mutable = bytes[cursor] != 0;
+                cursor += 1;
+
+                ExternType::Global(GlobalType {
+                    content_type: value_type,
+                    mutable,
+                })
+            }
+
+            // Unknown import kind
+            kind => return Err(Error::Parse(format!("Unknown import kind: 0x{:x}", kind))),
+        };
+
+        // Add the import to the module
+        module.imports.push(Import {
+            module: module_name,
+            name: import_name,
+            ty: import_type,
+        });
+    }
+
     Ok(())
 }
 
 /// Parse the function section (section code 3)
-fn parse_function_section(_module: &mut Module, _bytes: &[u8]) -> Result<()> {
-    // Placeholder - will parse function type indices in a future update
+///
+/// The function section declares the signatures of all functions in the module
+/// by specifying indices into the type section.
+/// The function bodies are defined in the code section.
+fn parse_function_section(module: &mut Module, bytes: &[u8]) -> Result<()> {
+    let mut cursor = 0;
+
+    // Read the number of functions
+    let (count, bytes_read) = read_leb128_u32(&bytes[cursor..])?;
+    cursor += bytes_read;
+
+    // Function section only contains type indices, not the actual function bodies
+    for _ in 0..count {
+        // Read the type index for this function
+        let (type_idx, bytes_read) = read_leb128_u32(&bytes[cursor..])?;
+        cursor += bytes_read;
+
+        // Validate the type index
+        if type_idx as usize >= module.types.len() {
+            return Err(Error::Validation(format!(
+                "Function references invalid type index: {}",
+                type_idx
+            )));
+        }
+
+        // Add a new function with the specified type index
+        // The locals and body will be filled in later when parsing the code section
+        module.functions.push(Function {
+            type_idx,
+            locals: Vec::new(),
+            body: Vec::new(),
+        });
+    }
+
     Ok(())
 }
 
@@ -761,9 +938,495 @@ fn parse_element_section(_module: &mut Module, _bytes: &[u8]) -> Result<()> {
 }
 
 /// Parse the code section (section code 10)
-fn parse_code_section(_module: &mut Module, _bytes: &[u8]) -> Result<()> {
-    // Placeholder - will parse function bodies in a future update
+///
+/// The code section contains the bodies of functions in the module.
+/// Each function body has local variable declarations and a sequence of instructions.
+fn parse_code_section(module: &mut Module, bytes: &[u8]) -> Result<()> {
+    let mut cursor = 0;
+
+    // Read the number of function bodies
+    let (count, bytes_read) = read_leb128_u32(&bytes[cursor..])?;
+    cursor += bytes_read;
+
+    // Count should match the number of functions defined in the function section
+    let _import_func_count = module
+        .imports
+        .iter()
+        .filter(|import| matches!(import.ty, ExternType::Function(_)))
+        .count();
+
+    let expected_count = module.functions.len();
+    if count as usize != expected_count {
+        return Err(Error::Parse(format!(
+            "Function body count ({}) doesn't match function count ({}) from function section",
+            count, expected_count
+        )));
+    }
+
+    // Parse each function body
+    for func_idx in 0..count as usize {
+        // Read the function body size
+        let (body_size, bytes_read) = read_leb128_u32(&bytes[cursor..])?;
+        cursor += bytes_read;
+
+        let body_start = cursor;
+        let body_end = body_start + body_size as usize;
+
+        if body_end > bytes.len() {
+            return Err(Error::Parse(
+                "Function body extends beyond end of section".into(),
+            ));
+        }
+
+        // Parse local declarations
+        let (locals_count, bytes_read) = read_leb128_u32(&bytes[cursor..])?;
+        cursor += bytes_read;
+
+        let mut locals = Vec::new();
+
+        // Parse local variable declarations
+        for _ in 0..locals_count {
+            // Read the count of locals of this type
+            let (local_count, bytes_read) = read_leb128_u32(&bytes[cursor..])?;
+            cursor += bytes_read;
+
+            // Read the value type
+            if cursor >= body_end {
+                return Err(Error::Parse(
+                    "Unexpected end of function body during locals parsing".into(),
+                ));
+            }
+
+            let value_type = parse_value_type(bytes[cursor])?;
+            cursor += 1;
+
+            // Add this many locals of this type
+            for _ in 0..local_count {
+                locals.push(value_type.clone());
+            }
+        }
+
+        // Parse function body instructions
+        let mut instructions = Vec::new();
+        let mut depth = 0; // Track nesting level for blocks, loops, and ifs
+
+        while cursor < body_end {
+            // Check for the end of the function body
+            if bytes[cursor] == 0x0B && depth == 0 {
+                // End opcode at depth 0 means end of function
+                cursor += 1;
+                break;
+            }
+
+            // Parse instruction
+            let (instruction, bytes_read) =
+                parse_instruction(&bytes[cursor..body_end], &mut depth)?;
+            cursor += bytes_read;
+
+            instructions.push(instruction);
+        }
+
+        if depth != 0 {
+            return Err(Error::Parse(format!(
+                "Unbalanced blocks in function body (depth: {})",
+                depth
+            )));
+        }
+
+        // Sanity check that we reached the end of the function body
+        if cursor != body_end {
+            return Err(Error::Parse(format!(
+                "Function body parsing ended at unexpected position. Expected: {}, Actual: {}",
+                body_end, cursor
+            )));
+        }
+
+        // Update the function with locals and body
+        if func_idx < module.functions.len() {
+            module.functions[func_idx].locals = locals;
+            module.functions[func_idx].body = instructions;
+        } else {
+            return Err(Error::Parse(format!(
+                "Function index out of bounds: {}",
+                func_idx
+            )));
+        }
+    }
+
     Ok(())
+}
+
+/// Parse a single WebAssembly instruction
+///
+/// Returns the parsed instruction and the number of bytes read
+fn parse_instruction(bytes: &[u8], depth: &mut i32) -> Result<(Instruction, usize)> {
+    if bytes.is_empty() {
+        return Err(Error::Parse("Unexpected end of instruction stream".into()));
+    }
+
+    let opcode = bytes[0];
+    let mut cursor = 1;
+
+    // Parse the instruction based on its opcode
+    let instruction = match opcode {
+        // Control instructions
+        0x00 => Instruction::Unreachable,
+        0x01 => Instruction::Nop,
+        0x02 => {
+            // block
+            *depth += 1;
+            let (block_type, bytes_read) = parse_block_type(&bytes[cursor..])?;
+            cursor += bytes_read;
+            Instruction::Block(block_type)
+        }
+        0x03 => {
+            // loop
+            *depth += 1;
+            let (block_type, bytes_read) = parse_block_type(&bytes[cursor..])?;
+            cursor += bytes_read;
+            Instruction::Loop(block_type)
+        }
+        0x04 => {
+            // if
+            *depth += 1;
+            let (block_type, bytes_read) = parse_block_type(&bytes[cursor..])?;
+            cursor += bytes_read;
+            Instruction::If(block_type)
+        }
+        0x05 => {
+            // else
+            Instruction::Else
+        }
+        0x0B => {
+            // end
+            *depth -= 1;
+            Instruction::End
+        }
+        0x0C => {
+            // br
+            let (label_idx, bytes_read) = read_leb128_u32(&bytes[cursor..])?;
+            cursor += bytes_read;
+            Instruction::Br(label_idx)
+        }
+        0x0D => {
+            // br_if
+            let (label_idx, bytes_read) = read_leb128_u32(&bytes[cursor..])?;
+            cursor += bytes_read;
+            Instruction::BrIf(label_idx)
+        }
+        0x0E => {
+            // br_table
+            let (target_count, bytes_read) = read_leb128_u32(&bytes[cursor..])?;
+            cursor += bytes_read;
+
+            let mut targets = Vec::with_capacity(target_count as usize);
+            for _ in 0..target_count {
+                let (target, bytes_read) = read_leb128_u32(&bytes[cursor..])?;
+                cursor += bytes_read;
+                targets.push(target);
+            }
+
+            let (default_target, bytes_read) = read_leb128_u32(&bytes[cursor..])?;
+            cursor += bytes_read;
+
+            Instruction::BrTable(targets, default_target)
+        }
+        0x0F => {
+            // return
+            Instruction::Return
+        }
+        0x10 => {
+            // call
+            let (func_idx, bytes_read) = read_leb128_u32(&bytes[cursor..])?;
+            cursor += bytes_read;
+            Instruction::Call(func_idx)
+        }
+        0x11 => {
+            // call_indirect
+            let (type_idx, bytes_read) = read_leb128_u32(&bytes[cursor..])?;
+            cursor += bytes_read;
+
+            // Table index (only 0 is valid in WASM 1.0)
+            if cursor >= bytes.len() {
+                return Err(Error::Parse(
+                    "Unexpected end of call_indirect instruction".into(),
+                ));
+            }
+            let table_idx = bytes[cursor];
+            cursor += 1;
+
+            if table_idx != 0 {
+                return Err(Error::Parse(format!(
+                    "Invalid table index in call_indirect: {}",
+                    table_idx
+                )));
+            }
+
+            Instruction::CallIndirect(type_idx, 0) // 0 as table index (only valid value in WASM 1.0)
+        }
+
+        // Parametric instructions
+        0x1A => Instruction::Drop,
+        0x1B => Instruction::Select,
+
+        // Variable instructions
+        0x20 => {
+            // local.get
+            let (local_idx, bytes_read) = read_leb128_u32(&bytes[cursor..])?;
+            cursor += bytes_read;
+            Instruction::LocalGet(local_idx)
+        }
+        0x21 => {
+            // local.set
+            let (local_idx, bytes_read) = read_leb128_u32(&bytes[cursor..])?;
+            cursor += bytes_read;
+            Instruction::LocalSet(local_idx)
+        }
+        0x22 => {
+            // local.tee
+            let (local_idx, bytes_read) = read_leb128_u32(&bytes[cursor..])?;
+            cursor += bytes_read;
+            Instruction::LocalTee(local_idx)
+        }
+        0x23 => {
+            // global.get
+            let (global_idx, bytes_read) = read_leb128_u32(&bytes[cursor..])?;
+            cursor += bytes_read;
+            Instruction::GlobalGet(global_idx)
+        }
+        0x24 => {
+            // global.set
+            let (global_idx, bytes_read) = read_leb128_u32(&bytes[cursor..])?;
+            cursor += bytes_read;
+            Instruction::GlobalSet(global_idx)
+        }
+
+        // Memory instructions
+        0x28 => {
+            // i32.load
+            let (align, bytes_read) = read_leb128_u32(&bytes[cursor..])?;
+            cursor += bytes_read;
+            let (offset, bytes_read) = read_leb128_u32(&bytes[cursor..])?;
+            cursor += bytes_read;
+            Instruction::I32Load(align, offset)
+        }
+        0x29 => {
+            // i64.load
+            let (align, bytes_read) = read_leb128_u32(&bytes[cursor..])?;
+            cursor += bytes_read;
+            let (offset, bytes_read) = read_leb128_u32(&bytes[cursor..])?;
+            cursor += bytes_read;
+            Instruction::I64Load(align, offset)
+        }
+        0x2A => {
+            // f32.load
+            let (align, bytes_read) = read_leb128_u32(&bytes[cursor..])?;
+            cursor += bytes_read;
+            let (offset, bytes_read) = read_leb128_u32(&bytes[cursor..])?;
+            cursor += bytes_read;
+            Instruction::F32Load(align, offset)
+        }
+        0x2B => {
+            // f64.load
+            let (align, bytes_read) = read_leb128_u32(&bytes[cursor..])?;
+            cursor += bytes_read;
+            let (offset, bytes_read) = read_leb128_u32(&bytes[cursor..])?;
+            cursor += bytes_read;
+            Instruction::F64Load(align, offset)
+        }
+
+        // Numeric instructions - Constants
+        0x41 => {
+            // i32.const
+            let (value, bytes_read) = read_leb128_i32(&bytes[cursor..])?;
+            cursor += bytes_read;
+            Instruction::I32Const(value)
+        }
+        0x42 => {
+            // i64.const
+            let (value, bytes_read) = read_leb128_i64(&bytes[cursor..])?;
+            cursor += bytes_read;
+            Instruction::I64Const(value)
+        }
+        0x43 => {
+            // f32.const
+            if cursor + 4 > bytes.len() {
+                return Err(Error::Parse(
+                    "Unexpected end of f32.const instruction".into(),
+                ));
+            }
+            let value_bytes = [
+                bytes[cursor],
+                bytes[cursor + 1],
+                bytes[cursor + 2],
+                bytes[cursor + 3],
+            ];
+            let value = f32::from_le_bytes(value_bytes);
+            cursor += 4;
+            Instruction::F32Const(value)
+        }
+        0x44 => {
+            // f64.const
+            if cursor + 8 > bytes.len() {
+                return Err(Error::Parse(
+                    "Unexpected end of f64.const instruction".into(),
+                ));
+            }
+            let value_bytes = [
+                bytes[cursor],
+                bytes[cursor + 1],
+                bytes[cursor + 2],
+                bytes[cursor + 3],
+                bytes[cursor + 4],
+                bytes[cursor + 5],
+                bytes[cursor + 6],
+                bytes[cursor + 7],
+            ];
+            let value = f64::from_le_bytes(value_bytes);
+            cursor += 8;
+            Instruction::F64Const(value)
+        }
+
+        // For brevity, we omit some instructions. The ones below are the minimum
+        // needed to parse most common WebAssembly modules
+
+        // Integer comparison operators
+        0x45 => Instruction::I32Eqz,
+        0x46 => Instruction::I32Eq,
+        0x47 => Instruction::I32Ne,
+        0x48 => Instruction::I32LtS,
+        0x49 => Instruction::I32LtU,
+        0x4A => Instruction::I32GtS,
+        0x4B => Instruction::I32GtU,
+        0x4C => Instruction::I32LeS,
+        0x4D => Instruction::I32LeU,
+        0x4E => Instruction::I32GeS,
+        0x4F => Instruction::I32GeU,
+
+        // Arithmetic operations
+        0x6A => Instruction::I32Add,
+        0x6B => Instruction::I32Sub,
+        0x6C => Instruction::I32Mul,
+        0x6D => Instruction::I32DivS,
+        0x6E => Instruction::I32DivU,
+
+        // If this is a complex or unimplemented instruction, return a placeholder
+        // In a real implementation, we would support ALL instructions
+        _ => {
+            return Err(Error::Parse(format!(
+                "Unimplemented or invalid instruction opcode: 0x{:02x}",
+                opcode
+            )));
+        }
+    };
+
+    Ok((instruction, cursor))
+}
+
+/// Parse a block type
+fn parse_block_type(bytes: &[u8]) -> Result<(BlockType, usize)> {
+    if bytes.is_empty() {
+        return Err(Error::Parse("Unexpected end of block type".into()));
+    }
+
+    match bytes[0] {
+        0x40 => Ok((BlockType::Empty, 1)), // Empty block type
+        byte => {
+            // Try to parse as a value type
+            let value_type = parse_value_type(byte)?;
+            Ok((BlockType::Type(value_type), 1))
+        }
+    }
+}
+
+/// Read a signed LEB128 encoded 32-bit integer from a byte slice
+///
+/// Returns the decoded value and the number of bytes read
+fn read_leb128_i32(bytes: &[u8]) -> Result<(i32, usize)> {
+    let mut result: i32 = 0;
+    let mut shift: u32 = 0;
+    let mut position: usize = 0;
+    let mut byte: u8;
+    let mut sign_bit: u32 = 0;
+
+    loop {
+        if position >= bytes.len() {
+            return Err(Error::Parse("Unexpected end of LEB128 sequence".into()));
+        }
+
+        byte = bytes[position];
+        position += 1;
+
+        // Check for overflow
+        if shift >= 32 {
+            return Err(Error::Parse("LEB128 value overflow".into()));
+        }
+
+        // Add the current byte's bits to the result
+        if shift < 32 {
+            result |= ((byte & 0x7F) as i32) << shift;
+            sign_bit = 0x40 as u32 & (byte as u32);
+        }
+
+        shift += 7;
+
+        // If the high bit is not set, we're done
+        if (byte & 0x80) == 0 {
+            break;
+        }
+    }
+
+    // Sign extend the result if necessary
+    if sign_bit != 0 && shift < 32 {
+        result |= !0 << shift;
+    }
+
+    Ok((result, position))
+}
+
+/// Read a signed LEB128 encoded 64-bit integer from a byte slice
+///
+/// Returns the decoded value and the number of bytes read
+fn read_leb128_i64(bytes: &[u8]) -> Result<(i64, usize)> {
+    let mut result: i64 = 0;
+    let mut shift: u32 = 0;
+    let mut position: usize = 0;
+    let mut byte: u8;
+    let mut sign_bit: u64 = 0;
+
+    loop {
+        if position >= bytes.len() {
+            return Err(Error::Parse("Unexpected end of LEB128 sequence".into()));
+        }
+
+        byte = bytes[position];
+        position += 1;
+
+        // Check for overflow
+        if shift >= 64 {
+            return Err(Error::Parse("LEB128 value overflow".into()));
+        }
+
+        // Add the current byte's bits to the result
+        if shift < 64 {
+            result |= ((byte & 0x7F) as i64) << shift;
+            sign_bit = 0x40 as u64 & (byte as u64);
+        }
+
+        shift += 7;
+
+        // If the high bit is not set, we're done
+        if (byte & 0x80) == 0 {
+            break;
+        }
+    }
+
+    // Sign extend the result if necessary
+    if sign_bit != 0 && shift < 64 {
+        result |= !0 << shift;
+    }
+
+    Ok((result, position))
 }
 
 /// Parse the data section (section code 11)
