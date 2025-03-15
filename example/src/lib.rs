@@ -27,29 +27,30 @@ impl exports::example::hello::example::Guest for HelloComponent {
         logging::log(
             logging::Level::Info,
             "example",
-            "#2 Starting loop for 10 iterations",
+            "TEST_MESSAGE: This is a test message from the component",
         );
 
-        let mut count = 0;
+        let count = 0;
 
-        // Loop for 5 iterations, logging each step
-        for i in 0..10 {
-            count += 1;
+        // // Loop for 5 iterations, logging each step
+        // for i in 0..5 {
+        //     count += 1;
 
-            // Log the current iteration number using a pre-formatted message
-            let message = format!("#1 Loop iteration: {}", i + 1);
-            logging::log(logging::Level::Debug, "example", &message);
+        //     // Add some operations to consume more fuel
+        //     let mut _sum = 0;
+        //     for j in 0..i {
+        //         _sum += j;
+        //     }
+        // }
 
-            // Add some operations to consume more fuel
-            let mut _sum = 0;
-            for j in 0..i {
-                _sum += j;
-            }
-        }
-
-        // Log completion message
-        let final_message = format!("Completed {} iterations", count);
-        logging::log(logging::Level::Info, "example", &final_message);
+        // // Log completion message
+        // let final_message = format!("Completed {} iterations", count);
+        // logging::log(logging::Level::Info, "example", &final_message);
+        logging::log(
+            logging::Level::Info,
+            "end",
+            "TEST_MESSAGE_END: This is a test message from the component",
+        );
 
         // Return total iterations
         count
