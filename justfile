@@ -169,7 +169,7 @@ check-udeps:
     cargo +nightly udeps -p wrt -p wrtd --all-targets || echo "Note: Criterion is allowed as an unused dev-dependency for future benchmarks"
 
 # Run all checks (format, clippy, tests, imports, udeps, docs)
-check-all: check test check-imports check-udeps check-docs test-wrtd-fuel
+check-all: check test check-imports check-udeps check-docs test-wrtd-example
 
 # Pre-commit check to run before committing changes
 pre-commit: check-all
