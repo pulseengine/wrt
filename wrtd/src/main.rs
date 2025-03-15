@@ -33,13 +33,13 @@
 use std::env;
 use std::fs;
 use std::path::PathBuf;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use anyhow::{Context, Result};
 use clap::Parser;
 use tracing::{debug, error, info, warn, Level};
 use tracing_subscriber::fmt::format::FmtSpan;
-use wrt::{Engine, ExportKind, ExternType, LogLevel, Value};
+use wrt::{Engine, ExportKind, ExternType, LogLevel, Module, Value};
 
 /// WebAssembly Runtime Daemon CLI arguments
 #[derive(Parser, Debug)]
@@ -61,10 +61,103 @@ struct Args {
     /// Displays instruction count, memory usage, and other metrics
     #[arg(short, long, help = "Show execution statistics")]
     stats: bool,
+
+    /// Treat file as component (use component model loader)
+    #[arg(short, long, help = "Force component model loading")]
+    component: bool,
+}
+
+/// Performance timing information for executing a WebAssembly module
+struct ExecutionTiming {
+    /// Time to load the WebAssembly file
+    load_time: Duration,
+    /// Time to parse the WebAssembly module
+    parse_time: Duration,
+    /// Time to instantiate the WebAssembly module
+    instantiate_time: Duration,
+    /// Time to execute the WebAssembly function
+    execution_time: Duration,
+    /// Total elapsed time
+    total_time: Duration,
 }
 
 fn main() -> Result<()> {
-    // Initialize tracing with additional diagnostics
+    // Initialize tracing
+    initialize_tracing();
+
+    // Parse command line arguments
+    let args = Args::parse();
+
+    // Setup timings for performance measurement
+    let total_start_time = Instant::now();
+
+    // Read the WebAssembly file
+    let (wasm_path, wasm_bytes, _load_time) = load_wasm_file(&args.wasm_file)?;
+
+    // Create a WebAssembly engine
+    info!("Initializing WebAssembly engine");
+    let mut engine = create_engine(args.fuel);
+
+    // If --component is specified, force component model loading
+    if args.component {
+        info!("Force loading as WebAssembly Component Model");
+        if let Err(e) = load_component(
+            &mut engine,
+            &wasm_bytes,
+            args.call.as_deref(),
+            wasm_path.display().to_string(),
+        ) {
+            error!("Component loading failed: {}", e);
+            return Err(e);
+        }
+
+        if args.stats {
+            display_execution_stats(&engine);
+        }
+        return Ok(());
+    }
+
+    // Try to load as a standard WebAssembly module first
+    match load_and_execute_module(
+        &mut engine,
+        &wasm_bytes,
+        &wasm_path,
+        args.call.as_deref(),
+        total_start_time,
+        args.stats,
+    ) {
+        Ok(_) => {
+            // Module loaded and executed successfully
+        }
+        Err(e) => {
+            warn!("Failed to load or execute as WebAssembly module: {}", e);
+
+            // Try to load as a component instead
+            info!("Trying to load as WebAssembly Component instead");
+            if let Err(component_err) = load_component(
+                &mut engine,
+                &wasm_bytes,
+                args.call.as_deref(),
+                wasm_path.display().to_string(),
+            ) {
+                error!("Failed to load as Component: {}", component_err);
+                return Err(anyhow::anyhow!(
+                    "Failed to load WebAssembly file as module or component: {}",
+                    component_err
+                ));
+            }
+
+            if args.stats {
+                display_execution_stats(&engine);
+            }
+        }
+    }
+
+    Ok(())
+}
+
+/// Initialize the tracing system for logging
+fn initialize_tracing() {
     let format = env::var("RUST_LOG_FORMAT").unwrap_or_else(|_| "pretty".to_string());
     let subscriber = tracing_subscriber::fmt()
         .with_max_level(Level::TRACE)
@@ -79,568 +172,127 @@ fn main() -> Result<()> {
         "compact" => subscriber.compact().init(),
         _ => subscriber.pretty().init(),
     }
+}
 
-    // Parse command line arguments
-    let args = Args::parse();
+/// Create a WebAssembly engine with the specified fuel limit
+fn create_engine(fuel: Option<u64>) -> Engine {
+    let mut engine = Engine::new();
 
-    // Setup timings for performance measurement
-    let total_start_time = Instant::now();
-    let parse_time;
-    let instantiate_time;
-    let execution_time;
+    // Register the log handler to handle component logging
+    engine.register_log_handler(|log_op| {
+        handle_component_log(log_op.level.as_str(), &log_op.message);
+    });
 
-    // Read the WebAssembly file
-    let wasm_path = PathBuf::from(&args.wasm_file);
+    // Apply fuel limit if specified
+    if let Some(fuel) = fuel {
+        info!("Setting fuel limit to {} units", fuel);
+        engine.set_fuel(Some(fuel));
+    }
+
+    engine
+}
+
+/// Load a WebAssembly file from disk
+fn load_wasm_file(file_path: &str) -> Result<(PathBuf, Vec<u8>, Duration)> {
+    let wasm_path = PathBuf::from(file_path);
     debug!("Loading WebAssembly file: {}", wasm_path.display());
+
     let load_start = Instant::now();
     let wasm_bytes = fs::read(&wasm_path).context("Failed to read WebAssembly file")?;
     let load_time = load_start.elapsed();
+
     info!(
         "Loaded {} bytes of WebAssembly code in {:?}",
         wasm_bytes.len(),
         load_time
     );
 
-    // Create a WebAssembly engine and module from the bytes
-    info!("Initializing WebAssembly engine");
-    let mut engine = Engine::new();
-
-    // Register the log handler to handle component logging
-    engine.register_log_handler(|log_op| {
-        // Convert WRT log level to tracing level
-        let level_str = log_op.level.as_str();
-        let message = log_op.message;
-
-        // Pass to the handle_component_log function
-        handle_component_log(level_str, &message);
-    });
-
-    // Apply fuel limit if specified
-    if let Some(fuel) = args.fuel {
-        info!("Setting fuel limit to {} units", fuel);
-        engine.set_fuel(Some(fuel));
-    }
-
-    // Try to load the WebAssembly file (supports both core modules and component model)
-    let parse_start = Instant::now();
-    match wrt::new_module().load_from_binary(&wasm_bytes) {
-        Ok(module) => {
-            parse_time = parse_start.elapsed();
-            info!(
-                "Loaded WebAssembly module ({}) in {:?}",
-                wasm_path.display(),
-                parse_time
-            );
-
-            // Instantiate the module
-            let inst_start = Instant::now();
-            match engine.instantiate(module) {
-                Ok(_) => {
-                    instantiate_time = inst_start.elapsed();
-                    info!(
-                        "Successfully instantiated WebAssembly module in {:?}",
-                        instantiate_time
-                    );
-
-                    // If a function call was specified, execute it
-                    if let Some(function_name) = args.call {
-                        info!("Calling function: {}", function_name);
-
-                        // Look up the function by name in the module exports
-                        let module_instance = &engine.instances[0];
-                        let mut func_idx = 0; // Default to function index 0
-                        let mut is_found = false;
-
-                        // Check if this is a component model module
-                        let is_component = module_instance
-                            .module
-                            .custom_sections
-                            .iter()
-                            .any(|s| s.name == "component-model-info");
-
-                        // Display module imports
-                        if !module_instance.module.imports.is_empty() {
-                            info!("Module imports:");
-                            for import in &module_instance.module.imports {
-                                let import_desc = match &import.ty {
-                                    wrt::ExternType::Function(func_type) => {
-                                        let params = func_type
-                                            .params
-                                            .iter()
-                                            .map(|p| p.to_string())
-                                            .collect::<Vec<_>>()
-                                            .join(", ");
-
-                                        let results = func_type
-                                            .results
-                                            .iter()
-                                            .map(|r| r.to_string())
-                                            .collect::<Vec<_>>()
-                                            .join(", ");
-
-                                        format!(
-                                            "Function(params: [{}], results: [{}])",
-                                            params, results
-                                        )
-                                    }
-                                    wrt::ExternType::Table(table) => {
-                                        format!(
-                                            "Table({:?}, min: {}, max: {:?})",
-                                            table.element_type, table.min, table.max
-                                        )
-                                    }
-                                    wrt::ExternType::Memory(mem) => {
-                                        format!("Memory(min: {}, max: {:?})", mem.min, mem.max)
-                                    }
-                                    wrt::ExternType::Global(global) => {
-                                        format!(
-                                            "Global({:?}, mutable: {})",
-                                            global.content_type, global.mutable
-                                        )
-                                    }
-                                };
-
-                                info!("  - {}.{} -> {}", import.module, import.name, import_desc);
-                            }
-                        }
-
-                        // Display module exports
-                        info!("Module exports:");
-                        for export in &module_instance.module.exports {
-                            info!("  - {} ({:?})", export.name, export.kind);
-
-                            if matches!(export.kind, ExportKind::Function) {
-                                // Get more details about the exported function type
-                                let type_info = match export.index {
-                                    // For imported functions that are exported
-                                    idx if idx < module_instance.module.imports.len() as u32 => {
-                                        let import = &module_instance.module.imports[idx as usize];
-                                        if let wrt::ExternType::Function(func_type) = &import.ty {
-                                            let params = func_type
-                                                .params
-                                                .iter()
-                                                .map(|p| p.to_string())
-                                                .collect::<Vec<_>>()
-                                                .join(", ");
-
-                                            let results = func_type
-                                                .results
-                                                .iter()
-                                                .map(|r| r.to_string())
-                                                .collect::<Vec<_>>()
-                                                .join(", ");
-
-                                            format!(" (Re-export of imported function. Type: params: [{}], results: [{}])", 
-                                                params, results)
-                                        } else {
-                                            String::from(" (Re-export of unknown import type)")
-                                        }
-                                    }
-                                    // For normal functions
-                                    idx => {
-                                        // Account for imports in the function index calculation
-                                        let import_func_count = module_instance
-                                            .module
-                                            .imports
-                                            .iter()
-                                            .filter(|import| {
-                                                matches!(import.ty, wrt::ExternType::Function(_))
-                                            })
-                                            .count()
-                                            as u32;
-
-                                        let adjusted_idx =
-                                            idx.checked_sub(import_func_count).unwrap_or(idx);
-
-                                        if adjusted_idx as usize
-                                            >= module_instance.module.functions.len()
-                                        {
-                                            format!(" (Invalid function index: {})", adjusted_idx)
-                                        } else {
-                                            let func = &module_instance.module.functions
-                                                [adjusted_idx as usize];
-                                            let func_type = &module_instance.module.types
-                                                [func.type_idx as usize];
-
-                                            let params = func_type
-                                                .params
-                                                .iter()
-                                                .map(|p| p.to_string())
-                                                .collect::<Vec<_>>()
-                                                .join(", ");
-
-                                            let results = func_type
-                                                .results
-                                                .iter()
-                                                .map(|r| r.to_string())
-                                                .collect::<Vec<_>>()
-                                                .join(", ");
-
-                                            format!(
-                                                " (Type: params: [{}], results: [{}])",
-                                                params, results
-                                            )
-                                        }
-                                    }
-                                };
-
-                                info!("    Type info: {}", type_info);
-
-                                // If this is a function, show its contents
-                                if matches!(export.kind, ExportKind::Function) {
-                                    let import_func_count = module_instance
-                                        .module
-                                        .imports
-                                        .iter()
-                                        .filter(|import| {
-                                            matches!(import.ty, ExternType::Function(_))
-                                        })
-                                        .count();
-
-                                    let adjusted_idx = export.index as usize;
-
-                                    if adjusted_idx >= import_func_count
-                                        && (adjusted_idx - import_func_count)
-                                            < module_instance.module.functions.len()
-                                    {
-                                        let func_idx = adjusted_idx - import_func_count;
-                                        let func = &module_instance.module.functions[func_idx];
-
-                                        info!("    Function details:");
-                                        info!("      - Type index: {}", func.type_idx);
-                                        info!("      - Locals: {} variables", func.locals.len());
-                                        info!("      - Body: {} instructions", func.body.len());
-
-                                        // Display a preview of the function body (first few instructions)
-                                        if !func.body.is_empty() {
-                                            let preview_count = std::cmp::min(5, func.body.len());
-                                            info!("      - Instruction preview:");
-                                            for (i, instr) in
-                                                func.body.iter().take(preview_count).enumerate()
-                                            {
-                                                info!("        {}. {:?}", i, instr);
-                                            }
-                                            if func.body.len() > preview_count {
-                                                info!(
-                                                    "        ... and {} more instructions",
-                                                    func.body.len() - preview_count
-                                                );
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-
-                            if export.name == function_name
-                                && matches!(export.kind, ExportKind::Function)
-                            {
-                                func_idx = export.index;
-                                is_found = true;
-                                info!(
-                                    "Found export '{}' at function index {}",
-                                    function_name, func_idx
-                                );
-                            }
-                        }
-
-                        if is_component {
-                            info!("Detected WebAssembly Component Model module");
-                        }
-
-                        if !is_found {
-                            warn!(
-                                "Export '{}' not found, using function index {}",
-                                function_name, func_idx
-                            );
-                        }
-
-                        // Create arguments based on function type
-                        let mut func_args = Vec::new();
-
-                        // Get function type to determine what arguments are needed
-                        let expected_args = {
-                            // First, get comprehensive info on the function we want to call
-                            info!(
-                                "Looking up function signature for '{}' (index {})",
-                                function_name, func_idx
-                            );
-
-                            // Count number of imported functions
-                            let import_func_count = module_instance
-                                .module
-                                .imports
-                                .iter()
-                                .filter(|import| matches!(import.ty, ExternType::Function(_)))
-                                .count();
-                            info!("Module has {} imported functions", import_func_count);
-
-                            // First check if the function name is explicitly exported
-                            if let Some(export) = module_instance
-                                .module
-                                .exports
-                                .iter()
-                                .find(|e| e.name == function_name)
-                            {
-                                if matches!(export.kind, ExportKind::Function) {
-                                    // Update the function index to use the export's index
-                                    info!(
-                                        "Found function '{}' as export with index {}",
-                                        function_name, export.index
-                                    );
-                                    func_idx = export.index;
-
-                                    if (export.index as usize) < import_func_count {
-                                        // It's a re-export of an imported function
-                                        let import_idx = export.index as usize;
-                                        if let ExternType::Function(func_type) =
-                                            &module_instance.module.imports[import_idx].ty
-                                        {
-                                            info!("Function is a re-export of imported function at index {}", import_idx);
-                                            info!(
-                                                "Function type: params: {}, results: {}",
-                                                func_type.params.len(),
-                                                func_type.results.len()
-                                            );
-                                            func_type.params.len()
-                                        } else {
-                                            info!("Export refers to non-function import");
-                                            0
-                                        }
-                                    } else {
-                                        // It's a regular function, but we need to adjust the index
-                                        let adjusted_idx =
-                                            (export.index as usize) - import_func_count;
-
-                                        info!(
-                                            "Function is a regular function with adjusted index {}",
-                                            adjusted_idx
-                                        );
-
-                                        if adjusted_idx < module_instance.module.functions.len() {
-                                            let func =
-                                                &module_instance.module.functions[adjusted_idx];
-                                            let func_type = &module_instance.module.types
-                                                [func.type_idx as usize];
-                                            info!(
-                                                "Function type_idx: {}, params: {}, results: {}",
-                                                func.type_idx,
-                                                func_type.params.len(),
-                                                func_type.results.len()
-                                            );
-                                            func_type.params.len()
-                                        } else {
-                                            info!("Adjusted index {} is out of bounds (module has {} functions)",
-                                                  adjusted_idx, module_instance.module.functions.len());
-                                            0
-                                        }
-                                    }
-                                } else {
-                                    info!("Export '{}' is not a function", function_name);
-                                    0
-                                }
-                            } else {
-                                // Function name not found as export, try using the raw function index
-                                info!(
-                                    "No export found with name '{}', using raw function index {}",
-                                    function_name, func_idx
-                                );
-
-                                if (func_idx as usize) < import_func_count {
-                                    // It's an imported function
-                                    if let ExternType::Function(func_type) =
-                                        &module_instance.module.imports[func_idx as usize].ty
-                                    {
-                                        info!(
-                                            "Function is an imported function at index {}",
-                                            func_idx
-                                        );
-                                        info!(
-                                            "Function type: params: {}, results: {}",
-                                            func_type.params.len(),
-                                            func_type.results.len()
-                                        );
-                                        func_type.params.len()
-                                    } else {
-                                        info!("Import at index {} is not a function", func_idx);
-                                        0
-                                    }
-                                } else {
-                                    // It's a regular function with adjusted index
-                                    let adjusted_idx = (func_idx as usize) - import_func_count;
-
-                                    info!("Function is at adjusted index {}", adjusted_idx);
-
-                                    if adjusted_idx < module_instance.module.functions.len() {
-                                        let func = &module_instance.module.functions[adjusted_idx];
-                                        let func_type =
-                                            &module_instance.module.types[func.type_idx as usize];
-                                        info!(
-                                            "Function type_idx: {}, params: {}, results: {}",
-                                            func.type_idx,
-                                            func_type.params.len(),
-                                            func_type.results.len()
-                                        );
-                                        func_type.params.len()
-                                    } else {
-                                        info!("Adjusted index {} is out of bounds (module has {} functions)",
-                                              adjusted_idx, module_instance.module.functions.len());
-                                        0
-                                    }
-                                }
-                            }
-                        };
-
-                        // For testing purposes, provide default arguments (zeros) for each parameter
-                        for _ in 0..expected_args {
-                            func_args.push(Value::I32(42)); // Default argument value for testing
-                        }
-
-                        if expected_args > 0 {
-                            info!(
-                                "Adding {} default arguments (value: 42) for function call",
-                                expected_args
-                            );
-                        }
-
-                        let exec_start = Instant::now();
-                        info!(
-                            "Executing function with {} arguments: {:?}",
-                            func_args.len(),
-                            func_args
-                        );
-                        match engine.execute(0, func_idx, func_args) {
-                            Ok(results) => {
-                                execution_time = exec_start.elapsed();
-                                info!(
-                                    "Function execution completed in {:?} with results: {:?}",
-                                    execution_time, results
-                                );
-
-                                // Display execution statistics if requested
-                                if args.stats {
-                                    display_execution_stats(&engine);
-                                }
-
-                                // Display detailed timing breakdown
-                                let total_duration = total_start_time.elapsed();
-                                info!("=== Performance Timing ===");
-                                info!("Total runtime: {:?}", total_duration);
-                                info!(
-                                    "File loading: {:?} ({:.2}%)",
-                                    load_time,
-                                    (load_time.as_secs_f64() / total_duration.as_secs_f64())
-                                        * 100.0
-                                );
-                                info!(
-                                    "Module parsing: {:?} ({:.2}%)",
-                                    parse_time,
-                                    (parse_time.as_secs_f64() / total_duration.as_secs_f64())
-                                        * 100.0
-                                );
-                                info!(
-                                    "Module instantiation: {:?} ({:.2}%)",
-                                    instantiate_time,
-                                    (instantiate_time.as_secs_f64() / total_duration.as_secs_f64())
-                                        * 100.0
-                                );
-                                info!(
-                                    "Function execution: {:?} ({:.2}%)",
-                                    execution_time,
-                                    (execution_time.as_secs_f64() / total_duration.as_secs_f64())
-                                        * 100.0
-                                );
-                                info!("===========================");
-                            }
-                            Err(wrt::Error::FuelExhausted) => {
-                                execution_time = exec_start.elapsed();
-                                info!(
-                                    "Function execution paused after {:?}: out of fuel",
-                                    execution_time
-                                );
-                                info!("To resume, run again with a higher --fuel value");
-
-                                // In a real implementation, we would persist the state to be resumed later
-                                // For now, we'll just report the remaining fuel
-                                if let Some(fuel_remaining) = engine.remaining_fuel() {
-                                    info!("Remaining fuel: {}", fuel_remaining);
-                                }
-
-                                // Display execution statistics if requested
-                                if args.stats {
-                                    display_execution_stats(&engine);
-                                }
-                            }
-                            Err(e) => {
-                                execution_time = exec_start.elapsed();
-                                error!("Execution error after {:?}: {}", execution_time, e);
-                                return Err(anyhow::anyhow!("Execution error: {}", e));
-                            }
-                        }
-                    } else {
-                        info!("No function specified to call. Use --call <function> to execute a function");
-                    }
-                }
-                Err(e) => {
-                    error!("Failed to instantiate module: {}", e);
-
-                    // Fall back to mock component
-                    info!("Falling back to mock component");
-                    execute_mock_component(&wasm_bytes, args.call.as_deref())?;
-                }
-            }
-        }
-        Err(e) => {
-            warn!("Failed to load as WebAssembly module: {}", e);
-
-            // Fall back to mock component for demonstration purposes
-            info!("Falling back to mock component");
-            execute_mock_component(&wasm_bytes, args.call.as_deref())?;
-        }
-    }
-
-    Ok(())
+    Ok((wasm_path, wasm_bytes, load_time))
 }
 
-/// Executes a mock component when the real module loading fails
-/// This is a fallback for demonstration/testing purposes
-fn execute_mock_component(bytes: &[u8], function_name: Option<&str>) -> Result<()> {
-    info!("Creating mock component with 'hello' and 'log' functions");
+/// Load and execute a WebAssembly module
+fn load_and_execute_module(
+    engine: &mut Engine,
+    wasm_bytes: &[u8],
+    wasm_path: &std::path::Path,
+    function_name: Option<&str>,
+    total_start_time: Instant,
+    show_stats: bool,
+) -> Result<()> {
+    let parse_start = Instant::now();
 
-    // Create a WebAssembly engine with logging support
-    let engine = Engine::new();
+    // Try to load the module
+    let module = wrt::new_module()
+        .load_from_binary(wasm_bytes)
+        .context("Failed to load WebAssembly module")?;
 
-    // Register the log handler to handle component logging
-    engine.register_log_handler(|log_op| {
-        // Convert WRT log level to tracing level
-        let level_str = log_op.level.as_str();
-        let message = log_op.message;
-
-        // Pass to the handle_component_log function
-        handle_component_log(level_str, &message);
-    });
-
-    // Create a mock component that simulates having 'hello' and 'log' functions
-    let component = MockComponent {
-        functions: vec![
-            // The hello function returns the number of iterations (100)
-            ("hello".to_string(), vec![Value::I32(100)]),
-            // The log function doesn't return any values
-            ("log".to_string(), vec![]),
-        ],
-        engine,
-    };
-
-    info!("Component loaded successfully (mocked)");
+    let parse_time = parse_start.elapsed();
     info!(
-        "Loaded component contains {} bytes of WebAssembly code",
-        bytes.len()
+        "Loaded WebAssembly module ({}) in {:?}",
+        wasm_path.display(),
+        parse_time
+    );
+
+    // Instantiate the module
+    let inst_start = Instant::now();
+    engine
+        .instantiate(module)
+        .context("Failed to instantiate WebAssembly module")?;
+
+    let instantiate_time = inst_start.elapsed();
+    info!(
+        "Successfully instantiated WebAssembly module in {:?}",
+        instantiate_time
     );
 
     // If a function call was specified, execute it
     if let Some(function_name) = function_name {
         info!("Calling function: {}", function_name);
-        let result = call_mock_function(&component, function_name)?;
-        info!("Function result: {:?}", result);
+
+        // Find the function to call
+        let instance_idx = 0; // First instance
+        let (func_idx, func_args) = find_function_to_call(engine, instance_idx, function_name)?;
+
+        // Execute the function
+        let exec_start = Instant::now();
+        info!(
+            "Executing function with {} arguments: {:?}",
+            func_args.len(),
+            func_args
+        );
+
+        match engine.execute(instance_idx as u32, func_idx, func_args) {
+            Ok(results) => {
+                let execution_time = exec_start.elapsed();
+                info!(
+                    "Function execution completed in {:?} with results: {:?}",
+                    execution_time, results
+                );
+
+                // Display execution statistics if requested
+                if show_stats {
+                    display_execution_stats(engine);
+                }
+
+                // Display detailed timing breakdown
+                display_timing_breakdown(&ExecutionTiming {
+                    load_time: Duration::default(), // Not tracked here
+                    parse_time,
+                    instantiate_time,
+                    execution_time,
+                    total_time: total_start_time.elapsed(),
+                });
+            }
+            Err(wrt::Error::FuelExhausted) => {
+                let execution_time = exec_start.elapsed();
+                handle_fuel_exhaustion(engine, execution_time, show_stats);
+            }
+            Err(e) => {
+                let execution_time = exec_start.elapsed();
+                error!("Execution error after {:?}: {}", execution_time, e);
+                return Err(anyhow::anyhow!("Execution error: {}", e));
+            }
+        }
     } else {
         info!("No function specified to call. Use --call <function> to execute a function");
     }
@@ -648,71 +300,522 @@ fn execute_mock_component(bytes: &[u8], function_name: Option<&str>) -> Result<(
     Ok(())
 }
 
-/// A mock component implementation that simulates a WebAssembly component
-#[derive(Debug)]
-struct MockComponent {
-    /// Functions in the component with their return values
-    functions: Vec<(String, Vec<Value>)>,
-    /// Engine for logging and other operations
-    engine: Engine,
+/// Handle the case where execution ran out of fuel
+fn handle_fuel_exhaustion(engine: &Engine, execution_time: Duration, show_stats: bool) {
+    info!(
+        "Function execution paused after {:?}: out of fuel",
+        execution_time
+    );
+    info!("To resume, run again with a higher --fuel value");
+
+    // Report the remaining fuel
+    if let Some(fuel_remaining) = engine.remaining_fuel() {
+        info!("Remaining fuel: {}", fuel_remaining);
+    }
+
+    // Display execution statistics if requested
+    if show_stats {
+        display_execution_stats(engine);
+    }
 }
 
-/// Calls a function on a mock component
-fn call_mock_function(component: &MockComponent, function_name: &str) -> Result<Vec<Value>> {
-    // Check if the function exists in the component's functions
-    for (name, return_values) in &component.functions {
-        if name == function_name {
-            info!("Executing function: {}", function_name);
+/// Find a function to call in a module by name or index
+fn find_function_to_call(
+    engine: &Engine,
+    instance_idx: usize,
+    function_name: &str,
+) -> Result<(u32, Vec<Value>)> {
+    let instance = &engine.instances[instance_idx];
+    let module = &instance.module;
+    let mut func_idx = 0; // Default to function index 0
+    let mut is_found = false;
 
-            // If this is the hello function, simulate the component's internal behavior
-            if name == "hello" {
-                // The hello function in the component would call the log function with INFO level
-                // Use the engine's logging mechanism to log the message
-                component
-                    .engine
-                    .handle_log(LogLevel::Info, "Starting loop for 1 iteration".to_string());
+    // Display module imports
+    display_module_imports(module);
 
-                // Simulate loop iterations with logging
-                let iterations = 1; // Match our improved component implementation
-                let mut count = 0;
+    // Display module exports and find the function
+    display_module_exports(module, function_name, &mut func_idx, &mut is_found);
 
-                for i in 0..iterations {
-                    count += 1;
-                    component
-                        .engine
-                        .handle_log(LogLevel::Debug, format!("Loop iteration: {}", i + 1));
-                }
+    // Detect if this is a component model module
+    let is_component = module
+        .custom_sections
+        .iter()
+        .any(|s| s.name == "component-model-info");
 
-                // Log completion
-                component
-                    .engine
-                    .handle_log(LogLevel::Info, format!("Completed {} iterations", count));
+    if is_component {
+        info!("Detected WebAssembly Component Model module");
+    }
 
-                // Also explain what's happening
-                debug!("Component 'hello' function executed with logging");
+    if !is_found {
+        warn!(
+            "Export '{}' not found, using function index {}",
+            function_name, func_idx
+        );
+    }
 
-                // Return the actual count instead of fixed 42
-                return Ok(vec![Value::I32(count)]);
+    // Create arguments based on function type
+    let expected_args = get_expected_argument_count(module, function_name, func_idx);
+
+    // Create default arguments (zeros) for each parameter
+    let mut func_args = Vec::new();
+    for _ in 0..expected_args {
+        func_args.push(Value::I32(42)); // Default argument value for testing
+    }
+
+    if expected_args > 0 {
+        info!(
+            "Adding {} default arguments (value: 42) for function call",
+            expected_args
+        );
+    }
+
+    Ok((func_idx, func_args))
+}
+
+/// Display information about a module's imports
+fn display_module_imports(module: &Module) {
+    if !module.imports.is_empty() {
+        info!("Module imports:");
+        for import in &module.imports {
+            let import_desc = format_extern_type(&import.ty);
+            info!("  - {}.{} -> {}", import.module, import.name, import_desc);
+        }
+    }
+}
+
+/// Represents an export entry
+#[derive(Clone)]
+struct ExportEntry {
+    /// Name of the export
+    name: String,
+    /// Kind of the export (Function, Table, Memory, Global)
+    kind: ExportKind,
+    /// Index of the exported item
+    index: u32,
+}
+
+/// Display information about a module's exports
+fn display_module_exports(
+    module: &Module,
+    function_name: &str,
+    func_idx: &mut u32,
+    is_found: &mut bool,
+) {
+    info!("Module exports:");
+    for export in &module.exports {
+        info!("  - {} ({:?})", export.name, export.kind);
+
+        if matches!(export.kind, ExportKind::Function) {
+            display_function_export_details(
+                module,
+                &ExportEntry {
+                    name: export.name.clone(),
+                    kind: export.kind.clone(),
+                    index: export.index,
+                },
+            );
+        }
+
+        if export.name == function_name && matches!(export.kind, ExportKind::Function) {
+            *func_idx = export.index;
+            *is_found = true;
+            info!(
+                "Found export '{}' at function index {}",
+                function_name, *func_idx
+            );
+        }
+    }
+}
+
+/// Display detailed information about a function export
+fn display_function_export_details(module: &Module, export: &ExportEntry) {
+    // Get more details about the exported function type
+    let type_info = get_function_type_info(module, export);
+    info!("    Type info: {}", type_info);
+
+    // Display function details if available
+    display_function_body_preview(module, export);
+}
+
+/// Get function type information
+fn get_function_type_info(module: &Module, export: &ExportEntry) -> String {
+    if export.index < module.imports.len() as u32 {
+        // For imported functions that are exported
+        let import = &module.imports[export.index as usize];
+        if let wrt::ExternType::Function(func_type) = &import.ty {
+            let params = format_value_types(&func_type.params);
+            let results = format_value_types(&func_type.results);
+            format!(
+                " (Re-export of imported function. Type: params: [{}], results: [{}])",
+                params, results
+            )
+        } else {
+            String::from(" (Re-export of unknown import type)")
+        }
+    } else {
+        // For normal functions
+        let import_func_count = count_imported_functions(module);
+        let adjusted_idx = export
+            .index
+            .checked_sub(import_func_count as u32)
+            .unwrap_or(export.index);
+
+        if adjusted_idx as usize >= module.functions.len() {
+            format!(" (Invalid function index: {})", adjusted_idx)
+        } else {
+            let func = &module.functions[adjusted_idx as usize];
+            let func_type = &module.types[func.type_idx as usize];
+
+            let params = format_value_types(&func_type.params);
+            let results = format_value_types(&func_type.results);
+
+            format!(" (Type: params: [{}], results: [{}])", params, results)
+        }
+    }
+}
+
+/// Display a preview of the function body (instructions)
+fn display_function_body_preview(module: &Module, export: &ExportEntry) {
+    let import_func_count = count_imported_functions(module);
+    let adjusted_idx = export.index as usize;
+
+    if adjusted_idx >= import_func_count
+        && (adjusted_idx - import_func_count) < module.functions.len()
+    {
+        let func_idx = adjusted_idx - import_func_count;
+        let func = &module.functions[func_idx];
+
+        info!("    Function details:");
+        info!("      - Type index: {}", func.type_idx);
+        info!("      - Locals: {} variables", func.locals.len());
+        info!("      - Body: {} instructions", func.body.len());
+
+        // Display a preview of the function body (first few instructions)
+        if !func.body.is_empty() {
+            let preview_count = std::cmp::min(5, func.body.len());
+            info!("      - Instruction preview:");
+            for (i, instr) in func.body.iter().take(preview_count).enumerate() {
+                info!("        {}. {:?}", i, instr);
             }
-
-            // If this is the log function being called directly, handle it
-            if name == "log" {
-                // We're not handling the actual log function parameters in this mock,
-                // but in a real implementation, we would extract the level and message
-                debug!("Log function called directly (parameters not handled in this mock)");
-
-                // Log a test message
-                component
-                    .engine
-                    .handle_log(LogLevel::Info, "Direct log function call".to_string());
+            if func.body.len() > preview_count {
+                info!(
+                    "        ... and {} more instructions",
+                    func.body.len() - preview_count
+                );
             }
+        }
+    }
+}
 
-            return Ok(return_values.clone());
+/// Get the number of arguments expected by a function
+fn get_expected_argument_count(module: &Module, function_name: &str, func_idx: u32) -> usize {
+    // First, get comprehensive info on the function we want to call
+    info!(
+        "Looking up function signature for '{}' (index {})",
+        function_name, func_idx
+    );
+
+    // Count number of imported functions
+    let import_func_count = count_imported_functions(module);
+    info!("Module has {} imported functions", import_func_count);
+
+    // First check if the function name is explicitly exported
+    if let Some(export) = module.exports.iter().find(|e| e.name == function_name) {
+        if matches!(export.kind, ExportKind::Function) {
+            // Update the function index to use the export's index
+            info!(
+                "Found function '{}' as export with index {}",
+                function_name, export.index
+            );
+
+            if (export.index as usize) < import_func_count {
+                // It's a re-export of an imported function
+                get_imported_function_param_count(module, export.index as usize)
+            } else {
+                // It's a regular function, but we need to adjust the index
+                get_regular_function_param_count(module, export.index as usize, import_func_count)
+            }
+        } else {
+            info!("Export '{}' is not a function", function_name);
+            0
+        }
+    } else {
+        // Function name not found as export, try using the raw function index
+        info!(
+            "No export found with name '{}', using raw function index {}",
+            function_name, func_idx
+        );
+
+        if (func_idx as usize) < import_func_count {
+            // It's an imported function
+            get_imported_function_param_count(module, func_idx as usize)
+        } else {
+            // It's a regular function with adjusted index
+            get_regular_function_param_count(module, func_idx as usize, import_func_count)
+        }
+    }
+}
+
+/// Get the parameter count of an imported function
+fn get_imported_function_param_count(module: &Module, import_idx: usize) -> usize {
+    if let ExternType::Function(func_type) = &module.imports[import_idx].ty {
+        info!("Function is an imported function at index {}", import_idx);
+        info!(
+            "Function type: params: {}, results: {}",
+            func_type.params.len(),
+            func_type.results.len()
+        );
+        func_type.params.len()
+    } else {
+        info!("Import at index {} is not a function", import_idx);
+        0
+    }
+}
+
+/// Get the parameter count of a regular (non-imported) function
+fn get_regular_function_param_count(
+    module: &Module,
+    func_idx: usize,
+    import_func_count: usize,
+) -> usize {
+    let adjusted_idx = func_idx - import_func_count;
+    info!("Function is at adjusted index {}", adjusted_idx);
+
+    if adjusted_idx < module.functions.len() {
+        let func = &module.functions[adjusted_idx];
+        let func_type = &module.types[func.type_idx as usize];
+        info!(
+            "Function type_idx: {}, params: {}, results: {}",
+            func.type_idx,
+            func_type.params.len(),
+            func_type.results.len()
+        );
+        func_type.params.len()
+    } else {
+        info!(
+            "Adjusted index {} is out of bounds (module has {} functions)",
+            adjusted_idx,
+            module.functions.len()
+        );
+        0
+    }
+}
+
+/// Count the number of imported functions in a module
+fn count_imported_functions(module: &Module) -> usize {
+    module
+        .imports
+        .iter()
+        .filter(|import| matches!(import.ty, ExternType::Function(_)))
+        .count()
+}
+
+/// Format a list of value types as a string
+fn format_value_types(types: &[wrt::ValueType]) -> String {
+    types
+        .iter()
+        .map(|p| p.to_string())
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
+/// Format an extern type as a string description
+fn format_extern_type(ty: &ExternType) -> String {
+    match ty {
+        ExternType::Function(func_type) => {
+            let params = format_value_types(&func_type.params);
+            let results = format_value_types(&func_type.results);
+            format!("Function(params: [{}], results: [{}])", params, results)
+        }
+        ExternType::Table(table) => {
+            format!(
+                "Table({:?}, min: {}, max: {:?})",
+                table.element_type, table.min, table.max
+            )
+        }
+        ExternType::Memory(mem) => {
+            format!("Memory(min: {}, max: {:?})", mem.min, mem.max)
+        }
+        ExternType::Global(global) => {
+            format!(
+                "Global({:?}, mutable: {})",
+                global.content_type, global.mutable
+            )
+        }
+    }
+}
+
+/// Load and execute a WebAssembly Component Model module
+fn load_component(
+    engine: &mut Engine,
+    bytes: &[u8],
+    function_name: Option<&str>,
+    _file_path: String,
+) -> Result<()> {
+    // Load the component
+    let parse_start = Instant::now();
+
+    // First try to load as a Module using the normal module loader
+    let module = wrt::new_module()
+        .load_from_binary(bytes)
+        .context("Failed to load as component")?;
+
+    let parse_time = parse_start.elapsed();
+    info!("Loaded WebAssembly Component in {:?}", parse_time);
+
+    // Parse interface information from the module
+    analyze_component_interfaces(&module);
+
+    // Instantiate the module
+    let inst_start = Instant::now();
+    engine
+        .instantiate(module)
+        .context("Failed to instantiate component")?;
+
+    let instantiate_time = inst_start.elapsed();
+    info!("Component instantiated in {:?}", instantiate_time);
+
+    // Execute the component's function if specified
+    if let Some(func_name) = function_name {
+        // For component model, we'll use instance index 0 like we do for normal modules
+        let instance_idx = 0;
+        execute_component_function(engine, instance_idx, func_name)?;
+    } else {
+        info!("No function specified to call. Use --call <function> to execute a function");
+    }
+
+    Ok(())
+}
+
+/// Analyze and display component interfaces
+fn analyze_component_interfaces(module: &Module) {
+    info!("Component interfaces:");
+
+    // Examine module imports and exports to identify interfaces
+    let function_imports = module
+        .imports
+        .iter()
+        .filter(|import| matches!(import.ty, ExternType::Function(_)))
+        .collect::<Vec<_>>();
+
+    // Log the interfaces
+    for import in &function_imports {
+        let function_name = &import.name;
+        info!("  - Import: {}.{}", import.module, function_name);
+
+        // Check if this is a logging interface
+        if import.module.contains("logging") || function_name == "log" {
+            info!("    Detected logging interface import - will provide implementation");
+        }
+
+        // Display function signature
+        if let ExternType::Function(func_type) = &import.ty {
+            let params = format_value_types(&func_type.params);
+            let results = format_value_types(&func_type.results);
+            info!(
+                "    Function signature: (params: [{}], results: [{}])",
+                params, results
+            );
         }
     }
 
-    error!("Function '{}' not found in component", function_name);
-    Err(anyhow::anyhow!("Function '{}' not found", function_name))
+    // Display exports as well
+    for export in &module.exports {
+        info!("  - Export: {}", export.name);
+
+        // Get function details
+        if matches!(export.kind, ExportKind::Function) {
+            display_component_function_details(
+                module,
+                &ExportEntry {
+                    name: export.name.clone(),
+                    kind: export.kind.clone(),
+                    index: export.index,
+                },
+                &function_imports,
+            );
+        }
+    }
+}
+
+/// Display details about a component function
+fn display_component_function_details(
+    module: &Module,
+    export: &ExportEntry,
+    function_imports: &[&wrt::Import],
+) {
+    // Find the function details
+    let func_idx = export.index as usize;
+    let func_count = module.functions.len();
+
+    // Display function details if this is a non-imported function
+    let import_func_count = function_imports.len();
+
+    if func_idx >= import_func_count && (func_idx - import_func_count) < func_count {
+        let adjusted_idx = func_idx - import_func_count;
+        let func = &module.functions[adjusted_idx];
+        let func_type = &module.types[func.type_idx as usize];
+
+        let params = format_value_types(&func_type.params);
+        let results = format_value_types(&func_type.results);
+
+        info!(
+            "    Function signature: (params: [{}], results: [{}])",
+            params, results
+        );
+    }
+}
+
+/// Execute a function in a component
+fn execute_component_function(
+    engine: &mut Engine,
+    instance_idx: u32,
+    func_name: &str,
+) -> Result<()> {
+    info!("Executing component function: {}", func_name);
+
+    // Find the function index
+    let mut func_idx = 0;
+    let mut found = false;
+
+    if (instance_idx as usize) < engine.instances.len() {
+        for export in &engine.instances[instance_idx as usize].module.exports {
+            if export.name == func_name && matches!(export.kind, ExportKind::Function) {
+                func_idx = export.index;
+                found = true;
+                break;
+            }
+        }
+    }
+
+    if found {
+        // Call the function
+        let exec_start = Instant::now();
+        match engine.execute(instance_idx, func_idx, vec![]) {
+            Ok(results) => {
+                let execution_time = exec_start.elapsed();
+                info!(
+                    "Function execution completed in {:?} with results: {:?}",
+                    execution_time, results
+                );
+                Ok(())
+            }
+            Err(e) => {
+                let execution_time = exec_start.elapsed();
+                error!(
+                    "Function execution failed after {:?}: {}",
+                    execution_time, e
+                );
+                Err(anyhow::anyhow!("Function execution error: {}", e))
+            }
+        }
+    } else {
+        warn!("Function '{}' not found in component", func_name);
+        Err(anyhow::anyhow!(
+            "Function '{}' not found in component",
+            func_name
+        ))
+    }
 }
 
 /// Handles a log call from a component by mapping it to the appropriate tracing level
@@ -721,8 +824,8 @@ fn handle_component_log(level: &str, message: &str) {
     let log_level = LogLevel::from_string_or_default(level);
 
     // Determine the message prefix based on content
-    let prefix = if message.starts_with("[Host function]") {
-        // This is from an imported host function
+    let prefix = if message.starts_with("[Host function]") || message.starts_with("[") {
+        // This is from an imported host function or already has a prefix
         "" // No additional prefix since it already has one
     } else {
         // This is from a component
@@ -740,6 +843,40 @@ fn handle_component_log(level: &str, message: &str) {
 
     // Also print to standard output for easier debugging during development
     println!("[LOG] {}{}: {}", prefix, level, message);
+}
+
+/// Display timing information for module execution
+fn display_timing_breakdown(timing: &ExecutionTiming) {
+    info!("=== Performance Timing ===");
+    info!("Total runtime: {:?}", timing.total_time);
+
+    if timing.load_time.as_secs_f64() > 0.0 {
+        info!(
+            "File loading: {:?} ({:.2}%)",
+            timing.load_time,
+            (timing.load_time.as_secs_f64() / timing.total_time.as_secs_f64()) * 100.0
+        );
+    }
+
+    info!(
+        "Module parsing: {:?} ({:.2}%)",
+        timing.parse_time,
+        (timing.parse_time.as_secs_f64() / timing.total_time.as_secs_f64()) * 100.0
+    );
+
+    info!(
+        "Module instantiation: {:?} ({:.2}%)",
+        timing.instantiate_time,
+        (timing.instantiate_time.as_secs_f64() / timing.total_time.as_secs_f64()) * 100.0
+    );
+
+    info!(
+        "Function execution: {:?} ({:.2}%)",
+        timing.execution_time,
+        (timing.execution_time.as_secs_f64() / timing.total_time.as_secs_f64()) * 100.0
+    );
+
+    info!("===========================");
 }
 
 /// Displays execution statistics
