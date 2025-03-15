@@ -10,7 +10,7 @@ use std::vec;
 pub const PAGE_SIZE: usize = 65536;
 
 /// Represents a WebAssembly memory instance
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Memory {
     /// Memory type
     mem_type: MemoryType,
