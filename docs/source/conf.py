@@ -27,6 +27,22 @@ html_static_path = ['_static']
 plantuml = 'plantuml'
 plantuml_output_format = 'svg'
 
+# Make PlantUML work cross-platform
+import os
+import platform
+if platform.system() == "Windows":
+    # Windows may need the full path to the plantuml.jar or plantuml.bat
+    plantuml = os.environ.get('PLANTUML_PATH', 'plantuml')
+elif platform.system() == "Darwin":  # macOS
+    # macOS typically uses Homebrew installation
+    plantuml = os.environ.get('PLANTUML_PATH', 'plantuml')
+elif platform.system() == "Linux":
+    # Linux installation path
+    plantuml = os.environ.get('PLANTUML_PATH', 'plantuml')
+
+# Allow customization through environment variables
+plantuml_output_format = os.environ.get('PLANTUML_FORMAT', 'svg')
+
 # Sphinx-needs configuration
 needs_types = [
     dict(directive="req", title="Requirement", prefix="R_", color="#BFD8D2", style="node"),
