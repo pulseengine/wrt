@@ -16,7 +16,6 @@ panic = "abort"
 panic = "abort"
 
 [dependencies]
-wit-bindgen = { workspace = true, features = ["realloc"] }
+wit-bindgen = { version = "0.12.0", features = ["realloc"] }
 
-[build-dependencies]
-wit-component = { workspace = true } 
+
