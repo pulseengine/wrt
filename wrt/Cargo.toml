@@ -15,6 +15,10 @@ path = "src/lib.rs"
 [dev-dependencies]
 criterion = "0.5"
 
+[[bench]]
+name = "engine_benchmarks"
+harness = false
+
 [package.metadata.cargo-udeps.ignore]
 dev-dependencies = ["criterion"]
 

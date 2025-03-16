@@ -638,3 +638,192 @@ impl fmt::Display for Value {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_value_creation_and_type() {
+        // Test numeric types
+        let i32_val = Value::I32(42);
+        assert_eq!(i32_val.type_(), ValueType::I32);
+
+        let i64_val = Value::I64(42);
+        assert_eq!(i64_val.type_(), ValueType::I64);
+
+        let f32_val = Value::F32(3.14);
+        assert_eq!(f32_val.type_(), ValueType::F32);
+
+        let f64_val = Value::F64(3.14159);
+        assert_eq!(f64_val.type_(), ValueType::F64);
+
+        // Test reference types
+        let func_ref = Value::FuncRef(Some(1));
+        assert_eq!(func_ref.type_(), ValueType::FuncRef);
+
+        let extern_ref = Value::ExternRef(Some(1));
+        assert_eq!(extern_ref.type_(), ValueType::ExternRef);
+    }
+
+    #[test]
+    fn test_value_default_creation() {
+        // Test default values for each type
+        assert_eq!(Value::default_for_type(&ValueType::I32), Value::I32(0));
+        assert_eq!(Value::default_for_type(&ValueType::I64), Value::I64(0));
+        assert_eq!(Value::default_for_type(&ValueType::F32), Value::F32(0.0));
+        assert_eq!(Value::default_for_type(&ValueType::F64), Value::F64(0.0));
+        assert_eq!(
+            Value::default_for_type(&ValueType::FuncRef),
+            Value::FuncRef(None)
+        );
+        assert_eq!(
+            Value::default_for_type(&ValueType::ExternRef),
+            Value::ExternRef(None)
+        );
+    }
+
+    #[test]
+    fn test_value_type_matching() {
+        let i32_val = Value::I32(42);
+        assert!(i32_val.matches_type(&ValueType::I32));
+        assert!(!i32_val.matches_type(&ValueType::I64));
+
+        let func_ref = Value::FuncRef(Some(1));
+        assert!(func_ref.matches_type(&ValueType::FuncRef));
+        assert!(!func_ref.matches_type(&ValueType::ExternRef));
+    }
+
+    #[test]
+    fn test_numeric_value_extraction() {
+        // Test i32
+        let i32_val = Value::I32(42);
+        assert_eq!(i32_val.as_i32(), Some(42));
+        assert_eq!(i32_val.as_i64(), None);
+        assert_eq!(i32_val.as_f32(), None);
+        assert_eq!(i32_val.as_f64(), None);
+
+        // Test i64
+        let i64_val = Value::I64(42);
+        assert_eq!(i64_val.as_i64(), Some(42));
+        assert_eq!(i64_val.as_i32(), None);
+
+        // Test f32
+        let f32_val = Value::F32(3.14);
+        assert_eq!(f32_val.as_f32(), Some(3.14));
+        assert_eq!(f32_val.as_f64(), None);
+
+        // Test f64
+        let f64_val = Value::F64(3.14159);
+        assert_eq!(f64_val.as_f64(), Some(3.14159));
+        assert_eq!(f64_val.as_f32(), None);
+    }
+
+    #[test]
+    fn test_reference_value_extraction() {
+        // Test FuncRef
+        let func_ref = Value::FuncRef(Some(42));
+        assert_eq!(func_ref.as_func_ref(), Some(Some(42)));
+        assert_eq!(func_ref.as_extern_ref(), None);
+
+        let null_func_ref = Value::FuncRef(None);
+        assert_eq!(null_func_ref.as_func_ref(), Some(None));
+
+        // Test ExternRef
+        let extern_ref = Value::ExternRef(Some(42));
+        assert_eq!(extern_ref.as_extern_ref(), Some(Some(42)));
+        assert_eq!(extern_ref.as_func_ref(), None);
+
+        let null_extern_ref = Value::ExternRef(None);
+        assert_eq!(null_extern_ref.as_extern_ref(), Some(None));
+    }
+
+    #[test]
+    fn test_component_model_values() {
+        // Test Record
+        let record = Value::Record(vec![
+            ("field1".to_string(), Box::new(Value::I32(1))),
+            ("field2".to_string(), Box::new(Value::I64(2))),
+        ]);
+        assert!(record.as_record().is_some());
+        assert_eq!(record.as_record().unwrap().len(), 2);
+
+        // Test Tuple
+        let tuple = Value::Tuple(vec![Box::new(Value::I32(1)), Box::new(Value::I64(2))]);
+        assert!(tuple.as_tuple().is_some());
+        assert_eq!(tuple.as_tuple().unwrap().len(), 2);
+
+        // Test List
+        let list = Value::List(vec![Box::new(Value::I32(1)), Box::new(Value::I32(2))]);
+        assert!(list.as_list().is_some());
+        assert_eq!(list.as_list().unwrap().len(), 2);
+
+        // Test Flags
+        let flags = Value::Flags(vec!["flag1".to_string(), "flag2".to_string()]);
+        assert!(flags.as_flags().is_some());
+        assert_eq!(flags.as_flags().unwrap().len(), 2);
+
+        // Test Variant
+        let variant = Value::Variant("some".to_string(), Some(Box::new(Value::I32(42))));
+        assert!(variant.as_variant().is_some());
+        assert_eq!(variant.as_variant().unwrap().0, "some");
+
+        // Test Enum
+        let enum_val = Value::Enum("RED".to_string());
+        assert!(enum_val.as_enum().is_some());
+        assert_eq!(enum_val.as_enum().unwrap(), "RED");
+
+        // Test Union
+        let union = Value::Union(Box::new(Value::I32(42)));
+        assert!(union.as_union().is_some());
+        assert_eq!(union.as_union().unwrap().as_i32(), Some(42));
+
+        // Test Option
+        let some_val = Value::Option(Some(Box::new(Value::I32(42))));
+        assert!(some_val.as_option().is_some());
+        let none_val = Value::Option(None);
+        assert!(none_val.as_option().is_some());
+        assert!(none_val.as_option().unwrap().is_none());
+
+        // Test Result
+        let ok_val = Value::Result(Ok(Box::new(Value::I32(42))));
+        assert!(ok_val.as_result().is_some());
+        let err_val = Value::Result(Err(Box::new(Value::I32(404))));
+        assert!(err_val.as_result().is_some());
+
+        // Test Future
+        let future = Value::Future(Box::new(Value::I32(42)));
+        assert!(future.as_future().is_some());
+        assert_eq!(future.as_future().unwrap().as_i32(), Some(42));
+
+        // Test Stream
+        let stream = Value::Stream {
+            element: Box::new(Value::I32(42)),
+            end: Some(Box::new(Value::I32(0))),
+        };
+        assert!(stream.as_stream().is_some());
+        let (element, end) = stream.as_stream().unwrap();
+        assert_eq!(element.as_i32(), Some(42));
+        assert!(end.is_some());
+    }
+
+    #[test]
+    fn test_value_display() {
+        // Test numeric display
+        assert_eq!(Value::I32(42).to_string(), "i32: 42");
+        assert_eq!(Value::I64(42).to_string(), "i64: 42");
+        assert_eq!(Value::F32(3.14).to_string(), "f32: 3.14");
+        assert_eq!(Value::F64(3.14159).to_string(), "f64: 3.14159");
+
+        // Test reference display
+        assert_eq!(Value::FuncRef(Some(1)).to_string(), "funcref: Some(1)");
+        assert_eq!(Value::ExternRef(None).to_string(), "externref: None");
+
+        // Test component model value display
+        let record = Value::Record(vec![("field1".to_string(), Box::new(Value::I32(1)))]);
+        assert!(record.to_string().starts_with("record:"));
+
+        let enum_val = Value::Enum("RED".to_string());
+        assert_eq!(enum_val.to_string(), "enum: RED");
+    }
+}
