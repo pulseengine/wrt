@@ -1,8 +1,11 @@
 target/
 docs/_build/
+docs/source/wrt/
+docs/source/wrtd/
+docs/source/changelog.md
 example/hello-world.wasm
 
 # Ignore all WASM files but keep WAT files which are the source format
 *.wasm
-# Don't ignore WASM files in target when specifically built
-!target/wasm32-*/*/example.wasm
+
+
