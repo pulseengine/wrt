@@ -2116,23 +2116,22 @@ fn parse_data_section(module: &mut Module, bytes: &[u8]) -> Result<()> {
         let (memory_idx, bytes_read) = read_leb128_u32(&bytes[cursor..])?;
         cursor += bytes_read;
 
-        // Parse offset expression - for simplicity create a placeholder instruction
+        // Parse offset expression
         let mut offset = Vec::new();
-        let _offset_start = cursor;
+        let mut depth = 0; // Track nesting level for blocks
 
-        // Skip instructions until we find the end opcode
-        while cursor < bytes.len() && bytes[cursor] != 0x0B {
-            cursor += 1;
+        // Parse instructions until we find the end opcode (0x0B)
+        while cursor < bytes.len() {
+            if bytes[cursor] == 0x0B && depth == 0 {
+                cursor += 1; // Skip the end opcode
+                break;
+            }
+
+            // Parse the next instruction in the offset expression
+            let (instruction, bytes_read) = parse_instruction(&bytes[cursor..], &mut depth)?;
+            cursor += bytes_read;
+            offset.push(instruction);
         }
-
-        if cursor >= bytes.len() || bytes[cursor] != 0x0B {
-            return Err(Error::Parse("Invalid data offset expression".into()));
-        }
-
-        // Add a placeholder const instruction (since we're just parsing)
-        offset.push(Instruction::I32Const(0));
-
-        cursor += 1; // Skip the end opcode
 
         // Read the size of the data
         let (data_size, bytes_read) = read_leb128_u32(&bytes[cursor..])?;
