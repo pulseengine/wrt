@@ -653,3 +653,100 @@ pub enum BlockType {
     /// This allows for blocks with multiple parameters and/or return values
     TypeIndex(u32),
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_instruction_variants() {
+        // Control instructions
+        let block = Instruction::Block(BlockType::Empty);
+        let loop_instr = Instruction::Loop(BlockType::Empty);
+        let if_instr = Instruction::If(BlockType::Empty);
+        let br = Instruction::Br(1);
+        let br_if = Instruction::BrIf(2);
+        let br_table = Instruction::BrTable(vec![1, 2, 3], 0);
+        let call = Instruction::Call(0);
+        let call_indirect = Instruction::CallIndirect(1, 0);
+
+        // Variable instructions
+        let local_get = Instruction::LocalGet(0);
+        let local_set = Instruction::LocalSet(1);
+        let local_tee = Instruction::LocalTee(2);
+        let global_get = Instruction::GlobalGet(0);
+        let global_set = Instruction::GlobalSet(1);
+
+        // Memory instructions
+        let i32_load = Instruction::I32Load(0, 0);
+        let i64_load = Instruction::I64Load(0, 0);
+        let i32_store = Instruction::I32Store(0, 0);
+        let i64_store = Instruction::I64Store(0, 0);
+
+        // Numeric instructions
+        let i32_const = Instruction::I32Const(42);
+        let i64_const = Instruction::I64Const(42);
+        let f32_const = Instruction::F32Const(42.0);
+        let f64_const = Instruction::F64Const(42.0);
+
+        // Unit variants (no parameters)
+        let memory_size = Instruction::MemorySize;
+        let memory_grow = Instruction::MemoryGrow;
+        let i32_add = Instruction::I32Add;
+        let i64_add = Instruction::I64Add;
+        let unreachable = Instruction::Unreachable;
+        let nop = Instruction::Nop;
+
+        // Verify instructions can be constructed and compared
+        assert!(matches!(block, Instruction::Block(_)));
+        assert!(matches!(loop_instr, Instruction::Loop(_)));
+        assert!(matches!(if_instr, Instruction::If(_)));
+        assert!(matches!(br, Instruction::Br(_)));
+        assert!(matches!(br_if, Instruction::BrIf(_)));
+        assert!(matches!(br_table, Instruction::BrTable(_, _)));
+        assert!(matches!(call, Instruction::Call(_)));
+        assert!(matches!(call_indirect, Instruction::CallIndirect(_, _)));
+
+        assert!(matches!(local_get, Instruction::LocalGet(_)));
+        assert!(matches!(local_set, Instruction::LocalSet(_)));
+        assert!(matches!(local_tee, Instruction::LocalTee(_)));
+        assert!(matches!(global_get, Instruction::GlobalGet(_)));
+        assert!(matches!(global_set, Instruction::GlobalSet(_)));
+
+        assert!(matches!(i32_load, Instruction::I32Load(_, _)));
+        assert!(matches!(i64_load, Instruction::I64Load(_, _)));
+        assert!(matches!(i32_store, Instruction::I32Store(_, _)));
+        assert!(matches!(i64_store, Instruction::I64Store(_, _)));
+
+        assert!(matches!(i32_const, Instruction::I32Const(_)));
+        assert!(matches!(i64_const, Instruction::I64Const(_)));
+        assert!(matches!(f32_const, Instruction::F32Const(_)));
+        assert!(matches!(f64_const, Instruction::F64Const(_)));
+
+        // Unit variants should match exactly
+        assert!(matches!(memory_size, Instruction::MemorySize));
+        assert!(matches!(memory_grow, Instruction::MemoryGrow));
+        assert!(matches!(i32_add, Instruction::I32Add));
+        assert!(matches!(i64_add, Instruction::I64Add));
+        assert!(matches!(unreachable, Instruction::Unreachable));
+        assert!(matches!(nop, Instruction::Nop));
+    }
+
+    #[test]
+    fn test_block_types() {
+        let empty = BlockType::Empty;
+        let i32_type = BlockType::Type(ValueType::I32);
+        let i64_type = BlockType::Type(ValueType::I64);
+        let f32_type = BlockType::Type(ValueType::F32);
+        let f64_type = BlockType::Type(ValueType::F64);
+        let type_index = BlockType::TypeIndex(42);
+
+        // Verify block types can be constructed and compared
+        assert!(matches!(empty, BlockType::Empty));
+        assert!(matches!(i32_type, BlockType::Type(ValueType::I32)));
+        assert!(matches!(i64_type, BlockType::Type(ValueType::I64)));
+        assert!(matches!(f32_type, BlockType::Type(ValueType::F32)));
+        assert!(matches!(f64_type, BlockType::Type(ValueType::F64)));
+        assert!(matches!(type_index, BlockType::TypeIndex(42)));
+    }
+}
