@@ -207,20 +207,9 @@ impl StacklessStack {
 
     /// Pops a value from the stack
     pub fn pop(&mut self) -> Result<Value> {
-        match self.values.pop() {
-            Some(value) => Ok(value),
-            None => {
-                // Handle stack underflow by returning a default value (i32 0)
-                // This allows more instructions to execute rather than failing immediately
-                #[cfg(feature = "std")]
-                eprintln!(
-                    "Warning: Stack underflow detected. Using default value (i32 0) for recovery."
-                );
-
-                // Return a default value to allow execution to continue
-                Ok(Value::I32(0))
-            }
-        }
+        self.values
+            .pop()
+            .ok_or_else(|| Error::Execution("Stack underflow".into()))
     }
 
     /// Pushes a label onto the control stack
@@ -283,6 +272,7 @@ impl StacklessStack {
 
     /// Initiates a branch operation in the stackless execution model
     pub fn branch(&mut self, depth: u32) -> Result<()> {
+        // Get the target label
         let label = self.get_label(depth)?;
         let arity = label.arity;
         let continuation = label.continuation;
@@ -296,13 +286,24 @@ impl StacklessStack {
         }
         preserved_values.reverse(); // Restore original order
 
-        // Set the branching state
-        self.set_state(ExecutionState::Branching {
-            depth,
-            values: preserved_values,
-        });
+        // Pop labels up to (but not including) the target depth
+        for _ in 0..depth {
+            if !self.labels.is_empty() {
+                self.pop_label()?;
+            }
+        }
 
-        // Update program counter to continuation point
+        // Clear any remaining values on the stack
+        while !self.values.is_empty() {
+            self.pop()?;
+        }
+
+        // Push the preserved values back onto the stack
+        for value in preserved_values {
+            self.push(value);
+        }
+
+        // Set program counter to continuation point
         self.set_pc(continuation);
 
         Ok(())
@@ -325,13 +326,7 @@ impl StacklessStack {
         match self.frames.last() {
             Some(frame) => Ok(frame),
             None => {
-                // This is a major error, but we'll try to recover with a placeholder frame
-                #[cfg(feature = "std")]
-                eprintln!("Warning: No active frame but trying to continue execution with placeholder frame.");
-
-                // In a real world application, this would be handled differently
-                // For now, we'll just return an error since creating a valid Frame
-                // requires a reference to module state that we can't fabricate
+                // Return an error since we can't create a valid frame
                 Err(Error::Execution("No active frame".into()))
             }
         }
@@ -541,6 +536,17 @@ impl StacklessEngine {
 
     /// Initializes a module instance
     fn initialize_instance(&mut self, instance_idx: u32) -> Result<()> {
+        // Initialize function addresses
+        let function_count = self.instances[instance_idx as usize].module.functions.len();
+        for idx in 0..function_count {
+            self.instances[instance_idx as usize]
+                .func_addrs
+                .push(FunctionAddr {
+                    instance_idx,
+                    func_idx: idx as u32,
+                });
+        }
+
         // Initialize memory instances
         let memory_count = self.instances[instance_idx as usize].module.memories.len();
         for idx in 0..memory_count {
@@ -559,9 +565,6 @@ impl StacklessEngine {
 
         // Initialize data segments
         self.initialize_data_segments(instance_idx)?;
-
-        // Initialize other resources (tables, globals, etc.)
-        // ...
 
         Ok(())
     }
@@ -665,16 +668,40 @@ impl StacklessEngine {
             self.reset_stats();
         }
 
-        // Initialize the stack
-        for arg in args.iter().rev() {
-            self.stack.push(arg.clone());
-        }
+        // Reset stack state
+        self.stack = StacklessStack::new();
+
+        // Initialize locals with arguments and default values
+        let mut locals = Vec::new();
+        let result_count = {
+            let instance = &self.instances[instance_idx as usize];
+            let function = &instance.module.functions[func_idx as usize];
+            let func_type = &instance.module.types[function.type_idx as usize];
+
+            // Validate argument count
+            if args.len() != func_type.params.len() {
+                return Err(Error::Validation(format!(
+                    "Expected {} arguments, got {}",
+                    func_type.params.len(),
+                    args.len()
+                )));
+            }
+
+            // Add arguments to locals
+            locals.extend(args.iter().cloned());
+
+            // Add local variables with default values
+            for local_type in &function.locals {
+                locals.push(Value::default_for_type(local_type));
+            }
+
+            func_type.results.len()
+        };
 
         // Set up the execution state
-        let _module = self.instances[instance_idx as usize].module.clone();
         let frame = Frame {
             func_idx,
-            locals: vec![], // Will be initialized during execution
+            locals,
             module: self.instances[instance_idx as usize].clone(),
             return_pc: 0, // This is the top-level call, so no return address
         };
@@ -755,22 +782,17 @@ impl StacklessEngine {
                     return Err(Error::FuelExhausted);
                 }
                 ExecutionState::Completed => {
-                    // Execution has completed, collect return values
+                    // Function has completed, collect any values left on the stack
                     let mut results = Vec::new();
-                    let arity = self.get_function_arity(instance_idx, func_idx)?;
-
-                    for _ in 0..arity {
+                    for _ in 0..result_count {
                         if let Ok(value) = self.stack.pop() {
                             results.push(value);
                         }
                     }
-
-                    // Reverse results to match expected order
                     results.reverse();
                     return Ok(results);
                 }
                 ExecutionState::Error(e) => {
-                    // An error occurred during execution
                     return Err(e);
                 }
             }
@@ -780,7 +802,15 @@ impl StacklessEngine {
     /// Executes a single instruction and updates the program counter
     fn execute_next_instruction(&mut self) -> Result<()> {
         // Get current frame and instruction
-        let frame = self.stack.current_frame()?.clone();
+        let frame = match self.stack.current_frame() {
+            Ok(frame) => frame.clone(),
+            Err(_) => {
+                // No active frame, set state to completed
+                self.stack.set_state(ExecutionState::Completed);
+                return Ok(());
+            }
+        };
+
         let func_idx = frame.func_idx as usize;
         let function = &frame.module.module.functions[func_idx];
         let pc = self.stack.pc();
@@ -821,6 +851,133 @@ impl StacklessEngine {
                 // Continue with the next instruction
                 self.stack.set_pc(pc + 1);
             }
+            Instruction::If(block_type) => {
+                // Pop condition value
+                let condition = self
+                    .stack
+                    .pop()?
+                    .as_i32()
+                    .ok_or_else(|| Error::Execution("Expected i32 condition".into()))?;
+
+                // Find the matching End instruction and optional Else
+                let continuation = self.find_matching_end(function, pc)?;
+                let else_pc = self.find_else_instruction(function, pc, continuation);
+
+                // Create a new label for the if block
+                let arity = self.get_block_arity(block_type, &frame.module.module)?;
+                self.stack.push_label(arity, continuation + 1); // +1 to skip the End instruction
+
+                if condition != 0 {
+                    // True case - continue with next instruction
+                    self.stack.set_pc(pc + 1);
+                } else {
+                    // False case - jump to else block or end
+                    if let Some(else_pc) = else_pc {
+                        self.stack.set_pc(else_pc); // Jump to the Else instruction
+                    } else {
+                        // No else block, so push default value if needed
+                        if arity > 0 {
+                            match block_type {
+                                BlockType::Type(value_type) => {
+                                    let default_value = Value::default_for_type(value_type);
+                                    self.stack.push(default_value);
+                                }
+                                BlockType::TypeIndex(type_idx) => {
+                                    let func_type = &frame.module.module.types[*type_idx as usize];
+                                    for result_type in &func_type.results {
+                                        let default_value = Value::default_for_type(result_type);
+                                        self.stack.push(default_value);
+                                    }
+                                }
+                                BlockType::Empty => {}
+                            }
+                        }
+                        self.stack.set_pc(continuation + 1);
+                    }
+                }
+            }
+            Instruction::Else => {
+                // Get the current label
+                if let Some(label) = self.stack.labels.last() {
+                    // Find the end of the if/else block
+                    let continuation = self.find_matching_end(function, pc)?;
+
+                    // If we have a value on the stack and the block has a result type,
+                    // we need to keep that value
+                    let mut preserved_values = Vec::new();
+                    for _ in 0..label.arity {
+                        if let Ok(value) = self.stack.pop() {
+                            preserved_values.push(value);
+                        }
+                    }
+                    preserved_values.reverse(); // Restore original order
+
+                    // Clear any remaining values on the stack
+                    while !self.stack.values.is_empty() {
+                        self.stack.pop()?;
+                    }
+
+                    // Push the preserved values back onto the stack
+                    for value in preserved_values {
+                        self.stack.push(value);
+                    }
+
+                    // Jump to the end of the if/else block
+                    self.stack.set_pc(continuation + 1);
+                } else {
+                    // No label found, just skip the else block
+                    let continuation = self.find_matching_end(function, pc)?;
+                    self.stack.set_pc(continuation + 1);
+                }
+            }
+            Instruction::End => {
+                // Pop the label and continue
+                if !self.stack.labels.is_empty() {
+                    let label = self.stack.pop_label()?;
+
+                    // If this is the end of a block with a result type,
+                    // we need to keep the values on the stack
+                    let mut preserved_values = Vec::new();
+                    for _ in 0..label.arity {
+                        if let Ok(value) = self.stack.pop() {
+                            preserved_values.push(value);
+                        }
+                    }
+                    preserved_values.reverse(); // Restore original order
+
+                    // Clear any remaining values on the stack
+                    while !self.stack.values.is_empty() {
+                        self.stack.pop()?;
+                    }
+
+                    // Push the preserved values back onto the stack
+                    for value in preserved_values {
+                        self.stack.push(value);
+                    }
+
+                    // Jump to the continuation point
+                    self.stack.set_pc(label.continuation);
+                } else {
+                    // No label found, this is the end of a function
+                    // Get return arity from function type
+                    let return_arity =
+                        self.get_function_return_arity(frame.func_idx, &frame.module.module)?;
+
+                    // Collect return values
+                    let mut return_values = Vec::new();
+                    for _ in 0..return_arity {
+                        if let Ok(value) = self.stack.pop() {
+                            return_values.push(value);
+                        }
+                    }
+                    return_values.reverse(); // Maintain expected order
+
+                    // Set state to returning
+                    self.stack.set_state(ExecutionState::Returning {
+                        values: return_values,
+                    });
+                }
+            }
             Instruction::Br(depth) => {
                 // Initiate a branch operation
                 self.stack.branch(*depth)?;
@@ -848,6 +1005,48 @@ impl StacklessEngine {
 
                 // Initiate a return operation
                 self.stack.return_function(return_values)?;
+            }
+            Instruction::LocalGet(idx) => {
+                // Get local variable value and push it onto the stack
+                let frame = self.stack.current_frame()?;
+                let value = frame.locals[*idx as usize].clone();
+                self.stack.push(value);
+                self.stack.set_pc(pc + 1);
+            }
+            Instruction::I32Add => {
+                // Pop two values and add them
+                let b = self
+                    .stack
+                    .pop()?
+                    .as_i32()
+                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
+                let a = self
+                    .stack
+                    .pop()?
+                    .as_i32()
+                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
+                self.stack.push(Value::I32(a + b));
+                self.stack.set_pc(pc + 1);
+            }
+            Instruction::I32Const(val) => {
+                // Push constant value
+                self.stack.push(Value::I32(*val));
+                self.stack.set_pc(pc + 1);
+            }
+            Instruction::I32GtS => {
+                // Pop two values and compare (a > b)
+                let b = self
+                    .stack
+                    .pop()?
+                    .as_i32()
+                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
+                let a = self
+                    .stack
+                    .pop()?
+                    .as_i32()
+                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
+                self.stack.push(Value::I32(if a > b { 1 } else { 0 }));
+                self.stack.set_pc(pc + 1);
             }
             // Add cases for other instructions...
             _ => {
@@ -886,6 +1085,37 @@ impl StacklessEngine {
         ))
     }
 
+    /// Finds the Else instruction in an if block, if it exists
+    fn find_else_instruction(
+        &self,
+        function: &Function,
+        start_pc: usize,
+        end_pc: usize,
+    ) -> Option<usize> {
+        let mut depth = 1;
+        let mut pc = start_pc + 1;
+
+        while pc < end_pc {
+            match function.body[pc] {
+                Instruction::Block(_) | Instruction::Loop(_) | Instruction::If(_) => {
+                    depth += 1;
+                }
+                Instruction::Else => {
+                    if depth == 1 {
+                        return Some(pc + 1); // Return position after Else instruction
+                    }
+                }
+                Instruction::End => {
+                    depth -= 1;
+                }
+                _ => {}
+            }
+            pc += 1;
+        }
+
+        None // No Else instruction found
+    }
+
     /// Gets the arity of a block type
     fn get_block_arity(&self, block_type: &BlockType, module: &Module) -> Result<usize> {
         match block_type {
@@ -902,14 +1132,6 @@ impl StacklessEngine {
     fn get_function_return_arity(&self, func_idx: u32, module: &Module) -> Result<usize> {
         let func = &module.functions[func_idx as usize];
         let func_type = &module.types[func.type_idx as usize];
-        Ok(func_type.results.len())
-    }
-
-    /// Gets the arity of a function (number of results)
-    fn get_function_arity(&self, instance_idx: u32, func_idx: u32) -> Result<usize> {
-        let instance = &self.instances[instance_idx as usize];
-        let func = &instance.module.functions[func_idx as usize];
-        let func_type = &instance.module.types[func.type_idx as usize];
         Ok(func_type.results.len())
     }
 
@@ -960,9 +1182,9 @@ impl StacklessEngine {
         Ok(())
     }
 
-    /// Handles a branch instruction
+    /// Handles a branch operation
     fn handle_branch(&mut self, depth: u32, values: Vec<Value>) -> Result<()> {
-        // Pop labels until we reach the target depth
+        // Pop labels up to the target depth
         for _ in 0..depth {
             self.stack.pop_label()?;
         }
@@ -971,7 +1193,12 @@ impl StacklessEngine {
         let label = self.stack.pop_label()?;
         let continuation = label.continuation;
 
-        // Push values back on the stack
+        // Clear any values on the stack up to the target label
+        while !self.stack.values.is_empty() {
+            self.stack.pop()?;
+        }
+
+        // Push the preserved values back onto the stack
         for value in values {
             self.stack.push(value);
         }
@@ -979,7 +1206,7 @@ impl StacklessEngine {
         // Set program counter to continuation
         self.stack.set_pc(continuation);
 
-        // Continue execution
+        // Set state back to running
         self.stack.set_state(ExecutionState::Running);
 
         Ok(())
