@@ -115,7 +115,7 @@ The core runtime is responsible for executing WebAssembly instructions and manag
    This implementation enables bounded execution and future state migration.
 
 Component Model Architecture
----------------------------
+----------------------------
 
 The Component Model subsystem implements the WebAssembly Component Model Preview 2 specification.
 
@@ -261,7 +261,7 @@ The current implementation status of the WRT architecture is as follows:
    :filter: type == 'impl'
 
 Architecture-Requirement Mapping
--------------------------------
+--------------------------------
 
 The following diagram shows how the architectural components map to requirements:
 

@@ -1,5 +1,6 @@
 import os
 import sys
+import platform
 sys.path.insert(0, os.path.abspath('../..'))
 
 project = 'WRT'
@@ -14,12 +15,13 @@ extensions = [
     'sphinx_needs',
     'myst_parser',
     'sphinxcontrib.plantuml',
+    "sphinxcontrib_rust",
 ]
 
 templates_path = ['_templates']
 exclude_patterns = []
 
-html_theme = 'sphinx_rtd_theme'
+html_theme = 'sphinx_book_theme'
 html_static_path = ['_static']
 
 # PlantUML configuration
@@ -28,8 +30,6 @@ plantuml = 'plantuml'
 plantuml_output_format = 'svg'
 
 # Make PlantUML work cross-platform
-import os
-import platform
 if platform.system() == "Windows":
     # Windows may need the full path to the plantuml.jar or plantuml.bat
     plantuml = os.environ.get('PLANTUML_PATH', 'plantuml')
@@ -54,3 +54,26 @@ needs_types = [
 needs_id_length = 7
 needs_title_optional = True
 needs_file_pattern = '**/*.rst' 
+
+source_suffix = {
+    ".rst": "restructuredtext",
+    ".md": "markdown",
+    ".txt": "markdown", # Optional
+}
+
+# See docs/compatibility for details on these extensions.
+myst_enable_extensions = {
+    "attrs_block",
+    "colon_fence",
+    "html_admonition",
+    "replacements",
+    "smartquotes",
+    "strikethrough",
+    "tasklist",
+}
+rust_crates = {
+    "wrt": "wrt",
+    "wrtd": "wrtd",
+}
+rust_doc_dir = "docs/source/"
+rust_rustdoc_fmt = "md"
