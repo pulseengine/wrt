@@ -22,6 +22,6 @@ dev-dependencies = ["criterion"]
 unexpected_cfgs = { level = "allow", check-cfg = ['cfg(test)'] }
 
 [features]
-default = []
+default = ["std"]
 std = []
 no_std = []
