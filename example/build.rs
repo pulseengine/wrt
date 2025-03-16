@@ -20,7 +20,4 @@ fn main() {
             fs::copy(source_wit, logging_wit).expect("Failed to copy logging.wit");
         }
     }
-
-    // This will prevent false positives from cargo-udeps by using the dependency
-    let _ = wit_component::ComponentEncoder::default();
 }

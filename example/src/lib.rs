@@ -31,6 +31,7 @@ impl exports::example::hello::example::Guest for HelloComponent {
         );
 
         let count = 0;
+        // let mut count = 0;
 
         // // Loop for 5 iterations, logging each step
         // for i in 0..5 {
