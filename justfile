@@ -240,7 +240,7 @@ docs-html:
     {{sphinx_build}} -M html "{{sphinx_source}}" "{{sphinx_build_dir}}" {{sphinx_opts}}
     
 # Build HTML documentation with PlantUML diagrams
-docs-with-diagrams: setup-plantuml
+docs-with-diagrams: setup-python-deps setup-plantuml
     #!/usr/bin/env bash
     # Set PLANTUML_PATH environment variable
     if command -v plantuml &> /dev/null; then
@@ -551,9 +551,10 @@ setup-wasm-tools:
     echo "WebAssembly toolchain setup complete!"
 
 # Install Python dependencies
-setup-python-deps:
+setup-python-deps: setup-rust-targets
+    cargo install git-cliff
+    cargo install sphinx-rustdocgen
     pip install -r docs/requirements.txt
-    pip install sphinxcontrib-plantuml
 
 # Install PlantUML (requires Java)
 setup-plantuml:
