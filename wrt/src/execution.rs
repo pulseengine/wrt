@@ -954,10 +954,10 @@ impl Engine {
         // Print debug info about data segments
         #[cfg(feature = "std")]
         {
-            eprintln!(
-                "Module has {} data segments",
-                self.instances[instance_idx as usize].module.data.len()
-            );
+            // eprintln!(
+            //     "Module has {} data segments",
+            //     self.instances[instance_idx as usize].module.data.len()
+            // );
             for (i, data) in self.instances[instance_idx as usize]
                 .module
                 .data
@@ -1027,8 +1027,8 @@ impl Engine {
         }
 
         // Initialize memory with data segments
-        #[cfg(feature = "std")]
-        eprintln!("Initializing memory with data segments");
+        // #[cfg(feature = "std")]
+        // eprintln!("Initializing memory with data segments");
 
         // First collect data segments to avoid borrowing issues
         let mut data_to_write: Vec<(usize, u32, Vec<u8>)> = Vec::new();

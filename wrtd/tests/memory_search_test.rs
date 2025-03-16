@@ -3,11 +3,10 @@
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
-use wrt::execution::Engine;
+use wrt::execution::{Engine, MemoryAddr, ModuleInstance};
 use wrt::memory::Memory;
-use wrt::module::{self, Module};
-use wrt::types::{MemoryAddr, MemoryType};
-use wrt::values::Value;
+use wrt::module::Module;
+use wrt::types::MemoryType;
 
 /// A simple memory search test
 ///
@@ -64,22 +63,22 @@ fn test_memory_search() {
     };
 
     // Create an empty module
-    let mut module = Module::default();
+    let module = Module::default();
 
     // Create a basic engine with our memory
-    let mut engine = Engine {
-        stack: Vec::new(),
-        instances: vec![module::Instance {
-            module: Arc::new(Mutex::new(module)),
-            globals: Vec::new(),
-            tables: Vec::new(),
-            memories: vec![memory],
-            exports: HashMap::new(),
-        }],
-        fuel: Some(1000),
-        fuel_consumed: 0,
-        last_error: None,
+    let mut engine = Engine::new();
+
+    // Create a module instance with our memory
+    let instance = ModuleInstance {
+        module_idx: 0,
+        module,
+        func_addrs: vec![],
+        table_addrs: vec![],
+        memory_addrs: vec![mem_addr.clone()],
+        global_addrs: vec![],
+        memories: vec![memory],
     };
+    engine.instances.push(instance);
 
     // Now test the Engine's memory search function
     println!("\nTesting engine's memory search capability:");

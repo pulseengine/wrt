@@ -124,3 +124,141 @@ impl Table {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::values::Value;
+
+    fn create_test_table_type(min: u32, max: Option<u32>) -> TableType {
+        TableType {
+            element_type: ValueType::FuncRef,
+            min,
+            max,
+        }
+    }
+
+    #[test]
+    fn test_table_creation() {
+        let table_type = TableType {
+            element_type: ValueType::I32,
+            min: 1,
+            max: Some(10),
+        };
+        let table = Table::new(table_type);
+        assert_eq!(table.size(), 1); // Initial size should be min elements
+    }
+
+    #[test]
+    fn test_table_growth() -> Result<()> {
+        let table_type = create_test_table_type(1, Some(10));
+        let mut table = Table::new(table_type);
+
+        // Test successful growth
+        let old_size = table.grow(2)?;
+        assert_eq!(old_size, 1);
+        assert_eq!(table.size(), 3);
+
+        // Test growth up to max
+        assert!(table.grow(7).is_ok());
+        assert_eq!(table.size(), 10);
+
+        // Test growth beyond max
+        assert!(table.grow(1).is_err());
+
+        // Test growth with no max
+        let mut table = Table::new(create_test_table_type(1, None));
+        assert!(table.grow(1000).is_ok());
+        assert_eq!(table.size(), 1001);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_table_access() -> Result<()> {
+        let mut table = Table::new(create_test_table_type(5, None));
+
+        // Test initial state
+        for i in 0..5 {
+            assert_eq!(table.get(i)?, None);
+        }
+
+        // Test set and get
+        let value = Value::FuncRef(Some(42));
+        table.set(3, Some(value.clone()))?;
+        assert_eq!(table.get(3)?, Some(value));
+
+        // Test bounds checking
+        assert!(table.get(5).is_err());
+        assert!(table.set(5, None).is_err());
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_table_initialization() -> Result<()> {
+        let mut table = Table::new(create_test_table_type(5, None));
+        let values = vec![
+            Some(Value::FuncRef(Some(1))),
+            Some(Value::FuncRef(Some(2))),
+            Some(Value::FuncRef(Some(3))),
+        ];
+
+        // Test successful initialization
+        table.init(1, &values)?;
+        assert_eq!(table.get(1)?, Some(Value::FuncRef(Some(1))));
+        assert_eq!(table.get(2)?, Some(Value::FuncRef(Some(2))));
+        assert_eq!(table.get(3)?, Some(Value::FuncRef(Some(3))));
+
+        // Test initialization out of bounds
+        assert!(table.init(4, &values).is_err());
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_table_copy() -> Result<()> {
+        let mut table = Table::new(create_test_table_type(10, None));
+
+        // Set up some initial values
+        table.set(0, Some(Value::FuncRef(Some(1))))?;
+        table.set(1, Some(Value::FuncRef(Some(2))))?;
+        table.set(2, Some(Value::FuncRef(Some(3))))?;
+
+        // Test forward copy
+        table.copy(5, 0, 3)?;
+        assert_eq!(table.get(5)?, Some(Value::FuncRef(Some(1))));
+        assert_eq!(table.get(6)?, Some(Value::FuncRef(Some(2))));
+        assert_eq!(table.get(7)?, Some(Value::FuncRef(Some(3))));
+
+        // Test backward copy (overlapping)
+        table.copy(1, 0, 2)?;
+        assert_eq!(table.get(1)?, Some(Value::FuncRef(Some(1))));
+        assert_eq!(table.get(2)?, Some(Value::FuncRef(Some(2))));
+
+        // Test copy out of bounds
+        assert!(table.copy(8, 0, 3).is_err());
+        assert!(table.copy(0, 8, 3).is_err());
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_table_fill() -> Result<()> {
+        let mut table = Table::new(create_test_table_type(5, None));
+        let value = Some(Value::FuncRef(Some(42)));
+
+        // Test successful fill
+        table.fill(1, 3, value.clone())?;
+        assert_eq!(table.get(1)?, value);
+        assert_eq!(table.get(2)?, value);
+        assert_eq!(table.get(3)?, value);
+        assert_eq!(table.get(0)?, None);
+        assert_eq!(table.get(4)?, None);
+
+        // Test fill out of bounds
+        assert!(table.fill(4, 2, value).is_err());
+
+        Ok(())
+    }
+}

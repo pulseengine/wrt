@@ -227,3 +227,185 @@ impl ComponentType {
         matches!(self, ComponentType::Stream { .. })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::values::Value;
+
+    #[test]
+    fn test_value_type_equality() {
+        assert_eq!(ValueType::I32, ValueType::I32);
+        assert_eq!(ValueType::I64, ValueType::I64);
+        assert_eq!(ValueType::F32, ValueType::F32);
+        assert_eq!(ValueType::F64, ValueType::F64);
+        assert_eq!(ValueType::FuncRef, ValueType::FuncRef);
+        assert_eq!(ValueType::ExternRef, ValueType::ExternRef);
+
+        assert_ne!(ValueType::I32, ValueType::I64);
+        assert_ne!(ValueType::F32, ValueType::F64);
+        assert_ne!(ValueType::FuncRef, ValueType::ExternRef);
+    }
+
+    #[test]
+    fn test_func_type() {
+        let func_type = FuncType {
+            params: vec![ValueType::I32, ValueType::I64],
+            results: vec![ValueType::F32],
+        };
+
+        assert_eq!(func_type.params.len(), 2);
+        assert_eq!(func_type.results.len(), 1);
+        assert_eq!(func_type.params[0], ValueType::I32);
+        assert_eq!(func_type.params[1], ValueType::I64);
+        assert_eq!(func_type.results[0], ValueType::F32);
+
+        // Test cloning
+        let cloned = func_type.clone();
+        assert_eq!(func_type, cloned);
+    }
+
+    #[test]
+    fn test_table_type() {
+        let table_type = TableType {
+            element_type: ValueType::FuncRef,
+            min: 1,
+            max: Some(10),
+        };
+
+        assert_eq!(table_type.element_type, ValueType::FuncRef);
+        assert_eq!(table_type.min, 1);
+        assert_eq!(table_type.max, Some(10));
+
+        // Test with no maximum
+        let unlimited_table = TableType {
+            element_type: ValueType::FuncRef,
+            min: 0,
+            max: None,
+        };
+        assert_eq!(unlimited_table.max, None);
+
+        // Test cloning
+        let cloned = table_type.clone();
+        assert_eq!(table_type, cloned);
+    }
+
+    #[test]
+    fn test_memory_type() {
+        let memory_type = MemoryType {
+            min: 1,
+            max: Some(10),
+        };
+
+        assert_eq!(memory_type.min, 1);
+        assert_eq!(memory_type.max, Some(10));
+
+        // Test with no maximum
+        let unlimited_memory = MemoryType { min: 0, max: None };
+        assert_eq!(unlimited_memory.max, None);
+
+        // Test cloning
+        let cloned = memory_type.clone();
+        assert_eq!(memory_type, cloned);
+    }
+
+    #[test]
+    fn test_global_type() {
+        let global_type = GlobalType {
+            content_type: ValueType::I32,
+            mutable: true,
+        };
+
+        assert_eq!(global_type.content_type, ValueType::I32);
+        assert!(global_type.mutable);
+
+        // Test immutable global
+        let immutable_global = GlobalType {
+            content_type: ValueType::F64,
+            mutable: false,
+        };
+        assert!(!immutable_global.mutable);
+
+        // Test cloning
+        let cloned = global_type.clone();
+        assert_eq!(global_type, cloned);
+    }
+
+    #[test]
+    fn test_extern_type() {
+        // Test function external type
+        let func_type = FuncType {
+            params: vec![ValueType::I32],
+            results: vec![ValueType::I32],
+        };
+        let func_extern = ExternType::Function(func_type.clone());
+        match &func_extern {
+            ExternType::Function(ft) => assert_eq!(ft, &func_type),
+            _ => panic!("Expected Function variant"),
+        }
+
+        // Test table external type
+        let table_type = TableType {
+            element_type: ValueType::FuncRef,
+            min: 1,
+            max: Some(10),
+        };
+        let table_extern = ExternType::Table(table_type.clone());
+        match &table_extern {
+            ExternType::Table(tt) => assert_eq!(tt, &table_type),
+            _ => panic!("Expected Table variant"),
+        }
+
+        // Test memory external type
+        let memory_type = MemoryType {
+            min: 1,
+            max: Some(10),
+        };
+        let memory_extern = ExternType::Memory(memory_type.clone());
+        match &memory_extern {
+            ExternType::Memory(mt) => assert_eq!(mt, &memory_type),
+            _ => panic!("Expected Memory variant"),
+        }
+
+        // Test global external type
+        let global_type = GlobalType {
+            content_type: ValueType::I32,
+            mutable: true,
+        };
+        let global_extern = ExternType::Global(global_type.clone());
+        match &global_extern {
+            ExternType::Global(gt) => assert_eq!(gt, &global_type),
+            _ => panic!("Expected Global variant"),
+        }
+
+        // Test cloning
+        let cloned = func_extern.clone();
+        assert_eq!(func_extern, cloned);
+    }
+
+    #[test]
+    fn test_value_type_operations() {
+        // Test value type creation and comparison
+        assert_eq!(ValueType::I32, ValueType::I32);
+        assert_ne!(ValueType::I32, ValueType::I64);
+        assert_ne!(ValueType::F32, ValueType::F64);
+
+        // Test default values for types
+        assert!(matches!(
+            Value::default_for_type(&ValueType::I32),
+            Value::I32(0)
+        ));
+        assert!(matches!(
+            Value::default_for_type(&ValueType::I64),
+            Value::I64(0)
+        ));
+        assert!(matches!(
+            Value::default_for_type(&ValueType::F32),
+            Value::F32(0.0)
+        ));
+        assert!(matches!(
+            Value::default_for_type(&ValueType::F64),
+            Value::F64(0.0)
+        ));
+    }
+}
