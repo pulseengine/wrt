@@ -254,6 +254,9 @@ docs-with-diagrams: setup-python-deps setup-plantuml
     echo "Cleaning previous diagram build artifacts..."
     rm -rf "{{sphinx_build_dir}}/html/_images/plantuml-*" "{{sphinx_build_dir}}/html/_plantuml" || true
     
+    # Generate changelog 
+    git-cliff -o docs/source/changelog.md
+
     # Build with PlantUML diagrams
     echo "Building documentation with PlantUML diagrams..."
     {{sphinx_build}} -M html "{{sphinx_source}}" "{{sphinx_build_dir}}" {{sphinx_opts}}
