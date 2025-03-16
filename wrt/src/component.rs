@@ -298,3 +298,242 @@ impl Host {
         Ok(vec![Value::I32(42)]) // Default implementation returns a sample value
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Helper function to create a test component type
+    fn create_test_component_type() -> ComponentType {
+        ComponentType {
+            imports: vec![(
+                "add".to_string(),
+                "math".to_string(),
+                ExternType::Function(FuncType {
+                    params: vec![ValueType::I32, ValueType::I32],
+                    results: vec![ValueType::I32],
+                }),
+            )],
+            exports: vec![
+                (
+                    "multiply".to_string(),
+                    ExternType::Function(FuncType {
+                        params: vec![ValueType::I32, ValueType::I32],
+                        results: vec![ValueType::I32],
+                    }),
+                ),
+                (
+                    "memory".to_string(),
+                    ExternType::Memory(MemoryType {
+                        min: 1,
+                        max: Some(2),
+                    }),
+                ),
+            ],
+            instances: Vec::new(),
+        }
+    }
+
+    // Helper function to create a test import
+    fn create_test_import() -> Import {
+        Import {
+            name: "add".to_string(),
+            ty: ExternType::Function(FuncType {
+                params: vec![ValueType::I32, ValueType::I32],
+                results: vec![ValueType::I32],
+            }),
+            value: ExternValue::Function(FunctionValue {
+                ty: FuncType {
+                    params: vec![ValueType::I32, ValueType::I32],
+                    results: vec![ValueType::I32],
+                },
+                export_name: "add".to_string(),
+            }),
+        }
+    }
+
+    #[test]
+    fn test_component_creation_and_instantiation() -> Result<()> {
+        let component_type = create_test_component_type();
+        let mut component = Component::new(component_type);
+        let import = create_test_import();
+
+        // Test instantiation
+        assert!(component.instantiate(vec![import]).is_ok());
+
+        // Test export access
+        let export = component.get_export("multiply")?;
+        assert_eq!(export.name, "multiply");
+        match &export.ty {
+            ExternType::Function(func_type) => {
+                assert_eq!(func_type.params.len(), 2);
+                assert_eq!(func_type.results.len(), 1);
+            }
+            _ => panic!("Expected function type"),
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_component_export_types() -> Result<()> {
+        let component_type = create_test_component_type();
+        let mut component = Component::new(component_type);
+        let import = create_test_import();
+        component.instantiate(vec![import])?;
+
+        // Test function export
+        let func_export = component.get_export("multiply")?;
+        assert_eq!(func_export.name, "multiply");
+        match &func_export.value {
+            ExternValue::Function(func) => {
+                assert_eq!(func.ty.params.len(), 2);
+                assert_eq!(func.ty.results.len(), 1);
+            }
+            _ => panic!("Expected function export"),
+        }
+
+        // Test memory export
+        let mem_export = component.get_export("memory")?;
+        assert_eq!(mem_export.name, "memory");
+        match &mem_export.value {
+            ExternValue::Memory(mem) => {
+                assert_eq!(mem.ty.min, 1);
+                assert_eq!(mem.ty.max, Some(2));
+            }
+            _ => panic!("Expected memory export"),
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_component_invalid_instantiation() {
+        let component_type = ComponentType {
+            imports: vec![(
+                "add".to_string(),
+                "math".to_string(),
+                ExternType::Function(FuncType {
+                    params: vec![ValueType::I32, ValueType::I32],
+                    results: vec![ValueType::I32],
+                }),
+            )],
+            exports: Vec::new(),
+            instances: Vec::new(),
+        };
+
+        let mut component = Component::new(component_type);
+
+        // Test instantiation with wrong number of imports
+        assert!(component.instantiate(vec![]).is_err());
+
+        // Test instantiation with wrong import type
+        let wrong_import = Import {
+            name: "add".to_string(),
+            ty: ExternType::Memory(MemoryType { min: 1, max: None }),
+            value: ExternValue::Memory(MemoryValue {
+                ty: MemoryType { min: 1, max: None },
+                memory: Memory::new(MemoryType { min: 1, max: None }),
+            }),
+        };
+        assert!(component.instantiate(vec![wrong_import]).is_err());
+    }
+
+    #[test]
+    fn test_component_function_calls() -> Result<()> {
+        let component_type = create_test_component_type();
+        let mut component = Component::new(component_type);
+        let import = create_test_import();
+        component.instantiate(vec![import])?;
+
+        // Test valid function call
+        let result = component.handle_function_call("multiply", &[Value::I32(5), Value::I32(3)])?;
+        assert_eq!(result, vec![Value::I32(42)]); // Default implementation returns 42
+
+        // Test function call with wrong number of arguments
+        assert!(component
+            .handle_function_call("multiply", &[Value::I32(5)])
+            .is_err());
+
+        // Test function call to non-existent function
+        assert!(component
+            .handle_function_call("nonexistent", &[Value::I32(5)])
+            .is_err());
+
+        // Test function call to non-function export
+        assert!(component
+            .handle_function_call("memory", &[Value::I32(5)])
+            .is_err());
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_host_function_management() -> Result<()> {
+        let mut host = Host::new();
+
+        // Add a host function
+        let func_value = FunctionValue {
+            ty: FuncType {
+                params: vec![ValueType::I32],
+                results: vec![ValueType::I32],
+            },
+            export_name: "increment".to_string(),
+        };
+        host.add_function("increment".to_string(), func_value);
+
+        // Test function retrieval
+        let retrieved_func = host.get_function("increment");
+        assert!(retrieved_func.is_some());
+        assert_eq!(retrieved_func.unwrap().export_name, "increment");
+
+        // Test nonexistent function
+        assert!(host.get_function("nonexistent").is_none());
+
+        // Test function call
+        let result = host.call_function("increment", &[Value::I32(5)])?;
+        assert_eq!(result, vec![Value::I32(42)]); // Default implementation returns 42
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_host_function_call_validation() {
+        let mut host = Host::new();
+
+        // Add a host function
+        let func_value = FunctionValue {
+            ty: FuncType {
+                params: vec![ValueType::I32, ValueType::I32],
+                results: vec![ValueType::I32],
+            },
+            export_name: "add".to_string(),
+        };
+        host.add_function("add".to_string(), func_value);
+
+        // Test call with wrong number of arguments
+        let result = host.call_function("add", &[Value::I32(5)]);
+        assert!(result.is_err());
+
+        // Test call to nonexistent function
+        let result = host.call_function("nonexistent", &[Value::I32(5)]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_export_mutation() -> Result<()> {
+        let component_type = create_test_component_type();
+        let mut component = Component::new(component_type);
+        let import = create_test_import();
+        component.instantiate(vec![import])?;
+
+        // Test mutable access to export
+        let export = component.get_export_mut("multiply")?;
+        assert_eq!(export.name, "multiply");
+
+        // Test mutable access to nonexistent export
+        assert!(component.get_export_mut("nonexistent").is_err());
+
+        Ok(())
+    }
+}
