@@ -42,44 +42,44 @@ pub use alloc::vec::{self, Vec};
 // Core WebAssembly modules
 
 /// Module for WebAssembly component model implementation
-mod component;
+pub mod component;
 
 /// Module for error definitions
-mod error;
+pub mod error;
 
 /// Module for WebAssembly execution environment
-mod execution;
+pub mod execution;
 
 /// Module for WebAssembly global variables
-mod global;
+pub mod global;
 
 /// Module for WebAssembly instructions
-mod instructions;
+pub mod instructions;
 
 /// Module for WebAssembly linear memory
-mod memory;
+pub mod memory;
 
 /// Module for WebAssembly module definitions
-mod module;
+pub mod module;
 
 /// Module for stackless WebAssembly execution
-mod stackless;
+pub mod stackless;
 
 /// Module for WebAssembly table
-mod table;
+pub mod table;
 
 /// Module for WebAssembly type definitions
-mod types;
+pub mod types;
 
 /// Module for WebAssembly runtime values
-mod values;
+pub mod values;
 
 /// Module for WebAssembly logging functionality
-mod logging;
+pub mod logging;
 
 /// Module for synchronization primitives in no_std environment
 #[cfg(not(feature = "std"))]
-mod sync;
+pub mod sync;
 
 // Public exports
 pub use component::{Component, Host, InstanceValue};
@@ -157,26 +157,315 @@ pub fn new_globals() -> Globals {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
 
     #[test]
-    fn it_works() {
-        let result = 2 + 2;
-        assert_eq!(result, 4);
+    fn test_version_constants() {
+        assert!(!CORE_VERSION.is_empty());
+        assert!(!COMPONENT_VERSION.is_empty());
     }
 
-    /// This test demonstrates how panics are reported
-    ///
-    /// ```
-    /// // This shows usage of the library and how to handle errors
-    /// use wrt::*;
-    /// let module = new_module();
-    /// // Always use error handling rather than unwrap to avoid panics
-    /// if let Err(e) = module.validate() {
-    ///     println!("Validation error: {}", e);
-    /// }
-    /// ```
     #[test]
-    fn test_panic_documentation() {
-        // This test doesn't actually do anything, it's just for the doc comment
+    fn test_engine_creation() {
+        let engine = new_engine();
+        assert!(engine.instances.is_empty());
+        assert_eq!(engine.remaining_fuel(), None);
+    }
+
+    #[test]
+    fn test_stackless_engine_creation() {
+        let engine = new_stackless_engine();
+        assert!(engine.instances.is_empty());
+        assert_eq!(engine.remaining_fuel(), None);
+    }
+
+    #[test]
+    fn test_module_creation() {
+        let module = new_module();
+        assert!(module.types.is_empty());
+        assert!(module.imports.is_empty());
+        assert!(module.exports.is_empty());
+        assert!(module.functions.is_empty());
+        assert!(module.tables.is_empty());
+        assert!(module.memories.is_empty());
+        assert!(module.globals.is_empty());
+    }
+
+    #[test]
+    fn test_memory_creation() {
+        let mem_type = MemoryType {
+            min: 1,
+            max: Some(2),
+        };
+        let memory = new_memory(mem_type.clone());
+        assert_eq!(memory.type_(), &mem_type);
+        assert_eq!(memory.size(), 1);
+    }
+
+    #[test]
+    fn test_table_creation() {
+        let table_type = TableType {
+            element_type: ValueType::FuncRef,
+            min: 1,
+            max: Some(10),
+        };
+        let table = new_table(table_type.clone());
+        assert_eq!(table.type_(), &table_type);
+        assert_eq!(table.size(), 1);
+    }
+
+    #[test]
+    fn test_global_creation() -> Result<()> {
+        let global_type = GlobalType {
+            content_type: ValueType::I32,
+            mutable: true,
+        };
+        let value = Value::I32(42);
+        let global = new_global(global_type.clone(), value.clone())?;
+        assert_eq!(global.type_(), &global_type);
+        assert_eq!(global.get(), value);
+        Ok(())
+    }
+
+    #[test]
+    fn test_globals_collection() {
+        let globals = new_globals();
+        assert!(globals.is_empty());
+        assert_eq!(globals.len(), 0);
+    }
+
+    #[test]
+    fn test_execute_add_i32() -> Result<()> {
+        // Create a module that adds two i32 numbers
+        let mut module = new_module();
+
+        // Add function type (i32, i32) -> i32
+        let func_type = FuncType {
+            params: vec![ValueType::I32, ValueType::I32],
+            results: vec![ValueType::I32],
+        };
+        module.types.push(func_type);
+
+        // Add function
+        let function = Function {
+            type_idx: 0,
+            locals: vec![],
+            body: vec![
+                Instruction::LocalGet(0), // Get first parameter
+                Instruction::LocalGet(1), // Get second parameter
+                Instruction::I32Add,      // Add them
+            ],
+        };
+        module.functions.push(function);
+
+        // Create engine and instantiate module
+        let mut engine = new_engine();
+        engine.instantiate(module)?;
+
+        // Execute the function with arguments 5 and 3
+        let args = vec![Value::I32(5), Value::I32(3)];
+        let results = engine.execute(0, 0, args)?;
+
+        // Check result
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0], Value::I32(8));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_execute_memory_ops() -> Result<()> {
+        // Create a module that writes to and reads from memory
+        let mut module = new_module();
+
+        // Add memory type (1 page)
+        module.memories.push(MemoryType {
+            min: 1,
+            max: Some(1),
+        });
+
+        // Add function type () -> i32
+        let func_type = FuncType {
+            params: vec![],
+            results: vec![ValueType::I32],
+        };
+        module.types.push(func_type);
+
+        // Add function that writes 42 to memory and reads it back
+        let function = Function {
+            type_idx: 0,
+            locals: vec![],
+            body: vec![
+                Instruction::I32Const(42),   // Value to write
+                Instruction::I32Const(0),    // Memory address
+                Instruction::I32Store(0, 0), // Store at address 0
+                Instruction::I32Const(0),    // Memory address for load
+                Instruction::I32Load(0, 0),  // Load from address 0
+            ],
+        };
+        module.functions.push(function);
+
+        // Create engine and instantiate module
+        let mut engine = new_engine();
+        engine.instantiate(module)?;
+
+        // Execute the function
+        let results = engine.execute(0, 0, vec![])?;
+
+        // Check result
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0], Value::I32(42));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_execute_if_else() -> Result<()> {
+        // Create a module with if/else control flow
+        let mut module = new_module();
+
+        // Add function type (i32) -> i32
+        let func_type = FuncType {
+            params: vec![ValueType::I32],
+            results: vec![ValueType::I32],
+        };
+        module.types.push(func_type);
+
+        // Add function that returns 1 if input > 0, else 0
+        let function = Function {
+            type_idx: 0,
+            locals: vec![],
+            body: vec![
+                Instruction::LocalGet(0),                         // Get parameter
+                Instruction::I32Const(0),                         // Push 0
+                Instruction::I32GtS,                              // Compare if param > 0
+                Instruction::If(BlockType::Type(ValueType::I32)), // Start if block with i32 result
+                Instruction::I32Const(1),                         // Push 1 (true case)
+                Instruction::Else,                                // Start else block
+                Instruction::I32Const(0),                         // Push 0 (false case)
+                Instruction::End,                                 // End if/else block
+            ],
+        };
+        module.functions.push(function);
+
+        // Create engine and instantiate module
+        let mut engine = new_stackless_engine();
+        engine.instantiate(module)?;
+
+        // Test with positive input
+        let results = engine.execute(0, 0, vec![Value::I32(5)])?;
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0], Value::I32(1));
+
+        // Test with negative input
+        let results = engine.execute(0, 0, vec![Value::I32(-5)])?;
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0], Value::I32(0));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_execute_function_call() -> Result<()> {
+        // Create a module with two functions that call each other
+        let mut module = new_module();
+
+        // Add function type (i32) -> i32
+        let func_type = FuncType {
+            params: vec![ValueType::I32],
+            results: vec![ValueType::I32],
+        };
+        module.types.push(func_type);
+
+        // Add function that doubles its input
+        let double_func = Function {
+            type_idx: 0,
+            locals: vec![],
+            body: vec![
+                Instruction::LocalGet(0), // Get parameter
+                Instruction::LocalGet(0), // Get parameter again
+                Instruction::I32Add,      // Add to itself
+            ],
+        };
+        module.functions.push(double_func);
+
+        // Add function that calls double and adds 1
+        let add_one_func = Function {
+            type_idx: 0,
+            locals: vec![],
+            body: vec![
+                Instruction::LocalGet(0), // Get parameter
+                Instruction::Call(0),     // Call double function
+                Instruction::I32Const(1), // Push 1
+                Instruction::I32Add,      // Add 1 to result
+            ],
+        };
+        module.functions.push(add_one_func);
+
+        // Create engine and instantiate module
+        let mut engine = new_engine();
+        engine.instantiate(module)?;
+
+        // Test double function
+        let results = engine.execute(0, 0, vec![Value::I32(5)])?;
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0], Value::I32(10));
+
+        // Test add_one function
+        let results = engine.execute(0, 1, vec![Value::I32(5)])?;
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0], Value::I32(11));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_stackless_execution() -> Result<()> {
+        // Create a module that adds two i32 numbers
+        let mut module = new_module();
+
+        // Add function type (i32, i32) -> i32
+        let func_type = FuncType {
+            params: vec![ValueType::I32, ValueType::I32],
+            results: vec![ValueType::I32],
+        };
+        module.types.push(func_type);
+
+        // Add function
+        let function = Function {
+            type_idx: 0,
+            locals: vec![],
+            body: vec![
+                Instruction::LocalGet(0), // Get first parameter
+                Instruction::LocalGet(1), // Get second parameter
+                Instruction::I32Add,      // Add them
+            ],
+        };
+        module.functions.push(function);
+
+        // Create stackless engine and instantiate module
+        let mut engine = new_stackless_engine();
+        let instance_idx = engine.instantiate(module)?;
+
+        // Set a fuel limit to demonstrate bounded execution
+        engine.set_fuel(Some(100));
+
+        // Execute the function with arguments 5 and 3
+        let args = vec![Value::I32(5), Value::I32(3)];
+        let results = engine.execute(instance_idx, 0, args)?;
+
+        // Check result
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0], Value::I32(8));
+
+        // Check that fuel was consumed
+        assert!(engine.remaining_fuel().unwrap() < 100);
+
+        // Check execution statistics
+        let stats = engine.stats();
+        assert!(stats.instructions_executed > 0);
+        assert!(stats.fuel_consumed > 0);
+
+        Ok(())
     }
 }
