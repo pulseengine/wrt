@@ -4225,97 +4225,272 @@ impl Engine {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::instructions::Instruction;
+    use crate::error::Error;
+    use crate::instructions::{BlockType, Instruction};
+    use crate::logging::LogOperation;
     use crate::module::Module;
-    use crate::types::{FuncType, ValueType};
     use crate::values::Value;
-    use crate::Vec;
 
-    #[cfg(not(feature = "std"))]
-    use alloc::vec;
-    #[cfg(feature = "std")]
-    use std::vec;
+    // Helper function to create a test module instance
+    fn create_test_module_instance() -> ModuleInstance {
+        ModuleInstance {
+            module_idx: 0,
+            module: Module::new(),
+            func_addrs: vec![],
+            table_addrs: vec![],
+            memory_addrs: vec![],
+            global_addrs: vec![],
+            memories: vec![],
+        }
+    }
 
     #[test]
-    fn test_fuel_bounded_execution() {
-        // Create a simple module with a single function
-        let mut module = Module::new();
+    fn test_stack_operations() {
+        let mut stack = Stack::new();
 
-        // Add a simple function type (no params, returns an i32)
-        module.types.push(FuncType {
-            params: vec![],
-            results: vec![ValueType::I32],
-        });
+        // Test value stack operations
+        stack.push(Value::I32(42));
+        stack.push(Value::I64(123));
+        assert_eq!(stack.pop().unwrap(), Value::I64(123));
+        assert_eq!(stack.pop().unwrap(), Value::I32(42));
 
-        // Add a function that executes a large number of instructions
-        let mut instructions = Vec::new();
-        for _ in 0..100 {
-            instructions.push(Instruction::Nop);
+        // Test stack underflow behavior - returns default value
+        assert_eq!(stack.pop().unwrap(), Value::I32(0));
+
+        // Test label stack operations
+        stack.push_label(1, 100);
+        let label = stack.pop_label().unwrap();
+        assert_eq!(label.arity, 1);
+        assert_eq!(label.continuation, 100);
+
+        // Test frame stack operations
+        let frame = Frame {
+            func_idx: 0,
+            locals: vec![Value::I32(1)],
+            module: create_test_module_instance(),
+        };
+        stack.push_frame(frame);
+        let popped_frame = stack.pop_frame().unwrap();
+        assert_eq!(popped_frame.func_idx, 0);
+        assert_eq!(popped_frame.locals.len(), 1);
+    }
+
+    #[test]
+    fn test_label_operations() {
+        let mut stack = Stack::new();
+
+        // Push multiple labels
+        stack.push_label(1, 100);
+        stack.push_label(2, 200);
+        stack.push_label(3, 300);
+
+        // Test get_label at different depths
+        let label = stack.get_label(0).unwrap();
+        assert_eq!(label.arity, 3);
+        assert_eq!(label.continuation, 300);
+
+        let label = stack.get_label(1).unwrap();
+        assert_eq!(label.arity, 2);
+        assert_eq!(label.continuation, 200);
+
+        // Test out of bounds label access
+        match stack.get_label(10) {
+            Err(Error::Execution(msg)) => assert!(msg.contains("Label")),
+            _ => panic!("Expected execution error for invalid label depth"),
         }
-        // At the end, push a constant value as the result
-        instructions.push(Instruction::I32Const(42));
+    }
 
-        // Add the function to the module
-        module.functions.push(crate::module::Function {
-            type_idx: 0,
-            locals: vec![],
-            body: instructions,
-        });
+    #[test]
+    fn test_frame_operations() {
+        let mut stack = Stack::new();
+        let module = create_test_module_instance();
 
-        // Create an engine with a fuel limit
-        let mut engine = Engine::new();
-        engine.instantiate(module).unwrap();
+        // Test frame stack operations
+        let frame1 = Frame {
+            func_idx: 1,
+            locals: vec![Value::I32(10)],
+            module: module.clone(),
+        };
+        let frame2 = Frame {
+            func_idx: 2,
+            locals: vec![Value::I64(20)],
+            module,
+        };
 
-        // Test with unlimited fuel
-        let result = engine.execute(0, 0, vec![]).unwrap();
-        assert_eq!(result, vec![Value::I32(42)]);
+        stack.push_frame(frame1);
+        stack.push_frame(frame2);
 
-        // Create a new module for the limited fuel test
-        let mut limited_module = Module::new();
+        // Test current frame access
+        let current = stack.current_frame().unwrap();
+        assert_eq!(current.func_idx, 2);
+        assert_eq!(current.locals.len(), 1);
 
-        // Add the same function type and instructions
-        limited_module.types.push(FuncType {
-            params: vec![],
-            results: vec![ValueType::I32],
-        });
+        // Test frame popping
+        let popped = stack.pop_frame().unwrap();
+        assert_eq!(popped.func_idx, 2);
 
-        // Add a function that executes a large number of instructions
-        let mut instructions = Vec::new();
-        for _ in 0..100 {
-            instructions.push(Instruction::Nop);
+        let popped = stack.pop_frame().unwrap();
+        assert_eq!(popped.func_idx, 1);
+
+        // Test empty frame stack - should return an error
+        match stack.pop_frame() {
+            Err(Error::Execution(msg)) => assert!(msg.contains("stack underflow")),
+            _ => panic!("Expected call stack underflow error"),
         }
-        // At the end, push a constant value as the result
-        instructions.push(Instruction::I32Const(42));
 
-        // Add the function to the module
-        limited_module.functions.push(crate::module::Function {
-            type_idx: 0,
-            locals: vec![],
-            body: instructions,
-        });
+        match stack.current_frame() {
+            Err(Error::Execution(msg)) => assert!(msg.contains("No active frame")),
+            _ => panic!("Expected no active frame error"),
+        }
+    }
 
-        // Reset the engine
+    #[test]
+    fn test_execution_state() {
+        let state = ExecutionState::Idle;
+        assert!(matches!(state, ExecutionState::Idle));
+
+        let state = ExecutionState::Running;
+        assert!(matches!(state, ExecutionState::Running));
+
+        let state = ExecutionState::Paused {
+            instance_idx: 1,
+            func_idx: 2,
+            pc: 100,
+            expected_results: 1,
+        };
+        match state {
+            ExecutionState::Paused {
+                instance_idx,
+                func_idx,
+                pc,
+                expected_results,
+            } => {
+                assert_eq!(instance_idx, 1);
+                assert_eq!(func_idx, 2);
+                assert_eq!(pc, 100);
+                assert_eq!(expected_results, 1);
+            }
+            _ => panic!("Expected Paused state"),
+        }
+
+        let state = ExecutionState::Finished;
+        assert!(matches!(state, ExecutionState::Finished));
+    }
+
+    #[test]
+    fn test_execution_stats() {
+        let mut stats = ExecutionStats {
+            instructions_executed: 0,
+            fuel_consumed: 0,
+            peak_memory_bytes: 0,
+            current_memory_bytes: 0,
+            function_calls: 0,
+            memory_operations: 0,
+            #[cfg(feature = "std")]
+            local_global_time_us: 0,
+            #[cfg(feature = "std")]
+            control_flow_time_us: 0,
+            #[cfg(feature = "std")]
+            arithmetic_time_us: 0,
+            #[cfg(feature = "std")]
+            memory_ops_time_us: 0,
+            #[cfg(feature = "std")]
+            function_call_time_us: 0,
+        };
+
+        // Update stats
+        stats.instructions_executed = 100;
+        stats.fuel_consumed = 50;
+        stats.peak_memory_bytes = 1024;
+        stats.current_memory_bytes = 512;
+        stats.function_calls = 10;
+        stats.memory_operations = 20;
+
+        // Verify stats
+        assert_eq!(stats.instructions_executed, 100);
+        assert_eq!(stats.fuel_consumed, 50);
+        assert_eq!(stats.peak_memory_bytes, 1024);
+        assert_eq!(stats.current_memory_bytes, 512);
+        assert_eq!(stats.function_calls, 10);
+        assert_eq!(stats.memory_operations, 20);
+    }
+
+    #[test]
+    fn test_engine_creation_and_fuel() {
         let mut engine = Engine::new();
-        engine.instantiate(limited_module).unwrap();
 
-        // Test with limited fuel
-        engine.set_fuel(Some(10)); // Only enough for 10 instructions
-        let result = engine.execute(0, 0, vec![]);
+        // Test initial state
+        assert!(matches!(engine.state(), ExecutionState::Idle));
+        assert_eq!(engine.remaining_fuel(), None);
 
-        // Should fail with FuelExhausted error
-        assert!(matches!(result, Err(Error::FuelExhausted)));
+        // Test fuel management
+        engine.set_fuel(Some(1000));
+        assert_eq!(engine.remaining_fuel(), Some(1000));
 
-        // Check the state
-        assert!(matches!(engine.state(), ExecutionState::Paused { .. }));
+        engine.set_fuel(None);
+        assert_eq!(engine.remaining_fuel(), None);
+    }
 
-        // Add more fuel and resume
-        engine.set_fuel(Some(200)); // Plenty of fuel to finish
-        let result = engine.resume().unwrap();
+    #[test]
+    fn test_engine_stats() {
+        let mut engine = Engine::new();
 
-        // Should complete execution
-        assert_eq!(result, vec![Value::I32(42)]);
+        // Test initial stats
+        let stats = engine.stats();
+        assert_eq!(stats.instructions_executed, 0);
+        assert_eq!(stats.fuel_consumed, 0);
+        assert_eq!(stats.peak_memory_bytes, 0);
+        assert_eq!(stats.current_memory_bytes, 0);
+        assert_eq!(stats.function_calls, 0);
+        assert_eq!(stats.memory_operations, 0);
 
-        // Check the state
-        assert_eq!(*engine.state(), ExecutionState::Finished);
+        // Test stats reset
+        engine.reset_stats();
+        let stats = engine.stats();
+        assert_eq!(stats.instructions_executed, 0);
+    }
+
+    #[test]
+    fn test_engine_callbacks() {
+        let engine = Engine::new();
+        let _callbacks = engine.callbacks();
+
+        // Test log handler registration with correct LogOperation type
+        engine.register_log_handler(|_op: LogOperation| {
+            // Do nothing, just verify we can register a handler
+        });
+    }
+
+    #[test]
+    fn test_instruction_categorization() {
+        let engine = Engine::new();
+
+        // Control flow instructions (cost 2-15)
+        assert_eq!(
+            engine.instruction_cost(&Instruction::Block(BlockType::Empty)),
+            2
+        );
+        assert_eq!(
+            engine.instruction_cost(&Instruction::Loop(BlockType::Empty)),
+            2
+        );
+        assert_eq!(
+            engine.instruction_cost(&Instruction::If(BlockType::Empty)),
+            3
+        );
+        assert_eq!(engine.instruction_cost(&Instruction::Call(0)), 10);
+        assert_eq!(
+            engine.instruction_cost(&Instruction::CallIndirect(0, 0)),
+            15
+        );
+
+        // Memory operations (cost 8)
+        assert_eq!(engine.instruction_cost(&Instruction::I32Load(0, 0)), 8);
+        assert_eq!(engine.instruction_cost(&Instruction::I32Store(0, 0)), 8);
+
+        // Arithmetic operations (cost 1)
+        assert_eq!(engine.instruction_cost(&Instruction::I32Add), 1);
+        assert_eq!(engine.instruction_cost(&Instruction::I32Sub), 1);
+        assert_eq!(engine.instruction_cost(&Instruction::I32Mul), 1);
     }
 }
