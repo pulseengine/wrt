@@ -7,10 +7,10 @@ description = "WebAssembly Runtime Daemon"
 
 [dependencies]
 wrt = { path = "../wrt", features = ["std"] }
-tracing = { workspace = true }
-tracing-subscriber = { workspace = true, features = ["json"] }
-anyhow = { workspace = true }
 clap = { version = "4.5.32", features = ["derive"] }
+tracing = "0.1"
+tracing-subscriber = { version= "0.3", features = ["json"]}
+anyhow = "1.0"
 
 [lints.rust]
 unexpected_cfgs = { level = "allow", check-cfg = ['cfg(test)'] }
