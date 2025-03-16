@@ -418,6 +418,7 @@ pub struct ExecutionStats {
 }
 
 /// Categorization of WebAssembly instructions for statistics
+#[allow(dead_code)]
 pub enum InstructionCategory {
     /// Local and global operations
     LocalGlobal,
@@ -468,6 +469,7 @@ impl CallbackRegistry {
     }
 
     /// Calls the logging callback if registered
+    #[allow(dead_code)]
     pub fn log(&self, operation: crate::logging::LogOperation) {
         if let Some(callback) = &self.log_callback {
             callback(operation);
@@ -935,7 +937,7 @@ impl StacklessEngine {
 
         // Then come the function's local variables
         for local in &func.locals {
-            locals.push(Value::default_for_type(&local));
+            locals.push(Value::default_for_type(local));
         }
 
         // Create the frame
