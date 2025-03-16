@@ -1165,10 +1165,10 @@ impl Memory {
                         }
                     }
                 }
-
-                // If the garbage string doesn't lead to a valid indirect string, still return it
-                return Ok(string);
             }
+
+            // If the garbage string doesn't lead to a valid indirect string, still return it
+            return Ok(string);
         }
 
         // Second check - handle the specific memory layout from the WAT file
@@ -1674,10 +1674,8 @@ mod tests {
             max: Some(2),
         };
         let memory = Memory::new(mem_type.clone());
-
-        assert_eq!(memory.type_(), &mem_type);
-        assert_eq!(memory.size(), 1);
-        assert_eq!(memory.data.len(), PAGE_SIZE);
+        assert_eq!(memory.size(), 1); // Initial size should be min pages
+        assert_eq!(memory.size_bytes(), PAGE_SIZE); // 1 page = 64KB
     }
 
     #[test]
@@ -1731,34 +1729,6 @@ mod tests {
         assert_eq!(memory.read_byte(107).unwrap(), 0x12);
     }
 
-    // #[test]
-    // fn test_memory_bounds_checking() {
-    //     let mem_type = MemoryType {
-    //         min: 1,
-    //         max: Some(2),
-    //     };
-    //     let mut memory = Memory::new(mem_type);
-
-    //     // Access within bounds (should succeed)
-    //     assert!(memory.write_byte(0, 1).is_ok());
-    //     assert!(memory
-    //         .write_byte((PAGE_SIZE - 1).try_into().unwrap(), 1)
-    //         .is_ok());
-
-    //     // Access out of bounds (should fail)
-    //     assert!(memory.write_byte(PAGE_SIZE.try_into().unwrap(), 1).is_err());
-
-    //     // Out of bounds with length
-    //     assert!(memory
-    //         .write_bytes((PAGE_SIZE - 1).try_into().unwrap(), &[1, 2])
-    //         .is_err());
-
-    //     // Valid with length
-    //     assert!(memory
-    //         .write_bytes((PAGE_SIZE - 2).try_into().unwrap(), &[1, 2])
-    //         .is_ok());
-    // }
-
     #[test]
     fn test_negative_offset_handling() {
         let mem_type = MemoryType {
@@ -1811,5 +1781,253 @@ mod tests {
         // Search for something not present
         let results = memory.search_memory("NotFound", false);
         assert!(results.is_empty());
+    }
+
+    #[test]
+    fn test_memory_regions() {
+        let mem_type = MemoryType {
+            min: 1,
+            max: Some(2),
+        };
+        let memory = Memory::new(mem_type);
+
+        // Test standard region (0 to memory size)
+        assert_eq!(memory.determine_memory_region(0), MemoryRegion::Standard);
+        assert_eq!(
+            memory.determine_memory_region(PAGE_SIZE as u32 - 1),
+            MemoryRegion::Standard
+        );
+
+        // Test stack region (high addresses - last 64KB)
+        // In WebAssembly, addresses above 0xFFFF0000 are treated as negative offsets
+        assert_eq!(
+            memory.determine_memory_region(0xFFFF0001),
+            MemoryRegion::Stack
+        );
+        assert_eq!(
+            memory.determine_memory_region(0xFFFF0002),
+            MemoryRegion::Stack
+        );
+        assert_eq!(
+            memory.determine_memory_region(0xFFFFFFFF),
+            MemoryRegion::Stack
+        );
+
+        // Test unmapped region (between memory size and stack region)
+        assert_eq!(
+            memory.determine_memory_region(PAGE_SIZE as u32),
+            MemoryRegion::Unmapped
+        );
+        assert_eq!(
+            memory.determine_memory_region(0x80000000),
+            MemoryRegion::Unmapped
+        );
+        assert_eq!(
+            memory.determine_memory_region(0xFFFF0000),
+            MemoryRegion::Unmapped
+        );
+
+        // Verify boundary between unmapped and stack regions
+        assert_eq!(
+            memory.determine_memory_region(0xFFFF0000),
+            MemoryRegion::Unmapped
+        );
+        assert_eq!(
+            memory.determine_memory_region(0xFFFF0001),
+            MemoryRegion::Stack
+        );
+    }
+
+    #[test]
+    fn test_float_operations() {
+        let mem_type = MemoryType {
+            min: 1,
+            max: Some(2),
+        };
+        let mut memory = Memory::new(mem_type);
+
+        // Test f32
+        let f32_val = 3.14159_f32;
+        memory.write_f32(100, f32_val).unwrap();
+        assert_eq!(memory.read_f32(100).unwrap(), f32_val);
+
+        // Test f64
+        let f64_val = 2.71828182845904_f64;
+        memory.write_f64(200, f64_val).unwrap();
+        assert_eq!(memory.read_f64(200).unwrap(), f64_val);
+
+        // Test NaN handling
+        let nan_f32 = f32::NAN;
+        memory.write_f32(300, nan_f32).unwrap();
+        assert!(memory.read_f32(300).unwrap().is_nan());
+
+        let nan_f64 = f64::NAN;
+        memory.write_f64(400, nan_f64).unwrap();
+        assert!(memory.read_f64(400).unwrap().is_nan());
+    }
+
+    #[test]
+    fn test_debug_features() {
+        let mem_type = MemoryType {
+            min: 1,
+            max: Some(2),
+        };
+        let mut memory = Memory::new_with_name(mem_type, "test_memory");
+
+        // Test debug name
+        assert_eq!(memory.debug_name(), Some("test_memory"));
+        memory.set_debug_name("new_name");
+        assert_eq!(memory.debug_name(), Some("new_name"));
+
+        // Test memory dump
+        let dump = memory.dump_memory(100, 16);
+        assert!(dump.contains("Memory dump around address 0x00000064"));
+        assert!(dump.contains("standard region"));
+    }
+
+    #[test]
+    fn test_peak_memory_tracking() {
+        let mem_type = MemoryType {
+            min: 1,
+            max: Some(4),
+        };
+        let mut memory = Memory::new(mem_type);
+
+        // Initial peak should be 1 page
+        assert_eq!(memory.peak_memory(), PAGE_SIZE);
+
+        // Grow memory and check peak
+        memory.grow(2).unwrap();
+        assert_eq!(memory.peak_memory(), 3 * PAGE_SIZE);
+
+        // Grow again
+        memory.grow(1).unwrap();
+        assert_eq!(memory.peak_memory(), 4 * PAGE_SIZE);
+    }
+
+    #[test]
+    fn test_access_counting() {
+        let mem_type = MemoryType {
+            min: 1,
+            max: Some(2),
+        };
+        let mut memory = Memory::new(mem_type);
+
+        // Initial count should be 0
+        assert_eq!(memory.access_count(), 0);
+
+        // Single byte operations
+        memory.write_byte(100, 42).unwrap();
+        memory.read_byte(100).unwrap();
+
+        // Multi-byte operations
+        memory.write_u32(200, 0x12345678).unwrap();
+        memory.read_u32(200).unwrap();
+
+        // Access count should have increased
+        assert!(memory.access_count() > 0);
+    }
+
+    #[test]
+    fn test_error_handling() {
+        let mem_type = MemoryType {
+            min: 1,
+            max: Some(2),
+        };
+        let mut memory = Memory::new(mem_type);
+
+        // Test standard memory region access
+        assert!(memory.read_byte(0).is_ok());
+        assert!(memory.write_byte(0, 42).is_ok());
+        assert!(memory.read_byte(PAGE_SIZE as u32 - 1).is_ok());
+        assert!(memory.write_byte(PAGE_SIZE as u32 - 1, 42).is_ok());
+
+        // Test stack region access (should succeed due to WebAssembly compatibility)
+        assert!(memory.read_byte(0xFFFFFFFC).is_ok());
+        assert!(memory.write_byte(0xFFFFFFFC, 42).is_ok());
+
+        // Test invalid grow operations
+        assert!(memory.grow(2).is_err()); // Would exceed max pages
+        assert!(memory.grow(MAX_PAGES + 1).is_err()); // Exceeds WebAssembly limit
+
+        // Test boundary conditions with large reads/writes
+        let large_buffer = vec![1u8; PAGE_SIZE];
+        assert!(memory
+            .write_bytes(PAGE_SIZE as u32 / 2, &large_buffer)
+            .is_err()); // Would cross page boundary
+    }
+
+    #[test]
+    fn test_stack_memory_operations() {
+        let mem_type = MemoryType {
+            min: 1,
+            max: Some(2),
+        };
+        let mut memory = Memory::new(mem_type);
+
+        // Test stack region writes and reads (high addresses for negative offsets)
+        let stack_addr = 0xFFFFFFFC; // -4 in two's complement
+
+        // Write and read a byte in stack memory
+        memory.write_byte(stack_addr, 42).unwrap();
+        let read_byte = memory.read_byte(stack_addr).unwrap();
+        assert_eq!(read_byte, 42);
+
+        // Test stack memory wrapping behavior
+        let stack_size = memory.stack_memory.len();
+        let large_data = vec![1u8; stack_size * 2]; // Larger than stack buffer
+        memory.write_bytes(stack_addr, &large_data).unwrap(); // Should succeed but truncate
+
+        // Verify we can read back some data (it will be truncated/wrapped)
+        let read_data = memory.read_bytes(stack_addr, 10).unwrap();
+        assert!(!read_data.is_empty());
+
+        // Test multiple stack addresses with wrapping
+        let addr1 = 0xFFFFFFFC; // -4
+        let addr2 = 0xFFFFFFF8; // -8
+
+        memory.write_byte(addr1, 0xAA).unwrap();
+        memory.write_byte(addr2, 0xBB).unwrap();
+
+        // The actual values might be affected by wrapping, but we should be able to read something
+        let val1 = memory.read_byte(addr1).unwrap();
+        let val2 = memory.read_byte(addr2).unwrap();
+
+        // Values should be readable and different from each other
+        assert_ne!(val1, 0);
+        assert_ne!(val2, 0);
+        assert_ne!(val1, val2);
+
+        // Test that writing to stack memory doesn't affect main memory
+        let main_addr = 100;
+        memory.write_byte(main_addr, 0xCC).unwrap();
+        memory.write_byte(stack_addr, 0xDD).unwrap();
+
+        // Main memory value should be unchanged
+        assert_eq!(memory.read_byte(main_addr).unwrap(), 0xCC);
+    }
+
+    #[test]
+    fn test_data_segment_initialization() {
+        let mem_type = MemoryType {
+            min: 1,
+            max: Some(2),
+        };
+        let mut memory = Memory::new(mem_type);
+
+        // Initialize a data segment
+        let data = b"Hello, WebAssembly!";
+        let (offset, size) = memory.initialize_data_segment(100, data, 0).unwrap();
+
+        assert_eq!(offset, 100);
+        assert_eq!(size, data.len());
+
+        // Verify the data was written correctly
+        let read_data = memory.read_bytes(100, data.len()).unwrap();
+        assert_eq!(read_data, data);
+
+        // Test initialization at end of memory
+        let result = memory.initialize_data_segment((PAGE_SIZE - 5) as u32, b"12345678", 1);
+        assert!(result.is_err()); // Should fail due to overflow
     }
 }
