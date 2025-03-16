@@ -37,8 +37,8 @@ jobs:
       - name: Setup Rust and build API docs
         uses: actions-rs/toolchain@v1
         with:
-          profile: nightly
-          toolchain: stable
+          profile: minimal
+          toolchain: nightly
           override: true
 
       - name: Check if just is available
