@@ -458,6 +458,8 @@ impl Module {
 
     /// Validates the module according to the WebAssembly specification
     pub fn validate(&self) -> Result<()> {
+        // Empty modules are valid in WebAssembly
+
         // Validate types - only check if we have functions
         if !self.functions.is_empty() && self.types.is_empty() {
             return Err(Error::Validation(
@@ -2157,4 +2159,264 @@ fn parse_data_section(module: &mut Module, bytes: &[u8]) -> Result<()> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::instructions::Instruction;
+
+    #[test]
+    fn test_module_creation() {
+        let module = Module::new();
+        // A new module starts with empty imports and exports
+        assert!(module.imports.is_empty());
+        assert!(module.exports.is_empty());
+    }
+
+    #[test]
+    fn test_module_imports() {
+        let mut module = Module::new();
+
+        // Add a function type
+        let func_type = FuncType {
+            params: vec![ValueType::I32, ValueType::I32],
+            results: vec![ValueType::I32],
+        };
+        module.types.push(func_type.clone());
+
+        // Add function import
+        let import = Import {
+            module: "math".to_string(),
+            name: "add".to_string(),
+            ty: ExternType::Function(func_type),
+        };
+        module.imports.push(import);
+
+        // Add memory import
+        let memory_import = Import {
+            module: "env".to_string(),
+            name: "memory".to_string(),
+            ty: ExternType::Memory(MemoryType {
+                min: 1,
+                max: Some(2),
+            }),
+        };
+        module.imports.push(memory_import);
+
+        // Validate
+        assert_eq!(module.imports.len(), 2);
+        assert_eq!(module.imports[0].module, "math");
+        assert_eq!(module.imports[0].name, "add");
+        assert_eq!(module.imports[1].module, "env");
+        assert_eq!(module.imports[1].name, "memory");
+    }
+
+    #[test]
+    fn test_module_exports() {
+        let mut module = Module::new();
+
+        // Add exports
+        module.exports.push(Export {
+            name: "add".to_string(),
+            kind: ExportKind::Function,
+            index: 0,
+        });
+
+        module.exports.push(Export {
+            name: "memory".to_string(),
+            kind: ExportKind::Memory,
+            index: 0,
+        });
+
+        // Validate
+        assert_eq!(module.exports.len(), 2);
+        assert_eq!(module.exports[0].name, "add");
+        assert_eq!(module.exports[0].kind, ExportKind::Function);
+        assert_eq!(module.exports[1].name, "memory");
+        assert_eq!(module.exports[1].kind, ExportKind::Memory);
+    }
+
+    #[test]
+    fn test_module_functions() {
+        let mut module = Module::new();
+
+        // Add a function type
+        let func_type = FuncType {
+            params: vec![ValueType::I32, ValueType::I32],
+            results: vec![ValueType::I32],
+        };
+        module.types.push(func_type);
+
+        // Add a function
+        let function = Function {
+            type_idx: 0,
+            locals: vec![ValueType::I32],
+            body: vec![
+                Instruction::LocalGet(0),
+                Instruction::LocalGet(1),
+                Instruction::I32Add,
+            ],
+        };
+        module.functions.push(function);
+
+        // Validate
+        assert_eq!(module.functions.len(), 1);
+        assert_eq!(module.functions[0].type_idx, 0);
+        assert_eq!(module.functions[0].locals.len(), 1);
+        assert_eq!(module.functions[0].body.len(), 3);
+    }
+
+    #[test]
+    fn test_module_memory() {
+        let mut module = Module::new();
+
+        // Add memory
+        let memory_type = MemoryType {
+            min: 1,
+            max: Some(2),
+        };
+        module.memories.push(memory_type);
+
+        // Add data segment
+        let data = Data {
+            memory_idx: 0,
+            offset: vec![Instruction::I32Const(0)],
+            init: vec![1, 2, 3, 4],
+        };
+        module.data.push(data);
+
+        // Validate
+        assert_eq!(module.memories.len(), 1);
+        assert_eq!(module.memories[0].min, 1);
+        assert_eq!(module.memories[0].max, Some(2));
+        assert_eq!(module.data.len(), 1);
+        assert_eq!(module.data[0].init, vec![1, 2, 3, 4]);
+    }
+
+    #[test]
+    fn test_module_tables() {
+        let mut module = Module::new();
+
+        // Add table
+        let table_type = TableType {
+            element_type: ValueType::FuncRef,
+            min: 1,
+            max: Some(10),
+        };
+        module.tables.push(table_type);
+
+        // Add element segment
+        let element = Element {
+            table_idx: 0,
+            offset: vec![Instruction::I32Const(0)],
+            init: vec![0, 1, 2],
+        };
+        module.elements.push(element);
+
+        // Validate
+        assert_eq!(module.tables.len(), 1);
+        assert_eq!(module.tables[0].element_type, ValueType::FuncRef);
+        assert_eq!(module.elements.len(), 1);
+        assert_eq!(module.elements[0].init, vec![0, 1, 2]);
+    }
+
+    #[test]
+    fn test_module_validation() {
+        let mut module = Module::new();
+
+        // Empty module should be valid according to the WebAssembly spec
+        assert!(module.validate().is_ok());
+
+        // Add a function with invalid type index (no types defined)
+        let invalid_function = Function {
+            type_idx: 0, // Invalid because no types exist
+            locals: vec![],
+            body: vec![],
+        };
+        module.functions.push(invalid_function);
+
+        // Should fail validation due to missing type
+        assert!(module.validate().is_err());
+
+        // Add a function type
+        let func_type = FuncType {
+            params: vec![ValueType::I32],
+            results: vec![ValueType::I32],
+        };
+        module.types.push(func_type.clone());
+
+        // Should now pass validation since type exists
+        assert!(module.validate().is_ok());
+
+        // Add a function with invalid type index
+        module.functions.push(Function {
+            type_idx: 1, // Invalid index
+            locals: vec![],
+            body: vec![],
+        });
+
+        // Should fail validation due to invalid type index
+        assert!(module.validate().is_err());
+    }
+
+    #[test]
+    fn test_module_binary_loading() {
+        let module = Module::new();
+
+        // Test invalid binary (too short)
+        let result = module.load_from_binary(&[0, 1, 2]);
+        assert!(result.is_err());
+
+        // Test invalid magic number
+        let result = module.load_from_binary(&[1, 2, 3, 4, 0, 0, 0, 0]);
+        assert!(result.is_err());
+
+        // Test invalid version
+        let result = module.load_from_binary(&[0x00, 0x61, 0x73, 0x6D, 0x02, 0x00, 0x00, 0x00]);
+        assert!(result.is_err());
+
+        // Test minimal valid module (magic + version only)
+        let result = module.load_from_binary(&[
+            0x00, 0x61, 0x73, 0x6D, // magic
+            0x01, 0x00, 0x00, 0x00, // version
+        ]);
+        assert!(result.is_err()); // Should fail because no functions/imports
+    }
+
+    #[test]
+    fn test_component_model_support() {
+        let module = Module::new();
+
+        // Test component model version detection
+        let result = module.load_from_binary(&[
+            0x00, 0x61, 0x73, 0x6D, // magic
+            0x0D, 0x00, 0x01, 0x00, // component model version
+        ]);
+        assert!(result.is_err()); // Should fail because no core module found
+
+        // Test invalid component version
+        let result = module.load_from_binary(&[
+            0x00, 0x61, 0x73, 0x6D, // magic
+            0x0D, 0x00, 0x02, 0x00, // invalid version
+        ]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_custom_sections() {
+        let mut module = Module::new();
+
+        // Add custom section
+        let custom_section = CustomSection {
+            name: "name".to_string(),
+            data: vec![1, 2, 3],
+        };
+        module.custom_sections.push(custom_section);
+
+        // Validate
+        assert_eq!(module.custom_sections.len(), 1);
+        assert_eq!(module.custom_sections[0].name, "name");
+        assert_eq!(module.custom_sections[0].data, vec![1, 2, 3]);
+    }
 }
