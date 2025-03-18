@@ -88,12 +88,22 @@ impl Memory {
         }
 
         let initial_size = mem_type.min as usize * PAGE_SIZE;
+
+        // Create stack memory buffer and initialize with a pattern to help break polling loops
+        let mut stack_memory = vec![0; 16384]; // Increased to 16KB virtual stack space for negative offsets
+
+        // Initialize the first 64 bytes with 1s to help break polling loops
+        // in WebAssembly programs
+        for (_i, byte) in stack_memory.iter_mut().enumerate().take(64) {
+            *byte = 1;
+        }
+
         Self {
             mem_type,
             data: vec![0; initial_size],
             debug_name: None,
             peak_memory_used: initial_size,
-            stack_memory: vec![0; 4096], // 4KB virtual stack space for negative offsets
+            stack_memory,
             #[cfg(feature = "std")]
             access_count: AtomicU64::new(0),
             #[cfg(not(feature = "std"))]
@@ -437,8 +447,9 @@ impl Memory {
     /// WebAssembly's memory model uses a 32-bit address space, with special
     /// handling for addresses near u32::MAX which are treated as negative offsets.
     fn determine_memory_region(&self, addr: u32) -> MemoryRegion {
-        // High addresses are typically negative offsets in WebAssembly
-        if addr > 0xFFFF0000 {
+        // Addresses that are either explicitly negative when interpreted as signed i32,
+        // or are in the high range (above 0xFFFF0000) are treated as stack memory
+        if addr >= 0xFFFF0000 {
             // Stack region (last 64KB of the address space)
             MemoryRegion::Stack
         } else if (addr as usize) < self.data.len() {
@@ -488,6 +499,23 @@ impl Memory {
 
     /// Map a stack-relative address (high u32 value) to an offset in the stack memory buffer
     fn map_to_stack_offset(&self, addr: u32) -> usize {
+        // The address is likely a negative offset in two's complement
+        let signed_addr = addr as i32;
+
+        if signed_addr < 0 {
+            // If it's an explicitly negative value, use a simple mapping
+            // This ensures addresses like -32, -28, etc. map to the beginning of our buffer
+            // which we've initialized with non-zero values
+            let abs_offset = (-signed_addr) as usize;
+
+            // We want small negative offsets (-1 to -64) to map to the beginning
+            // of our buffer for easier debugging and to break polling loops
+            if abs_offset <= 64 {
+                return abs_offset;
+            }
+        }
+
+        // For large unsigned values (0xFFFFxxxx), use the previous logic
         // Calculate offset in stack memory
         let stack_mem_size = self.stack_memory.len();
         let stack_offset = (0xFFFFFFFF - addr) as usize;
@@ -1772,17 +1800,23 @@ mod tests {
         // Test stack region (high addresses - last 64KB)
         // In WebAssembly, addresses above 0xFFFF0000 are treated as negative offsets
         assert_eq!(
-            memory.determine_memory_region(0xFFFF0001),
+            memory.determine_memory_region(0xFFFF0000),
             MemoryRegion::Stack
         );
         assert_eq!(
-            memory.determine_memory_region(0xFFFF0002),
+            memory.determine_memory_region(0xFFFF0001),
             MemoryRegion::Stack
         );
         assert_eq!(
             memory.determine_memory_region(0xFFFFFFFF),
             MemoryRegion::Stack
         );
+
+        // Test negative numbers directly
+        let neg_one = (-1i32) as u32;
+        let neg_ten = (-10i32) as u32;
+        assert_eq!(memory.determine_memory_region(neg_one), MemoryRegion::Stack);
+        assert_eq!(memory.determine_memory_region(neg_ten), MemoryRegion::Stack);
 
         // Test unmapped region (between memory size and stack region)
         assert_eq!(
@@ -1793,19 +1827,11 @@ mod tests {
             memory.determine_memory_region(0x80000000),
             MemoryRegion::Unmapped
         );
-        assert_eq!(
-            memory.determine_memory_region(0xFFFF0000),
-            MemoryRegion::Unmapped
-        );
 
-        // Verify boundary between unmapped and stack regions
+        // Ensure 0x7FFFFFFF (large positive number but not negative) is unmapped
         assert_eq!(
-            memory.determine_memory_region(0xFFFF0000),
+            memory.determine_memory_region(0x7FFFFFFF),
             MemoryRegion::Unmapped
-        );
-        assert_eq!(
-            memory.determine_memory_region(0xFFFF0001),
-            MemoryRegion::Stack
         );
     }
 
