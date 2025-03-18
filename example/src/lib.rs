@@ -30,23 +30,23 @@ impl exports::example::hello::example::Guest for HelloComponent {
             "TEST_MESSAGE: This is a test message from the component",
         );
 
-        let count = 0;
-        // let mut count = 0;
+        //let count = 0;
+        let mut count = 0;
 
-        // // Loop for 5 iterations, logging each step
-        // for i in 0..5 {
-        //     count += 1;
+        // Loop for 5 iterations, logging each step
+        for i in 0..5 {
+            count += 1;
 
-        //     // Add some operations to consume more fuel
-        //     let mut _sum = 0;
-        //     for j in 0..i {
-        //         _sum += j;
-        //     }
-        // }
+            // Add some operations to consume more fuel
+            let mut _sum = 0;
+            for j in 0..i {
+                _sum += j;
+            }
+        }
 
-        // // Log completion message
-        // let final_message = format!("Completed {} iterations", count);
-        // logging::log(logging::Level::Info, "example", &final_message);
+        // Log completion message
+        let final_message = format!("Completed {} iterations", count);
+        logging::log(logging::Level::Info, "example", &final_message);
         logging::log(
             logging::Level::Info,
             "end",

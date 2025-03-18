@@ -167,6 +167,8 @@ pub fn new_globals() -> Globals {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(not(feature = "std"))]
+    use alloc::vec;
 
     #[test]
     fn test_version_constants() {

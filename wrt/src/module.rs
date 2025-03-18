@@ -2164,6 +2164,10 @@ fn parse_data_section(module: &mut Module, bytes: &[u8]) -> Result<()> {
 mod tests {
     use super::*;
     use crate::instructions::Instruction;
+    #[cfg(not(feature = "std"))]
+    use alloc::format;
+    #[cfg(not(feature = "std"))]
+    use alloc::string::ToString;
 
     #[test]
     fn test_module_creation() {

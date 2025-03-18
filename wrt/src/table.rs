@@ -129,6 +129,8 @@ impl Table {
 mod tests {
     use super::*;
     use crate::values::Value;
+    #[cfg(not(feature = "std"))]
+    use alloc::vec;
 
     fn create_test_table_type(min: u32, max: Option<u32>) -> TableType {
         TableType {

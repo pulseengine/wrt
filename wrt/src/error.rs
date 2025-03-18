@@ -1,6 +1,9 @@
 use crate::String;
 use std::fmt;
 
+#[cfg(not(feature = "std"))]
+use alloc::string::ToString;
+
 /// Represents errors that can occur in the WebAssembly runtime.
 ///
 /// This enum covers the various categories of errors that can occur during WebAssembly
@@ -83,6 +86,10 @@ pub type Result<T> = std::result::Result<T, Error>;
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(not(feature = "std"))]
+    use alloc::format;
+    #[cfg(not(feature = "std"))]
+    use alloc::string::ToString;
 
     #[test]
     fn test_error_creation() {
