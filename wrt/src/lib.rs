@@ -41,6 +41,15 @@ pub use alloc::vec::{self, Vec};
 
 // Core WebAssembly modules
 
+/// Macro for debugging print statements that only compile with the "std" feature
+#[macro_export]
+macro_rules! debug_println {
+    ($($arg:tt)*) => {
+        #[cfg(feature = "std")]
+        eprintln!($($arg)*);
+    }
+}
+
 /// Module for WebAssembly component model implementation
 pub mod component;
 

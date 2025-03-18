@@ -469,8 +469,16 @@ impl Memory {
                 }
             }
             MemoryRegion::Unmapped => {
-                // Return error for unmapped memory
-                Err(Error::Execution("Memory access out of bounds".into()))
+                // This should never happen if check_bounds is working correctly
+                #[cfg(feature = "std")]
+                if let Ok(var) = std::env::var("WRT_DEBUG_MEMORY") {
+                    if var == "1" {
+                        debug_println!("WARNING: Unmapped memory read at {:#x}, returning 0", addr);
+                    }
+                }
+
+                // Return 0 for unmapped memory to match WebAssembly behavior
+                Ok(0)
             }
         }
     }
@@ -1094,80 +1102,18 @@ impl Memory {
 
             // Check if this is a "garbage" string (containing mostly control chars)
             let printable_chars = string.chars().filter(|&c| (' '..='~').contains(&c)).count();
-            if printable_chars > 0 && (printable_chars as f32 / string.len() as f32) > 0.5 {
-                return Ok(string);
-            } else {
-                // This might be a pointer to a string pointer
-                // Try to dereference the pointer by treating it as a u32 offset
-                #[cfg(feature = "std")]
-                if let Ok(var) = std::env::var("WRT_DEBUG_MEMORY") {
-                    if var == "1" {
-                        eprintln!(
-                            "String at {:#x} looked like garbage, trying to dereference...",
-                            ptr
-                        );
-                    }
-                }
+            let total_chars = string.chars().count();
 
-                if bytes.len() >= 4 && len >= 4 {
-                    let possible_ptr = u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]);
-
-                    // Check if the possible_ptr is in the likely valid range
-                    if possible_ptr > 0 && possible_ptr < 10 * 1024 * 1024 {
-                        #[cfg(feature = "std")]
-                        if let Ok(var) = std::env::var("WRT_DEBUG_MEMORY") {
-                            if var == "1" {
-                                eprintln!("Found potential indirect pointer: {:#x}", possible_ptr);
-                            }
-                        }
-
-                        // Try to read a string at this new pointer location
-                        // Assume a reasonable string length (we can also read a u32 length from bytes[4..8])
-                        let indirect_len = if bytes.len() >= 8 {
-                            u32::from_le_bytes([bytes[4], bytes[5], bytes[6], bytes[7]])
-                        } else {
-                            64 // default length
-                        };
-
-                        // Validate the length is reasonable
-                        let use_len = if indirect_len < 1024 {
-                            indirect_len
-                        } else {
-                            64
-                        };
-
-                        if let Ok(indirect_bytes) = self.read_bytes(possible_ptr, use_len as usize)
-                        {
-                            let indirect_string =
-                                String::from_utf8_lossy(indirect_bytes).into_owned();
-
-                            #[cfg(feature = "std")]
-                            if let Ok(var) = std::env::var("WRT_DEBUG_MEMORY") {
-                                if var == "1" {
-                                    eprintln!(
-                                        "Dereferenced string at {:#x}: '{}'",
-                                        possible_ptr, indirect_string
-                                    );
-                                }
-                            }
-
-                            // Check if this dereferenced string looks valid
-                            let printable_chars = indirect_string
-                                .chars()
-                                .filter(|&c| (' '..='~').contains(&c))
-                                .count();
-
-                            if printable_chars > 0
-                                && (printable_chars as f32 / indirect_string.len() as f32) > 0.5
-                            {
-                                return Ok(indirect_string);
-                            }
-                        }
-                    }
-                }
+            // If the string is mostly non-printable characters, it's probably not valid
+            // This helps avoid treating binary data as strings
+            if total_chars > 0 && printable_chars < (total_chars / 2) {
+                debug_println!(
+                    "String appears to be mostly non-printable characters ({}%)",
+                    (printable_chars * 100) / total_chars
+                );
+                return Ok(String::new());
             }
 
-            // If the garbage string doesn't lead to a valid indirect string, still return it
             return Ok(string);
         }
 
@@ -1505,42 +1451,47 @@ impl Memory {
                 target_offset = 0x100000; // 1048576
 
                 #[cfg(feature = "std")]
-                eprintln!(
+                debug_println!(
                     "FIXED MAPPING: Data segment {} (.rodata) at EXACTLY {:#x} (1048576)",
-                    segment_index, target_offset
+                    segment_index,
+                    target_offset
                 );
             } else if segment_index == 1 {
                 // Second segment (.data) goes at 0x101000 (1050496)
                 target_offset = 0x101000; // 1050496
 
                 #[cfg(feature = "std")]
-                eprintln!(
+                debug_println!(
                     "FIXED MAPPING: Data segment {} (.data) at EXACTLY {:#x} (1050496)",
-                    segment_index, target_offset
+                    segment_index,
+                    target_offset
                 );
             } else {
                 // Any other segments go after these two (unlikely)
                 target_offset = 0x101000 + ((segment_index - 1) as u32 * 0x1000);
 
                 #[cfg(feature = "std")]
-                eprintln!(
+                debug_println!(
                     "FIXED MAPPING: Data segment {} (other) at {:#x}",
-                    segment_index, target_offset
+                    segment_index,
+                    target_offset
                 );
             }
         } else if offset == rodata_base {
             // If it's explicitly targeting rodata section, honor it
             #[cfg(feature = "std")]
-            eprintln!(
+            debug_println!(
                 "Using explicit rodata section offset {:#x} for segment {}",
-                offset, segment_index
+                offset,
+                segment_index
             );
         } else if offset == pointer_table_base {
             // If it's explicitly targeting data section, honor it
             #[cfg(feature = "std")]
-            eprintln!(
+            debug_println!(
                 "Using explicit data section offset {:#x} for segment {}",
-                offset, segment_index
+                offset,
+                segment_index
             );
         }
 
@@ -1563,7 +1514,7 @@ impl Memory {
                 }
             }
 
-            eprintln!(
+            debug_println!(
                 "Wrote data segment to memory {}: {} bytes at offset {}",
                 segment_index,
                 data.len(),
@@ -1572,8 +1523,8 @@ impl Memory {
 
             // Do additional debugging for string data
             if is_string_data {
-                eprintln!("  Data sample: {:?}", &sample_bytes);
-                eprintln!("  As string: '{}'", sample_string);
+                debug_println!("  Data sample: {:?}", &sample_bytes);
+                debug_println!("  As string: '{}'", sample_string);
             }
         }
 
