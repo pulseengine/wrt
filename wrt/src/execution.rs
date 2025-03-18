@@ -1825,203 +1825,120 @@ impl Engine {
                 Ok(None)
             }
             Instruction::Call(func_idx) => {
-                // Get information we need from the current frame
+                self.execute_call(*func_idx)?;
+                Ok(None)
+            }
+            Instruction::CallIndirect(type_idx, table_idx) => {
+                // Get the function index from the stack
+                let func_elem_idx = self
+                    .stack
+                    .pop()?
+                    .as_i32()
+                    .ok_or_else(|| Error::Execution("Expected i32 function index".into()))?;
+
+                // Check for negative index
+                if func_elem_idx < 0 {
+                    return Err(Error::Execution("Function index cannot be negative".into()));
+                }
+
+                // Get current frame to access the module instance
                 let frame = self.stack.current_frame()?;
-                let local_func_idx = *func_idx;
-                let module_idx = frame.module.module_idx;
+                let instance = &frame.module;
 
-                // Debug the function call
-                #[cfg(feature = "std")]
-                if let Ok(var) = std::env::var("WRT_DEBUG_INSTRUCTIONS") {
-                    if var == "1" {
-                        eprintln!(
-                            "Function call: idx={} (local_idx={})",
-                            func_idx, local_func_idx
-                        );
-                    }
-                }
-
-                // Count imported functions that may affect the function index
-                let imports = frame
-                    .module
-                    .module
-                    .imports
-                    .iter()
-                    .filter(|import| matches!(import.ty, ExternType::Function(_)))
-                    .collect::<Vec<_>>();
-
-                let import_count = imports.len() as u32;
-
-                #[cfg(feature = "std")]
-                if let Ok(var) = std::env::var("WRT_DEBUG_IMPORTS") {
-                    if var == "1" {
-                        eprintln!("Module has {} function imports:", import_count);
-                        for (i, import) in imports.iter().enumerate() {
-                            eprintln!("  {}: {}.{}", i, import.module, import.name);
-                        }
-                    }
-                }
-
-                // Check if we're calling an imported function
-                let is_imported = local_func_idx < import_count;
-
-                // Check if this is an imported function call
-                if is_imported {
-                    let import = &frame.module.module.imports[local_func_idx as usize];
-
-                    // Debug the import call
-                    #[cfg(feature = "std")]
-                    if let Ok(var) = std::env::var("WRT_DEBUG_IMPORTS") {
-                        if var == "1" {
-                            eprintln!(
-                                "Calling imported function: {}.{}",
-                                import.module, import.name
-                            );
-                        }
-                    }
-
-                    // Check if this is a component with real functions being executed
-                    // This ensures imported functions get called properly even during real component execution
-                    let is_component = frame
-                        .module
-                        .module
-                        .custom_sections
-                        .iter()
-                        .any(|s| s.name == "component-model-info");
-                    if is_component {
-                        #[cfg(feature = "std")]
-                        eprintln!(
-                            "Processing component import: {}.{}",
-                            import.module, import.name
-                        );
-                    }
-
-                    // Match various formats of logging import
-                    // Component model can use different naming conventions:
-                    // - wasi_logging.log (legacy)
-                    // - wasi:logging/logging.log (canonical WIT)
-                    // - example:hello/logging.log (for WIT world interfaces)
-                    if import.name == "log"
-                        && (import.module == "wasi_logging"
-                            || import.module == "wasi:logging/logging"
-                            || import.module == "example:hello/logging"
-                            || import.module.contains("logging"))
-                    {
-                        #[cfg(feature = "std")]
-                        eprintln!(
-                            "Detected WASI logging call: {}.{}",
-                            import.module, import.name
-                        );
-                        #[cfg(feature = "std")]
-                        if let Ok(var) = std::env::var("WRT_DEBUG_IMPORTS") {
-                            if var == "1" {
-                                eprintln!(
-                                    "WASI logging import detected: {}.{}",
-                                    import.module, import.name
-                                );
-                            }
-                        }
-
-                        // For WASI logging, the stack should have 3 parameters:
-                        // - level enum value (0=trace, 1=debug, 2=info, etc.)
-                        // - context pointer (i32 address to read string from WebAssembly memory)
-                        // - message pointer (i32 address to read string from WebAssembly memory)
-
-                        // Find a memory export if available
-                        let mut memory_addr = MemoryAddr {
-                            instance_idx: frame.module.module_idx,
-                            memory_idx: 0,
-                        };
-
-                        // Try to find the specific memory export if possible
-                        for export in &frame.module.module.exports {
-                            if export.name == "memory" && matches!(export.kind, ExportKind::Memory)
-                            {
-                                memory_addr.memory_idx = export.index;
-
-                                #[cfg(feature = "std")]
-                                if let Ok(var) = std::env::var("WRT_DEBUG_MEMORY") {
-                                    if var == "1" {
-                                        eprintln!(
-                                            "Found memory export with index {}",
-                                            export.index
-                                        );
-                                    }
-                                }
-
-                                break;
-                            }
-                        }
-
-                        // End the current immutable borrow of frame
-                        let _ = frame;
-
-                        // Execute the logging call with our helper function
-                        self.execute_wasi_logging(&memory_addr)?;
-
-                        // No return value needed for log function
-                        return Ok(None);
-                    }
-
-                    // Special handling for the "env.print" function
-                    if import.module == "env" && import.name == "print" {
-                        // Get the parameter (expected to be an i32)
-                        let param = self.stack.pop()?;
-                        let value = param.as_i32().unwrap_or(0);
-
-                        // Print the value to the log
-                        self.handle_log(
-                            LogLevel::Info,
-                            format!("[Host function] env.print called with argument: {}", value),
-                        );
-
-                        // Return without error for successful imported function execution
-                        return Ok(None);
-                    }
-
-                    // For other imported functions, we will report they are not supported
+                // Check if table exists and index is valid
+                if *table_idx as usize >= instance.table_addrs.len() {
                     return Err(Error::Execution(format!(
-                        "Cannot call unsupported imported function at index {}: {}.{}",
-                        local_func_idx, import.module, import.name
+                        "Table index {} out of bounds",
+                        table_idx
                     )));
                 }
 
-                {
-                    // Adjust the function index to account for imported functions
-                    let adjusted_func_idx = local_func_idx - import_count;
+                // Get the table address
+                let table_addr = &instance.table_addrs[*table_idx as usize];
 
-                    // Verify the adjusted index is valid
-                    if adjusted_func_idx as usize >= frame.module.module.functions.len() {
-                        return Err(Error::Execution(format!(
-                            "Function index {} (adjusted to {}) out of bounds (max: {})",
-                            local_func_idx,
-                            adjusted_func_idx,
-                            frame.module.module.functions.len()
-                        )));
-                    }
+                // Get the actual table from the instance that contains it
+                let table_instance = &self.instances[table_addr.instance_idx as usize];
 
-                    let func = &frame.module.module.functions[adjusted_func_idx as usize];
-                    let func_type = &frame.module.module.types[func.type_idx as usize];
-                    let params_len = func_type.params.len();
-
-                    // End the immutable borrow of the frame before mutable operations
-                    let _ = frame;
-
-                    // Get function arguments
-                    let mut args = Vec::new();
-                    for _ in 0..params_len {
-                        args.push(self.stack.pop()?);
-                    }
-                    args.reverse();
-
-                    // Execute the function and push results
-                    let results = self.execute(module_idx, local_func_idx, args)?;
-                    for result in results {
-                        self.stack.push(result);
-                    }
-
-                    Ok(None)
+                // Verify table index is valid
+                if table_addr.table_idx as usize >= table_instance.tables.len() {
+                    return Err(Error::Execution(format!(
+                        "Table index {} out of bounds in instance",
+                        table_addr.table_idx
+                    )));
                 }
+
+                // Get the actual table
+                let table = &table_instance.tables[table_addr.table_idx as usize];
+
+                // Check if element index is within table bounds
+                if func_elem_idx as usize >= table.size() as usize {
+                    return Err(Error::Execution(format!(
+                        "Element index {} out of bounds in table (size: {})",
+                        func_elem_idx,
+                        table.size()
+                    )));
+                }
+
+                // Get the element from the table
+                let func_ref = match table.get(func_elem_idx as u32)? {
+                    Some(Value::FuncRef(Some(func_idx))) => {
+                        // In the simple case, the func_idx is directly the function index
+                        // in the current module instance
+                        FunctionAddr {
+                            instance_idx: instance.module_idx,
+                            func_idx,
+                        }
+                    }
+                    _ => {
+                        return Err(Error::Execution(
+                            "Null or invalid function reference".into(),
+                        ))
+                    }
+                };
+
+                // Execute function call
+                let func_instance = &self.instances[func_ref.instance_idx as usize];
+                let func = &func_instance.module.functions[func_ref.func_idx as usize];
+
+                // Get the expected function type
+                if *type_idx as usize >= instance.module.types.len() {
+                    return Err(Error::Execution(format!(
+                        "Type index {} out of bounds",
+                        type_idx
+                    )));
+                }
+
+                let expected_type = &instance.module.types[*type_idx as usize];
+                let actual_type = &func_instance.module.types[func.type_idx as usize];
+
+                // Check if types match
+                if expected_type != actual_type {
+                    return Err(Error::Execution(format!(
+                        "Function type mismatch: expected {:?}, got {:?}",
+                        expected_type, actual_type
+                    )));
+                }
+
+                // Execute the function by preparing arguments and calling execute
+                let func_type = expected_type;
+                let params_len = func_type.params.len();
+
+                // Get arguments from stack
+                let mut args = Vec::new();
+                for _ in 0..params_len {
+                    args.push(self.stack.pop()?);
+                }
+                args.reverse();
+
+                // Execute the function with appropriate indexes
+                let results = self.execute(func_ref.instance_idx, func_ref.func_idx, args)?;
+
+                // Push results onto stack
+                for result in results {
+                    self.stack.push(result);
+                }
+
+                Ok(None)
             }
 
             // Numeric constants
@@ -2042,7 +1959,6 @@ impl Engine {
                 Ok(None)
             }
 
-            // Variable access
             Instruction::LocalGet(idx) => {
                 let idx_usize = *idx as usize;
 
@@ -5282,6 +5198,203 @@ impl Engine {
         let results = self.execute(module_idx, func_idx as u32, args)?;
         for result in results {
             self.stack.push(result);
+        }
+
+        Ok(())
+    }
+
+    /// Executes a function call with the given function index
+    fn execute_call(&mut self, func_idx: u32) -> Result<()> {
+        // Get information we need from the current frame
+        let frame = self.stack.current_frame()?;
+        let local_func_idx = func_idx;
+        let module_idx = frame.module.module_idx;
+
+        // Debug the function call
+        #[cfg(feature = "std")]
+        if let Ok(var) = std::env::var("WRT_DEBUG_INSTRUCTIONS") {
+            if var == "1" {
+                eprintln!(
+                    "Function call: idx={} (local_idx={})",
+                    func_idx, local_func_idx
+                );
+            }
+        }
+
+        // Count imported functions that may affect the function index
+        let imports = frame
+            .module
+            .module
+            .imports
+            .iter()
+            .filter(|import| matches!(import.ty, ExternType::Function(_)))
+            .collect::<Vec<_>>();
+
+        let import_count = imports.len() as u32;
+
+        #[cfg(feature = "std")]
+        if let Ok(var) = std::env::var("WRT_DEBUG_IMPORTS") {
+            if var == "1" {
+                eprintln!("Module has {} function imports:", import_count);
+                for (i, import) in imports.iter().enumerate() {
+                    eprintln!("  {}: {}.{}", i, import.module, import.name);
+                }
+            }
+        }
+
+        // Check if we're calling an imported function
+        let is_imported = local_func_idx < import_count;
+
+        // Check if this is an imported function call
+        if is_imported {
+            let import = &frame.module.module.imports[local_func_idx as usize];
+
+            // Debug the import call
+            #[cfg(feature = "std")]
+            if let Ok(var) = std::env::var("WRT_DEBUG_IMPORTS") {
+                if var == "1" {
+                    eprintln!(
+                        "Calling imported function: {}.{}",
+                        import.module, import.name
+                    );
+                }
+            }
+
+            // Check if this is a component with real functions being executed
+            // This ensures imported functions get called properly even during real component execution
+            let is_component = frame
+                .module
+                .module
+                .custom_sections
+                .iter()
+                .any(|s| s.name == "component-model-info");
+            if is_component {
+                #[cfg(feature = "std")]
+                eprintln!(
+                    "Processing component import: {}.{}",
+                    import.module, import.name
+                );
+            }
+
+            // Match various formats of logging import
+            // Component model can use different naming conventions:
+            // - wasi_logging.log (legacy)
+            // - wasi:logging/logging.log (canonical WIT)
+            // - example:hello/logging.log (for WIT world interfaces)
+            if import.name == "log"
+                && (import.module == "wasi_logging"
+                    || import.module == "wasi:logging/logging"
+                    || import.module == "example:hello/logging"
+                    || import.module.contains("logging"))
+            {
+                #[cfg(feature = "std")]
+                eprintln!(
+                    "Detected WASI logging call: {}.{}",
+                    import.module, import.name
+                );
+                #[cfg(feature = "std")]
+                if let Ok(var) = std::env::var("WRT_DEBUG_IMPORTS") {
+                    if var == "1" {
+                        eprintln!(
+                            "WASI logging import detected: {}.{}",
+                            import.module, import.name
+                        );
+                    }
+                }
+
+                // For WASI logging, the stack should have 3 parameters:
+                // - level enum value (0=trace, 1=debug, 2=info, etc.)
+                // - context pointer (i32 address to read string from WebAssembly memory)
+                // - message pointer (i32 address to read string from WebAssembly memory)
+
+                // Find a memory export if available
+                let mut memory_addr = MemoryAddr {
+                    instance_idx: frame.module.module_idx,
+                    memory_idx: 0,
+                };
+
+                // Try to find the specific memory export if possible
+                for export in &frame.module.module.exports {
+                    if export.name == "memory" && matches!(export.kind, ExportKind::Memory) {
+                        memory_addr.memory_idx = export.index;
+
+                        #[cfg(feature = "std")]
+                        if let Ok(var) = std::env::var("WRT_DEBUG_MEMORY") {
+                            if var == "1" {
+                                eprintln!("Found memory export with index {}", export.index);
+                            }
+                        }
+
+                        break;
+                    }
+                }
+
+                // End the current immutable borrow of frame
+                let _ = frame;
+
+                // Execute the logging call with our helper function
+                self.execute_wasi_logging(&memory_addr)?;
+
+                // No return value needed for log function
+                return Ok(());
+            }
+
+            // Special handling for the "env.print" function
+            if import.module == "env" && import.name == "print" {
+                // Get the parameter (expected to be an i32)
+                let param = self.stack.pop()?;
+                let value = param.as_i32().unwrap_or(0);
+
+                // Print the value to the log
+                self.handle_log(
+                    LogLevel::Info,
+                    format!("[Host function] env.print called with argument: {}", value),
+                );
+
+                // Return without error for successful imported function execution
+                return Ok(());
+            }
+
+            // For other imported functions, we will report they are not supported
+            return Err(Error::Execution(format!(
+                "Cannot call unsupported imported function at index {}: {}.{}",
+                local_func_idx, import.module, import.name
+            )));
+        }
+
+        {
+            // Adjust the function index to account for imported functions
+            let adjusted_func_idx = local_func_idx - import_count;
+
+            // Verify the adjusted index is valid
+            if adjusted_func_idx as usize >= frame.module.module.functions.len() {
+                return Err(Error::Execution(format!(
+                    "Function index {} (adjusted to {}) out of bounds (max: {})",
+                    local_func_idx,
+                    adjusted_func_idx,
+                    frame.module.module.functions.len()
+                )));
+            }
+
+            let func = &frame.module.module.functions[adjusted_func_idx as usize];
+            let func_type = &frame.module.module.types[func.type_idx as usize];
+            let params_len = func_type.params.len();
+
+            // End the immutable borrow of the frame before mutable operations
+            let _ = frame;
+
+            // Get function arguments
+            let mut args = Vec::new();
+            for _ in 0..params_len {
+                args.push(self.stack.pop()?);
+            }
+            args.reverse();
+
+            // Execute the function and push results
+            let results = self.execute(module_idx, local_func_idx, args)?;
+            for result in results {
+                self.stack.push(result);
+            }
         }
 
         Ok(())
