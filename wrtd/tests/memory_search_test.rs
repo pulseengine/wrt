@@ -1,8 +1,6 @@
 //! Memory search test program
 //! This test demonstrates using the memory search functionality.
 
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
 use wrt::execution::{Engine, MemoryAddr, ModuleInstance};
 use wrt::memory::Memory;
 use wrt::module::Module;
@@ -77,6 +75,7 @@ fn test_memory_search() {
         memory_addrs: vec![mem_addr.clone()],
         global_addrs: vec![],
         memories: vec![memory],
+        tables: vec![],
     };
     engine.instances.push(instance);
 
