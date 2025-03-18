@@ -86,6 +86,8 @@ pub struct ModuleInstance {
     pub global_addrs: Vec<GlobalAddr>,
     /// Actual memory instances with data buffers
     pub memories: Vec<crate::memory::Memory>,
+    /// Actual table instances
+    pub tables: Vec<crate::table::Table>,
 }
 
 /// Represents a function address
@@ -954,6 +956,7 @@ impl Engine {
             memory_addrs: Vec::new(),
             global_addrs: Vec::new(),
             memories: Vec::new(),
+            tables: Vec::new(),
         };
 
         // Add instance to engine
@@ -1017,6 +1020,11 @@ impl Engine {
                     instance_idx,
                     table_idx: idx as u32,
                 });
+
+            // Create actual table instance from table type
+            let table_type = self.instances[instance_idx as usize].module.tables[idx].clone();
+            let table = crate::table::Table::new(table_type);
+            self.instances[instance_idx as usize].tables.push(table);
         }
 
         // Initialize memory addresses and memory instances
@@ -3984,6 +3992,267 @@ impl Engine {
                 }
                 Ok(None)
             }
+            // Select instruction (conditional value selection)
+            Instruction::Select => {
+                let condition =
+                    self.stack.pop()?.as_i32().ok_or_else(|| {
+                        Error::Execution("Expected i32 condition for select".into())
+                    })?;
+
+                let val2 = self.stack.pop()?;
+                let val1 = self.stack.pop()?;
+
+                // If condition is non-zero, select val1, otherwise select val2
+                if condition != 0 {
+                    self.stack.push(val1);
+                } else {
+                    self.stack.push(val2);
+                }
+
+                Ok(None)
+            }
+            // Select with typed variant
+            Instruction::SelectTyped(value_type) => {
+                let condition =
+                    self.stack.pop()?.as_i32().ok_or_else(|| {
+                        Error::Execution("Expected i32 condition for select".into())
+                    })?;
+
+                let val2 = self.stack.pop()?;
+                let val1 = self.stack.pop()?;
+
+                // Verify that both values match the expected type
+                if !val1.matches_type(value_type) || !val2.matches_type(value_type) {
+                    return Err(Error::Execution(format!(
+                        "Select values do not match expected type {:?}",
+                        value_type
+                    )));
+                }
+
+                // If condition is non-zero, select val1, otherwise select val2
+                if condition != 0 {
+                    self.stack.push(val1);
+                } else {
+                    self.stack.push(val2);
+                }
+
+                Ok(None)
+            }
+            // Table operations
+            Instruction::TableGet(table_idx) => {
+                // Get the element index from the stack
+                let elem_idx =
+                    self.stack.pop()?.as_i32().ok_or_else(|| {
+                        Error::Execution("Expected i32 index for table.get".into())
+                    })?;
+
+                // Get the current frame's module instance
+                let frame = self.stack.current_frame()?;
+                let instance = &frame.module;
+
+                // Verify the table index is valid
+                if *table_idx as usize >= instance.table_addrs.len() {
+                    return Err(Error::Execution(format!(
+                        "Invalid table index: {}",
+                        table_idx
+                    )));
+                }
+
+                // Get the table address
+                let table_addr = &instance.table_addrs[*table_idx as usize];
+
+                // Get the instance that contains the table
+                if table_addr.instance_idx as usize >= self.instances.len() {
+                    return Err(Error::Execution(format!(
+                        "Invalid table instance index: {}",
+                        table_addr.instance_idx
+                    )));
+                }
+
+                let table_instance = &self.instances[table_addr.instance_idx as usize];
+
+                // Access the table in the instance
+                if table_addr.table_idx as usize >= table_instance.tables.len() {
+                    return Err(Error::Execution(format!(
+                        "Invalid table index in instance: {}",
+                        table_addr.table_idx
+                    )));
+                }
+
+                // Get a reference to the table
+                let table = &table_instance.tables[table_addr.table_idx as usize];
+
+                // Check bounds
+                if elem_idx < 0 || elem_idx as u32 >= table.size() {
+                    return Err(Error::Execution(format!(
+                        "Table element index out of bounds: {} (size {})",
+                        elem_idx,
+                        table.size()
+                    )));
+                }
+
+                // Get the value from the table
+                match table.get(elem_idx as u32)? {
+                    Some(val) => self.stack.push(val),
+                    None => self.stack.push(Value::FuncRef(None)), // Push null reference
+                }
+
+                Ok(None)
+            }
+            Instruction::TableSet(table_idx) => {
+                // Get the element index and value from the stack
+                let value = self.stack.pop()?;
+                let elem_idx =
+                    self.stack.pop()?.as_i32().ok_or_else(|| {
+                        Error::Execution("Expected i32 index for table.set".into())
+                    })?;
+
+                // Get the current frame's module instance
+                let frame = self.stack.current_frame()?;
+                let instance = &frame.module;
+
+                // Verify the table index is valid
+                if *table_idx as usize >= instance.table_addrs.len() {
+                    return Err(Error::Execution(format!(
+                        "Invalid table index: {}",
+                        table_idx
+                    )));
+                }
+
+                // Get the table address
+                let table_addr = &instance.table_addrs[*table_idx as usize];
+
+                // Get the instance that contains the table
+                if table_addr.instance_idx as usize >= self.instances.len() {
+                    return Err(Error::Execution(format!(
+                        "Invalid table instance index: {}",
+                        table_addr.instance_idx
+                    )));
+                }
+
+                // Get a mutable reference to the table
+                let table = &mut self.instances[table_addr.instance_idx as usize].tables
+                    [table_addr.table_idx as usize];
+
+                // Check bounds
+                if elem_idx < 0 || elem_idx as u32 >= table.size() {
+                    return Err(Error::Execution(format!(
+                        "Table element index out of bounds: {} (size {})",
+                        elem_idx,
+                        table.size()
+                    )));
+                }
+
+                // Set the value in the table
+                table.set(elem_idx as u32, Some(value))?;
+
+                Ok(None)
+            }
+            Instruction::TableSize(table_idx) => {
+                // Get the current frame's module instance
+                let frame = self.stack.current_frame()?;
+                let instance = &frame.module;
+
+                // Verify the table index is valid
+                if *table_idx as usize >= instance.table_addrs.len() {
+                    return Err(Error::Execution(format!(
+                        "Invalid table index: {}",
+                        table_idx
+                    )));
+                }
+
+                // Get the table address
+                let table_addr = &instance.table_addrs[*table_idx as usize];
+
+                // Get the instance that contains the table
+                if table_addr.instance_idx as usize >= self.instances.len() {
+                    return Err(Error::Execution(format!(
+                        "Invalid table instance index: {}",
+                        table_addr.instance_idx
+                    )));
+                }
+
+                let table_instance = &self.instances[table_addr.instance_idx as usize];
+
+                // Access the table in the instance
+                if table_addr.table_idx as usize >= table_instance.tables.len() {
+                    return Err(Error::Execution(format!(
+                        "Invalid table index in instance: {}",
+                        table_addr.table_idx
+                    )));
+                }
+
+                // Get a reference to the table
+                let table = &table_instance.tables[table_addr.table_idx as usize];
+
+                // Get the current size of the table
+                let size = table.size();
+                self.stack.push(Value::I32(size as i32));
+
+                Ok(None)
+            }
+            Instruction::TableGrow(table_idx) => {
+                // Get the growth amount and fill value from the stack
+                let fill_value = self.stack.pop()?;
+                let n =
+                    self.stack.pop()?.as_i32().ok_or_else(|| {
+                        Error::Execution("Expected i32 size for table.grow".into())
+                    })?;
+
+                // Get the current frame's module instance
+                let frame = self.stack.current_frame()?;
+                let instance = &frame.module;
+
+                // Verify the table index is valid
+                if *table_idx as usize >= instance.table_addrs.len() {
+                    return Err(Error::Execution(format!(
+                        "Invalid table index: {}",
+                        table_idx
+                    )));
+                }
+
+                // Get the table address
+                let table_addr = &instance.table_addrs[*table_idx as usize];
+
+                // Get the instance that contains the table
+                if table_addr.instance_idx as usize >= self.instances.len() {
+                    return Err(Error::Execution(format!(
+                        "Invalid table instance index: {}",
+                        table_addr.instance_idx
+                    )));
+                }
+
+                // Get a mutable reference to the table
+                let table = &mut self.instances[table_addr.instance_idx as usize].tables
+                    [table_addr.table_idx as usize];
+
+                // Grow the table
+                let old_size = table.size();
+
+                // First grow the table
+                let grow_result = table.grow(n as u32);
+
+                // If growing was successful, fill the table with the provided value
+                if let Ok(_) = grow_result {
+                    // If we grew the table, fill the new elements with the provided value
+                    if n > 0 {
+                        let _ = table.fill(old_size, n as u32, Some(fill_value));
+                    }
+
+                    // Push the old size onto the stack
+                    self.stack.push(Value::I32(old_size as i32));
+                } else {
+                    // Push -1 to indicate failure
+                    self.stack.push(Value::I32(-1));
+                }
+
+                Ok(None)
+            }
+            Instruction::Drop => {
+                // Pop the top value from the stack and discard it
+                let _ = self.stack.pop()?;
+                Ok(None)
+            }
             // For remaining instructions, instead of error, treat as Nop
             _ => {
                 #[cfg(feature = "std")]
@@ -4410,6 +4679,7 @@ mod tests {
             memory_addrs: vec![],
             global_addrs: vec![],
             memories: vec![],
+            tables: vec![],
         }
     }
 
