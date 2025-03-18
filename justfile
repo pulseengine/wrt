@@ -64,13 +64,13 @@ test-wrt:
     # Default features
     cargo test -p wrt
     # No features
-    # TBD: disabled cargo test -p wrt --no-default-features
+    cargo test -p wrt --no-default-features
     # std feature only
     cargo test -p wrt --no-default-features --features std
     # no_std feature only
-    # TBD: disabled cargo test -p wrt --no-default-features --features no_std
+    cargo test -p wrt --no-default-features --features no_std
     # All features
-    # TBD: disabled cargo test -p wrt --all-features
+    cargo test -p wrt --all-features
 
 # Run tests for the WRT daemon
 test-wrtd:
