@@ -6,18 +6,23 @@ use crate::module::Module;
 use crate::types::{ExternType, ValueType};
 use crate::values::Value;
 use crate::{format, String, ToString, Vec};
-use std::collections::HashSet;
-use std::sync::{Arc, Mutex};
 
+#[cfg(not(feature = "std"))]
+use alloc::collections::BTreeSet as HashSet;
 #[cfg(feature = "std")]
-use std::time::Instant;
+use std::collections::HashSet;
 
 #[cfg(not(feature = "std"))]
 use crate::Mutex;
 #[cfg(not(feature = "std"))]
 use alloc::sync::Arc;
+#[cfg(feature = "std")]
+use std::sync::{Arc, Mutex};
+
 #[cfg(not(feature = "std"))]
 use alloc::vec;
+#[cfg(feature = "std")]
+use std::time::Instant;
 
 /// Categories of instructions for performance tracking
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -2203,6 +2208,121 @@ impl Engine {
                 self.stack.push(Value::I32(lhs.wrapping_sub(rhs)));
                 Ok(None)
             }
+            Instruction::I32Mul => {
+                let rhs = self
+                    .stack
+                    .pop()?
+                    .as_i32()
+                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
+                let lhs = self
+                    .stack
+                    .pop()?
+                    .as_i32()
+                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
+                self.stack.push(Value::I32(lhs.wrapping_mul(rhs)));
+                Ok(None)
+            }
+            Instruction::I32DivS => {
+                let rhs = self
+                    .stack
+                    .pop()?
+                    .as_i32()
+                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
+                let lhs = self
+                    .stack
+                    .pop()?
+                    .as_i32()
+                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
+
+                // Check for division by zero
+                if rhs == 0 {
+                    return Err(Error::Execution("Division by zero".into()));
+                }
+
+                // Check for overflow (only case is MIN_VALUE / -1)
+                if lhs == i32::MIN && rhs == -1 {
+                    return Err(Error::Execution("Division overflow".into()));
+                }
+
+                self.stack.push(Value::I32(lhs.wrapping_div(rhs)));
+                Ok(None)
+            }
+            Instruction::I32DivU => {
+                let rhs = self
+                    .stack
+                    .pop()?
+                    .as_i32()
+                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
+                let lhs = self
+                    .stack
+                    .pop()?
+                    .as_i32()
+                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
+
+                // Check for division by zero
+                if rhs == 0 {
+                    return Err(Error::Execution("Division by zero".into()));
+                }
+
+                // For unsigned division, we need to convert to u32 first
+                let lhs_u = lhs as u32;
+                let rhs_u = rhs as u32;
+
+                self.stack
+                    .push(Value::I32((lhs_u.wrapping_div(rhs_u)) as i32));
+                Ok(None)
+            }
+            Instruction::I32RemS => {
+                let rhs = self
+                    .stack
+                    .pop()?
+                    .as_i32()
+                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
+                let lhs = self
+                    .stack
+                    .pop()?
+                    .as_i32()
+                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
+
+                // Check for division by zero
+                if rhs == 0 {
+                    return Err(Error::Execution("Division by zero".into()));
+                }
+
+                // The result of a % 0 is implementation-defined in WebAssembly spec
+                // For i32::MIN % -1, the result is defined as 0 in WebAssembly
+                if lhs == i32::MIN && rhs == -1 {
+                    self.stack.push(Value::I32(0));
+                } else {
+                    self.stack.push(Value::I32(lhs % rhs));
+                }
+
+                Ok(None)
+            }
+            Instruction::I32RemU => {
+                let rhs = self
+                    .stack
+                    .pop()?
+                    .as_i32()
+                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
+                let lhs = self
+                    .stack
+                    .pop()?
+                    .as_i32()
+                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
+
+                // Check for division by zero
+                if rhs == 0 {
+                    return Err(Error::Execution("Division by zero".into()));
+                }
+
+                // For unsigned remainder, convert to u32 first
+                let lhs_u = lhs as u32;
+                let rhs_u = rhs as u32;
+
+                self.stack.push(Value::I32((lhs_u % rhs_u) as i32));
+                Ok(None)
+            }
 
             // Comparison operations
             Instruction::I32LtS => {
@@ -4234,7 +4354,7 @@ impl Engine {
                 let grow_result = table.grow(n as u32);
 
                 // If growing was successful, fill the table with the provided value
-                if let Ok(_) = grow_result {
+                if grow_result.is_ok() {
                     // If we grew the table, fill the new elements with the provided value
                     if n > 0 {
                         let _ = table.fill(old_size, n as u32, Some(fill_value));
@@ -4256,9 +4376,10 @@ impl Engine {
             }
             Instruction::TableFill(table_idx) => {
                 // Get the length, value, and start offset from the stack
-                let len = self.stack.pop()?.as_i32().ok_or_else(|| {
-                    Error::Execution("Expected i32 length for table.fill".into())
-                })?;
+                let len =
+                    self.stack.pop()?.as_i32().ok_or_else(|| {
+                        Error::Execution("Expected i32 length for table.fill".into())
+                    })?;
                 let val = self.stack.pop()?;
                 let dst = self.stack.pop()?.as_i32().ok_or_else(|| {
                     Error::Execution("Expected i32 destination for table.fill".into())
@@ -4302,9 +4423,10 @@ impl Engine {
             }
             Instruction::TableCopy(dst_table_idx, src_table_idx) => {
                 // Get the length and the source and destination offsets from the stack
-                let len = self.stack.pop()?.as_i32().ok_or_else(|| {
-                    Error::Execution("Expected i32 length for table.copy".into())
-                })?;
+                let len =
+                    self.stack.pop()?.as_i32().ok_or_else(|| {
+                        Error::Execution("Expected i32 length for table.copy".into())
+                    })?;
                 let src = self.stack.pop()?.as_i32().ok_or_else(|| {
                     Error::Execution("Expected i32 source offset for table.copy".into())
                 })?;
@@ -4343,15 +4465,17 @@ impl Engine {
                 let src_table_addr = &instance.table_addrs[*src_table_idx as usize];
 
                 // Verify both instances exist
-                if dst_table_addr.instance_idx as usize >= self.instances.len() || 
-                   src_table_addr.instance_idx as usize >= self.instances.len() {
+                if dst_table_addr.instance_idx as usize >= self.instances.len()
+                    || src_table_addr.instance_idx as usize >= self.instances.len()
+                {
                     return Err(Error::Execution("Invalid table instance index".into()));
                 }
 
                 // If both tables are in the same instance and are the same table,
                 // we need to handle the copy in a special way to avoid borrowing issues
-                if dst_table_addr.instance_idx == src_table_addr.instance_idx && 
-                   dst_table_addr.table_idx == src_table_addr.table_idx {
+                if dst_table_addr.instance_idx == src_table_addr.instance_idx
+                    && dst_table_addr.table_idx == src_table_addr.table_idx
+                {
                     // Get a mutable reference to the table
                     let table = &mut self.instances[dst_table_addr.instance_idx as usize].tables
                         [dst_table_addr.table_idx as usize];
@@ -4362,24 +4486,28 @@ impl Engine {
                     // Get source table elements
                     let src_instance = &self.instances[src_table_addr.instance_idx as usize];
                     if src_table_addr.table_idx as usize >= src_instance.tables.len() {
-                        return Err(Error::Execution("Invalid source table index in instance".into()));
+                        return Err(Error::Execution(
+                            "Invalid source table index in instance".into(),
+                        ));
                     }
                     let src_table = &src_instance.tables[src_table_addr.table_idx as usize];
-                    
+
                     // Collect elements to copy
                     let mut elements = Vec::with_capacity(len as usize);
                     for i in 0..len {
                         let elem = src_table.get((src + i) as u32)?;
                         elements.push(elem);
                     }
-                    
+
                     // Get destination table
                     let dst_instance = &mut self.instances[dst_table_addr.instance_idx as usize];
                     if dst_table_addr.table_idx as usize >= dst_instance.tables.len() {
-                        return Err(Error::Execution("Invalid destination table index in instance".into()));
+                        return Err(Error::Execution(
+                            "Invalid destination table index in instance".into(),
+                        ));
                     }
                     let dst_table = &mut dst_instance.tables[dst_table_addr.table_idx as usize];
-                    
+
                     // Write elements to destination
                     for i in 0..len {
                         dst_table.set((dst + i) as u32, elements[i as usize].clone())?;
@@ -4390,9 +4518,10 @@ impl Engine {
             }
             Instruction::TableInit(table_idx, elem_idx) => {
                 // Get the length and the source and destination offsets from the stack
-                let len = self.stack.pop()?.as_i32().ok_or_else(|| {
-                    Error::Execution("Expected i32 length for table.init".into())
-                })?;
+                let len =
+                    self.stack.pop()?.as_i32().ok_or_else(|| {
+                        Error::Execution("Expected i32 length for table.init".into())
+                    })?;
                 let src = self.stack.pop()?.as_i32().ok_or_else(|| {
                     Error::Execution("Expected i32 source offset for table.init".into())
                 })?;
@@ -4403,33 +4532,47 @@ impl Engine {
                 if len < 0 {
                     return Err(Error::Execution("Length must be non-negative".into()));
                 }
-                
+
                 // Get the current frame's module instance
                 let frame = self.stack.current_frame()?;
                 let instance = &frame.module;
-                
+
                 // Verify the table index is valid
                 if *table_idx as usize >= instance.table_addrs.len() {
-                    return Err(Error::Execution(format!("Invalid table index: {}", table_idx)));
+                    return Err(Error::Execution(format!(
+                        "Invalid table index: {}",
+                        table_idx
+                    )));
                 }
-                
+
                 // Get the element segment from the module
                 let module = &instance.module;
                 if *elem_idx as usize >= module.elements.len() {
-                    return Err(Error::Execution(format!("Invalid element index: {}", elem_idx)));
+                    return Err(Error::Execution(format!(
+                        "Invalid element index: {}",
+                        elem_idx
+                    )));
                 }
-                
+
                 // Check if the element segment has been dropped
-                if self.dropped_elems.contains(&(*elem_idx, instance.module_idx)) {
-                    return Err(Error::Execution(format!("Element segment {} has been dropped", elem_idx)));
+                if self
+                    .dropped_elems
+                    .contains(&(*elem_idx, instance.module_idx))
+                {
+                    return Err(Error::Execution(format!(
+                        "Element segment {} has been dropped",
+                        elem_idx
+                    )));
                 }
-                
+
                 // Get element segment data
                 let elem_segment = &module.elements[*elem_idx as usize];
                 if src as usize + len as usize > elem_segment.init.len() {
-                    return Err(Error::Execution("Element segment access out of bounds".into()));
+                    return Err(Error::Execution(
+                        "Element segment access out of bounds".into(),
+                    ));
                 }
-                
+
                 // Get the table
                 let table_addr = &instance.table_addrs[*table_idx as usize];
                 if table_addr.instance_idx as usize >= self.instances.len() {
@@ -4438,7 +4581,7 @@ impl Engine {
                         table_addr.instance_idx
                     )));
                 }
-                
+
                 let table_instance = &mut self.instances[table_addr.instance_idx as usize];
                 if table_addr.table_idx as usize >= table_instance.tables.len() {
                     return Err(Error::Execution(format!(
@@ -4446,35 +4589,299 @@ impl Engine {
                         table_addr.table_idx
                     )));
                 }
-                
+
                 let table = &mut table_instance.tables[table_addr.table_idx as usize];
-                
+
                 // Extract elements to initialize
-                let elements: Vec<Option<Value>> = elem_segment.init[src as usize..(src as usize + len as usize)]
+                let elements: Vec<Option<Value>> = elem_segment.init
+                    [src as usize..(src as usize + len as usize)]
                     .iter()
                     .map(|func_idx| Some(Value::FuncRef(Some(*func_idx))))
                     .collect();
-                
+
                 // Initialize the table with these elements
                 table.init(dst as u32, &elements)?;
-                
+
                 Ok(None)
             }
             Instruction::ElemDrop(elem_idx) => {
                 // Get the current frame's module instance
                 let frame = self.stack.current_frame()?;
                 let instance = &frame.module;
-                
+
                 // Verify the element index is valid
                 if *elem_idx as usize >= instance.module.elements.len() {
-                    return Err(Error::Execution(format!("Invalid element index: {}", elem_idx)));
+                    return Err(Error::Execution(format!(
+                        "Invalid element index: {}",
+                        elem_idx
+                    )));
                 }
-                
+
                 // Mark the element segment as dropped
                 self.dropped_elems.insert((*elem_idx, instance.module_idx));
-                
+
                 Ok(None)
             }
+
+            // I64 Arithmetic operations
+            Instruction::I64Add => {
+                let rhs = self
+                    .stack
+                    .pop()?
+                    .as_i64()
+                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
+                let lhs = self
+                    .stack
+                    .pop()?
+                    .as_i64()
+                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
+                self.stack.push(Value::I64(lhs.wrapping_add(rhs)));
+                Ok(None)
+            }
+            Instruction::I64Sub => {
+                let rhs = self
+                    .stack
+                    .pop()?
+                    .as_i64()
+                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
+                let lhs = self
+                    .stack
+                    .pop()?
+                    .as_i64()
+                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
+                self.stack.push(Value::I64(lhs.wrapping_sub(rhs)));
+                Ok(None)
+            }
+            Instruction::I64Mul => {
+                let rhs = self
+                    .stack
+                    .pop()?
+                    .as_i64()
+                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
+                let lhs = self
+                    .stack
+                    .pop()?
+                    .as_i64()
+                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
+                self.stack.push(Value::I64(lhs.wrapping_mul(rhs)));
+                Ok(None)
+            }
+            Instruction::I64DivS => {
+                let rhs = self
+                    .stack
+                    .pop()?
+                    .as_i64()
+                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
+                let lhs = self
+                    .stack
+                    .pop()?
+                    .as_i64()
+                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
+
+                // Check for division by zero
+                if rhs == 0 {
+                    return Err(Error::Execution("Division by zero".into()));
+                }
+
+                // Check for overflow (only case is MIN_VALUE / -1)
+                if lhs == i64::MIN && rhs == -1 {
+                    return Err(Error::Execution("Division overflow".into()));
+                }
+
+                self.stack.push(Value::I64(lhs.wrapping_div(rhs)));
+                Ok(None)
+            }
+            Instruction::I64DivU => {
+                let rhs = self
+                    .stack
+                    .pop()?
+                    .as_i64()
+                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
+                let lhs = self
+                    .stack
+                    .pop()?
+                    .as_i64()
+                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
+
+                // Check for division by zero
+                if rhs == 0 {
+                    return Err(Error::Execution("Division by zero".into()));
+                }
+
+                // For unsigned division, we need to convert to u64 first
+                let lhs_u = lhs as u64;
+                let rhs_u = rhs as u64;
+
+                self.stack
+                    .push(Value::I64((lhs_u.wrapping_div(rhs_u)) as i64));
+                Ok(None)
+            }
+            Instruction::I64RemS => {
+                let rhs = self
+                    .stack
+                    .pop()?
+                    .as_i64()
+                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
+                let lhs = self
+                    .stack
+                    .pop()?
+                    .as_i64()
+                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
+
+                // Check for division by zero
+                if rhs == 0 {
+                    return Err(Error::Execution("Division by zero".into()));
+                }
+
+                // The result of a % 0 is implementation-defined in WebAssembly spec
+                // For i64::MIN % -1, the result is defined as 0 in WebAssembly
+                if lhs == i64::MIN && rhs == -1 {
+                    self.stack.push(Value::I64(0));
+                } else {
+                    self.stack.push(Value::I64(lhs % rhs));
+                }
+
+                Ok(None)
+            }
+            Instruction::I64RemU => {
+                let rhs = self
+                    .stack
+                    .pop()?
+                    .as_i64()
+                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
+                let lhs = self
+                    .stack
+                    .pop()?
+                    .as_i64()
+                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
+
+                // Check for division by zero
+                if rhs == 0 {
+                    return Err(Error::Execution("Division by zero".into()));
+                }
+
+                // For unsigned remainder, convert to u64 first
+                let lhs_u = lhs as u64;
+                let rhs_u = rhs as u64;
+
+                self.stack.push(Value::I64((lhs_u % rhs_u) as i64));
+                Ok(None)
+            }
+
+            // Now let's add floating point operations
+            Instruction::F32Add => {
+                let rhs = self
+                    .stack
+                    .pop()?
+                    .as_f32()
+                    .ok_or_else(|| Error::Execution("Expected f32".into()))?;
+                let lhs = self
+                    .stack
+                    .pop()?
+                    .as_f32()
+                    .ok_or_else(|| Error::Execution("Expected f32".into()))?;
+                self.stack.push(Value::F32(lhs + rhs));
+                Ok(None)
+            }
+            Instruction::F32Sub => {
+                let rhs = self
+                    .stack
+                    .pop()?
+                    .as_f32()
+                    .ok_or_else(|| Error::Execution("Expected f32".into()))?;
+                let lhs = self
+                    .stack
+                    .pop()?
+                    .as_f32()
+                    .ok_or_else(|| Error::Execution("Expected f32".into()))?;
+                self.stack.push(Value::F32(lhs - rhs));
+                Ok(None)
+            }
+            Instruction::F32Mul => {
+                let rhs = self
+                    .stack
+                    .pop()?
+                    .as_f32()
+                    .ok_or_else(|| Error::Execution("Expected f32".into()))?;
+                let lhs = self
+                    .stack
+                    .pop()?
+                    .as_f32()
+                    .ok_or_else(|| Error::Execution("Expected f32".into()))?;
+                self.stack.push(Value::F32(lhs * rhs));
+                Ok(None)
+            }
+            Instruction::F32Div => {
+                let rhs = self
+                    .stack
+                    .pop()?
+                    .as_f32()
+                    .ok_or_else(|| Error::Execution("Expected f32".into()))?;
+                let lhs = self
+                    .stack
+                    .pop()?
+                    .as_f32()
+                    .ok_or_else(|| Error::Execution("Expected f32".into()))?;
+                self.stack.push(Value::F32(lhs / rhs));
+                Ok(None)
+            }
+            Instruction::F64Add => {
+                let rhs = self
+                    .stack
+                    .pop()?
+                    .as_f64()
+                    .ok_or_else(|| Error::Execution("Expected f64".into()))?;
+                let lhs = self
+                    .stack
+                    .pop()?
+                    .as_f64()
+                    .ok_or_else(|| Error::Execution("Expected f64".into()))?;
+                self.stack.push(Value::F64(lhs + rhs));
+                Ok(None)
+            }
+            Instruction::F64Sub => {
+                let rhs = self
+                    .stack
+                    .pop()?
+                    .as_f64()
+                    .ok_or_else(|| Error::Execution("Expected f64".into()))?;
+                let lhs = self
+                    .stack
+                    .pop()?
+                    .as_f64()
+                    .ok_or_else(|| Error::Execution("Expected f64".into()))?;
+                self.stack.push(Value::F64(lhs - rhs));
+                Ok(None)
+            }
+            Instruction::F64Mul => {
+                let rhs = self
+                    .stack
+                    .pop()?
+                    .as_f64()
+                    .ok_or_else(|| Error::Execution("Expected f64".into()))?;
+                let lhs = self
+                    .stack
+                    .pop()?
+                    .as_f64()
+                    .ok_or_else(|| Error::Execution("Expected f64".into()))?;
+                self.stack.push(Value::F64(lhs * rhs));
+                Ok(None)
+            }
+            Instruction::F64Div => {
+                let rhs = self
+                    .stack
+                    .pop()?
+                    .as_f64()
+                    .ok_or_else(|| Error::Execution("Expected f64".into()))?;
+                let lhs = self
+                    .stack
+                    .pop()?
+                    .as_f64()
+                    .ok_or_else(|| Error::Execution("Expected f64".into()))?;
+                self.stack.push(Value::F64(lhs / rhs));
+                Ok(None)
+            }
+
             // For remaining instructions, instead of error, treat as Nop
             _ => {
                 #[cfg(feature = "std")]
@@ -4680,7 +5087,6 @@ impl Engine {
                         Ok(s) => s,
                         Err(e) => {
                             // Log the error but continue with empty string
-                            #[cfg(feature = "std")]
                             debug_println!(
                                 "Error reading message string: {}, using empty string",
                                 e
