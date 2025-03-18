@@ -5,6 +5,8 @@ use crate::{String, Vec};
 use alloc::borrow::ToOwned;
 #[cfg(not(feature = "std"))]
 use alloc::vec;
+#[cfg(not(feature = "std"))]
+use core::cell::UnsafeCell;
 #[cfg(feature = "std")]
 use std::fmt;
 #[cfg(feature = "std")]
@@ -48,7 +50,7 @@ pub struct Memory {
     access_count: AtomicU64,
     /// Memory access counter for profiling (non-std environments)
     #[cfg(not(feature = "std"))]
-    access_count: u64,
+    access_count: UnsafeCell<u64>,
 }
 
 impl Clone for Memory {
@@ -62,7 +64,7 @@ impl Clone for Memory {
             #[cfg(feature = "std")]
             access_count: AtomicU64::new(self.access_count.load(Ordering::Relaxed)),
             #[cfg(not(feature = "std"))]
-            access_count: self.access_count,
+            access_count: UnsafeCell::new(unsafe { *self.access_count.get() }),
         }
     }
 }
@@ -95,7 +97,7 @@ impl Memory {
             #[cfg(feature = "std")]
             access_count: AtomicU64::new(0),
             #[cfg(not(feature = "std"))]
-            access_count: 0,
+            access_count: UnsafeCell::new(0),
         }
     }
 
@@ -132,9 +134,10 @@ impl Memory {
         {
             self.access_count.load(Ordering::Relaxed)
         }
+
         #[cfg(not(feature = "std"))]
         {
-            self.access_count
+            unsafe { *self.access_count.get() }
         }
     }
 
@@ -507,13 +510,9 @@ impl Memory {
 
         #[cfg(not(feature = "std"))]
         {
-            let counter = &self.access_count;
-            let new_count = counter.wrapping_add(1);
-            // Safe because we're only updating a counter
-            // which doesn't affect program correctness if it wraps
-            let counter_mut = counter as *const u64 as *mut u64;
             unsafe {
-                *counter_mut = new_count;
+                let current = *self.access_count.get();
+                *self.access_count.get() = current.wrapping_add(1);
             }
         }
 
@@ -557,7 +556,10 @@ impl Memory {
         // Increment access counter for profiling
         #[cfg(not(feature = "std"))]
         {
-            self.access_count = self.access_count.wrapping_add(1);
+            unsafe {
+                let current = *self.access_count.get();
+                *self.access_count.get() = current.wrapping_add(1);
+            }
         }
 
         #[cfg(feature = "std")]
@@ -619,12 +621,9 @@ impl Memory {
 
         #[cfg(not(feature = "std"))]
         {
-            let counter = &self.access_count;
-            let new_count = counter.wrapping_add(1);
-            // Safe because we're only updating a counter
-            let counter_mut = counter as *const u64 as *mut u64;
             unsafe {
-                *counter_mut = new_count;
+                let current = *self.access_count.get();
+                *self.access_count.get() = current.wrapping_add(1);
             }
         }
 
@@ -674,7 +673,10 @@ impl Memory {
         // Increment access counter for profiling
         #[cfg(not(feature = "std"))]
         {
-            self.access_count = self.access_count.wrapping_add(1);
+            unsafe {
+                let current = *self.access_count.get();
+                *self.access_count.get() = current.wrapping_add(1);
+            }
         }
 
         #[cfg(feature = "std")]
@@ -768,12 +770,9 @@ impl Memory {
 
         #[cfg(not(feature = "std"))]
         {
-            let counter = &self.access_count;
-            let new_count = counter.wrapping_add(access_inc);
-            // Safe because we're only updating a counter
-            let counter_mut = counter as *const u64 as *mut u64;
             unsafe {
-                *counter_mut = new_count;
+                let current = *self.access_count.get();
+                *self.access_count.get() = current.wrapping_add(access_inc);
             }
         }
 
@@ -854,7 +853,10 @@ impl Memory {
 
         #[cfg(not(feature = "std"))]
         {
-            self.access_count = self.access_count.wrapping_add(access_inc);
+            unsafe {
+                let current = *self.access_count.get();
+                *self.access_count.get() = current.wrapping_add(access_inc);
+            }
         }
 
         #[cfg(feature = "std")]
@@ -1725,6 +1727,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "std")]
     fn test_memory_search() {
         let mem_type = MemoryType {
             min: 1,
@@ -1835,6 +1838,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "std")]
     fn test_debug_features() {
         let mem_type = MemoryType {
             min: 1,

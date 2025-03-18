@@ -232,6 +232,8 @@ impl ComponentType {
 mod tests {
     use super::*;
     use crate::values::Value;
+    #[cfg(not(feature = "std"))]
+    use alloc::vec;
 
     #[test]
     fn test_value_type_equality() {
