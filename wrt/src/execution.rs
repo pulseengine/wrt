@@ -6,13 +6,11 @@ use crate::module::Module;
 use crate::types::{ExternType, ValueType};
 use crate::values::Value;
 use crate::{format, String, ToString, Vec};
+use std::collections::HashSet;
+use std::sync::{Arc, Mutex};
 
 #[cfg(feature = "std")]
-use std::sync::{Arc, Mutex};
-#[cfg(feature = "std")]
 use std::time::Instant;
-#[cfg(feature = "std")]
-use std::vec;
 
 #[cfg(not(feature = "std"))]
 use crate::Mutex;
@@ -347,6 +345,8 @@ pub struct Engine {
     stats: ExecutionStats,
     /// Callback registry for host functions (logging, etc.)
     callbacks: Arc<Mutex<CallbackRegistry>>,
+    /// Tracking which element segments have been dropped (elem_idx, module_idx)
+    dropped_elems: HashSet<(u32, u32)>,
 }
 
 impl Default for Engine {
@@ -365,6 +365,7 @@ impl Engine {
             state: ExecutionState::Idle,
             stats: ExecutionStats::default(),
             callbacks: Arc::new(Mutex::new(CallbackRegistry::new())),
+            dropped_elems: HashSet::new(),
         }
     }
 
@@ -4251,6 +4252,227 @@ impl Engine {
             Instruction::Drop => {
                 // Pop the top value from the stack and discard it
                 let _ = self.stack.pop()?;
+                Ok(None)
+            }
+            Instruction::TableFill(table_idx) => {
+                // Get the length, value, and start offset from the stack
+                let len = self.stack.pop()?.as_i32().ok_or_else(|| {
+                    Error::Execution("Expected i32 length for table.fill".into())
+                })?;
+                let val = self.stack.pop()?;
+                let dst = self.stack.pop()?.as_i32().ok_or_else(|| {
+                    Error::Execution("Expected i32 destination for table.fill".into())
+                })?;
+
+                if len < 0 {
+                    return Err(Error::Execution("Length must be non-negative".into()));
+                }
+
+                // Get the current frame's module instance
+                let frame = self.stack.current_frame()?;
+                let instance = &frame.module;
+
+                // Verify the table index is valid
+                if *table_idx as usize >= instance.table_addrs.len() {
+                    return Err(Error::Execution(format!(
+                        "Invalid table index: {}",
+                        table_idx
+                    )));
+                }
+
+                // Get the table address
+                let table_addr = &instance.table_addrs[*table_idx as usize];
+
+                // Get the instance that contains the table
+                if table_addr.instance_idx as usize >= self.instances.len() {
+                    return Err(Error::Execution(format!(
+                        "Invalid table instance index: {}",
+                        table_addr.instance_idx
+                    )));
+                }
+
+                // Get a mutable reference to the table
+                let table = &mut self.instances[table_addr.instance_idx as usize].tables
+                    [table_addr.table_idx as usize];
+
+                // Fill the table with the provided value
+                table.fill(dst as u32, len as u32, Some(val))?;
+
+                Ok(None)
+            }
+            Instruction::TableCopy(dst_table_idx, src_table_idx) => {
+                // Get the length and the source and destination offsets from the stack
+                let len = self.stack.pop()?.as_i32().ok_or_else(|| {
+                    Error::Execution("Expected i32 length for table.copy".into())
+                })?;
+                let src = self.stack.pop()?.as_i32().ok_or_else(|| {
+                    Error::Execution("Expected i32 source offset for table.copy".into())
+                })?;
+                let dst = self.stack.pop()?.as_i32().ok_or_else(|| {
+                    Error::Execution("Expected i32 destination offset for table.copy".into())
+                })?;
+
+                if len < 0 {
+                    return Err(Error::Execution("Length must be non-negative".into()));
+                }
+
+                // Get the current frame's module instance
+                let frame = self.stack.current_frame()?;
+                let instance = &frame.module;
+
+                // Verify the destination table index is valid
+                if *dst_table_idx as usize >= instance.table_addrs.len() {
+                    return Err(Error::Execution(format!(
+                        "Invalid destination table index: {}",
+                        dst_table_idx
+                    )));
+                }
+
+                // Verify the source table index is valid
+                if *src_table_idx as usize >= instance.table_addrs.len() {
+                    return Err(Error::Execution(format!(
+                        "Invalid source table index: {}",
+                        src_table_idx
+                    )));
+                }
+
+                // Get the destination table address
+                let dst_table_addr = &instance.table_addrs[*dst_table_idx as usize];
+
+                // Get the source table address
+                let src_table_addr = &instance.table_addrs[*src_table_idx as usize];
+
+                // Verify both instances exist
+                if dst_table_addr.instance_idx as usize >= self.instances.len() || 
+                   src_table_addr.instance_idx as usize >= self.instances.len() {
+                    return Err(Error::Execution("Invalid table instance index".into()));
+                }
+
+                // If both tables are in the same instance and are the same table,
+                // we need to handle the copy in a special way to avoid borrowing issues
+                if dst_table_addr.instance_idx == src_table_addr.instance_idx && 
+                   dst_table_addr.table_idx == src_table_addr.table_idx {
+                    // Get a mutable reference to the table
+                    let table = &mut self.instances[dst_table_addr.instance_idx as usize].tables
+                        [dst_table_addr.table_idx as usize];
+
+                    // Perform the copy within the same table
+                    table.copy(dst as u32, src as u32, len as u32)?;
+                } else {
+                    // Get source table elements
+                    let src_instance = &self.instances[src_table_addr.instance_idx as usize];
+                    if src_table_addr.table_idx as usize >= src_instance.tables.len() {
+                        return Err(Error::Execution("Invalid source table index in instance".into()));
+                    }
+                    let src_table = &src_instance.tables[src_table_addr.table_idx as usize];
+                    
+                    // Collect elements to copy
+                    let mut elements = Vec::with_capacity(len as usize);
+                    for i in 0..len {
+                        let elem = src_table.get((src + i) as u32)?;
+                        elements.push(elem);
+                    }
+                    
+                    // Get destination table
+                    let dst_instance = &mut self.instances[dst_table_addr.instance_idx as usize];
+                    if dst_table_addr.table_idx as usize >= dst_instance.tables.len() {
+                        return Err(Error::Execution("Invalid destination table index in instance".into()));
+                    }
+                    let dst_table = &mut dst_instance.tables[dst_table_addr.table_idx as usize];
+                    
+                    // Write elements to destination
+                    for i in 0..len {
+                        dst_table.set((dst + i) as u32, elements[i as usize].clone())?;
+                    }
+                }
+
+                Ok(None)
+            }
+            Instruction::TableInit(table_idx, elem_idx) => {
+                // Get the length and the source and destination offsets from the stack
+                let len = self.stack.pop()?.as_i32().ok_or_else(|| {
+                    Error::Execution("Expected i32 length for table.init".into())
+                })?;
+                let src = self.stack.pop()?.as_i32().ok_or_else(|| {
+                    Error::Execution("Expected i32 source offset for table.init".into())
+                })?;
+                let dst = self.stack.pop()?.as_i32().ok_or_else(|| {
+                    Error::Execution("Expected i32 destination offset for table.init".into())
+                })?;
+
+                if len < 0 {
+                    return Err(Error::Execution("Length must be non-negative".into()));
+                }
+                
+                // Get the current frame's module instance
+                let frame = self.stack.current_frame()?;
+                let instance = &frame.module;
+                
+                // Verify the table index is valid
+                if *table_idx as usize >= instance.table_addrs.len() {
+                    return Err(Error::Execution(format!("Invalid table index: {}", table_idx)));
+                }
+                
+                // Get the element segment from the module
+                let module = &instance.module;
+                if *elem_idx as usize >= module.elements.len() {
+                    return Err(Error::Execution(format!("Invalid element index: {}", elem_idx)));
+                }
+                
+                // Check if the element segment has been dropped
+                if self.dropped_elems.contains(&(*elem_idx, instance.module_idx)) {
+                    return Err(Error::Execution(format!("Element segment {} has been dropped", elem_idx)));
+                }
+                
+                // Get element segment data
+                let elem_segment = &module.elements[*elem_idx as usize];
+                if src as usize + len as usize > elem_segment.init.len() {
+                    return Err(Error::Execution("Element segment access out of bounds".into()));
+                }
+                
+                // Get the table
+                let table_addr = &instance.table_addrs[*table_idx as usize];
+                if table_addr.instance_idx as usize >= self.instances.len() {
+                    return Err(Error::Execution(format!(
+                        "Invalid table instance index: {}",
+                        table_addr.instance_idx
+                    )));
+                }
+                
+                let table_instance = &mut self.instances[table_addr.instance_idx as usize];
+                if table_addr.table_idx as usize >= table_instance.tables.len() {
+                    return Err(Error::Execution(format!(
+                        "Invalid table index in instance: {}",
+                        table_addr.table_idx
+                    )));
+                }
+                
+                let table = &mut table_instance.tables[table_addr.table_idx as usize];
+                
+                // Extract elements to initialize
+                let elements: Vec<Option<Value>> = elem_segment.init[src as usize..(src as usize + len as usize)]
+                    .iter()
+                    .map(|func_idx| Some(Value::FuncRef(Some(*func_idx))))
+                    .collect();
+                
+                // Initialize the table with these elements
+                table.init(dst as u32, &elements)?;
+                
+                Ok(None)
+            }
+            Instruction::ElemDrop(elem_idx) => {
+                // Get the current frame's module instance
+                let frame = self.stack.current_frame()?;
+                let instance = &frame.module;
+                
+                // Verify the element index is valid
+                if *elem_idx as usize >= instance.module.elements.len() {
+                    return Err(Error::Execution(format!("Invalid element index: {}", elem_idx)));
+                }
+                
+                // Mark the element segment as dropped
+                self.dropped_elems.insert((*elem_idx, instance.module_idx));
+                
                 Ok(None)
             }
             // For remaining instructions, instead of error, treat as Nop
