@@ -72,16 +72,16 @@ impl Memory {
     pub fn new(mem_type: MemoryType) -> Self {
         // Validate memory type
         if mem_type.min > MAX_PAGES {
-            // This should never happen with valid WebAssembly modules
-            // but we'll handle it gracefully
+            // Warning but not an error - some implementations allow this
             #[cfg(feature = "std")]
-            eprintln!("Warning: Memory min size exceeds WebAssembly spec maximum");
+            debug_println!("Warning: Memory min size exceeds WebAssembly spec maximum");
         }
 
         if let Some(max) = mem_type.max {
             if max > MAX_PAGES {
+                // Warning but not an error - some implementations allow this
                 #[cfg(feature = "std")]
-                eprintln!("Warning: Memory max size exceeds WebAssembly spec maximum");
+                debug_println!("Warning: Memory max size exceeds WebAssembly spec maximum");
             }
         }
 
@@ -540,7 +540,7 @@ impl Memory {
                 #[cfg(feature = "std")]
                 if let Ok(var) = std::env::var("WRT_DEBUG_MEMORY") {
                     if var == "1" {
-                        eprintln!("WARNING: Unmapped memory read at {:#x}, returning 0", addr);
+                        debug_println!("WARNING: Unmapped memory read at {:#x}, returning 0", addr);
                     }
                 }
 
@@ -590,7 +590,7 @@ impl Memory {
                 #[cfg(feature = "std")]
                 if let Ok(var) = std::env::var("WRT_DEBUG_MEMORY") {
                     if var == "1" {
-                        eprintln!("WARNING: Unmapped memory write at {:#x}, ignoring", addr);
+                        debug_println!("WARNING: Unmapped memory write at {:#x}, ignoring", addr);
                     }
                 }
 
@@ -633,7 +633,7 @@ impl Memory {
             #[cfg(feature = "std")]
             if let Ok(var) = std::env::var("WRT_DEBUG_MEMORY") {
                 if var == "1" {
-                    eprintln!(
+                    debug_println!(
                         "Special handling negative offset read at addr={:#x}, returning 0",
                         addr
                     );
@@ -656,7 +656,7 @@ impl Memory {
             } else {
                 // This should never happen if check_bounds works correctly
                 #[cfg(feature = "std")]
-                eprintln!("Warning: Failed to read byte at addr={:#x}+{}", addr, i);
+                debug_println!("Warning: Failed to read byte at addr={:#x}+{}", addr, i);
                 return Ok(T::from(0));
             }
         }
@@ -786,9 +786,11 @@ impl Memory {
             if let Ok(var) = std::env::var("WRT_DEBUG_MEMORY") {
                 if var == "1" {
                     let signed_addr = addr as i32; // Convert to signed for debugging
-                    eprintln!(
+                    debug_println!(
                         "WebAssembly negative offset memory access: addr={:#x} ({}), len={}",
-                        addr, signed_addr, len
+                        addr,
+                        signed_addr,
+                        len
                     );
                 }
             }
@@ -822,10 +824,10 @@ impl Memory {
             #[cfg(feature = "std")]
             if let Ok(var) = std::env::var("WRT_DEBUG_MEMORY") {
                 if var == "1" {
-                    eprintln!(
+                    debug_println!(
                         "WARNING: Memory access allowed by check_bounds but still out of bounds!"
                     );
-                    eprintln!(
+                    debug_println!(
                         "addr={:#x}, len={}, data.len()={}",
                         addr,
                         len,
@@ -909,6 +911,8 @@ impl Memory {
 
         // If length is 0, access is always valid (but useless)
         if len == 0 {
+            #[cfg(feature = "std")]
+            debug_println!("Warning: Zero-length read requested at addr={:#x}", addr);
             return Ok(());
         }
 
@@ -924,9 +928,12 @@ impl Memory {
             if var == "1" && is_negative_offset {
                 // Calculate the signed offset for debugging
                 let signed_addr = addr as i32; // This will correctly show the negative value
-                eprintln!(
+                debug_println!(
                     "Handling negative offset address: addr={:#x} (signed: {}), len={}, end={:#x}",
-                    addr, signed_addr, len, end
+                    addr,
+                    signed_addr,
+                    len,
+                    end
                 );
             }
         }
@@ -952,7 +959,7 @@ impl Memory {
             #[cfg(feature = "std")]
             if let Ok(var) = std::env::var("WRT_DEBUG_MEMORY") {
                 if var == "1" {
-                    eprintln!("Allowing unusual negative offset: addr={:#x}", addr);
+                    debug_println!("Allowing unusual negative offset: addr={:#x}", addr);
                 }
             }
 
@@ -970,7 +977,7 @@ impl Memory {
         #[cfg(feature = "std")]
         if let Ok(var) = std::env::var("WRT_DEBUG_MEMORY") {
             if var == "1" {
-                eprintln!(
+                debug_println!(
                     "Memory access out of bounds: addr={:#x}, len={}, end={:#x}, memory_size={}",
                     addr,
                     len,
@@ -990,7 +997,7 @@ impl Memory {
                 #[cfg(feature = "std")]
                 if let Ok(var) = std::env::var("WRT_DEBUG_MEMORY") {
                     if var == "1" {
-                        eprintln!("COMPATIBILITY: Allowing small memory overflow: addr={:#x}, len={}, overflow={}",
+                        debug_println!("COMPATIBILITY: Allowing small memory overflow: addr={:#x}, len={}, overflow={}",
                             addr, len, (end as usize) - self.data.len());
                     }
                 }
@@ -1004,7 +1011,7 @@ impl Memory {
             #[cfg(feature = "std")]
             if let Ok(var) = std::env::var("WRT_DEBUG_MEMORY") {
                 if var == "1" {
-                    eprintln!("SPECIAL COMPATIBILITY: Allowing apparent out-of-bounds access for negative offset: addr={:#x}",
+                    debug_println!("SPECIAL COMPATIBILITY: Allowing apparent out-of-bounds access for negative offset: addr={:#x}",
                         addr);
                 }
             }
@@ -1034,14 +1041,14 @@ impl Memory {
                 let rodata_offset = 1048576; // 0x100000, typical location for read-only data
 
                 if ptr >= rodata_offset && ptr < rodata_offset + 4096 {
-                    eprintln!("RODATA string access at ptr={:#x}, len={}", ptr, len);
+                    debug_println!("RODATA string access at ptr={:#x}, len={}", ptr, len);
 
                     // Try several different rodata strings to help with debugging
                     // Check for TEST_MESSAGE content
                     let test_results = self.search_memory("TEST_MESSAGE", false);
                     if !test_results.is_empty() {
                         for (i, (addr, content)) in test_results.iter().enumerate().take(3) {
-                            eprintln!(
+                            debug_println!(
                                 "TEST_MESSAGE #{} found at {:#x}: '{}'",
                                 i + 1,
                                 addr,
@@ -1055,13 +1062,13 @@ impl Memory {
                         let results = self.search_memory(keyword, false);
                         if !results.is_empty() {
                             for (_i, (addr, content)) in results.iter().enumerate().take(1) {
-                                eprintln!("'{}' found at {:#x}: '{}'", keyword, addr, content);
+                                debug_println!("'{}' found at {:#x}: '{}'", keyword, addr, content);
                             }
                         }
                     }
 
                     // Dump memory around the ptr
-                    eprintln!("Memory dump around read_wasm_string ptr={:#x}:", ptr);
+                    debug_println!("Memory dump around read_wasm_string ptr={:#x}:", ptr);
                     for offset in -16i32..32i32 {
                         let addr = ptr.wrapping_add(offset as u32);
                         if let Ok(byte) = self.read_byte(addr) {
@@ -1072,9 +1079,9 @@ impl Memory {
                             };
 
                             if offset == 0 {
-                                eprintln!("  *{:+3}: {:02x} '{}'", offset, byte, ascii);
+                                debug_println!("  *{:+3}: {:02x} '{}'", offset, byte, ascii);
                             } else {
-                                eprintln!("   {:+3}: {:02x} '{}'", offset, byte, ascii);
+                                debug_println!("   {:+3}: {:02x} '{}'", offset, byte, ascii);
                             }
                         }
                     }
@@ -1093,9 +1100,12 @@ impl Memory {
                 if var == "1" {
                     // Convert to signed i32 for easier debugging of negative offsets
                     let signed_ptr = ptr as i32;
-                    eprintln!(
+                    debug_println!(
                         "Read wasm string from ptr={:#x} ({}), len={}: '{}'",
-                        ptr, signed_ptr, len, string
+                        ptr,
+                        signed_ptr,
+                        len,
+                        string
                     );
                 }
             }
@@ -1139,7 +1149,7 @@ impl Memory {
             #[cfg(feature = "std")]
             if let Ok(var) = std::env::var("WRT_DEBUG_MEMORY") {
                 if var == "1" {
-                    eprintln!(
+                    debug_println!(
                         "Detected possible string pointer at {:#x} in pointer table region",
                         ptr
                     );
@@ -1153,9 +1163,10 @@ impl Memory {
                     #[cfg(feature = "std")]
                     if let Ok(var) = std::env::var("WRT_DEBUG_MEMORY") {
                         if var == "1" {
-                            eprintln!(
+                            debug_println!(
                                 "Found string descriptor: ptr={:#x}, len={}",
-                                str_ptr, str_len
+                                str_ptr,
+                                str_len
                             );
                         }
                     }
@@ -1176,7 +1187,10 @@ impl Memory {
                         #[cfg(feature = "std")]
                         if let Ok(var) = std::env::var("WRT_DEBUG_MEMORY") {
                             if var == "1" {
-                                eprintln!("Successfully read string from descriptor: '{}'", string);
+                                debug_println!(
+                                    "Successfully read string from descriptor: '{}'",
+                                    string
+                                );
                             }
                         }
 
@@ -1228,9 +1242,10 @@ impl Memory {
                     #[cfg(feature = "std")]
                     if let Ok(var) = std::env::var("WRT_DEBUG_MEMORY") {
                         if var == "1" {
-                            eprintln!(
+                            debug_println!(
                                 "Found valid string at alternate address {:#x}: '{}'",
-                                addr, string
+                                addr,
+                                string
                             );
                         }
                     }
@@ -1254,7 +1269,7 @@ impl Memory {
                 #[cfg(feature = "std")]
                 if let Ok(var) = std::env::var("WRT_DEBUG_MEMORY") {
                     if var == "1" {
-                        eprintln!("Read from stack memory at {:#x}: '{}'", ptr, string);
+                        debug_println!("Read from stack memory at {:#x}: '{}'", ptr, string);
                     }
                 }
 
@@ -1285,7 +1300,7 @@ impl Memory {
             #[cfg(feature = "std")]
             if let Ok(var) = std::env::var("WRT_DEBUG_MEMORY") {
                 if var == "1" {
-                    eprintln!("Searching memory for '{}'", pattern);
+                    debug_println!("Searching memory for '{}'", pattern);
                 }
             }
 
@@ -1311,9 +1326,11 @@ impl Memory {
                         #[cfg(feature = "std")]
                         if let Ok(var) = std::env::var("WRT_DEBUG_MEMORY") {
                             if var == "1" {
-                                eprintln!(
+                                debug_println!(
                                     "Found string containing '{}' at {:#x}: '{}'",
-                                    pattern, addr, found_string
+                                    pattern,
+                                    addr,
+                                    found_string
                                 );
                             }
                         }
@@ -1330,7 +1347,7 @@ impl Memory {
                                         #[cfg(feature = "std")]
                                         if let Ok(var) = std::env::var("WRT_DEBUG_MEMORY") {
                                             if var == "1" {
-                                                eprintln!(
+                                                debug_println!(
                                                     "Using longer TEST_MESSAGE string: '{}'",
                                                     str
                                                 );
@@ -1352,7 +1369,7 @@ impl Memory {
                                 #[cfg(feature = "std")]
                                 if let Ok(var) = std::env::var("WRT_DEBUG_MEMORY") {
                                     if var == "1" {
-                                        eprintln!("Reconstructing more complete test message");
+                                        debug_println!("Reconstructing more complete test message");
                                     }
                                 }
 
@@ -1370,7 +1387,7 @@ impl Memory {
         #[cfg(feature = "std")]
         if let Ok(var) = std::env::var("WRT_DEBUG_MEMORY") {
             if var == "1" {
-                eprintln!("WARNING: Failed to find valid string for ptr={:#x}, len={}. Returning empty string.", 
+                debug_println!("WARNING: Failed to find valid string for ptr={:#x}, len={}. Returning empty string.", 
                     ptr, len);
             }
         }

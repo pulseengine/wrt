@@ -191,7 +191,7 @@ impl Stack {
         // If the label stack is empty, create a placeholder label for error recovery
         if self.labels.is_empty() {
             #[cfg(feature = "std")]
-            eprintln!("Warning: Label stack is empty but branch instruction encountered. Using fake label for recovery.");
+            debug_println!("Warning: Label stack is empty but branch instruction encountered. Using fake label for recovery.");
 
             // Create a placeholder label that branches to instruction 0 (which should be a safe location)
             // By returning a fake label instead of an error, we allow execution to continue
@@ -249,6 +249,23 @@ impl Stack {
                 // This is a major error, but we'll try to recover with a placeholder frame
                 #[cfg(feature = "std")]
                 eprintln!("Warning: No active frame but trying to continue execution with placeholder frame.");
+
+                // In a real world application, this would be handled differently
+                // For now, we'll just return an error since creating a valid Frame
+                // requires a reference to module state that we can't fabricate
+                Err(Error::Execution("No active frame".into()))
+            }
+        }
+    }
+
+    /// Returns the current frame mutably
+    pub fn current_frame_mut(&mut self) -> Result<&mut Frame> {
+        match self.frames.last_mut() {
+            Some(frame) => Ok(frame),
+            None => {
+                // This is a major error, but we'll try to recover with a placeholder frame
+                #[cfg(feature = "std")]
+                debug_println!("Warning: No active frame but trying to continue execution with placeholder frame.");
 
                 // In a real world application, this would be handled differently
                 // For now, we'll just return an error since creating a valid Frame
@@ -2656,7 +2673,7 @@ impl Engine {
                 if memory_idx >= self.instances[mem_instance_idx].memories.len() {
                     // Invalid memory index, return default value
                     #[cfg(feature = "std")]
-                    eprintln!("Invalid memory index {}, returning 0", memory_idx);
+                    debug_println!("Invalid memory index {}, returning 0", memory_idx);
                     self.stack.push(Value::I32(0));
                     return Ok(None);
                 }
@@ -2670,7 +2687,7 @@ impl Engine {
                     Err(e) => {
                         // Handle out-of-bounds access by returning 0 instead of error
                         #[cfg(feature = "std")]
-                        eprintln!("Memory access error: {}, returning 0", e);
+                        debug_println!("Memory access error: {}, returning 0", e);
                         0
                     }
                 };
