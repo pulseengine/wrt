@@ -387,8 +387,7 @@ impl Engine {
     pub fn read_wasm_string(&self, memory_addr: &MemoryAddr, ptr: i32) -> Result<String> {
         // Special cases for null or negative pointers
         if ptr <= 0 {
-            #[cfg(feature = "std")]
-            eprintln!(
+            debug_println!(
                 "Null or negative string pointer: {}, returning empty string",
                 ptr
             );
@@ -405,8 +404,7 @@ impl Engine {
         // Get the instance with better error handling
         let instance_idx = memory_addr.instance_idx as usize;
         if instance_idx >= self.instances.len() {
-            #[cfg(feature = "std")]
-            eprintln!(
+            debug_println!(
                 "Instance index {} out of bounds (max: {}), returning empty string",
                 instance_idx,
                 self.instances.len().saturating_sub(1)
@@ -419,8 +417,7 @@ impl Engine {
         // Get memory instance for the instance
         let memory_idx = memory_addr.memory_idx as usize;
         if memory_idx >= instance.memories.len() {
-            #[cfg(feature = "std")]
-            eprintln!(
+            debug_println!(
                 "Memory index {} out of bounds (max: {}), returning empty string",
                 memory_idx,
                 instance.memories.len().saturating_sub(1)
@@ -440,8 +437,7 @@ impl Engine {
                 // Sanity check for unreasonably large lengths
                 if len > 1000000 {
                     // 1MB max string - most are much smaller
-                    #[cfg(feature = "std")]
-                    eprintln!(
+                    debug_println!(
                         "Unreasonably large string length: {} bytes, capping at 1024",
                         len
                     );
@@ -452,8 +448,7 @@ impl Engine {
             }
             Err(e) => {
                 // If we can't read length, return empty string
-                #[cfg(feature = "std")]
-                eprintln!(
+                debug_println!(
                     "Failed to read string length: {}, returning empty string",
                     e
                 );
@@ -477,17 +472,16 @@ impl Engine {
                     }
                     Err(e) => {
                         // Try to recover with lossy conversion instead of failing
-                        #[cfg(feature = "std")]
-                        eprintln!(
+                        debug_println!(
                             "UTF-8 conversion error in memory read at pointer {}: {}",
-                            ptr, e
+                            ptr,
+                            e
                         );
 
                         // Use lossy conversion to get a valid UTF-8 string
                         let lossy_string = String::from_utf8_lossy(bytes).into_owned();
 
-                        #[cfg(feature = "std")]
-                        eprintln!("Recovered with lossy conversion: '{}'", lossy_string);
+                        debug_println!("Recovered with lossy conversion: '{}'", lossy_string);
 
                         Ok(lossy_string)
                     }
@@ -495,9 +489,7 @@ impl Engine {
             }
             Err(e) => {
                 // If we can't read bytes, return empty string
-                #[cfg(feature = "std")]
-                eprintln!("Failed to read string bytes: {}, returning empty string", e);
-
+                debug_println!("Failed to read string bytes: {}, returning empty string", e);
                 Ok(String::new())
             }
         }
@@ -730,8 +722,7 @@ impl Engine {
             }
             Err(e) => {
                 // If we can't read bytes, return empty string in direct reader
-                #[cfg(feature = "std")]
-                eprintln!("Failed to read string bytes: {}, returning empty string", e);
+                debug_println!("Failed to read string bytes: {}, returning empty string", e);
                 Ok(String::new())
             }
         }
@@ -2034,8 +2025,8 @@ impl Engine {
                         } else {
                             // Handle out of bounds index gracefully
                             #[cfg(feature = "std")]
-                            eprintln!("Warning: Local {} out of bounds (max: {}) in LocalGet, using default",
-                                     idx_usize, frame.locals.len().saturating_sub(1));
+                            debug_println!("Warning: Local {} out of bounds (max: {}) in LocalGet, using default",
+                                         idx_usize, frame.locals.len().saturating_sub(1));
                             // Push a default value
                             self.stack.push(Value::I32(0));
                         }
@@ -2043,7 +2034,9 @@ impl Engine {
                     Err(_) => {
                         // No active frame - log and continue with default
                         #[cfg(feature = "std")]
-                        eprintln!("Warning: No active frame for LocalGet, using default value");
+                        debug_println!(
+                            "Warning: No active frame for LocalGet, using default value"
+                        );
                         self.stack.push(Value::I32(0));
                     }
                 }
@@ -3620,7 +3613,7 @@ impl Engine {
                     Ok(v) => v.as_i32().unwrap_or(0),
                     Err(_) => {
                         #[cfg(feature = "std")]
-                        eprintln!("Warning: Stack underflow for I32Store addr, using 0");
+                        debug_println!("Warning: Stack underflow for I32Store addr, using 0");
                         0
                     }
                 };
@@ -3959,6 +3952,21 @@ impl Engine {
                 Ok(None)
             }
 
+            // Add support for tail calls
+            Instruction::ReturnCall(func_idx) => {
+                if let Err(e) = self.execute_return_call(*func_idx) {
+                    #[cfg(feature = "std")]
+                    eprintln!("Return call error: {}", e);
+                }
+                Ok(None)
+            }
+            Instruction::ReturnCallIndirect(type_idx, table_idx) => {
+                if let Err(e) = self.execute_return_call_indirect(*type_idx, *table_idx) {
+                    #[cfg(feature = "std")]
+                    eprintln!("Return call indirect error: {}", e);
+                }
+                Ok(None)
+            }
             // For remaining instructions, instead of error, treat as Nop
             _ => {
                 #[cfg(feature = "std")]
@@ -4088,7 +4096,7 @@ impl Engine {
         // Get context and message, handling hardcoded case if memory is empty
         let (context, message) = if !memory_contains_expected_strings {
             #[cfg(feature = "std")]
-            eprintln!(
+            debug_println!(
                 "String data not found in memory - using hardcoded values from example/src/lib.rs"
             );
 
@@ -4112,7 +4120,7 @@ impl Engine {
                     Err(e) => {
                         // Log the error but continue with empty string
                         #[cfg(feature = "std")]
-                        eprintln!("Error reading context string: {}, using empty string", e);
+                        debug_println!("Error reading context string: {}, using empty string", e);
                         String::from("[unknown context]")
                     }
                 }
@@ -4165,7 +4173,10 @@ impl Engine {
                         Err(e) => {
                             // Log the error but continue with empty string
                             #[cfg(feature = "std")]
-                            eprintln!("Error reading message string: {}, using empty string", e);
+                            debug_println!(
+                                "Error reading message string: {}, using empty string",
+                                e
+                            );
                             String::from("[empty message]")
                         }
                     }
@@ -4191,7 +4202,10 @@ impl Engine {
                         Err(e) => {
                             // Log the error but continue with empty string
                             #[cfg(feature = "std")]
-                            eprintln!("Error reading message string: {}, using empty string", e);
+                            debug_println!(
+                                "Error reading message string: {}, using empty string",
+                                e
+                            );
                             String::from("[empty message]")
                         }
                     }
@@ -4219,6 +4233,144 @@ impl Engine {
 
         // No return value needed for log function
         Ok(vec![])
+    }
+
+    /// Execute a tail call instruction (return_call)
+    pub fn execute_return_call(&mut self, func_idx: u32) -> Result<()> {
+        // Get information we need from the current frame
+        let frame = match self.stack.current_frame() {
+            Ok(frame) => frame,
+            Err(_) => return Err(Error::Execution("No current frame for return call".into())),
+        };
+
+        let local_func_idx = func_idx;
+        let module_idx = frame.module.module_idx;
+
+        // Debug the function call
+        #[cfg(feature = "std")]
+        if let Ok(var) = std::env::var("WRT_DEBUG_INSTRUCTIONS") {
+            if var == "1" {
+                eprintln!(
+                    "Return call to function idx={} (local_idx={})",
+                    func_idx, local_func_idx
+                );
+            }
+        }
+
+        // Count imported functions that may affect the function index
+        let imports = frame
+            .module
+            .module
+            .imports
+            .iter()
+            .filter(|import| matches!(import.ty, ExternType::Function(_)))
+            .collect::<Vec<_>>();
+
+        let import_count = imports.len() as u32;
+
+        // Check if we're calling an imported function
+        let is_imported = local_func_idx < import_count;
+
+        // For imported functions, we'll revert to a regular call for now
+        if is_imported {
+            let import = &frame.module.module.imports[local_func_idx as usize];
+            return Err(Error::Execution(format!(
+                "Return call to imported function not supported: {}.{}",
+                import.module, import.name
+            )));
+        }
+
+        // Adjust the function index to account for imported functions
+        let adjusted_func_idx = local_func_idx - import_count;
+
+        // Verify the adjusted index is valid
+        if adjusted_func_idx as usize >= frame.module.module.functions.len() {
+            return Err(Error::Execution(format!(
+                "Function index {} (adjusted to {}) out of bounds (max: {})",
+                local_func_idx,
+                adjusted_func_idx,
+                frame.module.module.functions.len()
+            )));
+        }
+
+        let func = &frame.module.module.functions[adjusted_func_idx as usize];
+        let func_type = &frame.module.module.types[func.type_idx as usize];
+        let params_len = func_type.params.len();
+
+        // End the immutable borrow of the frame before mutable operations
+        let _ = frame;
+
+        // Get function arguments
+        let mut args = Vec::new();
+        for _ in 0..params_len {
+            args.push(self.stack.pop()?);
+        }
+        args.reverse();
+
+        // Pop the current frame since this is a tail call
+        self.stack.pop_frame()?;
+
+        // Execute the function and push results
+        let results = self.execute(module_idx, local_func_idx, args)?;
+        for result in results {
+            self.stack.push(result);
+        }
+
+        Ok(())
+    }
+
+    /// Execute an indirect tail call instruction (return_call_indirect)
+    pub fn execute_return_call_indirect(&mut self, type_idx: u32, table_idx: u32) -> Result<()> {
+        // Get the function index from the stack
+        let func_idx = self
+            .stack
+            .pop()?
+            .as_i32()
+            .ok_or_else(|| Error::Execution("Expected i32 function index".into()))?;
+
+        if func_idx < 0 {
+            return Err(Error::Execution(format!(
+                "Negative function index: {}",
+                func_idx
+            )));
+        }
+
+        let frame = self.stack.current_frame()?;
+        let module_idx = frame.module.module_idx;
+
+        // Get the table
+        if table_idx as usize >= frame.module.module.tables.len() {
+            return Err(Error::Execution(format!(
+                "Table index {} out of bounds",
+                table_idx
+            )));
+        }
+
+        // For now, we'll just use a regular call and pop the frame after
+        // Get function arguments based on the expected type
+        let module_type = &frame.module.module.types[type_idx as usize];
+        let params_len = module_type.params.len();
+
+        // End the immutable borrow of the frame before mutable operations
+        let _ = frame;
+
+        // Get function arguments
+        let mut args = Vec::new();
+        for _ in 0..params_len {
+            args.push(self.stack.pop()?);
+        }
+        args.reverse();
+
+        // Pop the current frame since this is a tail call
+        self.stack.pop_frame()?;
+
+        // Execute the function and push results
+        let results = self.execute(module_idx, func_idx as u32, args)?;
+        for result in results {
+            self.stack.push(result);
+        }
+
+        Ok(())
     }
 }
 

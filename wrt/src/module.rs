@@ -187,8 +187,7 @@ impl Module {
             if section_end > bytes.len() {
                 // For components, we might have sections that extend beyond what we understand
                 // Instead of failing, we'll truncate the section and continue
-                #[cfg(feature = "std")]
-                eprintln!(
+                debug_println!(
                     "WARNING: Section extends beyond end of file, truncating (end: {}, len: {})",
                     section_end,
                     bytes.len()
