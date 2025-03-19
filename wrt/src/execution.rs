@@ -1,14 +1,14 @@
 use crate::error::{Error, Result};
+use crate::global::Global;
 use crate::instructions::Instruction;
 use crate::logging::{CallbackRegistry, LogLevel, LogOperation};
+use crate::memory::Memory;
 use crate::module::ExportKind;
 use crate::module::{Function, Module};
+use crate::table::Table;
 use crate::types::{ExternType, ValueType};
 use crate::values::Value;
 use crate::{format, String, ToString, Vec};
-use crate::memory::Memory;
-use crate::table::Table;
-use crate::global::Global;
 
 #[cfg(not(feature = "std"))]
 use alloc::collections::BTreeSet as HashSet;
@@ -2295,7 +2295,8 @@ impl Engine {
                     .as_i32()
                     .ok_or_else(|| Error::Execution("Expected i32".into()))?;
                 // Cast to unsigned (u32) before comparison
-                self.stack.push(Value::I32(if (lhs as u32) < (rhs as u32) { 1 } else { 0 }));
+                self.stack
+                    .push(Value::I32(if (lhs as u32) < (rhs as u32) { 1 } else { 0 }));
                 Ok(None)
             }
             Instruction::I32GtS => {
@@ -2324,7 +2325,8 @@ impl Engine {
                     .as_i32()
                     .ok_or_else(|| Error::Execution("Expected i32".into()))?;
                 // Cast to unsigned (u32) before comparison
-                self.stack.push(Value::I32(if (lhs as u32) > (rhs as u32) { 1 } else { 0 }));
+                self.stack
+                    .push(Value::I32(if (lhs as u32) > (rhs as u32) { 1 } else { 0 }));
                 Ok(None)
             }
             Instruction::I32LeS => {
@@ -2353,7 +2355,8 @@ impl Engine {
                     .as_i32()
                     .ok_or_else(|| Error::Execution("Expected i32".into()))?;
                 // Cast to unsigned (u32) before comparison
-                self.stack.push(Value::I32(if (lhs as u32) <= (rhs as u32) { 1 } else { 0 }));
+                self.stack
+                    .push(Value::I32(if (lhs as u32) <= (rhs as u32) { 1 } else { 0 }));
                 Ok(None)
             }
             Instruction::I32GeS => {
@@ -2381,12 +2384,12 @@ impl Engine {
                     .pop()?
                     .as_i32()
                     .ok_or_else(|| Error::Execution("Expected i32".into()))?;
-                
+
                 // Special handling for component model polling loops
                 // The common pattern is: LocalGet(3), I32Const(4), I32GeU, BrIf(0)
                 if rhs == 4 {
                     self.polling_loop_counter += 1;
-                    
+
                     #[cfg(feature = "std")]
                     if let Ok(var) = std::env::var("WRT_DEBUG_MEMORY") {
                         if var == "1" {
@@ -2396,22 +2399,24 @@ impl Engine {
                             );
                         }
                     }
-                    
+
                     // After detecting the pattern many times, force exit to avoid wasting fuel
                     if self.polling_loop_counter > 500 {
                         return Err(Error::Execution(
-                            "Detected infinite component model polling loop, execution aborted".into()
+                            "Detected infinite component model polling loop, execution aborted"
+                                .into(),
                         ));
                     }
-                    
+
                     // Force the condition to fail by returning false (0)
                     // This will cause the BrIf(0) to not take the branch
-                    self.stack.push(Value::I32(0)); 
+                    self.stack.push(Value::I32(0));
                     return Ok(None);
                 }
-                
+
                 // Normal case - cast to unsigned (u32) before comparison
-                self.stack.push(Value::I32(if (lhs as u32) >= (rhs as u32) { 1 } else { 0 }));
+                self.stack
+                    .push(Value::I32(if (lhs as u32) >= (rhs as u32) { 1 } else { 0 }));
                 Ok(None)
             }
             Instruction::I32Eq => {
@@ -4658,72 +4663,160 @@ impl Engine {
 
             // I64 Comparison operations
             Instruction::I64Eqz => {
-                let value = self.stack.pop()?.as_i64().ok_or_else(|| Error::Execution("Expected i64".into()))?;
+                let value = self
+                    .stack
+                    .pop()?
+                    .as_i64()
+                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
                 self.stack.push(Value::I32(if value == 0 { 1 } else { 0 }));
                 Ok(None)
             }
             Instruction::I64Eq => {
-                let rhs = self.stack.pop()?.as_i64().ok_or_else(|| Error::Execution("Expected i64".into()))?;
-                let lhs = self.stack.pop()?.as_i64().ok_or_else(|| Error::Execution("Expected i64".into()))?;
+                let rhs = self
+                    .stack
+                    .pop()?
+                    .as_i64()
+                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
+                let lhs = self
+                    .stack
+                    .pop()?
+                    .as_i64()
+                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
                 self.stack.push(Value::I32(if lhs == rhs { 1 } else { 0 }));
                 Ok(None)
             }
             Instruction::I64Ne => {
-                let rhs = self.stack.pop()?.as_i64().ok_or_else(|| Error::Execution("Expected i64".into()))?;
-                let lhs = self.stack.pop()?.as_i64().ok_or_else(|| Error::Execution("Expected i64".into()))?;
+                let rhs = self
+                    .stack
+                    .pop()?
+                    .as_i64()
+                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
+                let lhs = self
+                    .stack
+                    .pop()?
+                    .as_i64()
+                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
                 self.stack.push(Value::I32(if lhs != rhs { 1 } else { 0 }));
                 Ok(None)
             }
             Instruction::I64LtS => {
-                let rhs = self.stack.pop()?.as_i64().ok_or_else(|| Error::Execution("Expected i64".into()))?;
-                let lhs = self.stack.pop()?.as_i64().ok_or_else(|| Error::Execution("Expected i64".into()))?;
+                let rhs = self
+                    .stack
+                    .pop()?
+                    .as_i64()
+                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
+                let lhs = self
+                    .stack
+                    .pop()?
+                    .as_i64()
+                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
                 self.stack.push(Value::I32(if lhs < rhs { 1 } else { 0 }));
                 Ok(None)
             }
             Instruction::I64LtU => {
-                let rhs = self.stack.pop()?.as_i64().ok_or_else(|| Error::Execution("Expected i64".into()))?;
-                let lhs = self.stack.pop()?.as_i64().ok_or_else(|| Error::Execution("Expected i64".into()))?;
+                let rhs = self
+                    .stack
+                    .pop()?
+                    .as_i64()
+                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
+                let lhs = self
+                    .stack
+                    .pop()?
+                    .as_i64()
+                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
                 // Cast to unsigned (u64) before comparison
-                self.stack.push(Value::I32(if (lhs as u64) < (rhs as u64) { 1 } else { 0 }));
+                self.stack
+                    .push(Value::I32(if (lhs as u64) < (rhs as u64) { 1 } else { 0 }));
                 Ok(None)
             }
             Instruction::I64GtS => {
-                let rhs = self.stack.pop()?.as_i64().ok_or_else(|| Error::Execution("Expected i64".into()))?;
-                let lhs = self.stack.pop()?.as_i64().ok_or_else(|| Error::Execution("Expected i64".into()))?;
+                let rhs = self
+                    .stack
+                    .pop()?
+                    .as_i64()
+                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
+                let lhs = self
+                    .stack
+                    .pop()?
+                    .as_i64()
+                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
                 self.stack.push(Value::I32(if lhs > rhs { 1 } else { 0 }));
                 Ok(None)
             }
             Instruction::I64GtU => {
-                let rhs = self.stack.pop()?.as_i64().ok_or_else(|| Error::Execution("Expected i64".into()))?;
-                let lhs = self.stack.pop()?.as_i64().ok_or_else(|| Error::Execution("Expected i64".into()))?;
+                let rhs = self
+                    .stack
+                    .pop()?
+                    .as_i64()
+                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
+                let lhs = self
+                    .stack
+                    .pop()?
+                    .as_i64()
+                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
                 // Cast to unsigned (u64) before comparison
-                self.stack.push(Value::I32(if (lhs as u64) > (rhs as u64) { 1 } else { 0 }));
+                self.stack
+                    .push(Value::I32(if (lhs as u64) > (rhs as u64) { 1 } else { 0 }));
                 Ok(None)
             }
             Instruction::I64LeS => {
-                let rhs = self.stack.pop()?.as_i64().ok_or_else(|| Error::Execution("Expected i64".into()))?;
-                let lhs = self.stack.pop()?.as_i64().ok_or_else(|| Error::Execution("Expected i64".into()))?;
+                let rhs = self
+                    .stack
+                    .pop()?
+                    .as_i64()
+                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
+                let lhs = self
+                    .stack
+                    .pop()?
+                    .as_i64()
+                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
                 self.stack.push(Value::I32(if lhs <= rhs { 1 } else { 0 }));
                 Ok(None)
             }
             Instruction::I64LeU => {
-                let rhs = self.stack.pop()?.as_i64().ok_or_else(|| Error::Execution("Expected i64".into()))?;
-                let lhs = self.stack.pop()?.as_i64().ok_or_else(|| Error::Execution("Expected i64".into()))?;
+                let rhs = self
+                    .stack
+                    .pop()?
+                    .as_i64()
+                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
+                let lhs = self
+                    .stack
+                    .pop()?
+                    .as_i64()
+                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
                 // Cast to unsigned (u64) before comparison
-                self.stack.push(Value::I32(if (lhs as u64) <= (rhs as u64) { 1 } else { 0 }));
+                self.stack
+                    .push(Value::I32(if (lhs as u64) <= (rhs as u64) { 1 } else { 0 }));
                 Ok(None)
             }
             Instruction::I64GeS => {
-                let rhs = self.stack.pop()?.as_i64().ok_or_else(|| Error::Execution("Expected i64".into()))?;
-                let lhs = self.stack.pop()?.as_i64().ok_or_else(|| Error::Execution("Expected i64".into()))?;
+                let rhs = self
+                    .stack
+                    .pop()?
+                    .as_i64()
+                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
+                let lhs = self
+                    .stack
+                    .pop()?
+                    .as_i64()
+                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
                 self.stack.push(Value::I32(if lhs >= rhs { 1 } else { 0 }));
                 Ok(None)
             }
             Instruction::I64GeU => {
-                let rhs = self.stack.pop()?.as_i64().ok_or_else(|| Error::Execution("Expected i64".into()))?;
-                let lhs = self.stack.pop()?.as_i64().ok_or_else(|| Error::Execution("Expected i64".into()))?;
+                let rhs = self
+                    .stack
+                    .pop()?
+                    .as_i64()
+                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
+                let lhs = self
+                    .stack
+                    .pop()?
+                    .as_i64()
+                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
                 // Cast to unsigned (u64) before comparison
-                self.stack.push(Value::I32(if (lhs as u64) >= (rhs as u64) { 1 } else { 0 }));
+                self.stack
+                    .push(Value::I32(if (lhs as u64) >= (rhs as u64) { 1 } else { 0 }));
                 Ok(None)
             }
             // I64 Arithmetic operations
