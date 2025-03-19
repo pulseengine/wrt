@@ -2255,6 +2255,22 @@ impl Engine {
                 self.stack.push(Value::I32(if lhs < rhs { 1 } else { 0 }));
                 Ok(None)
             }
+            Instruction::I32LtU => {
+                let rhs = self
+                    .stack
+                    .pop()?
+                    .as_i32()
+                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
+                let lhs = self
+                    .stack
+                    .pop()?
+                    .as_i32()
+                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
+                // Cast to unsigned (u32) before comparison
+                self.stack
+                    .push(Value::I32(if (lhs as u32) < (rhs as u32) { 1 } else { 0 }));
+                Ok(None)
+            }
             Instruction::I32GtS => {
                 let rhs = self
                     .stack
@@ -2267,6 +2283,22 @@ impl Engine {
                     .as_i32()
                     .ok_or_else(|| Error::Execution("Expected i32".into()))?;
                 self.stack.push(Value::I32(if lhs > rhs { 1 } else { 0 }));
+                Ok(None)
+            }
+            Instruction::I32GtU => {
+                let rhs = self
+                    .stack
+                    .pop()?
+                    .as_i32()
+                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
+                let lhs = self
+                    .stack
+                    .pop()?
+                    .as_i32()
+                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
+                // Cast to unsigned (u32) before comparison
+                self.stack
+                    .push(Value::I32(if (lhs as u32) > (rhs as u32) { 1 } else { 0 }));
                 Ok(None)
             }
             Instruction::I32LeS => {
@@ -2283,6 +2315,22 @@ impl Engine {
                 self.stack.push(Value::I32(if lhs <= rhs { 1 } else { 0 }));
                 Ok(None)
             }
+            Instruction::I32LeU => {
+                let rhs = self
+                    .stack
+                    .pop()?
+                    .as_i32()
+                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
+                let lhs = self
+                    .stack
+                    .pop()?
+                    .as_i32()
+                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
+                // Cast to unsigned (u32) before comparison
+                self.stack
+                    .push(Value::I32(if (lhs as u32) <= (rhs as u32) { 1 } else { 0 }));
+                Ok(None)
+            }
             Instruction::I32GeS => {
                 let rhs = self
                     .stack
@@ -2295,6 +2343,22 @@ impl Engine {
                     .as_i32()
                     .ok_or_else(|| Error::Execution("Expected i32".into()))?;
                 self.stack.push(Value::I32(if lhs >= rhs { 1 } else { 0 }));
+                Ok(None)
+            }
+            Instruction::I32GeU => {
+                let rhs = self
+                    .stack
+                    .pop()?
+                    .as_i32()
+                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
+                let lhs = self
+                    .stack
+                    .pop()?
+                    .as_i32()
+                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
+                // Cast to unsigned (u32) before comparison
+                self.stack
+                    .push(Value::I32(if (lhs as u32) >= (rhs as u32) { 1 } else { 0 }));
                 Ok(None)
             }
             Instruction::I32Eq => {
