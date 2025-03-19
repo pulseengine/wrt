@@ -40,6 +40,8 @@ enum InstructionCategory {
     FunctionCall,
     /// Arithmetic operations
     Arithmetic,
+    /// Comparison operations
+    Comparison,
     /// Other instructions (constants, etc.)
     Other,
 }
@@ -321,6 +323,8 @@ pub struct ExecutionStats {
     pub function_calls: u64,
     /// Number of memory operations
     pub memory_operations: u64,
+    /// Number of comparison operations
+    pub comparison_instructions: u64,
     /// Time spent in local/global operations (µs)
     #[cfg(feature = "std")]
     pub local_global_time_us: u64,
@@ -1689,84 +1693,15 @@ impl Engine {
         let timer_start = Instant::now();
 
         // Categorize the instruction for statistics tracking
-        let _inst_category = match inst {
-            // Memory operations
-            Instruction::I32Load(_, _)
-            | Instruction::I64Load(_, _)
-            | Instruction::F32Load(_, _)
-            | Instruction::F64Load(_, _)
-            | Instruction::I32Load8S(_, _)
-            | Instruction::I32Load8U(_, _)
-            | Instruction::I32Load16S(_, _)
-            | Instruction::I32Load16U(_, _)
-            | Instruction::I64Load8S(_, _)
-            | Instruction::I64Load8U(_, _)
-            | Instruction::I64Load16S(_, _)
-            | Instruction::I64Load16U(_, _)
-            | Instruction::I64Load32S(_, _)
-            | Instruction::I64Load32U(_, _)
-            | Instruction::I32Store(_, _)
-            | Instruction::I64Store(_, _)
-            | Instruction::F32Store(_, _)
-            | Instruction::F64Store(_, _)
-            | Instruction::I32Store8(_, _)
-            | Instruction::I32Store16(_, _)
-            | Instruction::I64Store8(_, _)
-            | Instruction::I64Store16(_, _)
-            | Instruction::I64Store32(_, _)
-            | Instruction::MemoryGrow
-            | Instruction::MemorySize
-            | Instruction::MemoryFill
-            | Instruction::MemoryCopy
-            | Instruction::MemoryInit(_)
-            | Instruction::DataDrop(_) => {
-                self.stats.memory_operations += 1;
-                InstructionCategory::MemoryOp
-            }
-            // Function calls
-            Instruction::Call(_)
-            | Instruction::CallIndirect(_, _)
-            | Instruction::ReturnCall(_)
-            | Instruction::ReturnCallIndirect(_, _) => {
-                self.stats.function_calls += 1;
-                InstructionCategory::FunctionCall
-            }
-            // Control flow
-            Instruction::Block(_)
-            | Instruction::Loop(_)
-            | Instruction::If(_)
-            | Instruction::Else
-            | Instruction::End
-            | Instruction::Br(_)
-            | Instruction::BrIf(_)
-            | Instruction::BrTable(_, _)
-            | Instruction::Return
-            | Instruction::Unreachable => InstructionCategory::ControlFlow,
-            // Local/global variables
-            Instruction::LocalGet(_)
-            | Instruction::LocalSet(_)
-            | Instruction::LocalTee(_)
-            | Instruction::GlobalGet(_)
-            | Instruction::GlobalSet(_) => InstructionCategory::LocalGlobal,
-            // Arithmetic operations
-            Instruction::I32Add
-            | Instruction::I32Sub
-            | Instruction::I32Mul
-            | Instruction::I32DivS
-            | Instruction::I32DivU
-            | Instruction::I32Eq
-            | Instruction::I32Ne
-            | Instruction::I32LtS
-            | Instruction::I32LtU
-            | Instruction::I32GtS
-            | Instruction::I32GtU
-            | Instruction::I32LeS
-            | Instruction::I32LeU
-            | Instruction::I32GeS
-            | Instruction::I32GeU => InstructionCategory::Arithmetic,
-            // Other - most constants fall here
-            _ => InstructionCategory::Other,
-        };
+        let _inst_category = self.categorize_instruction(inst);
+
+        // Track instruction categories for specific statistics
+        match _inst_category {
+            InstructionCategory::MemoryOp => self.stats.memory_operations += 1,
+            InstructionCategory::FunctionCall => self.stats.function_calls += 1,
+            InstructionCategory::Comparison => self.stats.comparison_instructions += 1,
+            _ => {} // Other categories don't have specific counters yet
+        }
 
         // Consume instruction-specific fuel amount if needed
         if let Some(fuel) = self.fuel {
@@ -5111,6 +5046,10 @@ impl Engine {
                 InstructionCategory::Arithmetic => {
                     self.stats.arithmetic_time_us += elapsed_micros;
                 }
+                InstructionCategory::Comparison => {
+                    // Track comparison time in arithmetic operations for now
+                    self.stats.arithmetic_time_us += elapsed_micros;
+                }
                 InstructionCategory::Other => {
                     // Not tracked specifically
                 }
@@ -5679,6 +5618,167 @@ impl Engine {
 
         Ok(())
     }
+
+    /// Categorizes an instruction by type
+    fn categorize_instruction(&self, inst: &Instruction) -> InstructionCategory {
+        match inst {
+            // Comparison operations
+            Instruction::I32Eqz
+            | Instruction::I32Eq
+            | Instruction::I32Ne
+            | Instruction::I32LtS
+            | Instruction::I32LtU
+            | Instruction::I32GtS
+            | Instruction::I32GtU
+            | Instruction::I32LeS
+            | Instruction::I32LeU
+            | Instruction::I32GeS
+            | Instruction::I32GeU
+            | Instruction::I64Eqz
+            | Instruction::I64Eq
+            | Instruction::I64Ne
+            | Instruction::I64LtS
+            | Instruction::I64LtU
+            | Instruction::I64GtS
+            | Instruction::I64GtU
+            | Instruction::I64LeS
+            | Instruction::I64LeU
+            | Instruction::I64GeS
+            | Instruction::I64GeU
+            | Instruction::F32Eq
+            | Instruction::F32Ne
+            | Instruction::F32Lt
+            | Instruction::F32Gt
+            | Instruction::F32Le
+            | Instruction::F32Ge
+            | Instruction::F64Eq
+            | Instruction::F64Ne
+            | Instruction::F64Lt
+            | Instruction::F64Gt
+            | Instruction::F64Le
+            | Instruction::F64Ge => InstructionCategory::Comparison,
+
+            // Control flow instructions
+            Instruction::Block(_)
+            | Instruction::Loop(_)
+            | Instruction::If(_)
+            | Instruction::Else
+            | Instruction::End
+            | Instruction::Br(_)
+            | Instruction::BrIf(_)
+            | Instruction::BrTable(_, _)
+            | Instruction::Return
+            | Instruction::Unreachable => InstructionCategory::ControlFlow,
+
+            // Local and global variable access
+            Instruction::LocalGet(_)
+            | Instruction::LocalSet(_)
+            | Instruction::LocalTee(_)
+            | Instruction::GlobalGet(_)
+            | Instruction::GlobalSet(_) => InstructionCategory::LocalGlobal,
+
+            // Memory operations
+            Instruction::I32Load(_, _)
+            | Instruction::I64Load(_, _)
+            | Instruction::F32Load(_, _)
+            | Instruction::F64Load(_, _)
+            | Instruction::I32Load8S(_, _)
+            | Instruction::I32Load8U(_, _)
+            | Instruction::I32Load16S(_, _)
+            | Instruction::I32Load16U(_, _)
+            | Instruction::I64Load8S(_, _)
+            | Instruction::I64Load8U(_, _)
+            | Instruction::I64Load16S(_, _)
+            | Instruction::I64Load16U(_, _)
+            | Instruction::I64Load32S(_, _)
+            | Instruction::I64Load32U(_, _)
+            | Instruction::I32Store(_, _)
+            | Instruction::I64Store(_, _)
+            | Instruction::F32Store(_, _)
+            | Instruction::F64Store(_, _)
+            | Instruction::I32Store8(_, _)
+            | Instruction::I32Store16(_, _)
+            | Instruction::I64Store8(_, _)
+            | Instruction::I64Store16(_, _)
+            | Instruction::I64Store32(_, _)
+            | Instruction::MemorySize
+            | Instruction::MemoryGrow => InstructionCategory::MemoryOp,
+
+            // Function calls
+            Instruction::Call(_) | Instruction::CallIndirect(_, _) => {
+                InstructionCategory::FunctionCall
+            }
+
+            // Arithmetic operations
+            Instruction::I32Add
+            | Instruction::I32Sub
+            | Instruction::I32Mul
+            | Instruction::I32DivS
+            | Instruction::I32DivU
+            | Instruction::I32RemS
+            | Instruction::I32RemU
+            | Instruction::I32And
+            | Instruction::I32Or
+            | Instruction::I32Xor
+            | Instruction::I32Shl
+            | Instruction::I32ShrS
+            | Instruction::I32ShrU
+            | Instruction::I32Rotl
+            | Instruction::I32Rotr
+            | Instruction::I32Clz
+            | Instruction::I32Ctz
+            | Instruction::I32Popcnt
+            | Instruction::I64Add
+            | Instruction::I64Sub
+            | Instruction::I64Mul
+            | Instruction::I64DivS
+            | Instruction::I64DivU
+            | Instruction::I64RemS
+            | Instruction::I64RemU
+            | Instruction::I64And
+            | Instruction::I64Or
+            | Instruction::I64Xor
+            | Instruction::I64Shl
+            | Instruction::I64ShrS
+            | Instruction::I64ShrU
+            | Instruction::I64Rotl
+            | Instruction::I64Rotr
+            | Instruction::I64Clz
+            | Instruction::I64Ctz
+            | Instruction::I64Popcnt
+            | Instruction::F32Abs
+            | Instruction::F32Neg
+            | Instruction::F32Ceil
+            | Instruction::F32Floor
+            | Instruction::F32Trunc
+            | Instruction::F32Nearest
+            | Instruction::F32Sqrt
+            | Instruction::F32Add
+            | Instruction::F32Sub
+            | Instruction::F32Mul
+            | Instruction::F32Div
+            | Instruction::F32Min
+            | Instruction::F32Max
+            | Instruction::F32Copysign
+            | Instruction::F64Abs
+            | Instruction::F64Neg
+            | Instruction::F64Ceil
+            | Instruction::F64Floor
+            | Instruction::F64Trunc
+            | Instruction::F64Nearest
+            | Instruction::F64Sqrt
+            | Instruction::F64Add
+            | Instruction::F64Sub
+            | Instruction::F64Mul
+            | Instruction::F64Div
+            | Instruction::F64Min
+            | Instruction::F64Max
+            | Instruction::F64Copysign => InstructionCategory::Arithmetic,
+
+            // Other operations
+            _ => InstructionCategory::Other,
+        }
+    }
 }
 
 #[cfg(test)]
@@ -5846,6 +5946,7 @@ mod tests {
             current_memory_bytes: 0,
             function_calls: 0,
             memory_operations: 0,
+            comparison_instructions: 0,
             #[cfg(feature = "std")]
             local_global_time_us: 0,
             #[cfg(feature = "std")]
@@ -5865,6 +5966,7 @@ mod tests {
         stats.current_memory_bytes = 512;
         stats.function_calls = 10;
         stats.memory_operations = 20;
+        stats.comparison_instructions = 5;
 
         // Verify stats
         assert_eq!(stats.instructions_executed, 100);
@@ -5873,6 +5975,7 @@ mod tests {
         assert_eq!(stats.current_memory_bytes, 512);
         assert_eq!(stats.function_calls, 10);
         assert_eq!(stats.memory_operations, 20);
+        assert_eq!(stats.comparison_instructions, 5);
     }
 
     #[test]
