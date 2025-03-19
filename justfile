@@ -467,7 +467,16 @@ clean:
 
 # Install rust targets required for the project
 setup-rust-targets:
-    rustup target add wasm32-wasip2 || rustup target add wasm32-wasip2
+    #!/usr/bin/env bash
+    echo "Installing required Rust targets..."
+
+    # Install the default Rust target for the host system
+    rustup target add wasm32-unknown-unknown || { echo "Failed to install wasm32-unknown-unknown target."; exit 1; }
+
+    # Install the ARMv8 target for Zephyr
+    rustup target add aarch64-unknown-none-softfloat || { echo "Failed to install aarch64-unknown-none-softfloat target."; exit 1; }
+
+    echo "Rust targets installed successfully!"
 
 # Install WebAssembly tools (wasmtime, wasm-tools)
 setup-wasm-tools:
