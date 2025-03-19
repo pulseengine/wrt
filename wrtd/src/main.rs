@@ -169,7 +169,7 @@ fn initialize_tracing() {
 
 /// Create a WebAssembly Component engine with the specified fuel limit
 fn create_engine(fuel: Option<u64>) -> Engine {
-    let mut engine = Engine::new();
+    let mut engine = Engine::new(Module::default());
 
     // Register the log handler to handle component logging
     engine.register_log_handler(|log_op| {

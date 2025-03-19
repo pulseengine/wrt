@@ -64,7 +64,7 @@ fn test_memory_search() {
     let module = Module::default();
 
     // Create a basic engine with our memory
-    let mut engine = Engine::new();
+    let mut engine = Engine::new(module.clone());
 
     // Create a module instance with our memory
     let instance = ModuleInstance {

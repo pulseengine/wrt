@@ -114,7 +114,7 @@ pub const COMPONENT_VERSION: &str = "0.1.0";
 
 /// Creates a new WebAssembly engine
 pub fn new_engine() -> Engine {
-    Engine::new()
+    Engine::new(Module::default())
 }
 
 /// Creates a new stackless WebAssembly engine
