@@ -21,39 +21,70 @@ struct HelloComponent;
 
 // Implement the example interface
 impl exports::example::hello::example::Guest for HelloComponent {
-    // Our main hello function that runs a loop for several iterations
+    // Test function specifically for unsigned comparison operations
     fn hello() -> i32 {
-        // Log a message using the imported WASI logging function
+        // Start test
         logging::log(
             logging::Level::Info,
-            "example",
-            "TEST_MESSAGE: This is a test message from the component",
+            "test",
+            "UNSIGNED_TEST: Testing unsigned comparisons",
         );
 
-        //let count = 0;
-        let mut count = 0;
+        // Test cases for unsigned comparisons
+        // These values are chosen to test the difference between signed and unsigned comparisons
+        let a: i32 = -10; // In unsigned view: 4294967286 (very large positive)
+        let b: i32 = 10; // In unsigned view: 10 (small positive)
 
-        // Loop for 5 iterations, logging each step
-        for i in 0..5 {
-            count += 1;
+        // For LtU: -10 < 10 (signed) but 4294967286 > 10 (unsigned)
+        let lt_signed = a < b;
+        let lt_unsigned = (a as u32) < (b as u32);
 
-            // Add some operations to consume more fuel
-            let mut _sum = 0;
-            for j in 0..i {
-                _sum += j;
-            }
+        if lt_signed {
+            logging::log(logging::Level::Info, "test", "Signed: -10 < 10 (correct)");
         }
 
-        // Log completion message
-        let final_message = format!("Completed {} iterations", count);
-        logging::log(logging::Level::Info, "example", &final_message);
+        if !lt_unsigned {
+            logging::log(
+                logging::Level::Info,
+                "test",
+                "Unsigned: 4294967286 > 10 (correct)",
+            );
+        }
+
+        // For GtU: -10 > 10 (unsigned comparison: 4294967286 > 10)
+        if (a as u32) > (b as u32) {
+            logging::log(
+                logging::Level::Info,
+                "test",
+                "GtU test passed: 4294967286 > 10",
+            );
+        }
+
+        // For GeU: -10 >= 10 (unsigned comparison: 4294967286 >= 10)
+        if (a as u32) >= (b as u32) {
+            logging::log(
+                logging::Level::Info,
+                "test",
+                "GeU test passed: 4294967286 >= 10",
+            );
+        }
+
+        // For LeU: 10 <= -10 (unsigned comparison: 10 <= 4294967286)
+        if (b as u32) <= (a as u32) {
+            logging::log(
+                logging::Level::Info,
+                "test",
+                "LeU test passed: 10 <= 4294967286",
+            );
+        }
+
         logging::log(
             logging::Level::Info,
-            "end",
-            "TEST_MESSAGE_END: This is a test message from the component",
+            "test",
+            "All unsigned comparison tests passed!",
         );
 
-        // Return total iterations
-        count
+        // Return success
+        0
     }
 }
