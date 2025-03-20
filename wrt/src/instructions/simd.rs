@@ -63,8 +63,9 @@ pub fn v128_store(
 ///
 /// * `Result<(), Error>` - Ok if the operation succeeded, or an Error
 pub fn v128_const(values: &mut Vec<Value>, bytes: [u8; 16]) -> Result<()> {
-    // We handle the conversion and pushing in execution.rs
-    // This function is a placeholder for now
+    // Convert bytes to u128 and push as V128 value
+    let v128_val = u128::from_le_bytes(bytes);
+    values.push(Value::V128(v128_val));
     Ok(())
 }
 
