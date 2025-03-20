@@ -1982,20 +1982,6 @@ fn parse_instruction(bytes: &[u8], depth: &mut i32) -> Result<(Instruction, usiz
             }
         }
 
-        // For unimplemented instructions, log a warning and continue with Nop
-        // This helps us get past parsing issues
-        _ => {
-            // Log the unimplemented opcode
-            #[cfg(feature = "std")]
-            eprintln!(
-                "WARNING: Unimplemented instruction 0x{:02x}, substituting Nop",
-                opcode
-            );
-
-            // Return a Nop instead of failing
-            Instruction::Nop
-        }
-
         // SIMD instructions with 0xFD prefix
         0xFD => {
             // Read the SIMD sub-opcode
@@ -2045,6 +2031,10 @@ fn parse_instruction(bytes: &[u8], depth: &mut i32) -> Result<(Instruction, usiz
                     let mut value_bytes = [0u8; 16];
                     value_bytes.copy_from_slice(&bytes[cursor..cursor + 16]);
                     cursor += 16;
+
+                    #[cfg(feature = "std")]
+                    eprintln!("DEBUG: Parsed V128Const with bytes: {:?}", value_bytes);
+
                     Instruction::V128Const(value_bytes)
                 }
                 // i8x16.shuffle
@@ -2112,7 +2102,12 @@ fn parse_instruction(bytes: &[u8], depth: &mut i32) -> Result<(Instruction, usiz
                 0x27 => Instruction::I8x16GtS,
                 0x28 => Instruction::I8x16GtU,
 
-                // Default case for unimplemented SIMD instructions
+                // SIMD arithmetic operations
+                0xAE => Instruction::I32x4Add,
+                0xB1 => Instruction::I32x4Sub,
+                0xB5 => Instruction::I32x4Mul,
+
+                // Handle unknown SIMD instructions
                 _ => {
                     return Err(Error::Parse(format!(
                         "Unimplemented SIMD instruction: 0xFD 0x{:x}",
@@ -2120,6 +2115,18 @@ fn parse_instruction(bytes: &[u8], depth: &mut i32) -> Result<(Instruction, usiz
                     )));
                 }
             }
+        }
+
+        _ => {
+            // Log the unimplemented opcode
+            #[cfg(feature = "std")]
+            eprintln!(
+                "WARNING: Unimplemented instruction 0x{:02x}, substituting Nop",
+                opcode
+            );
+
+            // Return a Nop instead of failing
+            Instruction::Nop
         }
     };
 
