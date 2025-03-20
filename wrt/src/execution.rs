@@ -3,6 +3,7 @@ use crate::global::Global;
 use crate::instructions::{
     // Import all instruction implementations
     control::{push_label, LabelType},
+    simd,
     Instruction,
 };
 use crate::logging::{CallbackRegistry, LogLevel, LogOperation};
@@ -2026,6 +2027,15 @@ impl Engine {
 
                 self.stack.values.push(Value::V128(result_val));
 
+                Ok(None)
+            }
+
+            Instruction::I32x4DotI16x8S => {
+                // Call the implementation in simd.rs
+                let result = simd::i32x4_dot_i16x8_s(&mut self.stack.values);
+                if let Err(e) = result {
+                    return Err(e);
+                }
                 Ok(None)
             }
 

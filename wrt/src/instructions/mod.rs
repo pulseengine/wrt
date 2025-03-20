@@ -350,6 +350,7 @@ pub enum Instruction {
     I32x4Add,
     I32x4Sub,
     I32x4Mul,
+    I32x4DotI16x8S,
 
     I64x2Neg,
     I64x2Add,

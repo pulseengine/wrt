@@ -347,4 +347,71 @@ pub fn i8x16_extract_lane_u(values: &mut Vec<Value>, lane_idx: u8) -> Result<()>
     Ok(())
 }
 
+/// Implements the i32x4.dot_i16x8_s operation, which computes the dot product of signed 16-bit integers
+///
+/// For each i in [0, 4):
+/// result[i] = (a[2*i] * b[2*i]) + (a[2*i+1] * b[2*i+1])
+///
+/// # Arguments
+///
+/// * `stack` - The operand stack
+///
+/// # Returns
+///
+/// * `Result<(), Error>` - Ok if the operation succeeded, or an Error
+pub fn i32x4_dot_i16x8_s(values: &mut Vec<Value>) -> Result<()> {
+    let b = values.pop().ok_or(Error::StackUnderflow)?;
+    let a = values.pop().ok_or(Error::StackUnderflow)?;
+
+    let Value::V128(a_val) = a else {
+        return Err(Error::Execution(
+            "Expected v128 for i32x4.dot_i16x8_s".into(),
+        ));
+    };
+
+    let Value::V128(b_val) = b else {
+        return Err(Error::Execution(
+            "Expected v128 for i32x4.dot_i16x8_s".into(),
+        ));
+    };
+
+    // Convert to bytes
+    let a_bytes = a_val.to_le_bytes();
+    let b_bytes = b_val.to_le_bytes();
+
+    // Extract the 16-bit integers for each operand
+    let mut a_i16 = [0i16; 8];
+    let mut b_i16 = [0i16; 8];
+
+    for i in 0..8 {
+        let a_idx = i * 2;
+        let b_idx = i * 2;
+        a_i16[i] = i16::from_le_bytes([a_bytes[a_idx], a_bytes[a_idx + 1]]);
+        b_i16[i] = i16::from_le_bytes([b_bytes[b_idx], b_bytes[b_idx + 1]]);
+    }
+
+    // Compute dot products for each pair of 16-bit integers
+    let mut result_i32 = [0i32; 4];
+    for i in 0..4 {
+        let j = i * 2;
+        result_i32[i] =
+            (a_i16[j] as i32 * b_i16[j] as i32) + (a_i16[j + 1] as i32 * b_i16[j + 1] as i32);
+    }
+
+    // Convert to bytes
+    let mut result_bytes = [0u8; 16];
+    for i in 0..4 {
+        let idx = i * 4;
+        let int_bytes = result_i32[i].to_le_bytes();
+        result_bytes[idx..idx + 4].copy_from_slice(&int_bytes);
+    }
+
+    // Convert to u128
+    let result_v128 = u128::from_le_bytes(result_bytes);
+
+    // Push result
+    values.push(Value::V128(result_v128));
+    Ok(())
+}
+
 // Add more SIMD operations as needed...
