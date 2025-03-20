@@ -374,12 +374,14 @@ fn execute_component_function(
     let mut func_idx = 0;
     let mut found = false;
 
-    if (instance_idx as usize) < engine.instances.len() {
-        for export in &engine.instances[instance_idx as usize].module.exports {
-            if export.name == func_name && matches!(export.kind, ExportKind::Function) {
-                func_idx = export.index;
-                found = true;
-                break;
+    if (instance_idx as usize) < engine.instance_count() {
+        if let Some(instance) = engine.get_instance(instance_idx) {
+            for export in &instance.module.exports {
+                if export.name == func_name && matches!(export.kind, ExportKind::Function) {
+                    func_idx = export.index;
+                    found = true;
+                    break;
+                }
             }
         }
     }
