@@ -2106,9 +2106,17 @@ fn parse_instruction(bytes: &[u8], depth: &mut i32) -> Result<(Instruction, usiz
                 0xAE => Instruction::I32x4Add,
                 0xB1 => Instruction::I32x4Sub,
                 0xB5 => Instruction::I32x4Mul,
+                0x4E => Instruction::I32x4DotI16x8S,
+                0xBA => Instruction::I32x4DotI16x8S, // Alternative encoding for i32x4.dot_i16x8_s
 
                 // Handle unknown SIMD instructions
                 _ => {
+                    #[cfg(feature = "std")]
+                    eprintln!(
+                        "DEBUG: Unimplemented SIMD instruction: 0xFD 0x{:x}",
+                        sub_opcode
+                    );
+
                     return Err(Error::Parse(format!(
                         "Unimplemented SIMD instruction: 0xFD 0x{:x}",
                         sub_opcode
