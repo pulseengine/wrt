@@ -2092,6 +2092,16 @@ fn parse_instruction(bytes: &[u8], depth: &mut i32) -> Result<(Instruction, usiz
                     cursor += 1;
                     Instruction::I8x16ReplaceLane(lane_idx)
                 }
+                0x18 => {
+                    if cursor >= bytes.len() {
+                        return Err(Error::Parse(
+                            "Unexpected end of i16x8.extract_lane_s instruction".into(),
+                        ));
+                    }
+                    let lane_idx = bytes[cursor];
+                    cursor += 1;
+                    Instruction::I16x8ExtractLaneS(lane_idx)
+                }
 
                 // Handle other SIMD instructions (we'll implement more as needed)
                 // SIMD comparison operations
@@ -2107,7 +2117,34 @@ fn parse_instruction(bytes: &[u8], depth: &mut i32) -> Result<(Instruction, usiz
                 0xB1 => Instruction::I32x4Sub,
                 0xB5 => Instruction::I32x4Mul,
                 0x4E => Instruction::I32x4DotI16x8S,
-                0xBA => Instruction::I32x4DotI16x8S, // Alternative encoding for i32x4.dot_i16x8_s
+                0x95 => Instruction::I32x4DotI16x8S, // Correct opcode for i32x4.dot_i16x8_s
+                0xBA => Instruction::I32x4DotI16x8S,
+
+                // Relaxed SIMD operations (only if the feature is enabled)
+                #[cfg(feature = "relaxed_simd")]
+                0xFC => Instruction::F32x4RelaxedMin,
+                #[cfg(feature = "relaxed_simd")]
+                0xFD => Instruction::F32x4RelaxedMax,
+                #[cfg(feature = "relaxed_simd")]
+                0xFE => Instruction::F64x2RelaxedMin,
+                #[cfg(feature = "relaxed_simd")]
+                0xFF => Instruction::F64x2RelaxedMax,
+                #[cfg(feature = "relaxed_simd")]
+                0x100 => Instruction::I16x8RelaxedQ15MulrS,
+                #[cfg(feature = "relaxed_simd")]
+                0x101 => Instruction::I16x8RelaxedDotI8x16I7x16S,
+                #[cfg(feature = "relaxed_simd")]
+                0x102 => Instruction::I32x4RelaxedDotI8x16I7x16AddS,
+                #[cfg(feature = "relaxed_simd")]
+                0x103 => Instruction::I8x16RelaxedSwizzle,
+                #[cfg(feature = "relaxed_simd")]
+                0x104 => Instruction::I32x4RelaxedTruncSatF32x4S,
+                #[cfg(feature = "relaxed_simd")]
+                0x105 => Instruction::I32x4RelaxedTruncSatF32x4U,
+                #[cfg(feature = "relaxed_simd")]
+                0x106 => Instruction::I32x4RelaxedTruncSatF64x2SZero,
+                #[cfg(feature = "relaxed_simd")]
+                0x107 => Instruction::I32x4RelaxedTruncSatF64x2UZero,
 
                 // Handle unknown SIMD instructions
                 _ => {
