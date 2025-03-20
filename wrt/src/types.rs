@@ -3,7 +3,7 @@ use std::fmt;
 use crate::{String, Vec};
 
 /// Represents a WebAssembly value type
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Copy)]
 pub enum ValueType {
     /// 32-bit integer
     I32,
