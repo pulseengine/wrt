@@ -1308,6 +1308,11 @@ impl StacklessEngine {
     fn reset_stats(&mut self) {
         self.stats = ExecutionStats::default();
     }
+
+    /// Returns true if the engine has no instances
+    pub fn has_no_instances(&self) -> bool {
+        self.instances.is_empty()
+    }
 }
 
 impl Default for StacklessEngine {

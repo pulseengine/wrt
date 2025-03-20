@@ -47,6 +47,9 @@ pub enum Error {
     /// This is useful for extension points or for wrapping errors from
     /// other libraries.
     Custom(String),
+
+    /// Represents a stack underflow error that occurs when trying to pop from an empty stack.
+    StackUnderflow,
 }
 
 impl fmt::Display for Error {
@@ -59,6 +62,7 @@ impl fmt::Display for Error {
             Error::Parse(msg) => write!(f, "Parse error: {}", msg),
             Error::Component(msg) => write!(f, "Component error: {}", msg),
             Error::Custom(msg) => write!(f, "{}", msg),
+            Error::StackUnderflow => write!(f, "Stack underflow error"),
         }
     }
 }
@@ -137,6 +141,7 @@ mod tests {
             "Component error: test"
         );
         assert_eq!(Error::Custom("test".to_string()).to_string(), "test");
+        assert_eq!(Error::StackUnderflow.to_string(), "Stack underflow error");
     }
 
     #[test]
