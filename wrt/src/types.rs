@@ -17,6 +17,8 @@ pub enum ValueType {
     FuncRef,
     /// External reference
     ExternRef,
+    /// 128-bit vector for SIMD operations
+    V128,
 }
 
 /// Represents a WebAssembly function type
@@ -120,6 +122,7 @@ impl fmt::Display for ValueType {
             ValueType::F64 => write!(f, "f64"),
             ValueType::FuncRef => write!(f, "funcref"),
             ValueType::ExternRef => write!(f, "externref"),
+            ValueType::V128 => write!(f, "v128"),
         }
     }
 }
@@ -131,6 +134,7 @@ impl ValueType {
             ValueType::I32 | ValueType::F32 => 4,
             ValueType::I64 | ValueType::F64 => 8,
             ValueType::FuncRef | ValueType::ExternRef => 8,
+            ValueType::V128 => 16,
         }
     }
 
@@ -143,8 +147,13 @@ impl ValueType {
     pub fn is_numeric(&self) -> bool {
         matches!(
             self,
-            ValueType::I32 | ValueType::I64 | ValueType::F32 | ValueType::F64
+            ValueType::I32 | ValueType::I64 | ValueType::F32 | ValueType::F64 | ValueType::V128
         )
+    }
+    
+    /// Returns whether the value type is a vector type
+    pub fn is_vector(&self) -> bool {
+        matches!(self, ValueType::V128)
     }
 }
 

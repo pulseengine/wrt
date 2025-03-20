@@ -14,6 +14,7 @@ pub mod conversion;
 pub mod memory;
 pub mod numeric_constants;
 pub mod parametric;
+pub mod simd;
 pub mod table;
 pub mod variable;
 
@@ -25,6 +26,7 @@ pub use conversion::*;
 pub use memory::*;
 pub use numeric_constants::*;
 pub use parametric::*;
+pub use simd::*;
 pub use table::*;
 pub use variable::*;
 
@@ -237,6 +239,156 @@ pub enum Instruction {
     I64ReinterpretF64,
     F32ReinterpretI32,
     F64ReinterpretI64,
+
+    // SIMD - v128 manipulation
+    V128Load(u32, u32),
+    V128Store(u32, u32),
+    V128Const([u8; 16]),
+    
+    // SIMD - Basic operations
+    I8x16Shuffle([u8; 16]),
+    I8x16Swizzle,
+    
+    // SIMD - Lane-wise operations
+    I8x16ExtractLaneS(u8),
+    I8x16ExtractLaneU(u8),
+    I8x16ReplaceLane(u8),
+    I16x8ExtractLaneS(u8),
+    I16x8ExtractLaneU(u8),
+    I16x8ReplaceLane(u8),
+    I32x4ExtractLane(u8),
+    I32x4ReplaceLane(u8),
+    I64x2ExtractLane(u8),
+    I64x2ReplaceLane(u8),
+    F32x4ExtractLane(u8),
+    F32x4ReplaceLane(u8),
+    F64x2ExtractLane(u8),
+    F64x2ReplaceLane(u8),
+    
+    // SIMD - Splat operations
+    I8x16Splat,
+    I16x8Splat,
+    I32x4Splat,
+    I64x2Splat,
+    F32x4Splat,
+    F64x2Splat,
+    
+    // SIMD - Comparison operations
+    I8x16Eq,
+    I8x16Ne,
+    I8x16LtS,
+    I8x16LtU,
+    I8x16GtS,
+    I8x16GtU,
+    I8x16LeS,
+    I8x16LeU,
+    I8x16GeS,
+    I8x16GeU,
+    
+    I16x8Eq,
+    I16x8Ne,
+    I16x8LtS,
+    I16x8LtU,
+    I16x8GtS,
+    I16x8GtU,
+    I16x8LeS,
+    I16x8LeU,
+    I16x8GeS,
+    I16x8GeU,
+    
+    I32x4Eq,
+    I32x4Ne,
+    I32x4LtS,
+    I32x4LtU,
+    I32x4GtS,
+    I32x4GtU,
+    I32x4LeS,
+    I32x4LeU,
+    I32x4GeS,
+    I32x4GeU,
+    
+    I64x2Eq,
+    I64x2Ne,
+    I64x2LtS,
+    I64x2GtS,
+    I64x2LeS,
+    I64x2GeS,
+    
+    F32x4Eq,
+    F32x4Ne,
+    F32x4Lt,
+    F32x4Gt,
+    F32x4Le,
+    F32x4Ge,
+    
+    F64x2Eq,
+    F64x2Ne,
+    F64x2Lt,
+    F64x2Gt,
+    F64x2Le,
+    F64x2Ge,
+    
+    // SIMD - Arithmetic operations
+    I8x16Neg,
+    I8x16Add,
+    I8x16AddSaturateS,
+    I8x16AddSaturateU,
+    I8x16Sub,
+    I8x16SubSaturateS,
+    I8x16SubSaturateU,
+    
+    I16x8Neg,
+    I16x8Add,
+    I16x8AddSaturateS,
+    I16x8AddSaturateU,
+    I16x8Sub,
+    I16x8SubSaturateS,
+    I16x8SubSaturateU,
+    I16x8Mul,
+    
+    I32x4Neg,
+    I32x4Add,
+    I32x4Sub,
+    I32x4Mul,
+    
+    I64x2Neg,
+    I64x2Add,
+    I64x2Sub,
+    I64x2Mul,
+    
+    F32x4Abs,
+    F32x4Neg,
+    F32x4Sqrt,
+    F32x4Add,
+    F32x4Sub,
+    F32x4Mul,
+    F32x4Div,
+    F32x4Min,
+    F32x4Max,
+    
+    F64x2Abs,
+    F64x2Neg,
+    F64x2Sqrt,
+    F64x2Add,
+    F64x2Sub,
+    F64x2Mul,
+    F64x2Div,
+    F64x2Min,
+    F64x2Max,
+    
+    // SIMD - Bitwise operations
+    V128Not,
+    V128And,
+    V128AndNot,
+    V128Or,
+    V128Xor,
+    V128Bitselect,
+    
+    // SIMD - Conversion operations
+    I32x4TruncSatF32x4S,
+    I32x4TruncSatF32x4U,
+    F32x4ConvertI32x4S,
+    F32x4ConvertI32x4U,
 }
 
 /// Block type for control flow instructions

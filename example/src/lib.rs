@@ -52,5 +52,6 @@ impl Guest for HelloComponent {
 
         // Return the sum as our result
         sum
+        a
     }
 }
