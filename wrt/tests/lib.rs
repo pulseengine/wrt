@@ -1,6 +1,10 @@
 use std::str::FromStr;
 use wrt::*;
 
+// Include our WebAssembly spec test modules
+#[cfg(test)]
+mod simple_spec_tests;
+
 #[cfg(test)]
 mod tests {
     use super::*;

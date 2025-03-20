@@ -85,7 +85,7 @@ pub struct Label {
 }
 
 /// Represents a function activation frame
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Frame {
     /// Function index
     pub func_idx: u32,
@@ -93,6 +93,10 @@ pub struct Frame {
     pub locals: Vec<Value>,
     /// Module instance
     pub module: ModuleInstance,
+    /// Memory addresses from the original instance
+    pub memory_addrs: Vec<MemoryAddr>,
+    /// Index of the instance that owns the memory
+    pub memory_instance_idx: u32,
     /// Program counter
     pub pc: usize,
     /// Function type
@@ -1153,7 +1157,7 @@ impl Engine {
         self.state = ExecutionState::Running;
 
         // Get module info (clone what we need to avoid borrow issues)
-        let (func_type, function, instance) = {
+        let (func_type, function, instance_without_memory) = {
             // Get the module instance
             let instance = self.instances.get(instance_idx as usize).ok_or_else(|| {
                 Error::Execution(format!("Invalid instance index: {}", instance_idx))
@@ -1175,8 +1179,13 @@ impl Engine {
                     Error::Execution(format!("Invalid type index: {}", function.type_idx))
                 })?;
 
+            // Create a shallow clone of the instance without the memory
+            let mut instance_clone = instance.clone();
+            // Clear the memories in the clone since we'll reference them separately
+            instance_clone.memories = Vec::new();
+
             // Clone what we need to avoid borrowing issues
-            (func_type.clone(), function.clone(), instance.clone())
+            (func_type.clone(), function.clone(), instance_clone)
         };
 
         // Check that the number of arguments matches the function signature
@@ -1202,15 +1211,25 @@ impl Engine {
         let mut locals = args.clone();
         locals.extend(function.locals.iter().map(|_| Value::I32(0)));
 
-        // Create a new frame
-        let frame = Frame {
-            func_idx,
-            locals,
-            module: instance,
-            pc: 0,
-            func_type: func_type.clone(),
-            returning: false,
-            stack_height: self.stack.values.len(),
+        // Create a new frame that references the original module's memory
+        let frame = {
+            // Get a reference to the original module instance's memory
+            let memory_addrs = {
+                let instance = self.instances.get(instance_idx as usize).unwrap();
+                instance.memory_addrs.clone()
+            };
+
+            Frame {
+                func_idx,
+                locals,
+                module: instance_without_memory,
+                memory_addrs, // Store the memory addresses for lookup
+                memory_instance_idx: instance_idx, // Track the instance that actually owns the memory
+                pc: 0,
+                func_type: func_type.clone(),
+                returning: false,
+                stack_height: self.stack.values.len(),
+            }
         };
 
         // Push the frame onto the stack
@@ -1593,7 +1612,24 @@ impl Engine {
                     return Err(Error::Execution("Expected i32 address".into()));
                 };
                 let frame = self.stack.current_frame()?;
-                let memory = &frame.module.memories[0];
+
+                // Access memory from the original instance
+                let memory_addr = &frame.memory_addrs[0]; // Assuming the first memory
+                let instance = self
+                    .instances
+                    .get(frame.memory_instance_idx as usize)
+                    .ok_or_else(|| Error::Execution("Invalid memory instance index".into()))?;
+
+                // Determine which memory to access
+                let memory_idx = memory_addr.memory_idx as usize;
+                if memory_idx >= instance.memories.len() {
+                    return Err(Error::Execution(format!(
+                        "Memory index out of bounds: {}",
+                        memory_idx
+                    )));
+                }
+
+                let memory = &instance.memories[memory_idx];
                 let bytes = memory.read_bytes(addr as u32 + *offset, 4)?;
                 let value = i32::from_le_bytes(bytes.try_into().unwrap());
                 self.stack.values.push(Value::I32(value));
@@ -1608,8 +1644,29 @@ impl Engine {
                 let Value::I32(value) = value else {
                     return Err(Error::Execution("Expected i32 value".into()));
                 };
-                let frame = self.stack.current_frame_mut()?;
-                let memory = &mut frame.module.memories[0];
+
+                let frame = self.stack.current_frame()?;
+
+                // Access memory from the original instance
+                let memory_addr = &frame.memory_addrs[0]; // Assuming the first memory
+                let instance_idx = frame.memory_instance_idx;
+
+                // Get mutable access to the instance
+                let instance = self
+                    .instances
+                    .get_mut(instance_idx as usize)
+                    .ok_or_else(|| Error::Execution("Invalid memory instance index".into()))?;
+
+                // Determine which memory to access
+                let memory_idx = memory_addr.memory_idx as usize;
+                if memory_idx >= instance.memories.len() {
+                    return Err(Error::Execution(format!(
+                        "Memory index out of bounds: {}",
+                        memory_idx
+                    )));
+                }
+
+                let memory = &mut instance.memories[memory_idx];
                 memory.write_bytes(addr as u32 + *offset, &value.to_le_bytes())?;
                 Ok(None)
             }
@@ -2478,6 +2535,8 @@ mod tests {
             func_idx: 0,
             locals: vec![Value::I32(1)],
             module: create_test_module_instance(),
+            memory_addrs: vec![],
+            memory_instance_idx: 0,
             pc: 0,
             func_type,
             returning: false,
@@ -2667,7 +2726,7 @@ mod tests {
 
         // Create a test function type
         let func_type = FuncType {
-            params: vec![],
+            params: vec![ValueType::I32],
             results: vec![],
         };
 
@@ -2676,6 +2735,8 @@ mod tests {
             func_idx: 0,
             locals: vec![Value::I32(1)],
             module: create_test_module_instance(),
+            memory_addrs: vec![],
+            memory_instance_idx: 0,
             pc: 0,
             func_type,
             returning: false,

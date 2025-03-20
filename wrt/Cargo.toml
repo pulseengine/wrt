@@ -15,6 +15,10 @@ path = "src/lib.rs"
 [dev-dependencies]
 criterion = "0.5"
 wat = "1.0"
+wast = "62.0"
+wasmparser = "0.116"
+tempfile = "3.8"
+dirs = "5.0"
 
 [[bench]]
 name = "engine_benchmarks"
