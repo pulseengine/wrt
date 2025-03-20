@@ -1734,7 +1734,7 @@ impl Engine {
                 "Unimplemented instruction: {:?}",
                 inst
             ))),
-            
+
             // SIMD Instructions
             Instruction::V128Load(align, offset) => {
                 let addr = self.stack.values.pop().ok_or(Error::StackUnderflow)?;
@@ -1760,16 +1760,16 @@ impl Engine {
                 }
 
                 let memory = &instance.memories[memory_idx];
-                
+
                 // Read 16 bytes for v128
                 let bytes = memory.read_bytes(addr as u32 + *offset, 16)?;
-                let bytes_array: [u8; 16] = bytes.try_into().map_err(|_| 
-                    Error::Execution("Failed to read 16 bytes for v128".into())
-                )?;
-                
+                let bytes_array: [u8; 16] = bytes
+                    .try_into()
+                    .map_err(|_| Error::Execution("Failed to read 16 bytes for v128".into()))?;
+
                 // Convert 16 bytes to u128
                 let v128_value = u128::from_le_bytes(bytes_array);
-                
+
                 // Push v128 value to stack
                 self.stack.values.push(Value::V128(v128_value));
                 Ok(None)
@@ -1826,7 +1826,7 @@ impl Engine {
                 // Implement swizzle logic or call appropriate function
                 return Err(Error::Execution("i8x16.swizzle not implemented yet".into()));
             }
-            
+
             // SIMD Splat Operations
             Instruction::I8x16Splat => {
                 crate::instructions::simd::i8x16_splat(&mut self.stack.values)?;
@@ -1852,7 +1852,7 @@ impl Engine {
                 crate::instructions::simd::f64x2_splat(&mut self.stack.values)?;
                 Ok(None)
             }
-            
+
             // SIMD Lane Operations
             Instruction::I8x16ExtractLaneS(lane_idx) => {
                 crate::instructions::simd::i8x16_extract_lane_s(&mut self.stack.values, *lane_idx)?;
@@ -1862,87 +1862,146 @@ impl Engine {
                 crate::instructions::simd::i8x16_extract_lane_u(&mut self.stack.values, *lane_idx)?;
                 Ok(None)
             }
-            
+
             // For other SIMD instructions, add proper implementation or return not implemented error
-            Instruction::I8x16ReplaceLane(_) |
-            Instruction::I16x8ExtractLaneS(_) |
-            Instruction::I16x8ExtractLaneU(_) |
-            Instruction::I16x8ReplaceLane(_) |
-            Instruction::I32x4ExtractLane(_) |
-            Instruction::I32x4ReplaceLane(_) |
-            Instruction::I64x2ExtractLane(_) |
-            Instruction::I64x2ReplaceLane(_) |
-            Instruction::F32x4ExtractLane(_) |
-            Instruction::F32x4ReplaceLane(_) |
-            Instruction::F64x2ExtractLane(_) |
-            Instruction::F64x2ReplaceLane(_) => {
-                return Err(Error::Execution("SIMD lane operation not implemented yet".into()));
+            Instruction::I8x16ReplaceLane(_)
+            | Instruction::I16x8ExtractLaneS(_)
+            | Instruction::I16x8ExtractLaneU(_)
+            | Instruction::I16x8ReplaceLane(_)
+            | Instruction::I32x4ExtractLane(_)
+            | Instruction::I32x4ReplaceLane(_)
+            | Instruction::I64x2ExtractLane(_)
+            | Instruction::I64x2ReplaceLane(_)
+            | Instruction::F32x4ExtractLane(_)
+            | Instruction::F32x4ReplaceLane(_)
+            | Instruction::F64x2ExtractLane(_)
+            | Instruction::F64x2ReplaceLane(_) => {
+                return Err(Error::Execution(
+                    "SIMD lane operation not implemented yet".into(),
+                ));
             }
-            
+
             // SIMD Comparison Operations
-            Instruction::I8x16Eq | Instruction::I8x16Ne |
-            Instruction::I8x16LtS | Instruction::I8x16LtU |
-            Instruction::I8x16GtS | Instruction::I8x16GtU |
-            Instruction::I8x16LeS | Instruction::I8x16LeU |
-            Instruction::I8x16GeS | Instruction::I8x16GeU |
-            Instruction::I16x8Eq | Instruction::I16x8Ne |
-            Instruction::I16x8LtS | Instruction::I16x8LtU |
-            Instruction::I16x8GtS | Instruction::I16x8GtU |
-            Instruction::I16x8LeS | Instruction::I16x8LeU |
-            Instruction::I16x8GeS | Instruction::I16x8GeU |
-            Instruction::I32x4Eq | Instruction::I32x4Ne |
-            Instruction::I32x4LtS | Instruction::I32x4LtU |
-            Instruction::I32x4GtS | Instruction::I32x4GtU |
-            Instruction::I32x4LeS | Instruction::I32x4LeU |
-            Instruction::I32x4GeS | Instruction::I32x4GeU |
-            Instruction::I64x2Eq | Instruction::I64x2Ne |
-            Instruction::I64x2LtS | Instruction::I64x2GtS |
-            Instruction::I64x2LeS | Instruction::I64x2GeS |
-            Instruction::F32x4Eq | Instruction::F32x4Ne |
-            Instruction::F32x4Lt | Instruction::F32x4Gt |
-            Instruction::F32x4Le | Instruction::F32x4Ge |
-            Instruction::F64x2Eq | Instruction::F64x2Ne |
-            Instruction::F64x2Lt | Instruction::F64x2Gt |
-            Instruction::F64x2Le | Instruction::F64x2Ge => {
-                return Err(Error::Execution("SIMD comparison operation not implemented yet".into()));
+            Instruction::I8x16Eq
+            | Instruction::I8x16Ne
+            | Instruction::I8x16LtS
+            | Instruction::I8x16LtU
+            | Instruction::I8x16GtS
+            | Instruction::I8x16GtU
+            | Instruction::I8x16LeS
+            | Instruction::I8x16LeU
+            | Instruction::I8x16GeS
+            | Instruction::I8x16GeU
+            | Instruction::I16x8Eq
+            | Instruction::I16x8Ne
+            | Instruction::I16x8LtS
+            | Instruction::I16x8LtU
+            | Instruction::I16x8GtS
+            | Instruction::I16x8GtU
+            | Instruction::I16x8LeS
+            | Instruction::I16x8LeU
+            | Instruction::I16x8GeS
+            | Instruction::I16x8GeU
+            | Instruction::I32x4Eq
+            | Instruction::I32x4Ne
+            | Instruction::I32x4LtS
+            | Instruction::I32x4LtU
+            | Instruction::I32x4GtS
+            | Instruction::I32x4GtU
+            | Instruction::I32x4LeS
+            | Instruction::I32x4LeU
+            | Instruction::I32x4GeS
+            | Instruction::I32x4GeU
+            | Instruction::I64x2Eq
+            | Instruction::I64x2Ne
+            | Instruction::I64x2LtS
+            | Instruction::I64x2GtS
+            | Instruction::I64x2LeS
+            | Instruction::I64x2GeS
+            | Instruction::F32x4Eq
+            | Instruction::F32x4Ne
+            | Instruction::F32x4Lt
+            | Instruction::F32x4Gt
+            | Instruction::F32x4Le
+            | Instruction::F32x4Ge
+            | Instruction::F64x2Eq
+            | Instruction::F64x2Ne
+            | Instruction::F64x2Lt
+            | Instruction::F64x2Gt
+            | Instruction::F64x2Le
+            | Instruction::F64x2Ge => {
+                return Err(Error::Execution(
+                    "SIMD comparison operation not implemented yet".into(),
+                ));
             }
-            
+
             // SIMD Arithmetic Operations
-            Instruction::I8x16Neg | Instruction::I8x16Add |
-            Instruction::I8x16AddSaturateS | Instruction::I8x16AddSaturateU |
-            Instruction::I8x16Sub | Instruction::I8x16SubSaturateS |
-            Instruction::I8x16SubSaturateU | Instruction::I16x8Neg |
-            Instruction::I16x8Add | Instruction::I16x8AddSaturateS |
-            Instruction::I16x8AddSaturateU | Instruction::I16x8Sub |
-            Instruction::I16x8SubSaturateS | Instruction::I16x8SubSaturateU |
-            Instruction::I16x8Mul | Instruction::I32x4Neg |
-            Instruction::I32x4Add | Instruction::I32x4Sub |
-            Instruction::I32x4Mul | Instruction::I64x2Neg |
-            Instruction::I64x2Add | Instruction::I64x2Sub |
-            Instruction::I64x2Mul | Instruction::F32x4Abs |
-            Instruction::F32x4Neg | Instruction::F32x4Sqrt |
-            Instruction::F32x4Add | Instruction::F32x4Sub |
-            Instruction::F32x4Mul | Instruction::F32x4Div |
-            Instruction::F32x4Min | Instruction::F32x4Max |
-            Instruction::F64x2Abs | Instruction::F64x2Neg |
-            Instruction::F64x2Sqrt | Instruction::F64x2Add |
-            Instruction::F64x2Sub | Instruction::F64x2Mul |
-            Instruction::F64x2Div | Instruction::F64x2Min |
-            Instruction::F64x2Max => {
-                return Err(Error::Execution("SIMD arithmetic operation not implemented yet".into()));
+            Instruction::I8x16Neg
+            | Instruction::I8x16Add
+            | Instruction::I8x16AddSaturateS
+            | Instruction::I8x16AddSaturateU
+            | Instruction::I8x16Sub
+            | Instruction::I8x16SubSaturateS
+            | Instruction::I8x16SubSaturateU
+            | Instruction::I16x8Neg
+            | Instruction::I16x8Add
+            | Instruction::I16x8AddSaturateS
+            | Instruction::I16x8AddSaturateU
+            | Instruction::I16x8Sub
+            | Instruction::I16x8SubSaturateS
+            | Instruction::I16x8SubSaturateU
+            | Instruction::I16x8Mul
+            | Instruction::I32x4Neg
+            | Instruction::I32x4Add
+            | Instruction::I32x4Sub
+            | Instruction::I32x4Mul
+            | Instruction::I64x2Neg
+            | Instruction::I64x2Add
+            | Instruction::I64x2Sub
+            | Instruction::I64x2Mul
+            | Instruction::F32x4Abs
+            | Instruction::F32x4Neg
+            | Instruction::F32x4Sqrt
+            | Instruction::F32x4Add
+            | Instruction::F32x4Sub
+            | Instruction::F32x4Mul
+            | Instruction::F32x4Div
+            | Instruction::F32x4Min
+            | Instruction::F32x4Max
+            | Instruction::F64x2Abs
+            | Instruction::F64x2Neg
+            | Instruction::F64x2Sqrt
+            | Instruction::F64x2Add
+            | Instruction::F64x2Sub
+            | Instruction::F64x2Mul
+            | Instruction::F64x2Div
+            | Instruction::F64x2Min
+            | Instruction::F64x2Max => {
+                return Err(Error::Execution(
+                    "SIMD arithmetic operation not implemented yet".into(),
+                ));
             }
-            
+
             // SIMD Bitwise Operations
-            Instruction::V128Not | Instruction::V128And |
-            Instruction::V128AndNot | Instruction::V128Or |
-            Instruction::V128Xor | Instruction::V128Bitselect => {
-                return Err(Error::Execution("SIMD bitwise operation not implemented yet".into()));
+            Instruction::V128Not
+            | Instruction::V128And
+            | Instruction::V128AndNot
+            | Instruction::V128Or
+            | Instruction::V128Xor
+            | Instruction::V128Bitselect => {
+                return Err(Error::Execution(
+                    "SIMD bitwise operation not implemented yet".into(),
+                ));
             }
-            
+
             // SIMD Conversion Operations
-            Instruction::I32x4TruncSatF32x4S | Instruction::I32x4TruncSatF32x4U |
-            Instruction::F32x4ConvertI32x4S | Instruction::F32x4ConvertI32x4U => {
-                return Err(Error::Execution("SIMD conversion operation not implemented yet".into()));
+            Instruction::I32x4TruncSatF32x4S
+            | Instruction::I32x4TruncSatF32x4U
+            | Instruction::F32x4ConvertI32x4S
+            | Instruction::F32x4ConvertI32x4U => {
+                return Err(Error::Execution(
+                    "SIMD conversion operation not implemented yet".into(),
+                ));
             }
         }
     }

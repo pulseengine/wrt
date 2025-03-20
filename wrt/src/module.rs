@@ -647,7 +647,8 @@ fn parse_value_type(byte: u8) -> Result<ValueType> {
         0x7C => Ok(ValueType::F64),
         0x70 => Ok(ValueType::FuncRef),
         0x6F => Ok(ValueType::ExternRef),
-        0x7B => Ok(ValueType::V128),  // Added support for v128 (SIMD)
+        0x7B => Ok(ValueType::V128),   // Added support for v128 (SIMD)
+        0x0B => Ok(ValueType::AnyRef), // Added support for anyref (reference types proposal)
         _ => Err(Error::Parse(format!("Invalid value type: 0x{:x}", byte))),
     }
 }
@@ -1999,7 +2000,9 @@ fn parse_instruction(bytes: &[u8], depth: &mut i32) -> Result<(Instruction, usiz
         0xFD => {
             // Read the SIMD sub-opcode
             if cursor >= bytes.len() {
-                return Err(Error::Parse("Unexpected end of 0xFD SIMD instruction".into()));
+                return Err(Error::Parse(
+                    "Unexpected end of 0xFD SIMD instruction".into(),
+                ));
             }
 
             let (sub_opcode, bytes_read) = read_leb128_u32(&bytes[cursor..])?;
@@ -2018,7 +2021,7 @@ fn parse_instruction(bytes: &[u8], depth: &mut i32) -> Result<(Instruction, usiz
                     cursor += bytes_read;
 
                     Instruction::V128Load(align, offset)
-                },
+                }
                 // v128.store
                 0x0B => {
                     // Read memory alignment
@@ -2030,32 +2033,36 @@ fn parse_instruction(bytes: &[u8], depth: &mut i32) -> Result<(Instruction, usiz
                     cursor += bytes_read;
 
                     Instruction::V128Store(align, offset)
-                },
+                }
                 // v128.const
                 0x0C => {
                     // Read 16 bytes for v128 constant
                     if cursor + 16 > bytes.len() {
-                        return Err(Error::Parse("Unexpected end of v128.const instruction".into()));
+                        return Err(Error::Parse(
+                            "Unexpected end of v128.const instruction".into(),
+                        ));
                     }
                     let mut value_bytes = [0u8; 16];
                     value_bytes.copy_from_slice(&bytes[cursor..cursor + 16]);
                     cursor += 16;
                     Instruction::V128Const(value_bytes)
-                },
+                }
                 // i8x16.shuffle
                 0x0D => {
                     // Read 16 lane indices for shuffle
                     if cursor + 16 > bytes.len() {
-                        return Err(Error::Parse("Unexpected end of i8x16.shuffle instruction".into()));
+                        return Err(Error::Parse(
+                            "Unexpected end of i8x16.shuffle instruction".into(),
+                        ));
                     }
                     let mut lanes = [0u8; 16];
                     lanes.copy_from_slice(&bytes[cursor..cursor + 16]);
                     cursor += 16;
                     Instruction::I8x16Shuffle(lanes)
-                },
+                }
                 // i8x16.swizzle
                 0x0E => Instruction::I8x16Swizzle,
-                
+
                 // Splat instructions
                 0x0F => Instruction::I8x16Splat,
                 0x10 => Instruction::I16x8Splat,
@@ -2063,33 +2070,39 @@ fn parse_instruction(bytes: &[u8], depth: &mut i32) -> Result<(Instruction, usiz
                 0x12 => Instruction::I64x2Splat,
                 0x13 => Instruction::F32x4Splat,
                 0x14 => Instruction::F64x2Splat,
-                
+
                 // Lane extract/replace instructions
                 0x15 => {
                     if cursor >= bytes.len() {
-                        return Err(Error::Parse("Unexpected end of i8x16.extract_lane_s instruction".into()));
+                        return Err(Error::Parse(
+                            "Unexpected end of i8x16.extract_lane_s instruction".into(),
+                        ));
                     }
                     let lane_idx = bytes[cursor];
                     cursor += 1;
                     Instruction::I8x16ExtractLaneS(lane_idx)
-                },
+                }
                 0x16 => {
                     if cursor >= bytes.len() {
-                        return Err(Error::Parse("Unexpected end of i8x16.extract_lane_u instruction".into()));
+                        return Err(Error::Parse(
+                            "Unexpected end of i8x16.extract_lane_u instruction".into(),
+                        ));
                     }
                     let lane_idx = bytes[cursor];
                     cursor += 1;
                     Instruction::I8x16ExtractLaneU(lane_idx)
-                },
+                }
                 0x17 => {
                     if cursor >= bytes.len() {
-                        return Err(Error::Parse("Unexpected end of i8x16.replace_lane instruction".into()));
+                        return Err(Error::Parse(
+                            "Unexpected end of i8x16.replace_lane instruction".into(),
+                        ));
                     }
                     let lane_idx = bytes[cursor];
                     cursor += 1;
                     Instruction::I8x16ReplaceLane(lane_idx)
-                },
-                
+                }
+
                 // Handle other SIMD instructions (we'll implement more as needed)
                 // SIMD comparison operations
                 0x23 => Instruction::I8x16Eq,
@@ -2098,7 +2111,7 @@ fn parse_instruction(bytes: &[u8], depth: &mut i32) -> Result<(Instruction, usiz
                 0x26 => Instruction::I8x16LtU,
                 0x27 => Instruction::I8x16GtS,
                 0x28 => Instruction::I8x16GtU,
-                
+
                 // Default case for unimplemented SIMD instructions
                 _ => {
                     return Err(Error::Parse(format!(
@@ -2107,7 +2120,7 @@ fn parse_instruction(bytes: &[u8], depth: &mut i32) -> Result<(Instruction, usiz
                     )));
                 }
             }
-        },
+        }
     };
 
     Ok((instruction, cursor))
