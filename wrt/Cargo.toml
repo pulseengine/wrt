@@ -6,7 +6,8 @@ license.workspace = true
 description = "WebAssembly Runtime Library"
 
 [dependencies]
-# No dependencies required
+# Dependencies
+log = "0.4"
 
 [lib]
 name = "wrt"
