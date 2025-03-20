@@ -5,7 +5,6 @@
 
 use crate::error::Error;
 use crate::memory::Memory;
-use crate::types::ValueType;
 use crate::Value;
 use crate::Vec;
 

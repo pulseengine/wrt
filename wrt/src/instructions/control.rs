@@ -3,13 +3,7 @@
 //! This module contains implementations for all WebAssembly control flow instructions,
 //! including blocks, branches, calls, and returns.
 
-use crate::{
-    error::Error,
-    execution::{Frame, Label, Stack},
-    format,
-    types::FuncType,
-    Result, Value, Vec,
-};
+use crate::{error::Error, execution::Stack, format, types::FuncType, Result, Value, Vec};
 
 #[cfg(feature = "std")]
 use std::vec;

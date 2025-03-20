@@ -4,7 +4,6 @@
 //! organized into submodules by instruction category.
 
 use crate::types::ValueType;
-use crate::values::Value;
 use crate::Vec;
 
 pub mod arithmetic;

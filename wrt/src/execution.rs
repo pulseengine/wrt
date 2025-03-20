@@ -2,20 +2,7 @@ use crate::error::{Error, Result};
 use crate::global::Global;
 use crate::instructions::{
     // Import all instruction implementations
-    arithmetic::*,
-    bit_counting::*,
-    comparison::*,
-    control::{
-        block, br, br_if, br_table, else_instr, end, if_instr, loop_instr, nop, push_label,
-        return_instr, unreachable, LabelType,
-    },
-    conversion::*,
-    memory::*,
-    numeric_constants::*,
-    parametric::*,
-    table::*,
-    variable::*,
-    BlockType,
+    control::{push_label, LabelType},
     Instruction,
 };
 use crate::logging::{CallbackRegistry, LogLevel, LogOperation};
@@ -23,7 +10,6 @@ use crate::memory::Memory;
 use crate::module::ExportKind;
 use crate::module::{Function, Module};
 use crate::table::Table;
-use crate::types::ValueType;
 use crate::types::{ExternType, FuncType};
 use crate::values::Value;
 use crate::{format, String, ToString, Vec};
@@ -42,8 +28,6 @@ use std::sync::{Arc, Mutex};
 
 #[cfg(not(feature = "std"))]
 use alloc::vec;
-#[cfg(feature = "std")]
-use std::time::Instant;
 
 /// Categories of instructions for performance tracking
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -2483,12 +2467,15 @@ impl Engine {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::error::Error;
+    use crate::global::Global;
     use crate::instructions::{BlockType, Instruction};
     use crate::logging::LogOperation;
+    use crate::memory::Memory;
     use crate::module::Module;
+    use crate::table::Table;
     use crate::types::FuncType;
     use crate::values::Value;
+    use crate::ValueType;
 
     // Helper function to create a test module instance
     fn create_test_module_instance() -> ModuleInstance {
