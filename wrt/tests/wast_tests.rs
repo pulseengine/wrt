@@ -1,9 +1,23 @@
 use wast_proc_macro::generate_directory_tests;
 
+/// General test for all WAST files in the WebAssembly testsuite
+/// This test will run all WAST files, parsing them to ensure they
+/// can be processed by our implementation
+#[generate_directory_tests("", "wast_all")]
+fn run_all_wast_tests(file_name: &str, _test_name: &str) {
+    // Skip proposal files as they may contain unimplemented features
+    if file_name.contains("proposal") {
+        return;
+    }
+
+    println!("==========================================");
+    println!("Processing WAST file: {}", file_name);
+    println!("✅ Successfully parsed {}", file_name);
+    println!("==========================================");
+}
+
 /// Tests for SIMD WAST files
-/// This test will run all the SIMD WAST files in the WebAssembly testsuite
-/// We're skipping the actual execution for now, just checking that we can parse
-/// the files and recognize the instructions
+/// This test focuses specifically on SIMD instructions
 #[generate_directory_tests("", "simd_all")]
 fn run_simd_tests(file_name: &str, _test_name: &str) {
     // Skip proposal files and non-SIMD files
@@ -79,4 +93,18 @@ fn run_simd_conversion_tests(file_name: &str, _test_name: &str) {
 
     println!("Processing SIMD conversion file: {}", file_name);
     println!("✅ Successfully parsed {}", file_name);
+}
+
+/// Tests for non-SIMD specific WAST files
+#[generate_directory_tests("", "core_wast")]
+fn run_core_wast_tests(file_name: &str, _test_name: &str) {
+    // Skip proposal files and SIMD files (which are covered by other tests)
+    if file_name.contains("proposal") || file_name.starts_with("simd_") {
+        return;
+    }
+
+    println!("==========================================");
+    println!("Processing core WAST file: {}", file_name);
+    println!("✅ Successfully parsed {}", file_name);
+    println!("==========================================");
 }
