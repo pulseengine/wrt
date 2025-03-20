@@ -40,6 +40,9 @@ pub enum Value {
     /// External reference value, containing an optional reference index
     ExternRef(Option<u32>),
 
+    /// Any reference value, containing an optional reference index
+    AnyRef(Option<u32>),
+
     /// 128-bit SIMD vector value
     V128(u128),
 
@@ -125,6 +128,7 @@ impl Value {
             ValueType::FuncRef => Value::FuncRef(None),
             ValueType::ExternRef => Value::ExternRef(None),
             ValueType::V128 => Value::V128(0),
+            ValueType::AnyRef => Value::AnyRef(None),
         }
     }
 
@@ -154,17 +158,18 @@ impl Value {
             Value::FuncRef(_) => ValueType::FuncRef,
             Value::ExternRef(_) => ValueType::ExternRef,
             Value::V128(_) => ValueType::V128,
-            Value::Record(_) => ValueType::ExternRef,
-            Value::Tuple(_) => ValueType::ExternRef,
-            Value::List(_) => ValueType::ExternRef,
-            Value::Flags(_) => ValueType::ExternRef,
-            Value::Variant(_, _) => ValueType::ExternRef,
-            Value::Enum(_) => ValueType::ExternRef,
-            Value::Union(_) => ValueType::ExternRef,
-            Value::Option(_) => ValueType::ExternRef,
-            Value::Result(_) => ValueType::ExternRef,
-            Value::Future(_) => ValueType::ExternRef,
-            Value::Stream { .. } => ValueType::ExternRef,
+            Value::AnyRef(_) => ValueType::AnyRef,
+            Value::Record(_) => ValueType::I32,
+            Value::Tuple(_) => ValueType::I32,
+            Value::List(_) => ValueType::I32,
+            Value::Flags(_) => ValueType::I32,
+            Value::Variant(_, _) => ValueType::I32,
+            Value::Enum(_) => ValueType::I32,
+            Value::Union(_) => ValueType::I32,
+            Value::Option(_) => ValueType::I32,
+            Value::Result(_) => ValueType::I32,
+            Value::Future(_) => ValueType::I32,
+            Value::Stream { .. } => ValueType::I32,
         }
     }
 
@@ -196,17 +201,18 @@ impl Value {
             (Value::FuncRef(_), ValueType::FuncRef) => true,
             (Value::ExternRef(_), ValueType::ExternRef) => true,
             (Value::V128(_), ValueType::V128) => true,
-            (Value::Record(_), ValueType::ExternRef) => true,
-            (Value::Tuple(_), ValueType::ExternRef) => true,
-            (Value::List(_), ValueType::ExternRef) => true,
-            (Value::Flags(_), ValueType::ExternRef) => true,
-            (Value::Variant(_, _), ValueType::ExternRef) => true,
-            (Value::Enum(_), ValueType::ExternRef) => true,
-            (Value::Union(_), ValueType::ExternRef) => true,
-            (Value::Option(_), ValueType::ExternRef) => true,
-            (Value::Result(_), ValueType::ExternRef) => true,
-            (Value::Future(_), ValueType::ExternRef) => true,
-            (Value::Stream { .. }, ValueType::ExternRef) => true,
+            (Value::AnyRef(_), ValueType::AnyRef) => true,
+            (Value::Record(_), ValueType::I32) => true,
+            (Value::Tuple(_), ValueType::I32) => true,
+            (Value::List(_), ValueType::I32) => true,
+            (Value::Flags(_), ValueType::I32) => true,
+            (Value::Variant(_, _), ValueType::I32) => true,
+            (Value::Enum(_), ValueType::I32) => true,
+            (Value::Union(_), ValueType::I32) => true,
+            (Value::Option(_), ValueType::I32) => true,
+            (Value::Result(_), ValueType::I32) => true,
+            (Value::Future(_), ValueType::I32) => true,
+            (Value::Stream { .. }, ValueType::I32) => true,
             _ => false,
         }
     }
@@ -646,21 +652,35 @@ impl Value {
             _ => None,
         }
     }
+
+    /// Attempts to extract an anyref value if this Value is an AnyRef.
+    ///
+    /// # Returns
+    ///
+    /// Some reference to the anyref value if this is an AnyRef value, None otherwise
+    pub fn as_any_ref(&self) -> Option<Option<u32>> {
+        match self {
+            Value::AnyRef(ref_idx) => Some(*ref_idx),
+            _ => None,
+        }
+    }
 }
 
 impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Value::I32(val) => write!(f, "i32: {}", val),
-            Value::I64(val) => write!(f, "i64: {}", val),
-            Value::F32(val) => write!(f, "f32: {}", val),
-            Value::F64(val) => write!(f, "f64: {}", val),
+            Value::I32(v) => write!(f, "i32: {}", v),
+            Value::I64(v) => write!(f, "i64: {}", v),
+            Value::F32(v) => write!(f, "f32: {}", v),
+            Value::F64(v) => write!(f, "f64: {}", v),
+            Value::FuncRef(Some(v)) => write!(f, "funcref: {}", v),
             Value::FuncRef(None) => write!(f, "funcref: null"),
-            Value::FuncRef(Some(idx)) => write!(f, "funcref: {}", idx),
+            Value::ExternRef(Some(v)) => write!(f, "externref: {}", v),
             Value::ExternRef(None) => write!(f, "externref: null"),
-            Value::ExternRef(Some(idx)) => write!(f, "externref: {}", idx),
-            Value::V128(val) => write!(f, "v128: 0x{:032x}", val),
-            Value::Record(v) => write!(f, "record: {:?}", v),
+            Value::AnyRef(Some(v)) => write!(f, "anyref: {}", v),
+            Value::AnyRef(None) => write!(f, "anyref: null"),
+            Value::V128(v) => write!(f, "v128: 0x{:032x}", v),
+            Value::Record(fields) => write!(f, "record: {:?}", fields),
             Value::Tuple(v) => write!(f, "tuple: {:?}", v),
             Value::List(v) => write!(f, "list: {:?}", v),
             Value::Flags(v) => write!(f, "flags: {:?}", v),
