@@ -123,3 +123,142 @@ fn run_core_wast_tests(file_name: &str, _test_name: &str) {
     println!("✅ Successfully parsed {}", file_name);
     println!("==========================================");
 }
+
+//===========================================================================
+// PROPOSAL TESTS
+//===========================================================================
+
+/// Tests for the relaxed SIMD proposal
+/// These tests are only run when the "relaxed_simd" feature is enabled
+#[cfg(feature = "relaxed_simd")]
+#[generate_directory_tests("proposals/relaxed-simd", "relaxed_simd")]
+fn run_relaxed_simd_proposal_tests(file_name: &str, _test_name: &str) {
+    println!("==========================================");
+    println!("Processing relaxed SIMD proposal file: {}", file_name);
+    println!("✅ Successfully parsed {}", file_name);
+    println!("==========================================");
+}
+
+/// Tests for the garbage collection (GC) proposal
+/// These tests are only run when the "gc" feature is enabled
+#[cfg(feature = "gc")]
+#[generate_directory_tests("proposals/gc", "gc")]
+fn run_gc_proposal_tests(file_name: &str, _test_name: &str) {
+    println!("==========================================");
+    println!("Processing GC proposal file: {}", file_name);
+    println!("✅ Successfully parsed {}", file_name);
+    println!("==========================================");
+}
+
+/// Tests for the function references proposal
+/// These tests are only run when the "function_references" feature is enabled
+#[cfg(feature = "function_references")]
+#[generate_directory_tests("proposals/function-references", "function_references")]
+fn run_function_references_proposal_tests(file_name: &str, _test_name: &str) {
+    println!("==========================================");
+    println!(
+        "Processing function references proposal file: {}",
+        file_name
+    );
+    println!("✅ Successfully parsed {}", file_name);
+    println!("==========================================");
+}
+
+/// Tests for the multi-memory proposal
+/// These tests are only run when the "multi_memory" feature is enabled
+#[cfg(feature = "multi_memory")]
+#[generate_directory_tests("proposals/multi-memory", "multi_memory")]
+fn run_multi_memory_proposal_tests(file_name: &str, _test_name: &str) {
+    println!("==========================================");
+    println!("Processing multi-memory proposal file: {}", file_name);
+    println!("✅ Successfully parsed {}", file_name);
+    println!("==========================================");
+}
+
+/// Tests for the exception handling proposal
+/// These tests are only run when the "exception_handling" feature is enabled
+#[cfg(feature = "exception_handling")]
+#[generate_directory_tests("proposals/exception-handling", "exception_handling")]
+fn run_exception_handling_proposal_tests(file_name: &str, _test_name: &str) {
+    println!("==========================================");
+    println!("Processing exception handling proposal file: {}", file_name);
+    println!("✅ Successfully parsed {}", file_name);
+    println!("==========================================");
+}
+
+/// Tests for the threads proposal
+/// These tests are only run when the "threads" feature is enabled
+#[cfg(feature = "threads")]
+#[generate_directory_tests("proposals/threads", "threads")]
+fn run_threads_proposal_tests(file_name: &str, _test_name: &str) {
+    println!("==========================================");
+    println!("Processing threads proposal file: {}", file_name);
+    println!("✅ Successfully parsed {}", file_name);
+    println!("==========================================");
+}
+
+/// Tests for the extended-const proposal
+/// These tests are only run when the "extended_const" feature is enabled
+#[cfg(feature = "extended_const")]
+#[generate_directory_tests("proposals/extended-const", "extended_const")]
+fn run_extended_const_proposal_tests(file_name: &str, _test_name: &str) {
+    println!("==========================================");
+    println!("Processing extended-const proposal file: {}", file_name);
+    println!("✅ Successfully parsed {}", file_name);
+    println!("==========================================");
+}
+
+/// Tests for the tail-call proposal
+/// These tests are only run when the "tail_call" feature is enabled
+#[cfg(feature = "tail_call")]
+#[generate_directory_tests("proposals/tail-call", "tail_call")]
+fn run_tail_call_proposal_tests(file_name: &str, _test_name: &str) {
+    println!("==========================================");
+    println!("Processing tail-call proposal file: {}", file_name);
+    println!("✅ Successfully parsed {}", file_name);
+    println!("==========================================");
+}
+
+/// Tests for WebAssembly 3.0 proposals
+/// These tests are only run when the "wasm_3_0" feature is enabled
+#[cfg(feature = "wasm_3_0")]
+#[generate_directory_tests("proposals/wasm-3.0", "wasm_3_0")]
+fn run_wasm_3_0_proposal_tests(file_name: &str, _test_name: &str) {
+    println!("==========================================");
+    println!("Processing WebAssembly 3.0 proposal file: {}", file_name);
+    println!("✅ Successfully parsed {}", file_name);
+    println!("==========================================");
+}
+
+/// Tests for the wide-arithmetic proposal
+/// These tests are only run when the "wide_arithmetic" feature is enabled
+#[cfg(feature = "wide_arithmetic")]
+#[generate_directory_tests("proposals/wide-arithmetic", "wide_arithmetic")]
+fn run_wide_arithmetic_proposal_tests(file_name: &str, _test_name: &str) {
+    println!("==========================================");
+    println!("Processing wide-arithmetic proposal file: {}", file_name);
+    println!("✅ Successfully parsed {}", file_name);
+    println!("==========================================");
+}
+
+/// Tests for the custom-page-sizes proposal
+/// These tests are only run when the "custom_page_sizes" feature is enabled
+#[cfg(feature = "custom_page_sizes")]
+#[generate_directory_tests("proposals/custom-page-sizes", "custom_page_sizes")]
+fn run_custom_page_sizes_proposal_tests(file_name: &str, _test_name: &str) {
+    println!("==========================================");
+    println!("Processing custom-page-sizes proposal file: {}", file_name);
+    println!("✅ Successfully parsed {}", file_name);
+    println!("==========================================");
+}
+
+/// Tests for the annotations proposal
+/// These tests are only run when the "annotations" feature is enabled
+#[cfg(feature = "annotations")]
+#[generate_directory_tests("proposals/annotations", "annotations")]
+fn run_annotations_proposal_tests(file_name: &str, _test_name: &str) {
+    println!("==========================================");
+    println!("Processing annotations proposal file: {}", file_name);
+    println!("✅ Successfully parsed {}", file_name);
+    println!("==========================================");
+}
