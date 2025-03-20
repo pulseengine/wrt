@@ -390,6 +390,32 @@ pub enum Instruction {
     I32x4TruncSatF32x4U,
     F32x4ConvertI32x4S,
     F32x4ConvertI32x4U,
+
+    // Relaxed SIMD operations
+    #[cfg(feature = "relaxed_simd")]
+    F32x4RelaxedMin,
+    #[cfg(feature = "relaxed_simd")]
+    F32x4RelaxedMax,
+    #[cfg(feature = "relaxed_simd")]
+    F64x2RelaxedMin,
+    #[cfg(feature = "relaxed_simd")]
+    F64x2RelaxedMax,
+    #[cfg(feature = "relaxed_simd")]
+    I16x8RelaxedQ15MulrS,
+    #[cfg(feature = "relaxed_simd")]
+    I16x8RelaxedDotI8x16I7x16S,
+    #[cfg(feature = "relaxed_simd")]
+    I32x4RelaxedDotI8x16I7x16AddS,
+    #[cfg(feature = "relaxed_simd")]
+    I8x16RelaxedSwizzle,
+    #[cfg(feature = "relaxed_simd")]
+    I32x4RelaxedTruncSatF32x4S,
+    #[cfg(feature = "relaxed_simd")]
+    I32x4RelaxedTruncSatF32x4U,
+    #[cfg(feature = "relaxed_simd")]
+    I32x4RelaxedTruncSatF64x2SZero,
+    #[cfg(feature = "relaxed_simd")]
+    I32x4RelaxedTruncSatF64x2UZero,
 }
 
 /// Block type for control flow instructions
