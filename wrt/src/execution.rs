@@ -1,12 +1,30 @@
 use crate::error::{Error, Result};
 use crate::global::Global;
-use crate::instructions::Instruction;
+use crate::instructions::{
+    // Import all instruction implementations
+    arithmetic::*,
+    bit_counting::*,
+    comparison::*,
+    control::{
+        block, br, br_if, br_table, else_instr, end, if_instr, loop_instr, nop, push_label,
+        return_instr, unreachable, LabelType,
+    },
+    conversion::*,
+    memory::*,
+    numeric_constants::*,
+    parametric::*,
+    table::*,
+    variable::*,
+    BlockType,
+    Instruction,
+};
 use crate::logging::{CallbackRegistry, LogLevel, LogOperation};
 use crate::memory::Memory;
 use crate::module::ExportKind;
 use crate::module::{Function, Module};
 use crate::table::Table;
-use crate::types::{ExternType, ValueType};
+use crate::types::ValueType;
+use crate::types::{ExternType, FuncType};
 use crate::values::Value;
 use crate::{format, String, ToString, Vec};
 
@@ -47,14 +65,14 @@ enum InstructionCategory {
 }
 
 /// Represents the execution stack
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Stack {
-    /// Values on the stack
-    values: Vec<Value>,
-    /// Labels (for control flow)
-    labels: Vec<Label>,
-    /// Function frames
-    frames: Vec<Frame>,
+    /// The global value stack shared across all frames
+    pub values: Vec<Value>,
+    /// Control flow labels
+    pub labels: Vec<Label>,
+    /// Call frames
+    pub frames: Vec<Frame>,
 }
 
 /// Represents a label in the control stack
@@ -75,6 +93,14 @@ pub struct Frame {
     pub locals: Vec<Value>,
     /// Module instance
     pub module: ModuleInstance,
+    /// Program counter
+    pub pc: usize,
+    /// Function type
+    pub func_type: FuncType,
+    /// Whether the frame is returning
+    pub returning: bool,
+    /// Stack height at frame start
+    pub stack_height: usize,
 }
 
 /// Represents a module instance during execution
@@ -96,6 +122,8 @@ pub struct ModuleInstance {
     pub memories: Vec<crate::memory::Memory>,
     /// Actual table instances
     pub tables: Vec<crate::table::Table>,
+    /// Actual global instances
+    pub globals: Vec<crate::global::Global>,
 }
 
 /// Represents a function address
@@ -142,12 +170,6 @@ pub struct GlobalAddr {
     pub global_idx: u32,
 }
 
-impl Default for Stack {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl Stack {
     /// Creates a new empty stack
     pub fn new() -> Self {
@@ -165,20 +187,7 @@ impl Stack {
 
     /// Pops a value from the stack
     pub fn pop(&mut self) -> Result<Value> {
-        match self.values.pop() {
-            Some(value) => Ok(value),
-            None => {
-                // Handle stack underflow by returning a default value (i32 0)
-                // This allows more instructions to execute rather than failing immediately
-                #[cfg(feature = "std")]
-                eprintln!(
-                    "Warning: Stack underflow detected. Using default value (i32 0) for recovery."
-                );
-
-                // Return a default value to allow execution to continue
-                Ok(Value::I32(0))
-            }
-        }
+        self.values.pop().ok_or(Error::StackUnderflow)
     }
 
     /// Pushes a label onto the control stack
@@ -200,43 +209,14 @@ impl Stack {
     pub fn get_label(&self, depth: u32) -> Result<&Label> {
         // If the label stack is empty, create a placeholder label for error recovery
         if self.labels.is_empty() {
-            #[cfg(feature = "std")]
             debug_println!("Warning: Label stack is empty but branch instruction encountered. Using fake label for recovery.");
-
-            // Create a placeholder label that branches to instruction 0 (which should be a safe location)
-            // By returning a fake label instead of an error, we allow execution to continue
-            static FALLBACK_LABEL: Label = Label {
-                arity: 0,
-                continuation: 0,
-            };
-            return Ok(&FALLBACK_LABEL);
+            return Err(Error::Execution("Label stack empty".into()));
         }
 
-        // Try to get the label at the specified depth
-        let idx = self
-            .labels
-            .len()
-            .checked_sub(1 + depth as usize)
-            .ok_or_else(|| Error::Execution(format!("Label depth {} out of bounds", depth)))?;
-
-        // If the label isn't found, use a placeholder label
-        match self.labels.get(idx) {
-            Some(label) => Ok(label),
-            None => {
-                #[cfg(feature = "std")]
-                eprintln!(
-                    "Warning: Label at depth {} not found. Using fake label for recovery.",
-                    depth
-                );
-
-                // Create a placeholder label that branches to instruction 0
-                static FALLBACK_LABEL: Label = Label {
-                    arity: 0,
-                    continuation: 0,
-                };
-                Ok(&FALLBACK_LABEL)
-            }
-        }
+        let idx = self.labels.len().saturating_sub(1 + depth as usize);
+        self.labels
+            .get(idx)
+            .ok_or_else(|| Error::Execution(format!("Invalid label depth: {}", depth)))
     }
 
     /// Pushes a frame onto the call stack
@@ -251,38 +231,18 @@ impl Stack {
             .ok_or_else(|| Error::Execution("Call stack underflow".into()))
     }
 
-    /// Returns the current frame
+    /// Gets the current frame without popping it
     pub fn current_frame(&self) -> Result<&Frame> {
-        match self.frames.last() {
-            Some(frame) => Ok(frame),
-            None => {
-                // This is a major error, but we'll try to recover with a placeholder frame
-                #[cfg(feature = "std")]
-                eprintln!("Warning: No active frame but trying to continue execution with placeholder frame.");
-
-                // In a real world application, this would be handled differently
-                // For now, we'll just return an error since creating a valid Frame
-                // requires a reference to module state that we can't fabricate
-                Err(Error::Execution("No active frame".into()))
-            }
-        }
+        self.frames
+            .last()
+            .ok_or_else(|| Error::Execution("No active frame".into()))
     }
 
-    /// Returns the current frame mutably
+    /// Gets the current frame mutably without popping it
     pub fn current_frame_mut(&mut self) -> Result<&mut Frame> {
-        match self.frames.last_mut() {
-            Some(frame) => Ok(frame),
-            None => {
-                // This is a major error, but we'll try to recover with a placeholder frame
-                #[cfg(feature = "std")]
-                debug_println!("Warning: No active frame but trying to continue execution with placeholder frame.");
-
-                // In a real world application, this would be handled differently
-                // For now, we'll just return an error since creating a valid Frame
-                // requires a reference to module state that we can't fabricate
-                Err(Error::Execution("No active frame".into()))
-            }
-        }
+        self.frames
+            .last_mut()
+            .ok_or_else(|| Error::Execution("No active frame".into()))
     }
 }
 
@@ -342,19 +302,27 @@ pub struct ExecutionStats {
     pub function_call_time_us: u64,
 }
 
+/// Maximum call depth to prevent stack overflow
+const MAX_CALL_DEPTH: usize = 1000;
+
 /// The WebAssembly execution engine
 #[derive(Debug)]
 pub struct Engine {
-    /// Execution stack
-    stack: Stack,
-    /// Module instances
-    pub instances: Vec<ModuleInstance>,
-    /// Remaining fuel for bounded execution
-    fuel: Option<u64>,
-    /// Current execution state
+    /// The current execution state
     state: ExecutionState,
+
+    /// The instances in the engine
+    instances: Vec<ModuleInstance>,
+
+    /// The execution stack
+    stack: Stack,
+
+    /// Remaining fuel (None for unlimited)
+    fuel: Option<u64>,
+
     /// Execution statistics
     stats: ExecutionStats,
+
     /// Callback registry for host functions (logging, etc.)
     callbacks: Arc<Mutex<CallbackRegistry>>,
     /// Tracking which element segments have been dropped (elem_idx, module_idx)
@@ -853,9 +821,19 @@ impl Engine {
         &self.stats
     }
 
-    /// Resets the execution statistics
+    /// Reset execution statistics
     pub fn reset_stats(&mut self) {
         self.stats = ExecutionStats::default();
+    }
+
+    /// Get a module instance by index
+    pub fn get_instance(&self, idx: u32) -> Option<&ModuleInstance> {
+        self.instances.get(idx as usize)
+    }
+
+    /// Get the number of module instances
+    pub fn instance_count(&self) -> usize {
+        self.instances.len()
     }
 
     /// Get a global value by address
@@ -907,10 +885,7 @@ impl Engine {
         // Check if global is mutable
         let global_type = &instance.module.globals[addr.global_idx as usize];
         if !global_type.mutable {
-            return Err(Error::Execution(format!(
-                "Global {} is not mutable",
-                addr.global_idx
-            )));
+            return Err(Error::Execution("Cannot set immutable global".into()));
         }
 
         // In a real implementation, this would update the actual global value
@@ -995,6 +970,7 @@ impl Engine {
             global_addrs: Vec::new(),
             memories: Vec::new(),
             tables: Vec::new(),
+            globals: Vec::new(),
         };
 
         // Add instance to engine
@@ -1173,327 +1149,161 @@ impl Engine {
         func_idx: u32,
         args: Vec<Value>,
     ) -> Result<Vec<Value>> {
-        // If we're starting a new execution, reset statistics only if not in a nested call
-        if !matches!(self.state, ExecutionState::Paused { .. })
-            && !matches!(self.state, ExecutionState::Running)
-        {
-            self.reset_stats();
+        // Set execution state to running
+        self.state = ExecutionState::Running;
+
+        // Get module info (clone what we need to avoid borrow issues)
+        let (func_type, function, instance) = {
+            // Get the module instance
+            let instance = self.instances.get(instance_idx as usize).ok_or_else(|| {
+                Error::Execution(format!("Invalid instance index: {}", instance_idx))
+            })?;
+
+            // Get the function from the module
+            let function = instance
+                .module
+                .functions
+                .get(func_idx as usize)
+                .ok_or_else(|| Error::Execution(format!("Invalid function index: {}", func_idx)))?;
+
+            // Get the function type
+            let func_type = instance
+                .module
+                .types
+                .get(function.type_idx as usize)
+                .ok_or_else(|| {
+                    Error::Execution(format!("Invalid type index: {}", function.type_idx))
+                })?;
+
+            // Clone what we need to avoid borrowing issues
+            (func_type.clone(), function.clone(), instance.clone())
+        };
+
+        // Check that the number of arguments matches the function signature
+        if args.len() != func_type.params.len() {
+            return Err(Error::Execution(format!(
+                "Wrong number of arguments: expected {}, got {}",
+                func_type.params.len(),
+                args.len()
+            )));
         }
 
-        // Check if we're resuming a paused execution
-        let start_pc = if let ExecutionState::Paused { pc, .. } = self.state {
-            // We're resuming from a paused state
-            pc
-        } else {
-            // We're starting a new execution
-            self.state = ExecutionState::Running;
+        // Type check arguments
+        for (i, (arg, param_type)) in args.iter().zip(func_type.params.iter()).enumerate() {
+            if !arg.matches_type(param_type) {
+                return Err(Error::Execution(format!(
+                    "Argument {} has wrong type: expected {:?}, got {:?}",
+                    i, param_type, arg
+                )));
+            }
+        }
 
-            // Check if this is a component - validate it has a real core module
-            let instance = &self.instances[instance_idx as usize];
-            let is_component = instance
-                .module
-                .custom_sections
-                .iter()
-                .any(|s| s.name == "component-model-info");
+        // Initialize locals (arguments + zeros for local variables)
+        let mut locals = args.clone();
+        locals.extend(function.locals.iter().map(|_| Value::I32(0)));
 
-            if is_component {
-                // Verify that this component has a core module extracted and processed
-                let has_core_module = instance
-                    .module
-                    .custom_sections
-                    .iter()
-                    .any(|s| s.name == "core-module-processed");
+        // Create a new frame
+        let frame = Frame {
+            func_idx,
+            locals,
+            module: instance,
+            pc: 0,
+            func_type: func_type.clone(),
+            returning: false,
+            stack_height: self.stack.values.len(),
+        };
 
-                if !has_core_module {
-                    return Err(Error::Execution(
-                        "Component doesn't have a processed core module - cannot execute.".into(),
-                    ));
-                }
+        // Push the frame onto the stack
+        self.stack.push_frame(frame);
 
-                #[cfg(feature = "std")]
-                eprintln!("Executing component with standard execution engine");
+        // Save initial stack height to collect results later
+        let initial_stack_height = self.stack.values.len();
+
+        // Execution loop
+        'execution_loop: while !self.stack.frames.is_empty() {
+            // Check if function is returning
+            let is_returning = self.stack.frames.last().unwrap().returning;
+            if is_returning {
+                self.stack.pop_frame()?;
+                continue;
             }
 
-            // Fetch and validate information within a scope to limit borrow
-            let (func_locals, instance_clone, _func_type) = {
-                // Check if the instance index is valid
-                if instance_idx as usize >= self.instances.len() {
-                    return Err(Error::Execution(format!(
-                        "Instance index {} out of bounds (max: {})",
-                        instance_idx,
-                        self.instances.len().saturating_sub(1)
-                    )));
-                }
+            // These scope blocks ensure borrows are released before calling execute_instruction
+            let (current_inst, current_pc, reached_end) = {
+                let frame = self.stack.frames.last().unwrap();
+                let function = &frame.module.module.functions[frame.func_idx as usize];
 
-                // Scope to limit the borrow of self.instances
-                let instance = &self.instances[instance_idx as usize];
-
-                // Determine if this is an imported function
-                let import_count = instance
-                    .module
-                    .imports
-                    .iter()
-                    .filter(|import| matches!(import.ty, ExternType::Function(_)))
-                    .count();
-
-                // Adjust function index for imports
-                let actual_func_idx = if func_idx < import_count as u32 {
-                    // This is an imported function - in a component model we need to handle it directly
-                    if instance
-                        .module
-                        .custom_sections
-                        .iter()
-                        .any(|s| s.name == "component-model-info")
-                    {
-                        // For component model, we'll handle imports specially in the Call instruction
-                        // But we still need to adjust index for module lookup
-                        func_idx
-                    } else {
-                        // For regular modules, we don't allow direct import calls
-                        return Err(Error::Execution(format!(
-                            "Imported function at index {} cannot be called directly: {}.{}",
-                            func_idx,
-                            instance.module.imports[func_idx as usize].module,
-                            instance.module.imports[func_idx as usize].name
-                        )));
-                    }
+                // Check if we've reached the end of the function
+                if frame.pc >= function.body.len() {
+                    (None, 0, true)
                 } else {
-                    // This is a regular function, adjust index to skip imports
-                    func_idx - import_count as u32
+                    // Get the current instruction and PC
+                    (Some(function.body[frame.pc].clone()), frame.pc, false)
+                }
+            };
+
+            // Handle function end
+            if reached_end {
+                if let Some(frame) = self.stack.frames.last_mut() {
+                    frame.returning = true;
+                }
+                continue;
+            }
+
+            // Execute the current instruction (borrows released at this point)
+            let inst = current_inst.unwrap();
+            let result = self.execute_instruction(&inst, current_pc);
+
+            // Handle the result
+            match result {
+                Ok(Some(new_pc)) => {
+                    // Update PC for jumps
+                    if let Some(frame) = self.stack.frames.last_mut() {
+                        frame.pc = new_pc;
+                    }
+                }
+                Ok(None) => {
+                    // Move to next instruction
+                    if let Some(frame) = self.stack.frames.last_mut() {
+                        frame.pc += 1;
+                    }
+                }
+                Err(e) => return Err(e),
+            }
+
+            // Check if we're out of fuel
+            if let Some(0) = self.fuel {
+                let frame_info = if let Some(frame) = self.stack.frames.last() {
+                    (frame.module.module_idx, frame.func_idx, frame.pc)
+                } else {
+                    (instance_idx, func_idx, 0)
                 };
 
-                // Verify function index is valid
-                if actual_func_idx as usize >= instance.module.functions.len() {
-                    return Err(Error::Execution(format!(
-                        "Function index {} out of bounds (max: {})",
-                        actual_func_idx,
-                        instance.module.functions.len()
-                    )));
-                }
-
-                // Get the function and its type
-                let func = &instance.module.functions[actual_func_idx as usize];
-                let func_type = &instance.module.types[func.type_idx as usize];
-
-                // Check argument count
-                if args.len() != func_type.params.len() {
-                    return Err(Error::Execution(format!(
-                        "Expected {} arguments, got {}",
-                        func_type.params.len(),
-                        args.len()
-                    )));
-                }
-
-                // Clone the locals, function type, and instance for use outside this scope
-                (func.locals.clone(), instance.clone(), func_type.clone())
-            };
-
-            // Create frame
-            let mut frame = Frame {
-                func_idx,
-                locals: Vec::new(),
-                module: instance_clone,
-            };
-
-            // Initialize locals with arguments
-            frame.locals.extend(args);
-
-            // Initialize any additional local variables needed by the function
-            // Create default values for each local variable type
-            for local_type in &func_locals {
-                match local_type {
-                    ValueType::I32 => frame.locals.push(Value::I32(0)),
-                    ValueType::I64 => frame.locals.push(Value::I64(0)),
-                    ValueType::F32 => frame.locals.push(Value::F32(0.0)),
-                    ValueType::F64 => frame.locals.push(Value::F64(0.0)),
-                    ValueType::FuncRef => frame.locals.push(Value::FuncRef(None)),
-                    ValueType::ExternRef => frame.locals.push(Value::ExternRef(None)),
-                }
+                self.state = ExecutionState::Paused {
+                    instance_idx: frame_info.0,
+                    func_idx: frame_info.1,
+                    pc: frame_info.2,
+                    expected_results: func_type.results.len(),
+                };
+                return Err(Error::Execution("Out of fuel".into()));
             }
+        }
 
-            // We now update function call statistics at the end of execution
-
-            // Push frame
-            self.stack.push_frame(frame);
-
-            // Start from the beginning
-            0
-        };
-
-        // Get the function clone and expected results
-        let (func_clone, expected_results) = {
-            // Check if the instance index is valid
-            if instance_idx as usize >= self.instances.len() {
-                return Err(Error::Execution(format!(
-                    "Instance index {} out of bounds (max: {})",
-                    instance_idx,
-                    self.instances.len().saturating_sub(1)
-                )));
-            }
-
-            let instance = &self.instances[instance_idx as usize];
-
-            // Determine if this is an imported function
-            let import_count = instance
-                .module
-                .imports
-                .iter()
-                .filter(|import| matches!(import.ty, ExternType::Function(_)))
-                .count();
-
-            // Adjust function index for imports
-            let actual_func_idx = if func_idx < import_count as u32 {
-                // Check if this is a component model
-                if instance
-                    .module
-                    .custom_sections
-                    .iter()
-                    .any(|s| s.name == "component-model-info")
-                {
-                    // Check if this is a specific import we want to mock
-                    let import = &instance.module.imports[func_idx as usize];
-
-                    // For component model WASI logging, process arguments and make the calls
-                    if import.module.contains("logging") && import.name == "log" {
-                        #[cfg(feature = "std")]
-                        eprintln!("Mocking WASI logging call for component execution");
-
-                        // Simply return a result - we're not really executing the call here
-                        // The real module execution happens in Call instruction handling
-                        return Ok(vec![Value::I32(10)]);
-                    }
-
-                    // For other imports or unknown imports, return a default result
-                    return Ok(vec![Value::I32(10)]); // Return the expected value (10)
-                } else {
-                    // For regular modules, we don't allow direct import calls
-                    return Err(Error::Execution(
-                        "Trying to execute an imported function".into(),
-                    ));
-                }
+        // Collect the results from the stack
+        let mut results = Vec::with_capacity(func_type.results.len());
+        for _ in 0..func_type.results.len() {
+            if self.stack.values.len() > initial_stack_height {
+                results.push(self.stack.values.pop().unwrap());
             } else {
-                // This is a regular function, adjust index to skip imports
-                func_idx - import_count as u32
-            };
-
-            // Verify function index is valid
-            if actual_func_idx as usize >= instance.module.functions.len() {
-                return Err(Error::Execution(format!(
-                    "Function index {} out of bounds (max: {})",
-                    actual_func_idx,
-                    instance.module.functions.len()
-                )));
-            }
-
-            // Get the function and its result count
-            let func = &instance.module.functions[actual_func_idx as usize];
-            let func_type = &instance.module.types[func.type_idx as usize];
-
-            (func.clone(), func_type.results.len())
-        };
-
-        // Execute function body with fuel limitation
-        let mut pc = start_pc;
-
-        // Add logging for component execution
-        #[cfg(feature = "std")]
-        if let Ok(var) = std::env::var("WRT_DEBUG_EXECUTE") {
-            if var == "1" {
-                eprintln!(
-                    "Executing function with {} instructions",
-                    func_clone.body.len()
-                );
-
-                // Debug module imports if available
-                let instance = &self.instances[instance_idx as usize];
-                if !instance.module.imports.is_empty() {
-                    eprintln!("Module imports:");
-                    for import in &instance.module.imports {
-                        eprintln!("  - {}.{}", import.module, import.name);
-                    }
-                }
+                return Err(Error::Execution(
+                    "Stack underflow when collecting results".into(),
+                ));
             }
         }
-
-        while pc < func_clone.body.len() {
-            // Check if we have fuel
-            if let Some(fuel) = self.fuel {
-                if fuel == 0 {
-                    // Out of fuel, pause execution
-                    self.state = ExecutionState::Paused {
-                        instance_idx,
-                        func_idx,
-                        pc,
-                        expected_results,
-                    };
-                    return Err(Error::FuelExhausted);
-                }
-
-                // Fuel is consumed in execute_instruction based on instruction type
-            }
-
-            // Execute the instruction
-            match self.execute_instruction(&func_clone.body[pc], pc) {
-                Ok(Some(new_pc)) => pc = new_pc,
-                Ok(None) => pc += 1,
-                Err(e) => {
-                    self.state = ExecutionState::Idle;
-                    return Err(e);
-                }
-            }
-        }
-
-        // Execution is complete, update statistics for complete function
-        self.stats.function_calls += 1;
-
-        // Add debug logging for execution statistics
-        #[cfg(feature = "std")]
-        if let Ok(var) = std::env::var("WRT_DEBUG_STATS") {
-            if var == "1" {
-                eprintln!(
-                    "Finished executing function, {} instructions executed",
-                    self.stats.instructions_executed
-                );
-            }
-        }
-
-        // Pop frame (but handle failure gracefully)
-        match self.stack.pop_frame() {
-            Ok(_) => {
-                // Normal path - we have a frame to pop
-            }
-            Err(e) => {
-                // Something went wrong, log it but continue
-                #[cfg(feature = "std")]
-                eprintln!("Warning: Failed to pop frame: {}", e);
-
-                // We'll still try to return a result
-            }
-        }
-
-        // Return results (ensure we have at least one result for functions expecting them)
-        let mut results = Vec::new();
-        for i in 0..expected_results {
-            match self.stack.pop() {
-                Ok(value) => results.push(value),
-                Err(_) => {
-                    // Stack is empty but we need a result - use a default
-                    #[cfg(feature = "std")]
-                    eprintln!(
-                        "Warning: Result {} missing from stack, using default value",
-                        i
-                    );
-                    results.push(Value::I32(42)); // Default result
-                }
-            }
-        }
-        results.reverse();
+        results.reverse(); // Results are popped in reverse order
 
         // Mark execution as finished
         self.state = ExecutionState::Finished;
-
-        // Update memory usage statistics
-        self.update_memory_stats()?;
 
         Ok(results)
     }
@@ -1629,3434 +1439,261 @@ impl Engine {
 
     /// Executes a single instruction
     fn execute_instruction(&mut self, inst: &Instruction, pc: usize) -> Result<Option<usize>> {
-        // Check if we have an active frame before executing instructions
-        // This prevents crashes when we're in an error recovery state
-        if self.stack.frames.is_empty() {
-            // For safe operation, we'll check if this is a simple operation that doesn't
-            // require a stack frame, otherwise return a nop for anything complex
-            match inst {
-                // Low-risk operations that can safely be run without a frame
-                Instruction::Nop => {}
-                Instruction::Unreachable => {}
-                Instruction::End => {}
-                Instruction::Return => {}
-
-                // For anything else, we'll just no-op and avoid crashing
-                _ => {
-                    #[cfg(feature = "std")]
-                    eprintln!("Warning: No active frame when executing instruction {:?}. Replacing with NOP.", inst);
-
-                    // For Return instructions specifically, we want to complete execution successfully
-                    if matches!(inst, Instruction::Return) {
-                        // We're already at the end of execution, so return success
-                        // with a reasonable default value (42)
-                        self.stack.push(Value::I32(42));
+        match inst {
+            // Control flow instructions
+            Instruction::Block(block_type) => {
+                let types = {
+                    let frame = self.stack.current_frame()?;
+                    frame.module.module.types.clone()
+                };
+                push_label(
+                    pc,
+                    &mut self.stack,
+                    LabelType::Block,
+                    *block_type,
+                    Some(&types),
+                )?;
+                Ok(None)
+            }
+            Instruction::Loop(block_type) => {
+                let types = {
+                    let frame = self.stack.current_frame()?;
+                    frame.module.module.types.clone()
+                };
+                push_label(
+                    pc,
+                    &mut self.stack,
+                    LabelType::Loop,
+                    *block_type,
+                    Some(&types),
+                )?;
+                Ok(None)
+            }
+            Instruction::If(block_type) => {
+                let condition = self.stack.values.pop().ok_or(Error::StackUnderflow)?;
+                if let Value::I32(cond) = condition {
+                    if cond != 0 {
+                        let types = {
+                            let frame = self.stack.current_frame()?;
+                            frame.module.module.types.clone()
+                        };
+                        push_label(
+                            pc,
+                            &mut self.stack,
+                            LabelType::If,
+                            *block_type,
+                            Some(&types),
+                        )?;
                     }
-
-                    return Ok(None); // Safely advance to next instruction
+                } else {
+                    return Err(Error::Execution("Expected i32 condition".into()));
+                }
+                Ok(None)
+            }
+            Instruction::Else => {
+                // For now, just continue execution
+                Ok(None)
+            }
+            Instruction::End => {
+                // Pop the label if any
+                let _ = self.stack.pop_label();
+                Ok(None)
+            }
+            Instruction::Br(label_idx) => {
+                let label = self.stack.get_label(*label_idx)?;
+                Ok(Some(label.continuation))
+            }
+            Instruction::BrIf(label_idx) => {
+                let condition = self.stack.values.pop().ok_or(Error::StackUnderflow)?;
+                if let Value::I32(cond) = condition {
+                    if cond != 0 {
+                        let label = self.stack.get_label(*label_idx)?;
+                        Ok(Some(label.continuation))
+                    } else {
+                        Ok(None)
+                    }
+                } else {
+                    Err(Error::Execution("Expected i32 condition".into()))
                 }
             }
-        }
-
-        // Always increment instruction count, even for component model
-        self.stats.instructions_executed += 1;
-
-        // Track instructions more verbosely in debug mode
-        #[cfg(feature = "std")]
-        if let Ok(var) = std::env::var("WRT_DEBUG_INSTRUCTIONS") {
-            if var == "1" {
-                eprintln!("Executing instruction: {:?}", inst);
-            } else if var == "2" {
-                // More verbose debugging with instruction and stack state
-                eprintln!("Executing instruction: {:?}", inst);
-                if let Ok(frame) = self.stack.current_frame() {
-                    eprintln!(
-                        "  Current stack depth: {} values, {} labels",
-                        self.stack.values.len(),
-                        self.stack.labels.len()
-                    );
-                    if !self.stack.values.is_empty() {
-                        eprintln!("  Stack top: {:?}", self.stack.values.last().unwrap());
-                    }
-                    eprintln!(
-                        "  Function: instance={}, func={}, locals={}",
-                        frame.module.module_idx,
-                        frame.func_idx,
-                        frame.locals.len()
-                    );
+            Instruction::BrTable(labels, default_label) => {
+                let index = self.stack.values.pop().ok_or(Error::StackUnderflow)?;
+                if let Value::I32(idx) = index {
+                    let label_idx = if (idx as usize) < labels.len() {
+                        labels[idx as usize]
+                    } else {
+                        *default_label
+                    };
+                    let label = self.stack.get_label(label_idx)?;
+                    Ok(Some(label.continuation))
+                } else {
+                    Err(Error::Execution("Expected i32 index".into()))
                 }
             }
-        }
-
-        // Set up timers for instruction type profiling
-        #[cfg(feature = "std")]
-        let timer_start = Instant::now();
-
-        // Categorize the instruction for statistics tracking
-        let _inst_category = self.categorize_instruction(inst);
-
-        // Track instruction categories for specific statistics
-        match _inst_category {
-            InstructionCategory::MemoryOp => self.stats.memory_operations += 1,
-            InstructionCategory::FunctionCall => self.stats.function_calls += 1,
-            InstructionCategory::Comparison => self.stats.comparison_instructions += 1,
-            _ => {} // Other categories don't have specific counters yet
-        }
-
-        // Consume instruction-specific fuel amount if needed
-        if let Some(fuel) = self.fuel {
-            let cost = self.instruction_cost(inst);
-            if fuel < cost {
-                // Not enough fuel for this instruction
-                self.fuel = Some(0); // Set to 0 to trigger out-of-fuel error on next check
-            } else {
-                self.fuel = Some(fuel - cost);
-                // Track fuel consumption
-                self.stats.fuel_consumed += cost;
+            Instruction::Return => {
+                self.stack.current_frame_mut()?.returning = true;
+                Ok(None)
             }
-        }
-
-        // Execute the instruction and track the result
-        let result = match inst {
-            // Control instructions
             Instruction::Unreachable => {
                 Err(Error::Execution("Unreachable instruction executed".into()))
             }
             Instruction::Nop => Ok(None),
-            Instruction::Block(_block_type) => {
-                self.stack.push_label(0, pc + 1);
+            Instruction::Drop => {
+                self.stack.values.pop().ok_or(Error::StackUnderflow)?;
                 Ok(None)
             }
-            Instruction::Loop(_block_type) => {
-                self.stack.push_label(0, pc);
-                Ok(None)
-            }
-            Instruction::If(_block_type) => {
-                let cond = self
-                    .stack
-                    .pop()?
-                    .as_i32()
-                    .ok_or_else(|| Error::Execution("Expected i32 condition".into()))?;
-                if cond != 0 {
-                    self.stack.push_label(0, pc + 1);
+            Instruction::Select => {
+                let condition = self.stack.values.pop().ok_or(Error::StackUnderflow)?;
+                let val2 = self.stack.values.pop().ok_or(Error::StackUnderflow)?;
+                let val1 = self.stack.values.pop().ok_or(Error::StackUnderflow)?;
+                if let Value::I32(cond) = condition {
+                    self.stack.values.push(if cond != 0 { val1 } else { val2 });
                     Ok(None)
                 } else {
-                    Ok(Some(pc + 2))
+                    Err(Error::Execution("Expected i32 condition".into()))
                 }
             }
-            Instruction::Else => {
-                let label = self.stack.pop_label()?;
-                self.stack.push_label(label.arity, pc + 1);
-                Ok(None)
-            }
-            Instruction::End => {
-                let _label = self.stack.pop_label()?;
-                Ok(None)
-            }
-            Instruction::Br(depth) => {
-                let label = self.stack.get_label(*depth)?;
-                Ok(Some(label.continuation))
-            }
-            Instruction::BrIf(depth) => {
-                let cond = self
-                    .stack
-                    .pop()?
-                    .as_i32()
-                    .ok_or_else(|| Error::Execution("Expected i32 condition".into()))?;
-                if cond != 0 {
-                    // If condition is true, branch to the label
-                    let label = self.stack.get_label(*depth)?;
-                    Ok(Some(label.continuation))
-                } else {
-                    // If condition is false, just continue to next instruction
+            Instruction::SelectTyped(value_type) => {
+                let condition = self.stack.values.pop().ok_or(Error::StackUnderflow)?;
+                let val2 = self.stack.values.pop().ok_or(Error::StackUnderflow)?;
+                let val1 = self.stack.values.pop().ok_or(Error::StackUnderflow)?;
+                if let Value::I32(cond) = condition {
+                    self.stack.values.push(if cond != 0 { val1 } else { val2 });
                     Ok(None)
+                } else {
+                    Err(Error::Execution("Expected i32 condition".into()))
                 }
             }
-            Instruction::Return => {
-                let frame = self.stack.current_frame()?;
-                let func = &frame.module.module.functions[frame.func_idx as usize];
-                let func_type = &frame.module.module.types[func.type_idx as usize];
-                let mut results = Vec::new();
-                for _ in 0..func_type.results.len() {
-                    results.push(self.stack.pop()?);
-                }
-                results.reverse();
-                self.stack.pop_frame()?;
-                for result in results {
-                    self.stack.push(result);
-                }
-                Ok(None)
-            }
-            Instruction::Call(func_idx) => {
-                self.execute_call(*func_idx)?;
-                Ok(None)
-            }
-            Instruction::CallIndirect(type_idx, table_idx) => {
-                // Get the function index from the stack
-                let func_elem_idx = self
-                    .stack
-                    .pop()?
-                    .as_i32()
-                    .ok_or_else(|| Error::Execution("Expected i32 function index".into()))?;
 
-                // Check for negative index
-                if func_elem_idx < 0 {
-                    return Err(Error::Execution("Function index cannot be negative".into()));
-                }
-
-                // Get current frame to access the module instance
-                let frame = self.stack.current_frame()?;
-                let instance = &frame.module;
-
-                // Check if table exists and index is valid
-                if *table_idx as usize >= instance.table_addrs.len() {
-                    return Err(Error::Execution(format!(
-                        "Table index {} out of bounds",
-                        table_idx
-                    )));
-                }
-
-                // Get the table address
-                let table_addr = &instance.table_addrs[*table_idx as usize];
-
-                // Get the actual table from the instance that contains it
-                let table_instance = &self.instances[table_addr.instance_idx as usize];
-
-                // Verify table index is valid
-                if table_addr.table_idx as usize >= table_instance.tables.len() {
-                    return Err(Error::Execution(format!(
-                        "Table index {} out of bounds in instance",
-                        table_addr.table_idx
-                    )));
-                }
-
-                // Get the actual table
-                let table = &table_instance.tables[table_addr.table_idx as usize];
-
-                // Check if element index is within table bounds
-                if func_elem_idx as usize >= table.size() as usize {
-                    return Err(Error::Execution(format!(
-                        "Element index {} out of bounds in table (size: {})",
-                        func_elem_idx,
-                        table.size()
-                    )));
-                }
-
-                // Get the element from the table
-                let func_ref = match table.get(func_elem_idx as u32)? {
-                    Some(Value::FuncRef(Some(func_idx))) => {
-                        // In the simple case, the func_idx is directly the function index
-                        // in the current module instance
-                        FunctionAddr {
-                            instance_idx: instance.module_idx,
-                            func_idx,
-                        }
-                    }
-                    _ => {
-                        return Err(Error::Execution(
-                            "Null or invalid function reference".into(),
-                        ))
-                    }
-                };
-
-                // Execute function call
-                let func_instance = &self.instances[func_ref.instance_idx as usize];
-                let func = &func_instance.module.functions[func_ref.func_idx as usize];
-
-                // Get the expected function type
-                if *type_idx as usize >= instance.module.types.len() {
-                    return Err(Error::Execution(format!(
-                        "Type index {} out of bounds",
-                        type_idx
-                    )));
-                }
-
-                let expected_type = &instance.module.types[*type_idx as usize];
-                let actual_type = &func_instance.module.types[func.type_idx as usize];
-
-                // Check if types match
-                if expected_type != actual_type {
-                    return Err(Error::Execution(format!(
-                        "Function type mismatch: expected {:?}, got {:?}",
-                        expected_type, actual_type
-                    )));
-                }
-
-                // Execute the function by preparing arguments and calling execute
-                let func_type = expected_type;
-                let params_len = func_type.params.len();
-
-                // Get arguments from stack
-                let mut args = Vec::new();
-                for _ in 0..params_len {
-                    args.push(self.stack.pop()?);
-                }
-                args.reverse();
-
-                // Execute the function with appropriate indexes
-                let results = self.execute(func_ref.instance_idx, func_ref.func_idx, args)?;
-
-                // Push results onto stack
-                for result in results {
-                    self.stack.push(result);
-                }
-
-                Ok(None)
-            }
-
-            // Numeric constants
-            Instruction::I32Const(value) => {
-                self.stack.push(Value::I32(*value));
-                Ok(None)
-            }
-            Instruction::I64Const(value) => {
-                self.stack.push(Value::I64(*value));
-                Ok(None)
-            }
-            Instruction::F32Const(value) => {
-                self.stack.push(Value::F32(*value));
-                Ok(None)
-            }
-            Instruction::F64Const(value) => {
-                self.stack.push(Value::F64(*value));
-                Ok(None)
-            }
-
+            // Variable instructions
             Instruction::LocalGet(idx) => {
-                let idx_usize = *idx as usize;
-
-                // Handle error cases gracefully
-                match self.stack.current_frame() {
-                    Ok(frame) => {
-                        if idx_usize < frame.locals.len() {
-                            // Normal case - get the local value
-                            let local = frame.locals[idx_usize].clone();
-                            self.stack.push(local);
-                        } else {
-                            // Handle out of bounds index gracefully
-                            #[cfg(feature = "std")]
-                            debug_println!("Warning: Local {} out of bounds (max: {}) in LocalGet, using default",
-                                         idx_usize, frame.locals.len().saturating_sub(1));
-                            // Push a default value
-                            self.stack.push(Value::I32(0));
-                        }
-                    }
-                    Err(_) => {
-                        // No active frame - log and continue with default
-                        #[cfg(feature = "std")]
-                        debug_println!(
-                            "Warning: No active frame for LocalGet, using default value"
-                        );
-                        self.stack.push(Value::I32(0));
-                    }
-                }
-
+                let frame = self.stack.current_frame()?;
+                let value = frame.locals[*idx as usize].clone();
+                self.stack.values.push(value);
                 Ok(None)
             }
             Instruction::LocalSet(idx) => {
-                // Get value, handle gracefully if not available
-                let value = match self.stack.pop() {
-                    Ok(v) => v,
-                    Err(_) => {
-                        // Stack underflow - use default and continue
-                        #[cfg(feature = "std")]
-                        eprintln!("Warning: Stack underflow in LocalSet, using default value");
-                        Value::I32(0)
-                    }
-                };
-
-                let idx = *idx as usize;
-
-                // Try to get the frame, but handle errors gracefully
-                match self.stack.current_frame() {
-                    Ok(frame) => {
-                        if idx >= frame.locals.len() {
-                            // Index out of bounds - log and continue
-                            #[cfg(feature = "std")]
-                            eprintln!(
-                                "Warning: Local {} out of bounds (max: {}) in LocalSet, ignoring",
-                                idx,
-                                frame.locals.len().saturating_sub(1)
-                            );
-                            return Ok(None);
-                        }
-
-                        // Can't borrow mutably while borrowing immutably, need to drop frame ref
-                        let _ = frame;
-                    }
-                    Err(_) => {
-                        // No active frame - log and continue
-                        #[cfg(feature = "std")]
-                        eprintln!("Warning: No active frame for LocalSet, ignoring");
-                        return Ok(None);
-                    }
-                }
-
-                // Now get a mutable reference to the current frame
-                if let Some(frame) = self.stack.frames.last_mut() {
-                    if idx < frame.locals.len() {
-                        frame.locals[idx] = value;
-                    }
-                }
+                let value = self.stack.values.pop().ok_or(Error::StackUnderflow)?;
+                let frame = self.stack.current_frame_mut()?;
+                frame.locals[*idx as usize] = value;
                 Ok(None)
             }
-
             Instruction::LocalTee(idx) => {
-                // Get value without removing it from stack
-                if self.stack.values.is_empty() {
-                    // Instead of error, push a default value and continue
-                    #[cfg(feature = "std")]
-                    eprintln!("Warning: Stack underflow in LocalTee, using default value");
-                    self.stack.push(Value::I32(0));
-                }
-
-                // Clone the value to keep it on the stack
-                let value = match self.stack.values.last() {
-                    Some(val) => val.clone(),
-                    None => {
-                        // Shouldn't happen due to check above, but be extra safe
-                        #[cfg(feature = "std")]
-                        eprintln!("Warning: No value on stack in LocalTee, using default value");
-                        Value::I32(0)
-                    }
-                };
-
-                let idx = *idx as usize;
-
-                // Try to get the frame, but handle errors gracefully
-                match self.stack.current_frame() {
-                    Ok(frame) => {
-                        if idx >= frame.locals.len() {
-                            // Index out of bounds - log and continue
-                            #[cfg(feature = "std")]
-                            eprintln!(
-                                "Warning: Local {} out of bounds (max: {}) in LocalTee, ignoring",
-                                idx,
-                                frame.locals.len().saturating_sub(1)
-                            );
-                            return Ok(None);
-                        }
-
-                        // Can't borrow mutably while borrowing immutably, need to drop frame ref
-                        let _ = frame;
-                    }
-                    Err(_) => {
-                        // No active frame - log and continue
-                        #[cfg(feature = "std")]
-                        eprintln!("Warning: No active frame for LocalTee, ignoring");
-                        return Ok(None);
-                    }
-                }
-
-                // Now get a mutable reference to the current frame
-                if let Some(frame) = self.stack.frames.last_mut() {
-                    if idx < frame.locals.len() {
-                        frame.locals[idx] = value;
-                    }
-                }
-
-                Ok(None)
-            }
-
-            // Integer operations
-            Instruction::I32Add => {
-                let rhs = self
-                    .stack
-                    .pop()?
-                    .as_i32()
-                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
-                let lhs = self
-                    .stack
-                    .pop()?
-                    .as_i32()
-                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
-                self.stack.push(Value::I32(lhs.wrapping_add(rhs)));
-                Ok(None)
-            }
-            Instruction::I32Sub => {
-                let rhs = self
-                    .stack
-                    .pop()?
-                    .as_i32()
-                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
-                let lhs = self
-                    .stack
-                    .pop()?
-                    .as_i32()
-                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
-                self.stack.push(Value::I32(lhs.wrapping_sub(rhs)));
-                Ok(None)
-            }
-            Instruction::I32Mul => {
-                let rhs = self
-                    .stack
-                    .pop()?
-                    .as_i32()
-                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
-                let lhs = self
-                    .stack
-                    .pop()?
-                    .as_i32()
-                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
-                self.stack.push(Value::I32(lhs.wrapping_mul(rhs)));
-                Ok(None)
-            }
-            Instruction::I32DivS => {
-                let rhs = self
-                    .stack
-                    .pop()?
-                    .as_i32()
-                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
-                let lhs = self
-                    .stack
-                    .pop()?
-                    .as_i32()
-                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
-
-                // Check for division by zero
-                if rhs == 0 {
-                    return Err(Error::Execution("Division by zero".into()));
-                }
-
-                // Check for overflow (only case is MIN_VALUE / -1)
-                if lhs == i32::MIN && rhs == -1 {
-                    return Err(Error::Execution("Division overflow".into()));
-                }
-
-                self.stack.push(Value::I32(lhs.wrapping_div(rhs)));
-                Ok(None)
-            }
-            Instruction::I32DivU => {
-                let rhs = self
-                    .stack
-                    .pop()?
-                    .as_i32()
-                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
-                let lhs = self
-                    .stack
-                    .pop()?
-                    .as_i32()
-                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
-
-                // Check for division by zero
-                if rhs == 0 {
-                    return Err(Error::Execution("Division by zero".into()));
-                }
-
-                // For unsigned division, we need to convert to u32 first
-                let lhs_u = lhs as u32;
-                let rhs_u = rhs as u32;
-
-                self.stack
-                    .push(Value::I32((lhs_u.wrapping_div(rhs_u)) as i32));
-                Ok(None)
-            }
-            Instruction::I32RemS => {
-                let rhs = self
-                    .stack
-                    .pop()?
-                    .as_i32()
-                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
-                let lhs = self
-                    .stack
-                    .pop()?
-                    .as_i32()
-                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
-
-                // Check for division by zero
-                if rhs == 0 {
-                    return Err(Error::Execution("Division by zero".into()));
-                }
-
-                // The result of a % 0 is implementation-defined in WebAssembly spec
-                // For i32::MIN % -1, the result is defined as 0 in WebAssembly
-                if lhs == i32::MIN && rhs == -1 {
-                    self.stack.push(Value::I32(0));
-                } else {
-                    self.stack.push(Value::I32(lhs % rhs));
-                }
-
-                Ok(None)
-            }
-            Instruction::I32RemU => {
-                let rhs = self
-                    .stack
-                    .pop()?
-                    .as_i32()
-                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
-                let lhs = self
-                    .stack
-                    .pop()?
-                    .as_i32()
-                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
-
-                // Check for division by zero
-                if rhs == 0 {
-                    return Err(Error::Execution("Division by zero".into()));
-                }
-
-                // For unsigned remainder, convert to u32 first
-                let lhs_u = lhs as u32;
-                let rhs_u = rhs as u32;
-
-                self.stack.push(Value::I32((lhs_u % rhs_u) as i32));
-                Ok(None)
-            }
-
-            // Comparison operations
-            Instruction::I32LtS => {
-                let rhs = self
-                    .stack
-                    .pop()?
-                    .as_i32()
-                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
-                let lhs = self
-                    .stack
-                    .pop()?
-                    .as_i32()
-                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
-                self.stack.push(Value::I32(if lhs < rhs { 1 } else { 0 }));
-                Ok(None)
-            }
-            Instruction::I32LtU => {
-                let rhs = self
-                    .stack
-                    .pop()?
-                    .as_i32()
-                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
-                let lhs = self
-                    .stack
-                    .pop()?
-                    .as_i32()
-                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
-                // Cast to unsigned (u32) before comparison
-                self.stack
-                    .push(Value::I32(if (lhs as u32) < (rhs as u32) { 1 } else { 0 }));
-                Ok(None)
-            }
-            Instruction::I32GtS => {
-                let rhs = self
-                    .stack
-                    .pop()?
-                    .as_i32()
-                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
-                let lhs = self
-                    .stack
-                    .pop()?
-                    .as_i32()
-                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
-                self.stack.push(Value::I32(if lhs > rhs { 1 } else { 0 }));
-                Ok(None)
-            }
-            Instruction::I32GtU => {
-                let rhs = self
-                    .stack
-                    .pop()?
-                    .as_i32()
-                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
-                let lhs = self
-                    .stack
-                    .pop()?
-                    .as_i32()
-                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
-                // Cast to unsigned (u32) before comparison
-                self.stack
-                    .push(Value::I32(if (lhs as u32) > (rhs as u32) { 1 } else { 0 }));
-                Ok(None)
-            }
-            Instruction::I32LeS => {
-                let rhs = self
-                    .stack
-                    .pop()?
-                    .as_i32()
-                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
-                let lhs = self
-                    .stack
-                    .pop()?
-                    .as_i32()
-                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
-                self.stack.push(Value::I32(if lhs <= rhs { 1 } else { 0 }));
-                Ok(None)
-            }
-            Instruction::I32LeU => {
-                let rhs = self
-                    .stack
-                    .pop()?
-                    .as_i32()
-                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
-                let lhs = self
-                    .stack
-                    .pop()?
-                    .as_i32()
-                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
-                // Cast to unsigned (u32) before comparison
-                self.stack
-                    .push(Value::I32(if (lhs as u32) <= (rhs as u32) { 1 } else { 0 }));
-                Ok(None)
-            }
-            Instruction::I32GeS => {
-                let rhs = self
-                    .stack
-                    .pop()?
-                    .as_i32()
-                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
-                let lhs = self
-                    .stack
-                    .pop()?
-                    .as_i32()
-                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
-                self.stack.push(Value::I32(if lhs >= rhs { 1 } else { 0 }));
-                Ok(None)
-            }
-            Instruction::I32GeU => {
-                let rhs = self
-                    .stack
-                    .pop()?
-                    .as_i32()
-                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
-                let lhs = self
-                    .stack
-                    .pop()?
-                    .as_i32()
-                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
-
-                // Special handling for component model polling loops
-                // The common pattern is: LocalGet(3), I32Const(4), I32GeU, BrIf(0)
-                if rhs == 4 {
-                    self.polling_loop_counter += 1;
-
-                    #[cfg(feature = "std")]
-                    if let Ok(var) = std::env::var("WRT_DEBUG_MEMORY") {
-                        if var == "1" {
-                            debug_println!(
-                                "Detected component model polling loop pattern: LHS={}, RHS=4, count={}",
-                                lhs, self.polling_loop_counter
-                            );
-                        }
-                    }
-
-                    // After detecting the pattern many times, force exit to avoid wasting fuel
-                    if self.polling_loop_counter > 500 {
-                        return Err(Error::Execution(
-                            "Detected infinite component model polling loop, execution aborted"
-                                .into(),
-                        ));
-                    }
-
-                    // Force the condition to fail by returning false (0)
-                    // This will cause the BrIf(0) to not take the branch
-                    self.stack.push(Value::I32(0));
-                    return Ok(None);
-                }
-
-                // Normal case - cast to unsigned (u32) before comparison
-                self.stack
-                    .push(Value::I32(if (lhs as u32) >= (rhs as u32) { 1 } else { 0 }));
-                Ok(None)
-            }
-            Instruction::I32Eq => {
-                let rhs = self
-                    .stack
-                    .pop()?
-                    .as_i32()
-                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
-                let lhs = self
-                    .stack
-                    .pop()?
-                    .as_i32()
-                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
-                self.stack.push(Value::I32(if lhs == rhs { 1 } else { 0 }));
-                Ok(None)
-            }
-            Instruction::I32Ne => {
-                let rhs = self
-                    .stack
-                    .pop()?
-                    .as_i32()
-                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
-                let lhs = self
-                    .stack
-                    .pop()?
-                    .as_i32()
-                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
-                self.stack.push(Value::I32(if lhs != rhs { 1 } else { 0 }));
-                Ok(None)
-            }
-
-            // Global access instructions
-            Instruction::GlobalGet(idx) => {
-                let frame = self.stack.current_frame()?;
-                let instance_idx = frame.module.module_idx;
-
-                // Check if the global index is valid
-                if (*idx as usize) < self.instances[instance_idx as usize].module.globals.len() {
-                    // Get the global value
-                    let global_addr = GlobalAddr {
-                        instance_idx,
-                        global_idx: *idx,
-                    };
-
-                    // Access global value directly from instance
-                    let value = self.get_global(&global_addr)?;
-                    self.stack.push(value);
-                    Ok(None)
-                } else {
-                    Err(Error::Execution(format!(
-                        "Global index {} out of bounds",
-                        idx
-                    )))
-                }
-            }
-            Instruction::GlobalSet(idx) => {
-                let value = self.stack.pop()?;
-                let frame = self.stack.current_frame()?;
-                let instance_idx = frame.module.module_idx;
-
-                // Check if the global index is valid
-                if (*idx as usize) < self.instances[instance_idx as usize].module.globals.len() {
-                    // Check if the global is mutable
-                    let global_type =
-                        &self.instances[instance_idx as usize].module.globals[*idx as usize];
-                    if !global_type.mutable {
-                        return Err(Error::Execution(format!("Global {} is not mutable", idx)));
-                    }
-
-                    // Create a global address
-                    let global_addr = GlobalAddr {
-                        instance_idx,
-                        global_idx: *idx,
-                    };
-
-                    // Set the global value
-                    self.set_global(&global_addr, value)?;
-                    Ok(None)
-                } else {
-                    Err(Error::Execution(format!(
-                        "Global index {} out of bounds",
-                        idx
-                    )))
-                }
-            }
-
-            // Bitwise operations (I32)
-            Instruction::I32Clz => {
-                let value = self
-                    .stack
-                    .pop()?
-                    .as_i32()
-                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
-                let result = value.leading_zeros() as i32;
-                self.stack.push(Value::I32(result));
-                Ok(None)
-            }
-            Instruction::I32Ctz => {
-                let value = self
-                    .stack
-                    .pop()?
-                    .as_i32()
-                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
-                let result = value.trailing_zeros() as i32;
-                self.stack.push(Value::I32(result));
-                Ok(None)
-            }
-            Instruction::I32Popcnt => {
-                let value = self
-                    .stack
-                    .pop()?
-                    .as_i32()
-                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
-                let result = value.count_ones() as i32;
-                self.stack.push(Value::I32(result));
-                Ok(None)
-            }
-
-            // Bitwise operations (I64)
-            Instruction::I64Clz => {
-                let value = self
-                    .stack
-                    .pop()?
-                    .as_i64()
-                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
-                let result = value.leading_zeros() as i64;
-                self.stack.push(Value::I64(result));
-                Ok(None)
-            }
-            Instruction::I64Ctz => {
-                let value = self
-                    .stack
-                    .pop()?
-                    .as_i64()
-                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
-                let result = value.trailing_zeros() as i64;
-                self.stack.push(Value::I64(result));
-                Ok(None)
-            }
-            Instruction::I64Popcnt => {
-                let value = self
-                    .stack
-                    .pop()?
-                    .as_i64()
-                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
-                let result = value.count_ones() as i64;
-                self.stack.push(Value::I64(result));
-                Ok(None)
-            }
-
-            // Bitwise operations
-            Instruction::I32And => {
-                // Get values, handling errors gracefully
-                let rhs = match self.stack.pop() {
-                    Ok(v) => v.as_i32().unwrap_or(0),
-                    Err(_) => {
-                        #[cfg(feature = "std")]
-                        eprintln!("Warning: Stack underflow for I32And rhs, using 0");
-                        0
-                    }
-                };
-
-                let lhs = match self.stack.pop() {
-                    Ok(v) => v.as_i32().unwrap_or(0),
-                    Err(_) => {
-                        #[cfg(feature = "std")]
-                        eprintln!("Warning: Stack underflow for I32And lhs, using 0");
-                        0
-                    }
-                };
-
-                self.stack.push(Value::I32(lhs & rhs));
-                Ok(None)
-            }
-
-            Instruction::I64Or => {
-                // Get values, handling errors gracefully
-                let rhs = match self.stack.pop() {
-                    Ok(v) => v.as_i64().unwrap_or(0),
-                    Err(_) => {
-                        #[cfg(feature = "std")]
-                        eprintln!("Warning: Stack underflow for I64Or rhs, using 0");
-                        0
-                    }
-                };
-
-                let lhs = match self.stack.pop() {
-                    Ok(v) => v.as_i64().unwrap_or(0),
-                    Err(_) => {
-                        #[cfg(feature = "std")]
-                        eprintln!("Warning: Stack underflow for I64Or lhs, using 0");
-                        0
-                    }
-                };
-
-                self.stack.push(Value::I64(lhs | rhs));
-                Ok(None)
-            }
-
-            Instruction::I64Shl => {
-                // Get values, handling errors gracefully
-                let shift = match self.stack.pop() {
-                    Ok(v) => v.as_i64().unwrap_or(0),
-                    Err(_) => {
-                        #[cfg(feature = "std")]
-                        eprintln!("Warning: Stack underflow for I64Shl shift, using 0");
-                        0
-                    }
-                };
-
-                let value = match self.stack.pop() {
-                    Ok(v) => v.as_i64().unwrap_or(0),
-                    Err(_) => {
-                        #[cfg(feature = "std")]
-                        eprintln!("Warning: Stack underflow for I64Shl value, using 0");
-                        0
-                    }
-                };
-
-                // Apply shift (only use lower 6 bits = 0-63)
-                let result = value << (shift & 0x3F);
-                self.stack.push(Value::I64(result));
-                Ok(None)
-            }
-
-            Instruction::I32Eqz => {
-                // Get value, handling errors gracefully
-                let value = match self.stack.pop() {
-                    Ok(v) => v.as_i32().unwrap_or(0),
-                    Err(_) => {
-                        #[cfg(feature = "std")]
-                        eprintln!("Warning: Stack underflow for I32Eqz, using 0");
-                        0
-                    }
-                };
-
-                // Check if the value is zero
-                self.stack.push(Value::I32(if value == 0 { 1 } else { 0 }));
+                let value = self.stack.values.pop().ok_or(Error::StackUnderflow)?;
+                let frame = self.stack.current_frame_mut()?;
+                frame.locals[*idx as usize] = value.clone();
+                self.stack.values.push(value);
                 Ok(None)
             }
 
             // Memory operations
-            Instruction::MemorySize => {
-                let frame = self.stack.current_frame()?;
-                let instance_idx = frame.module.module_idx;
-
-                // Get the memory info
-                if !self.instances[instance_idx as usize]
-                    .memory_addrs
-                    .is_empty()
-                {
-                    let memory_addr = &self.instances[instance_idx as usize].memory_addrs[0];
-                    let memory_idx = memory_addr.memory_idx;
-                    let mem_instance_idx = memory_addr.instance_idx;
-
-                    // Get the memory instance
-                    let memory_instance = &self.instances[mem_instance_idx as usize];
-
-                    // Get the actual memory object
-                    if memory_idx as usize >= memory_instance.memories.len() {
-                        // Return 0 size instead of error for better error handling
-                        #[cfg(feature = "std")]
-                        eprintln!("Memory index out of bounds in MemorySize, returning 0");
-                        self.stack.push(Value::I32(0));
-                        return Ok(None);
-                    }
-
-                    // Get the size from the actual memory object
-                    let memory = &memory_instance.memories[memory_idx as usize];
-                    let size_in_pages = memory.size();
-
-                    // The size is in pages (64KB each)
-                    self.stack.push(Value::I32(size_in_pages as i32));
-                    Ok(None)
-                } else {
-                    // No memory available, return 0 instead of error
-                    #[cfg(feature = "std")]
-                    eprintln!("No memory available for MemorySize, returning 0");
-                    self.stack.push(Value::I32(0));
-                    Ok(None)
-                }
-            }
-            Instruction::MemoryGrow => {
-                let pages = self
-                    .stack
-                    .pop()?
-                    .as_i32()
-                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
-
-                // Only handle positive growth
-                if pages < 0 {
-                    self.stack.push(Value::I32(-1)); // Failure
-                    return Ok(None);
-                }
-
-                let frame = self.stack.current_frame()?;
-                let instance_idx = frame.module.module_idx;
-
-                // Get memory address
-                if !self.instances[instance_idx as usize]
-                    .memory_addrs
-                    .is_empty()
-                {
-                    let memory_addr = &self.instances[instance_idx as usize].memory_addrs[0];
-                    let memory_idx = memory_addr.memory_idx;
-                    let mem_instance_idx = memory_addr.instance_idx;
-
-                    // Get the memory instance
-                    let memory_instance = &mut self.instances[mem_instance_idx as usize];
-
-                    // Access the memory
-                    if memory_idx as usize >= memory_instance.memories.len() {
-                        return Err(Error::Execution("Memory index out of bounds".into()));
-                    }
-
-                    // First update the memory type in the module
-                    if (memory_idx as usize) < memory_instance.module.memories.len() {
-                        let memory_type = &mut memory_instance.module.memories[memory_idx as usize];
-
-                        // Check if growth would exceed max memory
-                        if let Some(max) = memory_type.max {
-                            if memory_type.min + pages as u32 > max {
-                                self.stack.push(Value::I32(-1)); // Failure
-                                return Ok(None);
-                            }
-                        }
-                    }
-
-                    // Now actually grow the memory buffer by calling grow() on the Memory instance
-                    let memory = &mut memory_instance.memories[memory_idx as usize];
-                    match memory.grow(pages as u32) {
-                        Ok(old_size) => {
-                            // Return the old size in pages
-                            self.stack.push(Value::I32(old_size as i32));
-                            Ok(None)
-                        }
-                        Err(_) => {
-                            // If memory growth failed, indicate failure
-                            self.stack.push(Value::I32(-1));
-                            Ok(None)
-                        }
-                    }
-                } else {
-                    // No memory available, return -1 to match WebAssembly spec behavior
-                    self.stack.push(Value::I32(-1));
-                    Ok(None)
-                }
-            }
-
-            // Type conversion instructions
-            Instruction::I32WrapI64 => {
-                let value = self
-                    .stack
-                    .pop()?
-                    .as_i64()
-                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
-                self.stack.push(Value::I32(value as i32));
-                Ok(None)
-            }
-            Instruction::I64ExtendI32S => {
-                let value = self
-                    .stack
-                    .pop()?
-                    .as_i32()
-                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
-                self.stack.push(Value::I64(value as i64));
-                Ok(None)
-            }
-            Instruction::I64ExtendI32U => {
-                let value = self
-                    .stack
-                    .pop()?
-                    .as_i32()
-                    .ok_or_else(|| Error::Execution("Expected i32".into()))?;
-                self.stack.push(Value::I64((value as u32) as i64));
-                Ok(None)
-            }
-
-            // Memory load instructions
             Instruction::I32Load(align, offset) => {
-                // Get address from stack
-                let addr = self
-                    .stack
-                    .pop()?
-                    .as_i32()
-                    .ok_or_else(|| Error::Execution("Expected i32 address".into()))?;
-
-                // Calculate effective address
-                let effective_addr = (addr as u32).wrapping_add(*offset);
-
-                // Log memory operation
-                #[cfg(feature = "std")]
-                if let Ok(var) = std::env::var("WRT_DEBUG_MEMORY") {
-                    if var == "1" {
-                        eprintln!(
-                            "I32Load: addr={}, effective_addr={}, align={}, offset={}",
-                            addr, effective_addr, align, offset
-                        );
-                    }
-                }
-
-                // Get memory from the instance
-                let frame = self.stack.current_frame()?;
-                let instance_idx = frame.module.module_idx as usize;
-
-                // Check if this instance has any memory
-                if self.instances[instance_idx].memory_addrs.is_empty() {
-                    // No memory defined, return default value
-                    #[cfg(feature = "std")]
-                    eprintln!("No memory defined in instance, returning 0");
-                    self.stack.push(Value::I32(0));
-                    return Ok(None);
-                }
-
-                // Get memory address (use memory index 0 by default)
-                let memory_addr = &self.instances[instance_idx].memory_addrs[0];
-                let mem_instance_idx = memory_addr.instance_idx as usize;
-                let memory_idx = memory_addr.memory_idx as usize;
-
-                // Get the memory instance itself
-                if memory_idx >= self.instances[mem_instance_idx].memories.len() {
-                    // Invalid memory index, return default value
-                    #[cfg(feature = "std")]
-                    debug_println!("Invalid memory index {}, returning 0", memory_idx);
-                    self.stack.push(Value::I32(0));
-                    return Ok(None);
-                }
-
-                // Access the actual memory instance
-                let memory = &self.instances[mem_instance_idx].memories[memory_idx];
-
-                // Read value from memory
-                let value = match memory.read_u32(effective_addr) {
-                    Ok(v) => v as i32,
-                    Err(e) => {
-                        // Handle out-of-bounds access by returning 0 instead of error
-                        #[cfg(feature = "std")]
-                        debug_println!("Memory access error: {}, returning 0", e);
-                        0
-                    }
+                let addr = self.stack.values.pop().ok_or(Error::StackUnderflow)?;
+                let Value::I32(addr) = addr else {
+                    return Err(Error::Execution("Expected i32 address".into()));
                 };
-
-                // Update memory access statistics
-                self.stats.memory_operations += 1;
-
-                // Push value onto stack
-                self.stack.push(Value::I32(value));
+                let frame = self.stack.current_frame()?;
+                let memory = &frame.module.memories[0];
+                let bytes = memory.read_bytes(addr as u32 + *offset, 4)?;
+                let value = i32::from_le_bytes(bytes.try_into().unwrap());
+                self.stack.values.push(Value::I32(value));
                 Ok(None)
             }
-
-            Instruction::I32Load8U(align, offset) => {
-                // Get address from stack
-                let addr = self
-                    .stack
-                    .pop()?
-                    .as_i32()
-                    .ok_or_else(|| Error::Execution("Expected i32 address".into()))?;
-
-                // Calculate effective address
-                let effective_addr = (addr as u32).wrapping_add(*offset);
-
-                // Log memory operation
-                #[cfg(feature = "std")]
-                if let Ok(var) = std::env::var("WRT_DEBUG_MEMORY") {
-                    if var == "1" {
-                        eprintln!(
-                            "I32Load8U: addr={}, effective_addr={}, align={}, offset={}",
-                            addr, effective_addr, align, offset
-                        );
-                    }
-                }
-
-                // Get memory from the instance
-                let frame = self.stack.current_frame()?;
-                let instance_idx = frame.module.module_idx as usize;
-
-                // Check if this instance has any memory
-                if self.instances[instance_idx].memory_addrs.is_empty() {
-                    // No memory defined, return default value
-                    #[cfg(feature = "std")]
-                    eprintln!("No memory defined in instance, returning 0");
-                    self.stack.push(Value::I32(0));
-                    return Ok(None);
-                }
-
-                // Get memory address (use memory index 0 by default)
-                let memory_addr = &self.instances[instance_idx].memory_addrs[0];
-                let mem_instance_idx = memory_addr.instance_idx as usize;
-                let memory_idx = memory_addr.memory_idx as usize;
-
-                // Get the memory instance itself
-                if memory_idx >= self.instances[mem_instance_idx].memories.len() {
-                    // Invalid memory index, return default value
-                    #[cfg(feature = "std")]
-                    eprintln!("Invalid memory index {}, returning 0", memory_idx);
-                    self.stack.push(Value::I32(0));
-                    return Ok(None);
-                }
-
-                // Access the actual memory instance
-                let memory = &self.instances[mem_instance_idx].memories[memory_idx];
-
-                // Read value from memory
-                let value = match memory.read_byte(effective_addr) {
-                    Ok(v) => v as i32, // Unsigned conversion
-                    Err(e) => {
-                        // Handle out-of-bounds access by returning 0 instead of error
-                        #[cfg(feature = "std")]
-                        eprintln!("Memory access error: {}, returning 0", e);
-                        0
-                    }
-                };
-
-                // Update memory access statistics
-                self.stats.memory_operations += 1;
-
-                // Push value onto stack
-                self.stack.push(Value::I32(value));
-                Ok(None)
-            }
-
-            Instruction::I32Load8S(align, offset) => {
-                // Get address from stack
-                let addr = self
-                    .stack
-                    .pop()?
-                    .as_i32()
-                    .ok_or_else(|| Error::Execution("Expected i32 address".into()))?;
-
-                // Calculate effective address
-                let effective_addr = (addr as u32).wrapping_add(*offset);
-
-                // Log memory operation
-                #[cfg(feature = "std")]
-                if let Ok(var) = std::env::var("WRT_DEBUG_MEMORY") {
-                    if var == "1" {
-                        eprintln!(
-                            "I32Load8S: addr={}, effective_addr={}, align={}, offset={}",
-                            addr, effective_addr, align, offset
-                        );
-                    }
-                }
-
-                // Get memory from the instance
-                let frame = self.stack.current_frame()?;
-                let instance_idx = frame.module.module_idx as usize;
-
-                // Check if this instance has any memory
-                if self.instances[instance_idx].memory_addrs.is_empty() {
-                    // No memory defined, return default value
-                    #[cfg(feature = "std")]
-                    eprintln!("No memory defined in instance, returning 0");
-                    self.stack.push(Value::I32(0));
-                    return Ok(None);
-                }
-
-                // Get memory address (use memory index 0 by default)
-                let memory_addr = &self.instances[instance_idx].memory_addrs[0];
-                let mem_instance_idx = memory_addr.instance_idx as usize;
-                let memory_idx = memory_addr.memory_idx as usize;
-
-                // Get the memory instance itself
-                if memory_idx >= self.instances[mem_instance_idx].memories.len() {
-                    // Invalid memory index, return default value
-                    #[cfg(feature = "std")]
-                    eprintln!("Invalid memory index {}, returning 0", memory_idx);
-                    self.stack.push(Value::I32(0));
-                    return Ok(None);
-                }
-
-                // Access the actual memory instance
-                let memory = &self.instances[mem_instance_idx].memories[memory_idx];
-
-                // Read value from memory
-                let value = match memory.read_byte(effective_addr) {
-                    Ok(v) => (v as i8) as i32, // Sign-extended conversion
-                    Err(e) => {
-                        // Handle out-of-bounds access by returning 0 instead of error
-                        #[cfg(feature = "std")]
-                        eprintln!("Memory access error: {}, returning 0", e);
-                        0
-                    }
-                };
-
-                // Update memory access statistics
-                self.stats.memory_operations += 1;
-
-                // Push value onto stack
-                self.stack.push(Value::I32(value));
-                Ok(None)
-            }
-
-            Instruction::I32Load16U(align, offset) => {
-                // Get address from stack
-                let addr = self
-                    .stack
-                    .pop()?
-                    .as_i32()
-                    .ok_or_else(|| Error::Execution("Expected i32 address".into()))?;
-
-                // Calculate effective address
-                let effective_addr = (addr as u32).wrapping_add(*offset);
-
-                // Log memory operation
-                #[cfg(feature = "std")]
-                if let Ok(var) = std::env::var("WRT_DEBUG_MEMORY") {
-                    if var == "1" {
-                        eprintln!(
-                            "I32Load16U: addr={}, effective_addr={}, align={}, offset={}",
-                            addr, effective_addr, align, offset
-                        );
-                    }
-                }
-
-                // Get memory from the instance
-                let frame = self.stack.current_frame()?;
-                let instance_idx = frame.module.module_idx as usize;
-
-                // Check if this instance has any memory
-                if self.instances[instance_idx].memory_addrs.is_empty() {
-                    // No memory defined, return default value
-                    #[cfg(feature = "std")]
-                    eprintln!("No memory defined in instance, returning 0");
-                    self.stack.push(Value::I32(0));
-                    return Ok(None);
-                }
-
-                // Get memory address (use memory index 0 by default)
-                let memory_addr = &self.instances[instance_idx].memory_addrs[0];
-                let mem_instance_idx = memory_addr.instance_idx as usize;
-                let memory_idx = memory_addr.memory_idx as usize;
-
-                // Get the memory instance itself
-                if memory_idx >= self.instances[mem_instance_idx].memories.len() {
-                    // Invalid memory index, return default value
-                    #[cfg(feature = "std")]
-                    eprintln!("Invalid memory index {}, returning 0", memory_idx);
-                    self.stack.push(Value::I32(0));
-                    return Ok(None);
-                }
-
-                // Access the actual memory instance
-                let memory = &self.instances[mem_instance_idx].memories[memory_idx];
-
-                // Read value from memory
-                let value = match memory.read_u16(effective_addr) {
-                    Ok(v) => v as i32, // Unsigned conversion
-                    Err(e) => {
-                        // Handle out-of-bounds access by returning 0 instead of error
-                        #[cfg(feature = "std")]
-                        eprintln!("Memory access error: {}, returning 0", e);
-                        0
-                    }
-                };
-
-                // Update memory access statistics
-                self.stats.memory_operations += 1;
-
-                // Push value onto stack
-                self.stack.push(Value::I32(value));
-                Ok(None)
-            }
-
-            Instruction::I32Load16S(align, offset) => {
-                // Get address from stack
-                let addr = self
-                    .stack
-                    .pop()?
-                    .as_i32()
-                    .ok_or_else(|| Error::Execution("Expected i32 address".into()))?;
-
-                // Calculate effective address
-                let effective_addr = (addr as u32).wrapping_add(*offset);
-
-                // Log memory operation
-                #[cfg(feature = "std")]
-                if let Ok(var) = std::env::var("WRT_DEBUG_MEMORY") {
-                    if var == "1" {
-                        eprintln!(
-                            "I32Load16S: addr={}, effective_addr={}, align={}, offset={}",
-                            addr, effective_addr, align, offset
-                        );
-                    }
-                }
-
-                // Get memory from the instance
-                let frame = self.stack.current_frame()?;
-                let instance_idx = frame.module.module_idx as usize;
-
-                // Check if this instance has any memory
-                if self.instances[instance_idx].memory_addrs.is_empty() {
-                    // No memory defined, return default value
-                    #[cfg(feature = "std")]
-                    eprintln!("No memory defined in instance, returning 0");
-                    self.stack.push(Value::I32(0));
-                    return Ok(None);
-                }
-
-                // Get memory address (use memory index 0 by default)
-                let memory_addr = &self.instances[instance_idx].memory_addrs[0];
-                let mem_instance_idx = memory_addr.instance_idx as usize;
-                let memory_idx = memory_addr.memory_idx as usize;
-
-                // Get the memory instance itself
-                if memory_idx >= self.instances[mem_instance_idx].memories.len() {
-                    // Invalid memory index, return default value
-                    #[cfg(feature = "std")]
-                    eprintln!("Invalid memory index {}, returning 0", memory_idx);
-                    self.stack.push(Value::I32(0));
-                    return Ok(None);
-                }
-
-                // Access the actual memory instance
-                let memory = &self.instances[mem_instance_idx].memories[memory_idx];
-
-                // Read value from memory
-                let value = match memory.read_u16(effective_addr) {
-                    Ok(v) => (v as i16) as i32, // Sign-extended conversion
-                    Err(e) => {
-                        // Handle out-of-bounds access by returning 0 instead of error
-                        #[cfg(feature = "std")]
-                        eprintln!("Memory access error: {}, returning 0", e);
-                        0
-                    }
-                };
-
-                // Update memory access statistics
-                self.stats.memory_operations += 1;
-
-                // Push value onto stack
-                self.stack.push(Value::I32(value));
-                Ok(None)
-            }
-
-            Instruction::I64Load(align, offset) => {
-                // Get address from stack
-                let addr = self
-                    .stack
-                    .pop()?
-                    .as_i32()
-                    .ok_or_else(|| Error::Execution("Expected i32 address".into()))?;
-
-                // Calculate effective address
-                let effective_addr = (addr as u32).wrapping_add(*offset);
-
-                // Log memory operation
-                #[cfg(feature = "std")]
-                if let Ok(var) = std::env::var("WRT_DEBUG_MEMORY") {
-                    if var == "1" {
-                        eprintln!(
-                            "I64Load: addr={}, effective_addr={}, align={}, offset={}",
-                            addr, effective_addr, align, offset
-                        );
-                    }
-                }
-
-                // Get memory from the instance
-                let frame = self.stack.current_frame()?;
-                let instance_idx = frame.module.module_idx as usize;
-
-                // Check if this instance has any memory
-                if self.instances[instance_idx].memory_addrs.is_empty() {
-                    // No memory defined, return default value
-                    #[cfg(feature = "std")]
-                    eprintln!("No memory defined in instance, returning 0");
-                    self.stack.push(Value::I64(0));
-                    return Ok(None);
-                }
-
-                // Get memory address (use memory index 0 by default)
-                let memory_addr = &self.instances[instance_idx].memory_addrs[0];
-                let mem_instance_idx = memory_addr.instance_idx as usize;
-                let memory_idx = memory_addr.memory_idx as usize;
-
-                // Get the memory instance itself
-                if memory_idx >= self.instances[mem_instance_idx].memories.len() {
-                    // Invalid memory index, return default value
-                    #[cfg(feature = "std")]
-                    eprintln!("Invalid memory index {}, returning 0", memory_idx);
-                    self.stack.push(Value::I64(0));
-                    return Ok(None);
-                }
-
-                // Access the actual memory instance
-                let memory = &self.instances[mem_instance_idx].memories[memory_idx];
-
-                // Read value from memory
-                let value = match memory.read_u64(effective_addr) {
-                    Ok(v) => v as i64, // Convert to i64
-                    Err(e) => {
-                        // Handle out-of-bounds access by returning 0 instead of error
-                        #[cfg(feature = "std")]
-                        eprintln!("Memory access error: {}, returning 0", e);
-                        0
-                    }
-                };
-
-                // Update memory access statistics
-                self.stats.memory_operations += 1;
-
-                // Push value onto stack
-                self.stack.push(Value::I64(value));
-                Ok(None)
-            }
-
-            Instruction::I64Load8U(align, offset) => {
-                // Get address from stack
-                let addr = self
-                    .stack
-                    .pop()?
-                    .as_i32()
-                    .ok_or_else(|| Error::Execution("Expected i32 address".into()))?;
-
-                // Calculate effective address
-                let effective_addr = (addr as u32).wrapping_add(*offset);
-
-                // Log memory operation
-                #[cfg(feature = "std")]
-                if let Ok(var) = std::env::var("WRT_DEBUG_MEMORY") {
-                    if var == "1" {
-                        eprintln!(
-                            "I64Load8U: addr={}, effective_addr={}, align={}, offset={}",
-                            addr, effective_addr, align, offset
-                        );
-                    }
-                }
-
-                // Get memory from the instance
-                let frame = self.stack.current_frame()?;
-                let instance_idx = frame.module.module_idx as usize;
-
-                // Check if this instance has any memory
-                if self.instances[instance_idx].memory_addrs.is_empty() {
-                    // No memory defined, return default value
-                    #[cfg(feature = "std")]
-                    eprintln!("No memory defined in instance, returning 0");
-                    self.stack.push(Value::I64(0));
-                    return Ok(None);
-                }
-
-                // Get memory address (use memory index 0 by default)
-                let memory_addr = &self.instances[instance_idx].memory_addrs[0];
-                let mem_instance_idx = memory_addr.instance_idx as usize;
-                let memory_idx = memory_addr.memory_idx as usize;
-
-                // Get the memory instance itself
-                if memory_idx >= self.instances[mem_instance_idx].memories.len() {
-                    // Invalid memory index, return default value
-                    #[cfg(feature = "std")]
-                    eprintln!("Invalid memory index {}, returning 0", memory_idx);
-                    self.stack.push(Value::I64(0));
-                    return Ok(None);
-                }
-
-                // Access the actual memory instance
-                let memory = &self.instances[mem_instance_idx].memories[memory_idx];
-
-                // Read value from memory
-                let value = match memory.read_byte(effective_addr) {
-                    Ok(v) => v as i64, // Unsigned conversion to i64
-                    Err(e) => {
-                        // Handle out-of-bounds access by returning 0 instead of error
-                        #[cfg(feature = "std")]
-                        eprintln!("Memory access error: {}, returning 0", e);
-                        0
-                    }
-                };
-
-                // Update memory access statistics
-                self.stats.memory_operations += 1;
-
-                // Push value onto stack
-                self.stack.push(Value::I64(value));
-                Ok(None)
-            }
-
-            Instruction::I64Load8S(align, offset) => {
-                // Get address from stack
-                let addr = self
-                    .stack
-                    .pop()?
-                    .as_i32()
-                    .ok_or_else(|| Error::Execution("Expected i32 address".into()))?;
-
-                // Calculate effective address
-                let effective_addr = (addr as u32).wrapping_add(*offset);
-
-                // Log memory operation
-                #[cfg(feature = "std")]
-                if let Ok(var) = std::env::var("WRT_DEBUG_MEMORY") {
-                    if var == "1" {
-                        eprintln!(
-                            "I64Load8S: addr={}, effective_addr={}, align={}, offset={}",
-                            addr, effective_addr, align, offset
-                        );
-                    }
-                }
-
-                // Get memory from the instance
-                let frame = self.stack.current_frame()?;
-                let instance_idx = frame.module.module_idx as usize;
-
-                // Check if this instance has any memory
-                if self.instances[instance_idx].memory_addrs.is_empty() {
-                    // No memory defined, return default value
-                    #[cfg(feature = "std")]
-                    eprintln!("No memory defined in instance, returning 0");
-                    self.stack.push(Value::I64(0));
-                    return Ok(None);
-                }
-
-                // Get memory address (use memory index 0 by default)
-                let memory_addr = &self.instances[instance_idx].memory_addrs[0];
-                let mem_instance_idx = memory_addr.instance_idx as usize;
-                let memory_idx = memory_addr.memory_idx as usize;
-
-                // Get the memory instance itself
-                if memory_idx >= self.instances[mem_instance_idx].memories.len() {
-                    // Invalid memory index, return default value
-                    #[cfg(feature = "std")]
-                    eprintln!("Invalid memory index {}, returning 0", memory_idx);
-                    self.stack.push(Value::I64(0));
-                    return Ok(None);
-                }
-
-                // Access the actual memory instance
-                let memory = &self.instances[mem_instance_idx].memories[memory_idx];
-
-                // Read value from memory
-                let value = match memory.read_byte(effective_addr) {
-                    Ok(v) => (v as i8) as i64, // Sign-extended conversion to i64
-                    Err(e) => {
-                        // Handle out-of-bounds access by returning 0 instead of error
-                        #[cfg(feature = "std")]
-                        eprintln!("Memory access error: {}, returning 0", e);
-                        0
-                    }
-                };
-
-                // Update memory access statistics
-                self.stats.memory_operations += 1;
-
-                // Push value onto stack
-                self.stack.push(Value::I64(value));
-                Ok(None)
-            }
-
-            Instruction::I64Load16U(align, offset) => {
-                // Get address from stack
-                let addr = self
-                    .stack
-                    .pop()?
-                    .as_i32()
-                    .ok_or_else(|| Error::Execution("Expected i32 address".into()))?;
-
-                // Calculate effective address
-                let effective_addr = (addr as u32).wrapping_add(*offset);
-
-                // Log memory operation
-                #[cfg(feature = "std")]
-                if let Ok(var) = std::env::var("WRT_DEBUG_MEMORY") {
-                    if var == "1" {
-                        eprintln!(
-                            "I64Load16U: addr={}, effective_addr={}, align={}, offset={}",
-                            addr, effective_addr, align, offset
-                        );
-                    }
-                }
-
-                // Get memory from the instance
-                let frame = self.stack.current_frame()?;
-                let instance_idx = frame.module.module_idx as usize;
-
-                // Check if this instance has any memory
-                if self.instances[instance_idx].memory_addrs.is_empty() {
-                    // No memory defined, return default value
-                    #[cfg(feature = "std")]
-                    eprintln!("No memory defined in instance, returning 0");
-                    self.stack.push(Value::I64(0));
-                    return Ok(None);
-                }
-
-                // Get memory address (use memory index 0 by default)
-                let memory_addr = &self.instances[instance_idx].memory_addrs[0];
-                let mem_instance_idx = memory_addr.instance_idx as usize;
-                let memory_idx = memory_addr.memory_idx as usize;
-
-                // Get the memory instance itself
-                if memory_idx >= self.instances[mem_instance_idx].memories.len() {
-                    // Invalid memory index, return default value
-                    #[cfg(feature = "std")]
-                    eprintln!("Invalid memory index {}, returning 0", memory_idx);
-                    self.stack.push(Value::I64(0));
-                    return Ok(None);
-                }
-
-                // Access the actual memory instance
-                let memory = &self.instances[mem_instance_idx].memories[memory_idx];
-
-                // Read value from memory
-                let value = match memory.read_u16(effective_addr) {
-                    Ok(v) => v as i64, // Unsigned conversion to i64
-                    Err(e) => {
-                        // Handle out-of-bounds access by returning 0 instead of error
-                        #[cfg(feature = "std")]
-                        eprintln!("Memory access error: {}, returning 0", e);
-                        0
-                    }
-                };
-
-                // Update memory access statistics
-                self.stats.memory_operations += 1;
-
-                // Push value onto stack
-                self.stack.push(Value::I64(value));
-                Ok(None)
-            }
-
-            Instruction::I64Load16S(align, offset) => {
-                // Get address from stack
-                let addr = self
-                    .stack
-                    .pop()?
-                    .as_i32()
-                    .ok_or_else(|| Error::Execution("Expected i32 address".into()))?;
-
-                // Calculate effective address
-                let effective_addr = (addr as u32).wrapping_add(*offset);
-
-                // Log memory operation
-                #[cfg(feature = "std")]
-                if let Ok(var) = std::env::var("WRT_DEBUG_MEMORY") {
-                    if var == "1" {
-                        eprintln!(
-                            "I64Load16S: addr={}, effective_addr={}, align={}, offset={}",
-                            addr, effective_addr, align, offset
-                        );
-                    }
-                }
-
-                // Get memory from the instance
-                let frame = self.stack.current_frame()?;
-                let instance_idx = frame.module.module_idx as usize;
-
-                // Check if this instance has any memory
-                if self.instances[instance_idx].memory_addrs.is_empty() {
-                    // No memory defined, return default value
-                    #[cfg(feature = "std")]
-                    eprintln!("No memory defined in instance, returning 0");
-                    self.stack.push(Value::I64(0));
-                    return Ok(None);
-                }
-
-                // Get memory address (use memory index 0 by default)
-                let memory_addr = &self.instances[instance_idx].memory_addrs[0];
-                let mem_instance_idx = memory_addr.instance_idx as usize;
-                let memory_idx = memory_addr.memory_idx as usize;
-
-                // Get the memory instance itself
-                if memory_idx >= self.instances[mem_instance_idx].memories.len() {
-                    // Invalid memory index, return default value
-                    #[cfg(feature = "std")]
-                    eprintln!("Invalid memory index {}, returning 0", memory_idx);
-                    self.stack.push(Value::I64(0));
-                    return Ok(None);
-                }
-
-                // Access the actual memory instance
-                let memory = &self.instances[mem_instance_idx].memories[memory_idx];
-
-                // Read value from memory
-                let value = match memory.read_u16(effective_addr) {
-                    Ok(v) => (v as i16) as i64, // Sign-extended conversion to i64
-                    Err(e) => {
-                        // Handle out-of-bounds access by returning 0 instead of error
-                        #[cfg(feature = "std")]
-                        eprintln!("Memory access error: {}, returning 0", e);
-                        0
-                    }
-                };
-
-                // Update memory access statistics
-                self.stats.memory_operations += 1;
-
-                // Push value onto stack
-                self.stack.push(Value::I64(value));
-                Ok(None)
-            }
-
-            Instruction::I64Load32U(align, offset) => {
-                // Get address from stack
-                let addr = self
-                    .stack
-                    .pop()?
-                    .as_i32()
-                    .ok_or_else(|| Error::Execution("Expected i32 address".into()))?;
-
-                // Calculate effective address
-                let effective_addr = (addr as u32).wrapping_add(*offset);
-
-                // Log memory operation
-                #[cfg(feature = "std")]
-                if let Ok(var) = std::env::var("WRT_DEBUG_MEMORY") {
-                    if var == "1" {
-                        eprintln!(
-                            "I64Load32U: addr={}, effective_addr={}, align={}, offset={}",
-                            addr, effective_addr, align, offset
-                        );
-                    }
-                }
-
-                // Get memory from the instance
-                let frame = self.stack.current_frame()?;
-                let instance_idx = frame.module.module_idx as usize;
-
-                // Check if this instance has any memory
-                if self.instances[instance_idx].memory_addrs.is_empty() {
-                    // No memory defined, return default value
-                    #[cfg(feature = "std")]
-                    eprintln!("No memory defined in instance, returning 0");
-                    self.stack.push(Value::I64(0));
-                    return Ok(None);
-                }
-
-                // Get memory address (use memory index 0 by default)
-                let memory_addr = &self.instances[instance_idx].memory_addrs[0];
-                let mem_instance_idx = memory_addr.instance_idx as usize;
-                let memory_idx = memory_addr.memory_idx as usize;
-
-                // Get the memory instance itself
-                if memory_idx >= self.instances[mem_instance_idx].memories.len() {
-                    // Invalid memory index, return default value
-                    #[cfg(feature = "std")]
-                    eprintln!("Invalid memory index {}, returning 0", memory_idx);
-                    self.stack.push(Value::I64(0));
-                    return Ok(None);
-                }
-
-                // Access the actual memory instance
-                let memory = &self.instances[mem_instance_idx].memories[memory_idx];
-
-                // Read value from memory
-                let value = match memory.read_u32(effective_addr) {
-                    Ok(v) => v as i64, // Unsigned conversion to i64
-                    Err(e) => {
-                        // Handle out-of-bounds access by returning 0 instead of error
-                        #[cfg(feature = "std")]
-                        eprintln!("Memory access error: {}, returning 0", e);
-                        0
-                    }
-                };
-
-                // Update memory access statistics
-                self.stats.memory_operations += 1;
-
-                // Push value onto stack
-                self.stack.push(Value::I64(value));
-                Ok(None)
-            }
-
-            Instruction::I64Load32S(align, offset) => {
-                // Get address from stack
-                let addr = self
-                    .stack
-                    .pop()?
-                    .as_i32()
-                    .ok_or_else(|| Error::Execution("Expected i32 address".into()))?;
-
-                // Calculate effective address
-                let effective_addr = (addr as u32).wrapping_add(*offset);
-
-                // Log memory operation
-                #[cfg(feature = "std")]
-                if let Ok(var) = std::env::var("WRT_DEBUG_MEMORY") {
-                    if var == "1" {
-                        eprintln!(
-                            "I64Load32S: addr={}, effective_addr={}, align={}, offset={}",
-                            addr, effective_addr, align, offset
-                        );
-                    }
-                }
-
-                // Get memory from the instance
-                let frame = self.stack.current_frame()?;
-                let instance_idx = frame.module.module_idx as usize;
-
-                // Check if this instance has any memory
-                if self.instances[instance_idx].memory_addrs.is_empty() {
-                    // No memory defined, return default value
-                    #[cfg(feature = "std")]
-                    eprintln!("No memory defined in instance, returning 0");
-                    self.stack.push(Value::I64(0));
-                    return Ok(None);
-                }
-
-                // Get memory address (use memory index 0 by default)
-                let memory_addr = &self.instances[instance_idx].memory_addrs[0];
-                let mem_instance_idx = memory_addr.instance_idx as usize;
-                let memory_idx = memory_addr.memory_idx as usize;
-
-                // Get the memory instance itself
-                if memory_idx >= self.instances[mem_instance_idx].memories.len() {
-                    // Invalid memory index, return default value
-                    #[cfg(feature = "std")]
-                    eprintln!("Invalid memory index {}, returning 0", memory_idx);
-                    self.stack.push(Value::I64(0));
-                    return Ok(None);
-                }
-
-                // Access the actual memory instance
-                let memory = &self.instances[mem_instance_idx].memories[memory_idx];
-
-                // Read value from memory
-                let value = match memory.read_u32(effective_addr) {
-                    Ok(v) => (v as i32) as i64, // Sign-extended conversion to i64
-                    Err(e) => {
-                        // Handle out-of-bounds access by returning 0 instead of error
-                        #[cfg(feature = "std")]
-                        eprintln!("Memory access error: {}, returning 0", e);
-                        0
-                    }
-                };
-
-                // Update memory access statistics
-                self.stats.memory_operations += 1;
-
-                // Push value onto stack
-                self.stack.push(Value::I64(value));
-                Ok(None)
-            }
-
-            Instruction::F32Load(align, offset) => {
-                // Get address from stack
-                let addr = self
-                    .stack
-                    .pop()?
-                    .as_i32()
-                    .ok_or_else(|| Error::Execution("Expected i32 address".into()))?;
-
-                // Calculate effective address
-                let effective_addr = (addr as u32).wrapping_add(*offset);
-
-                // Log memory operation
-                #[cfg(feature = "std")]
-                if let Ok(var) = std::env::var("WRT_DEBUG_MEMORY") {
-                    if var == "1" {
-                        eprintln!(
-                            "F32Load: addr={}, effective_addr={}, align={}, offset={}",
-                            addr, effective_addr, align, offset
-                        );
-                    }
-                }
-
-                // Get memory from the instance
-                let frame = self.stack.current_frame()?;
-                let instance_idx = frame.module.module_idx as usize;
-
-                // Check if this instance has any memory
-                if self.instances[instance_idx].memory_addrs.is_empty() {
-                    // No memory defined, return default value
-                    #[cfg(feature = "std")]
-                    eprintln!("No memory defined in instance, returning 0.0");
-                    self.stack.push(Value::F32(0.0));
-                    return Ok(None);
-                }
-
-                // Get memory address (use memory index 0 by default)
-                let memory_addr = &self.instances[instance_idx].memory_addrs[0];
-                let mem_instance_idx = memory_addr.instance_idx as usize;
-                let memory_idx = memory_addr.memory_idx as usize;
-
-                // Get the memory instance itself
-                if memory_idx >= self.instances[mem_instance_idx].memories.len() {
-                    // Invalid memory index, return default value
-                    #[cfg(feature = "std")]
-                    eprintln!("Invalid memory index {}, returning 0.0", memory_idx);
-                    self.stack.push(Value::F32(0.0));
-                    return Ok(None);
-                }
-
-                // Access the actual memory instance
-                let memory = &self.instances[mem_instance_idx].memories[memory_idx];
-
-                // Read value from memory
-                let value = match memory.read_f32(effective_addr) {
-                    Ok(v) => v,
-                    Err(e) => {
-                        // Handle out-of-bounds access by returning 0 instead of error
-                        #[cfg(feature = "std")]
-                        eprintln!("Memory access error: {}, returning 0.0", e);
-                        0.0
-                    }
-                };
-
-                // Update memory access statistics
-                self.stats.memory_operations += 1;
-
-                // Push value onto stack
-                self.stack.push(Value::F32(value));
-                Ok(None)
-            }
-
-            Instruction::F64Load(align, offset) => {
-                // Get address from stack
-                let addr = self
-                    .stack
-                    .pop()?
-                    .as_i32()
-                    .ok_or_else(|| Error::Execution("Expected i32 address".into()))?;
-
-                // Calculate effective address
-                let effective_addr = (addr as u32).wrapping_add(*offset);
-
-                // Log memory operation
-                #[cfg(feature = "std")]
-                if let Ok(var) = std::env::var("WRT_DEBUG_MEMORY") {
-                    if var == "1" {
-                        eprintln!(
-                            "F64Load: addr={}, effective_addr={}, align={}, offset={}",
-                            addr, effective_addr, align, offset
-                        );
-                    }
-                }
-
-                // Get memory from the instance
-                let frame = self.stack.current_frame()?;
-                let instance_idx = frame.module.module_idx as usize;
-
-                // Check if this instance has any memory
-                if self.instances[instance_idx].memory_addrs.is_empty() {
-                    // No memory defined, return default value
-                    #[cfg(feature = "std")]
-                    eprintln!("No memory defined in instance, returning 0.0");
-                    self.stack.push(Value::F64(0.0));
-                    return Ok(None);
-                }
-
-                // Get memory address (use memory index 0 by default)
-                let memory_addr = &self.instances[instance_idx].memory_addrs[0];
-                let mem_instance_idx = memory_addr.instance_idx as usize;
-                let memory_idx = memory_addr.memory_idx as usize;
-
-                // Get the memory instance itself
-                if memory_idx >= self.instances[mem_instance_idx].memories.len() {
-                    // Invalid memory index, return default value
-                    #[cfg(feature = "std")]
-                    eprintln!("Invalid memory index {}, returning 0.0", memory_idx);
-                    self.stack.push(Value::F64(0.0));
-                    return Ok(None);
-                }
-
-                // Access the actual memory instance
-                let memory = &self.instances[mem_instance_idx].memories[memory_idx];
-
-                // Read value from memory
-                let value = match memory.read_f64(effective_addr) {
-                    Ok(v) => v,
-                    Err(e) => {
-                        // Handle out-of-bounds access by returning 0 instead of error
-                        #[cfg(feature = "std")]
-                        eprintln!("Memory access error: {}, returning 0.0", e);
-                        0.0
-                    }
-                };
-
-                // Update memory access statistics
-                self.stats.memory_operations += 1;
-
-                // Push value onto stack
-                self.stack.push(Value::F64(value));
-                Ok(None)
-            }
-
-            // Memory store instructions
             Instruction::I32Store(align, offset) => {
-                // Get address and value, handling errors gracefully
-                let addr = match self.stack.pop() {
-                    Ok(v) => v.as_i32().unwrap_or(0),
-                    Err(_) => {
-                        #[cfg(feature = "std")]
-                        debug_println!("Warning: Stack underflow for I32Store addr, using 0");
-                        0
-                    }
+                let value = self.stack.values.pop().ok_or(Error::StackUnderflow)?;
+                let addr = self.stack.values.pop().ok_or(Error::StackUnderflow)?;
+                let Value::I32(addr) = addr else {
+                    return Err(Error::Execution("Expected i32 address".into()));
+                };
+                let Value::I32(value) = value else {
+                    return Err(Error::Execution("Expected i32 value".into()));
+                };
+                let frame = self.stack.current_frame_mut()?;
+                let memory = &mut frame.module.memories[0];
+                memory.write_bytes(addr as u32 + *offset, &value.to_le_bytes())?;
+                Ok(None)
+            }
+
+            // Function calls
+            Instruction::Call(func_idx) => {
+                // Check call depth to prevent stack overflow
+                if self.stack.frames.len() >= MAX_CALL_DEPTH {
+                    return Err(Error::Execution(format!(
+                        "Maximum call depth exceeded: {}",
+                        MAX_CALL_DEPTH
+                    )));
+                }
+
+                // Collect necessary information first (with scoped borrowing)
+                let (module_idx, call_func_idx, func_type) = {
+                    // Get the current frame
+                    let frame = self.stack.current_frame()?;
+
+                    // Get function and type information
+                    let func = &frame.module.module.functions[*func_idx as usize];
+                    let func_type = &frame.module.module.types[func.type_idx as usize];
+
+                    // Store module index
+                    let module_idx = frame.module.module_idx;
+
+                    // Clone the function type to avoid borrowing issues
+                    (module_idx, *func_idx, func_type.clone())
                 };
 
-                let value = match self.stack.pop() {
-                    Ok(v) => v.as_i32().unwrap_or(0),
-                    Err(_) => {
-                        #[cfg(feature = "std")]
-                        eprintln!("Warning: Stack underflow for I32Store value, using 0");
-                        0
-                    }
-                };
-
-                // Calculate effective address
-                let effective_addr = (addr as u32).wrapping_add(*offset);
-
-                // Log memory operation
-                #[cfg(feature = "std")]
-                if let Ok(var) = std::env::var("WRT_DEBUG_MEMORY") {
-                    if var == "1" {
-                        eprintln!(
-                            "I32Store: addr={}, value={}, align={}, offset={}",
-                            addr, value, align, offset
-                        );
-                    }
+                // Collect arguments from stack
+                let mut args = Vec::with_capacity(func_type.params.len());
+                for _ in 0..func_type.params.len() {
+                    args.push(self.stack.values.pop().ok_or(Error::StackUnderflow)?);
                 }
+                args.reverse();
 
-                // Get memory from the instance
-                let frame = match self.stack.current_frame() {
-                    Ok(frame) => frame,
-                    Err(_) => {
-                        #[cfg(feature = "std")]
-                        eprintln!("Warning: No current frame for I32Store, skipping memory write");
-                        return Ok(None);
-                    }
-                };
+                // Execute the function (no active borrows at this point)
+                let results = self.execute(module_idx, call_func_idx, args)?;
 
-                let instance_idx = frame.module.module_idx as usize;
-
-                // Check if this instance has any memory
-                if self.instances[instance_idx].memory_addrs.is_empty() {
-                    // No memory defined, just ignore the store
-                    #[cfg(feature = "std")]
-                    eprintln!("No memory defined in instance, ignoring store");
-                    return Ok(None);
+                // Push results back onto stack
+                for result in results {
+                    self.stack.values.push(result);
                 }
-
-                // Get memory address (use memory index 0 by default)
-                let memory_addr = &self.instances[instance_idx].memory_addrs[0];
-                let mem_instance_idx = memory_addr.instance_idx as usize;
-                let memory_idx = memory_addr.memory_idx as usize;
-
-                // Get the memory instance itself
-                if memory_idx >= self.instances[mem_instance_idx].memories.len() {
-                    // Invalid memory index, just ignore the store
-                    #[cfg(feature = "std")]
-                    eprintln!("Invalid memory index {}, ignoring store", memory_idx);
-                    return Ok(None);
-                }
-
-                // Access the actual memory instance (need mutable access)
-                let memory = &mut self.instances[mem_instance_idx].memories[memory_idx];
-
-                // Write value to memory
-                if let Err(e) = memory.write_u32(effective_addr, value as u32) {
-                    // Handle out-of-bounds access by just ignoring the write
-                    #[cfg(feature = "std")]
-                    eprintln!("Memory write error: {}, ignoring write", e);
-                }
-
-                // Update memory access statistics
-                self.stats.memory_operations += 1;
 
                 Ok(None)
             }
-            Instruction::I64Store(align, offset) => {
-                // Get address and value, handling errors gracefully
-                let addr = match self.stack.pop() {
-                    Ok(v) => v.as_i32().unwrap_or(0),
-                    Err(_) => {
-                        #[cfg(feature = "std")]
-                        eprintln!("Warning: Stack underflow for I64Store addr, using 0");
-                        0
-                    }
-                };
 
-                let value = match self.stack.pop() {
-                    Ok(v) => v.as_i64().unwrap_or(0),
-                    Err(_) => {
-                        #[cfg(feature = "std")]
-                        eprintln!("Warning: Stack underflow for I64Store value, using 0");
-                        0
-                    }
-                };
-
-                // Log memory operation
-                #[cfg(feature = "std")]
-                if let Ok(var) = std::env::var("WRT_DEBUG_MEMORY") {
-                    if var == "1" {
-                        eprintln!(
-                            "I64Store: addr={}, value={}, align={}, offset={}",
-                            addr, value, align, offset
-                        );
-                    }
-                }
-
-                // As with I32Store, just accept the operation for now
+            // Constants
+            Instruction::I32Const(value) => {
+                self.stack.values.push(Value::I32(*value));
                 Ok(None)
             }
-            Instruction::I32Store8(align, offset) => {
-                // Get address and value, handling errors gracefully
-                let addr = match self.stack.pop() {
-                    Ok(v) => v.as_i32().unwrap_or(0),
-                    Err(_) => {
-                        #[cfg(feature = "std")]
-                        eprintln!("Warning: Stack underflow for I32Store8 addr, using 0");
-                        0
-                    }
-                };
-
-                let value = match self.stack.pop() {
-                    Ok(v) => v.as_i32().unwrap_or(0),
-                    Err(_) => {
-                        #[cfg(feature = "std")]
-                        eprintln!("Warning: Stack underflow for I32Store8 value, using 0");
-                        0
-                    }
-                };
-
-                // Log memory operation
-                #[cfg(feature = "std")]
-                if let Ok(var) = std::env::var("WRT_DEBUG_MEMORY") {
-                    if var == "1" {
-                        eprintln!(
-                            "I32Store8: addr={}, value={} (byte={}), align={}, offset={}",
-                            addr,
-                            value,
-                            (value & 0xFF),
-                            align,
-                            offset
-                        );
-                    }
-                }
-
-                // As with other stores, just accept the operation for now
+            Instruction::I64Const(value) => {
+                self.stack.values.push(Value::I64(*value));
                 Ok(None)
             }
-            Instruction::I32Store16(align, offset) => {
-                // Get address from stack
-                let addr = self
-                    .stack
-                    .pop()?
-                    .as_i32()
-                    .ok_or_else(|| Error::Execution("Expected i32 address".into()))?;
-
-                // Get value to store (truncate to 16 bits)
-                let value = self
-                    .stack
-                    .pop()?
-                    .as_i32()
-                    .ok_or_else(|| Error::Execution("Expected i32 value".into()))?;
-
-                // Log memory operation
-                #[cfg(feature = "std")]
-                if let Ok(var) = std::env::var("WRT_DEBUG_MEMORY") {
-                    if var == "1" {
-                        eprintln!(
-                            "I32Store16: addr={}, value={} (half={}), align={}, offset={}",
-                            addr,
-                            value,
-                            (value & 0xFFFF),
-                            align,
-                            offset
-                        );
-                    }
-                }
-
-                // As with other stores, just accept the operation for now
+            Instruction::F32Const(value) => {
+                self.stack.values.push(Value::F32(*value));
                 Ok(None)
             }
-            Instruction::F32Store(align, offset) => {
-                // Get address from stack
-                let addr = self
-                    .stack
-                    .pop()?
-                    .as_i32()
-                    .ok_or_else(|| Error::Execution("Expected i32 address".into()))?;
-
-                // Get value to store
-                let value = self
-                    .stack
-                    .pop()?
-                    .as_f32()
-                    .ok_or_else(|| Error::Execution("Expected f32 value".into()))?;
-
-                // Log memory operation
-                #[cfg(feature = "std")]
-                if let Ok(var) = std::env::var("WRT_DEBUG_MEMORY") {
-                    if var == "1" {
-                        eprintln!(
-                            "F32Store: addr={}, value={}, align={}, offset={}",
-                            addr, value, align, offset
-                        );
-                    }
-                }
-
-                // As with other stores, just accept the operation for now
-                Ok(None)
-            }
-            Instruction::F64Store(align, offset) => {
-                // Get address from stack
-                let addr = self
-                    .stack
-                    .pop()?
-                    .as_i32()
-                    .ok_or_else(|| Error::Execution("Expected i32 address".into()))?;
-
-                // Get value to store
-                let value = self
-                    .stack
-                    .pop()?
-                    .as_f64()
-                    .ok_or_else(|| Error::Execution("Expected f64 value".into()))?;
-
-                // Log memory operation
-                #[cfg(feature = "std")]
-                if let Ok(var) = std::env::var("WRT_DEBUG_MEMORY") {
-                    if var == "1" {
-                        eprintln!(
-                            "F64Store: addr={}, value={}, align={}, offset={}",
-                            addr, value, align, offset
-                        );
-                    }
-                }
-
-                // As with other stores, just accept the operation for now
-                Ok(None)
-            }
-            Instruction::I64Store8(align, offset) => {
-                // Get address from stack
-                let addr = self
-                    .stack
-                    .pop()?
-                    .as_i32()
-                    .ok_or_else(|| Error::Execution("Expected i32 address".into()))?;
-
-                // Get value to store (truncate to 8 bits)
-                let value = self
-                    .stack
-                    .pop()?
-                    .as_i64()
-                    .ok_or_else(|| Error::Execution("Expected i64 value".into()))?;
-
-                // Log memory operation
-                #[cfg(feature = "std")]
-                if let Ok(var) = std::env::var("WRT_DEBUG_MEMORY") {
-                    if var == "1" {
-                        eprintln!(
-                            "I64Store8: addr={}, value={} (byte={}), align={}, offset={}",
-                            addr,
-                            value,
-                            (value & 0xFF),
-                            align,
-                            offset
-                        );
-                    }
-                }
-
-                // As with other stores, just accept the operation for now
-                Ok(None)
-            }
-            Instruction::I64Store16(align, offset) => {
-                // Get address from stack
-                let addr = self
-                    .stack
-                    .pop()?
-                    .as_i32()
-                    .ok_or_else(|| Error::Execution("Expected i32 address".into()))?;
-
-                // Get value to store (truncate to 16 bits)
-                let value = self
-                    .stack
-                    .pop()?
-                    .as_i64()
-                    .ok_or_else(|| Error::Execution("Expected i64 value".into()))?;
-
-                // Log memory operation
-                #[cfg(feature = "std")]
-                if let Ok(var) = std::env::var("WRT_DEBUG_MEMORY") {
-                    if var == "1" {
-                        eprintln!(
-                            "I64Store16: addr={}, value={} (half={}), align={}, offset={}",
-                            addr,
-                            value,
-                            (value & 0xFFFF),
-                            align,
-                            offset
-                        );
-                    }
-                }
-
-                // As with other stores, just accept the operation for now
-                Ok(None)
-            }
-            Instruction::I64Store32(align, offset) => {
-                // Get address from stack
-                let addr = self
-                    .stack
-                    .pop()?
-                    .as_i32()
-                    .ok_or_else(|| Error::Execution("Expected i32 address".into()))?;
-
-                // Get value to store (truncate to 32 bits)
-                let value = self
-                    .stack
-                    .pop()?
-                    .as_i64()
-                    .ok_or_else(|| Error::Execution("Expected i64 value".into()))?;
-
-                // Log memory operation
-                #[cfg(feature = "std")]
-                if let Ok(var) = std::env::var("WRT_DEBUG_MEMORY") {
-                    if var == "1" {
-                        eprintln!(
-                            "I64Store32: addr={}, value={} (word={}), align={}, offset={}",
-                            addr,
-                            value,
-                            (value & 0xFFFFFFFF),
-                            align,
-                            offset
-                        );
-                    }
-                }
-
-                // As with other stores, just accept the operation for now
+            Instruction::F64Const(value) => {
+                self.stack.values.push(Value::F64(*value));
                 Ok(None)
             }
 
-            // Add support for tail calls
-            Instruction::ReturnCall(func_idx) => {
-                if let Err(e) = self.execute_return_call(*func_idx) {
-                    #[cfg(feature = "std")]
-                    eprintln!("Return call error: {}", e);
-                }
-                Ok(None)
-            }
-            Instruction::ReturnCallIndirect(type_idx, table_idx) => {
-                if let Err(e) = self.execute_return_call_indirect(*type_idx, *table_idx) {
-                    #[cfg(feature = "std")]
-                    eprintln!("Return call indirect error: {}", e);
-                }
-                Ok(None)
-            }
-            // Select instruction (conditional value selection)
-            Instruction::Select => {
-                let condition =
-                    self.stack.pop()?.as_i32().ok_or_else(|| {
-                        Error::Execution("Expected i32 condition for select".into())
-                    })?;
-
-                let val2 = self.stack.pop()?;
-                let val1 = self.stack.pop()?;
-
-                // If condition is non-zero, select val1, otherwise select val2
-                if condition != 0 {
-                    self.stack.push(val1);
+            // Numeric operations
+            Instruction::I32Add => {
+                let val2 = self.stack.values.pop().ok_or(Error::StackUnderflow)?;
+                let val1 = self.stack.values.pop().ok_or(Error::StackUnderflow)?;
+                if let (Value::I32(v1), Value::I32(v2)) = (val1, val2) {
+                    self.stack.values.push(Value::I32(v1.wrapping_add(v2)));
+                    Ok(None)
                 } else {
-                    self.stack.push(val2);
-                }
-
-                Ok(None)
-            }
-            // Select with typed variant
-            Instruction::SelectTyped(value_type) => {
-                let condition =
-                    self.stack.pop()?.as_i32().ok_or_else(|| {
-                        Error::Execution("Expected i32 condition for select".into())
-                    })?;
-
-                let val2 = self.stack.pop()?;
-                let val1 = self.stack.pop()?;
-
-                // Verify that both values match the expected type
-                if !val1.matches_type(value_type) || !val2.matches_type(value_type) {
-                    return Err(Error::Execution(format!(
-                        "Select values do not match expected type {:?}",
-                        value_type
-                    )));
-                }
-
-                // If condition is non-zero, select val1, otherwise select val2
-                if condition != 0 {
-                    self.stack.push(val1);
-                } else {
-                    self.stack.push(val2);
-                }
-
-                Ok(None)
-            }
-            // Table operations
-            Instruction::TableGet(table_idx) => {
-                // Get the element index from the stack
-                let elem_idx =
-                    self.stack.pop()?.as_i32().ok_or_else(|| {
-                        Error::Execution("Expected i32 index for table.get".into())
-                    })?;
-
-                // Get the current frame's module instance
-                let frame = self.stack.current_frame()?;
-                let instance = &frame.module;
-
-                // Verify the table index is valid
-                if *table_idx as usize >= instance.table_addrs.len() {
-                    return Err(Error::Execution(format!(
-                        "Invalid table index: {}",
-                        table_idx
-                    )));
-                }
-
-                // Get the table address
-                let table_addr = &instance.table_addrs[*table_idx as usize];
-
-                // Get the instance that contains the table
-                if table_addr.instance_idx as usize >= self.instances.len() {
-                    return Err(Error::Execution(format!(
-                        "Invalid table instance index: {}",
-                        table_addr.instance_idx
-                    )));
-                }
-
-                let table_instance = &self.instances[table_addr.instance_idx as usize];
-
-                // Access the table in the instance
-                if table_addr.table_idx as usize >= table_instance.tables.len() {
-                    return Err(Error::Execution(format!(
-                        "Invalid table index in instance: {}",
-                        table_addr.table_idx
-                    )));
-                }
-
-                // Get a reference to the table
-                let table = &table_instance.tables[table_addr.table_idx as usize];
-
-                // Check bounds
-                if elem_idx < 0 || elem_idx as u32 >= table.size() {
-                    return Err(Error::Execution(format!(
-                        "Table element index out of bounds: {} (size {})",
-                        elem_idx,
-                        table.size()
-                    )));
-                }
-
-                // Get the value from the table
-                match table.get(elem_idx as u32)? {
-                    Some(val) => self.stack.push(val),
-                    None => self.stack.push(Value::FuncRef(None)), // Push null reference
-                }
-
-                Ok(None)
-            }
-            Instruction::TableSet(table_idx) => {
-                // Get the element index and value from the stack
-                let value = self.stack.pop()?;
-                let elem_idx =
-                    self.stack.pop()?.as_i32().ok_or_else(|| {
-                        Error::Execution("Expected i32 index for table.set".into())
-                    })?;
-
-                // Get the current frame's module instance
-                let frame = self.stack.current_frame()?;
-                let instance = &frame.module;
-
-                // Verify the table index is valid
-                if *table_idx as usize >= instance.table_addrs.len() {
-                    return Err(Error::Execution(format!(
-                        "Invalid table index: {}",
-                        table_idx
-                    )));
-                }
-
-                // Get the table address
-                let table_addr = &instance.table_addrs[*table_idx as usize];
-
-                // Get the instance that contains the table
-                if table_addr.instance_idx as usize >= self.instances.len() {
-                    return Err(Error::Execution(format!(
-                        "Invalid table instance index: {}",
-                        table_addr.instance_idx
-                    )));
-                }
-
-                // Get a mutable reference to the table
-                let table = &mut self.instances[table_addr.instance_idx as usize].tables
-                    [table_addr.table_idx as usize];
-
-                // Check bounds
-                if elem_idx < 0 || elem_idx as u32 >= table.size() {
-                    return Err(Error::Execution(format!(
-                        "Table element index out of bounds: {} (size {})",
-                        elem_idx,
-                        table.size()
-                    )));
-                }
-
-                // Set the value in the table
-                table.set(elem_idx as u32, Some(value))?;
-
-                Ok(None)
-            }
-            Instruction::TableSize(table_idx) => {
-                // Get the current frame's module instance
-                let frame = self.stack.current_frame()?;
-                let instance = &frame.module;
-
-                // Verify the table index is valid
-                if *table_idx as usize >= instance.table_addrs.len() {
-                    return Err(Error::Execution(format!(
-                        "Invalid table index: {}",
-                        table_idx
-                    )));
-                }
-
-                // Get the table address
-                let table_addr = &instance.table_addrs[*table_idx as usize];
-
-                // Get the instance that contains the table
-                if table_addr.instance_idx as usize >= self.instances.len() {
-                    return Err(Error::Execution(format!(
-                        "Invalid table instance index: {}",
-                        table_addr.instance_idx
-                    )));
-                }
-
-                let table_instance = &self.instances[table_addr.instance_idx as usize];
-
-                // Access the table in the instance
-                if table_addr.table_idx as usize >= table_instance.tables.len() {
-                    return Err(Error::Execution(format!(
-                        "Invalid table index in instance: {}",
-                        table_addr.table_idx
-                    )));
-                }
-
-                // Get a reference to the table
-                let table = &table_instance.tables[table_addr.table_idx as usize];
-
-                // Get the current size of the table
-                let size = table.size();
-                self.stack.push(Value::I32(size as i32));
-
-                Ok(None)
-            }
-            Instruction::TableGrow(table_idx) => {
-                // Get the growth amount and fill value from the stack
-                let fill_value = self.stack.pop()?;
-                let n =
-                    self.stack.pop()?.as_i32().ok_or_else(|| {
-                        Error::Execution("Expected i32 size for table.grow".into())
-                    })?;
-
-                // Get the current frame's module instance
-                let frame = self.stack.current_frame()?;
-                let instance = &frame.module;
-
-                // Verify the table index is valid
-                if *table_idx as usize >= instance.table_addrs.len() {
-                    return Err(Error::Execution(format!(
-                        "Invalid table index: {}",
-                        table_idx
-                    )));
-                }
-
-                // Get the table address
-                let table_addr = &instance.table_addrs[*table_idx as usize];
-
-                // Get the instance that contains the table
-                if table_addr.instance_idx as usize >= self.instances.len() {
-                    return Err(Error::Execution(format!(
-                        "Invalid table instance index: {}",
-                        table_addr.instance_idx
-                    )));
-                }
-
-                // Get a mutable reference to the table
-                let table = &mut self.instances[table_addr.instance_idx as usize].tables
-                    [table_addr.table_idx as usize];
-
-                // Grow the table
-                let old_size = table.size();
-
-                // First grow the table
-                let grow_result = table.grow(n as u32);
-
-                // If growing was successful, fill the table with the provided value
-                if grow_result.is_ok() {
-                    // If we grew the table, fill the new elements with the provided value
-                    if n > 0 {
-                        let _ = table.fill(old_size, n as u32, Some(fill_value));
-                    }
-
-                    // Push the old size onto the stack
-                    self.stack.push(Value::I32(old_size as i32));
-                } else {
-                    // Push -1 to indicate failure
-                    self.stack.push(Value::I32(-1));
-                }
-
-                Ok(None)
-            }
-            Instruction::Drop => {
-                // Pop the top value from the stack and discard it
-                let _ = self.stack.pop()?;
-                Ok(None)
-            }
-            Instruction::TableFill(table_idx) => {
-                // Get the length, value, and start offset from the stack
-                let len =
-                    self.stack.pop()?.as_i32().ok_or_else(|| {
-                        Error::Execution("Expected i32 length for table.fill".into())
-                    })?;
-                let val = self.stack.pop()?;
-                let dst = self.stack.pop()?.as_i32().ok_or_else(|| {
-                    Error::Execution("Expected i32 destination for table.fill".into())
-                })?;
-
-                if len < 0 {
-                    return Err(Error::Execution("Length must be non-negative".into()));
-                }
-
-                // Get the current frame's module instance
-                let frame = self.stack.current_frame()?;
-                let instance = &frame.module;
-
-                // Verify the table index is valid
-                if *table_idx as usize >= instance.table_addrs.len() {
-                    return Err(Error::Execution(format!(
-                        "Invalid table index: {}",
-                        table_idx
-                    )));
-                }
-
-                // Get the table address
-                let table_addr = &instance.table_addrs[*table_idx as usize];
-
-                // Get the instance that contains the table
-                if table_addr.instance_idx as usize >= self.instances.len() {
-                    return Err(Error::Execution(format!(
-                        "Invalid table instance index: {}",
-                        table_addr.instance_idx
-                    )));
-                }
-
-                // Get a mutable reference to the table
-                let table = &mut self.instances[table_addr.instance_idx as usize].tables
-                    [table_addr.table_idx as usize];
-
-                // Fill the table with the provided value
-                table.fill(dst as u32, len as u32, Some(val))?;
-
-                Ok(None)
-            }
-            Instruction::TableCopy(dst_table_idx, src_table_idx) => {
-                // Get the length and the source and destination offsets from the stack
-                let len =
-                    self.stack.pop()?.as_i32().ok_or_else(|| {
-                        Error::Execution("Expected i32 length for table.copy".into())
-                    })?;
-                let src = self.stack.pop()?.as_i32().ok_or_else(|| {
-                    Error::Execution("Expected i32 source offset for table.copy".into())
-                })?;
-                let dst = self.stack.pop()?.as_i32().ok_or_else(|| {
-                    Error::Execution("Expected i32 destination offset for table.copy".into())
-                })?;
-
-                if len < 0 {
-                    return Err(Error::Execution("Length must be non-negative".into()));
-                }
-
-                // Get the current frame's module instance
-                let frame = self.stack.current_frame()?;
-                let instance = &frame.module;
-
-                // Verify the destination table index is valid
-                if *dst_table_idx as usize >= instance.table_addrs.len() {
-                    return Err(Error::Execution(format!(
-                        "Invalid destination table index: {}",
-                        dst_table_idx
-                    )));
-                }
-
-                // Verify the source table index is valid
-                if *src_table_idx as usize >= instance.table_addrs.len() {
-                    return Err(Error::Execution(format!(
-                        "Invalid source table index: {}",
-                        src_table_idx
-                    )));
-                }
-
-                // Get the destination table address
-                let dst_table_addr = &instance.table_addrs[*dst_table_idx as usize];
-
-                // Get the source table address
-                let src_table_addr = &instance.table_addrs[*src_table_idx as usize];
-
-                // Verify both instances exist
-                if dst_table_addr.instance_idx as usize >= self.instances.len()
-                    || src_table_addr.instance_idx as usize >= self.instances.len()
-                {
-                    return Err(Error::Execution("Invalid table instance index".into()));
-                }
-
-                // If both tables are in the same instance and are the same table,
-                // we need to handle the copy in a special way to avoid borrowing issues
-                if dst_table_addr.instance_idx == src_table_addr.instance_idx
-                    && dst_table_addr.table_idx == src_table_addr.table_idx
-                {
-                    // Get a mutable reference to the table
-                    let table = &mut self.instances[dst_table_addr.instance_idx as usize].tables
-                        [dst_table_addr.table_idx as usize];
-
-                    // Perform the copy within the same table
-                    table.copy(dst as u32, src as u32, len as u32)?;
-                } else {
-                    // Get source table elements
-                    let src_instance = &self.instances[src_table_addr.instance_idx as usize];
-                    if src_table_addr.table_idx as usize >= src_instance.tables.len() {
-                        return Err(Error::Execution(
-                            "Invalid source table index in instance".into(),
-                        ));
-                    }
-                    let src_table = &src_instance.tables[src_table_addr.table_idx as usize];
-
-                    // Collect elements to copy
-                    let mut elements = Vec::with_capacity(len as usize);
-                    for i in 0..len {
-                        let elem = src_table.get((src + i) as u32)?;
-                        elements.push(elem);
-                    }
-
-                    // Get destination table
-                    let dst_instance = &mut self.instances[dst_table_addr.instance_idx as usize];
-                    if dst_table_addr.table_idx as usize >= dst_instance.tables.len() {
-                        return Err(Error::Execution(
-                            "Invalid destination table index in instance".into(),
-                        ));
-                    }
-                    let dst_table = &mut dst_instance.tables[dst_table_addr.table_idx as usize];
-
-                    // Write elements to destination
-                    for i in 0..len {
-                        dst_table.set((dst + i) as u32, elements[i as usize].clone())?;
-                    }
-                }
-
-                Ok(None)
-            }
-            Instruction::TableInit(table_idx, elem_idx) => {
-                // Get the length and the source and destination offsets from the stack
-                let len =
-                    self.stack.pop()?.as_i32().ok_or_else(|| {
-                        Error::Execution("Expected i32 length for table.init".into())
-                    })?;
-                let src = self.stack.pop()?.as_i32().ok_or_else(|| {
-                    Error::Execution("Expected i32 source offset for table.init".into())
-                })?;
-                let dst = self.stack.pop()?.as_i32().ok_or_else(|| {
-                    Error::Execution("Expected i32 destination offset for table.init".into())
-                })?;
-
-                if len < 0 {
-                    return Err(Error::Execution("Length must be non-negative".into()));
-                }
-
-                // Get the current frame's module instance
-                let frame = self.stack.current_frame()?;
-                let instance = &frame.module;
-
-                // Verify the table index is valid
-                if *table_idx as usize >= instance.table_addrs.len() {
-                    return Err(Error::Execution(format!(
-                        "Invalid table index: {}",
-                        table_idx
-                    )));
-                }
-
-                // Get the element segment from the module
-                let module = &instance.module;
-                if *elem_idx as usize >= module.elements.len() {
-                    return Err(Error::Execution(format!(
-                        "Invalid element index: {}",
-                        elem_idx
-                    )));
-                }
-
-                // Check if the element segment has been dropped
-                if self
-                    .dropped_elems
-                    .contains(&(*elem_idx, instance.module_idx))
-                {
-                    return Err(Error::Execution(format!(
-                        "Element segment {} has been dropped",
-                        elem_idx
-                    )));
-                }
-
-                // Get element segment data
-                let elem_segment = &module.elements[*elem_idx as usize];
-                if src as usize + len as usize > elem_segment.init.len() {
-                    return Err(Error::Execution(
-                        "Element segment access out of bounds".into(),
-                    ));
-                }
-
-                // Get the table
-                let table_addr = &instance.table_addrs[*table_idx as usize];
-                if table_addr.instance_idx as usize >= self.instances.len() {
-                    return Err(Error::Execution(format!(
-                        "Invalid table instance index: {}",
-                        table_addr.instance_idx
-                    )));
-                }
-
-                let table_instance = &mut self.instances[table_addr.instance_idx as usize];
-                if table_addr.table_idx as usize >= table_instance.tables.len() {
-                    return Err(Error::Execution(format!(
-                        "Invalid table index in instance: {}",
-                        table_addr.table_idx
-                    )));
-                }
-
-                let table = &mut table_instance.tables[table_addr.table_idx as usize];
-
-                // Extract elements to initialize
-                let elements: Vec<Option<Value>> = elem_segment.init
-                    [src as usize..(src as usize + len as usize)]
-                    .iter()
-                    .map(|func_idx| Some(Value::FuncRef(Some(*func_idx))))
-                    .collect();
-
-                // Initialize the table with these elements
-                table.init(dst as u32, &elements)?;
-
-                Ok(None)
-            }
-            Instruction::ElemDrop(elem_idx) => {
-                // Get the current frame's module instance
-                let frame = self.stack.current_frame()?;
-                let instance = &frame.module;
-
-                // Verify the element index is valid
-                if *elem_idx as usize >= instance.module.elements.len() {
-                    return Err(Error::Execution(format!(
-                        "Invalid element index: {}",
-                        elem_idx
-                    )));
-                }
-
-                // Mark the element segment as dropped
-                self.dropped_elems.insert((*elem_idx, instance.module_idx));
-
-                Ok(None)
-            }
-
-            // I64 Comparison operations
-            Instruction::I64Eqz => {
-                let value = self
-                    .stack
-                    .pop()?
-                    .as_i64()
-                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
-                self.stack.push(Value::I32(if value == 0 { 1 } else { 0 }));
-                Ok(None)
-            }
-            Instruction::I64Eq => {
-                let rhs = self
-                    .stack
-                    .pop()?
-                    .as_i64()
-                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
-                let lhs = self
-                    .stack
-                    .pop()?
-                    .as_i64()
-                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
-                self.stack.push(Value::I32(if lhs == rhs { 1 } else { 0 }));
-                Ok(None)
-            }
-            Instruction::I64Ne => {
-                let rhs = self
-                    .stack
-                    .pop()?
-                    .as_i64()
-                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
-                let lhs = self
-                    .stack
-                    .pop()?
-                    .as_i64()
-                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
-                self.stack.push(Value::I32(if lhs != rhs { 1 } else { 0 }));
-                Ok(None)
-            }
-            Instruction::I64LtS => {
-                let rhs = self
-                    .stack
-                    .pop()?
-                    .as_i64()
-                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
-                let lhs = self
-                    .stack
-                    .pop()?
-                    .as_i64()
-                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
-                self.stack.push(Value::I32(if lhs < rhs { 1 } else { 0 }));
-                Ok(None)
-            }
-            Instruction::I64LtU => {
-                let rhs = self
-                    .stack
-                    .pop()?
-                    .as_i64()
-                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
-                let lhs = self
-                    .stack
-                    .pop()?
-                    .as_i64()
-                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
-                // Cast to unsigned (u64) before comparison
-                self.stack
-                    .push(Value::I32(if (lhs as u64) < (rhs as u64) { 1 } else { 0 }));
-                Ok(None)
-            }
-            Instruction::I64GtS => {
-                let rhs = self
-                    .stack
-                    .pop()?
-                    .as_i64()
-                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
-                let lhs = self
-                    .stack
-                    .pop()?
-                    .as_i64()
-                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
-                self.stack.push(Value::I32(if lhs > rhs { 1 } else { 0 }));
-                Ok(None)
-            }
-            Instruction::I64GtU => {
-                let rhs = self
-                    .stack
-                    .pop()?
-                    .as_i64()
-                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
-                let lhs = self
-                    .stack
-                    .pop()?
-                    .as_i64()
-                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
-                // Cast to unsigned (u64) before comparison
-                self.stack
-                    .push(Value::I32(if (lhs as u64) > (rhs as u64) { 1 } else { 0 }));
-                Ok(None)
-            }
-            Instruction::I64LeS => {
-                let rhs = self
-                    .stack
-                    .pop()?
-                    .as_i64()
-                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
-                let lhs = self
-                    .stack
-                    .pop()?
-                    .as_i64()
-                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
-                self.stack.push(Value::I32(if lhs <= rhs { 1 } else { 0 }));
-                Ok(None)
-            }
-            Instruction::I64LeU => {
-                let rhs = self
-                    .stack
-                    .pop()?
-                    .as_i64()
-                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
-                let lhs = self
-                    .stack
-                    .pop()?
-                    .as_i64()
-                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
-                // Cast to unsigned (u64) before comparison
-                self.stack
-                    .push(Value::I32(if (lhs as u64) <= (rhs as u64) { 1 } else { 0 }));
-                Ok(None)
-            }
-            Instruction::I64GeS => {
-                let rhs = self
-                    .stack
-                    .pop()?
-                    .as_i64()
-                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
-                let lhs = self
-                    .stack
-                    .pop()?
-                    .as_i64()
-                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
-                self.stack.push(Value::I32(if lhs >= rhs { 1 } else { 0 }));
-                Ok(None)
-            }
-            Instruction::I64GeU => {
-                let rhs = self
-                    .stack
-                    .pop()?
-                    .as_i64()
-                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
-                let lhs = self
-                    .stack
-                    .pop()?
-                    .as_i64()
-                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
-                // Cast to unsigned (u64) before comparison
-                self.stack
-                    .push(Value::I32(if (lhs as u64) >= (rhs as u64) { 1 } else { 0 }));
-                Ok(None)
-            }
-            // I64 Arithmetic operations
-            Instruction::I64Add => {
-                let rhs = self
-                    .stack
-                    .pop()?
-                    .as_i64()
-                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
-                let lhs = self
-                    .stack
-                    .pop()?
-                    .as_i64()
-                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
-                self.stack.push(Value::I64(lhs.wrapping_add(rhs)));
-                Ok(None)
-            }
-            Instruction::I64Sub => {
-                let rhs = self
-                    .stack
-                    .pop()?
-                    .as_i64()
-                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
-                let lhs = self
-                    .stack
-                    .pop()?
-                    .as_i64()
-                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
-                self.stack.push(Value::I64(lhs.wrapping_sub(rhs)));
-                Ok(None)
-            }
-            Instruction::I64Mul => {
-                let rhs = self
-                    .stack
-                    .pop()?
-                    .as_i64()
-                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
-                let lhs = self
-                    .stack
-                    .pop()?
-                    .as_i64()
-                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
-                self.stack.push(Value::I64(lhs.wrapping_mul(rhs)));
-                Ok(None)
-            }
-            Instruction::I64DivS => {
-                let rhs = self
-                    .stack
-                    .pop()?
-                    .as_i64()
-                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
-                let lhs = self
-                    .stack
-                    .pop()?
-                    .as_i64()
-                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
-
-                // Check for division by zero
-                if rhs == 0 {
-                    return Err(Error::Execution("Division by zero".into()));
-                }
-
-                // Check for overflow (only case is MIN_VALUE / -1)
-                if lhs == i64::MIN && rhs == -1 {
-                    return Err(Error::Execution("Division overflow".into()));
-                }
-
-                self.stack.push(Value::I64(lhs.wrapping_div(rhs)));
-                Ok(None)
-            }
-            Instruction::I64DivU => {
-                let rhs = self
-                    .stack
-                    .pop()?
-                    .as_i64()
-                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
-                let lhs = self
-                    .stack
-                    .pop()?
-                    .as_i64()
-                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
-
-                // Check for division by zero
-                if rhs == 0 {
-                    return Err(Error::Execution("Division by zero".into()));
-                }
-
-                // For unsigned division, we need to convert to u64 first
-                let lhs_u = lhs as u64;
-                let rhs_u = rhs as u64;
-
-                self.stack
-                    .push(Value::I64((lhs_u.wrapping_div(rhs_u)) as i64));
-                Ok(None)
-            }
-            Instruction::I64RemS => {
-                let rhs = self
-                    .stack
-                    .pop()?
-                    .as_i64()
-                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
-                let lhs = self
-                    .stack
-                    .pop()?
-                    .as_i64()
-                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
-
-                // Check for division by zero
-                if rhs == 0 {
-                    return Err(Error::Execution("Division by zero".into()));
-                }
-
-                // The result of a % 0 is implementation-defined in WebAssembly spec
-                // For i64::MIN % -1, the result is defined as 0 in WebAssembly
-                if lhs == i64::MIN && rhs == -1 {
-                    self.stack.push(Value::I64(0));
-                } else {
-                    self.stack.push(Value::I64(lhs % rhs));
-                }
-
-                Ok(None)
-            }
-            Instruction::I64RemU => {
-                let rhs = self
-                    .stack
-                    .pop()?
-                    .as_i64()
-                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
-                let lhs = self
-                    .stack
-                    .pop()?
-                    .as_i64()
-                    .ok_or_else(|| Error::Execution("Expected i64".into()))?;
-
-                // Check for division by zero
-                if rhs == 0 {
-                    return Err(Error::Execution("Division by zero".into()));
-                }
-
-                // For unsigned remainder, convert to u64 first
-                let lhs_u = lhs as u64;
-                let rhs_u = rhs as u64;
-
-                self.stack.push(Value::I64((lhs_u % rhs_u) as i64));
-                Ok(None)
-            }
-
-            // Now let's add floating point operations
-            Instruction::F32Add => {
-                let rhs = self
-                    .stack
-                    .pop()?
-                    .as_f32()
-                    .ok_or_else(|| Error::Execution("Expected f32".into()))?;
-                let lhs = self
-                    .stack
-                    .pop()?
-                    .as_f32()
-                    .ok_or_else(|| Error::Execution("Expected f32".into()))?;
-                self.stack.push(Value::F32(lhs + rhs));
-                Ok(None)
-            }
-            Instruction::F32Sub => {
-                let rhs = self
-                    .stack
-                    .pop()?
-                    .as_f32()
-                    .ok_or_else(|| Error::Execution("Expected f32".into()))?;
-                let lhs = self
-                    .stack
-                    .pop()?
-                    .as_f32()
-                    .ok_or_else(|| Error::Execution("Expected f32".into()))?;
-                self.stack.push(Value::F32(lhs - rhs));
-                Ok(None)
-            }
-            Instruction::F32Mul => {
-                let rhs = self
-                    .stack
-                    .pop()?
-                    .as_f32()
-                    .ok_or_else(|| Error::Execution("Expected f32".into()))?;
-                let lhs = self
-                    .stack
-                    .pop()?
-                    .as_f32()
-                    .ok_or_else(|| Error::Execution("Expected f32".into()))?;
-                self.stack.push(Value::F32(lhs * rhs));
-                Ok(None)
-            }
-            Instruction::F32Div => {
-                let rhs = self
-                    .stack
-                    .pop()?
-                    .as_f32()
-                    .ok_or_else(|| Error::Execution("Expected f32".into()))?;
-                let lhs = self
-                    .stack
-                    .pop()?
-                    .as_f32()
-                    .ok_or_else(|| Error::Execution("Expected f32".into()))?;
-                self.stack.push(Value::F32(lhs / rhs));
-                Ok(None)
-            }
-            Instruction::F64Add => {
-                let rhs = self
-                    .stack
-                    .pop()?
-                    .as_f64()
-                    .ok_or_else(|| Error::Execution("Expected f64".into()))?;
-                let lhs = self
-                    .stack
-                    .pop()?
-                    .as_f64()
-                    .ok_or_else(|| Error::Execution("Expected f64".into()))?;
-                self.stack.push(Value::F64(lhs + rhs));
-                Ok(None)
-            }
-            Instruction::F64Sub => {
-                let rhs = self
-                    .stack
-                    .pop()?
-                    .as_f64()
-                    .ok_or_else(|| Error::Execution("Expected f64".into()))?;
-                let lhs = self
-                    .stack
-                    .pop()?
-                    .as_f64()
-                    .ok_or_else(|| Error::Execution("Expected f64".into()))?;
-                self.stack.push(Value::F64(lhs - rhs));
-                Ok(None)
-            }
-            Instruction::F64Mul => {
-                let rhs = self
-                    .stack
-                    .pop()?
-                    .as_f64()
-                    .ok_or_else(|| Error::Execution("Expected f64".into()))?;
-                let lhs = self
-                    .stack
-                    .pop()?
-                    .as_f64()
-                    .ok_or_else(|| Error::Execution("Expected f64".into()))?;
-                self.stack.push(Value::F64(lhs * rhs));
-                Ok(None)
-            }
-            Instruction::F64Div => {
-                let rhs = self
-                    .stack
-                    .pop()?
-                    .as_f64()
-                    .ok_or_else(|| Error::Execution("Expected f64".into()))?;
-                let lhs = self
-                    .stack
-                    .pop()?
-                    .as_f64()
-                    .ok_or_else(|| Error::Execution("Expected f64".into()))?;
-                self.stack.push(Value::F64(lhs / rhs));
-                Ok(None)
-            }
-
-            // For remaining instructions, instead of error, treat as Nop
-            _ => {
-                #[cfg(feature = "std")]
-                eprintln!(
-                    "Warning: Instruction {:?} not implemented, treating as Nop",
-                    inst
-                );
-
-                // Just continue without error - this allows component model execution to proceed
-                Ok(None)
-            }
-        };
-
-        // Record execution time for this instruction type
-        #[cfg(feature = "std")]
-        {
-            let elapsed_micros = timer_start.elapsed().as_micros() as u64;
-            match _inst_category {
-                InstructionCategory::ControlFlow => {
-                    self.stats.control_flow_time_us += elapsed_micros;
-                }
-                InstructionCategory::LocalGlobal => {
-                    self.stats.local_global_time_us += elapsed_micros;
-                }
-                InstructionCategory::MemoryOp => {
-                    self.stats.memory_ops_time_us += elapsed_micros;
-                }
-                InstructionCategory::FunctionCall => {
-                    self.stats.function_call_time_us += elapsed_micros;
-                }
-                InstructionCategory::Arithmetic => {
-                    self.stats.arithmetic_time_us += elapsed_micros;
-                }
-                InstructionCategory::Comparison => {
-                    // Track comparison time in arithmetic operations for now
-                    self.stats.arithmetic_time_us += elapsed_micros;
-                }
-                InstructionCategory::Other => {
-                    // Not tracked specifically
+                    Err(Error::Execution("Expected i32 values for add".into()))
                 }
             }
+
+            // Default case for unimplemented instructions
+            _ => Err(Error::Execution(format!(
+                "Unimplemented instruction: {:?}",
+                inst
+            ))),
         }
-
-        result
     }
 
     /// Execute a WASI logging call with the given memory address
@@ -5779,6 +2416,11 @@ impl Engine {
             _ => InstructionCategory::Other,
         }
     }
+
+    /// Returns true if the engine has no instances
+    pub fn has_no_instances(&self) -> bool {
+        self.instances.is_empty()
+    }
 }
 
 #[cfg(test)]
@@ -5788,6 +2430,7 @@ mod tests {
     use crate::instructions::{BlockType, Instruction};
     use crate::logging::LogOperation;
     use crate::module::Module;
+    use crate::types::FuncType;
     use crate::values::Value;
 
     // Helper function to create a test module instance
@@ -5801,6 +2444,7 @@ mod tests {
             global_addrs: vec![],
             memories: vec![],
             tables: vec![],
+            globals: vec![],
         }
     }
 
@@ -5809,13 +2453,13 @@ mod tests {
         let mut stack = Stack::new();
 
         // Test value stack operations
-        stack.push(Value::I32(42));
-        stack.push(Value::I64(123));
-        assert_eq!(stack.pop().unwrap(), Value::I64(123));
-        assert_eq!(stack.pop().unwrap(), Value::I32(42));
+        stack.values.push(Value::I32(42));
+        stack.values.push(Value::I64(123));
+        assert_eq!(stack.values.pop().unwrap(), Value::I64(123));
+        assert_eq!(stack.values.pop().unwrap(), Value::I32(42));
 
-        // Test stack underflow behavior - returns default value
-        assert_eq!(stack.pop().unwrap(), Value::I32(0));
+        // Test stack underflow behavior - should return an error
+        assert!(stack.pop().is_err());
 
         // Test label stack operations
         stack.push_label(1, 100);
@@ -5823,85 +2467,26 @@ mod tests {
         assert_eq!(label.arity, 1);
         assert_eq!(label.continuation, 100);
 
+        // Create a test function type
+        let func_type = FuncType {
+            params: vec![],
+            results: vec![],
+        };
+
         // Test frame stack operations
         let frame = Frame {
             func_idx: 0,
             locals: vec![Value::I32(1)],
             module: create_test_module_instance(),
+            pc: 0,
+            func_type,
+            returning: false,
+            stack_height: 0,
         };
         stack.push_frame(frame);
         let popped_frame = stack.pop_frame().unwrap();
         assert_eq!(popped_frame.func_idx, 0);
         assert_eq!(popped_frame.locals.len(), 1);
-    }
-
-    #[test]
-    fn test_label_operations() {
-        let mut stack = Stack::new();
-
-        // Push multiple labels
-        stack.push_label(1, 100);
-        stack.push_label(2, 200);
-        stack.push_label(3, 300);
-
-        // Test get_label at different depths
-        let label = stack.get_label(0).unwrap();
-        assert_eq!(label.arity, 3);
-        assert_eq!(label.continuation, 300);
-
-        let label = stack.get_label(1).unwrap();
-        assert_eq!(label.arity, 2);
-        assert_eq!(label.continuation, 200);
-
-        // Test out of bounds label access
-        match stack.get_label(10) {
-            Err(Error::Execution(msg)) => assert!(msg.contains("Label")),
-            _ => panic!("Expected execution error for invalid label depth"),
-        }
-    }
-
-    #[test]
-    fn test_frame_operations() {
-        let mut stack = Stack::new();
-        let module = create_test_module_instance();
-
-        // Test frame stack operations
-        let frame1 = Frame {
-            func_idx: 1,
-            locals: vec![Value::I32(10)],
-            module: module.clone(),
-        };
-        let frame2 = Frame {
-            func_idx: 2,
-            locals: vec![Value::I64(20)],
-            module,
-        };
-
-        stack.push_frame(frame1);
-        stack.push_frame(frame2);
-
-        // Test current frame access
-        let current = stack.current_frame().unwrap();
-        assert_eq!(current.func_idx, 2);
-        assert_eq!(current.locals.len(), 1);
-
-        // Test frame popping
-        let popped = stack.pop_frame().unwrap();
-        assert_eq!(popped.func_idx, 2);
-
-        let popped = stack.pop_frame().unwrap();
-        assert_eq!(popped.func_idx, 1);
-
-        // Test empty frame stack - should return an error
-        match stack.pop_frame() {
-            Err(Error::Execution(msg)) => assert!(msg.contains("stack underflow")),
-            _ => panic!("Expected call stack underflow error"),
-        }
-
-        match stack.current_frame() {
-            Err(Error::Execution(msg)) => assert!(msg.contains("No active frame")),
-            _ => panic!("Expected no active frame error"),
-        }
     }
 
     #[test]
@@ -6006,6 +2591,7 @@ mod tests {
         assert_eq!(stats.current_memory_bytes, 0);
         assert_eq!(stats.function_calls, 0);
         assert_eq!(stats.memory_operations, 0);
+        assert_eq!(stats.comparison_instructions, 0);
 
         // Test stats reset
         engine.reset_stats();
@@ -6055,5 +2641,49 @@ mod tests {
         assert_eq!(engine.instruction_cost(&Instruction::I32Add), 1);
         assert_eq!(engine.instruction_cost(&Instruction::I32Sub), 1);
         assert_eq!(engine.instruction_cost(&Instruction::I32Mul), 1);
+    }
+
+    #[test]
+    fn test_stack_operations_modified() {
+        let mut stack = Stack::new();
+
+        // Test value stack operations
+        stack.values.push(Value::I32(42));
+        stack.values.push(Value::I64(123));
+        assert_eq!(stack.values.pop().unwrap(), Value::I64(123));
+        assert_eq!(stack.values.pop().unwrap(), Value::I32(42));
+
+        // Test stack underflow behavior - returns default value
+        assert!(stack.values.pop().is_none());
+
+        // Test label stack operations
+        stack.labels.push(Label {
+            arity: 1,
+            continuation: 100,
+        });
+        let label = stack.labels.pop().unwrap();
+        assert_eq!(label.arity, 1);
+        assert_eq!(label.continuation, 100);
+
+        // Create a test function type
+        let func_type = FuncType {
+            params: vec![],
+            results: vec![],
+        };
+
+        // Test frame stack operations
+        let frame = Frame {
+            func_idx: 0,
+            locals: vec![Value::I32(1)],
+            module: create_test_module_instance(),
+            pc: 0,
+            func_type,
+            returning: false,
+            stack_height: 0,
+        };
+        stack.frames.push(frame);
+        let popped_frame = stack.frames.pop().unwrap();
+        assert_eq!(popped_frame.func_idx, 0);
+        assert_eq!(popped_frame.locals.len(), 1);
     }
 }
