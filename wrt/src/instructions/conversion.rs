@@ -202,8 +202,10 @@ pub fn i32_trunc_f32_s(stack: &mut Vec<Value>) -> Result<(), Error> {
     if value.is_nan() {
         return Err(Error::Execution("NaN cannot be converted to i32".into()));
     }
-    if value >= (1i64 << 31) as f32 || value < -(1i64 << 31) as f32 {
-        return Err(Error::Execution("Value outside range of i32".into()));
+
+    // Check if value is outside the range of i32
+    if value >= 2_147_483_648.0 || value < -2_147_483_648.0 {
+        return Err(Error::Execution("Value out of range for i32".into()));
     }
 
     stack.push(Value::I32(value as i32));
@@ -290,8 +292,10 @@ pub fn i64_trunc_f32_s(stack: &mut Vec<Value>) -> Result<(), Error> {
     if value.is_nan() {
         return Err(Error::Execution("NaN cannot be converted to i64".into()));
     }
-    if value >= i64::MAX as f32 || value < i64::MIN as f32 {
-        return Err(Error::Execution("Value outside range of i64".into()));
+
+    // Check if value is outside the range of i64
+    if value >= 9_223_372_036_854_775_808.0 || value <= -9_223_372_036_854_775_808.0 {
+        return Err(Error::Execution("Value out of range for i64".into()));
     }
 
     stack.push(Value::I64(value as i64));
@@ -312,11 +316,13 @@ pub fn i64_trunc_f32_u(stack: &mut Vec<Value>) -> Result<(), Error> {
     if value.is_nan() {
         return Err(Error::Execution("NaN cannot be converted to i64".into()));
     }
-    if value >= u64::MAX as f32 || value < 0.0 {
-        return Err(Error::Execution("Value outside range of u64".into()));
+
+    // Check if value is outside the range of u64
+    if value >= 18_446_744_073_709_551_616.0 || value < 0.0 {
+        return Err(Error::Execution("Value out of range for u64".into()));
     }
 
-    stack.push(Value::I64(value as u64 as i64));
+    stack.push(Value::I64(value as i64));
     Ok(())
 }
 
@@ -334,8 +340,10 @@ pub fn i64_trunc_f64_s(stack: &mut Vec<Value>) -> Result<(), Error> {
     if value.is_nan() {
         return Err(Error::Execution("NaN cannot be converted to i64".into()));
     }
-    if value >= i64::MAX as f64 || value < i64::MIN as f64 {
-        return Err(Error::Execution("Value outside range of i64".into()));
+
+    // Check if value is outside the range of i64
+    if value >= 9_223_372_036_854_775_808.0 || value <= -9_223_372_036_854_775_808.0 {
+        return Err(Error::Execution("Value out of range for i64".into()));
     }
 
     stack.push(Value::I64(value as i64));
@@ -356,11 +364,13 @@ pub fn i64_trunc_f64_u(stack: &mut Vec<Value>) -> Result<(), Error> {
     if value.is_nan() {
         return Err(Error::Execution("NaN cannot be converted to i64".into()));
     }
-    if value >= u64::MAX as f64 || value < 0.0 {
-        return Err(Error::Execution("Value outside range of u64".into()));
+
+    // Check if value is outside the range of u64
+    if value >= 18_446_744_073_709_551_616.0 || value < 0.0 {
+        return Err(Error::Execution("Value out of range for u64".into()));
     }
 
-    stack.push(Value::I64(value as u64 as i64));
+    stack.push(Value::I64(value as i64));
     Ok(())
 }
 

@@ -12,5 +12,11 @@ example/hello-world.wasm
 .zephyrproject/
 .zephyr-venv/
 
+# Ignore external test repositories
+external/
+
+# Ignore duplicated directories
+wrt/wrt/
+
 
 
