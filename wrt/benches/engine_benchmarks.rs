@@ -1,7 +1,6 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use wrt::{
-    new_engine, new_stackless_engine, BlockType, FuncType, Function, Instruction, Module, Value,
-    ValueType,
+    new_engine, new_stackless_engine, FuncType, Function, Instruction, Module, Value, ValueType,
 };
 
 fn create_test_module() -> Module {

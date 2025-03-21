@@ -9,14 +9,9 @@ build = "build.rs"
 [dependencies]
 # Dependencies
 log = { version = "0.4", optional = true }
-proptest = "1.0"
 rayon = "1.5"
-structopt = "0.3"
-wabt = "0.10"
 wat = "1.0"
 wast = { version = "227.0.1", features = ["wasm-module", "component-model"] }
-wasm-bindgen-test = "0.3"
-wasm-bindgen-test-macro = "0.3"
 
 [lib]
 name = "wrt"
@@ -27,12 +22,7 @@ bench = false
 criterion = "0.5"
 wat = "1.0.53"
 wast = { version = "227.0.1", features = ["wasm-module", "component-model"] }
-wasmparser = "0.116"
-tempfile = "3.8"
-dirs = "5.0"
 wast_proc_macro = { path = "tests/wast_proc_macro" }
-wasm-bindgen-test = "0.3"
-wasm-bindgen-test-macro = "0.3"
 
 [[bench]]
 name = "engine_benchmarks"
