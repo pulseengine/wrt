@@ -532,16 +532,3 @@ pub fn i64_ge_u(stack: &mut Vec<Value>) -> std::result::Result<(), Error> {
 }
 
 // TODO: Implement f32/f64 comparison instructions
-
-impl InstructionExecutor for super::Instruction {
-    fn execute(&self, stack: &mut Stack, _frame: &mut Frame) -> std::result::Result<(), Error> {
-        match self {
-            super::Instruction::I32LtS => i32_lt_s(&mut stack.values),
-            // Additional instructions will be implemented here
-            _ => Err(Error::Execution(format!(
-                "Instruction not implemented via trait: {:?}",
-                self
-            ))),
-        }
-    }
-}
