@@ -23,6 +23,7 @@ criterion = "0.5"
 wat = "1.0.53"
 wast = { version = "227.0.1", features = ["wasm-module", "component-model"] }
 wast_proc_macro = { path = "tests/wast_proc_macro" }
+tempfile = "3.8"
 
 [[bench]]
 name = "engine_benchmarks"
