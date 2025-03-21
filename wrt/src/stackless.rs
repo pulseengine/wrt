@@ -566,6 +566,7 @@ impl CallbackRegistry {
         }
     }
 
+    /// Registers a host function handler for a specific module and function name
     pub fn register_host_function(
         &mut self,
         module: &str,
@@ -576,6 +577,7 @@ impl CallbackRegistry {
         module_functions.insert(name.to_string(), handler);
     }
 
+    /// Checks if a host function handler is registered for the given module and function name
     pub fn has_host_function(&self, module: &str, name: &str) -> bool {
         self.host_functions
             .get(module)
@@ -583,6 +585,7 @@ impl CallbackRegistry {
             .unwrap_or(false)
     }
 
+    /// Gets the host function handler for the given module and function name
     pub fn get_host_function(
         &self,
         module: &str,
@@ -593,6 +596,7 @@ impl CallbackRegistry {
             .and_then(|funcs| funcs.get(name))
     }
 
+    /// Registers a log handler for processing WebAssembly logging operations
     pub fn register_log_handler<F>(&mut self, handler: F)
     where
         F: Fn(crate::logging::LogOperation) + Send + Sync + 'static,
@@ -600,10 +604,12 @@ impl CallbackRegistry {
         self.log_handler = Some(Box::new(handler));
     }
 
+    /// Checks if a log handler is registered
     pub fn has_log_handler(&self) -> bool {
         self.log_handler.is_some()
     }
 
+    /// Handles a logging operation by calling the registered log handler
     pub fn handle_log(&self, operation: crate::logging::LogOperation) {
         if let Some(handler) = &self.log_handler {
             handler(operation);
@@ -999,7 +1005,7 @@ impl StacklessEngine {
                     _ => return Err(Error::Execution("Invalid types for i32.lt_s".into())),
                 }
             }
-            
+
             // i64 comparison operations
             I64Eqz => {
                 let v = self.stack.pop()?;
@@ -1049,7 +1055,8 @@ impl StacklessEngine {
 
                 match (v1, v2) {
                     (Value::I64(a), Value::I64(b)) => {
-                        self.stack.push(Value::I32(if (a as u64) < (b as u64) { 1 } else { 0 }));
+                        self.stack
+                            .push(Value::I32(if (a as u64) < (b as u64) { 1 } else { 0 }));
                     }
                     _ => return Err(Error::Execution("Invalid types for i64.lt_u".into())),
                 }
@@ -1071,7 +1078,8 @@ impl StacklessEngine {
 
                 match (v1, v2) {
                     (Value::I64(a), Value::I64(b)) => {
-                        self.stack.push(Value::I32(if (a as u64) > (b as u64) { 1 } else { 0 }));
+                        self.stack
+                            .push(Value::I32(if (a as u64) > (b as u64) { 1 } else { 0 }));
                     }
                     _ => return Err(Error::Execution("Invalid types for i64.gt_u".into())),
                 }
@@ -1093,7 +1101,8 @@ impl StacklessEngine {
 
                 match (v1, v2) {
                     (Value::I64(a), Value::I64(b)) => {
-                        self.stack.push(Value::I32(if (a as u64) <= (b as u64) { 1 } else { 0 }));
+                        self.stack
+                            .push(Value::I32(if (a as u64) <= (b as u64) { 1 } else { 0 }));
                     }
                     _ => return Err(Error::Execution("Invalid types for i64.le_u".into())),
                 }
@@ -1115,12 +1124,13 @@ impl StacklessEngine {
 
                 match (v1, v2) {
                     (Value::I64(a), Value::I64(b)) => {
-                        self.stack.push(Value::I32(if (a as u64) >= (b as u64) { 1 } else { 0 }));
+                        self.stack
+                            .push(Value::I32(if (a as u64) >= (b as u64) { 1 } else { 0 }));
                     }
                     _ => return Err(Error::Execution("Invalid types for i64.ge_u".into())),
                 }
             }
-            
+
             // Loop instruction
             Loop(block_type) => {
                 // Get current PC and module instance
