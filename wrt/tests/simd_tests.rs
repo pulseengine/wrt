@@ -302,7 +302,17 @@ fn test_v128_arithmetic() -> Result<()> {
     // Test i32x4.sub
     let result = engine.execute(0, 1, vec![])?;
     // Expected: [10-1, 20-2, 30-3, 40-4] = [9, 18, 27, 36]
-    let expected = Value::V128(0x0000002400000021_000000120000000A);
+    let expected = Value::V128(0x000000240000001B_0000001200000009);
+
+    // Debug output for expected and actual bytes
+    if let Value::V128(expected_val) = expected {
+        println!("Expected bytes: {:02X?}", expected_val.to_le_bytes());
+    }
+
+    if let Value::V128(actual_val) = result[0].clone() {
+        println!("Actual bytes: {:02X?}", actual_val.to_le_bytes());
+    }
+
     if result == vec![expected.clone()] {
         println!("✅ i32x4.sub test passed: {:?}", expected);
     } else {
@@ -316,7 +326,17 @@ fn test_v128_arithmetic() -> Result<()> {
     // Test i32x4.mul
     let result = engine.execute(0, 2, vec![])?;
     // Expected: [1*5, 2*6, 3*7, 4*8] = [5, 12, 21, 32]
-    let expected = Value::V128(0x0000002000000015_000000070000000C);
+    let expected = Value::V128(0x0000002000000015_0000000C00000005);
+
+    // Debug output for expected and actual bytes
+    if let Value::V128(expected_val) = expected {
+        println!("Expected mul bytes: {:02X?}", expected_val.to_le_bytes());
+    }
+
+    if let Value::V128(actual_val) = result[0].clone() {
+        println!("Actual mul bytes: {:02X?}", actual_val.to_le_bytes());
+    }
+
     if result == vec![expected.clone()] {
         println!("✅ i32x4.mul test passed: {:?}", expected);
     } else {
