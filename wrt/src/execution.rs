@@ -1200,21 +1200,36 @@ impl Engine {
                     self.stack.call_frames[frame_idx].pc += 1;
                 }
 
-                // Constants
-                Instruction::I32Const(val) => {
-                    self.stack.values.push(Value::I32(*val));
+                // Constant instructions
+                Instruction::I32Const(value) => {
+                    // Use shared implementation
+                    let const_value = crate::shared_instructions::i32_const(*value);
+                    self.stack.values.push(const_value);
+
                     self.stack.call_frames[frame_idx].pc += 1;
                 }
-                Instruction::I64Const(val) => {
-                    self.stack.values.push(Value::I64(*val));
+
+                Instruction::I64Const(value) => {
+                    // Use shared implementation
+                    let const_value = crate::shared_instructions::i64_const(*value);
+                    self.stack.values.push(const_value);
+
                     self.stack.call_frames[frame_idx].pc += 1;
                 }
-                Instruction::F32Const(val) => {
-                    self.stack.values.push(Value::F32(*val));
+
+                Instruction::F32Const(value) => {
+                    // Use shared implementation
+                    let const_value = crate::shared_instructions::f32_const(*value);
+                    self.stack.values.push(const_value);
+
                     self.stack.call_frames[frame_idx].pc += 1;
                 }
-                Instruction::F64Const(val) => {
-                    self.stack.values.push(Value::F64(*val));
+
+                Instruction::F64Const(value) => {
+                    // Use shared implementation
+                    let const_value = crate::shared_instructions::f64_const(*value);
+                    self.stack.values.push(const_value);
+
                     self.stack.call_frames[frame_idx].pc += 1;
                 }
                 Instruction::V128Const(bytes) => {
@@ -1416,31 +1431,41 @@ impl Engine {
 
                 // Local variable operations
                 Instruction::LocalGet(idx) => {
-                    let local_idx = *idx as usize;
-                    if local_idx >= self.stack.call_frames[frame_idx].locals.len() {
-                        return Err(Error::Execution(format!(
-                            "Invalid local index: {}",
-                            local_idx
-                        )));
-                    }
+                    // Get the current frame to access locals
+                    let locals = &self.stack.call_frames[frame_idx].locals;
 
-                    let value = self.stack.call_frames[frame_idx].locals[local_idx].clone();
+                    // Use shared implementation
+                    let value = crate::shared_instructions::local_get(locals, *idx)?;
                     self.stack.values.push(value);
 
                     self.stack.call_frames[frame_idx].pc += 1;
                 }
 
                 Instruction::LocalSet(idx) => {
-                    let local_idx = *idx as usize;
-                    if local_idx >= self.stack.call_frames[frame_idx].locals.len() {
-                        return Err(Error::Execution(format!(
-                            "Invalid local index: {}",
-                            local_idx
-                        )));
-                    }
-
+                    // Pop value from stack
                     let value = self.stack.pop_value()?;
-                    self.stack.call_frames[frame_idx].locals[local_idx] = value;
+
+                    // Get mutable reference to locals
+                    let locals = &mut self.stack.call_frames[frame_idx].locals;
+
+                    // Use shared implementation
+                    crate::shared_instructions::local_set(locals, *idx, value)?;
+
+                    self.stack.call_frames[frame_idx].pc += 1;
+                }
+
+                Instruction::LocalTee(idx) => {
+                    // Get the value from the top of the stack (but don't pop it)
+                    if self.stack.values.is_empty() {
+                        return Err(Error::Execution("Stack underflow".into()));
+                    }
+                    let value = self.stack.values.last().unwrap().clone();
+
+                    // Get mutable reference to locals
+                    let locals = &mut self.stack.call_frames[frame_idx].locals;
+
+                    // Use shared implementation
+                    crate::shared_instructions::local_set(locals, *idx, value)?;
 
                     self.stack.call_frames[frame_idx].pc += 1;
                 }
@@ -1557,6 +1582,73 @@ impl Engine {
                         self.stack.call_frames[frame_idx].pc += 1;
                     }
                 }
+                // Arithmetic operations
+                Instruction::I32Add => {
+                    let b = self.stack.pop_value()?;
+                    let a = self.stack.pop_value()?;
+
+                    // Use shared implementation
+                    let result = crate::shared_instructions::i32_add(a, b)?;
+                    self.stack.values.push(result);
+
+                    self.stack.call_frames[frame_idx].pc += 1;
+                }
+
+                Instruction::I64Add => {
+                    let b = self.stack.pop_value()?;
+                    let a = self.stack.pop_value()?;
+
+                    // Use shared implementation
+                    let result = crate::shared_instructions::i64_add(a, b)?;
+                    self.stack.values.push(result);
+
+                    self.stack.call_frames[frame_idx].pc += 1;
+                }
+
+                Instruction::I32Sub => {
+                    let b = self.stack.pop_value()?;
+                    let a = self.stack.pop_value()?;
+
+                    // Use shared implementation
+                    let result = crate::shared_instructions::i32_sub(a, b)?;
+                    self.stack.values.push(result);
+
+                    self.stack.call_frames[frame_idx].pc += 1;
+                }
+
+                Instruction::I64Sub => {
+                    let b = self.stack.pop_value()?;
+                    let a = self.stack.pop_value()?;
+
+                    // Use shared implementation
+                    let result = crate::shared_instructions::i64_sub(a, b)?;
+                    self.stack.values.push(result);
+
+                    self.stack.call_frames[frame_idx].pc += 1;
+                }
+
+                Instruction::I32Mul => {
+                    let b = self.stack.pop_value()?;
+                    let a = self.stack.pop_value()?;
+
+                    // Use shared implementation
+                    let result = crate::shared_instructions::i32_mul(a, b)?;
+                    self.stack.values.push(result);
+
+                    self.stack.call_frames[frame_idx].pc += 1;
+                }
+
+                Instruction::I64Mul => {
+                    let b = self.stack.pop_value()?;
+                    let a = self.stack.pop_value()?;
+
+                    // Use shared implementation
+                    let result = crate::shared_instructions::i64_mul(a, b)?;
+                    self.stack.values.push(result);
+
+                    self.stack.call_frames[frame_idx].pc += 1;
+                }
+
                 // For now, just increment PC for other instructions
                 // In a real implementation, you'd handle each instruction type
                 _ => {

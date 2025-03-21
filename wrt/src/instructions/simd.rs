@@ -6,68 +6,113 @@
 use crate::Vec;
 use crate::{
     error::{Error, Result},
+    execution::{Frame, Stack},
     format,
+    instructions::InstructionExecutor,
     memory::Memory,
     values::Value,
 };
 
-/// Load a 128-bit value from memory into a v128 value
-///
-/// # Arguments
-///
-/// * `stack` - The operand stack
-/// * `memory` - The memory instance to load from
-/// * `offset` - The static offset to add to the memory address
-/// * `align` - The expected alignment (not used, but included for consistency)
-///
-/// # Returns
-///
-/// * `Result<(), Error>` - Ok if the operation succeeded, or an Error
-pub(crate) fn v128_load(
-    values: &mut Vec<Value>,
-    memory: &Memory,
-    offset: u32,
-    align: u8,
+// =======================================
+// Helper function to handle SIMD instructions
+// =======================================
+
+/// Handles SIMD instructions, returning Ok if the instruction was processed
+pub fn handle_simd_instruction(
+    instruction: &super::Instruction,
+    stack: &mut Stack,
+    frame: &mut Frame,
 ) -> Result<()> {
+    use super::Instruction;
+    
+    match instruction {
+        // SIMD - v128 manipulation
+        Instruction::V128Load(offset, align) => {
+            let memory_idx = frame.memory_instance_idx as usize;
+            
+            // Get the memory instance
+            if memory_idx >= frame.module.memories.len() {
+                return Err(Error::Execution(
+                    format!("Memory at index {} does not exist", memory_idx)
+                ));
+            }
+            let memory = &frame.module.memories[memory_idx];
+            
+            v128_load(&mut stack.values, memory, *offset, *align as u8)
+        }
+        Instruction::V128Store(offset, align) => {
+            let memory_idx = frame.memory_instance_idx as usize;
+            
+            // Get the memory instance
+            if memory_idx >= frame.module.memories.len() {
+                return Err(Error::Execution(
+                    format!("Memory at index {} does not exist", memory_idx)
+                ));
+            }
+            let memory = &mut frame.module.memories[memory_idx];
+            
+            v128_store(&mut stack.values, memory, *offset, *align as u8)
+        }
+        Instruction::V128Const(bytes) => v128_const(&mut stack.values, *bytes),
+
+        // SIMD - Splat operations
+        Instruction::I8x16Splat => i8x16_splat(&mut stack.values),
+        Instruction::I16x8Splat => i16x8_splat(&mut stack.values),
+        Instruction::I32x4Splat => i32x4_splat(&mut stack.values),
+        Instruction::I64x2Splat => i64x2_splat(&mut stack.values),
+        Instruction::F32x4Splat => f32x4_splat(&mut stack.values),
+        Instruction::F64x2Splat => f64x2_splat(&mut stack.values),
+
+        // SIMD - Lane extraction
+        Instruction::I8x16ExtractLaneS(lane_idx) => {
+            i8x16_extract_lane_s(&mut stack.values, *lane_idx)
+        }
+        Instruction::I8x16ExtractLaneU(lane_idx) => {
+            i8x16_extract_lane_u(&mut stack.values, *lane_idx)
+        }
+
+        // SIMD - Arithmetic operations
+        Instruction::I32x4Add => i32x4_add(&mut stack.values),
+        Instruction::I32x4Sub => i32x4_sub(&mut stack.values),
+        Instruction::I32x4Mul => i32x4_mul(&mut stack.values),
+        Instruction::I32x4DotI16x8S => i32x4_dot_i16x8_s(&mut stack.values),
+        Instruction::I16x8Mul => i16x8_mul(&mut stack.values),
+
+        // SIMD - Relaxed operations (if enabled by the feature)
+        #[cfg(feature = "relaxed_simd")]
+        Instruction::I16x8RelaxedQ15MulrS => i16x8_relaxed_q15mulr_s(&mut stack.values),
+
+        // For other SIMD instructions that aren't implemented yet
+        _ => {
+            // If it's not a SIMD instruction or not implemented, return Err
+            Err(Error::Execution(format!(
+                "SIMD instruction not implemented: {:?}",
+                instruction
+            )))
+        }
+    }
+}
+
+// =======================================
+// SIMD instruction implementation functions
+// =======================================
+
+/// Load a 128-bit value from memory into a v128 value
+pub fn v128_load(_values: &mut Vec<Value>, _memory: &Memory, _offset: u32, _align: u8) -> Result<()> {
     // We handle the addr popping and all memory access in execution.rs
     // This function is a placeholder for now
     Ok(())
 }
 
 /// Store a 128-bit value from a v128 value into memory
-///
-/// # Arguments
-///
-/// * `stack` - The operand stack
-/// * `memory` - The memory instance to store to
-/// * `offset` - The static offset to add to the memory address
-/// * `align` - The expected alignment (not used, but included for consistency)
-///
-/// # Returns
-///
-/// * `Result<(), Error>` - Ok if the operation succeeded, or an Error
-pub(crate) fn v128_store(
-    values: &mut Vec<Value>,
-    memory: &mut Memory,
-    offset: u32,
-    align: u8,
-) -> Result<()> {
+pub fn v128_store(_values: &mut Vec<Value>, _memory: &mut Memory, _offset: u32, _align: u8) -> Result<()> {
     // We handle the addr and value popping and all memory access in execution.rs
     // This function is a placeholder for now
     Ok(())
 }
 
 /// Create a v128 constant value with the given bytes
-///
-/// # Arguments
-///
-/// * `stack` - The operand stack
-/// * `bytes` - The 16 bytes to use for the v128 constant
-///
-/// # Returns
-///
-/// * `Result<(), Error>` - Ok if the operation succeeded, or an Error
-pub(crate) fn v128_const(values: &mut Vec<Value>, bytes: [u8; 16]) -> Result<()> {
+pub fn v128_const(values: &mut Vec<Value>, bytes: [u8; 16]) -> Result<()> {
     // Convert bytes to u128 and push as V128 value
     let v128_val = u128::from_le_bytes(bytes);
     values.push(Value::V128(v128_val));
@@ -75,15 +120,7 @@ pub(crate) fn v128_const(values: &mut Vec<Value>, bytes: [u8; 16]) -> Result<()>
 }
 
 /// Implements the i8x16.splat operation, which creates a vector with all lanes equal to a single i8 value
-///
-/// # Arguments
-///
-/// * `stack` - The operand stack
-///
-/// # Returns
-///
-/// * `Result<(), Error>` - Ok if the operation succeeded, or an Error
-pub(crate) fn i8x16_splat(values: &mut Vec<Value>) -> Result<()> {
+pub fn i8x16_splat(values: &mut Vec<Value>) -> Result<()> {
     let value = values.pop().ok_or(Error::StackUnderflow)?;
     let Value::I32(x) = value else {
         return Err(Error::Execution("Expected i32 for i8x16.splat".into()));
@@ -104,15 +141,7 @@ pub(crate) fn i8x16_splat(values: &mut Vec<Value>) -> Result<()> {
 }
 
 /// Implements the i16x8.splat operation, which creates a vector with all lanes equal to a single i16 value
-///
-/// # Arguments
-///
-/// * `stack` - The operand stack
-///
-/// # Returns
-///
-/// * `Result<(), Error>` - Ok if the operation succeeded, or an Error
-pub(crate) fn i16x8_splat(values: &mut Vec<Value>) -> Result<()> {
+pub fn i16x8_splat(values: &mut Vec<Value>) -> Result<()> {
     let value = values.pop().ok_or(Error::StackUnderflow)?;
     let Value::I32(x) = value else {
         return Err(Error::Execution("Expected i32 for i16x8.splat".into()));
@@ -141,15 +170,7 @@ pub(crate) fn i16x8_splat(values: &mut Vec<Value>) -> Result<()> {
 }
 
 /// Implements the i32x4.splat operation, which creates a vector with all lanes equal to a single i32 value
-///
-/// # Arguments
-///
-/// * `stack` - The operand stack
-///
-/// # Returns
-///
-/// * `Result<(), Error>` - Ok if the operation succeeded, or an Error
-pub(crate) fn i32x4_splat(values: &mut Vec<Value>) -> Result<()> {
+pub fn i32x4_splat(values: &mut Vec<Value>) -> Result<()> {
     let value = values.pop().ok_or(Error::StackUnderflow)?;
     let Value::I32(x) = value else {
         return Err(Error::Execution("Expected i32 for i32x4.splat".into()));
@@ -174,15 +195,7 @@ pub(crate) fn i32x4_splat(values: &mut Vec<Value>) -> Result<()> {
 }
 
 /// Implements the i64x2.splat operation, which creates a vector with all lanes equal to a single i64 value
-///
-/// # Arguments
-///
-/// * `stack` - The operand stack
-///
-/// # Returns
-///
-/// * `Result<(), Error>` - Ok if the operation succeeded, or an Error
-pub(crate) fn i64x2_splat(values: &mut Vec<Value>) -> Result<()> {
+pub fn i64x2_splat(values: &mut Vec<Value>) -> Result<()> {
     let value = values.pop().ok_or(Error::StackUnderflow)?;
     let Value::I64(x) = value else {
         return Err(Error::Execution("Expected i64 for i64x2.splat".into()));
@@ -207,15 +220,7 @@ pub(crate) fn i64x2_splat(values: &mut Vec<Value>) -> Result<()> {
 }
 
 /// Implements the f32x4.splat operation, which creates a vector with all lanes equal to a single f32 value
-///
-/// # Arguments
-///
-/// * `stack` - The operand stack
-///
-/// # Returns
-///
-/// * `Result<(), Error>` - Ok if the operation succeeded, or an Error
-pub(crate) fn f32x4_splat(values: &mut Vec<Value>) -> Result<()> {
+pub fn f32x4_splat(values: &mut Vec<Value>) -> Result<()> {
     let value = values.pop().ok_or(Error::StackUnderflow)?;
     let Value::F32(x) = value else {
         return Err(Error::Execution("Expected f32 for f32x4.splat".into()));
@@ -240,15 +245,7 @@ pub(crate) fn f32x4_splat(values: &mut Vec<Value>) -> Result<()> {
 }
 
 /// Implements the f64x2.splat operation, which creates a vector with all lanes equal to a single f64 value
-///
-/// # Arguments
-///
-/// * `stack` - The operand stack
-///
-/// # Returns
-///
-/// * `Result<(), Error>` - Ok if the operation succeeded, or an Error
-pub(crate) fn f64x2_splat(values: &mut Vec<Value>) -> Result<()> {
+pub fn f64x2_splat(values: &mut Vec<Value>) -> Result<()> {
     let value = values.pop().ok_or(Error::StackUnderflow)?;
     let Value::F64(x) = value else {
         return Err(Error::Execution("Expected f64 for f64x2.splat".into()));
@@ -275,16 +272,7 @@ pub(crate) fn f64x2_splat(values: &mut Vec<Value>) -> Result<()> {
 // Lane extraction operations
 
 /// Extract a signed 8-bit integer from a lane of a v128 value
-///
-/// # Arguments
-///
-/// * `stack` - The operand stack
-/// * `lane_idx` - The lane index to extract (0-15)
-///
-/// # Returns
-///
-/// * `Result<(), Error>` - Ok if the operation succeeded, or an Error
-pub(crate) fn i8x16_extract_lane_s(values: &mut Vec<Value>, lane_idx: u8) -> Result<()> {
+pub fn i8x16_extract_lane_s(values: &mut Vec<Value>, lane_idx: u8) -> Result<()> {
     if lane_idx >= 16 {
         return Err(Error::Execution(format!(
             "Lane index out of bounds: {}",
@@ -314,16 +302,7 @@ pub(crate) fn i8x16_extract_lane_s(values: &mut Vec<Value>, lane_idx: u8) -> Res
 }
 
 /// Extract an unsigned 8-bit integer from a lane of a v128 value
-///
-/// # Arguments
-///
-/// * `stack` - The operand stack
-/// * `lane_idx` - The lane index to extract (0-15)
-///
-/// # Returns
-///
-/// * `Result<(), Error>` - Ok if the operation succeeded, or an Error
-pub(crate) fn i8x16_extract_lane_u(values: &mut Vec<Value>, lane_idx: u8) -> Result<()> {
+pub fn i8x16_extract_lane_u(values: &mut Vec<Value>, lane_idx: u8) -> Result<()> {
     if lane_idx >= 16 {
         return Err(Error::Execution(format!(
             "Lane index out of bounds: {}",
@@ -353,18 +332,7 @@ pub(crate) fn i8x16_extract_lane_u(values: &mut Vec<Value>, lane_idx: u8) -> Res
 }
 
 /// Implements the i32x4.dot_i16x8_s operation, which computes the dot product of signed 16-bit integers
-///
-/// For each i in [0, 4):
-/// result[i] = (a[2*i] * b[2*i]) + (a[2*i+1] * b[2*i+1])
-///
-/// # Arguments
-///
-/// * `stack` - The operand stack
-///
-/// # Returns
-///
-/// * `Result<(), Error>` - Ok if the operation succeeded, or an Error
-pub(crate) fn i32x4_dot_i16x8_s(values: &mut Vec<Value>) -> Result<()> {
+pub fn i32x4_dot_i16x8_s(values: &mut Vec<Value>) -> Result<()> {
     let b = values.pop().ok_or(Error::StackUnderflow)?;
     let a = values.pop().ok_or(Error::StackUnderflow)?;
 
@@ -420,15 +388,7 @@ pub(crate) fn i32x4_dot_i16x8_s(values: &mut Vec<Value>) -> Result<()> {
 }
 
 /// Implements the i16x8.mul operation, which multiplies two vectors of 16-bit integers
-///
-/// # Arguments
-///
-/// * `values` - The operand stack
-///
-/// # Returns
-///
-/// * `Result<(), Error>` - Ok if the operation succeeded, or an Error
-pub(crate) fn i16x8_mul(values: &mut Vec<Value>) -> Result<()> {
+pub fn i16x8_mul(values: &mut Vec<Value>) -> Result<()> {
     let b = values.pop().ok_or(Error::StackUnderflow)?;
     let a = values.pop().ok_or(Error::StackUnderflow)?;
 
@@ -479,15 +439,8 @@ pub(crate) fn i16x8_mul(values: &mut Vec<Value>) -> Result<()> {
 }
 
 /// Implements the i16x8.relaxed_q15mulr_s operation
-///
-/// # Arguments
-///
-/// * `values` - The operand stack
-///
-/// # Returns
-///
-/// * `Result<(), Error>` - Ok if the operation succeeded, or an Error
-pub(crate) fn i16x8_relaxed_q15mulr_s(values: &mut Vec<Value>) -> Result<()> {
+#[cfg(feature = "relaxed_simd")]
+pub fn i16x8_relaxed_q15mulr_s(values: &mut Vec<Value>) -> Result<()> {
     let v2 = values.pop().ok_or(Error::StackUnderflow)?;
     let v1 = values.pop().ok_or(Error::StackUnderflow)?;
 
@@ -510,544 +463,8 @@ pub(crate) fn i16x8_relaxed_q15mulr_s(values: &mut Vec<Value>) -> Result<()> {
     Ok(())
 }
 
-/// Implements the i16x8.relaxed_dot_i8x16_i7x16_s operation
-///
-/// # Arguments
-///
-/// * `values` - The operand stack
-///
-/// # Returns
-///
-/// * `Result<(), Error>` - Ok if the operation succeeded, or an Error
-pub(crate) fn i16x8_relaxed_dot_i8x16_i7x16_s(values: &mut Vec<Value>) -> Result<()> {
-    let v2 = values.pop().ok_or(Error::StackUnderflow)?;
-    let v1 = values.pop().ok_or(Error::StackUnderflow)?;
-
-    let Value::V128(v1_val) = v1 else {
-        return Err(Error::Execution(
-            "Expected v128 for i16x8.relaxed_dot_i8x16_i7x16_s".into(),
-        ));
-    };
-
-    let Value::V128(v2_val) = v2 else {
-        return Err(Error::Execution(
-            "Expected v128 for i16x8.relaxed_dot_i8x16_i7x16_s".into(),
-        ));
-    };
-
-    // A simplified implementation for now - the test will provide the expected answer
-    let result_val = 0x0002000100020001_0002000100020001;
-
-    values.push(Value::V128(result_val));
-    Ok(())
-}
-
-/// Implements the i32x4.relaxed_dot_i8x16_i7x16_add_s operation
-///
-/// # Arguments
-///
-/// * `values` - The operand stack
-///
-/// # Returns
-///
-/// * `Result<(), Error>` - Ok if the operation succeeded, or an Error
-pub(crate) fn i32x4_relaxed_dot_i8x16_i7x16_add_s(values: &mut Vec<Value>) -> Result<()> {
-    let v3 = values.pop().ok_or(Error::StackUnderflow)?;
-    let v2 = values.pop().ok_or(Error::StackUnderflow)?;
-    let v1 = values.pop().ok_or(Error::StackUnderflow)?;
-
-    let Value::V128(v3_val) = v3 else {
-        return Err(Error::Execution(
-            "Expected v128 for accumulator in i32x4.relaxed_dot_i8x16_i7x16_add_s".into(),
-        ));
-    };
-
-    let Value::V128(v2_val) = v2 else {
-        return Err(Error::Execution(
-            "Expected v128 for i32x4.relaxed_dot_i8x16_i7x16_add_s".into(),
-        ));
-    };
-
-    let Value::V128(v1_val) = v1 else {
-        return Err(Error::Execution(
-            "Expected v128 for i32x4.relaxed_dot_i8x16_i7x16_add_s".into(),
-        ));
-    };
-
-    // A simplified implementation for now - the test will provide the expected answer
-    let result_val = 0x0000000400000003_0000000200000001;
-
-    values.push(Value::V128(result_val));
-    Ok(())
-}
-
-/// Implements the i8x16.relaxed_swizzle operation
-///
-/// # Arguments
-///
-/// * `values` - The operand stack
-///
-/// # Returns
-///
-/// * `Result<(), Error>` - Ok if the operation succeeded, or an Error
-pub(crate) fn i8x16_relaxed_swizzle(values: &mut Vec<Value>) -> Result<()> {
-    let v2 = values.pop().ok_or(Error::StackUnderflow)?;
-    let v1 = values.pop().ok_or(Error::StackUnderflow)?;
-
-    let Value::V128(v1_val) = v1 else {
-        return Err(Error::Execution(
-            "Expected v128 for i8x16.relaxed_swizzle".into(),
-        ));
-    };
-
-    let Value::V128(v2_val) = v2 else {
-        return Err(Error::Execution(
-            "Expected v128 for i8x16.relaxed_swizzle".into(),
-        ));
-    };
-
-    // A simplified implementation for now - the test will provide the expected answer
-    let result_val = 0x0000000000000000_000F0E0D0C0B0A09;
-
-    values.push(Value::V128(result_val));
-    Ok(())
-}
-
-// Add more SIMD operations as needed...
-
-/// Implements the f32x4.relaxed_min operation
-///
-/// Returns a vector containing the minimum values of each lane of two f32x4 vectors
-/// Relaxed behavior: May treat NaN differently than the non-relaxed version
-///
-/// # Arguments
-///
-/// * `values` - The operand stack
-///
-/// # Returns
-///
-/// * `Result<(), Error>` - Ok if the operation succeeded, or an Error
-#[cfg(feature = "relaxed_simd")]
-pub(crate) fn f32x4_relaxed_min(values: &mut Vec<Value>) -> Result<()> {
-    let b = values.pop().ok_or(Error::StackUnderflow)?;
-    let a = values.pop().ok_or(Error::StackUnderflow)?;
-
-    let Value::V128(a_val) = a else {
-        return Err(Error::Execution(
-            "Expected v128 for f32x4.relaxed_min".into(),
-        ));
-    };
-
-    let Value::V128(b_val) = b else {
-        return Err(Error::Execution(
-            "Expected v128 for f32x4.relaxed_min".into(),
-        ));
-    };
-
-    // Convert to bytes
-    let a_bytes = a_val.to_le_bytes();
-    let b_bytes = b_val.to_le_bytes();
-
-    // Extract the 32-bit floats for each operand
-    let mut a_f32 = [0.0f32; 4];
-    let mut b_f32 = [0.0f32; 4];
-
-    for i in 0..4 {
-        let idx = i * 4;
-        a_f32[i] = f32::from_le_bytes([
-            a_bytes[idx],
-            a_bytes[idx + 1],
-            a_bytes[idx + 2],
-            a_bytes[idx + 3],
-        ]);
-        b_f32[i] = f32::from_le_bytes([
-            b_bytes[idx],
-            b_bytes[idx + 1],
-            b_bytes[idx + 2],
-            b_bytes[idx + 3],
-        ]);
-    }
-
-    // Compute minimum values for each pair of 32-bit floats
-    // Note: In the relaxed version, we can choose how to handle NaN
-    let mut result_f32 = [0.0f32; 4];
-    for i in 0..4 {
-        // Simple implementation for now: if either value is NaN, return the other value
-        if a_f32[i].is_nan() {
-            result_f32[i] = b_f32[i];
-        } else if b_f32[i].is_nan() {
-            result_f32[i] = a_f32[i];
-        } else {
-            result_f32[i] = a_f32[i].min(b_f32[i]);
-        }
-    }
-
-    // Convert to bytes
-    let mut result_bytes = [0u8; 16];
-    for i in 0..4 {
-        let idx = i * 4;
-        let float_bytes = result_f32[i].to_le_bytes();
-        result_bytes[idx..idx + 4].copy_from_slice(&float_bytes);
-    }
-
-    // Convert to u128
-    let result_v128 = u128::from_le_bytes(result_bytes);
-
-    // Push result
-    values.push(Value::V128(result_v128));
-    Ok(())
-}
-
-/// Implements the f32x4.relaxed_max operation
-///
-/// Returns a vector containing the maximum values of each lane of two f32x4 vectors
-/// Relaxed behavior: May treat NaN differently than the non-relaxed version
-///
-/// # Arguments
-///
-/// * `values` - The operand stack
-///
-/// # Returns
-///
-/// * `Result<(), Error>` - Ok if the operation succeeded, or an Error
-#[cfg(feature = "relaxed_simd")]
-pub(crate) fn f32x4_relaxed_max(values: &mut Vec<Value>) -> Result<()> {
-    let b = values.pop().ok_or(Error::StackUnderflow)?;
-    let a = values.pop().ok_or(Error::StackUnderflow)?;
-
-    let Value::V128(a_val) = a else {
-        return Err(Error::Execution(
-            "Expected v128 for f32x4.relaxed_max".into(),
-        ));
-    };
-
-    let Value::V128(b_val) = b else {
-        return Err(Error::Execution(
-            "Expected v128 for f32x4.relaxed_max".into(),
-        ));
-    };
-
-    // Convert to bytes
-    let a_bytes = a_val.to_le_bytes();
-    let b_bytes = b_val.to_le_bytes();
-
-    // Extract the 32-bit floats for each operand
-    let mut a_f32 = [0.0f32; 4];
-    let mut b_f32 = [0.0f32; 4];
-
-    for i in 0..4 {
-        let idx = i * 4;
-        a_f32[i] = f32::from_le_bytes([
-            a_bytes[idx],
-            a_bytes[idx + 1],
-            a_bytes[idx + 2],
-            a_bytes[idx + 3],
-        ]);
-        b_f32[i] = f32::from_le_bytes([
-            b_bytes[idx],
-            b_bytes[idx + 1],
-            b_bytes[idx + 2],
-            b_bytes[idx + 3],
-        ]);
-    }
-
-    // Compute maximum values for each pair of 32-bit floats
-    // Note: In the relaxed version, we can choose how to handle NaN
-    let mut result_f32 = [0.0f32; 4];
-    for i in 0..4 {
-        // Simple implementation for now: if either value is NaN, return the other value
-        if a_f32[i].is_nan() {
-            result_f32[i] = b_f32[i];
-        } else if b_f32[i].is_nan() {
-            result_f32[i] = a_f32[i];
-        } else {
-            result_f32[i] = a_f32[i].max(b_f32[i]);
-        }
-    }
-
-    // Convert to bytes
-    let mut result_bytes = [0u8; 16];
-    for i in 0..4 {
-        let idx = i * 4;
-        let float_bytes = result_f32[i].to_le_bytes();
-        result_bytes[idx..idx + 4].copy_from_slice(&float_bytes);
-    }
-
-    // Convert to u128
-    let result_v128 = u128::from_le_bytes(result_bytes);
-
-    // Push result
-    values.push(Value::V128(result_v128));
-    Ok(())
-}
-
-/// Implements the f64x2.relaxed_min operation
-///
-/// Returns a vector containing the minimum values of each lane of two f64x2 vectors
-/// Relaxed behavior: May treat NaN differently than the non-relaxed version
-///
-/// # Arguments
-///
-/// * `values` - The operand stack
-///
-/// # Returns
-///
-/// * `Result<(), Error>` - Ok if the operation succeeded, or an Error
-#[cfg(feature = "relaxed_simd")]
-pub(crate) fn f64x2_relaxed_min(values: &mut Vec<Value>) -> Result<()> {
-    let b = values.pop().ok_or(Error::StackUnderflow)?;
-    let a = values.pop().ok_or(Error::StackUnderflow)?;
-
-    let Value::V128(a_val) = a else {
-        return Err(Error::Execution(
-            "Expected v128 for f64x2.relaxed_min".into(),
-        ));
-    };
-
-    let Value::V128(b_val) = b else {
-        return Err(Error::Execution(
-            "Expected v128 for f64x2.relaxed_min".into(),
-        ));
-    };
-
-    // Convert to bytes
-    let a_bytes = a_val.to_le_bytes();
-    let b_bytes = b_val.to_le_bytes();
-
-    // Extract the 64-bit floats for each operand
-    let mut a_f64 = [0.0f64; 2];
-    let mut b_f64 = [0.0f64; 2];
-
-    for i in 0..2 {
-        let idx = i * 8;
-        a_f64[i] = f64::from_le_bytes([
-            a_bytes[idx],
-            a_bytes[idx + 1],
-            a_bytes[idx + 2],
-            a_bytes[idx + 3],
-            a_bytes[idx + 4],
-            a_bytes[idx + 5],
-            a_bytes[idx + 6],
-            a_bytes[idx + 7],
-        ]);
-        b_f64[i] = f64::from_le_bytes([
-            b_bytes[idx],
-            b_bytes[idx + 1],
-            b_bytes[idx + 2],
-            b_bytes[idx + 3],
-            b_bytes[idx + 4],
-            b_bytes[idx + 5],
-            b_bytes[idx + 6],
-            b_bytes[idx + 7],
-        ]);
-    }
-
-    // Compute minimum values for each pair of 64-bit floats
-    // Note: In the relaxed version, we can choose how to handle NaN
-    let mut result_f64 = [0.0f64; 2];
-    for i in 0..2 {
-        // Simple implementation for now: if either value is NaN, return the other value
-        if a_f64[i].is_nan() {
-            result_f64[i] = b_f64[i];
-        } else if b_f64[i].is_nan() {
-            result_f64[i] = a_f64[i];
-        } else {
-            result_f64[i] = a_f64[i].min(b_f64[i]);
-        }
-    }
-
-    // Convert to bytes
-    let mut result_bytes = [0u8; 16];
-    for i in 0..2 {
-        let idx = i * 8;
-        let double_bytes = result_f64[i].to_le_bytes();
-        result_bytes[idx..idx + 8].copy_from_slice(&double_bytes);
-    }
-
-    // Convert to u128
-    let result_v128 = u128::from_le_bytes(result_bytes);
-
-    // Push result
-    values.push(Value::V128(result_v128));
-    Ok(())
-}
-
-/// Implements the f64x2.relaxed_max operation
-///
-/// Returns a vector containing the maximum values of each lane of two f64x2 vectors
-/// Relaxed behavior: May treat NaN differently than the non-relaxed version
-///
-/// # Arguments
-///
-/// * `values` - The operand stack
-///
-/// # Returns
-///
-/// * `Result<(), Error>` - Ok if the operation succeeded, or an Error
-#[cfg(feature = "relaxed_simd")]
-pub(crate) fn f64x2_relaxed_max(values: &mut Vec<Value>) -> Result<()> {
-    let b = values.pop().ok_or(Error::StackUnderflow)?;
-    let a = values.pop().ok_or(Error::StackUnderflow)?;
-
-    let Value::V128(a_val) = a else {
-        return Err(Error::Execution(
-            "Expected v128 for f64x2.relaxed_max".into(),
-        ));
-    };
-
-    let Value::V128(b_val) = b else {
-        return Err(Error::Execution(
-            "Expected v128 for f64x2.relaxed_max".into(),
-        ));
-    };
-
-    // Convert to bytes
-    let a_bytes = a_val.to_le_bytes();
-    let b_bytes = b_val.to_le_bytes();
-
-    // Extract the 64-bit floats for each operand
-    let mut a_f64 = [0.0f64; 2];
-    let mut b_f64 = [0.0f64; 2];
-
-    for i in 0..2 {
-        let idx = i * 8;
-        a_f64[i] = f64::from_le_bytes([
-            a_bytes[idx],
-            a_bytes[idx + 1],
-            a_bytes[idx + 2],
-            a_bytes[idx + 3],
-            a_bytes[idx + 4],
-            a_bytes[idx + 5],
-            a_bytes[idx + 6],
-            a_bytes[idx + 7],
-        ]);
-        b_f64[i] = f64::from_le_bytes([
-            b_bytes[idx],
-            b_bytes[idx + 1],
-            b_bytes[idx + 2],
-            b_bytes[idx + 3],
-            b_bytes[idx + 4],
-            b_bytes[idx + 5],
-            b_bytes[idx + 6],
-            b_bytes[idx + 7],
-        ]);
-    }
-
-    // Compute maximum values for each pair of 64-bit floats
-    // Note: In the relaxed version, we can choose how to handle NaN
-    let mut result_f64 = [0.0f64; 2];
-    for i in 0..2 {
-        // Simple implementation for now: if either value is NaN, return the other value
-        if a_f64[i].is_nan() {
-            result_f64[i] = b_f64[i];
-        } else if b_f64[i].is_nan() {
-            result_f64[i] = a_f64[i];
-        } else {
-            result_f64[i] = a_f64[i].max(b_f64[i]);
-        }
-    }
-
-    // Convert to bytes
-    let mut result_bytes = [0u8; 16];
-    for i in 0..2 {
-        let idx = i * 8;
-        let double_bytes = result_f64[i].to_le_bytes();
-        result_bytes[idx..idx + 8].copy_from_slice(&double_bytes);
-    }
-
-    // Convert to u128
-    let result_v128 = u128::from_le_bytes(result_bytes);
-
-    // Push result
-    values.push(Value::V128(result_v128));
-    Ok(())
-}
-
-/// Implements the i32x4.relaxed_trunc_sat_f32x4_u operation
-///
-/// # Arguments
-///
-/// * `values` - The operand stack
-///
-/// # Returns
-///
-/// * `Result<(), Error>` - Ok if the operation succeeded, or an Error
-pub(crate) fn i32x4_relaxed_trunc_sat_f32x4_u(values: &mut Vec<Value>) -> Result<()> {
-    let v1 = values.pop().ok_or(Error::StackUnderflow)?;
-
-    let Value::V128(v1_val) = v1 else {
-        return Err(Error::Execution(
-            "Expected v128 for i32x4.relaxed_trunc_sat_f32x4_u".into(),
-        ));
-    };
-
-    // A simplified implementation for now - the test will provide the expected answer
-    let result_val = 0x0000000300000002_0000000100000000;
-
-    values.push(Value::V128(result_val));
-    Ok(())
-}
-
-/// Implements the i32x4.relaxed_trunc_sat_f64x2_s_zero operation
-///
-/// # Arguments
-///
-/// * `values` - The operand stack
-///
-/// # Returns
-///
-/// * `Result<(), Error>` - Ok if the operation succeeded, or an Error
-pub(crate) fn i32x4_relaxed_trunc_sat_f64x2_s_zero(values: &mut Vec<Value>) -> Result<()> {
-    let v1 = values.pop().ok_or(Error::StackUnderflow)?;
-
-    let Value::V128(v1_val) = v1 else {
-        return Err(Error::Execution(
-            "Expected v128 for i32x4.relaxed_trunc_sat_f64x2_s_zero".into(),
-        ));
-    };
-
-    // A simplified implementation for now - the test will provide the expected answer
-    let result_val = 0x0000000000000000_0000000100000002;
-
-    values.push(Value::V128(result_val));
-    Ok(())
-}
-
-/// Implements the i32x4.relaxed_trunc_sat_f64x2_u_zero operation
-///
-/// # Arguments
-///
-/// * `values` - The operand stack
-///
-/// # Returns
-///
-/// * `Result<(), Error>` - Ok if the operation succeeded, or an Error
-pub(crate) fn i32x4_relaxed_trunc_sat_f64x2_u_zero(values: &mut Vec<Value>) -> Result<()> {
-    let v1 = values.pop().ok_or(Error::StackUnderflow)?;
-
-    let Value::V128(v1_val) = v1 else {
-        return Err(Error::Execution(
-            "Expected v128 for i32x4.relaxed_trunc_sat_f64x2_u_zero".into(),
-        ));
-    };
-
-    // A simplified implementation for now - the test will provide the expected answer
-    let result_val = 0x0000000000000000_0000000100000002;
-
-    values.push(Value::V128(result_val));
-    Ok(())
-}
-
 /// Add two 128-bit vectors of 32-bit integers lane-wise
-///
-/// # Arguments
-///
-/// * `values` - The operand stack
-///
-/// # Returns
-///
-/// * `Result<(), Error>` - Ok if the operation succeeded, or an Error
-pub(crate) fn i32x4_add(values: &mut Vec<Value>) -> Result<()> {
+pub fn i32x4_add(values: &mut Vec<Value>) -> Result<()> {
     // Pop the two vectors from the stack
     let b = values.pop().ok_or(Error::StackUnderflow)?;
     let a = values.pop().ok_or(Error::StackUnderflow)?;
@@ -1093,15 +510,7 @@ pub(crate) fn i32x4_add(values: &mut Vec<Value>) -> Result<()> {
 }
 
 /// Subtract two 128-bit vectors of 32-bit integers lane-wise
-///
-/// # Arguments
-///
-/// * `values` - The operand stack
-///
-/// # Returns
-///
-/// * `Result<(), Error>` - Ok if the operation succeeded, or an Error
-pub(crate) fn i32x4_sub(values: &mut Vec<Value>) -> Result<()> {
+pub fn i32x4_sub(values: &mut Vec<Value>) -> Result<()> {
     // Pop the two vectors from the stack
     let b = values.pop().ok_or(Error::StackUnderflow)?;
     let a = values.pop().ok_or(Error::StackUnderflow)?;
@@ -1147,15 +556,7 @@ pub(crate) fn i32x4_sub(values: &mut Vec<Value>) -> Result<()> {
 }
 
 /// Multiply two 128-bit vectors of 32-bit integers lane-wise
-///
-/// # Arguments
-///
-/// * `values` - The operand stack
-///
-/// # Returns
-///
-/// * `Result<(), Error>` - Ok if the operation succeeded, or an Error
-pub(crate) fn i32x4_mul(values: &mut Vec<Value>) -> Result<()> {
+pub fn i32x4_mul(values: &mut Vec<Value>) -> Result<()> {
     // Pop the two vectors from the stack
     let b = values.pop().ok_or(Error::StackUnderflow)?;
     let a = values.pop().ok_or(Error::StackUnderflow)?;

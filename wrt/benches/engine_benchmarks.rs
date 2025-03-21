@@ -1,7 +1,5 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use wrt::{
-    new_engine, new_stackless_engine, FuncType, Function, Instruction, Module, Value, ValueType,
-};
+use wrt::{new_stackless_engine, FuncType, Function, Instruction, Module, Value, ValueType};
 
 fn create_test_module() -> Module {
     let mut module = Module::new();
@@ -94,13 +92,6 @@ fn benchmark_engine_loading(c: &mut Criterion) {
 
     let mut group = c.benchmark_group("wasm_component_loading");
 
-    group.bench_function("normal_engine", |b| {
-        b.iter(|| {
-            let mut engine = new_engine();
-            black_box(engine.instantiate(module.clone())).unwrap();
-        });
-    });
-
     group.bench_function("stackless_engine", |b| {
         b.iter(|| {
             let mut engine = new_stackless_engine();
@@ -116,16 +107,6 @@ fn benchmark_simple_execution(c: &mut Criterion) {
 
     // Create a simple module that adds two numbers
     let module = create_test_module();
-
-    group.bench_function("normal_engine", |b| {
-        b.iter(|| {
-            let mut engine = wrt::new_engine();
-            engine.instantiate(module.clone()).unwrap();
-            engine
-                .execute(0, 0, vec![Value::I32(5), Value::I32(3)])
-                .unwrap()
-        })
-    });
 
     group.bench_function("stackless_engine", |b| {
         b.iter(|| {
@@ -149,14 +130,6 @@ fn benchmark_complex_execution(c: &mut Criterion) {
     // Create an empty module and load it from binary
     let module = Module::new().load_from_binary(&wasm_bytes).unwrap();
 
-    group.bench_function("normal_engine", |b| {
-        b.iter(|| {
-            let mut engine = wrt::new_engine();
-            engine.instantiate(module.clone()).unwrap();
-            engine.execute(0, 0, vec![Value::I32(10)]).unwrap()
-        })
-    });
-
     group.bench_function("stackless_engine", |b| {
         b.iter(|| {
             let mut engine = wrt::new_stackless_engine();
@@ -175,16 +148,6 @@ fn benchmark_memory_operations(c: &mut Criterion) {
 
     // Create a module that performs memory operations
     let module = create_memory_module();
-
-    group.bench_function("normal_engine", |b| {
-        b.iter(|| {
-            let mut engine = wrt::new_engine();
-            engine.instantiate(module.clone()).unwrap();
-            engine
-                .execute(0, 0, vec![Value::I32(5), Value::I32(3)])
-                .unwrap()
-        })
-    });
 
     group.bench_function("stackless_engine", |b| {
         b.iter(|| {
