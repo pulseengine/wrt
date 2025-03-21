@@ -26,32 +26,15 @@ This document tracks the implementation tasks for the WRT project based on requi
    - [x] Address unused variables by prefixing with underscores in control.rs, parametric.rs, table.rs, and stackless.rs
    - [x] Remove dead code in `wrt/src/execution.rs` (unused InstructionCategory enum and MAX_CALL_DEPTH constant)
 
-4. [ ] **Focus on Component Model Implementation (REQ_014, REQ_021)**
-   - Current status: Basic component model structure exists with partial implementation. Core module extraction from components works, and we've added resource handling and interface types support.
+4. [~] **Focus on Component Model Implementation (REQ_014, REQ_021)**
+   - Current status: Resource type handling and interface types support has been implemented. Fixed type errors in component.rs.
    - Implementation plan:
-     - [ ] **Binary Format Parsing**:
-       - Enhance the `load_component_binary` method in `module.rs` to fully implement the Component Model binary format spec
-       - Support all section types and canonical type representation
-       - Implement proper validation of component format
-     - [x] **Resource Type Handling**:
-       - Add resource type definitions to `types.rs`
-       - Implement resource lifetime management
-       - Support resource tables and reference counting
-     - [x] **Interface Types**:
-       - Expand `ComponentType` to support all interface types
-       - Implement canonical ABI for interface types
-       - Add value lifting/lowering between core and component types
-     - [ ] **Component Instantiation**:
-       - Enhance component instantiation in `component.rs`
-       - Implement proper component linking
-       - Support instance exports and imports
-     - [ ] **Custom Section Handling**:
-       - Add support for component-specific custom sections
-       - Implement metadata extraction from custom sections
-     - [x] **Component Model Testing**:
-       - Create tests with real component binaries
-       - Test resource lifetime management
-       - Test component instantiation and linking
+     - [x] Fix type compatibility between component::InstanceType and types::InstanceType
+     - [x] Add Clone implementations for ExternValue and related types
+     - [x] Fix memory read operations to return Vec<u8> instead of &[u8]
+     - [ ] Fix the load_component_binary method to properly implement the binary format specification
+     - [ ] Enhance component instantiation to support proper linking
+     - [ ] Add support for component imports/exports
    - Dependencies: This task builds upon the existing execution engine and module parsing
    - Test files: 
      - Added basic tests in `wrt/tests/component_tests.rs`
