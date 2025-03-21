@@ -381,6 +381,11 @@ impl Engine {
         self.callbacks.clone()
     }
 
+    /// Returns true if the engine has no instances
+    pub fn has_no_instances(&self) -> bool {
+        self.instances.is_empty()
+    }
+
     /// Register a log handler
     pub fn register_log_handler<F>(&self, handler: F)
     where

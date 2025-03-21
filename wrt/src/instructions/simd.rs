@@ -1032,3 +1032,165 @@ pub fn i32x4_relaxed_trunc_sat_f64x2_u_zero(values: &mut Vec<Value>) -> Result<(
     values.push(Value::V128(result_val));
     Ok(())
 }
+
+/// Add two 128-bit vectors of 32-bit integers lane-wise
+///
+/// # Arguments
+///
+/// * `values` - The operand stack
+///
+/// # Returns
+///
+/// * `Result<(), Error>` - Ok if the operation succeeded, or an Error
+pub fn i32x4_add(values: &mut Vec<Value>) -> Result<()> {
+    // Pop the two vectors from the stack
+    let b = values.pop().ok_or(Error::StackUnderflow)?;
+    let a = values.pop().ok_or(Error::StackUnderflow)?;
+
+    // Verify both are V128 values
+    let Value::V128(a_val) = a else {
+        return Err(Error::Execution("Expected v128 for i32x4.add".into()));
+    };
+
+    let Value::V128(b_val) = b else {
+        return Err(Error::Execution("Expected v128 for i32x4.add".into()));
+    };
+
+    // Convert to bytes
+    let a_bytes = a_val.to_le_bytes();
+    let b_bytes = b_val.to_le_bytes();
+
+    // Process 4 lanes of i32
+    let mut result_bytes = [0u8; 16];
+    for i in 0..4 {
+        let offset = i * 4;
+        let mut a_lane_bytes = [0u8; 4];
+        let mut b_lane_bytes = [0u8; 4];
+
+        a_lane_bytes.copy_from_slice(&a_bytes[offset..offset + 4]);
+        b_lane_bytes.copy_from_slice(&b_bytes[offset..offset + 4]);
+
+        let a_lane = i32::from_le_bytes(a_lane_bytes);
+        let b_lane = i32::from_le_bytes(b_lane_bytes);
+
+        let result_lane = a_lane.wrapping_add(b_lane);
+        let result_lane_bytes = result_lane.to_le_bytes();
+
+        result_bytes[offset..offset + 4].copy_from_slice(&result_lane_bytes);
+    }
+
+    // Convert to u128
+    let result_val = u128::from_le_bytes(result_bytes);
+
+    // Push result
+    values.push(Value::V128(result_val));
+    Ok(())
+}
+
+/// Subtract two 128-bit vectors of 32-bit integers lane-wise
+///
+/// # Arguments
+///
+/// * `values` - The operand stack
+///
+/// # Returns
+///
+/// * `Result<(), Error>` - Ok if the operation succeeded, or an Error
+pub fn i32x4_sub(values: &mut Vec<Value>) -> Result<()> {
+    // Pop the two vectors from the stack
+    let b = values.pop().ok_or(Error::StackUnderflow)?;
+    let a = values.pop().ok_or(Error::StackUnderflow)?;
+
+    // Verify both are V128 values
+    let Value::V128(a_val) = a else {
+        return Err(Error::Execution("Expected v128 for i32x4.sub".into()));
+    };
+
+    let Value::V128(b_val) = b else {
+        return Err(Error::Execution("Expected v128 for i32x4.sub".into()));
+    };
+
+    // Convert to bytes
+    let a_bytes = a_val.to_le_bytes();
+    let b_bytes = b_val.to_le_bytes();
+
+    // Process 4 lanes of i32
+    let mut result_bytes = [0u8; 16];
+    for i in 0..4 {
+        let offset = i * 4;
+        let mut a_lane_bytes = [0u8; 4];
+        let mut b_lane_bytes = [0u8; 4];
+
+        a_lane_bytes.copy_from_slice(&a_bytes[offset..offset + 4]);
+        b_lane_bytes.copy_from_slice(&b_bytes[offset..offset + 4]);
+
+        let a_lane = i32::from_le_bytes(a_lane_bytes);
+        let b_lane = i32::from_le_bytes(b_lane_bytes);
+
+        let result_lane = a_lane.wrapping_sub(b_lane);
+        let result_lane_bytes = result_lane.to_le_bytes();
+
+        result_bytes[offset..offset + 4].copy_from_slice(&result_lane_bytes);
+    }
+
+    // Convert to u128
+    let result_val = u128::from_le_bytes(result_bytes);
+
+    // Push result
+    values.push(Value::V128(result_val));
+    Ok(())
+}
+
+/// Multiply two 128-bit vectors of 32-bit integers lane-wise
+///
+/// # Arguments
+///
+/// * `values` - The operand stack
+///
+/// # Returns
+///
+/// * `Result<(), Error>` - Ok if the operation succeeded, or an Error
+pub fn i32x4_mul(values: &mut Vec<Value>) -> Result<()> {
+    // Pop the two vectors from the stack
+    let b = values.pop().ok_or(Error::StackUnderflow)?;
+    let a = values.pop().ok_or(Error::StackUnderflow)?;
+
+    // Verify both are V128 values
+    let Value::V128(a_val) = a else {
+        return Err(Error::Execution("Expected v128 for i32x4.mul".into()));
+    };
+
+    let Value::V128(b_val) = b else {
+        return Err(Error::Execution("Expected v128 for i32x4.mul".into()));
+    };
+
+    // Convert to bytes
+    let a_bytes = a_val.to_le_bytes();
+    let b_bytes = b_val.to_le_bytes();
+
+    // Process 4 lanes of i32
+    let mut result_bytes = [0u8; 16];
+    for i in 0..4 {
+        let offset = i * 4;
+        let mut a_lane_bytes = [0u8; 4];
+        let mut b_lane_bytes = [0u8; 4];
+
+        a_lane_bytes.copy_from_slice(&a_bytes[offset..offset + 4]);
+        b_lane_bytes.copy_from_slice(&b_bytes[offset..offset + 4]);
+
+        let a_lane = i32::from_le_bytes(a_lane_bytes);
+        let b_lane = i32::from_le_bytes(b_lane_bytes);
+
+        let result_lane = a_lane.wrapping_mul(b_lane);
+        let result_lane_bytes = result_lane.to_le_bytes();
+
+        result_bytes[offset..offset + 4].copy_from_slice(&result_lane_bytes);
+    }
+
+    // Convert to u128
+    let result_val = u128::from_le_bytes(result_bytes);
+
+    // Push result
+    values.push(Value::V128(result_val));
+    Ok(())
+}
