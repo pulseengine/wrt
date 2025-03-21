@@ -245,7 +245,8 @@ pub fn generate_directory_tests(attr: TokenStream, item: TokenStream) -> TokenSt
             use std::path::Path;
             use std::fs;
             use wast::parser::{ParseBuffer, Parser};
-            use wast::{Wast, WastDirective};
+            use wast::{Wast, WastDirective, WastExecute, WastArg, WastRet};
+            use wrt::{Engine, Module, Value, Error as WrtError};
 
             // Get testsuite path from build script
             let testsuite_path = match env::var("WASM_TESTSUITE") {
@@ -326,7 +327,270 @@ pub fn generate_directory_tests(attr: TokenStream, item: TokenStream) -> TokenSt
 
                     println!("  Parsed {} directives in {}", wast.directives.len(), file_name);
 
-                    // Call the test function with the file name and test name
+                    // Setup WRT engine and module registry for execution
+                    let mut engine = Engine::new();
+                    let mut current_module_idx = 0;
+
+                    // Process directives
+                    for directive in wast.directives {
+                        match directive {
+                            WastDirective::Module(module) => {
+                                println!("    Processing module");
+
+                                // Convert WAT to binary WebAssembly
+                                let binary = module.encode().unwrap();
+
+                                // Load the module into the engine
+                                match Module::from_binary(&binary) {
+                                    Ok(module) => {
+                                        match engine.load_module(module) {
+                                            Ok(idx) => {
+                                                println!("    Module loaded successfully with index {}", idx);
+                                                current_module_idx = idx;
+                                            }
+                                            Err(e) => {
+                                                println!("    Failed to load module: {}", e);
+                                            }
+                                        }
+                                    }
+                                    Err(e) => {
+                                        println!("    Failed to parse binary module: {}", e);
+                                    }
+                                }
+                            }
+                            WastDirective::Invoke(invoke) => {
+                                println!("    Invoking function: {}", invoke.name);
+
+                                // Convert wast arguments to WRT values
+                                let mut args = Vec::new();
+                                for arg in &invoke.args {
+                                    match arg {
+                                        WastArg::Core(arg_core) => match arg_core {
+                                            wast::WastArgCore::I32(val) => args.push(Value::I32(*val)),
+                                            wast::WastArgCore::I64(val) => args.push(Value::I64(*val)),
+                                            wast::WastArgCore::F32(val) => args.push(Value::F32(f32::from_bits(val.bits()))),
+                                            wast::WastArgCore::F64(val) => args.push(Value::F64(f64::from_bits(val.bits()))),
+                                            wast::WastArgCore::V128(val) => {
+                                                let bits = u128::from_le_bytes(val.bytes());
+                                                args.push(Value::V128(bits));
+                                            },
+                                            _ => {
+                                                println!("    Unsupported argument type: {:?}", arg_core);
+                                                continue;
+                                            }
+                                        },
+                                        _ => {
+                                            println!("    Unsupported non-core argument type");
+                                            continue;
+                                        }
+                                    }
+                                }
+
+                                // Execute the function
+                                match engine.execute(current_module_idx, invoke.name, args) {
+                                    Ok(results) => {
+                                        println!("    Function executed successfully with {} results", results.len());
+                                    }
+                                    Err(e) => {
+                                        println!("    Function execution failed: {}", e);
+                                    }
+                                }
+                            }
+                            WastDirective::AssertReturn { exec, results, .. } => {
+                                println!("    Asserting return values");
+
+                                // Execute the function
+                                if let WastExecute::Invoke(invoke) = exec {
+                                    // Convert wast arguments to WRT values
+                                    let mut args = Vec::new();
+                                    for arg in &invoke.args {
+                                        match arg {
+                                            WastArg::Core(arg_core) => match arg_core {
+                                                wast::WastArgCore::I32(val) => args.push(Value::I32(*val)),
+                                                wast::WastArgCore::I64(val) => args.push(Value::I64(*val)),
+                                                wast::WastArgCore::F32(val) => args.push(Value::F32(f32::from_bits(val.bits()))),
+                                                wast::WastArgCore::F64(val) => args.push(Value::F64(f64::from_bits(val.bits()))),
+                                                wast::WastArgCore::V128(val) => {
+                                                    let bits = u128::from_le_bytes(val.bytes());
+                                                    args.push(Value::V128(bits));
+                                                },
+                                                _ => {
+                                                    println!("    Unsupported argument type: {:?}", arg_core);
+                                                    continue;
+                                                }
+                                            },
+                                            _ => {
+                                                println!("    Unsupported non-core argument type");
+                                                continue;
+                                            }
+                                        }
+                                    }
+
+                                    // Execute the function
+                                    match engine.execute(current_module_idx, invoke.name, args) {
+                                        Ok(actual_results) => {
+                                            // Compare expected and actual results
+                                            let mut is_match = true;
+                                            if actual_results.len() != results.len() {
+                                                println!("    Result count mismatch: expected {}, got {}",
+                                                        results.len(), actual_results.len());
+                                                is_match = false;
+                                            } else {
+                                                // Perform detailed comparison of each result
+                                                for (i, (expected, actual)) in results.iter().zip(actual_results.iter()).enumerate() {
+                                                    let mut result_matches = false;
+                                                    match expected {
+                                                        WastRet::Core(ret_core) => match ret_core {
+                                                            wast::WastRetCore::I32(expected_val) => {
+                                                                if let Value::I32(actual_val) = actual {
+                                                                    result_matches = *expected_val == *actual_val;
+                                                                    println!("    Comparing i32 result {}: expected {:?}, got {:?}, match: {}",
+                                                                        i, expected_val, actual_val, result_matches);
+                                                                } else {
+                                                                    println!("    Type mismatch: expected i32, got {:?}", actual);
+                                                                }
+                                                            },
+                                                            wast::WastRetCore::I64(expected_val) => {
+                                                                if let Value::I64(actual_val) = actual {
+                                                                    result_matches = *expected_val == *actual_val;
+                                                                    println!("    Comparing i64 result {}: expected {:?}, got {:?}, match: {}",
+                                                                        i, expected_val, actual_val, result_matches);
+                                                                } else {
+                                                                    println!("    Type mismatch: expected i64, got {:?}", actual);
+                                                                }
+                                                            },
+                                                            wast::WastRetCore::F32(expected_val) => {
+                                                                if let Value::F32(actual_val) = actual {
+                                                                    // For NanPattern<F32>, we need to handle NaN patterns
+                                                                    let expected_bits = expected_val.bits();
+                                                                    let actual_bits = actual_val.to_bits();
+
+                                                                    // Check if expected is a NaN pattern
+                                                                    if expected_val.is_nan_pattern() {
+                                                                        // For NaN, we just check if the actual value is also NaN
+                                                                        result_matches = actual_val.is_nan();
+                                                                        println!("    Comparing f32 NaN result {}: expected NaN, got {:?}, match: {}",
+                                                                            i, actual_val, result_matches);
+                                                                    } else {
+                                                                        // For exact comparison, check bit patterns
+                                                                        result_matches = expected_bits == actual_bits;
+                                                                        println!("    Comparing f32 result {}: expected 0x{:x}, got 0x{:x}, match: {}",
+                                                                            i, expected_bits, actual_bits, result_matches);
+                                                                    }
+                                                                } else {
+                                                                    println!("    Type mismatch: expected f32, got {:?}", actual);
+                                                                }
+                                                            },
+                                                            wast::WastRetCore::F64(expected_val) => {
+                                                                if let Value::F64(actual_val) = actual {
+                                                                    // For NanPattern<F64>, we need to handle NaN patterns
+                                                                    let expected_bits = expected_val.bits();
+                                                                    let actual_bits = actual_val.to_bits();
+
+                                                                    // Check if expected is a NaN pattern
+                                                                    if expected_val.is_nan_pattern() {
+                                                                        // For NaN, we just check if the actual value is also NaN
+                                                                        result_matches = actual_val.is_nan();
+                                                                        println!("    Comparing f64 NaN result {}: expected NaN, got {:?}, match: {}",
+                                                                            i, actual_val, result_matches);
+                                                                    } else {
+                                                                        // For exact comparison, check bit patterns
+                                                                        result_matches = expected_bits == actual_bits;
+                                                                        println!("    Comparing f64 result {}: expected 0x{:x}, got 0x{:x}, match: {}",
+                                                                            i, expected_bits, actual_bits, result_matches);
+                                                                    }
+                                                                } else {
+                                                                    println!("    Type mismatch: expected f64, got {:?}", actual);
+                                                                }
+                                                            },
+                                                            wast::WastRetCore::V128(expected_val) => {
+                                                                if let Value::V128(actual_val) = actual {
+                                                                    // For V128Pattern, we need to handle potential lane-wise NaN patterns
+                                                                    let expected_bits = expected_val.bits();
+
+                                                                    // For simple case, just compare the bit patterns directly
+                                                                    result_matches = expected_bits == *actual_val;
+                                                                    println!("    Comparing v128 result {}: expected 0x{:x}, got 0x{:x}, match: {}",
+                                                                        i, expected_bits, actual_val, result_matches);
+                                                                } else {
+                                                                    println!("    Type mismatch: expected v128, got {:?}", actual);
+                                                                }
+                                                            },
+                                                            _ => {
+                                                                println!("    Unsupported result type for comparison: {:?}", ret_core);
+                                                            }
+                                                        },
+                                                        _ => {
+                                                            println!("    Unsupported non-core result type");
+                                                        }
+                                                    }
+
+                                                    if !result_matches {
+                                                        is_match = false;
+                                                    }
+                                                }
+                                            }
+
+                                            if is_match {
+                                                println!("    ✅ Assert return passed");
+                                            } else {
+                                                println!("    ❌ Assert return failed");
+                                            }
+                                        }
+                                        Err(e) => {
+                                            println!("    ❌ Function execution failed: {}", e);
+                                        }
+                                    }
+                                }
+                            }
+                            WastDirective::AssertTrap { exec, .. } => {
+                                println!("    Asserting trap");
+
+                                // Execute the function expecting a trap
+                                if let WastExecute::Invoke(invoke) = exec {
+                                    // Convert wast arguments to WRT values
+                                    let mut args = Vec::new();
+                                    for arg in &invoke.args {
+                                        match arg {
+                                            WastArg::Core(arg_core) => match arg_core {
+                                                wast::WastArgCore::I32(val) => args.push(Value::I32(*val)),
+                                                wast::WastArgCore::I64(val) => args.push(Value::I64(*val)),
+                                                wast::WastArgCore::F32(val) => args.push(Value::F32(f32::from_bits(val.bits()))),
+                                                wast::WastArgCore::F64(val) => args.push(Value::F64(f64::from_bits(val.bits()))),
+                                                wast::WastArgCore::V128(val) => {
+                                                    let bits = u128::from_le_bytes(val.bytes());
+                                                    args.push(Value::V128(bits));
+                                                },
+                                                _ => {
+                                                    println!("    Unsupported argument type: {:?}", arg_core);
+                                                    continue;
+                                                }
+                                            },
+                                            _ => {
+                                                println!("    Unsupported non-core argument type");
+                                                continue;
+                                            }
+                                        }
+                                    }
+
+                                    // Execute the function
+                                    match engine.execute(current_module_idx, invoke.name, args) {
+                                        Ok(_) => {
+                                            println!("    ❌ Expected trap but function executed successfully");
+                                        }
+                                        Err(_) => {
+                                            println!("    ✅ Function trapped as expected");
+                                        }
+                                    }
+                                }
+                            }
+                            _ => {
+                                // Handle other directive types as needed
+                            }
+                        }
+                    }
+
+                    // Call the original function for each file
                     #fn_block
                 }
             }
