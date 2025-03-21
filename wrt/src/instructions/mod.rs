@@ -702,7 +702,7 @@ impl InstructionExecutor for Instruction {
         frame: &mut crate::execution::Frame,
     ) -> std::result::Result<(), crate::error::Error> {
         use crate::error::Error;
-        
+
         match self {
             // Comparison instructions
             Instruction::I32Eqz => comparison::i32_eqz(&mut stack.values),
@@ -716,7 +716,7 @@ impl InstructionExecutor for Instruction {
             Instruction::I32LeU => comparison::i32_le_u(&mut stack.values),
             Instruction::I32GeS => comparison::i32_ge_s(&mut stack.values),
             Instruction::I32GeU => comparison::i32_ge_u(&mut stack.values),
-            
+
             Instruction::I64Eqz => comparison::i64_eqz(&mut stack.values),
             Instruction::I64Eq => comparison::i64_eq(&mut stack.values),
             Instruction::I64Ne => comparison::i64_ne(&mut stack.values),
@@ -728,33 +728,33 @@ impl InstructionExecutor for Instruction {
             Instruction::I64LeU => comparison::i64_le_u(&mut stack.values),
             Instruction::I64GeS => comparison::i64_ge_s(&mut stack.values),
             Instruction::I64GeU => comparison::i64_ge_u(&mut stack.values),
-            
+
             // SIMD - v128 manipulation
             Instruction::V128Load(offset, _align) => {
                 // Implement using the memory operations in the stack
                 // This is a placeholder for now
                 Ok(())
-            },
+            }
             Instruction::V128Store(offset, _align) => {
                 // Implement using the memory operations in the stack
                 // This is a placeholder for now
                 Ok(())
-            },
+            }
             Instruction::V128Const(bytes) => {
                 let value = crate::values::Value::V128(u128::from_le_bytes(*bytes));
                 stack.push(value);
                 Ok(())
-            },
+            }
 
             // SIMD - Basic operations
             Instruction::I8x16Shuffle(lanes) => {
                 // Placeholder - Would need to implement the actual shuffling logic
                 Ok(())
-            },
+            }
             Instruction::I8x16Swizzle => {
                 // Placeholder for swizzle operation
                 Ok(())
-            },
+            }
 
             // SIMD - Lane-wise operations
             Instruction::I8x16ExtractLaneS(lane_idx) => {
@@ -771,8 +771,10 @@ impl InstructionExecutor for Instruction {
                         }
                     }
                 }
-                Err(Error::Execution("Invalid i8x16.extract_lane_s operation".into()))
-            },
+                Err(Error::Execution(
+                    "Invalid i8x16.extract_lane_s operation".into(),
+                ))
+            }
             Instruction::I8x16ExtractLaneU(lane_idx) => {
                 if let Some(v) = stack.last() {
                     if let crate::values::Value::V128(v_val) = v {
@@ -786,8 +788,10 @@ impl InstructionExecutor for Instruction {
                         }
                     }
                 }
-                Err(Error::Execution("Invalid i8x16.extract_lane_u operation".into()))
-            },
+                Err(Error::Execution(
+                    "Invalid i8x16.extract_lane_u operation".into(),
+                ))
+            }
 
             // SIMD - Splat operations
             Instruction::I8x16Splat => simd::i8x16_splat(&mut stack.values),
@@ -816,17 +820,27 @@ impl InstructionExecutor for Instruction {
             #[cfg(feature = "relaxed_simd")]
             Instruction::I16x8RelaxedQ15MulrS => simd::i16x8_relaxed_q15mulr_s(&mut stack.values),
             #[cfg(feature = "relaxed_simd")]
-            Instruction::I16x8RelaxedDotI8x16I7x16S => simd::i16x8_relaxed_dot_i8x16_i7x16_s(&mut stack.values),
+            Instruction::I16x8RelaxedDotI8x16I7x16S => {
+                simd::i16x8_relaxed_dot_i8x16_i7x16_s(&mut stack.values)
+            }
             #[cfg(feature = "relaxed_simd")]
-            Instruction::I32x4RelaxedDotI8x16I7x16AddS => simd::i32x4_relaxed_dot_i8x16_i7x16_add_s(&mut stack.values),
+            Instruction::I32x4RelaxedDotI8x16I7x16AddS => {
+                simd::i32x4_relaxed_dot_i8x16_i7x16_add_s(&mut stack.values)
+            }
             #[cfg(feature = "relaxed_simd")]
             Instruction::I8x16RelaxedSwizzle => simd::i8x16_relaxed_swizzle(&mut stack.values),
             #[cfg(feature = "relaxed_simd")]
-            Instruction::I32x4RelaxedTruncSatF32x4U => simd::i32x4_relaxed_trunc_sat_f32x4_u(&mut stack.values),
+            Instruction::I32x4RelaxedTruncSatF32x4U => {
+                simd::i32x4_relaxed_trunc_sat_f32x4_u(&mut stack.values)
+            }
             #[cfg(feature = "relaxed_simd")]
-            Instruction::I32x4RelaxedTruncSatF64x2SZero => simd::i32x4_relaxed_trunc_sat_f64x2_s_zero(&mut stack.values),
+            Instruction::I32x4RelaxedTruncSatF64x2SZero => {
+                simd::i32x4_relaxed_trunc_sat_f64x2_s_zero(&mut stack.values)
+            }
             #[cfg(feature = "relaxed_simd")]
-            Instruction::I32x4RelaxedTruncSatF64x2UZero => simd::i32x4_relaxed_trunc_sat_f64x2_u_zero(&mut stack.values),
+            Instruction::I32x4RelaxedTruncSatF64x2UZero => {
+                simd::i32x4_relaxed_trunc_sat_f64x2_u_zero(&mut stack.values)
+            }
 
             // For other instructions, defer to other matchers or return not implemented
             _ => Err(Error::Execution(format!(
