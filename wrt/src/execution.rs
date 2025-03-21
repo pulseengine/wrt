@@ -2,11 +2,11 @@ use crate::error::{Error, Result};
 use crate::global::Global;
 use crate::instructions::{
     // Import all instruction implementations
-    control::{push_label, LabelType},
-    Instruction,
     arithmetic,
     comparison,
+    control::{push_label, LabelType},
     numeric_constants,
+    Instruction,
 };
 use crate::logging::{CallbackRegistry, LogLevel, LogOperation};
 use crate::memory::Memory;
@@ -1901,6 +1901,52 @@ impl Engine {
             }
             Instruction::I32GeU => {
                 comparison::i32_ge_u(&mut self.stack.values)?;
+                Ok(None)
+            }
+
+            // I64 comparison operations
+            Instruction::I64Eqz => {
+                comparison::i64_eqz(&mut self.stack.values)?;
+                Ok(None)
+            }
+            Instruction::I64Eq => {
+                comparison::i64_eq(&mut self.stack.values)?;
+                Ok(None)
+            }
+            Instruction::I64Ne => {
+                comparison::i64_ne(&mut self.stack.values)?;
+                Ok(None)
+            }
+            Instruction::I64LtS => {
+                comparison::i64_lt_s(&mut self.stack.values)?;
+                Ok(None)
+            }
+            Instruction::I64LtU => {
+                comparison::i64_lt_u(&mut self.stack.values)?;
+                Ok(None)
+            }
+            Instruction::I64GtS => {
+                comparison::i64_gt_s(&mut self.stack.values)?;
+                Ok(None)
+            }
+            Instruction::I64GtU => {
+                comparison::i64_gt_u(&mut self.stack.values)?;
+                Ok(None)
+            }
+            Instruction::I64LeS => {
+                comparison::i64_le_s(&mut self.stack.values)?;
+                Ok(None)
+            }
+            Instruction::I64LeU => {
+                comparison::i64_le_u(&mut self.stack.values)?;
+                Ok(None)
+            }
+            Instruction::I64GeS => {
+                comparison::i64_ge_s(&mut self.stack.values)?;
+                Ok(None)
+            }
+            Instruction::I64GeU => {
+                comparison::i64_ge_u(&mut self.stack.values)?;
                 Ok(None)
             }
 
