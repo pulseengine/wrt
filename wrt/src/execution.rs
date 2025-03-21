@@ -2473,12 +2473,33 @@ impl Engine {
                 Ok(None)
             }
 
+            // I64 arithmetic operations
+            Instruction::I64Add => {
+                arithmetic::i64_add(&mut self.stack.values)?;
+                Ok(None)
+            }
+            Instruction::I64Sub => {
+                arithmetic::i64_sub(&mut self.stack.values)?;
+                Ok(None)
+            }
+            Instruction::I64Mul => {
+                arithmetic::i64_mul(&mut self.stack.values)?;
+                Ok(None)
+            }
+            Instruction::I64DivS => {
+                arithmetic::i64_div_s(&mut self.stack.values)?;
+                Ok(None)
+            }
+            Instruction::I64DivU => {
+                arithmetic::i64_div_u(&mut self.stack.values)?;
+                Ok(None)
+            }
+
             // Default case for unimplemented instructions
             _ => Err(Error::Execution(format!(
                 "Unimplemented instruction: {:?}",
                 inst
             ))),
-            // Delete all SIMD instructions from here, since they are now handled above
         }
     }
 
