@@ -1,6 +1,8 @@
 use std::fs;
 use std::path::{Path, PathBuf};
+use wast::core::{WastArgCore, WastRetCore};
 use wast::parser::{ParseBuffer, Parser};
+use wast::{Wast, WastDirective};
 use wast_proc_macro::generate_directory_tests;
 use wrt::{Engine, Error as WrtError, Module, Result, Value};
 
@@ -205,16 +207,17 @@ fn run_core_wast_tests(file_name: &str, _test_name: &str) {
 #[cfg(feature = "relaxed_simd")]
 #[generate_directory_tests("proposals/relaxed-simd", "relaxed_simd")]
 fn run_relaxed_simd_proposal_tests(file_name: &str, _test_name: &str) {
+    println!("==========================================");
     println!("Processing relaxed SIMD proposal file: {}", file_name);
-    
-    // The file_name as passed is just the base filename, we need to construct 
+
+    // The file_name as passed is just the base filename, we need to construct
     // the full path using the WASM_TESTSUITE env var
-    let testsuite_path = std::env::var("WASM_TESTSUITE")
-        .expect("WASM_TESTSUITE environment variable not set");
+    let testsuite_path =
+        std::env::var("WASM_TESTSUITE").expect("WASM_TESTSUITE environment variable not set");
     let full_path = std::path::Path::new(&testsuite_path)
         .join("proposals/relaxed-simd")
-        .join(&file_name);  // Use a reference here to borrow file_name
-    
+        .join(&file_name); // Use a reference here to borrow file_name
+
     println!("Full path: {:?}", full_path);
 
     // Run the parsing test first

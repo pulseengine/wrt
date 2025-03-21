@@ -1139,7 +1139,7 @@ impl Engine {
         args: Vec<Value>,
     ) -> Result<Vec<Value>> {
         // Set execution state to running
-            self.state = ExecutionState::Running;
+        self.state = ExecutionState::Running;
 
         // Get module info (clone what we need to avoid borrow issues)
         let (func_type, function, instance_without_memory) = {
@@ -1157,7 +1157,7 @@ impl Engine {
 
             // Get the function type
             let func_type = instance
-                    .module
+                .module
                 .types
                 .get(function.type_idx as usize)
                 .ok_or_else(|| {
@@ -1175,21 +1175,21 @@ impl Engine {
 
         // Check that the number of arguments matches the function signature
         if args.len() != func_type.params.len() {
-                    return Err(Error::Execution(format!(
+            return Err(Error::Execution(format!(
                 "Wrong number of arguments: expected {}, got {}",
                 func_type.params.len(),
                 args.len()
-                    )));
-                }
+            )));
+        }
 
         // Type check arguments
         for (i, (arg, param_type)) in args.iter().zip(func_type.params.iter()).enumerate() {
             if !arg.matches_type(param_type) {
-                        return Err(Error::Execution(format!(
+                return Err(Error::Execution(format!(
                     "Argument {} has wrong type: expected {:?}, got {:?}",
                     i, param_type, arg
-                        )));
-                    }
+                )));
+            }
         }
 
         // Initialize locals (arguments + zeros for local variables)
@@ -1218,7 +1218,7 @@ impl Engine {
         };
 
         // Push the frame onto the stack
-            self.stack.push_frame(frame);
+        self.stack.push_frame(frame);
 
         // Save initial stack height to collect results later
         let initial_stack_height = self.stack.values.len();
@@ -1515,7 +1515,7 @@ impl Engine {
                         let label = self.stack.get_label(*label_idx)?;
                         Ok(Some(label.continuation))
                     } else {
-                Ok(None)
+                        Ok(None)
                     }
                 } else {
                     Err(Error::Execution("Expected i32 condition".into()))
@@ -1553,7 +1553,7 @@ impl Engine {
                 let val1 = self.stack.values.pop().ok_or(Error::StackUnderflow)?;
                 if let Value::I32(cond) = condition {
                     self.stack.values.push(if cond != 0 { val1 } else { val2 });
-                Ok(None)
+                    Ok(None)
                 } else {
                     Err(Error::Execution("Expected i32 condition".into()))
                 }
@@ -1590,7 +1590,7 @@ impl Engine {
                 self.stack.values.push(value);
                 Ok(None)
             }
-            
+
             // Memory operations
             Instruction::I32Load(align, offset) => {
                 let addr = self.stack.values.pop().ok_or(Error::StackUnderflow)?;
@@ -2253,7 +2253,7 @@ impl Engine {
 
                 Ok(None)
             }
-            
+
             // Default case for unimplemented instructions
             _ => Err(Error::Execution(format!(
                 "Unimplemented instruction: {:?}",
@@ -2320,7 +2320,7 @@ impl Engine {
         #[cfg(feature = "std")]
         if let Ok(var) = std::env::var("WRT_DEBUG_MEMORY") {
             if var == "1" {
-                    eprintln!(
+                eprintln!(
                     "WASI logging call with level={}, context_ptr={}, context_len={}, message_ptr={}, message_len={}",
                     level.as_str(),
                     context_ptr,
@@ -2394,7 +2394,7 @@ impl Engine {
                 // Special handling for the format! message with iteration count
                 // This is the message from example/src/lib.rs line 47-48
                 if !(0..=0x7FFFFFFF).contains(&message_ptr) {
-        #[cfg(feature = "std")]
+                    #[cfg(feature = "std")]
                     eprintln!("Detected format! string for 'Completed {{}} iterations' with negative pointer: {}", message_ptr);
 
                     // Search memory for the pattern if debug search is enabled
@@ -2421,7 +2421,7 @@ impl Engine {
                             String::from("[empty message]")
                         }
                     }
-            } else {
+                } else {
                     // Try with the standard format as a fallback
                     match self.read_wasm_string(memory_addr, message_ptr) {
                         Ok(s) => s,
@@ -2564,9 +2564,9 @@ impl Engine {
     pub fn execute_return_call_indirect(&mut self, type_idx: u32, table_idx: u32) -> Result<()> {
         // Get the function index from the stack
         let func_idx = self
-                    .stack
-                    .pop()?
-                    .as_i32()
+            .stack
+            .pop()?
+            .as_i32()
             .ok_or_else(|| Error::Execution("Expected i32 function index".into()))?;
 
         if func_idx < 0 {
@@ -2576,7 +2576,7 @@ impl Engine {
             )));
         }
 
-                let frame = self.stack.current_frame()?;
+        let frame = self.stack.current_frame()?;
         let module_idx = frame.module.module_idx;
 
         // Get the table
@@ -2603,208 +2603,208 @@ impl Engine {
         args.reverse();
 
         // Pop the current frame since this is a tail call
-                self.stack.pop_frame()?;
+        self.stack.pop_frame()?;
 
         // Execute the function and push results
         let results = self.execute(module_idx, func_idx as u32, args)?;
-                for result in results {
-                    self.stack.push(result);
-                }
+        for result in results {
+            self.stack.push(result);
+        }
 
         Ok(())
-            }
+    }
 
     /// Executes a function call with the given function index
     fn execute_call(&mut self, func_idx: u32) -> Result<()> {
-                // Get information we need from the current frame
-                let frame = self.stack.current_frame()?;
+        // Get information we need from the current frame
+        let frame = self.stack.current_frame()?;
         let local_func_idx = func_idx;
-                let module_idx = frame.module.module_idx;
+        let module_idx = frame.module.module_idx;
 
-                // Debug the function call
-                #[cfg(feature = "std")]
-                if let Ok(var) = std::env::var("WRT_DEBUG_INSTRUCTIONS") {
-                    if var == "1" {
-                        eprintln!(
-                            "Function call: idx={} (local_idx={})",
-                            func_idx, local_func_idx
-                        );
-                    }
+        // Debug the function call
+        #[cfg(feature = "std")]
+        if let Ok(var) = std::env::var("WRT_DEBUG_INSTRUCTIONS") {
+            if var == "1" {
+                eprintln!(
+                    "Function call: idx={} (local_idx={})",
+                    func_idx, local_func_idx
+                );
+            }
+        }
+
+        // Count imported functions that may affect the function index
+        let imports = frame
+            .module
+            .module
+            .imports
+            .iter()
+            .filter(|import| matches!(import.ty, ExternType::Function(_)))
+            .collect::<Vec<_>>();
+
+        let import_count = imports.len() as u32;
+
+        #[cfg(feature = "std")]
+        if let Ok(var) = std::env::var("WRT_DEBUG_IMPORTS") {
+            if var == "1" {
+                eprintln!("Module has {} function imports:", import_count);
+                for (i, import) in imports.iter().enumerate() {
+                    eprintln!("  {}: {}.{}", i, import.module, import.name);
                 }
+            }
+        }
 
-                // Count imported functions that may affect the function index
-                let imports = frame
-                    .module
-                    .module
-                    .imports
-                    .iter()
-                    .filter(|import| matches!(import.ty, ExternType::Function(_)))
-                    .collect::<Vec<_>>();
+        // Check if we're calling an imported function
+        let is_imported = local_func_idx < import_count;
 
-                let import_count = imports.len() as u32;
+        // Check if this is an imported function call
+        if is_imported {
+            let import = &frame.module.module.imports[local_func_idx as usize];
 
+            // Debug the import call
+            #[cfg(feature = "std")]
+            if let Ok(var) = std::env::var("WRT_DEBUG_IMPORTS") {
+                if var == "1" {
+                    eprintln!(
+                        "Calling imported function: {}.{}",
+                        import.module, import.name
+                    );
+                }
+            }
+
+            // Check if this is a component with real functions being executed
+            // This ensures imported functions get called properly even during real component execution
+            let is_component = frame
+                .module
+                .module
+                .custom_sections
+                .iter()
+                .any(|s| s.name == "component-model-info");
+            if is_component {
+                #[cfg(feature = "std")]
+                eprintln!(
+                    "Processing component import: {}.{}",
+                    import.module, import.name
+                );
+            }
+
+            // Match various formats of logging import
+            // Component model can use different naming conventions:
+            // - wasi_logging.log (legacy)
+            // - wasi:logging/logging.log (canonical WIT)
+            // - example:hello/logging.log (for WIT world interfaces)
+            if import.name == "log"
+                && (import.module == "wasi_logging"
+                    || import.module == "wasi:logging/logging"
+                    || import.module == "example:hello/logging"
+                    || import.module.contains("logging"))
+            {
+                #[cfg(feature = "std")]
+                eprintln!(
+                    "Detected WASI logging call: {}.{}",
+                    import.module, import.name
+                );
                 #[cfg(feature = "std")]
                 if let Ok(var) = std::env::var("WRT_DEBUG_IMPORTS") {
                     if var == "1" {
-                        eprintln!("Module has {} function imports:", import_count);
-                        for (i, import) in imports.iter().enumerate() {
-                            eprintln!("  {}: {}.{}", i, import.module, import.name);
-                        }
+                        eprintln!(
+                            "WASI logging import detected: {}.{}",
+                            import.module, import.name
+                        );
                     }
                 }
 
-                // Check if we're calling an imported function
-                let is_imported = local_func_idx < import_count;
+                // For WASI logging, the stack should have 3 parameters:
+                // - level enum value (0=trace, 1=debug, 2=info, etc.)
+                // - context pointer (i32 address to read string from WebAssembly memory)
+                // - message pointer (i32 address to read string from WebAssembly memory)
 
-                // Check if this is an imported function call
-                if is_imported {
-                    let import = &frame.module.module.imports[local_func_idx as usize];
+                // Find a memory export if available
+                let mut memory_addr = MemoryAddr {
+                    instance_idx: frame.module.module_idx,
+                    memory_idx: 0,
+                };
 
-                    // Debug the import call
-                    #[cfg(feature = "std")]
-                    if let Ok(var) = std::env::var("WRT_DEBUG_IMPORTS") {
-                        if var == "1" {
-                            eprintln!(
-                                "Calling imported function: {}.{}",
-                                import.module, import.name
-                            );
-                        }
-                    }
-
-                    // Check if this is a component with real functions being executed
-                    // This ensures imported functions get called properly even during real component execution
-                    let is_component = frame
-                        .module
-                        .module
-                        .custom_sections
-                        .iter()
-                        .any(|s| s.name == "component-model-info");
-                    if is_component {
-                        #[cfg(feature = "std")]
-                        eprintln!(
-                            "Processing component import: {}.{}",
-                            import.module, import.name
-                        );
-                    }
-
-                    // Match various formats of logging import
-                    // Component model can use different naming conventions:
-                    // - wasi_logging.log (legacy)
-                    // - wasi:logging/logging.log (canonical WIT)
-                    // - example:hello/logging.log (for WIT world interfaces)
-                    if import.name == "log"
-                        && (import.module == "wasi_logging"
-                            || import.module == "wasi:logging/logging"
-                            || import.module == "example:hello/logging"
-                            || import.module.contains("logging"))
-                    {
-                        #[cfg(feature = "std")]
-                        eprintln!(
-                            "Detected WASI logging call: {}.{}",
-                            import.module, import.name
-                        );
-                        #[cfg(feature = "std")]
-                        if let Ok(var) = std::env::var("WRT_DEBUG_IMPORTS") {
-                            if var == "1" {
-                                eprintln!(
-                                    "WASI logging import detected: {}.{}",
-                                    import.module, import.name
-                                );
-                            }
-                        }
-
-                        // For WASI logging, the stack should have 3 parameters:
-                        // - level enum value (0=trace, 1=debug, 2=info, etc.)
-                        // - context pointer (i32 address to read string from WebAssembly memory)
-                        // - message pointer (i32 address to read string from WebAssembly memory)
-
-                        // Find a memory export if available
-                        let mut memory_addr = MemoryAddr {
-                            instance_idx: frame.module.module_idx,
-                            memory_idx: 0,
-                        };
-
-                        // Try to find the specific memory export if possible
-                        for export in &frame.module.module.exports {
+                // Try to find the specific memory export if possible
+                for export in &frame.module.module.exports {
                     if export.name == "memory" && matches!(export.kind, ExportKind::Memory) {
-                                memory_addr.memory_idx = export.index;
+                        memory_addr.memory_idx = export.index;
 
-                                #[cfg(feature = "std")]
-                                if let Ok(var) = std::env::var("WRT_DEBUG_MEMORY") {
-                                    if var == "1" {
+                        #[cfg(feature = "std")]
+                        if let Ok(var) = std::env::var("WRT_DEBUG_MEMORY") {
+                            if var == "1" {
                                 eprintln!("Found memory export with index {}", export.index);
-                                    }
-                                }
-
-                                break;
                             }
                         }
 
-                        // End the current immutable borrow of frame
-                        let _ = frame;
-
-                        // Execute the logging call with our helper function
-                        self.execute_wasi_logging(&memory_addr)?;
-
-                        // No return value needed for log function
-                return Ok(());
+                        break;
                     }
-
-                    // Special handling for the "env.print" function
-                    if import.module == "env" && import.name == "print" {
-                        // Get the parameter (expected to be an i32)
-                        let param = self.stack.pop()?;
-                        let value = param.as_i32().unwrap_or(0);
-
-                        // Print the value to the log
-                        self.handle_log(
-                            LogLevel::Info,
-                            format!("[Host function] env.print called with argument: {}", value),
-                        );
-
-                        // Return without error for successful imported function execution
-                return Ok(());
-                    }
-
-                    // For other imported functions, we will report they are not supported
-                    return Err(Error::Execution(format!(
-                        "Cannot call unsupported imported function at index {}: {}.{}",
-                        local_func_idx, import.module, import.name
-                    )));
                 }
 
-                {
-                    // Adjust the function index to account for imported functions
-                    let adjusted_func_idx = local_func_idx - import_count;
+                // End the current immutable borrow of frame
+                let _ = frame;
 
-                    // Verify the adjusted index is valid
-                    if adjusted_func_idx as usize >= frame.module.module.functions.len() {
-                        return Err(Error::Execution(format!(
-                            "Function index {} (adjusted to {}) out of bounds (max: {})",
-                            local_func_idx,
-                            adjusted_func_idx,
-                            frame.module.module.functions.len()
-                        )));
-                    }
+                // Execute the logging call with our helper function
+                self.execute_wasi_logging(&memory_addr)?;
 
-                    let func = &frame.module.module.functions[adjusted_func_idx as usize];
-                    let func_type = &frame.module.module.types[func.type_idx as usize];
-                    let params_len = func_type.params.len();
+                // No return value needed for log function
+                return Ok(());
+            }
 
-                    // End the immutable borrow of the frame before mutable operations
-                    let _ = frame;
+            // Special handling for the "env.print" function
+            if import.module == "env" && import.name == "print" {
+                // Get the parameter (expected to be an i32)
+                let param = self.stack.pop()?;
+                let value = param.as_i32().unwrap_or(0);
 
-                    // Get function arguments
-                    let mut args = Vec::new();
-                    for _ in 0..params_len {
-                        args.push(self.stack.pop()?);
-                    }
-                    args.reverse();
+                // Print the value to the log
+                self.handle_log(
+                    LogLevel::Info,
+                    format!("[Host function] env.print called with argument: {}", value),
+                );
 
-                    // Execute the function and push results
-                    let results = self.execute(module_idx, local_func_idx, args)?;
-                    for result in results {
-                        self.stack.push(result);
+                // Return without error for successful imported function execution
+                return Ok(());
+            }
+
+            // For other imported functions, we will report they are not supported
+            return Err(Error::Execution(format!(
+                "Cannot call unsupported imported function at index {}: {}.{}",
+                local_func_idx, import.module, import.name
+            )));
+        }
+
+        {
+            // Adjust the function index to account for imported functions
+            let adjusted_func_idx = local_func_idx - import_count;
+
+            // Verify the adjusted index is valid
+            if adjusted_func_idx as usize >= frame.module.module.functions.len() {
+                return Err(Error::Execution(format!(
+                    "Function index {} (adjusted to {}) out of bounds (max: {})",
+                    local_func_idx,
+                    adjusted_func_idx,
+                    frame.module.module.functions.len()
+                )));
+            }
+
+            let func = &frame.module.module.functions[adjusted_func_idx as usize];
+            let func_type = &frame.module.module.types[func.type_idx as usize];
+            let params_len = func_type.params.len();
+
+            // End the immutable borrow of the frame before mutable operations
+            let _ = frame;
+
+            // Get function arguments
+            let mut args = Vec::new();
+            for _ in 0..params_len {
+                args.push(self.stack.pop()?);
+            }
+            args.reverse();
+
+            // Execute the function and push results
+            let results = self.execute(module_idx, local_func_idx, args)?;
+            for result in results {
+                self.stack.push(result);
             }
         }
 
@@ -2849,7 +2849,7 @@ impl Engine {
             | Instruction::F64Gt
             | Instruction::F64Le
             | Instruction::F64Ge => InstructionCategory::Comparison,
-            
+
             // Control flow instructions
             Instruction::Block(_)
             | Instruction::Loop(_)
@@ -2861,7 +2861,7 @@ impl Engine {
             | Instruction::BrTable(_, _)
             | Instruction::Return
             | Instruction::Unreachable => InstructionCategory::ControlFlow,
-            
+
             // Local and global variable access
             Instruction::LocalGet(_)
             | Instruction::LocalSet(_)
@@ -2895,12 +2895,12 @@ impl Engine {
             | Instruction::I64Store32(_, _)
             | Instruction::MemorySize
             | Instruction::MemoryGrow => InstructionCategory::MemoryOp,
-            
+
             // Function calls
             Instruction::Call(_) | Instruction::CallIndirect(_, _) => {
                 InstructionCategory::FunctionCall
             }
-            
+
             // Arithmetic operations
             Instruction::I32Add
             | Instruction::I32Sub
@@ -2966,7 +2966,7 @@ impl Engine {
             | Instruction::F64Min
             | Instruction::F64Max
             | Instruction::F64Copysign => InstructionCategory::Arithmetic,
-            
+
             // Other operations
             _ => InstructionCategory::Other,
         }

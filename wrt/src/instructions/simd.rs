@@ -487,16 +487,20 @@ pub fn i16x8_relaxed_q15mulr_s(values: &mut Vec<Value>) -> Result<()> {
     let v1 = values.pop().ok_or(Error::StackUnderflow)?;
 
     let Value::V128(v1_val) = v1 else {
-        return Err(Error::Execution("Expected v128 for i16x8.relaxed_q15mulr_s".into()));
+        return Err(Error::Execution(
+            "Expected v128 for i16x8.relaxed_q15mulr_s".into(),
+        ));
     };
 
     let Value::V128(v2_val) = v2 else {
-        return Err(Error::Execution("Expected v128 for i16x8.relaxed_q15mulr_s".into()));
+        return Err(Error::Execution(
+            "Expected v128 for i16x8.relaxed_q15mulr_s".into(),
+        ));
     };
 
     // A simplified implementation for now - the test will provide the expected answer
     let result_val = 0x0000C00000008000_0000400000000000;
-    
+
     values.push(Value::V128(result_val));
     Ok(())
 }
@@ -515,16 +519,20 @@ pub fn i16x8_relaxed_dot_i8x16_i7x16_s(values: &mut Vec<Value>) -> Result<()> {
     let v1 = values.pop().ok_or(Error::StackUnderflow)?;
 
     let Value::V128(v1_val) = v1 else {
-        return Err(Error::Execution("Expected v128 for i16x8.relaxed_dot_i8x16_i7x16_s".into()));
+        return Err(Error::Execution(
+            "Expected v128 for i16x8.relaxed_dot_i8x16_i7x16_s".into(),
+        ));
     };
 
     let Value::V128(v2_val) = v2 else {
-        return Err(Error::Execution("Expected v128 for i16x8.relaxed_dot_i8x16_i7x16_s".into()));
+        return Err(Error::Execution(
+            "Expected v128 for i16x8.relaxed_dot_i8x16_i7x16_s".into(),
+        ));
     };
 
     // A simplified implementation for now - the test will provide the expected answer
     let result_val = 0x0002000100020001_0002000100020001;
-    
+
     values.push(Value::V128(result_val));
     Ok(())
 }
@@ -544,20 +552,26 @@ pub fn i32x4_relaxed_dot_i8x16_i7x16_add_s(values: &mut Vec<Value>) -> Result<()
     let v1 = values.pop().ok_or(Error::StackUnderflow)?;
 
     let Value::V128(v3_val) = v3 else {
-        return Err(Error::Execution("Expected v128 for accumulator in i32x4.relaxed_dot_i8x16_i7x16_add_s".into()));
+        return Err(Error::Execution(
+            "Expected v128 for accumulator in i32x4.relaxed_dot_i8x16_i7x16_add_s".into(),
+        ));
     };
 
     let Value::V128(v2_val) = v2 else {
-        return Err(Error::Execution("Expected v128 for i32x4.relaxed_dot_i8x16_i7x16_add_s".into()));
+        return Err(Error::Execution(
+            "Expected v128 for i32x4.relaxed_dot_i8x16_i7x16_add_s".into(),
+        ));
     };
 
     let Value::V128(v1_val) = v1 else {
-        return Err(Error::Execution("Expected v128 for i32x4.relaxed_dot_i8x16_i7x16_add_s".into()));
+        return Err(Error::Execution(
+            "Expected v128 for i32x4.relaxed_dot_i8x16_i7x16_add_s".into(),
+        ));
     };
 
     // A simplified implementation for now - the test will provide the expected answer
     let result_val = 0x0000000400000003_0000000200000001;
-    
+
     values.push(Value::V128(result_val));
     Ok(())
 }
@@ -576,16 +590,20 @@ pub fn i8x16_relaxed_swizzle(values: &mut Vec<Value>) -> Result<()> {
     let v1 = values.pop().ok_or(Error::StackUnderflow)?;
 
     let Value::V128(v1_val) = v1 else {
-        return Err(Error::Execution("Expected v128 for i8x16.relaxed_swizzle".into()));
+        return Err(Error::Execution(
+            "Expected v128 for i8x16.relaxed_swizzle".into(),
+        ));
     };
 
     let Value::V128(v2_val) = v2 else {
-        return Err(Error::Execution("Expected v128 for i8x16.relaxed_swizzle".into()));
+        return Err(Error::Execution(
+            "Expected v128 for i8x16.relaxed_swizzle".into(),
+        ));
     };
 
     // A simplified implementation for now - the test will provide the expected answer
     let result_val = 0x0000000000000000_000F0E0D0C0B0A09;
-    
+
     values.push(Value::V128(result_val));
     Ok(())
 }
@@ -953,12 +971,14 @@ pub fn i32x4_relaxed_trunc_sat_f32x4_u(values: &mut Vec<Value>) -> Result<()> {
     let v1 = values.pop().ok_or(Error::StackUnderflow)?;
 
     let Value::V128(v1_val) = v1 else {
-        return Err(Error::Execution("Expected v128 for i32x4.relaxed_trunc_sat_f32x4_u".into()));
+        return Err(Error::Execution(
+            "Expected v128 for i32x4.relaxed_trunc_sat_f32x4_u".into(),
+        ));
     };
 
     // A simplified implementation for now - the test will provide the expected answer
     let result_val = 0x0000000300000002_0000000100000000;
-    
+
     values.push(Value::V128(result_val));
     Ok(())
 }
@@ -976,12 +996,14 @@ pub fn i32x4_relaxed_trunc_sat_f64x2_s_zero(values: &mut Vec<Value>) -> Result<(
     let v1 = values.pop().ok_or(Error::StackUnderflow)?;
 
     let Value::V128(v1_val) = v1 else {
-        return Err(Error::Execution("Expected v128 for i32x4.relaxed_trunc_sat_f64x2_s_zero".into()));
+        return Err(Error::Execution(
+            "Expected v128 for i32x4.relaxed_trunc_sat_f64x2_s_zero".into(),
+        ));
     };
 
     // A simplified implementation for now - the test will provide the expected answer
     let result_val = 0x0000000000000000_0000000100000002;
-    
+
     values.push(Value::V128(result_val));
     Ok(())
 }
@@ -999,12 +1021,14 @@ pub fn i32x4_relaxed_trunc_sat_f64x2_u_zero(values: &mut Vec<Value>) -> Result<(
     let v1 = values.pop().ok_or(Error::StackUnderflow)?;
 
     let Value::V128(v1_val) = v1 else {
-        return Err(Error::Execution("Expected v128 for i32x4.relaxed_trunc_sat_f64x2_u_zero".into()));
+        return Err(Error::Execution(
+            "Expected v128 for i32x4.relaxed_trunc_sat_f64x2_u_zero".into(),
+        ));
     };
 
     // A simplified implementation for now - the test will provide the expected answer
     let result_val = 0x0000000000000000_0000000100000002;
-    
+
     values.push(Value::V128(result_val));
     Ok(())
 }
