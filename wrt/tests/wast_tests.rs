@@ -346,7 +346,19 @@ fn test_basic_simd_operations() -> Result<()> {
     // Test i32x4.sub
     let result = engine.execute(0, 4, vec![])?;
     // Expected: [10-1, 20-2, 30-3, 40-4] = [9, 18, 27, 36]
-    let expected = Value::V128(0x0000002400000021_000000120000000A);
+    let expected = Value::V128(0x000000240000001B_0000001200000009);
+    println!("i32x4.sub expected: {:?}", expected);
+    println!("i32x4.sub result:   {:?}", result[0]);
+    println!(
+        "i32x4.sub expected as hex: 0x{:016X}{:016X}",
+        (expected.as_v128().unwrap() >> 64) as u64,
+        expected.as_v128().unwrap() as u64
+    );
+    println!(
+        "i32x4.sub result as hex:   0x{:016X}{:016X}",
+        (result[0].as_v128().unwrap() >> 64) as u64,
+        result[0].as_v128().unwrap() as u64
+    );
     assert_eq!(
         result,
         vec![expected.clone()],
@@ -359,7 +371,19 @@ fn test_basic_simd_operations() -> Result<()> {
     // Test i32x4.mul
     let result = engine.execute(0, 5, vec![])?;
     // Expected: [1*5, 2*6, 3*7, 4*8] = [5, 12, 21, 32]
-    let expected = Value::V128(0x0000002000000015_000000070000000C);
+    println!(
+        "i32x4.mul result as hex:   0x{:016X}{:016X}",
+        (result[0].as_v128().unwrap() >> 64) as u64,
+        result[0].as_v128().unwrap() as u64
+    );
+    let expected = Value::V128(0x0000002000000015_0000000C00000005);
+    println!("i32x4.mul expected: {:?}", expected);
+    println!("i32x4.mul result:   {:?}", result[0]);
+    println!(
+        "i32x4.mul expected as hex: 0x{:016X}{:016X}",
+        (expected.as_v128().unwrap() >> 64) as u64,
+        expected.as_v128().unwrap() as u64
+    );
     assert_eq!(
         result,
         vec![expected.clone()],

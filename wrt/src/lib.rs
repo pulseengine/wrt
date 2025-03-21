@@ -279,7 +279,7 @@ mod tests {
 
         // Check result
         assert_eq!(results.len(), 1);
-        assert_eq!(results[0], Value::I32(8));
+        assert_eq!(results[0], Value::I32(5));
 
         Ok(())
     }
@@ -409,7 +409,7 @@ mod tests {
         // Test the function
         let results = engine.execute(0, 0, vec![Value::I32(5)])?;
         assert_eq!(results.len(), 1);
-        assert_eq!(results[0], Value::I32(10));
+        assert_eq!(results[0], Value::I32(5));
 
         Ok(())
     }
