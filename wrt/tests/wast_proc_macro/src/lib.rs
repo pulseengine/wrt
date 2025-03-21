@@ -73,7 +73,9 @@ pub fn generate_wast_tests(attr: TokenStream, item: TokenStream) -> TokenStream 
             use std::path::Path;
             use std::fs;
             use wast::parser::{ParseBuffer, Parser};
-            use wast::{Wast, WastDirective};
+            use wast::{Wast, WastDirective, WastExecute, WastArg, WastRet};
+            use wast::core::{WastArgCore, WastRetCore};
+            use wrt::{Engine, Module, Value, Error as WrtError};
 
             // Get testsuite path from build script
             let testsuite_path = match env::var("WASM_TESTSUITE") {
@@ -246,6 +248,7 @@ pub fn generate_directory_tests(attr: TokenStream, item: TokenStream) -> TokenSt
             use std::fs;
             use wast::parser::{ParseBuffer, Parser};
             use wast::{Wast, WastDirective, WastExecute, WastArg, WastRet};
+            use wast::core::{WastArgCore, WastRetCore};
             use wrt::{Engine, Module, Value, Error as WrtError};
 
             // Get testsuite path from build script
@@ -366,12 +369,19 @@ pub fn generate_directory_tests(attr: TokenStream, item: TokenStream) -> TokenSt
                                 for arg in &invoke.args {
                                     match arg {
                                         WastArg::Core(arg_core) => match arg_core {
-                                            wast::WastArgCore::I32(val) => args.push(Value::I32(*val)),
-                                            wast::WastArgCore::I64(val) => args.push(Value::I64(*val)),
-                                            wast::WastArgCore::F32(val) => args.push(Value::F32(f32::from_bits(val.bits()))),
-                                            wast::WastArgCore::F64(val) => args.push(Value::F64(f64::from_bits(val.bits()))),
-                                            wast::WastArgCore::V128(val) => {
-                                                let bits = u128::from_le_bytes(val.bytes());
+                                            WastArgCore::I32(val) => args.push(Value::I32(*val)),
+                                            WastArgCore::I64(val) => args.push(Value::I64(*val)),
+                                            WastArgCore::F32(val) => args.push(Value::F32(f32::from_bits(val.bits))),
+                                            WastArgCore::F64(val) => args.push(Value::F64(f64::from_bits(val.bits))),
+                                            WastArgCore::V128(val) => {
+                                                // Manual byte conversion
+                                                let mut bytes = [0u8; 16];
+                                                for (i, b) in val.to_vec().iter().enumerate() {
+                                                    if i < 16 {
+                                                        bytes[i] = *b;
+                                                    }
+                                                }
+                                                let bits = u128::from_le_bytes(bytes);
                                                 args.push(Value::V128(bits));
                                             },
                                             _ => {
@@ -406,12 +416,19 @@ pub fn generate_directory_tests(attr: TokenStream, item: TokenStream) -> TokenSt
                                     for arg in &invoke.args {
                                         match arg {
                                             WastArg::Core(arg_core) => match arg_core {
-                                                wast::WastArgCore::I32(val) => args.push(Value::I32(*val)),
-                                                wast::WastArgCore::I64(val) => args.push(Value::I64(*val)),
-                                                wast::WastArgCore::F32(val) => args.push(Value::F32(f32::from_bits(val.bits()))),
-                                                wast::WastArgCore::F64(val) => args.push(Value::F64(f64::from_bits(val.bits()))),
-                                                wast::WastArgCore::V128(val) => {
-                                                    let bits = u128::from_le_bytes(val.bytes());
+                                                WastArgCore::I32(val) => args.push(Value::I32(*val)),
+                                                WastArgCore::I64(val) => args.push(Value::I64(*val)),
+                                                WastArgCore::F32(val) => args.push(Value::F32(f32::from_bits(val.bits))),
+                                                WastArgCore::F64(val) => args.push(Value::F64(f64::from_bits(val.bits))),
+                                                WastArgCore::V128(val) => {
+                                                    // Manual byte conversion
+                                                    let mut bytes = [0u8; 16];
+                                                    for (i, b) in val.to_vec().iter().enumerate() {
+                                                        if i < 16 {
+                                                            bytes[i] = *b;
+                                                        }
+                                                    }
+                                                    let bits = u128::from_le_bytes(bytes);
                                                     args.push(Value::V128(bits));
                                                 },
                                                 _ => {
@@ -441,7 +458,7 @@ pub fn generate_directory_tests(attr: TokenStream, item: TokenStream) -> TokenSt
                                                     let mut result_matches = false;
                                                     match expected {
                                                         WastRet::Core(ret_core) => match ret_core {
-                                                            wast::WastRetCore::I32(expected_val) => {
+                                                            WastRetCore::I32(expected_val) => {
                                                                 if let Value::I32(actual_val) = actual {
                                                                     result_matches = *expected_val == *actual_val;
                                                                     println!("    Comparing i32 result {}: expected {:?}, got {:?}, match: {}",
@@ -450,7 +467,7 @@ pub fn generate_directory_tests(attr: TokenStream, item: TokenStream) -> TokenSt
                                                                     println!("    Type mismatch: expected i32, got {:?}", actual);
                                                                 }
                                                             },
-                                                            wast::WastRetCore::I64(expected_val) => {
+                                                            WastRetCore::I64(expected_val) => {
                                                                 if let Value::I64(actual_val) = actual {
                                                                     result_matches = *expected_val == *actual_val;
                                                                     println!("    Comparing i64 result {}: expected {:?}, got {:?}, match: {}",
@@ -459,20 +476,19 @@ pub fn generate_directory_tests(attr: TokenStream, item: TokenStream) -> TokenSt
                                                                     println!("    Type mismatch: expected i64, got {:?}", actual);
                                                                 }
                                                             },
-                                                            wast::WastRetCore::F32(expected_val) => {
+                                                            WastRetCore::F32(expected_val) => {
                                                                 if let Value::F32(actual_val) = actual {
-                                                                    // For NanPattern<F32>, we need to handle NaN patterns
-                                                                    let expected_bits = expected_val.bits();
-                                                                    let actual_bits = actual_val.to_bits();
-
-                                                                    // Check if expected is a NaN pattern
-                                                                    if expected_val.is_nan_pattern() {
-                                                                        // For NaN, we just check if the actual value is also NaN
+                                                                    // For NanPattern<F32>, we need special handling
+                                                                    // Manual implementation that works with any API version
+                                                                    if f32::from_bits(expected_val.bits).is_nan() {
+                                                                        // For NaN, just check if actual is also NaN
                                                                         result_matches = actual_val.is_nan();
                                                                         println!("    Comparing f32 NaN result {}: expected NaN, got {:?}, match: {}",
                                                                             i, actual_val, result_matches);
                                                                     } else {
                                                                         // For exact comparison, check bit patterns
+                                                                        let expected_bits = expected_val.bits;
+                                                                        let actual_bits = actual_val.to_bits();
                                                                         result_matches = expected_bits == actual_bits;
                                                                         println!("    Comparing f32 result {}: expected 0x{:x}, got 0x{:x}, match: {}",
                                                                             i, expected_bits, actual_bits, result_matches);
@@ -481,20 +497,19 @@ pub fn generate_directory_tests(attr: TokenStream, item: TokenStream) -> TokenSt
                                                                     println!("    Type mismatch: expected f32, got {:?}", actual);
                                                                 }
                                                             },
-                                                            wast::WastRetCore::F64(expected_val) => {
+                                                            WastRetCore::F64(expected_val) => {
                                                                 if let Value::F64(actual_val) = actual {
-                                                                    // For NanPattern<F64>, we need to handle NaN patterns
-                                                                    let expected_bits = expected_val.bits();
-                                                                    let actual_bits = actual_val.to_bits();
-
-                                                                    // Check if expected is a NaN pattern
-                                                                    if expected_val.is_nan_pattern() {
-                                                                        // For NaN, we just check if the actual value is also NaN
+                                                                    // For NanPattern<F64>, we need special handling
+                                                                    // Manual implementation that works with any API version
+                                                                    if f64::from_bits(expected_val.bits).is_nan() {
+                                                                        // For NaN, just check if actual is also NaN
                                                                         result_matches = actual_val.is_nan();
                                                                         println!("    Comparing f64 NaN result {}: expected NaN, got {:?}, match: {}",
                                                                             i, actual_val, result_matches);
                                                                     } else {
                                                                         // For exact comparison, check bit patterns
+                                                                        let expected_bits = expected_val.bits;
+                                                                        let actual_bits = actual_val.to_bits();
                                                                         result_matches = expected_bits == actual_bits;
                                                                         println!("    Comparing f64 result {}: expected 0x{:x}, got 0x{:x}, match: {}",
                                                                             i, expected_bits, actual_bits, result_matches);
@@ -503,10 +518,17 @@ pub fn generate_directory_tests(attr: TokenStream, item: TokenStream) -> TokenSt
                                                                     println!("    Type mismatch: expected f64, got {:?}", actual);
                                                                 }
                                                             },
-                                                            wast::WastRetCore::V128(expected_val) => {
+                                                            WastRetCore::V128(expected_val) => {
                                                                 if let Value::V128(actual_val) = actual {
-                                                                    // For V128Pattern, we need to handle potential lane-wise NaN patterns
-                                                                    let expected_bits = expected_val.bits();
+                                                                    // Manual implementation for V128Pattern comparison
+                                                                    // Convert to bytes, then to u128
+                                                                    let mut bytes = [0u8; 16];
+                                                                    for (i, b) in expected_val.to_vec().iter().enumerate() {
+                                                                        if i < 16 {
+                                                                            bytes[i] = *b;
+                                                                        }
+                                                                    }
+                                                                    let expected_bits = u128::from_le_bytes(bytes);
 
                                                                     // For simple case, just compare the bit patterns directly
                                                                     result_matches = expected_bits == *actual_val;
@@ -553,12 +575,19 @@ pub fn generate_directory_tests(attr: TokenStream, item: TokenStream) -> TokenSt
                                     for arg in &invoke.args {
                                         match arg {
                                             WastArg::Core(arg_core) => match arg_core {
-                                                wast::WastArgCore::I32(val) => args.push(Value::I32(*val)),
-                                                wast::WastArgCore::I64(val) => args.push(Value::I64(*val)),
-                                                wast::WastArgCore::F32(val) => args.push(Value::F32(f32::from_bits(val.bits()))),
-                                                wast::WastArgCore::F64(val) => args.push(Value::F64(f64::from_bits(val.bits()))),
-                                                wast::WastArgCore::V128(val) => {
-                                                    let bits = u128::from_le_bytes(val.bytes());
+                                                WastArgCore::I32(val) => args.push(Value::I32(*val)),
+                                                WastArgCore::I64(val) => args.push(Value::I64(*val)),
+                                                WastArgCore::F32(val) => args.push(Value::F32(f32::from_bits(val.bits))),
+                                                WastArgCore::F64(val) => args.push(Value::F64(f64::from_bits(val.bits))),
+                                                WastArgCore::V128(val) => {
+                                                    // Manual byte conversion
+                                                    let mut bytes = [0u8; 16];
+                                                    for (i, b) in val.to_vec().iter().enumerate() {
+                                                        if i < 16 {
+                                                            bytes[i] = *b;
+                                                        }
+                                                    }
+                                                    let bits = u128::from_le_bytes(bytes);
                                                     args.push(Value::V128(bits));
                                                 },
                                                 _ => {

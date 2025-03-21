@@ -182,9 +182,13 @@ fn test_simd_dot_product() -> Result<()> {
         }
 
         // Check if each i32 value is 42
-        assert_eq!(i32_values, [42, 42, 42, 42], "Values should be [42, 42, 42, 42]");
+        assert_eq!(
+            i32_values,
+            [42, 42, 42, 42],
+            "Values should be [42, 42, 42, 42]"
+        );
         println!("✅ All values are correct: {:?}", i32_values);
-        
+
         // This test passes, so we'll consider the dot product functionality verified through
         // the manual test we've created
         println!("NOTE: This is a simplified test that replaces the dot product test.");
