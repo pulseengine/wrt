@@ -23,7 +23,12 @@ use crate::{
 /// # Returns
 ///
 /// * `Result<(), Error>` - Ok if the operation succeeded, or an Error
-pub fn v128_load(values: &mut Vec<Value>, memory: &Memory, offset: u32, align: u8) -> Result<()> {
+pub(crate) fn v128_load(
+    values: &mut Vec<Value>,
+    memory: &Memory,
+    offset: u32,
+    align: u8,
+) -> Result<()> {
     // We handle the addr popping and all memory access in execution.rs
     // This function is a placeholder for now
     Ok(())
@@ -41,7 +46,7 @@ pub fn v128_load(values: &mut Vec<Value>, memory: &Memory, offset: u32, align: u
 /// # Returns
 ///
 /// * `Result<(), Error>` - Ok if the operation succeeded, or an Error
-pub fn v128_store(
+pub(crate) fn v128_store(
     values: &mut Vec<Value>,
     memory: &mut Memory,
     offset: u32,
@@ -62,7 +67,7 @@ pub fn v128_store(
 /// # Returns
 ///
 /// * `Result<(), Error>` - Ok if the operation succeeded, or an Error
-pub fn v128_const(values: &mut Vec<Value>, bytes: [u8; 16]) -> Result<()> {
+pub(crate) fn v128_const(values: &mut Vec<Value>, bytes: [u8; 16]) -> Result<()> {
     // Convert bytes to u128 and push as V128 value
     let v128_val = u128::from_le_bytes(bytes);
     values.push(Value::V128(v128_val));
@@ -78,7 +83,7 @@ pub fn v128_const(values: &mut Vec<Value>, bytes: [u8; 16]) -> Result<()> {
 /// # Returns
 ///
 /// * `Result<(), Error>` - Ok if the operation succeeded, or an Error
-pub fn i8x16_splat(values: &mut Vec<Value>) -> Result<()> {
+pub(crate) fn i8x16_splat(values: &mut Vec<Value>) -> Result<()> {
     let value = values.pop().ok_or(Error::StackUnderflow)?;
     let Value::I32(x) = value else {
         return Err(Error::Execution("Expected i32 for i8x16.splat".into()));
@@ -107,7 +112,7 @@ pub fn i8x16_splat(values: &mut Vec<Value>) -> Result<()> {
 /// # Returns
 ///
 /// * `Result<(), Error>` - Ok if the operation succeeded, or an Error
-pub fn i16x8_splat(values: &mut Vec<Value>) -> Result<()> {
+pub(crate) fn i16x8_splat(values: &mut Vec<Value>) -> Result<()> {
     let value = values.pop().ok_or(Error::StackUnderflow)?;
     let Value::I32(x) = value else {
         return Err(Error::Execution("Expected i32 for i16x8.splat".into()));
@@ -144,7 +149,7 @@ pub fn i16x8_splat(values: &mut Vec<Value>) -> Result<()> {
 /// # Returns
 ///
 /// * `Result<(), Error>` - Ok if the operation succeeded, or an Error
-pub fn i32x4_splat(values: &mut Vec<Value>) -> Result<()> {
+pub(crate) fn i32x4_splat(values: &mut Vec<Value>) -> Result<()> {
     let value = values.pop().ok_or(Error::StackUnderflow)?;
     let Value::I32(x) = value else {
         return Err(Error::Execution("Expected i32 for i32x4.splat".into()));
@@ -177,7 +182,7 @@ pub fn i32x4_splat(values: &mut Vec<Value>) -> Result<()> {
 /// # Returns
 ///
 /// * `Result<(), Error>` - Ok if the operation succeeded, or an Error
-pub fn i64x2_splat(values: &mut Vec<Value>) -> Result<()> {
+pub(crate) fn i64x2_splat(values: &mut Vec<Value>) -> Result<()> {
     let value = values.pop().ok_or(Error::StackUnderflow)?;
     let Value::I64(x) = value else {
         return Err(Error::Execution("Expected i64 for i64x2.splat".into()));
@@ -210,7 +215,7 @@ pub fn i64x2_splat(values: &mut Vec<Value>) -> Result<()> {
 /// # Returns
 ///
 /// * `Result<(), Error>` - Ok if the operation succeeded, or an Error
-pub fn f32x4_splat(values: &mut Vec<Value>) -> Result<()> {
+pub(crate) fn f32x4_splat(values: &mut Vec<Value>) -> Result<()> {
     let value = values.pop().ok_or(Error::StackUnderflow)?;
     let Value::F32(x) = value else {
         return Err(Error::Execution("Expected f32 for f32x4.splat".into()));
@@ -243,7 +248,7 @@ pub fn f32x4_splat(values: &mut Vec<Value>) -> Result<()> {
 /// # Returns
 ///
 /// * `Result<(), Error>` - Ok if the operation succeeded, or an Error
-pub fn f64x2_splat(values: &mut Vec<Value>) -> Result<()> {
+pub(crate) fn f64x2_splat(values: &mut Vec<Value>) -> Result<()> {
     let value = values.pop().ok_or(Error::StackUnderflow)?;
     let Value::F64(x) = value else {
         return Err(Error::Execution("Expected f64 for f64x2.splat".into()));
@@ -279,7 +284,7 @@ pub fn f64x2_splat(values: &mut Vec<Value>) -> Result<()> {
 /// # Returns
 ///
 /// * `Result<(), Error>` - Ok if the operation succeeded, or an Error
-pub fn i8x16_extract_lane_s(values: &mut Vec<Value>, lane_idx: u8) -> Result<()> {
+pub(crate) fn i8x16_extract_lane_s(values: &mut Vec<Value>, lane_idx: u8) -> Result<()> {
     if lane_idx >= 16 {
         return Err(Error::Execution(format!(
             "Lane index out of bounds: {}",
@@ -318,7 +323,7 @@ pub fn i8x16_extract_lane_s(values: &mut Vec<Value>, lane_idx: u8) -> Result<()>
 /// # Returns
 ///
 /// * `Result<(), Error>` - Ok if the operation succeeded, or an Error
-pub fn i8x16_extract_lane_u(values: &mut Vec<Value>, lane_idx: u8) -> Result<()> {
+pub(crate) fn i8x16_extract_lane_u(values: &mut Vec<Value>, lane_idx: u8) -> Result<()> {
     if lane_idx >= 16 {
         return Err(Error::Execution(format!(
             "Lane index out of bounds: {}",
@@ -359,7 +364,7 @@ pub fn i8x16_extract_lane_u(values: &mut Vec<Value>, lane_idx: u8) -> Result<()>
 /// # Returns
 ///
 /// * `Result<(), Error>` - Ok if the operation succeeded, or an Error
-pub fn i32x4_dot_i16x8_s(values: &mut Vec<Value>) -> Result<()> {
+pub(crate) fn i32x4_dot_i16x8_s(values: &mut Vec<Value>) -> Result<()> {
     let b = values.pop().ok_or(Error::StackUnderflow)?;
     let a = values.pop().ok_or(Error::StackUnderflow)?;
 
@@ -423,7 +428,7 @@ pub fn i32x4_dot_i16x8_s(values: &mut Vec<Value>) -> Result<()> {
 /// # Returns
 ///
 /// * `Result<(), Error>` - Ok if the operation succeeded, or an Error
-pub fn i16x8_mul(values: &mut Vec<Value>) -> Result<()> {
+pub(crate) fn i16x8_mul(values: &mut Vec<Value>) -> Result<()> {
     let b = values.pop().ok_or(Error::StackUnderflow)?;
     let a = values.pop().ok_or(Error::StackUnderflow)?;
 
@@ -482,7 +487,7 @@ pub fn i16x8_mul(values: &mut Vec<Value>) -> Result<()> {
 /// # Returns
 ///
 /// * `Result<(), Error>` - Ok if the operation succeeded, or an Error
-pub fn i16x8_relaxed_q15mulr_s(values: &mut Vec<Value>) -> Result<()> {
+pub(crate) fn i16x8_relaxed_q15mulr_s(values: &mut Vec<Value>) -> Result<()> {
     let v2 = values.pop().ok_or(Error::StackUnderflow)?;
     let v1 = values.pop().ok_or(Error::StackUnderflow)?;
 
@@ -514,7 +519,7 @@ pub fn i16x8_relaxed_q15mulr_s(values: &mut Vec<Value>) -> Result<()> {
 /// # Returns
 ///
 /// * `Result<(), Error>` - Ok if the operation succeeded, or an Error
-pub fn i16x8_relaxed_dot_i8x16_i7x16_s(values: &mut Vec<Value>) -> Result<()> {
+pub(crate) fn i16x8_relaxed_dot_i8x16_i7x16_s(values: &mut Vec<Value>) -> Result<()> {
     let v2 = values.pop().ok_or(Error::StackUnderflow)?;
     let v1 = values.pop().ok_or(Error::StackUnderflow)?;
 
@@ -546,7 +551,7 @@ pub fn i16x8_relaxed_dot_i8x16_i7x16_s(values: &mut Vec<Value>) -> Result<()> {
 /// # Returns
 ///
 /// * `Result<(), Error>` - Ok if the operation succeeded, or an Error
-pub fn i32x4_relaxed_dot_i8x16_i7x16_add_s(values: &mut Vec<Value>) -> Result<()> {
+pub(crate) fn i32x4_relaxed_dot_i8x16_i7x16_add_s(values: &mut Vec<Value>) -> Result<()> {
     let v3 = values.pop().ok_or(Error::StackUnderflow)?;
     let v2 = values.pop().ok_or(Error::StackUnderflow)?;
     let v1 = values.pop().ok_or(Error::StackUnderflow)?;
@@ -585,7 +590,7 @@ pub fn i32x4_relaxed_dot_i8x16_i7x16_add_s(values: &mut Vec<Value>) -> Result<()
 /// # Returns
 ///
 /// * `Result<(), Error>` - Ok if the operation succeeded, or an Error
-pub fn i8x16_relaxed_swizzle(values: &mut Vec<Value>) -> Result<()> {
+pub(crate) fn i8x16_relaxed_swizzle(values: &mut Vec<Value>) -> Result<()> {
     let v2 = values.pop().ok_or(Error::StackUnderflow)?;
     let v1 = values.pop().ok_or(Error::StackUnderflow)?;
 
@@ -623,7 +628,7 @@ pub fn i8x16_relaxed_swizzle(values: &mut Vec<Value>) -> Result<()> {
 ///
 /// * `Result<(), Error>` - Ok if the operation succeeded, or an Error
 #[cfg(feature = "relaxed_simd")]
-pub fn f32x4_relaxed_min(values: &mut Vec<Value>) -> Result<()> {
+pub(crate) fn f32x4_relaxed_min(values: &mut Vec<Value>) -> Result<()> {
     let b = values.pop().ok_or(Error::StackUnderflow)?;
     let a = values.pop().ok_or(Error::StackUnderflow)?;
 
@@ -706,7 +711,7 @@ pub fn f32x4_relaxed_min(values: &mut Vec<Value>) -> Result<()> {
 ///
 /// * `Result<(), Error>` - Ok if the operation succeeded, or an Error
 #[cfg(feature = "relaxed_simd")]
-pub fn f32x4_relaxed_max(values: &mut Vec<Value>) -> Result<()> {
+pub(crate) fn f32x4_relaxed_max(values: &mut Vec<Value>) -> Result<()> {
     let b = values.pop().ok_or(Error::StackUnderflow)?;
     let a = values.pop().ok_or(Error::StackUnderflow)?;
 
@@ -789,7 +794,7 @@ pub fn f32x4_relaxed_max(values: &mut Vec<Value>) -> Result<()> {
 ///
 /// * `Result<(), Error>` - Ok if the operation succeeded, or an Error
 #[cfg(feature = "relaxed_simd")]
-pub fn f64x2_relaxed_min(values: &mut Vec<Value>) -> Result<()> {
+pub(crate) fn f64x2_relaxed_min(values: &mut Vec<Value>) -> Result<()> {
     let b = values.pop().ok_or(Error::StackUnderflow)?;
     let a = values.pop().ok_or(Error::StackUnderflow)?;
 
@@ -880,7 +885,7 @@ pub fn f64x2_relaxed_min(values: &mut Vec<Value>) -> Result<()> {
 ///
 /// * `Result<(), Error>` - Ok if the operation succeeded, or an Error
 #[cfg(feature = "relaxed_simd")]
-pub fn f64x2_relaxed_max(values: &mut Vec<Value>) -> Result<()> {
+pub(crate) fn f64x2_relaxed_max(values: &mut Vec<Value>) -> Result<()> {
     let b = values.pop().ok_or(Error::StackUnderflow)?;
     let a = values.pop().ok_or(Error::StackUnderflow)?;
 
@@ -967,7 +972,7 @@ pub fn f64x2_relaxed_max(values: &mut Vec<Value>) -> Result<()> {
 /// # Returns
 ///
 /// * `Result<(), Error>` - Ok if the operation succeeded, or an Error
-pub fn i32x4_relaxed_trunc_sat_f32x4_u(values: &mut Vec<Value>) -> Result<()> {
+pub(crate) fn i32x4_relaxed_trunc_sat_f32x4_u(values: &mut Vec<Value>) -> Result<()> {
     let v1 = values.pop().ok_or(Error::StackUnderflow)?;
 
     let Value::V128(v1_val) = v1 else {
@@ -992,7 +997,7 @@ pub fn i32x4_relaxed_trunc_sat_f32x4_u(values: &mut Vec<Value>) -> Result<()> {
 /// # Returns
 ///
 /// * `Result<(), Error>` - Ok if the operation succeeded, or an Error
-pub fn i32x4_relaxed_trunc_sat_f64x2_s_zero(values: &mut Vec<Value>) -> Result<()> {
+pub(crate) fn i32x4_relaxed_trunc_sat_f64x2_s_zero(values: &mut Vec<Value>) -> Result<()> {
     let v1 = values.pop().ok_or(Error::StackUnderflow)?;
 
     let Value::V128(v1_val) = v1 else {
@@ -1017,7 +1022,7 @@ pub fn i32x4_relaxed_trunc_sat_f64x2_s_zero(values: &mut Vec<Value>) -> Result<(
 /// # Returns
 ///
 /// * `Result<(), Error>` - Ok if the operation succeeded, or an Error
-pub fn i32x4_relaxed_trunc_sat_f64x2_u_zero(values: &mut Vec<Value>) -> Result<()> {
+pub(crate) fn i32x4_relaxed_trunc_sat_f64x2_u_zero(values: &mut Vec<Value>) -> Result<()> {
     let v1 = values.pop().ok_or(Error::StackUnderflow)?;
 
     let Value::V128(v1_val) = v1 else {
@@ -1042,7 +1047,7 @@ pub fn i32x4_relaxed_trunc_sat_f64x2_u_zero(values: &mut Vec<Value>) -> Result<(
 /// # Returns
 ///
 /// * `Result<(), Error>` - Ok if the operation succeeded, or an Error
-pub fn i32x4_add(values: &mut Vec<Value>) -> Result<()> {
+pub(crate) fn i32x4_add(values: &mut Vec<Value>) -> Result<()> {
     // Pop the two vectors from the stack
     let b = values.pop().ok_or(Error::StackUnderflow)?;
     let a = values.pop().ok_or(Error::StackUnderflow)?;
@@ -1096,7 +1101,7 @@ pub fn i32x4_add(values: &mut Vec<Value>) -> Result<()> {
 /// # Returns
 ///
 /// * `Result<(), Error>` - Ok if the operation succeeded, or an Error
-pub fn i32x4_sub(values: &mut Vec<Value>) -> Result<()> {
+pub(crate) fn i32x4_sub(values: &mut Vec<Value>) -> Result<()> {
     // Pop the two vectors from the stack
     let b = values.pop().ok_or(Error::StackUnderflow)?;
     let a = values.pop().ok_or(Error::StackUnderflow)?;
@@ -1150,7 +1155,7 @@ pub fn i32x4_sub(values: &mut Vec<Value>) -> Result<()> {
 /// # Returns
 ///
 /// * `Result<(), Error>` - Ok if the operation succeeded, or an Error
-pub fn i32x4_mul(values: &mut Vec<Value>) -> Result<()> {
+pub(crate) fn i32x4_mul(values: &mut Vec<Value>) -> Result<()> {
     // Pop the two vectors from the stack
     let b = values.pop().ok_or(Error::StackUnderflow)?;
     let a = values.pop().ok_or(Error::StackUnderflow)?;
