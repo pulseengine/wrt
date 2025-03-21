@@ -3,7 +3,6 @@ use crate::global::Global;
 use crate::instructions::{
     // Import all instruction implementations
     control::{push_label, LabelType},
-    simd,
     Instruction,
 };
 use crate::logging::{CallbackRegistry, LogLevel, LogOperation};
@@ -2116,7 +2115,7 @@ impl Engine {
                 let byte_val = (x & 0xFF) as u8;
 
                 // Create a u128 with the same byte value in all 16 positions
-                let mut result_bytes = [byte_val; 16];
+                let result_bytes = [byte_val; 16];
                 let result_val = u128::from_le_bytes(result_bytes);
 
                 // Push the result back onto the stack
@@ -3044,12 +3043,12 @@ impl Engine {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::global::Global;
+
     use crate::instructions::{BlockType, Instruction};
     use crate::logging::LogOperation;
-    use crate::memory::Memory;
+
     use crate::module::Module;
-    use crate::table::Table;
+
     use crate::types::FuncType;
     use crate::values::Value;
     use crate::ValueType;
