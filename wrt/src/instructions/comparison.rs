@@ -4,6 +4,8 @@
 //! including equality, inequality, and ordering operations for numeric types.
 
 use crate::error::Error;
+use crate::execution::{Frame, Stack};
+use crate::instructions::InstructionExecutor;
 use crate::values::Value;
 use crate::Vec;
 
@@ -11,7 +13,7 @@ use crate::Vec;
 ///
 /// Pops an i32 value from the stack and compares it with zero.
 /// Pushes 1 if equal to zero, 0 otherwise.
-pub fn i32_eqz(stack: &mut Vec<Value>) -> Result<(), Error> {
+pub fn i32_eqz(stack: &mut Vec<Value>) -> std::result::Result<(), Error> {
     let val = stack
         .pop()
         .ok_or(Error::Execution("Stack underflow".into()))?;
@@ -32,7 +34,7 @@ pub fn i32_eqz(stack: &mut Vec<Value>) -> Result<(), Error> {
 ///
 /// Pops two i32 values from the stack and compares them.
 /// Pushes 1 if equal, 0 otherwise.
-pub fn i32_eq(stack: &mut Vec<Value>) -> Result<(), Error> {
+pub fn i32_eq(stack: &mut Vec<Value>) -> std::result::Result<(), Error> {
     let val2 = stack
         .pop()
         .ok_or(Error::Execution("Stack underflow".into()))?;
@@ -56,7 +58,7 @@ pub fn i32_eq(stack: &mut Vec<Value>) -> Result<(), Error> {
 ///
 /// Pops two i32 values from the stack and compares them.
 /// Pushes 1 if not equal, 0 otherwise.
-pub fn i32_ne(stack: &mut Vec<Value>) -> Result<(), Error> {
+pub fn i32_ne(stack: &mut Vec<Value>) -> std::result::Result<(), Error> {
     let val2 = stack
         .pop()
         .ok_or(Error::Execution("Stack underflow".into()))?;
@@ -80,7 +82,7 @@ pub fn i32_ne(stack: &mut Vec<Value>) -> Result<(), Error> {
 ///
 /// Pops two i32 values from the stack and compares them.
 /// Pushes 1 if first value is less than second value (signed), 0 otherwise.
-pub fn i32_lt_s(stack: &mut Vec<Value>) -> Result<(), Error> {
+pub fn i32_lt_s(stack: &mut Vec<Value>) -> std::result::Result<(), Error> {
     let val2 = stack
         .pop()
         .ok_or(Error::Execution("Stack underflow".into()))?;
@@ -104,7 +106,7 @@ pub fn i32_lt_s(stack: &mut Vec<Value>) -> Result<(), Error> {
 ///
 /// Pops two i32 values from the stack and compares them.
 /// Pushes 1 if first value is less than second value (unsigned), 0 otherwise.
-pub fn i32_lt_u(stack: &mut Vec<Value>) -> Result<(), Error> {
+pub fn i32_lt_u(stack: &mut Vec<Value>) -> std::result::Result<(), Error> {
     let val2 = stack
         .pop()
         .ok_or(Error::Execution("Stack underflow".into()))?;
@@ -128,7 +130,7 @@ pub fn i32_lt_u(stack: &mut Vec<Value>) -> Result<(), Error> {
 ///
 /// Pops two i32 values from the stack and compares them.
 /// Pushes 1 if first value is greater than second value (signed), 0 otherwise.
-pub fn i32_gt_s(stack: &mut Vec<Value>) -> Result<(), Error> {
+pub fn i32_gt_s(stack: &mut Vec<Value>) -> std::result::Result<(), Error> {
     let val2 = stack
         .pop()
         .ok_or(Error::Execution("Stack underflow".into()))?;
@@ -152,7 +154,7 @@ pub fn i32_gt_s(stack: &mut Vec<Value>) -> Result<(), Error> {
 ///
 /// Pops two i32 values from the stack and compares them.
 /// Pushes 1 if first value is greater than second value (unsigned), 0 otherwise.
-pub fn i32_gt_u(stack: &mut Vec<Value>) -> Result<(), Error> {
+pub fn i32_gt_u(stack: &mut Vec<Value>) -> std::result::Result<(), Error> {
     let val2 = stack
         .pop()
         .ok_or(Error::Execution("Stack underflow".into()))?;
@@ -176,7 +178,7 @@ pub fn i32_gt_u(stack: &mut Vec<Value>) -> Result<(), Error> {
 ///
 /// Pops two i32 values from the stack and compares them.
 /// Pushes 1 if first value is less than or equal to second value (signed), 0 otherwise.
-pub fn i32_le_s(stack: &mut Vec<Value>) -> Result<(), Error> {
+pub fn i32_le_s(stack: &mut Vec<Value>) -> std::result::Result<(), Error> {
     let val2 = stack
         .pop()
         .ok_or(Error::Execution("Stack underflow".into()))?;
@@ -200,7 +202,7 @@ pub fn i32_le_s(stack: &mut Vec<Value>) -> Result<(), Error> {
 ///
 /// Pops two i32 values from the stack and compares them.
 /// Pushes 1 if first value is less than or equal to second value (unsigned), 0 otherwise.
-pub fn i32_le_u(stack: &mut Vec<Value>) -> Result<(), Error> {
+pub fn i32_le_u(stack: &mut Vec<Value>) -> std::result::Result<(), Error> {
     let val2 = stack
         .pop()
         .ok_or(Error::Execution("Stack underflow".into()))?;
@@ -224,7 +226,7 @@ pub fn i32_le_u(stack: &mut Vec<Value>) -> Result<(), Error> {
 ///
 /// Pops two i32 values from the stack and compares them.
 /// Pushes 1 if first value is greater than or equal to second value (signed), 0 otherwise.
-pub fn i32_ge_s(stack: &mut Vec<Value>) -> Result<(), Error> {
+pub fn i32_ge_s(stack: &mut Vec<Value>) -> std::result::Result<(), Error> {
     let val2 = stack
         .pop()
         .ok_or(Error::Execution("Stack underflow".into()))?;
@@ -248,7 +250,7 @@ pub fn i32_ge_s(stack: &mut Vec<Value>) -> Result<(), Error> {
 ///
 /// Pops two i32 values from the stack and compares them.
 /// Pushes 1 if first value is greater than or equal to second value (unsigned), 0 otherwise.
-pub fn i32_ge_u(stack: &mut Vec<Value>) -> Result<(), Error> {
+pub fn i32_ge_u(stack: &mut Vec<Value>) -> std::result::Result<(), Error> {
     let val2 = stack
         .pop()
         .ok_or(Error::Execution("Stack underflow".into()))?;
@@ -272,7 +274,7 @@ pub fn i32_ge_u(stack: &mut Vec<Value>) -> Result<(), Error> {
 ///
 /// Pops an i64 value from the stack and compares it with zero.
 /// Pushes 1 if equal to zero, 0 otherwise.
-pub fn i64_eqz(stack: &mut Vec<Value>) -> Result<(), Error> {
+pub fn i64_eqz(stack: &mut Vec<Value>) -> std::result::Result<(), Error> {
     let val = stack
         .pop()
         .ok_or(Error::Execution("Stack underflow".into()))?;
@@ -293,7 +295,7 @@ pub fn i64_eqz(stack: &mut Vec<Value>) -> Result<(), Error> {
 ///
 /// Pops two i64 values from the stack and compares them.
 /// Pushes 1 if equal, 0 otherwise.
-pub fn i64_eq(stack: &mut Vec<Value>) -> Result<(), Error> {
+pub fn i64_eq(stack: &mut Vec<Value>) -> std::result::Result<(), Error> {
     let val2 = stack
         .pop()
         .ok_or(Error::Execution("Stack underflow".into()))?;
@@ -317,7 +319,7 @@ pub fn i64_eq(stack: &mut Vec<Value>) -> Result<(), Error> {
 ///
 /// Pops two i64 values from the stack and compares them.
 /// Pushes 1 if not equal, 0 otherwise.
-pub fn i64_ne(stack: &mut Vec<Value>) -> Result<(), Error> {
+pub fn i64_ne(stack: &mut Vec<Value>) -> std::result::Result<(), Error> {
     let val2 = stack
         .pop()
         .ok_or(Error::Execution("Stack underflow".into()))?;
@@ -341,7 +343,7 @@ pub fn i64_ne(stack: &mut Vec<Value>) -> Result<(), Error> {
 ///
 /// Pops two i64 values from the stack and compares them.
 /// Pushes 1 if first value is less than second value (signed), 0 otherwise.
-pub fn i64_lt_s(stack: &mut Vec<Value>) -> Result<(), Error> {
+pub fn i64_lt_s(stack: &mut Vec<Value>) -> std::result::Result<(), Error> {
     let val2 = stack
         .pop()
         .ok_or(Error::Execution("Stack underflow".into()))?;
@@ -365,7 +367,7 @@ pub fn i64_lt_s(stack: &mut Vec<Value>) -> Result<(), Error> {
 ///
 /// Pops two i64 values from the stack and compares them.
 /// Pushes 1 if first value is less than second value (unsigned), 0 otherwise.
-pub fn i64_lt_u(stack: &mut Vec<Value>) -> Result<(), Error> {
+pub fn i64_lt_u(stack: &mut Vec<Value>) -> std::result::Result<(), Error> {
     let val2 = stack
         .pop()
         .ok_or(Error::Execution("Stack underflow".into()))?;
@@ -389,7 +391,7 @@ pub fn i64_lt_u(stack: &mut Vec<Value>) -> Result<(), Error> {
 ///
 /// Pops two i64 values from the stack and compares them.
 /// Pushes 1 if first value is greater than second value (signed), 0 otherwise.
-pub fn i64_gt_s(stack: &mut Vec<Value>) -> Result<(), Error> {
+pub fn i64_gt_s(stack: &mut Vec<Value>) -> std::result::Result<(), Error> {
     let val2 = stack
         .pop()
         .ok_or(Error::Execution("Stack underflow".into()))?;
@@ -413,7 +415,7 @@ pub fn i64_gt_s(stack: &mut Vec<Value>) -> Result<(), Error> {
 ///
 /// Pops two i64 values from the stack and compares them.
 /// Pushes 1 if first value is greater than second value (unsigned), 0 otherwise.
-pub fn i64_gt_u(stack: &mut Vec<Value>) -> Result<(), Error> {
+pub fn i64_gt_u(stack: &mut Vec<Value>) -> std::result::Result<(), Error> {
     let val2 = stack
         .pop()
         .ok_or(Error::Execution("Stack underflow".into()))?;
@@ -437,7 +439,7 @@ pub fn i64_gt_u(stack: &mut Vec<Value>) -> Result<(), Error> {
 ///
 /// Pops two i64 values from the stack and compares them.
 /// Pushes 1 if first value is less than or equal to second value (signed), 0 otherwise.
-pub fn i64_le_s(stack: &mut Vec<Value>) -> Result<(), Error> {
+pub fn i64_le_s(stack: &mut Vec<Value>) -> std::result::Result<(), Error> {
     let val2 = stack
         .pop()
         .ok_or(Error::Execution("Stack underflow".into()))?;
@@ -461,7 +463,7 @@ pub fn i64_le_s(stack: &mut Vec<Value>) -> Result<(), Error> {
 ///
 /// Pops two i64 values from the stack and compares them.
 /// Pushes 1 if first value is less than or equal to second value (unsigned), 0 otherwise.
-pub fn i64_le_u(stack: &mut Vec<Value>) -> Result<(), Error> {
+pub fn i64_le_u(stack: &mut Vec<Value>) -> std::result::Result<(), Error> {
     let val2 = stack
         .pop()
         .ok_or(Error::Execution("Stack underflow".into()))?;
@@ -485,7 +487,7 @@ pub fn i64_le_u(stack: &mut Vec<Value>) -> Result<(), Error> {
 ///
 /// Pops two i64 values from the stack and compares them.
 /// Pushes 1 if first value is greater than or equal to second value (signed), 0 otherwise.
-pub fn i64_ge_s(stack: &mut Vec<Value>) -> Result<(), Error> {
+pub fn i64_ge_s(stack: &mut Vec<Value>) -> std::result::Result<(), Error> {
     let val2 = stack
         .pop()
         .ok_or(Error::Execution("Stack underflow".into()))?;
@@ -509,7 +511,7 @@ pub fn i64_ge_s(stack: &mut Vec<Value>) -> Result<(), Error> {
 ///
 /// Pops two i64 values from the stack and compares them.
 /// Pushes 1 if first value is greater than or equal to second value (unsigned), 0 otherwise.
-pub fn i64_ge_u(stack: &mut Vec<Value>) -> Result<(), Error> {
+pub fn i64_ge_u(stack: &mut Vec<Value>) -> std::result::Result<(), Error> {
     let val2 = stack
         .pop()
         .ok_or(Error::Execution("Stack underflow".into()))?;
@@ -530,3 +532,16 @@ pub fn i64_ge_u(stack: &mut Vec<Value>) -> Result<(), Error> {
 }
 
 // TODO: Implement f32/f64 comparison instructions
+
+impl InstructionExecutor for super::Instruction {
+    fn execute(&self, stack: &mut Stack, _frame: &mut Frame) -> std::result::Result<(), Error> {
+        match self {
+            super::Instruction::I32LtS => i32_lt_s(&mut stack.values),
+            // Additional instructions will be implemented here
+            _ => Err(Error::Execution(format!(
+                "Instruction not implemented via trait: {:?}",
+                self
+            ))),
+        }
+    }
+}
