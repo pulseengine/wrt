@@ -26,19 +26,19 @@ This document tracks the implementation tasks for the WRT project based on requi
    - [x] Address unused variables by prefixing with underscores in control.rs, parametric.rs, table.rs, and stackless.rs
    - [x] Remove dead code in `wrt/src/execution.rs` (unused InstructionCategory enum and MAX_CALL_DEPTH constant)
 
-4. [~] **Focus on Component Model Implementation (REQ_014, REQ_021)**
-   - Current status: Resource type handling, interface types support, and component binary parsing have been implemented. Fixed type errors in component.rs and created basic tests.
+4. [x] **Focus on Component Model Implementation (REQ_014, REQ_021)**
+   - Current status: Component Model has been fully implemented with proper support for component instantiation, imports, exports, and linking between components.
    - Implementation plan:
      - [x] Fix type compatibility between component::InstanceType and types::InstanceType
      - [x] Add Clone implementations for ExternValue and related types
      - [x] Fix memory read operations to return Vec<u8> instead of &[u8]
      - [x] Fix the load_component_binary method to properly implement the binary format specification
-     - [~] Enhance component instantiation to support proper linking
-     - [ ] Add support for component imports/exports
+     - [x] Enhance component instantiation to support proper linking
+     - [x] Add support for component imports/exports with namespaces
    - Dependencies: This task builds upon the existing execution engine and module parsing
    - Test files: 
-     - Added basic tests in `wrt/tests/component_tests.rs`
-     - Added resource and interface tests in their respective modules
+     - Comprehensive tests in `wrt/tests/component_tests.rs` including component linking tests
+     - Resource and interface tests in their respective modules
      - All component tests are now passing
 
 5. [ ] **Implement State Migration (REQ_004, REQ_008)**
