@@ -232,4 +232,113 @@ fn test_component_validation() -> Result<()> {
     assert!(result.is_err());
     
     Ok(())
+}
+
+#[test]
+fn test_component_linking() -> Result<()> {
+    // Create a parent component with imports
+    let parent_component_type = wrt::component::ComponentType {
+        imports: vec![
+            (
+                "log".to_string(),
+                "wasi".to_string(),
+                ExternType::Function(FuncType {
+                    params: vec![ValueType::I32],
+                    results: vec![],
+                }),
+            ),
+        ],
+        exports: vec![
+            (
+                "process".to_string(),
+                ExternType::Function(FuncType {
+                    params: vec![ValueType::I32],
+                    results: vec![ValueType::I32],
+                }),
+            ),
+        ],
+        instances: Vec::new(),
+    };
+
+    // Create a child component with imports and exports
+    let child_component_type = wrt::component::ComponentType {
+        imports: vec![
+            (
+                "process".to_string(),
+                "parent".to_string(),
+                ExternType::Function(FuncType {
+                    params: vec![ValueType::I32],
+                    results: vec![ValueType::I32],
+                }),
+            ),
+        ],
+        exports: vec![
+            (
+                "transform".to_string(),
+                ExternType::Function(FuncType {
+                    params: vec![ValueType::I32],
+                    results: vec![ValueType::I32],
+                }),
+            ),
+        ],
+        instances: Vec::new(),
+    };
+
+    // Instantiate the parent component
+    let mut parent = Component::new(parent_component_type);
+    let parent_import = wrt::component::Import {
+        name: "log".to_string(),
+        ty: ExternType::Function(FuncType {
+            params: vec![ValueType::I32],
+            results: vec![],
+        }),
+        value: wrt::component::ExternValue::Function(wrt::component::FunctionValue {
+            ty: FuncType {
+                params: vec![ValueType::I32],
+                results: vec![],
+            },
+            export_name: "log".to_string(),
+        }),
+    };
+    parent.instantiate(vec![parent_import])?;
+
+    // Instantiate the child component
+    let mut child = Component::new(child_component_type);
+    
+    // Create an import for the child that is linked to the parent's export
+    let child_import = wrt::component::Import {
+        name: "process".to_string(),
+        ty: ExternType::Function(FuncType {
+            params: vec![ValueType::I32],
+            results: vec![ValueType::I32],
+        }),
+        value: wrt::component::ExternValue::Function(wrt::component::FunctionValue {
+            ty: FuncType {
+                params: vec![ValueType::I32],
+                results: vec![ValueType::I32],
+            },
+            export_name: "process".to_string(),
+        }),
+    };
+    child.instantiate(vec![child_import])?;
+
+    // Link the child component to the parent using namespace
+    parent.import_component(&child, Some("child"))?;
+
+    // Verify the child's export is accessible from the parent with proper namespace
+    let export = parent.get_export("child.transform")?;
+    assert_eq!(export.name, "child.transform");
+    match &export.ty {
+        ExternType::Function(func_type) => {
+            assert_eq!(func_type.params.len(), 1);
+            assert_eq!(func_type.results.len(), 1);
+        }
+        _ => panic!("Expected function type"),
+    }
+
+    // Validate components
+    assert!(parent.validate().is_ok());
+    assert!(child.validate().is_ok());
+
+    Ok(())
 } 
