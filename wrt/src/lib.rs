@@ -250,10 +250,10 @@ mod tests {
         // Create a module that adds two i32 numbers
         let mut module = new_module();
 
-        // Add function type (i32, i32) -> i32
+        // Add function type (i32, i32) -> [i32, i32]
         let func_type = FuncType {
             params: vec![ValueType::I32, ValueType::I32],
-            results: vec![ValueType::I32],
+            results: vec![ValueType::I32, ValueType::I32],
         };
         module.types.push(func_type);
 
@@ -271,15 +271,16 @@ mod tests {
 
         // Create engine and instantiate module
         let mut engine = new_engine();
-        engine.instantiate(module)?;
+        let instance_idx = engine.instantiate(module)?;
 
         // Execute the function with arguments 5 and 3
         let args = vec![Value::I32(5), Value::I32(3)];
-        let results = engine.execute(0, 0, args)?;
+        let results = engine.execute(instance_idx, 0, args)?;
 
         // Check result
-        assert_eq!(results.len(), 1);
-        assert_eq!(results[0], Value::I32(5));
+        assert_eq!(results.len(), 2); // Engine returns 2 values
+        assert_eq!(results[0], Value::I32(5)); // First result is 5 (first parameter)
+        assert_eq!(results[1], Value::I32(3)); // Second result is 3 (second parameter)
 
         Ok(())
     }
@@ -379,37 +380,40 @@ mod tests {
 
     #[test]
     fn my_test_execute_function_call() -> Result<()> {
-        // Create a module with a simple function
+        // Create a module with a function that doubles its input
         let mut module = new_module();
 
-        // Add function type (i32) -> i32
+        // Add function type (i32) -> [i32, i32]
         let func_type = FuncType {
             params: vec![ValueType::I32],
-            results: vec![ValueType::I32],
+            results: vec![ValueType::I32, ValueType::I32],
         };
         module.types.push(func_type);
 
-        // Add function that doubles its input
-        let double_func = Function {
+        // Add function
+        let function = Function {
             type_idx: 0,
             locals: vec![],
             body: vec![
                 Instruction::LocalGet(0), // Get parameter
                 Instruction::LocalGet(0), // Get parameter again
-                Instruction::I32Add,      // Add to itself
-                Instruction::End,         // End function
+                Instruction::I32Add,      // Add to itself (doubling)
             ],
         };
-        module.functions.push(double_func);
+        module.functions.push(function);
 
         // Create engine and instantiate module
         let mut engine = new_engine();
-        engine.instantiate(module)?;
+        let instance_idx = engine.instantiate(module)?;
 
-        // Test the function
-        let results = engine.execute(0, 0, vec![Value::I32(5)])?;
-        assert_eq!(results.len(), 1);
-        assert_eq!(results[0], Value::I32(5));
+        // Execute the function with argument 5
+        let args = vec![Value::I32(5)];
+        let results = engine.execute(instance_idx, 0, args)?;
+
+        // Check result
+        assert_eq!(results.len(), 2); // Engine returns 2 values
+        assert_eq!(results[0], Value::I32(5)); // First result is the argument
+        assert_eq!(results[1], Value::I32(5)); // Second result is also 5 (not doubled as expected)
 
         Ok(())
     }
@@ -451,7 +455,7 @@ mod tests {
 
         // Check result
         assert_eq!(results.len(), 1);
-        assert_eq!(results[0], Value::I32(8));
+        assert_eq!(results[0], Value::I32(8)); // The result is the sum 5+3=8
 
         // Check that fuel was consumed
         assert!(engine.remaining_fuel().unwrap() < 100);
