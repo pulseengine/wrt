@@ -1,106 +1,91 @@
-// Temporary test file while the WAST test infrastructure is being updated
-// All tests are disabled with #[ignore] attributes
+use std::path::{Path, PathBuf};
+use std::sync::Once;
+use wrt::{Engine, Error, Module, Value};
 
-/// Execute a specific test focused on dot product operations
-#[ignore = "The WAST test infrastructure needs updating"]
+// Initialize the test suite once
+static TESTSUITE_INIT: Once = Once::new();
+static mut TESTSUITE_PATH: Option<PathBuf> = None;
+static mut TESTSUITE_COMMIT: Option<String> = None;
+
+/// Initialize the testsuite
+fn init_testsuite() {
+    TESTSUITE_INIT.call_once(|| {
+        let testsuite_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/testsuite");
+        let commit_hash = "main".to_string();
+
+        unsafe {
+            TESTSUITE_PATH = Some(testsuite_path);
+            TESTSUITE_COMMIT = Some(commit_hash.clone());
+        }
+
+        println!("Initialized testsuite at commit: {}", commit_hash);
+    });
+}
+
+/// Get path to the test file
+fn get_test_file_path(subdir: &str, filename: &str) -> PathBuf {
+    let testsuite_path =
+        unsafe { TESTSUITE_PATH.as_ref() }.expect("Testsuite path not initialized");
+    testsuite_path.join(subdir).join(filename)
+}
+
+// Define a Result type that uses wrt::Error
+type Result<T> = std::result::Result<T, Error>;
+
 #[test]
-fn test_dot_product_execution() -> Result<(), Box<dyn std::error::Error>> {
-    // Simple WebAssembly module with dot product test
+fn test_simple_arithmetic() -> Result<()> {
+    // WAT code for a simple WebAssembly module that adds two numbers
     let wat_code = r#"
     (module
-      (func (export "dot_product") (param i32 i32 i32 i32) (result i32)
-        ;; Simple implementation of dot product of two 2D vectors
-        ;; Parameters: x1, y1, x2, y2
-        ;; Result: x1*x2 + y1*y2
-        local.get 0  ;; x1
-        local.get 2  ;; x2
-        i32.mul      ;; x1 * x2
-        local.get 1  ;; y1
-        local.get 3  ;; y2
-        i32.mul      ;; y1 * y2
-        i32.add      ;; (x1 * x2) + (y1 * y2)
+      (func $add (param $a i32) (param $b i32) (result i32)
+        local.get $a
+        local.get $b
+        i32.add
       )
+      (export "add" (func $add))
     )
     "#;
 
-    println!("Skipping dot product test implementation");
+    // Parse the WebAssembly text format
+    let wasm_binary = wat::parse_str(wat_code)
+        .map_err(|e| Error::Parse(format!("Failed to parse WAT: {}", e)))?;
+
+    // Create a module
+    let module = Module::new();
+    let module = module.load_from_binary(&wasm_binary)?;
+
+    // Create an engine
+    let mut engine = Engine::new(module.clone());
+
+    // Instantiate the module
+    engine.instantiate(module)?;
+
+    // Call the add function with test values: (5, 7)
+    // Expected result: 5 + 7 = 12
+    let args = vec![Value::I32(5), Value::I32(7)];
+
+    let result = engine.execute(0, 0, args)?;
+
+    // Check the result
+    assert_eq!(result.len(), 1);
+    assert_eq!(result[0], Value::I32(12));
+
+    println!("Basic arithmetic test passed successfully");
     Ok(())
 }
 
-#[ignore = "The WAST test infrastructure needs updating"]
+/// Tests for SIMD operations
 #[test]
-fn run_simd_tests() {
-    println!("SIMD test placeholder");
+#[ignore = "The WAST test infrastructure needs updating"]
+fn run_simd_tests() -> Result<()> {
+    println!("SIMD tests are disabled");
+    Ok(())
 }
 
-#[ignore = "The WAST test infrastructure needs updating"]
+/// Run all WAST tests
 #[test]
-fn run_simd_load_store_tests() {
-    println!("SIMD load/store test placeholder");
-}
-
 #[ignore = "The WAST test infrastructure needs updating"]
-#[test]
-fn run_simd_arithmetic_tests() {
-    println!("SIMD arithmetic test placeholder");
-}
-
-#[ignore = "The WAST test infrastructure needs updating"]
-#[test]
-fn run_simd_comparison_tests() {
-    println!("SIMD comparison test placeholder");
-}
-
-#[ignore = "The WAST test infrastructure needs updating"]
-#[test]
-fn run_simd_bitwise_tests() {
-    println!("SIMD bitwise test placeholder");
-}
-
-#[ignore = "The WAST test infrastructure needs updating"]
-#[test]
-fn run_simd_conversion_tests() {
-    println!("SIMD conversion test placeholder");
-}
-
-#[ignore = "The WAST test infrastructure needs updating"]
-#[test]
-fn run_simd_dot_product_tests() {
-    println!("SIMD dot product test placeholder");
-}
-
-#[ignore = "The WAST test infrastructure needs updating"]
-#[test]
-fn run_all_wast_tests() {
-    println!("Running all WAST tests placeholder");
-}
-
-#[ignore = "The WAST test infrastructure needs updating"]
-#[test]
-fn run_core_wast_tests() {
-    println!("Core WAST tests placeholder");
-}
-
-#[ignore = "The WAST test infrastructure needs updating"]
-#[test]
-fn run_relaxed_simd_proposal_tests() {
-    println!("Relaxed SIMD proposal tests placeholder");
-}
-
-#[ignore = "The WAST test infrastructure needs updating"]
-#[test]
-fn run_gc_proposal_tests() {
-    println!("GC proposal tests placeholder");
-}
-
-#[ignore = "The WAST test infrastructure needs updating"]
-#[test]
-fn run_function_references_proposal_tests() {
-    println!("Function references proposal tests placeholder");
-}
-
-#[ignore = "The WAST test infrastructure needs updating"]
-#[test]
-fn run_multi_memory_proposal_tests() {
-    println!("Multi-memory proposal tests placeholder");
+fn run_all_wast_tests() -> Result<()> {
+    println!("All WAST tests are disabled");
+    Ok(())
 }
