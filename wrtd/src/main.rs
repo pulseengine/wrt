@@ -46,7 +46,7 @@ use wrt::{
     logging::LogLevel,
     module::{ExportKind, Function, Module},
     types::ExternType,
-    Engine, StacklessEngine,
+    StacklessEngine,
 };
 
 /// WebAssembly Runtime Daemon CLI arguments
@@ -67,10 +67,6 @@ struct Args {
     /// Show execution statistics
     #[arg(short, long)]
     stats: bool,
-
-    /// Use stackless execution engine
-    #[arg(long)]
-    stackless: bool,
 
     /// Analyze component interfaces only (don't execute)
     #[arg(long)]
@@ -118,7 +114,6 @@ fn main() -> Result<()> {
         args.fuel.map_or("None".to_string(), |f| f.to_string())
     );
     info!("  Show execution statistics: {}", args.stats);
-    info!("  Use stackless engine: {}", args.stackless);
     info!(
         "  Analyze component interfaces: {}",
         args.analyze_component_interfaces
@@ -142,50 +137,29 @@ fn main() -> Result<()> {
         return Ok(());
     }
 
-    if args.stackless {
-        // Create a stackless WebAssembly engine
-        info!("Initializing stackless WebAssembly Component engine");
-        let mut engine = create_stackless_engine(args.fuel);
+    // Create a stackless WebAssembly engine
+    info!("Initializing stackless WebAssembly Component engine");
+    let mut engine = create_stackless_engine(args.fuel);
 
-        // Load and execute using the stackless engine
-        if let Err(e) = load_component_stackless(
-            &mut engine,
-            &wasm_bytes,
-            args.call.as_deref(),
-            args.wasm_file.clone(),
-        ) {
-            error!(
-                "Failed to load WebAssembly Component with stackless engine: {}",
-                e
-            );
-            return Err(anyhow!(
-                "Failed to load WebAssembly Component with stackless engine: {}",
-                e
-            ));
-        }
+    // Load and execute using the stackless engine
+    if let Err(e) = load_component(
+        &mut engine,
+        &wasm_bytes,
+        args.call.as_deref(),
+        args.wasm_file.clone(),
+    ) {
+        error!(
+            "Failed to load WebAssembly Component with stackless engine: {}",
+            e
+        );
+        return Err(anyhow!(
+            "Failed to load WebAssembly Component with stackless engine: {}",
+            e
+        ));
+    }
 
-        if args.stats {
-            display_stackless_execution_stats(&engine);
-        }
-    } else {
-        // Create a standard WebAssembly engine
-        info!("Initializing WebAssembly Component engine");
-        let mut engine = create_engine(args.fuel);
-
-        // Load and execute as WebAssembly Component Model
-        if let Err(e) = load_component(
-            &mut engine,
-            &wasm_bytes,
-            args.call.as_deref(),
-            args.wasm_file.clone(),
-        ) {
-            error!("Failed to load WebAssembly Component: {}", e);
-            return Err(anyhow!("Failed to load WebAssembly Component: {}", e));
-        }
-
-        if args.stats {
-            display_execution_stats(&engine);
-        }
+    if args.stats {
+        display_stackless_execution_stats(&engine);
     }
 
     Ok(())
@@ -210,8 +184,8 @@ fn initialize_tracing() {
 }
 
 /// Create a WebAssembly Component engine with the specified fuel limit
-fn create_engine(fuel: Option<u64>) -> Engine {
-    let mut engine = Engine::new(Module::default());
+fn create_stackless_engine(fuel: Option<u64>) -> StacklessEngine {
+    let mut engine = StacklessEngine::new();
 
     // Register the log handler to handle component logging
     engine.register_log_handler(|log_op| {
@@ -232,6 +206,69 @@ fn create_engine(fuel: Option<u64>) -> Engine {
             context,
             log_op.message
         );
+    });
+
+    // Register host functions for WASI logging interface
+    // This is required for the component to be able to call the logging functions
+    engine.register_host_function("wasi:logging/logging", "log", move |engine, args| {
+        if args.len() >= 3 {
+            if let Some(level) = args[0].as_i32() {
+                let level_str = match level {
+                    0 => "trace",
+                    1 => "debug",
+                    2 => "info",
+                    3 => "warn",
+                    4 => "error",
+                    5 => "critical",
+                    _ => "info",
+                };
+
+                // Extract context string (argument 1)
+                if let Some(context_ptr) = args[1].as_i32() {
+                    // Extract message string (argument 2)
+                    if let Some(message_ptr) = args[2].as_i32() {
+                        // Read context and message from memory
+                        if let Some(engine_ref) =
+                            engine.downcast_mut::<wrt::stackless::StacklessEngine>()
+                        {
+                            if let (Ok(context), Ok(message)) = (
+                                engine_ref.read_wit_string(context_ptr as u32),
+                                engine_ref.read_wit_string(message_ptr as u32),
+                            ) {
+                                // Debug output to console for now
+                                println!("[WASI LOG] {}: {} - {}", level_str, context, message);
+
+                                // Also use the actual log handler
+                                handle_component_log(
+                                    level_str,
+                                    &format!("{}: {}", context, message),
+                                );
+
+                                // Use the engine's built-in log handler
+                                let log_level = match level_str {
+                                    "trace" => LogLevel::Trace,
+                                    "debug" => LogLevel::Debug,
+                                    "info" => LogLevel::Info,
+                                    "warn" => LogLevel::Warn,
+                                    "error" => LogLevel::Error,
+                                    "critical" => LogLevel::Critical,
+                                    _ => LogLevel::Info,
+                                };
+                                engine_ref
+                                    .handle_log(log_level, format!("{}: {}", context, message));
+
+                                return Ok(vec![]);
+                            }
+                        }
+                    }
+                }
+            }
+            // Fall through on error
+            println!("[WASI LOG] Failed to extract log parameters");
+        }
+
+        // Return empty result on any error
+        Ok(vec![])
     });
 
     // Apply fuel limit if specified
@@ -278,60 +315,6 @@ fn parse_module(bytes: &[u8]) -> Result<Module> {
     empty_module
         .load_from_binary(bytes)
         .context("Failed to parse WebAssembly module")
-}
-
-/// Load and execute a WebAssembly Component Model module
-fn load_component(
-    engine: &mut Engine,
-    bytes: &[u8],
-    function_name: Option<&str>,
-    _file_path: String,
-) -> Result<()> {
-    // Load the component
-    let parse_start = Instant::now();
-
-    // Load the module from binary
-    let module = parse_module(bytes)?;
-
-    let parse_time = parse_start.elapsed();
-    info!("Loaded WebAssembly Component in {:?}", parse_time);
-
-    // Store a copy of exports to display available functions
-    let mut available_exports = Vec::new();
-    for export in &module.exports {
-        if matches!(export.kind, ExportKind::Function) {
-            available_exports.push(export.name.clone());
-        }
-    }
-
-    // Parse interface information from the module
-    analyze_component_interfaces(&module);
-
-    // Instantiate the module
-    let inst_start = Instant::now();
-    engine
-        .instantiate(module)
-        .context("Failed to instantiate component")?;
-
-    let instantiate_time = inst_start.elapsed();
-    info!("Component instantiated in {:?}", instantiate_time);
-
-    // Execute the component's function if specified
-    if let Some(func_name) = function_name {
-        // For component model, we'll use instance index 0
-        let instance_idx = 0;
-
-        execute_component_function(engine, instance_idx, func_name)?;
-    } else {
-        info!("No function specified to call. Use --call <function> to execute a function");
-        // List available exports to help the user
-        info!("Available exported functions:");
-        for name in &available_exports {
-            info!("  - {}", name);
-        }
-    }
-
-    Ok(())
 }
 
 /// Analyze component interfaces in a module
@@ -457,316 +440,6 @@ fn display_component_function_details(
 
 /// Execute a function in a component
 fn execute_component_function(
-    engine: &mut Engine,
-    instance_idx: u32,
-    func_name: &str,
-) -> Result<()> {
-    info!("Executing component function: {}", func_name);
-
-    // Find the function index
-    let mut func_idx = 0;
-    let mut found = false;
-
-    // Get expected results count from component interface
-    let expected_result_count = get_expected_results_count(func_name);
-    debug!(
-        "Component interface declares {} expected results for function {}",
-        expected_result_count, func_name
-    );
-
-    // Debug all available exports to help identify the correct function
-    if (instance_idx as usize) < engine.instance_count() {
-        if let Some(instance) = engine.get_instance(instance_idx) {
-            debug!("Available exports in instance {}:", instance_idx);
-            for (i, export) in instance.module.exports.iter().enumerate() {
-                if matches!(export.kind, ExportKind::Function) {
-                    if let Some(func) = instance.module.functions.get(export.index as usize) {
-                        if let Some(func_type) = instance.module.types.get(func.type_idx as usize) {
-                            let params = format_value_types(&func_type.params);
-                            let results = format_value_types(&func_type.results);
-                            debug!("  Export[{}]: {} - function idx: {}, type: (params: [{}], results: [{}])",
-                                i, export.name, export.index, params, results);
-
-                            if export.name == func_name {
-                                debug!("Found export with matching name: {}", func_name);
-                                func_idx = export.index;
-                                found = true;
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    if found {
-        // Debug the function type directly
-        if let Some(instance) = engine.get_instance(instance_idx) {
-            if func_idx < instance.module.functions.len() as u32 {
-                let function = &instance.module.functions[func_idx as usize];
-                if function.type_idx < instance.module.types.len() as u32 {
-                    let func_type = &instance.module.types[function.type_idx as usize];
-                    debug!(
-                        "Function type: params={:?}, results={:?}",
-                        func_type.params, func_type.results
-                    );
-                } else {
-                    debug!("Function type index out of range: {}", function.type_idx);
-                }
-            } else {
-                debug!("Function index out of range: {}", func_idx);
-            }
-        }
-
-        // Get statistics before execution to measure differences
-        let stats_before = engine.stats().clone();
-
-        // Get the function type to determine needed arguments
-        let args = if let Some(instance) = engine.get_instance(instance_idx) {
-            let function = &instance.module.functions[func_idx as usize];
-            let func_type = &instance.module.types[function.type_idx as usize];
-
-            // Create default arguments based on the parameter types
-            let mut default_args = Vec::new();
-            for param_type in &func_type.params {
-                default_args.push(wrt::Value::default_for_type(param_type));
-            }
-            default_args
-        } else {
-            vec![] // Empty vector if we can't determine the types
-        };
-
-        match engine.execute(instance_idx, func_idx, args) {
-            Ok(results) => {
-                let execution_time = Duration::from_millis(0); // Placeholder
-
-                // Display timing information
-                // Timing displayed separately in component execution
-
-                // Get statistics after execution
-                let stats_after = engine.stats();
-
-                // Calculate actual instruction count
-                let instructions_executed =
-                    stats_after.instructions_executed - stats_before.instructions_executed;
-                let fuel_consumed = stats_after.fuel_consumed - stats_before.fuel_consumed;
-                let function_calls = stats_after.function_calls - stats_before.function_calls;
-                let memory_operations =
-                    stats_after.memory_operations - stats_before.memory_operations;
-
-                // Adjust results based on expected count from component interface
-                debug!(
-                    "Function expected to return {} results according to component interface",
-                    expected_result_count
-                );
-
-                // Take only the expected number of results
-                let adjusted_results = if expected_result_count > 0 {
-                    if results.len() > expected_result_count {
-                        debug!(
-                            "Truncating {} results to {} as per component interface",
-                            results.len(),
-                            expected_result_count
-                        );
-                        results
-                            .iter()
-                            .take(expected_result_count)
-                            .cloned()
-                            .collect::<Vec<_>>()
-                    } else if results.len() < expected_result_count {
-                        debug!("Function returned fewer results ({}) than expected ({}), will use defaults", 
-                              results.len(), expected_result_count);
-                        // Start with the results we have
-                        let mut full_results = results.clone();
-                        // Add default values for any missing results
-                        for _ in full_results.len()..expected_result_count {
-                            full_results.push(wrt::Value::I32(0)); // Default value
-                        }
-                        full_results
-                    } else {
-                        results
-                    }
-                } else {
-                    results
-                };
-
-                info!(
-                    "Function execution completed in {:?} with results: {:?}",
-                    execution_time, adjusted_results
-                );
-                // Only show component stats if they're non-zero (to avoid confusion)
-                if instructions_executed > 0
-                    || fuel_consumed > 0
-                    || function_calls > 0
-                    || memory_operations > 0
-                {
-                    info!(
-                        "Component statistics: {} instructions, {} fuel units, {} function calls, {} memory operations",
-                        instructions_executed, fuel_consumed, function_calls, memory_operations
-                    );
-                } else {
-                    warn!(
-                        "Component execution statistics not available - component model support is limited in the runtime"
-                    );
-                }
-
-                // Print for tests to check
-                println!("Function result: {:?}", adjusted_results);
-                Ok(())
-            }
-            Err(e) => {
-                let execution_time = Duration::from_millis(0); // Placeholder
-                error!(
-                    "Function execution failed after {:?}: {}",
-                    execution_time, e
-                );
-
-                // Even though execution failed, we'll display a message to indicate how close we got
-                info!("Component execution attempted but encountered errors.");
-                info!("Showing a default result since the real execution failed");
-
-                // Print a result so test scripts have something to check
-                println!("Function result: Value::I32(42) [Default result due to execution error]");
-
-                // Show stats about how far we got
-                display_execution_stats(engine);
-
-                // Just return OK with a note that this is a simulated result
-                Ok(())
-            }
-        }
-    } else {
-        warn!("Function '{}' not found in component", func_name);
-        Err(anyhow::anyhow!(
-            "Function '{}' not found in component",
-            func_name
-        ))
-    }
-}
-
-/// Handles a log call from a component by mapping it to the appropriate tracing level
-fn handle_component_log(level: &str, message: &str) {
-    // Map the level from the component to the appropriate tracing level
-    let log_level = LogLevel::from_string_or_default(level);
-
-    // Determine the message prefix based on content
-    let prefix = if message.starts_with("[Host function]") || message.starts_with("[") {
-        // This is from an imported host function or already has a prefix
-        "" // No additional prefix since it already has one
-    } else {
-        // This is from a component
-        "[Component] "
-    };
-
-    match log_level {
-        LogLevel::Trace => tracing::trace!("{}{}", prefix, message),
-        LogLevel::Debug => tracing::debug!("{}{}", prefix, message),
-        LogLevel::Info => tracing::info!("{}{}", prefix, message),
-        LogLevel::Warn => tracing::warn!("{}{}", prefix, message),
-        LogLevel::Error => tracing::error!("{}{}", prefix, message),
-        LogLevel::Critical => tracing::error!("{}CRITICAL: {}", prefix, message),
-    }
-
-    // Also print to standard output for easier debugging during development - show full message
-    println!("[LOG] {}{}: {}", prefix, level, message);
-}
-
-/// Create a stackless WebAssembly engine with the specified fuel limit
-fn create_stackless_engine(fuel: Option<u64>) -> StacklessEngine {
-    let mut engine = wrt::new_stackless_engine();
-
-    // Register the log handler to handle component logging
-    engine.register_log_handler(|log_op| {
-        let context = log_op.component_id.as_deref().unwrap_or("component");
-        println!(
-            "[DEBUG] Stackless log handler received: level={}, context={}, message='{}'",
-            log_op.level.as_str(),
-            context,
-            log_op.message
-        );
-        handle_component_log(
-            log_op.level.as_str(),
-            &format!("{}: {}", context, log_op.message),
-        );
-        println!(
-            "[Stackless Handler] {} log from {}: '{}'",
-            log_op.level.as_str(),
-            context,
-            log_op.message
-        );
-    });
-
-    // Apply fuel limit if specified
-    if let Some(fuel) = fuel {
-        info!("Setting stackless engine fuel limit to {} units", fuel);
-        engine.set_fuel(Some(fuel));
-    } else {
-        info!("No fuel limit specified, keeping stackless execution unbound");
-    }
-
-    engine
-}
-
-/// Load and execute a WebAssembly Component Model module with the stackless engine
-fn load_component_stackless(
-    engine: &mut StacklessEngine,
-    bytes: &[u8],
-    function_name: Option<&str>,
-    _file_path: String,
-) -> Result<()> {
-    // Load the component
-    let parse_start = Instant::now();
-
-    // Load the module from binary
-    let module = parse_module(bytes)?;
-
-    let parse_time = parse_start.elapsed();
-    info!(
-        "Loaded WebAssembly Component in {:?} with stackless engine",
-        parse_time
-    );
-
-    // Store a copy of exports to display available functions
-    let mut available_exports = Vec::new();
-    for export in &module.exports {
-        if matches!(export.kind, ExportKind::Function) {
-            available_exports.push(export.name.clone());
-        }
-    }
-
-    // Parse interface information from the module
-    analyze_component_interfaces(&module);
-
-    // Instantiate the module
-    let inst_start = Instant::now();
-    let instance_idx = engine
-        .instantiate(module)
-        .context("Failed to instantiate component with stackless engine")?;
-
-    let instantiate_time = inst_start.elapsed();
-    info!(
-        "Component instantiated in {:?} with stackless engine",
-        instantiate_time
-    );
-
-    // Execute the component's function if specified
-    if let Some(func_name) = function_name {
-        execute_component_function_stackless(engine, instance_idx, func_name)?;
-    } else {
-        info!("No function specified to call. Use --call <function> to execute a function");
-        // List available exports to help the user
-        info!("Available exported functions:");
-        for name in &available_exports {
-            info!("  - {}", name);
-        }
-    }
-
-    Ok(())
-}
-
-/// Execute a function in a component using the stackless engine
-fn execute_component_function_stackless(
     engine: &mut StacklessEngine,
     instance_idx: u32,
     func_name: &str,
@@ -825,128 +498,97 @@ fn execute_component_function_stackless(
     }
 
     if found {
+        // We found the function export, now prepare to call it
+        debug!("Function found, preparing to call it: {}", func_name);
+        debug!("Function index: {}", func_idx);
+
         // Debug the function type directly
         if (instance_idx as usize) < engine.instances.len() {
-            if func_idx
+            // Check if the function index is valid
+            if (func_idx as usize)
                 < engine.instances[instance_idx as usize]
                     .module
                     .functions
-                    .len() as u32
+                    .len()
             {
-                let function =
+                let func =
                     &engine.instances[instance_idx as usize].module.functions[func_idx as usize];
-                if function.type_idx
-                    < engine.instances[instance_idx as usize].module.types.len() as u32
+                if (func.type_idx as usize)
+                    < engine.instances[instance_idx as usize].module.types.len()
                 {
                     let func_type = &engine.instances[instance_idx as usize].module.types
-                        [function.type_idx as usize];
+                        [func.type_idx as usize];
                     debug!(
                         "Function type: params={:?}, results={:?}",
                         func_type.params, func_type.results
                     );
-                } else {
-                    debug!("Function type index out of range: {}", function.type_idx);
                 }
-            } else {
-                debug!("Function index out of range: {}", func_idx);
             }
         }
 
-        // Get statistics before execution to measure differences
+        // Capture stats before execution to measure performance
         let stats_before = engine.stats().clone();
 
-        // Get the function type to determine needed arguments
+        // Prepare arguments based on function parameters
         let args = if (instance_idx as usize) < engine.instances.len() {
             let instance = &engine.instances[instance_idx as usize];
-            let function = &instance.module.functions[func_idx as usize];
-            let func_type = &instance.module.types[function.type_idx as usize];
-
-            // Create default arguments based on the parameter types
-            let mut default_args = Vec::new();
-            for param_type in &func_type.params {
-                default_args.push(wrt::Value::default_for_type(param_type));
+            if (func_idx as usize) < instance.module.functions.len() {
+                let func = &instance.module.functions[func_idx as usize];
+                if (func.type_idx as usize) < instance.module.types.len() {
+                    let func_type = &instance.module.types[func.type_idx as usize];
+                    // Create placeholder arguments of the right type
+                    func_type
+                        .params
+                        .iter()
+                        .map(|param_type| wrt::Value::default_for_type(param_type))
+                        .collect()
+                } else {
+                    vec![]
+                }
+            } else {
+                vec![]
             }
-            default_args
         } else {
-            vec![] // Empty vector if we can't determine the types
+            vec![]
         };
 
+        // Execute the function
         match engine.execute(instance_idx, func_idx, args) {
             Ok(results) => {
-                let execution_time = Duration::from_millis(0); // Placeholder
+                // Log execution times
+                let execution_time = Instant::now().duration_since(Instant::now());
+                info!("Function execution completed in {:?}", execution_time);
 
-                // Display timing information
-                // Timing displayed separately in component execution
-
-                // Get statistics after execution
+                // Log the stats difference
                 let stats_after = engine.stats();
-
-                // Calculate actual instruction count
-                let instructions_executed =
-                    stats_after.instructions_executed - stats_before.instructions_executed;
-                let fuel_consumed = stats_after.fuel_consumed - stats_before.fuel_consumed;
-                let function_calls = stats_after.function_calls - stats_before.function_calls;
-                let memory_operations =
-                    stats_after.memory_operations - stats_before.memory_operations;
-
-                // Adjust results based on expected count from component interface
-                debug!(
-                    "Function expected to return {} results according to component interface",
-                    expected_result_count
-                );
-
-                // Take only the expected number of results
-                let adjusted_results = if expected_result_count > 0 {
-                    if results.len() > expected_result_count {
-                        debug!(
-                            "Truncating {} results to {} as per component interface",
-                            results.len(),
-                            expected_result_count
-                        );
-                        results
-                            .iter()
-                            .take(expected_result_count)
-                            .cloned()
-                            .collect::<Vec<_>>()
-                    } else if results.len() < expected_result_count {
-                        debug!("Function returned fewer results ({}) than expected ({}), will use defaults", 
-                              results.len(), expected_result_count);
-                        // Start with the results we have
-                        let mut full_results = results.clone();
-                        // Add default values for any missing results
-                        for _ in full_results.len()..expected_result_count {
-                            full_results.push(wrt::Value::I32(0)); // Default value
-                        }
-                        full_results
-                    } else {
-                        results
-                    }
-                } else {
-                    results
-                };
-
                 info!(
-                    "Function execution completed in {:?} with results: {:?}",
-                    execution_time, adjusted_results
+                    "Instructions executed: {} (total: {})",
+                    stats_after.instructions_executed - stats_before.instructions_executed,
+                    stats_after.instructions_executed
                 );
-                // Only show component stats if they're non-zero (to avoid confusion)
-                if instructions_executed > 0
-                    || fuel_consumed > 0
-                    || function_calls > 0
-                    || memory_operations > 0
-                {
+
+                if stats_after.fuel_consumed > 0 {
                     info!(
-                        "Component statistics: {} instructions, {} fuel units, {} function calls, {} memory operations",
-                        instructions_executed, fuel_consumed, function_calls, memory_operations
-                    );
-                } else {
-                    warn!(
-                        "Component execution statistics not available - component model support is limited in the runtime"
+                        "Fuel consumed: {} (total: {})",
+                        stats_after.fuel_consumed - stats_before.fuel_consumed,
+                        stats_after.fuel_consumed
                     );
                 }
 
-                // Print for tests to check
-                println!("Function result: {:?}", adjusted_results);
+                if !results.is_empty() {
+                    // Print the results
+                    info!("Function returned {} result values:", results.len());
+                    for (i, result) in results.iter().enumerate() {
+                        info!("  Result[{}]: {:?}", i, result);
+                        // Also print to standard output for easier consumption by test scripts
+                        println!("Function result: {:?}", result);
+                    }
+                } else {
+                    info!("Function returned no results");
+                    // Print this to ensure test scripts have something to check for
+                    println!("Function result: None");
+                }
+
                 Ok(())
             }
             Err(e) => {
@@ -979,75 +621,81 @@ fn execute_component_function_stackless(
     }
 }
 
-/// Displays execution statistics for the standard engine
-fn display_execution_stats(engine: &Engine) {
-    let stats = engine.stats();
+/// Handle component log messages
+fn handle_component_log(level: &str, message: &str) {
+    let log_level = match level.to_lowercase().as_str() {
+        "trace" => LogLevel::Trace,
+        "debug" => LogLevel::Debug,
+        "info" => LogLevel::Info,
+        "warn" => LogLevel::Warn,
+        "error" => LogLevel::Error,
+        "critical" => LogLevel::Critical,
+        _ => LogLevel::Info,
+    };
 
-    info!("=== Execution Statistics ===");
-    info!("Instructions executed:  {}", stats.instructions_executed);
-
-    // Note about component model statistics
-    if stats.instructions_executed <= 1 {
-        warn!(
-            "Note: WebAssembly Component Model support requires valid core modules in components."
-        );
-        warn!("      The runtime extracts and executes the core module from component binaries.");
-        warn!("      If execution fails, check if the component contains a valid core WebAssembly module.");
+    match log_level {
+        LogLevel::Trace => debug!("{}", message),
+        LogLevel::Debug => debug!("{}", message),
+        LogLevel::Info => info!("{}", message),
+        LogLevel::Warn => warn!("{}", message),
+        LogLevel::Error => error!("{}", message),
+        LogLevel::Critical => error!("CRITICAL: {}", message),
     }
+}
 
-    if stats.fuel_consumed > 0 {
-        info!("Fuel consumed:         {}", stats.fuel_consumed);
-    }
+/// Load and execute a WebAssembly Component Model module with stackless engine
+fn load_component(
+    engine: &mut StacklessEngine,
+    bytes: &[u8],
+    function_name: Option<&str>,
+    file_path: String,
+) -> Result<()> {
+    // Load the component
+    let parse_start = Instant::now();
 
-    info!("Function calls:         {}", stats.function_calls);
-    info!("Memory operations:      {}", stats.memory_operations);
+    // Load the module from binary
+    let module = parse_module(bytes)?;
 
-    // Format memory usage in a human-readable way
-    let current_kb = stats.current_memory_bytes / 1024;
-    let peak_kb = stats.peak_memory_bytes / 1024;
+    let parse_time = parse_start.elapsed();
+    info!(
+        "Loaded WebAssembly Component with stackless engine in {:?}",
+        parse_time
+    );
 
-    info!("Current memory usage:   {} KB", current_kb);
-    info!("Peak memory usage:      {} KB", peak_kb);
-
-    // Display time breakdowns if available
-    #[cfg(feature = "std")]
-    {
-        // Calculate total measured time in microseconds
-        let total_time = stats.local_global_time_us
-            + stats.control_flow_time_us
-            + stats.arithmetic_time_us
-            + stats.memory_ops_time_us
-            + stats.function_call_time_us;
-
-        if total_time > 0 {
-            info!("Time breakdown:");
-            info!(
-                "  Local/Global ops:    {} µs ({:.1}%)",
-                stats.local_global_time_us,
-                (stats.local_global_time_us as f64 / total_time as f64) * 100.0
-            );
-            info!(
-                "  Control flow:        {} µs ({:.1}%)",
-                stats.control_flow_time_us,
-                (stats.control_flow_time_us as f64 / total_time as f64) * 100.0
-            );
-            info!(
-                "  Arithmetic:          {} µs ({:.1}%)",
-                stats.arithmetic_time_us,
-                (stats.arithmetic_time_us as f64 / total_time as f64) * 100.0
-            );
-            info!(
-                "  Memory operations:   {} µs ({:.1}%)",
-                stats.memory_ops_time_us,
-                (stats.memory_ops_time_us as f64 / total_time as f64) * 100.0
-            );
-            info!(
-                "  Function calls:      {} µs ({:.1}%)",
-                stats.function_call_time_us,
-                (stats.function_call_time_us as f64 / total_time as f64) * 100.0
-            );
+    // Store a copy of exports to display available functions
+    let mut available_exports = Vec::new();
+    for export in &module.exports {
+        if matches!(export.kind, ExportKind::Function) {
+            available_exports.push(export.name.clone());
         }
     }
+
+    // Parse interface information from the module
+    analyze_component_interfaces(&module);
+
+    // Instantiate the module
+    let inst_start = Instant::now();
+    let instance_idx = engine
+        .instantiate(module.clone())
+        .context("Failed to instantiate component")?;
+
+    let instantiate_time = inst_start.elapsed();
+    info!("Component instantiated in {:?}", instantiate_time);
+
+    info!("Using stackless execution engine");
+
+    // Execute the component's function if specified
+    if let Some(func_name) = function_name {
+        execute_component_function(engine, instance_idx, func_name)?;
+    } else {
+        info!("No function specified to call. Use --call <function> to execute a function");
+        info!("Available exported functions:");
+        for name in &available_exports {
+            info!("  - {}", name);
+        }
+    }
+
+    Ok(())
 }
 
 /// Displays execution statistics for the stackless engine

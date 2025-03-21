@@ -1,3 +1,4 @@
+use crate::values::Value;
 use crate::{Box, String};
 
 #[cfg(not(feature = "std"))]
@@ -11,7 +12,16 @@ use core::result::Result;
 use std::result::Result;
 
 #[cfg(not(feature = "std"))]
+use alloc::collections::BTreeMap;
+#[cfg(not(feature = "std"))]
 use alloc::string::ToString;
+#[cfg(feature = "std")]
+use std::collections::HashMap;
+
+#[cfg(not(feature = "std"))]
+use core::any::Any;
+#[cfg(feature = "std")]
+use std::any::Any;
 
 /// Log levels for WebAssembly component logging
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -129,12 +139,24 @@ impl LogOperation {
 /// Log handler type for processing WebAssembly log operations
 pub type LogHandler = Box<dyn Fn(LogOperation) + Send + Sync>;
 
+/// Host function handler type for implementing WebAssembly imports
+pub type HostFunctionHandler =
+    Box<dyn Fn(&mut dyn Any, Vec<Value>) -> crate::error::Result<Vec<Value>> + Send + Sync>;
+
 /// A callback registry for handling WebAssembly component operations
 #[derive(Default)]
 pub struct CallbackRegistry {
     /// Log handler (if registered)
     #[allow(clippy::type_complexity)]
     log_handler: Option<LogHandler>,
+
+    /// Host functions registry (module name -> function name -> handler)
+    #[cfg(feature = "std")]
+    host_functions: HashMap<String, HashMap<String, HostFunctionHandler>>,
+
+    /// Host functions registry (module name -> function name -> handler)
+    #[cfg(not(feature = "std"))]
+    host_functions: BTreeMap<String, BTreeMap<String, HostFunctionHandler>>,
 }
 
 #[cfg(feature = "std")]
@@ -160,7 +182,13 @@ impl core::fmt::Debug for CallbackRegistry {
 impl CallbackRegistry {
     /// Create a new callback registry
     pub fn new() -> Self {
-        Self { log_handler: None }
+        Self {
+            log_handler: None,
+            #[cfg(feature = "std")]
+            host_functions: HashMap::new(),
+            #[cfg(not(feature = "std"))]
+            host_functions: BTreeMap::new(),
+        }
     }
 
     /// Register a log handler
@@ -169,6 +197,14 @@ impl CallbackRegistry {
         F: Fn(LogOperation) + Send + Sync + 'static,
     {
         self.log_handler = Some(Box::new(handler));
+    }
+
+    /// Register a log handler (alias for register_log_handler for backward compatibility)
+    pub fn register_log<F>(&mut self, handler: F)
+    where
+        F: Fn(LogOperation) + Send + Sync + 'static,
+    {
+        self.register_log_handler(handler);
     }
 
     /// Handle a log operation
@@ -181,6 +217,54 @@ impl CallbackRegistry {
     /// Check if a log handler is registered
     pub fn has_log_handler(&self) -> bool {
         self.log_handler.is_some()
+    }
+
+    /// Register a host function
+    pub fn register_host_function(
+        &mut self,
+        module_name: &str,
+        function_name: &str,
+        handler: HostFunctionHandler,
+    ) {
+        let module_name = module_name.to_string();
+        let function_name = function_name.to_string();
+
+        let module_functions = self.host_functions.entry(module_name).or_insert_with(|| {
+            #[cfg(feature = "std")]
+            return HashMap::new();
+            #[cfg(not(feature = "std"))]
+            return BTreeMap::new();
+        });
+
+        module_functions.insert(function_name, handler);
+    }
+
+    /// Check if a host function is registered
+    pub fn has_host_function(&self, module_name: &str, function_name: &str) -> bool {
+        self.host_functions
+            .get(module_name)
+            .and_then(|funcs| funcs.get(function_name))
+            .is_some()
+    }
+
+    /// Call a host function
+    pub fn call_host_function(
+        &self,
+        engine: &mut dyn Any,
+        module_name: &str,
+        function_name: &str,
+        args: Vec<Value>,
+    ) -> crate::error::Result<Vec<Value>> {
+        if let Some(module_functions) = self.host_functions.get(module_name) {
+            if let Some(handler) = module_functions.get(function_name) {
+                return handler(engine, args);
+            }
+        }
+
+        Err(crate::error::Error::Execution(format!(
+            "Host function {}.{} not found",
+            module_name, function_name
+        )))
     }
 }
 

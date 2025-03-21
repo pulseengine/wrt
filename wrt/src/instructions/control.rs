@@ -83,7 +83,27 @@ pub fn loop_instr(
     block_type: BlockType,
     function_types: Option<&[FuncType]>,
 ) -> Result<()> {
-    push_label(pc, stack, LabelType::Loop, block_type, function_types)
+    // For Loop instructions, the continuation point is the start of the loop itself
+    // This is different from Block, where the continuation is after the end
+    let loop_start = pc;
+    push_label(
+        loop_start,
+        stack,
+        LabelType::Loop,
+        block_type,
+        function_types,
+    )?;
+    println!(
+        "[PUSH_LABEL_DEBUG] Pushing new label - arity: {}, continuation: {}",
+        stack.labels.last().map_or(0, |l| l.arity),
+        stack.labels.last().map_or(0, |l| l.continuation)
+    );
+    println!(
+        "[PUSH_LABEL_DEBUG] Label stack size after push: {}",
+        stack.labels.len()
+    );
+
+    Ok(())
 }
 
 /// Executes an if instruction
