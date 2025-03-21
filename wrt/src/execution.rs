@@ -1729,6 +1729,26 @@ impl Engine {
                     Err(Error::Execution("Expected i32 values for add".into()))
                 }
             }
+            Instruction::I32Sub => {
+                let val2 = self.stack.values.pop().ok_or(Error::StackUnderflow)?;
+                let val1 = self.stack.values.pop().ok_or(Error::StackUnderflow)?;
+                if let (Value::I32(v1), Value::I32(v2)) = (val1, val2) {
+                    self.stack.values.push(Value::I32(v1.wrapping_sub(v2)));
+                    Ok(None)
+                } else {
+                    Err(Error::Execution("Expected i32 values for sub".into()))
+                }
+            }
+            Instruction::I32Mul => {
+                let val2 = self.stack.values.pop().ok_or(Error::StackUnderflow)?;
+                let val1 = self.stack.values.pop().ok_or(Error::StackUnderflow)?;
+                if let (Value::I32(v1), Value::I32(v2)) = (val1, val2) {
+                    self.stack.values.push(Value::I32(v1.wrapping_mul(v2)));
+                    Ok(None)
+                } else {
+                    Err(Error::Execution("Expected i32 values for mul".into()))
+                }
+            }
 
             // SIMD Instructions
             Instruction::V128Load(align, offset) => {
