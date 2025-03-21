@@ -121,7 +121,7 @@ pub fn table_grow(stack: &mut Vec<Value>, frame: &mut Frame, table_idx: u32) -> 
     let table = &mut frame.module.tables[table_addr.table_idx as usize];
 
     let old_size = table.size();
-    if let Err(_) = table.grow(n as u32) {
+    if table.grow(n as u32).is_err() {
         stack.push(Value::I32(-1));
     } else {
         stack.push(Value::I32(old_size as i32));

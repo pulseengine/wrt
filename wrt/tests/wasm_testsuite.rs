@@ -98,7 +98,7 @@ fn test_basic_simd_operations() -> Result<()> {
 
     // Test f32x4.splat
     let result = engine.execute(0, 0, vec![])?;
-    if let Some(Value::V128(_)) = result.get(0) {
+    if let Some(Value::V128(_)) = result.first() {
         println!("✅ f32x4_splat_test passed: {:?}", result[0]);
     } else {
         println!(
@@ -110,7 +110,7 @@ fn test_basic_simd_operations() -> Result<()> {
 
     // Test f64x2.splat
     let result = engine.execute(0, 1, vec![])?;
-    if let Some(Value::V128(_)) = result.get(0) {
+    if let Some(Value::V128(_)) = result.first() {
         println!("✅ f64x2_splat_test passed: {:?}", result[0]);
     } else {
         println!(
@@ -122,7 +122,7 @@ fn test_basic_simd_operations() -> Result<()> {
 
     // Test i32x4.splat
     let result = engine.execute(0, 2, vec![])?;
-    if let Some(Value::V128(_v)) = result.get(0) {
+    if let Some(Value::V128(_v)) = result.first() {
         println!("✅ i32x4_splat_test passed: {:?}", result[0]);
     } else {
         println!(
@@ -166,7 +166,7 @@ fn test_simd_dot_product() -> Result<()> {
 
     // Execute the function
     let result = engine.execute(0, 0, vec![])?;
-    if let Some(Value::V128(v)) = result.get(0) {
+    if let Some(Value::V128(v)) = result.first() {
         println!("✅ simple_simd_test passed: {:?}", result[0]);
 
         // Convert to bytes to inspect the values

@@ -204,7 +204,7 @@ pub fn i32_trunc_f32_s(stack: &mut Vec<Value>) -> Result<(), Error> {
     }
 
     // Check if value is outside the range of i32
-    if value >= 2_147_483_648.0 || value < -2_147_483_648.0 {
+    if !(-2_147_483_648.0..2_147_483_648.0).contains(&value) {
         return Err(Error::Execution("Value out of range for i32".into()));
     }
 
@@ -318,7 +318,7 @@ pub fn i64_trunc_f32_u(stack: &mut Vec<Value>) -> Result<(), Error> {
     }
 
     // Check if value is outside the range of u64
-    if value >= 18_446_744_073_709_551_616.0 || value < 0.0 {
+    if !(0.0..18_446_744_073_709_551_616.0).contains(&value) {
         return Err(Error::Execution("Value out of range for u64".into()));
     }
 
@@ -366,7 +366,7 @@ pub fn i64_trunc_f64_u(stack: &mut Vec<Value>) -> Result<(), Error> {
     }
 
     // Check if value is outside the range of u64
-    if value >= 18_446_744_073_709_551_616.0 || value < 0.0 {
+    if !(0.0..18_446_744_073_709_551_616.0).contains(&value) {
         return Err(Error::Execution("Value out of range for u64".into()));
     }
 

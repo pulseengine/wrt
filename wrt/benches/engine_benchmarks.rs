@@ -48,7 +48,6 @@ fn create_complex_module() -> Vec<u8> {
         )"#,
     )
     .unwrap()
-    .into()
 }
 
 fn create_memory_module() -> Module {

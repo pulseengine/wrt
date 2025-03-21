@@ -166,7 +166,7 @@ fn test_v128_splat() -> Result<()> {
     // Test f32x4.splat with value 3.14159
     let result = engine.execute(0, 4, vec![Value::F32(3.14159)])?;
     // We can't easily represent the exact expected bit pattern for floats, so just check that we got a v128 back
-    if let Some(Value::V128(_)) = result.get(0) {
+    if let Some(Value::V128(_)) = result.first() {
         println!("✅ f32x4.splat test passed: {:?}", result[0]);
     } else {
         println!(
@@ -179,7 +179,7 @@ fn test_v128_splat() -> Result<()> {
     // Test f64x2.splat with value 2.71828
     let result = engine.execute(0, 5, vec![Value::F64(2.71828)])?;
     // We can't easily represent the exact expected bit pattern for floats, so just check that we got a v128 back
-    if let Some(Value::V128(_)) = result.get(0) {
+    if let Some(Value::V128(_)) = result.first() {
         println!("✅ f64x2.splat test passed: {:?}", result[0]);
     } else {
         println!(

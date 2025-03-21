@@ -43,7 +43,7 @@ fn test_memory_persistence() -> Result<()> {
         .expect("No instance found");
     println!("Memory count in instance: {}", instance.memories.len());
 
-    if instance.memories.len() > 0 {
+    if !instance.memories.is_empty() {
         println!("Memory size: {}", instance.memories[0].size_bytes());
 
         // Check the byte at address 100 before store (should be 0)
@@ -80,7 +80,7 @@ fn test_memory_persistence() -> Result<()> {
     let instance = engine
         .get_instance(instance_idx)
         .expect("No instance found");
-    if instance.memories.len() > 0 {
+    if !instance.memories.is_empty() {
         // Read the byte at address 100 directly from memory
         let stored_bytes = match instance.memories[0].read_bytes(100, 4) {
             Ok(bytes) => bytes.to_vec(),
