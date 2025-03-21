@@ -214,22 +214,72 @@ fn test_binary_module_from_wast() -> Result<()> {
 
 /// Tests for SIMD operations
 #[test]
-#[ignore = "SIMD tests need implementing"]
 fn test_basic_simd_operations() -> Result<()> {
-    // A simple WAT module defining SIMD operations
-    let wat_code = r#"
+    // A WAT module defining various SIMD operations
+    let wat = r#"
     (module
-      (func $i32x4_splat (param $x i32) (result v128)
-        local.get $x
-        i32x4.splat
+      (memory 1)
+      (export "memory" (memory 0))
+      
+      ;; Load and store operations
+      (func $test_load_store (export "test_load_store") (result v128)
+        ;; Store a v128 constant in memory
+        (v128.const i32x4 0x10203040 0x50607080 0x90A0B0C0 0xD0E0F0FF)
+        (i32.const 0)  ;; address
+        (v128.store)
+        
+        ;; Load it back
+        (i32.const 0)  ;; address
+        (v128.load)
       )
-      (export "i32x4_splat" (func $i32x4_splat))
+      
+      ;; Splat operations - replicate a value to all lanes
+      (func $i32x4_splat (export "i32x4_splat") (param i32) (result v128)
+        (local.get 0)
+        (i32x4.splat)
+      )
+      
+      (func $i64x2_splat (export "i64x2_splat") (param i64) (result v128)
+        (local.get 0)
+        (i64x2.splat)
+      )
+      
+      ;; Arithmetic operations
+      (func $i32x4_add (export "i32x4_add") (result v128)
+        (v128.const i32x4 1 2 3 4)
+        (v128.const i32x4 5 6 7 8)
+        (i32x4.add)
+      )
+      
+      (func $i32x4_sub (export "i32x4_sub") (result v128)
+        (v128.const i32x4 10 20 30 40)
+        (v128.const i32x4 1 2 3 4)
+        (i32x4.sub)
+      )
+      
+      (func $i32x4_mul (export "i32x4_mul") (result v128)
+        (v128.const i32x4 1 2 3 4)
+        (v128.const i32x4 5 6 7 8)
+        (i32x4.mul)
+      )
+      
+      ;; Shuffle operation
+      (func $i8x16_shuffle (export "i8x16_shuffle") (result v128)
+        ;; First vector: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+        (v128.const i8x16 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15)
+        
+        ;; Second vector: [16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31]
+        (v128.const i8x16 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31)
+        
+        ;; Shuffle: select lanes in reverse order, alternating between vectors
+        (i8x16.shuffle 31 30 29 28 27 26 25 24 23 22 21 20 19 18 17 16)
+      )
     )
     "#;
 
     // Parse the WebAssembly text format
-    let wasm_binary = wat::parse_str(wat_code)
-        .map_err(|e| Error::Parse(format!("Failed to parse WAT: {}", e)))?;
+    let wasm_binary =
+        wat::parse_str(wat).map_err(|e| Error::Parse(format!("Failed to parse WAT: {}", e)))?;
 
     // Create and load the module
     let module = Module::new();
@@ -243,7 +293,96 @@ fn test_basic_simd_operations() -> Result<()> {
 
     println!("SIMD module loaded and instantiated successfully");
 
-    // Note: We're not executing the SIMD operations yet, as they require more implementation
+    // Test load and store
+    let result = engine.execute(0, 0, vec![])?;
+    // Expected v128 value (0xD0E0F0FF_90A0B0C0_50607080_10203040 in little-endian representation)
+    let expected = Value::V128(0xD0E0F0FF_90A0B0C0_50607080_10203040);
+    assert_eq!(
+        result,
+        vec![expected.clone()],
+        "v128.load/store failed: expected {:?}, got {:?}",
+        expected,
+        result
+    );
+    println!("✅ v128.load/store test passed");
+
+    // Test i32x4.splat
+    let result = engine.execute(0, 1, vec![Value::I32(0x12345678)])?;
+    let expected = Value::V128(0x1234567812345678_1234567812345678);
+    assert_eq!(
+        result,
+        vec![expected.clone()],
+        "i32x4.splat failed: expected {:?}, got {:?}",
+        expected,
+        result
+    );
+    println!("✅ i32x4.splat test passed");
+
+    // Test i64x2.splat
+    let result = engine.execute(0, 2, vec![Value::I64(0x123456789ABCDEF0)])?;
+    let expected = Value::V128(0x123456789ABCDEF0_123456789ABCDEF0);
+    assert_eq!(
+        result,
+        vec![expected.clone()],
+        "i64x2.splat failed: expected {:?}, got {:?}",
+        expected,
+        result
+    );
+    println!("✅ i64x2.splat test passed");
+
+    // Test i32x4.add
+    let result = engine.execute(0, 3, vec![])?;
+    // Expected: [1+5, 2+6, 3+7, 4+8] = [6, 8, 10, 12]
+    let expected = Value::V128(0x0000000C0000000A_0000000800000006);
+    assert_eq!(
+        result,
+        vec![expected.clone()],
+        "i32x4.add failed: expected {:?}, got {:?}",
+        expected,
+        result
+    );
+    println!("✅ i32x4.add test passed");
+
+    // Test i32x4.sub
+    let result = engine.execute(0, 4, vec![])?;
+    // Expected: [10-1, 20-2, 30-3, 40-4] = [9, 18, 27, 36]
+    let expected = Value::V128(0x0000002400000021_000000120000000A);
+    assert_eq!(
+        result,
+        vec![expected.clone()],
+        "i32x4.sub failed: expected {:?}, got {:?}",
+        expected,
+        result
+    );
+    println!("✅ i32x4.sub test passed");
+
+    // Test i32x4.mul
+    let result = engine.execute(0, 5, vec![])?;
+    // Expected: [1*5, 2*6, 3*7, 4*8] = [5, 12, 21, 32]
+    let expected = Value::V128(0x0000002000000015_000000070000000C);
+    assert_eq!(
+        result,
+        vec![expected.clone()],
+        "i32x4.mul failed: expected {:?}, got {:?}",
+        expected,
+        result
+    );
+    println!("✅ i32x4.mul test passed");
+
+    // Test i8x16.shuffle
+    let result = engine.execute(0, 6, vec![])?;
+    // Expected shuffle result
+    let expected = Value::V128(0x1011121314151617_18191A1B1C1D1E1F);
+    assert_eq!(
+        result,
+        vec![expected.clone()],
+        "i8x16.shuffle failed: expected {:?}, got {:?}",
+        expected,
+        result
+    );
+    println!("✅ i8x16.shuffle test passed");
+
+    println!("All SIMD tests passed successfully!");
 
     Ok(())
 }
