@@ -14,10 +14,10 @@ This document tracks the implementation tasks for the WRT project based on requi
      - [ ] Ensure instruction execution for i64 comparisons works in all execution modes
    - Test file: `wrt/tests/wast_tests.rs:test_i64_compare_operations`
 
-2. [ ] **Address Documentation Warnings**
-   - Add missing documentation for instruction variants in `wrt/src/instructions/mod.rs`
-   - Add missing documentation for methods in `wrt/src/stackless.rs`
-   - Follow project documentation standards as mentioned in README.md
+2. [x] **Address Documentation Warnings**
+   - [x] Add missing documentation for instruction variants in `wrt/src/instructions/mod.rs`
+   - [x] Add missing documentation for methods in `wrt/src/stackless.rs`
+   - [x] Follow project documentation standards as mentioned in README.md
 
 3. [ ] **Clean Up Unused Code**
    - Address unused variables by either using them or prefixing with underscores

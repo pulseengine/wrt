@@ -34,81 +34,145 @@ pub use variable::*;
 #[derive(Debug, Clone, PartialEq)]
 pub enum Instruction {
     // Control flow instructions
+    /// Block instruction: begins a block of code with a given signature
     Block(BlockType),
+    /// Loop instruction: begins a loop with a given signature
     Loop(BlockType),
+    /// If instruction: begins an if block with a given signature
     If(BlockType),
+    /// Else instruction: marks the beginning of the else branch of an if block
     Else,
+    /// End instruction: marks the end of a block, loop, if, or function
     End,
+    /// Branch instruction: jumps to the specified label depth
     Br(u32),
+    /// Conditional branch instruction: jumps to the specified label depth if the condition is true
     BrIf(u32),
+    /// Table branch instruction: jumps to the label selected by an index from a table of label targets
     BrTable(Vec<u32>, u32),
+    /// Return instruction: returns from the current function
     Return,
+    /// Unreachable instruction: indicates an unreachable code path
     Unreachable,
+    /// No-operation instruction: does nothing
     Nop,
 
     // Call instructions
+    /// Call instruction: directly calls a function by its index
     Call(u32),
+    /// Indirect call instruction: calls a function from a table at the given table index and type
     CallIndirect(u32, u32),
+    /// Tail call instruction: calls a function and returns directly to the caller
     ReturnCall(u32),
+    /// Indirect tail call instruction: calls a function from a table and returns directly to the caller
     ReturnCallIndirect(u32, u32),
 
     // Parametric instructions
+    /// Drop instruction: pops and discards the top value from the stack
     Drop,
+    /// Select instruction: selects one of two values based on a condition
     Select,
+    /// Typed select instruction: selects one of two values based on a condition, with explicit type
     SelectTyped(ValueType),
 
     // Variable instructions
+    /// Local get instruction: pushes the value of a local variable onto the stack
     LocalGet(u32),
+    /// Local set instruction: sets the value of a local variable from the stack
     LocalSet(u32),
+    /// Local tee instruction: sets a local variable and keeps the value on the stack
     LocalTee(u32),
+    /// Global get instruction: pushes the value of a global variable onto the stack
     GlobalGet(u32),
+    /// Global set instruction: sets the value of a global variable from the stack
     GlobalSet(u32),
 
     // Table instructions
+    /// Table get instruction: gets an element from a table
     TableGet(u32),
+    /// Table set instruction: sets an element in a table
     TableSet(u32),
+    /// Table size instruction: gets the current size of a table
     TableSize(u32),
+    /// Table grow instruction: grows a table by a given number of elements
     TableGrow(u32),
+    /// Table init instruction: initializes a table segment from an element segment
     TableInit(u32, u32),
+    /// Table copy instruction: copies elements from one table to another
     TableCopy(u32, u32),
+    /// Table fill instruction: fills a table range with a given value
     TableFill(u32),
+    /// Element drop instruction: drops an element segment
     ElemDrop(u32),
 
     // Memory instructions
+    /// Load a 32-bit integer from memory
     I32Load(u32, u32),
+    /// Load a 64-bit integer from memory
     I64Load(u32, u32),
+    /// Load a 32-bit float from memory
     F32Load(u32, u32),
+    /// Load a 64-bit float from memory
     F64Load(u32, u32),
+    /// Load an 8-bit integer from memory and sign-extend to 32 bits
     I32Load8S(u32, u32),
+    /// Load an 8-bit integer from memory and zero-extend to 32 bits
     I32Load8U(u32, u32),
+    /// Load a 16-bit integer from memory and sign-extend to 32 bits
     I32Load16S(u32, u32),
+    /// Load a 16-bit integer from memory and zero-extend to 32 bits
     I32Load16U(u32, u32),
+    /// Load an 8-bit integer from memory and sign-extend to 64 bits
     I64Load8S(u32, u32),
+    /// Load an 8-bit integer from memory and zero-extend to 64 bits
     I64Load8U(u32, u32),
+    /// Load a 16-bit integer from memory and sign-extend to 64 bits
     I64Load16S(u32, u32),
+    /// Load a 16-bit integer from memory and zero-extend to 64 bits
     I64Load16U(u32, u32),
+    /// Load a 32-bit integer from memory and sign-extend to 64 bits
     I64Load32S(u32, u32),
+    /// Load a 32-bit integer from memory and zero-extend to 64 bits
     I64Load32U(u32, u32),
+    /// Store a 32-bit integer to memory
     I32Store(u32, u32),
+    /// Store a 64-bit integer to memory
     I64Store(u32, u32),
+    /// Store a 32-bit float to memory
     F32Store(u32, u32),
+    /// Store a 64-bit float to memory
     F64Store(u32, u32),
+    /// Store the low 8 bits of a 32-bit integer to memory
     I32Store8(u32, u32),
+    /// Store the low 16 bits of a 32-bit integer to memory
     I32Store16(u32, u32),
+    /// Store the low 8 bits of a 64-bit integer to memory
     I64Store8(u32, u32),
+    /// Store the low 16 bits of a 64-bit integer to memory
     I64Store16(u32, u32),
+    /// Store the low 32 bits of a 64-bit integer to memory
     I64Store32(u32, u32),
+    /// Get the current size of memory in pages
     MemorySize,
+    /// Grow memory by a given number of pages
     MemoryGrow,
+    /// Initialize a region of memory from a data segment
     MemoryInit(u32),
+    /// Drop a data segment
     DataDrop(u32),
+    /// Copy data from one memory region to another
     MemoryCopy,
+    /// Fill a memory region with a given value
     MemoryFill,
 
     // Numeric constant instructions
+    /// Push a 32-bit integer constant onto the stack
     I32Const(i32),
+    /// Push a 64-bit integer constant onto the stack
     I64Const(i64),
+    /// Push a 32-bit float constant onto the stack
     F32Const(f32),
+    /// Push a 64-bit float constant onto the stack
     F64Const(f64),
 
     // Comparison instructions
