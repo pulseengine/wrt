@@ -175,7 +175,7 @@ mod tests {
         // Test error chaining with explicit type annotations
         let first_err: Result<()> = Err(Error::Validation("first".to_string()));
         let second_err: Result<()> = Err(Error::Execution("second".to_string()));
-        let result = first_err.and_then(|_| second_err);
+        let result = first_err.and(second_err);
         assert!(matches!(result.unwrap_err(), Error::Validation(_)));
     }
 
@@ -210,7 +210,7 @@ mod tests {
         assert!(matches!(mapped_err.unwrap_err(), Error::Custom(_)));
 
         // Test and_then with explicit type annotation
-        let chained: Result<i32> = Ok(42).and_then(|x| Ok(x * 2)).and_then(|x| Ok(x + 1));
+        let chained: Result<i32> = Ok(42).map(|x| x * 2).map(|x| x + 1);
         assert_eq!(chained.unwrap(), 85);
     }
 

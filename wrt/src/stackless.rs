@@ -214,24 +214,53 @@ impl StacklessStack {
 
     /// Pushes a label onto the control stack
     pub fn push_label(&mut self, arity: usize, continuation: usize) {
+        println!(
+            "[PUSH_LABEL_DEBUG] Pushing new label - arity: {}, continuation: {}",
+            arity, continuation
+        );
         self.labels.push(Label {
             arity,
             continuation,
         });
+        println!(
+            "[PUSH_LABEL_DEBUG] Label stack size after push: {}",
+            self.labels.len()
+        );
     }
 
     /// Pops a label from the control stack
     pub fn pop_label(&mut self) -> Result<Label> {
-        self.labels
+        println!(
+            "[POP_LABEL_DEBUG] Attempting to pop label, current stack size: {}",
+            self.labels.len()
+        );
+        let result = self
+            .labels
             .pop()
-            .ok_or_else(|| Error::Execution("Label stack underflow".into()))
+            .ok_or_else(|| Error::Execution("Label stack underflow".into()));
+
+        match &result {
+            Ok(label) => println!(
+                "[POP_LABEL_DEBUG] Successfully popped label - arity: {}, continuation: {}",
+                label.arity, label.continuation
+            ),
+            Err(e) => println!("[POP_LABEL_DEBUG] Failed to pop label: {}", e),
+        }
+
+        result
     }
 
     /// Gets a label at the specified depth without popping it
     pub fn get_label(&self, depth: u32) -> Result<&Label> {
+        println!(
+            "[GET_LABEL_DEBUG] Requested label at depth: {}, total labels: {}",
+            depth,
+            self.labels.len()
+        );
+
         // If the label stack is empty, create a placeholder label for error recovery
         if self.labels.is_empty() {
-            debug_println!("Warning: Label stack is empty but branch instruction encountered. Using fake label for recovery.");
+            println!("[GET_LABEL_DEBUG] Warning: Label stack is empty but branch instruction encountered. Using fake label for recovery.");
 
             // Create a placeholder label that branches to instruction 0 (which should be a safe location)
             // By returning a fake label instead of an error, we allow execution to continue
@@ -249,13 +278,24 @@ impl StacklessStack {
             .checked_sub(1 + depth as usize)
             .ok_or_else(|| Error::Execution(format!("Label depth {} out of bounds", depth)))?;
 
+        println!(
+            "[GET_LABEL_DEBUG] Accessing label at index: {} (depth: {})",
+            idx, depth
+        );
+
         // If the label isn't found, use a placeholder label
         match self.labels.get(idx) {
-            Some(label) => Ok(label),
+            Some(label) => {
+                println!(
+                    "[GET_LABEL_DEBUG] Found label - arity: {}, continuation: {}",
+                    label.arity, label.continuation
+                );
+                Ok(label)
+            }
             None => {
-                debug_println!(
-                    "Warning: Label at depth {} not found. Using fake label for recovery.",
-                    depth
+                println!(
+                    "[GET_LABEL_DEBUG] Warning: Label at depth {} (index {}) not found. Using fake label for recovery.",
+                    depth, idx
                 );
 
                 // Create a placeholder label that branches to instruction 0
@@ -271,9 +311,26 @@ impl StacklessStack {
     /// Initiates a branch operation in the stackless execution model
     pub fn branch(&mut self, depth: u32) -> Result<()> {
         // Get the target label
-        let label = self.get_label(depth)?;
+        println!(
+            "[BRANCH_DEBUG] Entering branch with depth: {}, number of labels: {}",
+            depth,
+            self.labels.len()
+        );
+
+        // Important: Check if we have enough labels
+        if depth as usize >= self.labels.len() {
+            return Err(Error::Execution(format!("Invalid branch depth: {}", depth)));
+        }
+
+        let label_index = self.labels.len() - 1 - depth as usize;
+        let label = &self.labels[label_index];
         let arity = label.arity;
         let continuation = label.continuation;
+
+        println!(
+            "[BRANCH_DEBUG] Got label: arity: {}, continuation PC: {}",
+            arity, continuation
+        );
 
         // Save values that need to be preserved across the branch
         let mut preserved_values = Vec::new();
@@ -284,16 +341,40 @@ impl StacklessStack {
         }
         preserved_values.reverse(); // Restore original order
 
-        // Pop labels up to (but not including) the target depth
-        for _ in 0..depth {
-            if !self.labels.is_empty() {
-                self.pop_label()?;
-            }
+        println!(
+            "[BRANCH_DEBUG] Preserved {} values from stack",
+            preserved_values.len()
+        );
+
+        // Save local variables from the current frame
+        let local_vars = self.frames.last().map(|frame| frame.locals.clone());
+
+        if let Some(vars) = &local_vars {
+            println!("[BRANCH_DEBUG] Saved {} local variables", vars.len());
         }
 
-        // Clear any remaining values on the stack
-        while !self.values.is_empty() {
-            self.pop()?;
+        // Pop labels up to (but not including) the target label
+        while self.labels.len() > label_index + 1 {
+            self.pop_label()?;
+            println!(
+                "[BRANCH_DEBUG] Popped a label, remaining: {}",
+                self.labels.len()
+            );
+        }
+
+        // Clear any values from the stack, but retain locals
+        let remove_count = self.values.len();
+        if remove_count > 0 {
+            self.values.clear();
+            println!("[BRANCH_DEBUG] Cleared {} values from stack", remove_count);
+        }
+
+        // Restore local variables if needed
+        if let Some(vars) = local_vars {
+            if !vars.is_empty() && !self.frames.is_empty() {
+                self.frames.last_mut().unwrap().locals = vars;
+                println!("[BRANCH_DEBUG] Restored local variables");
+            }
         }
 
         // Push the preserved values back onto the stack
@@ -302,6 +383,10 @@ impl StacklessStack {
         }
 
         // Set program counter to continuation point
+        println!(
+            "[BRANCH_DEBUG] Setting PC to continuation point: {}",
+            continuation
+        );
         self.set_pc(continuation);
 
         Ok(())
@@ -374,6 +459,12 @@ impl StacklessStack {
 
         Ok(())
     }
+
+    /// Get a label by depth without removing it
+    pub fn get_label_by_depth(&self, depth: u32) -> Option<&Label> {
+        let label_index = self.labels.len().checked_sub(1 + depth as usize)?;
+        self.labels.get(label_index)
+    }
 }
 
 /// Statistics for WebAssembly execution
@@ -444,6 +535,12 @@ pub struct StacklessEngine {
 pub struct CallbackRegistry {
     /// Callback for logging operations
     log_callback: Option<Box<dyn Fn(crate::logging::LogOperation) + Send + Sync>>,
+}
+
+impl Default for CallbackRegistry {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl CallbackRegistry {
@@ -720,13 +817,27 @@ impl StacklessEngine {
 
                         // Decrement fuel
                         self.fuel = Some(fuel - 1);
+
+                        // Update statistics
                         self.stats.fuel_consumed += 1;
                     }
 
-                    // Execute the next instruction
-                    if let Err(e) = self.execute_next_instruction() {
-                        self.stack.set_state(ExecutionState::Error(e.clone()));
-                        return Err(e);
+                    // Execute the current instruction
+                    self.execute_instruction()?;
+
+                    // Increment instruction count
+                    self.stats.instructions_executed += 1;
+
+                    // Check if we should continue execution
+                    let current_state = self.stack.state().clone();
+                    match current_state {
+                        ExecutionState::Running => {
+                            // Continue execution
+                        }
+                        _ => {
+                            // Execution state changed, handle appropriately
+                            continue;
+                        }
                     }
                 }
                 ExecutionState::Calling {
@@ -791,7 +902,7 @@ impl StacklessEngine {
     }
 
     /// Executes a single instruction and updates the program counter
-    fn execute_next_instruction(&mut self) -> Result<()> {
+    fn execute_instruction(&mut self) -> Result<()> {
         // Get current frame and instruction
         let frame = match self.stack.current_frame() {
             Ok(frame) => frame.clone(),
@@ -816,8 +927,13 @@ impl StacklessEngine {
         // Get the current instruction
         let inst = &function.body[pc];
 
-        // Increment instruction count
-        self.stats.instructions_executed += 1;
+        // Debug instruction if enabled
+        #[cfg(feature = "std")]
+        if let Ok(debug_instr) = std::env::var("WRT_DEBUG_INSTRUCTIONS") {
+            if debug_instr == "1" || debug_instr.to_lowercase() == "true" {
+                eprintln!("[INSTR] {}:{} - {:?}", func_idx, pc, inst);
+            }
+        }
 
         // Execute the instruction
         match inst {
@@ -837,7 +953,27 @@ impl StacklessEngine {
             Instruction::Loop(block_type) => {
                 // Create a new label for the loop, but continuation points to the loop itself
                 let arity = self.get_block_arity(block_type, &frame.module.module)?;
-                self.stack.push_label(arity, pc); // Loop jumps back to itself
+
+                // Check if we're executing the loop for the first time or after branching
+                // If we already have a label for this loop, don't push another one
+                let should_push_label = if let Some(last_label) = self.stack.labels.last() {
+                    // If the last label points to this PC, we're re-entering the loop via branching
+                    last_label.continuation != pc
+                } else {
+                    // No labels at all, definitely need to push one
+                    true
+                };
+
+                if should_push_label {
+                    // Debug print when we encounter a loop
+                    println!(
+                        "[LOOP_DEBUG] Creating loop label at PC: {}, arity: {}",
+                        pc, arity
+                    );
+                    self.stack.push_label(arity, pc); // Loop jumps back to itself
+                } else {
+                    println!("[LOOP_DEBUG] Reusing existing loop label at PC: {}", pc);
+                }
 
                 // Continue with the next instruction
                 self.stack.set_pc(pc + 1);
@@ -970,8 +1106,83 @@ impl StacklessEngine {
                 }
             }
             Instruction::Br(depth) => {
-                // Initiate a branch operation
-                self.stack.branch(*depth)?;
+                // Debug print for br instruction
+                println!("[BR_DEBUG] depth: {}, pc: {}", depth, pc);
+
+                // Determine target of branch
+                if let Some(label) = self.stack.get_label_by_depth(*depth) {
+                    println!("[BR_DEBUG] Label continuation: {}", label.continuation);
+
+                    // When branching to a loop (its continuation points to itself),
+                    // we need special handling
+                    if label.continuation <= pc {
+                        println!(
+                            "[BR_DEBUG] Branching to loop start at PC: {}",
+                            label.continuation
+                        );
+
+                        // For loops, we don't pop the label stack, we just jump to the loop start
+                        self.stack.set_pc(label.continuation);
+
+                        // Since we're jumping to a loop, we need to make sure we don't create
+                        // more labels when we get back to the loop instruction. We handle this
+                        // by NOT pushing new labels for loops.
+                    } else {
+                        // For other control blocks, use standard branch
+                        self.stack.branch(*depth)?;
+                    }
+                } else {
+                    return Err(Error::Execution(format!("Invalid branch depth: {}", depth)));
+                }
+            }
+            Instruction::BrIf(depth) => {
+                // Pop the condition value
+                let condition =
+                    self.stack.pop()?.as_i32().ok_or_else(|| {
+                        Error::Execution("Expected i32 condition for br_if".into())
+                    })?;
+
+                // Debug print for br_if instruction
+                println!(
+                    "[BR_IF_DEBUG] depth: {}, condition: {}, pc: {}",
+                    depth, condition, pc
+                );
+
+                // Only branch if condition is true (non-zero)
+                if condition != 0 {
+                    // When condition is true, we branch
+                    println!("[BR_IF_DEBUG] Branching to depth: {}", depth);
+
+                    // Determine target of branch
+                    if let Some(label) = self.stack.get_label_by_depth(*depth) {
+                        println!("[BR_IF_DEBUG] Label continuation: {}", label.continuation);
+
+                        // When branching to a loop (its continuation points to itself),
+                        // we need special handling
+                        if label.continuation <= pc {
+                            println!(
+                                "[BR_IF_DEBUG] Branching to loop start at PC: {}",
+                                label.continuation
+                            );
+
+                            // For loops, we don't pop the label stack, we just jump to the loop start
+                            self.stack.set_pc(label.continuation);
+
+                            // Since we're jumping to a loop, we need to make sure we don't create
+                            // more labels when we get back to the loop instruction. We handle this
+                            // by NOT pushing new labels for loops.
+                        } else {
+                            // For other control blocks, use standard branch
+                            self.stack.branch(*depth)?;
+                        }
+                    } else {
+                        return Err(Error::Execution(format!("Invalid branch depth: {}", depth)));
+                    }
+                } else {
+                    // If condition is false, just advance to the next instruction
+                    println!("[BR_IF_DEBUG] Not branching, continuing to PC: {}", pc + 1);
+                    self.stack.set_pc(pc + 1);
+                }
             }
             Instruction::Call(func_idx) => {
                 // Initiate a function call
@@ -1002,6 +1213,55 @@ impl StacklessEngine {
                 let frame = self.stack.current_frame()?;
                 let value = frame.locals[*idx as usize].clone();
                 self.stack.push(value);
+                self.stack.set_pc(pc + 1);
+            }
+            Instruction::LocalSet(idx) => {
+                // Pop a value from the stack and store it in the local variable
+                let value = self.stack.pop()?;
+
+                // Get mutable reference to current frame to update locals
+                if let Some(frame) = self.stack.frames.last_mut() {
+                    if (*idx as usize) < frame.locals.len() {
+                        // Update the local variable
+                        let value_clone = value.clone(); // Clone for debug print
+                        frame.locals[*idx as usize] = value;
+                        println!(
+                            "[LOCAL_SET_DEBUG] Setting local {} to {:?}",
+                            idx, value_clone
+                        );
+                    } else {
+                        return Err(Error::Execution(format!("Invalid local index: {}", idx)));
+                    }
+                } else {
+                    return Err(Error::Execution("No active frame".into()));
+                }
+
+                self.stack.set_pc(pc + 1);
+            }
+            Instruction::LocalTee(idx) => {
+                // Get the value from the top of the stack (but don't pop it)
+                if self.stack.values.is_empty() {
+                    return Err(Error::Execution("Stack underflow".into()));
+                }
+                let value = self.stack.values.last().unwrap().clone();
+
+                // Get mutable reference to current frame to update locals
+                if let Some(frame) = self.stack.frames.last_mut() {
+                    if (*idx as usize) < frame.locals.len() {
+                        // Update the local variable
+                        let value_clone = value.clone(); // Clone for debug print
+                        frame.locals[*idx as usize] = value;
+                        println!(
+                            "[LOCAL_TEE_DEBUG] Setting local {} to {:?} (keeping on stack)",
+                            idx, value_clone
+                        );
+                    } else {
+                        return Err(Error::Execution(format!("Invalid local index: {}", idx)));
+                    }
+                } else {
+                    return Err(Error::Execution("No active frame".into()));
+                }
+
                 self.stack.set_pc(pc + 1);
             }
             Instruction::I32Add => {
@@ -1319,4 +1579,17 @@ impl Default for StacklessEngine {
     fn default() -> Self {
         Self::new()
     }
+}
+
+/// Label type used for control flow in WebAssembly
+#[derive(Debug, Clone, PartialEq)]
+pub enum LabelType {
+    /// Block label
+    Block,
+    /// Loop label
+    Loop,
+    /// If label
+    If,
+    /// Function label
+    Function,
 }

@@ -96,7 +96,38 @@ pub fn if_instr(stack: &mut Stack) -> Result<()> {
 
 /// Executes a br instruction
 pub fn br(stack: &mut Stack, label_idx: u32) -> Result<()> {
-    Ok(())
+    // Get the label from the stack - we need to access the label stack from the bottom up
+    // since branch depths are counted from the innermost label (most recently pushed)
+    let labels_len = stack.labels.len();
+
+    if label_idx as usize >= labels_len {
+        return Err(Error::Execution(format!(
+            "Invalid branch target: {}",
+            label_idx
+        )));
+    }
+
+    // Calculate the index from the end of the stack (0 = most recent)
+    let idx = labels_len - 1 - (label_idx as usize);
+
+    if let Some(label) = stack.labels.get(idx) {
+        // Store the continuation PC
+        let continuation_pc = label.continuation;
+
+        // Pop all labels up to and including the target
+        for _ in 0..=label_idx {
+            stack.pop_label()?;
+        }
+
+        // Set PC to the continuation of the label
+        if let Some(frame) = stack.call_frames.last_mut() {
+            frame.pc = continuation_pc;
+            return Ok(());
+        }
+    }
+
+    // If no active frame, return an error
+    Err(Error::Execution("No active frame for branch".into()))
 }
 
 /// Executes a br_if instruction
@@ -104,6 +135,14 @@ pub fn br_if(stack: &mut Stack, label_idx: u32) -> Result<()> {
     let Value::I32(condition) = stack.pop()? else {
         return Err(Error::Execution("Expected i32 condition".into()));
     };
+
+    // Only branch if condition is true (non-zero)
+    if condition != 0 {
+        // Perform the actual branch operation
+        return br(stack, label_idx);
+    }
+
+    // If condition is false, just continue with the next instruction
     Ok(())
 }
 

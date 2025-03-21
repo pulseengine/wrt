@@ -95,7 +95,7 @@ fn main() {
 }
 
 fn check_internet_connection() -> bool {
-    let output = Command::new("ping").args(&["-c", "1", "8.8.8.8"]).output();
+    let output = Command::new("ping").args(["-c", "1", "8.8.8.8"]).output();
 
     match output {
         Ok(output) => output.status.success(),
@@ -105,7 +105,7 @@ fn check_internet_connection() -> bool {
 
 fn clone_testsuite(path: &Path) -> io::Result<()> {
     let status = Command::new("git")
-        .args(&["clone", TESTSUITE_REPO_URL, path.to_str().unwrap()])
+        .args(["clone", TESTSUITE_REPO_URL, path.to_str().unwrap()])
         .status()?;
 
     if !status.success() {
@@ -120,7 +120,7 @@ fn clone_testsuite(path: &Path) -> io::Result<()> {
 
 fn update_testsuite(path: &Path) -> io::Result<()> {
     let status = Command::new("git")
-        .args(&["pull", "origin", "master"])
+        .args(["pull", "origin", "master"])
         .current_dir(path)
         .status()?;
 
@@ -139,7 +139,7 @@ fn update_testsuite(path: &Path) -> io::Result<()> {
 
 fn get_commit_hash(path: &Path) -> io::Result<String> {
     let output = Command::new("git")
-        .args(&["rev-parse", "HEAD"])
+        .args(["rev-parse", "HEAD"])
         .current_dir(path)
         .output()?;
 

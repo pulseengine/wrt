@@ -1,8 +1,7 @@
 use proc_macro::TokenStream;
 use proc_macro2::Span;
-use quote::{quote, ToTokens};
-use std::path::Path;
-use syn::{parse_macro_input, Ident, LitStr};
+use quote::quote;
+use syn::parse_macro_input;
 
 /// Procedural macro to generate test cases from a WAST file
 ///

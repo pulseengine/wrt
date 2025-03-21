@@ -1290,7 +1290,7 @@ fn parse_code_section(module: &mut Module, bytes: &[u8]) -> Result<()> {
 
             // Add this many locals of this type
             for _ in 0..local_count {
-                locals.push(value_type.clone());
+                locals.push(value_type);
             }
         }
 
@@ -1897,6 +1897,16 @@ fn parse_instruction(bytes: &[u8], depth: &mut i32) -> Result<(Instruction, usiz
         0xBD => Instruction::I64ReinterpretF64, // i64.reinterpret_f64
         0xBE => Instruction::F32ReinterpretI32, // f32.reinterpret_i32
         0xBF => Instruction::F64ReinterpretI64, // f64.reinterpret_i64
+
+        // Component model specific opcodes
+        0xC0 => {
+            // This is a component model specific instruction
+            // For now, we'll return a Nop instruction to allow parsing to continue
+            log::warn!(
+                "Found component model instruction 0xC0, implementing as Nop for compatibility"
+            );
+            Instruction::Nop
+        }
 
         // FC prefix is used for various multi-byte opcodes
         0xFC => {
