@@ -137,7 +137,7 @@ pub fn table_init(
     stack: &mut Vec<Value>,
     frame: &mut Frame,
     table_idx: u32,
-    elem_idx: u32,
+    _elem_idx: u32,
 ) -> Result<(), Error> {
     let Value::I32(size) = stack
         .pop()

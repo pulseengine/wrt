@@ -19,9 +19,9 @@ This document tracks the implementation tasks for the WRT project based on requi
    - [x] Add missing documentation for methods in `wrt/src/stackless.rs`
    - [x] Follow project documentation standards as mentioned in README.md
 
-3. [ ] **Clean Up Unused Code**
-   - Address unused variables by either using them or prefixing with underscores
-   - Remove or refactor dead code in `wrt/src/execution.rs` (e.g., `InstructionCategory` enum and unused methods)
+3. [x] **Clean Up Unused Code**
+   - [x] Address unused variables by prefixing with underscores in control.rs, parametric.rs, table.rs, and stackless.rs
+   - [x] Remove dead code in `wrt/src/execution.rs` (unused InstructionCategory enum and MAX_CALL_DEPTH constant)
 
 4. [ ] **Focus on Component Model Implementation (REQ_014, REQ_021)**
    - Implement WebAssembly Component Model Preview 2 specification

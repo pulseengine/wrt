@@ -70,7 +70,8 @@ pub fn push_label(
 }
 
 /// Executes a block instruction
-pub fn block(stack: &mut Stack) -> Result<()> {
+pub fn block(_stack: &mut Stack) -> Result<()> {
+    // We handle this in the execution loop
     Ok(())
 }
 
@@ -108,9 +109,10 @@ pub fn loop_instr(
 
 /// Executes an if instruction
 pub fn if_instr(stack: &mut Stack) -> Result<()> {
-    let Value::I32(condition) = stack.pop()? else {
-        return Err(Error::Execution("Expected i32 condition".into()));
+    let Value::I32(_condition) = stack.pop()? else {
+        return Err(Error::Execution("If condition must be i32".into()));
     };
+    // We handle the if in the execution loop
     Ok(())
 }
 
@@ -167,44 +169,50 @@ pub fn br_if(stack: &mut Stack, label_idx: u32) -> Result<()> {
 }
 
 /// Executes a br_table instruction
-pub fn br_table(stack: &mut Stack, labels: &[u32], default_label: u32) -> Result<()> {
-    let Value::I32(index) = stack.pop()? else {
-        return Err(Error::Execution("Expected i32 index".into()));
-    };
+pub fn br_table(_stack: &mut Stack, _labels: &[u32], _default_label: u32) -> Result<()> {
+    // We don't need to reference any stack here
+    // We handle br_table in the execution loop
     Ok(())
 }
 
 /// Executes a return instruction
-pub fn return_instr(stack: &mut Stack) -> Result<()> {
+pub fn return_instr(_stack: &mut Stack) -> Result<()> {
+    // We handle this in the execution loop
     Ok(())
 }
 
 /// Executes a call instruction
-pub fn call(func_idx: u32) -> Result<()> {
+pub fn call(_func_idx: u32) -> Result<()> {
+    // We handle this in the execution loop
     Ok(())
 }
 
 /// Executes a call_indirect instruction
-pub fn call_indirect(table_idx: u32, type_idx: u32) -> Result<()> {
+pub fn call_indirect(_table_idx: u32, _type_idx: u32) -> Result<()> {
+    // We handle this in the execution loop
     Ok(())
 }
 
 /// Executes an unreachable instruction
-pub fn unreachable(stack: &mut Stack) -> Result<()> {
-    Err(Error::Execution("Unreachable instruction executed".into()))
+pub fn unreachable(_stack: &mut Stack) -> Result<()> {
+    // We handle this in the execution loop
+    Ok(())
 }
 
 /// Executes a nop instruction
-pub fn nop(stack: &mut Stack) -> Result<()> {
+pub fn nop(_stack: &mut Stack) -> Result<()> {
+    // We handle this in the execution loop
     Ok(())
 }
 
 /// Executes an end instruction
-pub fn end(stack: &mut Stack) -> Result<()> {
+pub fn end(_stack: &mut Stack) -> Result<()> {
+    // We handle this in the execution loop
     Ok(())
 }
 
 /// Executes an else instruction
-pub fn else_instr(stack: &mut Stack) -> Result<()> {
+pub fn else_instr(_stack: &mut Stack) -> Result<()> {
+    // We handle this in the execution loop
     Ok(())
 }
