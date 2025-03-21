@@ -34,25 +34,6 @@ use alloc::format;
 #[cfg(feature = "std")]
 use std::format;
 
-/// Categories of instructions for performance tracking
-#[derive(Debug, Clone, Copy, PartialEq)]
-enum InstructionCategory {
-    /// Control flow instructions (block, loop, if, etc.)
-    ControlFlow,
-    /// Local and global variable access instructions
-    LocalGlobal,
-    /// Memory operations (load, store, etc.)
-    MemoryOp,
-    /// Function call instructions
-    FunctionCall,
-    /// Arithmetic operations
-    Arithmetic,
-    /// Comparison operations
-    Comparison,
-    /// Other instructions (constants, etc.)
-    Other,
-}
-
 /// Represents the execution stack
 #[derive(Debug, Default)]
 pub struct Stack {
@@ -299,9 +280,6 @@ pub struct ExecutionStats {
     #[cfg(feature = "std")]
     pub function_call_time_us: u64,
 }
-
-/// Maximum call depth to prevent stack overflow
-const MAX_CALL_DEPTH: usize = 1000;
 
 /// The WebAssembly execution engine
 #[derive(Debug)]
@@ -1769,6 +1747,11 @@ impl Engine {
     }
 
     fn execute_instruction(&mut self, _instruction: &Instruction) -> Result<()> {
+        // This method is deprecated and is being removed
+        Err(Error::Execution("This method is deprecated".into()))
+    }
+
+    fn handle_memory_trap(&mut self, _e: Error) -> Result<()> {
         // This method is deprecated and is being removed
         Err(Error::Execution("This method is deprecated".into()))
     }

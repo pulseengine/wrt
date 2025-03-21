@@ -693,8 +693,8 @@ impl StacklessEngine {
         F: Fn(&mut dyn Any, Vec<Value>) -> crate::error::Result<Vec<Value>> + Send + Sync + 'static,
     {
         // Create a wrapper that owns the strings
-        let module_str = module_name.to_string();
-        let function_str = function_name.to_string();
+        let _module_str = module_name.to_string();
+        let _function_str = function_name.to_string();
 
         let handler_box =
             Box::new(move |engine: &mut dyn Any, args: Vec<Value>| handler(engine, args));
@@ -908,7 +908,7 @@ impl StacklessEngine {
         // Process instructions until we're done or paused
         while matches!(self.stack.state(), ExecutionState::Running) {
             // Check if we have a valid PC
-            let current_frame = self.stack.current_frame()?;
+            let _current_frame = self.stack.current_frame()?;
             let pc = self.stack.pc();
 
             // Check if we're at the end of the function
@@ -1132,7 +1132,7 @@ impl StacklessEngine {
             }
 
             // Loop instruction
-            Loop(block_type) => {
+            Loop(_block_type) => {
                 // Get current PC and module instance
                 let pc = self.stack.pc();
 

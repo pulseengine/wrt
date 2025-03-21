@@ -90,8 +90,8 @@ pub fn select_typed(stack: &mut Vec<Value>, _value_type: ValueType) -> Result<()
 /// Execute a block instruction
 ///
 /// Creates a new block scope.
-pub fn block(stack: &mut Vec<Value>) -> Result<(), Error> {
-    // No stack manipulation needed for block instruction
+pub fn block(_stack: &mut Vec<Value>) -> Result<(), Error> {
+    // We handle this in the execution loop
     Ok(())
 }
 
@@ -99,94 +99,82 @@ pub fn block(stack: &mut Vec<Value>) -> Result<(), Error> {
 ///
 /// Creates a new conditional block.
 pub fn if_instr(stack: &mut Vec<Value>) -> Result<(), Error> {
-    // Pop the condition value
-    let Value::I32(condition) = stack
+    let Value::I32(_condition) = stack
         .pop()
-        .ok_or(Error::Execution("Stack underflow".into()))?
+        .ok_or_else(|| Error::Execution("Stack underflow".into()))?
     else {
-        return Err(Error::Execution("Expected i32 for if condition".into()));
+        return Err(Error::Execution("Expected i32 condition".into()));
     };
-
-    // No further stack manipulation needed for if instruction
+    // We handle the if in the execution loop
     Ok(())
 }
 
 /// Execute an else instruction
 ///
 /// Ends the "if" part of an if/else and begins the "else" part.
-pub fn else_instr(stack: &mut Vec<Value>) -> Result<(), Error> {
-    // No stack manipulation needed for else instruction
+pub fn else_instr(_stack: &mut Vec<Value>) -> Result<(), Error> {
+    // We handle this in the execution loop
     Ok(())
 }
 
 /// Execute an end instruction
 ///
 /// Ends a block, loop, if, or function.
-pub fn end(stack: &mut Vec<Value>) -> Result<(), Error> {
-    // No stack manipulation needed for end instruction
+pub fn end(_stack: &mut Vec<Value>) -> Result<(), Error> {
+    // We handle this in the execution loop
     Ok(())
 }
 
 /// Execute a br instruction
 ///
 /// Unconditionally branches to a label.
-pub fn br(stack: &mut Vec<Value>, label_idx: u32) -> Result<(), Error> {
-    // No stack manipulation needed for br instruction
+pub fn br(_stack: &mut Vec<Value>, _label_idx: u32) -> Result<(), Error> {
+    // We handle this in the execution loop
     Ok(())
 }
 
 /// Execute a br_if instruction
 ///
 /// Conditionally branches to a label.
-pub fn br_if(stack: &mut Vec<Value>, label_idx: u32) -> Result<(), Error> {
-    // Pop the condition value
-    let Value::I32(condition) = stack
+pub fn br_if(stack: &mut Vec<Value>, _label_idx: u32) -> Result<(), Error> {
+    let Value::I32(_condition) = stack
         .pop()
-        .ok_or(Error::Execution("Stack underflow".into()))?
+        .ok_or_else(|| Error::Execution("Stack underflow".into()))?
     else {
-        return Err(Error::Execution("Expected i32 for br_if condition".into()));
+        return Err(Error::Execution("Expected i32 condition".into()));
     };
-
-    // No further stack manipulation needed for br_if instruction
+    // We handle the branch in the execution loop
     Ok(())
 }
 
 /// Execute a br_table instruction
 ///
 /// Branches to one of several labels based on an index value.
-pub fn br_table(stack: &mut Vec<Value>, labels: &[u32], default_label: u32) -> Result<(), Error> {
-    // Pop the index value
-    let Value::I32(index) = stack
-        .pop()
-        .ok_or(Error::Execution("Stack underflow".into()))?
-    else {
-        return Err(Error::Execution("Expected i32 for br_table index".into()));
-    };
-
-    // No further stack manipulation needed for br_table instruction
+pub fn br_table(_stack: &mut Vec<Value>, _labels: &[u32], _default_label: u32) -> Result<(), Error> {
+    // We handle the branch in the execution loop
     Ok(())
 }
 
 /// Execute a return instruction
 ///
 /// Returns from the current function.
-pub fn return_instr(stack: &mut Vec<Value>) -> Result<(), Error> {
-    // No stack manipulation needed for return instruction
+pub fn return_instr(_stack: &mut Vec<Value>) -> Result<(), Error> {
+    // We handle this in the execution loop
     Ok(())
 }
 
 /// Execute an unreachable instruction
 ///
 /// Indicates that the current code location should not be reachable.
-pub fn unreachable(stack: &mut Vec<Value>) -> Result<(), Error> {
-    // No stack manipulation needed for unreachable instruction
+pub fn unreachable(_stack: &mut Vec<Value>) -> Result<(), Error> {
+    // We handle this in the execution loop
     Ok(())
 }
 
 /// Execute a nop instruction
 ///
 /// No operation.
-pub fn nop(stack: &mut Vec<Value>) -> Result<(), Error> {
-    // No stack manipulation needed for nop instruction
+pub fn nop(_stack: &mut Vec<Value>) -> Result<(), Error> {
+    // We handle this in the execution loop
     Ok(())
 }
