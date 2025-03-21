@@ -10,9 +10,9 @@ use crate::memory::Memory;
 use crate::module::ExportKind;
 use crate::module::{Function, Module};
 use crate::table::Table;
-use crate::types::{ExternType, FuncType};
+use crate::types::{ExternType, FuncType, GlobalType, ValueType};
 use crate::values::Value;
-use crate::{format, String, ToString, Vec};
+use crate::{String, ToString, Vec};
 
 #[cfg(not(feature = "std"))]
 use alloc::collections::BTreeSet as HashSet;
@@ -1127,6 +1127,46 @@ impl Engine {
                 });
         }
 
+        // Initialize global instances
+        for idx in 0..global_count {
+            // Get the global type from the module
+            let global_type = self.instances[instance_idx as usize].module.globals[idx].clone();
+
+            // Default value (0 for numeric types)
+            let init_value = match global_type.content_type {
+                ValueType::I32 => Value::I32(0),
+                ValueType::I64 => Value::I64(0),
+                ValueType::F64 => Value::F64(0.0),
+                ValueType::F32 => Value::F32(0.0),
+                ValueType::V128 => Value::V128(0),
+                // Reference types default to null reference
+                ValueType::FuncRef | ValueType::ExternRef | ValueType::AnyRef => Value::I32(0),
+            };
+
+            // Create the global with the initialized value
+            match Global::new(global_type, init_value) {
+                Ok(global) => {
+                    self.instances[instance_idx as usize].globals.push(global);
+                }
+                Err(e) => {
+                    #[cfg(feature = "std")]
+                    eprintln!("Error creating global {}: {}", idx, e);
+                    // Create with a default value on error
+                    let default_global = Global::new(
+                        GlobalType {
+                            content_type: ValueType::I32,
+                            mutable: true,
+                        },
+                        Value::I32(0),
+                    )
+                    .unwrap(); // This should never fail
+                    self.instances[instance_idx as usize]
+                        .globals
+                        .push(default_global);
+                }
+            }
+        }
+
         Ok(())
     }
 
@@ -1589,6 +1629,61 @@ impl Engine {
                 self.stack.values.push(value);
                 Ok(None)
             }
+            Instruction::GlobalGet(global_idx) => {
+                let frame = self.stack.current_frame()?;
+
+                if *global_idx as usize >= frame.module.global_addrs.len() {
+                    return Err(Error::Execution(format!(
+                        "Invalid global index: {}",
+                        global_idx
+                    )));
+                }
+
+                let global_addr = &frame.module.global_addrs[*global_idx as usize];
+                let value = frame.module.globals[global_addr.global_idx as usize].get();
+                self.stack.values.push(value);
+                Ok(None)
+            }
+            Instruction::GlobalSet(global_idx) => {
+                // Check for stack underflow first
+                if self.stack.values.is_empty() {
+                    return Err(Error::Execution("Stack underflow".into()));
+                }
+
+                // Pop the value before getting a mutable reference to the frame
+                let value = self.stack.values.pop().unwrap();
+
+                let frame = self.stack.current_frame_mut()?;
+
+                if *global_idx as usize >= frame.module.global_addrs.len() {
+                    return Err(Error::Execution(format!(
+                        "Invalid global index: {}",
+                        global_idx
+                    )));
+                }
+
+                let global_addr = &frame.module.global_addrs[*global_idx as usize];
+
+                // First get the instance index
+                let instance_idx = frame.memory_instance_idx as usize;
+
+                // Get the global from the instance's globals, not from the module
+                let global =
+                    &mut self.instances[instance_idx].globals[global_addr.global_idx as usize];
+
+                if !global.type_().mutable {
+                    return Err(Error::Execution("Cannot set immutable global".into()));
+                }
+
+                if value.type_() != global.type_().content_type {
+                    return Err(Error::Execution(
+                        "Value type does not match global type".into(),
+                    ));
+                }
+
+                global.set(value)?;
+                Ok(None)
+            }
 
             // Memory operations
             Instruction::I32Load(align, offset) => {
@@ -1747,6 +1842,219 @@ impl Engine {
                     Ok(None)
                 } else {
                     Err(Error::Execution("Expected i32 values for mul".into()))
+                }
+            }
+            Instruction::I32DivS => {
+                let val2 = self.stack.values.pop().ok_or(Error::StackUnderflow)?;
+                let val1 = self.stack.values.pop().ok_or(Error::StackUnderflow)?;
+                if let (Value::I32(v1), Value::I32(v2)) = (val1, val2) {
+                    if v2 == 0 {
+                        return Err(Error::Execution("Division by zero".into()));
+                    }
+                    if v1 == i32::MIN && v2 == -1 {
+                        return Err(Error::Execution("Integer overflow".into()));
+                    }
+                    self.stack.values.push(Value::I32(v1.wrapping_div(v2)));
+                    Ok(None)
+                } else {
+                    Err(Error::Execution("Expected i32 values for div_s".into()))
+                }
+            }
+            Instruction::I32DivU => {
+                let val2 = self.stack.values.pop().ok_or(Error::StackUnderflow)?;
+                let val1 = self.stack.values.pop().ok_or(Error::StackUnderflow)?;
+                if let (Value::I32(v1), Value::I32(v2)) = (val1, val2) {
+                    if v2 == 0 {
+                        return Err(Error::Execution("Division by zero".into()));
+                    }
+                    self.stack
+                        .values
+                        .push(Value::I32((v1 as u32).wrapping_div(v2 as u32) as i32));
+                    Ok(None)
+                } else {
+                    Err(Error::Execution("Expected i32 values for div_u".into()))
+                }
+            }
+            Instruction::I32RemS => {
+                let val2 = self.stack.values.pop().ok_or(Error::StackUnderflow)?;
+                let val1 = self.stack.values.pop().ok_or(Error::StackUnderflow)?;
+                if let (Value::I32(v1), Value::I32(v2)) = (val1, val2) {
+                    if v2 == 0 {
+                        return Err(Error::Execution("Division by zero".into()));
+                    }
+                    if v1 == i32::MIN && v2 == -1 {
+                        self.stack.values.push(Value::I32(0));
+                    } else {
+                        self.stack.values.push(Value::I32(v1.wrapping_rem(v2)));
+                    }
+                    Ok(None)
+                } else {
+                    Err(Error::Execution("Expected i32 values for rem_s".into()))
+                }
+            }
+            Instruction::I32RemU => {
+                let val2 = self.stack.values.pop().ok_or(Error::StackUnderflow)?;
+                let val1 = self.stack.values.pop().ok_or(Error::StackUnderflow)?;
+                if let (Value::I32(v1), Value::I32(v2)) = (val1, val2) {
+                    if v2 == 0 {
+                        return Err(Error::Execution("Division by zero".into()));
+                    }
+                    self.stack
+                        .values
+                        .push(Value::I32((v1 as u32).wrapping_rem(v2 as u32) as i32));
+                    Ok(None)
+                } else {
+                    Err(Error::Execution("Expected i32 values for rem_u".into()))
+                }
+            }
+            Instruction::I32And => {
+                let val2 = self.stack.values.pop().ok_or(Error::StackUnderflow)?;
+                let val1 = self.stack.values.pop().ok_or(Error::StackUnderflow)?;
+                if let (Value::I32(v1), Value::I32(v2)) = (val1, val2) {
+                    self.stack.values.push(Value::I32(v1 & v2));
+                    Ok(None)
+                } else {
+                    Err(Error::Execution("Expected i32 values for and".into()))
+                }
+            }
+            Instruction::I32Or => {
+                let val2 = self.stack.values.pop().ok_or(Error::StackUnderflow)?;
+                let val1 = self.stack.values.pop().ok_or(Error::StackUnderflow)?;
+                if let (Value::I32(v1), Value::I32(v2)) = (val1, val2) {
+                    self.stack.values.push(Value::I32(v1 | v2));
+                    Ok(None)
+                } else {
+                    Err(Error::Execution("Expected i32 values for or".into()))
+                }
+            }
+            Instruction::I32Xor => {
+                let val2 = self.stack.values.pop().ok_or(Error::StackUnderflow)?;
+                let val1 = self.stack.values.pop().ok_or(Error::StackUnderflow)?;
+                if let (Value::I32(v1), Value::I32(v2)) = (val1, val2) {
+                    self.stack.values.push(Value::I32(v1 ^ v2));
+                    Ok(None)
+                } else {
+                    Err(Error::Execution("Expected i32 values for xor".into()))
+                }
+            }
+            Instruction::I32Eq => {
+                let val2 = self.stack.values.pop().ok_or(Error::StackUnderflow)?;
+                let val1 = self.stack.values.pop().ok_or(Error::StackUnderflow)?;
+                if let (Value::I32(v1), Value::I32(v2)) = (val1, val2) {
+                    self.stack
+                        .values
+                        .push(Value::I32(if v1 == v2 { 1 } else { 0 }));
+                    Ok(None)
+                } else {
+                    Err(Error::Execution("Expected i32 values for eq".into()))
+                }
+            }
+            Instruction::I32Ne => {
+                let val2 = self.stack.values.pop().ok_or(Error::StackUnderflow)?;
+                let val1 = self.stack.values.pop().ok_or(Error::StackUnderflow)?;
+                if let (Value::I32(v1), Value::I32(v2)) = (val1, val2) {
+                    self.stack
+                        .values
+                        .push(Value::I32(if v1 != v2 { 1 } else { 0 }));
+                    Ok(None)
+                } else {
+                    Err(Error::Execution("Expected i32 values for ne".into()))
+                }
+            }
+            Instruction::I32LtS => {
+                let val2 = self.stack.values.pop().ok_or(Error::StackUnderflow)?;
+                let val1 = self.stack.values.pop().ok_or(Error::StackUnderflow)?;
+                if let (Value::I32(v1), Value::I32(v2)) = (val1, val2) {
+                    self.stack
+                        .values
+                        .push(Value::I32(if v1 < v2 { 1 } else { 0 }));
+                    Ok(None)
+                } else {
+                    Err(Error::Execution("Expected i32 values for lt_s".into()))
+                }
+            }
+            Instruction::I32LtU => {
+                let val2 = self.stack.values.pop().ok_or(Error::StackUnderflow)?;
+                let val1 = self.stack.values.pop().ok_or(Error::StackUnderflow)?;
+                if let (Value::I32(v1), Value::I32(v2)) = (val1, val2) {
+                    self.stack
+                        .values
+                        .push(Value::I32(if (v1 as u32) < (v2 as u32) { 1 } else { 0 }));
+                    Ok(None)
+                } else {
+                    Err(Error::Execution("Expected i32 values for lt_u".into()))
+                }
+            }
+            Instruction::I32GtS => {
+                let val2 = self.stack.values.pop().ok_or(Error::StackUnderflow)?;
+                let val1 = self.stack.values.pop().ok_or(Error::StackUnderflow)?;
+                if let (Value::I32(v1), Value::I32(v2)) = (val1, val2) {
+                    self.stack
+                        .values
+                        .push(Value::I32(if v1 > v2 { 1 } else { 0 }));
+                    Ok(None)
+                } else {
+                    Err(Error::Execution("Expected i32 values for gt_s".into()))
+                }
+            }
+            Instruction::I32GtU => {
+                let val2 = self.stack.values.pop().ok_or(Error::StackUnderflow)?;
+                let val1 = self.stack.values.pop().ok_or(Error::StackUnderflow)?;
+                if let (Value::I32(v1), Value::I32(v2)) = (val1, val2) {
+                    self.stack
+                        .values
+                        .push(Value::I32(if (v1 as u32) > (v2 as u32) { 1 } else { 0 }));
+                    Ok(None)
+                } else {
+                    Err(Error::Execution("Expected i32 values for gt_u".into()))
+                }
+            }
+            Instruction::I32LeS => {
+                let val2 = self.stack.values.pop().ok_or(Error::StackUnderflow)?;
+                let val1 = self.stack.values.pop().ok_or(Error::StackUnderflow)?;
+                if let (Value::I32(v1), Value::I32(v2)) = (val1, val2) {
+                    self.stack
+                        .values
+                        .push(Value::I32(if v1 <= v2 { 1 } else { 0 }));
+                    Ok(None)
+                } else {
+                    Err(Error::Execution("Expected i32 values for le_s".into()))
+                }
+            }
+            Instruction::I32LeU => {
+                let val2 = self.stack.values.pop().ok_or(Error::StackUnderflow)?;
+                let val1 = self.stack.values.pop().ok_or(Error::StackUnderflow)?;
+                if let (Value::I32(v1), Value::I32(v2)) = (val1, val2) {
+                    self.stack
+                        .values
+                        .push(Value::I32(if (v1 as u32) <= (v2 as u32) { 1 } else { 0 }));
+                    Ok(None)
+                } else {
+                    Err(Error::Execution("Expected i32 values for le_u".into()))
+                }
+            }
+            Instruction::I32GeS => {
+                let val2 = self.stack.values.pop().ok_or(Error::StackUnderflow)?;
+                let val1 = self.stack.values.pop().ok_or(Error::StackUnderflow)?;
+                if let (Value::I32(v1), Value::I32(v2)) = (val1, val2) {
+                    self.stack
+                        .values
+                        .push(Value::I32(if v1 >= v2 { 1 } else { 0 }));
+                    Ok(None)
+                } else {
+                    Err(Error::Execution("Expected i32 values for ge_s".into()))
+                }
+            }
+            Instruction::I32GeU => {
+                let val2 = self.stack.values.pop().ok_or(Error::StackUnderflow)?;
+                let val1 = self.stack.values.pop().ok_or(Error::StackUnderflow)?;
+                if let (Value::I32(v1), Value::I32(v2)) = (val1, val2) {
+                    self.stack
+                        .values
+                        .push(Value::I32(if (v1 as u32) >= (v2 as u32) { 1 } else { 0 }));
+                    Ok(None)
+                } else {
+                    Err(Error::Execution("Expected i32 values for ge_u".into()))
                 }
             }
 
