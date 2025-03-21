@@ -710,3 +710,187 @@ fn test_wast_basic_module() -> Result<()> {
     println!("All WAST basic module tests passed successfully");
     Ok(())
 }
+
+#[test]
+fn test_i64_compare_operations() -> Result<()> {
+    let wat = r#"
+        (module
+            (func (export "i64_eq") (param i64 i64) (result i32)
+                local.get 0
+                local.get 1
+                i64.eq
+            )
+            (func (export "i64_ne") (param i64 i64) (result i32)
+                local.get 0
+                local.get 1
+                i64.ne
+            )
+            (func (export "i64_lt_s") (param i64 i64) (result i32)
+                local.get 0
+                local.get 1
+                i64.lt_s
+            )
+            (func (export "i64_lt_u") (param i64 i64) (result i32)
+                local.get 0
+                local.get 1
+                i64.lt_u
+            )
+            (func (export "i64_gt_s") (param i64 i64) (result i32)
+                local.get 0
+                local.get 1
+                i64.gt_s
+            )
+            (func (export "i64_gt_u") (param i64 i64) (result i32)
+                local.get 0
+                local.get 1
+                i64.gt_u
+            )
+            (func (export "i64_le_s") (param i64 i64) (result i32)
+                local.get 0
+                local.get 1
+                i64.le_s
+            )
+            (func (export "i64_le_u") (param i64 i64) (result i32)
+                local.get 0
+                local.get 1
+                i64.le_u
+            )
+            (func (export "i64_ge_s") (param i64 i64) (result i32)
+                local.get 0
+                local.get 1
+                i64.ge_s
+            )
+            (func (export "i64_ge_u") (param i64 i64) (result i32)
+                local.get 0
+                local.get 1
+                i64.ge_u
+            )
+        )
+    "#;
+
+    // Parse the WebAssembly text format
+    let wasm_binary =
+        wat::parse_str(wat).map_err(|e| Error::Parse(format!("Failed to parse WAT: {}", e)))?;
+
+    // Create and load the module
+    let module = Module::new();
+    let module = module.load_from_binary(&wasm_binary)?;
+
+    // Create an engine
+    let mut engine = Engine::new(module.clone());
+
+    // Instantiate the module
+    engine.instantiate(module)?;
+
+    // Test i64.eq
+    let args = vec![Value::I64(100), Value::I64(100)];
+    let result = engine.execute(0, 0, args)?;
+    assert_eq!(result, vec![Value::I32(1)]);
+
+    let args = vec![Value::I64(100), Value::I64(101)];
+    let result = engine.execute(0, 0, args)?;
+    assert_eq!(result, vec![Value::I32(0)]);
+
+    // Test i64.ne
+    let args = vec![Value::I64(100), Value::I64(100)];
+    let result = engine.execute(0, 1, args)?;
+    assert_eq!(result, vec![Value::I32(0)]);
+
+    let args = vec![Value::I64(100), Value::I64(101)];
+    let result = engine.execute(0, 1, args)?;
+    assert_eq!(result, vec![Value::I32(1)]);
+
+    // Test i64.lt_s
+    let args = vec![Value::I64(-100), Value::I64(100)];
+    let result = engine.execute(0, 2, args)?;
+    assert_eq!(result, vec![Value::I32(1)]);
+
+    let args = vec![Value::I64(100), Value::I64(100)];
+    let result = engine.execute(0, 2, args)?;
+    assert_eq!(result, vec![Value::I32(0)]);
+
+    // Test i64.lt_u
+    let args = vec![Value::I64(100), Value::I64(200)];
+    let result = engine.execute(0, 3, args)?;
+    assert_eq!(result, vec![Value::I32(1)]);
+
+    // Negative numbers are treated as large unsigned values
+    let args = vec![Value::I64(-1), Value::I64(1)];
+    let result = engine.execute(0, 3, args)?;
+    assert_eq!(result, vec![Value::I32(0)]);
+
+    // Test i64.gt_s
+    let args = vec![Value::I64(100), Value::I64(-100)];
+    let result = engine.execute(0, 4, args)?;
+    assert_eq!(result, vec![Value::I32(1)]);
+
+    let args = vec![Value::I64(100), Value::I64(100)];
+    let result = engine.execute(0, 4, args)?;
+    assert_eq!(result, vec![Value::I32(0)]);
+
+    // Test i64.gt_u
+    let args = vec![Value::I64(200), Value::I64(100)];
+    let result = engine.execute(0, 5, args)?;
+    assert_eq!(result, vec![Value::I32(1)]);
+
+    // Negative numbers are treated as large unsigned values
+    let args = vec![Value::I64(-1), Value::I64(1)];
+    let result = engine.execute(0, 5, args)?;
+    assert_eq!(result, vec![Value::I32(1)]);
+
+    // Test i64.le_s
+    let args = vec![Value::I64(-100), Value::I64(100)];
+    let result = engine.execute(0, 6, args)?;
+    assert_eq!(result, vec![Value::I32(1)]);
+
+    let args = vec![Value::I64(100), Value::I64(100)];
+    let result = engine.execute(0, 6, args)?;
+    assert_eq!(result, vec![Value::I32(1)]);
+
+    let args = vec![Value::I64(100), Value::I64(-100)];
+    let result = engine.execute(0, 6, args)?;
+    assert_eq!(result, vec![Value::I32(0)]);
+
+    // Test i64.le_u
+    let args = vec![Value::I64(100), Value::I64(200)];
+    let result = engine.execute(0, 7, args)?;
+    assert_eq!(result, vec![Value::I32(1)]);
+
+    let args = vec![Value::I64(100), Value::I64(100)];
+    let result = engine.execute(0, 7, args)?;
+    assert_eq!(result, vec![Value::I32(1)]);
+
+    // Negative numbers are treated as large unsigned values
+    let args = vec![Value::I64(-1), Value::I64(1)];
+    let result = engine.execute(0, 7, args)?;
+    assert_eq!(result, vec![Value::I32(0)]);
+
+    // Test i64.ge_s
+    let args = vec![Value::I64(100), Value::I64(-100)];
+    let result = engine.execute(0, 8, args)?;
+    assert_eq!(result, vec![Value::I32(1)]);
+
+    let args = vec![Value::I64(100), Value::I64(100)];
+    let result = engine.execute(0, 8, args)?;
+    assert_eq!(result, vec![Value::I32(1)]);
+
+    let args = vec![Value::I64(-100), Value::I64(100)];
+    let result = engine.execute(0, 8, args)?;
+    assert_eq!(result, vec![Value::I32(0)]);
+
+    // Test i64.ge_u
+    let args = vec![Value::I64(200), Value::I64(100)];
+    let result = engine.execute(0, 9, args)?;
+    assert_eq!(result, vec![Value::I32(1)]);
+
+    let args = vec![Value::I64(100), Value::I64(100)];
+    let result = engine.execute(0, 9, args)?;
+    assert_eq!(result, vec![Value::I32(1)]);
+
+    // Negative numbers are treated as large unsigned values
+    let args = vec![Value::I64(-1), Value::I64(1)];
+    let result = engine.execute(0, 9, args)?;
+    assert_eq!(result, vec![Value::I32(1)]);
+
+    Ok(())
+}
