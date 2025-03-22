@@ -1,5 +1,7 @@
 use crate::types::ValueType;
 use crate::{Box, String, Vec};
+#[cfg(feature = "serialization")]
+use serde::{Deserialize, Serialize};
 use std::fmt;
 
 /// Represents a WebAssembly value that can be used in the runtime.
@@ -21,6 +23,7 @@ use std::fmt;
 /// let list_value = Value::List(vec![Box::new(Value::I32(1)), Box::new(Value::I32(2))]);
 /// ```
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serialization", derive(Serialize, Deserialize))]
 pub enum Value {
     /// 32-bit signed integer value
     I32(i32),
@@ -662,6 +665,30 @@ impl Value {
         match self {
             Value::AnyRef(ref_idx) => Some(*ref_idx),
             _ => None,
+        }
+    }
+
+    pub fn get_type(&self) -> ValueType {
+        match self {
+            Value::I32(_) => ValueType::I32,
+            Value::I64(_) => ValueType::I64,
+            Value::F32(_) => ValueType::F32,
+            Value::F64(_) => ValueType::F64,
+            Value::V128(_) => ValueType::V128,
+            Value::FuncRef(_) => ValueType::FuncRef,
+            Value::ExternRef(_) => ValueType::ExternRef,
+            Value::AnyRef(_) => ValueType::AnyRef,
+            Value::Record(_) => ValueType::AnyRef,
+            Value::Tuple(_) => ValueType::AnyRef,
+            Value::List(_) => ValueType::AnyRef,
+            Value::Flags(_) => ValueType::AnyRef,
+            Value::Variant(_, _) => ValueType::AnyRef,
+            Value::Enum(_) => ValueType::AnyRef,
+            Value::Union(_) => ValueType::AnyRef,
+            Value::Option(_) => ValueType::AnyRef,
+            Value::Result(_) => ValueType::AnyRef,
+            Value::Future(_) => ValueType::AnyRef,
+            Value::Stream { .. } => ValueType::AnyRef,
         }
     }
 }

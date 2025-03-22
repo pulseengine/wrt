@@ -8,7 +8,11 @@
 //! and allows for pausing and resuming execution at any point.
 
 use crate::error::{Error, Result};
+use crate::global::Global;
+use crate::memory::Memory;
+use crate::module::Export;
 use crate::module::{ExportKind, Module};
+use crate::table::Table;
 use crate::values::Value;
 use crate::{format, Box, Vec};
 
@@ -36,6 +40,8 @@ pub enum ExecutionState {
         instance_idx: u32,
         /// Function index
         func_idx: u32,
+        /// Expected number of results
+        expected_results: usize,
     },
     /// Function call in progress
     Calling {
@@ -62,6 +68,8 @@ pub enum ExecutionState {
     },
     /// Completed execution
     Completed,
+    /// Execution finished
+    Finished,
     /// Error occurred
     Error(Error),
 }
@@ -104,7 +112,31 @@ pub struct ModuleInstance {
     /// Global addresses
     pub global_addrs: Vec<GlobalAddr>,
     /// Actual memory instances with data buffers
-    pub memories: Vec<crate::memory::Memory>,
+    pub memories: Vec<Memory>,
+    /// Actual table instances
+    pub tables: Vec<Table>,
+    /// Actual global instances
+    pub globals: Vec<Global>,
+}
+
+impl ModuleInstance {
+    pub fn new(module: Module) -> Result<Self> {
+        Ok(ModuleInstance {
+            module_idx: 0, // Will be set by the engine when added to instances
+            module,
+            func_addrs: Vec::new(),
+            table_addrs: Vec::new(),
+            memory_addrs: Vec::new(),
+            global_addrs: Vec::new(),
+            memories: Vec::new(),
+            tables: Vec::new(),
+            globals: Vec::new(),
+        })
+    }
+
+    pub fn get_export(&self, name: &str) -> Option<&Export> {
+        self.module.exports.iter().find(|e| e.name == name)
+    }
 }
 
 /// Represents a function address
@@ -351,7 +383,7 @@ impl StacklessStack {
 
         // Pop labels up to (but not including) the target label
         while self.labels.len() > label_index + 1 {
-            self.pop_label()?;
+            let _label = self.pop_label()?;
             println!(
                 "[BRANCH_DEBUG] Popped a label, remaining: {}",
                 self.labels.len()
@@ -785,6 +817,8 @@ impl StacklessEngine {
             memory_addrs: Vec::new(),
             global_addrs: Vec::new(),
             memories: Vec::new(),
+            tables: Vec::new(),
+            globals: Vec::new(),
         };
 
         // Add the instance to the engine
@@ -940,6 +974,7 @@ impl StacklessEngine {
                         pc: self.stack.pc(),
                         instance_idx,
                         func_idx,
+                        expected_results: 0,
                     });
                     return Err(Error::Execution("Out of fuel".into()));
                 }
@@ -1153,7 +1188,7 @@ impl StacklessEngine {
                 }
 
                 // Pop the label - this will adjust PC if needed
-                let label = self.stack.pop_label()?;
+                let _label = self.stack.pop_label()?;
 
                 // For loop labels, we need to jump back to the beginning of the loop
                 // The PC was already set by pop_label, so no action needed

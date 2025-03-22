@@ -3,15 +3,20 @@
 //! This module contains implementations for all WebAssembly control flow instructions,
 //! including blocks, branches, calls, and returns.
 
-use crate::{error::Error, execution::Stack, format, types::FuncType, Result, Value, Vec};
+use crate::error::{Error, Result};
+use crate::execution::Stack;
+use crate::format;
+use crate::instructions::{BlockType, Instruction, InstructionExecutor};
+use crate::stackless::Frame as StacklessFrame;
+use crate::types::FuncType;
+use crate::Value;
+use crate::Vec;
 
 #[cfg(feature = "std")]
 use std::vec;
 
 #[cfg(not(feature = "std"))]
 use alloc::vec;
-
-use crate::instructions::BlockType;
 
 /// Label type for control flow
 #[derive(Debug, Clone, PartialEq)]
@@ -70,114 +75,120 @@ pub fn push_label(
 }
 
 /// Executes a block instruction
-pub fn block(_stack: &mut Stack) -> Result<()> {
-    // We handle this in the execution loop
+pub fn block(
+    frame: &mut StacklessFrame,
+    stack: &mut Stack,
+    block_type: BlockType,
+    continuation_pc: usize,
+) -> Result<()> {
+    let arity = match block_type {
+        BlockType::Empty => 0,
+        BlockType::Type(_) => 1,
+        BlockType::TypeIndex(_) => 1, // Assuming type index refers to a type with one result
+    };
+    stack.push_label(arity, continuation_pc);
     Ok(())
 }
 
 /// Execute a loop instruction
 ///
 /// Creates a new loop scope with the given block type.
-pub fn loop_instr(
+pub fn loop_(
+    frame: &mut StacklessFrame,
     stack: &mut Stack,
-    pc: usize,
     block_type: BlockType,
-    function_types: Option<&[FuncType]>,
+    loop_pc: usize,
 ) -> Result<()> {
-    // For Loop instructions, the continuation point is the start of the loop itself
-    // This is different from Block, where the continuation is after the end
-    let loop_start = pc;
-    push_label(
-        loop_start,
-        stack,
-        LabelType::Loop,
-        block_type,
-        function_types,
-    )?;
-    println!(
-        "[PUSH_LABEL_DEBUG] Pushing new label - arity: {}, continuation: {}",
-        stack.labels.last().map_or(0, |l| l.arity),
-        stack.labels.last().map_or(0, |l| l.continuation)
-    );
-    println!(
-        "[PUSH_LABEL_DEBUG] Label stack size after push: {}",
-        stack.labels.len()
-    );
-
+    let arity = match block_type {
+        BlockType::Empty => 0,
+        BlockType::Type(_) => 1,
+        BlockType::TypeIndex(_) => 1, // Assuming type index refers to a type with one result
+    };
+    stack.push_label(arity, loop_pc);
     Ok(())
 }
 
 /// Executes an if instruction
-pub fn if_instr(stack: &mut Stack) -> Result<()> {
-    let Value::I32(_condition) = stack.pop()? else {
-        return Err(Error::Execution("If condition must be i32".into()));
+pub fn if_(
+    frame: &mut StacklessFrame,
+    stack: &mut Stack,
+    block_type: BlockType,
+    continuation_pc: usize,
+    else_pc: usize,
+) -> Result<()> {
+    let condition = match stack.pop()? {
+        Value::I32(v) => v != 0,
+        _ => {
+            return Err(Error::Execution(
+                "Expected i32 value for if condition".into(),
+            ))
+        }
     };
-    // We handle the if in the execution loop
+
+    let arity = match block_type {
+        BlockType::Empty => 0,
+        BlockType::Type(_) => 1,
+        BlockType::TypeIndex(_) => 1, // Assuming type index refers to a type with one result
+    };
+
+    if condition {
+        stack.push_label(arity, continuation_pc);
+    } else {
+        frame.return_pc = else_pc;
+    }
     Ok(())
 }
 
 /// Executes a br instruction
-pub fn br(stack: &mut Stack, label_idx: u32) -> Result<()> {
-    // Get the label from the stack - we need to access the label stack from the bottom up
-    // since branch depths are counted from the innermost label (most recently pushed)
-    let labels_len = stack.labels.len();
-
-    if label_idx as usize >= labels_len {
-        return Err(Error::Execution(format!(
-            "Invalid branch target: {}",
-            label_idx
-        )));
-    }
-
-    // Calculate the index from the end of the stack (0 = most recent)
-    let idx = labels_len - 1 - (label_idx as usize);
-
-    if let Some(label) = stack.labels.get(idx) {
-        // Store the continuation PC
-        let continuation_pc = label.continuation;
-
-        // Pop all labels up to and including the target
-        for _ in 0..=label_idx {
-            stack.pop_label()?;
-        }
-
-        // Set PC to the continuation of the label
-        if let Some(frame) = stack.call_frames.last_mut() {
-            frame.pc = continuation_pc;
-            return Ok(());
-        }
-    }
-
-    // If no active frame, return an error
-    Err(Error::Execution("No active frame for branch".into()))
+pub fn br(frame: &mut StacklessFrame, stack: &mut Stack, label_idx: u32) -> Result<()> {
+    let label = stack.get_label(label_idx)?;
+    frame.return_pc = label.continuation;
+    Ok(())
 }
 
 /// Executes a br_if instruction
-pub fn br_if(stack: &mut Stack, label_idx: u32) -> Result<()> {
-    let Value::I32(condition) = stack.pop()? else {
-        return Err(Error::Execution("Expected i32 condition".into()));
+pub fn br_if(frame: &mut StacklessFrame, stack: &mut Stack, label_idx: u32) -> Result<()> {
+    let condition = match stack.pop()? {
+        Value::I32(v) => v != 0,
+        _ => {
+            return Err(Error::Execution(
+                "Expected i32 value for br_if condition".into(),
+            ))
+        }
     };
 
-    // Only branch if condition is true (non-zero)
-    if condition != 0 {
-        // Perform the actual branch operation
-        return br(stack, label_idx);
+    if condition {
+        let label = stack.get_label(label_idx)?;
+        frame.return_pc = label.continuation;
     }
-
-    // If condition is false, just continue with the next instruction
     Ok(())
 }
 
 /// Executes a br_table instruction
-pub fn br_table(_stack: &mut Stack, _labels: &[u32], _default_label: u32) -> Result<()> {
-    // We don't need to reference any stack here
-    // We handle br_table in the execution loop
+pub fn br_table(
+    frame: &mut StacklessFrame,
+    stack: &mut Stack,
+    table: &[u32],
+    default_idx: u32,
+) -> Result<()> {
+    let index = match stack.pop()? {
+        Value::I32(v) => v as usize,
+        _ => {
+            return Err(Error::Execution(
+                "Expected i32 value for br_table index".into(),
+            ))
+        }
+    };
+
+    let label_idx = table.get(index).copied().unwrap_or(default_idx);
+    let label = stack.get_label(label_idx)?;
+    frame.return_pc = label.continuation;
     Ok(())
 }
 
 /// Executes a return instruction
-pub fn return_instr(_stack: &mut Stack) -> Result<()> {
-    // We handle this in the execution loop
+pub fn return_(frame: &mut StacklessFrame, stack: &mut Stack) -> Result<()> {
+    frame.return_pc = usize::MAX;
     Ok(())
 }
 

@@ -1,12 +1,13 @@
 #[cfg(test)]
 mod resume_tests {
     use wrt::error::Result;
-    use wrt::execution::{Engine, ExecutionState};
+    use wrt::execution::Engine;
     use wrt::instructions::Instruction;
     use wrt::module::Function;
     use wrt::new_module;
     use wrt::types::{FuncType, ValueType};
     use wrt::values::Value;
+    use wrt::ExecutionState;
 
     #[test]
     fn test_pause_on_fuel_exhaustion() -> Result<()> {
@@ -53,7 +54,7 @@ mod resume_tests {
         });
 
         // Now resume execution
-        let result = engine.resume()?;
+        let result = engine.resume(vec![])?;
 
         // The result should be 42
         assert_eq!(result, vec![Value::I32(42)]);
@@ -103,7 +104,7 @@ mod resume_tests {
         engine.instantiate(module)?;
 
         // Try to resume when the engine is not paused
-        let result = engine.resume();
+        let result = engine.resume(vec![]);
 
         // Should get an error with the message "Cannot resume: engine is not paused"
         assert!(result.is_err());

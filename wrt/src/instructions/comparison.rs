@@ -4,8 +4,6 @@
 //! including equality, inequality, and ordering operations for numeric types.
 
 use crate::error::Error;
-use crate::execution::{Frame, Stack};
-use crate::instructions::InstructionExecutor;
 use crate::values::Value;
 use crate::Vec;
 

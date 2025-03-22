@@ -1,17 +1,14 @@
-use wrt::{
-    CanonicalABI, Component, Error, InterfaceValue, ResourceTable, Result, ValueType,
-};
-use wrt::types::*;
 use wrt::resource::ResourceRepresentation;
 use wrt::resource::ResourceType;
-use wrt::module::Module;
+use wrt::types::*;
+use wrt::{CanonicalABI, Component, Error, InterfaceValue, ResourceTable, Result, ValueType};
 
 use std::sync::Arc;
 
 #[test]
 fn test_component_instantiation() -> Result<()> {
     // Create a simple component with a basic component type
-    let mut component_type = wrt::component::ComponentType {
+    let component_type = wrt::component::ComponentType {
         imports: Vec::new(),
         exports: vec![
             (
@@ -65,12 +62,12 @@ fn test_canonical_abi_conversion() -> Result<()> {
     let i32_val = wrt::Value::I32(42);
     let i32_type = ComponentType::Primitive(ValueType::I32);
     let interface_val = CanonicalABI::lift(i32_val.clone(), &i32_type, None, None)?;
-    
+
     assert!(matches!(interface_val, InterfaceValue::S32(42)));
-    
+
     let lowered_val = CanonicalABI::lower(interface_val, None, None)?;
     assert_eq!(lowered_val, i32_val);
-    
+
     Ok(())
 }
 
@@ -78,7 +75,7 @@ fn test_canonical_abi_conversion() -> Result<()> {
 fn test_resource_handling() -> Result<()> {
     // Create a resource table
     let mut table = ResourceTable::new();
-    
+
     // Define a resource type
     let resource_type = ResourceType {
         name: "test:resource".to_string(),
@@ -86,87 +83,93 @@ fn test_resource_handling() -> Result<()> {
         nullable: false,
         borrowable: true,
     };
-    
+
     // Create some test resource data
     struct TestResourceData {
         value: String,
     }
-    
+
     impl wrt::ResourceData for TestResourceData {
         // ResourceData requires Debug + Send + Sync and as_any
         fn as_any(&self) -> &dyn std::any::Any {
             self
         }
     }
-    
+
     impl std::fmt::Debug for TestResourceData {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             write!(f, "TestResourceData {{ value: {} }}", self.value)
         }
     }
-    
+
     // Allocate a resource
     let data = Arc::new(TestResourceData {
         value: "test value".to_string(),
     });
-    
+
     let id = table.allocate(resource_type.clone(), data);
-    
+
     // Get the resource back
     let resource = table.get(id)?;
-    
+
     // Check the resource
     assert_eq!(resource.id, id);
     assert_eq!(resource.resource_type.name, "test:resource");
-    
+
     // Add some references
     table.add_ref(id)?;
     table.add_ref(id)?;
-    
+
     // Drop references
     table.drop_ref(id)?;
     table.drop_ref(id)?;
-    
+
     // Resource should still exist
     assert!(table.get(id).is_ok());
-    
+
     // Drop the last reference
     table.drop_ref(id)?;
-    
+
     // Resource should no longer exist
     assert!(table.get(id).is_err());
-    
+
     Ok(())
 }
 
 #[test]
 fn test_component_types() {
     // Create nested component types
-    
+
     // 1. Record type
     let record_type = ComponentType::Record(vec![
-        ("name".to_string(), Box::new(ComponentType::Primitive(ValueType::I32))),
-        ("age".to_string(), Box::new(ComponentType::Primitive(ValueType::I32))),
+        (
+            "name".to_string(),
+            Box::new(ComponentType::Primitive(ValueType::I32)),
+        ),
+        (
+            "age".to_string(),
+            Box::new(ComponentType::Primitive(ValueType::I32)),
+        ),
     ]);
-    
+
     assert!(record_type.is_record());
-    
+
     // 2. List of records
     let list_type = ComponentType::List(Box::new(record_type.clone()));
-    
+
     assert!(list_type.is_list());
-    
+
     // 3. Result type with record as ok
     let result_type = ComponentType::Result {
         ok: Some(Box::new(record_type)),
         err: Some(Box::new(ComponentType::Primitive(ValueType::I32))),
     };
-    
+
     assert!(result_type.is_result());
-    
+
     // 4. Option type with list as value
     let option_type = ComponentType::Option(Box::new(list_type));
-    
+
     assert!(option_type.is_option());
 }
 
@@ -177,26 +180,27 @@ fn test_component_binary_parsing() -> Result<()> {
         // Component magic number and version
         0x00, 0x61, 0x73, 0x6D, // magic
         0x0D, 0x00, 0x01, 0x00, // component model version
-
         // Component Type Section (section code 1)
         0x01, // section code
         0x02, // section size
         0x00, // number of types (0)
         0x00, // padding byte to meet minimum length
     ];
-    
+
     // Create a module and load the component binary
     let module = wrt::module::Module::new();
     let loaded_module = module.load_from_binary(&component_binary)?;
-    
+
     // Verify that the module contains component-model-info section
-    let component_info = loaded_module.custom_sections.iter()
+    let component_info = loaded_module
+        .custom_sections
+        .iter()
         .find(|section| section.name == "component-model-info")
         .expect("Component model info section not found");
-    
+
     // Verify it's marked as a component
     assert_eq!(component_info.data, vec![0x01]);
-    
+
     Ok(())
 }
 
@@ -208,29 +212,28 @@ fn test_component_validation() -> Result<()> {
         0x00, 0x61, 0x73, 0x00, // wrong magic
         0x0D, 0x00, 0x01, 0x00, // component model version
     ];
-    
+
     // Loading should fail
     let module = wrt::module::Module::new();
     let result = module.load_from_binary(&invalid_binary);
     assert!(result.is_err());
-    
+
     // Create an invalid component binary (no core module or type section)
     let invalid_binary = [
         // Component magic number and version
         0x00, 0x61, 0x73, 0x6D, // magic
         0x0D, 0x00, 0x01, 0x00, // component model version
-        
         // Just a custom section
         0x00, // section code
         0x02, // section size
         0x00, // name length
         0x00, // empty data
     ];
-    
+
     // Loading should fail
     let result = module.load_from_binary(&invalid_binary);
     assert!(result.is_err());
-    
+
     Ok(())
 }
 
@@ -238,49 +241,41 @@ fn test_component_validation() -> Result<()> {
 fn test_component_linking() -> Result<()> {
     // Create a parent component with imports
     let parent_component_type = wrt::component::ComponentType {
-        imports: vec![
-            (
-                "log".to_string(),
-                "wasi".to_string(),
-                ExternType::Function(FuncType {
-                    params: vec![ValueType::I32],
-                    results: vec![],
-                }),
-            ),
-        ],
-        exports: vec![
-            (
-                "process".to_string(),
-                ExternType::Function(FuncType {
-                    params: vec![ValueType::I32],
-                    results: vec![ValueType::I32],
-                }),
-            ),
-        ],
+        imports: vec![(
+            "log".to_string(),
+            "wasi".to_string(),
+            ExternType::Function(FuncType {
+                params: vec![ValueType::I32],
+                results: vec![],
+            }),
+        )],
+        exports: vec![(
+            "process".to_string(),
+            ExternType::Function(FuncType {
+                params: vec![ValueType::I32],
+                results: vec![ValueType::I32],
+            }),
+        )],
         instances: Vec::new(),
     };
 
     // Create a child component with imports and exports
     let child_component_type = wrt::component::ComponentType {
-        imports: vec![
-            (
-                "process".to_string(),
-                "parent".to_string(),
-                ExternType::Function(FuncType {
-                    params: vec![ValueType::I32],
-                    results: vec![ValueType::I32],
-                }),
-            ),
-        ],
-        exports: vec![
-            (
-                "transform".to_string(),
-                ExternType::Function(FuncType {
-                    params: vec![ValueType::I32],
-                    results: vec![ValueType::I32],
-                }),
-            ),
-        ],
+        imports: vec![(
+            "process".to_string(),
+            "parent".to_string(),
+            ExternType::Function(FuncType {
+                params: vec![ValueType::I32],
+                results: vec![ValueType::I32],
+            }),
+        )],
+        exports: vec![(
+            "transform".to_string(),
+            ExternType::Function(FuncType {
+                params: vec![ValueType::I32],
+                results: vec![ValueType::I32],
+            }),
+        )],
         instances: Vec::new(),
     };
 
@@ -304,7 +299,7 @@ fn test_component_linking() -> Result<()> {
 
     // Instantiate the child component
     let mut child = Component::new(child_component_type);
-    
+
     // Create an import for the child that is linked to the parent's export
     let child_import = wrt::component::Import {
         name: "process".to_string(),
@@ -341,4 +336,4 @@ fn test_component_linking() -> Result<()> {
     assert!(child.validate().is_ok());
 
     Ok(())
-} 
+}

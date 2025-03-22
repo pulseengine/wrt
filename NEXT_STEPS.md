@@ -53,14 +53,12 @@ This document tracks the implementation tasks for the WRT project based on requi
    - Add stderr integration
    - Ensure thread-safe logging operations
    - Add platform-specific backends:
-     - Linux: syslog integration
-     - macOS: Unified Logging System integration
      - Generic fallback for other platforms
 
 7. [ ] **Improve Baremetal Support (REQ_002)**
    - Ensure the interpreter works in environments without an OS
    - Validate `no_std` compatibility across all components
-   - Test on bare-metal hardware
+   - Test on bare-metal hardware on zephyr. use existing installation.  see justfile for information. create a new app zwrtd as no_std doing a simplified version of wrtd.
 
 8. [ ] **Enhance Test Coverage**
    - Implement WAST test infrastructure

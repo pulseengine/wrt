@@ -1,5 +1,5 @@
-use wrt::{Error, Value};
 use wrt::instructions::comparison;
+use wrt::{Error, Value};
 
 #[test]
 fn test_direct_i64_comparison() -> Result<(), Error> {
@@ -81,7 +81,7 @@ fn test_direct_i64_comparison() -> Result<(), Error> {
 
     // Test a few unsigned comparisons with large values
     // -1 is represented as a very large unsigned number
-    
+
     // Test i64.lt_u (less than, unsigned)
     let mut values_lt_u_true = vec![Value::I64(100), Value::I64(-1)]; // 100 < MAX_U64
     comparison::i64_lt_u(&mut values_lt_u_true)?;
@@ -96,4 +96,4 @@ fn test_direct_i64_comparison() -> Result<(), Error> {
 
     println!("All i64 comparison tests passed!");
     Ok(())
-} 
+}

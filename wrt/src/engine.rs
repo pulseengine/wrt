@@ -13,6 +13,15 @@ use crate::Mutex;
 #[cfg(not(feature = "std"))]
 use alloc::sync::Arc;
 
+#[cfg(feature = "serialization")]
+use crate::serialization::{
+    Serializable, SerializableExecutionState, SerializableFrame, 
+    SerializableGlobal, SerializableMemory, SerializableModuleInstance, 
+    SerializableStack, SerializableState, SerializableTable
+};
+#[cfg(feature = "serialization")]
+use std::collections::HashSet;
+
 /// The WebAssembly execution engine
 #[derive(Debug)]
 pub struct Engine {
@@ -109,6 +118,108 @@ impl Engine {
     /// Returns the current execution statistics
     pub fn stats(&self) -> &ExecutionStats {
         &self.stats
+    }
+}
+
+#[cfg(feature = "serialization")]
+impl Serializable for Engine {
+    fn to_serializable(&self) -> Result<SerializableState> {
+        // Get the module binary
+        let module_binary = self.module.binary().to_vec();
+        
+        // Convert execution state
+        let state = SerializableExecutionState::from(self.state());
+        
+        // Convert stack
+        let stack = SerializableStack::from(&self.stack);
+        
+        // Convert instances
+        let instances = self.instances.iter()
+            .map(SerializableModuleInstance::from)
+            .collect();
+        
+        // Convert memories
+        let memories = self.memories.iter()
+            .map(SerializableMemory::from)
+            .collect();
+        
+        // Convert tables
+        let tables = self.tables.iter()
+            .map(SerializableTable::from)
+            .collect();
+        
+        // Convert globals
+        let globals = self.globals.iter()
+            .map(SerializableGlobal::from)
+            .collect();
+        
+        // Convert dropped_elems
+        let dropped_elems = self.dropped_elems.iter().cloned().collect();
+        
+        Ok(SerializableState {
+            state,
+            stack,
+            instances,
+            fuel: self.fuel,
+            stats: self.stats.clone(),
+            module_binary,
+            memories,
+            tables,
+            globals,
+            dropped_elems,
+        })
+    }
+    
+    fn from_serializable(state: SerializableState) -> Result<Self> {
+        // First, load the module from binary
+        let mut module = Module::new();
+        module.load_from_binary(&state.module_binary)?;
+        
+        // Create a new engine with the module
+        let mut engine = Engine::new(module);
+        
+        // Set the execution state
+        engine.state = ExecutionState::from(state.state);
+        
+        // Set the fuel
+        engine.fuel = state.fuel;
+        
+        // Set the stats
+        engine.stats = state.stats;
+        
+        // Reconstruct the stack
+        engine.stack = Stack::from(&state.stack);
+        
+        // Reconstruct module instances (structures only, not connections)
+        engine.instances = state.instances.iter()
+            .map(|inst| ModuleInstance {
+                name: inst.name.clone(),
+                memories: inst.memories.clone(),
+                tables: inst.tables.clone(),
+                globals: inst.globals.clone(),
+                functions: inst.functions.clone(),
+            })
+            .collect();
+        
+        // Reconstruct memories
+        engine.memories = state.memories.iter()
+            .map(Memory::from)
+            .collect();
+        
+        // Reconstruct tables
+        engine.tables = state.tables.iter()
+            .map(Table::from)
+            .collect();
+        
+        // Reconstruct globals
+        engine.globals = state.globals.iter()
+            .map(Global::from)
+            .collect();
+        
+        // Reconstruct dropped_elems
+        engine.dropped_elems = state.dropped_elems.into_iter().collect();
+        
+        Ok(engine)
     }
 }
 

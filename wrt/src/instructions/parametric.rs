@@ -150,7 +150,11 @@ pub fn br_if(stack: &mut Vec<Value>, _label_idx: u32) -> Result<(), Error> {
 /// Execute a br_table instruction
 ///
 /// Branches to one of several labels based on an index value.
-pub fn br_table(_stack: &mut Vec<Value>, _labels: &[u32], _default_label: u32) -> Result<(), Error> {
+pub fn br_table(
+    _stack: &mut Vec<Value>,
+    _labels: &[u32],
+    _default_label: u32,
+) -> Result<(), Error> {
     // We handle the branch in the execution loop
     Ok(())
 }
