@@ -755,7 +755,7 @@ pub trait InstructionExecutor {
     fn execute(
         &self,
         stack: &mut crate::execution::Stack,
-        frame: &mut crate::execution::Frame,
+        frame: &mut crate::stackless::Frame,
     ) -> std::result::Result<(), crate::error::Error>;
 }
 
@@ -763,7 +763,7 @@ impl InstructionExecutor for Instruction {
     fn execute(
         &self,
         stack: &mut crate::execution::Stack,
-        frame: &mut crate::execution::Frame,
+        frame: &mut crate::stackless::Frame,
     ) -> std::result::Result<(), crate::error::Error> {
         use crate::error::Error;
 

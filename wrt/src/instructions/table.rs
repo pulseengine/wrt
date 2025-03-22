@@ -3,16 +3,17 @@
 //! This module contains implementations for all WebAssembly table instructions,
 //! including table access and manipulation operations.
 
-use crate::error::Error;
-use crate::execution::Frame;
-use crate::format;
-use crate::Value;
-use crate::Vec;
+use crate::{
+    error::{Error, Result},
+    format,
+    stackless::Frame as StacklessFrame,
+    Value, Vec,
+};
 
 /// Execute a table.get instruction
 ///
 /// Gets an element from a table.
-pub fn table_get(stack: &mut Vec<Value>, frame: &Frame, table_idx: u32) -> Result<(), Error> {
+pub fn table_get(stack: &mut Vec<Value>, frame: &StacklessFrame, table_idx: u32) -> Result<()> {
     if table_idx as usize >= frame.module.table_addrs.len() {
         return Err(Error::Execution(format!(
             "Invalid table index: {}",
@@ -46,7 +47,7 @@ pub fn table_get(stack: &mut Vec<Value>, frame: &Frame, table_idx: u32) -> Resul
 /// Execute a table.set instruction
 ///
 /// Sets an element in a table.
-pub fn table_set(stack: &mut Vec<Value>, frame: &mut Frame, table_idx: u32) -> Result<(), Error> {
+pub fn table_set(stack: &mut Vec<Value>, frame: &mut StacklessFrame, table_idx: u32) -> Result<()> {
     if table_idx as usize >= frame.module.table_addrs.len() {
         return Err(Error::Execution(format!(
             "Invalid table index: {}",
@@ -82,7 +83,7 @@ pub fn table_set(stack: &mut Vec<Value>, frame: &mut Frame, table_idx: u32) -> R
 /// Execute a table.size instruction
 ///
 /// Returns the current size of a table.
-pub fn table_size(stack: &mut Vec<Value>, frame: &Frame, table_idx: u32) -> Result<(), Error> {
+pub fn table_size(stack: &mut Vec<Value>, frame: &StacklessFrame, table_idx: u32) -> Result<()> {
     if table_idx as usize >= frame.module.table_addrs.len() {
         return Err(Error::Execution(format!(
             "Invalid table index: {}",
@@ -101,7 +102,11 @@ pub fn table_size(stack: &mut Vec<Value>, frame: &Frame, table_idx: u32) -> Resu
 /// Execute a table.grow instruction
 ///
 /// Grows a table by a number of elements.
-pub fn table_grow(stack: &mut Vec<Value>, frame: &mut Frame, table_idx: u32) -> Result<(), Error> {
+pub fn table_grow(
+    stack: &mut Vec<Value>,
+    frame: &mut StacklessFrame,
+    table_idx: u32,
+) -> Result<()> {
     let Value::I32(n) = stack
         .pop()
         .ok_or(Error::Execution("Stack underflow".into()))?
@@ -109,7 +114,7 @@ pub fn table_grow(stack: &mut Vec<Value>, frame: &mut Frame, table_idx: u32) -> 
         return Err(Error::Execution("Expected i32 for table.grow".into()));
     };
 
-    let value = stack
+    let _value = stack
         .pop()
         .ok_or(Error::Execution("Stack underflow".into()))?;
 
@@ -135,10 +140,10 @@ pub fn table_grow(stack: &mut Vec<Value>, frame: &mut Frame, table_idx: u32) -> 
 /// Initializes a table segment.
 pub fn table_init(
     stack: &mut Vec<Value>,
-    frame: &mut Frame,
+    frame: &mut StacklessFrame,
     table_idx: u32,
     _elem_idx: u32,
-) -> Result<(), Error> {
+) -> Result<()> {
     let Value::I32(size) = stack
         .pop()
         .ok_or(Error::Execution("Stack underflow".into()))?
@@ -185,10 +190,10 @@ pub fn table_init(
 /// Copies elements from one table to another.
 pub fn table_copy(
     stack: &mut Vec<Value>,
-    frame: &mut Frame,
+    frame: &mut StacklessFrame,
     dst_table_idx: u32,
     src_table_idx: u32,
-) -> Result<(), Error> {
+) -> Result<()> {
     let size = stack
         .pop()
         .ok_or(Error::Execution("Stack underflow".into()))?;

@@ -1,5 +1,6 @@
 use std::fmt;
 
+use crate::resource::ResourceType;
 use crate::{String, Vec};
 
 /// Represents a WebAssembly value type
@@ -72,6 +73,12 @@ pub enum ExternType {
     Memory(MemoryType),
     /// Global type
     Global(GlobalType),
+    /// Resource type (Component Model)
+    Resource(ResourceType),
+    /// Instance type (Component Model)
+    Instance(InstanceType),
+    /// Component type (Component Model)
+    Component(ComponentTypeRef),
 }
 
 /// Represents a component model type
@@ -80,39 +87,87 @@ pub enum ComponentType {
     /// Primitive type
     Primitive(ValueType),
     /// Record type
-    Record(Vec<(String, ValueType)>),
+    Record(Vec<(String, Box<ComponentType>)>),
     /// Tuple type
-    Tuple(Vec<ValueType>),
+    Tuple(Vec<Box<ComponentType>>),
     /// List type
-    List(ValueType),
+    List(Box<ComponentType>),
     /// Flags type
     Flags(Vec<String>),
     /// Variant type
-    Variant(Vec<(String, Option<ValueType>)>),
+    Variant(Vec<(String, Option<Box<ComponentType>>)>),
     /// Enum type
     Enum(Vec<String>),
     /// Union type
-    Union(Vec<ValueType>),
+    Union(Vec<Box<ComponentType>>),
     /// Option type
-    Option(ValueType),
+    Option(Box<ComponentType>),
     /// Result type
     Result {
         /// Ok type
-        ok: Option<ValueType>,
+        ok: Option<Box<ComponentType>>,
         /// Error type
-        err: Option<ValueType>,
+        err: Option<Box<ComponentType>>,
     },
     /// Future type
-    Future(ValueType),
+    Future(Box<ComponentType>),
     /// Stream type
     Stream {
         /// Element type
-        element: ValueType,
+        element: Box<ComponentType>,
         /// End type
-        end: Option<ValueType>,
+        end: Option<Box<ComponentType>>,
     },
+    /// Resource type
+    Resource(ResourceType),
+    /// Borrowed type
+    Borrowed(Box<ComponentType>),
+    /// Own type
+    Own(Box<ComponentType>),
+    /// Handle type
+    Handle(u32),
+    /// Type reference (for recursive types)
+    TypeRef(u32),
     /// Unknown type
     Unknown,
+}
+
+/// Component function type
+#[derive(Debug, Clone, PartialEq)]
+pub struct ComponentFuncType {
+    /// Parameter types
+    pub params: Vec<(String, ComponentType)>,
+    /// Result types
+    pub results: ComponentType,
+}
+
+/// Component module type
+#[derive(Debug, Clone, PartialEq)]
+pub struct ComponentModuleType {
+    /// Module imports
+    pub imports: Vec<(String, ExternType)>,
+    /// Module exports
+    pub exports: Vec<(String, ExternType)>,
+}
+
+/// Component instance type
+#[derive(Debug, Clone, PartialEq)]
+pub struct InstanceType {
+    /// Instance exports
+    pub exports: Vec<(String, ExternType)>,
+}
+
+/// Reference to a component type
+#[derive(Debug, Clone, PartialEq)]
+pub struct ComponentTypeRef {
+    /// Type index
+    pub type_idx: u32,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ComponentResourceType {
+    pub name: String,
+    pub version: u32,
 }
 
 impl fmt::Display for ValueType {
@@ -164,82 +219,104 @@ impl ValueType {
 }
 
 impl ComponentType {
-    /// Returns whether the component type is a primitive type
+    /// Creates a new component primitive type from a value type
+    pub fn from_value_type(value_type: ValueType) -> Self {
+        ComponentType::Primitive(value_type)
+    }
+
+    /// Checks if this type is a primitive type
     pub fn is_primitive(&self) -> bool {
         matches!(self, ComponentType::Primitive(_))
     }
 
-    /// Returns whether the component type is a reference type
+    /// Checks if this type is a reference type
     pub fn is_ref(&self) -> bool {
-        matches!(
-            self,
-            ComponentType::Primitive(ValueType::FuncRef | ValueType::ExternRef)
-        )
+        match self {
+            ComponentType::Primitive(value_type) => value_type.is_ref(),
+            ComponentType::Resource(_) | ComponentType::Borrowed(_) | ComponentType::Own(_) => true,
+            _ => false,
+        }
     }
 
-    /// Returns whether the component type is a numeric type
+    /// Checks if this type is a numeric type
     pub fn is_numeric(&self) -> bool {
-        matches!(
-            self,
-            ComponentType::Primitive(
-                ValueType::I32 | ValueType::I64 | ValueType::F32 | ValueType::F64
-            )
-        )
+        match self {
+            ComponentType::Primitive(value_type) => match value_type {
+                ValueType::I32 | ValueType::I64 | ValueType::F32 | ValueType::F64 => true,
+                _ => false,
+            },
+            _ => false,
+        }
     }
 
-    /// Returns whether the component type is a record type
+    /// Checks if this type is a record type
     pub fn is_record(&self) -> bool {
         matches!(self, ComponentType::Record(_))
     }
 
-    /// Returns whether the component type is a tuple type
+    /// Checks if this type is a tuple type
     pub fn is_tuple(&self) -> bool {
         matches!(self, ComponentType::Tuple(_))
     }
 
-    /// Returns whether the component type is a list type
+    /// Checks if this type is a list type
     pub fn is_list(&self) -> bool {
         matches!(self, ComponentType::List(_))
     }
 
-    /// Returns whether the component type is a flags type
+    /// Checks if this type is a flags type
     pub fn is_flags(&self) -> bool {
         matches!(self, ComponentType::Flags(_))
     }
 
-    /// Returns whether the component type is a variant type
+    /// Checks if this type is a variant type
     pub fn is_variant(&self) -> bool {
         matches!(self, ComponentType::Variant(_))
     }
 
-    /// Returns whether the component type is an enum type
+    /// Checks if this type is an enum type
     pub fn is_enum(&self) -> bool {
         matches!(self, ComponentType::Enum(_))
     }
 
-    /// Returns whether the component type is a union type
+    /// Checks if this type is a union type
     pub fn is_union(&self) -> bool {
         matches!(self, ComponentType::Union(_))
     }
 
-    /// Returns whether the component type is an option type
+    /// Checks if this type is an option type
     pub fn is_option(&self) -> bool {
         matches!(self, ComponentType::Option(_))
     }
 
-    /// Returns whether the component type is a result type
+    /// Checks if this type is a result type
     pub fn is_result(&self) -> bool {
         matches!(self, ComponentType::Result { .. })
     }
 
-    /// Returns whether the component type is a future type
+    /// Checks if this type is a future type
     pub fn is_future(&self) -> bool {
         matches!(self, ComponentType::Future(_))
     }
 
-    /// Returns whether the component type is a stream type
+    /// Checks if this type is a stream type
     pub fn is_stream(&self) -> bool {
         matches!(self, ComponentType::Stream { .. })
+    }
+
+    /// Checks if this type is a resource type
+    pub fn is_resource(&self) -> bool {
+        matches!(self, ComponentType::Resource(_))
+    }
+
+    /// Checks if this type is a borrowed type
+    pub fn is_borrowed(&self) -> bool {
+        matches!(self, ComponentType::Borrowed(_))
+    }
+
+    /// Checks if this type is an own type
+    pub fn is_own(&self) -> bool {
+        matches!(self, ComponentType::Own(_))
     }
 }
 

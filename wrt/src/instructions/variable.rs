@@ -3,16 +3,17 @@
 //! This module contains implementations for all WebAssembly variable instructions,
 //! including local and global variable access.
 
-use crate::error::Error;
-use crate::execution::Frame;
-use crate::format;
-use crate::Value;
-use crate::Vec;
+use crate::{
+    error::{Error, Result},
+    format,
+    stackless::Frame as StacklessFrame,
+    Value, Vec,
+};
 
 /// Execute a local.get instruction
 ///
 /// Gets the value of a local variable.
-pub fn local_get(stack: &mut Vec<Value>, frame: &Frame, local_idx: u32) -> Result<(), Error> {
+pub fn local_get(stack: &mut Vec<Value>, frame: &StacklessFrame, local_idx: u32) -> Result<()> {
     if local_idx as usize >= frame.locals.len() {
         return Err(Error::Execution(format!(
             "Invalid local index: {}",
@@ -27,7 +28,7 @@ pub fn local_get(stack: &mut Vec<Value>, frame: &Frame, local_idx: u32) -> Resul
 /// Execute a local.set instruction
 ///
 /// Sets the value of a local variable.
-pub fn local_set(stack: &mut Vec<Value>, frame: &mut Frame, local_idx: u32) -> Result<(), Error> {
+pub fn local_set(stack: &mut Vec<Value>, frame: &mut StacklessFrame, local_idx: u32) -> Result<()> {
     if local_idx as usize >= frame.locals.len() {
         return Err(Error::Execution(format!(
             "Invalid local index: {}",
@@ -45,7 +46,7 @@ pub fn local_set(stack: &mut Vec<Value>, frame: &mut Frame, local_idx: u32) -> R
 /// Execute a local.tee instruction
 ///
 /// Sets the value of a local variable and keeps the value on the stack.
-pub fn local_tee(stack: &mut Vec<Value>, frame: &mut Frame, local_idx: u32) -> Result<(), Error> {
+pub fn local_tee(stack: &mut Vec<Value>, frame: &mut StacklessFrame, local_idx: u32) -> Result<()> {
     if local_idx as usize >= frame.locals.len() {
         return Err(Error::Execution(format!(
             "Invalid local index: {}",
@@ -65,7 +66,7 @@ pub fn local_tee(stack: &mut Vec<Value>, frame: &mut Frame, local_idx: u32) -> R
 /// Execute a global.get instruction
 ///
 /// Gets the value of a global variable.
-pub fn global_get(stack: &mut Vec<Value>, frame: &Frame, global_idx: u32) -> Result<(), Error> {
+pub fn global_get(stack: &mut Vec<Value>, frame: &StacklessFrame, global_idx: u32) -> Result<()> {
     if global_idx as usize >= frame.module.global_addrs.len() {
         return Err(Error::Execution(format!(
             "Invalid global index: {}",
@@ -82,7 +83,11 @@ pub fn global_get(stack: &mut Vec<Value>, frame: &Frame, global_idx: u32) -> Res
 /// Execute a global.set instruction
 ///
 /// Sets the value of a global variable.
-pub fn global_set(stack: &mut Vec<Value>, frame: &mut Frame, global_idx: u32) -> Result<(), Error> {
+pub fn global_set(
+    stack: &mut Vec<Value>,
+    frame: &mut StacklessFrame,
+    global_idx: u32,
+) -> Result<()> {
     let global_addr = &frame.module.global_addrs[global_idx as usize];
     let global = &mut frame.module.globals[global_addr.global_idx as usize];
 

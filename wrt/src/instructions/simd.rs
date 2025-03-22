@@ -6,11 +6,10 @@
 use crate::Vec;
 use crate::{
     error::{Error, Result},
-    execution::{Frame, Stack},
-    format,
+    execution::Stack,
     instructions::InstructionExecutor,
-    memory::Memory,
-    values::Value,
+    stackless::Frame as StacklessFrame,
+    Value,
 };
 
 // =======================================
@@ -21,37 +20,33 @@ use crate::{
 pub fn handle_simd_instruction(
     instruction: &super::Instruction,
     stack: &mut Stack,
-    frame: &mut Frame,
+    frame: &mut StacklessFrame,
 ) -> Result<()> {
     use super::Instruction;
-    
+
     match instruction {
         // SIMD - v128 manipulation
         Instruction::V128Load(offset, align) => {
-            let memory_idx = frame.memory_instance_idx as usize;
-            
-            // Get the memory instance
-            if memory_idx >= frame.module.memories.len() {
-                return Err(Error::Execution(
-                    format!("Memory at index {} does not exist", memory_idx)
-                ));
+            // Check if the module has any memories
+            if frame.module.memories.is_empty() {
+                return Err(Error::Execution("No memory available".into()));
             }
-            let memory = &frame.module.memories[memory_idx];
-            
-            v128_load(&mut stack.values, memory, *offset, *align as u8)
+
+            // Use the first memory (index 0)
+            let memory = &frame.module.memories[0];
+
+            v128_load(frame, stack, *offset, *align as u32)
         }
         Instruction::V128Store(offset, align) => {
-            let memory_idx = frame.memory_instance_idx as usize;
-            
-            // Get the memory instance
-            if memory_idx >= frame.module.memories.len() {
-                return Err(Error::Execution(
-                    format!("Memory at index {} does not exist", memory_idx)
-                ));
+            // Check if the module has any memories
+            if frame.module.memories.is_empty() {
+                return Err(Error::Execution("No memory available".into()));
             }
-            let memory = &mut frame.module.memories[memory_idx];
-            
-            v128_store(&mut stack.values, memory, *offset, *align as u8)
+
+            // Use the first memory (index 0)
+            let memory = &mut frame.module.memories[0];
+
+            v128_store(frame, stack, *offset, *align as u32)
         }
         Instruction::V128Const(bytes) => v128_const(&mut stack.values, *bytes),
 
@@ -82,14 +77,8 @@ pub fn handle_simd_instruction(
         #[cfg(feature = "relaxed_simd")]
         Instruction::I16x8RelaxedQ15MulrS => i16x8_relaxed_q15mulr_s(&mut stack.values),
 
-        // For other SIMD instructions that aren't implemented yet
-        _ => {
-            // If it's not a SIMD instruction or not implemented, return Err
-            Err(Error::Execution(format!(
-                "SIMD instruction not implemented: {:?}",
-                instruction
-            )))
-        }
+        // If not a SIMD instruction, return error to let the main handler handle it
+        _ => return Err(Error::Execution("Not a SIMD instruction".into())),
     }
 }
 
@@ -98,16 +87,62 @@ pub fn handle_simd_instruction(
 // =======================================
 
 /// Load a 128-bit value from memory into a v128 value
-pub fn v128_load(_values: &mut Vec<Value>, _memory: &Memory, _offset: u32, _align: u8) -> Result<()> {
-    // We handle the addr popping and all memory access in execution.rs
-    // This function is a placeholder for now
+pub fn v128_load(
+    frame: &mut StacklessFrame,
+    stack: &mut Stack,
+    offset: u32,
+    align: u32,
+) -> Result<()> {
+    if frame.module.memories.is_empty() {
+        return Err(Error::Execution("No memory available".into()));
+    }
+    let memory = &frame.module.memories[0];
+    let addr = match stack.pop()? {
+        Value::I32(v) => v as u32,
+        _ => {
+            return Err(Error::Execution(
+                "Expected i32 value for memory address".into(),
+            ))
+        }
+    };
+    let bytes = memory.read_bytes(addr + offset, 16)?;
+    let value = u128::from_le_bytes(
+        bytes
+            .try_into()
+            .map_err(|_| Error::Execution("Failed to convert bytes to u128".into()))?,
+    );
+    stack.push(Value::V128(value));
     Ok(())
 }
 
 /// Store a 128-bit value from a v128 value into memory
-pub fn v128_store(_values: &mut Vec<Value>, _memory: &mut Memory, _offset: u32, _align: u8) -> Result<()> {
-    // We handle the addr and value popping and all memory access in execution.rs
-    // This function is a placeholder for now
+pub fn v128_store(
+    frame: &mut StacklessFrame,
+    stack: &mut Stack,
+    offset: u32,
+    align: u32,
+) -> Result<()> {
+    if frame.module.memories.is_empty() {
+        return Err(Error::Execution("No memory available".into()));
+    }
+    let memory = &mut frame.module.memories[0];
+    let value = match stack.pop()? {
+        Value::V128(v) => v,
+        _ => {
+            return Err(Error::Execution(
+                "Expected v128 value for store operation".into(),
+            ))
+        }
+    };
+    let addr = match stack.pop()? {
+        Value::I32(v) => v as u32,
+        _ => {
+            return Err(Error::Execution(
+                "Expected i32 value for memory address".into(),
+            ))
+        }
+    };
+    memory.write_bytes(addr + offset, &value.to_le_bytes())?;
     Ok(())
 }
 

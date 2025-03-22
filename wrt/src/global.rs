@@ -7,9 +7,9 @@ use crate::{format, Vec};
 #[derive(Debug, Clone)]
 pub struct Global {
     /// Global type
-    global_type: GlobalType,
+    pub global_type: GlobalType,
     /// Global value
-    value: Value,
+    pub value: Value,
 }
 
 impl Global {

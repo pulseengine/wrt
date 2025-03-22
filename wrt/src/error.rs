@@ -50,6 +50,30 @@ pub enum Error {
 
     /// Represents a stack underflow error that occurs when trying to pop from an empty stack.
     StackUnderflow,
+
+    /// Represents errors that occur during serialization or deserialization of WebAssembly state.
+    Serialization(String),
+
+    /// Represents an error when an export is not found in a module.
+    ExportNotFound(String),
+
+    /// Represents an error when an instance index is invalid.
+    InvalidInstanceIndex(u32),
+
+    /// Represents an error when a function index is invalid.
+    InvalidFunctionIndex(u32),
+
+    /// Represents an error when a program counter is invalid.
+    InvalidProgramCounter(usize),
+
+    /// Represents an error when the execution state is invalid.
+    InvalidExecutionState,
+
+    /// Represents an error when no instances are available.
+    NoInstances,
+
+    /// Represents an error when the export type is invalid.
+    InvalidExport,
 }
 
 impl fmt::Display for Error {
@@ -63,6 +87,14 @@ impl fmt::Display for Error {
             Error::Component(msg) => write!(f, "Component error: {}", msg),
             Error::Custom(msg) => write!(f, "{}", msg),
             Error::StackUnderflow => write!(f, "Stack underflow error"),
+            Error::Serialization(msg) => write!(f, "Serialization error: {}", msg),
+            Error::ExportNotFound(name) => write!(f, "Export not found: {}", name),
+            Error::InvalidInstanceIndex(idx) => write!(f, "Invalid instance index: {}", idx),
+            Error::InvalidFunctionIndex(idx) => write!(f, "Invalid function index: {}", idx),
+            Error::InvalidProgramCounter(pc) => write!(f, "Invalid program counter: {}", pc),
+            Error::InvalidExecutionState => write!(f, "Invalid execution state"),
+            Error::NoInstances => write!(f, "No module instances available"),
+            Error::InvalidExport => write!(f, "Invalid export type"),
         }
     }
 }
@@ -86,6 +118,12 @@ impl std::error::Error for Error {}
 /// }
 /// ```
 pub type Result<T> = std::result::Result<T, Error>;
+
+impl From<wat::Error> for Error {
+    fn from(err: wat::Error) -> Self {
+        Error::Parse(err.to_string())
+    }
+}
 
 #[cfg(test)]
 mod tests {

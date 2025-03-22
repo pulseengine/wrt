@@ -127,27 +127,31 @@ pub struct Namespace {
 impl Namespace {
     /// Creates a namespace from a string
     pub fn from_string(s: &str) -> Self {
-        let elements = s.split('.')
+        let elements = s
+            .split('.')
             .filter(|part| !part.is_empty())
             .map(|part| part.to_string())
             .collect();
         Self { elements }
     }
-    
+
     /// Checks if this namespace matches another namespace
     pub fn matches(&self, other: &Namespace) -> bool {
         if self.elements.len() != other.elements.len() {
             return false;
         }
-        
-        self.elements.iter().zip(other.elements.iter()).all(|(a, b)| a == b)
+
+        self.elements
+            .iter()
+            .zip(other.elements.iter())
+            .all(|(a, b)| a == b)
     }
-    
+
     /// Returns a string representation of this namespace
     pub fn to_string(&self) -> String {
         self.elements.join(".")
     }
-    
+
     /// Checks if this namespace is empty
     pub fn is_empty(&self) -> bool {
         self.elements.is_empty()
@@ -270,23 +274,26 @@ impl Component {
                 ExternType::Instance(instance_type) => {
                     // For instance exports, create a new instance with initialized exports
                     let instance_exports = self.create_instance_exports(instance_type, name)?;
-                    
+
                     // Create and register the instance
                     let instance = InstanceValue {
                         ty: instance_type.clone(),
                         exports: instance_exports,
                     };
-                    
+
                     // Add this instance to our list for later linking
                     self.instances.push(instance);
-                    
+
                     // Return a placeholder reference for now - will be updated during linking
                     ExternValue::Trap(format!("Instance {} pending link", name))
                 }
                 ExternType::Component(_component_type) => {
                     // Component exports are not instantiated here - they should be instantiated
                     // separately and then linked. This is a placeholder.
-                    ExternValue::Trap(format!("Component {} requires separate instantiation", name))
+                    ExternValue::Trap(format!(
+                        "Component {} requires separate instantiation",
+                        name
+                    ))
                 }
             };
 
@@ -302,52 +309,51 @@ impl Component {
     }
 
     /// Create exports for an instance
-    fn create_instance_exports(&self, instance_type: &crate::types::InstanceType, instance_name: &str) -> Result<Vec<Export>> {
+    fn create_instance_exports(
+        &self,
+        instance_type: &crate::types::InstanceType,
+        instance_name: &str,
+    ) -> Result<Vec<Export>> {
         let mut exports = Vec::new();
-        
+
         for (export_name, export_type) in &instance_type.exports {
             // Create placeholder exports that will be linked later
             let value = match export_type {
-                ExternType::Function(func_type) => {
-                    ExternValue::Function(FunctionValue {
-                        ty: func_type.clone(),
-                        export_name: format!("{}.{}", instance_name, export_name),
-                    })
-                }
-                ExternType::Table(table_type) => {
-                    ExternValue::Table(TableValue {
-                        ty: table_type.clone(),
-                        table: Table::new(table_type.clone()),
-                    })
-                }
-                ExternType::Memory(memory_type) => {
-                    ExternValue::Memory(MemoryValue {
-                        ty: memory_type.clone(),
-                        memory: Memory::new(memory_type.clone()),
-                    })
-                }
-                ExternType::Global(global_type) => {
-                    ExternValue::Global(GlobalValue {
-                        ty: global_type.clone(),
-                        global: Global::new(
-                            global_type.clone(),
-                            Value::default_for_type(&global_type.content_type),
-                        )?,
-                    })
-                }
+                ExternType::Function(func_type) => ExternValue::Function(FunctionValue {
+                    ty: func_type.clone(),
+                    export_name: format!("{}.{}", instance_name, export_name),
+                }),
+                ExternType::Table(table_type) => ExternValue::Table(TableValue {
+                    ty: table_type.clone(),
+                    table: Table::new(table_type.clone()),
+                }),
+                ExternType::Memory(memory_type) => ExternValue::Memory(MemoryValue {
+                    ty: memory_type.clone(),
+                    memory: Memory::new(memory_type.clone()),
+                }),
+                ExternType::Global(global_type) => ExternValue::Global(GlobalValue {
+                    ty: global_type.clone(),
+                    global: Global::new(
+                        global_type.clone(),
+                        Value::default_for_type(&global_type.content_type),
+                    )?,
+                }),
                 _ => {
                     // More complex types will be handled during linking
-                    ExternValue::Trap(format!("Export {}.{} pending link", instance_name, export_name))
+                    ExternValue::Trap(format!(
+                        "Export {}.{} pending link",
+                        instance_name, export_name
+                    ))
                 }
             };
-            
+
             exports.push(Export {
                 name: export_name.clone(),
                 ty: export_type.clone(),
                 value,
             });
         }
-        
+
         Ok(exports)
     }
 
@@ -355,16 +361,16 @@ impl Component {
     fn link_instances(&mut self) -> Result<()> {
         // Phase 1: Link imports to component exports
         self.link_imports_to_exports()?;
-        
+
         // Phase 2: Link instance exports to component imports or exports
         self.link_instance_exports()?;
-        
+
         // Phase 3: Update any export references that refer to instances
         self.finalize_instance_exports()?;
-        
+
         Ok(())
     }
-    
+
     /// Link component imports to exports
     fn link_imports_to_exports(&mut self) -> Result<()> {
         // For each export that needs to be linked to an import
@@ -378,10 +384,10 @@ impl Component {
                 }
             }
         }
-        
+
         Ok(())
     }
-    
+
     /// Link instance exports to component imports or exports
     fn link_instance_exports(&mut self) -> Result<()> {
         // For each instance
@@ -393,28 +399,40 @@ impl Component {
                     // We found a matching import, link it
                     if types_are_compatible(&export.ty, &import.ty) {
                         export.value = import.value.clone();
-                        debug_println!("Linked instance export {} to component import", export.name);
+                        debug_println!(
+                            "Linked instance export {} to component import",
+                            export.name
+                        );
                     }
-                } else if let Some(comp_export) = self.exports.iter().find(|e| e.name == export.name) {
+                } else if let Some(comp_export) =
+                    self.exports.iter().find(|e| e.name == export.name)
+                {
                     // We found a matching export, link it
                     if types_are_compatible(&export.ty, &comp_export.ty) {
                         export.value = comp_export.value.clone();
-                        debug_println!("Linked instance export {} to component export", export.name);
+                        debug_println!(
+                            "Linked instance export {} to component export",
+                            export.name
+                        );
                     }
                 }
             }
         }
-        
+
         Ok(())
     }
-    
+
     /// Finalize instance exports in component exports
     fn finalize_instance_exports(&mut self) -> Result<()> {
         // Update any component exports that reference instances
         for export in &mut self.exports {
             if let ExternType::Instance(instance_type) = &export.ty {
                 // Find the matching instance
-                if let Some(_instance) = self.instances.iter().find(|i| instance_types_match(&i.ty, instance_type)) {
+                if let Some(_instance) = self
+                    .instances
+                    .iter()
+                    .find(|i| instance_types_match(&i.ty, instance_type))
+                {
                     // Replace the placeholder with a proper instance reference
                     // This is still a placeholder since we don't have a proper instance value type
                     export.value = ExternValue::Trap(format!(
@@ -425,7 +443,7 @@ impl Component {
                 }
             }
         }
-        
+
         Ok(())
     }
 
@@ -440,9 +458,7 @@ impl Component {
         // Check if it's a memory
         let memory_value = match &export.value {
             ExternValue::Memory(mem) => mem,
-            _ => {
-                return Err(Error::Execution(format!("Export {} is not a memory", name)))
-            }
+            _ => return Err(Error::Execution(format!("Export {} is not a memory", name))),
         };
 
         // Read from memory
@@ -463,7 +479,10 @@ impl Component {
         let func_value = match &export.value {
             ExternValue::Function(func) => func,
             _ => {
-                return Err(Error::Execution(format!("Export {} is not a function", name)))
+                return Err(Error::Execution(format!(
+                    "Export {} is not a function",
+                    name
+                )))
             }
         };
 
@@ -501,9 +520,7 @@ impl Component {
         // Check if it's a memory
         let memory_value = match &mut export.value {
             ExternValue::Memory(mem) => mem,
-            _ => {
-                return Err(Error::Execution(format!("Export {} is not a memory", name)))
-            }
+            _ => return Err(Error::Execution(format!("Export {} is not a memory", name))),
         };
 
         // Write to memory
@@ -564,30 +581,37 @@ impl Component {
     }
 
     /// Creates a new export
-    pub fn create_export(&mut self, name: String, ty: ExternType, value: ExternValue) -> Result<()> {
+    pub fn create_export(
+        &mut self,
+        name: String,
+        ty: ExternType,
+        value: ExternValue,
+    ) -> Result<()> {
         // Check if export already exists
         if self.exports.iter().any(|e| e.name == name) {
             return Err(Error::Validation(format!("Export {} already exists", name)));
         }
-        
+
         // Add the export
-        self.exports.push(Export {
-            name,
-            ty,
-            value,
-        });
-        
+        self.exports.push(Export { name, ty, value });
+
         Ok(())
     }
-    
+
     /// Imports a component
-    pub fn import_component(&mut self, component: &Component, namespace: Option<&str>) -> Result<()> {
+    pub fn import_component(
+        &mut self,
+        component: &Component,
+        namespace: Option<&str>,
+    ) -> Result<()> {
         let ns = if let Some(ns_str) = namespace {
             Namespace::from_string(ns_str)
         } else {
-            Namespace { elements: Vec::new() }
+            Namespace {
+                elements: Vec::new(),
+            }
         };
-        
+
         // Import all exports from the component
         for export in &component.exports {
             // Skip if name already exists
@@ -595,27 +619,27 @@ impl Component {
                 debug_println!("Skipping import of {} - name already exists", export.name);
                 continue;
             }
-            
+
             // Determine export name with namespace
             let export_name = if ns.is_empty() {
                 export.name.clone()
             } else {
                 format!("{}.{}", ns.to_string(), export.name)
             };
-            
+
             // Create the export
             self.exports.push(Export {
                 name: export_name,
                 ty: export.ty.clone(),
                 value: export.value.clone(),
             });
-            
+
             debug_println!("Imported export {} from component", export.name);
         }
-        
+
         Ok(())
     }
-    
+
     /// Exports a value
     pub fn export_value(&mut self, name: &str, ty: ExternType, value: ExternValue) -> Result<()> {
         // Validate type compatibility
@@ -637,9 +661,10 @@ impl Component {
             }
             ExternValue::Table(table) => {
                 if let ExternType::Table(export_table_type) = &ty {
-                    if table.ty.element_type != export_table_type.element_type || 
-                       table.ty.min != export_table_type.min || 
-                       table.ty.max != export_table_type.max {
+                    if table.ty.element_type != export_table_type.element_type
+                        || table.ty.min != export_table_type.min
+                        || table.ty.max != export_table_type.max
+                    {
                         return Err(Error::Validation(format!(
                             "Table type mismatch for export {}",
                             name
@@ -654,8 +679,9 @@ impl Component {
             }
             ExternValue::Memory(memory) => {
                 if let ExternType::Memory(export_memory_type) = &ty {
-                    if memory.ty.min != export_memory_type.min || 
-                       memory.ty.max != export_memory_type.max {
+                    if memory.ty.min != export_memory_type.min
+                        || memory.ty.max != export_memory_type.max
+                    {
                         return Err(Error::Validation(format!(
                             "Memory type mismatch for export {}",
                             name
@@ -670,8 +696,9 @@ impl Component {
             }
             ExternValue::Global(global) => {
                 if let ExternType::Global(export_global_type) = &ty {
-                    if global.ty.content_type != export_global_type.content_type || 
-                       global.ty.mutable != export_global_type.mutable {
+                    if global.ty.content_type != export_global_type.content_type
+                        || global.ty.mutable != export_global_type.mutable
+                    {
                         return Err(Error::Validation(format!(
                             "Global type mismatch for export {}",
                             name
@@ -691,11 +718,11 @@ impl Component {
                 )));
             }
         }
-        
+
         // Create the export
         self.create_export(name.to_string(), ty, value)
     }
-    
+
     /// Validates a component
     pub fn validate(&self) -> Result<()> {
         // Check that all required imports are provided
@@ -707,7 +734,7 @@ impl Component {
                 )));
             }
         }
-        
+
         // Check that all declared exports are provided
         for (name, ty) in &self.component_type.exports {
             if let Some(export) = self.exports.iter().find(|e| e.name == *name) {
@@ -724,7 +751,7 @@ impl Component {
                 )));
             }
         }
-        
+
         Ok(())
     }
 }
@@ -794,7 +821,9 @@ fn types_are_compatible(a: &ExternType, b: &ExternType) -> bool {
         (ExternType::Memory(a_ty), ExternType::Memory(b_ty)) => a_ty == b_ty,
         (ExternType::Global(a_ty), ExternType::Global(b_ty)) => a_ty == b_ty,
         (ExternType::Resource(_), ExternType::Resource(_)) => true, // Basic compatibility for now
-        (ExternType::Instance(a_ty), ExternType::Instance(b_ty)) => instance_types_match(a_ty, b_ty),
+        (ExternType::Instance(a_ty), ExternType::Instance(b_ty)) => {
+            instance_types_match(a_ty, b_ty)
+        }
         (ExternType::Component(_), ExternType::Component(_)) => true, // Basic compatibility for now
         _ => false,
     }
@@ -820,19 +849,19 @@ fn func_types_compatible(a: &FuncType, b: &FuncType) -> bool {
     if a.params.len() != b.params.len() || a.results.len() != b.results.len() {
         return false;
     }
-    
+
     for (a_param, b_param) in a.params.iter().zip(b.params.iter()) {
         if a_param != b_param {
             return false;
         }
     }
-    
+
     for (a_result, b_result) in a.results.iter().zip(b.results.iter()) {
         if a_result != b_result {
             return false;
         }
     }
-    
+
     true
 }
 
