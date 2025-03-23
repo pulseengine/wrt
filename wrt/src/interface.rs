@@ -4,12 +4,21 @@
 //! interface types and canonical ABI, including value lifting/lowering between
 //! core and component types.
 
-use crate::error::{Error, Result};
-use crate::memory::Memory;
-use crate::resource::{ResourceId, ResourceTable, ResourceType};
-use crate::types::{ComponentType, ValueType};
-use crate::values::Value;
-use crate::{format, String, Vec};
+use crate::{
+    error::{Error, Result},
+    memory::Memory,
+    resource::{ResourceId, ResourceTable},
+    types::{ComponentType, ValueType},
+    values::Value,
+};
+
+// Import std when available
+#[cfg(feature = "std")]
+use std::{boxed::Box, format, string::String, vec::Vec};
+
+// Import alloc for no_std
+#[cfg(not(feature = "std"))]
+use alloc::{boxed::Box, format, string::String, vec::Vec};
 
 /// Interface value representing a Component Model value
 #[derive(Debug, Clone)]
@@ -70,7 +79,7 @@ pub enum InterfaceValue {
     Result {
         /// Is ok
         is_ok: bool,
-        /// Ok value if is_ok is true, otherwise error value
+        /// Ok value if `is_ok` is true, otherwise error value
         value: Option<Box<InterfaceValue>>,
     },
     /// Resource reference
@@ -126,8 +135,7 @@ impl CanonicalABI {
                     Ok(InterfaceValue::Resource(id))
                 } else {
                     Err(Error::Execution(format!(
-                        "Invalid resource handle: {}",
-                        handle
+                        "Invalid resource handle: {handle}"
                     )))
                 }
             }
@@ -142,16 +150,14 @@ impl CanonicalABI {
                     Ok(InterfaceValue::Borrowed(id))
                 } else {
                     Err(Error::Execution(format!(
-                        "Invalid resource handle: {}",
-                        handle
+                        "Invalid resource handle: {handle}"
                     )))
                 }
             }
 
             // Not supported
             _ => Err(Error::Execution(format!(
-                "Cannot lift value {:?} to interface type {:?}",
-                value_clone, ty
+                "Cannot lift value {value_clone:?} to interface type {ty:?}"
             ))),
         }
     }
@@ -165,10 +171,10 @@ impl CanonicalABI {
         match value {
             // Simple primitive types
             InterfaceValue::Bool(b) => Ok(Value::I32(if b { 1 } else { 0 })),
-            InterfaceValue::S8(i) => Ok(Value::I32(i as i32)),
-            InterfaceValue::U8(i) => Ok(Value::I32(i as i32)),
-            InterfaceValue::S16(i) => Ok(Value::I32(i as i32)),
-            InterfaceValue::U16(i) => Ok(Value::I32(i as i32)),
+            InterfaceValue::S8(i) => Ok(Value::I32(i32::from(i))),
+            InterfaceValue::U8(i) => Ok(Value::I32(i32::from(i))),
+            InterfaceValue::S16(i) => Ok(Value::I32(i32::from(i))),
+            InterfaceValue::U16(i) => Ok(Value::I32(i32::from(i))),
             InterfaceValue::S32(i) => Ok(Value::I32(i)),
             InterfaceValue::U32(i) => Ok(Value::I32(i as i32)),
             InterfaceValue::S64(i) => Ok(Value::I64(i)),
@@ -190,8 +196,7 @@ impl CanonicalABI {
             // Complex types - these would typically be lowered to
             // multiple values or pointers to memory structures
             _ => Err(Error::Execution(format!(
-                "Cannot lower interface value {:?} to core type",
-                value
+                "Cannot lower interface value {value:?} to core type"
             ))),
         }
     }
@@ -199,15 +204,14 @@ impl CanonicalABI {
     /// Lift a string from memory
     fn lift_string(ptr: i32, memory: &Memory) -> Result<InterfaceValue> {
         if ptr < 0 {
-            return Err(Error::Execution(format!("Invalid string pointer: {}", ptr)));
+            return Err(Error::Execution(format!("Invalid string pointer: {ptr}")));
         }
 
         // In the canonical ABI, strings are represented as a pointer to a length-prefixed UTF-8 sequence
         let addr = ptr as u32;
         if addr + 4 > memory.size() * 65536 {
             return Err(Error::Execution(format!(
-                "String pointer out of bounds: {}",
-                ptr
+                "String pointer out of bounds: {ptr}"
             )));
         }
 
@@ -225,7 +229,7 @@ impl CanonicalABI {
 
         // Convert to UTF-8 string
         let string = String::from_utf8(string_data.to_vec())
-            .map_err(|e| Error::Execution(format!("Invalid UTF-8 string in memory: {}", e)))?;
+            .map_err(|e| Error::Execution(format!("Invalid UTF-8 string in memory: {e}")))?;
 
         Ok(InterfaceValue::String(string))
     }
@@ -272,10 +276,10 @@ impl CanonicalABI {
         match value {
             // Simple primitive types
             InterfaceValue::Bool(b) => Ok(Value::I32(if b { 1 } else { 0 })),
-            InterfaceValue::S8(i) => Ok(Value::I32(i as i32)),
-            InterfaceValue::U8(i) => Ok(Value::I32(i as i32)),
-            InterfaceValue::S16(i) => Ok(Value::I32(i as i32)),
-            InterfaceValue::U16(i) => Ok(Value::I32(i as i32)),
+            InterfaceValue::S8(i) => Ok(Value::I32(i32::from(i))),
+            InterfaceValue::U8(i) => Ok(Value::I32(i32::from(i))),
+            InterfaceValue::S16(i) => Ok(Value::I32(i32::from(i))),
+            InterfaceValue::U16(i) => Ok(Value::I32(i32::from(i))),
             InterfaceValue::S32(i) => Ok(Value::I32(i)),
             InterfaceValue::U32(i) => Ok(Value::I32(i as i32)),
             InterfaceValue::S64(i) => Ok(Value::I64(i)),
@@ -292,8 +296,7 @@ impl CanonicalABI {
             InterfaceValue::Borrowed(id) => Ok(Value::I32(id.0 as i32)),
 
             _ => Err(Error::Execution(format!(
-                "Cannot lower interface value {:?} to core type with given component type {:?}",
-                value, ty
+                "Cannot lower interface value {value:?} to core type with given component type {ty:?}"
             ))),
         }
     }
@@ -303,8 +306,11 @@ impl CanonicalABI {
 mod tests {
     use super::*;
     use crate::memory::Memory;
-    use crate::resource::{ResourceTable, SimpleResourceData};
+    use crate::resource::{
+        ResourceRepresentation, ResourceTable, ResourceType, SimpleResourceData,
+    };
     use crate::types::MemoryType;
+
     use std::sync::Arc;
 
     #[test]
@@ -409,7 +415,7 @@ mod tests {
         // Create a resource type
         let resource_type = ResourceType {
             name: String::from("test:resource"),
-            representation: crate::resource::ResourceRepresentation::Handle32,
+            representation: ResourceRepresentation::Handle32,
             nullable: false,
             borrowable: true,
         };

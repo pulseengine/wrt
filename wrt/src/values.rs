@@ -122,16 +122,17 @@ impl Value {
     /// let func_ref_default = Value::default_for_type(&ValueType::FuncRef);
     /// assert_eq!(func_ref_default.as_func_ref(), Some(None));
     /// ```
-    pub fn default_for_type(ty: &ValueType) -> Self {
+    #[must_use]
+    pub const fn default_for_type(ty: &ValueType) -> Self {
         match ty {
-            ValueType::I32 => Value::I32(0),
-            ValueType::I64 => Value::I64(0),
-            ValueType::F32 => Value::F32(0.0),
-            ValueType::F64 => Value::F64(0.0),
-            ValueType::FuncRef => Value::FuncRef(None),
-            ValueType::ExternRef => Value::ExternRef(None),
-            ValueType::V128 => Value::V128(0),
-            ValueType::AnyRef => Value::AnyRef(None),
+            ValueType::I32 => Self::I32(0),
+            ValueType::I64 => Self::I64(0),
+            ValueType::F32 => Self::F32(0.0),
+            ValueType::F64 => Self::F64(0.0),
+            ValueType::FuncRef => Self::FuncRef(None),
+            ValueType::ExternRef => Self::ExternRef(None),
+            ValueType::V128 => Self::V128(0),
+            ValueType::AnyRef => Self::AnyRef(None),
         }
     }
 
@@ -142,7 +143,7 @@ impl Value {
     ///
     /// # Returns
     ///
-    /// The ValueType that describes this value
+    /// The `ValueType` that describes this value
     ///
     /// # Examples
     ///
@@ -152,27 +153,28 @@ impl Value {
     /// let value = Value::F64(3.14);
     /// assert_eq!(value.type_(), ValueType::F64);
     /// ```
-    pub fn type_(&self) -> ValueType {
+    #[must_use]
+    pub const fn type_(&self) -> ValueType {
         match self {
-            Value::I32(_) => ValueType::I32,
-            Value::I64(_) => ValueType::I64,
-            Value::F32(_) => ValueType::F32,
-            Value::F64(_) => ValueType::F64,
-            Value::FuncRef(_) => ValueType::FuncRef,
-            Value::ExternRef(_) => ValueType::ExternRef,
-            Value::V128(_) => ValueType::V128,
-            Value::AnyRef(_) => ValueType::AnyRef,
-            Value::Record(_) => ValueType::I32,
-            Value::Tuple(_) => ValueType::I32,
-            Value::List(_) => ValueType::I32,
-            Value::Flags(_) => ValueType::I32,
-            Value::Variant(_, _) => ValueType::I32,
-            Value::Enum(_) => ValueType::I32,
-            Value::Union(_) => ValueType::I32,
-            Value::Option(_) => ValueType::I32,
-            Value::Result(_) => ValueType::I32,
-            Value::Future(_) => ValueType::I32,
-            Value::Stream { .. } => ValueType::I32,
+            Self::I32(_) => ValueType::I32,
+            Self::I64(_) => ValueType::I64,
+            Self::F32(_) => ValueType::F32,
+            Self::F64(_) => ValueType::F64,
+            Self::FuncRef(_) => ValueType::FuncRef,
+            Self::ExternRef(_) => ValueType::ExternRef,
+            Self::V128(_) => ValueType::V128,
+            Self::AnyRef(_) => ValueType::AnyRef,
+            Self::Record(_) => ValueType::I32,
+            Self::Tuple(_) => ValueType::I32,
+            Self::List(_) => ValueType::I32,
+            Self::Flags(_) => ValueType::I32,
+            Self::Variant(_, _) => ValueType::I32,
+            Self::Enum(_) => ValueType::I32,
+            Self::Union(_) => ValueType::I32,
+            Self::Option(_) => ValueType::I32,
+            Self::Result(_) => ValueType::I32,
+            Self::Future(_) => ValueType::I32,
+            Self::Stream { .. } => ValueType::I32,
         }
     }
 
@@ -180,7 +182,7 @@ impl Value {
     ///
     /// # Parameters
     ///
-    /// * `ty` - The ValueType to check against
+    /// * `ty` - The `ValueType` to check against
     ///
     /// # Returns
     ///
@@ -195,27 +197,28 @@ impl Value {
     /// assert!(value.matches_type(&ValueType::I32));
     /// assert!(!value.matches_type(&ValueType::I64));
     /// ```
-    pub fn matches_type(&self, ty: &ValueType) -> bool {
+    #[must_use]
+    pub const fn matches_type(&self, ty: &ValueType) -> bool {
         match (self, ty) {
-            (Value::I32(_), ValueType::I32) => true,
-            (Value::I64(_), ValueType::I64) => true,
-            (Value::F32(_), ValueType::F32) => true,
-            (Value::F64(_), ValueType::F64) => true,
-            (Value::FuncRef(_), ValueType::FuncRef) => true,
-            (Value::ExternRef(_), ValueType::ExternRef) => true,
-            (Value::V128(_), ValueType::V128) => true,
-            (Value::AnyRef(_), ValueType::AnyRef) => true,
-            (Value::Record(_), ValueType::I32) => true,
-            (Value::Tuple(_), ValueType::I32) => true,
-            (Value::List(_), ValueType::I32) => true,
-            (Value::Flags(_), ValueType::I32) => true,
-            (Value::Variant(_, _), ValueType::I32) => true,
-            (Value::Enum(_), ValueType::I32) => true,
-            (Value::Union(_), ValueType::I32) => true,
-            (Value::Option(_), ValueType::I32) => true,
-            (Value::Result(_), ValueType::I32) => true,
-            (Value::Future(_), ValueType::I32) => true,
-            (Value::Stream { .. }, ValueType::I32) => true,
+            (Self::I32(_), ValueType::I32) => true,
+            (Self::I64(_), ValueType::I64) => true,
+            (Self::F32(_), ValueType::F32) => true,
+            (Self::F64(_), ValueType::F64) => true,
+            (Self::FuncRef(_), ValueType::FuncRef) => true,
+            (Self::ExternRef(_), ValueType::ExternRef) => true,
+            (Self::V128(_), ValueType::V128) => true,
+            (Self::AnyRef(_), ValueType::AnyRef) => true,
+            (Self::Record(_), ValueType::I32) => true,
+            (Self::Tuple(_), ValueType::I32) => true,
+            (Self::List(_), ValueType::I32) => true,
+            (Self::Flags(_), ValueType::I32) => true,
+            (Self::Variant(_, _), ValueType::I32) => true,
+            (Self::Enum(_), ValueType::I32) => true,
+            (Self::Union(_), ValueType::I32) => true,
+            (Self::Option(_), ValueType::I32) => true,
+            (Self::Result(_), ValueType::I32) => true,
+            (Self::Future(_), ValueType::I32) => true,
+            (Self::Stream { .. }, ValueType::I32) => true,
             _ => false,
         }
     }
@@ -237,9 +240,10 @@ impl Value {
     /// let value = Value::F32(3.14);
     /// assert_eq!(value.as_i32(), None);
     /// ```
-    pub fn as_i32(&self) -> Option<i32> {
+    #[must_use]
+    pub const fn as_i32(&self) -> Option<i32> {
         match self {
-            Value::I32(x) => Some(*x),
+            Self::I32(x) => Some(*x),
             _ => None,
         }
     }
@@ -261,9 +265,10 @@ impl Value {
     /// let value = Value::I32(42);
     /// assert_eq!(value.as_i64(), None);
     /// ```
-    pub fn as_i64(&self) -> Option<i64> {
+    #[must_use]
+    pub const fn as_i64(&self) -> Option<i64> {
         match self {
-            Value::I64(x) => Some(*x),
+            Self::I64(x) => Some(*x),
             _ => None,
         }
     }
@@ -285,9 +290,10 @@ impl Value {
     /// let value = Value::I32(42);
     /// assert_eq!(value.as_f32(), None);
     /// ```
-    pub fn as_f32(&self) -> Option<f32> {
+    #[must_use]
+    pub const fn as_f32(&self) -> Option<f32> {
         match self {
-            Value::F32(x) => Some(*x),
+            Self::F32(x) => Some(*x),
             _ => None,
         }
     }
@@ -309,18 +315,19 @@ impl Value {
     /// let value = Value::F32(3.14);
     /// assert_eq!(value.as_f64(), None);
     /// ```
-    pub fn as_f64(&self) -> Option<f64> {
+    #[must_use]
+    pub const fn as_f64(&self) -> Option<f64> {
         match self {
-            Value::F64(x) => Some(*x),
+            Self::F64(x) => Some(*x),
             _ => None,
         }
     }
 
-    /// Attempts to extract a function reference if this Value is a FuncRef.
+    /// Attempts to extract a function reference if this Value is a `FuncRef`.
     ///
     /// # Returns
     ///
-    /// Some(Option<u32>) if this is a FuncRef value, None otherwise
+    /// Some(Option<u32>) if this is a `FuncRef` value, None otherwise
     ///
     /// # Examples
     ///
@@ -336,18 +343,19 @@ impl Value {
     /// let value = Value::I32(42);
     /// assert_eq!(value.as_func_ref(), None);
     /// ```
-    pub fn as_func_ref(&self) -> Option<Option<u32>> {
+    #[must_use]
+    pub const fn as_func_ref(&self) -> Option<Option<u32>> {
         match self {
-            Value::FuncRef(x) => Some(*x),
+            Self::FuncRef(x) => Some(*x),
             _ => None,
         }
     }
 
-    /// Attempts to extract an external reference if this Value is an ExternRef.
+    /// Attempts to extract an external reference if this Value is an `ExternRef`.
     ///
     /// # Returns
     ///
-    /// Some(Option<u32>) if this is an ExternRef value, None otherwise
+    /// Some(Option<u32>) if this is an `ExternRef` value, None otherwise
     ///
     /// # Examples
     ///
@@ -363,9 +371,10 @@ impl Value {
     /// let value = Value::I32(42);
     /// assert_eq!(value.as_extern_ref(), None);
     /// ```
-    pub fn as_extern_ref(&self) -> Option<Option<u32>> {
+    #[must_use]
+    pub const fn as_extern_ref(&self) -> Option<Option<u32>> {
         match self {
-            Value::ExternRef(x) => Some(*x),
+            Self::ExternRef(x) => Some(*x),
             _ => None,
         }
     }
@@ -389,9 +398,10 @@ impl Value {
     /// let value = Value::I32(42);
     /// assert!(value.as_record().is_none());
     /// ```
-    pub fn as_record(&self) -> Option<&Vec<(String, Box<Value>)>> {
+    #[must_use]
+    pub const fn as_record(&self) -> Option<&Vec<(String, Box<Self>)>> {
         match self {
-            Value::Record(x) => Some(x),
+            Self::Record(x) => Some(x),
             _ => None,
         }
     }
@@ -413,9 +423,10 @@ impl Value {
     /// let value = Value::I32(42);
     /// assert!(value.as_tuple().is_none());
     /// ```
-    pub fn as_tuple(&self) -> Option<&Vec<Box<Value>>> {
+    #[must_use]
+    pub const fn as_tuple(&self) -> Option<&Vec<Box<Self>>> {
         match self {
-            Value::Tuple(x) => Some(x),
+            Self::Tuple(x) => Some(x),
             _ => None,
         }
     }
@@ -429,17 +440,18 @@ impl Value {
     /// # Examples
     ///
     /// ```
-    /// use wrt::{Value, Box};
+    /// use wrt::{Value, Vec, Box};
     ///
-    /// let list = Value::List(vec![Box::new(Value::I32(1)), Box::new(Value::I32(2))]);
+    /// let list = Value::List(Vec::new());
     /// assert!(list.as_list().is_some());
     ///
     /// let value = Value::I32(42);
     /// assert!(value.as_list().is_none());
     /// ```
-    pub fn as_list(&self) -> Option<&Vec<Box<Value>>> {
+    #[must_use]
+    pub const fn as_list(&self) -> Option<&Vec<Box<Self>>> {
         match self {
-            Value::List(x) => Some(x),
+            Self::List(x) => Some(x),
             _ => None,
         }
     }
@@ -461,9 +473,10 @@ impl Value {
     /// let value = Value::I32(42);
     /// assert!(value.as_flags().is_none());
     /// ```
-    pub fn as_flags(&self) -> Option<&Vec<String>> {
+    #[must_use]
+    pub const fn as_flags(&self) -> Option<&Vec<String>> {
         match self {
-            Value::Flags(x) => Some(x),
+            Self::Flags(x) => Some(x),
             _ => None,
         }
     }
@@ -480,15 +493,16 @@ impl Value {
     /// ```
     /// use wrt::{Value, String, Box};
     ///
-    /// let variant = Value::Variant(String::from("some"), Some(Box::new(Value::I32(42))));
+    /// let variant = Value::Variant(String::from("success"), Some(Box::new(Value::I32(42))));
     /// assert!(variant.as_variant().is_some());
     ///
     /// let value = Value::I32(42);
     /// assert!(value.as_variant().is_none());
     /// ```
-    pub fn as_variant(&self) -> Option<(&String, &Option<Box<Value>>)> {
+    #[must_use]
+    pub const fn as_variant(&self) -> Option<(&String, &Option<Box<Self>>)> {
         match self {
-            Value::Variant(x, y) => Some((x, y)),
+            Self::Variant(x, y) => Some((x, y)),
             _ => None,
         }
     }
@@ -504,15 +518,16 @@ impl Value {
     /// ```
     /// use wrt::{Value, String};
     ///
-    /// let enum_val = Value::Enum(String::from("RED"));
+    /// let enum_val = Value::Enum(String::from("Red"));
     /// assert!(enum_val.as_enum().is_some());
     ///
     /// let value = Value::I32(42);
     /// assert!(value.as_enum().is_none());
     /// ```
-    pub fn as_enum(&self) -> Option<&String> {
+    #[must_use]
+    pub const fn as_enum(&self) -> Option<&String> {
         match self {
-            Value::Enum(x) => Some(x),
+            Self::Enum(x) => Some(x),
             _ => None,
         }
     }
@@ -528,15 +543,16 @@ impl Value {
     /// ```
     /// use wrt::{Value, Box};
     ///
-    /// let union_val = Value::Union(Box::new(Value::I32(42)));
-    /// assert!(union_val.as_union().is_some());
+    /// let union = Value::Union(Box::new(Value::I32(42)));
+    /// assert!(union.as_union().is_some());
     ///
     /// let value = Value::I32(42);
-    /// assert!(value.as_union().is_none());
+    /// assert!(union.as_union().is_some());
     /// ```
-    pub fn as_union(&self) -> Option<&Value> {
+    #[must_use]
+    pub const fn as_union(&self) -> Option<&Self> {
         match self {
-            Value::Union(x) => Some(x),
+            Self::Union(x) => Some(x),
             _ => None,
         }
     }
@@ -561,9 +577,10 @@ impl Value {
     /// let value = Value::I32(42);
     /// assert!(value.as_option().is_none());
     /// ```
-    pub fn as_option(&self) -> Option<&Option<Box<Value>>> {
+    #[must_use]
+    pub const fn as_option(&self) -> Option<&Option<Box<Self>>> {
         match self {
-            Value::Option(x) => Some(x),
+            Self::Option(x) => Some(x),
             _ => None,
         }
     }
@@ -589,9 +606,10 @@ impl Value {
     /// let value = Value::I32(42);
     /// assert!(value.as_result().is_none());
     /// ```
-    pub fn as_result(&self) -> Option<&std::result::Result<Box<Value>, Box<Value>>> {
+    #[must_use]
+    pub const fn as_result(&self) -> Option<&std::result::Result<Box<Self>, Box<Self>>> {
         match self {
-            Value::Result(x) => Some(x),
+            Self::Result(x) => Some(x),
             _ => None,
         }
     }
@@ -613,9 +631,10 @@ impl Value {
     /// let value = Value::I32(42);
     /// assert!(value.as_future().is_none());
     /// ```
-    pub fn as_future(&self) -> Option<&Value> {
+    #[must_use]
+    pub const fn as_future(&self) -> Option<&Self> {
         match self {
-            Value::Future(x) => Some(x),
+            Self::Future(x) => Some(x),
             _ => None,
         }
     }
@@ -641,54 +660,58 @@ impl Value {
     /// let value = Value::I32(42);
     /// assert!(value.as_stream().is_none());
     /// ```
-    pub fn as_stream(&self) -> Option<(&Value, &Option<Box<Value>>)> {
+    #[must_use]
+    pub const fn as_stream(&self) -> Option<(&Self, &Option<Box<Self>>)> {
         match self {
-            Value::Stream { element, end } => Some((element, end)),
+            Self::Stream { element, end } => Some((element, end)),
             _ => None,
         }
     }
 
     /// Get the SIMD v128 value, if this is a V128 value
-    pub fn as_v128(&self) -> Option<u128> {
+    #[must_use]
+    pub const fn as_v128(&self) -> Option<u128> {
         match self {
-            Value::V128(val) => Some(*val),
+            Self::V128(val) => Some(*val),
             _ => None,
         }
     }
 
-    /// Attempts to extract an anyref value if this Value is an AnyRef.
+    /// Attempts to extract an anyref value if this Value is an `AnyRef`.
     ///
     /// # Returns
     ///
-    /// Some reference to the anyref value if this is an AnyRef value, None otherwise
-    pub fn as_any_ref(&self) -> Option<Option<u32>> {
+    /// Some reference to the anyref value if this is an `AnyRef` value, None otherwise
+    #[must_use]
+    pub const fn as_any_ref(&self) -> Option<Option<u32>> {
         match self {
-            Value::AnyRef(ref_idx) => Some(*ref_idx),
+            Self::AnyRef(ref_idx) => Some(*ref_idx),
             _ => None,
         }
     }
 
-    pub fn get_type(&self) -> ValueType {
+    #[must_use]
+    pub const fn get_type(&self) -> ValueType {
         match self {
-            Value::I32(_) => ValueType::I32,
-            Value::I64(_) => ValueType::I64,
-            Value::F32(_) => ValueType::F32,
-            Value::F64(_) => ValueType::F64,
-            Value::V128(_) => ValueType::V128,
-            Value::FuncRef(_) => ValueType::FuncRef,
-            Value::ExternRef(_) => ValueType::ExternRef,
-            Value::AnyRef(_) => ValueType::AnyRef,
-            Value::Record(_) => ValueType::AnyRef,
-            Value::Tuple(_) => ValueType::AnyRef,
-            Value::List(_) => ValueType::AnyRef,
-            Value::Flags(_) => ValueType::AnyRef,
-            Value::Variant(_, _) => ValueType::AnyRef,
-            Value::Enum(_) => ValueType::AnyRef,
-            Value::Union(_) => ValueType::AnyRef,
-            Value::Option(_) => ValueType::AnyRef,
-            Value::Result(_) => ValueType::AnyRef,
-            Value::Future(_) => ValueType::AnyRef,
-            Value::Stream { .. } => ValueType::AnyRef,
+            Self::I32(_) => ValueType::I32,
+            Self::I64(_) => ValueType::I64,
+            Self::F32(_) => ValueType::F32,
+            Self::F64(_) => ValueType::F64,
+            Self::V128(_) => ValueType::V128,
+            Self::FuncRef(_) => ValueType::FuncRef,
+            Self::ExternRef(_) => ValueType::ExternRef,
+            Self::AnyRef(_) => ValueType::AnyRef,
+            Self::Record(_) => ValueType::AnyRef,
+            Self::Tuple(_) => ValueType::AnyRef,
+            Self::List(_) => ValueType::AnyRef,
+            Self::Flags(_) => ValueType::AnyRef,
+            Self::Variant(_, _) => ValueType::AnyRef,
+            Self::Enum(_) => ValueType::AnyRef,
+            Self::Union(_) => ValueType::AnyRef,
+            Self::Option(_) => ValueType::AnyRef,
+            Self::Result(_) => ValueType::AnyRef,
+            Self::Future(_) => ValueType::AnyRef,
+            Self::Stream { .. } => ValueType::AnyRef,
         }
     }
 }
@@ -696,28 +719,28 @@ impl Value {
 impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Value::I32(v) => write!(f, "i32: {}", v),
-            Value::I64(v) => write!(f, "i64: {}", v),
-            Value::F32(v) => write!(f, "f32: {}", v),
-            Value::F64(v) => write!(f, "f64: {}", v),
-            Value::FuncRef(Some(v)) => write!(f, "funcref: {}", v),
-            Value::FuncRef(None) => write!(f, "funcref: null"),
-            Value::ExternRef(Some(v)) => write!(f, "externref: {}", v),
-            Value::ExternRef(None) => write!(f, "externref: null"),
-            Value::AnyRef(Some(v)) => write!(f, "anyref: {}", v),
-            Value::AnyRef(None) => write!(f, "anyref: null"),
-            Value::V128(v) => write!(f, "v128: 0x{:032x}", v),
-            Value::Record(fields) => write!(f, "record: {:?}", fields),
-            Value::Tuple(v) => write!(f, "tuple: {:?}", v),
-            Value::List(v) => write!(f, "list: {:?}", v),
-            Value::Flags(v) => write!(f, "flags: {:?}", v),
-            Value::Variant(x, y) => write!(f, "variant: ({}, {:?})", x, y),
-            Value::Enum(x) => write!(f, "enum: {}", x),
-            Value::Union(x) => write!(f, "union: {:?}", x),
-            Value::Option(x) => write!(f, "option: {:?}", x),
-            Value::Result(x) => write!(f, "result: {:?}", x),
-            Value::Future(x) => write!(f, "future: {:?}", x),
-            Value::Stream { element, end } => write!(f, "stream: ({}, {:?})", element, end),
+            Self::I32(v) => write!(f, "i32: {v}"),
+            Self::I64(v) => write!(f, "i64: {v}"),
+            Self::F32(v) => write!(f, "f32: {v}"),
+            Self::F64(v) => write!(f, "f64: {v}"),
+            Self::FuncRef(Some(v)) => write!(f, "funcref: {v}"),
+            Self::FuncRef(None) => write!(f, "funcref: null"),
+            Self::ExternRef(Some(v)) => write!(f, "externref: {v}"),
+            Self::ExternRef(None) => write!(f, "externref: null"),
+            Self::AnyRef(Some(v)) => write!(f, "anyref: {v}"),
+            Self::AnyRef(None) => write!(f, "anyref: null"),
+            Self::V128(v) => write!(f, "v128: 0x{v:032x}"),
+            Self::Record(fields) => write!(f, "record: {fields:?}"),
+            Self::Tuple(v) => write!(f, "tuple: {v:?}"),
+            Self::List(v) => write!(f, "list: {v:?}"),
+            Self::Flags(v) => write!(f, "flags: {v:?}"),
+            Self::Variant(x, y) => write!(f, "variant: ({x}, {y:?})"),
+            Self::Enum(x) => write!(f, "enum: {x}"),
+            Self::Union(x) => write!(f, "union: {x:?}"),
+            Self::Option(x) => write!(f, "option: {x:?}"),
+            Self::Result(x) => write!(f, "result: {x:?}"),
+            Self::Future(x) => write!(f, "future: {x:?}"),
+            Self::Stream { element, end } => write!(f, "stream: ({element}, {end:?})"),
         }
     }
 }

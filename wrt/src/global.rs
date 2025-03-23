@@ -1,5 +1,5 @@
 use crate::error::{Error, Result};
-use crate::types::*;
+use crate::types::GlobalType;
 use crate::values::Value;
 use crate::{format, Vec};
 
@@ -28,11 +28,13 @@ impl Global {
     }
 
     /// Returns the global type
-    pub fn type_(&self) -> &GlobalType {
+    #[must_use]
+    pub const fn type_(&self) -> &GlobalType {
         &self.global_type
     }
 
     /// Gets the global value
+    #[must_use]
     pub fn get(&self) -> Value {
         self.value.clone()
     }
@@ -73,7 +75,8 @@ impl Default for Globals {
 
 impl Globals {
     /// Creates a new empty globals collection
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self {
             globals: Vec::new(),
         }
@@ -90,22 +93,24 @@ impl Globals {
     pub fn get(&self, idx: u32) -> Result<&Global> {
         self.globals
             .get(idx as usize)
-            .ok_or_else(|| Error::Execution(format!("Global index {} out of bounds", idx)))
+            .ok_or_else(|| Error::Execution(format!("Global index {idx} out of bounds")))
     }
 
     /// Gets a mutable reference to a global instance by index
     pub fn get_mut(&mut self, idx: u32) -> Result<&mut Global> {
         self.globals
             .get_mut(idx as usize)
-            .ok_or_else(|| Error::Execution(format!("Global index {} out of bounds", idx)))
+            .ok_or_else(|| Error::Execution(format!("Global index {idx} out of bounds")))
     }
 
     /// Returns the number of global instances
+    #[must_use]
     pub fn len(&self) -> u32 {
         self.globals.len() as u32
     }
 
     /// Returns whether the globals collection is empty
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.globals.is_empty()
     }
@@ -114,6 +119,8 @@ impl Globals {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::error::Result;
+    use crate::types::ValueType;
 
     // Helper function to create a test global type
     fn create_test_global_type(value_type: ValueType, mutable: bool) -> GlobalType {

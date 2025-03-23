@@ -48,7 +48,7 @@ pub fn select(stack: &mut Vec<Value>) -> Result<(), Error> {
     Ok(())
 }
 
-/// Execute a select_typed instruction
+/// Execute a `select_typed` instruction
 ///
 /// Selects one of two values based on a condition, with type checking.
 pub fn select_typed(stack: &mut Vec<Value>, _value_type: ValueType) -> Result<(), Error> {
@@ -133,7 +133,7 @@ pub fn br(_stack: &mut Vec<Value>, _label_idx: u32) -> Result<(), Error> {
     Ok(())
 }
 
-/// Execute a br_if instruction
+/// Execute a `br_if` instruction
 ///
 /// Conditionally branches to a label.
 pub fn br_if(stack: &mut Vec<Value>, _label_idx: u32) -> Result<(), Error> {
@@ -147,7 +147,7 @@ pub fn br_if(stack: &mut Vec<Value>, _label_idx: u32) -> Result<(), Error> {
     Ok(())
 }
 
-/// Execute a br_table instruction
+/// Execute a `br_table` instruction
 ///
 /// Branches to one of several labels based on an index value.
 pub fn br_table(

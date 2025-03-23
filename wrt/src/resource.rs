@@ -18,7 +18,7 @@ use std::sync::Arc;
 pub struct ResourceId(pub u64);
 
 /// A resource type with metadata
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ResourceType {
     /// Name of the resource type
     pub name: String,
@@ -102,7 +102,8 @@ pub struct ResourceTable {
 
 impl ResourceTable {
     /// Creates a new resource table
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self {
             resources: Vec::new(),
             next_id: 1, // Start at 1, 0 can be used as a null handle
@@ -126,7 +127,7 @@ impl ResourceTable {
         };
 
         // Find an empty slot or add to the end
-        let index = self.resources.iter().position(|r| r.is_none());
+        let index = self.resources.iter().position(std::option::Option::is_none);
         if let Some(index) = index {
             self.resources[index] = Some(resource);
         } else {
@@ -140,13 +141,13 @@ impl ResourceTable {
     pub fn get(&self, id: ResourceId) -> Result<&Resource> {
         let index = id.0 as usize - 1;
         if index >= self.resources.len() {
-            return Err(Error::Execution(format!("Invalid resource ID: {:?}", id)));
+            return Err(Error::Execution(format!("Invalid resource ID: {id:?}")));
         }
 
         if let Some(ref resource) = self.resources[index] {
             Ok(resource)
         } else {
-            Err(Error::Execution(format!("Resource not found: {:?}", id)))
+            Err(Error::Execution(format!("Resource not found: {id:?}")))
         }
     }
 
@@ -154,13 +155,13 @@ impl ResourceTable {
     pub fn get_mut(&mut self, id: ResourceId) -> Result<&mut Resource> {
         let index = id.0 as usize - 1;
         if index >= self.resources.len() {
-            return Err(Error::Execution(format!("Invalid resource ID: {:?}", id)));
+            return Err(Error::Execution(format!("Invalid resource ID: {id:?}")));
         }
 
         if let Some(ref mut resource) = self.resources[index] {
             Ok(resource)
         } else {
-            Err(Error::Execution(format!("Resource not found: {:?}", id)))
+            Err(Error::Execution(format!("Resource not found: {id:?}")))
         }
     }
 
@@ -175,7 +176,7 @@ impl ResourceTable {
     pub fn drop_ref(&mut self, id: ResourceId) -> Result<()> {
         let index = id.0 as usize - 1;
         if index >= self.resources.len() {
-            return Err(Error::Execution(format!("Invalid resource ID: {:?}", id)));
+            return Err(Error::Execution(format!("Invalid resource ID: {id:?}")));
         }
 
         let drop_resource = {
@@ -192,6 +193,7 @@ impl ResourceTable {
     }
 
     /// Counts the number of resources in the table
+    #[must_use]
     pub fn count(&self) -> usize {
         self.resources.iter().filter(|r| r.is_some()).count()
     }
@@ -213,7 +215,6 @@ impl ResourceData for SimpleResourceData {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::any::Any;
 
     fn create_test_resource_type() -> ResourceType {
         ResourceType {

@@ -65,10 +65,10 @@ pub fn i32_ne(stack: &mut Vec<Value>) -> std::result::Result<(), Error> {
         .ok_or(Error::Execution("Stack underflow".into()))?;
 
     if let (Value::I32(v1), Value::I32(v2)) = (val1, val2) {
-        if v1 != v2 {
-            stack.push(Value::I32(1));
-        } else {
+        if v1 == v2 {
             stack.push(Value::I32(0));
+        } else {
+            stack.push(Value::I32(1));
         }
         Ok(())
     } else {
@@ -326,10 +326,10 @@ pub fn i64_ne(stack: &mut Vec<Value>) -> std::result::Result<(), Error> {
         .ok_or(Error::Execution("Stack underflow".into()))?;
 
     if let (Value::I64(v1), Value::I64(v2)) = (val1, val2) {
-        if v1 != v2 {
-            stack.push(Value::I32(1));
-        } else {
+        if v1 == v2 {
             stack.push(Value::I32(0));
+        } else {
+            stack.push(Value::I32(1));
         }
         Ok(())
     } else {
@@ -529,4 +529,302 @@ pub fn i64_ge_u(stack: &mut Vec<Value>) -> std::result::Result<(), Error> {
     }
 }
 
-// TODO: Implement f32/f64 comparison instructions
+/// Execute an f32 equality instruction
+///
+/// Pops two f32 values from the stack and compares them.
+/// Pushes 1 if equal, 0 otherwise.
+/// Note: This follows IEEE 754 equality semantics, where `NaN` != `NaN`.
+pub fn f32_eq(stack: &mut Vec<Value>) -> std::result::Result<(), Error> {
+    let val2 = stack
+        .pop()
+        .ok_or(Error::Execution("Stack underflow".into()))?;
+    let val1 = stack
+        .pop()
+        .ok_or(Error::Execution("Stack underflow".into()))?;
+
+    if let (Value::F32(v1), Value::F32(v2)) = (val1, val2) {
+        if v1 == v2 {
+            stack.push(Value::I32(1));
+        } else {
+            stack.push(Value::I32(0));
+        }
+        Ok(())
+    } else {
+        Err(Error::Execution("Expected f32 values".into()))
+    }
+}
+
+/// Execute an f32 inequality instruction
+///
+/// Pops two f32 values from the stack and compares them.
+/// Pushes 1 if not equal, 0 otherwise.
+/// Note: This follows IEEE 754 inequality semantics, where `NaN` != `NaN`.
+pub fn f32_ne(stack: &mut Vec<Value>) -> std::result::Result<(), Error> {
+    let val2 = stack
+        .pop()
+        .ok_or(Error::Execution("Stack underflow".into()))?;
+    let val1 = stack
+        .pop()
+        .ok_or(Error::Execution("Stack underflow".into()))?;
+
+    if let (Value::F32(v1), Value::F32(v2)) = (val1, val2) {
+        if v1 == v2 {
+            stack.push(Value::I32(0));
+        } else {
+            stack.push(Value::I32(1));
+        }
+        Ok(())
+    } else {
+        Err(Error::Execution("Expected f32 values".into()))
+    }
+}
+
+/// Execute an f32 less than instruction
+///
+/// Pops two f32 values from the stack and compares them.
+/// Pushes 1 if first value is less than second value, 0 otherwise.
+/// Note: This follows IEEE 754 comparison semantics, where `NaN` comparisons return false.
+pub fn f32_lt(stack: &mut Vec<Value>) -> std::result::Result<(), Error> {
+    let val2 = stack
+        .pop()
+        .ok_or(Error::Execution("Stack underflow".into()))?;
+    let val1 = stack
+        .pop()
+        .ok_or(Error::Execution("Stack underflow".into()))?;
+
+    if let (Value::F32(v1), Value::F32(v2)) = (val1, val2) {
+        if v1 < v2 {
+            stack.push(Value::I32(1));
+        } else {
+            stack.push(Value::I32(0));
+        }
+        Ok(())
+    } else {
+        Err(Error::Execution("Expected f32 values".into()))
+    }
+}
+
+/// Execute an f32 greater than instruction
+///
+/// Pops two f32 values from the stack and compares them.
+/// Pushes 1 if first value is greater than second value, 0 otherwise.
+/// Note: This follows IEEE 754 comparison semantics, where `NaN` comparisons return false.
+pub fn f32_gt(stack: &mut Vec<Value>) -> std::result::Result<(), Error> {
+    let val2 = stack
+        .pop()
+        .ok_or(Error::Execution("Stack underflow".into()))?;
+    let val1 = stack
+        .pop()
+        .ok_or(Error::Execution("Stack underflow".into()))?;
+
+    if let (Value::F32(v1), Value::F32(v2)) = (val1, val2) {
+        if v1 > v2 {
+            stack.push(Value::I32(1));
+        } else {
+            stack.push(Value::I32(0));
+        }
+        Ok(())
+    } else {
+        Err(Error::Execution("Expected f32 values".into()))
+    }
+}
+
+/// Execute an f32 less than or equal instruction
+///
+/// Pops two f32 values from the stack and compares them.
+/// Pushes 1 if first value is less than or equal to second value, 0 otherwise.
+/// Note: This follows IEEE 754 comparison semantics, where `NaN` comparisons return false.
+pub fn f32_le(stack: &mut Vec<Value>) -> std::result::Result<(), Error> {
+    let val2 = stack
+        .pop()
+        .ok_or(Error::Execution("Stack underflow".into()))?;
+    let val1 = stack
+        .pop()
+        .ok_or(Error::Execution("Stack underflow".into()))?;
+
+    if let (Value::F32(v1), Value::F32(v2)) = (val1, val2) {
+        if v1 <= v2 {
+            stack.push(Value::I32(1));
+        } else {
+            stack.push(Value::I32(0));
+        }
+        Ok(())
+    } else {
+        Err(Error::Execution("Expected f32 values".into()))
+    }
+}
+
+/// Execute an f32 greater than or equal instruction
+///
+/// Pops two f32 values from the stack and compares them.
+/// Pushes 1 if first value is greater than or equal to second value, 0 otherwise.
+/// Note: This follows IEEE 754 comparison semantics, where `NaN` comparisons return false.
+pub fn f32_ge(stack: &mut Vec<Value>) -> std::result::Result<(), Error> {
+    let val2 = stack
+        .pop()
+        .ok_or(Error::Execution("Stack underflow".into()))?;
+    let val1 = stack
+        .pop()
+        .ok_or(Error::Execution("Stack underflow".into()))?;
+
+    if let (Value::F32(v1), Value::F32(v2)) = (val1, val2) {
+        if v1 >= v2 {
+            stack.push(Value::I32(1));
+        } else {
+            stack.push(Value::I32(0));
+        }
+        Ok(())
+    } else {
+        Err(Error::Execution("Expected f32 values".into()))
+    }
+}
+
+/// Execute an f64 equality instruction
+///
+/// Pops two f64 values from the stack and compares them.
+/// Pushes 1 if equal, 0 otherwise.
+/// Note: This follows IEEE 754 equality semantics, where `NaN` != `NaN`.
+pub fn f64_eq(stack: &mut Vec<Value>) -> std::result::Result<(), Error> {
+    let val2 = stack
+        .pop()
+        .ok_or(Error::Execution("Stack underflow".into()))?;
+    let val1 = stack
+        .pop()
+        .ok_or(Error::Execution("Stack underflow".into()))?;
+
+    if let (Value::F64(v1), Value::F64(v2)) = (val1, val2) {
+        if v1 == v2 {
+            stack.push(Value::I32(1));
+        } else {
+            stack.push(Value::I32(0));
+        }
+        Ok(())
+    } else {
+        Err(Error::Execution("Expected f64 values".into()))
+    }
+}
+
+/// Execute an f64 inequality instruction
+///
+/// Pops two f64 values from the stack and compares them.
+/// Pushes 1 if not equal, 0 otherwise.
+/// Note: This follows IEEE 754 inequality semantics, where `NaN` != `NaN`.
+pub fn f64_ne(stack: &mut Vec<Value>) -> std::result::Result<(), Error> {
+    let val2 = stack
+        .pop()
+        .ok_or(Error::Execution("Stack underflow".into()))?;
+    let val1 = stack
+        .pop()
+        .ok_or(Error::Execution("Stack underflow".into()))?;
+
+    if let (Value::F64(v1), Value::F64(v2)) = (val1, val2) {
+        if v1 == v2 {
+            stack.push(Value::I32(0));
+        } else {
+            stack.push(Value::I32(1));
+        }
+        Ok(())
+    } else {
+        Err(Error::Execution("Expected f64 values".into()))
+    }
+}
+
+/// Execute an f64 less than instruction
+///
+/// Pops two f64 values from the stack and compares them.
+/// Pushes 1 if first value is less than second value, 0 otherwise.
+/// Note: This follows IEEE 754 comparison semantics, where `NaN` comparisons return false.
+pub fn f64_lt(stack: &mut Vec<Value>) -> std::result::Result<(), Error> {
+    let val2 = stack
+        .pop()
+        .ok_or(Error::Execution("Stack underflow".into()))?;
+    let val1 = stack
+        .pop()
+        .ok_or(Error::Execution("Stack underflow".into()))?;
+
+    if let (Value::F64(v1), Value::F64(v2)) = (val1, val2) {
+        if v1 < v2 {
+            stack.push(Value::I32(1));
+        } else {
+            stack.push(Value::I32(0));
+        }
+        Ok(())
+    } else {
+        Err(Error::Execution("Expected f64 values".into()))
+    }
+}
+
+/// Execute an f64 greater than instruction
+///
+/// Pops two f64 values from the stack and compares them.
+/// Pushes 1 if first value is greater than second value, 0 otherwise.
+/// Note: This follows IEEE 754 comparison semantics, where `NaN` comparisons return false.
+pub fn f64_gt(stack: &mut Vec<Value>) -> std::result::Result<(), Error> {
+    let val2 = stack
+        .pop()
+        .ok_or(Error::Execution("Stack underflow".into()))?;
+    let val1 = stack
+        .pop()
+        .ok_or(Error::Execution("Stack underflow".into()))?;
+
+    if let (Value::F64(v1), Value::F64(v2)) = (val1, val2) {
+        if v1 > v2 {
+            stack.push(Value::I32(1));
+        } else {
+            stack.push(Value::I32(0));
+        }
+        Ok(())
+    } else {
+        Err(Error::Execution("Expected f64 values".into()))
+    }
+}
+
+/// Execute an f64 less than or equal instruction
+///
+/// Pops two f64 values from the stack and compares them.
+/// Pushes 1 if first value is less than or equal to second value, 0 otherwise.
+/// Note: This follows IEEE 754 comparison semantics, where `NaN` comparisons return false.
+pub fn f64_le(stack: &mut Vec<Value>) -> std::result::Result<(), Error> {
+    let val2 = stack
+        .pop()
+        .ok_or(Error::Execution("Stack underflow".into()))?;
+    let val1 = stack
+        .pop()
+        .ok_or(Error::Execution("Stack underflow".into()))?;
+
+    if let (Value::F64(v1), Value::F64(v2)) = (val1, val2) {
+        if v1 <= v2 {
+            stack.push(Value::I32(1));
+        } else {
+            stack.push(Value::I32(0));
+        }
+        Ok(())
+    } else {
+        Err(Error::Execution("Expected f64 values".into()))
+    }
+}
+
+/// Execute an f64 greater than or equal instruction
+///
+/// Pops two f64 values from the stack and compares them.
+/// Pushes 1 if first value is greater than or equal to second value, 0 otherwise.
+/// Note: This follows IEEE 754 comparison semantics, where `NaN` comparisons return false.
+pub fn f64_ge(stack: &mut Vec<Value>) -> std::result::Result<(), Error> {
+    let val2 = stack
+        .pop()
+        .ok_or(Error::Execution("Stack underflow".into()))?;
+    let val1 = stack
+        .pop()
+        .ok_or(Error::Execution("Stack underflow".into()))?;
+
+    if let (Value::F64(v1), Value::F64(v2)) = (val1, val2) {
+        if v1 >= v2 {
+            stack.push(Value::I32(1));
+        } else {
+            stack.push(Value::I32(0));
+        }
+        Ok(())
+    } else {
+        Err(Error::Execution("Expected f64 values".into()))
+    }
+}

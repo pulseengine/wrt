@@ -187,9 +187,8 @@ fn test_component_binary_parsing() -> Result<()> {
         0x00, // padding byte to meet minimum length
     ];
 
-    // Create a module and load the component binary
-    let module = wrt::module::Module::new();
-    let loaded_module = module.load_from_binary(&component_binary)?;
+    // Load the component binary using the correct pattern
+    let loaded_module = wrt::module::Module::from_bytes(&component_binary)?;
 
     // Verify that the module contains component-model-info section
     let component_info = loaded_module
@@ -214,24 +213,19 @@ fn test_component_validation() -> Result<()> {
     ];
 
     // Loading should fail
-    let module = wrt::module::Module::new();
-    let result = module.load_from_binary(&invalid_binary);
+    let result = wrt::module::Module::from_bytes(&invalid_binary);
     assert!(result.is_err());
 
     // Create an invalid component binary (no core module or type section)
     let invalid_binary = [
-        // Component magic number and version
+        // Valid magic and version
         0x00, 0x61, 0x73, 0x6D, // magic
         0x0D, 0x00, 0x01, 0x00, // component model version
-        // Just a custom section
-        0x00, // section code
-        0x02, // section size
-        0x00, // name length
-        0x00, // empty data
+              // No sections
     ];
 
     // Loading should fail
-    let result = module.load_from_binary(&invalid_binary);
+    let result = wrt::module::Module::from_bytes(&invalid_binary);
     assert!(result.is_err());
 
     Ok(())

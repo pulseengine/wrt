@@ -6,7 +6,7 @@
 use crate::error::{Error, Result};
 use crate::execution::Stack;
 use crate::format;
-use crate::instructions::{BlockType, Instruction, InstructionExecutor};
+use crate::instructions::BlockType;
 use crate::stackless::Frame as StacklessFrame;
 use crate::types::FuncType;
 use crate::Value;
@@ -19,7 +19,7 @@ use std::vec;
 use alloc::vec;
 
 /// Label type for control flow
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LabelType {
     /// Block instruction label
     Block,
@@ -54,16 +54,10 @@ pub fn push_label(
                 if let Some(ty) = types.get(type_idx as usize) {
                     ty.clone()
                 } else {
-                    return Err(Error::Execution(format!(
-                        "Invalid type index: {}",
-                        type_idx
-                    )));
+                    return Err(Error::Execution(format!("Invalid type index: {type_idx}")));
                 }
             } else {
-                return Err(Error::Execution(format!(
-                    "Invalid type index: {}",
-                    type_idx
-                )));
+                return Err(Error::Execution(format!("Invalid type index: {type_idx}")));
             }
         }
     };
@@ -146,7 +140,7 @@ pub fn br(frame: &mut StacklessFrame, stack: &mut Stack, label_idx: u32) -> Resu
     Ok(())
 }
 
-/// Executes a br_if instruction
+/// Executes a `br_if` instruction
 pub fn br_if(frame: &mut StacklessFrame, stack: &mut Stack, label_idx: u32) -> Result<()> {
     let condition = match stack.pop()? {
         Value::I32(v) => v != 0,
@@ -164,7 +158,7 @@ pub fn br_if(frame: &mut StacklessFrame, stack: &mut Stack, label_idx: u32) -> R
     Ok(())
 }
 
-/// Executes a br_table instruction
+/// Executes a `br_table` instruction
 pub fn br_table(
     frame: &mut StacklessFrame,
     stack: &mut Stack,
@@ -193,13 +187,13 @@ pub fn return_(frame: &mut StacklessFrame, stack: &mut Stack) -> Result<()> {
 }
 
 /// Executes a call instruction
-pub fn call(_func_idx: u32) -> Result<()> {
+pub const fn call(_func_idx: u32) -> Result<()> {
     // We handle this in the execution loop
     Ok(())
 }
 
-/// Executes a call_indirect instruction
-pub fn call_indirect(_table_idx: u32, _type_idx: u32) -> Result<()> {
+/// Executes a `call_indirect` instruction
+pub const fn call_indirect(_table_idx: u32, _type_idx: u32) -> Result<()> {
     // We handle this in the execution loop
     Ok(())
 }

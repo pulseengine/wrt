@@ -1,5 +1,5 @@
 use crate::error::{Error, Result};
-use crate::types::*;
+use crate::types::TableType;
 use crate::values::Value;
 use crate::Vec;
 
@@ -14,6 +14,7 @@ pub struct Table {
 
 impl Table {
     /// Creates a new table instance
+    #[must_use]
     pub fn new(table_type: TableType) -> Self {
         let initial_size = table_type.min;
         Self {
@@ -27,11 +28,13 @@ impl Table {
     }
 
     /// Returns the table type
-    pub fn type_(&self) -> &TableType {
+    #[must_use]
+    pub const fn type_(&self) -> &TableType {
         &self.type_
     }
 
     /// Returns the current size
+    #[must_use]
     pub fn size(&self) -> u32 {
         self.elements.len() as u32
     }
@@ -128,7 +131,9 @@ impl Table {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::error::Result;
     use crate::values::Value;
+    use crate::ValueType;
     #[cfg(not(feature = "std"))]
     use alloc::vec;
 

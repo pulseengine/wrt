@@ -87,7 +87,7 @@ fn test_basic_simd_operations() -> Result<()> {
     let wasm_binary = wat::parse_str(wat_code).expect("Failed to parse WAT");
 
     // Load the module from binary
-    let empty_module = Module::new();
+    let mut empty_module = Module::new();
     let module = empty_module.load_from_binary(&wasm_binary)?;
 
     // Create an engine with the loaded module
@@ -97,24 +97,36 @@ fn test_basic_simd_operations() -> Result<()> {
     engine.instantiate(module)?;
 
     println!("Running basic SIMD operations test");
-    
+
     // Debug: Print exports
     println!("DEBUG: Available exports:");
     for (i, export) in engine.instances[0].module.exports.iter().enumerate() {
-        println!("DEBUG: Export {}: {} (index: {})", i, export.name, export.index);
+        println!(
+            "DEBUG: Export {}: {} (index: {})",
+            i, export.name, export.index
+        );
     }
 
     // Get function indices from exports
     // Adjust to find by export index AND name to make sure we get the correct functions
-    let f32x4_splat_test_export = engine.instances[0].module.exports.iter()
+    let f32x4_splat_test_export = engine.instances[0]
+        .module
+        .exports
+        .iter()
         .find(|e| e.name == "f32x4_splat_test")
         .expect("Could not find f32x4_splat_test export");
 
-    let f64x2_splat_test_export = engine.instances[0].module.exports.iter()
+    let f64x2_splat_test_export = engine.instances[0]
+        .module
+        .exports
+        .iter()
         .find(|e| e.name == "f64x2_splat_test")
         .expect("Could not find f64x2_splat_test export");
 
-    let i32x4_splat_test_export = engine.instances[0].module.exports.iter()
+    let i32x4_splat_test_export = engine.instances[0]
+        .module
+        .exports
+        .iter()
         .find(|e| e.name == "i32x4_splat_test")
         .expect("Could not find i32x4_splat_test export");
 
@@ -125,17 +137,23 @@ fn test_basic_simd_operations() -> Result<()> {
 
     println!("DEBUG: Function indices: f32x4_splat_test_idx={}, f64x2_splat_test_idx={}, i32x4_splat_test_idx={}",
              f32x4_splat_test_idx, f64x2_splat_test_idx, i32x4_splat_test_idx);
-    
+
     // Test f32x4.splat - we need to get the function by index and name
-    let test_idx = engine.instances[0].module.exports.iter()
+    let test_idx = engine.instances[0]
+        .module
+        .exports
+        .iter()
         .position(|e| e.name == "f32x4_splat_test")
         .expect("Could not find f32x4_splat_test position") as u32;
-        
-    println!("DEBUG: Using export index {} for f32x4_splat_test", test_idx);
-    
-    let result = engine.execute(0, test_idx, vec![])?;
+
+    println!(
+        "DEBUG: Using export index {} for f32x4_splat_test",
+        test_idx
+    );
+
+    let result = engine.execute(0usize, test_idx, vec![])?;
     println!("DEBUG: f32x4_splat_test result: {:?}", result);
-    
+
     if let Some(Value::V128(_)) = result.first() {
         println!("✅ f32x4_splat_test passed: {:?}", result[0]);
     } else {
@@ -147,7 +165,7 @@ fn test_basic_simd_operations() -> Result<()> {
     }
 
     // Test f64x2.splat
-    let result = engine.execute(0, f64x2_splat_test_idx, vec![])?;
+    let result = engine.execute(0usize, f64x2_splat_test_idx, vec![])?;
     if let Some(Value::V128(_)) = result.first() {
         println!("✅ f64x2_splat_test passed: {:?}", result[0]);
     } else {
@@ -159,7 +177,7 @@ fn test_basic_simd_operations() -> Result<()> {
     }
 
     // Test i32x4.splat
-    let result = engine.execute(0, i32x4_splat_test_idx, vec![])?;
+    let result = engine.execute(0usize, i32x4_splat_test_idx, vec![])?;
     if let Some(Value::V128(_v)) = result.first() {
         println!("✅ i32x4_splat_test passed: {:?}", result[0]);
     } else {
@@ -193,7 +211,7 @@ fn test_simd_dot_product() -> Result<()> {
     let wasm_binary = wat::parse_str(wat_code).expect("Failed to parse WAT");
 
     // Load the module from binary
-    let empty_module = Module::new();
+    let mut empty_module = Module::new();
     let module = empty_module.load_from_binary(&wasm_binary)?;
 
     // Create an engine with the loaded module
@@ -203,7 +221,7 @@ fn test_simd_dot_product() -> Result<()> {
     engine.instantiate(module)?;
 
     // Execute the function
-    let result = engine.execute(0, 0, vec![])?;
+    let result = engine.execute(0usize, 0, vec![])?;
     if let Some(Value::V128(v)) = result.first() {
         println!("✅ simple_simd_test passed: {:?}", result[0]);
 

@@ -7,7 +7,7 @@ use crate::error::Error;
 use crate::values::Value;
 use crate::Vec;
 
-/// Execute an i32.wrap_i64 instruction
+/// Execute an `i32.wrap_i64` instruction
 ///
 /// Wraps an i64 value to i32 by truncating to the lower 32 bits.
 pub fn i32_wrap_i64(stack: &mut Vec<Value>) -> Result<(), Error> {
@@ -22,7 +22,7 @@ pub fn i32_wrap_i64(stack: &mut Vec<Value>) -> Result<(), Error> {
     Ok(())
 }
 
-/// Execute an i64.extend_i32_s instruction
+/// Execute an `i64.extend_i32_s` instruction
 ///
 /// Extends an i32 value to i64 with sign extension.
 pub fn i64_extend_i32_s(stack: &mut Vec<Value>) -> Result<(), Error> {
@@ -33,11 +33,11 @@ pub fn i64_extend_i32_s(stack: &mut Vec<Value>) -> Result<(), Error> {
         return Err(Error::Execution("Expected i32 for i64.extend_i32_s".into()));
     };
 
-    stack.push(Value::I64(value as i64));
+    stack.push(Value::I64(i64::from(value)));
     Ok(())
 }
 
-/// Execute an i64.extend_i32_u instruction
+/// Execute an `i64.extend_i32_u` instruction
 ///
 /// Extends an i32 value to i64 with zero extension.
 pub fn i64_extend_i32_u(stack: &mut Vec<Value>) -> Result<(), Error> {
@@ -48,11 +48,11 @@ pub fn i64_extend_i32_u(stack: &mut Vec<Value>) -> Result<(), Error> {
         return Err(Error::Execution("Expected i32 for i64.extend_i32_u".into()));
     };
 
-    stack.push(Value::I64(value as u32 as i64));
+    stack.push(Value::I64(i64::from(value as u32)));
     Ok(())
 }
 
-/// Execute an f32.convert_i32_s instruction
+/// Execute an `f32.convert_i32_s` instruction
 ///
 /// Converts an i32 value to f32 with signed conversion.
 pub fn f32_convert_i32_s(stack: &mut Vec<Value>) -> Result<(), Error> {
@@ -69,7 +69,7 @@ pub fn f32_convert_i32_s(stack: &mut Vec<Value>) -> Result<(), Error> {
     Ok(())
 }
 
-/// Execute an f32.convert_i32_u instruction
+/// Execute an `f32.convert_i32_u` instruction
 ///
 /// Converts an i32 value to f32 with unsigned conversion.
 pub fn f32_convert_i32_u(stack: &mut Vec<Value>) -> Result<(), Error> {
@@ -86,7 +86,7 @@ pub fn f32_convert_i32_u(stack: &mut Vec<Value>) -> Result<(), Error> {
     Ok(())
 }
 
-/// Execute an f32.convert_i64_s instruction
+/// Execute an `f32.convert_i64_s` instruction
 ///
 /// Converts an i64 value to f32 with signed conversion.
 pub fn f32_convert_i64_s(stack: &mut Vec<Value>) -> Result<(), Error> {
@@ -103,7 +103,7 @@ pub fn f32_convert_i64_s(stack: &mut Vec<Value>) -> Result<(), Error> {
     Ok(())
 }
 
-/// Execute an f32.convert_i64_u instruction
+/// Execute an `f32.convert_i64_u` instruction
 ///
 /// Converts an i64 value to f32 with unsigned conversion.
 pub fn f32_convert_i64_u(stack: &mut Vec<Value>) -> Result<(), Error> {
@@ -120,7 +120,7 @@ pub fn f32_convert_i64_u(stack: &mut Vec<Value>) -> Result<(), Error> {
     Ok(())
 }
 
-/// Execute an f64.convert_i32_s instruction
+/// Execute an `f64.convert_i32_s` instruction
 ///
 /// Converts an i32 value to f64 with signed conversion.
 pub fn f64_convert_i32_s(stack: &mut Vec<Value>) -> Result<(), Error> {
@@ -133,11 +133,11 @@ pub fn f64_convert_i32_s(stack: &mut Vec<Value>) -> Result<(), Error> {
         ));
     };
 
-    stack.push(Value::F64(value as f64));
+    stack.push(Value::F64(f64::from(value)));
     Ok(())
 }
 
-/// Execute an f64.convert_i32_u instruction
+/// Execute an `f64.convert_i32_u` instruction
 ///
 /// Converts an i32 value to f64 with unsigned conversion.
 pub fn f64_convert_i32_u(stack: &mut Vec<Value>) -> Result<(), Error> {
@@ -150,11 +150,11 @@ pub fn f64_convert_i32_u(stack: &mut Vec<Value>) -> Result<(), Error> {
         ));
     };
 
-    stack.push(Value::F64(value as u32 as f64));
+    stack.push(Value::F64(f64::from(value as u32)));
     Ok(())
 }
 
-/// Execute an f64.convert_i64_s instruction
+/// Execute an `f64.convert_i64_s` instruction
 ///
 /// Converts an i64 value to f64 with signed conversion.
 pub fn f64_convert_i64_s(stack: &mut Vec<Value>) -> Result<(), Error> {
@@ -171,7 +171,7 @@ pub fn f64_convert_i64_s(stack: &mut Vec<Value>) -> Result<(), Error> {
     Ok(())
 }
 
-/// Execute an f64.convert_i64_u instruction
+/// Execute an `f64.convert_i64_u` instruction
 ///
 /// Converts an i64 value to f64 with unsigned conversion.
 pub fn f64_convert_i64_u(stack: &mut Vec<Value>) -> Result<(), Error> {
@@ -188,7 +188,7 @@ pub fn f64_convert_i64_u(stack: &mut Vec<Value>) -> Result<(), Error> {
     Ok(())
 }
 
-/// Execute an i32.trunc_f32_s instruction
+/// Execute an `i32.trunc_f32_s` instruction
 ///
 /// Truncates an f32 value to i32 with signed conversion.
 pub fn i32_trunc_f32_s(stack: &mut Vec<Value>) -> Result<(), Error> {
@@ -212,7 +212,7 @@ pub fn i32_trunc_f32_s(stack: &mut Vec<Value>) -> Result<(), Error> {
     Ok(())
 }
 
-/// Execute an i32.trunc_f32_u instruction
+/// Execute an `i32.trunc_f32_u` instruction
 ///
 /// Truncates an f32 value to i32 with unsigned conversion.
 pub fn i32_trunc_f32_u(stack: &mut Vec<Value>) -> Result<(), Error> {
@@ -234,7 +234,7 @@ pub fn i32_trunc_f32_u(stack: &mut Vec<Value>) -> Result<(), Error> {
     Ok(())
 }
 
-/// Execute an i32.trunc_f64_s instruction
+/// Execute an `i32.trunc_f64_s` instruction
 ///
 /// Truncates an f64 value to i32 with signed conversion.
 pub fn i32_trunc_f64_s(stack: &mut Vec<Value>) -> Result<(), Error> {
@@ -256,7 +256,7 @@ pub fn i32_trunc_f64_s(stack: &mut Vec<Value>) -> Result<(), Error> {
     Ok(())
 }
 
-/// Execute an i32.trunc_f64_u instruction
+/// Execute an `i32.trunc_f64_u` instruction
 ///
 /// Truncates an f64 value to i32 with unsigned conversion.
 pub fn i32_trunc_f64_u(stack: &mut Vec<Value>) -> Result<(), Error> {
@@ -278,7 +278,7 @@ pub fn i32_trunc_f64_u(stack: &mut Vec<Value>) -> Result<(), Error> {
     Ok(())
 }
 
-/// Execute an i64.trunc_f32_s instruction
+/// Execute an `i64.trunc_f32_s` instruction
 ///
 /// Truncates an f32 value to i64 with signed conversion.
 pub fn i64_trunc_f32_s(stack: &mut Vec<Value>) -> Result<(), Error> {
@@ -302,7 +302,7 @@ pub fn i64_trunc_f32_s(stack: &mut Vec<Value>) -> Result<(), Error> {
     Ok(())
 }
 
-/// Execute an i64.trunc_f32_u instruction
+/// Execute an `i64.trunc_f32_u` instruction
 ///
 /// Truncates an f32 value to i64 with unsigned conversion.
 pub fn i64_trunc_f32_u(stack: &mut Vec<Value>) -> Result<(), Error> {
@@ -326,7 +326,7 @@ pub fn i64_trunc_f32_u(stack: &mut Vec<Value>) -> Result<(), Error> {
     Ok(())
 }
 
-/// Execute an i64.trunc_f64_s instruction
+/// Execute an `i64.trunc_f64_s` instruction
 ///
 /// Truncates an f64 value to i64 with signed conversion.
 pub fn i64_trunc_f64_s(stack: &mut Vec<Value>) -> Result<(), Error> {
@@ -350,7 +350,7 @@ pub fn i64_trunc_f64_s(stack: &mut Vec<Value>) -> Result<(), Error> {
     Ok(())
 }
 
-/// Execute an i64.trunc_f64_u instruction
+/// Execute an `i64.trunc_f64_u` instruction
 ///
 /// Truncates an f64 value to i64 with unsigned conversion.
 pub fn i64_trunc_f64_u(stack: &mut Vec<Value>) -> Result<(), Error> {
@@ -374,7 +374,7 @@ pub fn i64_trunc_f64_u(stack: &mut Vec<Value>) -> Result<(), Error> {
     Ok(())
 }
 
-/// Execute an f32.demote_f64 instruction
+/// Execute an `f32.demote_f64` instruction
 ///
 /// Demotes an f64 value to f32.
 pub fn f32_demote_f64(stack: &mut Vec<Value>) -> Result<(), Error> {
@@ -389,7 +389,7 @@ pub fn f32_demote_f64(stack: &mut Vec<Value>) -> Result<(), Error> {
     Ok(())
 }
 
-/// Execute an f64.promote_f32 instruction
+/// Execute an `f64.promote_f32` instruction
 ///
 /// Promotes an f32 value to f64.
 pub fn f64_promote_f32(stack: &mut Vec<Value>) -> Result<(), Error> {
@@ -400,11 +400,11 @@ pub fn f64_promote_f32(stack: &mut Vec<Value>) -> Result<(), Error> {
         return Err(Error::Execution("Expected f32 for f64.promote_f32".into()));
     };
 
-    stack.push(Value::F64(value as f64));
+    stack.push(Value::F64(f64::from(value)));
     Ok(())
 }
 
-/// Execute an i32.reinterpret_f32 instruction
+/// Execute an `i32.reinterpret_f32` instruction
 ///
 /// Reinterprets the bits of an f32 value as an i32 value.
 pub fn i32_reinterpret_f32(stack: &mut Vec<Value>) -> Result<(), Error> {
@@ -421,7 +421,7 @@ pub fn i32_reinterpret_f32(stack: &mut Vec<Value>) -> Result<(), Error> {
     Ok(())
 }
 
-/// Execute an i64.reinterpret_f64 instruction
+/// Execute an `i64.reinterpret_f64` instruction
 ///
 /// Reinterprets the bits of an f64 value as an i64 value.
 pub fn i64_reinterpret_f64(stack: &mut Vec<Value>) -> Result<(), Error> {
@@ -438,7 +438,7 @@ pub fn i64_reinterpret_f64(stack: &mut Vec<Value>) -> Result<(), Error> {
     Ok(())
 }
 
-/// Execute an f32.reinterpret_i32 instruction
+/// Execute an `f32.reinterpret_i32` instruction
 ///
 /// Reinterprets the bits of an i32 value as an f32 value.
 pub fn f32_reinterpret_i32(stack: &mut Vec<Value>) -> Result<(), Error> {
@@ -455,7 +455,7 @@ pub fn f32_reinterpret_i32(stack: &mut Vec<Value>) -> Result<(), Error> {
     Ok(())
 }
 
-/// Execute an f64.reinterpret_i64 instruction
+/// Execute an `f64.reinterpret_i64` instruction
 ///
 /// Reinterprets the bits of an i64 value as an f64 value.
 pub fn f64_reinterpret_i64(stack: &mut Vec<Value>) -> Result<(), Error> {

@@ -27,7 +27,7 @@ fn test_v128_load_store() -> Result<()> {
     let wasm = wat::parse_str(wat).expect("Failed to parse WAT");
 
     // Load the module from binary
-    let empty_module = Module::new();
+    let mut empty_module = Module::new();
     let module = empty_module.load_from_binary(&wasm)?;
 
     // Create an engine with the loaded module
@@ -39,10 +39,10 @@ fn test_v128_load_store() -> Result<()> {
     println!("Running v128.load/store test");
 
     // Execute the store function to put a v128 value in memory
-    engine.execute(0, 0, vec![])?;
+    engine.execute(0usize, 0, vec![])?;
 
     // Load the value back with the load function
-    let result = engine.execute(0, 1, vec![])?;
+    let result = engine.execute(0usize, 1, vec![])?;
 
     // Expected v128 value (0xD0E0F0FF_90A0B0C0_50607080_10203040 in little-endian representation)
     let expected_value = Value::V128(0xD0E0F0FF_90A0B0C0_50607080_10203040);
@@ -100,7 +100,7 @@ fn test_v128_splat() -> Result<()> {
     let wasm = wat::parse_str(wat).expect("Failed to parse WAT");
 
     // Load the module from binary
-    let empty_module = Module::new();
+    let mut empty_module = Module::new();
     let module = empty_module.load_from_binary(&wasm)?;
 
     // Create an engine with the loaded module
@@ -112,7 +112,7 @@ fn test_v128_splat() -> Result<()> {
     println!("Running v128 splat tests");
 
     // Test i8x16.splat with value 0x42
-    let result = engine.execute(0, 0, vec![Value::I32(0x42)])?;
+    let result = engine.execute(0usize, 0, vec![Value::I32(0x42)])?;
     let expected = Value::V128(0x4242424242424242_4242424242424242);
     if result == vec![expected.clone()] {
         println!("✅ i8x16.splat test passed: {:?}", expected);
@@ -125,7 +125,7 @@ fn test_v128_splat() -> Result<()> {
     }
 
     // Test i16x8.splat with value 0x4243
-    let result = engine.execute(0, 1, vec![Value::I32(0x4243)])?;
+    let result = engine.execute(0usize, 1, vec![Value::I32(0x4243)])?;
     let expected = Value::V128(0x4243424342434243_4243424342434243);
     if result == vec![expected.clone()] {
         println!("✅ i16x8.splat test passed: {:?}", expected);
@@ -138,7 +138,7 @@ fn test_v128_splat() -> Result<()> {
     }
 
     // Test i32x4.splat with value 0x10203040
-    let result = engine.execute(0, 2, vec![Value::I32(0x10203040)])?;
+    let result = engine.execute(0usize, 2, vec![Value::I32(0x10203040)])?;
     let expected = Value::V128(0x1020304010203040_1020304010203040);
     if result == vec![expected.clone()] {
         println!("✅ i32x4.splat test passed: {:?}", expected);
@@ -151,7 +151,7 @@ fn test_v128_splat() -> Result<()> {
     }
 
     // Test i64x2.splat with value 0x1122334455667788
-    let result = engine.execute(0, 3, vec![Value::I64(0x1122334455667788)])?;
+    let result = engine.execute(0usize, 3, vec![Value::I64(0x1122334455667788)])?;
     let expected = Value::V128(0x1122334455667788_1122334455667788);
     if result == vec![expected.clone()] {
         println!("✅ i64x2.splat test passed: {:?}", expected);
@@ -164,7 +164,7 @@ fn test_v128_splat() -> Result<()> {
     }
 
     // Test f32x4.splat with value 3.14159
-    let result = engine.execute(0, 4, vec![Value::F32(3.14159)])?;
+    let result = engine.execute(0usize, 4, vec![Value::F32(3.14159)])?;
     // We can't easily represent the exact expected bit pattern for floats, so just check that we got a v128 back
     if let Some(Value::V128(_)) = result.first() {
         println!("✅ f32x4.splat test passed: {:?}", result[0]);
@@ -177,7 +177,7 @@ fn test_v128_splat() -> Result<()> {
     }
 
     // Test f64x2.splat with value 2.71828
-    let result = engine.execute(0, 5, vec![Value::F64(2.71828)])?;
+    let result = engine.execute(0usize, 5, vec![Value::F64(2.71828)])?;
     // We can't easily represent the exact expected bit pattern for floats, so just check that we got a v128 back
     if let Some(Value::V128(_)) = result.first() {
         println!("✅ f64x2.splat test passed: {:?}", result[0]);
@@ -215,7 +215,7 @@ fn test_v128_shuffle() -> Result<()> {
     let wasm = wat::parse_str(wat).expect("Failed to parse WAT");
 
     // Load the module from binary
-    let empty_module = Module::new();
+    let mut empty_module = Module::new();
     let module = empty_module.load_from_binary(&wasm)?;
 
     // Create an engine with the loaded module
@@ -227,7 +227,7 @@ fn test_v128_shuffle() -> Result<()> {
     println!("Running i8x16.shuffle test");
 
     // Execute the shuffle function
-    let result = engine.execute(0, 0, vec![])?;
+    let result = engine.execute(0usize, 0, vec![])?;
 
     // The expected result is a vector with the lanes selected as specified in the shuffle
     // The lanes should be [31, 30, 29, 28, 27, 26, 25, 24, 23, 22, 21, 20, 19, 18, 17, 16]
@@ -274,7 +274,7 @@ fn test_v128_arithmetic() -> Result<()> {
     let wasm = wat::parse_str(wat).expect("Failed to parse WAT");
 
     // Load the module from binary
-    let empty_module = Module::new();
+    let mut empty_module = Module::new();
     let module = empty_module.load_from_binary(&wasm)?;
 
     // Create an engine with the loaded module
@@ -286,7 +286,7 @@ fn test_v128_arithmetic() -> Result<()> {
     println!("Running SIMD arithmetic tests");
 
     // Test i32x4.add
-    let result = engine.execute(0, 0, vec![])?;
+    let result = engine.execute(0usize, 0, vec![])?;
     // Expected: [1+5, 2+6, 3+7, 4+8] = [6, 8, 10, 12]
     let expected = Value::V128(0x0000000C0000000A_0000000800000006);
     if result == vec![expected.clone()] {
@@ -300,7 +300,7 @@ fn test_v128_arithmetic() -> Result<()> {
     }
 
     // Test i32x4.sub
-    let result = engine.execute(0, 1, vec![])?;
+    let result = engine.execute(0usize, 1, vec![])?;
     // Expected: [10-1, 20-2, 30-3, 40-4] = [9, 18, 27, 36]
     let expected = Value::V128(0x000000240000001B_0000001200000009);
 
@@ -324,7 +324,7 @@ fn test_v128_arithmetic() -> Result<()> {
     }
 
     // Test i32x4.mul
-    let result = engine.execute(0, 2, vec![])?;
+    let result = engine.execute(0usize, 2, vec![])?;
     // Expected: [1*5, 2*6, 3*7, 4*8] = [5, 12, 21, 32]
     let expected = Value::V128(0x0000002000000015_0000000C00000005);
 

@@ -731,7 +731,7 @@ pub enum Instruction {
 }
 
 /// Block type for control flow instructions
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BlockType {
     /// Empty block type (no parameters or results)
     Empty,
@@ -775,34 +775,33 @@ impl InstructionExecutor for Instruction {
         // Then handle other instruction types
         match self {
             // Comparison instructions
-            Instruction::I32Eqz => comparison::i32_eqz(&mut stack.values),
-            Instruction::I32Eq => comparison::i32_eq(&mut stack.values),
-            Instruction::I32Ne => comparison::i32_ne(&mut stack.values),
-            Instruction::I32LtS => comparison::i32_lt_s(&mut stack.values),
-            Instruction::I32LtU => comparison::i32_lt_u(&mut stack.values),
-            Instruction::I32GtS => comparison::i32_gt_s(&mut stack.values),
-            Instruction::I32GtU => comparison::i32_gt_u(&mut stack.values),
-            Instruction::I32LeS => comparison::i32_le_s(&mut stack.values),
-            Instruction::I32LeU => comparison::i32_le_u(&mut stack.values),
-            Instruction::I32GeS => comparison::i32_ge_s(&mut stack.values),
-            Instruction::I32GeU => comparison::i32_ge_u(&mut stack.values),
+            Self::I32Eqz => comparison::i32_eqz(&mut stack.values),
+            Self::I32Eq => comparison::i32_eq(&mut stack.values),
+            Self::I32Ne => comparison::i32_ne(&mut stack.values),
+            Self::I32LtS => comparison::i32_lt_s(&mut stack.values),
+            Self::I32LtU => comparison::i32_lt_u(&mut stack.values),
+            Self::I32GtS => comparison::i32_gt_s(&mut stack.values),
+            Self::I32GtU => comparison::i32_gt_u(&mut stack.values),
+            Self::I32LeS => comparison::i32_le_s(&mut stack.values),
+            Self::I32LeU => comparison::i32_le_u(&mut stack.values),
+            Self::I32GeS => comparison::i32_ge_s(&mut stack.values),
+            Self::I32GeU => comparison::i32_ge_u(&mut stack.values),
 
-            Instruction::I64Eqz => comparison::i64_eqz(&mut stack.values),
-            Instruction::I64Eq => comparison::i64_eq(&mut stack.values),
-            Instruction::I64Ne => comparison::i64_ne(&mut stack.values),
-            Instruction::I64LtS => comparison::i64_lt_s(&mut stack.values),
-            Instruction::I64LtU => comparison::i64_lt_u(&mut stack.values),
-            Instruction::I64GtS => comparison::i64_gt_s(&mut stack.values),
-            Instruction::I64GtU => comparison::i64_gt_u(&mut stack.values),
-            Instruction::I64LeS => comparison::i64_le_s(&mut stack.values),
-            Instruction::I64LeU => comparison::i64_le_u(&mut stack.values),
-            Instruction::I64GeS => comparison::i64_ge_s(&mut stack.values),
-            Instruction::I64GeU => comparison::i64_ge_u(&mut stack.values),
+            Self::I64Eqz => comparison::i64_eqz(&mut stack.values),
+            Self::I64Eq => comparison::i64_eq(&mut stack.values),
+            Self::I64Ne => comparison::i64_ne(&mut stack.values),
+            Self::I64LtS => comparison::i64_lt_s(&mut stack.values),
+            Self::I64LtU => comparison::i64_lt_u(&mut stack.values),
+            Self::I64GtS => comparison::i64_gt_s(&mut stack.values),
+            Self::I64GtU => comparison::i64_gt_u(&mut stack.values),
+            Self::I64LeS => comparison::i64_le_s(&mut stack.values),
+            Self::I64LeU => comparison::i64_le_u(&mut stack.values),
+            Self::I64GeS => comparison::i64_ge_s(&mut stack.values),
+            Self::I64GeU => comparison::i64_ge_u(&mut stack.values),
 
             // For other instructions, defer to other matchers or return not implemented
             _ => Err(Error::Execution(format!(
-                "Instruction not implemented via trait: {:?}",
-                self
+                "Instruction not implemented via trait: {self:?}"
             ))),
         }
     }

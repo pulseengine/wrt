@@ -114,7 +114,7 @@ pub fn f64_load(
     Ok(())
 }
 
-/// Execute an i32 load8_s instruction
+/// Execute an i32 `load8_s` instruction
 ///
 /// Loads an 8-bit signed integer from memory and sign-extends it to 32 bits.
 pub fn i32_load8_s(
@@ -133,13 +133,13 @@ pub fn i32_load8_s(
 
     // Read byte and sign-extend to i32
     let byte = memory.data[effective_addr as usize] as i8;
-    let value = byte as i32;
+    let value = i32::from(byte);
 
     stack.push(Value::I32(value));
     Ok(())
 }
 
-/// Execute an i32 load8_u instruction
+/// Execute an i32 `load8_u` instruction
 ///
 /// Loads an 8-bit unsigned integer from memory and zero-extends it to 32 bits.
 pub fn i32_load8_u(
@@ -158,13 +158,13 @@ pub fn i32_load8_u(
 
     // Read byte and zero-extend to i32
     let byte = memory.data[effective_addr as usize];
-    let value = byte as i32;
+    let value = i32::from(byte);
 
     stack.push(Value::I32(value));
     Ok(())
 }
 
-/// Execute an i32 load16_s instruction
+/// Execute an i32 `load16_s` instruction
 ///
 /// Loads a 16-bit signed integer from memory and sign-extends it to 32 bits.
 pub fn i32_load16_s(
@@ -183,13 +183,13 @@ pub fn i32_load16_s(
 
     // Read bytes and convert to little-endian i16, then sign-extend to i32
     let bytes = &memory.data[effective_addr as usize..effective_addr as usize + 2];
-    let value = i16::from_le_bytes([bytes[0], bytes[1]]) as i32;
+    let value = i32::from(i16::from_le_bytes([bytes[0], bytes[1]]));
 
     stack.push(Value::I32(value));
     Ok(())
 }
 
-/// Execute an i32 load16_u instruction
+/// Execute an i32 `load16_u` instruction
 ///
 /// Loads a 16-bit unsigned integer from memory and zero-extends it to 32 bits.
 pub fn i32_load16_u(
@@ -208,7 +208,7 @@ pub fn i32_load16_u(
 
     // Read bytes and convert to little-endian u16, then zero-extend to i32
     let bytes = &memory.data[effective_addr as usize..effective_addr as usize + 2];
-    let value = u16::from_le_bytes([bytes[0], bytes[1]]) as i32;
+    let value = i32::from(u16::from_le_bytes([bytes[0], bytes[1]]));
 
     stack.push(Value::I32(value));
     Ok(())

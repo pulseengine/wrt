@@ -37,7 +37,7 @@ fn test_i32_add() -> Result<()> {
     ];
 
     // Load the module from binary
-    let empty_module = Module::new();
+    let mut empty_module = Module::new();
     let module = empty_module.load_from_binary(&wasm_binary)?;
 
     // Create an engine with the loaded module
@@ -55,7 +55,7 @@ fn test_i32_add() -> Result<()> {
     println!("Running simple add test");
 
     for (idx, (inputs, expected)) in test_cases.iter().enumerate() {
-        let result = engine.execute(0, 0, inputs.clone())?;
+        let result = engine.execute(0usize, 0, inputs.clone())?;
 
         // Check if the result matches the expected output
         if result == *expected {
@@ -122,7 +122,7 @@ fn test_simple_memory() -> Result<()> {
     let wasm = wat::parse_str(wat).expect("Failed to parse WAT");
 
     // Load the module from binary
-    let empty_module = Module::new();
+    let mut empty_module = Module::new();
     let module = empty_module.load_from_binary(&wasm)?;
 
     // Create an engine with the loaded module
@@ -138,10 +138,10 @@ fn test_simple_memory() -> Result<()> {
 
     for (idx, value) in test_values.iter().enumerate() {
         // Store the value
-        engine.execute(0, 0, vec![Value::I32(*value)])?;
+        engine.execute(0usize, 0, vec![Value::I32(*value)])?;
 
         // Load the value back
-        let result = engine.execute(0, 1, vec![])?;
+        let result = engine.execute(0usize, 1, vec![])?;
 
         if result == vec![Value::I32(*value)] {
             println!("✅ Test case {}: Store and load {}", idx, value);

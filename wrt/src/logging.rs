@@ -1,54 +1,51 @@
+// Use our reexported types
 use crate::values::Value;
-use crate::{Box, String};
+
+// Core imports only - no std or duplicates
+use core::any::Any;
 
 #[cfg(not(feature = "std"))]
 use core::str::FromStr;
 #[cfg(feature = "std")]
 use std::str::FromStr;
 
-#[cfg(not(feature = "std"))]
-use core::result::Result;
+// Import std when available
 #[cfg(feature = "std")]
-use std::result::Result;
+use std::{boxed::Box, collections::HashMap, format, string::String, vec::Vec};
 
+// Import alloc for no_std
 #[cfg(not(feature = "std"))]
-use alloc::collections::BTreeMap;
-#[cfg(not(feature = "std"))]
-use alloc::string::ToString;
-#[cfg(feature = "std")]
-use std::collections::HashMap;
-
-#[cfg(not(feature = "std"))]
-use core::any::Any;
-#[cfg(feature = "std")]
-use std::any::Any;
+use alloc::{
+    boxed::Box,
+    collections::BTreeMap as HashMap,
+    format,
+    string::{String, ToString},
+    vec::Vec,
+};
 
 /// Log levels for WebAssembly component logging
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum LogLevel {
-    /// Trace level (most verbose)
+    /// Trace-level messages (detailed debugging information)
     Trace,
-    /// Debug level
+    /// Debug-level messages (useful for developers)
     Debug,
-    /// Info level (standard)
+    /// Informational messages (general runtime information)
     Info,
-    /// Warning level
+    /// Warning messages (potential issues)
     Warn,
-    /// Error level
+    /// Error messages (recoverable errors)
     Error,
-    /// Critical level (most severe)
+    /// Critical error messages (severe issues)
     Critical,
 }
 
-/// Error type for log level parsing errors
-#[derive(Debug, Clone, PartialEq)]
+/// Custom error for parsing log levels
+#[derive(Debug)]
 pub struct ParseLogLevelError {
-    /// The invalid level string
-    invalid_level: String,
+    /// The invalid log level string that was provided
+    pub invalid_level: String,
 }
-
-#[cfg(feature = "std")]
-impl std::error::Error for ParseLogLevelError {}
 
 #[cfg(feature = "std")]
 impl std::fmt::Display for ParseLogLevelError {
@@ -64,17 +61,40 @@ impl core::fmt::Display for ParseLogLevelError {
     }
 }
 
-impl FromStr for LogLevel {
+#[cfg(feature = "std")]
+impl std::error::Error for ParseLogLevelError {}
+
+#[cfg(feature = "std")]
+impl std::str::FromStr for LogLevel {
     type Err = ParseLogLevelError;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
         match s.to_lowercase().as_str() {
-            "trace" => Ok(LogLevel::Trace),
-            "debug" => Ok(LogLevel::Debug),
-            "info" => Ok(LogLevel::Info),
-            "warn" | "warning" => Ok(LogLevel::Warn),
-            "error" => Ok(LogLevel::Error),
-            "critical" => Ok(LogLevel::Critical),
+            "trace" => Ok(Self::Trace),
+            "debug" => Ok(Self::Debug),
+            "info" => Ok(Self::Info),
+            "warn" | "warning" => Ok(Self::Warn),
+            "error" | "err" => Ok(Self::Error),
+            "critical" | "fatal" => Ok(Self::Critical),
+            _ => Err(ParseLogLevelError {
+                invalid_level: s.to_string(),
+            }),
+        }
+    }
+}
+
+#[cfg(not(feature = "std"))]
+impl core::str::FromStr for LogLevel {
+    type Err = ParseLogLevelError;
+
+    fn from_str(s: &str) -> core::result::Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "trace" => Ok(Self::Trace),
+            "debug" => Ok(Self::Debug),
+            "info" => Ok(Self::Info),
+            "warn" | "warning" => Ok(Self::Warn),
+            "error" | "err" => Ok(Self::Error),
+            "critical" | "fatal" => Ok(Self::Critical),
             _ => Err(ParseLogLevelError {
                 invalid_level: s.to_string(),
             }),
@@ -83,20 +103,22 @@ impl FromStr for LogLevel {
 }
 
 impl LogLevel {
-    /// Creates a LogLevel from a string, defaulting to Info for invalid levels
+    /// Creates a `LogLevel` from a string, defaulting to Info for invalid levels
+    #[must_use]
     pub fn from_string_or_default(s: &str) -> Self {
-        Self::from_str(s).unwrap_or(LogLevel::Info)
+        Self::from_str(s).unwrap_or(Self::Info)
     }
 
-    /// Convert LogLevel to a string representation
-    pub fn as_str(&self) -> &'static str {
+    /// Convert `LogLevel` to a string representation
+    #[must_use]
+    pub const fn as_str(&self) -> &'static str {
         match self {
-            LogLevel::Trace => "trace",
-            LogLevel::Debug => "debug",
-            LogLevel::Info => "info",
-            LogLevel::Warn => "warn",
-            LogLevel::Error => "error",
-            LogLevel::Critical => "critical",
+            Self::Trace => "trace",
+            Self::Debug => "debug",
+            Self::Info => "info",
+            Self::Warn => "warn",
+            Self::Error => "error",
+            Self::Critical => "critical",
         }
     }
 }
@@ -114,7 +136,8 @@ pub struct LogOperation {
 
 impl LogOperation {
     /// Create a new log operation
-    pub fn new(level: LogLevel, message: String) -> Self {
+    #[must_use]
+    pub const fn new(level: LogLevel, message: String) -> Self {
         Self {
             level,
             message,
@@ -156,38 +179,39 @@ pub struct CallbackRegistry {
 
     /// Host functions registry (module name -> function name -> handler)
     #[cfg(not(feature = "std"))]
-    host_functions: BTreeMap<String, BTreeMap<String, HostFunctionHandler>>,
+    host_functions: HashMap<String, HashMap<String, HostFunctionHandler>>,
 }
 
 #[cfg(feature = "std")]
-// Manual Debug implementation since function pointers don't implement Debug
 impl std::fmt::Debug for CallbackRegistry {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("CallbackRegistry")
-            .field("has_log_handler", &self.has_log_handler())
+            .field("has_log_handler", &self.log_handler.is_some())
+            .field("registered_modules", &self.host_functions.keys())
             .finish()
     }
 }
 
 #[cfg(not(feature = "std"))]
-// Manual Debug implementation since function pointers don't implement Debug
 impl core::fmt::Debug for CallbackRegistry {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("CallbackRegistry")
-            .field("has_log_handler", &self.has_log_handler())
+            .field("has_log_handler", &self.log_handler.is_some())
+            .field("registered_modules", &self.host_functions.keys())
             .finish()
     }
 }
 
 impl CallbackRegistry {
     /// Create a new callback registry
+    #[must_use]
     pub fn new() -> Self {
         Self {
             log_handler: None,
             #[cfg(feature = "std")]
             host_functions: HashMap::new(),
             #[cfg(not(feature = "std"))]
-            host_functions: BTreeMap::new(),
+            host_functions: HashMap::new(),
         }
     }
 
@@ -199,7 +223,7 @@ impl CallbackRegistry {
         self.log_handler = Some(Box::new(handler));
     }
 
-    /// Register a log handler (alias for register_log_handler for backward compatibility)
+    /// Register a log handler (alias for `register_log_handler` for backward compatibility)
     pub fn register_log<F>(&mut self, handler: F)
     where
         F: Fn(LogOperation) + Send + Sync + 'static,
@@ -215,6 +239,7 @@ impl CallbackRegistry {
     }
 
     /// Check if a log handler is registered
+    #[must_use]
     pub fn has_log_handler(&self) -> bool {
         self.log_handler.is_some()
     }
@@ -233,13 +258,14 @@ impl CallbackRegistry {
             #[cfg(feature = "std")]
             return HashMap::new();
             #[cfg(not(feature = "std"))]
-            return BTreeMap::new();
+            return HashMap::new();
         });
 
         module_functions.insert(function_name, handler);
     }
 
     /// Check if a host function is registered
+    #[must_use]
     pub fn has_host_function(&self, module_name: &str, function_name: &str) -> bool {
         self.host_functions
             .get(module_name)
@@ -262,8 +288,7 @@ impl CallbackRegistry {
         }
 
         Err(crate::error::Error::Execution(format!(
-            "Host function {}.{} not found",
-            module_name, function_name
+            "Host function {module_name}.{function_name} not found"
         )))
     }
 }
@@ -271,18 +296,15 @@ impl CallbackRegistry {
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[cfg(not(feature = "std"))]
-    use crate::Mutex;
-    #[cfg(not(feature = "std"))]
-    use alloc::format;
-    #[cfg(not(feature = "std"))]
-    use alloc::sync::Arc;
-    #[cfg(not(feature = "std"))]
-    use alloc::vec;
-    #[cfg(not(feature = "std"))]
-    use alloc::vec::Vec;
+
     #[cfg(feature = "std")]
     use std::sync::{Arc, Mutex};
+
+    #[cfg(not(feature = "std"))]
+    use crate::sync::Mutex;
+
+    #[cfg(not(feature = "std"))]
+    use alloc::sync::Arc;
 
     #[test]
     fn test_log_level_parsing() {
@@ -394,14 +416,14 @@ mod tests {
         let registry = CallbackRegistry::new();
         assert_eq!(
             format!("{:?}", registry),
-            "CallbackRegistry { has_log_handler: false }"
+            "CallbackRegistry { has_log_handler: false, registered_modules: [] }"
         );
 
         let mut registry = CallbackRegistry::new();
         registry.register_log_handler(|_| {});
         assert_eq!(
             format!("{:?}", registry),
-            "CallbackRegistry { has_log_handler: true }"
+            "CallbackRegistry { has_log_handler: true, registered_modules: [] }"
         );
     }
 
