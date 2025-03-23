@@ -47,7 +47,7 @@ mod resume_tests {
 
         // Manually set the engine state to paused
         engine.set_state(ExecutionState::Paused {
-            instance_idx,
+            instance_idx: instance_idx as u32,
             func_idx: 0,
             pc: 0,
             expected_results: 1,

@@ -79,22 +79,22 @@ pub enum Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Error::Validation(msg) => write!(f, "Validation error: {}", msg),
-            Error::Execution(msg) => write!(f, "Execution error: {}", msg),
-            Error::FuelExhausted => write!(f, "Execution paused: out of fuel"),
-            Error::IO(msg) => write!(f, "IO error: {}", msg),
-            Error::Parse(msg) => write!(f, "Parse error: {}", msg),
-            Error::Component(msg) => write!(f, "Component error: {}", msg),
-            Error::Custom(msg) => write!(f, "{}", msg),
-            Error::StackUnderflow => write!(f, "Stack underflow error"),
-            Error::Serialization(msg) => write!(f, "Serialization error: {}", msg),
-            Error::ExportNotFound(name) => write!(f, "Export not found: {}", name),
-            Error::InvalidInstanceIndex(idx) => write!(f, "Invalid instance index: {}", idx),
-            Error::InvalidFunctionIndex(idx) => write!(f, "Invalid function index: {}", idx),
-            Error::InvalidProgramCounter(pc) => write!(f, "Invalid program counter: {}", pc),
-            Error::InvalidExecutionState => write!(f, "Invalid execution state"),
-            Error::NoInstances => write!(f, "No module instances available"),
-            Error::InvalidExport => write!(f, "Invalid export type"),
+            Self::Validation(msg) => write!(f, "Validation error: {msg}"),
+            Self::Execution(msg) => write!(f, "Execution error: {msg}"),
+            Self::FuelExhausted => write!(f, "Execution paused: out of fuel"),
+            Self::IO(msg) => write!(f, "IO error: {msg}"),
+            Self::Parse(msg) => write!(f, "Parse error: {msg}"),
+            Self::Component(msg) => write!(f, "Component error: {msg}"),
+            Self::Custom(msg) => write!(f, "{msg}"),
+            Self::StackUnderflow => write!(f, "Stack underflow error"),
+            Self::Serialization(msg) => write!(f, "Serialization error: {msg}"),
+            Self::ExportNotFound(name) => write!(f, "Export not found: {name}"),
+            Self::InvalidInstanceIndex(idx) => write!(f, "Invalid instance index: {idx}"),
+            Self::InvalidFunctionIndex(idx) => write!(f, "Invalid function index: {idx}"),
+            Self::InvalidProgramCounter(pc) => write!(f, "Invalid program counter: {pc}"),
+            Self::InvalidExecutionState => write!(f, "Invalid execution state"),
+            Self::NoInstances => write!(f, "No module instances available"),
+            Self::InvalidExport => write!(f, "Invalid export type"),
         }
     }
 }
@@ -121,7 +121,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 impl From<wat::Error> for Error {
     fn from(err: wat::Error) -> Self {
-        Error::Parse(err.to_string())
+        Self::Parse(err.to_string())
     }
 }
 

@@ -31,6 +31,7 @@
 #![warn(rustdoc::missing_doc_code_examples)]
 
 use once_cell::sync::Lazy;
+use std::any::Any;
 use std::collections::HashMap;
 use std::env;
 use std::fs;
@@ -46,6 +47,7 @@ use wrt::{
     logging::LogLevel,
     module::{ExportKind, Function, Module},
     types::ExternType,
+    values::Value,
     StacklessEngine,
 };
 
@@ -124,8 +126,23 @@ fn main() -> Result<()> {
     let start_time = Instant::now();
 
     // Load and parse the WebAssembly module
-    let wasm_bytes = fs::read(&args.wasm_file)?;
-    let module = parse_module(&wasm_bytes)?;
+    let wasm_bytes = fs::read(&args.wasm_file)
+        .with_context(|| format!("Failed to read WebAssembly file: {}", args.wasm_file))?;
+    info!("Read {} bytes from {}", wasm_bytes.len(), args.wasm_file);
+
+    let module = match parse_module(&wasm_bytes) {
+        Ok(module) => {
+            info!("Successfully parsed WebAssembly module:");
+            info!("  - {} functions", module.functions.len());
+            info!("  - {} exports", module.exports.len());
+            info!("  - {} imports", module.imports.len());
+            module
+        }
+        Err(e) => {
+            error!("Failed to parse module: {}", e);
+            return Err(e);
+        }
+    };
 
     timings.insert("parse_module".to_string(), start_time.elapsed());
 
@@ -210,66 +227,70 @@ fn create_stackless_engine(fuel: Option<u64>) -> StacklessEngine {
 
     // Register host functions for WASI logging interface
     // This is required for the component to be able to call the logging functions
-    engine.register_host_function("wasi:logging/logging", "log", move |engine, args| {
-        if args.len() >= 3 {
-            if let Some(level) = args[0].as_i32() {
-                let level_str = match level {
-                    0 => "trace",
-                    1 => "debug",
-                    2 => "info",
-                    3 => "warn",
-                    4 => "error",
-                    5 => "critical",
-                    _ => "info",
-                };
+    engine.register_host_function(
+        "wasi:logging/logging",
+        "log",
+        Box::new(move |engine: &mut dyn Any, args: Vec<Value>| {
+            if args.len() >= 3 {
+                if let Some(level) = args[0].as_i32() {
+                    let level_str = match level {
+                        0 => "trace",
+                        1 => "debug",
+                        2 => "info",
+                        3 => "warn",
+                        4 => "error",
+                        5 => "critical",
+                        _ => "info",
+                    };
 
-                // Extract context string (argument 1)
-                if let Some(context_ptr) = args[1].as_i32() {
-                    // Extract message string (argument 2)
-                    if let Some(message_ptr) = args[2].as_i32() {
-                        // Read context and message from memory
-                        if let Some(engine_ref) =
-                            engine.downcast_mut::<wrt::stackless::StacklessEngine>()
-                        {
-                            if let (Ok(context), Ok(message)) = (
-                                engine_ref.read_wit_string(context_ptr as u32),
-                                engine_ref.read_wit_string(message_ptr as u32),
-                            ) {
-                                // Debug output to console for now
-                                println!("[WASI LOG] {}: {} - {}", level_str, context, message);
+                    // Extract context string (argument 1)
+                    if let Some(context_ptr) = args[1].as_i32() {
+                        // Extract message string (argument 2)
+                        if let Some(message_ptr) = args[2].as_i32() {
+                            // Read context and message from memory
+                            if let Some(engine_ref) =
+                                engine.downcast_mut::<wrt::stackless::StacklessEngine>()
+                            {
+                                if let (Ok(context), Ok(message)) = (
+                                    engine_ref.read_wit_string(context_ptr as u32),
+                                    engine_ref.read_wit_string(message_ptr as u32),
+                                ) {
+                                    // Debug output to console for now
+                                    println!("[WASI LOG] {}: {} - {}", level_str, context, message);
 
-                                // Also use the actual log handler
-                                handle_component_log(
-                                    level_str,
-                                    &format!("{}: {}", context, message),
-                                );
+                                    // Also use the actual log handler
+                                    handle_component_log(
+                                        level_str,
+                                        &format!("{}: {}", context, message),
+                                    );
 
-                                // Use the engine's built-in log handler
-                                let log_level = match level_str {
-                                    "trace" => LogLevel::Trace,
-                                    "debug" => LogLevel::Debug,
-                                    "info" => LogLevel::Info,
-                                    "warn" => LogLevel::Warn,
-                                    "error" => LogLevel::Error,
-                                    "critical" => LogLevel::Critical,
-                                    _ => LogLevel::Info,
-                                };
-                                engine_ref
-                                    .handle_log(log_level, format!("{}: {}", context, message));
+                                    // Use the engine's built-in log handler
+                                    let log_level = match level_str {
+                                        "trace" => LogLevel::Trace,
+                                        "debug" => LogLevel::Debug,
+                                        "info" => LogLevel::Info,
+                                        "warn" => LogLevel::Warn,
+                                        "error" => LogLevel::Error,
+                                        "critical" => LogLevel::Critical,
+                                        _ => LogLevel::Info,
+                                    };
+                                    engine_ref
+                                        .handle_log(log_level, format!("{}: {}", context, message));
 
-                                return Ok(vec![]);
+                                    return Ok(vec![]);
+                                }
                             }
                         }
                     }
                 }
+                // Fall through on error
+                println!("[WASI LOG] Failed to extract log parameters");
             }
-            // Fall through on error
-            println!("[WASI LOG] Failed to extract log parameters");
-        }
 
-        // Return empty result on any error
-        Ok(vec![])
-    });
+            // Return empty result on any error
+            Ok(vec![])
+        }),
+    );
 
     // Apply fuel limit if specified
     if let Some(fuel) = fuel {
@@ -311,10 +332,29 @@ fn format_value_types(types: &[wrt::ValueType]) -> String {
 
 /// Parse a WebAssembly module from bytes
 fn parse_module(bytes: &[u8]) -> Result<Module> {
-    let empty_module = wrt::new_module();
-    empty_module
-        .load_from_binary(bytes)
-        .context("Failed to parse WebAssembly module")
+    debug!("Parsing WebAssembly module of {} bytes", bytes.len());
+
+    if bytes.is_empty() {
+        return Err(anyhow!("Empty WebAssembly binary"));
+    }
+
+    // Check for WebAssembly magic number
+    if bytes.len() < 4 || &bytes[0..4] != b"\0asm" {
+        return Err(anyhow!("Invalid WebAssembly binary magic number"));
+    }
+
+    let mut module = wrt::new_module();
+
+    match module.load_from_binary(bytes) {
+        Ok(loaded_module) => {
+            debug!("Successfully parsed WebAssembly module");
+            Ok(loaded_module)
+        }
+        Err(e) => {
+            error!("Failed to parse WebAssembly module: {}", e);
+            Err(anyhow!("Failed to parse WebAssembly module: {}", e))
+        }
+    }
 }
 
 /// Analyze component interfaces in a module
@@ -540,7 +580,7 @@ fn execute_component_function(
                     func_type
                         .params
                         .iter()
-                        .map(|param_type| wrt::Value::default_for_type(param_type))
+                        .map(wrt::Value::default_for_type)
                         .collect()
                 } else {
                     vec![]
@@ -553,7 +593,11 @@ fn execute_component_function(
         };
 
         // Execute the function
-        match engine.execute(instance_idx, func_idx, args) {
+        match engine.execute(
+            instance_idx.try_into().unwrap(),
+            func_idx.try_into().unwrap(),
+            args,
+        ) {
             Ok(results) => {
                 // Log execution times
                 let execution_time = Instant::now().duration_since(Instant::now());
@@ -686,7 +730,7 @@ fn load_component(
 
     // Execute the component's function if specified
     if let Some(func_name) = function_name {
-        execute_component_function(engine, instance_idx, func_name)?;
+        execute_component_function(engine, instance_idx.try_into().unwrap(), func_name)?;
     } else {
         info!("No function specified to call. Use --call <function> to execute a function");
         info!("Available exported functions:");

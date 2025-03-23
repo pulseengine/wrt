@@ -1,7 +1,14 @@
-use std::fmt;
+use core::fmt;
 
 use crate::resource::ResourceType;
-use crate::{String, Vec};
+
+// Import std when available
+#[cfg(feature = "std")]
+use std::{boxed::Box, string::String, vec::Vec};
+
+// Import alloc for no_std
+#[cfg(not(feature = "std"))]
+use alloc::{boxed::Box, string::String, vec::Vec};
 
 /// Represents a WebAssembly value type
 #[derive(Debug, Clone, PartialEq, Copy, Eq, Hash)]
@@ -25,7 +32,7 @@ pub enum ValueType {
 }
 
 /// Represents a WebAssembly function type
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FuncType {
     /// Parameter types
     pub params: Vec<ValueType>,
@@ -34,7 +41,7 @@ pub struct FuncType {
 }
 
 /// Represents a WebAssembly table type
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TableType {
     /// Element type
     pub element_type: ValueType,
@@ -45,7 +52,7 @@ pub struct TableType {
 }
 
 /// Represents a WebAssembly memory type
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MemoryType {
     /// Minimum size in pages
     pub min: u32,
@@ -54,7 +61,7 @@ pub struct MemoryType {
 }
 
 /// Represents a WebAssembly global type
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GlobalType {
     /// Content type
     pub content_type: ValueType,
@@ -158,13 +165,13 @@ pub struct InstanceType {
 }
 
 /// Reference to a component type
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ComponentTypeRef {
     /// Type index
     pub type_idx: u32,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ComponentResourceType {
     pub name: String,
     pub version: u32,
@@ -173,75 +180,80 @@ pub struct ComponentResourceType {
 impl fmt::Display for ValueType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ValueType::I32 => write!(f, "i32"),
-            ValueType::I64 => write!(f, "i64"),
-            ValueType::F32 => write!(f, "f32"),
-            ValueType::F64 => write!(f, "f64"),
-            ValueType::FuncRef => write!(f, "funcref"),
-            ValueType::ExternRef => write!(f, "externref"),
-            ValueType::V128 => write!(f, "v128"),
-            ValueType::AnyRef => write!(f, "anyref"),
+            Self::I32 => write!(f, "i32"),
+            Self::I64 => write!(f, "i64"),
+            Self::F32 => write!(f, "f32"),
+            Self::F64 => write!(f, "f64"),
+            Self::FuncRef => write!(f, "funcref"),
+            Self::ExternRef => write!(f, "externref"),
+            Self::V128 => write!(f, "v128"),
+            Self::AnyRef => write!(f, "anyref"),
         }
     }
 }
 
 impl ValueType {
     /// Returns the size of the value type in bytes
-    pub fn size(&self) -> usize {
+    #[must_use]
+    pub const fn size(&self) -> usize {
         match self {
-            ValueType::I32 | ValueType::F32 => 4,
-            ValueType::I64 | ValueType::F64 => 8,
-            ValueType::FuncRef | ValueType::ExternRef | ValueType::AnyRef => 8,
-            ValueType::V128 => 16,
+            Self::I32 | Self::F32 => 4,
+            Self::I64 | Self::F64 => 8,
+            Self::FuncRef | Self::ExternRef | Self::AnyRef => 8,
+            Self::V128 => 16,
         }
     }
 
     /// Returns whether the value type is a reference type
-    pub fn is_ref(&self) -> bool {
-        matches!(
-            self,
-            ValueType::FuncRef | ValueType::ExternRef | ValueType::AnyRef
-        )
+    #[must_use]
+    pub const fn is_ref(&self) -> bool {
+        matches!(self, Self::FuncRef | Self::ExternRef | Self::AnyRef)
     }
 
     /// Returns whether the value type is a numeric type
-    pub fn is_numeric(&self) -> bool {
+    #[must_use]
+    pub const fn is_numeric(&self) -> bool {
         matches!(
             self,
-            ValueType::I32 | ValueType::I64 | ValueType::F32 | ValueType::F64 | ValueType::V128
+            Self::I32 | Self::I64 | Self::F32 | Self::F64 | Self::V128
         )
     }
 
     /// Returns whether the value type is a vector type
-    pub fn is_vector(&self) -> bool {
-        matches!(self, ValueType::V128)
+    #[must_use]
+    pub const fn is_vector(&self) -> bool {
+        matches!(self, Self::V128)
     }
 }
 
 impl ComponentType {
     /// Creates a new component primitive type from a value type
-    pub fn from_value_type(value_type: ValueType) -> Self {
-        ComponentType::Primitive(value_type)
+    #[must_use]
+    pub const fn from_value_type(value_type: ValueType) -> Self {
+        Self::Primitive(value_type)
     }
 
     /// Checks if this type is a primitive type
-    pub fn is_primitive(&self) -> bool {
-        matches!(self, ComponentType::Primitive(_))
+    #[must_use]
+    pub const fn is_primitive(&self) -> bool {
+        matches!(self, Self::Primitive(_))
     }
 
     /// Checks if this type is a reference type
-    pub fn is_ref(&self) -> bool {
+    #[must_use]
+    pub const fn is_ref(&self) -> bool {
         match self {
-            ComponentType::Primitive(value_type) => value_type.is_ref(),
-            ComponentType::Resource(_) | ComponentType::Borrowed(_) | ComponentType::Own(_) => true,
+            Self::Primitive(value_type) => value_type.is_ref(),
+            Self::Resource(_) | Self::Borrowed(_) | Self::Own(_) => true,
             _ => false,
         }
     }
 
     /// Checks if this type is a numeric type
-    pub fn is_numeric(&self) -> bool {
+    #[must_use]
+    pub const fn is_numeric(&self) -> bool {
         match self {
-            ComponentType::Primitive(value_type) => match value_type {
+            Self::Primitive(value_type) => match value_type {
                 ValueType::I32 | ValueType::I64 | ValueType::F32 | ValueType::F64 => true,
                 _ => false,
             },
@@ -250,73 +262,87 @@ impl ComponentType {
     }
 
     /// Checks if this type is a record type
-    pub fn is_record(&self) -> bool {
-        matches!(self, ComponentType::Record(_))
+    #[must_use]
+    pub const fn is_record(&self) -> bool {
+        matches!(self, Self::Record(_))
     }
 
     /// Checks if this type is a tuple type
-    pub fn is_tuple(&self) -> bool {
-        matches!(self, ComponentType::Tuple(_))
+    #[must_use]
+    pub const fn is_tuple(&self) -> bool {
+        matches!(self, Self::Tuple(_))
     }
 
     /// Checks if this type is a list type
-    pub fn is_list(&self) -> bool {
-        matches!(self, ComponentType::List(_))
+    #[must_use]
+    pub const fn is_list(&self) -> bool {
+        matches!(self, Self::List(_))
     }
 
     /// Checks if this type is a flags type
-    pub fn is_flags(&self) -> bool {
-        matches!(self, ComponentType::Flags(_))
+    #[must_use]
+    pub const fn is_flags(&self) -> bool {
+        matches!(self, Self::Flags(_))
     }
 
     /// Checks if this type is a variant type
-    pub fn is_variant(&self) -> bool {
-        matches!(self, ComponentType::Variant(_))
+    #[must_use]
+    pub const fn is_variant(&self) -> bool {
+        matches!(self, Self::Variant(_))
     }
 
     /// Checks if this type is an enum type
-    pub fn is_enum(&self) -> bool {
-        matches!(self, ComponentType::Enum(_))
+    #[must_use]
+    pub const fn is_enum(&self) -> bool {
+        matches!(self, Self::Enum(_))
     }
 
     /// Checks if this type is a union type
-    pub fn is_union(&self) -> bool {
-        matches!(self, ComponentType::Union(_))
+    #[must_use]
+    pub const fn is_union(&self) -> bool {
+        matches!(self, Self::Union(_))
     }
 
     /// Checks if this type is an option type
-    pub fn is_option(&self) -> bool {
-        matches!(self, ComponentType::Option(_))
+    #[must_use]
+    pub const fn is_option(&self) -> bool {
+        matches!(self, Self::Option(_))
     }
 
     /// Checks if this type is a result type
-    pub fn is_result(&self) -> bool {
-        matches!(self, ComponentType::Result { .. })
+    #[must_use]
+    pub const fn is_result(&self) -> bool {
+        matches!(self, Self::Result { .. })
     }
 
     /// Checks if this type is a future type
-    pub fn is_future(&self) -> bool {
-        matches!(self, ComponentType::Future(_))
+    #[must_use]
+    pub const fn is_future(&self) -> bool {
+        matches!(self, Self::Future(_))
     }
 
     /// Checks if this type is a stream type
-    pub fn is_stream(&self) -> bool {
-        matches!(self, ComponentType::Stream { .. })
+    #[must_use]
+    pub const fn is_stream(&self) -> bool {
+        matches!(self, Self::Stream { .. })
     }
 
     /// Checks if this type is a resource type
-    pub fn is_resource(&self) -> bool {
-        matches!(self, ComponentType::Resource(_))
+    #[must_use]
+    pub const fn is_resource(&self) -> bool {
+        matches!(self, Self::Resource(_))
     }
 
     /// Checks if this type is a borrowed type
-    pub fn is_borrowed(&self) -> bool {
-        matches!(self, ComponentType::Borrowed(_))
+    #[must_use]
+    pub const fn is_borrowed(&self) -> bool {
+        matches!(self, Self::Borrowed(_))
     }
 
     /// Checks if this type is an own type
-    pub fn is_own(&self) -> bool {
-        matches!(self, ComponentType::Own(_))
+    #[must_use]
+    pub const fn is_own(&self) -> bool {
+        matches!(self, Self::Own(_))
     }
 }
 

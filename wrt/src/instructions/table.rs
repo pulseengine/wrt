@@ -16,8 +16,7 @@ use crate::{
 pub fn table_get(stack: &mut Vec<Value>, frame: &StacklessFrame, table_idx: u32) -> Result<()> {
     if table_idx as usize >= frame.module.table_addrs.len() {
         return Err(Error::Execution(format!(
-            "Invalid table index: {}",
-            table_idx
+            "Invalid table index: {table_idx}"
         )));
     }
 
@@ -31,8 +30,7 @@ pub fn table_get(stack: &mut Vec<Value>, frame: &StacklessFrame, table_idx: u32)
     if let Value::I32(idx) = value {
         if idx < 0 || idx as u32 >= table.size() {
             return Err(Error::Execution(format!(
-                "Table index out of bounds: {}",
-                idx
+                "Table index out of bounds: {idx}"
             )));
         }
 
@@ -50,8 +48,7 @@ pub fn table_get(stack: &mut Vec<Value>, frame: &StacklessFrame, table_idx: u32)
 pub fn table_set(stack: &mut Vec<Value>, frame: &mut StacklessFrame, table_idx: u32) -> Result<()> {
     if table_idx as usize >= frame.module.table_addrs.len() {
         return Err(Error::Execution(format!(
-            "Invalid table index: {}",
-            table_idx
+            "Invalid table index: {table_idx}"
         )));
     }
 
@@ -68,8 +65,7 @@ pub fn table_set(stack: &mut Vec<Value>, frame: &mut StacklessFrame, table_idx: 
     if let Value::I32(idx) = idx {
         if idx < 0 || idx as u32 >= table.size() {
             return Err(Error::Execution(format!(
-                "Table index out of bounds: {}",
-                idx
+                "Table index out of bounds: {idx}"
             )));
         }
 
@@ -86,8 +82,7 @@ pub fn table_set(stack: &mut Vec<Value>, frame: &mut StacklessFrame, table_idx: 
 pub fn table_size(stack: &mut Vec<Value>, frame: &StacklessFrame, table_idx: u32) -> Result<()> {
     if table_idx as usize >= frame.module.table_addrs.len() {
         return Err(Error::Execution(format!(
-            "Invalid table index: {}",
-            table_idx
+            "Invalid table index: {table_idx}"
         )));
     }
 
@@ -119,7 +114,7 @@ pub fn table_grow(
         .ok_or(Error::Execution("Stack underflow".into()))?;
 
     if n < 0 {
-        return Err(Error::Execution(format!("Invalid table size: {}", n)));
+        return Err(Error::Execution(format!("Invalid table size: {n}")));
     }
 
     let table_addr = &frame.module.table_addrs[table_idx as usize];

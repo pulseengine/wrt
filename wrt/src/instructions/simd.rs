@@ -7,7 +7,6 @@ use crate::Vec;
 use crate::{
     error::{Error, Result},
     execution::Stack,
-    instructions::InstructionExecutor,
     stackless::Frame as StacklessFrame,
     Value,
 };
@@ -35,7 +34,7 @@ pub fn handle_simd_instruction(
             // Use the first memory (index 0)
             let memory = &frame.module.memories[0];
 
-            v128_load(frame, stack, *offset, *align as u32)
+            v128_load(frame, stack, *offset, *align)
         }
         Instruction::V128Store(offset, align) => {
             // Check if the module has any memories
@@ -46,7 +45,7 @@ pub fn handle_simd_instruction(
             // Use the first memory (index 0)
             let memory = &mut frame.module.memories[0];
 
-            v128_store(frame, stack, *offset, *align as u32)
+            v128_store(frame, stack, *offset, *align)
         }
         Instruction::V128Const(bytes) => v128_const(&mut stack.values, *bytes),
 
@@ -78,7 +77,7 @@ pub fn handle_simd_instruction(
         Instruction::I16x8RelaxedQ15MulrS => i16x8_relaxed_q15mulr_s(&mut stack.values),
 
         // If not a SIMD instruction, return error to let the main handler handle it
-        _ => return Err(Error::Execution("Not a SIMD instruction".into())),
+        _ => Err(Error::Execution("Not a SIMD instruction".into())),
     }
 }
 
@@ -310,8 +309,7 @@ pub fn f64x2_splat(values: &mut Vec<Value>) -> Result<()> {
 pub fn i8x16_extract_lane_s(values: &mut Vec<Value>, lane_idx: u8) -> Result<()> {
     if lane_idx >= 16 {
         return Err(Error::Execution(format!(
-            "Lane index out of bounds: {}",
-            lane_idx
+            "Lane index out of bounds: {lane_idx}"
         )));
     }
 
@@ -329,7 +327,7 @@ pub fn i8x16_extract_lane_s(values: &mut Vec<Value>, lane_idx: u8) -> Result<()>
     let byte = bytes[lane_idx as usize];
 
     // Sign-extend to i32
-    let result = (byte as i8) as i32;
+    let result = i32::from(byte as i8);
 
     // Push result
     values.push(Value::I32(result));
@@ -340,8 +338,7 @@ pub fn i8x16_extract_lane_s(values: &mut Vec<Value>, lane_idx: u8) -> Result<()>
 pub fn i8x16_extract_lane_u(values: &mut Vec<Value>, lane_idx: u8) -> Result<()> {
     if lane_idx >= 16 {
         return Err(Error::Execution(format!(
-            "Lane index out of bounds: {}",
-            lane_idx
+            "Lane index out of bounds: {lane_idx}"
         )));
     }
 
@@ -359,14 +356,14 @@ pub fn i8x16_extract_lane_u(values: &mut Vec<Value>, lane_idx: u8) -> Result<()>
     let byte = bytes[lane_idx as usize];
 
     // Zero-extend to i32
-    let result = byte as i32;
+    let result = i32::from(byte);
 
     // Push result
     values.push(Value::I32(result));
     Ok(())
 }
 
-/// Implements the i32x4.dot_i16x8_s operation, which computes the dot product of signed 16-bit integers
+/// Implements the `i32x4.dot_i16x8_s` operation, which computes the dot product of signed 16-bit integers
 pub fn i32x4_dot_i16x8_s(values: &mut Vec<Value>) -> Result<()> {
     let b = values.pop().ok_or(Error::StackUnderflow)?;
     let a = values.pop().ok_or(Error::StackUnderflow)?;
@@ -402,8 +399,8 @@ pub fn i32x4_dot_i16x8_s(values: &mut Vec<Value>) -> Result<()> {
     let mut result_i32 = [0i32; 4];
     for i in 0..4 {
         let j = i * 2;
-        result_i32[i] =
-            (a_i16[j] as i32 * b_i16[j] as i32) + (a_i16[j + 1] as i32 * b_i16[j + 1] as i32);
+        result_i32[i] = (i32::from(a_i16[j]) * i32::from(b_i16[j]))
+            + (i32::from(a_i16[j + 1]) * i32::from(b_i16[j + 1]));
     }
 
     // Convert to bytes

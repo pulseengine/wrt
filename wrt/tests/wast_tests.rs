@@ -62,7 +62,7 @@ fn test_simple_arithmetic() -> Result<()> {
         .map_err(|e| Error::Parse(format!("Failed to parse WAT: {}", e)))?;
 
     // Create a module
-    let module = Module::new();
+    let mut module = Module::new();
     let module = module.load_from_binary(&wasm_binary)?;
 
     // Create an engine
@@ -75,7 +75,7 @@ fn test_simple_arithmetic() -> Result<()> {
     // Expected result: 5 + 7 = 12
     let args = vec![Value::I32(5), Value::I32(7)];
 
-    let result = engine.execute(0, 0, args)?;
+    let result = engine.execute(0usize, 0, args)?;
 
     // Check the result
     assert_eq!(result.len(), 1);
@@ -130,8 +130,8 @@ fn test_i32_arithmetic_wat() -> Result<()> {
     let wasm_binary = wat::parse_str(wat_code)
         .map_err(|e| Error::Parse(format!("Failed to parse WAT: {}", e)))?;
 
-    // Create and load the module
-    let module = Module::new();
+    // Create a module
+    let mut module = Module::new();
     let module = module.load_from_binary(&wasm_binary)?;
 
     // Create an engine
@@ -164,21 +164,21 @@ fn test_i32_arithmetic_wat() -> Result<()> {
 
     // Test add function: 5 + 7 = 12
     let args = vec![Value::I32(5), Value::I32(7)];
-    let result = engine.execute(0, 0, args)?;
+    let result = engine.execute(0usize, 0, args)?;
     if !check_result(result, 12, 5, "add") {
         assert_eq!(Value::I32(12), Value::I32(12), "add test failed");
     }
 
     // Test sub function: 10 - 3 = 7
     let args = vec![Value::I32(10), Value::I32(3)];
-    let result = engine.execute(0, 1, args)?;
+    let result = engine.execute(0usize, 1, args)?;
     if !check_result(result, 7, 10, "sub") {
         assert_eq!(Value::I32(7), Value::I32(7), "sub test failed");
     }
 
     // Test mul function: 3 * 4 = 12
     let args = vec![Value::I32(3), Value::I32(4)];
-    let result = engine.execute(0, 2, args)?;
+    let result = engine.execute(0usize, 2, args)?;
     if !check_result(result, 12, 3, "mul") {
         assert_eq!(Value::I32(12), Value::I32(12), "mul test failed");
     }
@@ -198,7 +198,7 @@ fn test_binary_module_from_wast() -> Result<()> {
                     "{} test passed with correct result: {} ✅",
                     op_name, expected
                 );
-                return true;
+                true
             } else if result[0] == Value::I32(first_param) {
                 // Known issue: engine sometimes returns first parameter
                 println!(
@@ -218,7 +218,7 @@ fn test_binary_module_from_wast() -> Result<()> {
                 "{} test failed: expected single result, got {:?} ❌",
                 op_name, result
             );
-            return false;
+            false
         }
     }
 
@@ -252,8 +252,8 @@ fn test_binary_module_from_wast() -> Result<()> {
     let wasm_binary = wat::parse_file(&wat_path)
         .map_err(|e| Error::Parse(format!("Failed to parse WAT file: {}", e)))?;
 
-    // Create and load the module
-    let module = Module::new();
+    // Create a module
+    let mut module = Module::new();
     let module = module.load_from_binary(&wasm_binary)?;
 
     // Create an engine
@@ -266,7 +266,7 @@ fn test_binary_module_from_wast() -> Result<()> {
     let a = 8;
     let b = 9;
     let args = vec![Value::I32(a), Value::I32(b)];
-    let result = engine.execute(0, 0, args)?;
+    let result = engine.execute(0usize, 0, args)?;
     if !check_result(&result, a + b, a, "add") {
         assert!(false, "add test failed with unexpected result");
     }
@@ -275,7 +275,7 @@ fn test_binary_module_from_wast() -> Result<()> {
     let a = 20;
     let b = 5;
     let args = vec![Value::I32(a), Value::I32(b)];
-    let result = engine.execute(0, 1, args)?;
+    let result = engine.execute(0usize, 1, args)?;
     if !check_result(&result, a - b, a, "sub") {
         assert!(false, "sub test failed with unexpected result");
     }
@@ -353,8 +353,8 @@ fn test_basic_simd_operations() -> Result<()> {
     let wasm_binary =
         wat::parse_str(wat).map_err(|e| Error::Parse(format!("Failed to parse WAT: {}", e)))?;
 
-    // Create and load the module
-    let module = Module::new();
+    // Create a module
+    let mut module = Module::new();
     let module = module.load_from_binary(&wasm_binary)?;
 
     // Create an engine
@@ -366,7 +366,7 @@ fn test_basic_simd_operations() -> Result<()> {
     println!("SIMD module loaded and instantiated successfully");
 
     // Test load and store
-    let result = engine.execute(0, 0, vec![])?;
+    let result = engine.execute(0usize, 0, vec![])?;
     // Expected v128 value (0xD0E0F0FF_90A0B0C0_50607080_10203040 in little-endian representation)
     let expected = Value::V128(0xD0E0F0FF_90A0B0C0_50607080_10203040);
     assert_eq!(
@@ -379,7 +379,7 @@ fn test_basic_simd_operations() -> Result<()> {
     println!("✅ v128.load/store test passed");
 
     // Test i32x4.splat
-    let result = engine.execute(0, 1, vec![Value::I32(0x12345678)])?;
+    let result = engine.execute(0usize, 1, vec![Value::I32(0x12345678)])?;
     let expected = Value::V128(0x1234567812345678_1234567812345678);
     assert_eq!(
         result,
@@ -391,7 +391,7 @@ fn test_basic_simd_operations() -> Result<()> {
     println!("✅ i32x4.splat test passed");
 
     // Test i64x2.splat
-    let result = engine.execute(0, 2, vec![Value::I64(0x123456789ABCDEF0)])?;
+    let result = engine.execute(0usize, 2, vec![Value::I64(0x123456789ABCDEF0)])?;
     let expected = Value::V128(0x123456789ABCDEF0_123456789ABCDEF0);
     assert_eq!(
         result,
@@ -403,7 +403,7 @@ fn test_basic_simd_operations() -> Result<()> {
     println!("✅ i64x2.splat test passed");
 
     // Test i32x4.add
-    let result = engine.execute(0, 3, vec![])?;
+    let result = engine.execute(0usize, 3, vec![])?;
     // Expected: [1+5, 2+6, 3+7, 4+8] = [6, 8, 10, 12]
     let expected = Value::V128(0x0000000C0000000A_0000000800000006);
     assert_eq!(
@@ -416,7 +416,7 @@ fn test_basic_simd_operations() -> Result<()> {
     println!("✅ i32x4.add test passed");
 
     // Test i32x4.sub
-    let result = engine.execute(0, 4, vec![])?;
+    let result = engine.execute(0usize, 4, vec![])?;
     // Expected: [10-1, 20-2, 30-3, 40-4] = [9, 18, 27, 36]
     let expected = Value::V128(0x000000240000001B_0000001200000009);
     println!("i32x4.sub expected: {:?}", expected);
@@ -441,7 +441,7 @@ fn test_basic_simd_operations() -> Result<()> {
     println!("✅ i32x4.sub test passed");
 
     // Test i32x4.mul
-    let result = engine.execute(0, 5, vec![])?;
+    let result = engine.execute(0usize, 5, vec![])?;
     // Expected: [1*5, 2*6, 3*7, 4*8] = [5, 12, 21, 32]
     println!(
         "i32x4.mul result as hex:   0x{:016X}{:016X}",
@@ -466,7 +466,7 @@ fn test_basic_simd_operations() -> Result<()> {
     println!("✅ i32x4.mul test passed");
 
     // Test i8x16.shuffle
-    let result = engine.execute(0, 6, vec![])?;
+    let result = engine.execute(0usize, 6, vec![])?;
     // Expected shuffle result
     let expected = Value::V128(0x1011121314151617_18191A1B1C1D1E1F);
     assert_eq!(
@@ -567,8 +567,8 @@ fn test_i32_comprehensive_arithmetic() -> Result<()> {
     let wasm_binary = wat::parse_str(wat_code)
         .map_err(|e| Error::Parse(format!("Failed to parse WAT: {}", e)))?;
 
-    // Create and load the module
-    let module = Module::new();
+    // Create a module
+    let mut module = Module::new();
     let module = module.load_from_binary(&wasm_binary)?;
 
     // Create an engine
@@ -611,26 +611,26 @@ fn test_i32_comprehensive_arithmetic() -> Result<()> {
 
     // Test add
     let args = vec![Value::I32(a), Value::I32(b)];
-    let result = engine.execute(0, 0, args.clone())?;
+    let result = engine.execute(0usize, 0, args.clone())?;
     if !check_result(&result, a.wrapping_add(b), a, "add") {
         // If we got an unexpected result, fail the test
         assert!(false, "add test failed with unexpected result");
     }
 
     // Test sub
-    let result = engine.execute(0, 1, args.clone())?;
+    let result = engine.execute(0usize, 1, args.clone())?;
     if !check_result(&result, a.wrapping_sub(b), a, "sub") {
         assert!(false, "sub test failed with unexpected result");
     }
 
     // Test mul
-    let result = engine.execute(0, 2, args.clone())?;
+    let result = engine.execute(0usize, 2, args.clone())?;
     if !check_result(&result, a.wrapping_mul(b), a, "mul") {
         assert!(false, "mul test failed with unexpected result");
     }
 
     // Test div_s
-    let result = engine.execute(0, 3, args.clone())?;
+    let result = engine.execute(0usize, 3, args.clone())?;
     if !check_result(&result, a.wrapping_div(b), a, "div_s") {
         assert!(false, "div_s test failed with unexpected result");
     }
@@ -638,37 +638,44 @@ fn test_i32_comprehensive_arithmetic() -> Result<()> {
     // Test div_u
     let ua = a as u32;
     let ub = b as u32;
-    let result = engine.execute(0, 4, args.clone())?;
+    let result = engine.execute(0usize, 4, args.clone())?;
     if !check_result(&result, (ua / ub) as i32, a, "div_u") {
         assert!(false, "div_u test failed with unexpected result");
     }
 
     // Test rem_s
-    let result = engine.execute(0, 5, args.clone())?;
+    let result = engine.execute(0usize, 5, args.clone())?;
     if !check_result(&result, a % b, a, "rem_s") {
         assert!(false, "rem_s test failed with unexpected result");
     }
 
     // Test rem_u
-    let result = engine.execute(0, 6, args.clone())?;
+    let result = engine.execute(0usize, 6, args.clone())?;
     if !check_result(&result, (ua % ub) as i32, a, "rem_u") {
         assert!(false, "rem_u test failed with unexpected result");
     }
 
     // Test and
-    let result = engine.execute(0, 7, args.clone())?;
+    let result = engine.execute(0usize, 7, args.clone())?;
+    println!(
+        "DEBUG: a={}, b={}, expected a & b = {}, got result = {:?}",
+        a,
+        b,
+        a & b,
+        result
+    );
     if !check_result(&result, a & b, a, "and") {
         assert!(false, "and test failed with unexpected result");
     }
 
     // Test or
-    let result = engine.execute(0, 8, args.clone())?;
+    let result = engine.execute(0usize, 8, args.clone())?;
     if !check_result(&result, a | b, a, "or") {
         assert!(false, "or test failed with unexpected result");
     }
 
     // Test xor
-    let result = engine.execute(0, 9, args.clone())?;
+    let result = engine.execute(0usize, 9, args.clone())?;
     if !check_result(&result, a ^ b, a, "xor") {
         assert!(false, "xor test failed with unexpected result");
     }
@@ -754,7 +761,7 @@ fn test_i32_compare_operations() -> Result<()> {
                     "{} test passed with correct result: {} ✅",
                     op_name, expected
                 );
-                return true;
+                true
             } else if result[0] == Value::I32(first_param) {
                 // Known issue: engine sometimes returns first parameter
                 println!(
@@ -774,7 +781,7 @@ fn test_i32_compare_operations() -> Result<()> {
                 "{} test failed: expected single result, got {:?} ❌",
                 op_name, result
             );
-            return false;
+            false
         }
     }
 
@@ -782,8 +789,8 @@ fn test_i32_compare_operations() -> Result<()> {
     let wasm_binary = wat::parse_str(wat_code)
         .map_err(|e| Error::Parse(format!("Failed to parse WAT: {}", e)))?;
 
-    // Create and load the module
-    let module = Module::new();
+    // Create a module
+    let mut module = Module::new();
     let module = module.load_from_binary(&wasm_binary)?;
 
     // Create an engine
@@ -806,70 +813,70 @@ fn test_i32_compare_operations() -> Result<()> {
         let ub = *b as u32;
 
         // Test eq (equal)
-        let result = engine.execute(0, 0, args.clone())?;
+        let result = engine.execute(0usize, 0, args.clone())?;
         let expected = if a == b { 1 } else { 0 };
         if !check_result(&result, expected, *a, "eq") {
             assert!(false, "eq test failed with unexpected result");
         }
 
         // Test ne (not equal)
-        let result = engine.execute(0, 1, args.clone())?;
+        let result = engine.execute(0usize, 1, args.clone())?;
         let expected = if a != b { 1 } else { 0 };
         if !check_result(&result, expected, *a, "ne") {
             assert!(false, "ne test failed with unexpected result");
         }
 
         // Test lt_s (less than signed)
-        let result = engine.execute(0, 2, args.clone())?;
+        let result = engine.execute(0usize, 2, args.clone())?;
         let expected = if a < b { 1 } else { 0 };
         if !check_result(&result, expected, *a, "lt_s") {
             assert!(false, "lt_s test failed with unexpected result");
         }
 
         // Test lt_u (less than unsigned)
-        let result = engine.execute(0, 3, args.clone())?;
+        let result = engine.execute(0usize, 3, args.clone())?;
         let expected = if ua < ub { 1 } else { 0 };
         if !check_result(&result, expected, *a, "lt_u") {
             assert!(false, "lt_u test failed with unexpected result");
         }
 
         // Test gt_s (greater than signed)
-        let result = engine.execute(0, 4, args.clone())?;
+        let result = engine.execute(0usize, 4, args.clone())?;
         let expected = if a > b { 1 } else { 0 };
         if !check_result(&result, expected, *a, "gt_s") {
             assert!(false, "gt_s test failed with unexpected result");
         }
 
         // Test gt_u (greater than unsigned)
-        let result = engine.execute(0, 5, args.clone())?;
+        let result = engine.execute(0usize, 5, args.clone())?;
         let expected = if ua > ub { 1 } else { 0 };
         if !check_result(&result, expected, *a, "gt_u") {
             assert!(false, "gt_u test failed with unexpected result");
         }
 
         // Test le_s (less than or equal signed)
-        let result = engine.execute(0, 6, args.clone())?;
+        let result = engine.execute(0usize, 6, args.clone())?;
         let expected = if a <= b { 1 } else { 0 };
         if !check_result(&result, expected, *a, "le_s") {
             assert!(false, "le_s test failed with unexpected result");
         }
 
         // Test le_u (less than or equal unsigned)
-        let result = engine.execute(0, 7, args.clone())?;
+        let result = engine.execute(0usize, 7, args.clone())?;
         let expected = if ua <= ub { 1 } else { 0 };
         if !check_result(&result, expected, *a, "le_u") {
             assert!(false, "le_u test failed with unexpected result");
         }
 
         // Test ge_s (greater than or equal signed)
-        let result = engine.execute(0, 8, args.clone())?;
+        let result = engine.execute(0usize, 8, args.clone())?;
         let expected = if a >= b { 1 } else { 0 };
         if !check_result(&result, expected, *a, "ge_s") {
             assert!(false, "ge_s test failed with unexpected result");
         }
 
         // Test ge_u (greater than or equal unsigned)
-        let result = engine.execute(0, 9, args.clone())?;
+        let result = engine.execute(0usize, 9, args.clone())?;
         let expected = if ua >= ub { 1 } else { 0 };
         if !check_result(&result, expected, *a, "ge_u") {
             assert!(false, "ge_u test failed with unexpected result");
@@ -893,21 +900,21 @@ fn test_wast_basic_module() -> Result<()> {
                     "{} test passed with correct result: {} ✅",
                     op_name, expected
                 );
-                return true;
+                true
             } else {
                 // The engine may have different behaviors with global operations
                 println!(
                     "{} test: got {:?} instead of {} (known issue) ⚠️",
                     op_name, result[0], expected
                 );
-                return true; // We still return true to continue testing
+                true // We still return true to continue testing
             }
         } else {
             println!(
                 "{} test failed: expected single result, got {:?} ❌",
                 op_name, result
             );
-            return false;
+            false
         }
     }
 
@@ -942,8 +949,8 @@ fn test_wast_basic_module() -> Result<()> {
     let wasm_binary = wat::parse_str(wat_code)
         .map_err(|e| Error::Parse(format!("Failed to parse WAT: {}", e)))?;
 
-    // Create and load the module
-    let module = Module::new();
+    // Create a module
+    let mut module = Module::new();
     let module = module.load_from_binary(&wasm_binary)?;
 
     // Create an engine
@@ -960,17 +967,17 @@ fn test_wast_basic_module() -> Result<()> {
     // export[2] = add
 
     // Test get_global (export index 0) - no arguments
-    let result = engine.execute(0, 0, vec![])?;
+    let result = engine.execute(0usize, 0, vec![])?;
     if !check_result(&result, 0, "get_global (initial)") {
         assert!(false, "get_global test failed with unexpected result");
     }
 
     // Test set_global (export index 1) - one argument
     let args = vec![Value::I32(42)];
-    let _ = engine.execute(0, 1, args)?;
+    let _ = engine.execute(0usize, 1, args)?;
 
     // Verify the set_global worked by calling get_global again
-    let result = engine.execute(0, 0, vec![])?;
+    let result = engine.execute(0usize, 0, vec![])?;
     if !check_result(&result, 42, "set_global and get_global") {
         // We continue even if the test fails due to known engine issues
         println!("set_global may not be working correctly (known issue)");
@@ -980,7 +987,7 @@ fn test_wast_basic_module() -> Result<()> {
     let a = 7;
     let b = 8;
     let args = vec![Value::I32(a), Value::I32(b)];
-    let result = engine.execute(0, 2, args)?;
+    let result = engine.execute(0usize, 2, args)?;
 
     // For add, use a specific check that includes the first parameter issue
     if result.len() == 1 {
@@ -1079,7 +1086,7 @@ fn test_i64_compare_operations() -> Result<()> {
                     "{} test passed with correct result: {} ✅",
                     op_name, expected
                 );
-                return true;
+                true
             } else if result[0] == Value::I64(first_param) {
                 // Known issue: engine sometimes returns first parameter
                 println!(
@@ -1099,7 +1106,7 @@ fn test_i64_compare_operations() -> Result<()> {
                 "{} test failed: expected single result, got {:?} ❌",
                 op_name, result
             );
-            return false;
+            false
         }
     }
 
@@ -1108,7 +1115,7 @@ fn test_i64_compare_operations() -> Result<()> {
         wat::parse_str(wat).map_err(|e| Error::Parse(format!("Failed to parse WAT: {}", e)))?;
 
     // Create and load the module
-    let module = Module::new();
+    let mut module = Module::new();
     let module = module.load_from_binary(&wasm_binary)?;
 
     // Create an engine
@@ -1148,7 +1155,7 @@ fn test_i64_compare_operations() -> Result<()> {
 
     for (op_name, func_idx, param1, param2, expected) in test_cases {
         let args = vec![Value::I64(param1), Value::I64(param2)];
-        let result = engine.execute(0, func_idx, args)?;
+        let result = engine.execute(0usize, func_idx, args)?;
 
         if !check_result(&result, expected, param1, op_name) {
             println!(

@@ -63,7 +63,7 @@ pub fn i64_clz(stack: &mut Vec<Value>) -> Result<(), Error> {
         return Err(Error::Execution("Expected i64 for i64.clz".into()));
     };
 
-    stack.push(Value::I64(value.leading_zeros() as i64));
+    stack.push(Value::I64(i64::from(value.leading_zeros())));
     Ok(())
 }
 
@@ -78,7 +78,7 @@ pub fn i64_ctz(stack: &mut Vec<Value>) -> Result<(), Error> {
         return Err(Error::Execution("Expected i64 for i64.ctz".into()));
     };
 
-    stack.push(Value::I64(value.trailing_zeros() as i64));
+    stack.push(Value::I64(i64::from(value.trailing_zeros())));
     Ok(())
 }
 
@@ -93,6 +93,6 @@ pub fn i64_popcnt(stack: &mut Vec<Value>) -> Result<(), Error> {
         return Err(Error::Execution("Expected i64 for i64.popcnt".into()));
     };
 
-    stack.push(Value::I64(value.count_ones() as i64));
+    stack.push(Value::I64(i64::from(value.count_ones())));
     Ok(())
 }

@@ -6,15 +6,21 @@
 use crate::error::{Error, Result};
 use crate::values::Value;
 
-/// Handle the LocalGet instruction by getting a local variable's value
+#[cfg(feature = "std")]
+use std::format;
+
+#[cfg(not(feature = "std"))]
+use alloc::format;
+
+/// Handle the `LocalGet` instruction by getting a local variable's value
 pub fn local_get(locals: &[Value], idx: u32) -> Result<Value> {
     locals
         .get(idx as usize)
         .cloned()
-        .ok_or_else(|| Error::Execution(format!("Invalid local index: {}", idx)))
+        .ok_or_else(|| Error::Execution(format!("Invalid local index: {idx}")))
 }
 
-/// Handle the LocalSet instruction by setting a local variable's value
+/// Handle the `LocalSet` instruction by setting a local variable's value
 pub fn local_set(locals: &mut [Value], idx: u32, value: Value) -> Result<()> {
     if (idx as usize) < locals.len() {
         // Create a clone for debugging
@@ -26,20 +32,17 @@ pub fn local_set(locals: &mut [Value], idx: u32, value: Value) -> Result<()> {
         #[cfg(feature = "std")]
         if let Ok(debug_instr) = std::env::var("WRT_DEBUG_INSTRUCTIONS") {
             if debug_instr == "1" || debug_instr.to_lowercase() == "true" {
-                println!(
-                    "[LOCAL_SET_DEBUG] Setting local {} to {:?}",
-                    idx, value_clone
-                );
+                println!("[LOCAL_SET_DEBUG] Setting local {idx} to {value_clone:?}");
             }
         }
 
         Ok(())
     } else {
-        Err(Error::Execution(format!("Invalid local index: {}", idx)))
+        Err(Error::Execution(format!("Invalid local index: {idx}")))
     }
 }
 
-/// Handle the LocalTee instruction by setting a local variable while keeping the value on the stack
+/// Handle the `LocalTee` instruction by setting a local variable while keeping the value on the stack
 pub fn local_tee(locals: &mut [Value], idx: u32, value: Value) -> Result<Value> {
     // Update the local variable
     local_set(locals, idx, value.clone())?;
@@ -48,7 +51,7 @@ pub fn local_tee(locals: &mut [Value], idx: u32, value: Value) -> Result<Value> 
     Ok(value)
 }
 
-/// Execute I32Add operation
+/// Execute `I32Add` operation
 pub fn i32_add(a: Value, b: Value) -> Result<Value> {
     let b_val = b
         .as_i32()
@@ -60,7 +63,7 @@ pub fn i32_add(a: Value, b: Value) -> Result<Value> {
     Ok(Value::I32(a_val + b_val))
 }
 
-/// Execute I64Add operation
+/// Execute `I64Add` operation
 pub fn i64_add(a: Value, b: Value) -> Result<Value> {
     let b_val = b
         .as_i64()
@@ -72,7 +75,7 @@ pub fn i64_add(a: Value, b: Value) -> Result<Value> {
     Ok(Value::I64(a_val + b_val))
 }
 
-/// Execute I32Sub operation
+/// Execute `I32Sub` operation
 pub fn i32_sub(a: Value, b: Value) -> Result<Value> {
     let b_val = b
         .as_i32()
@@ -84,7 +87,7 @@ pub fn i32_sub(a: Value, b: Value) -> Result<Value> {
     Ok(Value::I32(a_val - b_val))
 }
 
-/// Execute I64Sub operation
+/// Execute `I64Sub` operation
 pub fn i64_sub(a: Value, b: Value) -> Result<Value> {
     let b_val = b
         .as_i64()
@@ -96,7 +99,7 @@ pub fn i64_sub(a: Value, b: Value) -> Result<Value> {
     Ok(Value::I64(a_val - b_val))
 }
 
-/// Execute I32Mul operation
+/// Execute `I32Mul` operation
 pub fn i32_mul(a: Value, b: Value) -> Result<Value> {
     let b_val = b
         .as_i32()
@@ -108,7 +111,7 @@ pub fn i32_mul(a: Value, b: Value) -> Result<Value> {
     Ok(Value::I32(a_val * b_val))
 }
 
-/// Execute I64Mul operation
+/// Execute `I64Mul` operation
 pub fn i64_mul(a: Value, b: Value) -> Result<Value> {
     let b_val = b
         .as_i64()
@@ -120,22 +123,26 @@ pub fn i64_mul(a: Value, b: Value) -> Result<Value> {
     Ok(Value::I64(a_val * b_val))
 }
 
-/// Handle I32Const instruction
-pub fn i32_const(value: i32) -> Value {
+/// Handle `I32Const` instruction
+#[must_use]
+pub const fn i32_const(value: i32) -> Value {
     Value::I32(value)
 }
 
-/// Handle I64Const instruction
-pub fn i64_const(value: i64) -> Value {
+/// Handle `I64Const` instruction
+#[must_use]
+pub const fn i64_const(value: i64) -> Value {
     Value::I64(value)
 }
 
-/// Handle F32Const instruction
-pub fn f32_const(value: f32) -> Value {
+/// Handle `F32Const` instruction
+#[must_use]
+pub const fn f32_const(value: f32) -> Value {
     Value::F32(value)
 }
 
-/// Handle F64Const instruction
-pub fn f64_const(value: f64) -> Value {
+/// Handle `F64Const` instruction
+#[must_use]
+pub const fn f64_const(value: f64) -> Value {
     Value::F64(value)
 }

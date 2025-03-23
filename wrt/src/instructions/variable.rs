@@ -16,8 +16,7 @@ use crate::{
 pub fn local_get(stack: &mut Vec<Value>, frame: &StacklessFrame, local_idx: u32) -> Result<()> {
     if local_idx as usize >= frame.locals.len() {
         return Err(Error::Execution(format!(
-            "Invalid local index: {}",
-            local_idx
+            "Invalid local index: {local_idx}"
         )));
     }
 
@@ -31,8 +30,7 @@ pub fn local_get(stack: &mut Vec<Value>, frame: &StacklessFrame, local_idx: u32)
 pub fn local_set(stack: &mut Vec<Value>, frame: &mut StacklessFrame, local_idx: u32) -> Result<()> {
     if local_idx as usize >= frame.locals.len() {
         return Err(Error::Execution(format!(
-            "Invalid local index: {}",
-            local_idx
+            "Invalid local index: {local_idx}"
         )));
     }
 
@@ -49,8 +47,7 @@ pub fn local_set(stack: &mut Vec<Value>, frame: &mut StacklessFrame, local_idx: 
 pub fn local_tee(stack: &mut Vec<Value>, frame: &mut StacklessFrame, local_idx: u32) -> Result<()> {
     if local_idx as usize >= frame.locals.len() {
         return Err(Error::Execution(format!(
-            "Invalid local index: {}",
-            local_idx
+            "Invalid local index: {local_idx}"
         )));
     }
 
@@ -69,8 +66,7 @@ pub fn local_tee(stack: &mut Vec<Value>, frame: &mut StacklessFrame, local_idx: 
 pub fn global_get(stack: &mut Vec<Value>, frame: &StacklessFrame, global_idx: u32) -> Result<()> {
     if global_idx as usize >= frame.module.global_addrs.len() {
         return Err(Error::Execution(format!(
-            "Invalid global index: {}",
-            global_idx
+            "Invalid global index: {global_idx}"
         )));
     }
 

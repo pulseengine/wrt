@@ -1,5 +1,5 @@
 use crate::error::{Error, Result};
-use crate::types::*;
+use crate::types::{ExternType, FuncType, GlobalType, MemoryType, TableType};
 use crate::values::Value;
 use crate::{format, String, Vec};
 use crate::{Global, Memory, Table};
@@ -126,17 +126,19 @@ pub struct Namespace {
 
 impl Namespace {
     /// Creates a namespace from a string
+    #[must_use]
     pub fn from_string(s: &str) -> Self {
         let elements = s
             .split('.')
             .filter(|part| !part.is_empty())
-            .map(|part| part.to_string())
+            .map(std::string::ToString::to_string)
             .collect();
         Self { elements }
     }
 
     /// Checks if this namespace matches another namespace
-    pub fn matches(&self, other: &Namespace) -> bool {
+    #[must_use]
+    pub fn matches(&self, other: &Self) -> bool {
         if self.elements.len() != other.elements.len() {
             return false;
         }
@@ -148,11 +150,13 @@ impl Namespace {
     }
 
     /// Returns a string representation of this namespace
+    #[must_use]
     pub fn to_string(&self) -> String {
         self.elements.join(".")
     }
 
     /// Checks if this namespace is empty
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.elements.is_empty()
     }
@@ -171,7 +175,8 @@ pub struct ImportDefinition {
 
 impl Component {
     /// Creates a new component with the given type
-    pub fn new(component_type: ComponentType) -> Self {
+    #[must_use]
+    pub const fn new(component_type: ComponentType) -> Self {
         Self {
             component_type,
             exports: Vec::new(),
@@ -204,8 +209,7 @@ impl Component {
 
             if !types_are_compatible(import_type, &import.ty) {
                 return Err(Error::Validation(format!(
-                    "Import {} has incompatible type",
-                    import_name
+                    "Import {import_name} has incompatible type"
                 )));
             }
 
@@ -269,7 +273,7 @@ impl Component {
                     // Resource exports are handled through the resource table
                     // For now, we'll create a trap since proper resource management
                     // requires more infrastructure
-                    ExternValue::Trap(format!("Resource {} not fully implemented", name))
+                    ExternValue::Trap(format!("Resource {name} not fully implemented"))
                 }
                 ExternType::Instance(instance_type) => {
                     // For instance exports, create a new instance with initialized exports
@@ -285,15 +289,12 @@ impl Component {
                     self.instances.push(instance);
 
                     // Return a placeholder reference for now - will be updated during linking
-                    ExternValue::Trap(format!("Instance {} pending link", name))
+                    ExternValue::Trap(format!("Instance {name} pending link"))
                 }
                 ExternType::Component(_component_type) => {
                     // Component exports are not instantiated here - they should be instantiated
                     // separately and then linked. This is a placeholder.
-                    ExternValue::Trap(format!(
-                        "Component {} requires separate instantiation",
-                        name
-                    ))
+                    ExternValue::Trap(format!("Component {name} requires separate instantiation"))
                 }
             };
 
@@ -321,7 +322,7 @@ impl Component {
             let value = match export_type {
                 ExternType::Function(func_type) => ExternValue::Function(FunctionValue {
                     ty: func_type.clone(),
-                    export_name: format!("{}.{}", instance_name, export_name),
+                    export_name: format!("{instance_name}.{export_name}"),
                 }),
                 ExternType::Table(table_type) => ExternValue::Table(TableValue {
                     ty: table_type.clone(),
@@ -340,10 +341,7 @@ impl Component {
                 }),
                 _ => {
                     // More complex types will be handled during linking
-                    ExternValue::Trap(format!(
-                        "Export {}.{} pending link",
-                        instance_name, export_name
-                    ))
+                    ExternValue::Trap(format!("Export {instance_name}.{export_name} pending link"))
                 }
             };
 
@@ -458,7 +456,7 @@ impl Component {
         // Check if it's a memory
         let memory_value = match &export.value {
             ExternValue::Memory(mem) => mem,
-            _ => return Err(Error::Execution(format!("Export {} is not a memory", name))),
+            _ => return Err(Error::Execution(format!("Export {name} is not a memory"))),
         };
 
         // Read from memory
@@ -478,12 +476,7 @@ impl Component {
         // Check if it's a function
         let func_value = match &export.value {
             ExternValue::Function(func) => func,
-            _ => {
-                return Err(Error::Execution(format!(
-                    "Export {} is not a function",
-                    name
-                )))
-            }
+            _ => return Err(Error::Execution(format!("Export {name} is not a function"))),
         };
 
         // Check argument count
@@ -499,8 +492,7 @@ impl Component {
         for (i, (arg, expected_type)) in args.iter().zip(func_value.ty.params.iter()).enumerate() {
             if !arg.matches_type(expected_type) {
                 return Err(Error::Execution(format!(
-                    "Argument {} has invalid type - expected {:?}, got {:?}",
-                    i, expected_type, arg
+                    "Argument {i} has invalid type - expected {expected_type:?}, got {arg:?}"
                 )));
             }
         }
@@ -520,7 +512,7 @@ impl Component {
         // Check if it's a memory
         let memory_value = match &mut export.value {
             ExternValue::Memory(mem) => mem,
-            _ => return Err(Error::Execution(format!("Export {} is not a memory", name))),
+            _ => return Err(Error::Execution(format!("Export {name} is not a memory"))),
         };
 
         // Write to memory
@@ -532,7 +524,7 @@ impl Component {
         self.exports
             .iter()
             .find(|e| e.name == name)
-            .ok_or_else(|| Error::Validation(format!("Export {} not found", name)))
+            .ok_or_else(|| Error::Validation(format!("Export {name} not found")))
     }
 
     /// Gets a mutable reference to an export by name
@@ -540,7 +532,7 @@ impl Component {
         self.exports
             .iter_mut()
             .find(|e| e.name == name)
-            .ok_or_else(|| Error::Validation(format!("Export {} not found", name)))
+            .ok_or_else(|| Error::Validation(format!("Export {name} not found")))
     }
 
     /// Handles a function call from the host
@@ -552,12 +544,7 @@ impl Component {
         // Check if it's a function
         let func_value = match &export.value {
             ExternValue::Function(func) => func,
-            _ => {
-                return Err(Error::Execution(format!(
-                    "Export {} is not a function",
-                    name
-                )))
-            }
+            _ => return Err(Error::Execution(format!("Export {name} is not a function"))),
         };
 
         // Check argument count
@@ -575,6 +562,7 @@ impl Component {
     }
 
     /// Resolves import by name and namespace
+    #[must_use]
     pub fn resolve_import(&self, name: &str, _namespace: &Namespace) -> Option<&Import> {
         // For now, we ignore namespace and just match on name
         self.imports.iter().find(|i| i.name == name)
@@ -589,7 +577,7 @@ impl Component {
     ) -> Result<()> {
         // Check if export already exists
         if self.exports.iter().any(|e| e.name == name) {
-            return Err(Error::Validation(format!("Export {} already exists", name)));
+            return Err(Error::Validation(format!("Export {name} already exists")));
         }
 
         // Add the export
@@ -599,11 +587,7 @@ impl Component {
     }
 
     /// Imports a component
-    pub fn import_component(
-        &mut self,
-        component: &Component,
-        namespace: Option<&str>,
-    ) -> Result<()> {
+    pub fn import_component(&mut self, component: &Self, namespace: Option<&str>) -> Result<()> {
         let ns = if let Some(ns_str) = namespace {
             Namespace::from_string(ns_str)
         } else {
@@ -648,14 +632,12 @@ impl Component {
                 if let ExternType::Function(export_func_type) = &ty {
                     if !func_types_compatible(&func.ty, export_func_type) {
                         return Err(Error::Validation(format!(
-                            "Function type mismatch for export {}",
-                            name
+                            "Function type mismatch for export {name}"
                         )));
                     }
                 } else {
                     return Err(Error::Validation(format!(
-                        "Expected function type for export {}",
-                        name
+                        "Expected function type for export {name}"
                     )));
                 }
             }
@@ -666,14 +648,12 @@ impl Component {
                         || table.ty.max != export_table_type.max
                     {
                         return Err(Error::Validation(format!(
-                            "Table type mismatch for export {}",
-                            name
+                            "Table type mismatch for export {name}"
                         )));
                     }
                 } else {
                     return Err(Error::Validation(format!(
-                        "Expected table type for export {}",
-                        name
+                        "Expected table type for export {name}"
                     )));
                 }
             }
@@ -683,14 +663,12 @@ impl Component {
                         || memory.ty.max != export_memory_type.max
                     {
                         return Err(Error::Validation(format!(
-                            "Memory type mismatch for export {}",
-                            name
+                            "Memory type mismatch for export {name}"
                         )));
                     }
                 } else {
                     return Err(Error::Validation(format!(
-                        "Expected memory type for export {}",
-                        name
+                        "Expected memory type for export {name}"
                     )));
                 }
             }
@@ -700,21 +678,18 @@ impl Component {
                         || global.ty.mutable != export_global_type.mutable
                     {
                         return Err(Error::Validation(format!(
-                            "Global type mismatch for export {}",
-                            name
+                            "Global type mismatch for export {name}"
                         )));
                     }
                 } else {
                     return Err(Error::Validation(format!(
-                        "Expected global type for export {}",
-                        name
+                        "Expected global type for export {name}"
                     )));
                 }
             }
             ExternValue::Trap(_) => {
                 return Err(Error::Validation(format!(
-                    "Cannot export trap value for {}",
-                    name
+                    "Cannot export trap value for {name}"
                 )));
             }
         }
@@ -728,10 +703,7 @@ impl Component {
         // Check that all required imports are provided
         for (name, _namespace, _ty) in &self.component_type.imports {
             if !self.imports.iter().any(|import| import.name == *name) {
-                return Err(Error::Validation(format!(
-                    "Missing required import {}",
-                    name
-                )));
+                return Err(Error::Validation(format!("Missing required import {name}")));
             }
         }
 
@@ -740,15 +712,11 @@ impl Component {
             if let Some(export) = self.exports.iter().find(|e| e.name == *name) {
                 if !types_are_compatible(ty, &export.ty) {
                     return Err(Error::Validation(format!(
-                        "Export {} has incompatible type",
-                        name
+                        "Export {name} has incompatible type"
                     )));
                 }
             } else {
-                return Err(Error::Validation(format!(
-                    "Missing declared export {}",
-                    name
-                )));
+                return Err(Error::Validation(format!("Missing declared export {name}")));
             }
         }
 
@@ -771,7 +739,8 @@ impl Default for Host {
 
 impl Host {
     /// Creates a new host implementation
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self {
             functions: Vec::new(),
         }
@@ -783,6 +752,7 @@ impl Host {
     }
 
     /// Gets a host function by name
+    #[must_use]
     pub fn get_function(&self, name: &str) -> Option<&FunctionValue> {
         self.functions
             .iter()
@@ -794,7 +764,7 @@ impl Host {
     pub fn call_function(&self, name: &str, args: &[Value]) -> Result<Vec<Value>> {
         let func_value = self
             .get_function(name)
-            .ok_or_else(|| Error::Execution(format!("Host function {} not found", name)))?;
+            .ok_or_else(|| Error::Execution(format!("Host function {name} not found")))?;
 
         // Check argument count
         if args.len() != func_value.ty.params.len() {
@@ -868,7 +838,7 @@ fn func_types_compatible(a: &FuncType, b: &FuncType) -> bool {
 /// Debug print helper for non-std environments
 #[cfg(feature = "std")]
 fn debug_println(msg: &str) {
-    eprintln!("COMPONENT: {}", msg);
+    eprintln!("COMPONENT: {msg}");
 }
 
 /// Debug print helper for non-std environments
@@ -880,6 +850,8 @@ fn debug_println(_msg: &str) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::values::Value;
+    use crate::ValueType;
 
     // Helper function to create a test component type
     fn create_test_component_type() -> ComponentType {

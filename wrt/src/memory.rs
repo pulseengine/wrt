@@ -1,5 +1,5 @@
 use crate::error::{Error, Result};
-use crate::types::*;
+use crate::types::MemoryType;
 use crate::{String, Vec};
 #[cfg(not(feature = "std"))]
 use alloc::borrow::ToOwned;
@@ -71,6 +71,7 @@ impl Clone for Memory {
 
 impl Memory {
     /// Creates a new memory instance
+    #[must_use]
     pub fn new(mem_type: MemoryType) -> Self {
         // Validate memory type
         if mem_type.min > MAX_PAGES {
@@ -119,6 +120,7 @@ impl Memory {
     }
 
     /// Creates a new memory instance with a debug name
+    #[must_use]
     pub fn new_with_name(mem_type: MemoryType, name: &str) -> Self {
         let mut mem = Self::new(mem_type);
         mem.debug_name = Some(name.to_owned());
@@ -126,7 +128,7 @@ impl Memory {
     }
 
     /// Returns the memory type
-    pub fn type_(&self) -> &MemoryType {
+    pub const fn type_(&self) -> &MemoryType {
         &self.mem_type
     }
 
@@ -141,7 +143,7 @@ impl Memory {
     }
 
     /// Returns the peak memory usage in bytes
-    pub fn peak_memory(&self) -> usize {
+    pub const fn peak_memory(&self) -> usize {
         self.peak_memory_used
     }
 
@@ -268,7 +270,7 @@ impl Memory {
                     };
 
                     // Add to results with region annotation
-                    results.push((addr, format!("{}{}", region_name, string)));
+                    results.push((addr, format!("{region_name}{string}")));
                 }
             }
 
@@ -326,7 +328,7 @@ impl Memory {
                 };
 
                 // Add to results with stack memory annotation
-                results.push((addr, format!("[STACK] {}", string)));
+                results.push((addr, format!("[STACK] {string}")));
             }
         }
 
@@ -372,7 +374,7 @@ impl Memory {
         start_addr &= !0xF;
 
         for base_addr in (start_addr..=end_addr).step_by(16) {
-            result.push_str(&format!("{:08X}:  ", base_addr));
+            result.push_str(&format!("{base_addr:08X}:  "));
 
             // Bytes as hex
             for offset in 0..16 {
@@ -384,9 +386,9 @@ impl Memory {
 
                     // Highlight the target address
                     if current_addr == addr {
-                        result.push_str(&format!("[{:02X}]", byte));
+                        result.push_str(&format!("[{byte:02X}]"));
                     } else {
-                        result.push_str(&format!(" {:02X} ", byte));
+                        result.push_str(&format!(" {byte:02X} "));
                     }
                 }
             }
@@ -407,7 +409,7 @@ impl Memory {
 
                     // Highlight the target address
                     if current_addr == addr {
-                        result.push_str(&format!("[{}]", ch));
+                        result.push_str(&format!("[{ch}]"));
                     } else {
                         result.push(ch);
                     }
@@ -452,7 +454,7 @@ impl Memory {
     /// Determines which memory region an address belongs to
     ///
     /// WebAssembly's memory model uses a 32-bit address space, with special
-    /// handling for addresses near u32::MAX which are treated as negative offsets.
+    /// handling for addresses near `u32::MAX` which are treated as negative offsets.
     fn determine_memory_region(&self, addr: u32) -> MemoryRegion {
         // High addresses are typically negative offsets in WebAssembly
         if addr > 0xFFFF0000 {
@@ -1642,13 +1644,13 @@ impl fmt::Display for Memory {
         writeln!(f, "  accesses: {}", self.access_count())?;
 
         if let Some(name) = &self.debug_name {
-            writeln!(f, "  name: {}", name)?;
+            writeln!(f, "  name: {name}")?;
         }
 
         // Print a memory hexdump sample
         let sample_size = 64.min(self.data.len());
         if sample_size > 0 {
-            writeln!(f, "  First {} bytes:", sample_size)?;
+            writeln!(f, "  First {sample_size} bytes:")?;
             for i in 0..sample_size {
                 if i % 16 == 0 {
                     if i > 0 {
@@ -1667,7 +1669,7 @@ impl fmt::Display for Memory {
                         }
                         writeln!(f)?;
                     }
-                    write!(f, "  {:04x}:", i)?;
+                    write!(f, "  {i:04x}:")?;
                 }
                 write!(f, " {:02x}", self.data[i])?;
             }
