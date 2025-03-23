@@ -1387,7 +1387,7 @@ impl Engine {
 }
 
 impl ModuleInstance {
-    #[must_use]
+    /// Creates a new instance from a module
     pub const fn create(module: Module) -> Self {
         Self {
             module,
@@ -1402,7 +1402,9 @@ impl ModuleInstance {
         }
     }
 
-    #[must_use]
+    /// Finds an export by name
+    ///
+    /// Returns None if the export is not found
     pub fn find_export(&self, name: &str) -> Option<&Export> {
         self.module.exports.iter().find(|e| e.name == name)
     }

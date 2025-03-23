@@ -171,9 +171,11 @@ pub struct ComponentTypeRef {
     pub type_idx: u32,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+/// Represents a component model resource type with a name and version
 pub struct ComponentResourceType {
+    /// The name of the resource type
     pub name: String,
+    /// The version of the resource type
     pub version: u32,
 }
 

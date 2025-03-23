@@ -178,49 +178,35 @@ impl Value {
         }
     }
 
-    /// Checks if this value matches the given WebAssembly value type.
-    ///
-    /// # Parameters
-    ///
-    /// * `ty` - The `ValueType` to check against
+    /// Checks if this Value matches the specified ValueType
     ///
     /// # Returns
     ///
-    /// true if the value matches the given type, false otherwise
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use wrt::{Value, ValueType};
-    ///
-    /// let value = Value::I32(42);
-    /// assert!(value.matches_type(&ValueType::I32));
-    /// assert!(!value.matches_type(&ValueType::I64));
-    /// ```
+    /// true if the value matches the type, false otherwise
     #[must_use]
     pub const fn matches_type(&self, ty: &ValueType) -> bool {
-        match (self, ty) {
-            (Self::I32(_), ValueType::I32) => true,
-            (Self::I64(_), ValueType::I64) => true,
-            (Self::F32(_), ValueType::F32) => true,
-            (Self::F64(_), ValueType::F64) => true,
-            (Self::FuncRef(_), ValueType::FuncRef) => true,
-            (Self::ExternRef(_), ValueType::ExternRef) => true,
-            (Self::V128(_), ValueType::V128) => true,
-            (Self::AnyRef(_), ValueType::AnyRef) => true,
-            (Self::Record(_), ValueType::I32) => true,
-            (Self::Tuple(_), ValueType::I32) => true,
-            (Self::List(_), ValueType::I32) => true,
-            (Self::Flags(_), ValueType::I32) => true,
-            (Self::Variant(_, _), ValueType::I32) => true,
-            (Self::Enum(_), ValueType::I32) => true,
-            (Self::Union(_), ValueType::I32) => true,
-            (Self::Option(_), ValueType::I32) => true,
-            (Self::Result(_), ValueType::I32) => true,
-            (Self::Future(_), ValueType::I32) => true,
-            (Self::Stream { .. }, ValueType::I32) => true,
-            _ => false,
-        }
+        matches!(
+            (self, ty),
+            (Self::I32(_), ValueType::I32)
+                | (Self::I64(_), ValueType::I64)
+                | (Self::F32(_), ValueType::F32)
+                | (Self::F64(_), ValueType::F64)
+                | (Self::FuncRef(_), ValueType::FuncRef)
+                | (Self::ExternRef(_), ValueType::ExternRef)
+                | (Self::V128(_), ValueType::V128)
+                | (Self::AnyRef(_), ValueType::AnyRef)
+                | (Self::Record(_), ValueType::AnyRef)
+                | (Self::Tuple(_), ValueType::AnyRef)
+                | (Self::List(_), ValueType::AnyRef)
+                | (Self::Flags(_), ValueType::AnyRef)
+                | (Self::Variant(_, _), ValueType::AnyRef)
+                | (Self::Enum(_), ValueType::AnyRef)
+                | (Self::Union(_), ValueType::AnyRef)
+                | (Self::Option(_), ValueType::AnyRef)
+                | (Self::Result(_), ValueType::AnyRef)
+                | (Self::Future(_), ValueType::AnyRef)
+                | (Self::Stream { .. }, ValueType::AnyRef)
+        )
     }
 
     /// Attempts to extract an i32 value if this Value is an I32.
@@ -440,9 +426,9 @@ impl Value {
     /// # Examples
     ///
     /// ```
-    /// use wrt::{Value, Vec, Box};
+    /// use wrt::Value;
     ///
-    /// let list = Value::List(Vec::new());
+    /// let list = Value::List(vec![]);
     /// assert!(list.as_list().is_some());
     ///
     /// let value = Value::I32(42);
@@ -491,7 +477,7 @@ impl Value {
     /// # Examples
     ///
     /// ```
-    /// use wrt::{Value, String, Box};
+    /// use wrt::Value;
     ///
     /// let variant = Value::Variant(String::from("success"), Some(Box::new(Value::I32(42))));
     /// assert!(variant.as_variant().is_some());
@@ -516,7 +502,7 @@ impl Value {
     /// # Examples
     ///
     /// ```
-    /// use wrt::{Value, String};
+    /// use wrt::Value;
     ///
     /// let enum_val = Value::Enum(String::from("Red"));
     /// assert!(enum_val.as_enum().is_some());
@@ -541,7 +527,7 @@ impl Value {
     /// # Examples
     ///
     /// ```
-    /// use wrt::{Value, Box};
+    /// use wrt::Value;
     ///
     /// let union = Value::Union(Box::new(Value::I32(42)));
     /// assert!(union.as_union().is_some());
@@ -690,6 +676,10 @@ impl Value {
         }
     }
 
+    /// Returns the ValueType of this Value
+    ///
+    /// This is used to determine the type of the value for type checking
+    /// and validation.
     #[must_use]
     pub const fn get_type(&self) -> ValueType {
         match self {
@@ -700,18 +690,18 @@ impl Value {
             Self::V128(_) => ValueType::V128,
             Self::FuncRef(_) => ValueType::FuncRef,
             Self::ExternRef(_) => ValueType::ExternRef,
-            Self::AnyRef(_) => ValueType::AnyRef,
-            Self::Record(_) => ValueType::AnyRef,
-            Self::Tuple(_) => ValueType::AnyRef,
-            Self::List(_) => ValueType::AnyRef,
-            Self::Flags(_) => ValueType::AnyRef,
-            Self::Variant(_, _) => ValueType::AnyRef,
-            Self::Enum(_) => ValueType::AnyRef,
-            Self::Union(_) => ValueType::AnyRef,
-            Self::Option(_) => ValueType::AnyRef,
-            Self::Result(_) => ValueType::AnyRef,
-            Self::Future(_) => ValueType::AnyRef,
-            Self::Stream { .. } => ValueType::AnyRef,
+            Self::AnyRef(_)
+            | Self::Record(_)
+            | Self::Tuple(_)
+            | Self::List(_)
+            | Self::Flags(_)
+            | Self::Variant(_, _)
+            | Self::Enum(_)
+            | Self::Union(_)
+            | Self::Option(_)
+            | Self::Result(_)
+            | Self::Future(_)
+            | Self::Stream { .. } => ValueType::AnyRef,
         }
     }
 }

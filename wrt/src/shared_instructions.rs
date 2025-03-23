@@ -13,6 +13,10 @@ use std::format;
 use alloc::format;
 
 /// Handle the `LocalGet` instruction by getting a local variable's value
+///
+/// # Errors
+///
+/// Returns an error if the local index is out of bounds.
 pub fn local_get(locals: &[Value], idx: u32) -> Result<Value> {
     locals
         .get(idx as usize)
@@ -21,6 +25,10 @@ pub fn local_get(locals: &[Value], idx: u32) -> Result<Value> {
 }
 
 /// Handle the `LocalSet` instruction by setting a local variable's value
+///
+/// # Errors
+///
+/// Returns an error if the local index is out of bounds.
 pub fn local_set(locals: &mut [Value], idx: u32, value: Value) -> Result<()> {
     if (idx as usize) < locals.len() {
         // Create a clone for debugging
@@ -43,6 +51,10 @@ pub fn local_set(locals: &mut [Value], idx: u32, value: Value) -> Result<()> {
 }
 
 /// Handle the `LocalTee` instruction by setting a local variable while keeping the value on the stack
+///
+/// # Errors
+///
+/// Returns an error if the local index is out of bounds.
 pub fn local_tee(locals: &mut [Value], idx: u32, value: Value) -> Result<Value> {
     // Update the local variable
     local_set(locals, idx, value.clone())?;
@@ -52,7 +64,11 @@ pub fn local_tee(locals: &mut [Value], idx: u32, value: Value) -> Result<Value> 
 }
 
 /// Execute `I32Add` operation
-pub fn i32_add(a: Value, b: Value) -> Result<Value> {
+///
+/// # Errors
+///
+/// Returns an error if the values are not both i32 types.
+pub fn i32_add(a: &Value, b: &Value) -> Result<Value> {
     let b_val = b
         .as_i32()
         .ok_or_else(|| Error::Execution("Expected i32 for second operand".into()))?;
@@ -64,7 +80,11 @@ pub fn i32_add(a: Value, b: Value) -> Result<Value> {
 }
 
 /// Execute `I64Add` operation
-pub fn i64_add(a: Value, b: Value) -> Result<Value> {
+///
+/// # Errors
+///
+/// Returns an error if the values are not both i64 types.
+pub fn i64_add(a: &Value, b: &Value) -> Result<Value> {
     let b_val = b
         .as_i64()
         .ok_or_else(|| Error::Execution("Expected i64 for second operand".into()))?;
@@ -76,7 +96,11 @@ pub fn i64_add(a: Value, b: Value) -> Result<Value> {
 }
 
 /// Execute `I32Sub` operation
-pub fn i32_sub(a: Value, b: Value) -> Result<Value> {
+///
+/// # Errors
+///
+/// Returns an error if the values are not both i32 types.
+pub fn i32_sub(a: &Value, b: &Value) -> Result<Value> {
     let b_val = b
         .as_i32()
         .ok_or_else(|| Error::Execution("Expected i32 for second operand".into()))?;
@@ -88,7 +112,11 @@ pub fn i32_sub(a: Value, b: Value) -> Result<Value> {
 }
 
 /// Execute `I64Sub` operation
-pub fn i64_sub(a: Value, b: Value) -> Result<Value> {
+///
+/// # Errors
+///
+/// Returns an error if the values are not both i64 types.
+pub fn i64_sub(a: &Value, b: &Value) -> Result<Value> {
     let b_val = b
         .as_i64()
         .ok_or_else(|| Error::Execution("Expected i64 for second operand".into()))?;
@@ -100,7 +128,11 @@ pub fn i64_sub(a: Value, b: Value) -> Result<Value> {
 }
 
 /// Execute `I32Mul` operation
-pub fn i32_mul(a: Value, b: Value) -> Result<Value> {
+///
+/// # Errors
+///
+/// Returns an error if the values are not both i32 types.
+pub fn i32_mul(a: &Value, b: &Value) -> Result<Value> {
     let b_val = b
         .as_i32()
         .ok_or_else(|| Error::Execution("Expected i32 for second operand".into()))?;
@@ -112,7 +144,11 @@ pub fn i32_mul(a: Value, b: Value) -> Result<Value> {
 }
 
 /// Execute `I64Mul` operation
-pub fn i64_mul(a: Value, b: Value) -> Result<Value> {
+///
+/// # Errors
+///
+/// Returns an error if the values are not both i64 types.
+pub fn i64_mul(a: &Value, b: &Value) -> Result<Value> {
     let b_val = b
         .as_i64()
         .ok_or_else(|| Error::Execution("Expected i64 for second operand".into()))?;

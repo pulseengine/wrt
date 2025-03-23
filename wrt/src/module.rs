@@ -141,6 +141,19 @@ pub enum ExportValue {
     Global(u32),
 }
 
+/// Represents an index into one of the module's sections
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum ExportItem {
+    /// A function with the specified index
+    Function(u32),
+    /// A table with the specified index
+    Table(u32),
+    /// A memory with the specified index
+    Memory(u32),
+    /// A global with the specified index
+    Global(u32),
+}
+
 impl Default for Module {
     fn default() -> Self {
         Self::new()
@@ -186,7 +199,7 @@ impl Module {
     }
 
     /// Load a WebAssembly module binary
-    fn load_wasm_binary(&mut self, bytes: &[u8]) -> Result<Self> {
+    fn load_wasm_binary(&self, bytes: &[u8]) -> Result<Self> {
         let mut module = self.clone();
 
         // Clear existing definitions
@@ -208,7 +221,7 @@ impl Module {
     }
 
     /// Load a WebAssembly component binary
-    fn load_component_binary(&mut self, bytes: &[u8]) -> Result<Self> {
+    fn load_component_binary(&self, bytes: &[u8]) -> Result<Self> {
         let mut module = self.clone();
 
         // Clear existing definitions
