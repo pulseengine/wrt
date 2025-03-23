@@ -969,7 +969,7 @@ impl StacklessEngine {
         };
 
         // Make sure it's a function export
-        if let ExportKind::Function = export.kind {
+        if export.kind == ExportKind::Function {
             // Get the function index
             let func_idx = export.index as usize;
 

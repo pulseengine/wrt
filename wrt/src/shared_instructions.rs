@@ -32,7 +32,7 @@ pub fn local_get(locals: &[Value], idx: u32) -> Result<Value> {
 pub fn local_set(locals: &mut [Value], idx: u32, value: Value) -> Result<()> {
     if (idx as usize) < locals.len() {
         // Create a clone for debugging
-        let value_clone = value.clone();
+        let _value_clone = value.clone();
 
         // Update the local variable
         locals[idx as usize] = value;
@@ -40,7 +40,7 @@ pub fn local_set(locals: &mut [Value], idx: u32, value: Value) -> Result<()> {
         #[cfg(feature = "std")]
         if let Ok(debug_instr) = std::env::var("WRT_DEBUG_INSTRUCTIONS") {
             if debug_instr == "1" || debug_instr.to_lowercase() == "true" {
-                println!("[LOCAL_SET_DEBUG] Setting local {idx} to {value_clone:?}");
+                println!("[LOCAL_SET_DEBUG] Setting local {idx} to {_value_clone:?}");
             }
         }
 

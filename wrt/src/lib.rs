@@ -645,15 +645,15 @@ mod tests {
         let instance_idx = engine.instantiate(module)?;
 
         // Execute the function
-        let results = engine.execute(instance_idx, 0, Vec::new())?;
+        let _results = engine.execute(instance_idx, 0, Vec::new())?;
 
         // Check result
         #[cfg(feature = "std")]
         {
-            println!("Results length: {}", results.len());
-            if !results.is_empty() {
-                println!("Results[0]: {:?}", results[0]);
-                assert!(matches!(results[0], Value::I32(42)));
+            println!("Results length: {}", _results.len());
+            if !_results.is_empty() {
+                println!("Results[0]: {:?}", _results[0]);
+                assert!(matches!(_results[0], Value::I32(42)));
             }
         }
 

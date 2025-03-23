@@ -728,6 +728,24 @@ pub enum Instruction {
     I32x4RelaxedTruncSatF64x2SZero,
     #[cfg(feature = "relaxed_simd")]
     I32x4RelaxedTruncSatF64x2UZero,
+
+    // SIMD operations (already defined above, adding lane-specific ones only)
+    /// Load 8 bits into a lane of a 128-bit vector
+    V128Load8Lane(u32, u32, u8),
+    /// Load 16 bits into a lane of a 128-bit vector
+    V128Load16Lane(u32, u32, u8),
+    /// Load 32 bits into a lane of a 128-bit vector
+    V128Load32Lane(u32, u32, u8),
+    /// Load 64 bits into a lane of a 128-bit vector
+    V128Load64Lane(u32, u32, u8),
+    /// Store a lane (8 bits) of a 128-bit vector to memory
+    V128Store8Lane(u32, u32, u8),
+    /// Store a lane (16 bits) of a 128-bit vector to memory
+    V128Store16Lane(u32, u32, u8),
+    /// Store a lane (32 bits) of a 128-bit vector to memory
+    V128Store32Lane(u32, u32, u8),
+    /// Store a lane (64 bits) of a 128-bit vector to memory
+    V128Store64Lane(u32, u32, u8),
 }
 
 /// Block type for control flow instructions
