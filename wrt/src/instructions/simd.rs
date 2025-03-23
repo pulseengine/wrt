@@ -49,6 +49,32 @@ pub fn handle_simd_instruction(
         }
         Instruction::V128Const(bytes) => v128_const(&mut stack.values, *bytes),
 
+        // SIMD - Lane-specific load and store operations
+        Instruction::V128Load8Lane(offset, align, lane_idx) => {
+            v128_load8_lane(frame, stack, *offset, *align, *lane_idx)
+        }
+        Instruction::V128Load16Lane(offset, align, lane_idx) => {
+            v128_load16_lane(frame, stack, *offset, *align, *lane_idx)
+        }
+        Instruction::V128Load32Lane(offset, align, lane_idx) => {
+            v128_load32_lane(frame, stack, *offset, *align, *lane_idx)
+        }
+        Instruction::V128Load64Lane(offset, align, lane_idx) => {
+            v128_load64_lane(frame, stack, *offset, *align, *lane_idx)
+        }
+        Instruction::V128Store8Lane(offset, align, lane_idx) => {
+            v128_store8_lane(frame, stack, *offset, *align, *lane_idx)
+        }
+        Instruction::V128Store16Lane(offset, align, lane_idx) => {
+            v128_store16_lane(frame, stack, *offset, *align, *lane_idx)
+        }
+        Instruction::V128Store32Lane(offset, align, lane_idx) => {
+            v128_store32_lane(frame, stack, *offset, *align, *lane_idx)
+        }
+        Instruction::V128Store64Lane(offset, align, lane_idx) => {
+            v128_store64_lane(frame, stack, *offset, *align, *lane_idx)
+        }
+
         // SIMD - Splat operations
         Instruction::I8x16Splat => i8x16_splat(&mut stack.values),
         Instruction::I16x8Splat => i16x8_splat(&mut stack.values),
@@ -104,12 +130,28 @@ pub fn v128_load(
             ))
         }
     };
-    let bytes = memory.read_bytes(addr + offset, 16)?;
+
+    // If address exceeds memory bounds, we need to trap
+    let effective_addr = addr.wrapping_add(offset);
+    if effective_addr as usize + 16 > memory.size_bytes() {
+        return Err(Error::Execution(format!(
+            "Memory access out of bounds: address {:#x} with offset {:#x} exceeds memory size {}",
+            addr,
+            offset,
+            memory.size_bytes()
+        )));
+    }
+
+    // Read 16 bytes from memory
+    let bytes = memory.read_bytes(effective_addr, 16)?;
+
+    // Convert to u128 (little-endian)
     let value = u128::from_le_bytes(
         bytes
             .try_into()
             .map_err(|_| Error::Execution("Failed to convert bytes to u128".into()))?,
     );
+
     stack.push(Value::V128(value));
     Ok(())
 }
@@ -141,7 +183,22 @@ pub fn v128_store(
             ))
         }
     };
-    memory.write_bytes(addr + offset, &value.to_le_bytes())?;
+
+    // Calculate effective address with offset
+    let effective_addr = addr.wrapping_add(offset);
+
+    // Check memory bounds
+    if effective_addr as usize + 16 > memory.size_bytes() {
+        return Err(Error::Execution(format!(
+            "Memory access out of bounds: address {:#x} with offset {:#x} exceeds memory size {}",
+            addr,
+            offset,
+            memory.size_bytes()
+        )));
+    }
+
+    // Convert u128 to bytes (little-endian) and write to memory
+    memory.write_bytes(effective_addr, &value.to_le_bytes())?;
     Ok(())
 }
 
@@ -630,5 +687,567 @@ pub fn i32x4_mul(values: &mut Vec<Value>) -> Result<()> {
 
     // Push result
     values.push(Value::V128(result_val));
+    Ok(())
+}
+
+// =======================================
+// SIMD lane-specific load/store operations
+// =======================================
+
+/// Load a single 8-bit lane from memory into a v128 value
+pub fn v128_load8_lane(
+    frame: &mut StacklessFrame,
+    stack: &mut Stack,
+    offset: u32,
+    _align: u32,
+    lane_idx: u8,
+) -> Result<()> {
+    let memory = &frame.module.memories[0];
+
+    // Pop the v128 value from the stack (into which we'll insert the lane)
+    let v128_val = match stack.pop()? {
+        Value::V128(v) => v,
+        _ => {
+            return Err(Error::Execution(
+                "Expected v128 value for load lane operation".into(),
+            ))
+        }
+    };
+
+    // Pop the memory address from the stack
+    let addr = match stack.pop()? {
+        Value::I32(v) => v as u32,
+        _ => {
+            return Err(Error::Execution(
+                "Expected i32 value for memory address".into(),
+            ))
+        }
+    };
+
+    // Check if the lane index is valid (0-15 for i8x16)
+    if lane_idx >= 16 {
+        return Err(Error::Execution(format!(
+            "Invalid lane index {lane_idx} for v128.load8_lane (must be 0-15)"
+        )));
+    }
+
+    // Calculate effective address with offset
+    let effective_addr = addr.wrapping_add(offset);
+
+    // Check memory bounds (only need 1 byte)
+    if effective_addr as usize >= memory.size_bytes() {
+        return Err(Error::Execution(format!(
+            "Memory access out of bounds: address {:#x} with offset {:#x} exceeds memory size {}",
+            addr,
+            offset,
+            memory.size_bytes()
+        )));
+    }
+
+    // Read a single byte from memory
+    let byte = memory.read_byte(effective_addr)?;
+
+    // Convert v128 to a byte array
+    let mut bytes = v128_val.to_le_bytes();
+
+    // Replace the specified lane
+    bytes[lane_idx as usize] = byte;
+
+    // Convert back to v128
+    let new_v128 = u128::from_le_bytes(bytes);
+
+    // Push the result back onto the stack
+    stack.push(Value::V128(new_v128));
+
+    Ok(())
+}
+
+/// Load a single 16-bit lane from memory into a v128 value
+pub fn v128_load16_lane(
+    frame: &mut StacklessFrame,
+    stack: &mut Stack,
+    offset: u32,
+    _align: u32,
+    lane_idx: u8,
+) -> Result<()> {
+    let memory = &frame.module.memories[0];
+
+    // Pop the v128 value from the stack (into which we'll insert the lane)
+    let v128_val = match stack.pop()? {
+        Value::V128(v) => v,
+        _ => {
+            return Err(Error::Execution(
+                "Expected v128 value for load lane operation".into(),
+            ))
+        }
+    };
+
+    // Pop the memory address from the stack
+    let addr = match stack.pop()? {
+        Value::I32(v) => v as u32,
+        _ => {
+            return Err(Error::Execution(
+                "Expected i32 value for memory address".into(),
+            ))
+        }
+    };
+
+    // Check if the lane index is valid (0-7 for i16x8)
+    if lane_idx >= 8 {
+        return Err(Error::Execution(format!(
+            "Invalid lane index {lane_idx} for v128.load16_lane (must be 0-7)"
+        )));
+    }
+
+    // Calculate effective address with offset
+    let effective_addr = addr.wrapping_add(offset);
+
+    // Check memory bounds (need 2 bytes)
+    if effective_addr as usize + 1 >= memory.size_bytes() {
+        return Err(Error::Execution(format!(
+            "Memory access out of bounds: address {:#x} with offset {:#x} exceeds memory size {}",
+            addr,
+            offset,
+            memory.size_bytes()
+        )));
+    }
+
+    // Read 2 bytes from memory
+    let bytes_slice = memory.read_bytes(effective_addr, 2)?;
+    let u16_val = u16::from_le_bytes([bytes_slice[0], bytes_slice[1]]);
+
+    // Convert v128 to a byte array
+    let mut bytes = v128_val.to_le_bytes();
+
+    // Replace the specified lane
+    let lane_offset = lane_idx as usize * 2;
+    bytes[lane_offset] = (u16_val & 0xFF) as u8;
+    bytes[lane_offset + 1] = (u16_val >> 8) as u8;
+
+    // Convert back to v128
+    let new_v128 = u128::from_le_bytes(bytes);
+
+    // Push the result back onto the stack
+    stack.push(Value::V128(new_v128));
+
+    Ok(())
+}
+
+/// Load a single 32-bit lane from memory into a v128 value
+pub fn v128_load32_lane(
+    frame: &mut StacklessFrame,
+    stack: &mut Stack,
+    offset: u32,
+    _align: u32,
+    lane_idx: u8,
+) -> Result<()> {
+    let memory = &frame.module.memories[0];
+
+    // Pop the v128 value from the stack (into which we'll insert the lane)
+    let v128_val = match stack.pop()? {
+        Value::V128(v) => v,
+        _ => {
+            return Err(Error::Execution(
+                "Expected v128 value for load lane operation".into(),
+            ))
+        }
+    };
+
+    // Pop the memory address from the stack
+    let addr = match stack.pop()? {
+        Value::I32(v) => v as u32,
+        _ => {
+            return Err(Error::Execution(
+                "Expected i32 value for memory address".into(),
+            ))
+        }
+    };
+
+    // Check if the lane index is valid (0-3 for i32x4)
+    if lane_idx >= 4 {
+        return Err(Error::Execution(format!(
+            "Invalid lane index {lane_idx} for v128.load32_lane (must be 0-3)"
+        )));
+    }
+
+    // Calculate effective address with offset
+    let effective_addr = addr.wrapping_add(offset);
+
+    // Check memory bounds (need 4 bytes)
+    if effective_addr as usize + 3 >= memory.size_bytes() {
+        return Err(Error::Execution(format!(
+            "Memory access out of bounds: address {:#x} with offset {:#x} exceeds memory size {}",
+            addr,
+            offset,
+            memory.size_bytes()
+        )));
+    }
+
+    // Read 4 bytes from memory
+    let bytes_slice = memory.read_bytes(effective_addr, 4)?;
+    let u32_val = u32::from_le_bytes([
+        bytes_slice[0],
+        bytes_slice[1],
+        bytes_slice[2],
+        bytes_slice[3],
+    ]);
+
+    // Convert v128 to a byte array
+    let mut bytes = v128_val.to_le_bytes();
+
+    // Replace the specified lane
+    let lane_offset = lane_idx as usize * 4;
+    let u32_bytes = u32_val.to_le_bytes();
+    for i in 0..4 {
+        bytes[lane_offset + i] = u32_bytes[i];
+    }
+
+    // Convert back to v128
+    let new_v128 = u128::from_le_bytes(bytes);
+
+    // Push the result back onto the stack
+    stack.push(Value::V128(new_v128));
+
+    Ok(())
+}
+
+/// Load a single 64-bit lane from memory into a v128 value
+pub fn v128_load64_lane(
+    frame: &mut StacklessFrame,
+    stack: &mut Stack,
+    offset: u32,
+    _align: u32,
+    lane_idx: u8,
+) -> Result<()> {
+    let memory = &frame.module.memories[0];
+
+    // Pop the v128 value from the stack (into which we'll insert the lane)
+    let v128_val = match stack.pop()? {
+        Value::V128(v) => v,
+        _ => {
+            return Err(Error::Execution(
+                "Expected v128 value for load lane operation".into(),
+            ))
+        }
+    };
+
+    // Pop the memory address from the stack
+    let addr = match stack.pop()? {
+        Value::I32(v) => v as u32,
+        _ => {
+            return Err(Error::Execution(
+                "Expected i32 value for memory address".into(),
+            ))
+        }
+    };
+
+    // Check if the lane index is valid (0-1 for i64x2)
+    if lane_idx >= 2 {
+        return Err(Error::Execution(format!(
+            "Invalid lane index {lane_idx} for v128.load64_lane (must be 0-1)"
+        )));
+    }
+
+    // Calculate effective address with offset
+    let effective_addr = addr.wrapping_add(offset);
+
+    // Check memory bounds (need 8 bytes)
+    if effective_addr as usize + 7 >= memory.size_bytes() {
+        return Err(Error::Execution(format!(
+            "Memory access out of bounds: address {:#x} with offset {:#x} exceeds memory size {}",
+            addr,
+            offset,
+            memory.size_bytes()
+        )));
+    }
+
+    // Read 8 bytes from memory
+    let bytes_slice = memory.read_bytes(effective_addr, 8)?;
+    let u64_val = u64::from_le_bytes([
+        bytes_slice[0],
+        bytes_slice[1],
+        bytes_slice[2],
+        bytes_slice[3],
+        bytes_slice[4],
+        bytes_slice[5],
+        bytes_slice[6],
+        bytes_slice[7],
+    ]);
+
+    // Convert v128 to a byte array
+    let mut bytes = v128_val.to_le_bytes();
+
+    // Replace the specified lane
+    let lane_offset = lane_idx as usize * 8;
+    let u64_bytes = u64_val.to_le_bytes();
+    for i in 0..8 {
+        bytes[lane_offset + i] = u64_bytes[i];
+    }
+
+    // Convert back to v128
+    let new_v128 = u128::from_le_bytes(bytes);
+
+    // Push the result back onto the stack
+    stack.push(Value::V128(new_v128));
+
+    Ok(())
+}
+
+/// Store a single 8-bit lane from a v128 value into memory
+pub fn v128_store8_lane(
+    frame: &mut StacklessFrame,
+    stack: &mut Stack,
+    offset: u32,
+    _align: u32,
+    lane_idx: u8,
+) -> Result<()> {
+    let memory = &mut frame.module.memories[0];
+
+    // Pop the v128 value from the stack
+    let v128_val = match stack.pop()? {
+        Value::V128(v) => v,
+        _ => {
+            return Err(Error::Execution(
+                "Expected v128 value for store lane operation".into(),
+            ))
+        }
+    };
+
+    // Pop the memory address from the stack
+    let addr = match stack.pop()? {
+        Value::I32(v) => v as u32,
+        _ => {
+            return Err(Error::Execution(
+                "Expected i32 value for memory address".into(),
+            ))
+        }
+    };
+
+    // Check if the lane index is valid (0-15 for i8x16)
+    if lane_idx >= 16 {
+        return Err(Error::Execution(format!(
+            "Invalid lane index {lane_idx} for v128.store8_lane (must be 0-15)"
+        )));
+    }
+
+    // Calculate effective address with offset
+    let effective_addr = addr.wrapping_add(offset);
+
+    // Check memory bounds (need 1 byte)
+    if effective_addr as usize >= memory.size_bytes() {
+        return Err(Error::Execution(format!(
+            "Memory access out of bounds: address {:#x} with offset {:#x} exceeds memory size {}",
+            addr,
+            offset,
+            memory.size_bytes()
+        )));
+    }
+
+    // Convert v128 to a byte array and extract the specified lane
+    let bytes = v128_val.to_le_bytes();
+    let byte = bytes[lane_idx as usize];
+
+    // Write the lane to memory
+    memory.write_byte(effective_addr, byte)?;
+
+    Ok(())
+}
+
+/// Store a single 16-bit lane from a v128 value into memory
+pub fn v128_store16_lane(
+    frame: &mut StacklessFrame,
+    stack: &mut Stack,
+    offset: u32,
+    _align: u32,
+    lane_idx: u8,
+) -> Result<()> {
+    let memory = &mut frame.module.memories[0];
+
+    // Pop the v128 value from the stack
+    let v128_val = match stack.pop()? {
+        Value::V128(v) => v,
+        _ => {
+            return Err(Error::Execution(
+                "Expected v128 value for store lane operation".into(),
+            ))
+        }
+    };
+
+    // Pop the memory address from the stack
+    let addr = match stack.pop()? {
+        Value::I32(v) => v as u32,
+        _ => {
+            return Err(Error::Execution(
+                "Expected i32 value for memory address".into(),
+            ))
+        }
+    };
+
+    // Check if the lane index is valid (0-7 for i16x8)
+    if lane_idx >= 8 {
+        return Err(Error::Execution(format!(
+            "Invalid lane index {lane_idx} for v128.store16_lane (must be 0-7)"
+        )));
+    }
+
+    // Calculate effective address with offset
+    let effective_addr = addr.wrapping_add(offset);
+
+    // Check memory bounds (need 2 bytes)
+    if effective_addr as usize + 1 >= memory.size_bytes() {
+        return Err(Error::Execution(format!(
+            "Memory access out of bounds: address {:#x} with offset {:#x} exceeds memory size {}",
+            addr,
+            offset,
+            memory.size_bytes()
+        )));
+    }
+
+    // Convert v128 to a byte array and extract the specified lane
+    let bytes = v128_val.to_le_bytes();
+    let lane_offset = lane_idx as usize * 2;
+    let u16_val = u16::from_le_bytes([bytes[lane_offset], bytes[lane_offset + 1]]);
+
+    // Write the lane to memory
+    memory.write_u16(effective_addr, u16_val)?;
+
+    Ok(())
+}
+
+/// Store a single 32-bit lane from a v128 value into memory
+pub fn v128_store32_lane(
+    frame: &mut StacklessFrame,
+    stack: &mut Stack,
+    offset: u32,
+    _align: u32,
+    lane_idx: u8,
+) -> Result<()> {
+    let memory = &mut frame.module.memories[0];
+
+    // Pop the v128 value from the stack
+    let v128_val = match stack.pop()? {
+        Value::V128(v) => v,
+        _ => {
+            return Err(Error::Execution(
+                "Expected v128 value for store lane operation".into(),
+            ))
+        }
+    };
+
+    // Pop the memory address from the stack
+    let addr = match stack.pop()? {
+        Value::I32(v) => v as u32,
+        _ => {
+            return Err(Error::Execution(
+                "Expected i32 value for memory address".into(),
+            ))
+        }
+    };
+
+    // Check if the lane index is valid (0-3 for i32x4)
+    if lane_idx >= 4 {
+        return Err(Error::Execution(format!(
+            "Invalid lane index {lane_idx} for v128.store32_lane (must be 0-3)"
+        )));
+    }
+
+    // Calculate effective address with offset
+    let effective_addr = addr.wrapping_add(offset);
+
+    // Check memory bounds (need 4 bytes)
+    if effective_addr as usize + 3 >= memory.size_bytes() {
+        return Err(Error::Execution(format!(
+            "Memory access out of bounds: address {:#x} with offset {:#x} exceeds memory size {}",
+            addr,
+            offset,
+            memory.size_bytes()
+        )));
+    }
+
+    // Convert v128 to a byte array and extract the specified lane
+    let bytes = v128_val.to_le_bytes();
+    let lane_offset = lane_idx as usize * 4;
+    let u32_val = u32::from_le_bytes([
+        bytes[lane_offset],
+        bytes[lane_offset + 1],
+        bytes[lane_offset + 2],
+        bytes[lane_offset + 3],
+    ]);
+
+    // Write the lane to memory
+    memory.write_u32(effective_addr, u32_val)?;
+
+    Ok(())
+}
+
+/// Store a single 64-bit lane from a v128 value into memory
+pub fn v128_store64_lane(
+    frame: &mut StacklessFrame,
+    stack: &mut Stack,
+    offset: u32,
+    _align: u32,
+    lane_idx: u8,
+) -> Result<()> {
+    let memory = &mut frame.module.memories[0];
+
+    // Pop the v128 value from the stack
+    let v128_val = match stack.pop()? {
+        Value::V128(v) => v,
+        _ => {
+            return Err(Error::Execution(
+                "Expected v128 value for store lane operation".into(),
+            ))
+        }
+    };
+
+    // Pop the memory address from the stack
+    let addr = match stack.pop()? {
+        Value::I32(v) => v as u32,
+        _ => {
+            return Err(Error::Execution(
+                "Expected i32 value for memory address".into(),
+            ))
+        }
+    };
+
+    // Check if the lane index is valid (0-1 for i64x2)
+    if lane_idx >= 2 {
+        return Err(Error::Execution(format!(
+            "Invalid lane index {lane_idx} for v128.store64_lane (must be 0-1)"
+        )));
+    }
+
+    // Calculate effective address with offset
+    let effective_addr = addr.wrapping_add(offset);
+
+    // Check memory bounds (need 8 bytes)
+    if effective_addr as usize + 7 >= memory.size_bytes() {
+        return Err(Error::Execution(format!(
+            "Memory access out of bounds: address {:#x} with offset {:#x} exceeds memory size {}",
+            addr,
+            offset,
+            memory.size_bytes()
+        )));
+    }
+
+    // Convert v128 to a byte array and extract the specified lane
+    let bytes = v128_val.to_le_bytes();
+    let lane_offset = lane_idx as usize * 8;
+
+    // Convert the lane bytes to u64
+    let u64_val = u64::from_le_bytes([
+        bytes[lane_offset],
+        bytes[lane_offset + 1],
+        bytes[lane_offset + 2],
+        bytes[lane_offset + 3],
+        bytes[lane_offset + 4],
+        bytes[lane_offset + 5],
+        bytes[lane_offset + 6],
+        bytes[lane_offset + 7],
+    ]);
+
+    // Write the lane to memory
+    memory.write_u64(effective_addr, u64_val)?;
+
     Ok(())
 }

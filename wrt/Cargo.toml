@@ -34,6 +34,7 @@ wast = { version = "227.0.1", features = ["wasm-module", "component-model"] }
 wast_proc_macro = { path = "tests/wast_proc_macro" }
 tempfile = "3.8"
 tracing-subscriber = "0.3"
+lazy_static = "1.4"
 
 [[bench]]
 name = "engine_benchmarks"

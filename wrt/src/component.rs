@@ -837,14 +837,19 @@ fn func_types_compatible(a: &FuncType, b: &FuncType) -> bool {
 
 /// Debug print helper for non-std environments
 #[cfg(feature = "std")]
+#[allow(dead_code)]
 fn debug_println(msg: &str) {
-    eprintln!("COMPONENT: {msg}");
+    if let Ok(debug_comp) = std::env::var("WRT_DEBUG_COMPONENT") {
+        if debug_comp == "1" || debug_comp.to_lowercase() == "true" {
+            println!("[COMPONENT_DEBUG]: {msg}");
+        }
+    }
 }
 
 /// Debug print helper for non-std environments
 #[cfg(not(feature = "std"))]
 fn debug_println(_msg: &str) {
-    // No-op in no_std environment
+    // This function is currently unused but kept for future debugging
 }
 
 #[cfg(test)]

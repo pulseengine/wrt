@@ -1063,7 +1063,7 @@ fn parse_element_section(module: &mut Module, bytes: &[u8]) -> Result<()> {
             ));
         }
 
-        let offset_bytes = &bytes[offset_start..cursor];
+        let _offset_bytes = &bytes[offset_start..cursor];
         let offset = vec![Instruction::I32Const(0)]; // Placeholder
 
         // Read the number of function indices
@@ -1110,7 +1110,7 @@ fn parse_code_section(module: &mut Module, bytes: &[u8]) -> Result<()> {
         let (body_size, bytes_read) = read_leb128_u32(&bytes[cursor..])?;
         cursor += bytes_read;
 
-        let body_start = cursor;
+        let _body_start = cursor;
         let body_end = cursor + body_size as usize;
 
         if body_end > bytes.len() {
@@ -1714,7 +1714,7 @@ fn parse_component(module: &mut Module, bytes: &[u8]) -> Result<()> {
             3 => {
                 // This section contains a core WebAssembly module
                 // Extract it and use it as our module
-                let core_module = Module::new();
+                let _core_module = Module::new();
                 let mut core_result = Module::new();
                 core_result = core_result.load_from_binary(section_bytes)?;
 
@@ -1773,10 +1773,10 @@ fn parse_component(module: &mut Module, bytes: &[u8]) -> Result<()> {
                 let max_exports = 100;
                 let count_to_process = count.min(max_exports);
 
-                for i in 0..count_to_process {
+                for _i in 0..count_to_process {
                     // Check if we have enough bytes left
                     if offset >= section_bytes.len() {
-                        debug_println!("  Warning: Reached end of section bytes at export {}", i);
+                        debug_println!("  Warning: Reached end of section bytes at export {}", _i);
                         break;
                     }
 
@@ -1840,7 +1840,7 @@ fn parse_component(module: &mut Module, bytes: &[u8]) -> Result<()> {
 
                     debug_println!(
                         "  Export {}: name=\"{}\", kind={}, index={}",
-                        i,
+                        _i,
                         name,
                         kind,
                         index
@@ -1958,10 +1958,10 @@ fn parse_component(module: &mut Module, bytes: &[u8]) -> Result<()> {
                 let max_strings = 100;
                 let count_to_process = count.min(max_strings);
 
-                for i in 0..count_to_process {
+                for _i in 0..count_to_process {
                     // Check if we have enough bytes left
                     if offset >= section_bytes.len() {
-                        debug_println!("  Warning: Reached end of section bytes at string {}", i);
+                        debug_println!("  Warning: Reached end of section bytes at string {}", _i);
                         break;
                     }
 
@@ -2003,7 +2003,7 @@ fn parse_component(module: &mut Module, bytes: &[u8]) -> Result<()> {
                     // Advance offset safely
                     offset = (offset + str_len as usize).min(section_bytes.len());
 
-                    debug_println!("  String {}: \"{}\"", i, str_content);
+                    debug_println!("  String {}: \"{}\"", _i, str_content);
                     strings.push(str_content.to_string());
                 }
 

@@ -1510,6 +1510,7 @@ version = "0.1.0"
 dependencies = [
  "bincode",
  "criterion",
+ "lazy_static",
  "log",
  "rayon",
  "serde",

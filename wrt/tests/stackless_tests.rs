@@ -67,16 +67,12 @@ fn test_direct_memory_operations() -> Result<()> {
     // Check memory instance details before any operations
     println!("Module has {} memory definitions", module.memories.len());
 
-    // Find the memory export (there should be one named "memory")
-    let mem_export = module
-        .exports
-        .iter()
-        .find(|e| e.name == "memory")
-        .ok_or_else(|| wrt::Error::Execution("Memory export not found".into()))?;
-    let mem_idx = if let wrt::ExportKind::Memory = mem_export.kind {
+    // Get the memory export
+    let mem_export = module.get_export("memory").unwrap();
+    let _mem_idx = if let wrt::ExportKind::Memory = mem_export.kind {
         mem_export.index
     } else {
-        return Err(wrt::Error::Execution("Memory export kind mismatch".into()));
+        panic!("Expected memory export");
     };
 
     // Manual checks to diagnose the issue
