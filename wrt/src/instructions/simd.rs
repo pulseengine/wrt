@@ -726,9 +726,13 @@ pub fn v128_load8_lane(
 
     // Check if the lane index is valid (0-15 for i8x16)
     if lane_idx >= 16 {
-        return Err(Error::Execution(format!(
-            "Invalid lane index {lane_idx} for v128.load8_lane (must be 0-15)"
-        )));
+        return Err(Error::Execution(
+            format!(
+                "Invalid lane index {} for v128.load8_lane (must be 0-15)",
+                lane_idx
+            )
+            .into(),
+        ));
     }
 
     // Calculate effective address with offset
@@ -794,9 +798,13 @@ pub fn v128_load16_lane(
 
     // Check if the lane index is valid (0-7 for i16x8)
     if lane_idx >= 8 {
-        return Err(Error::Execution(format!(
-            "Invalid lane index {lane_idx} for v128.load16_lane (must be 0-7)"
-        )));
+        return Err(Error::Execution(
+            format!(
+                "Invalid lane index {} for v128.load16_lane (must be 0-7)",
+                lane_idx
+            )
+            .into(),
+        ));
     }
 
     // Calculate effective address with offset
@@ -865,9 +873,13 @@ pub fn v128_load32_lane(
 
     // Check if the lane index is valid (0-3 for i32x4)
     if lane_idx >= 4 {
-        return Err(Error::Execution(format!(
-            "Invalid lane index {lane_idx} for v128.load32_lane (must be 0-3)"
-        )));
+        return Err(Error::Execution(
+            format!(
+                "Invalid lane index {} for v128.load32_lane (must be 0-3)",
+                lane_idx
+            )
+            .into(),
+        ));
     }
 
     // Calculate effective address with offset
@@ -943,9 +955,13 @@ pub fn v128_load64_lane(
 
     // Check if the lane index is valid (0-1 for i64x2)
     if lane_idx >= 2 {
-        return Err(Error::Execution(format!(
-            "Invalid lane index {lane_idx} for v128.load64_lane (must be 0-1)"
-        )));
+        return Err(Error::Execution(
+            format!(
+                "Invalid lane index {} for v128.load64_lane (must be 0-1)",
+                lane_idx
+            )
+            .into(),
+        ));
     }
 
     // Calculate effective address with offset
@@ -1025,9 +1041,13 @@ pub fn v128_store8_lane(
 
     // Check if the lane index is valid (0-15 for i8x16)
     if lane_idx >= 16 {
-        return Err(Error::Execution(format!(
-            "Invalid lane index {lane_idx} for v128.store8_lane (must be 0-15)"
-        )));
+        return Err(Error::Execution(
+            format!(
+                "Invalid lane index {} for v128.store8_lane (must be 0-15)",
+                lane_idx
+            )
+            .into(),
+        ));
     }
 
     // Calculate effective address with offset
@@ -1085,9 +1105,13 @@ pub fn v128_store16_lane(
 
     // Check if the lane index is valid (0-7 for i16x8)
     if lane_idx >= 8 {
-        return Err(Error::Execution(format!(
-            "Invalid lane index {lane_idx} for v128.store16_lane (must be 0-7)"
-        )));
+        return Err(Error::Execution(
+            format!(
+                "Invalid lane index {} for v128.store16_lane (must be 0-7)",
+                lane_idx
+            )
+            .into(),
+        ));
     }
 
     // Calculate effective address with offset
@@ -1146,9 +1170,13 @@ pub fn v128_store32_lane(
 
     // Check if the lane index is valid (0-3 for i32x4)
     if lane_idx >= 4 {
-        return Err(Error::Execution(format!(
-            "Invalid lane index {lane_idx} for v128.store32_lane (must be 0-3)"
-        )));
+        return Err(Error::Execution(
+            format!(
+                "Invalid lane index {} for v128.store32_lane (must be 0-3)",
+                lane_idx
+            )
+            .into(),
+        ));
     }
 
     // Calculate effective address with offset
@@ -1212,9 +1240,13 @@ pub fn v128_store64_lane(
 
     // Check if the lane index is valid (0-1 for i64x2)
     if lane_idx >= 2 {
-        return Err(Error::Execution(format!(
-            "Invalid lane index {lane_idx} for v128.store64_lane (must be 0-1)"
-        )));
+        return Err(Error::Execution(
+            format!(
+                "Invalid lane index {} for v128.store64_lane (must be 0-1)",
+                lane_idx
+            )
+            .into(),
+        ));
     }
 
     // Calculate effective address with offset
