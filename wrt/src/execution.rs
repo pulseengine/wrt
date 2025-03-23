@@ -24,9 +24,6 @@ use alloc::{
 #[cfg(not(feature = "std"))]
 use crate::sync::Mutex;
 
-#[cfg(feature = "serialization")]
-use serde;
-
 /// Execution statistics for monitoring and reporting
 #[derive(Debug, Default)]
 pub struct ExecutionStats {
@@ -1388,6 +1385,7 @@ impl Engine {
 
 impl ModuleInstance {
     /// Creates a new instance from a module
+    #[must_use]
     pub const fn create(module: Module) -> Self {
         Self {
             module,
@@ -1405,6 +1403,7 @@ impl ModuleInstance {
     /// Finds an export by name
     ///
     /// Returns None if the export is not found
+    #[must_use]
     pub fn find_export(&self, name: &str) -> Option<&Export> {
         self.module.exports.iter().find(|e| e.name == name)
     }

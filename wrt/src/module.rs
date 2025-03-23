@@ -135,9 +135,13 @@ pub struct Export {
 /// Represents the value of an export
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ExportValue {
+    /// A function with the specified index
     Function(u32),
+    /// A table with the specified index
     Table(u32),
+    /// A memory with the specified index
     Memory(u32),
+    /// A global with the specified index
     Global(u32),
 }
 

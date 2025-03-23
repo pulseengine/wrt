@@ -139,7 +139,7 @@ pub struct ModuleInstance {
 }
 
 impl ModuleInstance {
-    /// Creates a new StacklessVM instance from a module
+    /// Creates a new `StacklessVM` instance from a module
     ///
     /// # Errors
     ///
@@ -161,6 +161,7 @@ impl ModuleInstance {
     /// Gets an export by name
     ///
     /// Returns None if the export is not found
+    #[must_use]
     pub fn get_export(&self, name: &str) -> Option<&Export> {
         self.module.exports.iter().find(|e| e.name == name)
     }
