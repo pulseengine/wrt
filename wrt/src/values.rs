@@ -136,14 +136,7 @@ impl Value {
         }
     }
 
-    /// Returns the WebAssembly value type of this value.
-    ///
-    /// Note that for component model values (Record, Tuple, etc.), this currently
-    /// returns I32 as a placeholder since they don't directly map to core WebAssembly types.
-    ///
-    /// # Returns
-    ///
-    /// The `ValueType` that describes this value
+    /// Returns the WebAssembly type of this value
     ///
     /// # Examples
     ///
@@ -164,25 +157,26 @@ impl Value {
             Self::ExternRef(_) => ValueType::ExternRef,
             Self::V128(_) => ValueType::V128,
             Self::AnyRef(_) => ValueType::AnyRef,
-            Self::Record(_) => ValueType::I32,
-            Self::Tuple(_) => ValueType::I32,
-            Self::List(_) => ValueType::I32,
-            Self::Flags(_) => ValueType::I32,
-            Self::Variant(_, _) => ValueType::I32,
-            Self::Enum(_) => ValueType::I32,
-            Self::Union(_) => ValueType::I32,
-            Self::Option(_) => ValueType::I32,
-            Self::Result(_) => ValueType::I32,
-            Self::Future(_) => ValueType::I32,
-            Self::Stream { .. } => ValueType::I32,
+            // All component model types are represented as I32 internally
+            Self::Record(_)
+            | Self::Tuple(_)
+            | Self::List(_)
+            | Self::Flags(_)
+            | Self::Variant(_, _)
+            | Self::Enum(_)
+            | Self::Union(_)
+            | Self::Option(_)
+            | Self::Result(_)
+            | Self::Future(_)
+            | Self::Stream { .. } => ValueType::I32,
         }
     }
 
-    /// Checks if this Value matches the specified ValueType
+    /// Checks if this Value matches the specified `ValueType`
     ///
     /// # Returns
     ///
-    /// true if the value matches the type, false otherwise
+    /// `true` if the value matches the type, `false` otherwise
     #[must_use]
     pub const fn matches_type(&self, ty: &ValueType) -> bool {
         matches!(
@@ -195,17 +189,20 @@ impl Value {
                 | (Self::ExternRef(_), ValueType::ExternRef)
                 | (Self::V128(_), ValueType::V128)
                 | (Self::AnyRef(_), ValueType::AnyRef)
-                | (Self::Record(_), ValueType::AnyRef)
-                | (Self::Tuple(_), ValueType::AnyRef)
-                | (Self::List(_), ValueType::AnyRef)
-                | (Self::Flags(_), ValueType::AnyRef)
-                | (Self::Variant(_, _), ValueType::AnyRef)
-                | (Self::Enum(_), ValueType::AnyRef)
-                | (Self::Union(_), ValueType::AnyRef)
-                | (Self::Option(_), ValueType::AnyRef)
-                | (Self::Result(_), ValueType::AnyRef)
-                | (Self::Future(_), ValueType::AnyRef)
-                | (Self::Stream { .. }, ValueType::AnyRef)
+                | (
+                    Self::Record(_)
+                        | Self::Tuple(_)
+                        | Self::List(_)
+                        | Self::Flags(_)
+                        | Self::Variant(_, _)
+                        | Self::Enum(_)
+                        | Self::Union(_)
+                        | Self::Option(_)
+                        | Self::Result(_)
+                        | Self::Future(_)
+                        | Self::Stream { .. },
+                    ValueType::AnyRef
+                )
         )
     }
 
@@ -676,7 +673,7 @@ impl Value {
         }
     }
 
-    /// Returns the ValueType of this Value
+    /// Returns the `ValueType` of this Value
     ///
     /// This is used to determine the type of the value for type checking
     /// and validation.

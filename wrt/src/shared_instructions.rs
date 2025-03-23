@@ -67,7 +67,7 @@ pub fn local_tee(locals: &mut [Value], idx: u32, value: Value) -> Result<Value> 
 ///
 /// # Errors
 ///
-/// Returns an error if the values are not both i32 types.
+/// Returns an error if the values are not both `i32` types.
 pub fn i32_add(a: &Value, b: &Value) -> Result<Value> {
     let b_val = b
         .as_i32()
@@ -83,7 +83,7 @@ pub fn i32_add(a: &Value, b: &Value) -> Result<Value> {
 ///
 /// # Errors
 ///
-/// Returns an error if the values are not both i64 types.
+/// Returns an error if the values are not both `i64` types.
 pub fn i64_add(a: &Value, b: &Value) -> Result<Value> {
     let b_val = b
         .as_i64()
@@ -99,7 +99,7 @@ pub fn i64_add(a: &Value, b: &Value) -> Result<Value> {
 ///
 /// # Errors
 ///
-/// Returns an error if the values are not both i32 types.
+/// Returns an error if the values are not both `i32` types.
 pub fn i32_sub(a: &Value, b: &Value) -> Result<Value> {
     let b_val = b
         .as_i32()
@@ -115,7 +115,7 @@ pub fn i32_sub(a: &Value, b: &Value) -> Result<Value> {
 ///
 /// # Errors
 ///
-/// Returns an error if the values are not both i64 types.
+/// Returns an error if the values are not both `i64` types.
 pub fn i64_sub(a: &Value, b: &Value) -> Result<Value> {
     let b_val = b
         .as_i64()
@@ -131,7 +131,7 @@ pub fn i64_sub(a: &Value, b: &Value) -> Result<Value> {
 ///
 /// # Errors
 ///
-/// Returns an error if the values are not both i32 types.
+/// Returns an error if the values are not both `i32` types.
 pub fn i32_mul(a: &Value, b: &Value) -> Result<Value> {
     let b_val = b
         .as_i32()
@@ -147,7 +147,7 @@ pub fn i32_mul(a: &Value, b: &Value) -> Result<Value> {
 ///
 /// # Errors
 ///
-/// Returns an error if the values are not both i64 types.
+/// Returns an error if the values are not both `i64` types.
 pub fn i64_mul(a: &Value, b: &Value) -> Result<Value> {
     let b_val = b
         .as_i64()

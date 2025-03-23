@@ -470,7 +470,7 @@ pub fn i16x8_mul(values: &mut Vec<Value>) -> Result<()> {
     Ok(())
 }
 
-/// Implements the i16x8.relaxed_q15mulr_s operation
+/// Implements the `i16x8.relaxed_q15mulr_s` operation
 #[cfg(feature = "relaxed_simd")]
 pub fn i16x8_relaxed_q15mulr_s(values: &mut Vec<Value>) -> Result<()> {
     let v2 = values.pop().ok_or(Error::StackUnderflow)?;
