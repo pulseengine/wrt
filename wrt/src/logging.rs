@@ -274,6 +274,10 @@ impl CallbackRegistry {
     }
 
     /// Call a host function
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the host function is not found or fails during execution
     pub fn call_host_function(
         &self,
         engine: &mut dyn Any,

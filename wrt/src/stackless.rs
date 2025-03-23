@@ -139,6 +139,11 @@ pub struct ModuleInstance {
 }
 
 impl ModuleInstance {
+    /// Creates a new StacklessVM instance from a module
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the module is invalid for stackless execution
     pub const fn new(module: Module) -> Result<Self> {
         Ok(Self {
             module_idx: 0, // Will be set by the engine when added to instances
@@ -153,7 +158,9 @@ impl ModuleInstance {
         })
     }
 
-    #[must_use]
+    /// Gets an export by name
+    ///
+    /// Returns None if the export is not found
     pub fn get_export(&self, name: &str) -> Option<&Export> {
         self.module.exports.iter().find(|e| e.name == name)
     }

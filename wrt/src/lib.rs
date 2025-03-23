@@ -212,7 +212,12 @@ impl Value {
     }
 }
 
-/// Use `StacklessVM` for testing memory operations
+/// Executes a test with the stackless engine.
+///
+/// # Errors
+///
+/// Returns an error if the test execution fails, such as when loading the module,
+/// instantiating the module, or executing the test itself.
 pub fn execute_test_with_stackless(path: &str) -> Result<()> {
     // Parse the WAT to WASM
     let wasm = wat::parse_file(path)?;
@@ -656,6 +661,14 @@ mod tests {
     }
 }
 
+/// Executes an exported function by name from a specific instance in the engine.
+///
+/// This function looks up the export by name and calls it using the engine.
+///
+/// # Errors
+///
+/// Returns an error if the export is not found, if the export is not a function,
+/// or if there is an error during the function execution.
 pub fn execute_export_by_name(
     instance_idx: usize,
     name: &str,
