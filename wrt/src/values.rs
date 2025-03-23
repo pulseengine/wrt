@@ -188,9 +188,9 @@ impl Value {
                 | (Self::FuncRef(_), ValueType::FuncRef)
                 | (Self::ExternRef(_), ValueType::ExternRef)
                 | (Self::V128(_), ValueType::V128)
-                | (Self::AnyRef(_), ValueType::AnyRef)
                 | (
-                    Self::Record(_)
+                    Self::AnyRef(_)
+                        | Self::Record(_)
                         | Self::Tuple(_)
                         | Self::List(_)
                         | Self::Flags(_)
