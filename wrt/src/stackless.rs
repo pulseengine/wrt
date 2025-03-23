@@ -606,12 +606,16 @@ impl StacklessCallbackRegistry {
 
     /// Registers a callback for logging operations
     pub fn register_log(&mut self, callback: impl Fn(LogOperation) + Send + Sync + 'static) {
-        // Store the log callback
-        let log_callback = Box::new(callback) as Box<dyn Fn(LogOperation) + Send + Sync>;
+        let _log_callback = Box::new(callback) as Box<dyn Fn(LogOperation) + Send + Sync>;
+        #[cfg(not(feature = "std"))]
+        {
+            // TODO: Implement logging registry for no_std
+        }
 
-        // We can't directly store this in callbacks as it's a different type
-        // Instead, we'll capture the common operations in debug output
-        debug_println!("Registered log callback");
+        #[cfg(feature = "std")]
+        {
+            // TODO: Implement logging registry
+        }
     }
 
     /// Registers a log handler for processing WebAssembly logging operations
@@ -622,12 +626,14 @@ impl StacklessCallbackRegistry {
         self.register_log(handler);
     }
 
-    /// Calls the logging callback if registered
-    #[allow(dead_code)]
-    pub fn log(&self, operation: LogOperation) {
-        // We can't directly use the stored callback
-        // Instead, we'll just log the operation
-        debug_println!("Log operation: {:?}", operation);
+    /// Logs a message with the specified operation
+    pub fn log(&self, _operation: LogOperation) {
+        // TODO: Send the log operation to registered handlers
+    }
+
+    /// Handles a log operation by passing it to the registered handlers
+    pub fn handle_log_operation(&self, _operation: LogOperation) {
+        // TODO: Implement log message handling
     }
 
     /// Registers a host function handler for a specific module and function name
@@ -938,6 +944,44 @@ impl StacklessEngine {
             Some(fuel) if fuel >= self.stats.fuel_consumed => Some(fuel - self.stats.fuel_consumed),
             Some(_) => Some(0),
             None => None,
+        }
+    }
+
+    /// Gets the function export with the specified name from the specified instance
+    pub fn get_function_export(&self, instance_idx: usize, name: &str) -> Result<Option<usize>> {
+        // Make sure the instance index is valid
+        if instance_idx >= self.instances.len() {
+            return Err(Error::Execution(format!(
+                "Invalid instance index: {instance_idx}"
+            )));
+        }
+
+        // Get the instance
+        let instance = &self.instances[instance_idx];
+
+        // Get the module
+        let module = &instance.module;
+
+        // Look up the export
+        let export = match module.get_export(name) {
+            Some(export) => export,
+            None => return Ok(None),
+        };
+
+        // Make sure it's a function export
+        if let ExportKind::Function = export.kind {
+            // Get the function index
+            let func_idx = export.index as usize;
+
+            // TODO: Validate the function index
+
+            // Convert to a u32 for the return value
+            let _func_idx_u32 = func_idx as u32;
+
+            // Return the function index
+            Ok(Some(func_idx))
+        } else {
+            Ok(None)
         }
     }
 }
