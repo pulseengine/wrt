@@ -551,21 +551,637 @@ fn parse_instruction(bytes: &[u8], depth: &mut i32) -> Result<(Instruction, usiz
         }
         0x02 => {
             *depth += 1;
-            Ok((Instruction::Block(BlockType::Empty), 1))
+            // Block instruction
+            if bytes.len() < 2 {
+                return Err(Error::Parse(
+                    "Unexpected end of input while parsing block type".into(),
+                ));
+            }
+
+            let block_type = if bytes[1] == 0x40 {
+                // Empty block type
+                BlockType::Empty
+            } else {
+                // Try to parse as a value type
+                if let Ok(value_type) = parse_value_type(bytes[1]) {
+                    BlockType::Type(value_type)
+                } else {
+                    // Could be a type index - using LEB128
+                    let (type_idx, _) = read_leb128_u32(&bytes[1..])?;
+                    BlockType::TypeIndex(type_idx)
+                }
+            };
+
+            Ok((Instruction::Block(block_type), 2))
+        }
+        0x03 => {
+            *depth += 1;
+            // Loop instruction
+            if bytes.len() < 2 {
+                return Err(Error::Parse(
+                    "Unexpected end of input while parsing loop type".into(),
+                ));
+            }
+
+            let block_type = if bytes[1] == 0x40 {
+                // Empty block type
+                BlockType::Empty
+            } else {
+                // Try to parse as a value type
+                if let Ok(value_type) = parse_value_type(bytes[1]) {
+                    BlockType::Type(value_type)
+                } else {
+                    // Could be a type index - using LEB128
+                    let (type_idx, _) = read_leb128_u32(&bytes[1..])?;
+                    BlockType::TypeIndex(type_idx)
+                }
+            };
+
+            Ok((Instruction::Loop(block_type), 2))
+        }
+        0x04 => {
+            *depth += 1;
+            // If instruction
+            if bytes.len() < 2 {
+                return Err(Error::Parse(
+                    "Unexpected end of input while parsing if type".into(),
+                ));
+            }
+
+            let block_type = if bytes[1] == 0x40 {
+                // Empty block type
+                BlockType::Empty
+            } else {
+                // Try to parse as a value type
+                if let Ok(value_type) = parse_value_type(bytes[1]) {
+                    BlockType::Type(value_type)
+                } else {
+                    // Could be a type index - using LEB128
+                    let (type_idx, _) = read_leb128_u32(&bytes[1..])?;
+                    BlockType::TypeIndex(type_idx)
+                }
+            };
+
+            Ok((Instruction::If(block_type), 2))
+        }
+        0x05 => {
+            // Else instruction
+            Ok((Instruction::Else, 1))
+        }
+        0x0C => {
+            // br instruction
+            if bytes.len() < 2 {
+                return Err(Error::Parse(
+                    "Unexpected end of input while parsing br".into(),
+                ));
+            }
+            let (label_idx, bytes_read) = read_leb128_u32(&bytes[1..])?;
+            Ok((Instruction::Br(label_idx), 1 + bytes_read))
+        }
+        0x0D => {
+            // br_if instruction
+            if bytes.len() < 2 {
+                return Err(Error::Parse(
+                    "Unexpected end of input while parsing br_if".into(),
+                ));
+            }
+            let (label_idx, bytes_read) = read_leb128_u32(&bytes[1..])?;
+            Ok((Instruction::BrIf(label_idx), 1 + bytes_read))
+        }
+        0x0E => {
+            // br_table instruction
+            if bytes.len() < 2 {
+                return Err(Error::Parse(
+                    "Unexpected end of input while parsing br_table".into(),
+                ));
+            }
+
+            // Read the label vector count
+            let (count, mut bytes_read) = read_leb128_u32(&bytes[1..])?;
+
+            // Read each label index
+            let mut label_indices = Vec::with_capacity(count as usize);
+            let mut offset = 1 + bytes_read;
+
+            for _ in 0..count {
+                if offset >= bytes.len() {
+                    return Err(Error::Parse(
+                        "Unexpected end of input while parsing br_table labels".into(),
+                    ));
+                }
+
+                let (label_idx, len) = read_leb128_u32(&bytes[offset..])?;
+                label_indices.push(label_idx);
+                offset += len;
+                bytes_read += len;
+            }
+
+            // Read the default label
+            if offset >= bytes.len() {
+                return Err(Error::Parse(
+                    "Unexpected end of input while parsing br_table default label".into(),
+                ));
+            }
+
+            let (default_idx, len) = read_leb128_u32(&bytes[offset..])?;
+            bytes_read += len;
+
+            Ok((
+                Instruction::BrTable(label_indices, default_idx),
+                1 + bytes_read,
+            ))
+        }
+        0x10 => {
+            // call instruction
+            if bytes.len() < 2 {
+                return Err(Error::Parse(
+                    "Unexpected end of input while parsing call".into(),
+                ));
+            }
+            let (func_idx, bytes_read) = read_leb128_u32(&bytes[1..])?;
+            Ok((Instruction::Call(func_idx), 1 + bytes_read))
+        }
+        0x11 => {
+            // call_indirect instruction
+            if bytes.len() < 2 {
+                return Err(Error::Parse(
+                    "Unexpected end of input while parsing call_indirect".into(),
+                ));
+            }
+
+            // Read type index
+            let (type_idx, type_bytes) = read_leb128_u32(&bytes[1..])?;
+
+            // Read table index (usually 0 in MVP)
+            if 1 + type_bytes >= bytes.len() {
+                return Err(Error::Parse(
+                    "Unexpected end of input while parsing call_indirect table index".into(),
+                ));
+            }
+
+            let (table_idx, table_bytes) = read_leb128_u32(&bytes[1 + type_bytes..])?;
+
+            Ok((
+                Instruction::CallIndirect(type_idx, table_idx),
+                1 + type_bytes + table_bytes,
+            ))
+        }
+        0x1A => {
+            // drop instruction
+            Ok((Instruction::Drop, 1))
+        }
+        0x1B => {
+            // select instruction
+            Ok((Instruction::Select, 1))
+        }
+        0x20 => {
+            // local.get instruction
+            if bytes.len() < 2 {
+                return Err(Error::Parse(
+                    "Unexpected end of input while parsing local.get".into(),
+                ));
+            }
+            let (local_idx, bytes_read) = read_leb128_u32(&bytes[1..])?;
+            Ok((Instruction::LocalGet(local_idx), 1 + bytes_read))
+        }
+        0x21 => {
+            // local.set instruction
+            if bytes.len() < 2 {
+                return Err(Error::Parse(
+                    "Unexpected end of input while parsing local.set".into(),
+                ));
+            }
+            let (local_idx, bytes_read) = read_leb128_u32(&bytes[1..])?;
+            Ok((Instruction::LocalSet(local_idx), 1 + bytes_read))
+        }
+        0x22 => {
+            // local.tee instruction
+            if bytes.len() < 2 {
+                return Err(Error::Parse(
+                    "Unexpected end of input while parsing local.tee".into(),
+                ));
+            }
+            let (local_idx, bytes_read) = read_leb128_u32(&bytes[1..])?;
+            Ok((Instruction::LocalTee(local_idx), 1 + bytes_read))
+        }
+        0x23 => {
+            // global.get instruction
+            if bytes.len() < 2 {
+                return Err(Error::Parse(
+                    "Unexpected end of input while parsing global.get".into(),
+                ));
+            }
+            let (global_idx, bytes_read) = read_leb128_u32(&bytes[1..])?;
+            Ok((Instruction::GlobalGet(global_idx), 1 + bytes_read))
+        }
+        0x24 => {
+            // global.set instruction
+            if bytes.len() < 2 {
+                return Err(Error::Parse(
+                    "Unexpected end of input while parsing global.set".into(),
+                ));
+            }
+            let (global_idx, bytes_read) = read_leb128_u32(&bytes[1..])?;
+            Ok((Instruction::GlobalSet(global_idx), 1 + bytes_read))
+        }
+        0x28 => {
+            // i32.load instruction
+            if bytes.len() < 3 {
+                return Err(Error::Parse(
+                    "Unexpected end of input while parsing i32.load".into(),
+                ));
+            }
+            let (align, align_bytes) = read_leb128_u32(&bytes[1..])?;
+            let (offset, offset_bytes) = read_leb128_u32(&bytes[1 + align_bytes..])?;
+            Ok((
+                Instruction::I32Load(offset, align),
+                1 + align_bytes + offset_bytes,
+            ))
+        }
+        0x36 => {
+            // i32.store instruction
+            if bytes.len() < 3 {
+                return Err(Error::Parse(
+                    "Unexpected end of input while parsing i32.store".into(),
+                ));
+            }
+            let (align, align_bytes) = read_leb128_u32(&bytes[1..])?;
+            let (offset, offset_bytes) = read_leb128_u32(&bytes[1 + align_bytes..])?;
+            Ok((
+                Instruction::I32Store(offset, align),
+                1 + align_bytes + offset_bytes,
+            ))
+        }
+        0x40 => {
+            // This is a block type marker that should be handled inside block-type instructions
+            // For standalone usage, just return a Nop instruction with a warning
+            println!(
+                "Warning: Encountered standalone 0x40 (empty block type) opcode at position 0"
+            );
+            Ok((Instruction::Nop, 1))
         }
         0x41 => {
-            // i32.const
+            // i32.const instruction
             let (value, bytes_read) = read_leb128_i32(&bytes[1..])?;
             Ok((Instruction::I32Const(value), 1 + bytes_read))
         }
         0x42 => {
-            // i64.const
+            // i64.const instruction
             let (value, bytes_read) = read_leb128_i64(&bytes[1..])?;
             Ok((Instruction::I64Const(value), 1 + bytes_read))
         }
-        _ => Err(Error::Parse(format!(
-            "Unsupported instruction opcode: 0x{opcode:x}"
-        ))),
+        0x43 => {
+            // f32.const instruction
+            if bytes.len() < 5 {
+                return Err(Error::Parse(
+                    "Unexpected end of input while parsing f32.const".into(),
+                ));
+            }
+            let mut value_bytes = [0u8; 4];
+            value_bytes.copy_from_slice(&bytes[1..5]);
+            let value = f32::from_le_bytes(value_bytes);
+            Ok((Instruction::F32Const(value), 5))
+        }
+        0x44 => {
+            // f64.const instruction
+            if bytes.len() < 9 {
+                return Err(Error::Parse(
+                    "Unexpected end of input while parsing f64.const".into(),
+                ));
+            }
+            let mut value_bytes = [0u8; 8];
+            value_bytes.copy_from_slice(&bytes[1..9]);
+            let value = f64::from_le_bytes(value_bytes);
+            Ok((Instruction::F64Const(value), 9))
+        }
+        0x45 => {
+            // i32.eqz instruction
+            Ok((Instruction::I32Eqz, 1))
+        }
+        0x46 => {
+            // i32.eq instruction
+            Ok((Instruction::I32Eq, 1))
+        }
+        0x47 => {
+            // i32.ne instruction
+            Ok((Instruction::I32Ne, 1))
+        }
+        0x48 => {
+            // i32.lt_s instruction
+            Ok((Instruction::I32LtS, 1))
+        }
+        0x49 => {
+            // i32.lt_u instruction
+            Ok((Instruction::I32LtU, 1))
+        }
+        0x4A => {
+            // i32.gt_s instruction
+            Ok((Instruction::I32GtS, 1))
+        }
+        0x4B => {
+            // i32.gt_u instruction
+            Ok((Instruction::I32GtU, 1))
+        }
+        0x4C => {
+            // i32.le_s instruction
+            Ok((Instruction::I32LeS, 1))
+        }
+        0x4D => {
+            // i32.le_u instruction
+            Ok((Instruction::I32LeU, 1))
+        }
+        0x4E => {
+            // i32.ge_s instruction
+            Ok((Instruction::I32GeS, 1))
+        }
+        0x4F => {
+            // i32.ge_u instruction
+            Ok((Instruction::I32GeU, 1))
+        }
+        0x6A => {
+            // i32.add instruction
+            Ok((Instruction::I32Add, 1))
+        }
+        0x6B => {
+            // i32.sub instruction
+            Ok((Instruction::I32Sub, 1))
+        }
+        0x6C => {
+            // i32.mul instruction
+            Ok((Instruction::I32Mul, 1))
+        }
+        0x6D => {
+            // i32.div_s instruction
+            Ok((Instruction::I32DivS, 1))
+        }
+        0x6E => {
+            // i32.div_u instruction
+            Ok((Instruction::I32DivU, 1))
+        }
+        0x6F => {
+            // i32.rem_s instruction
+            Ok((Instruction::I32RemS, 1))
+        }
+        0x70 => {
+            // i32.rem_u instruction
+            Ok((Instruction::I32RemU, 1))
+        }
+        0x7F => {
+            // This is an i32 value type - this should be handled in block/loop/if instructions
+            // For standalone usage, just return a Nop instruction with a warning
+            println!("Warning: Encountered standalone 0x7F (i32 value type) opcode at position 0");
+            Ok((Instruction::Nop, 1))
+        }
+        0x7E => {
+            // This is an i64 value type - this should be handled in block/loop/if instructions
+            // For standalone usage, just return a Nop instruction with a warning
+            println!("Warning: Encountered standalone 0x7E (i64 value type) opcode at position 0");
+            Ok((Instruction::Nop, 1))
+        }
+        0x7D => {
+            // This is an f32 value type - this should be handled in block/loop/if instructions
+            // For standalone usage, just return a Nop instruction with a warning
+            println!("Warning: Encountered standalone 0x7D (f32 value type) opcode at position 0");
+            Ok((Instruction::Nop, 1))
+        }
+        0x7C => {
+            // This is an f64 value type - this should be handled in block/loop/if instructions
+            // For standalone usage, just return a Nop instruction with a warning
+            println!("Warning: Encountered standalone 0x7C (f64 value type) opcode at position 0");
+            Ok((Instruction::Nop, 1))
+        }
+        0xC0 => {
+            println!("Warning: Opcode 0xC0 (i32.extend8_s) not fully implemented yet");
+            Ok((Instruction::I32Extend8S, 1))
+        }
+        0xC1 => {
+            println!("Warning: Opcode 0xC1 (i32.extend16_s) not fully implemented yet");
+            Ok((Instruction::I32Extend16S, 1))
+        }
+        0xC2 => {
+            println!("Warning: Opcode 0xC2 (i64.extend8_s) not fully implemented yet");
+            Ok((Instruction::I64Extend8S, 1))
+        }
+        0xC3 => {
+            println!("Warning: Opcode 0xC3 (i64.extend16_s) not fully implemented yet");
+            Ok((Instruction::I64Extend16S, 1))
+        }
+        0xC4 => {
+            println!("Warning: Opcode 0xC4 (i64.extend32_s) not fully implemented yet");
+            Ok((Instruction::I64Extend32S, 1))
+        }
+        0xfd => {
+            // SIMD prefix instruction
+            if bytes.len() < 2 {
+                return Err(Error::Parse(
+                    "Unexpected end of input while parsing SIMD instruction".into(),
+                ));
+            }
+            let simd_opcode = bytes[1];
+            match simd_opcode {
+                // v128.load
+                0x00 => {
+                    if bytes.len() < 3 {
+                        return Err(Error::Parse(
+                            "Unexpected end of input while parsing v128.load".into(),
+                        ));
+                    }
+                    let (align, align_bytes) = read_leb128_u32(&bytes[2..])?;
+                    let (offset, offset_bytes) = read_leb128_u32(&bytes[2 + align_bytes..])?;
+                    Ok((
+                        Instruction::V128Load(offset, align),
+                        2 + align_bytes + offset_bytes,
+                    ))
+                }
+                // v128.store
+                0x0B => {
+                    if bytes.len() < 3 {
+                        return Err(Error::Parse(
+                            "Unexpected end of input while parsing v128.store".into(),
+                        ));
+                    }
+                    let (align, align_bytes) = read_leb128_u32(&bytes[2..])?;
+                    let (offset, offset_bytes) = read_leb128_u32(&bytes[2 + align_bytes..])?;
+                    Ok((
+                        Instruction::V128Store(offset, align),
+                        2 + align_bytes + offset_bytes,
+                    ))
+                }
+                // v128.const
+                0x0C => {
+                    if bytes.len() < 18 {
+                        // 2 for opcode + 16 for bytes
+                        return Err(Error::Parse(
+                            "Unexpected end of input while parsing v128.const".into(),
+                        ));
+                    }
+                    let mut v128_bytes = [0u8; 16];
+                    v128_bytes.copy_from_slice(&bytes[2..18]);
+                    Ok((Instruction::V128Const(v128_bytes), 18))
+                }
+                // i8x16.shuffle
+                0x0D => {
+                    if bytes.len() < 18 {
+                        // 2 for opcode + 16 for lane indices
+                        return Err(Error::Parse(
+                            "Unexpected end of input while parsing i8x16.shuffle".into(),
+                        ));
+                    }
+                    let mut lanes = [0u8; 16];
+                    lanes.copy_from_slice(&bytes[2..18]);
+                    Ok((Instruction::I8x16Shuffle(lanes), 18))
+                }
+                // i8x16.swizzle
+                0x0E => Ok((Instruction::I8x16Swizzle, 2)),
+                // i8x16.splat
+                0x0F => Ok((Instruction::I8x16Splat, 2)),
+                // i16x8.splat
+                0x10 => Ok((Instruction::I16x8Splat, 2)),
+                // i32x4.splat
+                0x11 => Ok((Instruction::I32x4Splat, 2)),
+                // i64x2.splat
+                0x12 => Ok((Instruction::I64x2Splat, 2)),
+                // f32x4.splat
+                0x13 => Ok((Instruction::F32x4Splat, 2)),
+                // f64x2.splat
+                0x14 => Ok((Instruction::F64x2Splat, 2)),
+                // v128.load8_lane
+                0x54 => {
+                    if bytes.len() < 4 {
+                        return Err(Error::Parse(
+                            "Unexpected end of input while parsing v128.load8_lane".into(),
+                        ));
+                    }
+                    let (align, align_bytes) = read_leb128_u32(&bytes[2..])?;
+                    let (offset, offset_bytes) = read_leb128_u32(&bytes[2 + align_bytes..])?;
+                    let lane_idx = bytes[2 + align_bytes + offset_bytes];
+                    Ok((
+                        Instruction::V128Load8Lane(offset, align, lane_idx),
+                        3 + align_bytes + offset_bytes,
+                    ))
+                }
+                // v128.load16_lane
+                0x55 => {
+                    if bytes.len() < 4 {
+                        return Err(Error::Parse(
+                            "Unexpected end of input while parsing v128.load16_lane".into(),
+                        ));
+                    }
+                    let (align, align_bytes) = read_leb128_u32(&bytes[2..])?;
+                    let (offset, offset_bytes) = read_leb128_u32(&bytes[2 + align_bytes..])?;
+                    let lane_idx = bytes[2 + align_bytes + offset_bytes];
+                    Ok((
+                        Instruction::V128Load16Lane(offset, align, lane_idx),
+                        3 + align_bytes + offset_bytes,
+                    ))
+                }
+                // v128.load32_lane
+                0x56 => {
+                    if bytes.len() < 4 {
+                        return Err(Error::Parse(
+                            "Unexpected end of input while parsing v128.load32_lane".into(),
+                        ));
+                    }
+                    let (align, align_bytes) = read_leb128_u32(&bytes[2..])?;
+                    let (offset, offset_bytes) = read_leb128_u32(&bytes[2 + align_bytes..])?;
+                    let lane_idx = bytes[2 + align_bytes + offset_bytes];
+                    Ok((
+                        Instruction::V128Load32Lane(offset, align, lane_idx),
+                        3 + align_bytes + offset_bytes,
+                    ))
+                }
+                // v128.load64_lane
+                0x57 => {
+                    if bytes.len() < 4 {
+                        return Err(Error::Parse(
+                            "Unexpected end of input while parsing v128.load64_lane".into(),
+                        ));
+                    }
+                    let (align, align_bytes) = read_leb128_u32(&bytes[2..])?;
+                    let (offset, offset_bytes) = read_leb128_u32(&bytes[2 + align_bytes..])?;
+                    let lane_idx = bytes[2 + align_bytes + offset_bytes];
+                    Ok((
+                        Instruction::V128Load64Lane(offset, align, lane_idx),
+                        3 + align_bytes + offset_bytes,
+                    ))
+                }
+                // v128.store8_lane
+                0x58 => {
+                    if bytes.len() < 4 {
+                        return Err(Error::Parse(
+                            "Unexpected end of input while parsing v128.store8_lane".into(),
+                        ));
+                    }
+                    let (align, align_bytes) = read_leb128_u32(&bytes[2..])?;
+                    let (offset, offset_bytes) = read_leb128_u32(&bytes[2 + align_bytes..])?;
+                    let lane_idx = bytes[2 + align_bytes + offset_bytes];
+                    Ok((
+                        Instruction::V128Store8Lane(offset, align, lane_idx),
+                        3 + align_bytes + offset_bytes,
+                    ))
+                }
+                // v128.store16_lane
+                0x59 => {
+                    if bytes.len() < 4 {
+                        return Err(Error::Parse(
+                            "Unexpected end of input while parsing v128.store16_lane".into(),
+                        ));
+                    }
+                    let (align, align_bytes) = read_leb128_u32(&bytes[2..])?;
+                    let (offset, offset_bytes) = read_leb128_u32(&bytes[2 + align_bytes..])?;
+                    let lane_idx = bytes[2 + align_bytes + offset_bytes];
+                    Ok((
+                        Instruction::V128Store16Lane(offset, align, lane_idx),
+                        3 + align_bytes + offset_bytes,
+                    ))
+                }
+                // v128.store32_lane
+                0x5A => {
+                    if bytes.len() < 4 {
+                        return Err(Error::Parse(
+                            "Unexpected end of input while parsing v128.store32_lane".into(),
+                        ));
+                    }
+                    let (align, align_bytes) = read_leb128_u32(&bytes[2..])?;
+                    let (offset, offset_bytes) = read_leb128_u32(&bytes[2 + align_bytes..])?;
+                    let lane_idx = bytes[2 + align_bytes + offset_bytes];
+                    Ok((
+                        Instruction::V128Store32Lane(offset, align, lane_idx),
+                        3 + align_bytes + offset_bytes,
+                    ))
+                }
+                // v128.store64_lane
+                0x5B => {
+                    if bytes.len() < 4 {
+                        return Err(Error::Parse(
+                            "Unexpected end of input while parsing v128.store64_lane".into(),
+                        ));
+                    }
+                    let (align, align_bytes) = read_leb128_u32(&bytes[2..])?;
+                    let (offset, offset_bytes) = read_leb128_u32(&bytes[2 + align_bytes..])?;
+                    let lane_idx = bytes[2 + align_bytes + offset_bytes];
+                    Ok((
+                        Instruction::V128Store64Lane(offset, align, lane_idx),
+                        3 + align_bytes + offset_bytes,
+                    ))
+                }
+                // For other SIMD opcodes
+                _ => {
+                    println!(
+                        "Warning: Unimplemented SIMD opcode: 0x{:x} at position {}",
+                        simd_opcode, 1
+                    );
+                    Ok((Instruction::Nop, 2))
+                }
+            }
+        }
+        _ => {
+            println!(
+                "Warning: Unimplemented opcode: 0x{:x} at position {}",
+                opcode, 0
+            );
+            Ok((Instruction::Nop, 1))
+        }
     }
 }
 

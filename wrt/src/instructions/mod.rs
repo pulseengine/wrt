@@ -398,6 +398,16 @@ pub enum Instruction {
     I64TruncF64S,
     /// Truncate a 64-bit float to an unsigned 64-bit integer
     I64TruncF64U,
+    /// Sign-extend a 8-bit integer to a 32-bit integer
+    I32Extend8S,
+    /// Sign-extend a 16-bit integer to a 32-bit integer
+    I32Extend16S,
+    /// Sign-extend a 8-bit integer to a 64-bit integer
+    I64Extend8S,
+    /// Sign-extend a 16-bit integer to a 64-bit integer
+    I64Extend16S,
+    /// Sign-extend a 32-bit integer to a 64-bit integer
+    I64Extend32S,
     /// Convert a signed 32-bit integer to a 32-bit float
     F32ConvertI32S,
     /// Convert an unsigned 32-bit integer to a 32-bit float
