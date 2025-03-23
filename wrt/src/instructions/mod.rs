@@ -786,7 +786,7 @@ impl InstructionExecutor for Instruction {
         use crate::error::Error;
 
         // First try to handle with the specialized SIMD executor
-        if let Ok(_result) = simd::handle_simd_instruction(self, stack, frame) {
+        if let Ok(_result) = simd::handle_simd_instruction(self, frame, stack) {
             return Ok(());
         }
 
