@@ -328,7 +328,7 @@ pub fn v128_load(
     frame: &mut StacklessFrame,
     stack: &mut Stack,
     offset: u32,
-    align: u32,
+    _align: u32,
 ) -> Result<()> {
     if frame.module.memories.is_empty() {
         return Err(Error::Execution("No memory available".into()));

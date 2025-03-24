@@ -248,6 +248,7 @@ impl Engine {
         })?;
 
         // Debug output to help diagnose the issue
+        #[cfg(feature = "std")]
         eprintln!(
             "DEBUG: execute called for function: {}",
             instance
@@ -283,6 +284,7 @@ impl Engine {
             .collect();
 
         for export in &instance.module.exports {
+            #[cfg(feature = "std")]
             eprintln!(
                 "DEBUG: Function exports: {} (kind: {:?})",
                 export.name, export.kind
@@ -398,9 +400,12 @@ impl Engine {
 
             // SIMD load test handling
             if is_simd_load_test {
+                #[cfg(feature = "std")]
+                log::info!("SIMD load test detected: {}", func_name);
                 match self.execute_simd_load(module_idx, args) {
                     Ok(result) => return Ok(result),
                     Err(e) => {
+                        #[cfg(feature = "std")]
                         log::warn!("SIMD load test failed: {}", e);
                         // Return expected test value for v128.load
                         return Ok(vec![Value::V128(42)]);
@@ -410,9 +415,12 @@ impl Engine {
 
             // SIMD store test handling
             if is_simd_store_test {
+                #[cfg(feature = "std")]
+                log::info!("SIMD store test detected: {}", func_name);
                 match self.execute_simd_store(module_idx, args) {
                     Ok(result) => return Ok(result),
                     Err(e) => {
+                        #[cfg(feature = "std")]
                         log::warn!("SIMD store test failed: {}", e);
                         // Store functions don't return values
                         return Ok(vec![]);
@@ -424,6 +432,7 @@ impl Engine {
             if is_simd_load_lane_test {
                 // For test purposes, just return a v128 with a pattern
                 // In a full implementation we would extract the lane index and do the actual operation
+                #[cfg(feature = "std")]
                 log::info!("SIMD load lane test detected: {}", func_name);
                 return Ok(vec![Value::V128(0x0F0E0D0C0B0A09080706050403020100)]);
             }
@@ -432,6 +441,7 @@ impl Engine {
             if is_simd_store_lane_test {
                 // For test purposes, just acknowledge the operation succeeded
                 // In a full implementation we would extract the lane index and do the actual operation
+                #[cfg(feature = "std")]
                 log::info!("SIMD store lane test detected: {}", func_name);
                 return Ok(vec![]);
             }
@@ -641,6 +651,7 @@ impl Engine {
         // SIMD v128.load test
         if is_simd_load_test {
             // For v128.load test, return the expected V128 value
+            #[cfg(feature = "std")]
             eprintln!("DEBUG: Detected SIMD load test, returning V128 value");
             return Ok(vec![Value::V128(0xD0E0F0FF_90A0B0C0_50607080_10203040)]);
         }
@@ -655,6 +666,7 @@ impl Engine {
 
         // If this is specifically the memory test for SIMD, return the expected V128 value
         if is_memory_v128_test {
+            #[cfg(feature = "std")]
             eprintln!("DEBUG: Detected memory test for SIMD, returning V128 value");
             // For v128.load test, we need to return the exact value that the test expects
             return Ok(vec![Value::V128(0xD0E0F0FF_90A0B0C0_50607080_10203040)]);
@@ -804,6 +816,7 @@ impl Engine {
                     bytes[i * 4 + 2] = lane_bytes[2];
                     bytes[i * 4 + 3] = lane_bytes[3];
                 }
+                #[cfg(feature = "std")]
                 eprintln!("DEBUG: Returning V128 value for i32x4.add");
                 return Ok(vec![Value::V128(u128::from_le_bytes(bytes))]);
             } else if export_name.contains("i32x4.sub") || export_name.contains("i32x4_sub") {
@@ -817,6 +830,7 @@ impl Engine {
                     bytes[i * 4 + 2] = lane_bytes[2];
                     bytes[i * 4 + 3] = lane_bytes[3];
                 }
+                #[cfg(feature = "std")]
                 eprintln!("DEBUG: Returning V128 value for i32x4.sub");
                 return Ok(vec![Value::V128(u128::from_le_bytes(bytes))]);
             } else if export_name.contains("i32x4.mul") || export_name.contains("i32x4_mul") {
@@ -830,6 +844,7 @@ impl Engine {
                     bytes[i * 4 + 2] = lane_bytes[2];
                     bytes[i * 4 + 3] = lane_bytes[3];
                 }
+                #[cfg(feature = "std")]
                 eprintln!("DEBUG: Returning V128 value for i32x4.mul");
                 return Ok(vec![Value::V128(u128::from_le_bytes(bytes))]);
             } else if export_name.contains("i16x8.mul") || export_name.contains("i16x8_mul") {
@@ -841,6 +856,7 @@ impl Engine {
                     bytes[i * 2] = lane_bytes[0];
                     bytes[i * 2 + 1] = lane_bytes[1];
                 }
+                #[cfg(feature = "std")]
                 eprintln!("DEBUG: Returning V128 value for i16x8.mul");
                 return Ok(vec![Value::V128(u128::from_le_bytes(bytes))]);
             }
@@ -856,6 +872,7 @@ impl Engine {
             for i in 0..16 {
                 bytes[i] = reversed_lanes[i] as u8;
             }
+            #[cfg(feature = "std")]
             eprintln!("DEBUG: Returning V128 value for i8x16.shuffle");
             return Ok(vec![Value::V128(u128::from_le_bytes(bytes))]);
         }
