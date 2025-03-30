@@ -15,7 +15,7 @@ fn create_test_module() -> Module {
     let function = Function {
         type_idx: 0,
         locals: vec![],
-        body: vec![
+        code: vec![
             Instruction::LocalGet(0),
             Instruction::LocalGet(1),
             Instruction::I32Add,
@@ -62,7 +62,7 @@ fn create_memory_module() -> Module {
     let function = Function {
         type_idx: 0,
         locals: vec![ValueType::I32], // Local variable for sum
-        body: vec![
+        code: vec![
             // Initialize sum to 0
             Instruction::I32Const(0),
             Instruction::LocalSet(2),

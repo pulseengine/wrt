@@ -250,7 +250,7 @@ mod tests {
         let valid_function = crate::module::Function {
             type_idx: 0,
             locals: vec![ValueType::I32],
-            body: vec![],
+            code: vec![],
         };
         module.functions.push(valid_function);
         assert!(validate_module(&module).is_ok());
@@ -259,7 +259,7 @@ mod tests {
         let invalid_function = crate::module::Function {
             type_idx: 1, // Invalid index
             locals: vec![],
-            body: vec![],
+            code: vec![],
         };
         module.functions.push(invalid_function);
         assert!(validate_module(&module).is_err());
@@ -361,7 +361,7 @@ mod tests {
         let function = crate::module::Function {
             type_idx: 0,
             locals: vec![],
-            body: vec![],
+            code: vec![],
         };
         module.functions.push(function);
 
@@ -438,7 +438,7 @@ mod tests {
         let valid_function = crate::module::Function {
             type_idx: 0,
             locals: vec![],
-            body: vec![],
+            code: vec![],
         };
         module.functions.push(valid_function);
 
@@ -457,7 +457,7 @@ mod tests {
         let invalid_function = crate::module::Function {
             type_idx: 1,
             locals: vec![],
-            body: vec![],
+            code: vec![],
         };
         module.functions.push(invalid_function);
 

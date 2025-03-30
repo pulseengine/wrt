@@ -2,7 +2,8 @@
 members = [
     "wrt",
     "wrtd",
-    "example"
+    # Temporarily excluding example crate to focus on core libraries
+    # "example"
 ]
 resolver = "2"  # Use edition 2021 resolver
 

@@ -4,93 +4,60 @@
 //! including table access and manipulation operations.
 
 use crate::{
+    behavior::FrameBehavior,
     error::{Error, Result},
-    format,
-    stackless::Frame as StacklessFrame,
-    Value, Vec,
+    stack::Stack,
+    values::Value,
 };
 
 /// Execute a table.get instruction
 ///
 /// Gets an element from a table.
-pub fn table_get(stack: &mut Vec<Value>, frame: &StacklessFrame, table_idx: u32) -> Result<()> {
-    if table_idx as usize >= frame.module.table_addrs.len() {
-        return Err(Error::Execution(format!(
-            "Invalid table index: {table_idx}"
-        )));
-    }
-
-    let table_addr = &frame.module.table_addrs[table_idx as usize];
-    let table = &frame.module.tables[table_addr.table_idx as usize];
-
-    let value = stack
-        .pop()
-        .ok_or(Error::Execution("Stack underflow".into()))?;
-
-    if let Value::I32(idx) = value {
-        if idx < 0 || idx as u32 >= table.size() {
-            return Err(Error::Execution(format!(
-                "Table index out of bounds: {idx}"
-            )));
+pub fn table_get(
+    stack: &mut (impl Stack + ?Sized),
+    frame: &mut (impl FrameBehavior + ?Sized),
+    table_idx: u32,
+) -> Result<()> {
+    let idx = stack.pop()?;
+    match idx {
+        Value::I32(idx) => {
+            let value = frame.table_get(table_idx, idx as u32)?;
+            stack.push(value)?;
+            Ok(())
         }
-
-        let elem = table.get(idx as u32)?.unwrap_or(Value::FuncRef(None));
-        stack.push(elem);
-        Ok(())
-    } else {
-        Err(Error::Execution("Expected i32 for table index".into()))
+        _ => Err(Error::InvalidType("Expected i32".to_string())),
     }
 }
 
 /// Execute a table.set instruction
 ///
 /// Sets an element in a table.
-pub fn table_set(stack: &mut Vec<Value>, frame: &mut StacklessFrame, table_idx: u32) -> Result<()> {
-    if table_idx as usize >= frame.module.table_addrs.len() {
-        return Err(Error::Execution(format!(
-            "Invalid table index: {table_idx}"
-        )));
-    }
-
-    let table_addr = &frame.module.table_addrs[table_idx as usize];
-    let table = &mut frame.module.tables[table_addr.table_idx as usize];
-
-    let value = stack
-        .pop()
-        .ok_or(Error::Execution("Stack underflow".into()))?;
-    let idx = stack
-        .pop()
-        .ok_or(Error::Execution("Stack underflow".into()))?;
-
-    if let Value::I32(idx) = idx {
-        if idx < 0 || idx as u32 >= table.size() {
-            return Err(Error::Execution(format!(
-                "Table index out of bounds: {idx}"
-            )));
+pub fn table_set(
+    stack: &mut (impl Stack + ?Sized),
+    frame: &mut (impl FrameBehavior + ?Sized),
+    table_idx: u32,
+) -> Result<()> {
+    let value = stack.pop()?;
+    let idx = stack.pop()?;
+    match idx {
+        Value::I32(idx) => {
+            frame.table_set(table_idx, idx as u32, value)?;
+            Ok(())
         }
-
-        table.set(idx as u32, Some(value))?;
-        Ok(())
-    } else {
-        Err(Error::Execution("Expected i32 for table index".into()))
+        _ => Err(Error::InvalidType("Expected i32".to_string())),
     }
 }
 
 /// Execute a table.size instruction
 ///
 /// Returns the current size of a table.
-pub fn table_size(stack: &mut Vec<Value>, frame: &StacklessFrame, table_idx: u32) -> Result<()> {
-    if table_idx as usize >= frame.module.table_addrs.len() {
-        return Err(Error::Execution(format!(
-            "Invalid table index: {table_idx}"
-        )));
-    }
-
-    let table_addr = &frame.module.table_addrs[table_idx as usize];
-    let table = &frame.module.tables[table_addr.table_idx as usize];
-
-    stack.push(Value::I32(table.size() as i32));
-
+pub fn table_size(
+    stack: &mut (impl Stack + ?Sized),
+    frame: &mut (impl FrameBehavior + ?Sized),
+    table_idx: u32,
+) -> Result<()> {
+    let size = frame.table_size(table_idx)?;
+    stack.push(Value::I32(size as i32))?;
     Ok(())
 }
 
@@ -98,152 +65,86 @@ pub fn table_size(stack: &mut Vec<Value>, frame: &StacklessFrame, table_idx: u32
 ///
 /// Grows a table by a number of elements.
 pub fn table_grow(
-    stack: &mut Vec<Value>,
-    frame: &mut StacklessFrame,
+    stack: &mut (impl Stack + ?Sized),
+    frame: &mut (impl FrameBehavior + ?Sized),
     table_idx: u32,
 ) -> Result<()> {
-    let Value::I32(n) = stack
-        .pop()
-        .ok_or(Error::Execution("Stack underflow".into()))?
-    else {
-        return Err(Error::Execution("Expected i32 for table.grow".into()));
-    };
-
-    let _value = stack
-        .pop()
-        .ok_or(Error::Execution("Stack underflow".into()))?;
-
-    if n < 0 {
-        return Err(Error::Execution(format!("Invalid table size: {n}")));
+    let value = stack.pop()?;
+    let delta = stack.pop()?;
+    match delta {
+        Value::I32(delta) => {
+            let old_size = frame.table_grow(table_idx, delta as u32, value)?;
+            stack.push(Value::I32(old_size as i32))?;
+            Ok(())
+        }
+        _ => Err(Error::InvalidType("Expected i32".to_string())),
     }
-
-    let table_addr = &frame.module.table_addrs[table_idx as usize];
-    let table = &mut frame.module.tables[table_addr.table_idx as usize];
-
-    let old_size = table.size();
-    if table.grow(n as u32).is_err() {
-        stack.push(Value::I32(-1));
-    } else {
-        stack.push(Value::I32(old_size as i32));
-    }
-
-    Ok(())
 }
 
 /// Execute a table.init instruction
 ///
 /// Initializes a table segment.
 pub fn table_init(
-    stack: &mut Vec<Value>,
-    frame: &mut StacklessFrame,
+    stack: &mut (impl Stack + ?Sized),
+    frame: &mut (impl FrameBehavior + ?Sized),
     table_idx: u32,
-    _elem_idx: u32,
+    elem_idx: u32,
 ) -> Result<()> {
-    let Value::I32(size) = stack
-        .pop()
-        .ok_or(Error::Execution("Stack underflow".into()))?
-    else {
-        return Err(Error::Execution("Expected i32 for table.init size".into()));
-    };
-
-    let Value::I32(src_offset) = stack
-        .pop()
-        .ok_or(Error::Execution("Stack underflow".into()))?
-    else {
-        return Err(Error::Execution(
-            "Expected i32 for table.init source offset".into(),
-        ));
-    };
-
-    let Value::I32(dst_offset) = stack
-        .pop()
-        .ok_or(Error::Execution("Stack underflow".into()))?
-    else {
-        return Err(Error::Execution(
-            "Expected i32 for table.init destination offset".into(),
-        ));
-    };
-
-    if size < 0 || src_offset < 0 || dst_offset < 0 {
-        return Err(Error::Execution("Invalid table offset".into()));
+    let n = stack.pop()?;
+    let src = stack.pop()?;
+    let dst = stack.pop()?;
+    match (dst, src, n) {
+        (Value::I32(dst), Value::I32(src), Value::I32(n)) => {
+            frame.table_init(table_idx, elem_idx, dst as u32, src as u32, n as u32)?;
+            Ok(())
+        }
+        _ => Err(Error::InvalidType("Expected i32".to_string())),
     }
-
-    let table_addr = &frame.module.table_addrs[table_idx as usize];
-    let table = &mut frame.module.tables[table_addr.table_idx as usize];
-
-    if dst_offset as u32 + size as u32 > table.size() {
-        return Err(Error::Execution("Table out of bounds".into()));
-    }
-
-    // TODO: Implement table initialization from element segment
-
-    Ok(())
 }
 
 /// Execute a table.copy instruction
 ///
 /// Copies elements from one table to another.
 pub fn table_copy(
-    stack: &mut Vec<Value>,
-    frame: &mut StacklessFrame,
-    dst_table_idx: u32,
-    src_table_idx: u32,
+    stack: &mut (impl Stack + ?Sized),
+    frame: &mut (impl FrameBehavior + ?Sized),
+    dst_table: u32,
+    src_table: u32,
 ) -> Result<()> {
-    let size = stack
-        .pop()
-        .ok_or(Error::Execution("Stack underflow".into()))?;
-    let src_offset = stack
-        .pop()
-        .ok_or(Error::Execution("Stack underflow".into()))?;
-    let dst_offset = stack
-        .pop()
-        .ok_or(Error::Execution("Stack underflow".into()))?;
-
-    let Value::I32(size) = size else {
-        return Err(Error::Execution("Expected i32 value".into()));
-    };
-    let Value::I32(src_offset) = src_offset else {
-        return Err(Error::Execution("Expected i32 value".into()));
-    };
-    let Value::I32(dst_offset) = dst_offset else {
-        return Err(Error::Execution("Expected i32 value".into()));
-    };
-
-    if size < 0 || src_offset < 0 || dst_offset < 0 {
-        return Err(Error::Execution("Invalid table offset".into()));
+    let n = stack.pop()?;
+    let src = stack.pop()?;
+    let dst = stack.pop()?;
+    match (dst, src, n) {
+        (Value::I32(dst), Value::I32(src), Value::I32(n)) => {
+            frame.table_copy(dst_table, src_table, dst as u32, src as u32, n as u32)?;
+            Ok(())
+        }
+        _ => Err(Error::InvalidType("Expected i32".to_string())),
     }
+}
 
-    let src_table_addr = &frame.module.table_addrs[src_table_idx as usize];
-    let dst_table_addr = &frame.module.table_addrs[dst_table_idx as usize];
-
-    // Get both tables as mutable references
-    let (src_table, dst_table) = if src_table_addr.table_idx < dst_table_addr.table_idx {
-        let (left, right) = frame
-            .module
-            .tables
-            .split_at_mut(src_table_addr.table_idx as usize + 1);
-        (
-            &mut left[src_table_addr.table_idx as usize],
-            &mut right[dst_table_addr.table_idx as usize - src_table_addr.table_idx as usize - 1],
-        )
-    } else {
-        let (left, right) = frame
-            .module
-            .tables
-            .split_at_mut(dst_table_addr.table_idx as usize + 1);
-        (
-            &mut right[src_table_addr.table_idx as usize - dst_table_addr.table_idx as usize - 1],
-            &mut left[dst_table_addr.table_idx as usize],
-        )
-    };
-
-    if src_offset as u32 + size as u32 > src_table.size()
-        || dst_offset as u32 + size as u32 > dst_table.size()
-    {
-        return Err(Error::Execution("Table out of bounds".into()));
-    }
-
-    // TODO: Implement table copy
-
+pub fn elem_drop(
+    stack: &mut (impl Stack + ?Sized),
+    frame: &mut (impl FrameBehavior + ?Sized),
+    elem_idx: u32,
+) -> Result<()> {
+    frame.elem_drop(elem_idx)?;
     Ok(())
+}
+
+pub fn table_fill(
+    stack: &mut (impl Stack + ?Sized),
+    frame: &mut (impl FrameBehavior + ?Sized),
+    table_idx: u32,
+) -> Result<()> {
+    let n = stack.pop()?;
+    let val = stack.pop()?;
+    let dst = stack.pop()?;
+    match (dst, n) {
+        (Value::I32(dst), Value::I32(n)) => {
+            frame.table_fill(table_idx, dst as u32, val, n as u32)?;
+            Ok(())
+        }
+        _ => Err(Error::InvalidType("Expected i32".to_string())),
+    }
 }

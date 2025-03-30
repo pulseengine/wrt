@@ -37,6 +37,9 @@ pub enum Value {
     /// 64-bit floating point value
     F64(f64),
 
+    /// 128-bit SIMD vector value
+    V128([u8; 16]),
+
     /// Function reference value, containing an optional function index
     FuncRef(Option<u32>),
 
@@ -45,9 +48,6 @@ pub enum Value {
 
     /// Any reference value, containing an optional reference index
     AnyRef(Option<u32>),
-
-    /// 128-bit SIMD vector value
-    V128(u128),
 
     /// Record value from the component model, containing named fields
     /// with their corresponding values
@@ -131,7 +131,7 @@ impl Value {
             ValueType::F64 => Self::F64(0.0),
             ValueType::FuncRef => Self::FuncRef(None),
             ValueType::ExternRef => Self::ExternRef(None),
-            ValueType::V128 => Self::V128(0),
+            ValueType::V128 => Self::V128([0; 16]),
             ValueType::AnyRef => Self::AnyRef(None),
         }
     }
@@ -226,7 +226,7 @@ impl Value {
     #[must_use]
     pub const fn as_i32(&self) -> Option<i32> {
         match self {
-            Self::I32(x) => Some(*x),
+            Self::I32(v) => Some(*v),
             _ => None,
         }
     }
@@ -251,7 +251,7 @@ impl Value {
     #[must_use]
     pub const fn as_i64(&self) -> Option<i64> {
         match self {
-            Self::I64(x) => Some(*x),
+            Self::I64(v) => Some(*v),
             _ => None,
         }
     }
@@ -276,7 +276,7 @@ impl Value {
     #[must_use]
     pub const fn as_f32(&self) -> Option<f32> {
         match self {
-            Self::F32(x) => Some(*x),
+            Self::F32(v) => Some(*v),
             _ => None,
         }
     }
@@ -301,7 +301,7 @@ impl Value {
     #[must_use]
     pub const fn as_f64(&self) -> Option<f64> {
         match self {
-            Self::F64(x) => Some(*x),
+            Self::F64(v) => Some(*v),
             _ => None,
         }
     }
@@ -329,7 +329,7 @@ impl Value {
     #[must_use]
     pub const fn as_func_ref(&self) -> Option<Option<u32>> {
         match self {
-            Self::FuncRef(x) => Some(*x),
+            Self::FuncRef(v) => Some(*v),
             _ => None,
         }
     }
@@ -357,7 +357,7 @@ impl Value {
     #[must_use]
     pub const fn as_extern_ref(&self) -> Option<Option<u32>> {
         match self {
-            Self::ExternRef(x) => Some(*x),
+            Self::ExternRef(v) => Some(*v),
             _ => None,
         }
     }
@@ -653,9 +653,30 @@ impl Value {
 
     /// Get the SIMD v128 value, if this is a V128 value
     #[must_use]
-    pub const fn as_v128(&self) -> Option<u128> {
+    pub const fn as_v128(&self) -> Option<&[u8; 16]> {
         match self {
-            Self::V128(val) => Some(*val),
+            Self::V128(v) => Some(v),
+            _ => None,
+        }
+    }
+
+    /// Get the SIMD v128 value, if this is a V128 value
+    pub fn as_v128_mut(&mut self) -> Option<&mut [u8; 16]> {
+        match self {
+            Self::V128(v) => Some(v),
+            _ => None,
+        }
+    }
+
+    /// Get the SIMD v128 value, if this is a V128 value
+    #[must_use]
+    pub fn as_u128(&self) -> Option<u128> {
+        match self {
+            Self::V128(v) => {
+                let mut bytes = [0u8; 16];
+                bytes.copy_from_slice(v);
+                Some(u128::from_le_bytes(bytes))
+            }
             _ => None,
         }
     }
@@ -668,7 +689,7 @@ impl Value {
     #[must_use]
     pub const fn as_any_ref(&self) -> Option<Option<u32>> {
         match self {
-            Self::AnyRef(ref_idx) => Some(*ref_idx),
+            Self::AnyRef(v) => Some(*v),
             _ => None,
         }
     }
@@ -701,6 +722,44 @@ impl Value {
             | Self::Stream { .. } => ValueType::AnyRef,
         }
     }
+
+    /// Attempts to get the value as a u64
+    ///
+    /// # Returns
+    ///
+    /// Some(u64) if the value is an I64 and can be converted to u64,
+    /// None otherwise
+    #[must_use]
+    pub const fn as_u64(&self) -> Option<u64> {
+        match self {
+            Self::I64(n) if *n >= 0 => Some(*n as u64),
+            _ => None,
+        }
+    }
+
+    /// Attempts to get the value as a u32
+    ///
+    /// # Returns
+    ///
+    /// Some(u32) if the value is an I32 and can be converted to u32,
+    /// None otherwise
+    #[must_use]
+    pub const fn as_u32(&self) -> Option<u32> {
+        match self {
+            Self::I32(v) => Some(*v as u32),
+            _ => None,
+        }
+    }
+
+    /// Converts the value to an i32, returning an error if not possible
+    pub fn into_i32(self) -> crate::error::Result<i32> {
+        match self {
+            Self::I32(v) => Ok(v),
+            _ => Err(crate::error::Error::TypeMismatch(
+                "Expected i32 value".to_string(),
+            )),
+        }
+    }
 }
 
 impl fmt::Display for Value {
@@ -710,24 +769,75 @@ impl fmt::Display for Value {
             Self::I64(v) => write!(f, "i64: {v}"),
             Self::F32(v) => write!(f, "f32: {v}"),
             Self::F64(v) => write!(f, "f64: {v}"),
-            Self::FuncRef(Some(v)) => write!(f, "funcref: {v}"),
-            Self::FuncRef(None) => write!(f, "funcref: null"),
-            Self::ExternRef(Some(v)) => write!(f, "externref: {v}"),
-            Self::ExternRef(None) => write!(f, "externref: null"),
-            Self::AnyRef(Some(v)) => write!(f, "anyref: {v}"),
-            Self::AnyRef(None) => write!(f, "anyref: null"),
-            Self::V128(v) => write!(f, "v128: 0x{v:032x}"),
-            Self::Record(fields) => write!(f, "record: {fields:?}"),
-            Self::Tuple(v) => write!(f, "tuple: {v:?}"),
-            Self::List(v) => write!(f, "list: {v:?}"),
-            Self::Flags(v) => write!(f, "flags: {v:?}"),
-            Self::Variant(x, y) => write!(f, "variant: ({x}, {y:?})"),
-            Self::Enum(x) => write!(f, "enum: {x}"),
-            Self::Union(x) => write!(f, "union: {x:?}"),
-            Self::Option(x) => write!(f, "option: {x:?}"),
-            Self::Result(x) => write!(f, "result: {x:?}"),
-            Self::Future(x) => write!(f, "future: {x:?}"),
-            Self::Stream { element, end } => write!(f, "stream: ({element}, {end:?})"),
+            Self::V128(v) => write!(f, "v128: {v:02x?}"),
+            Self::FuncRef(v) => write!(f, "funcref: {v:?}"),
+            Self::ExternRef(v) => write!(f, "externref: {v:?}"),
+            Self::AnyRef(v) => write!(f, "anyref: {v:?}"),
+            Self::Record(fields) => {
+                write!(f, "record: {{")?;
+                for (i, (name, value)) in fields.iter().enumerate() {
+                    if i > 0 {
+                        write!(f, ", ")?;
+                    }
+                    write!(f, "{name}: {value}")?;
+                }
+                write!(f, "}}")
+            }
+            Self::Tuple(values) => {
+                write!(f, "tuple: (")?;
+                for (i, value) in values.iter().enumerate() {
+                    if i > 0 {
+                        write!(f, ", ")?;
+                    }
+                    write!(f, "{value}")?;
+                }
+                write!(f, ")")
+            }
+            Self::List(values) => {
+                write!(f, "list: [")?;
+                for (i, value) in values.iter().enumerate() {
+                    if i > 0 {
+                        write!(f, ", ")?;
+                    }
+                    write!(f, "{value}")?;
+                }
+                write!(f, "]")
+            }
+            Self::Flags(flags) => {
+                write!(f, "flags: {{")?;
+                for (i, flag) in flags.iter().enumerate() {
+                    if i > 0 {
+                        write!(f, ", ")?;
+                    }
+                    write!(f, "{flag}")?;
+                }
+                write!(f, "}}")
+            }
+            Self::Variant(name, value) => {
+                write!(f, "variant: {name}")?;
+                if let Some(value) = value {
+                    write!(f, "({value})")?;
+                }
+                Ok(())
+            }
+            Self::Enum(name) => write!(f, "enum: {name}"),
+            Self::Union(value) => write!(f, "union: {value}"),
+            Self::Option(value) => match value {
+                Some(v) => write!(f, "option: Some({v})"),
+                None => write!(f, "option: None"),
+            },
+            Self::Result(result) => match result {
+                Ok(v) => write!(f, "result: Ok({v})"),
+                Err(e) => write!(f, "result: Err({e})"),
+            },
+            Self::Future(value) => write!(f, "future: {value}"),
+            Self::Stream { element, end } => {
+                write!(f, "stream: ({element}")?;
+                if let Some(end) = end {
+                    write!(f, ", {end}")?;
+                }
+                write!(f, ")")
+            }
         }
     }
 }
