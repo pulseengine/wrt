@@ -7,8 +7,9 @@
 use crate::{
     error::{Error, Result},
     memory::Memory,
+    module::Module,
     resource::{ResourceId, ResourceTable},
-    types::{ComponentType, ValueType},
+    types::{ComponentType, InstanceType, ValueType},
     values::Value,
 };
 
@@ -450,4 +451,14 @@ mod tests {
 
         Ok(())
     }
+}
+
+pub fn instantiate(
+    module: &Module,
+    _resources: Option<&mut ResourceTable>,
+) -> Result<InstanceType> {
+    // Create a simple instance type with no exports
+    Ok(InstanceType {
+        exports: Vec::new(),
+    })
 }

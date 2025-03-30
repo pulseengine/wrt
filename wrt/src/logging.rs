@@ -162,9 +162,58 @@ impl LogOperation {
 /// Log handler type for processing WebAssembly log operations
 pub type LogHandler = Box<dyn Fn(LogOperation) + Send + Sync>;
 
+// Create a custom trait to use as a trait object
+pub trait FnWithVecValue: Send + Sync {
+    fn call(&self, target: &mut dyn Any, args: Vec<Value>) -> crate::error::Result<Vec<Value>>;
+    fn clone_box(&self) -> Box<dyn FnWithVecValue>;
+}
+
+// Implement the trait for function types that meet the requirements
+impl<F> FnWithVecValue for F
+where
+    F: Fn(&mut dyn Any, Vec<Value>) -> crate::error::Result<Vec<Value>>
+        + Send
+        + Sync
+        + Clone
+        + 'static,
+{
+    fn call(&self, target: &mut dyn Any, args: Vec<Value>) -> crate::error::Result<Vec<Value>> {
+        self(target, args)
+    }
+
+    fn clone_box(&self) -> Box<dyn FnWithVecValue> {
+        Box::new(self.clone())
+    }
+}
+
+// Create a cloneable wrapper for the trait object
+pub struct CloneableFn(Box<dyn FnWithVecValue>);
+
+impl CloneableFn {
+    pub fn new<F>(f: F) -> Self
+    where
+        F: Fn(&mut dyn Any, Vec<Value>) -> crate::error::Result<Vec<Value>>
+            + Send
+            + Sync
+            + Clone
+            + 'static,
+    {
+        Self(Box::new(f))
+    }
+
+    pub fn call(&self, target: &mut dyn Any, args: Vec<Value>) -> crate::error::Result<Vec<Value>> {
+        self.0.call(target, args)
+    }
+}
+
+impl Clone for CloneableFn {
+    fn clone(&self) -> Self {
+        Self(self.0.clone_box())
+    }
+}
+
 /// Host function handler type for implementing WebAssembly imports
-pub type HostFunctionHandler =
-    Box<dyn Fn(&mut dyn Any, Vec<Value>) -> crate::error::Result<Vec<Value>> + Send + Sync>;
+pub type HostFunctionHandler = CloneableFn;
 
 /// A callback registry for handling WebAssembly component operations
 #[derive(Default)]
@@ -287,7 +336,7 @@ impl CallbackRegistry {
     ) -> crate::error::Result<Vec<Value>> {
         if let Some(module_functions) = self.host_functions.get(module_name) {
             if let Some(handler) = module_functions.get(function_name) {
-                return handler(engine, args);
+                return handler.call(engine, args);
             }
         }
 

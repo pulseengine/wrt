@@ -3,103 +3,148 @@
 //! This module contains implementations for all WebAssembly variable instructions,
 //! including local and global variable access.
 
-use crate::{
-    error::{Error, Result},
-    format,
-    stackless::Frame as StacklessFrame,
-    Value, Vec,
-};
+use crate::{behavior::FrameBehavior, error::Result, stack::Stack, stackless::StacklessFrame};
 
-/// Execute a local.get instruction
-///
-/// Gets the value of a local variable.
-pub fn local_get(stack: &mut Vec<Value>, frame: &StacklessFrame, local_idx: u32) -> Result<()> {
-    if local_idx as usize >= frame.locals.len() {
-        return Err(Error::Execution(format!(
-            "Invalid local index: {local_idx}"
-        )));
-    }
-
-    stack.push(frame.locals[local_idx as usize].clone());
-    Ok(())
+pub struct LocalGet {
+    pub local_idx: u32,
 }
 
-/// Execute a local.set instruction
-///
-/// Sets the value of a local variable.
-pub fn local_set(stack: &mut Vec<Value>, frame: &mut StacklessFrame, local_idx: u32) -> Result<()> {
-    if local_idx as usize >= frame.locals.len() {
-        return Err(Error::Execution(format!(
-            "Invalid local index: {local_idx}"
-        )));
+impl LocalGet {
+    pub const fn new(local_idx: u32) -> Self {
+        Self { local_idx }
     }
 
-    let value = stack
-        .pop()
-        .ok_or(Error::Execution("Stack underflow".into()))?;
-    frame.locals[local_idx as usize] = value;
-    Ok(())
+    pub fn execute<S: Stack>(&self, stack: &mut S, frame: &mut StacklessFrame) -> Result<()> {
+        let value = frame.get_local(self.local_idx as usize)?;
+        stack.push(value)?;
+        Ok(())
+    }
 }
 
-/// Execute a local.tee instruction
-///
-/// Sets the value of a local variable and keeps the value on the stack.
-pub fn local_tee(stack: &mut Vec<Value>, frame: &mut StacklessFrame, local_idx: u32) -> Result<()> {
-    if local_idx as usize >= frame.locals.len() {
-        return Err(Error::Execution(format!(
-            "Invalid local index: {local_idx}"
-        )));
-    }
-
-    if stack.is_empty() {
-        return Err(Error::Execution("Stack underflow".into()));
-    }
-
-    let value = stack.last().unwrap().clone();
-    frame.locals[local_idx as usize] = value;
-    Ok(())
+pub struct LocalSet {
+    pub local_idx: u32,
 }
 
-/// Execute a global.get instruction
-///
-/// Gets the value of a global variable.
-pub fn global_get(stack: &mut Vec<Value>, frame: &StacklessFrame, global_idx: u32) -> Result<()> {
-    if global_idx as usize >= frame.module.global_addrs.len() {
-        return Err(Error::Execution(format!(
-            "Invalid global index: {global_idx}"
-        )));
+impl LocalSet {
+    pub const fn new(local_idx: u32) -> Self {
+        Self { local_idx }
     }
 
-    let global_addr = &frame.module.global_addrs[global_idx as usize];
-    let value = frame.module.globals[global_addr.global_idx as usize].get();
-    stack.push(value);
-    Ok(())
+    pub fn execute<S: Stack>(&self, stack: &mut S, frame: &mut StacklessFrame) -> Result<()> {
+        let value = stack.pop()?;
+        frame.set_local(self.local_idx as usize, value)?;
+        Ok(())
+    }
 }
 
-/// Execute a global.set instruction
-///
-/// Sets the value of a global variable.
-pub fn global_set(
-    stack: &mut Vec<Value>,
-    frame: &mut StacklessFrame,
-    global_idx: u32,
+pub struct LocalTee {
+    pub local_idx: u32,
+}
+
+impl LocalTee {
+    pub const fn new(local_idx: u32) -> Self {
+        Self { local_idx }
+    }
+
+    pub fn execute<S: Stack>(&self, stack: &mut S, frame: &mut StacklessFrame) -> Result<()> {
+        let value = stack.pop()?;
+        frame.set_local(self.local_idx as usize, value.clone())?;
+        stack.push(value)?;
+        Ok(())
+    }
+}
+
+pub struct GlobalGet {
+    pub global_idx: u32,
+}
+
+impl GlobalGet {
+    pub const fn new(global_idx: u32) -> Self {
+        Self { global_idx }
+    }
+
+    pub fn execute<S: Stack>(&self, stack: &mut S, frame: &mut StacklessFrame) -> Result<()> {
+        let global = frame.get_global(self.global_idx)?;
+        stack.push(global.value.clone())?;
+        Ok(())
+    }
+}
+
+pub struct GlobalSet {
+    pub global_idx: u32,
+}
+
+impl GlobalSet {
+    pub const fn new(global_idx: u32) -> Self {
+        Self { global_idx }
+    }
+
+    pub fn execute<S: Stack>(&self, stack: &mut S, frame: &mut StacklessFrame) -> Result<()> {
+        let value = stack.pop()?;
+        frame.set_global(self.global_idx as usize, value)?;
+        Ok(())
+    }
+}
+
+pub fn local_get(
+    stack: &mut (impl Stack + ?Sized),
+    frame: &mut (impl FrameBehavior + ?Sized),
+    idx: u32,
 ) -> Result<()> {
-    let global_addr = &frame.module.global_addrs[global_idx as usize];
-    let global = &mut frame.module.globals[global_addr.global_idx as usize];
+    println!("DEBUG: local_get - Executing with idx: {idx}");
+    println!(
+        "DEBUG: local_get - Frame locals length: {}",
+        frame.get_locals().len()
+    );
 
-    if !global.type_().mutable {
-        return Err(Error::Execution("Cannot set immutable global".into()));
-    }
+    // Get the local variable value
+    let value = frame.get_local(idx as usize)?;
+    println!("DEBUG: local_get - Retrieved value at index {idx}: {value:?}");
 
-    let value = stack
-        .pop()
-        .ok_or(Error::Execution("Stack underflow".into()))?;
-    if value.type_() != global.type_().content_type {
-        return Err(Error::Execution(
-            "Value type does not match global type".into(),
-        ));
-    }
+    // Push the value to the stack
+    stack.push(value)?;
+    println!("DEBUG: local_get - Stack after push: {:?}", stack.values());
 
-    global.set(value)?;
+    Ok(())
+}
+
+pub fn local_set(
+    stack: &mut (impl Stack + ?Sized),
+    frame: &mut (impl FrameBehavior + ?Sized),
+    idx: u32,
+) -> Result<()> {
+    let value = stack.pop()?;
+    frame.set_local(idx as usize, value)?;
+    Ok(())
+}
+
+pub fn local_tee(
+    stack: &mut (impl Stack + ?Sized),
+    frame: &mut (impl FrameBehavior + ?Sized),
+    idx: u32,
+) -> Result<()> {
+    let value = stack.pop()?;
+    frame.set_local(idx as usize, value.clone())?;
+    stack.push(value)?;
+    Ok(())
+}
+
+pub fn global_get(
+    stack: &mut (impl Stack + ?Sized),
+    frame: &mut (impl FrameBehavior + ?Sized),
+    idx: u32,
+) -> Result<()> {
+    let value = frame.get_global(idx as usize)?;
+    stack.push(value)?;
+    Ok(())
+}
+
+pub fn global_set(
+    stack: &mut (impl Stack + ?Sized),
+    frame: &mut (impl FrameBehavior + ?Sized),
+    idx: u32,
+) -> Result<()> {
+    let value = stack.pop()?;
+    frame.set_global(idx as usize, value)?;
     Ok(())
 }

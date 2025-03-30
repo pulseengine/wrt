@@ -179,6 +179,21 @@ pub struct ComponentResourceType {
     pub version: u32,
 }
 
+/// Represents a WebAssembly block type for control flow instructions
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum BlockType {
+    /// No values are returned
+    Empty,
+    /// A single value of the specified type is returned
+    Type(ValueType),
+    /// A single value of the specified type is returned (alternative version)
+    Value(ValueType),
+    /// Multiple values are returned according to the function type
+    FuncType(FuncType),
+    /// Reference to a function type by index
+    TypeIndex(u32),
+}
+
 impl fmt::Display for ValueType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
