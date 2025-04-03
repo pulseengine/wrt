@@ -812,9 +812,7 @@ mod tests {
         fn func_idx(&self) -> u32 {
             self.func_idx
         }
-        fn instance_idx(&self) -> u32 {
-            self.instance_idx as u32
-        }
+        fn instance_idx(&self) -> u32 { 0 }
         fn locals_len(&self) -> usize {
             self.locals.len()
         }

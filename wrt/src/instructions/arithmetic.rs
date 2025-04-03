@@ -1173,7 +1173,7 @@ mod tests {
         fn pc(&self) -> usize { todo!() }
         fn set_pc(&mut self, pc: usize) { todo!() }
         fn func_idx(&self) -> u32 { todo!() }
-        fn instance_idx(&self) -> u32 { todo!() } // Corrected type
+        fn instance_idx(&self) -> u32 { 0 }
         fn locals_len(&self) -> usize { todo!() }
         fn label_stack(&mut self) -> &mut Vec<Label> { todo!() }
         fn arity(&self) -> usize { todo!() }
@@ -1213,6 +1213,26 @@ mod tests {
         fn pop_bool(&mut self, stack: &mut dyn Stack) -> Result<bool> { todo!() }
         fn pop_i32(&mut self, stack: &mut dyn Stack) -> Result<i32> { todo!() }
         fn get_two_tables_mut(&mut self, idx1: u32, idx2: u32) -> Result<(MutexGuard<Table>, MutexGuard<Table>)> { todo!() }
+    }
+
+    // Added placeholder implementation
+    impl ControlFlowBehavior for TestFrame {
+        fn enter_block(&mut self, _ty: BlockType, _stack_len: usize) -> Result<()> { Ok(()) }
+        fn enter_loop(&mut self, _ty: BlockType, _stack_len: usize) -> Result<()> { Ok(()) }
+        fn enter_if(&mut self, _ty: BlockType, _stack_len: usize, _condition: bool) -> Result<()> { Ok(()) }
+        fn enter_else(&mut self, _stack_len: usize) -> Result<()> { Ok(()) }
+        fn exit_block(&mut self, _stack: &mut dyn Stack) -> Result<()> { Ok(()) }
+        fn branch(&mut self, _label_idx: u32, _stack: &mut dyn Stack) -> Result<()> { Ok(()) }
+        fn return_(&mut self, _stack: &mut dyn Stack) -> Result<()> { Ok(()) }
+        fn call(&mut self, _func_idx: u32, _stack: &mut dyn Stack) -> Result<()> { Ok(()) }
+        fn call_indirect(
+            &mut self,
+            _type_idx: u32,
+            _table_idx: u32,
+            _entry: u32,
+            _stack: &mut dyn Stack,
+        ) -> Result<()> { Ok(()) }
+        fn set_label_arity(&mut self, _arity: usize) {}
     }
 
     #[derive(Debug)]
