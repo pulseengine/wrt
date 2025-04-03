@@ -9,9 +9,9 @@ use crate::{
     memory::DefaultMemory,
     module::{ExportKind, Function, Module},
     module_instance::ModuleInstance,
-    stack::{Stack},
-    stackless_frame::StacklessFrame,
+    stack::Stack,
     stackless::StacklessStack,
+    stackless_frame::StacklessFrame,
     table::Table,
     values::Value,
 };
