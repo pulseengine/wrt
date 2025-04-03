@@ -41,8 +41,9 @@ Key Features:
 
 For detailed requirements and their relationships, see the :doc:`requirements` section.
 
-.. include:: _generated/symbols_latest.rst
-   :literal:
+.. include:: _generated_symbols.rst
+
+.. include:: _generated_coverage_summary.rst
 
 Indices and tables
 ==================
