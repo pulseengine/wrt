@@ -57,9 +57,8 @@ impl StacklessFrame {
         func_idx: u32,
         args: Vec<Value>,
     ) -> Result<Self> {
-        let func_type = module.get_function_type(func_idx).ok_or_else(|| {
-            Error::InvalidFunctionType(format!("Function type not found for index: {func_idx}"))
-        })?;
+        let module_clone = module.clone(); // Clone Arc before borrowing
+        let func_type = module_clone.get_function_type(func_idx)?;
 
         if args.len() != func_type.params.len() {
             return Err(Error::InvalidFunctionType(format!(
@@ -81,13 +80,13 @@ impl StacklessFrame {
         }
 
         Ok(Self {
-            module,
+            module: module_clone,
             func_idx,
             pc: 0, // Start at the beginning of the function code
             locals: args, // Arguments become the initial part of locals
             instance_idx,
             arity: func_type.results.len(), // Frame arity is the function's return arity
-            label_arity: func_type.results.len(), // Initial label arity matches function arity
+            label_arity: func_type.inputs.len(), // Initial label arity matches function input arity
             label_stack: Vec::new(),
             return_pc: 0, // Will be set by the caller
         })
@@ -479,19 +478,21 @@ impl ControlFlowBehavior for StacklessFrame {
          );
          self.set_pc(target_label.continuation);
 
-         // 6. Update the frame's current label arity based on the new top label (if any)
-         if let Some(new_top_label) = self.label_stack.last() {
-            let target_arity = new_top_label.arity; // Store arity before mutable borrow
-            self.set_label_arity(target_arity);
-            println!("DEBUG: branch - New top label: {:?}, Restored label_arity to: {}", new_top_label, target_arity); // Use stored variable
+         // 6. Restore the arity of the new top label (if any)
+         let new_label_arity = self.label_stack.last().map(|l| l.arity);
+         if let Some(arity) = new_label_arity {
+             self.set_label_arity(arity);
+             println!("DEBUG: branch - Restored label_arity to: {}", arity);
          } else {
-            // Branched out of the function frame scope
-            let func_type = self.get_function_type()?; // Needs implementation
-            let func_arity = func_type.results.len();
-            self.set_label_arity(func_arity);
-            println!("DEBUG: branch - Branched out of function, Restored label_arity to func arity: {}", func_arity);
+             // If branching out of the function entirely, restore function return arity
+             let func_type = self.get_function_type()?;
+             let func_arity = func_type.results.len();
+             self.set_label_arity(func_arity);
+             println!("DEBUG: branch - Restored label_arity to func arity: {}", func_arity);
          }
 
+         // 7. Pop labels up to the target
+         self.label_stack.truncate(target_label_index + 1);
 
          println!(
              "DEBUG: branch - END - PC: {}, Stack: {:?}, Label Stack: {:?}, New Label Arity: {}",
