@@ -387,7 +387,15 @@ impl StacklessEngine {
             .ok_or_else(|| Error::ExportNotFound(export_name.to_string()))?;
 
         match export.external {
-            crate::module::ExportKind::Function(func_idx) => {
+            crate::module::ExportKind::Function => {
+                // Found the start function export
+                let func_idx = if let crate::module::ExportValue::Function(idx) = export.value {
+                    idx
+                } else {
+                    return Err(Error::ExportNotFound(format!(
+                        "Export '{export_name}' is not a function"
+                    )));
+                };
                 self.call_function(instance_idx, func_idx, args)
             }
             _ => Err(Error::ExportNotFound(format!(
@@ -413,9 +421,13 @@ impl StacklessEngine {
         // Check if this is a host function callback
         // Find the export name associated with this function index
         let export_name = module.exports.iter().find_map(|(name, export)| {
-            if let crate::module::ExportKind::Function(idx) = export.external {
-                if idx == func_idx {
-                    Some(name.clone())
+            if let crate::module::ExportKind::Function = export.external {
+                if let crate::module::ExportValue::Function(idx) = export.value {
+                    if idx == func_idx {
+                        Some(name.clone())
+                    } else {
+                        None
+                    }
                 } else {
                     None
                 }
@@ -438,8 +450,8 @@ impl StacklessEngine {
         // Not a host callback, proceed with normal execution
         let func_idx = func_idx.ok_or(Error::InvalidInput("Entry function not found".to_string()))?;
 
-        // Clone the Arc<Module> obtained from the map
-        let initial_frame = StacklessFrame::new(module.clone(), func_idx, args, instance_idx as u32)?;
+        // Create the initial frame
+        let initial_frame = StacklessFrame::new(module.clone().into(), func_idx, args, instance_idx as u32)?;
         self.stack.frames.push(initial_frame);
         self.stack.state = StacklessExecutionState::Running;
 

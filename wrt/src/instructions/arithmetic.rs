@@ -4,8 +4,9 @@
 //! including addition, subtraction, multiplication, division, and more.
 
 use crate::{
-    behavior::{FrameBehavior, StackBehavior, ControlFlowBehavior, MemoryBehavior, NullBehavior},
+    behavior::{FrameBehavior, StackBehavior, ControlFlowBehavior, /* MemoryBehavior, */ NullBehavior},
     error::{Error, Result},
+    memory::MemoryBehavior,
     stack::Stack,
     values::Value,
     StacklessEngine,
@@ -1148,7 +1149,6 @@ mod tests {
         table::Table,
         global::Global,
         types::{FuncType, BlockType},
-        memory::MemoryBehavior,
         StacklessEngine,
     };
     use std::sync::{Arc, MutexGuard};
