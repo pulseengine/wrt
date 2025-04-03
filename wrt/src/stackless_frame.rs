@@ -86,7 +86,7 @@ impl StacklessFrame {
             locals: args, // Arguments become the initial part of locals
             instance_idx,
             arity: func_type.results.len(), // Frame arity is the function's return arity
-            label_arity: func_type.inputs.len(), // Initial label arity matches function input arity
+            label_arity: func_type.params.len(), // Initial label arity matches function input arity (use params field)
             label_stack: Vec::new(),
             return_pc: 0, // Will be set by the caller
         })
@@ -482,7 +482,7 @@ impl ControlFlowBehavior for StacklessFrame {
          let new_label_arity = self.label_stack.last().map(|l| l.arity);
          if let Some(arity) = new_label_arity {
              self.set_label_arity(arity);
-             println!("DEBUG: branch - Restored label_arity to: {}", arity);
+             // println!("DEBUG: branch - Restored label_arity to: {}", arity); // Removed to potentially fix borrow issue
          } else {
              // If branching out of the function entirely, restore function return arity
              let func_type = self.get_function_type()?;
