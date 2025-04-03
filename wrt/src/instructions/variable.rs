@@ -5,7 +5,10 @@
 
 use log::debug;
 
-use crate::{behavior::FrameBehavior, error::Result, stack::Stack, stackless_frame::StacklessFrame, StacklessEngine};
+use crate::{
+    behavior::FrameBehavior, error::Result, stack::Stack, stackless_frame::StacklessFrame,
+    StacklessEngine,
+};
 
 pub struct LocalGet {
     pub local_idx: u32,

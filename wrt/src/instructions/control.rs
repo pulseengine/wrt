@@ -87,7 +87,12 @@ pub struct Block {
 }
 
 impl InstructionExecutor for Block {
-    fn execute(&self, stack: &mut dyn Stack, frame: &mut dyn FrameBehavior, engine: &StacklessEngine) -> Result<()> {
+    fn execute(
+        &self,
+        stack: &mut dyn Stack,
+        frame: &mut dyn FrameBehavior,
+        engine: &StacklessEngine,
+    ) -> Result<()> {
         // Save current state
         let current_arity = frame.arity();
         let current_label_arity = frame.label_arity();
@@ -142,7 +147,12 @@ pub struct Loop {
 }
 
 impl InstructionExecutor for Loop {
-    fn execute(&self, stack: &mut dyn Stack, frame: &mut dyn FrameBehavior, engine: &StacklessEngine) -> Result<()> {
+    fn execute(
+        &self,
+        stack: &mut dyn Stack,
+        frame: &mut dyn FrameBehavior,
+        engine: &StacklessEngine,
+    ) -> Result<()> {
         // Save current state
         let current_arity = frame.arity();
         let current_label_arity = frame.label_arity();
@@ -198,7 +208,12 @@ pub struct If {
 }
 
 impl InstructionExecutor for If {
-    fn execute(&self, stack: &mut dyn Stack, frame: &mut dyn FrameBehavior, engine: &StacklessEngine) -> Result<()> {
+    fn execute(
+        &self,
+        stack: &mut dyn Stack,
+        frame: &mut dyn FrameBehavior,
+        engine: &StacklessEngine,
+    ) -> Result<()> {
         let condition = stack.pop()?;
         let condition_value = match condition {
             Value::I32(0) => false,
@@ -265,7 +280,12 @@ pub struct Br {
 }
 
 impl InstructionExecutor for Br {
-    fn execute(&self, _stack: &mut dyn Stack, frame: &mut dyn FrameBehavior, _engine: &StacklessEngine) -> Result<()> {
+    fn execute(
+        &self,
+        _stack: &mut dyn Stack,
+        frame: &mut dyn FrameBehavior,
+        _engine: &StacklessEngine,
+    ) -> Result<()> {
         // Get the label continuation address
         let label_stack = frame.label_stack();
         let label = label_stack
@@ -285,7 +305,12 @@ pub struct BrIf {
 }
 
 impl InstructionExecutor for BrIf {
-    fn execute(&self, stack: &mut dyn Stack, frame: &mut dyn FrameBehavior, _engine: &StacklessEngine) -> Result<()> {
+    fn execute(
+        &self,
+        stack: &mut dyn Stack,
+        frame: &mut dyn FrameBehavior,
+        _engine: &StacklessEngine,
+    ) -> Result<()> {
         let condition = stack.pop()?;
         let condition_value = match condition {
             Value::I32(0) => false,
@@ -316,7 +341,12 @@ pub struct BrTable {
 }
 
 impl InstructionExecutor for BrTable {
-    fn execute(&self, stack: &mut dyn Stack, frame: &mut dyn FrameBehavior, _engine: &StacklessEngine) -> Result<()> {
+    fn execute(
+        &self,
+        stack: &mut dyn Stack,
+        frame: &mut dyn FrameBehavior,
+        _engine: &StacklessEngine,
+    ) -> Result<()> {
         let index = stack.pop()?;
         let index_value = match index {
             Value::I32(i) => i as usize,
@@ -346,7 +376,12 @@ impl InstructionExecutor for BrTable {
 pub struct Return;
 
 impl InstructionExecutor for Return {
-    fn execute(&self, _stack: &mut dyn Stack, frame: &mut dyn FrameBehavior, _engine: &StacklessEngine) -> Result<()> {
+    fn execute(
+        &self,
+        _stack: &mut dyn Stack,
+        frame: &mut dyn FrameBehavior,
+        _engine: &StacklessEngine,
+    ) -> Result<()> {
         frame.set_return_pc(usize::MAX);
         Ok(())
     }
@@ -358,7 +393,12 @@ pub struct Call {
 }
 
 impl InstructionExecutor for Call {
-    fn execute(&self, stack: &mut dyn Stack, frame: &mut dyn FrameBehavior, engine: &StacklessEngine) -> Result<()> {
+    fn execute(
+        &self,
+        stack: &mut dyn Stack,
+        frame: &mut dyn FrameBehavior,
+        engine: &StacklessEngine,
+    ) -> Result<()> {
         engine.call(stack, frame, self.func_idx)
     }
 }
@@ -370,7 +410,12 @@ pub struct CallIndirect {
 }
 
 impl InstructionExecutor for CallIndirect {
-    fn execute(&self, stack: &mut dyn Stack, frame: &mut dyn FrameBehavior, engine: &StacklessEngine) -> Result<()> {
+    fn execute(
+        &self,
+        stack: &mut dyn Stack,
+        frame: &mut dyn FrameBehavior,
+        engine: &StacklessEngine,
+    ) -> Result<()> {
         engine.call_indirect(stack, frame, self.type_idx, self.table_idx)
     }
 }
@@ -450,7 +495,11 @@ pub fn end(stack: &mut impl Stack, frame: &mut (impl FrameBehavior + ?Sized)) ->
     Ok(())
 }
 
-pub fn end_dyn(stack: &mut dyn Stack, frame: &mut dyn FrameBehavior, engine: &StacklessEngine) -> Result<()> {
+pub fn end_dyn(
+    stack: &mut dyn Stack,
+    frame: &mut dyn FrameBehavior,
+    engine: &StacklessEngine,
+) -> Result<()> {
     // Don't call on Module
     if let Some(frame_concrete) = frame
         .as_any()
@@ -598,14 +647,23 @@ pub fn if_dyn(
     Ok(())
 }
 
-pub fn else_dyn(stack: &mut dyn Stack, frame: &mut dyn FrameBehavior, engine: &StacklessEngine) -> Result<()> {
+pub fn else_dyn(
+    stack: &mut dyn Stack,
+    frame: &mut dyn FrameBehavior,
+    engine: &StacklessEngine,
+) -> Result<()> {
     println!("Executing Else instruction");
     // Logic for when Else is encountered (usually involves jumping to End)
     // TODO: Pop the label pushed by If, find matching End, update frame PC
     Ok(())
 }
 
-pub fn br_dyn(stack: &mut dyn Stack, frame: &mut dyn FrameBehavior, label_idx: u32, engine: &StacklessEngine) -> Result<()> {
+pub fn br_dyn(
+    stack: &mut dyn Stack,
+    frame: &mut dyn FrameBehavior,
+    label_idx: u32,
+    engine: &StacklessEngine,
+) -> Result<()> {
     println!("Executing Br instruction: label_idx={}", label_idx);
     let label = stack.get_label(label_idx as usize)?; // Get the target label
     let arity = label.arity;
@@ -616,7 +674,12 @@ pub fn br_dyn(stack: &mut dyn Stack, frame: &mut dyn FrameBehavior, label_idx: u
     Ok(())
 }
 
-pub fn br_if_dyn(stack: &mut dyn Stack, frame: &mut dyn FrameBehavior, label_idx: u32, engine: &StacklessEngine) -> Result<()> {
+pub fn br_if_dyn(
+    stack: &mut dyn Stack,
+    frame: &mut dyn FrameBehavior,
+    label_idx: u32,
+    engine: &StacklessEngine,
+) -> Result<()> {
     println!("Executing BrIf instruction: label_idx={}", label_idx);
     let condition = stack.pop()?.as_i32()?;
     if condition != 0 {
@@ -635,8 +698,7 @@ pub fn br_table_dyn(
 ) -> Result<()> {
     println!(
         "Executing BrTable instruction: targets={:?}, default={}",
-        label_indices,
-        default_label
+        label_indices, default_label
     );
     let value = stack.pop()?.as_i32()? as usize;
     let target_label_idx = if value < label_indices.len() {
@@ -647,7 +709,11 @@ pub fn br_table_dyn(
     br_dyn(stack, frame, target_label_idx, engine)
 }
 
-pub fn return_dyn(stack: &mut dyn Stack, frame: &mut dyn FrameBehavior, engine: &StacklessEngine) -> Result<()> {
+pub fn return_dyn(
+    stack: &mut dyn Stack,
+    frame: &mut dyn FrameBehavior,
+    engine: &StacklessEngine,
+) -> Result<()> {
     println!("Executing Return instruction");
     let frame_arity = frame.arity(); // Get expected return arity from the frame
     let results = stack.pop_n(frame_arity)?;
@@ -664,17 +730,30 @@ pub fn return_dyn(stack: &mut dyn Stack, frame: &mut dyn FrameBehavior, engine: 
     Ok(())
 }
 
-pub fn unreachable_dyn(stack: &mut dyn Stack, frame: &mut dyn FrameBehavior, engine: &StacklessEngine) -> Result<()> {
+pub fn unreachable_dyn(
+    stack: &mut dyn Stack,
+    frame: &mut dyn FrameBehavior,
+    engine: &StacklessEngine,
+) -> Result<()> {
     println!("Executing Unreachable instruction");
     Err(Error::Unreachable)
 }
 
-pub fn nop_dyn(stack: &mut dyn Stack, frame: &mut dyn FrameBehavior, engine: &StacklessEngine) -> Result<()> {
+pub fn nop_dyn(
+    stack: &mut dyn Stack,
+    frame: &mut dyn FrameBehavior,
+    engine: &StacklessEngine,
+) -> Result<()> {
     println!("Executing Nop instruction");
     Ok(())
 }
 
-pub fn call_dyn(stack: &mut dyn Stack, frame: &mut dyn FrameBehavior, func_idx: u32, engine: &StacklessEngine) -> Result<()> {
+pub fn call_dyn(
+    stack: &mut dyn Stack,
+    frame: &mut dyn FrameBehavior,
+    func_idx: u32,
+    engine: &StacklessEngine,
+) -> Result<()> {
     println!("Executing Call instruction: func_idx={}", func_idx);
     let module_instance = frame.module_instance();
     let func_type = module_instance.get_function_type(func_idx)?;
@@ -699,8 +778,7 @@ pub fn call_indirect_dyn(
 ) -> Result<()> {
     println!(
         "Executing CallIndirect instruction: type_idx={}, table_idx={}",
-        type_idx,
-        table_idx
+        type_idx, table_idx
     );
     let table_addr = stack.pop()?.as_i32()? as usize;
     let module_instance = frame.module_instance();
@@ -749,8 +827,7 @@ pub fn return_call_indirect_dyn(
 ) -> Result<()> {
     println!(
         "Executing ReturnCallIndirect instruction: type_idx={}, table_idx={}",
-        type_idx,
-        table_idx
+        type_idx, table_idx
     );
     // Pop current frame/label first
     return_dyn(stack, frame, engine)?;

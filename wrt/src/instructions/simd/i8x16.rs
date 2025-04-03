@@ -9,20 +9,16 @@ use std::cmp;
 #[cfg(not(feature = "std"))]
 use core::cmp;
 
-use crate::{
-    behavior::FrameBehavior,
-    error::{Error, Result},
-    stack::Stack,
-    values::Value,
-};
+use crate::behavior::FrameBehavior;
+use crate::error::{Error, Result};
+use crate::stack::Stack;
+use crate::values::Value;
+use crate::StacklessEngine;
 
 use super::common::{pop_v128, push_v128 /*, V128 */};
 
 /// Replicate an i8 value to all lanes of a v128
-pub fn i8x16_splat(
-    stack: &mut (impl Stack + ?Sized),
-    _frame: &mut (impl FrameBehavior + ?Sized),
-) -> Result<()> {
+pub fn i8x16_splat(stack: &mut impl Stack, _frame: &mut impl FrameBehavior) -> Result<()> {
     // Pop the i32 value from the stack and extract the low 8 bits
     let value = match stack.pop()? {
         Value::I32(v) => v as i8,
@@ -575,4 +571,38 @@ pub fn i8x16_popcnt(
 
     // Push the result v128 to the stack
     push_v128(stack, result)
+}
+
+// Add stubs for missing functions
+
+pub fn i8x16_shr_s(
+    _stack: &mut dyn Stack,
+    _frame: &mut dyn FrameBehavior,
+    _engine: &StacklessEngine,
+) -> Result<()> {
+    todo!("Implement i8x16_shr_s")
+}
+
+pub fn i8x16_shr_u(
+    _stack: &mut dyn Stack,
+    _frame: &mut dyn FrameBehavior,
+    _engine: &StacklessEngine,
+) -> Result<()> {
+    todo!("Implement i8x16_shr_u")
+}
+
+pub fn i8x16_narrow_i16x8_s(
+    _stack: &mut dyn Stack,
+    _frame: &mut dyn FrameBehavior,
+    _engine: &StacklessEngine,
+) -> Result<()> {
+    todo!("Implement i8x16_narrow_i16x8_s")
+}
+
+pub fn i8x16_narrow_i16x8_u(
+    _stack: &mut dyn Stack,
+    _frame: &mut dyn FrameBehavior,
+    _engine: &StacklessEngine,
+) -> Result<()> {
+    todo!("Implement i8x16_narrow_i16x8_u")
 }

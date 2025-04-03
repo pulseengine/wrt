@@ -87,7 +87,7 @@ pub fn table_init(
     let d = stack.pop()?.as_i32()?;
     let table = frame.get_table_mut(table_idx)?;
     let elem_segment = frame.get_element_segment(elem_idx)?;
-    table.init(d as u32, elem_segment, s as u32, n as u32)?;
+    table.init(d as u32, elem_segment)?;
     Ok(())
 }
 
@@ -101,9 +101,9 @@ pub fn table_copy(
     src_table_idx: u32,
     _engine: &StacklessEngine,
 ) -> Result<()> {
-    let n = stack.pop()?.as_i32()?;
-    let s = stack.pop()?.as_i32()?;
-    let d = stack.pop()?.as_i32()?;
+    let n = stack.pop()?.as_i32().ok_or(Error::ValueTypeMismatch)?;
+    let s = stack.pop()?.as_i32().ok_or(Error::ValueTypeMismatch)?;
+    let d = stack.pop()?.as_i32().ok_or(Error::ValueTypeMismatch)?;
 
     let (dst_table, src_table) = frame.get_two_tables_mut(dst_table_idx, src_table_idx)?;
 
@@ -111,17 +111,22 @@ pub fn table_copy(
     let dst_size = dst_table.size() as i32;
     let src_size = src_table.size() as i32;
 
-    if s.checked_add(n).map_or(true, |end| end > src_size) || d.checked_add(n).map_or(true, |end| end > dst_size) {
-        return Err(Error::TableAccessOutOfBounds);
+    if s.checked_add(n).map_or(true, |end| end > src_size)
+        || d.checked_add(n).map_or(true, |end| end > dst_size)
+    {
+        return Err(Error::TableIndexOutOfBounds);
     }
 
     // Perform the copy - using write lock on the table
-    dst_table.write().map_err(|_| Error::PoisonedLock)?.copy_from(
-        &src_table.read().map_err(|_| Error::PoisonedLock)?,
-        s as u32,
-        d as u32,
-        n as u32,
-    )
+    dst_table
+        .write()
+        .map_err(|_| Error::PoisonedLock)?
+        .copy_from(
+            &src_table.read().map_err(|_| Error::PoisonedLock)?,
+            s as u32,
+            d as u32,
+            n as u32,
+        );
 
     // Old direct call:
     // table.copy_within(s as u32, d as u32, n as u32)?;
@@ -134,7 +139,7 @@ pub fn elem_drop(
     _engine: &StacklessEngine,
     elem_idx: u32,
 ) -> Result<()> {
-    frame.drop_element_segment(elem_idx)?;
+    frame.elem_drop(elem_idx)?;
     Ok(())
 }
 
@@ -144,24 +149,31 @@ pub fn table_fill(
     table_idx: u32,
     _engine: &StacklessEngine,
 ) -> Result<()> {
-    let n = stack.pop()?.as_i32()?;
+    let n = stack
+        .pop()?
+        .as_i32()
+        .ok_or_else(|| Error::InvalidType("Expected i32 for table_fill count".to_string()))?;
     let val = stack.pop()?;
-    let d = stack.pop()?.as_i32()?;
+    let d = stack
+        .pop()?
+        .as_i32()
+        .ok_or_else(|| Error::InvalidType("Expected i32 for table_fill offset".to_string()))?;
 
     let table = frame.get_table_mut(table_idx as usize)?;
     let table_size = table.size() as i32;
 
     if d.checked_add(n).map_or(true, |end| end > table_size) {
-        return Err(Error::TableAccessOutOfBounds);
+        return Err(Error::TableIndexOutOfBounds);
     }
 
     // Validate value type matches table type
     // Call element_type() on the TableType within the Arc
-    if val.value_type() != table.type_().element_type {
-        return Err(Error::TypeMismatch {
-            expected: table.type_().element_type,
-            actual: val.value_type(),
-        });
+    if val.type_() != table.type_().element_type {
+        return Err(Error::TypeMismatch(format!(
+            "Expected type {}, found type {}",
+            table.type_().element_type,
+            val.type_()
+        )));
     }
 
     // Get write lock on the internal elements Vec via the Arc

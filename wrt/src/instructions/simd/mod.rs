@@ -15,18 +15,28 @@ mod i64x2;
 pub use i64x2::*;
 
 use crate::{
-    behavior::{FrameBehavior, /* Stack */},
+    behavior::{FrameBehavior /* Stack */},
     error::{Error, Result},
     stack::Stack, // Import directly
     values::Value,
     StacklessEngine, // Import
 };
 
-pub fn v128_const(stack: &mut dyn Stack, frame: &mut dyn FrameBehavior, _engine: &StacklessEngine, val: [u8; 16]) -> Result<()> {
+pub fn v128_const(
+    stack: &mut dyn Stack,
+    frame: &mut dyn FrameBehavior,
+    _engine: &StacklessEngine,
+    val: [u8; 16],
+) -> Result<()> {
     stack.push(Value::V128(val))
 }
 
-pub fn i8x16_shuffle(stack: &mut dyn Stack, frame: &mut dyn FrameBehavior, _engine: &StacklessEngine, lanes: [u8; 16]) -> Result<()> {
+pub fn i8x16_shuffle(
+    stack: &mut dyn Stack,
+    frame: &mut dyn FrameBehavior,
+    _engine: &StacklessEngine,
+    lanes: [u8; 16],
+) -> Result<()> {
     let b = stack.pop()?.as_v128()?;
     let a = stack.pop()?.as_v128()?;
     let mut result = [0u8; 16];
@@ -47,7 +57,12 @@ pub fn i8x16_shuffle(stack: &mut dyn Stack, frame: &mut dyn FrameBehavior, _engi
 
 macro_rules! i8x16_extract_lane {
     ($name:ident, $signedness:ident) => {
-        pub fn $name(stack: &mut dyn Stack, frame: &mut dyn FrameBehavior, _engine: &StacklessEngine, lane_idx: u8) -> Result<()> {
+        pub fn $name(
+            stack: &mut dyn Stack,
+            frame: &mut dyn FrameBehavior,
+            _engine: &StacklessEngine,
+            lane_idx: u8,
+        ) -> Result<()> {
             let v = stack.pop()?.as_v128()?;
             let val = v[lane_idx as usize];
             let result = if stringify!($signedness) == "signed" {
@@ -63,7 +78,12 @@ macro_rules! i8x16_extract_lane {
 i8x16_extract_lane!(i8x16_extract_lane_s, signed);
 i8x16_extract_lane!(i8x16_extract_lane_u, unsigned);
 
-pub fn i8x16_replace_lane(stack: &mut dyn Stack, frame: &mut dyn FrameBehavior, _engine: &StacklessEngine, lane_idx: u8) -> Result<()> {
+pub fn i8x16_replace_lane(
+    stack: &mut dyn Stack,
+    frame: &mut dyn FrameBehavior,
+    _engine: &StacklessEngine,
+    lane_idx: u8,
+) -> Result<()> {
     let val = stack.pop()?.as_i32()?;
     let mut v = stack.pop()?.as_v128()?;
     v[lane_idx as usize] = val as u8;
@@ -72,7 +92,12 @@ pub fn i8x16_replace_lane(stack: &mut dyn Stack, frame: &mut dyn FrameBehavior, 
 
 macro_rules! i16x8_extract_lane {
     ($name:ident, $signedness:ident) => {
-        pub fn $name(stack: &mut dyn Stack, frame: &mut dyn FrameBehavior, _engine: &StacklessEngine, lane_idx: u8) -> Result<()> {
+        pub fn $name(
+            stack: &mut dyn Stack,
+            frame: &mut dyn FrameBehavior,
+            _engine: &StacklessEngine,
+            lane_idx: u8,
+        ) -> Result<()> {
             let v = stack.pop()?.as_v128()?;
             let start = lane_idx as usize * 2;
             let bytes: [u8; 2] = v[start..start + 2].try_into().unwrap();
@@ -89,7 +114,12 @@ macro_rules! i16x8_extract_lane {
 i16x8_extract_lane!(i16x8_extract_lane_s, signed);
 i16x8_extract_lane!(i16x8_extract_lane_u, unsigned);
 
-pub fn i16x8_replace_lane(stack: &mut dyn Stack, frame: &mut dyn FrameBehavior, _engine: &StacklessEngine, lane_idx: u8) -> Result<()> {
+pub fn i16x8_replace_lane(
+    stack: &mut dyn Stack,
+    frame: &mut dyn FrameBehavior,
+    _engine: &StacklessEngine,
+    lane_idx: u8,
+) -> Result<()> {
     let val = stack.pop()?.as_i32()?;
     let mut v = stack.pop()?.as_v128()?;
     let start = lane_idx as usize * 2;
@@ -97,7 +127,12 @@ pub fn i16x8_replace_lane(stack: &mut dyn Stack, frame: &mut dyn FrameBehavior, 
     stack.push(Value::V128(v))
 }
 
-pub fn i32x4_extract_lane(stack: &mut dyn Stack, frame: &mut dyn FrameBehavior, _engine: &StacklessEngine, lane_idx: u8) -> Result<()> {
+pub fn i32x4_extract_lane(
+    stack: &mut dyn Stack,
+    frame: &mut dyn FrameBehavior,
+    _engine: &StacklessEngine,
+    lane_idx: u8,
+) -> Result<()> {
     let v = stack.pop()?.as_v128()?;
     let start = lane_idx as usize * 4;
     let bytes: [u8; 4] = v[start..start + 4].try_into().unwrap();
@@ -105,7 +140,12 @@ pub fn i32x4_extract_lane(stack: &mut dyn Stack, frame: &mut dyn FrameBehavior, 
     stack.push(Value::I32(val))
 }
 
-pub fn i32x4_replace_lane(stack: &mut dyn Stack, frame: &mut dyn FrameBehavior, _engine: &StacklessEngine, lane_idx: u8) -> Result<()> {
+pub fn i32x4_replace_lane(
+    stack: &mut dyn Stack,
+    frame: &mut dyn FrameBehavior,
+    _engine: &StacklessEngine,
+    lane_idx: u8,
+) -> Result<()> {
     let val = stack.pop()?.as_i32()?;
     let mut v = stack.pop()?.as_v128()?;
     let start = lane_idx as usize * 4;
@@ -113,7 +153,12 @@ pub fn i32x4_replace_lane(stack: &mut dyn Stack, frame: &mut dyn FrameBehavior, 
     stack.push(Value::V128(v))
 }
 
-pub fn i64x2_extract_lane(stack: &mut dyn Stack, frame: &mut dyn FrameBehavior, _engine: &StacklessEngine, lane_idx: u8) -> Result<()> {
+pub fn i64x2_extract_lane(
+    stack: &mut dyn Stack,
+    frame: &mut dyn FrameBehavior,
+    _engine: &StacklessEngine,
+    lane_idx: u8,
+) -> Result<()> {
     let v = stack.pop()?.as_v128()?;
     let start = lane_idx as usize * 8;
     let bytes: [u8; 8] = v[start..start + 8].try_into().unwrap();
@@ -121,7 +166,12 @@ pub fn i64x2_extract_lane(stack: &mut dyn Stack, frame: &mut dyn FrameBehavior, 
     stack.push(Value::I64(val))
 }
 
-pub fn i64x2_replace_lane(stack: &mut dyn Stack, frame: &mut dyn FrameBehavior, _engine: &StacklessEngine, lane_idx: u8) -> Result<()> {
+pub fn i64x2_replace_lane(
+    stack: &mut dyn Stack,
+    frame: &mut dyn FrameBehavior,
+    _engine: &StacklessEngine,
+    lane_idx: u8,
+) -> Result<()> {
     let val = stack.pop()?.as_i64()?;
     let mut v = stack.pop()?.as_v128()?;
     let start = lane_idx as usize * 8;
@@ -129,7 +179,12 @@ pub fn i64x2_replace_lane(stack: &mut dyn Stack, frame: &mut dyn FrameBehavior, 
     stack.push(Value::V128(v))
 }
 
-pub fn f32x4_extract_lane(stack: &mut dyn Stack, frame: &mut dyn FrameBehavior, _engine: &StacklessEngine, lane_idx: u8) -> Result<()> {
+pub fn f32x4_extract_lane(
+    stack: &mut dyn Stack,
+    frame: &mut dyn FrameBehavior,
+    _engine: &StacklessEngine,
+    lane_idx: u8,
+) -> Result<()> {
     let v = stack.pop()?.as_v128()?;
     let start = lane_idx as usize * 4;
     let bytes: [u8; 4] = v[start..start + 4].try_into().unwrap();
@@ -137,7 +192,12 @@ pub fn f32x4_extract_lane(stack: &mut dyn Stack, frame: &mut dyn FrameBehavior, 
     stack.push(Value::F32(val))
 }
 
-pub fn f32x4_replace_lane(stack: &mut dyn Stack, frame: &mut dyn FrameBehavior, _engine: &StacklessEngine, lane_idx: u8) -> Result<()> {
+pub fn f32x4_replace_lane(
+    stack: &mut dyn Stack,
+    frame: &mut dyn FrameBehavior,
+    _engine: &StacklessEngine,
+    lane_idx: u8,
+) -> Result<()> {
     let val = stack.pop()?.as_f32()?;
     let mut v = stack.pop()?.as_v128()?;
     let start = lane_idx as usize * 4;
@@ -145,7 +205,12 @@ pub fn f32x4_replace_lane(stack: &mut dyn Stack, frame: &mut dyn FrameBehavior, 
     stack.push(Value::V128(v))
 }
 
-pub fn f64x2_extract_lane(stack: &mut dyn Stack, frame: &mut dyn FrameBehavior, _engine: &StacklessEngine, lane_idx: u8) -> Result<()> {
+pub fn f64x2_extract_lane(
+    stack: &mut dyn Stack,
+    frame: &mut dyn FrameBehavior,
+    _engine: &StacklessEngine,
+    lane_idx: u8,
+) -> Result<()> {
     let v = stack.pop()?.as_v128()?;
     let start = lane_idx as usize * 8;
     let bytes: [u8; 8] = v[start..start + 8].try_into().unwrap();
@@ -153,7 +218,12 @@ pub fn f64x2_extract_lane(stack: &mut dyn Stack, frame: &mut dyn FrameBehavior, 
     stack.push(Value::F64(val))
 }
 
-pub fn f64x2_replace_lane(stack: &mut dyn Stack, frame: &mut dyn FrameBehavior, _engine: &StacklessEngine, lane_idx: u8) -> Result<()> {
+pub fn f64x2_replace_lane(
+    stack: &mut dyn Stack,
+    frame: &mut dyn FrameBehavior,
+    _engine: &StacklessEngine,
+    lane_idx: u8,
+) -> Result<()> {
     let val = stack.pop()?.as_f64()?;
     let mut v = stack.pop()?.as_v128()?;
     let start = lane_idx as usize * 8;
@@ -164,7 +234,11 @@ pub fn f64x2_replace_lane(stack: &mut dyn Stack, frame: &mut dyn FrameBehavior, 
 // Unary ops
 macro_rules! v128_unary_op {
     ($name:ident, $op:ident) => {
-        pub fn $name(stack: &mut dyn Stack, frame: &mut dyn FrameBehavior, _engine: &StacklessEngine) -> Result<()> {
+        pub fn $name(
+            stack: &mut dyn Stack,
+            frame: &mut dyn FrameBehavior,
+            _engine: &StacklessEngine,
+        ) -> Result<()> {
             let a = stack.pop()?.as_v128()?;
             let mut result = [0u8; 16];
             for i in 0..16 {
@@ -177,7 +251,11 @@ macro_rules! v128_unary_op {
 
 macro_rules! i8x16_unary_op {
     ($name:ident, $op:ident) => {
-        pub fn $name(stack: &mut dyn Stack, frame: &mut dyn FrameBehavior, _engine: &StacklessEngine) -> Result<()> {
+        pub fn $name(
+            stack: &mut dyn Stack,
+            frame: &mut dyn FrameBehavior,
+            _engine: &StacklessEngine,
+        ) -> Result<()> {
             let a_v = stack.pop()?.as_v128()?;
             let mut result = [0u8; 16];
             for i in 0..16 {
@@ -190,7 +268,11 @@ macro_rules! i8x16_unary_op {
 
 macro_rules! i16x8_unary_op {
     ($name:ident, $op:ident) => {
-        pub fn $name(stack: &mut dyn Stack, frame: &mut dyn FrameBehavior, _engine: &StacklessEngine) -> Result<()> {
+        pub fn $name(
+            stack: &mut dyn Stack,
+            frame: &mut dyn FrameBehavior,
+            _engine: &StacklessEngine,
+        ) -> Result<()> {
             let a_v = stack.pop()?.as_v128()?;
             let mut result = [0u8; 16];
             for i in 0..8 {
@@ -206,7 +288,11 @@ macro_rules! i16x8_unary_op {
 
 macro_rules! i32x4_unary_op {
     ($name:ident, $op:ident) => {
-        pub fn $name(stack: &mut dyn Stack, frame: &mut dyn FrameBehavior, _engine: &StacklessEngine) -> Result<()> {
+        pub fn $name(
+            stack: &mut dyn Stack,
+            frame: &mut dyn FrameBehavior,
+            _engine: &StacklessEngine,
+        ) -> Result<()> {
             let a_v = stack.pop()?.as_v128()?;
             let mut result = [0u8; 16];
             for i in 0..4 {
@@ -222,7 +308,11 @@ macro_rules! i32x4_unary_op {
 
 macro_rules! i64x2_unary_op {
     ($name:ident, $op:ident) => {
-        pub fn $name(stack: &mut dyn Stack, frame: &mut dyn FrameBehavior, _engine: &StacklessEngine) -> Result<()> {
+        pub fn $name(
+            stack: &mut dyn Stack,
+            frame: &mut dyn FrameBehavior,
+            _engine: &StacklessEngine,
+        ) -> Result<()> {
             let a_v = stack.pop()?.as_v128()?;
             let mut result = [0u8; 16];
             for i in 0..2 {
@@ -238,7 +328,11 @@ macro_rules! i64x2_unary_op {
 
 macro_rules! f32x4_unary_op {
     ($name:ident, $op:ident) => {
-        pub fn $name(stack: &mut dyn Stack, frame: &mut dyn FrameBehavior, _engine: &StacklessEngine) -> Result<()> {
+        pub fn $name(
+            stack: &mut dyn Stack,
+            frame: &mut dyn FrameBehavior,
+            _engine: &StacklessEngine,
+        ) -> Result<()> {
             let a_v = stack.pop()?.as_v128()?;
             let mut result = [0u8; 16];
             for i in 0..4 {
@@ -254,7 +348,11 @@ macro_rules! f32x4_unary_op {
 
 macro_rules! f64x2_unary_op {
     ($name:ident, $op:ident) => {
-        pub fn $name(stack: &mut dyn Stack, frame: &mut dyn FrameBehavior, _engine: &StacklessEngine) -> Result<()> {
+        pub fn $name(
+            stack: &mut dyn Stack,
+            frame: &mut dyn FrameBehavior,
+            _engine: &StacklessEngine,
+        ) -> Result<()> {
             let a_v = stack.pop()?.as_v128()?;
             let mut result = [0u8; 16];
             for i in 0..2 {
@@ -268,7 +366,11 @@ macro_rules! f64x2_unary_op {
     };
 }
 
-pub fn v128_not(stack: &mut dyn Stack, frame: &mut dyn FrameBehavior, _engine: &StacklessEngine) -> Result<()> {
+pub fn v128_not(
+    stack: &mut dyn Stack,
+    frame: &mut dyn FrameBehavior,
+    _engine: &StacklessEngine,
+) -> Result<()> {
     let a = stack.pop()?.as_v128()?;
     let mut result = [0u8; 16];
     for i in 0..16 {
@@ -277,9 +379,12 @@ pub fn v128_not(stack: &mut dyn Stack, frame: &mut dyn FrameBehavior, _engine: &
     stack.push(Value::V128(result))
 }
 
-
 // Population count
-pub fn i8x16_popcnt(stack: &mut dyn Stack, frame: &mut dyn FrameBehavior, _engine: &StacklessEngine) -> Result<()> {
+pub fn i8x16_popcnt(
+    stack: &mut dyn Stack,
+    frame: &mut dyn FrameBehavior,
+    _engine: &StacklessEngine,
+) -> Result<()> {
     let a_v = stack.pop()?.as_v128()?;
     let mut result = [0u8; 16];
     for i in 0..16 {
@@ -311,7 +416,11 @@ f32x4_unary_op!(f32x4_ceil, ceil);
 f32x4_unary_op!(f32x4_floor, floor);
 f32x4_unary_op!(f32x4_trunc, trunc);
 // f32x4_nearest needs special handling due to Banker's rounding - cannot use simple macro
-pub fn f32x4_nearest(stack: &mut dyn Stack, frame: &mut dyn FrameBehavior, _engine: &StacklessEngine) -> Result<()> {
+pub fn f32x4_nearest(
+    stack: &mut dyn Stack,
+    frame: &mut dyn FrameBehavior,
+    _engine: &StacklessEngine,
+) -> Result<()> {
     let a_v = stack.pop()?.as_v128()?;
     let mut result = [0u8; 16];
     for i in 0..4 {
@@ -327,7 +436,11 @@ f64x2_unary_op!(f64x2_ceil, ceil);
 f64x2_unary_op!(f64x2_floor, floor);
 f64x2_unary_op!(f64x2_trunc, trunc);
 // f64x2_nearest needs special handling
-pub fn f64x2_nearest(stack: &mut dyn Stack, frame: &mut dyn FrameBehavior, _engine: &StacklessEngine) -> Result<()> {
+pub fn f64x2_nearest(
+    stack: &mut dyn Stack,
+    frame: &mut dyn FrameBehavior,
+    _engine: &StacklessEngine,
+) -> Result<()> {
     let a_v = stack.pop()?.as_v128()?;
     let mut result = [0u8; 16];
     for i in 0..2 {
@@ -342,14 +455,20 @@ pub fn f64x2_nearest(stack: &mut dyn Stack, frame: &mut dyn FrameBehavior, _engi
 // Bitmask extraction
 macro_rules! v128_bitmask {
     ($name:ident, $ty:ty, $lanes:expr) => {
-        pub fn $name(stack: &mut dyn Stack, frame: &mut dyn FrameBehavior, _engine: &StacklessEngine) -> Result<()> {
+        pub fn $name(
+            stack: &mut dyn Stack,
+            frame: &mut dyn FrameBehavior,
+            _engine: &StacklessEngine,
+        ) -> Result<()> {
             let v = stack.pop()?.as_v128()?;
             let mut result: i32 = 0;
             let lane_bytes = 16 / $lanes;
             for i in 0..$lanes {
                 let start = i * lane_bytes;
-                let lane_val = <$ty>::from_le_bytes(v[start..start + lane_bytes].try_into().unwrap());
-                if lane_val < 0 { // Check sign bit
+                let lane_val =
+                    <$ty>::from_le_bytes(v[start..start + lane_bytes].try_into().unwrap());
+                if lane_val < 0 {
+                    // Check sign bit
                     result |= 1 << i;
                 }
             }
@@ -366,7 +485,11 @@ v128_bitmask!(i64x2_bitmask, i64, 2);
 // Splat
 macro_rules! v128_splat {
     ($name:ident, $ty:ty, $lanes:expr, $val_method:ident) => {
-        pub fn $name(stack: &mut dyn Stack, frame: &mut dyn FrameBehavior, _engine: &StacklessEngine) -> Result<()> {
+        pub fn $name(
+            stack: &mut dyn Stack,
+            frame: &mut dyn FrameBehavior,
+            _engine: &StacklessEngine,
+        ) -> Result<()> {
             let val = stack.pop()?.$val_method()?;
             let mut result = [0u8; 16];
             let lane_bytes = 16 / $lanes;
@@ -388,7 +511,11 @@ v128_splat!(f32x4_splat, f32, 4, as_f32);
 v128_splat!(f64x2_splat, f64, 2, as_f64);
 
 // Any/All True
-pub fn v128_any_true(stack: &mut dyn Stack, frame: &mut dyn FrameBehavior, _engine: &StacklessEngine) -> Result<()> {
+pub fn v128_any_true(
+    stack: &mut dyn Stack,
+    frame: &mut dyn FrameBehavior,
+    _engine: &StacklessEngine,
+) -> Result<()> {
     let v = stack.pop()?.as_v128()?;
     let any_true = v.iter().any(|&byte| byte != 0);
     stack.push(Value::I32(any_true as i32))
@@ -396,7 +523,11 @@ pub fn v128_any_true(stack: &mut dyn Stack, frame: &mut dyn FrameBehavior, _engi
 
 macro_rules! v128_all_true {
     ($name:ident, $lanes:expr) => {
-        pub fn $name(stack: &mut dyn Stack, frame: &mut dyn FrameBehavior, _engine: &StacklessEngine) -> Result<()> {
+        pub fn $name(
+            stack: &mut dyn Stack,
+            frame: &mut dyn FrameBehavior,
+            _engine: &StacklessEngine,
+        ) -> Result<()> {
             let v = stack.pop()?.as_v128()?;
             let lane_bytes = 16 / $lanes;
             let all_true = (0..$lanes).all(|i| {
@@ -419,7 +550,11 @@ v128_all_true!(i32x4_all_true, 4);
 v128_all_true!(i64x2_all_true, 2);
 
 // Bitselect
-pub fn v128_bitselect(stack: &mut dyn Stack, frame: &mut dyn FrameBehavior, _engine: &StacklessEngine) -> Result<()> {
+pub fn v128_bitselect(
+    stack: &mut dyn Stack,
+    frame: &mut dyn FrameBehavior,
+    _engine: &StacklessEngine,
+) -> Result<()> {
     let c = stack.pop()?.as_v128()?;
     let v2 = stack.pop()?.as_v128()?;
     let v1 = stack.pop()?.as_v128()?;
@@ -428,4 +563,4 @@ pub fn v128_bitselect(stack: &mut dyn Stack, frame: &mut dyn FrameBehavior, _eng
         result[i] = (v1[i] & c[i]) | (v2[i] & !c[i]);
     }
     stack.push(Value::V128(result))
-} 
+}
