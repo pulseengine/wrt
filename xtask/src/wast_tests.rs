@@ -6,8 +6,7 @@ use std::path::{Path, PathBuf};
 use std::time::Instant;
 use walkdir::WalkDir;
 use wat;
-use wrt::execution::Engine;
-use wrt::Module;
+use wrt::{Module, StacklessEngine};
 
 // Assume testsuite is relative to the workspace root where xtask is run
 const TEST_SUITE_PATH: &str = "wrt/testsuite";
@@ -31,7 +30,7 @@ fn run_wast_test(path: &Path) -> Result<String> {
     // Create a shared engine
     let module =
         Module::new().map_err(|e| anyhow::anyhow!("Failed to create empty module: {}", e))?;
-    let mut shared_engine = Engine::new(module);
+    let mut shared_engine = StacklessEngine::new(module);
 
     // Extract and test all modules from the WAST file
     let mut module_idx = 0;
