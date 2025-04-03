@@ -6,17 +6,18 @@
 use core::panic;
 use std::{any::Any, sync::Arc};
 
+use crate::{
+    instructions::Instruction,
+    module::{Function, Module},
+};
 use parking_lot::MutexGuard;
-use crate::{instructions::Instruction, module::{Function, Module}};
 use wasmparser::{BlockType as WasmBlockType, FuncType as WasmFuncType, ValType};
 
 use crate::{
-    behavior::{
-        self, ControlFlowBehavior, FrameBehavior, Label, StackBehavior,
-    },
+    crate::module_instance::ModuleInstance,
+    behavior::{self, ControlFlowBehavior, FrameBehavior, Label, StackBehavior},
     error::{Error, Result},
     global::{self, Global},
-    crate::module_instance::ModuleInstance,
     memory::{DefaultMemory, MemoryBehavior},
     stack::{self, Stack},
     table::Table,
@@ -82,7 +83,7 @@ impl StacklessFrame {
         Ok(Self {
             module: module_clone,
             func_idx,
-            pc: 0, // Start at the beginning of the function code
+            pc: 0,        // Start at the beginning of the function code
             locals: args, // Arguments become the initial part of locals
             instance_idx,
             arity: func_type.results.len(), // Frame arity is the function's RETURN arity
@@ -105,8 +106,7 @@ impl StacklessFrame {
             .ok_or(Error::FunctionNotFound(func_idx))?;
 
         // Use internal helper to validate args and create basic frame
-        let mut frame =
-            Self::new_internal(module.clone(), instance_idx, func_idx, args.to_vec())?;
+        let mut frame = Self::new_internal(module.clone(), instance_idx, func_idx, args.to_vec())?;
 
         // Initialize declared local variables with their default values
         for local_type in &func.locals {
@@ -126,11 +126,14 @@ impl StacklessFrame {
     /// Gets the function type associated with this frame.
     pub fn get_function_type(&self) -> Result<&FuncType> {
         self.module.get_function_type(self.func_idx).ok_or_else(|| {
-            Error::InvalidFunctionType(format!("Function type not found for index: {}", self.func_idx))
+            Error::InvalidFunctionType(format!(
+                "Function type not found for index: {}",
+                self.func_idx
+            ))
         })
     }
 
-     /// Finds the program counter (PC) of the matching `Else` or `End` instruction
+    /// Finds the program counter (PC) of the matching `Else` or `End` instruction
     /// for the `If` block starting *after* the current frame PC.
     /// Used when the `If` condition is false.
     pub fn find_matching_else_or_end(&self) -> Result<usize> {
@@ -192,7 +195,6 @@ impl StacklessFrame {
             self.pc, self.func_idx
         )))
     }
-
 }
 
 // Implement the behavior traits
@@ -246,55 +248,65 @@ impl StackBehavior for StacklessFrame {
     }
 
     fn pop_label(&mut self) -> Result<Label> {
-        self.label_stack.pop().ok_or(Error::Execution("Label stack empty".to_string()))
+        self.label_stack
+            .pop()
+            .ok_or(Error::Execution("Label stack empty".to_string()))
     }
 
-     fn get_label(&self, index: usize) -> Option<&Label> {
+    fn get_label(&self, index: usize) -> Option<&Label> {
         // Access label stack relative to the end (top)
         let stack_len = self.label_stack.len();
         if index < stack_len {
-             Some(&self.label_stack[stack_len - 1 - index])
+            Some(&self.label_stack[stack_len - 1 - index])
         } else {
-             None
+            None
         }
-     }
+    }
 }
 
-
 impl ControlFlowBehavior for StacklessFrame {
-     fn enter_block(&mut self, ty: BlockType, stack_len: usize) -> Result<()> {
-         // Need to resolve function type index if BlockType::FuncType(idx)
-         // let arity = self.module.resolve_block_type_arity(&ty)?; // Method not found on Arc<Module>
-         let arity = 0; // Placeholder
-         self.label_stack.push(Label {
-             arity,
-             pc: self.pc, // PC points *after* the block instruction
-             continuation: self.pc, // Default continuation is next instruction
-             stack_depth: stack_len - arity, // Record stack depth before block params
-             is_loop: false,
-             is_if: false,
-         });
-         self.set_label_arity(arity);
-         println!("DEBUG: enter_block - Pushed Label: {:?}, Arity: {}, New Label Arity: {}", self.label_stack.last().unwrap(), arity, self.label_arity());
-         Ok(())
-     }
-
-     fn enter_loop(&mut self, ty: BlockType, stack_len: usize) -> Result<()> {
+    fn enter_block(&mut self, ty: BlockType, stack_len: usize) -> Result<()> {
+        // Need to resolve function type index if BlockType::FuncType(idx)
         // let arity = self.module.resolve_block_type_arity(&ty)?; // Method not found on Arc<Module>
         let arity = 0; // Placeholder
         self.label_stack.push(Label {
             arity,
-            pc: self.pc, // PC points *after* the loop instruction
+            pc: self.pc,                    // PC points *after* the block instruction
+            continuation: self.pc,          // Default continuation is next instruction
+            stack_depth: stack_len - arity, // Record stack depth before block params
+            is_loop: false,
+            is_if: false,
+        });
+        self.set_label_arity(arity);
+        println!(
+            "DEBUG: enter_block - Pushed Label: {:?}, Arity: {}, New Label Arity: {}",
+            self.label_stack.last().unwrap(),
+            arity,
+            self.label_arity()
+        );
+        Ok(())
+    }
+
+    fn enter_loop(&mut self, ty: BlockType, stack_len: usize) -> Result<()> {
+        // let arity = self.module.resolve_block_type_arity(&ty)?; // Method not found on Arc<Module>
+        let arity = 0; // Placeholder
+        self.label_stack.push(Label {
+            arity,
+            pc: self.pc,               // PC points *after* the loop instruction
             continuation: self.pc - 1, // Loop continues at the loop instruction itself
             stack_depth: stack_len - arity,
             is_loop: true,
             is_if: false,
         });
         self.set_label_arity(arity);
-        println!("DEBUG: enter_loop - Pushed Label: {:?}, Arity: {}, New Label Arity: {}", self.label_stack.last().unwrap(), arity, self.label_arity());
+        println!(
+            "DEBUG: enter_loop - Pushed Label: {:?}, Arity: {}, New Label Arity: {}",
+            self.label_stack.last().unwrap(),
+            arity,
+            self.label_arity()
+        );
         Ok(())
-     }
-
+    }
 
     fn enter_if(&mut self, ty: BlockType, stack_len: usize, condition: bool) -> Result<()> {
         // let arity = self.module.resolve_block_type_arity(&ty)?; // Method not found on Arc<Module>
@@ -314,29 +326,32 @@ impl ControlFlowBehavior for StacklessFrame {
             // Mark the block to be skipped until Else/End?
             // Or find the jump target now?
             // Requires more sophisticated control flow handling
-            println!("WARN: `if false` condition encountered, requires jump handling (unimplemented)");
+            println!(
+                "WARN: `if false` condition encountered, requires jump handling (unimplemented)"
+            );
         }
         Ok(())
     }
 
+    fn enter_else(&mut self, _stack_len: usize) -> Result<()> {
+        // This instruction is encountered when executing the 'then' block of an 'if'.
+        // We need to jump directly to the 'end' instruction matching the 'if'.
+        // The label for the 'if' block is currently on top of the label stack.
 
-     fn enter_else(&mut self, _stack_len: usize) -> Result<()> {
-         // This instruction is encountered when executing the 'then' block of an 'if'.
-         // We need to jump directly to the 'end' instruction matching the 'if'.
-         // The label for the 'if' block is currently on top of the label stack.
+        // Find the 'end' associated with the 'if' block *containing* this 'else'.
+        // The `find_matching_end` helper assumes the block starts *after* the current PC.
+        // We need a way to find the end corresponding to the label on the stack.
 
-         // Find the 'end' associated with the 'if' block *containing* this 'else'.
-         // The `find_matching_end` helper assumes the block starts *after* the current PC.
-         // We need a way to find the end corresponding to the label on the stack.
-
-         // For now, let's search forward from the 'else' PC.
-         let target_pc = self.find_matching_end()?;
-         println!("DEBUG: enter_else - Jumping from PC {} to {}", self.pc, target_pc);
-         self.set_pc(target_pc);
-         // The 'End' instruction will handle popping the label and values.
-         Ok(())
-     }
-
+        // For now, let's search forward from the 'else' PC.
+        let target_pc = self.find_matching_end()?;
+        println!(
+            "DEBUG: enter_else - Jumping from PC {} to {}",
+            self.pc, target_pc
+        );
+        self.set_pc(target_pc);
+        // The 'End' instruction will handle popping the label and values.
+        Ok(())
+    }
 
     fn exit_block(&mut self, stack: &mut dyn Stack) -> Result<()> {
         println!(
@@ -387,7 +402,10 @@ impl ControlFlowBehavior for StacklessFrame {
         if let Some(outer_label) = self.label_stack.last() {
             println!("DEBUG: exit_block - Found outer label: {:?}", outer_label);
             let outer_arity = outer_label.arity;
-            println!("DEBUG: exit_block - Restoring label_arity to: {}", outer_arity);
+            println!(
+                "DEBUG: exit_block - Restoring label_arity to: {}",
+                outer_arity
+            );
             self.set_label_arity(outer_arity);
         } else {
             // If no outer label, we are exiting the function frame itself.
@@ -412,97 +430,100 @@ impl ControlFlowBehavior for StacklessFrame {
         Ok(())
     }
 
+    fn branch(&mut self, depth: u32, stack: &mut dyn Stack) -> Result<()> {
+        println!(
+            "DEBUG: branch - START - Depth: {}, PC: {}, Stack: {:?}, Label Stack: {:?}",
+            depth,
+            self.pc,
+            stack.values(), // Assuming stack provides a way to view values
+            self.label_stack
+        );
 
-     fn branch(&mut self, depth: u32, stack: &mut dyn Stack) -> Result<()> {
-         println!(
-             "DEBUG: branch - START - Depth: {}, PC: {}, Stack: {:?}, Label Stack: {:?}",
-             depth,
-             self.pc,
-             stack.values(), // Assuming stack provides a way to view values
-             self.label_stack
-         );
+        let label_stack_len = self.label_stack.len();
+        if depth as usize >= label_stack_len {
+            return Err(Error::Execution(format!(
+                "Branch depth {} out of bounds (label stack len = {})",
+                depth, label_stack_len
+            )));
+        }
 
-         let label_stack_len = self.label_stack.len();
-         if depth as usize >= label_stack_len {
-             return Err(Error::Execution(format!(
-                 "Branch depth {} out of bounds (label stack len = {})",
-                 depth, label_stack_len
-             )));
-         }
+        // 1. Get the target label (relative to the top of the stack)
+        let target_label_index = label_stack_len - 1 - (depth as usize);
+        // Clone needed because we modify label_stack later
+        let target_label = self.label_stack[target_label_index].clone();
+        let target_arity = target_label.arity;
+        println!(
+            "DEBUG: branch - Target Label (idx {}): {:?}, Arity: {}",
+            target_label_index, target_label, target_arity
+        );
 
-         // 1. Get the target label (relative to the top of the stack)
-         let target_label_index = label_stack_len - 1 - (depth as usize);
-         // Clone needed because we modify label_stack later
-         let target_label = self.label_stack[target_label_index].clone();
-         let target_arity = target_label.arity;
-         println!(
-             "DEBUG: branch - Target Label (idx {}): {:?}, Arity: {}",
-             target_label_index, target_label, target_arity
-         );
+        // 2. Pop the m result values expected by the target label's block.
+        if stack.len() < target_arity {
+            println!(
+                "DEBUG: branch - ERROR: Stack underflow for branch results. Need {}, have {}",
+                target_arity,
+                stack.len()
+            );
+            return Err(Error::StackUnderflow);
+        }
+        let mut results = Vec::with_capacity(target_arity);
+        for _ in 0..target_arity {
+            results.push(stack.pop()?);
+        }
+        results.reverse(); // Keep results in stack order [res_0, ..., res_m-1]
+        println!("DEBUG: branch - Popped results for target: {:?}", results);
 
-         // 2. Pop the m result values expected by the target label's block.
-         if stack.len() < target_arity {
-             println!(
-                 "DEBUG: branch - ERROR: Stack underflow for branch results. Need {}, have {}",
-                 target_arity,
-                 stack.len()
-             );
-             return Err(Error::StackUnderflow);
-         }
-         let mut results = Vec::with_capacity(target_arity);
-         for _ in 0..target_arity {
-             results.push(stack.pop()?);
-         }
-         results.reverse(); // Keep results in stack order [res_0, ..., res_m-1]
-         println!("DEBUG: branch - Popped results for target: {:?}", results);
+        // 3. Pop labels from the label stack up to and including the target label.
+        for d in 0..=depth {
+            let popped_label = self.label_stack.pop().unwrap(); // Safe due to depth check
+            println!(
+                "DEBUG: branch - Popped label (depth {}): {:?}",
+                depth - d,
+                popped_label
+            );
+        }
 
-         // 3. Pop labels from the label stack up to and including the target label.
-         for d in 0..=depth {
-             let popped_label = self.label_stack.pop().unwrap(); // Safe due to depth check
-              println!(
-                  "DEBUG: branch - Popped label (depth {}): {:?}",
-                  depth - d, popped_label
-              );
-         }
+        // 4. Push the result values back onto the stack.
+        println!("DEBUG: branch - Pushing results back: {:?}", results);
+        for result in results {
+            stack.push(result)?;
+        }
 
-         // 4. Push the result values back onto the stack.
-         println!("DEBUG: branch - Pushing results back: {:?}", results);
-         for result in results {
-             stack.push(result)?;
-         }
+        // 5. Set the program counter to the target label's continuation point.
+        println!(
+            "DEBUG: branch - Setting PC to label continuation: {}",
+            target_label.continuation
+        );
+        self.set_pc(target_label.continuation);
 
-         // 5. Set the program counter to the target label's continuation point.
-         println!(
-             "DEBUG: branch - Setting PC to label continuation: {}",
-             target_label.continuation
-         );
-         self.set_pc(target_label.continuation);
+        // 6. Restore the arity of the new top label (if any)
+        let new_label_arity = self.label_stack.last().map(|l| l.arity);
+        if let Some(arity) = new_label_arity {
+            self.set_label_arity(arity);
+            // println!("DEBUG: branch - Restored label_arity to: {}", arity); // Removed to potentially fix borrow issue
+        } else {
+            // If branching out of the function entirely, restore function return arity
+            let func_type = self.get_function_type()?;
+            let func_arity = func_type.params.len();
+            self.set_label_arity(func_arity);
+            println!(
+                "DEBUG: branch - Restored label_arity to func arity: {}",
+                func_arity
+            );
+        }
 
-         // 6. Restore the arity of the new top label (if any)
-         let new_label_arity = self.label_stack.last().map(|l| l.arity);
-         if let Some(arity) = new_label_arity {
-             self.set_label_arity(arity);
-             // println!("DEBUG: branch - Restored label_arity to: {}", arity); // Removed to potentially fix borrow issue
-         } else {
-             // If branching out of the function entirely, restore function return arity
-             let func_type = self.get_function_type()?;
-             let func_arity = func_type.params.len();
-             self.set_label_arity(func_arity);
-             println!("DEBUG: branch - Restored label_arity to func arity: {}", func_arity);
-         }
+        // 7. Pop labels up to the target
+        self.label_stack.truncate(target_label_index + 1);
 
-         // 7. Pop labels up to the target
-         self.label_stack.truncate(target_label_index + 1);
-
-         println!(
-             "DEBUG: branch - END - PC: {}, Stack: {:?}, Label Stack: {:?}, New Label Arity: {}",
-             self.pc,
-             stack.values(), // Assuming stack provides a way to view values
-             self.label_stack,
-             self.label_arity()
-         );
-         Ok(())
-     }
+        println!(
+            "DEBUG: branch - END - PC: {}, Stack: {:?}, Label Stack: {:?}, New Label Arity: {}",
+            self.pc,
+            stack.values(), // Assuming stack provides a way to view values
+            self.label_stack,
+            self.label_arity()
+        );
+        Ok(())
+    }
 
     fn return_(&mut self, stack: &mut dyn Stack) -> Result<()> {
         // 1. Get the function's return arity
@@ -512,11 +533,11 @@ impl ControlFlowBehavior for StacklessFrame {
 
         // 2. Pop the return values from the stack
         if stack.len() < return_arity {
-             println!(
-                 "DEBUG: return_ - ERROR: Stack underflow for return values. Need {}, have {}",
-                 return_arity,
-                 stack.len()
-             );
+            println!(
+                "DEBUG: return_ - ERROR: Stack underflow for return values. Need {}, have {}",
+                return_arity,
+                stack.len()
+            );
             return Err(Error::StackUnderflow);
         }
         let mut return_values = Vec::with_capacity(return_arity);
@@ -528,49 +549,53 @@ impl ControlFlowBehavior for StacklessFrame {
 
         // 3. Clear the label stack for this frame (as we are leaving it)
         self.label_stack.clear();
-         println!("DEBUG: return_ - Cleared label stack");
+        println!("DEBUG: return_ - Cleared label stack");
 
         // 4. Push return values back (caller will expect them)
-         println!("DEBUG: return_ - Pushing return values back: {:?}", return_values);
+        println!(
+            "DEBUG: return_ - Pushing return values back: {:?}",
+            return_values
+        );
         for value in return_values {
             stack.push(value)?;
         }
 
         // 5. Set PC to the stored return address
-        println!("DEBUG: return_ - Setting PC to return_pc: {}", self.return_pc);
+        println!(
+            "DEBUG: return_ - Setting PC to return_pc: {}",
+            self.return_pc
+        );
         self.set_pc(self.return_pc);
 
         // The actual frame pop happens in the engine loop
         Ok(())
     }
 
-
     // `call` and `call_indirect` are handled by the engine, not directly by frame behavior.
     // The engine pushes a new frame.
-     fn call(&mut self, _func_idx: u32, _stack: &mut dyn Stack) -> Result<()> {
-         Err(Error::Unimplemented(
-             "call should be handled by StacklessEngine, not StacklessFrame".to_string(),
-         ))
-     }
+    fn call(&mut self, _func_idx: u32, _stack: &mut dyn Stack) -> Result<()> {
+        Err(Error::Unimplemented(
+            "call should be handled by StacklessEngine, not StacklessFrame".to_string(),
+        ))
+    }
 
-     fn call_indirect(
-         &mut self,
-         _type_idx: u32,
-         _table_idx: u32,
-         _entry_idx: u32,
+    fn call_indirect(
+        &mut self,
+        _type_idx: u32,
+        _table_idx: u32,
+        _entry_idx: u32,
         _stack: &mut dyn Stack,
-     ) -> Result<()> {
-         Err(Error::Unimplemented(
-             "call_indirect should be handled by StacklessEngine, not StacklessFrame".to_string(),
-         ))
-     }
+    ) -> Result<()> {
+        Err(Error::Unimplemented(
+            "call_indirect should be handled by StacklessEngine, not StacklessFrame".to_string(),
+        ))
+    }
 
-     // This is primarily managed by enter/exit block/loop/if
-     fn set_label_arity(&mut self, arity: usize) {
-         self.label_arity = arity;
-     }
+    // This is primarily managed by enter/exit block/loop/if
+    fn set_label_arity(&mut self, arity: usize) {
+        self.label_arity = arity;
+    }
 }
-
 
 // Implement FrameBehavior trait for StacklessFrame
 impl FrameBehavior for StacklessFrame {
@@ -579,10 +604,13 @@ impl FrameBehavior for StacklessFrame {
     }
 
     fn get_local(&self, idx: usize) -> Result<Value> {
-        self.locals
-            .get(idx)
-            .cloned()
-            .ok_or_else(|| Error::InvalidLocal(format!("Local index out of bounds: {} (locals len: {})", idx, self.locals.len())))
+        self.locals.get(idx).cloned().ok_or_else(|| {
+            Error::InvalidLocal(format!(
+                "Local index out of bounds: {} (locals len: {})",
+                idx,
+                self.locals.len()
+            ))
+        })
     }
 
     fn set_local(&mut self, idx: usize, value: Value) -> Result<()> {
@@ -592,37 +620,26 @@ impl FrameBehavior for StacklessFrame {
             Ok(())
         } else {
             Err(Error::InvalidLocal(format!(
-                "Local index out of bounds: {} (locals len: {})", idx, self.locals.len()
+                "Local index out of bounds: {} (locals len: {})",
+                idx,
+                self.locals.len()
             )))
         }
     }
 
     fn get_global(&self, idx: usize) -> Result<Arc<Global>> {
-         self.module
-            .globals
-            .read()
-            .map_err(|_| Error::PoisonedLock)?
-            .get(idx)
-            .cloned()
-            .ok_or(Error::InvalidGlobalIndex(idx))
+        // Reverted: Accessing globals via frame/module directly is problematic.
+        // This should likely be handled via ModuleInstance or Engine context.
+        // Err(Error::Unimplemented("get_global needs instance context".to_string()))
+        // TEMP FIX: Delegate to module instance (assuming we can get it - THIS IS STILL WRONG)
+        // Let's just return an error for now.
+        Err(Error::InvalidGlobalIndex(idx)) // Or Unimplemented
     }
 
     fn set_global(&mut self, idx: usize, value: Value) -> Result<()> {
-        // Need write lock on the module's globals vec
-        let mut module_globals = self
-            .module
-            .globals
-            .write()
-            .map_err(|_| Error::PoisonedLock)?;
-
-        // Get the specific global Arc
-        let global_arc = module_globals
-            .get(idx)
-            .ok_or(Error::InvalidGlobalIndex(idx))?
-            .clone(); // Clone Arc to release lock on the Vec
-
-        // Now operate on the Arc<Global>. Global uses interior mutability (Mutex).
-        global_arc.set(value) // Global::set handles type/mutability checks
+        // Reverted: Accessing globals via frame/module directly is problematic.
+        // Err(Error::Unimplemented("set_global needs instance context".to_string()))
+        Err(Error::InvalidGlobalIndex(idx)) // Or Unimplemented
     }
 
     // Memory operations delegate to the module's memory instance(s)
@@ -631,7 +648,7 @@ impl FrameBehavior for StacklessFrame {
     }
 
     fn get_memory_mut(&mut self, idx: usize) -> Result<Arc<dyn MemoryBehavior>> {
-         // MemoryBehavior uses interior mutability (&self), so get_memory is sufficient.
+        // MemoryBehavior uses interior mutability (&self), so get_memory is sufficient.
         self.get_memory(idx)
     }
 
@@ -680,14 +697,14 @@ impl FrameBehavior for StacklessFrame {
     }
 
     fn set_arity(&mut self, arity: usize) {
-         // This usually shouldn't be set directly on the frame after creation.
-         // Maybe log a warning?
-         // self.arity = arity;
-         println!("WARN: Attempted to set frame arity directly to {}", arity);
+        // This usually shouldn't be set directly on the frame after creation.
+        // Maybe log a warning?
+        // self.arity = arity;
+        println!("WARN: Attempted to set frame arity directly to {}", arity);
     }
 
     fn label_arity(&self) -> usize {
-         self.label_arity // Current block's expected stack arity
+        self.label_arity // Current block's expected stack arity
     }
 
     fn return_pc(&self) -> usize {
@@ -704,87 +721,87 @@ impl FrameBehavior for StacklessFrame {
 
     // --- Memory access methods delegate to MemoryBehavior ---
 
-    fn load_i32(&self, addr: usize, align: u32) -> Result<i32> {
-        let memory = self.get_memory(0)?; // Assuming memory 0 for now
+    fn load_i32(&self, addr: usize, _align: u32) -> Result<i32> {
+        let memory = self.get_memory(0)?; // Assuming memory index 0
         memory.read_i32(addr as u32)
     }
 
-    fn load_i64(&self, addr: usize, align: u32) -> Result<i64> {
+    fn load_i64(&self, addr: usize, _align: u32) -> Result<i64> {
         let memory = self.get_memory(0)?;
         memory.read_i64(addr as u32)
     }
 
-    fn load_f32(&self, addr: usize, align: u32) -> Result<f32> {
+    fn load_f32(&self, addr: usize, _align: u32) -> Result<f32> {
         let memory = self.get_memory(0)?;
         memory.read_f32(addr as u32)
     }
 
-    fn load_f64(&self, addr: usize, align: u32) -> Result<f64> {
+    fn load_f64(&self, addr: usize, _align: u32) -> Result<f64> {
         let memory = self.get_memory(0)?;
         memory.read_f64(addr as u32)
     }
 
-    fn load_i8(&self, addr: usize, align: u32) -> Result<i8> {
+    fn load_i8(&self, addr: usize, _align: u32) -> Result<i8> {
         let memory = self.get_memory(0)?;
-        memory.read_byte(addr as u32).map(|v| v as i8) // read_i8 doesn't exist
+        Ok(memory.read_byte(addr as u32)? as i8)
     }
 
-    fn load_u8(&self, addr: usize, align: u32) -> Result<u8> {
+    fn load_u8(&self, addr: usize, _align: u32) -> Result<u8> {
         let memory = self.get_memory(0)?;
         memory.read_byte(addr as u32)
     }
 
-    fn load_i16(&self, addr: usize, align: u32) -> Result<i16> {
+    fn load_i16(&self, addr: usize, _align: u32) -> Result<i16> {
         let memory = self.get_memory(0)?;
-        memory.read_u16(addr as u32).map(|v| v as i16) // read_i16 doesn't exist
+        Ok(memory.read_u16(addr as u32)? as i16)
     }
 
-    fn load_u16(&self, addr: usize, align: u32) -> Result<u16> {
+    fn load_u16(&self, addr: usize, _align: u32) -> Result<u16> {
         let memory = self.get_memory(0)?;
         memory.read_u16(addr as u32)
     }
 
-    fn store_i32(&mut self, addr: usize, align: u32, value: i32) -> Result<()> {
-        let memory = self.get_memory_mut(0)?; // Get memory (mutable access not needed due to interior mut)
+    fn store_i32(&mut self, addr: usize, _align: u32, value: i32) -> Result<()> {
+        let memory = self.get_memory_mut(0)?;
         memory.write_i32(addr as u32, value)
     }
 
-    fn store_i64(&mut self, addr: usize, align: u32, value: i64) -> Result<()> {
+    fn store_i64(&mut self, addr: usize, _align: u32, value: i64) -> Result<()> {
         let memory = self.get_memory_mut(0)?;
         memory.write_i64(addr as u32, value)
     }
 
-    fn store_f32(&mut self, addr: usize, align: u32, value: f32) -> Result<()> {
+    fn store_f32(&mut self, addr: usize, _align: u32, value: f32) -> Result<()> {
         let memory = self.get_memory_mut(0)?;
         memory.write_f32(addr as u32, value)
     }
 
-    fn store_f64(&mut self, addr: usize, align: u32, value: f64) -> Result<()> {
+    fn store_f64(&mut self, addr: usize, _align: u32, value: f64) -> Result<()> {
         let memory = self.get_memory_mut(0)?;
         memory.write_f64(addr as u32, value)
     }
 
-    fn store_i8(&mut self, addr: usize, align: u32, value: i8) -> Result<()> {
+    fn store_i8(&mut self, addr: usize, _align: u32, value: i8) -> Result<()> {
         let memory = self.get_memory_mut(0)?;
-        memory.write_byte(addr as u32, value as u8) // write_i8 doesn't exist
+        memory.write_byte(addr as u32, value as u8)
     }
 
-     fn store_u8(&mut self, addr: usize, align: u32, value: u8) -> Result<()> {
-         let memory = self.get_memory_mut(0)?;
-         memory.write_byte(addr as u32, value)
-     }
-
-    fn store_i16(&mut self, addr: usize, align: u32, value: i16) -> Result<()> {
+    fn store_u8(&mut self, addr: usize, _align: u32, value: u8) -> Result<()> {
         let memory = self.get_memory_mut(0)?;
-        memory.write_u16(addr as u32, value as u16) // write_i16 doesn't exist
+        memory.write_byte(addr as u32, value)
     }
 
-     fn store_u16(&mut self, addr: usize, align: u32, value: u16) -> Result<()> {
-         let memory = self.get_memory_mut(0)?;
-         memory.write_u16(addr as u32, value)
-     }
+    fn store_i16(&mut self, addr: usize, _align: u32, value: i16) -> Result<()> {
+        let memory = self.get_memory_mut(0)?;
+        memory.write_u16(addr as u32, value as u16)
+    }
 
-    fn store_v128(&mut self, addr: usize, align: u32, value: [u8; 16]) -> Result<()> {
+    fn store_u16(&mut self, addr: usize, _align: u32, value: u16) -> Result<()> {
+        let memory = self.get_memory_mut(0)?;
+        memory.write_u16(addr as u32, value)
+    }
+
+    fn store_v128(&mut self, addr: usize, _align: u32, value: [u8; 16]) -> Result<()> {
         let memory = self.get_memory_mut(0)?;
         memory.write_v128(addr as u32, value)
     }
@@ -793,8 +810,9 @@ impl FrameBehavior for StacklessFrame {
         todo!() // Placeholder
     }
 
-    fn load_v128(&self, addr: usize, align: u32) -> Result<[u8; 16]> {
-        todo!() // Placeholder
+    fn load_v128(&self, addr: usize, _align: u32) -> Result<[u8; 16]> {
+        let memory = self.get_memory(0)?;
+        memory.read_v128(addr as u32)
     }
 
     fn memory_size(&self) -> Result<u32> {
@@ -859,7 +877,11 @@ impl FrameBehavior for StacklessFrame {
         todo!() // Placeholder
     }
 
-    fn get_two_tables_mut(&mut self, idx1: u32, idx2: u32) -> Result<(std::sync::MutexGuard<Table>, std::sync::MutexGuard<Table>)> {
+    fn get_two_tables_mut(
+        &mut self,
+        idx1: u32,
+        idx2: u32,
+    ) -> Result<(std::sync::MutexGuard<Table>, std::sync::MutexGuard<Table>)> {
         todo!() // Placeholder
     }
-} 
+}
