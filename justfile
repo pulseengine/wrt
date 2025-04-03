@@ -4,7 +4,7 @@ default: build
 # ----------------- Build Commands -----------------
 
 # Build all crates and WAT files
-build: build-wrt build-wrtd build-example build-adapter build-wat-files
+build: build-wrt build-wrtd build-example build-adapter
 
 # Build the core WRT library
 build-wrt:
@@ -53,22 +53,6 @@ build-adapter-release: setup-rust-targets
 
 # Run tests for all crates
 test: setup-rust-targets test-wrt test-wrtd test-example test-docs test-wrtd-all
-
-# Run code coverage tests
-coverage:
-    # Install cargo-tarpaulin for coverage using --locked for consistency
-    cargo install cargo-tarpaulin --locked || true
-    # Clean up previous coverage data using xtask
-    cargo xtask fs rmrf target/coverage
-    cargo xtask fs mkdirp target/coverage
-    # Run tests and generate coverage reports
-    cargo tarpaulin --workspace --all-features --out Lcov --output-dir target/coverage --out Html
-    # Generate a simple JUnit XML report for test results
-    echo '<?xml version="1.0" encoding="UTF-8"?><testsuites><testsuite name="wrt" tests="3" failures="0" errors="0" skipped="0"><testcase classname="wrt::execution::tests" name="test_fuel_bounded_execution" /><testcase classname="wrt::tests" name="it_works" /><testcase classname="wrt::tests" name="test_panic_documentation" /></testsuite></testsuites>' > target/coverage/junit.xml
-    echo "Coverage reports generated in target/coverage/"
-    echo "  - HTML report: target/coverage/tarpaulin-report.html"
-    echo "  - LCOV report: target/coverage/lcov.info"
-    echo "  - JUnit XML report: target/coverage/junit.xml"
 
 # Run tests for the WRT library with all feature combinations
 test-wrt:
@@ -211,7 +195,7 @@ check-udeps:
     cargo machete
 
 # Run all checks (format, clippy, tests, imports, udeps, docs, wat files)
-check-all: check test check-imports check-udeps check-docs test-wrtd-example check-wat-files
+check-all: check test check-imports check-udeps check-docs test-wrtd-example
 
 # Pre-commit check to run before committing changes
 pre-commit: check-all
@@ -230,7 +214,7 @@ docs-html:
     {{sphinx_build}} -M html "{{sphinx_source}}" "{{sphinx_build_dir}}" {{sphinx_opts}}
     
 # Build HTML documentation with PlantUML diagrams
-docs-with-diagrams: setup-python-deps setup-plantuml
+docs-with-diagrams: docs-common setup-plantuml
     # Note: This recipe assumes 'plantuml' is in the PATH (handled by setup-plantuml for Linux/macOS).
     # Windows users need to ensure PlantUML is installed and in PATH manually.
 
@@ -243,9 +227,9 @@ docs-with-diagrams: setup-python-deps setup-plantuml
     git-cliff -o docs/source/changelog.md
 
     # Generate symbol documentation fragment (before Sphinx runs)
-    echo "Generating symbol documentation fragment..."
+    echo "Generating symbol documentation fragment (RST)..."
     # NOTE: Add --features std here once compilation errors are fixed
-    cargo xtask symbols --package wrt --doc-data
+    cargo xtask symbols --package wrt --format rst --output docs/source/_generated_symbols.rst
 
     # Build with PlantUML diagrams
     echo "Building documentation with PlantUML diagrams..."
@@ -274,16 +258,13 @@ docs-help:
 # ----------------- WebAssembly WAT/WASM Commands -----------------
 
 # Convert a single WAT file to WASM
-convert-wat-to-wasm WAT_FILE:
-    cargo xtask wasm convert "{{WAT_FILE}}"
+# [Recipe 'convert-wat-to-wasm' removed]
 
 # Build all WAT files in examples directory
-build-wat-files:
-    cargo xtask wasm build examples
+# [Recipe 'build-wat-files' removed]
 
 # Check if all WAT files are properly converted to WASM
-check-wat-files:
-    cargo xtask wasm check examples
+# [Recipe 'check-wat-files' removed]
 
 # ----------------- Utility Commands -----------------
 
@@ -531,13 +512,9 @@ setup: setup-hooks setup-rust-targets setup-wasm-tools setup-python-deps setup-p
 # Setup for CI environments (without hooks)
 setup-ci: setup-rust-targets setup-wasm-tools setup-python-deps setup-plantuml
     echo "✅ CI environment setup completed."
-    echo "Building any WAT files to WASM..."
-    just build-wat-files
-    
+
 # Minimal setup for CI that only installs necessary Rust targets and WASM tools
 setup-ci-minimal: setup-rust-targets setup-wasm-tools
-    echo "Building any WAT files to WASM..."
-    just build-wat-files
     echo "✅ Minimal CI environment setup completed (Rust targets and WASM tools)."
 
 # Install git hooks to enforce checks before commit/push
@@ -553,3 +530,17 @@ setup-hooks:
 # Show help
 help:
     @just --list
+
+# Generate coverage report (LCOV and HTML)
+coverage:
+    cargo xtask coverage
+
+# Common steps for documentation generation
+docs-common: coverage # Add coverage as a dependency
+    # Clean previous build artifacts
+    cargo xtask fs rmrf "{{sphinx_build_dir}}"
+    cargo xtask fs mkdirp "{{sphinx_build_dir}}"
+    # Create the target static directory for coverage report
+    cargo xtask fs mkdirp "{{sphinx_build_dir}}/html/_static/coverage"
+    # Copy the generated HTML coverage report
+    cargo xtask fs cp target/llvm-cov/html/* "{{sphinx_build_dir}}/html/_static/coverage/"
