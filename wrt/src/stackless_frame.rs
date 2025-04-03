@@ -321,7 +321,7 @@ impl ControlFlowBehavior for StacklessFrame {
     }
 
 
-     fn enter_else(&mut self, _stack: &mut dyn Stack) -> Result<()> {
+     fn enter_else(&mut self, _stack_len: usize) -> Result<()> {
          // This instruction is encountered when executing the 'then' block of an 'if'.
          // We need to jump directly to the 'end' instruction matching the 'if'.
          // The label for the 'if' block is currently on top of the label stack.
