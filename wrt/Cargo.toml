@@ -18,6 +18,8 @@ wast = { version = "227.0.1", features = ["wasm-module", "component-model"] }
 serde = { version = "1.0", features = ["derive"], optional = true }
 serde_json = { version = "1.0", optional = true }
 bincode = { version = "1.3", optional = true }
+anyhow.workspace = true
+walkdir = "2.4"
 
 # For no_std support
 spin = { version = "0.9.8", default-features = false, features = ["spin_mutex"], optional = true }
@@ -27,6 +29,10 @@ num-traits = "0.2.19"
 name = "wrt"
 path = "src/lib.rs"
 bench = false
+
+[[bin]]
+name = "wast_runner"
+path = "src/bin/wast_runner.rs"
 
 [dev-dependencies]
 criterion = "0.5"
@@ -73,3 +79,7 @@ component-json = ["std", "serde", "serde_json"]
 [package.metadata.docs.rs]
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
+
+[[test]]
+name = "test_rounding"
+path = "tests/temp_test/test_rounding.rs"
