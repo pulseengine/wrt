@@ -168,11 +168,8 @@ pub fn table_fill(
     let mut table_guard = table.elements.write().map_err(|_| Error::PoisonedLock)?;
     for i in 0..n {
         let idx = (d + i) as u32;
-        // Use standard Vec indexing
-        if let Some(value_to_set) = val.clone() {
-            table_guard[idx as usize] = Some(value_to_set);
-        }
-        // No need for `?` here, indexing doesn't return Result
+        // Use standard Vec indexing and clone the Option<Value>
+        table_guard[idx as usize] = val.clone();
     }
 
     Ok(())
