@@ -20,7 +20,7 @@ use super::common::{pop_v128, push_v128, V128};
 
 /// Helper to get an i16 value from a lane in a v128
 #[inline]
-fn get_i16_lane(v: &V128, lane: usize) -> i16 {
+pub fn get_i16_lane(v: &V128, lane: usize) -> i16 {
     let offset = lane * 2;
     i16::from_le_bytes([v[offset], v[offset + 1]])
 }
