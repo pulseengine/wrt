@@ -15,6 +15,7 @@ use crate::{
     execution::ExecutionStats,
     global::Global,
     instructions::Instruction,
+    logging::LogOperation,
     memory::{DefaultMemory, MemoryBehavior},
     module::{ExportKind, Function, Module},
     module_instance::ModuleInstance,
@@ -23,14 +24,13 @@ use crate::{
     table::Table,
     types::{BlockType, FuncType, ValueType},
     values::Value,
-    logging::LogOperation,
     HostFunctionHandler,
 };
+use log::trace;
 use std::{
     collections::HashMap,
     sync::{Arc, Mutex, MutexGuard},
 };
-use log::trace;
 
 /// Represents the execution state in a stackless implementation
 #[derive(Debug, PartialEq)]
@@ -353,9 +353,7 @@ impl StacklessEngine {
     /// Attempts to get a lock on the callback registry.
     ///
     /// Returns an `Error::PoisonedLock` if the mutex is poisoned.
-    fn get_callback_registry_lock(
-        &self,
-    ) -> Result<MutexGuard<'_, StacklessCallbackRegistry>> {
+    fn get_callback_registry_lock(&self) -> Result<MutexGuard<'_, StacklessCallbackRegistry>> {
         self.callbacks.lock().map_err(|_| Error::PoisonedLock)
     }
 
@@ -389,45 +387,45 @@ impl StacklessEngine {
         match export.external {
             crate::module::ExportKind::Function => {
                 // Found the start function export
-                let func_idx = if let crate::module::ExportValue::Function(idx) = export.value {
+                let func_idx = if let crate::module::ExportValue::Function(idx, _) = export.value {
                     idx
                 } else {
                     return Err(Error::ExportNotFound(format!(
                         "Export '{export_name}' is not a function"
                     )));
                 };
-                self.call_function(instance_idx, func_idx, args)
+                self.call_function(0, func_idx, args) // Assuming instance_idx 0 if not specified
             }
-            _ => Err(Error::ExportNotFound(format!(
-                "Export '{export_name}' is not a function"
-            ))),
+            _ => {
+                return Err(Error::ExportNotFound(format!(
+                    "Export '{export_name}' is not a function"
+                )))
+            }
         }
     }
 
     /// Calls a function by index within a specific instance
     pub fn call_function(
         &mut self,
-        instance_idx: usize,
+        instance_idx: u32,
         func_idx: u32,
         args: &[Value],
     ) -> Result<Vec<Value>> {
         let module = self
             .instances
-            .get(instance_idx)
-            .ok_or(Error::InvalidInstanceIndex(instance_idx))?
+            .last()
+            .ok_or(Error::InvalidInstanceIndex(self.instances.len()))?
             .module
             .clone();
 
         // Check if this is a host function callback
         // Find the export name associated with this function index
-        let export_name = module.exports.iter().find_map(|(name, export)| {
-            if let crate::module::ExportKind::Function = export.external {
-                if let crate::module::ExportValue::Function(idx) = export.value {
-                    if idx == func_idx {
-                        Some(name.clone())
-                    } else {
-                        None
-                    }
+        let export_name = module.exports.iter().find_map(|export| {
+            // Use export.kind and match the enum variant directly
+            if let crate::module::ExportKind::Function = export.kind {
+                // Also check the index associated with the Function kind
+                if export.index == func_idx {
+                    Some(export.name.clone())
                 } else {
                     None
                 }
@@ -448,10 +446,9 @@ impl StacklessEngine {
         }
 
         // Not a host callback, proceed with normal execution
-        let func_idx = func_idx.ok_or(Error::InvalidInput("Entry function not found".to_string()))?;
-
-        // Create the initial frame
-        let initial_frame = StacklessFrame::new(module.clone().into(), func_idx, args, instance_idx as u32)?;
+        // Clone the Arc<Module> obtained from the map and pass it
+        let initial_frame =
+            StacklessFrame::new(module.clone().into(), func_idx, args, instance_idx)?;
         self.stack.frames.push(initial_frame);
         self.stack.state = StacklessExecutionState::Running;
 
@@ -470,10 +467,7 @@ impl StacklessEngine {
                 if self.stack.values.len() < arity {
                     return Err(Error::StackUnderflow);
                 }
-                let results = self
-                    .stack
-                    .values
-                    .split_off(self.stack.values.len() - arity);
+                let results = self.stack.values.split_off(self.stack.values.len() - arity);
                 Ok(results)
             }
             Ok(state) => Err(Error::Execution(format!(
@@ -500,9 +494,9 @@ impl StacklessEngine {
             if *fuel == 0 {
                 // TODO: Save state for pause
                 self.stack.state = StacklessExecutionState::Paused {
-                    pc: 0, // Placeholder
-                    instance_idx: 0, // Placeholder
-                    func_idx: 0, // Placeholder
+                    pc: 0,               // Placeholder
+                    instance_idx: 0,     // Placeholder
+                    func_idx: 0,         // Placeholder
                     expected_results: 0, // Placeholder
                 };
                 return Ok(());
@@ -524,7 +518,10 @@ impl StacklessEngine {
 
         if pc >= code.len() {
             // Reached end of function code naturally
-            println!("DEBUG: Reached end of function {} at PC {}", func.func_idx, pc);
+            println!(
+                "DEBUG: Reached end of function {} at PC {}",
+                func.func_idx, pc
+            );
             // Perform implicit return
             current_frame.return_(&mut self.stack)?;
 
@@ -534,15 +531,20 @@ impl StacklessEngine {
                 .stack
                 .values
                 .split_off(self.stack.values.len() - completed_frame.arity);
-            println!("DEBUG: Popped frame for func {}, return values: {:?}", completed_frame.func_idx, return_values);
-
+            println!(
+                "DEBUG: Popped frame for func {}, return values: {:?}",
+                completed_frame.func_idx, return_values
+            );
 
             if self.stack.frames.is_empty() {
                 // Last frame completed, execution finished
                 self.stack.state = StacklessExecutionState::Completed;
                 // Push return values back for the caller
                 self.stack.values.extend(return_values);
-                println!("DEBUG: Final frame completed. State: Completed. Stack: {:?}", self.stack.values);
+                println!(
+                    "DEBUG: Final frame completed. State: Completed. Stack: {:?}",
+                    self.stack.values
+                );
             } else {
                 // Return to caller frame
                 let caller_frame = self.stack.frames.last_mut().unwrap(); // Safe: checked !is_empty()
@@ -550,8 +552,10 @@ impl StacklessEngine {
                 // Push return values onto caller's effective stack
                 self.stack.values.extend(return_values);
                 self.stack.state = StacklessExecutionState::Running;
-                 println!("DEBUG: Returning to caller frame func {}, PC set to {}, Stack: {:?}", caller_frame.func_idx, caller_frame.pc, self.stack.values);
-
+                println!(
+                    "DEBUG: Returning to caller frame func {}, PC set to {}, Stack: {:?}",
+                    caller_frame.func_idx, caller_frame.pc, self.stack.values
+                );
             }
             return Ok(());
         }
@@ -559,11 +563,7 @@ impl StacklessEngine {
         let instruction = &code[pc];
         println!(
             "DEBUG: Executing PC={}, Func={}, Inst: {:?}, Stack: {:?}, Labels: {:?}",
-            pc,
-            current_frame.func_idx,
-            instruction,
-            self.stack.values,
-            current_frame.label_stack
+            pc, current_frame.func_idx, instruction, self.stack.values, current_frame.label_stack
         );
         self.stats.instructions_executed += 1;
 
@@ -610,17 +610,19 @@ impl StacklessEngine {
                 StacklessExecutionState::Calling { .. } => {
                     // Handle call setup (push new frame)
                     // This state should ideally be handled within step() or call_function()
-                    return Err(Error::Execution("Unexpected Calling state in run_loop".into()));
+                    return Err(Error::Execution(
+                        "Unexpected Calling state in run_loop".into(),
+                    ));
                 }
                 StacklessExecutionState::Returning { .. } => {
                     // Handle return (pop frame, push results)
-                     // This state should ideally be handled within step() or return instruction
+                    // This state should ideally be handled within step() or return instruction
                     return Err(Error::Execution(
                         "Unexpected Returning state in run_loop".into(),
                     ));
                 }
                 StacklessExecutionState::Branching { .. } => {
-                     // This state should ideally be handled within step() or branch instruction
+                    // This state should ideally be handled within step() or branch instruction
                     return Err(Error::Execution(
                         "Unexpected Branching state in run_loop".into(),
                     ));
@@ -656,7 +658,9 @@ impl Stack for StacklessStack {
             });
             Ok(())
         } else {
-            Err(Error::Execution("No active frame to push label onto".into()))
+            Err(Error::Execution(
+                "No active frame to push label onto".into(),
+            ))
         }
     }
 
@@ -683,7 +687,9 @@ impl Stack for StacklessStack {
 
     fn get_label_mut(&mut self, idx: usize) -> Result<&mut stack::Label> {
         // Cannot provide a stable reference easily due to conversion
-        Err(Error::Unimplemented("get_label_mut for StacklessStack".into()))
+        Err(Error::Unimplemented(
+            "get_label_mut for StacklessStack".into(),
+        ))
     }
 
     fn labels_len(&self) -> usize {
@@ -732,7 +738,7 @@ impl StackBehavior for StacklessStack {
             frame.push_label(arity, pc);
         } else {
             // Log error or handle? Pushing label without frame is likely an issue.
-             eprintln!("Warning: push_label called on StacklessStack without an active frame.");
+            eprintln!("Warning: push_label called on StacklessStack without an active frame.");
         }
     }
 
@@ -745,6 +751,6 @@ impl StackBehavior for StacklessStack {
     }
 
     fn get_label(&self, index: usize) -> Option<&Label> {
-         self.frames.last().and_then(|f| f.get_label(index))
+        self.frames.last().and_then(|f| f.get_label(index))
     }
 }
