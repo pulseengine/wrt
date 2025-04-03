@@ -3,7 +3,7 @@ use clap::{Args, Parser, Subcommand, ValueEnum};
 use serde::Deserialize;
 use serde::Serialize;
 use std::fs::{self, File};
-use std::io::Write;
+use std::io::{BufRead, BufReader, Write};
 use std::path::PathBuf;
 use std::process::Command as StdCommand;
 use tera::{Context, Tera};
@@ -103,20 +103,14 @@ pub struct SymbolsOpts {
     /// Output file path. If not specified, prints to stdout.
     #[clap(short, long)]
     output: Option<PathBuf>,
-
-    /// Generate data suitable for graphical representation (implies JSON output).
-    #[clap(long)]
-    graph_data: bool,
-
-    /// Generate documentation fragment (.rst).
-    #[clap(long)]
-    doc_data: bool,
 }
 
 #[derive(ValueEnum, Clone, Debug)]
 enum OutputFormat {
-    Text, // Simple list of demangled symbols
-    Json, // Structured data including crate info and symbols
+    Text,     // Simple list of demangled symbols
+    Json,     // Structured data including crate info and symbols
+    Markdown, // List formatted as Markdown
+    Rst,      // Fragment formatted as reStructuredText for Sphinx
 }
 
 #[derive(clap::Args, Debug)]
@@ -129,12 +123,12 @@ struct WasmArgs {
 enum WasmCommands {
     /// Build all WAT files in the specified directory
     Build {
-        #[arg(default_value = "examples")]
+        #[arg(default_value = "example")]
         directory: PathBuf,
     },
     /// Check if WASM files are up-to-date with their WAT counterparts
     Check {
-        #[arg(default_value = "examples")]
+        #[arg(default_value = "example")]
         directory: PathBuf,
     },
     /// Convert a single WAT file to WASM
@@ -334,16 +328,108 @@ fn run_build(sh: &Shell, opts: BuildOpts) -> Result<()> {
 }
 
 fn run_coverage(sh: &Shell, _opts: CoverageOpts) -> Result<()> {
-    println!("Running coverage analysis...");
+    let lcov_path = PathBuf::from("coverage.lcov");
+    let html_output_dir = PathBuf::from("target/llvm-cov/html");
+    let summary_rst_path = PathBuf::from("docs/source/_generated_coverage_summary.rst");
+
+    // 1. Generate LCOV data
+    println!("Generating LCOV coverage data...");
     sh.cmd("cargo")
         .arg("llvm-cov")
+        .arg("test") // Run tests to generate coverage
         .arg("--all-features")
-        .arg("test")
         .arg("--lcov")
         .arg("--output-path")
-        .arg("coverage.lcov")
+        .arg(&lcov_path)
         .run()?;
-    println!("Coverage report generated at coverage.lcov");
+    println!("LCOV data generated at {}", lcov_path.display());
+
+    if !lcov_path.exists() {
+        anyhow::bail!("LCOV file was not generated: {}", lcov_path.display());
+    }
+
+    // 2. Generate HTML report from LCOV data
+    println!("Generating HTML coverage report from LCOV data...");
+    // Ensure the target directory exists
+    fs_ops::mkdirp(&html_output_dir.parent().unwrap())?; // Create target/llvm-cov if needed
+    sh.cmd("cargo")
+        .arg("llvm-cov")
+        .arg("report") // Use report subcommand
+        .arg("--lcov")
+        .arg(&lcov_path) // Input LCOV
+        .arg("--html")
+        .arg("--output-dir") // Specify output directory
+        .arg(&html_output_dir)
+        .run()?; // removed .arg("test") - we are reporting, not testing again
+    println!("HTML report generated in {}", html_output_dir.display());
+
+    // 3. Parse LCOV data for summary
+    println!("Parsing LCOV data for summary...");
+    let file = File::open(&lcov_path)
+        .with_context(|| format!("Failed to open LCOV file: {}", lcov_path.display()))?;
+    let reader = BufReader::new(file);
+
+    let mut total_lines = 0u64;
+    let mut covered_lines = 0u64;
+
+    for line in reader.lines() {
+        let line = line?;
+        if line.starts_with("LF:") {
+            // Lines Found
+            if let Ok(count) = line[3..].parse::<u64>() {
+                total_lines = total_lines.saturating_add(count);
+            }
+        } else if line.starts_with("LH:") {
+            // Lines Hit
+            if let Ok(count) = line[3..].parse::<u64>() {
+                covered_lines = covered_lines.saturating_add(count);
+            }
+        }
+    }
+
+    let percentage = if total_lines > 0 {
+        (covered_lines as f64 / total_lines as f64) * 100.0
+    } else {
+        100.0 // Or 0.0 if preferred for no lines found
+    };
+
+    println!(
+        "Coverage Summary: {} / {} lines covered ({:.2}%)",
+        covered_lines, total_lines, percentage
+    );
+
+    // 4. Generate RST summary file
+    println!(
+        "Generating RST summary file: {}",
+        summary_rst_path.display()
+    );
+    let rst_content = format!(
+        ".. container:: coverage-summary
+
+   **Code Coverage:** {:.2}% ({}/{} lines)
+
+   `Full HTML Report <../_static/coverage/index.html>`_
+",
+        percentage, covered_lines, total_lines
+    );
+
+    // Ensure parent directory exists for the RST file
+    if let Some(parent) = summary_rst_path.parent() {
+        fs::create_dir_all(parent).with_context(|| {
+            format!(
+                "Failed to create directory for RST file: {}",
+                parent.display()
+            )
+        })?;
+    }
+    fs::write(&summary_rst_path, rst_content).with_context(|| {
+        format!(
+            "Failed to write RST summary file: {}",
+            summary_rst_path.display()
+        )
+    })?;
+    println!("RST summary file generated successfully.");
+
     Ok(())
 }
 
@@ -507,7 +593,7 @@ fn run_symbols(sh: &Shell, opts: SymbolsOpts) -> Result<()> {
     let mut crate_features: Vec<String> = Vec::new();
 
     // Only gather metadata if needed for specific outputs
-    if opts.format == OutputFormat::Json || opts.graph_data || opts.doc_data {
+    if opts.format == OutputFormat::Json {
         println!("Gathering crate metadata...");
         let metadata_output = StdCommand::new("cargo")
             .arg("metadata")
@@ -567,7 +653,7 @@ fn run_symbols(sh: &Shell, opts: SymbolsOpts) -> Result<()> {
     };
 
     // Determine if JSON output is needed
-    let needs_json = opts.format == OutputFormat::Json || opts.graph_data;
+    let needs_json = opts.format == OutputFormat::Json;
 
     // --- Handle Output ---
     let mut output_writer: Box<dyn Write> = match &opts.output {
@@ -580,48 +666,69 @@ fn run_symbols(sh: &Shell, opts: SymbolsOpts) -> Result<()> {
         let json_string = serde_json::to_string_pretty(&output_data)?;
         writeln!(output_writer, "{}", json_string)?;
         println!("Output written as JSON.");
-    } else if opts.format == OutputFormat::Text {
-        // Output as plain text list
-        for symbol in &demangled_symbols {
-            writeln!(output_writer, "{}", symbol)?;
-        }
-        println!("Output written as plain text.");
-    }
+    } else {
+        // Format and write output
+        println!("Formatting output as {:?}...", opts.format);
+        let output_content = match opts.format {
+            OutputFormat::Text => {
+                // Simple text output: one symbol per line
+                output_data.symbols.join("\n")
+            }
+            OutputFormat::Json => {
+                // JSON output (potentially for graphs or structured data use)
+                // Pretty print JSON for readability
+                serde_json::to_string_pretty(&output_data)?
+            }
+            OutputFormat::Markdown => {
+                // Markdown output
+                let mut md = format!("# Symbols for `{}`\n\n", output_data.package_name);
+                if let Some(v) = &output_data.version {
+                    md.push_str(&format!("Version: `{}`\n", v));
+                }
+                if !output_data.features.is_empty() {
+                    md.push_str(&format!(
+                        "Features: `{}`\n",
+                        output_data.features.join(", ")
+                    ));
+                }
+                md.push_str(&format!("Symbol Count: {}\n\n", output_data.symbol_count));
+                md.push_str("## Demangled Symbols:\n\n");
+                for symbol in &output_data.symbols {
+                    md.push_str(&format!("- `{}`\n", symbol));
+                }
+                md
+            }
+            OutputFormat::Rst => {
+                // Use Tera for RST generation (similar to previous doc_data logic)
+                let tera = match Tera::new("xtask/templates/**/*.tera") {
+                    Ok(t) => t,
+                    Err(e) => anyhow::bail!("Failed to load Tera templates: {}", e),
+                };
+                let mut context = Context::new();
+                context.insert("pkg", &output_data); // Pass the whole struct
 
-    // --- Handle Doc Data Generation ---
-    if opts.doc_data {
-        println!("Generating documentation fragment...");
-
-        // Initialize Tera - assumes templates are in `xtask/templates/**/*`
-        let tera = match Tera::new("xtask/templates/**/*.tera") {
-            Ok(t) => t,
-            Err(e) => {
-                eprintln!("Failed to initialize Tera templating engine: {}", e);
-                anyhow::bail!("Tera initialization failed");
+                match tera.render("symbols.rst.tera", &context) {
+                    Ok(rendered) => rendered,
+                    Err(e) => anyhow::bail!("Failed to render RST template: {}", e),
+                }
             }
         };
 
-        let mut context = Context::new();
-        context.insert("data", &output_data);
-
-        match tera.render("symbols.rst.tera", &context) {
-            Ok(rendered_rst) => {
-                // Determine output path (use a fixed name for inclusion)
-                let doc_filename = "symbols_latest.rst"; // Fixed filename
-
-                let doc_dir = PathBuf::from("docs/source/_generated");
-                fs::create_dir_all(&doc_dir)?; // Ensure the _generated directory exists
-                let doc_path = doc_dir.join(doc_filename);
-
-                fs::write(&doc_path, rendered_rst)?;
-                println!("Documentation fragment written to: {}", doc_path.display());
+        // Write to file or stdout
+        if let Some(output_path) = opts.output {
+            println!("Writing output to {}...", output_path.display());
+            // Ensure parent directory exists
+            if let Some(parent) = output_path.parent() {
+                fs::create_dir_all(parent)?;
             }
-            Err(e) => {
-                eprintln!("Failed to render symbols.rst.tera template: {}", e);
-                // Don't bail, maybe just warn?
-                eprintln!("Context data: {:?}", output_data);
-                anyhow::bail!("Failed to render documentation template");
-            }
+            let mut file = File::create(&output_path)?;
+            file.write_all(output_content.as_bytes())?;
+            println!("Output written successfully.");
+        } else {
+            // Print to stdout if no output file is specified
+            println!("\n--- Symbol Output ---");
+            println!("{}", output_content);
+            println!("--- End Symbol Output ---");
         }
     }
 
