@@ -1,3 +1,4 @@
+use crate::StacklessEngine;
 use crate::{
     error::{Error, Result},
     global::Global,
@@ -9,7 +10,6 @@ use crate::{
     Vec,
 };
 use std::sync::Arc;
-use crate::StacklessEngine;
 use std::sync::MutexGuard;
 
 /// Defines the basic behavior of a value stack.
@@ -201,7 +201,11 @@ pub trait FrameBehavior: ControlFlowBehavior {
     fn pop_i32(&mut self, stack: &mut dyn Stack) -> Result<i32>;
 
     /// Get two tables and return a tuple of MutexGuard<Table>
-    fn get_two_tables_mut(&mut self, idx1: u32, idx2: u32) -> Result<(MutexGuard<Table>, MutexGuard<Table>)>;
+    fn get_two_tables_mut(
+        &mut self,
+        _idx1: u32,
+        _idx2: u32,
+    ) -> Result<(MutexGuard<Table>, MutexGuard<Table>)>;
 
     /// Add method to get instance index
     fn instance_idx(&self) -> u32;
@@ -540,8 +544,12 @@ impl FrameBehavior for NullBehavior {
         Err(Error::InvalidFunctionIndex(func_idx as usize))
     }
 
-    fn get_two_tables_mut(&mut self, idx1: u32, idx2: u32) -> Result<(MutexGuard<Table>, MutexGuard<Table>)> {
-        todo!()
+    fn get_two_tables_mut(
+        &mut self,
+        _idx1: u32,
+        _idx2: u32,
+    ) -> Result<(MutexGuard<Table>, MutexGuard<Table>)> {
+        unimplemented!()
     }
 }
 
@@ -549,35 +557,27 @@ impl ControlFlowBehavior for NullBehavior {
     fn enter_block(&mut self, _ty: BlockType, _stack_len: usize) -> Result<()> {
         Ok(())
     }
-
     fn enter_loop(&mut self, _ty: BlockType, _stack_len: usize) -> Result<()> {
         Ok(())
     }
-
     fn enter_if(&mut self, _ty: BlockType, _stack_len: usize, _condition: bool) -> Result<()> {
         Ok(())
     }
-
     fn enter_else(&mut self, _stack_len: usize) -> Result<()> {
         Ok(())
     }
-
     fn exit_block(&mut self, _stack: &mut dyn Stack) -> Result<()> {
         Ok(())
     }
-
     fn branch(&mut self, _label_idx: u32, _stack: &mut dyn Stack) -> Result<()> {
         Ok(())
     }
-
     fn return_(&mut self, _stack: &mut dyn Stack) -> Result<()> {
         Ok(())
     }
-
     fn call(&mut self, _func_idx: u32, _stack: &mut dyn Stack) -> Result<()> {
         Ok(())
     }
-
     fn call_indirect(
         &mut self,
         _type_idx: u32,
@@ -585,10 +585,7 @@ impl ControlFlowBehavior for NullBehavior {
         _entry: u32,
         _stack: &mut dyn Stack,
     ) -> Result<()> {
-        unimplemented!("call_indirect not implemented for Module")
+        Ok(())
     }
-
-    fn set_label_arity(&mut self, arity: usize) {
-        self.label_arity = arity;
-    }
+    fn set_label_arity(&mut self, _arity: usize) {}
 }
