@@ -9,12 +9,11 @@ use std::cmp;
 #[cfg(not(feature = "std"))]
 use core::cmp;
 
-use crate::{
-    behavior::FrameBehavior,
-    error::{Error, Result},
-    stack::Stack,
-    values::Value,
-};
+use crate::behavior::FrameBehavior;
+use crate::error::{Error, Result};
+use crate::stack::Stack;
+use crate::values::Value;
+use crate::StacklessEngine;
 
 use super::common::{pop_v128, push_v128, V128};
 use super::get_i16_lane;
@@ -45,10 +44,7 @@ pub fn set_i32_lane(v: &mut V128, lane: usize, value: i32) {
 }
 
 /// Replicate an i32 value to all lanes of a v128
-pub fn i32x4_splat(
-    stack: &mut (impl Stack + ?Sized),
-    _frame: &mut (impl FrameBehavior + ?Sized),
-) -> Result<()> {
+pub fn i32x4_splat(stack: &mut impl Stack, _frame: &mut impl FrameBehavior) -> Result<()> {
     // Pop the i32 value from the stack
     let value = match stack.pop()? {
         Value::I32(v) => v,
@@ -478,3 +474,125 @@ pub fn i32x4_extadd_pairwise_i16x8_u(
 }
 
 // Additional i32x4 operations will be implemented here as needed
+
+// Add stubs for missing functions
+
+pub fn i32x4_shr_s(
+    _stack: &mut dyn Stack,
+    _frame: &mut dyn FrameBehavior,
+    _engine: &StacklessEngine,
+) -> Result<()> {
+    todo!("Implement i32x4_shr_s")
+}
+
+pub fn i32x4_shr_u(
+    _stack: &mut dyn Stack,
+    _frame: &mut dyn FrameBehavior,
+    _engine: &StacklessEngine,
+) -> Result<()> {
+    todo!("Implement i32x4_shr_u")
+}
+
+pub fn i32x4_dot_i16x8_s(
+    _stack: &mut dyn Stack,
+    _frame: &mut dyn FrameBehavior,
+    _engine: &StacklessEngine,
+) -> Result<()> {
+    todo!("Implement i32x4_dot_i16x8_s")
+}
+
+pub fn i32x4_extmul_low_i16x8_s(
+    _stack: &mut dyn Stack,
+    _frame: &mut dyn FrameBehavior,
+    _engine: &StacklessEngine,
+) -> Result<()> {
+    todo!("Implement i32x4_extmul_low_i16x8_s")
+}
+
+pub fn i32x4_extmul_high_i16x8_s(
+    _stack: &mut dyn Stack,
+    _frame: &mut dyn FrameBehavior,
+    _engine: &StacklessEngine,
+) -> Result<()> {
+    todo!("Implement i32x4_extmul_high_i16x8_s")
+}
+
+pub fn i32x4_extmul_low_i16x8_u(
+    _stack: &mut dyn Stack,
+    _frame: &mut dyn FrameBehavior,
+    _engine: &StacklessEngine,
+) -> Result<()> {
+    todo!("Implement i32x4_extmul_low_i16x8_u")
+}
+
+pub fn i32x4_extmul_high_i16x8_u(
+    _stack: &mut dyn Stack,
+    _frame: &mut dyn FrameBehavior,
+    _engine: &StacklessEngine,
+) -> Result<()> {
+    todo!("Implement i32x4_extmul_high_i16x8_u")
+}
+
+pub fn i32x4_trunc_sat_f32x4_s(
+    _stack: &mut dyn Stack,
+    _frame: &mut dyn FrameBehavior,
+    _engine: &StacklessEngine,
+) -> Result<()> {
+    todo!("Implement i32x4_trunc_sat_f32x4_s")
+}
+
+pub fn i32x4_trunc_sat_f32x4_u(
+    _stack: &mut dyn Stack,
+    _frame: &mut dyn FrameBehavior,
+    _engine: &StacklessEngine,
+) -> Result<()> {
+    todo!("Implement i32x4_trunc_sat_f32x4_u")
+}
+
+pub fn i32x4_trunc_sat_f64x2_s_zero(
+    _stack: &mut dyn Stack,
+    _frame: &mut dyn FrameBehavior,
+    _engine: &StacklessEngine,
+) -> Result<()> {
+    todo!("Implement i32x4_trunc_sat_f64x2_s_zero")
+}
+
+pub fn i32x4_trunc_sat_f64x2_u_zero(
+    _stack: &mut dyn Stack,
+    _frame: &mut dyn FrameBehavior,
+    _engine: &StacklessEngine,
+) -> Result<()> {
+    todo!("Implement i32x4_trunc_sat_f64x2_u_zero")
+}
+
+pub fn i32x4_extend_low_i16x8_s(
+    _stack: &mut dyn Stack,
+    _frame: &mut dyn FrameBehavior,
+    _engine: &StacklessEngine,
+) -> Result<()> {
+    todo!("Implement i32x4_extend_low_i16x8_s")
+}
+
+pub fn i32x4_extend_high_i16x8_s(
+    _stack: &mut dyn Stack,
+    _frame: &mut dyn FrameBehavior,
+    _engine: &StacklessEngine,
+) -> Result<()> {
+    todo!("Implement i32x4_extend_high_i16x8_s")
+}
+
+pub fn i32x4_extend_low_i16x8_u(
+    _stack: &mut dyn Stack,
+    _frame: &mut dyn FrameBehavior,
+    _engine: &StacklessEngine,
+) -> Result<()> {
+    todo!("Implement i32x4_extend_low_i16x8_u")
+}
+
+pub fn i32x4_extend_high_i16x8_u(
+    _stack: &mut dyn Stack,
+    _frame: &mut dyn FrameBehavior,
+    _engine: &StacklessEngine,
+) -> Result<()> {
+    todo!("Implement i32x4_extend_high_i16x8_u")
+}

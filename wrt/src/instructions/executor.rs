@@ -3,15 +3,12 @@
 use crate::{
     behavior::{FrameBehavior, InstructionExecutor, StackBehavior},
     error::{Error, Result},
-    module_instance::ModuleInstance,
-    instructions::{
-        arithmetic, comparison, control, memory, numeric, parametric, table, variable,
-    },
     instructions::simd,
+    instructions::{arithmetic, comparison, control, memory, numeric, parametric, table, variable},
+    module_instance::ModuleInstance,
     stack::Stack,
     types::BlockType,
-    Instruction,
-    StacklessEngine,
+    Instruction, StacklessEngine,
 };
 use std::sync::Arc;
 
@@ -52,7 +49,9 @@ impl InstructionExecutor for Instruction {
             // Parametric instructions
             Self::Drop => parametric::drop(stack, frame, engine),
             Self::Select => parametric::select(stack, frame, engine),
-            Self::SelectTyped(value_type) => parametric::select_typed(stack, frame, *value_type, engine),
+            Self::SelectTyped(value_type) => {
+                parametric::select_typed(stack, frame, *value_type, engine)
+            }
 
             // Variable instructions
             Self::LocalGet(idx) => variable::local_get(stack, frame, engine, *idx),
@@ -80,30 +79,72 @@ impl InstructionExecutor for Instruction {
             Self::I64Load(offset, align) => memory::i64_load(stack, frame, *offset, *align, engine),
             Self::F32Load(offset, align) => memory::f32_load(stack, frame, *offset, *align, engine),
             Self::F64Load(offset, align) => memory::f64_load(stack, frame, *offset, *align, engine),
-            Self::I32Load8S(offset, align) => memory::i32_load8_s(stack, frame, *offset, *align, engine),
-            Self::I32Load8U(offset, align) => memory::i32_load8_u(stack, frame, *offset, *align, engine),
-            Self::I32Load16S(offset, align) => memory::i32_load16_s(stack, frame, *offset, *align, engine),
-            Self::I32Load16U(offset, align) => memory::i32_load16_u(stack, frame, *offset, *align, engine),
-            Self::I64Load8S(offset, align) => memory::i64_load8_s(stack, frame, *offset, *align, engine),
-            Self::I64Load8U(offset, align) => memory::i64_load8_u(stack, frame, *offset, *align, engine),
-            Self::I64Load16S(offset, align) => memory::i64_load16_s(stack, frame, *offset, *align, engine),
-            Self::I64Load16U(offset, align) => memory::i64_load16_u(stack, frame, *offset, *align, engine),
-            Self::I64Load32S(offset, align) => memory::i64_load32_s(stack, frame, *offset, *align, engine),
-            Self::I64Load32U(offset, align) => memory::i64_load32_u(stack, frame, *offset, *align, engine),
-            Self::I32Store(offset, align) => memory::i32_store(stack, frame, *offset, *align, engine),
-            Self::I64Store(offset, align) => memory::i64_store(stack, frame, *offset, *align, engine),
-            Self::F32Store(offset, align) => memory::f32_store(stack, frame, *offset, *align, engine),
-            Self::F64Store(offset, align) => memory::f64_store(stack, frame, *offset, *align, engine),
-            Self::I32Store8(offset, align) => memory::i32_store8(stack, frame, *offset, *align, engine),
-            Self::I32Store16(offset, align) => memory::i32_store16(stack, frame, *offset, *align, engine),
-            Self::I64Store8(offset, align) => memory::i64_store8(stack, frame, *offset, *align, engine),
-            Self::I64Store16(offset, align) => memory::i64_store16(stack, frame, *offset, *align, engine),
-            Self::I64Store32(offset, align) => memory::i64_store32(stack, frame, *offset, *align, engine),
+            Self::I32Load8S(offset, align) => {
+                memory::i32_load8_s(stack, frame, *offset, *align, engine)
+            }
+            Self::I32Load8U(offset, align) => {
+                memory::i32_load8_u(stack, frame, *offset, *align, engine)
+            }
+            Self::I32Load16S(offset, align) => {
+                memory::i32_load16_s(stack, frame, *offset, *align, engine)
+            }
+            Self::I32Load16U(offset, align) => {
+                memory::i32_load16_u(stack, frame, *offset, *align, engine)
+            }
+            Self::I64Load8S(offset, align) => {
+                memory::i64_load8_s(stack, frame, *offset, *align, engine)
+            }
+            Self::I64Load8U(offset, align) => {
+                memory::i64_load8_u(stack, frame, *offset, *align, engine)
+            }
+            Self::I64Load16S(offset, align) => {
+                memory::i64_load16_s(stack, frame, *offset, *align, engine)
+            }
+            Self::I64Load16U(offset, align) => {
+                memory::i64_load16_u(stack, frame, *offset, *align, engine)
+            }
+            Self::I64Load32S(offset, align) => {
+                memory::i64_load32_s(stack, frame, *offset, *align, engine)
+            }
+            Self::I64Load32U(offset, align) => {
+                memory::i64_load32_u(stack, frame, *offset, *align, engine)
+            }
+            Self::I32Store(offset, align) => {
+                memory::i32_store(stack, frame, *offset, *align, engine)
+            }
+            Self::I64Store(offset, align) => {
+                memory::i64_store(stack, frame, *offset, *align, engine)
+            }
+            Self::F32Store(offset, align) => {
+                memory::f32_store(stack, frame, *offset, *align, engine)
+            }
+            Self::F64Store(offset, align) => {
+                memory::f64_store(stack, frame, *offset, *align, engine)
+            }
+            Self::I32Store8(offset, align) => {
+                memory::i32_store8(stack, frame, *offset, *align, engine)
+            }
+            Self::I32Store16(offset, align) => {
+                memory::i32_store16(stack, frame, *offset, *align, engine)
+            }
+            Self::I64Store8(offset, align) => {
+                memory::i64_store8(stack, frame, *offset, *align, engine)
+            }
+            Self::I64Store16(offset, align) => {
+                memory::i64_store16(stack, frame, *offset, *align, engine)
+            }
+            Self::I64Store32(offset, align) => {
+                memory::i64_store32(stack, frame, *offset, *align, engine)
+            }
             Self::MemorySize(mem_idx) => memory::memory_size(stack, frame, *mem_idx, engine),
             Self::MemoryGrow(mem_idx) => memory::memory_grow(stack, frame, *mem_idx, engine),
-            Self::MemoryInit(data_idx, mem_idx) => memory::memory_init(stack, frame, *data_idx, *mem_idx, engine),
+            Self::MemoryInit(data_idx, mem_idx) => {
+                memory::memory_init(stack, frame, *data_idx, *mem_idx, engine)
+            }
             Self::DataDrop(idx) => memory::data_drop(stack, frame, *idx, engine),
-            Self::MemoryCopy(dst_mem, src_mem) => memory::memory_copy(stack, frame, *dst_mem, *src_mem, engine),
+            Self::MemoryCopy(dst_mem, src_mem) => {
+                memory::memory_copy(stack, frame, *dst_mem, *src_mem, engine)
+            }
             Self::MemoryFill(mem_idx) => memory::memory_fill(stack, frame, *mem_idx, engine),
 
             // Numeric constant instructions
@@ -269,7 +310,9 @@ impl InstructionExecutor for Instruction {
             // Already handled under Memory instructions
 
             // SIMD instructions - Add calls to SIMD handlers
-            Self::V128Load(offset, align) => memory::v128_load(stack, frame, *offset, *align, engine),
+            Self::V128Load(offset, align) => {
+                memory::v128_load(stack, frame, *offset, *align, engine)
+            }
             // Self::V128Load8x8S { offset, align } => memory::v128_load8x8_s(stack, frame, *offset, *align, engine),
             // Self::V128Load8x8U { offset, align } => memory::v128_load8x8_u(stack, frame, *offset, *align, engine),
             // Self::V128Load16x4S { offset, align } => memory::v128_load16x4_s(stack, frame, *offset, *align, engine),
@@ -282,7 +325,9 @@ impl InstructionExecutor for Instruction {
             // Self::V128Load64Splat { offset, align } => memory::v128_load64_splat(stack, frame, *offset, *align, engine),
             // Self::V128Load32Zero { offset, align } => memory::v128_load32_zero(stack, frame, *offset, *align, engine),
             // Self::V128Load64Zero { offset, align } => memory::v128_load64_zero(stack, frame, *offset, *align, engine),
-            Self::V128Store(offset, align) => memory::v128_store(stack, frame, *offset, *align, engine),
+            Self::V128Store(offset, align) => {
+                memory::v128_store(stack, frame, *offset, *align, engine)
+            }
             // Self::V128Load8Lane { offset, align, lane_idx } => memory::v128_load8_lane(stack, frame, *offset, *align, *lane_idx, engine),
             // Self::V128Load16Lane { offset, align, lane_idx } => memory::v128_load16_lane(stack, frame, *offset, *align, *lane_idx, engine),
             // Self::V128Load32Lane { offset, align, lane_idx } => memory::v128_load32_lane(stack, frame, *offset, *align, *lane_idx, engine),
@@ -293,60 +338,68 @@ impl InstructionExecutor for Instruction {
             // Self::V128Store64Lane { offset, align, lane_idx } => memory::v128_store64_lane(stack, frame, *offset, *align, *lane_idx, engine),
             Self::V128Const(val) => simd::v128_const(stack, frame, *val, engine),
             Self::I8x16Shuffle(indices) => simd::i8x16_shuffle(stack, frame, *indices, engine),
-            Self::I8x16ExtractLaneS(lane_idx) => simd::i8x16_extract_lane_s(stack, frame, *lane_idx, engine),
-            Self::I8x16ExtractLaneU(lane_idx) => simd::i8x16_extract_lane_u(stack, frame, *lane_idx, engine),
-            Self::I8x16ReplaceLane(lane_idx) => simd::i8x16_replace_lane(stack, frame, *lane_idx, engine),
-            Self::I16x8ExtractLaneS(lane_idx) => simd::i16x8_extract_lane_s(stack, frame, *lane_idx, engine),
-            Self::I16x8ExtractLaneU(lane_idx) => simd::i16x8_extract_lane_u(stack, frame, *lane_idx, engine),
-            Self::I16x8ReplaceLane(lane_idx) => simd::i16x8_replace_lane(stack, frame, *lane_idx, engine),
-            Self::I32x4ExtractLane(lane_idx) => simd::i32x4_extract_lane(stack, frame, *lane_idx, engine),
-            Self::I32x4ReplaceLane(lane_idx) => simd::i32x4_replace_lane(stack, frame, *lane_idx, engine),
-            Self::I64x2ExtractLane(lane_idx) => simd::i64x2_extract_lane(stack, frame, *lane_idx, engine),
-            Self::I64x2ReplaceLane(lane_idx) => simd::i64x2_replace_lane(stack, frame, *lane_idx, engine),
-            Self::F32x4ExtractLane(lane_idx) => simd::f32x4_extract_lane(stack, frame, *lane_idx, engine),
-            Self::F32x4ReplaceLane(lane_idx) => simd::f32x4_replace_lane(stack, frame, *lane_idx, engine),
-            Self::F64x2ExtractLane(lane_idx) => simd::f64x2_extract_lane(stack, frame, *lane_idx, engine),
-            Self::F64x2ReplaceLane(lane_idx) => simd::f64x2_replace_lane(stack, frame, *lane_idx, engine),
+            Self::I8x16ExtractLaneS(lane_idx) => {
+                simd::i8x16_extract_lane_s(stack, frame, *lane_idx)
+            }
+            Self::I8x16ExtractLaneU(lane_idx) => {
+                simd::i8x16_extract_lane_u(stack, frame, *lane_idx)
+            }
+            Self::I8x16ReplaceLane(lane_idx) => simd::i8x16_replace_lane(stack, frame, *lane_idx),
+            Self::I16x8ExtractLaneS(lane_idx) => {
+                simd::i16x8_extract_lane_s(stack, frame, *lane_idx)
+            }
+            Self::I16x8ExtractLaneU(lane_idx) => {
+                simd::i16x8_extract_lane_u(stack, frame, *lane_idx)
+            }
+            Self::I16x8ReplaceLane(lane_idx) => simd::i16x8_replace_lane(stack, frame, *lane_idx),
+            Self::I32x4ExtractLane(lane_idx) => simd::i32x4_extract_lane(stack, frame, *lane_idx),
+            Self::I32x4ReplaceLane(lane_idx) => simd::i32x4_replace_lane(stack, frame, *lane_idx),
+            Self::I64x2ExtractLane(lane_idx) => simd::i64x2_extract_lane(stack, frame, *lane_idx),
+            Self::I64x2ReplaceLane(lane_idx) => simd::i64x2_replace_lane(stack, frame, *lane_idx),
+            Self::F32x4ExtractLane(lane_idx) => simd::f32x4_extract_lane(stack, frame, *lane_idx),
+            Self::F32x4ReplaceLane(lane_idx) => simd::f32x4_replace_lane(stack, frame, *lane_idx),
+            Self::F64x2ExtractLane(lane_idx) => simd::f64x2_extract_lane(stack, frame, *lane_idx),
+            Self::F64x2ReplaceLane(lane_idx) => simd::f64x2_replace_lane(stack, frame, *lane_idx),
 
             Self::I8x16Swizzle => simd::i8x16_swizzle(stack, frame, engine),
-            Self::I8x16Splat => simd::i8x16_splat(stack, frame, engine),
-            Self::I16x8Splat => simd::i16x8_splat(stack, frame, engine),
-            Self::I32x4Splat => simd::i32x4_splat(stack, frame, engine),
-            Self::I64x2Splat => simd::i64x2_splat(stack, frame, engine),
-            Self::F32x4Splat => simd::f32x4_splat(stack, frame, engine),
-            Self::F64x2Splat => simd::f64x2_splat(stack, frame, engine),
+            Self::I8x16Splat => simd::i8x16_splat(stack, frame),
+            Self::I16x8Splat => simd::i16x8_splat(stack, frame),
+            Self::I32x4Splat => simd::i32x4_splat(stack, frame),
+            Self::I64x2Splat => simd::i64x2_splat(stack, frame),
+            Self::F32x4Splat => simd::f32x4_splat(stack, frame),
+            Self::F64x2Splat => simd::f64x2_splat(stack, frame),
 
             // SIMD Comparison Ops (Corrected Paths)
-            Self::I8x16Eq => simd::i8x16_eq(stack, frame, engine),
-            Self::I8x16Ne => simd::i8x16_ne(stack, frame, engine),
-            Self::I8x16LtS => simd::i8x16_lt_s(stack, frame, engine),
-            Self::I8x16LtU => simd::i8x16_lt_u(stack, frame, engine),
-            Self::I8x16GtS => simd::i8x16_gt_s(stack, frame, engine),
-            Self::I8x16GtU => simd::i8x16_gt_u(stack, frame, engine),
-            Self::I8x16LeS => simd::i8x16_le_s(stack, frame, engine),
-            Self::I8x16LeU => simd::i8x16_le_u(stack, frame, engine),
-            Self::I8x16GeS => simd::i8x16_ge_s(stack, frame, engine),
-            Self::I8x16GeU => simd::i8x16_ge_u(stack, frame, engine),
-            Self::I16x8Eq => simd::i16x8_eq(stack, frame, engine),
-            Self::I16x8Ne => simd::i16x8_ne(stack, frame, engine),
-            Self::I16x8LtS => simd::i16x8_lt_s(stack, frame, engine),
-            Self::I16x8LtU => simd::i16x8_lt_u(stack, frame, engine),
-            Self::I16x8GtS => simd::i16x8_gt_s(stack, frame, engine),
-            Self::I16x8GtU => simd::i16x8_gt_u(stack, frame, engine),
-            Self::I16x8LeS => simd::i16x8_le_s(stack, frame, engine),
-            Self::I16x8LeU => simd::i16x8_le_u(stack, frame, engine),
-            Self::I16x8GeS => simd::i16x8_ge_s(stack, frame, engine),
-            Self::I16x8GeU => simd::i16x8_ge_u(stack, frame, engine),
-            Self::I32x4Eq => simd::i32x4_eq(stack, frame, engine),
-            Self::I32x4Ne => simd::i32x4_ne(stack, frame, engine),
-            Self::I32x4LtS => simd::i32x4_lt_s(stack, frame, engine),
-            Self::I32x4LtU => simd::i32x4_lt_u(stack, frame, engine),
-            Self::I32x4GtS => simd::i32x4_gt_s(stack, frame, engine),
-            Self::I32x4GtU => simd::i32x4_gt_u(stack, frame, engine),
-            Self::I32x4LeS => simd::i32x4_le_s(stack, frame, engine),
-            Self::I32x4LeU => simd::i32x4_le_u(stack, frame, engine),
-            Self::I32x4GeS => simd::i32x4_ge_s(stack, frame, engine),
-            Self::I32x4GeU => simd::i32x4_ge_u(stack, frame, engine),
+            Self::I8x16Eq => simd::i8x16_eq(stack, frame),
+            Self::I8x16Ne => simd::i8x16_ne(stack, frame),
+            Self::I8x16LtS => simd::i8x16_lt_s(stack, frame),
+            Self::I8x16LtU => simd::i8x16_lt_u(stack, frame),
+            Self::I8x16GtS => simd::i8x16_gt_s(stack, frame),
+            Self::I8x16GtU => simd::i8x16_gt_u(stack, frame),
+            Self::I8x16LeS => simd::i8x16_le_s(stack, frame),
+            Self::I8x16LeU => simd::i8x16_le_u(stack, frame),
+            Self::I8x16GeS => simd::i8x16_ge_s(stack, frame),
+            Self::I8x16GeU => simd::i8x16_ge_u(stack, frame),
+            Self::I16x8Eq => simd::i16x8_eq(stack, frame),
+            Self::I16x8Ne => simd::i16x8_ne(stack, frame),
+            Self::I16x8LtS => simd::i16x8_lt_s(stack, frame),
+            Self::I16x8LtU => simd::i16x8_lt_u(stack, frame),
+            Self::I16x8GtS => simd::i16x8_gt_s(stack, frame),
+            Self::I16x8GtU => simd::i16x8_gt_u(stack, frame),
+            Self::I16x8LeS => simd::i16x8_le_s(stack, frame),
+            Self::I16x8LeU => simd::i16x8_le_u(stack, frame),
+            Self::I16x8GeS => simd::i16x8_ge_s(stack, frame),
+            Self::I16x8GeU => simd::i16x8_ge_u(stack, frame),
+            Self::I32x4Eq => simd::i32x4_eq(stack, frame),
+            Self::I32x4Ne => simd::i32x4_ne(stack, frame),
+            Self::I32x4LtS => simd::i32x4_lt_s(stack, frame),
+            Self::I32x4LtU => simd::i32x4_lt_u(stack, frame),
+            Self::I32x4GtS => simd::i32x4_gt_s(stack, frame),
+            Self::I32x4GtU => simd::i32x4_gt_u(stack, frame),
+            Self::I32x4LeS => simd::i32x4_le_s(stack, frame),
+            Self::I32x4LeU => simd::i32x4_le_u(stack, frame),
+            Self::I32x4GeS => simd::i32x4_ge_s(stack, frame),
+            Self::I32x4GeU => simd::i32x4_ge_u(stack, frame),
             Self::I64x2Eq => simd::i64x2_eq(stack, frame, engine),
             Self::I64x2Ne => simd::i64x2_ne(stack, frame, engine),
             Self::I64x2LtS => simd::i64x2_lt_s(stack, frame, engine),
@@ -375,24 +428,24 @@ impl InstructionExecutor for Instruction {
             Self::V128Bitselect => simd::v128_bitselect(stack, frame, engine),
             Self::V128AnyTrue => simd::v128_any_true(stack, frame, engine),
 
-            Self::I8x16Abs => simd::i8x16_abs(stack, frame, engine),
-            Self::I8x16Neg => simd::i8x16_neg(stack, frame, engine),
-            Self::I8x16Popcnt => simd::i8x16_popcnt(stack, frame, engine),
-            Self::I8x16AllTrue => simd::i8x16_all_true(stack, frame, engine),
-            Self::I8x16Bitmask => simd::i8x16_bitmask(stack, frame, engine),
+            Self::I8x16Abs => simd::i8x16_abs(stack, frame),
+            Self::I8x16Neg => simd::i8x16_neg(stack, frame),
+            Self::I8x16Popcnt => simd::i8x16_popcnt(stack, frame),
+            Self::I8x16AllTrue => simd::i8x16_all_true(stack, frame),
+            Self::I8x16Bitmask => simd::i8x16_bitmask(stack, frame),
             Self::I8x16Shl => simd::i8x16_shl(stack, frame, engine),
             Self::I8x16ShrS => simd::i8x16_shr_s(stack, frame, engine),
             Self::I8x16ShrU => simd::i8x16_shr_u(stack, frame, engine),
-            Self::I8x16Add => simd::i8x16_add(stack, frame, engine),
+            Self::I8x16Add => simd::i8x16_add(stack, frame),
             Self::I8x16AddSatS => simd::i8x16_add_sat_s(stack, frame, engine),
             Self::I8x16AddSatU => simd::i8x16_add_sat_u(stack, frame, engine),
-            Self::I8x16Sub => simd::i8x16_sub(stack, frame, engine),
+            Self::I8x16Sub => simd::i8x16_sub(stack, frame),
             Self::I8x16SubSatS => simd::i8x16_sub_sat_s(stack, frame, engine),
             Self::I8x16SubSatU => simd::i8x16_sub_sat_u(stack, frame, engine),
-            Self::I8x16MinS => simd::i8x16_min_s(stack, frame, engine),
-            Self::I8x16MinU => simd::i8x16_min_u(stack, frame, engine),
-            Self::I8x16MaxS => simd::i8x16_max_s(stack, frame, engine),
-            Self::I8x16MaxU => simd::i8x16_max_u(stack, frame, engine),
+            Self::I8x16MinS => simd::i8x16_min_s(stack, frame),
+            Self::I8x16MinU => simd::i8x16_min_u(stack, frame),
+            Self::I8x16MaxS => simd::i8x16_max_s(stack, frame),
+            Self::I8x16MaxU => simd::i8x16_max_u(stack, frame),
             Self::I8x16AvgrU => simd::i8x16_avgr_u(stack, frame, engine),
 
             Self::I16x8Q15MulrSatS => simd::i16x8_q15mulr_sat_s(stack, frame, engine),
@@ -401,39 +454,39 @@ impl InstructionExecutor for Instruction {
             Self::I16x8Shl => simd::i16x8_shl(stack, frame, engine),
             Self::I16x8ShrS => simd::i16x8_shr_s(stack, frame, engine),
             Self::I16x8ShrU => simd::i16x8_shr_u(stack, frame, engine),
-            Self::I16x8Add => simd::i16x8_add(stack, frame, engine),
+            Self::I16x8Add => simd::i16x8_add(stack, frame),
             Self::I16x8AddSatS => simd::i16x8_add_sat_s(stack, frame, engine),
             Self::I16x8AddSatU => simd::i16x8_add_sat_u(stack, frame, engine),
-            Self::I16x8Sub => simd::i16x8_sub(stack, frame, engine),
+            Self::I16x8Sub => simd::i16x8_sub(stack, frame),
             Self::I16x8SubSatS => simd::i16x8_sub_sat_s(stack, frame, engine),
             Self::I16x8SubSatU => simd::i16x8_sub_sat_u(stack, frame, engine),
-            Self::I16x8Mul => simd::i16x8_mul(stack, frame, engine),
-            Self::I16x8MinS => simd::i16x8_min_s(stack, frame, engine),
-            Self::I16x8MinU => simd::i16x8_min_u(stack, frame, engine),
-            Self::I16x8MaxS => simd::i16x8_max_s(stack, frame, engine),
-            Self::I16x8MaxU => simd::i16x8_max_u(stack, frame, engine),
+            Self::I16x8Mul => simd::i16x8_mul(stack, frame),
+            Self::I16x8MinS => simd::i16x8_min_s(stack, frame),
+            Self::I16x8MinU => simd::i16x8_min_u(stack, frame),
+            Self::I16x8MaxS => simd::i16x8_max_s(stack, frame),
+            Self::I16x8MaxU => simd::i16x8_max_u(stack, frame),
             Self::I16x8AvgrU => simd::i16x8_avgr_u(stack, frame, engine),
             Self::I16x8ExtMulLowI8x16S => simd::i16x8_extmul_low_i8x16_s(stack, frame, engine),
             Self::I16x8ExtMulHighI8x16S => simd::i16x8_extmul_high_i8x16_s(stack, frame, engine),
             Self::I16x8ExtMulLowI8x16U => simd::i16x8_extmul_low_i8x16_u(stack, frame, engine),
             Self::I16x8ExtMulHighI8x16U => simd::i16x8_extmul_high_i8x16_u(stack, frame, engine),
 
-            Self::I32x4ExtaddPairwiseI16x8S => simd::i32x4_extadd_pairwise_i16x8_s(stack, frame, engine),
-            Self::I32x4ExtaddPairwiseI16x8U => simd::i32x4_extadd_pairwise_i16x8_u(stack, frame, engine),
+            Self::I32x4ExtaddPairwiseI16x8S => simd::i32x4_extadd_pairwise_i16x8_s(stack, frame),
+            Self::I32x4ExtaddPairwiseI16x8U => simd::i32x4_extadd_pairwise_i16x8_u(stack, frame),
             Self::I32x4Abs => simd::i32x4_abs(stack, frame, engine),
-            Self::I32x4Neg => simd::i32x4_neg(stack, frame, engine),
+            Self::I32x4Neg => simd::i32x4_neg(stack, frame),
             Self::I32x4AllTrue => simd::i32x4_all_true(stack, frame, engine),
             Self::I32x4Bitmask => simd::i32x4_bitmask(stack, frame, engine),
             Self::I32x4Shl => simd::i32x4_shl(stack, frame, engine),
             Self::I32x4ShrS => simd::i32x4_shr_s(stack, frame, engine),
             Self::I32x4ShrU => simd::i32x4_shr_u(stack, frame, engine),
-            Self::I32x4Add => simd::i32x4_add(stack, frame, engine),
-            Self::I32x4Sub => simd::i32x4_sub(stack, frame, engine),
-            Self::I32x4Mul => simd::i32x4_mul(stack, frame, engine),
-            Self::I32x4MinS => simd::i32x4_min_s(stack, frame, engine),
-            Self::I32x4MinU => simd::i32x4_min_u(stack, frame, engine),
-            Self::I32x4MaxS => simd::i32x4_max_s(stack, frame, engine),
-            Self::I32x4MaxU => simd::i32x4_max_u(stack, frame, engine),
+            Self::I32x4Add => simd::i32x4_add(stack, frame),
+            Self::I32x4Sub => simd::i32x4_sub(stack, frame),
+            Self::I32x4Mul => simd::i32x4_mul(stack, frame),
+            Self::I32x4MinS => simd::i32x4_min_s(stack, frame),
+            Self::I32x4MinU => simd::i32x4_min_u(stack, frame),
+            Self::I32x4MaxS => simd::i32x4_max_s(stack, frame),
+            Self::I32x4MaxU => simd::i32x4_max_u(stack, frame),
             Self::I32x4DotI16x8S => simd::i32x4_dot_i16x8_s(stack, frame, engine),
             Self::I32x4ExtMulLowI16x8S => simd::i32x4_extmul_low_i16x8_s(stack, frame, engine),
             Self::I32x4ExtMulHighI16x8S => simd::i32x4_extmul_high_i16x8_s(stack, frame, engine),
@@ -441,15 +494,15 @@ impl InstructionExecutor for Instruction {
             Self::I32x4ExtMulHighI16x8U => simd::i32x4_extmul_high_i16x8_u(stack, frame, engine),
 
             Self::I64x2Abs => simd::i64x2_abs(stack, frame, engine),
-            Self::I64x2Neg => simd::i64x2_neg(stack, frame, engine),
+            Self::I64x2Neg => simd::i64x2_neg(stack, frame),
             Self::I64x2AllTrue => simd::i64x2_all_true(stack, frame, engine),
             Self::I64x2Bitmask => simd::i64x2_bitmask(stack, frame, engine),
             Self::I64x2Shl => simd::i64x2_shl(stack, frame, engine),
             Self::I64x2ShrS => simd::i64x2_shr_s(stack, frame, engine),
             Self::I64x2ShrU => simd::i64x2_shr_u(stack, frame, engine),
-            Self::I64x2Add => simd::i64x2_add(stack, frame, engine),
-            Self::I64x2Sub => simd::i64x2_sub(stack, frame, engine),
-            Self::I64x2Mul => simd::i64x2_mul(stack, frame, engine),
+            Self::I64x2Add => simd::i64x2_add(stack, frame),
+            Self::I64x2Sub => simd::i64x2_sub(stack, frame),
+            Self::I64x2Mul => simd::i64x2_mul(stack, frame),
             Self::I64x2ExtMulLowI32x4S => simd::i64x2_extmul_low_i32x4_s(stack, frame, engine),
             Self::I64x2ExtMulHighI32x4S => simd::i64x2_extmul_high_i32x4_s(stack, frame, engine),
             Self::I64x2ExtMulLowI32x4U => simd::i64x2_extmul_low_i32x4_u(stack, frame, engine),
@@ -460,20 +513,20 @@ impl InstructionExecutor for Instruction {
             Self::F32x4Trunc => simd::f32x4_trunc(stack, frame, engine),
             Self::F32x4Nearest => simd::f32x4_nearest(stack, frame, engine),
             Self::F32x4Abs => simd::f32x4_abs(stack, frame, engine),
-            Self::F32x4Neg => simd::f32x4_neg(stack, frame, engine),
+            Self::F32x4Neg => simd::f32x4_neg(stack, frame),
             Self::F32x4Sqrt => simd::f32x4_sqrt(stack, frame, engine),
-            Self::F32x4Add => simd::f32x4_add(stack, frame, engine),
-            Self::F32x4Sub => simd::f32x4_sub(stack, frame, engine),
-            Self::F32x4Mul => simd::f32x4_mul(stack, frame, engine),
-            Self::F32x4Div => simd::f32x4_div(stack, frame, engine),
+            Self::F32x4Add => simd::f32x4_add(stack, frame),
+            Self::F32x4Sub => simd::f32x4_sub(stack, frame),
+            Self::F32x4Mul => simd::f32x4_mul(stack, frame),
+            Self::F32x4Div => simd::f32x4_div(stack, frame),
             Self::F32x4Min => simd::f32x4_min(stack, frame, engine),
             Self::F32x4Max => simd::f32x4_max(stack, frame, engine),
             Self::F32x4PMin => simd::f32x4_pmin(stack, frame, engine),
             Self::F32x4PMax => simd::f32x4_pmax(stack, frame, engine),
 
-            Self::F32x4Sub => simd::f32x4_sub(stack, frame, engine),
-            Self::F32x4Mul => simd::f32x4_mul(stack, frame, engine),
-            Self::F32x4Div => simd::f32x4_div(stack, frame, engine),
+            Self::F32x4Sub => simd::f32x4_sub(stack, frame),
+            Self::F32x4Mul => simd::f32x4_mul(stack, frame),
+            Self::F32x4Div => simd::f32x4_div(stack, frame),
             Self::F32x4Min => simd::f32x4_min(stack, frame, engine),
             Self::F32x4Max => simd::f32x4_max(stack, frame, engine),
             Self::F32x4PMin => simd::f32x4_pmin(stack, frame, engine),
@@ -484,12 +537,12 @@ impl InstructionExecutor for Instruction {
             Self::F64x2Trunc => simd::f64x2_trunc(stack, frame, engine),
             Self::F64x2Nearest => simd::f64x2_nearest(stack, frame, engine),
             Self::F64x2Abs => simd::f64x2_abs(stack, frame, engine),
-            Self::F64x2Neg => simd::f64x2_neg(stack, frame, engine),
+            Self::F64x2Neg => simd::f64x2_neg(stack, frame),
             Self::F64x2Sqrt => simd::f64x2_sqrt(stack, frame, engine),
-            Self::F64x2Add => simd::f64x2_add(stack, frame, engine),
-            Self::F64x2Sub => simd::f64x2_sub(stack, frame, engine),
-            Self::F64x2Mul => simd::f64x2_mul(stack, frame, engine),
-            Self::F64x2Div => simd::f64x2_div(stack, frame, engine),
+            Self::F64x2Add => simd::f64x2_add(stack, frame),
+            Self::F64x2Sub => simd::f64x2_sub(stack, frame),
+            Self::F64x2Mul => simd::f64x2_mul(stack, frame),
+            Self::F64x2Div => simd::f64x2_div(stack, frame),
             Self::F64x2Min => simd::f64x2_min(stack, frame, engine),
             Self::F64x2Max => simd::f64x2_max(stack, frame, engine),
             Self::F64x2PMin => simd::f64x2_pmin(stack, frame, engine),
@@ -499,8 +552,12 @@ impl InstructionExecutor for Instruction {
             Self::I32x4TruncSatF32x4U => simd::i32x4_trunc_sat_f32x4_u(stack, frame, engine),
             Self::F32x4ConvertI32x4S => simd::f32x4_convert_i32x4_s(stack, frame, engine),
             Self::F32x4ConvertI32x4U => simd::f32x4_convert_i32x4_u(stack, frame, engine),
-            Self::I32x4TruncSatF64x2SZero => simd::i32x4_trunc_sat_f64x2_s_zero(stack, frame, engine),
-            Self::I32x4TruncSatF64x2UZero => simd::i32x4_trunc_sat_f64x2_u_zero(stack, frame, engine),
+            Self::I32x4TruncSatF64x2SZero => {
+                simd::i32x4_trunc_sat_f64x2_s_zero(stack, frame, engine)
+            }
+            Self::I32x4TruncSatF64x2UZero => {
+                simd::i32x4_trunc_sat_f64x2_u_zero(stack, frame, engine)
+            }
             Self::F64x2ConvertLowI32x4S => simd::f64x2_convert_low_i32x4_s(stack, frame, engine),
             Self::F64x2ConvertLowI32x4U => simd::f64x2_convert_low_i32x4_u(stack, frame, engine),
             Self::F32x4DemoteF64x2Zero => simd::f32x4_demote_f64x2_zero(stack, frame, engine),

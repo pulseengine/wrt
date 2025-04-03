@@ -4,7 +4,9 @@
 //! including addition, subtraction, multiplication, division, and more.
 
 use crate::{
-    behavior::{FrameBehavior, StackBehavior, ControlFlowBehavior, /* MemoryBehavior, */ NullBehavior},
+    behavior::{
+        ControlFlowBehavior, FrameBehavior, /* MemoryBehavior, */ NullBehavior, StackBehavior,
+    },
     error::{Error, Result},
     memory::MemoryBehavior,
     stack::Stack,
@@ -957,24 +959,40 @@ pub fn f64_neg(
 /// Add the missing sections back
 
 /// Conversion ops
-pub fn i32_wrap_i64(stack: &mut dyn Stack, _frame: &mut dyn FrameBehavior, _engine: &StacklessEngine) -> Result<()> {
+pub fn i32_wrap_i64(
+    stack: &mut dyn Stack,
+    _frame: &mut dyn FrameBehavior,
+    _engine: &StacklessEngine,
+) -> Result<()> {
     let val = stack.pop()?.as_i64()?;
     stack.push(Value::I32(val as i32))
 }
 
-pub fn i64_extend_i32_s(stack: &mut dyn Stack, _frame: &mut dyn FrameBehavior, _engine: &StacklessEngine) -> Result<()> {
+pub fn i64_extend_i32_s(
+    stack: &mut dyn Stack,
+    _frame: &mut dyn FrameBehavior,
+    _engine: &StacklessEngine,
+) -> Result<()> {
     let val = stack.pop()?.as_i32()?;
     stack.push(Value::I64(val as i64))
 }
 
-pub fn i64_extend_i32_u(stack: &mut dyn Stack, _frame: &mut dyn FrameBehavior, _engine: &StacklessEngine) -> Result<()> {
+pub fn i64_extend_i32_u(
+    stack: &mut dyn Stack,
+    _frame: &mut dyn FrameBehavior,
+    _engine: &StacklessEngine,
+) -> Result<()> {
     let val = stack.pop()?.as_u32()?;
     stack.push(Value::I64(val as i64))
 }
 
 macro_rules! trunc_impl {
     ($name:ident, $from_ty:ty, $to_ty:ty, $intermediate_ty:ty, $signedness:ident, $check_nan:expr, $check_bounds:expr) => {
-        pub fn $name(stack: &mut dyn Stack, _frame: &mut dyn FrameBehavior, _engine: &StacklessEngine) -> Result<()> {
+        pub fn $name(
+            stack: &mut dyn Stack,
+            _frame: &mut dyn FrameBehavior,
+            _engine: &StacklessEngine,
+        ) -> Result<()> {
             let val = stack.pop()?.as_::<$from_ty>()?;
             if $check_nan && val.is_nan() {
                 return Err(Error::InvalidConversionToInt);
@@ -1020,18 +1038,86 @@ fn check_bounds_i64_trunc_f64_u(val: f64) -> bool {
     val > -1.0 && val < (u64::MAX as f64 + 1.0)
 }
 
-trunc_impl!(i32_trunc_f32_s, f32, i32, I32, signed, true, check_bounds_i32_trunc_f32_s);
-trunc_impl!(i32_trunc_f32_u, f32, u32, I32, unsigned, true, check_bounds_i32_trunc_f32_u);
-trunc_impl!(i32_trunc_f64_s, f64, i32, I32, signed, true, check_bounds_i32_trunc_f64_s);
-trunc_impl!(i32_trunc_f64_u, f64, u32, I32, unsigned, true, check_bounds_i32_trunc_f64_u);
-trunc_impl!(i64_trunc_f32_s, f32, i64, I64, signed, true, check_bounds_i64_trunc_f32_s);
-trunc_impl!(i64_trunc_f32_u, f32, u64, I64, unsigned, true, check_bounds_i64_trunc_f32_u);
-trunc_impl!(i64_trunc_f64_s, f64, i64, I64, signed, true, check_bounds_i64_trunc_f64_s);
-trunc_impl!(i64_trunc_f64_u, f64, u64, I64, unsigned, true, check_bounds_i64_trunc_f64_u);
+trunc_impl!(
+    i32_trunc_f32_s,
+    f32,
+    i32,
+    I32,
+    signed,
+    true,
+    check_bounds_i32_trunc_f32_s
+);
+trunc_impl!(
+    i32_trunc_f32_u,
+    f32,
+    u32,
+    I32,
+    unsigned,
+    true,
+    check_bounds_i32_trunc_f32_u
+);
+trunc_impl!(
+    i32_trunc_f64_s,
+    f64,
+    i32,
+    I32,
+    signed,
+    true,
+    check_bounds_i32_trunc_f64_s
+);
+trunc_impl!(
+    i32_trunc_f64_u,
+    f64,
+    u32,
+    I32,
+    unsigned,
+    true,
+    check_bounds_i32_trunc_f64_u
+);
+trunc_impl!(
+    i64_trunc_f32_s,
+    f32,
+    i64,
+    I64,
+    signed,
+    true,
+    check_bounds_i64_trunc_f32_s
+);
+trunc_impl!(
+    i64_trunc_f32_u,
+    f32,
+    u64,
+    I64,
+    unsigned,
+    true,
+    check_bounds_i64_trunc_f32_u
+);
+trunc_impl!(
+    i64_trunc_f64_s,
+    f64,
+    i64,
+    I64,
+    signed,
+    true,
+    check_bounds_i64_trunc_f64_s
+);
+trunc_impl!(
+    i64_trunc_f64_u,
+    f64,
+    u64,
+    I64,
+    unsigned,
+    true,
+    check_bounds_i64_trunc_f64_u
+);
 
 macro_rules! convert_impl {
     ($name:ident, $from_ty:ty, $to_ty:ty, $intermediate_ty:ty, $signedness:ident) => {
-        pub fn $name(stack: &mut dyn Stack, _frame: &mut dyn FrameBehavior, _engine: &StacklessEngine) -> Result<()> {
+        pub fn $name(
+            stack: &mut dyn Stack,
+            _frame: &mut dyn FrameBehavior,
+            _engine: &StacklessEngine,
+        ) -> Result<()> {
             let val = stack.pop()?.as_::<$from_ty>()?;
             stack.push(Value::$intermediate_ty(val as $to_ty))
         }
@@ -1047,57 +1133,101 @@ convert_impl!(f64_convert_i32_u, u32, f64, F64, unsigned);
 convert_impl!(f64_convert_i64_s, i64, f64, F64, signed);
 convert_impl!(f64_convert_i64_u, u64, f64, F64, unsigned);
 
-pub fn f32_demote_f64(stack: &mut dyn Stack, _frame: &mut dyn FrameBehavior, _engine: &StacklessEngine) -> Result<()> {
+pub fn f32_demote_f64(
+    stack: &mut dyn Stack,
+    _frame: &mut dyn FrameBehavior,
+    _engine: &StacklessEngine,
+) -> Result<()> {
     let val = stack.pop()?.as_f64()?;
     stack.push(Value::F32(val as f32))
 }
 
-pub fn f64_promote_f32(stack: &mut dyn Stack, _frame: &mut dyn FrameBehavior, _engine: &StacklessEngine) -> Result<()> {
+pub fn f64_promote_f32(
+    stack: &mut dyn Stack,
+    _frame: &mut dyn FrameBehavior,
+    _engine: &StacklessEngine,
+) -> Result<()> {
     let val = stack.pop()?.as_f32()?;
     stack.push(Value::F64(val as f64))
 }
 
-pub fn i32_reinterpret_f32(stack: &mut dyn Stack, _frame: &mut dyn FrameBehavior, _engine: &StacklessEngine) -> Result<()> {
+pub fn i32_reinterpret_f32(
+    stack: &mut dyn Stack,
+    _frame: &mut dyn FrameBehavior,
+    _engine: &StacklessEngine,
+) -> Result<()> {
     let val = stack.pop()?.as_f32()?;
     stack.push(Value::I32(i32::from_ne_bytes(val.to_ne_bytes())))
 }
 
-pub fn i64_reinterpret_f64(stack: &mut dyn Stack, _frame: &mut dyn FrameBehavior, _engine: &StacklessEngine) -> Result<()> {
+pub fn i64_reinterpret_f64(
+    stack: &mut dyn Stack,
+    _frame: &mut dyn FrameBehavior,
+    _engine: &StacklessEngine,
+) -> Result<()> {
     let val = stack.pop()?.as_f64()?;
     stack.push(Value::I64(i64::from_ne_bytes(val.to_ne_bytes())))
 }
 
-pub fn f32_reinterpret_i32(stack: &mut dyn Stack, _frame: &mut dyn FrameBehavior, _engine: &StacklessEngine) -> Result<()> {
+pub fn f32_reinterpret_i32(
+    stack: &mut dyn Stack,
+    _frame: &mut dyn FrameBehavior,
+    _engine: &StacklessEngine,
+) -> Result<()> {
     let val = stack.pop()?.as_i32()?;
     stack.push(Value::F32(f32::from_ne_bytes(val.to_ne_bytes())))
 }
 
-pub fn f64_reinterpret_i64(stack: &mut dyn Stack, _frame: &mut dyn FrameBehavior, _engine: &StacklessEngine) -> Result<()> {
+pub fn f64_reinterpret_i64(
+    stack: &mut dyn Stack,
+    _frame: &mut dyn FrameBehavior,
+    _engine: &StacklessEngine,
+) -> Result<()> {
     let val = stack.pop()?.as_i64()?;
     stack.push(Value::F64(f64::from_ne_bytes(val.to_ne_bytes())))
 }
 
-pub fn i32_extend8_s(stack: &mut dyn Stack, _frame: &mut dyn FrameBehavior, _engine: &StacklessEngine) -> Result<()> {
+pub fn i32_extend8_s(
+    stack: &mut dyn Stack,
+    _frame: &mut dyn FrameBehavior,
+    _engine: &StacklessEngine,
+) -> Result<()> {
     let val = stack.pop()?.as_i32()?;
     stack.push(Value::I32((val as i8) as i32))
 }
 
-pub fn i32_extend16_s(stack: &mut dyn Stack, _frame: &mut dyn FrameBehavior, _engine: &StacklessEngine) -> Result<()> {
+pub fn i32_extend16_s(
+    stack: &mut dyn Stack,
+    _frame: &mut dyn FrameBehavior,
+    _engine: &StacklessEngine,
+) -> Result<()> {
     let val = stack.pop()?.as_i32()?;
     stack.push(Value::I32((val as i16) as i32))
 }
 
-pub fn i64_extend8_s(stack: &mut dyn Stack, _frame: &mut dyn FrameBehavior, _engine: &StacklessEngine) -> Result<()> {
+pub fn i64_extend8_s(
+    stack: &mut dyn Stack,
+    _frame: &mut dyn FrameBehavior,
+    _engine: &StacklessEngine,
+) -> Result<()> {
     let val = stack.pop()?.as_i64()?;
     stack.push(Value::I64((val as i8) as i64))
 }
 
-pub fn i64_extend16_s(stack: &mut dyn Stack, _frame: &mut dyn FrameBehavior, _engine: &StacklessEngine) -> Result<()> {
+pub fn i64_extend16_s(
+    stack: &mut dyn Stack,
+    _frame: &mut dyn FrameBehavior,
+    _engine: &StacklessEngine,
+) -> Result<()> {
     let val = stack.pop()?.as_i64()?;
     stack.push(Value::I64((val as i16) as i64))
 }
 
-pub fn i64_extend32_s(stack: &mut dyn Stack, _frame: &mut dyn FrameBehavior, _engine: &StacklessEngine) -> Result<()> {
+pub fn i64_extend32_s(
+    stack: &mut dyn Stack,
+    _frame: &mut dyn FrameBehavior,
+    _engine: &StacklessEngine,
+) -> Result<()> {
     let val = stack.pop()?.as_i64()?;
     stack.push(Value::I64((val as i32) as i64))
 }
@@ -1111,16 +1241,15 @@ macro_rules! trunc_sat_impl {
             _engine: &StacklessEngine,
         ) -> Result<()> {
             let val = stack.pop()?.as_float::<$float_ty>()?;
-            let result: $int_ty = 
-                 if val.is_nan() {
-                    0
-                 } else if val > (<$int_ty>::MAX as $float_ty) {
-                    <$int_ty>::MAX
-                 } else if val < (<$int_ty>::MIN as $float_ty) {
-                     <$int_ty>::MIN
-                 } else {
-                     val as $int_ty // Truncates towards zero (safe after checks)
-                 };
+            let result: $int_ty = if val.is_nan() {
+                0
+            } else if val > (<$int_ty>::MAX as $float_ty) {
+                <$int_ty>::MAX
+            } else if val < (<$int_ty>::MIN as $float_ty) {
+                <$int_ty>::MIN
+            } else {
+                val as $int_ty // Truncates towards zero (safe after checks)
+            };
             stack.push(Value::$intermediate_ty(result as _))
         }
     };
@@ -1142,17 +1271,17 @@ trunc_sat_impl!(i64_trunc_sat_f64_u, f64, u64, I64, unsigned);
 mod tests {
     use super::*;
     use crate::{
-        behavior::{FrameBehavior, Label, StackBehavior, ControlFlowBehavior, NullBehavior},
-        error::{Result, Error},
-        values::Value,
+        behavior::{ControlFlowBehavior, FrameBehavior, Label, NullBehavior, StackBehavior},
+        error::{Error, Result},
+        global::Global,
         stack::Stack,
         table::Table,
-        global::Global,
-        types::{FuncType, BlockType},
+        types::{BlockType, FuncType},
+        values::Value,
         StacklessEngine,
     };
-    use std::sync::{Arc, MutexGuard};
     use std::any::Any;
+    use std::sync::{Arc, MutexGuard};
 
     #[derive(Debug, Default)]
     struct TestFrame;
@@ -1160,78 +1289,220 @@ mod tests {
     // Filled FrameBehavior implementation
     impl FrameBehavior for TestFrame {
         // FrameBehavior specific methods
-        fn locals(&mut self) -> &mut Vec<Value> { todo!() }
-        fn get_local(&self, idx: usize) -> Result<Value> { todo!() }
-        fn set_local(&mut self, idx: usize, value: Value) -> Result<()> { todo!() }
-        fn get_global(&self, idx: usize) -> Result<Arc<Global>> { todo!() }
-        fn set_global(&mut self, idx: usize, value: Value) -> Result<()> { todo!() }
-        fn get_memory(&self, idx: usize) -> Result<Arc<dyn MemoryBehavior>> { todo!() }
-        fn get_memory_mut(&mut self, idx: usize) -> Result<Arc<dyn MemoryBehavior>> { todo!() }
-        fn get_table(&self, idx: usize) -> Result<Arc<Table>> { todo!() }
-        fn get_table_mut(&mut self, idx: usize) -> Result<Arc<Table>> { todo!() }
-        fn get_function_type(&self, func_idx: u32) -> Result<FuncType> { todo!() }
-        fn pc(&self) -> usize { todo!() }
-        fn set_pc(&mut self, pc: usize) { todo!() }
-        fn func_idx(&self) -> u32 { todo!() }
-        fn instance_idx(&self) -> u32 { 0 }
-        fn locals_len(&self) -> usize { todo!() }
-        fn label_stack(&mut self) -> &mut Vec<Label> { todo!() }
-        fn arity(&self) -> usize { todo!() }
-        fn set_arity(&mut self, arity: usize) { todo!() }
-        fn label_arity(&self) -> usize { todo!() }
-        fn return_pc(&self) -> usize { todo!() }
-        fn set_return_pc(&mut self, pc: usize) { todo!() }
-        fn as_any(&mut self) -> &mut dyn Any { todo!() }
-        fn load_i32(&self, addr: usize, align: u32) -> Result<i32> { todo!() }
-        fn load_i64(&self, addr: usize, align: u32) -> Result<i64> { todo!() }
-        fn load_f32(&self, addr: usize, align: u32) -> Result<f32> { todo!() }
-        fn load_f64(&self, addr: usize, align: u32) -> Result<f64> { todo!() }
-        fn load_i8(&self, addr: usize, align: u32) -> Result<i8> { todo!() }
-        fn load_u8(&self, addr: usize, align: u32) -> Result<u8> { todo!() }
-        fn load_i16(&self, addr: usize, align: u32) -> Result<i16> { todo!() }
-        fn load_u16(&self, addr: usize, align: u32) -> Result<u16> { todo!() }
-        fn load_v128(&self, addr: usize, align: u32) -> Result<[u8; 16]> { todo!() }
-        fn store_i32(&mut self, addr: usize, align: u32, value: i32) -> Result<()> { todo!() }
-        fn store_i64(&mut self, addr: usize, align: u32, value: i64) -> Result<()> { todo!() }
-        fn store_f32(&mut self, addr: usize, align: u32, value: f32) -> Result<()> { todo!() }
-        fn store_f64(&mut self, addr: usize, align: u32, value: f64) -> Result<()> { todo!() }
-        fn store_i8(&mut self, addr: usize, align: u32, value: i8) -> Result<()> { todo!() }
-        fn store_u8(&mut self, addr: usize, align: u32, value: u8) -> Result<()> { todo!() }
-        fn store_i16(&mut self, addr: usize, align: u32, value: i16) -> Result<()> { todo!() }
-        fn store_u16(&mut self, addr: usize, align: u32, value: u16) -> Result<()> { todo!() }
-        fn store_v128(&mut self, addr: usize, align: u32, value: [u8; 16]) -> Result<()> { todo!() }
-        fn memory_size(&self) -> Result<u32> { todo!() }
-        fn memory_grow(&mut self, pages: u32) -> Result<u32> { todo!() }
-        fn table_get(&self, table_idx: u32, idx: u32) -> Result<Value> { todo!() }
-        fn table_set(&mut self, table_idx: u32, idx: u32, value: Value) -> Result<()> { todo!() }
-        fn table_size(&self, table_idx: u32) -> Result<u32> { todo!() }
-        fn table_grow(&mut self, table_idx: u32, delta: u32, value: Value) -> Result<u32> { todo!() }
-        fn table_init(&mut self, table_idx: u32, elem_idx: u32, dst: u32, src: u32, n: u32) -> Result<()> { todo!() }
-        fn table_copy(&mut self, dst_table: u32, src_table: u32, dst: u32, src: u32, n: u32) -> Result<()> { todo!() }
-        fn elem_drop(&mut self, elem_idx: u32) -> Result<()> { todo!() }
-        fn table_fill(&mut self, table_idx: u32, dst: u32, val: Value, n: u32) -> Result<()> { todo!() }
-        fn pop_bool(&mut self, stack: &mut dyn Stack) -> Result<bool> { todo!() }
-        fn pop_i32(&mut self, stack: &mut dyn Stack) -> Result<i32> { todo!() }
-        fn get_two_tables_mut(&mut self, idx1: u32, idx2: u32) -> Result<(MutexGuard<Table>, MutexGuard<Table>)> { todo!() }
+        fn locals(&mut self) -> &mut Vec<Value> {
+            todo!()
+        }
+        fn get_local(&self, idx: usize) -> Result<Value> {
+            todo!()
+        }
+        fn set_local(&mut self, idx: usize, value: Value) -> Result<()> {
+            todo!()
+        }
+        fn get_global(&self, idx: usize) -> Result<Arc<Global>> {
+            todo!()
+        }
+        fn set_global(&mut self, idx: usize, value: Value) -> Result<()> {
+            todo!()
+        }
+        fn get_memory(&self, idx: usize) -> Result<Arc<dyn MemoryBehavior>> {
+            todo!()
+        }
+        fn get_memory_mut(&mut self, idx: usize) -> Result<Arc<dyn MemoryBehavior>> {
+            todo!()
+        }
+        fn get_table(&self, idx: usize) -> Result<Arc<Table>> {
+            todo!()
+        }
+        fn get_table_mut(&mut self, idx: usize) -> Result<Arc<Table>> {
+            todo!()
+        }
+        fn get_function_type(&self, func_idx: u32) -> Result<FuncType> {
+            todo!()
+        }
+        fn pc(&self) -> usize {
+            todo!()
+        }
+        fn set_pc(&mut self, pc: usize) {
+            todo!()
+        }
+        fn func_idx(&self) -> u32 {
+            todo!()
+        }
+        fn instance_idx(&self) -> u32 {
+            0
+        }
+        fn locals_len(&self) -> usize {
+            todo!()
+        }
+        fn label_stack(&mut self) -> &mut Vec<Label> {
+            todo!()
+        }
+        fn arity(&self) -> usize {
+            todo!()
+        }
+        fn set_arity(&mut self, arity: usize) {
+            todo!()
+        }
+        fn label_arity(&self) -> usize {
+            todo!()
+        }
+        fn return_pc(&self) -> usize {
+            todo!()
+        }
+        fn set_return_pc(&mut self, pc: usize) {
+            todo!()
+        }
+        fn as_any(&mut self) -> &mut dyn Any {
+            todo!()
+        }
+        fn load_i32(&self, addr: usize, align: u32) -> Result<i32> {
+            todo!()
+        }
+        fn load_i64(&self, addr: usize, align: u32) -> Result<i64> {
+            todo!()
+        }
+        fn load_f32(&self, addr: usize, align: u32) -> Result<f32> {
+            todo!()
+        }
+        fn load_f64(&self, addr: usize, align: u32) -> Result<f64> {
+            todo!()
+        }
+        fn load_i8(&self, addr: usize, align: u32) -> Result<i8> {
+            todo!()
+        }
+        fn load_u8(&self, addr: usize, align: u32) -> Result<u8> {
+            todo!()
+        }
+        fn load_i16(&self, addr: usize, align: u32) -> Result<i16> {
+            todo!()
+        }
+        fn load_u16(&self, addr: usize, align: u32) -> Result<u16> {
+            todo!()
+        }
+        fn load_v128(&self, addr: usize, align: u32) -> Result<[u8; 16]> {
+            todo!()
+        }
+        fn store_i32(&mut self, addr: usize, align: u32, value: i32) -> Result<()> {
+            todo!()
+        }
+        fn store_i64(&mut self, addr: usize, align: u32, value: i64) -> Result<()> {
+            todo!()
+        }
+        fn store_f32(&mut self, addr: usize, align: u32, value: f32) -> Result<()> {
+            todo!()
+        }
+        fn store_f64(&mut self, addr: usize, align: u32, value: f64) -> Result<()> {
+            todo!()
+        }
+        fn store_i8(&mut self, addr: usize, align: u32, value: i8) -> Result<()> {
+            todo!()
+        }
+        fn store_u8(&mut self, addr: usize, align: u32, value: u8) -> Result<()> {
+            todo!()
+        }
+        fn store_i16(&mut self, addr: usize, align: u32, value: i16) -> Result<()> {
+            todo!()
+        }
+        fn store_u16(&mut self, addr: usize, align: u32, value: u16) -> Result<()> {
+            todo!()
+        }
+        fn store_v128(&mut self, addr: usize, align: u32, value: [u8; 16]) -> Result<()> {
+            todo!()
+        }
+        fn memory_size(&self) -> Result<u32> {
+            todo!()
+        }
+        fn memory_grow(&mut self, pages: u32) -> Result<u32> {
+            todo!()
+        }
+        fn table_get(&self, table_idx: u32, idx: u32) -> Result<Value> {
+            todo!()
+        }
+        fn table_set(&mut self, table_idx: u32, idx: u32, value: Value) -> Result<()> {
+            todo!()
+        }
+        fn table_size(&self, table_idx: u32) -> Result<u32> {
+            todo!()
+        }
+        fn table_grow(&mut self, table_idx: u32, delta: u32, value: Value) -> Result<u32> {
+            todo!()
+        }
+        fn table_init(
+            &mut self,
+            table_idx: u32,
+            elem_idx: u32,
+            dst: u32,
+            src: u32,
+            n: u32,
+        ) -> Result<()> {
+            todo!()
+        }
+        fn table_copy(
+            &mut self,
+            dst_table: u32,
+            src_table: u32,
+            dst: u32,
+            src: u32,
+            n: u32,
+        ) -> Result<()> {
+            todo!()
+        }
+        fn elem_drop(&mut self, elem_idx: u32) -> Result<()> {
+            todo!()
+        }
+        fn table_fill(&mut self, table_idx: u32, dst: u32, val: Value, n: u32) -> Result<()> {
+            todo!()
+        }
+        fn pop_bool(&mut self, stack: &mut dyn Stack) -> Result<bool> {
+            todo!()
+        }
+        fn pop_i32(&mut self, stack: &mut dyn Stack) -> Result<i32> {
+            todo!()
+        }
+        fn get_two_tables_mut(
+            &mut self,
+            idx1: u32,
+            idx2: u32,
+        ) -> Result<(MutexGuard<Table>, MutexGuard<Table>)> {
+            todo!()
+        }
     }
 
     // Added placeholder implementation
     impl ControlFlowBehavior for TestFrame {
-        fn enter_block(&mut self, _ty: BlockType, _stack_len: usize) -> Result<()> { Ok(()) }
-        fn enter_loop(&mut self, _ty: BlockType, _stack_len: usize) -> Result<()> { Ok(()) }
-        fn enter_if(&mut self, _ty: BlockType, _stack_len: usize, _condition: bool) -> Result<()> { Ok(()) }
-        fn enter_else(&mut self, _stack_len: usize) -> Result<()> { Ok(()) }
-        fn exit_block(&mut self, _stack: &mut dyn Stack) -> Result<()> { Ok(()) }
-        fn branch(&mut self, _label_idx: u32, _stack: &mut dyn Stack) -> Result<()> { Ok(()) }
-        fn return_(&mut self, _stack: &mut dyn Stack) -> Result<()> { Ok(()) }
-        fn call(&mut self, _func_idx: u32, _stack: &mut dyn Stack) -> Result<()> { Ok(()) }
+        fn enter_block(&mut self, _ty: BlockType, _stack_len: usize) -> Result<()> {
+            Ok(())
+        }
+        fn enter_loop(&mut self, _ty: BlockType, _stack_len: usize) -> Result<()> {
+            Ok(())
+        }
+        fn enter_if(&mut self, _ty: BlockType, _stack_len: usize, _condition: bool) -> Result<()> {
+            Ok(())
+        }
+        fn enter_else(&mut self, _stack_len: usize) -> Result<()> {
+            Ok(())
+        }
+        fn exit_block(&mut self, _stack: &mut dyn Stack) -> Result<()> {
+            Ok(())
+        }
+        fn branch(&mut self, _label_idx: u32, _stack: &mut dyn Stack) -> Result<()> {
+            Ok(())
+        }
+        fn return_(&mut self, _stack: &mut dyn Stack) -> Result<()> {
+            Ok(())
+        }
+        fn call(&mut self, _func_idx: u32, _stack: &mut dyn Stack) -> Result<()> {
+            Ok(())
+        }
         fn call_indirect(
             &mut self,
             _type_idx: u32,
             _table_idx: u32,
             _entry: u32,
             _stack: &mut dyn Stack,
-        ) -> Result<()> { Ok(()) }
+        ) -> Result<()> {
+            Ok(())
+        }
         fn set_label_arity(&mut self, _arity: usize) {}
     }
 
