@@ -155,16 +155,17 @@ pub fn table_fill(
         return Err(Error::TableAccessOutOfBounds);
     }
 
-    // Dereference Arc to call methods on Table
-    if val.value_type() != (*table).element_type() {
+    // Validate value type matches table type
+    // Call element_type() on the TableType within the Arc
+    if val.value_type() != table.type_().element_type {
         return Err(Error::TypeMismatch {
-            expected: (*table).element_type(),
+            expected: table.type_().element_type,
             actual: val.value_type(),
         });
     }
 
-    // Dereference Arc to call methods on Table
-    let mut table_guard = (*table).write().map_err(|_| Error::PoisonedLock)?;
+    // Get write lock on the internal elements Vec via the Arc
+    let mut table_guard = table.elements.write().map_err(|_| Error::PoisonedLock)?;
     for i in 0..n {
         let idx = (d + i) as u32;
         table_guard.set(idx, val.clone())?;
