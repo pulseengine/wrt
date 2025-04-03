@@ -97,21 +97,34 @@ pub fn table_init(
 pub fn table_copy(
     stack: &mut dyn Stack,
     frame: &mut dyn FrameBehavior,
-    _engine: &StacklessEngine,
-    dest_table_idx: u32,
+    dst_table_idx: u32,
     src_table_idx: u32,
+    _engine: &StacklessEngine,
 ) -> Result<()> {
     let n = stack.pop()?.as_i32()?;
     let s = stack.pop()?.as_i32()?;
     let d = stack.pop()?.as_i32()?;
 
-    if dest_table_idx == src_table_idx {
-        let table = frame.get_table_mut(dest_table_idx)?;
-        table.copy_within(s as u32, d as u32, n as u32)?;
-    } else {
-        let (src_table, dest_table) = frame.get_two_tables_mut(src_table_idx, dest_table_idx)?;
-        dest_table.copy_from(src_table, s as u32, d as u32, n as u32)?;
+    let (dst_table, src_table) = frame.get_two_tables_mut(dst_table_idx, src_table_idx)?;
+
+    // Bounds checking
+    let dst_size = dst_table.size() as i32;
+    let src_size = src_table.size() as i32;
+
+    if s.checked_add(n).map_or(true, |end| end > src_size) || d.checked_add(n).map_or(true, |end| end > dst_size) {
+        return Err(Error::TableAccessOutOfBounds);
     }
+
+    // Perform the copy - using write lock on the table
+    dst_table.write().map_err(|_| Error::PoisonedLock)?.copy_from(
+        &src_table.read().map_err(|_| Error::PoisonedLock)?,
+        s as u32,
+        d as u32,
+        n as u32,
+    )
+
+    // Old direct call:
+    // table.copy_within(s as u32, d as u32, n as u32)?;
     Ok(())
 }
 
@@ -128,13 +141,34 @@ pub fn elem_drop(
 pub fn table_fill(
     stack: &mut dyn Stack,
     frame: &mut dyn FrameBehavior,
-    _engine: &StacklessEngine,
     table_idx: u32,
+    _engine: &StacklessEngine,
 ) -> Result<()> {
     let n = stack.pop()?.as_i32()?;
     let val = stack.pop()?;
-    let i = stack.pop()?.as_i32()?;
-    let table = frame.get_table_mut(table_idx)?;
-    table.fill(i as u32, val.try_into()?, n as u32)?;
+    let d = stack.pop()?.as_i32()?;
+
+    let table = frame.get_table_mut(table_idx as usize)?;
+    let table_size = table.size() as i32;
+
+    if d.checked_add(n).map_or(true, |end| end > table_size) {
+        return Err(Error::TableAccessOutOfBounds);
+    }
+
+    // Dereference Arc to call methods on Table
+    if val.value_type() != (*table).element_type() {
+        return Err(Error::TypeMismatch {
+            expected: (*table).element_type(),
+            actual: val.value_type(),
+        });
+    }
+
+    // Dereference Arc to call methods on Table
+    let mut table_guard = (*table).write().map_err(|_| Error::PoisonedLock)?;
+    for i in 0..n {
+        let idx = (d + i) as u32;
+        table_guard.set(idx, val.clone())?;
+    }
+
     Ok(())
 }

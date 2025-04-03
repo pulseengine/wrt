@@ -481,11 +481,12 @@ impl ControlFlowBehavior for StacklessFrame {
 
          // 6. Update the frame's current label arity based on the new top label (if any)
          if let Some(new_top_label) = self.label_stack.last() {
-            self.set_label_arity(new_top_label.arity);
-            println!("DEBUG: branch - New top label: {:?}, Restored label_arity to: {}", new_top_label, self.label_arity());
+            let target_arity = new_top_label.arity; // Store arity before mutable borrow
+            self.set_label_arity(target_arity);
+            println!("DEBUG: branch - New top label: {:?}, Restored label_arity to: {}", new_top_label, target_arity); // Use stored variable
          } else {
             // Branched out of the function frame scope
-            let func_type = self.get_function_type()?;
+            let func_type = self.get_function_type()?; // Needs implementation
             let func_arity = func_type.results.len();
             self.set_label_arity(func_arity);
             println!("DEBUG: branch - Branched out of function, Restored label_arity to func arity: {}", func_arity);
