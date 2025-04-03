@@ -85,8 +85,8 @@ impl StacklessFrame {
             pc: 0, // Start at the beginning of the function code
             locals: args, // Arguments become the initial part of locals
             instance_idx,
-            arity: func_type.results.len(), // Frame arity is the function's return arity
-            label_arity: func_type.params.len(), // Initial label arity matches function input arity (use params field)
+            arity: func_type.results.len(), // Frame arity is the function's RETURN arity
+            label_arity: func_type.params.len(), // Initial label arity matches function INPUT arity
             label_stack: Vec::new(),
             return_pc: 0, // Will be set by the caller
         })
@@ -393,7 +393,7 @@ impl ControlFlowBehavior for StacklessFrame {
             // If no outer label, we are exiting the function frame itself.
             // Restore arity to the function's return arity.
             let func_type = self.get_function_type()?;
-            let func_arity = func_type.results.len();
+            let func_arity = func_type.params.len();
             println!(
                 "DEBUG: exit_block - Exiting function frame. Restoring label_arity to func return arity: {}",
                 func_arity
@@ -486,7 +486,7 @@ impl ControlFlowBehavior for StacklessFrame {
          } else {
              // If branching out of the function entirely, restore function return arity
              let func_type = self.get_function_type()?;
-             let func_arity = func_type.results.len();
+             let func_arity = func_type.params.len();
              self.set_label_arity(func_arity);
              println!("DEBUG: branch - Restored label_arity to func arity: {}", func_arity);
          }
@@ -507,7 +507,7 @@ impl ControlFlowBehavior for StacklessFrame {
     fn return_(&mut self, stack: &mut dyn Stack) -> Result<()> {
         // 1. Get the function's return arity
         let func_type = self.get_function_type()?;
-        let return_arity = func_type.results.len();
+        let return_arity = func_type.params.len();
         println!("DEBUG: return_ - Func Arity: {}", return_arity);
 
         // 2. Pop the return values from the stack
