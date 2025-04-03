@@ -122,6 +122,7 @@ pub mod module_instance;
 pub mod stackless_frame;
 
 // Public exports
+pub use crate::{stackless::StacklessEngine, stackless_frame::StacklessFrame};
 pub use behavior::InstructionExecutor;
 pub use component::{Component, Host, InstanceValue};
 pub use execution::ExecutionStats;
@@ -131,7 +132,6 @@ pub use logging::HostFunctionHandler;
 pub use memory::{DefaultMemory, MemoryBehavior};
 pub use module::{ExportKind, Function, Import, Module, OtherExport};
 pub use stack::Stack;
-pub use crate::{stackless::StacklessEngine, stackless_frame::StacklessFrame};
 pub use table::Table;
 pub use types::{
     ComponentType, ExternType, FuncType, GlobalType, MemoryType, TableType, ValueType,
