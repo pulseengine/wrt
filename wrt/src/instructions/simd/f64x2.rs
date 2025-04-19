@@ -3,16 +3,12 @@
 //! This module contains implementations for WebAssembly SIMD instructions
 //! that operate on 128-bit vectors as two 64-bit floating point lanes.
 
-#[cfg(not(feature = "std"))]
-use core::cmp;
-
-use crate::behavior::FrameBehavior;
-use crate::error::{Error, Result};
-use crate::stack::Stack;
+use crate::behavior::{FrameBehavior, StackBehavior};
 use crate::values::Value;
 use crate::StacklessEngine;
+use wrt_error::{kinds, Error, Result};
 
-use super::common::{pop_v128, push_v128, V128};
+use super::{pop_v128, push_v128, V128};
 
 /// Helper to get an f64 value from a lane in a v128
 #[inline]
@@ -41,11 +37,18 @@ fn set_f64_lane(v: &mut V128, lane: usize, value: f64) {
 }
 
 /// Replicate an f64 value to all lanes of a v128
-pub fn f64x2_splat(stack: &mut impl Stack, _frame: &mut impl FrameBehavior) -> Result<()> {
+pub fn f64x2_splat(
+    stack: &mut impl StackBehavior,
+    _frame: &mut impl FrameBehavior,
+) -> Result<(), Error> {
     // Pop the f64 value from the stack
     let value = match stack.pop()? {
         Value::F64(v) => v,
-        _ => return Err(Error::InvalidType("Expected f64 for f64x2.splat".into())),
+        _ => {
+            return Err(Error::new(kinds::InvalidTypeError(
+                "Expected f64 for f64x2.splat".into(),
+            )))
+        }
     };
 
     // Create the result v128 with the f64 value replicated to both lanes
@@ -61,18 +64,22 @@ pub fn f64x2_splat(stack: &mut impl Stack, _frame: &mut impl FrameBehavior) -> R
     }
 
     // Push the result v128 to the stack
-    push_v128(stack, result)
+    push_v128(stack, result)?;
+    Ok(())
 }
 
 /// Extract a lane as an f64 from a v128
 pub fn f64x2_extract_lane(
-    stack: &mut (impl Stack + ?Sized),
-    _frame: &mut (impl FrameBehavior + ?Sized),
+    stack: &mut impl StackBehavior,
+    _frame: &mut impl FrameBehavior,
     lane: u32,
-) -> Result<()> {
+) -> Result<(), Error> {
     // Ensure lane index is in range
     if lane >= 2 {
-        return Err(Error::InvalidLaneIndex(2));
+        return Err(Error::new(kinds::ValidationError(format!(
+            "Invalid lane index: {}",
+            lane
+        ))));
     }
 
     // Pop the v128 value from the stack
@@ -88,22 +95,24 @@ pub fn f64x2_extract_lane(
 
 /// Replace a lane in a v128 with an f64 value
 pub fn f64x2_replace_lane(
-    stack: &mut (impl Stack + ?Sized),
-    _frame: &mut (impl FrameBehavior + ?Sized),
+    stack: &mut impl StackBehavior,
+    _frame: &mut impl FrameBehavior,
     lane: u32,
-) -> Result<()> {
+) -> Result<(), Error> {
     // Ensure lane index is in range
     if lane >= 2 {
-        return Err(Error::InvalidLaneIndex(2));
+        return Err(Error::new(kinds::ValidationError(
+            "Invalid lane index: 2".to_string(),
+        )));
     }
 
     // Pop the replacement f64 value from the stack
     let replacement = match stack.pop()? {
         Value::F64(v) => v,
         _ => {
-            return Err(Error::InvalidType(
+            return Err(Error::new(kinds::InvalidTypeError(
                 "Expected f64 for replacement value".into(),
-            ))
+            )))
         }
     };
 
@@ -114,14 +123,15 @@ pub fn f64x2_replace_lane(
     set_f64_lane(&mut v128, lane as usize, replacement);
 
     // Push the modified v128 value back to the stack
-    push_v128(stack, v128)
+    push_v128(stack, v128)?;
+    Ok(())
 }
 
 /// Add corresponding lanes of two v128 values
 pub fn f64x2_add(
-    stack: &mut (impl Stack + ?Sized),
-    _frame: &mut (impl FrameBehavior + ?Sized),
-) -> Result<()> {
+    stack: &mut impl StackBehavior,
+    _frame: &mut impl FrameBehavior,
+) -> Result<(), Error> {
     // Pop two v128 values from the stack
     let b = pop_v128(stack)?;
     let a = pop_v128(stack)?;
@@ -137,14 +147,15 @@ pub fn f64x2_add(
     }
 
     // Push the result v128 to the stack
-    push_v128(stack, result)
+    push_v128(stack, result)?;
+    Ok(())
 }
 
 /// Subtract corresponding lanes of two v128 values
 pub fn f64x2_sub(
-    stack: &mut (impl Stack + ?Sized),
-    _frame: &mut (impl FrameBehavior + ?Sized),
-) -> Result<()> {
+    stack: &mut impl StackBehavior,
+    _frame: &mut impl FrameBehavior,
+) -> Result<(), Error> {
     // Pop two v128 values from the stack
     let b = pop_v128(stack)?;
     let a = pop_v128(stack)?;
@@ -160,14 +171,15 @@ pub fn f64x2_sub(
     }
 
     // Push the result v128 to the stack
-    push_v128(stack, result)
+    push_v128(stack, result)?;
+    Ok(())
 }
 
 /// Multiply corresponding lanes of two v128 values
 pub fn f64x2_mul(
-    stack: &mut (impl Stack + ?Sized),
-    _frame: &mut (impl FrameBehavior + ?Sized),
-) -> Result<()> {
+    stack: &mut impl StackBehavior,
+    _frame: &mut impl FrameBehavior,
+) -> Result<(), Error> {
     // Pop two v128 values from the stack
     let b = pop_v128(stack)?;
     let a = pop_v128(stack)?;
@@ -183,14 +195,15 @@ pub fn f64x2_mul(
     }
 
     // Push the result v128 to the stack
-    push_v128(stack, result)
+    push_v128(stack, result)?;
+    Ok(())
 }
 
 /// Divide corresponding lanes of two v128 values
 pub fn f64x2_div(
-    stack: &mut (impl Stack + ?Sized),
-    _frame: &mut (impl FrameBehavior + ?Sized),
-) -> Result<()> {
+    stack: &mut impl StackBehavior,
+    _frame: &mut impl FrameBehavior,
+) -> Result<(), Error> {
     // Pop two v128 values from the stack
     let b = pop_v128(stack)?;
     let a = pop_v128(stack)?;
@@ -206,14 +219,15 @@ pub fn f64x2_div(
     }
 
     // Push the result v128 to the stack
-    push_v128(stack, result)
+    push_v128(stack, result)?;
+    Ok(())
 }
 
 /// Negate each lane of a v128 value
 pub fn f64x2_neg(
-    stack: &mut (impl Stack + ?Sized),
-    _frame: &mut (impl FrameBehavior + ?Sized),
-) -> Result<()> {
+    stack: &mut impl StackBehavior,
+    _frame: &mut impl FrameBehavior,
+) -> Result<(), Error> {
     // Pop the v128 value from the stack
     let v128 = pop_v128(stack)?;
 
@@ -227,63 +241,60 @@ pub fn f64x2_neg(
     }
 
     // Push the result v128 to the stack
-    push_v128(stack, result)
+    push_v128(stack, result)?;
+    Ok(())
 }
 
 // Add stubs for missing functions
 
 pub fn f64x2_min(
-    _stack: &mut dyn Stack,
+    _stack: &mut impl StackBehavior,
     _frame: &mut dyn FrameBehavior,
-    _engine: &StacklessEngine,
-) -> Result<()> {
+) -> Result<(), Error> {
     todo!("Implement f64x2_min")
 }
 
 pub fn f64x2_max(
-    _stack: &mut dyn Stack,
+    _stack: &mut impl StackBehavior,
     _frame: &mut dyn FrameBehavior,
-    _engine: &StacklessEngine,
-) -> Result<()> {
+) -> Result<(), Error> {
     todo!("Implement f64x2_max")
 }
 
 pub fn f64x2_pmin(
-    _stack: &mut dyn Stack,
+    _stack: &mut impl StackBehavior,
     _frame: &mut dyn FrameBehavior,
-    _engine: &StacklessEngine,
-) -> Result<()> {
+) -> Result<(), Error> {
     todo!("Implement f64x2_pmin")
 }
 
 pub fn f64x2_pmax(
-    _stack: &mut dyn Stack,
+    _stack: &mut impl StackBehavior,
     _frame: &mut dyn FrameBehavior,
-    _engine: &StacklessEngine,
-) -> Result<()> {
+) -> Result<(), Error> {
     todo!("Implement f64x2_pmax")
 }
 
 pub fn f64x2_convert_low_i32x4_s(
-    _stack: &mut dyn Stack,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
     _engine: &StacklessEngine,
-) -> Result<()> {
+) -> Result<(), Error> {
     todo!("Implement f64x2_convert_low_i32x4_s")
 }
 
 pub fn f64x2_convert_low_i32x4_u(
-    _stack: &mut dyn Stack,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
     _engine: &StacklessEngine,
-) -> Result<()> {
+) -> Result<(), Error> {
     todo!("Implement f64x2_convert_low_i32x4_u")
 }
 
 pub fn f64x2_promote_low_f32x4(
-    _stack: &mut dyn Stack,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
     _engine: &StacklessEngine,
-) -> Result<()> {
+) -> Result<(), Error> {
     todo!("Implement f64x2_promote_low_f32x4")
 }

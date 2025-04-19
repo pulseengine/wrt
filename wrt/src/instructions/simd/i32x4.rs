@@ -9,14 +9,13 @@ use std::cmp;
 #[cfg(not(feature = "std"))]
 use core::cmp;
 
-use crate::behavior::FrameBehavior;
-use crate::error::{Error, Result};
-use crate::stack::Stack;
-use crate::values::Value;
+use crate::behavior::{FrameBehavior, StackBehavior};
+use crate::values::{Value, Value::*};
 use crate::StacklessEngine;
+use wrt_error::{kinds, Error, Result};
 
-use super::common::{pop_v128, push_v128, V128};
 use super::get_i16_lane;
+use super::{pop_v128, push_v128, V128};
 
 /// Helper to get an i32 value from a lane in a v128
 #[inline]
@@ -44,11 +43,18 @@ pub fn set_i32_lane(v: &mut V128, lane: usize, value: i32) {
 }
 
 /// Replicate an i32 value to all lanes of a v128
-pub fn i32x4_splat(stack: &mut impl Stack, _frame: &mut impl FrameBehavior) -> Result<()> {
+pub fn i32x4_splat(
+    stack: &mut impl StackBehavior,
+    _frame: &mut impl FrameBehavior,
+) -> Result<(), Error> {
     // Pop the i32 value from the stack
     let value = match stack.pop()? {
         Value::I32(v) => v,
-        _ => return Err(Error::InvalidType("Expected i32 for i32x4.splat".into())),
+        _ => {
+            return Err(Error::new(kinds::InvalidTypeError(
+                "Expected i32 for i32x4.splat".into(),
+            )))
+        }
     };
 
     // Create the result v128 with the i32 value replicated to all 4 lanes
@@ -65,18 +71,22 @@ pub fn i32x4_splat(stack: &mut impl Stack, _frame: &mut impl FrameBehavior) -> R
     }
 
     // Push the result v128 to the stack
-    push_v128(stack, result)
+    push_v128(stack, result)?;
+    Ok(())
 }
 
 /// Extract a lane as a signed i32 from a v128
 pub fn i32x4_extract_lane(
-    stack: &mut (impl Stack + ?Sized),
-    _frame: &mut (impl FrameBehavior + ?Sized),
+    stack: &mut impl StackBehavior,
+    _frame: &mut impl FrameBehavior,
     lane: u32,
-) -> Result<()> {
+) -> Result<(), Error> {
     // Ensure lane index is in range
     if lane >= 4 {
-        return Err(Error::InvalidLaneIndex(4));
+        return Err(Error::new(kinds::ValidationError(format!(
+            "Invalid lane index: {}",
+            lane
+        ))));
     }
 
     // Pop the v128 value from the stack
@@ -92,22 +102,24 @@ pub fn i32x4_extract_lane(
 
 /// Replace a lane in a v128 with an i32 value
 pub fn i32x4_replace_lane(
-    stack: &mut (impl Stack + ?Sized),
-    _frame: &mut (impl FrameBehavior + ?Sized),
+    stack: &mut impl StackBehavior,
+    _frame: &mut impl FrameBehavior,
     lane: u32,
-) -> Result<()> {
+) -> Result<(), Error> {
     // Ensure lane index is in range
     if lane >= 4 {
-        return Err(Error::InvalidLaneIndex(4));
+        return Err(Error::new(kinds::ValidationError(
+            "Invalid lane index: 4".to_string(),
+        )));
     }
 
     // Pop the replacement i32 value from the stack
     let replacement = match stack.pop()? {
         Value::I32(v) => v,
         _ => {
-            return Err(Error::InvalidType(
+            return Err(Error::new(kinds::InvalidTypeError(
                 "Expected i32 for replacement value".into(),
-            ))
+            )))
         }
     };
 
@@ -118,14 +130,15 @@ pub fn i32x4_replace_lane(
     set_i32_lane(&mut v128, lane as usize, replacement);
 
     // Push the modified v128 value back to the stack
-    push_v128(stack, v128)
+    push_v128(stack, v128)?;
+    Ok(())
 }
 
 /// Add corresponding lanes of two v128 values
 pub fn i32x4_add(
-    stack: &mut (impl Stack + ?Sized),
-    _frame: &mut (impl FrameBehavior + ?Sized),
-) -> Result<()> {
+    stack: &mut impl StackBehavior,
+    _frame: &mut dyn FrameBehavior,
+) -> Result<(), Error> {
     // Pop two v128 values from the stack
     let b = pop_v128(stack)?;
     let a = pop_v128(stack)?;
@@ -141,14 +154,15 @@ pub fn i32x4_add(
     }
 
     // Push the result v128 to the stack
-    push_v128(stack, result)
+    push_v128(stack, result)?;
+    Ok(())
 }
 
 /// Subtract corresponding lanes of two v128 values
 pub fn i32x4_sub(
-    stack: &mut (impl Stack + ?Sized),
-    _frame: &mut (impl FrameBehavior + ?Sized),
-) -> Result<()> {
+    stack: &mut impl StackBehavior,
+    _frame: &mut dyn FrameBehavior,
+) -> Result<(), Error> {
     // Pop two v128 values from the stack
     let b = pop_v128(stack)?;
     let a = pop_v128(stack)?;
@@ -164,14 +178,15 @@ pub fn i32x4_sub(
     }
 
     // Push the result v128 to the stack
-    push_v128(stack, result)
+    push_v128(stack, result)?;
+    Ok(())
 }
 
 /// Multiply corresponding lanes of two v128 values
 pub fn i32x4_mul(
-    stack: &mut (impl Stack + ?Sized),
-    _frame: &mut (impl FrameBehavior + ?Sized),
-) -> Result<()> {
+    stack: &mut impl StackBehavior,
+    _frame: &mut dyn FrameBehavior,
+) -> Result<(), Error> {
     // Pop two v128 values from the stack
     let b = pop_v128(stack)?;
     let a = pop_v128(stack)?;
@@ -187,14 +202,15 @@ pub fn i32x4_mul(
     }
 
     // Push the result v128 to the stack
-    push_v128(stack, result)
+    push_v128(stack, result)?;
+    Ok(())
 }
 
 /// Negate each lane of a v128 value
 pub fn i32x4_neg(
-    stack: &mut (impl Stack + ?Sized),
-    _frame: &mut (impl FrameBehavior + ?Sized),
-) -> Result<()> {
+    stack: &mut impl StackBehavior,
+    _frame: &mut dyn FrameBehavior,
+) -> Result<(), Error> {
     // Pop the v128 value from the stack
     let v128 = pop_v128(stack)?;
 
@@ -208,14 +224,15 @@ pub fn i32x4_neg(
     }
 
     // Push the result v128 to the stack
-    push_v128(stack, result)
+    push_v128(stack, result)?;
+    Ok(())
 }
 
 /// Compare lanes for equality
 pub fn i32x4_eq(
-    stack: &mut (impl Stack + ?Sized),
-    _frame: &mut (impl FrameBehavior + ?Sized),
-) -> Result<()> {
+    stack: &mut impl StackBehavior,
+    _frame: &mut impl FrameBehavior,
+) -> Result<(), Error> {
     // Pop two v128 values from the stack
     let b = pop_v128(stack)?;
     let a = pop_v128(stack)?;
@@ -235,14 +252,15 @@ pub fn i32x4_eq(
     }
 
     // Push the result v128 to the stack
-    push_v128(stack, result)
+    push_v128(stack, result)?;
+    Ok(())
 }
 
 /// Compare lanes for inequality
 pub fn i32x4_ne(
-    stack: &mut (impl Stack + ?Sized),
-    _frame: &mut (impl FrameBehavior + ?Sized),
-) -> Result<()> {
+    stack: &mut impl StackBehavior,
+    _frame: &mut impl FrameBehavior,
+) -> Result<(), Error> {
     // Pop two v128 values from the stack
     let b = pop_v128(stack)?;
     let a = pop_v128(stack)?;
@@ -262,14 +280,15 @@ pub fn i32x4_ne(
     }
 
     // Push the result v128 to the stack
-    push_v128(stack, result)
+    push_v128(stack, result)?;
+    Ok(())
 }
 
 /// Compare lanes for less than (signed)
 pub fn i32x4_lt_s(
-    stack: &mut (impl Stack + ?Sized),
-    _frame: &mut (impl FrameBehavior + ?Sized),
-) -> Result<()> {
+    stack: &mut impl StackBehavior,
+    _frame: &mut impl FrameBehavior,
+) -> Result<(), Error> {
     // Pop two v128 values from the stack
     let b = pop_v128(stack)?;
     let a = pop_v128(stack)?;
@@ -289,14 +308,15 @@ pub fn i32x4_lt_s(
     }
 
     // Push the result v128 to the stack
-    push_v128(stack, result)
+    push_v128(stack, result)?;
+    Ok(())
 }
 
 /// Compare lanes for less than (unsigned)
 pub fn i32x4_lt_u(
-    stack: &mut (impl Stack + ?Sized),
-    _frame: &mut (impl FrameBehavior + ?Sized),
-) -> Result<()> {
+    stack: &mut impl StackBehavior,
+    _frame: &mut impl FrameBehavior,
+) -> Result<(), Error> {
     // Pop two v128 values from the stack
     let b = pop_v128(stack)?;
     let a = pop_v128(stack)?;
@@ -316,14 +336,15 @@ pub fn i32x4_lt_u(
     }
 
     // Push the result v128 to the stack
-    push_v128(stack, result)
+    push_v128(stack, result)?;
+    Ok(())
 }
 
 /// Find minimum of corresponding lanes (signed)
 pub fn i32x4_min_s(
-    stack: &mut (impl Stack + ?Sized),
-    _frame: &mut (impl FrameBehavior + ?Sized),
-) -> Result<()> {
+    stack: &mut impl StackBehavior,
+    _frame: &mut dyn FrameBehavior,
+) -> Result<(), Error> {
     // Pop two v128 values from the stack
     let b = pop_v128(stack)?;
     let a = pop_v128(stack)?;
@@ -339,14 +360,15 @@ pub fn i32x4_min_s(
     }
 
     // Push the result v128 to the stack
-    push_v128(stack, result)
+    push_v128(stack, result)?;
+    Ok(())
 }
 
 /// Find minimum of corresponding lanes (unsigned)
 pub fn i32x4_min_u(
-    stack: &mut (impl Stack + ?Sized),
-    _frame: &mut (impl FrameBehavior + ?Sized),
-) -> Result<()> {
+    stack: &mut impl StackBehavior,
+    _frame: &mut dyn FrameBehavior,
+) -> Result<(), Error> {
     // Pop two v128 values from the stack
     let b = pop_v128(stack)?;
     let a = pop_v128(stack)?;
@@ -367,14 +389,15 @@ pub fn i32x4_min_u(
     }
 
     // Push the result v128 to the stack
-    push_v128(stack, result)
+    push_v128(stack, result)?;
+    Ok(())
 }
 
 /// Find maximum of corresponding lanes (signed)
 pub fn i32x4_max_s(
-    stack: &mut (impl Stack + ?Sized),
-    _frame: &mut (impl FrameBehavior + ?Sized),
-) -> Result<()> {
+    stack: &mut impl StackBehavior,
+    _frame: &mut dyn FrameBehavior,
+) -> Result<(), Error> {
     // Pop two v128 values from the stack
     let b = pop_v128(stack)?;
     let a = pop_v128(stack)?;
@@ -390,14 +413,15 @@ pub fn i32x4_max_s(
     }
 
     // Push the result v128 to the stack
-    push_v128(stack, result)
+    push_v128(stack, result)?;
+    Ok(())
 }
 
 /// Find maximum of corresponding lanes (unsigned)
 pub fn i32x4_max_u(
-    stack: &mut (impl Stack + ?Sized),
-    _frame: &mut (impl FrameBehavior + ?Sized),
-) -> Result<()> {
+    stack: &mut impl StackBehavior,
+    _frame: &mut dyn FrameBehavior,
+) -> Result<(), Error> {
     // Pop two v128 values from the stack
     let b = pop_v128(stack)?;
     let a = pop_v128(stack)?;
@@ -418,14 +442,15 @@ pub fn i32x4_max_u(
     }
 
     // Push the result v128 to the stack
-    push_v128(stack, result)
+    push_v128(stack, result)?;
+    Ok(())
 }
 
 /// Implementation for i32x4.extadd_pairwise_i16x8_s (Opcode: 0xFD 0x7E)
 pub fn i32x4_extadd_pairwise_i16x8_s(
-    stack: &mut (impl Stack + ?Sized),
-    _frame: &mut (impl FrameBehavior + ?Sized),
-) -> Result<()> {
+    stack: &mut impl StackBehavior,
+    _frame: &mut impl FrameBehavior,
+) -> Result<(), Error> {
     let v = pop_v128(stack)?;
     let mut result = [0u8; 16];
 
@@ -445,14 +470,15 @@ pub fn i32x4_extadd_pairwise_i16x8_s(
         set_i32_lane(&mut result, i, sum);
     }
 
-    push_v128(stack, result)
+    push_v128(stack, result)?;
+    Ok(())
 }
 
 /// Implementation for i32x4.extadd_pairwise_i16x8_u (Opcode: 0xFD 0x7F)
 pub fn i32x4_extadd_pairwise_i16x8_u(
-    stack: &mut (impl Stack + ?Sized),
-    _frame: &mut (impl FrameBehavior + ?Sized),
-) -> Result<()> {
+    stack: &mut impl StackBehavior,
+    _frame: &mut impl FrameBehavior,
+) -> Result<(), Error> {
     let v = pop_v128(stack)?;
     let mut result = [0u8; 16];
 
@@ -470,7 +496,8 @@ pub fn i32x4_extadd_pairwise_i16x8_u(
         set_i32_lane(&mut result, i, sum as i32);
     }
 
-    push_v128(stack, result)
+    push_v128(stack, result)?;
+    Ok(())
 }
 
 // Additional i32x4 operations will be implemented here as needed
@@ -478,121 +505,137 @@ pub fn i32x4_extadd_pairwise_i16x8_u(
 // Add stubs for missing functions
 
 pub fn i32x4_shr_s(
-    _stack: &mut dyn Stack,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
     _engine: &StacklessEngine,
-) -> Result<()> {
+) -> Result<(), Error> {
     todo!("Implement i32x4_shr_s")
 }
 
 pub fn i32x4_shr_u(
-    _stack: &mut dyn Stack,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
     _engine: &StacklessEngine,
-) -> Result<()> {
+) -> Result<(), Error> {
     todo!("Implement i32x4_shr_u")
 }
 
 pub fn i32x4_dot_i16x8_s(
-    _stack: &mut dyn Stack,
+    stack: &mut impl StackBehavior,
     _frame: &mut dyn FrameBehavior,
-    _engine: &StacklessEngine,
-) -> Result<()> {
+) -> Result<(), Error> {
     todo!("Implement i32x4_dot_i16x8_s")
 }
 
 pub fn i32x4_extmul_low_i16x8_s(
-    _stack: &mut dyn Stack,
+    stack: &mut impl StackBehavior,
     _frame: &mut dyn FrameBehavior,
-    _engine: &StacklessEngine,
-) -> Result<()> {
+) -> Result<(), Error> {
     todo!("Implement i32x4_extmul_low_i16x8_s")
 }
 
 pub fn i32x4_extmul_high_i16x8_s(
-    _stack: &mut dyn Stack,
+    stack: &mut impl StackBehavior,
     _frame: &mut dyn FrameBehavior,
-    _engine: &StacklessEngine,
-) -> Result<()> {
+) -> Result<(), Error> {
     todo!("Implement i32x4_extmul_high_i16x8_s")
 }
 
 pub fn i32x4_extmul_low_i16x8_u(
-    _stack: &mut dyn Stack,
+    stack: &mut impl StackBehavior,
     _frame: &mut dyn FrameBehavior,
-    _engine: &StacklessEngine,
-) -> Result<()> {
+) -> Result<(), Error> {
     todo!("Implement i32x4_extmul_low_i16x8_u")
 }
 
 pub fn i32x4_extmul_high_i16x8_u(
-    _stack: &mut dyn Stack,
+    stack: &mut impl StackBehavior,
     _frame: &mut dyn FrameBehavior,
-    _engine: &StacklessEngine,
-) -> Result<()> {
+) -> Result<(), Error> {
     todo!("Implement i32x4_extmul_high_i16x8_u")
 }
 
 pub fn i32x4_trunc_sat_f32x4_s(
-    _stack: &mut dyn Stack,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
     _engine: &StacklessEngine,
-) -> Result<()> {
+) -> Result<(), Error> {
     todo!("Implement i32x4_trunc_sat_f32x4_s")
 }
 
 pub fn i32x4_trunc_sat_f32x4_u(
-    _stack: &mut dyn Stack,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
     _engine: &StacklessEngine,
-) -> Result<()> {
+) -> Result<(), Error> {
     todo!("Implement i32x4_trunc_sat_f32x4_u")
 }
 
 pub fn i32x4_trunc_sat_f64x2_s_zero(
-    _stack: &mut dyn Stack,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
     _engine: &StacklessEngine,
-) -> Result<()> {
+) -> Result<(), Error> {
     todo!("Implement i32x4_trunc_sat_f64x2_s_zero")
 }
 
 pub fn i32x4_trunc_sat_f64x2_u_zero(
-    _stack: &mut dyn Stack,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
     _engine: &StacklessEngine,
-) -> Result<()> {
+) -> Result<(), Error> {
     todo!("Implement i32x4_trunc_sat_f64x2_u_zero")
 }
 
 pub fn i32x4_extend_low_i16x8_s(
-    _stack: &mut dyn Stack,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
     _engine: &StacklessEngine,
-) -> Result<()> {
+) -> Result<(), Error> {
     todo!("Implement i32x4_extend_low_i16x8_s")
 }
 
 pub fn i32x4_extend_high_i16x8_s(
-    _stack: &mut dyn Stack,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
     _engine: &StacklessEngine,
-) -> Result<()> {
+) -> Result<(), Error> {
     todo!("Implement i32x4_extend_high_i16x8_s")
 }
 
 pub fn i32x4_extend_low_i16x8_u(
-    _stack: &mut dyn Stack,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
     _engine: &StacklessEngine,
-) -> Result<()> {
+) -> Result<(), Error> {
     todo!("Implement i32x4_extend_low_i16x8_u")
 }
 
 pub fn i32x4_extend_high_i16x8_u(
-    _stack: &mut dyn Stack,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
     _engine: &StacklessEngine,
-) -> Result<()> {
+) -> Result<(), Error> {
     todo!("Implement i32x4_extend_high_i16x8_u")
+}
+
+pub fn i32x4_all_true(
+    stack: &mut impl StackBehavior,
+    _frame: &mut dyn FrameBehavior,
+) -> Result<(), Error> {
+    todo!("Implement i32x4_all_true")
+}
+
+pub fn i32x4_bitmask(
+    stack: &mut impl StackBehavior,
+    _frame: &mut dyn FrameBehavior,
+) -> Result<(), Error> {
+    todo!("Implement i32x4_bitmask")
+}
+
+pub fn i32x4_abs(
+    stack: &mut impl StackBehavior,
+    _frame: &mut dyn FrameBehavior,
+) -> Result<(), Error> {
+    todo!("Implement i32x4_abs")
 }

@@ -3,16 +3,14 @@
 //! This module contains implementations for WebAssembly SIMD instructions
 //! that operate on 128-bit vectors as four 32-bit floating point lanes.
 
-#[cfg(not(feature = "std"))]
-use core::cmp;
+use std::ops::{Add, BitAnd, BitOr, BitXor, Div, Mul, Sub};
 
-use crate::behavior::FrameBehavior;
-use crate::error::{Error, Result};
-use crate::stack::Stack;
+use crate::behavior::{FrameBehavior, StackBehavior};
 use crate::values::Value;
 use crate::StacklessEngine;
+use wrt_error::{kinds, Error, Result};
 
-use super::common::{pop_v128, push_v128, V128};
+use super::{pop_v128, push_v128, V128};
 
 /// Helper to get an f32 value from a lane in a v128
 #[inline]
@@ -33,11 +31,15 @@ fn set_f32_lane(v: &mut V128, lane: usize, value: f32) {
 }
 
 /// Replicate an f32 value to all lanes of a v128
-pub fn f32x4_splat(stack: &mut impl Stack, _frame: &mut impl FrameBehavior) -> Result<()> {
+pub fn f32x4_splat(stack: &mut impl StackBehavior, _frame: &mut impl FrameBehavior) -> Result<()> {
     // Pop the f32 value from the stack
     let value = match stack.pop()? {
         Value::F32(v) => v,
-        _ => return Err(Error::InvalidType("Expected f32 for f32x4.splat".into())),
+        _ => {
+            return Err(Error::new(kinds::InvalidTypeError(
+                "Expected f32 for f32x4.splat".into(),
+            )))
+        }
     };
 
     // Create the result v128 with the f32 value replicated to all 4 lanes
@@ -59,13 +61,16 @@ pub fn f32x4_splat(stack: &mut impl Stack, _frame: &mut impl FrameBehavior) -> R
 
 /// Extract a lane as an f32 from a v128
 pub fn f32x4_extract_lane(
-    stack: &mut (impl Stack + ?Sized),
-    _frame: &mut (impl FrameBehavior + ?Sized),
+    stack: &mut impl StackBehavior,
+    _frame: &mut impl FrameBehavior,
     lane: u32,
 ) -> Result<()> {
     // Ensure lane index is in range
     if lane >= 4 {
-        return Err(Error::InvalidLaneIndex(4));
+        return Err(Error::new(kinds::ValidationError(format!(
+            "Invalid lane index: {}",
+            lane
+        ))));
     }
 
     // Pop the v128 value from the stack
@@ -81,22 +86,24 @@ pub fn f32x4_extract_lane(
 
 /// Replace a lane in a v128 with an f32 value
 pub fn f32x4_replace_lane(
-    stack: &mut (impl Stack + ?Sized),
-    _frame: &mut (impl FrameBehavior + ?Sized),
+    stack: &mut impl StackBehavior,
+    _frame: &mut impl FrameBehavior,
     lane: u32,
 ) -> Result<()> {
     // Ensure lane index is in range
     if lane >= 4 {
-        return Err(Error::InvalidLaneIndex(4));
+        return Err(Error::new(kinds::ValidationError(
+            "Invalid lane index: 4".to_string(),
+        )));
     }
 
     // Pop the replacement f32 value from the stack
     let replacement = match stack.pop()? {
         Value::F32(v) => v,
         _ => {
-            return Err(Error::InvalidType(
+            return Err(Error::new(kinds::InvalidTypeError(
                 "Expected f32 for replacement value".into(),
-            ))
+            )))
         }
     };
 
@@ -111,10 +118,7 @@ pub fn f32x4_replace_lane(
 }
 
 /// Add corresponding lanes of two v128 values
-pub fn f32x4_add(
-    stack: &mut (impl Stack + ?Sized),
-    _frame: &mut (impl FrameBehavior + ?Sized),
-) -> Result<()> {
+pub fn f32x4_add(stack: &mut impl StackBehavior, _frame: &mut impl FrameBehavior) -> Result<()> {
     // Pop two v128 values from the stack
     let b = pop_v128(stack)?;
     let a = pop_v128(stack)?;
@@ -134,10 +138,7 @@ pub fn f32x4_add(
 }
 
 /// Subtract corresponding lanes of two v128 values
-pub fn f32x4_sub(
-    stack: &mut (impl Stack + ?Sized),
-    _frame: &mut (impl FrameBehavior + ?Sized),
-) -> Result<()> {
+pub fn f32x4_sub(stack: &mut impl StackBehavior, _frame: &mut impl FrameBehavior) -> Result<()> {
     // Pop two v128 values from the stack
     let b = pop_v128(stack)?;
     let a = pop_v128(stack)?;
@@ -157,10 +158,7 @@ pub fn f32x4_sub(
 }
 
 /// Multiply corresponding lanes of two v128 values
-pub fn f32x4_mul(
-    stack: &mut (impl Stack + ?Sized),
-    _frame: &mut (impl FrameBehavior + ?Sized),
-) -> Result<()> {
+pub fn f32x4_mul(stack: &mut impl StackBehavior, _frame: &mut impl FrameBehavior) -> Result<()> {
     // Pop two v128 values from the stack
     let b = pop_v128(stack)?;
     let a = pop_v128(stack)?;
@@ -180,10 +178,7 @@ pub fn f32x4_mul(
 }
 
 /// Divide corresponding lanes of two v128 values
-pub fn f32x4_div(
-    stack: &mut (impl Stack + ?Sized),
-    _frame: &mut (impl FrameBehavior + ?Sized),
-) -> Result<()> {
+pub fn f32x4_div(stack: &mut impl StackBehavior, _frame: &mut impl FrameBehavior) -> Result<()> {
     // Pop two v128 values from the stack
     let b = pop_v128(stack)?;
     let a = pop_v128(stack)?;
@@ -203,10 +198,7 @@ pub fn f32x4_div(
 }
 
 /// Negate each lane of a v128 value
-pub fn f32x4_neg(
-    stack: &mut (impl Stack + ?Sized),
-    _frame: &mut (impl FrameBehavior + ?Sized),
-) -> Result<()> {
+pub fn f32x4_neg(stack: &mut impl StackBehavior, _frame: &mut impl FrameBehavior) -> Result<()> {
     // Pop the v128 value from the stack
     let v128 = pop_v128(stack)?;
 
@@ -225,40 +217,24 @@ pub fn f32x4_neg(
 
 // Add stubs for missing functions
 
-pub fn f32x4_min(
-    _stack: &mut dyn Stack,
-    _frame: &mut dyn FrameBehavior,
-    _engine: &StacklessEngine,
-) -> Result<()> {
+pub fn f32x4_min(_stack: &mut impl StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
     todo!("Implement f32x4_min")
 }
 
-pub fn f32x4_max(
-    _stack: &mut dyn Stack,
-    _frame: &mut dyn FrameBehavior,
-    _engine: &StacklessEngine,
-) -> Result<()> {
+pub fn f32x4_max(_stack: &mut impl StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
     todo!("Implement f32x4_max")
 }
 
-pub fn f32x4_pmin(
-    _stack: &mut dyn Stack,
-    _frame: &mut dyn FrameBehavior,
-    _engine: &StacklessEngine,
-) -> Result<()> {
+pub fn f32x4_pmin(_stack: &mut impl StackBehavior, _frame: &mut impl FrameBehavior) -> Result<()> {
     todo!("Implement f32x4_pmin")
 }
 
-pub fn f32x4_pmax(
-    _stack: &mut dyn Stack,
-    _frame: &mut dyn FrameBehavior,
-    _engine: &StacklessEngine,
-) -> Result<()> {
+pub fn f32x4_pmax(_stack: &mut impl StackBehavior, _frame: &mut impl FrameBehavior) -> Result<()> {
     todo!("Implement f32x4_pmax")
 }
 
 pub fn f32x4_convert_i32x4_s(
-    _stack: &mut dyn Stack,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
     _engine: &StacklessEngine,
 ) -> Result<()> {
@@ -266,7 +242,7 @@ pub fn f32x4_convert_i32x4_s(
 }
 
 pub fn f32x4_convert_i32x4_u(
-    _stack: &mut dyn Stack,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
     _engine: &StacklessEngine,
 ) -> Result<()> {
@@ -274,7 +250,7 @@ pub fn f32x4_convert_i32x4_u(
 }
 
 pub fn f32x4_demote_f64x2_zero(
-    _stack: &mut dyn Stack,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
     _engine: &StacklessEngine,
 ) -> Result<()> {

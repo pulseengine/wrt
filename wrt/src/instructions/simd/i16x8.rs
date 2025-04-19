@@ -9,13 +9,12 @@ use std::cmp;
 #[cfg(not(feature = "std"))]
 use core::cmp;
 
-use crate::behavior::FrameBehavior;
-use crate::error::{Error, Result};
-use crate::stack::Stack;
-use crate::values::Value;
+use crate::behavior::{FrameBehavior, StackBehavior};
+use crate::values::{Value, Value::*};
 use crate::StacklessEngine;
+use wrt_error::{kinds, Error, Result};
 
-use super::common::{pop_v128, push_v128, V128};
+use super::{pop_v128, push_v128, V128};
 
 /// Helper to get an i16 value from a lane in a v128
 #[inline]
@@ -41,11 +40,18 @@ fn set_i16_lane(v: &mut V128, lane: usize, value: i16) {
 }
 
 /// Replicate an i16 value to all lanes of a v128
-pub fn i16x8_splat(stack: &mut impl Stack, _frame: &mut impl FrameBehavior) -> Result<()> {
-    // Pop the i32 value from the stack and extract the low 16 bits
+pub fn i16x8_splat(
+    stack: &mut impl StackBehavior,
+    _frame: &mut impl FrameBehavior,
+) -> Result<(), Error> {
+    // Pop the i32 value from the stack
     let value = match stack.pop()? {
         Value::I32(v) => v as i16,
-        _ => return Err(Error::InvalidType("Expected i32 for i16x8.splat".into())),
+        _ => {
+            return Err(Error::new(kinds::InvalidTypeError(
+                "Expected i32 for i16x8.splat".into(),
+            )))
+        }
     };
 
     // Create the result v128 with the i16 value replicated to all 8 lanes
@@ -60,18 +66,22 @@ pub fn i16x8_splat(stack: &mut impl Stack, _frame: &mut impl FrameBehavior) -> R
     }
 
     // Push the result v128 to the stack
-    push_v128(stack, result)
+    push_v128(stack, result)?;
+    Ok(())
 }
 
 /// Extract a lane as a signed i16 from a v128
 pub fn i16x8_extract_lane_s(
-    stack: &mut impl Stack,
+    stack: &mut impl StackBehavior,
     _frame: &mut impl FrameBehavior,
     lane: u32,
-) -> Result<()> {
+) -> Result<(), Error> {
     // Ensure lane index is in range
     if lane >= 8 {
-        return Err(Error::InvalidLaneIndex(8));
+        return Err(Error::new(kinds::ValidationError(format!(
+            "Invalid lane index: {}",
+            lane
+        ))));
     }
 
     // Pop the v128 value from the stack
@@ -87,13 +97,15 @@ pub fn i16x8_extract_lane_s(
 
 /// Extract a lane as an unsigned i16 from a v128
 pub fn i16x8_extract_lane_u(
-    stack: &mut impl Stack,
+    stack: &mut impl StackBehavior,
     _frame: &mut impl FrameBehavior,
     lane: u32,
-) -> Result<()> {
+) -> Result<(), Error> {
     // Ensure lane index is in range
     if lane >= 8 {
-        return Err(Error::InvalidLaneIndex(8));
+        return Err(Error::new(kinds::ValidationError(
+            "Invalid lane index: 8".to_string(),
+        )));
     }
 
     // Pop the v128 value from the stack
@@ -109,22 +121,24 @@ pub fn i16x8_extract_lane_u(
 
 /// Replace a lane in a v128 with an i16 value
 pub fn i16x8_replace_lane(
-    stack: &mut impl Stack,
+    stack: &mut impl StackBehavior,
     _frame: &mut impl FrameBehavior,
     lane: u32,
-) -> Result<()> {
+) -> Result<(), Error> {
     // Ensure lane index is in range
     if lane >= 8 {
-        return Err(Error::InvalidLaneIndex(8));
+        return Err(Error::new(kinds::ValidationError(
+            "Invalid lane index: 8".to_string(),
+        )));
     }
 
     // Pop the replacement i32 value from the stack and truncate to i16
     let replacement = match stack.pop()? {
         Value::I32(v) => v as i16,
         _ => {
-            return Err(Error::InvalidType(
+            return Err(Error::new(kinds::InvalidTypeError(
                 "Expected i32 for replacement value".into(),
-            ))
+            )))
         }
     };
 
@@ -135,11 +149,15 @@ pub fn i16x8_replace_lane(
     set_i16_lane(&mut v128, lane as usize, replacement);
 
     // Push the modified v128 value back to the stack
-    push_v128(stack, v128)
+    push_v128(stack, v128)?;
+    Ok(())
 }
 
 /// Add corresponding lanes of two v128 values
-pub fn i16x8_add(stack: &mut impl Stack, _frame: &mut impl FrameBehavior) -> Result<()> {
+pub fn i16x8_add(
+    stack: &mut impl StackBehavior,
+    _frame: &mut impl FrameBehavior,
+) -> Result<(), Error> {
     // Pop two v128 values from the stack
     let b = pop_v128(stack)?;
     let a = pop_v128(stack)?;
@@ -155,11 +173,15 @@ pub fn i16x8_add(stack: &mut impl Stack, _frame: &mut impl FrameBehavior) -> Res
     }
 
     // Push the result v128 to the stack
-    push_v128(stack, result)
+    push_v128(stack, result)?;
+    Ok(())
 }
 
 /// Subtract corresponding lanes of two v128 values
-pub fn i16x8_sub(stack: &mut impl Stack, _frame: &mut impl FrameBehavior) -> Result<()> {
+pub fn i16x8_sub(
+    stack: &mut impl StackBehavior,
+    _frame: &mut impl FrameBehavior,
+) -> Result<(), Error> {
     // Pop two v128 values from the stack
     let b = pop_v128(stack)?;
     let a = pop_v128(stack)?;
@@ -175,11 +197,15 @@ pub fn i16x8_sub(stack: &mut impl Stack, _frame: &mut impl FrameBehavior) -> Res
     }
 
     // Push the result v128 to the stack
-    push_v128(stack, result)
+    push_v128(stack, result)?;
+    Ok(())
 }
 
 /// Multiply corresponding lanes of two v128 values
-pub fn i16x8_mul(stack: &mut impl Stack, _frame: &mut impl FrameBehavior) -> Result<()> {
+pub fn i16x8_mul(
+    stack: &mut impl StackBehavior,
+    _frame: &mut impl FrameBehavior,
+) -> Result<(), Error> {
     // Pop two v128 values from the stack
     let b = pop_v128(stack)?;
     let a = pop_v128(stack)?;
@@ -195,11 +221,15 @@ pub fn i16x8_mul(stack: &mut impl Stack, _frame: &mut impl FrameBehavior) -> Res
     }
 
     // Push the result v128 to the stack
-    push_v128(stack, result)
+    push_v128(stack, result)?;
+    Ok(())
 }
 
 /// Negate each lane of a v128 value
-pub fn i16x8_neg(stack: &mut impl Stack, _frame: &mut impl FrameBehavior) -> Result<()> {
+pub fn i16x8_neg(
+    stack: &mut impl StackBehavior,
+    _frame: &mut impl FrameBehavior,
+) -> Result<(), Error> {
     // Pop the v128 value from the stack
     let v128 = pop_v128(stack)?;
 
@@ -213,11 +243,15 @@ pub fn i16x8_neg(stack: &mut impl Stack, _frame: &mut impl FrameBehavior) -> Res
     }
 
     // Push the result v128 to the stack
-    push_v128(stack, result)
+    push_v128(stack, result)?;
+    Ok(())
 }
 
 /// Compare lanes for equality
-pub fn i16x8_eq(stack: &mut impl Stack, _frame: &mut impl FrameBehavior) -> Result<()> {
+pub fn i16x8_eq(
+    stack: &mut impl StackBehavior,
+    _frame: &mut impl FrameBehavior,
+) -> Result<(), Error> {
     // Pop two v128 values from the stack
     let b = pop_v128(stack)?;
     let a = pop_v128(stack)?;
@@ -233,11 +267,15 @@ pub fn i16x8_eq(stack: &mut impl Stack, _frame: &mut impl FrameBehavior) -> Resu
     }
 
     // Push the result v128 to the stack
-    push_v128(stack, result)
+    push_v128(stack, result)?;
+    Ok(())
 }
 
 /// Compare lanes for inequality
-pub fn i16x8_ne(stack: &mut impl Stack, _frame: &mut impl FrameBehavior) -> Result<()> {
+pub fn i16x8_ne(
+    stack: &mut impl StackBehavior,
+    _frame: &mut impl FrameBehavior,
+) -> Result<(), Error> {
     // Pop two v128 values from the stack
     let b = pop_v128(stack)?;
     let a = pop_v128(stack)?;
@@ -253,11 +291,15 @@ pub fn i16x8_ne(stack: &mut impl Stack, _frame: &mut impl FrameBehavior) -> Resu
     }
 
     // Push the result v128 to the stack
-    push_v128(stack, result)
+    push_v128(stack, result)?;
+    Ok(())
 }
 
 /// Compare lanes for less than (signed)
-pub fn i16x8_lt_s(stack: &mut impl Stack, _frame: &mut impl FrameBehavior) -> Result<()> {
+pub fn i16x8_lt_s(
+    stack: &mut impl StackBehavior,
+    _frame: &mut impl FrameBehavior,
+) -> Result<(), Error> {
     let b = pop_v128(stack)?;
     let a = pop_v128(stack)?;
     let mut result = [0u8; 16];
@@ -269,11 +311,16 @@ pub fn i16x8_lt_s(stack: &mut impl Stack, _frame: &mut impl FrameBehavior) -> Re
         set_i16_lane(&mut result, i, mask as i16);
     }
 
-    push_v128(stack, result)
+    // Push the result v128 to the stack
+    push_v128(stack, result)?;
+    Ok(())
 }
 
 /// Compare lanes for less than (unsigned)
-pub fn i16x8_lt_u(stack: &mut impl Stack, _frame: &mut impl FrameBehavior) -> Result<()> {
+pub fn i16x8_lt_u(
+    stack: &mut impl StackBehavior,
+    _frame: &mut impl FrameBehavior,
+) -> Result<(), Error> {
     let b = pop_v128(stack)?;
     let a = pop_v128(stack)?;
     let mut result = [0u8; 16];
@@ -285,11 +332,16 @@ pub fn i16x8_lt_u(stack: &mut impl Stack, _frame: &mut impl FrameBehavior) -> Re
         set_i16_lane(&mut result, i, mask as i16);
     }
 
-    push_v128(stack, result)
+    // Push the result v128 to the stack
+    push_v128(stack, result)?;
+    Ok(())
 }
 
 /// Find minimum of corresponding lanes (signed)
-pub fn i16x8_min_s(stack: &mut impl Stack, _frame: &mut impl FrameBehavior) -> Result<()> {
+pub fn i16x8_min_s(
+    stack: &mut impl StackBehavior,
+    _frame: &mut impl FrameBehavior,
+) -> Result<(), Error> {
     let b = pop_v128(stack)?;
     let a = pop_v128(stack)?;
     let mut result = [0u8; 16];
@@ -300,11 +352,15 @@ pub fn i16x8_min_s(stack: &mut impl Stack, _frame: &mut impl FrameBehavior) -> R
         set_i16_lane(&mut result, i, cmp::min(a_val, b_val));
     }
 
-    push_v128(stack, result)
+    push_v128(stack, result)?;
+    Ok(())
 }
 
 /// Find minimum of corresponding lanes (unsigned)
-pub fn i16x8_min_u(stack: &mut impl Stack, _frame: &mut impl FrameBehavior) -> Result<()> {
+pub fn i16x8_min_u(
+    stack: &mut impl StackBehavior,
+    _frame: &mut impl FrameBehavior,
+) -> Result<(), Error> {
     let b = pop_v128(stack)?;
     let a = pop_v128(stack)?;
     let mut result = [0u8; 16];
@@ -315,11 +371,15 @@ pub fn i16x8_min_u(stack: &mut impl Stack, _frame: &mut impl FrameBehavior) -> R
         set_i16_lane(&mut result, i, cmp::min(a_val, b_val) as i16);
     }
 
-    push_v128(stack, result)
+    push_v128(stack, result)?;
+    Ok(())
 }
 
 /// Find maximum of corresponding lanes (signed)
-pub fn i16x8_max_s(stack: &mut impl Stack, _frame: &mut impl FrameBehavior) -> Result<()> {
+pub fn i16x8_max_s(
+    stack: &mut impl StackBehavior,
+    _frame: &mut impl FrameBehavior,
+) -> Result<(), Error> {
     let b = pop_v128(stack)?;
     let a = pop_v128(stack)?;
     let mut result = [0u8; 16];
@@ -330,11 +390,15 @@ pub fn i16x8_max_s(stack: &mut impl Stack, _frame: &mut impl FrameBehavior) -> R
         set_i16_lane(&mut result, i, cmp::max(a_val, b_val));
     }
 
-    push_v128(stack, result)
+    push_v128(stack, result)?;
+    Ok(())
 }
 
 /// Find maximum of corresponding lanes (unsigned)
-pub fn i16x8_max_u(stack: &mut impl Stack, _frame: &mut impl FrameBehavior) -> Result<()> {
+pub fn i16x8_max_u(
+    stack: &mut impl StackBehavior,
+    _frame: &mut impl FrameBehavior,
+) -> Result<(), Error> {
     let b = pop_v128(stack)?;
     let a = pop_v128(stack)?;
     let mut result = [0u8; 16];
@@ -345,11 +409,15 @@ pub fn i16x8_max_u(stack: &mut impl Stack, _frame: &mut impl FrameBehavior) -> R
         set_i16_lane(&mut result, i, cmp::max(a_val, b_val) as i16);
     }
 
-    push_v128(stack, result)
+    push_v128(stack, result)?;
+    Ok(())
 }
 
 /// Compare lanes for greater than (signed)
-pub fn i16x8_gt_s(stack: &mut impl Stack, _frame: &mut impl FrameBehavior) -> Result<()> {
+pub fn i16x8_gt_s(
+    stack: &mut impl StackBehavior,
+    _frame: &mut impl FrameBehavior,
+) -> Result<(), Error> {
     let b = pop_v128(stack)?;
     let a = pop_v128(stack)?;
     let mut result = [0u8; 16];
@@ -361,11 +429,16 @@ pub fn i16x8_gt_s(stack: &mut impl Stack, _frame: &mut impl FrameBehavior) -> Re
         set_i16_lane(&mut result, i, mask as i16);
     }
 
-    push_v128(stack, result)
+    // Push the result v128 to the stack
+    push_v128(stack, result)?;
+    Ok(())
 }
 
 /// Compare lanes for greater than (unsigned)
-pub fn i16x8_gt_u(stack: &mut impl Stack, _frame: &mut impl FrameBehavior) -> Result<()> {
+pub fn i16x8_gt_u(
+    stack: &mut impl StackBehavior,
+    _frame: &mut impl FrameBehavior,
+) -> Result<(), Error> {
     let b = pop_v128(stack)?;
     let a = pop_v128(stack)?;
     let mut result = [0u8; 16];
@@ -377,11 +450,16 @@ pub fn i16x8_gt_u(stack: &mut impl Stack, _frame: &mut impl FrameBehavior) -> Re
         set_i16_lane(&mut result, i, mask as i16);
     }
 
-    push_v128(stack, result)
+    // Push the result v128 to the stack
+    push_v128(stack, result)?;
+    Ok(())
 }
 
 /// Compare lanes for less than or equal (signed)
-pub fn i16x8_le_s(stack: &mut impl Stack, _frame: &mut impl FrameBehavior) -> Result<()> {
+pub fn i16x8_le_s(
+    stack: &mut impl StackBehavior,
+    _frame: &mut impl FrameBehavior,
+) -> Result<(), Error> {
     let b = pop_v128(stack)?;
     let a = pop_v128(stack)?;
     let mut result = [0u8; 16];
@@ -393,11 +471,16 @@ pub fn i16x8_le_s(stack: &mut impl Stack, _frame: &mut impl FrameBehavior) -> Re
         set_i16_lane(&mut result, i, mask as i16);
     }
 
-    push_v128(stack, result)
+    // Push the result v128 to the stack
+    push_v128(stack, result)?;
+    Ok(())
 }
 
 /// Compare lanes for less than or equal (unsigned)
-pub fn i16x8_le_u(stack: &mut impl Stack, _frame: &mut impl FrameBehavior) -> Result<()> {
+pub fn i16x8_le_u(
+    stack: &mut impl StackBehavior,
+    _frame: &mut impl FrameBehavior,
+) -> Result<(), Error> {
     let b = pop_v128(stack)?;
     let a = pop_v128(stack)?;
     let mut result = [0u8; 16];
@@ -409,11 +492,16 @@ pub fn i16x8_le_u(stack: &mut impl Stack, _frame: &mut impl FrameBehavior) -> Re
         set_i16_lane(&mut result, i, mask as i16);
     }
 
-    push_v128(stack, result)
+    // Push the result v128 to the stack
+    push_v128(stack, result)?;
+    Ok(())
 }
 
 /// Compare lanes for greater than or equal (signed)
-pub fn i16x8_ge_s(stack: &mut impl Stack, _frame: &mut impl FrameBehavior) -> Result<()> {
+pub fn i16x8_ge_s(
+    stack: &mut impl StackBehavior,
+    _frame: &mut impl FrameBehavior,
+) -> Result<(), Error> {
     let b = pop_v128(stack)?;
     let a = pop_v128(stack)?;
     let mut result = [0u8; 16];
@@ -425,11 +513,16 @@ pub fn i16x8_ge_s(stack: &mut impl Stack, _frame: &mut impl FrameBehavior) -> Re
         set_i16_lane(&mut result, i, mask as i16);
     }
 
-    push_v128(stack, result)
+    // Push the result v128 to the stack
+    push_v128(stack, result)?;
+    Ok(())
 }
 
 /// Compare lanes for greater than or equal (unsigned)
-pub fn i16x8_ge_u(stack: &mut impl Stack, _frame: &mut impl FrameBehavior) -> Result<()> {
+pub fn i16x8_ge_u(
+    stack: &mut impl StackBehavior,
+    _frame: &mut impl FrameBehavior,
+) -> Result<(), Error> {
     let b = pop_v128(stack)?;
     let a = pop_v128(stack)?;
     let mut result = [0u8; 16];
@@ -441,71 +534,73 @@ pub fn i16x8_ge_u(stack: &mut impl Stack, _frame: &mut impl FrameBehavior) -> Re
         set_i16_lane(&mut result, i, mask as i16);
     }
 
-    push_v128(stack, result)
+    // Push the result v128 to the stack
+    push_v128(stack, result)?;
+    Ok(())
 }
 
 // Add stubs for missing functions
 
 pub fn i16x8_shr_s(
-    _stack: &mut dyn Stack,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
     _engine: &StacklessEngine,
-) -> Result<()> {
+) -> Result<(), Error> {
     todo!("Implement i16x8_shr_s")
 }
 
 pub fn i16x8_shr_u(
-    _stack: &mut dyn Stack,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
     _engine: &StacklessEngine,
-) -> Result<()> {
+) -> Result<(), Error> {
     todo!("Implement i16x8_shr_u")
 }
 
 pub fn i16x8_narrow_i32x4_s(
-    _stack: &mut dyn Stack,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
     _engine: &StacklessEngine,
-) -> Result<()> {
+) -> Result<(), Error> {
     todo!("Implement i16x8_narrow_i32x4_s")
 }
 
 pub fn i16x8_narrow_i32x4_u(
-    _stack: &mut dyn Stack,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
     _engine: &StacklessEngine,
-) -> Result<()> {
+) -> Result<(), Error> {
     todo!("Implement i16x8_narrow_i32x4_u")
 }
 
 pub fn i16x8_extend_low_i8x16_s(
-    _stack: &mut dyn Stack,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
     _engine: &StacklessEngine,
-) -> Result<()> {
+) -> Result<(), Error> {
     todo!("Implement i16x8_extend_low_i8x16_s")
 }
 
 pub fn i16x8_extend_high_i8x16_s(
-    _stack: &mut dyn Stack,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
     _engine: &StacklessEngine,
-) -> Result<()> {
+) -> Result<(), Error> {
     todo!("Implement i16x8_extend_high_i8x16_s")
 }
 
 pub fn i16x8_extend_low_i8x16_u(
-    _stack: &mut dyn Stack,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
     _engine: &StacklessEngine,
-) -> Result<()> {
+) -> Result<(), Error> {
     todo!("Implement i16x8_extend_low_i8x16_u")
 }
 
 pub fn i16x8_extend_high_i8x16_u(
-    _stack: &mut dyn Stack,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
     _engine: &StacklessEngine,
-) -> Result<()> {
+) -> Result<(), Error> {
     todo!("Implement i16x8_extend_high_i8x16_u")
 }

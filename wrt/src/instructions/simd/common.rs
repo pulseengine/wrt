@@ -19,7 +19,7 @@ pub type V128 = [u8; 16];
 pub fn pop_v128(stack: &mut (impl Stack + ?Sized)) -> Result<V128> {
     match stack.pop()? {
         Value::V128(bytes) => Ok(bytes),
-        _ => Err(Error::InvalidType("Expected v128 value".into())),
+        _ => Err(Error::new(InvalidTypeError("Expected v128 value".into())),
     }
 }
 
@@ -33,7 +33,7 @@ pub fn push_v128(stack: &mut (impl Stack + ?Sized), bytes: V128) -> Result<()> {
 pub fn v128_load(stack: &mut (impl Stack + ?Sized), offset: u32, _align: u32) -> Result<()> {
     let addr = match stack.pop()? {
         Value::I32(addr) => addr as u32,
-        _ => return Err(Error::InvalidType("Expected i32 for memory address".into())),
+        _ => return Err(Error::new(InvalidTypeError("Expected i32 for memory address".into())),
     };
 
     // Calculate the effective address
@@ -51,12 +51,12 @@ pub fn v128_load(stack: &mut (impl Stack + ?Sized), offset: u32, _align: u32) ->
 pub fn v128_store(stack: &mut (impl Stack + ?Sized), offset: u32, _align: u32) -> Result<()> {
     let bytes = match stack.pop()? {
         Value::V128(bytes) => bytes,
-        _ => return Err(Error::InvalidType("Expected v128 for store".into())),
+        _ => return Err(Error::new(InvalidTypeError("Expected v128 for store".into())),
     };
 
     let addr = match stack.pop()? {
         Value::I32(addr) => addr as u32,
-        _ => return Err(Error::InvalidType("Expected i32 for memory address".into())),
+        _ => return Err(Error::new(InvalidTypeError("Expected i32 for memory address".into())),
     };
 
     // Calculate the effective address
