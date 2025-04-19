@@ -3,7 +3,17 @@
 //! This module provides compression algorithms for WebAssembly state data,
 //! focusing on run-length encoding (RLE) which is efficient for memory sections.
 
+use crate::Vec;
 use wrt_error::{kinds, Error, Result};
+
+#[cfg(feature = "std")]
+use std::cmp;
+
+#[cfg(not(feature = "std"))]
+use core::{cmp, iter};
+
+#[cfg(not(feature = "std"))]
+use alloc::string::ToString;
 
 /// Supported compression types
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -55,7 +65,7 @@ pub fn rle_encode(data: &[u8]) -> Vec<u8> {
         } else {
             // For runs < 4 bytes, use literal encoding
             // [count, byte1, byte2, ...]
-            let literal_length = std::cmp::min(255, data.len() - i);
+            let literal_length = cmp::min(255, data.len() - i);
             result.push(literal_length as u8);
             for j in 0..literal_length {
                 result.push(data[i + j]);
