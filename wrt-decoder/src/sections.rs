@@ -5,10 +5,11 @@
 
 // Re-export relevant types from wrt-format
 pub use wrt_format::module::{
-    Data, Element, Export, ExportKind, Function, Global, Import, ImportDesc, Memory, Module, Table,
+    Data, DataMode, Element, Export, ExportKind, Function, Global, Import, ImportDesc, Memory,
+    Module, Table,
 };
 pub use wrt_format::section::{CustomSection, Section, SectionId};
-pub use wrt_format::types::{FuncType, Limits, ValueType};
+pub use wrt_format::types::{FuncType, Limits, MemoryIndexType, ValueType};
 
 // Local imports
 use crate::{String, Vec};
@@ -131,11 +132,102 @@ pub mod parsers {
     pub fn parse_memory_type(bytes: &[u8]) -> Result<(Memory, usize)> {
         let mut offset = 0;
 
-        // Read limits
-        let (limits, bytes_read) = parse_limits(&bytes[offset..])?;
+        // Read flags
+        if offset >= bytes.len() {
+            return Err(Error::new(kinds::ParseError(
+                "Unexpected end of memory type bytes".to_string(),
+            )));
+        }
+        let flags = bytes[offset];
+        offset += 1;
+
+        // Check if flags are valid
+        // For memory64, 0x04 bit is used to indicate 64-bit indexing
+        if flags & 0xF8 != 0 {
+            return Err(Error::new(kinds::ParseError(
+                "Invalid memory flags, reserved bits must be 0".to_string(),
+            )));
+        }
+
+        // Extract flags
+        let has_max = (flags & 0x01) != 0;
+        let is_shared = (flags & 0x02) != 0;
+        let is_memory64 = (flags & 0x04) != 0;
+
+        let memory_index_type = if is_memory64 {
+            MemoryIndexType::I64
+        } else {
+            MemoryIndexType::I32
+        };
+
+        // Shared memories must have max specified (shared = 0x03)
+        if is_shared && !has_max {
+            return Err(Error::new(kinds::ParseError(
+                "Shared memory must have maximum size specified".to_string(),
+            )));
+        }
+
+        // Read min limit (LEB128)
+        let min;
+        let bytes_read;
+
+        if is_memory64 {
+            let (value, read) = binary::read_leb128_u64(bytes, offset)?;
+            min = value;
+            bytes_read = read;
+        } else {
+            let (value, read) = binary::read_leb128_u32(bytes, offset)?;
+            min = value as u64;
+            bytes_read = read;
+        }
+
         offset += bytes_read;
 
-        Ok((Memory { limits }, offset))
+        // Read max limit if flags indicate it's present
+        let max = if has_max {
+            let max_val;
+            let bytes_read;
+
+            if is_memory64 {
+                let (value, read) = binary::read_leb128_u64(bytes, offset)?;
+                max_val = value;
+                bytes_read = read;
+            } else {
+                let (value, read) = binary::read_leb128_u32(bytes, offset)?;
+                max_val = value as u64;
+                bytes_read = read;
+            }
+
+            offset += bytes_read;
+
+            // Verify max >= min for shared memory
+            if is_shared && max_val < min {
+                return Err(Error::new(kinds::ParseError(
+                    "Shared memory maximum size must be greater than or equal to minimum size"
+                        .to_string(),
+                )));
+            }
+
+            Some(max_val)
+        } else {
+            None
+        };
+
+        // Create limits
+        let limits = Limits {
+            min,
+            max,
+            shared: is_shared,
+            memory_index_type,
+        };
+
+        Ok((
+            Memory {
+                limits,
+                shared: is_shared,
+            },
+            offset,
+        ))
     }
 
     /// Parse limits (used by table and memory)
@@ -151,20 +243,74 @@ pub mod parsers {
         let flags = bytes[offset];
         offset += 1;
 
+        // For standard limits with potential memory64
+        // Bit 0: has_max
+        // Bit 1: is_shared (memory only)
+        // Bit 2: is_memory64 (memory only)
+        // Remaining bits should be zero
+        if flags & 0xF8 != 0 {
+            return Err(Error::new(kinds::ParseError(
+                "Invalid limits flags, reserved bits must be 0".to_string(),
+            )));
+        }
+
+        // Extract flags
+        let has_max = (flags & 0x01) != 0;
+        let is_shared = (flags & 0x02) != 0;
+        let is_memory64 = (flags & 0x04) != 0;
+
+        let memory_index_type = if is_memory64 {
+            MemoryIndexType::I64
+        } else {
+            MemoryIndexType::I32
+        };
+
         // Read min limit (LEB128)
-        let (min, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
+        let min;
+        let bytes_read;
+
+        if is_memory64 {
+            let (value, read) = binary::read_leb128_u64(bytes, offset)?;
+            min = value;
+            bytes_read = read;
+        } else {
+            let (value, read) = binary::read_leb128_u32(bytes, offset)?;
+            min = value as u64;
+            bytes_read = read;
+        }
+
         offset += bytes_read;
 
         // Read max limit if flags indicate it's present
-        let max = if flags & 0x01 != 0 {
-            let (max_val, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
+        let max = if has_max {
+            let max_val;
+            let bytes_read;
+
+            if is_memory64 {
+                let (value, read) = binary::read_leb128_u64(bytes, offset)?;
+                max_val = value;
+                bytes_read = read;
+            } else {
+                let (value, read) = binary::read_leb128_u32(bytes, offset)?;
+                max_val = value as u64;
+                bytes_read = read;
+            }
+
             offset += bytes_read;
             Some(max_val)
         } else {
             None
         };
 
-        Ok((Limits { min, max }, offset))
+        Ok((
+            Limits {
+                min,
+                max,
+                shared: is_shared,
+                memory_index_type,
+            },
+            offset,
+        ))
     }
 
     /// Parse a string using wrt-format's binary utility

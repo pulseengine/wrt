@@ -5,8 +5,8 @@
 use crate::module::Module;
 use crate::sections::*;
 use wrt_error::{kinds, Error, Result};
-use wrt_format::module::{ExportKind, Global, Memory, Table};
-use wrt_format::types::ValueType;
+use wrt_format::module::{DataMode, ExportKind, Global, Memory, Table};
+use wrt_format::types::{MemoryIndexType, ValueType};
 
 /// Validate a WebAssembly module
 ///
@@ -151,7 +151,7 @@ fn validate_table_type(table: &Table) -> Result<()> {
 }
 
 /// Validate limits (min/max)
-fn validate_limits(limits: &Limits, max: u32) -> Result<()> {
+fn validate_limits(limits: &Limits, max: u64) -> Result<()> {
     // If max is specified, it must be >= min
     if let Some(max_limit) = limits.max {
         if max_limit > max {
@@ -166,48 +166,158 @@ fn validate_limits(limits: &Limits, max: u32) -> Result<()> {
 }
 
 /// Validate a memory type
-fn validate_memory_type(memory: &Memory) -> Result<()> {
-    // In WebAssembly 1.0, memories can only have at most 65536 pages (4GiB)
-    validate_limits(&memory.limits, 65536)
-}
+pub fn validate_memory_type(memory: &Memory) -> Result<()> {
+    // Check limits based on memory index type
+    match memory.limits.memory_index_type {
+        MemoryIndexType::I32 => {
+            // For 32-bit memories, enforce the 4GiB (65536 pages) limit
+            if memory.limits.min > 65536 {
+                return Err(Error::new(kinds::ValidationError(format!(
+                    "Memory32 minimum size exceeds maximum allowed pages (65536): {}",
+                    memory.limits.min
+                ))));
+            }
 
-/// Validate a global type
-fn validate_global_type(global: &Global) -> Result<()> {
-    validate_value_type(&global.value_type)
-}
+            // Check maximum is within spec bounds (if specified)
+            if let Some(max) = memory.limits.max {
+                if max > 65536 {
+                    return Err(Error::new(kinds::ValidationError(format!(
+                        "Memory32 maximum size exceeds maximum allowed pages (65536): {}",
+                        max
+                    ))));
+                }
+            }
+        }
+        MemoryIndexType::I64 => {
+            // For 64-bit memories, the limit is much higher (2^64 - 1)
+            // but we should still check for reasonable values
+            if memory.limits.min > (1u64 << 48) {
+                return Err(Error::new(kinds::ValidationError(format!(
+                    "Memory64 minimum size too large: {}",
+                    memory.limits.min
+                ))));
+            }
+        }
+    }
 
-/// Validate the functions section of a WebAssembly module
-fn validate_functions(module: &Module) -> Result<()> {
-    for (i, func) in module.functions.iter().enumerate() {
-        // Validate function type index
-        if func.type_idx as usize >= module.types.len() {
+    // Check maximum >= minimum
+    if let Some(max) = memory.limits.max {
+        if max < memory.limits.min {
             return Err(Error::new(kinds::ValidationError(format!(
-                "Function {} type index {} out of bounds (max {})",
-                i,
-                func.type_idx,
-                module.types.len()
+                "Memory maximum size ({}) is less than minimum size ({})",
+                max, memory.limits.min
             ))));
+        }
+    }
+
+    // Check shared memory constraints
+    if memory.shared {
+        // Shared memory must have max specified
+        if memory.limits.max.is_none() {
+            return Err(Error::new(kinds::ValidationError(
+                "Shared memory must have maximum size specified".to_string(),
+            )));
+        }
+
+        // Memory64 cannot be shared in the current spec
+        if matches!(memory.limits.memory_index_type, MemoryIndexType::I64) {
+            return Err(Error::new(kinds::ValidationError(
+                "Memory64 cannot be shared in the current specification".to_string(),
+            )));
         }
     }
 
     Ok(())
 }
 
-/// Validate the tables section of a WebAssembly module
-fn validate_tables(module: &Module) -> Result<()> {
-    for (i, table) in module.tables.iter().enumerate() {
-        // Validate table type
-        validate_table_type(table)?;
+/// Validate memory alignment for memory access instructions
+pub fn validate_memory_alignment(align: u32, natural_align: u32) -> Result<()> {
+    // According to the spec, alignment must be less than or equal to
+    // the natural alignment of the access operation
+    if align > natural_align {
+        return Err(Error::new(kinds::ValidationError(format!(
+            "Alignment 2^{} exceeds natural alignment 2^{}",
+            align, natural_align
+        ))));
     }
 
     Ok(())
 }
 
-/// Validate the memories section of a WebAssembly module
-fn validate_memories(module: &Module) -> Result<()> {
-    for (i, memory) in module.memories.iter().enumerate() {
-        // Validate memory type
+/// Validate memory access instruction (generic for all memory operations)
+pub fn validate_memory_access(
+    module: &Module,
+    mem_idx: u32,
+    align: u32,
+    access_size: u32,
+) -> Result<()> {
+    // Check if memory index is valid
+    let import_memories = module
+        .imports
+        .iter()
+        .filter(|i| matches!(i.desc, ImportDesc::Memory(_)))
+        .count();
+
+    let memory_count = import_memories + module.memories.len();
+
+    if mem_idx as usize >= memory_count {
+        return Err(Error::new(kinds::ValidationError(format!(
+            "Memory index {} out of bounds (max {})",
+            mem_idx, memory_count
+        ))));
+    }
+
+    // For each memory type, determine natural alignment
+    let natural_align = match access_size {
+        1 => 0,  // 2^0 = 1-byte alignment
+        2 => 1,  // 2^1 = 2-byte alignment
+        4 => 2,  // 2^2 = 4-byte alignment
+        8 => 3,  // 2^3 = 8-byte alignment
+        16 => 4, // 2^4 = 16-byte alignment (for v128)
+        _ => {
+            return Err(Error::new(kinds::ValidationError(format!(
+                "Invalid memory access size: {}",
+                access_size
+            ))))
+        }
+    };
+
+    // Validate alignment
+    validate_memory_alignment(align, natural_align)?;
+
+    Ok(())
+}
+
+/// Validate all memory types in a module
+pub fn validate_memories(module: &Module) -> Result<()> {
+    // Validate memory declarations
+    for memory in &module.memories {
         validate_memory_type(memory)?;
+    }
+
+    // Validate imported memories
+    for import in &module.imports {
+        if let ImportDesc::Memory(memory_type) = &import.desc {
+            validate_memory_type(&Memory {
+                limits: memory_type.limits.clone(),
+                shared: memory_type.limits.shared,
+            })?;
+        }
+    }
+
+    // WebAssembly 1.0 only allows a maximum of 1 memory per module
+    let defined_memories = module.memories.len();
+    let imported_memories = module
+        .imports
+        .iter()
+        .filter(|i| matches!(i.desc, ImportDesc::Memory(_)))
+        .count();
+
+    if defined_memories + imported_memories > 1 {
+        return Err(Error::new(kinds::ValidationError(format!(
+            "Multiple memories are not supported in WebAssembly 1.0: {} defined, {} imported",
+            defined_memories, imported_memories
+        ))));
     }
 
     Ok(())
@@ -421,13 +531,68 @@ fn validate_elements(module: &Module) -> Result<()> {
 /// Validate the data section of a WebAssembly module
 fn validate_data(module: &Module) -> Result<()> {
     for (i, data) in module.data.iter().enumerate() {
-        // Validate memory index
-        validate_memory_idx(module, data.memory_idx, i)?;
+        match data.mode {
+            DataMode::Active => {
+                // For active segments, validate the memory index
+                validate_memory_idx(module, data.memory_idx, i)?;
 
-        // TODO: Validate initialization expression
+                // Validate that the offset expression is a valid constant expression
+                validate_const_expr(&data.offset, ValueType::I32)?;
+            }
+            DataMode::Passive => {
+                // Passive segments have no additional validation requirements
+            }
+        }
     }
 
     Ok(())
+}
+
+/// Validate constant expressions in data offset fields
+fn validate_const_expr(expr: &[u8], expected_type: ValueType) -> Result<()> {
+    if expr.is_empty() {
+        return Err(Error::new(kinds::ValidationError(
+            "Empty constant expression".to_string(),
+        )));
+    }
+
+    // Ensure the expression ends with end opcode (0x0B)
+    if expr[expr.len() - 1] != 0x0B {
+        return Err(Error::new(kinds::ValidationError(
+            "Constant expression must end with end opcode (0x0B)".to_string(),
+        )));
+    }
+
+    // In a real implementation, you would validate the entire constant expression
+    // This is a simplified version that just checks for common constant expressions
+
+    // Check for i32.const expressions
+    if expr[0] == 0x41 && expr.len() >= 2 {
+        // This is an i32.const, which is valid for memory offsets
+        if expected_type == ValueType::I32 {
+            return Ok(());
+        }
+    }
+
+    // Check for i64.const expressions
+    if expr[0] == 0x42 && expr.len() >= 2 {
+        // This is an i64.const, which is valid for Memory64 offsets
+        if expected_type == ValueType::I64 {
+            return Ok(());
+        }
+    }
+
+    // Check for global.get expressions
+    if expr[0] == 0x23 && expr.len() >= 2 {
+        // This is a global.get, which is valid if the global is immutable and of the right type
+        // A full implementation would check the global type
+        return Ok(());
+    }
+
+    Err(Error::new(kinds::ValidationError(format!(
+        "Invalid constant expression for expected type {:?}",
+        expected_type
+    ))))
 }
 
 /// Validate the code section of a WebAssembly module
@@ -450,5 +615,38 @@ fn validate_code(module: &Module) -> Result<()> {
         }
     }
 
+    Ok(())
+}
+
+/// Validate the functions section of a WebAssembly module
+fn validate_functions(module: &Module) -> Result<()> {
+    for (i, func) in module.functions.iter().enumerate() {
+        // Validate function type index
+        if func.type_idx as usize >= module.types.len() {
+            return Err(Error::new(kinds::ValidationError(format!(
+                "Function {} type index {} out of bounds (max {})",
+                i,
+                func.type_idx,
+                module.types.len()
+            ))));
+        }
+    }
+
+    Ok(())
+}
+
+/// Validate the tables section of a WebAssembly module
+fn validate_tables(module: &Module) -> Result<()> {
+    for (i, table) in module.tables.iter().enumerate() {
+        // Validate table type
+        validate_table_type(table)?;
+    }
+
+    Ok(())
+}
+
+/// Validate a global type
+fn validate_global_type(global: &Global) -> Result<()> {
+    validate_value_type(&global.value_type)?;
     Ok(())
 }

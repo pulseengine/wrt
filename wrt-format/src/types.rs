@@ -32,13 +32,26 @@ pub struct FuncType {
     pub results: Vec<ValueType>,
 }
 
+/// WebAssembly memory index type (standard or 64-bit)
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MemoryIndexType {
+    /// Standard WebAssembly 1.0 memory (i32 addressing)
+    I32,
+    /// Memory64 extension (i64 addressing)
+    I64,
+}
+
 /// WebAssembly limits
 #[derive(Debug, Clone)]
 pub struct Limits {
     /// Minimum size
-    pub min: u32,
+    pub min: u64,
     /// Maximum size (optional)
-    pub max: Option<u32>,
+    pub max: Option<u64>,
+    /// Shared memory flag, used for memory types
+    pub shared: bool,
+    /// Memory index type (i32 or i64)
+    pub memory_index_type: MemoryIndexType,
 }
 
 /// Represents a WebAssembly block type

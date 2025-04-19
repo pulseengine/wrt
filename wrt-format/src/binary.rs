@@ -367,58 +367,66 @@ pub fn is_valid_wasm_header(bytes: &[u8]) -> bool {
 
 /// Read a LEB128 unsigned 64-bit integer from a byte array
 pub fn read_leb128_u64(bytes: &[u8], pos: usize) -> Result<(u64, usize)> {
-    let mut result = 0u64;
-    let mut shift = 0;
-    let mut offset = 0;
+    let mut result: u64 = 0;
+    let mut shift: u32 = 0;
+    let mut offset = pos;
+    let mut byte;
 
     loop {
-        if pos + offset >= bytes.len() {
+        if offset >= bytes.len() {
             return Err(Error::new(kinds::ParseError(
-                "Truncated LEB128 integer".to_string(),
+                "Unexpected end of LEB128 sequence".to_string(),
             )));
         }
 
-        let byte = bytes[pos + offset];
+        byte = bytes[offset];
         offset += 1;
 
-        // Apply 7 bits from this byte
+        // Apply the 7 bits from the current byte
         result |= ((byte & 0x7F) as u64) << shift;
-        shift += 7;
 
-        // Check for continuation bit
+        // If the high bit is not set, we're done
         if byte & 0x80 == 0 {
             break;
         }
 
-        // Guard against malformed/malicious LEB128
+        // Otherwise, shift for the next 7 bits
+        shift += 7;
+
+        // Ensure we don't exceed 64 bits (10 bytes)
         if shift >= 64 {
-            return Err(Error::new(kinds::ParseError(
-                "LEB128 integer too large".to_string(),
-            )));
+            if byte & 0x7F != 0 {
+                return Err(Error::new(kinds::ParseError(
+                    "LEB128 sequence exceeds maximum u64 value".to_string(),
+                )));
+            }
+            break;
         }
     }
 
-    Ok((result, offset))
+    Ok((result, offset - pos))
 }
 
 /// Write a LEB128 unsigned 64-bit integer to a byte array
 pub fn write_leb128_u64(value: u64) -> Vec<u8> {
-    if value == 0 {
-        return vec![0];
-    }
-
     let mut result = Vec::new();
     let mut value = value;
 
-    while value != 0 {
+    loop {
         let mut byte = (value & 0x7F) as u8;
         value >>= 7;
 
+        // If there are more bits to write, set the high bit
         if value != 0 {
             byte |= 0x80;
         }
 
         result.push(byte);
+
+        // If no more bits, we're done
+        if value == 0 {
+            break;
+        }
     }
 
     result
