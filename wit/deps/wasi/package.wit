@@ -1,0 +1,5 @@
+// WASI package definition
+package wasi:cli@0.2.0;
+
+// Package description
+// This package describes the WASI CLI interfaces. 
