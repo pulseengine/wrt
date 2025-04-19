@@ -12,6 +12,7 @@ This crate provides utilities for handling WebAssembly formats, including serial
 - **State serialization**: Save and load WebAssembly runtime state
 - **Compression**: Efficient compression of WebAssembly modules and state
 - **Version management**: Handle different versions of the WebAssembly specification
+- **`no_std` support**: Compatible with bare-metal environments
 - **Formally verified**: Critical components are verified using the Kani verifier
 
 ## Usage
@@ -21,6 +22,13 @@ Add the dependency to your `Cargo.toml`:
 ```toml
 [dependencies]
 wrt-format = { version = "0.1.0" }
+```
+
+For no_std environments:
+
+```toml
+[dependencies]
+wrt-format = { version = "0.1.0", default-features = false, features = ["no_std"] }
 ```
 
 ### Basic example
@@ -48,7 +56,19 @@ fn use_module() -> Result<(), wrt_error::Error> {
 ## Features
 
 - `std`: Enables integration with the standard library (default)
+- `no_std`: Enables compatibility with no_std environments
 - `kani`: Enables formal verification with the Kani verifier
+
+## No Std Support
+
+The `wrt-format` crate is fully compatible with `no_std` environments. When the `no_std` feature is enabled:
+
+- The crate doesn't rely on the Rust standard library
+- It uses `alloc` for dynamic memory management (Vec, String, etc.)
+- HashMap/HashSet are replaced with BTreeMap/BTreeSet
+- Core functionality works exactly the same as with the `std` feature
+
+This allows you to use the crate in environments like embedded systems, WebAssembly, or other platforms where the standard library is not available.
 
 ## Formal Verification
 
