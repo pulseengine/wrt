@@ -4,9 +4,8 @@
 //! including equality, inequality, and ordering operations for numeric types.
 
 use crate::{
-    behavior::FrameBehavior,
-    error::{Error, Result},
-    stack::Stack,
+    behavior::{FrameBehavior, StackBehavior},
+    error::{kinds, Error, Result},
     values::Value,
     StacklessEngine,
 };
@@ -16,8 +15,8 @@ use crate::{
 /// Pops an i32 value from the stack and compares it with zero.
 /// Pushes 1 if equal to zero, 0 otherwise.
 pub fn i32_eqz(
-    stack: &mut (impl Stack + ?Sized),
     _frame: &mut (impl FrameBehavior + ?Sized),
+    stack: &mut (impl StackBehavior + ?Sized),
     _engine: &StacklessEngine,
 ) -> Result<()> {
     let a = stack.pop()?;
@@ -26,7 +25,7 @@ pub fn i32_eqz(
             stack.push(Value::I32(i32::from(a == 0)))?;
             Ok(())
         }
-        _ => Err(Error::InvalidType("Expected i32".to_string())),
+        _ => Err(Error::invalid_type("Expected i32".to_string())),
     }
 }
 
@@ -35,8 +34,8 @@ pub fn i32_eqz(
 /// Pops two i32 values from the stack and compares them.
 /// Pushes 1 if equal, 0 otherwise.
 pub fn i32_eq(
-    stack: &mut (impl Stack + ?Sized),
     _frame: &mut (impl FrameBehavior + ?Sized),
+    stack: &mut (impl StackBehavior + ?Sized),
     _engine: &StacklessEngine,
 ) -> Result<()> {
     let b = stack.pop()?;
@@ -46,7 +45,7 @@ pub fn i32_eq(
             stack.push(Value::I32(i32::from(a == b)))?;
             Ok(())
         }
-        _ => Err(Error::InvalidType("Expected i32".to_string())),
+        _ => Err(Error::invalid_type("Expected i32".to_string())),
     }
 }
 
@@ -55,8 +54,8 @@ pub fn i32_eq(
 /// Pops two i32 values from the stack and compares them.
 /// Pushes 1 if not equal, 0 otherwise.
 pub fn i32_ne(
-    stack: &mut (impl Stack + ?Sized),
     _frame: &mut (impl FrameBehavior + ?Sized),
+    stack: &mut (impl StackBehavior + ?Sized),
     _engine: &StacklessEngine,
 ) -> Result<()> {
     let b = stack.pop()?;
@@ -66,7 +65,7 @@ pub fn i32_ne(
             stack.push(Value::I32(i32::from(a != b)))?;
             Ok(())
         }
-        _ => Err(Error::InvalidType("Expected i32".to_string())),
+        _ => Err(Error::invalid_type("Expected i32".to_string())),
     }
 }
 
@@ -75,8 +74,8 @@ pub fn i32_ne(
 /// Pops two i32 values from the stack and compares them.
 /// Pushes 1 if first value is less than second value (signed), 0 otherwise.
 pub fn i32_lt_s(
-    stack: &mut (impl Stack + ?Sized),
     _frame: &mut (impl FrameBehavior + ?Sized),
+    stack: &mut (impl StackBehavior + ?Sized),
     _engine: &StacklessEngine,
 ) -> Result<()> {
     let b = stack.pop()?;
@@ -86,7 +85,7 @@ pub fn i32_lt_s(
             stack.push(Value::I32(i32::from(a < b)))?;
             Ok(())
         }
-        _ => Err(Error::InvalidType("Expected i32".to_string())),
+        _ => Err(Error::invalid_type("Expected i32".to_string())),
     }
 }
 
@@ -95,8 +94,8 @@ pub fn i32_lt_s(
 /// Pops two i32 values from the stack and compares them.
 /// Pushes 1 if first value is less than second value (unsigned), 0 otherwise.
 pub fn i32_lt_u(
-    stack: &mut (impl Stack + ?Sized),
     _frame: &mut (impl FrameBehavior + ?Sized),
+    stack: &mut (impl StackBehavior + ?Sized),
     _engine: &StacklessEngine,
 ) -> Result<()> {
     let b = stack.pop()?;
@@ -108,7 +107,7 @@ pub fn i32_lt_u(
             stack.push(Value::I32(i32::from(a < b)))?;
             Ok(())
         }
-        _ => Err(Error::InvalidType("Expected i32".to_string())),
+        _ => Err(Error::invalid_type("Expected i32".to_string())),
     }
 }
 
@@ -117,8 +116,8 @@ pub fn i32_lt_u(
 /// Pops two i32 values from the stack and compares them.
 /// Pushes 1 if first value is greater than second value (signed), 0 otherwise.
 pub fn i32_gt_s(
-    stack: &mut (impl Stack + ?Sized),
     _frame: &mut (impl FrameBehavior + ?Sized),
+    stack: &mut (impl StackBehavior + ?Sized),
     _engine: &StacklessEngine,
 ) -> Result<()> {
     let b = stack.pop()?;
@@ -128,7 +127,7 @@ pub fn i32_gt_s(
             stack.push(Value::I32(i32::from(a > b)))?;
             Ok(())
         }
-        _ => Err(Error::InvalidType("Expected i32".to_string())),
+        _ => Err(Error::invalid_type("Expected i32".to_string())),
     }
 }
 
@@ -137,8 +136,8 @@ pub fn i32_gt_s(
 /// Pops two i32 values from the stack and compares them.
 /// Pushes 1 if first value is greater than second value (unsigned), 0 otherwise.
 pub fn i32_gt_u(
-    stack: &mut (impl Stack + ?Sized),
     _frame: &mut (impl FrameBehavior + ?Sized),
+    stack: &mut (impl StackBehavior + ?Sized),
     _engine: &StacklessEngine,
 ) -> Result<()> {
     let b = stack.pop()?;
@@ -150,7 +149,7 @@ pub fn i32_gt_u(
             stack.push(Value::I32(i32::from(a > b)))?;
             Ok(())
         }
-        _ => Err(Error::InvalidType("Expected i32".to_string())),
+        _ => Err(Error::invalid_type("Expected i32".to_string())),
     }
 }
 
@@ -159,8 +158,8 @@ pub fn i32_gt_u(
 /// Pops two i32 values from the stack and compares them.
 /// Pushes 1 if first value is less than or equal to second value (signed), 0 otherwise.
 pub fn i32_le_s(
-    stack: &mut (impl Stack + ?Sized),
     _frame: &mut (impl FrameBehavior + ?Sized),
+    stack: &mut (impl StackBehavior + ?Sized),
     _engine: &StacklessEngine,
 ) -> Result<()> {
     let b = stack.pop()?;
@@ -170,7 +169,7 @@ pub fn i32_le_s(
             stack.push(Value::I32(i32::from(a <= b)))?;
             Ok(())
         }
-        _ => Err(Error::InvalidType("Expected i32".to_string())),
+        _ => Err(Error::invalid_type("Expected i32".to_string())),
     }
 }
 
@@ -179,8 +178,8 @@ pub fn i32_le_s(
 /// Pops two i32 values from the stack and compares them.
 /// Pushes 1 if first value is less than or equal to second value (unsigned), 0 otherwise.
 pub fn i32_le_u(
-    stack: &mut (impl Stack + ?Sized),
     _frame: &mut (impl FrameBehavior + ?Sized),
+    stack: &mut (impl StackBehavior + ?Sized),
     _engine: &StacklessEngine,
 ) -> Result<()> {
     let b = stack.pop()?;
@@ -192,7 +191,7 @@ pub fn i32_le_u(
             stack.push(Value::I32(i32::from(a <= b)))?;
             Ok(())
         }
-        _ => Err(Error::InvalidType("Expected i32".to_string())),
+        _ => Err(Error::invalid_type("Expected i32".to_string())),
     }
 }
 
@@ -201,8 +200,8 @@ pub fn i32_le_u(
 /// Pops two i32 values from the stack and compares them.
 /// Pushes 1 if first value is greater than or equal to second value (signed), 0 otherwise.
 pub fn i32_ge_s(
-    stack: &mut (impl Stack + ?Sized),
     _frame: &mut (impl FrameBehavior + ?Sized),
+    stack: &mut (impl StackBehavior + ?Sized),
     _engine: &StacklessEngine,
 ) -> Result<()> {
     let b = stack.pop()?;
@@ -212,7 +211,7 @@ pub fn i32_ge_s(
             stack.push(Value::I32(i32::from(a >= b)))?;
             Ok(())
         }
-        _ => Err(Error::InvalidType("Expected i32".to_string())),
+        _ => Err(Error::invalid_type("Expected i32".to_string())),
     }
 }
 
@@ -221,8 +220,8 @@ pub fn i32_ge_s(
 /// Pops two i32 values from the stack and compares them.
 /// Pushes 1 if first value is greater than or equal to second value (unsigned), 0 otherwise.
 pub fn i32_ge_u(
-    stack: &mut (impl Stack + ?Sized),
     _frame: &mut (impl FrameBehavior + ?Sized),
+    stack: &mut (impl StackBehavior + ?Sized),
     _engine: &StacklessEngine,
 ) -> Result<()> {
     let b = stack.pop()?;
@@ -234,7 +233,7 @@ pub fn i32_ge_u(
             stack.push(Value::I32(i32::from(a >= b)))?;
             Ok(())
         }
-        _ => Err(Error::InvalidType("Expected i32".to_string())),
+        _ => Err(Error::invalid_type("Expected i32".to_string())),
     }
 }
 
@@ -243,8 +242,8 @@ pub fn i32_ge_u(
 /// Pops an i64 value from the stack and compares it with zero.
 /// Pushes 1 if equal to zero, 0 otherwise.
 pub fn i64_eqz(
-    stack: &mut (impl Stack + ?Sized),
     _frame: &mut (impl FrameBehavior + ?Sized),
+    stack: &mut (impl StackBehavior + ?Sized),
     _engine: &StacklessEngine,
 ) -> Result<()> {
     let a = stack.pop()?;
@@ -253,7 +252,7 @@ pub fn i64_eqz(
             stack.push(Value::I32(i32::from(a == 0)))?;
             Ok(())
         }
-        _ => Err(Error::InvalidType("Expected i64".to_string())),
+        _ => Err(Error::invalid_type("Expected i64".to_string())),
     }
 }
 
@@ -262,8 +261,8 @@ pub fn i64_eqz(
 /// Pops two i64 values from the stack and compares them.
 /// Pushes 1 if equal, 0 otherwise.
 pub fn i64_eq(
-    stack: &mut (impl Stack + ?Sized),
     _frame: &mut (impl FrameBehavior + ?Sized),
+    stack: &mut (impl StackBehavior + ?Sized),
     _engine: &StacklessEngine,
 ) -> Result<()> {
     let b = stack.pop()?;
@@ -273,7 +272,7 @@ pub fn i64_eq(
             stack.push(Value::I32(i32::from(a == b)))?;
             Ok(())
         }
-        _ => Err(Error::InvalidType("Expected i64".to_string())),
+        _ => Err(Error::invalid_type("Expected i64".to_string())),
     }
 }
 
@@ -282,8 +281,8 @@ pub fn i64_eq(
 /// Pops two i64 values from the stack and compares them.
 /// Pushes 1 if not equal, 0 otherwise.
 pub fn i64_ne(
-    stack: &mut (impl Stack + ?Sized),
     _frame: &mut (impl FrameBehavior + ?Sized),
+    stack: &mut (impl StackBehavior + ?Sized),
     _engine: &StacklessEngine,
 ) -> Result<()> {
     let b = stack.pop()?;
@@ -293,7 +292,7 @@ pub fn i64_ne(
             stack.push(Value::I32(i32::from(a != b)))?;
             Ok(())
         }
-        _ => Err(Error::InvalidType("Expected i64".to_string())),
+        _ => Err(Error::invalid_type("Expected i64".to_string())),
     }
 }
 
@@ -302,8 +301,8 @@ pub fn i64_ne(
 /// Pops two i64 values from the stack and compares them.
 /// Pushes 1 if first value is less than second value (signed), 0 otherwise.
 pub fn i64_lt_s(
-    stack: &mut (impl Stack + ?Sized),
     _frame: &mut (impl FrameBehavior + ?Sized),
+    stack: &mut (impl StackBehavior + ?Sized),
     _engine: &StacklessEngine,
 ) -> Result<()> {
     let b = stack.pop()?;
@@ -313,7 +312,7 @@ pub fn i64_lt_s(
             stack.push(Value::I32(i32::from(a < b)))?;
             Ok(())
         }
-        _ => Err(Error::InvalidType("Expected i64".to_string())),
+        _ => Err(Error::invalid_type("Expected i64".to_string())),
     }
 }
 
@@ -322,8 +321,8 @@ pub fn i64_lt_s(
 /// Pops two i64 values from the stack and compares them.
 /// Pushes 1 if first value is less than second value (unsigned), 0 otherwise.
 pub fn i64_lt_u(
-    stack: &mut (impl Stack + ?Sized),
     _frame: &mut (impl FrameBehavior + ?Sized),
+    stack: &mut (impl StackBehavior + ?Sized),
     _engine: &StacklessEngine,
 ) -> Result<()> {
     let b = stack.pop()?;
@@ -335,7 +334,7 @@ pub fn i64_lt_u(
             stack.push(Value::I32(i32::from(a < b)))?;
             Ok(())
         }
-        _ => Err(Error::InvalidType("Expected i64".to_string())),
+        _ => Err(Error::invalid_type("Expected i64".to_string())),
     }
 }
 
@@ -344,8 +343,8 @@ pub fn i64_lt_u(
 /// Pops two i64 values from the stack and compares them.
 /// Pushes 1 if first value is greater than second value (signed), 0 otherwise.
 pub fn i64_gt_s(
-    stack: &mut (impl Stack + ?Sized),
     _frame: &mut (impl FrameBehavior + ?Sized),
+    stack: &mut (impl StackBehavior + ?Sized),
     _engine: &StacklessEngine,
 ) -> Result<()> {
     let b = stack.pop()?;
@@ -355,7 +354,7 @@ pub fn i64_gt_s(
             stack.push(Value::I32(i32::from(a > b)))?;
             Ok(())
         }
-        _ => Err(Error::InvalidType("Expected i64".to_string())),
+        _ => Err(Error::invalid_type("Expected i64".to_string())),
     }
 }
 
@@ -364,8 +363,8 @@ pub fn i64_gt_s(
 /// Pops two i64 values from the stack and compares them.
 /// Pushes 1 if first value is greater than second value (unsigned), 0 otherwise.
 pub fn i64_gt_u(
-    stack: &mut (impl Stack + ?Sized),
     _frame: &mut (impl FrameBehavior + ?Sized),
+    stack: &mut (impl StackBehavior + ?Sized),
     _engine: &StacklessEngine,
 ) -> Result<()> {
     let b = stack.pop()?;
@@ -377,7 +376,7 @@ pub fn i64_gt_u(
             stack.push(Value::I32(i32::from(a > b)))?;
             Ok(())
         }
-        _ => Err(Error::InvalidType("Expected i64".to_string())),
+        _ => Err(Error::invalid_type("Expected i64".to_string())),
     }
 }
 
@@ -386,8 +385,8 @@ pub fn i64_gt_u(
 /// Pops two i64 values from the stack and compares them.
 /// Pushes 1 if first value is less than or equal to second value (signed), 0 otherwise.
 pub fn i64_le_s(
-    stack: &mut (impl Stack + ?Sized),
     _frame: &mut (impl FrameBehavior + ?Sized),
+    stack: &mut (impl StackBehavior + ?Sized),
     _engine: &StacklessEngine,
 ) -> Result<()> {
     let b = stack.pop()?;
@@ -397,7 +396,7 @@ pub fn i64_le_s(
             stack.push(Value::I32(i32::from(a <= b)))?;
             Ok(())
         }
-        _ => Err(Error::InvalidType("Expected i64".to_string())),
+        _ => Err(Error::invalid_type("Expected i64".to_string())),
     }
 }
 
@@ -406,8 +405,8 @@ pub fn i64_le_s(
 /// Pops two i64 values from the stack and compares them.
 /// Pushes 1 if first value is less than or equal to second value (unsigned), 0 otherwise.
 pub fn i64_le_u(
-    stack: &mut (impl Stack + ?Sized),
     _frame: &mut (impl FrameBehavior + ?Sized),
+    stack: &mut (impl StackBehavior + ?Sized),
     _engine: &StacklessEngine,
 ) -> Result<()> {
     let b = stack.pop()?;
@@ -419,7 +418,7 @@ pub fn i64_le_u(
             stack.push(Value::I32(i32::from(a <= b)))?;
             Ok(())
         }
-        _ => Err(Error::InvalidType("Expected i64".to_string())),
+        _ => Err(Error::invalid_type("Expected i64".to_string())),
     }
 }
 
@@ -428,8 +427,8 @@ pub fn i64_le_u(
 /// Pops two i64 values from the stack and compares them.
 /// Pushes 1 if first value is greater than or equal to second value (signed), 0 otherwise.
 pub fn i64_ge_s(
-    stack: &mut (impl Stack + ?Sized),
     _frame: &mut (impl FrameBehavior + ?Sized),
+    stack: &mut (impl StackBehavior + ?Sized),
     _engine: &StacklessEngine,
 ) -> Result<()> {
     let b = stack.pop()?;
@@ -439,7 +438,7 @@ pub fn i64_ge_s(
             stack.push(Value::I32(i32::from(a >= b)))?;
             Ok(())
         }
-        _ => Err(Error::InvalidType("Expected i64".to_string())),
+        _ => Err(Error::invalid_type("Expected i64".to_string())),
     }
 }
 
@@ -448,8 +447,8 @@ pub fn i64_ge_s(
 /// Pops two i64 values from the stack and compares them.
 /// Pushes 1 if first value is greater than or equal to second value (unsigned), 0 otherwise.
 pub fn i64_ge_u(
-    stack: &mut (impl Stack + ?Sized),
     _frame: &mut (impl FrameBehavior + ?Sized),
+    stack: &mut (impl StackBehavior + ?Sized),
     _engine: &StacklessEngine,
 ) -> Result<()> {
     let b = stack.pop()?;
@@ -461,7 +460,7 @@ pub fn i64_ge_u(
             stack.push(Value::I32(i32::from(a >= b)))?;
             Ok(())
         }
-        _ => Err(Error::InvalidType("Expected i64".to_string())),
+        _ => Err(Error::invalid_type("Expected i64".to_string())),
     }
 }
 
@@ -471,8 +470,8 @@ pub fn i64_ge_u(
 /// Pushes 1 if equal, 0 otherwise.
 /// Note: This follows IEEE 754 equality semantics, where `NaN` != `NaN`.
 pub fn f32_eq(
-    stack: &mut (impl Stack + ?Sized),
     _frame: &mut (impl FrameBehavior + ?Sized),
+    stack: &mut (impl StackBehavior + ?Sized),
     _engine: &StacklessEngine,
 ) -> Result<()> {
     let b = stack.pop()?;
@@ -482,7 +481,7 @@ pub fn f32_eq(
             stack.push(Value::I32(i32::from(a == b)))?;
             Ok(())
         }
-        _ => Err(Error::InvalidType("Expected f32".to_string())),
+        _ => Err(Error::invalid_type("Expected f32".to_string())),
     }
 }
 
@@ -492,8 +491,8 @@ pub fn f32_eq(
 /// Pushes 1 if not equal, 0 otherwise.
 /// Note: This follows IEEE 754 inequality semantics, where `NaN` != `NaN`.
 pub fn f32_ne(
-    stack: &mut (impl Stack + ?Sized),
     _frame: &mut (impl FrameBehavior + ?Sized),
+    stack: &mut (impl StackBehavior + ?Sized),
     _engine: &StacklessEngine,
 ) -> Result<()> {
     let b = stack.pop()?;
@@ -503,7 +502,7 @@ pub fn f32_ne(
             stack.push(Value::I32(i32::from(a != b)))?;
             Ok(())
         }
-        _ => Err(Error::InvalidType("Expected f32".to_string())),
+        _ => Err(Error::invalid_type("Expected f32".to_string())),
     }
 }
 
@@ -513,8 +512,8 @@ pub fn f32_ne(
 /// Pushes 1 if first value is less than second value, 0 otherwise.
 /// Note: This follows IEEE 754 comparison semantics, where `NaN` comparisons return false.
 pub fn f32_lt(
-    stack: &mut (impl Stack + ?Sized),
     _frame: &mut (impl FrameBehavior + ?Sized),
+    stack: &mut (impl StackBehavior + ?Sized),
     _engine: &StacklessEngine,
 ) -> Result<()> {
     let b = stack.pop()?;
@@ -524,7 +523,7 @@ pub fn f32_lt(
             stack.push(Value::I32(i32::from(a < b)))?;
             Ok(())
         }
-        _ => Err(Error::InvalidType("Expected f32".to_string())),
+        _ => Err(Error::invalid_type("Expected f32".to_string())),
     }
 }
 
@@ -534,8 +533,8 @@ pub fn f32_lt(
 /// Pushes 1 if first value is greater than second value, 0 otherwise.
 /// Note: This follows IEEE 754 comparison semantics, where `NaN` comparisons return false.
 pub fn f32_gt(
-    stack: &mut (impl Stack + ?Sized),
     _frame: &mut (impl FrameBehavior + ?Sized),
+    stack: &mut (impl StackBehavior + ?Sized),
     _engine: &StacklessEngine,
 ) -> Result<()> {
     let b = stack.pop()?;
@@ -545,7 +544,7 @@ pub fn f32_gt(
             stack.push(Value::I32(i32::from(a > b)))?;
             Ok(())
         }
-        _ => Err(Error::InvalidType("Expected f32".to_string())),
+        _ => Err(Error::invalid_type("Expected f32".to_string())),
     }
 }
 
@@ -555,8 +554,8 @@ pub fn f32_gt(
 /// Pushes 1 if first value is less than or equal to second value, 0 otherwise.
 /// Note: This follows IEEE 754 comparison semantics, where `NaN` comparisons return false.
 pub fn f32_le(
-    stack: &mut (impl Stack + ?Sized),
     _frame: &mut (impl FrameBehavior + ?Sized),
+    stack: &mut (impl StackBehavior + ?Sized),
     _engine: &StacklessEngine,
 ) -> Result<()> {
     let b = stack.pop()?;
@@ -566,7 +565,7 @@ pub fn f32_le(
             stack.push(Value::I32(i32::from(a <= b)))?;
             Ok(())
         }
-        _ => Err(Error::InvalidType("Expected f32".to_string())),
+        _ => Err(Error::invalid_type("Expected f32".to_string())),
     }
 }
 
@@ -576,8 +575,8 @@ pub fn f32_le(
 /// Pushes 1 if first value is greater than or equal to second value, 0 otherwise.
 /// Note: This follows IEEE 754 comparison semantics, where `NaN` comparisons return false.
 pub fn f32_ge(
-    stack: &mut (impl Stack + ?Sized),
     _frame: &mut (impl FrameBehavior + ?Sized),
+    stack: &mut (impl StackBehavior + ?Sized),
     _engine: &StacklessEngine,
 ) -> Result<()> {
     let b = stack.pop()?;
@@ -587,7 +586,7 @@ pub fn f32_ge(
             stack.push(Value::I32(i32::from(a >= b)))?;
             Ok(())
         }
-        _ => Err(Error::InvalidType("Expected f32".to_string())),
+        _ => Err(Error::invalid_type("Expected f32".to_string())),
     }
 }
 
@@ -597,8 +596,8 @@ pub fn f32_ge(
 /// Pushes 1 if equal, 0 otherwise.
 /// Note: This follows IEEE 754 equality semantics, where `NaN` != `NaN`.
 pub fn f64_eq(
-    stack: &mut (impl Stack + ?Sized),
     _frame: &mut (impl FrameBehavior + ?Sized),
+    stack: &mut (impl StackBehavior + ?Sized),
     _engine: &StacklessEngine,
 ) -> Result<()> {
     let b = stack.pop()?;
@@ -608,7 +607,7 @@ pub fn f64_eq(
             stack.push(Value::I32(i32::from(a == b)))?;
             Ok(())
         }
-        _ => Err(Error::InvalidType("Expected f64".to_string())),
+        _ => Err(Error::invalid_type("Expected f64".to_string())),
     }
 }
 
@@ -618,8 +617,8 @@ pub fn f64_eq(
 /// Pushes 1 if not equal, 0 otherwise.
 /// Note: This follows IEEE 754 inequality semantics, where `NaN` != `NaN`.
 pub fn f64_ne(
-    stack: &mut (impl Stack + ?Sized),
     _frame: &mut (impl FrameBehavior + ?Sized),
+    stack: &mut (impl StackBehavior + ?Sized),
     _engine: &StacklessEngine,
 ) -> Result<()> {
     let b = stack.pop()?;
@@ -629,7 +628,7 @@ pub fn f64_ne(
             stack.push(Value::I32(i32::from(a != b)))?;
             Ok(())
         }
-        _ => Err(Error::InvalidType("Expected f64".to_string())),
+        _ => Err(Error::invalid_type("Expected f64".to_string())),
     }
 }
 
@@ -639,8 +638,8 @@ pub fn f64_ne(
 /// Pushes 1 if first value is less than second value, 0 otherwise.
 /// Note: This follows IEEE 754 comparison semantics, where `NaN` comparisons return false.
 pub fn f64_lt(
-    stack: &mut (impl Stack + ?Sized),
     _frame: &mut (impl FrameBehavior + ?Sized),
+    stack: &mut (impl StackBehavior + ?Sized),
     _engine: &StacklessEngine,
 ) -> Result<()> {
     let b = stack.pop()?;
@@ -650,7 +649,7 @@ pub fn f64_lt(
             stack.push(Value::I32(i32::from(a < b)))?;
             Ok(())
         }
-        _ => Err(Error::InvalidType("Expected f64".to_string())),
+        _ => Err(Error::invalid_type("Expected f64".to_string())),
     }
 }
 
@@ -660,8 +659,8 @@ pub fn f64_lt(
 /// Pushes 1 if first value is greater than second value, 0 otherwise.
 /// Note: This follows IEEE 754 comparison semantics, where `NaN` comparisons return false.
 pub fn f64_gt(
-    stack: &mut (impl Stack + ?Sized),
     _frame: &mut (impl FrameBehavior + ?Sized),
+    stack: &mut (impl StackBehavior + ?Sized),
     _engine: &StacklessEngine,
 ) -> Result<()> {
     let b = stack.pop()?;
@@ -671,7 +670,7 @@ pub fn f64_gt(
             stack.push(Value::I32(i32::from(a > b)))?;
             Ok(())
         }
-        _ => Err(Error::InvalidType("Expected f64".to_string())),
+        _ => Err(Error::invalid_type("Expected f64".to_string())),
     }
 }
 
@@ -681,8 +680,8 @@ pub fn f64_gt(
 /// Pushes 1 if first value is less than or equal to second value, 0 otherwise.
 /// Note: This follows IEEE 754 comparison semantics, where `NaN` comparisons return false.
 pub fn f64_le(
-    stack: &mut (impl Stack + ?Sized),
     _frame: &mut (impl FrameBehavior + ?Sized),
+    stack: &mut (impl StackBehavior + ?Sized),
     _engine: &StacklessEngine,
 ) -> Result<()> {
     let b = stack.pop()?;
@@ -692,7 +691,7 @@ pub fn f64_le(
             stack.push(Value::I32(i32::from(a <= b)))?;
             Ok(())
         }
-        _ => Err(Error::InvalidType("Expected f64".to_string())),
+        _ => Err(Error::invalid_type("Expected f64".to_string())),
     }
 }
 
@@ -702,8 +701,8 @@ pub fn f64_le(
 /// Pushes 1 if first value is greater than or equal to second value, 0 otherwise.
 /// Note: This follows IEEE 754 comparison semantics, where `NaN` comparisons return false.
 pub fn f64_ge(
-    stack: &mut (impl Stack + ?Sized),
     _frame: &mut (impl FrameBehavior + ?Sized),
+    stack: &mut (impl StackBehavior + ?Sized),
     _engine: &StacklessEngine,
 ) -> Result<()> {
     let b = stack.pop()?;
@@ -713,6 +712,6 @@ pub fn f64_ge(
             stack.push(Value::I32(i32::from(a >= b)))?;
             Ok(())
         }
-        _ => Err(Error::InvalidType("Expected f64".to_string())),
+        _ => Err(Error::invalid_type("Expected f64".to_string())),
     }
 }

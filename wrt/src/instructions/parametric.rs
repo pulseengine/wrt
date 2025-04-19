@@ -3,184 +3,110 @@
 //! This module contains implementations for all WebAssembly parametric instructions,
 //! including operations for stack manipulation and control flow.
 
+use crate::behavior::ControlFlow;
 use crate::{
-    behavior::{FrameBehavior, StackBehavior},
-    error::{Error, Result},
-    instructions::InstructionExecutor,
-    stack::Stack,
+    behavior::{FrameBehavior, InstructionExecutor, StackBehavior},
+    error::{kinds, Error, Result},
+    stackless::StacklessEngine,
     types::ValueType,
     values::Value,
-    StacklessEngine,
 };
+use log::trace;
 
 /// Execute a drop instruction
 ///
 /// Removes the top value from the stack.
-pub fn drop(
-    stack: &mut dyn Stack,
-    _frame: &mut dyn FrameBehavior,
-    _engine: &StacklessEngine,
-) -> Result<()> {
-    let _ = stack.pop()?;
-    Ok(())
+#[derive(Debug)]
+pub struct Drop;
+
+impl InstructionExecutor for Drop {
+    fn execute(
+        &self,
+        stack: &mut dyn StackBehavior,
+        _frame: &mut dyn FrameBehavior,
+        _engine: &mut StacklessEngine,
+    ) -> Result<ControlFlow> {
+        let _ = stack.pop()?;
+        Ok(ControlFlow::Continue)
+    }
 }
 
 /// Execute a select instruction
 ///
 /// Selects one of two values based on a condition.
-pub fn select(
-    stack: &mut dyn Stack,
-    _frame: &mut dyn FrameBehavior,
-    _engine: &StacklessEngine,
-) -> Result<()> {
-    let c = stack.pop()?.as_i32()?;
-    let val2 = stack.pop()?;
-    let val1 = stack.pop()?;
+#[derive(Debug)]
+pub struct Select;
 
-    if c != 0 {
-        stack.push(val1)?;
-    } else {
-        stack.push(val2)?;
+impl InstructionExecutor for Select {
+    fn execute(
+        &self,
+        stack: &mut dyn StackBehavior,
+        _frame: &mut dyn FrameBehavior,
+        _engine: &mut StacklessEngine,
+    ) -> Result<ControlFlow> {
+        let c = stack.pop()?.as_i32().ok_or_else(|| {
+            Error::new(kinds::InvalidTypeError(
+                "Select condition must be i32".to_string(),
+            ))
+        })?;
+        let val2 = stack.pop()?;
+        let val1 = stack.pop()?;
+
+        if c != 0 {
+            stack.push(val1)?;
+        } else {
+            stack.push(val2)?;
+        }
+        Ok(ControlFlow::Continue)
     }
-    Ok(())
 }
 
 /// Execute a `select_typed` instruction
 ///
 /// Selects one of two values based on a condition, with type checking.
-pub fn select_typed(
-    stack: &mut dyn Stack,
-    _frame: &mut dyn FrameBehavior,
-    _engine: &StacklessEngine,
-    ty: &[ValueType],
-) -> Result<()> {
-    let c = stack.pop()?.as_i32()?;
-    let val2 = stack.pop()?;
-    let val1 = stack.pop()?;
+#[derive(Debug, Clone)]
+pub struct SelectTyped {
+    pub types: Vec<ValueType>,
+}
 
-    if !ty.is_empty() {
-        let expected_type = ty[0];
-        if !val1.value_type().matches(expected_type) || !val2.value_type().matches(expected_type) {
-            return Err(Error::TypeMismatch);
+impl SelectTyped {
+    pub fn new(types: Vec<ValueType>) -> Self {
+        Self { types }
+    }
+}
+
+impl InstructionExecutor for SelectTyped {
+    fn execute(
+        &self,
+        stack: &mut dyn StackBehavior,
+        _frame: &mut dyn FrameBehavior,
+        _engine: &mut StacklessEngine,
+    ) -> Result<ControlFlow> {
+        let c = stack.pop()?.as_i32().ok_or_else(|| {
+            Error::new(kinds::InvalidTypeError(
+                "Select condition must be i32".to_string(),
+            ))
+        })?;
+        let val2 = stack.pop()?;
+        let val1 = stack.pop()?;
+
+        if !self.types.is_empty() {
+            let expected_type = self.types[0];
+            if val1.type_() != expected_type || val2.type_() != expected_type {
+                return Err(Error::new(kinds::InvalidTypeError(format!(
+                    "Type mismatch for select: expected {:?}, got {:?} and {:?}",
+                    expected_type,
+                    val1.type_(),
+                    val2.type_()
+                ))));
+            }
         }
+
+        if c != 0 {
+            stack.push(val1)?;
+        } else {
+            stack.push(val2)?;
+        }
+        Ok(ControlFlow::Continue)
     }
-
-    if c != 0 {
-        stack.push(val1)?;
-    } else {
-        stack.push(val2)?;
-    }
-    Ok(())
-}
-
-/// Execute a block instruction
-///
-/// Creates a new block scope.
-pub fn block(
-    stack: &mut (impl Stack + ?Sized),
-    frame: &mut (impl FrameBehavior + ?Sized),
-) -> Result<()> {
-    Ok(())
-}
-
-/// Execute an if instruction
-///
-/// Creates a new conditional block.
-pub fn if_instr(
-    stack: &mut (impl Stack + ?Sized),
-    frame: &mut (impl FrameBehavior + ?Sized),
-) -> Result<()> {
-    let condition = stack.pop()?;
-    match condition {
-        Value::I32(0) => Ok(()),
-        _ => Ok(()),
-    }
-}
-
-/// Execute an else instruction
-///
-/// Ends the "if" part of an if/else and begins the "else" part.
-pub fn else_instr(
-    stack: &mut (impl Stack + ?Sized),
-    frame: &mut (impl FrameBehavior + ?Sized),
-) -> Result<()> {
-    Ok(())
-}
-
-/// Execute an end instruction
-///
-/// Ends a block, loop, if, or function.
-pub fn end(
-    stack: &mut (impl Stack + ?Sized),
-    frame: &mut (impl FrameBehavior + ?Sized),
-) -> Result<()> {
-    Ok(())
-}
-
-/// Execute a br instruction
-///
-/// Unconditionally branches to a label.
-pub fn br(
-    stack: &mut (impl Stack + ?Sized),
-    frame: &mut (impl FrameBehavior + ?Sized),
-) -> Result<()> {
-    Ok(())
-}
-
-/// Execute a `br_if` instruction
-///
-/// Conditionally branches to a label.
-pub fn br_if(
-    stack: &mut (impl Stack + ?Sized),
-    frame: &mut (impl FrameBehavior + ?Sized),
-) -> Result<()> {
-    let condition = stack.pop()?;
-    match condition {
-        Value::I32(0) => Ok(()),
-        _ => Ok(()),
-    }
-}
-
-/// Execute a `br_table` instruction
-///
-/// Branches to one of several labels based on an index value.
-pub fn br_table(
-    stack: &mut (impl Stack + ?Sized),
-    frame: &mut (impl FrameBehavior + ?Sized),
-) -> Result<()> {
-    let index = stack.pop()?;
-    match index {
-        Value::I32(_) => Ok(()),
-        _ => Err(Error::InvalidType("Expected i32".to_string())),
-    }
-}
-
-/// Execute a return instruction
-///
-/// Returns from the current function.
-pub fn return_instr(
-    stack: &mut (impl Stack + ?Sized),
-    frame: &mut (impl FrameBehavior + ?Sized),
-) -> Result<()> {
-    Ok(())
-}
-
-/// Execute an unreachable instruction
-///
-/// Indicates that the current code location should not be reachable.
-pub fn unreachable(
-    stack: &mut (impl Stack + ?Sized),
-    frame: &mut (impl FrameBehavior + ?Sized),
-) -> Result<()> {
-    Err(Error::Execution("Reached unreachable instruction".into()))
-}
-
-/// Execute a nop instruction
-///
-/// No operation.
-pub fn nop(
-    stack: &mut (impl Stack + ?Sized),
-    frame: &mut (impl FrameBehavior + ?Sized),
-) -> Result<()> {
-    Ok(())
 }
