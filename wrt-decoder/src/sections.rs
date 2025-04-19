@@ -16,6 +16,10 @@ use crate::{String, Vec};
 use wrt_error::{kinds, Error, Result};
 use wrt_format::binary;
 use wrt_format::types::parse_value_type;
+// Use our prelude for common imports
+use crate::prelude::*;
+
+// Imports from rest of crate
 
 // Create a module structure to organize section parsing code
 pub mod parsers {
