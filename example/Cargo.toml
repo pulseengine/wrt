@@ -16,22 +16,21 @@ panic = "abort"
 panic = "abort"
 
 [dependencies]
-# wit-bindgen = { workspace = true, features = ["realloc"] }
-# Add wit-bindgen as a direct dependency
-wit-bindgen = { version = "0.41.0", features = ["realloc"] }
+# Use wit-bindgen from workspace with realloc feature
+wit-bindgen = { workspace = true, features = ["realloc"] }
+
+# Add build-dependencies for the build script
+[build-dependencies]
+anyhow = { workspace = true }
 
 # Add component metadata
-# [package.metadata.component]
-# Define the target component and its WIT definition
-# Use a regular table for target
 [package.metadata.component.target]
 path = "../wit/deps" # Base path for dependencies
-world = "hello-world" # World defined in ../wit/hello-world.wit
+world = "hello-world" # World defined in wit/example.wit
 
-# Define dependencies relative to the target path (as a separate table)
+# Define dependencies 
 [package.metadata.component.target.dependencies]
-# Paths relative to Cargo.toml
-"wasi:logging" = { version = "0.2.0-preview2" } # Try preview2 version
+"wasi:logging" = { version = "0.2.0-preview2" } # Use the preview2 version
 "wasi:cli" = { version = "0.2.0-preview2" }
 "wasi:io" = { version = "0.2.0-preview2" }
 "wasi:clocks" = { version = "0.2.0-preview2" }
