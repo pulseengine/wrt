@@ -4,13 +4,20 @@
 //! including blocks, branches, calls, and returns.
 
 use crate::{
-    behavior::{ControlFlowBehavior, FrameBehavior, InstructionExecutor, Label},
-    error::{Error, Result},
-    stack::Stack,
-    types::{BlockType, FuncType},
-    values::Value,
+    behavior::{
+        self, ControlFlow, ControlFlowBehavior, FrameBehavior, InstructionExecutor, Label,
+        StackBehavior,
+    },
+    error::{kinds, Error, Result},
+    module::{self, Data, Element, ExportKind},
+    stackless_frame::StacklessFrame,
+    types::{BlockType, FuncType, ValueType},
+    values::{Value, Value::*},
     StacklessEngine,
 };
+use log::trace;
+use std::borrow::Borrow;
+use std::sync::Arc;
 
 #[cfg(feature = "std")]
 use std::vec;
@@ -32,245 +39,161 @@ pub enum LabelType {
 /// Create and push a new label onto the label stack
 ///
 /// This is used internally by block, loop, and if instructions.
-pub fn push_label<S: Stack>(
+pub fn push_label<S: StackBehavior>(
     pc: usize,
     stack: &mut S,
     _label_type: LabelType,
     block_type: BlockType,
     function_types: Option<&[FuncType]>,
 ) -> Result<()> {
-    // Determine the function type for this block
-    let func_type = match block_type {
-        BlockType::Empty => FuncType {
-            params: vec![],
-            results: vec![],
-        },
-        BlockType::Type(value_type) => FuncType {
-            params: vec![],
-            results: vec![value_type],
-        },
-        BlockType::Value(value_type) => FuncType {
-            params: vec![],
-            results: vec![value_type],
-        },
-        BlockType::FuncType(func_type) => func_type,
-        BlockType::TypeIndex(type_idx) => {
-            if let Some(types) = function_types {
-                if let Some(ty) = types.get(type_idx as usize) {
-                    ty.clone()
-                } else {
-                    return Err(Error::Execution(format!("Invalid type index: {type_idx}")));
-                }
+    // First, resolve the block type to get the expected result count
+    let arity = match block_type {
+        BlockType::Empty => 0,
+        BlockType::Type(_vt) | BlockType::Value(_vt) => 1,
+        BlockType::FuncType(_) => {
+            // For function types, need to look up the exact result count
+            // This would typically require access to the module's types
+            if let Some(_types) = function_types {
+                // TODO: Implement type lookup logic
+                // For now, assuming zero results if we can't resolve
+                0
             } else {
-                return Err(Error::Execution(format!("Invalid type index: {type_idx}")));
+                0 // Default to 0 if we can't resolve
             }
         }
+        BlockType::TypeIndex(_) => 0, // Default to 0 for type indices
     };
 
-    // Create a Label with all required fields
-    let label = crate::stack::Label {
-        arity: func_type.results.len(),
+    let label = Label {
+        arity,
         pc,
-        continuation: 0, // Default value, should be set by caller if needed
+        continuation: pc,
+        stack_depth: stack.len(), // Current stack depth
+        is_loop: matches!(_label_type, LabelType::Loop), // Add is_loop field
+        is_if: matches!(_label_type, LabelType::If), // Add is_if field
     };
 
-    // Push the new label using the Stack trait's method
-    <S as Stack>::push_label(stack, label)?;
+    // Push the new label using the StackBehavior trait's method
+    <S as StackBehavior>::push_label(stack, label);
 
+    Ok(())
+}
+
+pub fn block<S: StackBehavior>(stack: &mut S) -> Result<(), Error> {
+    // Push a new label with arity 0
+    let label = Label {
+        arity: 0,
+        pc: 0,           // Placeholder
+        continuation: 0, // Placeholder
+        stack_depth: 0,  // Will be filled in by the implementation
+        is_loop: false,
+        is_if: false,
+    };
+    <S as StackBehavior>::push_label(stack, label);
     Ok(())
 }
 
 #[derive(Debug)]
 pub struct Block {
     pub block_type: BlockType,
-    pub instructions: Vec<Box<dyn InstructionExecutor>>,
+}
+
+impl Block {
+    pub fn new(block_type: BlockType) -> Self {
+        Self { block_type }
+    }
 }
 
 impl InstructionExecutor for Block {
     fn execute(
         &self,
-        stack: &mut dyn Stack,
+        stack: &mut dyn StackBehavior,
         frame: &mut dyn FrameBehavior,
-        engine: &StacklessEngine,
-    ) -> Result<()> {
-        // Save current state
-        let current_arity = frame.arity();
-        let current_label_arity = frame.label_arity();
-
-        // Set up new block
-        let new_arity = match &self.block_type {
-            BlockType::Empty => 0,
-            BlockType::Value(_val_type) => 1,
-            BlockType::Type(_val_type) => 1,
-            BlockType::TypeIndex(_) => 1, // Assuming type index always results in a single value
-            BlockType::FuncType(func_type) => {
-                if func_type.results.is_empty() {
-                    0
-                } else {
-                    func_type.results.len()
-                }
-            }
-        };
-        frame.set_arity(new_arity);
-        frame.set_label_arity(new_arity);
-
-        // Pre-compute values for the label
-        let arity = frame.label_arity();
-        let pc = frame.pc();
-        let continuation = frame.return_pc() + 1;
-
-        // Push label with the pre-computed values
-        frame.label_stack().push(Label {
-            arity,
-            pc,
-            continuation,
-        });
-
-        // Execute instructions
-        for instruction in &self.instructions {
-            instruction.execute(stack, frame, engine)?;
+        _engine: &mut StacklessEngine,
+    ) -> Result<ControlFlow> {
+        let stack_len = stack.len();
+        // Cast directly to StacklessFrame rather than trying to downcast to the trait
+        if let Some(frame_cast) = frame
+            .as_any()
+            .downcast_mut::<crate::stackless_frame::StacklessFrame>()
+        {
+            frame_cast.enter_block(self.block_type.clone(), stack_len)?;
+            Ok(ControlFlow::Continue)
+        } else {
+            Err(Error::new(kinds::ExecutionError(
+                "Frame doesn't implement ControlFlowBehavior".to_string(),
+            )))
         }
-
-        // Restore state
-        frame.label_stack().pop();
-        frame.set_arity(current_arity);
-        frame.set_label_arity(current_label_arity);
-
-        Ok(())
     }
 }
 
 #[derive(Debug)]
 pub struct Loop {
     pub block_type: BlockType,
-    pub instructions: Vec<Box<dyn InstructionExecutor>>,
+}
+
+impl Loop {
+    pub fn new(block_type: BlockType) -> Self {
+        Self { block_type }
+    }
 }
 
 impl InstructionExecutor for Loop {
     fn execute(
         &self,
-        stack: &mut dyn Stack,
+        stack: &mut dyn StackBehavior,
         frame: &mut dyn FrameBehavior,
-        engine: &StacklessEngine,
-    ) -> Result<()> {
-        // Save current state
-        let current_arity = frame.arity();
-        let current_label_arity = frame.label_arity();
-
-        // Set up new loop
-        let new_arity = match &self.block_type {
-            BlockType::Empty => 0,
-            BlockType::Value(_val_type) => 1,
-            BlockType::Type(_val_type) => 1,
-            BlockType::TypeIndex(_) => 1, // Assuming type index always results in a single value
-            BlockType::FuncType(func_type) => {
-                if func_type.results.is_empty() {
-                    0
-                } else {
-                    func_type.results.len()
-                }
-            }
-        };
-        frame.set_arity(new_arity);
-        frame.set_label_arity(0); // Loops branch to the start
-
-        // Pre-compute values for the label
-        let arity = frame.label_arity();
-        let pc = frame.pc();
-        let continuation = frame.return_pc();
-
-        // Push label with the pre-computed values
-        frame.label_stack().push(Label {
-            arity,
-            pc,
-            continuation,
-        });
-
-        // Execute instructions
-        for instruction in &self.instructions {
-            instruction.execute(stack, frame, engine)?;
+        _engine: &mut StacklessEngine,
+    ) -> Result<ControlFlow> {
+        let stack_len = stack.len();
+        // Cast directly to StacklessFrame rather than trying to downcast to the trait
+        if let Some(frame_cast) = frame
+            .as_any()
+            .downcast_mut::<crate::stackless_frame::StacklessFrame>()
+        {
+            frame_cast.enter_loop(self.block_type.clone(), stack_len)?;
+            Ok(ControlFlow::Continue)
+        } else {
+            Err(Error::new(kinds::ExecutionError(
+                "Frame doesn't implement ControlFlowBehavior".to_string(),
+            )))
         }
-
-        // Restore state
-        frame.label_stack().pop();
-        frame.set_arity(current_arity);
-        frame.set_label_arity(current_label_arity);
-
-        Ok(())
     }
 }
 
 #[derive(Debug)]
 pub struct If {
     pub block_type: BlockType,
-    pub if_instructions: Vec<Box<dyn InstructionExecutor>>,
-    pub else_instructions: Vec<Box<dyn InstructionExecutor>>,
+}
+
+impl If {
+    pub fn new(block_type: BlockType) -> Self {
+        Self { block_type }
+    }
 }
 
 impl InstructionExecutor for If {
     fn execute(
         &self,
-        stack: &mut dyn Stack,
+        stack: &mut dyn StackBehavior,
         frame: &mut dyn FrameBehavior,
-        engine: &StacklessEngine,
-    ) -> Result<()> {
-        let condition = stack.pop()?;
-        let condition_value = match condition {
-            Value::I32(0) => false,
-            Value::I32(_) => true,
-            _ => return Err(Error::Execution("If condition must be i32".into())),
-        };
+        _engine: &mut StacklessEngine,
+    ) -> Result<ControlFlow> {
+        let condition_val = stack.pop_i32()?;
+        let stack_len = stack.len();
 
-        // Save current state
-        let current_arity = frame.arity();
-        let current_label_arity = frame.label_arity();
-
-        // Set up new if block
-        let new_arity = match &self.block_type {
-            BlockType::Empty => 0,
-            BlockType::Value(_val_type) => 1,
-            BlockType::Type(_val_type) => 1,
-            BlockType::TypeIndex(_) => 1, // Assuming type index always results in a single value
-            BlockType::FuncType(func_type) => {
-                if func_type.results.is_empty() {
-                    0
-                } else {
-                    func_type.results.len()
-                }
-            }
-        };
-        frame.set_arity(new_arity);
-        frame.set_label_arity(new_arity);
-
-        // Pre-compute values for the label
-        let arity = frame.label_arity();
-        let pc = frame.pc();
-        let continuation = frame.return_pc() + 1;
-
-        // Push label with the pre-computed values
-        frame.label_stack().push(Label {
-            arity,
-            pc,
-            continuation,
-        });
-
-        // Execute the appropriate branch
-        let instructions = if condition_value {
-            &self.if_instructions
+        // Cast directly to StacklessFrame rather than trying to downcast to the trait
+        if let Some(frame_cast) = frame
+            .as_any()
+            .downcast_mut::<crate::stackless_frame::StacklessFrame>()
+        {
+            frame_cast.enter_if(self.block_type.clone(), stack_len, condition_val != 0)?;
+            Ok(ControlFlow::Continue)
         } else {
-            &self.else_instructions
-        };
-
-        for instruction in instructions {
-            instruction.execute(stack, frame, engine)?;
+            Err(Error::new(kinds::ExecutionError(
+                "Frame doesn't implement ControlFlowBehavior".to_string(),
+            )))
         }
-
-        // Restore state
-        frame.label_stack().pop();
-        frame.set_arity(current_arity);
-        frame.set_label_arity(current_label_arity);
-
-        Ok(())
     }
 }
 
@@ -279,23 +202,20 @@ pub struct Br {
     pub label_idx: u32,
 }
 
+impl Br {
+    pub fn new(label_idx: u32) -> Self {
+        Self { label_idx }
+    }
+}
+
 impl InstructionExecutor for Br {
     fn execute(
         &self,
-        _stack: &mut dyn Stack,
-        frame: &mut dyn FrameBehavior,
-        _engine: &StacklessEngine,
-    ) -> Result<()> {
-        // Get the label continuation address
-        let label_stack = frame.label_stack();
-        let label = label_stack
-            .get(self.label_idx as usize)
-            .ok_or_else(|| Error::Execution("Branch target out of bounds".into()))?;
-        let continuation = label.continuation;
-
-        // Set the return PC
-        frame.set_return_pc(continuation);
-        Ok(())
+        _stack: &mut dyn StackBehavior,
+        _frame: &mut dyn FrameBehavior,
+        engine: &mut StacklessEngine,
+    ) -> Result<ControlFlow> {
+        br(self.label_idx, engine)
     }
 }
 
@@ -304,33 +224,20 @@ pub struct BrIf {
     pub label_idx: u32,
 }
 
+impl BrIf {
+    pub fn new(label_idx: u32) -> Self {
+        Self { label_idx }
+    }
+}
+
 impl InstructionExecutor for BrIf {
     fn execute(
         &self,
-        stack: &mut dyn Stack,
-        frame: &mut dyn FrameBehavior,
-        _engine: &StacklessEngine,
-    ) -> Result<()> {
-        let condition = stack.pop()?;
-        let condition_value = match condition {
-            Value::I32(0) => false,
-            Value::I32(_) => true,
-            _ => return Err(Error::Execution("BrIf condition must be i32".into())),
-        };
-
-        if condition_value {
-            // Get the label continuation address
-            let label_stack = frame.label_stack();
-            let label = label_stack
-                .get(self.label_idx as usize)
-                .ok_or_else(|| Error::Execution("Branch target out of bounds".into()))?;
-            let continuation = label.continuation;
-
-            // Set the return PC
-            frame.set_return_pc(continuation);
-        }
-
-        Ok(())
+        _stack: &mut dyn StackBehavior,
+        _frame: &mut dyn FrameBehavior,
+        engine: &mut StacklessEngine,
+    ) -> Result<ControlFlow> {
+        br_if(self.label_idx, engine)
     }
 }
 
@@ -340,50 +247,58 @@ pub struct BrTable {
     pub default_label: u32,
 }
 
-impl InstructionExecutor for BrTable {
-    fn execute(
-        &self,
-        stack: &mut dyn Stack,
-        frame: &mut dyn FrameBehavior,
-        _engine: &StacklessEngine,
-    ) -> Result<()> {
-        let index = stack.pop()?;
-        let index_value = match index {
-            Value::I32(i) => i as usize,
-            _ => return Err(Error::Execution("BrTable index must be i32".into())),
-        };
-
-        let label_idx = self
-            .labels
-            .get(index_value)
-            .copied()
-            .unwrap_or(self.default_label);
-
-        // Get the label continuation address
-        let label_stack = frame.label_stack();
-        let label = label_stack
-            .get(label_idx as usize)
-            .ok_or_else(|| Error::Execution("Branch target out of bounds".into()))?;
-        let continuation = label.continuation;
-
-        // Set the return PC
-        frame.set_return_pc(continuation);
-        Ok(())
+impl BrTable {
+    pub fn new(labels: Vec<u32>, default_label: u32) -> Self {
+        Self {
+            labels,
+            default_label,
+        }
     }
 }
 
-#[derive(Debug)]
+impl InstructionExecutor for BrTable {
+    fn execute(
+        &self,
+        _stack: &mut dyn StackBehavior,
+        _frame: &mut dyn FrameBehavior,
+        engine: &mut StacklessEngine,
+    ) -> Result<ControlFlow> {
+        execute_br_table(&self.labels, self.default_label, engine)
+    }
+}
+
+#[derive(Debug, Default)]
 pub struct Return;
 
 impl InstructionExecutor for Return {
     fn execute(
         &self,
-        _stack: &mut dyn Stack,
-        frame: &mut dyn FrameBehavior,
-        _engine: &StacklessEngine,
-    ) -> Result<()> {
-        frame.set_return_pc(usize::MAX);
-        Ok(())
+        _stack: &mut dyn StackBehavior,
+        _frame: &mut dyn FrameBehavior,
+        engine: &mut StacklessEngine,
+    ) -> Result<ControlFlow> {
+        // Pop frame from the engine's stack
+        let frame = engine
+            .exec_stack
+            .frames
+            .pop()
+            .ok_or_else(|| Error::trap("Frame stack underflow during return".to_string()))?;
+        let mut results = Vec::with_capacity(frame.arity());
+        for _ in 0..frame.arity() {
+            results.push(engine.exec_stack.pop()?);
+        }
+        results.reverse(); // Ensure correct order
+        engine.exec_stack.push_n(&results);
+
+        // Set PC in the new current frame (the caller), if one exists
+        if let Some(caller_frame) = engine.current_frame_mut().ok() {
+            // Use engine.current_frame_mut()
+            caller_frame.set_pc(frame.return_pc());
+            Ok(ControlFlow::Return { values: results })
+        } else {
+            // If no frame left, execution finished
+            Ok(ControlFlow::Return { values: results }) // TODO: Maybe signal finished state?
+        }
     }
 }
 
@@ -392,14 +307,20 @@ pub struct Call {
     pub func_idx: u32,
 }
 
+impl Call {
+    pub fn new(func_idx: u32) -> Self {
+        Self { func_idx }
+    }
+}
+
 impl InstructionExecutor for Call {
     fn execute(
         &self,
-        stack: &mut dyn Stack,
-        frame: &mut dyn FrameBehavior,
-        engine: &StacklessEngine,
-    ) -> Result<()> {
-        engine.call(stack, frame, self.func_idx)
+        _stack: &mut dyn StackBehavior,
+        _frame: &mut dyn FrameBehavior,
+        engine: &mut StacklessEngine,
+    ) -> Result<ControlFlow> {
+        call_internal(self.func_idx, engine)
     }
 }
 
@@ -409,428 +330,268 @@ pub struct CallIndirect {
     pub table_idx: u32,
 }
 
+impl CallIndirect {
+    pub fn new(type_idx: u32, table_idx: u32) -> Self {
+        Self {
+            type_idx,
+            table_idx,
+        }
+    }
+}
+
 impl InstructionExecutor for CallIndirect {
     fn execute(
         &self,
-        stack: &mut dyn Stack,
-        frame: &mut dyn FrameBehavior,
-        engine: &StacklessEngine,
-    ) -> Result<()> {
-        engine.call_indirect(stack, frame, self.type_idx, self.table_idx)
+        _stack: &mut dyn StackBehavior,
+        _frame: &mut dyn FrameBehavior,
+        engine: &mut StacklessEngine,
+    ) -> Result<ControlFlow> {
+        call_indirect(self.type_idx, self.table_idx, engine)
     }
 }
 
-/// Executes an unreachable instruction
-pub fn unreachable(
-    _stack: &mut (impl Stack + ?Sized),
-    _frame: &mut (impl FrameBehavior + ?Sized),
-) -> Result<()> {
-    Err(Error::Execution(
-        "unreachable instruction executed".to_string(),
-    ))
+#[derive(Debug, Default)]
+pub struct Nop;
+
+impl InstructionExecutor for Nop {
+    fn execute(
+        &self,
+        _stack: &mut dyn StackBehavior,
+        _frame: &mut dyn FrameBehavior,
+        _engine: &mut StacklessEngine,
+    ) -> Result<ControlFlow> {
+        Ok(ControlFlow::Continue)
+    }
 }
 
-/// Executes a nop instruction
-pub fn nop<S: Stack + ?Sized>(
-    _stack: &mut S,
-    _frame: &mut (impl FrameBehavior + ?Sized),
-) -> Result<()> {
-    // No operation
-    Ok(())
+#[derive(Debug, Default)]
+pub struct Unreachable;
+
+impl InstructionExecutor for Unreachable {
+    fn execute(
+        &self,
+        _stack: &mut dyn StackBehavior,
+        _frame: &mut dyn FrameBehavior,
+        _engine: &mut StacklessEngine,
+    ) -> Result<ControlFlow> {
+        Err(Error::new(kinds::Trap("unreachable executed".to_string())))
+    }
 }
 
-/// Executes an else instruction
-pub fn else_instr<S: Stack>(_stack: &mut S) -> Result<()> {
-    // We handle this in the execution loop
-    Ok(())
+#[derive(Debug, Default)]
+pub struct Else;
+
+impl InstructionExecutor for Else {
+    fn execute(
+        &self,
+        stack: &mut dyn StackBehavior,
+        frame: &mut dyn FrameBehavior,
+        _engine: &mut StacklessEngine,
+    ) -> Result<ControlFlow> {
+        let stack_len = stack.len();
+        // Cast directly to StacklessFrame similar to Block, Loop, and If
+        if let Some(frame_cast) = frame
+            .as_any()
+            .downcast_mut::<crate::stackless_frame::StacklessFrame>()
+        {
+            frame_cast.enter_else(stack_len)?;
+            Ok(ControlFlow::Continue)
+        } else {
+            Err(Error::new(kinds::ExecutionError(
+                "Frame doesn't implement ControlFlowBehavior".to_string(),
+            )))
+        }
+    }
 }
 
-/// Execute a block instruction
-pub fn block(
-    stack: &mut impl Stack,
-    frame: &mut (impl FrameBehavior + ?Sized),
-    ty: FuncType,
-) -> Result<()> {
-    frame.enter_block(BlockType::FuncType(ty), stack.len())?;
-    Ok(())
+#[derive(Debug, Default)]
+pub struct End;
+
+impl InstructionExecutor for End {
+    fn execute(
+        &self,
+        stack: &mut dyn StackBehavior,
+        frame: &mut dyn FrameBehavior,
+        _engine: &mut StacklessEngine,
+    ) -> Result<ControlFlow> {
+        // Cast directly to StacklessFrame similar to Block, Loop, and If
+        if let Some(frame_cast) = frame
+            .as_any()
+            .downcast_mut::<crate::stackless_frame::StacklessFrame>()
+        {
+            frame_cast.exit_block(stack)?;
+            Ok(ControlFlow::Continue)
+        } else {
+            Err(Error::new(kinds::ExecutionError(
+                "Frame doesn't implement ControlFlowBehavior".to_string(),
+            )))
+        }
+    }
 }
 
-/// Execute a loop instruction
-pub fn loop_(
-    stack: &mut impl Stack,
-    frame: &mut (impl FrameBehavior + ?Sized),
-    ty: FuncType,
-) -> Result<()> {
-    frame.enter_loop(BlockType::FuncType(ty), stack.len())?;
-    Ok(())
-}
+pub(crate) fn br(label_idx: u32, engine: &mut StacklessEngine) -> Result<ControlFlow> {
+    // Get the stack reference first
+    let stack = &mut engine.exec_stack;
 
-/// Execute an if instruction
-pub fn if_(
-    stack: &mut impl Stack,
-    frame: &mut (impl FrameBehavior + ?Sized),
-    ty: FuncType,
-) -> Result<()> {
-    // Pop the condition from the stack
-    let condition = stack.pop()?;
-    let condition_bool = match condition {
-        Value::I32(0) => false,
-        Value::I32(_) => true,
-        _ => return Err(Error::InvalidType("Expected i32 for condition".to_string())),
+    // Get the label from stack before getting the frame
+    let label = stack
+        .get_label(label_idx as usize)
+        .ok_or_else(|| Error::new(kinds::Trap(format!("Invalid label index: {}", label_idx))))?;
+
+    let (target_pc, arity, values_to_pop) = (label.pc, label.arity, 0);
+
+    let branch_args = if arity > 0 {
+        stack.pop_n(arity)
+    } else {
+        vec![]
     };
 
-    frame.enter_if(BlockType::FuncType(ty), stack.len(), condition_bool)?;
-    Ok(())
+    let _ = stack.pop_n(values_to_pop);
+
+    stack.push_n(&branch_args);
+
+    Ok(ControlFlow::Branch {
+        target_pc,
+        values_to_keep: arity,
+    })
 }
 
-/// Execute an else instruction
-pub fn else_(stack: &mut impl Stack, frame: &mut (impl FrameBehavior + ?Sized)) -> Result<()> {
-    frame.enter_else(stack.len())?;
-    Ok(())
-}
-
-/// Execute an end instruction
-pub fn end(stack: &mut impl Stack, frame: &mut (impl FrameBehavior + ?Sized)) -> Result<()> {
-    frame.exit_block(stack)?;
-    Ok(())
-}
-
-pub fn end_dyn(
-    stack: &mut dyn Stack,
-    frame: &mut dyn FrameBehavior,
-    engine: &StacklessEngine,
-) -> Result<()> {
-    // Don't call on Module
-    if let Some(frame_concrete) = frame
-        .as_any()
-        .downcast_mut::<crate::stackless_frame::StacklessFrame>()
-    {
-        frame_concrete.exit_block(stack)?;
-        Ok(())
+pub(crate) fn br_if(label_idx: u32, engine: &mut StacklessEngine) -> Result<ControlFlow> {
+    let condition = engine.exec_stack.pop_i32()? != 0;
+    if condition {
+        br(label_idx, engine)
     } else {
-        Err(Error::Execution("Invalid frame type for end".to_string()))
+        Ok(ControlFlow::Continue)
     }
 }
 
-pub fn br(
-    stack: &mut impl Stack,
-    frame: &mut (impl FrameBehavior + ?Sized),
-    label_idx: u32,
-) -> Result<()> {
-    frame.branch(label_idx, stack)?;
-    Ok(())
+pub(crate) fn execute_br_table(
+    indices: &Vec<u32>,
+    default_idx: u32,
+    engine: &mut StacklessEngine,
+) -> Result<ControlFlow> {
+    let index = engine.exec_stack.pop_i32()? as usize;
+    let target_label_idx = indices.get(index).copied().unwrap_or(default_idx);
+    br(target_label_idx, engine)
 }
 
-pub fn br_if(
-    stack: &mut impl Stack,
-    frame: &mut (impl FrameBehavior + ?Sized),
-    label_idx: u32,
-) -> Result<()> {
-    let condition = stack.pop()?;
-    match condition {
-        Value::I32(c) => {
-            if c != 0 {
-                frame.branch(label_idx, stack)?;
-            }
-            Ok(())
-        }
-        _ => Err(Error::InvalidType("Expected i32".to_string())),
-    }
-}
+pub(crate) fn call_internal(func_idx: u32, engine: &mut StacklessEngine) -> Result<ControlFlow> {
+    let current_instance_idx = engine.current_frame()?.instance_idx();
+    let (_func_addr, func_type) =
+        engine.with_instance(current_instance_idx as usize, |instance| {
+            let addr = instance.get_func_addr(func_idx);
+            let ty = instance.get_function_type(func_idx)?;
+            Ok((addr, ty.clone()))
+        })?;
 
-pub fn br_table(
-    stack: &mut impl Stack,
-    frame: &mut (impl FrameBehavior + ?Sized),
-    labels: Vec<u32>,
-    default: u32,
-) -> Result<()> {
-    let index = stack.pop()?;
-    match index {
-        Value::I32(i) => {
-            let label_idx = if (i as usize) < labels.len() {
-                labels[i as usize]
-            } else {
-                default
-            };
-            frame.branch(label_idx, stack)?;
-            Ok(())
-        }
-        _ => Err(Error::InvalidType("Expected i32".to_string())),
-    }
-}
+    let return_pc = engine.current_frame()?.pc();
 
-pub fn return_(stack: &mut impl Stack, frame: &mut (impl FrameBehavior + ?Sized)) -> Result<()> {
-    frame.return_(stack)?;
-    Ok(())
-}
+    let num_params = func_type.params.len();
+    let args = engine.exec_stack.pop_n(num_params);
 
-pub fn call(
-    stack: &mut impl Stack,
-    frame: &mut (impl FrameBehavior + ?Sized),
-    func_idx: u32,
-) -> Result<()> {
-    frame.call(func_idx, stack)?;
-    Ok(())
+    let module_arc = engine.with_instance(current_instance_idx as usize, |instance| {
+        Ok(instance.module.clone())
+    })?; // Remove second `?`
+
+    let new_frame = StacklessFrame::new(module_arc, func_idx, &args, current_instance_idx)?;
+
+    engine.exec_stack.frames.push(new_frame);
+
+    Ok(ControlFlow::Call {
+        func_idx,
+        args,
+        return_pc,
+    })
 }
 
 pub fn call_indirect(
-    stack: &mut impl Stack,
-    frame: &mut (impl FrameBehavior + ?Sized),
     type_idx: u32,
     table_idx: u32,
-) -> Result<()> {
-    let table_entry = stack.pop()?;
-    match table_entry {
-        Value::I32(entry) => {
-            // Convert i32 to u32
-            let entry_u32 = entry as u32;
-            frame.call_indirect(type_idx, table_idx, entry_u32, stack)?;
-            Ok(())
+    engine: &mut StacklessEngine,
+) -> Result<ControlFlow> {
+    let current_instance_idx = engine.current_frame()?.instance_idx();
+    let table_entry_idx = engine.exec_stack.pop_i32()?;
+
+    let func_ref_result = engine.with_instance(current_instance_idx as usize, |instance| {
+        let table = instance.get_table(table_idx as usize)?;
+        let table_ref = &*table; // Dereference Arc<Table>
+
+        if table_entry_idx < 0 || table_entry_idx as usize >= table_ref.size() as usize {
+            return Err(Error::new(kinds::Trap(
+                "indirect call table index out of bounds".to_string(),
+            )));
         }
-        _ => Err(Error::InvalidType("Expected i32".to_string())),
-    }
-}
 
-// Create adapter functions that accept dyn Stack
-pub fn block_dyn(
-    stack: &mut dyn Stack,
-    frame: &mut dyn FrameBehavior,
-    block_type: BlockType,
-    engine: &StacklessEngine,
-) -> Result<()> {
-    println!("Executing Block instruction");
-    // Logic to handle block execution start (push label)
-    let (param_types, result_types) = block_type.get_types(frame.module_instance().module());
-    let arity = result_types.len();
-    // TODO: Need to determine the continuation PC (address after the matching End)
-    let continuation_pc = frame.pc() + 1; // Placeholder
-    stack.push_label(arity, continuation_pc)?;
-    Ok(())
-}
+        let func_ref = table_ref.get(table_entry_idx as u32)?;
+        match func_ref {
+            // Match against Option<Value>
+            Some(Value::FuncRef(Some(idx))) => {
+                // Wrap pattern in Some()
+                let actual_type = instance.get_function_type(idx)?;
+                Ok((idx, actual_type.clone()))
+            }
+            Some(Value::FuncRef(None)) => Err(Error::new(kinds::InvalidFunctionType(format!(
+                "Invalid function reference in call_indirect: null reference"
+            )))),
+            None => Err(Error::new(kinds::Trap(
+                "uninitialized element in table".to_string(),
+            ))), // Handle None case explicitly
+            _ => Err(Error::new(kinds::Trap(
+                "indirect call type mismatch - expected funcref".to_string(),
+            ))), // Handle other Some(Value) variants
+        }
+    })?;
 
-pub fn loop_dyn(
-    stack: &mut dyn Stack,
-    frame: &mut dyn FrameBehavior,
-    block_type: BlockType,
-    engine: &StacklessEngine,
-) -> Result<()> {
-    println!("Executing Loop instruction");
-    // Logic to handle loop execution start (push label pointing to loop start)
-    let (param_types, result_types) = block_type.get_types(frame.module_instance().module());
-    let arity = param_types.len(); // Loops target the beginning, arity based on params
-    let continuation_pc = frame.pc(); // Loop back to the start of the loop instruction
-    stack.push_label(arity, continuation_pc)?;
-    Ok(())
-}
+    let (func_idx, actual_type) = func_ref_result;
 
-pub fn if_dyn(
-    stack: &mut dyn Stack,
-    frame: &mut dyn FrameBehavior,
-    block_type: BlockType,
-    engine: &StacklessEngine,
-) -> Result<()> {
-    println!("Executing If instruction");
-    let condition = stack.pop()?.as_i32()?;
-    let (param_types, result_types) = block_type.get_types(frame.module_instance().module());
-    let arity = result_types.len();
-    // TODO: Need to determine continuation PCs for both branches
-    let continuation_pc_after_end = frame.pc() + 1; // Placeholder
-    stack.push_label(arity, continuation_pc_after_end)?;
+    let expected_type = engine.with_instance(current_instance_idx as usize, |instance| {
+        instance.get_function_type(type_idx).cloned()
+    })?;
 
-    if condition == 0 {
-        // Jump to Else or End
-        // TODO: Implement logic to find the matching Else/End and update frame PC
-        println!("Condition is false, skipping If block");
-        // frame.set_pc(address_of_else_or_end);
-    }
-    // If condition is non-zero, continue execution into the If block
-    Ok(())
-}
-
-pub fn else_dyn(
-    stack: &mut dyn Stack,
-    frame: &mut dyn FrameBehavior,
-    engine: &StacklessEngine,
-) -> Result<()> {
-    println!("Executing Else instruction");
-    // Logic for when Else is encountered (usually involves jumping to End)
-    // TODO: Pop the label pushed by If, find matching End, update frame PC
-    Ok(())
-}
-
-pub fn br_dyn(
-    stack: &mut dyn Stack,
-    frame: &mut dyn FrameBehavior,
-    label_idx: u32,
-    engine: &StacklessEngine,
-) -> Result<()> {
-    println!("Executing Br instruction: label_idx={}", label_idx);
-    let label = stack.get_label(label_idx as usize)?; // Get the target label
-    let arity = label.arity;
-    let values_to_transfer = stack.pop_n(arity)?;
-    stack.pop_labels_until(label_idx as usize)?;
-    stack.push_n(values_to_transfer)?;
-    frame.set_pc(label.continuation); // Set PC to the label's continuation
-    Ok(())
-}
-
-pub fn br_if_dyn(
-    stack: &mut dyn Stack,
-    frame: &mut dyn FrameBehavior,
-    label_idx: u32,
-    engine: &StacklessEngine,
-) -> Result<()> {
-    println!("Executing BrIf instruction: label_idx={}", label_idx);
-    let condition = stack.pop()?.as_i32()?;
-    if condition != 0 {
-        br_dyn(stack, frame, label_idx, engine)?;
-    }
-    // If condition is 0, do nothing, execution continues sequentially
-    Ok(())
-}
-
-pub fn br_table_dyn(
-    stack: &mut dyn Stack,
-    frame: &mut dyn FrameBehavior,
-    label_indices: Vec<u32>,
-    default_label: u32,
-    engine: &StacklessEngine,
-) -> Result<()> {
-    println!(
-        "Executing BrTable instruction: targets={:?}, default={}",
-        label_indices, default_label
-    );
-    let value = stack.pop()?.as_i32()? as usize;
-    let target_label_idx = if value < label_indices.len() {
-        label_indices[value]
-    } else {
-        default_label
-    };
-    br_dyn(stack, frame, target_label_idx, engine)
-}
-
-pub fn return_dyn(
-    stack: &mut dyn Stack,
-    frame: &mut dyn FrameBehavior,
-    engine: &StacklessEngine,
-) -> Result<()> {
-    println!("Executing Return instruction");
-    let frame_arity = frame.arity(); // Get expected return arity from the frame
-    let results = stack.pop_n(frame_arity)?;
-
-    // Pop frames/labels until the function call boundary (e.g., pop the current frame's label)
-    // This assumes the frame label is at the top for a return.
-    stack.pop_frame_label()?; // Specific method to pop the label associated with the current frame
-
-    // Push results back onto the caller's stack context
-    stack.push_n(results)?;
-
-    // Signal return by setting PC beyond the end or using a specific flag
-    frame.set_pc(usize::MAX);
-    Ok(())
-}
-
-pub fn unreachable_dyn(
-    stack: &mut dyn Stack,
-    frame: &mut dyn FrameBehavior,
-    engine: &StacklessEngine,
-) -> Result<()> {
-    println!("Executing Unreachable instruction");
-    Err(Error::Unreachable)
-}
-
-pub fn nop_dyn(
-    stack: &mut dyn Stack,
-    frame: &mut dyn FrameBehavior,
-    engine: &StacklessEngine,
-) -> Result<()> {
-    println!("Executing Nop instruction");
-    Ok(())
-}
-
-pub fn call_dyn(
-    stack: &mut dyn Stack,
-    frame: &mut dyn FrameBehavior,
-    func_idx: u32,
-    engine: &StacklessEngine,
-) -> Result<()> {
-    println!("Executing Call instruction: func_idx={}", func_idx);
-    let module_instance = frame.module_instance();
-    let func_type = module_instance.get_function_type(func_idx)?;
-    let args_count = func_type.params.len();
-    let args = stack.pop_n(args_count)?;
-
-    // Execute the function call using the engine/stack context
-    // This needs access to the main execution logic, likely on StacklessStack or Engine
-    // stack.execute_function(engine, frame.instance_idx(), func_idx, args)?;
-    let results = stack.execute_function_call_direct(engine, 0, func_idx, args)?;
-    stack.push_n(results)?;
-
-    Ok(())
-}
-
-pub fn call_indirect_dyn(
-    stack: &mut dyn Stack,
-    frame: &mut dyn FrameBehavior,
-    type_idx: u32,
-    table_idx: u32,
-    engine: &StacklessEngine,
-) -> Result<()> {
-    println!(
-        "Executing CallIndirect instruction: type_idx={}, table_idx={}",
-        type_idx, table_idx
-    );
-    let table_addr = stack.pop()?.as_i32()? as usize;
-    let module_instance = frame.module_instance();
-    let table = module_instance.get_table(table_idx as usize)?;
-    let func_elem = table.get(table_addr)?;
-    let func_idx = func_elem.ok_or(Error::IndirectCallToNull)?;
-
-    // Type check
-    let expected_type = module_instance.module().get_function_type(type_idx)?;
-    let actual_type = module_instance.get_function_type(func_idx)?;
     if expected_type != actual_type {
-        return Err(Error::IndirectCallTypeMismatch);
+        return Err(Error::new(kinds::Trap(
+            "indirect call type mismatch".to_string(),
+        )));
     }
 
-    let args_count = actual_type.params.len();
-    let args = stack.pop_n(args_count)?;
-
-    // Execute indirect call
-    // stack.execute_function(engine, frame.instance_idx(), func_idx, args)?;
-    let results = stack.execute_function_call_direct(engine, table_idx, func_idx, args)?;
-    stack.push_n(results)?;
-
-    Ok(())
+    call_internal(func_idx, engine)
 }
 
-// Adapter functions for the rest
-pub fn return_call_dyn(
-    stack: &mut dyn Stack,
-    frame: &mut dyn FrameBehavior,
-    func_idx: u32,
-    engine: &StacklessEngine,
-) -> Result<()> {
-    println!("Executing ReturnCall instruction: func_idx={}", func_idx);
-    // Pop current frame/label first
-    return_dyn(stack, frame, engine)?;
-    // Then perform the call (tail call)
-    call_dyn(stack, frame, func_idx, engine)
+pub(crate) fn return_call(
+    stack: &mut dyn StackBehavior,
+    _engine: &mut StacklessEngine,
+) -> Result<ControlFlow> {
+    let _index = stack.pop_i32()?;
+    // TODO: Determine actual return values based on current function signature
+    // For now, assume no return values or handle in engine loop
+    Ok(ControlFlow::Return { values: vec![] }) // Use struct variant
 }
 
-pub fn return_call_indirect_dyn(
-    stack: &mut dyn Stack,
+fn branch(
+    label_idx: u32,
     frame: &mut dyn FrameBehavior,
-    type_idx: u32,
-    table_idx: u32,
-    engine: &StacklessEngine,
-) -> Result<()> {
-    println!(
-        "Executing ReturnCallIndirect instruction: type_idx={}, table_idx={}",
-        type_idx, table_idx
-    );
-    // Pop current frame/label first
-    return_dyn(stack, frame, engine)?;
-    // Then perform the indirect call (tail call)
-    call_indirect_dyn(stack, frame, type_idx, table_idx, engine)
+    stack: &mut dyn StackBehavior,
+    values_to_pop: usize,
+) -> Result<ControlFlow> {
+    // Get the label from stack
+    let label = stack
+        .get_label(label_idx as usize)
+        .ok_or_else(|| Error::new(kinds::Trap(format!("Invalid label index: {}", label_idx))))?;
+
+    let (target_pc, arity, values_to_pop) = (label.pc, label.arity, values_to_pop);
+
+    let branch_args = if arity > 0 {
+        stack.pop_n(arity)
+    } else {
+        vec![]
+    };
+
+    let _ = stack.pop_n(values_to_pop);
+
+    stack.push_n(&branch_args);
+
+    Ok(ControlFlow::Branch {
+        target_pc,
+        values_to_keep: arity,
+    })
 }
