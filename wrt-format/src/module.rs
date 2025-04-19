@@ -23,6 +23,8 @@ pub struct Function {
 pub struct Memory {
     /// Memory limits
     pub limits: Limits,
+    /// Whether this memory is shared between threads
+    pub shared: bool,
 }
 
 /// WebAssembly table definition
@@ -45,12 +47,23 @@ pub struct Global {
     pub init: Vec<u8>,
 }
 
+/// WebAssembly data segment types
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DataMode {
+    /// Active data segment (explicitly placed into a memory)
+    Active,
+    /// Passive data segment (used with memory.init)
+    Passive,
+}
+
 /// WebAssembly data segment
 #[derive(Debug, Clone)]
 pub struct Data {
-    /// Memory index
+    /// Data mode (active or passive)
+    pub mode: DataMode,
+    /// Memory index (for active data segments)
     pub memory_idx: u32,
-    /// Offset expression
+    /// Offset expression (for active data segments)
     pub offset: Vec<u8>,
     /// Initial data
     pub init: Vec<u8>,

@@ -373,8 +373,40 @@ fn parse_table_section(bytes: &[u8]) -> Result<(Vec<Table>, usize)> {
 }
 
 fn parse_memory_section(bytes: &[u8]) -> Result<(Vec<Memory>, usize)> {
-    // Placeholder - in a real implementation, you would parse the section properly
-    Ok((Vec::new(), bytes.len()))
+    let mut offset = 0;
+    let mut memories = Vec::new();
+
+    // Read the number of memories
+    if offset >= bytes.len() {
+        return Err(Error::new(kinds::ParseError(
+            "Unexpected end of memory section bytes".to_string(),
+        )));
+    }
+
+    let (count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
+    offset += bytes_read;
+
+    // WebAssembly 1.0 only allows a maximum of 1 memory per module
+    if count > 1 {
+        return Err(Error::new(kinds::ParseError(
+            "Multiple memories are not supported in WebAssembly 1.0".to_string(),
+        )));
+    }
+
+    // Parse each memory type
+    for _ in 0..count {
+        if offset >= bytes.len() {
+            return Err(Error::new(kinds::ParseError(
+                "Unexpected end of memory section bytes".to_string(),
+            )));
+        }
+
+        let (memory, bytes_read) = parsers::parse_memory_type(&bytes[offset..])?;
+        offset += bytes_read;
+        memories.push(memory);
+    }
+
+    Ok((memories, offset))
 }
 
 fn parse_global_section(bytes: &[u8]) -> Result<(Vec<Global>, usize)> {
@@ -398,8 +430,138 @@ fn parse_code_section(bytes: &[u8]) -> Result<(Vec<Code>, usize)> {
 }
 
 fn parse_data_section(bytes: &[u8]) -> Result<(Vec<Data>, usize)> {
-    // Placeholder - in a real implementation, you would parse the section properly
-    Ok((Vec::new(), bytes.len()))
+    let mut offset = 0;
+    let mut data_segments = Vec::new();
+
+    // Read count
+    if offset >= bytes.len() {
+        return Err(Error::new(kinds::ParseError(
+            "Unexpected end of data section bytes".to_string(),
+        )));
+    }
+    let (count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
+    offset += bytes_read;
+
+    // Parse each data segment
+    for _ in 0..count {
+        if offset >= bytes.len() {
+            return Err(Error::new(kinds::ParseError(
+                "Unexpected end of data section bytes".to_string(),
+            )));
+        }
+
+        // Read flags (indicates active vs. passive and memory index encoding)
+        let flags = bytes[offset];
+        offset += 1;
+
+        // Parse based on segment type
+        match flags {
+            0x00 => {
+                // Active segment with memory index 0
+                // Read offset expression
+                let (expr_size, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
+                offset += bytes_read;
+
+                if offset + expr_size as usize > bytes.len() {
+                    return Err(Error::new(kinds::ParseError(
+                        "Offset expression exceeds data section size".to_string(),
+                    )));
+                }
+
+                let offset_expr = bytes[offset..offset + expr_size as usize].to_vec();
+                offset += expr_size as usize;
+
+                // Read init data
+                let (data_size, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
+                offset += bytes_read;
+
+                if offset + data_size as usize > bytes.len() {
+                    return Err(Error::new(kinds::ParseError(
+                        "Data segment exceeds data section size".to_string(),
+                    )));
+                }
+
+                let init_data = bytes[offset..offset + data_size as usize].to_vec();
+                offset += data_size as usize;
+
+                data_segments.push(Data {
+                    mode: DataMode::Active,
+                    memory_idx: 0,
+                    offset: offset_expr,
+                    init: init_data,
+                });
+            }
+            0x01 => {
+                // Passive segment
+                // Read init data
+                let (data_size, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
+                offset += bytes_read;
+
+                if offset + data_size as usize > bytes.len() {
+                    return Err(Error::new(kinds::ParseError(
+                        "Data segment exceeds data section size".to_string(),
+                    )));
+                }
+
+                let init_data = bytes[offset..offset + data_size as usize].to_vec();
+                offset += data_size as usize;
+
+                data_segments.push(Data {
+                    mode: DataMode::Passive,
+                    memory_idx: 0,      // Not used for passive segments
+                    offset: Vec::new(), // Not used for passive segments
+                    init: init_data,
+                });
+            }
+            0x02 => {
+                // Active segment with explicit memory index
+                // Read memory index
+                let (memory_idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
+                offset += bytes_read;
+
+                // Read offset expression
+                let (expr_size, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
+                offset += bytes_read;
+
+                if offset + expr_size as usize > bytes.len() {
+                    return Err(Error::new(kinds::ParseError(
+                        "Offset expression exceeds data section size".to_string(),
+                    )));
+                }
+
+                let offset_expr = bytes[offset..offset + expr_size as usize].to_vec();
+                offset += expr_size as usize;
+
+                // Read init data
+                let (data_size, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
+                offset += bytes_read;
+
+                if offset + data_size as usize > bytes.len() {
+                    return Err(Error::new(kinds::ParseError(
+                        "Data segment exceeds data section size".to_string(),
+                    )));
+                }
+
+                let init_data = bytes[offset..offset + data_size as usize].to_vec();
+                offset += data_size as usize;
+
+                data_segments.push(Data {
+                    mode: DataMode::Active,
+                    memory_idx,
+                    offset: offset_expr,
+                    init: init_data,
+                });
+            }
+            _ => {
+                return Err(Error::new(kinds::ParseError(format!(
+                    "Invalid data segment flags: 0x{:02x}",
+                    flags
+                ))));
+            }
+        }
+    }
+
+    Ok((data_segments, offset))
 }
 
 // Section encoding functions (placeholders for a full implementation)
@@ -424,7 +586,104 @@ fn encode_table_section(result: &mut Vec<u8>, tables: &[Table]) -> Result<()> {
 }
 
 fn encode_memory_section(result: &mut Vec<u8>, memories: &[Memory]) -> Result<()> {
-    // Placeholder - in a real implementation, you would encode the section properly
+    // Skip if no memories
+    if memories.is_empty() {
+        return Ok(());
+    }
+
+    // WebAssembly 1.0 only allows a maximum of 1 memory per module
+    if memories.len() > 1 {
+        return Err(Error::new(kinds::ParseError(
+            "Multiple memories are not supported in WebAssembly 1.0".to_string(),
+        )));
+    }
+
+    // Create section content
+    let mut content = Vec::new();
+
+    // Write count
+    content.extend_from_slice(&binary::write_leb128_u32(memories.len() as u32));
+
+    // Write each memory type
+    for memory in memories {
+        // Calculate flags
+        let mut flags: u8 = 0;
+        if memory.limits.max.is_some() {
+            flags |= 0x01; // has_max flag
+        }
+        if memory.shared {
+            // Shared memory requires max to be set
+            if memory.limits.max.is_none() {
+                return Err(Error::new(kinds::ParseError(
+                    "Shared memory must have maximum size specified".to_string(),
+                )));
+            }
+            flags |= 0x02; // is_shared flag
+        }
+
+        // Set memory64 flag if needed
+        if memory.limits.memory_index_type == MemoryIndexType::I64 {
+            flags |= 0x04; // memory64 flag
+        }
+
+        // Write flags
+        content.push(flags);
+
+        // Write min - convert u64 to appropriate type
+        match memory.limits.memory_index_type {
+            MemoryIndexType::I32 => {
+                // For Memory32, ensure the value fits in u32
+                if memory.limits.min > u32::MAX as u64 {
+                    return Err(Error::new(kinds::ParseError(format!(
+                        "Memory min size {} exceeds 32-bit limit",
+                        memory.limits.min
+                    ))));
+                }
+                content.extend_from_slice(&binary::write_leb128_u32(memory.limits.min as u32));
+            }
+            MemoryIndexType::I64 => {
+                // For Memory64, use the u64 value directly
+                content.extend_from_slice(&binary::write_leb128_u64(memory.limits.min));
+            }
+        }
+
+        // Write max if present
+        if let Some(max) = memory.limits.max {
+            match memory.limits.memory_index_type {
+                MemoryIndexType::I32 => {
+                    // For Memory32, ensure the value fits in u32
+                    if max > u32::MAX as u64 {
+                        return Err(Error::new(kinds::ParseError(format!(
+                            "Memory max size {} exceeds 32-bit limit",
+                            max
+                        ))));
+                    }
+                    content.extend_from_slice(&binary::write_leb128_u32(max as u32));
+                }
+                MemoryIndexType::I64 => {
+                    // For Memory64, use the u64 value directly
+                    content.extend_from_slice(&binary::write_leb128_u64(max));
+                }
+            }
+
+            // Verify max >= min for shared memory
+            if memory.shared && max < memory.limits.min {
+                return Err(Error::new(kinds::ParseError(
+                    "Shared memory maximum size must be greater than or equal to minimum size"
+                        .to_string(),
+                )));
+            }
+        }
+    }
+
+    // Write the section
+    let section_id = wrt_format::section::SectionId::Memory as u8;
+    result.extend_from_slice(&binary::write_section_header(
+        section_id,
+        content.len() as u32,
+    ));
+    result.extend_from_slice(&content);
+
     Ok(())
 }
 
@@ -456,4 +715,175 @@ fn encode_code_section(result: &mut Vec<u8>, code: &[Code]) -> Result<()> {
 fn encode_data_section(result: &mut Vec<u8>, data: &[Data]) -> Result<()> {
     // Placeholder - in a real implementation, you would encode the section properly
     Ok(())
+}
+
+/// Initialize memory from data segments
+///
+/// This function applies active data segments to the given memory.
+/// It needs to be called during module instantiation to set up the initial memory state.
+///
+/// # Arguments
+///
+/// * `memory_data` - The memory data buffer to initialize
+/// * `data_segments` - The data segments to apply
+/// * `globals` - Global values needed to evaluate constant expressions
+///
+/// # Returns
+///
+/// * `Ok(())` if initialization succeeded
+/// * `Err(_)` if an error occurred
+pub fn initialize_memory(
+    memory_data: &mut [u8],
+    data_segments: &[Data],
+    globals: &[(ValueType, u64)], // Simplified globals representation: (type, value)
+) -> Result<()> {
+    // Process each active data segment
+    for (i, segment) in data_segments.iter().enumerate() {
+        if matches!(segment.mode, DataMode::Passive) {
+            // Skip passive segments
+            continue;
+        }
+
+        // Evaluate the offset expression
+        let offset = evaluate_const_expr(&segment.offset, globals)?;
+
+        // Convert to u32 (this is safe because WebAssembly memory is always < 2^32 bytes)
+        let offset_u32 = match offset {
+            ConstValue::I32(val) => val as u32,
+            ConstValue::I64(val) => {
+                if val > (u32::MAX as i64) {
+                    return Err(Error::new(kinds::RuntimeError(format!(
+                        "Memory offset in data segment {} exceeds 32-bit limit",
+                        i
+                    ))));
+                }
+                val as u32
+            }
+            _ => {
+                return Err(Error::new(kinds::RuntimeError(format!(
+                    "Invalid offset type in data segment {}",
+                    i
+                ))));
+            }
+        };
+
+        // Check if the segment fits in memory
+        if offset_u32 as usize + segment.init.len() > memory_data.len() {
+            return Err(Error::new(kinds::RuntimeError(
+                format!(
+                    "Data segment {} extends beyond memory size (offset: {}, length: {}, memory size: {})",
+                    i, offset_u32, segment.init.len(), memory_data.len()
+                )
+            )));
+        }
+
+        // Copy the segment data to memory
+        let dest_start = offset_u32 as usize;
+        let dest_end = dest_start + segment.init.len();
+        memory_data[dest_start..dest_end].copy_from_slice(&segment.init);
+    }
+
+    Ok(())
+}
+
+/// Constant expression value
+#[derive(Debug, Clone)]
+pub enum ConstValue {
+    /// 32-bit integer constant
+    I32(i32),
+    /// 64-bit integer constant
+    I64(i64),
+    /// 32-bit float constant
+    F32(f32),
+    /// 64-bit float constant
+    F64(f64),
+}
+
+/// Evaluate a constant expression (limited to simple cases)
+fn evaluate_const_expr(expr: &[u8], globals: &[(ValueType, u64)]) -> Result<ConstValue> {
+    // Ensure the expression is not empty and ends with end opcode
+    if expr.is_empty() || expr[expr.len() - 1] != 0x0B {
+        return Err(Error::new(kinds::RuntimeError(
+            "Invalid constant expression format".to_string(),
+        )));
+    }
+
+    // Handle common constant expressions
+    match expr[0] {
+        // i32.const
+        0x41 => {
+            // Parse the i32 value (LEB128 encoded)
+            let (value, _) = binary::read_leb128_i32(expr, 1)?;
+            Ok(ConstValue::I32(value))
+        }
+
+        // i64.const
+        0x42 => {
+            // Parse the i64 value (LEB128 encoded)
+            let (value, _) = binary::read_leb128_i64(expr, 1)?;
+            Ok(ConstValue::I64(value))
+        }
+
+        // f32.const
+        0x43 => {
+            if expr.len() < 5 {
+                // opcode + 4 bytes
+                return Err(Error::new(kinds::RuntimeError(
+                    "Invalid f32.const expression".to_string(),
+                )));
+            }
+
+            // Parse the f32 value (IEEE 754 encoded)
+            let bits = u32::from_le_bytes([expr[1], expr[2], expr[3], expr[4]]);
+            Ok(ConstValue::F32(f32::from_bits(bits)))
+        }
+
+        // f64.const
+        0x44 => {
+            if expr.len() < 9 {
+                // opcode + 8 bytes
+                return Err(Error::new(kinds::RuntimeError(
+                    "Invalid f64.const expression".to_string(),
+                )));
+            }
+
+            // Parse the f64 value (IEEE 754 encoded)
+            let bits = u64::from_le_bytes([
+                expr[1], expr[2], expr[3], expr[4], expr[5], expr[6], expr[7], expr[8],
+            ]);
+            Ok(ConstValue::F64(f64::from_bits(bits)))
+        }
+
+        // global.get
+        0x23 => {
+            // Parse the global index (LEB128 encoded)
+            let (global_idx, _) = binary::read_leb128_u32(expr, 1)?;
+
+            // Look up the global value
+            if global_idx as usize >= globals.len() {
+                return Err(Error::new(kinds::RuntimeError(format!(
+                    "Global index {} out of bounds",
+                    global_idx
+                ))));
+            }
+
+            // Convert the global value to the appropriate type
+            let (global_type, global_value) = &globals[global_idx as usize];
+            match global_type {
+                ValueType::I32 => Ok(ConstValue::I32(*global_value as i32)),
+                ValueType::I64 => Ok(ConstValue::I64(*global_value as i64)),
+                ValueType::F32 => Ok(ConstValue::F32(f32::from_bits(*global_value as u32))),
+                ValueType::F64 => Ok(ConstValue::F64(f64::from_bits(*global_value))),
+                _ => Err(Error::new(kinds::RuntimeError(format!(
+                    "Unsupported global type {:?}",
+                    global_type
+                )))),
+            }
+        }
+
+        _ => Err(Error::new(kinds::RuntimeError(format!(
+            "Unsupported constant expression opcode: 0x{:02x}",
+            expr[0]
+        )))),
+    }
 }
