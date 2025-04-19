@@ -372,6 +372,20 @@ fn parse_table_section(bytes: &[u8]) -> Result<(Vec<Table>, usize)> {
     Ok((Vec::new(), bytes.len()))
 }
 
+/// Parse the memory section from WebAssembly binary format
+///
+/// According to the WebAssembly Core Specification (Binary Format):
+/// https://webassembly.github.io/spec/core/bikeshed/#binary-memsec
+///
+/// The memory section has the following format:
+/// - Section ID: 5 (Memory)
+/// - Contents: Vector of memory entries
+///   - Each memory entry:
+///     - Flags byte: bit 0 = has_max, bit 1 = is_shared, bit 2 = is_memory64, bits 3-7 reserved (must be 0)
+///     - Min size: u32 (memory32) or u64 (memory64) in units of pages (64KiB)
+///     - Max size: Optional u32 (memory32) or u64 (memory64) in units of pages (present if has_max)
+///
+/// WebAssembly 1.0 allows at most one memory per module.
 fn parse_memory_section(bytes: &[u8]) -> Result<(Vec<Memory>, usize)> {
     let mut offset = 0;
     let mut memories = Vec::new();
@@ -585,6 +599,24 @@ fn encode_table_section(result: &mut Vec<u8>, tables: &[Table]) -> Result<()> {
     Ok(())
 }
 
+/// Encode the memory section to WebAssembly binary format
+///
+/// According to the WebAssembly Core Specification (Binary Format):
+/// https://webassembly.github.io/spec/core/bikeshed/#binary-memsec
+///
+/// The memory section has the following format:
+/// - Section ID: 5 (Memory)
+/// - Contents: Vector of memory entries
+///   - Each memory entry:
+///     - Flags byte: bit 0 = has_max, bit 1 = is_shared, bit 2 = is_memory64, bits 3-7 reserved (must be 0)
+///     - Min size: u32 (memory32) or u64 (memory64) in units of pages (64KiB)
+///     - Max size: Optional u32 (memory32) or u64 (memory64) in units of pages (present if has_max)
+///
+/// Validation rules:
+/// - WebAssembly 1.0 allows at most one memory per module
+/// - Shared memories must have a maximum size specified
+/// - The maximum size must be greater than or equal to the minimum size
+/// - For memory32, min and max must not exceed 65536 pages (4GiB)
 fn encode_memory_section(result: &mut Vec<u8>, memories: &[Memory]) -> Result<()> {
     // Skip if no memories
     if memories.is_empty() {
@@ -592,57 +624,76 @@ fn encode_memory_section(result: &mut Vec<u8>, memories: &[Memory]) -> Result<()
     }
 
     // WebAssembly 1.0 only allows a maximum of 1 memory per module
+    // This is specified in the WebAssembly Core Specification
     if memories.len() > 1 {
         return Err(Error::new(kinds::ParseError(
-            "Multiple memories are not supported in WebAssembly 1.0".to_string(),
+            "Multiple memories are not supported in WebAssembly 1.0 (per Core Specification)"
+                .to_string(),
         )));
     }
 
     // Create section content
     let mut content = Vec::new();
 
-    // Write count
+    // Write count as LEB128 unsigned integer
+    // As per WebAssembly binary format specification
     content.extend_from_slice(&binary::write_leb128_u32(memories.len() as u32));
 
     // Write each memory type
     for memory in memories {
-        // Calculate flags
+        // Calculate flags according to the WebAssembly binary format
+        // Bit 0: has_max flag
+        // Bit 1: is_shared flag
+        // Bit 2: is_memory64 flag (for Memory64 extension)
+        // Bits 3-7: must be zero (reserved for future use)
         let mut flags: u8 = 0;
         if memory.limits.max.is_some() {
             flags |= 0x01; // has_max flag
         }
         if memory.shared {
-            // Shared memory requires max to be set
+            // Shared memory requires max to be set (spec requirement)
             if memory.limits.max.is_none() {
                 return Err(Error::new(kinds::ParseError(
-                    "Shared memory must have maximum size specified".to_string(),
+                    "Shared memory must have maximum size specified (per WebAssembly spec)"
+                        .to_string(),
                 )));
             }
             flags |= 0x02; // is_shared flag
         }
 
-        // Set memory64 flag if needed
+        // Set memory64 flag if needed (memory64 extension)
         if memory.limits.memory_index_type == MemoryIndexType::I64 {
             flags |= 0x04; // memory64 flag
         }
 
-        // Write flags
+        // Write flags byte
         content.push(flags);
 
-        // Write min - convert u64 to appropriate type
+        // Write min - convert u64 to appropriate type based on memory index type
         match memory.limits.memory_index_type {
             MemoryIndexType::I32 => {
-                // For Memory32, ensure the value fits in u32
+                // For Memory32, ensure the value fits in u32 and is within WebAssembly limits
                 if memory.limits.min > u32::MAX as u64 {
                     return Err(Error::new(kinds::ParseError(format!(
                         "Memory min size {} exceeds 32-bit limit",
                         memory.limits.min
                     ))));
                 }
+                if memory.limits.min > 65536 {
+                    return Err(Error::new(kinds::ParseError(
+                        "Memory min size exceeds WebAssembly limit of 65536 pages".to_string(),
+                    )));
+                }
                 content.extend_from_slice(&binary::write_leb128_u32(memory.limits.min as u32));
             }
             MemoryIndexType::I64 => {
                 // For Memory64, use the u64 value directly
+                // Apply reasonable implementation limits
+                if memory.limits.min > (1u64 << 48) {
+                    return Err(Error::new(kinds::ParseError(
+                        "Memory64 min size exceeds implementation limit (2^48)".to_string(),
+                    )));
+                }
                 content.extend_from_slice(&binary::write_leb128_u64(memory.limits.min));
             }
         }
@@ -651,32 +702,43 @@ fn encode_memory_section(result: &mut Vec<u8>, memories: &[Memory]) -> Result<()
         if let Some(max) = memory.limits.max {
             match memory.limits.memory_index_type {
                 MemoryIndexType::I32 => {
-                    // For Memory32, ensure the value fits in u32
+                    // For Memory32, ensure the value fits in u32 and is within WebAssembly limits
                     if max > u32::MAX as u64 {
                         return Err(Error::new(kinds::ParseError(format!(
                             "Memory max size {} exceeds 32-bit limit",
                             max
                         ))));
                     }
+                    if max > 65536 {
+                        return Err(Error::new(kinds::ParseError(
+                            "Memory max size exceeds WebAssembly limit of 65536 pages".to_string(),
+                        )));
+                    }
                     content.extend_from_slice(&binary::write_leb128_u32(max as u32));
                 }
                 MemoryIndexType::I64 => {
                     // For Memory64, use the u64 value directly
+                    // Apply reasonable implementation limits
+                    if max > (1u64 << 48) {
+                        return Err(Error::new(kinds::ParseError(
+                            "Memory64 max size exceeds implementation limit (2^48)".to_string(),
+                        )));
+                    }
                     content.extend_from_slice(&binary::write_leb128_u64(max));
                 }
             }
 
-            // Verify max >= min for shared memory
+            // Verify max >= min for shared memory (WebAssembly spec requirement)
             if memory.shared && max < memory.limits.min {
                 return Err(Error::new(kinds::ParseError(
-                    "Shared memory maximum size must be greater than or equal to minimum size"
+                    "Shared memory maximum size must be greater than or equal to minimum size (per WebAssembly spec)"
                         .to_string(),
                 )));
             }
         }
     }
 
-    // Write the section
+    // Write the section with proper section ID (Memory = 5)
     let section_id = wrt_format::section::SectionId::Memory as u8;
     result.extend_from_slice(&binary::write_section_header(
         section_id,

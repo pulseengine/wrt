@@ -129,6 +129,23 @@ pub mod parsers {
     }
 
     /// Parse a memory type
+    ///
+    /// According to the WebAssembly Core Specification (Binary Format):
+    /// https://webassembly.github.io/spec/core/bikeshed/#binary-memtype
+    ///
+    /// The memory type has the following format:
+    /// - Flags byte:
+    ///   - bit 0 = has_max
+    ///   - bit 1 = is_shared (shared memory extension)
+    ///   - bit 2 = is_memory64 (memory64 extension)
+    ///   - bits 3-7 reserved (must be 0)
+    /// - Min size: u32 (memory32) or u64 (memory64) in units of pages (64KiB)
+    /// - Max size: Optional u32 (memory32) or u64 (memory64) in units of pages (present if has_max)
+    ///
+    /// Validation rules:
+    /// - Shared memories must have a maximum size specified
+    /// - For memory32, min and max must not exceed 65536 pages (4GiB)
+    /// - The maximum size must be greater than or equal to the minimum size for shared memories
     pub fn parse_memory_type(bytes: &[u8]) -> Result<(Memory, usize)> {
         let mut offset = 0;
 
@@ -143,9 +160,10 @@ pub mod parsers {
 
         // Check if flags are valid
         // For memory64, 0x04 bit is used to indicate 64-bit indexing
+        // According to the spec, reserved bits must be 0
         if flags & 0xF8 != 0 {
             return Err(Error::new(kinds::ParseError(
-                "Invalid memory flags, reserved bits must be 0".to_string(),
+                "Invalid memory flags, reserved bits must be 0 (per WebAssembly spec)".to_string(),
             )));
         }
 
@@ -161,9 +179,10 @@ pub mod parsers {
         };
 
         // Shared memories must have max specified (shared = 0x03)
+        // Per WebAssembly spec, shared memories must specify maximum size
         if is_shared && !has_max {
             return Err(Error::new(kinds::ParseError(
-                "Shared memory must have maximum size specified".to_string(),
+                "Shared memory must have maximum size specified (per WebAssembly spec)".to_string(),
             )));
         }
 
@@ -175,10 +194,26 @@ pub mod parsers {
             let (value, read) = binary::read_leb128_u64(bytes, offset)?;
             min = value;
             bytes_read = read;
+
+            // Validate minimum size for memory64 (implementation-defined, but should be reasonable)
+            // WebAssembly spec doesn't define specific limits for memory64, but implementations should check
+            if min > (1u64 << 48) {
+                return Err(Error::new(kinds::ParseError(
+                    "Memory64 minimum size exceeds implementation limit (2^48)".to_string(),
+                )));
+            }
         } else {
             let (value, read) = binary::read_leb128_u32(bytes, offset)?;
             min = value as u64;
             bytes_read = read;
+
+            // Validate minimum size for memory32 (per WebAssembly spec)
+            // In WebAssembly 1.0, memories are limited to 4GiB (max pages = 65536)
+            if min > 65536 {
+                return Err(Error::new(kinds::ParseError(
+                    "Memory32 minimum size exceeds WebAssembly limit of 65536 pages".to_string(),
+                )));
+            }
         }
 
         offset += bytes_read;
@@ -192,10 +227,25 @@ pub mod parsers {
                 let (value, read) = binary::read_leb128_u64(bytes, offset)?;
                 max_val = value;
                 bytes_read = read;
+
+                // Validate maximum size for memory64 (implementation-defined, but should be reasonable)
+                if max_val > (1u64 << 48) {
+                    return Err(Error::new(kinds::ParseError(
+                        "Memory64 maximum size exceeds implementation limit (2^48)".to_string(),
+                    )));
+                }
             } else {
                 let (value, read) = binary::read_leb128_u32(bytes, offset)?;
                 max_val = value as u64;
                 bytes_read = read;
+
+                // Validate maximum size for memory32 (per WebAssembly spec)
+                if max_val > 65536 {
+                    return Err(Error::new(kinds::ParseError(
+                        "Memory32 maximum size exceeds WebAssembly limit of 65536 pages"
+                            .to_string(),
+                    )));
+                }
             }
 
             offset += bytes_read;
@@ -203,7 +253,7 @@ pub mod parsers {
             // Verify max >= min for shared memory
             if is_shared && max_val < min {
                 return Err(Error::new(kinds::ParseError(
-                    "Shared memory maximum size must be greater than or equal to minimum size"
+                    "Shared memory maximum size must be greater than or equal to minimum size (per WebAssembly spec)"
                         .to_string(),
                 )));
             }
