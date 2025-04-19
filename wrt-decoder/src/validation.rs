@@ -2,11 +2,14 @@
 //!
 //! This module provides functions for validating WebAssembly modules.
 
-use crate::module::Module;
-use crate::sections::*;
 use wrt_error::{kinds, Error, Result};
-use wrt_format::module::{DataMode, ExportKind, Global, Memory, Table};
-use wrt_format::types::{MemoryIndexType, ValueType};
+use wrt_format::types::ValueType;
+// Use our prelude for common imports
+use crate::prelude::*;
+
+use crate::module::Module;
+use crate::sections::{Global, ImportDesc, Limits, Memory, MemoryIndexType, Table};
+use wrt_format::module::{DataMode, ExportKind};
 
 /// Validate a WebAssembly module
 ///
@@ -647,6 +650,6 @@ fn validate_tables(module: &Module) -> Result<()> {
 
 /// Validate a global type
 fn validate_global_type(global: &Global) -> Result<()> {
-    validate_value_type(&global.value_type)?;
+    validate_value_type(&global.global_type.value_type)?;
     Ok(())
 }

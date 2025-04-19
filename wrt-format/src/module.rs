@@ -4,8 +4,21 @@
 
 use crate::section::CustomSection;
 use crate::types::{FuncType, Limits, ValueType};
+use crate::{String, Vec};
 use wrt_error::kinds;
 use wrt_error::{Error, Result};
+
+#[cfg(not(feature = "std"))]
+use alloc::string::ToString;
+
+/// WebAssembly global type definition
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GlobalType {
+    /// The value type of the global
+    pub value_type: ValueType,
+    /// Whether the global is mutable
+    pub mutable: bool,
+}
 
 /// WebAssembly function definition
 #[derive(Debug, Clone)]
@@ -49,9 +62,7 @@ pub struct Table {
 #[derive(Debug, Clone)]
 pub struct Global {
     /// Global type
-    pub value_type: ValueType,
-    /// Mutable flag
-    pub mutable: bool,
+    pub global_type: GlobalType,
     /// Initialization expression
     pub init: Vec<u8>,
 }
