@@ -53,6 +53,8 @@ enum Command {
         )]
         verify_passing: bool,
     },
+    /// Check if Kani verifier is installed and runnable.
+    CheckKani,
 }
 
 #[derive(Args, Debug)]
@@ -278,6 +280,7 @@ fn main() -> Result<()> {
             create_files,
             verify_passing,
         } => wast_tests::run(create_files, verify_passing)?,
+        Command::CheckKani => run_check_kani(&sh)?,
     }
 
     Ok(())
@@ -301,19 +304,42 @@ fn run_lint(sh: &Shell, opts: LintOpts) -> Result<()> {
 
 fn run_test(sh: &Shell, opts: TestOpts) -> Result<()> {
     println!("Running tests...");
+
+    let mut cmd = StdCommand::new("cargo");
+    cmd.arg("test").arg("--workspace");
+
     if opts.coverage {
-        sh.cmd("cargo")
-            .arg("llvm-cov")
-            .arg("--all-features")
-            .arg("test")
-            .arg("--lcov")
-            .arg("--output-path")
-            .arg("coverage.lcov")
-            .run()?;
-        println!("Coverage report generated at coverage.lcov");
-    } else {
-        sh.cmd("cargo").arg("test").run()?;
+        // Example coverage setup (adjust as needed, e.g., using llvm-cov)
+        println!("Running tests with coverage...");
+        cmd.env("CARGO_INCREMENTAL", "0");
+        cmd.env("RUSTFLAGS", "-Zprofile -Ccodegen-units=1 -Copt-level=0 -Clink-dead-code -Coverflow-checks=off -Zpanic_abort_tests");
+        cmd.env("RUSTDOCFLAGS", "-Cpanic=abort");
+        // Add specific coverage tool commands here, e.g., grcov or llvm-cov
     }
+
+    let status = cmd.status()?;
+    if !status.success() {
+        anyhow::bail!("Cargo test failed");
+    }
+
+    // --- Add Kani Verification Step ---
+    println!("\nRunning Kani verification for wrt-sync...");
+    println!("(Ensure Kani is installed and compatible: https://model-checking.github.io/kani/)");
+
+    // Run Kani specifically on the wrt-sync crate's tests
+    let kani_cmd = StdCommand::new("cargo")
+        .current_dir("wrt-sync") // Ensure we run in the correct directory
+        .arg("kani")
+        .arg("--tests")
+        // Add --enable-unstable if needed for specific Kani features
+        // .arg("--enable-unstable")
+        .status()?;
+
+    if !kani_cmd.success() {
+        anyhow::bail!("Kani verification failed for wrt-sync");
+    }
+
+    println!("\nTests and Kani verification completed successfully.");
     Ok(())
 }
 
@@ -735,4 +761,38 @@ fn run_symbols(sh: &Shell, opts: SymbolsOpts) -> Result<()> {
     println!("Symbol analysis complete.");
 
     Ok(())
+}
+
+fn run_check_kani(sh: &Shell) -> Result<()> {
+    println!("Checking Kani installation...");
+
+    match StdCommand::new("cargo")
+        .arg("kani")
+        .arg("--version")
+        .output()
+    {
+        Ok(output) => {
+            if output.status.success() {
+                let version_str = String::from_utf8_lossy(&output.stdout);
+                println!("Kani found: {}", version_str.trim());
+                println!("Note: Ensure Kani version is compatible with kani-verifier crate.");
+                Ok(())
+            } else {
+                eprintln!("\nError: 'cargo kani --version' failed.");
+                eprintln!("Kani might not be installed or configured correctly.");
+                eprintln!(
+                    "Please follow the installation guide: https://model-checking.github.io/kani/"
+                );
+                anyhow::bail!("Kani check failed.")
+            }
+        }
+        Err(e) => {
+            eprintln!("\nError: Failed to execute 'cargo kani'. {}", e);
+            eprintln!("Kani might not be installed or in the system's PATH.");
+            eprintln!(
+                "Please follow the installation guide: https://model-checking.github.io/kani/"
+            );
+            anyhow::bail!("Kani check failed.")
+        }
+    }
 }

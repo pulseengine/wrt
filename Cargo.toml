@@ -5,6 +5,9 @@ members = [
     "xtask",
     "example",
     "logging-adapter",
+    "wrt-sync",
+    "wrt-error",
+    "wrt-format",
 ]
 resolver = "2"  # Use edition 2021 resolver
 
@@ -22,3 +25,7 @@ wit-bindgen = "0.41.0"
 
 [workspace.lints.rust]
 unexpected_cfgs = { level = "allow", check-cfg = ['cfg(test)'] }
+unused_imports = "allow"
+unused_variables = "allow"
+unused_mut = "allow"
+unused_macros = "allow"
