@@ -1,8 +1,9 @@
-use crate::error::{Error, Result};
-use crate::types::TableType;
-use crate::values::Value;
+//! Table manipulation logic.
+
 use crate::Vec;
-use std::sync::RwLock;
+use crate::{types::TableType, values::Value};
+use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
+use wrt_error::{kinds, Error, Result};
 
 /// Represents a WebAssembly table instance
 #[derive(Debug)]
@@ -55,10 +56,10 @@ impl Table {
         let old_size_usize = self.elements.read().unwrap().len(); // Get current size as usize
         let delta_usize: usize = delta
             .try_into()
-            .map_err(|_| Error::Execution("Delta too large for usize".into()))?;
+            .map_err(|_| Error::new(kinds::ExecutionError("Delta too large for usize".into())))?;
         let new_size_usize = old_size_usize
             .checked_add(delta_usize)
-            .ok_or_else(|| Error::Execution("Table size overflow".into()))?;
+            .ok_or_else(|| Error::new(kinds::ExecutionError("Table size overflow".into())))?;
 
         let max_usize = self
             .type_
@@ -66,7 +67,9 @@ impl Table {
             .map_or(usize::MAX, |m| m.try_into().unwrap_or(usize::MAX));
 
         if new_size_usize > max_usize {
-            return Err(Error::Execution("Table size exceeds maximum".into()));
+            return Err(Error::new(kinds::ExecutionError(
+                "Table size exceeds maximum".into(),
+            )));
         }
 
         let mut elements_guard = self.elements.write().unwrap();
@@ -76,30 +79,38 @@ impl Table {
 
     /// Gets an element from the table
     pub fn get(&self, idx: u32) -> Result<Option<Value>> {
-        let elements_guard = self.elements.read().unwrap();
+        let elements_guard = self.elements.read().map_err(|_| {
+            Error::new(kinds::PoisonedLockError(
+                "Table elements lock poisoned".to_string(),
+            ))
+        })?;
         let idx_usize = idx as usize;
         if idx_usize >= elements_guard.len() {
             // Wasm spec dictates trap on out-of-bounds access
-            return Err(Error::OutOfBounds);
+            return Err(Error::new(kinds::TableAccessOutOfBounds));
         }
         Ok(elements_guard[idx_usize].clone())
     }
 
     /// Sets an element in the table
     pub fn set(&self, idx: u32, value: Option<Value>) -> Result<()> {
-        let mut elements_guard = self.elements.write().unwrap();
+        let mut elements_guard = self.elements.write().map_err(|_| {
+            Error::new(kinds::PoisonedLockError(
+                "Table elements lock poisoned".to_string(),
+            ))
+        })?;
         let idx_usize = idx as usize;
         if idx_usize >= elements_guard.len() {
-            return Err(Error::OutOfBounds); // Trap on out-of-bounds write
+            return Err(Error::new(kinds::TableAccessOutOfBounds)); // Trap on out-of-bounds write
         }
         // Type check if value is Some
         if let Some(ref val) = value {
             if !val.matches_type(&self.type_.element_type) {
-                return Err(Error::TypeMismatch(format!(
+                return Err(Error::new(kinds::InvalidTypeError(format!(
                     "Invalid value type {:?} for table type {:?}",
                     val.get_type(),
                     self.type_.element_type
-                )));
+                ))));
             }
         }
         elements_guard[idx_usize] = value;
@@ -109,9 +120,11 @@ impl Table {
     /// Initializes a range of elements from a vector
     pub fn init(&self, offset: u32, init: &[Option<Value>]) -> Result<()> {
         let len = init.len() as u32;
-        let end = offset
-            .checked_add(len)
-            .ok_or_else(|| Error::Execution("Table initialization overflow".into()))?;
+        let end = offset.checked_add(len).ok_or_else(|| {
+            Error::new(kinds::ExecutionError(
+                "Table initialization overflow".into(),
+            ))
+        })?;
 
         let mut elements_guard = self.elements.write().unwrap();
         self.check_bounds_internal(end.saturating_sub(1), &elements_guard)?;
@@ -129,12 +142,14 @@ impl Table {
         if len == 0 {
             return Ok(());
         }
-        let dst_end = dst
-            .checked_add(len)
-            .ok_or_else(|| Error::Execution("Table copy destination overflow".into()))?;
-        let src_end = src
-            .checked_add(len)
-            .ok_or_else(|| Error::Execution("Table copy source overflow".into()))?;
+        let dst_end = dst.checked_add(len).ok_or_else(|| {
+            Error::new(kinds::ExecutionError(
+                "Table copy destination overflow".into(),
+            ))
+        })?;
+        let src_end = src.checked_add(len).ok_or_else(|| {
+            Error::new(kinds::ExecutionError("Table copy source overflow".into()))
+        })?;
 
         let mut elements_guard = self.elements.write().unwrap();
         self.check_bounds_internal(dst_end.saturating_sub(1), &elements_guard)?;
@@ -165,21 +180,21 @@ impl Table {
         let len_usize = len as usize;
         let end_usize = offset_usize
             .checked_add(len_usize)
-            .ok_or_else(|| Error::Execution("Table fill overflow".into()))?;
+            .ok_or_else(|| Error::new(kinds::ExecutionError("Table fill overflow".into())))?;
 
         let mut elements_guard = self.elements.write().unwrap();
         // Check bounds *after* getting lock
         if end_usize > elements_guard.len() {
-            return Err(Error::OutOfBounds); // Trap if fill goes out of bounds
+            return Err(Error::new(kinds::TableAccessOutOfBounds)); // Trap if fill goes out of bounds
         }
         // Type check if value is Some
         if let Some(ref val) = value {
             if !val.matches_type(&self.type_.element_type) {
-                return Err(Error::TypeMismatch(format!(
+                return Err(Error::new(kinds::InvalidTypeError(format!(
                     "Invalid value type {:?} for table type {:?}",
                     val.get_type(),
                     self.type_.element_type
-                )));
+                ))));
             }
         }
 
@@ -195,7 +210,7 @@ impl Table {
         G: std::ops::Deref<Target = Vec<Option<Value>>>,
     {
         if idx >= guard.len() as u32 {
-            return Err(Error::Execution("Table access out of bounds".into()));
+            return Err(Error::new(kinds::TableAccessOutOfBounds));
         }
         Ok(())
     }
@@ -204,11 +219,11 @@ impl Table {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::error::Result;
     use crate::values::Value;
     use crate::ValueType;
     #[cfg(not(feature = "std"))]
     use alloc::vec;
+    use wrt_error::Result;
 
     fn create_test_table_type(min: u32, max: Option<u32>) -> TableType {
         TableType {

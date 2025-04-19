@@ -1,69 +1,97 @@
-use crate::StacklessEngine;
+//! Behavior traits defining the core interfaces for the WebAssembly runtime engine.
+
+use std::any::Any;
+use std::sync::Arc;
+
 use crate::{
-    error::{Error, Result},
+    error::{kinds, Error, Result},
     global::Global,
     memory::{DefaultMemory, MemoryBehavior},
-    stack::Stack,
+    module::{Data, Element, Function},
+    stackless::StacklessEngine,
     table::Table,
-    types::{BlockType, FuncType, GlobalType, ValueType},
+    types::BlockType,
+    types::FuncType,
+    types::MemoryType,
     values::Value,
-    Vec,
 };
-use std::sync::Arc;
-use std::sync::MutexGuard;
+
+/// Represents the outcome of executing a single instruction, guiding the engine's next action.
+#[derive(Debug)]
+pub enum ControlFlow {
+    /// Continue to the next instruction sequentially.
+    Continue,
+    /// Branch to a different instruction PC, potentially adjusting the stack.
+    Branch {
+        target_pc: usize,
+        values_to_keep: usize,
+    },
+    /// Return from the current function call.
+    Return { values: Vec<Value> },
+    /// Initiate a new function call.
+    Call {
+        func_idx: u32,
+        args: Vec<Value>,
+        return_pc: usize,
+    },
+    /// Halt execution due to a trap.
+    Trap(Error),
+}
 
 /// Defines the basic behavior of a value stack.
 pub trait StackBehavior: std::fmt::Debug {
     /// Pushes a value onto the stack.
-    fn push(&mut self, value: Value) -> Result<()>;
+    fn push(&mut self, value: Value) -> Result<(), Error>;
     /// Pops a value from the stack.
-    fn pop(&mut self) -> Result<Value>;
+    fn pop(&mut self) -> Result<Value, Error>;
 
     /// Pops a value and expects it to be a boolean (i32, 0 or 1).
-    fn pop_bool(&mut self) -> Result<bool> {
+    fn pop_bool(&mut self) -> Result<bool, Error> {
         match self.pop()? {
             Value::I32(0) => Ok(false),
             Value::I32(1) => Ok(true),
-            _ => Err(Error::InvalidType(
+            _ => Err(Error::new(kinds::InvalidTypeError(
                 "Expected boolean (i32 0 or 1)".to_string(),
-            )),
+            ))),
         }
     }
 
     /// Pops a value and expects it to be an i32.
-    fn pop_i32(&mut self) -> Result<i32> {
+    fn pop_i32(&mut self) -> Result<i32, Error> {
         match self.pop()? {
             Value::I32(v) => Ok(v),
-            _ => Err(Error::InvalidType("Expected i32".to_string())),
+            _ => Err(Error::new(kinds::InvalidTypeError(
+                "Expected i32".to_string(),
+            ))),
         }
     }
 
     /// Pops a value and expects it to be a v128.
-    fn pop_v128(&mut self) -> Result<[u8; 16]> {
+    fn pop_v128(&mut self) -> Result<[u8; 16], Error> {
         match self.pop()? {
             Value::V128(bytes) => Ok(bytes),
-            other => Err(Error::InvalidType(format!(
+            other => Err(Error::new(kinds::InvalidTypeError(format!(
                 "Expected v128, found {}",
                 other.type_()
-            ))),
+            )))),
         }
     }
 
     /// Pops a value and expects it to be an i64.
-    fn pop_i64(&mut self) -> Result<i64> {
+    fn pop_i64(&mut self) -> Result<i64, Error> {
         match self.pop()? {
             Value::I64(val) => Ok(val),
-            other => Err(Error::InvalidType(format!(
+            other => Err(Error::new(kinds::InvalidTypeError(format!(
                 "Expected i64, found {}",
                 other.type_()
-            ))),
+            )))),
         }
     }
 
     /// Returns a reference to the top value on the stack without removing it.
-    fn peek(&self) -> Result<&Value>;
+    fn peek(&self) -> Result<&Value, Error>;
     /// Returns a mutable reference to the top value on the stack without removing it.
-    fn peek_mut(&mut self) -> Result<&mut Value>;
+    fn peek_mut(&mut self) -> Result<&mut Value, Error>;
     /// Returns a slice containing all values currently on the stack.
     fn values(&self) -> &[Value];
     /// Returns a mutable slice containing all values currently on the stack.
@@ -73,45 +101,84 @@ pub trait StackBehavior: std::fmt::Debug {
     /// Returns `true` if the stack contains no values.
     fn is_empty(&self) -> bool;
 
-    /// Pushes a label onto the conceptual label stack (implementation specific).
-    fn push_label(&mut self, arity: usize, pc: usize);
-    /// Pops a label from the conceptual label stack (implementation specific).
-    fn pop_label(&mut self) -> Result<Label>;
-    /// Gets a reference to a label by index from the conceptual label stack (implementation specific).
-    fn get_label(&self, index: usize) -> Option<&Label>;
+    /// Pushes a label onto the conceptual label stack
+    fn push_label(&mut self, label: Label) -> Result<(), Error>;
+
+    /// Pops a label from the conceptual label stack
+    fn pop_label(&mut self) -> Result<Label, Error>;
+
+    /// Gets a reference to a label at the given depth (relative to top of stack)
+    fn get_label(&self, depth: usize) -> Option<&Label>;
+
+    /// Pushes multiple values onto the stack.
+    fn push_n(&mut self, values: &[Value]);
+
+    /// Pops `n` values from the stack.
+    fn pop_n(&mut self, n: usize) -> Vec<Value>;
+
+    /// Pops a label specifically associated with a frame boundary.
+    fn pop_frame_label(&mut self) -> Result<Label, Error>;
+
+    /// Executes a direct function call using the stack context.
+    fn execute_function_call_direct(
+        &mut self,
+        engine: &mut StacklessEngine,
+        caller_instance_idx: u32,
+        func_idx: u32,
+        args: Vec<Value>,
+    ) -> Result<Vec<Value>, Error>;
+
+    /// Get mutable reference as Any for downcasting
+    fn as_any(&mut self) -> &mut dyn std::any::Any;
 }
 
 /// Trait for accessing the frame state
-pub trait FrameBehavior: ControlFlowBehavior {
+pub trait FrameBehavior: Send + Sync + std::fmt::Debug + Any {
     /// Get locals
     fn locals(&mut self) -> &mut Vec<Value>;
 
     /// Get a local variable by index
-    fn get_local(&self, idx: usize) -> Result<Value>;
+    fn get_local(&self, idx: usize) -> Result<Value, Error>;
 
     /// Set a local variable by index
-    fn set_local(&mut self, idx: usize, value: Value) -> Result<()>;
+    fn set_local(&mut self, idx: usize, value: Value) -> Result<(), Error>;
 
     /// Get a global variable by index (returns Arc)
-    fn get_global(&self, idx: usize) -> Result<Arc<Global>>;
+    fn get_global(&self, idx: usize, engine: &StacklessEngine) -> Result<Arc<Global>, Error>;
 
     /// Set a global variable by index (takes &self due to interior mutability)
-    fn set_global(&mut self, idx: usize, value: Value) -> Result<()>;
+    fn set_global(
+        &mut self,
+        idx: usize,
+        value: Value,
+        engine: &StacklessEngine,
+    ) -> Result<(), Error>;
+
+    /// Get mutable access to a global's value
+    fn get_global_mut(&mut self, idx: usize) -> Result<wrt_sync::WrtMutexGuard<Value>, Error>;
 
     /// Get a memory instance by index
-    fn get_memory(&self, idx: usize) -> Result<Arc<dyn MemoryBehavior>>;
+    fn get_memory(
+        &self,
+        idx: usize,
+        engine: &StacklessEngine,
+    ) -> Result<Arc<dyn MemoryBehavior>, Error>;
 
     /// Get a mutable memory instance by index
-    fn get_memory_mut(&mut self, idx: usize) -> Result<Arc<dyn MemoryBehavior>>;
+    fn get_memory_mut(
+        &mut self,
+        idx: usize,
+        engine: &StacklessEngine,
+    ) -> Result<Arc<dyn MemoryBehavior>, Error>;
 
     /// Get a table instance by index (returns Arc)
-    fn get_table(&self, idx: usize) -> Result<Arc<Table>>;
+    fn get_table(&self, idx: usize, engine: &StacklessEngine) -> Result<Arc<Table>, Error>;
 
     /// Get a mutable table instance by index (added)
-    fn get_table_mut(&mut self, idx: usize) -> Result<Arc<Table>>;
+    fn get_table_mut(&mut self, idx: usize, engine: &StacklessEngine) -> Result<Arc<Table>, Error>;
 
-    /// Get the function type for a given function index
-    fn get_function_type(&self, func_idx: u32) -> Result<FuncType>;
+    /// Get the function type for a given function index (Doesn't need engine)
+    fn get_function_type(&self, func_idx: u32) -> Result<FuncType, Error>;
 
     /// Get the current program counter
     fn pc(&self) -> usize;
@@ -127,6 +194,9 @@ pub trait FrameBehavior: ControlFlowBehavior {
 
     /// Get the number of locals
     fn locals_len(&self) -> usize;
+
+    /// Get mutable access to the local values
+    fn locals_mut(&mut self) -> &mut [Value];
 
     /// Get mutable access to the label stack
     fn label_stack(&mut self) -> &mut Vec<Label>;
@@ -144,38 +214,119 @@ pub trait FrameBehavior: ControlFlowBehavior {
     fn return_pc(&self) -> usize;
 
     /// Set the return program counter for the current frame
-    fn set_return_pc(&mut self, pc: usize);
+    fn set_return_pc(&mut self, pc: Option<usize>);
 
     /// Get the frame as a mutable Any reference for downcasting
     fn as_any(&mut self) -> &mut dyn std::any::Any;
 
-    // Memory access methods (take &self due to interior mutability)
-    fn load_i32(&self, addr: usize, align: u32) -> Result<i32>;
-    fn load_i64(&self, addr: usize, align: u32) -> Result<i64>;
-    fn load_f32(&self, addr: usize, align: u32) -> Result<f32>;
-    fn load_f64(&self, addr: usize, align: u32) -> Result<f64>;
-    fn load_i8(&self, addr: usize, align: u32) -> Result<i8>;
-    fn load_u8(&self, addr: usize, align: u32) -> Result<u8>;
-    fn load_i16(&self, addr: usize, align: u32) -> Result<i16>;
-    fn load_u16(&self, addr: usize, align: u32) -> Result<u16>;
-    fn load_v128(&self, addr: usize, align: u32) -> Result<[u8; 16]>;
-    fn store_i32(&mut self, addr: usize, align: u32, value: i32) -> Result<()>;
-    fn store_i64(&mut self, addr: usize, align: u32, value: i64) -> Result<()>;
-    fn store_f32(&mut self, addr: usize, align: u32, value: f32) -> Result<()>;
-    fn store_f64(&mut self, addr: usize, align: u32, value: f64) -> Result<()>;
-    fn store_i8(&mut self, addr: usize, align: u32, value: i8) -> Result<()>;
-    fn store_u8(&mut self, addr: usize, align: u32, value: u8) -> Result<()>;
-    fn store_i16(&mut self, addr: usize, align: u32, value: i16) -> Result<()>;
-    fn store_u16(&mut self, addr: usize, align: u32, value: u16) -> Result<()>;
-    fn store_v128(&mut self, addr: usize, align: u32, value: [u8; 16]) -> Result<()>;
-    fn memory_size(&self) -> Result<u32>;
-    fn memory_grow(&mut self, pages: u32) -> Result<u32>;
+    /// Push a label onto the frame's label stack
+    fn push_label(&mut self, label: Label) -> Result<(), Error>;
 
-    // Table access methods (take &self due to interior mutability)
-    fn table_get(&self, table_idx: u32, idx: u32) -> Result<Value>;
-    fn table_set(&mut self, table_idx: u32, idx: u32, value: Value) -> Result<()>;
-    fn table_size(&self, table_idx: u32) -> Result<u32>;
-    fn table_grow(&mut self, table_idx: u32, delta: u32, value: Value) -> Result<u32>;
+    /// Pop a label from the frame's label stack
+    fn pop_label(&mut self) -> Result<Label, Error>;
+
+    /// Get a reference to a label at the given depth (relative to top of stack)
+    fn get_label(&self, depth: usize) -> Option<&Label>;
+
+    // Memory access methods (need engine context)
+    fn load_i32(&self, addr: usize, align: u32, engine: &StacklessEngine) -> Result<i32, Error>;
+    fn load_i64(&self, addr: usize, align: u32, engine: &StacklessEngine) -> Result<i64, Error>;
+    fn load_f32(&self, addr: usize, align: u32, engine: &StacklessEngine) -> Result<f32, Error>;
+    fn load_f64(&self, addr: usize, align: u32, engine: &StacklessEngine) -> Result<f64, Error>;
+    fn load_i8(&self, addr: usize, align: u32, engine: &StacklessEngine) -> Result<i8, Error>;
+    fn load_u8(&self, addr: usize, align: u32, engine: &StacklessEngine) -> Result<u8, Error>;
+    fn load_i16(&self, addr: usize, align: u32, engine: &StacklessEngine) -> Result<i16, Error>;
+    fn load_u16(&self, addr: usize, align: u32, engine: &StacklessEngine) -> Result<u16, Error>;
+    fn load_v128(
+        &self,
+        addr: usize,
+        align: u32,
+        engine: &StacklessEngine,
+    ) -> Result<[u8; 16], Error>;
+    fn store_i32(
+        &mut self,
+        addr: usize,
+        align: u32,
+        value: i32,
+        engine: &StacklessEngine,
+    ) -> Result<(), Error>;
+    fn store_i64(
+        &mut self,
+        addr: usize,
+        align: u32,
+        value: i64,
+        engine: &StacklessEngine,
+    ) -> Result<(), Error>;
+    fn store_f32(
+        &mut self,
+        addr: usize,
+        align: u32,
+        value: f32,
+        engine: &StacklessEngine,
+    ) -> Result<(), Error>;
+    fn store_f64(
+        &mut self,
+        addr: usize,
+        align: u32,
+        value: f64,
+        engine: &StacklessEngine,
+    ) -> Result<(), Error>;
+    fn store_i8(
+        &mut self,
+        addr: usize,
+        align: u32,
+        value: i8,
+        engine: &StacklessEngine,
+    ) -> Result<(), Error>;
+    fn store_u8(
+        &mut self,
+        addr: usize,
+        align: u32,
+        value: u8,
+        engine: &StacklessEngine,
+    ) -> Result<(), Error>;
+    fn store_i16(
+        &mut self,
+        addr: usize,
+        align: u32,
+        value: i16,
+        engine: &StacklessEngine,
+    ) -> Result<(), Error>;
+    fn store_u16(
+        &mut self,
+        addr: usize,
+        align: u32,
+        value: u16,
+        engine: &StacklessEngine,
+    ) -> Result<(), Error>;
+    fn store_v128(
+        &mut self,
+        addr: usize,
+        align: u32,
+        value: [u8; 16],
+        engine: &StacklessEngine,
+    ) -> Result<(), Error>;
+    fn memory_size(&self, engine: &StacklessEngine) -> Result<u32, Error>;
+    fn memory_grow(&mut self, pages: u32, engine: &StacklessEngine) -> Result<u32, Error>;
+
+    // Table access methods (need engine context)
+    fn table_get(&self, table_idx: u32, idx: u32, engine: &StacklessEngine)
+        -> Result<Value, Error>;
+    fn table_set(
+        &mut self,
+        table_idx: u32,
+        idx: u32,
+        value: Value,
+        engine: &StacklessEngine,
+    ) -> Result<(), Error>;
+    fn table_size(&self, table_idx: u32, engine: &StacklessEngine) -> Result<u32, Error>;
+    fn table_grow(
+        &mut self,
+        table_idx: u32,
+        delta: u32,
+        value: Value,
+        engine: &StacklessEngine,
+    ) -> Result<u32, Error>;
     fn table_init(
         &mut self,
         table_idx: u32,
@@ -183,7 +334,8 @@ pub trait FrameBehavior: ControlFlowBehavior {
         dst: u32,
         src: u32,
         n: u32,
-    ) -> Result<()>;
+        engine: &StacklessEngine,
+    ) -> Result<(), Error>;
     fn table_copy(
         &mut self,
         dst_table: u32,
@@ -191,52 +343,75 @@ pub trait FrameBehavior: ControlFlowBehavior {
         dst: u32,
         src: u32,
         n: u32,
-    ) -> Result<()>;
-    fn elem_drop(&mut self, elem_idx: u32) -> Result<()>;
-    fn table_fill(&mut self, table_idx: u32, dst: u32, val: Value, n: u32) -> Result<()>;
+        engine: &StacklessEngine,
+    ) -> Result<(), Error>;
+    fn elem_drop(&mut self, elem_idx: u32, engine: &StacklessEngine) -> Result<(), Error>;
+    fn table_fill(
+        &mut self,
+        table_idx: u32,
+        dst: u32,
+        val: Value,
+        n: u32,
+        engine: &StacklessEngine,
+    ) -> Result<(), Error>;
+
+    /// Get an element segment by index (needs instance)
+    fn get_element_segment(
+        &self,
+        elem_idx: u32,
+        engine: &StacklessEngine,
+    ) -> Result<Arc<Element>, Error>;
+
+    /// Get the data segment by index (needs instance)
+    fn get_data_segment(&self, data_idx: u32, engine: &StacklessEngine)
+        -> Result<Arc<Data>, Error>;
+
+    /// Drop a data segment (needs instance)
+    fn drop_data_segment(&mut self, data_idx: u32, engine: &StacklessEngine) -> Result<(), Error>;
 
     // Stack interaction helpers (might not belong here, could be separate trait?)
     // These might still need &mut self if they directly manipulate a mutable stack reference
-    fn pop_bool(&mut self, stack: &mut dyn Stack) -> Result<bool>;
-    fn pop_i32(&mut self, stack: &mut dyn Stack) -> Result<i32>;
+    fn pop_bool(&mut self, stack: &mut dyn StackBehavior) -> Result<bool, Error>;
+    fn pop_i32(&mut self, stack: &mut dyn StackBehavior) -> Result<i32, Error>;
 
-    /// Get two tables and return a tuple of MutexGuard<Table>
+    /// Get two tables and return a tuple of Arc<Table>
     fn get_two_tables_mut(
         &mut self,
         _idx1: u32,
         _idx2: u32,
-    ) -> Result<(MutexGuard<Table>, MutexGuard<Table>)>;
+        engine: &StacklessEngine,
+    ) -> Result<(Arc<Table>, Arc<Table>), Error>;
 
-    /// Add method to get instance index
-    fn instance_idx(&self) -> u32;
+    // Added for bulk memory/table operations
+    fn set_data_segment(&mut self, idx: u32, segment: Arc<Data>) -> Result<(), Error>;
 }
 
 /// Defines behaviors related to control flow instructions.
 pub trait ControlFlowBehavior {
     /// Called when entering a `block` instruction.
-    fn enter_block(&mut self, ty: BlockType, stack_len: usize) -> Result<()>;
+    fn enter_block(&mut self, ty: BlockType, stack_len: usize) -> Result<(), Error>;
     /// Called when entering a `loop` instruction.
-    fn enter_loop(&mut self, ty: BlockType, stack_len: usize) -> Result<()>;
+    fn enter_loop(&mut self, ty: BlockType, stack_len: usize) -> Result<(), Error>;
     /// Called when entering an `if` instruction.
-    fn enter_if(&mut self, ty: BlockType, stack_len: usize, condition: bool) -> Result<()>;
+    fn enter_if(&mut self, ty: BlockType, stack_len: usize, condition: bool) -> Result<(), Error>;
     /// Called when entering an `else` branch.
-    fn enter_else(&mut self, stack_len: usize) -> Result<()>;
+    fn enter_else(&mut self, stack_len: usize) -> Result<(), Error>;
     /// Called when exiting a block (`end` instruction).
-    fn exit_block(&mut self, stack: &mut dyn Stack) -> Result<()>;
+    fn exit_block(&mut self, stack: &mut dyn StackBehavior) -> Result<(), Error>;
     /// Called for `br` and `br_if` instructions.
-    fn branch(&mut self, label_idx: u32, stack: &mut dyn Stack) -> Result<()>;
+    fn branch(&mut self, depth: u32) -> Result<(usize, usize), Error>;
     /// Called for the `return` instruction.
-    fn return_(&mut self, stack: &mut dyn Stack) -> Result<()>;
+    fn return_(&mut self) -> Result<(usize, usize), Error>;
     /// Called for the `call` instruction.
-    fn call(&mut self, func_idx: u32, stack: &mut dyn Stack) -> Result<()>;
+    fn call(&mut self, func_idx: u32, stack: &mut dyn StackBehavior) -> Result<(), Error>;
     /// Called for the `call_indirect` instruction.
     fn call_indirect(
         &mut self,
         type_idx: u32,
         table_idx: u32,
         entry: u32,
-        stack: &mut dyn Stack,
-    ) -> Result<()>;
+        stack: &mut dyn StackBehavior,
+    ) -> Result<(), Error>;
     /// Sets the arity for the current label (used for stack validation).
     fn set_label_arity(&mut self, arity: usize);
 }
@@ -246,19 +421,44 @@ pub trait InstructionExecutor: std::fmt::Debug {
     /// Execute the instruction in the given context
     ///
     /// # Arguments
-    /// * `stack` - The execution stack
-    /// * `frame` - The current execution frame
+    /// * `stack` - The operand stack.
+    /// * `frame` - The current execution frame.
+    /// * `engine` - The stackless engine (provides access to instances, etc.).
+    ///
+    /// # Returns
+    /// * `Ok(ControlFlow)` - Indicates the next control flow action for the engine.
+    /// * `Err(Error)` - If an error occurred during execution.
+    fn execute(
+        &self,
+        stack: &mut dyn StackBehavior,
+        frame: &mut dyn FrameBehavior,
+        engine: &mut StacklessEngine,
+    ) -> Result<ControlFlow, Error>;
+
+    /// Execute the instruction using a frame index to avoid multiple mutable borrows
+    ///
+    /// This is a default implementation that can be overridden for efficiency
+    ///
+    /// # Arguments
+    /// * `stack` - The operand stack which contains the frames
+    /// * `frame_idx` - The index of the frame to use
     /// * `engine` - The stackless engine
     ///
     /// # Returns
-    /// * `Ok(())` - If the instruction executed successfully
-    /// * `Err(Error)` - If an error occurred
-    fn execute(
+    /// * `Ok(ControlFlow)` - Indicates the next control flow action for the engine.
+    /// * `Err(Error)` - If an error occurred during execution.
+    fn execute_with_frame_idx(
         &self,
-        stack: &mut dyn Stack,
-        frame: &mut dyn FrameBehavior,
-        engine: &StacklessEngine,
-    ) -> Result<()>;
+        stack: &mut dyn StackBehavior,
+        frame_idx: usize,
+        engine: &mut StacklessEngine,
+    ) -> Result<ControlFlow, Error> {
+        // This implementation is no longer needed as stackless.rs directly uses execute
+        // with a cloned frame, avoiding the borrow checker issues
+        Err(Error::new(kinds::ExecutionError(
+            "execute_with_frame_idx is deprecated, use execute directly".to_string(),
+        )))
+    }
 }
 
 /// Represents a control-flow label used by behavior traits.
@@ -268,18 +468,14 @@ pub struct Label {
     pub arity: usize,
     /// The program counter (instruction index) pointing to the instruction *after* the block's end.
     pub pc: usize,
-    /// The program counter (instruction index) pointing to the continuation of the block (e.g., the `else` part of an `if`).
+    /// The program counter (instruction index) pointing to the continuation of the block (e.g., the `else` part of an `if`, or the start for `loop`).
     pub continuation: usize,
-}
-
-impl From<crate::stack::Label> for Label {
-    fn from(label: crate::stack::Label) -> Self {
-        Self {
-            arity: label.arity,
-            pc: label.pc,
-            continuation: label.continuation,
-        }
-    }
+    /// The depth of the value stack when this label was pushed (used for stack cleanup on branch).
+    pub stack_depth: usize,
+    /// Indicates if this label represents a loop (for `br` targeting).
+    pub is_loop: bool,
+    /// Indicates if this label represents an if block (for `else` handling).
+    pub is_if: bool, // Optional, might help with else logic
 }
 
 /// Represents the execution context (frame) used by behavior traits.
@@ -301,8 +497,8 @@ pub struct Frame {
     pub label_stack: Vec<Label>,
 }
 
-/// A behavior that does nothing and returns default values
-#[derive(Debug, Default)]
+/// Placeholder implementation for behaviors when no real implementation is needed.
+#[derive(Debug)]
 pub struct NullBehavior {
     pub locals: Vec<Value>,
     pub pc: usize,
@@ -311,6 +507,8 @@ pub struct NullBehavior {
     pub label_arity: usize,
     pub return_pc: usize,
     pub label_stack: Vec<Label>,
+    // Added instance_idx to satisfy FrameBehavior
+    pub instance_idx: u32,
 }
 
 impl FrameBehavior for NullBehavior {
@@ -318,48 +516,63 @@ impl FrameBehavior for NullBehavior {
         &mut self.locals
     }
 
-    fn get_local(&self, idx: usize) -> Result<Value> {
-        self.locals
-            .get(idx)
-            .cloned()
-            .ok_or_else(|| Error::InvalidLocal(format!("Local index out of bounds: {idx}")))
+    fn get_local(&self, idx: usize) -> Result<Value, Error> {
+        Err(Error::new(kinds::InvalidLocalIndexError(idx as u32)))
     }
 
     fn as_any(&mut self) -> &mut dyn std::any::Any {
         self
     }
 
-    fn set_local(&mut self, idx: usize, value: Value) -> Result<()> {
-        if idx < self.locals.len() {
-            self.locals[idx] = value;
-            Ok(())
-        } else {
-            Err(Error::InvalidLocalIndex(idx))
-        }
+    fn set_local(&mut self, idx: usize, _value: Value) -> Result<(), Error> {
+        Err(Error::new(kinds::InvalidLocalIndexError(idx as u32)))
     }
 
-    fn get_global(&self, _idx: usize) -> Result<Arc<Global>> {
-        Err(Error::InvalidGlobalIndex(_idx))
+    fn get_global(&self, idx: usize, _engine: &StacklessEngine) -> Result<Arc<Global>, Error> {
+        Err(Error::new(kinds::InvalidGlobalIndexError(idx as u32)))
     }
 
-    fn set_global(&mut self, _idx: usize, _value: Value) -> Result<()> {
-        Err(Error::InvalidGlobalIndex(_idx))
+    fn set_global(
+        &mut self,
+        idx: usize,
+        _value: Value,
+        _engine: &StacklessEngine,
+    ) -> Result<(), Error> {
+        Err(Error::new(kinds::InvalidGlobalIndexError(idx as u32)))
     }
 
-    fn get_memory(&self, _idx: usize) -> Result<Arc<dyn MemoryBehavior>> {
-        Err(Error::InvalidMemoryIndex(_idx))
+    fn get_memory(
+        &self,
+        idx: usize,
+        _engine: &StacklessEngine,
+    ) -> Result<Arc<dyn MemoryBehavior>, Error> {
+        Err(Error::new(kinds::InvalidMemoryIndexError(idx as u32)))
     }
 
-    fn get_memory_mut(&mut self, _idx: usize) -> Result<Arc<dyn MemoryBehavior>> {
-        Err(Error::InvalidMemoryIndex(_idx))
+    fn get_memory_mut(
+        &mut self,
+        idx: usize,
+        _engine: &StacklessEngine,
+    ) -> Result<Arc<dyn MemoryBehavior>, Error> {
+        Err(Error::new(kinds::InvalidMemoryIndexError(idx as u32)))
     }
 
-    fn get_table(&self, _idx: usize) -> Result<Arc<Table>> {
-        Err(Error::InvalidTableIndex(_idx))
+    fn get_table(&self, idx: usize, _engine: &StacklessEngine) -> Result<Arc<Table>, Error> {
+        Err(Error::new(kinds::UnimplementedError(format!(
+            "NullBehavior::get_table for index: {}",
+            idx
+        ))))
     }
 
-    fn get_table_mut(&mut self, idx: usize) -> Result<Arc<Table>> {
-        Err(Error::InvalidTableIndex(idx))
+    fn get_table_mut(
+        &mut self,
+        idx: usize,
+        _engine: &StacklessEngine,
+    ) -> Result<Arc<Table>, Error> {
+        Err(Error::new(kinds::UnimplementedError(format!(
+            "NullBehavior::get_table_mut for index: {}",
+            idx
+        ))))
     }
 
     fn pc(&self) -> usize {
@@ -375,7 +588,7 @@ impl FrameBehavior for NullBehavior {
     }
 
     fn instance_idx(&self) -> u32 {
-        0
+        self.instance_idx
     }
 
     fn locals_len(&self) -> usize {
@@ -402,180 +615,392 @@ impl FrameBehavior for NullBehavior {
         self.return_pc
     }
 
-    fn set_return_pc(&mut self, pc: usize) {
-        self.return_pc = pc;
+    fn set_return_pc(&mut self, _pc: Option<usize>) {}
+
+    fn load_i32(&self, _addr: usize, _align: u32, _engine: &StacklessEngine) -> Result<i32, Error> {
+        Err(Error::new(kinds::UnimplementedError(
+            "NullBehavior::load_i32".to_string(),
+        )))
     }
 
-    fn load_i32(&self, _addr: usize, _align: u32) -> Result<i32> {
-        Err(Error::InvalidMemoryIndex(0))
+    fn load_i64(&self, _addr: usize, _align: u32, _engine: &StacklessEngine) -> Result<i64, Error> {
+        Err(Error::new(kinds::UnimplementedError(
+            "NullBehavior::load_i64".to_string(),
+        )))
     }
 
-    fn load_i64(&self, _addr: usize, _align: u32) -> Result<i64> {
-        Err(Error::InvalidMemoryIndex(0))
+    fn load_f32(&self, _addr: usize, _align: u32, _engine: &StacklessEngine) -> Result<f32, Error> {
+        Err(Error::new(kinds::UnimplementedError(
+            "NullBehavior::load_f32".to_string(),
+        )))
     }
 
-    fn load_f32(&self, _addr: usize, _align: u32) -> Result<f32> {
-        Err(Error::InvalidMemoryIndex(0))
+    fn load_f64(&self, _addr: usize, _align: u32, _engine: &StacklessEngine) -> Result<f64, Error> {
+        Err(Error::new(kinds::UnimplementedError(
+            "NullBehavior::load_f64".to_string(),
+        )))
     }
 
-    fn load_f64(&self, _addr: usize, _align: u32) -> Result<f64> {
-        Err(Error::InvalidMemoryIndex(0))
+    fn load_i8(&self, _addr: usize, _align: u32, _engine: &StacklessEngine) -> Result<i8, Error> {
+        Err(Error::new(kinds::UnimplementedError(
+            "NullBehavior::load_i8".to_string(),
+        )))
     }
 
-    fn load_i8(&self, _addr: usize, _align: u32) -> Result<i8> {
-        Err(Error::InvalidMemoryIndex(0))
+    fn load_u8(&self, _addr: usize, _align: u32, _engine: &StacklessEngine) -> Result<u8, Error> {
+        Err(Error::new(kinds::UnimplementedError(
+            "NullBehavior::load_u8".to_string(),
+        )))
     }
 
-    fn load_u8(&self, _addr: usize, _align: u32) -> Result<u8> {
-        Err(Error::InvalidMemoryIndex(0))
+    fn load_i16(&self, _addr: usize, _align: u32, _engine: &StacklessEngine) -> Result<i16, Error> {
+        Err(Error::new(kinds::UnimplementedError(
+            "NullBehavior::load_i16".to_string(),
+        )))
     }
 
-    fn load_i16(&self, _addr: usize, _align: u32) -> Result<i16> {
-        Err(Error::InvalidMemoryIndex(0))
+    fn load_u16(&self, _addr: usize, _align: u32, _engine: &StacklessEngine) -> Result<u16, Error> {
+        Err(Error::new(kinds::UnimplementedError(
+            "NullBehavior::load_u16".to_string(),
+        )))
     }
 
-    fn load_u16(&self, _addr: usize, _align: u32) -> Result<u16> {
-        Err(Error::InvalidMemoryIndex(0))
+    fn load_v128(
+        &self,
+        _addr: usize,
+        _align: u32,
+        _engine: &StacklessEngine,
+    ) -> Result<[u8; 16], Error> {
+        Err(Error::new(kinds::UnimplementedError(
+            "NullBehavior::load_v128".to_string(),
+        )))
     }
 
-    fn load_v128(&self, _addr: usize, _align: u32) -> Result<[u8; 16]> {
-        Err(Error::InvalidMemoryIndex(0))
+    fn store_i32(
+        &mut self,
+        _addr: usize,
+        _align: u32,
+        _value: i32,
+        _engine: &StacklessEngine,
+    ) -> Result<(), Error> {
+        Err(Error::new(kinds::UnimplementedError(
+            "NullBehavior::store_i32".to_string(),
+        )))
     }
 
-    fn store_i32(&mut self, _addr: usize, _align: u32, _value: i32) -> Result<()> {
-        Err(Error::InvalidMemoryIndex(0))
+    fn store_i64(
+        &mut self,
+        _addr: usize,
+        _align: u32,
+        _value: i64,
+        _engine: &StacklessEngine,
+    ) -> Result<(), Error> {
+        Err(Error::new(kinds::UnimplementedError(
+            "NullBehavior::store_i64".to_string(),
+        )))
     }
 
-    fn store_i64(&mut self, _addr: usize, _align: u32, _value: i64) -> Result<()> {
-        Err(Error::InvalidMemoryIndex(0))
+    fn store_f32(
+        &mut self,
+        _addr: usize,
+        _align: u32,
+        _value: f32,
+        _engine: &StacklessEngine,
+    ) -> Result<(), Error> {
+        Err(Error::new(kinds::UnimplementedError(
+            "NullBehavior::store_f32".to_string(),
+        )))
     }
 
-    fn store_f32(&mut self, _addr: usize, _align: u32, _value: f32) -> Result<()> {
-        Err(Error::InvalidMemoryIndex(0))
+    fn store_f64(
+        &mut self,
+        _addr: usize,
+        _align: u32,
+        _value: f64,
+        _engine: &StacklessEngine,
+    ) -> Result<(), Error> {
+        Err(Error::new(kinds::UnimplementedError(
+            "NullBehavior::store_f64".to_string(),
+        )))
     }
 
-    fn store_f64(&mut self, _addr: usize, _align: u32, _value: f64) -> Result<()> {
-        Err(Error::InvalidMemoryIndex(0))
+    fn store_i8(
+        &mut self,
+        _addr: usize,
+        _align: u32,
+        _value: i8,
+        _engine: &StacklessEngine,
+    ) -> Result<(), Error> {
+        Err(Error::new(kinds::UnimplementedError(
+            "NullBehavior::store_i8".to_string(),
+        )))
     }
 
-    fn store_i8(&mut self, _addr: usize, _align: u32, _value: i8) -> Result<()> {
-        Err(Error::InvalidMemoryIndex(0))
+    fn store_u8(
+        &mut self,
+        _addr: usize,
+        _align: u32,
+        _value: u8,
+        _engine: &StacklessEngine,
+    ) -> Result<(), Error> {
+        Err(Error::new(kinds::UnimplementedError(
+            "NullBehavior::store_u8".to_string(),
+        )))
     }
 
-    fn store_u8(&mut self, _addr: usize, _align: u32, _value: u8) -> Result<()> {
-        Err(Error::InvalidMemoryIndex(0))
+    fn store_i16(
+        &mut self,
+        _addr: usize,
+        _align: u32,
+        _value: i16,
+        _engine: &StacklessEngine,
+    ) -> Result<(), Error> {
+        Err(Error::new(kinds::UnimplementedError(
+            "NullBehavior::store_i16".to_string(),
+        )))
     }
 
-    fn store_i16(&mut self, _addr: usize, _align: u32, _value: i16) -> Result<()> {
-        Err(Error::InvalidMemoryIndex(0))
+    fn store_u16(
+        &mut self,
+        _addr: usize,
+        _align: u32,
+        _value: u16,
+        _engine: &StacklessEngine,
+    ) -> Result<(), Error> {
+        Err(Error::new(kinds::UnimplementedError(
+            "NullBehavior::store_u16".to_string(),
+        )))
     }
 
-    fn store_u16(&mut self, _addr: usize, _align: u32, _value: u16) -> Result<()> {
-        Err(Error::InvalidMemoryIndex(0))
+    fn store_v128(
+        &mut self,
+        _addr: usize,
+        _align: u32,
+        _value: [u8; 16],
+        _engine: &StacklessEngine,
+    ) -> Result<(), Error> {
+        Err(Error::new(kinds::UnimplementedError(
+            "NullBehavior::store_v128".to_string(),
+        )))
     }
 
-    fn store_v128(&mut self, _addr: usize, _align: u32, _value: [u8; 16]) -> Result<()> {
-        Err(Error::InvalidMemoryIndex(0))
+    fn memory_size(&self, _engine: &StacklessEngine) -> Result<u32, Error> {
+        Err(Error::new(kinds::UnimplementedError(
+            "NullBehavior::memory_size".to_string(),
+        )))
     }
 
-    fn memory_size(&self) -> Result<u32> {
-        Err(Error::InvalidMemoryIndex(0))
+    fn memory_grow(&mut self, _pages: u32, _engine: &StacklessEngine) -> Result<u32, Error> {
+        Err(Error::new(kinds::UnimplementedError(
+            "NullBehavior::memory_grow".to_string(),
+        )))
     }
 
-    fn memory_grow(&mut self, _pages: u32) -> Result<u32> {
-        Err(Error::InvalidMemoryIndex(0))
+    fn table_get(
+        &self,
+        table_idx: u32,
+        idx: u32,
+        _engine: &StacklessEngine,
+    ) -> Result<Value, Error> {
+        Err(Error::new(kinds::UnimplementedError(
+            "NullBehavior::table_get".to_string(),
+        )))
     }
 
-    fn table_get(&self, _table_idx: u32, _idx: u32) -> Result<Value> {
-        Err(Error::InvalidTableIndex(_table_idx as usize))
-    }
-
-    fn table_set(&mut self, _table_idx: u32, _idx: u32, _value: Value) -> Result<()> {
-        Err(Error::InvalidTableIndex(_table_idx as usize))
-    }
-
-    fn table_size(&self, _table_idx: u32) -> Result<u32> {
-        Err(Error::InvalidTableIndex(_table_idx as usize))
-    }
-
-    fn table_grow(&mut self, _table_idx: u32, _delta: u32, _value: Value) -> Result<u32> {
-        Err(Error::InvalidTableIndex(_table_idx as usize))
-    }
-
-    fn table_init(
+    fn table_set(
         &mut self,
         _table_idx: u32,
-        _elem_idx: u32,
-        _dst: u32,
-        _src: u32,
-        _n: u32,
-    ) -> Result<()> {
-        Err(Error::InvalidTableIndex(_table_idx as usize))
+        _idx: u32,
+        _value: Value,
+        _engine: &StacklessEngine,
+    ) -> Result<(), Error> {
+        Err(Error::new(kinds::UnimplementedError(
+            "NullBehavior::table_set".to_string(),
+        )))
     }
 
+    fn table_size(&self, _table_idx: u32, _engine: &StacklessEngine) -> Result<u32, Error> {
+        Err(Error::new(kinds::UnimplementedError(
+            "NullBehavior::table_size".to_string(),
+        )))
+    }
+
+    fn table_grow(
+        &mut self,
+        _table_idx: u32,
+        _delta: u32,
+        _value: Value,
+        _engine: &StacklessEngine,
+    ) -> Result<u32, Error> {
+        Err(Error::new(kinds::UnimplementedError(
+            "NullBehavior::table_grow".to_string(),
+        )))
+    }
+
+    // Match trait: engine should be &StacklessEngine
+    fn table_init(
+        &mut self,
+        _dst_table_idx: u32,
+        _src_elem_idx: u32,
+        _dst_idx: u32,
+        _src_idx: u32,
+        _len: u32,
+        _engine: &StacklessEngine,
+    ) -> Result<(), Error> {
+        Err(Error::new(kinds::UnimplementedError(
+            "NullBehavior::table_init".to_string(),
+        )))
+    }
+
+    // Match trait: engine should be &StacklessEngine
     fn table_copy(
         &mut self,
-        _dst_table: u32,
-        _src_table: u32,
+        _dst_table_idx: u32,
+        _src_table_idx: u32,
+        _dst_idx: u32,
+        _src_idx: u32,
+        _len: u32,
+        _engine: &StacklessEngine,
+    ) -> Result<(), Error> {
+        Err(Error::new(kinds::UnimplementedError(
+            "NullBehavior::table_copy".to_string(),
+        )))
+    }
+
+    // Match trait: engine should be &StacklessEngine
+    fn elem_drop(&mut self, _elem_idx: u32, _engine: &StacklessEngine) -> Result<(), Error> {
+        Err(Error::new(kinds::UnimplementedError(
+            "NullBehavior::elem_drop".to_string(),
+        )))
+    }
+
+    fn table_fill(
+        &mut self,
+        _table_idx: u32,
         _dst: u32,
-        _src: u32,
+        _val: Value,
         _n: u32,
-    ) -> Result<()> {
-        Err(Error::InvalidTableIndex(_dst_table as usize))
+        _engine: &StacklessEngine,
+    ) -> Result<(), Error> {
+        Err(Error::new(kinds::UnimplementedError(
+            "NullBehavior::table_fill".to_string(),
+        )))
     }
 
-    fn elem_drop(&mut self, _elem_idx: u32) -> Result<()> {
-        Err(Error::Unimplemented("elem_drop NullBehavior".to_string()))
-    }
-
-    fn table_fill(&mut self, _table_idx: u32, _dst: u32, _val: Value, _n: u32) -> Result<()> {
-        Err(Error::InvalidTableIndex(_table_idx as usize))
-    }
-
-    fn pop_bool(&mut self, stack: &mut dyn Stack) -> Result<bool> {
-        stack.pop_bool()
-    }
-
-    fn pop_i32(&mut self, stack: &mut dyn Stack) -> Result<i32> {
-        stack.pop_i32()
-    }
-
-    fn get_function_type(&self, func_idx: u32) -> Result<FuncType> {
-        Err(Error::InvalidFunctionIndex(func_idx as usize))
+    fn get_function_type(&self, func_idx: u32) -> Result<FuncType, Error> {
+        Err(Error::new(kinds::InvalidFunctionIndexError(
+            func_idx as usize,
+        )))
     }
 
     fn get_two_tables_mut(
         &mut self,
         _idx1: u32,
         _idx2: u32,
-    ) -> Result<(MutexGuard<Table>, MutexGuard<Table>)> {
-        unimplemented!()
+        _engine: &StacklessEngine,
+    ) -> Result<(Arc<Table>, Arc<Table>), Error> {
+        Err(Error::new(kinds::UnimplementedError(
+            "NullBehavior::get_two_tables_mut".to_string(),
+        )))
+    }
+
+    fn get_element_segment(
+        &self,
+        elem_idx: u32,
+        _engine: &StacklessEngine,
+    ) -> Result<Arc<Element>, Error> {
+        Err(Error::new(kinds::UnimplementedError(format!(
+            "NullBehavior::get_element_segment for index: {}",
+            elem_idx
+        ))))
+    }
+
+    fn get_data_segment(
+        &self,
+        data_idx: u32,
+        _engine: &StacklessEngine,
+    ) -> Result<Arc<Data>, Error> {
+        Err(Error::new(kinds::UnimplementedError(format!(
+            "NullBehavior::get_data_segment for index: {}",
+            data_idx
+        ))))
+    }
+
+    fn drop_data_segment(&mut self, data_idx: u32, _engine: &StacklessEngine) -> Result<(), Error> {
+        Err(Error::new(kinds::UnimplementedError(format!(
+            "NullBehavior::drop_data_segment for index: {}",
+            data_idx
+        ))))
+    }
+
+    fn set_data_segment(&mut self, idx: u32, _segment: Arc<Data>) -> Result<(), Error> {
+        Err(Error::new(kinds::UnimplementedError(format!(
+            "NullBehavior::set_data_segment for index: {}",
+            idx
+        ))))
+    }
+
+    fn pop_bool(&mut self, stack: &mut dyn StackBehavior) -> Result<bool, Error> {
+        stack.pop_bool()
+    }
+
+    fn pop_i32(&mut self, stack: &mut dyn StackBehavior) -> Result<i32, Error> {
+        stack.pop_i32()
+    }
+
+    fn push_label(&mut self, label: Label) -> Result<(), Error> {
+        Ok(())
+    }
+
+    fn pop_label(&mut self) -> Result<Label, Error> {
+        Err(Error::new(kinds::ExecutionError(
+            "Cannot pop_label from NullBehavior frame".to_string(),
+        )))
+    }
+
+    fn get_label(&self, depth: usize) -> Option<&Label> {
+        None
+    }
+
+    fn locals_mut(&mut self) -> &mut [Value] {
+        &mut []
+    }
+
+    fn get_global_mut(&mut self, _index: usize) -> Result<wrt_sync::WrtMutexGuard<Value>, Error> {
+        Err(Error::new(kinds::ExecutionError(
+            "Cannot get_global_mut from NullBehavior frame".to_string(),
+        )))
     }
 }
 
 impl ControlFlowBehavior for NullBehavior {
-    fn enter_block(&mut self, _ty: BlockType, _stack_len: usize) -> Result<()> {
+    fn enter_block(&mut self, _ty: BlockType, _stack_len: usize) -> Result<(), Error> {
         Ok(())
     }
-    fn enter_loop(&mut self, _ty: BlockType, _stack_len: usize) -> Result<()> {
+    fn enter_loop(&mut self, _ty: BlockType, _stack_len: usize) -> Result<(), Error> {
         Ok(())
     }
-    fn enter_if(&mut self, _ty: BlockType, _stack_len: usize, _condition: bool) -> Result<()> {
+    fn enter_if(
+        &mut self,
+        _ty: BlockType,
+        _stack_len: usize,
+        _condition: bool,
+    ) -> Result<(), Error> {
         Ok(())
     }
-    fn enter_else(&mut self, _stack_len: usize) -> Result<()> {
+    fn enter_else(&mut self, _stack_len: usize) -> Result<(), Error> {
         Ok(())
     }
-    fn exit_block(&mut self, _stack: &mut dyn Stack) -> Result<()> {
+    fn exit_block(&mut self, _stack: &mut dyn StackBehavior) -> Result<(), Error> {
         Ok(())
     }
-    fn branch(&mut self, _label_idx: u32, _stack: &mut dyn Stack) -> Result<()> {
-        Ok(())
+    fn branch(&mut self, _depth: u32) -> Result<(usize, usize), Error> {
+        Ok((0, 0))
     }
-    fn return_(&mut self, _stack: &mut dyn Stack) -> Result<()> {
-        Ok(())
+    fn return_(&mut self) -> Result<(usize, usize), Error> {
+        Ok((0, 0))
     }
-    fn call(&mut self, _func_idx: u32, _stack: &mut dyn Stack) -> Result<()> {
+    fn call(&mut self, _func_idx: u32, _stack: &mut dyn StackBehavior) -> Result<(), Error> {
         Ok(())
     }
     fn call_indirect(
@@ -583,9 +1008,302 @@ impl ControlFlowBehavior for NullBehavior {
         _type_idx: u32,
         _table_idx: u32,
         _entry: u32,
-        _stack: &mut dyn Stack,
-    ) -> Result<()> {
+        _stack: &mut dyn StackBehavior,
+    ) -> Result<(), Error> {
         Ok(())
     }
     fn set_label_arity(&mut self, _arity: usize) {}
+}
+
+impl StackBehavior for NullBehavior {
+    fn push(&mut self, _value: Value) -> Result<(), Error> {
+        Ok(())
+    }
+
+    fn pop(&mut self) -> Result<Value, Error> {
+        Err(Error::new(kinds::StackUnderflowError))
+    }
+
+    fn peek(&self) -> Result<&Value, Error> {
+        Err(Error::new(kinds::StackUnderflowError))
+    }
+
+    fn peek_mut(&mut self) -> Result<&mut Value, Error> {
+        Err(Error::new(kinds::StackUnderflowError))
+    }
+
+    fn values(&self) -> &[Value] {
+        &[]
+    }
+
+    fn values_mut(&mut self) -> &mut [Value] {
+        &mut []
+    }
+
+    fn len(&self) -> usize {
+        0
+    }
+
+    fn is_empty(&self) -> bool {
+        true
+    }
+
+    fn push_label(&mut self, _label: Label) -> Result<(), Error> {
+        Ok(())
+    }
+
+    fn pop_label(&mut self) -> Result<Label, Error> {
+        Err(Error::new(kinds::ExecutionError(
+            "Cannot pop_label from NullBehavior stack".to_string(),
+        )))
+    }
+
+    fn get_label(&self, _depth: usize) -> Option<&Label> {
+        None
+    }
+
+    fn push_n(&mut self, _values: &[Value]) {}
+
+    fn pop_n(&mut self, _n: usize) -> Vec<Value> {
+        Vec::new()
+    }
+
+    fn pop_frame_label(&mut self) -> Result<Label, Error> {
+        Err(Error::new(kinds::ExecutionError(
+            "Cannot pop_frame_label from NullBehavior stack".to_string(),
+        )))
+    }
+
+    fn execute_function_call_direct(
+        &mut self,
+        _engine: &mut StacklessEngine,
+        _caller_instance_idx: u32,
+        _func_idx: u32,
+        _args: Vec<Value>,
+    ) -> Result<Vec<Value>, Error> {
+        Err(Error::new(kinds::ExecutionError(
+            "Cannot execute_function_call_direct on NullBehavior".to_string(),
+        )))
+    }
+
+    fn as_any(&mut self) -> &mut dyn std::any::Any {
+        self
+    }
+}
+
+impl MemoryBehavior for NullBehavior {
+    fn type_(&self) -> &MemoryType {
+        static MT: MemoryType = MemoryType { min: 0, max: None };
+        &MT
+    }
+    fn size(&self) -> u32 {
+        0
+    }
+    fn size_bytes(&self) -> usize {
+        0
+    }
+
+    fn grow(&self, _pages: u32) -> Result<u32, Error> {
+        Err(Error::new(kinds::MemoryGrowError(
+            "Cannot grow null memory".to_string(),
+        )))
+    }
+    fn read_byte(&self, offset: u32) -> Result<u8, Error> {
+        Err(Error::new(kinds::MemoryAccessOutOfBoundsError {
+            address: offset as u64,
+            length: 1,
+        }))
+    }
+    fn write_byte(&self, offset: u32, _value: u8) -> Result<(), Error> {
+        Err(Error::new(kinds::MemoryAccessOutOfBoundsError {
+            address: offset as u64,
+            length: 1,
+        }))
+    }
+    fn read_bytes(&self, offset: u32, len: usize) -> Result<Vec<u8>, Error> {
+        Err(Error::new(kinds::MemoryAccessOutOfBoundsError {
+            address: offset as u64,
+            length: len as u64,
+        }))
+    }
+    fn write_bytes(&self, offset: u32, bytes: &[u8]) -> Result<(), Error> {
+        Err(Error::new(kinds::MemoryAccessOutOfBoundsError {
+            address: offset as u64,
+            length: bytes.len() as u64,
+        }))
+    }
+    fn check_alignment(&self, _addr: u32, _access_size: u32, _align: u32) -> Result<(), Error> {
+        Ok(())
+    }
+    fn read_u16(&self, _addr: u32) -> Result<u16, Error> {
+        Err(Error::new(kinds::UnimplementedError(
+            "NullBehavior::read_u16".to_string(),
+        )))
+    }
+    fn write_u16(&self, _addr: u32, _value: u16) -> Result<(), Error> {
+        Err(Error::new(kinds::UnimplementedError(
+            "NullBehavior::write_u16".to_string(),
+        )))
+    }
+    fn read_i32(&self, _addr: u32) -> Result<i32, Error> {
+        Err(Error::new(kinds::UnimplementedError(
+            "NullBehavior::read_i32".to_string(),
+        )))
+    }
+    fn write_i32(&self, _addr: u32, _value: i32) -> Result<(), Error> {
+        Err(Error::new(kinds::UnimplementedError(
+            "NullBehavior::write_i32".to_string(),
+        )))
+    }
+    fn read_i64(&self, _addr: u32) -> Result<i64, Error> {
+        Err(Error::new(kinds::UnimplementedError(
+            "NullBehavior::read_i64".to_string(),
+        )))
+    }
+    fn write_i64(&self, _addr: u32, _value: i64) -> Result<()> {
+        Err(Error::new(kinds::UnimplementedError(
+            "NullBehavior::write_i64".to_string(),
+        )))
+    }
+    fn read_f32(&self, _addr: u32) -> Result<f32, Error> {
+        Err(Error::new(kinds::UnimplementedError(
+            "NullBehavior::read_f32".to_string(),
+        )))
+    }
+    fn write_f32(&self, _addr: u32, _value: f32) -> Result<(), Error> {
+        Err(Error::new(kinds::UnimplementedError(
+            "NullBehavior::write_f32".to_string(),
+        )))
+    }
+    fn read_f64(&self, _addr: u32) -> Result<f64, Error> {
+        Err(Error::new(kinds::UnimplementedError(
+            "NullBehavior::read_f64".to_string(),
+        )))
+    }
+    fn write_f64(&self, _addr: u32, _value: f64) -> Result<(), Error> {
+        Err(Error::new(kinds::UnimplementedError(
+            "NullBehavior::write_f64".to_string(),
+        )))
+    }
+    fn read_v128(&self, _addr: u32) -> Result<[u8; 16], Error> {
+        Err(Error::new(kinds::UnimplementedError(
+            "NullBehavior::read_v128".to_string(),
+        )))
+    }
+    fn write_v128(&self, _addr: u32, _value: [u8; 16]) -> Result<(), Error> {
+        Err(Error::new(kinds::UnimplementedError(
+            "NullBehavior::write_v128".to_string(),
+        )))
+    }
+    fn read_i8(&self, _addr: u32) -> Result<i8, Error> {
+        Err(Error::new(kinds::UnimplementedError(
+            "NullBehavior::read_i8".to_string(),
+        )))
+    }
+    fn read_u8(&self, _addr: u32) -> Result<u8, Error> {
+        Err(Error::new(kinds::UnimplementedError(
+            "NullBehavior::read_u8".to_string(),
+        )))
+    }
+    fn read_i16(&self, _addr: u32) -> Result<i16, Error> {
+        Err(Error::new(kinds::UnimplementedError(
+            "NullBehavior::read_i16".to_string(),
+        )))
+    }
+    fn read_u32(&self, _addr: u32) -> Result<u32, Error> {
+        Err(Error::new(kinds::UnimplementedError(
+            "NullBehavior::read_u32".to_string(),
+        )))
+    }
+    fn read_u64(&self, _addr: u32) -> Result<u64, Error> {
+        Err(Error::new(kinds::UnimplementedError(
+            "NullBehavior::read_u64".to_string(),
+        )))
+    }
+    fn write_i8(&self, _addr: u32, _value: i8) -> Result<(), Error> {
+        Err(Error::new(kinds::UnimplementedError(
+            "NullBehavior::write_i8".to_string(),
+        )))
+    }
+    fn write_u8(&self, _addr: u32, _value: u8) -> Result<(), Error> {
+        Err(Error::new(kinds::UnimplementedError(
+            "NullBehavior::write_u8".to_string(),
+        )))
+    }
+    fn write_i16(&self, _addr: u32, _value: i16) -> Result<(), Error> {
+        Err(Error::new(kinds::UnimplementedError(
+            "NullBehavior::write_i16".to_string(),
+        )))
+    }
+    fn write_u32(&self, _addr: u32, _value: u32) -> Result<(), Error> {
+        Err(Error::new(kinds::UnimplementedError(
+            "NullBehavior::write_u32".to_string(),
+        )))
+    }
+    fn write_u64(&self, _addr: u32, _value: u64) -> Result<()> {
+        Err(Error::new(kinds::UnimplementedError(
+            "NullBehavior::write_u64".to_string(),
+        )))
+    }
+    fn fill(&self, _addr: usize, _value: u8, _len: usize) -> Result<()> {
+        Err(Error::new(kinds::UnimplementedError(
+            "NullBehavior::fill".to_string(),
+        )))
+    }
+    fn copy_within_or_between(
+        &self,
+        _src_mem: Arc<dyn MemoryBehavior>,
+        _src_addr: usize,
+        _dst_addr: usize,
+        _len: usize,
+    ) -> Result<(), Error> {
+        Err(Error::new(kinds::UnimplementedError(
+            "NullBehavior::copy_within_or_between".to_string(),
+        )))
+    }
+    fn init(&self, _addr: usize, _data: &[u8], _data_offset: usize, _len: usize) -> Result<()> {
+        Err(Error::new(kinds::UnimplementedError(
+            "NullBehavior::init".to_string(),
+        )))
+    }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+    fn as_default_memory(&self) -> Option<&crate::memory::DefaultMemory> {
+        None
+    }
+}
+
+impl InstructionExecutor for NullBehavior {
+    fn execute(
+        &self,
+        _stack: &mut dyn StackBehavior,
+        _frame: &mut dyn FrameBehavior,
+        _engine: &mut StacklessEngine,
+    ) -> Result<ControlFlow, Error> {
+        Err(Error::new(kinds::UnimplementedError(
+            "NullBehavior::execute".to_string(),
+        )))
+    }
+
+    fn execute_with_frame_idx(
+        &self,
+        stack: &mut dyn StackBehavior,
+        frame_idx: usize,
+        engine: &mut StacklessEngine,
+    ) -> Result<ControlFlow, Error> {
+        // This implementation is no longer needed as stackless.rs directly uses execute
+        // with a cloned frame, avoiding the borrow checker issues
+        Err(Error::new(kinds::ExecutionError(
+            "execute_with_frame_idx is deprecated, use execute directly".to_string(),
+        )))
+    }
+}
+
+// Explicitly implemented instance_idx at the end of the implementation for NullBehavior
+impl NullBehavior {
+    // Explicitly implemented to fix compiler error
+    pub fn instance_idx(&self) -> u32 {
+        self.instance_idx
+    }
 }

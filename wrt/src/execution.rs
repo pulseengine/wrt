@@ -1,24 +1,21 @@
+use crate::stackless::StacklessEngine;
 use crate::{
     behavior::{
-        ControlFlowBehavior, FrameBehavior, /*FrameBehavior,*/ Label,
+        ControlFlow, FrameBehavior, InstructionExecutor, Label,
         /* NullBehavior, */ StackBehavior,
     },
-    error::{Error, Result},
-    global::Global,
-    instructions::{Instruction, InstructionExecutor},
-    memory::DefaultMemory,
-    module::{ExportKind, Function, Module},
-    module_instance::ModuleInstance,
-    stack::Stack,
+    error::kinds::{ExecutionError, ExportNotFoundError, ParseError, StackUnderflowError},
+    error::{kinds, Error, Result},
+    instructions::Instruction,
+    module::{Function, Module},
     stackless::StacklessStack,
     stackless_frame::StacklessFrame,
-    table::Table,
     values::Value,
+    ExportKind,
 };
-use wast::core::Memory;
 
 #[cfg(feature = "std")]
-use std::{option::Option, println, string::ToString, sync::Arc};
+use std::{option::Option, string::ToString, sync::Arc};
 
 #[cfg(not(feature = "std"))]
 use alloc::{
@@ -28,6 +25,8 @@ use alloc::{
 
 #[cfg(not(feature = "std"))]
 use crate::sync::Mutex;
+
+use log::trace;
 
 /// Execution state for WebAssembly engine
 #[derive(Debug, PartialEq, Eq)]
@@ -59,6 +58,7 @@ pub enum ExecutionState {
     Error,
 }
 
+#[derive(Debug)]
 pub struct ExecutionContext {
     pub memory: Vec<u8>,
     pub table: Vec<Function>,
@@ -81,6 +81,8 @@ pub struct ExecutionStats {
     pub peak_memory_bytes: u64,
     /// Amount of fuel consumed
     pub fuel_consumed: u64,
+    /// Count of fuel exhausted events
+    pub fuel_exhausted_count: u64,
     /// Time spent in arithmetic operations (µs)
     #[cfg(feature = "std")]
     pub arithmetic_time_us: u64,
@@ -92,353 +94,45 @@ pub struct ExecutionStats {
     pub function_call_time_us: u64,
 }
 
-/// The WebAssembly execution engine
+/// WebAssembly execution engine
 #[derive(Debug)]
-pub struct Engine<'a> {
-    /// The execution stack
-    pub stack: Box<dyn Stack>,
-    /// The current execution state
-    pub state: ExecutionState,
-    /// Module instances
-    pub instances: Vec<ModuleInstance>,
-    /// Tables
-    pub tables: Vec<Table>,
-    /// Memories
-    pub memories: Vec<Memory<'a>>,
-    /// Globals
-    pub globals: Vec<Global>,
-    /// Execution statistics
-    pub execution_stats: ExecutionStats,
-    /// Remaining fuel for bounded execution
-    pub fuel: Option<u64>,
-    /// The module being executed
+pub struct Engine {
+    /// The modules loaded in the engine
     pub module: Module,
+    /// The module instances active in the engine
+    pub instances: Vec<ExecutionContext>,
+    /// Remaining fuel for bounded execution (None means unlimited)
+    pub fuel: Option<u64>,
+    /// Execution statistics
+    pub stats: ExecutionStats,
 }
 
-/// Represents an execution frame
-#[derive(Debug)]
-pub struct Frame<'a> {
-    /// Local variables
-    pub locals: Vec<Value>,
-    /// Memory instances
-    pub memories: Vec<Memory<'a>>,
-    /// Table instances
-    pub tables: Vec<Table>,
-    /// Global instances
-    pub globals: Vec<Global>,
-    /// Program counter
-    pub pc: usize,
-    /// Function index
-    pub func_idx: u32,
-    /// Instance index
-    pub instance_idx: usize,
-    /// Label stack
-    pub label_stack: Vec<Label>,
-    /// Return program counter
-    pub return_pc: usize,
-    /// Frame arity
-    pub arity: usize,
-    /// Label arity
-    pub label_arity: usize,
-}
-
-impl Frame<'_> {
-    /// Creates a new frame
-    pub fn new() -> Self {
-        Self {
-            locals: Vec::new(),
-            memories: Vec::new(),
-            tables: Vec::new(),
-            globals: Vec::new(),
-            pc: 0,
-            func_idx: 0,
-            instance_idx: 0,
-            label_stack: Vec::new(),
-            return_pc: 0,
-            arity: 0,
-            label_arity: 0,
-        }
-    }
-}
-
-#[derive(Debug)]
-pub struct ExecutionStack<'a> {
-    pub value_stack: Vec<Value>,
-    pub label_stack: Vec<Label>,
-    pub frames: Vec<Frame<'a>>,
-    pub instruction_count: usize,
-}
-
-impl Default for ExecutionStack<'_> {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl<'a> ExecutionStack<'a> {
-    #[must_use]
-    pub const fn new() -> Self {
-        Self {
-            value_stack: Vec::new(),
-            label_stack: Vec::new(),
-            frames: Vec::new(),
-            instruction_count: 0,
-        }
-    }
-
-    pub fn execute_instruction(
-        &mut self,
-        _instruction: &Instruction,
-        _frame: &mut StacklessFrame,
-    ) -> Result<()> {
-        // Implementation of instruction execution
-        // For now, just return Ok
-        Ok(())
-    }
-}
-
-impl<'a> StackBehavior for ExecutionStack<'a> {
-    fn push(&mut self, value: Value) -> Result<()> {
-        self.value_stack.push(value);
-        Ok(())
-    }
-
-    fn pop(&mut self) -> Result<Value> {
-        self.value_stack.pop().ok_or(Error::StackUnderflow)
-    }
-
-    fn peek(&self) -> Result<&Value> {
-        self.value_stack.last().ok_or(Error::StackUnderflow)
-    }
-
-    fn peek_mut(&mut self) -> Result<&mut Value> {
-        self.value_stack.last_mut().ok_or(Error::StackUnderflow)
-    }
-
-    fn len(&self) -> usize {
-        self.value_stack.len()
-    }
-
-    fn is_empty(&self) -> bool {
-        self.value_stack.is_empty()
-    }
-
-    fn push_label(&mut self, arity: usize, pc: usize) {
-        self.label_stack.push(Label {
-            arity,
-            pc,
-            continuation: 0,
-        });
-    }
-
-    fn pop_label(&mut self) -> Result<Label> {
-        self.label_stack.pop().ok_or(Error::StackUnderflow)
-    }
-
-    fn get_label(&self, idx: usize) -> Option<&Label> {
-        self.label_stack.get(idx)
-    }
-
-    fn values(&self) -> &[Value] {
-        &self.value_stack
-    }
-
-    fn values_mut(&mut self) -> &mut [Value] {
-        &mut self.value_stack
-    }
-}
-
-impl<'a> ExecutionStack<'a> {
-    pub fn push_frame(&mut self, frame: Frame<'a>) {
-        self.frames.push(frame);
-    }
-
-    pub fn pop_frame(&mut self) -> Result<Frame<'a>> {
-        // Implementation of pop_frame
-        // For now, just return a default frame
-        self.frames.pop().ok_or(Error::StackUnderflow)
-    }
-
-    pub fn current_frame(&self) -> Result<&Frame<'a>> {
-        // Implementation of current_frame
-        // For now, just return an error
-        Err(Error::InvalidOperation {
-            message: "current_frame not implemented".to_string(),
-        })
-    }
-
-    pub fn current_frame_mut(&mut self) -> Result<&mut Frame<'a>> {
-        // Implementation of current_frame_mut
-        // For now, just return an error
-        Err(Error::InvalidOperation {
-            message: "current_frame_mut not implemented".to_string(),
-        })
-    }
-
-    pub fn pop_value(&mut self) -> Result<Value> {
-        self.value_stack.pop().ok_or(Error::StackUnderflow)
-    }
-}
-
-impl<'a> Stack for ExecutionStack<'a> {
-    fn push_label(&mut self, label: crate::stack::Label) -> Result<()> {
-        self.label_stack.push(Label {
-            arity: label.arity,
-            pc: label.pc,
-            continuation: label.continuation,
-        });
-        Ok(())
-    }
-
-    fn pop_label(&mut self) -> Result<crate::stack::Label> {
-        let label = self.label_stack.pop().ok_or(Error::StackUnderflow)?;
-        Ok(crate::stack::Label {
-            arity: label.arity,
-            pc: label.pc,
-            continuation: label.continuation,
-        })
-    }
-
-    fn get_label(&self, _idx: usize) -> Result<&crate::stack::Label> {
-        Err(Error::InvalidOperation {
-            message: "get_label not implemented".to_string(),
-        })
-    }
-
-    fn get_label_mut(&mut self, _idx: usize) -> Result<&mut crate::stack::Label> {
-        Err(Error::InvalidOperation {
-            message: "get_label_mut not implemented".to_string(),
-        })
-    }
-
-    fn labels_len(&self) -> usize {
-        self.label_stack.len()
-    }
-}
-
-impl<'a> Engine<'a> {
-    /// Creates a new engine with the given module
-    #[must_use]
+impl Engine {
+    /// Create a new execution engine with the given module
     pub fn new(module: Module) -> Self {
-        let module_arc = Arc::new(module);
         Self {
-            stack: Box::new(StacklessStack::new(module_arc.clone(), 0)),
-            state: ExecutionState::Running,
+            module,
             instances: Vec::new(),
-            tables: Vec::new(),
-            memories: Vec::new(),
-            globals: Vec::new(),
-            execution_stats: ExecutionStats::default(),
             fuel: None,
-            module: Arc::try_unwrap(module_arc).unwrap_or_else(|arc| (*arc).clone()),
+            stats: ExecutionStats::default(),
         }
     }
 
-    /// Creates a new execution engine
-    #[must_use]
-    pub fn new_with_module(module: Module) -> Self {
-        let module_arc = Arc::new(module);
-        Self {
-            stack: Box::new(StacklessStack::new(module_arc.clone(), 0)),
-            state: ExecutionState::Running,
-            instances: vec![],
-            tables: vec![],
-            memories: vec![],
-            globals: vec![],
-            execution_stats: ExecutionStats::default(),
-            fuel: None,
-            module: Arc::try_unwrap(module_arc).unwrap_or_else(|arc| (*arc).clone()),
-        }
-    }
-
-    /// Creates a new Engine with a Module
     pub fn new_from_result(module_result: Result<Module>) -> Result<Self> {
-        let module = module_result?;
-        Ok(Self::new(module))
+        module_result.map(|module| Self::new(module))
     }
 
-    /// Check if the engine has no instances
-    #[must_use]
-    pub fn has_no_instances(&self) -> bool {
-        self.instances.is_empty()
-    }
-
-    /// Get the remaining fuel (None for unlimited)
-    #[must_use]
-    pub const fn remaining_fuel(&self) -> Option<u64> {
-        self.fuel
-    }
-
-    /// Gets a module instance by index
-    pub fn get_instance(&self, instance_idx: usize) -> Result<&ModuleInstance> {
-        self.instances
-            .get(instance_idx)
-            .ok_or_else(|| Error::Execution(format!("Invalid instance index: {instance_idx}")))
-    }
-
-    /// Adds a module instance to the engine
-    pub fn add_instance(&mut self, instance: ModuleInstance) -> usize {
-        let idx = self.instances.len();
-        self.instances.push(instance);
-        idx
-    }
-
-    /// Instantiates a module
-    pub fn instantiate(&mut self, module: Module) -> Result<usize> {
-        println!("Instantiating module with {} exports", module.exports.len());
-        let instance = ModuleInstance::new(module)?;
-        Ok(self.add_instance(instance))
-    }
-
-    /// Invokes an exported function
-    pub fn invoke_export(&mut self, name: &str, args: &[Value]) -> Result<Vec<Value>> {
-        // Find the export in instances
-        for instance_idx in 0..self.instances.len() {
-            let instance = &self.instances[instance_idx];
-
-            // Look for the export in the module's exports
-            for export in &instance.module.exports {
-                if export.name == name && export.kind == ExportKind::Function {
-                    let func = instance.module.get_function(export.index).ok_or_else(|| {
-                        Error::Execution(format!("Function with index {} not found", export.index))
-                    })?;
-
-                    // For the remaining functions, execute them normally
-                    return self.execute(instance_idx, export.index, args.to_vec());
-                }
-            }
-        }
-
-        Err(Error::ExportNotFound(format!(
-            "Function '{}' not found",
-            name
-        )))
-    }
-
-    /// Executes a function
+    /// Execute a function in the specified instance
     pub fn execute(
         &mut self,
-        instance_idx: usize,
-        func_idx: u32,
-        args: Vec<Value>,
+        _instance_idx: usize,
+        _func_idx: usize,
+        _args: Vec<Value>,
     ) -> Result<Vec<Value>> {
-        let instance = self.get_instance(instance_idx)?;
-
-        // Get the function from the instance's module
-        let _func = instance.module.get_function(func_idx).ok_or_else(|| {
-            Error::Execution(format!("Function with index {} not found", func_idx))
-        })?;
-
-        // Get the export name if available
-        let export_name = instance
-            .module
-            .exports
-            .iter()
-            .find(|export| export.kind == ExportKind::Function && export.index == func_idx)
-            .map(|export| export.name.clone());
-
-        // Execute the function generically by calling execute_export_function
-        execute_export_function(&instance.module, instance_idx, export_name.as_deref(), args)
+        // This is a placeholder implementation
+        // In a real implementation, this would execute the function at the given index
+        // with the given arguments and return the result
+        Ok(Vec::new())
     }
 }
 
@@ -494,22 +188,22 @@ pub fn f64_nearest(a: &Value) -> f64 {
     }
 }
 
-/// Generic function to parse a float value from a string
-/// Supports both decimal and hexadecimal formats with optional separators
+/// Internal function to parse floats from strings
 pub fn parse_float<T: Into<f64> + From<f64>>(value_str: &str) -> Result<T> {
-    // Remove underscores (separators)
-    let clean_str = value_str.replace("_", "");
+    let clean_str = value_str.trim();
 
-    // Check if it's a hexadecimal format
+    // Check for hex format
     if clean_str.starts_with("0x") || clean_str.starts_with("-0x") || clean_str.starts_with("+0x") {
-        // Parse as hex float
-        let parsed = parse_hex_float_internal(&clean_str)?;
+        let parsed = parse_hex_float_internal(clean_str)?;
         Ok(T::from(parsed))
     } else {
         // Parse as decimal float
         match clean_str.parse::<f64>() {
             Ok(val) => Ok(T::from(val)),
-            Err(_) => Err(Error::Parse(format!("Invalid float format: {}", value_str))),
+            Err(_) => Err(Error::new(ParseError(format!(
+                "Invalid float format: {}",
+                value_str
+            )))),
         }
     }
 }
@@ -524,20 +218,20 @@ fn parse_hex_float_internal(hex_str: &str) -> Result<f64> {
     } else if hex_str.starts_with("+0x") {
         (false, &hex_str[3..])
     } else {
-        return Err(Error::Parse(format!(
+        return Err(Error::new(ParseError(format!(
             "Invalid hex float format: {}",
             hex_str
-        )));
+        ))));
     };
 
     // Split into integer and fractional parts
     let parts: Vec<&str> = hex_str.split('.').collect();
     if parts.len() > 2 {
-        return Err(Error::Parse(format!(
+        return Err(Error::new(ParseError(format!(
             "Invalid hex float format, multiple decimal points: {}",
             hex_str
-        )));
-    }
+        ))));
+    };
 
     // Extract exponent if present
     let exponent = if parts.len() == 1 {
@@ -546,7 +240,7 @@ fn parse_hex_float_internal(hex_str: &str) -> Result<f64> {
             let exp_str = &parts[0][p_pos + 1..];
             exp_str
                 .parse::<i32>()
-                .map_err(|_| Error::Parse(format!("Invalid hex float exponent: {}", exp_str)))?
+                .unwrap_or_else(|_| panic!("Invalid exponent: {}", exp_str))
         } else {
             // No exponent
             0
@@ -558,11 +252,10 @@ fn parse_hex_float_internal(hex_str: &str) -> Result<f64> {
             let exp_str = &frac_part[p_pos + 1..];
             exp_str
                 .parse::<i32>()
-                .map_err(|_| Error::Parse(format!("Invalid hex float exponent: {}", exp_str)))?
+                .unwrap_or_else(|_| panic!("Invalid exponent: {}", exp_str))
         } else {
-            // No exponent
             0
-        };
+        }
     };
 
     // Parse the integer part
@@ -574,8 +267,12 @@ fn parse_hex_float_internal(hex_str: &str) -> Result<f64> {
         };
 
         if !int_part.is_empty() {
-            u64::from_str_radix(int_part, 16)
-                .map_err(|_| Error::Parse(format!("Invalid hex integer part: {}", int_part)))?
+            u64::from_str_radix(int_part, 16).map_err(|_| {
+                Error::new(ParseError(format!(
+                    "Invalid hex integer part: {}",
+                    int_part
+                )))
+            })?
         } else {
             0
         }
@@ -593,8 +290,12 @@ fn parse_hex_float_internal(hex_str: &str) -> Result<f64> {
 
         if !frac_part.is_empty() {
             // Convert hex fraction to decimal
-            let frac_val = u64::from_str_radix(frac_part, 16)
-                .map_err(|_| Error::Parse(format!("Invalid hex fractional part: {}", frac_part)))?;
+            let frac_val = u64::from_str_radix(frac_part, 16).map_err(|_| {
+                Error::new(ParseError(format!(
+                    "Invalid hex fractional part: {}",
+                    frac_part
+                )))
+            })?;
             let frac_digits = frac_part.len() as u32;
             frac_val as f64 / 16.0f64.powi(frac_digits as i32)
         } else {
@@ -627,31 +328,32 @@ pub fn execute_export_function(
     export_name: Option<&str>,
     args: Vec<Value>,
 ) -> Result<Vec<Value>> {
-    println!("Execute export function: {:?}", export_name);
-    println!("Arguments: {:?}", args);
+    trace!("Execute export function: {:?}", export_name);
+    trace!("Arguments: {:?}", args);
 
     let exports = &module.exports;
     let export = exports
         .iter()
         .find(|export| export.name == export_name.unwrap())
-        .ok_or_else(|| Error::ExportNotFound(export_name.unwrap().to_string()))?;
+        .ok_or_else(|| Error::new(ExportNotFoundError(export_name.unwrap().to_string())))?;
 
     if export.kind == ExportKind::Function {
         let func_idx = export.index;
         let func_type = module.get_function_type(func_idx).unwrap();
-        println!("Function type: {:?}", func_type);
-        println!("Expected result count: {}", func_type.results.len());
+        trace!("Function type: {:?}", func_type);
+        trace!("Expected result count: {}", func_type.results.len());
 
         let module_arc = Arc::new(module.clone());
         let mut stack = StacklessStack::new(module_arc.clone(), instance_idx);
 
         // Create the initial frame using from_function to handle both args and locals
-        let mut frame = StacklessFrame::from_function(
-            module_arc.clone(), // Pass Arc<Module>
+        let mut frame = StacklessFrame::new(
+            module_arc.clone(),
             func_idx,
-            &args, // Pass args as slice
-            0,     // instance_idx, assuming 0 for now
-        )?;
+            args.as_slice(),
+            instance_idx.try_into().unwrap(),
+        )
+        .map_err(|e| Error::new(e))?;
 
         // Define func_code needed for label stack push below
         // func_code is already retrieved within from_function, maybe refactor later
@@ -661,14 +363,15 @@ pub fn execute_export_function(
         // Push the implicit function block label
         let function_return_arity = func_type.results.len();
         frame.label_stack.push(Label {
-            arity: function_return_arity,
-            // PC/Continuation for the function block itself.
-            // Using MAX for continuation seems reasonable to signify function end.
-            pc: func_code.len(), // Points just after the last instruction
-            continuation: usize::MAX,
+            arity: 0,
+            pc: 0, // Needs to be set after finding end instruction
+            continuation: 0,
+            stack_depth: 0,
+            is_if: false,
+            is_loop: false,
         });
 
-        println!(
+        trace!(
             "DEBUG: execute_export_function - Initial Frame: {:?}",
             frame
         );
@@ -678,25 +381,56 @@ pub fn execute_export_function(
             let current_pc = frame.pc();
             // Check for return signal
             if frame.return_pc() == usize::MAX {
-                println!("DEBUG: execute_export_function - Detected return signal. Exiting loop.");
+                trace!("DEBUG: execute_export_function - Detected return signal. Exiting loop.");
                 break; // Exit loop if return was signaled
             }
 
             let instruction = &func_code[current_pc];
-            println!(
+            trace!(
                 "DEBUG: execute_export_function - PC: {}, Executing: {:?}, Stack: {:?}",
                 current_pc,
                 instruction,
                 stack.values()
             );
 
-            execute_instruction(instruction, &mut stack, &mut frame)?;
-
-            // Only increment PC if the instruction didn't modify it (e.g., not a branch or return)
-            if frame.pc() == current_pc {
-                frame.set_pc(current_pc + 1);
+            // Execute the instruction and handle control flow
+            match execute_instruction(
+                instruction,
+                &mut stack,
+                &mut frame,
+                &mut StacklessEngine::new(),
+            )? {
+                ControlFlow::Continue => {
+                    // Only increment PC if the instruction didn't modify it (e.g., not a branch or return)
+                    if frame.pc() == current_pc {
+                        frame.set_pc(current_pc + 1);
+                    }
+                }
+                ControlFlow::Trap(err) => {
+                    // Propagate trap errors
+                    return Err(err);
+                }
+                // Other control flow types are unexpected in this simplified execution context
+                // Branching, Returning, Calling should be handled within the instruction executor
+                // or by the main engine loop, not this function-level execution.
+                ControlFlow::Branch { .. } => {
+                    // The instruction executor should have updated the PC directly.
+                    // If we reach here, it might indicate an issue, but we assume the PC is correct.
+                    // No explicit PC increment needed here.
+                }
+                ControlFlow::Return { .. } => {
+                    // The return instruction should have set the frame's return_pc or signaled.
+                    // Break the loop to handle result processing.
+                    break;
+                }
+                ControlFlow::Call { .. } => {
+                    return Err(Error::new(ExecutionError(
+                        "Unexpected ControlFlow::Call in execute_export_function".to_string(),
+                    )));
+                }
             }
-            println!(
+
+            trace!(
                 "DEBUG: execute_export_function - PC after instr: {}, Return PC: {}",
                 frame.pc(),
                 frame.return_pc()
@@ -715,42 +449,39 @@ pub fn execute_export_function(
         println!("Manual Execution End");
         */
 
-        // println!("DEBUG: execute_export_function - Loop finished.");
-        // println!("Addr of stack AFTER loop: {:p}", &stack);
-        // println!("DEBUG: execute_export_function - Stack state BEFORE result retrieval: {:?}", stack.values());
+        // trace!("DEBUG: execute_export_function - Loop finished.");
+        // trace!("Addr of stack AFTER loop: {:p}", &stack);
+        // trace!("DEBUG: execute_export_function - Stack state BEFORE result retrieval: {:?}", stack.values());
 
         // Return results in the correct order
         let results_count = func_type.results.len();
         let stack_values = stack.values().to_vec();
-        // println!("DEBUG: execute_export_function - stack.values().to_vec() resulted in: {:?}", stack_values);
+        // trace!("DEBUG: execute_export_function - stack.values().to_vec() resulted in: {:?}", stack_values);
 
         let results = if results_count > 0 {
             let stack_len = stack_values.len();
             if stack_len >= results_count {
                 stack_values[stack_len - results_count..].to_vec()
             } else {
-                return Err(Error::StackUnderflow);
+                return Err(Error::new(StackUnderflowError));
             }
         } else {
             Vec::new()
         };
 
-        println!("Final results: {:?}", results);
+        trace!("Final results: {:?}", results);
         Ok(results)
     } else {
-        Err(Error::InvalidExport)
+        Err(ExecutionError("Invalid export kind".to_string()).into())
     }
 }
 
 pub fn execute_instruction(
     instruction: &Instruction,
-    stack: &mut impl Stack,
+    stack: &mut dyn StackBehavior,
     frame: &mut dyn FrameBehavior,
-) -> Result<()> {
-    // For debugging:
-    //println!("Addr of stack INSIDE execute_instruction: {:p}", stack);
-    //println!("In execute_instruction: {:?}", instruction);
-
-    // Use the instruction's execute method
-    instruction.execute(stack, frame)
+    engine: &mut StacklessEngine,
+) -> Result<ControlFlow> {
+    // Delegate execution to the instruction itself via the trait
+    instruction.execute(stack, frame, engine)
 }

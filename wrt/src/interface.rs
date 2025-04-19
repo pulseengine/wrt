@@ -6,6 +6,7 @@
 
 use crate::{
     behavior::{FrameBehavior, StackBehavior},
+    error::kinds,
     error::{Error, Result},
     global::Global,
     memory::{DefaultMemory, MemoryBehavior},
@@ -138,8 +139,8 @@ impl CanonicalABI {
                 if resources.get(id).is_ok() {
                     Ok(InterfaceValue::Resource(id))
                 } else {
-                    Err(Error::Execution(format!(
-                        "Invalid resource handle: {handle}"
+                    Err(Error::new(kinds::ExecutionError(
+                        format!("Invalid resource handle: {handle}").into(),
                     )))
                 }
             }
@@ -153,15 +154,15 @@ impl CanonicalABI {
                 if resources.get(id).is_ok() {
                     Ok(InterfaceValue::Borrowed(id))
                 } else {
-                    Err(Error::Execution(format!(
-                        "Invalid resource handle: {handle}"
+                    Err(Error::new(kinds::ExecutionError(
+                        format!("Invalid resource handle: {handle}").into(),
                     )))
                 }
             }
 
             // Not supported
-            _ => Err(Error::Execution(format!(
-                "Cannot lift value {value_clone:?} to interface type {ty:?}"
+            _ => Err(Error::new(kinds::ExecutionError(
+                format!("Cannot lift value {value_clone:?} to interface type {ty:?}").into(),
             ))),
         }
     }
@@ -199,8 +200,8 @@ impl CanonicalABI {
 
             // Complex types - these would typically be lowered to
             // multiple values or pointers to memory structures
-            _ => Err(Error::Execution(format!(
-                "Cannot lower interface value {value:?} to core type"
+            _ => Err(Error::new(kinds::ExecutionError(
+                format!("Cannot lower interface value {value:?} to core type").into(),
             ))),
         }
     }
@@ -208,14 +209,21 @@ impl CanonicalABI {
     /// Lift a string from memory
     fn lift_string(ptr: i32, memory: &dyn MemoryBehavior) -> Result<InterfaceValue> {
         if ptr < 0 {
-            return Err(Error::Execution(format!("Invalid string pointer: {ptr}")));
+            return Err(Error::new(kinds::ExecutionError(
+                format!("Invalid string pointer: {ptr}").into(),
+            )));
         }
 
         // In the canonical ABI, strings are represented as a pointer to a length-prefixed UTF-8 sequence
         let addr = ptr as u32;
-        if addr + 4 > memory.size() * 65536 {
-            return Err(Error::Execution(format!(
-                "String pointer out of bounds: {ptr}"
+        // Check bounds carefully
+        let mem_size_bytes = memory.size_bytes();
+        if addr
+            .checked_add(4)
+            .map_or(true, |end| end > mem_size_bytes as u32)
+        {
+            return Err(Error::new(kinds::ExecutionError(
+                format!("String pointer (for length) out of bounds: {ptr}").into(),
             )));
         }
 
@@ -226,16 +234,32 @@ impl CanonicalABI {
             length_bytes[1],
             length_bytes[2],
             length_bytes[3],
-        ]) as usize;
+        ]);
 
-        // Read the string data
-        let string_data = memory.read_bytes(addr + 4, length)?;
+        // Check bounds for string data
+        if addr
+            .checked_add(4)
+            .and_then(|start| start.checked_add(length))
+            .map_or(true, |end| end > mem_size_bytes as u32)
+        {
+            return Err(Error::new(kinds::ExecutionError(
+                format!("String data length ({length}) exceeds memory bounds from pointer {ptr}")
+                    .into(),
+            )));
+        }
+
+        let string_data = memory.read_bytes(addr + 4, length as usize)?;
 
         // Convert to UTF-8 string
-        let string = String::from_utf8(string_data.to_vec())
-            .map_err(|e| Error::Execution(format!("Invalid UTF-8 string in memory: {e}")))?;
+        let string = String::from_utf8(string_data)
+            .map_err(|e| {
+                Error::new(kinds::ExecutionError(
+                    format!("Invalid UTF-8 string in memory: {e}").into(),
+                ))
+            })
+            .map(|s| InterfaceValue::String(s))?;
 
-        Ok(InterfaceValue::String(string))
+        Ok(string)
     }
 
     /// Lower a string to memory
@@ -245,27 +269,26 @@ impl CanonicalABI {
         let length = bytes.len();
 
         // Ensure we have enough memory for the string
-        // We need 4 bytes for the length + the string data
-        let total_size = 4 + length;
+        // This needs an allocation strategy (e.g., a simple bump allocator)
+        // For now, assume memory is large enough and place at a fixed offset (e.g., 0)
+        // A real implementation needs memory allocation.
+        let addr: u32 = 0; // Placeholder: Needs proper allocation
 
-        // First check if we need to grow memory
-        let current_size = memory.size_bytes();
-        if current_size < total_size {
-            let pages_needed = (total_size / 65536) + 1;
-            memory.grow(pages_needed as u32)?;
+        // Check bounds before writing
+        let mem_size_bytes = memory.size_bytes();
+        let required_size = (4 + length) as u64;
+        if addr as u64 + required_size > mem_size_bytes as u64 {
+            return Err(Error::new(kinds::ExecutionError(
+                "Not enough memory to lower string".to_string(),
+            )));
         }
 
-        // Use the end of the current data as our allocation point
-        let addr = (memory.size_bytes() - total_size) as u32;
-
-        // Write the length
-        let length_bytes = (length as u32).to_le_bytes();
-        memory.write_bytes(addr, &length_bytes)?;
-
-        // Write the string data
+        // Write length prefix
+        memory.write_bytes(addr, &u32::to_le_bytes(length as u32))?;
+        // Write string data
         memory.write_bytes(addr + 4, bytes)?;
 
-        // Return the pointer
+        // Return pointer to the start of the length prefix
         Ok(Value::I32(addr as i32))
     }
 
@@ -299,9 +322,9 @@ impl CanonicalABI {
             InterfaceValue::Resource(id) => Ok(Value::I32(id.0 as i32)),
             InterfaceValue::Borrowed(id) => Ok(Value::I32(id.0 as i32)),
 
-            _ => Err(Error::Execution(format!(
+            _ => Err(Error::new(kinds::ExecutionError(format!(
                 "Cannot lower interface value {value:?} to core type with given component type {ty:?}"
-            ))),
+            ).into())))
         }
     }
 }
@@ -336,7 +359,7 @@ mod tests {
         let f32_type = ComponentType::Primitive(ValueType::F32);
         let result = CanonicalABI::lift(f32_val, &f32_type, None, None)?;
         let InterfaceValue::Float32(f) = result else {
-            return Err(Error::Execution("Expected Float32".into()));
+            return Err(Error::new(kinds::ExecutionError("Expected Float32".into())));
         };
         assert_eq!(f, 3.14);
 
@@ -345,7 +368,7 @@ mod tests {
         let f64_type = ComponentType::Primitive(ValueType::F64);
         let result = CanonicalABI::lift(f64_val, &f64_type, None, None)?;
         let InterfaceValue::Float64(f) = result else {
-            return Err(Error::Execution("Expected Float64".into()));
+            return Err(Error::new(kinds::ExecutionError("Expected Float64".into())));
         };
         assert_eq!(f, 2.71828);
 
@@ -373,7 +396,7 @@ mod tests {
         let f32_val = InterfaceValue::Float32(3.14);
         let result = CanonicalABI::lower(f32_val, None, None)?;
         let Value::F32(f) = result else {
-            return Err(Error::Execution("Expected F32".into()));
+            return Err(Error::new(kinds::ExecutionError("Expected F32".into())));
         };
         assert_eq!(f, 3.14);
 
@@ -395,7 +418,9 @@ mod tests {
 
         // The result should be an i32 pointer
         let Value::I32(ptr) = result else {
-            return Err(Error::Execution("Expected I32 pointer".into()));
+            return Err(Error::new(kinds::ExecutionError(
+                "Expected I32 pointer".into(),
+            )));
         };
 
         // Now lift the string back from memory
@@ -404,7 +429,7 @@ mod tests {
 
         // Should get back the same string
         let InterfaceValue::String(s) = lifted else {
-            return Err(Error::Execution("Expected String".into()));
+            return Err(Error::new(kinds::ExecutionError("Expected String".into())));
         };
         assert_eq!(s, "Hello, WebAssembly!");
 
@@ -434,7 +459,9 @@ mod tests {
 
         // The result should be an i32 handle
         let Value::I32(handle) = result else {
-            return Err(Error::Execution("Expected I32 handle".into()));
+            return Err(Error::new(kinds::ExecutionError(
+                "Expected I32 handle".into(),
+            )));
         };
 
         // Now lift the resource back from the handle
@@ -448,7 +475,9 @@ mod tests {
 
         // Should get back the same resource ID
         let InterfaceValue::Resource(res_id) = lifted else {
-            return Err(Error::Execution("Expected Resource".into()));
+            return Err(Error::new(kinds::ExecutionError(
+                "Expected Resource".into(),
+            )));
         };
         assert_eq!(res_id.0, id.0);
 
@@ -471,11 +500,36 @@ mod tests {
 ///
 /// A `Result` containing the `InstanceType` on success, or an `Error` on failure.
 pub fn instantiate(
-    module: &Module,
+    _module: &Module,
     _resources: Option<&mut ResourceTable>,
 ) -> Result<InstanceType> {
     // Create a simple instance type with no exports
     Ok(InstanceType {
         exports: Vec::new(),
     })
+}
+
+/// Interface for a WebAssembly Component
+#[derive(Debug)]
+pub struct Interface {
+    /// The instance type of this interface
+    pub instance_type: InstanceType,
+    /// Whether this interface is instantiated
+    pub instantiated: bool,
+}
+
+impl Interface {
+    /// Create a new interface from an instance type
+    pub fn new(instance_type: InstanceType) -> Self {
+        Self {
+            instance_type,
+            instantiated: false,
+        }
+    }
+
+    /// Instantiate this interface
+    pub fn instantiate(&mut self) -> Result<()> {
+        self.instantiated = true;
+        Ok(())
+    }
 }

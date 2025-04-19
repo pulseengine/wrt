@@ -1,8 +1,18 @@
+#![cfg_attr(not(feature = "std"), no_std)]
+
+#[cfg(not(feature = "std"))]
+extern crate alloc;
+
+use crate::error::kinds;
+use crate::error::{Error, Result};
 use crate::types::ValueType;
-use crate::{Box, String, Vec};
+#[cfg(not(feature = "std"))]
+use alloc::{boxed::Box, string::String, vec::Vec};
+use core::fmt;
 #[cfg(feature = "serialization")]
 use serde::{Deserialize, Serialize};
-use std::fmt;
+#[cfg(feature = "std")]
+use std::{boxed::Box, string::String, vec::Vec};
 
 /// Represents a WebAssembly runtime value
 #[derive(Debug, Clone)]
@@ -44,6 +54,31 @@ impl PartialEq for Value {
 }
 
 impl Eq for Value {}
+
+/// A WebAssembly v128 value used for SIMD operations
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct V128 {
+    /// The 128-bit value represented as 16 bytes
+    pub bytes: [u8; 16],
+}
+
+impl V128 {
+    /// Create a new v128 value from 16 bytes
+    pub fn new(bytes: [u8; 16]) -> Self {
+        Self { bytes }
+    }
+
+    /// Create a v128 filled with zeros
+    pub fn zero() -> Self {
+        Self { bytes: [0; 16] }
+    }
+}
+
+// Create a helper function for creating a v128 value
+/// Helper function to create a new V128 value
+pub fn v128(bytes: [u8; 16]) -> V128 {
+    V128::new(bytes)
+}
 
 impl Value {
     /// Creates a default value for the given WebAssembly value type.
@@ -314,6 +349,11 @@ impl Value {
         }
     }
 
+    /// Returns the `ValueType` corresponding to this `Value` variant.
+    pub const fn value_type(&self) -> ValueType {
+        self.get_type()
+    }
+
     /// Attempts to get the value as a u64
     ///
     /// # Returns
@@ -346,9 +386,48 @@ impl Value {
     pub fn into_i32(self) -> crate::error::Result<i32> {
         match self {
             Self::I32(v) => Ok(v),
-            _ => Err(crate::error::Error::TypeMismatch(
+            _ => Err(crate::error::Error::new(kinds::InvalidTypeError(
                 "Expected i32 value".to_string(),
-            )),
+            ))),
+        }
+    }
+
+    /// Attempts to convert the value to a boolean (i32 0 or 1).
+    pub fn as_bool(&self) -> Option<bool> {
+        match self {
+            Value::I32(0) => Some(false),
+            Value::I32(1) => Some(true),
+            _ => None,
+        }
+    }
+
+    /// Converts the `Value` to `[u8; 16]` if it is `V128`.
+    pub fn as_v128(&self) -> Result<[u8; 16]> {
+        match self {
+            Value::V128(v) => Ok(*v),
+            _ => Err(Error::new(kinds::InvalidTypeError(
+                "Expected V128".to_string(),
+            ))),
+        }
+    }
+
+    /// Converts the value to `i32` if possible.
+    pub fn into_i32_from_f32(self) -> crate::error::Result<i32> {
+        match self {
+            Self::F32(v) => Ok(v as i32),
+            _ => Err(crate::error::Error::new(kinds::InvalidTypeError(
+                "Cannot convert f32 to non-numeric type".into(),
+            ))),
+        }
+    }
+
+    /// Converts the value to `i64` if possible.
+    pub fn into_i64_from_f64(self) -> crate::error::Result<i64> {
+        match self {
+            Self::F64(v) => Ok(v as i64),
+            _ => Err(crate::error::Error::new(kinds::InvalidTypeError(
+                "Cannot convert f64 to non-numeric type".into(),
+            ))),
         }
     }
 }

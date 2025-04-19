@@ -1,4 +1,3 @@
-use crate::error::{Error, Result};
 use crate::types::MemoryType;
 use crate::{String, Vec};
 #[cfg(not(feature = "std"))]
@@ -15,7 +14,8 @@ use std::sync::Arc;
 #[cfg(feature = "std")]
 use std::sync::RwLock;
 #[cfg(feature = "std")]
-use std::vec; // Import RwLock
+use std::vec;
+use wrt_error::{kinds, Error, Result}; // Import RwLock
 
 /// Size of a WebAssembly memory page in bytes (64KiB)
 pub const PAGE_SIZE: usize = 65536;
@@ -43,17 +43,17 @@ pub trait MemoryBehavior: std::fmt::Debug + Send + Sync {
     /// Returns the current memory size in bytes.
     fn size_bytes(&self) -> usize;
     /// Grows the memory by the specified number of pages.
-    fn grow(&self, delta: u32) -> Result<u32>;
+    fn grow(&self, delta: u32) -> Result<u32, Error>;
     /// Reads a single byte from the specified address.
-    fn read_byte(&self, addr: u32) -> Result<u8>;
+    fn read_byte(&self, addr: u32) -> Result<u8, Error>;
     /// Writes a single byte to the specified address.
-    fn write_byte(&self, addr: u32, value: u8) -> Result<()>;
+    fn write_byte(&self, addr: u32, value: u8) -> Result<(), Error>;
     /// Reads a sequence of bytes from the specified address.
-    fn read_bytes(&self, addr: u32, len: usize) -> Result<Vec<u8>>;
+    fn read_bytes(&self, addr: u32, len: usize) -> Result<Vec<u8>, Error>;
     /// Writes a sequence of bytes to the specified address.
-    fn write_bytes(&self, addr: u32, bytes: &[u8]) -> Result<()>;
+    fn write_bytes(&self, addr: u32, bytes: &[u8]) -> Result<(), Error>;
     /// Checks if a memory access at the given address with the specified alignment is valid.
-    fn check_alignment(&self, addr: u32, access_size: u32, align: u32) -> Result<()>;
+    fn check_alignment(&self, addr: u32, access_size: u32, align: u32) -> Result<(), Error>;
     // Add other necessary methods used by FrameBehavior or instructions if needed
     // e.g., read/write for specific types (i32, i64, f32, f64, v128) might be useful here
     // or they can remain helper functions if FrameBehavior uses read_bytes/write_bytes.
@@ -61,48 +61,48 @@ pub trait MemoryBehavior: std::fmt::Debug + Send + Sync {
 
     // Methods needed for MockMemory tests specifically
     // These might overlap with above, ensure signatures match
-    fn read_u16(&self, addr: u32) -> Result<u16>; // Added based on MockMemory usage pattern
-    fn write_u16(&self, addr: u32, value: u16) -> Result<()>; // Reverted to &self
-    fn read_i32(&self, addr: u32) -> Result<i32>; // Added
-    fn write_i32(&self, addr: u32, value: i32) -> Result<()>; // Reverted to &self
-    fn read_i64(&self, addr: u32) -> Result<i64>; // Added
-    fn write_i64(&self, addr: u32, value: i64) -> Result<()>; // Reverted to &self
-    fn read_f32(&self, addr: u32) -> Result<f32>; // Added
-    fn write_f32(&self, addr: u32, value: f32) -> Result<()>; // Reverted to &self
-    fn read_f64(&self, addr: u32) -> Result<f64>; // Added
-    fn write_f64(&self, addr: u32, value: f64) -> Result<()>; // Reverted to &self
-    fn read_v128(&self, addr: u32) -> Result<[u8; 16]>; // Added
-    fn write_v128(&self, addr: u32, value: [u8; 16]) -> Result<()>; // Reverted to &self
+    fn read_u16(&self, addr: u32) -> Result<u16, Error>; // Added based on MockMemory usage pattern
+    fn write_u16(&self, addr: u32, value: u16) -> Result<(), Error>; // Reverted to &self
+    fn read_i32(&self, addr: u32) -> Result<i32, Error>; // Added
+    fn write_i32(&self, addr: u32, value: i32) -> Result<(), Error>; // Reverted to &self
+    fn read_i64(&self, addr: u32) -> Result<i64, Error>; // Added
+    fn write_i64(&self, addr: u32, value: i64) -> Result<(), Error>; // Reverted to &self
+    fn read_f32(&self, addr: u32) -> Result<f32, Error>; // Added
+    fn write_f32(&self, addr: u32, value: f32) -> Result<(), Error>; // Reverted to &self
+    fn read_f64(&self, addr: u32) -> Result<f64, Error>; // Added
+    fn write_f64(&self, addr: u32, value: f64) -> Result<(), Error>; // Reverted to &self
+    fn read_v128(&self, addr: u32) -> Result<[u8; 16], Error>; // Added
+    fn write_v128(&self, addr: u32, value: [u8; 16]) -> Result<(), Error>; // Reverted to &self
 
     // Added missing methods based on usage in instructions/memory.rs and DefaultMemory
-    fn read_i8(&self, addr: u32) -> Result<i8>;
-    fn read_u8(&self, addr: u32) -> Result<u8>; // Often used synonym for read_byte
-    fn read_i16(&self, addr: u32) -> Result<i16>;
+    fn read_i8(&self, addr: u32) -> Result<i8, Error>;
+    fn read_u8(&self, addr: u32) -> Result<u8, Error>; // Often used synonym for read_byte
+    fn read_i16(&self, addr: u32) -> Result<i16, Error>;
     // read_u16 already exists
     // read_i32 already exists
-    fn read_u32(&self, addr: u32) -> Result<u32>;
+    fn read_u32(&self, addr: u32) -> Result<u32, Error>;
     // read_i64 already exists
-    fn read_u64(&self, addr: u32) -> Result<u64>;
+    fn read_u64(&self, addr: u32) -> Result<u64, Error>;
     // read_f32 already exists
     // read_f64 already exists
     // read_v128 already exists
 
-    fn write_i8(&self, addr: u32, value: i8) -> Result<()>;
-    fn write_u8(&self, addr: u32, value: u8) -> Result<()>; // Often used synonym for write_byte
-    fn write_i16(&self, addr: u32, value: i16) -> Result<()>;
+    fn write_i8(&self, addr: u32, value: i8) -> Result<(), Error>;
+    fn write_u8(&self, addr: u32, value: u8) -> Result<(), Error>; // Often used synonym for write_byte
+    fn write_i16(&self, addr: u32, value: i16) -> Result<(), Error>;
     // write_u16 already exists
     // write_i32 already exists
     // write_u32 already exists in DefaultMemory inherent methods, add to trait
-    fn write_u32(&self, addr: u32, value: u32) -> Result<()>;
+    fn write_u32(&self, addr: u32, value: u32) -> Result<(), Error>;
     // write_i64 already exists
     // write_u64 already exists in DefaultMemory inherent methods, add to trait
-    fn write_u64(&self, addr: u32, value: u64) -> Result<()>;
+    fn write_u64(&self, addr: u32, value: u64) -> Result<(), Error>;
     // write_f32 already exists
     // write_f64 already exists
     // write_v128 already exists
 
     // Bulk memory operations
-    fn fill(&self, addr: usize, value: u8, len: usize) -> Result<()>;
+    fn fill(&self, addr: usize, value: u8, len: usize) -> Result<(), Error>;
     // Changed signature to take Arc<dyn MemoryBehavior> to match DefaultMemory impl possibility
     fn copy_within_or_between(
         &self,
@@ -110,8 +110,8 @@ pub trait MemoryBehavior: std::fmt::Debug + Send + Sync {
         src_addr: usize,
         dst_addr: usize,
         len: usize,
-    ) -> Result<()>;
-    fn init(&self, dst_addr: usize, data: &[u8], src_addr: usize, len: usize) -> Result<()>;
+    ) -> Result<(), Error>;
+    fn init(&self, dst_addr: usize, data: &[u8], src_addr: usize, len: usize) -> Result<(), Error>;
 
     // Helper to downcast, useful for copy_within_or_between
     // Using Any + AnyMut because the source memory might not be mutable
@@ -139,7 +139,7 @@ pub struct DefaultMemory {
     access_count: AtomicU64,
     /// Memory access counter for profiling (non-std environments)
     #[cfg(not(feature = "std"))]
-    access_count: UnsafeCell<u64>,
+    access_count: RwLock<u64>,
 }
 
 impl Clone for DefaultMemory {
@@ -167,7 +167,12 @@ impl Clone for DefaultMemory {
             #[cfg(feature = "std")]
             access_count: AtomicU64::new(self.access_count.load(Ordering::Relaxed)),
             #[cfg(not(feature = "std"))]
-            access_count: UnsafeCell::new(unsafe { *self.access_count.get() }),
+            access_count: RwLock::new(
+                *self
+                    .access_count
+                    .read()
+                    .expect("Access count lock poisoned"),
+            ),
         }
     }
 }
@@ -205,7 +210,7 @@ impl DefaultMemory {
             #[cfg(feature = "std")]
             access_count: AtomicU64::new(0),
             #[cfg(not(feature = "std"))]
-            access_count: UnsafeCell::new(0),
+            access_count: RwLock::new(0),
         }
     }
 
@@ -248,7 +253,10 @@ impl DefaultMemory {
         }
         #[cfg(not(feature = "std"))]
         {
-            unsafe { *self.access_count.get() }
+            *self
+                .access_count
+                .read()
+                .expect("Access count lock poisoned")
         }
     }
 
@@ -263,11 +271,15 @@ impl DefaultMemory {
     }
 
     /// Grows the memory by the specified number of pages
-    pub fn grow(&self, delta: u32) -> Result<u32> {
+    pub fn grow(&self, delta: u32) -> Result<u32, Error> {
         let current_pages = self.current_size_pages();
         let new_pages = match current_pages.checked_add(delta) {
             Some(p) => p,
-            None => return Err(Error::MemoryGrowError("Page count overflow".into())),
+            None => {
+                return Err(Error::new(kinds::MemoryGrowError(
+                    "Page count overflow".into(),
+                )))
+            }
         };
 
         if let Some(max) = self.mem_type.max {
@@ -284,20 +296,20 @@ impl DefaultMemory {
             return Ok(current_pages);
         }
 
-        let mut data_guard = self
-            .data
-            .write()
-            .map_err(|_| Error::PoisonError("Memory lock poisoned".to_string()))?;
+        let mut data_guard = self.data.write().map_err(|_| {
+            Error::new(kinds::PoisonedLockError("Memory lock poisoned".to_string()))
+        })?;
         let new_len = data_guard.len().saturating_add(delta_bytes);
 
         // Try to resize the vector
         data_guard.resize(new_len, 0); // resize handles allocation
 
         // Update peak memory usage
-        let mut peak_mem = self
-            .peak_memory_used
-            .write()
-            .map_err(|_| Error::PoisonError("Peak memory lock poisoned".to_string()))?;
+        let mut peak_mem = self.peak_memory_used.write().map_err(|_| {
+            Error::new(kinds::PoisonedLockError(
+                "Peak memory lock poisoned".to_string(),
+            ))
+        })?;
         *peak_mem = (*peak_mem).max(new_len);
 
         Ok(current_pages)
@@ -321,7 +333,7 @@ impl DefaultMemory {
     }
 
     /// Check bounds, handling wrapping arithmetic and regions
-    fn check_bounds(&self, addr: u32, len: u32) -> Result<()> {
+    fn check_bounds(&self, addr: u32, len: u32) -> Result<(), Error> {
         if len == 0 {
             return Ok(());
         }
@@ -331,10 +343,10 @@ impl DefaultMemory {
         let end_region = self.determine_memory_region(end_addr);
 
         if start_region != end_region || start_region == MemoryRegion::Unmapped {
-            return Err(Error::MemoryAccessOutOfBounds(format!(
-                 "Access spanning regions or starting in unmapped: addr={:#x}, len={}, start_region={:?}, end_region={:?}",
-                 addr, len, start_region, end_region
-             )));
+            return Err(Error::new(kinds::MemoryAccessOutOfBoundsError {
+                address: addr as u64,
+                length: len as u64,
+            }));
         }
 
         match start_region {
@@ -346,16 +358,16 @@ impl DefaultMemory {
                         if (exclusive_end_addr as usize) <= data_len {
                             Ok(())
                         } else {
-                            Err(Error::MemoryAccessOutOfBounds(format!(
-                                "Standard memory OOB: addr={:#x}, len={}, memory_size={}",
-                                addr, len, data_len
-                            )))
+                            Err(Error::new(kinds::MemoryAccessOutOfBoundsError {
+                                address: addr as u64,
+                                length: len as u64,
+                            }))
                         }
                     }
-                    None => Err(Error::MemoryAccessOutOfBounds(format!(
-                        "Address calculation overflow: addr={:#x}, len={}",
-                        addr, len
-                    ))),
+                    None => Err(Error::new(kinds::MemoryAccessOutOfBoundsError {
+                        address: addr as u64,
+                        length: len as u64,
+                    })),
                 }
             }
             MemoryRegion::Stack => {
@@ -366,10 +378,10 @@ impl DefaultMemory {
                 if end_offset_inclusive <= start_offset && start_offset < stack_len {
                     Ok(())
                 } else {
-                    Err(Error::MemoryAccessOutOfBounds(format!(
-                     "Stack memory OOB: addr={:#x}, len={}, start_offset={}, end_offset_inclusive={}, stack_size={}",
-                     addr, len, start_offset, end_offset_inclusive, stack_len
-                 )))
+                    Err(Error::new(kinds::MemoryAccessOutOfBoundsError {
+                        address: addr as u64,
+                        length: len as u64,
+                    }))
                 }
             }
             MemoryRegion::Unmapped => unreachable!(), // Already handled above
@@ -378,7 +390,7 @@ impl DefaultMemory {
 
     // --- Inherent Read/Write Methods using check_bounds ---
 
-    pub fn read_byte(&self, addr: u32) -> Result<u8> {
+    pub fn read_byte(&self, addr: u32) -> Result<u8, Error> {
         self.check_bounds(addr, 1)?;
         // Increment access counter
         #[cfg(feature = "std")]
@@ -388,7 +400,11 @@ impl DefaultMemory {
         #[cfg(not(feature = "std"))]
         {
             unsafe {
-                *self.access_count.get() += 1;
+                let mut count = self
+                    .access_count
+                    .write()
+                    .expect("Access count lock poisoned");
+                *count += 1;
             }
         }
 
@@ -406,7 +422,7 @@ impl DefaultMemory {
         }
     }
 
-    pub fn write_byte(&self, addr: u32, value: u8) -> Result<()> {
+    pub fn write_byte(&self, addr: u32, value: u8) -> Result<(), Error> {
         self.check_bounds(addr, 1)?;
         // Increment access counter
         #[cfg(feature = "std")]
@@ -416,7 +432,11 @@ impl DefaultMemory {
         #[cfg(not(feature = "std"))]
         {
             unsafe {
-                *self.access_count.get() += 1;
+                let mut count = self
+                    .access_count
+                    .write()
+                    .expect("Access count lock poisoned");
+                *count += 1;
             }
         }
 
@@ -437,7 +457,7 @@ impl DefaultMemory {
     }
 
     /// Generic read for any integer type from memory
-    fn read_integer<T>(&self, addr: u32, size: usize) -> Result<T>
+    fn read_integer<T>(&self, addr: u32, size: usize) -> Result<T, Error>
     where
         T: Copy
             + Default
@@ -454,7 +474,11 @@ impl DefaultMemory {
         #[cfg(not(feature = "std"))]
         {
             unsafe {
-                *self.access_count.get() += 1;
+                let mut count = self
+                    .access_count
+                    .write()
+                    .expect("Access count lock poisoned");
+                *count += 1;
             }
         }
 
@@ -471,7 +495,7 @@ impl DefaultMemory {
     }
 
     /// Generic write for any integer type to memory
-    fn write_integer<T>(&self, addr: u32, value: T, size: usize) -> Result<()>
+    fn write_integer<T>(&self, addr: u32, value: T, size: usize) -> Result<(), Error>
     where
         T: Copy + Into<u64>,
     {
@@ -484,7 +508,11 @@ impl DefaultMemory {
         #[cfg(not(feature = "std"))]
         {
             unsafe {
-                *self.access_count.get() += 1;
+                let mut count = self
+                    .access_count
+                    .write()
+                    .expect("Access count lock poisoned");
+                *count += 1;
             }
         }
 
@@ -500,74 +528,74 @@ impl DefaultMemory {
 
     // --- Typed read/write methods using generic helpers ---
 
-    pub fn read_u8(&self, addr: u32) -> Result<u8> {
+    pub fn read_u8(&self, addr: u32) -> Result<u8, Error> {
         self.read_byte(addr)
     }
-    pub fn write_u8(&self, addr: u32, value: u8) -> Result<()> {
+    pub fn write_u8(&self, addr: u32, value: u8) -> Result<(), Error> {
         self.write_byte(addr, value)
     }
-    pub fn read_i8(&self, addr: u32) -> Result<i8> {
+    pub fn read_i8(&self, addr: u32) -> Result<i8, Error> {
         Ok(self.read_byte(addr)? as i8)
     }
-    pub fn write_i8(&self, addr: u32, value: i8) -> Result<()> {
+    pub fn write_i8(&self, addr: u32, value: i8) -> Result<(), Error> {
         self.write_byte(addr, value as u8)
     }
 
-    pub fn read_u16(&self, addr: u32) -> Result<u16> {
+    pub fn read_u16(&self, addr: u32) -> Result<u16, Error> {
         self.read_integer::<u16>(addr, 2)
     }
-    pub fn write_u16(&self, addr: u32, value: u16) -> Result<()> {
+    pub fn write_u16(&self, addr: u32, value: u16) -> Result<(), Error> {
         self.write_integer::<u16>(addr, value, 2)
     }
-    pub fn read_i16(&self, addr: u32) -> Result<i16> {
+    pub fn read_i16(&self, addr: u32) -> Result<i16, Error> {
         Ok(self.read_u16(addr)? as i16)
     }
-    pub fn write_i16(&self, addr: u32, value: i16) -> Result<()> {
+    pub fn write_i16(&self, addr: u32, value: i16) -> Result<(), Error> {
         self.write_u16(addr, value as u16)
     }
 
-    pub fn read_u32(&self, addr: u32) -> Result<u32> {
+    pub fn read_u32(&self, addr: u32) -> Result<u32, Error> {
         self.read_integer::<u32>(addr, 4)
     }
-    pub fn write_u32(&self, addr: u32, value: u32) -> Result<()> {
+    pub fn write_u32(&self, addr: u32, value: u32) -> Result<(), Error> {
         self.write_integer::<u32>(addr, value, 4)
     }
-    pub fn read_i32(&self, addr: u32) -> Result<i32> {
+    pub fn read_i32(&self, addr: u32) -> Result<i32, Error> {
         Ok(self.read_u32(addr)? as i32)
     }
-    pub fn write_i32(&self, addr: u32, value: i32) -> Result<()> {
+    pub fn write_i32(&self, addr: u32, value: i32) -> Result<(), Error> {
         self.write_u32(addr, value as u32)
     }
 
-    pub fn read_u64(&self, addr: u32) -> Result<u64> {
+    pub fn read_u64(&self, addr: u32) -> Result<u64, Error> {
         self.read_integer::<u64>(addr, 8)
     }
-    pub fn write_u64(&self, addr: u32, value: u64) -> Result<()> {
+    pub fn write_u64(&self, addr: u32, value: u64) -> Result<(), Error> {
         self.write_integer::<u64>(addr, value, 8)
     }
-    pub fn read_i64(&self, addr: u32) -> Result<i64> {
+    pub fn read_i64(&self, addr: u32) -> Result<i64, Error> {
         Ok(self.read_u64(addr)? as i64)
     }
-    pub fn write_i64(&self, addr: u32, value: i64) -> Result<()> {
+    pub fn write_i64(&self, addr: u32, value: i64) -> Result<(), Error> {
         self.write_u64(addr, value as u64)
     }
 
-    pub fn read_f32(&self, addr: u32) -> Result<f32> {
+    pub fn read_f32(&self, addr: u32) -> Result<f32, Error> {
         Ok(f32::from_bits(self.read_u32(addr)?))
     }
-    pub fn write_f32(&self, addr: u32, value: f32) -> Result<()> {
+    pub fn write_f32(&self, addr: u32, value: f32) -> Result<(), Error> {
         self.write_u32(addr, value.to_bits())
     }
-    pub fn read_f64(&self, addr: u32) -> Result<f64> {
+    pub fn read_f64(&self, addr: u32) -> Result<f64, Error> {
         Ok(f64::from_bits(self.read_u64(addr)?))
     }
-    pub fn write_f64(&self, addr: u32, value: f64) -> Result<()> {
+    pub fn write_f64(&self, addr: u32, value: f64) -> Result<(), Error> {
         self.write_u64(addr, value.to_bits())
     }
 
     // --- Bulk read/write methods ---
 
-    pub fn read_bytes(&self, addr: u32, len: usize) -> Result<Vec<u8>> {
+    pub fn read_bytes(&self, addr: u32, len: usize) -> Result<Vec<u8>, Error> {
         if len == 0 {
             return Ok(Vec::new());
         }
@@ -581,7 +609,11 @@ impl DefaultMemory {
         #[cfg(not(feature = "std"))]
         {
             unsafe {
-                *self.access_count.get() += access_inc;
+                let mut count = self
+                    .access_count
+                    .write()
+                    .expect("Access count lock poisoned");
+                *count += access_inc;
             }
         }
 
@@ -601,7 +633,7 @@ impl DefaultMemory {
         }
     }
 
-    pub fn write_bytes(&self, addr: u32, bytes: &[u8]) -> Result<()> {
+    pub fn write_bytes(&self, addr: u32, bytes: &[u8]) -> Result<(), Error> {
         let len = bytes.len();
         if len == 0 {
             return Ok(());
@@ -616,7 +648,11 @@ impl DefaultMemory {
         #[cfg(not(feature = "std"))]
         {
             unsafe {
-                *self.access_count.get() += access_inc;
+                let mut count = self
+                    .access_count
+                    .write()
+                    .expect("Access count lock poisoned");
+                *count += access_inc;
             }
         }
 
@@ -638,23 +674,23 @@ impl DefaultMemory {
         }
     }
 
-    pub fn read_v128(&self, addr: u32) -> Result<[u8; 16]> {
+    pub fn read_v128(&self, addr: u32) -> Result<[u8; 16], Error> {
         let bytes = self.read_bytes(addr, 16)?;
         bytes.try_into().map_err(|_| {
-            Error::MemoryAccessOutOfBounds(format!(
-                "Failed V128 conversion from read_bytes at addr {}",
-                addr
-            ))
+            Error::new(kinds::MemoryAccessOutOfBoundsError {
+                address: addr as u64,
+                length: 16,
+            })
         })
     }
 
-    pub fn write_v128(&self, addr: u32, value: [u8; 16]) -> Result<()> {
+    pub fn write_v128(&self, addr: u32, value: [u8; 16]) -> Result<(), Error> {
         self.write_bytes(addr, &value)
     }
 
     // --- Bulk memory operations ---
 
-    pub fn fill(&self, addr: usize, value: u8, len: usize) -> Result<()> {
+    pub fn fill(&self, addr: usize, value: u8, len: usize) -> Result<(), Error> {
         if len == 0 {
             return Ok(());
         }
@@ -668,7 +704,11 @@ impl DefaultMemory {
         #[cfg(not(feature = "std"))]
         {
             unsafe {
-                *self.access_count.get() += access_inc;
+                let mut count = self
+                    .access_count
+                    .write()
+                    .expect("Access count lock poisoned");
+                *count += access_inc;
             }
         }
 
@@ -691,7 +731,7 @@ impl DefaultMemory {
     }
 
     /// Copies data within this memory instance.
-    pub fn copy_within(&self, src_addr: usize, dst_addr: usize, len: usize) -> Result<()> {
+    pub fn copy_within(&self, src_addr: usize, dst_addr: usize, len: usize) -> Result<(), Error> {
         if len == 0 {
             return Ok(());
         }
@@ -704,9 +744,9 @@ impl DefaultMemory {
 
         // Copying between standard and stack memory is complex and likely not intended by Wasm spec for `memory.copy`
         if src_region != dst_region {
-            return Err(Error::Execution(
+            return Err(Error::new(kinds::ExecutionError(
                 "memory.copy between standard and stack regions not supported".into(),
-            ));
+            )));
         }
 
         // Increment access counter (consider it two accesses: read + write)
@@ -718,7 +758,11 @@ impl DefaultMemory {
         #[cfg(not(feature = "std"))]
         {
             unsafe {
-                *self.access_count.get() += access_inc;
+                let mut count = self
+                    .access_count
+                    .write()
+                    .expect("Access count lock poisoned");
+                *count += access_inc;
             }
         }
 
@@ -749,21 +793,18 @@ impl DefaultMemory {
         data: &[u8],
         src_addr: usize,
         len: usize,
-    ) -> Result<()> {
+    ) -> Result<(), Error> {
         if len == 0 {
             return Ok(());
         }
-        // Check bounds for the source data slice
-        if src_addr
-            .checked_add(len)
-            .map_or(true, |end| end > data.len())
-        {
-            return Err(Error::InvalidDataSegment(format!(
+        // Check bounds for the source data slice using usize consistently
+        if src_addr.checked_add(len).is_none() || (src_addr + len) > data.len() {
+            return Err(Error::new(kinds::ExecutionError(format!(
                 "Source data segment access out of bounds: src_addr={}, len={}, data_len={}",
                 src_addr,
                 len,
                 data.len()
-            )));
+            ))));
         }
         // Get the relevant part of the source data
         let src_data = &data[src_addr..src_addr + len];
@@ -773,7 +814,7 @@ impl DefaultMemory {
 
     // --- Debug/Helper Methods (Optional) ---
     #[cfg(feature = "std")]
-    pub fn search_memory(&self, pattern: &str, ascii_only: bool) -> Vec<(u32, String)> {
+    pub fn search_memory(&self, _pattern: &str, _ascii_only: bool) -> Vec<(u32, String)> {
         // Implementation omitted for brevity, but could be restored from previous context if needed
         vec![]
     }
@@ -804,84 +845,78 @@ impl MemoryBehavior for DefaultMemory {
         DefaultMemory::size_bytes(self)
     }
 
-    fn grow(&self, delta: u32) -> Result<u32> {
+    fn grow(&self, delta: u32) -> Result<u32, Error> {
         // Delegate to inherent method which uses RwLock
         DefaultMemory::grow(self, delta)
     }
 
-    fn read_byte(&self, addr: u32) -> Result<u8> {
+    fn read_byte(&self, addr: u32) -> Result<u8, Error> {
         // Delegate to inherent method
         DefaultMemory::read_byte(self, addr)
     }
 
-    fn write_byte(&self, addr: u32, value: u8) -> Result<()> {
+    fn write_byte(&self, addr: u32, value: u8) -> Result<(), Error> {
         // Delegate to inherent method
         DefaultMemory::write_byte(self, addr, value)
     }
 
-    fn read_bytes(&self, addr: u32, len: usize) -> Result<Vec<u8>> {
+    fn read_bytes(&self, addr: u32, len: usize) -> Result<Vec<u8>, Error> {
         // Delegate to inherent method
         DefaultMemory::read_bytes(self, addr, len)
     }
 
-    fn write_bytes(&self, addr: u32, bytes: &[u8]) -> Result<()> {
+    fn write_bytes(&self, addr: u32, bytes: &[u8]) -> Result<(), Error> {
         // Delegate to inherent method
         DefaultMemory::write_bytes(self, addr, bytes)
     }
 
-    fn check_alignment(&self, addr: u32, access_size: u32, align: u32) -> Result<()> {
-        // Implement alignment check directly in the trait impl
-        if align == 0 || !align.is_power_of_two() {
-            return Err(Error::InvalidAlignment(align));
+    fn check_alignment(&self, addr: u32, access_size: u32, align: u32) -> Result<(), Error> {
+        // Check if alignment is valid (must be a power of 2 and <= access_size)
+        if align == 0 || !align.is_power_of_two() || align > access_size {
+            return Err(Error::new(kinds::InvalidMemoryAccessError {})); // Use the specific kind
         }
-        // Check if address is aligned
+
         if addr % align != 0 {
-            return Err(Error::UnalignedMemoryAccess { addr, align });
-        }
-        // Check if alignment setting itself is valid for the access size
-        let required_alignment_bytes = 1u32 << align;
-        if required_alignment_bytes > access_size {
-            // Spec allows this if addr is aligned to required_alignment_bytes, but implies higher cost.
-            // Enforce natural alignment? For now, allow as long as addr % align == 0.
+            return Err(Error::new(kinds::UnalignedMemoryAccessError {})); // Use the specific kind
         }
         Ok(())
     }
 
     // --- Implement newly added methods ---
 
-    fn read_i8(&self, addr: u32) -> Result<i8> {
+    fn read_i8(&self, addr: u32) -> Result<i8, Error> {
         DefaultMemory::read_i8(self, addr)
     }
-    fn read_u8(&self, addr: u32) -> Result<u8> {
+    fn read_u8(&self, addr: u32) -> Result<u8, Error> {
         DefaultMemory::read_u8(self, addr)
     }
-    fn read_i16(&self, addr: u32) -> Result<i16> {
+    fn read_i16(&self, addr: u32) -> Result<i16, Error> {
         DefaultMemory::read_i16(self, addr)
     }
-    fn read_u32(&self, addr: u32) -> Result<u32> {
+    fn read_u32(&self, addr: u32) -> Result<u32, Error> {
         DefaultMemory::read_u32(self, addr)
     }
-    fn read_u64(&self, addr: u32) -> Result<u64> {
+    fn read_u64(&self, addr: u32) -> Result<u64, Error> {
         DefaultMemory::read_u64(self, addr)
     }
 
-    fn write_i8(&self, addr: u32, value: i8) -> Result<()> {
+    fn write_i8(&self, addr: u32, value: i8) -> Result<(), Error> {
         DefaultMemory::write_i8(self, addr, value)
     }
-    fn write_u8(&self, addr: u32, value: u8) -> Result<()> {
+    fn write_u8(&self, addr: u32, value: u8) -> Result<(), Error> {
         DefaultMemory::write_u8(self, addr, value)
     }
-    fn write_i16(&self, addr: u32, value: i16) -> Result<()> {
+    fn write_i16(&self, addr: u32, value: i16) -> Result<(), Error> {
         DefaultMemory::write_i16(self, addr, value)
     }
-    fn write_u32(&self, addr: u32, value: u32) -> Result<()> {
+    fn write_u32(&self, addr: u32, value: u32) -> Result<(), Error> {
         DefaultMemory::write_u32(self, addr, value)
     }
-    fn write_u64(&self, addr: u32, value: u64) -> Result<()> {
+    fn write_u64(&self, addr: u32, value: u64) -> Result<(), Error> {
         DefaultMemory::write_u64(self, addr, value)
     }
 
-    fn fill(&self, addr: usize, value: u8, len: usize) -> Result<()> {
+    fn fill(&self, addr: usize, value: u8, len: usize) -> Result<(), Error> {
         // Delegate to inherent method
         DefaultMemory::fill(self, addr, value, len)
     }
@@ -892,32 +927,61 @@ impl MemoryBehavior for DefaultMemory {
         src_addr: usize,
         dst_addr: usize,
         len: usize,
-    ) -> Result<()> {
-        // Use as_any for robust type checking/comparison
+    ) -> Result<(), Error> {
+        // Check if the source is also DefaultMemory for potentially faster copy
         if let Some(src_default_mem) = src_memory.as_any().downcast_ref::<DefaultMemory>() {
-            // Check if it's the *same* instance using pointer comparison via Any.
-            let self_ptr = self as *const _ as *const ();
-            let src_ptr = src_default_mem as *const _ as *const ();
+            let src_data = src_default_mem.data.read().map_err(|_| {
+                Error::new(kinds::PoisonedLockError(
+                    "Source data lock poisoned".to_string(),
+                ))
+            })?;
+            let mut dst_data = self.data.write().map_err(|_| {
+                Error::new(kinds::PoisonedLockError(
+                    "Destination data lock poisoned".to_string(),
+                ))
+            })?;
 
-            if std::ptr::eq(self_ptr, src_ptr) {
-                // Same instance: Use inherent copy_within.
-                DefaultMemory::copy_within(self, src_addr, dst_addr, len)
-            } else {
-                // Different DefaultMemory instances. Read bytes from source and write to destination.
-                // Locks handled by the inherent read/write methods.
-                let bytes = src_default_mem.read_bytes(src_addr as u32, len)?;
-                DefaultMemory::write_bytes(self, dst_addr as u32, &bytes)
+            if src_addr + len > src_data.len() || dst_addr + len > dst_data.len() {
+                return Err(Error::new(kinds::MemoryAccessOutOfBoundsError {
+                    address: (src_addr + len) as u64,
+                    length: len as u64,
+                })); // Simplified error
             }
+
+            // copy_within handles overlapping regions correctly
+            dst_data.copy_within(src_addr..src_addr + len, dst_addr);
         } else {
-            // Source is not DefaultMemory, use generic byte-by-byte copy.
-            let bytes = src_memory.read_bytes(src_addr as u32, len)?;
-            self.write_bytes(dst_addr as u32, &bytes) // Use self.write_bytes (trait method)
+            // Fallback: Read from source, write to destination (slower)
+            // This requires the src_memory to be readable
+            let bytes_to_copy = src_memory.read_bytes(src_addr as u32, len)?;
+            self.write_bytes(dst_addr as u32, &bytes_to_copy)?;
         }
+        Ok(())
     }
 
-    fn init(&self, dst_addr: usize, data: &[u8], src_addr: usize, len: usize) -> Result<()> {
-        // Delegate to DefaultMemory's inherent method
-        DefaultMemory::init_data_segment(self, dst_addr, data, src_addr, len)
+    fn init(&self, dst_addr: usize, data: &[u8], src_addr: usize, len: usize) -> Result<(), Error> {
+        // Bounds check source data slice
+        if src_addr.checked_add(len).is_none() || (src_addr + len) > data.len() {
+            return Err(Error::new(kinds::ExecutionError(format!(
+                "Source data segment OOB in init: src_addr={}, len={}, data_len={}",
+                src_addr,
+                len,
+                data.len()
+            ))));
+        }
+        // Bounds check destination memory
+        self.check_bounds(dst_addr as u32, len as u32)?;
+
+        let src_slice = &data[src_addr..src_addr + len];
+
+        // FIX: Construct PoisonedLockError with a message
+        let mut dst_data = self.data.write().map_err(|_| {
+            Error::new(kinds::PoisonedLockError(
+                "Destination data lock poisoned in init".to_string(),
+            ))
+        })?;
+        dst_data[dst_addr..dst_addr + len].copy_from_slice(src_slice);
+        Ok(())
     }
 
     fn as_any(&self) -> &dyn std::any::Any {
@@ -930,40 +994,40 @@ impl MemoryBehavior for DefaultMemory {
 
     // --- Implement existing MockMemory/required methods ---
 
-    fn read_u16(&self, addr: u32) -> Result<u16> {
+    fn read_u16(&self, addr: u32) -> Result<u16, Error> {
         DefaultMemory::read_u16(self, addr)
     }
-    fn write_u16(&self, addr: u32, value: u16) -> Result<()> {
+    fn write_u16(&self, addr: u32, value: u16) -> Result<(), Error> {
         DefaultMemory::write_u16(self, addr, value)
     }
-    fn read_i32(&self, addr: u32) -> Result<i32> {
+    fn read_i32(&self, addr: u32) -> Result<i32, Error> {
         DefaultMemory::read_i32(self, addr)
     }
-    fn write_i32(&self, addr: u32, value: i32) -> Result<()> {
+    fn write_i32(&self, addr: u32, value: i32) -> Result<(), Error> {
         DefaultMemory::write_i32(self, addr, value)
     }
-    fn read_i64(&self, addr: u32) -> Result<i64> {
+    fn read_i64(&self, addr: u32) -> Result<i64, Error> {
         DefaultMemory::read_i64(self, addr)
     }
-    fn write_i64(&self, addr: u32, value: i64) -> Result<()> {
+    fn write_i64(&self, addr: u32, value: i64) -> Result<(), Error> {
         DefaultMemory::write_i64(self, addr, value)
     }
-    fn read_f32(&self, addr: u32) -> Result<f32> {
+    fn read_f32(&self, addr: u32) -> Result<f32, Error> {
         DefaultMemory::read_f32(self, addr)
     }
-    fn write_f32(&self, addr: u32, value: f32) -> Result<()> {
+    fn write_f32(&self, addr: u32, value: f32) -> Result<(), Error> {
         DefaultMemory::write_f32(self, addr, value)
     }
-    fn read_f64(&self, addr: u32) -> Result<f64> {
+    fn read_f64(&self, addr: u32) -> Result<f64, Error> {
         DefaultMemory::read_f64(self, addr)
     }
-    fn write_f64(&self, addr: u32, value: f64) -> Result<()> {
+    fn write_f64(&self, addr: u32, value: f64) -> Result<(), Error> {
         DefaultMemory::write_f64(self, addr, value)
     }
-    fn read_v128(&self, addr: u32) -> Result<[u8; 16]> {
+    fn read_v128(&self, addr: u32) -> Result<[u8; 16], Error> {
         DefaultMemory::read_v128(self, addr)
     }
-    fn write_v128(&self, addr: u32, value: [u8; 16]) -> Result<()> {
+    fn write_v128(&self, addr: u32, value: [u8; 16]) -> Result<(), Error> {
         DefaultMemory::write_v128(self, addr, value)
     }
 }
@@ -1011,20 +1075,19 @@ mod tests {
         let just_below_stack_addr = u32::MAX - (stack_size as u32); // 0xFFFF0000
         let res_read = memory.read_byte(just_below_stack_addr);
         assert!(
-            matches!(res_read, Err(Error::Execution(_))),
-            "Expected Execution error for read below stack, got {:?}",
-            res_read
+            res_read.is_err()
+                && matches!(res_read, Err(e) if e.downcast_ref::<kinds::MemoryAccessOutOfBoundsError>().is_some()),
+            "Expected MemoryAccessOutOfBoundsError for read"
         );
 
         // Test writing just out of stack bounds (lower address)
         // assert!(memory.write_byte(just_below_stack_addr, 102).is_err()); // Original assert
         let res_write = memory.write_byte(just_below_stack_addr, 102);
         // assert!(matches!(res_write, Err(Error::Execution(_))), "Expected Execution error for write below stack, got {:?}", res_write);
-        let is_expected_error = matches!(res_write, Err(Error::Execution(_)));
+        let is_expected_error = matches!(res_write, Err(e) if e.downcast_ref::<kinds::MemoryAccessOutOfBoundsError>().is_some());
         assert!(
             is_expected_error,
-            "Expected Execution error for write below stack, got {:?}",
-            res_write
+            "Expected MemoryAccessOutOfBoundsError for write"
         );
 
         // Test reading from unmapped region between stack and standard
@@ -1127,9 +1190,9 @@ mod tests {
                                                                       // assert!(memory.read_bytes(stack_boundary_low_addr, 2).is_err()); // Read starting just below stack -- This read should also fail
         let res_read_low = memory.read_bytes(stack_boundary_low_addr, 2);
         assert!(
-            matches!(res_read_low, Err(Error::Execution(_))),
-            "Expected Execution error for read bytes below stack, got {:?}",
-            res_read_low
+            res_read_low.is_err()
+                && matches!(res_read_low, Err(e) if e.downcast_ref::<kinds::MemoryAccessOutOfBoundsError>().is_some()),
+            "Expected MemoryAccessOutOfBoundsError for low read"
         );
 
         // Write across stack boundary (lower address side)
@@ -1137,9 +1200,9 @@ mod tests {
         // memory.write_bytes(stack_boundary_low_addr, &stack_boundary_data).unwrap(); // Write starting just below stack - THIS SHOULD FAIL!
         let res_write_low = memory.write_bytes(stack_boundary_low_addr, &stack_boundary_data);
         assert!(
-            matches!(res_write_low, Err(Error::Execution(_))),
-            "Expected Execution error for write bytes below stack, got {:?}",
-            res_write_low
+            res_write_low.is_err()
+                && matches!(res_write_low, Err(e) if e.downcast_ref::<kinds::MemoryAccessOutOfBoundsError>().is_some()),
+            "Expected MemoryAccessOutOfBoundsError for low write"
         );
 
         // Write across stack boundary (higher address side - towards unmapped)
@@ -1194,4 +1257,79 @@ mod tests {
     }
 
     // Add more tests for grow, read/write specific types, stack interaction etc.
+}
+
+/// Load operation for memory access
+pub struct Load {
+    pub mem_idx: u32,
+    pub offset: u32,
+    pub align: u32,
+}
+
+/// Load signed operation for memory access
+pub struct LoadSigned {
+    pub mem_idx: u32,
+    pub offset: u32,
+    pub align: u32,
+}
+
+/// Load unsigned operation for memory access
+pub struct LoadUnsigned {
+    pub mem_idx: u32,
+    pub offset: u32,
+    pub align: u32,
+}
+
+/// Store operation for memory access
+pub struct Store {
+    pub mem_idx: u32,
+    pub offset: u32,
+    pub align: u32,
+}
+
+/// Store truncated operation for memory access
+#[derive(Debug)]
+pub struct StoreTruncated<F, T> {
+    pub mem_idx: u32,
+    pub offset: u32,
+    pub align: u32,
+    _phantom_from: std::marker::PhantomData<F>,
+    _phantom_to: std::marker::PhantomData<T>,
+}
+
+impl<F, T> StoreTruncated<F, T> {
+    pub fn new(offset: u32, align: u32) -> Self {
+        Self {
+            mem_idx: 0,
+            offset,
+            align,
+            _phantom_from: std::marker::PhantomData,
+            _phantom_to: std::marker::PhantomData,
+        }
+    }
+}
+
+/// Memory init operation for memory initialization from a data segment
+#[derive(Debug)]
+pub struct MemoryInit {
+    pub mem_idx: u32,
+    pub data_idx: u32,
+}
+
+impl MemoryInit {
+    pub fn new(data_idx: u32, mem_idx: u32) -> Self {
+        Self { data_idx, mem_idx }
+    }
+}
+
+/// Data drop operation for dropping a data segment
+#[derive(Debug)]
+pub struct DataDrop {
+    pub data_idx: u32,
+}
+
+impl DataDrop {
+    pub fn new(data_idx: u32) -> Self {
+        Self { data_idx }
+    }
 }

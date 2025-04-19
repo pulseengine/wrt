@@ -23,6 +23,11 @@ use alloc::{
     vec::Vec,
 };
 
+use crate::error::kinds;
+use crate::error::Error;
+use core::fmt::Debug;
+use log::Level;
+
 /// Log levels for WebAssembly component logging
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum LogLevel {
@@ -171,17 +176,13 @@ pub trait FnWithVecValue: Send + Sync {
     fn clone_box(&self) -> Box<dyn FnWithVecValue>;
 }
 
-// Implement the trait for function types that meet the requirements
 impl<F> FnWithVecValue for F
 where
-    F: Fn(&mut dyn Any, Vec<Value>) -> crate::error::Result<Vec<Value>>
-        + Send
-        + Sync
-        + Clone
-        + 'static,
+    F: Fn(&mut dyn Any) -> crate::error::Result<Vec<Value>> + Send + Sync + Clone + 'static,
 {
     fn call(&self, target: &mut dyn Any, args: Vec<Value>) -> crate::error::Result<Vec<Value>> {
-        self(target, args)
+        // Ignoring args since the function only takes target
+        self(target)
     }
 
     fn clone_box(&self) -> Box<dyn FnWithVecValue> {
@@ -199,11 +200,7 @@ impl CloneableFn {
     /// The closure must be `Send`, `Sync`, `Clone`, and `'static`.
     pub fn new<F>(f: F) -> Self
     where
-        F: Fn(&mut dyn Any, Vec<Value>) -> crate::error::Result<Vec<Value>>
-            + Send
-            + Sync
-            + Clone
-            + 'static,
+        F: Fn(&mut dyn Any) -> crate::error::Result<Vec<Value>> + Send + Sync + Clone + 'static,
     {
         Self(Box::new(f))
     }
@@ -348,9 +345,9 @@ impl CallbackRegistry {
             }
         }
 
-        Err(crate::error::Error::Execution(format!(
+        Err(crate::error::Error::new(kinds::ExecutionError(format!(
             "Host function {module_name}.{function_name} not found"
-        )))
+        ))))
     }
 }
 

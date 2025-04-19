@@ -3,8 +3,11 @@
 //! This module contains implementations of WebAssembly instructions
 //! that can be shared between different engine implementations.
 
-use crate::error::{Error, Result};
-use crate::values::Value;
+use crate::{
+    behavior::{ControlFlow, FrameBehavior, StackBehavior},
+    error::{kinds, Error, Result},
+    values::Value,
+};
 
 #[cfg(feature = "std")]
 use std::format;
@@ -21,7 +24,7 @@ pub fn local_get(locals: &[Value], idx: u32) -> Result<Value> {
     locals
         .get(idx as usize)
         .cloned()
-        .ok_or_else(|| Error::Execution(format!("Invalid local index: {idx}")))
+        .ok_or_else(|| Error::new(kinds::ExecutionError(format!("Invalid local index: {idx}"))))
 }
 
 /// Handle the `LocalSet` instruction by setting a local variable's value
@@ -46,7 +49,9 @@ pub fn local_set(locals: &mut [Value], idx: u32, value: Value) -> Result<()> {
 
         Ok(())
     } else {
-        Err(Error::Execution(format!("Invalid local index: {idx}")))
+        Err(Error::new(kinds::ExecutionError(format!(
+            "Invalid local index: {idx}"
+        ))))
     }
 }
 
@@ -69,12 +74,16 @@ pub fn local_tee(locals: &mut [Value], idx: u32, value: Value) -> Result<Value> 
 ///
 /// Returns an error if the values are not both `i32` types.
 pub fn i32_add(a: &Value, b: &Value) -> Result<Value> {
-    let b_val = b
-        .as_i32()
-        .ok_or_else(|| Error::Execution("Expected i32 for second operand".into()))?;
-    let a_val = a
-        .as_i32()
-        .ok_or_else(|| Error::Execution("Expected i32 for first operand".into()))?;
+    let b_val = b.as_i32().ok_or_else(|| {
+        Error::new(kinds::ExecutionError(
+            "Expected i32 for second operand".into(),
+        ))
+    })?;
+    let a_val = a.as_i32().ok_or_else(|| {
+        Error::new(kinds::ExecutionError(
+            "Expected i32 for first operand".into(),
+        ))
+    })?;
 
     Ok(Value::I32(a_val + b_val))
 }
@@ -85,12 +94,16 @@ pub fn i32_add(a: &Value, b: &Value) -> Result<Value> {
 ///
 /// Returns an error if the values are not both `i64` types.
 pub fn i64_add(a: &Value, b: &Value) -> Result<Value> {
-    let b_val = b
-        .as_i64()
-        .ok_or_else(|| Error::Execution("Expected i64 for second operand".into()))?;
-    let a_val = a
-        .as_i64()
-        .ok_or_else(|| Error::Execution("Expected i64 for first operand".into()))?;
+    let b_val = b.as_i64().ok_or_else(|| {
+        Error::new(kinds::ExecutionError(
+            "Expected i64 for second operand".into(),
+        ))
+    })?;
+    let a_val = a.as_i64().ok_or_else(|| {
+        Error::new(kinds::ExecutionError(
+            "Expected i64 for first operand".into(),
+        ))
+    })?;
 
     Ok(Value::I64(a_val + b_val))
 }
@@ -101,12 +114,16 @@ pub fn i64_add(a: &Value, b: &Value) -> Result<Value> {
 ///
 /// Returns an error if the values are not both `i32` types.
 pub fn i32_sub(a: &Value, b: &Value) -> Result<Value> {
-    let b_val = b
-        .as_i32()
-        .ok_or_else(|| Error::Execution("Expected i32 for second operand".into()))?;
-    let a_val = a
-        .as_i32()
-        .ok_or_else(|| Error::Execution("Expected i32 for first operand".into()))?;
+    let b_val = b.as_i32().ok_or_else(|| {
+        Error::new(kinds::ExecutionError(
+            "Expected i32 for second operand".into(),
+        ))
+    })?;
+    let a_val = a.as_i32().ok_or_else(|| {
+        Error::new(kinds::ExecutionError(
+            "Expected i32 for first operand".into(),
+        ))
+    })?;
 
     Ok(Value::I32(a_val - b_val))
 }
@@ -117,12 +134,16 @@ pub fn i32_sub(a: &Value, b: &Value) -> Result<Value> {
 ///
 /// Returns an error if the values are not both `i64` types.
 pub fn i64_sub(a: &Value, b: &Value) -> Result<Value> {
-    let b_val = b
-        .as_i64()
-        .ok_or_else(|| Error::Execution("Expected i64 for second operand".into()))?;
-    let a_val = a
-        .as_i64()
-        .ok_or_else(|| Error::Execution("Expected i64 for first operand".into()))?;
+    let b_val = b.as_i64().ok_or_else(|| {
+        Error::new(kinds::ExecutionError(
+            "Expected i64 for second operand".into(),
+        ))
+    })?;
+    let a_val = a.as_i64().ok_or_else(|| {
+        Error::new(kinds::ExecutionError(
+            "Expected i64 for first operand".into(),
+        ))
+    })?;
 
     Ok(Value::I64(a_val - b_val))
 }
@@ -133,12 +154,16 @@ pub fn i64_sub(a: &Value, b: &Value) -> Result<Value> {
 ///
 /// Returns an error if the values are not both `i32` types.
 pub fn i32_mul(a: &Value, b: &Value) -> Result<Value> {
-    let b_val = b
-        .as_i32()
-        .ok_or_else(|| Error::Execution("Expected i32 for second operand".into()))?;
-    let a_val = a
-        .as_i32()
-        .ok_or_else(|| Error::Execution("Expected i32 for first operand".into()))?;
+    let b_val = b.as_i32().ok_or_else(|| {
+        Error::new(kinds::ExecutionError(
+            "Expected i32 for second operand".into(),
+        ))
+    })?;
+    let a_val = a.as_i32().ok_or_else(|| {
+        Error::new(kinds::ExecutionError(
+            "Expected i32 for first operand".into(),
+        ))
+    })?;
 
     Ok(Value::I32(a_val * b_val))
 }
@@ -149,12 +174,16 @@ pub fn i32_mul(a: &Value, b: &Value) -> Result<Value> {
 ///
 /// Returns an error if the values are not both `i64` types.
 pub fn i64_mul(a: &Value, b: &Value) -> Result<Value> {
-    let b_val = b
-        .as_i64()
-        .ok_or_else(|| Error::Execution("Expected i64 for second operand".into()))?;
-    let a_val = a
-        .as_i64()
-        .ok_or_else(|| Error::Execution("Expected i64 for first operand".into()))?;
+    let b_val = b.as_i64().ok_or_else(|| {
+        Error::new(kinds::ExecutionError(
+            "Expected i64 for second operand".into(),
+        ))
+    })?;
+    let a_val = a.as_i64().ok_or_else(|| {
+        Error::new(kinds::ExecutionError(
+            "Expected i64 for first operand".into(),
+        ))
+    })?;
 
     Ok(Value::I64(a_val * b_val))
 }
