@@ -8,32 +8,43 @@
 //! and allows for pausing and resuming execution at any point.
 
 use crate::{
-    behavior::{
-        self, ControlFlowBehavior, FrameBehavior, InstructionExecutor, Label, StackBehavior,
-    },
-    error::{Error, Result},
+    behavior::{ControlFlowBehavior, FrameBehavior, InstructionExecutor, Label, StackBehavior},
+    error::kinds::{InvalidInstanceIndexError, PoisonedLockError},
     execution::ExecutionStats,
     global::Global,
-    instructions::Instruction,
-    logging::LogOperation,
+    instructions::{instruction_type::Instruction as InstructionType, Instruction},
+    interface,
+    logging::CloneableFn,
     memory::{DefaultMemory, MemoryBehavior},
-    module::{ExportKind, Function, Module},
+    module::{Data, Element, ExportKind, Function, Import, Module, OtherExport},
     module_instance::ModuleInstance,
-    stack::{self, Stack, StacklessStack},
+    resource::ResourceTable,
     stackless_frame::StacklessFrame,
     table::Table,
-    types::{BlockType, FuncType, ValueType},
+    types::*,
     values::Value,
-    HostFunctionHandler,
+    ControlFlow, HostFunctionHandler, LogOperation,
 };
+// Import directly from wrt_error and wrt_sync
+use core::mem;
 use log::trace;
-use std::{
-    collections::HashMap,
-    sync::{Arc, Mutex, MutexGuard},
-};
+use parking_lot::Mutex as ParkingLotMutex;
+use std::collections::HashMap;
+use std::sync::Arc;
+use wrt_error::kinds;
+use wrt_error::{Error, Result};
+use wrt_sync::EngineMutex;
+
+// --- Conditional imports for Mutex ---
+// TODO: Define FuelOutcomes and EngineConfig or import if they exist elsewhere
+#[derive(Debug)]
+pub struct FuelOutcomes; // Placeholder
+#[derive(Debug)]
+pub struct EngineConfig; // Placeholder
+                         // --- End added imports ---
 
 /// Represents the execution state in a stackless implementation
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone)]
 pub enum StacklessExecutionState {
     /// Executing instructions normally
     Running,
@@ -82,30 +93,41 @@ pub enum StacklessExecutionState {
 /// Represents the execution stack in a stackless implementation
 #[derive(Debug)]
 pub struct StacklessStack {
-    /// Values on the stack
+    /// Shared module reference
+    module: Arc<Module>,
+    /// Current instance index
+    instance_idx: usize,
+    /// The operand stack
     pub values: Vec<Value>,
-    /// Labels (for control flow)
-    pub labels: Vec<Label>,
+    /// The label stack
+    labels: Vec<Label>,
     /// Function frames
     pub frames: Vec<StacklessFrame>,
     /// Current execution state
     pub state: StacklessExecutionState,
     /// Instruction pointer
     pub pc: usize,
-    /// Instance index
-    pub instance_idx: usize,
     /// Function index
     pub func_idx: u32,
-    /// Reference to the module
-    pub module: Arc<Module>,
+    /// Capacity of the stack
+    pub capacity: usize,
 }
 
-/// Registry for callbacks in the stackless implementation
+/// A callback registry for handling WebAssembly component operations
 pub struct StacklessCallbackRegistry {
     /// Names of exports that are known to be callbacks
     pub export_names: HashMap<String, HashMap<String, LogOperation>>,
     /// Registered callback functions
     pub callbacks: HashMap<String, HostFunctionHandler>,
+}
+
+impl Default for StacklessCallbackRegistry {
+    fn default() -> Self {
+        Self {
+            export_names: HashMap::new(),
+            callbacks: HashMap::new(),
+        }
+    }
 }
 
 impl std::fmt::Debug for StacklessCallbackRegistry {
@@ -120,18 +142,19 @@ impl std::fmt::Debug for StacklessCallbackRegistry {
 /// State of the stackless WebAssembly execution engine
 #[derive(Debug)]
 pub struct StacklessEngine {
-    /// Execution stack
-    pub stack: StacklessStack,
-    /// Module instances
-    pub instances: Vec<ModuleInstance>,
+    /// The internal state of the stackless engine.
+    /// The actual execution stack (values, labels, frames, state)
+    pub(crate) exec_stack: StacklessStack,
     /// Remaining fuel for bounded execution
     fuel: Option<u64>,
     /// Execution statistics
     stats: ExecutionStats,
     /// Callback registry for host functions (logging, etc.)
-    callbacks: Arc<Mutex<StacklessCallbackRegistry>>,
+    callbacks: Arc<ParkingLotMutex<StacklessCallbackRegistry>>,
     /// Maximum call depth for function calls
     max_call_depth: Option<usize>,
+    /// Use the alias EngineMutex for the instance map
+    pub(crate) instances: Arc<ParkingLotMutex<Vec<Arc<ModuleInstance>>>>,
 }
 
 impl StacklessStack {
@@ -147,40 +170,51 @@ impl StacklessStack {
             instance_idx,
             func_idx: 0,
             module,
+            capacity: 1024, // Default capacity
         }
     }
 
     /// Pushes a value onto the stack
-    pub fn push(&mut self, value: Value) -> Result<()> {
+    pub fn push(&mut self, value: Value) -> Result<(), Error> {
+        if self.values.len() >= self.capacity {
+            return Err(Error::new(kinds::ExecutionError(
+                "Stack overflow".to_string(),
+            )));
+        }
         self.values.push(value);
         Ok(())
     }
 
     /// Pops a value from the stack
-    pub fn pop(&mut self) -> Result<Value> {
-        self.values.pop().ok_or(Error::StackUnderflow)
+    pub fn pop(&mut self) -> Result<Value, Error> {
+        self.values
+            .pop()
+            .ok_or_else(|| Error::new(kinds::StackUnderflowError))
     }
 
     /// Pushes a label onto the control stack
-    pub fn push_label(&mut self, arity: usize, pc: usize) -> Result<()> {
+    pub fn push_label(&mut self, arity: usize, pc: usize) -> Result<(), Error> {
         self.labels.push(Label {
             arity,
             pc,
             continuation: pc,
+            stack_depth: self.values.len(), // Assuming stack_depth is current value stack len
+            is_loop: false,                 // Default to false
+            is_if: false,                   // Default to false
         });
         Ok(())
     }
 
     /// Pops a label from the control stack
-    pub fn pop_label(&mut self) -> Result<Label> {
-        self.labels.pop().ok_or(Error::StackUnderflow)
+    pub fn pop_label(&mut self) -> Result<Label, Error> {
+        self.labels
+            .pop()
+            .ok_or_else(|| Error::new(kinds::StackUnderflowError))
     }
 
     /// Gets a label at the specified depth
-    pub fn get_label(&self, idx: usize) -> Result<&Label> {
-        self.labels
-            .get(idx)
-            .ok_or(Error::InvalidCode(format!("Invalid label index: {idx}")))
+    pub fn get_label(&self, idx: usize) -> Option<&Label> {
+        self.labels.get(self.labels.len().checked_sub(1 + idx)?)
     }
 
     /// Returns the number of labels currently on the control stack.
@@ -209,13 +243,17 @@ impl StacklessStack {
     }
 
     /// Returns a reference to the top value on the stack without removing it.
-    pub fn peek(&self) -> Result<&Value> {
-        self.values.last().ok_or(Error::StackUnderflow)
+    pub fn peek(&self) -> Result<&Value, Error> {
+        self.values
+            .last()
+            .ok_or(Error::new(kinds::StackUnderflowError))
     }
 
     /// Returns a mutable reference to the top value on the stack without removing it.
-    pub fn peek_mut(&mut self) -> Result<&mut Value> {
-        self.values.last_mut().ok_or(Error::StackUnderflow)
+    pub fn peek_mut(&mut self) -> Result<&mut Value, Error> {
+        self.values
+            .last_mut()
+            .ok_or_else(|| Error::new(kinds::StackUnderflowError))
     }
 
     // Note: Implementations of the `Stack` and `StackBehavior` traits for StacklessStack
@@ -232,13 +270,14 @@ impl StacklessEngine {
     /// Creates a new stackless WebAssembly engine
     #[must_use]
     pub fn new() -> Self {
-        let empty_module = Module::new().expect("Failed to create empty module");
+        let empty_module = Arc::new(Module::empty()); // Use Module::empty()
         Self {
-            stack: StacklessStack::new(Arc::new(empty_module), 0),
-            instances: Vec::new(),
+            exec_stack: StacklessStack::new(empty_module, 0), // Initialize exec_stack
+            // Use the EngineMutex alias for initialization
+            instances: Arc::new(ParkingLotMutex::new(Vec::new())),
             fuel: None,
             stats: ExecutionStats::default(),
-            callbacks: Arc::new(Mutex::new(StacklessCallbackRegistry {
+            callbacks: Arc::new(ParkingLotMutex::new(StacklessCallbackRegistry {
                 export_names: HashMap::new(),
                 callbacks: HashMap::new(),
             })),
@@ -270,42 +309,149 @@ impl StacklessEngine {
 
     /// Gets the current execution state
     #[must_use]
-    pub const fn state(&self) -> &StacklessExecutionState {
-        &self.stack.state
+    pub fn state(&self) -> &StacklessExecutionState {
+        &self.exec_stack.state // Access via exec_stack
     }
 
     /// Sets the execution state
     pub fn set_state(&mut self, state: StacklessExecutionState) {
-        self.stack.state = state;
+        self.exec_stack.state = state; // Access via exec_stack
     }
 
     /// Gets the number of module instances
     #[must_use]
     pub fn instance_count(&self) -> usize {
-        self.instances.len()
+        // Restore locking logic
+        match self.instances.try_lock() {
+            Some(guard) => guard.len(),
+            None => {
+                // Handle poisoned lock or contention if necessary
+                // Keep previous logic or adjust as needed
+                0 // Assuming 0 on contention for now
+            }
+        }
     }
 
-    /// Gets a module instance by index
-    pub fn get_instance(&self, instance_idx: usize) -> Result<&ModuleInstance> {
-        self.instances
+    /// Provides temporary access to a module instance by index via a closure.
+    pub fn with_instance<F, R>(&self, instance_idx: usize, f: F) -> Result<R, Error>
+    where
+        F: FnOnce(&ModuleInstance) -> Result<R, Error>,
+    {
+        let instances_guard = self.instances.lock();
+        let instance = instances_guard
             .get(instance_idx)
-            .ok_or(Error::Execution("Invalid instance index".into()))
+            .ok_or_else(|| Error::new(kinds::InvalidInstanceIndexError(instance_idx)))?;
+        f(instance)
     }
 
-    /// Adds a module instance
-    pub fn add_instance(&mut self, instance: ModuleInstance) -> usize {
-        self.instances.push(instance);
-        self.instances.len() - 1
+    /// Provides temporary mutable access to a module instance by index via a closure.
+    pub fn with_instance_mut<F, R>(&self, instance_idx: usize, f: F) -> Result<R, Error>
+    where
+        F: FnOnce(&mut ModuleInstance) -> Result<R, Error>,
+    {
+        let mut instances_guard = self.instances.lock();
+        let instance = instances_guard
+            .get_mut(instance_idx)
+            .ok_or_else(|| Error::new(kinds::InvalidInstanceIndexError(instance_idx)))?;
+        // Attempt to get a mutable reference from Arc, might fail if Arc is shared
+        if let Some(instance_mut) = Arc::get_mut(instance) {
+            f(instance_mut)
+        } else {
+            Err(Error::new(kinds::ExecutionError(
+                "Cannot get mutable access to shared ModuleInstance".into(),
+            ))) // Corrected error
+        }
     }
 
     /// Instantiates a module
-    pub fn instantiate(&mut self, module: Module) -> Result<usize> {
-        println!(
-            "DEBUG: instantiate called for module with {} exports",
-            module.exports.len()
-        );
-        let instance = ModuleInstance::new(module)?;
-        Ok(self.add_instance(instance))
+    pub fn instantiate(&mut self, module: Module) -> Result<usize, Error> {
+        // Module needs to be owned by the instance, so we clone it.
+        // TODO: Consider if cloning the whole module is necessary or if Arc is sufficient.
+        let module_arc = Arc::new(module);
+        // FIX: Pass the Arc directly, removing the clone, as ModuleInstance::new now accepts Arc<Module>
+        // Fix: Clone the Arc here to keep ownership for later use
+        let mut instance = ModuleInstance::new(module_arc.clone())?; // Clone Arc here
+
+        // Initialize memories
+        // Need read access to module's memory definitions
+        let module_memories = module_arc.memories.read().map_err(|_| {
+            Error::new(kinds::PoisonedLockError(
+                "Module memories lock poisoned".to_string(),
+            ))
+        })?;
+        for memory_arc in module_memories.iter() {
+            // Assuming DefaultMemory implements MemoryBehavior and can be cloned
+            // or re-instantiated based on type/descriptor if needed.
+            // Here, we clone the Arc and cast it. Adjust if DefaultMemory isn't Arc<T>.
+            instance
+                .memories
+                .push(memory_arc.clone() as Arc<dyn MemoryBehavior>);
+        }
+        drop(module_memories); // Release read lock
+
+        // TODO: Initialize tables similarly
+        // let module_tables = module_arc.tables.read().map_err(|_| Error::new(kinds::PoisonedLock))?;
+        // for table_arc in module_tables.iter() {
+        //     instance.tables.push(table_arc.clone()); // Assuming Table can be cloned or needs Arc::new
+        // }
+        // drop(module_tables);
+
+        // TODO: Initialize globals similarly
+        // let module_globals = module_arc.globals.read().map_err(|_| Error::new(kinds::PoisonedLock))?;
+        // for global_arc in module_globals.iter() {
+        //     instance.globals.push(global_arc.clone()); // Assuming Global can be cloned or needs Arc::new
+        // }
+        // drop(module_globals);
+
+        let instance_arc = Arc::new(instance); // Wrap the initialized instance in Arc
+
+        // Lock the instances vector to push the new instance
+        let mut instances_guard = self.instances.lock();
+        let instance_idx = instances_guard.len();
+        instances_guard.push(instance_arc); // Push first
+        if let Some(inst_mut_arc) = instances_guard.get_mut(instance_idx) {
+            if let Some(inst_mut) = Arc::get_mut(inst_mut_arc) {
+                inst_mut.module_idx = instance_idx as u32; // Assign via mutable reference
+            } else {
+                return Err(Error::new(kinds::ExecutionError(
+                    "Failed to get mutable access to newly added instance Arc".into(),
+                )));
+            }
+        } else {
+            return Err(Error::new(kinds::ExecutionError(
+                "Failed to find newly added instance after push".into(),
+            )));
+        }
+
+        // Drop the lock before potentially running the start function
+        drop(instances_guard);
+
+        // Execute start function if present
+        if let Some(start_func_idx) = module_arc.start {
+            // Need mutable access to the newly added instance
+            let mut instances_guard_mut = self.instances.lock();
+            if let Some(instance_mut_arc) = instances_guard_mut.get_mut(instance_idx) {
+                if let Some(instance_mut) = Arc::get_mut(instance_mut_arc) {
+                    // TODO: Implement start function execution properly.
+                    // This might involve calling self.call_function or a dedicated method.
+                    // instance_mut.execute_start_function(self, start_func_idx)?;
+                    println!("Warning: Start function execution is not yet fully implemented in instantiate.");
+                } else {
+                    return Err(Error::new(kinds::ExecutionError(
+                        "Failed to get mutable access to newly added instance for start function"
+                            .into(),
+                    )));
+                }
+            } else {
+                return Err(Error::new(kinds::ExecutionError(
+                    "Failed to find newly added instance for start function".into(),
+                )));
+            }
+            // Drop the mutable lock
+            drop(instances_guard_mut);
+        }
+
+        Ok(instance_idx)
     }
 
     /// Checks if the engine currently has any module instances loaded.
@@ -314,7 +460,7 @@ impl StacklessEngine {
     ///
     /// `true` if there are no instances, `false` otherwise.
     pub fn has_no_instances(&self) -> bool {
-        self.instances.is_empty()
+        self.instances.lock().is_empty()
     }
 
     /// Registers a callback function for a specific export name.
@@ -324,11 +470,11 @@ impl StacklessEngine {
         &mut self,
         export_name: &str,
         callback: HostFunctionHandler,
-    ) -> Result<()> {
-        let mut registry = self.callbacks.lock().map_err(|_| Error::PoisonedLock)?;
+    ) -> Result<(), Error> {
+        let mut registry = self.callbacks.lock();
         if registry.callbacks.contains_key(export_name) {
-            return Err(Error::Execution(format!(
-                "Callback already registered for export: {export_name}"
+            return Err(Error::new(kinds::ExecutionError(
+                format!("Callback already registered for export: {}", export_name).into(),
             )));
         }
         registry.callbacks.insert(export_name.to_string(), callback);
@@ -344,17 +490,10 @@ impl StacklessEngine {
     pub fn register_known_exports(
         &mut self,
         export_names: HashMap<String, HashMap<String, LogOperation>>,
-    ) -> Result<()> {
-        let mut registry = self.callbacks.lock().map_err(|_| Error::PoisonedLock)?;
-        registry.export_names.extend(export_names);
+    ) -> Result<(), Error> {
+        let mut registry = self.callbacks.lock();
+        registry.export_names = export_names;
         Ok(())
-    }
-
-    /// Attempts to get a lock on the callback registry.
-    ///
-    /// Returns an `Error::PoisonedLock` if the mutex is poisoned.
-    fn get_callback_registry_lock(&self) -> Result<MutexGuard<'_, StacklessCallbackRegistry>> {
-        self.callbacks.lock().map_err(|_| Error::PoisonedLock)
     }
 
     /// Finds a callback function by export name.
@@ -368,38 +507,32 @@ impl StacklessEngine {
     }
 
     /// Calls an exported function by name
-    pub fn call_export(&mut self, export_name: &str, args: &[Value]) -> Result<Vec<Value>> {
-        // Find the export in the *last added* instance (convention?)
-        // TODO: Allow specifying instance index or handle multiple instances better
-        let instance_idx = if self.instances.is_empty() {
-            return Err(Error::Execution("No instances loaded".into()));
-        } else {
-            self.instances.len() - 1
-        };
-        let instance = &self.instances[instance_idx];
+    pub fn call_export(&mut self, export_name: &str, args: &[Value]) -> Result<Vec<Value>, Error> {
+        let instance_idx = self.exec_stack.instance_idx;
+        let instances_guard = self.instances.lock();
+        let instance_arc = instances_guard
+            .get(instance_idx)
+            .cloned()
+            .ok_or_else(|| Error::new(kinds::InvalidInstanceIndexError(instance_idx)))?; // Cast to usize
+        drop(instances_guard); // Release lock early
 
-        let export = instance
+        let export = instance_arc
             .module
             .exports
-            .get(export_name)
-            .ok_or_else(|| Error::ExportNotFound(export_name.to_string()))?;
+            .iter()
+            .find(|e| e.name == export_name)
+            .ok_or_else(|| Error::new(kinds::ExportNotFoundError(export_name.to_string())))?;
 
-        match export.external {
-            crate::module::ExportKind::Function => {
-                // Found the start function export
-                let func_idx = if let crate::module::ExportValue::Function(idx, _) = export.value {
-                    idx
-                } else {
-                    return Err(Error::ExportNotFound(format!(
-                        "Export '{export_name}' is not a function"
-                    )));
-                };
-                self.call_function(0, func_idx, args) // Assuming instance_idx 0 if not specified
+        match export.kind {
+            ExportKind::Function => {
+                let func_idx = export.index;
+                self.call_function(instance_idx as u32, func_idx, args)
             }
             _ => {
-                return Err(Error::ExportNotFound(format!(
-                    "Export '{export_name}' is not a function"
-                )))
+                Err(Error::new(kinds::ExportNotFoundError(format!(
+                    "Export '{export_name}' is not a function (kind: {:?})",
+                    export.kind
+                )))) // Use tuple struct syntax
             }
         }
     }
@@ -410,20 +543,20 @@ impl StacklessEngine {
         instance_idx: u32,
         func_idx: u32,
         args: &[Value],
-    ) -> Result<Vec<Value>> {
-        let module = self
-            .instances
-            .last()
-            .ok_or(Error::InvalidInstanceIndex(self.instances.len()))?
-            .module
-            .clone();
+    ) -> Result<Vec<Value>, Error> {
+        // Fetch module Arc while holding the lock
+        let module = {
+            let instances_guard = self.instances.lock();
+            instances_guard
+                .get(instance_idx as usize)
+                .cloned() // Clone the Arc<ModuleInstance>
+                .ok_or_else(|| Error::new(kinds::InvalidInstanceIndexError(instance_idx as usize)))? // Cast to usize
+                .module
+                .clone()
+        }; // Lock released here
 
-        // Check if this is a host function callback
-        // Find the export name associated with this function index
         let export_name = module.exports.iter().find_map(|export| {
-            // Use export.kind and match the enum variant directly
-            if let crate::module::ExportKind::Function = export.kind {
-                // Also check the index associated with the Function kind
+            if let ExportKind::Function = export.kind {
                 if export.index == func_idx {
                     Some(export.name.clone())
                 } else {
@@ -434,286 +567,464 @@ impl StacklessEngine {
             }
         });
 
-        if let Some(name) = export_name {
-            let registry_lock = self.get_callback_registry_lock()?;
+        if let Some(name) = export_name.map(|s| s.to_string()) {
+            let registry_lock = self.callbacks_lock();
             if let Some(callback) = Self::find_callback_locked(&registry_lock, &name) {
-                println!("DEBUG: Calling host callback: {}", name);
-                // Drop the lock before calling the callback to avoid deadlocks if the callback tries to use the engine
+                trace!("DEBUG: Calling host callback: {}", name);
                 drop(registry_lock);
-                // Call the host function
-                return callback(args);
+                // TODO: Actually call the host function - requires plumbing HostFunc context/env
+                // For now, return UnimplementedError correctly
+                return Err(Error::new(kinds::UnimplementedError(
+                    "Host function callback invocation".to_string(),
+                )));
             }
         }
 
-        // Not a host callback, proceed with normal execution
-        // Clone the Arc<Module> obtained from the map and pass it
-        let initial_frame =
-            StacklessFrame::new(module.clone().into(), func_idx, args, instance_idx)?;
-        self.stack.frames.push(initial_frame);
-        self.stack.state = StacklessExecutionState::Running;
+        let initial_frame = StacklessFrame::new(module.into(), func_idx, args, instance_idx)?;
+        self.exec_stack.frames.push(initial_frame); // Use exec_stack
+        self.exec_stack.state = StacklessExecutionState::Running; // Use exec_stack
 
         let result = self.run_loop();
 
-        // Handle result
         match result {
             Ok(StacklessExecutionState::Completed) => {
-                // Pop return values from the value stack
-                let current_frame = self.stack.frames.last().ok_or(Error::Execution(
-                    "Frame stack empty after function completion".into(),
-                ))?;
+                // Access stack via self.exec_stack
+                let current_frame = self.exec_stack.frames.last().ok_or_else(|| {
+                    Error::new(kinds::ExecutionError(
+                        "Frame stack empty after function completion".into(),
+                    ))
+                })?;
                 let func_type = current_frame.get_function_type()?;
                 let arity = func_type.results.len();
 
-                if self.stack.values.len() < arity {
-                    return Err(Error::StackUnderflow);
+                if self.exec_stack.values.len() < arity {
+                    return Err(Error::new(kinds::StackUnderflowError));
                 }
-                let results = self.stack.values.split_off(self.stack.values.len() - arity);
+                let results = self
+                    .exec_stack
+                    .values
+                    .split_off(self.exec_stack.values.len() - arity);
                 Ok(results)
             }
-            Ok(state) => Err(Error::Execution(format!(
-                "Execution finished in unexpected state: {state:?}"
+            Ok(state) => Err(Error::new(kinds::ExecutionError(
+                format!("Execution finished in unexpected state: {:?}", state).into(),
             ))),
             Err(e) => Err(e),
         }
     }
 
-    /// The main execution loop
-    /// Continues execution until paused, completed, or an error occurs.
-    pub fn run(&mut self) -> Result<StacklessExecutionState> {
-        while self.stack.state == StacklessExecutionState::Running {
-            self.step()?;
-        }
-        Ok(self.stack.state.clone()) // Return the final state
+    /// Runs the engine until it halts, traps, or requires external interaction.
+    pub fn run(&mut self) -> Result<StacklessExecutionState, Error> {
+        self.run_loop()
     }
 
-    /// Executes a single step (instruction) of the engine.
-    /// This is the core of the interpreter loop.
-    pub fn step(&mut self) -> Result<()> {
-        // Check fuel before executing anything
-        if let Some(ref mut fuel) = self.fuel {
-            if *fuel == 0 {
-                // TODO: Save state for pause
-                self.stack.state = StacklessExecutionState::Paused {
-                    pc: 0,               // Placeholder
-                    instance_idx: 0,     // Placeholder
-                    func_idx: 0,         // Placeholder
-                    expected_results: 0, // Placeholder
-                };
-                return Ok(());
-            }
-            *fuel -= 1; // Consume fuel
-            self.stats.fuel_consumed += 1;
+    /// Executes a single step (instruction) in the engine.
+    pub fn step(&mut self) -> Result<(), Error> {
+        if self.exec_stack.frames.is_empty() {
+            return Err(Error::new(kinds::ExecutionError(
+                "No frames on the execution stack".to_string(),
+            )));
         }
 
-        // Get current frame (must exist if state is Running)
-        let current_frame = self
-            .stack
-            .frames
-            .last_mut()
-            .ok_or(Error::Execution("Execution frame stack empty".into()))?;
+        let top_frame_idx = self.exec_stack.frames.len() - 1;
 
-        let func = current_frame.get_function()?;
-        let code = &func.code;
-        let pc = current_frame.pc;
+        // Get the instruction and increment PC
+        let (instr, pc) = {
+            let frame = &self.exec_stack.frames[top_frame_idx];
+            let pc = frame.pc();
+            let func = frame.get_function().map_err(|e| {
+                Error::new(kinds::ExecutionError(format!(
+                    "Failed to get function: {}",
+                    e
+                )))
+            })?;
 
-        if pc >= code.len() {
-            // Reached end of function code naturally
-            println!(
-                "DEBUG: Reached end of function {} at PC {}",
-                func.func_idx, pc
-            );
-            // Perform implicit return
-            current_frame.return_(&mut self.stack)?;
-
-            // Pop the completed frame
-            let completed_frame = self.stack.frames.pop().unwrap(); // Safe due to check above
-            let return_values = self
-                .stack
-                .values
-                .split_off(self.stack.values.len() - completed_frame.arity);
-            println!(
-                "DEBUG: Popped frame for func {}, return values: {:?}",
-                completed_frame.func_idx, return_values
-            );
-
-            if self.stack.frames.is_empty() {
-                // Last frame completed, execution finished
-                self.stack.state = StacklessExecutionState::Completed;
-                // Push return values back for the caller
-                self.stack.values.extend(return_values);
-                println!(
-                    "DEBUG: Final frame completed. State: Completed. Stack: {:?}",
-                    self.stack.values
-                );
-            } else {
-                // Return to caller frame
-                let caller_frame = self.stack.frames.last_mut().unwrap(); // Safe: checked !is_empty()
-                caller_frame.set_pc(completed_frame.return_pc);
-                // Push return values onto caller's effective stack
-                self.stack.values.extend(return_values);
-                self.stack.state = StacklessExecutionState::Running;
-                println!(
-                    "DEBUG: Returning to caller frame func {}, PC set to {}, Stack: {:?}",
-                    caller_frame.func_idx, caller_frame.pc, self.stack.values
-                );
+            // Check if we're at the end of the function
+            if pc >= func.code.len() {
+                return Err(Error::new(kinds::ExecutionError(
+                    "Reached end of function without return".to_string(),
+                )));
             }
-            return Ok(());
-        }
 
-        let instruction = &code[pc];
-        println!(
-            "DEBUG: Executing PC={}, Func={}, Inst: {:?}, Stack: {:?}, Labels: {:?}",
-            pc, current_frame.func_idx, instruction, self.stack.values, current_frame.label_stack
-        );
-        self.stats.instructions_executed += 1;
+            // Get the instruction
+            let instr = func.code[pc].clone(); // Clone to avoid reference
 
-        // Execute instruction
-        // Need to clone Arc<Module> for instruction execution context if needed
-        // let frame_module = current_frame.module.clone();
+            // Increment PC in a separate scope
+            {
+                let frame = &mut self.exec_stack.frames[top_frame_idx];
+                frame.set_pc(pc + 1);
+            }
 
-        // Execute requires mutable frame and stack
-        // Temporarily take mutable references
-        let mut frame_ref = current_frame;
-        let mut stack_ref = &mut self.stack;
+            (instr, pc)
+        };
 
-        // The instruction execution might change the PC or state
-        match instruction.execute(stack_ref, &mut frame_ref, self) {
-            Ok(_) => {
-                // If execution didn't change PC (e.g., branch, return), increment PC
-                // Check if PC was already modified by the instruction execution (branch/return)
-                if frame_ref.pc == pc {
-                    frame_ref.pc += 1;
+        // Execute the instruction
+        trace!("Executing instruction: {:?}", &instr);
+
+        // Clone the instruction to avoid lifetime issues
+        let instruction = instr.clone();
+
+        // Clone the stack and engine to avoid borrowing self twice
+        let mut stack_clone = self.exec_stack.clone();
+        let mut engine_clone = self.clone();
+
+        // Execute directly with a cloned frame
+        let frame_idx = stack_clone.frames.len() - 1;
+        let mut frame_clone = stack_clone.frames[frame_idx].clone();
+
+        // Execute the instruction
+        let result = instruction.execute(&mut stack_clone, &mut frame_clone, &mut engine_clone);
+
+        // If successful, update our state
+        if result.is_ok() {
+            // Update the frame in the stack
+            stack_clone.frames[frame_idx] = frame_clone;
+
+            // Update the main stack
+            self.exec_stack.frames = stack_clone.frames;
+            self.exec_stack.values = stack_clone.values;
+            self.exec_stack.labels = stack_clone.labels;
+
+            // Update state if needed based on control flow
+            match &result {
+                Ok(ControlFlow::Return { values }) => {
+                    self.exec_stack.state = StacklessExecutionState::Returning {
+                        values: values.clone(),
+                    };
                 }
-                // State might have been changed (e.g., to Error by instruction)
-                // No need to set Running explicitly unless changed
-            }
-            Err(e) => {
-                // Instruction execution failed
-                self.stack.state = StacklessExecutionState::Error(e);
+                Ok(ControlFlow::Call {
+                    func_idx,
+                    args,
+                    return_pc,
+                }) => {
+                    // Use the values directly, no need to dereference
+                    let func_idx_val = *func_idx;
+                    let return_pc_val = *return_pc;
+
+                    self.exec_stack.state = StacklessExecutionState::Calling {
+                        instance_idx: stack_clone.instance_idx as u32,
+                        func_idx: func_idx_val,
+                        args: args.clone(),
+                        return_pc: return_pc_val,
+                    };
+                }
+                Ok(ControlFlow::Branch {
+                    target_pc,
+                    values_to_keep: _,
+                }) => {
+                    // Use the value directly, no need to dereference
+                    let target_pc_val = *target_pc;
+
+                    // Update PC for branches if needed
+                    self.exec_stack.pc = target_pc_val;
+                }
+                _ => {}
             }
         }
 
-        Ok(())
+        // Convert the result from Result<ControlFlow, Error> to Result<(), Error>
+        match result {
+            Ok(_) => Ok(()),
+            Err(e) => Err(e),
+        }
     }
 
-    // Internal run loop helper
-    fn run_loop(&mut self) -> Result<StacklessExecutionState> {
+    /// The main execution loop that drives the engine forward.
+    /// This function is typically called internally by `run`.
+    fn run_loop(&mut self) -> Result<StacklessExecutionState, Error> {
         loop {
-            match self.stack.state {
-                StacklessExecutionState::Running => {
-                    self.step()?;
+            match self.exec_stack.state {
+                StacklessExecutionState::Running => self.step()?,
+                StacklessExecutionState::Completed | StacklessExecutionState::Finished => {
+                    // Replace state with Completed and return the original
+                    return Ok(mem::replace(
+                        &mut self.exec_stack.state,
+                        StacklessExecutionState::Completed,
+                    ));
                 }
                 StacklessExecutionState::Paused { .. } => {
-                    // Return paused state
-                    return Ok(self.stack.state.clone());
-                }
-                StacklessExecutionState::Calling { .. } => {
-                    // Handle call setup (push new frame)
-                    // This state should ideally be handled within step() or call_function()
-                    return Err(Error::Execution(
-                        "Unexpected Calling state in run_loop".into(),
+                    // Replace state with Completed and return the original (Paused state)
+                    return Ok(mem::replace(
+                        &mut self.exec_stack.state,
+                        StacklessExecutionState::Completed,
                     ));
                 }
-                StacklessExecutionState::Returning { .. } => {
-                    // Handle return (pop frame, push results)
-                    // This state should ideally be handled within step() or return instruction
-                    return Err(Error::Execution(
-                        "Unexpected Returning state in run_loop".into(),
+                StacklessExecutionState::Error(_) => {
+                    // Replace state with Completed and return the original (Error state)
+                    return Ok(mem::replace(
+                        &mut self.exec_stack.state,
+                        StacklessExecutionState::Completed,
                     ));
                 }
-                StacklessExecutionState::Branching { .. } => {
-                    // This state should ideally be handled within step() or branch instruction
-                    return Err(Error::Execution(
-                        "Unexpected Branching state in run_loop".into(),
-                    ));
-                }
-                StacklessExecutionState::Completed => {
-                    // Execution finished successfully
-                    return Ok(StacklessExecutionState::Completed);
-                }
-                StacklessExecutionState::Finished => {
-                    // A potentially different terminal state?
-                    return Ok(StacklessExecutionState::Finished);
-                }
-                StacklessExecutionState::Error(ref e) => {
-                    // Propagate error
-                    return Err(e.clone());
-                }
+                // Other states like Calling, Returning, Branching are handled internally by step/run_loop
+                _ => self.step()?, // Continue stepping if in an intermediate state
             }
         }
     }
-}
 
-// Implement Stack trait for StacklessStack for compatibility
-impl Stack for StacklessStack {
-    // Delegate label operations to the current frame if possible, otherwise error
-    // This might be problematic as the Stack trait is usually for operand stack + labels
+    /// Returns an immutable reference to the current (top) execution frame.
+    pub fn current_frame(&self) -> Result<&StacklessFrame, Error> {
+        self.exec_stack
+            .frames
+            .last()
+            .ok_or_else(|| Error::new(kinds::ExecutionError("Call stack empty".to_string())))
+    }
 
-    fn push_label(&mut self, label: stack::Label) -> Result<()> {
-        if let Some(frame) = self.frames.last_mut() {
-            frame.label_stack.push(behavior::Label {
-                arity: label.arity,
-                pc: label.pc,
-                continuation: label.continuation,
-            });
-            Ok(())
+    /// Returns a mutable reference to the current (top) execution frame.
+    pub fn current_frame_mut(&mut self) -> Result<&mut StacklessFrame, Error> {
+        self.exec_stack
+            .frames
+            .last_mut()
+            .ok_or_else(|| Error::new(kinds::ExecutionError("Call stack empty".to_string())))
+    }
+
+    fn pop_n(&mut self, n: usize) -> Vec<Value> {
+        if self.exec_stack.values.len() < n {
+            // Log the error but return an empty vector
+            log::error!("Error popping values from stack: stack underflow");
+            Vec::new()
         } else {
-            Err(Error::Execution(
-                "No active frame to push label onto".into(),
-            ))
+            let new_len = self.exec_stack.values.len() - n;
+            self.exec_stack.values.split_off(new_len)
         }
     }
 
-    fn pop_label(&mut self) -> Result<stack::Label> {
-        if let Some(frame) = self.frames.last_mut() {
-            frame
-                .label_stack
-                .pop()
-                .map(|l| stack::Label {
-                    arity: l.arity,
-                    pc: l.pc,
-                    continuation: l.continuation,
-                })
-                .ok_or(Error::Execution("Label stack empty in frame".into()))
-        } else {
-            Err(Error::Execution("No active frame to pop label from".into()))
+    fn pop_frame_label(&self) -> Result<Label, Error> {
+        if let Some(frame) = self.exec_stack.frames.last() {
+            if let Some(label) = frame.label_stack.last() {
+                return Ok(label.clone());
+            }
         }
+        Err(Error::new(kinds::StackUnderflowError))
     }
 
-    fn get_label(&self, idx: usize) -> Result<&stack::Label> {
-        // Cannot provide a stable reference easily due to conversion
-        Err(Error::Unimplemented("get_label for StacklessStack".into()))
+    /// Get the current instance being executed
+    pub fn get_current_instance(&self) -> Result<Arc<ModuleInstance>, Error> {
+        let frame = self.current_frame()?;
+        self.with_instance(frame.instance_idx.try_into().unwrap(), |instance| {
+            Ok(Arc::new(instance.clone()))
+        })
     }
 
-    fn get_label_mut(&mut self, idx: usize) -> Result<&mut stack::Label> {
-        // Cannot provide a stable reference easily due to conversion
-        Err(Error::Unimplemented(
-            "get_label_mut for StacklessStack".into(),
-        ))
+    pub fn callbacks_lock(&self) -> parking_lot::MutexGuard<'_, StacklessCallbackRegistry> {
+        self.callbacks.lock()
     }
 
-    fn labels_len(&self) -> usize {
-        self.frames.last().map_or(0, |f| f.label_stack.len())
+    /// Public accessor for the callbacks lock
+    pub fn get_callbacks_lock(&self) -> parking_lot::MutexGuard<'_, StacklessCallbackRegistry> {
+        self.callbacks.lock()
+    }
+
+    pub fn invoke_host_function(
+        &mut self,
+        _func_ref: u32,
+        _instance_idx: usize,
+        _args: Vec<Value>,
+    ) -> Result<Vec<Value>> {
+        Err(Error::new(kinds::UnimplementedError(
+            "invoke_host_function".to_string(),
+        )))
+    }
+
+    pub fn get_func_ref_from_table(
+        &mut self,
+        _table_idx: u32,
+        _idx: u32,
+        _instance_idx: usize,
+    ) -> Result<u32> {
+        Err(Error::new(kinds::UnimplementedError(
+            "get_func_ref_from_table".to_string(),
+        )))
+    }
+
+    /// Execute a single instruction
+    pub fn execute_instruction(
+        &mut self,
+        stack: &mut StacklessStack,
+        instruction: &InstructionType,
+    ) -> Result<ControlFlow, Error> {
+        if stack.frames.is_empty() {
+            return Err(Error::new(kinds::ExecutionError(
+                "No frames on stack".to_string(),
+            )));
+        }
+
+        // Get the frame index
+        let frame_idx = stack.frames.len() - 1;
+
+        // Clone the frame and engine to avoid borrow issues
+        let mut frame = stack.frames[frame_idx].clone();
+        let mut engine_clone = self.clone();
+
+        // Execute directly with the cloned frame
+        let result = instruction.execute(stack, &mut frame, &mut engine_clone);
+
+        // If successful, update the frame in the stack
+        if result.is_ok() {
+            stack.frames[frame_idx] = frame;
+
+            // Update the engine state if needed
+            match &result {
+                Ok(ControlFlow::Return { values }) => {
+                    // Handle return values if needed
+                    self.exec_stack.state = StacklessExecutionState::Returning {
+                        values: values.clone(),
+                    };
+                }
+                Ok(ControlFlow::Call {
+                    func_idx,
+                    args,
+                    return_pc,
+                }) => {
+                    // Use the values directly, no need to dereference
+                    let func_idx_val = *func_idx;
+                    let return_pc_val = *return_pc;
+
+                    self.exec_stack.state = StacklessExecutionState::Calling {
+                        instance_idx: stack.instance_idx as u32,
+                        func_idx: func_idx_val,
+                        args: args.clone(),
+                        return_pc: return_pc_val,
+                    };
+                }
+                Ok(ControlFlow::Branch {
+                    target_pc,
+                    values_to_keep: _,
+                }) => {
+                    // Use the value directly, no need to dereference
+                    let target_pc_val = *target_pc;
+
+                    // Update PC for branches if needed
+                    self.exec_stack.pc = target_pc_val;
+                }
+                _ => {}
+            }
+        }
+
+        result
+    }
+
+    /// Gets a copy of the current module being executed
+    pub fn get_module_copy(&self) -> Result<Module> {
+        // Get a reference to the module
+        let instance_idx = self.exec_stack.instance_idx;
+
+        self.with_instance(instance_idx, |instance| {
+            // Clone the module - dereference the Arc to get a Module
+            Ok((*instance.module).clone())
+        })
     }
 }
 
-// Implement StackBehavior for StacklessStack
+// Implement StackBehavior for StacklessEngine by delegating to exec_stack
+impl StackBehavior for StacklessEngine {
+    fn push(&mut self, value: Value) -> Result<(), Error> {
+        self.exec_stack.push(value)
+    }
+
+    fn pop(&mut self) -> Result<Value, Error> {
+        self.exec_stack.pop()
+    }
+
+    fn peek(&self) -> Result<&Value, Error> {
+        self.exec_stack.peek()
+    }
+
+    fn peek_mut(&mut self) -> Result<&mut Value, Error> {
+        self.exec_stack.peek_mut()
+    }
+
+    fn values(&self) -> &[Value] {
+        self.exec_stack.values()
+    }
+
+    fn values_mut(&mut self) -> &mut [Value] {
+        self.exec_stack.values_mut()
+    }
+
+    fn len(&self) -> usize {
+        self.exec_stack.len()
+    }
+
+    fn is_empty(&self) -> bool {
+        self.exec_stack.is_empty()
+    }
+
+    fn push_label(&mut self, label: Label) -> Result<(), Error> {
+        self.exec_stack.push_label(label.arity, label.pc)
+    }
+
+    fn pop_label(&mut self) -> Result<Label, Error> {
+        self.exec_stack.pop_label()
+    }
+
+    fn get_label(&self, index: usize) -> Option<&Label> {
+        self.exec_stack.get_label(index)
+    }
+
+    fn push_n(&mut self, values: &[Value]) {
+        self.exec_stack.values.extend_from_slice(values);
+    }
+
+    fn pop_n(&mut self, n: usize) -> Vec<Value> {
+        if self.exec_stack.values.len() < n {
+            // Log the error but return an empty vector
+            log::error!("Error popping values from stack: stack underflow");
+            Vec::new()
+        } else {
+            let new_len = self.exec_stack.values.len() - n;
+            self.exec_stack.values.split_off(new_len)
+        }
+    }
+
+    fn pop_frame_label(&mut self) -> Result<Label, Error> {
+        self.exec_stack.pop_frame_label()
+    }
+
+    fn execute_function_call_direct(
+        &mut self,
+        _engine: &mut StacklessEngine, // Param required by trait, unused when self is engine
+        caller_instance_idx: u32,
+        func_idx: u32,
+        args: Vec<Value>,
+    ) -> Result<Vec<Value>, Error> {
+        // This is a bit of a hack - we unwrap self since self is already the engine
+        self.call_function(caller_instance_idx, func_idx, &args)
+    }
+
+    fn as_any(&mut self) -> &mut dyn std::any::Any {
+        self
+    }
+}
+
+// Replace the StackBehavior implementation for StacklessStack to avoid recursion
 impl StackBehavior for StacklessStack {
-    fn push(&mut self, value: Value) -> Result<()> {
+    fn push(&mut self, value: Value) -> Result<(), Error> {
+        if self.values.len() >= self.capacity {
+            return Err(Error::new(kinds::ExecutionError(
+                "Stack overflow".to_string(),
+            )));
+        }
         self.values.push(value);
         Ok(())
     }
 
-    fn pop(&mut self) -> Result<Value> {
-        self.values.pop().ok_or(Error::StackUnderflow)
+    fn pop(&mut self) -> Result<Value, Error> {
+        self.values
+            .pop()
+            .ok_or_else(|| Error::new(kinds::StackUnderflowError))
     }
 
-    fn peek(&self) -> Result<&Value> {
-        self.values.last().ok_or(Error::StackUnderflow)
+    fn peek(&self) -> Result<&Value, Error> {
+        self.values
+            .last()
+            .ok_or_else(|| Error::new(kinds::StackUnderflowError))
     }
 
-    fn peek_mut(&mut self) -> Result<&mut Value> {
-        self.values.last_mut().ok_or(Error::StackUnderflow)
+    fn peek_mut(&mut self) -> Result<&mut Value, Error> {
+        self.values
+            .last_mut()
+            .ok_or_else(|| Error::new(kinds::StackUnderflowError))
     }
 
     fn values(&self) -> &[Value] {
@@ -732,25 +1043,130 @@ impl StackBehavior for StacklessStack {
         self.values.is_empty()
     }
 
-    // Delegate label operations to the current frame
-    fn push_label(&mut self, arity: usize, pc: usize) {
-        if let Some(frame) = self.frames.last_mut() {
-            frame.push_label(arity, pc);
-        } else {
-            // Log error or handle? Pushing label without frame is likely an issue.
-            eprintln!("Warning: push_label called on StacklessStack without an active frame.");
-        }
+    fn push_label(&mut self, label: Label) -> Result<(), Error> {
+        self.labels.push(label);
+        Ok(())
     }
 
-    fn pop_label(&mut self) -> Result<Label> {
-        if let Some(frame) = self.frames.last_mut() {
-            frame.pop_label()
-        } else {
-            Err(Error::Execution("No active frame to pop label from".into()))
-        }
+    fn pop_label(&mut self) -> Result<Label, Error> {
+        self.labels
+            .pop()
+            .ok_or_else(|| Error::new(kinds::StackUnderflowError))
     }
 
     fn get_label(&self, index: usize) -> Option<&Label> {
-        self.frames.last().and_then(|f| f.get_label(index))
+        self.labels.get(index)
+    }
+
+    fn push_n(&mut self, values: &[Value]) {
+        for value in values {
+            let _ = self.push(value.clone());
+        }
+    }
+
+    fn pop_n(&mut self, n: usize) -> Vec<Value> {
+        if self.values.len() < n {
+            log::error!("Error popping values from stack: stack underflow");
+            Vec::new()
+        } else {
+            let new_len = self.values.len() - n;
+            let mut result = self.values.split_off(new_len);
+            result.reverse(); // maintain stack order
+            result
+        }
+    }
+
+    fn pop_frame_label(&mut self) -> Result<Label, Error> {
+        if let Some(frame) = self.frames.last() {
+            if let Some(label) = frame.label_stack.last() {
+                return Ok(label.clone());
+            }
+        }
+        Err(Error::new(kinds::StackUnderflowError))
+    }
+
+    fn execute_function_call_direct(
+        &mut self,
+        engine: &mut StacklessEngine,
+        caller_instance_idx: u32,
+        func_idx: u32,
+        args: Vec<Value>,
+    ) -> Result<Vec<Value>, Error> {
+        engine.call_function(caller_instance_idx, func_idx, &args)
+    }
+
+    fn as_any(&mut self) -> &mut dyn std::any::Any {
+        self
+    }
+}
+
+// Implement Clone for StacklessEngine
+impl Clone for StacklessEngine {
+    fn clone(&self) -> Self {
+        Self {
+            exec_stack: self.exec_stack.clone(),
+            fuel: self.fuel,
+            stats: self.stats.clone(),
+            callbacks: self.callbacks.clone(),
+            max_call_depth: self.max_call_depth,
+            instances: self.instances.clone(),
+        }
+    }
+}
+
+// Fix the Clone implementation for StacklessExecutionState in StacklessStack
+impl Clone for StacklessStack {
+    fn clone(&self) -> Self {
+        Self {
+            module: self.module.clone(),
+            instance_idx: self.instance_idx,
+            values: self.values.clone(),
+            labels: self.labels.clone(),
+            frames: self.frames.clone(),
+            state: match &self.state {
+                StacklessExecutionState::Running => StacklessExecutionState::Running,
+                StacklessExecutionState::Paused {
+                    pc,
+                    instance_idx,
+                    func_idx,
+                    expected_results,
+                } => StacklessExecutionState::Paused {
+                    pc: *pc,
+                    instance_idx: *instance_idx,
+                    func_idx: *func_idx,
+                    expected_results: *expected_results,
+                },
+                StacklessExecutionState::Calling {
+                    instance_idx,
+                    func_idx,
+                    args,
+                    return_pc,
+                } => StacklessExecutionState::Calling {
+                    instance_idx: *instance_idx,
+                    func_idx: *func_idx,
+                    args: args.clone(),
+                    return_pc: *return_pc,
+                },
+                StacklessExecutionState::Returning { values } => {
+                    StacklessExecutionState::Returning {
+                        values: values.clone(),
+                    }
+                }
+                StacklessExecutionState::Branching { depth, values } => {
+                    StacklessExecutionState::Branching {
+                        depth: *depth,
+                        values: values.clone(),
+                    }
+                }
+                StacklessExecutionState::Completed => StacklessExecutionState::Completed,
+                StacklessExecutionState::Finished => StacklessExecutionState::Finished,
+                StacklessExecutionState::Error(err) => StacklessExecutionState::Error(Error::new(
+                    kinds::ExecutionError(err.to_string()),
+                )),
+            },
+            pc: self.pc,
+            func_idx: self.func_idx,
+            capacity: self.capacity,
+        }
     }
 }

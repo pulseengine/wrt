@@ -1,5 +1,8 @@
 use core::fmt;
 
+use crate::error::kinds;
+use crate::error::{Error, Result};
+use crate::module::Module;
 use crate::resource::ResourceType;
 
 // Import std when available
@@ -360,6 +363,27 @@ impl ComponentType {
     #[must_use]
     pub const fn is_own(&self) -> bool {
         matches!(self, Self::Own(_))
+    }
+}
+
+impl BlockType {
+    /// Resolves the BlockType into parameter and result value types.
+    /// Requires the module context to look up function types by index.
+    pub fn resolve_types(&self, module: &Module) -> Result<(Vec<ValueType>, Vec<ValueType>)> {
+        match self {
+            BlockType::Empty => Ok((vec![], vec![])),
+            BlockType::Type(vt) | BlockType::Value(vt) => Ok((vec![], vec![*vt])),
+            BlockType::FuncType(ft) => Ok((ft.params.clone(), ft.results.clone())),
+            BlockType::TypeIndex(idx) => {
+                let func_type = module.get_function_type(*idx).ok_or_else(|| {
+                    Error::new(kinds::ValidationError(format!(
+                        "Invalid function type index: {}",
+                        idx
+                    )))
+                })?;
+                Ok((func_type.params.clone(), func_type.results.clone()))
+            }
+        }
     }
 }
 

@@ -4,14 +4,19 @@
 //! resource types, including resource tables, lifetime management, and
 //! reference counting.
 
-use crate::error::{Error, Result};
-use crate::{format, String, Vec};
+use crate::{
+    error::{kinds, Error, Result},
+    format, String, Vec,
+};
 #[cfg(not(feature = "std"))]
 use alloc::sync::Arc;
+use std::any::Any;
 use std::cmp::{Eq, PartialEq};
+use std::collections::HashMap;
 use std::fmt;
 #[cfg(feature = "std")]
 use std::sync::Arc;
+use std::sync::Mutex;
 
 /// A unique identifier for a resource instance
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -141,13 +146,19 @@ impl ResourceTable {
     pub fn get(&self, id: ResourceId) -> Result<&Resource> {
         let index = id.0 as usize - 1;
         if index >= self.resources.len() {
-            return Err(Error::Execution(format!("Invalid resource ID: {id:?}")));
+            return Err(Error::new(kinds::ExecutionError(format!(
+                "Invalid resource ID: {:?}",
+                id
+            ))));
         }
 
         if let Some(ref resource) = self.resources[index] {
             Ok(resource)
         } else {
-            Err(Error::Execution(format!("Resource not found: {id:?}")))
+            Err(Error::new(kinds::ExecutionError(format!(
+                "Resource not found: {:?}",
+                id
+            ))))
         }
     }
 
@@ -155,13 +166,19 @@ impl ResourceTable {
     pub fn get_mut(&mut self, id: ResourceId) -> Result<&mut Resource> {
         let index = id.0 as usize - 1;
         if index >= self.resources.len() {
-            return Err(Error::Execution(format!("Invalid resource ID: {id:?}")));
+            return Err(Error::new(kinds::ExecutionError(format!(
+                "Invalid resource ID: {:?}",
+                id
+            ))));
         }
 
         if let Some(ref mut resource) = self.resources[index] {
             Ok(resource)
         } else {
-            Err(Error::Execution(format!("Resource not found: {id:?}")))
+            Err(Error::new(kinds::ExecutionError(format!(
+                "Resource not found: {:?}",
+                id
+            ))))
         }
     }
 
@@ -176,7 +193,10 @@ impl ResourceTable {
     pub fn drop_ref(&mut self, id: ResourceId) -> Result<()> {
         let index = id.0 as usize - 1;
         if index >= self.resources.len() {
-            return Err(Error::Execution(format!("Invalid resource ID: {id:?}")));
+            return Err(Error::new(kinds::ExecutionError(format!(
+                "Invalid resource ID: {:?}",
+                id
+            ))));
         }
 
         let drop_resource = {
