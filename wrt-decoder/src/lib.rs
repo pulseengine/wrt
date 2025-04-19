@@ -25,15 +25,28 @@ extern crate std;
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 
-// Import std/alloc modules based on feature flag
-#[cfg(feature = "std")]
-use std::{string::String, vec::Vec};
-
+// Create a prelude module with common imports
 #[cfg(not(feature = "std"))]
-use alloc::{string::String, vec::Vec};
+pub(crate) mod prelude {
+    pub use alloc::collections::{BTreeMap as HashMap, BTreeSet as HashSet};
+    pub use alloc::format;
+    pub use alloc::string::{String, ToString};
+    pub use alloc::vec::Vec;
+}
+
+#[cfg(feature = "std")]
+pub(crate) mod prelude {
+    pub use std::collections::{HashMap, HashSet};
+    pub use std::format;
+    pub use std::string::ToString;
+    pub use std::vec::Vec;
+}
+
+// Use prelude items throughout the crate
 
 // Export module components
 pub mod component;
+pub mod component_name_section;
 pub mod component_validation;
 pub mod instructions;
 pub mod module;
@@ -65,100 +78,67 @@ pub fn decode(bytes: &[u8]) -> wrt_error::Result<Module> {
 
 /// Check if the binary is a WebAssembly component or core module
 ///
-/// Returns true if the binary appears to be a component, false if it's a core module,
-/// or an error if the format is invalid.
+/// Returns true if the bytes represent a WebAssembly component.
 pub fn is_component(bytes: &[u8]) -> wrt_error::Result<bool> {
-    use wrt_error::{kinds, Error};
-
-    // Check if we have enough bytes for a header
     if bytes.len() < 8 {
-        return Err(Error::new(kinds::ParseError(
+        return Err(wrt_error::Error::new(wrt_error::kinds::ParseError(
             "Binary too short for WebAssembly header".to_string(),
         )));
     }
 
-    // Check magic bytes (\0asm) - both component and core module have the same magic
     if bytes[0..4] != WASM_MAGIC {
-        return Err(Error::new(kinds::ParseError(
+        return Err(wrt_error::Error::new(wrt_error::kinds::ParseError(
             "Invalid WebAssembly magic bytes".to_string(),
         )));
     }
 
-    // Check the layer identifier in bytes 6-7
-    // For component it's [0x01, 0x00], for core module it's part of the version [0x00, 0x00]
-    Ok(bytes[6..8] == [0x01, 0x00])
+    // Check for component version number
+    Ok(bytes[7] != 0)
 }
 
-/// Encode a WebAssembly module into a binary format
+/// Encode a WebAssembly module into binary format
+///
+/// Currently, this function is a placeholder.
 pub fn encode(module: &Module) -> wrt_error::Result<Vec<u8>> {
     // In a real implementation, this would encode the module to binary
-    // For now, if the module has the original binary, return it
-    if let Some(binary) = &module.binary {
-        return Ok(binary.clone());
-    }
-
-    // Otherwise, return an error
-    Err(wrt_error::Error::new(wrt_error::kinds::RuntimeError(
+    Err(wrt_error::Error::new(wrt_error::kinds::ParseError(
         "Module encoding not yet implemented".to_string(),
     )))
 }
 
-/// Validate a WebAssembly binary module
+/// Validate a WebAssembly module
 ///
-/// This checks that the module follows the WebAssembly specification.
-pub fn validate(bytes: &[u8]) -> wrt_error::Result<()> {
-    let module = decode(bytes)?;
-    validation::validate_module(&module)
+/// This is the main entry point for validation.
+pub fn validate(module: &Module) -> wrt_error::Result<()> {
+    validation::validate_module(module)
 }
 
-/// Validate a WebAssembly binary component or module
+/// Extract custom sections with the given name from a module.
 ///
-/// This checks that the binary follows either the WebAssembly Core Specification
-/// or the WebAssembly Component Model Specification, depending on the binary type.
-pub fn validate_binary(bytes: &[u8]) -> wrt_error::Result<()> {
-    // First determine if this is a component or a core module
-    let is_comp = is_component(bytes)?;
-
-    if is_comp {
-        // Decode and validate as a component
-        let component = decode_component(bytes)?;
-        component_validation::validate_component(&component)
-    } else {
-        // Decode and validate as a core module
-        validate(bytes)
-    }
-}
-
-/// Extract custom sections from a WebAssembly module
-///
-/// This is useful for retrieving name sections or other metadata without
-/// fully parsing the module.
-pub fn extract_custom_sections(bytes: &[u8], name: &str) -> wrt_error::Result<Vec<Vec<u8>>> {
-    let module = decode(bytes)?;
-    let sections = module
+/// This function returns a vector of references to the raw data of custom sections
+/// with the specified name. This is useful for extracting specific metadata like
+/// name sections.
+pub fn extract_custom_sections<'a>(module: &'a Module, name: &str) -> Vec<&'a [u8]> {
+    module
         .custom_sections
         .iter()
-        .filter(|s| s.name == name)
-        .map(|s| s.data.clone())
-        .collect();
-    Ok(sections)
+        .filter(|section| section.name == name)
+        .map(|section| section.data.as_slice())
+        .collect()
 }
 
-/// Convert WebAssembly text format (WAT) to binary format
-///
-/// This is provided as a convenience function for development and testing.
-#[cfg(all(feature = "std", feature = "wat"))]
-pub fn wat_to_wasm(wat: &str) -> wrt_error::Result<Vec<u8>> {
-    // This requires the 'wat' crate which is optional
-    match ::wat::parse_str(wat) {
-        Ok(bytes) => Ok(bytes),
-        Err(e) => Err(wrt_error::Error::new(wrt_error::kinds::ParseError(
-            format!("Failed to parse WAT: {}", e),
-        ))),
-    }
-}
+#[cfg(feature = "no_std")]
+pub use alloc::{
+    borrow::ToOwned,
+    collections::HashMap,
+    string::{String, ToString},
+    vec::Vec,
+};
 
-/// Create a placeholder module for testing or other purposes
-pub fn create_empty_module() -> Module {
-    Module::new()
-}
+#[cfg(not(feature = "no_std"))]
+pub use std::{
+    borrow::ToOwned,
+    collections::HashMap,
+    string::{String, ToString},
+    vec::Vec,
+};
