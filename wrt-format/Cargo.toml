@@ -1,0 +1,27 @@
+[package]
+name = "wrt-format"
+version = "0.1.0"
+edition = "2021"
+description = "WebAssembly format handling for WRT"
+license = "MIT"
+repository = "https://github.com/avrabe/wrt"
+
+[dependencies]
+wrt-error = { path = "../wrt-error", version = "0.1.0" }
+
+[dev-dependencies]
+# For property testing
+proptest = "1.0.0"
+
+# For formal verification (moved to dependencies with optional flag)
+[dependencies.kani-verifier]
+version = "0.61.0"
+optional = true
+
+[features]
+# The 'kani' feature enables formal verification with the Kani verifier
+kani = ["dep:kani-verifier"] 
+
+# Configuration for Kani verification
+[package.metadata.kani]
+default-unwind = 2

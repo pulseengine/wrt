@@ -1,0 +1,35 @@
+[package]
+name = "wrt-decoder"
+version = "0.1.0"
+edition = "2021"
+description = "WebAssembly module decoder for wrt runtime"
+license = "MIT"
+repository = "https://github.com/avrabe/wrt"
+
+[dependencies]
+# Error handling
+wrt-error = { path = "../wrt-error", version = "0.1.0" }
+# Format handling
+wrt-format = { path = "../wrt-format", version = "0.1.0" }
+# Core dependencies
+log = { version = "0.4", optional = true }
+# WAT parsing (for testing)
+wat = { version = "1.0.53", optional = true }
+
+[dev-dependencies]
+criterion = "0.5"
+tempfile = "3.8"
+proptest = "1.4"
+hex = "0.4"
+wat = "1.0.53"
+
+[features]
+default = ["minimal", "std"]
+minimal = ["dep:log"]
+std = ["minimal"]
+no_std = []
+wat = ["dep:wat", "std"]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"] 

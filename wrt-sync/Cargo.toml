@@ -1,0 +1,23 @@
+[package]
+name = "wrt-sync"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "no_std synchronization primitives (Mutex, RwLock) for the WRT project."
+
+[lib]
+name = "wrt_sync"
+path = "src/lib.rs"
+
+[dependencies]
+# No external dependencies needed
+# Only used for formal verification when 'kani' feature is enabled
+kani-verifier = { version = "0.61.0", optional = true }
+
+[features]
+default = []
+# The 'std' feature enables Rust standard library functionality like thread parking
+# This allows for more efficient locking when locks are held for longer periods
+std = []
+# The 'kani' feature enables formal verification with the Kani verifier
+kani = ["std", "dep:kani-verifier"]
