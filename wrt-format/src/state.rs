@@ -6,8 +6,12 @@
 use crate::compression::{rle_decode, rle_encode, CompressionType};
 use crate::section::CustomSection;
 use crate::version::{STATE_MAGIC, STATE_VERSION};
+use crate::{format, String, Vec};
 use wrt_error::kinds;
 use wrt_error::{Error, Result};
+
+#[cfg(not(feature = "std"))]
+use alloc::string::ToString;
 
 /// Constants for state section names
 pub const STATE_SECTION_PREFIX: &str = "wrt-state";
@@ -69,99 +73,87 @@ impl StateSection {
     }
 }
 
-/// Header information for a state section
-#[derive(Debug)]
+/// State section header
+#[derive(Debug, Clone)]
 pub struct StateHeader {
-    /// State format version
-    pub version: u32,
     /// Section type
     pub section_type: StateSection,
-    /// Compression type used
-    pub compression: CompressionType,
-    /// Size of data after decompression
-    pub decompressed_size: u32,
+    /// Compression type
+    pub compression_type: CompressionType,
+    /// Data size
+    pub data_size: u32,
+    /// Original uncompressed size
+    pub uncompressed_size: u32,
 }
 
-/// Create a state section with proper header
-///
-/// # Arguments
-///
-/// * `section_type` - Type of state section
-/// * `data` - Raw data to include in the section
-/// * `compression` - Compression type to use
-///
-/// # Returns
-///
-/// A CustomSection containing the state data with proper header
+/// Create a custom section containing serialized state
 pub fn create_state_section(
     section_type: StateSection,
     data: &[u8],
-    compression: CompressionType,
+    compression_type: CompressionType,
 ) -> Result<CustomSection> {
-    // Create header structure
+    // Create header
     let mut header = Vec::with_capacity(17);
 
     // Magic bytes
     header.extend_from_slice(STATE_MAGIC);
 
-    // Version (little-endian)
+    // Version
     header.extend_from_slice(&STATE_VERSION.to_le_bytes());
 
-    // Section type (u32, little-endian)
-    header.extend_from_slice(&(section_type as u32).to_le_bytes());
+    // Section type
+    header.push(section_type as u8);
 
     // Compression type
-    header.push(compression as u8);
+    header.push(compression_type as u8);
 
-    // Apply compression if needed
-    let compressed_data = match compression {
+    // Original uncompressed size
+    let uncompressed_size = data.len() as u32;
+    header.extend_from_slice(&uncompressed_size.to_le_bytes());
+
+    // Compress data
+    let compressed_data = match compression_type {
         CompressionType::None => data.to_vec(),
         CompressionType::RLE => rle_encode(data),
     };
 
-    // Data length (decompressed size, little-endian)
-    header.extend_from_slice(&(data.len() as u32).to_le_bytes());
+    // Serialized data size
+    let compressed_size = compressed_data.len() as u32;
+    header.extend_from_slice(&compressed_size.to_le_bytes());
 
-    // Combine header and data
-    let mut section_data = header;
+    // Create complete section contents: header + compressed data
+    let mut section_data = Vec::with_capacity(header.len() + compressed_data.len());
+    section_data.extend_from_slice(&header);
     section_data.extend_from_slice(&compressed_data);
 
+    // Create custom section with name and data
     Ok(CustomSection {
         name: section_type.name(),
         data: section_data,
     })
 }
 
-/// Extract data from a state section
-///
-/// # Arguments
-///
-/// * `section` - The CustomSection to extract data from
-///
-/// # Returns
-///
-/// Header information and decompressed data
+/// Extract state data from a custom section
 pub fn extract_state_section(section: &CustomSection) -> Result<(StateHeader, Vec<u8>)> {
-    // Ensure section has a valid name
+    // Verify that this is a valid state section
     let section_type = StateSection::from_name(&section.name)
         .ok_or_else(|| Error::new(kinds::ParseError("Invalid state section name".to_string())))?;
 
-    // Check header size
+    // Parse header
     if section.data.len() < 17 {
         return Err(Error::new(kinds::ParseError(
             "State section header too small".to_string(),
         )));
     }
 
-    // Extract magic bytes
-    let magic = &section.data[0..4];
-    if magic != STATE_MAGIC {
+    // Verify magic bytes
+    if section.data[0..4] != *STATE_MAGIC {
         return Err(Error::new(kinds::ParseError(
             "Invalid state section magic bytes".to_string(),
         )));
     }
 
-    // Extract version
+    // Parse version
     let version = u32::from_le_bytes([
         section.data[4],
         section.data[5],
@@ -169,66 +161,80 @@ pub fn extract_state_section(section: &CustomSection) -> Result<(StateHeader, Ve
         section.data[7],
     ]);
 
-    // Extract section type
-    let section_type_id = u32::from_le_bytes([
-        section.data[8],
-        section.data[9],
-        section.data[10],
-        section.data[11],
-    ]);
+    // Version check
+    if version != STATE_VERSION {
+        // In future versions we'll need to handle migration
+        // For now, just reject mismatched versions
+    }
 
-    // Validate section type matches name
-    let parsed_section_type = StateSection::from_u32(section_type_id)
+    // Parse section type
+    let parsed_section_type = StateSection::from_u32(section.data[8] as u32)
         .ok_or_else(|| Error::new(kinds::ParseError("Invalid section type ID".to_string())))?;
 
+    // Verify section type matches the name
     if parsed_section_type != section_type {
         return Err(Error::new(kinds::ParseError(
             "Section type mismatch".to_string(),
         )));
     }
 
-    // Extract compression type
-    let compression = match section.data[12] {
-        0 => CompressionType::None,
-        1 => CompressionType::RLE,
-        _ => {
+    // Parse compression type
+    let compression_type = match CompressionType::from_u8(section.data[9]) {
+        Some(t) => t,
+        None => {
             return Err(Error::new(kinds::ParseError(
                 "Unknown compression type".to_string(),
-            )))
+            )));
         }
     };
 
-    // Extract decompressed size
-    let decompressed_size = u32::from_le_bytes([
+    // Parse uncompressed size
+    let uncompressed_size = u32::from_le_bytes([
+        section.data[10],
+        section.data[11],
+        section.data[12],
         section.data[13],
+    ]);
+
+    // Parse compressed size
+    let compressed_size = u32::from_le_bytes([
         section.data[14],
         section.data[15],
         section.data[16],
+        section.data[17],
     ]);
 
-    // Extract and decompress data
-    let compressed_data = &section.data[17..];
-    let data = match compression {
+    // Extract the compressed data
+    if section.data.len() < 18 + compressed_size as usize {
+        return Err(Error::new(kinds::ParseError(
+            "Compressed data truncated".to_string(),
+        )));
+    }
+
+    let compressed_data = &section.data[18..18 + compressed_size as usize];
+
+    // Decompress the data
+    let decompressed_data = match compression_type {
         CompressionType::None => compressed_data.to_vec(),
         CompressionType::RLE => rle_decode(compressed_data)?,
     };
 
     // Verify decompressed size
-    if data.len() != decompressed_size as usize {
+    if decompressed_data.len() != uncompressed_size as usize {
         return Err(Error::new(kinds::ParseError(
             "Decompressed size mismatch".to_string(),
         )));
     }
 
-    Ok((
-        StateHeader {
-            version,
-            section_type,
-            compression,
-            decompressed_size,
-        },
-        data,
-    ))
+    // Create header
+    let header = StateHeader {
+        section_type,
+        compression_type,
+        data_size: compressed_size,
+        uncompressed_size,
+    };
+
+    Ok((header, decompressed_data))
 }
 
 /// Check if a module contains state sections
@@ -268,8 +274,8 @@ mod verification {
 
         // Verify properties
         assert_eq!(header.section_type, StateSection::Stack);
-        assert_eq!(header.compression, CompressionType::None);
-        assert_eq!(header.decompressed_size as usize, test_data.len());
+        assert_eq!(header.compression_type, CompressionType::None);
+        assert_eq!(header.uncompressed_size as usize, test_data.len());
         assert_eq!(data, test_data);
     }
 

@@ -19,6 +19,9 @@ version = "0.61.0"
 optional = true
 
 [features]
+default = ["std"]
+std = []
+no_std = []
 # The 'kani' feature enables formal verification with the Kani verifier
 kani = ["dep:kani-verifier"] 
 

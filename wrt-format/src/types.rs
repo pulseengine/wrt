@@ -1,11 +1,15 @@
-//! WebAssembly type definitions
+//! WebAssembly type definitions.
 //!
-//! This module provides type definitions for WebAssembly binary format.
+//! This module provides type definitions for WebAssembly types.
 
+use crate::{format, Vec};
 use wrt_error::{kinds, Error, Result};
 
+#[cfg(not(feature = "std"))]
+use alloc::string::ToString;
+
 /// WebAssembly value types
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ValueType {
     /// 32-bit integer
     I32,
@@ -24,7 +28,7 @@ pub enum ValueType {
 }
 
 /// WebAssembly function type
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FuncType {
     /// Parameter types
     pub params: Vec<ValueType>,

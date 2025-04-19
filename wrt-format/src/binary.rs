@@ -4,7 +4,17 @@
 
 use crate::module::Module;
 use crate::types::{BlockType, ValueType};
+use crate::{format, String, Vec};
 use wrt_error::{kinds, Error, Result};
+
+#[cfg(feature = "std")]
+use std::str;
+
+#[cfg(not(feature = "std"))]
+use core::str;
+
+#[cfg(not(feature = "std"))]
+use alloc::{string::ToString, vec};
 
 /// Magic bytes for WebAssembly modules: \0asm
 pub const WASM_MAGIC: [u8; 4] = [0x00, 0x61, 0x73, 0x6D];
@@ -63,6 +73,50 @@ pub const I32_CONST: u8 = 0x41;
 pub const I64_CONST: u8 = 0x42;
 pub const F32_CONST: u8 = 0x43;
 pub const F64_CONST: u8 = 0x44;
+
+//==========================================================================
+// WebAssembly Component Model Binary Format
+//==========================================================================
+
+/// Component Model magic bytes (same as core: \0asm)
+pub const COMPONENT_MAGIC: [u8; 4] = [0x00, 0x61, 0x73, 0x6D];
+
+/// Component Model binary format version - pre-MVP version 0xD.0
+pub const COMPONENT_VERSION: [u8; 2] = [0x0D, 0x00];
+
+/// Component Model layer identifier - distinguishes components from modules
+pub const COMPONENT_LAYER: [u8; 2] = [0x01, 0x00];
+
+/// Component Model section IDs
+pub const COMPONENT_CUSTOM_SECTION_ID: u8 = 0x00;
+pub const COMPONENT_CORE_MODULE_SECTION_ID: u8 = 0x01;
+pub const COMPONENT_CORE_INSTANCE_SECTION_ID: u8 = 0x02;
+pub const COMPONENT_CORE_TYPE_SECTION_ID: u8 = 0x03;
+pub const COMPONENT_COMPONENT_SECTION_ID: u8 = 0x04;
+pub const COMPONENT_INSTANCE_SECTION_ID: u8 = 0x05;
+pub const COMPONENT_ALIAS_SECTION_ID: u8 = 0x06;
+pub const COMPONENT_TYPE_SECTION_ID: u8 = 0x07;
+pub const COMPONENT_CANON_SECTION_ID: u8 = 0x08;
+pub const COMPONENT_START_SECTION_ID: u8 = 0x09;
+pub const COMPONENT_IMPORT_SECTION_ID: u8 = 0x0A;
+pub const COMPONENT_EXPORT_SECTION_ID: u8 = 0x0B;
+pub const COMPONENT_VALUE_SECTION_ID: u8 = 0x0C;
+
+/// Component Model sort kinds
+pub const COMPONENT_CORE_SORT_FUNC: u8 = 0x00;
+pub const COMPONENT_CORE_SORT_TABLE: u8 = 0x01;
+pub const COMPONENT_CORE_SORT_MEMORY: u8 = 0x02;
+pub const COMPONENT_CORE_SORT_GLOBAL: u8 = 0x03;
+pub const COMPONENT_CORE_SORT_TYPE: u8 = 0x10;
+pub const COMPONENT_CORE_SORT_MODULE: u8 = 0x11;
+pub const COMPONENT_CORE_SORT_INSTANCE: u8 = 0x12;
+
+pub const COMPONENT_SORT_CORE: u8 = 0x00;
+pub const COMPONENT_SORT_FUNC: u8 = 0x01;
+pub const COMPONENT_SORT_VALUE: u8 = 0x02;
+pub const COMPONENT_SORT_TYPE: u8 = 0x03;
+pub const COMPONENT_SORT_COMPONENT: u8 = 0x04;
+pub const COMPONENT_SORT_INSTANCE: u8 = 0x05;
 
 /// Parse a WebAssembly binary into a module
 ///
@@ -484,38 +538,45 @@ pub fn write_f64(value: f64) -> Vec<u8> {
 
 /// Validate that a byte slice contains valid UTF-8
 pub fn validate_utf8(bytes: &[u8]) -> Result<()> {
-    match std::str::from_utf8(bytes) {
+    match str::from_utf8(bytes) {
         Ok(_) => Ok(()),
         Err(e) => Err(Error::new(kinds::ParseError(format!(
-            "Invalid UTF-8 string: {}",
+            "Invalid UTF-8 sequence: {}",
             e
         )))),
     }
 }
 
-/// Read a WebAssembly UTF-8 string (length prefixed)
+/// Read a string from a byte array
+///
+/// This reads a length-prefixed string (used in WebAssembly names).
 pub fn read_string(bytes: &[u8], pos: usize) -> Result<(String, usize)> {
-    // Read the length as a LEB128 unsigned integer
-    let (length, len_size) = read_leb128_u32(bytes, pos)?;
+    if pos >= bytes.len() {
+        return Err(Error::new(kinds::ParseError(
+            "String exceeds buffer bounds".to_string(),
+        )));
+    }
 
-    // Calculate the position and check bounds
-    let str_pos = pos + len_size;
-    let end_pos = str_pos + length as usize;
+    // Read the string length
+    let (str_len, len_size) = read_leb128_u32(bytes, pos)?;
+    let str_start = pos + len_size;
+    let str_end = str_start + str_len as usize;
 
-    if end_pos > bytes.len() {
+    // Ensure the string fits in the buffer
+    if str_end > bytes.len() {
         return Err(Error::new(kinds::ParseError(
             "String exceeds buffer bounds".to_string(),
         )));
     }
 
     // Extract the string bytes
-    let string_bytes = &bytes[str_pos..end_pos];
+    let string_bytes = &bytes[str_start..str_end];
 
-    // Validate and convert to UTF-8
-    match std::str::from_utf8(string_bytes) {
-        Ok(s) => Ok((s.to_string(), len_size + length as usize)),
+    // Convert to a Rust string
+    match str::from_utf8(string_bytes) {
+        Ok(s) => Ok((s.to_string(), len_size + str_len as usize)),
         Err(e) => Err(Error::new(kinds::ParseError(format!(
-            "Invalid UTF-8 string: {}",
+            "Invalid UTF-8 in string: {}",
             e
         )))),
     }
