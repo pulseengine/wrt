@@ -199,15 +199,6 @@ Dependency Requirements
    
    The interpreter shall compile on Rust ``1.76.0`` and later versions.
 
-.. req:: Component Model Tools
-   :id: REQ_020
-   :status: partial
-   :links: REQ_014
-   
-   The interpreter shall use the following tools for Component Model development:
-   - wit-parser >= 0.12.0 for WIT file parsing and validation
-   - wit-bindgen >= 0.41.0 for interface generation
-   - wit-component >= 0.12.0 for component model binary format handling
 
 Observability Requirements
 --------------------------
