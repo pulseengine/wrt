@@ -36,21 +36,37 @@ pub struct FuncType {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MemoryIndexType {
     /// Standard WebAssembly 1.0 memory (i32 addressing)
+    /// Limited to 4GiB (65536 pages × 64KiB)
     I32,
     /// Memory64 extension (i64 addressing)
+    /// Allows for memories larger than 4GiB
     I64,
 }
 
 /// WebAssembly limits
+///
+/// Limits represent the minimum and optional maximum sizes for
+/// memories and tables as defined in the WebAssembly Core Specification.
+///
+/// For memories, limits are specified in units of pages (64KiB each).
+/// For tables, limits are specified in number of elements.
+///
+/// The WebAssembly 1.0 specification has the following constraints:
+/// - For memories, the maximum number of pages is 65536 (4GiB)
+/// - Shared memories must have a maximum size specified
+/// - The maximum size must be greater than or equal to the minimum size
 #[derive(Debug, Clone)]
 pub struct Limits {
-    /// Minimum size
+    /// Minimum size (pages for memory, elements for table)
     pub min: u64,
-    /// Maximum size (optional)
+    /// Maximum size (optional, required for shared memories)
     pub max: Option<u64>,
     /// Shared memory flag, used for memory types
+    /// When true, memory can be shared between threads and requires max to be set
     pub shared: bool,
     /// Memory index type (i32 or i64)
+    /// Standard WebAssembly 1.0 uses i32 addressing (up to 4GiB)
+    /// The Memory64 extension uses i64 addressing (beyond 4GiB)
     pub memory_index_type: MemoryIndexType,
 }
 

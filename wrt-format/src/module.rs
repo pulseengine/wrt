@@ -19,11 +19,20 @@ pub struct Function {
 }
 
 /// WebAssembly memory definition
+///
+/// A memory instance as defined in the WebAssembly Core Specification.
+/// The memory section consists of a vector of memory definitions, each
+/// defining a memory with limits, and optional shared flag for threading.
+///
+/// WebAssembly 1.0 allows at most one memory per module.
+/// Memory64 extension allows memories with 64-bit addressing.
 #[derive(Debug, Clone)]
 pub struct Memory {
-    /// Memory limits
+    /// Memory limits (minimum and optional maximum size in pages)
+    /// Each page is 64KiB (65536 bytes)
     pub limits: Limits,
     /// Whether this memory is shared between threads
+    /// Shared memory must have a maximum size specified
     pub shared: bool,
 }
 
