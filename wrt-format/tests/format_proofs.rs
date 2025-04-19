@@ -1,12 +1,8 @@
 //! Formal verification proofs for the wrt-format crate.
 //!
 //! This module contains Kani proofs that verify key invariants of the format module.
-
+#[cfg(feature = "kani")]
 use kani;
-use wrt_format::compression::CompressionType;
-use wrt_format::module::Module;
-use wrt_format::section::CustomSection;
-use wrt_format::state::{create_state_section, extract_state_section, StateSection};
 
 /// Verify basic serialization properties of the format module
 #[kani::proof]
