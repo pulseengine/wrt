@@ -2,7 +2,8 @@
 //!
 //! This module provides types and functions for parsing and encoding WebAssembly instructions.
 
-use crate::{types::BlockType, Vec};
+use crate::prelude::*;
+use crate::types::BlockType;
 use wrt_error::{kinds, Error, Result};
 use wrt_format::binary;
 
