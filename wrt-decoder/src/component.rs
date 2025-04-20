@@ -3,27 +3,24 @@
 //! This module provides functions for decoding WebAssembly Component Model
 //! components from binary format.
 
-use crate::component_name_section::{
-    generate_component_name_section, parse_component_name_section, ComponentNameSection,
-};
+use crate::component_name_section;
+use crate::component_name_section::ComponentNameSection;
+use crate::component_val_type::encode_val_type;
 use crate::prelude::*;
 use wrt_error::{kinds, Error, Result};
 use wrt_format::binary;
-use wrt_format::{
-    component::{
-        Alias, AliasTarget, Component, CoreInlineExport, CoreInstance, CoreInstanceExpr,
-        CoreInstantiateArg, CoreSort, CoreType, CoreTypeDefinition, Export, ExportName, Import,
-        ImportName, Instance, Sort, Start, ValType, Value,
-    },
-    Module,
+use wrt_format::component::{
+    Alias, AliasTarget, Canon, CanonOperation, Component, ComponentType, CoreInlineExport,
+    CoreInstance, CoreInstanceExpr, CoreInstantiateArg, CoreSort, CoreType, CoreTypeDefinition,
+    Export, ExportName, Import, ImportName, Instance, InstanceExpr, LiftOptions, LowerOptions,
+    Sort, Start, ValType, Value,
 };
+use wrt_format::module::Module;
 
-const COMPONENT_VERSION: [u8; 4] = [0x01, 0x00, 0x00, 0x00];
-
-/// Component Model binary format magic bytes (same as core: \0asm)
-pub const COMPONENT_MAGIC: [u8; 4] = binary::COMPONENT_MAGIC;
-/// Component Model layer identifier
-pub const COMPONENT_LAYER: [u8; 2] = binary::COMPONENT_LAYER;
+// Relevant constants
+pub const COMPONENT_MAGIC: [u8; 4] = [0x00, 0x61, 0x73, 0x6D];
+pub const COMPONENT_VERSION: [u8; 4] = [0x01, 0x00, 0x00, 0x00];
+pub const COMPONENT_LAYER: [u8; 2] = [0x01, 0x00]; // Layer 1, version 0
 
 /// Decode a WebAssembly Component Model binary into a structured component representation
 pub fn decode_component(bytes: &[u8]) -> Result<Component> {
@@ -94,7 +91,9 @@ pub fn decode_component(bytes: &[u8]) -> Result<Component> {
                     if name == "name" && section_bytes.len() > name_size {
                         // Parse component name section
                         let name_data = &section_bytes[name_size..];
-                        name_section = Some(parse_component_name_section(name_data)?);
+                        name_section = Some(component_name_section::parse_component_name_section(
+                            name_data,
+                        )?);
                     }
                 }
             }
@@ -200,154 +199,128 @@ pub fn encode_component(component: &Component) -> Result<Vec<u8>> {
     result.extend_from_slice(&COMPONENT_VERSION);
     result.extend_from_slice(&COMPONENT_LAYER);
 
-    // Generate and add sections in the correct order
-
-    // 1. Core module section
+    // Encode core module section if present
     if !component.modules.is_empty() {
-        let section_contents = encode_core_module_section(&component.modules)?;
+        let section_content = encode_core_module_section(&component.modules)?;
         add_section(
             &mut result,
             binary::COMPONENT_CORE_MODULE_SECTION_ID,
-            &section_contents,
+            &section_content,
         );
     }
 
-    // 2. Core instance section
+    // Encode core instance section if present
     if !component.core_instances.is_empty() {
-        let section_contents = encode_core_instance_section(&component.core_instances)?;
+        let section_content = encode_core_instance_section(&component.core_instances)?;
         add_section(
             &mut result,
             binary::COMPONENT_CORE_INSTANCE_SECTION_ID,
-            &section_contents,
+            &section_content,
         );
     }
 
-    // 3. Core type section
+    // Encode core type section if present
     if !component.core_types.is_empty() {
-        let section_contents = encode_core_type_section(&component.core_types)?;
+        let section_content = encode_core_type_section(&component.core_types)?;
         add_section(
             &mut result,
             binary::COMPONENT_CORE_TYPE_SECTION_ID,
-            &section_contents,
+            &section_content,
         );
     }
 
-    // 4. Component section
+    // Encode component section if present
     if !component.components.is_empty() {
-        let section_contents = encode_component_section(&component.components)?;
+        let section_content = encode_component_section(&component.components)?;
         add_section(
             &mut result,
             binary::COMPONENT_COMPONENT_SECTION_ID,
-            &section_contents,
+            &section_content,
         );
     }
 
-    // 5. Instance section
+    // Encode instance section if present
     if !component.instances.is_empty() {
-        let section_contents = encode_instance_section(&component.instances)?;
+        let section_content = encode_instance_section(&component.instances)?;
         add_section(
             &mut result,
             binary::COMPONENT_INSTANCE_SECTION_ID,
-            &section_contents,
+            &section_content,
         );
     }
 
-    // 6. Alias section
+    // Encode alias section if present
     if !component.aliases.is_empty() {
-        let section_contents = encode_alias_section(&component.aliases)?;
+        let section_content = encode_alias_section(&component.aliases)?;
         add_section(
             &mut result,
             binary::COMPONENT_ALIAS_SECTION_ID,
-            &section_contents,
+            &section_content,
         );
     }
 
-    // 7. Type section
+    // Encode type section if present
     if !component.types.is_empty() {
-        let section_contents = encode_type_section(&component.types)?;
+        let section_content = encode_component_type_section(&component.types)?;
         add_section(
             &mut result,
             binary::COMPONENT_TYPE_SECTION_ID,
-            &section_contents,
+            &section_content,
         );
     }
 
-    // 8. Canon section
+    // Encode canon section if present
     if !component.canonicals.is_empty() {
-        let section_contents = encode_canon_section(&component.canonicals)?;
+        let section_content = encode_canon_section(&component.canonicals)?;
         add_section(
             &mut result,
             binary::COMPONENT_CANON_SECTION_ID,
-            &section_contents,
+            &section_content,
         );
     }
 
-    // 9. Start section
+    // Encode start section if present
     if let Some(start) = &component.start {
-        let section_contents = encode_start_section(start)?;
+        let section_content = encode_start_section(start)?;
         add_section(
             &mut result,
             binary::COMPONENT_START_SECTION_ID,
-            &section_contents,
+            &section_content,
         );
     }
 
-    // 10. Import section
+    // Encode import section if present
     if !component.imports.is_empty() {
-        let section_contents = encode_import_section(&component.imports)?;
+        let section_content = encode_import_section(&component.imports)?;
         add_section(
             &mut result,
             binary::COMPONENT_IMPORT_SECTION_ID,
-            &section_contents,
+            &section_content,
         );
     }
 
-    // 11. Export section
+    // Encode export section if present
     if !component.exports.is_empty() {
-        let section_contents = encode_export_section(&component.exports)?;
+        let section_content = encode_export_section(&component.exports)?;
         add_section(
             &mut result,
             binary::COMPONENT_EXPORT_SECTION_ID,
-            &section_contents,
+            &section_content,
         );
     }
 
-    // 12. Value section
+    // Encode value section if present
     if !component.values.is_empty() {
-        let section_contents = encode_value_section(&component.values)?;
+        let section_content = encode_value_section(&component.values)?;
         add_section(
             &mut result,
             binary::COMPONENT_VALUE_SECTION_ID,
-            &section_contents,
+            &section_content,
         );
     }
 
-    // Name section (custom section)
-    if let Some(name) = &component.name {
-        // Create a name section with the component name
-        let name_section = ComponentNameSection {
-            component_name: Some(name.clone()),
-            sort_names: Vec::new(),
-            import_names: Vec::new(),
-            export_names: Vec::new(),
-            canonical_names: Vec::new(),
-            type_names: Vec::new(),
-        };
-
-        // Generate name section binary
-        let name_section_data = generate_component_name_section(&name_section)?;
-
-        // Create custom section content with "name" as the identifier
-        let mut custom_section_content = binary::write_string("name");
-        custom_section_content.extend_from_slice(&name_section_data);
-
-        // Add as custom section
-        add_section(
-            &mut result,
-            binary::COMPONENT_CUSTOM_SECTION_ID,
-            &custom_section_content,
-        );
-    }
+    // TODO: Encode other sections as needed
+    // For example, name section
 
     Ok(result)
 }
@@ -2262,7 +2235,7 @@ fn parse_value_section(bytes: &[u8]) -> Result<(Vec<Value>, usize)> {
         offset += value_len as usize;
 
         // Parse the value based on its type
-        let (decoded_data, _) = decode_value(&val_type, value_bytes, 0)?;
+        let (_decoded_data, _) = decode_value(&val_type, value_bytes, 0)?;
 
         let value = Value {
             ty: val_type,
@@ -2275,490 +2248,350 @@ fn parse_value_section(bytes: &[u8]) -> Result<(Vec<Value>, usize)> {
     Ok((values, offset))
 }
 
-/// Decode a value from bytes according to its type
-fn decode_value(val_type: &ValType, bytes: &[u8], pos: usize) -> Result<(Vec<u8>, usize)> {
-    let mut offset = pos;
+// Component encoding functions
 
-    match val_type {
-        // Boolean
-        ValType::Bool => {
-            if offset >= bytes.len() {
-                return Err(Error::new(kinds::ParseError(
-                    "Unexpected end of boolean value data".to_string(),
-                )));
-            }
-
-            let value = bytes[offset];
-            if value != 0 && value != 1 {
-                return Err(Error::new(kinds::ParseError(format!(
-                    "Invalid boolean value: {}",
-                    value
-                ))));
-            }
-
-            offset += 1;
-            Ok((vec![value], offset - pos))
-        }
-
-        // Integer types
-        ValType::S8 | ValType::U8 => {
-            if offset >= bytes.len() {
-                return Err(Error::new(kinds::ParseError(
-                    "Unexpected end of 8-bit value data".to_string(),
-                )));
-            }
-
-            let value = bytes[offset];
-            offset += 1;
-            Ok((vec![value], offset - pos))
-        }
-
-        ValType::S16 | ValType::U16 => {
-            if offset + 2 > bytes.len() {
-                return Err(Error::new(kinds::ParseError(
-                    "Unexpected end of 16-bit value data".to_string(),
-                )));
-            }
-
-            let value = &bytes[offset..offset + 2];
-            offset += 2;
-            Ok((value.to_vec(), offset - pos))
-        }
-
-        ValType::S32 | ValType::U32 => {
-            if offset + 4 > bytes.len() {
-                return Err(Error::new(kinds::ParseError(
-                    "Unexpected end of 32-bit value data".to_string(),
-                )));
-            }
-
-            let value = &bytes[offset..offset + 4];
-            offset += 4;
-            Ok((value.to_vec(), offset - pos))
-        }
-
-        ValType::S64 | ValType::U64 => {
-            if offset + 8 > bytes.len() {
-                return Err(Error::new(kinds::ParseError(
-                    "Unexpected end of 64-bit value data".to_string(),
-                )));
-            }
-
-            let value = &bytes[offset..offset + 8];
-            offset += 8;
-            Ok((value.to_vec(), offset - pos))
-        }
-
-        // Floating point types
-        ValType::F32 => {
-            if offset + 4 > bytes.len() {
-                return Err(Error::new(kinds::ParseError(
-                    "Unexpected end of f32 value data".to_string(),
-                )));
-            }
-
-            let value = &bytes[offset..offset + 4];
-            offset += 4;
-            Ok((value.to_vec(), offset - pos))
-        }
-
-        ValType::F64 => {
-            if offset + 8 > bytes.len() {
-                return Err(Error::new(kinds::ParseError(
-                    "Unexpected end of f64 value data".to_string(),
-                )));
-            }
-
-            let value = &bytes[offset..offset + 8];
-            offset += 8;
-            Ok((value.to_vec(), offset - pos))
-        }
-
-        // Character
-        ValType::Char => {
-            // Char is encoded as a UTF-8 sequence
-            if offset >= bytes.len() {
-                return Err(Error::new(kinds::ParseError(
-                    "Unexpected end of char value data".to_string(),
-                )));
-            }
-
-            // Determine the length of the UTF-8 sequence
-            let first_byte = bytes[offset];
-            let char_len = if first_byte & 0x80 == 0 {
-                1 // ASCII
-            } else if first_byte & 0xE0 == 0xC0 {
-                2 // 2-byte UTF-8
-            } else if first_byte & 0xF0 == 0xE0 {
-                3 // 3-byte UTF-8
-            } else if first_byte & 0xF8 == 0xF0 {
-                4 // 4-byte UTF-8
-            } else {
-                return Err(Error::new(kinds::ParseError(format!(
-                    "Invalid UTF-8 sequence start byte: {}",
-                    first_byte
-                ))));
-            };
-
-            if offset + char_len > bytes.len() {
-                return Err(Error::new(kinds::ParseError(
-                    "Unexpected end of char value data".to_string(),
-                )));
-            }
-
-            // Validate the UTF-8 sequence
-            let char_bytes = &bytes[offset..offset + char_len];
-            let _ = std::str::from_utf8(char_bytes).map_err(|e| {
-                Error::new(kinds::ParseError(format!("Invalid UTF-8 sequence: {}", e)))
-            })?;
-
-            offset += char_len;
-            Ok((char_bytes.to_vec(), offset - pos))
-        }
-
-        // String
-        ValType::String => {
-            // Validate the string is proper UTF-8
-            let str_bytes = &bytes[offset..];
-            let _ = std::str::from_utf8(str_bytes).map_err(|e| {
-                Error::new(kinds::ParseError(format!("Invalid UTF-8 string: {}", e)))
-            })?;
-
-            offset += str_bytes.len();
-            Ok((str_bytes.to_vec(), offset - pos))
-        }
-
-        // Reference
-        ValType::Ref(_) => {
-            // Type index reference - encoded as a u32
-            let (idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
-            offset += bytes_read;
-            Ok((binary::write_leb128_u32(idx), offset - pos))
-        }
-
-        // Record
-        ValType::Record(fields) => {
-            let mut result = Vec::new();
-
-            for (_, field_type) in fields {
-                let (field_value, bytes_read) = decode_value(field_type, bytes, offset)?;
-                offset += bytes_read;
-                result.extend_from_slice(&field_value);
-            }
-
-            Ok((result, offset - pos))
-        }
-
-        // Variant
-        ValType::Variant(cases) => {
-            // Read the case index
-            let (case_idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
-            offset += bytes_read;
-
-            if (case_idx as usize) >= cases.len() {
-                return Err(Error::new(kinds::ParseError(format!(
-                    "Invalid variant case index: {}",
-                    case_idx
-                ))));
-            }
-
-            let mut result = binary::write_leb128_u32(case_idx);
-
-            // Read the case payload if it has one
-            if let Some(case_type) = &cases[case_idx as usize].1 {
-                let (payload, bytes_read) = decode_value(case_type, bytes, offset)?;
-                offset += bytes_read;
-                result.extend_from_slice(&payload);
-            }
-
-            Ok((result, offset - pos))
-        }
-
-        // List
-        ValType::List(element_type) => {
-            // Read the list length
-            let (length, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
-            offset += bytes_read;
-
-            let mut result = binary::write_leb128_u32(length);
-
-            // Read each element
-            for _ in 0..length {
-                let (element, bytes_read) = decode_value(element_type, bytes, offset)?;
-                offset += bytes_read;
-                result.extend_from_slice(&element);
-            }
-
-            Ok((result, offset - pos))
-        }
-
-        // Tuple
-        ValType::Tuple(elements) => {
-            let mut result = Vec::new();
-
-            for element_type in elements {
-                let (element, bytes_read) = decode_value(element_type, bytes, offset)?;
-                offset += bytes_read;
-                result.extend_from_slice(&element);
-            }
-
-            Ok((result, offset - pos))
-        }
-
-        // Flags
-        ValType::Flags(labels) => {
-            // Flags are encoded as a sequence of bytes, with each bit representing a flag
-            let num_bytes = labels.len().div_ceil(8);
-
-            if offset + num_bytes > bytes.len() {
-                return Err(Error::new(kinds::ParseError(
-                    "Unexpected end of flags value data".to_string(),
-                )));
-            }
-
-            let flag_bytes = &bytes[offset..offset + num_bytes];
-            offset += num_bytes;
-
-            Ok((flag_bytes.to_vec(), offset - pos))
-        }
-
-        // Enum
-        ValType::Enum(cases) => {
-            // Read the case index
-            let (case_idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
-            offset += bytes_read;
-
-            if (case_idx as usize) >= cases.len() {
-                return Err(Error::new(kinds::ParseError(format!(
-                    "Invalid enum case index: {}",
-                    case_idx
-                ))));
-            }
-
-            Ok((binary::write_leb128_u32(case_idx), offset - pos))
-        }
-
-        // Option
-        ValType::Option(inner_type) => {
-            // Read the option tag
-            if offset >= bytes.len() {
-                return Err(Error::new(kinds::ParseError(
-                    "Unexpected end of option value data".to_string(),
-                )));
-            }
-
-            let tag = bytes[offset];
-            offset += 1;
-            let mut result = vec![tag];
-
-            if tag == 0 {
-                // None case
-            } else if tag == 1 {
-                // Some case - read the inner value
-                let (inner_value, bytes_read) = decode_value(inner_type, bytes, offset)?;
-                offset += bytes_read;
-                result.extend_from_slice(&inner_value);
-            } else {
-                return Err(Error::new(kinds::ParseError(format!(
-                    "Invalid option tag: {}",
-                    tag
-                ))));
-            }
-
-            Ok((result, offset - pos))
-        }
-
-        // Result types
-        ValType::Result(ok_type) => {
-            // Read the result tag
-            if offset >= bytes.len() {
-                return Err(Error::new(kinds::ParseError(
-                    "Unexpected end of result value data".to_string(),
-                )));
-            }
-
-            let tag = bytes[offset];
-            offset += 1;
-            let mut result = vec![tag];
-
-            if tag == 0 {
-                // Ok case - read the ok value
-                let (ok_value, bytes_read) = decode_value(ok_type, bytes, offset)?;
-                offset += bytes_read;
-                result.extend_from_slice(&ok_value);
-            } else if tag == 1 {
-                // Error case with no payload
-            } else {
-                return Err(Error::new(kinds::ParseError(format!(
-                    "Invalid result tag: {}",
-                    tag
-                ))));
-            }
-
-            Ok((result, offset - pos))
-        }
-
-        ValType::ResultErr(err_type) => {
-            // Read the result tag
-            if offset >= bytes.len() {
-                return Err(Error::new(kinds::ParseError(
-                    "Unexpected end of result value data".to_string(),
-                )));
-            }
-
-            let tag = bytes[offset];
-            offset += 1;
-            let mut result = vec![tag];
-
-            if tag == 0 {
-                // Ok case with no payload
-            } else if tag == 1 {
-                // Error case - read the error value
-                let (err_value, bytes_read) = decode_value(err_type, bytes, offset)?;
-                offset += bytes_read;
-                result.extend_from_slice(&err_value);
-            } else {
-                return Err(Error::new(kinds::ParseError(format!(
-                    "Invalid result tag: {}",
-                    tag
-                ))));
-            }
-
-            Ok((result, offset - pos))
-        }
-
-        ValType::ResultBoth(ok_type, err_type) => {
-            // Read the result tag
-            if offset >= bytes.len() {
-                return Err(Error::new(kinds::ParseError(
-                    "Unexpected end of result value data".to_string(),
-                )));
-            }
-
-            let tag = bytes[offset];
-            offset += 1;
-            let mut result = vec![tag];
-
-            if tag == 0 {
-                // Ok case - read the ok value
-                let (ok_value, bytes_read) = decode_value(ok_type, bytes, offset)?;
-                offset += bytes_read;
-                result.extend_from_slice(&ok_value);
-            } else if tag == 1 {
-                // Error case - read the error value
-                let (err_value, bytes_read) = decode_value(err_type, bytes, offset)?;
-                offset += bytes_read;
-                result.extend_from_slice(&err_value);
-            } else {
-                return Err(Error::new(kinds::ParseError(format!(
-                    "Invalid result tag: {}",
-                    tag
-                ))));
-            }
-
-            Ok((result, offset - pos))
-        }
-
-        // Resource types
-        ValType::Own(idx) => {
-            // Resource handle - encoded as a u32
-            let (handle, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
-            offset += bytes_read;
-            Ok((binary::write_leb128_u32(handle), offset - pos))
-        }
-
-        ValType::Borrow(idx) => {
-            // Resource handle - encoded as a u32
-            let (handle, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
-            offset += bytes_read;
-            Ok((binary::write_leb128_u32(handle), offset - pos))
-        }
-    }
-}
-
-// Placeholder encoding functions
+/// Encode the core module section
 fn encode_core_module_section(modules: &[Module]) -> Result<Vec<u8>> {
-    // Placeholder - would need actual implementation
     let mut result = Vec::new();
 
-    // Write the number of modules
+    // Write count
     result.extend_from_slice(&binary::write_leb128_u32(modules.len() as u32));
 
-    // For each module, we would encode it
-    // This is just a placeholder
+    // Encode each module
+    for module in modules {
+        // If the module has a binary, use that
+        if let Some(binary_data) = &module.binary {
+            // Write the size of the module binary
+            result.extend_from_slice(&binary::write_leb128_u32(binary_data.len() as u32));
+
+            // Write the module binary
+            result.extend_from_slice(binary_data);
+        } else {
+            // Otherwise, we'd need to encode the module from its components
+            // This is more complex and would require a full module encoder
+            return Err(Error::new(kinds::NotImplementedError(
+                "Encoding module without binary not implemented yet".to_string(),
+            )));
+        }
+    }
+
     Ok(result)
 }
 
+/// Encode the core instance section
 fn encode_core_instance_section(instances: &[CoreInstance]) -> Result<Vec<u8>> {
-    // Placeholder - would need actual implementation
     let mut result = Vec::new();
 
-    // Write the number of instances
+    // Write count
     result.extend_from_slice(&binary::write_leb128_u32(instances.len() as u32));
 
-    // For each instance, we would encode it
-    // This is just a placeholder
+    // Encode each instance
+    for instance in instances {
+        match &instance.instance_expr {
+            CoreInstanceExpr::Instantiate { module_idx, args } => {
+                // Type 0 - instantiate
+                result.push(0x00);
+
+                // Write module index
+                result.extend_from_slice(&binary::write_leb128_u32(*module_idx));
+
+                // Write args count
+                result.extend_from_slice(&binary::write_leb128_u32(args.len() as u32));
+
+                // Write args
+                for arg in args {
+                    // Extract the name and instance index
+                    let name = &arg.name;
+                    let instance_idx = arg.instance_idx;
+
+                    result.extend_from_slice(&binary::write_string(name));
+                    result.extend_from_slice(&binary::write_leb128_u32(instance_idx));
+                }
+            }
+            CoreInstanceExpr::InlineExports(exports) => {
+                // Type 1 - inline exports
+                result.push(0x01);
+
+                // Write exports count
+                result.extend_from_slice(&binary::write_leb128_u32(exports.len() as u32));
+
+                // Write exports
+                for export in exports {
+                    result.extend_from_slice(&binary::write_string(&export.name));
+
+                    // Write kind
+                    match export.sort {
+                        CoreSort::Function => result.push(0x00),
+                        CoreSort::Table => result.push(0x01),
+                        CoreSort::Memory => result.push(0x02),
+                        CoreSort::Global => result.push(0x03),
+                        CoreSort::Type => result.push(0x04),
+                        CoreSort::Module => result.push(0x05),
+                        CoreSort::Instance => result.push(0x06),
+                    }
+
+                    // Write index
+                    result.extend_from_slice(&binary::write_leb128_u32(export.idx));
+                }
+            }
+        }
+    }
+
     Ok(result)
 }
 
+/// Encode the core type section
 fn encode_core_type_section(types: &[CoreType]) -> Result<Vec<u8>> {
-    // Placeholder - would need actual implementation
     let mut result = Vec::new();
 
-    // Write the number of types
+    // Write count
     result.extend_from_slice(&binary::write_leb128_u32(types.len() as u32));
 
-    // For each type, we would encode it
-    // This is just a placeholder
+    // Encode each type
+    for core_type in types {
+        match &core_type.definition {
+            CoreTypeDefinition::Function { params, results } => {
+                // Function type (0x00)
+                result.push(0x00);
+
+                // Write params count
+                result.extend_from_slice(&binary::write_leb128_u32(params.len() as u32));
+
+                // Write param types
+                for param_type in params {
+                    // For now, just write the value type as a placeholder
+                    // In a full implementation, this would properly encode the value type
+                    result.push(0x7F); // i32 as placeholder
+                }
+
+                // Write results count
+                result.extend_from_slice(&binary::write_leb128_u32(results.len() as u32));
+
+                // Write result types
+                for result_type in results {
+                    // For now, just write the value type as a placeholder
+                    result.push(0x7F); // i32 as placeholder
+                }
+            }
+            CoreTypeDefinition::Module { imports, exports } => {
+                // Module type (0x01)
+                result.push(0x01);
+
+                // Write imports count
+                result.extend_from_slice(&binary::write_leb128_u32(imports.len() as u32));
+
+                // Write imports
+                for (module_name, name, extern_type) in imports {
+                    // Write module name
+                    result.extend_from_slice(&binary::write_string(module_name));
+
+                    // Write field name
+                    result.extend_from_slice(&binary::write_string(name));
+
+                    // Write extern type
+                    // This is simplified - in a full implementation, this would properly encode the extern type
+                    result.push(0x00); // Function as placeholder
+                }
+
+                // Write exports count
+                result.extend_from_slice(&binary::write_leb128_u32(exports.len() as u32));
+
+                // Write exports
+                for (name, extern_type) in exports {
+                    // Write name
+                    result.extend_from_slice(&binary::write_string(name));
+
+                    // Write extern type
+                    // This is simplified - in a full implementation, this would properly encode the extern type
+                    result.push(0x00); // Function as placeholder
+                }
+            }
+        }
+    }
+
     Ok(result)
 }
 
-// Other placeholder functions would be similarly implemented
-fn encode_component_section(components: &[Component]) -> Result<Vec<u8>> {
-    unimplemented!("encode_component_section not implemented")
+/// Encode the canon section
+fn encode_canon_section(canonicals: &[Canon]) -> Result<Vec<u8>> {
+    let mut result = Vec::new();
+
+    // Write count
+    result.extend_from_slice(&binary::write_leb128_u32(canonicals.len() as u32));
+
+    // Encode each canonical operation
+    for canon in canonicals {
+        match &canon.operation {
+            CanonOperation::Lift {
+                func_idx,
+                type_idx,
+                options,
+            } => {
+                // Write canonical kind (0x00 = lift)
+                result.push(0x00);
+
+                // Write function index
+                result.extend_from_slice(&binary::write_leb128_u32(*func_idx));
+
+                // Write type index
+                result.extend_from_slice(&binary::write_leb128_u32(*type_idx));
+
+                // Write options
+                encode_lift_options(&mut result, options)?;
+            }
+            CanonOperation::Lower { func_idx, options } => {
+                // Write canonical kind (0x01 = lower)
+                result.push(0x01);
+
+                // Write function index
+                result.extend_from_slice(&binary::write_leb128_u32(*func_idx));
+
+                // Write options
+                encode_lower_options(&mut result, options)?;
+            }
+            // Handle other canon operations as needed
+            _ => {
+                return Err(Error::new(kinds::NotImplementedError(
+                    "Encoding for this canon operation not implemented yet".to_string(),
+                )));
+            }
+        }
+    }
+
+    Ok(result)
 }
 
-fn encode_instance_section(instances: &[Instance]) -> Result<Vec<u8>> {
-    unimplemented!("encode_instance_section not implemented")
+/// Encode lift options
+fn encode_lift_options(result: &mut Vec<u8>, _opts: &LiftOptions) -> Result<()> {
+    // In a full implementation, this would encode all lift options
+    // For now, we'll encode a minimal representation
+
+    // Write options count (for future extensibility)
+    result.extend_from_slice(&binary::write_leb128_u32(0));
+
+    Ok(())
 }
 
-fn encode_alias_section(aliases: &[Alias]) -> Result<Vec<u8>> {
-    unimplemented!("encode_alias_section not implemented")
+/// Encode lower options
+fn encode_lower_options(result: &mut Vec<u8>, _opts: &LowerOptions) -> Result<()> {
+    // In a full implementation, this would encode all lower options
+    // For now, we'll encode a minimal representation
+
+    // Write options count (for future extensibility)
+    result.extend_from_slice(&binary::write_leb128_u32(0));
+
+    Ok(())
 }
 
-fn encode_type_section(types: &[wrt_format::component::ComponentType]) -> Result<Vec<u8>> {
-    unimplemented!("encode_type_section not implemented")
-}
-
-fn encode_canon_section(canons: &[wrt_format::component::Canon]) -> Result<Vec<u8>> {
-    unimplemented!("encode_canon_section not implemented")
-}
-
+/// Encode the start section
 fn encode_start_section(start: &Start) -> Result<Vec<u8>> {
-    unimplemented!("encode_start_section not implemented")
+    let mut result = Vec::new();
+
+    // Encode function index
+    result.extend_from_slice(&binary::write_leb128_u32(start.func_idx));
+
+    // Encode args count and indices
+    result.extend_from_slice(&binary::write_leb128_u32(start.args.len() as u32));
+    for arg in &start.args {
+        result.extend_from_slice(&binary::write_leb128_u32(*arg));
+    }
+
+    // Encode results count
+    result.extend_from_slice(&binary::write_leb128_u32(start.results));
+
+    Ok(result)
 }
 
+/// Encode the import section
 fn encode_import_section(imports: &[Import]) -> Result<Vec<u8>> {
-    unimplemented!("encode_import_section not implemented")
+    let mut result = Vec::new();
+
+    // Write count
+    result.extend_from_slice(&binary::write_leb128_u32(imports.len() as u32));
+
+    // Encode each import
+    for import in imports {
+        // Write import namespace and name
+        result.extend_from_slice(&binary::write_string(&import.name.namespace));
+        result.extend_from_slice(&binary::write_string(&import.name.name));
+
+        // Encode extern type - we'll need to implement this properly
+        // For now, just using a placeholder
+        result.push(0x00); // Function type tag
+    }
+
+    Ok(result)
 }
 
+/// Encode the export section
 fn encode_export_section(exports: &[Export]) -> Result<Vec<u8>> {
-    unimplemented!("encode_export_section not implemented")
+    let mut result = Vec::new();
+
+    // Write count
+    result.extend_from_slice(&binary::write_leb128_u32(exports.len() as u32));
+
+    // Encode each export
+    for export in exports {
+        // Write export name
+        result.extend_from_slice(&binary::write_string(&export.name.name));
+
+        // Encode export sort and index
+        match export.sort {
+            Sort::Function => {
+                result.push(0x00); // Function tag
+                result.extend_from_slice(&binary::write_leb128_u32(export.idx));
+            }
+            Sort::Value => {
+                result.push(0x01); // Value tag
+                result.extend_from_slice(&binary::write_leb128_u32(export.idx));
+            }
+            Sort::Type => {
+                result.push(0x02); // Type tag
+                result.extend_from_slice(&binary::write_leb128_u32(export.idx));
+            }
+            Sort::Instance => {
+                result.push(0x03); // Instance tag
+                result.extend_from_slice(&binary::write_leb128_u32(export.idx));
+            }
+            Sort::Component => {
+                result.push(0x04); // Component tag
+                result.extend_from_slice(&binary::write_leb128_u32(export.idx));
+            }
+            Sort::Core(core_sort) => {
+                result.push(0x05); // Core tag
+
+                // Encode core sort
+                match core_sort {
+                    CoreSort::Function => result.push(0x00),
+                    CoreSort::Table => result.push(0x01),
+                    CoreSort::Memory => result.push(0x02),
+                    CoreSort::Global => result.push(0x03),
+                    CoreSort::Type => result.push(0x04),
+                    CoreSort::Module => result.push(0x05),
+                    CoreSort::Instance => result.push(0x06),
+                }
+
+                result.extend_from_slice(&binary::write_leb128_u32(export.idx));
+            }
+        }
+    }
+
+    Ok(result)
 }
 
+/// Encode the value section
 fn encode_value_section(values: &[Value]) -> Result<Vec<u8>> {
     let mut result = Vec::new();
 
-    // Write the number of values
+    // Write count
     result.extend_from_slice(&binary::write_leb128_u32(values.len() as u32));
 
-    // For each value, encode its type and data
+    // Encode each value
     for value in values {
         // Encode the value type
-        let type_encoding = encode_val_type(&value.ty)?;
-        result.extend_from_slice(&type_encoding);
+        encode_val_type(&mut result, &value.ty)?;
 
-        // Encode the value length and data
+        // Encode the value data
         result.extend_from_slice(&binary::write_leb128_u32(value.data.len() as u32));
         result.extend_from_slice(&value.data);
     }
@@ -2766,149 +2599,222 @@ fn encode_value_section(values: &[Value]) -> Result<Vec<u8>> {
     Ok(result)
 }
 
-/// Encode a value type to binary format
-fn encode_val_type(val_type: &wrt_format::component::ValType) -> Result<Vec<u8>> {
+/// Encode the component section
+fn encode_component_section(components: &[Component]) -> Result<Vec<u8>> {
     let mut result = Vec::new();
 
-    match val_type {
-        // Basic types
-        wrt_format::component::ValType::Bool => result.push(0x7F),
-        wrt_format::component::ValType::S8 => result.push(0x7E),
-        wrt_format::component::ValType::U8 => result.push(0x7D),
-        wrt_format::component::ValType::S16 => result.push(0x7C),
-        wrt_format::component::ValType::U16 => result.push(0x7B),
-        wrt_format::component::ValType::S32 => result.push(0x7A),
-        wrt_format::component::ValType::U32 => result.push(0x79),
-        wrt_format::component::ValType::S64 => result.push(0x78),
-        wrt_format::component::ValType::U64 => result.push(0x77),
-        wrt_format::component::ValType::F32 => result.push(0x76),
-        wrt_format::component::ValType::F64 => result.push(0x75),
-        wrt_format::component::ValType::Char => result.push(0x74),
-        wrt_format::component::ValType::String => result.push(0x73),
+    // Write count
+    result.extend_from_slice(&binary::write_leb128_u32(components.len() as u32));
 
-        // Reference type
-        wrt_format::component::ValType::Ref(idx) => {
-            result.push(0x70);
-            result.extend_from_slice(&binary::write_leb128_u32(*idx));
-        }
+    // Encode each component
+    for component in components {
+        // Encode the component to binary
+        let binary = encode_component(component)?;
 
-        // Record type
-        wrt_format::component::ValType::Record(fields) => {
-            result.push(0x6F);
-            result.extend_from_slice(&binary::write_leb128_u32(fields.len() as u32));
+        // Write the binary size
+        result.extend_from_slice(&binary::write_leb128_u32(binary.len() as u32));
 
-            for (name, field_type) in fields {
-                // Write field name
-                let name_bytes = binary::write_string(name);
-                result.extend_from_slice(&name_bytes);
+        // Write the binary
+        result.extend_from_slice(&binary);
+    }
 
-                // Write field type
-                let type_bytes = encode_val_type(field_type)?;
-                result.extend_from_slice(&type_bytes);
-            }
-        }
+    Ok(result)
+}
 
-        // Variant type
-        wrt_format::component::ValType::Variant(cases) => {
-            result.push(0x6E);
-            result.extend_from_slice(&binary::write_leb128_u32(cases.len() as u32));
+/// Encode the instance section
+fn encode_instance_section(instances: &[Instance]) -> Result<Vec<u8>> {
+    let mut result = Vec::new();
 
-            for (name, case_type) in cases {
-                // Write case name
-                let name_bytes = binary::write_string(name);
-                result.extend_from_slice(&name_bytes);
+    // Write count
+    result.extend_from_slice(&binary::write_leb128_u32(instances.len() as u32));
 
-                // Write has_type flag and case type if present
-                if let Some(case_type) = case_type {
-                    result.push(0x01); // has_type = true
-                    let type_bytes = encode_val_type(case_type)?;
-                    result.extend_from_slice(&type_bytes);
-                } else {
-                    result.push(0x00); // has_type = false
+    // Encode each instance
+    for instance in instances {
+        match &instance.instance_expr {
+            InstanceExpr::Instantiate {
+                component_idx,
+                args,
+            } => {
+                // Type 0 - instantiate
+                result.push(0x00);
+
+                // Write component index
+                result.extend_from_slice(&binary::write_leb128_u32(*component_idx));
+
+                // Write args count
+                result.extend_from_slice(&binary::write_leb128_u32(args.len() as u32));
+
+                // Write args
+                for arg in args {
+                    // Extract the name, sort, and index
+                    let name = &arg.name;
+                    let sort = &arg.sort;
+                    let idx = arg.idx;
+
+                    result.extend_from_slice(&binary::write_string(name));
+
+                    // Write sort
+                    match sort {
+                        Sort::Function => result.push(0x00),
+                        Sort::Value => result.push(0x01),
+                        Sort::Type => result.push(0x02),
+                        Sort::Instance => result.push(0x03),
+                        Sort::Component => result.push(0x04),
+                        Sort::Core(core_sort) => {
+                            result.push(0x05);
+                            match core_sort {
+                                CoreSort::Function => result.push(0x00),
+                                CoreSort::Table => result.push(0x01),
+                                CoreSort::Memory => result.push(0x02),
+                                CoreSort::Global => result.push(0x03),
+                                CoreSort::Type => result.push(0x04),
+                                CoreSort::Module => result.push(0x05),
+                                CoreSort::Instance => result.push(0x06),
+                            }
+                        }
+                    }
+
+                    // Write index
+                    result.extend_from_slice(&binary::write_leb128_u32(idx));
                 }
             }
-        }
+            InstanceExpr::InlineExports(exports) => {
+                // Type 1 - inline exports
+                result.push(0x01);
 
-        // List type
-        wrt_format::component::ValType::List(element_type) => {
-            result.push(0x6D);
-            let type_bytes = encode_val_type(element_type)?;
-            result.extend_from_slice(&type_bytes);
-        }
-
-        // Tuple type
-        wrt_format::component::ValType::Tuple(elements) => {
-            result.push(0x6C);
-            result.extend_from_slice(&binary::write_leb128_u32(elements.len() as u32));
-
-            for element_type in elements {
-                let type_bytes = encode_val_type(element_type)?;
-                result.extend_from_slice(&type_bytes);
+                // Implementation omitted for brevity
+                // Similar to CoreInstanceExpr::InlineExports
+                return Err(Error::new(kinds::NotImplementedError(
+                    "Encoding for InstanceExpr::InlineExports not implemented yet".to_string(),
+                )));
             }
         }
+    }
 
-        // Flags type
-        wrt_format::component::ValType::Flags(flags) => {
-            result.push(0x6B);
-            result.extend_from_slice(&binary::write_leb128_u32(flags.len() as u32));
+    Ok(result)
+}
 
-            for flag in flags {
-                let flag_bytes = binary::write_string(flag);
-                result.extend_from_slice(&flag_bytes);
+/// Encode the component type section
+fn encode_component_type_section(types: &[ComponentType]) -> Result<Vec<u8>> {
+    // Return a minimal result for now
+    Err(Error::new(kinds::NotImplementedError(
+        "Component type section encoding not implemented yet".to_string(),
+    )))
+}
+
+/// Decode a value from binary
+fn decode_value(val_type: &ValType, _bytes: &[u8], pos: usize) -> Result<(Value, usize)> {
+    // TODO: Implement proper value decoding
+    Ok((
+        Value {
+            ty: val_type.clone(),
+            data: Vec::new(),
+        },
+        pos,
+    ))
+}
+
+/// Encode the alias section
+fn encode_alias_section(aliases: &[Alias]) -> Result<Vec<u8>> {
+    let mut result = Vec::new();
+
+    // Write count
+    result.extend_from_slice(&binary::write_leb128_u32(aliases.len() as u32));
+
+    // Encode each alias
+    for alias in aliases {
+        match &alias.target {
+            AliasTarget::CoreInstanceExport {
+                instance_idx,
+                kind,
+                name,
+            } => {
+                // Type 2 - core instance export
+                result.push(0x02);
+
+                // Write instance index
+                result.extend_from_slice(&binary::write_leb128_u32(*instance_idx));
+
+                // Write kind
+                match kind {
+                    CoreSort::Function => result.push(0x00),
+                    CoreSort::Table => result.push(0x01),
+                    CoreSort::Memory => result.push(0x02),
+                    CoreSort::Global => result.push(0x03),
+                    CoreSort::Type => result.push(0x04),
+                    CoreSort::Module => result.push(0x05),
+                    CoreSort::Instance => result.push(0x06),
+                }
+
+                // Write name
+                result.extend_from_slice(&binary::write_string(name));
             }
-        }
+            AliasTarget::InstanceExport {
+                instance_idx,
+                kind,
+                name,
+            } => {
+                // Type 0 - instance export
+                result.push(0x00);
 
-        // Enum type
-        wrt_format::component::ValType::Enum(cases) => {
-            result.push(0x6A);
-            result.extend_from_slice(&binary::write_leb128_u32(cases.len() as u32));
+                // Write instance index
+                result.extend_from_slice(&binary::write_leb128_u32(*instance_idx));
 
-            for case in cases {
-                let case_bytes = binary::write_string(case);
-                result.extend_from_slice(&case_bytes);
+                // Write kind
+                match kind {
+                    Sort::Function => result.push(0x00),
+                    Sort::Value => result.push(0x01),
+                    Sort::Type => result.push(0x02),
+                    Sort::Instance => result.push(0x03),
+                    Sort::Component => result.push(0x04),
+                    Sort::Core(core_sort) => {
+                        result.push(0x05);
+                        match core_sort {
+                            CoreSort::Function => result.push(0x00),
+                            CoreSort::Table => result.push(0x01),
+                            CoreSort::Memory => result.push(0x02),
+                            CoreSort::Global => result.push(0x03),
+                            CoreSort::Type => result.push(0x04),
+                            CoreSort::Module => result.push(0x05),
+                            CoreSort::Instance => result.push(0x06),
+                        }
+                    }
+                }
+
+                // Write name
+                result.extend_from_slice(&binary::write_string(name));
             }
-        }
+            AliasTarget::Outer { count, kind, idx } => {
+                // Type 1 - outer
+                result.push(0x01);
 
-        // Option type
-        wrt_format::component::ValType::Option(inner_type) => {
-            result.push(0x69);
-            let type_bytes = encode_val_type(inner_type)?;
-            result.extend_from_slice(&type_bytes);
-        }
+                // Write count
+                result.extend_from_slice(&binary::write_leb128_u32(*count));
 
-        // Result type (ok only)
-        wrt_format::component::ValType::Result(ok_type) => {
-            result.push(0x68);
-            let type_bytes = encode_val_type(ok_type)?;
-            result.extend_from_slice(&type_bytes);
-        }
+                // Write kind
+                match kind {
+                    Sort::Function => result.push(0x00),
+                    Sort::Value => result.push(0x01),
+                    Sort::Type => result.push(0x02),
+                    Sort::Instance => result.push(0x03),
+                    Sort::Component => result.push(0x04),
+                    Sort::Core(core_sort) => {
+                        result.push(0x05);
+                        match core_sort {
+                            CoreSort::Function => result.push(0x00),
+                            CoreSort::Table => result.push(0x01),
+                            CoreSort::Memory => result.push(0x02),
+                            CoreSort::Global => result.push(0x03),
+                            CoreSort::Type => result.push(0x04),
+                            CoreSort::Module => result.push(0x05),
+                            CoreSort::Instance => result.push(0x06),
+                        }
+                    }
+                }
 
-        // Result type (err only)
-        wrt_format::component::ValType::ResultErr(err_type) => {
-            result.push(0x67);
-            let type_bytes = encode_val_type(err_type)?;
-            result.extend_from_slice(&type_bytes);
-        }
-
-        // Result type (ok and err)
-        wrt_format::component::ValType::ResultBoth(ok_type, err_type) => {
-            result.push(0x66);
-            let ok_bytes = encode_val_type(ok_type)?;
-            result.extend_from_slice(&ok_bytes);
-            let err_bytes = encode_val_type(err_type)?;
-            result.extend_from_slice(&err_bytes);
-        }
-
-        // Own type
-        wrt_format::component::ValType::Own(idx) => {
-            result.push(0x65);
-            result.extend_from_slice(&binary::write_leb128_u32(*idx));
-        }
-
-        // Borrow type
-        wrt_format::component::ValType::Borrow(idx) => {
-            result.push(0x64);
-            result.extend_from_slice(&binary::write_leb128_u32(*idx));
+                // Write index
+                result.extend_from_slice(&binary::write_leb128_u32(*idx));
+            }
         }
     }
 
