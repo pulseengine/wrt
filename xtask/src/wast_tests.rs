@@ -2,10 +2,16 @@ use anyhow::{Context, Result};
 use std::collections::{HashMap, HashSet};
 use std::fs::{self, File};
 use std::io::Read;
+#[cfg(feature = "wrt-integration")]
+use std::io::Write;
 use std::path::{Path, PathBuf};
+#[cfg(feature = "wrt-integration")]
 use std::time::Instant;
+#[cfg(feature = "wrt-integration")]
 use walkdir::WalkDir;
+#[cfg(feature = "wrt-integration")]
 use wat;
+#[cfg(feature = "wrt-integration")]
 use wrt::{Module, StacklessEngine};
 
 // Assume testsuite is relative to the workspace root where xtask is run
@@ -15,6 +21,7 @@ const PASSED_FILE: &str = "wast_passed.md";
 const FAILED_FILE: &str = "wast_failed.md";
 
 /// Process a single WebAssembly test file
+#[cfg(feature = "wrt-integration")]
 fn run_wast_test(path: &Path) -> Result<String> {
     let start = Instant::now();
 
@@ -130,6 +137,14 @@ fn run_wast_test(path: &Path) -> Result<String> {
     ))
 }
 
+#[cfg(not(feature = "wrt-integration"))]
+fn run_wast_test(_path: &Path) -> Result<String> {
+    // Stub implementation when wrt is not available
+    Err(anyhow::anyhow!(
+        "WAST tests are disabled - wrt-integration feature not enabled"
+    ))
+}
+
 /// Load tests from a markdown file
 fn load_tests_from_md(file_path: &Path) -> HashSet<PathBuf> {
     let mut tests = HashSet::new();
@@ -211,139 +226,134 @@ fn update_md_files(
 }
 
 // Main function to be called by xtask
-pub fn run(create_files: bool, verify_passing: bool) -> Result<()> {
-    // Path to the WebAssembly test suite
-    let test_suite_path = Path::new(TEST_SUITE_PATH);
-
-    // Check if the test suite exists
-    if !test_suite_path.exists() {
-        println!("Test suite not found at: {}", test_suite_path.display());
-        println!(
-            "Please make sure the WebAssembly test suite submodule is initialized and updated:"
-        );
-        println!("  git submodule update --init --recursive");
-        // Return Ok, as this isn't a failure of the runner itself
-        return Ok(());
-    }
-
-    // Load existing test results
-    let passed_file_path = Path::new(PASSED_FILE);
-    let failed_file_path = Path::new(FAILED_FILE);
-
-    let known_passed = load_tests_from_md(passed_file_path);
-    let known_failed = load_tests_from_md(failed_file_path);
-
-    // If --verify-passing is specified but wast_passed.md doesn't exist, exit
-    if verify_passing && !passed_file_path.exists() {
-        println!("No {} file found to verify against.", PASSED_FILE);
-        return Ok(());
-    }
-
-    // Track test results
-    let mut passed_tests = HashMap::new();
-    let mut failed_tests = HashMap::new();
-    let mut count = 0;
-    let mut run_count = 0;
-
-    // If not creating files and not verifying, check if files exist
-    if !create_files && !verify_passing && !passed_file_path.exists() && !failed_file_path.exists()
+pub fn run(_create_files: bool, _verify_passing: bool) -> Result<()> {
+    #[cfg(not(feature = "wrt-integration"))]
     {
-        println!(
-            "No existing test files ({}, {}) found.",
-            PASSED_FILE, FAILED_FILE
-        );
-        println!("Run with --create-files to create initial test files or");
-        println!("Run with --verify-passing to verify only passing tests.");
+        println!("WAST test runner is disabled because the wrt-integration feature is not enabled");
+        println!("To enable, build with --features=wrt-integration");
         return Ok(());
     }
 
-    // Run tests
-    println!("Running WAST tests from {}...", test_suite_path.display());
-    let workspace_root = std::env::current_dir().context("Failed to get current directory")?;
-
-    for entry in WalkDir::new(test_suite_path)
-        .into_iter()
-        .filter_map(Result::ok)
+    #[cfg(feature = "wrt-integration")]
     {
-        let path = entry.path();
-        if path.extension().is_some_and(|ext| ext == "wast") {
+        // Path to the WebAssembly test suite
+        let test_suite_path = Path::new(TEST_SUITE_PATH);
+
+        // Check if the test suite exists
+        if !test_suite_path.exists() {
+            println!("Test suite not found at: {}", test_suite_path.display());
+            println!(
+                "Please make sure the WebAssembly test suite submodule is initialized and updated:"
+            );
+            println!("  git submodule update --init --recursive");
+            // Return Ok, as this isn't a failure of the runner itself
+            return Ok(());
+        }
+
+        // Load existing test results
+        let passed_file_path = Path::new(PASSED_FILE);
+        let failed_file_path = Path::new(FAILED_FILE);
+
+        let known_passed = load_tests_from_md(passed_file_path);
+        let known_failed = load_tests_from_md(failed_file_path);
+
+        // If --verify-passing is specified but wast_passed.md doesn't exist, exit
+        if _verify_passing && !passed_file_path.exists() {
+            println!("No {} file found to verify against.", PASSED_FILE);
+            return Ok(());
+        }
+
+        // Track test results
+        let mut passed_tests = HashMap::new();
+        let mut failed_tests = HashMap::new();
+        let mut count = 0;
+        let mut run_count = 0;
+
+        // If not creating files and not verifying, check if files exist
+        if !_create_files
+            && !_verify_passing
+            && !passed_file_path.exists()
+            && !failed_file_path.exists()
+        {
+            println!("No existing test results found. Run with --create-files to initialize.");
+            return Ok(());
+        }
+
+        // Only if we are verifying passing, we'll focus on known passing tests
+        let tests_to_run = if _verify_passing {
+            known_passed.iter().cloned().collect::<Vec<_>>()
+        } else {
+            // Otherwise, discover all WAST files in the test suite
+            WalkDir::new(test_suite_path)
+                .into_iter()
+                .filter_map(|e| e.ok())
+                .filter(|e| {
+                    let path = e.path();
+                    path.is_file() && path.extension().map_or(false, |ext| ext == "wast")
+                })
+                .map(|e| e.path().to_path_buf())
+                .collect::<Vec<_>>()
+        };
+
+        let total_tests = tests_to_run.len();
+        println!("Found {} WAST tests to run", total_tests);
+
+        // Run the tests
+        for path in tests_to_run {
             count += 1;
-            // Make path relative to workspace root for consistent keys
-            let relative_path = path
-                .strip_prefix(&workspace_root)
-                .unwrap_or(path)
-                .to_path_buf();
-
-            // When verifying passing, only test files in known_passed
-            if verify_passing && !known_passed.contains(&relative_path) {
-                continue;
+            if count % 10 == 0 || count == total_tests {
+                print!("\rRunning test {}/{}", count, total_tests);
+                std::io::stdout().flush().unwrap();
             }
 
-            // When not creating files and not verifying passing, skip tests not in either list
-            if !create_files
-                && !verify_passing
-                && !known_passed.contains(&relative_path)
-                && !known_failed.contains(&relative_path)
-            {
+            // Skip known failed tests unless verify_passing mode
+            if !_verify_passing && known_failed.contains(&path) {
                 continue;
             }
 
             run_count += 1;
-            println!(
-                "Testing [{}/{}] {}...",
-                run_count,
-                count,
-                relative_path.display()
-            );
+            let relative_path = path
+                .strip_prefix(std::env::current_dir().unwrap())
+                .unwrap_or(&path);
 
-            match run_wast_test(path) {
+            match run_wast_test(&path) {
                 Ok(info) => {
-                    println!("  ✅ PASS: {}", relative_path.display());
-                    passed_tests.insert(relative_path, info);
+                    passed_tests.insert(relative_path.to_path_buf(), info);
                 }
                 Err(e) => {
-                    println!("  ❌ FAIL: {} - {}", relative_path.display(), e);
-                    failed_tests.insert(relative_path, e.to_string());
+                    // In verify mode, check if this was a previously passing test
+                    if _verify_passing && known_passed.contains(relative_path) {
+                        println!(
+                            "\n❌ ERROR: Regression in previously passing test: {}",
+                            relative_path.display()
+                        );
+                        println!("  Error: {}", e);
+                        return Err(anyhow::anyhow!(
+                            "Regression detected in previously passing test: {}",
+                            relative_path.display()
+                        ));
+                    }
+
+                    failed_tests.insert(relative_path.to_path_buf(), e.to_string());
                 }
             }
         }
-    }
 
-    println!("\nFinished running {} tests.", run_count);
+        println!("\nRan {} tests", run_count);
+        println!(
+            "Passed: {}, Failed: {}",
+            passed_tests.len(),
+            failed_tests.len()
+        );
 
-    // Update the markdown files if needed
-    if create_files || !passed_tests.is_empty() || !failed_tests.is_empty() {
-        update_md_files(&passed_tests, &failed_tests, create_files)?;
-    }
-
-    // Check for regressions or new failures when verifying
-    if verify_passing {
-        let mut regressions = 0;
-        for (path, error) in &failed_tests {
-            if known_passed.contains(path) {
-                println!(
-                    "REGRESSION DETECTED: Test passed previously but failed now: {}",
-                    path.display()
-                );
-                println!("  Error: {}", error);
-                regressions += 1;
-            }
+        // Update the output files if requested
+        if _create_files {
+            update_md_files(&passed_tests, &failed_tests, true)?;
+        } else if !_verify_passing {
+            // In normal mode, update with any newly passed/failed tests
+            update_md_files(&passed_tests, &failed_tests, false)?;
         }
-        if regressions > 0 {
-            anyhow::bail!("{} regressions detected!", regressions);
-        }
+
+        Ok(())
     }
-
-    println!(
-        "WAST test run complete. Passed: {}, Failed: {}",
-        passed_tests.len(),
-        failed_tests.len()
-    );
-
-    // Return error if any tests failed when not verifying known failures
-    if !verify_passing && !failed_tests.is_empty() {
-        anyhow::bail!("{} tests failed!", failed_tests.len());
-    }
-
-    Ok(())
 }

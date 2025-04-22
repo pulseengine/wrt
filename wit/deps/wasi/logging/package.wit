@@ -1,5 +1,0 @@
-// WASI logging package definition
-package wasi:logging@0.2.0;
-
-// Package description
-// This package describes the WASI logging interfaces. 
