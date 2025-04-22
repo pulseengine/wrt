@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use serde::Deserialize;
 use serde::Serialize;
@@ -6,11 +6,12 @@ use std::fs::{self, File};
 use std::io::{BufRead, BufReader, Write};
 use std::path::PathBuf;
 use std::process::Command as StdCommand;
-use tera::{Context, Tera};
+use tera::{Context as TeraContext, Tera};
 use xshell::Shell;
 
 mod check_imports;
 mod fs_ops;
+mod qualification;
 mod wasm_ops;
 mod wast_tests;
 
@@ -55,6 +56,17 @@ enum Command {
     },
     /// Check if Kani verifier is installed and runnable.
     CheckKani,
+    /// Qualification-related commands for certification
+    Qualification {
+        #[command(subcommand)]
+        command: QualificationCommands,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+enum QualificationCommands {
+    /// Report qualification status summary
+    Status,
 }
 
 #[derive(Args, Debug)]
@@ -107,7 +119,7 @@ pub struct SymbolsOpts {
     output: Option<PathBuf>,
 }
 
-#[derive(ValueEnum, Clone, Debug)]
+#[derive(ValueEnum, Clone, Debug, PartialEq)]
 enum OutputFormat {
     Text,     // Simple list of demangled symbols
     Json,     // Structured data including crate info and symbols
@@ -281,6 +293,9 @@ fn main() -> Result<()> {
             verify_passing,
         } => wast_tests::run(create_files, verify_passing)?,
         Command::CheckKani => run_check_kani(&sh)?,
+        Command::Qualification { command } => match command {
+            QualificationCommands::Status => qualification::report_status()?,
+        },
     }
 
     Ok(())
@@ -302,7 +317,7 @@ fn run_lint(sh: &Shell, opts: LintOpts) -> Result<()> {
     Ok(())
 }
 
-fn run_test(sh: &Shell, opts: TestOpts) -> Result<()> {
+fn run_test(_sh: &Shell, opts: TestOpts) -> Result<()> {
     println!("Running tests...");
 
     let mut cmd = StdCommand::new("cargo");
@@ -730,7 +745,7 @@ fn run_symbols(sh: &Shell, opts: SymbolsOpts) -> Result<()> {
                     Ok(t) => t,
                     Err(e) => anyhow::bail!("Failed to load Tera templates: {}", e),
                 };
-                let mut context = Context::new();
+                let mut context = TeraContext::new();
                 context.insert("pkg", &output_data); // Pass the whole struct
 
                 match tera.render("symbols.rst.tera", &context) {
@@ -763,7 +778,7 @@ fn run_symbols(sh: &Shell, opts: SymbolsOpts) -> Result<()> {
     Ok(())
 }
 
-fn run_check_kani(sh: &Shell) -> Result<()> {
+fn run_check_kani(_sh: &Shell) -> Result<()> {
     println!("Checking Kani installation...");
 
     match StdCommand::new("cargo")

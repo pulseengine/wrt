@@ -1,5 +1,0 @@
-// WASI IO package definition
-package wasi:io@0.2.0;
-
-// Package description
-// This package describes the WASI I/O interfaces. 
