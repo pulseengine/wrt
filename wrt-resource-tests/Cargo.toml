@@ -1,0 +1,10 @@
+[package]
+name = "wrt-resource-tests"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+wrt-error = { path = "../wrt-error" }
+
+[lints]
+workspace = true
