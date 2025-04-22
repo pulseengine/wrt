@@ -1,0 +1,31 @@
+[package]
+name = "wrt-logging"
+version = "0.1.0"
+edition = "2021"
+description = "Logging infrastructure for the WebAssembly Runtime (WRT)"
+license = "MIT"
+repository = "https://github.com/avrabe/wrt"
+documentation = "https://docs.rs/wrt-logging"
+keywords = ["wasm", "webassembly", "runtime", "logging", "component-model"]
+categories = ["wasm", "no-std"]
+
+[dependencies]
+wrt-error = { path = "../wrt-error", version = "0.1.0" }
+wrt-host = { path = "../wrt-host", version = "0.1.0" }
+wrt-types = { path = "../wrt-types", version = "0.1.0" }
+
+# Optional dependencies
+log = { version = "0.4", optional = true }
+
+[features]
+default = ["std"]
+std = ["wrt-host/std", "wrt-error/std", "wrt-types/std", "log"]
+no_std = ["wrt-host/no_std", "wrt-error/no_std", "wrt-types/no_std"]
+kani = ["wrt-host/kani"]
+
+[lints.rust]
+unexpected_cfgs = { level = "allow", check-cfg = ['cfg(test)'] }
+unused_imports = "allow"
+unused_variables = "allow"
+unused_mut = "allow"
+unused_macros = "allow" 
