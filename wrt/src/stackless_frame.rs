@@ -11,16 +11,23 @@ use crate::{
     error::{kinds, Error, Result},
     global::Global,
     instructions::instruction_type::Instruction,
-    memory::MemoryBehavior,
     module::{Data, Element, Function, Module},
     stackless::StacklessEngine,
-    table::Table,
     types::{BlockType, FuncType, ValueType},
     values::Value,
 };
 
-// Add wrt_sync as an external crate
+// Import from helper crates
+use wrt_runtime::{Memory, Table};
 use wrt_sync;
+// Import the bounded collections
+use wrt_types::{BoundedVec, Checksummed, Validatable, VerificationLevel};
+
+/// The maximum number of local variables in a function
+const MAX_LOCALS: usize = 1024;
+
+/// The maximum depth of control flow nesting (blocks, loops, if)
+const MAX_LABELS: usize = 64;
 
 /// Represents a function activation frame in the stackless engine.
 #[derive(Debug, Clone)]
@@ -33,15 +40,15 @@ pub struct StacklessFrame {
     pub pc: usize,
     /// The local variables for this frame, including function arguments.
     /// Note: In some contexts within the stackless engine, this might also temporarily hold operand stack values.
-    pub locals: Vec<Value>,
+    pub locals: BoundedVec<Value, MAX_LOCALS>,
     /// The index of the module instance this frame belongs to.
     pub instance_idx: u32,
-    /// The number of return values expected by the caller of this function frame.
+    /// The number of return values expected by the caller of this function.
     pub arity: usize,
     /// The arity (number of stack values expected) of the current control flow block (block, loop, if).
     pub label_arity: usize,
     /// The stack of active control flow labels (blocks, loops, ifs) within this frame.
-    pub label_stack: Vec<Label>,
+    pub label_stack: BoundedVec<Label, MAX_LABELS>,
     /// The program counter in the *caller's* frame to return to after this frame finishes.
     pub return_pc: usize,
 }
@@ -85,15 +92,29 @@ impl StacklessFrame {
             }
         }
 
+        // Create the frame with bounded collections
+        let mut locals = BoundedVec::with_verification_level(VerificationLevel::Standard);
+        let label_stack = BoundedVec::with_verification_level(VerificationLevel::Standard);
+
+        // Add args to locals
+        for arg in args {
+            locals.push(arg).map_err(|_| {
+                Error::new(kinds::ExecutionError(format!(
+                    "Too many local variables (limit: {})",
+                    MAX_LOCALS
+                )))
+            })?;
+        }
+
         Ok(Self {
             module,
             func_idx,
-            pc: 0,        // Start at the beginning of the function code
-            locals: args, // Arguments become the initial part of locals
+            pc: 0,  // Start at the beginning of the function code
+            locals, // Arguments become the initial part of locals
             instance_idx,
             arity: results_len,      // Frame arity is the function's RETURN arity
             label_arity: params_len, // Initial label arity matches function INPUT arity
-            label_stack: Vec::new(),
+            label_stack,
             return_pc: 0, // Will be set by the caller
         })
     }
@@ -136,23 +157,41 @@ impl StacklessFrame {
             ))));
         }
 
-        // Create locals with arguments and default values
-        let mut locals = Vec::with_capacity(args.len() + function.locals.len());
-        locals.extend_from_slice(args);
+        // Create bounded locals collection with the arguments
+        let mut locals = BoundedVec::with_verification_level(VerificationLevel::Standard);
+
+        // Add arguments first
+        for arg in args {
+            locals.push(arg.clone()).map_err(|_| {
+                Error::new(kinds::ExecutionError(format!(
+                    "Too many local variables (limit: {})",
+                    MAX_LOCALS
+                )))
+            })?;
+        }
 
         // Initialize local variables based on their types
         for &local_type in &function.locals {
-            match local_type {
-                ValueType::I32 => locals.push(Value::I32(0)),
-                ValueType::I64 => locals.push(Value::I64(0)),
-                ValueType::F32 => locals.push(Value::F32(0.0)),
-                ValueType::F64 => locals.push(Value::F64(0.0)),
-                ValueType::V128 => locals.push(Value::V128([0; 16])),
-                ValueType::FuncRef => locals.push(Value::FuncRef(None)),
-                ValueType::ExternRef => locals.push(Value::ExternRef(None)),
-                ValueType::AnyRef => locals.push(Value::AnyRef(None)),
-            }
+            let default_value = match local_type {
+                ValueType::I32 => Value::I32(0),
+                ValueType::I64 => Value::I64(0),
+                ValueType::F32 => Value::F32(0.0),
+                ValueType::F64 => Value::F64(0.0),
+                ValueType::V128 => Value::V128([0; 16]),
+                ValueType::FuncRef => Value::FuncRef(None),
+                ValueType::ExternRef => Value::ExternRef(None),
+            };
+
+            locals.push(default_value).map_err(|_| {
+                Error::new(kinds::ExecutionError(format!(
+                    "Too many local variables (limit: {})",
+                    MAX_LOCALS
+                )))
+            })?;
         }
+
+        // Create bounded label stack
+        let label_stack = BoundedVec::with_verification_level(VerificationLevel::Standard);
 
         Ok(Self {
             module,
@@ -162,9 +201,27 @@ impl StacklessFrame {
             instance_idx,
             arity: results_len,      // Frame arity is the function's RETURN arity
             label_arity: params_len, // Initial label arity matches function INPUT arity
-            label_stack: Vec::new(),
+            label_stack,
             return_pc: 0, // Will be set by the caller
         })
+    }
+
+    /// Validates the frame's integrity, checking all bounded collections.
+    pub fn validate(&self) -> Result<()> {
+        // Validate the local variables collection
+        self.locals.validate()?;
+
+        // Validate the label stack collection
+        self.label_stack.validate()?;
+
+        // Validate function index doesn't exceed module's function count
+        if (self.func_idx as usize) >= self.module.functions.len() {
+            return Err(Error::new(kinds::InvalidFunctionIndexError(
+                self.func_idx as usize,
+            )));
+        }
+
+        Ok(())
     }
 
     /// Gets the function definition associated with this frame.
@@ -313,8 +370,12 @@ impl StackBehavior for StacklessFrame {
     // Be cautious when interpreting these methods outside that context.
 
     fn push(&mut self, value: Value) -> Result<()> {
-        self.locals.push(value);
-        Ok(())
+        self.locals.push(value).map_err(|_| {
+            Error::new(kinds::ExecutionError(format!(
+                "Stack overflow, maximum locals: {}",
+                MAX_LOCALS
+            )))
+        })
     }
 
     fn pop(&mut self) -> Result<Value> {
@@ -325,22 +386,26 @@ impl StackBehavior for StacklessFrame {
 
     fn peek(&self) -> Result<&Value> {
         self.locals
-            .last()
+            .get(self.locals.len().checked_sub(1).unwrap_or(0))
             .ok_or_else(|| Error::new(kinds::StackUnderflow))
     }
 
     fn peek_mut(&mut self) -> Result<&mut Value> {
-        self.locals
-            .last_mut()
-            .ok_or_else(|| Error::new(kinds::StackUnderflow))
+        let len = self.locals.len();
+        if len == 0 {
+            return Err(Error::new(kinds::StackUnderflow));
+        }
+        Ok(self.locals.get_mut(len - 1).unwrap())
     }
 
     fn values(&self) -> &[Value] {
-        &self.locals
+        // This is safe because the BoundedVec internally stores a Vec and implements AsRef<[T]>
+        self.locals.as_ref()
     }
 
     fn values_mut(&mut self) -> &mut [Value] {
-        &mut self.locals
+        // Shortcut to get the entire slice for safety
+        self.locals.as_mut()
     }
 
     fn len(&self) -> usize {
@@ -354,8 +419,12 @@ impl StackBehavior for StacklessFrame {
     // Label stack operations are delegated to the frame's label_stack
     fn push_label(&mut self, label: Label) -> Result<(), Error> {
         // Push the label onto the label stack
-        self.label_stack.push(label);
-        Ok(())
+        self.label_stack.push(label).map_err(|_| {
+            Error::new(kinds::ExecutionError(format!(
+                "Label stack overflow, maximum depth: {}",
+                MAX_LABELS
+            )))
+        })
     }
 
     fn pop_label(&mut self) -> Result<Label, Error> {
@@ -365,7 +434,11 @@ impl StackBehavior for StacklessFrame {
     }
 
     fn get_label(&self, index: usize) -> Option<&Label> {
-        None // Not supported on frames directly
+        if index >= self.label_stack.len() {
+            None
+        } else {
+            self.label_stack.get(self.label_stack.len() - 1 - index)
+        }
     }
 
     fn push_n(&mut self, values: &[Value]) {
@@ -379,7 +452,7 @@ impl StackBehavior for StacklessFrame {
 
     fn pop_frame_label(&mut self) -> Result<Label, Error> {
         // Not supported by frames, should be handled by stack
-        Err(Error::new(kinds::UnimplementedError(
+        Err(Error::new(kinds::NotImplementedError(
             "pop_frame_label not supported on frames".to_string(),
         )))
     }
@@ -542,7 +615,7 @@ impl ControlFlowBehavior for StacklessFrame {
     // `call` and `call_indirect` are handled by the engine, not directly by frame behavior.
     // The engine pushes a new frame.
     fn call(&mut self, _func_idx: u32, _stack: &mut dyn StackBehavior) -> Result<()> {
-        Err(Error::new(kinds::UnimplementedError(
+        Err(Error::new(kinds::NotImplementedError(
             "call handled by Engine".into(),
         )))
     }
@@ -584,22 +657,24 @@ impl ControlFlowBehavior for StacklessFrame {
 // Implement FrameBehavior trait for StacklessFrame
 impl FrameBehavior for StacklessFrame {
     fn locals(&mut self) -> &mut Vec<Value> {
-        &mut self.locals
+        // We need to adapt the BoundedVec to work with the existing interface
+        // that expects a Vec. This is a compatibility layer.
+        self.locals.as_mut_vec()
     }
 
     fn get_local(&self, idx: usize) -> Result<Value> {
         self.locals
             .get(idx)
             .cloned()
-            .ok_or_else(|| Error::new(kinds::InvalidLocalIndexError(idx as u32)))
+            .ok_or_else(|| Error::new(kinds::InvalidLocalIndex(idx)))
     }
 
     fn set_local(&mut self, idx: usize, value: Value) -> Result<()> {
-        if idx < self.locals.len() {
-            self.locals[idx] = value;
+        if let Some(local) = self.locals.get_mut(idx) {
+            *local = value;
             Ok(())
         } else {
-            Err(Error::new(kinds::InvalidLocalIndexError(idx as u32)))
+            Err(Error::new(kinds::InvalidLocalIndex(idx)))
         }
     }
 
@@ -631,28 +706,38 @@ impl FrameBehavior for StacklessFrame {
             .and_then(|inner_result| Ok(inner_result))
     }
 
-    fn get_memory(&self, idx: usize, engine: &StacklessEngine) -> Result<Arc<dyn MemoryBehavior>> {
-        // Use .clone() on the Arc returned from within the closure to ensure proper ownership
+    fn get_memory(&self, idx: usize, engine: &StacklessEngine) -> Result<Arc<Memory>> {
         engine
             .with_instance(self.instance_idx as usize, |instance| {
-                let memory = instance.get_memory(idx)?;
-                Ok(memory.clone())
+                instance.get_memory(idx).map_err(|e| {
+                    Error::new(kinds::ExecutionError(format!(
+                        "Error getting memory at index {idx}: {e}"
+                    )))
+                })
             })
-            .and_then(|inner_result| Ok(inner_result))
+            .map_err(|e| {
+                Error::new(kinds::ExecutionError(format!(
+                    "Error accessing instance {}: {e}",
+                    self.instance_idx
+                )))
+            })?
     }
 
-    fn get_memory_mut(
-        &mut self,
-        idx: usize,
-        engine: &StacklessEngine,
-    ) -> Result<Arc<dyn MemoryBehavior>> {
-        // Use .clone() on the Arc returned from within the closure to ensure proper ownership
+    fn get_memory_mut(&mut self, idx: usize, engine: &StacklessEngine) -> Result<Arc<Memory>> {
+        let instance_idx = self.instance_idx as usize;
         engine
-            .with_instance_mut(self.instance_idx as usize, |instance| {
-                let memory = instance.get_memory(idx)?;
-                Ok(memory.clone())
+            .with_instance(instance_idx, |instance| {
+                instance.get_memory(idx).map_err(|e| {
+                    Error::new(kinds::ExecutionError(format!(
+                        "Error getting mutable memory at index {idx}: {e}"
+                    )))
+                })
             })
-            .and_then(|inner_result| Ok(inner_result))
+            .map_err(|e| {
+                Error::new(kinds::ExecutionError(format!(
+                    "Error accessing instance {instance_idx}: {e}"
+                )))
+            })?
     }
 
     fn get_table(&self, idx: usize, engine: &StacklessEngine) -> Result<Arc<Table>> {
@@ -693,7 +778,9 @@ impl FrameBehavior for StacklessFrame {
     }
 
     fn label_stack(&mut self) -> &mut Vec<Label> {
-        &mut self.label_stack
+        // We need to adapt the BoundedVec to work with the existing interface
+        // that expects a Vec. This is a compatibility layer.
+        self.label_stack.as_mut_vec()
     }
 
     fn arity(&self) -> usize {
@@ -724,92 +811,56 @@ impl FrameBehavior for StacklessFrame {
     // Memory access methods implementation...
     fn load_i32(&self, addr: usize, _align: u32, engine: &StacklessEngine) -> Result<i32> {
         let mem_idx = 0; // Assuming memory index 0
-        engine
-            .with_instance(self.instance_idx as usize, |instance| {
-                let memory = instance.get_memory(mem_idx)?;
-                memory.read_i32(addr as u32)
-            })
-            .and_then(|inner_result| Ok(inner_result))
+        let memory = self.get_memory(mem_idx, engine)?;
+        memory.read_i32(addr as u32)
     }
 
     fn load_i64(&self, addr: usize, _align: u32, engine: &StacklessEngine) -> Result<i64> {
         let mem_idx = 0; // Assuming memory index 0
-        engine
-            .with_instance(self.instance_idx as usize, |instance| {
-                let memory = instance.get_memory(mem_idx)?;
-                memory.read_i64(addr as u32)
-            })
-            .and_then(|inner_result| Ok(inner_result))
+        let memory = self.get_memory(mem_idx, engine)?;
+        memory.read_i64(addr as u32)
     }
 
     fn load_f32(&self, addr: usize, _align: u32, engine: &StacklessEngine) -> Result<f32> {
         let mem_idx = 0; // Assuming memory index 0
-        engine
-            .with_instance(self.instance_idx as usize, |instance| {
-                let memory = instance.get_memory(mem_idx)?;
-                memory.read_f32(addr as u32)
-            })
-            .and_then(|inner_result| Ok(inner_result))
+        let memory = self.get_memory(mem_idx, engine)?;
+        memory.read_f32(addr as u32)
     }
 
     fn load_f64(&self, addr: usize, _align: u32, engine: &StacklessEngine) -> Result<f64> {
         let mem_idx = 0; // Assuming memory index 0
-        engine
-            .with_instance(self.instance_idx as usize, |instance| {
-                let memory = instance.get_memory(mem_idx)?;
-                memory.read_f64(addr as u32)
-            })
-            .and_then(|inner_result| Ok(inner_result))
+        let memory = self.get_memory(mem_idx, engine)?;
+        memory.read_f64(addr as u32)
     }
 
     fn load_i8(&self, addr: usize, _align: u32, engine: &StacklessEngine) -> Result<i8> {
         let mem_idx = 0; // Assuming memory index 0
-        engine
-            .with_instance(self.instance_idx as usize, |instance| {
-                let memory = instance.get_memory(mem_idx)?;
-                memory.read_i8(addr as u32)
-            })
-            .and_then(|inner_result| Ok(inner_result))
+        let memory = self.get_memory(mem_idx, engine)?;
+        memory.read_i8(addr as u32)
     }
 
     fn load_u8(&self, addr: usize, _align: u32, engine: &StacklessEngine) -> Result<u8> {
         let mem_idx = 0; // Assuming memory index 0
-        engine
-            .with_instance(self.instance_idx as usize, |instance| {
-                let memory = instance.get_memory(mem_idx)?;
-                memory.read_u8(addr as u32)
-            })
-            .and_then(|inner_result| Ok(inner_result))
+        let memory = self.get_memory(mem_idx, engine)?;
+        memory.read_u8(addr as u32)
     }
 
     fn load_i16(&self, addr: usize, _align: u32, engine: &StacklessEngine) -> Result<i16> {
         let mem_idx = 0; // Assuming memory index 0
-        engine
-            .with_instance(self.instance_idx as usize, |instance| {
-                let memory = instance.get_memory(mem_idx)?;
-                memory.read_i16(addr as u32)
-            })
-            .and_then(|inner_result| Ok(inner_result))
+        let memory = self.get_memory(mem_idx, engine)?;
+        memory.read_i16(addr as u32)
     }
 
     fn load_u16(&self, addr: usize, _align: u32, engine: &StacklessEngine) -> Result<u16> {
         let mem_idx = 0; // Assuming memory index 0
-        engine
-            .with_instance(self.instance_idx as usize, |instance| {
-                let memory = instance.get_memory(mem_idx)?;
-                memory.read_u16(addr as u32)
-            })
-            .and_then(|inner_result| Ok(inner_result))
+        let memory = self.get_memory(mem_idx, engine)?;
+        memory.read_u16(addr as u32)
     }
 
     fn load_v128(&self, addr: usize, _align: u32, engine: &StacklessEngine) -> Result<[u8; 16]> {
         let mem_idx = 0; // Assuming memory index 0
-        engine
-            .with_instance(self.instance_idx as usize, |instance| {
-                let memory = instance.get_memory(mem_idx)?;
-                memory.read_v128(addr as u32)
-            })
-            .and_then(|inner_result| Ok(inner_result))
+        let memory = self.get_memory(mem_idx, engine)?;
+        memory.read_v128(addr as u32)
     }
 
     fn store_i32(
@@ -819,12 +870,8 @@ impl FrameBehavior for StacklessFrame {
         value: i32,
         engine: &StacklessEngine,
     ) -> Result<()> {
-        engine
-            .with_instance_mut(self.instance_idx as usize, |instance| {
-                let memory = instance.get_memory_mut(0)?; // Assuming memory index 0
-                memory.write_bytes(addr as u32, &value.to_le_bytes())
-            })
-            .and_then(|inner_result| Ok(inner_result))
+        let memory = self.get_memory_mut(0, engine)?;
+        memory.write_bytes(addr as u32, &value.to_le_bytes())
     }
 
     fn store_i64(
@@ -834,12 +881,8 @@ impl FrameBehavior for StacklessFrame {
         value: i64,
         engine: &StacklessEngine,
     ) -> Result<()> {
-        engine
-            .with_instance_mut(self.instance_idx as usize, |instance| {
-                let memory = instance.get_memory_mut(0)?; // Assuming memory index 0
-                memory.write_bytes(addr as u32, &value.to_le_bytes())
-            })
-            .and_then(|inner_result| Ok(inner_result))
+        let memory = self.get_memory_mut(0, engine)?;
+        memory.write_bytes(addr as u32, &value.to_le_bytes())
     }
 
     fn store_f32(
@@ -849,12 +892,8 @@ impl FrameBehavior for StacklessFrame {
         value: f32,
         engine: &StacklessEngine,
     ) -> Result<()> {
-        engine
-            .with_instance_mut(self.instance_idx as usize, |instance| {
-                let memory = instance.get_memory_mut(0)?; // Assuming memory index 0
-                memory.write_bytes(addr as u32, &value.to_le_bytes())
-            })
-            .and_then(|inner_result| Ok(inner_result))
+        let memory = self.get_memory_mut(0, engine)?;
+        memory.write_bytes(addr as u32, &value.to_le_bytes())
     }
 
     fn store_f64(
@@ -864,12 +903,8 @@ impl FrameBehavior for StacklessFrame {
         value: f64,
         engine: &StacklessEngine,
     ) -> Result<()> {
-        engine
-            .with_instance_mut(self.instance_idx as usize, |instance| {
-                let memory = instance.get_memory_mut(0)?; // Assuming memory index 0
-                memory.write_bytes(addr as u32, &value.to_le_bytes())
-            })
-            .and_then(|inner_result| Ok(inner_result))
+        let memory = self.get_memory_mut(0, engine)?;
+        memory.write_bytes(addr as u32, &value.to_le_bytes())
     }
 
     fn store_i8(
@@ -879,12 +914,8 @@ impl FrameBehavior for StacklessFrame {
         value: i8,
         engine: &StacklessEngine,
     ) -> Result<()> {
-        engine
-            .with_instance_mut(self.instance_idx as usize, |instance| {
-                let memory = instance.get_memory_mut(0)?; // Assuming memory index 0
-                memory.write_bytes(addr as u32, &[value as u8])
-            })
-            .and_then(|inner_result| Ok(inner_result))
+        let memory = self.get_memory_mut(0, engine)?;
+        memory.write_bytes(addr as u32, &[value as u8])
     }
 
     fn store_u8(
@@ -894,12 +925,8 @@ impl FrameBehavior for StacklessFrame {
         value: u8,
         engine: &StacklessEngine,
     ) -> Result<()> {
-        engine
-            .with_instance_mut(self.instance_idx as usize, |instance| {
-                let memory = instance.get_memory_mut(0)?; // Assuming memory index 0
-                memory.write_bytes(addr as u32, &[value])
-            })
-            .and_then(|inner_result| Ok(inner_result))
+        let memory = self.get_memory_mut(0, engine)?;
+        memory.write_bytes(addr as u32, &[value])
     }
 
     fn store_i16(
@@ -909,12 +936,8 @@ impl FrameBehavior for StacklessFrame {
         value: i16,
         engine: &StacklessEngine,
     ) -> Result<()> {
-        engine
-            .with_instance_mut(self.instance_idx as usize, |instance| {
-                let memory = instance.get_memory_mut(0)?; // Assuming memory index 0
-                memory.write_bytes(addr as u32, &value.to_le_bytes())
-            })
-            .and_then(|inner_result| Ok(inner_result))
+        let memory = self.get_memory_mut(0, engine)?;
+        memory.write_bytes(addr as u32, &value.to_le_bytes())
     }
 
     fn store_u16(
@@ -924,12 +947,8 @@ impl FrameBehavior for StacklessFrame {
         value: u16,
         engine: &StacklessEngine,
     ) -> Result<()> {
-        engine
-            .with_instance_mut(self.instance_idx as usize, |instance| {
-                let memory = instance.get_memory_mut(0)?;
-                memory.write_bytes(addr as u32, &value.to_le_bytes())
-            })
-            .and_then(|inner_result| Ok(inner_result))
+        let memory = self.get_memory_mut(0, engine)?;
+        memory.write_bytes(addr as u32, &value.to_le_bytes())
     }
 
     fn store_v128(
@@ -939,12 +958,8 @@ impl FrameBehavior for StacklessFrame {
         value: [u8; 16],
         engine: &StacklessEngine,
     ) -> Result<()> {
-        engine
-            .with_instance_mut(self.instance_idx as usize, |instance| {
-                let memory = instance.get_memory_mut(0)?;
-                memory.write_bytes(addr as u32, &value)
-            })
-            .and_then(|inner_result| Ok(inner_result))
+        let memory = self.get_memory_mut(0, engine)?;
+        memory.write_bytes(addr as u32, &value)
     }
 
     fn get_function_type(&self, func_idx: u32) -> Result<FuncType> {
@@ -955,23 +970,15 @@ impl FrameBehavior for StacklessFrame {
     }
 
     fn memory_size(&self, engine: &StacklessEngine) -> Result<u32> {
-        // Delegate to the first memory in the instance
-        engine
-            .with_instance(self.instance_idx as usize, |instance| {
-                let memory = instance.get_memory(0)?;
-                Ok(memory.size())
-            })
-            .and_then(|inner_result| Ok(inner_result))
+        // Get memory directly and use its size method
+        let memory = self.get_memory(0, engine)?;
+        Ok(memory.size())
     }
 
     fn memory_grow(&mut self, pages: u32, engine: &StacklessEngine) -> Result<u32> {
-        // Delegate to the first memory in the instance
-        engine
-            .with_instance_mut(self.instance_idx as usize, |instance| {
-                let memory = instance.get_memory_mut(0)?;
-                memory.grow(pages)
-            })
-            .and_then(|inner_result| Ok(inner_result))
+        // Get memory directly and use its grow method
+        let memory = self.get_memory_mut(0, engine)?;
+        memory.grow(pages)
     }
 
     fn table_get(&self, table_idx: u32, idx: u32, engine: &StacklessEngine) -> Result<Value> {
@@ -1022,8 +1029,7 @@ impl FrameBehavior for StacklessFrame {
         engine
             .with_instance_mut(self.instance_idx as usize, |instance| {
                 let table = instance.get_table_mut(table_idx as usize)?;
-                table.grow(delta) // Assuming grow takes only delta
-                                  // table.grow(delta, Some(value)) // Original incorrect call
+                table.grow(delta, value) // Pass the default value for new elements
             })
             .and_then(|inner_result| Ok(inner_result))
     }
@@ -1078,7 +1084,7 @@ impl FrameBehavior for StacklessFrame {
 
                 // Implement table copy logic here
                 // For now, just return an unimplemented error
-                Err(Error::new(kinds::UnimplementedError(
+                Err(Error::new(kinds::NotImplementedError(
                     "Table copy not yet implemented".into(),
                 )))
             })
@@ -1134,7 +1140,7 @@ impl FrameBehavior for StacklessFrame {
 
     fn set_data_segment(&mut self, _idx: u32, _segment: Arc<Data>) -> Result<(), Error> {
         // Not implemented for StacklessFrame
-        Err(Error::new(kinds::UnimplementedError(
+        Err(Error::new(kinds::NotImplementedError(
             "set_data_segment not implemented for StacklessFrame".to_string(),
         )))
     }

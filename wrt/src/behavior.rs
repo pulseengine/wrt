@@ -6,15 +6,17 @@ use std::sync::Arc;
 use crate::{
     error::{kinds, Error, Result},
     global::Global,
-    memory::{DefaultMemory, MemoryBehavior},
     module::{Data, Element, Function},
     stackless::StacklessEngine,
-    table::Table,
     types::BlockType,
     types::FuncType,
     types::MemoryType,
     values::Value,
 };
+
+use wrt_runtime::Memory;
+use wrt_types::safe_memory::SafeSlice;
+use wrt_types::types::Limits;
 
 /// Represents the outcome of executing a single instruction, guiding the engine's next action.
 #[derive(Debug)]
@@ -158,18 +160,14 @@ pub trait FrameBehavior: Send + Sync + std::fmt::Debug + Any {
     fn get_global_mut(&mut self, idx: usize) -> Result<wrt_sync::WrtMutexGuard<Value>, Error>;
 
     /// Get a memory instance by index
-    fn get_memory(
-        &self,
-        idx: usize,
-        engine: &StacklessEngine,
-    ) -> Result<Arc<dyn MemoryBehavior>, Error>;
+    fn get_memory(&self, idx: usize, engine: &StacklessEngine) -> Result<Arc<Memory>, Error>;
 
     /// Get a mutable memory instance by index
     fn get_memory_mut(
         &mut self,
         idx: usize,
         engine: &StacklessEngine,
-    ) -> Result<Arc<dyn MemoryBehavior>, Error>;
+    ) -> Result<Arc<Memory>, Error>;
 
     /// Get a table instance by index (returns Arc)
     fn get_table(&self, idx: usize, engine: &StacklessEngine) -> Result<Arc<Table>, Error>;
@@ -497,6 +495,11 @@ pub struct Frame {
     pub label_stack: Vec<Label>,
 }
 
+// Static memory type for NullBehavior (no need for once_cell)
+static NULL_MEMORY_TYPE: MemoryType = MemoryType {
+    limits: Limits { min: 0, max: None },
+};
+
 /// Placeholder implementation for behaviors when no real implementation is needed.
 #[derive(Debug)]
 pub struct NullBehavior {
@@ -541,11 +544,7 @@ impl FrameBehavior for NullBehavior {
         Err(Error::new(kinds::InvalidGlobalIndexError(idx as u32)))
     }
 
-    fn get_memory(
-        &self,
-        idx: usize,
-        _engine: &StacklessEngine,
-    ) -> Result<Arc<dyn MemoryBehavior>, Error> {
+    fn get_memory(&self, idx: usize, _engine: &StacklessEngine) -> Result<Arc<Memory>, Error> {
         Err(Error::new(kinds::InvalidMemoryIndexError(idx as u32)))
     }
 
@@ -553,12 +552,12 @@ impl FrameBehavior for NullBehavior {
         &mut self,
         idx: usize,
         _engine: &StacklessEngine,
-    ) -> Result<Arc<dyn MemoryBehavior>, Error> {
+    ) -> Result<Arc<Memory>, Error> {
         Err(Error::new(kinds::InvalidMemoryIndexError(idx as u32)))
     }
 
     fn get_table(&self, idx: usize, _engine: &StacklessEngine) -> Result<Arc<Table>, Error> {
-        Err(Error::new(kinds::UnimplementedError(format!(
+        Err(Error::new(kinds::NotImplementedError(format!(
             "NullBehavior::get_table for index: {}",
             idx
         ))))
@@ -569,7 +568,7 @@ impl FrameBehavior for NullBehavior {
         idx: usize,
         _engine: &StacklessEngine,
     ) -> Result<Arc<Table>, Error> {
-        Err(Error::new(kinds::UnimplementedError(format!(
+        Err(Error::new(kinds::NotImplementedError(format!(
             "NullBehavior::get_table_mut for index: {}",
             idx
         ))))
@@ -618,49 +617,49 @@ impl FrameBehavior for NullBehavior {
     fn set_return_pc(&mut self, _pc: Option<usize>) {}
 
     fn load_i32(&self, _addr: usize, _align: u32, _engine: &StacklessEngine) -> Result<i32, Error> {
-        Err(Error::new(kinds::UnimplementedError(
+        Err(Error::new(kinds::NotImplementedError(
             "NullBehavior::load_i32".to_string(),
         )))
     }
 
     fn load_i64(&self, _addr: usize, _align: u32, _engine: &StacklessEngine) -> Result<i64, Error> {
-        Err(Error::new(kinds::UnimplementedError(
+        Err(Error::new(kinds::NotImplementedError(
             "NullBehavior::load_i64".to_string(),
         )))
     }
 
     fn load_f32(&self, _addr: usize, _align: u32, _engine: &StacklessEngine) -> Result<f32, Error> {
-        Err(Error::new(kinds::UnimplementedError(
+        Err(Error::new(kinds::NotImplementedError(
             "NullBehavior::load_f32".to_string(),
         )))
     }
 
     fn load_f64(&self, _addr: usize, _align: u32, _engine: &StacklessEngine) -> Result<f64, Error> {
-        Err(Error::new(kinds::UnimplementedError(
+        Err(Error::new(kinds::NotImplementedError(
             "NullBehavior::load_f64".to_string(),
         )))
     }
 
     fn load_i8(&self, _addr: usize, _align: u32, _engine: &StacklessEngine) -> Result<i8, Error> {
-        Err(Error::new(kinds::UnimplementedError(
+        Err(Error::new(kinds::NotImplementedError(
             "NullBehavior::load_i8".to_string(),
         )))
     }
 
     fn load_u8(&self, _addr: usize, _align: u32, _engine: &StacklessEngine) -> Result<u8, Error> {
-        Err(Error::new(kinds::UnimplementedError(
+        Err(Error::new(kinds::NotImplementedError(
             "NullBehavior::load_u8".to_string(),
         )))
     }
 
     fn load_i16(&self, _addr: usize, _align: u32, _engine: &StacklessEngine) -> Result<i16, Error> {
-        Err(Error::new(kinds::UnimplementedError(
+        Err(Error::new(kinds::NotImplementedError(
             "NullBehavior::load_i16".to_string(),
         )))
     }
 
     fn load_u16(&self, _addr: usize, _align: u32, _engine: &StacklessEngine) -> Result<u16, Error> {
-        Err(Error::new(kinds::UnimplementedError(
+        Err(Error::new(kinds::NotImplementedError(
             "NullBehavior::load_u16".to_string(),
         )))
     }
@@ -671,7 +670,7 @@ impl FrameBehavior for NullBehavior {
         _align: u32,
         _engine: &StacklessEngine,
     ) -> Result<[u8; 16], Error> {
-        Err(Error::new(kinds::UnimplementedError(
+        Err(Error::new(kinds::NotImplementedError(
             "NullBehavior::load_v128".to_string(),
         )))
     }
@@ -683,7 +682,7 @@ impl FrameBehavior for NullBehavior {
         _value: i32,
         _engine: &StacklessEngine,
     ) -> Result<(), Error> {
-        Err(Error::new(kinds::UnimplementedError(
+        Err(Error::new(kinds::NotImplementedError(
             "NullBehavior::store_i32".to_string(),
         )))
     }
@@ -695,7 +694,7 @@ impl FrameBehavior for NullBehavior {
         _value: i64,
         _engine: &StacklessEngine,
     ) -> Result<(), Error> {
-        Err(Error::new(kinds::UnimplementedError(
+        Err(Error::new(kinds::NotImplementedError(
             "NullBehavior::store_i64".to_string(),
         )))
     }
@@ -707,7 +706,7 @@ impl FrameBehavior for NullBehavior {
         _value: f32,
         _engine: &StacklessEngine,
     ) -> Result<(), Error> {
-        Err(Error::new(kinds::UnimplementedError(
+        Err(Error::new(kinds::NotImplementedError(
             "NullBehavior::store_f32".to_string(),
         )))
     }
@@ -719,7 +718,7 @@ impl FrameBehavior for NullBehavior {
         _value: f64,
         _engine: &StacklessEngine,
     ) -> Result<(), Error> {
-        Err(Error::new(kinds::UnimplementedError(
+        Err(Error::new(kinds::NotImplementedError(
             "NullBehavior::store_f64".to_string(),
         )))
     }
@@ -731,7 +730,7 @@ impl FrameBehavior for NullBehavior {
         _value: i8,
         _engine: &StacklessEngine,
     ) -> Result<(), Error> {
-        Err(Error::new(kinds::UnimplementedError(
+        Err(Error::new(kinds::NotImplementedError(
             "NullBehavior::store_i8".to_string(),
         )))
     }
@@ -743,7 +742,7 @@ impl FrameBehavior for NullBehavior {
         _value: u8,
         _engine: &StacklessEngine,
     ) -> Result<(), Error> {
-        Err(Error::new(kinds::UnimplementedError(
+        Err(Error::new(kinds::NotImplementedError(
             "NullBehavior::store_u8".to_string(),
         )))
     }
@@ -755,7 +754,7 @@ impl FrameBehavior for NullBehavior {
         _value: i16,
         _engine: &StacklessEngine,
     ) -> Result<(), Error> {
-        Err(Error::new(kinds::UnimplementedError(
+        Err(Error::new(kinds::NotImplementedError(
             "NullBehavior::store_i16".to_string(),
         )))
     }
@@ -767,7 +766,7 @@ impl FrameBehavior for NullBehavior {
         _value: u16,
         _engine: &StacklessEngine,
     ) -> Result<(), Error> {
-        Err(Error::new(kinds::UnimplementedError(
+        Err(Error::new(kinds::NotImplementedError(
             "NullBehavior::store_u16".to_string(),
         )))
     }
@@ -779,19 +778,19 @@ impl FrameBehavior for NullBehavior {
         _value: [u8; 16],
         _engine: &StacklessEngine,
     ) -> Result<(), Error> {
-        Err(Error::new(kinds::UnimplementedError(
+        Err(Error::new(kinds::NotImplementedError(
             "NullBehavior::store_v128".to_string(),
         )))
     }
 
     fn memory_size(&self, _engine: &StacklessEngine) -> Result<u32, Error> {
-        Err(Error::new(kinds::UnimplementedError(
+        Err(Error::new(kinds::NotImplementedError(
             "NullBehavior::memory_size".to_string(),
         )))
     }
 
     fn memory_grow(&mut self, _pages: u32, _engine: &StacklessEngine) -> Result<u32, Error> {
-        Err(Error::new(kinds::UnimplementedError(
+        Err(Error::new(kinds::NotImplementedError(
             "NullBehavior::memory_grow".to_string(),
         )))
     }
@@ -802,7 +801,7 @@ impl FrameBehavior for NullBehavior {
         idx: u32,
         _engine: &StacklessEngine,
     ) -> Result<Value, Error> {
-        Err(Error::new(kinds::UnimplementedError(
+        Err(Error::new(kinds::NotImplementedError(
             "NullBehavior::table_get".to_string(),
         )))
     }
@@ -814,13 +813,13 @@ impl FrameBehavior for NullBehavior {
         _value: Value,
         _engine: &StacklessEngine,
     ) -> Result<(), Error> {
-        Err(Error::new(kinds::UnimplementedError(
+        Err(Error::new(kinds::NotImplementedError(
             "NullBehavior::table_set".to_string(),
         )))
     }
 
     fn table_size(&self, _table_idx: u32, _engine: &StacklessEngine) -> Result<u32, Error> {
-        Err(Error::new(kinds::UnimplementedError(
+        Err(Error::new(kinds::NotImplementedError(
             "NullBehavior::table_size".to_string(),
         )))
     }
@@ -832,7 +831,7 @@ impl FrameBehavior for NullBehavior {
         _value: Value,
         _engine: &StacklessEngine,
     ) -> Result<u32, Error> {
-        Err(Error::new(kinds::UnimplementedError(
+        Err(Error::new(kinds::NotImplementedError(
             "NullBehavior::table_grow".to_string(),
         )))
     }
@@ -847,7 +846,7 @@ impl FrameBehavior for NullBehavior {
         _len: u32,
         _engine: &StacklessEngine,
     ) -> Result<(), Error> {
-        Err(Error::new(kinds::UnimplementedError(
+        Err(Error::new(kinds::NotImplementedError(
             "NullBehavior::table_init".to_string(),
         )))
     }
@@ -862,14 +861,14 @@ impl FrameBehavior for NullBehavior {
         _len: u32,
         _engine: &StacklessEngine,
     ) -> Result<(), Error> {
-        Err(Error::new(kinds::UnimplementedError(
+        Err(Error::new(kinds::NotImplementedError(
             "NullBehavior::table_copy".to_string(),
         )))
     }
 
     // Match trait: engine should be &StacklessEngine
     fn elem_drop(&mut self, _elem_idx: u32, _engine: &StacklessEngine) -> Result<(), Error> {
-        Err(Error::new(kinds::UnimplementedError(
+        Err(Error::new(kinds::NotImplementedError(
             "NullBehavior::elem_drop".to_string(),
         )))
     }
@@ -882,7 +881,7 @@ impl FrameBehavior for NullBehavior {
         _n: u32,
         _engine: &StacklessEngine,
     ) -> Result<(), Error> {
-        Err(Error::new(kinds::UnimplementedError(
+        Err(Error::new(kinds::NotImplementedError(
             "NullBehavior::table_fill".to_string(),
         )))
     }
@@ -899,7 +898,7 @@ impl FrameBehavior for NullBehavior {
         _idx2: u32,
         _engine: &StacklessEngine,
     ) -> Result<(Arc<Table>, Arc<Table>), Error> {
-        Err(Error::new(kinds::UnimplementedError(
+        Err(Error::new(kinds::NotImplementedError(
             "NullBehavior::get_two_tables_mut".to_string(),
         )))
     }
@@ -909,7 +908,7 @@ impl FrameBehavior for NullBehavior {
         elem_idx: u32,
         _engine: &StacklessEngine,
     ) -> Result<Arc<Element>, Error> {
-        Err(Error::new(kinds::UnimplementedError(format!(
+        Err(Error::new(kinds::NotImplementedError(format!(
             "NullBehavior::get_element_segment for index: {}",
             elem_idx
         ))))
@@ -920,21 +919,21 @@ impl FrameBehavior for NullBehavior {
         data_idx: u32,
         _engine: &StacklessEngine,
     ) -> Result<Arc<Data>, Error> {
-        Err(Error::new(kinds::UnimplementedError(format!(
+        Err(Error::new(kinds::NotImplementedError(format!(
             "NullBehavior::get_data_segment for index: {}",
             data_idx
         ))))
     }
 
     fn drop_data_segment(&mut self, data_idx: u32, _engine: &StacklessEngine) -> Result<(), Error> {
-        Err(Error::new(kinds::UnimplementedError(format!(
+        Err(Error::new(kinds::NotImplementedError(format!(
             "NullBehavior::drop_data_segment for index: {}",
             data_idx
         ))))
     }
 
     fn set_data_segment(&mut self, idx: u32, _segment: Arc<Data>) -> Result<(), Error> {
-        Err(Error::new(kinds::UnimplementedError(format!(
+        Err(Error::new(kinds::NotImplementedError(format!(
             "NullBehavior::set_data_segment for index: {}",
             idx
         ))))
@@ -1091,189 +1090,6 @@ impl StackBehavior for NullBehavior {
     }
 }
 
-impl MemoryBehavior for NullBehavior {
-    fn type_(&self) -> &MemoryType {
-        static MT: MemoryType = MemoryType { min: 0, max: None };
-        &MT
-    }
-    fn size(&self) -> u32 {
-        0
-    }
-    fn size_bytes(&self) -> usize {
-        0
-    }
-
-    fn grow(&self, _pages: u32) -> Result<u32, Error> {
-        Err(Error::new(kinds::MemoryGrowError(
-            "Cannot grow null memory".to_string(),
-        )))
-    }
-    fn read_byte(&self, offset: u32) -> Result<u8, Error> {
-        Err(Error::new(kinds::MemoryAccessOutOfBoundsError {
-            address: offset as u64,
-            length: 1,
-        }))
-    }
-    fn write_byte(&self, offset: u32, _value: u8) -> Result<(), Error> {
-        Err(Error::new(kinds::MemoryAccessOutOfBoundsError {
-            address: offset as u64,
-            length: 1,
-        }))
-    }
-    fn read_bytes(&self, offset: u32, len: usize) -> Result<Vec<u8>, Error> {
-        Err(Error::new(kinds::MemoryAccessOutOfBoundsError {
-            address: offset as u64,
-            length: len as u64,
-        }))
-    }
-    fn write_bytes(&self, offset: u32, bytes: &[u8]) -> Result<(), Error> {
-        Err(Error::new(kinds::MemoryAccessOutOfBoundsError {
-            address: offset as u64,
-            length: bytes.len() as u64,
-        }))
-    }
-    fn check_alignment(&self, _addr: u32, _access_size: u32, _align: u32) -> Result<(), Error> {
-        Ok(())
-    }
-    fn read_u16(&self, _addr: u32) -> Result<u16, Error> {
-        Err(Error::new(kinds::UnimplementedError(
-            "NullBehavior::read_u16".to_string(),
-        )))
-    }
-    fn write_u16(&self, _addr: u32, _value: u16) -> Result<(), Error> {
-        Err(Error::new(kinds::UnimplementedError(
-            "NullBehavior::write_u16".to_string(),
-        )))
-    }
-    fn read_i32(&self, _addr: u32) -> Result<i32, Error> {
-        Err(Error::new(kinds::UnimplementedError(
-            "NullBehavior::read_i32".to_string(),
-        )))
-    }
-    fn write_i32(&self, _addr: u32, _value: i32) -> Result<(), Error> {
-        Err(Error::new(kinds::UnimplementedError(
-            "NullBehavior::write_i32".to_string(),
-        )))
-    }
-    fn read_i64(&self, _addr: u32) -> Result<i64, Error> {
-        Err(Error::new(kinds::UnimplementedError(
-            "NullBehavior::read_i64".to_string(),
-        )))
-    }
-    fn write_i64(&self, _addr: u32, _value: i64) -> Result<()> {
-        Err(Error::new(kinds::UnimplementedError(
-            "NullBehavior::write_i64".to_string(),
-        )))
-    }
-    fn read_f32(&self, _addr: u32) -> Result<f32, Error> {
-        Err(Error::new(kinds::UnimplementedError(
-            "NullBehavior::read_f32".to_string(),
-        )))
-    }
-    fn write_f32(&self, _addr: u32, _value: f32) -> Result<(), Error> {
-        Err(Error::new(kinds::UnimplementedError(
-            "NullBehavior::write_f32".to_string(),
-        )))
-    }
-    fn read_f64(&self, _addr: u32) -> Result<f64, Error> {
-        Err(Error::new(kinds::UnimplementedError(
-            "NullBehavior::read_f64".to_string(),
-        )))
-    }
-    fn write_f64(&self, _addr: u32, _value: f64) -> Result<(), Error> {
-        Err(Error::new(kinds::UnimplementedError(
-            "NullBehavior::write_f64".to_string(),
-        )))
-    }
-    fn read_v128(&self, _addr: u32) -> Result<[u8; 16], Error> {
-        Err(Error::new(kinds::UnimplementedError(
-            "NullBehavior::read_v128".to_string(),
-        )))
-    }
-    fn write_v128(&self, _addr: u32, _value: [u8; 16]) -> Result<(), Error> {
-        Err(Error::new(kinds::UnimplementedError(
-            "NullBehavior::write_v128".to_string(),
-        )))
-    }
-    fn read_i8(&self, _addr: u32) -> Result<i8, Error> {
-        Err(Error::new(kinds::UnimplementedError(
-            "NullBehavior::read_i8".to_string(),
-        )))
-    }
-    fn read_u8(&self, _addr: u32) -> Result<u8, Error> {
-        Err(Error::new(kinds::UnimplementedError(
-            "NullBehavior::read_u8".to_string(),
-        )))
-    }
-    fn read_i16(&self, _addr: u32) -> Result<i16, Error> {
-        Err(Error::new(kinds::UnimplementedError(
-            "NullBehavior::read_i16".to_string(),
-        )))
-    }
-    fn read_u32(&self, _addr: u32) -> Result<u32, Error> {
-        Err(Error::new(kinds::UnimplementedError(
-            "NullBehavior::read_u32".to_string(),
-        )))
-    }
-    fn read_u64(&self, _addr: u32) -> Result<u64, Error> {
-        Err(Error::new(kinds::UnimplementedError(
-            "NullBehavior::read_u64".to_string(),
-        )))
-    }
-    fn write_i8(&self, _addr: u32, _value: i8) -> Result<(), Error> {
-        Err(Error::new(kinds::UnimplementedError(
-            "NullBehavior::write_i8".to_string(),
-        )))
-    }
-    fn write_u8(&self, _addr: u32, _value: u8) -> Result<(), Error> {
-        Err(Error::new(kinds::UnimplementedError(
-            "NullBehavior::write_u8".to_string(),
-        )))
-    }
-    fn write_i16(&self, _addr: u32, _value: i16) -> Result<(), Error> {
-        Err(Error::new(kinds::UnimplementedError(
-            "NullBehavior::write_i16".to_string(),
-        )))
-    }
-    fn write_u32(&self, _addr: u32, _value: u32) -> Result<(), Error> {
-        Err(Error::new(kinds::UnimplementedError(
-            "NullBehavior::write_u32".to_string(),
-        )))
-    }
-    fn write_u64(&self, _addr: u32, _value: u64) -> Result<()> {
-        Err(Error::new(kinds::UnimplementedError(
-            "NullBehavior::write_u64".to_string(),
-        )))
-    }
-    fn fill(&self, _addr: usize, _value: u8, _len: usize) -> Result<()> {
-        Err(Error::new(kinds::UnimplementedError(
-            "NullBehavior::fill".to_string(),
-        )))
-    }
-    fn copy_within_or_between(
-        &self,
-        _src_mem: Arc<dyn MemoryBehavior>,
-        _src_addr: usize,
-        _dst_addr: usize,
-        _len: usize,
-    ) -> Result<(), Error> {
-        Err(Error::new(kinds::UnimplementedError(
-            "NullBehavior::copy_within_or_between".to_string(),
-        )))
-    }
-    fn init(&self, _addr: usize, _data: &[u8], _data_offset: usize, _len: usize) -> Result<()> {
-        Err(Error::new(kinds::UnimplementedError(
-            "NullBehavior::init".to_string(),
-        )))
-    }
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-    fn as_default_memory(&self) -> Option<&crate::memory::DefaultMemory> {
-        None
-    }
-}
-
 impl InstructionExecutor for NullBehavior {
     fn execute(
         &self,
@@ -1281,7 +1097,7 @@ impl InstructionExecutor for NullBehavior {
         _frame: &mut dyn FrameBehavior,
         _engine: &mut StacklessEngine,
     ) -> Result<ControlFlow, Error> {
-        Err(Error::new(kinds::UnimplementedError(
+        Err(Error::new(kinds::NotImplementedError(
             "NullBehavior::execute".to_string(),
         )))
     }
@@ -1307,3 +1123,27 @@ impl NullBehavior {
         self.instance_idx
     }
 }
+
+/// Define the EngineBehavior trait for the engine implementation that's used in memory.rs
+pub trait EngineBehavior {
+    /// Get a memory instance by index
+    fn get_memory(&self, memory_idx: usize, instance_idx: usize) -> Result<Arc<Memory>, Error>;
+
+    /// Get a global variable by index
+    fn get_global(&self, global_idx: usize, instance_idx: usize) -> Result<Arc<Global>, Error>;
+
+    /// Get a table by index
+    fn get_table(&self, table_idx: usize, instance_idx: usize) -> Result<Arc<Table>, Error>;
+
+    /// Get a data segment by index
+    fn get_data_segment(&self, data_idx: usize, instance_idx: usize) -> Result<Arc<Data>, Error>;
+
+    /// Get an element segment by index
+    fn get_element_segment(
+        &self,
+        elem_idx: usize,
+        instance_idx: usize,
+    ) -> Result<Arc<Element>, Error>;
+}
+
+// Implementation of EngineBehavior for StacklessEngine will be in stackless.rs

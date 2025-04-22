@@ -96,68 +96,58 @@ impl InstructionExecutor for Instruction {
 
             // Memory Instructions - using imported memory types
             Instruction::I32Load(offset, align) => {
-                Load::<i32>::new(*offset, *align, Value::I32).execute(stack, frame, engine)
+                Load::i32(*offset, *align).execute(stack, frame, engine)
             }
             Instruction::I64Load(offset, align) => {
-                Load::<i64>::new(*offset, *align, Value::I64).execute(stack, frame, engine)
+                Load::i64(*offset, *align).execute(stack, frame, engine)
             }
             Instruction::F32Load(offset, align) => {
-                Load::<f32>::new(*offset, *align, Value::F32).execute(stack, frame, engine)
+                Load::f32(*offset, *align).execute(stack, frame, engine)
             }
             Instruction::F64Load(offset, align) => {
-                Load::<f64>::new(*offset, *align, Value::F64).execute(stack, frame, engine)
+                Load::f64(*offset, *align).execute(stack, frame, engine)
             }
             Instruction::I32Load8S(offset, align) => {
-                LoadSigned::<i8, i32>::new(*offset, *align, Value::I32)
-                    .execute(stack, frame, engine)
+                LoadSigned::i8_i32(*offset, *align).execute(stack, frame, engine)
             }
             Instruction::I32Load8U(offset, align) => {
-                LoadUnsigned::<u8, i32>::new(*offset, *align, Value::I32)
-                    .execute(stack, frame, engine)
+                LoadUnsigned::u8_i32(*offset, *align).execute(stack, frame, engine)
             }
             Instruction::I32Load16S(offset, align) => {
-                LoadSigned::<i16, i32>::new(*offset, *align, Value::I32)
-                    .execute(stack, frame, engine)
+                LoadSigned::i16_i32(*offset, *align).execute(stack, frame, engine)
             }
             Instruction::I32Load16U(offset, align) => {
-                LoadUnsigned::<u16, i32>::new(*offset, *align, Value::I32)
-                    .execute(stack, frame, engine)
+                LoadUnsigned::u16_i32(*offset, *align).execute(stack, frame, engine)
             }
             Instruction::I64Load8S(offset, align) => {
-                LoadSigned::<i8, i64>::new(*offset, *align, Value::I64)
-                    .execute(stack, frame, engine)
+                LoadSigned::i8_i64(*offset, *align).execute(stack, frame, engine)
             }
             Instruction::I64Load8U(offset, align) => {
-                LoadUnsigned::<u8, i64>::new(*offset, *align, Value::I64)
-                    .execute(stack, frame, engine)
+                LoadUnsigned::u8_i64(*offset, *align).execute(stack, frame, engine)
             }
             Instruction::I64Load16S(offset, align) => {
-                LoadSigned::<i16, i64>::new(*offset, *align, Value::I64)
-                    .execute(stack, frame, engine)
+                LoadSigned::i16_i64(*offset, *align).execute(stack, frame, engine)
             }
             Instruction::I64Load16U(offset, align) => {
-                LoadUnsigned::<u16, i64>::new(*offset, *align, Value::I64)
-                    .execute(stack, frame, engine)
+                LoadUnsigned::u16_i64(*offset, *align).execute(stack, frame, engine)
             }
             Instruction::I64Load32S(offset, align) => {
-                LoadSigned::<i32, i64>::new(*offset, *align, Value::I64)
-                    .execute(stack, frame, engine)
+                LoadSigned::i32_i64(*offset, *align).execute(stack, frame, engine)
             }
             Instruction::I64Load32U(offset, align) => {
-                LoadUnsigned::<u32, i64>::new(*offset, *align, Value::I64)
-                    .execute(stack, frame, engine)
+                LoadUnsigned::u32_i64(*offset, *align).execute(stack, frame, engine)
             }
             Instruction::I32Store(offset, align) => {
-                Store::<i32>::new(*offset, *align).execute(stack, frame, engine)
+                Store::i32(*offset, *align).execute(stack, frame, engine)
             }
             Instruction::I64Store(offset, align) => {
-                Store::<i64>::new(*offset, *align).execute(stack, frame, engine)
+                Store::i64(*offset, *align).execute(stack, frame, engine)
             }
             Instruction::F32Store(offset, align) => {
-                Store::<f32>::new(*offset, *align).execute(stack, frame, engine)
+                Store::f32(*offset, *align).execute(stack, frame, engine)
             }
             Instruction::F64Store(offset, align) => {
-                Store::<f64>::new(*offset, *align).execute(stack, frame, engine)
+                Store::f64(*offset, *align).execute(stack, frame, engine)
             }
             Instruction::I32Store8(offset, align) => {
                 StoreTruncated::<i32, i8>::new(*offset, *align).execute(stack, frame, engine)
@@ -898,7 +888,7 @@ impl InstructionExecutor for Instruction {
             }
 
             // Catch-all for unimplemented instructions
-            _ => Err(Error::new(kinds::UnimplementedError(format!(
+            _ => Err(Error::new(kinds::NotImplementedError(format!(
                 "Instruction not implemented: {:?}",
                 self
             )))),

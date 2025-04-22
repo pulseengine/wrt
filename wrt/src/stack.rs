@@ -83,12 +83,12 @@ impl StackBehavior for Vec<Value> {
 
     fn push_label(&mut self, label: BehaviorLabel) -> Result<(), Error> {
         // Stack doesn't track labels directly - unsupported operation
-        Err(Error::new(kinds::UnimplementedError("push_label not supported on raw stack".to_string())))
+        Err(Error::new(kinds::NotImplementedError("push_label not supported on raw stack".to_string())))
     }
 
     fn pop_label(&mut self) -> Result<BehaviorLabel, Error> {
         // Stack doesn't track labels directly - unsupported operation
-        Err(Error::new(kinds::UnimplementedError("pop_label not supported on raw stack".to_string())))
+        Err(Error::new(kinds::NotImplementedError("pop_label not supported on raw stack".to_string())))
     }
 
     fn get_label(&self, _index: usize) -> Option<&BehaviorLabel> {
@@ -112,7 +112,7 @@ impl StackBehavior for Vec<Value> {
 
     fn pop_frame_label(&mut self) -> Result<BehaviorLabel, Error> {
         // Stack doesn't track frame labels directly - unsupported operation
-        Err(Error::new(kinds::UnimplementedError("pop_frame_label not supported on raw stack".to_string())))
+        Err(Error::new(kinds::NotImplementedError("pop_frame_label not supported on raw stack".to_string())))
     }
 
     fn execute_function_call_direct(
@@ -123,6 +123,6 @@ impl StackBehavior for Vec<Value> {
         _args: Vec<Value>,
     ) -> Result<Vec<Value>, Error> {
         // Raw stack can't execute functions
-        Err(Error::new(kinds::UnimplementedError("Function calls not supported on raw stack".to_string())))
+        Err(Error::new(kinds::NotImplementedError("Function calls not supported on raw stack".to_string())))
     }
 }

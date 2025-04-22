@@ -1,316 +1,51 @@
-use crate::{
-    behavior::{InstructionExecutor, StackBehavior},
-    format,
-    types::GlobalType,
-    values::Value,
-    Vec,
-};
-use parking_lot::RwLock;
-use wrt_error::{
-    kinds::{ExecutionError, PoisonedLockError},
-    Error, Result,
-};
+//! Module for WebAssembly global instances
+//!
+//! This module provides re-exports and adapters for wrt-runtime Global
 
-/// Represents a WebAssembly global instance
-#[derive(Debug)]
-pub struct Global {
-    /// Global type
-    pub global_type: GlobalType,
-    /// Global value, protected by RwLock
-    value: RwLock<Value>,
+// Re-export Global and GlobalType from wrt-runtime
+use crate::values::Value;
+use wrt_error::{kinds::ExecutionError, Error, Result};
+pub use wrt_runtime::{Global, GlobalType};
+use wrt_types::types::ValueType;
+
+/// Utility function to create a new global instance
+pub fn new_global(ty: GlobalType, value: Value) -> Result<Global> {
+    // Check that the value matches the global type
+    if !value.matches_type(&ty.value_type) {
+        return Err(Error::new(ExecutionError(format!(
+            "Value type {:?} does not match global type {:?}",
+            value.type_(),
+            ty.value_type
+        ))));
+    }
+
+    // Convert Value to wrt_types::values::Value
+    let runtime_value = value.into();
+
+    // Create a new Global
+    Ok(Global::new(ty, runtime_value))
 }
 
-impl Clone for Global {
-    fn clone(&self) -> Self {
-        let value_lock = self.value.read();
-        Self {
-            global_type: self.global_type.clone(),
-            value: RwLock::new(value_lock.clone()),
-        }
-    }
+/// Create a new global with i32 type
+pub fn new_i32_global(value: i32, mutable: bool) -> Global {
+    let ty = GlobalType::new(ValueType::I32, mutable);
+    Global::new(ty, wrt_types::values::Value::I32(value))
 }
 
-impl Global {
-    /// Creates a new global instance
-    pub fn new(global_type: GlobalType, value: Value) -> Result<Self> {
-        // Check that the value matches the global type
-        if !value.matches_type(&global_type.content_type) {
-            return Err(Error::new(ExecutionError(format!(
-                "Value type {:?} does not match global type {:?}",
-                value.type_(),
-                global_type.content_type
-            ))));
-        }
-
-        Ok(Self {
-            global_type,
-            value: RwLock::new(value),
-        })
-    }
-
-    /// Returns the global type
-    #[must_use]
-    pub const fn type_(&self) -> &GlobalType {
-        &self.global_type
-    }
-
-    /// Gets the global value
-    #[must_use]
-    pub fn get(&self) -> Value {
-        self.value.read().clone()
-    }
-
-    /// Internal helper to get value, used by Module const eval
-    pub(crate) fn get_value(&self) -> Result<Value> {
-        // parking_lot's RwLock can't poison, so we just read directly
-        Ok(self.value.read().clone())
-    }
-
-    /// Sets the global value
-    pub fn set(&self, value: Value) -> Result<()> {
-        // Check mutability
-        if !self.global_type.mutable {
-            return Err(Error::new(ExecutionError(
-                "Cannot set immutable global".into(),
-            )));
-        }
-
-        // Check value type
-        if !value.matches_type(&self.global_type.content_type) {
-            return Err(Error::new(ExecutionError(format!(
-                "Value type {:?} does not match global type {:?}",
-                value.type_(),
-                self.global_type.content_type
-            ))));
-        }
-
-        let mut value_guard = self.value.write();
-        *value_guard = value;
-        Ok(())
-    }
+/// Create a new global with i64 type
+pub fn new_i64_global(value: i64, mutable: bool) -> Global {
+    let ty = GlobalType::new(ValueType::I64, mutable);
+    Global::new(ty, wrt_types::values::Value::I64(value))
 }
 
-/// Represents a collection of global instances
-#[derive(Debug)]
-pub struct Globals {
-    /// Global instances
-    globals: Vec<Global>,
+/// Create a new global with f32 type
+pub fn new_f32_global(value: f32, mutable: bool) -> Global {
+    let ty = GlobalType::new(ValueType::F32, mutable);
+    Global::new(ty, wrt_types::values::Value::F32(value))
 }
 
-impl Default for Globals {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl Globals {
-    /// Creates a new empty globals collection
-    #[must_use]
-    pub const fn new() -> Self {
-        Self {
-            globals: Vec::new(),
-        }
-    }
-
-    /// Adds a new global instance
-    pub fn add(&mut self, global: Global) -> u32 {
-        let idx = self.globals.len() as u32;
-        self.globals.push(global);
-        idx
-    }
-
-    /// Gets a global instance by index
-    pub fn get(&self, idx: u32) -> Result<&Global> {
-        self.globals
-            .get(idx as usize)
-            .ok_or_else(|| Error::new(ExecutionError(format!("Global index {idx} out of bounds"))))
-    }
-
-    /// Gets a mutable reference to a global instance by index
-    pub fn get_mut(&mut self, idx: u32) -> Result<&mut Global> {
-        self.globals
-            .get_mut(idx as usize)
-            .ok_or_else(|| Error::new(ExecutionError(format!("Global index {idx} out of bounds"))))
-    }
-
-    /// Returns the number of global instances
-    #[must_use]
-    pub fn len(&self) -> u32 {
-        self.globals.len() as u32
-    }
-
-    /// Returns whether the globals collection is empty
-    #[must_use]
-    pub fn is_empty(&self) -> bool {
-        self.globals.is_empty()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::error::Result;
-    use crate::types::ValueType;
-
-    // Helper function to create a test global type
-    fn create_test_global_type(value_type: ValueType, mutable: bool) -> GlobalType {
-        GlobalType {
-            content_type: value_type,
-            mutable,
-        }
-    }
-
-    #[test]
-    fn test_global_creation() {
-        let global_type = GlobalType {
-            content_type: ValueType::I32,
-            mutable: true,
-        };
-        let value = Value::I32(42);
-        let global = Global::new(global_type.clone(), value.clone()).unwrap();
-
-        assert_eq!(global.get(), value);
-
-        // Test invalid type combination
-        let wrong_value = Value::I64(42);
-        assert!(Global::new(global_type, wrong_value).is_err());
-    }
-
-    #[test]
-    fn test_global_mutability() -> Result<()> {
-        // Test mutable global
-        let global_type = create_test_global_type(ValueType::I32, true);
-        let global = Global::new(global_type, Value::I32(42))?;
-
-        // Valid set operation
-        assert!(global.set(Value::I32(100)).is_ok());
-        assert_eq!(global.get(), Value::I32(100));
-
-        // Invalid type for set
-        assert!(global.set(Value::I64(100)).is_err());
-
-        // Test immutable global
-        let global_type = create_test_global_type(ValueType::I32, false);
-        let global = Global::new(global_type, Value::I32(42))?;
-
-        // Attempt to modify immutable global
-        let result = global.set(Value::I32(100));
-        assert!(result.is_err());
-
-        // Note: We don't test for specific error messages here since the error
-        // structure has been refactored to use the Error::new pattern
-
-        Ok(())
-    }
-
-    #[test]
-    fn test_globals_collection() -> Result<()> {
-        let mut globals = Globals::new();
-        assert!(globals.is_empty());
-        assert_eq!(globals.len(), 0);
-
-        // Add globals
-        let global1 = Global::new(
-            create_test_global_type(ValueType::I32, true),
-            Value::I32(42),
-        )?;
-        let global2 = Global::new(
-            create_test_global_type(ValueType::I64, false),
-            Value::I64(100),
-        )?;
-
-        let idx1 = globals.add(global1);
-        let idx2 = globals.add(global2);
-
-        assert_eq!(idx1, 0);
-        assert_eq!(idx2, 1);
-        assert_eq!(globals.len(), 2);
-        assert!(!globals.is_empty());
-
-        // Test get operations
-        let global1 = globals.get(idx1)?;
-        assert_eq!(global1.get(), Value::I32(42));
-        assert!(global1.type_().mutable);
-
-        let global2 = globals.get(idx2)?;
-        assert_eq!(global2.get(), Value::I64(100));
-        assert!(!global2.type_().mutable);
-
-        Ok(())
-    }
-
-    #[test]
-    fn test_globals_error_handling() {
-        let globals = Globals::new();
-
-        // Test out of bounds errors using downcast
-        match globals.get(0) {
-            Err(e) if e.downcast_ref::<ExecutionError>().is_some() => { /* Expected error */ }
-            Err(e) => panic!("Expected ExecutionError for out of bounds get, got: {}", e),
-            Ok(_) => panic!("Expected out of bounds error, got Ok"),
-        }
-
-        match globals.get(100) {
-            Err(e) if e.downcast_ref::<ExecutionError>().is_some() => { /* Expected error */ }
-            Err(e) => panic!("Expected ExecutionError for out of bounds get, got: {}", e),
-            Ok(_) => panic!("Expected out of bounds error, got Ok"),
-        }
-    }
-
-    #[test]
-    fn test_global_value_types() -> Result<()> {
-        // Test I32
-        let global = Global::new(
-            create_test_global_type(ValueType::I32, true),
-            Value::I32(42),
-        )?;
-        assert_eq!(global.get(), Value::I32(42));
-
-        // Test I64
-        let global = Global::new(
-            create_test_global_type(ValueType::I64, true),
-            Value::I64(42),
-        )?;
-        assert_eq!(global.get(), Value::I64(42));
-
-        // Test F32
-        let global = Global::new(
-            create_test_global_type(ValueType::F32, true),
-            Value::F32(42.0),
-        )?;
-        assert_eq!(global.get(), Value::F32(42.0));
-
-        // Test F64
-        let global = Global::new(
-            create_test_global_type(ValueType::F64, true),
-            Value::F64(42.0),
-        )?;
-        assert_eq!(global.get(), Value::F64(42.0));
-
-        Ok(())
-    }
-
-    #[test]
-    fn test_global_set_out_of_bounds() {
-        let result = test_global_set_out_of_bounds_result();
-        // Check for specific error kind using downcast
-        assert!(
-            result
-                .err()
-                .map_or(false, |e| e.downcast_ref::<ExecutionError>().is_some()),
-            "Expected ExecutionError for out of bounds global set"
-        );
-    }
-
-    #[test]
-    fn test_global_get_out_of_bounds() {
-        let result = test_global_get_out_of_bounds_result();
-        // Check for specific error kind using downcast
-        assert!(
-            result
-                .err()
-                .map_or(false, |e| e.downcast_ref::<ExecutionError>().is_some()),
-            "Expected ExecutionError for out of bounds global get"
-        );
-    }
+/// Create a new global with f64 type
+pub fn new_f64_global(value: f64, mutable: bool) -> Global {
+    let ty = GlobalType::new(ValueType::F64, mutable);
+    Global::new(ty, wrt_types::values::Value::F64(value))
 }

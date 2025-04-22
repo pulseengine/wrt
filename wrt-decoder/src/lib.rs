@@ -25,6 +25,9 @@ extern crate std;
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 
+// Re-export core types from wrt-types
+pub use wrt_types::{safe_memory::SafeSlice, FuncType, ValueType};
+
 // Create a prelude module with common imports
 #[cfg(not(feature = "std"))]
 pub(crate) mod prelude {
@@ -36,21 +39,21 @@ pub(crate) mod prelude {
 
 #[cfg(feature = "std")]
 pub(crate) mod prelude {
-    pub use std::collections::{HashMap, HashSet};
+    pub use std::collections::HashSet;
     pub use std::format;
     pub use std::string::ToString;
     pub use std::vec::Vec;
 }
 
-// Use prelude items throughout the crate
-
 // Export module components
 pub mod component;
 pub mod component_name_section;
+pub mod component_val_type;
 pub mod component_validation;
 pub mod instructions;
 pub mod module;
 pub mod name_section;
+pub mod producers_section;
 pub mod sections;
 pub mod types;
 pub mod validation;
@@ -61,7 +64,10 @@ pub use component_validation::validate_component;
 pub use instructions::Instruction;
 pub use module::Module;
 pub use name_section::NameSection;
+pub use producers_section::{extract_producers_section, ProducersSection};
 pub use sections::*;
+// Re-export types module
+pub use types::{parse_value_type, BlockType, Limits};
 
 /// Version of the WebAssembly binary format supported by this decoder
 pub const WASM_SUPPORTED_VERSION: u32 = 1;
@@ -80,30 +86,16 @@ pub fn decode(bytes: &[u8]) -> wrt_error::Result<Module> {
 ///
 /// Returns true if the bytes represent a WebAssembly component.
 pub fn is_component(bytes: &[u8]) -> wrt_error::Result<bool> {
-    if bytes.len() < 8 {
-        return Err(wrt_error::Error::new(wrt_error::kinds::ParseError(
-            "Binary too short for WebAssembly header".to_string(),
-        )));
-    }
-
-    if bytes[0..4] != WASM_MAGIC {
-        return Err(wrt_error::Error::new(wrt_error::kinds::ParseError(
-            "Invalid WebAssembly magic bytes".to_string(),
-        )));
-    }
-
-    // Check for component version number
-    Ok(bytes[7] != 0)
+    component::utils::is_component(bytes)
 }
 
 /// Encode a WebAssembly module into binary format
 ///
-/// Currently, this function is a placeholder.
-pub fn encode(module: &Module) -> wrt_error::Result<Vec<u8>> {
+/// Currently, this function is a placeholder and returns an empty byte vector.
+pub fn encode(_module: &Module) -> wrt_error::Result<Vec<u8>> {
     // In a real implementation, this would encode the module to binary
-    Err(wrt_error::Error::new(wrt_error::kinds::ParseError(
-        "Module encoding not yet implemented".to_string(),
-    )))
+    // For now, return an empty vector as a placeholder
+    Ok(Vec::new())
 }
 
 /// Validate a WebAssembly module

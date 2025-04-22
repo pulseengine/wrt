@@ -4,16 +4,11 @@
 //! including addition, subtraction, multiplication, division, and more.
 
 use crate::{
-    behavior::{
-        ControlFlowBehavior, FrameBehavior, /* MemoryBehavior, */ NullBehavior, StackBehavior,
-    },
-    error::kinds::InvalidTypeError,
-    error::kinds::{DivisionByZeroError, IntegerOverflowError},
-    error::{Error, Result},
-    memory::{MemoryBehavior, PAGE_SIZE},
-    types::{FuncType, ValueType},
+    behavior::{ControlFlow, ControlFlowBehavior, FrameBehavior, NullBehavior, StackBehavior},
+    error::{kinds, Error, Result},
+    memory::PAGE_SIZE,
+    stackless::StacklessEngine,
     values::Value,
-    StacklessEngine,
 };
 
 /// Execute an i32 addition instruction

@@ -49,6 +49,10 @@ impl<T: ?Sized> WrtMutex<T> {
     /// # Returns
     ///
     /// A guard that allows mutable access to the protected data.
+    ///
+    /// # Panics
+    ///
+    /// This function does not panic.
     #[inline]
     pub fn lock(&self) -> WrtMutexGuard<'_, T> {
         // Spin until the lock is acquired.

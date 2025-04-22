@@ -15,20 +15,23 @@ pub const COMPONENT_NAME_EXPORT: u8 = 3;
 pub const COMPONENT_NAME_CANONICAL: u8 = 4;
 pub const COMPONENT_NAME_TYPE: u8 = 5;
 
-/// WebAssembly Component Model name section
+/// A component name section structure
+///
+/// This struct represents the name section of a component,
+/// which can be used to store names for various component entities.
 #[derive(Debug, Clone, Default)]
 pub struct ComponentNameSection {
-    /// The component name, if present
+    /// Name of the component itself
     pub component_name: Option<String>,
-    /// Sort-specific name maps
-    pub sort_names: Vec<(Sort, Vec<(u32, String)>)>,
-    /// Import names
+    /// Map of names for various sorted items (functions, instances, etc.)
+    pub sort_names: Vec<(wrt_format::component::Sort, Vec<(u32, String)>)>,
+    /// Map of import names
     pub import_names: Vec<(u32, String)>,
-    /// Export names
+    /// Map of export names
     pub export_names: Vec<(u32, String)>,
-    /// Canonical function names
+    /// Map of canonical names
     pub canonical_names: Vec<(u32, String)>,
-    /// Type names
+    /// Map of type names
     pub type_names: Vec<(u32, String)>,
 }
 
@@ -71,27 +74,27 @@ pub fn parse_component_name_section(data: &[u8]) -> Result<ComponentNameSection>
             COMPONENT_NAME_SORT => {
                 // Sort-specific names
                 let (sort, bytes_read) = parse_sort(subsection_data, 0)?;
-                let (names, _) = parse_name_map(&subsection_data[bytes_read..])?;
+                let (names, _) = parse_name_map(subsection_data, bytes_read)?;
                 name_section.sort_names.push((sort, names));
             }
             COMPONENT_NAME_IMPORT => {
                 // Import names
-                let (names, _) = parse_name_map(subsection_data)?;
+                let (names, _) = parse_name_map(subsection_data, 0)?;
                 name_section.import_names = names;
             }
             COMPONENT_NAME_EXPORT => {
                 // Export names
-                let (names, _) = parse_name_map(subsection_data)?;
+                let (names, _) = parse_name_map(subsection_data, 0)?;
                 name_section.export_names = names;
             }
             COMPONENT_NAME_CANONICAL => {
                 // Canonical function names
-                let (names, _) = parse_name_map(subsection_data)?;
+                let (names, _) = parse_name_map(subsection_data, 0)?;
                 name_section.canonical_names = names;
             }
             COMPONENT_NAME_TYPE => {
                 // Type names
-                let (names, _) = parse_name_map(subsection_data)?;
+                let (names, _) = parse_name_map(subsection_data, 0)?;
                 name_section.type_names = names;
             }
             _ => {
@@ -176,22 +179,22 @@ fn parse_sort(bytes: &[u8], pos: usize) -> Result<(Sort, usize)> {
 /// Parse a name map from a byte array
 ///
 /// A name map is a vector of (index, name) pairs.
-fn parse_name_map(bytes: &[u8]) -> Result<(Vec<(u32, String)>, usize)> {
-    let mut offset = 0;
+fn parse_name_map(data: &[u8], pos: usize) -> Result<(Vec<(u32, String)>, usize)> {
+    let mut offset = pos;
 
     // Read count
-    let (count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
+    let (count, bytes_read) = binary::read_leb128_u32(data, offset)?;
     offset += bytes_read;
 
     let mut result = Vec::with_capacity(count as usize);
 
     for _ in 0..count {
         // Read index
-        let (index, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
+        let (index, bytes_read) = binary::read_leb128_u32(data, offset)?;
         offset += bytes_read;
 
         // Read name
-        let (name, bytes_read) = binary::read_string(bytes, offset)?;
+        let (name, bytes_read) = binary::read_string(data, offset)?;
         offset += bytes_read;
 
         result.push((index, name));

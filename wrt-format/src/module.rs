@@ -3,22 +3,15 @@
 //! This module provides types and utilities for working with WebAssembly modules.
 
 use crate::section::CustomSection;
-use crate::types::{FuncType, Limits, ValueType};
+use crate::types::Limits;
 use crate::{String, Vec};
 use wrt_error::kinds;
 use wrt_error::{Error, Result};
+// Import types from wrt-types
+use wrt_types::{types::GlobalType, ValueType};
 
 #[cfg(not(feature = "std"))]
 use alloc::string::ToString;
-
-/// WebAssembly global type definition
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct GlobalType {
-    /// The value type of the global
-    pub value_type: ValueType,
-    /// Whether the global is mutable
-    pub mutable: bool,
-}
 
 /// WebAssembly function definition
 #[derive(Debug, Clone)]
@@ -152,7 +145,7 @@ pub enum ImportDesc {
 #[derive(Debug, Clone)]
 pub struct Module {
     /// Function types
-    pub types: Vec<FuncType>,
+    pub types: Vec<ValueType>,
     /// Function definitions
     pub functions: Vec<Function>,
     /// Table definitions

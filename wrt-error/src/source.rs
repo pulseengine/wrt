@@ -21,9 +21,33 @@ pub trait ErrorSource: Debug + Display {
     fn source(&self) -> Option<&(dyn ErrorSource + 'static)> {
         None
     }
+
+    /// Returns the error code for this error type
+    ///
+    /// By default, returns 0 (unspecified error)
+    fn code(&self) -> u16 {
+        0 // Default error code (unspecified)
+    }
+
+    /// Returns a string message for this error
+    ///
+    /// By default, uses Display implementation
+    #[cfg(feature = "alloc")]
+    fn message(&self) -> String {
+        format!("{}", self)
+    }
 }
 
 // --- Basic ErrorSource impl for common types ---
+
+// This implementation is problematic and should be removed
+// Instead, we need to implement std::error::Error for specific types
+// #[cfg(feature = "std")]
+// impl<T: ErrorSource + 'static> std::error::Error for T {
+//     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+//         ErrorSource::source(self).map(|src| src as &(dyn std::error::Error + 'static))
+//     }
+// }
 
 // Implement for basic String errors (requires alloc)
 #[cfg(feature = "alloc")]

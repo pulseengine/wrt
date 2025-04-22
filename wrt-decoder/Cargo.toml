@@ -11,6 +11,8 @@ repository = "https://github.com/avrabe/wrt"
 wrt-error = { path = "../wrt-error", version = "0.1.0" }
 # Format handling
 wrt-format = { path = "../wrt-format", version = "0.1.0" }
+# Shared type definitions
+wrt-types = { path = "../wrt-types", version = "0.1.0" }
 # Core dependencies
 log = { version = "0.4", optional = true }
 # WAT parsing (for testing)
@@ -24,11 +26,23 @@ hex = "0.4"
 wat = "1.0.53"
 
 [features]
-default = ["minimal", "std"]
-minimal = ["dep:log"]
-std = ["minimal"]
-no_std = []
+default = ["minimal", "std", "component-model-core"]
+minimal = ["dep:log", "wrt-types/std"]
+std = ["minimal", "wrt-types/std"]
+no_std = ["wrt-types/no_std"]
+optimize = ["wrt-types/optimize"]
+safety = ["wrt-types/safety"]
 wat = ["dep:wat", "std"]
+
+# Component Model features
+component-model-core = ["wrt-format/component-model-core"]
+component-model-values = ["wrt-format/component-model-values"]
+component-model-resources = ["wrt-format/component-model-resources"]
+component-model-all = [
+    "component-model-core",
+    "component-model-values",
+    "component-model-resources"
+]
 
 [package.metadata.docs.rs]
 all-features = true

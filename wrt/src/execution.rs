@@ -13,6 +13,8 @@ use crate::{
     values::Value,
     ExportKind,
 };
+use wrt_runtime::{GlobalType, Memory, Table};
+use wrt_types::values::Value as RuntimeValue;
 
 #[cfg(feature = "std")]
 use std::{option::Option, string::ToString, sync::Arc};
@@ -60,14 +62,14 @@ pub enum ExecutionState {
 
 #[derive(Debug)]
 pub struct ExecutionContext {
-    pub memory: Vec<u8>,
-    pub table: Vec<Function>,
-    pub globals: Vec<Value>,
+    pub memories: Vec<Arc<Memory>>,
+    pub tables: Vec<Arc<Table>>,
+    pub globals: Vec<RuntimeValue>,
     pub functions: Vec<Function>,
 }
 
-/// Execution statistics for monitoring and reporting
-#[derive(Debug, Default, Clone)]
+/// Execution statistics for WebAssembly runtime
+#[derive(Debug, Clone, Default)]
 pub struct ExecutionStats {
     /// Number of instructions executed
     pub instructions_executed: u64,
@@ -92,6 +94,187 @@ pub struct ExecutionStats {
     /// Time spent in function calls (µs)
     #[cfg(feature = "std")]
     pub function_call_time_us: u64,
+    /// Memory read operations
+    pub memory_reads: u64,
+    /// Memory write operations
+    pub memory_writes: u64,
+    /// Memory grow operations
+    pub memory_grows: u64,
+    /// Collection push operations
+    pub collection_pushes: u64,
+    /// Collection pop operations
+    pub collection_pops: u64,
+    /// Collection lookup operations
+    pub collection_lookups: u64,
+    /// Collection insert operations
+    pub collection_inserts: u64,
+    /// Collection remove operations
+    pub collection_removes: u64,
+    /// Collection validate operations
+    pub collection_validates: u64,
+    /// Checksum calculations
+    pub checksum_calculations: u64,
+    /// Control flow operations
+    pub control_flows: u64,
+    /// Arithmetic operations
+    pub arithmetic_ops: u64,
+    /// Other operations
+    pub other_ops: u64,
+}
+
+impl ExecutionStats {
+    /// Create new execution stats
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Update stats from operation summary
+    pub fn update_from_operations(&mut self, ops: wrt_types::OperationSummary) {
+        self.memory_reads = ops.memory_reads;
+        self.memory_writes = ops.memory_writes;
+        self.memory_grows = ops.memory_grows;
+        self.collection_pushes = ops.collection_pushes;
+        self.collection_pops = ops.collection_pops;
+        self.collection_lookups = ops.collection_lookups;
+        self.collection_inserts = ops.collection_inserts;
+        self.collection_removes = ops.collection_removes;
+        self.collection_validates = ops.collection_validates;
+        self.checksum_calculations = ops.checksum_calculations;
+        self.function_calls += ops.function_calls;
+        self.control_flows = ops.control_flows;
+        self.arithmetic_ops = ops.arithmetic_ops;
+        self.other_ops = ops.other_ops;
+
+        // Update aggregate stats
+        self.memory_operations = ops.memory_reads + ops.memory_writes + ops.memory_grows;
+        self.fuel_consumed += ops.fuel_consumed;
+    }
+
+    /// Reset all operation statistics
+    pub fn reset_operations(&mut self) {
+        self.memory_reads = 0;
+        self.memory_writes = 0;
+        self.memory_grows = 0;
+        self.collection_pushes = 0;
+        self.collection_pops = 0;
+        self.collection_lookups = 0;
+        self.collection_inserts = 0;
+        self.collection_removes = 0;
+        self.collection_validates = 0;
+        self.checksum_calculations = 0;
+        self.control_flows = 0;
+        self.arithmetic_ops = 0;
+        self.other_ops = 0;
+    }
+
+    /// Format execution statistics as a human-readable string
+    #[cfg(feature = "std")]
+    pub fn formatted(&self) -> String {
+        use std::fmt::Write;
+        let mut output = String::new();
+
+        writeln!(&mut output, "Execution Statistics:").unwrap();
+        writeln!(&mut output, "-----------------------").unwrap();
+        writeln!(
+            &mut output,
+            "Instructions executed: {}",
+            self.instructions_executed
+        )
+        .unwrap();
+        writeln!(&mut output, "Function calls: {}", self.function_calls).unwrap();
+        writeln!(&mut output, "Fuel consumed: {}", self.fuel_consumed).unwrap();
+        if self.fuel_exhausted_count > 0 {
+            writeln!(
+                &mut output,
+                "Fuel exhausted events: {}",
+                self.fuel_exhausted_count
+            )
+            .unwrap();
+        }
+
+        writeln!(&mut output, "\nMemory Operations:").unwrap();
+        writeln!(&mut output, "  - Read operations: {}", self.memory_reads).unwrap();
+        writeln!(&mut output, "  - Write operations: {}", self.memory_writes).unwrap();
+        writeln!(&mut output, "  - Grow operations: {}", self.memory_grows).unwrap();
+        writeln!(
+            &mut output,
+            "  - Current memory: {} bytes",
+            self.current_memory_bytes
+        )
+        .unwrap();
+        writeln!(
+            &mut output,
+            "  - Peak memory: {} bytes",
+            self.peak_memory_bytes
+        )
+        .unwrap();
+
+        writeln!(&mut output, "\nCollection Operations:").unwrap();
+        writeln!(
+            &mut output,
+            "  - Push operations: {}",
+            self.collection_pushes
+        )
+        .unwrap();
+        writeln!(&mut output, "  - Pop operations: {}", self.collection_pops).unwrap();
+        writeln!(
+            &mut output,
+            "  - Lookup operations: {}",
+            self.collection_lookups
+        )
+        .unwrap();
+        writeln!(
+            &mut output,
+            "  - Insert operations: {}",
+            self.collection_inserts
+        )
+        .unwrap();
+        writeln!(
+            &mut output,
+            "  - Remove operations: {}",
+            self.collection_removes
+        )
+        .unwrap();
+        writeln!(
+            &mut output,
+            "  - Validate operations: {}",
+            self.collection_validates
+        )
+        .unwrap();
+
+        writeln!(&mut output, "\nVerification:").unwrap();
+        writeln!(
+            &mut output,
+            "  - Checksum calculations: {}",
+            self.checksum_calculations
+        )
+        .unwrap();
+
+        #[cfg(feature = "std")]
+        {
+            writeln!(&mut output, "\nTiming:").unwrap();
+            writeln!(
+                &mut output,
+                "  - Arithmetic operations: {}µs",
+                self.arithmetic_time_us
+            )
+            .unwrap();
+            writeln!(
+                &mut output,
+                "  - Memory operations: {}µs",
+                self.memory_ops_time_us
+            )
+            .unwrap();
+            writeln!(
+                &mut output,
+                "  - Function calls: {}µs",
+                self.function_call_time_us
+            )
+            .unwrap();
+        }
+
+        output
+    }
 }
 
 /// WebAssembly execution engine
@@ -118,25 +301,94 @@ impl Engine {
         }
     }
 
+    /// Create a new engine from a module result
     pub fn new_from_result(module_result: Result<Module>) -> Result<Self> {
         module_result.map(|module| Self::new(module))
+    }
+
+    /// Instantiate a module, creating a new instance context
+    pub fn instantiate(&mut self) -> Result<usize> {
+        let context = ExecutionContext {
+            memories: self.module.memories.clone(),
+            tables: self.module.tables.clone(),
+            globals: self
+                .module
+                .globals
+                .iter()
+                .map(|g| g.value.clone().into())
+                .collect(),
+            functions: self.module.functions.clone(),
+        };
+
+        self.instances.push(context);
+        Ok(self.instances.len() - 1)
+    }
+
+    /// Get a memory instance from the specified instance
+    pub fn get_memory(&self, instance_idx: usize, memory_idx: usize) -> Result<Arc<Memory>> {
+        let instance = self
+            .instances
+            .get(instance_idx)
+            .ok_or_else(|| Error::new(kinds::InvalidInstanceIndexError(instance_idx as u32)))?;
+
+        instance
+            .memories
+            .get(memory_idx)
+            .cloned()
+            .ok_or_else(|| Error::new(kinds::InvalidMemoryIndexError(memory_idx as u32)))
+    }
+
+    /// Get a table instance from the specified instance
+    pub fn get_table(&self, instance_idx: usize, table_idx: usize) -> Result<Arc<Table>> {
+        let instance = self
+            .instances
+            .get(instance_idx)
+            .ok_or_else(|| Error::new(kinds::InvalidInstanceIndexError(instance_idx as u32)))?;
+
+        instance
+            .tables
+            .get(table_idx)
+            .cloned()
+            .ok_or_else(|| Error::new(kinds::InvalidTableIndexError(table_idx as u32)))
     }
 
     /// Execute a function in the specified instance
     pub fn execute(
         &mut self,
-        _instance_idx: usize,
-        _func_idx: usize,
-        _args: Vec<Value>,
+        instance_idx: usize,
+        func_idx: usize,
+        args: Vec<Value>,
     ) -> Result<Vec<Value>> {
-        // This is a placeholder implementation
-        // In a real implementation, this would execute the function at the given index
-        // with the given arguments and return the result
+        // Check if the instance exists
+        if instance_idx >= self.instances.len() {
+            return Err(Error::new(kinds::InvalidInstanceIndexError(
+                instance_idx as u32,
+            )));
+        }
+
+        // Check if the function exists
+        let instance = &self.instances[instance_idx];
+        if func_idx >= instance.functions.len() {
+            return Err(Error::new(kinds::InvalidFunctionIndexError(
+                func_idx as u32,
+            )));
+        }
+
+        // This is where we would execute the function
+        // For now just return an empty vector
         Ok(Vec::new())
     }
 }
 
 pub fn f32_nearest(a: &Value) -> f32 {
+    /// Performs the nearest rounding operation on an f32 value.
+    ///
+    /// This implements the WebAssembly nearest rounding mode for f32 values,
+    /// rounding to the nearest integer, with ties rounded to the nearest even integer.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if the provided value is not an F32 value.
     match a {
         Value::F32(a) => {
             if a.is_nan() || a.is_infinite() || *a == 0.0 {
@@ -163,6 +415,14 @@ pub fn f32_nearest(a: &Value) -> f32 {
 }
 
 pub fn f64_nearest(a: &Value) -> f64 {
+    /// Performs the nearest rounding operation on an f64 value.
+    ///
+    /// This implements the WebAssembly nearest rounding mode for f64 values,
+    /// rounding to the nearest integer, with ties rounded to the nearest even integer.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if the provided value is not an F64 value.
     match a {
         Value::F64(a) => {
             if a.is_nan() || a.is_infinite() || *a == 0.0 {

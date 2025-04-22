@@ -1,5 +1,3 @@
-# Enable additional lints
+# Fixed clippy config
 warn-on-all-wildcard-imports = true
-
-# Documentation style
 doc-valid-idents = ["WebAssembly", "WASI"]

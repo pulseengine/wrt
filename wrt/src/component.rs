@@ -1,17 +1,15 @@
 use crate::error::{Error, Result};
-use crate::memory::DefaultMemory;
-use crate::types::{ExternType, FuncType, GlobalType, MemoryType, TableType};
+use crate::memory::Memory;
 use crate::values::Value;
-use crate::{format, String, Vec};
 use crate::{Global, Table};
-#[cfg(not(feature = "std"))]
-use alloc::string::ToString;
-#[cfg(not(feature = "std"))]
-use alloc::vec;
 use std::collections::HashMap;
 use std::sync::Arc;
-#[cfg(feature = "std")]
-use std::vec;
+use std::sync::RwLock;
+use wrt_runtime::Memory;
+use wrt_types::{
+    ComponentType, ExternType, FuncType, GlobalType, InstanceType, MemoryType, Namespace,
+    TableType, ValueType,
+};
 
 /// Represents a component instance
 #[derive(Debug)]
@@ -23,19 +21,7 @@ pub struct Component {
     /// Component imports
     imports: Vec<Import>,
     /// Component instances
-    #[allow(dead_code)]
     instances: Vec<InstanceValue>,
-}
-
-/// Represents a component type
-#[derive(Debug)]
-pub struct ComponentType {
-    /// Component imports
-    pub imports: Vec<(String, String, ExternType)>,
-    /// Component exports
-    pub exports: Vec<(String, ExternType)>,
-    /// Component instances
-    pub instances: Vec<crate::types::InstanceType>,
 }
 
 /// Represents a component export
@@ -99,7 +85,97 @@ pub struct MemoryValue {
     /// Memory type
     pub ty: MemoryType,
     /// Memory instance
-    pub memory: DefaultMemory,
+    pub memory: Arc<RwLock<Memory>>,
+}
+
+impl MemoryValue {
+    /// Creates a new memory value
+    ///
+    /// # Arguments
+    ///
+    /// * `ty` - The memory type
+    ///
+    /// # Returns
+    ///
+    /// A new memory value
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the memory cannot be created
+    pub fn new(ty: MemoryType) -> Result<Self> {
+        let memory = Memory::new(ty.clone())?;
+        Ok(Self {
+            ty,
+            memory: Arc::new(RwLock::new(memory)),
+        })
+    }
+
+    /// Reads from memory
+    ///
+    /// # Arguments
+    ///
+    /// * `offset` - The offset to read from
+    /// * `size` - The number of bytes to read
+    ///
+    /// # Returns
+    ///
+    /// The bytes read from memory
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the read fails
+    pub fn read(&self, offset: u32, size: u32) -> Result<Vec<u8>> {
+        let memory = self
+            .memory
+            .read()
+            .expect("Failed to acquire memory read lock");
+        let mut buffer = vec![0; size as usize];
+        memory.read(offset, &mut buffer)?;
+        Ok(buffer)
+    }
+
+    /// Writes to memory
+    ///
+    /// # Arguments
+    ///
+    /// * `offset` - The offset to write to
+    /// * `bytes` - The bytes to write
+    ///
+    /// # Returns
+    ///
+    /// Ok(()) if the write succeeds
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the write fails
+    pub fn write(&self, offset: u32, bytes: &[u8]) -> Result<()> {
+        let mut memory = self
+            .memory
+            .write()
+            .expect("Failed to acquire memory write lock");
+        memory.write(offset, bytes)
+    }
+
+    /// Grows the memory by the given number of pages
+    ///
+    /// # Arguments
+    ///
+    /// * `pages` - The number of pages to grow by
+    ///
+    /// # Returns
+    ///
+    /// The previous size in pages
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the memory cannot be grown
+    pub fn grow(&self, pages: u32) -> Result<u32> {
+        let mut memory = self
+            .memory
+            .write()
+            .expect("Failed to acquire memory write lock");
+        memory.grow(pages)
+    }
 }
 
 /// Represents a global value
@@ -115,65 +191,9 @@ pub struct GlobalValue {
 #[derive(Debug)]
 pub struct InstanceValue {
     /// Instance type
-    pub ty: crate::types::InstanceType,
+    pub ty: InstanceType,
     /// Instance exports
     pub exports: Vec<Export>,
-}
-
-/// Represents a namespace for component imports and exports
-#[derive(Debug, Clone)]
-pub struct Namespace {
-    /// Namespace elements (e.g., "wasi", "http", "client")
-    pub elements: Vec<String>,
-}
-
-impl Namespace {
-    /// Creates a namespace from a string
-    #[must_use]
-    pub fn from_string(s: &str) -> Self {
-        let elements = s
-            .split('.')
-            .filter(|part| !part.is_empty())
-            .map(std::string::ToString::to_string)
-            .collect();
-        Self { elements }
-    }
-
-    /// Checks if this namespace matches another namespace
-    #[must_use]
-    pub fn matches(&self, other: &Self) -> bool {
-        if self.elements.len() != other.elements.len() {
-            return false;
-        }
-
-        self.elements
-            .iter()
-            .zip(other.elements.iter())
-            .all(|(a, b)| a == b)
-    }
-
-    /// Returns a string representation of this namespace
-    #[must_use]
-    pub fn to_string(&self) -> String {
-        self.elements.join(".")
-    }
-
-    /// Checks if this namespace is empty
-    #[must_use]
-    pub fn is_empty(&self) -> bool {
-        self.elements.is_empty()
-    }
-}
-
-/// Represents a component import with namespace
-#[derive(Debug, Clone)]
-pub struct ImportDefinition {
-    /// Import name
-    pub name: String,
-    /// Import namespace
-    pub namespace: Namespace,
-    /// Import type
-    pub ty: ExternType,
 }
 
 impl Component {
@@ -210,7 +230,7 @@ impl Component {
                 ))));
             }
 
-            if !types_are_compatible(import_type, &import.ty) {
+            if !wrt_types::component::types_are_compatible(import_type, &import.ty) {
                 return Err(Error::new(crate::error::kinds::ValidationError(format!(
                     "Import {import_name} has incompatible type"
                 ))));
@@ -259,7 +279,7 @@ impl Component {
                     // Create a memory export with default initialization
                     ExternValue::Memory(MemoryValue {
                         ty: memory_type.clone(),
-                        memory: DefaultMemory::new(memory_type.clone()),
+                        memory: Arc::new(RwLock::new(Memory::new(memory_type.clone())?)),
                     })
                 }
                 ExternType::Global(global_type) => {
@@ -268,36 +288,15 @@ impl Component {
                         ty: global_type.clone(),
                         global: Global::new(
                             global_type.clone(),
-                            Value::default_for_type(&global_type.content_type),
+                            Value::convert_from_wrt_types(&wrt_types::Value::default_for_type(
+                                &global_type.value_type,
+                            )),
                         )?,
                     })
                 }
-                ExternType::Resource(_resource_type) => {
-                    // Resource exports are handled through the resource table
-                    // For now, we'll create a trap since proper resource management
-                    // requires more infrastructure
-                    ExternValue::Trap(format!("Resource {name} not fully implemented"))
-                }
-                ExternType::Instance(instance_type) => {
-                    // For instance exports, create a new instance with initialized exports
-                    let instance_exports = self.create_instance_exports(instance_type, name)?;
-
-                    // Create and register the instance
-                    let instance = InstanceValue {
-                        ty: instance_type.clone(),
-                        exports: instance_exports,
-                    };
-
-                    // Add this instance to our list for later linking
-                    self.instances.push(instance);
-
-                    // Return a placeholder reference for now - will be updated during linking
-                    ExternValue::Trap(format!("Instance {name} pending link"))
-                }
-                ExternType::Component(_component_type) => {
-                    // Component exports are not instantiated here - they should be instantiated
-                    // separately and then linked. This is a placeholder.
-                    ExternValue::Trap(format!("Component {name} requires separate instantiation"))
+                _ => {
+                    // More complex types are handled differently
+                    ExternValue::Trap(format!("Export {name} not fully implemented"))
                 }
             };
 
@@ -310,52 +309,6 @@ impl Component {
 
         self.exports = exports;
         Ok(())
-    }
-
-    /// Create exports for an instance
-    fn create_instance_exports(
-        &self,
-        instance_type: &crate::types::InstanceType,
-        instance_name: &str,
-    ) -> Result<Vec<Export>> {
-        let mut exports = Vec::new();
-
-        for (export_name, export_type) in &instance_type.exports {
-            // Create placeholder exports that will be linked later
-            let value = match export_type {
-                ExternType::Function(func_type) => ExternValue::Function(FunctionValue {
-                    ty: func_type.clone(),
-                    export_name: format!("{instance_name}.{export_name}"),
-                }),
-                ExternType::Table(table_type) => ExternValue::Table(TableValue {
-                    ty: table_type.clone(),
-                    table: Table::new(table_type.clone()),
-                }),
-                ExternType::Memory(memory_type) => ExternValue::Memory(MemoryValue {
-                    ty: memory_type.clone(),
-                    memory: DefaultMemory::new(memory_type.clone()),
-                }),
-                ExternType::Global(global_type) => ExternValue::Global(GlobalValue {
-                    ty: global_type.clone(),
-                    global: Global::new(
-                        global_type.clone(),
-                        Value::default_for_type(&global_type.content_type),
-                    )?,
-                }),
-                _ => {
-                    // More complex types will be handled during linking
-                    ExternValue::Trap(format!("Export {instance_name}.{export_name} pending link"))
-                }
-            };
-
-            exports.push(Export {
-                name: export_name.clone(),
-                ty: export_type.clone(),
-                value,
-            });
-        }
-
-        Ok(exports)
     }
 
     /// Link instances together
@@ -378,7 +331,7 @@ impl Component {
         for export in &mut self.exports {
             // If this export is implemented by an import, link them
             if let Some(import) = self.imports.iter().find(|i| i.name == export.name) {
-                if types_are_compatible(&export.ty, &import.ty) {
+                if wrt_types::component::types_are_compatible(&export.ty, &import.ty) {
                     // Only link if the import is not already linked to another export
                     export.value = import.value.clone();
                     debug_println!("Linked export {} to import", export.name);
@@ -398,7 +351,7 @@ impl Component {
                 // Try to find a matching import or export in the component
                 if let Some(import) = self.imports.iter().find(|i| i.name == export.name) {
                     // We found a matching import, link it
-                    if types_are_compatible(&export.ty, &import.ty) {
+                    if wrt_types::component::types_are_compatible(&export.ty, &import.ty) {
                         export.value = import.value.clone();
                         debug_println!(
                             "Linked instance export {} to component import",
@@ -409,7 +362,7 @@ impl Component {
                     self.exports.iter().find(|e| e.name == export.name)
                 {
                     // We found a matching export, link it
-                    if types_are_compatible(&export.ty, &comp_export.ty) {
+                    if wrt_types::component::types_are_compatible(&export.ty, &comp_export.ty) {
                         export.value = comp_export.value.clone();
                         debug_println!(
                             "Linked instance export {} to component export",
@@ -432,7 +385,7 @@ impl Component {
                 if let Some(_instance) = self
                     .instances
                     .iter()
-                    .find(|i| instance_types_match(&i.ty, instance_type))
+                    .find(|i| wrt_types::component::instance_types_match(instance_type, i.ty))
                 {
                     // Replace the placeholder with a proper instance reference
                     // This is still a placeholder since we don't have a proper instance value type
@@ -448,27 +401,70 @@ impl Component {
         Ok(())
     }
 
-    /// Reads from exported memory
+    /// Reads from a named memory
     ///
-    /// This function takes the name of the exported memory, the offset to read from,
-    /// and the number of bytes to read. It returns the bytes read.
+    /// # Arguments
+    ///
+    /// * `name` - The name of the memory export
+    /// * `offset` - The offset to read from
+    /// * `size` - The number of bytes to read
+    ///
+    /// # Returns
+    ///
+    /// The bytes read from memory
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the read fails or the memory doesn't exist
     pub fn read_memory(&self, name: &str, offset: u32, size: u32) -> Result<Vec<u8>> {
-        // Find the export
-        let export = self.get_export(name)?;
+        // Find the memory export
+        let memory_export = self.get_export(name)?;
 
-        // Check if it's a memory
-        let memory_value = match &export.value {
-            ExternValue::Memory(mem) => mem,
+        // Extract memory value
+        let memory_value = match &memory_export.value {
+            ExternValue::Memory(memory) => memory,
             _ => {
-                return Err(Error::new(crate::error::kinds::ExecutionError(format!(
+                return Err(Error::new(crate::error::kinds::ValidationError(format!(
                     "Export {name} is not a memory"
-                ))))
+                ))));
             }
         };
 
-        // Read from memory
-        let bytes = memory_value.memory.read_bytes(offset, size as usize)?;
-        Ok(bytes.to_vec())
+        // Perform the read
+        memory_value.read(offset, size)
+    }
+
+    /// Writes to a named memory
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - The name of the memory export
+    /// * `offset` - The offset to write to
+    /// * `bytes` - The bytes to write
+    ///
+    /// # Returns
+    ///
+    /// Ok(()) if the write succeeds
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the write fails or the memory doesn't exist
+    pub fn write_memory(&mut self, name: &str, offset: u32, bytes: &[u8]) -> Result<()> {
+        // Find the memory export
+        let memory_export = self.get_export(name)?;
+
+        // Extract memory value
+        let memory_value = match &memory_export.value {
+            ExternValue::Memory(memory) => memory,
+            _ => {
+                return Err(Error::new(crate::error::kinds::ValidationError(format!(
+                    "Export {name} is not a memory"
+                ))));
+            }
+        };
+
+        // Perform the write
+        memory_value.write(offset, bytes)
     }
 
     /// Executes an exported function
@@ -510,28 +506,6 @@ impl Component {
 
         // Call the function
         self.handle_function_call(name, &args)
-    }
-
-    /// Writes to exported memory
-    ///
-    /// This function takes the name of the exported memory, the offset to write to,
-    /// and the bytes to write. It returns the number of bytes written.
-    pub fn write_memory(&mut self, name: &str, offset: u32, bytes: &[u8]) -> Result<()> {
-        // Find the export
-        let export = self.get_export_mut(name)?;
-
-        // Check if it's a memory
-        let memory_value = match &mut export.value {
-            ExternValue::Memory(mem) => mem,
-            _ => {
-                return Err(Error::new(crate::error::kinds::ExecutionError(format!(
-                    "Export {name} is not a memory"
-                ))))
-            }
-        };
-
-        // Write to memory
-        memory_value.memory.write_bytes(offset, bytes)
     }
 
     /// Gets an export by name
@@ -656,7 +630,7 @@ impl Component {
         match &value {
             ExternValue::Function(func) => {
                 if let ExternType::Function(export_func_type) = &ty {
-                    if !func_types_compatible(&func.ty, export_func_type) {
+                    if !wrt_types::component::func_types_compatible(&func.ty, export_func_type) {
                         return Err(Error::new(crate::error::kinds::ValidationError(format!(
                             "Function type mismatch for export {name}"
                         ))));
@@ -670,8 +644,8 @@ impl Component {
             ExternValue::Table(table) => {
                 if let ExternType::Table(export_table_type) = &ty {
                     if table.ty.element_type != export_table_type.element_type
-                        || table.ty.min != export_table_type.min
-                        || table.ty.max != export_table_type.max
+                        || table.ty.limits.min != export_table_type.limits.min
+                        || table.ty.limits.max != export_table_type.limits.max
                     {
                         return Err(Error::new(crate::error::kinds::ValidationError(format!(
                             "Table type mismatch for export {name}"
@@ -685,8 +659,8 @@ impl Component {
             }
             ExternValue::Memory(memory) => {
                 if let ExternType::Memory(export_memory_type) = &ty {
-                    if memory.ty.min != export_memory_type.min
-                        || memory.ty.max != export_memory_type.max
+                    if memory.ty.limits.min != export_memory_type.limits.min
+                        || memory.ty.limits.max != export_memory_type.limits.max
                     {
                         return Err(Error::new(crate::error::kinds::ValidationError(format!(
                             "Memory type mismatch for export {name}"
@@ -700,7 +674,7 @@ impl Component {
             }
             ExternValue::Global(global) => {
                 if let ExternType::Global(export_global_type) = &ty {
-                    if global.ty.content_type != export_global_type.content_type
+                    if global.ty.value_type != export_global_type.value_type
                         || global.ty.mutable != export_global_type.mutable
                     {
                         return Err(Error::new(crate::error::kinds::ValidationError(format!(
@@ -738,7 +712,7 @@ impl Component {
         // Check that all declared exports are provided
         for (name, ty) in &self.component_type.exports {
             if let Some(export) = self.exports.iter().find(|e| e.name == *name) {
-                if !types_are_compatible(ty, &export.ty) {
+                if !wrt_types::component::types_are_compatible(ty, &export.ty) {
                     return Err(Error::new(crate::error::kinds::ValidationError(format!(
                         "Export {name} has incompatible type"
                     ))));
@@ -813,60 +787,6 @@ impl Host {
     }
 }
 
-/// Check if two types are compatible for linking
-fn types_are_compatible(a: &ExternType, b: &ExternType) -> bool {
-    match (a, b) {
-        (ExternType::Function(a_ty), ExternType::Function(b_ty)) => {
-            a_ty.params == b_ty.params && a_ty.results == b_ty.results
-        }
-        (ExternType::Table(a_ty), ExternType::Table(b_ty)) => a_ty == b_ty,
-        (ExternType::Memory(a_ty), ExternType::Memory(b_ty)) => a_ty == b_ty,
-        (ExternType::Global(a_ty), ExternType::Global(b_ty)) => a_ty == b_ty,
-        (ExternType::Resource(_), ExternType::Resource(_)) => true, // Basic compatibility for now
-        (ExternType::Instance(a_ty), ExternType::Instance(b_ty)) => {
-            instance_types_match(a_ty, b_ty)
-        }
-        (ExternType::Component(_), ExternType::Component(_)) => true, // Basic compatibility for now
-        _ => false,
-    }
-}
-
-/// Check if two instance types match for linking
-fn instance_types_match(a: &crate::types::InstanceType, b: &crate::types::InstanceType) -> bool {
-    if a.exports.len() != b.exports.len() {
-        return false;
-    }
-
-    for ((a_name, a_ty), (b_name, b_ty)) in a.exports.iter().zip(b.exports.iter()) {
-        if a_name != b_name || !types_are_compatible(a_ty, b_ty) {
-            return false;
-        }
-    }
-
-    true
-}
-
-/// Check if two function types are compatible
-fn func_types_compatible(a: &FuncType, b: &FuncType) -> bool {
-    if a.params.len() != b.params.len() || a.results.len() != b.results.len() {
-        return false;
-    }
-
-    for (a_param, b_param) in a.params.iter().zip(b.params.iter()) {
-        if a_param != b_param {
-            return false;
-        }
-    }
-
-    for (a_result, b_result) in a.results.iter().zip(b.results.iter()) {
-        if a_result != b_result {
-            return false;
-        }
-    }
-
-    true
-}
-
 /// Debug print helper for non-std environments
 #[cfg(feature = "std")]
 #[allow(dead_code)]
@@ -882,6 +802,33 @@ fn debug_println(msg: &str) {
 #[cfg(not(feature = "std"))]
 fn debug_println(_msg: &str) {
     // This function is currently unused but kept for future debugging
+}
+
+// Add conversion helpers between wrt_types values and internal values
+impl Value {
+    fn convert_from_wrt_types(value: &wrt_types::Value) -> Self {
+        match value {
+            wrt_types::Value::I32(val) => Self::I32(*val),
+            wrt_types::Value::I64(val) => Self::I64(*val),
+            wrt_types::Value::F32(val) => Self::F32(*val),
+            wrt_types::Value::F64(val) => Self::F64(*val),
+            wrt_types::Value::V128(val) => Self::V128(*val),
+            wrt_types::Value::FuncRef(_) => Self::FuncRef(0),
+            wrt_types::Value::ExternRef(_) => Self::ExternRef(0),
+        }
+    }
+
+    fn convert_to_wrt_types(&self) -> wrt_types::Value {
+        match self {
+            Self::I32(val) => wrt_types::Value::I32(*val),
+            Self::I64(val) => wrt_types::Value::I64(*val),
+            Self::F32(val) => wrt_types::Value::F32(*val),
+            Self::F64(val) => wrt_types::Value::F64(*val),
+            Self::V128(val) => wrt_types::Value::V128(*val),
+            Self::FuncRef(val) => wrt_types::Value::FuncRef(Some(*val as u32)),
+            Self::ExternRef(val) => wrt_types::Value::ExternRef(Some(*val as u32)),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -912,8 +859,11 @@ mod tests {
                 (
                     "memory".to_string(),
                     ExternType::Memory(MemoryType {
-                        min: 1,
-                        max: Some(2),
+                        limits: Limits {
+                            min: 1,
+                            max: Some(2),
+                        },
+                        shared: false,
                     }),
                 ),
             ],
@@ -985,8 +935,8 @@ mod tests {
         assert_eq!(mem_export.name, "memory");
         match &mem_export.value {
             ExternValue::Memory(mem) => {
-                assert_eq!(mem.ty.min, 1);
-                assert_eq!(mem.ty.max, Some(2));
+                assert_eq!(mem.ty.limits.min, 1);
+                assert_eq!(mem.ty.limits.max, Some(2));
             }
             _ => panic!("Expected memory export"),
         }
@@ -1017,10 +967,19 @@ mod tests {
         // Test instantiation with wrong import type
         let wrong_import = Import {
             name: "add".to_string(),
-            ty: ExternType::Memory(MemoryType { min: 1, max: None }),
+            ty: ExternType::Memory(MemoryType {
+                limits: Limits { min: 1, max: None },
+                shared: false,
+            }),
             value: ExternValue::Memory(MemoryValue {
-                ty: MemoryType { min: 1, max: None },
-                memory: DefaultMemory::new(MemoryType { min: 1, max: None }),
+                ty: MemoryType {
+                    limits: Limits { min: 1, max: None },
+                    shared: false,
+                },
+                memory: Arc::new(RwLock::new(Memory::new(MemoryType {
+                    limits: Limits { min: 1, max: None },
+                    shared: false,
+                })?)),
             }),
         };
         assert!(component.instantiate(vec![wrong_import]).is_err());

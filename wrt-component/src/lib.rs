@@ -22,7 +22,9 @@ pub use wrt_error::{Error, Result};
 pub use wrt_host::CallbackRegistry;
 
 // Export modules
+pub mod canonical;
 pub mod component;
+pub mod execution;
 pub mod export;
 pub mod host;
 pub mod import;
@@ -30,9 +32,12 @@ pub mod instance;
 pub mod namespace;
 pub mod resources;
 pub mod runtime;
+pub mod strategies;
+pub mod type_compatibility;
 pub mod values;
 
 // Reexport types
+pub use canonical::CanonicalABI;
 pub use component::{Component, ComponentType};
 pub use export::Export;
 pub use host::Host;
@@ -40,7 +45,14 @@ pub use import::Import;
 pub use instance::InstanceValue;
 pub use namespace::Namespace;
 pub use resources::{BufferPool, MemoryStrategy, Resource, ResourceTable, VerificationLevel};
-pub use values::{decode_component_value, encode_component_value, ComponentValue};
+pub use strategies::memory::{
+    BoundedCopyStrategy, FullIsolationStrategy, MemoryOptimizationStrategy, ZeroCopyStrategy,
+};
+pub use type_compatibility::{
+    component_value_to_value, deserialize_component_value, serialize_component_value,
+    value_to_component_value, TypeCompatibility,
+};
+pub use values::ComponentValue;
 
 // Include verification module when the kani feature is enabled
 #[cfg(feature = "kani")]

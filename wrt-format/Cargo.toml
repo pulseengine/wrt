@@ -8,6 +8,8 @@ repository = "https://github.com/avrabe/wrt"
 
 [dependencies]
 wrt-error = { path = "../wrt-error", version = "0.1.0" }
+wrt-common = { path = "../wrt-common", version = "0.1.0" }
+wrt-types = { path = "../wrt-types", version = "0.1.0" }
 
 [dev-dependencies]
 # For property testing
@@ -19,11 +21,25 @@ version = "0.61.0"
 optional = true
 
 [features]
-default = ["std"]
-std = []
-no_std = []
+default = ["std", "component-model-core"]
+std = ["wrt-common/std", "wrt-types/std"]
+no_std = ["wrt-common/no_std", "wrt-types/no_std"]
+optimize = ["wrt-types/optimize"]
+safety = ["wrt-types/safety"]
 # The 'kani' feature enables formal verification with the Kani verifier
-kani = ["dep:kani-verifier"] 
+kani = ["dep:kani-verifier", "wrt-common/kani", "wrt-types/kani"] 
+
+# Component Model features
+component-model-core = []  # Basic component model support
+component-model-values = []  # 🪙 Experimental values
+component-model-resources = []  # 🪙 Experimental resource types
+
+# Grouped features
+component-model-all = [
+    "component-model-core",
+    "component-model-values",
+    "component-model-resources"
+]
 
 # Configuration for Kani verification
 [package.metadata.kani]

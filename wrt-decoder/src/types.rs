@@ -1,11 +1,14 @@
 //! WebAssembly type utilities
 //!
 //! This module provides utilities for working with WebAssembly types.
-//! Most type definitions are re-exported from wrt-format.
+//! Type definitions are imported from wrt-types.
 
-// Re-export types from wrt-format
+// Import types directly from wrt-types
+pub use wrt_types::{safe_memory::SafeSlice, FuncType, ValueType};
+
+// Import format-specific types and functions from wrt-format
 pub use wrt_format::types::{
-    parse_value_type, value_type_to_byte, BlockType, FuncType, Limits, ValueType,
+    parse_value_type, value_type_to_byte, BlockType, Limits, MemoryIndexType,
 };
 
 // Use the block type parsing from wrt-format

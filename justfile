@@ -544,3 +544,16 @@ docs-common: coverage # Add coverage as a dependency
     cargo xtask fs mkdirp "{{sphinx_build_dir}}/html/_static/coverage"
     # Copy the generated HTML coverage report
     cargo xtask fs cp target/llvm-cov/html/* "{{sphinx_build_dir}}/html/_static/coverage/"
+
+# Check if Kani verifier is installed
+check-kani:
+    cargo xtask check-kani
+
+# Check qualification status
+qualification-status:
+    cargo xtask qualification status
+
+# Build qualification documentation (part of docs target)
+docs-qualification: docs-common
+    echo "Building qualification documentation..."
+    {{sphinx_build}} -M html "{{sphinx_source}}" "{{sphinx_build_dir}}" {{sphinx_opts}} qualification
