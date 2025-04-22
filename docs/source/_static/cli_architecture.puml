@@ -1,0 +1,54 @@
+@startuml
+
+package "CLI (WRTD)" {
+  package "Command Line Interface" {
+    [Arguments Parser] as ArgParser
+    [Commands] as Commands
+    [File Loading] as FileLoad
+    [Output Formatter] as Output
+    
+    ArgParser --> Commands
+    Commands --> FileLoad
+    Commands --> Output
+  }
+  
+  package "Engine Integration" {
+    [Module Loading] as ModLoad
+    [Function Execution] as FuncExec
+    [Fuel Configuration] as FuelConfig
+    [Statistics] as Stats
+    
+    ModLoad --> FileLoad
+    FuncExec --> ModLoad
+    FuelConfig --> FuncExec
+    Stats <-- FuncExec
+  }
+  
+  package "Component Features" {
+    [Component Loading] as CompLoad
+    [Interface Analysis] as IntAnalysis
+    [Import/Export Display] as ImpExpDisplay
+    
+    CompLoad --> ModLoad
+    IntAnalysis --> CompLoad
+    ImpExpDisplay <-- IntAnalysis
+  }
+  
+  package "Logging" {
+    [Log Configuration] as LogConfig
+    [Log Output] as LogOutput
+    
+    LogConfig --> LogOutput
+    FuncExec --> LogOutput
+  }
+  
+  package "Safety Features" {
+    [Resource Control] as ResControl
+    [Error Handling] as ErrHandling
+    
+    ResControl --> FuelConfig
+    ErrHandling <-- FuncExec
+  }
+}
+
+@enduml 

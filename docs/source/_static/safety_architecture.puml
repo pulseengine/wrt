@@ -1,0 +1,69 @@
+@startuml
+
+package "Safety Architecture" {
+  package "Memory Safety" {
+    [Bounds Checking] as BoundsCheck
+    [Safe Memory Adapter] as SafeAdapter
+    [Safe Slice] as SafeSlice
+    [Memory Access Validation] as MemValid
+    
+    BoundsCheck --> SafeSlice
+    SafeAdapter --> MemValid
+    SafeAdapter --> BoundsCheck
+  }
+  
+  package "Resource Management" {
+    [Resource Limits] as ResLimits
+    [Bounded Collections] as BoundedColl
+    [Memory Limits] as MemLimits
+    [Fuel-Based Execution] as FuelExec
+    [Resource Exhaustion] as ResExhaust
+    
+    ResLimits --> BoundedColl
+    ResLimits --> MemLimits
+    ResLimits --> FuelExec
+    ResExhaust --> ResLimits
+  }
+  
+  package "Error Handling" {
+    [Error Types] as ErrorTypes
+    [Panic Handler] as PanicHandler
+    [Engine Error] as EngineError
+    [Recovery Mechanism] as Recovery
+    
+    ErrorTypes --> PanicHandler
+    ErrorTypes --> EngineError
+    Recovery --> ErrorTypes
+  }
+  
+  package "Verification" {
+    [Verification Levels] as VerifyLevel
+    [Collection Validation] as CollValid
+    [Structural Validation] as StructValid
+    [Engine Verification] as EngineVerify
+    
+    VerifyLevel --> CollValid
+    VerifyLevel --> StructValid
+    VerifyLevel --> EngineVerify
+  }
+  
+  package "Testing" {
+    [Safety Tests] as SafetyTest
+    [Fuzzing] as Fuzzing
+    [Coverage] as Coverage
+    
+    SafetyTest --> Fuzzing
+    SafetyTest --> Coverage
+  }
+  
+  package "Code Quality" {
+    [Compiler Warning] as Warning
+    [Unsafe Code Review] as UnsafeReview
+    [CI Pipeline] as CI
+    
+    Warning --> CI
+    UnsafeReview --> CI
+  }
+}
+
+@enduml 

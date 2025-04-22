@@ -1,0 +1,55 @@
+@startuml
+
+package "Memory Subsystem" {
+  package "wrt-runtime" {
+    [Memory] as Memory
+    [SafeSlice] as SafeSlice
+    [MemoryLimits] as MemLimits
+    [MemoryHelpers] as MemHelpers
+    
+    Memory --> SafeSlice
+    Memory --> MemLimits
+    Memory --> MemHelpers
+  }
+  
+  package "wrt" {
+    [MemoryAdapter] as MemAdapter
+    
+    MemAdapter --> Memory
+  }
+  
+  package "wrt-instructions" {
+    [MemoryOps] as MemOps
+    [MemoryLoad] as MemLoad
+    [MemoryStore] as MemStore
+    [MemorySize] as MemSize
+    [MemoryGrow] as MemGrow
+    
+    MemOps --> MemLoad
+    MemOps --> MemStore
+    MemOps --> MemSize
+    MemOps --> MemGrow
+    
+    MemOps --> MemAdapter : uses
+  }
+  
+  package "Safety Mechanisms" {
+    [BoundsChecking] as BoundsCheck
+    [AccessValidation] as AccessValid
+    [CapacityLimits] as CapLimits
+    [ThreadSafety] as ThreadSafety
+    
+    SafeSlice --> BoundsCheck
+    Memory --> AccessValid
+    MemLimits --> CapLimits
+    Memory --> ThreadSafety
+  }
+  
+  package "Component Integration" {
+    [ResourceMemoryManager] as ResMem
+    
+    ResMem --> Memory
+  }
+}
+
+@enduml 

@@ -1,0 +1,62 @@
+@startuml
+
+package "Testing and Verification" {
+  package "Specification Testing" {
+    [WAST Test Runner] as WASTRunner
+    [Test Scripts] as TestScripts
+    [Result Validation] as ResultValid
+    [Test Blacklisting] as BlackList
+    
+    WASTRunner --> TestScripts
+    WASTRunner --> ResultValid
+    WASTRunner --> BlackList
+  }
+  
+  package "Safety Testing" {
+    [Safety Test Suite] as SafetySuite
+    [Memory Safety Tests] as MemTest
+    [Resource Limit Tests] as ResTest
+    [Error Handling Tests] as ErrTest
+    
+    SafetySuite --> MemTest
+    SafetySuite --> ResTest
+    SafetySuite --> ErrTest
+  }
+  
+  package "Fuzzing Infrastructure" {
+    [Fuzzing Tools] as FuzzTools
+    [Corpus Generation] as Corpus
+    [Edge Case Detection] as EdgeCase
+    [Crash Detection] as Crash
+    
+    FuzzTools --> Corpus
+    FuzzTools --> EdgeCase
+    FuzzTools --> Crash
+  }
+  
+  package "Coverage Analysis" {
+    [Code Coverage] as Coverage
+    [Line Coverage] as LineCoverage
+    [Branch Coverage] as BranchCoverage
+    [Function Coverage] as FuncCoverage
+    
+    Coverage --> LineCoverage
+    Coverage --> BranchCoverage
+    Coverage --> FuncCoverage
+  }
+  
+  package "CI Integration" {
+    [CI Pipeline] as CI
+    [Test Automation] as TestAuto
+    [Quality Gates] as QualityGates
+    
+    CI --> TestAuto
+    CI --> Coverage
+    CI --> QualityGates
+    TestAuto --> WASTRunner
+    TestAuto --> SafetySuite
+    TestAuto --> FuzzTools
+  }
+}
+
+@enduml 

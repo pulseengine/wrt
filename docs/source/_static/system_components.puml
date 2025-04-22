@@ -12,10 +12,12 @@ package "WRT System" {
       
       [Module] as Module 
       [Memory] as Memory
-      [Stack] as Stack /' Used by Traditional Engine '/
+      [Stack] as Stack
       [Instructions] as Instructions
       [Validation] as Validation
-      [Execution] as Execution /' Logic shared or specific to engines '/
+      [Execution] as Execution
+      [Resource Tracking] as ResTrack
+      [Error Handling] as ErrorHandling
       
       TradEngine --> Module
       TradEngine --> Memory
@@ -24,28 +26,53 @@ package "WRT System" {
       
       StacklessEngine --> Module
       StacklessEngine --> Memory
-      /' StacklessEngine manages state internally '/
       StacklessEngine --> Execution
+      StacklessEngine --> ResTrack
 
       Execution --> Instructions
       Module --> Validation
+      Execution --> ErrorHandling
     }
     
     package "Component Model" {
       [Component] as Component
       [Interface Types] as InterfaceTypes
       [Resource Types] as ResourceTypes
+      [Resource Manager] as ResourceManager
       
       Component --> InterfaceTypes
       Component --> ResourceTypes
+      ResourceTypes --> ResourceManager
+    }
+    
+    package "Safety Layer" {
+      [Memory Safety] as MemSafety
+      [Resource Limits] as ResLimits
+      [Verification] as Verify
+      [Error Recovery] as Recovery
+      
+      MemSafety --> Memory
+      ResLimits --> ResTrack
+      Verify --> Module
+      Recovery --> ErrorHandling
     }
     
     package "WASI Implementation" {
       [Logging] as Logging
-      [Platform Backends] as Backends #LightGray /' Planned '/
+      [Platform Backends] as Backends
       
-      Logging --> Backends <<..>> /' Planned '/ : platform-specific output
+      Logging --> Backends : platform-specific output
     }
+  }
+  
+  package "Testing Tools" {
+    [WAST Runner] as WASTRunner
+    [Safety Tests] as SafetyTests
+    [Fuzzing] as Fuzzing
+    
+    WASTRunner --> TradEngine
+    SafetyTests --> MemSafety
+    Fuzzing --> Component
   }
   
   CLI --> StacklessEngine : Primarily uses

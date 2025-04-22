@@ -1,0 +1,65 @@
+@startuml
+
+package "Core Runtime" {
+  package "Execution Engines" {
+    [Traditional Engine] as TradEngine
+    [Stackless Engine] as StacklessEngine
+    
+    note right of TradEngine
+      Uses host call stack
+      Suitable for general usage
+    end note
+    
+    note right of StacklessEngine
+      Uses state machine approach
+      Suitable for bounded execution
+      and resource-constrained environments
+    end note
+  }
+  
+  package "Engine Components" {
+    [Module] as Module
+    [Memory] as Memory
+    [Stack] as Stack
+    [Validation] as Validation
+    [Execution] as Execution
+    [Instructions] as Instructions
+    [Table] as Table
+    [Global] as Global
+    [Types] as Types
+    [Error Handling] as ErrorHandling
+  }
+  
+  package "Safety and Verification" {
+    [Memory Bounds Checking] as MemBounds
+    [Resource Tracking] as ResTrack
+    [Fuel Metering] as FuelMeter
+    [Error Recovery] as ErrorRecovery
+  }
+  
+  TradEngine --> Module
+  TradEngine --> Memory
+  TradEngine --> Stack
+  TradEngine --> Execution
+  TradEngine --> Table
+  TradEngine --> Global
+  
+  StacklessEngine --> Module
+  StacklessEngine --> Memory
+  StacklessEngine --> Execution
+  StacklessEngine --> Table
+  StacklessEngine --> Global
+  StacklessEngine --> FuelMeter
+  
+  Module --> Validation
+  Module --> Types
+  
+  Memory --> MemBounds
+  Execution --> Instructions
+  Execution --> ErrorHandling
+  ErrorHandling --> ErrorRecovery
+  
+  FuelMeter -[dashed]-> ResTrack
+}
+
+@enduml 

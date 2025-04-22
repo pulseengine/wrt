@@ -1,0 +1,57 @@
+@startuml
+
+package "Resource Management" {
+  package "Resource Types" {
+    [ResourceType] as ResType
+    [ResourceDefinition] as ResDef
+    [ResourceInstance] as ResInst
+    [ResourceTable] as ResTable
+    
+    ResType --> ResDef
+    ResDef --> ResInst : creates
+    ResTable --> ResInst : contains
+  }
+  
+  package "Resource Operations" {
+    [ResourceNew] as ResNew
+    [ResourceDrop] as ResDrop
+    [ResourceRep] as ResRep
+    [ResourceOperation] as ResOp
+    
+    ResOp <-- ResNew
+    ResOp <-- ResDrop
+    ResOp <-- ResRep
+  }
+  
+  package "Resource Strategies" {
+    [ResourceStrategy] as Strategy
+    [MemoryStrategy] as MemStrategy
+    [BufferPool] as BufferPool
+    
+    Strategy <|-- MemStrategy
+    MemStrategy --> BufferPool
+  }
+  
+  package "Resource Management" {
+    [ResourceManager] as Manager
+    [MemoryManager] as MemManager
+    [ReferenceCount] as RefCount
+    
+    Manager --> ResTable
+    Manager --> Strategy
+    Manager --> RefCount
+    MemManager --> Manager
+  }
+  
+  package "Safety Features" {
+    [ResourceValidation] as ResValid
+    [ResourceLimits] as ResLimit
+    [ResourceTracking] as ResTrack
+    
+    Manager --> ResValid
+    Manager --> ResLimit
+    ResTable --> ResTrack
+  }
+}
+
+@enduml 

@@ -1,0 +1,63 @@
+@startuml
+
+package "Component Model" {
+  package "Core" {
+    [Component] as Component
+    [Instance] as Instance
+    [Namespace] as Namespace
+    [Types] as Types
+    [Canonical ABI] as CanonicalABI
+    
+    Component --> Instance : instantiates
+    Component --> Types : uses
+    Instance --> Namespace : contains
+    Component --> CanonicalABI : uses
+  }
+  
+  package "Interface Types" {
+    [Type Compatibility] as TypeCompat
+    [Value Types] as ValueTypes
+    [Type Conversion] as TypeConv
+    
+    TypeCompat --> ValueTypes
+    TypeConv --> ValueTypes
+    ValueTypes --> CanonicalABI
+  }
+  
+  package "Resource Management" {
+    [Resources] as Resources
+    [Resource Manager] as ResourceManager
+    [Resource Strategy] as ResStrategy
+    [Memory Strategy] as MemStrategy
+    [Resource Operations] as ResOps
+    
+    Resources --> ResourceManager
+    ResourceManager --> ResStrategy
+    ResourceManager --> MemStrategy
+    Resources --> ResOps
+  }
+  
+  package "Host Integration" {
+    [Import] as Import
+    [Export] as Export
+    [Host] as Host
+    [Runtime] as Runtime
+    
+    Import --> Host
+    Export --> Host
+    Host --> Runtime
+    Runtime --> Component
+  }
+  
+  package "Verification" {
+    [Module Validation] as ModuleValid
+    [Type Verification] as TypeVerify
+    [Resource Verification] as ResVerify
+    
+    Component --> ModuleValid
+    ValueTypes --> TypeVerify
+    Resources --> ResVerify
+  }
+}
+
+@enduml 
