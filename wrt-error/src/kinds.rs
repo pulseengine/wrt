@@ -63,18 +63,57 @@ impl Display for ExecutionError {
 #[cfg(feature = "alloc")]
 impl ErrorSource for ExecutionError {}
 
-/// Error for unimplemented features
+/// Error for not implemented features (replacing UnimplementedError for backward compatibility)
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg(feature = "alloc")]
-pub struct UnimplementedError(pub String);
+pub struct NotImplementedError(pub String);
 #[cfg(feature = "alloc")]
-impl Display for UnimplementedError {
+impl Display for NotImplementedError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Unimplemented feature: {}", self.0)
+        write!(f, "Not implemented: {}", self.0)
     }
 }
 #[cfg(feature = "alloc")]
-impl ErrorSource for UnimplementedError {}
+impl ErrorSource for NotImplementedError {}
+
+/// Error for memory access issues
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg(feature = "alloc")]
+pub struct MemoryAccessError(pub String);
+#[cfg(feature = "alloc")]
+impl Display for MemoryAccessError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Memory access error: {}", self.0)
+    }
+}
+#[cfg(feature = "alloc")]
+impl ErrorSource for MemoryAccessError {}
+
+/// Error for initialization failures
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg(feature = "alloc")]
+pub struct InitializationError(pub String);
+#[cfg(feature = "alloc")]
+impl Display for InitializationError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Initialization error: {}", self.0)
+    }
+}
+#[cfg(feature = "alloc")]
+impl ErrorSource for InitializationError {}
+
+/// Error for type mismatches
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg(feature = "alloc")]
+pub struct TypeMismatchError(pub String);
+#[cfg(feature = "alloc")]
+impl Display for TypeMismatchError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Type mismatch: {}", self.0)
+    }
+}
+#[cfg(feature = "alloc")]
+impl ErrorSource for TypeMismatchError {}
 
 /// Error for invalid local index
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -124,6 +163,23 @@ impl Display for MemoryAccessOutOfBoundsError {
     }
 }
 impl ErrorSource for MemoryAccessOutOfBoundsError {}
+
+/// Error for unaligned memory access
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct MemoryAccessUnalignedError {
+    pub address: u64,
+    pub length: u64,
+}
+impl Display for MemoryAccessUnalignedError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "Unaligned memory access: address {}, requested alignment {}",
+            self.address, self.length
+        )
+    }
+}
+impl ErrorSource for MemoryAccessUnalignedError {}
 
 /// Error for export not found
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -463,3 +519,68 @@ impl Display for RuntimeError {
 }
 #[cfg(feature = "alloc")]
 impl ErrorSource for RuntimeError {}
+
+/// Error for out of bounds access with a message
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg(feature = "alloc")]
+pub struct OutOfBoundsError(pub String);
+#[cfg(feature = "alloc")]
+impl Display for OutOfBoundsError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Out of bounds error: {}", self.0)
+    }
+}
+#[cfg(feature = "alloc")]
+impl ErrorSource for OutOfBoundsError {}
+
+/// Error for resource access issues
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg(feature = "alloc")]
+pub struct ResourceAccessError(pub String);
+#[cfg(feature = "alloc")]
+impl Display for ResourceAccessError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Resource access error: {}", self.0)
+    }
+}
+#[cfg(feature = "alloc")]
+impl ErrorSource for ResourceAccessError {}
+
+/// Error for invalid resource handle
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg(feature = "alloc")]
+pub struct InvalidResourceHandle(pub String);
+#[cfg(feature = "alloc")]
+impl Display for InvalidResourceHandle {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Invalid resource handle: {}", self.0)
+    }
+}
+#[cfg(feature = "alloc")]
+impl ErrorSource for InvalidResourceHandle {}
+
+/// Error for resource limit exceeded
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg(feature = "alloc")]
+pub struct ResourceLimitExceeded(pub String);
+#[cfg(feature = "alloc")]
+impl Display for ResourceLimitExceeded {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Resource limit exceeded: {}", self.0)
+    }
+}
+#[cfg(feature = "alloc")]
+impl ErrorSource for ResourceLimitExceeded {}
+
+/// Error for unsupported operations
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg(feature = "alloc")]
+pub struct UnsupportedOperation(pub String);
+#[cfg(feature = "alloc")]
+impl Display for UnsupportedOperation {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Unsupported operation: {}", self.0)
+    }
+}
+#[cfg(feature = "alloc")]
+impl ErrorSource for UnsupportedOperation {}

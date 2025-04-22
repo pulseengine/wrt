@@ -28,6 +28,7 @@ pub mod host;
 pub mod import;
 pub mod instance;
 pub mod namespace;
+pub mod resources;
 pub mod runtime;
 pub mod values;
 
@@ -38,7 +39,8 @@ pub use host::Host;
 pub use import::Import;
 pub use instance::InstanceValue;
 pub use namespace::Namespace;
-pub use values::{ComponentValue, encode_component_value, decode_component_value};
+pub use resources::{BufferPool, MemoryStrategy, Resource, ResourceTable, VerificationLevel};
+pub use values::{decode_component_value, encode_component_value, ComponentValue};
 
 // Include verification module when the kani feature is enabled
 #[cfg(feature = "kani")]
