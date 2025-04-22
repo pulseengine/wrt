@@ -102,8 +102,8 @@ fn validate_tables(module: &Module) -> Result<()> {
         }
 
         // Validate limits
-        if let Some(max) = table.max {
-            if max < table.min {
+        if let Some(max) = table.limits.max {
+            if max < table.limits.min {
                 return Err(Error::Validation(format!(
                     "Table {} has maximum size less than minimum size",
                     idx
@@ -125,8 +125,8 @@ fn validate_memories(module: &Module) -> Result<()> {
 
     // Validate memory limits
     for (idx, memory) in module.memories.iter().enumerate() {
-        if let Some(max) = memory.max {
-            if max < memory.min {
+        if let Some(max) = memory.limits.max {
+            if max < memory.limits.min {
                 return Err(Error::Validation(format!(
                     "Memory {} has maximum size less than minimum size",
                     idx
@@ -272,8 +272,10 @@ mod tests {
         // Add a valid table
         let valid_table = TableType {
             element_type: ValueType::FuncRef,
-            min: 1,
-            max: Some(10),
+            limits: Limits {
+                min: 1,
+                max: Some(10),
+            },
         };
         module.tables.push(valid_table);
         assert!(validate_module(&module).is_ok());
@@ -281,8 +283,10 @@ mod tests {
         // Add a table with invalid element type
         let invalid_table = TableType {
             element_type: ValueType::I32, // Invalid element type
-            min: 1,
-            max: Some(10),
+            limits: Limits {
+                min: 1,
+                max: Some(10),
+            },
         };
         module.tables.push(invalid_table);
         assert!(validate_module(&module).is_err());
@@ -290,8 +294,10 @@ mod tests {
         // Add a table with invalid limits
         let invalid_limits_table = TableType {
             element_type: ValueType::FuncRef,
-            min: 10,
-            max: Some(5), // Max less than min
+            limits: Limits {
+                min: 10,
+                max: Some(5), // Max less than min
+            },
         };
         module.tables.push(invalid_limits_table);
         assert!(validate_module(&module).is_err());
@@ -303,16 +309,22 @@ mod tests {
 
         // Add a valid memory
         let valid_memory = MemoryType {
-            min: 1,
-            max: Some(10),
+            limits: Limits {
+                min: 1,
+                max: Some(10),
+            },
+            shared: false,
         };
         module.memories.push(valid_memory);
         assert!(validate_module(&module).is_ok());
 
         // Add a second memory (invalid)
         let second_memory = MemoryType {
-            min: 1,
-            max: Some(10),
+            limits: Limits {
+                min: 1,
+                max: Some(10),
+            },
+            shared: false,
         };
         module.memories.push(second_memory);
         assert!(validate_module(&module).is_err());
@@ -320,8 +332,11 @@ mod tests {
         // Test memory with invalid limits
         module.memories.clear();
         let invalid_limits_memory = MemoryType {
-            min: 10,
-            max: Some(5), // Max less than min
+            limits: Limits {
+                min: 10,
+                max: Some(5), // Max less than min
+            },
+            shared: false,
         };
         module.memories.push(invalid_limits_memory);
         assert!(validate_module(&module).is_err());
@@ -347,8 +362,10 @@ mod tests {
         // Add necessary table
         let table = TableType {
             element_type: ValueType::FuncRef,
-            min: 1,
-            max: Some(10),
+            limits: Limits {
+                min: 1,
+                max: Some(10),
+            },
         };
         module.tables.push(table);
 
@@ -399,8 +416,11 @@ mod tests {
 
         // Add necessary memory
         let memory = MemoryType {
-            min: 1,
-            max: Some(10),
+            limits: Limits {
+                min: 1,
+                max: Some(10),
+            },
+            shared: false,
         };
         module.memories.push(memory);
 

@@ -129,10 +129,10 @@ pub fn table_init(
         .checked_add(n)
         .map_or(true, |end| end as usize > element_segment.items.len())
     {
-        return Err(Error::new(kinds::TableAccessOutOfBoundsError(format!(
-            "Element access out of bounds, segment: {elem_idx}, src: {src}, n: {n}, len: {}",
-            element_segment.items.len()
-        ))));
+        return Err(Error::new(kinds::TableAccessOutOfBoundsError {
+            table_idx: dst_table_idx,
+            element_idx: elem_idx as usize,
+        }));
     }
     // Compare end (u32) with table.size() (usize) correctly
     if dst
@@ -150,21 +150,20 @@ pub fn table_init(
             .items
             .get((src + i) as usize)
             .ok_or_else(|| {
-                Error::new(kinds::TableAccessOutOfBoundsError(format!(
-                    "Element at index {} out of bounds for element {}",
-                    src + i,
-                    elem_idx
-                )))
+                Error::new(kinds::TableAccessOutOfBoundsError {
+                    table_idx: dst_table_idx,
+                    element_idx: (src + i) as usize,
+                })
             })?;
 
         let value_to_set = Value::FuncRef(Some(*elem_item));
         table
             .set((dst + i) as u32, Some(value_to_set))
             .map_err(|e| {
-                Error::new(kinds::TableAccessOutOfBoundsError(format!(
-                    "Table access out of bounds: {}",
-                    e
-                )))
+                Error::new(kinds::TableAccessOutOfBoundsError {
+                    table_idx: dst_table_idx,
+                    element_idx: (src + i) as usize,
+                })
             })?;
     }
 
@@ -212,7 +211,7 @@ pub fn table_copy(
 
     // Perform the copy
     // FIXME: Needs engine access and public API on Table to avoid accessing private fields.
-    return Err(Error::new(kinds::UnimplementedError(
+    return Err(Error::new(kinds::NotImplementedError(
         "table.copy needs engine access and Table API change".to_string(),
     )));
     // Ok(())
@@ -264,7 +263,7 @@ pub fn table_fill(
     }
 
     // FIXME: Needs engine access and public API on Table to avoid accessing private fields.
-    return Err(Error::new(kinds::UnimplementedError(
+    return Err(Error::new(kinds::NotImplementedError(
         "table.fill needs engine access and Table API change".to_string(),
     )));
     // Ok(())

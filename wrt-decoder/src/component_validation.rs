@@ -7,11 +7,12 @@ use wrt_error::{kinds, Error, Result};
 use wrt_format::component::{
     Component, ComponentTypeDefinition, CoreInstance, CoreInstanceExpr, CoreSort, CoreType,
     CoreTypeDefinition, Export, ExternType, Import, Instance, InstanceExpr, ResourceRepresentation,
-    Sort, Start, ValType,
+    Sort, ValType,
 };
 
 // Use our prelude instead of conditional imports
 use crate::prelude::*;
+use std::collections::HashMap;
 
 /// Check if a string is a valid semantic version (major.minor.patch)
 fn is_valid_semver(version: &str) -> bool {
@@ -190,14 +191,7 @@ pub fn validate_component_with_config(
         )));
     }
 
-    for (idx, value) in component.values.iter().enumerate() {
-        validate_value(value, &ctx)?;
-
-        // Add value to the context
-        let value_idx = ctx.values.len() as u32;
-        ctx.add_value(value_idx);
-        ctx.mark_value_unconsumed(value_idx);
-    }
+    validate_values(component, &mut ctx)?;
 
     // Validate exports (and mark consumed values)
     for export in &component.exports {
@@ -210,7 +204,7 @@ pub fn validate_component_with_config(
 
     // Validate start function if present
     if let Some(start) = &component.start {
-        validate_start(start, &ctx)?;
+        validate_start(component, &mut ctx)?;
 
         // Mark argument values as consumed
         for arg_idx in &start.args {
@@ -223,6 +217,11 @@ pub fn validate_component_with_config(
             ctx.add_value(value_idx);
             ctx.mark_value_unconsumed(value_idx);
         }
+    }
+
+    // Validate resources if enabled
+    if config.enable_resource_types {
+        validate_resources(component, &mut ctx)?;
     }
 
     // Check that all values have been consumed
@@ -259,20 +258,15 @@ struct ValidationContext {
     /// Resource types (for validating resource operations)
     resource_types: Vec<u32>,
     /// Resource ownership tracking - maps resource handle indices to owner state
-    #[cfg(feature = "std")]
+    #[allow(dead_code)]
     resource_ownership: HashMap<u32, ResourceOwnerState>,
     /// Resource borrowing tracking - maps resource handle indices to borrow state
-    #[cfg(feature = "std")]
-    resource_borrowing: HashMap<u32, ResourceBorrowState>,
-    /// Resource ownership tracking (no_std version)
-    #[cfg(not(feature = "std"))]
-    resource_ownership: HashMap<u32, ResourceOwnerState>,
-    /// Resource borrowing tracking (no_std version)
-    #[cfg(not(feature = "std"))]
+    #[allow(dead_code)]
     resource_borrowing: HashMap<u32, ResourceBorrowState>,
 }
 
 /// Tracks the ownership state of a resource
+#[allow(dead_code)]
 enum ResourceOwnerState {
     /// Resource is owned
     Owned,
@@ -285,8 +279,10 @@ enum ResourceOwnerState {
 /// Tracks the borrowing state of a resource
 struct ResourceBorrowState {
     /// Number of active borrows
+    #[allow(dead_code)]
     borrow_count: u32,
     /// Scope where the borrows must be resolved (function instance index)
+    #[allow(dead_code)]
     borrow_scope: u32,
 }
 
@@ -340,6 +336,7 @@ impl ValidationContext {
     }
 
     /// Add a function index to the context.
+    #[allow(dead_code)]
     fn add_func(&mut self, idx: u32) {
         self.funcs.push(idx);
     }
@@ -438,6 +435,7 @@ impl ValidationContext {
     }
 
     /// Add a resource type index to the context
+    #[allow(dead_code)]
     fn add_resource_type(&mut self, idx: u32) {
         self.resource_types.push(idx);
     }
@@ -448,28 +446,28 @@ impl ValidationContext {
     }
 
     /// Track a resource being created
+    #[allow(dead_code)]
     fn track_resource_created(&mut self, resource_idx: u32) {
         self.resource_ownership
             .insert(resource_idx, ResourceOwnerState::Owned);
     }
 
-    /// Track a resource being transferred
+    /// Track a resource ownership transfer
     fn track_resource_transferred(&mut self, resource_idx: u32) -> Result<()> {
-        match self.resource_ownership.get(&resource_idx) {
-            Some(ResourceOwnerState::Owned) => {
-                self.resource_ownership
-                    .insert(resource_idx, ResourceOwnerState::Transferred);
-                Ok(())
-            }
-            Some(ResourceOwnerState::Transferred) => Err(Error::new(kinds::ValidationError(
-                format!("Resource {} has already been transferred", resource_idx),
-            ))),
-            Some(ResourceOwnerState::Destroyed) => {
-                Err(Error::new(kinds::ValidationError(format!(
+        match self.resource_ownership.get_mut(&resource_idx) {
+            Some(owner_state) => match owner_state {
+                ResourceOwnerState::Owned => {
+                    *owner_state = ResourceOwnerState::Transferred;
+                    Ok(())
+                }
+                ResourceOwnerState::Transferred => Err(Error::new(kinds::ValidationError(
+                    format!("Resource {} has already been transferred", resource_idx),
+                ))),
+                ResourceOwnerState::Destroyed => Err(Error::new(kinds::ValidationError(format!(
                     "Resource {} has been destroyed and cannot be transferred",
                     resource_idx
-                ))))
-            }
+                )))),
+            },
             None => Err(Error::new(kinds::ValidationError(format!(
                 "Resource {} does not exist",
                 resource_idx
@@ -479,21 +477,23 @@ impl ValidationContext {
 
     /// Track a resource being destroyed
     fn track_resource_destroyed(&mut self, resource_idx: u32) -> Result<()> {
-        match self.resource_ownership.get(&resource_idx) {
-            Some(ResourceOwnerState::Owned) => {
-                self.resource_ownership
-                    .insert(resource_idx, ResourceOwnerState::Destroyed);
-                Ok(())
-            }
-            Some(ResourceOwnerState::Transferred) => {
-                Err(Error::new(kinds::ValidationError(format!(
-                    "Resource {} has been transferred and cannot be destroyed",
+        match self.resource_ownership.get_mut(&resource_idx) {
+            Some(owner_state) => match owner_state {
+                ResourceOwnerState::Owned => {
+                    *owner_state = ResourceOwnerState::Destroyed;
+                    Ok(())
+                }
+                ResourceOwnerState::Transferred => {
+                    Err(Error::new(kinds::ValidationError(format!(
+                        "Resource {} has been transferred and cannot be destroyed",
+                        resource_idx
+                    ))))
+                }
+                ResourceOwnerState::Destroyed => Err(Error::new(kinds::ValidationError(format!(
+                    "Resource {} has already been destroyed",
                     resource_idx
-                ))))
-            }
-            Some(ResourceOwnerState::Destroyed) => Err(Error::new(kinds::ValidationError(
-                format!("Resource {} has already been destroyed", resource_idx),
-            ))),
+                )))),
+            },
             None => Err(Error::new(kinds::ValidationError(format!(
                 "Resource {} does not exist",
                 resource_idx
@@ -505,6 +505,7 @@ impl ValidationContext {
     fn track_resource_borrowed(&mut self, resource_idx: u32, scope: u32) -> Result<()> {
         match self.resource_ownership.get(&resource_idx) {
             Some(ResourceOwnerState::Owned) => {
+                // Increment borrow count for this resource
                 let borrow_state =
                     self.resource_borrowing
                         .entry(resource_idx)
@@ -512,6 +513,14 @@ impl ValidationContext {
                             borrow_count: 0,
                             borrow_scope: scope,
                         });
+
+                if borrow_state.borrow_scope != scope {
+                    // Resources can only be borrowed in one scope at a time
+                    return Err(Error::new(kinds::ValidationError(format!(
+                        "Resource {} is already borrowed in scope {} but attempted to borrow in scope {}",
+                        resource_idx, borrow_state.borrow_scope, scope
+                    ))));
+                }
 
                 borrow_state.borrow_count += 1;
                 Ok(())
@@ -570,212 +579,155 @@ impl ValidationContext {
     }
 }
 
-/// Validate a core type, ensuring it is well-formed.
-fn validate_core_type(core_type: &CoreType, _ctx: &ValidationContext) -> Result<()> {
-    match &core_type.definition {
-        CoreTypeDefinition::Function { params, results } => {
-            // WebAssembly spec limits function signature to 1000 params and 1000 results
-            if params.len() > 1000 {
-                return Err(Error::new(kinds::ValidationError(
-                    "Core function type has too many parameters".to_string(),
-                )));
+/// Check if two types are compatible for import/export matching
+fn is_compatible_type(imported_type: &ExternType, exported_type: &ExternType) -> bool {
+    use wrt_format::component::ExternType;
+
+    match (imported_type, exported_type) {
+        // Functions are compatible if their types exactly match
+        (
+            ExternType::Function {
+                params: params1,
+                results: results1,
+            },
+            ExternType::Function {
+                params: params2,
+                results: results2,
+            },
+        ) => {
+            // Check parameter counts and types
+            if params1.len() != params2.len() || results1.len() != results2.len() {
+                return false;
             }
 
-            if results.len() > 1000 {
-                return Err(Error::new(kinds::ValidationError(
-                    "Core function type has too many results".to_string(),
-                )));
-            }
-        }
-        CoreTypeDefinition::Module {
-            imports: _,
-            exports: _,
-        } => {
-            // In a full implementation, we would validate the module type
-            // by checking imports and exports
-        }
-    }
-
-    Ok(())
-}
-
-/// Validate a core instance, ensuring it references valid modules and instances.
-fn validate_core_instance(core_instance: &CoreInstance, ctx: &ValidationContext) -> Result<()> {
-    match &core_instance.instance_expr {
-        CoreInstanceExpr::Instantiate { module_idx, args } => {
-            // Check that the module index is valid
-            if !ctx.is_valid_module(*module_idx) {
-                return Err(Error::new(kinds::ValidationError(format!(
-                    "Core instance references invalid module index: {}",
-                    module_idx
-                ))));
-            }
-
-            // Check that all instance indices in args are valid
-            for arg in args {
-                if !ctx.is_valid_core_instance(arg.instance_idx) {
-                    return Err(Error::new(kinds::ValidationError(format!(
-                        "Core instance arg references invalid instance index: {}",
-                        arg.instance_idx
-                    ))));
+            // Check parameter types (names can be different)
+            for (i, (_, t1)) in params1.iter().enumerate() {
+                if t1 != &params2[i].1 {
+                    return false;
                 }
             }
-        }
-        CoreInstanceExpr::InlineExports(_exports) => {
-            // In a full implementation, we would validate the exports
-            // by checking that the referenced indices are valid
-        }
-    }
 
-    Ok(())
-}
-
-/// Validate an instance, ensuring it references valid components and indices.
-fn validate_instance(instance: &Instance, ctx: &ValidationContext) -> Result<()> {
-    match &instance.instance_expr {
-        InstanceExpr::Instantiate {
-            component_idx,
-            args,
-        } => {
-            // Check that the component index is valid
-            if !ctx.is_valid_component(*component_idx) {
-                return Err(Error::new(kinds::ValidationError(format!(
-                    "Instance references invalid component index: {}",
-                    component_idx
-                ))));
-            }
-
-            // Check that all referenced indices in args are valid
-            for arg in args {
-                match arg.sort {
-                    Sort::Core(core_sort) => {
-                        match core_sort {
-                            CoreSort::Function => {
-                                // Check core function index
-                            }
-                            CoreSort::Table => {
-                                // Check core table index
-                            }
-                            CoreSort::Memory => {
-                                // Check core memory index
-                            }
-                            CoreSort::Global => {
-                                // Check core global index
-                            }
-                            CoreSort::Type => {
-                                if !ctx.is_valid_core_type(arg.idx) {
-                                    return Err(Error::new(kinds::ValidationError(format!(
-                                        "Instance arg references invalid core type index: {}",
-                                        arg.idx
-                                    ))));
-                                }
-                            }
-                            CoreSort::Module => {
-                                if !ctx.is_valid_module(arg.idx) {
-                                    return Err(Error::new(kinds::ValidationError(format!(
-                                        "Instance arg references invalid module index: {}",
-                                        arg.idx
-                                    ))));
-                                }
-                            }
-                            CoreSort::Instance => {
-                                if !ctx.is_valid_core_instance(arg.idx) {
-                                    return Err(Error::new(kinds::ValidationError(format!(
-                                        "Instance arg references invalid core instance index: {}",
-                                        arg.idx
-                                    ))));
-                                }
-                            }
-                        }
-                    }
-                    Sort::Function => {
-                        if !ctx.is_valid_func(arg.idx) {
-                            return Err(Error::new(kinds::ValidationError(format!(
-                                "Instance arg references invalid function index: {}",
-                                arg.idx
-                            ))));
-                        }
-                    }
-                    Sort::Value => {
-                        if !ctx.is_valid_value(arg.idx) {
-                            return Err(Error::new(kinds::ValidationError(format!(
-                                "Instance arg references invalid value index: {}",
-                                arg.idx
-                            ))));
-                        }
-                    }
-                    Sort::Type => {
-                        if !ctx.is_valid_component_type(arg.idx) {
-                            return Err(Error::new(kinds::ValidationError(format!(
-                                "Instance arg references invalid component type index: {}",
-                                arg.idx
-                            ))));
-                        }
-                    }
-                    Sort::Component => {
-                        if !ctx.is_valid_component(arg.idx) {
-                            return Err(Error::new(kinds::ValidationError(format!(
-                                "Instance arg references invalid component index: {}",
-                                arg.idx
-                            ))));
-                        }
-                    }
-                    Sort::Instance => {
-                        if !ctx.is_valid_instance(arg.idx) {
-                            return Err(Error::new(kinds::ValidationError(format!(
-                                "Instance arg references invalid instance index: {}",
-                                arg.idx
-                            ))));
-                        }
-                    }
+            // Check result types
+            for (i, t1) in results1.iter().enumerate() {
+                if t1 != &results2[i] {
+                    return false;
                 }
             }
-        }
-        InstanceExpr::InlineExports(_exports) => {
-            // In a full implementation, we would validate the exports
-            // by checking that the referenced indices are valid
-        }
-    }
 
-    Ok(())
+            true
+        }
+
+        // Values are compatible if their types exactly match
+        (ExternType::Value(v1), ExternType::Value(v2)) => v1 == v2,
+
+        // Types are compatible if they refer to the same index
+        (ExternType::Type(idx1), ExternType::Type(idx2)) => idx1 == idx2,
+
+        // Instances are compatible if their exports are compatible
+        (
+            ExternType::Instance { exports: exports1 },
+            ExternType::Instance { exports: exports2 },
+        ) => {
+            // For imports, the importing instance must have all exports that it needs
+            // but the exporting instance can have more
+            if exports1.len() > exports2.len() {
+                return false;
+            }
+
+            // Check that all exports in the import are present in the export
+            for (name1, ty1) in exports1 {
+                if let Some((_, ty2)) = exports2.iter().find(|(name2, _)| name1 == name2) {
+                    if !is_compatible_type(ty1, ty2) {
+                        return false;
+                    }
+                } else {
+                    return false;
+                }
+            }
+
+            true
+        }
+
+        // Components are compatible if imports and exports match
+        (
+            ExternType::Component {
+                imports: imports1,
+                exports: exports1,
+            },
+            ExternType::Component {
+                imports: imports2,
+                exports: exports2,
+            },
+        ) => {
+            // The importing component must have all the exports that it offers
+            if exports1.len() < exports2.len() {
+                return false;
+            }
+
+            // The exporting component must satisfy all the imports needed
+            if imports1.len() > imports2.len() {
+                return false;
+            }
+
+            // Check that imports match
+            for (ns1, name1, ty1) in imports1 {
+                if let Some((_, _, ty2)) = imports2
+                    .iter()
+                    .find(|(ns2, name2, _)| ns1 == ns2 && name1 == name2)
+                {
+                    if !is_compatible_type(ty1, ty2) {
+                        return false;
+                    }
+                } else {
+                    return false;
+                }
+            }
+
+            // Check that exports match
+            for (name2, ty2) in exports2 {
+                if let Some((_, ty1)) = exports1.iter().find(|(name1, _)| name2 == name1) {
+                    if !is_compatible_type(ty1, ty2) {
+                        return false;
+                    }
+                } else {
+                    return false;
+                }
+            }
+
+            true
+        }
+
+        // Any other combination is not compatible
+        _ => false,
+    }
 }
 
-/// Validate an import, ensuring it has a valid type.
-fn validate_import(import: &Import, ctx: &ValidationContext) -> Result<()> {
-    // Validate the import name format
-    validate_import_name(&import.name)?;
+/// Validate the start function
+fn validate_start(component: &Component, ctx: &mut ValidationContext) -> Result<()> {
+    if let Some(start) = &component.start {
+        // Check function index is valid
+        if !ctx.is_valid_func(start.func_idx) {
+            return Err(Error::new(kinds::ValidationError(format!(
+                "Invalid function index {} in start function",
+                start.func_idx
+            ))));
+        }
 
-    // Validate the import type
-    validate_extern_type(&import.ty, ctx)?;
+        // Check all argument indices are valid
+        for (idx, arg_idx) in start.args.iter().enumerate() {
+            if !ctx.is_valid_value(*arg_idx) {
+                return Err(Error::new(kinds::ValidationError(format!(
+                    "Invalid value index {} at argument position {} in start function",
+                    arg_idx, idx
+                ))));
+            }
+        }
 
-    // Additional validation for resource imports
-    if let ExternType::Type(type_idx) = &import.ty {
-        // Check if it's a resource type
-        // In a full implementation, we would check the actual type
+        // Add result values to the value index space
+        for _result_idx in 0..start.results {
+            // Values created by the start function are tracked elsewhere
+        }
     }
-
-    Ok(())
-}
-
-/// Validate import name format
-fn validate_import_name(name: &wrt_format::component::ImportName) -> Result<()> {
-    // Basic syntax validation
-    if name.namespace.is_empty() {
-        return Err(Error::new(kinds::ValidationError(
-            "Import namespace cannot be empty".to_string(),
-        )));
-    }
-
-    if name.name.is_empty() {
-        return Err(Error::new(kinds::ValidationError(
-            "Import name cannot be empty".to_string(),
-        )));
-    }
-
-    // Validate allowed characters in namespace and name
-    // In a full implementation, we would check for valid UTF-8 characters
-    // and disallow control characters
-
     Ok(())
 }
 
@@ -951,173 +903,66 @@ fn validate_export_name(name: &wrt_format::component::ExportName) -> Result<()> 
     Ok(())
 }
 
-/// Validate the start function
-fn validate_start(start: &Start, ctx: &ValidationContext) -> Result<()> {
-    // Validate function index
-    if !ctx.is_valid_func(start.func_idx) {
-        return Err(Error::new(kinds::ValidationError(format!(
-            "Invalid function index {} in start",
-            start.func_idx
-        ))));
-    }
+/// Validate an import, ensuring it has a valid type.
+fn validate_import(import: &Import, ctx: &ValidationContext) -> Result<()> {
+    // Validate the import name format
+    validate_import_name(&import.name)?;
 
-    // In a full implementation, we would retrieve the function type
-    // and validate against it. For now, we assume it's valid.
+    // Validate the import type
+    validate_extern_type(&import.ty, ctx)?;
 
-    // Validate value arguments
-    for (i, arg_idx) in start.args.iter().enumerate() {
-        if !ctx.is_valid_value(*arg_idx) {
+    // Additional validation for resource imports
+    if let ExternType::Value(val_type) = &import.ty {
+        if let ValType::Own(type_idx) = val_type {
+            // Check it's a valid resource type
+            if !ctx.is_valid_resource_type(*type_idx) {
+                return Err(Error::new(kinds::ValidationError(format!(
+                    "Import references invalid resource type: {}",
+                    type_idx
+                ))));
+            }
+        } else if let ValType::Borrow(type_idx) = val_type {
+            // Check it's a valid resource type
+            if !ctx.is_valid_resource_type(*type_idx) {
+                return Err(Error::new(kinds::ValidationError(format!(
+                    "Import references invalid resource type: {}",
+                    type_idx
+                ))));
+            }
+        }
+    } else if let ExternType::Type(type_idx) = &import.ty {
+        // Check if component type exists
+        if !ctx.is_valid_component_type(*type_idx) {
             return Err(Error::new(kinds::ValidationError(format!(
-                "Invalid value index {} at argument position {} in start",
-                arg_idx, i
+                "Import references invalid component type index: {}",
+                type_idx
             ))));
-        }
-    }
-
-    // Validate that all arguments are unconsumed values
-    for &arg_idx in &start.args {
-        if ctx.is_value_consumed(arg_idx) {
-            return Err(Error::new(kinds::ValidationError(format!(
-                "Value {} has already been consumed and cannot be used as start argument",
-                arg_idx
-            ))));
-        }
-    }
-
-    // Validate that the function signature matches the arguments and results
-    // This would require accessing the full function type
-    // For now, just validate that the start declaration is consistent
-
-    // Validate the results count is reasonable (not excessively large)
-    if start.results > 1000 {
-        return Err(Error::new(kinds::ValidationError(format!(
-            "Start function has an unreasonably large number of results: {}",
-            start.results
-        ))));
-    }
-
-    // Validate that the expected result types are compatible with how they'll be used
-    // This would need access to the result types from the function signature
-
-    // Check for resource handling in start functions
-    // Start functions with resource parameters require special handling
-    // to ensure resources are properly tracked
-
-    Ok(())
-}
-
-/// Validate a component type, ensuring it is well-formed
-fn validate_component_type(
-    comp_type: &wrt_format::component::ComponentType,
-    ctx: &ValidationContext,
-) -> Result<()> {
-    use wrt_format::component::ComponentTypeDefinition;
-
-    match &comp_type.definition {
-        ComponentTypeDefinition::Component { imports, exports } => {
-            // Validate component imports
-            for (_namespace, _name, ty) in imports {
-                validate_extern_type(ty, ctx)?;
-            }
-
-            // Validate component exports
-            for (_name, ty) in exports {
-                validate_extern_type(ty, ctx)?;
-            }
-        }
-        ComponentTypeDefinition::Instance { exports } => {
-            // Validate instance exports
-            for (_name, ty) in exports {
-                validate_extern_type(ty, ctx)?;
-            }
-        }
-        ComponentTypeDefinition::Function { params, results } => {
-            // Validate function parameters
-            for (_name, param_type) in params {
-                validate_val_type(param_type, ctx)?;
-            }
-
-            // Validate function results
-            for result_type in results {
-                validate_val_type(result_type, ctx)?;
-            }
-        }
-        ComponentTypeDefinition::Value(val_type) => {
-            validate_val_type(val_type, ctx)?;
-        }
-        ComponentTypeDefinition::Resource {
-            representation,
-            nullable: _,
-        } => {
-            // Record this as a valid resource type
-            let resource_idx = ctx.component_types.len() as u32 - 1;
-            // Unable to modify ctx here due to immutability, would need design change
-            // ctx.add_resource_type(resource_idx);
-
-            // Validate the resource representation
-            validate_resource_representation(representation, ctx)?;
         }
     }
 
     Ok(())
 }
 
-/// Validate a resource representation
-fn validate_resource_representation(
-    representation: &wrt_format::component::ResourceRepresentation,
-    ctx: &ValidationContext,
-) -> Result<()> {
-    match representation {
-        ResourceRepresentation::Handle32 | ResourceRepresentation::Handle64 => {
-            // Simple handle representations are always valid
-            Ok(())
-        }
-        ResourceRepresentation::Record(field_names) => {
-            // Validate that field names are unique
-            let mut seen_fields = HashSet::new();
-            for name in field_names {
-                if !seen_fields.insert(name) {
-                    return Err(Error::new(kinds::ValidationError(format!(
-                        "Duplicate field name '{}' in resource record representation",
-                        name
-                    ))));
-                }
-            }
-
-            // Record representation must have at least one field
-            if field_names.is_empty() {
-                return Err(Error::new(kinds::ValidationError(
-                    "Resource record representation must have at least one field".to_string(),
-                )));
-            }
-
-            Ok(())
-        }
-        ResourceRepresentation::Aggregate(type_indices) => {
-            // Validate that all referenced types exist
-            for (i, type_idx) in type_indices.iter().enumerate() {
-                if !ctx.is_valid_component_type(*type_idx) {
-                    return Err(Error::new(kinds::ValidationError(format!(
-                        "Invalid component type index {} in resource aggregate representation at position {}",
-                        type_idx, i
-                    ))));
-                }
-
-                // In a full implementation, we would validate that each referenced type
-                // is a suitable representation type (e.g., not a function type)
-            }
-
-            // Aggregate representation must reference at least one type
-            if type_indices.is_empty() {
-                return Err(Error::new(kinds::ValidationError(
-                    "Resource aggregate representation must reference at least one type"
-                        .to_string(),
-                )));
-            }
-
-            Ok(())
-        }
+/// Validate import name format
+fn validate_import_name(name: &wrt_format::component::ImportName) -> Result<()> {
+    // Basic syntax validation
+    if name.namespace.is_empty() {
+        return Err(Error::new(kinds::ValidationError(
+            "Import namespace cannot be empty".to_string(),
+        )));
     }
+
+    if name.name.is_empty() {
+        return Err(Error::new(kinds::ValidationError(
+            "Import name cannot be empty".to_string(),
+        )));
+    }
+
+    // Validate allowed characters in namespace and name
+    // In a full implementation, we would check for valid UTF-8 characters
+    // and disallow control characters
+
+    Ok(())
 }
 
 /// Validate an external type
@@ -1351,6 +1196,582 @@ fn validate_val_type(
     }
 }
 
+/// Validate a core type, ensuring it is well-formed.
+fn validate_core_type(core_type: &CoreType, _ctx: &ValidationContext) -> Result<()> {
+    match &core_type.definition {
+        CoreTypeDefinition::Function { params, results } => {
+            // WebAssembly spec limits function signature to 1000 params and 1000 results
+            if params.len() > 1000 {
+                return Err(Error::new(kinds::ValidationError(
+                    "Core function type has too many parameters".to_string(),
+                )));
+            }
+
+            if results.len() > 1000 {
+                return Err(Error::new(kinds::ValidationError(
+                    "Core function type has too many results".to_string(),
+                )));
+            }
+        }
+        CoreTypeDefinition::Module { imports, exports } => {
+            // Validate module imports
+            for (module, name, ty) in imports {
+                // Validate import name format
+                if module.is_empty() {
+                    return Err(Error::new(kinds::ValidationError(
+                        "Core module import module name cannot be empty".to_string(),
+                    )));
+                }
+
+                if name.is_empty() {
+                    return Err(Error::new(kinds::ValidationError(
+                        "Core module import item name cannot be empty".to_string(),
+                    )));
+                }
+
+                // Validate the type is a valid core type
+                match ty {
+                    wrt_format::component::CoreExternType::Function {
+                        params: _,
+                        results: _,
+                    }
+                    | wrt_format::component::CoreExternType::Global {
+                        value_type: _,
+                        mutable: _,
+                    }
+                    | wrt_format::component::CoreExternType::Memory {
+                        min: _,
+                        max: _,
+                        shared: _,
+                    }
+                    | wrt_format::component::CoreExternType::Table {
+                        element_type: _,
+                        min: _,
+                        max: _,
+                    } => {
+                        // These are valid core types
+                    }
+                }
+            }
+
+            // Check for duplicate import names
+            let mut import_names = HashSet::new();
+            for (module, name, _) in imports {
+                let full_name = format!("{}.{}", module, name);
+                if !import_names.insert(full_name) {
+                    return Err(Error::new(kinds::ValidationError(format!(
+                        "Duplicate import name in core module type: {}.{}",
+                        module, name
+                    ))));
+                }
+            }
+
+            // Validate module exports
+            for (name, ty) in exports {
+                // Validate export name format
+                if name.is_empty() {
+                    return Err(Error::new(kinds::ValidationError(
+                        "Core module export name cannot be empty".to_string(),
+                    )));
+                }
+
+                // Validate the type is a valid core type
+                match ty {
+                    wrt_format::component::CoreExternType::Function {
+                        params: _,
+                        results: _,
+                    }
+                    | wrt_format::component::CoreExternType::Global {
+                        value_type: _,
+                        mutable: _,
+                    }
+                    | wrt_format::component::CoreExternType::Memory {
+                        min: _,
+                        max: _,
+                        shared: _,
+                    }
+                    | wrt_format::component::CoreExternType::Table {
+                        element_type: _,
+                        min: _,
+                        max: _,
+                    } => {
+                        // These are valid core types
+                    }
+                }
+            }
+
+            // Check for duplicate export names
+            let mut export_names = HashSet::new();
+            for (name, _) in exports {
+                if !export_names.insert(name) {
+                    return Err(Error::new(kinds::ValidationError(format!(
+                        "Duplicate export name in core module type: {}",
+                        name
+                    ))));
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
+/// Validate a core instance, ensuring it references valid modules and instances.
+fn validate_core_instance(core_instance: &CoreInstance, ctx: &ValidationContext) -> Result<()> {
+    match &core_instance.instance_expr {
+        CoreInstanceExpr::Instantiate { module_idx, args } => {
+            // Check that the module index is valid
+            if !ctx.is_valid_module(*module_idx) {
+                return Err(Error::new(kinds::ValidationError(format!(
+                    "Core instance references invalid module index: {}",
+                    module_idx
+                ))));
+            }
+
+            // Check that all instance indices in args are valid
+            for arg in args {
+                if !ctx.is_valid_core_instance(arg.instance_idx) {
+                    return Err(Error::new(kinds::ValidationError(format!(
+                        "Core instance arg references invalid instance index: {}",
+                        arg.instance_idx
+                    ))));
+                }
+
+                // Check export name is not empty
+                if arg.name.is_empty() {
+                    return Err(Error::new(kinds::ValidationError(
+                        "Core instance arg export name cannot be empty".to_string(),
+                    )));
+                }
+            }
+
+            // Check for duplicate export references
+            let mut export_names = HashSet::new();
+            for arg in args {
+                let full_ref = format!("{}.{}", arg.instance_idx, arg.name);
+                if !export_names.insert(full_ref) {
+                    return Err(Error::new(kinds::ValidationError(format!(
+                        "Duplicate export reference in core instance: instance {} export {}",
+                        arg.instance_idx, arg.name
+                    ))));
+                }
+            }
+        }
+        CoreInstanceExpr::InlineExports(exports) => {
+            // Validate inline exports
+            let mut export_names = HashSet::new();
+
+            for export in exports {
+                // Validate export name is not empty
+                if export.name.is_empty() {
+                    return Err(Error::new(kinds::ValidationError(
+                        "Core instance inline export name cannot be empty".to_string(),
+                    )));
+                }
+
+                // Check for duplicate export names
+                if !export_names.insert(&export.name) {
+                    return Err(Error::new(kinds::ValidationError(format!(
+                        "Duplicate export name in core instance: {}",
+                        export.name
+                    ))));
+                }
+
+                // Validate sort-specific indices
+                match export.sort {
+                    wrt_format::component::CoreSort::Function => {
+                        // Would check function index if available
+                    }
+                    wrt_format::component::CoreSort::Table => {
+                        // Would check table index if available
+                    }
+                    wrt_format::component::CoreSort::Memory => {
+                        // Would check memory index if available
+                    }
+                    wrt_format::component::CoreSort::Global => {
+                        // Would check global index if available
+                    }
+                    wrt_format::component::CoreSort::Type => {
+                        if !ctx.is_valid_core_type(export.idx) {
+                            return Err(Error::new(kinds::ValidationError(format!(
+                                "Core instance export references invalid core type index: {}",
+                                export.idx
+                            ))));
+                        }
+                    }
+                    wrt_format::component::CoreSort::Module => {
+                        if !ctx.is_valid_module(export.idx) {
+                            return Err(Error::new(kinds::ValidationError(format!(
+                                "Core instance export references invalid module index: {}",
+                                export.idx
+                            ))));
+                        }
+                    }
+                    wrt_format::component::CoreSort::Instance => {
+                        if !ctx.is_valid_core_instance(export.idx) {
+                            return Err(Error::new(kinds::ValidationError(format!(
+                                "Core instance export references invalid core instance index: {}",
+                                export.idx
+                            ))));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
+/// Validate a component type, ensuring it is well-formed
+fn validate_component_type(
+    comp_type: &wrt_format::component::ComponentType,
+    ctx: &mut ValidationContext,
+) -> Result<()> {
+    use wrt_format::component::ComponentTypeDefinition;
+
+    match &comp_type.definition {
+        ComponentTypeDefinition::Component { imports, exports } => {
+            // Validate component imports
+            for (_namespace, _name, ty) in imports {
+                validate_extern_type(ty, ctx)?;
+            }
+
+            // Validate component exports
+            for (_name, ty) in exports {
+                validate_extern_type(ty, ctx)?;
+            }
+        }
+        ComponentTypeDefinition::Instance { exports } => {
+            // Validate instance exports
+            for (_name, ty) in exports {
+                validate_extern_type(ty, ctx)?;
+            }
+        }
+        ComponentTypeDefinition::Function { params, results } => {
+            // Validate function parameters
+            for (_name, param_type) in params {
+                validate_val_type(param_type, ctx)?;
+            }
+
+            // Validate function results
+            for result_type in results {
+                validate_val_type(result_type, ctx)?;
+            }
+        }
+        ComponentTypeDefinition::Value(val_type) => {
+            validate_val_type(val_type, ctx)?;
+        }
+        ComponentTypeDefinition::Resource {
+            representation,
+            nullable: _,
+        } => {
+            // Record this as a valid resource type
+            let resource_idx = ctx.component_types.len() as u32 - 1;
+            ctx.add_resource_type(resource_idx);
+
+            // Validate the resource representation
+            validate_resource_representation(representation, ctx)?;
+        }
+    }
+
+    Ok(())
+}
+
+/// Validate a resource representation
+fn validate_resource_representation(
+    representation: &wrt_format::component::ResourceRepresentation,
+    ctx: &ValidationContext,
+) -> Result<()> {
+    match representation {
+        ResourceRepresentation::Handle32 | ResourceRepresentation::Handle64 => {
+            // Simple handle representations are always valid
+            Ok(())
+        }
+        ResourceRepresentation::Record(field_names) => {
+            // Validate that field names are unique
+            let mut seen_fields = HashSet::new();
+            for name in field_names {
+                if !seen_fields.insert(name) {
+                    return Err(Error::new(kinds::ValidationError(format!(
+                        "Duplicate field name '{}' in resource record representation",
+                        name
+                    ))));
+                }
+            }
+
+            // Record representation must have at least one field
+            if field_names.is_empty() {
+                return Err(Error::new(kinds::ValidationError(
+                    "Resource record representation must have at least one field".to_string(),
+                )));
+            }
+
+            Ok(())
+        }
+        ResourceRepresentation::Aggregate(type_indices) => {
+            // Validate that all referenced types exist
+            for (i, type_idx) in type_indices.iter().enumerate() {
+                if !ctx.is_valid_component_type(*type_idx) {
+                    return Err(Error::new(kinds::ValidationError(format!(
+                        "Invalid component type index {} in resource aggregate representation at position {}",
+                        type_idx, i
+                    ))));
+                }
+
+                // In a full implementation, we would validate that each referenced type
+                // is a suitable representation type (e.g., not a function type)
+            }
+
+            // Aggregate representation must reference at least one type
+            if type_indices.is_empty() {
+                return Err(Error::new(kinds::ValidationError(
+                    "Resource aggregate representation must reference at least one type"
+                        .to_string(),
+                )));
+            }
+
+            Ok(())
+        }
+    }
+}
+
+/// Validate an instance, ensuring it references valid components and indices.
+fn validate_instance(instance: &Instance, ctx: &ValidationContext) -> Result<()> {
+    match &instance.instance_expr {
+        InstanceExpr::Instantiate {
+            component_idx,
+            args,
+        } => {
+            // Check that the component index is valid
+            if !ctx.is_valid_component(*component_idx) {
+                return Err(Error::new(kinds::ValidationError(format!(
+                    "Instance references invalid component index: {}",
+                    component_idx
+                ))));
+            }
+
+            // Check that all referenced indices in args are valid
+            for arg in args {
+                match arg.sort {
+                    Sort::Core(core_sort) => {
+                        match core_sort {
+                            CoreSort::Function => {
+                                // In a full implementation, check core function index
+                            }
+                            CoreSort::Table => {
+                                // In a full implementation, check core table index
+                            }
+                            CoreSort::Memory => {
+                                // In a full implementation, check core memory index
+                            }
+                            CoreSort::Global => {
+                                // In a full implementation, check core global index
+                            }
+                            CoreSort::Type => {
+                                if !ctx.is_valid_core_type(arg.idx) {
+                                    return Err(Error::new(kinds::ValidationError(format!(
+                                        "Instance arg references invalid core type index: {}",
+                                        arg.idx
+                                    ))));
+                                }
+                            }
+                            CoreSort::Module => {
+                                if !ctx.is_valid_module(arg.idx) {
+                                    return Err(Error::new(kinds::ValidationError(format!(
+                                        "Instance arg references invalid module index: {}",
+                                        arg.idx
+                                    ))));
+                                }
+                            }
+                            CoreSort::Instance => {
+                                if !ctx.is_valid_core_instance(arg.idx) {
+                                    return Err(Error::new(kinds::ValidationError(format!(
+                                        "Instance arg references invalid core instance index: {}",
+                                        arg.idx
+                                    ))));
+                                }
+                            }
+                        }
+                    }
+                    Sort::Function => {
+                        if !ctx.is_valid_func(arg.idx) {
+                            return Err(Error::new(kinds::ValidationError(format!(
+                                "Instance arg references invalid function index: {}",
+                                arg.idx
+                            ))));
+                        }
+                    }
+                    Sort::Value => {
+                        if !ctx.is_valid_value(arg.idx) {
+                            return Err(Error::new(kinds::ValidationError(format!(
+                                "Instance arg references invalid value index: {}",
+                                arg.idx
+                            ))));
+                        }
+
+                        // Mark that this value is consumed
+                        // Can't modify the context here due to borrowing rules
+                        // ctx.mark_value_consumed(arg.idx);
+                    }
+                    Sort::Type => {
+                        if !ctx.is_valid_component_type(arg.idx) {
+                            return Err(Error::new(kinds::ValidationError(format!(
+                                "Instance arg references invalid component type index: {}",
+                                arg.idx
+                            ))));
+                        }
+                    }
+                    Sort::Component => {
+                        if !ctx.is_valid_component(arg.idx) {
+                            return Err(Error::new(kinds::ValidationError(format!(
+                                "Instance arg references invalid component index: {}",
+                                arg.idx
+                            ))));
+                        }
+                    }
+                    Sort::Instance => {
+                        if !ctx.is_valid_instance(arg.idx) {
+                            return Err(Error::new(kinds::ValidationError(format!(
+                                "Instance arg references invalid instance index: {}",
+                                arg.idx
+                            ))));
+                        }
+                    }
+                }
+
+                // Check that arg name is not empty
+                if arg.name.is_empty() {
+                    return Err(Error::new(kinds::ValidationError(
+                        "Instance arg name cannot be empty".to_string(),
+                    )));
+                }
+            }
+
+            // Check for duplicate arg names
+            let mut arg_names = HashSet::new();
+            for arg in args {
+                if !arg_names.insert(&arg.name) {
+                    return Err(Error::new(kinds::ValidationError(format!(
+                        "Duplicate arg name in instance: {}",
+                        arg.name
+                    ))));
+                }
+            }
+        }
+        InstanceExpr::InlineExports(exports) => {
+            // Validate inline exports
+            let mut export_names = HashSet::new();
+
+            for export in exports {
+                // Validate export name is not empty
+                if export.name.is_empty() {
+                    return Err(Error::new(kinds::ValidationError(
+                        "Instance inline export name cannot be empty".to_string(),
+                    )));
+                }
+
+                // Check for duplicate export names
+                if !export_names.insert(&export.name) {
+                    return Err(Error::new(kinds::ValidationError(format!(
+                        "Duplicate export name in instance: {}",
+                        export.name
+                    ))));
+                }
+
+                // Validate based on sort
+                match export.sort {
+                    Sort::Core(core_sort) => {
+                        match core_sort {
+                            CoreSort::Function => {
+                                // Would check core function index if available
+                            }
+                            CoreSort::Table => {
+                                // Would check core table index if available
+                            }
+                            CoreSort::Memory => {
+                                // Would check core memory index if available
+                            }
+                            CoreSort::Global => {
+                                // Would check core global index if available
+                            }
+                            CoreSort::Type => {
+                                if !ctx.is_valid_core_type(export.idx) {
+                                    return Err(Error::new(kinds::ValidationError(format!(
+                                        "Instance export references invalid core type index: {}",
+                                        export.idx
+                                    ))));
+                                }
+                            }
+                            CoreSort::Module => {
+                                if !ctx.is_valid_module(export.idx) {
+                                    return Err(Error::new(kinds::ValidationError(format!(
+                                        "Instance export references invalid module index: {}",
+                                        export.idx
+                                    ))));
+                                }
+                            }
+                            CoreSort::Instance => {
+                                if !ctx.is_valid_core_instance(export.idx) {
+                                    return Err(Error::new(kinds::ValidationError(format!(
+                                        "Instance export references invalid core instance index: {}",
+                                        export.idx
+                                    ))));
+                                }
+                            }
+                        }
+                    }
+                    Sort::Function => {
+                        if !ctx.is_valid_func(export.idx) {
+                            return Err(Error::new(kinds::ValidationError(format!(
+                                "Instance export references invalid function index: {}",
+                                export.idx
+                            ))));
+                        }
+                    }
+                    Sort::Value => {
+                        if !ctx.is_valid_value(export.idx) {
+                            return Err(Error::new(kinds::ValidationError(format!(
+                                "Instance export references invalid value index: {}",
+                                export.idx
+                            ))));
+                        }
+
+                        // Would mark value as consumed here
+                        // ctx.mark_value_consumed(export.idx);
+                    }
+                    Sort::Type => {
+                        if !ctx.is_valid_component_type(export.idx) {
+                            return Err(Error::new(kinds::ValidationError(format!(
+                                "Instance export references invalid component type index: {}",
+                                export.idx
+                            ))));
+                        }
+                    }
+                    Sort::Component => {
+                        if !ctx.is_valid_component(export.idx) {
+                            return Err(Error::new(kinds::ValidationError(format!(
+                                "Instance export references invalid component index: {}",
+                                export.idx
+                            ))));
+                        }
+                    }
+                    Sort::Instance => {
+                        if !ctx.is_valid_instance(export.idx) {
+                            return Err(Error::new(kinds::ValidationError(format!(
+                                "Instance export references invalid instance index: {}",
+                                export.idx
+                            ))));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
 /// Validate a canonical operation
 fn validate_canon(canon: &wrt_format::component::Canon, ctx: &ValidationContext) -> Result<()> {
     use wrt_format::component::{CanonOperation, ResourceOperation};
@@ -1362,7 +1783,7 @@ fn validate_canon(canon: &wrt_format::component::Canon, ctx: &ValidationContext)
             options,
         } => {
             // Validate that the core function index is valid
-            if *func_idx >= ctx.modules.len() as u32 {
+            if !ctx.is_valid_func(*func_idx) {
                 return Err(Error::new(kinds::ValidationError(format!(
                     "Invalid core function index {} in lift operation",
                     func_idx
@@ -1406,46 +1827,34 @@ fn validate_canon(canon: &wrt_format::component::Canon, ctx: &ValidationContext)
         }
         CanonOperation::Resource(resource_op) => {
             match resource_op {
-                ResourceOperation::New(new_op) => {
+                ResourceOperation::New(resource_new) => {
                     // Validate that the resource type index is valid
-                    if !ctx.is_valid_resource_type(new_op.type_idx) {
+                    if !ctx.is_valid_resource_type(resource_new.type_idx) {
                         return Err(Error::new(kinds::ValidationError(format!(
                             "Invalid resource type index {} in resource new operation",
-                            new_op.type_idx
+                            resource_new.type_idx
                         ))));
                     }
-
-                    // In a full implementation, we would validate that the type
-                    // at type_idx is actually a resource type
-
                     Ok(())
                 }
-                ResourceOperation::Drop(drop_op) => {
+                ResourceOperation::Drop(resource_drop) => {
                     // Validate that the resource type index is valid
-                    if !ctx.is_valid_resource_type(drop_op.type_idx) {
+                    if !ctx.is_valid_resource_type(resource_drop.type_idx) {
                         return Err(Error::new(kinds::ValidationError(format!(
                             "Invalid resource type index {} in resource drop operation",
-                            drop_op.type_idx
+                            resource_drop.type_idx
                         ))));
                     }
-
-                    // In a full implementation, we would validate that the type
-                    // at type_idx is actually a resource type
-
                     Ok(())
                 }
-                ResourceOperation::Rep(rep_op) => {
+                ResourceOperation::Rep(resource_rep) => {
                     // Validate that the resource type index is valid
-                    if !ctx.is_valid_resource_type(rep_op.type_idx) {
+                    if !ctx.is_valid_resource_type(resource_rep.type_idx) {
                         return Err(Error::new(kinds::ValidationError(format!(
                             "Invalid resource type index {} in resource rep operation",
-                            rep_op.type_idx
+                            resource_rep.type_idx
                         ))));
                     }
-
-                    // In a full implementation, we would validate that the type
-                    // at type_idx is actually a resource type
-
                     Ok(())
                 }
             }
@@ -1458,19 +1867,30 @@ fn validate_lift_options(
     options: &wrt_format::component::LiftOptions,
     ctx: &ValidationContext,
 ) -> Result<()> {
-    // Validate memory index if provided
+    // Check memory index if specified
     if let Some(memory_idx) = options.memory_idx {
-        // In a full implementation, we would validate that the memory index is valid
-        // For now, we just assume it's valid
+        // In a full implementation, we would validate the memory index
+        // For now, we just check it's not out of bounds
+        if memory_idx >= ctx.modules.len() as u32 {
+            return Err(Error::new(kinds::ValidationError(format!(
+                "Invalid memory index {} in lift options",
+                memory_idx
+            ))));
+        }
     }
 
-    // Validate string encoding
+    // Check string encoding if specified
     if let Some(string_encoding) = &options.string_encoding {
-        // All string encodings defined in the spec are valid
-        // No additional validation required
+        // Check that the encoding is valid
+        match string_encoding {
+            wrt_format::component::StringEncoding::UTF8 => Ok(()),
+            wrt_format::component::StringEncoding::UTF16 => Ok(()),
+            wrt_format::component::StringEncoding::Latin1 => Ok(()),
+            wrt_format::component::StringEncoding::ASCII => Ok(()),
+        }
+    } else {
+        Ok(())
     }
-
-    Ok(())
 }
 
 /// Validate lower options
@@ -1478,28 +1898,59 @@ fn validate_lower_options(
     options: &wrt_format::component::LowerOptions,
     ctx: &ValidationContext,
 ) -> Result<()> {
-    // Validate memory index if provided
+    // Check memory index if specified
     if let Some(memory_idx) = options.memory_idx {
-        // In a full implementation, we would validate that the memory index is valid
-        // For now, we just assume it's valid
+        // In a full implementation, we would validate the memory index
+        // For now, we just check it's not out of bounds
+        if memory_idx >= ctx.modules.len() as u32 {
+            return Err(Error::new(kinds::ValidationError(format!(
+                "Invalid memory index {} in lower options",
+                memory_idx
+            ))));
+        }
     }
 
-    // Validate string encoding
+    // Check string encoding if specified
     if let Some(string_encoding) = &options.string_encoding {
-        // All string encodings defined in the spec are valid
-        // No additional validation required
+        // Check that the encoding is valid
+        match string_encoding {
+            wrt_format::component::StringEncoding::UTF8 => Ok(()),
+            wrt_format::component::StringEncoding::UTF16 => Ok(()),
+            wrt_format::component::StringEncoding::Latin1 => Ok(()),
+            wrt_format::component::StringEncoding::ASCII => Ok(()),
+        }
+    } else {
+        Ok(())
     }
-
-    Ok(())
 }
 
-/// Validate a value against its declared type
-fn validate_value(value: &wrt_format::component::Value, ctx: &ValidationContext) -> Result<()> {
-    // First validate the type itself
-    validate_val_type(&value.ty, ctx)?;
+fn validate_values(component: &Component, ctx: &mut ValidationContext) -> Result<()> {
+    for (idx, value) in component.values.iter().enumerate() {
+        // Validate the value type
+        validate_val_type(&value.ty, ctx)?;
 
-    // Then validate that the encoded data matches the expected type
-    validate_encoded_value(&value.data, &value.ty, ctx)
+        // Validate that the encoded data matches the expected type
+        validate_encoded_value(&value.data, &value.ty, ctx)?;
+
+        // Add value to the context
+        let value_idx = ctx.values.len() as u32;
+        ctx.add_value(value_idx);
+        ctx.mark_value_unconsumed(value_idx);
+
+        // Handle resource values specially
+        if let ValType::Own(resource_idx) = &value.ty {
+            if !ctx.is_valid_resource_type(*resource_idx) {
+                return Err(Error::new(kinds::ValidationError(format!(
+                    "Value references invalid resource type index: {}",
+                    resource_idx
+                ))));
+            }
+
+            // Track the resource creation
+            ctx.track_resource_created(idx as u32);
+        }
+    }
+    Ok(())
 }
 
 /// Validate that encoded data matches the expected type
@@ -1600,131 +2051,84 @@ fn validate_encoded_value(data: &[u8], val_type: &ValType, ctx: &ValidationConte
     }
 }
 
-/// Check if two types are compatible for linking
-fn is_compatible_type(imported: &ExternType, exported: &ExternType) -> bool {
-    match (imported, exported) {
-        (
-            ExternType::Function {
-                params: imp_params,
-                results: imp_results,
-            },
-            ExternType::Function {
-                params: exp_params,
-                results: exp_results,
-            },
-        ) => {
-            // Function types must match exactly for parameters and results
-            if imp_params.len() != exp_params.len() || imp_results.len() != exp_results.len() {
-                return false;
-            }
+/// Validate resource usage in a component
+fn validate_resources(component: &Component, ctx: &mut ValidationContext) -> Result<()> {
+    // For each component type definition, identify resource types
+    for (idx, type_def) in component.types.iter().enumerate() {
+        match &type_def.definition {
+            ComponentTypeDefinition::Resource { representation, .. } => {
+                // Add this resource type to the context
+                ctx.add_resource_type(idx as u32);
 
-            // Check parameter types
-            for (i, (_, imp_param_type)) in imp_params.iter().enumerate() {
-                let (_, exp_param_type) = &exp_params[i];
-                if !is_compatible_val_type(imp_param_type, exp_param_type) {
-                    return false;
-                }
+                // Validate resource representation
+                validate_resource_representation(representation, ctx)?;
             }
-
-            // Check result types
-            for (i, imp_result_type) in imp_results.iter().enumerate() {
-                let exp_result_type = &exp_results[i];
-                if !is_compatible_val_type(imp_result_type, exp_result_type) {
-                    return false;
-                }
-            }
-
-            true
+            _ => {}
         }
-        (ExternType::Value(imp_type), ExternType::Value(exp_type)) => {
-            // Value types must be compatible
-            is_compatible_val_type(imp_type, exp_type)
-        }
-        (ExternType::Type(imp_idx), ExternType::Type(exp_idx)) => {
-            // Type indices must refer to compatible types
-            // In a full implementation, we would look up the types and check compatibility
-            imp_idx == exp_idx
-        }
-        (
-            ExternType::Instance {
-                exports: imp_exports,
-            },
-            ExternType::Instance {
-                exports: exp_exports,
-            },
-        ) => {
-            // Instance exports must be compatible
-            if imp_exports.len() > exp_exports.len() {
-                return false;
-            }
-
-            // Each import export must be present in the exports with a compatible type
-            for (imp_name, imp_type) in imp_exports {
-                if let Some((_, exp_type)) = exp_exports.iter().find(|(name, _)| name == imp_name) {
-                    if !is_compatible_type(imp_type, exp_type) {
-                        return false;
-                    }
-                } else {
-                    return false;
-                }
-            }
-
-            true
-        }
-        (
-            ExternType::Component {
-                imports: imp_imports,
-                exports: imp_exports,
-            },
-            ExternType::Component {
-                imports: exp_imports,
-                exports: exp_exports,
-            },
-        ) => {
-            // Component imports must be compatible (contravariant)
-            if exp_imports.len() > imp_imports.len() {
-                return false;
-            }
-
-            // Each export import must be present in the imports with a compatible type
-            for (exp_ns, exp_name, exp_type) in exp_imports {
-                if let Some((imp_ns, imp_name, imp_type)) = imp_imports
-                    .iter()
-                    .find(|(ns, name, _)| ns == exp_ns && name == exp_name)
-                {
-                    if !is_compatible_type(exp_type, imp_type) {
-                        return false;
-                    }
-                } else {
-                    return false;
-                }
-            }
-
-            // Component exports must be compatible (covariant)
-            if imp_exports.len() > exp_exports.len() {
-                return false;
-            }
-
-            // Each import export must be present in the exports with a compatible type
-            for (imp_name, imp_type) in imp_exports {
-                if let Some((_, exp_type)) = exp_exports.iter().find(|(name, _)| name == imp_name) {
-                    if !is_compatible_type(imp_type, exp_type) {
-                        return false;
-                    }
-                } else {
-                    return false;
-                }
-            }
-
-            true
-        }
-        _ => false, // Different types are not compatible
     }
+
+    // For value types that are resources, check they reference valid resource types
+    for value in &component.values {
+        if let ValType::Own(resource_idx) = value.ty {
+            if !ctx.is_valid_resource_type(resource_idx) {
+                return Err(Error::new(kinds::ValidationError(format!(
+                    "Value with invalid resource type: {}",
+                    resource_idx
+                ))));
+            }
+        }
+    }
+
+    Ok(())
 }
 
-/// Check if two value types are compatible for linking
-fn is_compatible_val_type(imported: &ValType, exported: &ValType) -> bool {
-    // For simplicity, we'll just check for exact equality
-    // In a full implementation, we would check subtyping rules
-    imported == exported
+fn validate_import_export_compatibility(
+    ctx: &ValidationContext,
+    imported_type: &ExternType,
+    exported_type: &ExternType,
+) -> Result<()> {
+    if !is_compatible_type(imported_type, exported_type) {
+        return Err(Error::new(kinds::ValidationError(format!(
+            "Incompatible import/export types"
+        ))));
+    }
+
+    // Special validation for resource types
+    match (imported_type, exported_type) {
+        (ExternType::Value(ValType::Own(i_idx)), ExternType::Value(ValType::Own(e_idx))) => {
+            if i_idx != e_idx {
+                return Err(Error::new(kinds::ValidationError(format!(
+                    "Incompatible resource types: imported {} != exported {}",
+                    i_idx, e_idx
+                ))));
+            }
+
+            // Check that both are valid resource types
+            if !ctx.is_valid_resource_type(*i_idx) || !ctx.is_valid_resource_type(*e_idx) {
+                return Err(Error::new(kinds::ValidationError(format!(
+                    "Invalid resource type index in import/export"
+                ))));
+            }
+        }
+        (ExternType::Value(ValType::Borrow(i_idx)), ExternType::Value(ValType::Borrow(e_idx))) => {
+            if i_idx != e_idx {
+                return Err(Error::new(kinds::ValidationError(format!(
+                    "Incompatible borrowed resource types: imported {} != exported {}",
+                    i_idx, e_idx
+                ))));
+            }
+
+            // Check that both are valid resource types
+            if !ctx.is_valid_resource_type(*i_idx) || !ctx.is_valid_resource_type(*e_idx) {
+                return Err(Error::new(kinds::ValidationError(format!(
+                    "Invalid resource type index in import/export"
+                ))));
+            }
+        }
+        _ => {
+            // Other types are handled by the compatibility check above
+        }
+    }
+
+    Ok(())
 }

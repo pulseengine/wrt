@@ -9,7 +9,7 @@ use crate::{
     error::kinds,
     error::{Error, Result},
     global::Global,
-    memory::{DefaultMemory, MemoryBehavior},
+    memory::{Memory, PAGE_SIZE},
     module::{ExportKind, ExportValue, Function, Import, Module},
     module_instance::ModuleInstance,
     resource::{ResourceId, ResourceTable},
@@ -101,7 +101,7 @@ impl CanonicalABI {
     pub fn lift(
         value: Value,
         ty: &ComponentType,
-        memory: Option<&dyn MemoryBehavior>,
+        memory: Option<&Memory>,
         resources: Option<&ResourceTable>,
     ) -> Result<InterfaceValue> {
         let value_clone = value.clone(); // Clone value so we can reference it later
@@ -170,7 +170,7 @@ impl CanonicalABI {
     /// Lower an interface value to a core WebAssembly value
     pub fn lower(
         value: InterfaceValue,
-        memory: Option<&mut dyn MemoryBehavior>,
+        memory: Option<&mut Memory>,
         resources: Option<&mut ResourceTable>,
     ) -> Result<Value> {
         match value {
@@ -207,7 +207,7 @@ impl CanonicalABI {
     }
 
     /// Lift a string from memory
-    fn lift_string(ptr: i32, memory: &dyn MemoryBehavior) -> Result<InterfaceValue> {
+    fn lift_string(ptr: i32, memory: &Memory) -> Result<InterfaceValue> {
         if ptr < 0 {
             return Err(Error::new(kinds::ExecutionError(
                 format!("Invalid string pointer: {ptr}").into(),
@@ -217,7 +217,7 @@ impl CanonicalABI {
         // In the canonical ABI, strings are represented as a pointer to a length-prefixed UTF-8 sequence
         let addr = ptr as u32;
         // Check bounds carefully
-        let mem_size_bytes = memory.size_bytes();
+        let mem_size_bytes = memory.size_in_bytes();
         if addr
             .checked_add(4)
             .map_or(true, |end| end > mem_size_bytes as u32)
@@ -228,13 +228,9 @@ impl CanonicalABI {
         }
 
         // Read the length
-        let length_bytes = memory.read_bytes(addr, 4)?;
-        let length = u32::from_le_bytes([
-            length_bytes[0],
-            length_bytes[1],
-            length_bytes[2],
-            length_bytes[3],
-        ]);
+        let mut length_bytes = [0u8; 4];
+        memory.read(addr, &mut length_bytes)?;
+        let length = u32::from_le_bytes(length_bytes);
 
         // Check bounds for string data
         if addr
@@ -248,48 +244,44 @@ impl CanonicalABI {
             )));
         }
 
-        let string_data = memory.read_bytes(addr + 4, length as usize)?;
+        // Read the string data
+        let mut string_bytes = vec![0u8; length as usize];
+        memory.read(addr + 4, &mut string_bytes)?;
 
-        // Convert to UTF-8 string
-        let string = String::from_utf8(string_data)
-            .map_err(|e| {
-                Error::new(kinds::ExecutionError(
-                    format!("Invalid UTF-8 string in memory: {e}").into(),
-                ))
-            })
-            .map(|s| InterfaceValue::String(s))?;
-
-        Ok(string)
+        // Convert to a Rust String
+        match String::from_utf8(string_bytes) {
+            Ok(s) => Ok(InterfaceValue::String(s)),
+            Err(e) => Err(Error::new(kinds::ExecutionError(
+                format!("Invalid UTF-8 sequence in memory: {e}").into(),
+            ))),
+        }
     }
 
     /// Lower a string to memory
-    fn lower_string(s: String, memory: &mut dyn MemoryBehavior) -> Result<Value> {
-        // Get the string as UTF-8 bytes
-        let bytes = s.as_bytes();
-        let length = bytes.len();
+    fn lower_string(s: String, memory: &mut Memory) -> Result<Value> {
+        let string_bytes = s.as_bytes();
+        let string_len = string_bytes.len() as u32;
+        let total_len = string_len + 4; // 4 bytes for length prefix
 
-        // Ensure we have enough memory for the string
-        // This needs an allocation strategy (e.g., a simple bump allocator)
-        // For now, assume memory is large enough and place at a fixed offset (e.g., 0)
-        // A real implementation needs memory allocation.
-        let addr: u32 = 0; // Placeholder: Needs proper allocation
+        // Grow memory if needed (we use a very simple allocation strategy)
+        let current_size = memory.size_in_bytes();
+        let ptr = current_size as u32; // Allocate at the end of memory
 
-        // Check bounds before writing
-        let mem_size_bytes = memory.size_bytes();
-        let required_size = (4 + length) as u64;
-        if addr as u64 + required_size > mem_size_bytes as u64 {
-            return Err(Error::new(kinds::ExecutionError(
-                "Not enough memory to lower string".to_string(),
-            )));
+        // Check if we need to grow memory
+        let pages_needed =
+            (ptr + total_len + PAGE_SIZE as u32 - 1) / PAGE_SIZE as u32 - memory.size();
+        if pages_needed > 0 {
+            memory.grow(pages_needed)?;
         }
 
         // Write length prefix
-        memory.write_bytes(addr, &u32::to_le_bytes(length as u32))?;
-        // Write string data
-        memory.write_bytes(addr + 4, bytes)?;
+        memory.write(ptr, &string_len.to_le_bytes())?;
 
-        // Return pointer to the start of the length prefix
-        Ok(Value::I32(addr as i32))
+        // Write string data
+        memory.write(ptr + 4, string_bytes)?;
+
+        // Return pointer to the start of the length-prefixed string
+        Ok(Value::I32(ptr as i32))
     }
 
     /// Lower a component value to a WebAssembly value
@@ -297,34 +289,50 @@ impl CanonicalABI {
         &self,
         value: InterfaceValue,
         ty: &ComponentType,
-        memory: Option<&mut dyn MemoryBehavior>,
+        memory: Option<&mut Memory>,
         _resources: Option<&mut ResourceTable>,
     ) -> Result<Value> {
-        match value {
-            // Simple primitive types
-            InterfaceValue::Bool(b) => Ok(Value::I32(if b { 1 } else { 0 })),
-            InterfaceValue::S8(i) => Ok(Value::I32(i32::from(i))),
-            InterfaceValue::U8(i) => Ok(Value::I32(i32::from(i))),
-            InterfaceValue::S16(i) => Ok(Value::I32(i32::from(i))),
-            InterfaceValue::U16(i) => Ok(Value::I32(i32::from(i))),
-            InterfaceValue::S32(i) => Ok(Value::I32(i)),
-            InterfaceValue::U32(i) => Ok(Value::I32(i as i32)),
-            InterfaceValue::S64(i) => Ok(Value::I64(i)),
-            InterfaceValue::U64(i) => Ok(Value::I64(i as i64)),
-            InterfaceValue::Float32(f) => Ok(Value::F32(f)),
-            InterfaceValue::Float64(f) => Ok(Value::F64(f)),
-            InterfaceValue::Char(c) => Ok(Value::I32(c as i32)),
-
-            // String (will be stored in memory and return pointer/length)
-            InterfaceValue::String(s) if memory.is_some() => Self::lower_string(s, memory.unwrap()),
-
-            // Resource
-            InterfaceValue::Resource(id) => Ok(Value::I32(id.0 as i32)),
-            InterfaceValue::Borrowed(id) => Ok(Value::I32(id.0 as i32)),
-
-            _ => Err(Error::new(kinds::ExecutionError(format!(
-                "Cannot lower interface value {value:?} to core type with given component type {ty:?}"
-            ).into())))
+        // Based on the type, delegate to appropriate conversion
+        match ty {
+            ComponentType::Primitive(ty) => match (&value, ty) {
+                (InterfaceValue::S32(i), ValueType::I32) => Ok(Value::I32(*i)),
+                (InterfaceValue::S64(i), ValueType::I64) => Ok(Value::I64(*i)),
+                (InterfaceValue::Float32(f), ValueType::F32) => Ok(Value::F32(*f)),
+                (InterfaceValue::Float64(f), ValueType::F64) => Ok(Value::F64(*f)),
+                _ => Err(Error::new(kinds::ExecutionError(
+                    format!(
+                        "Type mismatch: cannot lower interface value {value:?} to primitive type {ty:?}"
+                    )
+                    .into(),
+                ))),
+            },
+            ComponentType::Option(inner) => match (&value, inner.as_ref()) {
+                (InterfaceValue::Bool(b), ty) if matches!(ty, ComponentType::Primitive(ValueType::I32)) => {
+                    Ok(Value::I32(if *b { 1 } else { 0 }))
+                }
+                _ => Err(Error::new(kinds::ExecutionError(
+                    format!(
+                        "Type mismatch: cannot lower interface value {value:?} to option type {inner:?}"
+                    )
+                    .into(),
+                ))),
+            },
+            ComponentType::List(inner) => match (&value, inner.as_ref()) {
+                (InterfaceValue::String(s), ty)
+                    if matches!(ty, ComponentType::Primitive(ValueType::I32)) && memory.is_some() =>
+                {
+                    Self::lower_string(s.clone(), memory.unwrap())
+                }
+                _ => Err(Error::new(kinds::ExecutionError(
+                    format!(
+                        "Type mismatch: cannot lower interface value {value:?} to list type {inner:?}"
+                    )
+                    .into(),
+                ))),
+            },
+            _ => Err(Error::new(kinds::ExecutionError(
+                format!("Unsupported type for lowering: {ty:?}").into(),
+            ))),
         }
     }
 }
@@ -332,7 +340,7 @@ impl CanonicalABI {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::memory::DefaultMemory;
+    use crate::memory::Memory;
     use crate::resource::{
         ResourceRepresentation, ResourceTable, ResourceType, SimpleResourceData,
     };
@@ -410,7 +418,7 @@ mod tests {
             min: 1,
             max: Some(2),
         };
-        let mut memory = DefaultMemory::new(mem_type);
+        let mut memory = Memory::new(mem_type);
 
         // Test string lowering
         let string_val = InterfaceValue::String("Hello, WebAssembly!".to_string());

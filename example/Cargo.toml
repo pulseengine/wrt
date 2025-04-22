@@ -23,20 +23,3 @@ wit-bindgen = { workspace = true, features = ["realloc"] }
 [build-dependencies]
 anyhow = { workspace = true }
 
-# Add component metadata
-[package.metadata.component.target]
-path = "../wit/deps" # Base path for dependencies
-world = "hello-world" # World defined in wit/example.wit
-
-# Define dependencies 
-[package.metadata.component.target.dependencies]
-"wasi:logging" = { version = "0.2.0-preview2" } # Use the preview2 version
-"wasi:cli" = { version = "0.2.0-preview2" }
-"wasi:io" = { version = "0.2.0-preview2" }
-"wasi:clocks" = { version = "0.2.0-preview2" }
-
-# REMOVED: Redundant dependency definition
-# [package.metadata.component.dependencies]
-# "wasi:logging" = { path = "../wit/wasi/logging" }
-
-

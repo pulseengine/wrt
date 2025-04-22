@@ -7,25 +7,48 @@ use crate::{
     behavior::{ControlFlow, FrameBehavior, InstructionExecutor, StackBehavior},
     error::{kinds, Error, Result},
     global::Global,
-    memory::{self, DataDrop, DefaultMemory, MemoryInit, StoreTruncated, PAGE_SIZE},
-    module::Module,
+    memory::{self, Memory},
+    module::{Data, Module},
     module_instance::ModuleInstance,
     stackless::StacklessEngine,
     types::{GlobalType, MemoryType, ValueType},
     values::Value,
 };
+use std::marker::PhantomData;
 use std::sync::Arc;
+use wrt_types::types::Limits;
 
 // Conditionally import wasmparser based on feature flag
 #[cfg(feature = "std")]
 use wasmparser::MemArg;
 
-/// Memory access out of bounds error
-pub struct MemoryAccessOutOfBoundsError {
-    /// The memory address that was accessed
-    pub address: usize,
-    /// The size of the access
-    pub length: u64,
+/// Represents a memory initialization instruction
+#[derive(Debug)]
+pub struct MemoryInit {
+    /// Data segment index
+    pub data_idx: u32,
+    /// Memory index
+    pub mem_idx: u32,
+}
+
+/// Represents a data drop instruction
+#[derive(Debug)]
+pub struct DataDrop {
+    /// Data segment index
+    pub data_idx: u32,
+}
+
+/// Represents a store instruction that truncates a value
+#[derive(Debug)]
+pub struct StoreTruncated<F, T> {
+    /// Offset within memory
+    pub offset: u32,
+    /// Alignment hint
+    pub align: u32,
+    /// Placeholder for source type
+    pub _from: PhantomData<F>,
+    /// Placeholder for target type
+    pub _to: PhantomData<T>,
 }
 
 /// Execute an i32 load instruction
@@ -281,7 +304,10 @@ pub fn memory_fill(engine: &mut StacklessEngine, mem_idx: u32) -> Result<()> {
     })? as usize;
 
     let frame = engine.current_frame()?;
+    // Get memory reference and use the Memory::fill method directly
     let memory = frame.get_memory(mem_idx as usize, engine)?;
+
+    // Use the ArcMemoryExt trait which applies the clone-and-mutate pattern internally
     memory.fill(d, val, n)
 }
 
@@ -306,8 +332,16 @@ pub fn memory_copy(engine: &mut StacklessEngine, dst_mem: u32, src_mem: u32) -> 
     })? as usize;
 
     let frame = engine.current_frame()?;
+    // Get both memory references
     let memory_src = frame.get_memory(src_mem as usize, engine)?;
-    let memory_dst = frame.get_memory(dst_mem as usize, engine)?;
+    let memory_dst = if dst_mem == src_mem {
+        memory_src.clone() // Just clone the Arc if it's the same memory
+    } else {
+        frame.get_memory(dst_mem as usize, engine)?
+    };
+
+    // Use copy_within_or_between with clone-and-mutate pattern internally
+    // The ArcMemoryExt trait will handle the Arc correctly
     memory_dst.copy_within_or_between(memory_src, s, d, n)
 }
 
@@ -323,10 +357,13 @@ impl InstructionExecutor for MemoryInit {
         let src = stack.pop_i32()? as usize;
         let dst = stack.pop_i32()? as usize;
 
-        let memory = frame.get_memory_mut(self.mem_idx as usize, engine)?;
+        // Get the memory using get_memory instead of get_memory_mut
+        // ArcMemoryExt trait will handle the Arc correctly
+        let memory = frame.get_memory(self.mem_idx as usize, engine)?;
         let data_segment = frame.get_data_segment(self.data_idx, engine)?;
 
-        let mem_size = memory.size() as usize * PAGE_SIZE;
+        // Safety checks for bounds
+        let mem_size = memory.size() as usize * memory::PAGE_SIZE;
         let data_len = data_segment.data().len();
 
         if src.checked_add(n).map_or(true, |end| end > data_len)
@@ -338,6 +375,7 @@ impl InstructionExecutor for MemoryInit {
             }));
         }
 
+        // Use init method through ArcMemoryExt trait
         memory.init(dst, data_segment.data(), src, n)?;
 
         Ok(ControlFlow::Continue)
@@ -644,10 +682,10 @@ pub fn global_set(engine: &mut StacklessEngine, idx: u32) -> Result<()> {
 
 fn setup_test() -> StacklessEngine {
     let test_module = Module {
-        memories: Arc::new(std::sync::RwLock::new(vec![Arc::new(DefaultMemory::new(
+        memories: Arc::new(std::sync::RwLock::new(vec![Arc::new(Memory::new(
             MemoryType {
-                min: 1,
-                max: Some(4),
+                limits: Limits::new(1, Some(4)),
+                shared: false,
             },
         ))])),
         data: vec![Data {
@@ -658,7 +696,7 @@ fn setup_test() -> StacklessEngine {
         globals: Arc::new(std::sync::RwLock::new(vec![Arc::new(
             Global::new(
                 GlobalType {
-                    content_type: ValueType::I32,
+                    value_type: ValueType::I32,
                     mutable: true,
                 },
                 Value::I32(0),
@@ -863,14 +901,10 @@ fn test_memory_init_data_drop() {
     let mut engine = StacklessEngine::new().expect("Engine creation failed");
     let mut stack = crate::stack::Stack::new();
 
-    let mem = Arc::new(
-        // Handle Result from DefaultMemory::new using expect
-        DefaultMemory::new(MemoryType {
-            initial: 1,
-            maximum: Some(10),
-        })
-        .expect("Failed to create memory"),
-    );
+    let mem = Arc::new(Memory::new(MemoryType {
+        limits: Limits::new(1, None),
+        shared: false,
+    }));
     let data_segment = Data {
         memory_idx: 0,
         offset: vec![], // Dummy offset
@@ -990,8 +1024,11 @@ fn test_global_set() -> Result<(), Error> {
 #[test]
 fn test_memory_grow_fails_if_no_maximum() {
     // Setup: Create a memory without a maximum size
-    let mem_type = MemoryType { min: 1, max: None };
-    let mem = Arc::new(DefaultMemory::new(mem_type));
+    let mem_type = MemoryType {
+        limits: Limits::new(1, None),
+        shared: false,
+    };
+    let mem = Arc::new(Memory::new(mem_type));
 
     // Create a module with the memory
     let module = Arc::new(Module {
@@ -1032,8 +1069,11 @@ fn create_test_module() -> Arc<Module> {
         imports: vec![],
         functions: vec![],
         tables: Arc::new(std::sync::RwLock::new(vec![])),
-        memories: Arc::new(std::sync::RwLock::new(vec![Arc::new(DefaultMemory::new(
-            MemoryType { min: 1, max: None },
+        memories: Arc::new(std::sync::RwLock::new(vec![Arc::new(Memory::new(
+            MemoryType {
+                limits: Limits::new(1, None),
+                shared: false,
+            },
         ))])),
         globals: Arc::new(std::sync::RwLock::new(vec![])),
         elements: vec![],
@@ -1084,16 +1124,16 @@ fn create_test_module_instance() -> ModuleInstance {
         imports: vec![],
         functions: vec![],
         tables: Arc::new(std::sync::RwLock::new(vec![])),
-        memories: Arc::new(std::sync::RwLock::new(vec![Arc::new(DefaultMemory::new(
+        memories: Arc::new(std::sync::RwLock::new(vec![Arc::new(Memory::new(
             MemoryType {
-                min: 1,
-                max: Some(10),
+                limits: Limits::new(1, Some(10)),
+                shared: false,
             },
         ))])),
         globals: Arc::new(std::sync::RwLock::new(vec![Arc::new(
             Global::new(
                 GlobalType {
-                    content_type: ValueType::I32,
+                    value_type: ValueType::I32,
                     mutable: true,
                 },
                 Value::I32(0),
@@ -1118,8 +1158,11 @@ fn create_test_module_instance() -> ModuleInstance {
 #[test]
 fn test_memory_grow_fails_if_no_maximum() {
     // Setup: Create a memory without a maximum size
-    let mem_type = MemoryType { min: 1, max: None };
-    let mem = Arc::new(DefaultMemory::new(mem_type));
+    let mem_type = MemoryType {
+        limits: Limits::new(1, None),
+        shared: false,
+    };
+    let mem = Arc::new(Memory::new(mem_type));
 
     // Create a module with the memory
     let module = Arc::new(Module {

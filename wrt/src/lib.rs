@@ -40,7 +40,13 @@ pub use alloc::{
 };
 
 /// Re-export needed traits and types at crate level
-pub use error::{kinds, Error, Result};
+pub use wrt_error::{kinds, Error, Result};
+
+// Import and re-export from wrt-runtime
+pub use wrt_runtime::{FuncType, GlobalType, Memory, MemoryType, Table, TableType, PAGE_SIZE};
+
+// Use runtime Global directly
+pub use wrt_runtime::global::Global;
 
 // Core WebAssembly modules
 
@@ -86,11 +92,8 @@ pub mod serialization;
 /// Adapter for WebAssembly format handling
 pub mod format_adapter;
 
-/// Module for stackless WebAssembly execution
-pub mod stackless;
-
-/// Extensions for the stackless WebAssembly execution engine
-pub mod stackless_extensions;
+/// Integration layer for wrt-decoder with functional safety
+pub mod decoder_integration;
 
 /// Module for WebAssembly table
 pub mod table;
@@ -100,9 +103,6 @@ pub mod types;
 
 /// Module for WebAssembly runtime values
 pub mod values;
-
-/// Module for WebAssembly logging functionality
-pub mod logging;
 
 /// Module for WebAssembly synchronization primitives in no_std environment
 #[cfg(not(feature = "std"))]
@@ -120,20 +120,23 @@ pub mod module_instance;
 /// Module for WebAssembly stackless frame
 pub mod stackless_frame;
 
+/// Module for WebAssembly stackless execution engine
+pub mod stackless;
+
 // Public exports
 pub use crate::{stackless::StacklessEngine, stackless_frame::StacklessFrame};
 pub use behavior::InstructionExecutor;
 pub use component::{Component, Host, InstanceValue};
 pub use execution::ExecutionStats;
-pub use global::Global;
 pub use instructions::{types::BlockType, Instruction};
-pub use memory::PAGE_SIZE;
 pub use module::{ExportKind, Function, Import, Module, OtherExport};
-pub use table::Table;
-pub use types::{
-    ComponentType, ExternType, FuncType, GlobalType, MemoryType, TableType, ValueType,
-};
-pub use values::Value;
+pub use types::{ComponentType, ExternType};
+
+// Use wrt_types values
+pub use wrt_types::values::Value;
+
+// Reexport wrt_types types to avoid duplicate imports in user code
+pub use wrt_types::types::Limits;
 
 /// Version of the WebAssembly Core specification implemented
 pub const CORE_VERSION: &str = "1.0";
@@ -168,15 +171,43 @@ pub fn new_module() -> Result<Module> {
 }
 
 /// Creates a new WebAssembly memory instance
+///
+/// This now uses the wrt-runtime Memory implementation
 #[must_use]
-pub fn new_memory(mem_type: MemoryType) -> DefaultMemory {
-    DefaultMemory::new(mem_type)
+pub fn new_memory(mem_type: MemoryType) -> Memory {
+    Memory::new(mem_type).expect("Failed to create new memory instance")
+}
+
+/// Creates a new WebAssembly memory adapter
+///
+/// For backward compatibility
+#[must_use]
+pub fn new_memory_adapter(mem_type: MemoryType) -> Memory {
+    Memory::new(mem_type).expect("Failed to create new memory adapter")
 }
 
 /// Creates a new WebAssembly table instance
+///
+/// This now uses the wrt-runtime Table implementation
 #[must_use]
 pub fn new_table(table_type: TableType) -> Table {
-    Table::new(table_type)
+    Table::new(
+        table_type,
+        wrt_types::values::Value::default_for_type(&table_type.element_type),
+    )
+    .expect("Failed to create new table instance")
+}
+
+/// Creates a new WebAssembly table adapter
+///
+/// For backward compatibility
+#[must_use]
+pub fn new_table_adapter(table_type: TableType) -> Table {
+    Table::new(
+        table_type,
+        wrt_types::values::Value::default_for_type(&table_type.element_type),
+    )
+    .expect("Failed to create new table adapter")
 }
 
 /// Creates a new WebAssembly global instance
@@ -199,364 +230,20 @@ pub fn new_global(global_type: GlobalType, value: Value) -> Result<Global> {
 
 /// Creates a new global array
 pub fn new_globals() -> Vec<std::sync::Arc<Global>> {
-    use crate::global::Global;
     Vec::new()
 }
-
-/// Executes a test with the stackless engine.
-///
-/// # Errors
-///
-/// Returns an error if the test execution fails, such as when loading the module,
-/// instantiating the module, or executing the test itself.
-#[cfg(feature = "wat-parsing")]
-pub fn execute_test_with_stackless(path: &str) -> Result<()> {
-    // Parse the WAT to WASM
-    let wasm = wat::parse_file(path).map_err(|e| Error::Parse(e.to_string()))?;
-
-    // Create a new module
-    let mut module = Module::new()?;
-    let module = module.load_from_binary(&wasm)?;
-
-    println!(
-        "Successfully loaded module with {} memory definitions",
-        module.memories_len()
-    );
-    println!("Memory types: {:?}", module.memories);
-    println!(
-        "Exports: {}",
-        module
-            .exports
-            .iter()
-            .map(|e| format!("{} (kind={:?}, idx={})", e.name, e.kind, e.index))
-            .collect::<Vec<_>>()
-            .join(", ")
-    );
-
-    // Initialize the StacklessVM
-    let mut engine = new_stackless_engine();
-    let instance_idx = engine.instantiate(module.clone())?;
-
-    // Set a fuel limit to prevent infinite loops
-    engine.set_fuel(Some(1000000));
-
-    // Find the 'run' export in the module
-    let export = module
-        .exports
-        .iter()
-        .find(|e| e.name == "run" && e.kind == crate::module::ExportKind::Function)
-        .ok_or_else(|| Error::Execution("No 'run' export found".into()))?;
-
-    println!("Found 'run' export at index {}", export.index);
-
-    // Set up the engine state for execution
-    let instance_idx_usize = instance_idx
-        .try_into()
-        .map_err(|_| Error::InvalidInstanceIndex(instance_idx))?;
-    engine.stack.execute(
-        engine,
-        instance_idx_usize,
-        export.index as usize,
-        Vec::new(),
-    )?;
-
-    // Check if we have a result
-    if let Some(result) = engine.stack.values.last() {
-        if *result == Value::I32(1) {
-            Ok(())
-        } else {
-            Err(Error::Execution(format!(
-                "Test failed: expected 1, got {result:?}"
-            )))
-        }
-    } else {
-        Err(Error::Execution("Expected I32 result".to_string()))
-    }
-}
-
-/// Executes an exported function by name from a specific instance in the engine.
-///
-/// This function looks up the export by name and calls it using the engine.
-///
-/// # Errors
-///
-/// Returns an error if the export is not found, if the export is not a function,
-/// or if there is an error during the function execution.
-pub fn execute_export_by_name(
-    instance_idx: usize,
-    name: &str,
-    engine: &mut ExecutionEngine,
-) -> Result<Vec<Value>> {
-    use std::vec::Vec;
-
-    match find_export_by_name(instance_idx, name, engine) {
-        Some(export) => {
-            // Check if this is a function export, otherwise return an error
-            if export.kind != ExportKind::Function {
-                return Err(Error::new(kinds::ExportNotFoundError(format!(
-                    "Export {name} is not a function"
-                ))));
-            }
-
-            // Execute the function with an empty arguments vector
-            let mut result = engine.execute(instance_idx, export.index as usize, Vec::new());
-
-            // Keep trying execution in case of fuel exhaustion
-            while let Err(e) = &result {
-                if e.is_fuel_exhausted() {
-                    engine.stats.fuel_exhausted_count += 1;
-                    // Try one more time
-                    result = engine.execute(instance_idx, export.index as usize, Vec::new());
-                } else {
-                    // Other error, return it
-                    break;
-                }
-            }
-
-            return result;
-        }
-        None => Err(Error::new(kinds::ExportNotFoundError(format!(
-            "Export {name} not found"
-        )))),
-    }
-}
-
-/// Find an export by name in a module instance
-fn find_export_by_name(
-    instance_idx: usize,
-    name: &str,
-    engine: &ExecutionEngine,
-) -> Option<OtherExport> {
-    if instance_idx >= engine.instances.len() {
-        return None;
-    }
-
-    // Look for the export in the module's exports
-    for export in &engine.module.exports {
-        if export.name == name {
-            return Some(export.clone());
-        }
-    }
-
-    None
-}
-
-/// Gets the memory count of a module
-pub fn memories_len(module: &Module) -> Result<usize> {
-    Ok(module.memories_len())
-}
-
-/// Gets the number of tables in a module
-pub fn tables_len(module: &Module) -> Result<usize> {
-    Ok(module.tables_len())
-}
-
-/// Gets the number of globals in a module
-pub fn globals_len(module: &Module) -> Result<usize> {
-    Ok(module.globals_len())
-}
-
-pub fn new() -> Result<ExecutionEngine> {
-    ExecutionEngine::new_from_result(Module::new())
-}
-
-impl StacklessEngine {
-    pub fn execute(
-        &mut self,
-        instance_idx: usize,
-        func_idx: u32,
-        args: Vec<Value>,
-    ) -> Result<Vec<Value>> {
-        // Lock the instances mutex to get access to the Vec
-        let instances_guard = self.instances.lock();
-        // Access the instance using the guard
-        let instance = instances_guard
-            .get(instance_idx)
-            .ok_or_else(|| Error::new(kinds::InvalidInstanceIndexError(instance_idx)))?;
-
-        // Get the function type to determine number of results
-        let func = instance
-            .module
-            .get_function(func_idx)
-            .ok_or_else(|| Error::new(kinds::InvalidFunctionIndexError(func_idx as usize)))?;
-        let func_type = instance
-            .module
-            .get_function_type(func.type_idx)
-            .ok_or_else(|| {
-                Error::new(kinds::InvalidFunctionTypeError(format!(
-                    "Function type not found for index {}",
-                    func.type_idx
-                )))
-            })?;
-
-        let result_count = func_type.results.len();
-
-        println!(
-            "DEBUG: Function type has {} parameters and {} results",
-            func_type.params.len(),
-            result_count
-        );
-
-        // Use the module from the ModuleInstance
-        let mut frame = StacklessFrame::new(
-            instance.module.clone(),
-            func_idx,
-            &args,
-            instance_idx as u32,
-        )?;
-
-        // Get a concrete stack implementation for execution
-        let mut stack = Vec::<Value>::new();
-
-        // Execute the frame with our concrete stack
-        // frame.execute(&mut stack)?; // << COMMENTED OUT - Method doesn't exist, needs revisit
-        println!(
-            "WARN: StacklessFrame::execute commented out in wrt/src/lib.rs - execution logic needs revisit"
-        );
-
-        println!(
-            "DEBUG: After execution, stack has {} values: {:?}",
-            stack.len(),
-            stack
-        );
-
-        // Take the top 'result_count' values from the stack as our results
-        let mut results = Vec::with_capacity(result_count);
-
-        // Make sure we have enough values on the stack
-        if stack.len() < result_count {
-            return Err(Error::new(kinds::ExecutionError(format!(
-                "Function did not produce enough results. Expected {}, got {}",
-                result_count,
-                stack.len()
-            ))));
-        }
-
-        // Return the appropriate number of results
-        if result_count > 0 {
-            // Take values from the end of the stack (most recently pushed)
-            let start_index = stack.len() - result_count;
-            for i in 0..result_count {
-                results.push(stack[start_index + i].clone());
-            }
-        }
-
-        println!("DEBUG: Returning {} results: {:?}", results.len(), results);
-
-        Ok(results)
-    }
-}
-
-#[cfg(feature = "wat-parsing")]
-pub fn execute_wasm_test<F>(wat_string: &str, test_fn: F) -> Result<()>
-where
-    F: FnOnce(&mut StacklessEngine) -> Result<()>,
-{
-    let module = Module::from_wat(wat_string)?;
-    let _frame = StacklessFrame::new(
-        module.clone(),
-        0,   // Assuming function index 0 if needed, adjust as necessary
-        &[], // No initial arguments for the frame itself usually
-        0,   // Assuming instance index 0
-    )?;
-    let _stack = Vec::<Value>::new();
-    let mut engine = StacklessEngine::new_with_module(module);
-    test_fn(&mut engine)
-}
-
-/// Retrieves the length of memories for a given module instance
-pub fn memories_len_for_instance(instance_idx: usize, engine: &ExecutionEngine) -> Result<usize> {
-    if instance_idx >= engine.instances.len() {
-        return Err(Error::new(kinds::InvalidInstanceIndexError(instance_idx)));
-    }
-
-    // Use the engine's module instead of the instance's module
-    Ok(engine.module.memories_len())
-}
-
-// Remove duplicate module declarations as they're already declared at the top of the file
-// Keep error module only for minimal feature
-// pub mod error;
-
-// All other modules depend on std feature - these should be removed
-// They're already declared above with different conditional compilation attributes
-// The declarations below conflict with the ones above
-/*
-#[cfg(feature = "std")]
-pub mod behavior;
-#[cfg(feature = "std")]
-pub mod component;
-#[cfg(feature = "std")]
-pub mod execution;
-#[cfg(feature = "std")]
-pub mod global;
-#[cfg(feature = "std")]
-pub mod instructions;
-#[cfg(feature = "std")]
-pub mod interface;
-#[cfg(feature = "std")]
-pub mod logging;
-#[cfg(feature = "std")]
-pub mod memory;
-#[cfg(feature = "std")]
-pub mod module;
-#[cfg(feature = "std")]
-pub mod module_instance;
-#[cfg(feature = "std")]
-pub mod resource;
-#[cfg(feature = "std")]
-pub mod stack;
-#[cfg(feature = "std")]
-pub mod stackless;
-#[cfg(feature = "std")]
-pub mod stackless_extensions;
-#[cfg(feature = "std")]
-pub mod stackless_frame;
-#[cfg(feature = "std")]
-pub mod table;
-#[cfg(feature = "std")]
-pub mod shared_instructions;
-#[cfg(feature = "std")]
-pub mod types;
-#[cfg(feature = "std")]
-pub mod values;
-*/
-
-// Include only required public exports for minimal feature
-#[cfg(not(feature = "std"))]
-pub use error::*;
-
-// For full std feature, include all public exports
-#[cfg(feature = "std")]
-pub use {error::*, execution::*, logging::*, resource::*};
 
 // Explicit type re-exports to avoid ambiguity
 #[cfg(feature = "std")]
 pub use {
     behavior::{ControlFlow, ControlFlowBehavior, FrameBehavior, Label, StackBehavior},
     interface::Interface,
-    memory::DefaultMemory,
+    memory::Memory,
     module_instance::ModuleInstance,
 };
 
-// Re-export CloneableFn and HostFunctionHandler specifically
-pub use logging::{CloneableFn, HostFunctionHandler};
-
-// Synchronization primitives for WRT.
-// Re-exports synchronization primitives from the wrt-sync crate.
-
-// Re-export the mutex and rwlock types from wrt-sync
-pub use wrt_sync::{
-    WrtMutex as Mutex, WrtMutexGuard as MutexGuard, WrtRwLock as RwLock,
-    WrtRwLockReadGuard as RwLockReadGuard, WrtRwLockWriteGuard as RwLockWriteGuard,
-};
-
-// Remove all the parking lock imports that don't exist
-// #[cfg(feature = "std")]
-// pub use wrt_sync::WrtParkingRwLock as ParkingRwLock;
-
-// #[cfg(feature = "std")]
-// pub use wrt_sync::{
-//     WrtParkingRwLockReadGuard as ParkingRwLockReadGuard,
-//     WrtParkingRwLockWriteGuard as ParkingRwLockWriteGuard,
-// };
+// Re-export types from wrt-logging
+pub use wrt_logging::{LogLevel, LogOperation};
+// Re-export CallbackRegistry only if std feature is enabled
+#[cfg(feature = "std")]
+pub use wrt_logging::CallbackRegistry;

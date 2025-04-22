@@ -1,40 +1,15 @@
 //! WebAssembly type definitions.
 //!
 //! This module provides type definitions for WebAssembly types.
+//! Most core types are re-exported from wrt-types.
 
-use crate::{format, Vec};
+use crate::format;
 use wrt_error::{kinds, Error, Result};
+// Import types from wrt-types
+pub use wrt_types::{safe_memory::SafeSlice, FuncType, ValueType};
 
 #[cfg(not(feature = "std"))]
 use alloc::string::ToString;
-
-/// WebAssembly value types
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum ValueType {
-    /// 32-bit integer
-    I32,
-    /// 64-bit integer
-    I64,
-    /// 32-bit floating point
-    F32,
-    /// 64-bit floating point
-    F64,
-    /// 128-bit vector
-    V128,
-    /// Function reference
-    FuncRef,
-    /// External reference
-    ExternRef,
-}
-
-/// WebAssembly function type
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct FuncType {
-    /// Parameter types
-    pub params: Vec<ValueType>,
-    /// Result types
-    pub results: Vec<ValueType>,
-}
 
 /// WebAssembly memory index type (standard or 64-bit)
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

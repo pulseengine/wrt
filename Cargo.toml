@@ -4,10 +4,18 @@ members = [
     "wrtd",
     "xtask",
     "example",
-    "logging-adapter",
     "wrt-sync",
     "wrt-error",
     "wrt-format",
+    "wrt-types",
+    "wrt-decoder",
+    "wrt-component",
+    "wrt-host",
+    "wrt-logging",
+    "wrt-runtime",
+    "wrt-instructions",
+    "wrt-common",
+    "wrt-intercept",
 ]
 resolver = "2"  # Use edition 2021 resolver
 
@@ -22,6 +30,8 @@ tracing-subscriber = "0.3"
 anyhow = "1.0"
 clap = { version = "4.5", features = ["derive"] }
 wit-bindgen = "0.41.0"
+wrt-types = { path = "./wrt-types", version = "0.1.0" }
+wrt-format = { path = "./wrt-format", version = "0.1.0" }
 
 [workspace.lints.rust]
 unexpected_cfgs = { level = "allow", check-cfg = ['cfg(test)'] }
@@ -29,3 +39,17 @@ unused_imports = "allow"
 unused_variables = "allow"
 unused_mut = "allow"
 unused_macros = "allow"
+
+# Workspace-level features for Component Model
+[workspace.features]
+# Basic features
+component-model-core = ["wrt-format/component-model-core"]
+# Experimental features
+component-model-values = ["wrt-format/component-model-values"]
+component-model-resources = ["wrt-format/component-model-resources"]
+# All Component Model features
+component-model-all = [
+    "component-model-core",
+    "component-model-values",
+    "component-model-resources"
+]

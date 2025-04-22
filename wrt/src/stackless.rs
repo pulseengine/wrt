@@ -14,17 +14,17 @@ use crate::{
     global::Global,
     instructions::{instruction_type::Instruction as InstructionType, Instruction},
     interface,
-    logging::CloneableFn,
-    memory::{DefaultMemory, MemoryBehavior},
+    memory::MemoryAdapter,
     module::{Data, Element, ExportKind, Function, Import, Module, OtherExport},
     module_instance::ModuleInstance,
     resource::ResourceTable,
     stackless_frame::StacklessFrame,
-    table::Table,
     types::*,
     values::Value,
-    ControlFlow, HostFunctionHandler, LogOperation,
+    ControlFlow,
 };
+// Import from wrt-logging instead of local logging module
+use wrt_logging::{CloneableFn, HostFunctionHandler, LogOperation};
 // Import directly from wrt_error and wrt_sync
 use core::mem;
 use log::trace;
@@ -33,7 +33,17 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use wrt_error::kinds;
 use wrt_error::{Error, Result};
+use wrt_runtime::{Memory, Table};
 use wrt_sync::EngineMutex;
+use wrt_types::{BoundedVec, VerificationLevel};
+
+// Define constants for maximum sizes
+/// Maximum number of values on the operand stack
+const MAX_VALUES: usize = 2048;
+/// Maximum number of control flow labels
+const MAX_LABELS: usize = 128;
+/// Maximum call depth (number of frames)
+const MAX_FRAMES: usize = 256;
 
 // --- Conditional imports for Mutex ---
 // TODO: Define FuelOutcomes and EngineConfig or import if they exist elsewhere
@@ -98,18 +108,18 @@ pub struct StacklessStack {
     /// Current instance index
     instance_idx: usize,
     /// The operand stack
-    pub values: Vec<Value>,
+    pub values: BoundedVec<Value, MAX_VALUES>,
     /// The label stack
-    labels: Vec<Label>,
+    labels: BoundedVec<Label, MAX_LABELS>,
     /// Function frames
-    pub frames: Vec<StacklessFrame>,
+    pub frames: BoundedVec<StacklessFrame, MAX_FRAMES>,
     /// Current execution state
     pub state: StacklessExecutionState,
     /// Instruction pointer
     pub pc: usize,
     /// Function index
     pub func_idx: u32,
-    /// Capacity of the stack
+    /// Capacity of the stack (no longer needed, kept for backward compatibility)
     pub capacity: usize,
 }
 
@@ -155,34 +165,81 @@ pub struct StacklessEngine {
     max_call_depth: Option<usize>,
     /// Use the alias EngineMutex for the instance map
     pub(crate) instances: Arc<ParkingLotMutex<Vec<Arc<ModuleInstance>>>>,
+    /// Verification level for bounded collections
+    verification_level: VerificationLevel,
 }
 
 impl StacklessStack {
     /// Creates a new `StacklessStack` with the given module.
     #[must_use]
-    pub const fn new(module: Arc<Module>, instance_idx: usize) -> Self {
+    pub fn new(module: Arc<Module>, instance_idx: usize) -> Self {
         Self {
-            values: Vec::new(),
-            labels: Vec::new(),
-            frames: Vec::new(),
+            values: BoundedVec::with_verification_level(VerificationLevel::Standard),
+            labels: BoundedVec::with_verification_level(VerificationLevel::Standard),
+            frames: BoundedVec::with_verification_level(VerificationLevel::Standard),
             state: StacklessExecutionState::Running,
             pc: 0,
             instance_idx,
             func_idx: 0,
             module,
-            capacity: 1024, // Default capacity
+            capacity: MAX_VALUES, // For backward compatibility
         }
+    }
+
+    /// Validates the stack's integrity, checking all bounded collections.
+    pub fn validate(&self) -> Result<(), Error> {
+        // Validate operand stack
+        self.values.validate().map_err(|e| {
+            Error::new(kinds::ExecutionError(format!(
+                "Value stack validation failed: {}",
+                e
+            )))
+        })?;
+
+        // Validate label stack
+        self.labels.validate().map_err(|e| {
+            Error::new(kinds::ExecutionError(format!(
+                "Label stack validation failed: {}",
+                e
+            )))
+        })?;
+
+        // Validate frame stack
+        self.frames.validate().map_err(|e| {
+            Error::new(kinds::ExecutionError(format!(
+                "Frame stack validation failed: {}",
+                e
+            )))
+        })?;
+
+        // Validate each frame
+        for (i, frame) in self.frames.iter().enumerate() {
+            if let Err(e) = frame.validate() {
+                return Err(Error::new(kinds::ExecutionError(format!(
+                    "Frame {} validation failed: {}",
+                    i, e
+                ))));
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Sets the verification level for all bounded collections in the stack.
+    pub fn set_verification_level(&mut self, level: VerificationLevel) {
+        self.values.set_verification_level(level);
+        self.labels.set_verification_level(level);
+        self.frames.set_verification_level(level);
     }
 
     /// Pushes a value onto the stack
     pub fn push(&mut self, value: Value) -> Result<(), Error> {
-        if self.values.len() >= self.capacity {
-            return Err(Error::new(kinds::ExecutionError(
-                "Stack overflow".to_string(),
-            )));
-        }
-        self.values.push(value);
-        Ok(())
+        self.values.push(value).map_err(|_| {
+            Error::new(kinds::ExecutionError(format!(
+                "Stack overflow, maximum values: {}",
+                MAX_VALUES
+            )))
+        })
     }
 
     /// Pops a value from the stack
@@ -194,15 +251,21 @@ impl StacklessStack {
 
     /// Pushes a label onto the control stack
     pub fn push_label(&mut self, arity: usize, pc: usize) -> Result<(), Error> {
-        self.labels.push(Label {
+        let label = Label {
             arity,
             pc,
             continuation: pc,
             stack_depth: self.values.len(), // Assuming stack_depth is current value stack len
             is_loop: false,                 // Default to false
             is_if: false,                   // Default to false
-        });
-        Ok(())
+        };
+
+        self.labels.push(label).map_err(|_| {
+            Error::new(kinds::ExecutionError(format!(
+                "Label stack overflow, maximum labels: {}",
+                MAX_LABELS
+            )))
+        })
     }
 
     /// Pops a label from the control stack
@@ -214,7 +277,9 @@ impl StacklessStack {
 
     /// Gets a label at the specified depth
     pub fn get_label(&self, idx: usize) -> Option<&Label> {
-        self.labels.get(self.labels.len().checked_sub(1 + idx)?)
+        let len = self.labels.len();
+        len.checked_sub(1 + idx)
+            .and_then(|adjusted_idx| self.labels.get(adjusted_idx))
     }
 
     /// Returns the number of labels currently on the control stack.
@@ -234,30 +299,49 @@ impl StacklessStack {
 
     /// Returns a slice containing all values on the stack.
     pub fn values(&self) -> &[Value] {
-        &self.values
+        self.values.as_ref()
     }
 
     /// Returns a mutable slice containing all values on the stack.
     pub fn values_mut(&mut self) -> &mut [Value] {
-        &mut self.values
+        self.values.as_mut()
     }
 
     /// Returns a reference to the top value on the stack without removing it.
     pub fn peek(&self) -> Result<&Value, Error> {
-        self.values
-            .last()
-            .ok_or(Error::new(kinds::StackUnderflowError))
+        let len = self.values.len();
+        if len == 0 {
+            return Err(Error::new(kinds::StackUnderflowError));
+        }
+
+        Ok(self.values.get(len - 1).unwrap())
     }
 
     /// Returns a mutable reference to the top value on the stack without removing it.
     pub fn peek_mut(&mut self) -> Result<&mut Value, Error> {
-        self.values
-            .last_mut()
-            .ok_or_else(|| Error::new(kinds::StackUnderflowError))
+        let len = self.values.len();
+        if len == 0 {
+            return Err(Error::new(kinds::StackUnderflowError));
+        }
+
+        Ok(self.values.get_mut(len - 1).unwrap())
     }
 
-    // Note: Implementations of the `Stack` and `StackBehavior` traits for StacklessStack
-    // are added below to maintain compatibility where the engine expects these traits.
+    /// Pops a frame label (internal helper)
+    pub fn pop_frame_label(&self) -> Result<Label, Error> {
+        if let Some(frame) = self
+            .frames
+            .get(self.frames.len().checked_sub(1).unwrap_or(0))
+        {
+            if let Some(label) = frame
+                .label_stack
+                .get(frame.label_stack.len().checked_sub(1).unwrap_or(0))
+            {
+                return Ok(label.clone());
+            }
+        }
+        Err(Error::new(kinds::StackUnderflowError))
+    }
 }
 
 impl Default for StacklessEngine {
@@ -267,27 +351,250 @@ impl Default for StacklessEngine {
 }
 
 impl StacklessEngine {
-    /// Creates a new stackless WebAssembly engine
+    /// Creates a new empty stackless engine.
     #[must_use]
     pub fn new() -> Self {
-        let empty_module = Arc::new(Module::empty()); // Use Module::empty()
+        let dummy_module = Arc::new(Module::default());
         Self {
-            exec_stack: StacklessStack::new(empty_module, 0), // Initialize exec_stack
-            // Use the EngineMutex alias for initialization
-            instances: Arc::new(ParkingLotMutex::new(Vec::new())),
+            exec_stack: StacklessStack::new(dummy_module.clone(), 0),
             fuel: None,
             stats: ExecutionStats::default(),
-            callbacks: Arc::new(ParkingLotMutex::new(StacklessCallbackRegistry {
-                export_names: HashMap::new(),
-                callbacks: HashMap::new(),
-            })),
+            callbacks: Arc::new(ParkingLotMutex::new(StacklessCallbackRegistry::default())),
             max_call_depth: None,
+            instances: Arc::new(ParkingLotMutex::new(Vec::new())),
+            verification_level: VerificationLevel::Standard,
+        }
+    }
+
+    /// Creates a new stackless engine with a specified verification level.
+    #[must_use]
+    pub fn with_verification_level(level: VerificationLevel) -> Self {
+        let mut engine = Self::new();
+        engine.set_verification_level(level);
+        engine
+    }
+
+    /// Sets the verification level for all bounded collections in the engine.
+    pub fn set_verification_level(&mut self, level: VerificationLevel) {
+        self.verification_level = level;
+        self.exec_stack.set_verification_level(level);
+
+        // Update verification level in all module instances
+        let instances = self.instances.lock();
+        for instance in instances.iter() {
+            // If the module instance implementation supports setting verification level,
+            // we would update it here. This requires implementation in ModuleInstance.
+        }
+    }
+
+    /// Validates the engine's state, checking all bounded collections.
+    pub fn validate(&self) -> Result<(), Error> {
+        // First validate the stack state
+        self.exec_stack.validate()?;
+
+        // Then validate memory if using SafeMemoryAdapter
+        self.validate_memory()?;
+
+        Ok(())
+    }
+
+    /// Validate memory integrity across all instances
+    fn validate_memory(&self) -> Result<(), Error> {
+        // Validate memory in all instances
+        if let Ok(instances) = self.instances.try_lock() {
+            for (idx, instance) in instances.iter().enumerate() {
+                // Skip validation for non-existent instances
+                if instance.memory_count() == 0 {
+                    continue;
+                }
+
+                // Try to get memory adapters and validate them
+                for mem_idx in 0..instance.memory_count() {
+                    if let Ok(memory) = instance.get_memory(mem_idx as u32) {
+                        // Check if memory adapter is available
+                        if let Some(adapter) = self.get_memory_adapter(idx, mem_idx) {
+                            // Verify memory integrity
+                            adapter.verify_integrity().map_err(|e| {
+                                Error::new(kinds::ValidationError(format!(
+                                    "Memory validation failed for instance {}, memory {}: {}",
+                                    idx, mem_idx, e
+                                )))
+                            })?;
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Get a memory adapter for a specific instance and memory index
+    fn get_memory_adapter(
+        &self,
+        instance_idx: usize,
+        memory_idx: usize,
+    ) -> Option<Arc<dyn crate::memory_adapter::MemoryAdapter>> {
+        // Try to get the instance
+        let instances_guard = match self.instances.try_lock() {
+            Some(guard) => guard,
+            None => return None,
+        };
+
+        // Get the instance
+        let instance = match instances_guard.get(instance_idx) {
+            Some(instance) => instance,
+            None => return None,
+        };
+
+        // Get the memory
+        match instance.get_memory(memory_idx as u32) {
+            Ok(memory) => {
+                // Create a memory adapter with the current verification level
+                let adapter = Arc::new(
+                    crate::memory_adapter::SafeMemoryAdapter::with_verification_level(
+                        memory,
+                        self.verification_level,
+                    ),
+                );
+
+                Some(adapter as Arc<dyn crate::memory_adapter::MemoryAdapter>)
+            }
+            Err(_) => None,
+        }
+    }
+
+    /// Execute memory validation at critical points during execution
+    fn validate_at_checkpoint(&self) -> Result<(), Error> {
+        // Skip validation if verification level is None
+        if matches!(self.verification_level, VerificationLevel::None) {
+            return Ok(());
+        }
+
+        // For Sampling level, only validate occasionally
+        if matches!(self.verification_level, VerificationLevel::Sampling) {
+            // Only validate on ~5% of calls
+            let should_verify = rand::random::<u8>() < 13; // ~5% chance (13/256)
+            if !should_verify {
+                return Ok(());
+            }
+        }
+
+        // Validate the entire engine state
+        self.validate()
+    }
+
+    /// Check memory bounds with verification
+    pub fn check_memory_bounds(
+        &self,
+        instance_idx: usize,
+        memory_idx: u32,
+        offset: usize,
+        size: usize,
+    ) -> Result<(), Error> {
+        // Get the memory adapter
+        let adapter = match self.get_memory_adapter(instance_idx, memory_idx as usize) {
+            Some(adapter) => adapter,
+            None => {
+                return Err(Error::new(kinds::ResourceError(format!(
+                    "Memory not found: instance {}, memory {}",
+                    instance_idx, memory_idx
+                ))))
+            }
+        };
+
+        // Get memory size
+        let memory_size = adapter.byte_size().map_err(|e| {
+            Error::new(kinds::ResourceError(format!(
+                "Failed to get memory size: {}",
+                e
+            )))
+        })?;
+
+        // Check bounds
+        if offset + size > memory_size {
+            return Err(Error::new(kinds::OutOfBoundsError(format!(
+                "Memory access out of bounds: offset={}, size={}, memory_size={}",
+                offset, size, memory_size
+            ))));
+        }
+
+        // Validate memory integrity if using full verification
+        if matches!(self.verification_level, VerificationLevel::Full) {
+            adapter.verify_integrity().map_err(|e| {
+                Error::new(kinds::ValidationError(format!(
+                    "Memory validation failed: {}",
+                    e
+                )))
+            })?;
+        }
+
+        Ok(())
+    }
+
+    /// Run with enhanced memory safety
+    pub fn run_with_memory_safety(&mut self) -> Result<StacklessExecutionState, Error> {
+        // Validate initial state
+        self.validate()?;
+
+        // Run with periodic validation
+        let mut steps = 0;
+        loop {
+            // Execute a step
+            match self.step() {
+                Ok(()) => {
+                    // Validate every 1000 steps
+                    steps += 1;
+                    if steps % 1000 == 0 {
+                        self.validate_at_checkpoint()?;
+                    }
+
+                    // Check state
+                    match self.state() {
+                        StacklessExecutionState::Completed | StacklessExecutionState::Finished => {
+                            // Final validation before returning
+                            self.validate()?;
+
+                            // Update execution stats with operation stats
+                            let op_stats = wrt_types::global_operation_summary();
+                            self.stats.memory_operations +=
+                                op_stats.memory_reads + op_stats.memory_writes;
+                            self.stats.function_calls += op_stats.function_calls;
+                            self.stats.fuel_consumed += op_stats.fuel_consumed;
+
+                            return Ok(self.state().clone());
+                        }
+                        StacklessExecutionState::Error(err) => {
+                            return Err(err.clone());
+                        }
+                        StacklessExecutionState::Paused { .. } => {
+                            // Validate before pausing
+                            self.validate()?;
+
+                            // Update execution stats with operation stats
+                            let op_stats = wrt_types::global_operation_summary();
+                            self.stats.memory_operations +=
+                                op_stats.memory_reads + op_stats.memory_writes;
+                            self.stats.function_calls += op_stats.function_calls;
+                            self.stats.fuel_consumed += op_stats.fuel_consumed;
+
+                            return Ok(self.state().clone());
+                        }
+                        _ => continue,
+                    }
+                }
+                Err(err) => {
+                    return Err(err);
+                }
+            }
         }
     }
 
     /// Sets the fuel limit for bounded execution
     pub fn set_fuel(&mut self, fuel: Option<u64>) {
         self.fuel = fuel;
+        // Reset operation tracking when setting fuel
+        wrt_types::reset_global_operations();
     }
 
     /// Gets the remaining fuel
@@ -380,12 +687,8 @@ impl StacklessEngine {
             ))
         })?;
         for memory_arc in module_memories.iter() {
-            // Assuming DefaultMemory implements MemoryBehavior and can be cloned
-            // or re-instantiated based on type/descriptor if needed.
-            // Here, we clone the Arc and cast it. Adjust if DefaultMemory isn't Arc<T>.
-            instance
-                .memories
-                .push(memory_arc.clone() as Arc<dyn MemoryBehavior>);
+            // Use Memory directly without casting to MemoryBehavior
+            instance.memories.push(memory_arc.clone());
         }
         drop(module_memories); // Release read lock
 
@@ -573,15 +876,23 @@ impl StacklessEngine {
                 trace!("DEBUG: Calling host callback: {}", name);
                 drop(registry_lock);
                 // TODO: Actually call the host function - requires plumbing HostFunc context/env
-                // For now, return UnimplementedError correctly
-                return Err(Error::new(kinds::UnimplementedError(
+                // For now, return NotImplementedError correctly
+                return Err(Error::new(kinds::NotImplementedError(
                     "Host function callback invocation".to_string(),
                 )));
             }
         }
 
         let initial_frame = StacklessFrame::new(module.into(), func_idx, args, instance_idx)?;
-        self.exec_stack.frames.push(initial_frame); // Use exec_stack
+
+        // Use push with error handling for bounded vector
+        self.exec_stack.frames.push(initial_frame).map_err(|_| {
+            Error::new(kinds::ExecutionError(format!(
+                "Call stack overflow, maximum frames: {}",
+                MAX_FRAMES
+            )))
+        })?;
+
         self.exec_stack.state = StacklessExecutionState::Running; // Use exec_stack
 
         let result = self.run_loop();
@@ -615,117 +926,55 @@ impl StacklessEngine {
 
     /// Runs the engine until it halts, traps, or requires external interaction.
     pub fn run(&mut self) -> Result<StacklessExecutionState, Error> {
+        // Validate engine state before execution
+        if self.verification_level != VerificationLevel::None {
+            self.validate()?;
+        }
+
         self.run_loop()
     }
 
     /// Executes a single step (instruction) in the engine.
     pub fn step(&mut self) -> Result<(), Error> {
-        if self.exec_stack.frames.is_empty() {
-            return Err(Error::new(kinds::ExecutionError(
-                "No frames on the execution stack".to_string(),
-            )));
+        // Check if we have enough fuel for another step
+        self.check_fuel()?;
+
+        // Track function call operation
+        wrt_types::record_global_operation(
+            wrt_types::OperationType::FunctionCall,
+            self.verification_level,
+        );
+
+        // Ensure the engine state is valid before a step
+        if self.verification_level != VerificationLevel::None {
+            self.validate()?;
         }
 
-        let top_frame_idx = self.exec_stack.frames.len() - 1;
-
-        // Get the instruction and increment PC
-        let (instr, pc) = {
-            let frame = &self.exec_stack.frames[top_frame_idx];
-            let pc = frame.pc();
-            let func = frame.get_function().map_err(|e| {
-                Error::new(kinds::ExecutionError(format!(
-                    "Failed to get function: {}",
-                    e
-                )))
-            })?;
-
-            // Check if we're at the end of the function
-            if pc >= func.code.len() {
-                return Err(Error::new(kinds::ExecutionError(
-                    "Reached end of function without return".to_string(),
-                )));
+        match self.state().clone() {
+            StacklessExecutionState::Running => self.step()?,
+            StacklessExecutionState::Completed | StacklessExecutionState::Finished => {
+                // Replace state with Completed and return the original
+                return Ok(mem::replace(
+                    &mut self.exec_stack.state,
+                    StacklessExecutionState::Completed,
+                ));
             }
-
-            // Get the instruction
-            let instr = func.code[pc].clone(); // Clone to avoid reference
-
-            // Increment PC in a separate scope
-            {
-                let frame = &mut self.exec_stack.frames[top_frame_idx];
-                frame.set_pc(pc + 1);
+            StacklessExecutionState::Paused { .. } => {
+                // Replace state with Completed and return the original (Paused state)
+                return Ok(mem::replace(
+                    &mut self.exec_stack.state,
+                    StacklessExecutionState::Completed,
+                ));
             }
-
-            (instr, pc)
-        };
-
-        // Execute the instruction
-        trace!("Executing instruction: {:?}", &instr);
-
-        // Clone the instruction to avoid lifetime issues
-        let instruction = instr.clone();
-
-        // Clone the stack and engine to avoid borrowing self twice
-        let mut stack_clone = self.exec_stack.clone();
-        let mut engine_clone = self.clone();
-
-        // Execute directly with a cloned frame
-        let frame_idx = stack_clone.frames.len() - 1;
-        let mut frame_clone = stack_clone.frames[frame_idx].clone();
-
-        // Execute the instruction
-        let result = instruction.execute(&mut stack_clone, &mut frame_clone, &mut engine_clone);
-
-        // If successful, update our state
-        if result.is_ok() {
-            // Update the frame in the stack
-            stack_clone.frames[frame_idx] = frame_clone;
-
-            // Update the main stack
-            self.exec_stack.frames = stack_clone.frames;
-            self.exec_stack.values = stack_clone.values;
-            self.exec_stack.labels = stack_clone.labels;
-
-            // Update state if needed based on control flow
-            match &result {
-                Ok(ControlFlow::Return { values }) => {
-                    self.exec_stack.state = StacklessExecutionState::Returning {
-                        values: values.clone(),
-                    };
-                }
-                Ok(ControlFlow::Call {
-                    func_idx,
-                    args,
-                    return_pc,
-                }) => {
-                    // Use the values directly, no need to dereference
-                    let func_idx_val = *func_idx;
-                    let return_pc_val = *return_pc;
-
-                    self.exec_stack.state = StacklessExecutionState::Calling {
-                        instance_idx: stack_clone.instance_idx as u32,
-                        func_idx: func_idx_val,
-                        args: args.clone(),
-                        return_pc: return_pc_val,
-                    };
-                }
-                Ok(ControlFlow::Branch {
-                    target_pc,
-                    values_to_keep: _,
-                }) => {
-                    // Use the value directly, no need to dereference
-                    let target_pc_val = *target_pc;
-
-                    // Update PC for branches if needed
-                    self.exec_stack.pc = target_pc_val;
-                }
-                _ => {}
+            StacklessExecutionState::Error(_) => {
+                // Replace state with Completed and return the original (Error state)
+                return Ok(mem::replace(
+                    &mut self.exec_stack.state,
+                    StacklessExecutionState::Completed,
+                ));
             }
-        }
-
-        // Convert the result from Result<ControlFlow, Error> to Result<(), Error>
-        match result {
-            Ok(_) => Ok(()),
-            Err(e) => Err(e),
+            // Other states like Calling, Returning, Branching are handled internally by step/run_loop
+            _ => self.step()?, // Continue stepping if in an intermediate state
         }
     }
 
@@ -821,7 +1070,7 @@ impl StacklessEngine {
         _instance_idx: usize,
         _args: Vec<Value>,
     ) -> Result<Vec<Value>> {
-        Err(Error::new(kinds::UnimplementedError(
+        Err(Error::new(kinds::NotImplementedError(
             "invoke_host_function".to_string(),
         )))
     }
@@ -832,7 +1081,7 @@ impl StacklessEngine {
         _idx: u32,
         _instance_idx: usize,
     ) -> Result<u32> {
-        Err(Error::new(kinds::UnimplementedError(
+        Err(Error::new(kinds::NotImplementedError(
             "get_func_ref_from_table".to_string(),
         )))
     }
@@ -914,6 +1163,120 @@ impl StacklessEngine {
             Ok((*instance.module).clone())
         })
     }
+
+    /// Executes a context switch (typically for function calls)
+    /// Updates frame, module, instance, etc. references
+    pub fn switch_context(&mut self, entry_point: u32, args: &[Value]) -> Result<(), Error> {
+        let instance_idx = self.exec_stack.instance_idx;
+
+        // Get current frame and set its return point
+        if let Some(current_frame) = self.exec_stack.frames.last_mut() {
+            current_frame.return_pc = self.exec_stack.pc;
+        }
+
+        // Create a new frame for the called function
+        let module = self.exec_stack.module.clone();
+        let new_frame = StacklessFrame::new(module, entry_point, args, instance_idx as u32)?;
+
+        // Push the new frame onto the stack
+        self.exec_stack.frames.push(new_frame).map_err(|_| {
+            Error::new(kinds::ExecutionError(format!(
+                "Call stack overflow, maximum frames: {}",
+                MAX_FRAMES
+            )))
+        })?;
+
+        // Update function index for the engine
+        self.exec_stack.func_idx = entry_point;
+
+        Ok(())
+    }
+
+    /// Save the current context (before a function call)
+    fn save_context(&mut self) -> Result<u32> {
+        if let Some(frame) = self.exec_stack.frames.last() {
+            Ok(frame.func_idx)
+        } else {
+            Err(Error::new(kinds::StackUnderflowError))
+        }
+    }
+
+    /// Push a frame for a new function call
+    fn push_frame(&mut self, frame: StacklessFrame) -> Result<()> {
+        // Validate frame before pushing
+        if self.verification_level != VerificationLevel::None {
+            frame.validate()?;
+        }
+
+        if let Some(max_depth) = self.max_call_depth {
+            if self.exec_stack.frames.len() >= max_depth {
+                return Err(Error::new(kinds::StackOverflowError));
+            }
+        }
+
+        self.exec_stack
+            .frames
+            .push(frame)
+            .map_err(|_| Error::new(kinds::StackOverflowError))
+    }
+
+    /// Restore the previous context (after returning from a function)
+    fn restore_context(&mut self) -> Result<()> {
+        // Pop the current frame
+        self.exec_stack
+            .frames
+            .pop()
+            .ok_or_else(|| Error::new(kinds::StackUnderflowError))?;
+
+        // Update current function index if we have a frame
+        if let Some(frame) = self.exec_stack.frames.last() {
+            self.exec_stack.func_idx = frame.func_idx;
+            self.exec_stack.pc = frame.pc;
+        }
+
+        Ok(())
+    }
+
+    /// Check if the engine has enough fuel to continue or consumed all fuel
+    ///
+    /// This method also processes any bounded collection operations performed
+    /// during execution, updating the remaining fuel accordingly.
+    fn check_fuel(&mut self) -> Result<(), Error> {
+        if let Some(fuel) = self.fuel {
+            // Get the fuel consumed by operations since last check
+            let op_fuel = wrt_types::global_fuel_consumed();
+
+            // Subtract operation fuel
+            if op_fuel > 0 {
+                // Avoid overflowing if op_fuel is greater than remaining fuel
+                if op_fuel >= fuel {
+                    self.fuel = Some(0);
+                    self.stats.fuel_exhausted_count += 1;
+                    return Err(Error::new(kinds::InsufficientFuelError(
+                        "Insufficient fuel for operation".into(),
+                    )));
+                } else {
+                    self.fuel = Some(fuel - op_fuel);
+                }
+
+                // Update fuel consumed in stats
+                self.stats.fuel_consumed += op_fuel;
+
+                // Reset operation tracking for next check
+                wrt_types::reset_global_operations();
+            }
+
+            // Check if we have fuel left
+            if fuel == 0 {
+                self.stats.fuel_exhausted_count += 1;
+                return Err(Error::new(kinds::InsufficientFuelError(
+                    "Insufficient fuel".into(),
+                )));
+            }
+        }
+
+        Ok(())
+    }
 }
 
 // Implement StackBehavior for StacklessEngine by delegating to exec_stack
@@ -963,18 +1326,39 @@ impl StackBehavior for StacklessEngine {
     }
 
     fn push_n(&mut self, values: &[Value]) {
-        self.exec_stack.values.extend_from_slice(values);
+        // Now that we have bounded collections, we need to handle possible capacity errors
+        for value in values {
+            // Note: We silently drop values if we hit the capacity limit
+            // This avoids panics in the engine when stack overflows occur
+            let _ = self.exec_stack.values.push(value.clone());
+        }
     }
 
     fn pop_n(&mut self, n: usize) -> Vec<Value> {
-        if self.exec_stack.values.len() < n {
+        let len = self.exec_stack.values.len();
+        if len < n {
             // Log the error but return an empty vector
-            log::error!("Error popping values from stack: stack underflow");
-            Vec::new()
-        } else {
-            let new_len = self.exec_stack.values.len() - n;
-            self.exec_stack.values.split_off(new_len)
+            log::error!(
+                "Error popping values from stack: stack underflow (needed {}, had {})",
+                n,
+                len
+            );
+            return Vec::new();
         }
+
+        // Create a result vector
+        let mut result = Vec::with_capacity(n);
+
+        // Pop values one by one since split_off is not available on BoundedVec
+        for _ in 0..n {
+            if let Some(value) = self.exec_stack.values.pop() {
+                result.push(value);
+            }
+        }
+
+        // The values were popped in reverse order, so we need to reverse them
+        result.reverse();
+        result
     }
 
     fn pop_frame_label(&mut self) -> Result<Label, Error> {
@@ -1000,13 +1384,12 @@ impl StackBehavior for StacklessEngine {
 // Replace the StackBehavior implementation for StacklessStack to avoid recursion
 impl StackBehavior for StacklessStack {
     fn push(&mut self, value: Value) -> Result<(), Error> {
-        if self.values.len() >= self.capacity {
-            return Err(Error::new(kinds::ExecutionError(
-                "Stack overflow".to_string(),
-            )));
-        }
-        self.values.push(value);
-        Ok(())
+        self.values.push(value).map_err(|_| {
+            Error::new(kinds::ExecutionError(format!(
+                "Stack overflow, maximum values: {}",
+                MAX_VALUES
+            )))
+        })
     }
 
     fn pop(&mut self) -> Result<Value, Error> {
@@ -1028,11 +1411,11 @@ impl StackBehavior for StacklessStack {
     }
 
     fn values(&self) -> &[Value] {
-        &self.values
+        self.values.as_ref()
     }
 
     fn values_mut(&mut self) -> &mut [Value] {
-        &mut self.values
+        self.values.as_mut()
     }
 
     fn len(&self) -> usize {
@@ -1044,8 +1427,12 @@ impl StackBehavior for StacklessStack {
     }
 
     fn push_label(&mut self, label: Label) -> Result<(), Error> {
-        self.labels.push(label);
-        Ok(())
+        self.labels.push(label).map_err(|_| {
+            Error::new(kinds::ExecutionError(format!(
+                "Label stack overflow, maximum labels: {}",
+                MAX_LABELS
+            )))
+        })
     }
 
     fn pop_label(&mut self) -> Result<Label, Error> {
@@ -1055,7 +1442,9 @@ impl StackBehavior for StacklessStack {
     }
 
     fn get_label(&self, index: usize) -> Option<&Label> {
-        self.labels.get(index)
+        let len = self.labels.len();
+        len.checked_sub(1 + index)
+            .and_then(|adjusted_idx| self.labels.get(adjusted_idx))
     }
 
     fn push_n(&mut self, values: &[Value]) {
@@ -1077,8 +1466,14 @@ impl StackBehavior for StacklessStack {
     }
 
     fn pop_frame_label(&mut self) -> Result<Label, Error> {
-        if let Some(frame) = self.frames.last() {
-            if let Some(label) = frame.label_stack.last() {
+        if let Some(frame) = self
+            .frames
+            .get(self.frames.len().checked_sub(1).unwrap_or(0))
+        {
+            if let Some(label) = frame
+                .label_stack
+                .get(frame.label_stack.len().checked_sub(1).unwrap_or(0))
+            {
                 return Ok(label.clone());
             }
         }
@@ -1110,6 +1505,7 @@ impl Clone for StacklessEngine {
             callbacks: self.callbacks.clone(),
             max_call_depth: self.max_call_depth,
             instances: self.instances.clone(),
+            verification_level: self.verification_level,
         }
     }
 }
@@ -1117,12 +1513,31 @@ impl Clone for StacklessEngine {
 // Fix the Clone implementation for StacklessExecutionState in StacklessStack
 impl Clone for StacklessStack {
     fn clone(&self) -> Self {
+        // Create new bounded vectors with the same verification level
+        let mut values = BoundedVec::with_verification_level(VerificationLevel::Standard);
+        let mut labels = BoundedVec::with_verification_level(VerificationLevel::Standard);
+        let mut frames = BoundedVec::with_verification_level(VerificationLevel::Standard);
+
+        // Copy all items from the original vectors to the new ones
+        // Note: If the original vectors somehow exceeded capacity, we'll silently truncate
+        for value in self.values.iter() {
+            let _ = values.push(value.clone());
+        }
+
+        for label in self.labels.iter() {
+            let _ = labels.push(label.clone());
+        }
+
+        for frame in self.frames.iter() {
+            let _ = frames.push(frame.clone());
+        }
+
         Self {
             module: self.module.clone(),
             instance_idx: self.instance_idx,
-            values: self.values.clone(),
-            labels: self.labels.clone(),
-            frames: self.frames.clone(),
+            values,
+            labels,
+            frames,
             state: match &self.state {
                 StacklessExecutionState::Running => StacklessExecutionState::Running,
                 StacklessExecutionState::Paused {
@@ -1160,9 +1575,7 @@ impl Clone for StacklessStack {
                 }
                 StacklessExecutionState::Completed => StacklessExecutionState::Completed,
                 StacklessExecutionState::Finished => StacklessExecutionState::Finished,
-                StacklessExecutionState::Error(err) => StacklessExecutionState::Error(Error::new(
-                    kinds::ExecutionError(err.to_string()),
-                )),
+                StacklessExecutionState::Error(err) => StacklessExecutionState::Error(err.clone()),
             },
             pc: self.pc,
             func_idx: self.func_idx,

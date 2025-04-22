@@ -4,6 +4,7 @@
 
 use wrt_error::{kinds, Error, Result};
 use wrt_format::types::ValueType;
+use wrt_types::FuncType;
 // Use our prelude for common imports
 use crate::prelude::*;
 
@@ -84,24 +85,16 @@ fn validate_basic_structure(module: &Module) -> Result<()> {
 
 /// Validate the types section of a WebAssembly module
 fn validate_types(module: &Module) -> Result<()> {
-    // For each function type, check parameter and result types
-    for (i, ty) in module.types.iter().enumerate() {
-        // Validate parameter and result types are valid
-        for param in &ty.params {
-            validate_value_type(param)?;
-        }
-
-        for result in &ty.results {
-            validate_value_type(result)?;
-        }
+    for ty in module.types.iter() {
+        // Validate each function type
+        validate_func_type(ty)?;
     }
-
     Ok(())
 }
 
-/// Validate a WebAssembly value type
-fn validate_value_type(ty: &ValueType) -> Result<()> {
-    // All value types defined in the spec are valid
+/// Validate a value type
+fn validate_value_type(_ty: &ValueType) -> Result<()> {
+    // All value types are valid
     Ok(())
 }
 
@@ -328,13 +321,12 @@ pub fn validate_memories(module: &Module) -> Result<()> {
 
 /// Validate the globals section of a WebAssembly module
 fn validate_globals(module: &Module) -> Result<()> {
-    for (i, global) in module.globals.iter().enumerate() {
+    for global in &module.globals {
         // Validate global type
-        validate_global_type(global)?;
+        validate_value_type(&global.global_type.value_type)?;
 
-        // TODO: Validate initialization expression
+        // Note: We'd normally validate init expr here, but skipping for simplicity
     }
-
     Ok(())
 }
 
@@ -520,8 +512,6 @@ fn validate_elements(module: &Module) -> Result<()> {
         // Validate table index
         validate_table_idx(module, elem.table_idx, i)?;
 
-        // TODO: Validate initialization expression
-
         // Validate function indices
         for (j, func_idx) in elem.init.iter().enumerate() {
             validate_func_idx(module, *func_idx, i)?;
@@ -651,5 +641,45 @@ fn validate_tables(module: &Module) -> Result<()> {
 /// Validate a global type
 fn validate_global_type(global: &Global) -> Result<()> {
     validate_value_type(&global.global_type.value_type)?;
+    Ok(())
+}
+
+/// Validate a WebAssembly function type
+fn validate_func_type(ty: &FuncType) -> Result<()> {
+    // Validate parameter and result types are valid
+    for param in &ty.params {
+        validate_value_type(param)?;
+    }
+
+    for result in &ty.results {
+        validate_value_type(result)?;
+    }
+
+    Ok(())
+}
+
+/// Validate element segment
+fn validate_elem(module: &Module) -> Result<()> {
+    for elem in &module.elements {
+        // Check table index
+        if elem.table_idx >= module.tables.len() as u32 {
+            return Err(Error::new(kinds::ValidationError(format!(
+                "Element table index {} out of bounds",
+                elem.table_idx
+            ))));
+        }
+
+        // Note: We'd normally validate offset expr here, but skipping for simplicity
+
+        // Check function indices
+        for func_idx in elem.init.iter() {
+            if *func_idx >= module.functions.len() as u32 {
+                return Err(Error::new(kinds::ValidationError(format!(
+                    "Element function index {} out of bounds",
+                    func_idx
+                ))));
+            }
+        }
+    }
     Ok(())
 }

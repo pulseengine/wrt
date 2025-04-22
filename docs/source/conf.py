@@ -45,11 +45,30 @@ plantuml_output_format = os.environ.get('PLANTUML_FORMAT', 'svg')
 
 # Sphinx-needs configuration
 needs_types = [
-    dict(directive="req", title="Requirement", prefix="R_", color="#BFD8D2", style="node"),
-    dict(directive="spec", title="Specification", prefix="S_", color="#FEDCD2", style="node"),
-    dict(directive="impl", title="Implementation", prefix="I_", color="#DF744A", style="node"),
+    dict(directive="req", title="Requirement", prefix="REQ_", color="#BFD8D2", style="node"),
+    dict(directive="spec", title="Specification", prefix="SPEC_", color="#FEDCD2", style="node"),
+    dict(directive="impl", title="Implementation", prefix="IMPL_", color="#DF744A", style="node"),
     dict(directive="test", title="Test Case", prefix="T_", color="#DCB239", style="node"),
+    dict(directive="safety", title="Safety", prefix="SAFETY_", color="#FF5D73", style="node"),
+    dict(directive="qual", title="Qualification", prefix="QUAL_", color="#9370DB", style="node"),
+    dict(directive="constraint", title="Constraint", prefix="CNST_", color="#4682B4", style="node"),
 ]
+
+# Add option specs to register additional options for directives
+needs_extra_options = ['rationale', 'verification', 'mitigation', 'implementation']
+
+# Allow all sphinx-needs options for all directives
+needs_allow_unsafe_options = True
+
+# Disable warnings for unknown link targets to avoid the many outgoing link warnings
+needs_warnings_always_warn = False
+
+# Custom sphinx-needs templates for qualification and safety
+needs_templates = {
+    'safety_template': '**Hazard**: {{content}}\n\n**Mitigation**: {{mitigation}}',
+    'qualification_template': '**Status**: {{status}}\n\n**Implementation**: {{implementation}}',
+    'constraint_template': '**Constraint**: {{content}}\n\n**Rationale**: {{rationale}}\n\n**Verification**: {{verification}}',
+}
 
 needs_id_length = 7
 needs_title_optional = True

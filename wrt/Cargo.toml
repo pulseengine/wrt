@@ -20,8 +20,16 @@ wrt-error = { path = "../wrt-error", version = "0.1.0" }
 wrt-sync = { path = "../wrt-sync", version = "0.1.0" }
 # Format handling (no longer optional)
 wrt-format = { path = "../wrt-format", version = "0.1.0" }
+# Shared type definitions
+wrt-types = { path = "../wrt-types", version = "0.1.0" }
 # WebAssembly decoding
 wrt-decoder = { path = "../wrt-decoder", version = "0.1.0" }
+# Runtime implementation
+wrt-runtime = { path = "../wrt-runtime", version = "0.1.0" }
+# Logging functionality
+wrt-logging = { path = "../wrt-logging", version = "0.1.0" }
+# Instruction implementations
+wrt-instructions = { path = "../wrt-instructions", version = "0.1.0" }
 # WASI dependencies (optional)
 wasi-common = { version = "17.0.3", optional = true }
 wasi-cap-std-sync = { version = "17.0.3", optional = true }
@@ -62,18 +70,24 @@ dev-dependencies = ["criterion"]
 unexpected_cfgs = { level = "allow", check-cfg = ['cfg(test)'] }
 
 [features]
-# Temporarily removing problematic features
+# Core features
 default = ["minimal", "alloc", "std"]
-# Core features - a minimal subset to get the code to compile
-minimal = ["dep:anyhow", "dep:log"]
-# Full std feature - enable once minimal works
-std = ["minimal", "dep:wasmparser", "alloc"]
-alloc = [] # Tentatively enable spin with alloc
-no_std = []
-# Optional features dependent on std or other optional crates
+# Minimal feature set
+minimal = ["dep:anyhow", "dep:log", "wrt-types/std", "wrt-decoder/minimal"]
+# Full std feature
+std = ["minimal", "dep:wasmparser", "alloc", "wrt-types/std", "wrt-decoder/std"]
+# alloc feature for heap allocation
+alloc = [] # Tentatively enable with alloc
+# no_std support
+no_std = ["wrt-types/no_std", "wrt-decoder/no_std"]
+# Optimization for non-safety-critical paths
+optimize = ["wrt-types/optimize", "wrt-decoder/optimize"]
+# Safety features for ASIL-B compliance
+safety = ["wrt-types/safety", "wrt-decoder/safety"]
+# Optional features dependent on std
 serialization = ["dep:serde", "dep:bincode", "dep:serde_json", "alloc", "std"]
 wasi = ["dep:wasi-common", "dep:wasi-cap-std-sync", "dep:cap-std", "dep:wasi", "std"]
-wat-parsing = ["dep:wat", "std"]
+wat-parsing = ["dep:wat", "std", "wrt-decoder/wat"]
 component-json = ["dep:serde", "dep:serde_json", "std"]
 # Proposal features (mostly placeholders/unused for now)
 relaxed_simd = []

@@ -8,6 +8,58 @@ extern crate alloc;
 #[cfg(feature = "alloc")]
 use alloc::string::String;
 
+// Error codes definitions
+// Core related errors
+pub const LABEL_STACK_UNDERFLOW_ERROR: u16 = 1000;
+pub const UNALIGNED_MEMORY_ACCESS_ERROR: u16 = 1001;
+pub const INVALID_MEMORY_ACCESS_ERROR: u16 = 1002;
+pub const INVALID_INSTANCE_INDEX_ERROR: u16 = 1003;
+pub const EXECUTION_ERROR: u16 = 1004;
+pub const NOT_IMPLEMENTED_ERROR: u16 = 1005;
+pub const MEMORY_ACCESS_ERROR: u16 = 1006;
+pub const INITIALIZATION_ERROR: u16 = 1007;
+pub const TYPE_MISMATCH_ERROR: u16 = 1008;
+
+// Runtime related errors
+pub const INVALID_LOCAL_INDEX_ERROR: u16 = 2000;
+pub const INVALID_DATA_SEGMENT_INDEX_ERROR: u16 = 2001;
+pub const INVALID_BRANCH_TARGET_ERROR: u16 = 2002;
+pub const MEMORY_ACCESS_OUT_OF_BOUNDS_ERROR: u16 = 2003;
+pub const MEMORY_ACCESS_UNALIGNED_ERROR: u16 = 2004;
+pub const EXPORT_NOT_FOUND_ERROR: u16 = 2005;
+pub const FUEL_EXHAUSTED_ERROR: u16 = 2006;
+pub const INVALID_FUNCTION_INDEX_ERROR: u16 = 2007;
+pub const INVALID_FUNCTION_TYPE_ERROR: u16 = 2008;
+pub const TRAP_ERROR: u16 = 2009;
+pub const MEMORY_OUT_OF_BOUNDS_ERROR: u16 = 2010;
+pub const TABLE_ACCESS_OUT_OF_BOUNDS_ERROR: u16 = 2011;
+pub const PARSE_ERROR: u16 = 2012;
+pub const VALIDATION_ERROR: u16 = 2013;
+pub const MEMORY_GROW_ERROR: u16 = 2014;
+pub const POISONED_LOCK_ERROR: u16 = 2015;
+pub const UNSUPPORTED_ERROR: u16 = 2016;
+pub const STACK_UNDERFLOW_ERROR: u16 = 2017;
+pub const FUNCTION_NOT_FOUND_ERROR: u16 = 2018;
+pub const INVALID_MEMORY_INDEX_ERROR: u16 = 2019;
+pub const INVALID_GLOBAL_INDEX_ERROR: u16 = 2020;
+pub const INVALID_TYPE_ERROR: u16 = 2021;
+
+// Component related errors
+pub const INVALID_FUNCTION_INDEX: u16 = 3000;
+pub const TYPE_MISMATCH: u16 = 3001;
+pub const ENCODING_ERROR: u16 = 3002;
+pub const EXECUTION_LIMIT_EXCEEDED: u16 = 3003;
+pub const RESOURCE_ERROR: u16 = 3004;
+pub const COMPONENT_INSTANTIATION_ERROR: u16 = 3005;
+pub const CANONICAL_ABI_ERROR: u16 = 3006;
+pub const COMPONENT_LINKING_ERROR: u16 = 3007;
+pub const MEMORY_ACCESS_ERROR_COMPONENT: u16 = 3008;
+pub const CONVERSION_ERROR: u16 = 3009;
+pub const RESOURCE_LIMIT_EXCEEDED: u16 = 3010;
+pub const RESOURCE_ACCESS_ERROR: u16 = 3011;
+pub const OUT_OF_BOUNDS_ACCESS: u16 = 3012;
+pub const INVALID_VALUE_ERROR: u16 = 3013;
+
 // --- Common WebAssembly Error Types ---
 
 /// Error when label stack underflows
@@ -520,20 +572,7 @@ impl Display for RuntimeError {
 #[cfg(feature = "alloc")]
 impl ErrorSource for RuntimeError {}
 
-/// Error for out of bounds access with a message
-#[derive(Debug, Clone, PartialEq, Eq)]
-#[cfg(feature = "alloc")]
-pub struct OutOfBoundsError(pub String);
-#[cfg(feature = "alloc")]
-impl Display for OutOfBoundsError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Out of bounds error: {}", self.0)
-    }
-}
-#[cfg(feature = "alloc")]
-impl ErrorSource for OutOfBoundsError {}
-
-/// Error for resource access issues
+/// Resource access error for component model resources
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg(feature = "alloc")]
 pub struct ResourceAccessError(pub String);
@@ -544,7 +583,45 @@ impl Display for ResourceAccessError {
     }
 }
 #[cfg(feature = "alloc")]
-impl ErrorSource for ResourceAccessError {}
+impl ErrorSource for ResourceAccessError {
+    fn code(&self) -> u16 {
+        RESOURCE_ACCESS_ERROR
+    }
+}
+
+/// Out of bounds access error
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg(feature = "alloc")]
+pub struct OutOfBoundsAccess(pub String);
+#[cfg(feature = "alloc")]
+impl Display for OutOfBoundsAccess {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Out of bounds access: {}", self.0)
+    }
+}
+#[cfg(feature = "alloc")]
+impl ErrorSource for OutOfBoundsAccess {
+    fn code(&self) -> u16 {
+        OUT_OF_BOUNDS_ACCESS
+    }
+}
+
+/// Out of bounds error
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg(feature = "alloc")]
+pub struct OutOfBoundsError(pub String);
+#[cfg(feature = "alloc")]
+impl Display for OutOfBoundsError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Out of bounds error: {}", self.0)
+    }
+}
+#[cfg(feature = "alloc")]
+impl ErrorSource for OutOfBoundsError {
+    fn code(&self) -> u16 {
+        OUT_OF_BOUNDS_ACCESS
+    }
+}
 
 /// Error for invalid resource handle
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -570,7 +647,11 @@ impl Display for ResourceLimitExceeded {
     }
 }
 #[cfg(feature = "alloc")]
-impl ErrorSource for ResourceLimitExceeded {}
+impl ErrorSource for ResourceLimitExceeded {
+    fn code(&self) -> u16 {
+        RESOURCE_LIMIT_EXCEEDED
+    }
+}
 
 /// Error for unsupported operations
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -584,3 +665,311 @@ impl Display for UnsupportedOperation {
 }
 #[cfg(feature = "alloc")]
 impl ErrorSource for UnsupportedOperation {}
+
+// --- Bounded Collection and Verification Error Types ---
+
+/// Error for validation failures in bounded collections
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg(feature = "alloc")]
+pub struct ValidationFailureError(pub String);
+#[cfg(feature = "alloc")]
+impl Display for ValidationFailureError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Validation failure: {}", self.0)
+    }
+}
+#[cfg(feature = "alloc")]
+impl ErrorSource for ValidationFailureError {}
+
+/// Error for checksum mismatches in verified data structures
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg(feature = "alloc")]
+pub struct ChecksumMismatchError {
+    pub expected: u32,
+    pub actual: u32,
+    pub description: String,
+}
+#[cfg(feature = "alloc")]
+impl Display for ChecksumMismatchError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "Checksum mismatch in {}: expected {:08x}, got {:08x}",
+            self.description, self.expected, self.actual
+        )
+    }
+}
+#[cfg(feature = "alloc")]
+impl ErrorSource for ChecksumMismatchError {}
+
+/// Error for bounded collection capacity exceeded
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg(feature = "alloc")]
+pub struct BoundedCapacityExceededError {
+    pub collection_type: String,
+    pub capacity: usize,
+    pub attempted_size: usize,
+}
+#[cfg(feature = "alloc")]
+impl Display for BoundedCapacityExceededError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{} capacity exceeded: limit {}, attempted {}",
+            self.collection_type, self.capacity, self.attempted_size
+        )
+    }
+}
+#[cfg(feature = "alloc")]
+impl ErrorSource for BoundedCapacityExceededError {}
+
+/// Error for invalid access to a bounded collection
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg(feature = "alloc")]
+pub struct BoundedCollectionAccessError {
+    pub collection_type: String,
+    pub index: usize,
+    pub size: usize,
+}
+#[cfg(feature = "alloc")]
+impl Display for BoundedCollectionAccessError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "Invalid access to {} at index {}, size is {}",
+            self.collection_type, self.index, self.size
+        )
+    }
+}
+#[cfg(feature = "alloc")]
+impl ErrorSource for BoundedCollectionAccessError {}
+
+/// Error for critical integrity violations
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg(feature = "alloc")]
+pub struct IntegrityViolationError(pub String);
+#[cfg(feature = "alloc")]
+impl Display for IntegrityViolationError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Critical integrity violation: {}", self.0)
+    }
+}
+#[cfg(feature = "alloc")]
+impl ErrorSource for IntegrityViolationError {}
+
+/// Error for verification level violations (attempting unsafe operations)
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg(feature = "alloc")]
+pub struct VerificationLevelViolationError {
+    pub operation: String,
+    pub required_level: String,
+    pub current_level: String,
+}
+#[cfg(feature = "alloc")]
+impl Display for VerificationLevelViolationError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "Operation '{}' requires verification level '{}', but current level is '{}'",
+            self.operation, self.required_level, self.current_level
+        )
+    }
+}
+#[cfg(feature = "alloc")]
+impl ErrorSource for VerificationLevelViolationError {}
+
+/// Decoding error for binary format parsing
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg(feature = "alloc")]
+pub struct DecodingError(pub String);
+#[cfg(feature = "alloc")]
+impl Display for DecodingError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Decoding error: {}", self.0)
+    }
+}
+#[cfg(feature = "alloc")]
+impl ErrorSource for DecodingError {}
+
+/// Execution timeout error
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg(feature = "alloc")]
+pub struct ExecutionTimeoutError(pub String);
+#[cfg(feature = "alloc")]
+impl Display for ExecutionTimeoutError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Execution timeout: {}", self.0)
+    }
+}
+#[cfg(feature = "alloc")]
+impl ErrorSource for ExecutionTimeoutError {}
+
+/// Invalid function index error
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg(feature = "alloc")]
+pub struct InvalidFunctionIndex(pub usize);
+#[cfg(feature = "alloc")]
+impl Display for InvalidFunctionIndex {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Invalid function index: {}", self.0)
+    }
+}
+#[cfg(feature = "alloc")]
+impl ErrorSource for InvalidFunctionIndex {
+    fn code(&self) -> u16 {
+        INVALID_FUNCTION_INDEX
+    }
+}
+
+/// Type mismatch error
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg(feature = "alloc")]
+pub struct TypeMismatch(pub String);
+#[cfg(feature = "alloc")]
+impl Display for TypeMismatch {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Type mismatch: {}", self.0)
+    }
+}
+#[cfg(feature = "alloc")]
+impl ErrorSource for TypeMismatch {
+    fn code(&self) -> u16 {
+        TYPE_MISMATCH
+    }
+}
+
+/// Encoding error
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg(feature = "alloc")]
+pub struct EncodingError(pub String);
+#[cfg(feature = "alloc")]
+impl Display for EncodingError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Encoding error: {}", self.0)
+    }
+}
+#[cfg(feature = "alloc")]
+impl ErrorSource for EncodingError {
+    fn code(&self) -> u16 {
+        ENCODING_ERROR
+    }
+}
+
+/// Execution limit exceeded error
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg(feature = "alloc")]
+pub struct ExecutionLimitExceeded(pub String);
+#[cfg(feature = "alloc")]
+impl Display for ExecutionLimitExceeded {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Execution limit exceeded: {}", self.0)
+    }
+}
+#[cfg(feature = "alloc")]
+impl ErrorSource for ExecutionLimitExceeded {
+    fn code(&self) -> u16 {
+        EXECUTION_LIMIT_EXCEEDED
+    }
+}
+
+/// Resource error
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg(feature = "alloc")]
+pub struct ResourceError(pub String);
+#[cfg(feature = "alloc")]
+impl Display for ResourceError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Resource error: {}", self.0)
+    }
+}
+#[cfg(feature = "alloc")]
+impl ErrorSource for ResourceError {
+    fn code(&self) -> u16 {
+        RESOURCE_ERROR
+    }
+}
+
+/// Component instantiation error
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg(feature = "alloc")]
+pub struct ComponentInstantiationError(pub String);
+#[cfg(feature = "alloc")]
+impl Display for ComponentInstantiationError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Component instantiation error: {}", self.0)
+    }
+}
+#[cfg(feature = "alloc")]
+impl ErrorSource for ComponentInstantiationError {
+    fn code(&self) -> u16 {
+        COMPONENT_INSTANTIATION_ERROR
+    }
+}
+
+/// Canonical ABI error
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg(feature = "alloc")]
+pub struct CanonicalABIError(pub String);
+#[cfg(feature = "alloc")]
+impl Display for CanonicalABIError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Canonical ABI error: {}", self.0)
+    }
+}
+#[cfg(feature = "alloc")]
+impl ErrorSource for CanonicalABIError {
+    fn code(&self) -> u16 {
+        CANONICAL_ABI_ERROR
+    }
+}
+
+/// Component linking error
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg(feature = "alloc")]
+pub struct ComponentLinkingError(pub String);
+#[cfg(feature = "alloc")]
+impl Display for ComponentLinkingError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Component linking error: {}", self.0)
+    }
+}
+#[cfg(feature = "alloc")]
+impl ErrorSource for ComponentLinkingError {
+    fn code(&self) -> u16 {
+        COMPONENT_LINKING_ERROR
+    }
+}
+
+/// Conversion error
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg(feature = "alloc")]
+pub struct ConversionError(pub String);
+#[cfg(feature = "alloc")]
+impl Display for ConversionError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Conversion error: {}", self.0)
+    }
+}
+#[cfg(feature = "alloc")]
+impl ErrorSource for ConversionError {
+    fn code(&self) -> u16 {
+        CONVERSION_ERROR
+    }
+}
+
+/// Invalid value
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg(feature = "alloc")]
+pub struct InvalidValue(pub String);
+#[cfg(feature = "alloc")]
+impl Display for InvalidValue {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Invalid value: {}", self.0)
+    }
+}
+#[cfg(feature = "alloc")]
+impl ErrorSource for InvalidValue {
+    fn code(&self) -> u16 {
+        INVALID_VALUE_ERROR
+    }
+}

@@ -1,219 +1,60 @@
 //! Table manipulation logic.
+//! This module provides re-exports and convenience functions for wrt-runtime Table implementation.
 
-use crate::Vec;
-use crate::{types::TableType, values::Value};
-use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
-use wrt_error::{kinds, Error, Result};
+use crate::values::Value;
+use crate::Result;
 
-/// Represents a WebAssembly table instance
-#[derive(Debug)]
-pub struct Table {
-    /// Table type
-    pub type_: TableType,
-    /// Table elements, protected by RwLock
-    elements: RwLock<Vec<Option<Value>>>,
+// Re-export table types from wrt-runtime
+pub use wrt_runtime::{Table, TableType};
+pub use wrt_types::types::Limits;
+
+// Alias for backward compatibility
+pub type TableAdapter = Table;
+
+/// Create a new table instance
+///
+/// This is a convenience function that creates a table instance
+/// with the given type.
+///
+/// # Arguments
+///
+/// * `table_type` - The table type
+///
+/// # Returns
+///
+/// A new table instance
+///
+/// # Errors
+///
+/// Returns an error if the table cannot be created
+pub fn create_table(table_type: TableType) -> Result<Table> {
+    Table::new(
+        table_type,
+        wrt_types::values::Value::default_for_type(&table_type.element_type),
+    )
 }
 
-impl Clone for Table {
-    fn clone(&self) -> Self {
-        let elements_lock = self.elements.read().unwrap();
-        Self {
-            type_: self.type_.clone(),
-            elements: RwLock::new(elements_lock.clone()),
-        }
-    }
-}
-
-impl Table {
-    /// Creates a new table instance
-    #[must_use]
-    pub fn new(table_type: TableType) -> Self {
-        let initial_size = table_type.min;
-        Self {
-            type_: table_type,
-            elements: RwLock::new({
-                let mut v = Vec::with_capacity(initial_size as usize);
-                v.resize(initial_size as usize, None);
-                v
-            }),
-        }
-    }
-
-    /// Returns the table type
-    #[must_use]
-    pub const fn type_(&self) -> &TableType {
-        &self.type_
-    }
-
-    /// Returns the current size
-    #[must_use]
-    pub fn size(&self) -> usize {
-        self.elements.read().unwrap().len()
-    }
-
-    /// Grows the table by the specified number of elements
-    pub fn grow(&self, delta: u32) -> Result<u32> {
-        let old_size_usize = self.elements.read().unwrap().len(); // Get current size as usize
-        let delta_usize: usize = delta
-            .try_into()
-            .map_err(|_| Error::new(kinds::ExecutionError("Delta too large for usize".into())))?;
-        let new_size_usize = old_size_usize
-            .checked_add(delta_usize)
-            .ok_or_else(|| Error::new(kinds::ExecutionError("Table size overflow".into())))?;
-
-        let max_usize = self
-            .type_
-            .max
-            .map_or(usize::MAX, |m| m.try_into().unwrap_or(usize::MAX));
-
-        if new_size_usize > max_usize {
-            return Err(Error::new(kinds::ExecutionError(
-                "Table size exceeds maximum".into(),
-            )));
-        }
-
-        let mut elements_guard = self.elements.write().unwrap();
-        elements_guard.resize(new_size_usize, None);
-        Ok(old_size_usize.try_into().unwrap_or(u32::MAX)) // Return old size as u32
-    }
-
-    /// Gets an element from the table
-    pub fn get(&self, idx: u32) -> Result<Option<Value>> {
-        let elements_guard = self.elements.read().map_err(|_| {
-            Error::new(kinds::PoisonedLockError(
-                "Table elements lock poisoned".to_string(),
-            ))
-        })?;
-        let idx_usize = idx as usize;
-        if idx_usize >= elements_guard.len() {
-            // Wasm spec dictates trap on out-of-bounds access
-            return Err(Error::new(kinds::TableAccessOutOfBounds));
-        }
-        Ok(elements_guard[idx_usize].clone())
-    }
-
-    /// Sets an element in the table
-    pub fn set(&self, idx: u32, value: Option<Value>) -> Result<()> {
-        let mut elements_guard = self.elements.write().map_err(|_| {
-            Error::new(kinds::PoisonedLockError(
-                "Table elements lock poisoned".to_string(),
-            ))
-        })?;
-        let idx_usize = idx as usize;
-        if idx_usize >= elements_guard.len() {
-            return Err(Error::new(kinds::TableAccessOutOfBounds)); // Trap on out-of-bounds write
-        }
-        // Type check if value is Some
-        if let Some(ref val) = value {
-            if !val.matches_type(&self.type_.element_type) {
-                return Err(Error::new(kinds::InvalidTypeError(format!(
-                    "Invalid value type {:?} for table type {:?}",
-                    val.get_type(),
-                    self.type_.element_type
-                ))));
-            }
-        }
-        elements_guard[idx_usize] = value;
-        Ok(())
-    }
-
-    /// Initializes a range of elements from a vector
-    pub fn init(&self, offset: u32, init: &[Option<Value>]) -> Result<()> {
-        let len = init.len() as u32;
-        let end = offset.checked_add(len).ok_or_else(|| {
-            Error::new(kinds::ExecutionError(
-                "Table initialization overflow".into(),
-            ))
-        })?;
-
-        let mut elements_guard = self.elements.write().unwrap();
-        self.check_bounds_internal(end.saturating_sub(1), &elements_guard)?;
-
-        // Clone each element individually since Option<Value> doesn't implement Copy
-        for (i, value) in init.iter().enumerate() {
-            elements_guard[offset as usize + i] = value.clone();
-        }
-
-        Ok(())
-    }
-
-    /// Copies elements from one range to another
-    pub fn copy(&self, dst: u32, src: u32, len: u32) -> Result<()> {
-        if len == 0 {
-            return Ok(());
-        }
-        let dst_end = dst.checked_add(len).ok_or_else(|| {
-            Error::new(kinds::ExecutionError(
-                "Table copy destination overflow".into(),
-            ))
-        })?;
-        let src_end = src.checked_add(len).ok_or_else(|| {
-            Error::new(kinds::ExecutionError("Table copy source overflow".into()))
-        })?;
-
-        let mut elements_guard = self.elements.write().unwrap();
-        self.check_bounds_internal(dst_end.saturating_sub(1), &elements_guard)?;
-        self.check_bounds_internal(src_end.saturating_sub(1), &elements_guard)?;
-
-        // Perform copy within the locked guard
-        // Need to handle overlap carefully - copy_within might be simpler if elements were Copy
-        if dst <= src {
-            // Forward copy
-            for i in 0..len {
-                elements_guard[(dst + i) as usize] = elements_guard[(src + i) as usize].clone();
-            }
-        } else {
-            // Backward copy
-            for i in (0..len).rev() {
-                elements_guard[(dst + i) as usize] = elements_guard[(src + i) as usize].clone();
-            }
-        }
-        Ok(())
-    }
-
-    /// Fills a range of elements with a value
-    pub fn fill(&self, offset: u32, len: u32, value: Option<Value>) -> Result<()> {
-        if len == 0 {
-            return Ok(());
-        }
-        let offset_usize = offset as usize;
-        let len_usize = len as usize;
-        let end_usize = offset_usize
-            .checked_add(len_usize)
-            .ok_or_else(|| Error::new(kinds::ExecutionError("Table fill overflow".into())))?;
-
-        let mut elements_guard = self.elements.write().unwrap();
-        // Check bounds *after* getting lock
-        if end_usize > elements_guard.len() {
-            return Err(Error::new(kinds::TableAccessOutOfBounds)); // Trap if fill goes out of bounds
-        }
-        // Type check if value is Some
-        if let Some(ref val) = value {
-            if !val.matches_type(&self.type_.element_type) {
-                return Err(Error::new(kinds::InvalidTypeError(format!(
-                    "Invalid value type {:?} for table type {:?}",
-                    val.get_type(),
-                    self.type_.element_type
-                ))));
-            }
-        }
-
-        for i in offset_usize..end_usize {
-            elements_guard[i] = value.clone();
-        }
-        Ok(())
-    }
-
-    /// Internal bounds check using a lock guard
-    fn check_bounds_internal<G>(&self, idx: u32, guard: &G) -> Result<()>
-    where
-        G: std::ops::Deref<Target = Vec<Option<Value>>>,
-    {
-        if idx >= guard.len() as u32 {
-            return Err(Error::new(kinds::TableAccessOutOfBounds));
-        }
-        Ok(())
-    }
+/// Create a new table instance with a name
+///
+/// This is a convenience function that creates a table instance
+/// with the given type and name.
+///
+/// # Arguments
+///
+/// * `table_type` - The table type
+/// * `name` - The debug name for the table
+///
+/// # Returns
+///
+/// A new table instance
+///
+/// # Errors
+///
+/// Returns an error if the table cannot be created
+pub fn create_table_with_name(table_type: TableType, name: &str) -> Result<Table> {
+    let mut table = create_table(table_type)?;
+    table.set_debug_name(name);
+    Ok(table)
 }
 
 #[cfg(test)]
@@ -228,131 +69,156 @@ mod tests {
     fn create_test_table_type(min: u32, max: Option<u32>) -> TableType {
         TableType {
             element_type: ValueType::FuncRef,
-            min,
-            max,
+            limits: Limits { min, max },
         }
     }
 
     #[test]
     fn test_table_creation() {
-        let table_type = TableType {
-            element_type: ValueType::I32,
-            min: 1,
-            max: Some(10),
-        };
+        let table_type = create_test_table_type(10, Some(20));
         let table = Table::new(table_type);
-        assert_eq!(table.size(), 1); // Initial size should be min elements
+        assert_eq!(table.size(), 10);
+
+        // Test with unbounded max
+        let table_type_unbounded = create_test_table_type(5, None);
+        let table_unbounded = Table::new(table_type_unbounded);
+        assert_eq!(table_unbounded.size(), 5);
     }
 
     #[test]
     fn test_table_growth() -> Result<()> {
-        let table_type = create_test_table_type(1, Some(10));
+        // Test bounded table
+        let table_type = create_test_table_type(10, Some(20));
         let table = Table::new(table_type);
 
-        // Test successful growth
-        let old_size = table.grow(2)?;
-        assert_eq!(old_size, 1);
-        assert_eq!(table.size(), 3);
+        // Valid growth
+        let old_size = table.grow(5)?;
+        assert_eq!(old_size, 10);
+        assert_eq!(table.size(), 15);
 
-        // Test growth up to max
-        assert!(table.grow(7).is_ok());
-        assert_eq!(table.size(), 10);
+        // Growth to max exactly
+        let old_size = table.grow(5)?;
+        assert_eq!(old_size, 15);
+        assert_eq!(table.size(), 20);
 
-        // Test growth beyond max
-        assert!(table.grow(1).is_err());
+        // Growth beyond max
+        let result = table.grow(1);
+        assert!(result.is_err());
 
-        // Test growth with no max
-        let table = Table::new(create_test_table_type(1, None));
-        assert!(table.grow(1000).is_ok());
-        assert_eq!(table.size(), 1001);
+        // Test unbounded table
+        let table_type = create_test_table_type(5, None);
+        let table = Table::new(table_type);
+
+        // Growth with no max
+        let old_size = table.grow(10)?;
+        assert_eq!(old_size, 5);
+        assert_eq!(table.size(), 15);
 
         Ok(())
     }
 
     #[test]
     fn test_table_access() -> Result<()> {
-        let table = Table::new(create_test_table_type(5, None));
+        let table_type = create_test_table_type(10, Some(20));
+        let table = Table::new(table_type);
 
-        // Test initial state
-        for i in 0..5 {
-            assert_eq!(table.get(i)?, None);
-        }
+        // Get initial value (should be None)
+        let val = table.get(5)?;
+        assert!(val.is_none());
 
-        // Test set and get
-        let value = Value::FuncRef(Some(42));
-        table.set(3, Some(value.clone()))?;
-        assert_eq!(table.get(3)?, Some(value));
+        // Set a value
+        table.set(5, Some(Value::Ref(1)))?;
 
-        // Test bounds checking
-        assert!(table.get(5).is_err());
-        assert!(table.set(5, None).is_err());
+        // Get the value back
+        let val = table.get(5)?;
+        assert_eq!(val, Some(Value::Ref(1)));
+
+        // Out of bounds access
+        assert!(table.get(10).is_err());
+        assert!(table.set(10, Some(Value::Ref(2))).is_err());
 
         Ok(())
     }
 
     #[test]
     fn test_table_initialization() -> Result<()> {
-        let table = Table::new(create_test_table_type(5, None));
-        let values = vec![
-            Some(Value::FuncRef(Some(1))),
-            Some(Value::FuncRef(Some(2))),
-            Some(Value::FuncRef(Some(3))),
+        let table_type = create_test_table_type(10, Some(20));
+        let table = Table::new(table_type);
+
+        // Initialize a range
+        let init_values = vec![
+            Some(Value::Ref(1)),
+            Some(Value::Ref(2)),
+            Some(Value::Ref(3)),
         ];
+        table.init(2, &init_values)?;
 
-        // Test successful initialization
-        table.init(1, &values)?;
-        assert_eq!(table.get(1)?, Some(Value::FuncRef(Some(1))));
-        assert_eq!(table.get(2)?, Some(Value::FuncRef(Some(2))));
-        assert_eq!(table.get(3)?, Some(Value::FuncRef(Some(3))));
+        // Check the values
+        assert_eq!(table.get(2)?, Some(Value::Ref(1)));
+        assert_eq!(table.get(3)?, Some(Value::Ref(2)));
+        assert_eq!(table.get(4)?, Some(Value::Ref(3)));
 
-        // Test initialization out of bounds
-        assert!(table.init(4, &values).is_err());
+        // Out of bounds initialization
+        let result = table.init(8, &init_values);
+        assert!(result.is_err());
 
         Ok(())
     }
 
     #[test]
     fn test_table_copy() -> Result<()> {
-        let table = Table::new(create_test_table_type(10, None));
+        let table_type = create_test_table_type(10, Some(20));
+        let table = Table::new(table_type);
 
-        // Set up some initial values
-        table.set(0, Some(Value::FuncRef(Some(1))))?;
-        table.set(1, Some(Value::FuncRef(Some(2))))?;
-        table.set(2, Some(Value::FuncRef(Some(3))))?;
+        // Initialize source values
+        let init_values = vec![
+            Some(Value::Ref(1)),
+            Some(Value::Ref(2)),
+            Some(Value::Ref(3)),
+        ];
+        table.init(2, &init_values)?;
 
-        // Test forward copy
-        table.copy(5, 0, 3)?;
-        assert_eq!(table.get(5)?, Some(Value::FuncRef(Some(1))));
-        assert_eq!(table.get(6)?, Some(Value::FuncRef(Some(2))));
-        assert_eq!(table.get(7)?, Some(Value::FuncRef(Some(3))));
+        // Copy forward (non-overlapping)
+        table.copy(5, 2, 3)?;
+        assert_eq!(table.get(5)?, Some(Value::Ref(1)));
+        assert_eq!(table.get(6)?, Some(Value::Ref(2)));
+        assert_eq!(table.get(7)?, Some(Value::Ref(3)));
 
-        // Test backward copy (overlapping)
-        table.copy(1, 0, 2)?;
-        assert_eq!(table.get(1)?, Some(Value::FuncRef(Some(1))));
-        assert_eq!(table.get(2)?, Some(Value::FuncRef(Some(2))));
+        // Copy backward (overlapping)
+        table.copy(1, 2, 3)?;
+        assert_eq!(table.get(1)?, Some(Value::Ref(1)));
+        assert_eq!(table.get(2)?, Some(Value::Ref(2)));
+        assert_eq!(table.get(3)?, Some(Value::Ref(3)));
 
-        // Test copy out of bounds
-        assert!(table.copy(8, 0, 3).is_err());
-        assert!(table.copy(0, 8, 3).is_err());
+        // Out of bounds copy
+        assert!(table.copy(8, 2, 3).is_err()); // Destination out of bounds
+        assert!(table.copy(2, 8, 3).is_err()); // Source out of bounds
 
         Ok(())
     }
 
     #[test]
     fn test_table_fill() -> Result<()> {
-        let table = Table::new(create_test_table_type(5, None));
-        let value = Some(Value::FuncRef(Some(42)));
+        let table_type = create_test_table_type(10, Some(20));
+        let table = Table::new(table_type);
 
-        // Test successful fill
-        table.fill(1, 3, value.clone())?;
-        assert_eq!(table.get(1)?, value);
-        assert_eq!(table.get(2)?, value);
-        assert_eq!(table.get(3)?, value);
-        assert_eq!(table.get(0)?, None);
+        // Fill a range
+        table.fill(2, 3, Some(Value::Ref(42)))?;
+
+        // Check the values
+        assert_eq!(table.get(2)?, Some(Value::Ref(42)));
+        assert_eq!(table.get(3)?, Some(Value::Ref(42)));
+        assert_eq!(table.get(4)?, Some(Value::Ref(42)));
+        assert_eq!(table.get(5)?, None); // Should not affect values outside range
+
+        // Fill with None (clear values)
+        table.fill(2, 3, None)?;
+        assert_eq!(table.get(2)?, None);
+        assert_eq!(table.get(3)?, None);
         assert_eq!(table.get(4)?, None);
 
-        // Test fill out of bounds
-        assert!(table.fill(4, 2, value).is_err());
+        // Out of bounds fill
+        assert!(table.fill(8, 3, Some(Value::Ref(42))).is_err());
 
         Ok(())
     }

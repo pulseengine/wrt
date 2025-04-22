@@ -6,6 +6,9 @@ use crate::{
     Value,
 };
 
+// Import RefType from wrt_types
+use wrt_types::types::RefType;
+
 /// Represents a ref.null instruction which creates a null reference of the given reference type
 #[derive(Debug, Clone, Copy)]
 pub struct RefNull {

@@ -81,8 +81,12 @@ pub const F64_CONST: u8 = 0x44;
 /// Component Model magic bytes (same as core: \0asm)
 pub const COMPONENT_MAGIC: [u8; 4] = [0x00, 0x61, 0x73, 0x6D];
 
-/// Component Model binary format version - pre-MVP version 0xD.0
-pub const COMPONENT_VERSION: [u8; 2] = [0x0D, 0x00];
+/// Component Model binary format version - 2 bytes version, 2 bytes layer
+/// Version 1.0, Layer 1
+pub const COMPONENT_VERSION: [u8; 4] = [0x01, 0x00, 0x01, 0x00];
+
+/// Component Model version only (first two bytes of version)
+pub const COMPONENT_VERSION_ONLY: [u8; 2] = [0x01, 0x00];
 
 /// Component Model layer identifier - distinguishes components from modules
 pub const COMPONENT_LAYER: [u8; 2] = [0x01, 0x00];

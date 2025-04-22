@@ -86,8 +86,8 @@ mod tests {
 
         // Test initial state
         assert_eq!(memory.size(), 1);
-        assert_eq!(memory.type_().min, 1);
-        assert_eq!(memory.type_().max, Some(10));
+        assert_eq!(memory.type_().limits.min, 1);
+        assert_eq!(memory.type_().limits.max, Some(10));
 
         // Test growth
         let result = memory.grow(2);
@@ -131,8 +131,8 @@ mod tests {
 
         // Test initial state
         assert_eq!(table.size(), 1);
-        assert_eq!(table.type_().min, 1);
-        assert_eq!(table.type_().max, Some(10));
+        assert_eq!(table.type_().limits.min, 1);
+        assert_eq!(table.type_().limits.max, Some(10));
 
         // Test growth
         assert!(table.grow(2).is_ok());
@@ -263,8 +263,8 @@ mod tests {
         assert_eq!(mem_import.name, "memory");
         match &mem_import.ty {
             ExternType::Memory(mem_type) => {
-                assert_eq!(mem_type.min, 1);
-                assert!(mem_type.max.is_none());
+                assert_eq!(mem_type.limits.min, 1);
+                assert!(mem_type.limits.max.is_none());
             }
             _ => panic!("Expected memory import type"),
         }
@@ -338,5 +338,16 @@ mod tests {
             custom_error.to_string(),
             "Custom error: custom error message"
         );
+    }
+
+    #[test]
+    fn test_memory_type_checking() {
+        let module = Module::new().expect("Module creation failed");
+        let mem = module.get_memory(0)?;
+        let mem_type = mem.type_();
+
+        // Check memory type
+        assert_eq!(mem_type.limits.min, 1);
+        assert!(mem_type.limits.max.is_none());
     }
 }
