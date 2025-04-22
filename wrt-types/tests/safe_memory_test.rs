@@ -1,0 +1,90 @@
+//! Tests for the safe memory implementation
+
+use wrt_types::{
+    safe_memory::{MemoryProvider, MemorySafety, SafeSlice, StdMemoryProvider},
+    verification::VerificationLevel,
+};
+
+#[test]
+fn test_safe_slice_creation() {
+    let data = vec![1, 2, 3, 4, 5];
+    let slice = SafeSlice::new(&data);
+
+    // Verify data access works
+    assert_eq!(slice.data().unwrap(), &[1, 2, 3, 4, 5]);
+    assert_eq!(slice.len(), 5);
+    assert!(!slice.is_empty());
+}
+
+#[test]
+fn test_safe_slice_verification_levels() {
+    let data = vec![1, 2, 3, 4, 5];
+
+    // Create with different verification levels
+    let slice_none = SafeSlice::with_verification_level(&data, VerificationLevel::None);
+    let slice_sampling = SafeSlice::with_verification_level(&data, VerificationLevel::Sampling);
+    let slice_standard = SafeSlice::with_verification_level(&data, VerificationLevel::Standard);
+    let slice_full = SafeSlice::with_verification_level(&data, VerificationLevel::Full);
+
+    // All should return the same data
+    assert_eq!(slice_none.data().unwrap(), &[1, 2, 3, 4, 5]);
+    assert_eq!(slice_sampling.data().unwrap(), &[1, 2, 3, 4, 5]);
+    assert_eq!(slice_standard.data().unwrap(), &[1, 2, 3, 4, 5]);
+    assert_eq!(slice_full.data().unwrap(), &[1, 2, 3, 4, 5]);
+}
+
+#[test]
+fn test_std_memory_provider() {
+    let data = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    let provider = StdMemoryProvider::new(data);
+
+    // Test borrow_slice
+    let slice = provider.borrow_slice(2, 3).unwrap();
+    assert_eq!(slice.data().unwrap(), &[3, 4, 5]);
+
+    // Test size
+    assert_eq!(provider.size(), 10);
+
+    // Test verify_access
+    assert!(provider.verify_access(0, 10).is_ok());
+    assert!(provider.verify_access(5, 5).is_ok());
+    assert!(provider.verify_access(10, 1).is_err()); // Out of bounds
+}
+
+#[test]
+fn test_memory_stats() {
+    let data = vec![0; 1024];
+    let provider = StdMemoryProvider::new(data);
+
+    // Access different regions
+    let _ = provider.borrow_slice(0, 100).unwrap();
+    let _ = provider.borrow_slice(200, 100).unwrap();
+    let _ = provider.borrow_slice(500, 200).unwrap();
+
+    // Get stats
+    let stats = provider.memory_stats();
+
+    // Verify stats
+    assert_eq!(stats.total_size, 1024);
+    assert_eq!(stats.access_count, 3);
+    assert!(stats.unique_regions > 0);
+    assert_eq!(stats.max_access_size, 200);
+}
+
+#[test]
+fn test_memory_safety_trait() {
+    let data = vec![0; 1024];
+    let mut provider = StdMemoryProvider::new(data);
+
+    // Test MemorySafety trait methods
+    assert!(provider.verify_integrity().is_ok());
+
+    // Test changing verification level
+    assert_eq!(provider.verification_level(), VerificationLevel::Standard);
+    provider.set_verification_level(VerificationLevel::Full);
+    assert_eq!(provider.verification_level(), VerificationLevel::Full);
+
+    // Test memory stats
+    let stats = provider.memory_stats();
+    assert_eq!(stats.total_size, 1024);
+}

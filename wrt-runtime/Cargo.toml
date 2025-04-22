@@ -1,0 +1,44 @@
+[package]
+name = "wrt-runtime"
+version = "0.1.0"
+edition = "2021"
+description = "WebAssembly Component Model Runtime for WRT"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/avrabe/wrt"
+documentation = "https://docs.rs/wrt-runtime"
+keywords = ["wasm", "webassembly", "runtime", "component-model"]
+categories = ["wasm", "no-std"]
+
+[dependencies]
+wrt-error = { path = "../wrt-error", version = "0.1.0" }
+wrt-types = { path = "../wrt-types", version = "0.1.0" }
+
+# No-std support
+alloc = { version = "1.0.0", optional = true, package = "rustc-std-workspace-alloc" }
+
+# No additional dependencies for now
+
+[features]
+default = ["std"]
+std = [
+    "wrt-error/std", 
+    "wrt-types/std",
+]
+no_std = [
+    "wrt-error/no_std", 
+    "wrt-types/no_std",
+]
+kani = []
+kani-verifier = []
+optimize = []
+safety = []
+
+[lints.rust]
+unexpected_cfgs = { level = "allow", check-cfg = ['cfg(test)'] }
+unused_imports = "allow"
+unused_variables = "allow"
+unused_mut = "allow"
+unsafe_code = "warn"
+
+[dev-dependencies]
+proptest = "1.4.0" 

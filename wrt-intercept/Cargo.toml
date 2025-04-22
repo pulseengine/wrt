@@ -1,0 +1,35 @@
+[package]
+name = "wrt-intercept"
+version = "0.1.0"
+edition = "2021"
+description = "Interception layer for the WebAssembly Runtime (WRT)"
+license = "MIT"
+repository = "https://github.com/avrabe/wrt"
+documentation = "https://docs.rs/wrt-intercept"
+keywords = ["wasm", "webassembly", "runtime", "interception"]
+categories = ["wasm", "no-std"]
+
+[dependencies]
+wrt-error = { path = "../wrt-error", version = "0.1.0" }
+wrt-types = { path = "../wrt-types", version = "0.1.0" }
+wrt-format = { path = "../wrt-format", version = "0.1.0" }
+wrt-common = { path = "../wrt-common", version = "0.1.0" }
+
+# Optional dependencies
+log = { version = "0.4", optional = true }
+
+[dev-dependencies]
+chrono = "0.4"  # For examples
+
+[features]
+default = ["std"]
+std = ["wrt-error/std", "wrt-types/std", "wrt-format/std", "wrt-common/std", "log"]
+no_std = ["wrt-error/no_std", "wrt-types/no_std", "wrt-format/no_std", "wrt-common/no_std"]
+kani = ["wrt-common/kani"]
+
+[lints.rust]
+unexpected_cfgs = { level = "allow", check-cfg = ['cfg(test)'] }
+unused_imports = "allow"
+unused_variables = "allow"
+unused_mut = "allow"
+unused_macros = "allow" 

@@ -1,0 +1,12 @@
+//! Built-in strategies for intercepting component function calls
+//!
+//! This module provides implementations of common interceptor strategies
+//! that can be used out of the box or as examples for creating custom strategies.
+
+mod firewall;
+mod logging;
+mod stats;
+
+pub use firewall::FirewallStrategy;
+pub use logging::LoggingStrategy;
+pub use stats::StatisticsStrategy;
