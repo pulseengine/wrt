@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg width="256" height="256" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+  <!-- State Migration Icon in Bauhaus style -->
+  <!-- Background -->
+  <rect x="0" y="0" width="256" height="256" fill="#FFFFFF"/>
+  
+  <!-- System 1 (left) -->
+  <rect x="28" y="78" width="80" height="100" rx="5" ry="5" fill="#1D71B8" stroke="#000000" stroke-width="4"/>
+  
+  <!-- System 2 (right) -->
+  <rect x="148" y="78" width="80" height="100" rx="5" ry="5" fill="#DE0000" stroke="#000000" stroke-width="4"/>
+  
+  <!-- State object (represented as a cube) -->
+  <g transform="translate(108, 128) scale(0.6)">
+    <!-- Cube faces -->
+    <polygon points="0,0 40,0 40,40 0,40" fill="#FFED00" stroke="#000000" stroke-width="3"/>
+    <polygon points="40,0 50,-20 50,20 40,40" fill="#DE0000" stroke="#000000" stroke-width="3"/>
+    <polygon points="0,40 40,40 50,20 10,20" fill="#1D71B8" stroke="#000000" stroke-width="3"/>
+  </g>
+  
+  <!-- Migration path (arrow) -->
+  <path d="M 108,128 L 148,128" stroke="#000000" stroke-width="4"/>
+  <polygon points="138,118 148,128 138,138" fill="#000000"/>
+  
+  <!-- System indicators (simple circuits) -->
+  <path d="M 48,98 L 88,98 M 48,108 L 88,108 M 48,118 L 88,118 
+           M 48,128 L 88,128 M 48,138 L 88,138 M 48,148 L 88,148 
+           M 48,158 L 88,158" 
+        stroke="#FFFFFF" stroke-width="2"/>
+        
+  <path d="M 168,98 L 208,98 M 168,108 L 208,108 M 168,118 L 208,118 
+           M 168,128 L 208,128 M 168,138 L 208,138 M 168,148 L 208,148 
+           M 168,158 L 208,158" 
+        stroke="#FFFFFF" stroke-width="2"/>
+        
+  <!-- Connection points -->
+  <circle cx="68" cy="128" r="5" fill="#FFED00" stroke="#000000" stroke-width="1"/>
+  <circle cx="188" cy="128" r="5" fill="#FFED00" stroke="#000000" stroke-width="1"/>
+</svg> 
