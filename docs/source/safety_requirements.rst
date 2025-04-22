@@ -7,7 +7,7 @@ Safety and Resource Requirements
    :align: right
    :alt: Safety Features Icon
 
-This document defines the safety, resource management, and verification requirements for the WRT runtime.
+This document defines the safety, resource management, and verification requirements for the WRT runtime. For details on how these requirements are implemented in the architecture, please see the :doc:`architecture` documentation, specifically the :ref:`Safety Architecture <safety-architecture>` section.
 
 .. contents:: Table of Contents
    :local:
