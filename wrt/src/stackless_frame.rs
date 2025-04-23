@@ -18,8 +18,8 @@ use crate::{
 };
 
 // Import from helper crates
-use wrt_runtime::{Memory, Table};
 use wrt_runtime::memory::MemoryArcExt;
+use wrt_runtime::{Memory, Table};
 use wrt_sync;
 // Import the bounded collections and the capacity trait
 use wrt_types::{BoundedCapacity, BoundedVec, Checksummed, Validatable, VerificationLevel};
@@ -608,19 +608,21 @@ impl ControlFlowBehavior for StacklessFrame {
 
     fn branch(&mut self, depth: u32) -> Result<(usize, usize), Error> {
         let depth = depth as usize;
-        
+
         if depth >= self.label_stack.len() {
             return Err(Error::new(kinds::InvalidLabelIndexError(depth)));
         }
-        
+
         let label_idx = self.label_stack.len() - 1 - depth;
-        let label = self.label_stack.get(label_idx)
+        let label = self
+            .label_stack
+            .get(label_idx)
             .ok_or_else(|| Error::new(kinds::InvalidLabelIndexError(depth)))?;
-            
+
         // The rest of the method remains unchanged
         let target_pc = label.continuation_pc;
         let expected_values = label.arity;
-        
+
         Ok((target_pc, expected_values))
     }
 
@@ -1217,20 +1219,20 @@ impl AsRef<[u8]> for StacklessFrame {
         // Create a static representation of the frame using its critical fields
         // This is a simplification for checksum purposes only
         static mut BUFFER: [u8; 32] = [0; 32];
-        
+
         unsafe {
             // Pack the critical fields into the buffer
             let func_idx_bytes = self.func_idx.to_le_bytes();
             let pc_bytes = self.pc.to_le_bytes();
             let instance_idx_bytes = self.instance_idx.to_le_bytes();
             let arity_bytes = self.arity.to_le_bytes();
-            
+
             // Copy bytes into buffer
             BUFFER[0..4].copy_from_slice(&func_idx_bytes);
             BUFFER[4..12].copy_from_slice(&pc_bytes);
             BUFFER[12..16].copy_from_slice(&instance_idx_bytes);
             BUFFER[16..24].copy_from_slice(&arity_bytes);
-            
+
             // Return a slice to the buffer
             &BUFFER[..]
         }

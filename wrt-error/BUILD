@@ -1,35 +1,27 @@
-load("@rules_rust//rust:defs.bzl", "rust_library", "rust_test", "rust_binary")
+load("@rules_rust//rust:defs.bzl", "rust_library", "rust_test")
 load("@crates//:defs.bzl", "aliases", "all_crate_deps")
+load("//bazel:features.bzl", "rust_library_with_features", "rust_test_with_features")
 
-rust_library(
+# Create std library target
+rust_library_with_features(
     name = "wrt-error",
     srcs = glob(["src/**/*.rs"]),
-    edition = "2021",
-    rustc_flags = [
-        "--cfg=feature=\"alloc\"",
-        "--cfg=feature=\"std\"",
-    ],
-    deps = all_crate_deps(
-        normal = True,
-    ),
-    proc_macro_deps = all_crate_deps(
-        proc_macro = True,
-    ),
-    visibility = ["//visibility:public"],
+    feature_set = "std",
+    deps = [],
 )
 
-rust_test(
-    name = "wrt-error_test",
+# Create a no_std library target
+rust_library_with_features(
+    name = "wrt-error_no_std",
     srcs = glob(["src/**/*.rs"]),
-    edition = "2021",
-    rustc_flags = [
-        "--cfg=feature=\"alloc\"",
-        "--cfg=feature=\"std\"",
-    ],
-    deps = all_crate_deps(
-        normal = True,
-    ),
-    proc_macro_deps = all_crate_deps(
-        proc_macro = True,
-    ),
+    feature_set = "no_std",
+    deps = [],
+)
+
+# Test targets for both std and no_std
+rust_test_with_features(
+    name = "wrt-error",
+    srcs = glob(["src/**/*.rs"]),
+    feature_set = "both",
+    deps = [],
 )

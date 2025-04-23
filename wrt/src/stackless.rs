@@ -483,9 +483,9 @@ impl StacklessEngine {
                 .duration_since(std::time::UNIX_EPOCH)
                 .map(|d| d.as_millis() as u8)
                 .unwrap_or(0);
-            
+
             let should_verify = counter % 20 == 0; // ~5% chance
-            
+
             if should_verify {
                 return self.validate();
             }
@@ -977,7 +977,7 @@ impl StacklessEngine {
                 ..
             } => {
                 // ... existing code until the affected part ...
-                
+
                 // Fix the issues with mem::replace
                 if next_instruction_idx >= instructions.len() as u32 {
                     mem::replace(
@@ -1058,7 +1058,7 @@ impl StacklessEngine {
         if n > len {
             return Vec::new(); // or panic, depending on your error handling strategy
         }
-        
+
         let new_len = len - n;
         // Convert BoundedVec to Vec when returning
         values.split_off(new_len).to_vec()
@@ -1128,9 +1128,11 @@ impl StacklessEngine {
         let frame_idx = stack.frames.len() - 1;
 
         // Clone the frame and engine to avoid borrow issues
-        let mut frame = stack.frames.get(frame_idx).ok_or_else(|| 
-            Error::new(kinds::StackUnderflow)
-        )?.clone();
+        let mut frame = stack
+            .frames
+            .get(frame_idx)
+            .ok_or_else(|| Error::new(kinds::StackUnderflow))?
+            .clone();
         let mut engine_clone = self.clone();
 
         // Execute directly with the cloned frame
@@ -1624,9 +1626,11 @@ fn apply_branch(
     let value_cache: Vec<Value> = stack.values.to_vec();
 
     if let Some(frame_idx) = stack.current_frame_idx() {
-        let frame = stack.frames.get(frame_idx).ok_or_else(|| 
-            Error::new(wrt_error::kinds::StackUnderflow)
-        )?.clone();
+        let frame = stack
+            .frames
+            .get(frame_idx)
+            .ok_or_else(|| Error::new(wrt_error::kinds::StackUnderflow))?
+            .clone();
 
         // Execute the branch
         stack.state = handle_branch(frame, to_block, keep_values, &value_cache)?;

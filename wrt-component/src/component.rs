@@ -13,19 +13,21 @@ use crate::{
 use log::{debug, error, info, trace, warn};
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
-use wrt_common::component::ComponentValue;
-use wrt_error::{kinds, Error, Result};
+use wrt_error::{kinds, kinds::*, Error, Result};
+use wrt_types::ComponentValue;
 
 // Use direct imports from wrt-types
 use wrt_types::{
-    ComponentType, ExternType, FuncType, InstanceType, ResourceType, Value, ValueType,
-    VerificationLevel,
+    ComponentType, ExportType, ExternType as TypesExternType, FuncType, GlobalType, InstanceType,
+    Limits, MemoryType as TypesMemoryType, Namespace, ResourceType, TableType as TypesTableType,
+    TypeIndex, ValueType,
 };
 
 // Use format types with explicit namespacing
 use wrt_format::component::{
-    ComponentTypeDefinition as FormatComponentTypeDefinition, ExternType as FormatExternType,
-    ResourceOperation as FormatResourceOperation, ValType as FormatValType,
+    ComponentSection, ComponentTypeDefinition as FormatComponentTypeDefinition,
+    ComponentTypeSection, ExportSection, ExternType as FormatExternType, ImportSection,
+    InstanceSection, ResourceOperation as FormatResourceOperation, ValType as FormatValType,
 };
 
 // Import conversion functions
@@ -75,8 +77,8 @@ use std::collections::VecDeque;
 // Import type conversion utilities for clear transformations
 use crate::type_conversion::{
     common_to_format_val_type, extern_type_to_func_type, format_to_common_val_type,
-    format_to_types_extern_type, format_val_type_to_value_type, types_to_format_extern_type,
-    value_type_to_format_val_type,
+    format_to_types_extern_type, format_val_type_to_types_valtype, format_val_type_to_value_type,
+    types_to_format_extern_type, types_valtype_to_format_valtype, value_type_to_format_val_type,
 };
 
 /// Represents a component instance
@@ -2065,7 +2067,7 @@ impl Component {
                         if params.is_empty() && results.is_empty() {
                             Ok(Some((idx as u32, Vec::new())))
                         } else {
-                            Err(Error::new(kinds::TypeMismatchError(format!( 
+                            Err(Error::new(kinds::TypeMismatchError(format!(
                                 "Export '_start' has incorrect signature: expected () -> (), found {:?} -> {:?}",
                                 params, results
                             ))))
@@ -2178,7 +2180,7 @@ impl Component {
                     // Use specific error struct
                     "Export at index {} ('{}') is not a function",
                     func_idx, func_export.name
-                ))))
+                ))));
             }
         };
         let format_param_types = format_param_types.clone();
@@ -3697,4 +3699,10 @@ fn convert_component_type(
 fn types_are_compatible(a: &ExternType, b: &ExternType) -> bool {
     // Use the compatibility function from wrt_types
     wrt_types::component::types_are_compatible(a, b)
+}
+
+// If needed, create a helper function to construct a ComponentType
+fn create_component_type() -> ComponentType {
+    // This is just a simple default implementation
+    ComponentType::default()
 }

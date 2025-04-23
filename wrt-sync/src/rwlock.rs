@@ -416,10 +416,8 @@ impl<T: ?Sized> WrtParkingRwLock<T> {
                 }
                 Err(_) => {
                     // Failed to acquire lock, register and park
-                    if !registered {
-                        if waiters.register_writer() {
-                            registered = true;
-                        }
+                    if !registered && waiters.register_writer() {
+                        registered = true;
                     }
 
                     // Park the thread
@@ -466,7 +464,7 @@ impl<T: ?Sized> WrtParkingRwLock<T> {
 }
 
 #[cfg(feature = "std")]
-impl<'a, T: ?Sized> Drop for WrtParkingRwLockReadGuard<'a, T> {
+impl<T: ?Sized> Drop for WrtParkingRwLockReadGuard<'_, T> {
     #[inline]
     fn drop(&mut self) {
         // Decrement reader count
@@ -485,7 +483,7 @@ impl<'a, T: ?Sized> Drop for WrtParkingRwLockReadGuard<'a, T> {
 }
 
 #[cfg(feature = "std")]
-impl<'a, T: ?Sized> Drop for WrtParkingRwLockWriteGuard<'a, T> {
+impl<T: ?Sized> Drop for WrtParkingRwLockWriteGuard<'_, T> {
     #[inline]
     fn drop(&mut self) {
         // Set state back to unlocked
@@ -530,7 +528,7 @@ impl<T: ?Sized + fmt::Debug> fmt::Debug for WrtParkingRwLock<T> {
 }
 
 #[cfg(feature = "std")]
-impl<'a, T: ?Sized> Deref for WrtParkingRwLockReadGuard<'a, T> {
+impl<T: ?Sized> Deref for WrtParkingRwLockReadGuard<'_, T> {
     type Target = T;
     #[inline]
     fn deref(&self) -> &Self::Target {
@@ -540,7 +538,7 @@ impl<'a, T: ?Sized> Deref for WrtParkingRwLockReadGuard<'a, T> {
 }
 
 #[cfg(feature = "std")]
-impl<'a, T: ?Sized> Deref for WrtParkingRwLockWriteGuard<'a, T> {
+impl<T: ?Sized> Deref for WrtParkingRwLockWriteGuard<'_, T> {
     type Target = T;
     #[inline]
     fn deref(&self) -> &Self::Target {
@@ -550,7 +548,7 @@ impl<'a, T: ?Sized> Deref for WrtParkingRwLockWriteGuard<'a, T> {
 }
 
 #[cfg(feature = "std")]
-impl<'a, T: ?Sized> DerefMut for WrtParkingRwLockWriteGuard<'a, T> {
+impl<T: ?Sized> DerefMut for WrtParkingRwLockWriteGuard<'_, T> {
     #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
         // Safety: Guard ensures write lock is held.
