@@ -3524,19 +3524,6 @@ dependencies = [
 
 [[package]]
 name = "wast"
-version = "227.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "85c14e5042b16c9d267da3b9b0f4529870455178415286312c25c34dfc1b2816"
-dependencies = [
- "bumpalo",
- "leb128fmt",
- "memchr",
- "unicode-width 0.2.0",
- "wasm-encoder 0.227.1",
-]
-
-[[package]]
-name = "wast"
 version = "228.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9e5aae124478cb51439f6587f074a3a5e835afd22751c59a87b2e2a882727c97"
@@ -4082,7 +4069,7 @@ dependencies = [
  "wasi-cap-std-sync",
  "wasi-common",
  "wasmparser 0.227.1",
- "wast 227.0.1",
+ "wast 228.0.0",
  "wat",
  "wrt-decoder",
  "wrt-error",
