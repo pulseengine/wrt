@@ -299,6 +299,53 @@ impl fmt::Display for Value {
     }
 }
 
+// Add AsRef<[u8]> implementation for Value to work with BoundedVec
+impl AsRef<[u8]> for Value {
+    fn as_ref(&self) -> &[u8] {
+        match self {
+            Self::I32(v) => unsafe {
+                std::slice::from_raw_parts(v as *const i32 as *const u8, std::mem::size_of::<i32>())
+            },
+            Self::I64(v) => unsafe {
+                std::slice::from_raw_parts(v as *const i64 as *const u8, std::mem::size_of::<i64>())
+            },
+            Self::F32(v) => unsafe {
+                std::slice::from_raw_parts(v as *const f32 as *const u8, std::mem::size_of::<f32>())
+            },
+            Self::F64(v) => unsafe {
+                std::slice::from_raw_parts(v as *const f64 as *const u8, std::mem::size_of::<f64>())
+            },
+            Self::V128(bytes) => bytes.as_ref(),
+            Self::FuncRef(ref_opt) => {
+                if let Some(func_ref) = ref_opt {
+                    unsafe {
+                        std::slice::from_raw_parts(
+                            &func_ref.index as *const u32 as *const u8,
+                            std::mem::size_of::<u32>(),
+                        )
+                    }
+                } else {
+                    // Use a static empty array for None values
+                    &[0u8; 4]
+                }
+            }
+            Self::ExternRef(ref_opt) => {
+                if let Some(extern_ref) = ref_opt {
+                    unsafe {
+                        std::slice::from_raw_parts(
+                            &extern_ref.index as *const u32 as *const u8,
+                            std::mem::size_of::<u32>(),
+                        )
+                    }
+                } else {
+                    // Use a static empty array for None values
+                    &[0u8; 4]
+                }
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

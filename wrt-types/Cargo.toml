@@ -8,17 +8,16 @@ repository = "https://github.com/avrabe/wrt"
 
 [features]
 default = ["std", "allocator_api", "log"]
-std = ["wrt-error/std", "wrt-common/std", "log"]
+std = ["wrt-error/std", "log"]
 allocator_api = []
 alloc = ["dep:alloc"]
-no_std = ["wrt-error/no_std", "wrt-common/no_std"]
+no_std = ["wrt-error/no_std"]
 optimize = []  # Optional feature to bypass some safety checks in performance-critical paths
 safety = []    # Additional safety features for ASIL-B compliance
-kani = ["dep:kani-verifier", "wrt-common/kani"]  # Feature for formal verification
+kani = ["dep:kani-verifier"]  # Feature for formal verification
 
 [dependencies]
 wrt-error = { path = "../wrt-error", version = "0.1.0" }
-wrt-common = { path = "../wrt-common", version = "0.1.0" }
 
 # For formal verification
 kani-verifier = { version = "0.61.0", optional = true }

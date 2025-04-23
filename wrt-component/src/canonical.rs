@@ -4,12 +4,13 @@
 // in the WebAssembly Component Model to interface between components.
 
 use crate::resources::{BufferPool, MemoryStrategy, ResourceTable, VerificationLevel};
-use crate::values::ComponentValue;
 use std::any::Any;
 use std::sync::Arc;
+use wrt_types::values::Value;
 use wrt_error::{kinds, Error, Result};
-use wrt_format::component::{ResourceOperation, ValType};
+use wrt_format::component::{ResourceOperation as FormatResourceOperation, ValType};
 use wrt_intercept::{LinkInterceptor, LinkInterceptorStrategy};
+use wrt_runtime::Memory;
 use wrt_types::values::Value;
 
 #[cfg(feature = "std")]
@@ -96,14 +97,14 @@ impl CanonicalABI {
         self
     }
 
-    /// Lift a value from the WebAssembly memory into a ComponentValue
+    /// Lift a value from the WebAssembly memory into a Value
     pub fn lift(
         &self,
         ty: &ValType,
         addr: u32,
         resource_table: &ResourceTable,
         memory_bytes: &[u8],
-    ) -> Result<ComponentValue> {
+    ) -> Result<Value> {
         // Get memory strategy from interceptor or use default
         let memory_strategy = self.get_strategy_from_interceptor();
 
@@ -118,9 +119,9 @@ impl CanonicalABI {
             for strategy in &interceptor.strategies {
                 if strategy.should_intercept_canonical() {
                     if let Some(value) = strategy.intercept_lift(ty, addr, memory_bytes)? {
-                        // Convert the strategy's result into a ComponentValue
+                        // Convert the strategy's result into a Value
                         // This is a placeholder - actual implementation would depend on the return format
-                        return Ok(ComponentValue::Bool(true)); // Placeholder
+                        return Ok(value); // Placeholder
                     }
                 }
             }
@@ -148,8 +149,23 @@ impl CanonicalABI {
             ValType::Option(inner_ty) => {
                 self.lift_option(inner_ty, addr, resource_table, memory_bytes)
             }
-            ValType::Result(ok_ty, err_ty) => {
-                self.lift_result(ok_ty, err_ty, addr, resource_table, memory_bytes)
+            ValType::Result(ok_ty) => {
+                // Handle single-value result (ok only)
+                self.lift_result(Some(ok_ty), None, addr, resource_table, memory_bytes)
+            }
+            ValType::ResultErr(err_ty) => {
+                // Handle single-value result (err only)
+                self.lift_result(None, Some(err_ty), addr, resource_table, memory_bytes)
+            }
+            ValType::ResultBoth(ok_ty, err_ty) => {
+                // Handle dual-value result (ok and err)
+                self.lift_result(
+                    Some(ok_ty),
+                    Some(err_ty),
+                    addr,
+                    resource_table,
+                    memory_bytes,
+                )
             }
             ValType::Tuple(types) => self.lift_tuple(types, addr, resource_table, memory_bytes),
             ValType::Flags(names) => self.lift_flags(names, addr, memory_bytes),
@@ -166,10 +182,10 @@ impl CanonicalABI {
         }
     }
 
-    /// Lower a ComponentValue into the WebAssembly memory
+    /// Lower a Value into the WebAssembly memory
     pub fn lower(
         &self,
-        value: &ComponentValue,
+        value: &Value,
         addr: u32,
         resource_table: &ResourceTable,
         memory_bytes: &mut [u8],
@@ -192,8 +208,11 @@ impl CanonicalABI {
                     let value_type = value.get_type();
                     let value_data: &[u8] = &[]; // Placeholder - actual implementation would serialize the value
 
-                    if strategy.intercept_lower(&value_type, value_data, addr, memory_bytes)? {
-                        return Ok(());
+                    // Convert value_type to FormatValType directly
+                    if let Ok(format_val_type) = crate::type_conversion::value_type_to_format_val_type(&value_type) {
+                        if strategy.intercept_lower(&format_val_type, value_data, addr, memory_bytes)? {
+                            return Ok(());
+                        }
                     }
                 }
             }
@@ -201,34 +220,35 @@ impl CanonicalABI {
 
         // Perform the lower operation
         match value {
-            ComponentValue::Bool(v) => self.lower_bool(*v, addr, memory_bytes),
-            ComponentValue::S8(v) => self.lower_s8(*v, addr, memory_bytes),
-            ComponentValue::U8(v) => self.lower_u8(*v, addr, memory_bytes),
-            ComponentValue::S16(v) => self.lower_s16(*v, addr, memory_bytes),
-            ComponentValue::U16(v) => self.lower_u16(*v, addr, memory_bytes),
-            ComponentValue::S32(v) => self.lower_s32(*v, addr, memory_bytes),
-            ComponentValue::U32(v) => self.lower_u32(*v, addr, memory_bytes),
-            ComponentValue::S64(v) => self.lower_s64(*v, addr, memory_bytes),
-            ComponentValue::U64(v) => self.lower_u64(*v, addr, memory_bytes),
-            ComponentValue::F32(v) => self.lower_f32(*v, addr, memory_bytes),
-            ComponentValue::F64(v) => self.lower_f64(*v, addr, memory_bytes),
-            ComponentValue::Char(v) => self.lower_char(*v, addr, memory_bytes),
-            ComponentValue::String(v) => self.lower_string(v, addr, memory_bytes),
-            ComponentValue::List(vs) => self.lower_list(vs, addr, resource_table, memory_bytes),
-            ComponentValue::Record(fields) => {
-                self.lower_record(fields, addr, resource_table, memory_bytes)
-            }
-            ComponentValue::Variant { case, value } => {
+            Value::Bool(b) => self.lower_bool(*b, addr, memory_bytes),
+            Value::S8(v) => self.lower_s8(*v, addr, memory_bytes),
+            Value::U8(v) => self.lower_u8(*v, addr, memory_bytes),
+            Value::S16(v) => self.lower_s16(*v, addr, memory_bytes),
+            Value::U16(v) => self.lower_u16(*v, addr, memory_bytes),
+            Value::S32(v) => self.lower_s32(*v, addr, memory_bytes),
+            Value::U32(v) => self.lower_u32(*v, addr, memory_bytes),
+            Value::S64(v) => self.lower_s64(*v, addr, memory_bytes),
+            Value::U64(v) => self.lower_u64(*v, addr, memory_bytes),
+            Value::F32(v) => self.lower_f32(*v, addr, memory_bytes),
+            Value::F64(v) => self.lower_f64(*v, addr, memory_bytes),
+            Value::Char(c) => self.lower_char(*c, addr, memory_bytes),
+            Value::String(s) => self.lower_string(s, addr, memory_bytes),
+            Value::List(values) => self.lower_list(values, addr, resource_table, memory_bytes),
+            Value::Record(fields) => self.lower_record(fields, addr, resource_table, memory_bytes),
+            Value::Variant { case, value } => {
                 self.lower_variant(*case, value, addr, resource_table, memory_bytes)
             }
-            ComponentValue::Enum(idx) => self.lower_enum(*idx, addr, memory_bytes),
-            ComponentValue::Option(v) => {
-                self.lower_option(v.as_deref(), addr, resource_table, memory_bytes)
+            Value::Enum(idx) => self.lower_enum(*idx, addr, memory_bytes),
+            Value::Option(value) => {
+                self.lower_option(value.as_ref().map(|v| v.as_ref()), addr, resource_table, memory_bytes)
             }
-            ComponentValue::Result(r) => self.lower_result(r, addr, resource_table, memory_bytes),
-            ComponentValue::Tuple(vs) => self.lower_tuple(vs, addr, resource_table, memory_bytes),
-            ComponentValue::Flags(flags) => self.lower_flags(flags, addr, memory_bytes),
-            ComponentValue::Resource(handle) => {
+            Value::Result(result) => self.lower_result(result, addr, resource_table, memory_bytes),
+            Value::Tuple(values) => self.lower_tuple(values, addr, resource_table, memory_bytes),
+            Value::Flags(flags) => self.lower_flags(flags, addr, memory_bytes),
+            Value::Own(handle) => {
+                self.lower_resource(*handle, addr, resource_table, memory_bytes)
+            }
+            Value::Borrow(handle) => {
                 self.lower_resource(*handle, addr, resource_table, memory_bytes)
             }
             _ => Err(Error::new(kinds::NotImplementedError(format!(
@@ -239,10 +259,10 @@ impl CanonicalABI {
     }
 
     // Primitive lifting operations
-    fn lift_bool(&self, addr: u32, memory_bytes: &[u8]) -> Result<ComponentValue> {
+    fn lift_bool(&self, addr: u32, memory_bytes: &[u8]) -> Result<Value> {
         if (addr as usize) < memory_bytes.len() {
             let v = memory_bytes[addr as usize] != 0;
-            Ok(ComponentValue::Bool(v))
+            Ok(Value::Bool(v))
         } else {
             Err(Error::new(kinds::OutOfBoundsAccess(format!(
                 "Address {} out of bounds for memory of size {}",
@@ -252,10 +272,10 @@ impl CanonicalABI {
         }
     }
 
-    fn lift_s8(&self, addr: u32, memory_bytes: &[u8]) -> Result<ComponentValue> {
+    fn lift_s8(&self, addr: u32, memory_bytes: &[u8]) -> Result<Value> {
         if (addr as usize) < memory_bytes.len() {
             let v = memory_bytes[addr as usize] as i8;
-            Ok(ComponentValue::S8(v))
+            Ok(Value::S8(v))
         } else {
             Err(Error::new(kinds::OutOfBoundsAccess(format!(
                 "Address {} out of bounds for memory of size {}",
@@ -265,10 +285,10 @@ impl CanonicalABI {
         }
     }
 
-    fn lift_u8(&self, addr: u32, memory_bytes: &[u8]) -> Result<ComponentValue> {
+    fn lift_u8(&self, addr: u32, memory_bytes: &[u8]) -> Result<Value> {
         if (addr as usize) < memory_bytes.len() {
             let v = memory_bytes[addr as usize];
-            Ok(ComponentValue::U8(v))
+            Ok(Value::U8(v))
         } else {
             Err(Error::new(kinds::OutOfBoundsAccess(format!(
                 "Address {} out of bounds for memory of size {}",
@@ -278,19 +298,19 @@ impl CanonicalABI {
         }
     }
 
-    fn lift_s16(&self, addr: u32, memory_bytes: &[u8]) -> Result<ComponentValue> {
+    fn lift_s16(&self, addr: u32, memory_bytes: &[u8]) -> Result<Value> {
         self.check_bounds(addr, 2, memory_bytes)?;
         let v = i16::from_le_bytes([memory_bytes[addr as usize], memory_bytes[addr as usize + 1]]);
-        Ok(ComponentValue::S16(v))
+        Ok(Value::S16(v))
     }
 
-    fn lift_u16(&self, addr: u32, memory_bytes: &[u8]) -> Result<ComponentValue> {
+    fn lift_u16(&self, addr: u32, memory_bytes: &[u8]) -> Result<Value> {
         self.check_bounds(addr, 2, memory_bytes)?;
         let v = u16::from_le_bytes([memory_bytes[addr as usize], memory_bytes[addr as usize + 1]]);
-        Ok(ComponentValue::U16(v))
+        Ok(Value::U16(v))
     }
 
-    fn lift_s32(&self, addr: u32, memory_bytes: &[u8]) -> Result<ComponentValue> {
+    fn lift_s32(&self, addr: u32, memory_bytes: &[u8]) -> Result<Value> {
         self.check_bounds(addr, 4, memory_bytes)?;
         let v = i32::from_le_bytes([
             memory_bytes[addr as usize],
@@ -298,10 +318,10 @@ impl CanonicalABI {
             memory_bytes[addr as usize + 2],
             memory_bytes[addr as usize + 3],
         ]);
-        Ok(ComponentValue::S32(v))
+        Ok(Value::S32(v))
     }
 
-    fn lift_u32(&self, addr: u32, memory_bytes: &[u8]) -> Result<ComponentValue> {
+    fn lift_u32(&self, addr: u32, memory_bytes: &[u8]) -> Result<Value> {
         self.check_bounds(addr, 4, memory_bytes)?;
         let v = u32::from_le_bytes([
             memory_bytes[addr as usize],
@@ -309,10 +329,10 @@ impl CanonicalABI {
             memory_bytes[addr as usize + 2],
             memory_bytes[addr as usize + 3],
         ]);
-        Ok(ComponentValue::U32(v))
+        Ok(Value::U32(v))
     }
 
-    fn lift_s64(&self, addr: u32, memory_bytes: &[u8]) -> Result<ComponentValue> {
+    fn lift_s64(&self, addr: u32, memory_bytes: &[u8]) -> Result<Value> {
         self.check_bounds(addr, 8, memory_bytes)?;
         let v = i64::from_le_bytes([
             memory_bytes[addr as usize],
@@ -324,10 +344,10 @@ impl CanonicalABI {
             memory_bytes[addr as usize + 6],
             memory_bytes[addr as usize + 7],
         ]);
-        Ok(ComponentValue::S64(v))
+        Ok(Value::S64(v))
     }
 
-    fn lift_u64(&self, addr: u32, memory_bytes: &[u8]) -> Result<ComponentValue> {
+    fn lift_u64(&self, addr: u32, memory_bytes: &[u8]) -> Result<Value> {
         self.check_bounds(addr, 8, memory_bytes)?;
         let v = u64::from_le_bytes([
             memory_bytes[addr as usize],
@@ -339,10 +359,10 @@ impl CanonicalABI {
             memory_bytes[addr as usize + 6],
             memory_bytes[addr as usize + 7],
         ]);
-        Ok(ComponentValue::U64(v))
+        Ok(Value::U64(v))
     }
 
-    fn lift_f32(&self, addr: u32, memory_bytes: &[u8]) -> Result<ComponentValue> {
+    fn lift_f32(&self, addr: u32, memory_bytes: &[u8]) -> Result<Value> {
         self.check_bounds(addr, 4, memory_bytes)?;
         let bytes = [
             memory_bytes[addr as usize],
@@ -351,10 +371,10 @@ impl CanonicalABI {
             memory_bytes[addr as usize + 3],
         ];
         let v = f32::from_le_bytes(bytes);
-        Ok(ComponentValue::F32(v))
+        Ok(Value::F32(v))
     }
 
-    fn lift_f64(&self, addr: u32, memory_bytes: &[u8]) -> Result<ComponentValue> {
+    fn lift_f64(&self, addr: u32, memory_bytes: &[u8]) -> Result<Value> {
         self.check_bounds(addr, 8, memory_bytes)?;
         let bytes = [
             memory_bytes[addr as usize],
@@ -367,10 +387,10 @@ impl CanonicalABI {
             memory_bytes[addr as usize + 7],
         ];
         let v = f64::from_le_bytes(bytes);
-        Ok(ComponentValue::F64(v))
+        Ok(Value::F64(v))
     }
 
-    fn lift_char(&self, addr: u32, memory_bytes: &[u8]) -> Result<ComponentValue> {
+    fn lift_char(&self, addr: u32, memory_bytes: &[u8]) -> Result<Value> {
         // Chars are 4 bytes in canonical ABI
         self.check_bounds(addr, 4, memory_bytes)?;
         let code_point = u32::from_le_bytes([
@@ -381,7 +401,7 @@ impl CanonicalABI {
         ]);
 
         match char::from_u32(code_point) {
-            Some(c) => Ok(ComponentValue::Char(c)),
+            Some(c) => Ok(Value::Char(c)),
             None => Err(Error::new(kinds::InvalidValue(format!(
                 "Invalid UTF-8 code point: {}",
                 code_point
@@ -389,7 +409,7 @@ impl CanonicalABI {
         }
     }
 
-    fn lift_string(&self, addr: u32, memory_bytes: &[u8]) -> Result<ComponentValue> {
+    fn lift_string(&self, addr: u32, memory_bytes: &[u8]) -> Result<Value> {
         // String format in canonical ABI:
         // - 4 bytes length prefix (u32)
         // - UTF-8 encoded string data
@@ -410,7 +430,7 @@ impl CanonicalABI {
 
         // Convert to a Rust string
         match std::str::from_utf8(string_bytes) {
-            Ok(s) => Ok(ComponentValue::String(s.to_string())),
+            Ok(s) => Ok(Value::String(s.to_string())),
             Err(e) => Err(Error::new(kinds::InvalidValue(format!(
                 "Invalid UTF-8 string: {}",
                 e
@@ -425,7 +445,7 @@ impl CanonicalABI {
         _addr: u32,
         _resource_table: &ResourceTable,
         _memory_bytes: &[u8],
-    ) -> Result<ComponentValue> {
+    ) -> Result<Value> {
         // Placeholder implementation
         Err(Error::new(kinds::NotImplementedError(
             "List lifting not yet implemented".to_string(),
@@ -438,7 +458,7 @@ impl CanonicalABI {
         _addr: u32,
         _resource_table: &ResourceTable,
         _memory_bytes: &[u8],
-    ) -> Result<ComponentValue> {
+    ) -> Result<Value> {
         // Placeholder implementation
         Err(Error::new(kinds::NotImplementedError(
             "Record lifting not yet implemented".to_string(),
@@ -451,7 +471,7 @@ impl CanonicalABI {
         _addr: u32,
         _resource_table: &ResourceTable,
         _memory_bytes: &[u8],
-    ) -> Result<ComponentValue> {
+    ) -> Result<Value> {
         // Placeholder implementation
         Err(Error::new(kinds::NotImplementedError(
             "Variant lifting not yet implemented".to_string(),
@@ -463,7 +483,7 @@ impl CanonicalABI {
         _cases: &Vec<String>,
         _addr: u32,
         _memory_bytes: &[u8],
-    ) -> Result<ComponentValue> {
+    ) -> Result<Value> {
         // Placeholder implementation
         Err(Error::new(kinds::NotImplementedError(
             "Enum lifting not yet implemented".to_string(),
@@ -476,7 +496,7 @@ impl CanonicalABI {
         _addr: u32,
         _resource_table: &ResourceTable,
         _memory_bytes: &[u8],
-    ) -> Result<ComponentValue> {
+    ) -> Result<Value> {
         // Placeholder implementation
         Err(Error::new(kinds::NotImplementedError(
             "Option lifting not yet implemented".to_string(),
@@ -485,12 +505,12 @@ impl CanonicalABI {
 
     fn lift_result(
         &self,
-        _ok_ty: &Option<Box<ValType>>,
-        _err_ty: &Option<Box<ValType>>,
+        _ok_ty: Option<&Box<ValType>>,
+        _err_ty: Option<&Box<ValType>>,
         _addr: u32,
         _resource_table: &ResourceTable,
         _memory_bytes: &[u8],
-    ) -> Result<ComponentValue> {
+    ) -> Result<Value> {
         // Placeholder implementation
         Err(Error::new(kinds::NotImplementedError(
             "Result lifting not yet implemented".to_string(),
@@ -503,7 +523,7 @@ impl CanonicalABI {
         _addr: u32,
         _resource_table: &ResourceTable,
         _memory_bytes: &[u8],
-    ) -> Result<ComponentValue> {
+    ) -> Result<Value> {
         // Placeholder implementation
         Err(Error::new(kinds::NotImplementedError(
             "Tuple lifting not yet implemented".to_string(),
@@ -515,7 +535,7 @@ impl CanonicalABI {
         _names: &Vec<String>,
         _addr: u32,
         _memory_bytes: &[u8],
-    ) -> Result<ComponentValue> {
+    ) -> Result<Value> {
         // Placeholder implementation
         Err(Error::new(kinds::NotImplementedError(
             "Flags lifting not yet implemented".to_string(),
@@ -528,7 +548,7 @@ impl CanonicalABI {
         _addr: u32,
         _resource_table: &ResourceTable,
         _memory_bytes: &[u8],
-    ) -> Result<ComponentValue> {
+    ) -> Result<Value> {
         // TODO: Implement resource lifting
         Err(Error::new(kinds::NotImplementedError(
             "Resource lifting not yet implemented".to_string(),
@@ -676,7 +696,7 @@ impl CanonicalABI {
 
     fn lower_list(
         &self,
-        _values: &Vec<ComponentValue>,
+        _values: &Vec<Value>,
         _addr: u32,
         _resource_table: &ResourceTable,
         _memory_bytes: &mut [u8],
@@ -689,7 +709,7 @@ impl CanonicalABI {
 
     fn lower_record(
         &self,
-        _fields: &HashMap<String, ComponentValue>,
+        _fields: &HashMap<String, Value>,
         _addr: u32,
         _resource_table: &ResourceTable,
         _memory_bytes: &mut [u8],
@@ -703,7 +723,7 @@ impl CanonicalABI {
     fn lower_variant(
         &self,
         _case: u32,
-        _value: &Option<Box<ComponentValue>>,
+        _value: &Option<Box<Value>>,
         _addr: u32,
         _resource_table: &ResourceTable,
         _memory_bytes: &mut [u8],
@@ -723,7 +743,7 @@ impl CanonicalABI {
 
     fn lower_option(
         &self,
-        _value: Option<&ComponentValue>,
+        _value: Option<&Value>,
         _addr: u32,
         _resource_table: &ResourceTable,
         _memory_bytes: &mut [u8],
@@ -736,7 +756,7 @@ impl CanonicalABI {
 
     fn lower_result(
         &self,
-        _result: &Result<Option<Box<ComponentValue>>, Option<Box<ComponentValue>>>,
+        _result: &Result<Option<Box<Value>>, Option<Box<Value>>>,
         _addr: u32,
         _resource_table: &ResourceTable,
         _memory_bytes: &mut [u8],
@@ -749,7 +769,7 @@ impl CanonicalABI {
 
     fn lower_tuple(
         &self,
-        _values: &Vec<ComponentValue>,
+        _values: &Vec<Value>,
         _addr: u32,
         _resource_table: &ResourceTable,
         _memory_bytes: &mut [u8],
@@ -843,10 +863,10 @@ mod tests {
         let memory = vec![1, 0, 0, 0, 2, 0, 0, 0];
 
         let value = abi.lift_bool(0, &memory).unwrap();
-        assert_eq!(value, ComponentValue::Bool(true));
+        assert_eq!(value, Value::Bool(true));
 
         let value = abi.lift_u32(4, &memory).unwrap();
-        assert_eq!(value, ComponentValue::U32(2));
+        assert_eq!(value, Value::U32(2));
     }
 
     #[test]

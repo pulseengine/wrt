@@ -3,6 +3,8 @@
 //! This crate provides a lightweight, no_std compatible error handling system
 //! that supports error chaining, context, and specific error types for WebAssembly operations.
 
+#![warn(clippy::missing_panics_doc)]
+
 // Re-export modules
 pub mod context;
 pub mod error;

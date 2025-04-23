@@ -14,9 +14,61 @@ use alloc::{
     vec::Vec,
 };
 
-use wrt_error::{kinds, Error, Result};
-use wrt_format::component::ValType;
 use crate::values::Value;
+use wrt_error::{kinds, Error, Result};
+
+/// A Component Model value type
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ValType {
+    /// Boolean value
+    Bool,
+    /// Signed 8-bit integer
+    S8,
+    /// Unsigned 8-bit integer
+    U8,
+    /// Signed 16-bit integer
+    S16,
+    /// Unsigned 16-bit integer
+    U16,
+    /// Signed 32-bit integer
+    S32,
+    /// Unsigned 32-bit integer
+    U32,
+    /// Signed 64-bit integer
+    S64,
+    /// Unsigned 64-bit integer
+    U64,
+    /// 32-bit floating point
+    F32,
+    /// 64-bit floating point
+    F64,
+    /// Unicode character
+    Char,
+    /// UTF-8 string
+    String,
+    /// Reference to another entity
+    Ref(u32),
+    /// Record with named fields
+    Record(Vec<(String, ValType)>),
+    /// Variant with cases
+    Variant(Vec<(String, Option<ValType>)>),
+    /// List of elements
+    List(Box<ValType>),
+    /// Tuple of elements
+    Tuple(Vec<ValType>),
+    /// Flags (set of named boolean flags)
+    Flags(Vec<String>),
+    /// Enumeration of variants
+    Enum(Vec<String>),
+    /// Option type
+    Option(Box<ValType>),
+    /// Result type
+    Result(Box<ValType>),
+    /// Resource handle (owned)
+    Own(u32),
+    /// Resource handle (borrowed)
+    Borrow(u32),
+}
 
 /// A Component Model value used at runtime
 #[derive(Debug, Clone, PartialEq)]
@@ -53,7 +105,9 @@ pub enum ComponentValue {
     Record(HashMap<String, ComponentValue>),
     /// Variant with case name and optional value
     Variant {
+        /// Case/discriminant index
         case: u32,
+        /// Optional value associated with this variant case
         value: Option<Box<ComponentValue>>,
     },
     /// Tuple of values
@@ -131,17 +185,15 @@ impl ComponentValue {
                     ValType::Option(Box::new(ValType::Bool)) // Placeholder
                 }
             }
-            Self::Result(val) => ValType::Result(Box::new(
-                if let Ok(ok) = val {
-                    if let Some(v) = ok {
-                        v.get_type()
-                    } else {
-                        ValType::Bool // Placeholder for None
-                    }
+            Self::Result(val) => ValType::Result(Box::new(if let Ok(ok) = val {
+                if let Some(v) = ok {
+                    v.get_type()
                 } else {
-                    ValType::Bool // Placeholder for Err
+                    ValType::Bool // Placeholder for None
                 }
-            )),
+            } else {
+                ValType::Bool // Placeholder for Err
+            })),
             Self::Own(idx) => ValType::Own(*idx),
             Self::Borrow(idx) => ValType::Borrow(*idx),
         }
@@ -191,16 +243,19 @@ impl ComponentValue {
             }
 
             (ComponentValue::Variant { case, value }, ValType::Variant(cases)) => {
-                // Find the case in the variant type
-                if let Some((_, case_type)) = cases.iter().find(|(name, _)| name == &case.to_string()) {
-                    // Check if the value matches the case type
-                    match (value, case_type) {
-                        (Some(value), Some(ty)) => value.matches_type(ty),
-                        (None, None) => true,
-                        _ => false,
-                    }
-                } else {
-                    false
+                // Check if the case index is valid
+                if *case as usize >= cases.len() {
+                    return false;
+                }
+
+                // Get the case type from the index
+                let (_, case_type) = &cases[*case as usize];
+
+                // Check if the value matches the case type
+                match (value, case_type) {
+                    (Some(value), Some(ty)) => value.matches_type(ty),
+                    (None, None) => true,
+                    _ => false,
                 }
             }
 
@@ -226,7 +281,10 @@ impl ComponentValue {
                 flag_names.iter().all(|name| flags.contains_key(name))
             }
 
-            (ComponentValue::Enum(value), ValType::Enum(variants)) => variants.contains(&value.to_string()),
+            (ComponentValue::Enum(value), ValType::Enum(variants)) => {
+                // Check if the enum index is valid
+                *value < variants.len() as u32
+            }
 
             (ComponentValue::Option(value), ValType::Option(option_type)) => {
                 match value {
@@ -294,10 +352,10 @@ impl ComponentValue {
 /// Simple serialization of component values
 pub fn serialize_component_values(values: &[ComponentValue]) -> Result<Vec<u8>> {
     let mut result = Vec::new();
-    
+
     // Write the number of values
     result.extend_from_slice(&(values.len() as u32).to_le_bytes());
-    
+
     // Write each value (very basic implementation)
     for value in values {
         match value {
@@ -314,12 +372,15 @@ pub fn serialize_component_values(values: &[ComponentValue]) -> Result<Vec<u8>> 
                 result.extend_from_slice(&v.to_le_bytes());
             }
             // Add more types as needed for intercept functionality
-            _ => return Err(Error::new(kinds::EncodingError(
-                format!("Serialization not implemented for this type: {:?}", value)
-            ))),
+            _ => {
+                return Err(Error::new(kinds::EncodingError(format!(
+                    "Serialization not implemented for this type: {:?}",
+                    value
+                ))))
+            }
         }
     }
-    
+
     Ok(result)
 }
 
@@ -327,73 +388,91 @@ pub fn serialize_component_values(values: &[ComponentValue]) -> Result<Vec<u8>> 
 pub fn deserialize_component_values(data: &[u8], types: &[ValType]) -> Result<Vec<ComponentValue>> {
     let mut result = Vec::new();
     let mut offset = 0;
-    
+
     // Read the number of values
     if data.len() < 4 {
         return Err(Error::new(kinds::DecodingError(
-            "Data too short to contain value count".to_string()
+            "Data too short to contain value count".to_string(),
         )));
     }
-    
+
     let count = u32::from_le_bytes([data[0], data[1], data[2], data[3]]) as usize;
     offset += 4;
-    
+
     // Sanity check
     if count != types.len() {
-        return Err(Error::new(kinds::TypeMismatch(
-            format!("Value count mismatch: data has {} values but types list has {}", count, types.len())
-        )));
+        return Err(Error::new(kinds::TypeMismatch(format!(
+            "Value count mismatch: data has {} values but types list has {}",
+            count,
+            types.len()
+        ))));
     }
-    
+
     // Read each value
     for _ in 0..count {
         if offset >= data.len() {
             return Err(Error::new(kinds::DecodingError(
-                "Unexpected end of data".to_string()
+                "Unexpected end of data".to_string(),
             )));
         }
-        
+
         let type_tag = data[offset];
         offset += 1;
-        
+
         match type_tag {
-            0 => { // Bool
+            0 => {
+                // Bool
                 if offset >= data.len() {
                     return Err(Error::new(kinds::DecodingError(
-                        "Unexpected end of data".to_string()
+                        "Unexpected end of data".to_string(),
                     )));
                 }
                 let value = data[offset] != 0;
                 offset += 1;
                 result.push(ComponentValue::Bool(value));
             }
-            1 => { // U32
+            1 => {
+                // U32
                 if offset + 4 > data.len() {
                     return Err(Error::new(kinds::DecodingError(
-                        "Unexpected end of data".to_string()
+                        "Unexpected end of data".to_string(),
                     )));
                 }
-                let value = u32::from_le_bytes([data[offset], data[offset+1], data[offset+2], data[offset+3]]);
+                let value = u32::from_le_bytes([
+                    data[offset],
+                    data[offset + 1],
+                    data[offset + 2],
+                    data[offset + 3],
+                ]);
                 offset += 4;
                 result.push(ComponentValue::U32(value));
             }
-            2 => { // S32
+            2 => {
+                // S32
                 if offset + 4 > data.len() {
                     return Err(Error::new(kinds::DecodingError(
-                        "Unexpected end of data".to_string()
+                        "Unexpected end of data".to_string(),
                     )));
                 }
-                let value = i32::from_le_bytes([data[offset], data[offset+1], data[offset+2], data[offset+3]]);
+                let value = i32::from_le_bytes([
+                    data[offset],
+                    data[offset + 1],
+                    data[offset + 2],
+                    data[offset + 3],
+                ]);
                 offset += 4;
                 result.push(ComponentValue::S32(value));
             }
             // Add more types as needed for intercept functionality
-            _ => return Err(Error::new(kinds::DecodingError(
-                format!("Deserialization not implemented for type tag: {}", type_tag)
-            ))),
+            _ => {
+                return Err(Error::new(kinds::DecodingError(format!(
+                    "Deserialization not implemented for type tag: {}",
+                    type_tag
+                ))))
+            }
         }
     }
-    
+
     Ok(result)
 }
 
@@ -406,13 +485,13 @@ mod tests {
         let bool_value = ComponentValue::Bool(true);
         let int_value = ComponentValue::S32(42);
         let float_value = ComponentValue::F32(3.14);
-        
+
         assert!(bool_value.matches_type(&ValType::Bool));
         assert!(!bool_value.matches_type(&ValType::S32));
-        
+
         assert!(int_value.matches_type(&ValType::S32));
         assert!(!int_value.matches_type(&ValType::Bool));
-        
+
         assert!(float_value.matches_type(&ValType::F32));
         assert!(!float_value.matches_type(&ValType::F64));
     }
@@ -421,16 +500,16 @@ mod tests {
     fn test_conversion_between_core_and_component() {
         let i32_val = Value::I32(42);
         let f64_val = Value::F64(3.14);
-        
+
         let comp_i32 = ComponentValue::from_core_value(&i32_val).unwrap();
         let comp_f64 = ComponentValue::from_core_value(&f64_val).unwrap();
-        
+
         assert!(matches!(comp_i32, ComponentValue::S32(42)));
         assert!(matches!(comp_f64, ComponentValue::F64(v) if (v - 3.14).abs() < f64::EPSILON));
-        
+
         let core_i32 = comp_i32.to_core_value().unwrap();
         let core_f64 = comp_f64.to_core_value().unwrap();
-        
+
         assert_eq!(core_i32, i32_val);
         assert_eq!(core_f64, f64_val);
     }
@@ -442,34 +521,30 @@ mod tests {
             ComponentValue::U32(42),
             ComponentValue::S32(-7),
         ];
-        
-        let types = vec![
-            ValType::Bool,
-            ValType::U32,
-            ValType::S32,
-        ];
-        
+
+        let types = vec![ValType::Bool, ValType::U32, ValType::S32];
+
         let serialized = serialize_component_values(&values).unwrap();
         let deserialized = deserialize_component_values(&serialized, &types).unwrap();
-        
+
         assert_eq!(deserialized.len(), values.len());
-        
+
         if let ComponentValue::Bool(v) = &deserialized[0] {
-            assert_eq!(*v, true);
+            assert!(*v);
         } else {
             panic!("Expected Bool value");
         }
-        
+
         if let ComponentValue::U32(v) = &deserialized[1] {
             assert_eq!(*v, 42);
         } else {
             panic!("Expected U32 value");
         }
-        
+
         if let ComponentValue::S32(v) = &deserialized[2] {
             assert_eq!(*v, -7);
         } else {
             panic!("Expected S32 value");
         }
     }
-} 
+}

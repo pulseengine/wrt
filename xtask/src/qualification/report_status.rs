@@ -9,11 +9,7 @@ pub fn run() -> Result<(), Box<dyn Error>> {
     let qualification_materials = [
         ("Evaluation Plan", "docs/source/evaluation_plan.rst"),
         ("Evaluation Report", "docs/source/evaluation_report.rst"),
-        (
-            "Qualification Plan",
-            "docs/source/qualification_plan.rst",
-            "docs/source/qualification.rst",
-        ),
+        ("Qualification Plan", "docs/source/qualification_plan.rst"),
         (
             "Qualification Report",
             "docs/source/qualification_report.rst",

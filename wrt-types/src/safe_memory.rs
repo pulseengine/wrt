@@ -264,6 +264,25 @@ pub struct StdMemoryProvider {
 }
 
 #[cfg(feature = "std")]
+impl fmt::Debug for StdMemoryProvider {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("StdMemoryProvider")
+            .field("data_size", &self.data.len())
+            .field("access_count", &self.access_count.load(Ordering::Relaxed))
+            .field(
+                "max_access_size",
+                &self.max_access_size.load(Ordering::Relaxed),
+            )
+            .field(
+                "unique_regions",
+                &self.unique_regions.load(Ordering::Relaxed),
+            )
+            .field("verification_level", &self.verification_level)
+            .finish()
+    }
+}
+
+#[cfg(feature = "std")]
 impl StdMemoryProvider {
     /// Create a new StdMemoryProvider with the given data
     pub fn new(data: Vec<u8>) -> Self {
@@ -480,6 +499,18 @@ pub struct NoStdMemoryProvider<const N: usize> {
     last_access_offset: AtomicUsize,
     /// Last access length for validation
     last_access_length: AtomicUsize,
+}
+
+#[cfg(not(feature = "std"))]
+impl<const N: usize> fmt::Debug for NoStdMemoryProvider<N> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("NoStdMemoryProvider")
+            .field("capacity", &N)
+            .field("used", &self.used)
+            .field("access_count", &self.access_count.load(Ordering::Relaxed))
+            .field("last_access", &self.last_access())
+            .finish()
+    }
 }
 
 #[cfg(not(feature = "std"))]

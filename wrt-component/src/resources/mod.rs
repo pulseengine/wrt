@@ -7,10 +7,14 @@ use std::any::Any;
 use std::collections::HashMap;
 use std::fmt;
 use std::sync::{Arc, Mutex, RwLock, Weak};
+use wrt_common::component::ComponentValue;
 use wrt_error::{kinds, Error, Result};
-use wrt_format::component::{ResourceOperation, ValType};
-
-use crate::values::ComponentValue;
+use wrt_format::component::{ResourceOperation as FormatResourceOperation, ValType as FormatValType};
+use wrt_intercept::{
+    InterceptionContext, InterceptionResult, MemoryAccessMode,
+    ResourceOperation as InterceptorResourceOperation,
+};
+use crate::values::deserialize_component_value;
 
 /// Maximum number of resources that can be stored in a resource table
 const MAX_RESOURCES: usize = 1024;
@@ -76,6 +80,12 @@ pub enum MemoryStrategy {
     FullIsolation,
 }
 
+impl Default for MemoryStrategy {
+    fn default() -> Self {
+        MemoryStrategy::BoundedCopy
+    }
+}
+
 impl MemoryStrategy {
     /// Convert from u8 to MemoryStrategy
     pub fn from_u8(value: u8) -> Option<Self> {
@@ -104,6 +114,7 @@ impl MemoryStrategy {
 }
 
 /// Resource entry in the resource table
+#[derive(Clone)]
 struct ResourceEntry {
     /// The resource instance
     resource: Arc<Mutex<Resource>>,
@@ -127,6 +138,7 @@ pub enum VerificationLevel {
 }
 
 /// Resource table for tracking resource instances
+#[derive(Clone)]
 pub struct ResourceTable {
     /// Map of resource handles to resource entries
     resources: HashMap<u32, ResourceEntry>,
@@ -139,7 +151,7 @@ pub struct ResourceTable {
     /// Default verification level
     default_verification_level: VerificationLevel,
     /// Buffer pool for bounded copy operations
-    buffer_pool: BufferPool,
+    buffer_pool: Arc<Mutex<BufferPool>>,
     /// Interceptors for resource operations
     interceptors: Vec<Arc<dyn ResourceInterceptor>>,
 }
@@ -167,9 +179,9 @@ impl ResourceTable {
             resources: HashMap::new(),
             next_handle: 1, // Start at 1 as 0 is reserved
             max_resources: MAX_RESOURCES,
-            default_memory_strategy: MemoryStrategy::BoundedCopy,
+            default_memory_strategy: MemoryStrategy::default(),
             default_verification_level: VerificationLevel::Critical,
-            buffer_pool: BufferPool::new(4096), // 4KB chunks
+            buffer_pool: Arc::new(Mutex::new(BufferPool::new(4096))),
             interceptors: Vec::new(),
         }
     }
@@ -186,7 +198,7 @@ impl ResourceTable {
             max_resources,
             default_memory_strategy: memory_strategy,
             default_verification_level: verification_level,
-            buffer_pool: BufferPool::new(4096),
+            buffer_pool: Arc::new(Mutex::new(BufferPool::new(4096))),
             interceptors: Vec::new(),
         }
     }
@@ -222,16 +234,14 @@ impl ResourceTable {
         let handle = self.next_handle;
         self.next_handle += 1;
 
-        // Store the resource
-        self.resources.insert(
-            handle,
-            ResourceEntry {
-                resource: Arc::new(Mutex::new(resource)),
-                borrows: Vec::new(),
-                memory_strategy: self.default_memory_strategy,
-                verification_level: self.default_verification_level,
-            },
-        );
+        let entry = ResourceEntry {
+            resource: Arc::new(Mutex::new(resource)),
+            borrows: Vec::new(),
+            memory_strategy: self.get_strategy_from_interceptors(handle).unwrap_or(self.default_memory_strategy),
+            verification_level: self.default_verification_level,
+        };
+
+        self.resources.insert(handle, entry);
 
         Ok(handle)
     }
@@ -324,77 +334,67 @@ impl ResourceTable {
         Ok(entry.resource.clone())
     }
 
-    /// Apply a resource operation
+    /// Apply an operation to a resource
     pub fn apply_operation(
         &mut self,
         handle: u32,
-        operation: ResourceOperation,
+        operation: wrt_format::component::ResourceOperation,
     ) -> Result<ComponentValue> {
         // Check if the resource exists
         if !self.resources.contains_key(&handle) {
-            return Err(Error::resource_access_error(format!(
+            return Err(Error::new(kinds::ResourceNotFoundError(format!(
                 "Resource handle {} not found",
                 handle
-            )));
+            ))));
         }
 
-        // Get the resource entry
-        let entry = self.resources.get(&handle).unwrap();
+        // Get the operation kind for interception
+        let local_op = match &operation {
+            FormatResourceOperation::Rep(_) => ResourceOperation::Read,
+            FormatResourceOperation::Drop(_) => ResourceOperation::Delete,
+            FormatResourceOperation::New(_) => ResourceOperation::Create,
+        };
 
-        // Get memory strategy
-        let memory_strategy = self
-            .get_strategy_from_interceptors(handle)
-            .unwrap_or(entry.memory_strategy);
-
-        // Get verification level
-        let verification_level = entry.verification_level;
-
-        // Notify interceptors about resource operation
-        let mut intercepted_result = None;
+        // Check interceptors first
         for interceptor in &self.interceptors {
+            // Pass the format operation to interceptors
             interceptor.on_resource_operation(handle, &operation)?;
 
-            // Check if any interceptor provides a direct result
-            if let Ok(Some(_result_data)) =
-                interceptor.intercept_resource_operation(handle, &operation)
-            {
-                // In a real implementation, this would decode the result data into a ComponentValue
-                // For now, return a placeholder value
-                intercepted_result = Some(ComponentValue::Bool(true));
-                break;
-            }
-        }
-
-        // If an interceptor provided a direct result, use that
-        if let Some(result) = intercepted_result {
-            return Ok(result);
-        }
-
-        // Record the access
-        if let Some(entry) = self.resources.get_mut(&handle) {
-            if let Ok(mut resource) = entry.resource.lock() {
-                resource.record_access();
+            // Check if the interceptor will override the operation
+            if let Some(result) = interceptor.intercept_resource_operation(handle, &operation)? {
+                // If the interceptor provides a result, use it
+                return deserialize_component_value(&result, &FormatValType::U32);
             }
         }
 
         // Apply the operation based on the resource
         match operation {
-            ResourceOperation::Rep(rep) => {
+            FormatResourceOperation::Rep(rep) => {
                 // Implement representation operation
-                self.get_resource_value(handle, operation)
+                let resource = self.get_resource(handle)?;
+                let mut resource = resource.lock().unwrap();
+                resource.record_access();
+
+                // In a real implementation, we would convert the resource data to a ComponentValue
+                // based on its type, but for this skeleton we just return a placeholder
+                Ok(ComponentValue::U32(handle))
             }
-            ResourceOperation::Drop(drop) => {
+            FormatResourceOperation::Drop(drop) => {
                 // Implement drop operation
                 self.drop_resource(handle)?;
                 Ok(ComponentValue::Bool(true))
             }
-            _ => {
-                // Unsupported operation
-                Err(Error::new(kinds::UnsupportedOperation(format!(
-                    "Unsupported resource operation {:?}",
-                    operation
-                ))))
+            FormatResourceOperation::New(new) => {
+                // Implement new operation
+                // In a real implementation, we would create a new resource
+                // Here we just return the existing handle
+                Ok(ComponentValue::U32(handle))
             }
+            // The local operations for better API usability
+            _ => Err(Error::new(kinds::NotImplementedError(format!(
+                "ResourceOperation {:?} not implemented",
+                operation
+            )))),
         }
     }
 
@@ -443,12 +443,12 @@ impl ResourceTable {
 
     /// Get a buffer from the pool
     pub fn get_buffer(&mut self, size: usize) -> Vec<u8> {
-        self.buffer_pool.allocate(size)
+        self.buffer_pool.lock().unwrap().allocate(size)
     }
 
     /// Return a buffer to the pool
     pub fn return_buffer(&mut self, buffer: Vec<u8>) {
-        self.buffer_pool.return_buffer(buffer);
+        self.buffer_pool.lock().unwrap().return_buffer(buffer)
     }
 
     /// Get memory strategy from interceptors
@@ -465,10 +465,10 @@ impl ResourceTable {
 }
 
 /// Buffer pool for reusing memory buffers
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct BufferPool {
     /// Map of buffer sizes to pools of buffers
-    pools: HashMap<usize, Vec<Vec<u8>>>,
+    pools: Arc<Mutex<HashMap<usize, Vec<Vec<u8>>>>>,
     /// Maximum buffer size to keep in the pool
     max_buffer_size: usize,
     /// Maximum number of buffers per size
@@ -479,7 +479,7 @@ impl BufferPool {
     /// Create a new buffer pool
     pub fn new(max_buffer_size: usize) -> Self {
         Self {
-            pools: HashMap::new(),
+            pools: Arc::new(Mutex::new(HashMap::new())),
             max_buffer_size,
             max_buffers_per_size: 8, // Reasonable default
         }
@@ -487,16 +487,16 @@ impl BufferPool {
 
     /// Get a buffer of at least the specified size
     pub fn allocate(&mut self, min_size: usize) -> Vec<u8> {
+        let mut pools = self.pools.lock().unwrap();
         // Find the smallest buffer size that fits
-        let size_key = self
-            .pools
+        let size_key = pools
             .keys()
             .filter(|&size| *size >= min_size)
             .min()
             .cloned();
 
         if let Some(size) = size_key {
-            if let Some(buffers) = self.pools.get_mut(&size) {
+            if let Some(buffers) = pools.get_mut(&size) {
                 if let Some(buffer) = buffers.pop() {
                     return buffer;
                 }
@@ -513,6 +513,7 @@ impl BufferPool {
 
     /// Return a buffer to the pool
     pub fn return_buffer(&mut self, mut buffer: Vec<u8>) {
+        let mut pools = self.pools.lock().unwrap();
         let capacity = buffer.capacity();
 
         // Only keep buffers below max size
@@ -524,7 +525,7 @@ impl BufferPool {
         buffer.clear();
 
         // Add to the pool
-        let buffers = self.pools.entry(capacity).or_insert_with(Vec::new);
+        let buffers = pools.entry(capacity).or_insert_with(Vec::new);
         if buffers.len() < self.max_buffers_per_size {
             buffers.push(buffer);
         }
@@ -532,10 +533,11 @@ impl BufferPool {
 
     /// Get statistics about the buffer pool
     pub fn stats(&self) -> BufferPoolStats {
+        let pools = self.pools.lock().unwrap();
         let mut total_buffers = 0;
         let mut total_capacity = 0;
 
-        for (size, buffers) in &self.pools {
+        for (size, buffers) in pools.iter() {
             total_buffers += buffers.len();
             total_capacity += size * buffers.len();
         }
@@ -543,13 +545,14 @@ impl BufferPool {
         BufferPoolStats {
             total_buffers,
             total_capacity,
-            size_count: self.pools.len(),
+            size_count: pools.len(),
         }
     }
 
     /// Clear all buffers from the pool
     pub fn reset(&mut self) {
-        self.pools.clear();
+        let mut pools = self.pools.lock().unwrap();
+        pools.clear();
     }
 }
 
@@ -578,7 +581,8 @@ pub trait ResourceInterceptor: Send + Sync {
     fn on_resource_access(&self, handle: u32) -> Result<()>;
 
     /// Called when an operation is performed on a resource
-    fn on_resource_operation(&self, handle: u32, operation: &ResourceOperation) -> Result<()>;
+    fn on_resource_operation(&self, handle: u32, operation: &FormatResourceOperation)
+        -> Result<()>;
 
     /// Get memory strategy for a resource
     fn get_memory_strategy(&self, handle: u32) -> Option<u8> {
@@ -589,7 +593,7 @@ pub trait ResourceInterceptor: Send + Sync {
     fn intercept_resource_operation(
         &self,
         handle: u32,
-        operation: &ResourceOperation,
+        operation: &FormatResourceOperation,
     ) -> Result<Option<Vec<u8>>> {
         Ok(None)
     }
@@ -653,7 +657,11 @@ mod tests {
             Ok(())
         }
 
-        fn on_resource_operation(&self, handle: u32, operation: &ResourceOperation) -> Result<()> {
+        fn on_resource_operation(
+            &self,
+            handle: u32,
+            operation: &FormatResourceOperation,
+        ) -> Result<()> {
             self.operations
                 .lock()
                 .unwrap()
@@ -672,7 +680,7 @@ mod tests {
         fn intercept_resource_operation(
             &self,
             handle: u32,
-            operation: &ResourceOperation,
+            operation: &FormatResourceOperation,
         ) -> Result<Option<Vec<u8>>> {
             self.operations
                 .lock()
@@ -833,7 +841,7 @@ mod tests {
 
         // Apply an operation
         table
-            .apply_operation(handle, ResourceOperation::Rep)
+            .apply_operation(handle, FormatResourceOperation::Rep)
             .unwrap();
 
         // Check interceptor operations
@@ -868,12 +876,14 @@ mod tests {
 
         // Test regular operation
         let result = table
-            .apply_operation(handle, ResourceOperation::Rep)
+            .apply_operation(handle, FormatResourceOperation::Rep)
             .unwrap();
         assert!(matches!(result, ComponentValue::U32(_)));
 
         // Test intercepted operation
-        let result = table.apply_operation(42, ResourceOperation::Rep).unwrap();
+        let result = table
+            .apply_operation(42, FormatResourceOperation::Rep)
+            .unwrap();
         assert!(matches!(result, ComponentValue::Bool(true)));
 
         // Check that operations were recorded
@@ -930,3 +940,51 @@ mod tests {
         assert_eq!(odd_strategy, None);
     }
 }
+
+// Re-export the resource operation module
+pub mod resource_operation {
+    /// Operations that can be performed on resources
+    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+    pub enum ResourceOperation {
+        /// Read access to a resource
+        Read,
+        /// Write access to a resource
+        Write,
+        /// Execute a resource as code
+        Execute,
+        /// Create a new resource
+        Create,
+        /// Delete an existing resource
+        Delete,
+        /// Reference a resource (borrow it)
+        Reference,
+        /// Dereference a resource (access it through a reference)
+        Dereference,
+    }
+
+    impl ResourceOperation {
+        /// Check if the operation requires read access
+        pub fn requires_read(&self) -> bool {
+            match self {
+                ResourceOperation::Read
+                | ResourceOperation::Execute
+                | ResourceOperation::Dereference => true,
+                _ => false,
+            }
+        }
+
+        /// Check if the operation requires write access
+        pub fn requires_write(&self) -> bool {
+            match self {
+                ResourceOperation::Write
+                | ResourceOperation::Create
+                | ResourceOperation::Delete
+                | ResourceOperation::Reference => true,
+                _ => false,
+            }
+        }
+    }
+}
+
+// Use our custom ResourceOperation in the apply_operation function
+use resource_operation::ResourceOperation;

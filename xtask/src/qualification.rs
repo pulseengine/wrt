@@ -1,7 +1,9 @@
+use anyhow::Result;
 use clap::{Arg, ArgMatches, Command};
 use std::error::Error;
 use std::fs;
 use std::path::Path;
+use xshell::Shell;
 
 pub mod assess;
 pub mod report_status;
@@ -187,7 +189,12 @@ fn assess_qualification(matches: &ArgMatches) -> Result<(), Box<dyn Error>> {
     }
 
     // Generate assessment report
-    let assessment_content = generate_assessment_report(&assessment_results);
+    let assessment_results_converted: Vec<(String, bool, String)> = assessment_results
+        .iter()
+        .map(|(name, exists, status)| (name.to_string(), *exists, status.clone()))
+        .collect();
+
+    let assessment_content = generate_assessment_report(&assessment_results_converted);
 
     // Ensure output directory exists
     if let Some(parent) = Path::new(output_path).parent() {
@@ -492,4 +499,10 @@ pub struct SafetyRequirement {
 pub struct SafetyConcern {
     pub component: String,
     pub concern: String,
+}
+
+pub fn status(sh: &Shell) -> Result<()> {
+    // This is a stub function for now to make the code compile
+    println!("Qualification status reporting is still under development");
+    Ok(())
 }

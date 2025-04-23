@@ -33,6 +33,8 @@ pub enum OperationType {
     CollectionRemove,
     /// Collection validation operation
     CollectionValidate,
+    /// Collection mutation operation
+    CollectionMutate,
     /// Checksum calculation
     ChecksumCalculation,
     /// Function call operation
@@ -58,6 +60,7 @@ impl OperationType {
             Self::CollectionInsert => 3,
             Self::CollectionRemove => 3,
             Self::CollectionValidate => 5,
+            Self::CollectionMutate => 4,
             Self::ChecksumCalculation => 10,
             Self::FunctionCall => 5,
             Self::ControlFlow => 2,
@@ -78,6 +81,7 @@ impl OperationType {
             Self::CollectionInsert => 150,
             Self::CollectionRemove => 150,
             Self::CollectionValidate => 200,
+            Self::CollectionMutate => 150,
             Self::ChecksumCalculation => 180,
             Self::FunctionCall => 150,
             Self::ControlFlow => 120,
@@ -108,6 +112,8 @@ pub struct OperationCounter {
     collection_removes: AtomicU64,
     /// Counter for collection validate operations
     collection_validates: AtomicU64,
+    /// Counter for collection mutate operations
+    collection_mutates: AtomicU64,
     /// Counter for checksum calculations
     checksum_calculations: AtomicU64,
     /// Counter for function calls
@@ -141,6 +147,7 @@ impl OperationCounter {
             collection_inserts: AtomicU64::new(0),
             collection_removes: AtomicU64::new(0),
             collection_validates: AtomicU64::new(0),
+            collection_mutates: AtomicU64::new(0),
             checksum_calculations: AtomicU64::new(0),
             function_calls: AtomicU64::new(0),
             control_flows: AtomicU64::new(0),
@@ -170,6 +177,9 @@ impl OperationCounter {
             }
             OperationType::CollectionValidate => {
                 self.collection_validates.fetch_add(1, Ordering::Relaxed)
+            }
+            OperationType::CollectionMutate => {
+                self.collection_mutates.fetch_add(1, Ordering::Relaxed)
             }
             OperationType::ChecksumCalculation => {
                 self.checksum_calculations.fetch_add(1, Ordering::Relaxed)
@@ -214,6 +224,7 @@ impl OperationCounter {
         self.collection_inserts.store(0, Ordering::Relaxed);
         self.collection_removes.store(0, Ordering::Relaxed);
         self.collection_validates.store(0, Ordering::Relaxed);
+        self.collection_mutates.store(0, Ordering::Relaxed);
         self.checksum_calculations.store(0, Ordering::Relaxed);
         self.function_calls.store(0, Ordering::Relaxed);
         self.control_flows.store(0, Ordering::Relaxed);
@@ -234,6 +245,7 @@ impl OperationCounter {
             collection_inserts: self.collection_inserts.load(Ordering::Relaxed),
             collection_removes: self.collection_removes.load(Ordering::Relaxed),
             collection_validates: self.collection_validates.load(Ordering::Relaxed),
+            collection_mutates: self.collection_mutates.load(Ordering::Relaxed),
             checksum_calculations: self.checksum_calculations.load(Ordering::Relaxed),
             function_calls: self.function_calls.load(Ordering::Relaxed),
             control_flows: self.control_flows.load(Ordering::Relaxed),
@@ -265,6 +277,8 @@ pub struct OperationSummary {
     pub collection_removes: u64,
     /// Number of collection validate operations
     pub collection_validates: u64,
+    /// Number of collection mutate operations
+    pub collection_mutates: u64,
     /// Number of checksum calculations
     pub checksum_calculations: u64,
     /// Number of function calls

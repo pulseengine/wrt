@@ -231,7 +231,7 @@ pub fn run(_create_files: bool, _verify_passing: bool) -> Result<()> {
     {
         println!("WAST test runner is disabled because the wrt-integration feature is not enabled");
         println!("To enable, build with --features=wrt-integration");
-        return Ok(());
+        Ok(())
     }
 
     #[cfg(feature = "wrt-integration")]
@@ -356,4 +356,10 @@ pub fn run(_create_files: bool, _verify_passing: bool) -> Result<()> {
 
         Ok(())
     }
+}
+
+// Add a public wrapper for run function to maintain backward compatibility with the old name
+pub fn run_wast_tests(sh: &xshell::Shell, create_files: bool, verify_passing: bool) -> Result<()> {
+    // We don't use the Shell parameter in the implementation
+    run(create_files, verify_passing)
 }

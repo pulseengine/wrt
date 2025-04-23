@@ -2,8 +2,8 @@
 name = "wrt-component"
 version = "0.1.0"
 edition = "2021"
-description = "Component Model implementation for the WebAssembly Runtime (WRT)"
-license = "MIT"
+description = "WebAssembly Component Model support for WRT"
+license = "MIT OR Apache-2.0"
 repository = "https://github.com/avrabe/wrt"
 documentation = "https://docs.rs/wrt-component"
 keywords = ["wasm", "webassembly", "runtime", "component-model"]
@@ -11,16 +11,14 @@ categories = ["wasm", "no-std"]
 
 [dependencies]
 wrt-error = { path = "../wrt-error", version = "0.1.0" }
+wrt-format = { path = "../wrt-format", version = "0.1.0" }
 wrt-host = { path = "../wrt-host", version = "0.1.0" }
 wrt-types = { path = "../wrt-types", version = "0.1.0" }
-wrt-format = { path = "../wrt-format", version = "0.1.0" }
-wrt-decoder = { path = "../wrt-decoder", version = "0.1.0" }
-wrt-runtime = { path = "../wrt-runtime", version = "0.1.0" }
 wrt-intercept = { path = "../wrt-intercept", version = "0.1.0" }
-wrt-common = { path = "../wrt-common", version = "0.1.0" }
 
 # Optional dependencies
 log = { version = "0.4", optional = true }
+chrono = { version = "0.4", optional = true }
 
 [dev-dependencies]
 ratatui = "0.29.0"
@@ -29,44 +27,29 @@ strum = { version = "0.26", features = ["derive"] }
 tui-nodes = "0.8.0"
 
 [features]
-default = ["std", "component-model-core"]
+default = ["std"]
 std = [
-    "wrt-host/std", 
-    "wrt-format/std", 
-    "wrt-decoder/std", 
-    "wrt-error/std", 
+    "wrt-error/std",
+    "wrt-format/std",
+    "wrt-host/std",
     "wrt-types/std",
-    "wrt-runtime/std",
     "wrt-intercept/std",
-    "wrt-common/std",
-    "log"
+    "chrono",
+    "log",
 ]
 no_std = [
-    "wrt-host/no_std", 
-    "wrt-format/no_std", 
-    "wrt-decoder/no_std",
-    "wrt-error/no_std", 
+    "wrt-error/no_std",
+    "wrt-format/no_std",
+    "wrt-host/no_std",
     "wrt-types/no_std",
-    "wrt-runtime/no_std",
-    "wrt-intercept/no_std",
-    "wrt-common/no_std"
+    "wrt-intercept/no_std"
 ]
-kani = ["wrt-host/kani", "wrt-intercept/kani", "wrt-common/kani"]
-wat-parsing = ["wrt-decoder/wat"]
+kani = ["wrt-host/kani", "wrt-intercept/kani"]
 
 # Component Model features
-component-model-core = [
-    "wrt-format/component-model-core",
-    "wrt-decoder/component-model-core"
-]
-component-model-values = [
-    "wrt-format/component-model-values",
-    "wrt-decoder/component-model-values"
-]
-component-model-resources = [
-    "wrt-format/component-model-resources",
-    "wrt-decoder/component-model-resources"
-]
+component-model-core = ["wrt-format/component-model-core"]
+component-model-values = ["wrt-format/component-model-values"]
+component-model-resources = ["wrt-format/component-model-resources"]
 component-model-all = [
     "component-model-core",
     "component-model-values",

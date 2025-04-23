@@ -9,7 +9,9 @@ use std::process::Command as StdCommand;
 use tera::{Context as TeraContext, Tera};
 use xshell::Shell;
 
+mod bazel_ops;
 mod check_imports;
+mod check_panics;
 mod fs_ops;
 mod qualification;
 mod wasm_ops;
@@ -61,12 +63,51 @@ enum Command {
         #[command(subcommand)]
         command: QualificationCommands,
     },
+    /// Check for undocumented panics across all crates.
+    CheckPanics {
+        #[arg(
+            long,
+            help = "Fix issues by adding missing panic documentation templates"
+        )]
+        fix: bool,
+        #[arg(long, help = "Only show crates with issues")]
+        only_failures: bool,
+    },
+    /// Bazel related commands
+    Bazel {
+        #[command(subcommand)]
+        command: BazelCommands,
+    },
 }
 
 #[derive(Subcommand, Debug)]
 enum QualificationCommands {
     /// Report qualification status summary
     Status,
+}
+
+#[derive(Subcommand, Debug)]
+enum BazelCommands {
+    /// Build a specific target with Bazel
+    Build {
+        #[arg(default_value = "//...", help = "Target to build")]
+        target: String,
+    },
+    /// Run tests with Bazel
+    Test {
+        #[arg(default_value = "//...", help = "Target to test")]
+        target: String,
+    },
+    /// Generate BUILD files for a package
+    Generate {
+        #[arg(help = "Directory containing the package")]
+        directory: PathBuf,
+    },
+    /// Migrate a justfile command to Bazel
+    Migrate {
+        #[arg(help = "Command from justfile to migrate")]
+        command: String,
+    },
 }
 
 #[derive(Args, Debug)]
@@ -255,50 +296,58 @@ struct SymbolOutput {
 }
 
 fn main() -> Result<()> {
-    let opts: Opts = Opts::parse();
     let sh = Shell::new()?;
+    let opts = Opts::parse();
 
     match opts.command {
-        Command::Lint(opts) => run_lint(&sh, opts)?,
-        Command::Test(opts) => run_test(&sh, opts)?,
-        Command::Build(opts) => run_build(&sh, opts)?,
-        Command::Coverage(opts) => run_coverage(&sh, opts)?,
-        Command::Symbols(opts) => run_symbols(&sh, opts)?,
-        Command::CheckImports { dir1, dir2 } => check_imports::run(&[&dir1, &dir2])?,
+        Command::Lint(opts) => run_lint(&sh, opts),
+        Command::Test(opts) => run_test(&sh, opts),
+        Command::Build(opts) => run_build(&sh, opts),
+        Command::Coverage(opts) => run_coverage(&sh, opts),
+        Command::Symbols(opts) => run_symbols(&sh, opts),
+        Command::CheckImports { dir1, dir2 } => check_imports::run(&[&dir1, &dir2]),
         Command::Wasm(args) => match args.command {
-            WasmCommands::Build { directory } => wasm_ops::build_all_wat(&directory)?,
-            WasmCommands::Check { directory } => wasm_ops::check_all_wat(&directory)?,
+            WasmCommands::Build { directory } => wasm_ops::build_all_wat(&directory),
+            WasmCommands::Check { directory } => wasm_ops::check_all_wat(&directory),
             WasmCommands::Convert { wat_file } => {
-                let wasm_file = wasm_ops::wat_to_wasm_path(&wat_file)?;
-                wasm_ops::convert_wat(&wat_file, &wasm_file, false)?;
+                let wasm_path = wasm_ops::wat_to_wasm_path(&wat_file)?;
+                wasm_ops::convert_wat(&wat_file, &wasm_path, false)?;
+                Ok(())
             }
         },
         Command::Fs(args) => match args.command {
-            FsCommands::RmRf { path } => fs_ops::rmrf(&path)?,
-            FsCommands::MkdirP { path } => fs_ops::mkdirp(&path)?,
+            FsCommands::RmRf { path } => fs_ops::rmrf(&path),
+            FsCommands::MkdirP { path } => fs_ops::mkdirp(&path),
             FsCommands::FindDelete { directory, pattern } => {
-                fs_ops::find_delete(&directory, &pattern)?
+                fs_ops::find_delete(&directory, &pattern)
             }
             FsCommands::CountFiles { directory, pattern } => {
-                fs_ops::count_files(&directory, &pattern)?
+                fs_ops::count_files(&directory, &pattern)
             }
-            FsCommands::FileSize { path } => fs_ops::file_size(&path)?,
+            FsCommands::FileSize { path } => fs_ops::file_size(&path),
             FsCommands::Cp {
                 source,
                 destination,
-            } => fs_ops::copy_file(&source, &destination)?,
+            } => fs_ops::cp(&source, &destination),
         },
         Command::RunWastTests {
             create_files,
             verify_passing,
-        } => wast_tests::run(create_files, verify_passing)?,
-        Command::CheckKani => run_check_kani(&sh)?,
+        } => wast_tests::run_wast_tests(&sh, create_files, verify_passing),
+        Command::CheckKani => run_check_kani(&sh),
         Command::Qualification { command } => match command {
-            QualificationCommands::Status => qualification::report_status()?,
+            QualificationCommands::Status => qualification::status(&sh),
+        },
+        Command::CheckPanics { fix, only_failures } => check_panics::run(&sh, fix, only_failures),
+        Command::Bazel { command } => match command {
+            BazelCommands::Build { target } => bazel_ops::run_build(&sh, &target),
+            BazelCommands::Test { target } => bazel_ops::run_test(&sh, &target),
+            BazelCommands::Generate { directory } => {
+                bazel_ops::generate_build_file(&sh, &directory)
+            }
+            BazelCommands::Migrate { command } => bazel_ops::migrate_just_command(&sh, &command),
         },
     }
-
-    Ok(())
 }
 
 fn run_lint(sh: &Shell, opts: LintOpts) -> Result<()> {
@@ -392,7 +441,7 @@ fn run_coverage(sh: &Shell, _opts: CoverageOpts) -> Result<()> {
     // 2. Generate HTML report from LCOV data
     println!("Generating HTML coverage report from LCOV data...");
     // Ensure the target directory exists
-    fs_ops::mkdirp(&html_output_dir.parent().unwrap())?; // Create target/llvm-cov if needed
+    fs_ops::mkdirp(html_output_dir.parent().unwrap())?; // Create target/llvm-cov if needed
     sh.cmd("cargo")
         .arg("llvm-cov")
         .arg("report") // Use report subcommand
@@ -527,7 +576,7 @@ fn run_symbols(sh: &Shell, opts: SymbolsOpts) -> Result<()> {
         match serde_json::from_str::<CargoMessage>(line) {
             Ok(message) => {
                 if message.reason == "compiler-artifact"
-                    && message.target.as_ref().map_or(false, |t| {
+                    && message.target.as_ref().is_some_and(|t| {
                         t.name == opts.package && t.kind.contains(&"lib".to_string())
                     })
                 {
@@ -535,7 +584,7 @@ fn run_symbols(sh: &Shell, opts: SymbolsOpts) -> Result<()> {
                         // Find the .rlib file
                         if let Some(rlib) = filenames
                             .into_iter()
-                            .find(|f| f.extension().map_or(false, |ext| ext == "rlib"))
+                            .find(|f| f.extension().is_some_and(|ext| ext == "rlib"))
                         {
                             artifact_path = Some(rlib);
                             break; // Found the artifact we need

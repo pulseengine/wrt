@@ -166,3 +166,8 @@ pub fn copy_file(source: &Path, destination: &Path) -> Result<()> {
     );
     Ok(())
 }
+
+// Create an alias for the copy_file function as cp to maintain backward compatibility
+pub fn cp(source: &Path, destination: &Path) -> Result<()> {
+    copy_file(source, destination)
+}
