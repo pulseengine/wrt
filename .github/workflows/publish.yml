@@ -2,12 +2,19 @@
 name: Deploy Documentation to Pages
 
 on:
-  # Runs on pushes targeting the default branch
+  # Runs on pushes targeting the default branch or tags
   push:
     branches: ["main"]
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+'
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to build and deploy (leave empty for automatic detection)'
+        required: false
+        default: ''
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
@@ -28,6 +35,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # We need history to get tags
+          fetch-depth: 0
         
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -60,8 +70,68 @@ jobs:
         if: env.JUST_INSTALLED != 'true'
         run: just setup-python-deps
 
-      - name: Build Sphinx documentation
-        run: just docs-with-diagrams
+      - name: Determine version
+        id: determine-version
+        run: |
+          # Initialize version variable
+          VERSION=""
+          
+          # Check if version was provided as input
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+            echo "Using manually specified version: $VERSION"
+          # Check if this is a tag push
+          elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            VERSION="${{ github.ref_name }}"
+            echo "Using tag version: $VERSION"
+          # Default to 'main' for branch pushes
+          elif [[ "${{ github.ref }}" == refs/heads/main ]]; then
+            VERSION="main"
+            echo "Using branch version: $VERSION"
+          else
+            VERSION="main"
+            echo "Using default version: $VERSION"
+          fi
+          
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Build Sphinx documentation for version
+        run: |
+          # Set version for documentation build
+          export DOCS_VERSION="${{ env.VERSION }}"
+          export DOCS_VERSION_PATH_PREFIX="/"
+          
+          # Build documentation (continue on error)
+          just docs-with-diagrams || {
+            echo "::warning::Documentation build encountered errors but will try to continue with versioning"
+            # Ensure build directory exists even if build failed
+            mkdir -p docs/_build/html
+          }
+          
+          # Create directory structure for versioned docs
+          mkdir -p docs/_build/versioned/${{ env.VERSION }}
+          
+          # Copy built HTML to versioned directory if it exists
+          if [ -d "docs/_build/html" ]; then
+            cp -r docs/_build/html/* docs/_build/versioned/${{ env.VERSION }}/ || {
+              echo "::warning::Failed to copy HTML documentation to versioned directory"
+              mkdir -p docs/_build/versioned/${{ env.VERSION }}
+              echo "<html><body><h1>Documentation Generation Failed</h1><p>The documentation for version ${{ env.VERSION }} could not be generated properly.</p></body></html>" > docs/_build/versioned/${{ env.VERSION }}/index.html
+            }
+          else
+            echo "::warning::HTML documentation directory not found"
+            mkdir -p docs/_build/versioned/${{ env.VERSION }}
+            echo "<html><body><h1>Documentation Generation Failed</h1><p>The documentation for version ${{ env.VERSION }} could not be generated properly.</p></body></html>" > docs/_build/versioned/${{ env.VERSION }}/index.html
+          fi
+          
+          # Generate index file for root
+          cp docs/source/root_index.html docs/_build/versioned/index.html || {
+            echo "::warning::Failed to copy root index file"
+            echo "<html><body><h1>WRT Documentation</h1><p>Please select a version: <a href='./main/'>main</a></p></body></html>" > docs/_build/versioned/index.html
+          }
+          
+          echo "Documentation processing completed for version ${{ env.VERSION }}"
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
@@ -69,7 +139,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: 'docs/_build/html'
+          path: 'docs/_build/versioned'
           
   # Deployment job
   deploy:

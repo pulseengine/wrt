@@ -1,0 +1,6 @@
+# Rustfmt configuration
+build --@rules_rust//rust/settings:rustfmt.toml=//:rustfmt.toml
+
+# Optional: Uncomment these lines to enable rustfmt check during builds
+# build --aspects=@rules_rust//rust:defs.bzl%rustfmt_aspect
+# build --output_groups=+rustfmt_checks 
