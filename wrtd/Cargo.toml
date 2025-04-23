@@ -9,7 +9,7 @@ description = "WebAssembly Runtime Daemon"
 wrt = { path = "../wrt", features = ["std"] }
 wrt-component = { path = "../wrt-component", features = ["std"] }
 wrt-intercept = { path = "../wrt-intercept" }
-clap = { version = "4.5.32", features = ["derive"] }
+clap = { version = "4.5.37", features = ["derive"] }
 tracing = "0.1"
 tracing-subscriber = { version= "0.3", features = ["json"]}
 anyhow = "1.0"
