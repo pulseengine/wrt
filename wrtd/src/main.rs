@@ -52,6 +52,10 @@ use wrt::{
     StacklessEngine,
 };
 
+// Add direct imports for helper crates
+use wrt_component;
+use wrt_intercept;
+
 /// WebAssembly Runtime Daemon CLI arguments
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -74,6 +78,18 @@ struct Args {
     /// Analyze component interfaces only (don't execute)
     #[arg(long)]
     analyze_component_interfaces: bool,
+
+    /// Memory strategy to use
+    #[arg(short, long, default_value = "bounded-copy")]
+    memory_strategy: String,
+
+    /// Buffer size for bounded-copy memory strategy (in bytes)
+    #[arg(long, default_value = "1048576")] // 1MB default
+    buffer_size: usize,
+
+    /// Enable interceptors (comma-separated list: logging,stats,resources)
+    #[arg(short, long)]
+    interceptors: Option<String>,
 }
 
 /// Parse component interface declarations to determine function signatures
@@ -144,6 +160,12 @@ fn main() -> Result<()> {
     info!(
         "  Analyze component interfaces: {}",
         args.analyze_component_interfaces
+    );
+    info!("  Memory strategy: {}", args.memory_strategy);
+    info!("  Buffer size: {} bytes", args.buffer_size);
+    info!(
+        "  Interceptors: {}",
+        args.interceptors.as_deref().unwrap_or("None")
     );
 
     // Setup timings for performance measurement
@@ -614,34 +636,39 @@ fn load_component(
     function_name: Option<&str>,
     _file_path: String, // Prefix with underscore to avoid unused variable warning
 ) -> Result<()> {
+    // Parse CLI args for current configuration
+    let args = Args::parse();
+
     // Load the component
     let parse_start = Instant::now();
 
-    // Load the module from binary
-    let module = parse_module(bytes)?; // Remove 'mut' since it's not needed
+    // Use wrt-component directly instead of going through wrt's parse_module
+    let component = wrt_component::Component::parse(bytes)
+        .map_err(|e| anyhow!("Failed to parse component: {}", e))?;
 
     let parse_time = parse_start.elapsed();
-    info!(
-        "Loaded WebAssembly Component with stackless engine in {:?}",
-        parse_time
-    );
+    info!("Loaded WebAssembly Component in {:?}", parse_time);
 
-    // Store a copy of exports to display available functions
+    // Extract information about exports to display available functions
     let mut available_exports = Vec::new();
-    for export in &module.exports {
-        if matches!(export.kind, ExportKind::Function) {
-            available_exports.push(export.name.clone());
+    for export in component.exports() {
+        if let wrt_component::export::Export::Function(func) = export {
+            available_exports.push(func.name().to_string());
         }
     }
 
-    // Parse interface information from the module
-    analyze_component_interfaces(&module);
-
-    // Instantiate the module
+    // Instantiate the component directly
     let inst_start = Instant::now();
-    let instance_idx = engine
-        .instantiate(module.clone())
-        .map_err(wrt_err_to_anyhow)?;
+
+    // Use memory strategy selected from args
+    let memory_strategy = select_memory_strategy(&args);
+
+    // Configure interceptors from args
+    let interceptors = configure_interceptors(&args);
+
+    let instance = component
+        .instantiate(engine, memory_strategy, interceptors)
+        .map_err(|e| anyhow!("Failed to instantiate component: {}", e))?;
 
     let instantiate_time = inst_start.elapsed();
     info!("Component instantiated in {:?}", instantiate_time);
@@ -650,7 +677,23 @@ fn load_component(
 
     // Execute the component's function if specified
     if let Some(func_name) = function_name {
-        execute_component_function(engine, instance_idx, func_name)?;
+        // Find the function by name
+        let func = instance
+            .get_export(func_name)
+            .ok_or_else(|| anyhow!("Function '{}' not found in component exports", func_name))?;
+
+        if let wrt_component::export::Export::Function(func) = func {
+            // Execute the function
+            info!("Executing function: {}", func_name);
+            let result = func
+                .call(&[])
+                .map_err(|e| anyhow!("Function execution failed: {}", e))?;
+
+            // Display the result
+            info!("Function returned: {:?}", result);
+        } else {
+            return Err(anyhow!("Export '{}' is not a function", func_name));
+        }
     } else {
         info!("No function specified to call. Use --call <function> to execute a function");
         info!("Available exported functions:");
@@ -660,6 +703,37 @@ fn load_component(
     }
 
     Ok(())
+}
+
+/// Configure interceptors based on the CLI options
+fn configure_interceptors(options: &Args) -> Vec<Box<dyn wrt_intercept::Interceptor>> {
+    let mut interceptors = Vec::new();
+
+    if let Some(interceptor_list) = &options.interceptors {
+        for interceptor_name in interceptor_list.split(',') {
+            match interceptor_name.trim() {
+                "logging" => {
+                    info!("Enabling logging interceptor");
+                    interceptors.push(Box::new(wrt_intercept::LoggingInterceptor::default()));
+                }
+                "stats" => {
+                    info!("Enabling statistics interceptor");
+                    interceptors.push(Box::new(wrt_intercept::StatisticsInterceptor::default()));
+                }
+                "resources" => {
+                    info!("Enabling resource monitoring interceptor");
+                    // Use default resource limits for now
+                    interceptors
+                        .push(Box::new(wrt_intercept::ResourceLimitsInterceptor::default()));
+                }
+                unknown => {
+                    warn!("Unknown interceptor: {}, ignoring", unknown);
+                }
+            }
+        }
+    }
+
+    interceptors
 }
 
 /// Displays execution statistics for the stackless engine
@@ -733,4 +807,21 @@ fn display_stackless_execution_stats(engine: &StacklessEngine) {
     }
 
     info!("===========================");
+}
+
+/// Select the memory strategy based on the CLI options
+fn select_memory_strategy(options: &Args) -> wrt_component::strategies::memory::MemoryStrategy {
+    match options.memory_strategy.as_str() {
+        "zero-copy" => wrt_component::strategies::memory::MemoryStrategy::ZeroCopy,
+        "bounded-copy" => wrt_component::strategies::memory::MemoryStrategy::BoundedCopy {
+            buffer_size: options.buffer_size,
+        },
+        "full-isolation" => wrt_component::strategies::memory::MemoryStrategy::FullIsolation,
+        unknown => {
+            warn!("Unknown memory strategy: {}, using BoundedCopy", unknown);
+            wrt_component::strategies::memory::MemoryStrategy::BoundedCopy {
+                buffer_size: options.buffer_size,
+            }
+        }
+    }
 }

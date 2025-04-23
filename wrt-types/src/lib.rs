@@ -7,6 +7,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(feature = "kani", feature(allocator_api))]
 #![deny(missing_docs)]
+#![warn(clippy::missing_panics_doc)]
 
 // Import std when available
 #[cfg(feature = "std")]
@@ -18,46 +19,49 @@ extern crate alloc;
 
 // Core re-exports based on environment
 #[cfg(feature = "std")]
-pub use std::{collections::HashMap, string::String, vec::Vec};
+pub use std::{collections::HashMap, fmt, string::String, vec::Vec};
 
 #[cfg(not(feature = "std"))]
 pub use alloc::{collections::BTreeMap as HashMap, string::String, vec::Vec};
 
 // Core modules
+/// Bounded collections for memory safety
 pub mod bounded;
+/// WebAssembly Component Model types
+pub mod component;
+/// WebAssembly Component Model value types
+pub mod component_value;
+/// Operation tracking and fuel metering
 pub mod operations;
+/// Safe memory access primitives
 pub mod safe_memory;
+/// WebAssembly section definitions
 pub mod sections;
+/// Core WebAssembly types
 pub mod types;
+/// Validation utilities
 pub mod validation;
+/// WebAssembly value representations
 pub mod values;
+/// Verification and integrity checking
 pub mod verification;
-
-// Re-export ComponentValue from wrt-common
-pub use wrt_common::component_value::ComponentValue;
 
 // Re-export the most important types
 pub use bounded::{BoundedHashMap, BoundedStack, BoundedVec, CapacityError};
+pub use component::{
+    ComponentType, ExternType, FuncType, GlobalType, InstanceType, Limits, MemoryType, Namespace,
+    ResourceType, TableType,
+};
+pub use component_value::ComponentValue;
 pub use operations::{
     global_fuel_consumed, global_operation_summary, record_global_operation,
     reset_global_operations, OperationSummary, OperationTracking, OperationType,
 };
 pub use safe_memory::{MemoryProvider, SafeSlice};
-pub use types::{FuncType, ValueType};
+pub use types::ValueType;
 pub use validation::{BoundedCapacity, Checksummed, Validatable};
 pub use values::Value;
 pub use verification::{Checksum, VerificationLevel};
-
-/// Definitions for WebAssembly Component Model types
-pub mod component;
-/// Value types and operations for WebAssembly values
-pub mod value;
-
-// Re-export commonly used types
-pub use component::{
-    ComponentType, ExternType, GlobalType, InstanceType, Limits, MemoryType, Namespace,
-    ResourceType, TableType,
-};
 
 /// The WebAssembly binary format magic number: \0asm
 pub const WASM_MAGIC: [u8; 4] = [0x00, 0x61, 0x73, 0x6D];
@@ -65,12 +69,20 @@ pub const WASM_MAGIC: [u8; 4] = [0x00, 0x61, 0x73, 0x6D];
 /// The WebAssembly binary format version
 pub const WASM_VERSION: u32 = 1;
 
-pub use operations::*;
-pub use values::*;
-pub use verification::*;
-
-// Create a re-export module for component values
-/// Module for Component Model value types
-pub mod component_value {
-    pub use wrt_common::component_value::*;
+// Conversion traits for standardized conversions
+/// Trait for converting from a format type to a runtime type
+pub trait FromFormat<T> {
+    /// Convert from format value to runtime type
+    fn from_format(format_value: T) -> wrt_error::Result<Self>
+    where
+        Self: Sized;
 }
+
+/// Trait for converting from a runtime type to a format type
+pub trait ToFormat<T> {
+    /// Convert from runtime type to format value
+    fn to_format(&self) -> wrt_error::Result<T>;
+}
+
+// Re-export Result for convenience
+pub use wrt_error::Result;

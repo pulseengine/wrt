@@ -246,6 +246,19 @@ impl Display for ExportNotFoundError {
 #[cfg(feature = "alloc")]
 impl ErrorSource for ExportNotFoundError {}
 
+/// Error for resource not found
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg(feature = "alloc")]
+pub struct ResourceNotFoundError(pub String);
+#[cfg(feature = "alloc")]
+impl Display for ResourceNotFoundError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Resource not found: {}", self.0)
+    }
+}
+#[cfg(feature = "alloc")]
+impl ErrorSource for ResourceNotFoundError {}
+
 /// Error for fuel exhaustion
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FuelExhaustedError;

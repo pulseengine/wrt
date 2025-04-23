@@ -15,7 +15,7 @@ use alloc::{vec, vec::Vec};
 #[cfg(not(feature = "std"))]
 use core::{fmt, hash};
 
-use crate::operations::{record_global_operation, OperationType};
+use crate::operations::{self, record_global_operation, OperationType};
 use crate::validation::importance;
 use crate::validation::{BoundedCapacity, Checksummed};
 use crate::verification::{Checksum, VerificationLevel};
@@ -535,6 +535,95 @@ where
     /// Get an iterator over the items
     pub fn iter(&self) -> impl Iterator<Item = &T> {
         self.data.iter()
+    }
+
+    /// Get the last element of the vector
+    pub fn last(&self) -> Option<&T> {
+        self.data.last()
+    }
+
+    /// Get a mutable reference to the last element of the vector
+    pub fn last_mut(&mut self) -> Option<&mut T> {
+        self.data.last_mut()
+    }
+
+    /// Get a reference to the underlying data
+    pub fn as_ref(&self) -> &[T] {
+        &self.data
+    }
+
+    /// Get a mutable reference to the underlying data
+    pub fn as_mut(&mut self) -> &mut [T] {
+        &mut self.data
+    }
+
+    /// Remove the last element from the vector and return it
+    pub fn pop(&mut self) -> Option<T> {
+        // Track the pop operation
+        record_global_operation(OperationType::CollectionPop, self.verification_level);
+
+        let item = self.data.pop()?;
+
+        // Recompute checksum if verification is enabled
+        if crate::validation::should_validate(self.verification_level, importance::MUTATION) {
+            self.recalculate_checksum();
+            // Track checksum calculation
+            record_global_operation(OperationType::ChecksumCalculation, self.verification_level);
+        }
+
+        Some(item)
+    }
+
+    /// Splits the collection at the given index, returning a new vector containing
+    /// the elements from index onwards.
+    pub fn split_off(&mut self, at: usize) -> Self {
+        // Track the mutation operation
+        record_global_operation(OperationType::CollectionMutate, self.verification_level);
+
+        // Split the vec
+        let split_data = self.data.split_off(at);
+
+        // Recompute checksums
+        if crate::validation::should_validate(self.verification_level, importance::MUTATION) {
+            self.recalculate_checksum();
+            record_global_operation(OperationType::ChecksumCalculation, self.verification_level);
+        }
+
+        // Create a new BoundedVec with the split data
+        let mut result = Self::with_verification_level(self.verification_level);
+        result.data = split_data;
+
+        // Calculate checksum for the new vec
+        if crate::validation::should_validate(result.verification_level, importance::MUTATION) {
+            result.recalculate_checksum();
+            record_global_operation(
+                OperationType::ChecksumCalculation,
+                result.verification_level,
+            );
+        }
+
+        result
+    }
+
+    /// Reverses the order of elements in the BoundedVec
+    pub fn reverse(&mut self) {
+        self.data.reverse();
+
+        // Track the operation and recalculate checksum if needed
+        #[cfg(feature = "std")]
+        {
+            operations::record_global_operation(
+                OperationType::CollectionMutate,
+                self.verification_level,
+            );
+
+            if matches!(
+                self.verification_level,
+                VerificationLevel::Standard | VerificationLevel::Full
+            ) {
+                self.recalculate_checksum();
+            }
+        }
     }
 }
 

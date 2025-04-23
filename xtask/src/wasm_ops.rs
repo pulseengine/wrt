@@ -4,7 +4,6 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 use walkdir::WalkDir;
-use wat;
 
 /// Builds all .wat files found recursively in the given directory.
 pub fn build_all_wat(dir: &Path) -> Result<()> {
@@ -117,7 +116,7 @@ fn find_wat_files(dir: &Path) -> Result<Vec<PathBuf>> {
     for entry in WalkDir::new(dir)
         .into_iter()
         .filter_map(|e| e.ok())
-        .filter(|e| e.path().extension().map_or(false, |ext| ext == "wat"))
+        .filter(|e| e.path().extension().is_some_and(|ext| ext == "wat"))
     {
         wat_files.push(entry.path().to_path_buf());
     }
@@ -126,7 +125,7 @@ fn find_wat_files(dir: &Path) -> Result<Vec<PathBuf>> {
 
 /// Determines the corresponding .wasm path for a given .wat path.
 pub fn wat_to_wasm_path(wat_path: &Path) -> Result<PathBuf> {
-    if wat_path.extension().map_or(true, |ext| ext != "wat") {
+    if wat_path.extension().is_none_or(|ext| ext != "wat") {
         bail!(
             "Input file does not have a .wat extension: {}",
             wat_path.display()
@@ -144,9 +143,7 @@ fn needs_conversion(wat_path: &Path, wasm_path: &Path) -> Result<bool> {
     let wasm_meta = fs::metadata(wasm_path)?;
     // Handle potential errors getting modified time
     let wat_modified = wat_meta.modified().unwrap_or_else(|_| SystemTime::now());
-    let wasm_modified = wasm_meta
-        .modified()
-        .unwrap_or_else(|_| SystemTime::UNIX_EPOCH);
+    let wasm_modified = wasm_meta.modified().unwrap_or(SystemTime::UNIX_EPOCH);
 
     Ok(wat_modified > wasm_modified)
 }

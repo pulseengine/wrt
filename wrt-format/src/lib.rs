@@ -4,6 +4,7 @@
 //! including serialization and deserialization of WebAssembly modules and state.
 
 #![cfg_attr(not(feature = "std"), no_std)]
+#![warn(clippy::missing_panics_doc)]
 
 // Import std when available
 #[cfg(feature = "std")]
@@ -35,9 +36,15 @@ pub use alloc::{
 // Re-export core types from wrt-types
 pub use wrt_types::{safe_memory::SafeSlice, FuncType, ValueType};
 
+/// WebAssembly binary format parsing and access
 pub mod binary;
+/// WebAssembly component model format
 pub mod component;
+/// Conversion utilities for component model types
+pub mod component_conversion;
+/// Compression utilities for WebAssembly modules
 pub mod compression;
+/// WebAssembly module format
 pub mod module;
 pub mod section;
 pub mod state;

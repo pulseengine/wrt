@@ -3,10 +3,12 @@
 //! This module provides implementations for Component Model value types, including
 //! serialization/deserialization, conversion, and runtime representation.
 
-use wrt_common::component::ComponentValue;
+use wrt_common::component::{ComponentValue, ValType as CommonValType};
 use wrt_error::{kinds, Error, Result};
 use wrt_format::component::ValType;
 use wrt_types::values::Value;
+use wrt_types::ValueType;
+use wrt_common::{FromFormat, ToFormat};
 
 #[cfg(feature = "std")]
 use std::{collections::HashMap, string::String, sync::Arc, vec, vec::Vec};
@@ -20,282 +22,545 @@ use alloc::{
     vec::Vec,
 };
 
-/// A Component Model value used at runtime
-#[derive(Debug, Clone, PartialEq)]
-pub enum ComponentValue {
-    /// Boolean value
-    Bool(bool),
-    /// Signed 8-bit integer
-    S8(i8),
-    /// Unsigned 8-bit integer
-    U8(u8),
-    /// Signed 16-bit integer
-    S16(i16),
-    /// Unsigned 16-bit integer
-    U16(u16),
-    /// Signed 32-bit integer
-    S32(i32),
-    /// Unsigned 32-bit integer
-    U32(u32),
-    /// Signed 64-bit integer
-    S64(i64),
-    /// Unsigned 64-bit integer
-    U64(u64),
-    /// 32-bit floating point
-    F32(f32),
-    /// 64-bit floating point
-    F64(f64),
-    /// Unicode character
-    Char(char),
-    /// UTF-8 string
-    String(String),
-    /// List of values
-    List(Vec<ComponentValue>),
-    /// Record with named fields
-    Record(HashMap<String, ComponentValue>),
-    /// Variant with case name and optional value
-    Variant {
-        case: u32,
-        value: Option<Box<ComponentValue>>,
-    },
-    /// Tuple of values
-    Tuple(Vec<ComponentValue>),
-    /// Flags (set of named boolean flags)
-    Flags(HashMap<String, bool>),
-    /// Enumeration value
-    Enum(u32),
-    /// Option type
-    Option(Option<Box<ComponentValue>>),
-    /// Result type with ok value
-    Result(Result<Option<Box<ComponentValue>>, Option<Box<ComponentValue>>>),
-    /// Resource handle (owned)
-    Own(u32),
-    /// Resource handle (borrowed)
-    Borrow(u32),
+/// Convert from CommonValType to wrt_format::component::ValType
+pub fn convert_common_to_format_valtype(common_type: &CommonValType) -> ValType {
+    match common_type {
+        CommonValType::Bool => ValType::Bool,
+        CommonValType::S8 => ValType::S8,
+        CommonValType::U8 => ValType::U8,
+        CommonValType::S16 => ValType::S16,
+        CommonValType::U16 => ValType::U16,
+        CommonValType::S32 => ValType::S32,
+        CommonValType::U32 => ValType::U32,
+        CommonValType::S64 => ValType::S64,
+        CommonValType::U64 => ValType::U64,
+        CommonValType::F32 => ValType::F32,
+        CommonValType::F64 => ValType::F64,
+        CommonValType::Char => ValType::Char,
+        CommonValType::String => ValType::String,
+        CommonValType::Ref(idx) => ValType::Ref(*idx),
+        CommonValType::Record(fields) => {
+            let converted_fields = fields
+                .iter()
+                .map(|(name, val_type)| (name.clone(), convert_common_to_format_valtype(val_type)))
+                .collect();
+            ValType::Record(converted_fields)
+        }
+        CommonValType::Variant(cases) => {
+            let converted_cases = cases
+                .iter()
+                .map(|(name, opt_type)| {
+                    (
+                        name.clone(),
+                        opt_type
+                            .as_ref()
+                            .map(|val_type| convert_common_to_format_valtype(val_type)),
+                    )
+                })
+                .collect();
+            ValType::Variant(converted_cases)
+        }
+        CommonValType::List(elem_type) => {
+            ValType::List(Box::new(convert_common_to_format_valtype(elem_type)))
+        }
+        CommonValType::Tuple(types) => {
+            let converted_types = types
+                .iter()
+                .map(|val_type| convert_common_to_format_valtype(val_type))
+                .collect();
+            ValType::Tuple(converted_types)
+        }
+        CommonValType::Flags(names) => ValType::Flags(names.clone()),
+        CommonValType::Enum(variants) => ValType::Enum(variants.clone()),
+        CommonValType::Option(inner_type) => {
+            ValType::Option(Box::new(convert_common_to_format_valtype(inner_type)))
+        }
+        CommonValType::Result(result_type) => {
+            ValType::Result(Box::new(convert_common_to_format_valtype(result_type)))
+        }
+        CommonValType::Own(idx) => ValType::Own(*idx),
+        CommonValType::Borrow(idx) => ValType::Borrow(*idx),
+    }
 }
 
-// Implement Eq for ComponentValue
-// Note: This means we can't use floating point equality comparisons directly
-impl Eq for ComponentValue {}
-
-impl ComponentValue {
-    /// Get the type of this component value
-    pub fn get_type(&self) -> ValType {
-        match self {
-            Self::Bool(_) => ValType::Bool,
-            Self::S8(_) => ValType::S8,
-            Self::U8(_) => ValType::U8,
-            Self::S16(_) => ValType::S16,
-            Self::U16(_) => ValType::U16,
-            Self::S32(_) => ValType::S32,
-            Self::U32(_) => ValType::U32,
-            Self::S64(_) => ValType::S64,
-            Self::U64(_) => ValType::U64,
-            Self::F32(_) => ValType::F32,
-            Self::F64(_) => ValType::F64,
-            Self::Char(_) => ValType::Char,
-            Self::String(_) => ValType::String,
-            Self::List(items) => {
-                if let Some(first) = items.first() {
-                    ValType::List(Box::new(first.get_type()))
-                } else {
-                    // Empty list, use a placeholder type
-                    ValType::List(Box::new(ValType::Bool))
-                }
-            }
-            Self::Record(fields) => {
-                let mut field_types = Vec::new();
-                for (name, value) in fields {
-                    field_types.push((name.clone(), value.get_type()));
-                }
-                ValType::Record(field_types)
-            }
-            Self::Variant { case, value } => {
-                let cases = vec![(case.to_string(), value.as_ref().map(|v| v.get_type()))];
-                ValType::Variant(cases)
-            }
-            Self::Tuple(items) => {
-                let item_types = items.iter().map(|v| v.get_type()).collect();
-                ValType::Tuple(item_types)
-            }
-            Self::Flags(flags) => {
-                let names = flags.keys().cloned().collect();
-                ValType::Flags(names)
-            }
-            Self::Enum(variant) => {
-                let variants = vec![variant.to_string()];
-                ValType::Enum(variants)
-            }
-            Self::Option(opt) => {
-                if let Some(val) = opt {
-                    ValType::Option(Box::new(val.get_type()))
-                } else {
-                    ValType::Option(Box::new(ValType::Bool)) // Placeholder
-                }
-            }
-            Self::Result(val) => ValType::Result(Box::new(if let Ok(ok) = val {
-                if let Some(v) = ok {
-                    v.get_type()
-                } else {
-                    ValType::Bool // Placeholder for None
-                }
-            } else {
-                ValType::Bool // Placeholder for Err
-            })),
-            Self::Own(idx) => ValType::Own(*idx),
-            Self::Borrow(idx) => ValType::Borrow(*idx),
+/// Convert from wrt_format::component::ValType to CommonValType
+pub fn convert_format_to_common_valtype(format_type: &ValType) -> CommonValType {
+    match format_type {
+        ValType::Bool => CommonValType::Bool,
+        ValType::S8 => CommonValType::S8,
+        ValType::U8 => CommonValType::U8,
+        ValType::S16 => CommonValType::S16,
+        ValType::U16 => CommonValType::U16,
+        ValType::S32 => CommonValType::S32,
+        ValType::U32 => CommonValType::U32,
+        ValType::S64 => CommonValType::S64,
+        ValType::U64 => CommonValType::U64,
+        ValType::F32 => CommonValType::F32,
+        ValType::F64 => CommonValType::F64,
+        ValType::Char => CommonValType::Char,
+        ValType::String => CommonValType::String,
+        ValType::Ref(idx) => CommonValType::Ref(*idx),
+        ValType::Record(fields) => {
+            let converted_fields = fields
+                .iter()
+                .map(|(name, val_type)| (name.clone(), convert_format_to_common_valtype(val_type)))
+                .collect();
+            CommonValType::Record(converted_fields)
         }
+        ValType::Variant(cases) => {
+            let converted_cases = cases
+                .iter()
+                .map(|(name, opt_type)| {
+                    (
+                        name.clone(),
+                        opt_type
+                            .as_ref()
+                            .map(|val_type| convert_format_to_common_valtype(val_type)),
+                    )
+                })
+                .collect();
+            CommonValType::Variant(converted_cases)
+        }
+        ValType::List(elem_type) => {
+            CommonValType::List(Box::new(convert_format_to_common_valtype(elem_type)))
+        }
+        ValType::Tuple(types) => {
+            let converted_types = types
+                .iter()
+                .map(|val_type| convert_format_to_common_valtype(val_type))
+                .collect();
+            CommonValType::Tuple(converted_types)
+        }
+        ValType::Flags(names) => CommonValType::Flags(names.clone()),
+        ValType::Enum(variants) => CommonValType::Enum(variants.clone()),
+        ValType::Option(inner_type) => {
+            CommonValType::Option(Box::new(convert_format_to_common_valtype(inner_type)))
+        }
+        ValType::Result(result_type) => {
+            CommonValType::Result(Box::new(convert_format_to_common_valtype(result_type)))
+        }
+        ValType::ResultErr(err_type) => {
+            // Map to CommonValType::Result with a default inner type
+            CommonValType::Result(Box::new(CommonValType::Bool))
+        }
+        ValType::ResultBoth(ok_type, err_type) => {
+            // Map to CommonValType::Result with the ok type
+            CommonValType::Result(Box::new(convert_format_to_common_valtype(ok_type)))
+        }
+        ValType::Own(idx) => CommonValType::Own(*idx),
+        ValType::Borrow(idx) => CommonValType::Borrow(*idx),
+    }
+}
+
+// Serialization and deserialization functions for ComponentValue
+pub fn serialize_component_value(value: &ComponentValue) -> Result<Vec<u8>> {
+    let common_type = value.get_type();
+    let format_type = convert_common_to_format_valtype(&common_type);
+
+    // Serialize the value
+    let mut buffer = Vec::new();
+
+    // Implementation of serialization based on the type
+    match value {
+        ComponentValue::Bool(b) => {
+            buffer.push(if *b { 1 } else { 0 });
+        }
+        ComponentValue::S8(v) => {
+            buffer.push(*v as u8);
+        }
+        ComponentValue::U8(v) => {
+            buffer.push(*v);
+        }
+        ComponentValue::S16(v) => {
+            buffer.extend_from_slice(&v.to_le_bytes());
+        }
+        ComponentValue::U16(v) => {
+            buffer.extend_from_slice(&v.to_le_bytes());
+        }
+        ComponentValue::S32(v) => {
+            buffer.extend_from_slice(&v.to_le_bytes());
+        }
+        ComponentValue::U32(v) => {
+            buffer.extend_from_slice(&v.to_le_bytes());
+        }
+        ComponentValue::S64(v) => {
+            buffer.extend_from_slice(&v.to_le_bytes());
+        }
+        ComponentValue::U64(v) => {
+            buffer.extend_from_slice(&v.to_le_bytes());
+        }
+        ComponentValue::F32(v) => {
+            buffer.extend_from_slice(&v.to_bits().to_le_bytes());
+        }
+        ComponentValue::F64(v) => {
+            buffer.extend_from_slice(&v.to_bits().to_le_bytes());
+        }
+        ComponentValue::Char(c) => {
+            buffer.extend_from_slice(&(*c as u32).to_le_bytes());
+        }
+        ComponentValue::String(s) => {
+            let bytes = s.as_bytes();
+            buffer.extend_from_slice(&(bytes.len() as u32).to_le_bytes());
+            buffer.extend_from_slice(bytes);
+        }
+        // For complex types, would need recursive serialization
+        // Implementation omitted for brevity
+        _ => return Err(Error::new("Unsupported value type for serialization")),
     }
 
-    /// Check if this value matches the specified type
-    pub fn matches_type(&self, value_type: &ValType) -> bool {
-        match (self, value_type) {
-            // Simple primitive type checks
-            (ComponentValue::Bool(_), ValType::Bool) => true,
-            (ComponentValue::S8(_), ValType::S8) => true,
-            (ComponentValue::U8(_), ValType::U8) => true,
-            (ComponentValue::S16(_), ValType::S16) => true,
-            (ComponentValue::U16(_), ValType::U16) => true,
-            (ComponentValue::S32(_), ValType::S32) => true,
-            (ComponentValue::U32(_), ValType::U32) => true,
-            (ComponentValue::S64(_), ValType::S64) => true,
-            (ComponentValue::U64(_), ValType::U64) => true,
-            (ComponentValue::F32(_), ValType::F32) => true,
-            (ComponentValue::F64(_), ValType::F64) => true,
-            (ComponentValue::Char(_), ValType::Char) => true,
-            (ComponentValue::String(_), ValType::String) => true,
+    Ok(buffer)
+}
 
-            // Complex type checks
-            (ComponentValue::List(items), ValType::List(list_type)) => {
-                items.iter().all(|item| item.matches_type(list_type))
+/// Internal helper function for deserializing component values with offset tracking
+fn deserialize_component_value_with_offset(
+    data: &[u8],
+    offset: &mut usize,
+    ty: &ValType,
+) -> Result<ComponentValue> {
+    match ty {
+        ValType::Bool => {
+            if *offset >= data.len() {
+                return Err(Error::new("Not enough data to deserialize bool"));
             }
-
-            (ComponentValue::Record(fields), ValType::Record(record_types)) => {
-                // Check if all fields in the record type are present in the value
-                // and that their types match
-                if fields.len() != record_types.len() {
-                    return false;
-                }
-
-                for (field_name, field_type) in record_types {
-                    if let Some(field_value) = fields.get(field_name) {
-                        if !field_value.matches_type(field_type) {
-                            return false;
-                        }
-                    } else {
-                        return false; // Missing field
-                    }
-                }
-
-                true
-            }
-
-            (ComponentValue::Variant { case, value }, ValType::Variant(cases)) => {
-                // Find the case in the variant type
-                if let Some((_, case_type)) =
-                    cases.iter().find(|(name, _)| name == &case.to_string())
-                {
-                    // Check if the value matches the case type
-                    match (value, case_type) {
-                        (Some(value), Some(ty)) => value.matches_type(ty),
-                        (None, None) => true,
-                        _ => false,
-                    }
-                } else {
-                    false // Case not found
-                }
-            }
-
-            (ComponentValue::Tuple(items), ValType::Tuple(item_types)) => {
-                if items.len() != item_types.len() {
-                    return false;
-                }
-
-                items
-                    .iter()
-                    .zip(item_types.iter())
-                    .all(|(value, ty)| value.matches_type(ty))
-            }
-
-            (ComponentValue::Flags(flags), ValType::Flags(flag_names)) => {
-                // Check if all flags in the type are present in the value
-                if flags.len() != flag_names.len() {
-                    return false;
-                }
-
-                flag_names.iter().all(|name| flags.contains_key(name))
-            }
-
-            (ComponentValue::Enum(value), ValType::Enum(variants)) => {
-                variants.contains(&value.to_string())
-            }
-
-            (ComponentValue::Option(value), ValType::Option(option_type)) => {
-                match (value, option_type) {
-                    (Some(v), ty) => v.matches_type(ty),
-                    (None, _) => true, // None matches any option type
-                }
-            }
-
-            (ComponentValue::Result(val), ValType::Result(result_type)) => {
-                match val {
-                    Ok(ok) => match ok {
-                        Some(v) => v.matches_type(result_type),
-                        None => true, // Empty Ok matches any result type
-                    },
-                    Err(err) => match err {
-                        Some(v) => v.matches_type(result_type),
-                        None => true, // Empty Err matches any result type
-                    },
-                }
-            }
-
-            (ComponentValue::Own(handle), ValType::Own(id)) => *handle == *id,
-            (ComponentValue::Borrow(handle), ValType::Borrow(id)) => *handle == *id,
-
-            // Any other combination doesn't match
-            _ => false,
+            let value = data[*offset] != 0;
+            *offset += 1;
+            Ok(ComponentValue::Bool(value))
         }
+        ValType::S8 => {
+            if *offset >= data.len() {
+                return Err(Error::new("Not enough data to deserialize S8"));
+            }
+            let value = data[*offset] as i8;
+            *offset += 1;
+            Ok(ComponentValue::S8(value))
+        }
+        ValType::U8 => {
+            if *offset >= data.len() {
+                return Err(Error::new("Not enough data to deserialize U8"));
+            }
+            let value = data[*offset];
+            *offset += 1;
+            Ok(ComponentValue::U8(value))
+        }
+        ValType::S16 => {
+            if *offset + 2 > data.len() {
+                return Err(Error::new("Not enough data to deserialize S16"));
+            }
+            let mut bytes = [0u8; 2];
+            bytes.copy_from_slice(&data[*offset..*offset + 2]);
+            *offset += 2;
+            Ok(ComponentValue::S16(i16::from_le_bytes(bytes)))
+        }
+        ValType::U16 => {
+            if *offset + 2 > data.len() {
+                return Err(Error::new("Not enough data to deserialize U16"));
+            }
+            let mut bytes = [0u8; 2];
+            bytes.copy_from_slice(&data[*offset..*offset + 2]);
+            *offset += 2;
+            Ok(ComponentValue::U16(u16::from_le_bytes(bytes)))
+        }
+        ValType::S32 => {
+            if *offset + 4 > data.len() {
+                return Err(Error::new("Not enough data to deserialize S32"));
+            }
+            let mut bytes = [0u8; 4];
+            bytes.copy_from_slice(&data[*offset..*offset + 4]);
+            *offset += 4;
+            Ok(ComponentValue::S32(i32::from_le_bytes(bytes)))
+        }
+        ValType::U32 => {
+            if *offset + 4 > data.len() {
+                return Err(Error::new("Not enough data to deserialize U32"));
+            }
+            let mut bytes = [0u8; 4];
+            bytes.copy_from_slice(&data[*offset..*offset + 4]);
+            *offset += 4;
+            Ok(ComponentValue::U32(u32::from_le_bytes(bytes)))
+        }
+        ValType::S64 => {
+            if *offset + 8 > data.len() {
+                return Err(Error::new("Not enough data to deserialize S64"));
+            }
+            let mut bytes = [0u8; 8];
+            bytes.copy_from_slice(&data[*offset..*offset + 8]);
+            *offset += 8;
+            Ok(ComponentValue::S64(i64::from_le_bytes(bytes)))
+        }
+        ValType::U64 => {
+            if *offset + 8 > data.len() {
+                return Err(Error::new("Not enough data to deserialize U64"));
+            }
+            let mut bytes = [0u8; 8];
+            bytes.copy_from_slice(&data[*offset..*offset + 8]);
+            *offset += 8;
+            Ok(ComponentValue::U64(u64::from_le_bytes(bytes)))
+        }
+        ValType::F32 => {
+            if *offset + 4 > data.len() {
+                return Err(Error::new("Not enough data to deserialize F32"));
+            }
+            let mut bytes = [0u8; 4];
+            bytes.copy_from_slice(&data[*offset..*offset + 4]);
+            *offset += 4;
+            Ok(ComponentValue::F32(f32::from_le_bytes(bytes)))
+        }
+        ValType::F64 => {
+            if *offset + 8 > data.len() {
+                return Err(Error::new("Not enough data to deserialize F64"));
+            }
+            let mut bytes = [0u8; 8];
+            bytes.copy_from_slice(&data[*offset..*offset + 8]);
+            *offset += 8;
+            Ok(ComponentValue::F64(f64::from_le_bytes(bytes)))
+        }
+        ValType::Char => {
+            if *offset >= data.len() {
+                return Err(Error::new("Not enough data to deserialize char"));
+            }
+            let s = String::from_utf8_lossy(&data[*offset..*offset + 4]);
+            *offset += 4;
+            let c = s
+                .chars()
+                .next()
+                .ok_or_else(|| Error::invalid_data("Invalid UTF-8 sequence"))?;
+            Ok(ComponentValue::Char(c))
+        }
+        ValType::String => {
+            if *offset >= data.len() {
+                return Err(Error::new("Not enough data to deserialize string"));
+            }
+            let len = u32::from_le_bytes(data[*offset..*offset + 4].try_into().unwrap());
+            *offset += 4;
+            if *offset + len as usize > data.len() {
+                return Err(Error::new("Not enough data to deserialize string"));
+            }
+            let s = String::from_utf8_lossy(&data[*offset..*offset + len as usize]);
+            *offset += len as usize;
+            Ok(ComponentValue::String(s.to_string()))
+        }
+        ValType::List(elem_type) => {
+            if *offset >= data.len() {
+                return Err(Error::new("Not enough data to deserialize list length"));
+            }
+            let mut bytes = [0u8; 4];
+            bytes.copy_from_slice(&data[*offset..*offset + 4]);
+            *offset += 4;
+            let count = u32::from_le_bytes(bytes) as usize;
+            if *offset + count * size_in_bytes(elem_type) > data.len() {
+                return Err(Error::new("Not enough data to deserialize list"));
+            }
+            let mut items = Vec::with_capacity(count);
+            for _ in 0..count {
+                let item = deserialize_component_value_with_offset(data, offset, elem_type)?;
+                items.push(item);
+            }
+            Ok(ComponentValue::List(items))
+        }
+        ValType::Record(field_types) => {
+            let mut fields = HashMap::new();
+            for (name, field_type) in field_types {
+                let value = deserialize_component_value_with_offset(data, offset, field_type)?;
+                fields.insert(name.clone(), value);
+            }
+            Ok(ComponentValue::Record(fields))
+        }
+        ValType::Variant(cases) => {
+            if *offset + 4 > data.len() {
+                return Err(Error::new("Not enough data to deserialize variant case"));
+            }
+
+            // Read the case index as a u32 (4 bytes)
+            let mut bytes = [0u8; 4];
+            bytes.copy_from_slice(&data[*offset..*offset + 4]);
+            *offset += 4;
+            let case_index = u32::from_le_bytes(bytes);
+
+            // Find the corresponding case
+            if case_index as usize >= cases.len() {
+                return Err(Error::new(format!(
+                    "Invalid variant case index: {}",
+                    case_index
+                )));
+            }
+
+            let (case_name, case_type) = &cases[case_index as usize];
+
+            match case_type {
+                Some(val_type) => {
+                    // Deserialize the nested value
+                    let value = deserialize_component_value_with_offset(data, offset, val_type)?;
+                    Ok(ComponentValue::Variant {
+                        case: case_index,
+                        value: Some(Box::new(value)),
+                    })
+                }
+                None => {
+                    // Case without a value
+                    Ok(ComponentValue::Variant {
+                        case: case_index,
+                        value: None,
+                    })
+                }
+            }
+        }
+        ValType::Tuple(types) => {
+            let mut items = Vec::with_capacity(types.len());
+            for item_type in types {
+                let item = deserialize_component_value_with_offset(data, offset, item_type)?;
+                items.push(item);
+            }
+            Ok(ComponentValue::Tuple(items))
+        }
+        ValType::Flags(names) => {
+            let total_bytes = (names.len() + 7) / 8;
+            if *offset + total_bytes > data.len() {
+                return Err(Error::new("Not enough data to deserialize flags"));
+            }
+            let mut flags = HashMap::new();
+            for (i, name) in names.iter().enumerate() {
+                let byte_index = i / 8;
+                let bit_index = i % 8;
+                let flag_value = (data[*offset + byte_index] & (1 << bit_index)) != 0;
+                flags.insert(name.clone(), flag_value);
+            }
+            *offset += total_bytes;
+            Ok(ComponentValue::Flags(flags))
+        }
+        ValType::Enum(variants) => {
+            if *offset >= data.len() {
+                return Err(Error::new("Not enough data to deserialize enum value"));
+            }
+            let mut bytes = [0u8; 4];
+            bytes.copy_from_slice(&data[*offset..*offset + 4]);
+            *offset += 4;
+            let case_name = u32::from_le_bytes(bytes);
+            if case_name as usize >= variants.len() {
+                return Err(Error::new(format!("Invalid enum variant: {}", case_name)));
+            }
+            Ok(ComponentValue::Enum(case_name))
+        }
+        ValType::Option(inner_type) => {
+            if *offset >= data.len() {
+                return Err(Error::new("Not enough data to deserialize option tag"));
+            }
+            let tag = data[*offset];
+            *offset += 1;
+            let value = if tag == 0 {
+                None
+            } else {
+                if *offset >= data.len() {
+                    return Err(Error::new("Insufficient data to deserialize option value"));
+                }
+                let value = deserialize_component_value_with_offset(data, offset, inner_type)?;
+                Some(Box::new(value))
+            };
+            Ok(ComponentValue::Option(value))
+        }
+        ValType::Result(result_type) => {
+            if *offset >= data.len() {
+                return Err(Error::new("Not enough data to deserialize result tag"));
+            }
+            let tag = data[*offset];
+            *offset += 1;
+            let value = if tag == 0 {
+                Err(if *offset < data.len() {
+                    let error = deserialize_component_value_with_offset(data, offset, result_type)?;
+                    Some(Box::new(error))
+                } else {
+                    None
+                })
+            } else {
+                Ok(if *offset < data.len() {
+                    let ok = deserialize_component_value_with_offset(data, offset, result_type)?;
+                    Some(Box::new(ok))
+                } else {
+                    None
+                })
+            };
+            Ok(ComponentValue::Result(value))
+        }
+        ValType::Own(_) => {
+            if *offset >= data.len() {
+                return Err(Error::new("Not enough data to deserialize handle"));
+            }
+            let mut bytes = [0u8; 4];
+            bytes.copy_from_slice(&data[*offset..*offset + 4]);
+            *offset += 4;
+            let handle = u32::from_le_bytes(bytes);
+            Ok(ComponentValue::Own(handle))
+        }
+        ValType::Borrow(_) => {
+            if *offset >= data.len() {
+                return Err(Error::new("Not enough data to deserialize handle"));
+            }
+            let mut bytes = [0u8; 4];
+            bytes.copy_from_slice(&data[*offset..*offset + 4]);
+            *offset += 4;
+            let handle = u32::from_le_bytes(bytes);
+            Ok(ComponentValue::Borrow(handle))
+        }
+        // For more complex types, would need recursive deserialization
+        // Implementation omitted for brevity
+        _ => Err(Error::new("Unsupported value type for deserialization")),
     }
 }
 
 /// Encode a component value to bytes
 pub fn encode_component_value(value: &ComponentValue, ty: &ValType) -> Result<Vec<u8>> {
     match (value, ty) {
-        (ComponentValue::Bool(v), ValType::Bool) => Ok(vec![if *v { 1 } else { 0 }]),
-        (ComponentValue::S8(v), ValType::S8) => Ok(vec![*v as u8]),
-        (ComponentValue::U8(v), ValType::U8) => Ok(vec![*v]),
-        (ComponentValue::S16(v), ValType::S16) => Ok(v.to_le_bytes().to_vec()),
-        (ComponentValue::U16(v), ValType::U16) => Ok(v.to_le_bytes().to_vec()),
-        (ComponentValue::S32(v), ValType::S32) => Ok(v.to_le_bytes().to_vec()),
-        (ComponentValue::U32(v), ValType::U32) => Ok(v.to_le_bytes().to_vec()),
-        (ComponentValue::S64(v), ValType::S64) => Ok(v.to_le_bytes().to_vec()),
-        (ComponentValue::U64(v), ValType::U64) => Ok(v.to_le_bytes().to_vec()),
-        (ComponentValue::F32(v), ValType::F32) => Ok(v.to_le_bytes().to_vec()),
-        (ComponentValue::F64(v), ValType::F64) => Ok(v.to_le_bytes().to_vec()),
-        (ComponentValue::Char(v), ValType::Char) => {
-            let mut bytes = [0u8; 4];
-            let len = v.encode_utf8(&mut bytes).len();
-            Ok(bytes[..len].to_vec())
+        (ComponentValue::Bool(b), ValType::Bool) => {
+            Ok(vec![if *b { 1 } else { 0 }])
         }
-        (ComponentValue::String(v), ValType::String) => Ok(v.as_bytes().to_vec()),
-        (ComponentValue::List(items), ValType::List(elem_type)) => {
-            let mut buffer = vec![];
-            let count = items.len() as u32;
-            buffer.extend_from_slice(&count.to_le_bytes());
-            for item in items {
-                buffer.extend_from_slice(&encode_component_value(item, elem_type)?);
-            }
+        (ComponentValue::S8(n), ValType::S8) => {
+            Ok(vec![*n as u8])
+        }
+        (ComponentValue::U8(n), ValType::U8) => {
+            Ok(vec![*n])
+        }
+        (ComponentValue::S16(n), ValType::S16) => {
+            Ok(n.to_le_bytes().to_vec())
+        }
+        (ComponentValue::U16(n), ValType::U16) => {
+            Ok(n.to_le_bytes().to_vec())
+        }
+        (ComponentValue::S32(n), ValType::S32) => {
+            Ok(n.to_le_bytes().to_vec())
+        }
+        (ComponentValue::U32(n), ValType::U32) => {
+            Ok(n.to_le_bytes().to_vec())
+        }
+        (ComponentValue::S64(n), ValType::S64) => {
+            Ok(n.to_le_bytes().to_vec())
+        }
+        (ComponentValue::U64(n), ValType::U64) => {
+            Ok(n.to_le_bytes().to_vec())
+        }
+        (ComponentValue::F32(n), ValType::F32) => {
+            Ok(n.to_le_bytes().to_vec())
+        }
+        (ComponentValue::F64(n), ValType::F64) => {
+            Ok(n.to_le_bytes().to_vec())
+        }
+        (ComponentValue::Char(c), ValType::Char) => {
+            let mut buffer = Vec::new();
+            buffer.extend_from_slice(&(*c as u32).to_le_bytes());
+            Ok(buffer)
+        }
+        (ComponentValue::String(s), ValType::String) => {
+            let mut buffer = Vec::new();
+            buffer.extend_from_slice(s.as_bytes());
+            buffer.push(0); // Null terminator
             Ok(buffer)
         }
         (ComponentValue::Record(fields), ValType::Record(field_types)) => {
-            let mut buffer = vec![];
+            let mut buffer = Vec::new();
             for (name, field_type) in field_types {
                 if let Some(field_value) = fields.get(name) {
-                    buffer.extend_from_slice(&encode_component_value(field_value, field_type)?);
+                    buffer.extend_from_slice(&encode_component_value(field_value, &field_type)?);
                 } else {
                     return Err(Error::invalid_data(format!(
-                        "Field {} not found in record",
+                        "Missing field '{}' in record",
                         name
                     )));
                 }
@@ -303,36 +568,64 @@ pub fn encode_component_value(value: &ComponentValue, ty: &ValType) -> Result<Ve
             Ok(buffer)
         }
         (ComponentValue::Variant { case, value }, ValType::Variant(cases)) => {
-            let mut buffer = vec![];
-            buffer.extend_from_slice(&case.to_le_bytes());
-            if let Some(case_val) = value {
-                if let Some((_, Some(case_type))) = cases.get(*case as usize) {
-                    buffer.extend_from_slice(&encode_component_value(case_val, case_type)?);
+            let mut buffer = Vec::new();
+            if *case as usize >= cases.len() {
+                return Err(Error::invalid_data("Invalid variant case"));
+            }
+            
+            buffer.extend_from_slice(&case.to_le_bytes()); // Case discriminant
+            
+            if let Some(case_value) = value {
+                if let Some(case_type) = &cases[*case as usize].1 {
+                    buffer.extend_from_slice(&encode_component_value(case_value, &case_type)?);
                 }
             }
+            
             Ok(buffer)
         }
-        (ComponentValue::Tuple(items), ValType::Tuple(types)) => {
-            let mut buffer = vec![];
-            if items.len() != types.len() {
-                return Err(Error::invalid_data("Tuple length mismatch"));
+        (ComponentValue::List(elements), ValType::List(elem_type)) => {
+            let mut buffer = Vec::new();
+            
+            // Write element count
+            buffer.extend_from_slice(&(elements.len() as u32).to_le_bytes());
+            
+            // Write each element
+            for element in elements {
+                buffer.extend_from_slice(&encode_component_value(element, &*elem_type)?);
             }
-            for (item, item_type) in items.iter().zip(types.iter()) {
-                buffer.extend_from_slice(&encode_component_value(item, item_type)?);
+            
+            Ok(buffer)
+        }
+        (ComponentValue::Tuple(elements), ValType::Tuple(types)) => {
+            let mut buffer = Vec::new();
+            
+            if elements.len() != types.len() {
+                return Err(Error::invalid_data(format!(
+                    "Tuple size mismatch: expected {}, got {}",
+                    types.len(),
+                    elements.len()
+                )));
             }
+            
+            for (element, ty) in elements.iter().zip(types.iter()) {
+                buffer.extend_from_slice(&encode_component_value(element, ty)?);
+            }
+            
             Ok(buffer)
         }
         (ComponentValue::Flags(flags), ValType::Flags(names)) => {
-            let total_bytes = (names.len() + 7) / 8; // Ceiling division
-            let mut buffer = vec![0u8; total_bytes];
+            // Represent flags as a bit vector
+            let mut bits = vec![0u8; (names.len() + 7) / 8]; // Ceiling division to determine byte count
+            
             for (i, name) in names.iter().enumerate() {
-                if let Some(flag) = flags.get(name) {
-                    if *flag {
-                        buffer[i / 8] |= 1 << (i % 8);
+                if let Some(value) = flags.get(name) {
+                    if *value {
+                        bits[i / 8] |= 1 << (i % 8);
                     }
                 }
             }
-            Ok(buffer)
+            
+            Ok(bits)
         }
         (ComponentValue::Enum(variant), ValType::Enum(variants)) => {
             if *variant >= variants.len() as u32 {
@@ -345,7 +638,7 @@ pub fn encode_component_value(value: &ComponentValue, ty: &ValType) -> Result<Ve
             match opt {
                 Some(v) => {
                     buffer.push(1); // Some tag
-                    buffer.extend_from_slice(&encode_component_value(v, inner_type)?);
+                    buffer.extend_from_slice(&encode_component_value(v, &*inner_type)?);
                 }
                 None => {
                     buffer.push(0); // None tag
@@ -359,24 +652,54 @@ pub fn encode_component_value(value: &ComponentValue, ty: &ValType) -> Result<Ve
                 Ok(v) => {
                     buffer.push(1); // Ok tag
                     if let Some(value) = v {
-                        buffer.extend_from_slice(&encode_component_value(value, result_type)?);
+                        buffer.extend_from_slice(&encode_component_value(value, &*result_type)?);
+                    }
+                }
+                Err(_) => {
+                    buffer.push(0); // Err tag
+                }
+            }
+            Ok(buffer)
+        }
+        (ComponentValue::Result(val), ValType::ResultErr(err_type)) => {
+            let mut buffer = vec![];
+            match val {
+                Ok(_) => {
+                    buffer.push(1); // Ok tag with no value
+                }
+                Err(v) => {
+                    buffer.push(0); // Err tag
+                    if let Some(value) = v {
+                        buffer.extend_from_slice(&encode_component_value(value, &*err_type)?);
+                    }
+                }
+            }
+            Ok(buffer)
+        }
+        (ComponentValue::Result(val), ValType::ResultBoth(ok_type, err_type)) => {
+            let mut buffer = vec![];
+            match val {
+                Ok(v) => {
+                    buffer.push(1); // Ok tag
+                    if let Some(value) = v {
+                        buffer.extend_from_slice(&encode_component_value(value, &*ok_type)?);
                     }
                 }
                 Err(v) => {
                     buffer.push(0); // Err tag
                     if let Some(value) = v {
-                        buffer.extend_from_slice(&encode_component_value(value, result_type)?);
+                        buffer.extend_from_slice(&encode_component_value(value, &*err_type)?);
                     }
                 }
             }
             Ok(buffer)
         }
         (ComponentValue::Own(handle), ValType::Own(_)) => {
-            let mut buffer = handle.to_le_bytes().to_vec();
+            let buffer = handle.to_le_bytes().to_vec();
             Ok(buffer)
         }
         (ComponentValue::Borrow(handle), ValType::Borrow(_)) => {
-            let mut buffer = handle.to_le_bytes().to_vec();
+            let buffer = handle.to_le_bytes().to_vec();
             Ok(buffer)
         }
         _ => Err(Error::type_mismatch_error(format!(
@@ -386,320 +709,10 @@ pub fn encode_component_value(value: &ComponentValue, ty: &ValType) -> Result<Ve
     }
 }
 
-/// Decode bytes to a component value
-pub fn decode_component_value(data: &[u8], ty: &ValType) -> Result<ComponentValue> {
-    match ty {
-        ValType::Bool => {
-            if data.is_empty() {
-                return Err(Error::invalid_data("Empty data for bool value"));
-            }
-            Ok(ComponentValue::Bool(data[0] != 0))
-        }
-        ValType::S8 => {
-            if data.is_empty() {
-                return Err(Error::invalid_data("Empty data for s8 value"));
-            }
-            Ok(ComponentValue::S8(data[0] as i8))
-        }
-        ValType::U8 => {
-            if data.is_empty() {
-                return Err(Error::invalid_data("Empty data for u8 value"));
-            }
-            Ok(ComponentValue::U8(data[0]))
-        }
-        ValType::S16 => {
-            if data.len() < 2 {
-                return Err(Error::invalid_data("Insufficient data for s16 value"));
-            }
-            let mut bytes = [0u8; 2];
-            bytes.copy_from_slice(&data[0..2]);
-            Ok(ComponentValue::S16(i16::from_le_bytes(bytes)))
-        }
-        ValType::U16 => {
-            if data.len() < 2 {
-                return Err(Error::invalid_data("Insufficient data for u16 value"));
-            }
-            let mut bytes = [0u8; 2];
-            bytes.copy_from_slice(&data[0..2]);
-            Ok(ComponentValue::U16(u16::from_le_bytes(bytes)))
-        }
-        ValType::S32 => {
-            if data.len() < 4 {
-                return Err(Error::invalid_data("Insufficient data for s32 value"));
-            }
-            let mut bytes = [0u8; 4];
-            bytes.copy_from_slice(&data[0..4]);
-            Ok(ComponentValue::S32(i32::from_le_bytes(bytes)))
-        }
-        ValType::U32 => {
-            if data.len() < 4 {
-                return Err(Error::invalid_data("Insufficient data for u32 value"));
-            }
-            let mut bytes = [0u8; 4];
-            bytes.copy_from_slice(&data[0..4]);
-            Ok(ComponentValue::U32(u32::from_le_bytes(bytes)))
-        }
-        ValType::S64 => {
-            if data.len() < 8 {
-                return Err(Error::invalid_data("Insufficient data for s64 value"));
-            }
-            let mut bytes = [0u8; 8];
-            bytes.copy_from_slice(&data[0..8]);
-            Ok(ComponentValue::S64(i64::from_le_bytes(bytes)))
-        }
-        ValType::U64 => {
-            if data.len() < 8 {
-                return Err(Error::invalid_data("Insufficient data for u64 value"));
-            }
-            let mut bytes = [0u8; 8];
-            bytes.copy_from_slice(&data[0..8]);
-            Ok(ComponentValue::U64(u64::from_le_bytes(bytes)))
-        }
-        ValType::F32 => {
-            if data.len() < 4 {
-                return Err(Error::invalid_data("Insufficient data for f32 value"));
-            }
-            let mut bytes = [0u8; 4];
-            bytes.copy_from_slice(&data[0..4]);
-            Ok(ComponentValue::F32(f32::from_le_bytes(bytes)))
-        }
-        ValType::F64 => {
-            if data.len() < 8 {
-                return Err(Error::invalid_data("Insufficient data for f64 value"));
-            }
-            let mut bytes = [0u8; 8];
-            bytes.copy_from_slice(&data[0..8]);
-            Ok(ComponentValue::F64(f64::from_le_bytes(bytes)))
-        }
-        ValType::Char => {
-            if data.is_empty() {
-                return Err(Error::invalid_data("Empty data for char value"));
-            }
-            // Handle UTF-8 characters
-            let s = String::from_utf8_lossy(data);
-            let mut chars = s.chars();
-            let c = chars
-                .next()
-                .ok_or_else(|| Error::invalid_data("Invalid UTF-8 sequence"))?;
-
-            // Check that we only have one character
-            if chars.next().is_some() {
-                return Err(Error::invalid_data("Multiple characters in char value"));
-            }
-
-            Ok(ComponentValue::Char(c))
-        }
-        ValType::String => {
-            let result = String::from_utf8_lossy(data).to_string();
-            Ok(ComponentValue::String(result))
-        }
-        ValType::List(elem_type) => {
-            if data.len() < 4 {
-                return Err(Error::invalid_data("Insufficient data for list length"));
-            }
-
-            let mut bytes = [0u8; 4];
-            bytes.copy_from_slice(&data[0..4]);
-            let count = u32::from_le_bytes(bytes) as usize;
-
-            let mut items = Vec::with_capacity(count);
-            let mut offset = 4;
-
-            for _ in 0..count {
-                if offset >= data.len() {
-                    return Err(Error::invalid_data("Unexpected end of data"));
-                }
-
-                let elem_data = &data[offset..];
-                let elem = decode_component_value(elem_data, elem_type)?;
-                items.push(elem);
-
-                // Update offset based on the size of the element
-                offset += elem_type.size_bytes();
-            }
-
-            Ok(ComponentValue::List(items))
-        }
-        ValType::Record(field_types) => {
-            let mut fields = HashMap::new();
-            let mut offset = 0;
-
-            for (name, field_type) in field_types {
-                if offset >= data.len() {
-                    return Err(Error::invalid_data(format!(
-                        "Record missing field {}",
-                        name
-                    )));
-                }
-
-                let field_data = &data[offset..];
-                let field_value = decode_component_value(field_data, field_type)?;
-                fields.insert(name.clone(), field_value);
-
-                // Update offset based on the size of the field
-                offset += field_type.size_bytes();
-            }
-
-            Ok(ComponentValue::Record(fields))
-        }
-        ValType::Variant(cases) => {
-            if data.len() < 4 {
-                return Err(Error::invalid_data("Insufficient data for variant case"));
-            }
-
-            let mut bytes = [0u8; 4];
-            bytes.copy_from_slice(&data[0..4]);
-            let case = u32::from_le_bytes(bytes);
-
-            if case as usize >= cases.len() {
-                return Err(Error::invalid_data(format!(
-                    "Invalid variant case: {}",
-                    case
-                )));
-            }
-
-            let (case_name, case_type) = &cases[case as usize];
-            let value = if let Some(case_type) = case_type {
-                if data.len() < 4 + case_type.size_bytes() {
-                    return Err(Error::invalid_data(format!(
-                        "Insufficient data for variant case {}",
-                        case_name
-                    )));
-                }
-
-                let value_data = &data[4..];
-                Some(Box::new(decode_component_value(value_data, case_type)?))
-            } else {
-                None
-            };
-
-            Ok(ComponentValue::Variant { case, value })
-        }
-        ValType::Tuple(types) => {
-            let mut items = Vec::with_capacity(types.len());
-            let mut offset = 0;
-
-            for item_type in types {
-                if offset >= data.len() {
-                    return Err(Error::invalid_data("Tuple missing elements"));
-                }
-
-                let item_data = &data[offset..];
-                let item = decode_component_value(item_data, item_type)?;
-                items.push(item);
-
-                // Update offset based on the size of the item
-                offset += item_type.size_bytes();
-            }
-
-            Ok(ComponentValue::Tuple(items))
-        }
-        ValType::Flags(names) => {
-            let total_bytes = (names.len() + 7) / 8; // Ceiling division
-            if data.len() < total_bytes {
-                return Err(Error::invalid_data("Insufficient data for flags"));
-            }
-
-            let mut flags = HashMap::new();
-            for (i, name) in names.iter().enumerate() {
-                let byte_index = i / 8;
-                let bit_index = i % 8;
-                let flag_value = (data[byte_index] & (1 << bit_index)) != 0;
-                flags.insert(name.clone(), flag_value);
-            }
-
-            Ok(ComponentValue::Flags(flags))
-        }
-        ValType::Enum(variants) => {
-            if data.len() < 4 {
-                return Err(Error::invalid_data("Insufficient data for enum value"));
-            }
-
-            let mut bytes = [0u8; 4];
-            bytes.copy_from_slice(&data[0..4]);
-            let case_name = u32::from_le_bytes(bytes);
-
-            if case_name as usize >= variants.len() {
-                return Err(Error::invalid_data(format!(
-                    "Invalid enum variant: {}",
-                    case_name
-                )));
-            }
-
-            Ok(ComponentValue::Enum(case_name))
-        }
-        ValType::Option(inner_type) => {
-            if data.is_empty() {
-                return Err(Error::invalid_data("Empty data for option value"));
-            }
-
-            let tag = data[0];
-            let value = if tag == 0 {
-                // None
-                None
-            } else {
-                // Some
-                if data.len() < 1 + inner_type.size_bytes() {
-                    return Err(Error::invalid_data("Insufficient data for option value"));
-                }
-
-                let value_data = &data[1..];
-                Some(Box::new(decode_component_value(value_data, inner_type)?))
-            };
-
-            Ok(ComponentValue::Option(value))
-        }
-        ValType::Result(result_type) => {
-            if data.is_empty() {
-                return Err(Error::invalid_data("Empty data for result value"));
-            }
-
-            let tag = data[0];
-            let value = if tag == 0 {
-                // Err
-                let error = if data.len() > 1 {
-                    let error_data = &data[1..];
-                    Some(Box::new(decode_component_value(error_data, result_type)?))
-                } else {
-                    None
-                };
-                Err(error)
-            } else {
-                // Ok
-                let ok = if data.len() > 1 {
-                    let ok_data = &data[1..];
-                    Some(Box::new(decode_component_value(ok_data, result_type)?))
-                } else {
-                    None
-                };
-                Ok(ok)
-            };
-
-            Ok(ComponentValue::Result(value))
-        }
-        ValType::Own(_) => {
-            if data.len() < 4 {
-                return Err(Error::invalid_data("Insufficient data for handle"));
-            }
-
-            let mut bytes = [0u8; 4];
-            bytes.copy_from_slice(&data[0..4]);
-            let handle = u32::from_le_bytes(bytes);
-
-            Ok(ComponentValue::Own(handle))
-        }
-        ValType::Borrow(_) => {
-            if data.len() < 4 {
-                return Err(Error::invalid_data("Insufficient data for handle"));
-            }
-
-            let mut bytes = [0u8; 4];
-            bytes.copy_from_slice(&data[0..4]);
-            let handle = u32::from_le_bytes(bytes);
-
-            Ok(ComponentValue::Borrow(handle))
-        }
-    }
+/// Deserialize a single ComponentValue
+pub fn deserialize_component_value(data: &[u8], format_type: &ValType) -> Result<ComponentValue> {
+    let mut offset = 0;
+    deserialize_component_value_with_offset(data, &mut offset, format_type)
 }
 
 /// Convert a core WebAssembly value to a component value
@@ -745,70 +758,53 @@ pub fn component_to_core_value(value: &ComponentValue) -> Result<Value> {
     }
 }
 
-/// Serialize a vector of ComponentValue to bytes
+/// Serialize multiple component values
 pub fn serialize_component_values(values: &[ComponentValue]) -> Result<Vec<u8>> {
-    let mut buffer = Vec::new();
+    let mut result = Vec::new();
 
-    // Write the number of values
-    buffer.extend_from_slice(&(values.len() as u32).to_le_bytes());
+    // Write number of values
+    result.extend_from_slice(&(values.len() as u32).to_le_bytes());
 
-    // For each value, encode its type and value
+    // Write each value (simplified implementation)
     for value in values {
-        let value_type = value.get_type();
-        let value_buffer = encode_component_value(value, &value_type)?;
+        // Get the value type
+        let val_type = value.get_type();
 
-        // Write the type
-        let type_buffer = serialize_val_type(&value_type)?;
-        buffer.extend_from_slice(&type_buffer);
+        // Convert to format ValType
+        let format_val_type = convert_common_to_format_valtype(&val_type);
 
-        // Write the value size and data
-        buffer.extend_from_slice(&(value_buffer.len() as u32).to_le_bytes());
-        buffer.extend_from_slice(&value_buffer);
+        // Serialize the value
+        let value_data = encode_component_value(value, &format_val_type)?;
+
+        // Write value length and data
+        result.extend_from_slice(&(value_data.len() as u32).to_le_bytes());
+        result.extend_from_slice(&value_data);
     }
 
-    Ok(buffer)
+    Ok(result)
 }
 
-/// Deserialize bytes to a vector of ComponentValue
+/// Deserialize multiple component values
 pub fn deserialize_component_values(
     data: &[u8],
     types: &[wrt_format::component::ValType],
 ) -> Result<Vec<ComponentValue>> {
-    if types.is_empty() {
-        return Ok(Vec::new());
-    }
-
-    let mut values = Vec::with_capacity(types.len());
     let mut offset = 0;
+    let mut result = Vec::new();
 
+    // Read each value according to the provided types
     for ty in types {
-        let value = deserialize_component_value(data, &mut offset, ty)?;
-        values.push(value);
+        if offset >= data.len() {
+            return Err(Error::new(kinds::ParseError(
+                "Unexpected end of input while deserializing component values".to_string(),
+            )));
+        }
+
+        let value = deserialize_component_value_with_offset(data, &mut offset, ty)?;
+        result.push(value);
     }
 
-    Ok(values)
-}
-
-/// Deserialize a single ComponentValue
-fn deserialize_component_value(
-    data: &[u8],
-    offset: &mut usize,
-    ty: &wrt_format::component::ValType,
-) -> Result<ComponentValue> {
-    if *offset >= data.len() {
-        return Err(Error::invalid_data("Unexpected end of data"));
-    }
-
-    // Extract a slice with the rest of the data
-    let value_data = &data[*offset..];
-
-    // Decode the value
-    let value = decode_component_value(value_data, ty)?;
-
-    // Update the offset
-    *offset += ty.size_bytes();
-
-    Ok(value)
+    Ok(result)
 }
 
 /// Serialize a ValType to bytes
@@ -838,8 +834,11 @@ fn serialize_val_type(ty: &ValType) -> Result<Vec<u8>> {
         ValType::Enum(_) => buffer.push(18),
         ValType::Option(_) => buffer.push(19),
         ValType::Result(_) => buffer.push(20),
-        ValType::Own(_) => buffer.push(21),
-        ValType::Borrow(_) => buffer.push(22),
+        ValType::ResultErr(_) => buffer.push(21),
+        ValType::ResultBoth(_, _) => buffer.push(22),
+        ValType::Own(_) => buffer.push(23),
+        ValType::Borrow(_) => buffer.push(24),
+        ValType::Ref(_) => buffer.push(25),
     }
 
     // Additional information for complex types
@@ -852,6 +851,256 @@ fn serialize_val_type(ty: &ValType) -> Result<Vec<u8>> {
     }
 
     Ok(buffer)
+}
+
+/// Convert ValueType to CommonValType
+pub fn value_type_to_common_valtype(value_type: &wrt_types::types::ValueType) -> wrt_common::component_type::ValType {
+    match value_type {
+        wrt_types::types::ValueType::I32 => wrt_common::component_type::ValType::S32,
+        wrt_types::types::ValueType::I64 => wrt_common::component_type::ValType::S64,
+        wrt_types::types::ValueType::F32 => wrt_common::component_type::ValType::F32,
+        wrt_types::types::ValueType::F64 => wrt_common::component_type::ValType::F64,
+        wrt_types::types::ValueType::V128 => wrt_common::component_type::ValType::Tuple(vec![
+            wrt_common::component_type::ValType::S64,
+            wrt_common::component_type::ValType::S64,
+        ]),
+        wrt_types::types::ValueType::FuncRef => wrt_common::component_type::ValType::Own(0), // Default to resource type 0
+        wrt_types::types::ValueType::ExternRef => wrt_common::component_type::ValType::Ref(0), // Default to type index 0
+    }
+}
+
+/// Convert FormatValType to CommonValType
+pub fn format_valtype_to_common_valtype(format_val_type: &wrt_format::component::ValType) -> CommonValType {
+    match format_val_type {
+        ValType::Bool => CommonValType::Bool,
+        ValType::S8 => CommonValType::S8,
+        ValType::U8 => CommonValType::U8,
+        ValType::S16 => CommonValType::S16,
+        ValType::U16 => CommonValType::U16,
+        ValType::S32 => CommonValType::S32,
+        ValType::U32 => CommonValType::U32,
+        ValType::S64 => CommonValType::S64,
+        ValType::U64 => CommonValType::U64,
+        ValType::F32 => CommonValType::F32,
+        ValType::F64 => CommonValType::F64,
+        ValType::Char => CommonValType::Char,
+        ValType::String => CommonValType::String,
+        ValType::Ref(idx) => CommonValType::Ref(*idx),
+        ValType::Record(fields) => {
+            let converted_fields = fields
+                .iter()
+                .map(|(name, val_type)| (name.clone(), format_valtype_to_common_valtype(val_type)))
+                .collect();
+            CommonValType::Record(converted_fields)
+        }
+        ValType::Variant(cases) => {
+            let converted_cases = cases
+                .iter()
+                .map(|(name, opt_type)| {
+                    (
+                        name.clone(),
+                        opt_type
+                            .as_ref()
+                            .map(|val_type| Box::new(format_valtype_to_common_valtype(val_type))),
+                    )
+                })
+                .collect();
+            CommonValType::Variant(converted_cases)
+        }
+        ValType::List(elem_type) => {
+            CommonValType::List(Box::new(format_valtype_to_common_valtype(elem_type)))
+        }
+        ValType::Tuple(types) => {
+            let converted_types = types
+                .iter()
+                .map(|val_type| format_valtype_to_common_valtype(val_type))
+                .collect();
+            CommonValType::Tuple(converted_types)
+        }
+        ValType::Flags(names) => CommonValType::Flags(names.clone()),
+        ValType::Enum(variants) => CommonValType::Enum(variants.clone()),
+        ValType::Option(inner_type) => {
+            CommonValType::Option(Box::new(format_valtype_to_common_valtype(inner_type)))
+        }
+        ValType::Result(result_type) => {
+            // Use the tuple variant
+            CommonValType::Result(Box::new(format_valtype_to_common_valtype(result_type)))
+        }
+        ValType::ResultErr(err_type) => {
+            // For error-only results, convert to a Result with the error type
+            CommonValType::Result(Box::new(format_valtype_to_common_valtype(err_type)))
+        }
+        ValType::ResultBoth(ok_type, _err_type) => {
+            // For results with both ok and error, prioritize the ok type
+            CommonValType::Result(Box::new(format_valtype_to_common_valtype(ok_type)))
+        }
+        ValType::Own(idx) => CommonValType::Own(*idx),
+        ValType::Borrow(idx) => CommonValType::Borrow(*idx),
+    }
+}
+
+/// Convert a CommonValType to a FormatValType
+pub fn common_valtype_to_format_valtype(common_val_type: &CommonValType) -> wrt_format::component::ValType {
+    match common_val_type {
+        CommonValType::Bool => wrt_format::component::ValType::Bool,
+        CommonValType::S8 => wrt_format::component::ValType::S8,
+        CommonValType::U8 => wrt_format::component::ValType::U8,
+        CommonValType::S16 => wrt_format::component::ValType::S16,
+        CommonValType::U16 => wrt_format::component::ValType::U16,
+        CommonValType::S32 => wrt_format::component::ValType::S32,
+        CommonValType::U32 => wrt_format::component::ValType::U32,
+        CommonValType::S64 => wrt_format::component::ValType::S64,
+        CommonValType::U64 => wrt_format::component::ValType::U64,
+        CommonValType::F32 => wrt_format::component::ValType::F32,
+        CommonValType::F64 => wrt_format::component::ValType::F64,
+        CommonValType::Char => wrt_format::component::ValType::Char,
+        CommonValType::String => wrt_format::component::ValType::String,
+        CommonValType::List(elem_type) => {
+            wrt_format::component::ValType::List(Box::new(common_valtype_to_format_valtype(elem_type)))
+        }
+        CommonValType::Record(fields) => {
+            let format_fields = fields
+                .iter()
+                .map(|(name, val_type)| (name.clone(), common_valtype_to_format_valtype(val_type)))
+                .collect();
+            wrt_format::component::ValType::Record(format_fields)
+        }
+        CommonValType::Variant(cases) => {
+            let format_cases = cases
+                .iter()
+                .map(|(name, val_type)| {
+                    (
+                        name.clone(),
+                        val_type
+                            .as_ref()
+                            .map(|vt| common_valtype_to_format_valtype(vt)),
+                    )
+                })
+                .collect();
+            wrt_format::component::ValType::Variant(format_cases)
+        }
+        CommonValType::Enum(cases) => wrt_format::component::ValType::Enum(cases.clone()),
+        CommonValType::Option(inner_type) => {
+            wrt_format::component::ValType::Option(Box::new(common_valtype_to_format_valtype(inner_type)))
+        }
+        CommonValType::Result(ok_type, err_type) => match (ok_type, err_type) {
+            (Some(ok), Some(err)) => wrt_format::component::ValType::ResultBoth(
+                Box::new(common_valtype_to_format_valtype(ok)),
+                Box::new(common_valtype_to_format_valtype(err)),
+            ),
+            (Some(ok), None) => wrt_format::component::ValType::Result(
+                Box::new(common_valtype_to_format_valtype(ok)),
+            ),
+            (None, Some(err)) => wrt_format::component::ValType::ResultErr(
+                Box::new(common_valtype_to_format_valtype(err)),
+            ),
+            (None, None) => wrt_format::component::ValType::Result(Box::new(wrt_format::component::ValType::Unit)),
+        },
+        CommonValType::Tuple(types) => {
+            let format_types = types
+                .iter()
+                .map(|val_type| common_valtype_to_format_valtype(val_type))
+                .collect();
+            wrt_format::component::ValType::Tuple(format_types)
+        }
+        CommonValType::Flags(names) => wrt_format::component::ValType::Flags(names.clone()),
+        CommonValType::Resource(type_idx) => wrt_format::component::ValType::Own(*type_idx),
+        CommonValType::BorrowedResource(type_idx) => wrt_format::component::ValType::Borrow(*type_idx),
+        CommonValType::Unit => wrt_format::component::ValType::Unit,
+    }
+}
+
+/// Value to ComponentValue conversion
+pub fn value_to_component_value(value: &Value) -> Result<ComponentValue> {
+    match value {
+        Value::I32(val) => Ok(ComponentValue::S32(*val)),
+        Value::I64(val) => Ok(ComponentValue::S64(*val)),
+        Value::F32(val) => Ok(ComponentValue::F32(*val)),
+        Value::F64(val) => Ok(ComponentValue::F64(*val)),
+        Value::FuncRef(val) => {
+            if val.is_none() {
+                Ok(ComponentValue::Option(None)) // Null function reference
+            } else {
+                // Non-null function reference represented as a handle
+                let func_ref = val.as_ref().unwrap();
+                Ok(ComponentValue::Own(func_ref.index()))
+            }
+        }
+        Value::ExternRef(val) => {
+            if val.is_none() {
+                Ok(ComponentValue::Option(None)) // Null external reference
+            } else {
+                // Represent as a string for compatibility
+                let extern_ref = val.as_ref().unwrap();
+                Ok(ComponentValue::String(format!("ref_{}", extern_ref.index())))
+            }
+        }
+        Value::V128(_) => Err(Error::new(kinds::ConversionError(
+            "V128 values not supported in Component Model".to_string(),
+        ))),
+    }
+}
+
+/// ComponentValue to Value conversion
+pub fn component_value_to_value(cv: &ComponentValue) -> Result<Value> {
+    match cv {
+        ComponentValue::Bool(val) => Ok(Value::I32(*val as i32)),
+        ComponentValue::S8(val) => Ok(Value::I32(*val as i32)),
+        ComponentValue::U8(val) => Ok(Value::I32(*val as i32)),
+        ComponentValue::S16(val) => Ok(Value::I32(*val as i32)),
+        ComponentValue::U16(val) => Ok(Value::I32(*val as i32)),
+        ComponentValue::S32(val) => Ok(Value::I32(*val)),
+        ComponentValue::U32(val) => Ok(Value::I32(*val as i32)),
+        ComponentValue::S64(val) => Ok(Value::I64(*val)),
+        ComponentValue::U64(val) => Ok(Value::I64(*val as i64)),
+        ComponentValue::F32(val) => Ok(Value::F32(*val)),
+        ComponentValue::F64(val) => Ok(Value::F64(*val)),
+        ComponentValue::Char(val) => Ok(Value::I32(*val as i32)),
+        // For complex types, use ExternRef with the index of 1 (non-null reference)
+        ComponentValue::String(_) => Ok(Value::ExternRef(Some(wrt_types::values::ExternRef::new(1)))),
+        ComponentValue::List(_) => Ok(Value::ExternRef(Some(wrt_types::values::ExternRef::new(1)))),
+        ComponentValue::Record(_) => Ok(Value::ExternRef(Some(wrt_types::values::ExternRef::new(1)))),
+        ComponentValue::Variant { .. } => Ok(Value::ExternRef(Some(wrt_types::values::ExternRef::new(1)))),
+        ComponentValue::Tuple(_) => Ok(Value::ExternRef(Some(wrt_types::values::ExternRef::new(1)))),
+        ComponentValue::Flags(_) => Ok(Value::I32(0)), // Default flag value
+        ComponentValue::Enum(val) => Ok(Value::I32(*val as i32)),
+        ComponentValue::Option(opt) => match opt {
+            Some(_) => Ok(Value::ExternRef(Some(wrt_types::values::ExternRef::new(1)))), // Non-null reference
+            None => Ok(Value::ExternRef(None)),    // Null reference
+        },
+        ComponentValue::Result(res) => match res {
+            Ok(_) => Ok(Value::I32(1)), // Success value
+            Err(_) => Ok(Value::I32(0)), // Error value 
+        },
+        ComponentValue::Own(handle) => Ok(Value::I32(*handle as i32)),
+        ComponentValue::Borrow(handle) => Ok(Value::I32(*handle as i32)),
+    }
+}
+
+/// Get the size in bytes of a ValType
+fn size_in_bytes(ty: &ValType) -> usize {
+    match ty {
+        ValType::Bool => 1,
+        ValType::S8 | ValType::U8 => 1,
+        ValType::S16 | ValType::U16 => 2,
+        ValType::S32 | ValType::U32 | ValType::F32 => 4,
+        ValType::S64 | ValType::U64 | ValType::F64 => 8,
+        ValType::Char => 4, // Unicode code points
+        ValType::String => 8, // Reference to a string
+        ValType::List(_) => 8, // Reference to a list
+        ValType::Record(_) => 8, // Reference to a record
+        ValType::Variant(_) => 8, // Variant tag + payload
+        ValType::Tuple(_) => 8, // Reference to a tuple
+        ValType::Flags(_) => 4, // Flags are represented as integers
+        ValType::Enum(_) => 4, // Enum discriminants
+        ValType::Option(_) => 8, // Tag + payload
+        ValType::Result(_) => 8, // Tag + payload
+        ValType::ResultErr(_) => 8, // Tag + payload
+        ValType::ResultBoth(_, _) => 8, // Tag + payload
+        ValType::Own(_) => 4, // Resource handle
+        ValType::Borrow(_) => 4, // Resource handle
+        ValType::Ref(_) => 4, // Reference
+    }
 }
 
 #[cfg(test)]

@@ -1,6 +1,7 @@
 #![no_std]
 #![cfg_attr(feature = "std", allow(unused_imports))]
 #![doc = "no_std synchronization primitives (Mutex, RwLock) for the WRT project."]
+#![warn(clippy::missing_panics_doc)]
 
 // Allow `alloc` crate usage when no_std
 #[cfg(not(feature = "std"))]

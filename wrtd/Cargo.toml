@@ -7,6 +7,8 @@ description = "WebAssembly Runtime Daemon"
 
 [dependencies]
 wrt = { path = "../wrt", features = ["std"] }
+wrt-component = { path = "../wrt-component", features = ["std"] }
+wrt-intercept = { path = "../wrt-intercept" }
 clap = { version = "4.5.32", features = ["derive"] }
 tracing = "0.1"
 tracing-subscriber = { version= "0.3", features = ["json"]}
