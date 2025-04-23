@@ -3,18 +3,20 @@
 //! This module provides resource type handling for the WebAssembly Component Model,
 //! including resource lifetime management, memory optimization, and interception support.
 
+use crate::values::deserialize_component_value;
 use std::any::Any;
 use std::collections::HashMap;
 use std::fmt;
 use std::sync::{Arc, Mutex, RwLock, Weak};
 use wrt_common::component::ComponentValue;
 use wrt_error::{kinds, Error, Result};
-use wrt_format::component::{ResourceOperation as FormatResourceOperation, ValType as FormatValType};
+use wrt_format::component::{
+    ResourceOperation as FormatResourceOperation, ValType as FormatValType,
+};
 use wrt_intercept::{
     InterceptionContext, InterceptionResult, MemoryAccessMode,
     ResourceOperation as InterceptorResourceOperation,
 };
-use crate::values::deserialize_component_value;
 
 /// Maximum number of resources that can be stored in a resource table
 const MAX_RESOURCES: usize = 1024;
@@ -237,7 +239,9 @@ impl ResourceTable {
         let entry = ResourceEntry {
             resource: Arc::new(Mutex::new(resource)),
             borrows: Vec::new(),
-            memory_strategy: self.get_strategy_from_interceptors(handle).unwrap_or(self.default_memory_strategy),
+            memory_strategy: self
+                .get_strategy_from_interceptors(handle)
+                .unwrap_or(self.default_memory_strategy),
             verification_level: self.default_verification_level,
         };
 

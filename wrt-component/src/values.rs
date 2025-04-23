@@ -4,11 +4,11 @@
 //! serialization/deserialization, conversion, and runtime representation.
 
 use wrt_common::component::{ComponentValue, ValType as CommonValType};
+use wrt_common::{FromFormat, ToFormat};
 use wrt_error::{kinds, Error, Result};
 use wrt_format::component::ValType;
 use wrt_types::values::Value;
 use wrt_types::ValueType;
-use wrt_common::{FromFormat, ToFormat};
 
 #[cfg(feature = "std")]
 use std::{collections::HashMap, string::String, sync::Arc, vec, vec::Vec};
@@ -509,39 +509,17 @@ fn deserialize_component_value_with_offset(
 /// Encode a component value to bytes
 pub fn encode_component_value(value: &ComponentValue, ty: &ValType) -> Result<Vec<u8>> {
     match (value, ty) {
-        (ComponentValue::Bool(b), ValType::Bool) => {
-            Ok(vec![if *b { 1 } else { 0 }])
-        }
-        (ComponentValue::S8(n), ValType::S8) => {
-            Ok(vec![*n as u8])
-        }
-        (ComponentValue::U8(n), ValType::U8) => {
-            Ok(vec![*n])
-        }
-        (ComponentValue::S16(n), ValType::S16) => {
-            Ok(n.to_le_bytes().to_vec())
-        }
-        (ComponentValue::U16(n), ValType::U16) => {
-            Ok(n.to_le_bytes().to_vec())
-        }
-        (ComponentValue::S32(n), ValType::S32) => {
-            Ok(n.to_le_bytes().to_vec())
-        }
-        (ComponentValue::U32(n), ValType::U32) => {
-            Ok(n.to_le_bytes().to_vec())
-        }
-        (ComponentValue::S64(n), ValType::S64) => {
-            Ok(n.to_le_bytes().to_vec())
-        }
-        (ComponentValue::U64(n), ValType::U64) => {
-            Ok(n.to_le_bytes().to_vec())
-        }
-        (ComponentValue::F32(n), ValType::F32) => {
-            Ok(n.to_le_bytes().to_vec())
-        }
-        (ComponentValue::F64(n), ValType::F64) => {
-            Ok(n.to_le_bytes().to_vec())
-        }
+        (ComponentValue::Bool(b), ValType::Bool) => Ok(vec![if *b { 1 } else { 0 }]),
+        (ComponentValue::S8(n), ValType::S8) => Ok(vec![*n as u8]),
+        (ComponentValue::U8(n), ValType::U8) => Ok(vec![*n]),
+        (ComponentValue::S16(n), ValType::S16) => Ok(n.to_le_bytes().to_vec()),
+        (ComponentValue::U16(n), ValType::U16) => Ok(n.to_le_bytes().to_vec()),
+        (ComponentValue::S32(n), ValType::S32) => Ok(n.to_le_bytes().to_vec()),
+        (ComponentValue::U32(n), ValType::U32) => Ok(n.to_le_bytes().to_vec()),
+        (ComponentValue::S64(n), ValType::S64) => Ok(n.to_le_bytes().to_vec()),
+        (ComponentValue::U64(n), ValType::U64) => Ok(n.to_le_bytes().to_vec()),
+        (ComponentValue::F32(n), ValType::F32) => Ok(n.to_le_bytes().to_vec()),
+        (ComponentValue::F64(n), ValType::F64) => Ok(n.to_le_bytes().to_vec()),
         (ComponentValue::Char(c), ValType::Char) => {
             let mut buffer = Vec::new();
             buffer.extend_from_slice(&(*c as u32).to_le_bytes());
@@ -572,33 +550,33 @@ pub fn encode_component_value(value: &ComponentValue, ty: &ValType) -> Result<Ve
             if *case as usize >= cases.len() {
                 return Err(Error::invalid_data("Invalid variant case"));
             }
-            
+
             buffer.extend_from_slice(&case.to_le_bytes()); // Case discriminant
-            
+
             if let Some(case_value) = value {
                 if let Some(case_type) = &cases[*case as usize].1 {
                     buffer.extend_from_slice(&encode_component_value(case_value, &case_type)?);
                 }
             }
-            
+
             Ok(buffer)
         }
         (ComponentValue::List(elements), ValType::List(elem_type)) => {
             let mut buffer = Vec::new();
-            
+
             // Write element count
             buffer.extend_from_slice(&(elements.len() as u32).to_le_bytes());
-            
+
             // Write each element
             for element in elements {
                 buffer.extend_from_slice(&encode_component_value(element, &*elem_type)?);
             }
-            
+
             Ok(buffer)
         }
         (ComponentValue::Tuple(elements), ValType::Tuple(types)) => {
             let mut buffer = Vec::new();
-            
+
             if elements.len() != types.len() {
                 return Err(Error::invalid_data(format!(
                     "Tuple size mismatch: expected {}, got {}",
@@ -606,17 +584,17 @@ pub fn encode_component_value(value: &ComponentValue, ty: &ValType) -> Result<Ve
                     elements.len()
                 )));
             }
-            
+
             for (element, ty) in elements.iter().zip(types.iter()) {
                 buffer.extend_from_slice(&encode_component_value(element, ty)?);
             }
-            
+
             Ok(buffer)
         }
         (ComponentValue::Flags(flags), ValType::Flags(names)) => {
             // Represent flags as a bit vector
             let mut bits = vec![0u8; (names.len() + 7) / 8]; // Ceiling division to determine byte count
-            
+
             for (i, name) in names.iter().enumerate() {
                 if let Some(value) = flags.get(name) {
                     if *value {
@@ -624,7 +602,7 @@ pub fn encode_component_value(value: &ComponentValue, ty: &ValType) -> Result<Ve
                     }
                 }
             }
-            
+
             Ok(bits)
         }
         (ComponentValue::Enum(variant), ValType::Enum(variants)) => {
@@ -854,7 +832,9 @@ fn serialize_val_type(ty: &ValType) -> Result<Vec<u8>> {
 }
 
 /// Convert ValueType to CommonValType
-pub fn value_type_to_common_valtype(value_type: &wrt_types::types::ValueType) -> wrt_common::component_type::ValType {
+pub fn value_type_to_common_valtype(
+    value_type: &wrt_types::types::ValueType,
+) -> wrt_common::component_type::ValType {
     match value_type {
         wrt_types::types::ValueType::I32 => wrt_common::component_type::ValType::S32,
         wrt_types::types::ValueType::I64 => wrt_common::component_type::ValType::S64,
@@ -870,7 +850,9 @@ pub fn value_type_to_common_valtype(value_type: &wrt_types::types::ValueType) ->
 }
 
 /// Convert FormatValType to CommonValType
-pub fn format_valtype_to_common_valtype(format_val_type: &wrt_format::component::ValType) -> CommonValType {
+pub fn format_valtype_to_common_valtype(
+    format_val_type: &wrt_format::component::ValType,
+) -> CommonValType {
     match format_val_type {
         ValType::Bool => CommonValType::Bool,
         ValType::S8 => CommonValType::S8,
@@ -940,7 +922,9 @@ pub fn format_valtype_to_common_valtype(format_val_type: &wrt_format::component:
 }
 
 /// Convert a CommonValType to a FormatValType
-pub fn common_valtype_to_format_valtype(common_val_type: &CommonValType) -> wrt_format::component::ValType {
+pub fn common_valtype_to_format_valtype(
+    common_val_type: &CommonValType,
+) -> wrt_format::component::ValType {
     match common_val_type {
         CommonValType::Bool => wrt_format::component::ValType::Bool,
         CommonValType::S8 => wrt_format::component::ValType::S8,
@@ -955,9 +939,9 @@ pub fn common_valtype_to_format_valtype(common_val_type: &CommonValType) -> wrt_
         CommonValType::F64 => wrt_format::component::ValType::F64,
         CommonValType::Char => wrt_format::component::ValType::Char,
         CommonValType::String => wrt_format::component::ValType::String,
-        CommonValType::List(elem_type) => {
-            wrt_format::component::ValType::List(Box::new(common_valtype_to_format_valtype(elem_type)))
-        }
+        CommonValType::List(elem_type) => wrt_format::component::ValType::List(Box::new(
+            common_valtype_to_format_valtype(elem_type),
+        )),
         CommonValType::Record(fields) => {
             let format_fields = fields
                 .iter()
@@ -980,21 +964,23 @@ pub fn common_valtype_to_format_valtype(common_val_type: &CommonValType) -> wrt_
             wrt_format::component::ValType::Variant(format_cases)
         }
         CommonValType::Enum(cases) => wrt_format::component::ValType::Enum(cases.clone()),
-        CommonValType::Option(inner_type) => {
-            wrt_format::component::ValType::Option(Box::new(common_valtype_to_format_valtype(inner_type)))
-        }
+        CommonValType::Option(inner_type) => wrt_format::component::ValType::Option(Box::new(
+            common_valtype_to_format_valtype(inner_type),
+        )),
         CommonValType::Result(ok_type, err_type) => match (ok_type, err_type) {
             (Some(ok), Some(err)) => wrt_format::component::ValType::ResultBoth(
                 Box::new(common_valtype_to_format_valtype(ok)),
                 Box::new(common_valtype_to_format_valtype(err)),
             ),
-            (Some(ok), None) => wrt_format::component::ValType::Result(
-                Box::new(common_valtype_to_format_valtype(ok)),
-            ),
-            (None, Some(err)) => wrt_format::component::ValType::ResultErr(
-                Box::new(common_valtype_to_format_valtype(err)),
-            ),
-            (None, None) => wrt_format::component::ValType::Result(Box::new(wrt_format::component::ValType::Unit)),
+            (Some(ok), None) => wrt_format::component::ValType::Result(Box::new(
+                common_valtype_to_format_valtype(ok),
+            )),
+            (None, Some(err)) => wrt_format::component::ValType::ResultErr(Box::new(
+                common_valtype_to_format_valtype(err),
+            )),
+            (None, None) => wrt_format::component::ValType::Result(Box::new(
+                wrt_format::component::ValType::Unit,
+            )),
         },
         CommonValType::Tuple(types) => {
             let format_types = types
@@ -1005,7 +991,9 @@ pub fn common_valtype_to_format_valtype(common_val_type: &CommonValType) -> wrt_
         }
         CommonValType::Flags(names) => wrt_format::component::ValType::Flags(names.clone()),
         CommonValType::Resource(type_idx) => wrt_format::component::ValType::Own(*type_idx),
-        CommonValType::BorrowedResource(type_idx) => wrt_format::component::ValType::Borrow(*type_idx),
+        CommonValType::BorrowedResource(type_idx) => {
+            wrt_format::component::ValType::Borrow(*type_idx)
+        }
         CommonValType::Unit => wrt_format::component::ValType::Unit,
     }
 }
@@ -1032,7 +1020,10 @@ pub fn value_to_component_value(value: &Value) -> Result<ComponentValue> {
             } else {
                 // Represent as a string for compatibility
                 let extern_ref = val.as_ref().unwrap();
-                Ok(ComponentValue::String(format!("ref_{}", extern_ref.index())))
+                Ok(ComponentValue::String(format!(
+                    "ref_{}",
+                    extern_ref.index()
+                )))
             }
         }
         Value::V128(_) => Err(Error::new(kinds::ConversionError(
@@ -1057,20 +1048,28 @@ pub fn component_value_to_value(cv: &ComponentValue) -> Result<Value> {
         ComponentValue::F64(val) => Ok(Value::F64(*val)),
         ComponentValue::Char(val) => Ok(Value::I32(*val as i32)),
         // For complex types, use ExternRef with the index of 1 (non-null reference)
-        ComponentValue::String(_) => Ok(Value::ExternRef(Some(wrt_types::values::ExternRef::new(1)))),
+        ComponentValue::String(_) => {
+            Ok(Value::ExternRef(Some(wrt_types::values::ExternRef::new(1))))
+        }
         ComponentValue::List(_) => Ok(Value::ExternRef(Some(wrt_types::values::ExternRef::new(1)))),
-        ComponentValue::Record(_) => Ok(Value::ExternRef(Some(wrt_types::values::ExternRef::new(1)))),
-        ComponentValue::Variant { .. } => Ok(Value::ExternRef(Some(wrt_types::values::ExternRef::new(1)))),
-        ComponentValue::Tuple(_) => Ok(Value::ExternRef(Some(wrt_types::values::ExternRef::new(1)))),
+        ComponentValue::Record(_) => {
+            Ok(Value::ExternRef(Some(wrt_types::values::ExternRef::new(1))))
+        }
+        ComponentValue::Variant { .. } => {
+            Ok(Value::ExternRef(Some(wrt_types::values::ExternRef::new(1))))
+        }
+        ComponentValue::Tuple(_) => {
+            Ok(Value::ExternRef(Some(wrt_types::values::ExternRef::new(1))))
+        }
         ComponentValue::Flags(_) => Ok(Value::I32(0)), // Default flag value
         ComponentValue::Enum(val) => Ok(Value::I32(*val as i32)),
         ComponentValue::Option(opt) => match opt {
             Some(_) => Ok(Value::ExternRef(Some(wrt_types::values::ExternRef::new(1)))), // Non-null reference
-            None => Ok(Value::ExternRef(None)),    // Null reference
+            None => Ok(Value::ExternRef(None)), // Null reference
         },
         ComponentValue::Result(res) => match res {
-            Ok(_) => Ok(Value::I32(1)), // Success value
-            Err(_) => Ok(Value::I32(0)), // Error value 
+            Ok(_) => Ok(Value::I32(1)),  // Success value
+            Err(_) => Ok(Value::I32(0)), // Error value
         },
         ComponentValue::Own(handle) => Ok(Value::I32(*handle as i32)),
         ComponentValue::Borrow(handle) => Ok(Value::I32(*handle as i32)),
@@ -1085,21 +1084,21 @@ fn size_in_bytes(ty: &ValType) -> usize {
         ValType::S16 | ValType::U16 => 2,
         ValType::S32 | ValType::U32 | ValType::F32 => 4,
         ValType::S64 | ValType::U64 | ValType::F64 => 8,
-        ValType::Char => 4, // Unicode code points
-        ValType::String => 8, // Reference to a string
-        ValType::List(_) => 8, // Reference to a list
-        ValType::Record(_) => 8, // Reference to a record
-        ValType::Variant(_) => 8, // Variant tag + payload
-        ValType::Tuple(_) => 8, // Reference to a tuple
-        ValType::Flags(_) => 4, // Flags are represented as integers
-        ValType::Enum(_) => 4, // Enum discriminants
-        ValType::Option(_) => 8, // Tag + payload
-        ValType::Result(_) => 8, // Tag + payload
-        ValType::ResultErr(_) => 8, // Tag + payload
+        ValType::Char => 4,             // Unicode code points
+        ValType::String => 8,           // Reference to a string
+        ValType::List(_) => 8,          // Reference to a list
+        ValType::Record(_) => 8,        // Reference to a record
+        ValType::Variant(_) => 8,       // Variant tag + payload
+        ValType::Tuple(_) => 8,         // Reference to a tuple
+        ValType::Flags(_) => 4,         // Flags are represented as integers
+        ValType::Enum(_) => 4,          // Enum discriminants
+        ValType::Option(_) => 8,        // Tag + payload
+        ValType::Result(_) => 8,        // Tag + payload
+        ValType::ResultErr(_) => 8,     // Tag + payload
         ValType::ResultBoth(_, _) => 8, // Tag + payload
-        ValType::Own(_) => 4, // Resource handle
-        ValType::Borrow(_) => 4, // Resource handle
-        ValType::Ref(_) => 4, // Reference
+        ValType::Own(_) => 4,           // Resource handle
+        ValType::Borrow(_) => 4,        // Resource handle
+        ValType::Ref(_) => 4,           // Reference
     }
 }
 
