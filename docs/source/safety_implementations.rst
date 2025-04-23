@@ -103,6 +103,21 @@ The resource management implementations are illustrated in the :ref:`Resource Ma
    
    The resource limitation system provides configurable limits for memory, stack, call depth, and execution time.
 
+.. impl:: Resource Limits Implementation
+   :id: IMPL_RESOURCE_LIMITS_001
+   :status: implemented
+   :links: REQ_RESOURCE_001, REQ_RESOURCE_002, REQ_RESOURCE_003
+   
+   The resource limits implementation enforces constraints on various system resources:
+   
+   1. Memory usage limits for WebAssembly instances
+   2. Stack depth constraints to prevent stack overflow
+   3. Call depth limits to prevent excessive recursion
+   4. Resource table capacity limits
+   5. Component instance count limits
+   
+   This implementation helps prevent resource exhaustion and ensures predictable behavior in resource-constrained environments.
+
 .. impl:: Bounded Collections
    :id: IMPL_BOUNDED_COLL_001
    :status: implemented

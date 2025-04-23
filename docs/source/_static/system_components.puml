@@ -1,15 +1,12 @@
 @startuml
+' Fix potential syntax issues by simplifying the file
 
 package "WRT System" {
   [WRTD CLI] as CLI
 
   package "WRT Core Library" {
     package "Core Runtime" {
-      /' Traditional Engine using host stack '/
-      [Traditional Engine] as TradEngine
-      /' Stackless Engine using state machine '/
       [Stackless Engine] as StacklessEngine
-      
       [Module] as Module 
       [Memory] as Memory
       [Stack] as Stack
@@ -19,13 +16,9 @@ package "WRT System" {
       [Resource Tracking] as ResTrack
       [Error Handling] as ErrorHandling
       
-      TradEngine --> Module
-      TradEngine --> Memory
-      TradEngine --> Stack
-      TradEngine --> Execution
-      
       StacklessEngine --> Module
       StacklessEngine --> Memory
+      StacklessEngine --> Stack
       StacklessEngine --> Execution
       StacklessEngine --> ResTrack
 
@@ -61,7 +54,7 @@ package "WRT System" {
       [Logging] as Logging
       [Platform Backends] as Backends
       
-      Logging --> Backends : platform-specific output
+      Logging --> Backends
     }
   }
   
@@ -70,12 +63,12 @@ package "WRT System" {
     [Safety Tests] as SafetyTests
     [Fuzzing] as Fuzzing
     
-    WASTRunner --> TradEngine
+    WASTRunner --> StacklessEngine
     SafetyTests --> MemSafety
     Fuzzing --> Component
   }
   
-  CLI --> StacklessEngine : Primarily uses
+  CLI --> StacklessEngine
   CLI --> Component
   CLI --> Logging
 }

@@ -1,0 +1,24 @@
+/* Version switcher styles */
+.version-switcher {
+  display: inline-block;
+  margin-right: 10px;
+  margin-bottom: 10px;
+}
+
+.version-switcher select {
+  padding: 5px 10px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  background-color: #f8f9fa;
+  font-size: 0.9em;
+  cursor: pointer;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .version-switcher select {
+    background-color: #2d333b;
+    color: #e6edf3;
+    border-color: #444c56;
+  }
+} 
