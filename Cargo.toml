@@ -14,7 +14,6 @@ members = [
     "wrt-logging",
     "wrt-runtime",
     "wrt-instructions",
-    "wrt-common",
     "wrt-intercept",
 ]
 resolver = "2"  # Use edition 2021 resolver

@@ -7,6 +7,7 @@
 #![cfg_attr(feature = "kani-verifier", feature(kani))]
 #![deny(unsafe_code)]
 #![warn(missing_docs)]
+#![warn(clippy::missing_panics_doc)]
 
 // Import std when available
 #[cfg(feature = "std")]

@@ -15,6 +15,7 @@ use crate::{
 };
 
 use wrt_runtime::Memory;
+use wrt_runtime::Table;
 use wrt_types::safe_memory::SafeSlice;
 use wrt_types::types::Limits;
 
@@ -474,6 +475,32 @@ pub struct Label {
     pub is_loop: bool,
     /// Indicates if this label represents an if block (for `else` handling).
     pub is_if: bool, // Optional, might help with else logic
+}
+
+// Add AsRef<[u8]> implementation for Label to work with BoundedVec
+impl AsRef<[u8]> for Label {
+    fn as_ref(&self) -> &[u8] {
+        // Create a static representation of the label using its critical fields
+        // This is a simplification for checksum purposes only
+        static mut BUFFER: [u8; 32] = [0; 32];
+        
+        unsafe {
+            // Pack the critical fields into the buffer
+            let arity_bytes = self.arity.to_le_bytes();
+            let pc_bytes = self.pc.to_le_bytes();
+            let continuation_bytes = self.continuation.to_le_bytes();
+            let stack_depth_bytes = self.stack_depth.to_le_bytes();
+            
+            // Copy bytes into buffer
+            BUFFER[0..8].copy_from_slice(&arity_bytes);
+            BUFFER[8..16].copy_from_slice(&pc_bytes);
+            BUFFER[16..24].copy_from_slice(&continuation_bytes);
+            BUFFER[24..32].copy_from_slice(&stack_depth_bytes);
+            
+            // Return a slice to the buffer
+            &BUFFER[..]
+        }
+    }
 }
 
 /// Represents the execution context (frame) used by behavior traits.

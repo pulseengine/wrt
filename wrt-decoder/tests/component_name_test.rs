@@ -26,6 +26,7 @@ fn test_component_name_section() {
 
 // Let's create our own ComponentNameSection for testing since we don't know the exact structure
 // This matches what the test is expecting
+#[derive(Default)]
 struct TestComponentNameSection {
     pub component_name: Option<String>,
     pub sort_names: Vec<(Sort, Vec<(u32, String)>)>,
@@ -36,18 +37,6 @@ struct TestComponentNameSection {
 }
 
 // Implement Default for our test struct
-impl Default for TestComponentNameSection {
-    fn default() -> Self {
-        Self {
-            component_name: None,
-            sort_names: Vec::new(),
-            import_names: Vec::new(),
-            export_names: Vec::new(),
-            canonical_names: Vec::new(),
-            type_names: Vec::new(),
-        }
-    }
-}
 
 #[test]
 fn test_standalone_name_section() {

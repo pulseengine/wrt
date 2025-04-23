@@ -215,6 +215,15 @@ impl Memory {
         self.data.len()
     }
 
+    /// Returns a reference to the memory buffer
+    ///
+    /// # Returns
+    ///
+    /// A reference to the memory data
+    pub fn buffer(&self) -> &[u8] {
+        &self.data
+    }
+
     /// Returns the peak memory usage during execution
     ///
     /// # Panics
@@ -1176,6 +1185,123 @@ impl Clone for Memory {
             #[cfg(not(feature = "std"))]
             metrics: RwLock::new(MemoryMetrics::default()), // Reset metrics on clone
         }
+    }
+}
+
+/// Extension trait for Arc<Memory> to provide methods for working with shared references
+pub trait MemoryArcExt {
+    /// Grows the memory by the specified number of pages using clone_and_mutate
+    fn arc_grow(&self, pages: u32) -> Result<u32>;
+
+    /// Writes data to memory using clone_and_mutate
+    fn arc_write(&self, offset: u32, data: &[u8]) -> Result<()>;
+
+    /// Fills a region of memory with a byte value using clone_and_mutate
+    fn arc_fill(&self, dst: usize, val: u8, size: usize) -> Result<()>;
+
+    /// Initializes a region of memory with data using clone_and_mutate
+    fn arc_init(&self, dst: usize, data: &[u8], src: usize, size: usize) -> Result<()>;
+
+    /// Copies data between memory regions using clone_and_mutate
+    fn arc_copy_within_or_between(
+        &self,
+        src_mem: Arc<Memory>,
+        src_addr: usize,
+        dst_addr: usize,
+        size: usize,
+    ) -> Result<()>;
+
+    /// Writes an i32 value to memory using clone_and_mutate
+    fn arc_write_i32(&self, addr: u32, value: i32) -> Result<()>;
+
+    /// Writes an i64 value to memory using clone_and_mutate
+    fn arc_write_i64(&self, addr: u32, value: i64) -> Result<()>;
+
+    /// Writes an f32 value to memory using clone_and_mutate
+    fn arc_write_f32(&self, addr: u32, value: f32) -> Result<()>;
+
+    /// Writes an f64 value to memory using clone_and_mutate
+    fn arc_write_f64(&self, addr: u32, value: f64) -> Result<()>;
+
+    /// Writes a u8 value to memory using clone_and_mutate
+    fn arc_write_u8(&self, addr: u32, value: u8) -> Result<()>;
+
+    /// Writes a u16 value to memory using clone_and_mutate
+    fn arc_write_u16(&self, addr: u32, value: u16) -> Result<()>;
+
+    /// Writes a u32 value to memory using clone_and_mutate
+    fn arc_write_u32(&self, addr: u32, value: u32) -> Result<()>;
+
+    /// Writes a u64 value to memory using clone_and_mutate
+    fn arc_write_u64(&self, addr: u32, value: u64) -> Result<()>;
+
+    /// Writes a v128 value to memory using clone_and_mutate
+    fn arc_write_v128(&self, addr: u32, value: [u8; 16]) -> Result<()>;
+}
+
+impl MemoryArcExt for Arc<Memory> {
+    fn arc_grow(&self, pages: u32) -> Result<u32> {
+        self.clone_and_mutate(|memory| memory.grow(pages))
+    }
+
+    fn arc_write(&self, offset: u32, data: &[u8]) -> Result<()> {
+        self.clone_and_mutate(|memory| memory.write(offset, data))
+    }
+
+    fn arc_fill(&self, dst: usize, val: u8, size: usize) -> Result<()> {
+        self.clone_and_mutate(|memory| memory.fill(dst, val, size))
+    }
+
+    fn arc_init(&self, dst: usize, data: &[u8], src: usize, size: usize) -> Result<()> {
+        self.clone_and_mutate(|memory| memory.init(dst, data, src, size))
+    }
+
+    fn arc_copy_within_or_between(
+        &self,
+        src_mem: Arc<Memory>,
+        src_addr: usize,
+        dst_addr: usize,
+        size: usize,
+    ) -> Result<()> {
+        self.clone_and_mutate(|memory| {
+            memory.copy_within_or_between(src_mem.clone(), src_addr, dst_addr, size)
+        })
+    }
+
+    fn arc_write_i32(&self, addr: u32, value: i32) -> Result<()> {
+        self.clone_and_mutate(|memory| memory.write_i32(addr, value))
+    }
+
+    fn arc_write_i64(&self, addr: u32, value: i64) -> Result<()> {
+        self.clone_and_mutate(|memory| memory.write_i64(addr, value))
+    }
+
+    fn arc_write_f32(&self, addr: u32, value: f32) -> Result<()> {
+        self.clone_and_mutate(|memory| memory.write_f32(addr, value))
+    }
+
+    fn arc_write_f64(&self, addr: u32, value: f64) -> Result<()> {
+        self.clone_and_mutate(|memory| memory.write_f64(addr, value))
+    }
+
+    fn arc_write_u8(&self, addr: u32, value: u8) -> Result<()> {
+        self.clone_and_mutate(|memory| memory.write_u8(addr, value))
+    }
+
+    fn arc_write_u16(&self, addr: u32, value: u16) -> Result<()> {
+        self.clone_and_mutate(|memory| memory.write_u16(addr, value))
+    }
+
+    fn arc_write_u32(&self, addr: u32, value: u32) -> Result<()> {
+        self.clone_and_mutate(|memory| memory.write_u32(addr, value))
+    }
+
+    fn arc_write_u64(&self, addr: u32, value: u64) -> Result<()> {
+        self.clone_and_mutate(|memory| memory.write_u64(addr, value))
+    }
+
+    fn arc_write_v128(&self, addr: u32, value: [u8; 16]) -> Result<()> {
+        self.clone_and_mutate(|memory| memory.write_v128(addr, value))
     }
 }
 

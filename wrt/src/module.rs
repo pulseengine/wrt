@@ -441,11 +441,11 @@ impl Module {
     /// Adds a function export
     pub fn add_function_export(&mut self, name: String, index: u32) {
         self.exports.insert(
-            name,
+            name.clone(),
             OtherExport {
                 name,
-                kind: ExportKind::Function,
                 index,
+                kind: ExportKind::Function,
             },
         );
     }
@@ -453,11 +453,11 @@ impl Module {
     /// Adds a table export
     pub fn add_table_export(&mut self, name: String, index: u32) {
         self.exports.insert(
-            name,
+            name.clone(),
             OtherExport {
                 name,
-                kind: ExportKind::Table,
                 index,
+                kind: ExportKind::Table,
             },
         );
     }
@@ -465,11 +465,11 @@ impl Module {
     /// Adds a memory export
     pub fn add_memory_export(&mut self, name: String, index: u32) {
         self.exports.insert(
-            name,
+            name.clone(),
             OtherExport {
                 name,
-                kind: ExportKind::Memory,
                 index,
+                kind: ExportKind::Memory,
             },
         );
     }
@@ -477,11 +477,11 @@ impl Module {
     /// Adds a global export
     pub fn add_global_export(&mut self, name: String, index: u32) {
         self.exports.insert(
-            name,
+            name.clone(),
             OtherExport {
                 name,
-                kind: ExportKind::Global,
                 index,
+                kind: ExportKind::Global,
             },
         );
     }

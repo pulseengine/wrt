@@ -1,5 +1,4 @@
 use crate::error::{Error, Result};
-use crate::memory::Memory;
 use crate::values::Value;
 use crate::{Global, Table};
 use std::collections::HashMap;
