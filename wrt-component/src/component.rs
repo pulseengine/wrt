@@ -10,37 +10,32 @@ use crate::{
     resources::{BufferPool, MemoryStrategy, Resource, ResourceTable},
     values::{deserialize_component_values, serialize_component_values},
 };
+use log::{debug, error, info, trace, warn};
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 use wrt_common::component::ComponentValue;
-use wrt_error::{Error, Result, kinds};
-use log::{debug, error, info, trace, warn};
+use wrt_error::{kinds, Error, Result};
 
 // Use direct imports from wrt-types
 use wrt_types::{
-    ComponentType, ExternType, FuncType, InstanceType, ValueType, Value, ResourceType,
-    VerificationLevel
+    ComponentType, ExternType, FuncType, InstanceType, ResourceType, Value, ValueType,
+    VerificationLevel,
 };
 
 // Use format types with explicit namespacing
 use wrt_format::component::{
-    ExternType as FormatExternType, 
-    ResourceOperation as FormatResourceOperation, 
-    ValType as FormatValType,
-    ComponentTypeDefinition as FormatComponentTypeDefinition
+    ComponentTypeDefinition as FormatComponentTypeDefinition, ExternType as FormatExternType,
+    ResourceOperation as FormatResourceOperation, ValType as FormatValType,
 };
 
 // Import conversion functions
 use wrt_format::component_conversion::{
-    format_type_def_to_component_type,
-    component_type_to_format_type_def,
+    component_type_to_format_type_def, format_type_def_to_component_type,
 };
 
 use wrt_host::function::HostFunctionHandler;
 use wrt_host::CallbackRegistry;
-use wrt_intercept::{
-    InterceptionResult, LinkInterceptor, LinkInterceptorStrategy,
-};
+use wrt_intercept::{InterceptionResult, LinkInterceptor, LinkInterceptorStrategy};
 
 // Runtime types with explicit namespacing
 use wrt_runtime::types::{MemoryType, TableType};
@@ -79,9 +74,9 @@ use std::collections::VecDeque;
 
 // Import type conversion utilities for clear transformations
 use crate::type_conversion::{
-    common_to_format_val_type, format_to_common_val_type, format_to_types_extern_type,
-    format_val_type_to_value_type, types_to_format_extern_type, value_type_to_format_val_type,
-    extern_type_to_func_type,
+    common_to_format_val_type, extern_type_to_func_type, format_to_common_val_type,
+    format_to_types_extern_type, format_val_type_to_value_type, types_to_format_extern_type,
+    value_type_to_format_val_type,
 };
 
 /// Represents a component instance
@@ -738,7 +733,7 @@ impl Component {
                 }
                 ExternType::Table(_) => {
                     // Table exports need to be linked from imports or instances
-                    ExternValue::Trap("Table not yet initialized".to_string())  
+                    ExternValue::Trap("Table not yet initialized".to_string())
                 }
                 ExternType::Memory(_) => {
                     // Memory exports need to be linked from imports or instances
@@ -1261,26 +1256,35 @@ impl Component {
         let mut host_namespace = Namespace::from_string(api_name);
         for (func_name, func_type, handler) in functions {
             // Convert TypesFuncType to RuntimeFuncType if needed for FunctionValue
-             let runtime_func_type = RuntimeFuncType::new(
-                 func_type.params.iter().cloned().collect(), // Access field directly
-                 func_type.results.iter().cloned().collect(), // Access field directly
-             );
+            let runtime_func_type = RuntimeFuncType::new(
+                func_type.params.iter().cloned().collect(), // Access field directly
+                func_type.results.iter().cloned().collect(), // Access field directly
+            );
 
             let host_func = FunctionValue {
                 ty: runtime_func_type,
                 export_name: func_name.clone(),
             };
             // Use Export::new - needs ExternType and ExternValue
-            let format_extern_type = types_to_format_extern_type(&TypesExternType::Function(func_type.clone()))?;
+            let format_extern_type =
+                types_to_format_extern_type(&TypesExternType::Function(func_type.clone()))?;
             let extern_value = ExternValue::Function(host_func);
 
             // Use Export::new
-            host_namespace.add_export(Export::new(func_name.clone(), format_extern_type, extern_value));
+            host_namespace.add_export(Export::new(
+                func_name.clone(),
+                format_extern_type,
+                extern_value,
+            ));
 
             // Register with callback registry if available
-            if let Some(_registry) = &self.callback_registry { // Mark registry unused
-                 let _ = handler; // Avoid unused warning
-                 debug_println(&format!("Skipping callback registration for {}/{} (needs CallbackType fix)", api_name, func_name));
+            if let Some(_registry) = &self.callback_registry {
+                // Mark registry unused
+                let _ = handler; // Avoid unused warning
+                debug_println(&format!(
+                    "Skipping callback registration for {}/{} (needs CallbackType fix)",
+                    api_name, func_name
+                ));
             }
         }
         Ok(())
@@ -1348,9 +1352,7 @@ impl Component {
                 // Convert ValType to ValueType
                 let converted_params = params
                     .iter()
-                    .map(|(name, val_type)| {
-                        Ok(format_val_type_to_value_type(val_type)?)
-                    })
+                    .map(|(name, val_type)| Ok(format_val_type_to_value_type(val_type)?))
                     .collect::<Result<Vec<_>>>()?;
 
                 let converted_results = results
@@ -1415,7 +1417,10 @@ impl Component {
                 nullable,
             } => {
                 // Create a ResourceType using the helper function
-                let resource_type = crate::type_conversion::format_resource_rep_to_resource_type(representation, *nullable);
+                let resource_type = crate::type_conversion::format_resource_rep_to_resource_type(
+                    representation,
+                    *nullable,
+                );
                 Ok(TypesExternType::Resource(resource_type))
             }
         }
@@ -1639,11 +1644,11 @@ impl Component {
                                 .iter()
                                 .map(|(_, val_type)| {
                                     format_val_type_to_value_type(val_type)
-                                        // Remove map_err and unwrap_or, use ? operator
-                                        // .map_err(|e| {
-                                        //     Error::new(TypeMismatchError(e.to_string()))
-                                        // })
-                                        // .unwrap_or(ValueType::I32) // Fallback to I32 in case of error
+                                    // Remove map_err and unwrap_or, use ? operator
+                                    // .map_err(|e| {
+                                    //     Error::new(TypeMismatchError(e.to_string()))
+                                    // })
+                                    // .unwrap_or(ValueType::I32) // Fallback to I32 in case of error
                                 })
                                 .collect::<Result<Vec<_>>>()?,
                             // Convert value types for results
@@ -1651,18 +1656,18 @@ impl Component {
                                 .iter()
                                 .map(|val_type| {
                                     format_val_type_to_value_type(val_type)
-                                        // Remove map_err and unwrap_or, use ? operator
-                                        // .map_err(|e| {
-                                        //     Error::new(TypeMismatchError(e.to_string()))
-                                        // })
-                                        // .unwrap_or(ValueType::I32) // Fallback to I32 in case of error
+                                    // Remove map_err and unwrap_or, use ? operator
+                                    // .map_err(|e| {
+                                    //     Error::new(TypeMismatchError(e.to_string()))
+                                    // })
+                                    // .unwrap_or(ValueType::I32) // Fallback to I32 in case of error
                                 })
                                 .collect::<Result<Vec<_>>>()?,
                         ),
                         export_name: name,
                     }),
                     attributes: HashMap::new(), // Ensure attributes field exists
-                    integrity_hash: None, // Ensure integrity_hash field exists
+                    integrity_hash: None,       // Ensure integrity_hash field exists
                 };
                 self.exports.push(export);
             }
@@ -1857,9 +1862,10 @@ impl Component {
     ) -> Result<()> {
         // Convert the verification level to the resources module version
         let resources_level = convert_verification_level(level);
-        
+
         // Set the verification level in the resource table
-        self.resource_table.set_verification_level(handle, resources_level)
+        self.resource_table
+            .set_verification_level(handle, resources_level)
     }
 
     /// Executes the component's start function if one is defined
@@ -2057,15 +2063,15 @@ impl Component {
                 return match &export.ty {
                     FormatExternType::Function { params, results } => {
                         if params.is_empty() && results.is_empty() {
-                             Ok(Some((idx as u32, Vec::new())))
+                            Ok(Some((idx as u32, Vec::new())))
                         } else {
-                             Err(Error::new(kinds::TypeMismatchError(format!( 
+                            Err(Error::new(kinds::TypeMismatchError(format!( 
                                 "Export '_start' has incorrect signature: expected () -> (), found {:?} -> {:?}",
                                 params, results
                             ))))
                         }
                     }
-                    _ => Err(Error::new(kinds::TypeMismatchError( 
+                    _ => Err(Error::new(kinds::TypeMismatchError(
                         "Export '_start' is not a function".to_string(),
                     ))),
                 };
@@ -2158,20 +2164,29 @@ impl Component {
     ) -> Result<Vec<ComponentValue>> {
         debug_println(&format!("Calling function index: {}", func_idx));
         let func_export = self.exports.get(func_idx as usize).ok_or_else(|| {
-            Error::new(FunctionNotFoundError(format!( // Use specific error struct
-                "Function export with index {} not found", func_idx
+            Error::new(FunctionNotFoundError(format!(
+                // Use specific error struct
+                "Function export with index {} not found",
+                func_idx
             )))
         })?;
 
         let (format_param_types, format_result_types, func_name) = match &func_export.ty {
-             FormatExternType::Function{ params, results } => (params, results, &func_export.name),
-             _ => return Err(Error::new(TypeMismatchError(format!( // Use specific error struct
-                 "Export at index {} ('{}') is not a function", func_idx, func_export.name
-             )))),
+            FormatExternType::Function { params, results } => (params, results, &func_export.name),
+            _ => {
+                return Err(Error::new(TypeMismatchError(format!(
+                    // Use specific error struct
+                    "Export at index {} ('{}') is not a function",
+                    func_idx, func_export.name
+                ))))
+            }
         };
         let format_param_types = format_param_types.clone();
         let format_result_types = format_result_types.clone();
-        debug_println(&format!("Found function export '{}' with type: {:?} -> {:?}", func_name, format_param_types, format_result_types));
+        debug_println(&format!(
+            "Found function export '{}' with type: {:?} -> {:?}",
+            func_name, format_param_types, format_result_types
+        ));
 
         let arg_types: Vec<FormatValType> = args
             .iter()
@@ -2179,11 +2194,16 @@ impl Component {
             .collect::<Result<Vec<_>>>()?;
 
         // Fix E0277: Compare Vec<FormatValType> with Vec<FormatValType>
-        let format_param_valtypes: Vec<_> = format_param_types.iter().map(|(_, ty)| ty).cloned().collect();
+        let format_param_valtypes: Vec<_> = format_param_types
+            .iter()
+            .map(|(_, ty)| ty)
+            .cloned()
+            .collect();
         if arg_types != format_param_valtypes {
-            return Err(Error::new(TypeMismatchError(format!( // Use specific error struct
-                 "Argument type mismatch for function '{}': expected {:?}, got {:?}",
-                 func_name, format_param_valtypes, arg_types
+            return Err(Error::new(TypeMismatchError(format!(
+                // Use specific error struct
+                "Argument type mismatch for function '{}': expected {:?}, got {:?}",
+                func_name, format_param_valtypes, arg_types
             ))));
         }
         debug_println("Argument types match expected parameter types.");
@@ -2191,7 +2211,8 @@ impl Component {
         let data = serialize_component_values(&args)?;
         debug_println(&format!("Serialized args ({} bytes)", data.len()));
 
-        let _data_to_call = if let Some(_interceptor) = self.get_interceptor() { // Mark interceptor unused for now
+        let _data_to_call = if let Some(_interceptor) = self.get_interceptor() {
+            // Mark interceptor unused for now
             debug_println("Skipping lower interception..."); // Skip interception logic
             data
         } else {
@@ -2202,15 +2223,25 @@ impl Component {
             .into_iter()
             .map(|cv| component_value_to_value(&cv))
             .collect::<Result<Vec<_>>>()?;
-        debug_println(&format!("Converted {} ComponentValues to Core Values", core_args.len()));
+        debug_println(&format!(
+            "Converted {} ComponentValues to Core Values",
+            core_args.len()
+        ));
 
-        debug_println(&format!("Executing resolved function '{}' (idx {})", func_name, func_idx));
+        debug_println(&format!(
+            "Executing resolved function '{}' (idx {})",
+            func_name, func_idx
+        ));
         let core_results = self.call_resolved_function(func_idx, func_name, core_args)?;
-        debug_println(&format!("Resolved function returned {} core results", core_results.len()));
+        debug_println(&format!(
+            "Resolved function returned {} core results",
+            core_results.len()
+        ));
 
-        let final_core_results = if let Some(_interceptor) = self.get_interceptor() { // Mark interceptor unused
-             debug_println("Skipping lift interception..."); // Skip interception logic
-             core_results
+        let final_core_results = if let Some(_interceptor) = self.get_interceptor() {
+            // Mark interceptor unused
+            debug_println("Skipping lift interception..."); // Skip interception logic
+            core_results
         } else {
             core_results
         };
@@ -2223,33 +2254,54 @@ impl Component {
         let component_results: Vec<ComponentValue> = final_core_results
             .into_iter()
             .zip(format_result_types.iter()) // Pair Value with its FormatValType
-             // .map(|(value, format_type)| value_to_component_value(&value, format_type)) // Original failing call
-             // Temporary fix: Call with only &value if value_to_component_value signature is changed, or use a placeholder type.
-             // Assuming value_to_component_value is updated or needs more context.
-             // For now, let's comment out the map body to see other errors.
-             // This part needs revisiting based on the definition of value_to_component_value.
-             .map(|(value, _format_type)| value_to_component_value(&value /* placeholder */)) // Placeholder call
+            // .map(|(value, format_type)| value_to_component_value(&value, format_type)) // Original failing call
+            // Temporary fix: Call with only &value if value_to_component_value signature is changed, or use a placeholder type.
+            // Assuming value_to_component_value is updated or needs more context.
+            // For now, let's comment out the map body to see other errors.
+            // This part needs revisiting based on the definition of value_to_component_value.
+            .map(|(value, _format_type)| value_to_component_value(&value /* placeholder */)) // Placeholder call
             .collect::<Result<Vec<_>>>()?;
-        debug_println(&format!("Converted {} Core Values back to ComponentValues", component_results.len()));
+        debug_println(&format!(
+            "Converted {} Core Values back to ComponentValues",
+            component_results.len()
+        ));
 
         Ok(component_results)
     }
 
-    fn call_resolved_function(&self, _func_idx: u32, func_name: &str, args: Vec<Value>) -> Result<Vec<Value>> {
-         if let Some(runtime) = &self.runtime {
-             debug_println(&format!("Delegating call '{}' to runtime instance", func_name));
-             runtime.execute_function(func_name, args)
-         } else if let Some(_registry) = &self.callback_registry { // Mark registry unused
-             debug_println(&format!("Delegating call '{}' to host callback registry - SKIPPED (Needs fix)", func_name));
-             Err(Error::new(NotImplementedError( // Use specific error struct
-                 "CallbackRegistry interaction needs correct method call".to_string(),
-             )))
-         } else {
-             error!("Cannot call function '{}': No runtime or host registry configured", func_name);
-             Err(Error::new(ExecutionError(format!( // Use specific error struct
-                 "Cannot call function '{}': No runtime or host registry configured", func_name
-             ))))
-         }
+    fn call_resolved_function(
+        &self,
+        _func_idx: u32,
+        func_name: &str,
+        args: Vec<Value>,
+    ) -> Result<Vec<Value>> {
+        if let Some(runtime) = &self.runtime {
+            debug_println(&format!(
+                "Delegating call '{}' to runtime instance",
+                func_name
+            ));
+            runtime.execute_function(func_name, args)
+        } else if let Some(_registry) = &self.callback_registry {
+            // Mark registry unused
+            debug_println(&format!(
+                "Delegating call '{}' to host callback registry - SKIPPED (Needs fix)",
+                func_name
+            ));
+            Err(Error::new(NotImplementedError(
+                // Use specific error struct
+                "CallbackRegistry interaction needs correct method call".to_string(),
+            )))
+        } else {
+            error!(
+                "Cannot call function '{}': No runtime or host registry configured",
+                func_name
+            );
+            Err(Error::new(ExecutionError(format!(
+                // Use specific error struct
+                "Cannot call function '{}': No runtime or host registry configured",
+                func_name
+            ))))
+        }
     }
 }
 
@@ -2778,10 +2830,7 @@ fn format_val_type(val_type: &wrt_format::component::ValType) -> String {
 /// Checks if two types are compatible
 fn types_are_compatible(a: &FormatExternType, b: &FormatExternType) -> bool {
     match (a, b) {
-        (
-            FormatExternType::Function { .. },
-            FormatExternType::Function { .. },
-        ) => {
+        (FormatExternType::Function { .. }, FormatExternType::Function { .. }) => {
             // Convert to our FormatFuncType and use func_types_compatible
             if let (Some(a_func), Some(b_func)) = (
                 crate::type_conversion::extern_type_to_func_type(a),
@@ -2857,7 +2906,10 @@ fn types_are_compatible(a: &FormatExternType, b: &FormatExternType) -> bool {
 }
 
 /// Checks if two function types are compatible
-fn func_types_compatible(a: &crate::type_conversion::FormatFuncType, b: &crate::type_conversion::FormatFuncType) -> bool {
+fn func_types_compatible(
+    a: &crate::type_conversion::FormatFuncType,
+    b: &crate::type_conversion::FormatFuncType,
+) -> bool {
     if a.params.len() != b.params.len() || a.results.len() != b.results.len() {
         return false;
     }
@@ -3616,7 +3668,9 @@ fn value_to_format_val_type(
 }
 
 // Conversion between verification levels
-fn convert_verification_level(level: wrt_types::VerificationLevel) -> crate::resources::VerificationLevel {
+fn convert_verification_level(
+    level: wrt_types::VerificationLevel,
+) -> crate::resources::VerificationLevel {
     match level {
         wrt_types::VerificationLevel::None => crate::resources::VerificationLevel::None,
         wrt_types::VerificationLevel::Sampling => crate::resources::VerificationLevel::Critical,

@@ -6,11 +6,11 @@
 use crate::resources::{BufferPool, MemoryStrategy, ResourceTable, VerificationLevel};
 use std::any::Any;
 use std::sync::Arc;
-use wrt_types::values::Value;
 use wrt_error::{kinds, Error, Result};
 use wrt_format::component::{ResourceOperation as FormatResourceOperation, ValType};
 use wrt_intercept::{LinkInterceptor, LinkInterceptorStrategy};
 use wrt_runtime::Memory;
+use wrt_types::values::Value;
 use wrt_types::values::Value;
 
 #[cfg(feature = "std")]
@@ -209,8 +209,15 @@ impl CanonicalABI {
                     let value_data: &[u8] = &[]; // Placeholder - actual implementation would serialize the value
 
                     // Convert value_type to FormatValType directly
-                    if let Ok(format_val_type) = crate::type_conversion::value_type_to_format_val_type(&value_type) {
-                        if strategy.intercept_lower(&format_val_type, value_data, addr, memory_bytes)? {
+                    if let Ok(format_val_type) =
+                        crate::type_conversion::value_type_to_format_val_type(&value_type)
+                    {
+                        if strategy.intercept_lower(
+                            &format_val_type,
+                            value_data,
+                            addr,
+                            memory_bytes,
+                        )? {
                             return Ok(());
                         }
                     }
@@ -239,15 +246,16 @@ impl CanonicalABI {
                 self.lower_variant(*case, value, addr, resource_table, memory_bytes)
             }
             Value::Enum(idx) => self.lower_enum(*idx, addr, memory_bytes),
-            Value::Option(value) => {
-                self.lower_option(value.as_ref().map(|v| v.as_ref()), addr, resource_table, memory_bytes)
-            }
+            Value::Option(value) => self.lower_option(
+                value.as_ref().map(|v| v.as_ref()),
+                addr,
+                resource_table,
+                memory_bytes,
+            ),
             Value::Result(result) => self.lower_result(result, addr, resource_table, memory_bytes),
             Value::Tuple(values) => self.lower_tuple(values, addr, resource_table, memory_bytes),
             Value::Flags(flags) => self.lower_flags(flags, addr, memory_bytes),
-            Value::Own(handle) => {
-                self.lower_resource(*handle, addr, resource_table, memory_bytes)
-            }
+            Value::Own(handle) => self.lower_resource(*handle, addr, resource_table, memory_bytes),
             Value::Borrow(handle) => {
                 self.lower_resource(*handle, addr, resource_table, memory_bytes)
             }
@@ -478,12 +486,7 @@ impl CanonicalABI {
         )))
     }
 
-    fn lift_enum(
-        &self,
-        _cases: &Vec<String>,
-        _addr: u32,
-        _memory_bytes: &[u8],
-    ) -> Result<Value> {
+    fn lift_enum(&self, _cases: &Vec<String>, _addr: u32, _memory_bytes: &[u8]) -> Result<Value> {
         // Placeholder implementation
         Err(Error::new(kinds::NotImplementedError(
             "Enum lifting not yet implemented".to_string(),
@@ -530,12 +533,7 @@ impl CanonicalABI {
         )))
     }
 
-    fn lift_flags(
-        &self,
-        _names: &Vec<String>,
-        _addr: u32,
-        _memory_bytes: &[u8],
-    ) -> Result<Value> {
+    fn lift_flags(&self, _names: &Vec<String>, _addr: u32, _memory_bytes: &[u8]) -> Result<Value> {
         // Placeholder implementation
         Err(Error::new(kinds::NotImplementedError(
             "Flags lifting not yet implemented".to_string(),

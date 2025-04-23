@@ -49,11 +49,12 @@ pub use resources::{BufferPool, MemoryStrategy, Resource, ResourceTable, Verific
 pub use strategies::memory::{
     BoundedCopyStrategy, FullIsolationStrategy, MemoryOptimizationStrategy, ZeroCopyStrategy,
 };
+pub use type_conversion::{format_val_type_to_value_type, value_type_to_format_val_type};
 pub use values::{
-    component_value_to_value, format_valtype_to_common_valtype, deserialize_component_value, 
-    encode_component_value as serialize_component_value, value_to_component_value,
+    component_value_to_value, deserialize_component_value,
+    encode_component_value as serialize_component_value, format_valtype_to_common_valtype,
+    value_to_component_value,
 };
-pub use type_conversion::{value_type_to_format_val_type, format_val_type_to_value_type};
 pub use wrt_types::types::ValueType;
 pub use wrt_types::values::Value;
 
