@@ -91,12 +91,21 @@ extensions = [
 templates_path = ['_templates']
 exclude_patterns = []
 
-html_theme = 'sphinx_book_theme'
+# Change theme from sphinx_book_theme to pydata_sphinx_theme
+html_theme = 'pydata_sphinx_theme'
 html_static_path = ['_static']
 
-# Add custom sidebar templates
-html_sidebars = {
-    '**': ['versioning.html', 'searchbox.html', 'sidebar-nav-bs.html'],
+# Configure theme options
+html_theme_options = {
+    # Configure the version switcher
+    "switcher": {
+        "json_url": f"{version_path_prefix}switcher.json",
+        "version_match": current_version,
+    },
+    # Place the version switcher in the navbar
+    "navbar_start": ["navbar-logo", "version-switcher"],
+    # Test configuration - disable in production
+    "check_switcher": False,
 }
 
 # PlantUML configuration
