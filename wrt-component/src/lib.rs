@@ -39,7 +39,6 @@ pub mod values;
 
 // Reexport types
 pub use canonical::CanonicalABI;
-pub use component::{Component, ComponentType};
 pub use export::Export;
 pub use host::Host;
 pub use import::Import;
@@ -55,9 +54,12 @@ pub use values::{
     encode_component_value as serialize_component_value, format_valtype_to_common_valtype,
     value_to_component_value,
 };
+pub use wrt_types::component::ComponentType;
 pub use wrt_types::types::ValueType;
 pub use wrt_types::values::Value;
 
 // Include verification module when the kani feature is enabled
 #[cfg(feature = "kani")]
 pub mod verify;
+
+pub use component::Component;

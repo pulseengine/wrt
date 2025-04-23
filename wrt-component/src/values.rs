@@ -7,6 +7,9 @@ use wrt_common::component::{ComponentValue, ValType as CommonValType};
 use wrt_common::{FromFormat, ToFormat};
 use wrt_error::{kinds, Error, Result};
 use wrt_format::component::ValType;
+use wrt_format::component::ValType as FormatValType;
+use wrt_intercept::Value;
+use wrt_types::component_value::{ComponentValue, ValType as TypesValType};
 use wrt_types::values::Value;
 use wrt_types::ValueType;
 
@@ -21,6 +24,9 @@ use alloc::{
     vec,
     vec::Vec,
 };
+
+// Further down in the file, alias CommonValType to avoid changing all occurrences
+type CommonValType = TypesValType;
 
 /// Convert from CommonValType to wrt_format::component::ValType
 pub fn convert_common_to_format_valtype(common_type: &CommonValType) -> ValType {
@@ -831,21 +837,21 @@ fn serialize_val_type(ty: &ValType) -> Result<Vec<u8>> {
     Ok(buffer)
 }
 
-/// Convert ValueType to CommonValType
+/// Convert ValueType to TypesValType
 pub fn value_type_to_common_valtype(
     value_type: &wrt_types::types::ValueType,
-) -> wrt_common::component_type::ValType {
+) -> wrt_types::component_value::ValType {
     match value_type {
-        wrt_types::types::ValueType::I32 => wrt_common::component_type::ValType::S32,
-        wrt_types::types::ValueType::I64 => wrt_common::component_type::ValType::S64,
-        wrt_types::types::ValueType::F32 => wrt_common::component_type::ValType::F32,
-        wrt_types::types::ValueType::F64 => wrt_common::component_type::ValType::F64,
-        wrt_types::types::ValueType::V128 => wrt_common::component_type::ValType::Tuple(vec![
-            wrt_common::component_type::ValType::S64,
-            wrt_common::component_type::ValType::S64,
+        wrt_types::types::ValueType::I32 => wrt_types::component_value::ValType::S32,
+        wrt_types::types::ValueType::I64 => wrt_types::component_value::ValType::S64,
+        wrt_types::types::ValueType::F32 => wrt_types::component_value::ValType::F32,
+        wrt_types::types::ValueType::F64 => wrt_types::component_value::ValType::F64,
+        wrt_types::types::ValueType::V128 => wrt_types::component_value::ValType::Tuple(vec![
+            wrt_types::component_value::ValType::S64,
+            wrt_types::component_value::ValType::S64,
         ]),
-        wrt_types::types::ValueType::FuncRef => wrt_common::component_type::ValType::Own(0), // Default to resource type 0
-        wrt_types::types::ValueType::ExternRef => wrt_common::component_type::ValType::Ref(0), // Default to type index 0
+        wrt_types::types::ValueType::FuncRef => wrt_types::component_value::ValType::Own(0), // Default to resource type 0
+        wrt_types::types::ValueType::ExternRef => wrt_types::component_value::ValType::Ref(0), // Default to type index 0
     }
 }
 
@@ -967,19 +973,17 @@ pub fn common_valtype_to_format_valtype(
         CommonValType::Option(inner_type) => wrt_format::component::ValType::Option(Box::new(
             common_valtype_to_format_valtype(inner_type),
         )),
-        CommonValType::Result(ok_type, err_type) => match (ok_type, err_type) {
-            (Some(ok), Some(err)) => wrt_format::component::ValType::ResultBoth(
-                Box::new(common_valtype_to_format_valtype(ok)),
-                Box::new(common_valtype_to_format_valtype(err)),
-            ),
-            (Some(ok), None) => wrt_format::component::ValType::Result(Box::new(
-                common_valtype_to_format_valtype(ok),
-            )),
-            (None, Some(err)) => wrt_format::component::ValType::ResultErr(Box::new(
-                common_valtype_to_format_valtype(err),
-            )),
-            (None, None) => wrt_format::component::ValType::Result(Box::new(
-                wrt_format::component::ValType::Unit,
+        CommonValType::Result(ok_type) => match ok_type.as_ref() {
+            // If the inner type is a tuple, handle it as a result with both ok and err
+            TypesValType::Tuple(types) if types.len() == 2 => {
+                wrt_format::component::ValType::ResultBoth(
+                    Box::new(common_valtype_to_format_valtype(&types[0])),
+                    Box::new(common_valtype_to_format_valtype(&types[1])),
+                )
+            }
+            // Otherwise treat it as just the ok type
+            _ => wrt_format::component::ValType::Result(Box::new(
+                common_valtype_to_format_valtype(ok_type),
             )),
         },
         CommonValType::Tuple(types) => {
@@ -990,11 +994,8 @@ pub fn common_valtype_to_format_valtype(
             wrt_format::component::ValType::Tuple(format_types)
         }
         CommonValType::Flags(names) => wrt_format::component::ValType::Flags(names.clone()),
-        CommonValType::Resource(type_idx) => wrt_format::component::ValType::Own(*type_idx),
-        CommonValType::BorrowedResource(type_idx) => {
-            wrt_format::component::ValType::Borrow(*type_idx)
-        }
-        CommonValType::Unit => wrt_format::component::ValType::Unit,
+        CommonValType::Own(idx) => wrt_format::component::ValType::Own(*idx),
+        CommonValType::Borrow(idx) => wrt_format::component::ValType::Borrow(*idx),
     }
 }
 

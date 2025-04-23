@@ -1167,7 +1167,7 @@ where
                 value
             }
         };
-        
+
         let addr = stack.pop_i32()? as u32;
 
         let mem = frame.get_memory_mut(self.mem_idx as usize, engine)?;
@@ -1252,10 +1252,15 @@ pub fn i64_store32(engine: &mut StacklessEngine, offset: u32, align: u32) -> Res
 }
 
 /// Store vector values
+pub fn store_vector(
+    memory: &mut Memory,
+    effective_addr: u32,
+    value: v128,
+    align: u32,
+) -> Result<()> {
     memory.check_alignment(effective_addr, 16, align)?;
     memory.write_v128(effective_addr, value)
-
-/// Execute an i32 `store16` instruction
+}
 ///
 /// Stores the low 16 bits of a 32-bit integer to memory.
 pub fn i32_store16(engine: &mut StacklessEngine, offset: u32, align: u32) -> Result<()> {

@@ -483,20 +483,20 @@ impl AsRef<[u8]> for Label {
         // Create a static representation of the label using its critical fields
         // This is a simplification for checksum purposes only
         static mut BUFFER: [u8; 32] = [0; 32];
-        
+
         unsafe {
             // Pack the critical fields into the buffer
             let arity_bytes = self.arity.to_le_bytes();
             let pc_bytes = self.pc.to_le_bytes();
             let continuation_bytes = self.continuation.to_le_bytes();
             let stack_depth_bytes = self.stack_depth.to_le_bytes();
-            
+
             // Copy bytes into buffer
             BUFFER[0..8].copy_from_slice(&arity_bytes);
             BUFFER[8..16].copy_from_slice(&pc_bytes);
             BUFFER[16..24].copy_from_slice(&continuation_bytes);
             BUFFER[24..32].copy_from_slice(&stack_depth_bytes);
-            
+
             // Return a slice to the buffer
             &BUFFER[..]
         }
