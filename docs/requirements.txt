@@ -5,3 +5,4 @@ myst-parser>=2.0.0
 sphinxcontrib-plantuml>=0.25.0
 pillow>=8.3.1
 sphinxcontrib-rust>=0.1.0
+pydata-sphinx-theme>=0.16.1
