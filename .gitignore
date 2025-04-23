@@ -30,7 +30,6 @@ external/
 # Ignore duplicated directories
 wrt/wrt/
 
-
-
 wrt/testsuite
 wast_failed.md
+bazel-*

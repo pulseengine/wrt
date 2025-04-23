@@ -4,10 +4,11 @@ load("@bazel_skylib//lib:shell.bzl", "shell")
 
 def _check_impl(ctx):
     script_content = """
+    # Run cargo fmt check
     cargo fmt -- --check
-    cargo clippy --package wrtd -- -W clippy::missing_panics_doc -W clippy::missing_docs_in_private_items -A clippy::missing_errors_doc -A dead_code -A clippy::borrowed_box -A clippy::vec_init_then_push -A clippy::new_without_default
-    # TBD: temporary disable checking no_std
-    cargo clippy --package wrt --features std -- -W clippy::missing_panics_doc -W clippy::missing_docs_in_private_items -A clippy::missing_errors_doc -A dead_code -A clippy::borrowed_box -A clippy::vec_init_then_push -A clippy::new_without_default
+    
+    # Run clippy with both std and no_std features via Bazel
+    bazel run //:clippy_all
     """
 
     script_file = ctx.actions.declare_file(ctx.label.name + ".sh")

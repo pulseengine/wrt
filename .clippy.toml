@@ -1,3 +1,20 @@
 # Fixed clippy config
 warn-on-all-wildcard-imports = true
 doc-valid-idents = ["WebAssembly", "WASI"]
+
+# Lint configurations
+msrv = "1.56.0"  # Minimum supported Rust version
+
+# Clippy is strict about the following lints
+cognitive-complexity-threshold = 30
+type-complexity-threshold = 500
+too-many-arguments-threshold = 10
+too-many-lines-threshold = 500
+
+# Explicitly disallow some patterns
+disallowed-names = []
+disallowed-methods = []
+disallowed-types = []
+
+# Documentation checks
+missing-docs-in-crate-items = true  # Instead of missing-docs-in-private-items
