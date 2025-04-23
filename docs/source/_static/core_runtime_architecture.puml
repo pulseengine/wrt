@@ -1,14 +1,8 @@
 @startuml
 
 package "Core Runtime" {
-  package "Execution Engines" {
-    [Traditional Engine] as TradEngine
+  package "Execution Engine" {
     [Stackless Engine] as StacklessEngine
-    
-    note right of TradEngine
-      Uses host call stack
-      Suitable for general usage
-    end note
     
     note right of StacklessEngine
       Uses state machine approach
@@ -37,15 +31,9 @@ package "Core Runtime" {
     [Error Recovery] as ErrorRecovery
   }
   
-  TradEngine --> Module
-  TradEngine --> Memory
-  TradEngine --> Stack
-  TradEngine --> Execution
-  TradEngine --> Table
-  TradEngine --> Global
-  
   StacklessEngine --> Module
   StacklessEngine --> Memory
+  StacklessEngine --> Stack
   StacklessEngine --> Execution
   StacklessEngine --> Table
   StacklessEngine --> Global

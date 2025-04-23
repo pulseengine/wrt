@@ -8,10 +8,14 @@ Software Architecture
 
 This chapter describes the software architecture of the WRT system. The architecture is designed to meet the requirements specified in the :doc:`requirements` section and the safety requirements in the :doc:`safety_requirements` section.
 
+.. _system-overview:
+
 System Overview
 ---------------
 
 WRT is a WebAssembly runtime implementation with a focus on bounded execution, bare-metal support, and component model capabilities. The architecture is organized into several key subsystems:
+
+.. _system-component-diagram:
 
 .. spec:: System Component Diagram
    :id: SPEC_001
@@ -24,7 +28,6 @@ WRT is a WebAssembly runtime implementation with a focus on bounded execution, b
    The WRT system is comprised of the following main components:
    
    1. Core Runtime - The foundational WebAssembly execution engine
-      - Traditional Engine - Stack-based execution engine
       - Stackless Engine - State machine-based execution engine for bounded execution
    2. Component Model - The implementation of WebAssembly Component Model Preview 2
    3. Memory Subsystem - Consolidated memory management system with safety features
@@ -33,6 +36,8 @@ WRT is a WebAssembly runtime implementation with a focus on bounded execution, b
    6. CLI (WRTD) - Command-line interface for running WebAssembly modules
    7. Safety Layer - Cross-cutting safety mechanisms and verifications
 
+
+.. _core-runtime-architecture:
 
 Core Runtime Architecture
 -------------------------
@@ -67,14 +72,12 @@ The core runtime is responsible for executing WebAssembly instructions and manag
       :alt: Core Runtime Architecture
       :width: 100%
    
-   The core runtime provides two main interpreter implementations:
+   The core runtime provides a stackless interpreter implementation designed specifically for:
    
-   1. Traditional Execution Engine - Suitable for most environments
-   2. Stackless Execution Engine - Designed specifically for:
-      - Bounded execution through fuel metering
-      - Resumability after execution pauses
-      - No-std compatibility for bare-metal environments
-      - State serialization for migration between systems
+   - Bounded execution through fuel metering
+   - Resumability after execution pauses
+   - No-std compatibility for bare-metal environments
+   - State serialization for migration between systems
 
 .. impl:: Engine Implementation
    :id: IMPL_001
@@ -116,13 +119,15 @@ The core runtime is responsible for executing WebAssembly instructions and manag
    :status: implemented
    :links: SPEC_002, REQ_005, REQ_RESOURCE_002
    
-   The ``Stack`` struct implements a stackless interpreter model:
+   The ``Stack`` struct implements a value stack for the stackless interpreter model:
    
    1. Stores the WebAssembly value stack
    2. Tracks control flow with labels
    3. Enables pausing and resuming execution at any point
    
    This implementation enables bounded execution and state migration.
+
+.. _memory-subsystem-architecture:
 
 Memory Subsystem Architecture
 -----------------------------
@@ -190,6 +195,8 @@ The memory subsystem provides a consolidated implementation across the WRT ecosy
    - ``MemoryStore`` - Stores values to memory with proper type conversion
    - ``MemorySize`` - Returns the current memory size
    - ``MemoryGrow`` - Expands the memory by a specified number of pages
+
+.. _component-model-architecture:
 
 Component Model Architecture
 ----------------------------
@@ -266,8 +273,10 @@ The Component Model subsystem implements the WebAssembly Component Model Preview
    
    The implementation handles interface types including records, variants, enums, flags, and resources.
 
+.. _resource-management-architecture:
+
 Resource Management Architecture
--------------------------------
+--------------------------------
 
 .. image:: _static/icons/resource_management.svg
    :width: 48px
@@ -292,6 +301,20 @@ The resource management subsystem handles WebAssembly Component Model resources 
    4. Resource operation handlers (new, drop, rep)
    5. Memory-based resource strategies
 
+.. _resource-capacity-system:
+
+.. spec:: Resource Capacity System
+   :id: SPEC_CAP_001
+   :links: REQ_RESOURCE_001, REQ_RESOURCE_002, REQ_RESOURCE_003
+   
+   The resource capacity system defines:
+   
+   1. Maximum memory allocation limits
+   2. Stack size constraints
+   3. Resource table capacity limits
+   4. Component instance count limitations
+   5. Fuel-based execution limits
+
 .. impl:: Resource Type Handling
    :id: IMPL_010
    :status: implemented
@@ -312,6 +335,8 @@ The resource management subsystem handles WebAssembly Component Model resources 
    - ``ResourceManager`` - Manages resource instances and lifecycles
    - ``ResourceOperation`` - Represents operations on resources
    - Resource lifetime management functions
+
+.. _logging-subsystem:
 
 Logging Subsystem
 -----------------
@@ -369,8 +394,10 @@ The logging subsystem implements the WASI logging API and provides platform-spec
    - ``handle_log(operation)`` - Internal method to process log messages
    - ``LogOperation::with_component(level, message, component_id)`` - Creates a log operation with component context
 
+.. _safety-architecture:
+
 Safety Architecture
-------------------
+-------------------
 
 .. image:: _static/icons/safety_features.svg
    :width: 48px
@@ -444,6 +471,35 @@ The safety architecture implements cross-cutting safety features that span all W
    3. Structural validation for data consistency
    4. Engine state verification
 
+.. _verification-level-system:
+
+.. spec:: Verification Level System
+   :id: SPEC_VERIFY_001
+   :links: REQ_VERIFY_001, REQ_PERF_001
+   
+   The verification level system provides:
+   
+   1. Multiple verification levels (None, Basic, Full)
+   2. Configuration options for different deployment scenarios
+   3. Balance between safety and performance
+   4. Component-specific verification settings
+
+.. _build-configuration-system:
+
+.. impl:: Build Configuration System
+   :id: IMPL_CONFIG_001
+   :links: REQ_BUILD_001, REQ_BUILD_002
+   
+   The build configuration system provides:
+   
+   1. Safety-optimized build settings
+   2. Debug and release configurations
+   3. Feature flags for enabling/disabling safety mechanisms
+   4. Platform-specific optimizations
+   5. Clean build environment requirements
+
+.. _cli-architecture:
+
 CLI (WRTD) Architecture
 -----------------------
 
@@ -486,8 +542,10 @@ The WRTD command-line interface provides a user-friendly way to execute WebAssem
    - ``--stats`` - Show execution statistics
    - ``--analyze-component-interfaces`` - Analyze component interfaces without execution
 
+.. _testing-and-safety-verification:
+
 Testing and Safety Verification
-------------------------------
+-------------------------------
 
 WRT includes specialized tools for testing, validation, and safety verification.
 
@@ -536,22 +594,32 @@ Development Status
 
 The current implementation status of the WRT architecture is as follows:
 
-.. needtable::
-   :columns: id;title;status;links
-   :filter: type == 'impl'
+.. Temporarily commented out for debugging
+.. 
+   .. needtable::
+      :columns: id;title;status;links
+      :filter: type == 'impl'
 
 Architecture-Requirement Mapping
 --------------------------------
 
 The following diagram shows how the architectural components map to requirements:
 
-.. needflow::
-   :filter: id in ['SPEC_001', 'SPEC_002', 'SPEC_003', 'SPEC_004', 'SPEC_005', 'SPEC_006', 'SPEC_007', 'SPEC_008', 'SPEC_009', 'SPEC_010', 'IMPL_001', 'IMPL_002', 'IMPL_003', 'IMPL_004', 'IMPL_005', 'IMPL_006', 'IMPL_007', 'IMPL_008', 'IMPL_009', 'IMPL_010', 'IMPL_011', 'IMPL_012', 'REQ_001', 'REQ_003', 'REQ_005', 'REQ_006', 'REQ_007', 'REQ_014', 'REQ_015', 'REQ_016', 'REQ_018', 'REQ_019', 'REQ_020', 'REQ_021', 'REQ_022', 'REQ_023', 'REQ_024', 'REQ_MEM_SAFETY_001', 'REQ_MEM_SAFETY_002', 'REQ_MEM_SAFETY_003', 'REQ_RESOURCE_001', 'REQ_RESOURCE_002', 'REQ_RESOURCE_003', 'REQ_RESOURCE_004', 'REQ_RESOURCE_005', 'REQ_ERROR_001', 'REQ_ERROR_002', 'REQ_ERROR_003', 'REQ_ERROR_004', 'REQ_ERROR_005', 'REQ_VERIFY_001', 'REQ_VERIFY_002', 'REQ_VERIFY_003', 'REQ_VERIFY_004', 'REQ_QA_001', 'REQ_QA_002', 'REQ_QA_003', 'REQ_SAFETY_001', 'REQ_SAFETY_002']
+.. Temporarily commented out for debugging
+..
+   .. needflow::
+      :filter: id in ['SPEC_001', 'SPEC_002', 'SPEC_003', 'SPEC_004', 'SPEC_005', 'SPEC_006', 'SPEC_007', 'SPEC_008', 'SPEC_009', 'SPEC_010', 'IMPL_001', 'IMPL_002', 'IMPL_003', 'IMPL_004', 'IMPL_005', 'IMPL_006', 'IMPL_007', 'IMPL_008', 'IMPL_009', 'IMPL_010', 'IMPL_011', 'IMPL_012', 'REQ_001', 'REQ_003', 'REQ_005', 'REQ_006', 'REQ_007', 'REQ_014', 'REQ_015', 'REQ_016', 'REQ_018', 'REQ_019', 'REQ_020', 'REQ_021', 'REQ_022', 'REQ_023', 'REQ_024', 'REQ_MEM_SAFETY_001', 'REQ_MEM_SAFETY_002', 'REQ_MEM_SAFETY_003', 'REQ_RESOURCE_001', 'REQ_RESOURCE_002', 'REQ_RESOURCE_003', 'REQ_RESOURCE_004', 'REQ_RESOURCE_005', 'REQ_ERROR_001', 'REQ_ERROR_002', 'REQ_ERROR_003', 'REQ_ERROR_004', 'REQ_ERROR_005', 'REQ_VERIFY_001', 'REQ_VERIFY_002', 'REQ_VERIFY_003', 'REQ_VERIFY_004', 'REQ_QA_001', 'REQ_QA_002', 'REQ_QA_003', 'REQ_SAFETY_001', 'REQ_SAFETY_002']
+      :name: architecture_requirement_mapping
+
+.. _safety-architecture-mapping:
 
 Safety-Architecture Mapping
 ---------------------------
 
 The following diagram shows the relationship between safety requirements and architectural components:
 
-.. needflow::
-   :filter: id in ['SPEC_002', 'SPEC_007', 'SPEC_008', 'SPEC_009', 'SPEC_010', 'IMPL_MEMORY_SAFETY_001', 'IMPL_RESOURCE_SAFETY_001', 'IMPL_ERROR_HANDLING_RECOVERY_001', 'IMPL_VERIFICATION_001', 'IMPL_SAFETY_TESTING_001', 'REQ_MEM_SAFETY_001', 'REQ_MEM_SAFETY_002', 'REQ_MEM_SAFETY_003', 'REQ_RESOURCE_001', 'REQ_RESOURCE_002', 'REQ_RESOURCE_003', 'REQ_RESOURCE_004', 'REQ_RESOURCE_005', 'REQ_ERROR_001', 'REQ_ERROR_002', 'REQ_ERROR_003', 'REQ_ERROR_004', 'REQ_ERROR_005', 'REQ_VERIFY_001', 'REQ_VERIFY_002', 'REQ_VERIFY_003', 'REQ_VERIFY_004', 'REQ_QA_001', 'REQ_QA_002', 'REQ_QA_003', 'REQ_SAFETY_001', 'REQ_SAFETY_002', 'IMPL_BOUNDS_001', 'IMPL_SAFE_SLICE_001', 'IMPL_ADAPTER_001', 'IMPL_WASM_MEM_001', 'IMPL_LIMITS_001', 'IMPL_FUEL_001', 'IMPL_ERROR_HANDLING_001', 'IMPL_RECOVERY_001', 'IMPL_SAFETY_TEST_001', 'IMPL_FUZZ_001']
+.. Temporarily commented out for debugging
+..
+   .. needflow::
+      :filter: id in ['SPEC_002', 'SPEC_007', 'SPEC_008', 'SPEC_009', 'SPEC_010', 'IMPL_MEMORY_SAFETY_001', 'IMPL_RESOURCE_SAFETY_001', 'IMPL_ERROR_HANDLING_RECOVERY_001', 'IMPL_VERIFICATION_001', 'IMPL_SAFETY_TESTING_001', 'REQ_MEM_SAFETY_001', 'REQ_MEM_SAFETY_002', 'REQ_MEM_SAFETY_003', 'REQ_RESOURCE_001', 'REQ_RESOURCE_002', 'REQ_RESOURCE_003', 'REQ_RESOURCE_004', 'REQ_RESOURCE_005', 'REQ_ERROR_001', 'REQ_ERROR_002', 'REQ_ERROR_003', 'REQ_ERROR_004', 'REQ_ERROR_005', 'REQ_VERIFY_001', 'REQ_VERIFY_002', 'REQ_VERIFY_003', 'REQ_VERIFY_004', 'REQ_QA_001', 'REQ_QA_002', 'REQ_QA_003', 'REQ_SAFETY_001', 'REQ_SAFETY_002', 'IMPL_BOUNDS_001', 'IMPL_SAFE_SLICE_001', 'IMPL_ADAPTER_001', 'IMPL_WASM_MEM_001', 'IMPL_LIMITS_001', 'IMPL_FUEL_001', 'IMPL_ERROR_HANDLING_001', 'IMPL_RECOVERY_001', 'IMPL_SAFETY_TEST_001', 'IMPL_FUZZ_001']
+      :name: safety_architecture_mapping

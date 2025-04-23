@@ -1,0 +1,9 @@
+File Path,Function Name,Line Number,Panic Condition,Safety Impact,Tracking ID,Resolution Status,Handling Strategy,Last Updated
+wrt/src/lib.rs,new_engine,169,Failed to create new empty module,MEDIUM,WRTQ-100,Todo,Replace with Result,
+wrt/src/lib.rs,new_memory,214,Failed to create new memory instance,HIGH,WRTQ-101,Todo,Replace with Result,
+wrt/src/lib.rs,new_memory_adapter,223,Failed to create new memory adapter,HIGH,WRTQ-102,Todo,Replace with Result,
+wrt/src/lib.rs,new_table,236,Unwrap on table creation result,MEDIUM,WRTQ-103,Todo,Replace with Result,
+wrt/src/lib.rs,new_table_adapter,250,Unwrap on table creation result,MEDIUM,WRTQ-104,Todo,Replace with Result,
+wrt-runtime/src/memory.rs,grow,78,Integer overflow in memory size calculation,HIGH,WRTQ-200,Todo,Bounds check,
+wrt-sync/src/mutex.rs,lock,45,Thread panic during lock operation,MEDIUM,WRTQ-300,Todo,Resilient locking,
+wrt-types/src/bounded.rs,push,120,Capacity overflow,MEDIUM,WRTQ-400,Todo,Return Result instead of panic, 

@@ -4,7 +4,7 @@
    contain the root `toctree` directive.
 
 Welcome to SPE_wrt's documentation!
-==================================
+===================================
 
 .. image:: _static/icons/logo.svg
    :width: 120px
@@ -22,6 +22,18 @@ Welcome to SPE_wrt's documentation!
    qualification/index
    changelog
    wrt/lib
+   wrt-error/lib
+   wrt-sync/lib
+   wrt-format/lib
+   wrt-decode/lib
+   wrt-common/lib
+   wrt-component/lib
+   wrt-host/lib
+   wrt-instruction/lib
+   wrt-intercept/lib
+   wrt-logging/lib
+   wrt-runtime/lib
+   wrt-types/lib
    wrtd/main
 
 Overview
@@ -37,7 +49,8 @@ Overview
 
 SentryPulse Engine (WRT Edition), or SPE_wrt for short, builds on our solid foundation—the interpreted WebAssembly runtime known as **wrt**—to offer an engine engineered for environments where every cycle matters. Drawing on hard-core, time-tested engineering principles and decades of experience in system reliability, SentryPulse delivers deterministic behavior, continuous oversight, and relentless precision, all essential for systems in IoT, medicine, automotive, and avionics.
 
-### What It Does
+What It Does
+------------
 
 - **Interpretation at Its Core:**  
   Based on **wrt**, our engine interprets WebAssembly code with deterministic execution. This ensures that every instruction is processed with absolute predictability—a must for critical applications where inconsistencies can lead to failure.
@@ -48,7 +61,8 @@ SentryPulse Engine (WRT Edition), or SPE_wrt for short, builds on our solid foun
 - **Steady Throughput ("Pulse"):**  
   Think of the pulse as the heartbeat of your system. The engine's consistent performance guarantees that even under heavy load, operations are executed with the precise timing required for safety-critical controls.
 
-### Why It Matters
+Why It Matters
+---------------
 
 Engineered for mission-critical systems, SPE_wrt is designed for scenarios where reliability isn't optional:
   

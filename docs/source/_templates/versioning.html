@@ -1,0 +1,10 @@
+<div class="version-switcher">
+  <select id="version-switcher" onchange="window.location.href=this.value">
+    <option value="" selected>{{ current_version }}</option>
+    {% for version in versions %}
+      {% if version != current_version %}
+        <option value="{{ version_path_prefix }}{{ version }}/">{{ version }}</option>
+      {% endif %}
+    {% endfor %}
+  </select>
+</div> 

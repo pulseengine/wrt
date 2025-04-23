@@ -1,12 +1,82 @@
 import os
 import sys
 import platform
+import json
+import subprocess
 sys.path.insert(0, os.path.abspath('../..'))
 
 project = 'WRT'
 copyright = '2024, WRT Contributors'
 author = 'WRT Contributors'
 release = '0.1.0'
+
+# Version configuration
+# Read current version from environment or default to 'main'
+current_version = os.environ.get('DOCS_VERSION', 'main')
+version_path_prefix = os.environ.get('DOCS_VERSION_PATH_PREFIX', '/')
+
+# Function to get available versions
+def get_versions():
+    versions = ['main']
+    try:
+        # Get all tags
+        result = subprocess.run(['git', 'tag'], stdout=subprocess.PIPE, universal_newlines=True)
+        if result.returncode == 0:
+            # Only include semantic version tags (x.y.z)
+            import re
+            tags = result.stdout.strip().split('\n')
+            for tag in tags:
+                if re.match(r'^\d+\.\d+\.\d+$', tag):
+                    versions.append(tag)
+    except Exception as e:
+        print(f"Error getting versions: {e}")
+    
+    return sorted(versions, key=lambda v: v if v == 'main' else [int(x) for x in v.split('.')])
+
+# Available versions for the switcher
+versions = get_versions()
+
+# Write versions data for the index page to use for redirection
+versions_data = {
+    'current_version': current_version,
+    'versions': versions,
+    'version_path_prefix': version_path_prefix
+}
+
+# Ensure _static directory exists
+os.makedirs(os.path.join(os.path.dirname(__file__), '_static'), exist_ok=True)
+
+# Write versions data to a JSON file
+with open(os.path.join(os.path.dirname(__file__), '_static', 'versions.json'), 'w') as f:
+    json.dump(versions_data, f)
+
+# Add version data to the context for templates
+html_context = {
+    'current_version': current_version,
+    'versions': versions,
+    'version_path_prefix': version_path_prefix
+}
+
+# Custom monkeypatch to handle NoneType in names
+def setup(app):
+    from sphinx.domains.std import StandardDomain
+    old_process_doc = StandardDomain.process_doc
+    
+    def patched_process_doc(self, env, docname, document):
+        try:
+            return old_process_doc(self, env, docname, document)
+        except TypeError as e:
+            if "'NoneType' object is not subscriptable" in str(e):
+                print(f"WARNING: Caught TypeError in {docname}. This indicates a node with missing 'names' attribute.")
+                return
+            raise
+    
+    StandardDomain.process_doc = patched_process_doc
+    
+    # Add our custom CSS
+    app.add_css_file('css/custom.css')
+    
+    return {'version': '0.1', 'parallel_read_safe': True}
 
 extensions = [
     'sphinx.ext.autodoc',
@@ -23,6 +93,11 @@ exclude_patterns = []
 
 html_theme = 'sphinx_book_theme'
 html_static_path = ['_static']
+
+# Add custom sidebar templates
+html_sidebars = {
+    '**': ['versioning.html', 'searchbox.html', 'sidebar-nav-bs.html'],
+}
 
 # PlantUML configuration
 # Using the installed plantuml executable
@@ -72,7 +147,11 @@ needs_templates = {
 
 needs_id_length = 7
 needs_title_optional = True
-needs_file_pattern = '**/*.rst' 
+needs_file_pattern = '**/*.rst'
+
+# Additional debug settings for sphinx-needs
+needs_debug_processing = True
+needs_debug_event_handler = True
 
 source_suffix = {
     ".rst": "restructuredtext",
@@ -90,9 +169,22 @@ myst_enable_extensions = {
     "strikethrough",
     "tasklist",
 }
+# Rust documentation configuration
 rust_crates = {
-    "wrt": "wrt",
-    "wrtd": "wrtd",
+     "wrt": os.path.abspath("../../wrt"),
+     "wrt-error": os.path.abspath("../../wrt-error"),
+     "wrt-sync": os.path.abspath("../../wrt-sync"),
+     "wrt-format": os.path.abspath("../../wrt-format"),
+     "wrt-decode": os.path.abspath("../../wrt-decode"),
+     "wrt-common": os.path.abspath("../../wrt-common"),
+     "wrt-component": os.path.abspath("../../wrt-component"),
+     "wrt-host": os.path.abspath("../../wrt-host"),
+     "wrt-instruction": os.path.abspath("../../wrt-instruction"),
+     "wrt-intercept": os.path.abspath("../../wrt-intercept"),
+     "wrt-logging": os.path.abspath("../../wrt-logging"),
+     "wrt-runtime": os.path.abspath("../../wrt-runtime"),
+     "wrt-types": os.path.abspath("../../wrt-types"),
+     "wrtd": os.path.abspath("../../wrtd"),
 }
 rust_doc_dir = "docs/source/"
 rust_rustdoc_fmt = "md"
