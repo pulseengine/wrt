@@ -8,6 +8,7 @@
 #![deny(clippy::nursery)]
 #![deny(clippy::cargo)]
 #![warn(clippy::pedantic)]
+#![warn(clippy::missing_panics_doc)]
 #![warn(missing_docs)]
 // Disable because it's unstable
 // #![warn(rustdoc::missing_doc_code_examples)]
@@ -123,6 +124,9 @@ pub mod stackless_frame;
 /// Module for WebAssembly stackless execution engine
 pub mod stackless;
 
+/// Module for WebAssembly stackless memory adapter
+pub mod memory_adapter;
+
 // Public exports
 pub use crate::{stackless::StacklessEngine, stackless_frame::StacklessFrame};
 pub use behavior::InstructionExecutor;
@@ -186,46 +190,43 @@ pub fn new_memory_adapter(mem_type: MemoryType) -> Memory {
     Memory::new(mem_type).expect("Failed to create new memory adapter")
 }
 
-/// Creates a new WebAssembly table instance
-///
-/// This now uses the wrt-runtime Table implementation
-#[must_use]
-pub fn new_table(table_type: TableType) -> Table {
-    Table::new(
-        table_type,
-        wrt_types::values::Value::default_for_type(&table_type.element_type),
-    )
-    .expect("Failed to create new table instance")
-}
-
-/// Creates a new WebAssembly table adapter
-///
-/// For backward compatibility
-#[must_use]
-pub fn new_table_adapter(table_type: TableType) -> Table {
-    Table::new(
-        table_type,
-        wrt_types::values::Value::default_for_type(&table_type.element_type),
-    )
-    .expect("Failed to create new table adapter")
-}
-
-/// Creates a new WebAssembly global instance
+/// Create a new table with the specified type
 ///
 /// # Parameters
 ///
-/// * `global_type` - The type of the global variable
-/// * `value` - The initial value of the global variable
+/// * `table_type` - The type of the table to create
 ///
 /// # Returns
 ///
-/// A new global instance with the specified type and initial value
+/// A new table instance with the specified type
+pub fn new_table(table_type: TableType) -> Table {
+    Table::new(
+        table_type.clone(),
+        Value::default_for_type(&table_type.element_type),
+    )
+    .unwrap()
+}
+
+/// Create a new table with the specified type
 ///
-/// # Errors
+/// # Parameters
 ///
-/// Returns `Error::Validation` if the value type does not match the global type
+/// * `table_type` - The type of the table to create
+///
+/// # Returns
+///
+/// A new table instance with the specified type
+pub fn new_table_adapter(table_type: TableType) -> Table {
+    Table::new(
+        table_type.clone(),
+        Value::default_for_type(&table_type.element_type),
+    )
+    .unwrap()
+}
+
+/// Create a new global with the specified type and value
 pub fn new_global(global_type: GlobalType, value: Value) -> Result<Global> {
-    Global::new(global_type, value)
+    Ok(Global::new(global_type, value))
 }
 
 /// Creates a new global array
@@ -238,7 +239,6 @@ pub fn new_globals() -> Vec<std::sync::Arc<Global>> {
 pub use {
     behavior::{ControlFlow, ControlFlowBehavior, FrameBehavior, Label, StackBehavior},
     interface::Interface,
-    memory::Memory,
     module_instance::ModuleInstance,
 };
 
@@ -247,3 +247,21 @@ pub use wrt_logging::{LogLevel, LogOperation};
 // Re-export CallbackRegistry only if std feature is enabled
 #[cfg(feature = "std")]
 pub use wrt_logging::CallbackRegistry;
+
+// List of module re-exports
+pub use crate::{
+    // error::Error, // Already imported above
+    // error::Result, // Already imported above
+    // execution::ExecutionStats, // Already imported in mod declarations
+    // global::Global, // Already imported above
+    // interface::Interface, // Already imported above
+    module::ExportValue,
+    // module::Function, // Already imported in mod declarations
+    // module::Import, // Already imported in mod declarations
+    // module::ImportType, // Commented out to fix compilation error
+    // module::Module, // Already imported in mod declarations
+    // module::OtherExport, // Already imported in mod declarations
+    resource::ResourceTable,
+    // stackless::StacklessEngine, // Already imported in mod declarations
+    // values::Value, // Already imported in mod declarations
+};

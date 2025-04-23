@@ -1,3 +1,9 @@
+//! Example WebAssembly Component Model implementation.
+//!
+//! This crate demonstrates a simple component with a logger resource.
+
+#![warn(clippy::missing_panics_doc)]
+
 use std::cell::{Cell, RefCell};
 use wit_bindgen::generate;
 

@@ -102,7 +102,7 @@ pub mod parsers {
             offset += 1;
         }
 
-        Ok((FuncType::new(params, results), offset))
+        Ok((FuncType { params, results }, offset))
     }
 
     /// Parse a table type

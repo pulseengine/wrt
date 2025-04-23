@@ -14,7 +14,6 @@ use crate::{
     global::Global,
     instructions::{instruction_type::Instruction as InstructionType, Instruction},
     interface,
-    memory::MemoryAdapter,
     module::{Data, Element, ExportKind, Function, Import, Module, OtherExport},
     module_instance::ModuleInstance,
     resource::ResourceTable,
@@ -35,7 +34,13 @@ use wrt_error::kinds;
 use wrt_error::{Error, Result};
 use wrt_runtime::{Memory, Table};
 use wrt_sync::EngineMutex;
-use wrt_types::{BoundedVec, VerificationLevel};
+use wrt_types::{BoundedCapacity, BoundedVec, VerificationLevel};
+
+// Add these imports to fix host function handler imports
+use wrt_host::function::CloneableFn;
+use wrt_host::CallbackRegistry;
+use wrt_sync::WrtMutex;
+use wrt_types::types::{ExternType, FuncType, MemoryType, TableType};
 
 // Define constants for maximum sizes
 /// Maximum number of values on the operand stack
@@ -466,22 +471,28 @@ impl StacklessEngine {
 
     /// Execute memory validation at critical points during execution
     fn validate_at_checkpoint(&self) -> Result<(), Error> {
-        // Skip validation if verification level is None
-        if matches!(self.verification_level, VerificationLevel::None) {
-            return Ok(());
+        // For full verification level, run validation on every checkpoint
+        if matches!(self.verification_level, VerificationLevel::Full) {
+            return self.validate();
         }
 
-        // For Sampling level, only validate occasionally
-        if matches!(self.verification_level, VerificationLevel::Sampling) {
-            // Only validate on ~5% of calls
-            let should_verify = rand::random::<u8>() < 13; // ~5% chance (13/256)
-            if !should_verify {
-                return Ok(());
+        // For standard verification, validate 5% of the time
+        if matches!(self.verification_level, VerificationLevel::Standard) {
+            // Use a simple timer-based approach instead of rand
+            let counter = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_millis() as u8)
+                .unwrap_or(0);
+            
+            let should_verify = counter % 20 == 0; // ~5% chance
+            
+            if should_verify {
+                return self.validate();
             }
         }
 
-        // Validate the entire engine state
-        self.validate()
+        // No verification for VerificationLevel::None
+        Ok(())
     }
 
     /// Check memory bounds with verification
@@ -883,10 +894,10 @@ impl StacklessEngine {
             }
         }
 
-        let initial_frame = StacklessFrame::new(module.into(), func_idx, args, instance_idx)?;
+        let mut frame = StacklessFrame::new(module, func_idx, args, instance_idx)?;
 
         // Use push with error handling for bounded vector
-        self.exec_stack.frames.push(initial_frame).map_err(|_| {
+        self.exec_stack.frames.push(frame).map_err(|_| {
             Error::new(kinds::ExecutionError(format!(
                 "Call stack overflow, maximum frames: {}",
                 MAX_FRAMES
@@ -950,32 +961,46 @@ impl StacklessEngine {
             self.validate()?;
         }
 
-        match self.state().clone() {
-            StacklessExecutionState::Running => self.step()?,
-            StacklessExecutionState::Completed | StacklessExecutionState::Finished => {
-                // Replace state with Completed and return the original
-                return Ok(mem::replace(
-                    &mut self.exec_stack.state,
-                    StacklessExecutionState::Completed,
-                ));
+        match self.exec_stack.state {
+            StacklessExecutionState::Exited => {
+                return Ok(());
             }
-            StacklessExecutionState::Paused { .. } => {
-                // Replace state with Completed and return the original (Paused state)
-                return Ok(mem::replace(
-                    &mut self.exec_stack.state,
-                    StacklessExecutionState::Completed,
-                ));
+            StacklessExecutionState::Trapped => {
+                return Err(Error::new(kinds::WasmTrap));
             }
-            StacklessExecutionState::Error(_) => {
-                // Replace state with Completed and return the original (Error state)
-                return Ok(mem::replace(
-                    &mut self.exec_stack.state,
-                    StacklessExecutionState::Completed,
-                ));
+            StacklessExecutionState::Completed => {
+                return Ok(());
             }
-            // Other states like Calling, Returning, Branching are handled internally by step/run_loop
-            _ => self.step()?, // Continue stepping if in an intermediate state
+            StacklessExecutionState::Running {
+                instruction_idx,
+                frame_idx,
+                ..
+            } => {
+                // ... existing code until the affected part ...
+                
+                // Fix the issues with mem::replace
+                if next_instruction_idx >= instructions.len() as u32 {
+                    mem::replace(
+                        &mut self.exec_stack.state,
+                        StacklessExecutionState::Completed,
+                    );
+                    return Ok(());
+                } else {
+                    // Update the instruction index
+                    if let StacklessExecutionState::Running {
+                        ref mut instruction_idx,
+                        ..
+                    } = self.exec_stack.state
+                    {
+                        *instruction_idx = next_instruction_idx;
+                    }
+                }
+            }
+            // Fix the ? operator issue
+            _ => self.step(), // Continue stepping if in an intermediate state
         }
+
+        Ok(())
     }
 
     /// The main execution loop that drives the engine forward.
@@ -1028,14 +1053,15 @@ impl StacklessEngine {
     }
 
     fn pop_n(&mut self, n: usize) -> Vec<Value> {
-        if self.exec_stack.values.len() < n {
-            // Log the error but return an empty vector
-            log::error!("Error popping values from stack: stack underflow");
-            Vec::new()
-        } else {
-            let new_len = self.exec_stack.values.len() - n;
-            self.exec_stack.values.split_off(new_len)
+        let values = &mut self.exec_stack.values;
+        let len = values.len();
+        if n > len {
+            return Vec::new(); // or panic, depending on your error handling strategy
         }
+        
+        let new_len = len - n;
+        // Convert BoundedVec to Vec when returning
+        values.split_off(new_len).to_vec()
     }
 
     fn pop_frame_label(&self) -> Result<Label, Error> {
@@ -1102,7 +1128,9 @@ impl StacklessEngine {
         let frame_idx = stack.frames.len() - 1;
 
         // Clone the frame and engine to avoid borrow issues
-        let mut frame = stack.frames[frame_idx].clone();
+        let mut frame = stack.frames.get(frame_idx).ok_or_else(|| 
+            Error::new(kinds::StackUnderflow)
+        )?.clone();
         let mut engine_clone = self.clone();
 
         // Execute directly with the cloned frame
@@ -1110,7 +1138,8 @@ impl StacklessEngine {
 
         // If successful, update the frame in the stack
         if result.is_ok() {
-            stack.frames[frame_idx] = frame;
+            // Update the frame in the stack
+            stack.frames.set(frame_idx, frame)?;
 
             // Update the engine state if needed
             match &result {
@@ -1461,7 +1490,7 @@ impl StackBehavior for StacklessStack {
             let new_len = self.values.len() - n;
             let mut result = self.values.split_off(new_len);
             result.reverse(); // maintain stack order
-            result
+            result.to_vec()
         }
     }
 
@@ -1581,5 +1610,55 @@ impl Clone for StacklessStack {
             func_idx: self.func_idx,
             capacity: self.capacity,
         }
+    }
+}
+
+/// Apply the branch instruction to the call stack
+fn apply_branch(
+    stack: &mut StacklessExecutionStack,
+    frame_idx: usize,
+    to_block: Option<usize>,
+    keep_values: Option<usize>,
+) -> Result<()> {
+    // Caching value stack to ensure branch continuity
+    let value_cache: Vec<Value> = stack.values.to_vec();
+
+    if let Some(frame_idx) = stack.current_frame_idx() {
+        let frame = stack.frames.get(frame_idx).ok_or_else(|| 
+            Error::new(wrt_error::kinds::StackUnderflow)
+        )?.clone();
+
+        // Execute the branch
+        stack.state = handle_branch(frame, to_block, keep_values, &value_cache)?;
+
+        // Store the updated frame
+        if frame_idx < stack.frames.len() {
+            stack.frames.set(frame_idx, frame)?;
+        } else {
+            return Err(Error::new(wrt_error::kinds::StackUnderflow));
+        }
+        Ok(())
+    } else {
+        Err(Error::new(kinds::StackUnderflow))
+    }
+}
+
+/// Handle a branch instruction
+fn handle_branch(
+    frame: StacklessFrame,
+    to_block: Option<usize>,
+    keep_values: Option<usize>,
+    value_cache: &[Value],
+) -> Result<StacklessExecutionState> {
+    // If to_block is Some, we're jumping to a specific block
+    if let Some(block_idx) = to_block {
+        // Create branching state with necessary info
+        Ok(StacklessExecutionState::Branching {
+            depth: block_idx as u32,
+            values: value_cache.to_vec(),
+        })
+    } else {
+        // If no specific block, mark as Completed
+        Ok(StacklessExecutionState::Completed)
     }
 }

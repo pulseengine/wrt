@@ -3,216 +3,160 @@
 //! This adapter provides safe, bounded memory access
 //! with integrated memory safety features for WebAssembly memory instances.
 
-use wrt_runtime::Memory as RuntimeMemory;
-use wrt_types::{
-    safe_memory::{MemoryProvider, MemorySafety, SafeSlice, StdMemoryProvider},
-    verification::VerificationLevel,
-};
+use std::sync::Arc;
+use wrt_error::{Error, Result, kinds};
+use wrt_runtime::Memory;
+use wrt_runtime::memory::MemoryArcExt;
+use wrt_types::safe_memory::{MemoryProvider, StdMemoryProvider};
+use wrt_types::BoundedCapacity;
 
 use core::ops::Range;
-use std::sync::Arc;
-use wrt_error::{kinds, Error, Result};
 
-/// Interface for memory implementations used by the engine
+/// Memory adapter interface for working with memory
 pub trait MemoryAdapter {
-    /// Load data from memory
-    fn load(&self, offset: usize, len: usize) -> Result<Box<[u8]>>;
+    /// Get the memory backing this adapter
+    fn memory(&self) -> Arc<Memory>;
 
-    /// Store data to memory
+    /// Get the size of the memory in bytes
+    fn size(&self) -> Result<usize>;
+
+    /// Load data from memory
+    fn load(&self, offset: usize, len: usize) -> Result<Vec<u8>>;
+
+    /// Store data into memory
     fn store(&self, offset: usize, data: &[u8]) -> Result<()>;
 
-    /// Get the memory size in pages
-    fn size(&self) -> Result<u32>;
-
-    /// Get the memory size in bytes
-    fn byte_size(&self) -> Result<usize>;
-
-    /// Grow memory by a number of pages
-    fn grow(&self, pages: u32) -> Result<u32>;
-
-    /// Verify memory integrity and safety
-    fn verify_integrity(&self) -> Result<()>;
+    /// Grow memory by number of pages
+    fn grow(&self, pages: u32) -> Result<usize>;
 }
 
-/// A memory adapter with SafeMemory features
-#[derive(Clone, Debug)]
+/// Memory adapter with safety guarantees
 pub struct SafeMemoryAdapter {
-    /// The underlying memory implementation
-    memory: Arc<RuntimeMemory>,
-    /// The SafeMemory provider for memory safety
-    provider: Arc<StdMemoryProvider>,
-    /// Verification level for memory operations
-    verification_level: VerificationLevel,
+    /// Underlying memory
+    memory: Arc<Memory>,
+    /// Memory provider
+    provider: StdMemoryProvider,
 }
 
 impl SafeMemoryAdapter {
-    /// Create a new safety-enhanced memory adapter
-    pub fn new(memory: Arc<RuntimeMemory>) -> Self {
-        // Create a provider with the current memory data
-        let data = match memory.buffer() {
-            Ok(data) => data.to_vec(),
-            Err(_) => Vec::new(),
-        };
-
+    /// Create a new adapter with the given memory
+    pub fn new(memory: Arc<Memory>) -> Self {
+        let data = memory.buffer().to_vec();
+        let provider = StdMemoryProvider::new(data);
         Self {
             memory,
-            provider: Arc::new(StdMemoryProvider::new(data)),
-            verification_level: VerificationLevel::Standard,
+            provider,
         }
     }
-    
-    /// Create a new memory adapter with a specific verification level
-    pub fn with_verification_level(memory: Arc<RuntimeMemory>, level: VerificationLevel) -> Self {
-        let mut adapter = Self::new(memory);
-        adapter.verification_level = level;
-        adapter
+
+    /// Get the memory provider for this adapter
+    pub fn memory_provider(&self) -> &StdMemoryProvider {
+        &self.provider
     }
-    
-    /// Set the verification level for memory operations
-    pub fn set_verification_level(&mut self, level: VerificationLevel) {
-        self.verification_level = level;
-    }
-    
-    /// Get the current verification level
-    pub fn verification_level(&self) -> VerificationLevel {
-        self.verification_level
-    }
-    
-    /// Synchronize the provider with the underlying memory
-    fn sync_provider(&self) -> Result<Arc<StdMemoryProvider>> {
-        // Get the current memory buffer
-        let buffer = self.memory.buffer()?;
-        
-        // Create a new provider with the current data
-        let provider = StdMemoryProvider::new(buffer.to_vec());
-        
-        Ok(Arc::new(provider))
-    }
-    
-    /// Get memory safety statistics
-    pub fn memory_stats(&self) -> Result<wrt_types::safe_memory::MemoryStats> {
-        let provider = self.sync_provider()?;
-        Ok(provider.memory_stats())
+
+    /// Synchronize the provider with memory
+    fn sync_provider(&mut self) -> Result<()> {
+        let data = self.memory.buffer().to_vec();
+        // Create a new provider with updated data
+        self.provider = StdMemoryProvider::new(data);
+        Ok(())
     }
 }
 
 impl MemoryAdapter for SafeMemoryAdapter {
-    fn load(&self, offset: usize, len: usize) -> Result<Box<[u8]>> {
-        // For high verification levels, always sync provider for fresh checks
-        let provider = if matches!(self.verification_level, VerificationLevel::Full) {
-            self.sync_provider()?
-        } else {
-            self.provider.clone()
-        };
+    fn memory(&self) -> Arc<Memory> {
+        self.memory.clone()
+    }
+
+    fn size(&self) -> Result<usize> {
+        Ok(self.memory.size() as usize * wrt_runtime::PAGE_SIZE)
+    }
+
+    fn load(&self, offset: usize, len: usize) -> Result<Vec<u8>> {
+        // Use the provider to verify and get data
+        let slice = self.provider.borrow_slice(offset, len)?;
         
-        // Use the provider to get a validated safe slice
-        let safe_slice = provider.borrow_slice(offset, len)?;
-        
-        // Get the data with integrity check
-        let data = safe_slice.data()?;
-        
-        Ok(data.to_vec().into_boxed_slice())
+        // Convert safe slice to Vec<u8>
+        Ok(slice.data()?.to_vec())
     }
 
     fn store(&self, offset: usize, data: &[u8]) -> Result<()> {
-        // Verify bounds before storing
-        let byte_size = self.byte_size()?;
-        if offset + data.len() > byte_size {
-            return Err(Error::new(kinds::OutOfBoundsError(format!(
-                "Memory access out of bounds: offset={}, len={}, memory_size={}",
-                offset, data.len(), byte_size
-            ))));
+        // Check bounds first
+        let end_offset = offset
+            .checked_add(data.len())
+            .ok_or_else(|| Error::new(kinds::MemoryAccessOutOfBoundsError))?;
+        
+        if end_offset > self.memory.buffer().len() {
+            return Err(Error::new(kinds::MemoryAccessOutOfBoundsError));
         }
-        
-        // Store via the runtime memory
-        self.memory.store(offset, data)?;
-        
-        // For Full verification, sync provider after every write
-        if matches!(self.verification_level, VerificationLevel::Full) {
-            self.sync_provider()?;
-        }
-        
-        Ok(())
+
+        // Use the arc_write method from MemoryArcExt
+        self.memory.arc_write(offset as u32, data)
     }
 
-    fn size(&self) -> Result<u32> {
-        self.memory.size()
-    }
-
-    fn byte_size(&self) -> Result<usize> {
-        let pages = self.size()?;
-        Ok(pages as usize * 65536)
-    }
-
-    fn grow(&self, pages: u32) -> Result<u32> {
-        let result = self.memory.grow(pages)?;
+    fn grow(&self, pages: u32) -> Result<usize> {
+        // Use the arc_grow method from MemoryArcExt
+        let old_size = self.memory.arc_grow(pages)?;
         
-        // After growing, sync the provider
-        if !matches!(self.verification_level, VerificationLevel::None) {
-            self.sync_provider()?;
-        }
-        
-        Ok(result)
-    }
-    
-    fn verify_integrity(&self) -> Result<()> {
-        // Sync provider to get the latest state
-        let provider = self.sync_provider()?;
-        
-        // Verify memory integrity
-        provider.verify_integrity()
+        Ok(old_size as usize)
     }
 }
 
-/// A default memory adapter (without safety features)
-#[derive(Clone)]
+/// Default memory adapter without additional safety checks
 pub struct DefaultMemoryAdapter {
-    /// The underlying memory implementation
-    memory: Arc<RuntimeMemory>,
+    /// Underlying memory
+    memory: Arc<Memory>,
 }
 
 impl DefaultMemoryAdapter {
-    /// Create a new memory adapter
-    pub fn new(memory: Arc<RuntimeMemory>) -> Self {
+    /// Create a new adapter with the given memory
+    pub fn new(memory: Arc<Memory>) -> Self {
         Self { memory }
     }
 }
 
 impl MemoryAdapter for DefaultMemoryAdapter {
-    fn load(&self, offset: usize, len: usize) -> Result<Box<[u8]>> {
-        let buffer = self.memory.buffer()?;
-        
+    fn memory(&self) -> Arc<Memory> {
+        self.memory.clone()
+    }
+
+    fn size(&self) -> Result<usize> {
+        Ok(self.memory.size() as usize * wrt_runtime::PAGE_SIZE)
+    }
+
+    fn load(&self, offset: usize, len: usize) -> Result<Vec<u8>> {
         // Bounds check
-        if offset + len > buffer.len() {
-            return Err(Error::new(kinds::OutOfBoundsError(format!(
-                "Memory access out of bounds: offset={}, len={}, buffer_size={}",
-                offset, len, buffer.len()
-            ))));
+        let mem_data = self.memory.buffer();
+        let end_offset = offset
+            .checked_add(len)
+            .ok_or_else(|| Error::new(kinds::MemoryAccessOutOfBoundsError))?;
+            
+        if end_offset > mem_data.len() {
+            return Err(Error::new(kinds::MemoryAccessOutOfBoundsError));
         }
         
-        let data = buffer[offset..offset + len].to_vec();
-        Ok(data.into_boxed_slice())
+        // Return a slice of memory
+        Ok(mem_data[offset..end_offset].to_vec())
     }
 
     fn store(&self, offset: usize, data: &[u8]) -> Result<()> {
-        self.memory.store(offset, data)
+        // Bounds check
+        let mem_size = self.memory.buffer().len();
+        let end_offset = offset
+            .checked_add(data.len())
+            .ok_or_else(|| Error::new(kinds::MemoryAccessOutOfBoundsError))?;
+            
+        if end_offset > mem_size {
+            return Err(Error::new(kinds::MemoryAccessOutOfBoundsError));
+        }
+        
+        // Use the arc_write method from MemoryArcExt
+        self.memory.arc_write(offset as u32, data)
     }
 
-    fn size(&self) -> Result<u32> {
-        self.memory.size()
-    }
-
-    fn byte_size(&self) -> Result<usize> {
-        let pages = self.size()?;
-        Ok(pages as usize * 65536)
-    }
-
-    fn grow(&self, pages: u32) -> Result<u32> {
-        self.memory.grow(pages)
-    }
-    
-    fn verify_integrity(&self) -> Result<()> {
-        // Basic memory adapter does not have integrity checks
-        Ok(())
+    fn grow(&self, pages: u32) -> Result<usize> {
+        // Use the arc_grow method from MemoryArcExt
+        let old_size = self.memory.arc_grow(pages)?;
+        Ok(old_size as usize)
     }
 } 

@@ -2055,15 +2055,12 @@ fn validate_encoded_value(data: &[u8], val_type: &ValType, ctx: &ValidationConte
 fn validate_resources(component: &Component, ctx: &mut ValidationContext) -> Result<()> {
     // For each component type definition, identify resource types
     for (idx, type_def) in component.types.iter().enumerate() {
-        match &type_def.definition {
-            ComponentTypeDefinition::Resource { representation, .. } => {
-                // Add this resource type to the context
-                ctx.add_resource_type(idx as u32);
+        if let ComponentTypeDefinition::Resource { representation, .. } = &type_def.definition {
+            // Add this resource type to the context
+            ctx.add_resource_type(idx as u32);
 
-                // Validate resource representation
-                validate_resource_representation(representation, ctx)?;
-            }
-            _ => {}
+            // Validate resource representation
+            validate_resource_representation(representation, ctx)?;
         }
     }
 
@@ -2088,9 +2085,9 @@ fn validate_import_export_compatibility(
     exported_type: &ExternType,
 ) -> Result<()> {
     if !is_compatible_type(imported_type, exported_type) {
-        return Err(Error::new(kinds::ValidationError(format!(
-            "Incompatible import/export types"
-        ))));
+        return Err(Error::new(kinds::ValidationError(
+            "Incompatible import/export types".to_string(),
+        )));
     }
 
     // Special validation for resource types
@@ -2105,9 +2102,9 @@ fn validate_import_export_compatibility(
 
             // Check that both are valid resource types
             if !ctx.is_valid_resource_type(*i_idx) || !ctx.is_valid_resource_type(*e_idx) {
-                return Err(Error::new(kinds::ValidationError(format!(
-                    "Invalid resource type index in import/export"
-                ))));
+                return Err(Error::new(kinds::ValidationError(
+                    "Invalid resource type index in import/export".to_string(),
+                )));
             }
         }
         (ExternType::Value(ValType::Borrow(i_idx)), ExternType::Value(ValType::Borrow(e_idx))) => {
@@ -2120,9 +2117,9 @@ fn validate_import_export_compatibility(
 
             // Check that both are valid resource types
             if !ctx.is_valid_resource_type(*i_idx) || !ctx.is_valid_resource_type(*e_idx) {
-                return Err(Error::new(kinds::ValidationError(format!(
-                    "Invalid resource type index in import/export"
-                ))));
+                return Err(Error::new(kinds::ValidationError(
+                    "Invalid resource type index in import/export".to_string(),
+                )));
             }
         }
         _ => {

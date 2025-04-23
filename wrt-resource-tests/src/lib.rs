@@ -1,3 +1,9 @@
+//! Resource management test utilities for the WebAssembly Runtime.
+//!
+//! This crate provides test utilities for resource management features.
+
+#![warn(clippy::missing_panics_doc)]
+
 pub mod buffer_pool;
 pub mod memory_manager;
 pub mod memory_strategy;

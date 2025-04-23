@@ -54,4 +54,16 @@ interface logging {
                 .expect("Failed to create minimal logging.wit");
         }
     }
+
+    // Output any WIT files we find
+    let wit_dir = Path::new("wit");
+    if wit_dir.exists() {
+        for entry in fs::read_dir(wit_dir).unwrap() {
+            let entry = entry.unwrap();
+            let path = entry.path();
+            if path.is_file() && path.extension().is_some_and(|ext| ext == "wit") {
+                println!("cargo:rerun-if-changed={}", path.display());
+            }
+        }
+    }
 }

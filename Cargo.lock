@@ -4033,31 +4033,19 @@ dependencies = [
 ]
 
 [[package]]
-name = "wrt-common"
-version = "0.1.0"
-dependencies = [
- "kani-verifier",
- "log",
- "rustc-std-workspace-alloc",
- "wrt-error",
-]
-
-[[package]]
 name = "wrt-component"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "crossterm 0.27.0",
  "log",
  "ratatui",
  "strum",
  "tui-nodes",
- "wrt-common",
- "wrt-decoder",
  "wrt-error",
  "wrt-format",
  "wrt-host",
  "wrt-intercept",
- "wrt-runtime",
  "wrt-types",
 ]
 
@@ -4096,7 +4084,6 @@ version = "0.1.0"
 dependencies = [
  "kani-verifier",
  "proptest",
- "wrt-common",
  "wrt-error",
  "wrt-types",
 ]
@@ -4129,7 +4116,7 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "log",
- "wrt-common",
+ "pretty_assertions",
  "wrt-error",
  "wrt-format",
  "wrt-types",
@@ -4171,7 +4158,6 @@ dependencies = [
  "log",
  "proptest",
  "rustc-std-workspace-alloc",
- "wrt-common",
  "wrt-error",
 ]
 
@@ -4185,6 +4171,8 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "wrt",
+ "wrt-component",
+ "wrt-intercept",
 ]
 
 [[package]]

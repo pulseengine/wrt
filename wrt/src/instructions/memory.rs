@@ -16,11 +16,17 @@ use crate::{
 };
 use std::marker::PhantomData;
 use std::sync::Arc;
-use wrt_types::types::Limits;
+use wrt_types::Limits;
 
-// Conditionally import wasmparser based on feature flag
-#[cfg(feature = "std")]
-use wasmparser::MemArg;
+// Define the constant locally
+const WASM_PAGE_SIZE: u32 = 65536;
+
+// Define a simple struct to represent memory arguments
+#[derive(Debug, Clone, Copy)]
+pub struct MemoryArg {
+    pub offset: u32,
+    pub align: u32,
+}
 
 /// Represents a memory initialization instruction
 #[derive(Debug)]
@@ -543,86 +549,6 @@ pub fn i32_store8(engine: &mut StacklessEngine, offset: u32, align: u32) -> Resu
     let effective_addr = (base_addr as u32).wrapping_add(offset);
     memory.check_alignment(effective_addr, 1, align)?;
     memory.write_u8(effective_addr, value as u8)
-}
-
-/// Store low 16 bits of i32
-pub fn i32_store16(engine: &mut StacklessEngine, offset: u32, align: u32) -> Result<()> {
-    let value = engine
-        .exec_stack
-        .pop()?
-        .as_i32()
-        .ok_or_else(|| Error::new(kinds::ExecutionError("Expected i32 value".to_string())))?;
-    let base_addr = engine
-        .exec_stack
-        .pop()?
-        .as_i32()
-        .ok_or_else(|| Error::new(kinds::ExecutionError("Expected i32 address".to_string())))?;
-
-    let frame = engine.current_frame()?;
-    let memory = frame.get_memory(0, engine)?;
-    let effective_addr = (base_addr as u32).wrapping_add(offset);
-    memory.check_alignment(effective_addr, 2, align)?;
-    memory.write_u16(effective_addr, value as u16)
-}
-
-/// Store low 8 bits of i64
-pub fn i64_store8(engine: &mut StacklessEngine, offset: u32, align: u32) -> Result<()> {
-    let value = engine
-        .exec_stack
-        .pop()?
-        .as_i64()
-        .ok_or_else(|| Error::new(kinds::ExecutionError("Expected i64 value".to_string())))?;
-    let base_addr = engine
-        .exec_stack
-        .pop()?
-        .as_i32()
-        .ok_or_else(|| Error::new(kinds::ExecutionError("Expected i32 address".to_string())))?;
-
-    let frame = engine.current_frame()?;
-    let memory = frame.get_memory(0, engine)?;
-    let effective_addr = (base_addr as u32).wrapping_add(offset);
-    memory.check_alignment(effective_addr, 1, align)?;
-    memory.write_u8(effective_addr, value as u8)
-}
-
-/// Store low 16 bits of i64
-pub fn i64_store16(engine: &mut StacklessEngine, offset: u32, align: u32) -> Result<()> {
-    let value = engine
-        .exec_stack
-        .pop()?
-        .as_i64()
-        .ok_or_else(|| Error::new(kinds::ExecutionError("Expected i64 value".to_string())))?;
-    let base_addr = engine
-        .exec_stack
-        .pop()?
-        .as_i32()
-        .ok_or_else(|| Error::new(kinds::ExecutionError("Expected i32 address".to_string())))?;
-
-    let frame = engine.current_frame()?;
-    let memory = frame.get_memory(0, engine)?;
-    let effective_addr = (base_addr as u32).wrapping_add(offset);
-    memory.check_alignment(effective_addr, 2, align)?;
-    memory.write_u16(effective_addr, value as u16)
-}
-
-/// Store low 32 bits of i64
-pub fn i64_store32(engine: &mut StacklessEngine, offset: u32, align: u32) -> Result<()> {
-    let value = engine
-        .exec_stack
-        .pop()?
-        .as_i64()
-        .ok_or_else(|| Error::new(kinds::ExecutionError("Expected i64 value".to_string())))?;
-    let base_addr = engine
-        .exec_stack
-        .pop()?
-        .as_i32()
-        .ok_or_else(|| Error::new(kinds::ExecutionError("Expected i32 address".to_string())))?;
-
-    let frame = engine.current_frame()?;
-    let memory = frame.get_memory(0, engine)?;
-    let effective_addr = (base_addr as u32).wrapping_add(offset);
-    memory.check_alignment(effective_addr, 4, align)?;
-    memory.write_u32(effective_addr, value as u32)
 }
 
 /// Execute a v128 store instruction
@@ -1229,7 +1155,19 @@ where
         frame: &mut dyn FrameBehavior,
         engine: &mut StacklessEngine,
     ) -> Result<ControlFlow, Error> {
-        let value = stack.pop_i64()?;
+        let value = match std::any::TypeId::of::<F>() {
+            id if id == std::any::TypeId::of::<i32>() => {
+                // Handle i32 case
+                let value = stack.pop_i32()?;
+                value as i64
+            }
+            _ => {
+                // Handle i64 case
+                let value = stack.pop_i64()?;
+                value
+            }
+        };
+        
         let addr = stack.pop_i32()? as u32;
 
         let mem = frame.get_memory_mut(self.mem_idx as usize, engine)?;
@@ -1254,36 +1192,86 @@ where
     }
 }
 
-impl<T> InstructionExecutor for StoreTruncated<i32, T>
-where
-    T: Copy + 'static,
-{
-    fn execute(
-        &self,
-        stack: &mut dyn StackBehavior,
-        frame: &mut dyn FrameBehavior,
-        engine: &mut StacklessEngine,
-    ) -> Result<ControlFlow, Error> {
-        let value = stack.pop_i32()?;
-        let addr = stack.pop_i32()? as u32;
+/// Store low 8 bits of i64
+pub fn i64_store8(engine: &mut StacklessEngine, offset: u32, align: u32) -> Result<()> {
+    let value = engine
+        .exec_stack
+        .pop()?
+        .as_i64()
+        .ok_or_else(|| Error::new(kinds::ExecutionError("Expected i64 value".to_string())))?;
+    let base_addr = engine
+        .exec_stack
+        .pop()?
+        .as_i32()
+        .ok_or_else(|| Error::new(kinds::ExecutionError("Expected i32 address".to_string())))?;
 
-        let mem = frame.get_memory_mut(self.mem_idx as usize, engine)?;
-        let effective_addr = addr.wrapping_add(self.offset);
+    let frame = engine.current_frame()?;
+    let memory = frame.get_memory(0, engine)?;
+    let effective_addr = (base_addr as u32).wrapping_add(offset);
+    memory.write_u8(effective_addr, value as u8)
+}
 
-        mem.check_alignment(effective_addr, std::mem::size_of::<T>() as u32, self.align)?;
+/// Store low 16 bits of i64
+pub fn i64_store16(engine: &mut StacklessEngine, offset: u32, align: u32) -> Result<()> {
+    let value = engine
+        .exec_stack
+        .pop()?
+        .as_i64()
+        .ok_or_else(|| Error::new(kinds::ExecutionError("Expected i64 value".to_string())))?;
+    let base_addr = engine
+        .exec_stack
+        .pop()?
+        .as_i32()
+        .ok_or_else(|| Error::new(kinds::ExecutionError("Expected i32 address".to_string())))?;
 
-        // Instead of using unsafe casts, handle each specific case
-        match std::mem::size_of::<T>() {
-            1 => mem.write_i8(effective_addr, value as i8)?,
-            2 => mem.write_i16(effective_addr, value as i16)?,
-            _ => {
-                return Err(Error::new(kinds::ExecutionError(format!(
-                    "Unsupported truncation size: {} bytes",
-                    std::mem::size_of::<T>()
-                ))))
-            }
-        }
+    let frame = engine.current_frame()?;
+    let memory = frame.get_memory(0, engine)?;
+    let effective_addr = (base_addr as u32).wrapping_add(offset);
+    memory.check_alignment(effective_addr, 2, align)?;
+    memory.write_u16(effective_addr, value as u16)
+}
 
-        Ok(ControlFlow::Continue)
-    }
+/// Store low 32 bits of i64
+pub fn i64_store32(engine: &mut StacklessEngine, offset: u32, align: u32) -> Result<()> {
+    let value = engine
+        .exec_stack
+        .pop()?
+        .as_i64()
+        .ok_or_else(|| Error::new(kinds::ExecutionError("Expected i64 value".to_string())))?;
+    let base_addr = engine
+        .exec_stack
+        .pop()?
+        .as_i32()
+        .ok_or_else(|| Error::new(kinds::ExecutionError("Expected i32 address".to_string())))?;
+
+    let frame = engine.current_frame()?;
+    let memory = frame.get_memory(0, engine)?;
+    let effective_addr = (base_addr as u32).wrapping_add(offset);
+    memory.check_alignment(effective_addr, 4, align)?;
+    memory.write_u32(effective_addr, value as u32)
+}
+
+/// Store vector values
+    memory.check_alignment(effective_addr, 16, align)?;
+    memory.write_v128(effective_addr, value)
+
+/// Execute an i32 `store16` instruction
+///
+/// Stores the low 16 bits of a 32-bit integer to memory.
+pub fn i32_store16(engine: &mut StacklessEngine, offset: u32, align: u32) -> Result<()> {
+    let value = engine
+        .exec_stack
+        .pop()?
+        .as_i32()
+        .ok_or_else(|| Error::new(kinds::ExecutionError("Expected i32 value".to_string())))?;
+    let base_addr = engine
+        .exec_stack
+        .pop()?
+        .as_i32()
+        .ok_or_else(|| Error::new(kinds::ExecutionError("Expected i32 address".to_string())))?;
+    let frame = engine.current_frame()?;
+    let memory = frame.get_memory(0, engine)?;
+    let effective_addr = (base_addr as u32).wrapping_add(offset);
+    memory.check_alignment(effective_addr, 2, align)?;
+    memory.write_u16(effective_addr, value as u16)
 }

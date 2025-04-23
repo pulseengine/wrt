@@ -182,6 +182,79 @@ check:
     # TBD: temporary disable checking no_std
     cargo clippy --package wrt --features std -- -W clippy::missing_panics_doc -W clippy::missing_docs_in_private_items -A clippy::missing_errors_doc -A dead_code -A clippy::borrowed_box -A clippy::vec_init_then_push -A clippy::new_without_default
     
+# Check for missing panic documentation across all wrt crates
+check-panic-docs:
+    #!/usr/bin/env bash
+    echo "Checking for undocumented panics across all crates..."
+    
+    # List of all crates in the workspace
+    CRATES=(
+        "wrt"
+        "wrtd"
+        "xtask"
+        "example"
+        "wrt-sync"
+        "wrt-error"
+        "wrt-format"
+        "wrt-types"
+        "wrt-decoder"
+        "wrt-component"
+        "wrt-host"
+        "wrt-logging"
+        "wrt-runtime"
+        "wrt-instructions"
+        "wrt-common"
+        "wrt-intercept"
+    )
+    
+    # Colors for output
+    RED='\033[0;31m'
+    GREEN='\033[0;32m'
+    YELLOW='\033[0;33m'
+    NC='\033[0m' # No Color
+    
+    FAILED=0
+    FAILED_CRATES=()
+    
+    for crate in "$${CRATES[@]}"; do
+        if [ -d "$${crate}" ]; then
+            echo -e "Checking $${YELLOW}$${crate}$${NC}..."
+            if cargo clippy --manifest-path="$${crate}/Cargo.toml" -- -W clippy::missing_panics_doc 2>&1 | grep -q "missing_panics_doc"; then
+                echo -e "  $${RED}FAILED: Missing panic documentation detected$${NC}"
+                FAILED=1
+                FAILED_CRATES+=("$${crate}")
+                
+                # Show more details about the specific issues
+                cargo clippy --manifest-path="$${crate}/Cargo.toml" -- -W clippy::missing_panics_doc 2>&1 | grep "missing_panics_doc" | sed 's/^/    /'
+                echo ""
+            else
+                echo -e "  $${GREEN}PASSED$${NC}"
+            fi
+        else
+            echo -e "  $${RED}WARNING: Directory $${crate} does not exist$${NC}"
+        fi
+    done
+    
+    if [ $${FAILED} -eq 1 ]; then
+        echo -e "$${RED}The following crates have functions with undocumented panics:$${NC}"
+        for crate in "$${FAILED_CRATES[@]}"; do
+            echo -e "  - $${crate}"
+        done
+        
+        echo -e "\nPlease add appropriate panic documentation using the format:"
+        echo -e "/// # Panics"
+        echo -e "///"
+        echo -e "/// This function will panic if [describe condition]"
+        echo -e "///"
+        echo -e "/// Safety impact: [LOW|MEDIUM|HIGH]"
+        echo -e "/// Tracking: [WRTQ-XXX]"
+        echo ""
+        echo -e "See docs/PANIC_DOCUMENTATION.md for more details."
+        exit 1
+    else
+        echo -e "\n$${GREEN}All checked crates have properly documented panics!$${NC}"
+    fi
+
 # Check import organization (std first, then third-party, then internal)
 check-imports:
     # Build and run the cross-platform Rust utility for checking imports
@@ -195,7 +268,7 @@ check-udeps:
     cargo machete
 
 # Run all checks (format, clippy, tests, imports, udeps, docs, wat files)
-check-all: check test check-imports check-udeps check-docs test-wrtd-example
+check-all: check test check-imports check-udeps check-docs check-panic-docs test-wrtd-example
 
 # Pre-commit check to run before committing changes
 pre-commit: check-all
@@ -215,6 +288,9 @@ docs-html:
     
 # Build HTML documentation with PlantUML diagrams
 docs-with-diagrams: docs-common setup-plantuml
+    #!/usr/bin/env bash
+    set -e
+    
     # Note: This recipe assumes 'plantuml' is in the PATH (handled by setup-plantuml for Linux/macOS).
     # Windows users need to ensure PlantUML is installed and in PATH manually.
 
@@ -224,12 +300,25 @@ docs-with-diagrams: docs-common setup-plantuml
     cargo xtask fs rmrf "{{sphinx_build_dir}}/html/_plantuml"
 
     # Generate changelog
-    git-cliff -o docs/source/changelog.md
+    git-cliff -o docs/source/changelog.md || echo "⚠️  Warning: Failed to generate changelog. Continuing with documentation build..."
 
     # Generate symbol documentation fragment (before Sphinx runs)
     echo "Generating symbol documentation fragment (RST)..."
     # NOTE: Add --features std here once compilation errors are fixed
-    cargo xtask symbols --package wrt --format rst --output docs/source/_generated_symbols.rst
+    cargo xtask symbols --package wrt --format rst --output docs/source/_generated_symbols.rst || (
+        echo "⚠️  Warning: Failed to generate symbol documentation. Continuing with documentation build..."
+        echo "# Symbol Documentation Generation Failed" > docs/source/_generated_symbols.rst
+        echo "Symbol documentation could not be generated due to build errors." >> docs/source/_generated_symbols.rst
+    )
+    
+    # Handle coverage summary
+    if [ ! -f "docs/source/_generated_coverage_summary.rst" ]; then
+        echo "⚠️  Warning: Coverage summary not found. Using placeholder..."
+        cp docs/source/_generated_coverage_summary.rst.template docs/source/_generated_coverage_summary.rst || (
+            echo "# Coverage Summary Generation Failed" > docs/source/_generated_coverage_summary.rst
+            echo "Coverage summary could not be generated due to build errors." >> docs/source/_generated_coverage_summary.rst
+        )
+    fi
 
     # Build with PlantUML diagrams
     echo "Building documentation with PlantUML diagrams..."
@@ -237,7 +326,7 @@ docs-with-diagrams: docs-common setup-plantuml
     
     # Confirm diagrams were generated using xtask
     echo -n "Generated PlantUML diagrams: "
-    @cargo xtask fs count-files "{{sphinx_build_dir}}/html/_images" "plantuml-*"
+    @cargo xtask fs count-files "{{sphinx_build_dir}}/html/_images" "plantuml-*" || echo "0 (error counting diagrams)"
     # Add a reminder check for the user
     echo "(If the count is 0, please check your PlantUML setup and .puml files)"
 
@@ -254,6 +343,46 @@ docs: docs-with-diagrams
 # Show Sphinx documentation help
 docs-help:
     {{sphinx_build}} -M help "{{sphinx_source}}" "{{sphinx_build_dir}}" {{sphinx_opts}}
+
+# Build versioned documentation
+docs-versioned VERSION="main":
+    #!/usr/bin/env bash
+    set -e
+    
+    # Set version for documentation build
+    export DOCS_VERSION="{{VERSION}}"
+    export DOCS_VERSION_PATH_PREFIX="/"
+    
+    # Build documentation
+    (just docs-with-diagrams) || (
+        echo "⚠️  Warning: Documentation build encountered errors but will try to continue with versioning..."
+        mkdir -p docs/_build/html
+    )
+    
+    # Create directory structure for versioned docs
+    mkdir -p docs/_build/versioned/{{VERSION}}
+    
+    # Copy built HTML to versioned directory if it exists
+    if [ -d "docs/_build/html" ]; then
+        cp -r docs/_build/html/* docs/_build/versioned/{{VERSION}}/ || (
+            echo "⚠️  Error: Failed to copy HTML documentation to versioned directory."
+            mkdir -p docs/_build/versioned/{{VERSION}}
+            echo "<html><body><h1>Documentation Generation Failed</h1><p>The documentation for version {{VERSION}} could not be generated properly.</p></body></html>" > docs/_build/versioned/{{VERSION}}/index.html
+        )
+    else
+        echo "⚠️  Error: HTML documentation directory not found."
+        mkdir -p docs/_build/versioned/{{VERSION}}
+        echo "<html><body><h1>Documentation Generation Failed</h1><p>The documentation for version {{VERSION}} could not be generated properly.</p></body></html>" > docs/_build/versioned/{{VERSION}}/index.html
+    fi
+    
+    # Generate index file for root
+    cp docs/source/root_index.html docs/_build/versioned/index.html || (
+        echo "⚠️  Error: Failed to copy root index file."
+        echo "<html><body><h1>WRT Documentation</h1><p>Please select a version: <a href='./main/'>main</a></p></body></html>" > docs/_build/versioned/index.html
+    )
+    
+    echo "Versioned documentation processing completed for version {{VERSION}}."
+    echo "The documentation is available in docs/_build/versioned/{{VERSION}}/"
 
 # ----------------- WebAssembly WAT/WASM Commands -----------------
 
@@ -536,14 +665,25 @@ coverage:
     cargo xtask coverage
 
 # Common steps for documentation generation
-docs-common: coverage # Add coverage as a dependency
+docs-common:
+    # Try to generate coverage if possible, but continue on failure
+    cargo xtask coverage || echo "⚠️  Warning: Failed to generate code coverage. Continuing with documentation build..."
+    
     # Clean previous build artifacts
     cargo xtask fs rmrf "{{sphinx_build_dir}}"
     cargo xtask fs mkdirp "{{sphinx_build_dir}}"
+    
     # Create the target static directory for coverage report
     cargo xtask fs mkdirp "{{sphinx_build_dir}}/html/_static/coverage"
-    # Copy the generated HTML coverage report
-    cargo xtask fs cp target/llvm-cov/html/* "{{sphinx_build_dir}}/html/_static/coverage/"
+    
+    # Copy the generated HTML coverage report if it exists
+    if [ -d "target/llvm-cov/html" ]; then
+    cargo xtask fs cp target/llvm-cov/html/* "{{sphinx_build_dir}}/html/_static/coverage/" || echo "⚠️  Warning: Failed to copy coverage reports. Continuing with documentation build..."
+    else
+    echo "⚠️  Warning: Coverage report directory not found. Continuing with documentation build..."
+    mkdir -p "{{sphinx_build_dir}}/html/_static/coverage/"
+    echo "<h1>Coverage Report Not Available</h1><p>The coverage report could not be generated due to build errors.</p>" > "{{sphinx_build_dir}}/html/_static/coverage/index.html"
+    fi
 
 # Check if Kani verifier is installed
 check-kani:

@@ -56,6 +56,7 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(feature = "kani", feature(kani))]
+#![warn(clippy::missing_panics_doc)]
 
 // When no_std but alloc is available
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
@@ -68,9 +69,9 @@ use alloc::{boxed::Box, string::String, sync::Arc, vec::Vec};
 use std::{boxed::Box, string::String, sync::Arc, vec::Vec};
 
 // Reexports for convenience
-pub use wrt_common::component::ComponentValue;
 pub use wrt_error::{Error, Result};
 pub use wrt_types::values::Value;
+pub use wrt_types::ComponentValue;
 
 // Import HashMap if using std
 #[cfg(feature = "std")]

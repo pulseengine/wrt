@@ -5,6 +5,7 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![warn(missing_docs)]
+#![warn(clippy::missing_panics_doc)]
 
 // When no_std but alloc is available
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
