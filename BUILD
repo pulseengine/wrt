@@ -1,4 +1,4 @@
-load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library", "rust_test", "rust_test_suite", "rustfmt_test")
+load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library", "rust_test", "rust_test_suite", "rustfmt_test", "rust_clippy")
 load("@crates//:defs.bzl", "all_crate_deps")
 
 # Keep these load statements for now, we might need to adjust them later
@@ -113,6 +113,11 @@ fmt(
 
 check(
     name = "check",
+    # Adding a data dependency to ensure clippy targets exist
+    # (they will be called by the check script)
+    data = [
+        ":clippy_all",
+    ],
 )
 
 docs(
@@ -141,12 +146,18 @@ rust_test_suite(
     srcs = [],
     deps = [
         "//wrt:wrt_test",
+        "//wrt:wrt_no_std_test",
         "//wrt-common:wrt-common_test",
         "//wrt-error:wrt-error_test",
+        "//wrt-error:wrt-error_no_std_test",
         "//wrt-types:wrt-types_test",
+        "//wrt-types:wrt-types_no_std_test",
         "//wrt-component:wrt-component_test",
+        "//wrt-component:wrt-component_no_std_test",
         "//wrt-sync:wrt-sync_test",
+        "//wrt-sync:wrt-sync_no_std_test",
         "//wrt-runtime:wrt-runtime_test",
+        "//wrt-runtime:wrt-runtime_no_std_test",
     ],
 )
 
@@ -168,4 +179,51 @@ rustfmt_test(
         "//wrt-sync:wrt-sync",
         "//wrt-runtime:wrt-runtime",
     ],
+)
+
+# Add feature-specific build targets
+load("//bazel:feature-build.bzl", "build_with_features")
+
+build_with_features(
+    name = "build_std",
+    feature_set = "std",
+)
+
+build_with_features(
+    name = "build_no_std",
+    feature_set = "no_std",
+)
+
+# Add clippy targets
+load("//bazel:clippy.bzl", "clippy_all", "clippy_with_features")
+
+# Run clippy on specific targets with default configuration
+rust_clippy(
+    name = "clippy",
+    deps = [
+        "//wrt:wrt",
+        "//wrt-runtime:wrt-runtime",
+        "//wrt-types:wrt-types",
+        "//wrt-component:wrt-component",
+        "//wrt-sync:wrt-sync",
+        "//wrt-error:wrt-error",
+        "//wrtd",
+    ],
+)
+
+# Run clippy with std features
+clippy_with_features(
+    name = "clippy_std",
+    feature_set = "std",
+)
+
+# Run clippy with no_std features
+clippy_with_features(
+    name = "clippy_no_std",
+    feature_set = "no_std",
+)
+
+# Run clippy with both feature sets
+clippy_all(
+    name = "clippy_all",
 ) 

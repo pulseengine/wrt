@@ -38,17 +38,3 @@ unused_imports = "allow"
 unused_variables = "allow"
 unused_mut = "allow"
 unused_macros = "allow"
-
-# Workspace-level features for Component Model
-[workspace.features]
-# Basic features
-component-model-core = ["wrt-format/component-model-core"]
-# Experimental features
-component-model-values = ["wrt-format/component-model-values"]
-component-model-resources = ["wrt-format/component-model-resources"]
-# All Component Model features
-component-model-all = [
-    "component-model-core",
-    "component-model-values",
-    "component-model-resources"
-]
