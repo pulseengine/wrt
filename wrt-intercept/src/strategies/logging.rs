@@ -187,10 +187,9 @@ impl<S: LogSink + 'static, F: ValueFormatter + 'static> LinkInterceptorStrategy
     ) -> Result<Vec<Value>> {
         // Calculate elapsed time if timing is enabled
         let elapsed = if self.config.log_timing {
-            if let Ok(mut timing) = self.timing.lock() {
-                timing.take().map(|start| start.elapsed())
-            } else {
-                None
+            match self.timing.lock() {
+                Ok(mut timing) => timing.take().map(|start| start.elapsed()),
+                _ => None,
             }
         } else {
             None
