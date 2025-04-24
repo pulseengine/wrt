@@ -11,7 +11,7 @@ repository = "https://github.com/avrabe/wrt"
 log = { version = "0.4", optional = true }
 anyhow = { workspace = true, optional = true }
 serde = { version = "1.0", features = ["derive"], optional = true }
-wat = { version = "1.0.53", optional = true }
+wat = { version = "1.229.0", optional = true }
 serde_json = { version = "1.0", optional = true }
 bincode = { version = "2.0", optional = true }
 # Error handling
