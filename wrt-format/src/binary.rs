@@ -491,7 +491,7 @@ pub fn write_leb128_u64(value: u64) -> Vec<u8> {
 }
 
 /// IEEE 754 floating point handling
-
+///
 /// Read a 32-bit IEEE 754 float from a byte array
 pub fn read_f32(bytes: &[u8], pos: usize) -> Result<(f32, usize)> {
     if pos + 4 > bytes.len() {
@@ -539,7 +539,7 @@ pub fn write_f64(value: f64) -> Vec<u8> {
 }
 
 /// UTF-8 string validation and parsing
-
+///
 /// Validate that a byte slice contains valid UTF-8
 pub fn validate_utf8(bytes: &[u8]) -> Result<()> {
     match str::from_utf8(bytes) {

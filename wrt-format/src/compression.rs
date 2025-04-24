@@ -10,7 +10,7 @@ use wrt_error::{kinds, Error, Result};
 use std::cmp;
 
 #[cfg(not(feature = "std"))]
-use core::{cmp, iter};
+use core::cmp;
 
 #[cfg(not(feature = "std"))]
 use alloc::string::ToString;
@@ -108,7 +108,10 @@ pub fn rle_decode(input: &[u8]) -> Result<Vec<u8>> {
             }
             let value = input[i];
             i += 1;
+            #[cfg(feature = "std")]
             result.extend(std::iter::repeat_n(value, run_length));
+            #[cfg(not(feature = "std"))]
+            result.extend(core::iter::repeat_n(value, run_length));
         } else {
             // Literal sequence ((control & 0x7F) + 1 bytes)
             let literal_length = (control & 0x7F) as usize + 1;

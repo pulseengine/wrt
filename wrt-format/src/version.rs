@@ -28,7 +28,7 @@ impl Default for ComponentModelVersion {
 }
 
 /// Feature flags for different Component Model capabilities
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
 pub enum ComponentModelFeature {
     /// Core module support
     CoreModule,
