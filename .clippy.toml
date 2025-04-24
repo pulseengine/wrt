@@ -3,7 +3,7 @@ warn-on-all-wildcard-imports = true
 doc-valid-idents = ["WebAssembly", "WASI"]
 
 # Lint configurations
-msrv = "1.56.0"  # Minimum supported Rust version
+msrv = "1.86.0"  # Minimum supported Rust version
 
 # Clippy is strict about the following lints
 cognitive-complexity-threshold = 30
