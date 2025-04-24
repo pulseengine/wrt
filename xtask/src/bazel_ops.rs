@@ -25,7 +25,7 @@ pub fn run_test(sh: &Shell, target: &str) -> Result<()> {
 }
 
 /// Generate a BUILD file for the specified package directory
-pub fn generate_build_file(sh: &Shell, directory: &Path) -> Result<()> {
+pub fn generate_build_file(_sh: &Shell, directory: &Path) -> Result<()> {
     let dir_str = directory.to_string_lossy();
 
     // Check if directory exists
@@ -78,7 +78,7 @@ pub fn generate_build_file(sh: &Shell, directory: &Path) -> Result<()> {
 }
 
 /// Migrate a just command to Bazel
-pub fn migrate_just_command(sh: &Shell, command: &str) -> Result<()> {
+pub fn migrate_just_command(_sh: &Shell, command: &str) -> Result<()> {
     // Read the justfile
     let justfile_path = Path::new("justfile");
     if !justfile_path.exists() {
