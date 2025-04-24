@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use std::error::Error;
 use std::fs;
 use std::path::Path;
@@ -70,10 +72,10 @@ pub fn run(output_path: &Path, format: &str) -> Result<(), Box<dyn Error>> {
 }
 
 fn build_relationships(
-    requirements: &[crate::qualification::Requirement],
-    specifications: &[crate::qualification::Specification],
-    qualification_specs: &[crate::qualification::Specification],
-) -> Vec<Relationship> {
+    _requirements: &[crate::qualification::Requirement],
+    _specifications: &[crate::qualification::Specification],
+    _qualification_specs: &[crate::qualification::Specification],
+) -> Vec<crate::qualification::Relationship> {
     // This would build the relationships between requirements and specifications
     // Placeholder implementation
     vec![Relationship {
