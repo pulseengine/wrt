@@ -131,8 +131,8 @@ jobs:
             echo "<html><body><h1>WRT Documentation</h1><p>Please select a version: <a href='./main/'>main</a></p></body></html>" > docs/_build/versioned/index.html
           }
           
-          # Generate the switcher.json file specifically for GitHub Pages
-          python docs/source/_static/js/generate_switcher.py
+          # Generate the switcher.json file specifically for GitHub Pages using the new xtask command
+          cargo xtask docs switcher-json
           
           echo "Documentation processing completed for version ${{ env.VERSION }}"
 
