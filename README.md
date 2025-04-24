@@ -25,7 +25,7 @@ WRT is a pure Rust implementation of a WebAssembly runtime that supports both th
 
 ### Prerequisites
 
-- Rust 1.70 or newer
+- Rust 1.86.0 or newer
 - For development: [just](https://github.com/casey/just) command runner
 - Python 3 (for documentation and hooks)
 - Java (optional, for PlantUML diagrams in documentation)
