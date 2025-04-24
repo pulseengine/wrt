@@ -6,6 +6,12 @@
 use wrt_error::{kinds, Error, Result};
 use wrt_types::{FromFormat, ToFormat, ValueType};
 
+// Import ToString based on feature flags
+#[cfg(not(feature = "std"))]
+use alloc::string::ToString;
+#[cfg(feature = "std")]
+use std::string::ToString;
+
 // Temporary imported type aliases to make the transition easier
 use crate::component::ValType as FormatValType;
 

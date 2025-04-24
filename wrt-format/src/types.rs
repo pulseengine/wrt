@@ -8,9 +8,6 @@ use wrt_error::{kinds, Error, Result};
 // Import types from wrt-types
 pub use wrt_types::{safe_memory::SafeSlice, FuncType, ValueType};
 
-#[cfg(not(feature = "std"))]
-use alloc::string::ToString;
-
 /// WebAssembly memory index type (standard or 64-bit)
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MemoryIndexType {
