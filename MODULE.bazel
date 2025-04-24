@@ -7,7 +7,7 @@
 
 module(
     name = "wrt",
-    version = "0.1.0",
+    version = "0.2.0",
 )
 
 bazel_dep(name = "rules_rust", version = "0.60.0")

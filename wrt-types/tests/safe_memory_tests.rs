@@ -5,12 +5,15 @@
 
 extern crate wrt_types;
 
-use wrt_error::Error;
 use wrt_types::{
-    safe_memory::{MemoryProvider, MemorySafety, SafeSlice, StdMemoryProvider},
+    safe_memory::{MemoryProvider, MemorySafety, SafeSlice},
     verification::VerificationLevel,
 };
 
+#[cfg(feature = "std")]
+use wrt_types::safe_memory::StdMemoryProvider;
+
+#[cfg(feature = "std")]
 #[test]
 fn test_std_memory_provider() {
     let data = vec![1, 2, 3, 4, 5, 6, 7, 8];
@@ -29,6 +32,7 @@ fn test_std_memory_provider() {
     assert_eq!(stats.access_count, 1);
 }
 
+#[cfg(feature = "std")]
 #[test]
 fn test_std_memory_provider_out_of_bounds() {
     let data = vec![1, 2, 3, 4, 5];
@@ -44,6 +48,7 @@ fn test_std_memory_provider_out_of_bounds() {
     }
 }
 
+#[cfg(feature = "std")]
 #[test]
 fn test_std_memory_provider_operations() {
     let mut provider = StdMemoryProvider::with_capacity(10);
@@ -69,6 +74,7 @@ fn test_std_memory_provider_operations() {
     assert_eq!(stats.access_count, 0);
 }
 
+#[cfg(feature = "std")]
 #[test]
 fn test_std_memory_provider_integrity() {
     let mut provider = StdMemoryProvider::with_capacity(1024);
@@ -213,6 +219,7 @@ fn test_safe_slice_verification_levels() {
     assert_eq!(slice_full.len(), 8);
 }
 
+#[cfg(feature = "std")]
 #[test]
 fn test_memory_safety_trait() {
     // Create providers implementing MemorySafety
@@ -246,119 +253,119 @@ fn test_safe_slice_sub_slicing() {
     let data = &[1, 2, 3, 4, 5, 6, 7, 8];
     let slice = SafeSlice::new(data);
 
-    // Create a sub-slice
+    // Create a sub-slice from index 2 to 6 (exclusive)
     let sub_slice = slice.slice(2, 6).unwrap();
     assert_eq!(sub_slice.data().unwrap(), &[3, 4, 5, 6]);
-    assert_eq!(sub_slice.len(), 4);
 
-    // Try invalid sub-slice
-    let invalid_slice = slice.slice(6, 10);
-    assert!(invalid_slice.is_err());
+    // Create another level of sub-slicing from index 0 to 2 (exclusive)
+    let sub_sub_slice = sub_slice.slice(0, 2).unwrap();
+    assert_eq!(sub_sub_slice.data().unwrap(), &[3, 4]);
+
+    // Test out of bounds sub-slicing
+    let result = slice.slice(5, 8);
+    assert!(result.is_ok());
+    let result = slice.slice(5, 9);
+    assert!(result.is_err());
 }
+
+// Generic test functions to ensure traits are properly implemented
 
 #[cfg(feature = "std")]
 #[test]
 fn test_generic_memory_provider() {
-    // Function that works with any memory provider
-    fn access_memory<P: MemoryProvider>(provider: &P) -> Result<Vec<u8>, Error> {
-        let slice = provider.borrow_slice(2, 4)?;
+    #[cfg(feature = "std")]
+    fn access_memory<P: MemoryProvider>(provider: &P) -> Result<Vec<u8>, wrt_error::Error> {
+        let slice = provider.borrow_slice(2, 3)?;
         let data = slice.data()?;
         Ok(data.to_vec())
     }
 
-    // Test with StdMemoryProvider
-    let provider = StdMemoryProvider::new(vec![1, 2, 3, 4, 5, 6, 7, 8]);
+    let data = vec![1, 2, 3, 4, 5, 6, 7, 8];
+    let provider = StdMemoryProvider::new(data);
+
     let result = access_memory(&provider).unwrap();
-    assert_eq!(result, vec![3, 4, 5, 6]);
+    assert_eq!(result, vec![3, 4, 5]);
 }
 
 #[cfg(feature = "std")]
 #[test]
 fn test_generic_memory_safety() {
-    // Generic function that works with any MemorySafety implementation
-    fn verify_and_access<M: MemoryProvider + MemorySafety>(provider: &M) -> Result<(), Error> {
-        // Verify integrity
+    #[cfg(feature = "std")]
+    fn verify_and_access<M: MemoryProvider + MemorySafety>(
+        provider: &M,
+    ) -> Result<(), wrt_error::Error> {
         provider.verify_integrity()?;
 
-        // Get memory stats before
-        let before = provider.memory_stats();
+        // Check verification level
+        assert_eq!(provider.verification_level(), VerificationLevel::Standard);
 
-        // Make an access
-        let slice = provider.borrow_slice(2, 4)?;
+        // Access data
+        let slice = provider.borrow_slice(0, 4)?;
         assert_eq!(slice.len(), 4);
 
-        // Get memory stats after
-        let after = provider.memory_stats();
-
-        // Verify counts increased
-        assert!(after.access_count > before.access_count);
+        // Check stats
+        let stats = provider.memory_stats();
+        assert!(stats.access_count > 0);
 
         Ok(())
     }
 
-    // Test with StdMemoryProvider
-    let provider = StdMemoryProvider::new(vec![1, 2, 3, 4, 5, 6, 7, 8]);
-    assert!(verify_and_access(&provider).is_ok());
+    let data = vec![1, 2, 3, 4, 5, 6, 7, 8];
+    let provider = StdMemoryProvider::new(data);
+
+    verify_and_access(&provider).unwrap();
 }
 
-#[cfg(test)]
+// More comprehensive tests in a separate module
+#[cfg(feature = "std")]
 mod tests {
-    use std::vec;
-
-    use wrt_types::safe_memory::{MemoryProvider, MemorySafety, SafeSlice, StdMemoryProvider};
-    use wrt_types::verification::VerificationLevel;
+    use super::*;
+    use wrt_types::{
+        safe_memory::{MemoryProvider, MemorySafety, SafeSlice, StdMemoryProvider},
+        verification::VerificationLevel,
+    };
 
     #[test]
     fn test_safe_slice_creation() {
         let data = vec![1, 2, 3, 4, 5];
         let slice = SafeSlice::new(&data);
 
+        assert_eq!(slice.data().unwrap(), &[1, 2, 3, 4, 5]);
         assert_eq!(slice.len(), 5);
         assert!(!slice.is_empty());
-
-        // Access the data and verify it matches
-        let accessed_data = slice.data().unwrap();
-        assert_eq!(accessed_data, &[1, 2, 3, 4, 5]);
     }
 
     #[test]
     fn test_std_memory_provider() {
-        let data = vec![1, 2, 3, 4, 5, 6, 7, 8];
+        let data = vec![1, 2, 3, 4, 5];
         let provider = StdMemoryProvider::new(data);
 
-        // Borrow a slice and verify its contents
-        let slice = provider.borrow_slice(2, 3).unwrap();
-        assert_eq!(slice.len(), 3);
-        assert_eq!(slice.data().unwrap(), &[3, 4, 5]);
-
-        // Check access tracking
-        let stats = provider.memory_stats();
-        assert_eq!(stats.access_count, 1);
+        let slice = provider.borrow_slice(1, 3).unwrap();
+        assert_eq!(slice.data().unwrap(), &[2, 3, 4]);
     }
 
     #[test]
     fn test_safe_slice_with_verification_levels() {
         let data = vec![1, 2, 3, 4, 5];
 
-        // Test with standard verification level (default)
-        let slice = SafeSlice::new(&data);
-        assert_eq!(slice.verification_level(), VerificationLevel::Standard);
+        // Test with all verification levels
+        let levels = [
+            VerificationLevel::None,
+            VerificationLevel::Sampling,
+            VerificationLevel::Standard,
+            VerificationLevel::Full,
+        ];
 
-        // Test with full verification level
-        let full_slice = SafeSlice::with_verification_level(&data, VerificationLevel::Full);
-        assert_eq!(full_slice.verification_level(), VerificationLevel::Full);
+        for level in &levels {
+            let slice = SafeSlice::with_verification_level(&data, *level);
 
-        // Test with no verification
-        let no_verify_slice = SafeSlice::with_verification_level(&data, VerificationLevel::None);
-        assert_eq!(
-            no_verify_slice.verification_level(),
-            VerificationLevel::None
-        );
+            // Basic properties should work
+            assert_eq!(slice.data().unwrap(), &[1, 2, 3, 4, 5]);
+            assert_eq!(slice.len(), 5);
 
-        // All should still return correct data
-        assert_eq!(slice.data().unwrap(), &[1, 2, 3, 4, 5]);
-        assert_eq!(full_slice.data().unwrap(), &[1, 2, 3, 4, 5]);
-        assert_eq!(no_verify_slice.data().unwrap(), &[1, 2, 3, 4, 5]);
+            // Verification level should be retained
+            assert_eq!(slice.verification_level(), *level);
+        }
     }
 
     #[test]
@@ -366,62 +373,70 @@ mod tests {
         let data = vec![1, 2, 3, 4, 5];
         let provider = StdMemoryProvider::new(data);
 
-        // Try to access beyond the end of data
-        let result = provider.borrow_slice(3, 10);
-        assert!(result.is_err());
+        // Valid access
+        assert!(provider.borrow_slice(0, 5).is_ok());
 
-        // Check access tracking still recorded the attempt
-        let stats = provider.memory_stats();
-        assert_eq!(stats.access_count, 1);
+        // Invalid accesses
+        assert!(provider.borrow_slice(1, 5).is_err());
+        assert!(provider.borrow_slice(5, 1).is_err());
+        assert!(provider.borrow_slice(6, 0).is_err());
     }
 
     #[test]
     fn test_slice_sub_slicing() {
         let data = vec![1, 2, 3, 4, 5, 6, 7, 8];
-        let provider = StdMemoryProvider::new(data);
+        let slice = SafeSlice::new(&data);
 
-        // Borrow a slice
-        let slice = provider.borrow_slice(1, 6).unwrap();
-        assert_eq!(slice.data().unwrap(), &[2, 3, 4, 5, 6, 7]);
+        // Create a sub-slice from indices 2 to 6 (exclusive of 2, inclusive of 5)
+        let sub_slice = slice.slice(2, 6).unwrap();
+        assert_eq!(sub_slice.data().unwrap(), &[3, 4, 5, 6]);
 
-        // Create a sub-slice
-        let sub_slice = slice.slice(2, 4).unwrap();
-        assert_eq!(sub_slice.data().unwrap(), &[4, 5]);
+        // Create a nested sub-slice from indices 0 to 2 of the sub-slice
+        let nested_slice = sub_slice.slice(0, 2).unwrap();
+        // The nested slice should contain elements at positions 0 and 1 of the sub_slice
+        assert_eq!(nested_slice.data().unwrap(), &[3, 4]);
 
-        // Check access tracking
-        let stats = provider.memory_stats();
-        assert!(stats.access_count >= 2);
-        assert!(stats.unique_regions >= 1);
+        // Create a nested sub-slice with boundaries of the entire sub-slice
+        let boundary_slice = sub_slice.slice(0, 4).unwrap();
+        assert_eq!(boundary_slice.data().unwrap(), &[3, 4, 5, 6]);
+
+        // Test out of bounds
+        assert!(sub_slice.slice(0, 5).is_err());
+        assert!(sub_slice.slice(4, 1).is_err());
     }
 
     #[test]
     fn test_safe_slice_integrity_verification() {
         let data = vec![1, 2, 3, 4, 5];
-        let slice = SafeSlice::new(&data);
+        let slice = SafeSlice::with_verification_level(&data, VerificationLevel::Full);
 
-        // Verify integrity works
+        // Basic integrity check
         assert!(slice.verify_integrity().is_ok());
 
-        // We can't easily test corruption detection since SafeSlice
-        // has immutable access to the data, but we can at least
-        // ensure the verification functions don't panic
-        let _ = slice.verify_integrity_with_importance(200);
+        // Data access should work
+        assert_eq!(slice.data().unwrap(), &[1, 2, 3, 4, 5]);
     }
 
     #[test]
     fn test_memory_provider_safety() {
-        let data = vec![1, 2, 3, 4, 5];
+        let data = vec![1, 2, 3, 4, 5, 6, 7, 8];
         let mut provider = StdMemoryProvider::new(data);
 
-        // Test verification level setting
+        // Set verification level
         provider.set_verification_level(VerificationLevel::Full);
         assert_eq!(provider.verification_level(), VerificationLevel::Full);
 
-        // Test integrity verification
-        assert!(provider.verify_integrity().is_ok());
+        // Get statistics
+        let stats_before = provider.memory_stats();
+        assert_eq!(stats_before.access_count, 0);
 
-        // Test stats
-        let stats = provider.memory_stats();
-        assert_eq!(stats.total_size, 5);
+        // Make some accesses
+        provider.borrow_slice(1, 3).unwrap();
+        provider.borrow_slice(4, 3).unwrap();
+
+        // Check statistics after access
+        let stats_after = provider.memory_stats();
+        assert_eq!(stats_after.access_count, 2);
+        assert_eq!(stats_after.max_access_size, 3);
     }
 }

@@ -1,6 +1,6 @@
 [package]
 name = "wrt"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 description = "Pure Rust WebAssembly runtime supporting Core and Component Model specs"
 license = "MIT"
@@ -15,21 +15,21 @@ wat = { version = "1.0.53", optional = true }
 serde_json = { version = "1.0", optional = true }
 bincode = { version = "2.0", optional = true }
 # Error handling
-wrt-error = { path = "../wrt-error", version = "0.1.0" }
+wrt-error = { path = "../wrt-error", version = "0.2.0" }
 # Synchronization primitives
-wrt-sync = { path = "../wrt-sync", version = "0.1.0" }
+wrt-sync = { path = "../wrt-sync", version = "0.2.0" }
 # Format handling (no longer optional)
-wrt-format = { path = "../wrt-format", version = "0.1.0" }
+wrt-format = { path = "../wrt-format", version = "0.2.0" }
 # Shared type definitions
-wrt-types = { path = "../wrt-types", version = "0.1.0" }
+wrt-types = { path = "../wrt-types", version = "0.2.0" }
 # WebAssembly decoding
-wrt-decoder = { path = "../wrt-decoder", version = "0.1.0" }
+wrt-decoder = { path = "../wrt-decoder", version = "0.2.0" }
 # Runtime implementation
-wrt-runtime = { path = "../wrt-runtime", version = "0.1.0" }
+wrt-runtime = { path = "../wrt-runtime", version = "0.2.0" }
 # Logging functionality
-wrt-logging = { path = "../wrt-logging", version = "0.1.0" }
+wrt-logging = { path = "../wrt-logging", version = "0.2.0" }
 # Instruction implementations
-wrt-instructions = { path = "../wrt-instructions", version = "0.1.0" }
+wrt-instructions = { path = "../wrt-instructions", version = "0.2.0" }
 # WASI dependencies (optional)
 wasi-common = { version = "17.0.3", optional = true }
 wasi-cap-std-sync = { version = "17.0.3", optional = true }

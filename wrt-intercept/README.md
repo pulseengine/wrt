@@ -147,11 +147,11 @@ This crate can be used in no-std environments by disabling the default `std` fea
 
 ```toml
 [dependencies]
-wrt-intercept = { version = "0.1.0", default-features = false, features = ["no_std"] }
+wrt-intercept = { version = "0.2.0", default-features = false, features = ["no_std"] }
 ```
 
 Note that some strategies (like `StatisticsStrategy`) have limited functionality in no-std mode.
 
 ## License
 
-This project is licensed under the MIT License. 
+This project is licensed under the MIT License.

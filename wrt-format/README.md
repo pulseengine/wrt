@@ -21,14 +21,14 @@ Add the dependency to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-wrt-format = { version = "0.1.0" }
+wrt-format = { version = "0.2.0" }
 ```
 
 For no_std environments:
 
 ```toml
 [dependencies]
-wrt-format = { version = "0.1.0", default-features = false, features = ["no_std"] }
+wrt-format = { version = "0.2.0", default-features = false, features = ["no_std"] }
 ```
 
 ### Basic example

@@ -1,19 +1,22 @@
-//! WebAssembly type definitions
+//! Core WebAssembly types
 //!
-//! This module provides type definitions for WebAssembly entities
-//! with functional safety verification built in.
+//! This module defines basic WebAssembly types as specified in the
+//! WebAssembly specification.
+
+use core::fmt;
+
+#[cfg(feature = "std")]
+use std::{string::String, vec::Vec};
+
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+use alloc::{
+    format,
+    string::{String, ToString},
+    vec::Vec,
+};
 
 use crate::verification::Hasher;
 use wrt_error::{kinds, Error, Result};
-
-#[cfg(feature = "std")]
-use std::fmt;
-
-#[cfg(not(feature = "std"))]
-use core::fmt;
-
-#[cfg(not(feature = "std"))]
-use alloc::{string::String, vec::Vec};
 
 /// WebAssembly value types
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -46,10 +49,20 @@ impl ValueType {
             0x7B => Ok(Self::V128),
             0x70 => Ok(Self::FuncRef),
             0x6F => Ok(Self::ExternRef),
+            #[cfg(feature = "std")]
             _ => Err(Error::new(kinds::ParseError(format!(
                 "Invalid value type byte: 0x{:x}",
                 byte
             )))),
+            #[cfg(all(not(feature = "std"), feature = "alloc"))]
+            _ => Err(Error::new(kinds::ParseError(format!(
+                "Invalid value type byte: 0x{:x}",
+                byte
+            )))),
+            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            _ => Err(Error::new(kinds::ParseError(
+                "Invalid value type byte".into(),
+            ))),
         }
     }
 
@@ -384,6 +397,9 @@ impl Limits {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(not(feature = "std"))]
+    use alloc::vec;
 
     #[test]
     fn test_value_type_conversions() {

@@ -1,6 +1,6 @@
 [package]
 name = "wrt-host"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 description = "Host function infrastructure for the WebAssembly Runtime (WRT)"
 license = "MIT"
@@ -10,9 +10,9 @@ keywords = ["wasm", "webassembly", "runtime", "host", "component-model"]
 categories = ["wasm", "no-std"]
 
 [dependencies]
-wrt-error = { path = "../wrt-error", version = "0.1.0" }
-wrt-types = { path = "../wrt-types", version = "0.1.0" }
-wrt-intercept = { path = "../wrt-intercept", version = "0.1.0" }
+wrt-error = { path = "../wrt-error", version = "0.2.0" }
+wrt-types = { path = "../wrt-types", version = "0.2.0" }
+wrt-intercept = { path = "../wrt-intercept", version = "0.2.0" }
 
 # Std dependencies
 log = { version = "0.4", optional = true }

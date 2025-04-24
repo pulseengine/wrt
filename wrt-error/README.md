@@ -19,7 +19,7 @@ Add the dependency to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-wrt-error = { version = "0.1.0", features = ["std"] }
+wrt-error = { version = "0.2.0", features = ["std"] }
 ```
 
 ### Basic example

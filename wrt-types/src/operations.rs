@@ -12,6 +12,12 @@ use std::sync::atomic::{AtomicU64, Ordering};
 #[cfg(not(feature = "std"))]
 use core::sync::atomic::{AtomicU64, Ordering};
 
+#[cfg(feature = "std")]
+use std::sync::OnceLock;
+
+#[cfg(not(feature = "std"))]
+use core::sync::atomic::AtomicBool;
+
 /// Operation types that can be tracked for fuel consumption
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OperationType {
@@ -126,6 +132,32 @@ pub struct OperationCounter {
     other_ops: AtomicU64,
     /// Total fuel consumed by operations
     fuel_consumed: AtomicU64,
+}
+
+// Manual implementation of Clone for OperationCounter since AtomicU64 doesn't implement Clone
+impl Clone for OperationCounter {
+    fn clone(&self) -> Self {
+        Self {
+            memory_reads: AtomicU64::new(self.memory_reads.load(Ordering::Relaxed)),
+            memory_writes: AtomicU64::new(self.memory_writes.load(Ordering::Relaxed)),
+            memory_grows: AtomicU64::new(self.memory_grows.load(Ordering::Relaxed)),
+            collection_pushes: AtomicU64::new(self.collection_pushes.load(Ordering::Relaxed)),
+            collection_pops: AtomicU64::new(self.collection_pops.load(Ordering::Relaxed)),
+            collection_lookups: AtomicU64::new(self.collection_lookups.load(Ordering::Relaxed)),
+            collection_inserts: AtomicU64::new(self.collection_inserts.load(Ordering::Relaxed)),
+            collection_removes: AtomicU64::new(self.collection_removes.load(Ordering::Relaxed)),
+            collection_validates: AtomicU64::new(self.collection_validates.load(Ordering::Relaxed)),
+            collection_mutates: AtomicU64::new(self.collection_mutates.load(Ordering::Relaxed)),
+            checksum_calculations: AtomicU64::new(
+                self.checksum_calculations.load(Ordering::Relaxed),
+            ),
+            function_calls: AtomicU64::new(self.function_calls.load(Ordering::Relaxed)),
+            control_flows: AtomicU64::new(self.control_flows.load(Ordering::Relaxed)),
+            arithmetic_ops: AtomicU64::new(self.arithmetic_ops.load(Ordering::Relaxed)),
+            other_ops: AtomicU64::new(self.other_ops.load(Ordering::Relaxed)),
+            fuel_consumed: AtomicU64::new(self.fuel_consumed.load(Ordering::Relaxed)),
+        }
+    }
 }
 
 impl Default for OperationCounter {
@@ -305,11 +337,75 @@ pub trait OperationTracking {
     fn reset_operation_stats(&self);
 }
 
-/// Global operation counter for use when a local counter isn't available
-use std::sync::OnceLock;
+// Global operation counter for use when a local counter isn't available
+#[cfg(feature = "std")]
 static GLOBAL_COUNTER: OnceLock<OperationCounter> = OnceLock::new();
 
+// For no_std environment, we'll use a safer approach with atomic flags for initialization
+#[cfg(not(feature = "std"))]
+mod global_counter {
+    use super::*;
+    use alloc::boxed::Box;
+    use core::sync::atomic::{AtomicBool, Ordering};
+
+    // Storage for our global counter
+    static mut COUNTER_STORAGE: Option<Box<OperationCounter>> = None;
+    // Flag to track initialization
+    static INITIALIZED: AtomicBool = AtomicBool::new(false);
+    // Flag to track if initialization is in progress to avoid reentrancy issues
+    static INITIALIZING: AtomicBool = AtomicBool::new(false);
+
+    /// Get or initialize the counter with proper synchronization
+    pub fn get_counter() -> &'static OperationCounter {
+        if !INITIALIZED.load(Ordering::Acquire) {
+            // Use compare_exchange to ensure only one thread initializes
+            if !INITIALIZING
+                .compare_exchange(false, true, Ordering::Acquire, Ordering::Relaxed)
+                .is_ok()
+            {
+                // Another thread is initializing - spin wait
+                while !INITIALIZED.load(Ordering::Acquire) && INITIALIZING.load(Ordering::Relaxed) {
+                    core::hint::spin_loop();
+                }
+            } else {
+                // We're the initializing thread
+                let counter = Box::new(OperationCounter::new());
+                unsafe {
+                    COUNTER_STORAGE = Some(counter);
+                    // Before marking as initialized, ensure all writes are visible
+                    core::sync::atomic::fence(Ordering::Release);
+                    INITIALIZED.store(true, Ordering::Release);
+                    INITIALIZING.store(false, Ordering::Release);
+                }
+            }
+        }
+
+        // Counter is now guaranteed to be initialized
+        unsafe {
+            // This is safe because we've guaranteed initialization
+            // and we never modify or drop the Box after initialization
+            COUNTER_STORAGE.as_ref().unwrap()
+        }
+    }
+
+    /// Get a mutable reference to the counter - only used for reset operations
+    pub fn get_counter_mut() -> &'static mut OperationCounter {
+        if !INITIALIZED.load(Ordering::Acquire) {
+            // Initialize if not already done
+            let _ = get_counter();
+        }
+
+        unsafe {
+            // This is safe because we've guaranteed initialization,
+            // and we use appropriate atomic operations to ensure synchronization
+            // for mutation operations
+            COUNTER_STORAGE.as_mut().unwrap()
+        }
+    }
+}
+
 /// Get the global counter instance, initializing it if necessary
+#[cfg(feature = "std")]
 fn global_counter() -> &'static OperationCounter {
     // Compatibility implementation for MSRV < 1.86.0
     // This manually checks and initializes if not already set
@@ -324,23 +420,53 @@ fn global_counter() -> &'static OperationCounter {
 }
 
 /// Record an operation in the global counter
+#[cfg(feature = "std")]
 pub fn record_global_operation(op_type: OperationType, level: VerificationLevel) {
     global_counter().record_operation(op_type, level);
 }
 
+/// Record an operation in the global counter
+#[cfg(not(feature = "std"))]
+pub fn record_global_operation(op_type: OperationType, level: VerificationLevel) {
+    global_counter::get_counter().record_operation(op_type, level);
+}
+
 /// Get the summary from the global counter
+#[cfg(feature = "std")]
 pub fn global_operation_summary() -> OperationSummary {
     global_counter().get_summary()
 }
 
+/// Get the summary from the global counter
+#[cfg(not(feature = "std"))]
+pub fn global_operation_summary() -> OperationSummary {
+    global_counter::get_counter().get_summary()
+}
+
 /// Reset the global counter
+#[cfg(feature = "std")]
 pub fn reset_global_operations() {
     global_counter().reset();
 }
 
+/// Reset the global counter
+#[cfg(not(feature = "std"))]
+pub fn reset_global_operations() {
+    // For reset, we need to call an atomic method of OperationCounter
+    // which is safe because OperationCounter uses atomics internally
+    global_counter::get_counter().reset();
+}
+
 /// Get the total fuel consumed from the global counter
+#[cfg(feature = "std")]
 pub fn global_fuel_consumed() -> u64 {
     global_counter().get_fuel_consumed()
+}
+
+/// Get the total fuel consumed from the global counter
+#[cfg(not(feature = "std"))]
+pub fn global_fuel_consumed() -> u64 {
+    global_counter::get_counter().get_fuel_consumed()
 }
 
 #[cfg(test)]

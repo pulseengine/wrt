@@ -1,6 +1,6 @@
 [package]
 name = "wrt-intercept"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 description = "Host interception for WebAssembly Runtime (WRT)"
 license = "MIT OR Apache-2.0"
@@ -10,9 +10,9 @@ keywords = ["wasm", "webassembly", "runtime", "interception"]
 categories = ["wasm", "no-std"]
 
 [dependencies]
-wrt-error = { path = "../wrt-error", version = "0.1.0" }
-wrt-types = { path = "../wrt-types", version = "0.1.0" }
-wrt-format = { path = "../wrt-format", version = "0.1.0" }
+wrt-error = { path = "../wrt-error", version = "0.2.0" }
+wrt-types = { path = "../wrt-types", version = "0.2.0" }
+wrt-format = { path = "../wrt-format", version = "0.2.0" }
 
 # Optional dependencies
 log = { version = "0.4", optional = true }
