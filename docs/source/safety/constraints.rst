@@ -47,7 +47,7 @@ Installation Constraints
 
    The following prerequisites must be correctly installed before using the WebAssembly Runtime:
 
-   * Rust toolchain (minimum version 1.70)
+   * Rust toolchain (minimum version 1.86.0)
    * Required build dependencies as specified in the README
    * For development: just command runner and python for documentation
 

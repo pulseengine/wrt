@@ -29,6 +29,21 @@ All notable changes to this project will be documented in this file.
 - Implement i64 comparisons and floating-point operations
 - Implement proper SIMD instruction handling
 - Implement proper SIMD instruction helpers
+- *(xtask)* Add lint, test, build, coverage, and symbols commands
+- *(xtask)* Enhance coverage and symbols tasks
+- Add modular crates for decoder, error handling, format, and sync
+- Implement SIMD instruction functions and improve v128 handling
+- Update WIT interfaces and add component model examples
+- *(decoder)* Implement SIMD binary format updates
+- *(wrt-format)* Add GlobalType struct and update usages
+- *(wrt-format)* Add no_std support to core format
+- *(wrt-format)* Add initial WebAssembly Component Model types
+- *(wrt-decoder)* Add WebAssembly Component Model decoding and validation
+- *(resources)* Implement new resource management system
+- *(component)* Implement component model architecture improvements
+- *(modules)* Add new specialized component modules
+- *(component)* Add component examples and tests
+- Implement new features and update modules
 
 ### 🐛 Bug Fixes
 
@@ -54,10 +69,18 @@ All notable changes to this project will be documented in this file.
 - Implement proper V128 result handling for SIMD address tests
 - *(simd)* Add feature flags to log calls and fix unused variable warnings
 - Correct rotr operation implementation
+- *(engine)* Correct enter_else signature in StacklessFrame
+- *(engine)* Refine table fill and stack frame logic
+- *(engine)* Use parameter count for frame/block arity calculation
+- *(wasm)* Improve WebAssembly memory section specification compliance
+- *(decoder)* Update error type in encode function - Replace non-existent EncodeError with RuntimeError to fix compilation issues in wrt-decoder
+- *(decoder)* Implement CoreInstanceExport variant in encode_alias_section
 
 ### 💼 Other
 
 - Update dependencies and simplify benchmarks
+- *(deps)* Bump actions/setup-java from 3 to 4
+- *(deps)* Bump actions/checkout from 3 to 4
 
 ### 🚜 Refactor
 
@@ -73,6 +96,30 @@ All notable changes to this project will be documented in this file.
 - *(instructions)* Implement InstructionExecutor for SIMD operations
 - *(simd)* Change function visibility from pub to pub(crate)
 - Clean up unused code and fix variable warnings
+- *(xtask)* Introduce xtask crate for build and utility tasks
+- *(tests)* Update WAST tests for StacklessEngine and float comparison
+- *(simd)* Reorganize SIMD instruction implementation
+- *(engine)* Update stackless engine and related instructions
+- *(tests)* Update various tests and remove old WAST runner
+- *(examples)* Update example crate and remove old examples
+- *(instr)* Adapt table_fill instruction to Table type changes
+- *(engine)* Improve label arity and branching logic in StacklessFrame
+- *(instr)* Simplify value assignment in table_fill
+- *(runtime)* Cleanup and adjust stackless frame implementation
+- *(runtime)* Overhaul memory implementation and behavior
+- *(runtime)* Update stackless engine and behaviors
+- *(runtime)* Update instruction implementations and add SIMD stubs
+- *(runtime)* Update execution logic and core library file
+- *(wit)* Update logging adapter WIT files
+- Improve instruction handling and add new instruction types
+- Migrate to stackless execution model and improve error handling
+- Improve no_std compatibility for GlobalType implementation
+- *(wrt-decoder)* Update instructions module to use prelude
+- *(decoder)* Restructure component decoder implementation
+- *(core)* Update core modules for resource implementation
+- *(wrt-component)* Update component logic and refactor code structures
+- *(wrt-error)* Reorganize test structure for better maintainability
+- Update and refactor source code in wrt-component and wrt directories
 
 ### 📚 Documentation
 
@@ -81,6 +128,15 @@ All notable changes to this project will be documented in this file.
 - Add missing documentation for instruction variants and stackless methods
 - Update NEXT_STEPS.md to reflect Component Model implementation progress
 - Improve documentation formatting and reduce duplicated match arms
+- Update README and architecture documentation
+- Remove Component Model Tools requirement
+- *(wrt-format)* Update documentation for no_std support
+- Add Component Model improvement suggestions
+- *(safety)* Add qualification framework and safety documentation
+- *(architecture)* Add architecture diagrams and qualification module
+- *(safety)* Update safety requirements and implementation details
+- Update documentation and guidelines
+- Update documentation requirements and templates
 
 ### 🎨 Styling
 
@@ -103,6 +159,10 @@ All notable changes to this project will be documented in this file.
 - *(wasm)* Add conditional proposal tests for std and no_std
 - Temporarily disable WAST tests with placeholders
 - Fix component binary parsing tests and update progress
+- *(wrt)* Update test frame implementations
+- *(wrt-format)* Update tests for no_std compatibility
+- *(wrt-decoder)* Add tests for Component Model features
+- *(safety)* Add fuzz testing and resource verification tests
 
 ### ⚙️ Miscellaneous Tasks
 
@@ -115,6 +175,16 @@ All notable changes to this project will be documented in this file.
 - Fix an ci error during publishing
 - Changelog generation is missing
 - Update project configuration files
+- Update dependencies, build scripts, and CI workflow
+- Update documentation and build script
+- Update dependencies and remove NEXT_STEPS.md
+- Update wrt crate dependencies
+- *(cleanup)* Remove legacy files and update xtask
+- *(config)* Update configuration and workflows
+- Remove deprecated scripts and wrt-common modules
+- Commit remaining untracked files
+- *(config)* Update configuration files and Bazel build scripts
+- Commit all untracked files
 
 ## [0.1.0] - 2025-03-15
 
