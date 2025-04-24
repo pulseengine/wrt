@@ -130,9 +130,9 @@ dependencies = [
 
 [[package]]
 name = "anyhow"
-version = "1.0.97"
+version = "1.0.98"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dcfed56ad506cb2c684a14971b8861fdc3baaaae314b9e5f9bb532cbe3ba7a4f"
+checksum = "e16d2d3311acee920a9eb8d33b8cbc1787ce4a264e85f964c2404b969bdcd487"
 
 [[package]]
 name = "arbitrary"
@@ -870,7 +870,7 @@ dependencies = [
 
 [[package]]
 name = "example"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "wit-bindgen",
@@ -4061,7 +4061,7 @@ checksum = "1e9df38ee2d2c3c5948ea468a8406ff0db0b29ae1ffde1bcf20ef305bcc95c51"
 
 [[package]]
 name = "wrt"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "bincode 2.0.1",
@@ -4096,7 +4096,7 @@ dependencies = [
 
 [[package]]
 name = "wrt-component"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "chrono",
  "crossterm 0.27.0",
@@ -4113,7 +4113,7 @@ dependencies = [
 
 [[package]]
 name = "wrt-decoder"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "criterion",
  "hex",
@@ -4128,7 +4128,7 @@ dependencies = [
 
 [[package]]
 name = "wrt-error"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "bincode 2.0.1",
@@ -4142,7 +4142,7 @@ dependencies = [
 
 [[package]]
 name = "wrt-format"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "kani-verifier",
  "proptest",
@@ -4152,7 +4152,7 @@ dependencies = [
 
 [[package]]
 name = "wrt-host"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "log",
  "parking_lot",
@@ -4163,7 +4163,7 @@ dependencies = [
 
 [[package]]
 name = "wrt-instructions"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "proptest",
  "rustc-std-workspace-alloc",
@@ -4174,7 +4174,7 @@ dependencies = [
 
 [[package]]
 name = "wrt-intercept"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "chrono",
  "log",
@@ -4186,7 +4186,7 @@ dependencies = [
 
 [[package]]
 name = "wrt-logging"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "log",
  "wrt-error",
@@ -4196,7 +4196,7 @@ dependencies = [
 
 [[package]]
 name = "wrt-runtime"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "proptest",
  "rustc-std-workspace-alloc",
@@ -4206,14 +4206,14 @@ dependencies = [
 
 [[package]]
 name = "wrt-sync"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "kani-verifier",
 ]
 
 [[package]]
 name = "wrt-types"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "criterion",
  "kani-verifier",
@@ -4225,7 +4225,7 @@ dependencies = [
 
 [[package]]
 name = "wrtd"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -4254,7 +4254,7 @@ checksum = "32ac00cd3f8ec9c1d33fb3e7958a82df6989c42d747bd326c822b1d625283547"
 
 [[package]]
 name = "xtask"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "clap",
