@@ -547,16 +547,6 @@ where
         self.data.last_mut()
     }
 
-    /// Get a reference to the underlying data
-    pub fn as_ref(&self) -> &[T] {
-        &self.data
-    }
-
-    /// Get a mutable reference to the underlying data
-    pub fn as_mut(&mut self) -> &mut [T] {
-        &mut self.data
-    }
-
     /// Remove the last element from the vector and return it
     pub fn pop(&mut self) -> Option<T> {
         // Track the pop operation
@@ -638,6 +628,26 @@ where
 
     fn len(&self) -> usize {
         self.data.len()
+    }
+}
+
+// Implement AsRef trait for BoundedVec
+impl<T, const N: usize> AsRef<[T]> for BoundedVec<T, N>
+where
+    T: AsRef<[u8]>,
+{
+    fn as_ref(&self) -> &[T] {
+        &self.data
+    }
+}
+
+// Implement AsMut trait for BoundedVec
+impl<T, const N: usize> AsMut<[T]> for BoundedVec<T, N>
+where
+    T: AsRef<[u8]>,
+{
+    fn as_mut(&mut self) -> &mut [T] {
+        &mut self.data
     }
 }
 

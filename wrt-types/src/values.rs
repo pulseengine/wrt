@@ -303,43 +303,109 @@ impl fmt::Display for Value {
 impl AsRef<[u8]> for Value {
     fn as_ref(&self) -> &[u8] {
         match self {
-            Self::I32(v) => unsafe {
-                std::slice::from_raw_parts(v as *const i32 as *const u8, std::mem::size_of::<i32>())
-            },
-            Self::I64(v) => unsafe {
-                std::slice::from_raw_parts(v as *const i64 as *const u8, std::mem::size_of::<i64>())
-            },
-            Self::F32(v) => unsafe {
-                std::slice::from_raw_parts(v as *const f32 as *const u8, std::mem::size_of::<f32>())
-            },
-            Self::F64(v) => unsafe {
-                std::slice::from_raw_parts(v as *const f64 as *const u8, std::mem::size_of::<f64>())
-            },
-            Self::V128(bytes) => bytes.as_ref(),
-            Self::FuncRef(ref_opt) => {
-                if let Some(func_ref) = ref_opt {
-                    unsafe {
-                        std::slice::from_raw_parts(
-                            &func_ref.index as *const u32 as *const u8,
-                            std::mem::size_of::<u32>(),
-                        )
+            Self::I32(v) => {
+                match *v {
+                    // Common values as static byte arrays to avoid allocation
+                    0 => &[0, 0, 0, 0],
+                    1 => &[1, 0, 0, 0],
+                    -1 => &[255, 255, 255, 255],
+                    // Use thread-local storage for dynamic values
+                    _ => {
+                        // Using thread_local for thread safety
+                        thread_local! {
+                            static BYTES: std::cell::RefCell<[u8; 4]> = std::cell::RefCell::new([0; 4]);
+                        }
+
+                        BYTES.with(|cell| {
+                            let mut bytes = cell.borrow_mut();
+                            *bytes = v.to_le_bytes();
+                            // Leak a copy of the bytes with a 'static lifetime
+                            let leaked: &'static [u8] = Box::leak(Box::new(*bytes));
+                            leaked
+                        })
                     }
-                } else {
-                    // Use a static empty array for None values
-                    &[0u8; 4]
                 }
             }
-            Self::ExternRef(ref_opt) => {
-                if let Some(extern_ref) = ref_opt {
-                    unsafe {
-                        std::slice::from_raw_parts(
-                            &extern_ref.index as *const u32 as *const u8,
-                            std::mem::size_of::<u32>(),
-                        )
+            Self::I64(v) => match *v {
+                0 => &[0, 0, 0, 0, 0, 0, 0, 0],
+                1 => &[1, 0, 0, 0, 0, 0, 0, 0],
+                -1 => &[255, 255, 255, 255, 255, 255, 255, 255],
+                _ => {
+                    thread_local! {
+                        static BYTES: std::cell::RefCell<[u8; 8]> = std::cell::RefCell::new([0; 8]);
                     }
+
+                    BYTES.with(|cell| {
+                        let mut bytes = cell.borrow_mut();
+                        *bytes = v.to_le_bytes();
+                        let leaked: &'static [u8] = Box::leak(Box::new(*bytes));
+                        leaked
+                    })
+                }
+            },
+            Self::F32(v) => {
+                if *v == 0.0 {
+                    &[0, 0, 0, 0]
                 } else {
-                    // Use a static empty array for None values
-                    &[0u8; 4]
+                    thread_local! {
+                        static BYTES: std::cell::RefCell<[u8; 4]> = std::cell::RefCell::new([0; 4]);
+                    }
+
+                    BYTES.with(|cell| {
+                        let mut bytes = cell.borrow_mut();
+                        *bytes = v.to_le_bytes();
+                        let leaked: &'static [u8] = Box::leak(Box::new(*bytes));
+                        leaked
+                    })
+                }
+            }
+            Self::F64(v) => {
+                if *v == 0.0 {
+                    &[0, 0, 0, 0, 0, 0, 0, 0]
+                } else {
+                    thread_local! {
+                        static BYTES: std::cell::RefCell<[u8; 8]> = std::cell::RefCell::new([0; 8]);
+                    }
+
+                    BYTES.with(|cell| {
+                        let mut bytes = cell.borrow_mut();
+                        *bytes = v.to_le_bytes();
+                        let leaked: &'static [u8] = Box::leak(Box::new(*bytes));
+                        leaked
+                    })
+                }
+            }
+            Self::V128(v) => v.as_ref(),
+            Self::FuncRef(func_ref) => {
+                if let Some(func) = func_ref {
+                    thread_local! {
+                        static BYTES: std::cell::RefCell<[u8; 4]> = std::cell::RefCell::new([0; 4]);
+                    }
+
+                    BYTES.with(|cell| {
+                        let mut bytes = cell.borrow_mut();
+                        *bytes = func.index.to_le_bytes();
+                        let leaked: &'static [u8] = Box::leak(Box::new(*bytes));
+                        leaked
+                    })
+                } else {
+                    &[0, 0, 0, 0]
+                }
+            }
+            Self::ExternRef(extern_ref) => {
+                if let Some(ext) = extern_ref {
+                    thread_local! {
+                        static BYTES: std::cell::RefCell<[u8; 4]> = std::cell::RefCell::new([0; 4]);
+                    }
+
+                    BYTES.with(|cell| {
+                        let mut bytes = cell.borrow_mut();
+                        *bytes = ext.index.to_le_bytes();
+                        let leaked: &'static [u8] = Box::leak(Box::new(*bytes));
+                        leaked
+                    })
+                } else {
+                    &[0, 0, 0, 0]
                 }
             }
         }

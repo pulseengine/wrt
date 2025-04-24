@@ -367,13 +367,14 @@ impl StdMemoryProvider {
 
     /// Clear the access tracking data but preserve statistics
     pub fn clear_access_tracking(&self) -> Result<()> {
-        if let Ok(mut log) = self.access_log.lock() {
-            log.clear();
-            Ok(())
-        } else {
-            Err(Error::new(kinds::ValidationError(
+        match self.access_log.lock() {
+            Ok(mut log) => {
+                log.clear();
+                Ok(())
+            }
+            _ => Err(Error::new(kinds::ValidationError(
                 "Access log mutex poisoned".into(),
-            )))
+            ))),
         }
     }
 

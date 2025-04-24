@@ -185,14 +185,10 @@ impl ComponentValue {
                     ValType::Option(Box::new(ValType::Bool)) // Placeholder
                 }
             }
-            Self::Result(val) => ValType::Result(Box::new(if let Ok(ok) = val {
-                if let Some(v) = ok {
-                    v.get_type()
-                } else {
-                    ValType::Bool // Placeholder for None
-                }
+            Self::Result(val) => ValType::Result(Box::new(if let Ok(Some(v)) = val {
+                v.get_type()
             } else {
-                ValType::Bool // Placeholder for Err
+                ValType::Bool // Placeholder for None or Err
             })),
             Self::Own(idx) => ValType::Own(*idx),
             Self::Borrow(idx) => ValType::Borrow(*idx),
@@ -348,7 +344,7 @@ impl ComponentValue {
 /// Basic serialization/deserialization functions for component values
 /// These are simple implementations to handle the basic needs for the
 /// intercept crate. Full serialization is in the component crate.
-
+///
 /// Simple serialization of component values
 pub fn serialize_component_values(values: &[ComponentValue]) -> Result<Vec<u8>> {
     let mut result = Vec::new();
