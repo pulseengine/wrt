@@ -108,10 +108,9 @@ impl StatisticsStrategy {
 
     /// Get statistics for all functions
     pub fn get_all_stats(&self) -> HashMap<String, FunctionStats> {
-        if let Ok(stats) = self.stats.read() {
-            stats.clone()
-        } else {
-            HashMap::new()
+        match self.stats.read() {
+            Ok(stats) => stats.clone(),
+            _ => HashMap::new(),
         }
     }
 
@@ -123,10 +122,9 @@ impl StatisticsStrategy {
         function: &str,
     ) -> Option<FunctionStats> {
         let key = Self::function_key(source, target, function);
-        if let Ok(stats) = self.stats.read() {
-            stats.get(&key).cloned()
-        } else {
-            None
+        match self.stats.read() {
+            Ok(stats) => stats.get(&key).cloned(),
+            _ => None,
         }
     }
 
@@ -172,12 +170,11 @@ impl LinkInterceptorStrategy for StatisticsStrategy {
         let key = Self::function_key(source, target, function);
         let is_success = result.is_ok();
         let elapsed_ms = if self.config.track_timing {
-            if let Ok(mut executing) = self.executing.lock() {
-                executing
+            match self.executing.lock() {
+                Ok(mut executing) => executing
                     .remove(&key)
-                    .map(|start| start.elapsed().as_secs_f64() * 1000.0)
-            } else {
-                None
+                    .map(|start| start.elapsed().as_secs_f64() * 1000.0),
+                _ => None,
             }
         } else {
             None
