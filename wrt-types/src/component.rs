@@ -126,16 +126,24 @@ impl Namespace {
             .all(|(a, b)| a == b)
     }
 
-    /// Returns a string representation of this namespace
-    #[must_use]
-    pub fn to_string(&self) -> String {
-        self.elements.join(".")
-    }
-
     /// Checks if this namespace is empty
     #[must_use]
     pub fn is_empty(&self) -> bool {
         self.elements.is_empty()
+    }
+}
+
+#[cfg(feature = "std")]
+impl std::fmt::Display for Namespace {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.elements.join("."))
+    }
+}
+
+#[cfg(not(feature = "std"))]
+impl core::fmt::Display for Namespace {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{}", self.elements.join("."))
     }
 }
 

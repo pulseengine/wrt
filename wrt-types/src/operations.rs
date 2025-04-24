@@ -311,7 +311,16 @@ static GLOBAL_COUNTER: OnceLock<OperationCounter> = OnceLock::new();
 
 /// Get the global counter instance, initializing it if necessary
 fn global_counter() -> &'static OperationCounter {
-    GLOBAL_COUNTER.get_or_init(OperationCounter::new)
+    // Compatibility implementation for MSRV < 1.86.0
+    // This manually checks and initializes if not already set
+    if let Some(counter) = GLOBAL_COUNTER.get() {
+        counter
+    } else {
+        // This has a race condition, but OnceLock ensures only the first setter wins
+        let _ = GLOBAL_COUNTER.set(OperationCounter::new());
+        // This is now guaranteed to return Some
+        GLOBAL_COUNTER.get().unwrap()
+    }
 }
 
 /// Record an operation in the global counter

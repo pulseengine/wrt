@@ -64,14 +64,12 @@ impl VerificationLevel {
                 // Higher importance = higher chance of being verified
                 // This is deterministic based on a counter to ensure
                 // predictable behavior for WCET analysis
-                static mut COUNTER: u32 = 0;
+                use std::sync::atomic::{AtomicU32, Ordering};
+                static COUNTER: AtomicU32 = AtomicU32::new(0);
 
-                // Safety: This is safe because we're only using it for
-                // sampling verification, not for critical safety
-                unsafe {
-                    COUNTER = COUNTER.wrapping_add(1);
-                    (COUNTER % 256) < u32::from(operation_importance)
-                }
+                // Get the current counter value and increment it atomically
+                let current = COUNTER.fetch_add(1, Ordering::Relaxed);
+                (current % 256) < u32::from(operation_importance)
             }
             Self::Standard | Self::Full => true,
         }
