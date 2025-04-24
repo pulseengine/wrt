@@ -12,6 +12,7 @@ use xshell::Shell;
 mod bazel_ops;
 mod check_imports;
 mod check_panics;
+mod docs;
 mod fs_ops;
 mod qualification;
 mod wasm_ops;
@@ -78,6 +79,11 @@ enum Command {
         #[command(subcommand)]
         command: BazelCommands,
     },
+    /// Documentation related commands
+    Docs {
+        #[command(subcommand)]
+        command: DocsCommands,
+    },
 }
 
 #[derive(Subcommand, Debug)]
@@ -108,6 +114,17 @@ enum BazelCommands {
         #[arg(help = "Command from justfile to migrate")]
         command: String,
     },
+}
+
+#[derive(Subcommand, Debug)]
+enum DocsCommands {
+    /// Generate the version switcher JSON file
+    SwitcherJson {
+        #[arg(long, help = "Generate for local development (localhost:8080)")]
+        local: bool,
+    },
+    /// Start a local HTTP server for documentation
+    Serve,
 }
 
 #[derive(Args, Debug)]
@@ -229,7 +246,8 @@ enum FsCommands {
 }
 
 // Structs for deserializing cargo --message-format=json output
-#[derive(Deserialize, Debug)]
+#[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct CargoMessage {
     reason: String,
     package_id: Option<String>,
@@ -238,7 +256,8 @@ struct CargoMessage {
     filenames: Option<Vec<PathBuf>>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct CargoTarget {
     name: String,
     kind: Vec<String>,
@@ -246,7 +265,8 @@ struct CargoTarget {
     src_path: PathBuf,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct CargoProfile {
     opt_level: String,
     debuginfo: Option<u32>,
@@ -256,14 +276,16 @@ struct CargoProfile {
 }
 
 // Structs for deserializing cargo metadata output
-#[derive(Deserialize, Debug)]
+#[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct Metadata {
     packages: Vec<Package>,
     resolve: Option<Resolve>,
     workspace_root: PathBuf,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct Package {
     name: String,
     version: String,
@@ -272,13 +294,15 @@ struct Package {
                 // Add other fields if needed (e.g., dependencies)
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct Resolve {
     root: Option<String>, // Package ID of the root package
     nodes: Vec<ResolveNode>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 struct ResolveNode {
     id: String, // Package ID
     features: Option<Vec<String>>, // Resolved features for this node
@@ -296,8 +320,8 @@ struct SymbolOutput {
 }
 
 fn main() -> Result<()> {
+    let opts: Opts = Opts::parse();
     let sh = Shell::new()?;
-    let opts = Opts::parse();
 
     match opts.command {
         Command::Lint(opts) => run_lint(&sh, opts),
@@ -346,6 +370,10 @@ fn main() -> Result<()> {
                 bazel_ops::generate_build_file(&sh, &directory)
             }
             BazelCommands::Migrate { command } => bazel_ops::migrate_just_command(&sh, &command),
+        },
+        Command::Docs { command } => match command {
+            DocsCommands::SwitcherJson { local } => docs::generate_switcher_json(local),
+            DocsCommands::Serve => docs::serve_docs(),
         },
     }
 }
@@ -523,7 +551,7 @@ fn run_coverage(sh: &Shell, _opts: CoverageOpts) -> Result<()> {
     Ok(())
 }
 
-fn run_symbols(sh: &Shell, opts: SymbolsOpts) -> Result<()> {
+fn run_symbols(_sh: &Shell, opts: SymbolsOpts) -> Result<()> {
     println!(
         "Running symbol analysis for package '{}' with profile '{}'...",
         opts.package, opts.profile
@@ -592,7 +620,7 @@ fn run_symbols(sh: &Shell, opts: SymbolsOpts) -> Result<()> {
                     }
                 }
             }
-            Err(e) => {
+            Err(_e) => {
                 // Ignore lines that aren't valid JSON messages (like notes from cargo)
                 // eprintln!("Failed to parse cargo JSON message: {}\nLine: {}", e, line);
             }
