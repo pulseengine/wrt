@@ -1,21 +1,7 @@
 target/
 docs/_build/
-docs/source/wrt/
-docs/source/wrt-error/
-docs/source/wrt-sync/
-docs/source/wrt-format/
-docs/source/wrt-decode/
-docs/source/wrt-common/
-docs/source/wrt-component/
-docs/source/wrt-host/
-docs/source/wrt-instruction/
-docs/source/wrt-intercept/
-docs/source/wrt-logging/
-docs/source/wrt-runtime/
-docs/source/wrt-types/
-docs/source/wrtd/
+docs/source/wrt*
 docs/source/changelog.md
-example/hello-world.wasm
 
 # Ignore all WASM files but keep WAT files which are the source format
 *.wasm
@@ -35,3 +21,6 @@ wast_failed.md
 bazel-*
 wrt/target
 wrtd/target
+docs/source/_generated_symbols.rst
+docs/source/_generated_coverage_summary.rst
+docs/source/_static/versions.json
