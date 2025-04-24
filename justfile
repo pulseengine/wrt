@@ -296,8 +296,8 @@ docs-with-diagrams: docs-common setup-plantuml
 
     # Use xtask to clean previous diagrams cross-platform
     echo "Cleaning previous diagram build artifacts..."
-    cargo xtask fs rmrf "{{sphinx_build_dir}}/html/_images/plantuml-*"
-    cargo xtask fs rmrf "{{sphinx_build_dir}}/html/_plantuml"
+    cargo xtask fs rm-rf "{{sphinx_build_dir}}/html/_images/plantuml-*"
+    cargo xtask fs rm-rf "{{sphinx_build_dir}}/html/_plantuml"
 
     # Generate changelog
     git-cliff -o docs/source/changelog.md || echo "⚠️  Warning: Failed to generate changelog. Continuing with documentation build..."
@@ -340,6 +340,21 @@ docs: docs-with-diagrams
     echo "Documentation built successfully. HTML documentation available in docs/_build/html."
     echo "To build PDF documentation, run 'just docs-pdf' (requires LaTeX installation)."
 
+# Serve documentation locally with version switcher support
+docs-serve:
+    #!/usr/bin/env bash
+    echo "Starting local documentation server..."
+    echo "First, ensuring we have at least one versioned doc build..."
+    
+    # Check if docs/_build/versioned/main exists
+    if [ ! -d "docs/_build/versioned/main" ]; then
+        echo "Building main version documentation first..."
+        just docs-versioned main
+    fi
+    
+    # Start the server using the new xtask command
+    cargo xtask docs serve
+
 # Show Sphinx documentation help
 docs-help:
     {{sphinx_build}} -M help "{{sphinx_source}}" "{{sphinx_build_dir}}" {{sphinx_opts}}
@@ -356,30 +371,46 @@ docs-versioned VERSION="main":
     # Build documentation
     (just docs-with-diagrams) || (
         echo "⚠️  Warning: Documentation build encountered errors but will try to continue with versioning..."
-        mkdir -p docs/_build/html
+        cargo xtask fs mkdir-p docs/_build/html
     )
     
     # Create directory structure for versioned docs
-    mkdir -p docs/_build/versioned/{{VERSION}}
+    cargo xtask fs mkdir-p docs/_build/versioned/{{VERSION}}
     
     # Copy built HTML to versioned directory if it exists
     if [ -d "docs/_build/html" ]; then
-        cp -r docs/_build/html/* docs/_build/versioned/{{VERSION}}/ || (
+        # Note: xtask doesn't support cp -r directly, so we need to create dirs first and then copy files
+        # This basic approach works but may need enhancement for complex structures
+        for file in docs/_build/html/*; do
+            if [ -f "$file" ]; then
+                cargo xtask fs cp "$file" "docs/_build/versioned/{{VERSION}}/$(basename "$file")"
+            elif [ -d "$file" ]; then
+                dirname=$(basename "$file")
+                cargo xtask fs mkdir-p "docs/_build/versioned/{{VERSION}}/$dirname"
+                # For directories, we still need to use cp -r
+                cp -r "$file"/* "docs/_build/versioned/{{VERSION}}/$dirname/" || (
+                    echo "⚠️  Error: Failed to copy directory $file."
+                )
+            fi
+        done || (
             echo "⚠️  Error: Failed to copy HTML documentation to versioned directory."
-            mkdir -p docs/_build/versioned/{{VERSION}}
+            cargo xtask fs mkdir-p docs/_build/versioned/{{VERSION}}
             echo "<html><body><h1>Documentation Generation Failed</h1><p>The documentation for version {{VERSION}} could not be generated properly.</p></body></html>" > docs/_build/versioned/{{VERSION}}/index.html
         )
     else
         echo "⚠️  Error: HTML documentation directory not found."
-        mkdir -p docs/_build/versioned/{{VERSION}}
+        cargo xtask fs mkdir-p docs/_build/versioned/{{VERSION}}
         echo "<html><body><h1>Documentation Generation Failed</h1><p>The documentation for version {{VERSION}} could not be generated properly.</p></body></html>" > docs/_build/versioned/{{VERSION}}/index.html
     fi
     
     # Generate index file for root
-    cp docs/source/root_index.html docs/_build/versioned/index.html || (
+    cargo xtask fs cp docs/source/root_index.html docs/_build/versioned/index.html || (
         echo "⚠️  Error: Failed to copy root index file."
         echo "<html><body><h1>WRT Documentation</h1><p>Please select a version: <a href='./main/'>main</a></p></body></html>" > docs/_build/versioned/index.html
     )
+    
+    # Generate the switcher.json file using the new xtask command
+    cargo xtask docs switcher-json
     
     echo "Versioned documentation processing completed for version {{VERSION}}."
     echo "The documentation is available in docs/_build/versioned/{{VERSION}}/"
@@ -401,14 +432,14 @@ docs-versioned VERSION="main":
 clean:
     cargo clean
     # Use xtask for cross-platform removal
-    cargo xtask fs rmrf example/hello-world.wasm
-    cargo xtask fs rmrf target/wasm32-wasip2/debug/example.wasm
-    cargo xtask fs rmrf target/wasm32-wasip2/release/example.wasm
-    cargo xtask fs rmrf target/wasm32-wasip2/debug/logging-adapter.wasm
-    cargo xtask fs rmrf target/wasm32-wasip2/release/logging-adapter.wasm
-    cargo xtask fs rmrf target/wasm32-wasip2/debug/composed-example.wasm
-    cargo xtask fs rmrf target/wasm32-wasip2/release/composed-example.wasm
-    cargo xtask fs rmrf docs/_build
+    cargo xtask fs rm-rf example/hello-world.wasm
+    cargo xtask fs rm-rf target/wasm32-wasip2/debug/example.wasm
+    cargo xtask fs rm-rf target/wasm32-wasip2/release/example.wasm
+    cargo xtask fs rm-rf target/wasm32-wasip2/debug/logging-adapter.wasm
+    cargo xtask fs rm-rf target/wasm32-wasip2/release/logging-adapter.wasm
+    cargo xtask fs rm-rf target/wasm32-wasip2/debug/composed-example.wasm
+    cargo xtask fs rm-rf target/wasm32-wasip2/release/composed-example.wasm
+    cargo xtask fs rm-rf docs/_build
     # Also clean generated WASM files using xtask
     cargo xtask fs find-delete examples "*.wasm"
 
@@ -573,7 +604,7 @@ setup-zephyr-sdk:
     
     # Initialize Zephyr workspace locally (platform-independent part)
     echo "Initializing Zephyr workspace in $ZEPHYR_DIR..."
-    mkdir -p "$ZEPHYR_DIR"
+    cargo xtask fs mkdir-p "$ZEPHYR_DIR"
     cd "$ZEPHYR_DIR" || { echo "ERROR: Failed to cd into $ZEPHYR_DIR"; deactivate; exit 1; }
     west init -m https://github.com/zephyrproject-rtos/zephyr.git --mr main || { echo "ERROR: Failed to initialize Zephyr workspace (west init)."; cd ..; deactivate; exit 1; }
     west update || { echo "ERROR: Failed to update Zephyr modules (west update)."; cd ..; deactivate; exit 1; }
@@ -670,20 +701,17 @@ docs-common:
     cargo xtask coverage || echo "⚠️  Warning: Failed to generate code coverage. Continuing with documentation build..."
     
     # Clean previous build artifacts
-    cargo xtask fs rmrf "{{sphinx_build_dir}}"
-    cargo xtask fs mkdirp "{{sphinx_build_dir}}"
+    cargo xtask fs rm-rf "{{sphinx_build_dir}}"
+    cargo xtask fs mkdir-p "{{sphinx_build_dir}}"
     
     # Create the target static directory for coverage report
-    cargo xtask fs mkdirp "{{sphinx_build_dir}}/html/_static/coverage"
+    cargo xtask fs mkdir-p "{{sphinx_build_dir}}/html/_static/coverage"
     
-    # Copy the generated HTML coverage report if it exists
-    if [ -d "target/llvm-cov/html" ]; then
-    cargo xtask fs cp target/llvm-cov/html/* "{{sphinx_build_dir}}/html/_static/coverage/" || echo "⚠️  Warning: Failed to copy coverage reports. Continuing with documentation build..."
-    else
-    echo "⚠️  Warning: Coverage report directory not found. Continuing with documentation build..."
-    mkdir -p "{{sphinx_build_dir}}/html/_static/coverage/"
-    echo "<h1>Coverage Report Not Available</h1><p>The coverage report could not be generated due to build errors.</p>" > "{{sphinx_build_dir}}/html/_static/coverage/index.html"
-    fi
+    # Check if coverage report exists and copy if it does
+    [ -d "target/llvm-cov/html" ] && cargo xtask fs cp target/llvm-cov/html/* "{{sphinx_build_dir}}/html/_static/coverage/" || echo "⚠️  Warning: Coverage report not found or copy failed. Creating placeholder..."
+    
+    # Create placeholder if needed
+    [ ! -d "target/llvm-cov/html" ] && echo "<h1>Coverage Report Not Available</h1><p>The coverage report could not be generated due to build errors.</p>" > "{{sphinx_build_dir}}/html/_static/coverage/index.html" || true
 
 # Check if Kani verifier is installed
 check-kani:
