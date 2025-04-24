@@ -15,9 +15,12 @@ use wat;
 use wrt::{Module, StacklessEngine};
 
 // Assume testsuite is relative to the workspace root where xtask is run
+#[allow(dead_code)]
 const TEST_SUITE_PATH: &str = "wrt/testsuite";
 // Output files in the workspace root
+#[allow(dead_code)]
 const PASSED_FILE: &str = "wast_passed.md";
+#[allow(dead_code)]
 const FAILED_FILE: &str = "wast_failed.md";
 
 /// Process a single WebAssembly test file
@@ -138,6 +141,7 @@ fn run_wast_test(path: &Path) -> Result<String> {
 }
 
 #[cfg(not(feature = "wrt-integration"))]
+#[allow(dead_code)]
 fn run_wast_test(_path: &Path) -> Result<String> {
     // Stub implementation when wrt is not available
     Err(anyhow::anyhow!(
@@ -146,6 +150,7 @@ fn run_wast_test(_path: &Path) -> Result<String> {
 }
 
 /// Load tests from a markdown file
+#[allow(dead_code)]
 fn load_tests_from_md(file_path: &Path) -> HashSet<PathBuf> {
     let mut tests = HashSet::new();
 
@@ -187,6 +192,7 @@ fn load_tests_from_md(file_path: &Path) -> HashSet<PathBuf> {
 }
 
 /// Update the markdown files with test results
+#[allow(dead_code)]
 fn update_md_files(
     passed: &HashMap<PathBuf, String>,
     failed: &HashMap<PathBuf, String>,
@@ -359,7 +365,7 @@ pub fn run(_create_files: bool, _verify_passing: bool) -> Result<()> {
 }
 
 // Add a public wrapper for run function to maintain backward compatibility with the old name
-pub fn run_wast_tests(sh: &xshell::Shell, create_files: bool, verify_passing: bool) -> Result<()> {
+pub fn run_wast_tests(_sh: &xshell::Shell, create_files: bool, verify_passing: bool) -> Result<()> {
     // We don't use the Shell parameter in the implementation
     run(create_files, verify_passing)
 }

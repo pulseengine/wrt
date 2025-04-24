@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use anyhow::Result;
 use clap::{Arg, ArgMatches, Command};
 use std::error::Error;
@@ -214,7 +216,7 @@ fn report_status_command() -> Command {
 }
 
 /// Reports the status of qualification documents
-pub fn report_status(matches: &ArgMatches) -> Result<(), Box<dyn Error>> {
+pub fn report_status(_matches: &ArgMatches) -> Result<(), Box<dyn Error>> {
     println!("Generating qualification status report...");
 
     // Check for qualification materials
@@ -376,72 +378,72 @@ fn count_objects_in_file(file_path: &str, object_prefix: &str) -> Result<String,
 
 // Helper function stubs - these would be implemented in detail for actual use
 
-pub fn parse_requirements(content: &str) -> Vec<Requirement> {
+pub fn parse_requirements(_content: &str) -> Vec<Requirement> {
     // This would parse the RST file to extract requirements
     // Placeholder implementation
     vec![]
 }
 
-pub fn parse_specifications(content: &str) -> Vec<Specification> {
+pub fn parse_specifications(_content: &str) -> Vec<Specification> {
     // This would parse the RST file to extract specifications
     // Placeholder implementation
     vec![]
 }
 
 fn build_relationships(
-    requirements: &[Requirement],
-    specifications: &[Specification],
-    qualification_specs: &[Specification],
+    _requirements: &[Requirement],
+    _specifications: &[Specification],
+    _qualification_specs: &[Specification],
 ) -> Vec<Relationship> {
     // This would build the relationships between requirements and specifications
     // Placeholder implementation
     vec![]
 }
 
-fn generate_rst_traceability(relationships: &[Relationship]) -> String {
+fn generate_rst_traceability(_relationships: &[Relationship]) -> String {
     // This would generate an RST representation of the traceability matrix
     // Placeholder implementation
     "Traceability Matrix\n=================\n\nTODO: Implement traceability matrix generation"
         .to_string()
 }
 
-fn generate_md_traceability(relationships: &[Relationship]) -> String {
+fn generate_md_traceability(_relationships: &[Relationship]) -> String {
     // This would generate a Markdown representation of the traceability matrix
     // Placeholder implementation
     "# Traceability Matrix\n\nTODO: Implement traceability matrix generation".to_string()
 }
 
-fn generate_csv_traceability(relationships: &[Relationship]) -> String {
+fn generate_csv_traceability(_relationships: &[Relationship]) -> String {
     // This would generate a CSV representation of the traceability matrix
     // Placeholder implementation
     "Requirement,Specification\nTODO,Implement".to_string()
 }
 
-fn extract_safety_requirements(content: &str) -> Vec<SafetyRequirement> {
+fn extract_safety_requirements(_content: &str) -> Vec<SafetyRequirement> {
     // This would extract safety-related requirements
     // Placeholder implementation
     vec![]
 }
 
-fn analyze_architecture_safety(content: &str) -> Vec<SafetyConcern> {
+fn analyze_architecture_safety(_content: &str) -> Vec<SafetyConcern> {
     // This would analyze the architecture for safety concerns
     // Placeholder implementation
     vec![]
 }
 
 fn generate_safety_report(
-    safety_requirements: &[SafetyRequirement],
-    safety_architecture: &[SafetyConcern],
+    _safety_requirements: &[SafetyRequirement],
+    _safety_architecture: &[SafetyConcern],
 ) -> String {
     // This would generate a safety analysis report
     // Placeholder implementation
     "Safety Analysis Report\n=====================\n\nTODO: Implement safety analysis".to_string()
 }
 
-fn assess_document_completeness(content: &str, path: &str) -> String {
+fn assess_document_completeness(_content: &str, _path: &str) -> String {
     // This would assess how complete a document is
     // For now, use a simple heuristic based on TBD/TODO
-    if content.contains("TBD") || content.contains("TODO") {
+    if _content.contains("TBD") || _content.contains("TODO") {
         "Partial".to_string()
     } else {
         "Implemented".to_string()
@@ -501,7 +503,7 @@ pub struct SafetyConcern {
     pub concern: String,
 }
 
-pub fn status(sh: &Shell) -> Result<()> {
+pub fn status(_sh: &Shell) -> Result<()> {
     // This is a stub function for now to make the code compile
     println!("Qualification status reporting is still under development");
     Ok(())
