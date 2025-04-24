@@ -14,6 +14,9 @@ extern crate alloc;
 #[cfg(feature = "alloc")]
 use alloc::string::String;
 
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use alloc::format;
+
 use crate::verification::{Checksum, VerificationLevel};
 
 /// Trait for types that can be validated for data integrity
@@ -156,6 +159,9 @@ pub fn validate_checksum(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(not(feature = "std"))]
+    use alloc::vec;
 
     #[test]
     fn test_should_validate() {

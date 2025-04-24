@@ -107,13 +107,8 @@ impl FirewallStrategy {
             if let Ok(mut allowed_cache) = self.allowed_functions.write() {
                 allowed_cache.insert(key);
             }
-        } else {
-            match self.denied_functions.write() {
-                Ok(mut denied_cache) => {
-                    denied_cache.insert(key);
-                }
-                _ => {}
-            }
+        } else if let Ok(mut denied_cache) = self.denied_functions.write() {
+            denied_cache.insert(key);
         }
 
         allowed

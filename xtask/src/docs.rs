@@ -154,18 +154,21 @@ fn get_versions() -> Result<Vec<String>> {
 
     // Get all tags from git
     let output = Command::new("git")
-        .args(&["tag"])
+        .args(["tag"])
         .output()
         .context("Failed to execute git tag command")?;
 
     if output.status.success() {
         let output_str = String::from_utf8_lossy(&output.stdout);
         for tag in output_str.lines() {
+            // Handle tags with optional 'v' prefix (v0.1.0 or 0.1.0)
+            let clean_tag = tag.trim_start_matches('v');
+
             // Only include semantic version tags (x.y.z)
-            if tag.matches('.').count() == 2
-                && tag.split('.').all(|part| part.parse::<u32>().is_ok())
+            if clean_tag.matches('.').count() == 2
+                && clean_tag.split('.').all(|part| part.parse::<u32>().is_ok())
             {
-                versions.push(tag.to_string());
+                versions.push(clean_tag.to_string());
             }
         }
     }

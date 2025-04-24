@@ -1,3 +1,7 @@
+/// Tests for operation tracking functionality
+///
+/// This module contains tests for the operation tracking features,
+/// including fuel consumption calculation and global operation counter.
 #[cfg(test)]
 mod tests {
     use wrt_types::operations::{
@@ -90,8 +94,8 @@ mod tests {
 
     #[test]
     fn test_operation_types() {
-        // Test that all operation types have appropriate fuel costs
-        for op_type in &[
+        // Test that all operation types have meaningful fuel costs
+        for op_type in [
             OperationType::MemoryRead,
             OperationType::MemoryWrite,
             OperationType::MemoryGrow,
@@ -101,6 +105,7 @@ mod tests {
             OperationType::CollectionInsert,
             OperationType::CollectionRemove,
             OperationType::CollectionValidate,
+            OperationType::CollectionMutate,
             OperationType::ChecksumCalculation,
             OperationType::FunctionCall,
             OperationType::ControlFlow,
@@ -110,8 +115,7 @@ mod tests {
             // Fuel cost should be positive
             assert!(op_type.fuel_cost() > 0);
 
-            // Importance should be between 0 and 255
-            assert!(op_type.importance() <= 255);
+            // Importance should be within reasonable range
             assert!(op_type.importance() > 0);
         }
     }

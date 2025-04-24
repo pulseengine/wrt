@@ -5,7 +5,6 @@
 //! functional safety for ASIL-B compliance.
 
 #![cfg_attr(not(feature = "std"), no_std)]
-#![cfg_attr(feature = "kani", feature(allocator_api))]
 #![deny(missing_docs)]
 #![warn(clippy::missing_panics_doc)]
 

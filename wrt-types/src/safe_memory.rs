@@ -4,29 +4,26 @@
 //! functional safety at ASIL-B level, implementing verification
 //! mechanisms to detect memory corruption.
 
+use core::fmt;
+use core::sync::atomic::{AtomicUsize, Ordering};
+
 use crate::operations::{record_global_operation, OperationType};
 use crate::verification::{Checksum, VerificationLevel};
-
-// Import from std or core based on feature flag
-#[cfg(feature = "std")]
-use std::{
-    fmt,
-    sync::{
-        atomic::{AtomicUsize, Ordering},
-        Mutex,
-    },
-};
-
-#[cfg(not(feature = "std"))]
-use core::{
-    fmt,
-    sync::atomic::{AtomicUsize, Ordering},
-};
-
-#[cfg(not(feature = "std"))]
-use alloc::vec::Vec;
-
 use wrt_error::{kinds, Error, Result};
+
+#[cfg(feature = "std")]
+use std::sync::Mutex;
+
+#[cfg(feature = "std")]
+use std::vec::Vec;
+
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+use alloc::{
+    format,
+    string::{String, ToString},
+    vec,
+    vec::Vec,
+};
 
 /// A safe slice with integrated checksum for data integrity verification
 #[derive(Clone)]
@@ -142,9 +139,7 @@ impl<'a> SafeSlice<'a> {
 
         // Skip detailed verification in optimize mode for non-critical paths
         #[cfg(feature = "optimize")]
-        {
-            return Ok(());
-        }
+        return Ok(());
 
         // Skip checksum verification for non-redundant checks
         // unless we're using full verification
@@ -183,9 +178,13 @@ impl<'a> SafeSlice<'a> {
             ))));
         }
 
+        // Create a new SafeSlice with the specified range
+        // We need to use just the exact range requested
+        let sub_data = &self.data[start..end];
+
         // Create a new SafeSlice with the same verification level
         Ok(SafeSlice::with_verification_level(
-            &self.data[start..end],
+            sub_data,
             self.verification_level,
         ))
     }
@@ -487,7 +486,11 @@ impl MemorySafety for StdMemoryProvider {
     }
 }
 
-/// Memory provider for no_std environments with fixed-size buffer
+/// Memory provider for no-std environments
+///
+/// This provider uses a fixed-size array and manages accesses with atomic operations.
+/// It provides memory safety and verification similar to StdMemoryProvider but with
+/// a simpler implementation suitable for environments without std.
 #[cfg(not(feature = "std"))]
 pub struct NoStdMemoryProvider<const N: usize> {
     /// The underlying data buffer
@@ -500,6 +503,8 @@ pub struct NoStdMemoryProvider<const N: usize> {
     last_access_offset: AtomicUsize,
     /// Last access length for validation
     last_access_length: AtomicUsize,
+    /// Verification level for memory operations
+    verification_level: VerificationLevel,
 }
 
 #[cfg(not(feature = "std"))]
@@ -510,13 +515,14 @@ impl<const N: usize> fmt::Debug for NoStdMemoryProvider<N> {
             .field("used", &self.used)
             .field("access_count", &self.access_count.load(Ordering::Relaxed))
             .field("last_access", &self.last_access())
+            .field("verification_level", &self.verification_level)
             .finish()
     }
 }
 
 #[cfg(not(feature = "std"))]
 impl<const N: usize> NoStdMemoryProvider<N> {
-    /// Create a new NoStdMemoryProvider
+    /// Create a new empty memory provider
     pub fn new() -> Self {
         Self {
             data: [0; N],
@@ -524,6 +530,7 @@ impl<const N: usize> NoStdMemoryProvider<N> {
             access_count: AtomicUsize::new(0),
             last_access_offset: AtomicUsize::new(0),
             last_access_length: AtomicUsize::new(0),
+            verification_level: VerificationLevel::Standard,
         }
     }
 
@@ -570,8 +577,19 @@ impl<const N: usize> NoStdMemoryProvider<N> {
     /// Resize the used portion of memory
     pub fn resize(&mut self, new_size: usize) -> Result<()> {
         if new_size > N {
+            #[cfg(feature = "std")]
             return Err(Error::new(kinds::OutOfBoundsError(
                 format!("Cannot resize to {} (max: {})", new_size, N).into(),
+            )));
+
+            #[cfg(all(not(feature = "std"), feature = "alloc"))]
+            return Err(Error::new(kinds::OutOfBoundsError(
+                format!("Cannot resize to {} (max: {})", new_size, N).into(),
+            )));
+
+            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            return Err(Error::new(kinds::OutOfBoundsError(
+                "Memory resize exceeds capacity".into(),
             )));
         }
 
@@ -593,12 +611,27 @@ impl<const N: usize> NoStdMemoryProvider<N> {
         let length = self.last_access_length.load(Ordering::SeqCst);
 
         if length > 0 && offset + length > self.used {
+            #[cfg(feature = "std")]
             return Err(Error::new(kinds::ValidationError(
                 format!(
                     "Last access out of bounds: offset={}, len={}, used={}",
                     offset, length, self.used
                 )
                 .into(),
+            )));
+
+            #[cfg(all(not(feature = "std"), feature = "alloc"))]
+            return Err(Error::new(kinds::ValidationError(
+                format!(
+                    "Last access out of bounds: offset={}, len={}, used={}",
+                    offset, length, self.used
+                )
+                .into(),
+            )));
+
+            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            return Err(Error::new(kinds::ValidationError(
+                "Last memory access was out of bounds".into(),
             )));
         }
 
@@ -663,10 +696,22 @@ impl<const N: usize> MemoryProvider for NoStdMemoryProvider<N> {
 
         // Check if the access is within the used portion of memory
         if end > self.used {
+            #[cfg(feature = "std")]
             return Err(Error::new(kinds::OutOfBoundsError(format!(
                 "Memory access out of bounds: offset={}, len={}, used={}",
                 offset, len, self.used
             ))));
+
+            #[cfg(all(not(feature = "std"), feature = "alloc"))]
+            return Err(Error::new(kinds::OutOfBoundsError(format!(
+                "Memory access out of bounds: offset={}, len={}, used={}",
+                offset, len, self.used
+            ))));
+
+            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            return Err(Error::new(kinds::OutOfBoundsError(
+                "Memory access out of bounds".into(),
+            )));
         }
 
         Ok(())
@@ -696,14 +741,12 @@ impl<const N: usize> MemorySafety for NoStdMemoryProvider<N> {
         Ok(())
     }
 
-    fn set_verification_level(&mut self, _level: VerificationLevel) {
-        // NoStdMemoryProvider doesn't need to change verification level
-        // since SafeSlice instances handle their own verification
+    fn set_verification_level(&mut self, level: VerificationLevel) {
+        self.verification_level = level;
     }
 
     fn verification_level(&self) -> VerificationLevel {
-        // Default to standard verification
-        VerificationLevel::Standard
+        self.verification_level
     }
 
     fn memory_stats(&self) -> MemoryStats {

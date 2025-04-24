@@ -1,6 +1,6 @@
 [package]
 name = "wrt-component"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 description = "WebAssembly Component Model support for WRT"
 license = "MIT OR Apache-2.0"
@@ -10,11 +10,11 @@ keywords = ["wasm", "webassembly", "runtime", "component-model"]
 categories = ["wasm", "no-std"]
 
 [dependencies]
-wrt-error = { path = "../wrt-error", version = "0.1.0" }
-wrt-format = { path = "../wrt-format", version = "0.1.0" }
-wrt-host = { path = "../wrt-host", version = "0.1.0" }
-wrt-types = { path = "../wrt-types", version = "0.1.0" }
-wrt-intercept = { path = "../wrt-intercept", version = "0.1.0" }
+wrt-error = { path = "../wrt-error", version = "0.2.0" }
+wrt-format = { path = "../wrt-format", version = "0.2.0" }
+wrt-host = { path = "../wrt-host", version = "0.2.0" }
+wrt-types = { path = "../wrt-types", version = "0.2.0" }
+wrt-intercept = { path = "../wrt-intercept", version = "0.2.0" }
 
 # Optional dependencies
 log = { version = "0.4", optional = true }

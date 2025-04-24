@@ -38,11 +38,30 @@ jobs:
         with:
           # We need history to get tags
           fetch-depth: 0
+      
+      # Cache Rust dependencies to speed up builds
+      - name: Cache Rust dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
         
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.x'
+          
+      # Setup Java for PlantUML
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
                                    
       - name: Setup Rust and build API docs
         uses: actions-rs/toolchain@v1
@@ -50,6 +69,7 @@ jobs:
           profile: minimal
           toolchain: nightly
           override: true
+          components: llvm-tools-preview
 
       - name: Check if just is available
         id: check-just
@@ -67,8 +87,28 @@ jobs:
         run: cargo install just --locked
 
       - name: Install python dependencies
-        if: env.JUST_INSTALLED != 'true'
         run: just setup-python-deps
+        
+      - name: Install cargo-llvm-cov
+        run: cargo install cargo-llvm-cov
+
+      # Install PlantUML for diagram generation
+      - name: Install PlantUML
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y plantuml
+          
+      # Run coverage separately to handle errors better
+      - name: Generate code coverage
+        run: |
+          # Generate coverage data
+          cargo xtask coverage || {
+            echo "::warning::Failed to generate coverage data. Creating placeholder..."
+            mkdir -p target/llvm-cov/html
+            echo "<h1>Coverage Report Not Available</h1>" > target/llvm-cov/html/index.html
+            mkdir -p docs/source
+            cp docs/source/_generated_coverage_summary.rst.template docs/source/_generated_coverage_summary.rst || true
+          }
 
       - name: Determine version
         id: determine-version
@@ -101,6 +141,9 @@ jobs:
           # Set version for documentation build
           export DOCS_VERSION="${{ env.VERSION }}"
           export DOCS_VERSION_PATH_PREFIX="/"
+          
+          # Skip coverage generation since we already did it separately
+          export SKIP_COVERAGE=1
           
           # Build documentation (continue on error)
           just docs-with-diagrams || {

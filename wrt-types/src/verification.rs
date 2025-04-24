@@ -11,6 +11,12 @@ use std::fmt;
 #[cfg(not(feature = "std"))]
 use core::fmt;
 
+#[cfg(feature = "std")]
+use std::sync::atomic::{AtomicU32, Ordering};
+
+#[cfg(not(feature = "std"))]
+use core::sync::atomic::{AtomicU32, Ordering};
+
 /// Verification level for controlling the intensity of safety checks
 ///
 /// This enum allows configuring the verification strategy based on
@@ -64,7 +70,6 @@ impl VerificationLevel {
                 // Higher importance = higher chance of being verified
                 // This is deterministic based on a counter to ensure
                 // predictable behavior for WCET analysis
-                use std::sync::atomic::{AtomicU32, Ordering};
                 static COUNTER: AtomicU32 = AtomicU32::new(0);
 
                 // Get the current counter value and increment it atomically

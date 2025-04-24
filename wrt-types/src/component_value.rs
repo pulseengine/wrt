@@ -8,11 +8,16 @@ use std::{collections::HashMap, string::String, vec::Vec};
 
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 use alloc::{
+    boxed::Box,
     collections::BTreeMap as HashMap,
+    format,
     string::{String, ToString},
     vec,
     vec::Vec,
 };
+
+#[cfg(feature = "std")]
+use std::boxed::Box;
 
 use crate::values::Value;
 use wrt_error::{kinds, Error, Result};
