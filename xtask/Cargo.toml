@@ -25,4 +25,7 @@ wasm-tools = { version = "1.228.0" }
 wat = "1.228.0"
 wrt = { path = "../wrt", optional = true }
 
+# For documentation HTTP server
+tiny_http = "0.12"
+
 # Check for the latest compatible version 
