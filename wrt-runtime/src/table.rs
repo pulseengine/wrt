@@ -210,7 +210,7 @@ impl Table {
 
         // Check all values match the element type
         for (i, value) in init.iter().enumerate() {
-            if let Some(ref val) = value {
+            if let Some(val) = value {
                 if !val.matches_type(&self.ty.element_type) {
                     return Err(Error::new(kinds::ValidationError(format!(
                         "Value at index {} type doesn't match table element type: {:?} vs {:?}",
