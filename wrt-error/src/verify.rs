@@ -27,8 +27,7 @@ pub mod kani_verification {
     }
 
     /// Verify that creating and displaying an error works correctly
-    #[cfg(feature = "kani")]
-    #[kani::proof]
+    #[cfg_attr(feature = "kani", kani_verifier::proof)]
     pub fn verify_error_creation() {
         let error = Error::new(VerifyError("verification test"));
         let error_str = format!("{}", error);
@@ -38,8 +37,7 @@ pub mod kani_verification {
     }
 
     /// Verify that error context chaining works correctly
-    #[cfg(feature = "kani")]
-    #[kani::proof]
+    #[cfg_attr(feature = "kani", kani_verifier::proof)]
     pub fn verify_error_context() {
         let result: core::result::Result<(), VerifyError> = Err(VerifyError("base error"));
         let with_context = result.context("operation failed");
@@ -54,8 +52,7 @@ pub mod kani_verification {
     }
 
     /// Verify that multiple contexts chain correctly
-    #[cfg(feature = "kani")]
-    #[kani::proof]
+    #[cfg_attr(feature = "kani", kani_verifier::proof)]
     pub fn verify_multiple_contexts() {
         let result: Result<()> = Err(Error::new(VerifyError("original error")))
             .context("first context")
@@ -72,8 +69,7 @@ pub mod kani_verification {
     }
 
     /// Verify that factory methods create the correct error types
-    #[cfg(feature = "kani")]
-    #[kani::proof]
+    #[cfg_attr(feature = "kani", kani_verifier::proof)]
     pub fn verify_factory_methods() {
         let div_error = Error::division_by_zero();
         assert!(format!("{}", div_error) == "Division by zero");
@@ -85,8 +81,7 @@ pub mod kani_verification {
     }
 
     /// Verify that Error::from works correctly
-    #[cfg(feature = "kani")]
-    #[kani::proof]
+    #[cfg_attr(feature = "kani", kani_verifier::proof)]
     pub fn verify_error_from() {
         let original_error = VerifyError("source error");
         let error = Error::from(original_error);
@@ -95,8 +90,7 @@ pub mod kani_verification {
     }
 
     /// Verify that Result works correctly with different error types
-    #[cfg(feature = "kani")]
-    #[kani::proof]
+    #[cfg_attr(feature = "kani", kani_verifier::proof)]
     pub fn verify_result_type() {
         // Test with the default error type
         let result1: Result<i32> = Ok(42);

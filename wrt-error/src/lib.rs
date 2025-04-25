@@ -16,6 +16,7 @@ pub mod source;
 pub mod verify;
 
 // Re-export key types
+#[cfg(feature = "alloc")]
 pub use error::Error;
 
 #[cfg(feature = "alloc")]

@@ -26,13 +26,11 @@ cap-std = { version = "2.0.0", optional = true }
 kani-verifier = { version = "0.61.0", optional = true }
 
 [features]
-default = ["minimal"]
-# Core features - a minimal subset for no_std support
-minimal = ["alloc"]
-# Standard library features
-std = ["minimal"]
-# For no_std, we need to enable alloc
+default = ["std"]
+# For allocation support without std
 alloc = []
+# Standard library features (includes alloc)
+std = ["alloc"]
 # For complete no_std/no_alloc support
 no_std = []
 # Optional integration with other libraries
