@@ -198,30 +198,30 @@ Performance Considerations
 1. **Verification level selection**:
    
    * Balance safety and performance requirements.
-   * Consider using different verification levels for different components.
+   * Use the verification level selection guide to choose appropriate settings.
 
-2. **Batching validation**:
+2. **Caching and preprocessing**:
    
-   * Batch validation operations to amortize costs.
-   * Validate state at strategic points rather than after every operation.
+   * When using higher verification levels, consider preprocessing or caching results.
+   * Document performance impacts in your design.
 
-3. **Optimizing critical paths**:
+Error Handling and Panic Conditions
+----------------------------------
+
+1. **Error propagation**:
    
-   * Identify and optimize performance-critical paths.
-   * Consider using optimized verification strategies in hot paths.
+   * Prefer using `Result` types for error handling instead of panic.
+   * Implement appropriate error recovery mechanisms.
 
-   .. code-block:: rust
+2. **Panic conditions**:
+   
+   * Document all panic conditions according to the :doc:`../development/panic_documentation`.
+   * Always provide a safety impact assessment for panic points.
 
-      // Optimize verification for hot paths
-      #[cfg(feature = "optimize")]
-      let verification = VerificationLevel::Sampling;
-      #[cfg(not(feature = "optimize"))]
-      let verification = VerificationLevel::Standard;
-      
-      let stack = BoundedStack::<u32>::with_capacity_and_verification(
-          capacity,
-          verification
-      );
+3. **Containment**:
+   
+   * Design components to contain failures within their boundaries.
+   * Consider using catch_unwind in safety-critical boundaries.
 
 Certification and Compliance
 ---------------------------

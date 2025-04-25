@@ -20,29 +20,12 @@ Welcome to SPE_wrt's documentation!
    binary
    safety/index
    qualification/index
+   development/panic_documentation
    changelog
-   wrt/lib
-   wrt-error/lib
-   wrt-sync/lib
-   wrt-format/lib
-   wrt-decode/lib
-   wrt-common/lib
-   wrt-component/lib
-   wrt-host/lib
-   wrt-instruction/lib
-   wrt-intercept/lib
-   wrt-logging/lib
-   wrt-runtime/lib
-   wrt-types/lib
-   wrtd/main
+   api/index
 
 Overview
 --------
-
-.. image:: _static/icons/system_integration.svg
-   :width: 64px
-   :align: right
-   :alt: System Integration Icon
 
 
 **SentryPulse Engine (WRT Edition): Precision Runtime for Mission-Critical Systems**
