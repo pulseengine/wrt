@@ -5,9 +5,6 @@
 
 // Conditionally import from std or core
 
-#[cfg(not(feature = "std"))]
-use core::fmt;
-
 #[cfg(feature = "alloc")]
 extern crate alloc;
 

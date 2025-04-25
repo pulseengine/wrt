@@ -7,21 +7,20 @@ use core::fmt;
 use wrt_error::{kinds, Error, Result};
 
 #[cfg(feature = "std")]
-use std::{boxed::Box, cell::RefCell};
+use std::cell::RefCell;
+
+#[cfg(not(feature = "std"))]
+#[allow(unused_imports)]
+use core::cell::RefCell;
+
+#[cfg(feature = "std")]
+use std::boxed::Box;
 
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::{
-    boxed::Box,
-    format,
-    string::{String, ToString},
-    vec::Vec,
-};
+use alloc::{boxed::Box, format, string::ToString, vec};
 
 #[cfg(feature = "std")]
 use std::thread_local;
-
-#[cfg(not(feature = "std"))]
-use core::cell::RefCell;
 
 /// Represents a WebAssembly runtime value
 #[derive(Debug, Clone)]
@@ -488,6 +487,9 @@ impl AsRef<[u8]> for Value {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(not(feature = "std"))]
+    use alloc::string::ToString;
 
     #[test]
     fn test_value_creation_and_type() {

@@ -4,21 +4,25 @@
 //! functional safety with built-in size limits and verification features.
 
 #[cfg(feature = "std")]
-use std::{collections::HashMap, fmt, hash, mem};
+use std::{fmt, hash, mem};
 
 #[cfg(not(feature = "std"))]
-use alloc::vec::Vec;
+use alloc::{format, vec, vec::Vec};
 
 #[cfg(not(feature = "std"))]
 use core::{fmt, hash, mem};
 
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::{collections::BTreeMap as HashMap, string::ToString};
+use alloc::string::ToString;
 
+// Use the HashMap that's re-exported in lib.rs - works for both std and no_std
+#[allow(unused_imports)]
 use crate::operations;
-use crate::operations::{record_global_operation, OperationType};
-use crate::validation::{importance, BoundedCapacity, Checksummed};
+use crate::operations::record_global_operation;
+use crate::operations::OperationType;
+use crate::validation::{importance, BoundedCapacity, Checksummed, Validatable};
 use crate::verification::{Checksum, VerificationLevel};
+use crate::HashMap;
 
 #[cfg(feature = "alloc")]
 extern crate alloc;
@@ -36,7 +40,6 @@ impl fmt::Display for CapacityError {
 }
 
 /// Error types for bounded collections
-#[cfg(feature = "alloc")]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BoundedError {
     /// Capacity limit exceeded
@@ -73,7 +76,6 @@ pub enum BoundedError {
     ValidationFailure(String),
 }
 
-#[cfg(feature = "alloc")]
 impl fmt::Display for BoundedError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -748,6 +750,9 @@ where
 /// This hash map ensures it never exceeds the specified capacity,
 /// returning an error when operations would exceed this limit.
 /// It also maintains a checksum of its contents for verification.
+///
+/// For no_std environments, this uses BTreeMap underneath, requiring keys to implement Ord.
+#[derive(Debug, Clone)]
 #[cfg(feature = "std")]
 pub struct BoundedHashMap<K, V, const N: usize>
 where
@@ -769,6 +774,7 @@ where
 /// It also maintains a checksum of its contents for verification.
 ///
 /// For no_std environments, this uses BTreeMap underneath, requiring keys to implement Ord.
+#[derive(Debug, Clone)]
 #[cfg(not(feature = "std"))]
 pub struct BoundedHashMap<K, V, const N: usize>
 where
@@ -784,6 +790,312 @@ where
 }
 
 #[cfg(feature = "std")]
+impl<K, V, const N: usize> Default for BoundedHashMap<K, V, N>
+where
+    K: Eq + hash::Hash + AsRef<[u8]>,
+    V: AsRef<[u8]>,
+{
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[cfg(not(feature = "std"))]
+impl<K, V, const N: usize> Default for BoundedHashMap<K, V, N>
+where
+    K: Eq + hash::Hash + AsRef<[u8]> + core::cmp::Ord,
+    V: AsRef<[u8]>,
+{
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[cfg(feature = "std")]
+impl<K, V, const N: usize> BoundedCapacity for BoundedHashMap<K, V, N>
+where
+    K: Eq + hash::Hash + AsRef<[u8]>,
+    V: AsRef<[u8]>,
+{
+    fn capacity(&self) -> usize {
+        N
+    }
+
+    fn len(&self) -> usize {
+        self.data.len()
+    }
+}
+
+#[cfg(not(feature = "std"))]
+impl<K, V, const N: usize> BoundedCapacity for BoundedHashMap<K, V, N>
+where
+    K: Eq + hash::Hash + AsRef<[u8]> + core::cmp::Ord,
+    V: AsRef<[u8]>,
+{
+    fn capacity(&self) -> usize {
+        N
+    }
+
+    fn len(&self) -> usize {
+        self.data.len()
+    }
+}
+
+#[cfg(feature = "std")]
+impl<K, V, const N: usize> Checksummed for BoundedHashMap<K, V, N>
+where
+    K: Eq + hash::Hash + AsRef<[u8]>,
+    V: AsRef<[u8]>,
+{
+    fn checksum(&self) -> Checksum {
+        self.checksum
+    }
+
+    fn recalculate_checksum(&mut self) {
+        let mut new_checksum = Checksum::new();
+        // We need to iterate in a consistent order for checksum stability
+        // For std HashMap this isn't guaranteed, so we sort
+
+        // Convert to sorted Vec of key/value pairs to ensure consistent order
+        let mut sorted_items = Vec::with_capacity(self.data.len());
+        for (k, v) in &self.data {
+            sorted_items.push((k.as_ref(), v.as_ref()));
+        }
+
+        // Sort by key bytes for consistent ordering
+        sorted_items.sort_by(|a, b| a.0.cmp(b.0));
+
+        // Calculate checksum in this consistent order
+        for (k, v) in sorted_items {
+            new_checksum.update_slice(k);
+            new_checksum.update_slice(v);
+        }
+
+        self.checksum = new_checksum;
+    }
+
+    fn verify_checksum(&self) -> bool {
+        // For empty collections, checksum is always valid
+        if self.data.is_empty() {
+            return true;
+        }
+
+        // Calculate a fresh checksum
+        let mut fresh_checksum = Checksum::new();
+
+        // Convert to sorted Vec of key/value pairs to ensure consistent order
+        let mut sorted_items = Vec::with_capacity(self.data.len());
+        for (k, v) in &self.data {
+            sorted_items.push((k.as_ref(), v.as_ref()));
+        }
+
+        // Sort by key bytes for consistent ordering
+        sorted_items.sort_by(|a, b| a.0.cmp(b.0));
+
+        // Calculate checksum in this consistent order
+        for (k, v) in sorted_items {
+            fresh_checksum.update_slice(k);
+            fresh_checksum.update_slice(v);
+        }
+
+        // Compare the calculated checksum with the stored one
+        fresh_checksum == self.checksum
+    }
+}
+
+#[cfg(not(feature = "std"))]
+impl<K, V, const N: usize> Checksummed for BoundedHashMap<K, V, N>
+where
+    K: Eq + hash::Hash + AsRef<[u8]> + core::cmp::Ord,
+    V: AsRef<[u8]>,
+{
+    fn checksum(&self) -> Checksum {
+        self.checksum
+    }
+
+    fn recalculate_checksum(&mut self) {
+        let mut new_checksum = Checksum::new();
+
+        // BTreeMap already iterates in a consistent order, so we can just use that
+        for (k, v) in &self.data {
+            new_checksum.update_slice(k.as_ref());
+            new_checksum.update_slice(v.as_ref());
+        }
+
+        self.checksum = new_checksum;
+    }
+
+    fn verify_checksum(&self) -> bool {
+        // For empty collections, checksum is always valid
+        if self.data.is_empty() {
+            return true;
+        }
+
+        // Calculate a fresh checksum
+        let mut fresh_checksum = Checksum::new();
+
+        // BTreeMap already iterates in a consistent order, so we can just use that
+        for (k, v) in &self.data {
+            fresh_checksum.update_slice(k.as_ref());
+            fresh_checksum.update_slice(v.as_ref());
+        }
+
+        // Compare the calculated checksum with the stored one
+        fresh_checksum == self.checksum
+    }
+}
+
+#[cfg(feature = "std")]
+impl<K, V, const N: usize> Validatable for BoundedHashMap<K, V, N>
+where
+    K: Eq + hash::Hash + AsRef<[u8]>,
+    V: AsRef<[u8]>,
+{
+    type Error = BoundedError;
+
+    fn validate(&self) -> Result<(), BoundedError> {
+        // Only run validation if the validation level requires it
+        if !crate::validation::should_validate(self.verification_level, importance::CRITICAL) {
+            return Ok(());
+        }
+
+        // Validate capacity constraints
+        if self.len() > self.capacity() {
+            return Err(BoundedError::CapacityExceeded {
+                collection_type: "BoundedHashMap".to_string(),
+                capacity: self.capacity(),
+                attempted_size: self.len(),
+            });
+        }
+
+        // Validate checksum integrity
+        if !self.verify_checksum() {
+            // Calculate a fresh checksum for error reporting
+            let mut fresh_checksum = Checksum::new();
+
+            // Sort key/value pairs for deterministic checksum
+            let mut sorted_items = Vec::with_capacity(self.data.len());
+            for (k, v) in &self.data {
+                sorted_items.push((k.as_ref(), v.as_ref()));
+            }
+            sorted_items.sort_by(|a, b| a.0.cmp(b.0));
+
+            for (k, v) in sorted_items {
+                fresh_checksum.update_slice(k);
+                fresh_checksum.update_slice(v);
+            }
+
+            return Err(BoundedError::ChecksumMismatch {
+                expected: self.checksum.value(),
+                actual: fresh_checksum.value(),
+                description: "BoundedHashMap".to_string(),
+            });
+        }
+
+        Ok(())
+    }
+
+    fn validation_level(&self) -> VerificationLevel {
+        self.verification_level
+    }
+
+    fn set_validation_level(&mut self, level: VerificationLevel) {
+        self.set_verification_level(level);
+    }
+}
+
+#[cfg(not(feature = "std"))]
+impl<K, V, const N: usize> Validatable for BoundedHashMap<K, V, N>
+where
+    K: Eq + hash::Hash + AsRef<[u8]> + core::cmp::Ord,
+    V: AsRef<[u8]>,
+{
+    type Error = BoundedError;
+
+    fn validate(&self) -> Result<(), BoundedError> {
+        // Only run validation if the validation level requires it
+        if !crate::validation::should_validate(self.verification_level, importance::CRITICAL) {
+            return Ok(());
+        }
+
+        // Validate capacity constraints
+        if self.len() > self.capacity() {
+            return Err(BoundedError::CapacityExceeded {
+                collection_type: "BoundedHashMap".to_string(),
+                capacity: self.capacity(),
+                attempted_size: self.len(),
+            });
+        }
+
+        // Validate checksum integrity
+        if !self.verify_checksum() {
+            // Calculate a fresh checksum for error reporting
+            let mut fresh_checksum = Checksum::new();
+
+            // BTreeMap already iterates in a consistent order
+            for (k, v) in &self.data {
+                fresh_checksum.update_slice(k.as_ref());
+                fresh_checksum.update_slice(v.as_ref());
+            }
+
+            return Err(BoundedError::ChecksumMismatch {
+                expected: self.checksum.value(),
+                actual: fresh_checksum.value(),
+                description: "BoundedHashMap".to_string(),
+            });
+        }
+
+        Ok(())
+    }
+
+    fn validation_level(&self) -> VerificationLevel {
+        self.verification_level
+    }
+
+    fn set_validation_level(&mut self, level: VerificationLevel) {
+        self.set_verification_level(level);
+    }
+}
+
+#[cfg(feature = "std")]
+impl<K, V, const N: usize> PartialEq for BoundedHashMap<K, V, N>
+where
+    K: Eq + hash::Hash + AsRef<[u8]>,
+    V: AsRef<[u8]> + Eq,
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.data == other.data
+    }
+}
+
+#[cfg(not(feature = "std"))]
+impl<K, V, const N: usize> PartialEq for BoundedHashMap<K, V, N>
+where
+    K: Eq + hash::Hash + AsRef<[u8]> + core::cmp::Ord,
+    V: AsRef<[u8]> + Eq,
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.data == other.data
+    }
+}
+
+#[cfg(feature = "std")]
+impl<K, V, const N: usize> Eq for BoundedHashMap<K, V, N>
+where
+    K: Eq + hash::Hash + AsRef<[u8]>,
+    V: AsRef<[u8]> + Eq,
+{
+}
+
+#[cfg(not(feature = "std"))]
+impl<K, V, const N: usize> Eq for BoundedHashMap<K, V, N>
+where
+    K: Eq + hash::Hash + AsRef<[u8]> + core::cmp::Ord,
+    V: AsRef<[u8]> + Eq,
+{
+}
+
+#[cfg(feature = "std")]
 impl<K, V, const N: usize> BoundedHashMap<K, V, N>
 where
     K: Eq + hash::Hash + AsRef<[u8]>,
@@ -893,6 +1205,11 @@ where
     pub fn verify(&self) -> bool {
         // Track the validation operation
         record_global_operation(OperationType::CollectionValidate, self.verification_level);
+
+        // Always return true for None verification level
+        if matches!(self.verification_level, VerificationLevel::None) {
+            return true;
+        }
 
         self.verify_checksum()
     }
@@ -1019,6 +1336,11 @@ where
         // Track the validation operation
         record_global_operation(OperationType::CollectionValidate, self.verification_level);
 
+        // Always return true for None verification level
+        if matches!(self.verification_level, VerificationLevel::None) {
+            return true;
+        }
+
         self.verify_checksum()
     }
 
@@ -1031,311 +1353,6 @@ where
     pub fn force_recalculate_checksum(&mut self) {
         self.recalculate_checksum();
     }
-}
-
-#[cfg(feature = "std")]
-impl<K, V, const N: usize> Default for BoundedHashMap<K, V, N>
-where
-    K: Eq + hash::Hash + AsRef<[u8]>,
-    V: AsRef<[u8]>,
-{
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-#[cfg(not(feature = "std"))]
-impl<K, V, const N: usize> Default for BoundedHashMap<K, V, N>
-where
-    K: Eq + hash::Hash + AsRef<[u8]> + core::cmp::Ord,
-    V: AsRef<[u8]>,
-{
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-// Implement the traits for BoundedHashMap
-#[cfg(feature = "std")]
-impl<K, V, const N: usize> BoundedCapacity for BoundedHashMap<K, V, N>
-where
-    K: Eq + hash::Hash + AsRef<[u8]>,
-    V: AsRef<[u8]>,
-{
-    fn capacity(&self) -> usize {
-        N
-    }
-
-    fn len(&self) -> usize {
-        self.data.len()
-    }
-}
-
-#[cfg(not(feature = "std"))]
-impl<K, V, const N: usize> BoundedCapacity for BoundedHashMap<K, V, N>
-where
-    K: Eq + hash::Hash + AsRef<[u8]> + core::cmp::Ord,
-    V: AsRef<[u8]>,
-{
-    fn capacity(&self) -> usize {
-        N
-    }
-
-    fn len(&self) -> usize {
-        self.data.len()
-    }
-}
-
-#[cfg(feature = "std")]
-impl<K, V, const N: usize> Checksummed for BoundedHashMap<K, V, N>
-where
-    K: Eq + hash::Hash + AsRef<[u8]>,
-    V: AsRef<[u8]>,
-{
-    fn checksum(&self) -> Checksum {
-        self.checksum
-    }
-
-    fn recalculate_checksum(&mut self) {
-        let mut checksum = Checksum::new();
-
-        // Sort the entries to ensure deterministic order for checksumming
-        let mut entries: Vec<_> = self.data.iter().collect();
-        entries.sort_by(|a, b| a.0.as_ref().cmp(b.0.as_ref()));
-
-        for (key, value) in entries {
-            checksum.update_slice(key.as_ref());
-            checksum.update_slice(value.as_ref());
-        }
-
-        self.checksum = checksum;
-    }
-
-    fn verify_checksum(&self) -> bool {
-        // Always return true for None verification level
-        if matches!(self.verification_level, VerificationLevel::None) {
-            return true;
-        }
-
-        // Skip verification based on sampling level
-        if !self.verification_level.should_verify(importance::READ) {
-            return true;
-        }
-
-        // Compute a fresh checksum and compare
-        let mut fresh = Checksum::new();
-
-        // Sort the entries to ensure deterministic order for checksumming
-        let mut entries: Vec<_> = self.data.iter().collect();
-        entries.sort_by(|a, b| a.0.as_ref().cmp(b.0.as_ref()));
-
-        for (key, value) in entries {
-            fresh.update_slice(key.as_ref());
-            fresh.update_slice(value.as_ref());
-        }
-
-        fresh == self.checksum
-    }
-}
-
-#[cfg(not(feature = "std"))]
-impl<K, V, const N: usize> Checksummed for BoundedHashMap<K, V, N>
-where
-    K: Eq + hash::Hash + AsRef<[u8]> + core::cmp::Ord,
-    V: AsRef<[u8]>,
-{
-    fn checksum(&self) -> Checksum {
-        self.checksum
-    }
-
-    fn recalculate_checksum(&mut self) {
-        let mut checksum = Checksum::new();
-
-        // BTreeMap already has deterministic order, so just iterate
-        for (key, value) in &self.data {
-            checksum.update_slice(key.as_ref());
-            checksum.update_slice(value.as_ref());
-        }
-
-        self.checksum = checksum;
-    }
-
-    fn verify_checksum(&self) -> bool {
-        // Always return true for None verification level
-        if matches!(self.verification_level, VerificationLevel::None) {
-            return true;
-        }
-
-        // Skip verification based on sampling level
-        if !self.verification_level.should_verify(importance::READ) {
-            return true;
-        }
-
-        // Compute a fresh checksum and compare
-        let mut fresh = Checksum::new();
-
-        // BTreeMap already has deterministic order, so just iterate
-        for (key, value) in &self.data {
-            fresh.update_slice(key.as_ref());
-            fresh.update_slice(value.as_ref());
-        }
-
-        fresh == self.checksum
-    }
-}
-
-#[cfg(all(feature = "alloc", feature = "std"))]
-impl<K, V, const N: usize> Validatable for BoundedHashMap<K, V, N>
-where
-    K: Eq + hash::Hash + AsRef<[u8]>,
-    V: AsRef<[u8]>,
-{
-    type Error = BoundedError;
-
-    fn validate(&self) -> Result<(), BoundedError> {
-        // Always pass for None verification level
-        if matches!(self.verification_level, VerificationLevel::None) {
-            return Ok(());
-        }
-
-        // Verify capacity constraints
-        if self.len() > self.capacity() {
-            return Err(BoundedError::CapacityExceeded {
-                collection_type: "BoundedHashMap".to_string(),
-                capacity: self.capacity(),
-                attempted_size: self.len(),
-            });
-        }
-
-        // Verify checksum integrity
-        if !self.verify_checksum() {
-            let mut fresh = Checksum::new();
-            for (key, value) in &self.data {
-                fresh.update_slice(key.as_ref());
-                fresh.update_slice(value.as_ref());
-            }
-
-            return Err(BoundedError::ChecksumMismatch {
-                expected: self.checksum.value(),
-                actual: fresh.value(),
-                description: "BoundedHashMap".to_string(),
-            });
-        }
-
-        Ok(())
-    }
-
-    fn validation_level(&self) -> VerificationLevel {
-        self.verification_level
-    }
-
-    fn set_validation_level(&mut self, level: VerificationLevel) {
-        // When changing to a non-None level from None, recalculate the checksum
-        let needs_recalc = matches!(self.verification_level, VerificationLevel::None)
-            && !matches!(level, VerificationLevel::None);
-
-        self.verification_level = level;
-
-        if needs_recalc {
-            self.recalculate_checksum();
-        }
-    }
-}
-
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-impl<K, V, const N: usize> Validatable for BoundedHashMap<K, V, N>
-where
-    K: Eq + hash::Hash + AsRef<[u8]> + core::cmp::Ord,
-    V: AsRef<[u8]>,
-{
-    type Error = BoundedError;
-
-    fn validate(&self) -> Result<(), BoundedError> {
-        // Always pass for None verification level
-        if matches!(self.verification_level, VerificationLevel::None) {
-            return Ok(());
-        }
-
-        // Verify capacity constraints
-        if self.len() > self.capacity() {
-            return Err(BoundedError::CapacityExceeded {
-                collection_type: "BoundedHashMap".to_string(),
-                capacity: self.capacity(),
-                attempted_size: self.len(),
-            });
-        }
-
-        // Verify checksum integrity
-        if !self.verify_checksum() {
-            let mut fresh = Checksum::new();
-            for (key, value) in &self.data {
-                fresh.update_slice(key.as_ref());
-                fresh.update_slice(value.as_ref());
-            }
-
-            return Err(BoundedError::ChecksumMismatch {
-                expected: self.checksum.value(),
-                actual: fresh.value(),
-                description: "BoundedHashMap".to_string(),
-            });
-        }
-
-        Ok(())
-    }
-
-    fn validation_level(&self) -> VerificationLevel {
-        self.verification_level
-    }
-
-    fn set_validation_level(&mut self, level: VerificationLevel) {
-        // When changing to a non-None level from None, recalculate the checksum
-        let needs_recalc = matches!(self.verification_level, VerificationLevel::None)
-            && !matches!(level, VerificationLevel::None);
-
-        self.verification_level = level;
-
-        if needs_recalc {
-            self.recalculate_checksum();
-        }
-    }
-}
-
-#[cfg(feature = "std")]
-impl<K, V, const N: usize> PartialEq for BoundedHashMap<K, V, N>
-where
-    K: Eq + hash::Hash + AsRef<[u8]>,
-    V: Eq + AsRef<[u8]>,
-{
-    fn eq(&self, other: &Self) -> bool {
-        self.data == other.data
-    }
-}
-
-#[cfg(not(feature = "std"))]
-impl<K, V, const N: usize> PartialEq for BoundedHashMap<K, V, N>
-where
-    K: Eq + hash::Hash + AsRef<[u8]> + core::cmp::Ord,
-    V: Eq + AsRef<[u8]>,
-{
-    fn eq(&self, other: &Self) -> bool {
-        self.data == other.data
-    }
-}
-
-#[cfg(feature = "std")]
-impl<K, V, const N: usize> Eq for BoundedHashMap<K, V, N>
-where
-    K: Eq + hash::Hash + AsRef<[u8]>,
-    V: Eq + AsRef<[u8]>,
-{
-}
-
-#[cfg(not(feature = "std"))]
-impl<K, V, const N: usize> Eq for BoundedHashMap<K, V, N>
-where
-    K: Eq + hash::Hash + AsRef<[u8]> + core::cmp::Ord,
-    V: Eq + AsRef<[u8]>,
-{
 }
 
 #[cfg(test)]

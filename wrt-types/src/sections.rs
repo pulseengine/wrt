@@ -4,11 +4,7 @@
 //! safety verification built in.
 
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::{
-    format,
-    string::{String, ToString},
-    vec::Vec,
-};
+use alloc::format;
 
 use crate::safe_memory::SafeSlice;
 use wrt_error::{kinds, Error, Result};
