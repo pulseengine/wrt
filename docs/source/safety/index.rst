@@ -347,4 +347,8 @@ A.2 Abbreviated Terms
 * **Wasm**: WebAssembly
 * **VM**: Virtual Machine
 * **MCU**: Microcontroller Unit
-* **SLOC**: Source Lines of Code 
+* **SLOC**: Source Lines of Code
+
+.. note::
+
+   For detailed information about panic handling and documentation, see the :doc:`../development/panic_documentation` guide. 
