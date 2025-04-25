@@ -92,6 +92,10 @@ jobs:
       - name: Install cargo-llvm-cov
         run: cargo install cargo-llvm-cov
 
+      # Install grcov for combining coverage reports
+      - name: Install grcov
+        run: cargo install grcov
+
       # Install PlantUML for diagram generation
       - name: Install PlantUML
         run: |
@@ -101,11 +105,11 @@ jobs:
       # Run coverage separately to handle errors better
       - name: Generate code coverage
         run: |
-          # Generate coverage data
-          cargo xtask coverage || {
+          # Generate coverage data using the new full approach
+          just coverage-full || {
             echo "::warning::Failed to generate coverage data. Creating placeholder..."
-            mkdir -p target/llvm-cov/html
-            echo "<h1>Coverage Report Not Available</h1>" > target/llvm-cov/html/index.html
+            mkdir -p target/coverage/html
+            echo "<h1>Coverage Report Not Available</h1>" > target/coverage/html/index.html
             mkdir -p docs/source
             cp docs/source/_generated_coverage_summary.rst.template docs/source/_generated_coverage_summary.rst || true
           }
