@@ -1,5 +1,6 @@
 //! Defines the `ResultExt` trait for adding context to errors.
 
+#[cfg(feature = "alloc")]
 use super::error::Error;
 use super::source::ErrorSource;
 use core::fmt::{self, Debug, Display};

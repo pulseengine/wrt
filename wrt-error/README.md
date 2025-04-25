@@ -48,12 +48,11 @@ fn from_io_error() -> Result<()> {
 
 ## Features
 
-- `std`: Enables integration with the standard library (recommended for most use cases)
-- `alloc`: Enables features that require heap allocation (enabled by default)
-- `minimal`: Minimal feature set for basic functionality with `alloc`
+- `std`: Standard library support (includes `alloc`, default feature)
+- `alloc`: Enables features that require heap allocation
 - `no_std`: For embedded environments without standard library or allocator
 - `kani`: Enables formal verification with the Kani verifier
-- Integration features:
+- Integration features (all require `std`):
   - `wasmparser`: Allows working with `wasmparser::BinaryReaderError`
   - `serde_json`: Adds support for `serde_json::Error`
   - `bincode`: Adds support for `bincode::Error`

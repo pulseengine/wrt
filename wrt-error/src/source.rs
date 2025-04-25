@@ -38,17 +38,6 @@ pub trait ErrorSource: Debug + Display {
     }
 }
 
-// --- Basic ErrorSource impl for common types ---
-
-// This implementation is problematic and should be removed
-// Instead, we need to implement std::error::Error for specific types
-// #[cfg(feature = "std")]
-// impl<T: ErrorSource + 'static> std::error::Error for T {
-//     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-//         ErrorSource::source(self).map(|src| src as &(dyn std::error::Error + 'static))
-//     }
-// }
-
 // Implement for basic String errors (requires alloc)
 #[cfg(feature = "alloc")]
 impl ErrorSource for String {}
@@ -86,9 +75,18 @@ impl ErrorSource for serde_json::Error {
     }
 }
 
-// Implement for bincode::Error
+// Implement for bincode::error::EncodeError and bincode::error::DecodeError
+// Note: bincode 2.0 changed the error types from a single Error to specific EncodeError and DecodeError
 #[cfg(feature = "bincode")]
-impl ErrorSource for bincode::Error {
+impl ErrorSource for bincode::error::EncodeError {
+    #[cfg(feature = "std")]
+    fn source(&self) -> Option<&(dyn ErrorSource + 'static)> {
+        None
+    }
+}
+
+#[cfg(feature = "bincode")]
+impl ErrorSource for bincode::error::DecodeError {
     #[cfg(feature = "std")]
     fn source(&self) -> Option<&(dyn ErrorSource + 'static)> {
         None
@@ -113,14 +111,8 @@ impl ErrorSource for wasi_common::Error {
     }
 }
 
-// Implement for cap_std::Error
-#[cfg(feature = "wasi")]
-impl ErrorSource for cap_std::Error {
-    #[cfg(feature = "std")]
-    fn source(&self) -> Option<&(dyn ErrorSource + 'static)> {
-        None
-    }
-}
+// cap-std uses std::io::Error for most of its error handling,
+// so we don't need to implement a specific handler for cap-std errors
 
 // Implement for Box<dyn ErrorSource + ...>
 #[cfg(feature = "alloc")]
