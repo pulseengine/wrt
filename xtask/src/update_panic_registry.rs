@@ -7,7 +7,21 @@ use std::path::{Path, PathBuf};
 use std::time::Instant;
 use xshell::Shell;
 
+/// Structure representing a panic entry with safety impact and tracking ID
+struct PanicInfo {
+    file_path: String,
+    function_name: String,
+    line_number: usize,
+    panic_condition: String,
+    safety_impact: String,
+    tracking_id: String,
+    resolution_status: String,
+    handling_strategy: String,
+    last_updated: String,
+}
+
 /// Extract panic documentation from Rust source files and update the panic registry CSV
+/// and generate an RST file for sphinx-needs integration
 pub fn run(sh: &Shell, output_path: &str, verbose: bool) -> Result<()> {
     println!("Scanning codebase for panic documentation...");
     let start_time = Instant::now();
@@ -16,7 +30,7 @@ pub fn run(sh: &Shell, output_path: &str, verbose: bool) -> Result<()> {
     let crates = vec![
         "wrt",
         "wrtd",
-        "xtask",
+        // "xtask", // Exclude xtask from panic search
         "example",
         "wrt-sync",
         "wrt-error",
@@ -31,19 +45,6 @@ pub fn run(sh: &Shell, output_path: &str, verbose: bool) -> Result<()> {
         "wrt-common",
         "wrt-intercept",
     ];
-
-    // Structure to hold panic information
-    struct PanicInfo {
-        file_path: String,
-        function_name: String,
-        line_number: usize,
-        panic_condition: String,
-        safety_impact: String,
-        tracking_id: String,
-        resolution_status: String,
-        handling_strategy: String,
-        last_updated: String,
-    }
 
     // Load existing panic registry to preserve any manual updates
     let mut existing_entries = HashMap::new();
@@ -177,24 +178,18 @@ pub fn run(sh: &Shell, output_path: &str, verbose: bool) -> Result<()> {
                                 if let Some(track_idx) = l.find("Tracking:") {
                                     tracking_id = l[track_idx + 9..].trim().to_string();
                                 }
-                            } else if l.contains("///")
-                                && !l.contains("# Panics")
-                                && !panic_condition.is_empty()
-                            {
-                                // Append to existing panic condition
+                            } else if l.contains("///") && !l.contains("# Panics") {
+                                // Extract the content after ///
                                 let content = l.trim_start().trim_start_matches("///").trim();
+
                                 if !content.is_empty() {
-                                    panic_condition.push(' ');
-                                    panic_condition.push_str(content);
-                                }
-                            } else if l.contains("///")
-                                && !l.contains("# Panics")
-                                && panic_condition.is_empty()
-                            {
-                                // Start capturing panic condition
-                                let content = l.trim_start().trim_start_matches("///").trim();
-                                if !content.is_empty() {
-                                    panic_condition = content.to_string();
+                                    // If we already have content, append; otherwise set as new content
+                                    if !panic_condition.is_empty() {
+                                        panic_condition.push(' ');
+                                        panic_condition.push_str(content);
+                                    } else {
+                                        panic_condition = content.to_string();
+                                    }
                                 }
                             }
                             i += 1;
@@ -255,10 +250,135 @@ pub fn run(sh: &Shell, output_path: &str, verbose: bool) -> Result<()> {
         )?;
     }
 
+    // Generate RST file from the CSV
+    generate_rst_file(&panic_infos, output_path)?;
+
     let elapsed = start_time.elapsed();
     println!("Successfully updated panic registry at {}", output_path);
     println!("Found {} panic documentation entries", count);
-    println!("Time taken: {:.2?}", elapsed);
+    println!("Time taken: {:?}", elapsed);
 
+    Ok(())
+}
+
+/// Generate an RST file for sphinx-needs from the panic registry data
+fn generate_rst_file(panic_infos: &[PanicInfo], csv_path: &str) -> Result<()> {
+    // Create RST path in qualification directory instead of the same location as CSV
+    let qualification_dir = Path::new("docs/source/qualification");
+
+    // Create qualification directory if it doesn't exist
+    if !qualification_dir.exists() {
+        std::fs::create_dir_all(qualification_dir)?;
+    }
+
+    let rst_file_name = Path::new(csv_path).file_name().unwrap();
+    let rst_path = qualification_dir.join(rst_file_name).with_extension("rst");
+    let mut file = File::create(&rst_path)?;
+
+    // Write RST header
+    writeln!(file, ".. _panic-registry:")?;
+    writeln!(file)?;
+    writeln!(file, "Panic Registry")?;
+    writeln!(file, "==============")?;
+    writeln!(file)?;
+    writeln!(
+        file,
+        "This document contains all documented panic conditions in the WRT codebase."
+    )?;
+    writeln!(
+        file,
+        "Each panic is tracked as a qualification requirement using sphinx-needs."
+    )?;
+    writeln!(file)?;
+    writeln!(file, ".. contents:: Table of Contents")?;
+    writeln!(file, "   :local:")?;
+    writeln!(file, "   :depth: 2")?;
+    writeln!(file)?;
+    writeln!(file, "Summary")?;
+    writeln!(file, "-------")?;
+    writeln!(file)?;
+    writeln!(file, "* Total panic points: {}", panic_infos.len())?;
+
+    // Count by status
+    let mut todo_count = 0;
+    let mut in_progress_count = 0;
+    let mut resolved_count = 0;
+
+    for info in panic_infos {
+        match info.resolution_status.as_str() {
+            "Todo" => todo_count += 1,
+            "In Progress" => in_progress_count += 1,
+            "Resolved" => resolved_count += 1,
+            _ => todo_count += 1,
+        }
+    }
+
+    writeln!(file, "* Status:")?;
+    writeln!(file, "  * Todo: {}", todo_count)?;
+    writeln!(file, "  * In Progress: {}", in_progress_count)?;
+    writeln!(file, "  * Resolved: {}", resolved_count)?;
+    writeln!(file)?;
+    writeln!(
+        file,
+        "The original CSV version of this registry is maintained at:"
+    )?;
+    writeln!(file, "{}", csv_path)?;
+    writeln!(file)?;
+    writeln!(file, ".. csv-table:: Panic Registry CSV")?;
+    writeln!(
+        file,
+        "   :file: {}",
+        Path::new(csv_path).file_name().unwrap().to_string_lossy()
+    )?;
+    writeln!(file, "   :header-rows: 1")?;
+    writeln!(file, "   :widths: 20, 15, 5, 20, 5, 10, 10, 15")?;
+    writeln!(file)?;
+    writeln!(file, "Panic Details")?;
+    writeln!(file, "------------")?;
+    writeln!(file)?;
+
+    // Add entries as needs
+    for (i, info) in panic_infos.iter().enumerate() {
+        // Create ID from tracking ID if available, otherwise generate one
+        let id = if !info.tracking_id.is_empty() {
+            info.tracking_id.clone()
+        } else {
+            format!("WRTQ-{:04}", i + 1)
+        };
+
+        // Determine safety level
+        let safety_level = if info.safety_impact.starts_with("LOW") {
+            "LOW"
+        } else if info.safety_impact.starts_with("MEDIUM") {
+            "MEDIUM"
+        } else if info.safety_impact.starts_with("HIGH") {
+            "HIGH"
+        } else {
+            "UNKNOWN"
+        };
+
+        // Clean up panic condition and safety impact for RST format
+        let panic_condition = info.panic_condition.replace('\n', " ");
+
+        writeln!(file, ".. qual:: {}", info.function_name)?;
+        writeln!(file, "   :id: {}", id)?;
+        writeln!(file, "   :status: {}", info.resolution_status)?;
+        writeln!(file, "   :implementation: {}", info.handling_strategy)?;
+        writeln!(file, "   :tags: panic, {}", safety_level.to_lowercase())?;
+        writeln!(file)?;
+        writeln!(file, "   **File:** {}", info.file_path)?;
+        writeln!(file, "   **Line:** {}", info.line_number)?;
+        writeln!(file, "   **Function:** {}", info.function_name)?;
+        writeln!(file, "   **Safety Impact:** {}", info.safety_impact)?;
+        writeln!(file, "   **Last Updated:** {}", info.last_updated)?;
+        writeln!(file)?;
+        writeln!(file, "   {}", panic_condition)?;
+        writeln!(file)?;
+    }
+
+    println!(
+        "Successfully generated sphinx-needs RST file at {}",
+        rst_path.display()
+    );
     Ok(())
 }

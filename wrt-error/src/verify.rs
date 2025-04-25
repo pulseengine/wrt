@@ -1,9 +1,12 @@
 //! Formal verification for the error handling system using Kani.
 //!
 //! This module contains proofs that verify core properties of the error handling system.
-//! These proofs only run with `cargo kani --features kani`.
+//! These proofs only run with Kani and are isolated from normal compilation and testing.
 
-#[cfg(feature = "kani")]
+// Only compile Kani verification code when documentation is being generated
+// or when explicitly running cargo kani. This prevents interference with
+// coverage testing.
+#[cfg(any(doc, kani))]
 pub mod kani_verification {
     use crate::source::ErrorSource;
     use crate::{Error, Result, ResultExt};
@@ -27,7 +30,7 @@ pub mod kani_verification {
     }
 
     /// Verify that creating and displaying an error works correctly
-    #[cfg_attr(feature = "kani", kani_verifier::proof)]
+    #[cfg_attr(kani, kani::proof)]
     pub fn verify_error_creation() {
         let error = Error::new(VerifyError("verification test"));
         let error_str = format!("{}", error);
@@ -37,7 +40,7 @@ pub mod kani_verification {
     }
 
     /// Verify that error context chaining works correctly
-    #[cfg_attr(feature = "kani", kani_verifier::proof)]
+    #[cfg_attr(kani, kani::proof)]
     pub fn verify_error_context() {
         let result: core::result::Result<(), VerifyError> = Err(VerifyError("base error"));
         let with_context = result.context("operation failed");
@@ -52,7 +55,7 @@ pub mod kani_verification {
     }
 
     /// Verify that multiple contexts chain correctly
-    #[cfg_attr(feature = "kani", kani_verifier::proof)]
+    #[cfg_attr(kani, kani::proof)]
     pub fn verify_multiple_contexts() {
         let result: Result<()> = Err(Error::new(VerifyError("original error")))
             .context("first context")
@@ -69,7 +72,7 @@ pub mod kani_verification {
     }
 
     /// Verify that factory methods create the correct error types
-    #[cfg_attr(feature = "kani", kani_verifier::proof)]
+    #[cfg_attr(kani, kani::proof)]
     pub fn verify_factory_methods() {
         let div_error = Error::division_by_zero();
         assert!(format!("{}", div_error) == "Division by zero");
@@ -81,7 +84,7 @@ pub mod kani_verification {
     }
 
     /// Verify that Error::from works correctly
-    #[cfg_attr(feature = "kani", kani_verifier::proof)]
+    #[cfg_attr(kani, kani::proof)]
     pub fn verify_error_from() {
         let original_error = VerifyError("source error");
         let error = Error::from(original_error);
@@ -90,7 +93,7 @@ pub mod kani_verification {
     }
 
     /// Verify that Result works correctly with different error types
-    #[cfg_attr(feature = "kani", kani_verifier::proof)]
+    #[cfg_attr(kani, kani::proof)]
     pub fn verify_result_type() {
         // Test with the default error type
         let result1: Result<i32> = Ok(42);
@@ -108,6 +111,6 @@ pub mod kani_verification {
     }
 }
 
-// Include the verification module in the main library when kani feature is enabled
-#[cfg(feature = "kani")]
+// Expose the verification module in docs but not for normal compilation
+#[cfg(any(doc, kani))]
 pub use kani_verification::*;

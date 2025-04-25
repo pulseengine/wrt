@@ -26,7 +26,14 @@ hex = "0.4"
 wat = "1.229.0"
 
 [features]
-default = ["minimal", "std", "component-model-core"]
+default = [
+    "minimal",
+    "std",
+    "component-model-core",
+    "component-model-values",
+    "component-model-fixed-lists",
+    "component-model-namespaces"
+]
 minimal = ["dep:log", "wrt-types/std"]
 std = ["minimal", "wrt-types/std"]
 no_std = ["wrt-types/no_std"]
@@ -38,10 +45,14 @@ wat = ["dep:wat", "std"]
 component-model-core = ["wrt-format/component-model-core"]
 component-model-values = ["wrt-format/component-model-values"]
 component-model-resources = ["wrt-format/component-model-resources"]
+component-model-fixed-lists = ["wrt-format/component-model-fixed-lists"]
+component-model-namespaces = ["wrt-format/component-model-namespaces"]
 component-model-all = [
     "component-model-core",
     "component-model-values",
-    "component-model-resources"
+    "component-model-resources",
+    "component-model-fixed-lists",
+    "component-model-namespaces"
 ]
 
 [package.metadata.docs.rs]

@@ -11,8 +11,8 @@ pub mod error;
 pub mod kinds;
 pub mod source;
 
-// Include verification module when the kani feature is enabled
-#[cfg(feature = "kani")]
+// Include verification module conditionally, but exclude during coverage builds
+#[cfg(all(not(coverage), doc))]
 pub mod verify;
 
 // Re-export key types

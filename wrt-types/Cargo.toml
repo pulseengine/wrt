@@ -8,7 +8,14 @@ repository = "https://github.com/avrabe/wrt"
 
 [features]
 # Default features for standard environments
-default = ["std", "log"]
+default = [
+    "std", 
+    "log", 
+    "component-model-core", 
+    "component-model-values", 
+    "component-model-fixed-lists", 
+    "component-model-namespaces"
+]
 # Standard library support
 std = ["wrt-error/std", "log"]
 # Allocator support for no_std environments
@@ -21,6 +28,13 @@ optimize = []
 safety = []
 # Feature for formal verification, requires nightly for full functionality
 kani = ["dep:kani-verifier"]
+
+# Component Model features
+component-model-core = []  # Basic component model support
+component-model-values = []  # 🪙 Experimental values
+component-model-resources = []  # Resource types
+component-model-fixed-lists = []  # 🔧 Fixed-length lists
+component-model-namespaces = []  # 🪺 Nested namespaces
 
 [dependencies]
 wrt-error = { path = "../wrt-error", version = "0.2.0" }

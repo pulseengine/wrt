@@ -55,7 +55,6 @@
 //! ```
 
 #![cfg_attr(not(feature = "std"), no_std)]
-#![cfg_attr(feature = "kani", feature(kani))]
 #![warn(clippy::missing_panics_doc)]
 
 // When no_std but alloc is available
@@ -80,8 +79,8 @@ use std::collections::HashMap;
 // Built-in strategy implementations
 pub mod strategies;
 
-// Conditionally include verification code for Kani
-#[cfg(feature = "kani")]
+// Include verification module conditionally, but exclude during coverage builds
+#[cfg(all(not(coverage), any(doc, feature = "kani")))]
 pub mod verify;
 
 /// Strategy pattern for intercepting component linking

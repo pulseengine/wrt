@@ -19,5 +19,12 @@ default = []
 # The 'std' feature enables Rust standard library functionality like thread parking
 # This allows for more efficient locking when locks are held for longer periods
 std = []
-# The 'kani' feature enables formal verification with the Kani verifier
-kani = ["std", "dep:kani-verifier"]
+
+[lints.rust]
+unexpected_cfgs = { level = "allow", check-cfg = ['cfg(test)', 'cfg(kani)', 'cfg(coverage)', 'cfg(doc)'] }
+
+# Configuration for Kani verification
+# This will only be used when running `cargo kani`
+[package.metadata.kani]
+enabled-checks = ["assertion", "overflow"]
+default-unwind = 3

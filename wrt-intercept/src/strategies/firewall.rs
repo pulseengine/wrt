@@ -210,94 +210,22 @@ impl LinkInterceptorStrategy for FirewallStrategy {
     }
 }
 
-/// Builder for creating a firewall strategy
-pub struct FirewallBuilder {
-    config: FirewallConfig,
-}
-
-impl FirewallBuilder {
-    /// Create a new firewall builder
-    pub fn new(default_allow: bool) -> Self {
-        Self {
-            config: FirewallConfig {
-                default_allow,
-                rules: Vec::new(),
-                check_parameters: false,
-            },
-        }
-    }
-
-    /// Enable parameter checking
-    pub fn check_parameters(mut self, check: bool) -> Self {
-        self.config.check_parameters = check;
-        self
-    }
-
-    /// Add a rule to the firewall
-    pub fn add_rule(mut self, rule: FirewallRule) -> Self {
-        self.config.rules.push(rule);
-        self
-    }
-
-    /// Allow a specific function call
-    pub fn allow_function(self, source: &str, target: &str, function: &str) -> Self {
-        self.add_rule(FirewallRule::AllowFunction(
-            source.to_string(),
-            target.to_string(),
-            function.to_string(),
-        ))
-    }
-
-    /// Allow all functions from a source to a target
-    pub fn allow_source(self, source: &str, target: &str) -> Self {
-        self.add_rule(FirewallRule::AllowSource(
-            source.to_string(),
-            target.to_string(),
-        ))
-    }
-
-    /// Allow all functions to a target
-    pub fn allow_target(self, target: &str) -> Self {
-        self.add_rule(FirewallRule::AllowTarget(target.to_string()))
-    }
-
-    /// Deny a specific function call
-    pub fn deny_function(self, source: &str, target: &str, function: &str) -> Self {
-        self.add_rule(FirewallRule::DenyFunction(
-            source.to_string(),
-            target.to_string(),
-            function.to_string(),
-        ))
-    }
-
-    /// Deny all functions from a source to a target
-    pub fn deny_source(self, source: &str, target: &str) -> Self {
-        self.add_rule(FirewallRule::DenySource(
-            source.to_string(),
-            target.to_string(),
-        ))
-    }
-
-    /// Deny all functions to a target
-    pub fn deny_target(self, target: &str) -> Self {
-        self.add_rule(FirewallRule::DenyTarget(target.to_string()))
-    }
-
-    /// Build the firewall strategy
-    pub fn build(self) -> FirewallStrategy {
-        FirewallStrategy::new(self.config)
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn test_firewall_allow_by_default() {
-        let strategy = FirewallBuilder::new(true)
-            .deny_function("source", "target", "denied_function")
-            .build();
+        let config = FirewallConfig {
+            default_allow: true,
+            rules: vec![FirewallRule::DenyFunction(
+                "source".to_string(),
+                "target".to_string(),
+                "denied_function".to_string(),
+            )],
+            check_parameters: false,
+        };
+        let strategy = FirewallStrategy::new(config);
 
         // Test allowed function
         let result = strategy.before_call("source", "target", "allowed_function", &[]);
@@ -310,9 +238,16 @@ mod tests {
 
     #[test]
     fn test_firewall_deny_by_default() {
-        let strategy = FirewallBuilder::new(false)
-            .allow_function("source", "target", "allowed_function")
-            .build();
+        let config = FirewallConfig {
+            default_allow: false,
+            rules: vec![FirewallRule::AllowFunction(
+                "source".to_string(),
+                "target".to_string(),
+                "allowed_function".to_string(),
+            )],
+            check_parameters: false,
+        };
+        let strategy = FirewallStrategy::new(config);
 
         // Test allowed function
         let result = strategy.before_call("source", "target", "allowed_function", &[]);
@@ -325,9 +260,15 @@ mod tests {
 
     #[test]
     fn test_firewall_allow_source() {
-        let strategy = FirewallBuilder::new(false)
-            .allow_source("source", "target")
-            .build();
+        let config = FirewallConfig {
+            default_allow: false,
+            rules: vec![FirewallRule::AllowSource(
+                "source".to_string(),
+                "target".to_string(),
+            )],
+            check_parameters: false,
+        };
+        let strategy = FirewallStrategy::new(config);
 
         // Test allowed source
         let result = strategy.before_call("source", "target", "any_function", &[]);
@@ -340,10 +281,19 @@ mod tests {
 
     #[test]
     fn test_firewall_rule_precedence() {
-        let strategy = FirewallBuilder::new(false)
-            .allow_source("source", "target")
-            .deny_function("source", "target", "denied_function")
-            .build();
+        let config = FirewallConfig {
+            default_allow: false,
+            rules: vec![
+                FirewallRule::AllowSource("source".to_string(), "target".to_string()),
+                FirewallRule::DenyFunction(
+                    "source".to_string(),
+                    "target".to_string(),
+                    "denied_function".to_string(),
+                ),
+            ],
+            check_parameters: false,
+        };
+        let strategy = FirewallStrategy::new(config);
 
         // Test allowed function
         let result = strategy.before_call("source", "target", "allowed_function", &[]);

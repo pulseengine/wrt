@@ -8,7 +8,6 @@ use std::any::Any;
 use std::collections::HashMap;
 use std::fmt;
 use std::sync::{Arc, Mutex, RwLock, Weak};
-use wrt_common::component::ComponentValue;
 use wrt_error::{kinds, Error, Result};
 use wrt_format::component::{
     ResourceOperation as FormatResourceOperation, ValType as FormatValType,
@@ -17,6 +16,7 @@ use wrt_intercept::{
     InterceptionContext, InterceptionResult, MemoryAccessMode,
     ResourceOperation as InterceptorResourceOperation,
 };
+use wrt_types::component_value::ComponentValue;
 
 /// Maximum number of resources that can be stored in a resource table
 const MAX_RESOURCES: usize = 1024;

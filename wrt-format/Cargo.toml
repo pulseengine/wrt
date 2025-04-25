@@ -20,25 +20,47 @@ version = "0.61.0"
 optional = true
 
 [features]
-default = ["std", "component-model-core"]
-std = ["wrt-types/std"]
-no_std = ["wrt-types/no_std"]
+default = [
+    "std",
+    "component-model-core",
+    "component-model-values",
+    "component-model-fixed-lists",
+    "component-model-namespaces"
+]
+std = ["wrt-error/std", "wrt-types/std"]
+no_std = ["wrt-error/no_std", "wrt-types/no_std"]
 optimize = ["wrt-types/optimize"]
 safety = ["wrt-types/safety"]
 # The 'kani' feature enables formal verification with the Kani verifier
-kani = ["dep:kani-verifier", "wrt-types/kani"] 
+kani = ["dep:kani-verifier"]
 
 # Component Model features
 component-model-core = []  # Basic component model support
 component-model-values = []  # 🪙 Experimental values
-component-model-resources = []  # 🪙 Experimental resource types
+component-model-resources = []  # Resource types
+component-model-canonical = []  # Canonical ABI support
+component-model-fixed-lists = []  # 🔧 Fixed-length lists
+component-model-error-context = []  # 📝 Error context type
+component-model-async = []  # 🔀 Async functionality
+component-model-threading = []  # 🧵 Threading built-ins
+component-model-namespaces = []  # �� Nested namespaces
 
 # Grouped features
 component-model-all = [
     "component-model-core",
     "component-model-values",
-    "component-model-resources"
+    "component-model-resources",
+    "component-model-canonical",
+    "component-model-fixed-lists",
+    "component-model-error-context",
+    "component-model-async",
+    "component-model-threading",
+    "component-model-namespaces"
 ]
+
+# Config for linting
+[lints.rust]
+unexpected_cfgs = { level = "allow", check-cfg = ['cfg(test)', 'cfg(kani)', 'cfg(coverage)', 'cfg(doc)'] }
 
 # Configuration for Kani verification
 [package.metadata.kani]

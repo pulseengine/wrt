@@ -123,7 +123,7 @@ pub fn extract_custom_sections<'a>(module: &'a Module, name: &str) -> Vec<&'a [u
 #[cfg(feature = "no_std")]
 pub use alloc::{
     borrow::ToOwned,
-    collections::HashMap,
+    collections::BTreeMap as HashMap,
     string::{String, ToString},
     vec::Vec,
 };

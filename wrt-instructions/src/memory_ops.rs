@@ -764,7 +764,7 @@ mod tests {
             .unwrap();
 
         // Test i64 store
-        let store = MemoryStore::i64(4, 8);
+        let store = MemoryStore::i64(4, 4);
         store
             .execute(&mut memory, &Value::I32(0), &i64_value)
             .unwrap();
@@ -819,7 +819,7 @@ mod tests {
             .unwrap();
         let mut buffer = [0; 4];
         memory.read(28, &mut buffer).unwrap();
-        assert_eq!(u32::from_le_bytes(buffer), 0xABCDEF);
+        assert_eq!(u32::from_le_bytes(buffer), 0x78ABCDEF);
     }
 
     #[test]

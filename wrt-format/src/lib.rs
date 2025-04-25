@@ -38,6 +38,7 @@ pub use wrt_types::{safe_memory::SafeSlice, FuncType, ValueType};
 
 /// WebAssembly binary format parsing and access
 pub mod binary;
+pub mod canonical;
 /// WebAssembly component model format
 pub mod component;
 /// Conversion utilities for component model types
@@ -49,6 +50,7 @@ pub mod module;
 pub mod section;
 pub mod state;
 pub mod types;
+pub mod verify;
 pub mod version;
 
 pub use component::Component;

@@ -94,6 +94,19 @@ pub fn encode_val_type(result: &mut Vec<u8>, val_type: &ValType) -> Result<()> {
             )));
         }
         ValType::Char => result.push(0x16),
+        &wrt_format::component::ValType::FixedList(ref inner, size) => {
+            // Fixed-length lists are encoded as a list tag followed by the element type and size
+            result.push(0x17); // Example tag for fixed list
+            let mut inner_bytes = Vec::new();
+            encode_val_type(&mut inner_bytes, inner.as_ref())?;
+
+            // Encode size without dereferencing
+            result.extend_from_slice(&binary::write_leb128_u32(size));
+        }
+        &wrt_format::component::ValType::ErrorContext => {
+            // Error context is a simple type
+            result.push(0x18); // Example tag for error context
+        }
     }
     Ok(())
 }

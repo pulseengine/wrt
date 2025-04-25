@@ -185,25 +185,20 @@ impl<S: LogSink + 'static, F: ValueFormatter + 'static> LinkInterceptorStrategy
         _args: &[Value],
         result: Result<Vec<Value>>,
     ) -> Result<Vec<Value>> {
-        // Calculate elapsed time if timing is enabled
-        let elapsed = if self.config.log_timing {
-            match self.timing.lock() {
-                Ok(mut timing) => timing.take().map(|start| start.elapsed()),
-                _ => None,
-            }
-        } else {
-            None
-        };
-
-        // Format the log entry
+        // Format the return
         let mut log_entry = format!("RETURN: {}->{}::{}", source, target, function);
 
-        // Add timing information if available
-        if let Some(duration) = elapsed {
-            log_entry.push_str(&format!(" ({}ms)", duration.as_secs_f64() * 1000.0));
+        // Add timing information if configured
+        if self.config.log_timing {
+            if let Ok(mut timing) = self.timing.lock() {
+                if let Some(start_time) = timing.take() {
+                    let elapsed = start_time.elapsed();
+                    log_entry.push_str(&format!(" elapsed: {:?}", elapsed));
+                }
+            }
         }
 
-        // Add result information if configured
+        // Add results if configured
         if self.config.log_results {
             match &result {
                 Ok(values) => {
@@ -271,9 +266,10 @@ pub struct FileLogSink {
 }
 
 #[cfg(feature = "std")]
+#[allow(dead_code)]
 impl FileLogSink {
     /// Create a new file log sink
-    pub fn new(path: &std::path::Path) -> std::io::Result<Self> {
+    fn new(path: &std::path::Path) -> std::io::Result<Self> {
         let file = std::fs::OpenOptions::new()
             .create(true)
             .append(true)
@@ -303,9 +299,10 @@ pub struct LogCrateSink {
 }
 
 #[cfg(feature = "log")]
+#[allow(dead_code)]
 impl LogCrateSink {
     /// Create a new log crate sink
-    pub fn new(module: &'static str) -> Self {
+    fn new(module: &'static str) -> Self {
         Self { module }
     }
 }
@@ -390,13 +387,11 @@ mod tests {
         };
         let strategy = LoggingStrategy::new(sink.clone()).with_config(config);
 
-        // Test before_call with no args logging
+        // Test before_call with custom config
         let args = vec![Value::I32(42), Value::I64(123)];
-        strategy
-            .before_call("source", "target", "function", &args)
-            .unwrap();
+        let _ = strategy.before_call("source", "target", "function", &args);
 
-        // Check log entry
+        // Check log entry - should not contain args
         let logs = sink.logs.lock().unwrap();
         assert_eq!(logs.len(), 1);
         assert!(logs[0].contains("CALL: source->target::function"));

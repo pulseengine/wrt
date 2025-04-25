@@ -53,6 +53,8 @@ impl<T: ?Sized> WrtMutex<T> {
     /// # Panics
     ///
     /// This function does not panic.
+    /// Safety impact: [LOW|MEDIUM|HIGH] - [Brief explanation of the safety implication]
+    /// Tracking: WRTQ-XXX (qualification requirement tracking ID).
     #[inline]
     pub fn lock(&self) -> WrtMutexGuard<'_, T> {
         // Spin until the lock is acquired.

@@ -22,6 +22,7 @@ This section contains all qualification-related documents for the WebAssembly Ru
    technical_report
    qualification_report
    internal_procedures
+   panic_registry
 
 Overview
 --------

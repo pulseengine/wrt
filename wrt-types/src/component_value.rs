@@ -5,22 +5,17 @@
 
 #![allow(clippy::derive_partial_eq_without_eq)]
 
-use crate::Value;
+use core::fmt;
 use wrt_error::kinds;
 use wrt_error::{Error, Result};
 
-#[cfg(not(feature = "std"))]
-use alloc::{
-    boxed::Box,
-    collections::HashMap,
-    format,
-    string::{String, ToString},
-    vec,
-    vec::Vec,
-};
-
 #[cfg(feature = "std")]
-use std::collections::HashMap;
+use std::{string::String, vec::Vec};
+
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+use alloc::{string::String, vec::Vec};
+
+use crate::Value;
 
 /// A Component Model value type
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -60,6 +55,8 @@ pub enum ValType {
     Variant(Vec<(String, Option<ValType>)>),
     /// List of elements
     List(Box<ValType>),
+    /// Fixed-length list of elements with a known length
+    FixedList(Box<ValType>, u32),
     /// Tuple of elements
     Tuple(Vec<ValType>),
     /// Flags (set of named boolean flags)
@@ -74,12 +71,18 @@ pub enum ValType {
     Own(u32),
     /// Resource handle (borrowed)
     Borrow(u32),
+    /// Void type
+    Void,
+    /// Error context type
+    ErrorContext,
 }
 
-/// A Component Model value used at runtime
+/// WebAssembly component value types
 #[derive(Debug, Clone, PartialEq)]
 pub enum ComponentValue {
-    /// Boolean value
+    /// Invalid/uninitialized value
+    Void,
+    /// Boolean value (true/false)
     Bool(bool),
     /// Signed 8-bit integer
     S8(i8),
@@ -105,31 +108,30 @@ pub enum ComponentValue {
     Char(char),
     /// UTF-8 string
     String(String),
-    /// List of values
+    /// List of component values
     List(Vec<ComponentValue>),
+    /// Fixed-length list of component values with a known length
+    FixedList(Vec<ComponentValue>, u32),
     /// Record with named fields
-    Record(HashMap<String, ComponentValue>),
+    Record(Vec<(String, ComponentValue)>),
     /// Variant with case name and optional value
-    Variant {
-        /// Case/discriminant index
-        case: u32,
-        /// Optional value associated with this variant case
-        value: Option<Box<ComponentValue>>,
-    },
-    /// Tuple of values
+    Variant(String, Option<Box<ComponentValue>>),
+    /// Tuple of component values
     Tuple(Vec<ComponentValue>),
-    /// Flags (set of named boolean flags)
-    Flags(HashMap<String, bool>),
-    /// Enumeration value
-    Enum(u32),
-    /// Option type
+    /// Flags with boolean fields
+    Flags(Vec<(String, bool)>),
+    /// Enumeration with case name
+    Enum(String),
+    /// Optional value (Some/None)
     Option(Option<Box<ComponentValue>>),
-    /// Result type with ok value
-    Result(Result<Option<Box<ComponentValue>>, Option<Box<ComponentValue>>>),
-    /// Resource handle (owned)
-    Own(u32),
-    /// Resource handle (borrowed)
+    /// Result value (Ok/Err)
+    Result(Result<Box<ComponentValue>, Box<ComponentValue>>),
+    /// Handle to a resource (u32 representation)
+    Handle(u32),
+    /// Reference to a borrowed resource (u32 representation)
     Borrow(u32),
+    /// Error context information
+    ErrorContext(Vec<ComponentValue>),
 }
 
 // Implement Eq for ComponentValue
@@ -137,9 +139,162 @@ pub enum ComponentValue {
 impl Eq for ComponentValue {}
 
 impl ComponentValue {
+    /// Create a new void value
+    pub fn void() -> Self {
+        Self::Void
+    }
+
+    /// Create a new boolean value
+    pub fn bool(v: bool) -> Self {
+        Self::Bool(v)
+    }
+
+    /// Create a new signed 8-bit integer value
+    pub fn s8(v: i8) -> Self {
+        Self::S8(v)
+    }
+
+    /// Create a new unsigned 8-bit integer value
+    pub fn u8(v: u8) -> Self {
+        Self::U8(v)
+    }
+
+    /// Create a new signed 16-bit integer value
+    pub fn s16(v: i16) -> Self {
+        Self::S16(v)
+    }
+
+    /// Create a new unsigned 16-bit integer value
+    pub fn u16(v: u16) -> Self {
+        Self::U16(v)
+    }
+
+    /// Create a new signed 32-bit integer value
+    pub fn s32(v: i32) -> Self {
+        Self::S32(v)
+    }
+
+    /// Create a new unsigned 32-bit integer value
+    pub fn u32(v: u32) -> Self {
+        Self::U32(v)
+    }
+
+    /// Create a new signed 64-bit integer value
+    pub fn s64(v: i64) -> Self {
+        Self::S64(v)
+    }
+
+    /// Create a new unsigned 64-bit integer value
+    pub fn u64(v: u64) -> Self {
+        Self::U64(v)
+    }
+
+    /// Create a new 32-bit float value
+    pub fn f32(v: f32) -> Self {
+        Self::F32(v)
+    }
+
+    /// Create a new 64-bit float value
+    pub fn f64(v: f64) -> Self {
+        Self::F64(v)
+    }
+
+    /// Create a new character value
+    pub fn char(v: char) -> Self {
+        Self::Char(v)
+    }
+
+    /// Create a new string value
+    pub fn string<S: Into<String>>(v: S) -> Self {
+        Self::String(v.into())
+    }
+
+    /// Create a new list value
+    pub fn list(v: Vec<ComponentValue>) -> Self {
+        Self::List(v)
+    }
+
+    /// Create a new fixed-length list value
+    pub fn fixed_list(v: Vec<ComponentValue>, len: u32) -> Result<Self> {
+        if v.len() != len as usize {
+            return Err(Error::new(kinds::ValidationError(format!(
+                "Fixed list length mismatch: expected {}, got {}",
+                len,
+                v.len()
+            ))));
+        }
+        Ok(Self::FixedList(v, len))
+    }
+
+    /// Create a new record value
+    pub fn record(v: Vec<(String, ComponentValue)>) -> Self {
+        Self::Record(v)
+    }
+
+    /// Create a new variant value
+    pub fn variant<S: Into<String>>(case: S, value: Option<ComponentValue>) -> Self {
+        Self::Variant(case.into(), value.map(Box::new))
+    }
+
+    /// Create a new tuple value
+    pub fn tuple(v: Vec<ComponentValue>) -> Self {
+        Self::Tuple(v)
+    }
+
+    /// Create a new flags value
+    pub fn flags(v: Vec<(String, bool)>) -> Self {
+        Self::Flags(v)
+    }
+
+    /// Create a new enum value
+    pub fn enum_value<S: Into<String>>(case: S) -> Self {
+        Self::Enum(case.into())
+    }
+
+    /// Create a new option value (some)
+    pub fn some(v: ComponentValue) -> Self {
+        Self::Option(Some(Box::new(v)))
+    }
+
+    /// Create a new option value (none)
+    pub fn none() -> Self {
+        Self::Option(None)
+    }
+
+    /// Create a new result value (ok)
+    pub fn ok(v: ComponentValue) -> Self {
+        Self::Result(Ok(Box::new(v)))
+    }
+
+    /// Create a new result value (err)
+    pub fn err(v: ComponentValue) -> Self {
+        Self::Result(Err(Box::new(v)))
+    }
+
+    /// Create a new handle value
+    pub fn handle(v: u32) -> Self {
+        Self::Handle(v)
+    }
+
+    /// Create a new borrow value
+    pub fn borrow(v: u32) -> Self {
+        Self::Borrow(v)
+    }
+
+    /// Create a new error context value
+    pub fn error_context(v: Vec<ComponentValue>) -> Self {
+        Self::ErrorContext(v)
+    }
+
+    /// Check if this value is of the void type
+    pub fn is_void(&self) -> bool {
+        matches!(self, Self::Void)
+    }
+
     /// Get the type of this component value
     pub fn get_type(&self) -> ValType {
         match self {
+            Self::Void => ValType::Void,
             Self::Bool(_) => ValType::Bool,
             Self::S8(_) => ValType::S8,
             Self::U8(_) => ValType::U8,
@@ -161,6 +316,14 @@ impl ComponentValue {
                     ValType::List(Box::new(ValType::Bool))
                 }
             }
+            Self::FixedList(items, _len) => {
+                if let Some(first) = items.first() {
+                    ValType::FixedList(Box::new(first.get_type()), *_len)
+                } else {
+                    // Empty list, use a placeholder type
+                    ValType::FixedList(Box::new(ValType::Bool), *_len)
+                }
+            }
             Self::Record(fields) => {
                 let mut field_types = Vec::new();
                 for (name, value) in fields {
@@ -168,8 +331,8 @@ impl ComponentValue {
                 }
                 ValType::Record(field_types)
             }
-            Self::Variant { case, value } => {
-                let cases = vec![(case.to_string(), value.as_ref().map(|v| v.get_type()))];
+            Self::Variant(case, value) => {
+                let cases = vec![(case.clone(), value.as_ref().map(|v| v.get_type()))];
                 ValType::Variant(cases)
             }
             Self::Tuple(items) => {
@@ -177,11 +340,11 @@ impl ComponentValue {
                 ValType::Tuple(item_types)
             }
             Self::Flags(flags) => {
-                let names = flags.keys().cloned().collect();
+                let names = flags.iter().map(|(name, _)| name.clone()).collect();
                 ValType::Flags(names)
             }
-            Self::Enum(variant) => {
-                let variants = vec![variant.to_string()];
+            Self::Enum(case) => {
+                let variants = vec![case.clone()];
                 ValType::Enum(variants)
             }
             Self::Option(opt) => {
@@ -191,19 +354,28 @@ impl ComponentValue {
                     ValType::Option(Box::new(ValType::Bool)) // Placeholder
                 }
             }
-            Self::Result(val) => ValType::Result(Box::new(if let Ok(Some(v)) = val {
-                v.get_type()
-            } else {
-                ValType::Bool // Placeholder for None or Err
-            })),
-            Self::Own(idx) => ValType::Own(*idx),
+            Self::Result(val) => {
+                match val {
+                    Ok(v) => ValType::Result(Box::new(v.get_type())),
+                    Err(_) => ValType::Result(Box::new(ValType::Bool)), // Placeholder for error
+                }
+            }
+            Self::Handle(idx) => ValType::Own(*idx),
             Self::Borrow(idx) => ValType::Borrow(*idx),
+            Self::ErrorContext(_) => ValType::ErrorContext,
         }
     }
 
     /// Check if this value matches the specified type
     pub fn matches_type(&self, value_type: &ValType) -> bool {
         match (self, value_type) {
+            // Handle Void type
+            (ComponentValue::Void, ValType::Void) => true,
+            (ComponentValue::Void, _) => false,
+
+            // Handle ErrorContext type
+            (ComponentValue::ErrorContext(_), ValType::ErrorContext) => true,
+
             // Simple primitive type checks
             (ComponentValue::Bool(_), ValType::Bool) => true,
             (ComponentValue::S8(_), ValType::S8) => true,
@@ -224,6 +396,14 @@ impl ComponentValue {
                 items.iter().all(|item| item.matches_type(list_type))
             }
 
+            // Fixed-length list type check
+            (
+                ComponentValue::FixedList(items, list_len),
+                ValType::FixedList(list_type, expected_len),
+            ) => {
+                *list_len == *expected_len && items.iter().all(|item| item.matches_type(list_type))
+            }
+
             (ComponentValue::Record(fields), ValType::Record(record_types)) => {
                 // Check if all fields in the record type are present in the value
                 // and that their types match
@@ -232,8 +412,10 @@ impl ComponentValue {
                 }
 
                 for (field_name, field_type) in record_types {
-                    if let Some(field_value) = fields.get(field_name) {
-                        if !field_value.matches_type(field_type) {
+                    // Find the field by name in the vector
+                    let field_value = fields.iter().find(|(name, _)| name == field_name);
+                    if let Some((_, value)) = field_value {
+                        if !value.matches_type(field_type) {
                             return false;
                         }
                     } else {
@@ -244,14 +426,14 @@ impl ComponentValue {
                 true
             }
 
-            (ComponentValue::Variant { case, value }, ValType::Variant(cases)) => {
+            (ComponentValue::Variant(case, value), ValType::Variant(cases)) => {
                 // Check if the case index is valid
-                if *case as usize >= cases.len() {
+                if !cases.iter().any(|(c, _)| c == case) {
                     return false;
                 }
 
                 // Get the case type from the index
-                let (_, case_type) = &cases[*case as usize];
+                let (_, case_type) = cases.iter().find(|(c, _)| c == case).unwrap();
 
                 // Check if the value matches the case type
                 match (value, case_type) {
@@ -280,12 +462,15 @@ impl ComponentValue {
                     return false;
                 }
 
-                flag_names.iter().all(|name| flags.contains_key(name))
+                // Check that all flag names in the type are present in the value
+                flag_names
+                    .iter()
+                    .all(|name| flags.iter().any(|(fname, _)| fname == name))
             }
 
             (ComponentValue::Enum(value), ValType::Enum(variants)) => {
                 // Check if the enum index is valid
-                *value < variants.len() as u32
+                variants.contains(value)
             }
 
             (ComponentValue::Option(value), ValType::Option(option_type)) => {
@@ -297,15 +482,12 @@ impl ComponentValue {
 
             (ComponentValue::Result(val), ValType::Result(result_type)) => {
                 match val {
-                    Ok(v) => match v {
-                        Some(inner) => inner.matches_type(result_type),
-                        None => true, // None matches any result type
-                    },
-                    Err(_) => true, // We don't check error types for now
+                    Ok(v) => v.matches_type(result_type),
+                    Err(_) => false, // Error doesn't match ok type
                 }
             }
 
-            (ComponentValue::Own(handle), ValType::Own(id)) => handle == id,
+            (ComponentValue::Handle(handle), ValType::Own(id)) => handle == id,
             (ComponentValue::Borrow(handle), ValType::Borrow(id)) => handle == id,
 
             // All other combinations don't match
@@ -343,6 +525,110 @@ impl ComponentValue {
             _ => Err(Error::new(kinds::ConversionError(
                 "Unsupported component value type for conversion to core value".to_string(),
             ))),
+        }
+    }
+}
+
+// Format implementation
+impl fmt::Display for ComponentValue {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ComponentValue::Void => write!(f, "void"),
+            ComponentValue::Bool(b) => write!(f, "{}", b),
+            ComponentValue::S8(n) => write!(f, "{}i8", n),
+            ComponentValue::U8(n) => write!(f, "{}u8", n),
+            ComponentValue::S16(n) => write!(f, "{}i16", n),
+            ComponentValue::U16(n) => write!(f, "{}u16", n),
+            ComponentValue::S32(n) => write!(f, "{}i32", n),
+            ComponentValue::U32(n) => write!(f, "{}u32", n),
+            ComponentValue::S64(n) => write!(f, "{}i64", n),
+            ComponentValue::U64(n) => write!(f, "{}u64", n),
+            ComponentValue::F32(n) => write!(f, "{}f32", n),
+            ComponentValue::F64(n) => write!(f, "{}f64", n),
+            ComponentValue::Char(c) => write!(f, "'{}'", c),
+            ComponentValue::String(s) => write!(f, "\"{}\"", s),
+            ComponentValue::List(v) => {
+                write!(f, "[")?;
+                for (i, val) in v.iter().enumerate() {
+                    if i > 0 {
+                        write!(f, ", ")?;
+                    }
+                    write!(f, "{}", val)?;
+                }
+                write!(f, "]")
+            }
+            ComponentValue::FixedList(v, len) => {
+                write!(f, "[{}: ", len)?;
+                for (i, val) in v.iter().enumerate() {
+                    if i > 0 {
+                        write!(f, ", ")?;
+                    }
+                    write!(f, "{}", val)?;
+                }
+                write!(f, "]")
+            }
+            ComponentValue::Record(fields) => {
+                write!(f, "{{")?;
+                for (i, (name, val)) in fields.iter().enumerate() {
+                    if i > 0 {
+                        write!(f, ", ")?;
+                    }
+                    write!(f, "{}: {}", name, val)?;
+                }
+                write!(f, "}}")
+            }
+            ComponentValue::Variant(case, val) => {
+                write!(f, "{}(", case)?;
+                if let Some(v) = val {
+                    write!(f, "{}", v)?;
+                }
+                write!(f, ")")
+            }
+            ComponentValue::Tuple(v) => {
+                write!(f, "(")?;
+                for (i, val) in v.iter().enumerate() {
+                    if i > 0 {
+                        write!(f, ", ")?;
+                    }
+                    write!(f, "{}", val)?;
+                }
+                write!(f, ")")
+            }
+            ComponentValue::Flags(flags) => {
+                write!(f, "{{")?;
+                let mut first = true;
+                for (name, enabled) in flags {
+                    if *enabled {
+                        if !first {
+                            write!(f, ", ")?;
+                        }
+                        write!(f, "{}", name)?;
+                        first = false;
+                    }
+                }
+                write!(f, "}}")
+            }
+            ComponentValue::Enum(case) => write!(f, "{}", case),
+            ComponentValue::Option(opt) => match opt {
+                Some(v) => write!(f, "some({})", v),
+                None => write!(f, "none"),
+            },
+            ComponentValue::Result(res) => match res {
+                Ok(v) => write!(f, "ok({})", v),
+                Err(e) => write!(f, "err({})", e),
+            },
+            ComponentValue::Handle(h) => write!(f, "handle({})", h),
+            ComponentValue::Borrow(b) => write!(f, "borrow({})", b),
+            ComponentValue::ErrorContext(ctx) => {
+                write!(f, "error_context(")?;
+                for (i, val) in ctx.iter().enumerate() {
+                    if i > 0 {
+                        write!(f, ", ")?;
+                    }
+                    write!(f, "{}", val)?;
+                }
+                write!(f, ")")
+            }
         }
     }
 }
