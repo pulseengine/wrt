@@ -265,9 +265,7 @@ impl Table {
             temp.push(self.elements[src + i].clone());
         }
 
-        for i in 0..len {
-            self.elements[dst + i] = temp[i].clone();
-        }
+        self.elements[dst..(len + dst)].clone_from_slice(&temp[..len]);
 
         Ok(())
     }

@@ -509,10 +509,15 @@ pub fn parse_component_section(bytes: &[u8]) -> Result<(Vec<Component>, usize)> 
         let component_bytes = &bytes[offset..component_end];
 
         // Parse the component binary using the decoder
-        // In a real implementation, this would recursively parse the component
-        // For now, we'll create an empty component
-        let component = Component::new();
-        components.push(component);
+        match crate::component::decode_component(component_bytes) {
+            Ok(component) => components.push(component),
+            Err(e) => {
+                return Err(Error::new(kinds::ParseError(format!(
+                    "Failed to parse nested component: {}",
+                    e
+                ))));
+            }
+        }
 
         offset = component_end;
     }
@@ -797,10 +802,18 @@ fn parse_lift_options(bytes: &[u8]) -> Result<(wrt_format::component::LiftOption
         None
     };
 
+    let string_encoding_value = match string_encoding {
+        Some(encoding) => encoding,
+        None => wrt_format::component::StringEncoding::UTF8,
+    };
+
     Ok((
         wrt_format::component::LiftOptions {
-            memory_idx,
-            string_encoding,
+            memory_idx: Some(memory_idx.unwrap_or(0)),
+            string_encoding: Some(string_encoding_value),
+            realloc_func_idx: None,
+            post_return_func_idx: None,
+            is_async: false,
         },
         offset,
     ))
@@ -854,10 +867,18 @@ fn parse_lower_options(bytes: &[u8]) -> Result<(wrt_format::component::LowerOpti
         None
     };
 
+    let string_encoding_value = match string_encoding {
+        Some(encoding) => encoding,
+        None => wrt_format::component::StringEncoding::UTF8,
+    };
+
     Ok((
         wrt_format::component::LowerOptions {
-            memory_idx,
-            string_encoding,
+            memory_idx: Some(memory_idx.unwrap_or(0)),
+            string_encoding: Some(string_encoding_value),
+            realloc_func_idx: None,
+            is_async: false,
+            error_mode: None,
         },
         offset,
     ))
@@ -882,12 +903,21 @@ fn parse_resource_operation(
             // Resource new
 
             // Read type index
-            let (type_idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
+            let (type_idx, bytes_read) = match binary::read_leb128_u32(bytes, offset) {
+                Ok(result) => result,
+                Err(e) => {
+                    return Err(Error::new(kinds::ParseError(format!(
+                        "Failed to read type index in resource new operation: {}",
+                        e
+                    ))))
+                }
+            };
             offset += bytes_read;
 
             Ok((
                 wrt_format::component::ResourceOperation::New(wrt_format::component::ResourceNew {
                     type_idx,
+                    memory_idx: None, // Memory index is optional in the binary format
                 }),
                 offset,
             ))
@@ -896,7 +926,15 @@ fn parse_resource_operation(
             // Resource drop
 
             // Read type index
-            let (type_idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
+            let (type_idx, bytes_read) = match binary::read_leb128_u32(bytes, offset) {
+                Ok(result) => result,
+                Err(e) => {
+                    return Err(Error::new(kinds::ParseError(format!(
+                        "Failed to read type index in resource drop operation: {}",
+                        e
+                    ))))
+                }
+            };
             offset += bytes_read;
 
             Ok((
@@ -910,18 +948,27 @@ fn parse_resource_operation(
             // Resource rep
 
             // Read type index
-            let (type_idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
+            let (type_idx, bytes_read) = match binary::read_leb128_u32(bytes, offset) {
+                Ok(result) => result,
+                Err(e) => {
+                    return Err(Error::new(kinds::ParseError(format!(
+                        "Failed to read type index in resource rep operation: {}",
+                        e
+                    ))))
+                }
+            };
             offset += bytes_read;
 
             Ok((
                 wrt_format::component::ResourceOperation::Rep(wrt_format::component::ResourceRep {
                     type_idx,
+                    memory_idx: None, // Memory index is optional in the binary format
                 }),
                 offset,
             ))
         }
         _ => Err(Error::new(kinds::ParseError(format!(
-            "Invalid resource operation tag: {:#x}",
+            "Invalid resource operation tag: {:#x} (expected 0x00, 0x01, or 0x02)",
             tag
         )))),
     }
@@ -1145,13 +1192,29 @@ fn parse_resource_representation(
             // Record representation
 
             // Read field vector
-            let (field_count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
+            let (field_count, bytes_read) = match binary::read_leb128_u32(bytes, offset) {
+                Ok(result) => result,
+                Err(e) => {
+                    return Err(Error::new(kinds::ParseError(format!(
+                        "Failed to read field count in resource record representation: {}",
+                        e
+                    ))))
+                }
+            };
             offset += bytes_read;
 
             let mut fields = Vec::with_capacity(field_count as usize);
-            for _ in 0..field_count {
+            for i in 0..field_count {
                 // Read field name
-                let (name, bytes_read) = binary::read_string(bytes, offset)?;
+                let (name, bytes_read) = match binary::read_string(bytes, offset) {
+                    Ok(result) => result,
+                    Err(e) => {
+                        return Err(Error::new(kinds::ParseError(format!(
+                            "Failed to read field name {} in resource record representation: {}",
+                            i, e
+                        ))))
+                    }
+                };
                 offset += bytes_read;
 
                 fields.push(name);
@@ -1166,13 +1229,29 @@ fn parse_resource_representation(
             // Aggregate representation
 
             // Read type indices
-            let (index_count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
+            let (index_count, bytes_read) = match binary::read_leb128_u32(bytes, offset) {
+                Ok(result) => result,
+                Err(e) => {
+                    return Err(Error::new(kinds::ParseError(format!(
+                        "Failed to read index count in resource aggregate representation: {}",
+                        e
+                    ))))
+                }
+            };
             offset += bytes_read;
 
             let mut indices = Vec::with_capacity(index_count as usize);
-            for _ in 0..index_count {
+            for i in 0..index_count {
                 // Read type index
-                let (idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
+                let (idx, bytes_read) = match binary::read_leb128_u32(bytes, offset) {
+                    Ok(result) => result,
+                    Err(e) => {
+                        return Err(Error::new(kinds::ParseError(format!(
+                            "Failed to read type index {} in resource aggregate representation: {}",
+                            i, e
+                        ))))
+                    }
+                };
                 offset += bytes_read;
 
                 indices.push(idx);
@@ -1347,10 +1426,8 @@ fn parse_val_type(bytes: &[u8]) -> Result<(wrt_format::component::ValType, usize
 
     // Read the type tag
     let tag = bytes[0];
-    let offset = 1;
+    let mut offset = 1;
 
-    // This implementation only handles primitive types for now
-    // In a complete implementation, all value types should be handled
     match tag {
         0x7F => Ok((wrt_format::component::ValType::Bool, offset)),
         0x7E => Ok((wrt_format::component::ValType::S8, offset)),
@@ -1365,14 +1442,182 @@ fn parse_val_type(bytes: &[u8]) -> Result<(wrt_format::component::ValType, usize
         0x75 => Ok((wrt_format::component::ValType::F64, offset)),
         0x74 => Ok((wrt_format::component::ValType::Char, offset)),
         0x73 => Ok((wrt_format::component::ValType::String, offset)),
-        _ => {
-            // For complex types, we'd need to recursively parse their structure
-            // For now, return an error
-            Err(Error::new(kinds::ParseError(format!(
-                "Complex value type parsing not yet implemented: {:#x}",
-                tag
-            ))))
+        0x72 => {
+            // Reference type
+            let (idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
+            offset += bytes_read;
+            Ok((wrt_format::component::ValType::Ref(idx), offset))
         }
+        0x71 => {
+            // Record type
+            let (field_count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
+            offset += bytes_read;
+
+            let mut fields = Vec::with_capacity(field_count as usize);
+            for _ in 0..field_count {
+                // Read field name
+                let (name, bytes_read) = binary::read_string(bytes, offset)?;
+                offset += bytes_read;
+
+                // Read field type
+                let (field_type, bytes_read) = parse_val_type(&bytes[offset..])?;
+                offset += bytes_read;
+
+                fields.push((name, field_type));
+            }
+
+            Ok((wrt_format::component::ValType::Record(fields), offset))
+        }
+        0x70 => {
+            // Variant type
+            let (case_count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
+            offset += bytes_read;
+
+            let mut cases = Vec::with_capacity(case_count as usize);
+            for _ in 0..case_count {
+                // Read case name
+                let (name, bytes_read) = binary::read_string(bytes, offset)?;
+                offset += bytes_read;
+
+                // Read case type flag
+                let has_type = bytes[offset] != 0;
+                offset += 1;
+
+                let mut case_type = None;
+                if has_type {
+                    let (ty, bytes_read) = parse_val_type(&bytes[offset..])?;
+                    offset += bytes_read;
+                    case_type = Some(ty);
+                }
+
+                cases.push((name, case_type));
+            }
+
+            Ok((wrt_format::component::ValType::Variant(cases), offset))
+        }
+        0x6F => {
+            // List type
+            let (element_type, bytes_read) = parse_val_type(&bytes[offset..])?;
+            offset += bytes_read;
+            Ok((
+                wrt_format::component::ValType::List(Box::new(element_type)),
+                offset,
+            ))
+        }
+        0x6E => {
+            // Fixed-length list type (🔧)
+            let (element_type, bytes_read) = parse_val_type(&bytes[offset..])?;
+            offset += bytes_read;
+
+            // Read the length
+            let (length, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
+            offset += bytes_read;
+
+            Ok((
+                wrt_format::component::ValType::FixedList(Box::new(element_type), length),
+                offset,
+            ))
+        }
+        0x6D => {
+            // Tuple type
+            let (field_count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
+            offset += bytes_read;
+
+            let mut fields = Vec::with_capacity(field_count as usize);
+            for _ in 0..field_count {
+                let (field_type, bytes_read) = parse_val_type(&bytes[offset..])?;
+                offset += bytes_read;
+                fields.push(field_type);
+            }
+
+            Ok((wrt_format::component::ValType::Tuple(fields), offset))
+        }
+        0x6C => {
+            // Flags type
+            let (flag_count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
+            offset += bytes_read;
+
+            let mut flags = Vec::with_capacity(flag_count as usize);
+            for _ in 0..flag_count {
+                let (name, bytes_read) = binary::read_string(bytes, offset)?;
+                offset += bytes_read;
+                flags.push(name);
+            }
+
+            Ok((wrt_format::component::ValType::Flags(flags), offset))
+        }
+        0x6B => {
+            // Enum type
+            let (variant_count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
+            offset += bytes_read;
+
+            let mut variants = Vec::with_capacity(variant_count as usize);
+            for _ in 0..variant_count {
+                let (name, bytes_read) = binary::read_string(bytes, offset)?;
+                offset += bytes_read;
+                variants.push(name);
+            }
+
+            Ok((wrt_format::component::ValType::Enum(variants), offset))
+        }
+        0x6A => {
+            // Option type
+            let (inner_type, bytes_read) = parse_val_type(&bytes[offset..])?;
+            offset += bytes_read;
+            Ok((
+                wrt_format::component::ValType::Option(Box::new(inner_type)),
+                offset,
+            ))
+        }
+        0x69 => {
+            // Result type (ok only)
+            let (ok_type, bytes_read) = parse_val_type(&bytes[offset..])?;
+            offset += bytes_read;
+            Ok((
+                wrt_format::component::ValType::Result(Box::new(ok_type)),
+                offset,
+            ))
+        }
+        0x68 => {
+            // Result type (err only)
+            let (err_type, bytes_read) = parse_val_type(&bytes[offset..])?;
+            offset += bytes_read;
+            Ok((
+                wrt_format::component::ValType::ResultErr(Box::new(err_type)),
+                offset,
+            ))
+        }
+        0x67 => {
+            // Result type (ok and err)
+            let (ok_type, bytes_read) = parse_val_type(&bytes[offset..])?;
+            offset += bytes_read;
+            let (err_type, bytes_read) = parse_val_type(&bytes[offset..])?;
+            offset += bytes_read;
+            Ok((
+                wrt_format::component::ValType::ResultBoth(Box::new(ok_type), Box::new(err_type)),
+                offset,
+            ))
+        }
+        0x66 => {
+            // Own a resource
+            let (idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
+            offset += bytes_read;
+            Ok((wrt_format::component::ValType::Own(idx), offset))
+        }
+        0x65 => {
+            // Borrow a resource
+            let (idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
+            offset += bytes_read;
+            Ok((wrt_format::component::ValType::Borrow(idx), offset))
+        }
+        0x64 => {
+            // Error context type
+            Ok((wrt_format::component::ValType::ErrorContext, offset))
+        }
+        _ => Err(Error::new(kinds::ParseError(format!(
+            "Invalid value type tag: {:#x}",
+            tag
+        )))),
     }
 }
 
@@ -1425,13 +1670,81 @@ pub fn parse_import_section(bytes: &[u8]) -> Result<(Vec<Import>, usize)> {
         let (name, bytes_read) = binary::read_string(bytes, offset)?;
         offset += bytes_read;
 
+        // Check if there are nested namespaces or package information
+        let mut nested = Vec::new();
+        let mut package = None;
+
+        // Read nested namespace flag if present
+        if offset < bytes.len() {
+            let has_nested = bytes[offset] != 0;
+            offset += 1;
+
+            if has_nested {
+                // Read count of nested namespaces
+                let (nested_count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
+                offset += bytes_read;
+
+                // Read each nested namespace
+                for _ in 0..nested_count {
+                    let (nested_name, bytes_read) = binary::read_string(bytes, offset)?;
+                    offset += bytes_read;
+                    nested.push(nested_name);
+                }
+            }
+
+            // Read package flag if present
+            if offset < bytes.len() {
+                let has_package = bytes[offset] != 0;
+                offset += 1;
+
+                if has_package {
+                    // Read package name
+                    let (package_name, bytes_read) = binary::read_string(bytes, offset)?;
+                    offset += bytes_read;
+
+                    // Read version flag
+                    let has_version = bytes[offset] != 0;
+                    offset += 1;
+
+                    let mut version = None;
+                    if has_version {
+                        let (ver, bytes_read) = binary::read_string(bytes, offset)?;
+                        offset += bytes_read;
+                        version = Some(ver);
+                    }
+
+                    // Read hash flag
+                    let has_hash = bytes[offset] != 0;
+                    offset += 1;
+
+                    let mut hash = None;
+                    if has_hash {
+                        let (h, bytes_read) = binary::read_string(bytes, offset)?;
+                        offset += bytes_read;
+                        hash = Some(h);
+                    }
+
+                    package = Some(wrt_format::component::PackageReference {
+                        name: package_name,
+                        version,
+                        hash,
+                    });
+                }
+            }
+        }
+
         // Read import type
         let (extern_type, bytes_read) = parse_extern_type(&bytes[offset..])?;
         offset += bytes_read;
 
         // Create the import
         imports.push(Import {
-            name: wrt_format::component::ImportName { namespace, name },
+            name: wrt_format::component::ImportName {
+                namespace,
+                name,
+                nested,
+                package,
+            },
             ty: extern_type,
         });
     }
@@ -1463,6 +1776,7 @@ pub fn parse_export_section(bytes: &[u8]) -> Result<(Vec<Export>, usize)> {
         let is_resource = (flags & 0x01) != 0;
         let has_semver = (flags & 0x02) != 0;
         let has_integrity = (flags & 0x04) != 0;
+        let has_nested = (flags & 0x08) != 0;
 
         // Read semver (if present)
         let semver = if has_semver {
@@ -1482,12 +1796,30 @@ pub fn parse_export_section(bytes: &[u8]) -> Result<(Vec<Export>, usize)> {
             None
         };
 
+        // Read nested namespaces (if present)
+        let nested = if has_nested {
+            // Read count of nested namespaces
+            let (nested_count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
+            offset += bytes_read;
+
+            let mut nested_names = Vec::with_capacity(nested_count as usize);
+            for _ in 0..nested_count {
+                let (nested_name, bytes_read) = binary::read_string(bytes, offset)?;
+                offset += bytes_read;
+                nested_names.push(nested_name);
+            }
+            nested_names
+        } else {
+            Vec::new()
+        };
+
         // Create export name
         let export_name = wrt_format::component::ExportName {
             name: basic_name,
             is_resource,
             semver,
             integrity,
+            nested,
         };
 
         // Read sort byte
@@ -1562,11 +1894,280 @@ pub fn parse_value_section(bytes: &[u8]) -> Result<(Vec<Value>, usize)> {
         let data = bytes[offset..data_end].to_vec();
         offset = data_end;
 
+        // Check for expression flag
+        let mut expression = None;
+        if offset < bytes.len() {
+            let has_expr = bytes[offset] != 0;
+            offset += 1;
+
+            if has_expr {
+                let (expr, bytes_read) = parse_value_expression(&bytes[offset..])?;
+                offset += bytes_read;
+                expression = Some(expr);
+            }
+        }
+
+        // Check for name flag
+        let mut name = None;
+        if offset < bytes.len() {
+            let has_name = bytes[offset] != 0;
+            offset += 1;
+
+            if has_name {
+                let (value_name, bytes_read) = binary::read_string(bytes, offset)?;
+                offset += bytes_read;
+                name = Some(value_name);
+            }
+        }
+
         // Create the value
-        values.push(Value { ty: val_type, data });
+        values.push(Value {
+            ty: val_type,
+            data,
+            expression,
+            name,
+        });
     }
 
     Ok((values, offset))
+}
+
+/// Parse a value expression
+fn parse_value_expression(bytes: &[u8]) -> Result<(wrt_format::component::ValueExpression, usize)> {
+    if bytes.is_empty() {
+        return Err(Error::new(kinds::ParseError(
+            "Unexpected end of input while parsing value expression".to_string(),
+        )));
+    }
+
+    // Read the expression tag
+    let tag = bytes[0];
+    let mut offset = 1;
+
+    match tag {
+        0x00 => {
+            // Reference to an item
+            let kind_byte = bytes[offset];
+            offset += 1;
+
+            // Convert to Sort
+            let sort = parse_sort(kind_byte)?;
+
+            // Read index
+            let (idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
+            offset += bytes_read;
+
+            Ok((
+                wrt_format::component::ValueExpression::ItemRef { sort, idx },
+                offset,
+            ))
+        }
+        0x01 => {
+            // Global initialization
+            let (global_idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
+            offset += bytes_read;
+
+            Ok((
+                wrt_format::component::ValueExpression::GlobalInit { global_idx },
+                offset,
+            ))
+        }
+        0x02 => {
+            // Function call
+            let (func_idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
+            offset += bytes_read;
+
+            // Read args vector
+            let (args_count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
+            offset += bytes_read;
+
+            let mut args = Vec::with_capacity(args_count as usize);
+            for _ in 0..args_count {
+                let (arg_idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
+                offset += bytes_read;
+                args.push(arg_idx);
+            }
+
+            Ok((
+                wrt_format::component::ValueExpression::FunctionCall { func_idx, args },
+                offset,
+            ))
+        }
+        0x03 => {
+            // Constant value
+            let (const_value, bytes_read) = parse_const_value(&bytes[offset..])?;
+            offset += bytes_read;
+
+            Ok((
+                wrt_format::component::ValueExpression::Const(const_value),
+                offset,
+            ))
+        }
+        _ => Err(Error::new(kinds::ParseError(format!(
+            "Invalid value expression tag: {:#x}",
+            tag
+        )))),
+    }
+}
+
+/// Parse a constant value
+fn parse_const_value(bytes: &[u8]) -> Result<(wrt_format::component::ConstValue, usize)> {
+    if bytes.is_empty() {
+        return Err(Error::new(kinds::ParseError(
+            "Unexpected end of input while parsing constant value".to_string(),
+        )));
+    }
+
+    // Read the value tag
+    let tag = bytes[0];
+    let mut offset = 1;
+
+    match tag {
+        0x00 => {
+            // Boolean value
+            let value = bytes[offset] != 0;
+            offset += 1;
+            Ok((wrt_format::component::ConstValue::Bool(value), offset))
+        }
+        0x01 => {
+            // S8 value
+            let value = bytes[offset] as i8;
+            offset += 1;
+            Ok((wrt_format::component::ConstValue::S8(value), offset))
+        }
+        0x02 => {
+            // U8 value
+            let value = bytes[offset];
+            offset += 1;
+            Ok((wrt_format::component::ConstValue::U8(value), offset))
+        }
+        0x03 => {
+            // S16 value
+            let value = i16::from_le_bytes([bytes[offset], bytes[offset + 1]]);
+            offset += 2;
+            Ok((wrt_format::component::ConstValue::S16(value), offset))
+        }
+        0x04 => {
+            // U16 value
+            let value = u16::from_le_bytes([bytes[offset], bytes[offset + 1]]);
+            offset += 2;
+            Ok((wrt_format::component::ConstValue::U16(value), offset))
+        }
+        0x05 => {
+            // S32 value
+            let value = i32::from_le_bytes([
+                bytes[offset],
+                bytes[offset + 1],
+                bytes[offset + 2],
+                bytes[offset + 3],
+            ]);
+            offset += 4;
+            Ok((wrt_format::component::ConstValue::S32(value), offset))
+        }
+        0x06 => {
+            // U32 value
+            let value = u32::from_le_bytes([
+                bytes[offset],
+                bytes[offset + 1],
+                bytes[offset + 2],
+                bytes[offset + 3],
+            ]);
+            offset += 4;
+            Ok((wrt_format::component::ConstValue::U32(value), offset))
+        }
+        0x07 => {
+            // S64 value
+            let value = i64::from_le_bytes([
+                bytes[offset],
+                bytes[offset + 1],
+                bytes[offset + 2],
+                bytes[offset + 3],
+                bytes[offset + 4],
+                bytes[offset + 5],
+                bytes[offset + 6],
+                bytes[offset + 7],
+            ]);
+            offset += 8;
+            Ok((wrt_format::component::ConstValue::S64(value), offset))
+        }
+        0x08 => {
+            // U64 value
+            let value = u64::from_le_bytes([
+                bytes[offset],
+                bytes[offset + 1],
+                bytes[offset + 2],
+                bytes[offset + 3],
+                bytes[offset + 4],
+                bytes[offset + 5],
+                bytes[offset + 6],
+                bytes[offset + 7],
+            ]);
+            offset += 8;
+            Ok((wrt_format::component::ConstValue::U64(value), offset))
+        }
+        0x09 => {
+            // F32 value
+            let value_bits = u32::from_le_bytes([
+                bytes[offset],
+                bytes[offset + 1],
+                bytes[offset + 2],
+                bytes[offset + 3],
+            ]);
+            let value = f32::from_bits(value_bits);
+            offset += 4;
+            Ok((wrt_format::component::ConstValue::F32(value), offset))
+        }
+        0x0A => {
+            // F64 value
+            let value_bits = u64::from_le_bytes([
+                bytes[offset],
+                bytes[offset + 1],
+                bytes[offset + 2],
+                bytes[offset + 3],
+                bytes[offset + 4],
+                bytes[offset + 5],
+                bytes[offset + 6],
+                bytes[offset + 7],
+            ]);
+            let value = f64::from_bits(value_bits);
+            offset += 8;
+            Ok((wrt_format::component::ConstValue::F64(value), offset))
+        }
+        0x0B => {
+            // Char value
+            let (value_str, bytes_read) = binary::read_string(bytes, offset)?;
+            offset += bytes_read;
+
+            // Validate that the string is a single Unicode scalar value
+            let mut chars = value_str.chars();
+            let first_char = chars.next().ok_or_else(|| {
+                Error::new(kinds::ParseError(
+                    "Empty string found when parsing char value".to_string(),
+                ))
+            })?;
+            if chars.next().is_some() {
+                return Err(Error::new(kinds::ParseError(
+                    "Multiple characters found when parsing char value".to_string(),
+                )));
+            }
+
+            Ok((wrt_format::component::ConstValue::Char(first_char), offset))
+        }
+        0x0C => {
+            // String value
+            let (value, bytes_read) = binary::read_string(bytes, offset)?;
+            offset += bytes_read;
+            Ok((wrt_format::component::ConstValue::String(value), offset))
+        }
+        0x0D => {
+            // Null value
+            Ok((wrt_format::component::ConstValue::Null, offset))
+        }
+        _ => Err(Error::new(kinds::ParseError(format!(
+            "Invalid constant value tag: {:#x}",
+            tag
+        )))),
+    }
 }
 
 /// Parse an alias section

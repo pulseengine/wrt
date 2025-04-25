@@ -5,7 +5,6 @@
 //! for host functions and the Canonical ABI.
 
 #![cfg_attr(not(feature = "std"), no_std)]
-#![cfg_attr(feature = "kani", feature(kani))]
 #![warn(clippy::missing_panics_doc)]
 
 // When no_std but alloc is available
@@ -29,6 +28,6 @@ pub mod function;
 pub use callback::CallbackRegistry;
 pub use function::{CloneableFn, HostFunctionHandler};
 
-// Include verification module when the kani feature is enabled
-#[cfg(feature = "kani")]
+// Include verification module conditionally, but exclude during coverage builds
+#[cfg(all(not(coverage), any(doc, kani)))]
 pub mod verify;

@@ -26,7 +26,7 @@ no_std = ["wrt-error/no_std", "wrt-types/no_std", "wrt-intercept/no_std"]
 kani = ["wrt-intercept/kani"]
 
 [lints.rust]
-unexpected_cfgs = { level = "allow", check-cfg = ['cfg(test)'] }
+unexpected_cfgs = { level = "allow", check-cfg = ['cfg(test)', 'cfg(kani)', 'cfg(coverage)', 'cfg(doc)'] }
 unused_imports = "allow"
 unused_variables = "allow"
 unused_mut = "allow"

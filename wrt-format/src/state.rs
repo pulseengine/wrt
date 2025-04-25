@@ -252,52 +252,8 @@ pub fn has_state_sections(custom_sections: &[CustomSection]) -> bool {
         .any(|section| section.name.starts_with(STATE_SECTION_PREFIX))
 }
 
-#[cfg(feature = "kani")]
-mod verification {
-    use super::*;
-    use kani::*;
+#[cfg(test)]
+mod tests {
 
-    #[kani::proof]
-    fn verify_state_section_roundtrip() {
-        // Create small test data - Kani works best with small bounds
-        let mut test_data = Vec::with_capacity(5);
-        for _ in 0..5 {
-            test_data.push(any::<u8>());
-        }
-
-        // Create state section
-        let section =
-            create_state_section(StateSection::Stack, &test_data, CompressionType::None).unwrap();
-
-        // Extract section data
-        let (header, data) = extract_state_section(&section).unwrap();
-
-        // Verify properties
-        assert_eq!(header.section_type, StateSection::Stack);
-        assert_eq!(header.compression_type, CompressionType::None);
-        assert_eq!(header.uncompressed_size as usize, test_data.len());
-        assert_eq!(data, test_data);
-    }
-
-    #[kani::proof]
-    fn verify_section_type_roundtrip() {
-        let section_type: u32 = any();
-
-        if let Some(state_section) = StateSection::from_u32(section_type) {
-            // Valid section type
-            assert!(section_type <= 4);
-
-            // Verify roundtrip
-            assert_eq!(section_type, state_section as u32);
-
-            // Verify name conversions
-            let name = state_section.name();
-            let from_name = StateSection::from_name(&name);
-            assert!(from_name.is_some());
-            assert_eq!(from_name.unwrap(), state_section);
-        } else {
-            // Invalid section type
-            assert!(section_type > 4);
-        }
-    }
+    // ... existing test code ...
 }

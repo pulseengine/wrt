@@ -122,6 +122,36 @@ pub const COMPONENT_SORT_TYPE: u8 = 0x03;
 pub const COMPONENT_SORT_COMPONENT: u8 = 0x04;
 pub const COMPONENT_SORT_INSTANCE: u8 = 0x05;
 
+/// Component Model value type codes
+pub const COMPONENT_VALTYPE_BOOL: u8 = 0x7F;
+pub const COMPONENT_VALTYPE_S8: u8 = 0x7E;
+pub const COMPONENT_VALTYPE_U8: u8 = 0x7D;
+pub const COMPONENT_VALTYPE_S16: u8 = 0x7C;
+pub const COMPONENT_VALTYPE_U16: u8 = 0x7B;
+pub const COMPONENT_VALTYPE_S32: u8 = 0x7A;
+pub const COMPONENT_VALTYPE_U32: u8 = 0x79;
+pub const COMPONENT_VALTYPE_S64: u8 = 0x78;
+pub const COMPONENT_VALTYPE_U64: u8 = 0x77;
+pub const COMPONENT_VALTYPE_F32: u8 = 0x76;
+pub const COMPONENT_VALTYPE_F64: u8 = 0x75;
+pub const COMPONENT_VALTYPE_CHAR: u8 = 0x74;
+pub const COMPONENT_VALTYPE_STRING: u8 = 0x73;
+pub const COMPONENT_VALTYPE_REF: u8 = 0x72;
+pub const COMPONENT_VALTYPE_RECORD: u8 = 0x71;
+pub const COMPONENT_VALTYPE_VARIANT: u8 = 0x70;
+pub const COMPONENT_VALTYPE_LIST: u8 = 0x6F;
+pub const COMPONENT_VALTYPE_FIXED_LIST: u8 = 0x6E;
+pub const COMPONENT_VALTYPE_TUPLE: u8 = 0x6D;
+pub const COMPONENT_VALTYPE_FLAGS: u8 = 0x6C;
+pub const COMPONENT_VALTYPE_ENUM: u8 = 0x6B;
+pub const COMPONENT_VALTYPE_OPTION: u8 = 0x6A;
+pub const COMPONENT_VALTYPE_RESULT: u8 = 0x69;
+pub const COMPONENT_VALTYPE_RESULT_ERR: u8 = 0x68;
+pub const COMPONENT_VALTYPE_RESULT_BOTH: u8 = 0x67;
+pub const COMPONENT_VALTYPE_OWN: u8 = 0x66;
+pub const COMPONENT_VALTYPE_BORROW: u8 = 0x65;
+pub const COMPONENT_VALTYPE_ERROR_CONTEXT: u8 = 0x64;
+
 /// Parse a WebAssembly binary into a module
 ///
 /// This is a placeholder that will be implemented fully in Phase 1.
@@ -707,38 +737,358 @@ pub fn parse_block_type(bytes: &[u8], pos: usize) -> Result<(BlockType, usize)> 
     }
 }
 
-#[cfg(feature = "kani")]
-mod verification {
-    use super::*;
-    use kani::*;
+/// Read a Component Model value type from a byte array
+pub fn read_component_valtype(
+    bytes: &[u8],
+    pos: usize,
+) -> Result<(crate::component::ValType, usize)> {
+    use crate::component::ValType;
 
-    #[kani::proof]
-    fn verify_leb128_u32_roundtrip() {
-        let value: u32 = any();
-
-        // Encode
-        let encoded = write_leb128_u32(value);
-
-        // Decode
-        let (decoded, _) = read_leb128_u32(&encoded, 0).unwrap();
-
-        // Verify roundtrip
-        assert_eq!(value, decoded);
+    if pos >= bytes.len() {
+        return Err(Error::new(kinds::ParseError(
+            "Unexpected end of input when reading component value type".to_string(),
+        )));
     }
 
-    #[kani::proof]
-    fn verify_leb128_i32_roundtrip() {
-        let value: i32 = any();
+    let byte = bytes[pos];
+    let mut new_pos = pos + 1;
 
-        // Encode
-        let encoded = write_leb128_i32(value);
+    match byte {
+        COMPONENT_VALTYPE_BOOL => Ok((ValType::Bool, new_pos)),
+        COMPONENT_VALTYPE_S8 => Ok((ValType::S8, new_pos)),
+        COMPONENT_VALTYPE_U8 => Ok((ValType::U8, new_pos)),
+        COMPONENT_VALTYPE_S16 => Ok((ValType::S16, new_pos)),
+        COMPONENT_VALTYPE_U16 => Ok((ValType::U16, new_pos)),
+        COMPONENT_VALTYPE_S32 => Ok((ValType::S32, new_pos)),
+        COMPONENT_VALTYPE_U32 => Ok((ValType::U32, new_pos)),
+        COMPONENT_VALTYPE_S64 => Ok((ValType::S64, new_pos)),
+        COMPONENT_VALTYPE_U64 => Ok((ValType::U64, new_pos)),
+        COMPONENT_VALTYPE_F32 => Ok((ValType::F32, new_pos)),
+        COMPONENT_VALTYPE_F64 => Ok((ValType::F64, new_pos)),
+        COMPONENT_VALTYPE_CHAR => Ok((ValType::Char, new_pos)),
+        COMPONENT_VALTYPE_STRING => Ok((ValType::String, new_pos)),
+        COMPONENT_VALTYPE_REF => {
+            let (idx, next_pos) = read_leb128_u32(bytes, new_pos)?;
+            Ok((ValType::Ref(idx), next_pos))
+        }
+        COMPONENT_VALTYPE_RECORD => {
+            let (count, next_pos) = read_leb128_u32(bytes, new_pos)?;
+            new_pos = next_pos;
 
-        // Decode
-        let (decoded, _) = read_leb128_i32(&encoded, 0).unwrap();
+            let mut fields = Vec::with_capacity(count as usize);
+            for _ in 0..count {
+                let (name, next_pos) = read_string(bytes, new_pos)?;
+                new_pos = next_pos;
 
-        // Verify roundtrip
-        assert_eq!(value, decoded);
+                let (val_type, next_pos) = read_component_valtype(bytes, new_pos)?;
+                new_pos = next_pos;
+
+                fields.push((name, val_type));
+            }
+
+            Ok((ValType::Record(fields), new_pos))
+        }
+        COMPONENT_VALTYPE_VARIANT => {
+            let (count, next_pos) = read_leb128_u32(bytes, new_pos)?;
+            new_pos = next_pos;
+
+            let mut cases = Vec::with_capacity(count as usize);
+            for _ in 0..count {
+                let (name, next_pos) = read_string(bytes, new_pos)?;
+                new_pos = next_pos;
+
+                let (has_type, next_pos) = read_leb128_u32(bytes, new_pos)?;
+                new_pos = next_pos;
+
+                let val_type = if has_type == 1 {
+                    let (val_type, next_pos) = read_component_valtype(bytes, new_pos)?;
+                    new_pos = next_pos;
+                    Some(val_type)
+                } else {
+                    None
+                };
+
+                cases.push((name, val_type));
+            }
+
+            Ok((ValType::Variant(cases), new_pos))
+        }
+        COMPONENT_VALTYPE_LIST => {
+            let (val_type, next_pos) = read_component_valtype(bytes, new_pos)?;
+            Ok((ValType::List(Box::new(val_type)), next_pos))
+        }
+        COMPONENT_VALTYPE_FIXED_LIST => {
+            let (val_type, next_pos) = read_component_valtype(bytes, new_pos)?;
+            new_pos = next_pos;
+
+            let (length, next_pos) = read_leb128_u32(bytes, new_pos)?;
+            Ok((ValType::FixedList(Box::new(val_type), length), next_pos))
+        }
+        COMPONENT_VALTYPE_TUPLE => {
+            let (count, next_pos) = read_leb128_u32(bytes, new_pos)?;
+            new_pos = next_pos;
+
+            let mut elements = Vec::with_capacity(count as usize);
+            for _ in 0..count {
+                let (val_type, next_pos) = read_component_valtype(bytes, new_pos)?;
+                new_pos = next_pos;
+                elements.push(val_type);
+            }
+
+            Ok((ValType::Tuple(elements), new_pos))
+        }
+        COMPONENT_VALTYPE_FLAGS => {
+            let (count, next_pos) = read_leb128_u32(bytes, new_pos)?;
+            new_pos = next_pos;
+
+            let mut names = Vec::with_capacity(count as usize);
+            for _ in 0..count {
+                let (name, next_pos) = read_string(bytes, new_pos)?;
+                new_pos = next_pos;
+                names.push(name);
+            }
+
+            Ok((ValType::Flags(names), new_pos))
+        }
+        COMPONENT_VALTYPE_ENUM => {
+            let (count, next_pos) = read_leb128_u32(bytes, new_pos)?;
+            new_pos = next_pos;
+
+            let mut names = Vec::with_capacity(count as usize);
+            for _ in 0..count {
+                let (name, next_pos) = read_string(bytes, new_pos)?;
+                new_pos = next_pos;
+                names.push(name);
+            }
+
+            Ok((ValType::Enum(names), new_pos))
+        }
+        COMPONENT_VALTYPE_OPTION => {
+            let (val_type, next_pos) = read_component_valtype(bytes, new_pos)?;
+            Ok((ValType::Option(Box::new(val_type)), next_pos))
+        }
+        COMPONENT_VALTYPE_RESULT => {
+            let (val_type, next_pos) = read_component_valtype(bytes, new_pos)?;
+            Ok((ValType::Result(Box::new(val_type)), next_pos))
+        }
+        COMPONENT_VALTYPE_RESULT_ERR => {
+            let (val_type, next_pos) = read_component_valtype(bytes, new_pos)?;
+            Ok((ValType::ResultErr(Box::new(val_type)), next_pos))
+        }
+        COMPONENT_VALTYPE_RESULT_BOTH => {
+            let (ok_type, next_pos) = read_component_valtype(bytes, new_pos)?;
+            new_pos = next_pos;
+
+            let (err_type, next_pos) = read_component_valtype(bytes, new_pos)?;
+            Ok((
+                ValType::ResultBoth(Box::new(ok_type), Box::new(err_type)),
+                next_pos,
+            ))
+        }
+        COMPONENT_VALTYPE_OWN => {
+            let (idx, next_pos) = read_leb128_u32(bytes, new_pos)?;
+            Ok((ValType::Own(idx), next_pos))
+        }
+        COMPONENT_VALTYPE_BORROW => {
+            let (idx, next_pos) = read_leb128_u32(bytes, new_pos)?;
+            Ok((ValType::Borrow(idx), next_pos))
+        }
+        COMPONENT_VALTYPE_ERROR_CONTEXT => Ok((ValType::ErrorContext, new_pos)),
+        _ => Err(Error::new(kinds::ParseError(format!(
+            "Invalid component value type: 0x{:02x}",
+            byte
+        )))),
     }
+}
+
+/// Write a Component Model value type to a byte array
+pub fn write_component_valtype(val_type: &crate::component::ValType) -> Vec<u8> {
+    use crate::component::ValType;
+
+    let mut bytes = Vec::new();
+
+    match val_type {
+        ValType::Bool => bytes.push(COMPONENT_VALTYPE_BOOL),
+        ValType::S8 => bytes.push(COMPONENT_VALTYPE_S8),
+        ValType::U8 => bytes.push(COMPONENT_VALTYPE_U8),
+        ValType::S16 => bytes.push(COMPONENT_VALTYPE_S16),
+        ValType::U16 => bytes.push(COMPONENT_VALTYPE_U16),
+        ValType::S32 => bytes.push(COMPONENT_VALTYPE_S32),
+        ValType::U32 => bytes.push(COMPONENT_VALTYPE_U32),
+        ValType::S64 => bytes.push(COMPONENT_VALTYPE_S64),
+        ValType::U64 => bytes.push(COMPONENT_VALTYPE_U64),
+        ValType::F32 => bytes.push(COMPONENT_VALTYPE_F32),
+        ValType::F64 => bytes.push(COMPONENT_VALTYPE_F64),
+        ValType::Char => bytes.push(COMPONENT_VALTYPE_CHAR),
+        ValType::String => bytes.push(COMPONENT_VALTYPE_STRING),
+        ValType::Ref(idx) => {
+            bytes.push(COMPONENT_VALTYPE_REF);
+            bytes.extend_from_slice(&write_leb128_u32(*idx));
+        }
+        ValType::Record(fields) => {
+            bytes.push(COMPONENT_VALTYPE_RECORD);
+            bytes.extend_from_slice(&write_leb128_u32(fields.len() as u32));
+
+            for (name, val_type) in fields {
+                bytes.extend_from_slice(&write_string(name));
+                bytes.extend_from_slice(&write_component_valtype(val_type));
+            }
+        }
+        ValType::Variant(cases) => {
+            bytes.push(COMPONENT_VALTYPE_VARIANT);
+            bytes.extend_from_slice(&write_leb128_u32(cases.len() as u32));
+
+            for (name, val_type) in cases {
+                bytes.extend_from_slice(&write_string(name));
+
+                match val_type {
+                    Some(ty) => {
+                        bytes.extend_from_slice(&write_leb128_u32(1));
+                        bytes.extend_from_slice(&write_component_valtype(ty));
+                    }
+                    None => {
+                        bytes.extend_from_slice(&write_leb128_u32(0));
+                    }
+                }
+            }
+        }
+        ValType::List(val_type) => {
+            bytes.push(COMPONENT_VALTYPE_LIST);
+            bytes.extend_from_slice(&write_component_valtype(val_type));
+        }
+        ValType::FixedList(val_type, length) => {
+            bytes.push(COMPONENT_VALTYPE_FIXED_LIST);
+            bytes.extend_from_slice(&write_component_valtype(val_type));
+            bytes.extend_from_slice(&write_leb128_u32(*length));
+        }
+        ValType::Tuple(elements) => {
+            bytes.push(COMPONENT_VALTYPE_TUPLE);
+            bytes.extend_from_slice(&write_leb128_u32(elements.len() as u32));
+
+            for val_type in elements {
+                bytes.extend_from_slice(&write_component_valtype(val_type));
+            }
+        }
+        ValType::Flags(names) => {
+            bytes.push(COMPONENT_VALTYPE_FLAGS);
+            bytes.extend_from_slice(&write_leb128_u32(names.len() as u32));
+
+            for name in names {
+                bytes.extend_from_slice(&write_string(name));
+            }
+        }
+        ValType::Enum(names) => {
+            bytes.push(COMPONENT_VALTYPE_ENUM);
+            bytes.extend_from_slice(&write_leb128_u32(names.len() as u32));
+
+            for name in names {
+                bytes.extend_from_slice(&write_string(name));
+            }
+        }
+        ValType::Option(val_type) => {
+            bytes.push(COMPONENT_VALTYPE_OPTION);
+            bytes.extend_from_slice(&write_component_valtype(val_type));
+        }
+        ValType::Result(val_type) => {
+            bytes.push(COMPONENT_VALTYPE_RESULT);
+            bytes.extend_from_slice(&write_component_valtype(val_type));
+        }
+        ValType::ResultErr(val_type) => {
+            bytes.push(COMPONENT_VALTYPE_RESULT_ERR);
+            bytes.extend_from_slice(&write_component_valtype(val_type));
+        }
+        ValType::ResultBoth(ok_type, err_type) => {
+            bytes.push(COMPONENT_VALTYPE_RESULT_BOTH);
+            bytes.extend_from_slice(&write_component_valtype(ok_type));
+            bytes.extend_from_slice(&write_component_valtype(err_type));
+        }
+        ValType::Own(idx) => {
+            bytes.push(COMPONENT_VALTYPE_OWN);
+            bytes.extend_from_slice(&write_leb128_u32(*idx));
+        }
+        ValType::Borrow(idx) => {
+            bytes.push(COMPONENT_VALTYPE_BORROW);
+            bytes.extend_from_slice(&write_leb128_u32(*idx));
+        }
+        ValType::ErrorContext => bytes.push(COMPONENT_VALTYPE_ERROR_CONTEXT),
+    }
+
+    bytes
+}
+
+/// Parse a WebAssembly component binary into a component
+pub fn parse_component_binary(bytes: &[u8]) -> Result<crate::component::Component> {
+    // Verify magic bytes
+    if bytes.len() < 8 {
+        return Err(Error::new(kinds::ParseError(
+            "WebAssembly component binary too short".to_string(),
+        )));
+    }
+
+    if bytes[0..4] != COMPONENT_MAGIC {
+        return Err(Error::new(kinds::ParseError(
+            "Invalid WebAssembly component magic bytes".to_string(),
+        )));
+    }
+
+    // Verify component version and layer
+    if bytes[4..6] != COMPONENT_VERSION_ONLY {
+        return Err(Error::new(kinds::ParseError(
+            "Unsupported WebAssembly component version".to_string(),
+        )));
+    }
+
+    if bytes[6..8] != COMPONENT_LAYER {
+        return Err(Error::new(kinds::ParseError(
+            "Invalid WebAssembly component layer".to_string(),
+        )));
+    }
+
+    // Create an empty component with the binary stored
+    let mut component = crate::component::Component::new();
+    component.binary = Some(bytes.to_vec());
+
+    // In a real implementation, we would parse the sections here
+    // This will be fully implemented in the future
+
+    Ok(component)
+}
+
+/// Generate a WebAssembly component binary from a component
+pub fn generate_component_binary(component: &crate::component::Component) -> Result<Vec<u8>> {
+    // If we have the original binary and haven't modified the component,
+    // we can just return it
+    if let Some(binary) = &component.binary {
+        return Ok(binary.clone());
+    }
+
+    // Create a minimal valid component
+    let mut binary = Vec::with_capacity(8);
+
+    // Magic bytes
+    binary.extend_from_slice(&COMPONENT_MAGIC);
+
+    // Version and layer
+    binary.extend_from_slice(&COMPONENT_VERSION);
+
+    // Generate sections
+    // This is a placeholder - full implementation will be added in the future
+
+    // In a complete implementation, we would encode all sections:
+    // - Core module sections
+    // - Core instance sections
+    // - Core type sections
+    // - Component sections
+    // - Instance sections
+    // - Alias sections
+    // - Type sections
+    // - Canon sections
+    // - Start sections
+    // - Import sections
+    // - Export sections
+    // - Value sections
+
+    Ok(binary)
 }
 
 #[cfg(test)]

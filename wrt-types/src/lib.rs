@@ -36,6 +36,8 @@ pub mod operations;
 pub mod safe_memory;
 /// WebAssembly section definitions
 pub mod sections;
+/// Common traits for type conversions
+pub mod traits;
 /// Core WebAssembly types
 pub mod types;
 /// Validation utilities
@@ -57,6 +59,7 @@ pub use operations::{
     reset_global_operations, OperationSummary, OperationTracking, OperationType,
 };
 pub use safe_memory::{MemoryProvider, SafeSlice};
+pub use traits::{FromFormat, ToFormat};
 pub use types::ValueType;
 pub use validation::{BoundedCapacity, Checksummed, Validatable};
 pub use values::Value;
@@ -67,21 +70,6 @@ pub const WASM_MAGIC: [u8; 4] = [0x00, 0x61, 0x73, 0x6D];
 
 /// The WebAssembly binary format version
 pub const WASM_VERSION: u32 = 1;
-
-// Conversion traits for standardized conversions
-/// Trait for converting from a format type to a runtime type
-pub trait FromFormat<T> {
-    /// Convert from format value to runtime type
-    fn from_format(format_value: T) -> wrt_error::Result<Self>
-    where
-        Self: Sized;
-}
-
-/// Trait for converting from a runtime type to a format type
-pub trait ToFormat<T> {
-    /// Convert from runtime type to format value
-    fn to_format(&self) -> wrt_error::Result<T>;
-}
 
 // Re-export Result for convenience
 pub use wrt_error::Result;

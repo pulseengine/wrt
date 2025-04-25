@@ -2799,6 +2799,9 @@ fn format_val_type(val_type: &wrt_format::component::ValType) -> String {
         wrt_format::component::ValType::List(inner) => {
             format!("list({})", format_val_type(inner))
         }
+        wrt_format::component::ValType::FixedList(inner, len) => {
+            format!("fixed_list({}, length={})", format_val_type(inner), len)
+        }
         wrt_format::component::ValType::Tuple(elements) => {
             format!("tuple(elements={})", elements.len())
         }
@@ -2826,6 +2829,7 @@ fn format_val_type(val_type: &wrt_format::component::ValType) -> String {
         wrt_format::component::ValType::Borrow(idx) => {
             format!("borrow({})", idx)
         }
+        wrt_format::component::ValType::ErrorContext => "error_context".to_string(),
     }
 }
 

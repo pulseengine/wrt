@@ -14,5 +14,9 @@ extern crate std;
 pub mod mutex;
 pub mod rwlock;
 
+// Include verification module conditionally, but exclude during coverage builds
+#[cfg(all(not(coverage), doc))]
+pub mod verify;
+
 pub use mutex::*;
 pub use rwlock::*;

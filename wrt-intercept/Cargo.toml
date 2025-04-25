@@ -16,6 +16,8 @@ wrt-format = { path = "../wrt-format", version = "0.2.0" }
 
 # Optional dependencies
 log = { version = "0.4", optional = true }
+# For formal verification when 'kani' feature is enabled
+kani-verifier = { version = "0.61.0", optional = true }
 
 [dev-dependencies]
 chrono = "0.4"  # For examples
@@ -25,11 +27,17 @@ pretty_assertions = "1.4.0"
 default = ["std"]
 std = ["wrt-error/std", "wrt-types/std", "wrt-format/std", "log"]
 no_std = ["wrt-error/no_std", "wrt-types/no_std", "wrt-format/no_std"]
-kani = []
+kani = ["dep:kani-verifier"]
 
 [lints.rust]
-unexpected_cfgs = { level = "allow", check-cfg = ['cfg(test)'] }
+unexpected_cfgs = { level = "allow", check-cfg = ['cfg(test)', 'cfg(kani)', 'cfg(coverage)', 'cfg(doc)'] }
 unused_imports = "allow"
 unused_variables = "allow"
 unused_mut = "allow"
-unused_macros = "allow" 
+unused_macros = "allow"
+
+# Configuration for Kani verification
+# This will only be used when running `cargo kani`
+[package.metadata.kani]
+enabled-checks = ["assertion", "overflow"]
+default-unwind = 2 

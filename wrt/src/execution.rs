@@ -389,6 +389,8 @@ pub fn f32_nearest(a: &Value) -> f32 {
     /// # Panics
     ///
     /// This function will panic if the provided value is not an F32 value.
+    /// Safety impact: [LOW|MEDIUM|HIGH] - [Brief explanation of the safety implication]
+    /// Tracking: WRTQ-XXX (qualification requirement tracking ID).
     match a {
         Value::F32(a) => {
             if a.is_nan() || a.is_infinite() || *a == 0.0 {
@@ -422,6 +424,8 @@ pub fn f64_nearest(a: &Value) -> f64 {
     ///
     /// # Panics
     ///
+    /// Safety impact: [LOW|MEDIUM|HIGH] - [Brief explanation of the safety implication]
+    /// Tracking: WRTQ-XXX (qualification requirement tracking ID).
     /// This function will panic if the provided value is not an F64 value.
     match a {
         Value::F64(a) => {

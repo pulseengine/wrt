@@ -4,8 +4,11 @@
 //! for the Kani model checker to verify the correctness of
 //! the interceptor implementation.
 
-#[cfg(feature = "kani")]
-mod proofs {
+// Only compile Kani verification code when documentation is being generated
+// or when explicitly running cargo kani. This prevents interference with
+// coverage testing.
+#[cfg(any(doc, feature = "kani"))]
+pub mod proofs {
     use crate::{LinkInterceptor, LinkInterceptorStrategy};
     use std::sync::Arc;
     use wrt_error::Result;
@@ -54,8 +57,8 @@ mod proofs {
     }
 
     /// Verify that the interceptor properly modifies arguments
-    #[kani::proof]
-    fn verify_interceptor_modifies_args() {
+    #[cfg_attr(feature = "kani", kani::proof)]
+    pub fn verify_interceptor_modifies_args() {
         let strategy = Arc::new(TestStrategy { modify_args: true });
         let mut interceptor = LinkInterceptor::new("test");
         interceptor.add_strategy(strategy);
@@ -63,17 +66,17 @@ mod proofs {
         let args = vec![Value::I32(10)];
         let result = interceptor.intercept_call("target", "func", args.clone(), |modified_args| {
             // The strategy should have modified the args
-            kani::assert(modified_args.len() == 1);
-            kani::assert(matches!(modified_args[0], Value::I32(42)));
+            assert!(modified_args.len() == 1);
+            assert!(matches!(modified_args[0], Value::I32(42)));
             Ok(vec![Value::I64(20)])
         });
 
-        kani::assert(result.is_ok());
+        assert!(result.is_ok());
     }
 
     /// Verify that the interceptor passes through arguments when not modified
-    #[kani::proof]
-    fn verify_interceptor_passthrough() {
+    #[cfg_attr(feature = "kani", kani::proof)]
+    pub fn verify_interceptor_passthrough() {
         let strategy = Arc::new(TestStrategy { modify_args: false });
         let mut interceptor = LinkInterceptor::new("test");
         interceptor.add_strategy(strategy);
@@ -81,17 +84,17 @@ mod proofs {
         let args = vec![Value::I32(10)];
         let result = interceptor.intercept_call("target", "func", args.clone(), |modified_args| {
             // The strategy should not have modified the args
-            kani::assert(modified_args.len() == args.len());
-            kani::assert(matches!(modified_args[0], Value::I32(10)));
+            assert!(modified_args.len() == args.len());
+            assert!(matches!(modified_args[0], Value::I32(10)));
             Ok(vec![Value::I64(20)])
         });
 
-        kani::assert(result.is_ok());
+        assert!(result.is_ok());
     }
 
     /// Verify that multiple strategies are applied in order
-    #[kani::proof]
-    fn verify_multiple_strategies() {
+    #[cfg_attr(feature = "kani", kani::proof)]
+    pub fn verify_multiple_strategies() {
         let strategy1 = Arc::new(TestStrategy { modify_args: true });
         let strategy2 = Arc::new(TestStrategy { modify_args: false });
 
@@ -103,17 +106,17 @@ mod proofs {
         let result = interceptor.intercept_call("target", "func", args.clone(), |modified_args| {
             // The first strategy should have modified the args
             // The second strategy should have passed them through
-            kani::assert(modified_args.len() == 1);
-            kani::assert(matches!(modified_args[0], Value::I32(42)));
+            assert!(modified_args.len() == 1);
+            assert!(matches!(modified_args[0], Value::I32(42)));
             Ok(vec![Value::I64(20)])
         });
 
-        kani::assert(result.is_ok());
+        assert!(result.is_ok());
     }
 
     /// Verify that the interceptor passes errors through
-    #[kani::proof]
-    fn verify_error_passthrough() {
+    #[cfg_attr(feature = "kani", kani::proof)]
+    pub fn verify_error_passthrough() {
         let strategy = Arc::new(TestStrategy { modify_args: false });
         let mut interceptor = LinkInterceptor::new("test");
         interceptor.add_strategy(strategy);
@@ -125,6 +128,10 @@ mod proofs {
             )))
         });
 
-        kani::assert(result.is_err());
+        assert!(result.is_err());
     }
 }
+
+// Expose the verification module in docs but not for normal compilation
+#[cfg(any(doc, feature = "kani"))]
+pub use proofs::*;

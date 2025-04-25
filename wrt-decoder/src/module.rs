@@ -216,6 +216,8 @@ impl Module {
 /// This function will panic if it attempts to access the last element of an empty
 /// custom_sections vector, which can happen if the implementation tries to process
 /// a custom section before any custom sections have been added to the module.
+/// Safety impact: [LOW|MEDIUM|HIGH] - [Brief explanation of the safety implication]
+/// Tracking: WRTQ-XXX (qualification requirement tracking ID).
 pub fn decode_module(bytes: &[u8]) -> Result<Module> {
     // Verify magic bytes and version
     if bytes.len() < 8 {

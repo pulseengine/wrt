@@ -196,6 +196,8 @@ where
     /// # Panics
     ///
     /// This function does not panic.
+    /// Safety impact: [LOW|MEDIUM|HIGH] - [Brief explanation of the safety implication]
+    /// Tracking: WRTQ-XXX (qualification requirement tracking ID).
     pub fn pop(&mut self) -> Option<T> {
         // Track the pop operation
         record_global_operation(OperationType::CollectionPop, self.verification_level);

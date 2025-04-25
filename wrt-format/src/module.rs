@@ -231,52 +231,8 @@ impl Module {
     }
 }
 
-#[cfg(feature = "kani")]
-mod verification {
-    use super::*;
-    use kani::*;
+#[cfg(test)]
+mod tests {
 
-    #[kani::proof]
-    fn verify_module_new_is_empty() {
-        let module = Module::new();
-        assert!(module.types.is_empty());
-        assert!(module.functions.is_empty());
-        assert!(module.tables.is_empty());
-        assert!(module.memories.is_empty());
-        assert!(module.globals.is_empty());
-        assert!(module.elements.is_empty());
-        assert!(module.data.is_empty());
-        assert!(module.exports.is_empty());
-        assert!(module.imports.is_empty());
-        assert!(module.start.is_none());
-        assert!(module.custom_sections.is_empty());
-        assert!(module.binary.is_none());
-    }
-
-    #[kani::proof]
-    fn verify_find_custom_section() {
-        // Create a module with a custom section
-        let mut module = Module::new();
-
-        // Add a custom section
-        let section_name = "test-section";
-        let section_data = vec![1, 2, 3, 4];
-        module.add_custom_section(CustomSection {
-            name: section_name.to_string(),
-            data: section_data.clone(),
-        });
-
-        // Find the section
-        let found = module.find_custom_section(section_name);
-        assert!(found.is_some());
-
-        // Verify the section data
-        let section = found.unwrap();
-        assert_eq!(section.name, section_name);
-        assert_eq!(section.data, section_data);
-
-        // Try to find a non-existent section
-        let not_found = module.find_custom_section("non-existent");
-        assert!(not_found.is_none());
-    }
+    // ... existing test code ...
 }

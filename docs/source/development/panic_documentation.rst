@@ -31,7 +31,7 @@ All functions that may panic should include a "Panics" section in their document
     /// 
     /// Safety impact: [LOW|MEDIUM|HIGH] - [Brief explanation of the safety implication]
     /// 
-    /// Tracking: WRTQ-XXX (qualification requirement tracking ID)
+    /// Tracking: WRTQ-XXX (qualification requirement tracking ID).
 
 Safety Impact Levels
 ~~~~~~~~~~~~~~~~~~~
@@ -59,23 +59,32 @@ Implementation Approach
 Panic Registry
 -------------
 
-We maintain a centralized panic registry in ``docs/source/development/panic_registry.csv`` that includes:
+We maintain panic documentation in two formats:
 
-- File path
-- Function name
-- Line number
-- Panic condition
-- Safety impact
-- Tracking ID
-- Resolution status (Todo, In Progress, Resolved)
-- Handling strategy (when determined)
+1. A CSV file at ``docs/source/development/panic_registry.csv`` that is easy to read and maintain
+2. A structured RST file using sphinx-needs at ``docs/source/development/panic_registry.rst`` for qualification documentation
+
+The registry is automatically updated by the ``xtask update-panic-registry`` command, which scans the codebase for documented panics and updates both formats.
+
+CSV Registry
+~~~~~~~~~~~
+
+The CSV registry includes the following information:
 
 .. csv-table:: Panic Registry
    :file: panic_registry.csv
    :header-rows: 1
    :widths: 20, 15, 5, 20, 5, 10, 10, 15
 
-The registry is automatically updated by the ``xtask update-panic-registry`` command, which scans the codebase for documented panics.
+Sphinx-Needs Registry
+~~~~~~~~~~~~~~~~~~~~
+
+For qualification purposes, all panic points are also available in a structured format using sphinx-needs in the :doc:`panic_registry` document. This allows:
+
+- Cross-referencing of panic points in documentation
+- Filtering and searching by safety impact level
+- Integration with qualification traceability matrices
+- Status tracking and reporting
 
 Common Panic Scenarios
 ---------------------
@@ -158,7 +167,4 @@ Responsible Teams
 Example Code
 -----------
 
-Below is an example demonstrating proper panic documentation:
-
-.. include:: examples/panic_doc_example.rs
-   :code: rust 
+Below is an example demonstrating proper panic documentation: 

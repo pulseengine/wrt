@@ -11,12 +11,15 @@ use crate::component_traits::{
     ComponentInstance, ComponentRuntime, HostFunction, HostFunctionFactory,
 };
 
-/// A concrete implementation of a host function
+/// Type alias for function implementations
+type HostFunctionImplementation = Arc<dyn Fn(&[Value]) -> Result<Vec<Value>> + Send + Sync>;
+
+/// A host function implementation
 pub struct HostFunctionImpl {
     /// Function type
     func_type: FuncType,
     /// Function implementation
-    implementation: Arc<dyn Fn(&[Value]) -> Result<Vec<Value>> + Send + Sync>,
+    implementation: HostFunctionImplementation,
 }
 
 impl HostFunction for HostFunctionImpl {
@@ -169,13 +172,7 @@ impl ComponentRuntime for ComponentRuntimeImpl {
 /// A default host function factory for standard functions
 pub struct DefaultHostFunctionFactory {
     /// Function implementations
-    functions: HashMap<
-        String,
-        (
-            FuncType,
-            Arc<dyn Fn(&[Value]) -> Result<Vec<Value>> + Send + Sync>,
-        ),
-    >,
+    functions: HashMap<String, (FuncType, HostFunctionImplementation)>,
 }
 
 impl Default for DefaultHostFunctionFactory {

@@ -7,6 +7,6 @@ mod firewall;
 mod logging;
 mod stats;
 
-pub use firewall::FirewallStrategy;
+pub use firewall::{FirewallConfig, FirewallRule, FirewallStrategy};
 pub use logging::LoggingStrategy;
 pub use stats::StatisticsStrategy;

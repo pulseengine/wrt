@@ -136,10 +136,19 @@ needs_types = [
     dict(directive="safety", title="Safety", prefix="SAFETY_", color="#FF5D73", style="node"),
     dict(directive="qual", title="Qualification", prefix="QUAL_", color="#9370DB", style="node"),
     dict(directive="constraint", title="Constraint", prefix="CNST_", color="#4682B4", style="node"),
+    dict(directive="panic", title="Panic", prefix="WRTQ-", color="#E74C3C", style="node"),
 ]
 
 # Add option specs to register additional options for directives
-needs_extra_options = ['rationale', 'verification', 'mitigation', 'implementation']
+needs_extra_options = [
+    'rationale', 
+    'verification', 
+    'mitigation', 
+    'implementation', 
+    'safety_impact',
+    'status',
+    'handling_strategy'
+]
 
 # Allow all sphinx-needs options for all directives
 needs_allow_unsafe_options = True
@@ -152,7 +161,20 @@ needs_templates = {
     'safety_template': '**Hazard**: {{content}}\n\n**Mitigation**: {{mitigation}}',
     'qualification_template': '**Status**: {{status}}\n\n**Implementation**: {{implementation}}',
     'constraint_template': '**Constraint**: {{content}}\n\n**Rationale**: {{rationale}}\n\n**Verification**: {{verification}}',
+    'panic_template': '**Panic Condition**: {{content}}\n\n**Safety Impact**: {{safety_impact}}\n\n**Status**: {{status}}\n\n**Handling Strategy**: {{handling_strategy}}',
 }
+
+# Tags for filtering and displaying panic entries
+needs_tags = [
+    dict(name="panic", description="Panic documentation entry", bgcolor="#E74C3C"),
+    dict(name="low", description="Low safety impact", bgcolor="#2ECC71"),
+    dict(name="medium", description="Medium safety impact", bgcolor="#F39C12"),
+    dict(name="high", description="High safety impact", bgcolor="#E74C3C"),
+]
+
+# Configure needs roles for referencing 
+needs_role_need_template = "{title} ({id})"
+needs_role_need_max_title_length = 30
 
 needs_id_length = 7
 needs_title_optional = True

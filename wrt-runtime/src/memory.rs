@@ -231,6 +231,8 @@ impl Memory {
     /// In `no_std` environments, this method will panic if the read lock for the metrics
     /// cannot be acquired. This would typically only happen in case of a deadlock or
     /// if the lock is poisoned due to a panic in another thread holding the lock.
+    /// Safety impact: [LOW|MEDIUM|HIGH] - [Brief explanation of the safety implication]
+    /// Tracking: WRTQ-XXX (qualification requirement tracking ID).
     #[must_use]
     pub fn peak_memory(&self) -> usize {
         #[cfg(feature = "std")]
@@ -250,6 +252,8 @@ impl Memory {
     ///
     /// In `no_std` environments, this method will panic if the read lock for the metrics
     /// cannot be acquired. This would typically only happen in case of a deadlock or
+    /// Safety impact: [LOW|MEDIUM|HIGH] - [Brief explanation of the safety implication]
+    /// Tracking: WRTQ-XXX (qualification requirement tracking ID).
     /// if the lock is poisoned due to a panic in another thread holding the lock.
     #[must_use]
     pub fn access_count(&self) -> u64 {
@@ -269,6 +273,8 @@ impl Memory {
     /// # Panics
     ///
     /// In `no_std` environments, this method will panic if the write lock for the metrics
+    /// Safety impact: [LOW|MEDIUM|HIGH] - [Brief explanation of the safety implication]
+    /// Tracking: WRTQ-XXX (qualification requirement tracking ID).
     /// cannot be acquired. This would typically only happen in case of a deadlock or
     /// if the lock is poisoned due to a panic in another thread holding the lock.
     fn increment_access_count(&self) {
@@ -287,6 +293,8 @@ impl Memory {
     ///
     /// # Panics
     ///
+    /// Safety impact: [LOW|MEDIUM|HIGH] - [Brief explanation of the safety implication]
+    /// Tracking: WRTQ-XXX (qualification requirement tracking ID).
     /// In `no_std` environments, this method will panic if the write lock for the metrics
     /// cannot be acquired. This would typically only happen in case of a deadlock or
     /// if the lock is poisoned due to a panic in another thread holding the lock.

@@ -129,9 +129,9 @@ pub fn validate_component_with_config(
         // Check resource types are enabled
         if !config.enable_resource_types {
             if let ComponentTypeDefinition::Resource { .. } = &comp_type.definition {
-                return Err(Error::new(kinds::ValidationError(
+                return Err(Error::new(Error::new(kinds::ValidationError(
                     "Resource types are not enabled in the current configuration".to_string(),
-                )));
+                ))));
             }
         }
 
@@ -186,9 +186,9 @@ pub fn validate_component_with_config(
 
     // Validate value definitions if enabled
     if !component.values.is_empty() && !config.enable_value_section {
-        return Err(Error::new(kinds::ValidationError(
+        return Err(Error::new(Error::new(kinds::ValidationError(
             "Value section is not enabled in the current configuration".to_string(),
-        )));
+        ))));
     }
 
     validate_values(component, &mut ctx)?;
@@ -258,10 +258,8 @@ struct ValidationContext {
     /// Resource types (for validating resource operations)
     resource_types: Vec<u32>,
     /// Resource ownership tracking - maps resource handle indices to owner state
-    #[allow(dead_code)]
     resource_ownership: HashMap<u32, ResourceOwnerState>,
     /// Resource borrowing tracking - maps resource handle indices to borrow state
-    #[allow(dead_code)]
     resource_borrowing: HashMap<u32, ResourceBorrowState>,
 }
 
@@ -435,7 +433,6 @@ impl ValidationContext {
     }
 
     /// Add a resource type index to the context
-    #[allow(dead_code)]
     fn add_resource_type(&mut self, idx: u32) {
         self.resource_types.push(idx);
     }
@@ -446,7 +443,6 @@ impl ValidationContext {
     }
 
     /// Track a resource being created
-    #[allow(dead_code)]
     fn track_resource_created(&mut self, resource_idx: u32) {
         self.resource_ownership
             .insert(resource_idx, ResourceOwnerState::Owned);
@@ -1193,6 +1189,24 @@ fn validate_val_type(
             }
             Ok(())
         }
+        ValType::FixedList(elem_type, size) => {
+            // Validate the element type and ensure size is reasonable
+            validate_val_type(elem_type, ctx)?;
+
+            // Optional: add validation for reasonable size limits
+            if *size > 1_000_000 {
+                return Err(Error::new(kinds::ValidationError(format!(
+                    "Fixed list size {} exceeds reasonable limits",
+                    size
+                ))));
+            }
+
+            Ok(())
+        }
+        ValType::ErrorContext => {
+            // Error context type is simple and doesn't need further validation
+            Ok(())
+        }
     }
 }
 
@@ -1857,7 +1871,105 @@ fn validate_canon(canon: &wrt_format::component::Canon, ctx: &ValidationContext)
                     }
                     Ok(())
                 }
+                ResourceOperation::Destroy(resource_destroy) => {
+                    // Validate that the resource type index is valid
+                    if !ctx.is_valid_resource_type(resource_destroy.type_idx) {
+                        return Err(Error::new(kinds::ValidationError(format!(
+                            "Invalid resource type index {} in resource destroy operation",
+                            resource_destroy.type_idx
+                        ))));
+                    }
+                    Ok(())
+                }
+                ResourceOperation::Transfer(resource_transfer) => {
+                    // Validate that the resource type index is valid
+                    if !ctx.is_valid_resource_type(resource_transfer.type_idx) {
+                        return Err(Error::new(kinds::ValidationError(format!(
+                            "Invalid resource type index {} in resource transfer operation",
+                            resource_transfer.type_idx
+                        ))));
+                    }
+                    Ok(())
+                }
+                ResourceOperation::Borrow(resource_borrow) => {
+                    // Validate that the resource type index is valid
+                    if !ctx.is_valid_resource_type(resource_borrow.type_idx) {
+                        return Err(Error::new(kinds::ValidationError(format!(
+                            "Invalid resource type index {} in resource borrow operation",
+                            resource_borrow.type_idx
+                        ))));
+                    }
+                    Ok(())
+                }
             }
+        }
+        CanonOperation::Realloc {
+            alloc_func_idx,
+            memory_idx,
+        } => {
+            // Check that the function index is valid
+            if !ctx.is_valid_func(*alloc_func_idx) {
+                return Err(Error::new(kinds::ValidationError(format!(
+                    "Invalid alloc function index {} in realloc operation",
+                    alloc_func_idx
+                ))));
+            }
+
+            // Core memory index doesn't use the usual validation mechanism
+            Ok(())
+        }
+        CanonOperation::PostReturn { func_idx } => {
+            // Check that the function index is valid
+            if !ctx.is_valid_func(*func_idx) {
+                return Err(Error::new(kinds::ValidationError(format!(
+                    "Invalid function index {} in post-return operation",
+                    func_idx
+                ))));
+            }
+
+            Ok(())
+        }
+        CanonOperation::MemoryCopy {
+            src_memory_idx,
+            dst_memory_idx,
+            func_idx,
+        } => {
+            // Check that the function index is valid
+            if !ctx.is_valid_func(*func_idx) {
+                return Err(Error::new(kinds::ValidationError(format!(
+                    "Invalid function index {} in memory copy operation",
+                    func_idx
+                ))));
+            }
+
+            // Core memory indices don't use the usual validation mechanism
+            Ok(())
+        }
+        CanonOperation::Async {
+            func_idx,
+            type_idx,
+            options,
+        } => {
+            // Check that the function index is valid
+            if !ctx.is_valid_func(*func_idx) {
+                return Err(Error::new(kinds::ValidationError(format!(
+                    "Invalid function index {} in async operation",
+                    func_idx
+                ))));
+            }
+
+            // Check that the type index is valid
+            if !ctx.is_valid_component_type(*type_idx) {
+                return Err(Error::new(kinds::ValidationError(format!(
+                    "Invalid type index {} in async operation",
+                    type_idx
+                ))));
+            }
+
+            // Validate async options
+            validate_async_options(options, ctx)?;
+
+            Ok(())
         }
     }
 }
@@ -1922,6 +2034,28 @@ fn validate_lower_options(
     } else {
         Ok(())
     }
+}
+
+/// Validate async options
+fn validate_async_options(
+    options: &wrt_format::component::AsyncOptions,
+    ctx: &ValidationContext,
+) -> Result<()> {
+    // Validate memory index (it's a core memory index, so we don't validate it here)
+
+    // Validate realloc function index if provided
+    if let Some(realloc_func_idx) = options.realloc_func_idx {
+        if !ctx.is_valid_func(realloc_func_idx) {
+            return Err(Error::new(kinds::ValidationError(format!(
+                "Invalid realloc function index {} in async options",
+                realloc_func_idx
+            ))));
+        }
+    }
+
+    // String encoding always valid
+
+    Ok(())
 }
 
 fn validate_values(component: &Component, ctx: &mut ValidationContext) -> Result<()> {

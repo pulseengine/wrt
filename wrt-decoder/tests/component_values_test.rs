@@ -14,21 +14,29 @@ fn create_test_component() -> Result<wrt_format::component::Component> {
         Value {
             ty: ValType::Bool,
             data: vec![0x01],
+            expression: None,
+            name: None,
         },
         // Boolean value (false)
         Value {
             ty: ValType::Bool,
             data: vec![0x00],
+            expression: None,
+            name: None,
         },
         // S32 value (42)
         Value {
             ty: ValType::S32,
             data: vec![0x2A, 0x00, 0x00, 0x00],
+            expression: None,
+            name: None,
         },
         // String value ("Hello, WebAssembly!")
         Value {
             ty: ValType::String,
             data: "Hello, WebAssembly!".as_bytes().to_vec(),
+            expression: None,
+            name: None,
         },
         // List of S32 values
         Value {
@@ -49,6 +57,8 @@ fn create_test_component() -> Result<wrt_format::component::Component> {
 
                 data
             },
+            expression: None,
+            name: None,
         },
         // Option type (Some(42))
         Value {
@@ -60,11 +70,15 @@ fn create_test_component() -> Result<wrt_format::component::Component> {
                 data.extend_from_slice(&[0x2A, 0x00, 0x00, 0x00]);
                 data
             },
+            expression: None,
+            name: None,
         },
         // Option type (None)
         Value {
             ty: ValType::Option(Box::new(ValType::S32)),
             data: vec![0x00], // None variant (tag = 0)
+            expression: None,
+            name: None,
         },
         // Result type (Ok(42))
         Value {
@@ -76,11 +90,15 @@ fn create_test_component() -> Result<wrt_format::component::Component> {
                 data.extend_from_slice(&[0x2A, 0x00, 0x00, 0x00]);
                 data
             },
+            expression: None,
+            name: None,
         },
         // Result type (Error)
         Value {
             ty: ValType::Result(Box::new(ValType::S32)),
             data: vec![0x01], // Error variant (tag = 1)
+            expression: None,
+            name: None,
         },
     ];
 

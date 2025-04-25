@@ -51,6 +51,8 @@ impl<'a> SafeSlice<'a> {
     ///
     /// This function will panic if the initial integrity verification fails.
     /// This can happen if memory corruption is detected during initialization.
+    /// Safety impact: [LOW|MEDIUM|HIGH] - [Brief explanation of the safety implication]
+    /// Tracking: WRTQ-XXX (qualification requirement tracking ID).
     pub fn with_verification_level(data: &'a [u8], level: VerificationLevel) -> Self {
         // Track checksum calculation
         record_global_operation(OperationType::ChecksumCalculation, level);
@@ -125,36 +127,43 @@ impl<'a> SafeSlice<'a> {
             return Ok(());
         }
 
-        // Verify length first
+        // If length doesn't match stored value, memory is corrupt
         if self.data.len() != self.length {
             return Err(Error::new(kinds::ValidationError(
                 "Memory corruption detected: length mismatch".into(),
             )));
         }
 
-        // Skip detailed verification in optimize mode for non-critical paths
+        // Different paths for optimize vs non-optimize
         #[cfg(feature = "optimize")]
-        return Ok(());
-
-        // Skip checksum verification for non-redundant checks
-        // unless we're using full verification
-        if !self.verification_level.should_verify_redundant() && importance < 200 {
-            return Ok(());
-        }
-
-        // Track checksum calculation
-        if importance >= 200 || self.verification_level.should_verify_redundant() {
-            record_global_operation(OperationType::ChecksumCalculation, self.verification_level);
-        }
-
-        // Compute current checksum and compare with stored checksum
-        let current = Checksum::compute(self.data);
-        if current == self.checksum {
+        {
             Ok(())
-        } else {
-            Err(Error::new(kinds::ValidationError(
-                "Memory corruption detected: checksum mismatch".into(),
-            )))
+        }
+
+        #[cfg(not(feature = "optimize"))]
+        {
+            // Track checksum calculation for important operations
+            if importance >= 200 || self.verification_level.should_verify_redundant() {
+                record_global_operation(
+                    OperationType::ChecksumCalculation,
+                    self.verification_level,
+                );
+            }
+
+            // Skip detailed checks for low importance non-redundant checks
+            if !self.verification_level.should_verify_redundant() && importance < 200 {
+                return Ok(());
+            }
+
+            // Compute current checksum and compare with stored checksum
+            let current = Checksum::compute(self.data);
+            if current == self.checksum {
+                Ok(())
+            } else {
+                Err(Error::new(kinds::ValidationError(
+                    "Memory corruption detected: checksum mismatch".into(),
+                )))
+            }
         }
     }
 

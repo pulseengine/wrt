@@ -1,2 +1,13 @@
 [alias]
 xtask = "run --package xtask --quiet --" 
+
+[build]
+# Configure rustflags for different build operations
+
+# For coverage builds, define a "coverage" cfg to conditionally disable problematic modules
+[target.'cfg(all())']
+rustflags = ["--cfg=coverage"]
+
+# For llvm-cov, define a "coverage" flag to disable problematic modules
+[target.'cfg(llvm_coverage)']
+rustflags = ["--cfg=coverage"] 

@@ -357,8 +357,8 @@ pub enum ExternType {
     },
 }
 
-/// Component value type
-#[derive(Debug, Clone, PartialEq)]
+/// Component value type including fixed-length lists
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ValType {
     /// Boolean type
     Bool,
@@ -394,6 +394,8 @@ pub enum ValType {
     Variant(Vec<(String, Option<ValType>)>),
     /// List type
     List(Box<ValType>),
+    /// Fixed-length list type with element type and length
+    FixedList(Box<ValType>, u32),
     /// Tuple type
     Tuple(Vec<ValType>),
     /// Flags type
@@ -412,6 +414,8 @@ pub enum ValType {
     Own(u32),
     /// Borrow a resource
     Borrow(u32),
+    /// Error context type
+    ErrorContext,
 }
 
 /// Resource representation type
@@ -455,28 +459,81 @@ pub enum CanonOperation {
     },
     /// Resource operations
     Resource(ResourceOperation),
+    /// Reallocation operation
+    Realloc {
+        /// Function index for memory allocation
+        alloc_func_idx: u32,
+        /// Memory index to use
+        memory_idx: u32,
+    },
+    /// Post-return operation (cleanup)
+    PostReturn {
+        /// Function index for post-return cleanup
+        func_idx: u32,
+    },
+    /// Memory copy operation (optional optimization)
+    MemoryCopy {
+        /// Source memory index
+        src_memory_idx: u32,
+        /// Destination memory index
+        dst_memory_idx: u32,
+        /// Function index for the copy operation
+        func_idx: u32,
+    },
+    /// Async operation (stackful lift)
+    Async {
+        /// Function index for the async operation
+        func_idx: u32,
+        /// Type index for the async function
+        type_idx: u32,
+        /// Options for async operations
+        options: AsyncOptions,
+    },
 }
 
-/// Canonical lifting options
+/// Options for lifting operations
 #[derive(Debug, Clone)]
 pub struct LiftOptions {
     /// Memory index to use for string/list conversions
     pub memory_idx: Option<u32>,
     /// String encoding to use
     pub string_encoding: Option<StringEncoding>,
+    /// Realloc function index (optional)
+    pub realloc_func_idx: Option<u32>,
+    /// Post-return function index (optional)
+    pub post_return_func_idx: Option<u32>,
+    /// Whether this is an async lift
+    pub is_async: bool,
 }
 
-/// Canonical lowering options
+/// Options for lowering operations
 #[derive(Debug, Clone)]
 pub struct LowerOptions {
     /// Memory index to use for string/list conversions
     pub memory_idx: Option<u32>,
     /// String encoding to use
     pub string_encoding: Option<StringEncoding>,
+    /// Realloc function index (optional)
+    pub realloc_func_idx: Option<u32>,
+    /// Whether this is an async lower
+    pub is_async: bool,
+    /// Error handling mode
+    pub error_mode: Option<ErrorMode>,
 }
 
-/// String encoding for canonical ABI
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// Options for async operations
+#[derive(Debug, Clone)]
+pub struct AsyncOptions {
+    /// Memory index to use
+    pub memory_idx: u32,
+    /// Realloc function index
+    pub realloc_func_idx: Option<u32>,
+    /// String encoding to use
+    pub string_encoding: Option<StringEncoding>,
+}
+
+/// String encoding options
+#[derive(Debug, Clone)]
 pub enum StringEncoding {
     /// UTF-8 encoding
     UTF8,
@@ -488,6 +545,17 @@ pub enum StringEncoding {
     ASCII,
 }
 
+/// Error handling modes
+#[derive(Debug, Clone)]
+pub enum ErrorMode {
+    /// Convert errors to exceptions
+    ThrowOnError,
+    /// Convert exceptions to errors
+    CatchExceptions,
+    /// Pass through errors/exceptions
+    Passthrough,
+}
+
 /// Resource operation for canonical ABI
 #[derive(Debug, Clone)]
 pub enum ResourceOperation {
@@ -497,27 +565,60 @@ pub enum ResourceOperation {
     Drop(ResourceDrop),
     /// Resource rep: converts a resource to its representation
     Rep(ResourceRep),
+    /// Resource destroy: destroys a resource
+    Destroy(ResourceDestroy),
+    /// Resource transfer: transfers ownership of a resource
+    Transfer(ResourceTransfer),
+    /// Resource borrow: temporarily borrows a resource
+    Borrow(ResourceBorrow),
 }
 
-/// Resource new operation
+/// Resource new operation data
 #[derive(Debug, Clone)]
 pub struct ResourceNew {
     /// Type index of the resource
     pub type_idx: u32,
+    /// Memory index for resource representation (if any)
+    pub memory_idx: Option<u32>,
 }
 
-/// Resource drop operation
+/// Resource drop operation data
 #[derive(Debug, Clone)]
 pub struct ResourceDrop {
     /// Type index of the resource
     pub type_idx: u32,
 }
 
-/// Resource representation operation
+/// Resource rep operation data
 #[derive(Debug, Clone)]
 pub struct ResourceRep {
     /// Type index of the resource
     pub type_idx: u32,
+    /// Memory index for resource representation (if any)
+    pub memory_idx: Option<u32>,
+}
+
+/// Resource destroy operation data
+#[derive(Debug, Clone)]
+pub struct ResourceDestroy {
+    /// Type index of the resource
+    pub type_idx: u32,
+}
+
+/// Resource transfer operation data
+#[derive(Debug, Clone)]
+pub struct ResourceTransfer {
+    /// Type index of the resource
+    pub type_idx: u32,
+}
+
+/// Resource borrow operation data
+#[derive(Debug, Clone)]
+pub struct ResourceBorrow {
+    /// Type index of the resource
+    pub type_idx: u32,
+    /// Borrow duration (in ticks)
+    pub duration: Option<u32>,
 }
 
 /// Component start function
@@ -531,7 +632,7 @@ pub struct Start {
     pub results: u32,
 }
 
-/// Component import
+/// Import definition in a component
 #[derive(Debug, Clone)]
 pub struct Import {
     /// Import name in namespace.name format
@@ -540,16 +641,31 @@ pub struct Import {
     pub ty: ExternType,
 }
 
-/// Import name with namespacing
+/// Import name with support for nested namespaces
 #[derive(Debug, Clone)]
 pub struct ImportName {
     /// Namespace of the import
     pub namespace: String,
     /// Name of the import
     pub name: String,
+    /// Nested namespaces (if any)
+    pub nested: Vec<String>,
+    /// Package reference (if any)
+    pub package: Option<PackageReference>,
 }
 
-/// Component export
+/// Package reference for imports
+#[derive(Debug, Clone)]
+pub struct PackageReference {
+    /// Package name
+    pub name: String,
+    /// Package version
+    pub version: Option<String>,
+    /// Package hash (for content verification)
+    pub hash: Option<String>,
+}
+
+/// Export definition in a component
 #[derive(Debug, Clone)]
 pub struct Export {
     /// Export name in "name" format
@@ -562,7 +678,7 @@ pub struct Export {
     pub ty: Option<ExternType>,
 }
 
-/// Export name with optional annotations
+/// Export name with support for nested namespaces
 #[derive(Debug, Clone)]
 pub struct ExportName {
     /// Basic name
@@ -573,13 +689,166 @@ pub struct ExportName {
     pub semver: Option<String>,
     /// Integrity hash for content verification
     pub integrity: Option<String>,
+    /// Nested namespaces (if any)
+    pub nested: Vec<String>,
 }
 
-/// Component value
+impl ImportName {
+    /// Create a new import name with just namespace and name
+    pub fn new(namespace: String, name: String) -> Self {
+        Self {
+            namespace,
+            name,
+            nested: Vec::new(),
+            package: None,
+        }
+    }
+
+    /// Create a new import name with nested namespaces
+    pub fn with_nested(namespace: String, name: String, nested: Vec<String>) -> Self {
+        Self {
+            namespace,
+            name,
+            nested,
+            package: None,
+        }
+    }
+
+    /// Add package reference to an import name
+    pub fn with_package(mut self, package: PackageReference) -> Self {
+        self.package = Some(package);
+        self
+    }
+
+    /// Get the full import path as a string
+    pub fn full_path(&self) -> String {
+        let mut path = format!("{}.{}", self.namespace, self.name);
+        for nested in &self.nested {
+            path.push_str(&format!(".{}", nested));
+        }
+        path
+    }
+}
+
+impl ExportName {
+    /// Create a new export name
+    pub fn new(name: String) -> Self {
+        Self {
+            name,
+            is_resource: false,
+            semver: None,
+            integrity: None,
+            nested: Vec::new(),
+        }
+    }
+
+    /// Create a new export name with nested namespaces
+    pub fn with_nested(name: String, nested: Vec<String>) -> Self {
+        Self {
+            name,
+            is_resource: false,
+            semver: None,
+            integrity: None,
+            nested,
+        }
+    }
+
+    /// Mark as a resource export
+    pub fn as_resource(mut self) -> Self {
+        self.is_resource = true;
+        self
+    }
+
+    /// Add semver compatibility information
+    pub fn with_semver(mut self, semver: String) -> Self {
+        self.semver = Some(semver);
+        self
+    }
+
+    /// Add integrity hash for content verification
+    pub fn with_integrity(mut self, integrity: String) -> Self {
+        self.integrity = Some(integrity);
+        self
+    }
+
+    /// Get the full export path as a string
+    pub fn full_path(&self) -> String {
+        let mut path = self.name.clone();
+        for nested in &self.nested {
+            path.push_str(&format!(".{}", nested));
+        }
+        path
+    }
+}
+
+/// Component value definition
 #[derive(Debug, Clone)]
 pub struct Value {
     /// Type of the value
     pub ty: ValType,
     /// Encoded value data
     pub data: Vec<u8>,
+    /// Value expression (if available)
+    pub expression: Option<ValueExpression>,
+    /// Value name (if available from custom sections)
+    pub name: Option<String>,
+}
+
+/// Value expression types
+#[derive(Debug, Clone)]
+pub enum ValueExpression {
+    /// Reference to an item in component
+    ItemRef {
+        /// Sort of the referenced item
+        sort: Sort,
+        /// Index within the sort
+        idx: u32,
+    },
+    /// Global initialization expression
+    GlobalInit {
+        /// Global index
+        global_idx: u32,
+    },
+    /// Function call expression
+    FunctionCall {
+        /// Function index
+        func_idx: u32,
+        /// Arguments (indices to other values)
+        args: Vec<u32>,
+    },
+    /// Direct constant value
+    Const(ConstValue),
+}
+
+/// Constant value types
+#[derive(Debug, Clone)]
+pub enum ConstValue {
+    /// Boolean constant
+    Bool(bool),
+    /// 8-bit signed integer
+    S8(i8),
+    /// 8-bit unsigned integer
+    U8(u8),
+    /// 16-bit signed integer
+    S16(i16),
+    /// 16-bit unsigned integer
+    U16(u16),
+    /// 32-bit signed integer
+    S32(i32),
+    /// 32-bit unsigned integer
+    U32(u32),
+    /// 64-bit signed integer
+    S64(i64),
+    /// 64-bit unsigned integer
+    U64(u64),
+    /// 32-bit float
+    F32(f32),
+    /// 64-bit float
+    F64(f64),
+    /// Character constant
+    Char(char),
+    /// String constant
+    String(String),
+    /// Empty null constant
+    Null,
 }

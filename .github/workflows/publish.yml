@@ -105,14 +105,34 @@ jobs:
       # Run coverage separately to handle errors better
       - name: Generate code coverage
         run: |
-          # Generate coverage data using the new full approach
-          just coverage-full || {
+          # Generate coverage using the robust xtask command
+          cargo xtask robust-coverage --exclude wrt-host --html || {
             echo "::warning::Failed to generate coverage data. Creating placeholder..."
             mkdir -p target/coverage/html
             echo "<h1>Coverage Report Not Available</h1>" > target/coverage/html/index.html
-            mkdir -p docs/source
+            
             cp docs/source/_generated_coverage_summary.rst.template docs/source/_generated_coverage_summary.rst || true
           }
+          
+          # Create a minimum viable coverage report if it doesn't exist
+          if [ ! -d "target/coverage/html" ]; then
+            echo "::warning::Creating minimal coverage report directory..."
+            mkdir -p target/coverage/html
+            echo "<h1>Coverage Report Not Available</h1><p>The coverage report could not be generated due to build errors.</p>" > target/coverage/html/index.html
+          fi
+          
+          # Ensure coverage summary exists for documentation
+          if [ ! -f "docs/source/_generated_coverage_summary.rst" ]; then
+            echo "::warning::Creating coverage summary placeholder..."
+            mkdir -p docs/source
+            cp docs/source/_generated_coverage_summary.rst.template docs/source/_generated_coverage_summary.rst 2>/dev/null || {
+              echo ".. container:: coverage-summary" > docs/source/_generated_coverage_summary.rst
+              echo "" >> docs/source/_generated_coverage_summary.rst
+              echo "   **Code Coverage:** 0.00% (0/0 lines)" >> docs/source/_generated_coverage_summary.rst
+              echo "" >> docs/source/_generated_coverage_summary.rst
+              echo "   \`Full HTML Report <../_static/coverage/index.html>\`_" >> docs/source/_generated_coverage_summary.rst
+            }
+          fi
 
       - name: Determine version
         id: determine-version

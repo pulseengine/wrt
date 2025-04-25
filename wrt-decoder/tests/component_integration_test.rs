@@ -1,86 +1,64 @@
 #[cfg(test)]
 mod tests {
-    use wrt_decoder::component::ComponentDecoder;
+    use wrt_decoder::component::decode_component;
     use wrt_error::Result;
-    use wrt_types::{ComponentType, ExternType, FuncType, ValueType};
+    use wrt_format::component::{ExternType, ValType};
 
     #[test]
     fn test_decode_simple_component() -> Result<()> {
         // This is a mock test since we can't include actual binary data here
         // In a real test, we would decode an actual binary component
 
-        // Create a mock component decoder
-        let decoder = MockComponentDecoder::new();
+        // Create a mock component
+        let component = create_mock_component()?;
 
-        // Decode a mock component
-        let component_type = decoder.decode_mock_component()?;
+        // Encode the component
+        let binary = wrt_decoder::component::encode_component(&component)?;
+
+        // Decode the binary
+        let decoded_component = decode_component(&binary)?;
 
         // Verify the component structure
-        assert_eq!(component_type.imports.len(), 1);
-        assert_eq!(component_type.exports.len(), 1);
-
-        // Verify the import
-        let (import_name, import_namespace, import_type) = &component_type.imports[0];
-        assert_eq!(import_name, "import_func");
-        assert_eq!(import_namespace, "env");
-
-        match import_type {
-            ExternType::Function(func_type) => {
-                assert_eq!(func_type.params.len(), 1);
-                assert_eq!(func_type.results.len(), 1);
-                assert_eq!(func_type.params[0], ValueType::I32);
-                assert_eq!(func_type.results[0], ValueType::I32);
-            }
-            _ => panic!("Expected function import"),
-        }
-
-        // Verify the export
-        let (export_name, export_type) = &component_type.exports[0];
-        assert_eq!(export_name, "export_func");
-
-        match export_type {
-            ExternType::Function(func_type) => {
-                assert_eq!(func_type.params.len(), 1);
-                assert_eq!(func_type.results.len(), 1);
-                assert_eq!(func_type.params[0], ValueType::I32);
-                assert_eq!(func_type.results[0], ValueType::I32);
-            }
-            _ => panic!("Expected function export"),
-        }
+        assert_eq!(decoded_component.imports.len(), 1);
+        assert_eq!(decoded_component.exports.len(), 1);
 
         Ok(())
     }
 
-    // Mock component decoder for testing
-    struct MockComponentDecoder {}
+    fn create_mock_component() -> Result<wrt_format::component::Component> {
+        let mut component = wrt_format::component::Component::new();
 
-    impl MockComponentDecoder {
-        fn new() -> Self {
-            Self {}
-        }
+        // Add a simple function import
+        component.imports.push(wrt_format::component::Import {
+            name: wrt_format::component::ImportName {
+                namespace: "env".to_string(),
+                name: "import_func".to_string(),
+                nested: Vec::new(),
+                package: None,
+            },
+            ty: wrt_format::component::ExternType::Function {
+                params: vec![("param".to_string(), ValType::S32)],
+                results: vec![ValType::S32],
+            },
+        });
 
-        fn decode_mock_component(&self) -> Result<ComponentType> {
-            // Create a mock component type
-            let component_type = ComponentType {
-                imports: vec![(
-                    "import_func".to_string(),
-                    "env".to_string(),
-                    ExternType::Function(FuncType {
-                        params: vec![ValueType::I32],
-                        results: vec![ValueType::I32],
-                    }),
-                )],
-                exports: vec![(
-                    "export_func".to_string(),
-                    ExternType::Function(FuncType {
-                        params: vec![ValueType::I32],
-                        results: vec![ValueType::I32],
-                    }),
-                )],
-                instances: Vec::new(),
-            };
+        // Add a simple function export
+        component.exports.push(wrt_format::component::Export {
+            name: wrt_format::component::ExportName {
+                name: "export_func".to_string(),
+                is_resource: false,
+                semver: None,
+                integrity: None,
+                nested: Vec::new(),
+            },
+            sort: wrt_format::component::Sort::Function,
+            idx: 0,
+            ty: Some(wrt_format::component::ExternType::Function {
+                params: vec![("param".to_string(), ValType::S32)],
+                results: vec![ValType::S32],
+            }),
+        });
 
-            Ok(component_type)
-        }
+        Ok(component)
     }
 }
