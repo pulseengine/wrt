@@ -15,6 +15,7 @@ mod check_panics;
 mod docs;
 mod fs_ops;
 mod qualification;
+mod update_panic_registry;
 mod wasm_ops;
 mod wast_tests;
 
@@ -84,6 +85,16 @@ enum Command {
         #[command(subcommand)]
         command: DocsCommands,
     },
+    /// Update the panic registry CSV file
+    UpdatePanicRegistry {
+        /// Output CSV file path (relative to workspace root)
+        #[arg(long, default_value = "docs/source/development/panic_registry.csv")]
+        output: String,
+
+        /// Whether to print verbose output
+        #[arg(short, long)]
+        verbose: bool,
+    },
 }
 
 #[derive(Subcommand, Debug)]
@@ -147,7 +158,47 @@ pub struct BuildOpts {
 
 #[derive(Args, Debug)]
 pub struct CoverageOpts {
-    // Add options for coverage if needed
+    /// Mode of operation: single (run llvm-cov), individual (per-crate coverage), or combined (merge with grcov)
+    #[clap(long, value_enum, default_value = "single")]
+    mode: CoverageMode,
+
+    /// Format for coverage output
+    #[clap(long, value_enum, default_value = "lcov")]
+    format: CoverageFormat,
+
+    /// Crates to include, if not specified all will be included
+    #[clap(long, use_value_delimiter = true, value_delimiter = ',')]
+    crates: Vec<String>,
+
+    /// Exclude specific crates from coverage
+    #[clap(long, use_value_delimiter = true, value_delimiter = ',')]
+    exclude: Vec<String>,
+
+    /// Directory to store coverage artifacts
+    #[clap(long, default_value = "target/coverage")]
+    output_dir: PathBuf,
+}
+
+#[derive(ValueEnum, Clone, Debug, PartialEq)]
+enum CoverageMode {
+    /// Run coverage for all crates combined (default)
+    Single,
+    /// Run coverage for each crate individually
+    Individual,
+    /// Combine previously generated coverage reports with grcov
+    Combined,
+}
+
+#[derive(ValueEnum, Clone, Debug, PartialEq)]
+enum CoverageFormat {
+    /// LCOV format (default)
+    Lcov,
+    /// HTML report
+    Html,
+    /// Cobertura XML format
+    Cobertura,
+    /// All formats
+    All,
 }
 
 #[derive(Args, Debug)]
@@ -375,6 +426,10 @@ fn main() -> Result<()> {
             DocsCommands::SwitcherJson { local } => docs::generate_switcher_json(local),
             DocsCommands::Serve => docs::serve_docs(),
         },
+        Command::UpdatePanicRegistry { output, verbose } => {
+            update_panic_registry::run(&sh, &output, verbose)?;
+            Ok(())
+        }
     }
 }
 
@@ -445,45 +500,228 @@ fn run_build(sh: &Shell, opts: BuildOpts) -> Result<()> {
     Ok(())
 }
 
-fn run_coverage(sh: &Shell, _opts: CoverageOpts) -> Result<()> {
-    let lcov_path = PathBuf::from("coverage.lcov");
-    let html_output_dir = PathBuf::from("target/llvm-cov/html");
+fn run_coverage(sh: &Shell, opts: CoverageOpts) -> Result<()> {
+    // Create output directory if it doesn't exist
+    fs_ops::mkdirp(&opts.output_dir)?;
+
+    match opts.mode {
+        CoverageMode::Single => run_single_coverage(sh, &opts),
+        CoverageMode::Individual => run_individual_coverage(sh, &opts),
+        CoverageMode::Combined => run_combined_coverage(sh, &opts),
+    }
+}
+
+fn run_single_coverage(sh: &Shell, opts: &CoverageOpts) -> Result<()> {
+    let lcov_path = opts.output_dir.join("coverage.lcov");
+    let html_output_dir = opts.output_dir.join("html");
     let summary_rst_path = PathBuf::from("docs/source/_generated_coverage_summary.rst");
 
     // 1. Generate LCOV data
-    println!("Generating LCOV coverage data...");
-    sh.cmd("cargo")
+    println!("Generating LCOV coverage data for all crates...");
+    let mut cmd = sh.cmd("cargo");
+    cmd = cmd
         .arg("llvm-cov")
         .arg("test") // Run tests to generate coverage
         .arg("--all-features")
-        .arg("--lcov")
-        .arg("--output-path")
-        .arg(&lcov_path)
-        .run()?;
-    println!("LCOV data generated at {}", lcov_path.display());
+        .arg("--workspace");
 
+    // Add exclusions if specified
+    for excl in &opts.exclude {
+        cmd = cmd.arg("--exclude").arg(excl);
+    }
+
+    cmd = cmd.arg("--lcov").arg("--output-path").arg(&lcov_path);
+
+    // Run the command but don't fail if it returns an error
+    match cmd.run() {
+        Ok(_) => println!("LCOV data generated at {}", lcov_path.display()),
+        Err(e) => {
+            println!("Warning: Failed to generate complete LCOV data: {}", e);
+            println!("Continuing with partial coverage data if available");
+        }
+    }
+
+    // Only proceed if the LCOV file was generated
     if !lcov_path.exists() {
         anyhow::bail!("LCOV file was not generated: {}", lcov_path.display());
     }
 
-    // 2. Generate HTML report from LCOV data
+    // 2. Generate HTML report from LCOV data if requested
+    if opts.format == CoverageFormat::Html || opts.format == CoverageFormat::All {
+        generate_html_report(sh, &lcov_path, &html_output_dir)?;
+    }
+
+    // 3. Generate summary for documentation
+    generate_coverage_summary(&lcov_path, &summary_rst_path)?;
+
+    Ok(())
+}
+
+fn run_individual_coverage(sh: &Shell, opts: &CoverageOpts) -> Result<()> {
+    println!("Running individual coverage for each crate...");
+
+    // Get list of crates in workspace
+    let mut crates = if opts.crates.is_empty() {
+        // Get all crates in workspace
+        let output = sh
+            .cmd("cargo")
+            .arg("metadata")
+            .arg("--format-version=1")
+            .read()?;
+        let metadata: serde_json::Value = serde_json::from_str(&output)?;
+
+        metadata["packages"]
+            .as_array()
+            .map(|packages| {
+                packages
+                    .iter()
+                    .filter_map(|pkg| pkg["name"].as_str().map(String::from))
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default()
+    } else {
+        opts.crates.clone()
+    };
+
+    // Filter out excluded crates
+    crates.retain(|c| !opts.exclude.contains(c));
+
+    // Create directory for individual reports
+    let individual_dir = opts.output_dir.join("individual");
+    fs_ops::mkdirp(&individual_dir)?;
+
+    // Run coverage for each crate
+    for crate_name in &crates {
+        println!("Generating coverage for crate: {}", crate_name);
+        let crate_lcov_path = individual_dir.join(format!("{}.lcov", crate_name));
+
+        // Run coverage for this crate
+        let result = sh
+            .cmd("cargo")
+            .arg("llvm-cov")
+            .arg("test")
+            .arg("--all-features")
+            .arg("--package")
+            .arg(crate_name)
+            .arg("--lcov")
+            .arg("--output-path")
+            .arg(&crate_lcov_path)
+            .run();
+
+        match result {
+            Ok(_) => println!("  ✓ Coverage generated for {}", crate_name),
+            Err(e) => println!("  ✗ Failed to generate coverage for {}: {}", crate_name, e),
+        }
+    }
+
+    println!(
+        "Individual coverage reports generated in {}",
+        individual_dir.display()
+    );
+    Ok(())
+}
+
+fn run_combined_coverage(sh: &Shell, opts: &CoverageOpts) -> Result<()> {
+    println!("Combining coverage reports with grcov...");
+
+    // Check if grcov is installed
+    if sh.cmd("which").arg("grcov").read().is_err() {
+        return Err(anyhow::anyhow!(
+            "grcov is not installed. Install with 'cargo install grcov'"
+        ));
+    }
+
+    // Find all LCOV files
+    let individual_dir = opts.output_dir.join("individual");
+    if !individual_dir.exists() {
+        return Err(anyhow::anyhow!(
+            "No individual coverage reports found in {}",
+            individual_dir.display()
+        ));
+    }
+
+    // Output paths
+    let combined_lcov = opts.output_dir.join("combined.lcov");
+    let html_output_dir = opts.output_dir.join("html");
+
+    // Run grcov to combine reports
+    println!("Merging LCOV files with grcov...");
+
+    // Use grcov to process the individual directory with all LCOV files
+    let mut cmd = sh.cmd("grcov");
+    cmd = cmd.arg(&individual_dir);
+
+    // Add proper output format
+    if opts.format == CoverageFormat::Lcov || opts.format == CoverageFormat::All {
+        cmd = cmd.arg("-t").arg("lcov").arg("-o").arg(&combined_lcov);
+    }
+
+    if opts.format == CoverageFormat::Html || opts.format == CoverageFormat::All {
+        fs_ops::mkdirp(&html_output_dir)?;
+        cmd = cmd.arg("-t").arg("html").arg("--branch");
+
+        // Add exclusion pattern for assertions and derives
+        cmd = cmd
+            .arg("--excl-br-line")
+            .arg("^\\s*((debug_)?assert(_eq|_ne)?!|#\\[derive\\()");
+
+        cmd = cmd.arg("--ignore-not-existing");
+        cmd = cmd.arg("-o").arg(&html_output_dir);
+    }
+
+    if opts.format == CoverageFormat::Cobertura || opts.format == CoverageFormat::All {
+        let cobertura_path = opts.output_dir.join("cobertura.xml");
+        cmd = cmd.arg("-t").arg("cobertura").arg("-o").arg(cobertura_path);
+    }
+
+    // Run grcov (don't fail if it returns an error)
+    match cmd.run() {
+        Ok(_) => println!("Combined coverage reports successfully"),
+        Err(e) => println!("Warning: grcov had issues combining reports: {}", e),
+    }
+
+    // Generate summary for documentation if LCOV was generated
+    if combined_lcov.exists()
+        && (opts.format == CoverageFormat::Lcov || opts.format == CoverageFormat::All)
+    {
+        let summary_rst_path = PathBuf::from("docs/source/_generated_coverage_summary.rst");
+        generate_coverage_summary(&combined_lcov, &summary_rst_path)?;
+    }
+
+    println!(
+        "Combined coverage report generated in {}",
+        opts.output_dir.display()
+    );
+    Ok(())
+}
+
+fn generate_html_report(sh: &Shell, lcov_path: &PathBuf, html_output_dir: &PathBuf) -> Result<()> {
     println!("Generating HTML coverage report from LCOV data...");
     // Ensure the target directory exists
-    fs_ops::mkdirp(html_output_dir.parent().unwrap())?; // Create target/llvm-cov if needed
-    sh.cmd("cargo")
+    fs_ops::mkdirp(html_output_dir)?;
+
+    let result = sh
+        .cmd("cargo")
         .arg("llvm-cov")
         .arg("report") // Use report subcommand
         .arg("--lcov")
-        .arg(&lcov_path) // Input LCOV
+        .arg(lcov_path) // Input LCOV
         .arg("--html")
         .arg("--output-dir") // Specify output directory
-        .arg(&html_output_dir)
-        .run()?; // removed .arg("test") - we are reporting, not testing again
-    println!("HTML report generated in {}", html_output_dir.display());
+        .arg(html_output_dir)
+        .run();
 
-    // 3. Parse LCOV data for summary
+    match result {
+        Ok(_) => println!("HTML report generated in {}", html_output_dir.display()),
+        Err(e) => println!("Warning: Failed to generate HTML report: {}", e),
+    }
+
+    Ok(())
+}
+
+fn generate_coverage_summary(lcov_path: &PathBuf, summary_rst_path: &PathBuf) -> Result<()> {
     println!("Parsing LCOV data for summary...");
-    let file = File::open(&lcov_path)
+    let file = File::open(lcov_path)
         .with_context(|| format!("Failed to open LCOV file: {}", lcov_path.display()))?;
     let reader = BufReader::new(file);
 
@@ -516,7 +754,7 @@ fn run_coverage(sh: &Shell, _opts: CoverageOpts) -> Result<()> {
         covered_lines, total_lines, percentage
     );
 
-    // 4. Generate RST summary file
+    // Generate RST summary file
     println!(
         "Generating RST summary file: {}",
         summary_rst_path.display()
@@ -540,7 +778,7 @@ fn run_coverage(sh: &Shell, _opts: CoverageOpts) -> Result<()> {
             )
         })?;
     }
-    fs::write(&summary_rst_path, rst_content).with_context(|| {
+    fs::write(summary_rst_path, rst_content).with_context(|| {
         format!(
             "Failed to write RST summary file: {}",
             summary_rst_path.display()
