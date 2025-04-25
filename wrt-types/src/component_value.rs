@@ -3,13 +3,16 @@
 //! This module defines the runtime value types used in WebAssembly Component Model
 //! implementations.
 
-#[cfg(feature = "std")]
-use std::{collections::HashMap, string::String, vec::Vec};
+#![allow(clippy::derive_partial_eq_without_eq)]
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
+use crate::Value;
+use wrt_error::kinds;
+use wrt_error::{Error, Result};
+
+#[cfg(not(feature = "std"))]
 use alloc::{
     boxed::Box,
-    collections::BTreeMap as HashMap,
+    collections::HashMap,
     format,
     string::{String, ToString},
     vec,
@@ -17,15 +20,13 @@ use alloc::{
 };
 
 #[cfg(feature = "std")]
-use std::boxed::Box;
-
-use crate::values::Value;
-use wrt_error::{kinds, Error, Result};
+use std::collections::HashMap;
 
 /// A Component Model value type
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum ValType {
     /// Boolean value
+    #[default]
     Bool,
     /// Signed 8-bit integer
     S8,

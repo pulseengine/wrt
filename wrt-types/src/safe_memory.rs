@@ -18,12 +18,7 @@ use std::sync::Mutex;
 use std::vec::Vec;
 
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::{
-    format,
-    string::{String, ToString},
-    vec,
-    vec::Vec,
-};
+use alloc::{format, string::ToString};
 
 /// A safe slice with integrated checksum for data integrity verification
 #[derive(Clone)]
@@ -511,12 +506,17 @@ pub struct NoStdMemoryProvider<const N: usize> {
 impl<const N: usize> fmt::Debug for NoStdMemoryProvider<N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("NoStdMemoryProvider")
-            .field("capacity", &N)
             .field("used", &self.used)
             .field("access_count", &self.access_count.load(Ordering::Relaxed))
-            .field("last_access", &self.last_access())
             .field("verification_level", &self.verification_level)
             .finish()
+    }
+}
+
+#[cfg(not(feature = "std"))]
+impl<const N: usize> Default for NoStdMemoryProvider<N> {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -578,14 +578,16 @@ impl<const N: usize> NoStdMemoryProvider<N> {
     pub fn resize(&mut self, new_size: usize) -> Result<()> {
         if new_size > N {
             #[cfg(feature = "std")]
-            return Err(Error::new(kinds::OutOfBoundsError(
-                format!("Cannot resize to {} (max: {})", new_size, N).into(),
-            )));
+            return Err(Error::new(kinds::OutOfBoundsError(format!(
+                "Cannot resize to {} (max: {})",
+                new_size, N
+            ))));
 
             #[cfg(all(not(feature = "std"), feature = "alloc"))]
-            return Err(Error::new(kinds::OutOfBoundsError(
-                format!("Cannot resize to {} (max: {})", new_size, N).into(),
-            )));
+            return Err(Error::new(kinds::OutOfBoundsError(format!(
+                "Cannot resize to {} (max: {})",
+                new_size, N
+            ))));
 
             #[cfg(not(any(feature = "std", feature = "alloc")))]
             return Err(Error::new(kinds::OutOfBoundsError(
@@ -612,22 +614,16 @@ impl<const N: usize> NoStdMemoryProvider<N> {
 
         if length > 0 && offset + length > self.used {
             #[cfg(feature = "std")]
-            return Err(Error::new(kinds::ValidationError(
-                format!(
-                    "Last access out of bounds: offset={}, len={}, used={}",
-                    offset, length, self.used
-                )
-                .into(),
-            )));
+            return Err(Error::new(kinds::ValidationError(format!(
+                "Last access out of bounds: offset={}, len={}, used={}",
+                offset, length, self.used
+            ))));
 
             #[cfg(all(not(feature = "std"), feature = "alloc"))]
-            return Err(Error::new(kinds::ValidationError(
-                format!(
-                    "Last access out of bounds: offset={}, len={}, used={}",
-                    offset, length, self.used
-                )
-                .into(),
-            )));
+            return Err(Error::new(kinds::ValidationError(format!(
+                "Last access out of bounds: offset={}, len={}, used={}",
+                offset, length, self.used
+            ))));
 
             #[cfg(not(any(feature = "std", feature = "alloc")))]
             return Err(Error::new(kinds::ValidationError(
@@ -654,7 +650,7 @@ impl<const N: usize> NoStdMemoryProvider<N> {
 
 #[cfg(not(feature = "std"))]
 impl<const N: usize> MemoryProvider for NoStdMemoryProvider<N> {
-    fn borrow_slice<'a>(&'a self, offset: usize, len: usize) -> Result<SafeSlice<'a>> {
+    fn borrow_slice(&self, offset: usize, len: usize) -> Result<SafeSlice<'_>> {
         // Track memory read
         record_global_operation(OperationType::MemoryRead, VerificationLevel::Standard);
 

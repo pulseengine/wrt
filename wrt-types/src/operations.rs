@@ -15,9 +15,6 @@ use core::sync::atomic::{AtomicU64, Ordering};
 #[cfg(feature = "std")]
 use std::sync::OnceLock;
 
-#[cfg(not(feature = "std"))]
-use core::sync::atomic::AtomicBool;
-
 /// Operation types that can be tracked for fuel consumption
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OperationType {
@@ -359,9 +356,9 @@ mod global_counter {
     pub fn get_counter() -> &'static OperationCounter {
         if !INITIALIZED.load(Ordering::Acquire) {
             // Use compare_exchange to ensure only one thread initializes
-            if !INITIALIZING
+            if INITIALIZING
                 .compare_exchange(false, true, Ordering::Acquire, Ordering::Relaxed)
-                .is_ok()
+                .is_err()
             {
                 // Another thread is initializing - spin wait
                 while !INITIALIZED.load(Ordering::Acquire) && INITIALIZING.load(Ordering::Relaxed) {
