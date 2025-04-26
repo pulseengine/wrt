@@ -19,6 +19,7 @@ wrt-intercept = { path = "../wrt-intercept", version = "0.2.0" }
 # Optional dependencies
 log = { version = "0.4", optional = true }
 chrono = { version = "0.4", optional = true }
+futures = { version = "0.3", optional = true }
 
 [dev-dependencies]
 ratatui = "0.29.0"
@@ -50,10 +51,16 @@ kani = ["wrt-host/kani", "wrt-intercept/kani"]
 component-model-core = ["wrt-format/component-model-core"]
 component-model-values = ["wrt-format/component-model-values"]
 component-model-resources = ["wrt-format/component-model-resources"]
+component-model-async = ["wrt-types/component-model-async", "futures"]
+component-model-error-context = ["wrt-types/component-model-error-context"]
+component-model-threading = ["wrt-types/component-model-threading"]
 component-model-all = [
     "component-model-core",
     "component-model-values",
-    "component-model-resources"
+    "component-model-resources",
+    "component-model-async",
+    "component-model-error-context",
+    "component-model-threading"
 ]
 
 [[example]]

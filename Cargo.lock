@@ -2672,6 +2672,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "test-control-instructions"
+version = "0.1.0"
+dependencies = [
+ "wrt-decoder",
+ "wrt-error",
+ "wrt-format",
+ "wrt-types",
+]
+
+[[package]]
 name = "thiserror"
 version = "1.0.69"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4183,6 +4193,7 @@ version = "0.2.0"
 dependencies = [
  "chrono",
  "crossterm 0.27.0",
+ "futures",
  "log",
  "ratatui",
  "strum",

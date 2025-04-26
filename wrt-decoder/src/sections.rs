@@ -12,7 +12,7 @@ pub use wrt_format::section::{CustomSection, Section, SectionId};
 pub use wrt_format::types::{FuncType, Limits, MemoryIndexType, ValueType};
 
 // Local imports
-use crate::{String, Vec};
+use crate::prelude::{String, Vec};
 use wrt_error::{kinds, Error, Result};
 use wrt_format::binary;
 use wrt_format::types::parse_value_type;

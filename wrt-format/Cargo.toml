@@ -29,6 +29,7 @@ default = [
 ]
 std = ["wrt-error/std", "wrt-types/std"]
 no_std = ["wrt-error/no_std", "wrt-types/no_std"]
+alloc = ["wrt-error/alloc", "wrt-types/alloc"]
 optimize = ["wrt-types/optimize"]
 safety = ["wrt-types/safety"]
 # The 'kani' feature enables formal verification with the Kani verifier

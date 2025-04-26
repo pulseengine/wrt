@@ -34,7 +34,10 @@ component-model-core = []  # Basic component model support
 component-model-values = []  # 🪙 Experimental values
 component-model-resources = []  # Resource types
 component-model-fixed-lists = []  # 🔧 Fixed-length lists
-component-model-namespaces = []  # 🪺 Nested namespaces
+component-model-namespaces = []  # �� Nested namespaces
+component-model-async = []  # 🚝 Async value types and operations
+component-model-error-context = []  # 📝 Error context types and operations
+component-model-threading = []  # 🧵 Threading operations
 
 [dependencies]
 wrt-error = { path = "../wrt-error", version = "0.2.0" }

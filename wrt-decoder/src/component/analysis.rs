@@ -230,28 +230,32 @@ pub fn analyze_component_extended(
     ))
 }
 
-/// Convert a CoreSort to a string representation
+/// Convert a CoreSort to a string representation (debug helper)
+#[allow(dead_code)]
 fn kind_to_string(kind: &CoreSort) -> String {
     match kind {
-        CoreSort::Function => "function".to_string(),
-        CoreSort::Table => "table".to_string(),
-        CoreSort::Memory => "memory".to_string(),
-        CoreSort::Global => "global".to_string(),
-        CoreSort::Type => "type".to_string(),
-        CoreSort::Module => "module".to_string(),
-        CoreSort::Instance => "instance".to_string(),
+        CoreSort::Module => "CoreModule".to_string(),
+        CoreSort::Function => "CoreFunction".to_string(),
+        CoreSort::Table => "CoreTable".to_string(),
+        CoreSort::Memory => "CoreMemory".to_string(),
+        CoreSort::Global => "CoreGlobal".to_string(),
+        CoreSort::Instance => "CoreInstance".to_string(),
+        CoreSort::Type => "CoreType".to_string(),
     }
 }
 
-/// Convert a Sort to a string representation
+/// Helper to convert Sort to string (debug helper)
+#[allow(dead_code)]
 fn sort_to_string(sort: &Sort) -> String {
     match sort {
-        Sort::Function => "function".to_string(),
-        Sort::Instance => "instance".to_string(),
-        Sort::Component => "component".to_string(),
-        Sort::Value => "value".to_string(),
-        Sort::Type => "type".to_string(),
-        Sort::Core(core_sort) => format!("core({})", kind_to_string(core_sort)),
+        Sort::Func => "Func".to_string(),
+        Sort::Value => "Value".to_string(),
+        Sort::Table => "Table".to_string(),
+        Sort::Memory => "Memory".to_string(),
+        Sort::Instance => "Instance".to_string(),
+        Sort::Module => "Module".to_string(),
+        Sort::Component => "Component".to_string(),
+        Sort::Core(core_sort) => format!("Core({})", kind_to_string(core_sort)),
     }
 }
 

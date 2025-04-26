@@ -249,7 +249,7 @@ check-panic-docs:
         echo -e "/// Safety impact: [LOW|MEDIUM|HIGH]"
         echo -e "/// Tracking: [WRTQ-XXX]"
         echo ""
-        echo -e "See docs/PANIC_DOCUMENTATION.md for more details."
+        echo -e "See docs/source/development/panic_documentation.rst for more details."
         exit 1
     else
         echo -e "\n$${GREEN}All checked crates have properly documented panics!$${NC}"
@@ -286,7 +286,7 @@ sphinx_build_dir := "docs/_build"
 docs-html:
     {{sphinx_build}} -M html "{{sphinx_source}}" "{{sphinx_build_dir}}" {{sphinx_opts}}
     
-# Build HTML documentation with PlantUML diagrams
+# Build HTML documentation with PlantUML diagrams (requires plantuml in PATH)
 docs-with-diagrams: docs-common setup-plantuml
     #!/usr/bin/env bash
     set -e
@@ -304,12 +304,79 @@ docs-with-diagrams: docs-common setup-plantuml
 
     # Generate symbol documentation fragment (before Sphinx runs)
     echo "Generating symbol documentation fragment (RST)..."
-    # NOTE: Add --features std here once compilation errors are fixed
-    cargo xtask symbols --package wrt --format rst --output docs/source/_generated_symbols.rst || (
-        echo "⚠️  Warning: Failed to generate symbol documentation. Continuing with documentation build..."
-        echo "# Symbol Documentation Generation Failed" > docs/source/_generated_symbols.rst
-        echo "Symbol documentation could not be generated due to build errors." >> docs/source/_generated_symbols.rst
+    
+    # Create a combined symbols RST file by generating symbols for each wrt crate
+    echo "# WRT Symbol Documentation" > docs/source/_generated_symbols.rst
+    echo "This file contains symbol documentation for all WRT crates.\n" >> docs/source/_generated_symbols.rst
+    
+    # Use nm directly on existing rlib files rather than rebuilding
+    # This is more reliable than the xtask symbols command which tries to build
+    # everything from scratch and may fail
+    
+    echo "\n## Core Library Crates\n" >> docs/source/_generated_symbols.rst
+    
+    # Check if rustfilt is installed and try to install it if not
+    if ! command -v rustfilt &> /dev/null; then
+        echo "rustfilt not found, attempting to install it..."
+        cargo install rustfilt || {
+            echo "⚠️ Warning: Could not install rustfilt. Will use manual demangling."
+        }
+    fi
+    
+    # List of crates to document (based on lib.rs files found)
+    CRATES=(
+        "wrt"
+        "wrt-error"
+        "wrt-sync"
+        "wrt-format"
+        "wrt-decoder"
+        "wrt-component"
+        "wrt-host"
+        "wrt-instructions"
+        "wrt-intercept"
+        "wrt-logging"
+        "wrt-runtime"
+        "wrt-types"
     )
+    
+    for CRATE in "${CRATES[@]}"; do
+        echo "Processing $CRATE..."
+        CRATE_PATH=$(echo "$CRATE" | tr '-' '_')
+        
+        # Try to locate an existing rlib file
+        RLIB_PATH=$(find target/debug/deps -name "lib${CRATE_PATH}*.rlib" | head -n 1)
+        
+        if [ -z "$RLIB_PATH" ]; then
+            # Try release path as fallback
+            RLIB_PATH=$(find target/release/deps -name "lib${CRATE_PATH}*.rlib" | head -n 1)
+        fi
+        
+        if [ -n "$RLIB_PATH" ]; then
+            echo "\n## ${CRATE} Symbols\n" >> docs/source/_generated_symbols.rst
+            echo "Found rlib for $CRATE at $RLIB_PATH"
+            
+            echo "Dumping symbols for $CRATE..."
+            echo "\`\`\`" >> docs/source/_generated_symbols.rst
+            
+            # Extract symbols with a more resilient approach
+            if command -v rustfilt &> /dev/null; then
+                # Use rustfilt if available
+                nm -g "$RLIB_PATH" | grep -v " U " | grep " T " | awk '{print $3}' | grep -v '^_' | \
+                  grep -v "\.llvm" | sort | uniq | head -n 100 | xargs -I{} rustfilt {} >> docs/source/_generated_symbols.rst 2>/dev/null
+            else
+                # Fall back to simple approach without demangling
+                nm -g "$RLIB_PATH" | grep -v " U " | grep " T " | awk '{print $3}' | grep -v '^_' | \
+                  grep -v "\.llvm" | sort | uniq | head -n 100 >> docs/source/_generated_symbols.rst
+            fi
+            
+            echo "... (showing first 100 symbols)" >> docs/source/_generated_symbols.rst
+            echo "\`\`\`" >> docs/source/_generated_symbols.rst
+        else
+            echo "\n## ${CRATE} Symbols\n" >> docs/source/_generated_symbols.rst
+            echo "No build artifacts found for this crate." >> docs/source/_generated_symbols.rst
+            echo "" >> docs/source/_generated_symbols.rst
+        fi
+    done
     
     # Handle coverage summary
     if [ ! -f "docs/source/_generated_coverage_summary.rst" ]; then
@@ -326,7 +393,7 @@ docs-with-diagrams: docs-common setup-plantuml
     
     # Confirm diagrams were generated using xtask
     echo -n "Generated PlantUML diagrams: "
-    @cargo xtask fs count-files "{{sphinx_build_dir}}/html/_images" "plantuml-*" || echo "0 (error counting diagrams)"
+    cargo xtask fs count-files "{{sphinx_build_dir}}/html/_images" "plantuml-*" || echo "0 (error counting diagrams)"
     # Add a reminder check for the user
     echo "(If the count is 0, please check your PlantUML setup and .puml files)"
 
@@ -693,12 +760,35 @@ help:
 
 # Generate coverage report (LCOV and HTML)
 coverage:
-    cargo xtask coverage
+    cargo xtask coverage --format all
+
+# Generate individual coverage reports for each crate
+coverage-individual:
+    cargo xtask coverage --mode individual --format lcov
+
+# Combine individual coverage reports using grcov
+coverage-combined:
+    cargo xtask coverage --mode combined --format all
+
+# Generate full coverage report (run individual tests, then combine with grcov)
+coverage-full:
+    # Define problematic crates that need to be excluded from coverage
+    cargo xtask coverage --mode individual --format lcov --exclude wrt-error
+    cargo xtask coverage --mode combined --format all
+
+# Generate robust coverage report using xtask
+coverage-robust:
+    cargo xtask robust-coverage --exclude wrt-host --html
 
 # Common steps for documentation generation
 docs-common:
+    #!/usr/bin/env bash
     # Try to generate coverage if possible, but continue on failure
-    cargo xtask coverage || echo "⚠️  Warning: Failed to generate code coverage. Continuing with documentation build..."
+    if [ "${SKIP_COVERAGE:-}" = "" ]; then
+        just coverage-robust || echo "⚠️  Warning: Failed to generate code coverage. Continuing with documentation build..."
+    else
+        echo "Skipping coverage generation (SKIP_COVERAGE is set)"
+    fi
     
     # Clean previous build artifacts
     cargo xtask fs rm-rf "{{sphinx_build_dir}}"
@@ -708,10 +798,20 @@ docs-common:
     cargo xtask fs mkdir-p "{{sphinx_build_dir}}/html/_static/coverage"
     
     # Check if coverage report exists and copy if it does
-    [ -d "target/llvm-cov/html" ] && cargo xtask fs cp target/llvm-cov/html/* "{{sphinx_build_dir}}/html/_static/coverage/" || echo "⚠️  Warning: Coverage report not found or copy failed. Creating placeholder..."
+    if [ -d "target/coverage/html" ]; then
+        echo "Copying coverage report to documentation directory..."
+        # Use cp directly as xtask fs cp doesn't support wildcards
+        cp -r target/coverage/html/* "{{sphinx_build_dir}}/html/_static/coverage/" || \
+            echo "⚠️  Warning: Coverage report copy failed. Creating placeholder..."
+    else
+        echo "⚠️  Warning: Coverage report not found. Creating placeholder..."
+    fi
     
     # Create placeholder if needed
-    [ ! -d "target/llvm-cov/html" ] && echo "<h1>Coverage Report Not Available</h1><p>The coverage report could not be generated due to build errors.</p>" > "{{sphinx_build_dir}}/html/_static/coverage/index.html" || true
+    if [ ! -f "{{sphinx_build_dir}}/html/_static/coverage/index.html" ]; then
+        echo "<h1>Coverage Report Not Available</h1><p>The coverage report could not be generated due to build errors.</p>" > "{{sphinx_build_dir}}/html/_static/coverage/index.html"
+        echo "✅ Created placeholder coverage report"
+    fi
 
 # Check if Kani verifier is installed
 check-kani:

@@ -12,7 +12,6 @@ use wrt_format::component::{
 
 // Use our prelude instead of conditional imports
 use crate::prelude::*;
-use std::collections::HashMap;
 
 /// Check if a string is a valid semantic version (major.minor.patch)
 fn is_valid_semver(version: &str) -> bool {
@@ -212,7 +211,7 @@ pub fn validate_component_with_config(
         }
 
         // Add result values to the value index space
-        for result_idx in 0..start.results {
+        for _result_idx in 0..start.results {
             let value_idx = ctx.values.len() as u32;
             ctx.add_value(value_idx);
             ctx.mark_value_unconsumed(value_idx);
@@ -260,6 +259,7 @@ struct ValidationContext {
     /// Resource ownership tracking - maps resource handle indices to owner state
     resource_ownership: HashMap<u32, ResourceOwnerState>,
     /// Resource borrowing tracking - maps resource handle indices to borrow state
+    #[allow(dead_code)]
     resource_borrowing: HashMap<u32, ResourceBorrowState>,
 }
 
@@ -365,6 +365,7 @@ impl ValidationContext {
     }
 
     /// Check if a value has been consumed
+    #[allow(dead_code)]
     fn is_value_consumed(&self, idx: u32) -> bool {
         if idx as usize >= self.value_consumed.len() {
             return false; // Ignore invalid indices, validation will fail elsewhere
@@ -448,126 +449,159 @@ impl ValidationContext {
             .insert(resource_idx, ResourceOwnerState::Owned);
     }
 
-    /// Track a resource ownership transfer
+    /// Track the transfer of resource ownership
+    #[allow(dead_code)]
     fn track_resource_transferred(&mut self, resource_idx: u32) -> Result<()> {
-        match self.resource_ownership.get_mut(&resource_idx) {
-            Some(owner_state) => match owner_state {
+        // If the resource doesn't exist in the ownership map, add it
+        if !self.resource_ownership.contains_key(&resource_idx) {
+            return Err(Error::new(kinds::ValidationError(format!(
+                "Cannot transfer ownership of non-existent resource {}",
+                resource_idx
+            ))));
+        }
+
+        // Check the resource is owned (not already transferred or destroyed)
+        if let Some(state) = self.resource_ownership.get(&resource_idx) {
+            match state {
                 ResourceOwnerState::Owned => {
-                    *owner_state = ResourceOwnerState::Transferred;
+                    // Mark as transferred
+                    self.resource_ownership
+                        .insert(resource_idx, ResourceOwnerState::Transferred);
                     Ok(())
                 }
                 ResourceOwnerState::Transferred => Err(Error::new(kinds::ValidationError(
                     format!("Resource {} has already been transferred", resource_idx),
                 ))),
                 ResourceOwnerState::Destroyed => Err(Error::new(kinds::ValidationError(format!(
-                    "Resource {} has been destroyed and cannot be transferred",
+                    "Resource {} has already been destroyed",
                     resource_idx
                 )))),
-            },
-            None => Err(Error::new(kinds::ValidationError(format!(
+            }
+        } else {
+            Err(Error::new(kinds::ValidationError(format!(
                 "Resource {} does not exist",
                 resource_idx
-            )))),
+            ))))
         }
     }
 
-    /// Track a resource being destroyed
+    /// Track the destruction of a resource
+    #[allow(dead_code)]
     fn track_resource_destroyed(&mut self, resource_idx: u32) -> Result<()> {
-        match self.resource_ownership.get_mut(&resource_idx) {
-            Some(owner_state) => match owner_state {
+        // If the resource doesn't exist in the ownership map, add it
+        if !self.resource_ownership.contains_key(&resource_idx) {
+            return Err(Error::new(kinds::ValidationError(format!(
+                "Cannot destroy non-existent resource {}",
+                resource_idx
+            ))));
+        }
+
+        // Check the resource is owned (not already transferred or destroyed)
+        if let Some(state) = self.resource_ownership.get(&resource_idx) {
+            match state {
                 ResourceOwnerState::Owned => {
-                    *owner_state = ResourceOwnerState::Destroyed;
+                    // Mark as destroyed
+                    self.resource_ownership
+                        .insert(resource_idx, ResourceOwnerState::Destroyed);
                     Ok(())
                 }
-                ResourceOwnerState::Transferred => {
-                    Err(Error::new(kinds::ValidationError(format!(
-                        "Resource {} has been transferred and cannot be destroyed",
-                        resource_idx
-                    ))))
-                }
+                ResourceOwnerState::Transferred => Err(Error::new(kinds::ValidationError(
+                    format!("Resource {} has already been transferred", resource_idx),
+                ))),
                 ResourceOwnerState::Destroyed => Err(Error::new(kinds::ValidationError(format!(
                     "Resource {} has already been destroyed",
                     resource_idx
                 )))),
-            },
-            None => Err(Error::new(kinds::ValidationError(format!(
+            }
+        } else {
+            Err(Error::new(kinds::ValidationError(format!(
                 "Resource {} does not exist",
                 resource_idx
-            )))),
+            ))))
         }
     }
 
     /// Track a resource being borrowed
+    #[allow(dead_code)]
     fn track_resource_borrowed(&mut self, resource_idx: u32, scope: u32) -> Result<()> {
-        match self.resource_ownership.get(&resource_idx) {
-            Some(ResourceOwnerState::Owned) => {
-                // Increment borrow count for this resource
-                let borrow_state =
-                    self.resource_borrowing
-                        .entry(resource_idx)
-                        .or_insert(ResourceBorrowState {
-                            borrow_count: 0,
-                            borrow_scope: scope,
-                        });
-
-                if borrow_state.borrow_scope != scope {
-                    // Resources can only be borrowed in one scope at a time
-                    return Err(Error::new(kinds::ValidationError(format!(
-                        "Resource {} is already borrowed in scope {} but attempted to borrow in scope {}",
-                        resource_idx, borrow_state.borrow_scope, scope
-                    ))));
-                }
-
-                borrow_state.borrow_count += 1;
-                Ok(())
-            }
-            Some(ResourceOwnerState::Transferred) => {
-                Err(Error::new(kinds::ValidationError(format!(
-                    "Resource {} has been transferred and cannot be borrowed",
-                    resource_idx
-                ))))
-            }
-            Some(ResourceOwnerState::Destroyed) => {
-                Err(Error::new(kinds::ValidationError(format!(
-                    "Resource {} has been destroyed and cannot be borrowed",
-                    resource_idx
-                ))))
-            }
-            None => Err(Error::new(kinds::ValidationError(format!(
-                "Resource {} does not exist",
+        // If the resource doesn't exist in the ownership map, error
+        if !self.resource_ownership.contains_key(&resource_idx) {
+            return Err(Error::new(kinds::ValidationError(format!(
+                "Cannot borrow non-existent resource {}",
                 resource_idx
-            )))),
+            ))));
         }
-    }
 
-    /// Track a resource borrow being released
-    fn track_resource_borrow_released(&mut self, resource_idx: u32) -> Result<()> {
-        match self.resource_borrowing.get_mut(&resource_idx) {
-            Some(borrow_state) => {
-                if borrow_state.borrow_count > 0 {
-                    borrow_state.borrow_count -= 1;
+        // Check the resource is owned (not already transferred or destroyed)
+        if let Some(state) = self.resource_ownership.get(&resource_idx) {
+            match state {
+                ResourceOwnerState::Owned => {
+                    // Track the borrow
+                    if let Some(borrow_state) = self.resource_borrowing.get_mut(&resource_idx) {
+                        // Resource is already being borrowed, increment count
+                        borrow_state.borrow_count += 1;
+                    } else {
+                        // First borrow of this resource
+                        self.resource_borrowing.insert(
+                            resource_idx,
+                            ResourceBorrowState {
+                                borrow_count: 1,
+                                borrow_scope: scope,
+                            },
+                        );
+                    }
                     Ok(())
-                } else {
+                }
+                ResourceOwnerState::Transferred => {
                     Err(Error::new(kinds::ValidationError(format!(
-                        "Resource {} has no active borrows to release",
+                        "Cannot borrow resource {} as it has been transferred",
                         resource_idx
                     ))))
                 }
+                ResourceOwnerState::Destroyed => Err(Error::new(kinds::ValidationError(format!(
+                    "Cannot borrow resource {} as it has been destroyed",
+                    resource_idx
+                )))),
             }
-            None => Err(Error::new(kinds::ValidationError(format!(
-                "Resource {} has no borrow state",
+        } else {
+            Err(Error::new(kinds::ValidationError(format!(
+                "Resource {} does not exist",
                 resource_idx
-            )))),
+            ))))
         }
     }
 
-    /// Validate that all resource borrows are released in a scope
+    /// Track releasing a resource borrow
+    #[allow(dead_code)]
+    fn track_resource_borrow_released(&mut self, resource_idx: u32) -> Result<()> {
+        // If the resource doesn't exist in the borrow map, error
+        if let Some(borrow_state) = self.resource_borrowing.get_mut(&resource_idx) {
+            if borrow_state.borrow_count > 0 {
+                borrow_state.borrow_count -= 1;
+                Ok(())
+            } else {
+                Err(Error::new(kinds::ValidationError(format!(
+                    "Attempt to release borrow on resource {} with no active borrows",
+                    resource_idx
+                ))))
+            }
+        } else {
+            Err(Error::new(kinds::ValidationError(format!(
+                "Cannot release borrow on resource {} as it is not currently borrowed",
+                resource_idx
+            ))))
+        }
+    }
+
+    /// Validate that all borrows have been released for a given scope
+    #[allow(dead_code)]
     fn validate_all_borrows_released(&self, scope: u32) -> Result<()> {
-        for (resource_idx, borrow_state) in &self.resource_borrowing {
-            if borrow_state.borrow_scope == scope && borrow_state.borrow_count > 0 {
+        // Check all resource borrows to ensure any related to this scope are released
+        for (resource_idx, state) in &self.resource_borrowing {
+            if state.borrow_scope == scope && state.borrow_count > 0 {
                 return Err(Error::new(kinds::ValidationError(format!(
-                    "Resource {} has {} unreleased borrows at the end of scope {}",
-                    resource_idx, borrow_state.borrow_count, scope
+                    "Resource {} still has {} unreleased borrows in scope {}",
+                    resource_idx, state.borrow_count, scope
                 ))));
             }
         }
@@ -576,6 +610,7 @@ impl ValidationContext {
 }
 
 /// Check if two types are compatible for import/export matching
+#[allow(dead_code)]
 fn is_compatible_type(imported_type: &ExternType, exported_type: &ExternType) -> bool {
     use wrt_format::component::ExternType;
 
@@ -721,7 +756,9 @@ fn validate_start(component: &Component, ctx: &mut ValidationContext) -> Result<
 
         // Add result values to the value index space
         for _result_idx in 0..start.results {
-            // Values created by the start function are tracked elsewhere
+            let value_idx = ctx.values.len() as u32;
+            ctx.add_value(value_idx);
+            ctx.mark_value_unconsumed(value_idx);
         }
     }
     Ok(())
@@ -1905,7 +1942,7 @@ fn validate_canon(canon: &wrt_format::component::Canon, ctx: &ValidationContext)
         }
         CanonOperation::Realloc {
             alloc_func_idx,
-            memory_idx,
+            memory_idx: _memory_idx,
         } => {
             // Check that the function index is valid
             if !ctx.is_valid_func(*alloc_func_idx) {
@@ -1930,8 +1967,8 @@ fn validate_canon(canon: &wrt_format::component::Canon, ctx: &ValidationContext)
             Ok(())
         }
         CanonOperation::MemoryCopy {
-            src_memory_idx,
-            dst_memory_idx,
+            src_memory_idx: _src_memory_idx,
+            dst_memory_idx: _dst_memory_idx,
             func_idx,
         } => {
             // Check that the function index is valid
@@ -2088,7 +2125,7 @@ fn validate_values(component: &Component, ctx: &mut ValidationContext) -> Result
 }
 
 /// Validate that encoded data matches the expected type
-fn validate_encoded_value(data: &[u8], val_type: &ValType, ctx: &ValidationContext) -> Result<()> {
+fn validate_encoded_value(data: &[u8], val_type: &ValType, _ctx: &ValidationContext) -> Result<()> {
     use wrt_format::component::ValType;
 
     match val_type {
@@ -2151,7 +2188,7 @@ fn validate_encoded_value(data: &[u8], val_type: &ValType, ctx: &ValidationConte
         }
         ValType::Char => {
             // Validate UTF-8 encoding of a single character
-            match std::str::from_utf8(data) {
+            match crate::prelude::str::from_utf8(data) {
                 Ok(s) => {
                     if s.chars().count() != 1 {
                         return Err(Error::new(kinds::ValidationError(
@@ -2167,7 +2204,7 @@ fn validate_encoded_value(data: &[u8], val_type: &ValType, ctx: &ValidationConte
         }
         ValType::String => {
             // Validate UTF-8 encoding
-            match std::str::from_utf8(data) {
+            match crate::prelude::str::from_utf8(data) {
                 Ok(_) => Ok(()),
                 Err(_) => Err(Error::new(kinds::ValidationError(
                     "Invalid UTF-8 encoding for string value".to_string(),
@@ -2213,6 +2250,8 @@ fn validate_resources(component: &Component, ctx: &mut ValidationContext) -> Res
     Ok(())
 }
 
+/// Validate compatibility between an import and an export
+#[allow(dead_code)]
 fn validate_import_export_compatibility(
     ctx: &ValidationContext,
     imported_type: &ExternType,
@@ -2220,46 +2259,27 @@ fn validate_import_export_compatibility(
 ) -> Result<()> {
     if !is_compatible_type(imported_type, exported_type) {
         return Err(Error::new(kinds::ValidationError(
-            "Incompatible import/export types".to_string(),
+            "Import and export types are not compatible".to_string(),
         )));
     }
+    Ok(())
+}
 
-    // Special validation for resource types
-    match (imported_type, exported_type) {
-        (ExternType::Value(ValType::Own(i_idx)), ExternType::Value(ValType::Own(e_idx))) => {
-            if i_idx != e_idx {
-                return Err(Error::new(kinds::ValidationError(format!(
-                    "Incompatible resource types: imported {} != exported {}",
-                    i_idx, e_idx
-                ))));
-            }
-
-            // Check that both are valid resource types
-            if !ctx.is_valid_resource_type(*i_idx) || !ctx.is_valid_resource_type(*e_idx) {
-                return Err(Error::new(kinds::ValidationError(
-                    "Invalid resource type index in import/export".to_string(),
-                )));
-            }
-        }
-        (ExternType::Value(ValType::Borrow(i_idx)), ExternType::Value(ValType::Borrow(e_idx))) => {
-            if i_idx != e_idx {
-                return Err(Error::new(kinds::ValidationError(format!(
-                    "Incompatible borrowed resource types: imported {} != exported {}",
-                    i_idx, e_idx
-                ))));
-            }
-
-            // Check that both are valid resource types
-            if !ctx.is_valid_resource_type(*i_idx) || !ctx.is_valid_resource_type(*e_idx) {
-                return Err(Error::new(kinds::ValidationError(
-                    "Invalid resource type index in import/export".to_string(),
-                )));
-            }
-        }
-        _ => {
-            // Other types are handled by the compatibility check above
-        }
-    }
-
+/// Register a visitor for a component
+fn register_component_for_visit(
+    &mut self,
+    comp: ComponentIdx,
+    comp_ty: ComponentTypeIdx,
+    instance_exports: &[InstanceExport],
+) -> Result<()> {
+    // TODO: find the component in the instance/component hierarchy
+    let _ctx = self.validate_component(
+        comp,
+        instance_exports
+            .iter()
+            .map(|e| e.name.to_string())
+            .collect(),
+    )?;
+    debug!("registered component for visit: {:?}", comp);
     Ok(())
 }

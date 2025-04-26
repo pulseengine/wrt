@@ -4,7 +4,7 @@
 //! The producers section is a custom section that provides information about the tools
 //! that produced the WebAssembly module.
 
-use crate::{String, Vec};
+use crate::prelude::{String, Vec};
 use wrt_error::Result;
 use wrt_format::binary;
 

@@ -362,7 +362,7 @@ fn generate_rst_file(panic_infos: &[PanicInfo], csv_path: &str) -> Result<()> {
 
         writeln!(file, ".. qual:: {}", info.function_name)?;
         writeln!(file, "   :id: {}", id)?;
-        writeln!(file, "   :status: {}", info.resolution_status)?;
+        writeln!(file, "   :item_status: {}", info.resolution_status)?;
         writeln!(file, "   :implementation: {}", info.handling_strategy)?;
         writeln!(file, "   :tags: panic, {}", safety_level.to_lowercase())?;
         writeln!(file)?;

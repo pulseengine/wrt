@@ -32,7 +32,7 @@ Panic Details
 
 .. qual:: f32_nearest
    :id: WRTQ-XXX (qualification requirement tracking ID).
-   :status: Todo
+   :item_status: Todo
    :implementation: 
    :tags: panic, unknown
 
@@ -46,7 +46,7 @@ Panic Details
 
 .. qual:: f64_nearest
    :id: WRTQ-XXX (qualification requirement tracking ID).
-   :status: Todo
+   :item_status: Todo
    :implementation: 
    :tags: panic, unknown
 
@@ -60,7 +60,7 @@ Panic Details
 
 .. qual:: new
    :id: WRTQ-XXX (qualification requirement tracking ID).
-   :status: Todo
+   :item_status: Todo
    :implementation: 
    :tags: panic, unknown
 
@@ -74,7 +74,7 @@ Panic Details
 
 .. qual:: new
    :id: WRTQ-XXX (qualification requirement tracking ID).
-   :status: Todo
+   :item_status: Todo
    :implementation: 
    :tags: panic, unknown
 
@@ -88,7 +88,7 @@ Panic Details
 
 .. qual:: push
    :id: WRTQ-XXX (qualification requirement tracking ID).
-   :status: Todo
+   :item_status: Todo
    :implementation: Return Result instead of panic
    :tags: panic, unknown
 
@@ -102,7 +102,7 @@ Panic Details
 
 .. qual:: encode
    :id: WRTQ-XXX (qualification requirement tracking ID).
-   :status: WRTQ-XXX (qualification requirement tracking ID).
+   :item_status: WRTQ-XXX (qualification requirement tracking ID).
    :implementation: WRTQ-XXX (qualification requirement tracking ID).
    :tags: panic, unknown
 
@@ -116,7 +116,7 @@ Panic Details
 
 .. qual:: buffer
    :id: WRTQ-XXX (qualification requirement tracking ID).
-   :status: WRTQ-XXX (qualification requirement tracking ID).
+   :item_status: WRTQ-XXX (qualification requirement tracking ID).
    :implementation: WRTQ-XXX (qualification requirement tracking ID).
    :tags: panic, unknown
 
@@ -130,7 +130,7 @@ Panic Details
 
 .. qual:: peak_memory
    :id: WRTQ-XXX (qualification requirement tracking ID).
-   :status: WRTQ-XXX (qualification requirement tracking ID).
+   :item_status: WRTQ-XXX (qualification requirement tracking ID).
    :implementation: WRTQ-XXX (qualification requirement tracking ID).
    :tags: panic, unknown
 
@@ -144,7 +144,7 @@ Panic Details
 
 .. qual:: access_count
    :id: WRTQ-XXX (qualification requirement tracking ID).
-   :status: WRTQ-XXX (qualification requirement tracking ID).
+   :item_status: WRTQ-XXX (qualification requirement tracking ID).
    :implementation: WRTQ-XXX (qualification requirement tracking ID).
    :tags: panic, unknown
 
@@ -158,7 +158,7 @@ Panic Details
 
 .. qual:: increment_access_count
    :id: WRTQ-XXX (qualification requirement tracking ID).
-   :status: WRTQ-XXX (qualification requirement tracking ID).
+   :item_status: WRTQ-XXX (qualification requirement tracking ID).
    :implementation: WRTQ-XXX (qualification requirement tracking ID).
    :tags: panic, unknown
 

@@ -3,7 +3,7 @@
 //! This module provides utilities for parsing and generating the WebAssembly name section.
 //! The name section is a custom section that provides debug information.
 
-use crate::{String, Vec};
+use crate::prelude::{format, String, Vec};
 use wrt_error::{kinds, Error, Result};
 use wrt_format::binary;
 

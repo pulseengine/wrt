@@ -76,6 +76,14 @@ pub use wrt_types::ComponentValue;
 #[cfg(feature = "std")]
 use std::collections::HashMap;
 
+// Include built-in interception module
+pub mod builtins;
+
+// Re-export built-in interception types
+pub use builtins::{
+    BeforeBuiltinResult, BuiltinInterceptor, BuiltinSerialization, InterceptContext,
+};
+
 // Built-in strategy implementations
 pub mod strategies;
 

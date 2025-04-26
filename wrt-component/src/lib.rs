@@ -23,6 +23,7 @@ pub use wrt_error::{Error, Result};
 pub use wrt_host::CallbackRegistry;
 
 // Export modules
+pub mod builtins;
 pub mod canonical;
 pub mod component;
 pub mod execution;
@@ -38,6 +39,7 @@ pub mod type_conversion;
 pub mod values;
 
 // Reexport types
+pub use builtins::{BuiltinHandler, BuiltinRegistry};
 pub use canonical::CanonicalABI;
 pub use export::Export;
 pub use host::Host;
@@ -54,6 +56,7 @@ pub use values::{
     encode_component_value as serialize_component_value, format_valtype_to_common_valtype,
     value_to_component_value,
 };
+pub use wrt_types::builtin::BuiltinType;
 pub use wrt_types::component::ComponentType;
 pub use wrt_types::types::ValueType;
 pub use wrt_types::values::Value;

@@ -75,11 +75,11 @@ default = ["minimal", "alloc", "std"]
 # Minimal feature set
 minimal = ["dep:anyhow", "dep:log", "wrt-types/std", "wrt-decoder/minimal"]
 # Full std feature
-std = ["minimal", "dep:wasmparser", "alloc", "wrt-types/std", "wrt-decoder/std"]
+std = ["minimal", "dep:wasmparser", "alloc", "wrt-types/std", "wrt-decoder/std", "wrt-instructions/std"]
 # alloc feature for heap allocation
 alloc = [] # Tentatively enable with alloc
 # no_std support
-no_std = ["wrt-types/no_std", "wrt-decoder/no_std"]
+no_std = ["wrt-types/no_std", "wrt-decoder/no_std", "wrt-instructions/no_std"]
 # Optimization for non-safety-critical paths
 optimize = ["wrt-types/optimize", "wrt-decoder/optimize"]
 # Safety features for ASIL-B compliance

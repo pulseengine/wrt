@@ -3,7 +3,7 @@
 //! This module provides utilities for parsing and generating the WebAssembly Component Model name section.
 //! The name section is a custom section that provides debug information for components.
 
-use crate::{String, Vec};
+use crate::prelude::{format, String, ToString, Vec};
 use wrt_error::{kinds, Error, Result};
 use wrt_format::{binary, component::Sort};
 

@@ -15,7 +15,7 @@ use wrt_error::{kinds, Error, Result};
 use std::sync::Mutex;
 
 #[cfg(feature = "std")]
-use std::vec::Vec;
+use std::{format, vec::Vec};
 
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 use alloc::{format, string::ToString};
@@ -586,13 +586,7 @@ impl<const N: usize> NoStdMemoryProvider<N> {
     /// Resize the used portion of memory
     pub fn resize(&mut self, new_size: usize) -> Result<()> {
         if new_size > N {
-            #[cfg(feature = "std")]
-            return Err(Error::new(kinds::OutOfBoundsError(format!(
-                "Cannot resize to {} (max: {})",
-                new_size, N
-            ))));
-
-            #[cfg(all(not(feature = "std"), feature = "alloc"))]
+            #[cfg(any(feature = "std", feature = "alloc"))]
             return Err(Error::new(kinds::OutOfBoundsError(format!(
                 "Cannot resize to {} (max: {})",
                 new_size, N
@@ -622,13 +616,7 @@ impl<const N: usize> NoStdMemoryProvider<N> {
         let length = self.last_access_length.load(Ordering::SeqCst);
 
         if length > 0 && offset + length > self.used {
-            #[cfg(feature = "std")]
-            return Err(Error::new(kinds::ValidationError(format!(
-                "Last access out of bounds: offset={}, len={}, used={}",
-                offset, length, self.used
-            ))));
-
-            #[cfg(all(not(feature = "std"), feature = "alloc"))]
+            #[cfg(any(feature = "std", feature = "alloc"))]
             return Err(Error::new(kinds::ValidationError(format!(
                 "Last access out of bounds: offset={}, len={}, used={}",
                 offset, length, self.used
@@ -661,7 +649,7 @@ impl<const N: usize> NoStdMemoryProvider<N> {
 impl<const N: usize> MemoryProvider for NoStdMemoryProvider<N> {
     fn borrow_slice(&self, offset: usize, len: usize) -> Result<SafeSlice<'_>> {
         // Track memory read
-        record_global_operation(OperationType::MemoryRead, VerificationLevel::Standard);
+        record_global_operation(OperationType::MemoryRead, self.verification_level);
 
         // Update access tracking
         self.access_count.fetch_add(1, Ordering::Relaxed);
@@ -681,16 +669,13 @@ impl<const N: usize> MemoryProvider for NoStdMemoryProvider<N> {
         // Get a slice and create a SafeSlice from it
         Ok(SafeSlice::with_verification_level(
             &self.data[offset..end],
-            VerificationLevel::Standard,
+            self.verification_level,
         ))
     }
 
     fn verify_access(&self, offset: usize, len: usize) -> Result<()> {
         // Track validation operation
-        record_global_operation(
-            OperationType::CollectionValidate,
-            VerificationLevel::Standard,
-        );
+        record_global_operation(OperationType::CollectionValidate, self.verification_level);
 
         // Calculate the end offset
         let end = offset.checked_add(len).ok_or_else(|| {
@@ -701,13 +686,7 @@ impl<const N: usize> MemoryProvider for NoStdMemoryProvider<N> {
 
         // Check if the access is within the used portion of memory
         if end > self.used {
-            #[cfg(feature = "std")]
-            return Err(Error::new(kinds::OutOfBoundsError(format!(
-                "Memory access out of bounds: offset={}, len={}, used={}",
-                offset, len, self.used
-            ))));
-
-            #[cfg(all(not(feature = "std"), feature = "alloc"))]
+            #[cfg(any(feature = "std", feature = "alloc"))]
             return Err(Error::new(kinds::OutOfBoundsError(format!(
                 "Memory access out of bounds: offset={}, len={}, used={}",
                 offset, len, self.used
@@ -731,10 +710,7 @@ impl<const N: usize> MemoryProvider for NoStdMemoryProvider<N> {
 impl<const N: usize> MemorySafety for NoStdMemoryProvider<N> {
     fn verify_integrity(&self) -> Result<()> {
         // Track validation operation
-        record_global_operation(
-            OperationType::CollectionValidate,
-            VerificationLevel::Standard,
-        );
+        record_global_operation(OperationType::CollectionValidate, self.verification_level);
 
         // Simple length check
         if self.used > N {
@@ -791,5 +767,39 @@ mod tests {
 
         // Test invalid sub-slice
         assert!(slice.slice(3, 6).is_err());
+    }
+
+    #[test]
+    #[cfg(not(feature = "std"))]
+    fn test_no_std_memory_provider() {
+        // Create a provider with fixed size 10
+        let mut provider = NoStdMemoryProvider::<10>::new();
+
+        // Set some data
+        provider.set_data(&[1, 2, 3, 4, 5]).unwrap();
+
+        // Test valid access
+        let slice = provider.borrow_slice(1, 3).unwrap();
+        assert_eq!(slice.data().unwrap(), &[2, 3, 4]);
+
+        // Test out of bounds
+        assert!(provider.borrow_slice(3, 3).is_err());
+
+        // Test setting verification level
+        provider.set_verification_level(VerificationLevel::None);
+        assert_eq!(provider.verification_level(), VerificationLevel::None);
+
+        // Resize within bounds
+        assert!(provider.resize(8).is_ok());
+
+        // Resize beyond bounds should fail
+        assert!(provider.resize(11).is_err());
+
+        // Verify integrity
+        assert!(provider.verify_integrity().is_ok());
+
+        // Test memory stats
+        let stats = provider.memory_stats();
+        assert_eq!(stats.total_size, 8);
     }
 }

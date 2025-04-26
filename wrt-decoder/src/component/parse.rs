@@ -333,7 +333,7 @@ fn parse_core_extern_type(bytes: &[u8]) -> Result<(wrt_format::component::CoreEx
             // Function type
 
             // Read type index
-            let (type_idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
+            let (_type_idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
             offset += bytes_read;
 
             // Function types are referenced by index, but we need to inline the params/results
@@ -2314,7 +2314,11 @@ fn parse_alias_target(bytes: &[u8]) -> Result<(wrt_format::component::AliasTarge
     }
 }
 
-/// Parse a string
+/// Parse a name from a byte array
+///
+/// This is a utility function to parse a name field, which is common in
+/// various WebAssembly and Component Model sections.
+#[allow(dead_code)]
 pub fn parse_name(bytes: &[u8]) -> Result<(String, usize)> {
     binary::read_string(bytes, 0)
 }

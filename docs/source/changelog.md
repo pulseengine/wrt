@@ -6,6 +6,33 @@ All notable changes to this project will be documented in this file.
 
 ### 🚀 Features
 
+- *(xtask)* Add automatic panic registry update tool
+- *(resources)* Implement resource management system - Add canonical format for binary resources - Add verification functionality - Delete deprecated resource-tests module - Update panic registry documentation
+
+### 💼 Other
+
+- *(deps)* Bump anyhow from 1.0.97 to 1.0.98
+- *(deps)* Bump wast from 227.0.1 to 229.0.0
+- *(deps)* Bump wat from 1.227.1 to 1.229.0
+
+### 🚜 Refactor
+
+- *(wrt-error)* Improve error handling system
+- *(wrt-types)* Update type system implementation
+
+### 📚 Documentation
+
+- Remove outdated panic documentation
+- Restructure documentation with new API and development sections
+
+### ⚙️ Miscellaneous Tasks
+
+- Update GitHub workflow and dependencies
+
+## [0.2.0] - 2025-04-24
+
+### 🚀 Features
+
 - Set default feature to std in Cargo.toml
 - Update configuration, execution improvements, and testing additions
 - Add benchmark tests for engine performance
@@ -44,6 +71,7 @@ All notable changes to this project will be documented in this file.
 - *(modules)* Add new specialized component modules
 - *(component)* Add component examples and tests
 - Implement new features and update modules
+- *(docs)* Add version switcher for documentation
 
 ### 🐛 Bug Fixes
 
@@ -75,12 +103,15 @@ All notable changes to this project will be documented in this file.
 - *(wasm)* Improve WebAssembly memory section specification compliance
 - *(decoder)* Update error type in encode function - Replace non-existent EncodeError with RuntimeError to fix compilation issues in wrt-decoder
 - *(decoder)* Implement CoreInstanceExport variant in encode_alias_section
+- Add missing parameter annotations for unused variables
 
 ### 💼 Other
 
 - Update dependencies and simplify benchmarks
 - *(deps)* Bump actions/setup-java from 3 to 4
 - *(deps)* Bump actions/checkout from 3 to 4
+- *(deps)* Bump bincode from 1.3.3 to 2.0.1
+- *(deps)* Bump clap from 4.5.32 to 4.5.37
 
 ### 🚜 Refactor
 
@@ -120,6 +151,13 @@ All notable changes to this project will be documented in this file.
 - *(wrt-component)* Update component logic and refactor code structures
 - *(wrt-error)* Reorganize test structure for better maintainability
 - Update and refactor source code in wrt-component and wrt directories
+- *(build)* Rename fs commands for consistency
+- *(docs)* Remove Python scripts replaced by Rust implementation
+- *(types)* Implement AsRef/AsMut traits for BoundedVec
+- *(format)* Update binary format implementation
+- *(intercept)* Update intercept strategies
+- *(runtime)* Update table implementation
+- *(qualification)* Update qualification and test utilities
 
 ### 📚 Documentation
 
@@ -137,6 +175,7 @@ All notable changes to this project will be documented in this file.
 - *(safety)* Update safety requirements and implementation details
 - Update documentation and guidelines
 - Update documentation requirements and templates
+- Update changelog and safety documentation
 
 ### 🎨 Styling
 
@@ -185,6 +224,10 @@ All notable changes to this project will be documented in this file.
 - Commit remaining untracked files
 - *(config)* Update configuration files and Bazel build scripts
 - Commit all untracked files
+- Update dependencies and MSRV to 1.86.0
+- Update MSRV to 1.86.0 in project files
+- Update Cargo.lock with new dependencies
+- Upgrade all crates to version 0.2.0
 
 ## [0.1.0] - 2025-03-15
 

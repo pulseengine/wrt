@@ -1,11 +1,21 @@
-//! WebAssembly runtime value types.
+//! WebAssembly value representations
 //!
-//! This module provides types for representing WebAssembly runtime values.
+//! This module provides datatypes for representing WebAssembly values at runtime.
 
 use crate::types::ValueType;
-use core::fmt;
 use wrt_error::{kinds, Error, Result};
 
+#[cfg(feature = "std")]
+use std::thread_local;
+
+// Core imports
+#[cfg(feature = "std")]
+use std::fmt;
+
+#[cfg(not(feature = "std"))]
+use core::fmt;
+
+// RefCell for thread local storage
 #[cfg(feature = "std")]
 use std::cell::RefCell;
 
@@ -13,14 +23,19 @@ use std::cell::RefCell;
 #[allow(unused_imports)]
 use core::cell::RefCell;
 
+// Box for dynamic allocation
 #[cfg(feature = "std")]
 use std::boxed::Box;
 
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::{boxed::Box, format, string::ToString, vec};
+use alloc::boxed::Box;
 
+// Conditional imports for different environments
 #[cfg(feature = "std")]
-use std::thread_local;
+use std::format;
+
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+use alloc::format;
 
 /// Represents a WebAssembly runtime value
 #[derive(Debug, Clone)]
@@ -90,6 +105,14 @@ pub fn v128(bytes: [u8; 16]) -> V128 {
 pub struct FuncRef {
     /// Function index
     pub index: u32,
+}
+
+impl FuncRef {
+    /// Creates a new FuncRef from an index
+    #[must_use]
+    pub fn from_index(index: u32) -> Self {
+        Self { index }
+    }
 }
 
 /// External reference type

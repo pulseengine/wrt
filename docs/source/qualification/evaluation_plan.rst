@@ -15,7 +15,7 @@ This section assesses the target qualification levels for the WRT project.
 
 .. qual:: ISO-26262 Qualification Level
    :id: QUAL_100
-   :status: targeted
+   :item_status: targeted
    :implementation: The WRT targets ASIL D qualification according to ISO-26262 for automotive applications.
 
    ASIL D is the highest automotive safety integrity level and requires:
@@ -27,7 +27,7 @@ This section assesses the target qualification levels for the WRT project.
 
 .. qual:: IEC-61508 Qualification Level
    :id: QUAL_101
-   :status: targeted
+   :item_status: targeted
    :implementation: The WRT targets SIL 3 qualification according to IEC-61508 for general functional safety applications.
 
    SIL 3 requires:
@@ -39,7 +39,7 @@ This section assesses the target qualification levels for the WRT project.
 
 .. qual:: IEC-62304 Qualification Level
    :id: QUAL_102
-   :status: targeted
+   :item_status: targeted
    :implementation: The WRT targets Class C qualification according to IEC-62304 for medical device software.
 
    Class C is for software that could directly contribute to serious injury or death, requiring:
