@@ -1,10 +1,30 @@
 //! WebAssembly instruction type definition
+//!
+//! This module defines the `Instruction` enum that represents all WebAssembly instructions.
+//! Each instruction in this enum corresponds to a pure implementation in the `wrt-instructions` crate.
+//! 
+//! The `Instruction` enum serves as the integration layer that connects the pure instruction
+//! implementations with the runtime engine. When an instruction is executed, the runtime will:
+//!
+//! 1. Match on the instruction variant
+//! 2. Call the corresponding pure implementation from `wrt-instructions`
+//! 3. Handle runtime-specific concerns (stack manipulation, memory management, etc.)
+//!
+//! This separation of concerns allows for:
+//! - Clear boundaries between pure instruction logic and runtime integration
+//! - Support for ahead-of-time compilation
+//! - Reuse of instruction implementations across different execution engines
+//! - Better maintainability and testing
 
 use crate::types::{BlockType, ValueType};
 use core::fmt;
 use std::fmt::{Display, Formatter};
 
 /// Represents a WebAssembly instruction
+///
+/// Each variant corresponds to a pure implementation in the `wrt-instructions` crate.
+/// The execution of these instructions is delegated to the pure implementations,
+/// which are integrated with the runtime engine via the `InstructionExecutor` trait.
 #[derive(PartialEq)]
 pub enum Instruction {
     // Control flow instructions
@@ -709,6 +729,9 @@ pub enum Instruction {
 
 impl Instruction {
     /// Returns true if the instruction is a SIMD instruction
+    ///
+    /// This method helps identify instructions that require SIMD support.
+    /// It's used during both interpretation and ahead-of-time compilation.
     #[must_use]
     pub const fn is_simd(&self) -> bool {
         match self {
@@ -953,6 +976,28 @@ impl Instruction {
             | Self::I16x8RelaxedQ15MulrS => true,
             _ => false,
         }
+    }
+
+    /// Maps this instruction to its corresponding pure implementation in wrt-instructions.
+    ///
+    /// This method is a key component for ahead-of-time compilation, as it allows the runtime
+    /// to delegate the execution logic to pure implementations while maintaining control over
+    /// the execution context and runtime-specific concerns.
+    ///
+    /// # Returns
+    ///
+    /// * A reference to the pure implementation that corresponds to this instruction
+    ///
+    /// # Note
+    ///
+    /// This method is intended to be used by the ahead-of-time compilation engine to create
+    /// optimized instruction blocks. The actual mapping implementation will be completed in
+    /// Phase 4 of the implementation plan.
+    #[cfg(feature = "aot")]
+    pub fn to_pure_implementation(&self) -> Box<dyn PureInstruction<ExecutionContext, Error>> {
+        // This is a placeholder for the actual implementation that will be added
+        // during Phase 4 of the implementation plan.
+        todo!("Implement mapping to pure implementations")
     }
 }
 

@@ -2,6 +2,9 @@
 //!
 //! This module contains implementations for all WebAssembly arithmetic instructions,
 //! including addition, subtraction, multiplication, division, and more.
+//!
+//! This module integrates with the pure implementations in `wrt-instructions/arithmetic_ops.rs`,
+//! providing the runtime-specific context needed for execution.
 
 use crate::{
     behavior::{ControlFlow, ControlFlowBehavior, FrameBehavior, NullBehavior, StackBehavior},
@@ -11,6 +14,24 @@ use crate::{
     values::Value,
 };
 
+// Import the pure implementations from wrt-instructions
+use wrt_instructions::arithmetic_ops::{ArithmeticContext, ArithmeticOp};
+
+/// Runtime adapter that bridges the pure arithmetic operations with the stackless engine
+struct RuntimeArithmeticContext<'a> {
+    stack: &'a mut dyn StackBehavior,
+}
+
+impl<'a> ArithmeticContext for RuntimeArithmeticContext<'a> {
+    fn pop_arithmetic_value(&mut self) -> wrt_instructions::Result<Value> {
+        self.stack.pop().map_err(|e| wrt_instructions::Error::new(e.kind()))
+    }
+
+    fn push_arithmetic_value(&mut self, value: Value) -> wrt_instructions::Result<()> {
+        self.stack.push(value).map_err(|e| wrt_instructions::Error::new(e.kind()))
+    }
+}
+
 /// Execute an i32 addition instruction
 ///
 /// Pops two i32 values from the stack, adds them, and pushes the result.
@@ -19,28 +40,10 @@ pub fn i32_add<TFrame: FrameBehavior + ?Sized>(
     stack: &mut dyn StackBehavior,
     _engine: &StacklessEngine,
 ) -> Result<()> {
-    println!("DEBUG: i32_add - Starting execution");
-    println!("DEBUG: i32_add - Stack before: {:?}", stack.values());
-    let b_val = stack.pop()?;
-    let b = b_val.as_i32().ok_or_else(|| {
-        Error::invalid_type(format!(
-            "Expected I32 for i32.add operand b, found {}",
-            b_val.value_type()
-        ))
-    })?;
-    let a_val = stack.pop()?;
-    let a = a_val.as_i32().ok_or_else(|| {
-        Error::invalid_type(format!(
-            "Expected I32 for i32.add operand a, found {}",
-            a_val.value_type()
-        ))
-    })?;
-    println!("DEBUG: i32_add - Popped values: a={a:?}, b={b:?}");
-    let result = a.wrapping_add(b);
-    println!("DEBUG: i32_add - Result: {a} + {b} = {result}");
-    stack.push(Value::I32(result))?;
-    println!("DEBUG: i32_add - Stack after: {:?}", stack.values());
-    Ok(())
+    // Create the runtime context and delegate to the pure implementation
+    let mut context = RuntimeArithmeticContext { stack };
+    ArithmeticOp::I32Add.execute(&mut context)
+        .map_err(|e| Error::new(e.kind()))
 }
 
 /// Execute an i32 subtraction instruction
@@ -51,22 +54,10 @@ pub fn i32_sub<TFrame: FrameBehavior + ?Sized>(
     stack: &mut dyn StackBehavior,
     _engine: &StacklessEngine,
 ) -> Result<()> {
-    let b_val = stack.pop()?;
-    let b = b_val.as_i32().ok_or_else(|| {
-        Error::invalid_type(format!(
-            "Expected I32 for i32.sub operand b, found {}",
-            b_val.value_type()
-        ))
-    })?;
-    let a_val = stack.pop()?;
-    let a = a_val.as_i32().ok_or_else(|| {
-        Error::invalid_type(format!(
-            "Expected I32 for i32.sub operand a, found {}",
-            a_val.value_type()
-        ))
-    })?;
-    stack.push(Value::I32(a.wrapping_sub(b)))?;
-    Ok(())
+    // Create the runtime context and delegate to the pure implementation
+    let mut context = RuntimeArithmeticContext { stack };
+    ArithmeticOp::I32Sub.execute(&mut context)
+        .map_err(|e| Error::new(e.kind()))
 }
 
 /// Execute an i32 multiplication instruction
@@ -77,22 +68,10 @@ pub fn i32_mul<TFrame: FrameBehavior + ?Sized>(
     stack: &mut dyn StackBehavior,
     _engine: &StacklessEngine,
 ) -> Result<()> {
-    let b_val = stack.pop()?;
-    let b = b_val.as_i32().ok_or_else(|| {
-        Error::invalid_type(format!(
-            "Expected I32 for i32.mul operand b, found {}",
-            b_val.value_type()
-        ))
-    })?;
-    let a_val = stack.pop()?;
-    let a = a_val.as_i32().ok_or_else(|| {
-        Error::invalid_type(format!(
-            "Expected I32 for i32.mul operand a, found {}",
-            a_val.value_type()
-        ))
-    })?;
-    stack.push(Value::I32(a.wrapping_mul(b)))?;
-    Ok(())
+    // Create the runtime context and delegate to the pure implementation
+    let mut context = RuntimeArithmeticContext { stack };
+    ArithmeticOp::I32Mul.execute(&mut context)
+        .map_err(|e| Error::new(e.kind()))
 }
 
 /// Execute an i32 signed division instruction
@@ -104,28 +83,10 @@ pub fn i32_div_s<TFrame: FrameBehavior + ?Sized>(
     stack: &mut dyn StackBehavior,
     _engine: &StacklessEngine,
 ) -> Result<()> {
-    let b_val = stack.pop()?;
-    let b = b_val.as_i32().ok_or_else(|| {
-        Error::invalid_type(format!(
-            "Expected I32 for i32.div_s operand b, found {}",
-            b_val.value_type()
-        ))
-    })?;
-    let a_val = stack.pop()?;
-    let a = a_val.as_i32().ok_or_else(|| {
-        Error::invalid_type(format!(
-            "Expected I32 for i32.div_s operand a, found {}",
-            a_val.value_type()
-        ))
-    })?;
-    if b == 0 {
-        return Err(Error::division_by_zero());
-    }
-    if a == i32::MIN && b == -1 {
-        return Err(Error::integer_overflow());
-    }
-    stack.push(Value::I32(a.wrapping_div(b)))?;
-    Ok(())
+    // Create the runtime context and delegate to the pure implementation
+    let mut context = RuntimeArithmeticContext { stack };
+    ArithmeticOp::I32DivS.execute(&mut context)
+        .map_err(|e| Error::new(e.kind()))
 }
 
 /// Execute an i32 unsigned division instruction
@@ -137,25 +98,10 @@ pub fn i32_div_u<TFrame: FrameBehavior + ?Sized>(
     stack: &mut dyn StackBehavior,
     _engine: &StacklessEngine,
 ) -> Result<()> {
-    let b_val = stack.pop()?;
-    let b = b_val.as_u32().ok_or_else(|| {
-        Error::invalid_type(format!(
-            "Expected I32 for i32.div_u operand b, found {}",
-            b_val.value_type()
-        ))
-    })?;
-    let a_val = stack.pop()?;
-    let a = a_val.as_u32().ok_or_else(|| {
-        Error::invalid_type(format!(
-            "Expected I32 for i32.div_u operand a, found {}",
-            a_val.value_type()
-        ))
-    })?;
-    if b == 0 {
-        return Err(Error::division_by_zero());
-    }
-    stack.push(Value::I32(a.wrapping_div(b) as i32))?;
-    Ok(())
+    // Create the runtime context and delegate to the pure implementation
+    let mut context = RuntimeArithmeticContext { stack };
+    ArithmeticOp::I32DivU.execute(&mut context)
+        .map_err(|e| Error::new(e.kind()))
 }
 
 /// Execute an i32 signed remainder instruction
@@ -167,25 +113,10 @@ pub fn i32_rem_s<TFrame: FrameBehavior + ?Sized>(
     stack: &mut dyn StackBehavior,
     _engine: &StacklessEngine,
 ) -> Result<()> {
-    let b_val = stack.pop()?;
-    let b = b_val.as_i32().ok_or_else(|| {
-        Error::invalid_type(format!(
-            "Expected I32 for i32.rem_s operand b, found {}",
-            b_val.value_type()
-        ))
-    })?;
-    let a_val = stack.pop()?;
-    let a = a_val.as_i32().ok_or_else(|| {
-        Error::invalid_type(format!(
-            "Expected I32 for i32.rem_s operand a, found {}",
-            a_val.value_type()
-        ))
-    })?;
-    if b == 0 {
-        return Err(Error::division_by_zero());
-    }
-    stack.push(Value::I32(a.wrapping_rem(b)))?;
-    Ok(())
+    // Create the runtime context and delegate to the pure implementation
+    let mut context = RuntimeArithmeticContext { stack };
+    ArithmeticOp::I32RemS.execute(&mut context)
+        .map_err(|e| Error::new(e.kind()))
 }
 
 /// Execute an i32 unsigned remainder instruction
@@ -197,25 +128,10 @@ pub fn i32_rem_u<TFrame: FrameBehavior + ?Sized>(
     stack: &mut dyn StackBehavior,
     _engine: &StacklessEngine,
 ) -> Result<()> {
-    let b_val = stack.pop()?;
-    let b = b_val.as_u32().ok_or_else(|| {
-        Error::invalid_type(format!(
-            "Expected I32 for i32.rem_u operand b, found {}",
-            b_val.value_type()
-        ))
-    })?;
-    let a_val = stack.pop()?;
-    let a = a_val.as_u32().ok_or_else(|| {
-        Error::invalid_type(format!(
-            "Expected I32 for i32.rem_u operand a, found {}",
-            a_val.value_type()
-        ))
-    })?;
-    if b == 0 {
-        return Err(Error::division_by_zero());
-    }
-    stack.push(Value::I32(a.wrapping_rem(b) as i32))?;
-    Ok(())
+    // Create the runtime context and delegate to the pure implementation
+    let mut context = RuntimeArithmeticContext { stack };
+    ArithmeticOp::I32RemU.execute(&mut context)
+        .map_err(|e| Error::new(e.kind()))
 }
 
 /// Execute an i32 bitwise AND instruction

@@ -55,8 +55,12 @@ use crate::{Error, Result, Value, ValueType};
 use wrt_error::kinds;
 use wrt_runtime::Memory;
 
+// When no_std but alloc is available
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::{sync::Arc, vec::Vec};
+use alloc::{format, string::ToString};
+
+#[cfg(feature = "std")]
+use std::{format, string::ToString};
 
 /// Memory load operation
 #[derive(Debug, Clone)]
@@ -665,6 +669,21 @@ mod tests {
     use wrt_runtime::MemoryType;
     use wrt_types::types::Limits;
 
+    // Use different constants based on the feature flag
+    #[cfg(feature = "std")]
+    use std::f32::consts::PI as F32_PI;
+    #[cfg(feature = "std")]
+    use std::f64::consts::E as F64_E;
+
+    // For no_std, we need to define our own constants
+    // We allow approximation constants clippy warning as these are test values
+    #[cfg(not(feature = "std"))]
+    #[allow(clippy::approx_constant)]
+    const F32_PI: f32 = 3.141_592_7_f32;
+    #[cfg(not(feature = "std"))]
+    #[allow(clippy::approx_constant)]
+    const F64_E: f64 = 2.718_281_828_459_045_f64;
+
     #[test]
     fn test_memory_load() {
         // Create a memory instance
@@ -679,8 +698,8 @@ mod tests {
         // Write test data
         let i32_value = 0x12345678u32 as i32;
         let i64_value = 0x1234567890ABCDEFu64 as i64;
-        let f32_value = 3.14f32;
-        let f64_value = 2.71828f64;
+        let f32_value = F32_PI;
+        let f64_value = F64_E;
 
         memory.write(0, &i32_value.to_le_bytes()).unwrap();
         memory.write(4, &i64_value.to_le_bytes()).unwrap();
@@ -754,8 +773,8 @@ mod tests {
         // Test values
         let i32_value = Value::I32(0x12345678);
         let i64_value = Value::I64(0x1234567890ABCDEF);
-        let f32_value = Value::F32(3.14);
-        let f64_value = Value::F64(2.71828);
+        let f32_value = Value::F32(F32_PI);
+        let f64_value = Value::F64(F64_E);
 
         // Test i32 store
         let store = MemoryStore::i32(0, 4);
@@ -792,11 +811,11 @@ mod tests {
 
         let mut buffer = [0; 4];
         memory.read(12, &mut buffer).unwrap();
-        assert_eq!(f32::from_le_bytes(buffer), 3.14);
+        assert_eq!(f32::from_le_bytes(buffer), F32_PI);
 
         let mut buffer = [0; 8];
         memory.read(16, &mut buffer).unwrap();
-        assert_eq!(f64::from_le_bytes(buffer), 2.71828);
+        assert_eq!(f64::from_le_bytes(buffer), F64_E);
 
         // Test partial-width stores
         let store = MemoryStore::i32_store8(24, 1);
