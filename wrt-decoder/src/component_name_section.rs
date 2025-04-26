@@ -4,6 +4,10 @@
 //! The name section is a custom section that provides debug information for components.
 
 use crate::prelude::{format, String, ToString, Vec};
+
+#[cfg(not(feature = "std"))]
+use alloc::vec;
+
 use wrt_error::{kinds, Error, Result};
 use wrt_format::{binary, component::Sort};
 
@@ -390,10 +394,10 @@ mod tests {
 
         for i in 0..original.sort_names.len() {
             let (sort1, names1) = &original.sort_names[i];
-            let (sort2, names2) = &decoded.sort_names[i];
+            let (_sort2, names2) = &decoded.sort_names[i];
 
             // Compare sorts
-            assert!(matches!(sort1, sort2));
+            assert!(matches!(sort1, _sort2));
 
             // Compare name maps
             assert_eq!(names1.len(), names2.len());

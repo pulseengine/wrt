@@ -83,10 +83,10 @@ fn test_standalone_name_section() {
 
     for i in 0..original.sort_names.len() {
         let (sort1, names1) = &original.sort_names[i];
-        let (sort2, names2) = &decoded.sort_names[i];
+        let (_sort2, names2) = &decoded.sort_names[i];
 
         // Compare sorts (using debug representation since Sort doesn't implement PartialEq)
-        assert!(matches!(sort1, sort2));
+        assert!(matches!(sort1, _sort2));
 
         // Compare name maps
         assert_eq!(names1.len(), names2.len());
