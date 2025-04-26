@@ -28,6 +28,8 @@ pub enum CallbackType {
     Deallocate,
     /// Callback for custom interceptors
     Intercept,
+    /// Callback for logging
+    Logging,
 }
 
 /// A callback registry for handling WebAssembly component operations
@@ -204,6 +206,28 @@ impl CallbackRegistry {
         }
     }
 
+    /// Get all available built-in types provided by this registry
+    ///
+    /// This method returns a set of all built-in types that are available
+    /// through this registry's host functions.
+    #[must_use]
+    pub fn get_available_builtins(&self) -> crate::HashSet<BuiltinType> {
+        use crate::HashSet;
+
+        let mut builtins = HashSet::new();
+
+        // Check for built-ins in the wasi_builtin module
+        if let Some(builtin_funcs) = self.host_functions.get("wasi_builtin") {
+            for func_name in builtin_funcs.keys() {
+                if let Ok(builtin_type) = func_name.parse::<BuiltinType>() {
+                    builtins.insert(builtin_type);
+                }
+            }
+        }
+
+        builtins
+    }
+
     /// Call a built-in function
     ///
     /// # Arguments
@@ -232,7 +256,7 @@ impl CallbackRegistry {
         if self.has_host_function("wasi_builtin", builtin_name) {
             return self.call_host_function(engine, "wasi_builtin", builtin_name, args);
         }
-        
+
         // If not, delegate to the built-in host
         builtin_host.call_builtin(engine, builtin_type, args)
     }
@@ -242,22 +266,22 @@ impl Clone for CallbackRegistry {
     fn clone(&self) -> Self {
         // Create a new registry
         let mut new_registry = Self::new();
-        
+
         // Clone the interceptor if present
         if let Some(interceptor) = &self.interceptor {
             new_registry.interceptor = Some(interceptor.clone());
         }
-        
+
         // Clone host functions by creating new mappings with cloned handlers
         for (module_name, function_map) in &self.host_functions {
             for (function_name, handler) in function_map {
                 new_registry.register_host_function(module_name, function_name, handler.clone());
             }
         }
-        
+
         // Note: We can't easily clone the callbacks since they're Any type
         // In a real implementation, you would need to find a way to clone these as well
-        
+
         new_registry
     }
 }
@@ -265,8 +289,8 @@ impl Clone for CallbackRegistry {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use wrt_types::values::Value;
     use wrt_types::builtin::BuiltinType;
+    use wrt_types::values::Value;
 
     #[test]
     fn test_callback_registry() {
@@ -323,9 +347,7 @@ mod tests {
 
         // Create a built-in host with a different implementation
         let mut builtin_host = BuiltinHost::new("test-component", "test-host");
-        builtin_host.register_handler(BuiltinType::ResourceCreate, |_, _| {
-            Ok(vec![Value::I32(99)])
-        });
+        builtin_host.register_handler(BuiltinType::ResourceCreate, |_, _| Ok(vec![Value::I32(99)]));
 
         // Test calling via registry - should use the registry's implementation
         let mut engine = ();
@@ -345,15 +367,13 @@ mod tests {
             BuiltinType::ResourceDrop,
             vec![],
         );
-        
+
         // Should fail because neither registry nor host implements it
         assert!(result.is_err());
-        
+
         // Now add it to the host
-        builtin_host.register_handler(BuiltinType::ResourceDrop, |_, _| {
-            Ok(vec![Value::I32(55)])
-        });
-        
+        builtin_host.register_handler(BuiltinType::ResourceDrop, |_, _| Ok(vec![Value::I32(55)]));
+
         // Try again
         let result = registry.call_builtin_function(
             &mut engine,
@@ -361,7 +381,7 @@ mod tests {
             BuiltinType::ResourceDrop,
             vec![],
         );
-        
+
         // Should work now
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), vec![Value::I32(55)]);

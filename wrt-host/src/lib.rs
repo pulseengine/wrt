@@ -14,11 +14,9 @@ extern crate alloc;
 // Re-exports for alloc types
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 pub use alloc::{
-    boxed::Box, collections::BTreeMap as HashMap, collections::BTreeSet as HashSet, format,
+    boxed::Box, collections::BTreeMap as HashMap, collections::BTreeSet as HashSet, fmt, format,
     string::String, string::ToString, sync::Arc, vec, vec::Vec,
 };
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-pub use core::fmt;
 
 // Re-exports for std types
 #[cfg(feature = "std")]
@@ -28,7 +26,9 @@ pub use std::{
 };
 
 // Reexports for convenience
-pub use wrt_error::{Error, Result};
+pub use crate::callback::CallbackType;
+pub use wrt_error::{kinds, Error, Result};
+pub use wrt_types::{Value, ValueType};
 
 // Export modules
 pub mod builder;
