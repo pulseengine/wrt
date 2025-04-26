@@ -18,9 +18,9 @@ use wrt_types::ComponentValue;
 
 // Use direct imports from wrt-types
 use wrt_types::{
-    ComponentType, ExportType, ExternType as TypesExternType, FuncType, GlobalType, InstanceType,
-    Limits, MemoryType as TypesMemoryType, Namespace, ResourceType, TableType as TypesTableType,
-    TypeIndex, ValueType,
+    builtin::BuiltinType, ComponentType, ExportType, ExternType as TypesExternType, FuncType,
+    GlobalType, InstanceType, Limits, MemoryType as TypesMemoryType, Namespace, ResourceType,
+    TableType as TypesTableType, TypeIndex, ValueType,
 };
 
 // Use format types with explicit namespacing
@@ -81,6 +81,8 @@ use crate::type_conversion::{
     types_to_format_extern_type, types_valtype_to_format_valtype, value_type_to_format_val_type,
 };
 
+use crate::debug_println;
+
 /// Represents a component instance
 #[derive(Debug)]
 pub struct Component {
@@ -102,6 +104,8 @@ pub struct Component {
     pub(crate) interceptor: Option<Arc<LinkInterceptor>>,
     /// Resource table for managing component resources
     pub resource_table: ResourceTable,
+    /// Built-in requirements
+    pub(crate) built_in_requirements: Option<BuiltinRequirements>,
 }
 
 /// Represents a component type
@@ -620,13 +624,10 @@ impl Host {
 }
 
 impl Component {
-    /// Creates a new component instance
-    #[must_use]
+    /// Creates a new component with the given type
     pub fn new(component_type: ComponentType) -> Self {
-        // Use ResourceTable::new() without arguments
-        let resource_table = ResourceTable::new();
         Self {
-            component_type, // Use the parameter directly
+            component_type,
             exports: Vec::new(),
             imports: Vec::new(),
             instances: Vec::new(),
@@ -634,7 +635,8 @@ impl Component {
             callback_registry: None,
             runtime: None,
             interceptor: None,
-            resource_table,
+            resource_table: ResourceTable::new(),
+            built_in_requirements: Some(BuiltinRequirements::new()),
         }
     }
 
@@ -875,7 +877,7 @@ impl Component {
             for export in &self.exports {
                 if export.name == import.identifier() {
                     // Found a matching export, use its value
-                    debug_println(&format!(
+                    debug_println!(&format!(
                         "Linking import {} to export {}",
                         import.identifier(),
                         export.name
@@ -915,7 +917,7 @@ impl Component {
                 for import in &self.imports {
                     if export.name == import.name && types_are_compatible(&export.ty, &import.ty) {
                         // For now, just log that we found a match
-                        debug_println(&format!(
+                        debug_println!(&format!(
                             "Found match for instance export {} in component import {}",
                             export.name, import.name
                         ));
@@ -992,7 +994,7 @@ impl Component {
         match &export.value {
             ExternValue::Function(func) => {
                 let func_name = &func.export_name;
-                debug_println(&format!("Executing function: {}", func_name));
+                debug_println!(&format!("Executing function: {}", func_name));
                 self.handle_function_call(func_name, &args)
             }
             _ => Err(Error::new(kinds::RuntimeError(format!(
@@ -1283,7 +1285,7 @@ impl Component {
             if let Some(_registry) = &self.callback_registry {
                 // Mark registry unused
                 let _ = handler; // Avoid unused warning
-                debug_println(&format!(
+                debug_println!(&format!(
                     "Skipping callback registration for {}/{} (needs CallbackType fix)",
                     api_name, func_name
                 ));
@@ -1294,49 +1296,61 @@ impl Component {
 
     /// Instantiate a component from binary bytes
     pub fn instantiate_component(&mut self, bytes: &[u8], imports: Vec<Import>) -> Result<()> {
-        // Decode the component binary format using wrt-decoder
-        let decoded_component = wrt_decoder::component::decode_component(bytes)?;
+        use wrt_decoder::{Component as DecodedComponent, ComponentDecoder};
 
-        // Extract component type information from the decoded component
-        let mut component_type = ComponentType::new();
+        // Parse the component binary
+        let component = match ComponentDecoder::new().parse(bytes) {
+            Ok(component) => component,
+            Err(err) => {
+                return Err(Error::new(format!(
+                    "Failed to parse component binary: {}",
+                    err
+                )))
+            }
+        };
 
-        // Process imports from the decoded component
-        for import in &decoded_component.imports {
-            let name_data = &import.name;
-            let namespace = name_data.namespace.clone();
-            let name = name_data.name.clone();
+        // Detect built-in requirements before instantiation
+        let requirements = scan_builtins(bytes)?;
 
-            let extern_type = Self::convert_format_extern_type(&import.ty)?;
-            component_type.imports.push((name, namespace, extern_type));
+        // Validate that all required built-ins are available in the current configuration
+        if !requirements.is_supported() {
+            let unsupported_builtins = requirements.get_unsupported();
+            return Err(Error::new(format!(
+                "Component requires unsupported built-ins: {:?}",
+                unsupported_builtins
+            )));
         }
 
-        // Process exports from the decoded component
-        for export in &decoded_component.exports {
-            let name = export.name.name.clone();
+        // If we have a callback registry, validate that it can satisfy all requirements
+        if let Some(registry) = &self.callback_registry {
+            let available_builtins = registry.get_available_builtins();
+            let mut missing_builtins = vec![];
 
-            let extern_type = if let Some(ty) = &export.ty {
-                Self::convert_format_extern_type(ty)?
-            } else {
-                // If type is not directly available, create a placeholder
-                return Err(Error::new(kinds::ValidationError(
-                    "Export type is required".to_string(),
+            for builtin in requirements.get_requirements() {
+                if !available_builtins.contains(&builtin) {
+                    missing_builtins.push(builtin);
+                }
+            }
+
+            if !missing_builtins.is_empty() {
+                return Err(Error::new(format!(
+                    "Component requires built-ins not provided by the host: {:?}",
+                    missing_builtins
                 )));
-            };
-
-            component_type.exports.push((name, extern_type));
+            }
         }
 
-        // Process component instances
-        for instance in &decoded_component.instances {
-            let instance_type = Self::convert_instance_type(instance)?;
-            component_type.instances.push(instance_type);
-        }
+        // Continue with the normal instantiation process...
+        self.imports = imports;
 
-        // Update the component's type
+        // Extract the component type
+        let component_type = Self::extract_component_type(&component)?;
         self.component_type = component_type;
 
-        // Now use the normal instantiate method to instantiate the component with the given imports
-        self.instantiate(imports)
+        // Instantiate the component
+        self.instantiate(self.imports.clone())?;
+
+        Ok(())
     }
 
     /// Convert wrt_format::component::ExternType to wrt_types::component::ExternType
@@ -1444,7 +1458,7 @@ impl Component {
                 // For instantiated components, we'll extract exports from the resulting instance
                 // In a full implementation, we would need to resolve the component_idx to the actual component
                 // and determine its exports
-                debug_println(&format!(
+                debug_println!(&format!(
                     "Extracting exports from instantiated component {}",
                     component_idx
                 ));
@@ -1455,28 +1469,28 @@ impl Component {
                         // The actual enum variants may differ, so we'll use match guards instead
                         arg if Self::is_instance_arg(arg) => {
                             let (name, idx) = Self::get_instance_arg_info(arg);
-                            debug_println(&format!(
+                            debug_println!(&format!(
                                 "Found instance arg {} -> instance {}",
                                 name, idx
                             ));
                         }
                         arg if Self::is_core_arg(arg) => {
                             let (name, idx) = Self::get_core_arg_info(arg);
-                            debug_println(&format!(
+                            debug_println!(&format!(
                                 "Found core arg {} -> core instance {}",
                                 name, idx
                             ));
                         }
                         arg if Self::is_function_arg(arg) => {
                             let (name, idx) = Self::get_function_arg_info(arg);
-                            debug_println(&format!(
+                            debug_println!(&format!(
                                 "Found function arg {} -> function {}",
                                 name, idx
                             ));
                         }
                         // Add other argument types as needed
                         _ => {
-                            debug_println("Found other instantiate arg type");
+                            debug_println!("Found other instantiate arg type");
                         }
                     }
                 }
@@ -1485,7 +1499,7 @@ impl Component {
             }
             // Check for other instance expression types
             _ => {
-                debug_println("Unknown instance expression type");
+                debug_println!("Unknown instance expression type");
                 Vec::new() // In a full implementation, we would handle other expression types
             }
         };
@@ -2164,7 +2178,7 @@ impl Component {
         func_idx: u32,
         args: Vec<ComponentValue>,
     ) -> Result<Vec<ComponentValue>> {
-        debug_println(&format!("Calling function index: {}", func_idx));
+        debug_println!(&format!("Calling function index: {}", func_idx));
         let func_export = self.exports.get(func_idx as usize).ok_or_else(|| {
             Error::new(FunctionNotFoundError(format!(
                 // Use specific error struct
@@ -2185,7 +2199,7 @@ impl Component {
         };
         let format_param_types = format_param_types.clone();
         let format_result_types = format_result_types.clone();
-        debug_println(&format!(
+        debug_println!(&format!(
             "Found function export '{}' with type: {:?} -> {:?}",
             func_name, format_param_types, format_result_types
         ));
@@ -2208,14 +2222,14 @@ impl Component {
                 func_name, format_param_valtypes, arg_types
             ))));
         }
-        debug_println("Argument types match expected parameter types.");
+        debug_println!("Argument types match expected parameter types.");
 
         let data = serialize_component_values(&args)?;
-        debug_println(&format!("Serialized args ({} bytes)", data.len()));
+        debug_println!(&format!("Serialized args ({} bytes)", data.len()));
 
         let _data_to_call = if let Some(_interceptor) = self.get_interceptor() {
             // Mark interceptor unused for now
-            debug_println("Skipping lower interception..."); // Skip interception logic
+            debug_println!("Skipping lower interception..."); // Skip interception logic
             data
         } else {
             data
@@ -2225,24 +2239,24 @@ impl Component {
             .into_iter()
             .map(|cv| component_value_to_value(&cv))
             .collect::<Result<Vec<_>>>()?;
-        debug_println(&format!(
+        debug_println!(&format!(
             "Converted {} ComponentValues to Core Values",
             core_args.len()
         ));
 
-        debug_println(&format!(
+        debug_println!(&format!(
             "Executing resolved function '{}' (idx {})",
             func_name, func_idx
         ));
         let core_results = self.call_resolved_function(func_idx, func_name, core_args)?;
-        debug_println(&format!(
+        debug_println!(&format!(
             "Resolved function returned {} core results",
             core_results.len()
         ));
 
         let final_core_results = if let Some(_interceptor) = self.get_interceptor() {
             // Mark interceptor unused
-            debug_println("Skipping lift interception..."); // Skip interception logic
+            debug_println!("Skipping lift interception..."); // Skip interception logic
             core_results
         } else {
             core_results
@@ -2263,7 +2277,7 @@ impl Component {
             // This part needs revisiting based on the definition of value_to_component_value.
             .map(|(value, _format_type)| value_to_component_value(&value /* placeholder */)) // Placeholder call
             .collect::<Result<Vec<_>>>()?;
-        debug_println(&format!(
+        debug_println!(&format!(
             "Converted {} Core Values back to ComponentValues",
             component_results.len()
         ));
@@ -2278,14 +2292,14 @@ impl Component {
         args: Vec<Value>,
     ) -> Result<Vec<Value>> {
         if let Some(runtime) = &self.runtime {
-            debug_println(&format!(
+            debug_println!(&format!(
                 "Delegating call '{}' to runtime instance",
                 func_name
             ));
             runtime.execute_function(func_name, args)
         } else if let Some(_registry) = &self.callback_registry {
             // Mark registry unused
-            debug_println(&format!(
+            debug_println!(&format!(
                 "Delegating call '{}' to host callback registry - SKIPPED (Needs fix)",
                 func_name
             ));
@@ -2304,6 +2318,84 @@ impl Component {
                 func_name
             ))))
         }
+    }
+
+    /// Extract component type information from a decoded component
+    ///
+    /// # Arguments
+    ///
+    /// * `component` - The decoded component
+    ///
+    /// # Returns
+    ///
+    /// A `Result` containing the extracted `ComponentType` or an error
+    fn extract_component_type(component: &wrt_decoder::Component) -> Result<ComponentType> {
+        let mut component_type = ComponentType::new();
+
+        // Process imports from the decoded component
+        for import in component.import_section() {
+            let namespace = import.module.clone();
+            let name = import.name.clone();
+
+            // Convert the import type to our internal type representation
+            let extern_type = match &import.import_type {
+                wrt_decoder::ImportType::Func(_) => TypesExternType::Func(FuncType::default()),
+                wrt_decoder::ImportType::Table(_) => {
+                    TypesExternType::Table(TypesTableType::default())
+                }
+                wrt_decoder::ImportType::Memory(_) => {
+                    TypesExternType::Memory(TypesMemoryType::default())
+                }
+                wrt_decoder::ImportType::Global(_) => {
+                    TypesExternType::Global(GlobalType::default())
+                }
+                wrt_decoder::ImportType::Tag(_) => {
+                    return Err(Error::new(kinds::ValidationError(
+                        "Tag imports are not supported".to_string(),
+                    )));
+                }
+            };
+
+            component_type.imports.push((name, namespace, extern_type));
+        }
+
+        // Process exports from the decoded component
+        for export in component.export_section() {
+            let name = export.name.clone();
+
+            // Convert the export type to our internal type representation
+            let extern_type = match export.export_type {
+                wrt_decoder::ExportType::Func(_) => TypesExternType::Func(FuncType::default()),
+                wrt_decoder::ExportType::Table(_) => {
+                    TypesExternType::Table(TypesTableType::default())
+                }
+                wrt_decoder::ExportType::Memory(_) => {
+                    TypesExternType::Memory(TypesMemoryType::default())
+                }
+                wrt_decoder::ExportType::Global(_) => {
+                    TypesExternType::Global(GlobalType::default())
+                }
+                wrt_decoder::ExportType::Tag(_) => {
+                    return Err(Error::new(kinds::ValidationError(
+                        "Tag exports are not supported".to_string(),
+                    )));
+                }
+            };
+
+            component_type.exports.push((name, extern_type));
+        }
+
+        // Process component instances
+        for instance in component.instance_section() {
+            // For now, create a placeholder type definition
+            let instance_type =
+                FormatComponentTypeDefinition::Instance(wrt_format::component::InstanceType {
+                    exports: Vec::new(),
+                });
+            component_type.instances.push(instance_type);
+        }
+
+        Ok(component_type)
     }
 }
 
@@ -2325,1356 +2417,277 @@ fn get_module_type_index(
     None
 }
 
-// Helper function to format core extern type info
-fn format_core_extern_type(ty: &wrt_format::component::CoreExternType) -> String {
-    match ty {
-        wrt_format::component::CoreExternType::Function { params, results } => {
-            format!(
-                "Function(params={}, results={})",
-                params.len(),
-                results.len()
-            )
+/// A struct to track the built-in requirements of a component
+#[derive(Debug, Clone)]
+pub struct BuiltinRequirements {
+    /// The set of built-in types required by this component
+    requirements: HashSet<BuiltinType>,
+}
+
+impl BuiltinRequirements {
+    /// Create a new, empty set of requirements
+    pub fn new() -> Self {
+        Self {
+            requirements: HashSet::new(),
         }
-        wrt_format::component::CoreExternType::Table {
-            element_type,
-            min,
-            max,
-        } => {
-            format!("Table({:?}, min={}, max={:?})", element_type, min, max)
-        }
-        wrt_format::component::CoreExternType::Memory { min, max, shared } => {
-            format!("Memory(min={}, max={:?}, shared={})", min, max, shared)
-        }
-        wrt_format::component::CoreExternType::Global {
-            value_type,
-            mutable,
-        } => {
-            format!("Global({:?}, mutable={})", value_type, mutable)
-        }
+    }
+
+    /// Add a requirement for a specific built-in type
+    pub fn add_requirement(&mut self, builtin_type: BuiltinType) {
+        self.requirements.insert(builtin_type);
+    }
+
+    /// Get the set of required built-ins
+    pub fn get_requirements(&self) -> &HashSet<BuiltinType> {
+        &self.requirements
+    }
+
+    /// Check if all the requirements can be satisfied with the current runtime
+    pub fn is_supported(&self) -> bool {
+        // For now, all built-ins are supported
+        // In the future, this could check if experimental features are enabled
+        true
+    }
+
+    /// Get a list of unsupported built-ins
+    pub fn get_unsupported(&self) -> Vec<BuiltinType> {
+        // For now, all built-ins are supported
+        vec![]
+    }
+
+    /// Check if the requirements can be satisfied with the given available built-ins
+    pub fn can_be_satisfied(&self, available: &HashSet<BuiltinType>) -> bool {
+        self.requirements.iter().all(|req| available.contains(req))
     }
 }
 
-/// Extract embedded modules from the component binary
-pub fn extract_embedded_modules(bytes: &[u8]) -> Result<Vec<Vec<u8>>> {
-    let mut modules = Vec::new();
-    let mut offset = 8; // Skip magic + version bytes
+impl Default for BuiltinRequirements {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
-    // First, try to find modules in the proper core module section
-    while offset < bytes.len() {
-        // Check if we have at least one byte for section ID
-        if offset >= bytes.len() {
-            break;
+/// Scan a component binary for built-in usage
+///
+/// # Arguments
+///
+/// * `bytes` - The component binary
+///
+/// # Returns
+///
+/// A result containing the set of built-in requirements or an error
+pub fn scan_builtins(bytes: &[u8]) -> Result<BuiltinRequirements> {
+    let mut requirements = BuiltinRequirements::new();
+
+    // Extract the component
+    let component = match wrt_decoder::ComponentDecoder::new().parse(bytes) {
+        Ok(component) => component,
+        Err(err) => {
+            return Err(Error::new(kinds::DecodingError(format!(
+                "Failed to decode component during built-in scan: {}",
+                err
+            ))));
         }
+    };
 
-        let section_id = bytes[offset];
-        offset += 1;
+    // Scan the component functions for built-in usage
+    scan_functions_for_builtins(&component, &mut requirements)?;
 
-        // If this is a core module section
-        if section_id == binary::COMPONENT_CORE_MODULE_SECTION_ID {
-            // Parse the section size
-            if offset >= bytes.len() {
-                break;
-            }
+    // Extract and scan any embedded modules
+    let modules = extract_embedded_modules(bytes)?;
+    for module in modules {
+        scan_module_for_builtins(&module, &mut requirements)?;
+    }
 
-            let (section_size, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
-            offset += bytes_read;
+    Ok(requirements)
+}
 
-            let section_end = offset + section_size as usize;
-            if section_end > bytes.len() {
-                break;
-            }
+/// Scan a WebAssembly module for built-in usage
+///
+/// # Arguments
+///
+/// * `module` - The WebAssembly module
+/// * `requirements` - The requirements to be updated
+///
+/// # Returns
+///
+/// A result indicating success or an error
+fn scan_module_for_builtins(module: &[u8], requirements: &mut BuiltinRequirements) -> Result<()> {
+    // Parse the module
+    let module = match wasmparser::Parser::new(0).parse_all(module) {
+        Ok(module) => module,
+        Err(err) => {
+            return Err(Error::new(kinds::DecodingError(format!(
+                "Failed to parse embedded module during built-in scan: {}",
+                err
+            ))));
+        }
+    };
 
-            // Parse number of modules
-            let (module_count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
-            offset += bytes_read;
-
-            // Extract each module
-            for _ in 0..module_count {
-                // Read module size
-                let (module_size, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
-                offset += bytes_read;
-
-                if offset + module_size as usize > bytes.len() {
-                    break;
+    // Scan for imports from the "wasi_builtin" module
+    for payload in module {
+        if let Ok(wasmparser::Payload::ImportSection(imports)) = payload {
+            for import in imports {
+                match import {
+                    Ok(import) => {
+                        if import.module == "wasi_builtin" {
+                            // Map the import name to the corresponding built-in type
+                            if let Some(builtin_type) = map_import_to_builtin(import.name) {
+                                requirements.add_requirement(builtin_type);
+                            }
+                        }
+                    }
+                    Err(err) => {
+                        return Err(Error::new(kinds::DecodingError(format!(
+                            "Failed to parse import during built-in scan: {}",
+                            err
+                        ))));
+                    }
                 }
-
-                // Extract the module bytes
-                let module_bytes = bytes[offset..offset + module_size as usize].to_vec();
-
-                // Check if this is a valid module
-                if is_valid_module(&module_bytes) {
-                    modules.push(module_bytes);
-                }
-
-                // Move to the next module
-                offset += module_size as usize;
             }
-        } else {
-            // Skip non-module sections
-            if offset >= bytes.len() {
-                break;
-            }
-
-            let (section_size, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
-            offset += bytes_read;
-            offset += section_size as usize;
         }
     }
 
-    // If no modules were found, try to find embedded modules in the raw binary
-    if modules.is_empty() {
-        // The WebAssembly module magic bytes and version
-        let wasm_magic_version = [0x00, 0x61, 0x73, 0x6D, 0x01, 0x00, 0x00, 0x00];
+    Ok(())
+}
 
-        // Look for the core module at the beginning of the binary
-        // This is the most likely place for an inline module in a simple component
-        if bytes.len() > 16 && bytes[0x0C..0x14] == wasm_magic_version {
-            // Debug print to help with troubleshooting
-            debug_println(&format!(
-                "Found potential embedded module at offset 0x0C with magic bytes: [{}]",
-                bytes[0x0C..0x14]
-                    .iter()
-                    .map(|b| format!("0x{:02x}", b))
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            ));
+/// Map an import name to a built-in type
+fn map_import_to_builtin(import_name: &str) -> Option<BuiltinType> {
+    match import_name {
+        "http_fetch" => Some(BuiltinType::Http),
+        "random_get_bytes" => Some(BuiltinType::Random),
+        "clock_now" => Some(BuiltinType::Clock),
+        "stdin_read" => Some(BuiltinType::Stdin),
+        "stdout_write" => Some(BuiltinType::Stdout),
+        "stderr_write" => Some(BuiltinType::Stderr),
+        "fs_read_file" | "fs_write_file" => Some(BuiltinType::FileSystem),
+        _ => None,
+    }
+}
 
-            // The component format often embeds the core module right after the component header
-            // Extract it and check if it's a valid module
-            let mut module_end = 0x14; // Start from after the magic+version
-            let mut section_count = 0;
-
-            // Basic module parsing to find its end
-            while module_end < bytes.len() {
-                // If we've found a reasonable number of sections, this is likely a valid module
-                if section_count >= 5 {
-                    // Extract the potential module
-                    let module_bytes = bytes[0x0C..module_end].to_vec();
-                    if is_valid_module(&module_bytes) {
-                        modules.push(module_bytes);
-                    }
-                    break;
-                }
-
-                // Check for section ID
-                if module_end + 1 < bytes.len() {
-                    let section_id = bytes[module_end];
-                    module_end += 1;
-
-                    // Skip this section
-                    if module_end < bytes.len() {
-                        let (section_size, bytes_read) =
-                            match binary::read_leb128_u32(bytes, module_end) {
-                                Ok(result) => result,
-                                Err(_) => break, // Not a valid LEB128, stop parsing
-                            };
-                        module_end += bytes_read;
-                        module_end += section_size as usize;
-                        section_count += 1;
-                    }
-                } else {
-                    break;
-                }
-            }
+/// Scan component functions for built-in usage
+///
+/// # Arguments
+///
+/// * `component` - The component to scan
+/// * `requirements` - The requirements to be updated
+///
+/// # Returns
+///
+/// A result indicating success or an error
+fn scan_functions_for_builtins(
+    component: &wrt_decoder::Component,
+    requirements: &mut BuiltinRequirements,
+) -> Result<()> {
+    // Check for resource types which indicate built-in usage
+    for type_def in component.types() {
+        if let wrt_decoder::TypeDef::Resource(_) = type_def {
+            // Resources typically require the Resource built-in
+            requirements.add_requirement(BuiltinType::Resource);
         }
+    }
+
+    // Check for async functions which require the Future built-in
+    for func in component.functions() {
+        if func.is_async() {
+            requirements.add_requirement(BuiltinType::Future);
+            break; // Only need to identify one async function
+        }
+    }
+
+    Ok(())
+}
+
+/// Extract embedded modules from a component binary
+///
+/// # Arguments
+///
+/// * `bytes` - The component binary
+///
+/// # Returns
+///
+/// A result containing a vector of embedded modules or an error
+fn extract_embedded_modules(bytes: &[u8]) -> Result<Vec<Vec<u8>>> {
+    let mut modules = Vec::new();
+
+    // This is a simplified implementation - in practice, we would need to fully parse
+    // the component and extract all embedded modules
+    // For now, we'll just look for the first module
+
+    // Parse the component
+    let component = match wrt_decoder::ComponentDecoder::new().parse(bytes) {
+        Ok(component) => component,
+        Err(err) => {
+            return Err(Error::new(kinds::DecodingError(format!(
+                "Failed to decode component while extracting modules: {}",
+                err
+            ))));
+        }
+    };
+
+    // Check if there's an embedded module and extract it
+    // This is a placeholder - the actual implementation would need to extract all modules
+    // from the component binary
+    if let Some(first_module) = component.module_section().first() {
+        modules.push(first_module.content().to_vec());
     }
 
     Ok(modules)
 }
 
-/// Check if a byte array represents a valid WebAssembly module
-pub fn is_valid_module(bytes: &[u8]) -> bool {
-    // Check for magic bytes and version
-    if bytes.len() < 8 {
-        return false;
-    }
-
-    // Check magic number and version - make clear we're using hex values
-    if bytes[0..4] != [0x00, 0x61, 0x73, 0x6D] || // \0asm (0x00, 0x61, 0x73, 0x6D)
-       bytes[4..8] != [0x01, 0x00, 0x00, 0x00]
-    {
-        // Version 1.0 (0x01, 0x00, 0x00, 0x00)
-        debug_println(&format!(
-            "Invalid magic/version. Found: [{}], [{}]",
-            bytes[0..4]
-                .iter()
-                .map(|b| format!("0x{:02x}", b))
-                .collect::<Vec<_>>()
-                .join(", "),
-            bytes[4..8]
-                .iter()
-                .map(|b| format!("0x{:02x}", b))
-                .collect::<Vec<_>>()
-                .join(", ")
-        ));
-        return false;
-    }
-
-    // Validate basic module structure - try to parse sections
-    let mut offset = 8;
-    let mut section_count = 0;
-
-    while offset < bytes.len() {
-        // Read section ID
-        if offset >= bytes.len() {
-            break;
-        }
-        let _section_id = bytes[offset];
-        offset += 1;
-
-        // Read section size
-        if offset >= bytes.len() {
-            return false; // Unexpected end
-        }
-
-        match binary::read_leb128_u32(bytes, offset) {
-            Ok((section_size, bytes_read)) => {
-                offset += bytes_read;
-
-                // Check if section fits in the module
-                if offset + section_size as usize > bytes.len() {
-                    return false;
-                }
-
-                // Skip section content
-                offset += section_size as usize;
-                section_count += 1;
-            }
-            Err(_) => return false, // Invalid LEB128
-        }
-    }
-
-    // A valid module should have at least a few sections
-    section_count >= 1
-}
-
-/// Helper struct for extracted module information
-struct ModuleInfo {
-    exports: Vec<String>,
-    imports: Vec<String>,
-    function_count: usize,
-    memory_count: usize,
-    table_count: usize,
-    global_count: usize,
-}
-
-/// Extract basic information from a WebAssembly module binary
-fn extract_module_info(binary: &[u8]) -> Result<ModuleInfo> {
-    // Basic validation of the module header
-    if binary.len() < 8 || binary[0..4] != [0x00, 0x61, 0x73, 0x6D] {
-        return Err(Error::new(kinds::ParseError(
-            "Invalid module header".to_string(),
-        )));
-    }
-
-    let mut info = ModuleInfo {
-        exports: Vec::new(),
-        imports: Vec::new(),
-        function_count: 0,
-        memory_count: 0,
-        table_count: 0,
-        global_count: 0,
-    };
-
-    // Simple section scanning to extract basic information
-    let mut offset = 8; // Skip magic + version
-    while offset < binary.len() {
-        // Read section ID
-        let section_id = binary[offset];
-        offset += 1;
-
-        // Read section size
-        let mut size_offset = 0;
-        let (size, bytes_read) = binary::read_leb128_u32(binary, offset)?;
-        offset += bytes_read;
-
-        let section_end = offset + size as usize;
-
-        // Process sections of interest
-        match section_id {
-            // Function section
-            1 => {
-                // Read count
-                let (count, _) = binary::read_leb128_u32(binary, offset)?;
-                info.function_count = count as usize;
-            }
-            // Import section
-            2 => {
-                let mut import_offset = offset;
-                let (count, bytes_read) = binary::read_leb128_u32(binary, import_offset)?;
-                import_offset += bytes_read;
-
-                for _ in 0..count {
-                    // Read module name
-                    let (module, bytes_read) = binary::read_string(binary, import_offset)?;
-                    import_offset += bytes_read;
-
-                    // Read field name
-                    let (field, bytes_read) = binary::read_string(binary, import_offset)?;
-                    import_offset += bytes_read;
-
-                    info.imports.push(format!("{}.{}", module, field));
-
-                    // Skip the import kind and type
-                    let kind = binary[import_offset];
-                    import_offset += 1;
-
-                    // Skip type information based on kind
-                    match kind {
-                        0 => {
-                            // Function import
-                            let (_, bytes_read) = binary::read_leb128_u32(binary, import_offset)?;
-                            import_offset += bytes_read;
-                        }
-                        1 => {
-                            // Table import
-                            import_offset += 1; // elem type
-                            let flags = binary[import_offset];
-                            import_offset += 1;
-
-                            // Initial size
-                            let (_, bytes_read) = binary::read_leb128_u32(binary, import_offset)?;
-                            import_offset += bytes_read;
-
-                            // Max size if present
-                            if (flags & 0x01) != 0 {
-                                let (_, bytes_read) =
-                                    binary::read_leb128_u32(binary, import_offset)?;
-                                import_offset += bytes_read;
-                            }
-                        }
-                        2 => {
-                            // Memory import
-                            let flags = binary[import_offset];
-                            import_offset += 1;
-
-                            // Initial size
-                            let (_, bytes_read) = binary::read_leb128_u32(binary, import_offset)?;
-                            import_offset += bytes_read;
-
-                            // Max size if present
-                            if (flags & 0x01) != 0 {
-                                let (_, bytes_read) =
-                                    binary::read_leb128_u32(binary, import_offset)?;
-                                import_offset += bytes_read;
-                            }
-                        }
-                        3 => {
-                            // Global import
-                            import_offset += 1; // value type
-                            import_offset += 1; // mutability
-                        }
-                        _ => {
-                            // Unknown import kind, can't parse further
-                            break;
-                        }
-                    }
-                }
-            }
-            // Table section
-            4 => {
-                let (count, _) = binary::read_leb128_u32(binary, offset)?;
-                info.table_count = count as usize;
-            }
-            // Memory section
-            5 => {
-                let (count, _) = binary::read_leb128_u32(binary, offset)?;
-                info.memory_count = count as usize;
-            }
-            // Global section
-            6 => {
-                let (count, _) = binary::read_leb128_u32(binary, offset)?;
-                info.global_count = count as usize;
-            }
-            // Export section
-            7 => {
-                let mut export_offset = offset;
-                let (count, bytes_read) = binary::read_leb128_u32(binary, export_offset)?;
-                export_offset += bytes_read;
-
-                for _ in 0..count {
-                    // Read name
-                    let (name, bytes_read) = binary::read_string(binary, export_offset)?;
-                    export_offset += bytes_read;
-
-                    info.exports.push(name);
-
-                    // Skip kind and index
-                    export_offset += 1; // kind
-                    let (_, bytes_read) = binary::read_leb128_u32(binary, export_offset)?;
-                    export_offset += bytes_read;
-                }
-            }
-            _ => {
-                // Skip other sections
-            }
-        }
-
-        // Move to the next section
-        offset = section_end;
-    }
-
-    Ok(info)
-}
-
-/// Helper function to format component type info for display
-fn format_component_type_info(ty: &wrt_format::component::ComponentTypeDefinition) -> String {
-    match ty {
-        wrt_format::component::ComponentTypeDefinition::Function { params, results } => {
-            format!(
-                "Function({} params, {} results)",
-                params.len(),
-                results.len()
-            )
-        }
-        wrt_format::component::ComponentTypeDefinition::Instance { exports } => {
-            format!("Instance({} exports)", exports.len())
-        }
-        wrt_format::component::ComponentTypeDefinition::Component { imports, exports } => {
-            format!(
-                "Component({} imports, {} exports)",
-                imports.len(),
-                exports.len()
-            )
-        }
-        wrt_format::component::ComponentTypeDefinition::Value(val_type) => {
-            format!("Value({:?})", val_type)
-        }
-        _ => format!("{:?}", ty),
-    }
-}
-
-/// Helper function to format extern type info for display
-fn format_extern_type_info(ty: &wrt_format::component::ExternType) -> String {
-    match ty {
-        wrt_format::component::ExternType::Function { params, results } => {
-            format!(
-                "Function({} params, {} results)",
-                params.len(),
-                results.len()
-            )
-        }
-        wrt_format::component::ExternType::Value(val_type) => {
-            format!("Value({})", format_val_type(val_type))
-        }
-        wrt_format::component::ExternType::Type(idx) => {
-            format!("Type(idx={})", idx)
-        }
-        wrt_format::component::ExternType::Instance { exports } => {
-            format!("Instance(exports={})", exports.len())
-        }
-        wrt_format::component::ExternType::Component { imports, exports } => {
-            format!(
-                "Component(imports={}, exports={})",
-                imports.len(),
-                exports.len()
-            )
-        }
-    }
-}
-
-// Helper function to format val type
-fn format_val_type(val_type: &wrt_format::component::ValType) -> String {
-    match val_type {
-        wrt_format::component::ValType::Bool => "bool".to_string(),
-        wrt_format::component::ValType::S8 => "s8".to_string(),
-        wrt_format::component::ValType::U8 => "u8".to_string(),
-        wrt_format::component::ValType::S16 => "s16".to_string(),
-        wrt_format::component::ValType::U16 => "u16".to_string(),
-        wrt_format::component::ValType::S32 => "s32".to_string(),
-        wrt_format::component::ValType::U32 => "u32".to_string(),
-        wrt_format::component::ValType::S64 => "s64".to_string(),
-        wrt_format::component::ValType::U64 => "u64".to_string(),
-        wrt_format::component::ValType::F32 => "f32".to_string(),
-        wrt_format::component::ValType::F64 => "f64".to_string(),
-        wrt_format::component::ValType::Char => "char".to_string(),
-        wrt_format::component::ValType::String => "string".to_string(),
-        wrt_format::component::ValType::Ref(idx) => format!("ref({})", idx),
-        wrt_format::component::ValType::Record(fields) => {
-            format!("record(fields={})", fields.len())
-        }
-        wrt_format::component::ValType::Variant(cases) => {
-            format!("variant(cases={})", cases.len())
-        }
-        wrt_format::component::ValType::List(inner) => {
-            format!("list({})", format_val_type(inner))
-        }
-        wrt_format::component::ValType::FixedList(inner, len) => {
-            format!("fixed_list({}, length={})", format_val_type(inner), len)
-        }
-        wrt_format::component::ValType::Tuple(elements) => {
-            format!("tuple(elements={})", elements.len())
-        }
-        wrt_format::component::ValType::Flags(names) => {
-            format!("flags(count={})", names.len())
-        }
-        wrt_format::component::ValType::Enum(cases) => {
-            format!("enum(cases={})", cases.len())
-        }
-        wrt_format::component::ValType::Option(inner) => {
-            format!("option({})", format_val_type(inner))
-        }
-        wrt_format::component::ValType::Result(ok) => {
-            format!("result<{}, _>", format_val_type(ok))
-        }
-        wrt_format::component::ValType::ResultErr(err) => {
-            format!("result<_, {}>", format_val_type(err))
-        }
-        wrt_format::component::ValType::ResultBoth(ok, err) => {
-            format!("result<{}, {}>", format_val_type(ok), format_val_type(err))
-        }
-        wrt_format::component::ValType::Own(idx) => {
-            format!("own({})", idx)
-        }
-        wrt_format::component::ValType::Borrow(idx) => {
-            format!("borrow({})", idx)
-        }
-        wrt_format::component::ValType::ErrorContext => "error_context".to_string(),
-    }
-}
-
-/// Checks if two types are compatible
-fn types_are_compatible(a: &FormatExternType, b: &FormatExternType) -> bool {
-    match (a, b) {
-        (FormatExternType::Function { .. }, FormatExternType::Function { .. }) => {
-            // Convert to our FormatFuncType and use func_types_compatible
-            if let (Some(a_func), Some(b_func)) = (
-                crate::type_conversion::extern_type_to_func_type(a),
-                crate::type_conversion::extern_type_to_func_type(b),
-            ) {
-                return func_types_compatible(&a_func, &b_func);
-            }
-            false
-        }
-        (FormatExternType::Type(a_idx), FormatExternType::Type(b_idx)) => a_idx == b_idx,
-        (FormatExternType::Value(a_val_type), FormatExternType::Value(b_val_type)) => {
-            a_val_type == b_val_type
-        }
-        (
-            FormatExternType::Instance { exports: a_exports },
-            FormatExternType::Instance { exports: b_exports },
-        ) => {
-            // Check that export counts match
-            if a_exports.len() != b_exports.len() {
-                return false;
-            }
-
-            // Check that exports match by name and type
-            for ((a_name, a_type), (b_name, b_type)) in a_exports.iter().zip(b_exports.iter()) {
-                if a_name != b_name || !types_are_compatible(a_type, b_type) {
-                    return false;
-                }
-            }
-
-            true
-        }
-        (
-            FormatExternType::Component {
-                imports: a_imports,
-                exports: a_exports,
-            },
-            FormatExternType::Component {
-                imports: b_imports,
-                exports: b_exports,
-            },
-        ) => {
-            // Check that import counts match
-            if a_imports.len() != b_imports.len() {
-                return false;
-            }
-
-            // Check that import namespaces, names, and types match
-            for ((a_ns, a_name, a_type), (b_ns, b_name, b_type)) in
-                a_imports.iter().zip(b_imports.iter())
-            {
-                if a_ns != b_ns || a_name != b_name || !types_are_compatible(a_type, b_type) {
-                    return false;
-                }
-            }
-
-            // Check that export counts match
-            if a_exports.len() != b_exports.len() {
-                return false;
-            }
-
-            // Check that exports match by name and type
-            for ((a_name, a_type), (b_name, b_type)) in a_exports.iter().zip(b_exports.iter()) {
-                if a_name != b_name || !types_are_compatible(a_type, b_type) {
-                    return false;
-                }
-            }
-
-            true
-        }
-        // Different types are not compatible
-        _ => false,
-    }
-}
-
-/// Checks if two function types are compatible
-fn func_types_compatible(
-    a: &crate::type_conversion::FormatFuncType,
-    b: &crate::type_conversion::FormatFuncType,
-) -> bool {
-    if a.params.len() != b.params.len() || a.results.len() != b.results.len() {
-        return false;
-    }
-
-    for (a_param, b_param) in a.params.iter().zip(b.params.iter()) {
-        if a_param != b_param {
-            return false;
-        }
-    }
-
-    for (a_result, b_result) in a.results.iter().zip(b.results.iter()) {
-        if a_result != b_result {
-            return false;
-        }
-    }
-
-    true
-}
-
-/// Debug println function that uses the host callback registry if available.
-/// Falls back to regular println! if the std feature is enabled.
-#[cfg(feature = "std")]
-fn debug_println(msg: &str) {
-    // Use standard println in debug builds with std feature
-    #[cfg(debug_assertions)]
-    println!("DEBUG: {}", msg);
-}
-
-/// Debug println function that does nothing in no_std mode
-#[cfg(not(feature = "std"))]
-fn debug_println(_msg: &str) {
-    // No-op in no_std mode
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use wrt_format::component::ValType;
-    use wrt_host::function::CloneableFn;
-
-    /// Creates a test component type
-    fn create_test_component_type() -> ComponentType {
-        ComponentType {
-            imports: vec![(
-                "wasi".to_string(),
-                "print".to_string(),
-                ExternType::Function {
-                    params: vec![("message".to_string(), ValType::S32)],
-                    results: vec![],
-                },
-            )],
-            exports: vec![(
-                "add".to_string(),
-                ExternType::Function {
-                    params: vec![
-                        ("a".to_string(), ValType::S32),
-                        ("b".to_string(), ValType::S32),
-                    ],
-                    results: vec![("result".to_string(), ValType::S32)],
-                },
-            )],
-            instances: Vec::new(),
-        }
-    }
-
-    /// Creates a test import
-    fn create_test_import() -> Import {
-        Import {
-            namespace: "wasi".to_string(),
-            name: "print".to_string(),
-            ty: ExternType::Function {
-                params: vec![("message".to_string(), ValType::S32)],
-                results: vec![],
-            },
-            value: ExternValue::Function(FunctionValue {
-                ty: FuncType {
-                    params: vec![("message".to_string(), ValType::S32)],
-                    results: vec![],
-                },
-                export_name: "print".to_string(),
-            }),
-        }
-    }
-
-    /// Test component creation and instantiation
-    #[test]
-    fn test_component_creation_and_instantiation() -> Result<()> {
-        // Create a component
-        let mut component = Component::new(create_test_component_type());
-
-        // Test that it has the right imports and exports
-        assert_eq!(component.component_type.imports.len(), 1);
-        assert_eq!(component.component_type.exports.len(), 1);
-
-        // Instantiate the component
-        component.instantiate(vec![create_test_import()])?;
-
-        // Verify it worked
-        assert!(!component.exports.is_empty());
-        assert!(!component.imports.is_empty());
-
-        Ok(())
-    }
-
-    #[test]
-    fn test_component_export_types() -> Result<()> {
-        // Create a component with a function export
-        let mut component = Component::new(ComponentType {
-            imports: Vec::new(),
-            exports: vec![(
-                "add".to_string(),
-                ExternType::Function {
-                    params: vec![
-                        ("a".to_string(), ValType::S32),
-                        ("b".to_string(), ValType::S32),
-                    ],
-                    results: vec![("result".to_string(), ValType::S32)],
-                },
-            )],
-            instances: Vec::new(),
-        });
-
-        // Add a function export directly
-        component.export_value(
-            ExternType::Function {
-                params: vec![
-                    ("a".to_string(), ValType::S32),
-                    ("b".to_string(), ValType::S32),
-                ],
-                results: vec![("result".to_string(), ValType::S32)],
-            },
-            "add".to_string(),
-        )?;
-
-        // Verify the export
-        let export = component.get_export("add");
-        match &export.ty {
-            ExternType::Function { params, results } => {
-                assert_eq!(params.len(), 2);
-                assert_eq!(results.len(), 1);
-            }
-            _ => {
-                return Err(Error::new(kinds::ValidationError(
-                    "Expected function export".to_string(),
-                )));
-            }
-        }
-
-        Ok(())
-    }
-
-    #[test]
-    fn test_component_invalid_instantiation() {
-        // Create a component type with imports
-        let mut component_type = ComponentType::new();
-
-        // Add an import
-        component_type.imports.push((
-            "add".to_string(),
-            "host".to_string(),
-            ExternType::Function(FuncType {
-                params: vec![
-                    wrt_types::types::ValueType::I32,
-                    wrt_types::types::ValueType::I32,
-                ],
-                results: vec![wrt_types::types::ValueType::I32],
-            }),
-        ));
-
-        // Create a component
-        let mut component = Component::new(component_type);
-
-        // Try to instantiate with no imports
-        let result = component.instantiate(vec![]);
-
-        // Should fail due to missing imports
-        assert!(result.is_err());
-        let err = result.unwrap_err();
-        match err {
-            Error::Validation(msg) => {
-                assert!(
-                    msg.contains("Expected 1 imports, got 0"),
-                    "Unexpected error message: {}",
-                    msg
-                );
-            }
-            _ => panic!("Expected ValidationError, got {:?}", err),
-        }
-
-        // Try with wrong import type
-        let wrong_import = Import {
-            name: "add".to_string(),
-            ty: ExternType::Type(0), // Use Type instead of Memory
-            value: ExternValue::Memory(
-                MemoryValue::new(MemoryType {
-                    limits: wrt_types::types::Limits {
-                        min: 1,
-                        max: Some(2),
-                        shared: false,
-                    },
-                })
-                .unwrap(),
-            ),
-        };
-
-        let result = component.instantiate(vec![wrong_import]);
-
-        // Should fail due to import type mismatch during validation
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_component_function_calls() -> Result<()> {
-        // Create a simple component with a function
-        let mut component = Component::new(ComponentType::default());
-
-        // Create a mock runtime that can handle function calls
-        struct MockRuntime;
-        impl RuntimeInstance {
-            fn mock() -> Self {
-                Self {}
-            }
-
-            #[cfg(test)]
-            fn mock_execute_function(&self, name: &str, args: Vec<Value>) -> Result<Vec<Value>> {
-                // Mock implementation for testing only
-                match name {
-                    "add" => {
-                        if args.len() != 2 {
-                            return Err(Error::new(kinds::ValidationError(
-                                "add expects 2 args".to_string(),
-                            )));
-                        }
-                        if let (Value::I32(a), Value::I32(b)) = (&args[0], &args[1]) {
-                            Ok(vec![Value::I32(a + b)])
-                        } else {
-                            Err(Error::new(TypeMismatchError(
-                                "Expected i32 args".to_string(),
-                            )))
-                        }
-                    }
-                    _ => Err(Error::new(kinds::NotImplementedError(format!(
-                        "Function {} not implemented",
-                        name
-                    )))),
-                }
-            }
-        }
-
-        // Override execute_function for testing
-        impl RuntimeInstance {
-            #[cfg(test)]
-            fn execute_function(&self, name: &str, args: Vec<Value>) -> Result<Vec<Value>> {
-                Self::mock_execute_function(self, name, args)
-            }
-        }
-
-        // Add runtime to component
-        component = component.with_runtime(RuntimeInstance::mock());
-
-        // Add a function export directly (bypassing normal instantiation)
-        component.export_value(
-            ExternType::Function(FuncType {
-                params: vec![
-                    wrt_types::types::ValueType::I32,
-                    wrt_types::types::ValueType::I32,
-                ],
-                results: vec![wrt_types::types::ValueType::I32],
-            }),
-            "add".to_string(),
-        )?;
-
-        // Try calling the function
-        let result = component.execute_function("add", vec![Value::I32(5), Value::I32(3)])?;
-
-        // We should get back the addition result
-        assert_eq!(result.len(), 1);
-        assert_eq!(result[0], Value::I32(8));
-
-        Ok(())
-    }
-
-    #[test]
-    fn test_host_function_management() -> Result<()> {
-        // Create a host
-        let mut host = Host::new();
-
-        // Add a host function
-        let func_value = FunctionValue {
-            ty: FuncType {
-                params: vec![wrt_types::types::ValueType::I32],
-                results: vec![wrt_types::types::ValueType::I32],
-            },
-            export_name: "increment".to_string(),
-        };
-
-        host.add_function("increment".to_string(), func_value);
-
-        // Check that we can retrieve the function
-        let retrieved_func = host.get_function("increment");
-        assert!(retrieved_func.is_some());
-
-        // Check that we can't retrieve a nonexistent function
-        assert!(host.get_function("nonexistent").is_none());
-
-        // Calling the function would fail since we have no implementation
-        let result = host.call_function("increment", &[Value::I32(5)]);
-        assert!(result.is_err());
-        if let Error::NotImplemented(_) = result.unwrap_err() {
-            // Expected error
-        } else {
-            panic!("Expected NotImplementedError");
-        }
-
-        Ok(())
-    }
-
-    #[test]
-    fn test_host_function_call_validation() {
-        // Create a host
-        let mut host = Host::new();
-
-        // Add a host function
-        let func_value = FunctionValue {
-            ty: FuncType {
-                params: vec![
-                    wrt_types::types::ValueType::I32,
-                    wrt_types::types::ValueType::I32,
-                ],
-                results: vec![wrt_types::types::ValueType::I32],
-            },
-            export_name: "add".to_string(),
-        };
-
-        host.add_function("add".to_string(), func_value);
-
-        // Try calling with wrong number of arguments
-        let result = host.call_function("add", &[Value::I32(5)]);
-        assert!(result.is_err());
-
-        // Try calling a nonexistent function
-        let result = host.call_function("nonexistent", &[Value::I32(5)]);
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_export_mutation() -> Result<()> {
-        // Create a component
-        let mut component = Component::new(ComponentType::default());
-
-        // Add a global export
-        component.export_value(
-            ExternType::Global(GlobalType {
-                value_type: wrt_types::types::ValueType::I32,
-                mutable: true,
-            }),
-            "counter".to_string(),
-        )?;
-
-        // Get the export
-        let export = component.get_export("counter")?;
-
-        // Check its type
-        match &export.ty {
-            ExternType::Global(ty) => {
-                assert_eq!(ty.value_type, wrt_types::types::ValueType::I32);
-                assert!(ty.mutable);
-            }
-            _ => panic!("Expected global export"),
-        }
-
-        // Update the export
-        component.export_value(
-            ExternType::Global(GlobalType {
-                value_type: wrt_types::types::ValueType::I64,
-                mutable: false,
-            }),
-            "counter".to_string(),
-        )?;
-
-        // Get the updated export
-        let export = component.get_export("counter")?;
-
-        // Check its new type
-        match &export.ty {
-            ExternType::Global(ty) => {
-                assert_eq!(ty.value_type, wrt_types::types::ValueType::I64);
-                assert!(!ty.mutable);
-            }
-            _ => panic!("Expected global export"),
-        }
-
-        Ok(())
-    }
-
-    #[test]
-    fn test_component_linking() -> Result<()> {
-        // Create a parent component
-        let mut parent = Component::new(ComponentType::new());
-
-        // Create a child component
-        let mut child = Component::new(ComponentType::new());
-
-        // Add an export to child
-        child.export_value(
-            ExternType::Function {
-                params: vec![("a".to_string(), ValType::S32)],
-                results: vec![ValType::S32],
-            },
-            "test_func".to_string(),
-        )?;
-
-        // Link child to parent with namespace
-        parent.link_component(&child, "child")?;
-
-        // Check if export is available in parent with namespace
-        let export = parent.get_export("child.test_func");
-        assert!(export.is_ok());
-
-        Ok(())
-    }
-
-    #[test]
-    fn test_host_function_integration() -> Result<()> {
-        // Create a component
-        let mut component = Component::new(ComponentType::new());
-
-        // Create a callback registry
-        let mut registry = CallbackRegistry::new();
-
-        // Register a host function
-        registry.register_host_function(
-            "test_api",
-            "add",
-            CloneableFn::new(|_, args| {
-                if args.len() != 2 {
-                    return Err(Error::new(kinds::ValidationError(
-                        "add expects 2 arguments".to_string(),
-                    )));
-                }
-
-                match (&args[0], &args[1]) {
-                    (Value::I32(a), Value::I32(b)) => Ok(vec![Value::I32(a + b)]),
-                    _ => Err(Error::new(TypeMismatchError(
-                        "add expects i32 arguments".to_string(),
-                    ))),
-                }
-            }),
-        );
-
-        // Attach registry to component
-        component = component.with_callback_registry(Arc::new(registry));
-
-        // Register host API in component
-        component.register_host_api(
-            "test_api",
-            vec![(
-                "add".to_string(),
-                FuncType {
-                    params: vec![ValType::S32, ValType::S32],
-                    results: vec![ValType::S32],
-                },
-                // In a real implementation, we would create a real handler here
-                // For test, this is just a placeholder
-                CloneableFn::new(|_, _| Ok(vec![Value::I32(0)])),
-            )],
-        )?;
-
-        // Check if export is available
-        let export = component.get_export("test_api.add");
-        assert!(export.is_ok());
-
-        Ok(())
-    }
-}
-
-/// Placeholder clone implementation - this would need to be properly implemented
-impl Clone for Component {
-    fn clone(&self) -> Self {
-        // Create a new component with the same type
-        let mut component = Self::new(self.component_type.clone());
-
-        // Clone exports, imports, instances, etc.
-        component.exports = self.exports.clone();
-        component.imports = self.imports.clone();
-        component.instances = self.instances.clone();
-
-        // Note: We don't clone linked_components to avoid circular references
+/// Convert a component value to a runtime value
+pub fn component_value_to_value(
+    component_value: &wrt_types::ComponentValue,
+) -> wrt_intercept::Value {
+    use wrt_intercept::Value;
+    use wrt_types::ComponentValue;
+
+    match component_value {
+        ComponentValue::Bool(v) => Value::I32(if *v { 1 } else { 0 }),
+        ComponentValue::S8(v) => Value::I32(*v as i32),
+        ComponentValue::U8(v) => Value::I32(*v as i32),
+        ComponentValue::S16(v) => Value::I32(*v as i32),
+        ComponentValue::U16(v) => Value::I32(*v as i32),
+        ComponentValue::S32(v) => Value::I32(*v),
+        ComponentValue::U32(v) => Value::I32(*v as i32),
+        ComponentValue::S64(v) => Value::I64(*v),
+        ComponentValue::U64(v) => Value::I64(*v as i64),
+        ComponentValue::F32(v) => Value::F32(*v),
+        ComponentValue::F64(v) => Value::F64(*v),
+        ComponentValue::Handle(v) => Value::I32(*v as i32),
+        ComponentValue::Borrow(v) => Value::I32(*v as i32),
+        // For complex types, we need to serialize them properly
         // This is a simplified implementation
-
-        component
+        _ => Value::I32(0),
     }
 }
 
-/// Try to extract the inline module at module_idx 0
-fn extract_inline_module(bytes: &[u8]) -> Result<Option<Vec<u8>>> {
-    // In this special case, we're looking specifically at module 0
-    // which is often embedded directly in the binary after the component header
-    if bytes.len() < 16 {
-        return Ok(None);
-    }
+/// Convert a runtime value to a component value
+pub fn value_to_component_value(value: &wrt_intercept::Value) -> wrt_types::ComponentValue {
+    use wrt_intercept::Value;
+    use wrt_types::ComponentValue;
 
-    // Check if at offset 0xC we have the start of a WebAssembly module
-    if bytes[0xC..0x14] != [0x00, 0x61, 0x73, 0x6D] {
-        // \0asm magic
-        return Ok(None);
-    }
-
-    if bytes[0x10..0x14] != [0x01, 0x00, 0x00, 0x00] {
-        // version 1.0
-        return Ok(None);
-    }
-
-    // We found a module, now need to determine its size
-    let mut offset = 0x14; // Start after the magic+version
-    let mut section_count = 0;
-    let mut valid_module = true;
-
-    // Parse the module sections to find its end
-    while offset < bytes.len() {
-        // If we've found enough sections, this is likely a valid module
-        if section_count >= 5 {
-            break;
-        }
-
-        // Check if we have a section ID
-        if offset >= bytes.len() {
-            valid_module = false;
-            break;
-        }
-
-        let _section_id = bytes[offset];
-        offset += 1;
-
-        // Parse section size
-        if offset >= bytes.len() {
-            valid_module = false;
-            break;
-        }
-
-        match binary::read_leb128_u32(bytes, offset) {
-            Ok((section_size, bytes_read)) => {
-                offset += bytes_read;
-
-                // Check if section fits in the binary
-                if offset + section_size as usize > bytes.len() {
-                    valid_module = false;
-                    break;
-                }
-
-                // Skip section content
-                offset += section_size as usize;
-                section_count += 1;
-            }
-            Err(_) => {
-                valid_module = false;
-                break;
-            }
-        }
-    }
-
-    if valid_module {
-        // Extract the module
-        let module_bytes = bytes[0xC..offset].to_vec();
-        Ok(Some(module_bytes))
-    } else {
-        Ok(None)
+    match value {
+        Value::I32(v) => ComponentValue::S32(*v),
+        Value::I64(v) => ComponentValue::S64(*v),
+        Value::F32(v) => ComponentValue::F32(*v),
+        Value::F64(v) => ComponentValue::F64(*v),
+        Value::ExternRef(_) => ComponentValue::Void,
+        Value::FuncRef(_) => ComponentValue::Void,
+        Value::V128(_) => ComponentValue::Void,
     }
 }
 
-/// Summary information about a WebAssembly Component
-#[derive(Debug)]
-pub struct ComponentSummary {
-    /// Component name
-    pub name: String,
-    /// Number of core modules in the component
-    pub core_modules_count: u32,
-    /// Number of core instances in the component
-    pub core_instances_count: u32,
-    /// Number of aliases in the component
-    pub aliases_count: u32,
-    /// Number of imports in the component
-    pub imports_count: u32,
-    /// Number of exports in the component
-    pub exports_count: u32,
-    /// Details about core modules
-    pub core_modules: Vec<CoreModuleInfo>,
-    /// Details about core instances
-    pub core_instances: Vec<CoreInstanceInfo>,
-    /// Details about aliases
-    pub aliases: Vec<AliasInfo>,
-    /// Component types
-    pub component_types: Vec<wrt_format::Component>,
+/// Convert parameter to value type
+pub fn convert_param_to_value_type(
+    param: &wrt_format::component::ValType,
+) -> wrt_types::types::ValueType {
+    crate::type_conversion::format_val_type_to_value_type(param)
+        .unwrap_or(wrt_types::types::ValueType::I32)
 }
 
-impl std::fmt::Display for ComponentSummary {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "Component Summary:")?;
-        writeln!(f, "  Name: {}", self.name)?;
-        writeln!(f, "  Core Modules: {}", self.core_modules_count)?;
-        writeln!(f, "  Core Instances: {}", self.core_instances_count)?;
-        writeln!(f, "  Aliases: {}", self.aliases_count)?;
-        writeln!(f, "  Imports: {}", self.imports_count)?;
-        writeln!(f, "  Exports: {}", self.exports_count)?;
-
-        if !self.core_modules.is_empty() {
-            writeln!(f, "\nCore Modules:")?;
-            for module in &self.core_modules {
-                writeln!(f, "  - Module {}: {} bytes", module.idx, module.size)?;
-            }
-        }
-
-        if !self.core_instances.is_empty() {
-            writeln!(f, "\nCore Instances:")?;
-            for (i, instance) in self.core_instances.iter().enumerate() {
-                writeln!(f, "  - Instance {}: Module {}", i, instance.module_idx)?;
-                if !instance.args.is_empty() {
-                    writeln!(f, "    Args: {:?}", instance.args)?;
-                }
-            }
-        }
-
-        if !self.aliases.is_empty() {
-            writeln!(f, "\nAliases:")?;
-            for (i, alias) in self.aliases.iter().enumerate() {
-                writeln!(
-                    f,
-                    "  - Alias {}: {} from Instance {} export '{}'",
-                    i, alias.kind, alias.instance_idx, alias.export_name
-                )?;
-            }
-        }
-
-        Ok(())
-    }
-}
-
-/// Information about a core module in a component
-#[derive(Debug)]
-pub struct CoreModuleInfo {
-    /// Module index
-    pub idx: u32,
-    /// Module size in bytes
-    pub size: usize,
-}
-
-/// Information about a core instance in a component
-#[derive(Debug)]
-pub struct CoreInstanceInfo {
-    /// Index of the module instantiated
-    pub module_idx: u32,
-    /// Arguments passed to the instantiation
-    pub args: Vec<String>,
-}
-
-/// Information about an alias in a component
-#[derive(Debug)]
-pub struct AliasInfo {
-    /// Kind of alias
-    pub kind: String,
-    /// Index of the instance being aliased
-    pub instance_idx: u32,
-    /// Name of the export being aliased
-    pub export_name: String,
-}
-
-/// Extended information about an import in a component
-#[derive(Debug, Clone)]
-pub struct ExtendedImportInfo {
-    /// Import namespace
-    pub namespace: String,
-    /// Import name
-    pub name: String,
-    /// Kind of import (as string representation)
-    pub kind: String,
-}
-
-/// Extended information about an export in a component
-#[derive(Debug, Clone)]
-pub struct ExtendedExportInfo {
-    /// Export name
-    pub name: String,
-    /// Kind of export (as string representation)
-    pub kind: String,
-    /// Export index
-    pub index: u32,
-}
-
-/// Information about an import in a core module
-#[derive(Debug, Clone)]
-pub struct ModuleImportInfo {
-    /// Module name (namespace)
-    pub module: String,
-    /// Import name
-    pub name: String,
-    /// Kind of import (as string representation)
-    pub kind: String,
-    /// Index within the type
-    pub index: u32,
-    /// Module index that contains this import
-    pub module_idx: u32,
-}
-
-/// Information about an export in a core module
-#[derive(Debug, Clone)]
-pub struct ModuleExportInfo {
-    /// Export name
-    pub name: String,
-    /// Kind of export (as string representation)
-    pub kind: String,
-    /// Index within the type
-    pub index: u32,
-    /// Module index that contains this export
-    pub module_idx: u32,
-}
-
-// Helper function to convert CoreSort to string
-fn kind_to_string(kind: &wrt_format::component::CoreSort) -> String {
-    match kind {
-        wrt_format::component::CoreSort::Function => "Function".to_string(),
-        wrt_format::component::CoreSort::Table => "Table".to_string(),
-        wrt_format::component::CoreSort::Memory => "Memory".to_string(),
-        wrt_format::component::CoreSort::Global => "Global".to_string(),
-        wrt_format::component::CoreSort::Type => "Type".to_string(),
-        wrt_format::component::CoreSort::Module => "Module".to_string(),
-        wrt_format::component::CoreSort::Instance => "Instance".to_string(),
-    }
-}
-
-// Helper function to convert Sort to string
-fn sort_to_string(sort: &wrt_format::component::Sort) -> String {
-    match sort {
-        wrt_format::component::Sort::Core(core_sort) => {
-            format!("Core({})", kind_to_string(core_sort))
-        }
-        wrt_format::component::Sort::Function => "Function".to_string(),
-        wrt_format::component::Sort::Value => "Value".to_string(),
-        wrt_format::component::Sort::Type => "Type".to_string(),
-        wrt_format::component::Sort::Component => "Component".to_string(),
-        wrt_format::component::Sort::Instance => "Instance".to_string(),
-    }
-}
-
-/// Convert a function parameter entry to a ValueType
-fn convert_param_to_value_type(param: &ValueType) -> Result<ValueType> {
-    // Just return the value type directly - already in the right format
-    Ok(param.clone())
-}
-
-/// Converts a wrt_types::types::ValueType to wrt_format::component::ValType
-fn value_to_format_val_type(
-    value_type: &wrt_types::types::ValueType,
-) -> Result<wrt_format::component::ValType> {
-    // Use the conversion utility from type_conversion.rs
-    value_type_to_format_val_type(value_type)
-}
-
-// Conversion between verification levels
-fn convert_verification_level(
+/// Convert verification level
+pub fn convert_verification_level(
     level: wrt_types::VerificationLevel,
 ) -> crate::resources::VerificationLevel {
     match level {
@@ -3683,30 +2696,4 @@ fn convert_verification_level(
         wrt_types::VerificationLevel::Standard => crate::resources::VerificationLevel::Critical,
         wrt_types::VerificationLevel::Full => crate::resources::VerificationLevel::Full,
     }
-}
-
-// Helper function to convert a format type to a runtime type
-fn convert_format_extern_type(extern_type: &FormatExternType) -> Result<ExternType> {
-    // Use the FromFormat trait implementation
-    ExternType::from_format(extern_type.clone())
-}
-
-// Helper function to convert a format type definition to a runtime type
-fn convert_component_type(
-    type_def: &wrt_format::component::ComponentTypeDefinition,
-) -> Result<ComponentType> {
-    // Use the helper function from component_conversion
-    format_type_def_to_component_type(type_def)
-}
-
-// Helper function to check if two types are compatible
-fn types_are_compatible(a: &ExternType, b: &ExternType) -> bool {
-    // Use the compatibility function from wrt_types
-    wrt_types::component::types_are_compatible(a, b)
-}
-
-// If needed, create a helper function to construct a ComponentType
-fn create_component_type() -> ComponentType {
-    // This is just a simple default implementation
-    ComponentType::default()
 }

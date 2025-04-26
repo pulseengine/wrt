@@ -210,30 +210,67 @@ pub fn format_to_types_extern_type(
 ) -> Result<TypesExternType> {
     match format_extern_type {
         FormatExternType::Function { params, results } => {
-            let converted_params: Vec<(String, TypesValType)> = params
+            // Convert parameter and result types from FormatValType to ValueType
+            let params_value_types: Result<Vec<ValueType>> = params
                 .iter()
-                .map(|(name, val_type)| (name.clone(), format_valtype_to_types_valtype(val_type)))
+                .map(|(_, val_type)| format_val_type_to_value_type(val_type))
                 .collect();
 
-            let converted_results: Vec<(String, TypesValType)> = results
-                .iter()
-                .map(|(name, val_type)| (name.clone(), format_valtype_to_types_valtype(val_type)))
-                .collect();
+            let results_value_types: Result<Vec<ValueType>> =
+                results.iter().map(format_val_type_to_value_type).collect();
 
-            Ok(TypesExternType::Function(TypesFuncType {
-                params: converted_params,
-                results: converted_results,
+            Ok(TypesExternType::Function(wrt_types::component::FuncType {
+                params: params_value_types?,
+                results: results_value_types?,
             }))
         }
         FormatExternType::Instance { exports } => {
-            // Convert instance type - this is simplified
-            // Create a default InstanceType since we don't have proper way to convert yet
-            Ok(TypesExternType::Instance(InstanceType { exports: vec![] }))
+            // Convert exports to TypesExternType
+            let converted_exports: Result<Vec<(String, TypesExternType)>> = exports
+                .iter()
+                .map(|(name, ext_type)| Ok((name.clone(), format_to_types_extern_type(ext_type)?)))
+                .collect();
+
+            Ok(TypesExternType::Instance(InstanceType {
+                exports: converted_exports?,
+            }))
         }
         FormatExternType::Component { imports, exports } => {
-            // Convert component type - this is simplified
-            // Create a default ComponentType since we don't have proper way to convert yet
-            Ok(TypesExternType::Component(ComponentType::default()))
+            // Convert imports to TypesExternType
+            let converted_imports: Result<Vec<(String, String, TypesExternType)>> = imports
+                .iter()
+                .map(|(ns, name, ext_type)| {
+                    Ok((
+                        ns.clone(),
+                        name.clone(),
+                        format_to_types_extern_type(ext_type)?,
+                    ))
+                })
+                .collect();
+
+            // Convert exports to TypesExternType
+            let converted_exports: Result<Vec<(String, TypesExternType)>> = exports
+                .iter()
+                .map(|(name, ext_type)| Ok((name.clone(), format_to_types_extern_type(ext_type)?)))
+                .collect();
+
+            Ok(TypesExternType::Component(ComponentType {
+                imports: converted_imports?,
+                exports: converted_exports?,
+                instances: vec![],
+            }))
+        }
+        FormatExternType::Value(val_type) => {
+            // Handle value type - convert to appropriate TypesExternType
+            Err(Error::new(kinds::NotImplementedError(
+                "Value ExternType not supported in wrt_types".to_string(),
+            )))
+        }
+        FormatExternType::Type(type_idx) => {
+            // Handle type reference - convert to appropriate TypesExternType
+            Err(Error::new(kinds::NotImplementedError(
+                "Type reference ExternType not supported in wrt_types".to_string(),
+            )))
         }
     }
 }
@@ -244,40 +281,145 @@ pub fn types_to_format_extern_type(
 ) -> Result<FormatExternType> {
     match types_extern_type {
         TypesExternType::Function(func_type) => {
-            let converted_params: Vec<(String, FormatValType)> = func_type
+            // Convert parameter and result types to named parameters for FormatExternType
+            let converted_params: Result<Vec<(String, FormatValType)>> = func_type
                 .params
                 .iter()
-                .map(|(name, val_type)| (name.clone(), types_valtype_to_format_valtype(val_type)))
+                .enumerate()
+                .map(|(i, val_type)| {
+                    let param_name = format!("p{}", i);
+                    let format_val_type = value_type_to_format_val_type(val_type)?;
+                    Ok((param_name, format_val_type))
+                })
                 .collect();
 
-            let converted_results: Vec<(String, FormatValType)> = func_type
+            // Convert result types to unnamed results for FormatExternType
+            let converted_results: Result<Vec<(String, FormatValType)>> = func_type
                 .results
                 .iter()
-                .map(|(name, val_type)| (name.clone(), types_valtype_to_format_valtype(val_type)))
+                .enumerate()
+                .map(|(i, val_type)| {
+                    let result_name = format!("r{}", i);
+                    let format_val_type = value_type_to_format_val_type(val_type)?;
+                    Ok((result_name, format_val_type))
+                })
                 .collect();
 
             Ok(FormatExternType::Function {
-                params: converted_params,
-                results: converted_results,
+                params: converted_params?,
+                results: converted_results?,
             })
         }
         TypesExternType::Instance(instance_type) => {
-            // Convert instance type - simplified for now
-            // Create an empty exports map for now
-            Ok(FormatExternType::Instance { exports: vec![] })
-        }
-        TypesExternType::Component(component_type) => {
-            // Convert component type - simplified for now
-            Ok(FormatExternType::Component {
-                imports: vec![],
-                exports: vec![],
+            // Convert exports to FormatExternType
+            let converted_exports: Result<Vec<(String, FormatExternType)>> = instance_type
+                .exports
+                .iter()
+                .map(|(name, ext_type)| Ok((name.clone(), types_to_format_extern_type(ext_type)?)))
+                .collect();
+
+            Ok(FormatExternType::Instance {
+                exports: converted_exports?,
             })
         }
-        TypesExternType::Resource(_) => {
-            // wrt_format doesn't have a resource external type right now
+        TypesExternType::Component(component_type) => {
+            // Convert imports to FormatExternType
+            let converted_imports: Result<Vec<(String, String, FormatExternType)>> = component_type
+                .imports
+                .iter()
+                .map(|(ns, name, ext_type)| {
+                    Ok((
+                        ns.clone(),
+                        name.clone(),
+                        types_to_format_extern_type(ext_type)?,
+                    ))
+                })
+                .collect();
+
+            // Convert exports to FormatExternType
+            let converted_exports: Result<Vec<(String, FormatExternType)>> = component_type
+                .exports
+                .iter()
+                .map(|(name, ext_type)| Ok((name.clone(), types_to_format_extern_type(ext_type)?)))
+                .collect();
+
+            Ok(FormatExternType::Component {
+                imports: converted_imports?,
+                exports: converted_exports?,
+            })
+        }
+        TypesExternType::Table(table_type) => {
+            // wrt_format doesn't have a table external type at the component level
             Err(Error::new(kinds::NotImplementedError(
-                "Resource ExternType not supported in wrt_format".to_string(),
+                "Table ExternType not supported in wrt_format::component".to_string(),
             )))
         }
+        TypesExternType::Memory(memory_type) => {
+            // wrt_format doesn't have a memory external type at the component level
+            Err(Error::new(kinds::NotImplementedError(
+                "Memory ExternType not supported in wrt_format::component".to_string(),
+            )))
+        }
+        TypesExternType::Global(global_type) => {
+            // wrt_format doesn't have a global external type at the component level
+            Err(Error::new(kinds::NotImplementedError(
+                "Global ExternType not supported in wrt_format::component".to_string(),
+            )))
+        }
+        TypesExternType::Resource(resource_type) => {
+            // wrt_format doesn't have a direct resource external type
+            Err(Error::new(kinds::NotImplementedError(
+                "Resource ExternType not directly supported in wrt_format".to_string(),
+            )))
+        }
+    }
+}
+
+/// Convert the format ValType to the common ValueType used in the runtime
+pub fn format_to_common_val_type(val_type: &FormatValType) -> Result<ValueType> {
+    match val_type {
+        FormatValType::S32 => Ok(ValueType::I32),
+        FormatValType::S64 => Ok(ValueType::I64),
+        FormatValType::F32 => Ok(ValueType::F32),
+        FormatValType::F64 => Ok(ValueType::F64),
+        _ => Err(Error::new(kinds::NotImplementedError(format!(
+            "Cannot convert {:?} to core ValueType",
+            val_type
+        )))),
+    }
+}
+
+/// Convert the common ValueType to a format ValType
+pub fn common_to_format_val_type(value_type: &ValueType) -> Result<FormatValType> {
+    match value_type {
+        ValueType::I32 => Ok(FormatValType::S32),
+        ValueType::I64 => Ok(FormatValType::S64),
+        ValueType::F32 => Ok(FormatValType::F32),
+        ValueType::F64 => Ok(FormatValType::F64),
+        _ => Err(Error::new(kinds::NotImplementedError(format!(
+            "Value type {:?} cannot be directly mapped to component format",
+            value_type
+        )))),
+    }
+}
+
+/// Convert an ExternType to a FuncType if it represents a function
+///
+/// # Arguments
+///
+/// * `extern_type` - The external type to convert
+///
+/// # Returns
+///
+/// The function type if the extern type is a function, or an error otherwise
+pub fn extern_type_to_func_type(
+    extern_type: &wrt_types::ExternType,
+) -> Result<wrt_types::component::FuncType> {
+    match extern_type {
+        wrt_types::ExternType::Function(func_type) => Ok(func_type.clone()),
+        _ => Err(Error::new(kinds::TypeMismatchError(format!(
+            "Expected Function ExternType, got {:?}",
+            extern_type
+        )))),
     }
 }
