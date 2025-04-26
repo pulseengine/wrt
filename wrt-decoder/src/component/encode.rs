@@ -21,8 +21,10 @@ fn encode_sections(component: &Component, binary: &mut Vec<u8>) -> Result<()> {
     // If the component has a name, add a name section
     if let Some(name) = &component.name {
         // Create a name section with the component name
-        let mut name_section = crate::component_name_section::ComponentNameSection::default();
-        name_section.component_name = Some(name.clone());
+        let name_section = crate::component_name_section::ComponentNameSection {
+            component_name: Some(name.clone()),
+            ..Default::default()
+        };
 
         // Generate the name section data
         let name_section_data =
@@ -46,7 +48,8 @@ fn encode_sections(component: &Component, binary: &mut Vec<u8>) -> Result<()> {
     Ok(())
 }
 
-fn encode_core_module_section(modules: &[wrt_format::module::Module]) -> Result<Vec<u8>> {
+#[allow(dead_code)]
+fn encode_core_module_section(_modules: &[wrt_format::module::Module]) -> Result<Vec<u8>> {
     let data = Vec::new();
 
     // Placeholder - actual implementation would encode modules here
@@ -55,8 +58,9 @@ fn encode_core_module_section(modules: &[wrt_format::module::Module]) -> Result<
     Ok(data)
 }
 
+#[allow(dead_code)]
 fn encode_core_instance_section(
-    instances: &[wrt_format::component::CoreInstance],
+    _instances: &[wrt_format::component::CoreInstance],
 ) -> Result<Vec<u8>> {
     let data = Vec::new();
 
@@ -65,7 +69,8 @@ fn encode_core_instance_section(
     Ok(data)
 }
 
-fn encode_import_section(imports: &[wrt_format::component::Import]) -> Result<Vec<u8>> {
+#[allow(dead_code)]
+fn encode_import_section(_imports: &[wrt_format::component::Import]) -> Result<Vec<u8>> {
     let data = Vec::new();
 
     // Placeholder - actual implementation would encode imports
@@ -73,7 +78,8 @@ fn encode_import_section(imports: &[wrt_format::component::Import]) -> Result<Ve
     Ok(data)
 }
 
-fn encode_export_section(exports: &[wrt_format::component::Export]) -> Result<Vec<u8>> {
+#[allow(dead_code)]
+fn encode_export_section(_exports: &[wrt_format::component::Export]) -> Result<Vec<u8>> {
     let data = Vec::new();
 
     // Placeholder - actual implementation would encode exports

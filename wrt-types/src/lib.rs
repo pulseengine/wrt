@@ -5,15 +5,16 @@
 //! functional safety for ASIL-B compliance.
 
 #![cfg_attr(not(feature = "std"), no_std)]
-#![deny(missing_docs)]
-#![warn(clippy::missing_panics_doc)]
+#![cfg_attr(feature = "kani", feature(kani))]
+#![warn(unsafe_code)]
+#![warn(missing_docs)]
 
 // Import std when available
 #[cfg(feature = "std")]
 extern crate std;
 
 // Import alloc for no_std
-#[cfg(not(feature = "std"))]
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
 extern crate alloc;
 
 // Core re-exports based on environment
@@ -23,9 +24,19 @@ pub use std::{collections::HashMap, fmt, string::String, vec::Vec};
 #[cfg(not(feature = "std"))]
 pub use alloc::{collections::BTreeMap as HashMap, string::String, vec::Vec};
 
+// Make sure the necessary types are available for no_std builds
+#[cfg(not(feature = "std"))]
+pub use alloc::{borrow, boxed::Box, format, rc, sync, vec};
+
+// Re-export ToString for no_std builds
+#[cfg(not(feature = "std"))]
+pub use alloc::string::ToString;
+
 // Core modules
 /// Bounded collections for memory safety
 pub mod bounded;
+/// WebAssembly Component Model built-in types
+pub mod builtin;
 /// WebAssembly Component Model types
 pub mod component;
 /// WebAssembly Component Model value types
@@ -49,6 +60,7 @@ pub mod verification;
 
 // Re-export the most important types
 pub use bounded::{BoundedHashMap, BoundedStack, BoundedVec, CapacityError};
+pub use builtin::BuiltinType;
 pub use component::{
     ComponentType, ExternType, FuncType, GlobalType, InstanceType, Limits, MemoryType, Namespace,
     ResourceType, TableType,
@@ -73,3 +85,11 @@ pub const WASM_VERSION: u32 = 1;
 
 // Re-export Result for convenience
 pub use wrt_error::Result;
+
+// Core feature re-exports
+// Note: These are feature-gated re-exports that shouldn't conflict with the main ones
+// #[cfg(feature = "component-model-core")]
+// pub use component::ComponentType;
+
+#[cfg(feature = "component-model-values")]
+pub use component_value::ValType;

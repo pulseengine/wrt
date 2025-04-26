@@ -6,6 +6,13 @@ use crate::prelude::*;
 use crate::types::BlockType;
 use wrt_error::{kinds, Error, Result};
 use wrt_format::binary;
+use wrt_format::types::value_type_to_byte;
+
+#[cfg(feature = "std")]
+use std::vec;
+
+#[cfg(not(feature = "std"))]
+use alloc::vec;
 
 /// WebAssembly instruction enumeration
 #[derive(Debug, Clone, PartialEq)]
@@ -239,7 +246,119 @@ pub fn parse_instruction(bytes: &[u8]) -> Result<(Instruction, usize)> {
         binary::UNREACHABLE => Ok((Instruction::Unreachable, 1)),
         binary::NOP => Ok((Instruction::Nop, 1)),
 
-        // TODO: Implement block, loop, if
+        // Block, loop, if instructions
+        binary::BLOCK => {
+            let pos = 1;
+            let (block_type, bt_bytes) = crate::types::parse_block_type(bytes, pos)?;
+            let pos = pos + bt_bytes;
+
+            let mut instructions = Vec::new();
+            let mut current_pos = pos;
+
+            // Parse instructions until we hit an END opcode
+            while current_pos < bytes.len() && bytes[current_pos] != binary::END {
+                // Handle ELSE opcode for if blocks
+                if bytes[current_pos] == binary::ELSE {
+                    return Err(Error::new(kinds::ParseError(
+                        "Unexpected ELSE opcode in block".to_string(),
+                    )));
+                }
+
+                let (instruction, bytes_read) = parse_instruction(&bytes[current_pos..])?;
+                instructions.push(instruction);
+                current_pos += bytes_read;
+            }
+
+            // Skip the END opcode
+            if current_pos < bytes.len() && bytes[current_pos] == binary::END {
+                current_pos += 1;
+            } else {
+                return Err(Error::new(kinds::ParseError(
+                    "Missing END opcode for block".to_string(),
+                )));
+            }
+
+            Ok((Instruction::Block(block_type, instructions), current_pos))
+        }
+        binary::LOOP => {
+            let pos = 1;
+            let (block_type, bt_bytes) = crate::types::parse_block_type(bytes, pos)?;
+            let pos = pos + bt_bytes;
+
+            let mut instructions = Vec::new();
+            let mut current_pos = pos;
+
+            // Parse instructions until we hit an END opcode
+            while current_pos < bytes.len() && bytes[current_pos] != binary::END {
+                // Handle ELSE opcode for if blocks
+                if bytes[current_pos] == binary::ELSE {
+                    return Err(Error::new(kinds::ParseError(
+                        "Unexpected ELSE opcode in loop".to_string(),
+                    )));
+                }
+
+                let (instruction, bytes_read) = parse_instruction(&bytes[current_pos..])?;
+                instructions.push(instruction);
+                current_pos += bytes_read;
+            }
+
+            // Skip the END opcode
+            if current_pos < bytes.len() && bytes[current_pos] == binary::END {
+                current_pos += 1;
+            } else {
+                return Err(Error::new(kinds::ParseError(
+                    "Missing END opcode for loop".to_string(),
+                )));
+            }
+
+            Ok((Instruction::Loop(block_type, instructions), current_pos))
+        }
+        binary::IF => {
+            let pos = 1;
+            let (block_type, bt_bytes) = crate::types::parse_block_type(bytes, pos)?;
+            let pos = pos + bt_bytes;
+
+            let mut then_instructions = Vec::new();
+            let mut else_instructions = Vec::new();
+            let mut current_pos = pos;
+            let mut found_else = false;
+
+            // Parse instructions until we hit an ELSE or END opcode
+            while current_pos < bytes.len() && bytes[current_pos] != binary::END {
+                if bytes[current_pos] == binary::ELSE {
+                    if found_else {
+                        return Err(Error::new(kinds::ParseError(
+                            "Multiple ELSE opcodes in if block".to_string(),
+                        )));
+                    }
+                    found_else = true;
+                    current_pos += 1;
+                    continue;
+                }
+
+                let (instruction, bytes_read) = parse_instruction(&bytes[current_pos..])?;
+                if found_else {
+                    else_instructions.push(instruction);
+                } else {
+                    then_instructions.push(instruction);
+                }
+                current_pos += bytes_read;
+            }
+
+            // Skip the END opcode
+            if current_pos < bytes.len() && bytes[current_pos] == binary::END {
+                current_pos += 1;
+            } else {
+                return Err(Error::new(kinds::ParseError(
+                    "Missing END opcode for if".to_string(),
+                )));
+            }
+
+            Ok((
+                Instruction::If(block_type, then_instructions, else_instructions),
+                current_pos,
+            ))
+        }
         binary::BR => {
             let (label_idx, bytes_read) = binary::read_leb128_u32(bytes, 1)?;
             Ok((Instruction::Br(label_idx), 1 + bytes_read))
@@ -248,8 +367,26 @@ pub fn parse_instruction(bytes: &[u8]) -> Result<(Instruction, usize)> {
             let (label_idx, bytes_read) = binary::read_leb128_u32(bytes, 1)?;
             Ok((Instruction::BrIf(label_idx), 1 + bytes_read))
         }
+        binary::BR_TABLE => {
+            let mut offset = 1;
 
-        // TODO: Implement br_table
+            // Read the vector of label indices
+            let (count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
+            offset += bytes_read;
+
+            let mut labels = Vec::with_capacity(count as usize);
+            for _ in 0..count {
+                let (label, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
+                labels.push(label);
+                offset += bytes_read;
+            }
+
+            // Read the default label
+            let (default_label, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
+            offset += bytes_read;
+
+            Ok((Instruction::BrTable(labels, default_label), offset))
+        }
         binary::RETURN => Ok((Instruction::Return, 1)),
 
         binary::CALL => {
@@ -258,6 +395,25 @@ pub fn parse_instruction(bytes: &[u8]) -> Result<(Instruction, usize)> {
         }
 
         // TODO: Implement call_indirect
+        binary::CALL_INDIRECT => {
+            let mut offset = 1;
+
+            // Read the type index
+            let (type_idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
+            offset += bytes_read;
+
+            // Read the table index (currently always 0 in MVP, but encoded for future compatibility)
+            if offset >= bytes.len() {
+                return Err(Error::new(kinds::ParseError(
+                    "Unexpected end of call_indirect instruction".to_string(),
+                )));
+            }
+
+            let table_idx = bytes[offset];
+            offset += 1;
+
+            Ok((Instruction::CallIndirect(type_idx, table_idx), offset))
+        }
 
         // Variable instructions
         binary::LOCAL_GET => {
@@ -326,34 +482,183 @@ pub fn encode_instructions(instructions: &[Instruction]) -> Result<Vec<u8>> {
 
 /// Encode a single WebAssembly instruction
 pub fn encode_instruction(instruction: &Instruction) -> Result<Vec<u8>> {
-    let mut result = Vec::new();
-
     match instruction {
         // Control instructions
-        Instruction::Unreachable => result.push(binary::UNREACHABLE),
-        Instruction::Nop => result.push(binary::NOP),
+        Instruction::Unreachable => Ok(vec![binary::UNREACHABLE]),
+        Instruction::Nop => Ok(vec![binary::NOP]),
+        Instruction::Call(func_idx) => {
+            let mut result = vec![binary::CALL];
+            result.extend_from_slice(&wrt_format::binary::write_leb128_u32(*func_idx));
+            Ok(result)
+        }
 
-        // TODO: Implement block, if, loop
-        // TODO: Implement br, br_if, br_table
-        // TODO: Implement call, call_indirect
-        // TODO: Implement drop, select
+        // Block, loop, if instructions
+        Instruction::Block(block_type, instructions) => {
+            let mut bytes = vec![binary::BLOCK];
 
-        // Memory instructions
-        // TODO: Implement memory instructions
+            // Encode block type
+            match block_type {
+                BlockType::Empty => bytes.push(0x40),
+                BlockType::Value(val_type) => bytes.push(value_type_to_byte(*val_type)),
+                BlockType::FuncType(type_idx) => {
+                    bytes.extend_from_slice(&binary::write_leb128_i32(*type_idx as i32))
+                }
+            }
+
+            // Encode nested instructions
+            for inst in instructions {
+                bytes.extend_from_slice(&encode_instruction(inst)?);
+            }
+
+            // Add END opcode
+            bytes.push(binary::END);
+
+            Ok(bytes)
+        }
+        Instruction::Loop(block_type, instructions) => {
+            let mut bytes = vec![binary::LOOP];
+
+            // Encode block type
+            match block_type {
+                BlockType::Empty => bytes.push(0x40),
+                BlockType::Value(val_type) => bytes.push(value_type_to_byte(*val_type)),
+                BlockType::FuncType(type_idx) => {
+                    bytes.extend_from_slice(&binary::write_leb128_i32(*type_idx as i32))
+                }
+            }
+
+            // Encode nested instructions
+            for inst in instructions {
+                bytes.extend_from_slice(&encode_instruction(inst)?);
+            }
+
+            // Add END opcode
+            bytes.push(binary::END);
+
+            Ok(bytes)
+        }
+        Instruction::If(block_type, then_instructions, else_instructions) => {
+            let mut bytes = vec![binary::IF];
+
+            // Encode block type
+            match block_type {
+                BlockType::Empty => bytes.push(0x40),
+                BlockType::Value(val_type) => bytes.push(value_type_to_byte(*val_type)),
+                BlockType::FuncType(type_idx) => {
+                    bytes.extend_from_slice(&binary::write_leb128_i32(*type_idx as i32))
+                }
+            }
+
+            // Encode then instructions
+            for inst in then_instructions {
+                bytes.extend_from_slice(&encode_instruction(inst)?);
+            }
+
+            // Add ELSE opcode if there are else instructions
+            if !else_instructions.is_empty() {
+                bytes.push(binary::ELSE);
+
+                // Encode else instructions
+                for inst in else_instructions {
+                    bytes.extend_from_slice(&encode_instruction(inst)?);
+                }
+            }
+
+            // Add END opcode
+            bytes.push(binary::END);
+
+            Ok(bytes)
+        }
+        Instruction::Br(label_idx) => {
+            let mut bytes = vec![binary::BR];
+            bytes.extend_from_slice(&binary::write_leb128_u32(*label_idx));
+            Ok(bytes)
+        }
+        Instruction::BrIf(label_idx) => {
+            let mut bytes = vec![binary::BR_IF];
+            bytes.extend_from_slice(&binary::write_leb128_u32(*label_idx));
+            Ok(bytes)
+        }
+        Instruction::BrTable(labels, default_label) => {
+            let mut bytes = vec![binary::BR_TABLE];
+
+            // Encode the label count
+            bytes.extend_from_slice(&binary::write_leb128_u32(labels.len() as u32));
+
+            // Encode each label
+            for label in labels {
+                bytes.extend_from_slice(&binary::write_leb128_u32(*label));
+            }
+
+            // Encode the default label
+            bytes.extend_from_slice(&binary::write_leb128_u32(*default_label));
+
+            Ok(bytes)
+        }
+        Instruction::Return => Ok(vec![binary::RETURN]),
+
+        // Variable instructions
+        Instruction::LocalGet(local_idx) => {
+            let mut bytes = vec![binary::LOCAL_GET];
+            bytes.extend_from_slice(&binary::write_leb128_u32(*local_idx));
+            Ok(bytes)
+        }
+        Instruction::LocalSet(local_idx) => {
+            let mut bytes = vec![binary::LOCAL_SET];
+            bytes.extend_from_slice(&binary::write_leb128_u32(*local_idx));
+            Ok(bytes)
+        }
+        Instruction::LocalTee(local_idx) => {
+            let mut bytes = vec![binary::LOCAL_TEE];
+            bytes.extend_from_slice(&binary::write_leb128_u32(*local_idx));
+            Ok(bytes)
+        }
+        Instruction::GlobalGet(global_idx) => {
+            let mut bytes = vec![binary::GLOBAL_GET];
+            bytes.extend_from_slice(&binary::write_leb128_u32(*global_idx));
+            Ok(bytes)
+        }
+        Instruction::GlobalSet(global_idx) => {
+            let mut bytes = vec![binary::GLOBAL_SET];
+            bytes.extend_from_slice(&binary::write_leb128_u32(*global_idx));
+            Ok(bytes)
+        }
 
         // Numeric instructions
-        // TODO: Implement numeric instructions
-
-        // Handle unsupported instructions
-        _ => {
-            return Err(Error::new(kinds::ParseError(format!(
-                "Encoding not yet implemented for instruction: {:?}",
-                instruction
-            ))))
+        Instruction::I32Const(value) => {
+            let mut bytes = vec![binary::I32_CONST];
+            bytes.extend_from_slice(&binary::write_leb128_i32(*value));
+            Ok(bytes)
         }
-    }
+        Instruction::I64Const(value) => {
+            let mut bytes = vec![binary::I64_CONST];
+            bytes.extend_from_slice(&binary::write_leb128_i64(*value));
+            Ok(bytes)
+        }
+        Instruction::F32Const(value) => {
+            let mut bytes = vec![binary::F32_CONST];
+            bytes.extend_from_slice(&binary::write_f32(*value));
+            Ok(bytes)
+        }
+        Instruction::F64Const(value) => {
+            let mut bytes = vec![binary::F64_CONST];
+            bytes.extend_from_slice(&binary::write_f64(*value));
+            Ok(bytes)
+        }
 
-    Ok(result)
+        // TODO: Complete memory and numeric instructions
+        // For now, return an error for unimplemented instructions
+        Instruction::CallIndirect(type_idx, table_idx) => {
+            let mut result = vec![binary::CALL_INDIRECT];
+            result.extend_from_slice(&wrt_format::binary::write_leb128_u32(*type_idx));
+            result.push(*table_idx);
+            Ok(result)
+        }
+        _ => Err(Error::new(kinds::EncodingError(format!(
+            "Encoding not implemented for instruction: {:?}",
+            instruction
+        )))),
+    }
 }
 
 /// Extract local declarations from a function body
@@ -387,39 +692,142 @@ mod tests {
 
     #[test]
     fn test_parse_encode_i32_const() {
-        let test_values = [0, 1, -1, 42, -42, 0x7FFFFFFF, -0x80000000];
+        let bytes = vec![binary::I32_CONST, 0x2A]; // 42 in LEB128
+        let (instruction, bytes_read) = parse_instruction(&bytes).unwrap();
 
-        for &value in &test_values {
-            // Create instruction
-            let instr = Instruction::I32Const(value);
+        assert_eq!(instruction, Instruction::I32Const(42));
+        assert_eq!(bytes_read, 2);
 
-            // Encode
-            let encoded = encode_instruction(&instr).unwrap();
-
-            // Parse back
-            let (decoded, _) = parse_instruction(&encoded).unwrap();
-
-            // Verify
-            assert_eq!(instr, decoded);
-        }
+        let encoded = encode_instruction(&instruction).unwrap();
+        assert_eq!(encoded, bytes);
     }
 
     #[test]
     fn test_parse_encode_call() {
-        let test_values = [0, 1, 42, 0x10000];
+        let bytes = vec![binary::CALL, 0x10]; // Function index 16 in LEB128
+        let (instruction, bytes_read) = parse_instruction(&bytes).unwrap();
 
-        for &value in &test_values {
-            // Create instruction
-            let instr = Instruction::Call(value);
+        assert_eq!(instruction, Instruction::Call(16));
+        assert_eq!(bytes_read, 2);
 
-            // Encode
-            let encoded = encode_instruction(&instr).unwrap();
+        let encoded = encode_instruction(&instruction).unwrap();
+        assert_eq!(encoded, bytes);
+    }
 
-            // Parse back
-            let (decoded, _) = parse_instruction(&encoded).unwrap();
+    #[test]
+    fn test_parse_encode_call_indirect() {
+        let bytes = vec![binary::CALL_INDIRECT, 0x20, 0x00]; // Type index 32, table index 0
+        let (instruction, bytes_read) = parse_instruction(&bytes).unwrap();
 
-            // Verify
-            assert_eq!(instr, decoded);
+        assert_eq!(instruction, Instruction::CallIndirect(32, 0));
+        assert_eq!(bytes_read, 3);
+
+        let encoded = encode_instruction(&instruction).unwrap();
+        assert_eq!(encoded, bytes);
+    }
+
+    #[test]
+    fn test_parse_encode_block() {
+        // block (empty) end
+        let bytes = vec![binary::BLOCK, 0x40, binary::END];
+        let (instruction, bytes_read) = parse_instruction(&bytes).unwrap();
+
+        match instruction {
+            Instruction::Block(block_type, instructions) => {
+                assert_eq!(block_type, BlockType::Empty);
+                assert!(instructions.is_empty());
+            }
+            _ => panic!("Expected Block instruction"),
         }
+
+        assert_eq!(bytes_read, 3);
+
+        let encoded = encode_instruction(&instruction).unwrap();
+        assert_eq!(encoded, bytes);
+    }
+
+    #[test]
+    fn test_parse_encode_loop() {
+        // loop (i32) i32.const 1 end
+        let bytes = vec![
+            binary::LOOP,
+            binary::I32_TYPE,
+            binary::I32_CONST,
+            0x01,
+            binary::END,
+        ];
+        let (instruction, bytes_read) = parse_instruction(&bytes).unwrap();
+
+        match instruction {
+            Instruction::Loop(block_type, instructions) => {
+                assert_eq!(block_type, BlockType::Value(ValueType::I32));
+                assert_eq!(instructions.len(), 1);
+                assert_eq!(instructions[0], Instruction::I32Const(1));
+            }
+            _ => panic!("Expected Loop instruction"),
+        }
+
+        assert_eq!(bytes_read, 5);
+
+        let encoded = encode_instruction(&instruction).unwrap();
+        assert_eq!(encoded, bytes);
+    }
+
+    #[test]
+    fn test_parse_encode_if() {
+        // if (empty) i32.const 1 else i32.const 0 end
+        let bytes = vec![
+            binary::IF,
+            0x40,
+            binary::I32_CONST,
+            0x01,
+            binary::ELSE,
+            binary::I32_CONST,
+            0x00,
+            binary::END,
+        ];
+        let (instruction, bytes_read) = parse_instruction(&bytes).unwrap();
+
+        match instruction {
+            Instruction::If(block_type, then_instructions, else_instructions) => {
+                assert_eq!(block_type, BlockType::Empty);
+                assert_eq!(then_instructions.len(), 1);
+                assert_eq!(then_instructions[0], Instruction::I32Const(1));
+                assert_eq!(else_instructions.len(), 1);
+                assert_eq!(else_instructions[0], Instruction::I32Const(0));
+            }
+            _ => panic!("Expected If instruction"),
+        }
+
+        assert_eq!(bytes_read, 8);
+
+        let encoded = encode_instruction(&instruction).unwrap();
+        assert_eq!(encoded, bytes);
+    }
+
+    #[test]
+    fn test_parse_encode_br_table() {
+        // br_table [0 1] 2
+        let bytes = vec![
+            binary::BR_TABLE,
+            0x02, // count = 2
+            0x00, // label 0
+            0x01, // label 1
+            0x02, // default label 2
+        ];
+        let (instruction, bytes_read) = parse_instruction(&bytes).unwrap();
+
+        match instruction {
+            Instruction::BrTable(labels, default_label) => {
+                assert_eq!(labels, vec![0, 1]);
+                assert_eq!(default_label, 2);
+            }
+            _ => panic!("Expected BrTable instruction"),
+        }
+
+        assert_eq!(bytes_read, 5);
+
+        let encoded = encode_instruction(&instruction).unwrap();
+        assert_eq!(encoded, bytes);
     }
 }

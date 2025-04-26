@@ -27,6 +27,7 @@ pretty_assertions = "1.4.0"
 default = ["std"]
 std = ["wrt-error/std", "wrt-types/std", "wrt-format/std", "log"]
 no_std = ["wrt-error/no_std", "wrt-types/no_std", "wrt-format/no_std"]
+alloc = ["wrt-error/alloc", "wrt-types/alloc", "wrt-format/alloc"]
 kani = ["dep:kani-verifier"]
 
 [lints.rust]

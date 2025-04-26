@@ -10,10 +10,10 @@ use wrt_error::kinds;
 use wrt_error::{Error, Result};
 
 #[cfg(feature = "std")]
-use std::{string::String, vec::Vec};
+use std::{boxed::Box, format, string::String, vec, vec::Vec};
 
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::{string::String, vec::Vec};
+use alloc::{boxed::Box, format, string::String, string::ToString, vec, vec::Vec};
 
 use crate::Value;
 

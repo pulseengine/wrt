@@ -8,8 +8,8 @@
 #[cfg(feature = "std")]
 use std::fmt;
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::fmt;
+#[cfg(not(feature = "std"))]
+use core::fmt;
 
 #[cfg(feature = "std")]
 use std::sync::atomic::{AtomicU32, Ordering};

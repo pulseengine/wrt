@@ -13,7 +13,7 @@ use super::parse::{
 /// Decode a WebAssembly Component Model binary into a structured component representation
 pub fn decode_component(bytes: &[u8]) -> Result<Component> {
     let mut component = Component::new();
-    let mut offset = 0;
+    let mut offset;
 
     // Check magic and version
     if bytes.len() < 8 {

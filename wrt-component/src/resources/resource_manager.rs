@@ -91,6 +91,11 @@ impl ResourceManager {
     pub fn resource_count(&self) -> usize {
         self.resources.len()
     }
+    
+    /// Get an iterator over resource IDs and their values
+    pub fn get_resources_iter(&self) -> impl Iterator<Item = (&ResourceId, &Arc<Mutex<Box<dyn Any + Send + Sync>>>)> {
+        self.resources.iter()
+    }
 }
 
 impl fmt::Debug for ResourceManager {

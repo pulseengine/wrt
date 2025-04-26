@@ -31,10 +31,7 @@ pub fn is_valid_integrity(integrity: &str) -> bool {
 
     // Check algorithm is supported
     let algorithm = parts[0];
-    match algorithm {
-        "sha256" | "sha384" | "sha512" => true,
-        _ => false,
-    }
+    matches!(algorithm, "sha256" | "sha384" | "sha512")
 }
 
 /// Check if the binary is a WebAssembly component

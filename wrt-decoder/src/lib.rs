@@ -32,17 +32,21 @@ pub use wrt_types::{safe_memory::SafeSlice, FuncType, ValueType};
 // Create a prelude module with common imports
 #[cfg(not(feature = "std"))]
 pub(crate) mod prelude {
-    pub use alloc::collections::{BTreeMap as HashMap, BTreeSet as HashSet};
-    pub use alloc::format;
-    pub use alloc::string::{String, ToString};
-    pub use alloc::vec::Vec;
+    pub use ::alloc::boxed::Box;
+    pub use ::alloc::collections::{BTreeMap as HashMap, BTreeSet as HashSet};
+    pub use ::alloc::format;
+    pub use ::alloc::string::{String, ToString};
+    pub use ::alloc::vec::Vec;
+    pub use core::str;
 }
 
 #[cfg(feature = "std")]
 pub(crate) mod prelude {
-    pub use std::collections::HashSet;
+    pub use std::boxed::Box;
+    pub use std::collections::{HashMap, HashSet};
     pub use std::format;
-    pub use std::string::ToString;
+    pub use std::str;
+    pub use std::string::{String, ToString};
     pub use std::vec::Vec;
 }
 
@@ -120,17 +124,24 @@ pub fn extract_custom_sections<'a>(module: &'a Module, name: &str) -> Vec<&'a [u
         .collect()
 }
 
-#[cfg(feature = "no_std")]
-pub use alloc::{
+// These conflicting definitions are causing issues - let's replace them with a cleaner approach
+// that uses feature flags correctly
+
+// For no_std builds we re-export from alloc
+#[cfg(all(feature = "no_std", not(feature = "std")))]
+pub use ::alloc::{
     borrow::ToOwned,
+    boxed::Box,
     collections::BTreeMap as HashMap,
     string::{String, ToString},
     vec::Vec,
 };
 
-#[cfg(not(feature = "no_std"))]
+// For std builds we re-export from std
+#[cfg(feature = "std")]
 pub use std::{
     borrow::ToOwned,
+    boxed::Box,
     collections::HashMap,
     string::{String, ToString},
     vec::Vec,

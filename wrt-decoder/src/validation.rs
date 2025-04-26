@@ -513,7 +513,7 @@ fn validate_elements(module: &Module) -> Result<()> {
         validate_table_idx(module, elem.table_idx, i)?;
 
         // Validate function indices
-        for (j, func_idx) in elem.init.iter().enumerate() {
+        for func_idx in elem.init.iter() {
             validate_func_idx(module, *func_idx, i)?;
         }
     }
@@ -630,7 +630,7 @@ fn validate_functions(module: &Module) -> Result<()> {
 
 /// Validate the tables section of a WebAssembly module
 fn validate_tables(module: &Module) -> Result<()> {
-    for (i, table) in module.tables.iter().enumerate() {
+    for table in module.tables.iter() {
         // Validate table type
         validate_table_type(table)?;
     }
@@ -659,6 +659,7 @@ fn validate_func_type(ty: &FuncType) -> Result<()> {
 }
 
 /// Validate element segment
+#[allow(dead_code)]
 fn validate_elem(module: &Module) -> Result<()> {
     for elem in &module.elements {
         // Check table index

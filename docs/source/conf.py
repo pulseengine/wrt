@@ -146,7 +146,7 @@ needs_extra_options = [
     'mitigation', 
     'implementation', 
     'safety_impact',
-    'status',
+    'item_status',
     'handling_strategy'
 ]
 
@@ -159,9 +159,9 @@ needs_warnings_always_warn = False
 # Custom sphinx-needs templates for qualification and safety
 needs_templates = {
     'safety_template': '**Hazard**: {{content}}\n\n**Mitigation**: {{mitigation}}',
-    'qualification_template': '**Status**: {{status}}\n\n**Implementation**: {{implementation}}',
+    'qualification_template': '**Status**: {{item_status}}\n\n**Implementation**: {{implementation}}',
     'constraint_template': '**Constraint**: {{content}}\n\n**Rationale**: {{rationale}}\n\n**Verification**: {{verification}}',
-    'panic_template': '**Panic Condition**: {{content}}\n\n**Safety Impact**: {{safety_impact}}\n\n**Status**: {{status}}\n\n**Handling Strategy**: {{handling_strategy}}',
+    'panic_template': '**Panic Condition**: {{content}}\n\n**Safety Impact**: {{safety_impact}}\n\n**Status**: {{item_status}}\n\n**Handling Strategy**: {{handling_strategy}}',
 }
 
 # Tags for filtering and displaying panic entries

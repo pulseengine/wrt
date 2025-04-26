@@ -443,29 +443,42 @@ impl StacklessEngine {
         // Try to get the instance
         let instances_guard = match self.instances.try_lock() {
             Some(guard) => guard,
-            None => return None,
+            None => {
+                log::debug!("Failed to acquire lock on instances");
+                return None;
+            }
         };
 
         // Get the instance
         let instance = match instances_guard.get(instance_idx) {
             Some(instance) => instance,
-            None => return None,
+            None => {
+                log::debug!("Invalid instance index: {}", instance_idx);
+                return None;
+            }
         };
 
         // Get the memory
         match instance.get_memory(memory_idx as u32) {
             Ok(memory) => {
+                // Create a cloned memory adapter with the current verification level
+                // Ensure we're working with a fresh copy of memory for thread safety
+                let memory_clone = memory.clone();
+
                 // Create a memory adapter with the current verification level
                 let adapter = Arc::new(
                     crate::memory_adapter::SafeMemoryAdapter::with_verification_level(
-                        memory,
+                        memory_clone,
                         self.verification_level,
                     ),
                 );
 
                 Some(adapter as Arc<dyn crate::memory_adapter::MemoryAdapter>)
             }
-            Err(_) => None,
+            Err(err) => {
+                log::debug!("Failed to get memory at index {}: {:?}", memory_idx, err);
+                None
+            }
         }
     }
 

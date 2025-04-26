@@ -1,5 +1,5 @@
 ==================================
-WebAssembly Binary Format in WRT
+WebAssembly Component Model Binary Format in WRT
 ==================================
 
 .. image:: _static/icons/validation_process.svg
@@ -7,60 +7,619 @@ WebAssembly Binary Format in WRT
    :align: right
    :alt: Validation Process Icon
 
-This document describes the implementation of the WebAssembly Component Model Binary Format in WRT, following the `Component Model Binary Format specification <https://github.com/WebAssembly/component-model/blob/main/design/mvp/Binary.md>`_.
+This document describes the implementation of the WebAssembly Component Model Binary Format in WRT, following the official `Component Model Binary Format specification <https://github.com/WebAssembly/component-model/blob/main/design/mvp/Binary.md>`_.
 
 .. contents:: Table of Contents
    :local:
    :depth: 2
 
-Core WebAssembly Format
-=======================
+Overview
+========
 
-.. image:: _static/icons/fuel_execution.svg
-   :width: 32px
-   :align: left
-   :alt: Fuel-Based Execution Icon
+The WebAssembly Component Model binary format builds upon the core WebAssembly binary format, adding a new layer identifier to distinguish components from modules. The top-level production is ``component`` and the convention is that a file with the ``.wasm`` extension may contain either a core module or a component.
 
-WRT implements the Core WebAssembly binary format as specified in the `WebAssembly specification <https://webassembly.github.io/spec/core/bikeshed/>`_. The binary format begins with the magic number ``\0asm`` followed by the version ``\1\0\0\0``.
+WRT Implementation Status
+------------------------
 
-.. code-block:: text
+The current WRT implementation provides foundational support for the Component Model binary format with the following implementation components:
 
-   magic     ::= 0x00 0x61 0x73 0x6D
-   version   ::= 0x01 0x00 0x00 0x00
+- **Decoder**: Implemented in ``wrt-decoder/src/component/decode.rs`` 
+- **Section Parsers**: Defined in ``wrt-decoder/src/component/parse.rs``
+- **Data Structures**: Defined in ``wrt-format/src/component.rs``
+- **Binary Constants**: Defined in ``wrt-format/src/binary.rs``
 
-Component Model Format Overview
-===============================
+Many aspects of the specification are still in development, with placeholder implementations that will be completed in future versions.
+
+Binary Format Structure
+======================
 
 Component Definitions
----------------------
+--------------------
 
-The Component Model binary format in WRT follows this structure:
+The specification defines:
 
 .. code-block:: text
 
-   component ::= <preamble> s*:<section>*            => (component flatten(s*))
+   component ::= <preamble> s*:<section>*
    preamble  ::= <magic> <version> <layer>
    magic     ::= 0x00 0x61 0x73 0x6D
-   version   ::= 0x0D 0x00
+   version   ::= 0x0d 0x00
    layer     ::= 0x01 0x00
 
-Section types are defined as:
+**WRT Implementation**:
+
+The WRT implementation uses different version and layer encoding:
 
 .. code-block:: text
 
-   section   ::=    section_0(<core:custom>)         => ϵ
-               | m: section_1(<core:module>)         => [core-prefix(m)]
-               | i*:section_2(vec(<core:instance>))  => core-prefix(i)*
-               | t*:section_3(vec(<core:type>))      => core-prefix(t)*
-               | c: section_4(<component>)           => [c]
-               | i*:section_5(vec(<instance>))       => i*
-               | a*:section_6(vec(<alias>))          => a*
-               | t*:section_7(vec(<type>))           => t*
-               | c*:section_8(vec(<canon>))          => c*
-               | s: section_9(<start>)               => [s]
-               | i*:section_10(vec(<import>))        => i*
-               | e*:section_11(vec(<export>))        => e*
-               | v*:section_12(vec(<value>))         => v*
+   // Component Model magic bytes (same as core: \0asm)
+   pub const COMPONENT_MAGIC: [u8; 4] = [0x00, 0x61, 0x73, 0x6D];
+   
+   // Component Model binary format version - 2 bytes version, 2 bytes layer
+   // Version 1.0, Layer 1
+   pub const COMPONENT_VERSION: [u8; 4] = [0x01, 0x00, 0x01, 0x00];
+
+**Discrepancy**: The specification uses version ``[0x0d, 0x00]`` with layer ``[0x01, 0x00]``, while WRT implements version ``[0x01, 0x00]`` with layer ``[0x01, 0x00]``. Additionally, WRT combines these into a single 4-byte field rather than two separate 2-byte fields.
+
+The implementation in ``wrt-decoder/src/component/decode.rs`` verifies only the first 8 bytes (magic + version), without distinguishing between version and layer as separate fields.
+
+Section Definitions
+------------------
+
+The specification defines the following section types:
+
+.. code-block:: text
+
+   section ::=    section_0(<core:custom>)         => ϵ
+              | m: section_1(<core:module>)         => [core-prefix(m)]
+              | i*:section_2(vec(<core:instance>))  => core-prefix(i)*
+              | t*:section_3(vec(<core:type>))      => core-prefix(t)*
+              | c: section_4(<component>)           => [c]
+              | i*:section_5(vec(<instance>))       => i*
+              | a*:section_6(vec(<alias>))          => a*
+              | t*:section_7(vec(<type>))           => t*
+              | c*:section_8(vec(<canon>))          => c*
+              | s: section_9(<start>)               => [s]
+              | i*:section_10(vec(<import>))        => i*
+              | e*:section_11(vec(<export>))        => e*
+              | v*:section_12(vec(<value>))         => v*
+
+**WRT Implementation**:
+
+WRT defines section IDs in ``wrt-format/src/binary.rs``:
+
+.. code-block:: text
+
+   pub const COMPONENT_CUSTOM_SECTION_ID: u8 = 0x00;
+   pub const COMPONENT_CORE_MODULE_SECTION_ID: u8 = 0x01;
+   pub const COMPONENT_CORE_INSTANCE_SECTION_ID: u8 = 0x02;
+   pub const COMPONENT_CORE_TYPE_SECTION_ID: u8 = 0x03;
+   pub const COMPONENT_COMPONENT_SECTION_ID: u8 = 0x04;
+   pub const COMPONENT_INSTANCE_SECTION_ID: u8 = 0x05;
+   pub const COMPONENT_ALIAS_SECTION_ID: u8 = 0x06;
+   pub const COMPONENT_TYPE_SECTION_ID: u8 = 0x07;
+   pub const COMPONENT_CANON_SECTION_ID: u8 = 0x08;
+   pub const COMPONENT_START_SECTION_ID: u8 = 0x09;
+   pub const COMPONENT_IMPORT_SECTION_ID: u8 = 0x0A;
+   pub const COMPONENT_EXPORT_SECTION_ID: u8 = 0x0B;
+   pub const COMPONENT_VALUE_SECTION_ID: u8 = 0x0C;
+
+The section parsing is implemented in ``wrt-decoder/src/component/decode.rs``, which iterates through sections and delegates to appropriate parsers in ``wrt-decoder/src/component/parse.rs``.
+
+Instance Definitions
+===================
+
+Core Instance Definitions
+-------------------------
+
+The specification defines:
+
+.. code-block:: text
+
+   core:instance       ::= ie:<core:instanceexpr>                             => (instance ie)
+   core:instanceexpr   ::= 0x00 m:<moduleidx> arg*:vec(<core:instantiatearg>) => (instantiate m arg*)
+                         | 0x01 e*:vec(<core:inlineexport>)                   => e*
+
+**WRT Implementation**:
+
+WRT implements core instance definitions in ``wrt-format/src/component.rs``:
+
+.. code-block:: text
+
+   pub struct CoreInstance {
+       /// Instance expression
+       pub instance_expr: CoreInstanceExpr,
+   }
+
+   pub enum CoreInstanceExpr {
+       /// Instantiate a core module
+       Instantiate {
+           /// Module index
+           module_idx: u32,
+           /// Instantiation arguments
+           args: Vec<CoreInstantiateArg>,
+       },
+       /// Collection of inlined exports
+       InlineExports(Vec<CoreInlineExport>),
+   }
+
+The binary parsing is implemented in ``wrt-decoder/src/component/parse.rs`` in the ``parse_core_instance_section`` and ``parse_core_instance_expr`` functions.
+
+Component Instance Definitions
+-----------------------------
+
+The specification defines:
+
+.. code-block:: text
+
+   instance            ::= ie:<instanceexpr>                                  => (instance ie)
+   instanceexpr        ::= 0x00 c:<componentidx> arg*:vec(<instantiatearg>)   => (instantiate c arg*)
+                         | 0x01 e*:vec(<inlineexport>)                        => e*
+   sort                ::= 0x00 cs:<core:sort>                                => core cs
+                         | 0x01                                               => func
+                         | 0x02                                               => value
+                         | 0x03                                               => type
+                         | 0x04                                               => component
+                         | 0x05                                               => instance
+
+**WRT Implementation**:
+
+WRT implements component instance definitions in ``wrt-format/src/component.rs``:
+
+.. code-block:: text
+
+   pub struct Instance {
+       /// Instance expression
+       pub instance_expr: InstanceExpr,
+   }
+
+   pub enum InstanceExpr {
+       /// Instantiate a component
+       Instantiate {
+           /// Component index
+           component_idx: u32,
+           /// Instantiation arguments
+           args: Vec<InstantiateArg>,
+       },
+       /// Collection of inlined exports
+       InlineExports(Vec<InlineExport>),
+   }
+
+   pub enum Sort {
+       /// Core reference
+       Core(CoreSort),
+       /// Function reference
+       Function,
+       /// Value reference
+       Value,
+       /// Type reference
+       Type,
+       /// Component reference
+       Component,
+       /// Instance reference
+       Instance,
+   }
+
+The sorts are defined in ``wrt-format/src/binary.rs`` with values matching the specification:
+
+.. code-block:: text
+
+   pub const COMPONENT_SORT_CORE: u8 = 0x00;
+   pub const COMPONENT_SORT_FUNC: u8 = 0x01;
+   pub const COMPONENT_SORT_VALUE: u8 = 0x02;
+   pub const COMPONENT_SORT_TYPE: u8 = 0x03;
+   pub const COMPONENT_SORT_COMPONENT: u8 = 0x04;
+   pub const COMPONENT_SORT_INSTANCE: u8 = 0x05;
+
+Type Definitions
+===============
+
+The specification defines various component types. WRT implements them in ``wrt-format/src/component.rs``:
+
+.. code-block:: text
+
+   pub enum ComponentTypeDefinition {
+       /// Component type
+       Component {
+           /// Component imports
+           imports: Vec<(String, String, ExternType)>,
+           /// Component exports
+           exports: Vec<(String, ExternType)>,
+       },
+       /// Instance type
+       Instance {
+           /// Instance exports
+           exports: Vec<(String, ExternType)>,
+       },
+       /// Function type
+       Function {
+           /// Parameter types
+           params: Vec<(String, ValType)>,
+           /// Result types
+           results: Vec<ValType>,
+       },
+       /// Value type
+       Value(ValType),
+       /// Resource type
+       Resource {
+           /// Resource representation type
+           representation: ResourceRepresentation,
+           /// Whether the resource is nullable
+           nullable: bool,
+       },
+   }
+
+Value Types
+----------
+
+The specification defines numerous value types. WRT implements them in ``wrt-format/src/component.rs``:
+
+.. code-block:: text
+
+   pub enum ValType {
+       /// Boolean type
+       Bool,
+       /// 8-bit signed integer
+       S8,
+       /// 8-bit unsigned integer
+       U8,
+       /// 16-bit signed integer
+       S16,
+       /// 16-bit unsigned integer
+       U16,
+       /// 32-bit signed integer
+       S32,
+       /// 32-bit unsigned integer
+       U32,
+       /// 64-bit signed integer
+       S64,
+       /// 64-bit unsigned integer
+       U64,
+       /// 32-bit float
+       F32,
+       /// 64-bit float
+       F64,
+       /// Unicode character
+       Char,
+       /// String type
+       String,
+       /// Reference type
+       Ref(u32),
+       /// Record type with named fields
+       Record(Vec<(String, ValType)>),
+       /// Variant type
+       Variant(Vec<(String, Option<ValType>)>),
+       /// List type
+       List(Box<ValType>),
+       /// Fixed-length list type with element type and length
+       FixedList(Box<ValType>, u32),
+       /// Tuple type
+       Tuple(Vec<ValType>),
+       /// Flags type
+       Flags(Vec<String>),
+       /// Enum type
+       Enum(Vec<String>),
+       /// Option type
+       Option(Box<ValType>),
+       /// Result type (ok only)
+       Result(Box<ValType>),
+       /// Result type (error only)
+       ResultErr(Box<ValType>),
+       /// Result type (ok and error)
+       ResultBoth(Box<ValType>, Box<ValType>),
+       /// Own a resource
+       Own(u32),
+       /// Borrow a resource
+       Borrow(u32),
+       /// Error context type
+       ErrorContext,
+   }
+
+The binary type codes are defined in ``wrt-format/src/binary.rs``:
+
+.. code-block:: text
+
+   pub const COMPONENT_VALTYPE_BOOL: u8 = 0x7F;
+   pub const COMPONENT_VALTYPE_S8: u8 = 0x7E;
+   pub const COMPONENT_VALTYPE_U8: u8 = 0x7D;
+   // ...and so on
+
+Resource Types
+-------------
+
+WRT implements resource types with a custom representation:
+
+.. code-block:: text
+
+   pub enum ResourceRepresentation {
+       /// 32-bit integer handle
+       Handle32,
+       /// 64-bit integer handle
+       Handle64,
+       /// Record representation
+       Record(Vec<String>),
+       /// Aggregate representation
+       Aggregate(Vec<u32>),
+   }
+
+This differs from the specification, which has a simpler representation focused on abstract vs. concrete resources.
+
+Alias Definitions
+===============
+
+The specification defines different forms of aliases. WRT implements them in ``wrt-format/src/component.rs``:
+
+.. code-block:: text
+
+   pub enum AliasTarget {
+       /// Core WebAssembly export from an instance
+       CoreInstanceExport {
+           /// Instance index
+           instance_idx: u32,
+           /// Export name
+           name: String,
+           /// Kind of the target
+           kind: CoreSort,
+       },
+       /// Export from a component instance
+       InstanceExport {
+           /// Instance index
+           instance_idx: u32,
+           /// Export name
+           name: String,
+           /// Kind of the target
+           kind: Sort,
+       },
+       /// Outer definition from an enclosing component (forwarding from parent)
+       Outer {
+           /// Count of components to traverse outward
+           count: u32,
+           /// Kind of the target
+           kind: Sort,
+           /// Index within the kind
+           idx: u32,
+       },
+   }
+
+The parsing is implemented in ``parse_alias_section`` and ``parse_alias_target`` in ``wrt-decoder/src/component/parse.rs``.
+
+Canonical Function Definitions
+=============================
+
+The specification defines canonical operations for function lifting and lowering. WRT implements an extended version in ``wrt-format/src/component.rs``:
+
+.. code-block:: text
+
+   pub enum CanonOperation {
+       /// Lift a core function to the component ABI
+       Lift {
+           /// Core function index
+           func_idx: u32,
+           /// Type index for the lifted function
+           type_idx: u32,
+           /// Options for lifting
+           options: LiftOptions,
+       },
+       /// Lower a component function to the core ABI
+       Lower {
+           /// Component function index
+           func_idx: u32,
+           /// Options for lowering
+           options: LowerOptions,
+       },
+       /// Resource operations
+       Resource(ResourceOperation),
+       /// Reallocation operation
+       Realloc {
+           /// Function index for memory allocation
+           alloc_func_idx: u32,
+           /// Memory index to use
+           memory_idx: u32,
+       },
+       /// Post-return operation (cleanup)
+       PostReturn {
+           /// Function index for post-return cleanup
+           func_idx: u32,
+       },
+       /// Memory copy operation (optional optimization)
+       MemoryCopy {
+           /// Source memory index
+           src_memory_idx: u32,
+           /// Destination memory index
+           dst_memory_idx: u32,
+           /// Function index for the copy operation
+           func_idx: u32,
+       },
+       /// Async operation (stackful lift)
+       Async {
+           /// Function index for the async operation
+           func_idx: u32,
+           /// Type index for the async function
+           type_idx: u32,
+           /// Options for async operations
+           options: AsyncOptions,
+       },
+   }
+
+The parsing is implemented in ``parse_canon_section`` and related functions in ``wrt-decoder/src/component/parse.rs``.
+
+Start Definitions
+================
+
+The specification defines:
+
+.. code-block:: text
+
+   start ::= f:<funcidx> arg*:vec(<valueidx>) r:<u32> => (start f (value arg)* (result (value))ʳ)
+
+**WRT Implementation**:
+
+WRT implements the start definition in ``wrt-format/src/component.rs``:
+
+.. code-block:: text
+
+   pub struct Start {
+       /// Function index
+       pub func_idx: u32,
+       /// Value arguments
+       pub args: Vec<u32>,
+       /// Number of results
+       pub results: u32,
+   }
+
+**Implementation Status**: The ``parse_start_section`` function in ``wrt-decoder/src/component/parse.rs`` currently returns a "not implemented" error, indicating this feature is planned but not yet implemented.
+
+Import and Export Definitions
+===========================
+
+The specification defines import and export declarations. WRT implements them in ``wrt-format/src/component.rs``:
+
+.. code-block:: text
+
+   pub struct Import {
+       /// Import name in namespace.name format
+       pub name: ImportName,
+       /// Type of the import
+       pub ty: ExternType,
+   }
+
+   pub struct Export {
+       /// Export name in "name" format
+       pub name: ExportName,
+       /// Sort of the exported item
+       pub sort: Sort,
+       /// Index within the sort
+       pub idx: u32,
+       /// Declared type (optional)
+       pub ty: Option<ExternType>,
+   }
+
+WRT has extended name structures:
+
+.. code-block:: text
+
+   pub struct ImportName {
+       /// Namespace of the import
+       pub namespace: String,
+       /// Name of the import
+       pub name: String,
+       /// Nested namespaces (if any)
+       pub nested: Vec<String>,
+       /// Package reference (if any)
+       pub package: Option<PackageReference>,
+   }
+   
+   pub struct ExportName {
+       /// Basic name
+       pub name: String,
+       /// Whether this export is a resource
+       pub is_resource: bool,
+       /// Semver compatibility string
+       pub semver: Option<String>,
+       /// Integrity hash for content verification
+       pub integrity: Option<String>,
+       /// Nested namespaces (if any)
+       pub nested: Vec<String>,
+   }
+
+The parsing is implemented in ``parse_import_section`` and ``parse_export_section`` in ``wrt-decoder/src/component/parse.rs``.
+
+Value Definitions
+================
+
+The specification defines detailed value encoding rules. WRT implements a simplified version in ``wrt-format/src/component.rs``:
+
+.. code-block:: text
+
+   pub struct Value {
+       /// Type of the value
+       pub ty: ValType,
+       /// Encoded value data
+       pub data: Vec<u8>,
+       /// Value expression (if available)
+       pub expression: Option<ValueExpression>,
+       /// Value name (if available from custom sections)
+       pub name: Option<String>,
+   }
+
+   pub enum ValueExpression {
+       /// Reference to an item in component
+       ItemRef {
+           /// Sort of the referenced item
+           sort: Sort,
+           /// Index within the sort
+           idx: u32,
+       },
+       /// Global initialization expression
+       GlobalInit {
+           /// Global index
+           global_idx: u32,
+       },
+       /// Function call expression
+       FunctionCall {
+           /// Function index
+           func_idx: u32,
+           /// Arguments (indices to other values)
+           args: Vec<u32>,
+       },
+       /// Direct constant value
+       Const(ConstValue),
+   }
+
+The parsing is implemented in ``parse_value_section`` and related functions in ``wrt-decoder/src/component/parse.rs``.
+
+Name Section
+===========
+
+The specification defines a name section for components similar to the core WebAssembly name section. WRT has an initial implementation in ``wrt-decoder/src/component_name_section.rs`` that parses the component name but does not yet support the full specification's naming capabilities for all component elements.
+
+Current Implementation Differences Summary
+==========================================
+
+1. **Version Field Format**: WRT uses ``[0x01, 0x00, 0x01, 0x00]`` while the specification uses ``[0x0D, 0x00]`` for version followed by ``[0x01, 0x00]`` for layer.
+
+2. **Incomplete Section Implementations**: Many section parsers are currently placeholder implementations or only partially implemented:
+   - Start section parser explicitly returns "not implemented"
+   - Value section parser has incomplete value encoding/decoding
+   - Resource types have a different representation structure
+
+3. **Extended Structure**: WRT implements additional fields and structures beyond the specification:
+   - Extended import/export name structures with packaging and nesting information
+   - Additional canonical operation types for async functions and memory management
+   - Value expressions have multiple forms beyond the specification's direct encoding
+
+4. **Name Section Implementation**: The component name section implementation is simpler than specified, focusing primarily on the component name rather than all of the possible naming information.
+
+5. **Validation**: Many of the validation rules specified in the binary format documentation are not yet fully implemented.
+
+Binary Format Parsing Process
+============================
+
+The WRT component binary parsing process in ``wrt-decoder/src/component/decode.rs`` follows these steps:
+
+1. Verify the magic number (``\0asm``)
+2. Check the version bytes (currently checking only for 8 total bytes)
+3. Process each section:
+   a. Read section ID and size
+   b. Extract section bytes
+   c. Delegate to the appropriate section parser
+
+Each section parser in ``wrt-decoder/src/component/parse.rs`` is responsible for:
+1. Reading the count of elements in the section
+2. Parsing each element according to its binary format
+3. Returning a vector of the parsed elements
+
+Next Steps in Implementation
+===========================
+
+Key areas for future development of the WRT binary format implementation:
+
+1. **Align Version Handling**: Update to match the specification's separate version and layer fields
+2. **Complete Parsers**: Implement the remaining placeholder parsers, particularly for start sections and value encoding
+3. **Validation Rules**: Add full validation according to the specification
+4. **Resource Type Handling**: Align resource type implementation with the specification
+5. **Name Section**: Complete the name section implementation 
+6. **Value Encoding/Decoding**: Implement complete value encoding and decoding according to the specification
 
 Current Implementation Status
 -----------------------------

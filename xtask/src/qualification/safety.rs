@@ -50,7 +50,7 @@ fn generate_safety_report() -> String {
 
     content.push_str(".. safety:: Unbounded Execution\n");
     content.push_str("   :id: SAFETY_001\n");
-    content.push_str("   :status: mitigated\n");
+    content.push_str("   :item_status: mitigated\n");
     content.push_str("   :links: REQ_003, REQ_007\n\n");
     content.push_str("   **Hazard**: A WebAssembly module could enter an infinite loop, causing the host system \
                     to become unresponsive or consume excessive resources.\n\n");
@@ -59,7 +59,7 @@ fn generate_safety_report() -> String {
 
     content.push_str(".. safety:: Memory Access Violations\n");
     content.push_str("   :id: SAFETY_002\n");
-    content.push_str("   :status: mitigated\n");
+    content.push_str("   :item_status: mitigated\n");
     content.push_str("   :links: REQ_018\n\n");
     content.push_str("   **Hazard**: Improper memory access could lead to data corruption or system crashes.\n\n");
     content.push_str("   **Mitigation**: The WRT implements strict memory bounds checking as part of the WebAssembly \
@@ -67,7 +67,7 @@ fn generate_safety_report() -> String {
 
     content.push_str(".. safety:: Resource Exhaustion\n");
     content.push_str("   :id: SAFETY_003\n");
-    content.push_str("   :status: mitigated\n");
+    content.push_str("   :item_status: mitigated\n");
     content.push_str("   :links: REQ_014, REQ_024\n\n");
     content.push_str(
         "   **Hazard**: A WebAssembly module could exhaust system resources such as memory.\n\n",
@@ -78,7 +78,7 @@ fn generate_safety_report() -> String {
 
     content.push_str(".. safety:: Interface Type Mismatch\n");
     content.push_str("   :id: SAFETY_004\n");
-    content.push_str("   :status: mitigated\n");
+    content.push_str("   :item_status: mitigated\n");
     content.push_str("   :links: REQ_014, REQ_019\n\n");
     content.push_str("   **Hazard**: Type mismatches at component interfaces could lead to incorrect data interpretation \
                     and potentially unsafe operations.\n\n");

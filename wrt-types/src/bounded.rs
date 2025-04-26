@@ -4,16 +4,16 @@
 //! functional safety with built-in size limits and verification features.
 
 #[cfg(feature = "std")]
-use std::{fmt, hash, mem};
-
-#[cfg(not(feature = "std"))]
-use alloc::{format, vec, vec::Vec};
+use std::{fmt, hash, mem, string::String, vec::Vec};
 
 #[cfg(not(feature = "std"))]
 use core::{fmt, hash, mem};
 
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::string::ToString;
+use alloc::{
+    string::{String, ToString},
+    vec::Vec,
+};
 
 // Use the HashMap that's re-exported in lib.rs - works for both std and no_std
 #[allow(unused_imports)]
@@ -23,11 +23,6 @@ use crate::operations::OperationType;
 use crate::validation::{importance, BoundedCapacity, Checksummed, Validatable};
 use crate::verification::{Checksum, VerificationLevel};
 use crate::HashMap;
-
-#[cfg(feature = "alloc")]
-extern crate alloc;
-#[cfg(feature = "alloc")]
-use alloc::string::String;
 
 /// Error indicating a collection has reached its capacity limit
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

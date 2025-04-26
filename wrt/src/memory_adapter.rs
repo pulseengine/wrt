@@ -7,7 +7,7 @@ use std::sync::Arc;
 use wrt_error::{kinds, Error, Result};
 use wrt_runtime::memory::MemoryArcExt;
 use wrt_runtime::Memory;
-use wrt_types::safe_memory::{MemoryProvider, StdMemoryProvider};
+use wrt_types::safe_memory::{MemoryProvider, MemorySafety, StdMemoryProvider};
 use wrt_types::BoundedCapacity;
 
 use core::ops::Range;
@@ -19,6 +19,12 @@ pub trait MemoryAdapter {
 
     /// Get the size of the memory in bytes
     fn size(&self) -> Result<usize>;
+
+    /// Get the size of the memory in bytes - alternative method name
+    /// for compatibility
+    fn byte_size(&self) -> Result<usize> {
+        self.size()
+    }
 
     /// Load data from memory
     fn load(&self, offset: usize, len: usize) -> Result<Vec<u8>>;
@@ -46,6 +52,17 @@ impl SafeMemoryAdapter {
         Self { memory, provider }
     }
 
+    /// Create a new adapter with the given memory and verification level
+    pub fn with_verification_level(
+        memory: Arc<Memory>,
+        level: wrt_types::VerificationLevel,
+    ) -> Self {
+        let data = memory.buffer().to_vec();
+        let mut provider = StdMemoryProvider::new(data);
+        provider.set_verification_level(level);
+        Self { memory, provider }
+    }
+
     /// Get the memory provider for this adapter
     pub fn memory_provider(&self) -> &StdMemoryProvider {
         &self.provider
@@ -57,6 +74,27 @@ impl SafeMemoryAdapter {
         // Create a new provider with updated data
         self.provider = StdMemoryProvider::new(data);
         Ok(())
+    }
+}
+
+// Implement the MemorySafety trait for SafeMemoryAdapter
+impl MemorySafety for SafeMemoryAdapter {
+    fn verify_integrity(&self) -> Result<()> {
+        // Call verify_integrity on the memory provider
+        self.provider.verify_integrity().map_err(|e| {
+            Error::new(kinds::MemoryError(format!(
+                "Memory integrity check failed: {}",
+                e
+            )))
+        })
+    }
+
+    fn set_verification_level(&mut self, level: wrt_types::VerificationLevel) {
+        self.provider.set_verification_level(level);
+    }
+
+    fn verification_level(&self) -> wrt_types::VerificationLevel {
+        self.provider.verification_level()
     }
 }
 
