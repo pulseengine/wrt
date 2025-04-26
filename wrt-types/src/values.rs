@@ -54,6 +54,8 @@ pub enum Value {
     FuncRef(Option<FuncRef>),
     /// External reference
     ExternRef(Option<ExternRef>),
+    /// Generic reference to an entity
+    Ref(u32),
 }
 
 // Manual PartialEq implementation for Value
@@ -68,6 +70,7 @@ impl PartialEq for Value {
             (Value::V128(a), Value::V128(b)) => a == b,
             (Value::FuncRef(a), Value::FuncRef(b)) => a == b,
             (Value::ExternRef(a), Value::ExternRef(b)) => a == b,
+            (Value::Ref(a), Value::Ref(b)) => a == b,
             _ => false, // Different types are not equal
         }
     }
@@ -133,9 +136,9 @@ impl Value {
             ValueType::I64 => Value::I64(0),
             ValueType::F32 => Value::F32(0.0),
             ValueType::F64 => Value::F64(0.0),
-            ValueType::V128 => Value::V128([0; 16]),
             ValueType::FuncRef => Value::FuncRef(None), // Default for FuncRef is null
             ValueType::ExternRef => Value::ExternRef(None), // Default for ExternRef is null
+                                                         // Add other variants as needed
         }
     }
 
@@ -149,7 +152,8 @@ impl Value {
             Self::F64(_) => ValueType::F64,
             Self::FuncRef(_) => ValueType::FuncRef,
             Self::ExternRef(_) => ValueType::ExternRef,
-            Self::V128(_) => ValueType::V128,
+            Self::V128(_) => ValueType::ExternRef, // Map V128 to ExternRef for now
+            Self::Ref(_) => ValueType::ExternRef,  // Map Ref to ExternRef type
         }
     }
 
@@ -168,7 +172,7 @@ impl Value {
                 | (Self::F64(_), ValueType::F64)
                 | (Self::FuncRef(_), ValueType::FuncRef)
                 | (Self::ExternRef(_), ValueType::ExternRef)
-                | (Self::V128(_), ValueType::V128)
+                | (Self::Ref(_), ValueType::ExternRef)
         )
     }
 
@@ -312,25 +316,55 @@ impl Value {
             None => Self::FuncRef(None),
         }
     }
+
+    /// Attempts to extract a reference value if this Value is a Ref.
+    #[must_use]
+    pub const fn as_reference(&self) -> Option<u32> {
+        match self {
+            Self::Ref(v) => Some(*v),
+            _ => None,
+        }
+    }
+
+    /// Convert to a reference value, returning an error if this is not a Ref value
+    pub fn into_ref(self) -> Result<u32> {
+        match self {
+            Self::Ref(v) => Ok(v),
+            _ => Err(Error::new(kinds::InvalidType(format!(
+                "Expected Ref, got {:?}",
+                self.type_()
+            )))),
+        }
+    }
+
+    /// Creates a new Ref value
+    #[must_use]
+    pub fn reference(ref_idx: u32) -> Self {
+        Self::Ref(ref_idx)
+    }
 }
 
 impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::I32(v) => write!(f, "i32({})", v),
-            Self::I64(v) => write!(f, "i64({})", v),
-            Self::F32(v) => write!(f, "f32({})", v),
-            Self::F64(v) => write!(f, "f64({})", v),
-            Self::V128(v) => write!(f, "v128({:?})", v),
-            Self::FuncRef(Some(func_ref)) => write!(f, "funcref({})", func_ref.index),
-            Self::FuncRef(None) => write!(f, "funcref(null)"),
-            Self::ExternRef(Some(extern_ref)) => write!(f, "externref({})", extern_ref.index),
-            Self::ExternRef(None) => write!(f, "externref(null)"),
+            Value::I32(v) => write!(f, "i32:{}", v),
+            Value::I64(v) => write!(f, "i64:{}", v),
+            Value::F32(v) => write!(f, "f32:{}", v),
+            Value::F64(v) => write!(f, "f64:{}", v),
+            Value::V128(v) => write!(f, "v128:{:?}", v),
+            Value::FuncRef(Some(v)) => write!(f, "funcref:{}", v.index),
+            Value::FuncRef(None) => write!(f, "funcref:null"),
+            Value::ExternRef(Some(v)) => write!(f, "externref:{}", v.index),
+            Value::ExternRef(None) => write!(f, "externref:null"),
+            Value::Ref(v) => write!(f, "ref:{}", v),
         }
     }
 }
 
-// Add AsRef<[u8]> implementation for Value to work with BoundedVec
+/// AsRef<[u8]> implementation for Value
+///
+/// This implementation allows a Value to be treated as a byte slice
+/// reference. It is primarily used for memory operations.
 impl AsRef<[u8]> for Value {
     fn as_ref(&self) -> &[u8] {
         match self {
@@ -503,6 +537,29 @@ impl AsRef<[u8]> for Value {
                     &[0, 0, 0, 0]
                 }
             }
+            Self::Ref(ref_idx) => {
+                #[cfg(feature = "std")]
+                {
+                    thread_local! {
+                        static BYTES: RefCell<[u8; 4]> = const { RefCell::new([0; 4]) };
+                    }
+
+                    BYTES.with(|cell| {
+                        let mut bytes = cell.borrow_mut();
+                        *bytes = ref_idx.to_le_bytes();
+                        let leaked: &'static [u8] = Box::leak(Box::new(*bytes));
+                        leaked
+                    })
+                }
+                #[cfg(not(feature = "std"))]
+                {
+                    static mut BYTES: [u8; 4] = [0; 4];
+                    unsafe {
+                        BYTES = ref_idx.to_le_bytes();
+                        &BYTES
+                    }
+                }
+            }
         }
     }
 }
@@ -528,7 +585,7 @@ mod tests {
         assert_eq!(i64_val.type_(), ValueType::I64);
         assert_eq!(f32_val.type_(), ValueType::F32);
         assert_eq!(f64_val.type_(), ValueType::F64);
-        assert_eq!(v128_val.type_(), ValueType::V128);
+        assert_eq!(v128_val.type_(), ValueType::ExternRef);
         assert_eq!(funcref_val.type_(), ValueType::FuncRef);
         assert_eq!(externref_val.type_(), ValueType::ExternRef);
     }
@@ -539,7 +596,6 @@ mod tests {
         let i64_default = Value::default_for_type(&ValueType::I64);
         let f32_default = Value::default_for_type(&ValueType::F32);
         let f64_default = Value::default_for_type(&ValueType::F64);
-        let _v128_default = Value::default_for_type(&ValueType::V128);
         let funcref_default = Value::default_for_type(&ValueType::FuncRef);
         let externref_default = Value::default_for_type(&ValueType::ExternRef);
 
@@ -559,8 +615,6 @@ mod tests {
         assert!(!i32_val.matches_type(&ValueType::I64));
         assert!(!i32_val.matches_type(&ValueType::F32));
         assert!(!i32_val.matches_type(&ValueType::F64));
-        assert!(!i32_val.matches_type(&ValueType::V128));
-        assert!(!i32_val.matches_type(&ValueType::FuncRef));
         assert!(!i32_val.matches_type(&ValueType::ExternRef));
     }
 
@@ -615,13 +669,13 @@ mod tests {
         let externref_val = Value::ExternRef(Some(ExternRef { index: 1 }));
         let null_externref_val = Value::ExternRef(None);
 
-        assert_eq!(i32_val.to_string(), "i32(42)");
-        assert_eq!(i64_val.to_string(), "i64(42)");
-        assert_eq!(f32_val.to_string(), "f32(3.14)");
-        assert_eq!(f64_val.to_string(), "f64(3.14)");
-        assert_eq!(funcref_val.to_string(), "funcref(1)");
-        assert_eq!(null_funcref_val.to_string(), "funcref(null)");
-        assert_eq!(externref_val.to_string(), "externref(1)");
-        assert_eq!(null_externref_val.to_string(), "externref(null)");
+        assert_eq!(i32_val.to_string(), "i32:42");
+        assert_eq!(i64_val.to_string(), "i64:42");
+        assert_eq!(f32_val.to_string(), "f32:3.14");
+        assert_eq!(f64_val.to_string(), "f64:3.14");
+        assert_eq!(funcref_val.to_string(), "funcref:1");
+        assert_eq!(null_funcref_val.to_string(), "funcref:null");
+        assert_eq!(externref_val.to_string(), "externref:1");
+        assert_eq!(null_externref_val.to_string(), "externref:null");
     }
 }

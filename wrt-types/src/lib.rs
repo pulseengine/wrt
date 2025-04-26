@@ -19,18 +19,22 @@ extern crate alloc;
 
 // Core re-exports based on environment
 #[cfg(feature = "std")]
-pub use std::{collections::HashMap, fmt, string::String, vec::Vec};
+pub use std::{
+    boxed::Box, collections::HashMap, fmt, format, string::String, string::ToString, vec, vec::Vec,
+};
 
-#[cfg(not(feature = "std"))]
-pub use alloc::{collections::BTreeMap as HashMap, string::String, vec::Vec};
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+pub use alloc::{
+    boxed::Box, collections::BTreeMap as HashMap, format, string::String, string::ToString, vec,
+    vec::Vec,
+};
 
 // Make sure the necessary types are available for no_std builds
-#[cfg(not(feature = "std"))]
-pub use alloc::{borrow, boxed::Box, format, rc, sync, vec};
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+pub use alloc::{borrow, rc, sync};
 
-// Re-export ToString for no_std builds
-#[cfg(not(feature = "std"))]
-pub use alloc::string::ToString;
+// Re-export error related types for convenience
+pub use wrt_error::{kinds, Error, Result};
 
 // Core modules
 /// Bounded collections for memory safety
@@ -82,9 +86,6 @@ pub const WASM_MAGIC: [u8; 4] = [0x00, 0x61, 0x73, 0x6D];
 
 /// The WebAssembly binary format version
 pub const WASM_VERSION: u32 = 1;
-
-// Re-export Result for convenience
-pub use wrt_error::Result;
 
 // Core feature re-exports
 // Note: These are feature-gated re-exports that shouldn't conflict with the main ones
