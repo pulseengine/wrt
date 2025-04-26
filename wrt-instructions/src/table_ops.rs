@@ -40,9 +40,19 @@ pub enum TableOp {
     /// Fill a table with a value
     TableFill(u32),
     /// Copy elements from one table to another
-    TableCopy { dst_table: u32, src_table: u32 },
+    TableCopy {
+        /// Destination table index
+        dst_table: u32,
+        /// Source table index
+        src_table: u32,
+    },
     /// Initialize a table from an element segment
-    TableInit { table_index: u32, elem_index: u32 },
+    TableInit {
+        /// Table index to initialize
+        table_index: u32,
+        /// Element segment index to use
+        elem_index: u32,
+    },
     /// Drop an element segment
     ElemDrop(u32),
 }

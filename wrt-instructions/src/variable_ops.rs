@@ -5,13 +5,8 @@
 
 use crate::{instruction_traits::PureInstruction, Error, Result, Value};
 
-// When no_std but alloc is available
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::string::ToString;
-
-// When std is available
-#[cfg(feature = "std")]
-use std::string::ToString;
+// ToString is brought in through the prelude for both std and no_std configurations
+// so we don't need explicit imports
 
 /// Represents a pure variable operation for WebAssembly.
 #[derive(Debug, Clone)]
