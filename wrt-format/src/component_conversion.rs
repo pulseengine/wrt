@@ -56,9 +56,8 @@ impl ToFormat<FormatValType> for ValueType {
             ValueType::I64 => FormatValType::S64,
             ValueType::F32 => FormatValType::F32,
             ValueType::F64 => FormatValType::F64,
-            ValueType::V128 => FormatValType::ErrorContext, // Map V128 to ErrorContext (not ideal)
-            ValueType::FuncRef => FormatValType::Ref(0),    // Use a default reference index
-            ValueType::ExternRef => FormatValType::String,  // Default to string format
+            ValueType::FuncRef => FormatValType::Own(0), // Map to handle
+            ValueType::ExternRef => FormatValType::Own(0), // Map to handle
         }
     }
 }
@@ -71,6 +70,18 @@ pub fn format_val_type_to_value_type(format_type: &FormatValType) -> Result<Valu
 // Helper function for error handling when converting to format type
 pub fn value_type_to_format_val_type(value_type: &ValueType) -> Result<FormatValType> {
     Ok(value_type.to_format())
+}
+
+// Map a core WebAssembly ValueType to a Component Model ValType
+pub fn map_wasm_type_to_component(ty: ValueType) -> FormatValType {
+    match ty {
+        ValueType::I32 => FormatValType::S32,
+        ValueType::I64 => FormatValType::S64,
+        ValueType::F32 => FormatValType::F32,
+        ValueType::F64 => FormatValType::F64,
+        ValueType::FuncRef => FormatValType::Own(0), // Map to handle
+        ValueType::ExternRef => FormatValType::Own(0), // Map to handle
+    }
 }
 
 #[cfg(test)]

@@ -1,10 +1,14 @@
-//! WebAssembly Component Model Canonical ABI representation.
+//! WebAssembly Component Model canonical ABI.
 //!
-//! This module provides types and utilities for working with the Canonical ABI for
-//! WebAssembly Component Model, including memory layouts and type transformations.
+//! This module implements the Canonical ABI for WebAssembly component model.
 
-use crate::component::ValType;
-use crate::{String, Vec};
+#[cfg(feature = "std")]
+use std::{boxed::Box, string::String, vec, vec::Vec};
+
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+use alloc::{boxed::Box, string::String, string::ToString, vec, vec::Vec};
+
+use wrt_types::component_value::ValType;
 
 /// Canonical ABI memory layout for component types
 #[derive(Debug, Clone)]
@@ -102,8 +106,14 @@ pub fn calculate_layout(ty: &ValType) -> CanonicalLayout {
             details: CanonicalLayoutDetails::Primitive,
         },
         ValType::Char => CanonicalLayout {
-            size: 4,
+            size: 4, // Unicode scalar value as u32
             alignment: 4,
+            offset: None,
+            details: CanonicalLayoutDetails::Primitive,
+        },
+        ValType::Void => CanonicalLayout {
+            size: 0,
+            alignment: 1,
             offset: None,
             details: CanonicalLayoutDetails::Primitive,
         },
@@ -286,55 +296,12 @@ pub fn calculate_layout(ty: &ValType) -> CanonicalLayout {
             }
         }
         ValType::Result(ok_type) => {
-            // Result with only OK type
+            // Result with only OK type, and we'll also handle the error case
+            // For the error case, we'll use the same layout as the OK type for simplicity
             let ok_layout = calculate_layout(ok_type);
+            let err_layout = ok_layout.clone(); // Assuming same layout for errors
+
             let tag_size = 1; // Just enough for Ok/Err
-
-            // Calculate total size including tag and alignment padding
-            let payload_offset = align_up(tag_size, ok_layout.alignment);
-            let total_size = payload_offset + ok_layout.size;
-
-            CanonicalLayout {
-                size: total_size,
-                alignment: ok_layout.alignment.max(tag_size),
-                offset: None,
-                details: CanonicalLayoutDetails::Variant {
-                    tag_size: 1,
-                    cases: vec![
-                        ("ok".to_string(), Some(ok_layout)),
-                        ("err".to_string(), None),
-                    ],
-                },
-            }
-        }
-        ValType::ResultErr(err_type) => {
-            // Result with only Err type
-            let err_layout = calculate_layout(err_type);
-            let tag_size = 1; // Just enough for Ok/Err
-
-            // Calculate total size including tag and alignment padding
-            let payload_offset = align_up(tag_size, err_layout.alignment);
-            let total_size = payload_offset + err_layout.size;
-
-            CanonicalLayout {
-                size: total_size,
-                alignment: err_layout.alignment.max(tag_size),
-                offset: None,
-                details: CanonicalLayoutDetails::Variant {
-                    tag_size: 1,
-                    cases: vec![
-                        ("ok".to_string(), None),
-                        ("err".to_string(), Some(err_layout)),
-                    ],
-                },
-            }
-        }
-        ValType::ResultBoth(ok_type, err_type) => {
-            // Result with both Ok and Err types
-            let ok_layout = calculate_layout(ok_type);
-            let err_layout = calculate_layout(err_type);
-            let tag_size = 1; // Just enough for Ok/Err
-
             let max_payload_size = ok_layout.size.max(err_layout.size);
             let max_payload_alignment = ok_layout.alignment.max(err_layout.alignment);
 

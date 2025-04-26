@@ -11,7 +11,7 @@
 extern crate std;
 
 // Import alloc for no_std
-#[cfg(not(feature = "std"))]
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
 extern crate alloc;
 
 // Import std/alloc collections based on feature flag
@@ -19,17 +19,19 @@ extern crate alloc;
 pub use std::{
     boxed::Box,
     collections::{HashMap, HashSet},
-    format,
-    string::String,
+    fmt, format,
+    string::{String, ToString},
+    vec,
     vec::Vec,
 };
 
-#[cfg(not(feature = "std"))]
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
 pub use alloc::{
     boxed::Box,
     collections::{BTreeMap as HashMap, BTreeSet as HashSet},
-    format,
-    string::String,
+    fmt, format,
+    string::{String, ToString},
+    vec,
     vec::Vec,
 };
 
