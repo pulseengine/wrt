@@ -18,51 +18,40 @@ use alloc::{
 use crate::verification::Hasher;
 use wrt_error::{kinds, Error, Result};
 
+const MAX_PARAMS: usize = 128;
+const MAX_RESULTS: usize = 16;
+
 /// WebAssembly value types
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u8)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ValueType {
     /// 32-bit integer
-    I32 = 0x7F,
+    I32,
     /// 64-bit integer
-    I64 = 0x7E,
-    /// 32-bit float
-    F32 = 0x7D,
-    /// 64-bit float
-    F64 = 0x7C,
-    /// 128-bit vector (SIMD)
-    V128 = 0x7B,
+    I64,
+    /// 32-bit floating point
+    F32,
+    /// 64-bit floating point
+    F64,
     /// Function reference
-    FuncRef = 0x70,
-    /// Extern reference
-    ExternRef = 0x6F,
+    FuncRef,
+    /// External reference
+    ExternRef,
 }
 
 impl ValueType {
-    /// Convert from the WebAssembly binary format value
+    /// Create a value type from a binary representation
     pub fn from_binary(byte: u8) -> Result<Self> {
         match byte {
             0x7F => Ok(Self::I32),
             0x7E => Ok(Self::I64),
             0x7D => Ok(Self::F32),
             0x7C => Ok(Self::F64),
-            0x7B => Ok(Self::V128),
             0x70 => Ok(Self::FuncRef),
             0x6F => Ok(Self::ExternRef),
-            #[cfg(feature = "std")]
             _ => Err(Error::new(kinds::ParseError(format!(
-                "Invalid value type byte: 0x{:x}",
+                "Invalid value type byte: 0x{:02x}",
                 byte
             )))),
-            #[cfg(all(not(feature = "std"), feature = "alloc"))]
-            _ => Err(Error::new(kinds::ParseError(format!(
-                "Invalid value type byte: 0x{:x}",
-                byte
-            )))),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
-            _ => Err(Error::new(kinds::ParseError(
-                "Invalid value type byte".into(),
-            ))),
         }
     }
 
@@ -76,7 +65,6 @@ impl ValueType {
         match self {
             Self::I32 | Self::F32 => 4,
             Self::I64 | Self::F64 => 8,
-            Self::V128 => 16,
             Self::FuncRef | Self::ExternRef => {
                 // Reference types are pointer-sized
                 #[cfg(target_pointer_width = "64")]
@@ -99,7 +87,6 @@ impl fmt::Display for ValueType {
             Self::I64 => write!(f, "i64"),
             Self::F32 => write!(f, "f32"),
             Self::F64 => write!(f, "f64"),
-            Self::V128 => write!(f, "v128"),
             Self::FuncRef => write!(f, "funcref"),
             Self::ExternRef => write!(f, "externref"),
         }
@@ -407,7 +394,6 @@ mod tests {
         assert_eq!(ValueType::from_binary(0x7E).unwrap(), ValueType::I64);
         assert_eq!(ValueType::from_binary(0x7D).unwrap(), ValueType::F32);
         assert_eq!(ValueType::from_binary(0x7C).unwrap(), ValueType::F64);
-        assert_eq!(ValueType::from_binary(0x7B).unwrap(), ValueType::V128);
         assert_eq!(ValueType::from_binary(0x70).unwrap(), ValueType::FuncRef);
         assert_eq!(ValueType::from_binary(0x6F).unwrap(), ValueType::ExternRef);
 
