@@ -194,6 +194,10 @@ pub fn extract_producers_section(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::prelude::{ToString, Vec};
+
+    #[cfg(not(feature = "std"))]
+    use alloc::vec;
 
     #[test]
     fn test_parse_producers_section() {
@@ -241,7 +245,6 @@ mod tests {
 
     #[test]
     fn test_round_trip() {
-        // Create a producers section
         let mut producers = ProducersSection::new();
         producers.add_language("Rust".to_string(), "1.50.0".to_string());
         producers.add_processed_by("rustc".to_string(), "1.50.0".to_string());

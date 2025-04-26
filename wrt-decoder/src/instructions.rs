@@ -689,6 +689,13 @@ pub fn parse_locals(bytes: &[u8]) -> Result<(Vec<(u32, u8)>, usize)> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ValueType;
+
+    #[cfg(feature = "std")]
+    use std::vec;
+
+    #[cfg(not(feature = "std"))]
+    use alloc::vec;
 
     #[test]
     fn test_parse_encode_i32_const() {
@@ -728,19 +735,22 @@ mod tests {
 
     #[test]
     fn test_parse_encode_block() {
-        // block (empty) end
-        let bytes = vec![binary::BLOCK, 0x40, binary::END];
+        let bytes = [
+            0x02, 0x7F, // block i32
+            0x41, 0x2A, // i32.const 42
+            0x0B, // end
+        ];
+
         let (instruction, bytes_read) = parse_instruction(&bytes).unwrap();
+        assert_eq!(bytes_read, bytes.len());
 
-        match instruction {
-            Instruction::Block(block_type, instructions) => {
-                assert_eq!(block_type, BlockType::Empty);
-                assert!(instructions.is_empty());
-            }
-            _ => panic!("Expected Block instruction"),
+        if let Instruction::Block(ref block_type, ref instructions) = instruction {
+            assert_eq!(block_type, &BlockType::Value(ValueType::I32));
+            assert_eq!(instructions.len(), 1);
+            assert_eq!(instructions[0], Instruction::I32Const(42));
+        } else {
+            panic!("Expected Block instruction");
         }
-
-        assert_eq!(bytes_read, 3);
 
         let encoded = encode_instruction(&instruction).unwrap();
         assert_eq!(encoded, bytes);
@@ -748,26 +758,24 @@ mod tests {
 
     #[test]
     fn test_parse_encode_loop() {
-        // loop (i32) i32.const 1 end
-        let bytes = vec![
-            binary::LOOP,
-            binary::I32_TYPE,
-            binary::I32_CONST,
-            0x01,
-            binary::END,
+        let bytes = [
+            0x03, 0x7F, // loop i32
+            0x41, 0x2A, // i32.const 42
+            0x0C, 0x00, // br 0
+            0x0B, // end
         ];
+
         let (instruction, bytes_read) = parse_instruction(&bytes).unwrap();
+        assert_eq!(bytes_read, bytes.len());
 
-        match instruction {
-            Instruction::Loop(block_type, instructions) => {
-                assert_eq!(block_type, BlockType::Value(ValueType::I32));
-                assert_eq!(instructions.len(), 1);
-                assert_eq!(instructions[0], Instruction::I32Const(1));
-            }
-            _ => panic!("Expected Loop instruction"),
+        if let Instruction::Loop(ref block_type, ref instructions) = instruction {
+            assert_eq!(block_type, &BlockType::Value(ValueType::I32));
+            assert_eq!(instructions.len(), 2);
+            assert_eq!(instructions[0], Instruction::I32Const(42));
+            assert_eq!(instructions[1], Instruction::Br(0));
+        } else {
+            panic!("Expected Loop instruction");
         }
-
-        assert_eq!(bytes_read, 5);
 
         let encoded = encode_instruction(&instruction).unwrap();
         assert_eq!(encoded, bytes);
@@ -775,31 +783,28 @@ mod tests {
 
     #[test]
     fn test_parse_encode_if() {
-        // if (empty) i32.const 1 else i32.const 0 end
-        let bytes = vec![
-            binary::IF,
-            0x40,
-            binary::I32_CONST,
-            0x01,
-            binary::ELSE,
-            binary::I32_CONST,
-            0x00,
-            binary::END,
+        let bytes = [
+            0x04, 0x7F, // if i32
+            0x41, 0x2A, // i32.const 42
+            0x05, // else
+            0x41, 0x37, // i32.const 55
+            0x0B, // end
         ];
+
         let (instruction, bytes_read) = parse_instruction(&bytes).unwrap();
+        assert_eq!(bytes_read, bytes.len());
 
-        match instruction {
-            Instruction::If(block_type, then_instructions, else_instructions) => {
-                assert_eq!(block_type, BlockType::Empty);
-                assert_eq!(then_instructions.len(), 1);
-                assert_eq!(then_instructions[0], Instruction::I32Const(1));
-                assert_eq!(else_instructions.len(), 1);
-                assert_eq!(else_instructions[0], Instruction::I32Const(0));
-            }
-            _ => panic!("Expected If instruction"),
+        if let Instruction::If(ref block_type, ref then_instructions, ref else_instructions) =
+            instruction
+        {
+            assert_eq!(block_type, &BlockType::Value(ValueType::I32));
+            assert_eq!(then_instructions.len(), 1);
+            assert_eq!(then_instructions[0], Instruction::I32Const(42));
+            assert_eq!(else_instructions.len(), 1);
+            assert_eq!(else_instructions[0], Instruction::I32Const(55));
+        } else {
+            panic!("Expected If instruction");
         }
-
-        assert_eq!(bytes_read, 8);
 
         let encoded = encode_instruction(&instruction).unwrap();
         assert_eq!(encoded, bytes);
@@ -807,25 +812,23 @@ mod tests {
 
     #[test]
     fn test_parse_encode_br_table() {
-        // br_table [0 1] 2
-        let bytes = vec![
-            binary::BR_TABLE,
-            0x02, // count = 2
+        let bytes = [
+            0x0E, // br_table
+            0x02, // 2 labels
             0x00, // label 0
             0x01, // label 1
-            0x02, // default label 2
+            0x02, // default label
         ];
+
         let (instruction, bytes_read) = parse_instruction(&bytes).unwrap();
+        assert_eq!(bytes_read, bytes.len());
 
-        match instruction {
-            Instruction::BrTable(labels, default_label) => {
-                assert_eq!(labels, vec![0, 1]);
-                assert_eq!(default_label, 2);
-            }
-            _ => panic!("Expected BrTable instruction"),
+        if let Instruction::BrTable(ref labels, default_label) = instruction {
+            assert_eq!(labels, &[0, 1]);
+            assert_eq!(default_label, 2);
+        } else {
+            panic!("Expected BrTable instruction");
         }
-
-        assert_eq!(bytes_read, 5);
 
         let encoded = encode_instruction(&instruction).unwrap();
         assert_eq!(encoded, bytes);

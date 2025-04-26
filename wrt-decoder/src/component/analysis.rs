@@ -246,14 +246,12 @@ fn kind_to_string(kind: &CoreSort) -> String {
 
 /// Helper to convert Sort to string (debug helper)
 #[allow(dead_code)]
-fn sort_to_string(sort: &Sort) -> String {
+fn sort_to_string(sort: &wrt_format::component::Sort) -> String {
     match sort {
-        Sort::Func => "Func".to_string(),
+        Sort::Function => "Func".to_string(),
         Sort::Value => "Value".to_string(),
-        Sort::Table => "Table".to_string(),
-        Sort::Memory => "Memory".to_string(),
+        Sort::Type => "Type".to_string(),
         Sort::Instance => "Instance".to_string(),
-        Sort::Module => "Module".to_string(),
         Sort::Component => "Component".to_string(),
         Sort::Core(core_sort) => format!("Core({})", kind_to_string(core_sort)),
     }

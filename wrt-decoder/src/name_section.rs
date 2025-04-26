@@ -7,6 +7,9 @@ use crate::prelude::{format, String, Vec};
 use wrt_error::{kinds, Error, Result};
 use wrt_format::binary;
 
+#[cfg(not(feature = "std"))]
+use alloc::vec;
+
 /// WebAssembly name section types
 pub const NAME_MODULE: u8 = 0;
 pub const NAME_FUNCTION: u8 = 1;

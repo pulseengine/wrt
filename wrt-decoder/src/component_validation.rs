@@ -2253,7 +2253,7 @@ fn validate_resources(component: &Component, ctx: &mut ValidationContext) -> Res
 /// Validate compatibility between an import and an export
 #[allow(dead_code)]
 fn validate_import_export_compatibility(
-    ctx: &ValidationContext,
+    _ctx: &ValidationContext,
     imported_type: &ExternType,
     exported_type: &ExternType,
 ) -> Result<()> {
@@ -2262,24 +2262,5 @@ fn validate_import_export_compatibility(
             "Import and export types are not compatible".to_string(),
         )));
     }
-    Ok(())
-}
-
-/// Register a visitor for a component
-fn register_component_for_visit(
-    &mut self,
-    comp: ComponentIdx,
-    comp_ty: ComponentTypeIdx,
-    instance_exports: &[InstanceExport],
-) -> Result<()> {
-    // TODO: find the component in the instance/component hierarchy
-    let _ctx = self.validate_component(
-        comp,
-        instance_exports
-            .iter()
-            .map(|e| e.name.to_string())
-            .collect(),
-    )?;
-    debug!("registered component for visit: {:?}", comp);
     Ok(())
 }

@@ -50,6 +50,9 @@ pub(crate) mod prelude {
     pub use std::vec::Vec;
 }
 
+// Use the prelude throughout this crate
+use crate::prelude::*;
+
 // Export module components
 pub mod component;
 pub mod component_name_section;
