@@ -2,6 +2,9 @@
 //!
 //! This module contains implementations for all WebAssembly variable instructions,
 //! including local and global variable access.
+//!
+//! This module integrates with the pure implementations in `wrt-instructions/variable_ops.rs`,
+//! providing the runtime-specific context needed for execution.
 
 use log::debug;
 use std::sync::Arc;
@@ -15,6 +18,9 @@ use crate::{
     values::Value,
     StacklessEngine,
 };
+
+// Import the pure implementations from wrt-instructions
+use wrt_instructions::variable_ops::{VariableContext, VariableOp};
 
 /// Implementation for `local.get` instruction.
 #[derive(Debug, Clone, PartialEq)]
@@ -71,12 +77,47 @@ impl GlobalSet {
     }
 }
 
+/// Runtime adapter that bridges the pure variable operations with the stackless engine
+struct RuntimeVariableContext<'a> {
+    stack: &'a mut dyn StackBehavior,
+    frame: &'a mut StacklessFrame,
+    engine: &'a mut StacklessEngine,
+}
+
+impl<'a> VariableContext for RuntimeVariableContext<'a> {
+    fn get_local(&self, index: u32) -> wrt_instructions::Result<Value> {
+        self.frame.get_local(index as usize).map_err(|e| wrt_instructions::Error::new(e.kind()))
+    }
+
+    fn set_local(&mut self, index: u32, value: Value) -> wrt_instructions::Result<()> {
+        self.frame.set_local(index as usize, value).map_err(|e| wrt_instructions::Error::new(e.kind()))
+    }
+
+    fn get_global(&self, index: u32) -> wrt_instructions::Result<Value> {
+        self.frame.get_global(index as usize, self.engine)
+            .map_err(|e| wrt_instructions::Error::new(e.kind()))
+    }
+
+    fn set_global(&mut self, index: u32, value: Value) -> wrt_instructions::Result<()> {
+        self.frame.set_global(index as usize, value, self.engine)
+            .map_err(|e| wrt_instructions::Error::new(e.kind()))
+    }
+
+    fn push_value(&mut self, value: Value) -> wrt_instructions::Result<()> {
+        self.stack.push(value).map_err(|e| wrt_instructions::Error::new(e.kind()))
+    }
+
+    fn pop_value(&mut self) -> wrt_instructions::Result<Value> {
+        self.stack.pop().map_err(|e| wrt_instructions::Error::new(e.kind()))
+    }
+}
+
 impl InstructionExecutor for LocalGet {
     fn execute(
         &self,
         stack: &mut dyn StackBehavior,
         frame: &mut dyn FrameBehavior,
-        _engine: &mut StacklessEngine,
+        engine: &mut StacklessEngine,
     ) -> Result<ControlFlow> {
         let frame = frame
             .as_any()
@@ -86,8 +127,17 @@ impl InstructionExecutor for LocalGet {
                     "FrameBehavior is not StacklessFrame in LocalGet".to_string(),
                 ))
             })?;
-        let value = frame.get_local(self.local_idx as usize)?;
-        stack.push(value)?;
+        
+        let mut context = RuntimeVariableContext {
+            stack,
+            frame,
+            engine,
+        };
+        
+        // Use the pure implementation from wrt-instructions
+        VariableOp::LocalGet(self.local_idx).execute(&mut context)
+            .map_err(|e| Error::new(e.kind()))?;
+            
         Ok(ControlFlow::Continue)
     }
 }
@@ -97,7 +147,7 @@ impl InstructionExecutor for LocalSet {
         &self,
         stack: &mut dyn StackBehavior,
         frame: &mut dyn FrameBehavior,
-        _engine: &mut StacklessEngine,
+        engine: &mut StacklessEngine,
     ) -> Result<ControlFlow> {
         let frame = frame
             .as_any()
@@ -107,8 +157,17 @@ impl InstructionExecutor for LocalSet {
                     "FrameBehavior is not StacklessFrame in LocalSet".to_string(),
                 ))
             })?;
-        let value = stack.pop()?;
-        frame.set_local(self.local_idx as usize, value)?;
+        
+        let mut context = RuntimeVariableContext {
+            stack,
+            frame,
+            engine,
+        };
+        
+        // Use the pure implementation from wrt-instructions
+        VariableOp::LocalSet(self.local_idx).execute(&mut context)
+            .map_err(|e| Error::new(e.kind()))?;
+            
         Ok(ControlFlow::Continue)
     }
 }
@@ -118,7 +177,7 @@ impl InstructionExecutor for LocalTee {
         &self,
         stack: &mut dyn StackBehavior,
         frame: &mut dyn FrameBehavior,
-        _engine: &mut StacklessEngine,
+        engine: &mut StacklessEngine,
     ) -> Result<ControlFlow> {
         let frame = frame
             .as_any()
@@ -128,8 +187,17 @@ impl InstructionExecutor for LocalTee {
                     "FrameBehavior is not StacklessFrame in LocalTee".to_string(),
                 ))
             })?;
-        let value = stack.peek()?.clone();
-        frame.set_local(self.local_idx as usize, value)?;
+        
+        let mut context = RuntimeVariableContext {
+            stack,
+            frame,
+            engine,
+        };
+        
+        // Use the pure implementation from wrt-instructions
+        VariableOp::LocalTee(self.local_idx).execute(&mut context)
+            .map_err(|e| Error::new(e.kind()))?;
+            
         Ok(ControlFlow::Continue)
     }
 }
@@ -149,8 +217,17 @@ impl InstructionExecutor for GlobalGet {
                     "FrameBehavior is not StacklessFrame in GlobalGet".to_string(),
                 ))
             })?;
-        let global = frame.get_global(self.global_idx as usize, engine)?;
-        stack.push(global.get())?;
+        
+        let mut context = RuntimeVariableContext {
+            stack,
+            frame,
+            engine,
+        };
+        
+        // Use the pure implementation from wrt-instructions
+        VariableOp::GlobalGet(self.global_idx).execute(&mut context)
+            .map_err(|e| Error::new(e.kind()))?;
+            
         Ok(ControlFlow::Continue)
     }
 }
@@ -170,8 +247,17 @@ impl InstructionExecutor for GlobalSet {
                     "FrameBehavior is not StacklessFrame in GlobalSet".to_string(),
                 ))
             })?;
-        let value = stack.pop()?;
-        frame.set_global(self.global_idx as usize, value, engine)?;
+        
+        let mut context = RuntimeVariableContext {
+            stack,
+            frame,
+            engine,
+        };
+        
+        // Use the pure implementation from wrt-instructions
+        VariableOp::GlobalSet(self.global_idx).execute(&mut context)
+            .map_err(|e| Error::new(e.kind()))?;
+            
         Ok(ControlFlow::Continue)
     }
 }
