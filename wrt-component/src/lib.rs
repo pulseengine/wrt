@@ -66,3 +66,18 @@ pub use wrt_types::values::Value;
 pub mod verify;
 
 pub use component::Component;
+
+/// Debug logging macro - conditionally compiled
+#[macro_export]
+macro_rules! debug_println {
+    ($($arg:tt)*) => {
+        #[cfg(feature = "debug-log")]
+        {
+            println!($($arg)*);
+        }
+        #[cfg(not(feature = "debug-log"))]
+        {
+            // Do nothing when debug logging is disabled
+        }
+    };
+}
