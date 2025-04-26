@@ -93,6 +93,9 @@ pub mod serialization;
 /// Adapter for WebAssembly format handling
 pub mod format_adapter;
 
+/// Adapter for WebAssembly instructions to use pure implementations
+pub mod instructions_adapter;
+
 /// Integration layer for wrt-decoder with functional safety
 pub mod decoder_integration;
 

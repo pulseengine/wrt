@@ -24,11 +24,15 @@ struct RuntimeArithmeticContext<'a> {
 
 impl<'a> ArithmeticContext for RuntimeArithmeticContext<'a> {
     fn pop_arithmetic_value(&mut self) -> wrt_instructions::Result<Value> {
-        self.stack.pop().map_err(|e| wrt_instructions::Error::new(e.kind()))
+        self.stack
+            .pop()
+            .map_err(|e| wrt_instructions::Error::new(e.kind()))
     }
 
     fn push_arithmetic_value(&mut self, value: Value) -> wrt_instructions::Result<()> {
-        self.stack.push(value).map_err(|e| wrt_instructions::Error::new(e.kind()))
+        self.stack
+            .push(value)
+            .map_err(|e| wrt_instructions::Error::new(e.kind()))
     }
 }
 
@@ -42,7 +46,8 @@ pub fn i32_add<TFrame: FrameBehavior + ?Sized>(
 ) -> Result<()> {
     // Create the runtime context and delegate to the pure implementation
     let mut context = RuntimeArithmeticContext { stack };
-    ArithmeticOp::I32Add.execute(&mut context)
+    ArithmeticOp::I32Add
+        .execute(&mut context)
         .map_err(|e| Error::new(e.kind()))
 }
 
@@ -56,7 +61,8 @@ pub fn i32_sub<TFrame: FrameBehavior + ?Sized>(
 ) -> Result<()> {
     // Create the runtime context and delegate to the pure implementation
     let mut context = RuntimeArithmeticContext { stack };
-    ArithmeticOp::I32Sub.execute(&mut context)
+    ArithmeticOp::I32Sub
+        .execute(&mut context)
         .map_err(|e| Error::new(e.kind()))
 }
 
@@ -70,7 +76,8 @@ pub fn i32_mul<TFrame: FrameBehavior + ?Sized>(
 ) -> Result<()> {
     // Create the runtime context and delegate to the pure implementation
     let mut context = RuntimeArithmeticContext { stack };
-    ArithmeticOp::I32Mul.execute(&mut context)
+    ArithmeticOp::I32Mul
+        .execute(&mut context)
         .map_err(|e| Error::new(e.kind()))
 }
 
@@ -85,7 +92,8 @@ pub fn i32_div_s<TFrame: FrameBehavior + ?Sized>(
 ) -> Result<()> {
     // Create the runtime context and delegate to the pure implementation
     let mut context = RuntimeArithmeticContext { stack };
-    ArithmeticOp::I32DivS.execute(&mut context)
+    ArithmeticOp::I32DivS
+        .execute(&mut context)
         .map_err(|e| Error::new(e.kind()))
 }
 
@@ -100,7 +108,8 @@ pub fn i32_div_u<TFrame: FrameBehavior + ?Sized>(
 ) -> Result<()> {
     // Create the runtime context and delegate to the pure implementation
     let mut context = RuntimeArithmeticContext { stack };
-    ArithmeticOp::I32DivU.execute(&mut context)
+    ArithmeticOp::I32DivU
+        .execute(&mut context)
         .map_err(|e| Error::new(e.kind()))
 }
 
@@ -115,7 +124,8 @@ pub fn i32_rem_s<TFrame: FrameBehavior + ?Sized>(
 ) -> Result<()> {
     // Create the runtime context and delegate to the pure implementation
     let mut context = RuntimeArithmeticContext { stack };
-    ArithmeticOp::I32RemS.execute(&mut context)
+    ArithmeticOp::I32RemS
+        .execute(&mut context)
         .map_err(|e| Error::new(e.kind()))
 }
 
@@ -130,7 +140,8 @@ pub fn i32_rem_u<TFrame: FrameBehavior + ?Sized>(
 ) -> Result<()> {
     // Create the runtime context and delegate to the pure implementation
     let mut context = RuntimeArithmeticContext { stack };
-    ArithmeticOp::I32RemU.execute(&mut context)
+    ArithmeticOp::I32RemU
+        .execute(&mut context)
         .map_err(|e| Error::new(e.kind()))
 }
 

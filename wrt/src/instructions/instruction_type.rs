@@ -2,7 +2,7 @@
 //!
 //! This module defines the `Instruction` enum that represents all WebAssembly instructions.
 //! Each instruction in this enum corresponds to a pure implementation in the `wrt-instructions` crate.
-//! 
+//!
 //! The `Instruction` enum serves as the integration layer that connects the pure instruction
 //! implementations with the runtime engine. When an instruction is executed, the runtime will:
 //!

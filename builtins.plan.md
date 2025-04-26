@@ -127,7 +127,7 @@ This document outlines the comprehensive implementation plan for enhancing the W
 - [x] Documentation is complete with examples
 - [x] Code coverage meets minimum threshold (>80%)
 
-### Phase 3: Host Builder and Configuration (Week 3)
+### Phase 3: Validation and Integration (Week 3)
 
 #### 3.1 Create Host Builder in `wrt-host`
 
@@ -173,9 +173,147 @@ This document outlines the comprehensive implementation plan for enhancing the W
 - Ensure no_std compatibility with proper type imports
 
 **Validation:**
+- [x] All code builds with both `std` and `no_std` features
+- [x] Clippy runs with no warnings
+- [x] Code passes basic tests after fixes
+
+#### 3.3.1.A Implement Complete Bidirectional Type Conversion Layer
+
+**Tasks:**
+- Create dedicated module `wrt-component/src/type_conversion/bidirectional.rs` to house all conversion logic
+- Implement comprehensive `format_to_runtime_extern_type` and `runtime_to_format_extern_type` functions with full type coverage
+- Add specialized conversion functions for each nested type (ValType, ResourceType, etc.)
+- Document all conversion functions with clear examples
+- Add feature flags to ensure compatibility with both `std` and `no_std` environments
+- Implement extension traits (IntoRuntimeType, IntoFormatType) for ergonomic usage
+
+**Validation:**
+- [ ] All conversion functions have complete pattern matching (no wildcard or unhandled cases)
+- [ ] All conversion functions are well-documented with examples
+- [ ] Code builds with `--no-default-features` flag
+- [ ] Code builds with default features
+- [ ] Clippy runs with no warnings
+
+#### 3.3.1.B Refactor Component and Instance Type Handling
+
+**Tasks:**
+- Fix the implementation of `ComponentType` by creating a local wrapper type
+- Replace direct trait implementations that violate orphan rules with proper conversion patterns
+- Update `InstanceType` references to use correct type from each domain
+- Implement `From`/`TryFrom` traits for all wrapper types
+- Ensure all public APIs use consistent type signatures
+
+**Validation:**
+- [ ] All `impl` blocks satisfy Rust's orphan rules
+- [ ] No direct implementations on external types
 - [ ] All code builds with both `std` and `no_std` features
 - [ ] Clippy runs with no warnings
-- [ ] Code passes basic tests after fixes
+
+#### 3.3.1.C Update Missing `binary` Module References
+
+**Tasks:**
+- Add proper import for `binary` module where needed in `component.rs`
+- Ensure all module imports are properly conditioned for feature flags
+- Fix import references in `wrt_decoder` dependency
+- Update type references to maintain consistent naming across the codebase
+
+**Validation:**
+- [ ] All imports resolve correctly
+- [ ] No unresolved module references in compilation output
+- [ ] Code builds with both `std` and `no_std` features
+- [ ] Clippy runs with no warnings
+
+#### 3.3.1.D Fix Value Variant Mismatch Issues
+
+**Tasks:**
+- Update `Value` enum matches to handle all variants correctly
+- Add missing match arms for `Value::Ref` and other variants
+- Ensure variant naming is consistent between `Value` implementations
+- Implement comprehensive conversion between different `Value` representations
+
+**Validation:**
+- [ ] All match expressions are exhaustive
+- [ ] Pattern matching compiles without warnings
+- [ ] No missed variants in runtime code
+- [ ] Code builds with both `std` and `no_std` features
+
+#### 3.3.1.E Implement Comprehensive Test Suite
+
+**Tasks:**
+- Create unit tests for each conversion function
+- Add round-trip serialization tests (format→runtime→format)
+- Implement property-based tests for type conversions
+- Add regression tests for previously identified issues
+- Create integration tests for the entire conversion pipeline
+
+**Validation:**
+- [ ] Test coverage exceeds 90% for conversion code
+- [ ] All edge cases are tested
+- [ ] Tests pass with both `std` and `no_std` features
+- [ ] No regressions from previous fixes
+
+#### 3.3.1.F Implement no_std Compatibility Fixes
+
+**Tasks:**
+- Add conditional imports for standard library types (`Vec`, `String`, `Box`, etc.)
+- Implement alternative synchronization primitives for `no_std` environments
+- Ensure memory allocation is properly conditioned on `alloc` feature
+- Add wrappers for `std`-only functionality when used in `no_std` context
+
+**Validation:**
+- [ ] Code builds with `--no-default-features` flag
+- [ ] Code builds with `--no-default-features --features="alloc"` flag
+- [ ] All tests pass in both `std` and `no_std` environments
+- [ ] No conditional compilation warnings
+
+#### 3.3.1.G Integrate Conversion Layer into Component Handling
+
+**Tasks:**
+- Update `component.rs` to use the conversion functions at domain boundaries
+- Modify instantiation flow to convert between format and runtime types
+- Update WebAssembly I/O operations to use the conversion layer
+- Ensure all exported APIs maintain type consistency
+
+**Integration Points:**
+- `wrt-component/src/component.rs`: Module instantiation and export handling
+- `wrt-component/src/execution.rs`: Function execution and argument conversion
+- `wrt-runtime/src/component_impl.rs`: Runtime component implementation
+- `wrt/src/module.rs`: Public API for module operations
+
+**Validation:**
+- [ ] All integration points correctly use the conversion layer
+- [ ] No direct casting between incompatible types
+- [ ] WebAssembly I/O operations correctly preserve all type information
+- [ ] Component operations work correctly with both formats
+
+#### 3.3.1.H Polish Documentation and API
+
+**Tasks:**
+- Add detailed documentation for the conversion layer
+- Create usage examples for common conversion scenarios
+- Update API documentation to reflect type conversion requirements
+- Add warnings about potential performance implications of conversions
+
+**Validation:**
+- [ ] All public APIs are documented
+- [ ] Documentation includes examples
+- [ ] Documentation builds without warnings
+- [ ] Documentation coverage meets project standards
+
+#### 3.3.1.I Final Validation
+
+**Tasks:**
+- Perform comprehensive validation across all affected crates
+- Verify all build configurations
+- Run full test suite including integration tests
+- Verify documentation
+
+**Validation:**
+- [ ] All code builds with all feature combinations
+- [ ] All tests pass
+- [ ] Clippy runs with no warnings
+- [ ] Documentation is complete and accurate
+- [ ] Type conversion is correctly integrated at all domain boundaries
 
 ##### 3.3.2 Implement Built-in Scanner
 

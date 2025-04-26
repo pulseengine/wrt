@@ -1,6 +1,4 @@
-use wrt_decoder::instructions::{encode_instruction, parse_instruction, Instruction};
-use wrt_decoder::types::BlockType;
-use wrt_types::ValueType;
+use wrt_decoder::instructions::{encode_instruction, parse_instruction};
 
 fn main() {
     println!("Testing WebAssembly control instructions");
