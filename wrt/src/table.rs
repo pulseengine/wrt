@@ -28,9 +28,10 @@ pub type TableAdapter = Table;
 ///
 /// Returns an error if the table cannot be created
 pub fn create_table(table_type: TableType) -> Result<Table> {
+    let element_type = table_type.element_type;
     Table::new(
         table_type,
-        wrt_types::values::Value::default_for_type(&table_type.element_type),
+        wrt_types::values::Value::default_for_type(&element_type),
     )
 }
 
@@ -76,12 +77,12 @@ mod tests {
     #[test]
     fn test_table_creation() {
         let table_type = create_test_table_type(10, Some(20));
-        let table = Table::new(table_type);
+        let table = create_table(table_type).unwrap();
         assert_eq!(table.size(), 10);
 
         // Test with unbounded max
         let table_type_unbounded = create_test_table_type(5, None);
-        let table_unbounded = Table::new(table_type_unbounded);
+        let table_unbounded = create_table(table_type_unbounded).unwrap();
         assert_eq!(table_unbounded.size(), 5);
     }
 
@@ -89,7 +90,7 @@ mod tests {
     fn test_table_growth() -> Result<()> {
         // Test bounded table
         let table_type = create_test_table_type(10, Some(20));
-        let table = Table::new(table_type);
+        let mut table = create_table(table_type)?;
 
         // Valid growth
         let old_size = table.grow(5)?;
@@ -107,7 +108,7 @@ mod tests {
 
         // Test unbounded table
         let table_type = create_test_table_type(5, None);
-        let table = Table::new(table_type);
+        let mut table = create_table(table_type)?;
 
         // Growth with no max
         let old_size = table.grow(10)?;
@@ -120,22 +121,25 @@ mod tests {
     #[test]
     fn test_table_access() -> Result<()> {
         let table_type = create_test_table_type(10, Some(20));
-        let table = Table::new(table_type);
+        let mut table = Table::new(
+            table_type,
+            wrt_types::values::Value::default_for_type(&ValueType::FuncRef),
+        )?;
 
         // Get initial value (should be None)
         let val = table.get(5)?;
         assert!(val.is_none());
 
         // Set a value
-        table.set(5, Some(Value::Ref(1)))?;
+        table.set(5, Some(Value::reference(1)))?;
 
         // Get the value back
         let val = table.get(5)?;
-        assert_eq!(val, Some(Value::Ref(1)));
+        assert_eq!(val, Some(Value::reference(1)));
 
         // Out of bounds access
         assert!(table.get(10).is_err());
-        assert!(table.set(10, Some(Value::Ref(2))).is_err());
+        assert!(table.set(10, Some(Value::reference(2))).is_err());
 
         Ok(())
     }
@@ -143,20 +147,23 @@ mod tests {
     #[test]
     fn test_table_initialization() -> Result<()> {
         let table_type = create_test_table_type(10, Some(20));
-        let table = Table::new(table_type);
+        let mut table = Table::new(
+            table_type,
+            wrt_types::values::Value::default_for_type(&ValueType::FuncRef),
+        )?;
 
         // Initialize a range
         let init_values = vec![
-            Some(Value::Ref(1)),
-            Some(Value::Ref(2)),
-            Some(Value::Ref(3)),
+            Some(Value::reference(1)),
+            Some(Value::reference(2)),
+            Some(Value::reference(3)),
         ];
         table.init(2, &init_values)?;
 
         // Check the values
-        assert_eq!(table.get(2)?, Some(Value::Ref(1)));
-        assert_eq!(table.get(3)?, Some(Value::Ref(2)));
-        assert_eq!(table.get(4)?, Some(Value::Ref(3)));
+        assert_eq!(table.get(2)?, Some(Value::reference(1)));
+        assert_eq!(table.get(3)?, Some(Value::reference(2)));
+        assert_eq!(table.get(4)?, Some(Value::reference(3)));
 
         // Out of bounds initialization
         let result = table.init(8, &init_values);
@@ -168,27 +175,30 @@ mod tests {
     #[test]
     fn test_table_copy() -> Result<()> {
         let table_type = create_test_table_type(10, Some(20));
-        let table = Table::new(table_type);
+        let mut table = Table::new(
+            table_type,
+            wrt_types::values::Value::default_for_type(&ValueType::FuncRef),
+        )?;
 
         // Initialize source values
         let init_values = vec![
-            Some(Value::Ref(1)),
-            Some(Value::Ref(2)),
-            Some(Value::Ref(3)),
+            Some(Value::reference(1)),
+            Some(Value::reference(2)),
+            Some(Value::reference(3)),
         ];
         table.init(2, &init_values)?;
 
         // Copy forward (non-overlapping)
         table.copy(5, 2, 3)?;
-        assert_eq!(table.get(5)?, Some(Value::Ref(1)));
-        assert_eq!(table.get(6)?, Some(Value::Ref(2)));
-        assert_eq!(table.get(7)?, Some(Value::Ref(3)));
+        assert_eq!(table.get(5)?, Some(Value::reference(1)));
+        assert_eq!(table.get(6)?, Some(Value::reference(2)));
+        assert_eq!(table.get(7)?, Some(Value::reference(3)));
 
         // Copy backward (overlapping)
         table.copy(1, 2, 3)?;
-        assert_eq!(table.get(1)?, Some(Value::Ref(1)));
-        assert_eq!(table.get(2)?, Some(Value::Ref(2)));
-        assert_eq!(table.get(3)?, Some(Value::Ref(3)));
+        assert_eq!(table.get(1)?, Some(Value::reference(1)));
+        assert_eq!(table.get(2)?, Some(Value::reference(2)));
+        assert_eq!(table.get(3)?, Some(Value::reference(3)));
 
         // Out of bounds copy
         assert!(table.copy(8, 2, 3).is_err()); // Destination out of bounds
@@ -200,15 +210,18 @@ mod tests {
     #[test]
     fn test_table_fill() -> Result<()> {
         let table_type = create_test_table_type(10, Some(20));
-        let table = Table::new(table_type);
+        let mut table = Table::new(
+            table_type,
+            wrt_types::values::Value::default_for_type(&ValueType::FuncRef),
+        )?;
 
         // Fill a range
-        table.fill(2, 3, Some(Value::Ref(42)))?;
+        table.fill(2, 3, Some(Value::reference(42)))?;
 
         // Check the values
-        assert_eq!(table.get(2)?, Some(Value::Ref(42)));
-        assert_eq!(table.get(3)?, Some(Value::Ref(42)));
-        assert_eq!(table.get(4)?, Some(Value::Ref(42)));
+        assert_eq!(table.get(2)?, Some(Value::reference(42)));
+        assert_eq!(table.get(3)?, Some(Value::reference(42)));
+        assert_eq!(table.get(4)?, Some(Value::reference(42)));
         assert_eq!(table.get(5)?, None); // Should not affect values outside range
 
         // Fill with None (clear values)
@@ -218,7 +231,7 @@ mod tests {
         assert_eq!(table.get(4)?, None);
 
         // Out of bounds fill
-        assert!(table.fill(8, 3, Some(Value::Ref(42))).is_err());
+        assert!(table.fill(8, 3, Some(Value::reference(42))).is_err());
 
         Ok(())
     }

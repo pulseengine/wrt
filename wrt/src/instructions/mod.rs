@@ -29,9 +29,20 @@ pub use instruction_type::Instruction;
 use crate::{
     behavior::{ControlFlow, FrameBehavior, InstructionExecutor, StackBehavior},
     error::{kinds, Error, Result},
+    instructions_adapter::execute_pure_instruction,
     memory::{DataDrop, Load, LoadSigned, LoadUnsigned, MemoryInit, Store, StoreTruncated},
     stackless::StacklessEngine,
     values::Value,
+};
+
+// Import pure instruction implementations
+use wrt_instructions::{
+    arithmetic_ops::ArithmeticOp,
+    comparison_ops::ComparisonOp,
+    control_ops::ControlOp,
+    memory_ops::{MemoryLoad, MemoryStore},
+    table_ops::TableOp,
+    variable_ops::VariableOp,
 };
 
 impl InstructionExecutor for Instruction {

@@ -44,7 +44,10 @@ impl<'a, S: StackBehavior + ?Sized> ComparisonContext for RuntimeComparisonConte
         }
     }
 
-    fn push_comparison_value(&mut self, value: wrt_instructions::Value) -> wrt_instructions::Result<()> {
+    fn push_comparison_value(
+        &mut self,
+        value: wrt_instructions::Value,
+    ) -> wrt_instructions::Result<()> {
         // Convert from wrt_instructions::Value to wrt::values::Value
         let value = match value {
             wrt_instructions::Value::I32(v) => Value::I32(v),
@@ -91,7 +94,8 @@ pub fn i32_eq(
     _engine: &StacklessEngine,
 ) -> Result<()> {
     let mut context = RuntimeComparisonContext::new(stack);
-    ComparisonOp::I32Eq.execute(&mut context)
+    ComparisonOp::I32Eq
+        .execute(&mut context)
         .map_err(|e| Error::invalid_type(format!("ComparisonOp::I32Eq error: {}", e)))
 }
 
@@ -105,7 +109,8 @@ pub fn i32_ne(
     _engine: &StacklessEngine,
 ) -> Result<()> {
     let mut context = RuntimeComparisonContext::new(stack);
-    ComparisonOp::I32Ne.execute(&mut context)
+    ComparisonOp::I32Ne
+        .execute(&mut context)
         .map_err(|e| Error::invalid_type(format!("ComparisonOp::I32Ne error: {}", e)))
 }
 
@@ -119,7 +124,8 @@ pub fn i32_lt_s(
     _engine: &StacklessEngine,
 ) -> Result<()> {
     let mut context = RuntimeComparisonContext::new(stack);
-    ComparisonOp::I32LtS.execute(&mut context)
+    ComparisonOp::I32LtS
+        .execute(&mut context)
         .map_err(|e| Error::invalid_type(format!("ComparisonOp::I32LtS error: {}", e)))
 }
 
@@ -133,7 +139,8 @@ pub fn i32_lt_u(
     _engine: &StacklessEngine,
 ) -> Result<()> {
     let mut context = RuntimeComparisonContext::new(stack);
-    ComparisonOp::I32LtU.execute(&mut context)
+    ComparisonOp::I32LtU
+        .execute(&mut context)
         .map_err(|e| Error::invalid_type(format!("ComparisonOp::I32LtU error: {}", e)))
 }
 
@@ -147,7 +154,8 @@ pub fn i32_gt_s(
     _engine: &StacklessEngine,
 ) -> Result<()> {
     let mut context = RuntimeComparisonContext::new(stack);
-    ComparisonOp::I32GtS.execute(&mut context)
+    ComparisonOp::I32GtS
+        .execute(&mut context)
         .map_err(|e| Error::invalid_type(format!("ComparisonOp::I32GtS error: {}", e)))
 }
 
@@ -161,7 +169,8 @@ pub fn i32_gt_u(
     _engine: &StacklessEngine,
 ) -> Result<()> {
     let mut context = RuntimeComparisonContext::new(stack);
-    ComparisonOp::I32GtU.execute(&mut context)
+    ComparisonOp::I32GtU
+        .execute(&mut context)
         .map_err(|e| Error::invalid_type(format!("ComparisonOp::I32GtU error: {}", e)))
 }
 
@@ -175,7 +184,8 @@ pub fn i32_le_s(
     _engine: &StacklessEngine,
 ) -> Result<()> {
     let mut context = RuntimeComparisonContext::new(stack);
-    ComparisonOp::I32LeS.execute(&mut context)
+    ComparisonOp::I32LeS
+        .execute(&mut context)
         .map_err(|e| Error::invalid_type(format!("ComparisonOp::I32LeS error: {}", e)))
 }
 
@@ -189,7 +199,8 @@ pub fn i32_le_u(
     _engine: &StacklessEngine,
 ) -> Result<()> {
     let mut context = RuntimeComparisonContext::new(stack);
-    ComparisonOp::I32LeU.execute(&mut context)
+    ComparisonOp::I32LeU
+        .execute(&mut context)
         .map_err(|e| Error::invalid_type(format!("ComparisonOp::I32LeU error: {}", e)))
 }
 
@@ -203,7 +214,8 @@ pub fn i32_ge_s(
     _engine: &StacklessEngine,
 ) -> Result<()> {
     let mut context = RuntimeComparisonContext::new(stack);
-    ComparisonOp::I32GeS.execute(&mut context)
+    ComparisonOp::I32GeS
+        .execute(&mut context)
         .map_err(|e| Error::invalid_type(format!("ComparisonOp::I32GeS error: {}", e)))
 }
 
@@ -217,7 +229,8 @@ pub fn i32_ge_u(
     _engine: &StacklessEngine,
 ) -> Result<()> {
     let mut context = RuntimeComparisonContext::new(stack);
-    ComparisonOp::I32GeU.execute(&mut context)
+    ComparisonOp::I32GeU
+        .execute(&mut context)
         .map_err(|e| Error::invalid_type(format!("ComparisonOp::I32GeU error: {}", e)))
 }
 
@@ -250,7 +263,8 @@ pub fn i64_eq(
     _engine: &StacklessEngine,
 ) -> Result<()> {
     let mut context = RuntimeComparisonContext::new(stack);
-    ComparisonOp::I64Eq.execute(&mut context)
+    ComparisonOp::I64Eq
+        .execute(&mut context)
         .map_err(|e| Error::invalid_type(format!("ComparisonOp::I64Eq error: {}", e)))
 }
 
@@ -264,7 +278,8 @@ pub fn i64_ne(
     _engine: &StacklessEngine,
 ) -> Result<()> {
     let mut context = RuntimeComparisonContext::new(stack);
-    ComparisonOp::I64Ne.execute(&mut context)
+    ComparisonOp::I64Ne
+        .execute(&mut context)
         .map_err(|e| Error::invalid_type(format!("ComparisonOp::I64Ne error: {}", e)))
 }
 
@@ -278,7 +293,8 @@ pub fn i64_lt_s(
     _engine: &StacklessEngine,
 ) -> Result<()> {
     let mut context = RuntimeComparisonContext::new(stack);
-    ComparisonOp::I64LtS.execute(&mut context)
+    ComparisonOp::I64LtS
+        .execute(&mut context)
         .map_err(|e| Error::invalid_type(format!("ComparisonOp::I64LtS error: {}", e)))
 }
 
@@ -292,7 +308,8 @@ pub fn i64_lt_u(
     _engine: &StacklessEngine,
 ) -> Result<()> {
     let mut context = RuntimeComparisonContext::new(stack);
-    ComparisonOp::I64LtU.execute(&mut context)
+    ComparisonOp::I64LtU
+        .execute(&mut context)
         .map_err(|e| Error::invalid_type(format!("ComparisonOp::I64LtU error: {}", e)))
 }
 
@@ -306,7 +323,8 @@ pub fn i64_gt_s(
     _engine: &StacklessEngine,
 ) -> Result<()> {
     let mut context = RuntimeComparisonContext::new(stack);
-    ComparisonOp::I64GtS.execute(&mut context)
+    ComparisonOp::I64GtS
+        .execute(&mut context)
         .map_err(|e| Error::invalid_type(format!("ComparisonOp::I64GtS error: {}", e)))
 }
 
@@ -320,7 +338,8 @@ pub fn i64_gt_u(
     _engine: &StacklessEngine,
 ) -> Result<()> {
     let mut context = RuntimeComparisonContext::new(stack);
-    ComparisonOp::I64GtU.execute(&mut context)
+    ComparisonOp::I64GtU
+        .execute(&mut context)
         .map_err(|e| Error::invalid_type(format!("ComparisonOp::I64GtU error: {}", e)))
 }
 
@@ -334,7 +353,8 @@ pub fn i64_le_s(
     _engine: &StacklessEngine,
 ) -> Result<()> {
     let mut context = RuntimeComparisonContext::new(stack);
-    ComparisonOp::I64LeS.execute(&mut context)
+    ComparisonOp::I64LeS
+        .execute(&mut context)
         .map_err(|e| Error::invalid_type(format!("ComparisonOp::I64LeS error: {}", e)))
 }
 
@@ -348,7 +368,8 @@ pub fn i64_le_u(
     _engine: &StacklessEngine,
 ) -> Result<()> {
     let mut context = RuntimeComparisonContext::new(stack);
-    ComparisonOp::I64LeU.execute(&mut context)
+    ComparisonOp::I64LeU
+        .execute(&mut context)
         .map_err(|e| Error::invalid_type(format!("ComparisonOp::I64LeU error: {}", e)))
 }
 
@@ -362,7 +383,8 @@ pub fn i64_ge_s(
     _engine: &StacklessEngine,
 ) -> Result<()> {
     let mut context = RuntimeComparisonContext::new(stack);
-    ComparisonOp::I64GeS.execute(&mut context)
+    ComparisonOp::I64GeS
+        .execute(&mut context)
         .map_err(|e| Error::invalid_type(format!("ComparisonOp::I64GeS error: {}", e)))
 }
 
@@ -376,7 +398,8 @@ pub fn i64_ge_u(
     _engine: &StacklessEngine,
 ) -> Result<()> {
     let mut context = RuntimeComparisonContext::new(stack);
-    ComparisonOp::I64GeU.execute(&mut context)
+    ComparisonOp::I64GeU
+        .execute(&mut context)
         .map_err(|e| Error::invalid_type(format!("ComparisonOp::I64GeU error: {}", e)))
 }
 
@@ -390,7 +413,8 @@ pub fn f32_eq(
     _engine: &StacklessEngine,
 ) -> Result<()> {
     let mut context = RuntimeComparisonContext::new(stack);
-    ComparisonOp::F32Eq.execute(&mut context)
+    ComparisonOp::F32Eq
+        .execute(&mut context)
         .map_err(|e| Error::invalid_type(format!("ComparisonOp::F32Eq error: {}", e)))
 }
 
@@ -404,7 +428,8 @@ pub fn f32_ne(
     _engine: &StacklessEngine,
 ) -> Result<()> {
     let mut context = RuntimeComparisonContext::new(stack);
-    ComparisonOp::F32Ne.execute(&mut context)
+    ComparisonOp::F32Ne
+        .execute(&mut context)
         .map_err(|e| Error::invalid_type(format!("ComparisonOp::F32Ne error: {}", e)))
 }
 
@@ -418,7 +443,8 @@ pub fn f32_lt(
     _engine: &StacklessEngine,
 ) -> Result<()> {
     let mut context = RuntimeComparisonContext::new(stack);
-    ComparisonOp::F32Lt.execute(&mut context)
+    ComparisonOp::F32Lt
+        .execute(&mut context)
         .map_err(|e| Error::invalid_type(format!("ComparisonOp::F32Lt error: {}", e)))
 }
 
@@ -432,7 +458,8 @@ pub fn f32_gt(
     _engine: &StacklessEngine,
 ) -> Result<()> {
     let mut context = RuntimeComparisonContext::new(stack);
-    ComparisonOp::F32Gt.execute(&mut context)
+    ComparisonOp::F32Gt
+        .execute(&mut context)
         .map_err(|e| Error::invalid_type(format!("ComparisonOp::F32Gt error: {}", e)))
 }
 
@@ -446,7 +473,8 @@ pub fn f32_le(
     _engine: &StacklessEngine,
 ) -> Result<()> {
     let mut context = RuntimeComparisonContext::new(stack);
-    ComparisonOp::F32Le.execute(&mut context)
+    ComparisonOp::F32Le
+        .execute(&mut context)
         .map_err(|e| Error::invalid_type(format!("ComparisonOp::F32Le error: {}", e)))
 }
 
@@ -460,7 +488,8 @@ pub fn f32_ge(
     _engine: &StacklessEngine,
 ) -> Result<()> {
     let mut context = RuntimeComparisonContext::new(stack);
-    ComparisonOp::F32Ge.execute(&mut context)
+    ComparisonOp::F32Ge
+        .execute(&mut context)
         .map_err(|e| Error::invalid_type(format!("ComparisonOp::F32Ge error: {}", e)))
 }
 
@@ -474,7 +503,8 @@ pub fn f64_eq(
     _engine: &StacklessEngine,
 ) -> Result<()> {
     let mut context = RuntimeComparisonContext::new(stack);
-    ComparisonOp::F64Eq.execute(&mut context)
+    ComparisonOp::F64Eq
+        .execute(&mut context)
         .map_err(|e| Error::invalid_type(format!("ComparisonOp::F64Eq error: {}", e)))
 }
 
@@ -488,7 +518,8 @@ pub fn f64_ne(
     _engine: &StacklessEngine,
 ) -> Result<()> {
     let mut context = RuntimeComparisonContext::new(stack);
-    ComparisonOp::F64Ne.execute(&mut context)
+    ComparisonOp::F64Ne
+        .execute(&mut context)
         .map_err(|e| Error::invalid_type(format!("ComparisonOp::F64Ne error: {}", e)))
 }
 
@@ -502,7 +533,8 @@ pub fn f64_lt(
     _engine: &StacklessEngine,
 ) -> Result<()> {
     let mut context = RuntimeComparisonContext::new(stack);
-    ComparisonOp::F64Lt.execute(&mut context)
+    ComparisonOp::F64Lt
+        .execute(&mut context)
         .map_err(|e| Error::invalid_type(format!("ComparisonOp::F64Lt error: {}", e)))
 }
 
@@ -516,7 +548,8 @@ pub fn f64_gt(
     _engine: &StacklessEngine,
 ) -> Result<()> {
     let mut context = RuntimeComparisonContext::new(stack);
-    ComparisonOp::F64Gt.execute(&mut context)
+    ComparisonOp::F64Gt
+        .execute(&mut context)
         .map_err(|e| Error::invalid_type(format!("ComparisonOp::F64Gt error: {}", e)))
 }
 
@@ -530,7 +563,8 @@ pub fn f64_le(
     _engine: &StacklessEngine,
 ) -> Result<()> {
     let mut context = RuntimeComparisonContext::new(stack);
-    ComparisonOp::F64Le.execute(&mut context)
+    ComparisonOp::F64Le
+        .execute(&mut context)
         .map_err(|e| Error::invalid_type(format!("ComparisonOp::F64Le error: {}", e)))
 }
 
@@ -544,6 +578,7 @@ pub fn f64_ge(
     _engine: &StacklessEngine,
 ) -> Result<()> {
     let mut context = RuntimeComparisonContext::new(stack);
-    ComparisonOp::F64Ge.execute(&mut context)
+    ComparisonOp::F64Ge
+        .execute(&mut context)
         .map_err(|e| Error::invalid_type(format!("ComparisonOp::F64Ge error: {}", e)))
 }
