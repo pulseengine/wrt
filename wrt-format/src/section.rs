@@ -2,7 +2,12 @@
 //!
 //! This module provides types and utilities for working with WebAssembly sections.
 
-use crate::{String, Vec};
+#[cfg(feature = "std")]
+use std::{format, string::String, vec::Vec};
+
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+use alloc::{format, string::String, vec::Vec};
+
 use wrt_error::{Error, Result};
 
 /// WebAssembly section ID constants

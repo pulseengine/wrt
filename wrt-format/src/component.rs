@@ -1,10 +1,22 @@
-//! WebAssembly Component Model structure.
+//! WebAssembly Component Model format.
 //!
-//! This module provides types and utilities for working with WebAssembly Component Model.
+//! This module provides types and utilities for working with the WebAssembly
+//! Component Model binary format.
+
+#[cfg(feature = "std")]
+use std::{boxed::Box, format, string::String, vec::Vec};
+
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+use alloc::{
+    boxed::Box,
+    format,
+    string::{String, ToString},
+    vec,
+    vec::Vec,
+};
 
 use crate::module::Module;
 use crate::types::ValueType;
-use crate::{Box, String, Vec};
 
 /// WebAssembly Component Model component definition
 #[derive(Debug, Clone)]

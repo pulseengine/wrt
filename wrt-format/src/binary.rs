@@ -2,19 +2,24 @@
 //!
 //! This module provides utilities for parsing and generating WebAssembly binary format.
 
-use crate::module::Module;
-use crate::types::{BlockType, ValueType};
-use crate::{format, String, Vec};
-use wrt_error::{kinds, Error, Result};
-
 #[cfg(feature = "std")]
-use std::str;
+use std::{boxed::Box, format, str, string::String, vec::Vec};
+
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+use alloc::{
+    boxed::Box,
+    format,
+    string::{String, ToString},
+    vec,
+    vec::Vec,
+};
 
 #[cfg(not(feature = "std"))]
 use core::str;
 
-#[cfg(not(feature = "std"))]
-use alloc::{string::ToString, vec};
+use crate::module::Module;
+use crate::types::{BlockType, ValueType};
+use wrt_error::{kinds, Error, Result};
 
 /// Magic bytes for WebAssembly modules: \0asm
 pub const WASM_MAGIC: [u8; 4] = [0x00, 0x61, 0x73, 0x6D];
@@ -711,28 +716,39 @@ pub fn write_section_header(id: u8, content_size: u32) -> Vec<u8> {
     result
 }
 
-/// Parse a block type from binary
+/// Parse a block type value
 pub fn parse_block_type(bytes: &[u8], pos: usize) -> Result<(BlockType, usize)> {
     if pos >= bytes.len() {
         return Err(Error::new(kinds::ParseError(
-            "Unexpected end of block type bytes".to_string(),
+            "Unexpected end of input when parsing block type".to_string(),
         )));
     }
 
     match bytes[pos] {
-        0x40 => Ok((BlockType::Empty, 1)), // Empty return type
+        0x40 => Ok((BlockType::None, 1)), // Empty block type
         0x7F => Ok((BlockType::Value(ValueType::I32), 1)),
         0x7E => Ok((BlockType::Value(ValueType::I64), 1)),
         0x7D => Ok((BlockType::Value(ValueType::F32), 1)),
         0x7C => Ok((BlockType::Value(ValueType::F64), 1)),
-        0x7B => Ok((BlockType::Value(ValueType::V128), 1)),
         0x70 => Ok((BlockType::Value(ValueType::FuncRef), 1)),
         0x6F => Ok((BlockType::Value(ValueType::ExternRef), 1)),
-        _ => {
-            // If not a value type, it's an index to a function type
-            // Read as signed LEB128 (negative indices have special meanings)
-            let (type_idx, bytes_read) = read_leb128_i32(bytes, pos)?;
-            Ok((BlockType::FuncType(type_idx as u32), bytes_read))
+        byte => {
+            if (byte & 0x80) != 0 {
+                // It's a function type index (negative LEB128)
+                let (value, size) = read_leb128_i32(bytes, pos)?;
+                if value >= 0 {
+                    return Err(Error::new(kinds::ParseError(format!(
+                        "Invalid block type index: expected negative value, got {}",
+                        value
+                    ))));
+                }
+                Ok((BlockType::FuncType((-value - 1) as u32), size))
+            } else {
+                Err(Error::new(kinds::ParseError(format!(
+                    "Invalid block type byte: 0x{:02x}",
+                    byte
+                ))))
+            }
         }
     }
 }

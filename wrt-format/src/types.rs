@@ -46,42 +46,40 @@ pub struct Limits {
     pub memory_index_type: MemoryIndexType,
 }
 
-/// Represents a WebAssembly block type
-#[derive(Debug, Clone, PartialEq, Eq)]
+/// Block type enum for WebAssembly instructions
+#[derive(Debug, Clone, PartialEq)]
 pub enum BlockType {
-    /// No values are returned
-    Empty,
-    /// A single value of the specified type is returned
+    /// No return value (void)
+    None,
+    /// Single return value
     Value(ValueType),
-    /// Multiple values are returned according to the function type
-    FuncType(u32), // Function type index
+    /// Function type reference
+    FuncType(u32),
 }
 
-/// Parse a value type from a byte
+/// Parse a value type byte to a ValueType enum
 pub fn parse_value_type(byte: u8) -> Result<ValueType> {
     match byte {
         0x7F => Ok(ValueType::I32),
         0x7E => Ok(ValueType::I64),
         0x7D => Ok(ValueType::F32),
         0x7C => Ok(ValueType::F64),
-        0x7B => Ok(ValueType::V128),
         0x70 => Ok(ValueType::FuncRef),
         0x6F => Ok(ValueType::ExternRef),
         _ => Err(Error::new(kinds::ParseError(format!(
-            "Invalid value type: 0x{:02x}",
+            "Invalid value type byte: 0x{:02x}",
             byte
         )))),
     }
 }
 
-/// Convert a value type to its binary representation
+/// Convert a ValueType to its binary representation
 pub fn value_type_to_byte(value_type: ValueType) -> u8 {
     match value_type {
         ValueType::I32 => 0x7F,
         ValueType::I64 => 0x7E,
         ValueType::F32 => 0x7D,
         ValueType::F64 => 0x7C,
-        ValueType::V128 => 0x7B,
         ValueType::FuncRef => 0x70,
         ValueType::ExternRef => 0x6F,
     }
