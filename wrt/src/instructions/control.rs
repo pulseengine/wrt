@@ -2,6 +2,9 @@
 //!
 //! This module contains implementations for all WebAssembly control flow instructions,
 //! including blocks, branches, calls, and returns.
+//!
+//! This module integrates with the pure implementations in `wrt-instructions/control_ops.rs`,
+//! providing the runtime-specific context needed for execution.
 
 use crate::{
     behavior::{
@@ -19,6 +22,12 @@ use log::trace;
 use std::borrow::Borrow;
 use std::sync::Arc;
 
+// Import the pure implementations from wrt-instructions
+use wrt_instructions::control_ops::{
+    Block as ControlBlock, BranchTarget, ControlBlockType, ControlContext, ControlOp,
+};
+use wrt_instructions::instruction_traits::PureInstruction;
+
 #[cfg(feature = "std")]
 use std::vec;
 
@@ -34,6 +43,113 @@ pub enum LabelType {
     Loop,
     /// If instruction label
     If,
+}
+
+/// Runtime adapter that bridges the pure control operations with the stackless engine
+struct RuntimeControlContext<'a> {
+    stack: &'a mut dyn StackBehavior,
+    frame: &'a mut StacklessFrame,
+    engine: &'a mut StacklessEngine,
+}
+
+impl<'a> ControlContext for RuntimeControlContext<'a> {
+    fn push_control_value(&mut self, value: Value) -> wrt_instructions::Result<()> {
+        self.stack
+            .push(value)
+            .map_err(|e| wrt_instructions::Error::new(e.kind()))
+    }
+
+    fn pop_control_value(&mut self) -> wrt_instructions::Result<Value> {
+        self.stack
+            .pop()
+            .map_err(|e| wrt_instructions::Error::new(e.kind()))
+    }
+
+    fn get_block_depth(&self) -> usize {
+        self.frame.get_label_count()
+    }
+
+    fn enter_block(&mut self, block_type: ControlBlock) -> wrt_instructions::Result<()> {
+        let stack_len = self.stack.len();
+
+        match block_type {
+            ControlBlock::Block(block_type) => {
+                let wrt_block_type = convert_block_type(block_type);
+                self.frame
+                    .enter_block(wrt_block_type, stack_len)
+                    .map_err(|e| wrt_instructions::Error::new(e.kind()))
+            }
+            ControlBlock::Loop(block_type) => {
+                let wrt_block_type = convert_block_type(block_type);
+                self.frame
+                    .enter_loop(wrt_block_type, stack_len)
+                    .map_err(|e| wrt_instructions::Error::new(e.kind()))
+            }
+            ControlBlock::If(block_type) => {
+                let wrt_block_type = convert_block_type(block_type);
+                // Default to condition true since we've already evaluated it in the pure implementation
+                self.frame
+                    .enter_if(wrt_block_type, stack_len, true)
+                    .map_err(|e| wrt_instructions::Error::new(e.kind()))
+            }
+            ControlBlock::Try(_) => {
+                // Not supported yet
+                Err(wrt_instructions::Error::new(
+                    wrt_error::kinds::ExecutionError("Try blocks not supported yet".to_string()),
+                ))
+            }
+        }
+    }
+
+    fn exit_block(&mut self) -> wrt_instructions::Result<ControlBlock> {
+        self.frame
+            .exit_block()
+            .map(|_| ControlBlock::Block(ControlBlockType::ValueType(None))) // Just a placeholder
+            .map_err(|e| wrt_instructions::Error::new(e.kind()))
+    }
+
+    fn branch(&mut self, target: BranchTarget) -> wrt_instructions::Result<()> {
+        // Use the internal br implementation
+        br(target.label_idx, self.engine)
+            .map(|_| ())
+            .map_err(|e| wrt_instructions::Error::new(e.kind()))
+    }
+
+    fn return_function(&mut self) -> wrt_instructions::Result<()> {
+        // Use the internal return_call implementation
+        return_call(self.stack, self.engine)
+            .map(|_| ())
+            .map_err(|e| wrt_instructions::Error::new(e.kind()))
+    }
+
+    fn call_function(&mut self, func_idx: u32) -> wrt_instructions::Result<()> {
+        // Use the internal call_internal implementation
+        call_internal(func_idx, self.engine)
+            .map(|_| ())
+            .map_err(|e| wrt_instructions::Error::new(e.kind()))
+    }
+
+    fn call_indirect(&mut self, table_idx: u32, type_idx: u32) -> wrt_instructions::Result<()> {
+        // Use the internal call_indirect implementation
+        call_indirect(type_idx, table_idx, self.engine)
+            .map(|_| ())
+            .map_err(|e| wrt_instructions::Error::new(e.kind()))
+    }
+
+    fn trap(&mut self, message: &str) -> wrt_instructions::Result<()> {
+        Err(wrt_instructions::Error::new(wrt_error::kinds::Trap(
+            message.to_string(),
+        )))
+    }
+}
+
+/// Convert from wrt-instructions BlockType to wrt BlockType
+fn convert_block_type(block_type: ControlBlockType) -> BlockType {
+    match block_type {
+        ControlBlockType::ValueType(Some(vt)) => BlockType::Type(vt),
+        ControlBlockType::ValueType(None) => BlockType::Empty,
+        ControlBlockType::FuncType(ft) => BlockType::FuncType(ft),
+    }
 }
 
 /// Create and push a new label onto the label stack
@@ -109,21 +225,38 @@ impl InstructionExecutor for Block {
         &self,
         stack: &mut dyn StackBehavior,
         frame: &mut dyn FrameBehavior,
-        _engine: &mut StacklessEngine,
+        engine: &mut StacklessEngine,
     ) -> Result<ControlFlow> {
-        let stack_len = stack.len();
-        // Cast directly to StacklessFrame rather than trying to downcast to the trait
-        if let Some(frame_cast) = frame
+        let frame = frame
             .as_any()
-            .downcast_mut::<crate::stackless_frame::StacklessFrame>()
-        {
-            frame_cast.enter_block(self.block_type.clone(), stack_len)?;
-            Ok(ControlFlow::Continue)
-        } else {
-            Err(Error::new(kinds::ExecutionError(
-                "Frame doesn't implement ControlFlowBehavior".to_string(),
-            )))
-        }
+            .downcast_mut::<StacklessFrame>()
+            .ok_or_else(|| {
+                Error::new(kinds::RuntimeError(
+                    "FrameBehavior is not StacklessFrame in Block".to_string(),
+                ))
+            })?;
+
+        let mut context = RuntimeControlContext {
+            stack,
+            frame,
+            engine,
+        };
+
+        // Convert to wrt-instructions block type
+        let control_block_type = match &self.block_type {
+            BlockType::Empty => ControlBlockType::ValueType(None),
+            BlockType::Type(vt) => ControlBlockType::ValueType(Some(*vt)),
+            BlockType::Value(vt) => ControlBlockType::ValueType(Some(*vt)),
+            BlockType::FuncType(ft) => ControlBlockType::FuncType(ft.clone()),
+            BlockType::TypeIndex(_) => ControlBlockType::ValueType(None), // Default to empty for type indices
+        };
+
+        // Use the pure implementation from wrt-instructions
+        ControlOp::Block(control_block_type)
+            .execute(&mut context)
+            .map_err(|e| Error::new(e.kind()))?;
+
+        Ok(ControlFlow::Continue)
     }
 }
 
@@ -143,21 +276,38 @@ impl InstructionExecutor for Loop {
         &self,
         stack: &mut dyn StackBehavior,
         frame: &mut dyn FrameBehavior,
-        _engine: &mut StacklessEngine,
+        engine: &mut StacklessEngine,
     ) -> Result<ControlFlow> {
-        let stack_len = stack.len();
-        // Cast directly to StacklessFrame rather than trying to downcast to the trait
-        if let Some(frame_cast) = frame
+        let frame = frame
             .as_any()
-            .downcast_mut::<crate::stackless_frame::StacklessFrame>()
-        {
-            frame_cast.enter_loop(self.block_type.clone(), stack_len)?;
-            Ok(ControlFlow::Continue)
-        } else {
-            Err(Error::new(kinds::ExecutionError(
-                "Frame doesn't implement ControlFlowBehavior".to_string(),
-            )))
-        }
+            .downcast_mut::<StacklessFrame>()
+            .ok_or_else(|| {
+                Error::new(kinds::RuntimeError(
+                    "FrameBehavior is not StacklessFrame in Loop".to_string(),
+                ))
+            })?;
+
+        let mut context = RuntimeControlContext {
+            stack,
+            frame,
+            engine,
+        };
+
+        // Convert to wrt-instructions block type
+        let control_block_type = match &self.block_type {
+            BlockType::Empty => ControlBlockType::ValueType(None),
+            BlockType::Type(vt) => ControlBlockType::ValueType(Some(*vt)),
+            BlockType::Value(vt) => ControlBlockType::ValueType(Some(*vt)),
+            BlockType::FuncType(ft) => ControlBlockType::FuncType(ft.clone()),
+            BlockType::TypeIndex(_) => ControlBlockType::ValueType(None), // Default to empty for type indices
+        };
+
+        // Use the pure implementation from wrt-instructions
+        ControlOp::Loop(control_block_type)
+            .execute(&mut context)
+            .map_err(|e| Error::new(e.kind()))?;
+
+        Ok(ControlFlow::Continue)
     }
 }
 
@@ -177,23 +327,38 @@ impl InstructionExecutor for If {
         &self,
         stack: &mut dyn StackBehavior,
         frame: &mut dyn FrameBehavior,
-        _engine: &mut StacklessEngine,
+        engine: &mut StacklessEngine,
     ) -> Result<ControlFlow> {
-        let condition_val = stack.pop_i32()?;
-        let stack_len = stack.len();
-
-        // Cast directly to StacklessFrame rather than trying to downcast to the trait
-        if let Some(frame_cast) = frame
+        let frame = frame
             .as_any()
-            .downcast_mut::<crate::stackless_frame::StacklessFrame>()
-        {
-            frame_cast.enter_if(self.block_type.clone(), stack_len, condition_val != 0)?;
-            Ok(ControlFlow::Continue)
-        } else {
-            Err(Error::new(kinds::ExecutionError(
-                "Frame doesn't implement ControlFlowBehavior".to_string(),
-            )))
-        }
+            .downcast_mut::<StacklessFrame>()
+            .ok_or_else(|| {
+                Error::new(kinds::RuntimeError(
+                    "FrameBehavior is not StacklessFrame in If".to_string(),
+                ))
+            })?;
+
+        let mut context = RuntimeControlContext {
+            stack,
+            frame,
+            engine,
+        };
+
+        // Convert to wrt-instructions block type
+        let control_block_type = match &self.block_type {
+            BlockType::Empty => ControlBlockType::ValueType(None),
+            BlockType::Type(vt) => ControlBlockType::ValueType(Some(*vt)),
+            BlockType::Value(vt) => ControlBlockType::ValueType(Some(*vt)),
+            BlockType::FuncType(ft) => ControlBlockType::FuncType(ft.clone()),
+            BlockType::TypeIndex(_) => ControlBlockType::ValueType(None), // Default to empty for type indices
+        };
+
+        // Use the pure implementation from wrt-instructions
+        ControlOp::If(control_block_type)
+            .execute(&mut context)
+            .map_err(|e| Error::new(e.kind()))?;
+
+        Ok(ControlFlow::Continue)
     }
 }
 
@@ -211,11 +376,32 @@ impl Br {
 impl InstructionExecutor for Br {
     fn execute(
         &self,
-        _stack: &mut dyn StackBehavior,
-        _frame: &mut dyn FrameBehavior,
+        stack: &mut dyn StackBehavior,
+        frame: &mut dyn FrameBehavior,
         engine: &mut StacklessEngine,
     ) -> Result<ControlFlow> {
-        br(self.label_idx, engine)
+        let frame = frame
+            .as_any()
+            .downcast_mut::<StacklessFrame>()
+            .ok_or_else(|| {
+                Error::new(kinds::RuntimeError(
+                    "FrameBehavior is not StacklessFrame in Br".to_string(),
+                ))
+            })?;
+
+        let mut context = RuntimeControlContext {
+            stack,
+            frame,
+            engine,
+        };
+
+        // Use the pure implementation from wrt-instructions
+        ControlOp::Br(self.label_idx)
+            .execute(&mut context)
+            .map_err(|e| Error::new(e.kind()))?;
+
+        // Branch always causes control flow change, but this will be handled by the engine
+        Ok(ControlFlow::Branch(self.label_idx))
     }
 }
 
@@ -233,11 +419,39 @@ impl BrIf {
 impl InstructionExecutor for BrIf {
     fn execute(
         &self,
-        _stack: &mut dyn StackBehavior,
-        _frame: &mut dyn FrameBehavior,
+        stack: &mut dyn StackBehavior,
+        frame: &mut dyn FrameBehavior,
         engine: &mut StacklessEngine,
     ) -> Result<ControlFlow> {
-        br_if(self.label_idx, engine)
+        let frame = frame
+            .as_any()
+            .downcast_mut::<StacklessFrame>()
+            .ok_or_else(|| {
+                Error::new(kinds::RuntimeError(
+                    "FrameBehavior is not StacklessFrame in BrIf".to_string(),
+                ))
+            })?;
+
+        let mut context = RuntimeControlContext {
+            stack,
+            frame,
+            engine,
+        };
+
+        // Get the condition before executing
+        let condition = stack.pop_i32()?;
+
+        // Use the pure implementation from wrt-instructions
+        ControlOp::BrIf(self.label_idx)
+            .execute(&mut context)
+            .map_err(|e| Error::new(e.kind()))?;
+
+        // If condition is true, branch; otherwise continue
+        if condition != 0 {
+            Ok(ControlFlow::Branch(self.label_idx))
+        } else {
+            Ok(ControlFlow::Continue)
+        }
     }
 }
 
@@ -259,46 +473,78 @@ impl BrTable {
 impl InstructionExecutor for BrTable {
     fn execute(
         &self,
-        _stack: &mut dyn StackBehavior,
-        _frame: &mut dyn FrameBehavior,
+        stack: &mut dyn StackBehavior,
+        frame: &mut dyn FrameBehavior,
         engine: &mut StacklessEngine,
     ) -> Result<ControlFlow> {
-        execute_br_table(&self.labels, self.default_label, engine)
+        let frame = frame
+            .as_any()
+            .downcast_mut::<StacklessFrame>()
+            .ok_or_else(|| {
+                Error::new(kinds::RuntimeError(
+                    "FrameBehavior is not StacklessFrame in BrTable".to_string(),
+                ))
+            })?;
+
+        let mut context = RuntimeControlContext {
+            stack,
+            frame,
+            engine,
+        };
+
+        // Get the index before executing
+        let index = stack.pop_i32()?;
+
+        // Use the pure implementation from wrt-instructions
+        ControlOp::BrTable {
+            table: self.labels.clone(),
+            default: self.default_label,
+        }
+        .execute(&mut context)
+        .map_err(|e| Error::new(e.kind()))?;
+
+        // Determine which label to branch to
+        let label_idx = if index >= 0 && (index as usize) < self.labels.len() {
+            self.labels[index as usize]
+        } else {
+            self.default_label
+        };
+
+        Ok(ControlFlow::Branch(label_idx))
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Return;
 
 impl InstructionExecutor for Return {
     fn execute(
         &self,
-        _stack: &mut dyn StackBehavior,
-        _frame: &mut dyn FrameBehavior,
+        stack: &mut dyn StackBehavior,
+        frame: &mut dyn FrameBehavior,
         engine: &mut StacklessEngine,
     ) -> Result<ControlFlow> {
-        // Pop frame from the engine's stack
-        let frame = engine
-            .exec_stack
-            .frames
-            .pop()
-            .ok_or_else(|| Error::trap("Frame stack underflow during return".to_string()))?;
-        let mut results = Vec::with_capacity(frame.arity());
-        for _ in 0..frame.arity() {
-            results.push(engine.exec_stack.pop()?);
-        }
-        results.reverse(); // Ensure correct order
-        engine.exec_stack.push_n(&results);
+        let frame = frame
+            .as_any()
+            .downcast_mut::<StacklessFrame>()
+            .ok_or_else(|| {
+                Error::new(kinds::RuntimeError(
+                    "FrameBehavior is not StacklessFrame in Return".to_string(),
+                ))
+            })?;
 
-        // Set PC in the new current frame (the caller), if one exists
-        if let Some(caller_frame) = engine.current_frame_mut().ok() {
-            // Use engine.current_frame_mut()
-            caller_frame.set_pc(frame.return_pc());
-            Ok(ControlFlow::Return { values: results })
-        } else {
-            // If no frame left, execution finished
-            Ok(ControlFlow::Return { values: results }) // TODO: Maybe signal finished state?
-        }
+        let mut context = RuntimeControlContext {
+            stack,
+            frame,
+            engine,
+        };
+
+        // Use the pure implementation from wrt-instructions
+        ControlOp::Return
+            .execute(&mut context)
+            .map_err(|e| Error::new(e.kind()))?;
+
+        Ok(ControlFlow::Return)
     }
 }
 
@@ -316,11 +562,31 @@ impl Call {
 impl InstructionExecutor for Call {
     fn execute(
         &self,
-        _stack: &mut dyn StackBehavior,
-        _frame: &mut dyn FrameBehavior,
+        stack: &mut dyn StackBehavior,
+        frame: &mut dyn FrameBehavior,
         engine: &mut StacklessEngine,
     ) -> Result<ControlFlow> {
-        call_internal(self.func_idx, engine)
+        let frame = frame
+            .as_any()
+            .downcast_mut::<StacklessFrame>()
+            .ok_or_else(|| {
+                Error::new(kinds::RuntimeError(
+                    "FrameBehavior is not StacklessFrame in Call".to_string(),
+                ))
+            })?;
+
+        let mut context = RuntimeControlContext {
+            stack,
+            frame,
+            engine,
+        };
+
+        // Use the pure implementation from wrt-instructions
+        ControlOp::Call(self.func_idx)
+            .execute(&mut context)
+            .map_err(|e| Error::new(e.kind()))?;
+
+        Ok(ControlFlow::Call(self.func_idx))
     }
 }
 
@@ -342,43 +608,106 @@ impl CallIndirect {
 impl InstructionExecutor for CallIndirect {
     fn execute(
         &self,
-        _stack: &mut dyn StackBehavior,
-        _frame: &mut dyn FrameBehavior,
+        stack: &mut dyn StackBehavior,
+        frame: &mut dyn FrameBehavior,
         engine: &mut StacklessEngine,
     ) -> Result<ControlFlow> {
-        call_indirect(self.type_idx, self.table_idx, engine)
+        let frame = frame
+            .as_any()
+            .downcast_mut::<StacklessFrame>()
+            .ok_or_else(|| {
+                Error::new(kinds::RuntimeError(
+                    "FrameBehavior is not StacklessFrame in CallIndirect".to_string(),
+                ))
+            })?;
+
+        let mut context = RuntimeControlContext {
+            stack,
+            frame,
+            engine,
+        };
+
+        // Use the pure implementation from wrt-instructions
+        ControlOp::CallIndirect {
+            table_idx: self.table_idx,
+            type_idx: self.type_idx,
+        }
+        .execute(&mut context)
+        .map_err(|e| Error::new(e.kind()))?;
+
+        // CallIndirect is handled internally in the engine
+        // Just return Continue here as the actual call flow will be determined by the engine
+        Ok(ControlFlow::Continue)
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Nop;
 
 impl InstructionExecutor for Nop {
     fn execute(
         &self,
-        _stack: &mut dyn StackBehavior,
-        _frame: &mut dyn FrameBehavior,
-        _engine: &mut StacklessEngine,
+        stack: &mut dyn StackBehavior,
+        frame: &mut dyn FrameBehavior,
+        engine: &mut StacklessEngine,
     ) -> Result<ControlFlow> {
+        let frame = frame
+            .as_any()
+            .downcast_mut::<StacklessFrame>()
+            .ok_or_else(|| {
+                Error::new(kinds::RuntimeError(
+                    "FrameBehavior is not StacklessFrame in Nop".to_string(),
+                ))
+            })?;
+
+        let mut context = RuntimeControlContext {
+            stack,
+            frame,
+            engine,
+        };
+
+        // Use the pure implementation from wrt-instructions
+        ControlOp::Nop
+            .execute(&mut context)
+            .map_err(|e| Error::new(e.kind()))?;
+
         Ok(ControlFlow::Continue)
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Unreachable;
 
 impl InstructionExecutor for Unreachable {
     fn execute(
         &self,
-        _stack: &mut dyn StackBehavior,
-        _frame: &mut dyn FrameBehavior,
-        _engine: &mut StacklessEngine,
+        stack: &mut dyn StackBehavior,
+        frame: &mut dyn FrameBehavior,
+        engine: &mut StacklessEngine,
     ) -> Result<ControlFlow> {
-        Err(Error::new(kinds::Trap("unreachable executed".to_string())))
+        let frame = frame
+            .as_any()
+            .downcast_mut::<StacklessFrame>()
+            .ok_or_else(|| {
+                Error::new(kinds::RuntimeError(
+                    "FrameBehavior is not StacklessFrame in Unreachable".to_string(),
+                ))
+            })?;
+
+        let mut context = RuntimeControlContext {
+            stack,
+            frame,
+            engine,
+        };
+
+        // Use the pure implementation from wrt-instructions
+        ControlOp::Unreachable
+            .execute(&mut context)
+            .map_err(|e| Error::new(e.kind()))
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Else;
 
 impl InstructionExecutor for Else {
@@ -386,25 +715,35 @@ impl InstructionExecutor for Else {
         &self,
         stack: &mut dyn StackBehavior,
         frame: &mut dyn FrameBehavior,
-        _engine: &mut StacklessEngine,
+        engine: &mut StacklessEngine,
     ) -> Result<ControlFlow> {
-        let stack_len = stack.len();
-        // Cast directly to StacklessFrame similar to Block, Loop, and If
-        if let Some(frame_cast) = frame
+        let frame = frame
             .as_any()
-            .downcast_mut::<crate::stackless_frame::StacklessFrame>()
-        {
-            frame_cast.enter_else(stack_len)?;
-            Ok(ControlFlow::Continue)
-        } else {
-            Err(Error::new(kinds::ExecutionError(
-                "Frame doesn't implement ControlFlowBehavior".to_string(),
-            )))
-        }
+            .downcast_mut::<StacklessFrame>()
+            .ok_or_else(|| {
+                Error::new(kinds::RuntimeError(
+                    "FrameBehavior is not StacklessFrame in Else".to_string(),
+                ))
+            })?;
+
+        let mut context = RuntimeControlContext {
+            stack,
+            frame,
+            engine,
+        };
+
+        // Use the pure implementation from wrt-instructions
+        ControlOp::Else
+            .execute(&mut context)
+            .map_err(|e| Error::new(e.kind()))?;
+
+        // Else instruction is handled in the frame
+        // depending on the current state of if execution
+        Ok(frame.else_block()?)
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct End;
 
 impl InstructionExecutor for End {
@@ -412,20 +751,30 @@ impl InstructionExecutor for End {
         &self,
         stack: &mut dyn StackBehavior,
         frame: &mut dyn FrameBehavior,
-        _engine: &mut StacklessEngine,
+        engine: &mut StacklessEngine,
     ) -> Result<ControlFlow> {
-        // Cast directly to StacklessFrame similar to Block, Loop, and If
-        if let Some(frame_cast) = frame
+        let frame = frame
             .as_any()
-            .downcast_mut::<crate::stackless_frame::StacklessFrame>()
-        {
-            frame_cast.exit_block(stack)?;
-            Ok(ControlFlow::Continue)
-        } else {
-            Err(Error::new(kinds::ExecutionError(
-                "Frame doesn't implement ControlFlowBehavior".to_string(),
-            )))
-        }
+            .downcast_mut::<StacklessFrame>()
+            .ok_or_else(|| {
+                Error::new(kinds::RuntimeError(
+                    "FrameBehavior is not StacklessFrame in End".to_string(),
+                ))
+            })?;
+
+        let mut context = RuntimeControlContext {
+            stack,
+            frame,
+            engine,
+        };
+
+        // Use the pure implementation from wrt-instructions
+        ControlOp::End
+            .execute(&mut context)
+            .map_err(|e| Error::new(e.kind()))?;
+
+        // End instruction is handled in the frame
+        Ok(frame.end_block()?)
     }
 }
 
