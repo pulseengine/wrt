@@ -3,12 +3,14 @@
 //! This module provides pure implementations for WebAssembly control flow instructions,
 //! including block, loop, if, branch, and return operations.
 
+#![allow(clippy::match_single_binding)]
+
 use crate::{instruction_traits::PureInstruction, Error, Result, Value};
 use wrt_types::types::{FuncType, ValueType};
 
 // When no_std but alloc is available
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::{string::ToString, vec, vec::Vec};
+use alloc::{string::ToString, vec::Vec};
 
 // When std is available
 #[cfg(feature = "std")]
@@ -81,17 +83,27 @@ pub enum ControlOp {
     /// Conditional branch to a label
     BrIf(u32),
     /// Branch to a label in a table
-    BrTable { table: Vec<u32>, default: u32 },
+    BrTable {
+        /// Table of branch target labels
+        table: Vec<u32>,
+        /// Default label to branch to if the index is out of bounds
+        default: u32,
+    },
     /// Return from a function
     Return,
     /// Call a function by index
     Call(u32),
-    /// Call a function indirectly through a table
-    CallIndirect { table_idx: u32, type_idx: u32 },
-    /// Unreachable instruction (trap)
-    Unreachable,
-    /// No operation
+    /// Calls a function through a table indirection
+    CallIndirect {
+        /// Index of the table to use for the call
+        table_idx: u32,
+        /// Type index for the function signature
+        type_idx: u32,
+    },
+    /// Execute a nop instruction (no operation)
     Nop,
+    /// Execute an unreachable instruction (causes trap)
+    Unreachable,
 }
 
 /// Execution context for control flow operations
@@ -203,11 +215,11 @@ impl<T: ControlContext> PureInstruction<T, Error> for ControlOp {
                 table_idx,
                 type_idx,
             } => context.call_indirect(*table_idx, *type_idx),
-            Self::Unreachable => context.trap("unreachable instruction executed"),
             Self::Nop => {
                 // No operation, just return Ok
                 Ok(())
             }
+            Self::Unreachable => context.trap("unreachable instruction executed"),
         }
     }
 }
