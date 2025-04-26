@@ -1,16 +1,12 @@
-//! Host function implementation for the WebAssembly Runtime.
+//! Host function infrastructure.
 //!
-//! This module provides types for representing host functions that can be
-//! called from WebAssembly components.
+//! This module provides the core infrastructure for host functions
+//! that can be called from WebAssembly components.
 
 use core::any::Any;
 
-#[cfg(feature = "std")]
-use std::{boxed::Box, vec::Vec};
-
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::{boxed::Box, vec::Vec};
-
+// Use the re-exported types from lib.rs
+use crate::{Box, Vec};
 use wrt_error::Result;
 use wrt_types::values::Value;
 

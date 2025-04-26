@@ -11,22 +11,36 @@
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 extern crate alloc;
 
+// Re-exports for alloc types
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::{boxed::Box, string::String, vec::Vec};
+pub use alloc::{
+    boxed::Box, collections::BTreeMap as HashMap, collections::BTreeSet as HashSet, format,
+    string::String, string::ToString, sync::Arc, vec, vec::Vec,
+};
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+pub use core::fmt;
 
+// Re-exports for std types
 #[cfg(feature = "std")]
-use std::{boxed::Box, string::String, vec::Vec};
+pub use std::{
+    boxed::Box, collections::HashMap, collections::HashSet, fmt, format, string::String,
+    string::ToString, sync::Arc, vec, vec::Vec,
+};
 
 // Reexports for convenience
 pub use wrt_error::{Error, Result};
 
 // Export modules
+pub mod builder;
 pub mod callback;
 pub mod function;
+pub mod host;
 
 // Reexport types
+pub use builder::HostBuilder;
 pub use callback::CallbackRegistry;
 pub use function::{CloneableFn, HostFunctionHandler};
+pub use host::BuiltinHost;
 
 // Include verification module conditionally, but exclude during coverage builds
 #[cfg(all(not(coverage), any(doc, kani)))]
