@@ -1,0 +1,12 @@
+[package]
+name = "test-control-instructions"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+wrt-decoder = { path = "../wrt-decoder", default-features = false }
+wrt-format = { path = "../wrt-format", default-features = false }
+wrt-types = { path = "../wrt-types", default-features = false }
+wrt-error = { path = "../wrt-error", default-features = false }
