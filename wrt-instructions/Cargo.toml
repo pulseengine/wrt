@@ -17,6 +17,7 @@ no_std = [
     "wrt-error/no_std", 
     "wrt-types/no_std",
     "wrt-runtime/no_std",
+    "alloc",
 ]
 optimize = []  # Optional feature to bypass some safety checks in performance-critical paths
 safety = []    # Additional safety features for ASIL-B compliance

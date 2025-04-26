@@ -23,6 +23,7 @@ parking_lot = { version = "0.12", optional = true }
 default = ["std"]
 std = ["log", "parking_lot", "wrt-error/std", "wrt-types/std", "wrt-intercept/std"]
 no_std = ["wrt-error/no_std", "wrt-types/no_std", "wrt-intercept/no_std"]
+alloc = ["wrt-error/alloc", "wrt-types/alloc", "wrt-intercept/alloc"]
 kani = ["wrt-intercept/kani"]
 
 [lints.rust]
