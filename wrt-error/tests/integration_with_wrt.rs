@@ -3,7 +3,8 @@
 //! This file is a placeholder for now since we haven't yet modified the wrt crate
 //! to use wrt-error directly.
 
-#[cfg(test)]
+// These tests require the alloc feature to be enabled since they use Error
+#[cfg(all(test, feature = "alloc"))]
 mod tests {
     use wrt_error::Error;
 
