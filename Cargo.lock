@@ -4171,7 +4171,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "walkdir",
- "wasi 0.11.0+wasi-snapshot-preview1",
+ "wasi 0.14.2+wasi-0.2.4",
  "wasi-cap-std-sync",
  "wasi-common",
  "wasmparser 0.227.1",
