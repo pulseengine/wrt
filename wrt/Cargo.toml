@@ -31,7 +31,7 @@ wrt-logging = { path = "../wrt-logging", version = "0.2.0" }
 # Instruction implementations
 wrt-instructions = { path = "../wrt-instructions", version = "0.2.0" }
 # WASI dependencies (optional)
-wasi-common = { version = "17.0.3", optional = true }
+wasi-common = { version = "32.0.0", optional = true }
 wasi-cap-std-sync = { version = "17.0.3", optional = true }
 cap-std = { version = "2.0.0", optional = true }
 wasi = { version = "0.11.0", optional = true }
