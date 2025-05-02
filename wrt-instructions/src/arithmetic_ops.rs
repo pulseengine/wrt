@@ -204,10 +204,10 @@ impl<T: ArithmeticContext> PureInstruction<T, Error> for ArithmeticOp {
                 })?;
 
                 if b == 0 {
-                    return Err(Error::new(kinds::DivisionByZeroError));
+                    return Err(Error::from(kinds::division_by_zero_error()));
                 }
                 if a == i32::MIN && b == -1 {
-                    return Err(Error::new(kinds::IntegerOverflowError));
+                    return Err(Error::from(kinds::integer_overflow_error()));
                 }
 
                 context.push_arithmetic_value(Value::I32(a.wrapping_div(b)))
@@ -221,7 +221,7 @@ impl<T: ArithmeticContext> PureInstruction<T, Error> for ArithmeticOp {
                 })?;
 
                 if b == 0 {
-                    return Err(Error::new(kinds::DivisionByZeroError));
+                    return Err(Error::from(kinds::division_by_zero_error()));
                 }
 
                 context.push_arithmetic_value(Value::I32(a.wrapping_div(b) as i32))
@@ -235,7 +235,7 @@ impl<T: ArithmeticContext> PureInstruction<T, Error> for ArithmeticOp {
                 })?;
 
                 if b == 0 {
-                    return Err(Error::new(kinds::DivisionByZeroError));
+                    return Err(Error::from(kinds::division_by_zero_error()));
                 }
 
                 context.push_arithmetic_value(Value::I32(a.wrapping_rem(b)))
@@ -249,7 +249,7 @@ impl<T: ArithmeticContext> PureInstruction<T, Error> for ArithmeticOp {
                 })?;
 
                 if b == 0 {
-                    return Err(Error::new(kinds::DivisionByZeroError));
+                    return Err(Error::from(kinds::division_by_zero_error()));
                 }
 
                 context.push_arithmetic_value(Value::I32(a.wrapping_rem(b) as i32))

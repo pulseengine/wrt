@@ -1,3 +1,4 @@
+use crate::types::FuncType;
 use crate::types::ValueType;
 use crate::{String, Vec};
 #[cfg(not(feature = "std"))]
@@ -12,6 +13,29 @@ pub struct ComponentType {
     pub exports: Vec<(String, ExternType)>,
     /// Component instances
     pub instances: Vec<InstanceType>,
+}
+
+impl ComponentType {
+    /// Creates a new component type with the specified imports and exports
+    pub fn new(
+        imports: Vec<(String, String, ExternType)>,
+        exports: Vec<(String, ExternType)>,
+    ) -> Self {
+        Self {
+            imports,
+            exports,
+            instances: Vec::new(),
+        }
+    }
+
+    /// Creates an empty component type
+    pub fn empty() -> Self {
+        Self {
+            imports: Vec::new(),
+            exports: Vec::new(),
+            instances: Vec::new(),
+        }
+    }
 }
 
 /// Represents an instance type
@@ -38,15 +62,6 @@ pub enum ExternType {
     Instance(InstanceType),
     /// Component type
     Component(ComponentType),
-}
-
-/// Represents a function type
-#[derive(Debug, Clone, PartialEq)]
-pub struct FuncType {
-    /// Function parameters
-    pub params: Vec<ValueType>,
-    /// Function results
-    pub results: Vec<ValueType>,
 }
 
 /// Represents a table type
@@ -134,16 +149,24 @@ impl Namespace {
 }
 
 #[cfg(feature = "std")]
-impl std::fmt::Display for Namespace {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Display for Namespace {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", self.elements.join("."))
     }
 }
 
-#[cfg(not(feature = "std"))]
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
 impl core::fmt::Display for Namespace {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "{}", self.elements.join("."))
+        if self.elements.is_empty() {
+            return Ok(());
+        }
+
+        write!(f, "{}", self.elements[0])?;
+        for elem in &self.elements[1..] {
+            write!(f, ".{}", elem)?;
+        }
+        Ok(())
     }
 }
 

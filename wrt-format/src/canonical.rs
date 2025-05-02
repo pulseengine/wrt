@@ -273,51 +273,95 @@ pub fn calculate_layout(ty: &ValType) -> CanonicalLayout {
                 details: CanonicalLayoutDetails::Primitive,
             }
         }
-        ValType::Option(inner) => {
-            // Option is represented as a variant
-            let inner_layout = calculate_layout(inner);
-            let tag_size = 1; // Just enough for None/Some
+        ValType::Option(inner_type) => {
+            // Option type is equivalent to variant with None and Some cases
+            let inner_layout = calculate_layout(inner_type);
 
-            // Calculate total size including tag and alignment padding
-            let payload_offset = align_up(tag_size, inner_layout.alignment);
+            // 1 byte tag + aligned value
+            let tag_size = 1;
+            let payload_offset = align_up(tag_size as u32, inner_layout.alignment);
             let total_size = payload_offset + inner_layout.size;
 
             CanonicalLayout {
                 size: total_size,
-                alignment: inner_layout.alignment.max(tag_size),
+                alignment: inner_layout.alignment.max(tag_size as u32),
                 offset: None,
                 details: CanonicalLayoutDetails::Variant {
-                    tag_size: 1,
+                    tag_size: tag_size as u8,
                     cases: vec![
-                        ("none".to_string(), None),
-                        ("some".to_string(), Some(inner_layout)),
+                        ("None".to_string(), None),
+                        ("Some".to_string(), Some(inner_layout)),
                     ],
                 },
             }
         }
         ValType::Result(ok_type) => {
-            // Result with only OK type, and we'll also handle the error case
-            // For the error case, we'll use the same layout as the OK type for simplicity
+            // Result type with just ok value is equivalent to Option
             let ok_layout = calculate_layout(ok_type);
-            let err_layout = ok_layout.clone(); // Assuming same layout for errors
 
-            let tag_size = 1; // Just enough for Ok/Err
-            let max_payload_size = ok_layout.size.max(err_layout.size);
+            // 1 byte tag + aligned value
+            let tag_size = 1;
+            let payload_offset = align_up(tag_size as u32, ok_layout.alignment);
+            let total_size = payload_offset + ok_layout.size;
+
+            CanonicalLayout {
+                size: total_size,
+                alignment: ok_layout.alignment.max(tag_size as u32),
+                offset: None,
+                details: CanonicalLayoutDetails::Variant {
+                    tag_size: tag_size as u8,
+                    cases: vec![
+                        ("Ok".to_string(), Some(ok_layout)),
+                        ("Err".to_string(), None),
+                    ],
+                },
+            }
+        }
+        ValType::ResultErr(err_type) => {
+            // Result type with just err value is equivalent to Option
+            let err_layout = calculate_layout(err_type);
+
+            // 1 byte tag + aligned value
+            let tag_size = 1;
+            let payload_offset = align_up(tag_size as u32, err_layout.alignment);
+            let total_size = payload_offset + err_layout.size;
+
+            CanonicalLayout {
+                size: total_size,
+                alignment: err_layout.alignment.max(tag_size as u32),
+                offset: None,
+                details: CanonicalLayoutDetails::Variant {
+                    tag_size: tag_size as u8,
+                    cases: vec![
+                        ("Ok".to_string(), None),
+                        ("Err".to_string(), Some(err_layout)),
+                    ],
+                },
+            }
+        }
+        ValType::ResultBoth(ok_type, err_type) => {
+            // Result type with both ok and err values
+            let ok_layout = calculate_layout(ok_type);
+            let err_layout = calculate_layout(err_type);
+
+            // Determine max alignment and size of the payload
             let max_payload_alignment = ok_layout.alignment.max(err_layout.alignment);
+            let max_payload_size = ok_layout.size.max(err_layout.size);
 
-            // Calculate total size including tag and alignment padding
-            let payload_offset = align_up(tag_size, max_payload_alignment);
+            // 1 byte tag + aligned value
+            let tag_size = 1;
+            let payload_offset = align_up(tag_size as u32, max_payload_alignment);
             let total_size = payload_offset + max_payload_size;
 
             CanonicalLayout {
                 size: total_size,
-                alignment: max_payload_alignment.max(tag_size),
+                alignment: max_payload_alignment.max(tag_size as u32),
                 offset: None,
                 details: CanonicalLayoutDetails::Variant {
-                    tag_size: 1,
+                    tag_size: tag_size as u8,
                     cases: vec![
-                        ("ok".to_string(), Some(ok_layout)),
-                        ("err".to_string(), Some(err_layout)),
+                        ("Ok".to_string(), Some(ok_layout)),
+                        ("Err".to_string(), Some(err_layout)),
                     ],
                 },
             }

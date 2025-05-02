@@ -1,45 +1,91 @@
 @startuml
 
-title WRT Stackless Execution Flow (with Fuel)
-
-participant "WRTD CLI" as CLI
-participant "StacklessEngine" as Engine
+actor User
+participant "WRTD CLI" as WRTD
+participant "Engine" as Engine
+participant "Component" as Component
 participant "Module" as Module
-participant "Validation" as Validation
-participant "Stackless Execution" as Execution /' Internal to StacklessEngine '/
+participant "Stack" as Stack
 participant "Memory" as Memory
+participant "ResourceManager" as ResMan
 
-CLI -> Module: load_from_binary(bytes)
-Module -> Validation: validate()
+User -> WRTD: Run WebAssembly/Component
+activate WRTD
 
-CLI -> Engine: instantiate(module)
-Engine -> Module: instantiate()
-Engine --> CLI: instance ID
-
-CLI -> Engine: set_fuel(amount)
-CLI -> Engine: execute(instance_id, func_idx, args)
+WRTD -> WRTD: Parse command arguments
+WRTD -> Engine: Create engine
 activate Engine
 
-Engine -> Execution: initialize_state(args)
-activate Execution
-
-loop until completion or out of fuel
-  Execution -> Execution: process_instruction()
-  Execution -> Memory: read/write data
+alt WebAssembly Module
+  WRTD -> Module: Load module
+  activate Module
+  Module -> Module: Parse and validate
+  Module -> Engine: Instantiate
+  Engine -> Memory: Initialize memory
+  Engine -> Stack: Initialize stack
+  WRTD -> Engine: set_fuel(limit)
+  WRTD -> Engine: execute(function, args)
   
-  alt out of fuel condition
-    Execution --> Engine: FuelExhausted error
-    Engine --> CLI: FuelExhausted error
-    deactivate Execution
-    deactivate Engine
-    stop
+  loop until execution completes or fuel exhausts
+    Engine -> Engine: Execute instructions
+    Engine -> Engine: Consume fuel
+    
+    alt Memory operation
+      Engine -> Memory: Perform memory operation
+      Memory --> Engine: Return result
+    end
+    
+    alt if fuel exhausted
+      Engine --> WRTD: Execution paused (OUT_OF_FUEL)
+      WRTD -> WRTD: Show execution status
+      WRTD -> Engine: set_fuel(additional)
+      WRTD -> Engine: resume()
+    end
   end
+  
+  Engine --> WRTD: Execution result
+  deactivate Module
+else WebAssembly Component
+  WRTD -> Component: Load component
+  activate Component
+  Component -> Component: Parse and validate
+  Component -> Engine: Create component instance
+  Engine -> Memory: Initialize memory
+  Engine -> ResMan: Initialize resource manager
+  WRTD -> Component: Invoke export
+  
+  Component -> ResMan: Create resources
+  Component -> Engine: Perform canonical conversion
+  Engine -> Engine: Execute core function
+  
+  loop until execution completes or fuel exhausts
+    Engine -> Engine: Execute instructions
+    Engine -> Engine: Consume fuel
+    
+    alt Resource operation
+      Engine -> ResMan: Perform resource operation
+      ResMan --> Engine: Return result
+    end
+    
+    alt if fuel exhausted
+      Engine --> Component: Execution paused (OUT_OF_FUEL)
+      Component --> WRTD: Out of fuel error
+      WRTD -> WRTD: Show execution status
+      WRTD -> Engine: set_fuel(additional)
+      WRTD -> Component: Resume invocation
+    end
+  end
+  
+  Component -> Component: Perform canonical conversion of result
+  Component --> WRTD: Execution result
+  deactivate Component
 end
 
-Execution --> Engine: execution results
-deactivate Execution
-
-Engine --> CLI: function results
+WRTD -> WRTD: Display results
+WRTD -> WRTD: Show execution statistics
 deactivate Engine
+WRTD --> User: Execution complete
+
+deactivate WRTD
 
 @enduml

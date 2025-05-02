@@ -82,10 +82,10 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.viewcode',
     'sphinx.ext.napoleon',
-    'sphinx_needs',
+    'sphinx_needs',  # Temporarily disabled to focus on diagrams
     'myst_parser',
     'sphinxcontrib.plantuml',
-    "sphinxcontrib_rust",
+    # "sphinxcontrib_rust",  # Disabled temporarily to focus on diagrams
 ]
 
 templates_path = ['_templates']
@@ -106,12 +106,23 @@ html_theme_options = {
     "navbar_start": ["navbar-logo", "version-switcher"],
     # Test configuration - disable in production
     "check_switcher": False,
+    # Control navigation bar behavior
+    "navbar_align": "content",
+    "use_navbar_nav_drop_shadow": True,
+    # Control the sidebar navigation
+    "navigation_with_keys": True,
+    "show_nav_level": 1,
+    "show_toc_level": 2,
+    # Only show in the sidebar the current page's TOC
+    "collapse_navigation": True,
+    "show_prev_next": True,
 }
 
 # PlantUML configuration
 # Using the installed plantuml executable
 plantuml = 'plantuml'
 plantuml_output_format = 'svg'
+plantuml_latex_output_format = 'pdf'
 
 # Make PlantUML work cross-platform
 if platform.system() == "Windows":
@@ -120,6 +131,9 @@ if platform.system() == "Windows":
 elif platform.system() == "Darwin":  # macOS
     # macOS typically uses Homebrew installation
     plantuml = os.environ.get('PLANTUML_PATH', 'plantuml')
+    # Add debug info
+    print(f"PlantUML path on macOS: {plantuml}")
+    print(f"PlantUML exists: {os.path.exists(plantuml) if os.path.isabs(plantuml) else 'checking PATH'}")
 elif platform.system() == "Linux":
     # Linux installation path
     plantuml = os.environ.get('PLANTUML_PATH', 'plantuml')
@@ -136,8 +150,11 @@ needs_types = [
     dict(directive="safety", title="Safety", prefix="SAFETY_", color="#FF5D73", style="node"),
     dict(directive="qual", title="Qualification", prefix="QUAL_", color="#9370DB", style="node"),
     dict(directive="constraint", title="Constraint", prefix="CNST_", color="#4682B4", style="node"),
-    dict(directive="panic", title="Panic", prefix="WRTQ-", color="#E74C3C", style="node"),
+    dict(directive="panic", title="Panic", prefix="WRTQ_", color="#E74C3C", style="node"),
 ]
+
+# Add ID regex pattern for sphinx-needs
+needs_id_regex = '^[A-Z0-9_]{5,}$'
 
 # Add option specs to register additional options for directives
 needs_extra_options = [
@@ -147,7 +164,8 @@ needs_extra_options = [
     'implementation', 
     'safety_impact',
     'item_status',
-    'handling_strategy'
+    'handling_strategy',
+    'last_updated'
 ]
 
 # Allow all sphinx-needs options for all directives
@@ -170,6 +188,7 @@ needs_tags = [
     dict(name="low", description="Low safety impact", bgcolor="#2ECC71"),
     dict(name="medium", description="Medium safety impact", bgcolor="#F39C12"),
     dict(name="high", description="High safety impact", bgcolor="#E74C3C"),
+    dict(name="unknown", description="Unknown safety impact", bgcolor="#95A5A6"),
 ]
 
 # Configure needs roles for referencing 
@@ -200,22 +219,22 @@ myst_enable_extensions = {
     "strikethrough",
     "tasklist",
 }
-# Rust documentation configuration
+# Rust documentation configuration - temporarily disabled
 rust_crates = {
-     "wrt": os.path.abspath("../../wrt"),
-     "wrt-error": os.path.abspath("../../wrt-error"),
-     "wrt-sync": os.path.abspath("../../wrt-sync"),
-     "wrt-format": os.path.abspath("../../wrt-format"),
-     "wrt-decode": os.path.abspath("../../wrt-decode"),
-     "wrt-common": os.path.abspath("../../wrt-common"),
-     "wrt-component": os.path.abspath("../../wrt-component"),
-     "wrt-host": os.path.abspath("../../wrt-host"),
-     "wrt-instruction": os.path.abspath("../../wrt-instruction"),
-     "wrt-intercept": os.path.abspath("../../wrt-intercept"),
-     "wrt-logging": os.path.abspath("../../wrt-logging"),
-     "wrt-runtime": os.path.abspath("../../wrt-runtime"),
-     "wrt-types": os.path.abspath("../../wrt-types"),
-     "wrtd": os.path.abspath("../../wrtd"),
+"wrt": os.path.abspath("../../wrt"),
+"wrt-error": os.path.abspath("../../wrt-error"),
+"wrt-sync": os.path.abspath("../../wrt-sync"),
+"wrt-format": os.path.abspath("../../wrt-format"),
+"wrt-decoder": os.path.abspath("../../wrt-decoder"),
+"wrt-common": os.path.abspath("../../wrt-common"),
+"wrt-component": os.path.abspath("../../wrt-component"),
+"wrt-host": os.path.abspath("../../wrt-host"),
+"wrt-instructions": os.path.abspath("../../wrt-instructions"),
+"wrt-intercept": os.path.abspath("../../wrt-intercept"),
+"wrt-logging": os.path.abspath("../../wrt-logging"),
+"wrt-runtime": os.path.abspath("../../wrt-runtime"),
+"wrt-types": os.path.abspath("../../wrt-types"),
+"wrtd": os.path.abspath("../../wrtd"),
 }
 rust_doc_dir = "docs/source/"
 rust_rustdoc_fmt = "md"

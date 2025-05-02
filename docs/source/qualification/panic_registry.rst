@@ -25,148 +25,105 @@ docs/source/development/panic_registry.csv
 .. csv-table:: Panic Registry CSV
    :file: panic_registry.csv
    :header-rows: 1
-   :widths: 20, 15, 5, 20, 5, 10, 10, 15
+   :widths: auto
 
 Panic Details
-------------
+-------------
 
 .. qual:: f32_nearest
-   :id: WRTQ-XXX (qualification requirement tracking ID).
+   :id: WRTQ_001
    :item_status: Todo
    :implementation: 
    :tags: panic, unknown
+   :safety_impact: LOW - Limited impact, only affects specific F32 operations
+   :last_updated: 2025-04-25
 
    **File:** wrt/src/execution.rs
    **Line:** 389
    **Function:** f32_nearest
-   **Safety Impact:** [LOW|MEDIUM|HIGH] - [Brief explanation of the safety implication]
-   **Last Updated:** 2025-04-25
 
    This function will panic if the provided value is not an F32 value.
 
 .. qual:: f64_nearest
-   :id: WRTQ-XXX (qualification requirement tracking ID).
+   :id: WRTQ_002
    :item_status: Todo
    :implementation: 
    :tags: panic, unknown
+   :safety_impact: LOW - Limited impact, only affects specific F64 operations
+   :last_updated: 2025-04-25
 
    **File:** wrt/src/execution.rs
    **Line:** 425
    **Function:** f64_nearest
-   **Safety Impact:** [LOW|MEDIUM|HIGH] - [Brief explanation of the safety implication]
-   **Last Updated:** 2025-04-25
 
    This function will panic if the provided value is not an F64 value.
 
 .. qual:: new
-   :id: WRTQ-XXX (qualification requirement tracking ID).
+   :id: WRTQ_003
    :item_status: Todo
    :implementation: 
    :tags: panic, unknown
+   :safety_impact: LOW - This function does not actually panic
+   :last_updated: 2025-04-25
 
    **File:** wrt-sync/src/mutex.rs
    **Line:** 53
    **Function:** new
-   **Safety Impact:** [LOW|MEDIUM|HIGH] - [Brief explanation of the safety implication]
-   **Last Updated:** 2025-04-25
 
    This function does not panic.
 
 .. qual:: new
-   :id: WRTQ-XXX (qualification requirement tracking ID).
+   :id: WRTQ_004
    :item_status: Todo
    :implementation: 
    :tags: panic, unknown
+   :safety_impact: MEDIUM - Memory corruption could cause system instability
+   :last_updated: 2025-04-25
 
    **File:** wrt-types/src/safe_memory.rs
    **Line:** 50
    **Function:** new
-   **Safety Impact:** [LOW|MEDIUM|HIGH] - [Brief explanation of the safety implication]
-   **Last Updated:** 2025-04-25
 
    This function will panic if the initial integrity verification fails. This can happen if memory corruption is detected during initialization.
 
 .. qual:: push
-   :id: WRTQ-XXX (qualification requirement tracking ID).
+   :id: WRTQ_005
    :item_status: Todo
    :implementation: Return Result instead of panic
    :tags: panic, unknown
+   :safety_impact: LOW - This function does not actually panic
+   :last_updated: 2025-04-25
 
    **File:** wrt-types/src/bounded.rs
    **Line:** 196
    **Function:** push
-   **Safety Impact:** [LOW|MEDIUM|HIGH] - [Brief explanation of the safety implication]
-   **Last Updated:** 2025-04-25
 
    This function does not panic.
 
 .. qual:: encode
-   :id: WRTQ-XXX (qualification requirement tracking ID).
-   :item_status: WRTQ-XXX (qualification requirement tracking ID).
-   :implementation: WRTQ-XXX (qualification requirement tracking ID).
+   :id: WRTQ_006
+   :item_status: Todo
+   :implementation: Add checks for empty vector 
    :tags: panic, unknown
+   :safety_impact: MEDIUM - Could cause unexpected termination during module loading
+   :last_updated: 2025-04-25
 
    **File:** wrt-decoder/src/module.rs
    **Line:** 214
    **Function:** encode
-   **Safety Impact:** [LOW|MEDIUM|HIGH] - [Brief explanation of the safety implication]
-   **Last Updated:** 2025-04-25
 
    This function will panic if it attempts to access the last element of an empty custom_sections vector, which can happen if the implementation tries to process a custom section before any custom sections have been added to the module.
 
 .. qual:: buffer
-   :id: WRTQ-XXX (qualification requirement tracking ID).
-   :item_status: WRTQ-XXX (qualification requirement tracking ID).
-   :implementation: WRTQ-XXX (qualification requirement tracking ID).
+   :id: WRTQ_007
+   :item_status: Todo
+   :implementation: Improve error handling
    :tags: panic, unknown
+   :safety_impact: MEDIUM - Memory access issues could cause system instability
+   :last_updated: 2025-04-25
 
    **File:** wrt-runtime/src/memory.rs
    **Line:** 229
    **Function:** buffer
-   **Safety Impact:** [LOW|MEDIUM|HIGH] - [Brief explanation of the safety implication]
-   **Last Updated:** 2025-04-25
 
-   In `no_std` environments, this method will panic if the read lock for the metrics cannot be acquired. This would typically only happen in case of a deadlock or if the lock is poisoned due to a panic in another thread holding the lock.
-
-.. qual:: peak_memory
-   :id: WRTQ-XXX (qualification requirement tracking ID).
-   :item_status: WRTQ-XXX (qualification requirement tracking ID).
-   :implementation: WRTQ-XXX (qualification requirement tracking ID).
-   :tags: panic, unknown
-
-   **File:** wrt-runtime/src/memory.rs
-   **Line:** 251
-   **Function:** peak_memory
-   **Safety Impact:** [LOW|MEDIUM|HIGH] - [Brief explanation of the safety implication]
-   **Last Updated:** 2025-04-25
-
-   In `no_std` environments, this method will panic if the read lock for the metrics cannot be acquired. This would typically only happen in case of a deadlock or if the lock is poisoned due to a panic in another thread holding the lock.
-
-.. qual:: access_count
-   :id: WRTQ-XXX (qualification requirement tracking ID).
-   :item_status: WRTQ-XXX (qualification requirement tracking ID).
-   :implementation: WRTQ-XXX (qualification requirement tracking ID).
-   :tags: panic, unknown
-
-   **File:** wrt-runtime/src/memory.rs
-   **Line:** 273
-   **Function:** access_count
-   **Safety Impact:** [LOW|MEDIUM|HIGH] - [Brief explanation of the safety implication]
-   **Last Updated:** 2025-04-25
-
-   In `no_std` environments, this method will panic if the write lock for the metrics cannot be acquired. This would typically only happen in case of a deadlock or if the lock is poisoned due to a panic in another thread holding the lock.
-
-.. qual:: increment_access_count
-   :id: WRTQ-XXX (qualification requirement tracking ID).
-   :item_status: WRTQ-XXX (qualification requirement tracking ID).
-   :implementation: WRTQ-XXX (qualification requirement tracking ID).
-   :tags: panic, unknown
-
-   **File:** wrt-runtime/src/memory.rs
-   **Line:** 294
-   **Function:** increment_access_count
-   **Safety Impact:** [LOW|MEDIUM|HIGH] - [Brief explanation of the safety implication]
-   **Last Updated:** 2025-04-25
-
-   In `no_std` environments, this method will panic if the write lock for the metrics cannot be acquired. This would typically only happen in case of a deadlock or if the lock is poisoned due to a panic in another thread holding the lock.
-
+   In `no_std`

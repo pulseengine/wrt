@@ -3,7 +3,9 @@
 //! This module provides a minimal execution context for pure instruction implementations.
 //! It defines interfaces that can be implemented by different execution engines.
 
-use crate::{arithmetic_ops::ArithmeticContext, Result, Value, ValueType};
+use crate::{
+    arithmetic_ops::ArithmeticContext, comparison_ops::ComparisonContext, Result, Value, ValueType,
+};
 
 // Imports for alloc
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
@@ -78,16 +80,15 @@ impl PureExecutionContext for ExecutionContext {
     fn pop_value(&mut self) -> Result<Value> {
         self.stack
             .pop()
-            .ok_or_else(|| crate::Error::new(wrt_error::kinds::StackUnderflow))
+            .ok_or_else(|| crate::Error::from(wrt_error::kinds::stack_underflow()))
     }
 
     fn pop_value_expected(&mut self, expected_type: ValueType) -> Result<Value> {
         let value = PureExecutionContext::pop_value(self)?;
         if value.value_type() != expected_type {
-            return Err(crate::Error::new(wrt_error::kinds::TypeMismatch(format!(
-                "Expected {expected_type:?}, got {:?}",
-                value.value_type()
-            ))));
+            return Err(crate::Error::from(wrt_error::kinds::type_mismatch(
+                format!("Expected {expected_type:?}, got {:?}", value.value_type()),
+            )));
         }
         Ok(value)
     }
@@ -100,6 +101,16 @@ impl ArithmeticContext for ExecutionContext {
 
     fn pop_arithmetic_value(&mut self) -> Result<Value> {
         PureExecutionContext::pop_value(self)
+    }
+}
+
+impl ComparisonContext for ExecutionContext {
+    fn pop_comparison_value(&mut self) -> Result<Value> {
+        PureExecutionContext::pop_value(self)
+    }
+
+    fn push_comparison_value(&mut self, value: Value) -> Result<()> {
+        PureExecutionContext::push_value(self, value)
     }
 }
 
@@ -141,16 +152,15 @@ impl PureExecutionContext for TestExecutionContext {
     fn pop_value(&mut self) -> Result<Value> {
         self.stack
             .pop()
-            .ok_or_else(|| crate::Error::new(wrt_error::kinds::StackUnderflow))
+            .ok_or_else(|| crate::Error::from(wrt_error::kinds::stack_underflow()))
     }
 
     fn pop_value_expected(&mut self, expected_type: ValueType) -> Result<Value> {
         let value = PureExecutionContext::pop_value(self)?;
         if value.value_type() != expected_type {
-            return Err(crate::Error::new(wrt_error::kinds::TypeMismatch(format!(
-                "Expected {expected_type:?}, got {:?}",
-                value.value_type()
-            ))));
+            return Err(crate::Error::from(wrt_error::kinds::type_mismatch(
+                format!("Expected {expected_type:?}, got {:?}", value.value_type()),
+            )));
         }
         Ok(value)
     }
@@ -164,6 +174,17 @@ impl ArithmeticContext for TestExecutionContext {
 
     fn pop_arithmetic_value(&mut self) -> Result<Value> {
         PureExecutionContext::pop_value(self)
+    }
+}
+
+#[cfg(test)]
+impl ComparisonContext for TestExecutionContext {
+    fn pop_comparison_value(&mut self) -> Result<Value> {
+        PureExecutionContext::pop_value(self)
+    }
+
+    fn push_comparison_value(&mut self, value: Value) -> Result<()> {
+        PureExecutionContext::push_value(self, value)
     }
 }
 

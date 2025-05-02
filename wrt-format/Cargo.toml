@@ -36,15 +36,15 @@ safety = ["wrt-types/safety"]
 kani = ["dep:kani-verifier"]
 
 # Component Model features
-component-model-core = []  # Basic component model support
-component-model-values = []  # 🪙 Experimental values
-component-model-resources = []  # Resource types
-component-model-canonical = []  # Canonical ABI support
-component-model-fixed-lists = []  # 🔧 Fixed-length lists
-component-model-error-context = []  # 📝 Error context type
-component-model-async = []  # 🔀 Async functionality
-component-model-threading = []  # 🧵 Threading built-ins
-component-model-namespaces = []  # �� Nested namespaces
+component-model-core = ["wrt-types/component-model-core"]
+component-model-values = ["wrt-types/component-model-values"]
+component-model-resources = ["wrt-types/component-model-resources"]
+component-model-canonical = []
+component-model-fixed-lists = ["wrt-types/component-model-fixed-lists"]
+component-model-error-context = ["wrt-types/component-model-error-context"]
+component-model-async = ["wrt-types/component-model-async"]
+component-model-threading = ["wrt-types/component-model-threading"]
+component-model-namespaces = ["wrt-types/component-model-namespaces"]
 
 # Grouped features
 component-model-all = [

@@ -5,10 +5,7 @@
 
 extern crate wrt_types;
 
-use wrt_types::{
-    safe_memory::{MemoryProvider, MemorySafety, SafeSlice},
-    verification::VerificationLevel,
-};
+use wrt_types::safe_memory::{MemoryProvider, SafeSlice, StdMemoryProvider};
 
 #[cfg(feature = "std")]
 use wrt_types::safe_memory::StdMemoryProvider;

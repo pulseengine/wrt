@@ -1,5 +1,5 @@
 use crate::func::FuncType;
-use wrt_error::{Error, Result};
+use wrt_error::Result;
 use wrt_types::{ComponentType, ExternType, Value, Vec};
 
 /// Represents a runtime component instance

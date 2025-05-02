@@ -1,53 +1,87 @@
 @startuml
 
 package "Core Runtime" {
-  package "Execution Engine" {
-    [Stackless Engine] as StacklessEngine
+  package "Engine" {
+    [Stackless Engine] as Engine
+    [Execution State] as State
+    [Fuel Counter] as Fuel
+    [Statistics] as Stats
+    [Error Handler] as ErrorHandler
     
-    note right of StacklessEngine
-      Uses state machine approach
-      Suitable for bounded execution
-      and resource-constrained environments
-    end note
+    Engine --> State : manages
+    Engine --> Fuel : tracks
+    Engine --> Stats : collects
+    Engine --> ErrorHandler : uses
   }
   
-  package "Engine Components" {
-    [Module] as Module
+  package "Module" {
+    [Binary Format] as Binary
+    [Types] as Types
+    [Functions] as Functions
+    [Imports] as Imports
+    [Exports] as Exports
     [Memory] as Memory
-    [Stack] as Stack
-    [Validation] as Validation
-    [Execution] as Execution
-    [Instructions] as Instructions
     [Table] as Table
     [Global] as Global
-    [Types] as Types
-    [Error Handling] as ErrorHandling
+    [Validation] as Validation
+    
+    Binary --> Types : defines
+    Binary --> Functions : contains
+    Binary --> Imports : declares
+    Binary --> Exports : exposes
+    Binary --> Memory : allocates
+    Binary --> Table : defines
+    Binary --> Global : declares
+    Binary --> Validation : undergoes
   }
   
-  package "Safety and Verification" {
-    [Memory Bounds Checking] as MemBounds
-    [Resource Tracking] as ResTrack
-    [Fuel Metering] as FuelMeter
-    [Error Recovery] as ErrorRecovery
+  package "Execution" {
+    [Stack] as Stack
+    [Frame] as Frame
+    [Label] as Label
+    [Value] as Value
+    [Control Flow] as Control
+    [Instructions] as Instructions
+    
+    Stack --> Frame : contains
+    Frame --> Label : manages
+    Frame --> Value : holds
+    Stack --> Control : enables
+    Control --> Instructions : executes
   }
   
-  StacklessEngine --> Module
-  StacklessEngine --> Memory
-  StacklessEngine --> Stack
-  StacklessEngine --> Execution
-  StacklessEngine --> Table
-  StacklessEngine --> Global
-  StacklessEngine --> FuelMeter
+  package "Memory Management" {
+    [Memory Instance] as MemoryInst
+    [Memory Metrics] as MemMetrics
+    [Memory Safety] as MemSafety
+    [Memory Growth] as MemGrowth
+    
+    Memory --> MemoryInst : instantiates
+    MemoryInst --> MemMetrics : tracks
+    MemoryInst --> MemSafety : ensures
+    MemoryInst --> MemGrowth : supports
+  }
   
-  Module --> Validation
-  Module --> Types
+  package "Table Management" {
+    [Table Instance] as TableInst
+    [Function References] as FuncRef
+    [Table Operations] as TableOps
+    
+    Table --> TableInst : instantiates
+    TableInst --> FuncRef : contains
+    TableInst --> TableOps : supports
+  }
   
-  Memory --> MemBounds
-  Execution --> Instructions
-  Execution --> ErrorHandling
-  ErrorHandling --> ErrorRecovery
-  
-  FuelMeter -[dashed]-> ResTrack
+  package "State Management" {
+    [Instance] as Instance
+    [Resumable State] as Resumable
+    [Migration] as Migration
+    [Serialization] as Serialize
+    
+    Instance --> Resumable : enables
+    Resumable --> Migration : allows
+    Resumable --> Serialize : supports
+  }
 }
 
 @enduml 

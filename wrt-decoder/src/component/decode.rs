@@ -1,5 +1,4 @@
-use crate::prelude::*;
-use wrt_error::{kinds, Error, Result};
+use wrt_error::{codes, Error, ErrorCategory, Result};
 use wrt_format::binary;
 use wrt_format::component::Component;
 
@@ -17,16 +16,20 @@ pub fn decode_component(bytes: &[u8]) -> Result<Component> {
 
     // Check magic and version
     if bytes.len() < 8 {
-        return Err(Error::new(kinds::ParseError(
-            "Component too small (less than 8 bytes)".to_string(),
-        )));
+        return Err(Error::new(
+            ErrorCategory::Parse,
+            codes::PARSE_ERROR,
+            "Component too small (less than 8 bytes)",
+        ));
     }
 
     // Check magic number
     if bytes[0..4] != binary::COMPONENT_MAGIC {
-        return Err(Error::new(kinds::ParseError(
-            "Invalid component magic number".to_string(),
-        )));
+        return Err(Error::new(
+            ErrorCategory::Parse,
+            codes::PARSE_ERROR,
+            "Invalid component magic number",
+        ));
     }
 
     offset = 8;
@@ -35,10 +38,11 @@ pub fn decode_component(bytes: &[u8]) -> Result<Component> {
     while offset < bytes.len() {
         // Read section ID and size
         if offset + 1 > bytes.len() {
-            return Err(Error::new(kinds::ParseError(format!(
-                "Unexpected end of component binary at offset {:#x}",
-                offset
-            ))));
+            return Err(Error::new(
+                ErrorCategory::Parse,
+                codes::PARSE_ERROR,
+                format!("Unexpected end of component binary at offset {:#x}", offset),
+            ));
         }
 
         let section_id = bytes[offset];
@@ -47,19 +51,24 @@ pub fn decode_component(bytes: &[u8]) -> Result<Component> {
         let (section_size, bytes_read) = match binary::read_leb128_u32(bytes, offset) {
             Ok(result) => result,
             Err(_) => {
-                return Err(Error::new(kinds::ParseError(format!(
-                    "Invalid section size at offset {:#x}",
-                    offset
-                ))));
+                return Err(Error::new(
+                    ErrorCategory::Parse,
+                    codes::PARSE_ERROR,
+                    format!("Invalid section size at offset {:#x}", offset),
+                ));
             }
         };
         offset += bytes_read;
 
         if offset + section_size as usize > bytes.len() {
-            return Err(Error::new(kinds::ParseError(format!(
-                "Section size {} exceeds binary size at offset {:#x}",
-                section_size, offset
-            ))));
+            return Err(Error::new(
+                ErrorCategory::Parse,
+                codes::PARSE_ERROR,
+                format!(
+                    "Section size {} exceeds binary size at offset {:#x}",
+                    section_size, offset
+                ),
+            ));
         }
 
         // Extract section bytes
@@ -76,7 +85,7 @@ pub fn decode_component(bytes: &[u8]) -> Result<Component> {
                         // If this is a name section, extract the component name
                         if name == "name" {
                             if let Ok(name_section) =
-                                crate::component_name_section::parse_component_name_section(
+                                crate::component::name_section::parse_component_name_section(
                                     &section_bytes[name_offset..],
                                 )
                             {
@@ -231,4 +240,68 @@ pub fn decode_component(bytes: &[u8]) -> Result<Component> {
     }
 
     Ok(component)
+}
+
+/// Helper function to create a decode error
+pub fn decode_error(message: &str) -> Error {
+    Error::new(ErrorCategory::Parse, codes::DECODING_ERROR, message)
+}
+
+/// Helper function to create a decode error with context
+pub fn decode_error_with_context(message: &str, context: &str) -> Error {
+    Error::new(
+        ErrorCategory::Parse,
+        codes::DECODING_ERROR,
+        format!("{}: {}", message, context),
+    )
+}
+
+/// Helper function to create a decode error with position
+pub fn decode_error_with_position(message: &str, position: usize) -> Error {
+    Error::new(
+        ErrorCategory::Parse,
+        codes::DECODING_ERROR,
+        format!("{} at position {}", message, position),
+    )
+}
+
+/// Helper function to create a decode error with type
+pub fn decode_error_with_type(message: &str, type_name: &str) -> Error {
+    Error::new(
+        ErrorCategory::Parse,
+        codes::DECODING_ERROR,
+        format!("{}: {}", message, type_name),
+    )
+}
+
+/// Helper function to create a decode error with value
+pub fn decode_error_with_value(message: &str, value: &str) -> Error {
+    Error::new(
+        ErrorCategory::Parse,
+        codes::DECODING_ERROR,
+        format!("{}: {}", message, value),
+    )
+}
+
+/// Helper function to create a parse error
+pub fn parse_error(message: &str) -> Error {
+    Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, message)
+}
+
+/// Helper function to create a parse error with context
+pub fn parse_error_with_context(message: &str, context: &str) -> Error {
+    Error::new(
+        ErrorCategory::Parse,
+        codes::PARSE_ERROR,
+        format!("{}: {}", message, context),
+    )
+}
+
+/// Helper function to create a parse error with position
+pub fn parse_error_with_position(message: &str, position: usize) -> Error {
+    Error::new(
+        ErrorCategory::Parse,
+        codes::PARSE_ERROR,
+        format!("{} at position {}", message, position),
+    )
 }

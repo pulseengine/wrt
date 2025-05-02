@@ -1,5 +1,5 @@
 Panic Documentation Guidelines
-================================
+==============================
 
 Overview
 --------
@@ -7,7 +7,7 @@ Overview
 This document outlines our approach to documenting and managing panics in the WRT project Rust codebase. As a safety-critical project, we need to carefully track where panics can occur, understand their impact, and plan appropriate mitigation strategies.
 
 Why Document Panics?
--------------------
+--------------------
 
 Rust's ``panic!`` mechanism is a form of error handling that abruptly terminates execution when encountering an unrecoverable error. While useful for development, panics in production code can lead to:
 
@@ -19,7 +19,7 @@ Rust's ``panic!`` mechanism is a form of error handling that abruptly terminates
 6. **Security Vulnerabilities**: Improper error handling can create exploitable weaknesses.
 
 Documentation Format
-------------------
+--------------------
 
 All functions that may panic should include a "Panics" section in their documentation following this format:
 
@@ -34,14 +34,14 @@ All functions that may panic should include a "Panics" section in their document
     /// Tracking: WRTQ-XXX (qualification requirement tracking ID).
 
 Safety Impact Levels
-~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~
 
 - **LOW**: Panic is contained within the scope of a single operation and doesn't affect the overall system state.
 - **MEDIUM**: Panic affects component functionality but not overall system safety.
 - **HIGH**: Panic could cause system failure, data loss, or compromise safety guarantees.
 
 Tracking IDs
-~~~~~~~~~~~
+~~~~~~~~~~~~
 
 Each documented panic must have a tracking ID in our issue tracker (WRTQ-XXX format). This allows us to:
 
@@ -50,14 +50,14 @@ Each documented panic must have a tracking ID in our issue tracker (WRTQ-XXX for
 3. Link to any mitigation strategies
 
 Implementation Approach
-----------------------
+-----------------------
 
 1. We've added ``#![warn(clippy::missing_panics_doc)]`` to all crates to identify undocumented panics
 2. As we identify panic conditions, we'll document them according to this standard
 3. In a later phase, we'll systematically address each panic point according to our final panic handling strategy
 
 Panic Registry
--------------
+--------------
 
 We maintain panic documentation in two formats:
 
@@ -67,19 +67,19 @@ We maintain panic documentation in two formats:
 The registry is automatically updated by the ``xtask update-panic-registry`` command, which scans the codebase for documented panics and updates both formats.
 
 CSV Registry
-~~~~~~~~~~~
+~~~~~~~~~~~~
 
 The CSV registry includes the following information:
 
 .. csv-table:: Panic Registry
    :file: panic_registry.csv
    :header-rows: 1
-   :widths: 20, 15, 5, 20, 5, 10, 10, 15
+   :widths: 15, 10, 5, 20, 15, 10, 10, 15
 
 Sphinx-Needs Registry
-~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~
 
-For qualification purposes, all panic points are also available in a structured format using sphinx-needs in the :doc:`panic_registry` document. This allows:
+For qualification purposes, all panic points are also available in a structured format using sphinx-needs. This allows:
 
 - Cross-referencing of panic points in documentation
 - Filtering and searching by safety impact level
@@ -87,7 +87,7 @@ For qualification purposes, all panic points are also available in a structured 
 - Status tracking and reporting
 
 Common Panic Scenarios
----------------------
+----------------------
 
 Document these scenarios consistently:
 
@@ -122,7 +122,7 @@ Document these scenarios consistently:
       /// Tracking: WRTQ-003
 
 Best Practices
--------------
+--------------
 
 1. **Prefer Result over Panic**: When possible, use ``Result<T, E>`` instead of panicking functions.
 2. **Safe Alternatives**: Provide safe alternatives to panicking functions (e.g., ``try_`` prefixed versions).
@@ -131,12 +131,12 @@ Best Practices
 5. **Review Panic Points**: Regularly review the panic registry to identify patterns and improvement opportunities.
 
 Examples
--------
+--------
 
 See the :ref:`panic-documentation-example` for examples of properly documented panics and their safe alternatives.
 
 Resolving Panics
----------------
+----------------
 
 Options for resolving panic conditions include:
 
@@ -147,7 +147,7 @@ Options for resolving panic conditions include:
 5. **Tests**: Add tests that verify the panic occurs under the documented conditions.
 
 Future Direction
---------------
+----------------
 
 This documentation approach is the first step in our safety qualification strategy. In future releases:
 
@@ -156,7 +156,7 @@ This documentation approach is the first step in our safety qualification strate
 3. Verification evidence will be included in qualification documentation
 
 Responsible Teams
----------------
+-----------------
 
 - **Safety Team**: Maintains panic registry and safety impact classifications
 - **Development Team**: Documents panics as they're identified
@@ -165,6 +165,6 @@ Responsible Teams
 .. _panic-documentation-example:
 
 Example Code
------------
+------------
 
 Below is an example demonstrating proper panic documentation: 

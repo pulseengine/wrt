@@ -2675,6 +2675,7 @@ dependencies = [
 name = "test-control-instructions"
 version = "0.1.0"
 dependencies = [
+ "rustc-std-workspace-alloc",
  "wrt-decoder",
  "wrt-error",
  "wrt-format",
@@ -4191,13 +4192,13 @@ dependencies = [
 name = "wrt-component"
 version = "0.2.0"
 dependencies = [
- "chrono",
  "crossterm 0.27.0",
  "futures",
  "log",
  "ratatui",
  "strum",
  "tui-nodes",
+ "wrt-decoder",
  "wrt-error",
  "wrt-format",
  "wrt-host",
@@ -4224,11 +4225,6 @@ dependencies = [
 name = "wrt-error"
 version = "0.2.0"
 dependencies = [
- "anyhow",
- "bincode 2.0.1",
- "cap-std",
- "serde_json",
- "wasi-common",
  "wasmparser 0.227.1",
  "wat",
 ]
@@ -4283,6 +4279,7 @@ name = "wrt-logging"
 version = "0.2.0"
 dependencies = [
  "log",
+ "rustc-std-workspace-alloc",
  "wrt-error",
  "wrt-host",
  "wrt-types",
@@ -4303,6 +4300,7 @@ name = "wrt-sync"
 version = "0.2.0"
 dependencies = [
  "kani-verifier",
+ "rustc-std-workspace-alloc",
 ]
 
 [[package]]
@@ -4315,6 +4313,15 @@ dependencies = [
  "proptest",
  "rustc-std-workspace-alloc",
  "wrt-error",
+]
+
+[[package]]
+name = "wrt-verification-tool"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "rustc-std-workspace-alloc",
+ "wrt-decoder",
 ]
 
 [[package]]

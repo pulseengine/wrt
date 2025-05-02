@@ -309,8 +309,12 @@ pub trait FrameBehavior: Send + Sync + std::fmt::Debug + Any {
     fn memory_grow(&mut self, pages: u32, engine: &StacklessEngine) -> Result<u32, Error>;
 
     // Table access methods (need engine context)
-    fn table_get(&self, table_idx: u32, idx: u32, engine: &StacklessEngine)
-        -> Result<Value, Error>;
+    fn table_get(
+        &self,
+        _table_idx: u32,
+        _idx: u32,
+        engine: &StacklessEngine,
+    ) -> Result<Value, Error>;
     fn table_set(
         &mut self,
         table_idx: u32,
@@ -382,7 +386,7 @@ pub trait FrameBehavior: Send + Sync + std::fmt::Debug + Any {
     ) -> Result<(Arc<Table>, Arc<Table>), Error>;
 
     // Added for bulk memory/table operations
-    fn set_data_segment(&mut self, idx: u32, segment: Arc<Data>) -> Result<(), Error>;
+    fn set_data_segment(&mut self, _idx: u32, _segment: Arc<Data>) -> Result<(), Error>;
 }
 
 /// Defines behaviors related to control flow instructions.
@@ -448,9 +452,9 @@ pub trait InstructionExecutor: std::fmt::Debug {
     /// * `Err(Error)` - If an error occurred during execution.
     fn execute_with_frame_idx(
         &self,
-        stack: &mut dyn StackBehavior,
-        frame_idx: usize,
-        engine: &mut StacklessEngine,
+        _stack: &mut dyn StackBehavior,
+        _frame_idx: usize,
+        _engine: &mut StacklessEngine,
     ) -> Result<ControlFlow, Error> {
         // This implementation is no longer needed as stackless.rs directly uses execute
         // with a cloned frame, avoiding the borrow checker issues
@@ -824,8 +828,8 @@ impl FrameBehavior for NullBehavior {
 
     fn table_get(
         &self,
-        table_idx: u32,
-        idx: u32,
+        _table_idx: u32,
+        _idx: u32,
         _engine: &StacklessEngine,
     ) -> Result<Value, Error> {
         Err(Error::new(kinds::NotImplementedError(
@@ -959,10 +963,10 @@ impl FrameBehavior for NullBehavior {
         ))))
     }
 
-    fn set_data_segment(&mut self, idx: u32, _segment: Arc<Data>) -> Result<(), Error> {
+    fn set_data_segment(&mut self, _idx: u32, _segment: Arc<Data>) -> Result<(), Error> {
         Err(Error::new(kinds::NotImplementedError(format!(
             "NullBehavior::set_data_segment for index: {}",
-            idx
+            _idx
         ))))
     }
 
@@ -1131,9 +1135,9 @@ impl InstructionExecutor for NullBehavior {
 
     fn execute_with_frame_idx(
         &self,
-        stack: &mut dyn StackBehavior,
-        frame_idx: usize,
-        engine: &mut StacklessEngine,
+        _stack: &mut dyn StackBehavior,
+        _frame_idx: usize,
+        _engine: &mut StacklessEngine,
     ) -> Result<ControlFlow, Error> {
         // This implementation is no longer needed as stackless.rs directly uses execute
         // with a cloned frame, avoiding the borrow checker issues
@@ -1174,3 +1178,43 @@ pub trait EngineBehavior {
 }
 
 // Implementation of EngineBehavior for StacklessEngine will be in stackless.rs
+
+/// Execute instruction by index on behalf of frame
+fn execute_with_idx(
+    &mut self,
+    _stack: &mut dyn StackBehavior,
+    _frame_idx: usize,
+    _engine: &mut StacklessEngine,
+    instruction: &InstructionType,
+) -> Result<ControlFlow, Error> {
+    // Default implementation delegates to the instruction's execute method
+    instruction.execute(self, self.frame_idx(), _engine)
+}
+
+/// Placeholder for table_elem_get (this should be replaced with actual implementation)
+fn table_elem_get(&self, _table_idx: u32, _idx: u32) -> Result<Value, Error> {
+    Err(Error::new(kinds::NotImplementedError(
+        "table_elem_get not implemented".to_string(),
+    )))
+}
+
+/// Push a label onto the context's label stack
+fn push_label(&mut self, _label: Label) -> Result<(), Error> {
+    unimplemented!()
+}
+
+/// Get the label at the specified depth
+fn get_label(&self, _depth: usize) -> Option<&Label> {
+    None
+}
+
+/// Default implementation for executing instructions (override for custom behavior)
+fn on_instruction(
+    &mut self,
+    _stack: &mut dyn StackBehavior,
+    _frame_idx: usize,
+    _engine: &mut StacklessEngine,
+    instruction: &InstructionType,
+) -> Result<ControlFlow, Error> {
+    instruction.execute(self, _frame_idx, _engine)
+}

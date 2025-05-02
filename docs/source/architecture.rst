@@ -21,10 +21,29 @@ WRT is a WebAssembly runtime implementation with a focus on bounded execution, b
    :id: SPEC_001
    :links: REQ_001, REQ_003, REQ_014, REQ_018, REQ_MEM_SAFETY_001, REQ_RESOURCE_001
    
-   .. uml:: _static/system_components.puml
-      :alt: WRT System Components
-      :width: 100%
-
+   .. uml::
+      
+      @startuml
+      package "WRT System" {
+        [Core Runtime] as Core
+        [Component Model] as Component
+        [Memory Subsystem] as Memory
+        [Resource Management] as Resources
+        [Safety Layer] as Safety
+        [WASI Interfaces] as WASI
+        [CLI (WRTD)] as CLI
+        
+        Core --> Memory
+        Component --> Core
+        Safety --> Core
+        Safety --> Memory
+        Resources --> Memory
+        CLI --> Core
+        CLI --> Component
+        WASI --> Core
+      }
+      @enduml
+      
    The WRT system is comprised of the following main components:
    
    1. Core Runtime - The foundational WebAssembly execution engine
@@ -53,11 +72,20 @@ The core runtime is responsible for executing WebAssembly instructions and manag
    :id: SPEC_006
    :links: REQ_001, REQ_003, REQ_007, REQ_RESOURCE_004
    
-   .. uml:: _static/component_flow.puml
-      :alt: WRT Execution Flow
-      :width: 100%
+   .. code-block:: text
+      
+      User -> WRTD CLI -> Engine -> Module
+      Engine -> Memory
+      
+      When fuel is exhausted:
+      Engine -> WRTD CLI (paused)
+      WRTD CLI -> Engine (add fuel)
+      Engine -> WRTD CLI (resume)
+      
+      Final result:
+      Engine -> WRTD CLI -> User
    
-   The execution flow demonstrates the bounded execution model, showing how the WRTD CLI interacts with the Engine and how the fuel-based execution can be paused when fuel is exhausted.
+   The execution flow demonstrates the bounded execution model, showing how the WRTD CLI interacts with the Engine and how the fuel-based execution can be paused when fuel is exhausted. The diagram also illustrates the difference between executing a standard WebAssembly module and a Component Model component, highlighting the resource management and canonical conversion aspects of the Component Model.
 
 .. spec:: Core Runtime Architecture
    :id: SPEC_002
@@ -68,9 +96,24 @@ The core runtime is responsible for executing WebAssembly instructions and manag
       :align: right
       :alt: Stackless Engine Icon
    
-   .. uml:: _static/core_runtime_architecture.puml
-      :alt: Core Runtime Architecture
-      :width: 100%
+   .. code-block:: text
+      
+      Core Runtime
+      ├── Engine
+      │   ├── Stackless Engine
+      │   ├── Execution State
+      │   ├── Fuel Counter
+      │   └── Statistics
+      ├── Module
+      │   ├── Binary Format
+      │   ├── Types
+      │   ├── Functions
+      │   └── Validation
+      └── Execution
+          ├── Stack
+          ├── Frame
+          ├── Control Flow
+          └── Instructions
    
    The core runtime provides a stackless interpreter implementation designed specifically for:
    
@@ -143,9 +186,15 @@ The memory subsystem provides a consolidated implementation across the WRT ecosy
    :id: SPEC_007
    :links: REQ_018, REQ_023, REQ_024, REQ_MEM_SAFETY_001, REQ_MEM_SAFETY_002, REQ_MEM_SAFETY_003
    
-   .. uml:: _static/memory_subsystem.puml
-      :alt: Memory Subsystem Architecture
-      :width: 100%
+   .. code-block:: text
+      
+      Memory Subsystem
+      ├── Memory
+      ├── Memory Type
+      ├── Memory Metrics
+      ├── Memory Operations
+      ├── Bounds Checking
+      └── Thread Safety
    
    The memory subsystem architecture consists of:
    
@@ -154,6 +203,9 @@ The memory subsystem provides a consolidated implementation across the WRT ecosy
    3. Consistent memory access across core and component models
    4. Thread-safe memory metrics for profiling and optimization
    5. Comprehensive bounds checking for safety
+   6. Performance tracking with access counts and peak usage monitoring
+   7. Support for both standard and no-std environments
+   8. Memory hooks for custom memory management integration
 
 .. impl:: Memory Implementation
    :id: IMPL_003
@@ -169,6 +221,9 @@ The memory subsystem provides a consolidated implementation across the WRT ecosy
    5. Monitors peak memory usage
    6. Supports thread-safe operations
    7. Provides debug name capabilities
+   8. Supports pre and post grow hooks
+   9. Performs memory integrity verification
+   10. Implements thread-safe operations with environment-specific synchronization
    
    Key methods include:
    - ``grow(pages)`` - Grows memory by the specified number of pages
@@ -177,6 +232,8 @@ The memory subsystem provides a consolidated implementation across the WRT ecosy
    - ``peak_memory()`` - Returns the peak memory usage during execution
    - ``access_count()`` - Returns the number of memory accesses for profiling
    - ``get_safe_slice()`` - Provides a memory-safe view of a memory region
+   - ``verify_integrity()`` - Verifies memory integrity
+   - ``with_pre_grow_hook/with_post_grow_hook`` - Registers hooks for memory growth events
 
 .. impl:: Memory Operations
    :id: IMPL_011
@@ -189,12 +246,16 @@ The memory subsystem provides a consolidated implementation across the WRT ecosy
    2. Implementation of WebAssembly memory instructions
    3. Bounds and alignment checking
    4. Efficient memory load/store operations
+   5. Memory fill, copy, and initialization operations
    
    Key operations include:
    - ``MemoryLoad`` - Loads values from memory with proper type conversion
    - ``MemoryStore`` - Stores values to memory with proper type conversion
    - ``MemorySize`` - Returns the current memory size
    - ``MemoryGrow`` - Expands the memory by a specified number of pages
+   - ``MemoryFill`` - Fills a memory region with a specified value
+   - ``MemoryCopy`` - Copies data between memory regions
+   - ``MemoryInit`` - Initializes memory from data segments
 
 .. _component-model-architecture:
 
@@ -212,20 +273,28 @@ The Component Model subsystem implements the WebAssembly Component Model Preview
    :id: SPEC_003
    :links: REQ_014, REQ_019, REQ_020, REQ_021, REQ_RESOURCE_001
    
-   .. uml:: _static/component_model.puml
-      :alt: Component Model Architecture
-      :width: 100%
+   .. code-block:: text
+      
+      Component Model
+      ├── Component
+      ├── Instance
+      ├── Interface Types
+      │   └── Value Types
+      │       └── Canonical ABI
+      └── Resource Manager
    
    The Component Model implementation provides:
    
    1. Component instantiation and linking
-   2. Interface type conversion
-   3. Resource type management
-   4. Host function binding
+   2. Interface type conversion with type compatibility checking
+   3. Resource type management and lifecycle tracking
+   4. Host function binding and integration
    5. Binary format parsing and validation
    6. Component instance management
    7. Value section encoding/decoding
    8. Name section handling for debugging
+   9. Export and import handling
+   10. Execution context management
 
 .. impl:: Component Implementation
    :id: IMPL_005
@@ -257,6 +326,8 @@ The Component Model subsystem implements the WebAssembly Component Model Preview
    3. Support for option and result types with proper tag handling
    4. Type validation for encoded values
    5. Efficient serialization and deserialization
+   6. Conversion strategies for different type representations
+   7. Built-in support for common value types
    
    This implementation allows for proper representation and manipulation of all value types defined in the Component Model specification.
 
@@ -270,8 +341,9 @@ The Component Model subsystem implements the WebAssembly Component Model Preview
    1. Type adapters for each interface type
    2. Conversion between host and component types
    3. Validation of type compatibility
+   4. Strategies for different conversion approaches
    
-   The implementation handles interface types including records, variants, enums, flags, and resources.
+   The implementation handles interface types including records, variants, enums, flags, and resources with proper type conversion and validation.
 
 .. _resource-management-architecture:
 
@@ -298,8 +370,11 @@ The resource management subsystem handles WebAssembly Component Model resources 
    1. Resource type definitions and representations
    2. Resource tables for tracking live resources
    3. Reference counting and lifecycle management
-   4. Resource operation handlers (new, drop, rep)
-   5. Memory-based resource strategies
+   4. Resource operation handlers (new, drop, rep, transform)
+   5. Memory-based resource strategies with buffer pooling
+   6. Resource handle and ID management
+   7. Host callbacks for resource lifecycle events
+   8. Resource validation and security checks
 
 .. _resource-capacity-system:
 
@@ -314,6 +389,7 @@ The resource management subsystem handles WebAssembly Component Model resources 
    3. Resource table capacity limits
    4. Component instance count limitations
    5. Fuel-based execution limits
+   6. Resource exhaustion handling strategies
 
 .. impl:: Resource Type Handling
    :id: IMPL_010
@@ -325,16 +401,124 @@ The resource management subsystem handles WebAssembly Component Model resources 
    1. Reference counting for resource instances
    2. Resource tables for tracking live resources
    3. Host callbacks for resource lifecycle events
-   4. Resource dropping semantics
+   4. Resource dropping semantics with proper cleanup
    5. Support for different resource representations (Handle32, Handle64, Record, Aggregate)
-   6. Validation for resource operations (new, drop, rep)
+   6. Validation for resource operations (new, drop, rep, transform)
+   7. Resource strategy pattern for extensible resource implementation
+   8. Memory buffer pooling for efficient resource memory management
    
    Key components:
    - ``Resource`` struct - Represents a component model resource
    - ``ResourceType`` - Type information for resources
    - ``ResourceManager`` - Manages resource instances and lifecycles
    - ``ResourceOperation`` - Represents operations on resources
+   - ``ResourceStrategy`` - Strategy interface for resource implementation
+   - ``MemoryStrategy`` - Memory-based resource strategy
+   - ``BufferPool`` - Memory buffer pooling for resources
    - Resource lifetime management functions
+
+.. _intercept-system-architecture:
+
+Intercept System Architecture
+-----------------------------
+
+.. image:: _static/icons/intercept.svg
+   :width: 48px
+   :align: right
+   :alt: Intercept System Icon
+
+The intercept system provides a flexible mechanism for intercepting function calls between components and between components and the host.
+
+.. spec:: Intercept System Architecture
+   :id: SPEC_011
+   :links: REQ_014, REQ_020, REQ_SAFETY_001
+   
+   .. uml:: _static/intercept_system.puml
+      :alt: Intercept System Architecture
+      :width: 100%
+   
+   The intercept system architecture consists of:
+   
+   1. Core interception framework with strategy pattern
+   2. Flexible interception points for component interactions
+   3. Built-in strategies for common use cases
+   4. Canonical ABI integration for type-safe interception
+   5. Memory strategy selection for performance and safety
+   6. Security controls for proper isolation
+
+.. impl:: Intercept Implementation
+   :id: IMPL_INTERCEPT_001
+   :status: implemented
+   :links: SPEC_011, REQ_014, REQ_020
+   
+   The intercept system is implemented through:
+   
+   1. The ``LinkInterceptorStrategy`` trait defining interception points
+   2. The ``LinkInterceptor`` class coordinating strategy application
+   3. Interception result processing with detailed modification capabilities
+   4. Built-in strategies for common use cases:
+      - Logging strategy for debugging and tracing
+      - Firewall strategy for security enforcement
+      - Statistics strategy for performance monitoring
+   
+   Key features include:
+   - Function call interception before and after execution
+   - Optional function bypass for security and mocking
+   - Canonical ABI interception for type-safe data manipulation
+   - Resource operation interception
+   - Memory strategy selection for performance optimization
+   - Component start function interception
+
+.. _safe-memory-architecture:
+
+Safe Memory Architecture
+------------------------
+
+.. image:: _static/icons/safe_memory.svg
+   :width: 48px
+   :align: left
+   :alt: Safe Memory Icon
+
+The safe memory architecture provides memory safety abstractions designed for functional safety, implementing verification mechanisms to detect memory corruption.
+
+.. spec:: Safe Memory Architecture
+   :id: SPEC_012
+   :links: REQ_MEM_SAFETY_001, REQ_MEM_SAFETY_002, REQ_MEM_SAFETY_003
+   
+   .. uml:: _static/safe_memory_system.puml
+      :alt: Safe Memory System Architecture
+      :width: 100%
+   
+   The safe memory architecture consists of:
+   
+   1. SafeSlice abstraction with integrity verification
+   2. Memory providers for different environments (std, no_std)
+   3. Data integrity verification with checksums
+   4. Configurable verification levels for performance/safety balance
+   5. Access tracking for memory analysis
+   6. Thread-safe operations
+
+.. impl:: Safe Memory Implementation
+   :id: IMPL_SAFE_MEMORY_001
+   :status: implemented
+   :links: SPEC_012, REQ_MEM_SAFETY_001, REQ_MEM_SAFETY_002, REQ_MEM_SAFETY_003
+   
+   The safe memory system is implemented through:
+   
+   1. The ``SafeSlice`` type providing a memory-safe view with integrity checks
+   2. The ``MemoryProvider`` trait for different memory backends
+   3. The ``MemorySafety`` trait for safety operations
+   4. Memory providers for different environments:
+      - ``StdMemoryProvider`` for standard environments
+      - ``NoStdMemoryProvider`` for no_std environments
+   
+   Key features include:
+   - Checksums for data integrity verification
+   - Configurable verification levels (None, Basic, Sampling, Full)
+   - Memory access logging and statistics
+   - Thread-safe operations with atomic counters
+   - Access verification for bounds checking
+   - Support for slicing with safety guarantees
 
 .. _logging-subsystem:
 
@@ -421,6 +605,8 @@ The safety architecture implements cross-cutting safety features that span all W
    3. Error handling strategies
    4. Verification systems
    5. Code quality assurance processes
+   6. Thread safety implementation
+   7. Execution bounding mechanisms
 
 .. impl:: Memory Safety Implementations
    :id: IMPL_MEMORY_SAFETY_001
@@ -433,6 +619,9 @@ The safety architecture implements cross-cutting safety features that span all W
    2. Safe memory adapters for interfacing with WebAssembly memory
    3. Validation of memory access operations
    4. SafeSlice implementation for memory-safe views
+   5. Thread-safe memory access with atomic counters and locks
+   6. Memory integrity verification
+   7. Memory operation hooks for custom memory management
 
 .. impl:: Resource Management Safety
    :id: IMPL_RESOURCE_SAFETY_001
@@ -445,6 +634,9 @@ The safety architecture implements cross-cutting safety features that span all W
    2. Bounded collections with capacity limits
    3. Fuel-based execution limiting
    4. Resource exhaustion handling
+   5. Resource reference counting
+   6. Resource validation and verification
+   7. Buffer pooling for memory efficiency
 
 .. impl:: Error Handling and Recovery
    :id: IMPL_ERROR_HANDLING_RECOVERY_001
@@ -458,6 +650,8 @@ The safety architecture implements cross-cutting safety features that span all W
    3. Engine error reporting
    4. Recovery mechanisms for graceful degradation
    5. Resource exhaustion handling
+   6. Error categorization and detailed error messages
+   7. Error propagation with context
 
 .. impl:: Verification Systems
    :id: IMPL_VERIFICATION_001
@@ -470,6 +664,9 @@ The safety architecture implements cross-cutting safety features that span all W
    2. Collection validation for integrity checking
    3. Structural validation for data consistency
    4. Engine state verification
+   5. Resource verification
+   6. Type verification with compatibility checks
+   7. Module validation against the WebAssembly specification
 
 .. _verification-level-system:
 
@@ -483,6 +680,8 @@ The safety architecture implements cross-cutting safety features that span all W
    2. Configuration options for different deployment scenarios
    3. Balance between safety and performance
    4. Component-specific verification settings
+   5. Runtime validation options
+   6. Compile-time feature flags for verification
 
 .. _build-configuration-system:
 
@@ -497,6 +696,8 @@ The safety architecture implements cross-cutting safety features that span all W
    3. Feature flags for enabling/disabling safety mechanisms
    4. Platform-specific optimizations
    5. Clean build environment requirements
+   6. No-std compatibility options
+   7. Thread safety configuration
 
 .. _cli-architecture:
 
@@ -521,6 +722,7 @@ The WRTD command-line interface provides a user-friendly way to execute WebAssem
    4. Statistics reporting
    5. Logging configuration
    6. Component interface analysis capabilities
+   7. WASI interface implementation
 
 .. impl:: CLI Implementation
    :id: IMPL_008
@@ -535,6 +737,7 @@ The WRTD command-line interface provides a user-friendly way to execute WebAssem
    4. Execution statistics reporting
    5. Logging configuration and output
    6. Component interface parsing and introspection
+   7. Support for both WebAssembly modules and components
    
    Command-line options include:
    - ``--call <function>`` - Function to call
@@ -564,6 +767,8 @@ WRT includes specialized tools for testing, validation, and safety verification.
    3. Fuzzing infrastructure for identifying edge cases
    4. Code coverage measurement
    5. Quality assurance processes
+   6. Component model testing
+   7. Memory safety verification tests
 
 .. impl:: WAST Test Runner
    :id: IMPL_009
@@ -588,28 +793,27 @@ WRT includes specialized tools for testing, validation, and safety verification.
    2. Fuzzing infrastructure for finding edge cases
    3. Coverage measurement for quality assurance
    4. Automated test execution in CI pipeline
+   5. Memory safety tests
+   6. Resource exhaustion tests
+   7. Component model validation tests
 
 Development Status
 ------------------
 
 The current implementation status of the WRT architecture is as follows:
 
-.. Temporarily commented out for debugging
-.. 
-   .. needtable::
-      :columns: id;title;status;links
-      :filter: type == 'impl'
+.. needtable::
+   :columns: id;title;status;links
+   :filter: type == 'impl'
 
 Architecture-Requirement Mapping
 --------------------------------
 
 The following diagram shows how the architectural components map to requirements:
 
-.. Temporarily commented out for debugging
-..
-   .. needflow::
-      :filter: id in ['SPEC_001', 'SPEC_002', 'SPEC_003', 'SPEC_004', 'SPEC_005', 'SPEC_006', 'SPEC_007', 'SPEC_008', 'SPEC_009', 'SPEC_010', 'IMPL_001', 'IMPL_002', 'IMPL_003', 'IMPL_004', 'IMPL_005', 'IMPL_006', 'IMPL_007', 'IMPL_008', 'IMPL_009', 'IMPL_010', 'IMPL_011', 'IMPL_012', 'REQ_001', 'REQ_003', 'REQ_005', 'REQ_006', 'REQ_007', 'REQ_014', 'REQ_015', 'REQ_016', 'REQ_018', 'REQ_019', 'REQ_020', 'REQ_021', 'REQ_022', 'REQ_023', 'REQ_024', 'REQ_MEM_SAFETY_001', 'REQ_MEM_SAFETY_002', 'REQ_MEM_SAFETY_003', 'REQ_RESOURCE_001', 'REQ_RESOURCE_002', 'REQ_RESOURCE_003', 'REQ_RESOURCE_004', 'REQ_RESOURCE_005', 'REQ_ERROR_001', 'REQ_ERROR_002', 'REQ_ERROR_003', 'REQ_ERROR_004', 'REQ_ERROR_005', 'REQ_VERIFY_001', 'REQ_VERIFY_002', 'REQ_VERIFY_003', 'REQ_VERIFY_004', 'REQ_QA_001', 'REQ_QA_002', 'REQ_QA_003', 'REQ_SAFETY_001', 'REQ_SAFETY_002']
-      :name: architecture_requirement_mapping
+.. needflow::
+   :filter: id in ['SPEC_001', 'SPEC_002', 'SPEC_003', 'SPEC_004', 'SPEC_005', 'SPEC_006', 'SPEC_007', 'SPEC_008', 'SPEC_009', 'SPEC_010', 'IMPL_001', 'IMPL_002', 'IMPL_003', 'IMPL_004', 'IMPL_005', 'IMPL_006', 'IMPL_007', 'IMPL_008', 'IMPL_009', 'IMPL_010', 'IMPL_011', 'IMPL_012', 'REQ_001', 'REQ_003', 'REQ_005', 'REQ_006', 'REQ_007', 'REQ_014', 'REQ_015', 'REQ_016', 'REQ_018', 'REQ_019', 'REQ_020', 'REQ_021', 'REQ_022', 'REQ_023', 'REQ_024', 'REQ_MEM_SAFETY_001', 'REQ_MEM_SAFETY_002', 'REQ_MEM_SAFETY_003', 'REQ_RESOURCE_001', 'REQ_RESOURCE_002', 'REQ_RESOURCE_003', 'REQ_RESOURCE_004', 'REQ_RESOURCE_005', 'REQ_ERROR_001', 'REQ_ERROR_002', 'REQ_ERROR_003', 'REQ_ERROR_004', 'REQ_ERROR_005', 'REQ_VERIFY_001', 'REQ_VERIFY_002', 'REQ_VERIFY_003', 'REQ_VERIFY_004', 'REQ_QA_001', 'REQ_QA_002', 'REQ_QA_003', 'REQ_SAFETY_001', 'REQ_SAFETY_002']
+   :name: architecture_requirement_mapping
 
 .. _safety-architecture-mapping:
 
@@ -618,8 +822,6 @@ Safety-Architecture Mapping
 
 The following diagram shows the relationship between safety requirements and architectural components:
 
-.. Temporarily commented out for debugging
-..
-   .. needflow::
-      :filter: id in ['SPEC_002', 'SPEC_007', 'SPEC_008', 'SPEC_009', 'SPEC_010', 'IMPL_MEMORY_SAFETY_001', 'IMPL_RESOURCE_SAFETY_001', 'IMPL_ERROR_HANDLING_RECOVERY_001', 'IMPL_VERIFICATION_001', 'IMPL_SAFETY_TESTING_001', 'REQ_MEM_SAFETY_001', 'REQ_MEM_SAFETY_002', 'REQ_MEM_SAFETY_003', 'REQ_RESOURCE_001', 'REQ_RESOURCE_002', 'REQ_RESOURCE_003', 'REQ_RESOURCE_004', 'REQ_RESOURCE_005', 'REQ_ERROR_001', 'REQ_ERROR_002', 'REQ_ERROR_003', 'REQ_ERROR_004', 'REQ_ERROR_005', 'REQ_VERIFY_001', 'REQ_VERIFY_002', 'REQ_VERIFY_003', 'REQ_VERIFY_004', 'REQ_QA_001', 'REQ_QA_002', 'REQ_QA_003', 'REQ_SAFETY_001', 'REQ_SAFETY_002', 'IMPL_BOUNDS_001', 'IMPL_SAFE_SLICE_001', 'IMPL_ADAPTER_001', 'IMPL_WASM_MEM_001', 'IMPL_LIMITS_001', 'IMPL_FUEL_001', 'IMPL_ERROR_HANDLING_001', 'IMPL_RECOVERY_001', 'IMPL_SAFETY_TEST_001', 'IMPL_FUZZ_001']
-      :name: safety_architecture_mapping
+.. needflow::
+   :filter: id in ['SPEC_002', 'SPEC_007', 'SPEC_008', 'SPEC_009', 'SPEC_010', 'IMPL_MEMORY_SAFETY_001', 'IMPL_RESOURCE_SAFETY_001', 'IMPL_ERROR_HANDLING_RECOVERY_001', 'IMPL_VERIFICATION_001', 'IMPL_SAFETY_TESTING_001', 'REQ_MEM_SAFETY_001', 'REQ_MEM_SAFETY_002', 'REQ_MEM_SAFETY_003', 'REQ_RESOURCE_001', 'REQ_RESOURCE_002', 'REQ_RESOURCE_003', 'REQ_RESOURCE_004', 'REQ_RESOURCE_005', 'REQ_ERROR_001', 'REQ_ERROR_002', 'REQ_ERROR_003', 'REQ_ERROR_004', 'REQ_ERROR_005', 'REQ_VERIFY_001', 'REQ_VERIFY_002', 'REQ_VERIFY_003', 'REQ_VERIFY_004', 'REQ_QA_001', 'REQ_QA_002', 'REQ_QA_003', 'REQ_SAFETY_001', 'REQ_SAFETY_002', 'IMPL_BOUNDS_001', 'IMPL_SAFE_SLICE_001', 'IMPL_ADAPTER_001', 'IMPL_WASM_MEM_001', 'IMPL_LIMITS_001', 'IMPL_FUEL_001', 'IMPL_ERROR_HANDLING_001', 'IMPL_RECOVERY_001', 'IMPL_SAFETY_TEST_001', 'IMPL_FUZZ_001']
+   :name: safety_architecture_mapping

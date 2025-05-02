@@ -19,8 +19,9 @@ no_std = [
     "wrt-runtime/no_std",
     "alloc",
 ]
-optimize = []  # Optional feature to bypass some safety checks in performance-critical paths
-safety = []    # Additional safety features for ASIL-B compliance
+alloc = ["wrt-error/alloc", "wrt-types/alloc", "wrt-runtime/alloc", "dep:alloc"]
+optimize = ["wrt-types/optimize", "wrt-runtime/optimize"]
+safety = ["wrt-types/safety", "wrt-runtime/safety"]
 
 [dependencies]
 wrt-error = { path = "../wrt-error", version = "0.2.0" }

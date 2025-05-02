@@ -3,6 +3,7 @@
 //! A pure Rust implementation of the WebAssembly runtime, supporting the WebAssembly Core
 //! and Component Model specifications.
 
+#![cfg_attr(not(feature = "std"), no_std)]
 #![deny(clippy::all)]
 #![deny(clippy::perf)]
 #![deny(clippy::nursery)]
@@ -16,7 +17,7 @@
 #[cfg(feature = "std")]
 extern crate std;
 
-#[cfg(not(feature = "std"))]
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
 extern crate alloc;
 
 // Import and re-export types from std when available
@@ -31,12 +32,13 @@ pub use std::{
 };
 
 // Import and re-export types for no_std environment
-#[cfg(not(feature = "std"))]
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
 pub use alloc::{
     boxed::Box,
     collections::BTreeMap as HashMap,
     format,
     string::{String, ToString},
+    sync::Arc,
     vec::Vec,
 };
 
@@ -88,6 +90,7 @@ pub mod module;
 pub mod resource;
 
 /// Module for WebAssembly serialization
+#[cfg(feature = "serialization")]
 pub mod serialization;
 
 /// Adapter for WebAssembly format handling
@@ -109,7 +112,6 @@ pub mod types;
 pub mod values;
 
 /// Module for WebAssembly synchronization primitives in no_std environment
-#[cfg(not(feature = "std"))]
 pub mod sync;
 
 /// Shared instruction implementations for all engines
@@ -198,42 +200,33 @@ pub fn new_memory_adapter(mem_type: MemoryType) -> Memory {
 /// # Parameters
 ///
 /// * `table_type` - The type of the table to create
-///
-/// # Returns
-///
-/// A new table instance with the specified type
+#[must_use]
 pub fn new_table(table_type: TableType) -> Table {
-    Table::new(
-        table_type.clone(),
-        Value::default_for_type(&table_type.element_type),
-    )
-    .unwrap()
+    Table::new(table_type).expect("Failed to create new table")
 }
 
-/// Create a new table with the specified type
+/// Create a new table adapter with the specified type
+///
+/// This function exists to maintain backward compatibility with
+/// code that uses the older memory adapter API.
 ///
 /// # Parameters
 ///
-/// * `table_type` - The type of the table to create
-///
-/// # Returns
-///
-/// A new table instance with the specified type
+/// * `table_type` - The type of the table adapter to create
+#[must_use]
 pub fn new_table_adapter(table_type: TableType) -> Table {
-    Table::new(
-        table_type.clone(),
-        Value::default_for_type(&table_type.element_type),
-    )
-    .unwrap()
+    Table::new(table_type).expect("Failed to create new table adapter")
 }
 
-/// Create a new global with the specified type and value
+/// Creates a new WebAssembly global with the specified type and value
+#[must_use]
 pub fn new_global(global_type: GlobalType, value: Value) -> Result<Global> {
-    Ok(Global::new(global_type, value))
+    Global::new(global_type, value)
 }
 
-/// Creates a new global array
-pub fn new_globals() -> Vec<std::sync::Arc<Global>> {
+/// Creates an empty globals vector
+#[must_use]
+pub fn new_globals() -> Vec<Arc<Global>> {
     Vec::new()
 }
 

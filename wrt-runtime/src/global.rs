@@ -2,48 +2,58 @@
 //!
 //! This module provides the implementation for WebAssembly globals.
 
-use wrt_error::kinds;
-use wrt_error::{Error, Result};
+use wrt_error::{codes, kinds, Error, ErrorCategory, Result};
+use wrt_types::types::GlobalType as TypesGlobalType;
 use wrt_types::values::Value;
 
-/// Represents a WebAssembly global instance
-#[derive(Debug, Clone)]
+/// Represents a WebAssembly global variable
+#[derive(Debug, Clone, PartialEq)]
 pub struct Global {
-    /// The type of the global, including mutability
-    pub ty: GlobalType,
-    /// The current value of the global
+    /// The global type
+    ty: TypesGlobalType,
+    /// The global value
     value: Value,
 }
 
 impl Global {
-    /// Create a new global with the given type and initial value
-    pub fn new(ty: GlobalType, value: Value) -> Self {
+    /// Create a new global value
+    pub fn new(ty: TypesGlobalType, value: Value) -> Self {
         Self { ty, value }
     }
 
-    /// Get the current value of the global
-    pub fn get(&self) -> Value {
-        self.value.clone()
+    /// Get global value
+    pub fn get(&self) -> &Value {
+        &self.value
     }
 
-    /// Set the value of the global if it's mutable
-    pub fn set(&mut self, value: Value) -> Result<()> {
+    /// Set global value
+    pub fn set(&mut self, value: &Value) -> Result<()> {
         if !self.ty.mutable {
-            return Err(Error::new(kinds::ValidationError(
-                "Cannot modify immutable global".to_string(),
-            )));
+            return Err(Error::new(
+                ErrorCategory::Validation,
+                codes::VALIDATION_ERROR,
+                kinds::ValidationError("Cannot modify immutable global".to_string()),
+            ));
         }
 
-        // Ensure the value type matches the global's type
         if !value.matches_type(&self.ty.value_type) {
-            return Err(Error::new(kinds::ValidationError(format!(
-                "Value type doesn't match global type: {:?} vs {}",
-                value, self.ty.value_type
-            ))));
+            return Err(Error::new(
+                ErrorCategory::Type,
+                codes::TYPE_MISMATCH,
+                kinds::ValidationError(format!(
+                    "Value type doesn't match global type: {:?} vs {}",
+                    value, self.ty.value_type
+                )),
+            ));
         }
 
-        self.value = value;
+        self.value = value.clone();
         Ok(())
+    }
+
+    /// Get the global type
+    pub fn global_type(&self) -> &TypesGlobalType {
+        &self.ty
     }
 }
 

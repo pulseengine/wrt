@@ -24,3 +24,5 @@ wrtd/target
 docs/source/_generated_symbols.rst
 docs/source/_generated_coverage_summary.rst
 docs/source/_static/versions.json
+implementation_summary.md
+decoder.agent.prompt.md decoder.plan.md

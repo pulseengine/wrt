@@ -17,6 +17,13 @@ use alloc::{
 
 use crate::module::Module;
 use crate::types::ValueType;
+use crate::validation::Validatable;
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+use alloc::fmt::Display;
+use wrt_error::{Error, Result};
+use wrt_types::resource::{ResourceDrop, ResourceNew, ResourceRep, ResourceRepresentation};
+// Re-export ValType from wrt-types
+pub use wrt_types::component_value::ValType;
 
 /// WebAssembly Component Model component definition
 #[derive(Debug, Clone)]
@@ -79,11 +86,85 @@ impl Component {
     }
 }
 
+impl Validatable for Component {
+    fn validate(&self) -> Result<()> {
+        // Validate component name if present
+        if let Some(name) = &self.name {
+            if name.is_empty() {
+                return Err(Error::validation_error("Component name cannot be empty"));
+            }
+        }
+
+        // Validate all child elements
+        self.modules.validate()?;
+        self.core_instances.validate()?;
+        self.core_types.validate()?;
+        self.components.validate()?;
+        self.instances.validate()?;
+        self.aliases.validate()?;
+        self.types.validate()?;
+        self.canonicals.validate()?;
+        self.start.validate()?;
+        self.imports.validate()?;
+        self.exports.validate()?;
+        self.values.validate()?;
+
+        Ok(())
+    }
+}
+
 /// Core WebAssembly instance definition in a component
 #[derive(Debug, Clone)]
 pub struct CoreInstance {
     /// Instance expression
     pub instance_expr: CoreInstanceExpr,
+}
+
+impl Validatable for CoreInstance {
+    fn validate(&self) -> Result<()> {
+        match &self.instance_expr {
+            CoreInstanceExpr::Instantiate { module_idx, args } => {
+                // Basic validation: module_idx should be reasonable
+                if *module_idx > 10000 {
+                    // Arbitrary reasonable limit
+                    return Err(Error::validation_error(format!(
+                        "Module index {} seems unreasonably large",
+                        module_idx
+                    )));
+                }
+
+                // Validate args
+                for arg in args {
+                    if arg.name.is_empty() {
+                        return Err(Error::validation_error(
+                            "Instantiate arg name cannot be empty",
+                        ));
+                    }
+                }
+
+                Ok(())
+            }
+            CoreInstanceExpr::InlineExports(exports) => {
+                // Validate exports
+                for export in exports {
+                    if export.name.is_empty() {
+                        return Err(Error::validation_error(
+                            "Inline export name cannot be empty",
+                        ));
+                    }
+                    // Reasonable index limit
+                    if export.idx > 100000 {
+                        return Err(Error::validation_error(format!(
+                            "Export index {} seems unreasonably large",
+                            export.idx
+                        )));
+                    }
+                }
+
+                Ok(())
+            }
+        }
+    }
 }
 
 /// Core WebAssembly instance expression
@@ -144,6 +225,51 @@ pub enum CoreSort {
 pub struct CoreType {
     /// Type definition
     pub definition: CoreTypeDefinition,
+}
+
+impl Validatable for CoreType {
+    fn validate(&self) -> Result<()> {
+        match &self.definition {
+            CoreTypeDefinition::Function { params, results } => {
+                // Basic validation: reasonable limits on params and results
+                if params.len() > 1000 {
+                    return Err(Error::validation_error(format!(
+                        "Function has too many parameters ({})",
+                        params.len()
+                    )));
+                }
+
+                if results.len() > 1000 {
+                    return Err(Error::validation_error(format!(
+                        "Function has too many results ({})",
+                        results.len()
+                    )));
+                }
+
+                Ok(())
+            }
+            CoreTypeDefinition::Module { imports, exports } => {
+                // Validate imports
+                for (namespace, name, _) in imports {
+                    if namespace.is_empty() {
+                        return Err(Error::validation_error("Import namespace cannot be empty"));
+                    }
+                    if name.is_empty() {
+                        return Err(Error::validation_error("Import name cannot be empty"));
+                    }
+                }
+
+                // Validate exports
+                for (name, _) in exports {
+                    if name.is_empty() {
+                        return Err(Error::validation_error("Export name cannot be empty"));
+                    }
+                }
+
+                Ok(())
+            }
+        }
+    }
 }
 
 /// Core WebAssembly type definition
@@ -326,12 +452,12 @@ pub enum ComponentTypeDefinition {
     /// Function type
     Function {
         /// Parameter types
-        params: Vec<(String, ValType)>,
+        params: Vec<(String, FormatValType)>,
         /// Result types
-        results: Vec<ValType>,
+        results: Vec<FormatValType>,
     },
     /// Value type
-    Value(ValType),
+    Value(FormatValType),
     /// Resource type
     Resource {
         /// Resource representation type
@@ -347,12 +473,12 @@ pub enum ExternType {
     /// Function type
     Function {
         /// Parameter types
-        params: Vec<(String, ValType)>,
+        params: Vec<(String, FormatValType)>,
         /// Result types
-        results: Vec<ValType>,
+        results: Vec<FormatValType>,
     },
     /// Value type
-    Value(ValType),
+    Value(FormatValType),
     /// Type reference
     Type(u32),
     /// Instance type
@@ -369,9 +495,9 @@ pub enum ExternType {
     },
 }
 
-/// Component value type including fixed-length lists
+/// Component Model value types
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ValType {
+pub enum FormatValType {
     /// Boolean type
     Bool,
     /// 8-bit signed integer
@@ -401,46 +527,31 @@ pub enum ValType {
     /// Reference type
     Ref(u32),
     /// Record type with named fields
-    Record(Vec<(String, ValType)>),
+    Record(Vec<(String, FormatValType)>),
     /// Variant type
-    Variant(Vec<(String, Option<ValType>)>),
+    Variant(Vec<(String, Option<FormatValType>)>),
     /// List type
-    List(Box<ValType>),
+    List(Box<FormatValType>),
     /// Fixed-length list type with element type and length
-    FixedList(Box<ValType>, u32),
+    FixedList(Box<FormatValType>, u32),
     /// Tuple type
-    Tuple(Vec<ValType>),
+    Tuple(Vec<FormatValType>),
     /// Flags type
     Flags(Vec<String>),
     /// Enum type
     Enum(Vec<String>),
     /// Option type
-    Option(Box<ValType>),
-    /// Result type (ok only)
-    Result(Box<ValType>),
-    /// Result type (error only)
-    ResultErr(Box<ValType>),
-    /// Result type (ok and error)
-    ResultBoth(Box<ValType>, Box<ValType>),
+    Option(Box<FormatValType>),
+    /// Result type (can contain ok or error)
+    Result(Box<FormatValType>),
     /// Own a resource
     Own(u32),
     /// Borrow a resource
     Borrow(u32),
+    /// Void/empty type
+    Void,
     /// Error context type
     ErrorContext,
-}
-
-/// Resource representation type
-#[derive(Debug, Clone, PartialEq)]
-pub enum ResourceRepresentation {
-    /// 32-bit integer handle
-    Handle32,
-    /// 64-bit integer handle
-    Handle64,
-    /// Record representation
-    Record(Vec<String>),
-    /// Aggregate representation
-    Aggregate(Vec<u32>),
 }
 
 /// Canonical function conversion
@@ -470,7 +581,7 @@ pub enum CanonOperation {
         options: LowerOptions,
     },
     /// Resource operations
-    Resource(ResourceOperation),
+    Resource(FormatResourceOperation),
     /// Reallocation operation
     Realloc {
         /// Function index for memory allocation
@@ -566,71 +677,6 @@ pub enum ErrorMode {
     CatchExceptions,
     /// Pass through errors/exceptions
     Passthrough,
-}
-
-/// Resource operation for canonical ABI
-#[derive(Debug, Clone)]
-pub enum ResourceOperation {
-    /// Resource new: converts a constructor to an implementation
-    New(ResourceNew),
-    /// Resource drop: drops a resource without destroying it
-    Drop(ResourceDrop),
-    /// Resource rep: converts a resource to its representation
-    Rep(ResourceRep),
-    /// Resource destroy: destroys a resource
-    Destroy(ResourceDestroy),
-    /// Resource transfer: transfers ownership of a resource
-    Transfer(ResourceTransfer),
-    /// Resource borrow: temporarily borrows a resource
-    Borrow(ResourceBorrow),
-}
-
-/// Resource new operation data
-#[derive(Debug, Clone)]
-pub struct ResourceNew {
-    /// Type index of the resource
-    pub type_idx: u32,
-    /// Memory index for resource representation (if any)
-    pub memory_idx: Option<u32>,
-}
-
-/// Resource drop operation data
-#[derive(Debug, Clone)]
-pub struct ResourceDrop {
-    /// Type index of the resource
-    pub type_idx: u32,
-}
-
-/// Resource rep operation data
-#[derive(Debug, Clone)]
-pub struct ResourceRep {
-    /// Type index of the resource
-    pub type_idx: u32,
-    /// Memory index for resource representation (if any)
-    pub memory_idx: Option<u32>,
-}
-
-/// Resource destroy operation data
-#[derive(Debug, Clone)]
-pub struct ResourceDestroy {
-    /// Type index of the resource
-    pub type_idx: u32,
-}
-
-/// Resource transfer operation data
-#[derive(Debug, Clone)]
-pub struct ResourceTransfer {
-    /// Type index of the resource
-    pub type_idx: u32,
-}
-
-/// Resource borrow operation data
-#[derive(Debug, Clone)]
-pub struct ResourceBorrow {
-    /// Type index of the resource
-    pub type_idx: u32,
-    /// Borrow duration (in ticks)
-    pub duration: Option<u32>,
 }
 
 /// Component start function
@@ -797,7 +843,7 @@ impl ExportName {
 #[derive(Debug, Clone)]
 pub struct Value {
     /// Type of the value
-    pub ty: ValType,
+    pub ty: FormatValType,
     /// Encoded value data
     pub data: Vec<u8>,
     /// Value expression (if available)
@@ -863,4 +909,358 @@ pub enum ConstValue {
     String(String),
     /// Empty null constant
     Null,
+}
+
+impl Validatable for Instance {
+    fn validate(&self) -> Result<()> {
+        match &self.instance_expr {
+            InstanceExpr::Instantiate {
+                component_idx,
+                args,
+            } => {
+                // Basic validation: component_idx should be reasonable
+                if *component_idx > 10000 {
+                    // Arbitrary reasonable limit
+                    return Err(Error::validation_error(format!(
+                        "Component index {} seems unreasonably large",
+                        component_idx
+                    )));
+                }
+
+                // Validate args
+                for arg in args {
+                    if arg.name.is_empty() {
+                        return Err(Error::validation_error(
+                            "Instantiate arg name cannot be empty",
+                        ));
+                    }
+                }
+
+                Ok(())
+            }
+            InstanceExpr::InlineExports(exports) => {
+                // Validate exports
+                for export in exports {
+                    if export.name.is_empty() {
+                        return Err(Error::validation_error(
+                            "Inline export name cannot be empty",
+                        ));
+                    }
+                }
+
+                Ok(())
+            }
+        }
+    }
+}
+
+impl Validatable for Alias {
+    fn validate(&self) -> Result<()> {
+        match &self.target {
+            AliasTarget::CoreInstanceExport {
+                instance_idx, name, ..
+            } => {
+                if *instance_idx > 10000 {
+                    return Err(Error::validation_error(format!(
+                        "Instance index {} seems unreasonably large",
+                        instance_idx
+                    )));
+                }
+
+                if name.is_empty() {
+                    return Err(Error::validation_error("Export name cannot be empty"));
+                }
+
+                Ok(())
+            }
+            AliasTarget::InstanceExport {
+                instance_idx, name, ..
+            } => {
+                if *instance_idx > 10000 {
+                    return Err(Error::validation_error(format!(
+                        "Instance index {} seems unreasonably large",
+                        instance_idx
+                    )));
+                }
+
+                if name.is_empty() {
+                    return Err(Error::validation_error("Export name cannot be empty"));
+                }
+
+                Ok(())
+            }
+            AliasTarget::Outer { count, idx, .. } => {
+                if *count > 10 {
+                    return Err(Error::validation_error(format!(
+                        "Outer count {} seems unreasonably large",
+                        count
+                    )));
+                }
+
+                if *idx > 10000 {
+                    return Err(Error::validation_error(format!(
+                        "Index {} seems unreasonably large",
+                        idx
+                    )));
+                }
+
+                Ok(())
+            }
+        }
+    }
+}
+
+impl Validatable for ComponentType {
+    fn validate(&self) -> Result<()> {
+        match &self.definition {
+            ComponentTypeDefinition::Component { imports, exports } => {
+                // Validate imports
+                for (namespace, name, _) in imports {
+                    if namespace.is_empty() {
+                        return Err(Error::validation_error("Import namespace cannot be empty"));
+                    }
+                    if name.is_empty() {
+                        return Err(Error::validation_error("Import name cannot be empty"));
+                    }
+                }
+
+                // Validate exports
+                for (name, _) in exports {
+                    if name.is_empty() {
+                        return Err(Error::validation_error("Export name cannot be empty"));
+                    }
+                }
+
+                Ok(())
+            }
+            ComponentTypeDefinition::Instance { exports } => {
+                // Validate exports
+                for (name, _) in exports {
+                    if name.is_empty() {
+                        return Err(Error::validation_error("Export name cannot be empty"));
+                    }
+                }
+
+                Ok(())
+            }
+            ComponentTypeDefinition::Function { params, results } => {
+                // Basic validation: reasonable limits on params and results
+                if params.len() > 1000 {
+                    return Err(Error::validation_error(format!(
+                        "Function has too many parameters ({})",
+                        params.len()
+                    )));
+                }
+
+                // Check param names
+                for (name, _) in params {
+                    if name.is_empty() {
+                        return Err(Error::validation_error("Parameter name cannot be empty"));
+                    }
+                }
+
+                if results.len() > 1000 {
+                    return Err(Error::validation_error(format!(
+                        "Function has too many results ({})",
+                        results.len()
+                    )));
+                }
+
+                Ok(())
+            }
+            ComponentTypeDefinition::Value(_) => {
+                // Simple value types don't need further validation
+                Ok(())
+            }
+            ComponentTypeDefinition::Resource { .. } => {
+                // Resource types are validated elsewhere
+                Ok(())
+            }
+        }
+    }
+}
+
+impl Validatable for Canon {
+    fn validate(&self) -> Result<()> {
+        match &self.operation {
+            CanonOperation::Lift {
+                func_idx, type_idx, ..
+            } => {
+                if *func_idx > 10000 {
+                    return Err(Error::validation_error(format!(
+                        "Function index {} seems unreasonably large",
+                        func_idx
+                    )));
+                }
+
+                if *type_idx > 10000 {
+                    return Err(Error::validation_error(format!(
+                        "Type index {} seems unreasonably large",
+                        type_idx
+                    )));
+                }
+
+                Ok(())
+            }
+            CanonOperation::Lower { func_idx, .. } => {
+                if *func_idx > 10000 {
+                    return Err(Error::validation_error(format!(
+                        "Function index {} seems unreasonably large",
+                        func_idx
+                    )));
+                }
+
+                Ok(())
+            }
+            // Other operations have simpler validation requirements
+            _ => Ok(()),
+        }
+    }
+}
+
+impl Validatable for Start {
+    fn validate(&self) -> Result<()> {
+        if self.func_idx > 10000 {
+            return Err(Error::validation_error(format!(
+                "Function index {} seems unreasonably large",
+                self.func_idx
+            )));
+        }
+
+        if self.args.len() > 1000 {
+            return Err(Error::validation_error(format!(
+                "Start function has too many arguments ({})",
+                self.args.len()
+            )));
+        }
+
+        if self.results > 1000 {
+            return Err(Error::validation_error(format!(
+                "Start function has too many results ({})",
+                self.results
+            )));
+        }
+
+        Ok(())
+    }
+}
+
+impl Validatable for Import {
+    fn validate(&self) -> Result<()> {
+        // Validate import name
+        if self.name.namespace.is_empty() {
+            return Err(Error::validation_error("Import namespace cannot be empty"));
+        }
+
+        if self.name.name.is_empty() {
+            return Err(Error::validation_error("Import name cannot be empty"));
+        }
+
+        // Nested namespaces should not be empty strings
+        for nested in &self.name.nested {
+            if nested.is_empty() {
+                return Err(Error::validation_error("Nested namespace cannot be empty"));
+            }
+        }
+
+        // Validate package reference if present
+        if let Some(pkg) = &self.name.package {
+            if pkg.name.is_empty() {
+                return Err(Error::validation_error("Package name cannot be empty"));
+            }
+        }
+
+        Ok(())
+    }
+}
+
+impl Validatable for Export {
+    fn validate(&self) -> Result<()> {
+        // Validate export name
+        if self.name.name.is_empty() {
+            return Err(Error::validation_error("Export name cannot be empty"));
+        }
+
+        // Nested namespaces should not be empty strings
+        for nested in &self.name.nested {
+            if nested.is_empty() {
+                return Err(Error::validation_error("Nested namespace cannot be empty"));
+            }
+        }
+
+        // Index should be reasonable
+        if self.idx > 10000 {
+            return Err(Error::validation_error(format!(
+                "Export index {} seems unreasonably large",
+                self.idx
+            )));
+        }
+
+        Ok(())
+    }
+}
+
+impl Validatable for Value {
+    fn validate(&self) -> Result<()> {
+        // Validate data size (should be reasonable)
+        if self.data.len() > 1000000 {
+            return Err(Error::validation_error(format!(
+                "Value data size {} seems unreasonably large",
+                self.data.len()
+            )));
+        }
+
+        // Check value expression if present
+        if let Some(expr) = &self.expression {
+            match expr {
+                ValueExpression::ItemRef { idx, .. } => {
+                    if *idx > 10000 {
+                        return Err(Error::validation_error(format!(
+                            "Item reference index {} seems unreasonably large",
+                            idx
+                        )));
+                    }
+                }
+                ValueExpression::GlobalInit { global_idx } => {
+                    if *global_idx > 10000 {
+                        return Err(Error::validation_error(format!(
+                            "Global index {} seems unreasonably large",
+                            global_idx
+                        )));
+                    }
+                }
+                ValueExpression::FunctionCall { func_idx, args } => {
+                    if *func_idx > 10000 {
+                        return Err(Error::validation_error(format!(
+                            "Function index {} seems unreasonably large",
+                            func_idx
+                        )));
+                    }
+
+                    if args.len() > 1000 {
+                        return Err(Error::validation_error(format!(
+                            "Function call has too many arguments ({})",
+                            args.len()
+                        )));
+                    }
+                }
+                ValueExpression::Const(_) => {
+                    // Constants are validated elsewhere
+                }
+            }
+        }
+
+        Ok(())
+    }
+}
+
+/// Resource operation in a canonical function
+#[derive(Debug, Clone)]
+pub enum FormatResourceOperation {
+    /// New resource operation
+    New(ResourceNew),
+    /// Drop a resource
+    Drop(ResourceDrop),
+    /// Resource representation operation
+    Rep(ResourceRep),
 }

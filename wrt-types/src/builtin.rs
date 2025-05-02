@@ -7,7 +7,7 @@ use core::fmt;
 use core::str::FromStr;
 
 #[cfg(feature = "std")]
-use std::vec::Vec;
+use std::{vec, vec::Vec};
 
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 use alloc::{vec, vec::Vec};

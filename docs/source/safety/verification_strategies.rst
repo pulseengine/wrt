@@ -1,5 +1,5 @@
 WebAssembly Runtime Verification Strategies
-=======================================
+===========================================
 
 Overview
 --------
@@ -7,7 +7,7 @@ Overview
 This document details the verification strategies implemented in the WebAssembly Runtime (WRT) to ensure memory safety, bounded execution, and data integrity. These strategies are a key part of the functional safety implementation and provide mechanisms for detecting and preventing various types of errors and vulnerabilities.
 
 Verification Levels
-------------------
+-------------------
 
 The runtime implements four verification levels that provide different balances of safety and performance:
 
@@ -21,7 +21,7 @@ The runtime implements four verification levels that provide different balances 
 - **Safety Guarantees**: Only basic type safety provided by Rust's type system.
 
 2. Sampling (``VerificationLevel::Sampling``)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - **Description**: Lightweight verification that performs checks on a statistical subset of operations.
 - **Use Case**: Performance-critical paths that still require some safety assurance.
@@ -40,7 +40,7 @@ The runtime implements four verification levels that provide different balances 
 - **Safety Guarantees**: Can detect persistent or frequently occurring issues with high probability.
 
 3. Standard (``VerificationLevel::Standard``)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - **Description**: Balanced verification with checks at critical points and for important operations.
 - **Use Case**: General-purpose usage balancing safety and performance.
@@ -61,7 +61,7 @@ Verification Techniques
 -----------------------
 
 Bounds Checking
-~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~
 
 - **Purpose**: Prevent buffer overflows and out-of-bounds memory access.
 - **Implementation**: 
@@ -80,7 +80,7 @@ Bounds Checking
      }
 
 Checksumming
-~~~~~~~~~~~
+~~~~~~~~~~~~
 
 - **Purpose**: Detect memory corruption and unauthorized modifications.
 - **Implementation**:
@@ -103,7 +103,7 @@ Checksumming
      }
 
 Structural Validation
-~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~
 
 - **Purpose**: Ensure internal data structures maintain consistency.
 - **Implementation**:
@@ -134,7 +134,7 @@ Structural Validation
      }
 
 Memory Integrity Verification
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - **Purpose**: Ensure WebAssembly memory hasn't been corrupted.
 - **Implementation**:
@@ -172,7 +172,7 @@ Memory Integrity Verification
      }
 
 Operation Tracking and Accounting
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - **Purpose**: Monitor resource usage and detect abnormal patterns.
 - **Implementation**:
@@ -197,41 +197,41 @@ Operation Tracking and Accounting
      }
 
 Verification Integration Points
-------------------------------
+-------------------------------
 
 1. Collection Operations
-~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 - **Push/Pop Operations**: Verify capacity constraints and update checksums.
 - **Access Operations**: Perform bounds checking and validate state.
 - **Iteration**: Validate collection state before iteration begins.
 
 2. Memory Operations
-~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~
 
 - **Memory Allocation**: Verify size constraints and initialize tracking.
 - **Memory Access**: Check bounds and validate memory integrity.
 - **Memory Growth**: Validate state before and after growth operations.
 
 3. Engine Execution
-~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~
 
 - **Function Invocation**: Validate engine state before and after calls.
 - **Instruction Execution**: Track operations and perform periodic validation.
 - **State Transitions**: Verify integrity during significant state changes.
 
 Performance Optimization Strategies
-----------------------------------
+-----------------------------------
 
 1. Verification Batching
-~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Group multiple validation operations to amortize overhead.
 - Batch checksum computations for adjacent memory regions.
 - Combine validation operations when possible.
 
 2. Importance-Based Verification
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Assign importance levels to different operations:
   - Critical operations (e.g., memory grow): Importance 255
@@ -240,7 +240,7 @@ Performance Optimization Strategies
 - Adjust verification frequency based on operation importance.
 
 3. Hot Path Optimization
-~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Identify performance-critical paths through profiling.
 - Apply specialized verification strategies to hot paths:
@@ -249,7 +249,7 @@ Performance Optimization Strategies
   - Utilize cache-friendly verification patterns.
 
 4. Compile-Time Optimizations
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Use feature flags to enable or disable verification:
 
@@ -270,7 +270,7 @@ Performance Optimization Strategies
 - Provide specialized implementations for different verification levels.
 
 Security Considerations
-----------------------
+-----------------------
 
 - **Detection vs. Prevention**: Verification primarily focuses on detection, but also prevents continued execution after corruption is detected.
 - **Error Handling**: All verification failures produce detailed error information to aid diagnosis.
@@ -278,7 +278,7 @@ Security Considerations
 - **Tampering Detection**: Checksumming helps detect unauthorized modifications of runtime state.
 
 Conclusion
----------
+----------
 
 The verification strategies implemented in the WebAssembly Runtime provide a robust foundation for ensuring memory safety, bounded execution, and data integrity. By supporting multiple verification levels, the runtime offers flexibility in balancing safety and performance requirements for different use cases.
 

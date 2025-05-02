@@ -5,7 +5,6 @@
 //! functional safety for ASIL-B compliance.
 
 #![cfg_attr(not(feature = "std"), no_std)]
-#![cfg_attr(feature = "kani", feature(kani))]
 #![warn(unsafe_code)]
 #![warn(missing_docs)]
 
@@ -23,6 +22,10 @@ pub use std::{
     boxed::Box, collections::HashMap, fmt, format, string::String, string::ToString, vec, vec::Vec,
 };
 
+// Export ToString trait for no_std code
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+pub use core::fmt;
+
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 pub use alloc::{
     boxed::Box, collections::BTreeMap as HashMap, format, string::String, string::ToString, vec,
@@ -34,7 +37,10 @@ pub use alloc::{
 pub use alloc::{borrow, rc, sync};
 
 // Re-export error related types for convenience
-pub use wrt_error::{kinds, Error, Result};
+pub use wrt_error::{kinds, Error as WrtErrorBase};
+
+// Create a Result type alias using wrt_error::Error
+pub type WrtResult<T> = core::result::Result<T, WrtErrorBase>;
 
 // Core modules
 /// Bounded collections for memory safety
@@ -45,8 +51,12 @@ pub mod builtin;
 pub mod component;
 /// WebAssembly Component Model value types
 pub mod component_value;
+/// Conversions between wrt_error and wrt_types
+pub mod error_convert;
 /// Operation tracking and fuel metering
 pub mod operations;
+/// Resource management
+pub mod resource;
 /// Safe memory access primitives
 pub mod safe_memory;
 /// WebAssembly section definitions
@@ -66,20 +76,24 @@ pub mod verification;
 pub use bounded::{BoundedHashMap, BoundedStack, BoundedVec, CapacityError};
 pub use builtin::BuiltinType;
 pub use component::{
-    ComponentType, ExternType, FuncType, GlobalType, InstanceType, Limits, MemoryType, Namespace,
+    ComponentType, ExternType, GlobalType, InstanceType, Limits, MemoryType, Namespace,
     ResourceType, TableType,
 };
 pub use component_value::ComponentValue;
+pub use error_convert::{Error, ErrorCategory};
 pub use operations::{
     global_fuel_consumed, global_operation_summary, record_global_operation,
     reset_global_operations, OperationSummary, OperationTracking, OperationType,
 };
 pub use safe_memory::{MemoryProvider, SafeSlice};
 pub use traits::{FromFormat, ToFormat};
-pub use types::ValueType;
+pub use types::{BlockType, FuncType, RefType, ValueType};
 pub use validation::{BoundedCapacity, Checksummed, Validatable};
 pub use values::Value;
 pub use verification::{Checksum, VerificationLevel};
+
+// Create a Result type alias using our own Error type
+pub type Result<T> = core::result::Result<T, Error>;
 
 /// The WebAssembly binary format magic number: \0asm
 pub const WASM_MAGIC: [u8; 4] = [0x00, 0x61, 0x73, 0x6D];

@@ -2,12 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
-## [unreleased]
+## Unreleased Changes
 
 ### 🚀 Features
 
 - *(xtask)* Add automatic panic registry update tool
 - *(resources)* Implement resource management system - Add canonical format for binary resources - Add verification functionality - Delete deprecated resource-tests module - Update panic registry documentation
+- *(component)* Implement WebAssembly Component Model built-ins
+- *(host)* Implement host builder and built-in hosting system
+- *(test)* Add test program for control instructions
+- Add instructions adapter for pure instruction execution
+- Enhance component implementation with resource support
+- Add decoder examples and improve component validation
+- Enhance host implementation with resource handling
+- Extend type system with resource type support
 
 ### 💼 Other
 
@@ -19,17 +27,30 @@ All notable changes to this project will be documented in this file.
 
 - *(wrt-error)* Improve error handling system
 - *(wrt-types)* Update type system implementation
+- *(instructions)* Implement pure instruction traits and operations
+- Extract pure control flow operations to wrt-instructions
+- Update format module for improved resource handling
+- Update error handling for resource operations
+- Update table and variable operations
 
 ### 📚 Documentation
 
 - Remove outdated panic documentation
 - Restructure documentation with new API and development sections
+- Add planning documents for builtins, decoder, and instructions
+- Update planning documents and implement core runtime changes
+
+### 🧪 Testing
+
+- *(decoder)* Add tests for call_indirect and control instructions
+- *(instructions)* Add arithmetic operations test
 
 ### ⚙️ Miscellaneous Tasks
 
 - Update GitHub workflow and dependencies
+- Update dependencies and integration for resource implementation
 
-## [0.2.0] - 2025-04-24
+## Version 0.2.0 - 2025-04-24
 
 ### 🚀 Features
 
@@ -229,7 +250,7 @@ All notable changes to this project will be documented in this file.
 - Update Cargo.lock with new dependencies
 - Upgrade all crates to version 0.2.0
 
-## [0.1.0] - 2025-03-15
+## Version 0.1.0 - 2025-03-15
 
 ### 🚀 Features
 

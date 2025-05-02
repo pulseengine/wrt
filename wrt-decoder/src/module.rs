@@ -8,8 +8,10 @@ use crate::{
     sections::*,
     WASM_MAGIC,
 };
-use wrt_error::{kinds, Error, Result};
+use wrt_error::{kinds, Error, Result, WrtError, codes, ErrorCategory};
 use wrt_format::binary;
+use wrt_format::types::parse_value_type;
+use wrt_types::types::GlobalType;
 
 /// WebAssembly binary format version
 pub const WASM_VERSION: [u8; 4] = [0x01, 0x00, 0x00, 0x00];
@@ -225,21 +227,15 @@ impl Module {
 pub fn decode_module(bytes: &[u8]) -> Result<Module> {
     // Verify magic bytes and version
     if bytes.len() < 8 {
-        return Err(Error::new(kinds::ParseError(
-            "WebAssembly binary too short".to_string(),
-        )));
+        return Err(WrtError::parse_error("WebAssembly binary too short".to_string()));
     }
 
     if bytes[0..4] != WASM_MAGIC {
-        return Err(Error::new(kinds::ParseError(
-            "Invalid WebAssembly magic bytes".to_string(),
-        )));
+        return Err(WrtError::parse_error("Invalid WebAssembly magic bytes".to_string()));
     }
 
     if bytes[4..8] != WASM_VERSION {
-        return Err(Error::new(kinds::ParseError(
-            "Unsupported WebAssembly version".to_string(),
-        )));
+        return Err(WrtError::parse_error("Unsupported WebAssembly version".to_string()));
     }
 
     let mut module = Module::new();
@@ -258,10 +254,10 @@ pub fn decode_module(bytes: &[u8]) -> Result<Module> {
         let section_end = section_start + size as usize;
 
         if section_end > bytes.len() {
-            return Err(Error::new(kinds::ParseError(format!(
+            return Err(WrtError::parse_error(format!(
                 "Section size {} for section ID {} exceeds binary size",
                 size, section_id
-            ))));
+            )));
         }
 
         let section_bytes = &bytes[section_start..section_end];
@@ -285,7 +281,7 @@ pub fn decode_module(bytes: &[u8]) -> Result<Module> {
             }
             0x02 => {
                 // Import section
-                let (imports, _) = parse_import_section(section_bytes)?;
+                let (imports, _) = parse_import_section_bytes(section_bytes)?;
                 module.imports = imports;
             }
             0x03 => {
@@ -349,11 +345,11 @@ pub fn decode_module(bytes: &[u8]) -> Result<Module> {
 
     // Validate the basic structure now that we've parsed everything
     if module.functions.len() != module.code.len() && !module.functions.is_empty() {
-        return Err(Error::new(kinds::ParseError(format!(
+        return Err(WrtError::parse_error(format!(
             "Function and code section counts mismatch: {} functions but {} code entries",
             module.functions.len(),
             module.code.len()
-        ))));
+        )));
     }
 
     Ok(module)
@@ -426,9 +422,134 @@ fn parse_type_section(bytes: &[u8]) -> Result<(Vec<FuncType>, usize)> {
     Ok((Vec::new(), bytes.len()))
 }
 
-fn parse_import_section(bytes: &[u8]) -> Result<(Vec<Import>, usize)> {
-    // Placeholder - in a real implementation, you would parse the section properly
-    Ok((Vec::new(), bytes.len()))
+/// Internal function to parse import section bytes
+fn parse_import_section_bytes(bytes: &[u8]) -> Result<(Vec<Import>, usize)> {
+    let mut offset = 0;
+    
+    // Read the number of imports
+    let (count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
+    offset += bytes_read;
+    
+    let mut imports = Vec::with_capacity(count as usize);
+    
+    // Parse each import
+    for _ in 0..count {
+        // Read module name string
+        let (module_name, bytes_read) = binary::read_string(bytes, offset)?;
+        offset += bytes_read;
+        
+        // Read field/name string
+        let (field_name, bytes_read) = binary::read_string(bytes, offset)?;
+        offset += bytes_read;
+        
+        // Read import kind/type (1 byte)
+        if offset >= bytes.len() {
+            return Err(WrtError::parse_error("Unexpected end of import section".to_string()));
+        }
+        
+        let import_type = bytes[offset];
+        offset += 1;
+        
+        // Parse import descriptor based on the type
+        let desc = match import_type {
+            0x00 => {
+                // Function import
+                let (type_idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
+                offset += bytes_read;
+                ImportDesc::Function(type_idx)
+            },
+            0x01 => {
+                // Table import
+                let (table_type, bytes_read) = parsers::parse_table_type(&bytes[offset..])?;
+                offset += bytes_read;
+                ImportDesc::Table(table_type)
+            },
+            0x02 => {
+                // Memory import
+                let (memory_type, bytes_read) = parsers::parse_memory_type(&bytes[offset..])?;
+                offset += bytes_read;
+                ImportDesc::Memory(memory_type)
+            },
+            0x03 => {
+                // Global import
+                // Get the value type (1 byte)
+                if offset >= bytes.len() {
+                    return Err(WrtError::parse_error("Unexpected end of global import".to_string()));
+                }
+                
+                let val_type = parse_value_type(bytes[offset])?;
+                offset += 1;
+                
+                // Get mutability (1 byte)
+                if offset >= bytes.len() {
+                    return Err(WrtError::parse_error("Unexpected end of global import mutability".to_string()));
+                }
+                
+                let mutability = bytes[offset] != 0;
+                offset += 1;
+                
+                // Create global import
+                let global_type = GlobalType {
+                    value_type: val_type,
+                    mutable: mutability,
+                };
+                
+                ImportDesc::Global(Global {
+                    global_type,
+                    init: Vec::new(), // No initialization for imports
+                })
+            },
+            _ => {
+                return Err(WrtError::parse_error(format!("Invalid import type: {}", import_type)));
+            }
+        };
+        
+        // Create and add the import to our list
+        let import = Import {
+            module: module_name,
+            name: field_name,
+            desc,
+        };
+        
+        imports.push(import);
+    }
+    
+    Ok((imports, offset))
+}
+
+/// Parse the import section from a WebAssembly binary
+///
+/// This function parses the import section of a WebAssembly module given the section offset and size.
+/// It returns a vector of Import structures representing all imports defined in the section.
+///
+/// # Parameters
+///
+/// * `binary` - The complete WebAssembly binary data
+/// * `section_offset` - Offset in the binary where the import section content starts (after section id and size)
+/// * `section_size` - Size of the import section content in bytes
+///
+/// # Returns
+///
+/// A Result containing either a vector of Import structures or an Error
+pub fn parse_import_section(
+    binary: &[u8],
+    section_offset: usize,
+    section_size: usize,
+) -> Result<Vec<Import>> {
+    if section_offset + section_size > binary.len() {
+        return Err(WrtError::parse_error("Import section extends beyond binary size".to_string()));
+    }
+    
+    // Use the existing parse_import_section function with the section bytes
+    let section_bytes = &binary[section_offset..section_offset + section_size];
+    let (imports, parsed_size) = parse_import_section_bytes(section_bytes)?;
+    
+    // Verify that we consumed the entire section
+    if parsed_size != section_size {
+        return Err(WrtError::parse_error(format!("Import section parsing incomplete. Parsed {} bytes out of {}", parsed_size, section_size)));
+    }
+    
+    Ok(imports)
 }
 
 fn parse_function_section(bytes: &[u8]) -> Result<(Vec<Function>, usize)> {
@@ -461,9 +582,7 @@ fn parse_memory_section(bytes: &[u8]) -> Result<(Vec<Memory>, usize)> {
 
     // Read the number of memories
     if offset >= bytes.len() {
-        return Err(Error::new(kinds::ParseError(
-            "Unexpected end of memory section bytes".to_string(),
-        )));
+        return Err(WrtError::parse_error("Unexpected end of memory section bytes".to_string()));
     }
 
     let (count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
@@ -471,17 +590,13 @@ fn parse_memory_section(bytes: &[u8]) -> Result<(Vec<Memory>, usize)> {
 
     // WebAssembly 1.0 only allows a maximum of 1 memory per module
     if count > 1 {
-        return Err(Error::new(kinds::ParseError(
-            "Multiple memories are not supported in WebAssembly 1.0".to_string(),
-        )));
+        return Err(WrtError::parse_error("Multiple memories are not supported in WebAssembly 1.0".to_string()));
     }
 
     // Parse each memory type
     for _ in 0..count {
         if offset >= bytes.len() {
-            return Err(Error::new(kinds::ParseError(
-                "Unexpected end of memory section bytes".to_string(),
-            )));
+            return Err(WrtError::parse_error("Unexpected end of memory section bytes".to_string()));
         }
 
         let (memory, bytes_read) = parsers::parse_memory_type(&bytes[offset..])?;
@@ -518,9 +633,7 @@ fn parse_data_section(bytes: &[u8]) -> Result<(Vec<Data>, usize)> {
 
     // Read count
     if offset >= bytes.len() {
-        return Err(Error::new(kinds::ParseError(
-            "Unexpected end of data section bytes".to_string(),
-        )));
+        return Err(WrtError::parse_error("Unexpected end of data section bytes".to_string()));
     }
     let (count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
     offset += bytes_read;
@@ -528,9 +641,7 @@ fn parse_data_section(bytes: &[u8]) -> Result<(Vec<Data>, usize)> {
     // Parse each data segment
     for _ in 0..count {
         if offset >= bytes.len() {
-            return Err(Error::new(kinds::ParseError(
-                "Unexpected end of data section bytes".to_string(),
-            )));
+            return Err(WrtError::parse_error("Unexpected end of data section bytes".to_string()));
         }
 
         // Read flags (indicates active vs. passive and memory index encoding)
@@ -546,9 +657,7 @@ fn parse_data_section(bytes: &[u8]) -> Result<(Vec<Data>, usize)> {
                 offset += bytes_read;
 
                 if offset + expr_size as usize > bytes.len() {
-                    return Err(Error::new(kinds::ParseError(
-                        "Offset expression exceeds data section size".to_string(),
-                    )));
+                    return Err(WrtError::parse_error("Offset expression exceeds data section size".to_string()));
                 }
 
                 let offset_expr = bytes[offset..offset + expr_size as usize].to_vec();
@@ -559,9 +668,7 @@ fn parse_data_section(bytes: &[u8]) -> Result<(Vec<Data>, usize)> {
                 offset += bytes_read;
 
                 if offset + data_size as usize > bytes.len() {
-                    return Err(Error::new(kinds::ParseError(
-                        "Data segment exceeds data section size".to_string(),
-                    )));
+                    return Err(WrtError::parse_error("Data segment exceeds data section size".to_string()));
                 }
 
                 let init_data = bytes[offset..offset + data_size as usize].to_vec();
@@ -581,9 +688,7 @@ fn parse_data_section(bytes: &[u8]) -> Result<(Vec<Data>, usize)> {
                 offset += bytes_read;
 
                 if offset + data_size as usize > bytes.len() {
-                    return Err(Error::new(kinds::ParseError(
-                        "Data segment exceeds data section size".to_string(),
-                    )));
+                    return Err(WrtError::parse_error("Data segment exceeds data section size".to_string()));
                 }
 
                 let init_data = bytes[offset..offset + data_size as usize].to_vec();
@@ -607,9 +712,7 @@ fn parse_data_section(bytes: &[u8]) -> Result<(Vec<Data>, usize)> {
                 offset += bytes_read;
 
                 if offset + expr_size as usize > bytes.len() {
-                    return Err(Error::new(kinds::ParseError(
-                        "Offset expression exceeds data section size".to_string(),
-                    )));
+                    return Err(WrtError::parse_error("Offset expression exceeds data section size".to_string()));
                 }
 
                 let offset_expr = bytes[offset..offset + expr_size as usize].to_vec();
@@ -620,9 +723,7 @@ fn parse_data_section(bytes: &[u8]) -> Result<(Vec<Data>, usize)> {
                 offset += bytes_read;
 
                 if offset + data_size as usize > bytes.len() {
-                    return Err(Error::new(kinds::ParseError(
-                        "Data segment exceeds data section size".to_string(),
-                    )));
+                    return Err(WrtError::parse_error("Data segment exceeds data section size".to_string()));
                 }
 
                 let init_data = bytes[offset..offset + data_size as usize].to_vec();
@@ -636,10 +737,7 @@ fn parse_data_section(bytes: &[u8]) -> Result<(Vec<Data>, usize)> {
                 });
             }
             _ => {
-                return Err(Error::new(kinds::ParseError(format!(
-                    "Invalid data segment flags: 0x{:02x}",
-                    flags
-                ))));
+                return Err(WrtError::parse_error(format!("Invalid data segment flags: 0x{:02x}", flags)));
             }
         }
     }
@@ -772,29 +870,29 @@ pub fn initialize_memory(
             ConstValue::I32(val) => val as u32,
             ConstValue::I64(val) => {
                 if val > (u32::MAX as i64) {
-                    return Err(Error::new(kinds::RuntimeError(format!(
+                    return Err(WrtError::runtime_error(format!(
                         "Memory offset in data segment {} exceeds 32-bit limit",
                         i
-                    ))));
+                    )));
                 }
                 val as u32
             }
             _ => {
-                return Err(Error::new(kinds::RuntimeError(format!(
+                return Err(WrtError::runtime_error(format!(
                     "Invalid offset type in data segment {}",
                     i
-                ))));
+                )));
             }
         };
 
         // Check if the segment fits in memory
         if offset_u32 as usize + segment.init.len() > memory_data.len() {
-            return Err(Error::new(kinds::RuntimeError(
+            return Err(WrtError::runtime_error(
                 format!(
                     "Data segment {} extends beyond memory size (offset: {}, length: {}, memory size: {})",
                     i, offset_u32, segment.init.len(), memory_data.len()
                 )
-            )));
+            ));
         }
 
         // Copy the segment data to memory
@@ -823,9 +921,7 @@ pub enum ConstValue {
 fn evaluate_const_expr(expr: &[u8], globals: &[(ValueType, u64)]) -> Result<ConstValue> {
     // Ensure the expression is not empty and ends with end opcode
     if expr.is_empty() || expr[expr.len() - 1] != 0x0B {
-        return Err(Error::new(kinds::RuntimeError(
-            "Invalid constant expression format".to_string(),
-        )));
+        return Err(WrtError::runtime_error("Invalid constant expression format".to_string()));
     }
 
     // Handle common constant expressions
@@ -848,9 +944,7 @@ fn evaluate_const_expr(expr: &[u8], globals: &[(ValueType, u64)]) -> Result<Cons
         0x43 => {
             if expr.len() < 5 {
                 // opcode + 4 bytes
-                return Err(Error::new(kinds::RuntimeError(
-                    "Invalid f32.const expression".to_string(),
-                )));
+                return Err(WrtError::runtime_error("Invalid f32.const expression".to_string()));
             }
 
             // Parse the f32 value (IEEE 754 encoded)
@@ -862,9 +956,7 @@ fn evaluate_const_expr(expr: &[u8], globals: &[(ValueType, u64)]) -> Result<Cons
         0x44 => {
             if expr.len() < 9 {
                 // opcode + 8 bytes
-                return Err(Error::new(kinds::RuntimeError(
-                    "Invalid f64.const expression".to_string(),
-                )));
+                return Err(WrtError::runtime_error("Invalid f64.const expression".to_string()));
             }
 
             // Parse the f64 value (IEEE 754 encoded)
@@ -881,10 +973,10 @@ fn evaluate_const_expr(expr: &[u8], globals: &[(ValueType, u64)]) -> Result<Cons
 
             // Look up the global value
             if global_idx as usize >= globals.len() {
-                return Err(Error::new(kinds::RuntimeError(format!(
+                return Err(WrtError::runtime_error(format!(
                     "Global index {} out of bounds",
                     global_idx
-                ))));
+                )));
             }
 
             // Convert the global value to the appropriate type
@@ -894,16 +986,40 @@ fn evaluate_const_expr(expr: &[u8], globals: &[(ValueType, u64)]) -> Result<Cons
                 ValueType::I64 => Ok(ConstValue::I64(*global_value as i64)),
                 ValueType::F32 => Ok(ConstValue::F32(f32::from_bits(*global_value as u32))),
                 ValueType::F64 => Ok(ConstValue::F64(f64::from_bits(*global_value))),
-                _ => Err(Error::new(kinds::RuntimeError(format!(
+                _ => Err(WrtError::runtime_error(format!(
                     "Unsupported global type {:?}",
                     global_type
-                )))),
+                ))),
             }
         }
 
-        _ => Err(Error::new(kinds::RuntimeError(format!(
+        _ => Err(WrtError::runtime_error(format!(
             "Unsupported constant expression opcode: 0x{:02x}",
             expr[0]
-        )))),
+        ))),
     }
+}
+
+pub fn parse_error(message: &str) -> WrtError {
+    WrtError::parse_error(message.to_string())
+}
+
+pub fn parse_error_with_context(message: &str, context: &str) -> WrtError {
+    WrtError::parse_error(format!("{}: {}", message, context))
+}
+
+pub fn parse_error_with_position(message: &str, position: usize) -> WrtError {
+    WrtError::parse_error(format!("{} at position {}", message, position))
+}
+
+pub fn runtime_error(message: &str) -> WrtError {
+    WrtError::runtime_error(message.to_string())
+}
+
+pub fn runtime_error_with_context(message: &str, context: &str) -> WrtError {
+    WrtError::runtime_error(format!("{}: {}", message, context))
+}
+
+pub fn runtime_error_with_type(message: &str, type_name: &str) -> WrtError {
+    WrtError::runtime_error(format!("{} for type {}", message, type_name))
 }

@@ -4,7 +4,7 @@
 //! The name section is a custom section that provides debug information.
 
 use crate::prelude::{format, String, Vec};
-use wrt_error::{kinds, Error, Result};
+use wrt_error::{kinds, Error, Result, WrtError, codes, ErrorCategory};
 use wrt_format::binary;
 
 #[cfg(not(feature = "std"))]
@@ -245,6 +245,18 @@ pub fn create_function_names_section(names: &[(u32, String)]) -> Result<Vec<u8>>
     };
 
     generate_name_section(&name_section)
+}
+
+pub fn parse_error(message: &str) -> WrtError {
+    WrtError::parse_error(message.to_string())
+}
+
+pub fn parse_error_with_context(message: &str, context: &str) -> WrtError {
+    WrtError::parse_error(format!("{}: {}", message, context))
+}
+
+pub fn parse_error_with_position(message: &str, position: usize) -> WrtError {
+    WrtError::parse_error(format!("{} at position {}", message, position))
 }
 
 #[cfg(test)]

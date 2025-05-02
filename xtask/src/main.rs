@@ -97,6 +97,8 @@ enum Command {
         #[arg(short, long)]
         verbose: bool,
     },
+    /// Test building all crates with both std and no_std features
+    TestStdNoStd,
 }
 
 #[derive(Subcommand, Debug)]
@@ -449,6 +451,7 @@ fn main() -> Result<()> {
             update_panic_registry::run(&sh, &output, verbose)?;
             Ok(())
         }
+        Command::TestStdNoStd => test_std_no_std(),
     }
 }
 
@@ -1832,4 +1835,64 @@ fn get_cargo_metadata(sh: &Shell) -> Result<Metadata> {
     }
 
     Ok(metadata)
+}
+
+/// Test building all crates with both std and no_std features
+///
+/// This function attempts to build each crate in the workspace with both
+/// the standard library and no_std features to ensure compatibility.
+fn test_std_no_std() -> Result<()> {
+    println!("Testing crates with std and no_std features...");
+
+    // List of crates to test
+    let crates = vec![
+        "wrt-error",
+        "wrt-types",
+        "wrt-format",
+        "wrt-decoder",
+        "wrt-runtime",
+        "wrt-component",
+        "wrt-host",
+        "wrt-instructions",
+        "wrt-intercept",
+        "wrt-logging",
+        "wrt-sync",
+        "wrt",
+    ];
+
+    // Test with std (default)
+    for crate_name in &crates {
+        println!("\nTesting {} with std features", crate_name);
+        let status = std::process::Command::new("cargo")
+            .args(["build", "-p", crate_name])
+            .status()?;
+
+        if !status.success() {
+            eprintln!("Failed to build {} with std features", crate_name);
+            return Err(anyhow::anyhow!("Build failed"));
+        }
+    }
+
+    // Test with no_std
+    for crate_name in &crates {
+        println!("\nTesting {} with no_std features", crate_name);
+        let status = std::process::Command::new("cargo")
+            .args([
+                "build",
+                "-p",
+                crate_name,
+                "--no-default-features",
+                "--features",
+                "no_std",
+            ])
+            .status()?;
+
+        if !status.success() {
+            eprintln!("Failed to build {} with no_std features", crate_name);
+            return Err(anyhow::anyhow!("Build failed"));
+        }
+    }
+
+    println!("\nAll crates successfully built with both std and no_std features!");
+    Ok(())
 }

@@ -1,0 +1,22 @@
+[package]
+name = "wrt-verification-tool"
+version = "0.1.0"
+edition = "2021"
+description = "Verification tools for WebAssembly Runtime (WRT)"
+license = "MIT"
+
+[dependencies]
+wrt-decoder = { path = "../wrt-decoder", version = "0.2.0" }
+# For alloc support in no_std
+alloc = { version = "1.0.0", optional = true, package = "rustc-std-workspace-alloc" }
+# Feature-gated std dependencies
+log = { version = "0.4", optional = true }
+
+[features]
+default = ["std"]
+std = ["wrt-decoder/std", "log"]
+no_std = ["wrt-decoder/no_std", "alloc", "wrt-decoder/alloc"]
+alloc = ["dep:alloc", "wrt-decoder/alloc"]
+
+[lints.rust]
+unexpected_cfgs = { level = "allow", check-cfg = ['cfg(test)'] } 

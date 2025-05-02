@@ -36,7 +36,13 @@ pub use alloc::{
 };
 
 // Re-export core types from wrt-types
-pub use wrt_types::{safe_memory::SafeSlice, FuncType, ValueType};
+pub use wrt_types::{safe_memory::SafeSlice, BlockType, FuncType, RefType, ValueType};
+// Re-export error types from wrt-types error_convert module
+pub use wrt_types::error_convert::{Error, ErrorCategory};
+// Re-export Result type from wrt-types
+pub use wrt_types::Result;
+// Re-export resource types from wrt-types
+pub use wrt_types::resource::ResourceRepresentation;
 
 /// WebAssembly binary format parsing and access
 pub mod binary;
@@ -47,22 +53,36 @@ pub mod component;
 pub mod component_conversion;
 /// Compression utilities for WebAssembly modules
 pub mod compression;
+/// Error utilities for working with wrt-error types
+pub mod error;
 /// WebAssembly module format
 pub mod module;
 pub mod section;
 pub mod state;
 pub mod types;
+/// Validation utilities
+pub mod validation;
 pub mod verify;
 pub mod version;
 
 pub use component::Component;
 pub use compression::{rle_decode, rle_encode, CompressionType};
+pub use error::{parse_error, runtime_error, type_error, validation_error, IntoError};
 pub use module::Module;
 pub use section::{CustomSection, Section};
 pub use state::{create_state_section, extract_state_section, StateSection};
-pub use types::{parse_value_type, value_type_to_byte, BlockType, Limits, MemoryIndexType};
+pub use types::{parse_value_type, value_type_to_byte, FormatBlockType, Limits, MemoryIndexType};
+pub use validation::Validatable;
 pub use version::{
     ComponentModelFeature, ComponentModelVersion, FeatureStatus, VersionInfo, STATE_VERSION,
+};
+// Re-export binary constants
+pub use binary::{
+    read_leb128_u32, read_string, write_leb128_u32, write_string, COMPONENT_CORE_SORT_FUNC,
+    COMPONENT_CORE_SORT_GLOBAL, COMPONENT_CORE_SORT_INSTANCE, COMPONENT_CORE_SORT_MEMORY,
+    COMPONENT_CORE_SORT_MODULE, COMPONENT_CORE_SORT_TABLE, COMPONENT_CORE_SORT_TYPE,
+    COMPONENT_MAGIC, COMPONENT_SORT_COMPONENT, COMPONENT_SORT_CORE, COMPONENT_SORT_FUNC,
+    COMPONENT_SORT_INSTANCE, COMPONENT_SORT_TYPE, COMPONENT_SORT_VALUE, COMPONENT_VERSION,
 };
 
 // Public functions for feature detection

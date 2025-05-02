@@ -5,9 +5,7 @@
 
 use crate::types::TableType;
 use crate::{Error, Result};
-use wrt_error::kinds;
-use wrt_types::types::Limits;
-use wrt_types::values::FuncRef;
+use wrt_error::{errors::codes, kinds, ErrorCategory};
 use wrt_types::values::Value;
 
 use std::sync::Arc;
@@ -44,10 +42,14 @@ impl Table {
     pub fn new(ty: TableType, default_value: Value) -> Result<Self> {
         // Verify the default value matches the element type
         if !default_value.matches_type(&ty.element_type) {
-            return Err(Error::new(kinds::ValidationError(format!(
-                "Default value type doesn't match table element type: {:?} vs {:?}",
-                default_value, ty.element_type
-            ))));
+            return Err(Error::new(
+                ErrorCategory::Validation,
+                codes::VALIDATION_ERROR,
+                format!(
+                    "Default value type doesn't match table element type: {:?} vs {:?}",
+                    default_value, ty.element_type
+                ),
+            ));
         }
 
         let initial_size = ty.limits.min as usize;
@@ -85,7 +87,11 @@ impl Table {
     pub fn get(&self, idx: u32) -> Result<Option<Value>> {
         let idx = idx as usize;
         if idx >= self.elements.len() {
-            return Err(Error::new(kinds::TableAccessOutOfBounds));
+            return Err(Error::new(
+                ErrorCategory::Runtime,
+                codes::INVALID_FUNCTION_INDEX,
+                "Table access out of bounds",
+            ));
         }
         Ok(self.elements[idx].clone())
     }
@@ -107,16 +113,24 @@ impl Table {
     pub fn set(&mut self, idx: u32, value: Option<Value>) -> Result<()> {
         let idx = idx as usize;
         if idx >= self.elements.len() {
-            return Err(Error::new(kinds::TableAccessOutOfBounds));
+            return Err(Error::new(
+                ErrorCategory::Runtime,
+                codes::INVALID_FUNCTION_INDEX,
+                "Table access out of bounds",
+            ));
         }
 
         // If value is Some, check that it matches the element type
         if let Some(ref val) = value {
             if !val.matches_type(&self.ty.element_type) {
-                return Err(Error::new(kinds::ValidationError(format!(
-                    "Value type doesn't match table element type: {:?} vs {:?}",
-                    val, self.ty.element_type
-                ))));
+                return Err(Error::new(
+                    ErrorCategory::Validation,
+                    codes::VALIDATION_ERROR,
+                    format!(
+                        "Value type doesn't match table element type: {:?} vs {:?}",
+                        val, self.ty.element_type
+                    ),
+                ));
             }
         }
 
@@ -141,24 +155,36 @@ impl Table {
     pub fn grow(&mut self, delta: u32, init_value: Value) -> Result<u32> {
         // Verify the init value matches the element type
         if !init_value.matches_type(&self.ty.element_type) {
-            return Err(Error::new(kinds::ValidationError(format!(
-                "Init value type doesn't match table element type: {:?} vs {:?}",
-                init_value, self.ty.element_type
-            ))));
+            return Err(Error::new(
+                ErrorCategory::Validation,
+                codes::VALIDATION_ERROR,
+                format!(
+                    "Init value type doesn't match table element type: {:?} vs {:?}",
+                    init_value, self.ty.element_type
+                ),
+            ));
         }
 
         let old_size = self.size();
-        let new_size = old_size
-            .checked_add(delta)
-            .ok_or_else(|| Error::new(kinds::ValidationError("Table size overflow".to_string())))?;
+        let new_size = old_size.checked_add(delta).ok_or_else(|| {
+            Error::new(
+                ErrorCategory::Validation,
+                codes::VALIDATION_ERROR,
+                "Table size overflow",
+            )
+        })?;
 
         // Check against the maximum
         if let Some(max) = self.ty.limits.max {
             if new_size > max {
-                return Err(Error::new(kinds::ValidationError(format!(
-                    "Cannot grow table beyond maximum size: {} > {}",
-                    new_size, max
-                ))));
+                return Err(Error::new(
+                    ErrorCategory::Validation,
+                    codes::VALIDATION_ERROR,
+                    format!(
+                        "Cannot grow table beyond maximum size: {} > {}",
+                        new_size, max
+                    ),
+                ));
             }
         }
 
@@ -205,17 +231,25 @@ impl Table {
         let end = offset + init.len();
 
         if end > self.elements.len() {
-            return Err(Error::new(kinds::TableAccessOutOfBounds));
+            return Err(Error::new(
+                ErrorCategory::Runtime,
+                codes::INVALID_FUNCTION_INDEX,
+                "Table access out of bounds",
+            ));
         }
 
         // Check all values match the element type
         for (i, value) in init.iter().enumerate() {
             if let Some(val) = value {
                 if !val.matches_type(&self.ty.element_type) {
-                    return Err(Error::new(kinds::ValidationError(format!(
-                        "Value at index {} type doesn't match table element type: {:?} vs {:?}",
-                        i, val, self.ty.element_type
-                    ))));
+                    return Err(Error::new(
+                        ErrorCategory::Validation,
+                        codes::VALIDATION_ERROR,
+                        format!(
+                            "Value at index {} type doesn't match table element type: {:?} vs {:?}",
+                            i, val, self.ty.element_type
+                        ),
+                    ));
                 }
             }
         }
@@ -256,7 +290,11 @@ impl Table {
         let src_end = src + len;
 
         if dst_end > self.elements.len() || src_end > self.elements.len() {
-            return Err(Error::new(kinds::TableAccessOutOfBounds));
+            return Err(Error::new(
+                ErrorCategory::Runtime,
+                codes::INVALID_FUNCTION_INDEX,
+                "Table access out of bounds",
+            ));
         }
 
         // Handle overlapping ranges
@@ -295,16 +333,24 @@ impl Table {
         let end = offset + len;
 
         if end > self.elements.len() {
-            return Err(Error::new(kinds::TableAccessOutOfBounds));
+            return Err(Error::new(
+                ErrorCategory::Runtime,
+                codes::INVALID_FUNCTION_INDEX,
+                "Table access out of bounds",
+            ));
         }
 
         // If value is Some, check that it matches the element type
         if let Some(ref val) = value {
             if !val.matches_type(&self.ty.element_type) {
-                return Err(Error::new(kinds::ValidationError(format!(
-                    "Value type doesn't match table element type: {:?} vs {:?}",
-                    val, self.ty.element_type
-                ))));
+                return Err(Error::new(
+                    ErrorCategory::Validation,
+                    codes::VALIDATION_ERROR,
+                    format!(
+                        "Value type doesn't match table element type: {:?} vs {:?}",
+                        val, self.ty.element_type
+                    ),
+                ));
             }
         }
 

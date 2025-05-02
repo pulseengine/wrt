@@ -5,8 +5,7 @@
 //! It extends the wrt-host crate with logging-specific capabilities.
 
 #![cfg_attr(not(feature = "std"), no_std)]
-// Commenting out the problematic line
-// #![cfg_attr(feature = "kani", feature(kani))]
+#![cfg_attr(feature = "kani", feature(kani))]
 #![warn(clippy::missing_panics_doc)]
 
 // When no_std but alloc is available

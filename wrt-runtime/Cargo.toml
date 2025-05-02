@@ -28,10 +28,11 @@ no_std = [
     "wrt-error/no_std", 
     "wrt-types/no_std",
 ]
+alloc = ["wrt-error/alloc", "wrt-types/alloc", "dep:alloc"]
+optimize = ["wrt-types/optimize"]
+safety = ["wrt-types/safety"]
 kani = []
 kani-verifier = []
-optimize = []
-safety = []
 
 [lints.rust]
 unexpected_cfgs = { level = "allow", check-cfg = ['cfg(test)'] }

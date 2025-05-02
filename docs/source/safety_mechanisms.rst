@@ -1,6 +1,6 @@
-===================================
+=================
 Safety Mechanisms
-===================================
+=================
 
 .. image:: _static/icons/safety_features.svg
    :width: 64px
@@ -16,8 +16,8 @@ This document defines the safety mechanisms implemented in the WRT runtime to en
 Memory Safety Mechanisms
 ------------------------
 
-.. safety:: Memory Safety Boundaries
-   :id: SAFETY_MEM_001
+.. safety:: Memory Safety Boundaries Rev3
+   :id: SAFETY_MEM_003
    :status: active
    :links: REQ_MEM_SAFETY_001, IMPL_BOUNDS_001, IMPL_BOUNDS_CHECK_001, T_MEM_BOUNDS_001
    
@@ -29,10 +29,10 @@ Memory Safety Mechanisms
    * Validation of memory regions before access operations
 
 Resource Management Safety
--------------------------
+--------------------------
 
-.. safety:: Resource Limitation Safety
-   :id: SAFETY_RESOURCE_001
+.. safety:: Resource Limitation Safety Rev3
+   :id: SAFETY_RESOURCE_003
    :status: active
    :links: REQ_RESOURCE_001, IMPL_LIMITS_001, T_RESOURCE_001
    
@@ -45,10 +45,10 @@ Resource Management Safety
    * Resource usage tracking and reporting
 
 Recovery Mechanisms
-------------------
+-------------------
 
-.. safety:: Error Recovery Strategy
-   :id: SAFETY_RECOVERY_001
+.. safety:: Error Recovery Strategy Rev3
+   :id: SAFETY_RECOVERY_003
    :status: active
    :links: REQ_ERROR_004, IMPL_RECOVERY_001
    
@@ -61,10 +61,10 @@ Recovery Mechanisms
    * Safe fallback strategies for critical operations
 
 WebAssembly Import Safety
-------------------------
+-------------------------
 
-.. safety:: WebAssembly Import Function Safety
-   :id: SAFETY_IMPORTS_001
+.. safety:: WebAssembly Import Function Safety Rev3
+   :id: SAFETY_IMPORTS_003
    :status: active
    :links: REQ_WASM_002, IMPL_IMPORT_SAFETY_001
    
@@ -77,10 +77,10 @@ WebAssembly Import Safety
    * Error handling for invalid inputs
 
 Code Safety Mechanisms
---------------------
+----------------------
 
-.. safety:: Unsafe Code Protection
-   :id: SAFETY_UNSAFE_001
+.. safety:: Unsafe Code Protection Rev3
+   :id: SAFETY_UNSAFE_003
    :status: active
    :links: REQ_CODE_QUALITY_002, IMPL_CODE_REVIEW_001
    
@@ -93,7 +93,7 @@ Code Safety Mechanisms
    * Verification of unsafe code preconditions and postconditions
 
 Testing Safety Mechanisms
------------------------
+-------------------------
 
 .. safety:: Fuzzing Infrastructure
    :id: SAFETY_FUZZ_001

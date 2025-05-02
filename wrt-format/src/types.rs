@@ -4,9 +4,9 @@
 //! Most core types are re-exported from wrt-types.
 
 use crate::format;
-use wrt_error::{kinds, Error, Result};
+use wrt_error::{codes, Error, ErrorCategory, Result};
 // Import types from wrt-types
-pub use wrt_types::{safe_memory::SafeSlice, FuncType, ValueType};
+pub use wrt_types::{BlockType, FuncType, RefType, ValueType};
 
 /// WebAssembly memory index type (standard or 64-bit)
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -46,15 +46,37 @@ pub struct Limits {
     pub memory_index_type: MemoryIndexType,
 }
 
-/// Block type enum for WebAssembly instructions
+/// Parser-specific block type for binary format
 #[derive(Debug, Clone, PartialEq)]
-pub enum BlockType {
+pub enum FormatBlockType {
     /// No return value (void)
     None,
     /// Single return value
     Value(ValueType),
     /// Function type reference
     FuncType(u32),
+    /// I32 value type (used in binary format)
+    I32,
+    /// I64 value type (used in binary format)
+    I64,
+    /// F32 value type (used in binary format)
+    F32,
+    /// F64 value type (used in binary format)
+    F64,
+}
+
+impl From<FormatBlockType> for BlockType {
+    fn from(bt: FormatBlockType) -> Self {
+        match bt {
+            FormatBlockType::None => BlockType::Empty,
+            FormatBlockType::Value(vt) => BlockType::Value(vt),
+            FormatBlockType::FuncType(idx) => BlockType::TypeIndex(idx),
+            FormatBlockType::I32 => BlockType::Value(ValueType::I32),
+            FormatBlockType::I64 => BlockType::Value(ValueType::I64),
+            FormatBlockType::F32 => BlockType::Value(ValueType::F32),
+            FormatBlockType::F64 => BlockType::Value(ValueType::F64),
+        }
+    }
 }
 
 /// Parse a value type byte to a ValueType enum
@@ -66,10 +88,11 @@ pub fn parse_value_type(byte: u8) -> Result<ValueType> {
         0x7C => Ok(ValueType::F64),
         0x70 => Ok(ValueType::FuncRef),
         0x6F => Ok(ValueType::ExternRef),
-        _ => Err(Error::new(kinds::ParseError(format!(
-            "Invalid value type byte: 0x{:02x}",
-            byte
-        )))),
+        _ => Err(Error::new(
+            ErrorCategory::Validation,
+            codes::PARSE_ERROR,
+            format!("Invalid value type byte: 0x{:02x}", byte),
+        )),
     }
 }
 

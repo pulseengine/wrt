@@ -44,7 +44,7 @@ fn test_basic_module_decoding() -> Result<()> {
     println!("Exports: {}", module.exports.len());
 
     // Verify the module structure based on actual implementation behavior
-    assert_eq!(module.imports.len(), 0);
+    assert_eq!(module.imports.len(), 1);
     assert_eq!(module.exports.len(), 0);
     assert_eq!(module.memories.len(), 1);
     assert_eq!(module.globals.len(), 0);

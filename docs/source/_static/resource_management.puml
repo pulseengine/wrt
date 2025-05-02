@@ -6,21 +6,27 @@ package "Resource Management" {
     [ResourceDefinition] as ResDef
     [ResourceInstance] as ResInst
     [ResourceTable] as ResTable
+    [ResourceHandle] as ResHandle
+    [ResourceId] as ResId
     
-    ResType --> ResDef
+    ResType --> ResDef : defines
     ResDef --> ResInst : creates
     ResTable --> ResInst : contains
+    ResInst --> ResHandle : represented by
+    ResHandle --> ResId : contains
   }
   
   package "Resource Operations" {
+    [ResourceOperation] as ResOp
     [ResourceNew] as ResNew
     [ResourceDrop] as ResDrop
     [ResourceRep] as ResRep
-    [ResourceOperation] as ResOp
+    [ResourceTransform] as ResTrans
     
-    ResOp <-- ResNew
-    ResOp <-- ResDrop
-    ResOp <-- ResRep
+    ResOp <|-- ResNew : extends
+    ResOp <|-- ResDrop : extends
+    ResOp <|-- ResRep : extends
+    ResOp <|-- ResTrans : extends
   }
   
   package "Resource Strategies" {
@@ -28,29 +34,43 @@ package "Resource Management" {
     [MemoryStrategy] as MemStrategy
     [BufferPool] as BufferPool
     
-    Strategy <|-- MemStrategy
-    MemStrategy --> BufferPool
+    Strategy <|-- MemStrategy : extends
+    MemStrategy --> BufferPool : uses
   }
   
   package "Resource Management" {
     [ResourceManager] as Manager
     [MemoryManager] as MemManager
     [ReferenceCount] as RefCount
+    [CallbackRegistry] as Callbacks
     
-    Manager --> ResTable
-    Manager --> Strategy
-    Manager --> RefCount
-    MemManager --> Manager
+    Manager --> ResTable : manages
+    Manager --> Strategy : uses
+    Manager --> RefCount : tracks
+    Manager --> Callbacks : registers
+    MemManager --> Manager : specializes
   }
   
   package "Safety Features" {
     [ResourceValidation] as ResValid
     [ResourceLimits] as ResLimit
     [ResourceTracking] as ResTrack
+    [ExhaustionHandling] as ExhaustHandle
     
-    Manager --> ResValid
-    Manager --> ResLimit
-    ResTable --> ResTrack
+    Manager --> ResValid : performs
+    Manager --> ResLimit : enforces
+    ResTable --> ResTrack : implements
+    Manager --> ExhaustHandle : provides
+  }
+  
+  package "Component Integration" {
+    [Interface] as Interface
+    [CodeGen] as CodeGen
+    [Execution] as Execution
+    
+    Interface --> ResType : exposes
+    CodeGen --> ResOp : generates
+    Execution --> Manager : utilizes
   }
 }
 

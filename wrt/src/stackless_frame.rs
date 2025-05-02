@@ -430,12 +430,8 @@ impl StackBehavior for StacklessFrame {
     // Label stack operations are delegated to the frame's label_stack
     fn push_label(&mut self, label: Label) -> Result<(), Error> {
         // Push the label onto the label stack
-        self.label_stack.push(label).map_err(|_| {
-            Error::new(kinds::ExecutionError(format!(
-                "Label stack overflow, maximum depth: {}",
-                MAX_LABELS
-            )))
-        })
+        self.label_stack.push(label);
+        Ok(())
     }
 
     fn pop_label(&mut self) -> Result<Label, Error> {
@@ -448,12 +444,12 @@ impl StackBehavior for StacklessFrame {
         self.get_label_at_depth(depth)
     }
 
-    fn push_n(&mut self, values: &[Value]) {
-        // Not supported by frames, we don't store the operand stack
+    fn push_n(&mut self, _values: &[Value]) {
+        // Implementation omitted
     }
 
-    fn pop_n(&mut self, n: usize) -> Vec<Value> {
-        // Not supported by frames, we don't store the operand stack
+    fn pop_n(&mut self, _n: usize) -> Vec<Value> {
+        // Implementation omitted
         Vec::new()
     }
 
@@ -586,7 +582,7 @@ impl ControlFlowBehavior for StacklessFrame {
         Ok(())
     }
 
-    fn exit_block(&mut self, stack: &mut dyn StackBehavior) -> Result<()> {
+    fn exit_block(&mut self, _stack: &mut dyn StackBehavior) -> Result<(), Error> {
         // Pop the label
         let label = self
             .label_stack
@@ -636,18 +632,13 @@ impl ControlFlowBehavior for StacklessFrame {
 
     fn call_indirect(
         &mut self,
-        type_idx: u32,
-        table_idx: u32,
-        entry_idx: u32,
-        _stack: &mut dyn StackBehavior,
-    ) -> Result<()> {
-        // For StacklessFrame, the call_indirect operation is handled by the engine
-        // We'll just pass on relevant information to the engine
-
-        // Instead of returning unimplemented error, provide a better error that indicates
-        // this is meant to be handled by the StacklessEngine
-        Err(Error::new(kinds::ExecutionError(
-            "call_indirect in StacklessFrame should be handled by the StacklessEngine".to_string(),
+        _type_idx: u32,
+        _table_idx: u32,
+        _entry_idx: u32,
+        stack: &mut dyn StackBehavior,
+    ) -> Result<(), Error> {
+        Err(Error::new(kinds::NotImplementedError(
+            "call_indirect not implemented for StacklessFrame yet".to_string(),
         )))
     }
 
@@ -700,10 +691,9 @@ impl FrameBehavior for StacklessFrame {
             .and_then(|inner_result| Ok(inner_result))
     }
 
-    fn get_global_mut(&mut self, idx: usize) -> Result<wrt_sync::WrtMutexGuard<Value>, Error> {
-        // Return an error as this needs to be handled by the engine
-        Err(Error::new(kinds::ExecutionError(
-            "get_global_mut in StacklessFrame should be handled by the StacklessEngine".to_string(),
+    fn get_global_mut(&mut self, _idx: usize) -> Result<wrt_sync::WrtMutexGuard<Value>, Error> {
+        Err(Error::new(kinds::NotImplementedError(
+            "get_global_mut not implemented for StacklessFrame".to_string(),
         )))
     }
 
@@ -1151,7 +1141,7 @@ impl FrameBehavior for StacklessFrame {
         Ok((table1, table2))
     }
 
-    fn set_data_segment(&mut self, _idx: u32, _segment: Arc<Data>) -> Result<(), Error> {
+    fn set_data_segment(&mut self, idx: u32, segment: Arc<Data>) -> Result<(), Error> {
         // Not implemented for StacklessFrame
         Err(Error::new(kinds::NotImplementedError(
             "set_data_segment not implemented for StacklessFrame".to_string(),
@@ -1194,22 +1184,6 @@ impl FrameBehavior for StacklessFrame {
                 instance.drop_data_segment(data_idx)
             })
             .and_then(|inner_result| Ok(inner_result))
-    }
-
-    fn push_label(&mut self, label: Label) -> Result<(), Error> {
-        // Push the label onto the label stack
-        self.label_stack.push(label);
-        Ok(())
-    }
-
-    fn pop_label(&mut self) -> Result<Label, Error> {
-        self.label_stack
-            .pop()
-            .ok_or_else(|| Error::new(kinds::LabelStackUnderflowError))
-    }
-
-    fn get_label(&self, depth: usize) -> Option<&Label> {
-        self.get_label_at_depth(depth)
     }
 }
 

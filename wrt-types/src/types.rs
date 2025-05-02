@@ -3,23 +3,57 @@
 //! This module defines basic WebAssembly types as specified in the
 //! WebAssembly specification.
 
+#![allow(unused_imports)]
 use core::fmt;
+#[cfg(feature = "std")]
+use core::hash::Hasher as StdHasher;
+#[cfg(feature = "std")]
+use core::str::FromStr;
 
 #[cfg(feature = "std")]
-use std::{string::String, vec::Vec};
+use std::collections::HashMap;
+#[cfg(feature = "std")]
+use std::collections::HashSet;
+#[cfg(feature = "std")]
+use std::{string::String, string::ToString, vec::Vec};
 
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::{
-    format,
-    string::{String, ToString},
-    vec::Vec,
-};
+use alloc::collections::BTreeMap as HashMap;
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+use alloc::collections::BTreeSet as HashSet;
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+use alloc::{string::String, string::ToString, vec::Vec};
 
-use crate::verification::Hasher;
-use wrt_error::{kinds, Error, Result};
+use crate::sections::Section;
+use crate::values::Value;
+use crate::Result;
 
-const MAX_PARAMS: usize = 128;
-const MAX_RESULTS: usize = 16;
+// Import our local Error and ErrorCategory
+use crate::error_convert::{Error, ErrorCategory};
+// Import wrt_error codes for error constants
+use wrt_error::codes;
+
+// Simple FNV-1a Hasher implementation
+struct Hasher {
+    hash: u32,
+}
+
+impl Hasher {
+    fn new() -> Self {
+        Self { hash: 0x811c9dc5 } // FNV-1a offset basis for 32-bit
+    }
+
+    fn update(&mut self, bytes: &[u8]) {
+        for &byte in bytes {
+            self.hash ^= byte as u32;
+            self.hash = self.hash.wrapping_mul(0x01000193); // FNV prime for 32-bit
+        }
+    }
+
+    fn finalize(&self) -> u32 {
+        self.hash
+    }
+}
 
 /// WebAssembly value types
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -48,10 +82,11 @@ impl ValueType {
             0x7C => Ok(Self::F64),
             0x70 => Ok(Self::FuncRef),
             0x6F => Ok(Self::ExternRef),
-            _ => Err(Error::new(kinds::ParseError(format!(
-                "Invalid value type byte: 0x{:02x}",
-                byte
-            )))),
+            _ => Err(Error::new(
+                ErrorCategory::Validation,
+                codes::INVALID_VALUE_TYPE,
+                "Invalid value type byte",
+            )),
         }
     }
 
@@ -93,6 +128,87 @@ impl fmt::Display for ValueType {
     }
 }
 
+/// WebAssembly block type for control flow instructions
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum BlockType {
+    /// No values are returned (void/empty)
+    Empty,
+    /// A single value of the specified type is returned
+    Value(ValueType),
+    /// Multiple values are returned according to the function type
+    FuncType(FuncType),
+    /// Reference to a function type by index
+    TypeIndex(u32),
+}
+
+impl BlockType {
+    /// Returns the ValueType if this is a single-value block type
+    pub fn as_value_type(&self) -> Option<ValueType> {
+        match self {
+            Self::Value(vt) => Some(*vt),
+            _ => None,
+        }
+    }
+
+    /// Returns the FuncType if this is a multi-value block type
+    pub fn as_func_type(&self) -> Option<&FuncType> {
+        match self {
+            Self::FuncType(ft) => Some(ft),
+            _ => None,
+        }
+    }
+
+    /// Returns the type index if this is a type reference
+    pub fn as_type_index(&self) -> Option<u32> {
+        match self {
+            Self::TypeIndex(idx) => Some(*idx),
+            _ => None,
+        }
+    }
+
+    /// Creates a BlockType from a ValueType option (None = Empty, Some = Value)
+    pub fn from_value_type_option(vt: Option<ValueType>) -> Self {
+        match vt {
+            Some(vt) => Self::Value(vt),
+            None => Self::Empty,
+        }
+    }
+}
+
+/// WebAssembly reference types
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RefType {
+    /// Function reference type
+    Funcref,
+    /// External reference type
+    Externref,
+}
+
+impl From<RefType> for ValueType {
+    fn from(rt: RefType) -> Self {
+        match rt {
+            RefType::Funcref => ValueType::FuncRef,
+            RefType::Externref => ValueType::ExternRef,
+        }
+    }
+}
+
+impl TryFrom<ValueType> for RefType {
+    type Error = Error;
+
+    fn try_from(vt: ValueType) -> Result<Self> {
+        match vt {
+            ValueType::FuncRef => Ok(RefType::Funcref),
+            ValueType::ExternRef => Ok(RefType::Externref),
+            _ => Err(Error::new(
+                ErrorCategory::Type,
+                codes::INVALID_TYPE,
+                "Expected reference type",
+            )),
+        }
+    }
+}
+
 /// WebAssembly function type
 ///
 /// Represents a function's parameter and result types.
@@ -114,10 +230,7 @@ impl FuncType {
             results,
             type_hash: 0,
         };
-
-        // Compute hash for safety validation
         func_type.compute_hash();
-
         func_type
     }
 
@@ -144,57 +257,89 @@ impl FuncType {
         self.type_hash = hasher.finalize();
     }
 
-    /// Verify type integrity
+    /// Verify the integrity of the function type
     pub fn verify(&self) -> Result<()> {
-        // Create a copy for verification
-        let mut copy = Self {
-            params: self.params.clone(),
-            results: self.results.clone(),
-            type_hash: 0,
-        };
+        let mut hasher = Hasher::new();
+        // Hash parameter types
+        for param in &self.params {
+            hasher.update(&[param.to_binary()]);
+        }
+        // Hash a separator
+        hasher.update(&[0xFF]);
+        // Hash result types
+        for result in &self.results {
+            hasher.update(&[result.to_binary()]);
+        }
 
-        // Compute hash on the copy
-        copy.compute_hash();
-
-        // Compare with original hash
-        if copy.type_hash != self.type_hash {
-            return Err(Error::new(kinds::ValidationError(
-                "Type integrity check failed: hash mismatch".into(),
-            )));
+        let computed_hash = hasher.finalize();
+        if computed_hash != self.type_hash {
+            return Err(Error::new(
+                ErrorCategory::Validation,
+                codes::INTEGRITY_VIOLATION,
+                "Type integrity check failed: hash mismatch",
+            ));
         }
 
         Ok(())
     }
 
-    /// Check if two function types are structurally equal
+    /// Check if this function type matches another function type
     pub fn matches(&self, other: &Self) -> Result<bool> {
-        // Verify both types first
         self.verify()?;
         other.verify()?;
 
-        // Quick check using hash
-        if self.type_hash == other.type_hash {
-            return Ok(true);
+        // Hash comparison is a fast way to check equality
+        Ok(self.type_hash == other.type_hash)
+    }
+
+    /// Validate that the provided parameters match this function type
+    pub fn validate_params(&self, params: &[Value]) -> Result<()> {
+        self.verify()?;
+
+        if params.len() != self.params.len() {
+            return Err(Error::new(
+                ErrorCategory::Type,
+                codes::TYPE_MISMATCH_ERROR,
+                "Parameter count mismatch",
+            ));
         }
 
-        // Detailed structural equality check
-        if self.params.len() != other.params.len() || self.results.len() != other.results.len() {
-            return Ok(false);
-        }
-
-        for (a, b) in self.params.iter().zip(other.params.iter()) {
-            if a != b {
-                return Ok(false);
+        for (i, (param, expected_type)) in params.iter().zip(self.params.iter()).enumerate() {
+            if param.value_type() != *expected_type {
+                return Err(Error::new(
+                    ErrorCategory::Type,
+                    codes::TYPE_MISMATCH_ERROR,
+                    "Parameter type mismatch",
+                ));
             }
         }
 
-        for (a, b) in self.results.iter().zip(other.results.iter()) {
-            if a != b {
-                return Ok(false);
+        Ok(())
+    }
+
+    /// Validate that the provided results match this function type
+    pub fn validate_results(&self, results: &[Value]) -> Result<()> {
+        self.verify()?;
+
+        if results.len() != self.results.len() {
+            return Err(Error::new(
+                ErrorCategory::Type,
+                codes::TYPE_MISMATCH_ERROR,
+                "Result count mismatch",
+            ));
+        }
+
+        for (i, (result, expected_type)) in results.iter().zip(self.results.iter()).enumerate() {
+            if result.value_type() != *expected_type {
+                return Err(Error::new(
+                    ErrorCategory::Type,
+                    codes::TYPE_MISMATCH_ERROR,
+                    "Result type mismatch",
+                ));
             }
         }
 
-        Ok(true)
+        Ok(())
     }
 }
 

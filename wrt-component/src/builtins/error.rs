@@ -4,7 +4,7 @@
 // - error.new: Create a new error context
 // - error.trace: Get the trace from an error context
 
-use wrt_error::{Error, Result};
+use wrt_error::{codes, kinds::ValidationError, Error, ErrorCategory, Result, WrtError};
 use wrt_types::builtin::BuiltinType;
 use wrt_types::component_value::ComponentValue;
 
@@ -133,13 +133,20 @@ impl BuiltinHandler for ErrorNewHandler {
     fn execute(&self, args: &[ComponentValue]) -> Result<Vec<ComponentValue>> {
         // Validate arguments
         if args.len() != 1 {
-            return Err(Error::new("error.new requires exactly 1 argument"));
+            return Err(Error::new(ValidationError(format!(
+                "error.new requires exactly 1 argument, got {}",
+                args.len()
+            ))));
         }
 
         // Extract error message
         let message = match &args[0] {
             ComponentValue::String(s) => s.as_str(),
-            _ => return Err(Error::new("error.new argument must be a string")),
+            _ => {
+                return Err(Error::new(ValidationError(
+                    "error.new argument must be a string",
+                )))
+            }
         };
 
         // Create a new error context
@@ -176,14 +183,17 @@ impl BuiltinHandler for ErrorTraceHandler {
     fn execute(&self, args: &[ComponentValue]) -> Result<Vec<ComponentValue>> {
         // Validate arguments
         if args.len() != 2 {
-            return Err(Error::new("error.trace requires exactly 2 arguments"));
+            return Err(WrtError::validation_error(format!(
+                "error.trace requires exactly 2 arguments, got {}",
+                args.len()
+            )));
         }
 
         // Extract error context ID
         let error_id = match args[0] {
             ComponentValue::U64(id) => id,
             _ => {
-                return Err(Error::new(
+                return Err(WrtError::type_mismatch_error(
                     "error.trace first argument must be an error context ID",
                 ))
             }
@@ -192,14 +202,18 @@ impl BuiltinHandler for ErrorTraceHandler {
         // Extract trace message
         let trace_message = match &args[1] {
             ComponentValue::String(s) => s.as_str(),
-            _ => return Err(Error::new("error.trace second argument must be a string")),
+            _ => {
+                return Err(WrtError::type_mismatch_error(
+                    "error.trace second argument must be a string",
+                ))
+            }
         };
 
         // Add trace to the error context
         let mut store = self.store.lock().unwrap();
-        let error_context = store
-            .get_error_mut(error_id)
-            .ok_or_else(|| Error::new(format!("Invalid error context ID: {}", error_id)))?;
+        let error_context = store.get_error_mut(error_id).ok_or_else(|| {
+            WrtError::resource_error(format!("Invalid error context ID: {}", error_id))
+        })?;
         error_context.add_trace(trace_message);
 
         // No return value

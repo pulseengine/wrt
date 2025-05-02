@@ -1,16 +1,16 @@
 WebAssembly Runtime Performance Tuning Guide
-=======================================
+============================================
 
 Introduction
------------
+------------
 
 This guide provides strategies for optimizing the performance of applications using the WebAssembly Runtime (WRT) while maintaining appropriate safety levels. It focuses on the bounded collections and memory safety features introduced in the Functional Safety Implementation Plan.
 
 Understanding Performance Tradeoffs
-----------------------------------
+-----------------------------------
 
 Safety vs. Performance Spectrum
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The WebAssembly Runtime implements a spectrum of safety features that provide different tradeoffs between performance and safety:
 
@@ -35,10 +35,10 @@ The WebAssembly Runtime implements a spectrum of safety features that provide di
      - Safety-critical applications
 
 Benchmarking Your Application
-----------------------------
+-----------------------------
 
 Using The Built-in Benchmarks
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The runtime includes benchmarks for measuring performance impact of different safety configurations:
 
@@ -51,7 +51,7 @@ The runtime includes benchmarks for measuring performance impact of different sa
    cargo bench --bench safe_memory_benchmarks
 
 Interpreting Benchmark Results
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 When analyzing benchmark results:
 
@@ -74,10 +74,10 @@ This shows:
 - The choice of verification level has significant performance implications
 
 Performance Optimization Strategies
----------------------------------
+-----------------------------------
 
 1. Verification Level Selection
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Select the appropriate verification level based on the criticality of each component:
 
@@ -96,7 +96,7 @@ Select the appropriate verification level based on the criticality of each compo
    );
 
 2. Capacity Planning
-~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~
 
 Properly sizing bounded collections is essential for performance:
 
@@ -117,7 +117,7 @@ Properly sizing bounded collections is essential for performance:
    let call_stack = BoundedStack::<Frame>::with_capacity(MAX_CALL_STACK_DEPTH);
 
 3. Batch Operations
-~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~
 
 Minimize validation overhead by batching operations:
 
@@ -136,7 +136,7 @@ Minimize validation overhead by batching operations:
    stack.validate()?;
 
 4. Hot Path Optimization
-~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 Identify and optimize performance-critical paths:
 
@@ -174,7 +174,7 @@ Identify and optimize performance-critical paths:
    }
 
 5. Memory Access Patterns
-~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Optimize memory access patterns for better performance:
 
@@ -195,7 +195,7 @@ Optimize memory access patterns for better performance:
    }
 
 6. Compilation and Build Configuration
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Use build configurations to control safety features:
 
@@ -223,7 +223,7 @@ Use build configurations to control safety features:
    const DEFAULT_VERIFICATION: VerificationLevel = VerificationLevel::Full;
 
 7. Using Specialized Containers
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Select the right container for each use case:
 
@@ -233,7 +233,7 @@ Select the right container for each use case:
 - **SafeSlice**: For direct memory access with bounds checking
 
 8. Advanced: Customizing Validation Frequency
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Implement custom validation strategies for complex applications:
 
@@ -264,10 +264,10 @@ Implement custom validation strategies for complex applications:
    }
 
 Measuring Impact of Safety Features
-----------------------------------
+-----------------------------------
 
 Operation Tracking
-~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~
 
 The runtime includes operation tracking that can help identify performance bottlenecks:
 
@@ -280,7 +280,7 @@ The runtime includes operation tracking that can help identify performance bottl
    println!("Validation operations: {}", stats.validation_operations);
 
 Profiling Different Verification Levels
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Systematically profile your application with different verification levels:
 
@@ -290,10 +290,10 @@ Systematically profile your application with different verification levels:
 4. Apply targeted optimization to critical paths
 
 Common Performance Pitfalls
---------------------------
+---------------------------
 
 1. Excessive Validation
-~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
 
 **Symptom**: High percentage of time spent in validation functions.
 
@@ -304,7 +304,7 @@ Common Performance Pitfalls
 - Use sampling verification for non-critical paths
 
 2. Undersized Collections
-~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 **Symptom**: Frequent capacity errors or constant resizing.
 
@@ -315,7 +315,7 @@ Common Performance Pitfalls
 - Monitor capacity usage in testing
 
 3. Cache-Unfriendly Access Patterns
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 **Symptom**: Performance degrades with larger datasets despite bounded operations.
 
@@ -326,7 +326,7 @@ Common Performance Pitfalls
 - Review memory access patterns
 
 4. Unnecessary Safety in Hot Paths
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 **Symptom**: Specific functions consume disproportionate execution time.
 
@@ -337,10 +337,10 @@ Common Performance Pitfalls
 - Consider using unchecked operations with manual validation
 
 Real-World Optimization Examples
--------------------------------
+--------------------------------
 
 Example 1: Optimizing a WebAssembly Interpreter Loop
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: rust
 
@@ -381,7 +381,7 @@ Example 1: Optimizing a WebAssembly Interpreter Loop
    }
 
 Example 2: Memory-Intensive Operation Optimization
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: rust
 
@@ -416,7 +416,7 @@ Example 2: Memory-Intensive Operation Optimization
    }
 
 Conclusion
----------
+----------
 
 Optimizing performance while maintaining safety involves understanding the tradeoffs and applying appropriate strategies based on your specific requirements. By following this guide, you can:
 

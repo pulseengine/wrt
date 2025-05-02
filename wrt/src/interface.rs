@@ -5,7 +5,7 @@
 //! core and component types.
 
 use crate::{
-    behavior::{FrameBehavior, StackBehavior},
+    behavior::FrameBehavior,
     error::kinds,
     error::{Error, Result},
     global::Global,

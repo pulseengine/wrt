@@ -21,4 +21,131 @@
     color: #e6edf3;
     border-color: #444c56;
   }
+}
+
+/* Custom CSS for WRT documentation */
+
+/* Make titles more prominent */
+h1, h2, h3, h4, h5, h6 {
+    color: #2c3e50;
+    font-weight: bold;
+    margin-top: 1.5em;
+    margin-bottom: 0.5em;
+}
+
+/* Add a border below h1 and h2 headings */
+h1, h2 {
+    border-bottom: 1px solid #eaecef;
+    padding-bottom: 0.3em;
+}
+
+/* Style code blocks */
+pre {
+    background-color: #f8f9fa;
+    border-left: 3px solid #3498db;
+    padding: 1em;
+    margin: 1em 0;
+    overflow: auto;
+}
+
+/* Style inline code */
+code {
+    background-color: #f8f9fa;
+    border-radius: 3px;
+    padding: 0.2em 0.4em;
+    font-size: 0.9em;
+    color: #e83e8c;
+}
+
+/* Style note, warning, and danger admonitions */
+.admonition {
+    border-radius: 4px;
+    padding: 1em;
+    margin: 1em 0;
+    border-left: 4px solid;
+}
+
+.admonition.note {
+    background-color: #f8f9fa;
+    border-color: #3498db;
+}
+
+.admonition.warning {
+    background-color: #fff3cd;
+    border-color: #f39c12;
+}
+
+.admonition.danger {
+    background-color: #f8d7da;
+    border-color: #e74c3c;
+}
+
+/* Style the title of admonitions */
+.admonition-title {
+    font-weight: bold;
+    margin-bottom: 0.5em;
+}
+
+/* Style tables */
+table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 1em 0;
+}
+
+th, td {
+    border: 1px solid #dfe2e5;
+    padding: 0.5em 1em;
+}
+
+th {
+    background-color: #f8f9fa;
+    font-weight: bold;
+}
+
+/* Style icons */
+img[alt$=" Icon"] {
+    max-width: 64px;
+    max-height: 64px;
+}
+
+/* Style the sidebar */
+.sidebar-brand-text {
+    font-weight: bold;
+}
+
+/* Fix sphinx-needs styling */
+.needs_container {
+    margin: 1em 0;
+    padding: 1em;
+    border-radius: 4px;
+    background-color: #f8f9fa;
+}
+
+/* Improve code block line number styling */
+.linenos pre {
+    background-color: #e9ecef;
+    color: #495057;
+    border: none;
+    padding: 0.5em;
+    text-align: right;
+}
+
+/* Style SVG images */
+svg {
+    max-width: 100%;
+    height: auto;
+}
+
+/* Improve mobile responsiveness */
+@media (max-width: 768px) {
+    .sidebar {
+        width: 100%;
+        float: none;
+        margin-right: 0;
+    }
+    
+    .content {
+        margin-left: 0;
+    }
 } 

@@ -4,18 +4,26 @@ package "Memory Subsystem" {
   package "wrt-runtime" {
     [Memory] as Memory
     [SafeSlice] as SafeSlice
-    [MemoryLimits] as MemLimits
+    [MemoryType] as MemType
+    [MemoryMetrics] as MemMetrics
     [MemoryHelpers] as MemHelpers
+    [MemoryArcExt] as MemArcExt
     
-    Memory --> SafeSlice
-    Memory --> MemLimits
-    Memory --> MemHelpers
+    Memory --> SafeSlice : provides
+    Memory --> MemType : uses
+    Memory --> MemMetrics : tracks
+    Memory --> MemHelpers : uses
+    Memory --> MemArcExt : implements
   }
   
-  package "wrt" {
-    [MemoryAdapter] as MemAdapter
+  package "wrt-types" {
+    [Limits] as Limits
+    [MemoryTypes] as MemTypes
+    [SafeMemory] as SafeMem
     
-    MemAdapter --> Memory
+    MemType --> Limits
+    MemType --> MemTypes
+    SafeSlice --> SafeMem
   }
   
   package "wrt-instructions" {
@@ -24,31 +32,55 @@ package "Memory Subsystem" {
     [MemoryStore] as MemStore
     [MemorySize] as MemSize
     [MemoryGrow] as MemGrow
+    [MemoryFill] as MemFill
+    [MemoryCopy] as MemCopy
+    [MemoryInit] as MemInit
     
     MemOps --> MemLoad
     MemOps --> MemStore
     MemOps --> MemSize
     MemOps --> MemGrow
+    MemOps --> MemFill
+    MemOps --> MemCopy
+    MemOps --> MemInit
     
-    MemOps --> MemAdapter : uses
+    MemOps -[dashed]-> Memory : utilizes
   }
   
   package "Safety Mechanisms" {
     [BoundsChecking] as BoundsCheck
     [AccessValidation] as AccessValid
-    [CapacityLimits] as CapLimits
-    [ThreadSafety] as ThreadSafety
+    [ThreadSafetyAtomics] as TsAtomics
+    [ThreadSafetyRwLock] as TsRwLock
+    [IntegrityVerification] as IntVerify
+    [HookCallbacks] as Hooks
     
-    SafeSlice --> BoundsCheck
-    Memory --> AccessValid
-    MemLimits --> CapLimits
-    Memory --> ThreadSafety
+    Memory --> BoundsCheck : enforces
+    Memory --> AccessValid : ensures
+    Memory --> TsAtomics : uses in std
+    Memory --> TsRwLock : uses in no_std
+    Memory --> IntVerify : performs
+    Memory --> Hooks : supports
   }
   
   package "Component Integration" {
     [ResourceMemoryManager] as ResMem
+    [MemoryStrategy] as MemStrategy
+    [BufferPool] as BufferPool
     
-    ResMem --> Memory
+    ResMem --> Memory : manages
+    MemStrategy --> Memory : uses
+    BufferPool --> Memory : pools
+  }
+  
+  package "Performance Tracking" {
+    [PeakMemoryUsage] as PeakUsage
+    [AccessCount] as AccessCount
+    [GrowthMetrics] as GrowthMetrics
+    
+    MemMetrics --> PeakUsage : tracks
+    MemMetrics --> AccessCount : measures
+    MemMetrics --> GrowthMetrics : monitors
   }
 }
 

@@ -1,18 +1,18 @@
 WebAssembly Runtime Safety Guidelines
-==================================
+=====================================
 
 Introduction
------------
+------------
 
 This document provides guidelines for safely utilizing the bounded collections and memory safety features
 in the WebAssembly Runtime (WRT). These guidelines are intended to ensure that applications meet safety
 requirements and conform to the design principles established in the Functional Safety Plan.
 
 Bounded Collections
-------------------
+-------------------
 
 Usage Guidelines
-~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~
 
 1. **Always specify capacity limits**:
    
@@ -63,10 +63,10 @@ Usage Guidelines
       stack.validate()?; // Validates the stack integrity
 
 Safe Memory Operations
----------------------
+----------------------
 
 Safety Guidelines
-~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~
 
 1. **Bounds checking**:
    
@@ -111,10 +111,10 @@ Safety Guidelines
       );
 
 Engine Integration
------------------
+------------------
 
 Safety Best Practices
-~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~
 
 1. **Validation checkpoints**:
    
@@ -159,10 +159,10 @@ Safety Best Practices
       }
 
 Fuzzing and Testing
-------------------
+-------------------
 
 Validation Guidelines
-~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~
 
 1. **Use provided fuzzers**:
    
@@ -193,7 +193,7 @@ Validation Guidelines
       cargo bench --bench safe_memory_benchmarks
 
 Performance Considerations
-------------------------
+--------------------------
 
 1. **Verification level selection**:
    
@@ -206,7 +206,7 @@ Performance Considerations
    * Document performance impacts in your design.
 
 Error Handling and Panic Conditions
-----------------------------------
+-----------------------------------
 
 1. **Error propagation**:
    
@@ -224,7 +224,7 @@ Error Handling and Panic Conditions
    * Consider using catch_unwind in safety-critical boundaries.
 
 Certification and Compliance
----------------------------
+----------------------------
 
 1. **Documentation**:
    
@@ -242,7 +242,7 @@ Certification and Compliance
    * Consider formal verification for critical components.
 
 Conclusion
----------
+----------
 
 Following these guidelines will help ensure the safe use of bounded collections and memory safety features
 in the WebAssembly Runtime. By appropriately handling capacity limits, implementing proper error handling,

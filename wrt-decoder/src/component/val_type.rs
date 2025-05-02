@@ -1,5 +1,9 @@
+//! WebAssembly Component Model value type encoding utilities
+//!
+//! This module provides helpers for encoding component value types.
+
 use crate::prelude::*;
-use wrt_error::{kinds, Error, Result};
+use wrt_error::{codes, Error, ErrorCategory, Result};
 use wrt_format::binary;
 use wrt_format::component::ValType;
 
@@ -54,21 +58,12 @@ pub fn encode_val_type(result: &mut Vec<u8>, val_type: &ValType) -> Result<()> {
             result.push(0x11);
             encode_val_type(result, inner)?;
         }
-        ValType::ResultBoth(ok, err) => {
-            result.push(0x12);
-            result.push(0x03); // both ok and err
-            encode_val_type(result, ok)?;
-            encode_val_type(result, err)?;
-        }
-        ValType::Result(ok) => {
+        // Handle Result type - assuming it's a tuple with optional ok and err values
+        ValType::Result(inner) => {
+            // For now, assume it's an ok-only type by default
             result.push(0x12);
             result.push(0x01); // ok only
-            encode_val_type(result, ok)?;
-        }
-        ValType::ResultErr(err) => {
-            result.push(0x12);
-            result.push(0x02); // err only
-            encode_val_type(result, err)?;
+            encode_val_type(result, inner)?;
         }
         ValType::Enum(cases) => {
             result.push(0x13);
@@ -89,23 +84,36 @@ pub fn encode_val_type(result: &mut Vec<u8>, val_type: &ValType) -> Result<()> {
             result.extend_from_slice(&binary::write_leb128_u32(*idx));
         }
         ValType::Own(_) | ValType::Borrow(_) => {
-            return Err(Error::new(kinds::ParseError(
+            return Err(Error::new(
+                ErrorCategory::Parse,
+                codes::PARSE_ERROR,
                 "Resource types are not supported for encoding yet".to_string(),
-            )));
+            ));
         }
         ValType::Char => result.push(0x16),
-        &wrt_format::component::ValType::FixedList(ref inner, size) => {
+        ValType::FixedList(inner, size) => {
             // Fixed-length lists are encoded as a list tag followed by the element type and size
             result.push(0x17); // Example tag for fixed list
-            let mut inner_bytes = Vec::new();
-            encode_val_type(&mut inner_bytes, inner.as_ref())?;
+            encode_val_type(result, inner)?;
 
-            // Encode size without dereferencing
-            result.extend_from_slice(&binary::write_leb128_u32(size));
+            // Encode size
+            result.extend_from_slice(&binary::write_leb128_u32(*size));
         }
-        &wrt_format::component::ValType::ErrorContext => {
+        ValType::ErrorContext => {
             // Error context is a simple type
             result.push(0x18); // Example tag for error context
+        }
+        ValType::Void => {
+            // Void is a simple type
+            result.push(0x19); // Example tag for void
+        }
+        // Add a catch-all for any new variants that might be added in the future
+        _ => {
+            return Err(Error::new(
+                ErrorCategory::Parse,
+                codes::PARSE_ERROR,
+                "Unsupported value type for encoding".to_string(),
+            ));
         }
     }
     Ok(())

@@ -3,6 +3,7 @@
 //! This module contains implementations for all WebAssembly instructions,
 //! including loads, stores, and memory management operations.
 
+use crate::behavior::ControlFlow;
 use crate::{
     behavior::{ControlFlow, FrameBehavior, InstructionExecutor, StackBehavior},
     error::{kinds, Error, Result},
@@ -16,7 +17,10 @@ use crate::{
 };
 use std::marker::PhantomData;
 use std::sync::Arc;
+use wrt_error::{Error, Result};
+use wrt_types::v128;
 use wrt_types::Limits;
+use wrt_types::Value;
 
 // Define the constant locally
 const WASM_PAGE_SIZE: u32 = 65536;

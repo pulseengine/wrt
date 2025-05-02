@@ -280,7 +280,7 @@ pub fn i64x2_extmul_high_i32x4_u(
 }
 
 pub fn i64x2_extend_low_i32x4_s(
-    stack: &mut impl StackBehavior,
+    _stack: &mut impl StackBehavior,
     _frame: &mut impl FrameBehavior,
     _engine: &StacklessEngine,
 ) -> Result<(), Error> {
@@ -288,7 +288,7 @@ pub fn i64x2_extend_low_i32x4_s(
 }
 
 pub fn i64x2_extend_high_i32x4_s(
-    stack: &mut impl StackBehavior,
+    _stack: &mut impl StackBehavior,
     _frame: &mut impl FrameBehavior,
     _engine: &StacklessEngine,
 ) -> Result<(), Error> {
@@ -296,7 +296,7 @@ pub fn i64x2_extend_high_i32x4_s(
 }
 
 pub fn i64x2_extend_low_i32x4_u(
-    stack: &mut impl StackBehavior,
+    _stack: &mut impl StackBehavior,
     _frame: &mut impl FrameBehavior,
     _engine: &StacklessEngine,
 ) -> Result<(), Error> {
@@ -304,7 +304,7 @@ pub fn i64x2_extend_low_i32x4_u(
 }
 
 pub fn i64x2_extend_high_i32x4_u(
-    stack: &mut impl StackBehavior,
+    _stack: &mut impl StackBehavior,
     _frame: &mut impl FrameBehavior,
     _engine: &StacklessEngine,
 ) -> Result<(), Error> {

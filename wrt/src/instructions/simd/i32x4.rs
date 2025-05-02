@@ -521,35 +521,35 @@ pub fn i32x4_shr_u(
 }
 
 pub fn i32x4_dot_i16x8_s(
-    stack: &mut impl StackBehavior,
+    _stack: &mut impl StackBehavior,
     _frame: &mut dyn FrameBehavior,
 ) -> Result<(), Error> {
     todo!("Implement i32x4_dot_i16x8_s")
 }
 
 pub fn i32x4_extmul_low_i16x8_s(
-    stack: &mut impl StackBehavior,
+    _stack: &mut impl StackBehavior,
     _frame: &mut dyn FrameBehavior,
 ) -> Result<(), Error> {
     todo!("Implement i32x4_extmul_low_i16x8_s")
 }
 
 pub fn i32x4_extmul_high_i16x8_s(
-    stack: &mut impl StackBehavior,
+    _stack: &mut impl StackBehavior,
     _frame: &mut dyn FrameBehavior,
 ) -> Result<(), Error> {
     todo!("Implement i32x4_extmul_high_i16x8_s")
 }
 
 pub fn i32x4_extmul_low_i16x8_u(
-    stack: &mut impl StackBehavior,
+    _stack: &mut impl StackBehavior,
     _frame: &mut dyn FrameBehavior,
 ) -> Result<(), Error> {
     todo!("Implement i32x4_extmul_low_i16x8_u")
 }
 
 pub fn i32x4_extmul_high_i16x8_u(
-    stack: &mut impl StackBehavior,
+    _stack: &mut impl StackBehavior,
     _frame: &mut dyn FrameBehavior,
 ) -> Result<(), Error> {
     todo!("Implement i32x4_extmul_high_i16x8_u")
@@ -620,21 +620,21 @@ pub fn i32x4_extend_high_i16x8_u(
 }
 
 pub fn i32x4_all_true(
-    stack: &mut impl StackBehavior,
+    _stack: &mut impl StackBehavior,
     _frame: &mut dyn FrameBehavior,
 ) -> Result<(), Error> {
     todo!("Implement i32x4_all_true")
 }
 
 pub fn i32x4_bitmask(
-    stack: &mut impl StackBehavior,
+    _stack: &mut impl StackBehavior,
     _frame: &mut dyn FrameBehavior,
 ) -> Result<(), Error> {
     todo!("Implement i32x4_bitmask")
 }
 
 pub fn i32x4_abs(
-    stack: &mut impl StackBehavior,
+    _stack: &mut impl StackBehavior,
     _frame: &mut dyn FrameBehavior,
 ) -> Result<(), Error> {
     todo!("Implement i32x4_abs")

@@ -11,6 +11,7 @@ use core::{fmt, hash, mem};
 
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 use alloc::{
+    boxed::Box,
     string::{String, ToString},
     vec::Vec,
 };
@@ -742,15 +743,13 @@ where
     }
 }
 
-/// A bounded hash map with a fixed maximum capacity and verification
+/// A bounded hash map with a fixed maximum capacity and verification support
 ///
-/// This hash map ensures it never exceeds the specified capacity,
-/// returning an error when operations would exceed this limit.
+/// This HashMap ensures it never exceeds the specified capacity,
+/// returning an error when insertion would exceed this limit.
 /// It also maintains a checksum of its contents for verification.
-///
-/// For no_std environments, this uses BTreeMap underneath, requiring keys to implement Ord.
-#[derive(Debug, Clone)]
 #[cfg(feature = "std")]
+#[derive(Debug, Clone)]
 pub struct BoundedHashMap<K, V, const N: usize>
 where
     K: Eq + hash::Hash + AsRef<[u8]>,
@@ -764,15 +763,13 @@ where
     verification_level: VerificationLevel,
 }
 
-/// A bounded hash map with a fixed maximum capacity and verification
+/// A bounded hash map with a fixed maximum capacity and verification support
 ///
-/// This hash map ensures it never exceeds the specified capacity,
-/// returning an error when operations would exceed this limit.
+/// This HashMap ensures it never exceeds the specified capacity,
+/// returning an error when insertion would exceed this limit.
 /// It also maintains a checksum of its contents for verification.
-///
-/// For no_std environments, this uses BTreeMap underneath, requiring keys to implement Ord.
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
 #[derive(Debug, Clone)]
-#[cfg(not(feature = "std"))]
 pub struct BoundedHashMap<K, V, const N: usize>
 where
     K: Eq + hash::Hash + AsRef<[u8]> + core::cmp::Ord,

@@ -75,6 +75,17 @@ impl<T: VariableContext> PureInstruction<T, Error> for VariableOp {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use wrt_error::kinds;
+
+    // Import Vec and vec! based on feature flags
+    #[cfg(feature = "std")]
+    use std::vec::Vec;
+
+    #[cfg(all(not(feature = "std"), feature = "alloc"))]
+    use alloc::vec::Vec;
+
+    #[cfg(all(not(feature = "std"), feature = "alloc"))]
+    use alloc::vec;
 
     // Mock variable context for testing
     struct MockVariableContext {
@@ -98,7 +109,7 @@ mod tests {
             self.locals
                 .get(index as usize)
                 .cloned()
-                .ok_or_else(|| Error::new(kinds::InvalidLocalIndexError))
+                .ok_or_else(|| Error::new(kinds::InvalidLocalIndexError(index)))
         }
 
         fn set_local(&mut self, index: u32, value: Value) -> Result<()> {
@@ -106,7 +117,7 @@ mod tests {
                 *local = value;
                 Ok(())
             } else {
-                Err(Error::new(kinds::InvalidLocalIndexError))
+                Err(Error::new(kinds::InvalidLocalIndexError(index)))
             }
         }
 
@@ -114,7 +125,7 @@ mod tests {
             self.globals
                 .get(index as usize)
                 .cloned()
-                .ok_or_else(|| Error::new(kinds::InvalidGlobalIndexError))
+                .ok_or_else(|| Error::new(kinds::InvalidGlobalIndexError(index)))
         }
 
         fn set_global(&mut self, index: u32, value: Value) -> Result<()> {
@@ -122,7 +133,7 @@ mod tests {
                 *global = value;
                 Ok(())
             } else {
-                Err(Error::new(kinds::InvalidGlobalIndexError))
+                Err(Error::new(kinds::InvalidGlobalIndexError(index)))
             }
         }
 

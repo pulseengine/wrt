@@ -271,10 +271,12 @@ impl ArcMemoryExt for Arc<Memory> {
             wrt_types::types::ValueType::I64 => self.read_i64(addr).map(Value::I64),
             wrt_types::types::ValueType::F32 => self.read_f32(addr).map(Value::F32),
             wrt_types::types::ValueType::F64 => self.read_f64(addr).map(Value::F64),
-            wrt_types::types::ValueType::V128 => self.read_v128(addr).map(Value::V128),
-            _ => Err(wrt_error::Error::new(wrt_error::kinds::TypeMismatchError(
+            // V128 doesn't exist in ValueType enum, so we'll handle it separately
+            _ => Err(wrt_error::Error::new(
+                wrt_error::ErrorCategory::Type,
+                wrt_error::errors::codes::TYPE_MISMATCH_ERROR,
                 format!("Cannot read value of type {:?} from memory", value_type),
-            ))),
+            )),
         }
     }
 
@@ -286,9 +288,11 @@ impl ArcMemoryExt for Arc<Memory> {
             Value::F32(v) => mem.write_f32(addr, v),
             Value::F64(v) => mem.write_f64(addr, v),
             Value::V128(v) => mem.write_v128(addr, v),
-            _ => Err(wrt_error::Error::new(wrt_error::kinds::TypeMismatchError(
+            _ => Err(wrt_error::Error::new(
+                wrt_error::ErrorCategory::Type,
+                wrt_error::errors::codes::TYPE_MISMATCH_ERROR,
                 format!("Cannot write value {:?} to memory", value),
-            ))),
+            )),
         })
     }
 

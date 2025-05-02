@@ -1,5 +1,5 @@
 Internal Procedures
-=================
+===================
 
 .. note::
    This document is a placeholder. It will be completed as part of the qualification process.
@@ -7,7 +7,7 @@ Internal Procedures
 This document will contain engineering-level procedures for installing the development environment, using the existing infrastructure, and working with the WRT toolchain.
 
 Planned Content
---------------
+---------------
 
 1. Development environment setup
 2. Code review procedures

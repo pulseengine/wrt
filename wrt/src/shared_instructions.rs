@@ -4,7 +4,7 @@
 //! that can be shared between different engine implementations.
 
 use crate::{
-    behavior::{ControlFlow, FrameBehavior, StackBehavior},
+    behavior::{ControlFlow, FrameBehavior},
     error::{kinds, Error, Result},
     values::Value,
 };

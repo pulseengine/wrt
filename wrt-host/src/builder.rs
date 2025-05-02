@@ -8,7 +8,7 @@ use core::any::Any;
 
 // Use the re-exported types from lib.rs
 use crate::{format, Arc, Box, HashSet, String, ToString, Vec};
-use wrt_error::{Error, Result};
+use wrt_error::{codes, ErrorCategory, WrtError};
 use wrt_intercept::{BuiltinInterceptor, LinkInterceptor};
 use wrt_types::builtin::BuiltinType;
 use wrt_types::values::Value;
@@ -181,7 +181,7 @@ impl HostBuilder {
         if self.strict_validation {
             for &builtin_type in &self.required_builtins {
                 if !self.is_builtin_implemented(builtin_type) {
-                    return Err(Error::new(format!(
+                    return Err(WrtError::runtime_error(format!(
                         "Required built-in {} is not implemented",
                         builtin_type.name()
                     )));
@@ -497,4 +497,12 @@ mod tests {
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), vec![Value::I32(777)]);
     }
+}
+
+pub fn runtime_error(message: &str) -> WrtError {
+    WrtError::runtime_error(message.to_string())
+}
+
+pub fn runtime_error_with_context(message: &str, context: &str) -> WrtError {
+    WrtError::runtime_error(format!("{}: {}", message, context))
 }
