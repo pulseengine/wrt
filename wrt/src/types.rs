@@ -18,6 +18,11 @@ use std::{boxed::Box, string::String, vec::Vec};
 #[cfg(not(feature = "std"))]
 use alloc::{boxed::Box, string::String, vec::Vec};
 
+// Re-export types from other crates for convenience
+pub use wrt_error::{kinds, Error, Result};
+pub use wrt_types::values::Value;
+pub use wrt_types::{BlockType, FuncType, RefType, ValueType};
+
 /// Represents a WebAssembly external type
 #[derive(Debug, Clone, PartialEq)]
 pub enum ExternType {
@@ -126,21 +131,6 @@ pub struct ComponentResourceType {
     pub name: String,
     /// The version of the resource type
     pub version: u32,
-}
-
-/// Represents a WebAssembly block type for control flow instructions
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum BlockType {
-    /// No values are returned
-    Empty,
-    /// A single value of the specified type is returned
-    Type(ValueType),
-    /// A single value of the specified type is returned (alternative version)
-    Value(ValueType),
-    /// Multiple values are returned according to the function type
-    FuncType(FuncType),
-    /// Reference to a function type by index
-    TypeIndex(u32),
 }
 
 impl ComponentType {
@@ -267,14 +257,24 @@ impl ComponentType {
     }
 }
 
-impl BlockType {
+// BlockType implementation is now provided by the BlockTypeExt trait
+
+// Add extension methods for BlockType to support the WRT-specific resolve_types method
+pub trait BlockTypeExt {
     /// Resolves the parameter and result types for a block type
-    pub fn resolve_types(&self, module: &Module) -> Result<(Vec<ValueType>, Vec<ValueType>)> {
+    fn resolve_types(&self, module: &Module) -> Result<(Vec<ValueType>, Vec<ValueType>)>;
+}
+
+impl BlockTypeExt for BlockType {
+    /// Resolves the parameter and result types for a block type
+    fn resolve_types(&self, module: &Module) -> Result<(Vec<ValueType>, Vec<ValueType>)> {
         match self {
-            Self::Empty => Ok((Vec::new(), Vec::new())),
-            Self::Type(value_type) | Self::Value(value_type) => Ok((Vec::new(), vec![*value_type])),
-            Self::FuncType(func_type) => Ok((func_type.params.clone(), func_type.results.clone())),
-            Self::TypeIndex(type_idx) => match module.get_function_type(*type_idx) {
+            BlockType::Empty => Ok((Vec::new(), Vec::new())),
+            BlockType::Value(value_type) => Ok((Vec::new(), vec![*value_type])),
+            BlockType::FuncType(func_type) => {
+                Ok((func_type.params.clone(), func_type.results.clone()))
+            }
+            BlockType::TypeIndex(type_idx) => match module.get_function_type(*type_idx) {
                 Some(func_type) => Ok((func_type.params.clone(), func_type.results.clone())),
                 None => Err(Error::new(kinds::ValidationError(format!(
                     "Function type not found: {type_idx}"

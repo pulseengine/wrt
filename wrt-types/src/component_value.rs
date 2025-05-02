@@ -6,8 +6,8 @@
 #![allow(clippy::derive_partial_eq_without_eq)]
 
 use core::fmt;
-use wrt_error::kinds;
-use wrt_error::{Error, Result};
+use wrt_error::Result;
+use wrt_error::{Error, ErrorCategory};
 
 #[cfg(feature = "std")]
 use std::{boxed::Box, format, string::String, vec, vec::Vec};
@@ -67,6 +67,10 @@ pub enum ValType {
     Option(Box<ValType>),
     /// Result type
     Result(Box<ValType>),
+    /// Result type with only Err
+    ResultErr(Box<ValType>),
+    /// Result type with both Ok and Err
+    ResultBoth(Box<ValType>, Box<ValType>),
     /// Resource handle (owned)
     Own(u32),
     /// Resource handle (borrowed)
@@ -217,11 +221,15 @@ impl ComponentValue {
     /// Create a new fixed-length list value
     pub fn fixed_list(v: Vec<ComponentValue>, len: u32) -> Result<Self> {
         if v.len() != len as usize {
-            return Err(Error::new(kinds::ValidationError(format!(
-                "Fixed list length mismatch: expected {}, got {}",
-                len,
-                v.len()
-            ))));
+            return Err(Error::new(
+                ErrorCategory::Type,
+                3001, // TYPE_MISMATCH
+                format!(
+                    "Fixed list length mismatch: expected {}, got {}",
+                    len,
+                    v.len()
+                ),
+            ));
         }
         Ok(Self::FixedList(v, len))
     }
@@ -502,9 +510,11 @@ impl ComponentValue {
             Value::I64(v) => Ok(ComponentValue::S64(*v)),
             Value::F32(v) => Ok(ComponentValue::F32(*v)),
             Value::F64(v) => Ok(ComponentValue::F64(*v)),
-            _ => Err(Error::new(kinds::ConversionError(
-                "Unsupported value type for conversion to component value".to_string(),
-            ))),
+            _ => Err(Error::new(
+                ErrorCategory::Type,
+                3001, // TYPE_MISMATCH
+                "Unsupported value type for conversion to component value",
+            )),
         }
     }
 
@@ -522,9 +532,11 @@ impl ComponentValue {
             ComponentValue::U64(v) => Ok(Value::I64(*v as i64)),
             ComponentValue::F32(v) => Ok(Value::F32(*v)),
             ComponentValue::F64(v) => Ok(Value::F64(*v)),
-            _ => Err(Error::new(kinds::ConversionError(
-                "Unsupported component value type for conversion to core value".to_string(),
-            ))),
+            _ => Err(Error::new(
+                ErrorCategory::Type,
+                3001, // TYPE_MISMATCH
+                "Unsupported component value type for conversion to core value",
+            )),
         }
     }
 }
@@ -661,10 +673,11 @@ pub fn serialize_component_values(values: &[ComponentValue]) -> Result<Vec<u8>> 
             }
             // Add more types as needed for intercept functionality
             _ => {
-                return Err(Error::new(kinds::EncodingError(format!(
-                    "Serialization not implemented for this type: {:?}",
-                    value
-                ))))
+                return Err(Error::new(
+                    ErrorCategory::Component,
+                    3002, // ENCODING_ERROR
+                    format!("Serialization not implemented for this type: {:?}", value),
+                ));
             }
         }
     }
@@ -679,9 +692,11 @@ pub fn deserialize_component_values(data: &[u8], types: &[ValType]) -> Result<Ve
 
     // Read the number of values
     if data.len() < 4 {
-        return Err(Error::new(kinds::DecodingError(
-            "Data too short to contain value count".to_string(),
-        )));
+        return Err(Error::new(
+            ErrorCategory::Component,
+            3002, // ENCODING_ERROR
+            "Data too short to contain value count",
+        ));
     }
 
     let count = u32::from_le_bytes([data[0], data[1], data[2], data[3]]) as usize;
@@ -689,19 +704,25 @@ pub fn deserialize_component_values(data: &[u8], types: &[ValType]) -> Result<Ve
 
     // Sanity check
     if count != types.len() {
-        return Err(Error::new(kinds::TypeMismatch(format!(
-            "Value count mismatch: data has {} values but types list has {}",
-            count,
-            types.len()
-        ))));
+        return Err(Error::new(
+            ErrorCategory::Type,
+            3001, // TYPE_MISMATCH
+            format!(
+                "Value count mismatch: data has {} values but types list has {}",
+                count,
+                types.len()
+            ),
+        ));
     }
 
     // Read each value
     for _ in 0..count {
         if offset >= data.len() {
-            return Err(Error::new(kinds::DecodingError(
-                "Unexpected end of data".to_string(),
-            )));
+            return Err(Error::new(
+                ErrorCategory::Component,
+                3002, // ENCODING_ERROR
+                "Unexpected end of data",
+            ));
         }
 
         let type_tag = data[offset];
@@ -711,9 +732,11 @@ pub fn deserialize_component_values(data: &[u8], types: &[ValType]) -> Result<Ve
             0 => {
                 // Bool
                 if offset >= data.len() {
-                    return Err(Error::new(kinds::DecodingError(
-                        "Unexpected end of data".to_string(),
-                    )));
+                    return Err(Error::new(
+                        ErrorCategory::Component,
+                        3002, // ENCODING_ERROR
+                        "Unexpected end of data",
+                    ));
                 }
                 let value = data[offset] != 0;
                 offset += 1;
@@ -722,9 +745,11 @@ pub fn deserialize_component_values(data: &[u8], types: &[ValType]) -> Result<Ve
             1 => {
                 // U32
                 if offset + 4 > data.len() {
-                    return Err(Error::new(kinds::DecodingError(
-                        "Unexpected end of data".to_string(),
-                    )));
+                    return Err(Error::new(
+                        ErrorCategory::Component,
+                        3002, // ENCODING_ERROR
+                        "Unexpected end of data",
+                    ));
                 }
                 let value = u32::from_le_bytes([
                     data[offset],
@@ -738,9 +763,11 @@ pub fn deserialize_component_values(data: &[u8], types: &[ValType]) -> Result<Ve
             2 => {
                 // S32
                 if offset + 4 > data.len() {
-                    return Err(Error::new(kinds::DecodingError(
-                        "Unexpected end of data".to_string(),
-                    )));
+                    return Err(Error::new(
+                        ErrorCategory::Component,
+                        3002, // ENCODING_ERROR
+                        "Unexpected end of data",
+                    ));
                 }
                 let value = i32::from_le_bytes([
                     data[offset],
@@ -753,10 +780,11 @@ pub fn deserialize_component_values(data: &[u8], types: &[ValType]) -> Result<Ve
             }
             // Add more types as needed for intercept functionality
             _ => {
-                return Err(Error::new(kinds::DecodingError(format!(
-                    "Deserialization not implemented for type tag: {}",
-                    type_tag
-                ))))
+                return Err(Error::new(
+                    ErrorCategory::Component,
+                    3002, // ENCODING_ERROR
+                    format!("Deserialization not implemented for type tag: {}", type_tag),
+                ));
             }
         }
     }
@@ -764,15 +792,41 @@ pub fn deserialize_component_values(data: &[u8], types: &[ValType]) -> Result<Ve
     Ok(result)
 }
 
+pub fn conversion_error(message: &str) -> Error {
+    Error::new(
+        ErrorCategory::Type,
+        3001, // TYPE_MISMATCH
+        format!("Type conversion error: {}", message),
+    )
+}
+
+pub fn encoding_error(message: &str) -> Error {
+    Error::new(
+        ErrorCategory::Component,
+        3002, // ENCODING_ERROR
+        format!("Component encoding error: {}", message),
+    )
+}
+
+pub fn decoding_error(message: &str) -> Error {
+    Error::new(
+        ErrorCategory::Component,
+        3002, // ENCODING_ERROR
+        format!("Component decoding error: {}", message),
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use core::f32::consts::PI;
+    use core::f64::consts::PI as PI_F64;
 
     #[test]
     fn test_primitive_value_type_matching() {
         let bool_value = ComponentValue::Bool(true);
         let int_value = ComponentValue::S32(42);
-        let float_value = ComponentValue::F32(3.14);
+        let float_value = ComponentValue::F32(PI);
 
         assert!(bool_value.matches_type(&ValType::Bool));
         assert!(!bool_value.matches_type(&ValType::S32));
@@ -787,13 +841,13 @@ mod tests {
     #[test]
     fn test_conversion_between_core_and_component() {
         let i32_val = Value::I32(42);
-        let f64_val = Value::F64(3.14);
+        let f64_val = Value::F64(PI_F64);
 
         let comp_i32 = ComponentValue::from_core_value(&i32_val).unwrap();
         let comp_f64 = ComponentValue::from_core_value(&f64_val).unwrap();
 
         assert!(matches!(comp_i32, ComponentValue::S32(42)));
-        assert!(matches!(comp_f64, ComponentValue::F64(v) if (v - 3.14).abs() < f64::EPSILON));
+        assert!(matches!(comp_f64, ComponentValue::F64(v) if (v - PI_F64).abs() < f64::EPSILON));
 
         let core_i32 = comp_i32.to_core_value().unwrap();
         let core_f64 = comp_f64.to_core_value().unwrap();

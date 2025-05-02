@@ -1,5 +1,5 @@
 Safety Analysis Report
-=====================
+======================
 
 This document contains the safety analysis for the WebAssembly Runtime (WRT) project.
 
@@ -9,13 +9,18 @@ Introduction
 This safety analysis identifies potential hazards that could arise from the use of the WRT runtime in safety-critical applications and evaluates their potential impact. It also identifies mitigation strategies to address these hazards.
 
 Hazard Identification
---------------------
+---------------------
 
 This section identifies potential hazards in the WRT system and their mitigations.
 
-.. needfilter::
-   :types: req
-   :regex_filter: title, .*[Ss]afety.*|.*[Bb]ound.*|.*[Ll]imit.*|.*[Hh]azard.*
+Safety-Critical Requirements
+-------------------------------
+
+.. commenting out needfilter directives until they can be fixed
+..
+.. .. needfilter::
+..    :types: req
+..    :regex_filter: title, .*[Ss]afety.*|.*[Bb]ound.*|.*[Ll]imit.*|.*[Hh]azard.*
 
 .. safety:: Unbounded Execution
    :id: SAFETY_001
@@ -80,7 +85,7 @@ This section assesses the risk of each identified hazard.
      - Low
 
 Mitigation Strategies
---------------------
+---------------------
 
 Summary of hazards and their mitigation status:
 
@@ -89,7 +94,7 @@ Summary of hazards and their mitigation status:
    :filter: id in ['SAFETY_001', 'SAFETY_002', 'SAFETY_003', 'SAFETY_004']
 
 Safety Validation
-----------------
+-----------------
 
 The following validation activities are required to ensure safety properties:
 
@@ -114,9 +119,10 @@ The following validation activities are required to ensure safety properties:
    - Test with boundary conditions for complex types
 
 Safety Requirement Relationships
------------------------------
+--------------------------------
 
 The following diagram shows the relationships between safety hazards and their mitigating requirements:
 
 .. needflow::
-   :filter: id in ['SAFETY_001', 'SAFETY_002', 'SAFETY_003', 'SAFETY_004', 'REQ_001', 'REQ_003', 'REQ_007', 'REQ_014', 'REQ_018', 'REQ_019', 'REQ_024'] 
+   :filter: id in ['SAFETY_001', 'SAFETY_002', 'SAFETY_003', 'SAFETY_004', 'REQ_001', 'REQ_003', 'REQ_007', 'REQ_014', 'REQ_018', 'REQ_019', 'REQ_024']
+   :show_link_names: 

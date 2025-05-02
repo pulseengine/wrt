@@ -1,5 +1,5 @@
 Qualification Documents
-========================
+=======================
 
 .. image:: ../_static/icons/metrics_instrumentation.svg
    :width: 48px

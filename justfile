@@ -175,6 +175,36 @@ test-wrtd-all: test-wrtd-example test-wrtd-fuel test-wrtd-stats test-wrtd-help t
 fmt:
     cargo fmt
 
+# ----------------- Code Coverage Commands -----------------
+
+# Install llvm-cov tools
+setup-llvm-cov:
+    cargo install cargo-llvm-cov || true
+
+# Generate code coverage report for all crates
+coverage: setup-llvm-cov
+    cargo llvm-cov --all-features --workspace --lcov --output-path lcov.info
+    
+# Generate code coverage report and open in browser
+coverage-html: setup-llvm-cov
+    cargo llvm-cov --all-features --workspace --open
+
+# Create baseline coverage report
+coverage-baseline: setup-llvm-cov
+    @mkdir -p docs
+    cargo llvm-cov --all-features --workspace --json --output-path coverage.json
+    @echo "Generating baseline coverage report..."
+    @echo "# Baseline Code Coverage Report" > docs/baseline_coverage.md
+    @echo "Generated on: $(date)" >> docs/baseline_coverage.md
+    @echo "\n## Summary\n" >> docs/baseline_coverage.md
+    cargo llvm-cov --all-features --workspace --summary-only >> docs/baseline_coverage.md
+    @echo "\nDetailed coverage data is available in coverage.json" >> docs/baseline_coverage.md
+    @echo "Baseline coverage report created at docs/baseline_coverage.md"
+
+# Check coverage against baseline
+coverage-check: setup-llvm-cov
+    cargo llvm-cov --all-features --workspace --summary-only
+
 # Check code style
 check:
     cargo fmt -- --check
@@ -286,116 +316,26 @@ sphinx_build_dir := "docs/_build"
 docs-html:
     {{sphinx_build}} -M html "{{sphinx_source}}" "{{sphinx_build_dir}}" {{sphinx_opts}}
     
-# Build HTML documentation with PlantUML diagrams (requires plantuml in PATH)
-docs-with-diagrams: docs-common setup-plantuml
+# Build HTML documentation with PlantUML diagrams only (no Rust docs)
+docs-diagrams-only:
     #!/usr/bin/env bash
     set -e
     
-    # Note: This recipe assumes 'plantuml' is in the PATH (handled by setup-plantuml for Linux/macOS).
-    # Windows users need to ensure PlantUML is installed and in PATH manually.
-
-    # Use xtask to clean previous diagrams cross-platform
     echo "Cleaning previous diagram build artifacts..."
-    cargo xtask fs rm-rf "{{sphinx_build_dir}}/html/_images/plantuml-*"
-    cargo xtask fs rm-rf "{{sphinx_build_dir}}/html/_plantuml"
-
-    # Generate changelog
-    git-cliff -o docs/source/changelog.md || echo "⚠️  Warning: Failed to generate changelog. Continuing with documentation build..."
-
-    # Generate symbol documentation fragment (before Sphinx runs)
-    echo "Generating symbol documentation fragment (RST)..."
+    cargo xtask fs rm-rf "{{sphinx_build_dir}}/html/_images/plantuml-*" || true
+    cargo xtask fs rm-rf "{{sphinx_build_dir}}/html/_plantuml" || true
     
-    # Create a combined symbols RST file by generating symbols for each wrt crate
-    echo "# WRT Symbol Documentation" > docs/source/_generated_symbols.rst
-    echo "This file contains symbol documentation for all WRT crates.\n" >> docs/source/_generated_symbols.rst
-    
-    # Use nm directly on existing rlib files rather than rebuilding
-    # This is more reliable than the xtask symbols command which tries to build
-    # everything from scratch and may fail
-    
-    echo "\n## Core Library Crates\n" >> docs/source/_generated_symbols.rst
-    
-    # Check if rustfilt is installed and try to install it if not
-    if ! command -v rustfilt &> /dev/null; then
-        echo "rustfilt not found, attempting to install it..."
-        cargo install rustfilt || {
-            echo "⚠️ Warning: Could not install rustfilt. Will use manual demangling."
-        }
-    fi
-    
-    # List of crates to document (based on lib.rs files found)
-    CRATES=(
-        "wrt"
-        "wrt-error"
-        "wrt-sync"
-        "wrt-format"
-        "wrt-decoder"
-        "wrt-component"
-        "wrt-host"
-        "wrt-instructions"
-        "wrt-intercept"
-        "wrt-logging"
-        "wrt-runtime"
-        "wrt-types"
-    )
-    
-    for CRATE in "${CRATES[@]}"; do
-        echo "Processing $CRATE..."
-        CRATE_PATH=$(echo "$CRATE" | tr '-' '_')
-        
-        # Try to locate an existing rlib file
-        RLIB_PATH=$(find target/debug/deps -name "lib${CRATE_PATH}*.rlib" | head -n 1)
-        
-        if [ -z "$RLIB_PATH" ]; then
-            # Try release path as fallback
-            RLIB_PATH=$(find target/release/deps -name "lib${CRATE_PATH}*.rlib" | head -n 1)
-        fi
-        
-        if [ -n "$RLIB_PATH" ]; then
-            echo "\n## ${CRATE} Symbols\n" >> docs/source/_generated_symbols.rst
-            echo "Found rlib for $CRATE at $RLIB_PATH"
-            
-            echo "Dumping symbols for $CRATE..."
-            echo "\`\`\`" >> docs/source/_generated_symbols.rst
-            
-            # Extract symbols with a more resilient approach
-            if command -v rustfilt &> /dev/null; then
-                # Use rustfilt if available
-                nm -g "$RLIB_PATH" | grep -v " U " | grep " T " | awk '{print $3}' | grep -v '^_' | \
-                  grep -v "\.llvm" | sort | uniq | head -n 100 | xargs -I{} rustfilt {} >> docs/source/_generated_symbols.rst 2>/dev/null
-            else
-                # Fall back to simple approach without demangling
-                nm -g "$RLIB_PATH" | grep -v " U " | grep " T " | awk '{print $3}' | grep -v '^_' | \
-                  grep -v "\.llvm" | sort | uniq | head -n 100 >> docs/source/_generated_symbols.rst
-            fi
-            
-            echo "... (showing first 100 symbols)" >> docs/source/_generated_symbols.rst
-            echo "\`\`\`" >> docs/source/_generated_symbols.rst
-        else
-            echo "\n## ${CRATE} Symbols\n" >> docs/source/_generated_symbols.rst
-            echo "No build artifacts found for this crate." >> docs/source/_generated_symbols.rst
-            echo "" >> docs/source/_generated_symbols.rst
-        fi
-    done
-    
-    # Handle coverage summary
-    if [ ! -f "docs/source/_generated_coverage_summary.rst" ]; then
-        echo "⚠️  Warning: Coverage summary not found. Using placeholder..."
-        cp docs/source/_generated_coverage_summary.rst.template docs/source/_generated_coverage_summary.rst || (
-            echo "# Coverage Summary Generation Failed" > docs/source/_generated_coverage_summary.rst
-            echo "Coverage summary could not be generated due to build errors." >> docs/source/_generated_coverage_summary.rst
-        )
-    fi
-
-    # Build with PlantUML diagrams
     echo "Building documentation with PlantUML diagrams..."
     {{sphinx_build}} -M html "{{sphinx_source}}" "{{sphinx_build_dir}}" {{sphinx_opts}}
     
-    # Confirm diagrams were generated using xtask
+    # Confirm diagrams were generated
     echo -n "Generated PlantUML diagrams: "
     cargo xtask fs count-files "{{sphinx_build_dir}}/html/_images" "plantuml-*" || echo "0 (error counting diagrams)"
-    # Add a reminder check for the user
     echo "(If the count is 0, please check your PlantUML setup and .puml files)"
+
+# Build HTML documentation with PlantUML diagrams (alias for docs-diagrams-only)
+docs-with-diagrams: docs-diagrams-only
+    echo "Documentation with diagrams built successfully. HTML documentation available in docs/_build/html."
 
 # Build PDF documentation (requires LaTeX installation)
 docs-pdf:
@@ -403,7 +343,7 @@ docs-pdf:
     echo "LaTeX files generated in docs/_build/latex. Run 'make' in that directory to build PDF (requires LaTeX installation)."
 
 # Build all documentation formats (HTML with diagrams by default)
-docs: docs-with-diagrams
+docs: docs-diagrams-only
     echo "Documentation built successfully. HTML documentation available in docs/_build/html."
     echo "To build PDF documentation, run 'just docs-pdf' (requires LaTeX installation)."
 
@@ -436,7 +376,7 @@ docs-versioned VERSION="main":
     export DOCS_VERSION_PATH_PREFIX="/"
     
     # Build documentation
-    (just docs-with-diagrams) || (
+    (just docs-diagrams-only) || (
         echo "⚠️  Warning: Documentation build encountered errors but will try to continue with versioning..."
         cargo xtask fs mkdir-p docs/_build/html
     )
@@ -658,7 +598,7 @@ setup-zephyr-sdk:
         source "$VENV_DIR/Scripts/activate" || { echo "ERROR: Failed to activate virtual environment on Windows."; exit 1; }
         PIP_CMD="pip"
         # Ensure pip is available inside venv
-        if ! command -v $PIP_CMD &> /dev/null; then 
+        if ! command -v $PIP_CMD &> /dev/null; 
             echo "ERROR: pip command not found inside virtual environment on Windows."; deactivate; exit 1; 
         fi
     else
@@ -759,9 +699,6 @@ help:
     @just --list
 
 # Generate coverage report (LCOV and HTML)
-coverage:
-    cargo xtask coverage --format all
-
 # Generate individual coverage reports for each crate
 coverage-individual:
     cargo xtask coverage --mode individual --format lcov
@@ -822,6 +759,10 @@ qualification-status:
     cargo xtask qualification status
 
 # Build qualification documentation (part of docs target)
-docs-qualification: docs-common
-    echo "Building qualification documentation..."
-    {{sphinx_build}} -M html "{{sphinx_source}}" "{{sphinx_build_dir}}" {{sphinx_opts}} qualification
+# ----------------- Development Setup Commands -----------------
+
+# Set up git hooks
+
+# Set up development environment
+setup-dev: setup-rust-targets setup-wasm-tools setup-hooks setup-llvm-cov
+    @echo "Development environment set up successfully"

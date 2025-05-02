@@ -75,15 +75,45 @@ default = ["minimal", "alloc", "std"]
 # Minimal feature set
 minimal = ["dep:anyhow", "dep:log", "wrt-types/std", "wrt-decoder/minimal"]
 # Full std feature
-std = ["minimal", "dep:wasmparser", "alloc", "wrt-types/std", "wrt-decoder/std", "wrt-instructions/std"]
+std = ["minimal", "dep:wasmparser", "alloc", 
+       "wrt-error/std", 
+       "wrt-sync/std", 
+       "wrt-format/std", 
+       "wrt-types/std", 
+       "wrt-decoder/std", 
+       "wrt-runtime/std", 
+       "wrt-logging/std", 
+       "wrt-instructions/std"]
 # alloc feature for heap allocation
-alloc = [] # Tentatively enable with alloc
+alloc = ["wrt-error/alloc", 
+         "wrt-sync/alloc", 
+         "wrt-format/alloc", 
+         "wrt-types/alloc", 
+         "wrt-decoder/alloc", 
+         "wrt-runtime/alloc", 
+         "wrt-logging/alloc", 
+         "wrt-instructions/alloc"]
 # no_std support
-no_std = ["wrt-types/no_std", "wrt-decoder/no_std", "wrt-instructions/no_std"]
+no_std = ["wrt-error/no_std", 
+          "wrt-sync/no_std", 
+          "wrt-format/no_std", 
+          "wrt-types/no_std", 
+          "wrt-decoder/no_std", 
+          "wrt-runtime/no_std", 
+          "wrt-logging/no_std", 
+          "wrt-instructions/no_std"]
 # Optimization for non-safety-critical paths
-optimize = ["wrt-types/optimize", "wrt-decoder/optimize"]
+optimize = ["wrt-types/optimize", 
+            "wrt-decoder/optimize", 
+            "wrt-format/optimize", 
+            "wrt-runtime/optimize", 
+            "wrt-instructions/optimize"]
 # Safety features for ASIL-B compliance
-safety = ["wrt-types/safety", "wrt-decoder/safety"]
+safety = ["wrt-types/safety", 
+          "wrt-decoder/safety", 
+          "wrt-format/safety", 
+          "wrt-runtime/safety", 
+          "wrt-instructions/safety"]
 # Optional features dependent on std
 serialization = ["dep:serde", "dep:bincode", "dep:serde_json", "alloc", "std"]
 wasi = ["dep:wasi-common", "dep:wasi-cap-std-sync", "dep:cap-std", "dep:wasi", "std"]

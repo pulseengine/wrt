@@ -908,9 +908,9 @@ impl InstructionExecutor for Instruction {
 
     fn execute_with_frame_idx(
         &self,
-        stack: &mut dyn StackBehavior,
-        frame_idx: usize,
-        engine: &mut StacklessEngine,
+        _stack: &mut dyn StackBehavior,
+        _frame_idx: usize,
+        _engine: &mut StacklessEngine,
     ) -> Result<ControlFlow, crate::error::Error> {
         // This implementation is no longer needed as stackless.rs directly uses execute
         // with a cloned frame, avoiding the borrow checker issues

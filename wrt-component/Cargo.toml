@@ -15,10 +15,10 @@ wrt-format = { path = "../wrt-format", version = "0.2.0" }
 wrt-host = { path = "../wrt-host", version = "0.2.0" }
 wrt-types = { path = "../wrt-types", version = "0.2.0" }
 wrt-intercept = { path = "../wrt-intercept", version = "0.2.0" }
+wrt-decoder = { path = "../wrt-decoder", version = "0.2.0" }
 
 # Optional dependencies
 log = { version = "0.4", optional = true }
-chrono = { version = "0.4", optional = true }
 futures = { version = "0.3", optional = true }
 
 [dev-dependencies]
@@ -35,7 +35,7 @@ std = [
     "wrt-host/std",
     "wrt-types/std",
     "wrt-intercept/std",
-    "chrono",
+    "wrt-decoder/std",
     "log",
 ]
 no_std = [
@@ -43,7 +43,8 @@ no_std = [
     "wrt-format/no_std",
     "wrt-host/no_std",
     "wrt-types/no_std",
-    "wrt-intercept/no_std"
+    "wrt-intercept/no_std",
+    "wrt-decoder/no_std"
 ]
 kani = ["wrt-host/kani", "wrt-intercept/kani"]
 

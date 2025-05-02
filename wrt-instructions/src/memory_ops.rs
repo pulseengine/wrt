@@ -296,17 +296,21 @@ impl MemoryLoad {
             Value::I32(a) => *a as u32,
             Value::I64(a) => *a as u32, // Truncate to u32 as per WebAssembly spec
             _ => {
-                return Err(Error::new(kinds::ValidationError(
+                return Err(Error::new(
+                    wrt_error::ErrorCategory::Validation,
+                    wrt_error::codes::VALIDATION_ERROR,
                     "Invalid address type for memory load".to_string(),
-                )))
+                ))
             }
         };
 
         // Calculate effective address
         let effective_addr = addr.checked_add(self.offset).ok_or_else(|| {
-            Error::new(kinds::ValidationError(
+            Error::new(
+                wrt_error::ErrorCategory::Validation,
+                wrt_error::codes::VALIDATION_ERROR,
                 "Memory address overflow".to_string(),
-            ))
+            )
         })?;
 
         // Check alignment
@@ -393,10 +397,14 @@ impl MemoryLoad {
             }
 
             // Invalid combinations
-            _ => Err(Error::new(kinds::ValidationError(format!(
-                "Invalid memory load: type {:?} with width {}",
-                self.value_type, self.width
-            )))),
+            _ => Err(Error::new(
+                wrt_error::ErrorCategory::Validation,
+                wrt_error::codes::VALIDATION_ERROR,
+                format!(
+                    "Invalid memory load: type {:?} with width {}",
+                    self.value_type, self.width
+                ),
+            )),
         }
     }
 }
@@ -594,7 +602,7 @@ impl MemoryStore {
             Value::I32(a) => *a as u32,
             Value::I64(a) => *a as u32, // Truncate to u32 as per WebAssembly spec
             _ => {
-                return Err(Error::new(kinds::ValidationError(
+                return Err(Error::from(kinds::validation_error(
                     "Invalid address type for memory store".to_string(),
                 )))
             }
@@ -602,7 +610,7 @@ impl MemoryStore {
 
         // Calculate effective address
         let effective_addr = addr.checked_add(self.offset).ok_or_else(|| {
-            Error::new(kinds::ValidationError(
+            Error::from(kinds::validation_error(
                 "Memory address overflow".to_string(),
             ))
         })?;
@@ -655,7 +663,7 @@ impl MemoryStore {
             }
 
             // Type mismatch or invalid combinations
-            _ => Err(Error::new(kinds::ValidationError(format!(
+            _ => Err(Error::from(kinds::validation_error(format!(
                 "Invalid memory store: expected {:?} with width {}, got {:?}",
                 self.value_type, self.width, value
             )))),

@@ -1,6 +1,6 @@
-===================================
+=================
 Safety Test Cases
-===================================
+=================
 
 .. image:: _static/icons/safety_features.svg
    :width: 64px
@@ -14,7 +14,7 @@ This document defines the test cases for safety, resource management, and verifi
    :depth: 2
 
 Installation Tests
----------------
+------------------
 
 .. test:: Installation Validation
    :id: T_INSTALL_001
@@ -31,17 +31,17 @@ Installation Tests
    Tests that verify the runtime installation is valid.
 
 Build Tests
---------
+-----------
 
-.. test:: Clean Build
-   :id: T_BUILD_001
+.. test:: Clean Build Updated
+   :id: T_BUILD_002
    :status: implemented
    :links: REQ_BUILD_001, IMPL_CI_001
    
    Test that verifies clean build environment functionality.
 
 Environment Tests
--------------
+-----------------
 
 .. test:: Environment Variables
    :id: T_ENV_VARS_001
@@ -51,7 +51,7 @@ Environment Tests
    Test that verifies environment variables are correctly used.
 
 Memory Safety Tests
----------------
+-------------------
 
 .. test:: Memory Bounds
    :id: T_MEM_BOUNDS_001
@@ -82,10 +82,10 @@ Memory Safety Tests
    Test suite for WebAssembly linear memory safety features.
 
 Resource Management Tests
----------------------
+-------------------------
 
-.. test:: Resource Limits
-   :id: T_RESOURCE_001
+.. test:: Resource Limits Rev3
+   :id: T_RESOURCE_003
    :status: implemented
    :links: REQ_RESOURCE_001, IMPL_LIMITS_001
    
@@ -120,7 +120,7 @@ Resource Management Tests
    Test that verifies fuel-based execution limiting functionality.
 
 Error Handling Tests
-----------------
+--------------------
 
 .. test:: Panic Handling
    :id: T_PANIC_001
@@ -137,7 +137,7 @@ Error Handling Tests
    Test that verifies engine error handling and reporting.
 
 Verification Tests
---------------
+------------------
 
 .. test:: Collection Validation
    :id: T_COLL_VALID_001
@@ -161,7 +161,7 @@ Verification Tests
    Test that verifies engine state verification for critical operations.
 
 WebAssembly Tests
--------------
+-----------------
 
 .. test:: Module Validation
    :id: T_MODULE_VALID_001
@@ -171,7 +171,7 @@ WebAssembly Tests
    Test that verifies WebAssembly module validation functionality.
 
 Performance Tests
--------------
+-----------------
 
 .. test:: Batch Operations
    :id: T_BATCH_OPS_001
@@ -181,7 +181,7 @@ Performance Tests
    Test that verifies batch operations functionality.
 
 Quality Assurance Tests
--------------------
+-----------------------
 
 .. test:: Fuzzing
    :id: T_FUZZ_001

@@ -19,9 +19,9 @@ default = [
 # Standard library support
 std = ["wrt-error/std", "log"]
 # Allocator support for no_std environments
-alloc = ["dep:alloc"]
-# No standard library support
-no_std = ["wrt-error/no_std"]
+alloc = ["dep:alloc", "wrt-error/alloc"]
+# No standard library support (includes alloc since most no_std code needs allocation)
+no_std = ["wrt-error/no_std", "alloc"]
 # Optional feature to bypass some safety checks in performance-critical paths
 optimize = []
 # Additional safety features for ASIL-B compliance
@@ -34,7 +34,7 @@ component-model-core = []  # Basic component model support
 component-model-values = []  # 🪙 Experimental values
 component-model-resources = []  # Resource types
 component-model-fixed-lists = []  # 🔧 Fixed-length lists
-component-model-namespaces = []  # �� Nested namespaces
+component-model-namespaces = []  #  Nested namespaces
 component-model-async = []  # 🚝 Async value types and operations
 component-model-error-context = []  # 📝 Error context types and operations
 component-model-threading = []  # 🧵 Threading operations

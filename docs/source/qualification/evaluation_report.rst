@@ -1,5 +1,5 @@
 Evaluation Report
-================
+=================
 
 .. note::
    This document is a placeholder. It will be completed as part of the qualification process.
@@ -7,7 +7,7 @@ Evaluation Report
 This document will contain the evaluation of all hazardous events that can happen and the counter-measures implemented to mitigate these hazards.
 
 Planned Content
---------------
+---------------
 
 1. Introduction and scope
 2. Hazard identification methodology

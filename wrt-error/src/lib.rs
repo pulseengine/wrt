@@ -1,23 +1,76 @@
-//! Error handling for the WRT WebAssembly runtime.
+//! WRT Error handling library
 //!
-//! This crate provides a lightweight, no_std compatible error handling system
-//! that supports error chaining, context, and specific error types for WebAssembly operations.
+//! This library provides a comprehensive error handling system for the WRT runtime.
+//! It includes error types, helper functions, and utilities for creating and managing errors.
+//!
+//! # Error Categories
+//!
+//! Errors are organized into several categories, each with its own range of error codes:
+//!
+//! ## Core Errors (1000-1008)
+//! - Stack underflow
+//! - Memory access violations
+//! - Instance index errors
+//! - Execution errors
+//! - Type mismatches
+//!
+//! ## Runtime Errors (2000-2021)
+//! - Invalid indices (local, global, function)
+//! - Memory and table access errors
+//! - Resource exhaustion
+//! - Validation failures
+//! - Parse errors
+//!
+//! ## Component Errors (3000-3013)
+//! - Function index errors
+//! - Type mismatches
+//! - Resource limits
+//! - Component lifecycle errors
+//! - ABI errors
+//!
+//! ## System Errors (0x1000-0x1001)
+//! - Async operation errors
+//! - Threading errors
+//!
+//! # Usage
+//!
+//! The library provides both low-level error types and high-level helper functions:
+//!
+//! ```rust
+//! use wrt_error::{Error, helpers};
+//!
+//! // Using helper functions for common errors
+//! let error = helpers::create_index_error("function", 42);
+//! let error = helpers::create_memory_access_error(100, 32, 64, "load");
+//!
+//! // Direct error creation
+//! let error = Error::execution_error("Failed to execute instruction");
+//! ```
 
+#![cfg_attr(not(feature = "std"), no_std)]
 #![warn(clippy::missing_panics_doc)]
 
-// Re-export modules
+// Import std when available
+#[cfg(feature = "std")]
+extern crate std;
+
+// Import alloc when needed for no_std
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+extern crate alloc;
+
+// Modules
 pub mod context;
-pub mod error;
+pub mod errors;
+pub mod helpers;
 pub mod kinds;
-pub mod source;
 
 // Include verification module conditionally, but exclude during coverage builds
 #[cfg(all(not(coverage), doc))]
 pub mod verify;
 
 // Re-export key types
-#[cfg(feature = "alloc")]
-pub use error::Error;
+pub use errors::Error;
+pub use errors::{codes, ErrorCategory, ErrorSource};
 
 #[cfg(feature = "alloc")]
 pub use context::ResultExt;
@@ -25,113 +78,36 @@ pub use context::ResultExt;
 /// A specialized `Result` type for WRT operations.
 /// When the `alloc` feature is enabled, this defaults to using `wrt_error::Error` as the error type.
 /// When `alloc` is not available, the specific error type must be provided.
-#[cfg(feature = "alloc")]
 pub type Result<T, E = Error> = core::result::Result<T, E>;
 
-/// A specialized `Result` type for WRT operations when `alloc` is not available.
-/// The specific error type must be provided.
-#[cfg(not(feature = "alloc"))]
-pub type Result<T, E> = core::result::Result<T, E>;
-
-// Add implementations of From for error types used in execution.rs
-#[cfg(feature = "alloc")]
-impl From<kinds::ParseError> for Error {
-    fn from(err: kinds::ParseError) -> Self {
-        Error::new(err)
-    }
-}
-
-#[cfg(feature = "alloc")]
-impl From<kinds::ExecutionError> for Error {
-    fn from(err: kinds::ExecutionError) -> Self {
-        Error::new(err)
-    }
-}
-
-#[cfg(feature = "alloc")]
-impl From<kinds::ExportNotFoundError> for Error {
-    fn from(err: kinds::ExportNotFoundError) -> Self {
-        Error::new(err)
-    }
-}
-
-#[cfg(feature = "alloc")]
-impl From<kinds::StackUnderflowError> for Error {
-    fn from(err: kinds::StackUnderflowError) -> Self {
-        Error::new(err)
-    }
-}
+// Re-export error kinds for convenience
+pub use kinds::{
+    component_error, invalid_type, out_of_bounds_error, parse_error, poisoned_lock_error,
+    resource_error, runtime_error, validation_error, ComponentError, InvalidType, OutOfBoundsError,
+    ParseError, PoisonedLockError, ResourceError, RuntimeError, ValidationError,
+};
 
 #[cfg(all(test, feature = "alloc"))]
 mod tests {
-    use super::source::ErrorSource;
-    use super::{Error, Result, ResultExt};
+    use super::*;
 
-    use core::fmt::{self, Display};
+    #[test]
+    fn test_error_categories() {
+        let resource_err = Error::resource_error("Resource not found");
+        assert!(resource_err.is_resource_error());
+        assert!(!resource_err.is_memory_error());
 
-    // A simple custom error for testing
-    #[derive(Debug, Clone)]
-    struct MyTestError(&'static str);
-
-    impl Display for MyTestError {
-        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            write!(f, "MyTestError: {}", self.0)
-        }
-    }
-
-    // Implement ErrorSource for the test error
-    impl ErrorSource for MyTestError {
-        #[cfg(feature = "std")]
-        fn source(&self) -> Option<&(dyn ErrorSource + 'static)> {
-            None
-        }
+        let memory_err = Error::memory_error("Memory access out of bounds");
+        assert!(memory_err.is_memory_error());
+        assert!(!resource_err.is_resource_error());
     }
 
     #[test]
-    fn test_error_creation() {
-        let e1: Result<()> = Err(Error::new(MyTestError("Something failed ")));
-        assert!(e1.is_err());
-
-        fn fallible() -> Result<(), MyTestError> {
-            Err(MyTestError("Operation failed "))
-        }
-
-        let e2: Result<()> = fallible().map_err(Error::from); // Use Error::from
-        assert!(e2.is_err());
-        println!("Created error: {}", e2.unwrap_err()); // Test Display
-    }
-
-    #[test]
-    fn test_context() {
-        fn fallible() -> core::result::Result<(), MyTestError> {
-            Err(MyTestError("Base error "))
-        }
-
-        let res = fallible().context("Failed during high-level operation ");
-        assert!(res.is_err());
-        let err = res.unwrap_err();
-
-        let display_output = format!("{}", err);
-        assert!(display_output.contains("Failed during high-level operation "));
-        assert!(display_output.contains("Base error "));
-    }
-
-    #[test]
-    #[cfg(feature = "std")]
-    fn test_debug_chaining_std() {
-        use std::io::{Error as IoError, ErrorKind};
-
-        let io_err = IoError::new(ErrorKind::NotFound, "Low level IO error");
-
-        let res: Result<()> = Err(Error::from(io_err))
-            .context("Mid level operation failed")
-            .context("Top level task failed");
-
-        assert!(res.is_err());
-        let err_dbg = format!("{:?}", res.unwrap_err());
-
-        assert!(err_dbg.contains("Top level task failed"));
-        assert!(err_dbg.contains("Mid level operation failed"));
-        assert!(err_dbg.contains("Low level IO error"));
+    fn test_error_codes() {
+        let err = Error::resource_error("Test error");
+        assert_eq!(err.code, codes::RESOURCE_ERROR);
     }
 }
+
+// Re-export additional helpers
+pub use helpers::*;

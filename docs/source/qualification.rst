@@ -1,18 +1,21 @@
 Qualification Plan
-================
+==================
 
-Overview
---------
+This document outlines the plan for creating qualification materials for safety-critical certification of the WRT (WebAssembly Runtime) components. The qualification materials are designed to meet requirements for safety standards such as ISO-26262, IEC-61508, and IEC-62304.
 
-This qualification plan outlines the activities needed to implement a comprehensive qualification framework for the WebAssembly Runtime (WRT) project aligned with the Ferrocene qualification approach. The plan identifies which qualification materials are already in place, which need to be implemented, and how to integrate them within the existing codebase structure.
+The qualification process is important for:
 
-Qualification Materials Assessment
----------------------------------
+1. Ensuring that WRT components can be used in safety-critical systems
+2. Providing evidence of reliability and robustness
+3. Supporting certification efforts for systems using WRT
 
-Based on the Ferrocene qualification materials (`Ferrocene Documentation <https://public-docs.ferrocene.dev/main/index.html>`_), we've assessed our current implementation status:
+Current Status
+--------------
+
+The following table summarizes the current status of qualification materials:
 
 .. list-table:: Qualification Materials Status
-   :widths: 30 15 55
+   :widths: 30 20 50
    :header-rows: 1
 
    * - Qualification Material
@@ -47,10 +50,10 @@ Based on the Ferrocene qualification materials (`Ferrocene Documentation <https:
      - Defined in :doc:`requirements`
 
 Implementation Requirements
---------------------------
+---------------------------
 
 1. Evaluation Plan Enhancements
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. spec:: Evaluation Plan Enhancement
    :id: QUAL_001
@@ -68,7 +71,7 @@ Implementation Requirements
      - Detailed activities breakdown for qualification
 
 2. Evaluation Report
-^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^
 
 .. spec:: Evaluation Report Implementation
    :id: QUAL_002
@@ -86,7 +89,7 @@ Implementation Requirements
      - Safety assessment
 
 3. Complete Qualification Plan
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. spec:: Qualification Plan Completion
    :id: QUAL_003
@@ -103,7 +106,7 @@ Implementation Requirements
    * Define testing approach for IEC-61508 and IEC-62304 compliance
 
 4. Qualification Report
-^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^
 
 .. spec:: Qualification Report Creation
    :id: QUAL_004
@@ -120,7 +123,7 @@ Implementation Requirements
    * Document validation approaches for each qualification activity
 
 5. Complete Traceability Matrix
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. spec:: Traceability Matrix Enhancement
    :id: QUAL_005
@@ -138,7 +141,7 @@ Implementation Requirements
    * Integrate with Sphinx for matrix generation
 
 6. Document List
-^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^
 
 .. spec:: Document List Creation
    :id: QUAL_006
@@ -154,7 +157,7 @@ Implementation Requirements
    * Add industry standards references (ISO-26262, IEC-61508, IEC-62304)
 
 7. Internal Procedures Enhancement
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. spec:: Internal Procedures Documentation
    :id: QUAL_007
@@ -172,7 +175,7 @@ Implementation Requirements
    * Create verification and validation procedures
 
 8. Technical Report
-^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^
 
 .. spec:: Technical Report Creation
    :id: QUAL_008
@@ -190,10 +193,10 @@ Implementation Requirements
    * Summarize qualification evidence
 
 Integration with Existing Tools
-------------------------------
+-------------------------------
 
 xtask Integration
-^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^
 
 The qualification process will be integrated with the existing xtask framework:
 
@@ -225,7 +228,7 @@ The qualification process will be integrated with the existing xtask framework:
    }
 
 justfile Integration
-^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^
 
 Add qualification-specific recipes to the justfile:
 
@@ -245,7 +248,7 @@ Add qualification-specific recipes to the justfile:
        cargo xtask qualification report-status
 
 Implementation Schedule
-----------------------
+-----------------------
 
 1. **Phase 1: Documentation Structure**
    
@@ -272,7 +275,7 @@ Implementation Schedule
    * Prepare final qualification package
 
 Crate-Specific Qualification Activities
---------------------------------------
+---------------------------------------
 
 Each crate in the WRT ecosystem requires specific qualification activities:
 
@@ -295,7 +298,7 @@ Type system qualification:
 * Formal verification of type conversions
 
 wrt-component
-^^^^^^^^^^^^
+^^^^^^^^^^^^^
 
 Component model qualification:
 
@@ -313,7 +316,7 @@ Command-line interface qualification:
 * Performance validation
 
 Conclusion
----------
+----------
 
 This qualification plan provides a roadmap for implementing the necessary qualification materials to achieve certification alignment with standards like ISO-26262 and IEC-61508. By following this plan, we will systematically extend our existing documentation and testing infrastructure to support formal qualification activities.
 

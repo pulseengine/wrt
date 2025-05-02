@@ -4,6 +4,13 @@ use crate::{
     Error, Value,
 };
 
+// Import Vec based on feature flags
+#[cfg(feature = "std")]
+use std::vec::Vec;
+
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+use alloc::vec::Vec;
+
 struct SimpleContext {
     stack: Vec<Value>,
 }

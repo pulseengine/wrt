@@ -1,5 +1,5 @@
 use crate::prelude::*;
-use wrt_error::{kinds, Error, Result};
+use crate::{Error, Result};
 use wrt_format::binary;
 use wrt_format::component::ValType;
 
@@ -37,15 +37,13 @@ pub fn is_valid_integrity(integrity: &str) -> bool {
 /// Check if the binary is a WebAssembly component
 pub fn is_component(bytes: &[u8]) -> Result<bool> {
     if bytes.len() < 8 {
-        return Err(Error::new(kinds::ParseError(
-            "Binary too short for WebAssembly header".to_string(),
-        )));
+        return Err(
+            Error::parse_error("Binary too short for WebAssembly header".to_string()).into(),
+        );
     }
 
     if bytes[0..4] != binary::WASM_MAGIC {
-        return Err(Error::new(kinds::ParseError(
-            "Invalid WebAssembly magic bytes".to_string(),
-        )));
+        return Err(Error::parse_error("Invalid WebAssembly magic bytes".to_string()).into());
     }
 
     // Check for component layer
@@ -55,9 +53,10 @@ pub fn is_component(bytes: &[u8]) -> Result<bool> {
 /// Parse a ValType from binary format
 pub fn parse_val_type(bytes: &[u8], offset: usize) -> Result<(ValType, usize)> {
     if offset >= bytes.len() {
-        return Err(Error::new(kinds::ParseError(
+        return Err(Error::parse_error(
             "Unexpected end of binary when parsing ValType".to_string(),
-        )));
+        )
+        .into());
     }
 
     let val_type_byte = bytes[offset];
@@ -76,12 +75,39 @@ pub fn parse_val_type(bytes: &[u8], offset: usize) -> Result<(ValType, usize)> {
         0x0B => ValType::Char,
         0x0C => ValType::String,
         _ => {
-            return Err(Error::new(kinds::ParseError(format!(
-                "Unknown ValType byte: {:#x}",
-                val_type_byte
-            ))));
+            return Err(
+                Error::parse_error(format!("Unknown ValType byte: {:#x}", val_type_byte)).into(),
+            );
         }
     };
 
     Ok((val_type, 1))
+}
+
+pub fn invalid_component_format(message: &str) -> Error {
+    Error::validation_error(message.to_string())
+}
+
+pub fn invalid_component_data(message: &str) -> Error {
+    Error::validation_error(message.to_string())
+}
+
+pub fn invalid_component_section(message: &str) -> Error {
+    Error::validation_error(message.to_string())
+}
+
+pub fn invalid_component_value(message: &str) -> Error {
+    Error::validation_error(message.to_string())
+}
+
+pub fn parse_error(message: &str) -> Error {
+    Error::parse_error(message.to_string())
+}
+
+pub fn parse_error_with_context(message: &str, context: &str) -> Error {
+    Error::parse_error(format!("{}: {}", message, context))
+}
+
+pub fn parse_error_with_position(message: &str, position: usize) -> Error {
+    Error::parse_error(format!("{} at position {}", message, position))
 }

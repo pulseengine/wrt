@@ -5,7 +5,7 @@
 // - threading.join: Join a thread (wait for its completion)
 // - threading.sync: Create a synchronization primitive
 
-use wrt_error::{Error, Result};
+use wrt_error::{kinds::ThreadingError, Error, Result};
 use wrt_types::builtin::BuiltinType;
 use wrt_types::component_value::ComponentValue;
 
@@ -185,9 +185,9 @@ impl ThreadManager {
     pub fn join(&self, thread_id: ThreadId) -> Result<Vec<ComponentValue>> {
         // Find the thread
         let mut threads = self.threads.write().unwrap();
-        let thread = threads
-            .get_mut(&thread_id)
-            .ok_or_else(|| Error::new(format!("Invalid thread ID: {}", thread_id)))?;
+        let thread = threads.get_mut(&thread_id).ok_or_else(|| {
+            Error::new(ThreadingError(format!("Invalid thread ID: {}", thread_id)))
+        })?;
 
         // Check if thread is already joined
         if thread.handle.is_none() {
@@ -197,12 +197,10 @@ impl ThreadManager {
             match state {
                 ThreadState::Completed => {
                     // Return the cached result
-                    let result = thread
-                        .result
-                        .read()
-                        .unwrap()
-                        .clone()
-                        .ok_or_else(|| Error::new("Thread result unavailable"))?;
+                    let result =
+                        thread.result.read().unwrap().clone().ok_or_else(|| {
+                            Error::new(ThreadingError("Thread result unavailable"))
+                        })?;
                     Ok(result)
                 }
                 ThreadState::Error => {
@@ -213,11 +211,13 @@ impl ThreadManager {
                         .unwrap()
                         .clone()
                         .unwrap_or_else(|| "Unknown thread error".to_string());
-                    Err(Error::new(err_msg))
+                    Err(Error::new(ThreadingError(err_msg)))
                 }
                 ThreadState::Running => {
                     // This shouldn't happen if handle is None
-                    Err(Error::new("Thread is still running but handle is missing"))
+                    Err(Error::new(ThreadingError(
+                        "Thread is still running but handle is missing",
+                    )))
                 }
             }
         } else {
@@ -225,7 +225,7 @@ impl ThreadManager {
             let handle = thread
                 .handle
                 .take()
-                .ok_or_else(|| Error::new("Thread handle unavailable"))?;
+                .ok_or_else(|| Error::new(ThreadingError("Thread handle unavailable")))?;
 
             // Join the thread
             match handle.join() {
@@ -234,7 +234,9 @@ impl ThreadManager {
                     // Thread panicked
                     *thread.state.write().unwrap() = ThreadState::Error;
                     *thread.error.write().unwrap() = Some("Thread panicked".to_string());
-                    Err(Error::new("Thread panicked during execution"))
+                    Err(Error::new(ThreadingError(
+                        "Thread panicked during execution",
+                    )))
                 }
             }
         }
@@ -252,9 +254,9 @@ impl ThreadManager {
     pub fn is_thread_completed(&self, thread_id: ThreadId) -> Result<bool> {
         // Find the thread
         let threads = self.threads.read().unwrap();
-        let thread = threads
-            .get(&thread_id)
-            .ok_or_else(|| Error::new(format!("Invalid thread ID: {}", thread_id)))?;
+        let thread = threads.get(&thread_id).ok_or_else(|| {
+            Error::new(ThreadingError(format!("Invalid thread ID: {}", thread_id)))
+        })?;
 
         // Check the state
         let state = *thread.state.read().unwrap();
@@ -345,8 +347,14 @@ impl ThreadManager {
 
                 Ok(previous)
             }
-            Some(_) => Err(Error::new(format!("Sync ID {} is not a mutex", sync_id))),
-            None => Err(Error::new(format!("Invalid sync ID: {}", sync_id))),
+            Some(_) => Err(Error::new(ThreadingError(format!(
+                "Sync ID {} is not a mutex",
+                sync_id
+            )))),
+            None => Err(Error::new(ThreadingError(format!(
+                "Invalid sync ID: {}",
+                sync_id
+            )))),
         }
     }
 
@@ -381,11 +389,14 @@ impl ThreadManager {
                 // Return the data
                 Ok(guard.clone())
             }
-            Some(_) => Err(Error::new(format!(
+            Some(_) => Err(Error::new(ThreadingError(format!(
                 "Sync ID {} is not a condition variable",
                 sync_id
-            ))),
-            None => Err(Error::new(format!("Invalid sync ID: {}", sync_id))),
+            )))),
+            None => Err(Error::new(ThreadingError(format!(
+                "Invalid sync ID: {}",
+                sync_id
+            )))),
         }
     }
 
@@ -421,11 +432,14 @@ impl ThreadManager {
 
                 Ok(previous)
             }
-            Some(_) => Err(Error::new(format!(
+            Some(_) => Err(Error::new(ThreadingError(format!(
                 "Sync ID {} is not a condition variable",
                 sync_id
-            ))),
-            None => Err(Error::new(format!("Invalid sync ID: {}", sync_id))),
+            )))),
+            None => Err(Error::new(ThreadingError(format!(
+                "Invalid sync ID: {}",
+                sync_id
+            )))),
         }
     }
 
@@ -450,11 +464,14 @@ impl ThreadManager {
                 // Return a clone of the data
                 Ok(guard.clone())
             }
-            Some(_) => Err(Error::new(format!(
+            Some(_) => Err(Error::new(ThreadingError(format!(
                 "Sync ID {} is not a read-write lock",
                 sync_id
-            ))),
-            None => Err(Error::new(format!("Invalid sync ID: {}", sync_id))),
+            )))),
+            None => Err(Error::new(ThreadingError(format!(
+                "Invalid sync ID: {}",
+                sync_id
+            )))),
         }
     }
 
@@ -487,11 +504,14 @@ impl ThreadManager {
 
                 Ok(previous)
             }
-            Some(_) => Err(Error::new(format!(
+            Some(_) => Err(Error::new(ThreadingError(format!(
                 "Sync ID {} is not a read-write lock",
                 sync_id
-            ))),
-            None => Err(Error::new(format!("Invalid sync ID: {}", sync_id))),
+            )))),
+            None => Err(Error::new(ThreadingError(format!(
+                "Invalid sync ID: {}",
+                sync_id
+            )))),
         }
     }
 }
@@ -536,16 +556,18 @@ impl BuiltinHandler for ThreadingSpawnHandler {
     fn execute(&self, args: &[ComponentValue]) -> Result<Vec<ComponentValue>> {
         // Validate arguments
         if args.len() < 1 {
-            return Err(Error::new("threading.spawn requires at least 1 argument"));
+            return Err(Error::new(ThreadingError(
+                "threading.spawn requires at least 1 argument",
+            )));
         }
 
         // Extract function ID
         let function_id = match args[0] {
             ComponentValue::U32(id) => id,
             _ => {
-                return Err(Error::new(
+                return Err(Error::new(ThreadingError(
                     "threading.spawn first argument must be a function ID",
-                ))
+                )));
             }
         };
 
@@ -600,13 +622,19 @@ impl BuiltinHandler for ThreadingJoinHandler {
     fn execute(&self, args: &[ComponentValue]) -> Result<Vec<ComponentValue>> {
         // Validate arguments
         if args.len() != 1 {
-            return Err(Error::new("threading.join requires exactly 1 argument"));
+            return Err(Error::new(ThreadingError(
+                "threading.join requires exactly 1 argument",
+            )));
         }
 
         // Extract thread ID
         let thread_id = match args[0] {
             ComponentValue::U64(id) => id,
-            _ => return Err(Error::new("threading.join argument must be a thread ID")),
+            _ => {
+                return Err(Error::new(ThreadingError(
+                    "threading.join argument must be a thread ID",
+                )))
+            }
         };
 
         // Join the thread
@@ -652,18 +680,26 @@ impl BuiltinHandler for ThreadingSyncHandler {
     fn execute(&self, args: &[ComponentValue]) -> Result<Vec<ComponentValue>> {
         // Check if we're in no_std mode (should never happen if properly feature-gated)
         if self.no_std_mode.load(Ordering::Relaxed) {
-            return Err(Error::new("Threading is not supported in no_std mode"));
+            return Err(Error::new(ThreadingError(
+                "Threading is not supported in no_std mode",
+            )));
         }
 
         // Validate arguments
         if args.len() < 1 {
-            return Err(Error::new("threading.sync requires at least 1 argument"));
+            return Err(Error::new(ThreadingError(
+                "threading.sync requires at least 1 argument",
+            )));
         }
 
         // Extract operation type
         let op_type = match &args[0] {
             ComponentValue::String(s) => s.as_str(),
-            _ => return Err(Error::new("threading.sync first argument must be a string")),
+            _ => {
+                return Err(Error::new(ThreadingError(
+                    "threading.sync first argument must be a string",
+                )))
+            }
         };
 
         match op_type {
@@ -675,15 +711,15 @@ impl BuiltinHandler for ThreadingSyncHandler {
             "lock-mutex" => {
                 // Lock a mutex
                 if args.len() < 2 {
-                    return Err(Error::new("lock-mutex requires a mutex ID"));
+                    return Err(Error::new(ThreadingError("lock-mutex requires a mutex ID")));
                 }
 
                 let mutex_id = match args[1] {
                     ComponentValue::U64(id) => id,
                     _ => {
-                        return Err(Error::new(
+                        return Err(Error::new(ThreadingError(
                             "lock-mutex requires a mutex ID as second argument",
-                        ))
+                        )));
                     }
                 };
 
@@ -708,15 +744,17 @@ impl BuiltinHandler for ThreadingSyncHandler {
             "wait-condvar" => {
                 // Wait on a condition variable
                 if args.len() < 2 {
-                    return Err(Error::new("wait-condvar requires a condvar ID"));
+                    return Err(Error::new(ThreadingError(
+                        "wait-condvar requires a condvar ID",
+                    )));
                 }
 
                 let condvar_id = match args[1] {
                     ComponentValue::U64(id) => id,
                     _ => {
-                        return Err(Error::new(
+                        return Err(Error::new(ThreadingError(
                             "wait-condvar requires a condvar ID as second argument",
-                        ))
+                        )));
                     }
                 };
 
@@ -732,15 +770,17 @@ impl BuiltinHandler for ThreadingSyncHandler {
             "signal-condvar" => {
                 // Signal a condition variable
                 if args.len() < 2 {
-                    return Err(Error::new("signal-condvar requires a condvar ID"));
+                    return Err(Error::new(ThreadingError(
+                        "signal-condvar requires a condvar ID",
+                    )));
                 }
 
                 let condvar_id = match args[1] {
                     ComponentValue::U64(id) => id,
                     _ => {
-                        return Err(Error::new(
+                        return Err(Error::new(ThreadingError(
                             "signal-condvar requires a condvar ID as second argument",
-                        ))
+                        )));
                     }
                 };
 
@@ -765,15 +805,17 @@ impl BuiltinHandler for ThreadingSyncHandler {
             "read-rwlock" => {
                 // Read from a read-write lock
                 if args.len() < 2 {
-                    return Err(Error::new("read-rwlock requires a rwlock ID"));
+                    return Err(Error::new(ThreadingError(
+                        "read-rwlock requires a rwlock ID",
+                    )));
                 }
 
                 let rwlock_id = match args[1] {
                     ComponentValue::U64(id) => id,
                     _ => {
-                        return Err(Error::new(
+                        return Err(Error::new(ThreadingError(
                             "read-rwlock requires a rwlock ID as second argument",
-                        ))
+                        )));
                     }
                 };
 
@@ -786,15 +828,17 @@ impl BuiltinHandler for ThreadingSyncHandler {
             "write-rwlock" => {
                 // Write to a read-write lock
                 if args.len() < 2 {
-                    return Err(Error::new("write-rwlock requires a rwlock ID"));
+                    return Err(Error::new(ThreadingError(
+                        "write-rwlock requires a rwlock ID",
+                    )));
                 }
 
                 let rwlock_id = match args[1] {
                     ComponentValue::U64(id) => id,
                     _ => {
-                        return Err(Error::new(
+                        return Err(Error::new(ThreadingError(
                             "write-rwlock requires a rwlock ID as second argument",
-                        ))
+                        )));
                     }
                 };
 
@@ -811,10 +855,10 @@ impl BuiltinHandler for ThreadingSyncHandler {
                 // Return the previous data
                 Ok(previous.unwrap_or_default())
             }
-            _ => Err(Error::new(format!(
+            _ => Err(Error::new(ThreadingError(format!(
                 "Unknown threading.sync operation: {}",
                 op_type
-            ))),
+            )))),
         }
     }
 
@@ -885,7 +929,10 @@ mod tests {
             3 => Err(Error::new("Test error")),
 
             // Unknown function
-            _ => Err(Error::new(format!("Unknown function ID: {}", function_id))),
+            _ => Err(Error::new(ThreadingError(format!(
+                "Unknown function ID: {}",
+                function_id
+            )))),
         }
     }
 

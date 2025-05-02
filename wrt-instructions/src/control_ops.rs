@@ -6,7 +6,7 @@
 #![allow(clippy::match_single_binding)]
 
 use crate::{instruction_traits::PureInstruction, Error, Result, Value};
-use wrt_types::types::{FuncType, ValueType};
+use wrt_types::types::{BlockType, FuncType, ValueType};
 
 // When no_std but alloc is available
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
@@ -15,15 +15,6 @@ use alloc::{string::ToString, vec::Vec};
 // When std is available
 #[cfg(feature = "std")]
 use std::{string::ToString, vec::Vec};
-
-/// Define BlockType since it's not available in wrt_types
-#[derive(Debug, Clone)]
-pub enum BlockType {
-    /// Block with a value type
-    ValType(Option<ValueType>),
-    /// Block with a function type
-    FuncType(FuncType),
-}
 
 /// Branch target information
 #[derive(Debug, Clone)]
@@ -46,8 +37,10 @@ pub enum ControlBlockType {
 impl From<BlockType> for ControlBlockType {
     fn from(bt: BlockType) -> Self {
         match bt {
-            BlockType::ValType(vt) => ControlBlockType::ValueType(vt),
+            BlockType::Empty => ControlBlockType::ValueType(None),
+            BlockType::Value(vt) => ControlBlockType::ValueType(Some(vt)),
             BlockType::FuncType(ft) => ControlBlockType::FuncType(ft),
+            BlockType::TypeIndex(_) => ControlBlockType::ValueType(None), // Default handling for type indices
         }
     }
 }
@@ -137,6 +130,9 @@ pub trait ControlContext {
 
     /// Trap the execution (unreachable)
     fn trap(&mut self, message: &str) -> Result<()>;
+
+    /// Get the current block
+    fn get_current_block(&self) -> Option<&Block>;
 }
 
 impl<T: ControlContext> PureInstruction<T, Error> for ControlOp {
@@ -219,7 +215,10 @@ impl<T: ControlContext> PureInstruction<T, Error> for ControlOp {
                 // No operation, just return Ok
                 Ok(())
             }
-            Self::Unreachable => context.trap("unreachable instruction executed"),
+            Self::Unreachable => {
+                // The unreachable instruction unconditionally traps
+                context.trap("unreachable instruction executed")
+            }
         }
     }
 }
@@ -227,7 +226,18 @@ impl<T: ControlContext> PureInstruction<T, Error> for ControlOp {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use wrt_types::types::{FuncType, ValueType};
+    use wrt_error::kinds;
+    use wrt_types::types::ValueType;
+
+    // Import Vec and vec! based on feature flags
+    #[cfg(feature = "std")]
+    use std::vec::Vec;
+
+    #[cfg(all(not(feature = "std"), feature = "alloc"))]
+    use alloc::vec::Vec;
+
+    #[cfg(all(not(feature = "std"), feature = "alloc"))]
+    use alloc::vec;
 
     // A simplified control context for testing
     struct MockControlContext {
@@ -278,7 +288,7 @@ mod tests {
         fn exit_block(&mut self) -> Result<Block> {
             self.blocks
                 .pop()
-                .ok_or_else(|| Error::new(kinds::InvalidBlockExitError))
+                .ok_or_else(|| Error::new(kinds::InvalidBranchTargetError { depth: 0 }))
         }
 
         fn branch(&mut self, target: BranchTarget) -> Result<()> {
@@ -303,7 +313,11 @@ mod tests {
 
         fn trap(&mut self, _message: &str) -> Result<()> {
             self.trapped = true;
-            Err(Error::new(kinds::TrapError))
+            Err(Error::new(kinds::Trap("Execution trapped".to_string())))
+        }
+
+        fn get_current_block(&self) -> Option<&Block> {
+            self.blocks.last()
         }
     }
 

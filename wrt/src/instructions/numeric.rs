@@ -7,56 +7,56 @@ use crate::{
 
 /// Push a 32-bit integer constant onto the stack
 pub fn i32_const(
-    stack: &mut dyn StackBehavior,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
     value: i32,
     _engine: &mut StacklessEngine,
 ) -> Result<()> {
-    stack.push(Value::I32(value))?;
+    _stack.push(Value::I32(value))?;
     Ok(())
 }
 
 /// Push a 64-bit integer constant onto the stack
 pub fn i64_const(
-    stack: &mut dyn StackBehavior,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
     value: i64,
     _engine: &mut StacklessEngine,
 ) -> Result<()> {
-    stack.push(Value::I64(value))?;
+    _stack.push(Value::I64(value))?;
     Ok(())
 }
 
 /// Push a 32-bit float constant onto the stack
 pub fn f32_const(
-    stack: &mut dyn StackBehavior,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
     value: f32,
     _engine: &mut StacklessEngine,
 ) -> Result<()> {
-    stack.push(Value::F32(value))?;
+    _stack.push(Value::F32(value))?;
     Ok(())
 }
 
 pub fn f64_const(
-    stack: &mut dyn StackBehavior,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
     value: f64,
     _engine: &mut StacklessEngine,
 ) -> Result<()> {
-    stack.push(Value::F64(value))?;
+    _stack.push(Value::F64(value))?;
     Ok(())
 }
 
 pub fn i32_clz(
-    stack: &mut dyn StackBehavior,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
     _engine: &mut StacklessEngine,
 ) -> Result<()> {
-    let a = stack.pop()?;
+    let a = _stack.pop()?;
     match a {
         Value::I32(a) => {
-            stack.push(Value::I32(a.leading_zeros() as i32))?;
+            _stack.push(Value::I32(a.leading_zeros() as i32))?;
             Ok(())
         }
         _ => Err(Error::invalid_type("Expected i32".to_string())),
@@ -64,14 +64,14 @@ pub fn i32_clz(
 }
 
 pub fn i32_ctz(
-    stack: &mut dyn StackBehavior,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
     _engine: &mut StacklessEngine,
 ) -> Result<()> {
-    let a = stack.pop()?;
+    let a = _stack.pop()?;
     match a {
         Value::I32(a) => {
-            stack.push(Value::I32(a.trailing_zeros() as i32))?;
+            _stack.push(Value::I32(a.trailing_zeros() as i32))?;
             Ok(())
         }
         _ => Err(Error::invalid_type("Expected i32".to_string())),
@@ -79,14 +79,14 @@ pub fn i32_ctz(
 }
 
 pub fn i32_popcnt(
-    stack: &mut dyn StackBehavior,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
     _engine: &mut StacklessEngine,
 ) -> Result<()> {
-    let a = stack.pop()?;
+    let a = _stack.pop()?;
     match a {
         Value::I32(a) => {
-            stack.push(Value::I32(a.count_ones() as i32))?;
+            _stack.push(Value::I32(a.count_ones() as i32))?;
             Ok(())
         }
         _ => Err(Error::invalid_type("Expected i32".to_string())),
@@ -94,16 +94,16 @@ pub fn i32_popcnt(
 }
 
 pub fn i32_add(
-    stack: &mut dyn StackBehavior,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
     _engine: &mut StacklessEngine,
 ) -> Result<()> {
-    let b = stack.pop()?;
-    let a = stack.pop()?;
+    let b = _stack.pop()?;
+    let a = _stack.pop()?;
 
     match (a, b) {
         (Value::I32(a), Value::I32(b)) => {
-            stack.push(Value::I32(a.wrapping_add(b)))?;
+            _stack.push(Value::I32(a.wrapping_add(b)))?;
             Ok(())
         }
         _ => Err(Error::invalid_type("Expected i32".to_string())),
@@ -111,15 +111,15 @@ pub fn i32_add(
 }
 
 pub fn i32_sub(
-    stack: &mut dyn StackBehavior,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
     _engine: &mut StacklessEngine,
 ) -> Result<()> {
-    let b = stack.pop()?;
-    let a = stack.pop()?;
+    let b = _stack.pop()?;
+    let a = _stack.pop()?;
     match (a, b) {
         (Value::I32(a), Value::I32(b)) => {
-            stack.push(Value::I32(a.wrapping_sub(b)))?;
+            _stack.push(Value::I32(a.wrapping_sub(b)))?;
             Ok(())
         }
         _ => Err(Error::invalid_type("Expected i32".to_string())),
@@ -127,15 +127,15 @@ pub fn i32_sub(
 }
 
 pub fn i32_mul(
-    stack: &mut dyn StackBehavior,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
     _engine: &mut StacklessEngine,
 ) -> Result<()> {
-    let b = stack.pop()?;
-    let a = stack.pop()?;
+    let b = _stack.pop()?;
+    let a = _stack.pop()?;
     match (a, b) {
         (Value::I32(a), Value::I32(b)) => {
-            stack.push(Value::I32(a.wrapping_mul(b)))?;
+            _stack.push(Value::I32(a.wrapping_mul(b)))?;
             Ok(())
         }
         _ => Err(Error::invalid_type("Expected i32".to_string())),
@@ -143,12 +143,12 @@ pub fn i32_mul(
 }
 
 pub fn i32_div_s(
-    stack: &mut dyn StackBehavior,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
     _engine: &mut StacklessEngine,
 ) -> Result<()> {
-    let b = stack.pop()?;
-    let a = stack.pop()?;
+    let b = _stack.pop()?;
+    let a = _stack.pop()?;
     match (a, b) {
         (Value::I32(a), Value::I32(b)) => {
             if b == 0 {
@@ -159,7 +159,7 @@ pub fn i32_div_s(
             if a == i32::MIN && b == -1 {
                 return Err(Error::new(kinds::Trap("integer overflow".to_string())));
             }
-            stack.push(Value::I32(a.wrapping_div(b)))?;
+            _stack.push(Value::I32(a.wrapping_div(b)))?;
             Ok(())
         }
         _ => Err(Error::invalid_type("Expected i32".to_string())),
@@ -167,12 +167,12 @@ pub fn i32_div_s(
 }
 
 pub fn i32_div_u(
-    stack: &mut dyn StackBehavior,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
     _engine: &mut StacklessEngine,
 ) -> Result<()> {
-    let b = stack.pop()?;
-    let a = stack.pop()?;
+    let b = _stack.pop()?;
+    let a = _stack.pop()?;
     match (a, b) {
         (Value::I32(a), Value::I32(b)) => {
             if b == 0 {
@@ -182,7 +182,7 @@ pub fn i32_div_u(
             }
             let a = a as u32;
             let b = b as u32;
-            stack.push(Value::I32((a / b) as i32))?;
+            _stack.push(Value::I32((a / b) as i32))?;
             Ok(())
         }
         _ => Err(Error::invalid_type("Expected i32".to_string())),
@@ -190,12 +190,12 @@ pub fn i32_div_u(
 }
 
 pub fn i32_rem_s(
-    stack: &mut dyn StackBehavior,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
     _engine: &mut StacklessEngine,
 ) -> Result<()> {
-    let b = stack.pop()?;
-    let a = stack.pop()?;
+    let b = _stack.pop()?;
+    let a = _stack.pop()?;
     match (a, b) {
         (Value::I32(a), Value::I32(b)) => {
             if b == 0 {
@@ -203,7 +203,7 @@ pub fn i32_rem_s(
                     "integer division by zero".to_string(),
                 )));
             }
-            stack.push(Value::I32(a.wrapping_rem(b)))?;
+            _stack.push(Value::I32(a.wrapping_rem(b)))?;
             Ok(())
         }
         _ => Err(Error::invalid_type("Expected i32".to_string())),
@@ -211,12 +211,12 @@ pub fn i32_rem_s(
 }
 
 pub fn i32_rem_u(
-    stack: &mut dyn StackBehavior,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
     _engine: &mut StacklessEngine,
 ) -> Result<()> {
-    let b = stack.pop()?;
-    let a = stack.pop()?;
+    let b = _stack.pop()?;
+    let a = _stack.pop()?;
     match (a, b) {
         (Value::I32(a), Value::I32(b)) => {
             if b == 0 {
@@ -226,7 +226,7 @@ pub fn i32_rem_u(
             }
             let a = a as u32;
             let b = b as u32;
-            stack.push(Value::I32((a % b) as i32))?;
+            _stack.push(Value::I32((a % b) as i32))?;
             Ok(())
         }
         _ => Err(Error::invalid_type("Expected i32".to_string())),
@@ -234,15 +234,15 @@ pub fn i32_rem_u(
 }
 
 pub fn i32_and(
-    stack: &mut dyn StackBehavior,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
     _engine: &mut StacklessEngine,
 ) -> Result<()> {
-    let b = stack.pop()?;
-    let a = stack.pop()?;
+    let b = _stack.pop()?;
+    let a = _stack.pop()?;
     match (a, b) {
         (Value::I32(a), Value::I32(b)) => {
-            stack.push(Value::I32(a & b))?;
+            _stack.push(Value::I32(a & b))?;
             Ok(())
         }
         _ => Err(Error::invalid_type("Expected i32".to_string())),
@@ -250,15 +250,15 @@ pub fn i32_and(
 }
 
 pub fn i32_or(
-    stack: &mut dyn StackBehavior,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
     _engine: &mut StacklessEngine,
 ) -> Result<()> {
-    let b = stack.pop()?;
-    let a = stack.pop()?;
+    let b = _stack.pop()?;
+    let a = _stack.pop()?;
     match (a, b) {
         (Value::I32(a), Value::I32(b)) => {
-            stack.push(Value::I32(a | b))?;
+            _stack.push(Value::I32(a | b))?;
             Ok(())
         }
         _ => Err(Error::invalid_type("Expected i32".to_string())),
@@ -266,15 +266,15 @@ pub fn i32_or(
 }
 
 pub fn i32_xor(
-    stack: &mut dyn StackBehavior,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
     _engine: &mut StacklessEngine,
 ) -> Result<()> {
-    let b = stack.pop()?;
-    let a = stack.pop()?;
+    let b = _stack.pop()?;
+    let a = _stack.pop()?;
     match (a, b) {
         (Value::I32(a), Value::I32(b)) => {
-            stack.push(Value::I32(a ^ b))?;
+            _stack.push(Value::I32(a ^ b))?;
             Ok(())
         }
         _ => Err(Error::invalid_type("Expected i32".to_string())),
@@ -282,15 +282,15 @@ pub fn i32_xor(
 }
 
 pub fn i32_shl(
-    stack: &mut dyn StackBehavior,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
     _engine: &mut StacklessEngine,
 ) -> Result<()> {
-    let b = stack.pop()?;
-    let a = stack.pop()?;
+    let b = _stack.pop()?;
+    let a = _stack.pop()?;
     match (a, b) {
         (Value::I32(a), Value::I32(b)) => {
-            stack.push(Value::I32(a.wrapping_shl(b as u32)))?;
+            _stack.push(Value::I32(a.wrapping_shl(b as u32)))?;
             Ok(())
         }
         _ => Err(Error::invalid_type("Expected i32".to_string())),
@@ -298,15 +298,15 @@ pub fn i32_shl(
 }
 
 pub fn i32_shr_s(
-    stack: &mut dyn StackBehavior,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
     _engine: &mut StacklessEngine,
 ) -> Result<()> {
-    let b = stack.pop()?;
-    let a = stack.pop()?;
+    let b = _stack.pop()?;
+    let a = _stack.pop()?;
     match (a, b) {
         (Value::I32(a), Value::I32(b)) => {
-            stack.push(Value::I32(a.wrapping_shr(b as u32)))?;
+            _stack.push(Value::I32(a.wrapping_shr(b as u32)))?;
             Ok(())
         }
         _ => Err(Error::invalid_type("Expected i32".to_string())),
@@ -314,16 +314,16 @@ pub fn i32_shr_s(
 }
 
 pub fn i32_shr_u(
-    stack: &mut dyn StackBehavior,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
     _engine: &mut StacklessEngine,
 ) -> Result<()> {
-    let b = stack.pop()?;
-    let a = stack.pop()?;
+    let b = _stack.pop()?;
+    let a = _stack.pop()?;
     match (a, b) {
         (Value::I32(a), Value::I32(b)) => {
             let a = a as u32;
-            stack.push(Value::I32((a.wrapping_shr(b as u32)) as i32))?;
+            _stack.push(Value::I32((a.wrapping_shr(b as u32)) as i32))?;
             Ok(())
         }
         _ => Err(Error::invalid_type("Expected i32".to_string())),
@@ -331,17 +331,17 @@ pub fn i32_shr_u(
 }
 
 pub fn i32_rotl(
-    stack: &mut dyn StackBehavior,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
     _engine: &mut StacklessEngine,
 ) -> Result<()> {
-    let b = stack.pop()?;
-    let a = stack.pop()?;
+    let b = _stack.pop()?;
+    let a = _stack.pop()?;
     match (a, b) {
         (Value::I32(a), Value::I32(b)) => {
             let b = b as u32;
             let b = b % 32;
-            stack.push(Value::I32(a.rotate_left(b)))?;
+            _stack.push(Value::I32(a.rotate_left(b)))?;
             Ok(())
         }
         _ => Err(Error::invalid_type("Expected i32".to_string())),
@@ -349,17 +349,17 @@ pub fn i32_rotl(
 }
 
 pub fn i32_rotr(
-    stack: &mut dyn StackBehavior,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
     _engine: &mut StacklessEngine,
 ) -> Result<()> {
-    let b = stack.pop()?;
-    let a = stack.pop()?;
+    let b = _stack.pop()?;
+    let a = _stack.pop()?;
     match (a, b) {
         (Value::I32(a), Value::I32(b)) => {
             let b = b as u32;
             let b = b % 32;
-            stack.push(Value::I32(a.rotate_right(b)))?;
+            _stack.push(Value::I32(a.rotate_right(b)))?;
             Ok(())
         }
         _ => Err(Error::invalid_type("Expected i32".to_string())),
@@ -367,187 +367,187 @@ pub fn i32_rotr(
 }
 
 pub fn i32_eqz(
-    stack: &mut dyn StackBehavior,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
     _engine: &mut StacklessEngine,
 ) -> Result<()> {
-    let a = stack.pop()?;
+    let a = _stack.pop()?;
     match a {
         Value::I32(a) => {
-            stack.push(Value::I32(i32::from(a == 0)))?;
+            _stack.push(Value::I32(i32::from(a == 0)))?;
             Ok(())
         }
         _ => Err(Error::invalid_type("Expected i32".to_string())),
     }
 }
 
-pub fn i32_eq(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
-    let b = stack.pop()?;
-    let a = stack.pop()?;
+pub fn i32_eq(_stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
+    let b = _stack.pop()?;
+    let a = _stack.pop()?;
     match (a, b) {
         (Value::I32(a), Value::I32(b)) => {
-            stack.push(Value::I32(i32::from(a == b)))?;
+            _stack.push(Value::I32(i32::from(a == b)))?;
             Ok(())
         }
         _ => Err(Error::invalid_type("Expected i32".to_string())),
     }
 }
 
-pub fn i32_ne(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
-    let b = stack.pop()?;
-    let a = stack.pop()?;
+pub fn i32_ne(_stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
+    let b = _stack.pop()?;
+    let a = _stack.pop()?;
     match (a, b) {
         (Value::I32(a), Value::I32(b)) => {
-            stack.push(Value::I32(i32::from(a != b)))?;
+            _stack.push(Value::I32(i32::from(a != b)))?;
             Ok(())
         }
         _ => Err(Error::invalid_type("Expected i32".to_string())),
     }
 }
 
-pub fn i32_lt_s(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
-    let b = stack.pop()?;
-    let a = stack.pop()?;
+pub fn i32_lt_s(_stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
+    let b = _stack.pop()?;
+    let a = _stack.pop()?;
     match (a, b) {
         (Value::I32(a), Value::I32(b)) => {
-            stack.push(Value::I32(i32::from(a < b)))?;
+            _stack.push(Value::I32(i32::from(a < b)))?;
             Ok(())
         }
         _ => Err(Error::invalid_type("Expected i32".to_string())),
     }
 }
 
-pub fn i32_lt_u(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
-    let b = stack.pop()?;
-    let a = stack.pop()?;
-    match (a, b) {
-        (Value::I32(a), Value::I32(b)) => {
-            let a = a as u32;
-            let b = b as u32;
-            stack.push(Value::I32(i32::from(a < b)))?;
-            Ok(())
-        }
-        _ => Err(Error::invalid_type("Expected i32".to_string())),
-    }
-}
-
-pub fn i32_gt_s(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
-    let b = stack.pop()?;
-    let a = stack.pop()?;
-    match (a, b) {
-        (Value::I32(a), Value::I32(b)) => {
-            stack.push(Value::I32(i32::from(a > b)))?;
-            Ok(())
-        }
-        _ => Err(Error::invalid_type("Expected i32".to_string())),
-    }
-}
-
-pub fn i32_gt_u(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
-    let b = stack.pop()?;
-    let a = stack.pop()?;
+pub fn i32_lt_u(_stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
+    let b = _stack.pop()?;
+    let a = _stack.pop()?;
     match (a, b) {
         (Value::I32(a), Value::I32(b)) => {
             let a = a as u32;
             let b = b as u32;
-            stack.push(Value::I32(i32::from(a > b)))?;
+            _stack.push(Value::I32(i32::from(a < b)))?;
             Ok(())
         }
         _ => Err(Error::invalid_type("Expected i32".to_string())),
     }
 }
 
-pub fn i32_le_s(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
-    let b = stack.pop()?;
-    let a = stack.pop()?;
+pub fn i32_gt_s(_stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
+    let b = _stack.pop()?;
+    let a = _stack.pop()?;
     match (a, b) {
         (Value::I32(a), Value::I32(b)) => {
-            stack.push(Value::I32(i32::from(a <= b)))?;
+            _stack.push(Value::I32(i32::from(a > b)))?;
             Ok(())
         }
         _ => Err(Error::invalid_type("Expected i32".to_string())),
     }
 }
 
-pub fn i32_le_u(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
-    let b = stack.pop()?;
-    let a = stack.pop()?;
-    match (a, b) {
-        (Value::I32(a), Value::I32(b)) => {
-            let a = a as u32;
-            let b = b as u32;
-            stack.push(Value::I32(i32::from(a <= b)))?;
-            Ok(())
-        }
-        _ => Err(Error::invalid_type("Expected i32".to_string())),
-    }
-}
-
-pub fn i32_ge_s(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
-    let b = stack.pop()?;
-    let a = stack.pop()?;
-    match (a, b) {
-        (Value::I32(a), Value::I32(b)) => {
-            stack.push(Value::I32(i32::from(a >= b)))?;
-            Ok(())
-        }
-        _ => Err(Error::invalid_type("Expected i32".to_string())),
-    }
-}
-
-pub fn i32_ge_u(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
-    let b = stack.pop()?;
-    let a = stack.pop()?;
+pub fn i32_gt_u(_stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
+    let b = _stack.pop()?;
+    let a = _stack.pop()?;
     match (a, b) {
         (Value::I32(a), Value::I32(b)) => {
             let a = a as u32;
             let b = b as u32;
-            stack.push(Value::I32(i32::from(a >= b)))?;
+            _stack.push(Value::I32(i32::from(a > b)))?;
             Ok(())
         }
         _ => Err(Error::invalid_type("Expected i32".to_string())),
     }
 }
 
-pub fn i64_add(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
-    let b = stack.pop()?;
-    let a = stack.pop()?;
+pub fn i32_le_s(_stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
+    let b = _stack.pop()?;
+    let a = _stack.pop()?;
+    match (a, b) {
+        (Value::I32(a), Value::I32(b)) => {
+            _stack.push(Value::I32(i32::from(a <= b)))?;
+            Ok(())
+        }
+        _ => Err(Error::invalid_type("Expected i32".to_string())),
+    }
+}
+
+pub fn i32_le_u(_stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
+    let b = _stack.pop()?;
+    let a = _stack.pop()?;
+    match (a, b) {
+        (Value::I32(a), Value::I32(b)) => {
+            let a = a as u32;
+            let b = b as u32;
+            _stack.push(Value::I32(i32::from(a <= b)))?;
+            Ok(())
+        }
+        _ => Err(Error::invalid_type("Expected i32".to_string())),
+    }
+}
+
+pub fn i32_ge_s(_stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
+    let b = _stack.pop()?;
+    let a = _stack.pop()?;
+    match (a, b) {
+        (Value::I32(a), Value::I32(b)) => {
+            _stack.push(Value::I32(i32::from(a >= b)))?;
+            Ok(())
+        }
+        _ => Err(Error::invalid_type("Expected i32".to_string())),
+    }
+}
+
+pub fn i32_ge_u(_stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
+    let b = _stack.pop()?;
+    let a = _stack.pop()?;
+    match (a, b) {
+        (Value::I32(a), Value::I32(b)) => {
+            let a = a as u32;
+            let b = b as u32;
+            _stack.push(Value::I32(i32::from(a >= b)))?;
+            Ok(())
+        }
+        _ => Err(Error::invalid_type("Expected i32".to_string())),
+    }
+}
+
+pub fn i64_add(_stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
+    let b = _stack.pop()?;
+    let a = _stack.pop()?;
     match (a, b) {
         (Value::I64(a), Value::I64(b)) => {
-            stack.push(Value::I64(a.wrapping_add(b)))?;
+            _stack.push(Value::I64(a.wrapping_add(b)))?;
             Ok(())
         }
         _ => Err(Error::invalid_type("Expected i64".to_string())),
     }
 }
 
-pub fn i64_sub(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
-    let b = stack.pop()?;
-    let a = stack.pop()?;
+pub fn i64_sub(_stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
+    let b = _stack.pop()?;
+    let a = _stack.pop()?;
     match (a, b) {
         (Value::I64(a), Value::I64(b)) => {
-            stack.push(Value::I64(a.wrapping_sub(b)))?;
+            _stack.push(Value::I64(a.wrapping_sub(b)))?;
             Ok(())
         }
         _ => Err(Error::invalid_type("Expected i64".to_string())),
     }
 }
 
-pub fn i64_mul(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
-    let b = stack.pop()?;
-    let a = stack.pop()?;
+pub fn i64_mul(_stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
+    let b = _stack.pop()?;
+    let a = _stack.pop()?;
     match (a, b) {
         (Value::I64(a), Value::I64(b)) => {
-            stack.push(Value::I64(a.wrapping_mul(b)))?;
+            _stack.push(Value::I64(a.wrapping_mul(b)))?;
             Ok(())
         }
         _ => Err(Error::invalid_type("Expected i64".to_string())),
     }
 }
 
-pub fn i64_div_s(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
-    let b = stack.pop()?;
-    let a = stack.pop()?;
+pub fn i64_div_s(_stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
+    let b = _stack.pop()?;
+    let a = _stack.pop()?;
     match (a, b) {
         (Value::I64(a), Value::I64(b)) => {
             if b == 0 {
@@ -556,9 +556,9 @@ pub fn i64_div_s(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) 
                 )));
             }
             if a == i64::MIN && b == -1 {
-                stack.push(Value::I64(i64::MIN))?;
+                _stack.push(Value::I64(i64::MIN))?;
             } else {
-                stack.push(Value::I64(a / b))?;
+                _stack.push(Value::I64(a / b))?;
             }
             Ok(())
         }
@@ -566,9 +566,9 @@ pub fn i64_div_s(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) 
     }
 }
 
-pub fn i64_div_u(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
-    let b = stack.pop()?;
-    let a = stack.pop()?;
+pub fn i64_div_u(_stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
+    let b = _stack.pop()?;
+    let a = _stack.pop()?;
     match (a, b) {
         (Value::I64(a), Value::I64(b)) => {
             if b == 0 {
@@ -578,7 +578,7 @@ pub fn i64_div_u(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) 
             }
             let ua = a as u64;
             let ub = b as u64;
-            stack.push(Value::I64((ua / ub) as i64))?;
+            _stack.push(Value::I64((ua / ub) as i64))?;
             Ok(())
         }
         _ => Err(Error::new(kinds::InvalidTypeError(
@@ -587,9 +587,9 @@ pub fn i64_div_u(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) 
     }
 }
 
-pub fn i64_rem_s(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
-    let b = stack.pop()?;
-    let a = stack.pop()?;
+pub fn i64_rem_s(_stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
+    let b = _stack.pop()?;
+    let a = _stack.pop()?;
     match (a, b) {
         (Value::I64(a), Value::I64(b)) => {
             if b == 0 {
@@ -597,7 +597,7 @@ pub fn i64_rem_s(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) 
                     "integer division by zero".to_string(),
                 )));
             }
-            stack.push(Value::I64(a % b))?;
+            _stack.push(Value::I64(a % b))?;
             Ok(())
         }
         _ => Err(Error::new(kinds::InvalidTypeError(
@@ -607,12 +607,12 @@ pub fn i64_rem_s(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) 
 }
 
 pub fn i64_rem_u(
-    stack: &mut dyn StackBehavior,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
     _engine: &mut StacklessEngine,
 ) -> Result<()> {
-    let b = stack.pop()?;
-    let a = stack.pop()?;
+    let b = _stack.pop()?;
+    let a = _stack.pop()?;
     match (a, b) {
         (Value::I64(a), Value::I64(b)) => {
             if b == 0 {
@@ -622,7 +622,7 @@ pub fn i64_rem_u(
             }
             let ua = a as u64;
             let ub = b as u64;
-            stack.push(Value::I64((ua % ub) as i64))?;
+            _stack.push(Value::I64((ua % ub) as i64))?;
             Ok(())
         }
         _ => Err(Error::new(kinds::InvalidTypeError(
@@ -631,12 +631,12 @@ pub fn i64_rem_u(
     }
 }
 
-pub fn i64_and(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
-    let b = stack.pop()?;
-    let a = stack.pop()?;
+pub fn i64_and(_stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
+    let b = _stack.pop()?;
+    let a = _stack.pop()?;
     match (a, b) {
         (Value::I64(a), Value::I64(b)) => {
-            stack.push(Value::I64(a & b))?;
+            _stack.push(Value::I64(a & b))?;
             Ok(())
         }
         _ => Err(Error::new(kinds::InvalidTypeError(
@@ -645,12 +645,12 @@ pub fn i64_and(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) ->
     }
 }
 
-pub fn i64_or(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
-    let b = stack.pop()?;
-    let a = stack.pop()?;
+pub fn i64_or(_stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
+    let b = _stack.pop()?;
+    let a = _stack.pop()?;
     match (a, b) {
         (Value::I64(a), Value::I64(b)) => {
-            stack.push(Value::I64(a | b))?;
+            _stack.push(Value::I64(a | b))?;
             Ok(())
         }
         _ => Err(Error::new(kinds::InvalidTypeError(
@@ -659,12 +659,12 @@ pub fn i64_or(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> 
     }
 }
 
-pub fn i64_xor(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
-    let b = stack.pop()?;
-    let a = stack.pop()?;
+pub fn i64_xor(_stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
+    let b = _stack.pop()?;
+    let a = _stack.pop()?;
     match (a, b) {
         (Value::I64(a), Value::I64(b)) => {
-            stack.push(Value::I64(a ^ b))?;
+            _stack.push(Value::I64(a ^ b))?;
             Ok(())
         }
         _ => Err(Error::new(kinds::InvalidTypeError(
@@ -673,28 +673,13 @@ pub fn i64_xor(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) ->
     }
 }
 
-pub fn i64_shl(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
-    let b = stack.pop()?;
-    let a = stack.pop()?;
-    match (a, b) {
-        (Value::I64(a), Value::I64(b)) => {
-            let shift = (b & 0x3F) as u32;
-            stack.push(Value::I64(a << shift))?;
-            Ok(())
-        }
-        _ => Err(Error::new(kinds::InvalidTypeError(
-            "Expected i64".to_string(),
-        ))),
-    }
-}
-
-pub fn i64_shr_s(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
-    let b = stack.pop()?;
-    let a = stack.pop()?;
+pub fn i64_shl(_stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
+    let b = _stack.pop()?;
+    let a = _stack.pop()?;
     match (a, b) {
         (Value::I64(a), Value::I64(b)) => {
             let shift = (b & 0x3F) as u32;
-            stack.push(Value::I64(a >> shift))?;
+            _stack.push(Value::I64(a << shift))?;
             Ok(())
         }
         _ => Err(Error::new(kinds::InvalidTypeError(
@@ -703,14 +688,29 @@ pub fn i64_shr_s(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) 
     }
 }
 
-pub fn i64_shr_u(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
-    let b = stack.pop()?;
-    let a = stack.pop()?;
+pub fn i64_shr_s(_stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
+    let b = _stack.pop()?;
+    let a = _stack.pop()?;
+    match (a, b) {
+        (Value::I64(a), Value::I64(b)) => {
+            let shift = (b & 0x3F) as u32;
+            _stack.push(Value::I64(a >> shift))?;
+            Ok(())
+        }
+        _ => Err(Error::new(kinds::InvalidTypeError(
+            "Expected i64".to_string(),
+        ))),
+    }
+}
+
+pub fn i64_shr_u(_stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
+    let b = _stack.pop()?;
+    let a = _stack.pop()?;
     match (a, b) {
         (Value::I64(a), Value::I64(b)) => {
             let shift = (b & 0x3F) as u32;
             let ua = a as u64;
-            stack.push(Value::I64((ua >> shift) as i64))?;
+            _stack.push(Value::I64((ua >> shift) as i64))?;
             Ok(())
         }
         _ => Err(Error::new(kinds::InvalidTypeError(
@@ -719,15 +719,15 @@ pub fn i64_shr_u(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) 
     }
 }
 
-pub fn i64_rotl(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
-    let b = stack.pop()?;
-    let a = stack.pop()?;
+pub fn i64_rotl(_stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
+    let b = _stack.pop()?;
+    let a = _stack.pop()?;
     match (a, b) {
         (Value::I64(a), Value::I64(b)) => {
             let shift = (b & 0x3F) as u32;
             let ua = a as u64;
             let rotated = ua.rotate_left(shift);
-            stack.push(Value::I64(rotated as i64))?;
+            _stack.push(Value::I64(rotated as i64))?;
             Ok(())
         }
         _ => Err(Error::new(kinds::InvalidTypeError(
@@ -736,15 +736,15 @@ pub fn i64_rotl(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -
     }
 }
 
-pub fn i64_rotr(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
-    let b = stack.pop()?;
-    let a = stack.pop()?;
+pub fn i64_rotr(_stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
+    let b = _stack.pop()?;
+    let a = _stack.pop()?;
     match (a, b) {
         (Value::I64(a), Value::I64(b)) => {
             let shift = (b & 0x3F) as u32;
             let ua = a as u64;
             let rotated = ua.rotate_right(shift);
-            stack.push(Value::I64(rotated as i64))?;
+            _stack.push(Value::I64(rotated as i64))?;
             Ok(())
         }
         _ => Err(Error::new(kinds::InvalidTypeError(
@@ -754,14 +754,14 @@ pub fn i64_rotr(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -
 }
 
 pub fn i64_clz(
-    stack: &mut dyn StackBehavior,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
     _engine: &mut StacklessEngine,
 ) -> Result<()> {
-    let a = stack.pop()?;
+    let a = _stack.pop()?;
     match a {
         Value::I64(a) => {
-            stack.push(Value::I64(a.leading_zeros() as i64))?;
+            _stack.push(Value::I64(a.leading_zeros() as i64))?;
             Ok(())
         }
         _ => Err(Error::new(kinds::InvalidTypeError(
@@ -771,14 +771,14 @@ pub fn i64_clz(
 }
 
 pub fn i64_ctz(
-    stack: &mut dyn StackBehavior,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
     _engine: &mut StacklessEngine,
 ) -> Result<()> {
-    let a = stack.pop()?;
+    let a = _stack.pop()?;
     match a {
         Value::I64(a) => {
-            stack.push(Value::I64(a.trailing_zeros() as i64))?;
+            _stack.push(Value::I64(a.trailing_zeros() as i64))?;
             Ok(())
         }
         _ => Err(Error::new(kinds::InvalidTypeError(
@@ -788,14 +788,14 @@ pub fn i64_ctz(
 }
 
 pub fn i64_popcnt(
-    stack: &mut dyn StackBehavior,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
     _engine: &mut StacklessEngine,
 ) -> Result<()> {
-    let a = stack.pop()?;
+    let a = _stack.pop()?;
     match a {
         Value::I64(a) => {
-            stack.push(Value::I64(a.count_ones() as i64))?;
+            _stack.push(Value::I64(a.count_ones() as i64))?;
             Ok(())
         }
         _ => Err(Error::new(kinds::InvalidTypeError(
@@ -804,139 +804,139 @@ pub fn i64_popcnt(
     }
 }
 
-pub fn f32_sub(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
-    let b = stack.pop()?;
-    let a = stack.pop()?;
+pub fn f32_sub(_stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
+    let b = _stack.pop()?;
+    let a = _stack.pop()?;
     match (a, b) {
         (Value::F32(a), Value::F32(b)) => {
-            stack.push(Value::F32(a - b))?;
+            _stack.push(Value::F32(a - b))?;
             Ok(())
         }
         _ => Err(Error::invalid_type("Expected f32".to_string())),
     }
 }
 
-pub fn f32_mul(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
-    let b = stack.pop()?;
-    let a = stack.pop()?;
+pub fn f32_mul(_stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
+    let b = _stack.pop()?;
+    let a = _stack.pop()?;
     match (a, b) {
         (Value::F32(a), Value::F32(b)) => {
-            stack.push(Value::F32(a * b))?;
+            _stack.push(Value::F32(a * b))?;
             Ok(())
         }
         _ => Err(Error::invalid_type("Expected f32".to_string())),
     }
 }
 
-pub fn f32_div(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
-    let b = stack.pop()?;
-    let a = stack.pop()?;
+pub fn f32_div(_stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
+    let b = _stack.pop()?;
+    let a = _stack.pop()?;
     match (a, b) {
         (Value::F32(a), Value::F32(b)) => {
-            stack.push(Value::F32(a / b))?;
+            _stack.push(Value::F32(a / b))?;
             Ok(())
         }
         _ => Err(Error::invalid_type("Expected f32".to_string())),
     }
 }
 
-pub fn f32_min(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
-    let b = stack.pop()?;
-    let a = stack.pop()?;
+pub fn f32_min(_stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
+    let b = _stack.pop()?;
+    let a = _stack.pop()?;
     match (a, b) {
         (Value::F32(a), Value::F32(b)) => {
-            stack.push(Value::F32(a.min(b)))?;
+            _stack.push(Value::F32(a.min(b)))?;
             Ok(())
         }
         _ => Err(Error::invalid_type("Expected f32".to_string())),
     }
 }
 
-pub fn f32_max(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
-    let b = stack.pop()?;
-    let a = stack.pop()?;
+pub fn f32_max(_stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
+    let b = _stack.pop()?;
+    let a = _stack.pop()?;
     match (a, b) {
         (Value::F32(a), Value::F32(b)) => {
-            stack.push(Value::F32(a.max(b)))?;
+            _stack.push(Value::F32(a.max(b)))?;
             Ok(())
         }
         _ => Err(Error::invalid_type("Expected f32".to_string())),
     }
 }
 
-pub fn f32_abs(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
-    let a = stack.pop()?;
+pub fn f32_abs(_stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
+    let a = _stack.pop()?;
     match a {
         Value::F32(a) => {
-            stack.push(Value::F32(a.abs()))?;
+            _stack.push(Value::F32(a.abs()))?;
             Ok(())
         }
         _ => Err(Error::invalid_type("Expected f32".to_string())),
     }
 }
 
-pub fn f32_neg(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
-    let a = stack.pop()?;
+pub fn f32_neg(_stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
+    let a = _stack.pop()?;
     match a {
         Value::F32(a) => {
-            stack.push(Value::F32(-a))?;
+            _stack.push(Value::F32(-a))?;
             Ok(())
         }
         _ => Err(Error::invalid_type("Expected f32".to_string())),
     }
 }
 
-pub fn f32_copysign(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
-    let b = stack.pop()?;
-    let a = stack.pop()?;
+pub fn f32_copysign(_stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
+    let b = _stack.pop()?;
+    let a = _stack.pop()?;
     match (a, b) {
         (Value::F32(a), Value::F32(b)) => {
-            stack.push(Value::F32(a.copysign(b)))?;
+            _stack.push(Value::F32(a.copysign(b)))?;
             Ok(())
         }
         _ => Err(Error::invalid_type("Expected f32".to_string())),
     }
 }
 
-pub fn f32_ceil(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
-    let a = stack.pop()?;
+pub fn f32_ceil(_stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
+    let a = _stack.pop()?;
     match a {
         Value::F32(a) => {
-            stack.push(Value::F32(a.ceil()))?;
+            _stack.push(Value::F32(a.ceil()))?;
             Ok(())
         }
         _ => Err(Error::invalid_type("Expected f32".to_string())),
     }
 }
 
-pub fn f32_floor(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
-    let a = stack.pop()?;
+pub fn f32_floor(_stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
+    let a = _stack.pop()?;
     match a {
         Value::F32(a) => {
-            stack.push(Value::F32(a.floor()))?;
+            _stack.push(Value::F32(a.floor()))?;
             Ok(())
         }
         _ => Err(Error::invalid_type("Expected f32".to_string())),
     }
 }
 
-pub fn f32_trunc(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
-    let a = stack.pop()?;
+pub fn f32_trunc(_stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
+    let a = _stack.pop()?;
     match a {
         Value::F32(a) => {
-            stack.push(Value::F32(a.trunc()))?;
+            _stack.push(Value::F32(a.trunc()))?;
             Ok(())
         }
         _ => Err(Error::invalid_type("Expected f32".to_string())),
     }
 }
 
-pub fn f32_nearest(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
-    let a = stack.pop()?;
+pub fn f32_nearest(_stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
+    let a = _stack.pop()?;
 
     if let Value::F32(f) = a {
         if f.is_nan() || f.is_infinite() || f == 0.0 {
-            stack.push(a)?;
+            _stack.push(a)?;
             return Ok(());
         }
 
@@ -957,7 +957,7 @@ pub fn f32_nearest(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior
             f.round()
         };
 
-        stack.push(Value::F32(result))?;
+        _stack.push(Value::F32(result))?;
     } else {
         return Err(Error::new(kinds::ExecutionError(
             "Expected f32 value".into(),
@@ -967,131 +967,131 @@ pub fn f32_nearest(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior
     Ok(())
 }
 
-pub fn f32_sqrt(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
-    let a = stack.pop()?;
+pub fn f32_sqrt(_stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
+    let a = _stack.pop()?;
     match a {
         Value::F32(a) => {
-            stack.push(Value::F32(a.sqrt()))?;
+            _stack.push(Value::F32(a.sqrt()))?;
             Ok(())
         }
         _ => Err(Error::invalid_type("Expected f32".to_string())),
     }
 }
 
-pub fn f32_eq(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
-    let b = stack.pop()?;
-    let a = stack.pop()?;
+pub fn f32_eq(_stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
+    let b = _stack.pop()?;
+    let a = _stack.pop()?;
     match (a, b) {
         (Value::F32(a), Value::F32(b)) => {
-            stack.push(Value::I32(i32::from(a == b)))?;
+            _stack.push(Value::I32(i32::from(a == b)))?;
             Ok(())
         }
         _ => Err(Error::invalid_type("Expected f32".to_string())),
     }
 }
 
-pub fn f32_ne(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
-    let b = stack.pop()?;
-    let a = stack.pop()?;
+pub fn f32_ne(_stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
+    let b = _stack.pop()?;
+    let a = _stack.pop()?;
     match (a, b) {
         (Value::F32(a), Value::F32(b)) => {
-            stack.push(Value::I32(i32::from(a != b)))?;
+            _stack.push(Value::I32(i32::from(a != b)))?;
             Ok(())
         }
         _ => Err(Error::invalid_type("Expected f32".to_string())),
     }
 }
 
-pub fn f32_lt(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
-    let b = stack.pop()?;
-    let a = stack.pop()?;
+pub fn f32_lt(_stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
+    let b = _stack.pop()?;
+    let a = _stack.pop()?;
     match (a, b) {
         (Value::F32(a), Value::F32(b)) => {
-            stack.push(Value::I32(i32::from(a < b)))?;
+            _stack.push(Value::I32(i32::from(a < b)))?;
             Ok(())
         }
         _ => Err(Error::invalid_type("Expected f32".to_string())),
     }
 }
 
-pub fn f32_gt(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
-    let b = stack.pop()?;
-    let a = stack.pop()?;
+pub fn f32_gt(_stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
+    let b = _stack.pop()?;
+    let a = _stack.pop()?;
     match (a, b) {
         (Value::F32(a), Value::F32(b)) => {
-            stack.push(Value::I32(i32::from(a > b)))?;
+            _stack.push(Value::I32(i32::from(a > b)))?;
             Ok(())
         }
         _ => Err(Error::invalid_type("Expected f32".to_string())),
     }
 }
 
-pub fn f32_le(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
-    let b = stack.pop()?;
-    let a = stack.pop()?;
+pub fn f32_le(_stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
+    let b = _stack.pop()?;
+    let a = _stack.pop()?;
     match (a, b) {
         (Value::F32(a), Value::F32(b)) => {
-            stack.push(Value::I32(i32::from(a <= b)))?;
+            _stack.push(Value::I32(i32::from(a <= b)))?;
             Ok(())
         }
         _ => Err(Error::invalid_type("Expected f32".to_string())),
     }
 }
 
-pub fn f32_ge(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
-    let b = stack.pop()?;
-    let a = stack.pop()?;
+pub fn f32_ge(_stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
+    let b = _stack.pop()?;
+    let a = _stack.pop()?;
     match (a, b) {
         (Value::F32(a), Value::F32(b)) => {
-            stack.push(Value::I32(i32::from(a >= b)))?;
+            _stack.push(Value::I32(i32::from(a >= b)))?;
             Ok(())
         }
         _ => Err(Error::invalid_type("Expected f32".to_string())),
     }
 }
 
-pub fn f64_add(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
-    let b = stack.pop()?;
-    let a = stack.pop()?;
+pub fn f64_add(_stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
+    let b = _stack.pop()?;
+    let a = _stack.pop()?;
     match (a, b) {
         (Value::F64(a), Value::F64(b)) => {
-            stack.push(Value::F64(a + b))?;
+            _stack.push(Value::F64(a + b))?;
             Ok(())
         }
         _ => Err(Error::invalid_type("Expected f64".to_string())),
     }
 }
 
-pub fn f64_sub(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
-    let b = stack.pop()?;
-    let a = stack.pop()?;
+pub fn f64_sub(_stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
+    let b = _stack.pop()?;
+    let a = _stack.pop()?;
     match (a, b) {
         (Value::F64(a), Value::F64(b)) => {
-            stack.push(Value::F64(a - b))?;
+            _stack.push(Value::F64(a - b))?;
             Ok(())
         }
         _ => Err(Error::invalid_type("Expected f64".to_string())),
     }
 }
 
-pub fn f64_mul(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
-    let b = stack.pop()?;
-    let a = stack.pop()?;
+pub fn f64_mul(_stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
+    let b = _stack.pop()?;
+    let a = _stack.pop()?;
     match (a, b) {
         (Value::F64(a), Value::F64(b)) => {
-            stack.push(Value::F64(a * b))?;
+            _stack.push(Value::F64(a * b))?;
             Ok(())
         }
         _ => Err(Error::invalid_type("Expected f64".to_string())),
     }
 }
 
-pub fn f64_div(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
-    let b = stack.pop()?;
-    let a = stack.pop()?;
+pub fn f64_div(_stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
+    let b = _stack.pop()?;
+    let a = _stack.pop()?;
     match (a, b) {
         (Value::F64(a), Value::F64(b)) => {
-            stack.push(Value::F64(a / b))?;
+            _stack.push(Value::F64(a / b))?;
             Ok(())
         }
         _ => Err(Error::new(kinds::InvalidTypeError(
@@ -1100,12 +1100,12 @@ pub fn f64_div(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) ->
     }
 }
 
-pub fn f64_min(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
-    let b = stack.pop()?;
-    let a = stack.pop()?;
+pub fn f64_min(_stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
+    let b = _stack.pop()?;
+    let a = _stack.pop()?;
     match (a, b) {
         (Value::F64(a), Value::F64(b)) => {
-            stack.push(Value::F64(a.min(b)))?;
+            _stack.push(Value::F64(a.min(b)))?;
             Ok(())
         }
         _ => Err(Error::new(kinds::InvalidTypeError(
@@ -1114,12 +1114,12 @@ pub fn f64_min(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) ->
     }
 }
 
-pub fn f64_max(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
-    let b = stack.pop()?;
-    let a = stack.pop()?;
+pub fn f64_max(_stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
+    let b = _stack.pop()?;
+    let a = _stack.pop()?;
     match (a, b) {
         (Value::F64(a), Value::F64(b)) => {
-            stack.push(Value::F64(a.max(b)))?;
+            _stack.push(Value::F64(a.max(b)))?;
             Ok(())
         }
         _ => Err(Error::new(kinds::InvalidTypeError(
@@ -1128,11 +1128,11 @@ pub fn f64_max(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) ->
     }
 }
 
-pub fn f64_abs(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
-    let a = stack.pop()?;
+pub fn f64_abs(_stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
+    let a = _stack.pop()?;
     match a {
         Value::F64(a) => {
-            stack.push(Value::F64(a.abs()))?;
+            _stack.push(Value::F64(a.abs()))?;
             Ok(())
         }
         _ => Err(Error::new(kinds::InvalidTypeError(
@@ -1141,11 +1141,11 @@ pub fn f64_abs(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) ->
     }
 }
 
-pub fn f64_neg(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
-    let a = stack.pop()?;
+pub fn f64_neg(_stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
+    let a = _stack.pop()?;
     match a {
         Value::F64(a) => {
-            stack.push(Value::F64(-a))?;
+            _stack.push(Value::F64(-a))?;
             Ok(())
         }
         _ => Err(Error::new(kinds::InvalidTypeError(
@@ -1154,12 +1154,12 @@ pub fn f64_neg(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) ->
     }
 }
 
-pub fn f64_copysign(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
-    let b = stack.pop()?;
-    let a = stack.pop()?;
+pub fn f64_copysign(_stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
+    let b = _stack.pop()?;
+    let a = _stack.pop()?;
     match (a, b) {
         (Value::F64(a), Value::F64(b)) => {
-            stack.push(Value::F64(a.copysign(b)))?;
+            _stack.push(Value::F64(a.copysign(b)))?;
             Ok(())
         }
         _ => Err(Error::new(kinds::InvalidTypeError(
@@ -1168,11 +1168,11 @@ pub fn f64_copysign(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavio
     }
 }
 
-pub fn f64_ceil(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
-    let a = stack.pop()?;
+pub fn f64_ceil(_stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
+    let a = _stack.pop()?;
     match a {
         Value::F64(a) => {
-            stack.push(Value::F64(a.ceil()))?;
+            _stack.push(Value::F64(a.ceil()))?;
             Ok(())
         }
         _ => Err(Error::new(kinds::InvalidTypeError(
@@ -1181,34 +1181,34 @@ pub fn f64_ceil(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -
     }
 }
 
-pub fn f64_floor(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
-    let a = stack.pop()?;
+pub fn f64_floor(_stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
+    let a = _stack.pop()?;
     match a {
         Value::F64(a) => {
-            stack.push(Value::F64(a.floor()))?;
+            _stack.push(Value::F64(a.floor()))?;
             Ok(())
         }
         _ => Err(Error::invalid_type("Expected f64".to_string())),
     }
 }
 
-pub fn f64_trunc(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
-    let a = stack.pop()?;
+pub fn f64_trunc(_stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
+    let a = _stack.pop()?;
     match a {
         Value::F64(a) => {
-            stack.push(Value::F64(a.trunc()))?;
+            _stack.push(Value::F64(a.trunc()))?;
             Ok(())
         }
         _ => Err(Error::invalid_type("Expected f64".to_string())),
     }
 }
 
-pub fn f64_nearest(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
-    let a = stack.pop()?;
+pub fn f64_nearest(_stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
+    let a = _stack.pop()?;
 
     if let Value::F64(f) = a {
         if f.is_nan() || f.is_infinite() || f == 0.0 {
-            stack.push(a)?;
+            _stack.push(a)?;
             return Ok(());
         }
 
@@ -1229,7 +1229,7 @@ pub fn f64_nearest(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior
             f.round()
         };
 
-        stack.push(Value::F64(result))?;
+        _stack.push(Value::F64(result))?;
     } else {
         return Err(Error::new(kinds::ExecutionError(
             "Expected f64 value".into(),
@@ -1239,23 +1239,23 @@ pub fn f64_nearest(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior
     Ok(())
 }
 
-pub fn f64_sqrt(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
-    let a = stack.pop()?;
+pub fn f64_sqrt(_stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
+    let a = _stack.pop()?;
     match a {
         Value::F64(a) => {
-            stack.push(Value::F64(a.sqrt()))?;
+            _stack.push(Value::F64(a.sqrt()))?;
             Ok(())
         }
         _ => Err(Error::invalid_type("Expected f64".to_string())),
     }
 }
 
-pub fn f64_eq(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
-    let b = stack.pop()?;
-    let a = stack.pop()?;
+pub fn f64_eq(_stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
+    let b = _stack.pop()?;
+    let a = _stack.pop()?;
     match (a, b) {
         (Value::F64(a), Value::F64(b)) => {
-            stack.push(Value::I32(i32::from(a == b)))?;
+            _stack.push(Value::I32(i32::from(a == b)))?;
             Ok(())
         }
         _ => Err(Error::new(kinds::InvalidTypeError(
@@ -1264,12 +1264,12 @@ pub fn f64_eq(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> 
     }
 }
 
-pub fn f64_ne(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
-    let b = stack.pop()?;
-    let a = stack.pop()?;
+pub fn f64_ne(_stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
+    let b = _stack.pop()?;
+    let a = _stack.pop()?;
     match (a, b) {
         (Value::F64(a), Value::F64(b)) => {
-            stack.push(Value::I32(i32::from(a != b)))?;
+            _stack.push(Value::I32(i32::from(a != b)))?;
             Ok(())
         }
         _ => Err(Error::new(kinds::InvalidTypeError(
@@ -1278,12 +1278,12 @@ pub fn f64_ne(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> 
     }
 }
 
-pub fn f64_lt(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
-    let b = stack.pop()?;
-    let a = stack.pop()?;
+pub fn f64_lt(_stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
+    let b = _stack.pop()?;
+    let a = _stack.pop()?;
     match (a, b) {
         (Value::F64(a), Value::F64(b)) => {
-            stack.push(Value::I32(i32::from(a < b)))?;
+            _stack.push(Value::I32(i32::from(a < b)))?;
             Ok(())
         }
         _ => Err(Error::new(kinds::InvalidTypeError(
@@ -1292,12 +1292,12 @@ pub fn f64_lt(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> 
     }
 }
 
-pub fn f64_gt(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
-    let b = stack.pop()?;
-    let a = stack.pop()?;
+pub fn f64_gt(_stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
+    let b = _stack.pop()?;
+    let a = _stack.pop()?;
     match (a, b) {
         (Value::F64(a), Value::F64(b)) => {
-            stack.push(Value::I32(i32::from(a > b)))?;
+            _stack.push(Value::I32(i32::from(a > b)))?;
             Ok(())
         }
         _ => Err(Error::new(kinds::InvalidTypeError(
@@ -1306,12 +1306,12 @@ pub fn f64_gt(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> 
     }
 }
 
-pub fn f64_le(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
-    let b = stack.pop()?;
-    let a = stack.pop()?;
+pub fn f64_le(_stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
+    let b = _stack.pop()?;
+    let a = _stack.pop()?;
     match (a, b) {
         (Value::F64(a), Value::F64(b)) => {
-            stack.push(Value::I32(i32::from(a <= b)))?;
+            _stack.push(Value::I32(i32::from(a <= b)))?;
             Ok(())
         }
         _ => Err(Error::new(kinds::InvalidTypeError(
@@ -1320,12 +1320,12 @@ pub fn f64_le(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> 
     }
 }
 
-pub fn f64_ge(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
-    let b = stack.pop()?;
-    let a = stack.pop()?;
+pub fn f64_ge(_stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
+    let b = _stack.pop()?;
+    let a = _stack.pop()?;
     match (a, b) {
         (Value::F64(a), Value::F64(b)) => {
-            stack.push(Value::I32(i32::from(a >= b)))?;
+            _stack.push(Value::I32(i32::from(a >= b)))?;
             Ok(())
         }
         _ => Err(Error::new(kinds::InvalidTypeError(
@@ -1335,13 +1335,13 @@ pub fn f64_ge(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> 
 }
 
 pub fn i64_extend_i32_s(
-    stack: &mut dyn StackBehavior,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
 ) -> Result<()> {
-    let a = stack.pop()?;
+    let a = _stack.pop()?;
     match a {
         Value::I32(a) => {
-            stack.push(Value::I64(i64::from(a)))?;
+            _stack.push(Value::I64(i64::from(a)))?;
             Ok(())
         }
         _ => Err(Error::new(kinds::InvalidTypeError(
@@ -1351,13 +1351,13 @@ pub fn i64_extend_i32_s(
 }
 
 pub fn i64_extend_i32_u(
-    stack: &mut dyn StackBehavior,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
 ) -> Result<()> {
-    let a = stack.pop()?;
+    let a = _stack.pop()?;
     match a {
         Value::I32(a) => {
-            stack.push(Value::I64(i64::from(a)))?;
+            _stack.push(Value::I64(i64::from(a)))?;
             Ok(())
         }
         _ => Err(Error::new(kinds::InvalidTypeError(
@@ -1367,13 +1367,13 @@ pub fn i64_extend_i32_u(
 }
 
 pub fn i64_trunc_f32_s(
-    stack: &mut dyn StackBehavior,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
 ) -> Result<()> {
-    let a = stack.pop()?;
+    let a = _stack.pop()?;
     match a {
         Value::F32(a) => {
-            stack.push(Value::I64(a as i64))?;
+            _stack.push(Value::I64(a as i64))?;
             Ok(())
         }
         _ => Err(Error::new(kinds::InvalidTypeError(
@@ -1383,13 +1383,13 @@ pub fn i64_trunc_f32_s(
 }
 
 pub fn i64_trunc_f32_u(
-    stack: &mut dyn StackBehavior,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
 ) -> Result<()> {
-    let a = stack.pop()?;
+    let a = _stack.pop()?;
     match a {
         Value::F32(a) => {
-            stack.push(Value::I64(a as i64))?;
+            _stack.push(Value::I64(a as i64))?;
             Ok(())
         }
         _ => Err(Error::new(kinds::InvalidTypeError(
@@ -1399,13 +1399,13 @@ pub fn i64_trunc_f32_u(
 }
 
 pub fn i64_trunc_f64_s(
-    stack: &mut dyn StackBehavior,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
 ) -> Result<()> {
-    let a = stack.pop()?;
+    let a = _stack.pop()?;
     match a {
         Value::F64(a) => {
-            stack.push(Value::I64(a as i64))?;
+            _stack.push(Value::I64(a as i64))?;
             Ok(())
         }
         _ => Err(Error::new(kinds::InvalidTypeError(
@@ -1415,13 +1415,13 @@ pub fn i64_trunc_f64_s(
 }
 
 pub fn i64_trunc_f64_u(
-    stack: &mut dyn StackBehavior,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
 ) -> Result<()> {
-    let a = stack.pop()?;
+    let a = _stack.pop()?;
     match a {
         Value::F64(a) => {
-            stack.push(Value::I64(a as i64))?;
+            _stack.push(Value::I64(a as i64))?;
             Ok(())
         }
         _ => Err(Error::new(kinds::InvalidTypeError(
@@ -1431,71 +1431,71 @@ pub fn i64_trunc_f64_u(
 }
 
 pub fn i32_trunc_sat_f32_s(
-    stack: &mut dyn StackBehavior,
-    frame: &mut dyn FrameBehavior,
+    _stack: &mut dyn StackBehavior,
+    _frame: &mut dyn FrameBehavior,
     _engine: &mut StacklessEngine,
 ) -> Result<()> {
     unimplemented!()
 }
 
 pub fn i32_trunc_sat_f32_u(
-    stack: &mut dyn StackBehavior,
-    frame: &mut dyn FrameBehavior,
+    _stack: &mut dyn StackBehavior,
+    _frame: &mut dyn FrameBehavior,
     _engine: &mut StacklessEngine,
 ) -> Result<()> {
     unimplemented!()
 }
 
 pub fn i32_trunc_sat_f64_s(
-    stack: &mut dyn StackBehavior,
-    frame: &mut dyn FrameBehavior,
+    _stack: &mut dyn StackBehavior,
+    _frame: &mut dyn FrameBehavior,
     _engine: &mut StacklessEngine,
 ) -> Result<()> {
     unimplemented!()
 }
 
 pub fn i32_trunc_sat_f64_u(
-    stack: &mut dyn StackBehavior,
-    frame: &mut dyn FrameBehavior,
+    _stack: &mut dyn StackBehavior,
+    _frame: &mut dyn FrameBehavior,
     _engine: &mut StacklessEngine,
 ) -> Result<()> {
     unimplemented!()
 }
 
 pub fn i64_trunc_sat_f32_s(
-    stack: &mut dyn StackBehavior,
-    frame: &mut dyn FrameBehavior,
+    _stack: &mut dyn StackBehavior,
+    _frame: &mut dyn FrameBehavior,
     _engine: &mut StacklessEngine,
 ) -> Result<()> {
     unimplemented!()
 }
 
 pub fn i64_trunc_sat_f32_u(
-    stack: &mut dyn StackBehavior,
-    frame: &mut dyn FrameBehavior,
+    _stack: &mut dyn StackBehavior,
+    _frame: &mut dyn FrameBehavior,
     _engine: &mut StacklessEngine,
 ) -> Result<()> {
     unimplemented!()
 }
 
 pub fn i64_trunc_sat_f64_s(
-    stack: &mut dyn StackBehavior,
-    frame: &mut dyn FrameBehavior,
+    _stack: &mut dyn StackBehavior,
+    _frame: &mut dyn FrameBehavior,
     _engine: &mut StacklessEngine,
 ) -> Result<()> {
     unimplemented!()
 }
 
 pub fn i64_trunc_sat_f64_u(
-    stack: &mut dyn StackBehavior,
-    frame: &mut dyn FrameBehavior,
+    _stack: &mut dyn StackBehavior,
+    _frame: &mut dyn FrameBehavior,
     _engine: &mut StacklessEngine,
 ) -> Result<()> {
     unimplemented!()
 }
 
 pub fn i32_trunc_f32_s(
-    stack: &mut dyn StackBehavior,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
     _engine: &mut StacklessEngine,
 ) -> Result<()> {
@@ -1503,7 +1503,7 @@ pub fn i32_trunc_f32_s(
 }
 
 pub fn i32_trunc_f32_u(
-    stack: &mut dyn StackBehavior,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
     _engine: &mut StacklessEngine,
 ) -> Result<()> {
@@ -1511,7 +1511,7 @@ pub fn i32_trunc_f32_u(
 }
 
 pub fn i32_trunc_f64_s(
-    stack: &mut dyn StackBehavior,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
     _engine: &mut StacklessEngine,
 ) -> Result<()> {
@@ -1519,7 +1519,7 @@ pub fn i32_trunc_f64_s(
 }
 
 pub fn i32_trunc_f64_u(
-    stack: &mut dyn StackBehavior,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
     _engine: &mut StacklessEngine,
 ) -> Result<()> {
@@ -1567,14 +1567,14 @@ pub fn i64_extend32_s(
 }
 
 pub fn i64_eqz(
-    stack: &mut dyn StackBehavior,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
     _engine: &mut StacklessEngine,
 ) -> Result<()> {
-    let a = stack.pop()?;
+    let a = _stack.pop()?;
     match a {
         Value::I64(a) => {
-            stack.push(Value::I32(if a == 0 { 1 } else { 0 }))?;
+            _stack.push(Value::I32(if a == 0 { 1 } else { 0 }))?;
             Ok(())
         }
         _ => Err(Error::new(kinds::InvalidTypeError(
@@ -1583,119 +1583,122 @@ pub fn i64_eqz(
     }
 }
 
-pub fn i32_wrap_i64(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
-    let val = stack.pop_i64()?;
-    stack.push(Value::I32(val as i32))?;
+pub fn i32_wrap_i64(_stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
+    let val = _stack.pop_i64()?;
+    _stack.push(Value::I32(val as i32))?;
     Ok(())
 }
 
 pub fn f32_convert_i32_s(
-    stack: &mut dyn StackBehavior,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
 ) -> Result<()> {
-    let val = stack.pop_i32()?;
-    stack.push(Value::F32(val as f32))?;
+    let val = _stack.pop_i32()?;
+    _stack.push(Value::F32(val as f32))?;
     Ok(())
 }
 
 pub fn f32_convert_i32_u(
-    stack: &mut dyn StackBehavior,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
 ) -> Result<()> {
-    let val = stack.pop_i32()? as u32;
-    stack.push(Value::F32(val as f32))?;
+    let val = _stack.pop_i32()? as u32;
+    _stack.push(Value::F32(val as f32))?;
     Ok(())
 }
 
 pub fn f32_convert_i64_s(
-    stack: &mut dyn StackBehavior,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
 ) -> Result<()> {
-    let val = stack.pop_i64()?;
-    stack.push(Value::F32(val as f32))?;
+    let val = _stack.pop_i64()?;
+    _stack.push(Value::F32(val as f32))?;
     Ok(())
 }
 
 pub fn f32_convert_i64_u(
-    stack: &mut dyn StackBehavior,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
 ) -> Result<()> {
-    let val = stack.pop_i64()? as u64;
-    stack.push(Value::F32(val as f32))?;
+    let val = _stack.pop_i64()? as u64;
+    _stack.push(Value::F32(val as f32))?;
     Ok(())
 }
 
-pub fn f32_demote_f64(stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior) -> Result<()> {
-    let val = stack.pop()?;
+pub fn f32_demote_f64(
+    _stack: &mut dyn StackBehavior,
+    _frame: &mut dyn FrameBehavior,
+) -> Result<()> {
+    let val = _stack.pop()?;
     let f_val = val.as_f64().ok_or_else(|| {
         Error::new(kinds::InvalidTypeError(format!(
             "Expected F64, found {:?}",
             val.value_type()
         )))
     })?;
-    stack.push(Value::F32(f_val as f32))?;
+    _stack.push(Value::F32(f_val as f32))?;
     Ok(())
 }
 
 pub fn f64_convert_i32_s(
-    stack: &mut dyn StackBehavior,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
 ) -> Result<()> {
-    let val = stack.pop_i32()?;
-    stack.push(Value::F64(val as f64))?;
+    let val = _stack.pop_i32()?;
+    _stack.push(Value::F64(val as f64))?;
     Ok(())
 }
 
 pub fn f64_convert_i32_u(
-    stack: &mut dyn StackBehavior,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
 ) -> Result<()> {
-    let val = stack.pop_i32()? as u32;
-    stack.push(Value::F64(val as f64))?;
+    let val = _stack.pop_i32()? as u32;
+    _stack.push(Value::F64(val as f64))?;
     Ok(())
 }
 
 pub fn f64_convert_i64_s(
-    stack: &mut dyn StackBehavior,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
 ) -> Result<()> {
-    let val = stack.pop_i64()?;
-    stack.push(Value::F64(val as f64))?;
+    let val = _stack.pop_i64()?;
+    _stack.push(Value::F64(val as f64))?;
     Ok(())
 }
 
 pub fn f64_convert_i64_u(
-    stack: &mut dyn StackBehavior,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
 ) -> Result<()> {
-    let val = stack.pop_i64()? as u64;
-    stack.push(Value::F64(val as f64))?;
+    let val = _stack.pop_i64()? as u64;
+    _stack.push(Value::F64(val as f64))?;
     Ok(())
 }
 
 pub fn f64_promote_f32(
-    stack: &mut dyn StackBehavior,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
 ) -> Result<()> {
-    let val = stack.pop()?;
+    let val = _stack.pop()?;
     let f_val = val.as_f32().ok_or_else(|| {
         Error::new(kinds::InvalidTypeError(format!(
             "Expected F32, found {:?}",
             val.value_type()
         )))
     })?;
-    stack.push(Value::F64(f_val as f64))?;
+    _stack.push(Value::F64(f_val as f64))?;
     Ok(())
 }
 
 /// Implements the reinterpret i32 as f32 operation
 pub fn i32_reinterpret_f32(
-    stack: &mut dyn StackBehavior,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
 ) -> Result<()> {
-    let val = stack.pop()?;
+    let val = _stack.pop()?;
     if let Value::I32(int_val) = val {
-        stack.push(Value::F32(f32::from_bits(int_val as u32)))
+        _stack.push(Value::F32(f32::from_bits(int_val as u32)))
     } else {
         Err(Error::invalid_type("Expected i32".to_string()))
     }
@@ -1703,36 +1706,36 @@ pub fn i32_reinterpret_f32(
 
 /// Implements the reinterpret i64 as f64 operation
 pub fn i64_reinterpret_f64(
-    stack: &mut dyn StackBehavior,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
 ) -> Result<()> {
-    let val = stack.pop()?;
+    let val = _stack.pop()?;
     if let Value::I64(int_val) = val {
-        stack.push(Value::F64(f64::from_bits(int_val as u64)))
+        _stack.push(Value::F64(f64::from_bits(int_val as u64)))
     } else {
         Err(Error::invalid_type("Expected i64".to_string()))
     }
 }
 
 pub fn f32_reinterpret_i32(
-    stack: &mut dyn StackBehavior,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
 ) -> Result<()> {
-    let val = stack.pop()?;
+    let val = _stack.pop()?;
     if let Value::F32(float_val) = val {
-        stack.push(Value::I32(float_val.to_bits() as i32))
+        _stack.push(Value::I32(float_val.to_bits() as i32))
     } else {
         Err(Error::invalid_type("Expected f32".to_string()))
     }
 }
 
 pub fn f64_reinterpret_i64(
-    stack: &mut dyn StackBehavior,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
 ) -> Result<()> {
-    let val = stack.pop()?;
+    let val = _stack.pop()?;
     if let Value::F64(float_val) = val {
-        stack.push(Value::I64(float_val.to_bits() as i64))
+        _stack.push(Value::I64(float_val.to_bits() as i64))
     } else {
         Err(Error::invalid_type("Expected f64".to_string()))
     }
@@ -1740,15 +1743,15 @@ pub fn f64_reinterpret_i64(
 
 /// Execute an i64 greater than or equal to, signed version
 pub fn i64_ge_s(
-    stack: &mut dyn StackBehavior,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
     _engine: &mut StacklessEngine,
 ) -> Result<()> {
-    let b = stack.pop()?;
-    let a = stack.pop()?;
+    let b = _stack.pop()?;
+    let a = _stack.pop()?;
     match (a, b) {
         (Value::I64(a), Value::I64(b)) => {
-            stack.push(Value::I32(i32::from(a >= b)))?;
+            _stack.push(Value::I32(i32::from(a >= b)))?;
             Ok(())
         }
         _ => Err(Error::invalid_type("Expected i64".to_string())),
@@ -1757,17 +1760,17 @@ pub fn i64_ge_s(
 
 /// Execute an i64 greater than or equal to, unsigned version
 pub fn i64_ge_u(
-    stack: &mut dyn StackBehavior,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
     _engine: &mut StacklessEngine,
 ) -> Result<()> {
-    let b = stack.pop()?;
-    let a = stack.pop()?;
+    let b = _stack.pop()?;
+    let a = _stack.pop()?;
     match (a, b) {
         (Value::I64(a), Value::I64(b)) => {
             let a = a as u64;
             let b = b as u64;
-            stack.push(Value::I32(i32::from(a >= b)))?;
+            _stack.push(Value::I32(i32::from(a >= b)))?;
             Ok(())
         }
         _ => Err(Error::invalid_type("Expected i64".to_string())),
@@ -1778,17 +1781,93 @@ pub fn i64_ge_u(
 ///
 /// Pops two f32 values from the stack, adds them, and pushes the result.
 pub fn f32_add(
-    stack: &mut dyn StackBehavior,
+    _stack: &mut dyn StackBehavior,
     _frame: &mut dyn FrameBehavior,
     _engine: &mut StacklessEngine,
 ) -> Result<()> {
-    let b = stack.pop()?;
-    let a = stack.pop()?;
+    let b = _stack.pop()?;
+    let a = _stack.pop()?;
     match (a, b) {
         (Value::F32(a), Value::F32(b)) => {
-            stack.push(Value::F32(a + b))?;
+            _stack.push(Value::F32(a + b))?;
             Ok(())
         }
         _ => Err(Error::invalid_type("Expected f32".to_string())),
     }
+}
+
+#[cfg(feature = "std")]
+pub fn _verify_value(
+    _stack: &mut dyn StackBehavior,
+    _frame: &mut dyn FrameBehavior,
+) -> Result<ControlFlow, Error> {
+    // ... existing code ...
+}
+
+#[cfg(feature = "std")]
+pub fn _verify_i32(
+    _stack: &mut dyn StackBehavior,
+    _frame: &mut dyn FrameBehavior,
+) -> Result<ControlFlow, Error> {
+    // ... existing code ...
+}
+
+#[cfg(feature = "std")]
+pub fn _verify_i64(
+    _stack: &mut dyn StackBehavior,
+    _frame: &mut dyn FrameBehavior,
+) -> Result<ControlFlow, Error> {
+    // ... existing code ...
+}
+
+#[cfg(feature = "std")]
+pub fn _verify_f32(
+    _stack: &mut dyn StackBehavior,
+    _frame: &mut dyn FrameBehavior,
+) -> Result<ControlFlow, Error> {
+    // ... existing code ...
+}
+
+#[cfg(feature = "std")]
+pub fn _verify_f64(
+    _stack: &mut dyn StackBehavior,
+    _frame: &mut dyn FrameBehavior,
+) -> Result<ControlFlow, Error> {
+    // ... existing code ...
+}
+
+#[cfg(feature = "std")]
+pub fn _verify_v128(
+    _stack: &mut dyn StackBehavior,
+    _frame: &mut dyn FrameBehavior,
+) -> Result<ControlFlow, Error> {
+    // ... existing code ...
+}
+
+#[cfg(feature = "std")]
+pub fn _verify_func_ref(
+    _stack: &mut dyn StackBehavior,
+    _frame: &mut dyn FrameBehavior,
+) -> Result<ControlFlow, Error> {
+    // ... existing code ...
+}
+
+#[cfg(feature = "std")]
+pub fn _check_i32_nan(_stack: &mut dyn StackBehavior) -> Result<ControlFlow, Error> {
+    // ... existing code ...
+}
+
+#[cfg(feature = "std")]
+pub fn _check_i64_nan(_stack: &mut dyn StackBehavior) -> Result<ControlFlow, Error> {
+    // ... existing code ...
+}
+
+#[cfg(feature = "std")]
+pub fn _check_f32_nan(_stack: &mut dyn StackBehavior) -> Result<ControlFlow, Error> {
+    // ... existing code ...
+}
+
+#[cfg(feature = "std")]
+pub fn _check_f64_nan(_stack: &mut dyn StackBehavior) -> Result<ControlFlow, Error> {
+    // ... existing code ...
 }

@@ -4,7 +4,7 @@
 //! focusing on run-length encoding (RLE) which is efficient for memory sections.
 
 use crate::Vec;
-use wrt_error::{kinds, Error, Result};
+use wrt_error::{codes, Error, ErrorCategory, Result};
 
 #[cfg(feature = "std")]
 use std::cmp;
@@ -90,9 +90,11 @@ pub fn rle_decode(input: &[u8]) -> Result<Vec<u8>> {
 
     while i < input.len() {
         if i >= input.len() {
-            return Err(Error::new(kinds::ParseError(
+            return Err(Error::new(
+                ErrorCategory::Validation,
+                codes::PARSE_ERROR,
                 "Truncated RLE data".to_string(),
-            )));
+            ));
         }
 
         let control = input[i];
@@ -102,9 +104,11 @@ pub fn rle_decode(input: &[u8]) -> Result<Vec<u8>> {
             // Run of repeated bytes (0-127 times)
             let run_length = control as usize + 1;
             if i >= input.len() {
-                return Err(Error::new(kinds::ParseError(
+                return Err(Error::new(
+                    ErrorCategory::Validation,
+                    codes::PARSE_ERROR,
                     "Truncated RLE sequence".to_string(),
-                )));
+                ));
             }
             let value = input[i];
             i += 1;
@@ -116,9 +120,11 @@ pub fn rle_decode(input: &[u8]) -> Result<Vec<u8>> {
             // Literal sequence ((control & 0x7F) + 1 bytes)
             let literal_length = (control & 0x7F) as usize + 1;
             if i + literal_length > input.len() {
-                return Err(Error::new(kinds::ParseError(
+                return Err(Error::new(
+                    ErrorCategory::Validation,
+                    codes::PARSE_ERROR,
                     "Truncated literal sequence".to_string(),
-                )));
+                ));
             }
             result.extend_from_slice(&input[i..i + literal_length]);
             i += literal_length;

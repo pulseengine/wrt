@@ -1,5 +1,5 @@
 use crate::{
-    behavior::{self, ControlFlowBehavior, FrameBehavior, StackBehavior},
+    behavior::{self, ControlFlowBehavior},
     decoder_integration,
     error::{kinds, Error, Result},
     global::Global,

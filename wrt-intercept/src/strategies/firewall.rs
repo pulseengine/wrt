@@ -171,10 +171,14 @@ impl LinkInterceptorStrategy for FirewallStrategy {
     ) -> Result<Vec<Value>> {
         // Check if the function call is allowed
         if !self.is_allowed(source, target, function) {
-            return Err(Error::new(kinds::RuntimeError(format!(
-                "Security error: Function call from '{}' to '{}::{}' is not allowed by firewall policy",
-                source, target, function
-            ))));
+            return Err(Error::new(
+                wrt_error::ErrorCategory::Runtime,
+                wrt_error::codes::RUNTIME_ERROR,
+                kinds::RuntimeError(format!(
+                    "Security error: Function call from '{}' to '{}::{}' is not allowed by firewall policy",
+                    source, target, function
+                ))
+            ));
         }
 
         // Check parameters if configured

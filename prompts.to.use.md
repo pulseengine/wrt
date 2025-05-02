@@ -1,0 +1,2 @@
+I want to have wrt and all it's related crates buildable for std and non_std with no errors and no warnings. They also should ensure that each crate does it's specific jobs and we don't implement things twice. Please work on this. If you have any doubts to choose. Stop and ask me. Ensure that each crate has its purpose and use them appropriately. dont develop twice. Otherwise stop only once you are done.
+

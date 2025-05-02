@@ -1,15 +1,15 @@
 Evaluation Plan
-==============
+===============
 
 This document defines the evaluation approach for the WRT project to determine qualification levels and activities.
 
 Introduction
------------
+------------
 
 The evaluation plan establishes the criteria for determining the appropriate qualification levels for the WRT project and outlines the activities required to meet those levels.
 
 Qualification Levels Assessment
------------------------------
+-------------------------------
 
 This section assesses the target qualification levels for the WRT project.
 
@@ -50,7 +50,7 @@ This section assesses the target qualification levels for the WRT project.
    - Comprehensive testing
 
 Safety Criticality Assessment
----------------------------
+-----------------------------
 
 This section assesses the safety criticality of the WRT components.
 
@@ -81,7 +81,7 @@ This section assesses the safety criticality of the WRT components.
      - Command-line interface that mediates access to runtime
 
 Qualification Activities Plan
----------------------------
+-----------------------------
 
 The following activities are required for qualification:
 
@@ -120,7 +120,7 @@ The following activities are required for qualification:
    - Qualification evidence
 
 Evaluation Criteria
------------------
+-------------------
 
 The following criteria will be used to evaluate the qualification status:
 

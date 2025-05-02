@@ -1,6 +1,6 @@
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
-use wrt_error::{Error, Result};
+use std::sync::Arc;
+use wrt_error::{errors::codes, Error, ErrorCategory, Result};
 use wrt_types::{ComponentType, ExternType, Vec};
 
 // Import our local function type (not the component one)
@@ -55,21 +55,33 @@ impl ComponentInstance for ComponentInstanceImpl {
                 ExternType::Function(func_type) => {
                     // Validate argument count
                     if args.len() != func_type.params.len() {
-                        return Err(Error::new(format!(
-                            "Expected {} arguments, got {}",
-                            func_type.params.len(),
-                            args.len()
-                        )));
+                        return Err(Error::new(
+                            ErrorCategory::Component,
+                            codes::COMPONENT_TYPE_MISMATCH,
+                            format!(
+                                "Expected {} arguments, got {}",
+                                func_type.params.len(),
+                                args.len()
+                            ),
+                        ));
                     }
 
                     // This is a placeholder implementation - in a real system, this would
                     // execute the actual component function
                     Ok(vec![Value::I32(42)])
                 }
-                _ => Err(Error::new(format!("Export {name} is not a function"))),
+                _ => Err(Error::new(
+                    ErrorCategory::Component,
+                    codes::COMPONENT_INSTANTIATION_ERROR,
+                    format!("Export {name} is not a function"),
+                )),
             }
         } else {
-            Err(Error::new(format!("Function {name} not found")))
+            Err(Error::new(
+                ErrorCategory::Component,
+                codes::COMPONENT_INSTANTIATION_ERROR,
+                format!("Function {name} not found"),
+            ))
         }
     }
 
@@ -81,10 +93,18 @@ impl ComponentInstance for ComponentInstanceImpl {
             if end <= mem.len() {
                 Ok(mem[start..end].to_vec())
             } else {
-                Err(Error::new("Memory access out of bounds".to_string()))
+                Err(Error::new(
+                    ErrorCategory::Memory,
+                    codes::MEMORY_ACCESS_OUT_OF_BOUNDS,
+                    "Memory access out of bounds",
+                ))
             }
         } else {
-            Err(Error::new(format!("Memory {name} not found")))
+            Err(Error::new(
+                ErrorCategory::Component,
+                codes::COMPONENT_INSTANTIATION_ERROR,
+                format!("Memory {name} not found"),
+            ))
         }
     }
 
@@ -110,7 +130,11 @@ impl ComponentInstance for ComponentInstanceImpl {
         if let Some((_, ty)) = self.component_type.exports.iter().find(|(n, _)| n == name) {
             Ok(ty.clone())
         } else {
-            Err(Error::new(format!("Export {name} not found")))
+            Err(Error::new(
+                ErrorCategory::Component,
+                codes::COMPONENT_INSTANTIATION_ERROR,
+                format!("Export {name} not found"),
+            ))
         }
     }
 }
@@ -215,10 +239,18 @@ impl HostFunctionFactory for DefaultHostFunctionFactory {
 
                 Ok(Box::new(host_func))
             } else {
-                Err(Error::new(format!("Function {name} has incompatible type")))
+                Err(Error::new(
+                    ErrorCategory::Component,
+                    codes::COMPONENT_TYPE_MISMATCH,
+                    format!("Function {name} has incompatible type"),
+                ))
             }
         } else {
-            Err(Error::new(format!("Function {name} not found")))
+            Err(Error::new(
+                ErrorCategory::Component,
+                codes::COMPONENT_INSTANTIATION_ERROR,
+                format!("Function {name} not found"),
+            ))
         }
     }
 }

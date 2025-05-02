@@ -7,7 +7,7 @@
 use alloc::format;
 
 use crate::safe_memory::SafeSlice;
-use wrt_error::{kinds, Error, Result};
+use wrt_error::{codes, Error, ErrorCategory, Result};
 
 /// WebAssembly section ID values
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -59,17 +59,23 @@ impl SectionId {
             11 => Ok(Self::Data),
             12 => Ok(Self::DataCount),
             #[cfg(feature = "std")]
-            _ => Err(Error::new(kinds::ParseError(format!(
-                "Invalid section id: {}",
-                value
-            )))),
+            _ => Err(Error::new(
+                ErrorCategory::Validation,
+                codes::PARSE_ERROR,
+                "Invalid section id",
+            )),
             #[cfg(all(not(feature = "std"), feature = "alloc"))]
-            _ => Err(Error::new(kinds::ParseError(format!(
-                "Invalid section id: {}",
-                value
-            )))),
+            _ => Err(Error::new(
+                ErrorCategory::Validation,
+                codes::PARSE_ERROR,
+                "Invalid section id",
+            )),
             #[cfg(not(any(feature = "std", feature = "alloc")))]
-            _ => Err(Error::new(kinds::ParseError("Invalid section id".into()))),
+            _ => Err(Error::new(
+                ErrorCategory::Validation,
+                codes::PARSE_ERROR,
+                "Invalid section id",
+            )),
         }
     }
 }
@@ -106,18 +112,18 @@ impl<'a> Section<'a> {
         // Verify size matches data length
         if self.size as usize != self.data.len() {
             #[cfg(feature = "std")]
-            return Err(Error::new(kinds::ValidationError(format!(
-                "Section size mismatch: expected {}, got {}",
-                self.size,
-                self.data.len()
-            ))));
+            return Err(Error::new(
+                ErrorCategory::Validation,
+                codes::VALIDATION_ERROR,
+                "Section size mismatch",
+            ));
 
             #[cfg(all(not(feature = "std"), feature = "alloc"))]
-            return Err(Error::new(kinds::ValidationError(format!(
-                "Section size mismatch: expected {}, got {}",
-                self.size,
-                self.data.len()
-            ))));
+            return Err(Error::new(
+                ErrorCategory::Validation,
+                codes::VALIDATION_ERROR,
+                "Section size mismatch",
+            ));
         }
         Ok(())
     }

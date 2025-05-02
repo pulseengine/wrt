@@ -5,10 +5,8 @@
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use std::sync::Arc;
-use wrt_types::{
-    safe_memory::{MemoryProvider, SafeSlice, StdMemoryProvider},
-    verification::VerificationLevel,
-};
+use wrt_types::safe_memory::{SafeSlice, StdMemoryProvider};
+use wrt_types::verification::VerificationLevel;
 
 fn safe_memory_store_benchmark(c: &mut Criterion) {
     let mut group = c.benchmark_group("SafeMemory Store");

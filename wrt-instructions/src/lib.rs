@@ -53,4 +53,6 @@ mod arithmetic_test;
 pub use wrt_error::{Error, Result};
 pub use wrt_types::types::ValueType;
 pub use wrt_types::values::Value;
+pub use wrt_types::BlockType;
+pub use wrt_types::RefType;
 pub use wrt_types::Result as TypesResult;

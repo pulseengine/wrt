@@ -7,8 +7,20 @@ use std::sync::Arc;
 use wrt_error::{kinds, Error, Result};
 use wrt_runtime::memory::MemoryArcExt;
 use wrt_runtime::Memory;
-use wrt_types::safe_memory::{MemoryProvider, MemorySafety, StdMemoryProvider};
-use wrt_types::BoundedCapacity;
+use wrt_runtime::MemoryType;
+use wrt_types::safe_memory::{MemoryProvider, MemorySafety, MemoryStats, StdMemoryProvider};
+use wrt_types::verification::VerificationLevel;
+use wrt_types::Value;
+
+#[cfg(not(feature = "std"))]
+use alloc::sync::Arc;
+#[cfg(feature = "std")]
+use std::sync::Arc;
+
+#[cfg(not(feature = "std"))]
+use alloc::vec::Vec;
+#[cfg(feature = "std")]
+use std::vec::Vec;
 
 use core::ops::Range;
 
@@ -80,13 +92,7 @@ impl SafeMemoryAdapter {
 // Implement the MemorySafety trait for SafeMemoryAdapter
 impl MemorySafety for SafeMemoryAdapter {
     fn verify_integrity(&self) -> Result<()> {
-        // Call verify_integrity on the memory provider
-        self.provider.verify_integrity().map_err(|e| {
-            Error::new(kinds::MemoryError(format!(
-                "Memory integrity check failed: {}",
-                e
-            )))
-        })
+        self.memory.verify_integrity()
     }
 
     fn set_verification_level(&mut self, level: wrt_types::VerificationLevel) {
@@ -96,6 +102,19 @@ impl MemorySafety for SafeMemoryAdapter {
     fn verification_level(&self) -> wrt_types::VerificationLevel {
         self.provider.verification_level()
     }
+
+    fn memory_stats(&self) -> MemoryStats {
+        let size = self.memory.size().unwrap_or(0);
+        let access_count = self.memory.access_count();
+        let peak_usage = self.memory.peak_usage();
+
+        MemoryStats {
+            total_size: size,
+            access_count: access_count as usize,
+            unique_regions: 1, // For now, we don't track unique regions
+            max_access_size: peak_usage,
+        }
+    }
 }
 
 impl MemoryAdapter for SafeMemoryAdapter {
@@ -104,36 +123,21 @@ impl MemoryAdapter for SafeMemoryAdapter {
     }
 
     fn size(&self) -> Result<usize> {
-        Ok(self.memory.size() as usize * wrt_runtime::PAGE_SIZE)
+        Ok(self.memory.size_in_bytes())
     }
 
     fn load(&self, offset: usize, len: usize) -> Result<Vec<u8>> {
-        // Use the provider to verify and get data
-        let slice = self.provider.borrow_slice(offset, len)?;
-
-        // Convert safe slice to Vec<u8>
-        Ok(slice.data()?.to_vec())
+        let mut buffer = vec![0; len];
+        self.memory.read(offset as u32, &mut buffer)?;
+        Ok(buffer)
     }
 
     fn store(&self, offset: usize, data: &[u8]) -> Result<()> {
-        // Check bounds first
-        let end_offset = offset
-            .checked_add(data.len())
-            .ok_or_else(|| Error::new(kinds::MemoryAccessOutOfBoundsError))?;
-
-        if end_offset > self.memory.buffer().len() {
-            return Err(Error::new(kinds::MemoryAccessOutOfBoundsError));
-        }
-
-        // Use the arc_write method from MemoryArcExt
-        self.memory.arc_write(offset as u32, data)
+        self.memory.write(offset as u32, data)
     }
 
     fn grow(&self, pages: u32) -> Result<usize> {
-        // Use the arc_grow method from MemoryArcExt
-        let old_size = self.memory.arc_grow(pages)?;
-
-        Ok(old_size as usize)
+        self.memory.grow(pages)
     }
 }
 
@@ -160,33 +164,17 @@ impl MemoryAdapter for DefaultMemoryAdapter {
     }
 
     fn load(&self, offset: usize, len: usize) -> Result<Vec<u8>> {
-        // Bounds check
-        let mem_data = self.memory.buffer();
-        let end_offset = offset
-            .checked_add(len)
-            .ok_or_else(|| Error::new(kinds::MemoryAccessOutOfBoundsError))?;
-
-        if end_offset > mem_data.len() {
-            return Err(Error::new(kinds::MemoryAccessOutOfBoundsError));
+        if offset + len > self.size()? {
+            return Err(Error::new(kinds::MemoryOutOfBoundsError));
         }
-
-        // Return a slice of memory
-        Ok(mem_data[offset..end_offset].to_vec())
+        self.memory.read(offset as u32, len as u32)
     }
 
     fn store(&self, offset: usize, data: &[u8]) -> Result<()> {
-        // Bounds check
-        let mem_size = self.memory.buffer().len();
-        let end_offset = offset
-            .checked_add(data.len())
-            .ok_or_else(|| Error::new(kinds::MemoryAccessOutOfBoundsError))?;
-
-        if end_offset > mem_size {
-            return Err(Error::new(kinds::MemoryAccessOutOfBoundsError));
+        if offset + data.len() > self.size()? {
+            return Err(Error::new(kinds::MemoryOutOfBoundsError));
         }
-
-        // Use the arc_write method from MemoryArcExt
-        self.memory.arc_write(offset as u32, data)
+        self.memory.write(offset as u32, data)
     }
 
     fn grow(&self, pages: u32) -> Result<usize> {

@@ -9,16 +9,24 @@ use core::sync::atomic::{AtomicUsize, Ordering};
 
 use crate::operations::{record_global_operation, OperationType};
 use crate::verification::{Checksum, VerificationLevel};
-use wrt_error::{kinds, Error, Result};
+use wrt_error::{Error, Result};
 
 #[cfg(feature = "std")]
+use std::collections::HashSet;
+#[cfg(feature = "std")]
 use std::sync::Mutex;
+
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+use alloc::collections::BTreeSet as HashSet;
 
 #[cfg(feature = "std")]
 use std::{format, vec::Vec};
 
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::{format, string::ToString};
+use alloc::{format, string::ToString, vec::Vec};
+
+#[cfg(not(feature = "std"))]
+use self::once_mutex::OnceMutex as Mutex;
 
 /// A safe slice with integrated checksum for data integrity verification
 #[derive(Clone)]
@@ -129,9 +137,9 @@ impl<'a> SafeSlice<'a> {
 
         // If length doesn't match stored value, memory is corrupt
         if self.data.len() != self.length {
-            return Err(Error::new(kinds::ValidationError(
-                "Memory corruption detected: length mismatch".into(),
-            )));
+            return Err(Error::validation_error(
+                "Memory corruption detected: length mismatch",
+            ));
         }
 
         // Different paths for optimize vs non-optimize
@@ -160,9 +168,9 @@ impl<'a> SafeSlice<'a> {
             if current == self.checksum {
                 Ok(())
             } else {
-                Err(Error::new(kinds::ValidationError(
-                    "Memory corruption detected: checksum mismatch".into(),
-                )))
+                Err(Error::validation_error(
+                    "Memory corruption detected: checksum mismatch",
+                ))
             }
         }
     }
@@ -176,10 +184,10 @@ impl<'a> SafeSlice<'a> {
         self.verify_integrity_with_importance(200)?;
 
         if start > end || end > self.length {
-            return Err(Error::new(kinds::OutOfBoundsError(format!(
+            return Err(Error::memory_error(format!(
                 "Invalid slice range: {}..{} (len: {})",
                 start, end, self.length
-            ))));
+            )));
         }
 
         // Create a new SafeSlice with the specified range
@@ -261,7 +269,7 @@ pub struct StdMemoryProvider {
     /// Number of unique regions accessed
     unique_regions: AtomicUsize,
     /// Regions hash (for uniqueness tracking)
-    regions_hash: Mutex<std::collections::HashSet<usize>>,
+    regions_hash: Mutex<HashSet<usize>>,
     /// Verification level for memory operations
     verification_level: VerificationLevel,
 }
@@ -288,15 +296,16 @@ impl fmt::Debug for StdMemoryProvider {
 #[cfg(feature = "std")]
 impl StdMemoryProvider {
     /// Create a new StdMemoryProvider with the given data
+    #[allow(clippy::redundant_clone)]
     pub fn new(data: Vec<u8>) -> Self {
         Self {
             data,
-            access_log: Mutex::new(Vec::new()),
+            access_log: Mutex::new(Vec::with_capacity(100)),
             access_count: AtomicUsize::new(0),
             max_access_size: AtomicUsize::new(0),
             unique_regions: AtomicUsize::new(0),
-            regions_hash: Mutex::new(std::collections::HashSet::new()),
-            verification_level: VerificationLevel::Standard,
+            regions_hash: Mutex::new(HashSet::new()),
+            verification_level: VerificationLevel::default(),
         }
     }
 
@@ -309,9 +318,7 @@ impl StdMemoryProvider {
     pub fn access_log(&self) -> Result<Vec<(usize, usize)>> {
         match self.access_log.lock() {
             Ok(log) => Ok(log.clone()),
-            Err(_) => Err(Error::new(kinds::PoisonedLockError(
-                "Access log mutex poisoned".into(),
-            ))),
+            Err(_) => Err(Error::runtime_error("Access log mutex poisoned")),
         }
     }
 
@@ -375,9 +382,7 @@ impl StdMemoryProvider {
                 log.clear();
                 Ok(())
             }
-            _ => Err(Error::new(kinds::ValidationError(
-                "Access log mutex poisoned".into(),
-            ))),
+            Err(_) => Err(Error::runtime_error("Access log mutex poisoned")),
         }
     }
 
@@ -412,11 +417,9 @@ impl MemoryProvider for StdMemoryProvider {
         self.verify_access(offset, len)?;
 
         // Calculate the end offset
-        let end = offset.checked_add(len).ok_or_else(|| {
-            Error::new(kinds::OutOfBoundsError(
-                "Memory access overflow".to_string(),
-            ))
-        })?;
+        let end = offset
+            .checked_add(len)
+            .ok_or_else(|| Error::memory_error("Memory access overflow".to_string()))?;
 
         // Get a slice and create a SafeSlice from it
         let slice = &self.data[offset..end];
@@ -431,20 +434,18 @@ impl MemoryProvider for StdMemoryProvider {
         record_global_operation(OperationType::CollectionValidate, self.verification_level);
 
         // Calculate the end offset
-        let end = offset.checked_add(len).ok_or_else(|| {
-            Error::new(kinds::OutOfBoundsError(
-                "Memory access overflow".to_string(),
-            ))
-        })?;
+        let end = offset
+            .checked_add(len)
+            .ok_or_else(|| Error::memory_error("Memory access overflow".to_string()))?;
 
         // Check if the access is within bounds
         if end > self.data.len() {
-            return Err(Error::new(kinds::OutOfBoundsError(format!(
+            return Err(Error::memory_error(format!(
                 "Memory access out of bounds: offset={}, len={}, size={}",
                 offset,
                 len,
                 self.data.len()
-            ))));
+            )));
         }
 
         Ok(())
@@ -546,8 +547,10 @@ impl<const N: usize> NoStdMemoryProvider<N> {
     /// Set the data for this memory provider
     pub fn set_data(&mut self, data: &[u8]) -> Result<()> {
         if data.len() > N {
-            return Err(Error::new(kinds::OutOfBoundsError(
-                "Data too large for fixed-size buffer".into(),
+            return Err(Error::memory_error(format!(
+                "Data too large for fixed-size buffer: {} > {}",
+                data.len(),
+                N
             )));
         }
 
@@ -586,16 +589,11 @@ impl<const N: usize> NoStdMemoryProvider<N> {
     /// Resize the used portion of memory
     pub fn resize(&mut self, new_size: usize) -> Result<()> {
         if new_size > N {
-            #[cfg(any(feature = "std", feature = "alloc"))]
-            return Err(Error::new(kinds::OutOfBoundsError(format!(
-                "Cannot resize to {} (max: {})",
-                new_size, N
-            ))));
-
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
-            return Err(Error::new(kinds::OutOfBoundsError(
-                "Memory resize exceeds capacity".into(),
-            )));
+            return Err(Error::new(
+                ErrorCategory::Memory,
+                codes::MEMORY_OUT_OF_BOUNDS,
+                format!("Cannot resize to {} (max: {})", new_size, N),
+            ));
         }
 
         // Zero out any newly used memory
@@ -611,21 +609,31 @@ impl<const N: usize> NoStdMemoryProvider<N> {
 
     /// Verify memory integrity
     pub fn verify_integrity(&self) -> Result<()> {
+        // Track validation operation
+        record_global_operation(OperationType::CollectionValidate, self.verification_level);
+
+        // Simple length check
+        if self.used > N {
+            return Err(Error::new(
+                ErrorCategory::Validation,
+                codes::INTEGRITY_VIOLATION,
+                "Memory corruption detected: used > capacity",
+            ));
+        }
+
         // Verify that the last access was valid
         let offset = self.last_access_offset.load(Ordering::SeqCst);
         let length = self.last_access_length.load(Ordering::SeqCst);
 
         if length > 0 && offset + length > self.used {
-            #[cfg(any(feature = "std", feature = "alloc"))]
-            return Err(Error::new(kinds::ValidationError(format!(
-                "Last access out of bounds: offset={}, len={}, used={}",
-                offset, length, self.used
-            ))));
-
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
-            return Err(Error::new(kinds::ValidationError(
-                "Last memory access was out of bounds".into(),
-            )));
+            return Err(Error::new(
+                ErrorCategory::Memory,
+                codes::MEMORY_ACCESS_OUT_OF_BOUNDS,
+                format!(
+                    "Last access out of bounds: offset={}, len={}, used={}",
+                    offset, length, self.used
+                ),
+            ));
         }
 
         Ok(())
@@ -660,11 +668,9 @@ impl<const N: usize> MemoryProvider for NoStdMemoryProvider<N> {
         self.verify_access(offset, len)?;
 
         // Calculate the end offset
-        let end = offset.checked_add(len).ok_or_else(|| {
-            Error::new(kinds::OutOfBoundsError(
-                "Memory access overflow".to_string(),
-            ))
-        })?;
+        let end = offset
+            .checked_add(len)
+            .ok_or_else(|| Error::memory_error("Memory access overflow".to_string()))?;
 
         // Get a slice and create a SafeSlice from it
         Ok(SafeSlice::with_verification_level(
@@ -674,29 +680,34 @@ impl<const N: usize> MemoryProvider for NoStdMemoryProvider<N> {
     }
 
     fn verify_access(&self, offset: usize, len: usize) -> Result<()> {
-        // Track validation operation
-        record_global_operation(OperationType::CollectionValidate, self.verification_level);
+        // Range check to ensure the access is within bounds
+        let end = offset.saturating_add(len);
 
-        // Calculate the end offset
-        let end = offset.checked_add(len).ok_or_else(|| {
-            Error::new(kinds::OutOfBoundsError(
-                "Memory access overflow".to_string(),
-            ))
-        })?;
+        // Check if offset + len overflows
+        if end < offset {
+            return Err(Error::new(
+                ErrorCategory::Memory,
+                codes::MEMORY_ACCESS_OUT_OF_BOUNDS,
+                format!("Memory access overflow: offset={}, len={}", offset, len),
+            ));
+        }
 
         // Check if the access is within the used portion of memory
         if end > self.used {
-            #[cfg(any(feature = "std", feature = "alloc"))]
-            return Err(Error::new(kinds::OutOfBoundsError(format!(
-                "Memory access out of bounds: offset={}, len={}, used={}",
-                offset, len, self.used
-            ))));
-
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
-            return Err(Error::new(kinds::OutOfBoundsError(
-                "Memory access out of bounds".into(),
-            )));
+            return Err(Error::new(
+                ErrorCategory::Memory,
+                codes::MEMORY_ACCESS_OUT_OF_BOUNDS,
+                format!(
+                    "Memory access out of bounds: offset={}, len={}, used={}",
+                    offset, len, self.used
+                ),
+            ));
         }
+
+        // Track the access
+        self.last_access_offset.store(offset, Ordering::SeqCst);
+        self.last_access_length.store(len, Ordering::SeqCst);
+        self.access_count.fetch_add(1, Ordering::SeqCst);
 
         Ok(())
     }
@@ -714,9 +725,26 @@ impl<const N: usize> MemorySafety for NoStdMemoryProvider<N> {
 
         // Simple length check
         if self.used > N {
-            return Err(Error::new(kinds::ValidationError(
-                "Memory corruption detected: used > capacity".into(),
-            )));
+            return Err(Error::new(
+                ErrorCategory::Validation,
+                codes::INTEGRITY_VIOLATION,
+                "Memory corruption detected: used > capacity",
+            ));
+        }
+
+        // Verify that the last access was valid
+        let offset = self.last_access_offset.load(Ordering::SeqCst);
+        let length = self.last_access_length.load(Ordering::SeqCst);
+
+        if length > 0 && offset + length > self.used {
+            return Err(Error::new(
+                ErrorCategory::Memory,
+                codes::MEMORY_ACCESS_OUT_OF_BOUNDS,
+                format!(
+                    "Last access out of bounds: offset={}, len={}, used={}",
+                    offset, length, self.used
+                ),
+            ));
         }
 
         Ok(())
@@ -802,4 +830,61 @@ mod tests {
         let stats = provider.memory_stats();
         assert_eq!(stats.total_size, 8);
     }
+}
+
+#[cfg(not(feature = "std"))]
+pub mod once_mutex {
+    use core::cell::UnsafeCell;
+    use core::sync::atomic::{AtomicBool, Ordering};
+
+    pub struct OnceMutex<T> {
+        locked: AtomicBool,
+        data: UnsafeCell<T>,
+    }
+
+    impl<T> OnceMutex<T> {
+        pub fn new(data: T) -> Self {
+            Self {
+                locked: AtomicBool::new(false),
+                data: UnsafeCell::new(data),
+            }
+        }
+
+        pub fn lock(&self) -> MutexGuard<'_, T> {
+            // Spin until we get the lock
+            while self.locked.swap(true, Ordering::Acquire) {
+                core::hint::spin_loop();
+            }
+
+            MutexGuard { mutex: self }
+        }
+    }
+
+    pub struct MutexGuard<'a, T> {
+        mutex: &'a OnceMutex<T>,
+    }
+
+    impl<'a, T> core::ops::Deref for MutexGuard<'a, T> {
+        type Target = T;
+
+        fn deref(&self) -> &Self::Target {
+            unsafe { &*self.mutex.data.get() }
+        }
+    }
+
+    impl<'a, T> core::ops::DerefMut for MutexGuard<'a, T> {
+        fn deref_mut(&mut self) -> &mut Self::Target {
+            unsafe { &mut *self.mutex.data.get() }
+        }
+    }
+
+    impl<'a, T> Drop for MutexGuard<'a, T> {
+        fn drop(&mut self) {
+            self.mutex.locked.store(false, Ordering::Release);
+        }
+    }
+
+    // This is safe because we handle synchronization with AtomicBool
+    unsafe impl<T: Send> Send for OnceMutex<T> {}
+    unsafe impl<T: Send> Sync for OnceMutex<T> {}
 }

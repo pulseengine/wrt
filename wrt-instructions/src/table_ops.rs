@@ -118,7 +118,7 @@ impl<T: TableContext> PureInstruction<T, Error> for TableOp {
                 })?;
 
                 if index < 0 {
-                    return Err(Error::new(kinds::InvalidTableIndexError(index as u32)));
+                    return Err(Error::from(kinds::invalid_table_index_error(index as u32)));
                 }
 
                 let ref_val = context.get_table_element(*table_index, index as u32)?;
@@ -138,7 +138,7 @@ impl<T: TableContext> PureInstruction<T, Error> for TableOp {
                 })?;
 
                 if index < 0 {
-                    return Err(Error::new(kinds::InvalidTableIndexError(index as u32)));
+                    return Err(Error::from(kinds::invalid_table_index_error(index as u32)));
                 }
 
                 let ref_val = match value {
@@ -166,8 +166,8 @@ impl<T: TableContext> PureInstruction<T, Error> for TableOp {
                 let init_value = context.pop_table_value()?;
 
                 if delta < 0 {
-                    return Err(Error::new(kinds::InvalidTypeError(
-                        "Table grow delta must be non-negative".into(),
+                    return Err(Error::from(kinds::invalid_type(
+                        "Table grow delta must be non-negative",
                     )));
                 }
 
@@ -196,7 +196,7 @@ impl<T: TableContext> PureInstruction<T, Error> for TableOp {
                 })?;
 
                 if dst < 0 || len < 0 {
-                    return Err(Error::new(kinds::InvalidTableIndexError(if dst < 0 {
+                    return Err(Error::from(kinds::invalid_table_index_error(if dst < 0 {
                         dst as u32
                     } else {
                         len as u32
@@ -232,7 +232,7 @@ impl<T: TableContext> PureInstruction<T, Error> for TableOp {
                 })?;
 
                 if dst < 0 || src < 0 || len < 0 {
-                    return Err(Error::new(kinds::InvalidTableIndexError(if dst < 0 {
+                    return Err(Error::from(kinds::invalid_table_index_error(if dst < 0 {
                         dst as u32
                     } else if src < 0 {
                         src as u32
@@ -258,7 +258,7 @@ impl<T: TableContext> PureInstruction<T, Error> for TableOp {
                 })?;
 
                 if dst < 0 || src < 0 || len < 0 {
-                    return Err(Error::new(kinds::InvalidTableIndexError(if dst < 0 {
+                    return Err(Error::from(kinds::invalid_table_index_error(if dst < 0 {
                         dst as u32
                     } else if src < 0 {
                         src as u32
@@ -283,6 +283,16 @@ impl<T: TableContext> PureInstruction<T, Error> for TableOp {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // Import Vec and vec! based on feature flags
+    #[cfg(feature = "std")]
+    use std::vec::Vec;
+
+    #[cfg(all(not(feature = "std"), feature = "alloc"))]
+    use alloc::vec::Vec;
+
+    #[cfg(all(not(feature = "std"), feature = "alloc"))]
+    use alloc::vec;
 
     // Mock table context for testing
     struct MockTableContext {
@@ -324,7 +334,9 @@ mod tests {
                     Err(Error::new(kinds::InvalidTableIndexError(elem_index)))
                 }
             } else {
-                Err(Error::new(kinds::InvalidTableError))
+                Err(Error::new(kinds::InvalidTypeError(
+                    "Invalid table".to_string(),
+                )))
             }
         }
 
@@ -342,7 +354,9 @@ mod tests {
                     Err(Error::new(kinds::InvalidTableIndexError(elem_index)))
                 }
             } else {
-                Err(Error::new(kinds::InvalidTableError))
+                Err(Error::new(kinds::InvalidTypeError(
+                    "Invalid table".to_string(),
+                )))
             }
         }
 
@@ -350,7 +364,9 @@ mod tests {
             if let Some(table) = self.tables.get(table_index as usize) {
                 Ok(table.len() as u32)
             } else {
-                Err(Error::new(kinds::InvalidTableError))
+                Err(Error::new(kinds::InvalidTypeError(
+                    "Invalid table".to_string(),
+                )))
             }
         }
 
@@ -369,7 +385,9 @@ mod tests {
 
                 Ok(old_size)
             } else {
-                Err(Error::new(kinds::InvalidTableError))
+                Err(Error::new(kinds::InvalidTypeError(
+                    "Invalid table".to_string(),
+                )))
             }
         }
 
@@ -382,11 +400,7 @@ mod tests {
         ) -> Result<()> {
             if let Some(table) = self.tables.get_mut(table_index as usize) {
                 if dst as usize + len as usize > table.len() {
-                    return Err(Error::new(kinds::InvalidTableIndexError(if dst < 0 {
-                        dst as u32
-                    } else {
-                        len as u32
-                    })));
+                    return Err(Error::new(kinds::InvalidTableIndexError(dst)));
                 }
 
                 for i in 0..len {
@@ -395,7 +409,9 @@ mod tests {
 
                 Ok(())
             } else {
-                Err(Error::new(kinds::InvalidTableError))
+                Err(Error::new(kinds::InvalidTypeError(
+                    "Invalid table".to_string(),
+                )))
             }
         }
 
@@ -407,36 +423,32 @@ mod tests {
             src_index: u32,
             len: u32,
         ) -> Result<()> {
-            // Check table bounds
+            // First, check if indexes are valid
             if dst_table as usize >= self.tables.len() || src_table as usize >= self.tables.len() {
-                return Err(Error::new(kinds::InvalidTableError));
+                return Err(Error::new(kinds::InvalidTypeError(
+                    "Invalid table index".to_string(),
+                )));
             }
 
-            let dst_table_size = self.tables[dst_table as usize].len();
-            let src_table_size = self.tables[src_table as usize].len();
+            // Get the needed information from source table
+            let src_elements: Vec<RefValue> = {
+                let src_table = &self.tables[src_table as usize];
 
-            if dst_index as usize + len as usize > dst_table_size
-                || src_index as usize + len as usize > src_table_size
-            {
-                return Err(Error::new(kinds::InvalidTableIndexError(if dst < 0 {
-                    dst as u32
-                } else if src < 0 {
-                    src as u32
-                } else {
-                    len as u32
-                })));
+                if src_index as usize + len as usize > src_table.len() {
+                    return Err(Error::new(kinds::InvalidTableIndexError(src_index)));
+                }
+
+                src_table[src_index as usize..(src_index as usize + len as usize)].to_vec()
+            };
+
+            // Now modify destination table
+            let dst_table = &mut self.tables[dst_table as usize];
+            if dst_index as usize + len as usize > dst_table.len() {
+                return Err(Error::new(kinds::InvalidTableIndexError(dst_index)));
             }
 
-            // Copy elements (handle overlapping correctly)
-            let elements: Vec<RefValue> = self.tables[src_table as usize]
-                .iter()
-                .skip(src_index as usize)
-                .take(len as usize)
-                .cloned()
-                .collect();
-
-            for (i, elem) in elements.iter().enumerate() {
-                self.tables[dst_table as usize][dst_index as usize + i] = elem.clone();
+            for i in 0..len as usize {
+                dst_table[dst_index as usize + i] = src_elements[i].clone();
             }
 
             Ok(())
@@ -450,48 +462,41 @@ mod tests {
             src: u32,
             len: u32,
         ) -> Result<()> {
-            // Check if element segment exists
             if elem_index as usize >= self.elem_segments.len() {
-                return Err(Error::new(kinds::InvalidElemIndexError));
-            }
-
-            // Check if table exists
-            if table_index as usize >= self.tables.len() {
-                return Err(Error::new(kinds::InvalidTableError));
+                return Err(Error::new(kinds::InvalidElementIndexError(elem_index)));
             }
 
             let elem_segment = &self.elem_segments[elem_index as usize];
-            let table = &mut self.tables[table_index as usize];
 
-            // Check bounds
-            if src as usize + len as usize > elem_segment.len()
-                || dst as usize + len as usize > table.len()
-            {
-                return Err(Error::new(kinds::InvalidTableIndexError(if dst < 0 {
-                    dst as u32
-                } else if src < 0 {
-                    src as u32
-                } else {
-                    len as u32
-                })));
+            if src as usize + len as usize > elem_segment.len() {
+                return Err(Error::new(kinds::InvalidTableIndexError(src)));
             }
 
-            // Copy elements from element segment to table
-            for i in 0..len {
-                table[dst as usize + i as usize] = elem_segment[src as usize + i as usize].clone();
-            }
+            if let Some(table) = self.tables.get_mut(table_index as usize) {
+                if dst as usize + len as usize > table.len() {
+                    return Err(Error::new(kinds::InvalidTableIndexError(dst)));
+                }
 
-            Ok(())
+                for i in 0..len {
+                    table[dst as usize + i as usize] =
+                        elem_segment[src as usize + i as usize].clone();
+                }
+
+                Ok(())
+            } else {
+                Err(Error::new(kinds::InvalidTypeError(
+                    "Invalid table".to_string(),
+                )))
+            }
         }
 
         fn drop_elem(&mut self, elem_index: u32) -> Result<()> {
             if elem_index as usize >= self.elem_segments.len() {
-                return Err(Error::new(kinds::InvalidElemIndexError));
+                return Err(Error::new(kinds::InvalidElementIndexError(elem_index)));
             }
 
-            // Keep the segment but clear its contents
+            // Just clear the element segment, but keep the entry in the vec for simplicity
             self.elem_segments[elem_index as usize].clear();
-
             Ok(())
         }
 

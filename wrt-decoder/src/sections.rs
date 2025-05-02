@@ -13,13 +13,15 @@ pub use wrt_format::types::{FuncType, Limits, MemoryIndexType, ValueType};
 
 // Local imports
 use crate::prelude::{String, Vec};
-use wrt_error::{kinds, Error, Result};
+use wrt_error::{kinds, Error, Result, WrtError, codes, ErrorCategory};
 use wrt_format::binary;
 use wrt_format::types::parse_value_type;
 // Use our prelude for common imports
 use crate::prelude::*;
 
 // Imports from rest of crate
+use wrt_types::{types::{FuncType, ValueType}, error_convert::convert_to_wrt_error, ToString};
+use crate::section_error;
 
 // Create a module structure to organize section parsing code
 pub mod parsers {
@@ -30,78 +32,83 @@ pub mod parsers {
     /// Parse a code entry
     pub fn parse_code(bytes: &[u8]) -> Result<(Code, usize)> {
         let mut offset = 0;
-
-        // Read the size of locals
-        let (size, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
-        offset += bytes_read;
-
-        if (offset + size as usize) > bytes.len() {
-            return Err(Error::new(kinds::ParseError(
-                "Code size exceeds available bytes".to_string(),
-            )));
-        }
-
-        // For now, just store the code as raw bytes
-        let code_bytes = bytes[offset..(offset + size as usize)].to_vec();
-        offset += size as usize;
-
-        let code = Code {
-            size,
-            locals: Vec::new(), // Will be parsed later
-            body: code_bytes,
+        
+        // Read body size
+        let (size, bytes_read) = match binary::read_leb128_u32(bytes, offset) {
+            Ok(result) => result,
+            Err(e) => return Err(convert_to_wrt_error(e)),
         };
-
+        offset += bytes_read;
+        
+        // Make sure we have enough bytes
+        if offset + size as usize > bytes.len() {
+            return Err(section_error::unexpected_end(offset, size as usize, bytes.len() - offset));
+        }
+        
+        // Extract code section data
+        let code = Code {
+            body_size: size,
+            body: &bytes[offset..offset + size as usize],
+        };
+        
+        offset += size as usize;
         Ok((code, offset))
     }
 
-    /// Parse a function type
+    /// Parse a function type from the type section
     pub fn parse_func_type(bytes: &[u8]) -> Result<(FuncType, usize)> {
         let mut offset = 0;
-
-        // Check for function type marker (0x60)
-        if bytes.is_empty() || bytes[0] != 0x60 {
-            return Err(Error::new(kinds::ParseError(
-                "Invalid function type".to_string(),
-            )));
+        
+        // First byte should be the function type indicator (0x60)
+        if bytes.is_empty() {
+            return Err(section_error::unexpected_end(offset, 1, 0));
         }
+        
+        let func_type_indicator = bytes[offset];
         offset += 1;
-
+        
+        if func_type_indicator != 0x60 {
+            return Err(section_error::invalid_value(offset - 1, 1, &format!("Invalid function type indicator: 0x{:02x}, expected 0x60", func_type_indicator)));
+        }
+        
         // Read parameter count
-        let (param_count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
+        let (param_count, bytes_read) = match binary::read_leb128_u32(bytes, offset) {
+            Ok(result) => result,
+            Err(e) => return Err(convert_to_wrt_error(e)),
+        };
         offset += bytes_read;
-
+        
         // Read parameter types
         let mut params = Vec::with_capacity(param_count as usize);
         for _ in 0..param_count {
             if offset >= bytes.len() {
-                return Err(Error::new(kinds::ParseError(
-                    "Unexpected end of parameter types".to_string(),
-                )));
+                return Err(section_error::unexpected_end(offset, 1, 0));
             }
-
-            let val_type = parse_value_type(bytes[offset])?;
-            params.push(val_type);
+            
+            let val_type = ValueType::from_byte(bytes[offset])?;
             offset += 1;
+            params.push(val_type);
         }
-
+        
         // Read result count
-        let (result_count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
+        let (result_count, bytes_read) = match binary::read_leb128_u32(bytes, offset) {
+            Ok(result) => result,
+            Err(e) => return Err(convert_to_wrt_error(e)),
+        };
         offset += bytes_read;
-
+        
         // Read result types
         let mut results = Vec::with_capacity(result_count as usize);
         for _ in 0..result_count {
             if offset >= bytes.len() {
-                return Err(Error::new(kinds::ParseError(
-                    "Unexpected end of result types".to_string(),
-                )));
+                return Err(section_error::unexpected_end(offset, 1, 0));
             }
-
-            let val_type = parse_value_type(bytes[offset])?;
-            results.push(val_type);
+            
+            let val_type = ValueType::from_byte(bytes[offset])?;
             offset += 1;
+            results.push(val_type);
         }
-
+        
         Ok((FuncType { params, results }, offset))
     }
 
@@ -111,9 +118,13 @@ pub mod parsers {
 
         // Read element type
         if offset >= bytes.len() {
-            return Err(Error::new(kinds::ParseError(
-                "Unexpected end of table type bytes".to_string(),
-            )));
+            return Err(Error::new(
+                ErrorCategory::Validation, 
+                codes::PARSE_ERROR,
+                kinds::ParseError(
+                    "Unexpected end of table type bytes".to_string(),
+                )
+            ));
         }
 
         let element_type = parse_value_type(bytes[offset])?;
@@ -155,9 +166,13 @@ pub mod parsers {
 
         // Read flags
         if offset >= bytes.len() {
-            return Err(Error::new(kinds::ParseError(
-                "Unexpected end of memory type bytes".to_string(),
-            )));
+            return Err(Error::new(
+                ErrorCategory::Validation, 
+                codes::PARSE_ERROR,
+                kinds::ParseError(
+                    "Unexpected end of memory type bytes".to_string(),
+                )
+            ));
         }
         let flags = bytes[offset];
         offset += 1;
@@ -166,9 +181,13 @@ pub mod parsers {
         // For memory64, 0x04 bit is used to indicate 64-bit indexing
         // According to the spec, reserved bits must be 0
         if flags & 0xF8 != 0 {
-            return Err(Error::new(kinds::ParseError(
-                "Invalid memory flags, reserved bits must be 0 (per WebAssembly spec)".to_string(),
-            )));
+            return Err(Error::new(
+                ErrorCategory::Validation, 
+                codes::PARSE_ERROR,
+                kinds::ParseError(
+                    "Invalid memory flags, reserved bits must be 0 (per WebAssembly spec)".to_string(),
+                )
+            ));
         }
 
         // Extract flags
@@ -185,9 +204,13 @@ pub mod parsers {
         // Shared memories must have max specified (shared = 0x03)
         // Per WebAssembly spec, shared memories must specify maximum size
         if is_shared && !has_max {
-            return Err(Error::new(kinds::ParseError(
-                "Shared memory must have maximum size specified (per WebAssembly spec)".to_string(),
-            )));
+            return Err(Error::new(
+                ErrorCategory::Validation, 
+                codes::PARSE_ERROR,
+                kinds::ParseError(
+                    "Shared memory must have maximum size specified (per WebAssembly spec)".to_string(),
+                )
+            ));
         }
 
         // Read min limit (LEB128)
@@ -195,28 +218,38 @@ pub mod parsers {
         let bytes_read;
 
         if is_memory64 {
-            let (value, read) = binary::read_leb128_u64(bytes, offset)?;
+            let result = crate::handle_error(binary::read_leb128_u64(bytes, offset))?;
+            let (value, read) = result;
             min = value;
             bytes_read = read;
 
             // Validate minimum size for memory64 (implementation-defined, but should be reasonable)
             // WebAssembly spec doesn't define specific limits for memory64, but implementations should check
             if min > (1u64 << 48) {
-                return Err(Error::new(kinds::ParseError(
-                    "Memory64 minimum size exceeds implementation limit (2^48)".to_string(),
-                )));
+                return Err(Error::new(
+                    ErrorCategory::Validation,
+                    codes::PARSE_ERROR,
+                    kinds::ParseError(
+                        "Memory64 minimum size exceeds implementation limit (2^48)".to_string(),
+                    ),
+                ));
             }
         } else {
-            let (value, read) = binary::read_leb128_u32(bytes, offset)?;
+            let result = crate::handle_error(binary::read_leb128_u32(bytes, offset))?;
+            let (value, read) = result;
             min = value as u64;
             bytes_read = read;
 
             // Validate minimum size for memory32 (per WebAssembly spec)
             // In WebAssembly 1.0, memories are limited to 4GiB (max pages = 65536)
             if min > 65536 {
-                return Err(Error::new(kinds::ParseError(
-                    "Memory32 minimum size exceeds WebAssembly limit of 65536 pages".to_string(),
-                )));
+                return Err(Error::new(
+                    ErrorCategory::Validation,
+                    codes::PARSE_ERROR,
+                    kinds::ParseError(
+                        "Memory32 minimum size exceeds WebAssembly limit of 65536 pages".to_string(),
+                    ),
+                ));
             }
         }
 
@@ -228,27 +261,37 @@ pub mod parsers {
             let bytes_read;
 
             if is_memory64 {
-                let (value, read) = binary::read_leb128_u64(bytes, offset)?;
+                let result = crate::handle_error(binary::read_leb128_u64(bytes, offset))?;
+                let (value, read) = result;
                 max_val = value;
                 bytes_read = read;
 
                 // Validate maximum size for memory64 (implementation-defined, but should be reasonable)
                 if max_val > (1u64 << 48) {
-                    return Err(Error::new(kinds::ParseError(
-                        "Memory64 maximum size exceeds implementation limit (2^48)".to_string(),
-                    )));
+                    return Err(Error::new(
+                        ErrorCategory::Validation,
+                        codes::PARSE_ERROR,
+                        kinds::ParseError(
+                            "Memory64 maximum size exceeds implementation limit (2^48)".to_string(),
+                        ),
+                    ));
                 }
             } else {
-                let (value, read) = binary::read_leb128_u32(bytes, offset)?;
+                let result = crate::handle_error(binary::read_leb128_u32(bytes, offset))?;
+                let (value, read) = result;
                 max_val = value as u64;
                 bytes_read = read;
 
                 // Validate maximum size for memory32 (per WebAssembly spec)
                 if max_val > 65536 {
-                    return Err(Error::new(kinds::ParseError(
-                        "Memory32 maximum size exceeds WebAssembly limit of 65536 pages"
-                            .to_string(),
-                    )));
+                    return Err(Error::new(
+                        ErrorCategory::Validation,
+                        codes::PARSE_ERROR,
+                        kinds::ParseError(
+                            "Memory32 maximum size exceeds WebAssembly limit of 65536 pages"
+                                .to_string(),
+                        ),
+                    ));
                 }
             }
 
@@ -256,10 +299,14 @@ pub mod parsers {
 
             // Verify max >= min for shared memory
             if is_shared && max_val < min {
-                return Err(Error::new(kinds::ParseError(
-                    "Shared memory maximum size must be greater than or equal to minimum size (per WebAssembly spec)"
-                        .to_string(),
-                )));
+                return Err(Error::new(
+                    ErrorCategory::Validation,
+                    codes::PARSE_ERROR,
+                    kinds::ParseError(
+                        "Shared memory maximum size must be greater than or equal to minimum size (per WebAssembly spec)"
+                            .to_string(),
+                    ),
+                ));
             }
 
             Some(max_val)
@@ -290,9 +337,13 @@ pub mod parsers {
 
         // Read flags
         if offset >= bytes.len() {
-            return Err(Error::new(kinds::ParseError(
-                "Unexpected end of limits bytes".to_string(),
-            )));
+            return Err(Error::new(
+                ErrorCategory::Validation,
+                codes::PARSE_ERROR,
+                kinds::ParseError(
+                    "Unexpected end of limits bytes".to_string(),
+                ),
+            ));
         }
         let flags = bytes[offset];
         offset += 1;
@@ -303,9 +354,13 @@ pub mod parsers {
         // Bit 2: is_memory64 (memory only)
         // Remaining bits should be zero
         if flags & 0xF8 != 0 {
-            return Err(Error::new(kinds::ParseError(
-                "Invalid limits flags, reserved bits must be 0".to_string(),
-            )));
+            return Err(Error::new(
+                ErrorCategory::Validation,
+                codes::PARSE_ERROR,
+                kinds::ParseError(
+                    "Invalid limits flags, reserved bits must be 0".to_string(),
+                ),
+            ));
         }
 
         // Extract flags
@@ -324,11 +379,13 @@ pub mod parsers {
         let bytes_read;
 
         if is_memory64 {
-            let (value, read) = binary::read_leb128_u64(bytes, offset)?;
+            let result = crate::handle_error(binary::read_leb128_u64(bytes, offset))?;
+            let (value, read) = result;
             min = value;
             bytes_read = read;
         } else {
-            let (value, read) = binary::read_leb128_u32(bytes, offset)?;
+            let result = crate::handle_error(binary::read_leb128_u32(bytes, offset))?;
+            let (value, read) = result;
             min = value as u64;
             bytes_read = read;
         }
@@ -341,11 +398,13 @@ pub mod parsers {
             let bytes_read;
 
             if is_memory64 {
-                let (value, read) = binary::read_leb128_u64(bytes, offset)?;
+                let result = crate::handle_error(binary::read_leb128_u64(bytes, offset))?;
+                let (value, read) = result;
                 max_val = value;
                 bytes_read = read;
             } else {
-                let (value, read) = binary::read_leb128_u32(bytes, offset)?;
+                let result = crate::handle_error(binary::read_leb128_u32(bytes, offset))?;
+                let (value, read) = result;
                 max_val = value as u64;
                 bytes_read = read;
             }
@@ -369,7 +428,7 @@ pub mod parsers {
 
     /// Parse a string using wrt-format's binary utility
     pub fn parse_string(bytes: &[u8]) -> Result<(String, usize)> {
-        binary::read_string(bytes, 0)
+        crate::handle_error(binary::read_string(bytes, 0))
     }
 }
 
@@ -377,9 +436,19 @@ pub mod parsers {
 #[derive(Debug, Clone)]
 pub struct Code {
     /// Size of the code section entry
-    pub size: u32,
-    /// Local declarations (count, type pairs)
-    pub locals: Vec<(u32, ValueType)>,
+    pub body_size: u32,
     /// Function body as raw bytes, will be parsed into instructions later
-    pub body: Vec<u8>,
+    pub body: &[u8],
+}
+
+pub fn parse_error(message: &str) -> WrtError {
+    WrtError::parse_error(message.to_string())
+}
+
+pub fn parse_error_with_context(message: &str, context: &str) -> WrtError {
+    WrtError::parse_error(format!("{}: {}", message, context))
+}
+
+pub fn parse_error_with_position(message: &str, position: usize) -> WrtError {
+    WrtError::parse_error(format!("{} at position {}", message, position))
 }

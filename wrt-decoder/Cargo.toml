@@ -30,15 +30,14 @@ default = [
     "minimal",
     "std",
     "component-model-core",
-    "component-model-values",
-    "component-model-fixed-lists",
-    "component-model-namespaces"
+    "component-model-values"
 ]
-minimal = ["dep:log", "wrt-types/std"]
-std = ["minimal", "wrt-types/std"]
-no_std = ["wrt-types/no_std"]
-optimize = ["wrt-types/optimize"]
-safety = ["wrt-types/safety"]
+minimal = ["dep:log"]
+std = ["wrt-error/std", "wrt-format/std", "wrt-types/std"]
+alloc = ["wrt-error/alloc", "wrt-format/alloc", "wrt-types/alloc"]
+no_std = ["wrt-error/no_std", "wrt-format/no_std", "wrt-types/no_std"]
+optimize = ["wrt-types/optimize", "wrt-format/optimize"]
+safety = ["wrt-types/safety", "wrt-format/safety"]
 wat = ["dep:wat", "std"]
 
 # Component Model features

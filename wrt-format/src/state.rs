@@ -7,8 +7,7 @@ use crate::compression::{rle_decode, rle_encode, CompressionType};
 use crate::section::CustomSection;
 use crate::version::{STATE_MAGIC, STATE_VERSION};
 use crate::{format, String, Vec};
-use wrt_error::kinds;
-use wrt_error::{Error, Result};
+use wrt_error::{codes, Error, ErrorCategory, Result};
 
 #[cfg(not(feature = "std"))]
 use alloc::string::ToString;
@@ -136,21 +135,30 @@ pub fn create_state_section(
 /// Extract state data from a custom section
 pub fn extract_state_section(section: &CustomSection) -> Result<(StateHeader, Vec<u8>)> {
     // Verify that this is a valid state section
-    let section_type = StateSection::from_name(&section.name)
-        .ok_or_else(|| Error::new(kinds::ParseError("Invalid state section name".to_string())))?;
+    let section_type = StateSection::from_name(&section.name).ok_or_else(|| {
+        Error::new(
+            ErrorCategory::Validation,
+            codes::PARSE_ERROR,
+            "Invalid state section name".to_string(),
+        )
+    })?;
 
     // Parse header
     if section.data.len() < 17 {
-        return Err(Error::new(kinds::ParseError(
+        return Err(Error::new(
+            ErrorCategory::Validation,
+            codes::PARSE_ERROR,
             "State section header too small".to_string(),
-        )));
+        ));
     }
 
     // Verify magic bytes
     if section.data[0..4] != *STATE_MAGIC {
-        return Err(Error::new(kinds::ParseError(
+        return Err(Error::new(
+            ErrorCategory::Validation,
+            codes::PARSE_ERROR,
             "Invalid state section magic bytes".to_string(),
-        )));
+        ));
     }
 
     // Parse version
@@ -168,23 +176,32 @@ pub fn extract_state_section(section: &CustomSection) -> Result<(StateHeader, Ve
     }
 
     // Parse section type
-    let parsed_section_type = StateSection::from_u32(section.data[8] as u32)
-        .ok_or_else(|| Error::new(kinds::ParseError("Invalid section type ID".to_string())))?;
+    let parsed_section_type = StateSection::from_u32(section.data[8] as u32).ok_or_else(|| {
+        Error::new(
+            ErrorCategory::Validation,
+            codes::PARSE_ERROR,
+            "Invalid section type ID".to_string(),
+        )
+    })?;
 
     // Verify section type matches the name
     if parsed_section_type != section_type {
-        return Err(Error::new(kinds::ParseError(
+        return Err(Error::new(
+            ErrorCategory::Validation,
+            codes::PARSE_ERROR,
             "Section type mismatch".to_string(),
-        )));
+        ));
     }
 
     // Parse compression type
     let compression_type = match CompressionType::from_u8(section.data[9]) {
         Some(t) => t,
         None => {
-            return Err(Error::new(kinds::ParseError(
+            return Err(Error::new(
+                ErrorCategory::Validation,
+                codes::PARSE_ERROR,
                 "Unknown compression type".to_string(),
-            )));
+            ));
         }
     };
 
@@ -206,9 +223,11 @@ pub fn extract_state_section(section: &CustomSection) -> Result<(StateHeader, Ve
 
     // Extract the compressed data
     if section.data.len() < 18 + compressed_size as usize {
-        return Err(Error::new(kinds::ParseError(
+        return Err(Error::new(
+            ErrorCategory::Validation,
+            codes::PARSE_ERROR,
             "Compressed data truncated".to_string(),
-        )));
+        ));
     }
 
     let compressed_data = &section.data[18..18 + compressed_size as usize];
@@ -221,9 +240,11 @@ pub fn extract_state_section(section: &CustomSection) -> Result<(StateHeader, Ve
 
     // Verify decompressed size
     if decompressed_data.len() != uncompressed_size as usize {
-        return Err(Error::new(kinds::ParseError(
+        return Err(Error::new(
+            ErrorCategory::Validation,
+            codes::PARSE_ERROR,
             "Decompressed size mismatch".to_string(),
-        )));
+        ));
     }
 
     // Create header

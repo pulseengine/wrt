@@ -95,7 +95,13 @@ impl BuiltinSerialization {
                 ComponentValue::S64(v) => v.to_le_bytes().to_vec(),
                 ComponentValue::F32(v) => v.to_le_bytes().to_vec(),
                 ComponentValue::F64(v) => v.to_le_bytes().to_vec(),
-                _ => return Err(Error::new("Unsupported value type for serialization")),
+                _ => {
+                    return Err(Error::new(
+                        wrt_error::ErrorCategory::Type,
+                        wrt_error::codes::INVALID_TYPE,
+                        "Unsupported value type for serialization",
+                    ))
+                }
             };
             result.extend(bytes);
         }
@@ -123,7 +129,11 @@ impl BuiltinSerialization {
             match ty {
                 wrt_format::component::ValType::S32 => {
                     if offset + 4 > bytes.len() {
-                        return Err(Error::new("Insufficient bytes for i32"));
+                        return Err(Error::new(
+                            wrt_error::ErrorCategory::Parse,
+                            wrt_error::codes::PARSE_ERROR,
+                            "Insufficient bytes for i32",
+                        ));
                     }
                     let mut buf = [0u8; 4];
                     buf.copy_from_slice(&bytes[offset..offset + 4]);
@@ -132,7 +142,11 @@ impl BuiltinSerialization {
                 }
                 wrt_format::component::ValType::S64 => {
                     if offset + 8 > bytes.len() {
-                        return Err(Error::new("Insufficient bytes for i64"));
+                        return Err(Error::new(
+                            wrt_error::ErrorCategory::Parse,
+                            wrt_error::codes::PARSE_ERROR,
+                            "Insufficient bytes for i64",
+                        ));
                     }
                     let mut buf = [0u8; 8];
                     buf.copy_from_slice(&bytes[offset..offset + 8]);
@@ -141,7 +155,11 @@ impl BuiltinSerialization {
                 }
                 wrt_format::component::ValType::F32 => {
                     if offset + 4 > bytes.len() {
-                        return Err(Error::new("Insufficient bytes for f32"));
+                        return Err(Error::new(
+                            wrt_error::ErrorCategory::Parse,
+                            wrt_error::codes::PARSE_ERROR,
+                            "Insufficient bytes for f32",
+                        ));
                     }
                     let mut buf = [0u8; 4];
                     buf.copy_from_slice(&bytes[offset..offset + 4]);
@@ -150,14 +168,24 @@ impl BuiltinSerialization {
                 }
                 wrt_format::component::ValType::F64 => {
                     if offset + 8 > bytes.len() {
-                        return Err(Error::new("Insufficient bytes for f64"));
+                        return Err(Error::new(
+                            wrt_error::ErrorCategory::Parse,
+                            wrt_error::codes::PARSE_ERROR,
+                            "Insufficient bytes for f64",
+                        ));
                     }
                     let mut buf = [0u8; 8];
                     buf.copy_from_slice(&bytes[offset..offset + 8]);
                     result.push(ComponentValue::F64(f64::from_le_bytes(buf)));
                     offset += 8;
                 }
-                _ => return Err(Error::new("Unsupported value type for deserialization")),
+                _ => {
+                    return Err(Error::new(
+                        wrt_error::ErrorCategory::Type,
+                        wrt_error::codes::INVALID_TYPE,
+                        "Unsupported value type for deserialization",
+                    ))
+                }
             }
         }
 

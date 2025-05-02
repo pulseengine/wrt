@@ -1,6 +1,6 @@
-==================================
+================================================
 WebAssembly Component Model Binary Format in WRT
-==================================
+================================================
 
 .. image:: _static/icons/validation_process.svg
    :width: 64px
@@ -19,7 +19,7 @@ Overview
 The WebAssembly Component Model binary format builds upon the core WebAssembly binary format, adding a new layer identifier to distinguish components from modules. The top-level production is ``component`` and the convention is that a file with the ``.wasm`` extension may contain either a core module or a component.
 
 WRT Implementation Status
-------------------------
+-------------------------
 
 The current WRT implementation provides foundational support for the Component Model binary format with the following implementation components:
 
@@ -31,10 +31,10 @@ The current WRT implementation provides foundational support for the Component M
 Many aspects of the specification are still in development, with placeholder implementations that will be completed in future versions.
 
 Binary Format Structure
-======================
+=======================
 
 Component Definitions
---------------------
+---------------------
 
 The specification defines:
 
@@ -64,7 +64,7 @@ The WRT implementation uses different version and layer encoding:
 The implementation in ``wrt-decoder/src/component/decode.rs`` verifies only the first 8 bytes (magic + version), without distinguishing between version and layer as separate fields.
 
 Section Definitions
-------------------
+-------------------
 
 The specification defines the following section types:
 
@@ -107,7 +107,7 @@ WRT defines section IDs in ``wrt-format/src/binary.rs``:
 The section parsing is implemented in ``wrt-decoder/src/component/decode.rs``, which iterates through sections and delegates to appropriate parsers in ``wrt-decoder/src/component/parse.rs``.
 
 Instance Definitions
-===================
+====================
 
 Core Instance Definitions
 -------------------------
@@ -146,7 +146,7 @@ WRT implements core instance definitions in ``wrt-format/src/component.rs``:
 The binary parsing is implemented in ``wrt-decoder/src/component/parse.rs`` in the ``parse_core_instance_section`` and ``parse_core_instance_expr`` functions.
 
 Component Instance Definitions
------------------------------
+------------------------------
 
 The specification defines:
 
@@ -212,7 +212,7 @@ The sorts are defined in ``wrt-format/src/binary.rs`` with values matching the s
    pub const COMPONENT_SORT_INSTANCE: u8 = 0x05;
 
 Type Definitions
-===============
+================
 
 The specification defines various component types. WRT implements them in ``wrt-format/src/component.rs``:
 
@@ -250,7 +250,7 @@ The specification defines various component types. WRT implements them in ``wrt-
    }
 
 Value Types
-----------
+-----------
 
 The specification defines numerous value types. WRT implements them in ``wrt-format/src/component.rs``:
 
@@ -325,7 +325,7 @@ The binary type codes are defined in ``wrt-format/src/binary.rs``:
    // ...and so on
 
 Resource Types
--------------
+--------------
 
 WRT implements resource types with a custom representation:
 
@@ -345,7 +345,7 @@ WRT implements resource types with a custom representation:
 This differs from the specification, which has a simpler representation focused on abstract vs. concrete resources.
 
 Alias Definitions
-===============
+=================
 
 The specification defines different forms of aliases. WRT implements them in ``wrt-format/src/component.rs``:
 
@@ -384,7 +384,7 @@ The specification defines different forms of aliases. WRT implements them in ``w
 The parsing is implemented in ``parse_alias_section`` and ``parse_alias_target`` in ``wrt-decoder/src/component/parse.rs``.
 
 Canonical Function Definitions
-=============================
+==============================
 
 The specification defines canonical operations for function lifting and lowering. WRT implements an extended version in ``wrt-format/src/component.rs``:
 
@@ -444,7 +444,7 @@ The specification defines canonical operations for function lifting and lowering
 The parsing is implemented in ``parse_canon_section`` and related functions in ``wrt-decoder/src/component/parse.rs``.
 
 Start Definitions
-================
+=================
 
 The specification defines:
 
@@ -470,7 +470,7 @@ WRT implements the start definition in ``wrt-format/src/component.rs``:
 **Implementation Status**: The ``parse_start_section`` function in ``wrt-decoder/src/component/parse.rs`` currently returns a "not implemented" error, indicating this feature is planned but not yet implemented.
 
 Import and Export Definitions
-===========================
+=============================
 
 The specification defines import and export declarations. WRT implements them in ``wrt-format/src/component.rs``:
 
@@ -525,7 +525,7 @@ WRT has extended name structures:
 The parsing is implemented in ``parse_import_section`` and ``parse_export_section`` in ``wrt-decoder/src/component/parse.rs``.
 
 Value Definitions
-================
+=================
 
 The specification defines detailed value encoding rules. WRT implements a simplified version in ``wrt-format/src/component.rs``:
 
@@ -569,7 +569,7 @@ The specification defines detailed value encoding rules. WRT implements a simpli
 The parsing is implemented in ``parse_value_section`` and related functions in ``wrt-decoder/src/component/parse.rs``.
 
 Name Section
-===========
+============
 
 The specification defines a name section for components similar to the core WebAssembly name section. WRT has an initial implementation in ``wrt-decoder/src/component_name_section.rs`` that parses the component name but does not yet support the full specification's naming capabilities for all component elements.
 
@@ -593,7 +593,7 @@ Current Implementation Differences Summary
 5. **Validation**: Many of the validation rules specified in the binary format documentation are not yet fully implemented.
 
 Binary Format Parsing Process
-============================
+=============================
 
 The WRT component binary parsing process in ``wrt-decoder/src/component/decode.rs`` follows these steps:
 
@@ -610,7 +610,7 @@ Each section parser in ``wrt-decoder/src/component/parse.rs`` is responsible for
 3. Returning a vector of the parsed elements
 
 Next Steps in Implementation
-===========================
+============================
 
 Key areas for future development of the WRT binary format implementation:
 
@@ -1013,7 +1013,7 @@ The binary format constants are defined in ``wrt-format/src/binary.rs``:
    COMPONENT_VALUE_SECTION_ID: 0x0C
 
 Name Section Implementation
-============================
+===========================
 
 The specification defines a name section for components, similar to the core WebAssembly name section. The WRT implementation has a partial implementation in ``wrt-decoder/src/component_name_section.rs`` but with some discrepancies:
 

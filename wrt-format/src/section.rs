@@ -8,7 +8,9 @@ use std::{format, string::String, vec::Vec};
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 use alloc::{format, string::String, vec::Vec};
 
-use wrt_error::{Error, Result};
+// Use wrt_types error handling
+use crate::error::parse_error;
+use wrt_types::Result;
 
 /// WebAssembly section ID constants
 pub const CUSTOM_ID: u8 = 0;
@@ -215,12 +217,8 @@ pub fn parse_component_section_header(
 ) -> Result<(ComponentSectionHeader, usize)> {
     let (id, size, new_pos) = crate::binary::read_section_header(bytes, pos)?;
 
-    let section_type = ComponentSectionType::from_u8(id).ok_or_else(|| {
-        Error::new(wrt_error::kinds::ParseError(format!(
-            "Invalid component section ID: {}",
-            id
-        )))
-    })?;
+    let section_type = ComponentSectionType::from_u8(id)
+        .ok_or_else(|| parse_error(format!("Invalid component section ID: {}", id)))?;
 
     Ok((ComponentSectionHeader { section_type, size }, new_pos))
 }

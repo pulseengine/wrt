@@ -1,6 +1,6 @@
-===================================
+================================
 Safety and Resource Requirements
-===================================
+================================
 
 .. image:: _static/icons/safety_features.svg
    :width: 64px
@@ -14,7 +14,7 @@ This document defines the safety, resource management, and verification requirem
    :depth: 2
 
 Safety Requirements
-------------------
+-------------------
 
 .. req:: Safety Manual Compliance
    :id: REQ_SAFETY_001
@@ -29,7 +29,7 @@ Safety Requirements
    All safety mechanisms shall be regularly verified through appropriate test suites.
 
 Memory Safety Requirements
-------------------------
+--------------------------
 
 .. req:: Memory Bounds Checking
    :id: REQ_MEM_SAFETY_001
@@ -50,7 +50,7 @@ Memory Safety Requirements
    When interacting with WebAssembly linear memory, all operations shall verify offsets, lengths, and validate pointers.
 
 Resource Management Requirements
------------------------------
+--------------------------------
 
 .. req:: Resource Limitations
    :id: REQ_RESOURCE_001
@@ -83,7 +83,7 @@ Resource Management Requirements
    The system shall implement specific handling strategies for resource exhaustion scenarios.
 
 Error Handling Requirements
-------------------------
+---------------------------
 
 .. req:: Capacity Error Handling
    :id: REQ_ERROR_001
@@ -116,7 +116,7 @@ Error Handling Requirements
    The runtime shall handle resource exhaustion errors in a safe manner.
 
 Verification Requirements
-----------------------
+-------------------------
 
 .. req:: Verification Level Selection
    :id: REQ_VERIFY_001
@@ -143,7 +143,7 @@ Verification Requirements
    The engine shall implement state verification for critical operations.
 
 WebAssembly Requirements
----------------------
+------------------------
 
 .. req:: Module Validation
    :id: REQ_WASM_001
@@ -158,7 +158,7 @@ WebAssembly Requirements
    When defining imports for WebAssembly modules, all parameters shall be validated and error cases explicitly handled.
 
 Build and Environment Requirements
--------------------------------
+----------------------------------
 
 .. req:: Clean Build Environment
    :id: REQ_BUILD_001
@@ -179,7 +179,7 @@ Build and Environment Requirements
    The runtime shall document all environment variables and their impact on runtime behavior.
 
 Installation Requirements
----------------------
+-------------------------
 
 .. req:: Installation Prerequisites
    :id: REQ_INSTALL_001
@@ -194,7 +194,7 @@ Installation Requirements
    After installation, validation tests shall be executed to verify the installation.
 
 Code Quality Requirements
----------------------
+-------------------------
 
 .. req:: Warning Treatment
    :id: REQ_CODE_QUALITY_001
@@ -209,7 +209,7 @@ Code Quality Requirements
    All unsafe code blocks shall be reviewed by at least two developers and have explicit test cases.
 
 Performance Requirements
----------------------
+------------------------
 
 .. req:: Performance and Safety Balance
    :id: REQ_PERF_001
@@ -224,7 +224,7 @@ Performance Requirements
    Performance-critical operations shall support batch processing where appropriate.
 
 Quality Assurance Requirements
----------------------------
+------------------------------
 
 .. req:: Testing Coverage
    :id: REQ_QA_001
@@ -245,7 +245,7 @@ Quality Assurance Requirements
    The runtime shall include a fuzzing infrastructure to identify unexpected edge cases.
 
 Qualification Requirements
------------------------
+--------------------------
 
 .. req:: Documentation Requirements
    :id: QUAL_DOCS_001

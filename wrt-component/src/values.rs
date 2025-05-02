@@ -12,7 +12,7 @@ use wrt_types::ValueType;
 #[cfg(feature = "std")]
 use std::{collections::HashMap, string::String, sync::Arc, vec, vec::Vec};
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
+#[cfg(not(feature = "std"))]
 use alloc::{
     collections::BTreeMap as HashMap,
     string::{String, ToString},
@@ -82,6 +82,14 @@ pub fn convert_common_to_format_valtype(common_type: &CanonicalValType) -> Forma
         }
         CanonicalValType::Own(idx) => FormatValType::Own(*idx),
         CanonicalValType::Borrow(idx) => FormatValType::Borrow(*idx),
+        CanonicalValType::FixedList(elem_type, size) => {
+            FormatValType::FixedList(Box::new(convert_common_to_format_valtype(elem_type)), *size)
+        }
+        CanonicalValType::Void => {
+            // Void doesn't have a direct mapping, convert to a unit tuple
+            FormatValType::Tuple(Vec::new())
+        }
+        CanonicalValType::ErrorContext => FormatValType::ErrorContext,
     }
 }
 
@@ -151,14 +159,11 @@ pub fn convert_format_to_common_valtype(format_type: &FormatValType) -> Canonica
         }
         FormatValType::Own(idx) => CanonicalValType::Own(*idx),
         FormatValType::Borrow(idx) => CanonicalValType::Borrow(*idx),
-        FormatValType::FixedList(elem_type, _) => {
-            // Map FixedList to standard List for runtime
-            CanonicalValType::List(Box::new(convert_format_to_common_valtype(elem_type)))
-        }
-        FormatValType::ErrorContext => {
-            // Map error context to a string type
-            CanonicalValType::String
-        }
+        FormatValType::FixedList(elem_type, size) => CanonicalValType::FixedList(
+            Box::new(convert_format_to_common_valtype(elem_type)),
+            *size,
+        ),
+        FormatValType::ErrorContext => CanonicalValType::ErrorContext,
     }
 }
 
@@ -364,46 +369,48 @@ pub fn deserialize_component_values(
 
 // Core value conversion functions
 pub fn core_to_component_value(value: &Value, ty: &FormatValType) -> Result<ComponentValue> {
-    let common_type = convert_format_to_common_valtype(ty);
+    use crate::type_conversion::{
+        core_value_to_types_componentvalue, format_valtype_to_types_valtype,
+    };
 
-    match (value, &common_type) {
-        (Value::I32(v), CanonicalValType::Bool) => Ok(ComponentValue::Bool(*v != 0)),
-        (Value::I32(v), CanonicalValType::S8) => Ok(ComponentValue::S8(*v as i8)),
-        (Value::I32(v), CanonicalValType::U8) => Ok(ComponentValue::U8(*v as u8)),
-        (Value::I32(v), CanonicalValType::S16) => Ok(ComponentValue::S16(*v as i16)),
-        (Value::I32(v), CanonicalValType::U16) => Ok(ComponentValue::U16(*v as u16)),
-        (Value::I32(v), CanonicalValType::S32) => Ok(ComponentValue::S32(*v)),
-        (Value::I32(v), CanonicalValType::U32) => Ok(ComponentValue::U32(*v as u32)),
-        (Value::I64(v), CanonicalValType::S64) => Ok(ComponentValue::S64(*v)),
-        (Value::I64(v), CanonicalValType::U64) => Ok(ComponentValue::U64(*v as u64)),
-        (Value::F32(v), CanonicalValType::F32) => Ok(ComponentValue::F32(*v)),
-        (Value::F64(v), CanonicalValType::F64) => Ok(ComponentValue::F64(*v)),
+    // First, convert the format value type to a types value type
+    let types_val_type = format_valtype_to_types_valtype(ty);
+
+    // Then convert the core value to a component value
+    let component_value = core_value_to_types_componentvalue(value)?;
+
+    // Check if the types match or provide a conversion error
+    match (&component_value, &types_val_type) {
+        // Basic type checking for primitive types
+        (ComponentValue::S32(_), TypesValType::S32)
+        | (ComponentValue::S64(_), TypesValType::S64)
+        | (ComponentValue::F32(_), TypesValType::F32)
+        | (ComponentValue::F64(_), TypesValType::F64) => Ok(component_value),
+
+        // Handle boolean conversion from i32
+        (ComponentValue::S32(v), TypesValType::Bool) => Ok(ComponentValue::Bool(*v != 0)),
+
+        // Other integer width conversions
+        (ComponentValue::S32(v), TypesValType::S8) => Ok(ComponentValue::S8(*v as i8)),
+        (ComponentValue::S32(v), TypesValType::U8) => Ok(ComponentValue::U8(*v as u8)),
+        (ComponentValue::S32(v), TypesValType::S16) => Ok(ComponentValue::S16(*v as i16)),
+        (ComponentValue::S32(v), TypesValType::U16) => Ok(ComponentValue::U16(*v as u16)),
+        (ComponentValue::S32(v), TypesValType::U32) => Ok(ComponentValue::U32(*v as u32)),
+        (ComponentValue::S64(v), TypesValType::U64) => Ok(ComponentValue::U64(*v as u64)),
+
+        // Error for type mismatch
         _ => Err(Error::new(kinds::ConversionError(format!(
-            "Cannot convert core value {:?} to component value of type {:?}",
-            value, common_type
+            "Type mismatch: cannot convert {:?} to component value of type {:?}",
+            value, types_val_type
         )))),
     }
 }
 
 pub fn component_to_core_value(value: &ComponentValue) -> Result<Value> {
-    match value {
-        ComponentValue::Bool(v) => Ok(Value::I32(if *v { 1 } else { 0 })),
-        ComponentValue::S8(v) => Ok(Value::I32(*v as i32)),
-        ComponentValue::U8(v) => Ok(Value::I32(*v as i32)),
-        ComponentValue::S16(v) => Ok(Value::I32(*v as i32)),
-        ComponentValue::U16(v) => Ok(Value::I32(*v as i32)),
-        ComponentValue::S32(v) => Ok(Value::I32(*v)),
-        ComponentValue::U32(v) => Ok(Value::I32(*v as i32)),
-        ComponentValue::S64(v) => Ok(Value::I64(*v)),
-        ComponentValue::U64(v) => Ok(Value::I64(*v as i64)),
-        ComponentValue::F32(v) => Ok(Value::F32(*v)),
-        ComponentValue::F64(v) => Ok(Value::F64(*v)),
-        // String and other complex types cannot be directly represented
-        _ => Err(Error::new(kinds::ConversionError(format!(
-            "Cannot convert component value {:?} to core value",
-            value
-        )))),
-    }
+    use crate::type_conversion::types_componentvalue_to_core_value;
+
+    // Use the centralized conversion function
+    types_componentvalue_to_core_value(value)
 }
 
 // Size calculation for component values

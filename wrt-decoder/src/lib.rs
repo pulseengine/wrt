@@ -26,126 +26,15 @@ extern crate std;
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 
-// Re-export core types from wrt-types
-pub use wrt_types::{safe_memory::SafeSlice, FuncType, ValueType};
-
-// Create a prelude module with common imports
-#[cfg(not(feature = "std"))]
-pub(crate) mod prelude {
-    pub use ::alloc::boxed::Box;
-    pub use ::alloc::collections::{BTreeMap as HashMap, BTreeSet as HashSet};
-    pub use ::alloc::format;
-    pub use ::alloc::string::{String, ToString};
-    pub use ::alloc::vec::Vec;
-    pub use core::str;
-}
-
-#[cfg(feature = "std")]
-pub(crate) mod prelude {
-    pub use std::boxed::Box;
-    pub use std::collections::{HashMap, HashSet};
-    pub use std::format;
-    pub use std::str;
-    pub use std::string::{String, ToString};
-    pub use std::vec::Vec;
-}
-
-// Use the prelude throughout this crate
-use crate::prelude::*;
-
-// Export module components
+// Module exports
 pub mod component;
-pub mod component_name_section;
-pub mod component_val_type;
-pub mod component_validation;
-pub mod instructions;
-pub mod module;
-pub mod name_section;
-pub mod producers_section;
-pub mod sections;
-pub mod types;
-pub mod validation;
+pub mod core;
+pub mod prelude;
+pub mod wasm;
 
-// Re-export main components for ease of use
-pub use component::decode_component;
-pub use component_validation::validate_component;
-pub use instructions::Instruction;
-pub use module::Module;
-pub use name_section::NameSection;
-pub use producers_section::{extract_producers_section, ProducersSection};
-pub use sections::*;
-// Re-export types module
-pub use types::{parse_value_type, BlockType, Limits};
+// Re-exports
+pub use wrt_error::{codes, kinds};
+pub use wrt_types::{Error, ErrorCategory};
 
-/// Version of the WebAssembly binary format supported by this decoder
-pub const WASM_SUPPORTED_VERSION: u32 = 1;
-
-// Magic bytes for WebAssembly modules: \0asm
-pub const WASM_MAGIC: [u8; 4] = [0x00, 0x61, 0x73, 0x6D];
-
-/// Decode a WebAssembly binary module into a structured module representation
-///
-/// This is the main entry point for clients using this crate.
-pub fn decode(bytes: &[u8]) -> wrt_error::Result<Module> {
-    module::decode_module(bytes)
-}
-
-/// Check if the binary is a WebAssembly component or core module
-///
-/// Returns true if the bytes represent a WebAssembly component.
-pub fn is_component(bytes: &[u8]) -> wrt_error::Result<bool> {
-    component::utils::is_component(bytes)
-}
-
-/// Encode a WebAssembly module into binary format
-///
-/// Currently, this function is a placeholder and returns an empty byte vector.
-pub fn encode(_module: &Module) -> wrt_error::Result<Vec<u8>> {
-    // In a real implementation, this would encode the module to binary
-    // For now, return an empty vector as a placeholder
-    Ok(Vec::new())
-}
-
-/// Validate a WebAssembly module
-///
-/// This is the main entry point for validation.
-pub fn validate(module: &Module) -> wrt_error::Result<()> {
-    validation::validate_module(module)
-}
-
-/// Extract custom sections with the given name from a module.
-///
-/// This function returns a vector of references to the raw data of custom sections
-/// with the specified name. This is useful for extracting specific metadata like
-/// name sections.
-pub fn extract_custom_sections<'a>(module: &'a Module, name: &str) -> Vec<&'a [u8]> {
-    module
-        .custom_sections
-        .iter()
-        .filter(|section| section.name == name)
-        .map(|section| section.data.as_slice())
-        .collect()
-}
-
-// These conflicting definitions are causing issues - let's replace them with a cleaner approach
-// that uses feature flags correctly
-
-// For no_std builds we re-export from alloc
-#[cfg(all(feature = "no_std", not(feature = "std")))]
-pub use ::alloc::{
-    borrow::ToOwned,
-    boxed::Box,
-    collections::BTreeMap as HashMap,
-    string::{String, ToString},
-    vec::Vec,
-};
-
-// For std builds we re-export from std
-#[cfg(feature = "std")]
-pub use std::{
-    borrow::ToOwned,
-    boxed::Box,
-    collections::HashMap,
-    string::{String, ToString},
-    vec::Vec,
-};
+// Type alias
+pub type Result<T> = std::result::Result<T, wrt_error::Error>;

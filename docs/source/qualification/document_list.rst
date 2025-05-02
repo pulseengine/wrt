@@ -1,10 +1,10 @@
 Document List
-============
+=============
 
 This document provides a comprehensive list of documents used in the qualification process for the WRT project.
 
 Project Documentation
--------------------
+---------------------
 
 .. list-table:: WRT Project Documentation
    :widths: 30 15 55
@@ -54,7 +54,7 @@ Project Documentation
      - Build and test automation procedures
 
 Reference Standards
------------------
+-------------------
 
 .. list-table:: Reference Standards
    :widths: 20 80
@@ -74,7 +74,7 @@ Reference Standards
      - Official WebAssembly component model specification
 
 Tools and References
-------------------
+--------------------
 
 .. list-table:: Development and Verification Tools
    :widths: 20 80

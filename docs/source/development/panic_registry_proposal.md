@@ -42,8 +42,8 @@ The `check_panics` command has been enhanced to:
 
 - Check for undocumented panics as before
 - Additionally validate that panic documentation includes required fields:
-  - Safety impact: [LOW|MEDIUM|HIGH] - [Brief explanation]
-  - Tracking: WRTQ-XXX (qualification tracking ID)
+  - Safety impact: `LOW/MEDIUM/HIGH` - Brief explanation
+  - Tracking: `WRTQ-XXX` (qualification tracking ID)
 - Generate appropriate documentation templates when run with `--fix`
 
 ## Benefits

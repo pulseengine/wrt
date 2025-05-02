@@ -12,15 +12,8 @@ path = "src/lib.rs"
 [dependencies]
 # No external dependencies by default
 # Optional dependencies
-anyhow = { workspace = true, optional = true }
-
-# For advanced error integration with other libraries
 wasmparser = { version = "0.227.1", optional = true }
-serde_json = { version = "1.0", optional = true }
-bincode = { version = "2.0", optional = true }
 wat = { version = "1.229.0", optional = true }
-wasi-common = { version = "17.0.3", optional = true }
-cap-std = { version = "2.0.0", optional = true }
 
 [features]
 default = ["std"]
@@ -32,10 +25,7 @@ std = ["alloc"]
 no_std = []
 # Optional integration with other libraries
 wasmparser = ["dep:wasmparser", "std"]
-serde_json = ["dep:serde_json", "std"]
-bincode = ["dep:bincode", "std"]
 wat = ["dep:wat", "std"]
-wasi = ["dep:wasi-common", "dep:cap-std", "std"]
 
 [lints.rust]
 unexpected_cfgs = { level = "allow", check-cfg = ['cfg(test)', 'cfg(kani)', 'cfg(coverage)', 'cfg(doc)'] }

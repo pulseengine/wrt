@@ -91,6 +91,8 @@ pub mod strategies;
 #[cfg(all(not(coverage), any(doc, feature = "kani")))]
 pub mod verify;
 
+use wrt_types::resource::ResourceCanonicalOperation;
+
 /// Strategy pattern for intercepting component linking
 pub trait LinkInterceptorStrategy: Send + Sync {
     /// Called before a function call is made
@@ -260,7 +262,7 @@ pub trait LinkInterceptorStrategy: Send + Sync {
     fn intercept_resource_operation(
         &self,
         _handle: u32,
-        _operation: &wrt_format::component::ResourceOperation,
+        _operation: &ResourceCanonicalOperation,
     ) -> Result<Option<Vec<u8>>> {
         Ok(None)
     }
@@ -508,39 +510,51 @@ impl LinkInterceptor {
         for modification in modifications {
             match modification {
                 Modification::Replace { offset, data } => {
-                    if offset + data.len() <= modified_data.len() {
-                        modified_data[*offset..*offset + data.len()].copy_from_slice(data);
-                    } else {
-                        return Err(Error::new(wrt_error::kinds::ValidationError(format!(
-                            "Modification offset out of bounds: {} + {} > {}",
-                            offset,
-                            data.len(),
-                            modified_data.len()
-                        ))));
+                    if offset + data.len() > modified_data.len() {
+                        return Err(Error::new(
+                            wrt_error::ErrorCategory::Validation,
+                            wrt_error::codes::VALIDATION_ERROR,
+                            wrt_error::kinds::ValidationError(format!(
+                                "Modification offset out of bounds: {} + {} > {}",
+                                offset,
+                                data.len(),
+                                modified_data.len()
+                            )),
+                        ));
                     }
+
+                    modified_data[offset..offset + data.len()].copy_from_slice(data);
                 }
                 Modification::Insert { offset, data } => {
-                    if *offset <= modified_data.len() {
-                        modified_data.splice(*offset..*offset, data.iter().cloned());
-                    } else {
-                        return Err(Error::new(wrt_error::kinds::ValidationError(format!(
-                            "Insertion offset out of bounds: {} > {}",
-                            offset,
-                            modified_data.len()
-                        ))));
+                    if offset > modified_data.len() {
+                        return Err(Error::new(
+                            wrt_error::ErrorCategory::Validation,
+                            wrt_error::codes::VALIDATION_ERROR,
+                            wrt_error::kinds::ValidationError(format!(
+                                "Insertion offset out of bounds: {} > {}",
+                                offset,
+                                modified_data.len()
+                            )),
+                        ));
                     }
+
+                    modified_data.splice(offset..offset, data.iter().cloned());
                 }
                 Modification::Remove { offset, length } => {
-                    if offset + length <= modified_data.len() {
-                        modified_data.drain(*offset..*offset + *length);
-                    } else {
-                        return Err(Error::new(wrt_error::kinds::ValidationError(format!(
-                            "Removal range out of bounds: {} + {} > {}",
-                            offset,
-                            length,
-                            modified_data.len()
-                        ))));
+                    if offset + length > modified_data.len() {
+                        return Err(Error::new(
+                            wrt_error::ErrorCategory::Validation,
+                            wrt_error::codes::VALIDATION_ERROR,
+                            wrt_error::kinds::ValidationError(format!(
+                                "Removal range out of bounds: {} + {} > {}",
+                                offset,
+                                length,
+                                modified_data.len()
+                            )),
+                        ));
                     }
+
+                    modified_data.drain(offset..offset + length);
                 }
             }
         }
@@ -684,7 +698,7 @@ mod tests {
         fn intercept_resource_operation(
             &self,
             _handle: u32,
-            _operation: &wrt_format::component::ResourceOperation,
+            _operation: &ResourceCanonicalOperation,
         ) -> Result<Option<Vec<u8>>> {
             Ok(None)
         }

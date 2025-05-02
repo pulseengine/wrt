@@ -7,7 +7,7 @@
 // - async.wait: Wait for an async value to complete
 
 #[cfg(feature = "component-model-async")]
-use wrt_error::{Error, Result};
+use wrt_error::{kinds::AsyncError, Error, Result};
 #[cfg(feature = "component-model-async")]
 use wrt_types::builtin::BuiltinType;
 #[cfg(feature = "component-model-async")]
@@ -116,7 +116,10 @@ impl AsyncValueStore {
 
                 Ok(())
             }
-            None => Err(Error::new(format!("Async ID not found: {}", id))),
+            None => Err(Error::new(AsyncError(format!(
+                "Async ID not found: {}",
+                id
+            )))),
         }
     }
 
@@ -134,7 +137,10 @@ impl AsyncValueStore {
 
                 Ok(())
             }
-            None => Err(Error::new(format!("Async ID not found: {}", id))),
+            None => Err(Error::new(AsyncError(format!(
+                "Async ID not found: {}",
+                id
+            )))),
         }
     }
 
@@ -142,7 +148,10 @@ impl AsyncValueStore {
     pub fn get_status(&self, id: u32) -> Result<AsyncStatus> {
         match self.values.get(&id) {
             Some(async_value) => Ok(async_value.status.clone()),
-            None => Err(Error::new(format!("Async ID not found: {}", id))),
+            None => Err(Error::new(AsyncError(format!(
+                "Async ID not found: {}",
+                id
+            )))),
         }
     }
 
@@ -151,22 +160,26 @@ impl AsyncValueStore {
         match self.values.get(&id) {
             Some(async_value) => {
                 if async_value.status == AsyncStatus::Ready {
-                    async_value
-                        .result
-                        .clone()
-                        .ok_or_else(|| Error::new("Async result not available".to_string()))
+                    async_value.result.clone().ok_or_else(|| {
+                        Error::new(AsyncError("Async result not available".to_string()))
+                    })
                 } else if async_value.status == AsyncStatus::Failed {
-                    Err(Error::new(
+                    Err(Error::new(AsyncError(
                         async_value
                             .error
                             .clone()
                             .unwrap_or_else(|| "Async operation failed".to_string()),
-                    ))
+                    )))
                 } else {
-                    Err(Error::new("Async operation still pending".to_string()))
+                    Err(Error::new(AsyncError(
+                        "Async operation still pending".to_string(),
+                    )))
                 }
             }
-            None => Err(Error::new(format!("Async ID not found: {}", id))),
+            None => Err(Error::new(AsyncError(format!(
+                "Async ID not found: {}",
+                id
+            )))),
         }
     }
 
@@ -178,7 +191,10 @@ impl AsyncValueStore {
                 async_value.waker = Some(waker);
                 Ok(())
             }
-            None => Err(Error::new(format!("Async ID not found: {}", id))),
+            None => Err(Error::new(AsyncError(format!(
+                "Async ID not found: {}",
+                id
+            )))),
         }
     }
 
@@ -192,7 +208,10 @@ impl AsyncValueStore {
         if self.values.remove(&id).is_some() {
             Ok(())
         } else {
-            Err(Error::new(format!("Async ID not found: {}", id)))
+            Err(Error::new(AsyncError(format!(
+                "Async ID not found: {}",
+                id
+            ))))
         }
     }
 }

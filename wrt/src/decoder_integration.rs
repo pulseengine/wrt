@@ -13,7 +13,7 @@ use wrt_types::{
         CustomSection, Data, Element, Export, ExportDesc, FunctionBody, Global, Import, ImportDesc,
         LocalEntry, Section, SectionId,
     },
-    types::{FuncType, GlobalType, Limits, MemoryType, TableType, ValueType},
+    types::{BlockType, FuncType, GlobalType, Limits, MemoryType, RefType, TableType, ValueType},
 };
 
 #[cfg(feature = "std")]
@@ -305,13 +305,12 @@ fn convert_custom_section(section: &CustomSection) -> WrtCustomSection {
 
 /// Convert from wrt-types ImportDesc to wrt ExternType
 fn convert_import_desc(desc: &ImportDesc) -> crate::types::ExternType {
+    use crate::types::ExternType;
     match desc {
-        ImportDesc::Func(type_idx) => {
-            crate::types::ExternType::Function(FuncType::new(Vec::new(), Vec::new()))
-        }
-        ImportDesc::Table(table_type) => crate::types::ExternType::Table(table_type.clone()),
-        ImportDesc::Memory(memory_type) => crate::types::ExternType::Memory(memory_type.clone()),
-        ImportDesc::Global(global_type) => crate::types::ExternType::Global(global_type.clone()),
+        ImportDesc::Func(type_idx) => ExternType::Func(*type_idx),
+        ImportDesc::Table(table_type) => ExternType::Table(table_type.clone()),
+        ImportDesc::Memory(memory_type) => ExternType::Memory(memory_type.clone()),
+        ImportDesc::Global(global_type) => ExternType::Global(global_type.clone()),
     }
 }
 
@@ -320,14 +319,14 @@ fn convert_import(import: &Import) -> WrtImport {
     WrtImport {
         module: import.module.clone(),
         name: import.name.clone(),
-        ty: convert_import_desc(&import.desc),
+        desc: convert_import_desc(&import.desc),
     }
 }
 
 /// Convert from wrt-types ExportDesc to wrt ExportKind and index
 fn convert_export_desc(desc: &ExportDesc) -> (ExportKind, u32) {
     match desc {
-        ExportDesc::Func(idx) => (ExportKind::Function, *idx),
+        ExportDesc::Func(idx) => (ExportKind::Func, *idx),
         ExportDesc::Table(idx) => (ExportKind::Table, *idx),
         ExportDesc::Memory(idx) => (ExportKind::Memory, *idx),
         ExportDesc::Global(idx) => (ExportKind::Global, *idx),
@@ -336,38 +335,29 @@ fn convert_export_desc(desc: &ExportDesc) -> (ExportKind, u32) {
 
 /// Convert from wrt-types Export to wrt OtherExport
 fn convert_export(export: &Export) -> OtherExport {
-    let (kind, index) = convert_export_desc(&export.desc);
+    let (kind, idx) = convert_export_desc(&export.desc);
     OtherExport {
         name: export.name.clone(),
         kind,
-        index,
+        value: ExportValue::Index(idx),
     }
 }
 
 /// Convert from wrt-types FunctionBody to wrt Function
 fn convert_function_body(body: &FunctionBody, type_idx: u32) -> Result<Function> {
-    // Convert local entries to flat list of ValueType
-    let mut locals = Vec::new();
-    for entry in &body.locals {
-        for _ in 0..entry.count {
-            locals.push(entry.type_value);
-        }
-    }
-
-    // Parse instructions from binary code
-    // Note: This is a simplified version. In a real implementation,
-    // you would parse the instructions from the binary code.
+    // Parse the code section
     let code = parse_function_body(&body.code)?;
 
-    Ok(Function::new(type_idx, locals, code))
+    Ok(Function {
+        type_idx,
+        locals: body.locals.clone(),
+        code,
+    })
 }
 
 /// Parse function body to extract instructions
-fn parse_function_body(code: &[u8]) -> Result<Vec<Instruction>> {
-    // This is a placeholder. In a real implementation, you would
-    // parse the instructions from the binary code.
-    // For now, we'll return an empty vector to demonstrate the concept.
-    Ok(Vec::new())
+fn parse_function_body(_code: &[u8]) -> Result<Vec<Instruction>> {
+    unimplemented!()
 }
 
 /// Convert from wrt-types Element to wrt Element
@@ -389,11 +379,8 @@ fn convert_data(data: &Data) -> WrtData {
 }
 
 /// Parse expression from binary code
-fn parse_expr(code: &[u8]) -> Result<Vec<Instruction>> {
-    // This is a placeholder. In a real implementation, you would
-    // parse the expression from the binary code.
-    // For now, we'll return an empty vector to demonstrate the concept.
-    Ok(Vec::new())
+fn parse_expr(_code: &[u8]) -> Result<Vec<Instruction>> {
+    unimplemented!()
 }
 
 /// Convert a SafeModule to a runtime Module
@@ -411,20 +398,16 @@ pub fn convert_to_runtime_module(safe_module: &SafeModule) -> Result<Module> {
         .map(convert_custom_section)
         .collect();
 
-    // Convert types
+    // Since FuncType is now consolidated, we can directly use it without conversion
     module.types = safe_module.types.clone();
 
     // Convert imports
-    // In a real implementation, you would need to handle the import functions
-    // by creating function instances and setting up the appropriate imports.
     let imports: Vec<WrtImport> = safe_module.imports.iter().map(convert_import).collect();
     for import in imports {
-        // Add to module.imports - in a real implementation you'd handle this more comprehensively
         module.imports.push(import);
     }
 
     // Convert functions
-    // Convert function bodies to wrt Functions
     let functions: Result<Vec<Function>> = safe_module
         .functions
         .iter()
@@ -436,9 +419,6 @@ pub fn convert_to_runtime_module(safe_module: &SafeModule) -> Result<Module> {
         .collect();
     module.functions = functions?;
 
-    // Convert memories, tables and globals
-    // In a real implementation, you would instantiate these and add them to the module
-
     // Convert exports
     module.exports = safe_module.exports.iter().map(convert_export).collect();
 
@@ -447,9 +427,6 @@ pub fn convert_to_runtime_module(safe_module: &SafeModule) -> Result<Module> {
 
     // Convert data segments
     module.data = safe_module.data.iter().map(convert_data).collect();
-
-    // Set data count
-    // module.data_count = safe_module.data_count;
 
     Ok(module)
 }

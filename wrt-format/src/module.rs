@@ -1,17 +1,22 @@
-//! WebAssembly module structure.
+//! WebAssembly module format.
 //!
 //! This module provides types and utilities for working with WebAssembly modules.
 
+#[cfg(feature = "std")]
+use std::{string::String, vec::Vec};
+
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+use alloc::{string::String, vec::Vec};
+
 use crate::section::CustomSection;
 use crate::types::Limits;
-use crate::{String, Vec};
-use wrt_error::kinds;
-use wrt_error::{Error, Result};
-// Import types from wrt-types
+use wrt_error::{codes, Error, ErrorCategory, Result};
 use wrt_types::{types::GlobalType, ValueType};
 
 #[cfg(not(feature = "std"))]
 use alloc::string::ToString;
+
+use crate::validation::Validatable;
 
 /// WebAssembly function definition
 #[derive(Debug, Clone)]
@@ -199,18 +204,20 @@ impl Module {
     ///
     /// This is a convenience method that wraps Binary::from_bytes + Module::from_binary
     pub fn from_bytes(_wasm_bytes: &[u8]) -> Result<Self> {
-        // This is a minimal implementation - will be expanded later
-        Err(Error::new(kinds::ParseError(
+        Err(Error::new(
+            ErrorCategory::Validation,
+            codes::PARSE_ERROR,
             "Module::from_bytes not yet implemented".to_string(),
-        )))
+        ))
     }
 
     /// Convert a Module to a WebAssembly binary.
     pub fn to_bytes(&self) -> Result<Vec<u8>> {
-        // This is a minimal implementation - will be expanded later
-        Err(Error::new(kinds::ParseError(
+        Err(Error::new(
+            ErrorCategory::Validation,
+            codes::PARSE_ERROR,
             "Module::to_bytes not yet implemented".to_string(),
-        )))
+        ))
     }
 
     /// Find a custom section by name
@@ -228,6 +235,62 @@ impl Module {
     /// Check if this module contains state sections
     pub fn has_state_sections(&self) -> bool {
         crate::state::has_state_sections(&self.custom_sections)
+    }
+}
+
+impl Validatable for Module {
+    fn validate(&self) -> Result<()> {
+        // Basic validation checks
+
+        // Check for reasonable number of types
+        if self.types.len() > 10000 {
+            return Err(Error::new(
+                ErrorCategory::Validation,
+                codes::VALIDATION_ERROR,
+                "Module has too many types",
+            ));
+        }
+
+        // Check for reasonable number of functions
+        if self.functions.len() > 10000 {
+            return Err(Error::new(
+                ErrorCategory::Validation,
+                codes::VALIDATION_ERROR,
+                "Module has too many functions",
+            ));
+        }
+
+        // Check for empty exports
+        for export in &self.exports {
+            if export.name.is_empty() {
+                return Err(Error::new(
+                    ErrorCategory::Validation,
+                    codes::VALIDATION_ERROR,
+                    "Export name cannot be empty",
+                ));
+            }
+        }
+
+        // Check for empty imports
+        for import in &self.imports {
+            if import.module.is_empty() {
+                return Err(Error::new(
+                    ErrorCategory::Validation,
+                    codes::VALIDATION_ERROR,
+                    "Import module name cannot be empty",
+                ));
+            }
+
+            if import.name.is_empty() {
+                return Err(Error::new(
+                    ErrorCategory::Validation,
+                    codes::VALIDATION_ERROR,
+                    "Import name cannot be empty",
+                ));
+            }
+        }
+
+        Ok(())
     }
 }
 

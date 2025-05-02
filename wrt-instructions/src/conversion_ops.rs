@@ -101,13 +101,13 @@ impl<T: ConversionContext> PureInstruction<T, Error> for ConversionOp {
                 })?;
 
                 if a.is_nan() {
-                    return Err(Error::new(kinds::ConversionError(
-                        "NaN cannot be converted to integer".into(),
+                    return Err(Error::from(kinds::conversion_error(
+                        "NaN cannot be converted to integer",
                     )));
                 }
 
                 if a >= (i32::MAX as f32) + 1.0 || a < (i32::MIN as f32) {
-                    return Err(Error::new(kinds::IntegerOverflowError));
+                    return Err(Error::from(kinds::integer_overflow_error()));
                 }
 
                 context.push_conversion_value(Value::I32(a as i32))
@@ -118,13 +118,13 @@ impl<T: ConversionContext> PureInstruction<T, Error> for ConversionOp {
                 })?;
 
                 if a.is_nan() {
-                    return Err(Error::new(kinds::ConversionError(
-                        "NaN cannot be converted to integer".into(),
+                    return Err(Error::from(kinds::conversion_error(
+                        "NaN cannot be converted to integer",
                     )));
                 }
 
                 if a >= (u32::MAX as f32) + 1.0 || a < 0.0 {
-                    return Err(Error::new(kinds::IntegerOverflowError));
+                    return Err(Error::from(kinds::integer_overflow_error()));
                 }
 
                 context.push_conversion_value(Value::I32(a as u32 as i32))
@@ -193,6 +193,23 @@ impl<T: ConversionContext> PureInstruction<T, Error> for ConversionOp {
                 })?;
                 context.push_conversion_value(Value::F64(a as f64))
             }
+            Self::I32TruncF64S => {
+                let a = context.pop_conversion_value()?.as_f64().ok_or_else(|| {
+                    Error::invalid_type("Expected F64 for i32.trunc_f64_s operand".to_string())
+                })?;
+
+                if a.is_nan() {
+                    return Err(Error::from(kinds::conversion_error(
+                        "NaN cannot be converted to integer",
+                    )));
+                }
+
+                if a >= (i32::MAX as f64) + 1.0 || a < (i32::MIN as f64) {
+                    return Err(Error::from(kinds::integer_overflow_error()));
+                }
+
+                context.push_conversion_value(Value::I32(a as i32))
+            }
 
             // Return Ok for unimplemented operations (to be completed)
             _ => Ok(()),
@@ -203,8 +220,14 @@ impl<T: ConversionContext> PureInstruction<T, Error> for ConversionOp {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::execution::ExecutionContext;
+    use wrt_error::kinds;
+
+    // Import Vec and collections based on feature flags
+    #[cfg(feature = "std")]
     use std::collections::VecDeque;
+
+    #[cfg(all(not(feature = "std"), feature = "alloc"))]
+    use alloc::collections::VecDeque;
 
     struct MockExecutionContext {
         stack: VecDeque<Value>,
@@ -219,13 +242,15 @@ mod tests {
     }
 
     impl ConversionContext for MockExecutionContext {
-        fn push_conversion_value(&mut self, value: Value) -> Result<(), InvalidValueTypeError> {
+        fn push_conversion_value(&mut self, value: Value) -> Result<()> {
             self.stack.push_back(value);
             Ok(())
         }
 
-        fn pop_conversion_value(&mut self) -> Result<Value, InvalidValueTypeError> {
-            self.stack.pop_back().ok_or(InvalidValueTypeError)
+        fn pop_conversion_value(&mut self) -> Result<Value> {
+            self.stack
+                .pop_back()
+                .ok_or_else(|| Error::from(kinds::stack_underflow()))
         }
     }
 

@@ -1,5 +1,5 @@
 WebAssembly Runtime Safety Constraints
-===================================
+======================================
 
 This document defines the mandatory safety constraints that must be followed when using the WebAssembly Runtime. Each constraint includes a rationale explaining why it exists and a verification approach describing how compliance with the constraint can be verified.
 
@@ -9,7 +9,7 @@ This document defines the mandatory safety constraints that must be followed whe
    :backlinks: none
 
 User Responsibility Constraints
-------------------------------
+-------------------------------
 
 .. constraint:: User Responsibility
    :id: CNST_USER_RESP
@@ -36,7 +36,7 @@ User Responsibility Constraints
    * Impact assessment on safety
 
 Installation Constraints
------------------------
+------------------------
 
 .. constraint:: Installation Prerequisites
    :id: CNST_INSTALL_PREREQ
@@ -68,7 +68,7 @@ Installation Constraints
    A successful test run confirms the installation is valid.
 
 Build Environment Constraints
----------------------------
+-----------------------------
 
 .. constraint:: Clean Build
    :id: CNST_CLEAN_BUILD
@@ -115,7 +115,7 @@ Build Environment Constraints
    * Any custom WRT_* environment variables
 
 Memory Safety Constraints
------------------------
+-------------------------
 
 .. constraint:: Memory Boundary Checks
    :id: CNST_MEM_BOUNDS
@@ -159,7 +159,7 @@ Memory Safety Constraints
       );
 
 Resource Limitation Constraints
------------------------------
+-------------------------------
 
 .. constraint:: Resource Limits
    :id: CNST_RESOURCE_LIM
@@ -237,7 +237,7 @@ Resource Limitation Constraints
    * External timeout mechanisms
 
 Verification Constraints
-----------------------
+------------------------
 
 .. constraint:: Verification Level Selection
    :id: CNST_VERIFY_LEVEL
@@ -290,7 +290,7 @@ Verification Constraints
    Structural validation ensures internal data structures maintain consistency.
 
 WebAssembly-Specific Constraints
-------------------------------
+--------------------------------
 
 .. constraint:: Pre-execution Validation
    :id: CNST_MODULE_VALID
@@ -330,7 +330,7 @@ WebAssembly-Specific Constraints
    * Validate pointers received from WebAssembly modules
 
 Testing and Code Quality Constraints
-----------------------------------
+------------------------------------
 
 .. constraint:: Testing Coverage
    :id: CNST_TEST_COV
@@ -387,7 +387,7 @@ Testing and Code Quality Constraints
    * For safety-critical systems, consider restarting components on panic
 
 Error Handling Constraints
-------------------------
+--------------------------
 
 .. constraint:: Engine Error Handling
    :id: CNST_ENGINE_ERR
@@ -427,7 +427,7 @@ Error Handling Constraints
    * Consider implementing resource usage quotas
 
 Performance Optimization Constraints
-----------------------------------
+------------------------------------
 
 .. constraint:: Batch Operations
    :id: CNST_BATCH_OPS
@@ -442,7 +442,7 @@ Performance Optimization Constraints
    :id: CNST_BUILD_CONFIG
    :rationale: Build configuration affects safety features and performance.
    :verification: Testing with different build configurations.
-   :links: REQ_BUILD_002, IMPL_BUILD_CONFIG_001, SPEC_CONFIG_001
+   :links: REQ_BUILD_002, IMPL_BUILD_CONFIG_001, IMPL_CONFIG_001
    :status: Active
 
    Use build configurations to control safety features.

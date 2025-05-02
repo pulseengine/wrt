@@ -1,61 +1,81 @@
 @startuml
 
-package "Testing and Verification" {
-  package "Specification Testing" {
-    [WAST Test Runner] as WASTRunner
-    [Test Scripts] as TestScripts
-    [Result Validation] as ResultValid
-    [Test Blacklisting] as BlackList
+package "Testing Infrastructure" {
+  package "WAST Test Runner" {
+    [WAST Parser] as WASTParser
+    [Test Executor] as TestExec
+    [Assertion Checker] as Assert
+    [Test Reporter] as TestReport
+    [Test Blacklist] as Blacklist
     
-    WASTRunner --> TestScripts
-    WASTRunner --> ResultValid
-    WASTRunner --> BlackList
+    WASTParser --> TestExec
+    TestExec --> Assert
+    Assert --> TestReport
+    Blacklist --> TestExec
   }
   
   package "Safety Testing" {
-    [Safety Test Suite] as SafetySuite
     [Memory Safety Tests] as MemTest
     [Resource Limit Tests] as ResTest
-    [Error Handling Tests] as ErrTest
+    [Bounds Tests] as BoundsTest
+    [Validation Tests] as ValidTest
+    [Error Handling Tests] as ErrorTest
     
-    SafetySuite --> MemTest
-    SafetySuite --> ResTest
-    SafetySuite --> ErrTest
+    MemTest --> BoundsTest
+    ResTest --> BoundsTest
+    ValidTest --> ErrorTest
   }
   
-  package "Fuzzing Infrastructure" {
-    [Fuzzing Tools] as FuzzTools
-    [Corpus Generation] as Corpus
-    [Edge Case Detection] as EdgeCase
-    [Crash Detection] as Crash
+  package "Fuzzing" {
+    [Binary Fuzzer] as BinFuzz
+    [Instruction Fuzzer] as InstFuzz
+    [Memory Fuzzer] as MemFuzz
+    [Resource Fuzzer] as ResFuzz
+    [Component Fuzzer] as CompFuzz
     
-    FuzzTools --> Corpus
-    FuzzTools --> EdgeCase
-    FuzzTools --> Crash
+    BinFuzz --> InstFuzz
+    InstFuzz --> MemFuzz
+    MemFuzz --> ResFuzz
+    ResFuzz --> CompFuzz
   }
   
-  package "Coverage Analysis" {
+  package "Component Model Testing" {
+    [Interface Testing] as InterfaceTest
+    [Value Types Tests] as ValueTest
+    [Resource Tests] as ResourceTest
+    [Canonical ABI Tests] as ABITest
+    [Import/Export Tests] as IETest
+    
+    InterfaceTest --> ValueTest
+    ValueTest --> ResourceTest
+    ResourceTest --> ABITest
+    ABITest --> IETest
+  }
+  
+  package "Quality Assurance" {
     [Code Coverage] as Coverage
-    [Line Coverage] as LineCoverage
-    [Branch Coverage] as BranchCoverage
-    [Function Coverage] as FuncCoverage
+    [Benchmark Suite] as Bench
+    [CI Pipeline] as CI
+    [Performance Tests] as PerfTest
+    [Regression Tests] as RegTest
     
-    Coverage --> LineCoverage
-    Coverage --> BranchCoverage
-    Coverage --> FuncCoverage
+    Coverage --> CI
+    Bench --> PerfTest
+    PerfTest --> RegTest
+    RegTest --> CI
   }
   
-  package "CI Integration" {
-    [CI Pipeline] as CI
-    [Test Automation] as TestAuto
-    [Quality Gates] as QualityGates
+  package "Verification Tools" {
+    [Memory Verifier] as MemVerify
+    [Type Checker] as TypeCheck
+    [Stack Validation] as StackValid
+    [Engine State Verifier] as EngineVerify
+    [Resource Tracking Verifier] as ResVerify
     
-    CI --> TestAuto
-    CI --> Coverage
-    CI --> QualityGates
-    TestAuto --> WASTRunner
-    TestAuto --> SafetySuite
-    TestAuto --> FuzzTools
+    MemVerify --> TypeCheck
+    TypeCheck --> StackValid
+    StackValid --> EngineVerify
+    EngineVerify --> ResVerify
   }
 }
 

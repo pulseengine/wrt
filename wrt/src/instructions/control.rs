@@ -344,17 +344,25 @@ impl InstructionExecutor for If {
             engine,
         };
 
-        // Convert to wrt-instructions block type
+        // Convert to wrt-instructions control block type using the consolidated BlockType
         let control_block_type = match &self.block_type {
-            BlockType::Empty => ControlBlockType::ValueType(None),
-            BlockType::Type(vt) => ControlBlockType::ValueType(Some(*vt)),
-            BlockType::Value(vt) => ControlBlockType::ValueType(Some(*vt)),
-            BlockType::FuncType(ft) => ControlBlockType::FuncType(ft.clone()),
-            BlockType::TypeIndex(_) => ControlBlockType::ValueType(None), // Default to empty for type indices
+            BlockType::Empty => wrt_instructions::control_ops::ControlBlockType::ValueType(None),
+            BlockType::Type(vt) => {
+                wrt_instructions::control_ops::ControlBlockType::ValueType(Some(*vt))
+            }
+            BlockType::Value(vt) => {
+                wrt_instructions::control_ops::ControlBlockType::ValueType(Some(*vt))
+            }
+            BlockType::FuncType(ft) => {
+                wrt_instructions::control_ops::ControlBlockType::FuncType(ft.clone())
+            }
+            BlockType::TypeIndex(_) => {
+                wrt_instructions::control_ops::ControlBlockType::ValueType(None)
+            } // Default to empty for type indices
         };
 
         // Use the pure implementation from wrt-instructions
-        ControlOp::If(control_block_type)
+        wrt_instructions::control_ops::ControlOp::If(control_block_type)
             .execute(&mut context)
             .map_err(|e| Error::new(e.kind()))?;
 

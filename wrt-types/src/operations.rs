@@ -15,6 +15,59 @@ use core::sync::atomic::{AtomicU64, Ordering};
 #[cfg(feature = "std")]
 use std::sync::OnceLock;
 
+#[cfg(not(feature = "std"))]
+mod once_cell {
+    use core::cell::UnsafeCell;
+    use core::sync::atomic::{AtomicBool, Ordering};
+
+    pub struct OnceCell<T> {
+        is_initialized: AtomicBool,
+        value: UnsafeCell<Option<T>>,
+    }
+
+    impl<T> OnceCell<T> {
+        pub const fn new() -> Self {
+            Self {
+                is_initialized: AtomicBool::new(false),
+                value: UnsafeCell::new(None),
+            }
+        }
+
+        pub fn get_or_init<F>(&self, f: F) -> &T
+        where
+            F: FnOnce() -> T,
+        {
+            if !self.is_initialized.load(Ordering::Acquire) {
+                // Only one thread will be able to store true here
+                if !self.is_initialized.swap(true, Ordering::AcqRel) {
+                    unsafe {
+                        *self.value.get() = Some(f());
+                    }
+                } else {
+                    // Wait for the other thread to finish initialization
+                    while !self.is_initialized.load(Ordering::Acquire) {
+                        core::hint::spin_loop();
+                    }
+                }
+            }
+
+            unsafe {
+                match &*self.value.get() {
+                    Some(value) => value,
+                    None => unreachable!("Value should be initialized"),
+                }
+            }
+        }
+    }
+
+    // This is safe because we handle synchronization with AtomicBool
+    unsafe impl<T: Send + Sync> Sync for OnceCell<T> {}
+    unsafe impl<T: Send> Send for OnceCell<T> {}
+}
+
+#[cfg(not(feature = "std"))]
+use self::once_cell::OnceCell as OnceLock;
+
 /// Operation types that can be tracked for fuel consumption
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OperationType {

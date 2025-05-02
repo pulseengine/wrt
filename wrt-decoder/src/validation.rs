@@ -2,7 +2,7 @@
 //!
 //! This module provides functions for validating WebAssembly modules.
 
-use wrt_error::{kinds, Error, Result};
+use wrt_error::{kinds, Error, Result, WrtError, codes, ErrorCategory};
 use wrt_format::types::ValueType;
 use wrt_types::FuncType;
 // Use our prelude for common imports
@@ -59,25 +59,37 @@ pub fn validate_module(module: &Module) -> Result<()> {
 fn validate_basic_structure(module: &Module) -> Result<()> {
     // Check if we have a function section but no code section
     if !module.functions.is_empty() && module.code.is_empty() {
-        return Err(Error::new(kinds::ValidationError(
-            "Module has function section but no code section".to_string(),
-        )));
+        return Err(Error::new(
+            ErrorCategory::Validation,
+            codes::VALIDATION_ERROR,
+            kinds::ValidationError(
+                "Module has function section but no code section".to_string(),
+            )
+        ));
     }
 
     // Check if we have a code section but no function section
     if module.functions.is_empty() && !module.code.is_empty() {
-        return Err(Error::new(kinds::ValidationError(
-            "Module has code section but no function section".to_string(),
-        )));
+        return Err(Error::new(
+            ErrorCategory::Validation,
+            codes::VALIDATION_ERROR,
+            kinds::ValidationError(
+                "Module has code section but no function section".to_string(),
+            )
+        ));
     }
 
     // Check that function and code sections match in size
     if module.functions.len() != module.code.len() {
-        return Err(Error::new(kinds::ValidationError(format!(
-            "Function and code sections have mismatched lengths: {} vs {}",
-            module.functions.len(),
-            module.code.len()
-        ))));
+        return Err(Error::new(
+            ErrorCategory::Validation,
+            codes::VALIDATION_ERROR,
+            kinds::ValidationError(format!(
+                "Function and code sections have mismatched lengths: {} vs {}",
+                module.functions.len(),
+                module.code.len()
+            ))
+        ));
     }
 
     Ok(())
@@ -105,10 +117,14 @@ fn validate_imports(module: &Module) -> Result<()> {
             ImportDesc::Function(type_idx) => {
                 // Validate type index
                 if *type_idx as usize >= module.types.len() {
-                    return Err(Error::new(kinds::ValidationError(format!(
-                        "Invalid type index {} in import {}",
-                        type_idx, i
-                    ))));
+                    return Err(Error::new(
+                        ErrorCategory::Validation,
+                        codes::VALIDATION_ERROR,
+                        kinds::ValidationError(format!(
+                            "Invalid type index {} in import {}",
+                            type_idx, i
+                        ))
+                    ));
                 }
             }
             ImportDesc::Table(table) => {
@@ -135,10 +151,14 @@ fn validate_table_type(table: &Table) -> Result<()> {
     match table.element_type {
         ValueType::FuncRef | ValueType::ExternRef => {}
         _ => {
-            return Err(Error::new(kinds::ValidationError(format!(
-                "Invalid table element type: {:?}",
-                table.element_type
-            ))));
+            return Err(Error::new(
+                ErrorCategory::Validation,
+                codes::VALIDATION_ERROR,
+                kinds::ValidationError(format!(
+                    "Invalid table element type: {:?}",
+                    table.element_type
+                ))
+            ));
         }
     }
 
@@ -151,10 +171,14 @@ fn validate_limits(limits: &Limits, max: u64) -> Result<()> {
     // If max is specified, it must be >= min
     if let Some(max_limit) = limits.max {
         if max_limit > max {
-            return Err(Error::new(kinds::ValidationError(format!(
-                "Invalid limits: max ({}) > max allowed ({})",
-                max_limit, max
-            ))));
+            return Err(Error::new(
+                ErrorCategory::Validation,
+                codes::VALIDATION_ERROR,
+                kinds::ValidationError(format!(
+                    "Invalid limits: max ({}) > max allowed ({})",
+                    max_limit, max
+                ))
+            ));
         }
     }
 
@@ -168,19 +192,27 @@ pub fn validate_memory_type(memory: &Memory) -> Result<()> {
         MemoryIndexType::I32 => {
             // For 32-bit memories, enforce the 4GiB (65536 pages) limit
             if memory.limits.min > 65536 {
-                return Err(Error::new(kinds::ValidationError(format!(
-                    "Memory32 minimum size exceeds maximum allowed pages (65536): {}",
-                    memory.limits.min
-                ))));
+                return Err(Error::new(
+                    ErrorCategory::Validation,
+                    codes::VALIDATION_ERROR,
+                    kinds::ValidationError(format!(
+                        "Memory32 minimum size exceeds maximum allowed pages (65536): {}",
+                        memory.limits.min
+                    ))
+                ));
             }
 
             // Check maximum is within spec bounds (if specified)
             if let Some(max) = memory.limits.max {
                 if max > 65536 {
-                    return Err(Error::new(kinds::ValidationError(format!(
-                        "Memory32 maximum size exceeds maximum allowed pages (65536): {}",
-                        max
-                    ))));
+                    return Err(Error::new(
+                        ErrorCategory::Validation,
+                        codes::VALIDATION_ERROR,
+                        kinds::ValidationError(format!(
+                            "Memory32 maximum size exceeds maximum allowed pages (65536): {}",
+                            max
+                        ))
+                    ));
                 }
             }
         }
@@ -188,10 +220,14 @@ pub fn validate_memory_type(memory: &Memory) -> Result<()> {
             // For 64-bit memories, the limit is much higher (2^64 - 1)
             // but we should still check for reasonable values
             if memory.limits.min > (1u64 << 48) {
-                return Err(Error::new(kinds::ValidationError(format!(
-                    "Memory64 minimum size too large: {}",
-                    memory.limits.min
-                ))));
+                return Err(Error::new(
+                    ErrorCategory::Validation,
+                    codes::VALIDATION_ERROR,
+                    kinds::ValidationError(format!(
+                        "Memory64 minimum size too large: {}",
+                        memory.limits.min
+                    ))
+                ));
             }
         }
     }
@@ -199,123 +235,135 @@ pub fn validate_memory_type(memory: &Memory) -> Result<()> {
     // Check maximum >= minimum
     if let Some(max) = memory.limits.max {
         if max < memory.limits.min {
-            return Err(Error::new(kinds::ValidationError(format!(
-                "Memory maximum size ({}) is less than minimum size ({})",
-                max, memory.limits.min
-            ))));
+            return Err(Error::new(
+                ErrorCategory::Validation,
+                codes::VALIDATION_ERROR,
+                kinds::ValidationError(format!(
+                    "Memory maximum size ({}) is less than minimum size ({})",
+                    max, memory.limits.min
+                ))
+            ));
         }
     }
 
-    // Check shared memory constraints
+    // Validate shared memory requirements
     if memory.shared {
-        // Shared memory must have max specified
         if memory.limits.max.is_none() {
-            return Err(Error::new(kinds::ValidationError(
-                "Shared memory must have maximum size specified".to_string(),
-            )));
+            return Err(Error::new(
+                ErrorCategory::Validation,
+                codes::VALIDATION_ERROR,
+                kinds::ValidationError(
+                    "Shared memory must have maximum size specified".to_string(),
+                )
+            ));
         }
 
-        // Memory64 cannot be shared in the current spec
-        if matches!(memory.limits.memory_index_type, MemoryIndexType::I64) {
-            return Err(Error::new(kinds::ValidationError(
-                "Memory64 cannot be shared in the current specification".to_string(),
-            )));
+        // Memory64 cannot be shared in the current specification
+        if memory.limits.memory_index_type == MemoryIndexType::I64 {
+            return Err(Error::new(
+                ErrorCategory::Validation,
+                codes::VALIDATION_ERROR,
+                kinds::ValidationError(
+                    "Memory64 cannot be shared in the current specification".to_string(),
+                )
+            ));
         }
     }
 
     Ok(())
 }
 
-/// Validate memory alignment for memory access instructions
+/// Validate memory alignment
+///
+/// The alignment must not exceed the natural alignment of the access.
+/// For example, a 4-byte access must not have an alignment larger than 2 (2^2 = 4).
 pub fn validate_memory_alignment(align: u32, natural_align: u32) -> Result<()> {
-    // According to the spec, alignment must be less than or equal to
-    // the natural alignment of the access operation
     if align > natural_align {
-        return Err(Error::new(kinds::ValidationError(format!(
-            "Alignment 2^{} exceeds natural alignment 2^{}",
-            align, natural_align
-        ))));
+        return Err(Error::new(
+            ErrorCategory::Validation,
+            codes::VALIDATION_ERROR,
+            kinds::ValidationError(format!(
+                "Alignment 2^{} exceeds natural alignment 2^{}",
+                align, natural_align
+            ))
+        ));
     }
-
     Ok(())
 }
 
-/// Validate memory access instruction (generic for all memory operations)
+/// Validate a memory access instruction
+///
+/// This validates:
+/// 1. The memory index is valid
+/// 2. The alignment is valid for the access size
+/// 3. The access size is valid (1, 2, 4, or 8 bytes)
 pub fn validate_memory_access(
     module: &Module,
     mem_idx: u32,
     align: u32,
     access_size: u32,
 ) -> Result<()> {
-    // Check if memory index is valid
-    let import_memories = module
-        .imports
-        .iter()
-        .filter(|i| matches!(i.desc, ImportDesc::Memory(_)))
-        .count();
-
-    let memory_count = import_memories + module.memories.len();
-
-    if mem_idx as usize >= memory_count {
-        return Err(Error::new(kinds::ValidationError(format!(
-            "Memory index {} out of bounds (max {})",
-            mem_idx, memory_count
-        ))));
+    // Validate memory index
+    let memory_count = module.memories.len() as u32 + module.imported_memories.len() as u32;
+    if mem_idx >= memory_count {
+        return Err(Error::new(
+            ErrorCategory::Validation,
+            codes::VALIDATION_ERROR,
+            kinds::ValidationError(format!(
+                "Memory index {} out of bounds (max {})",
+                mem_idx, memory_count
+            ))
+        ));
     }
 
-    // For each memory type, determine natural alignment
-    let natural_align = match access_size {
-        1 => 0,  // 2^0 = 1-byte alignment
-        2 => 1,  // 2^1 = 2-byte alignment
-        4 => 2,  // 2^2 = 4-byte alignment
-        8 => 3,  // 2^3 = 8-byte alignment
-        16 => 4, // 2^4 = 16-byte alignment (for v128)
+    // Validate access size
+    match access_size {
+        1 => validate_memory_alignment(align, 0)?, // natural align for 1 byte is 2^0
+        2 => validate_memory_alignment(align, 1)?, // natural align for 2 bytes is 2^1
+        4 => validate_memory_alignment(align, 2)?, // natural align for 4 bytes is 2^2
+        8 => validate_memory_alignment(align, 3)?, // natural align for 8 bytes is 2^3
         _ => {
-            return Err(Error::new(kinds::ValidationError(format!(
-                "Invalid memory access size: {}",
-                access_size
-            ))))
+            return Err(Error::new(
+                ErrorCategory::Validation,
+                codes::VALIDATION_ERROR,
+                kinds::ValidationError(format!(
+                    "Invalid memory access size: {}",
+                    access_size
+                ))
+            ))
         }
-    };
-
-    // Validate alignment
-    validate_memory_alignment(align, natural_align)?;
+    }
 
     Ok(())
 }
 
 /// Validate all memory types in a module
 pub fn validate_memories(module: &Module) -> Result<()> {
-    // Validate memory declarations
+    // Count imported memories
+    let imported_memories = module.imports.iter()
+        .filter(|i| matches!(i.desc, ImportDesc::Memory(_)))
+        .count();
+    
+    // Count defined memories
+    let defined_memories = module.memories.len();
+    
+    // In the MVP, only 1 memory is allowed (imported or defined)
+    if imported_memories + defined_memories > 1 {
+        return Err(Error::new(
+            ErrorCategory::Validation,
+            codes::VALIDATION_ERROR,
+            kinds::ValidationError(format!(
+                "Multiple memories are not supported in WebAssembly 1.0: {} defined, {} imported",
+                defined_memories, imported_memories
+            ))
+        ));
+    }
+    
+    // Validate each memory definition
     for memory in &module.memories {
         validate_memory_type(memory)?;
     }
-
-    // Validate imported memories
-    for import in &module.imports {
-        if let ImportDesc::Memory(memory_type) = &import.desc {
-            validate_memory_type(&Memory {
-                limits: memory_type.limits.clone(),
-                shared: memory_type.limits.shared,
-            })?;
-        }
-    }
-
-    // WebAssembly 1.0 only allows a maximum of 1 memory per module
-    let defined_memories = module.memories.len();
-    let imported_memories = module
-        .imports
-        .iter()
-        .filter(|i| matches!(i.desc, ImportDesc::Memory(_)))
-        .count();
-
-    if defined_memories + imported_memories > 1 {
-        return Err(Error::new(kinds::ValidationError(format!(
-            "Multiple memories are not supported in WebAssembly 1.0: {} defined, {} imported",
-            defined_memories, imported_memories
-        ))));
-    }
-
+    
     Ok(())
 }
 
@@ -332,177 +380,179 @@ fn validate_globals(module: &Module) -> Result<()> {
 
 /// Validate the exports section of a WebAssembly module
 fn validate_exports(module: &Module) -> Result<()> {
-    let mut export_names = Vec::new();
-
-    for (i, export) in module.exports.iter().enumerate() {
+    // Check for duplicate export names
+    let mut export_names = std::collections::HashSet::new();
+    
+    for export in &module.exports {
         // Check for duplicate export names
-        if export_names.contains(&export.name) {
-            return Err(Error::new(kinds::ValidationError(format!(
-                "Duplicate export name: {}",
-                export.name
-            ))));
+        if !export_names.insert(&export.name) {
+            return Err(Error::new(
+                ErrorCategory::Validation,
+                codes::VALIDATION_ERROR,
+                kinds::ValidationError(format!(
+                    "Duplicate export name: {}",
+                    export.name
+                ))
+            ));
         }
-
-        export_names.push(export.name.clone());
-
-        // Validate export kind and index
+        
+        // Validate the export kind
         match export.kind {
-            ExportKind::Function => {
-                validate_func_idx(module, export.index, i)?;
-            }
-            ExportKind::Table => {
-                validate_table_idx(module, export.index, i)?;
-            }
-            ExportKind::Memory => {
-                validate_memory_idx(module, export.index, i)?;
-            }
-            ExportKind::Global => {
-                validate_global_idx(module, export.index, i)?;
-            }
+            ExportKind::Function => validate_func_idx(module, export.idx, export_names.len() - 1)?,
+            ExportKind::Table => validate_table_idx(module, export.idx, export_names.len() - 1)?,
+            ExportKind::Memory => validate_memory_idx(module, export.idx, export_names.len() - 1)?,
+            ExportKind::Global => validate_global_idx(module, export.idx, export_names.len() - 1)?,
         }
     }
-
+    
     Ok(())
 }
 
 /// Validate a function index
 fn validate_func_idx(module: &Module, idx: u32, export_idx: usize) -> Result<()> {
-    let import_funcs = module
-        .imports
-        .iter()
-        .filter(|import| matches!(import.desc, ImportDesc::Function(_)))
-        .count();
-
-    let func_count = import_funcs + module.functions.len();
-
+    // Count total functions (imported + defined)
+    let func_count = module.functions.len() + module.imported_functions.len();
+    
+    // Check index is within bounds
     if idx as usize >= func_count {
-        return Err(Error::new(kinds::ValidationError(format!(
-            "Export {} function index {} out of bounds (max {})",
-            export_idx, idx, func_count
-        ))));
+        return Err(Error::new(
+            ErrorCategory::Validation,
+            codes::VALIDATION_ERROR,
+            kinds::ValidationError(format!(
+                "Export {} function index {} out of bounds (max {})",
+                export_idx, idx, func_count
+            ))
+        ));
     }
-
+    
     Ok(())
 }
 
 /// Validate a table index
 fn validate_table_idx(module: &Module, idx: u32, export_idx: usize) -> Result<()> {
-    let import_tables = module
-        .imports
-        .iter()
-        .filter(|import| matches!(import.desc, ImportDesc::Table(_)))
-        .count();
-
-    let table_count = import_tables + module.tables.len();
-
+    // Count total tables (imported + defined)
+    let table_count = module.tables.len() + module.imported_tables.len();
+    
+    // Check index is within bounds
     if idx as usize >= table_count {
-        return Err(Error::new(kinds::ValidationError(format!(
-            "Export {} table index {} out of bounds (max {})",
-            export_idx, idx, table_count
-        ))));
+        return Err(Error::new(
+            ErrorCategory::Validation,
+            codes::VALIDATION_ERROR,
+            kinds::ValidationError(format!(
+                "Export {} table index {} out of bounds (max {})",
+                export_idx, idx, table_count
+            ))
+        ));
     }
-
+    
     Ok(())
 }
 
 /// Validate a memory index
 fn validate_memory_idx(module: &Module, idx: u32, export_idx: usize) -> Result<()> {
-    let import_memories = module
-        .imports
-        .iter()
-        .filter(|import| matches!(import.desc, ImportDesc::Memory(_)))
-        .count();
-
-    let memory_count = import_memories + module.memories.len();
-
+    // Count total memories (imported + defined)
+    let memory_count = module.memories.len() + module.imported_memories.len();
+    
+    // Check index is within bounds
     if idx as usize >= memory_count {
-        return Err(Error::new(kinds::ValidationError(format!(
-            "Export {} memory index {} out of bounds (max {})",
-            export_idx, idx, memory_count
-        ))));
+        return Err(Error::new(
+            ErrorCategory::Validation,
+            codes::VALIDATION_ERROR,
+            kinds::ValidationError(format!(
+                "Export {} memory index {} out of bounds (max {})",
+                export_idx, idx, memory_count
+            ))
+        ));
     }
-
+    
     Ok(())
 }
 
 /// Validate a global index
 fn validate_global_idx(module: &Module, idx: u32, export_idx: usize) -> Result<()> {
-    let import_globals = module
-        .imports
-        .iter()
-        .filter(|import| matches!(import.desc, ImportDesc::Global(_)))
-        .count();
-
-    let global_count = import_globals + module.globals.len();
-
+    // Count total globals (imported + defined)
+    let global_count = module.globals.len() + module.imported_globals.len();
+    
+    // Check index is within bounds
     if idx as usize >= global_count {
-        return Err(Error::new(kinds::ValidationError(format!(
-            "Export {} global index {} out of bounds (max {})",
-            export_idx, idx, global_count
-        ))));
+        return Err(Error::new(
+            ErrorCategory::Validation,
+            codes::VALIDATION_ERROR,
+            kinds::ValidationError(format!(
+                "Export {} global index {} out of bounds (max {})",
+                export_idx, idx, global_count
+            ))
+        ));
     }
-
+    
     Ok(())
 }
 
 /// Validate the start section of a WebAssembly module
 fn validate_start(module: &Module) -> Result<()> {
-    if let Some(start_idx) = module.start {
-        // Validate start function index
-        validate_func_idx(module, start_idx, 0)?;
-
-        // Check that the start function has the correct type (no params, no results)
-        let import_funcs = module
-            .imports
-            .iter()
-            .filter(|import| matches!(import.desc, ImportDesc::Function(_)))
-            .count();
-
-        let func_idx = start_idx as usize;
-
-        // If it's an imported function
-        if func_idx < import_funcs {
-            let import_idx = module
-                .imports
-                .iter()
-                .filter(|import| matches!(import.desc, ImportDesc::Function(_)))
-                .enumerate()
-                .filter(|(i, _)| *i == func_idx)
-                .map(|(_, import)| {
-                    if let ImportDesc::Function(type_idx) = import.desc {
-                        type_idx as usize
-                    } else {
-                        0
-                    }
-                })
-                .next()
-                .unwrap_or(0);
-
-            if import_idx < module.types.len() {
-                let func_type = &module.types[import_idx];
-                if !func_type.params.is_empty() || !func_type.results.is_empty() {
-                    return Err(Error::new(kinds::ValidationError(
-                        "Start function must have type [] -> []".to_string(),
-                    )));
-                }
-            }
+    // If there's no start function, that's valid
+    if module.start.is_none() {
+        return Ok(());
+    }
+    
+    // Get the start function index
+    let start_idx = module.start.unwrap();
+    
+    // Validate the function index
+    let func_count = module.functions.len() + module.imported_functions.len();
+    if start_idx as usize >= func_count {
+        return Err(validation_error(&format!(
+            "Start function index {} out of bounds (max {})",
+            start_idx, func_count
+        )));
+    }
+    
+    // Get the function type index
+    let mut type_idx = 0;
+    
+    if start_idx as usize < module.imported_functions.len() {
+        // It's an imported function, find its type
+        let import_function = &module.imported_functions[start_idx as usize];
+        type_idx = import_function.type_idx;
+    } else {
+        // It's a defined function, find its type
+        let adjusted_idx = start_idx as usize - module.imported_functions.len();
+        if adjusted_idx < module.functions.len() {
+            type_idx = module.functions[adjusted_idx].type_idx;
         } else {
-            // It's a defined function
-            let defined_idx = func_idx - import_funcs;
-            if defined_idx < module.functions.len() {
-                let type_idx = module.functions[defined_idx].type_idx as usize;
-                if type_idx < module.types.len() {
-                    let func_type = &module.types[type_idx];
-                    if !func_type.params.is_empty() || !func_type.results.is_empty() {
-                        return Err(Error::new(kinds::ValidationError(
-                            "Start function must have type [] -> []".to_string(),
-                        )));
-                    }
-                }
-            }
+            return Err(Error::new(
+                ErrorCategory::Validation,
+                codes::VALIDATION_ERROR,
+                kinds::ValidationError(
+                    "Start function must have type [] -> []".to_string(),
+                )
+            ));
         }
     }
-
+    
+    // Check that the type exists
+    if type_idx as usize >= module.types.len() {
+        return Err(Error::new(
+            ErrorCategory::Validation,
+            codes::VALIDATION_ERROR,
+            kinds::ValidationError(
+                "Start function must have type [] -> []".to_string(),
+            )
+        ));
+    }
+    
+    // Check that the function type is [] -> []
+    let func_type = &module.types[type_idx as usize];
+    if !func_type.params.is_empty() || !func_type.results.is_empty() {
+        return Err(Error::new(
+            ErrorCategory::Validation,
+            codes::VALIDATION_ERROR,
+            kinds::ValidationError(
+                "Start function must have type [] -> []".to_string(),
+            )
+        ));
+    }
+    
     Ok(())
 }
 
@@ -683,4 +733,65 @@ fn validate_elem(module: &Module) -> Result<()> {
         }
     }
     Ok(())
+}
+
+/// Validate memory copy operation
+pub fn validate_memory_copy(module: &Module, dst_memory_idx: u32, src_memory_idx: u32) -> Result<()> {
+    // Check if memory indices are valid
+    let import_memories = module
+        .imports
+        .iter()
+        .filter(|i| matches!(i.desc, ImportDesc::Memory(_)))
+        .count();
+
+    let memory_count = import_memories + module.memories.len();
+
+    if dst_memory_idx as usize >= memory_count {
+        return Err(Error::new(kinds::ValidationError(format!(
+            "Destination memory index {} out of bounds (max {})",
+            dst_memory_idx, memory_count
+        ))));
+    }
+
+    if src_memory_idx as usize >= memory_count {
+        return Err(Error::new(kinds::ValidationError(format!(
+            "Source memory index {} out of bounds (max {})",
+            src_memory_idx, memory_count
+        ))));
+    }
+
+    Ok(())
+}
+
+/// Validate memory fill operation
+pub fn validate_memory_fill(module: &Module, memory_idx: u32) -> Result<()> {
+    // Check if memory index is valid
+    let import_memories = module
+        .imports
+        .iter()
+        .filter(|i| matches!(i.desc, ImportDesc::Memory(_)))
+        .count();
+
+    let memory_count = import_memories + module.memories.len();
+
+    if memory_idx as usize >= memory_count {
+        return Err(Error::new(kinds::ValidationError(format!(
+            "Memory index {} out of bounds (max {})",
+            memory_idx, memory_count
+        ))));
+    }
+
+    Ok(())
+}
+
+pub fn validation_error(message: &str) -> WrtError {
+    WrtError::validation_error(message.to_string())
+}
+
+pub fn validation_error_with_context(message: &str, context: &str) -> WrtError {
+    WrtError::validation_error(format!("{}: {}", message, context))
+}
+
+pub fn validation_error_with_type(message: &str, type_name: &str) -> WrtError {
+    WrtError::validation_error(format!("{} for type {}", message, type_name))
 }
