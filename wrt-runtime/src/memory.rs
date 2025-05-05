@@ -77,31 +77,34 @@
 //! assert_eq!(old_size, 1); // Previous size was 1 page
 //! ```
 
+use crate::prelude::*;
 use crate::types::MemoryType;
-use crate::{Error, Result};
-use wrt_error::kinds;
-use wrt_error::{errors::codes, ErrorCategory};
-use wrt_types::safe_memory::MemoryStats;
-use wrt_types::safe_memory::{MemoryProvider, MemorySafety, SafeSlice};
-use wrt_types::verification::VerificationLevel;
-
-#[cfg(feature = "std")]
-use std::{
-    sync::{
-        atomic::{AtomicU64, AtomicUsize, Ordering},
-        Arc,
-    },
-    vec::Vec,
+use wrt_types::safe_memory::{
+    MemoryProvider, MemorySafety, MemoryStats, SafeMemoryHandler, SafeSlice,
 };
 
+// Import correct types for Atomic operations
+#[cfg(feature = "std")]
+use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
+
 #[cfg(not(feature = "std"))]
-use alloc::vec::Vec;
+use core::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
+
+// Import RwLock from appropriate location in no_std
+#[cfg(not(feature = "std"))]
+use wrt_sync::WrtRwLock as RwLock;
 
 /// WebAssembly page size (64KB)
 pub const PAGE_SIZE: usize = 65536;
 
 /// Maximum number of memory pages allowed by WebAssembly spec
 pub const MAX_PAGES: u32 = 65536;
+
+/// The maximum memory size in bytes (4GB)
+const MAX_MEMORY_BYTES: usize = 4 * 1024 * 1024 * 1024;
+
+/// Memory size error code (must be u16 to match Error::new)
+const MEMORY_SIZE_TOO_LARGE: u16 = 4001;
 
 /// Memory metrics for tracking usage and performance
 #[derive(Debug, Default)]
@@ -169,68 +172,53 @@ impl MemoryMetrics {
             last_access_length: 0,
         }
     }
-
-    #[cfg(feature = "std")]
-    fn track_access(&self, offset: usize, len: usize) {
-        self.access_count.fetch_add(1, Ordering::Relaxed);
-        self.max_access_size.fetch_max(len, Ordering::Relaxed);
-        self.last_access_offset.store(offset, Ordering::Relaxed);
-        self.last_access_length.store(len, Ordering::Relaxed);
-    }
-
-    #[cfg(not(feature = "std"))]
-    fn track_access(&mut self, offset: usize, len: usize) {
-        self.access_count += 1;
-        self.max_access_size = self.max_access_size.max(len);
-        self.last_access_offset = offset;
-        self.last_access_length = len;
-    }
-
-    #[cfg(feature = "std")]
-    fn update_peak_usage(&self, size: usize) {
-        let mut current = self.peak_usage.load(Ordering::Relaxed);
-        while size > current {
-            match self.peak_usage.compare_exchange(
-                current,
-                size,
-                Ordering::Relaxed,
-                Ordering::Relaxed,
-            ) {
-                Ok(_) => break,
-                Err(actual) => current = actual,
-            }
-        }
-    }
-
-    #[cfg(not(feature = "std"))]
-    fn update_peak_usage(&mut self, size: usize) {
-        self.peak_usage = self.peak_usage.max(size);
-    }
 }
 
 /// Represents a WebAssembly memory instance
 #[derive(Debug)]
 pub struct Memory {
-    /// Memory type
+    /// The memory type
     pub ty: MemoryType,
-    /// Memory data
-    data: Vec<u8>,
-    /// Current size in pages
+    /// The memory data
+    data: SafeMemoryHandler,
+    /// The current number of pages
     current_pages: u32,
-    /// Debug name for this memory instance (optional)
+    /// A debug name for diagnostics
     debug_name: Option<String>,
-    /// Performance metrics
     #[cfg(feature = "std")]
     metrics: MemoryMetrics,
-    /// Performance metrics (wrapped in RwLock for no_std)
     #[cfg(not(feature = "std"))]
     metrics: RwLock<MemoryMetrics>,
     /// Verification level for memory operations
     verification_level: VerificationLevel,
 }
 
+impl Clone for Memory {
+    fn clone(&self) -> Self {
+        // Get the current data
+        let data_vec = self.data.to_vec().expect("Failed to clone memory data");
+
+        // Create a new SafeMemoryHandler with the same data
+        let mut new_data = SafeMemoryHandler::new(data_vec);
+        new_data.set_verification_level(self.verification_level);
+
+        // Create a new instance with copied data
+        Self {
+            ty: self.ty.clone(),
+            data: new_data,
+            current_pages: self.current_pages,
+            debug_name: self.debug_name.clone(),
+            #[cfg(feature = "std")]
+            metrics: MemoryMetrics::new(self.data.size()),
+            #[cfg(not(feature = "std"))]
+            metrics: RwLock::new(MemoryMetrics::new(self.data.size())),
+            verification_level: self.verification_level,
+        }
+    }
+}
+
 impl Memory {
-    /// Creates a new memory instance
+    /// Creates a new memory instance from a type
     ///
     /// # Arguments
     ///
@@ -238,29 +226,48 @@ impl Memory {
     ///
     /// # Returns
     ///
-    /// A new Memory instance with the given type
+    /// A new memory instance
     ///
     /// # Errors
     ///
-    /// Returns an error if the memory cannot be created
+    /// Returns an error if the memory type is invalid
     pub fn new(ty: MemoryType) -> Result<Self> {
-        // Calculate memory size based on page size (64KB)
-        let size = ty.limits.min as usize * PAGE_SIZE;
+        // Calculate number of pages
         let min_pages = ty.limits.min;
 
-        let memory = Self {
+        // Calculate size in bytes (1 page = 64KiB)
+        let size = min_pages as usize * PAGE_SIZE;
+
+        // Check limits
+        if size > MAX_MEMORY_BYTES {
+            return Err(Error::new(
+                ErrorCategory::Memory,
+                MEMORY_SIZE_TOO_LARGE,
+                format!("Memory size too large: {} bytes", size),
+            ));
+        }
+
+        // Create initial memory buffer with proper size
+        let mut data = SafeMemoryHandler::with_capacity(size);
+        // Set verification level to match our memory safety needs
+        data.set_verification_level(VerificationLevel::Standard);
+
+        // Initialize with zeros (avoiding unnecessary Vec creation)
+        // Use resize instead of creating a temporary Vec
+        data.resize(size, 0);
+
+        // Create memory instance
+        Ok(Self {
             ty,
-            data: vec![0; size],
+            data,
             current_pages: min_pages,
             debug_name: None,
             #[cfg(feature = "std")]
             metrics: MemoryMetrics::new(size),
             #[cfg(not(feature = "std"))]
             metrics: RwLock::new(MemoryMetrics::new(size)),
-            verification_level: VerificationLevel::default(),
-        };
-
-        Ok(memory)
+            verification_level: VerificationLevel::Standard,
+        })
     }
 
     /// Creates a new memory instance with a debug name
@@ -314,85 +321,184 @@ impl Memory {
         self.current_pages as usize * PAGE_SIZE
     }
 
-    /// Returns a reference to the memory buffer
+    /// A reference to the memory data as a `Vec<u8>`
     ///
-    /// # Returns
+    /// # Warning
     ///
-    /// A reference to the memory data
-    pub fn buffer(&self) -> &[u8] {
-        &self.data
+    /// This method is primarily for compatibility with existing code and should be
+    /// avoided in new code. It creates a full copy of the memory data which is inefficient.
+    ///
+    /// For memory-safe access, prefer using `get_safe_slice()` or `as_safe_slice()` methods instead.
+    pub fn buffer(&self) -> Result<Vec<u8>> {
+        // Use the SafeMemoryHandler to get data through a safe slice to ensure
+        // memory integrity is verified during the operation
+        let data_size = self.data.size();
+        if data_size == 0 {
+            return Ok(Vec::new());
+        }
+
+        // Get a safe slice over the entire memory
+        let safe_slice = self.data.get_slice(0, data_size)?;
+
+        // Get the data from the safe slice and create a copy
+        let memory_data = safe_slice.data()?;
+
+        // Create a new Vec with the data
+        #[cfg(feature = "std")]
+        let result = memory_data.to_vec();
+
+        #[cfg(all(not(feature = "std"), feature = "alloc"))]
+        let result = alloc::slice::SliceExt::to_vec(memory_data);
+
+        Ok(result)
     }
 
-    /// Returns the peak memory usage during execution
-    ///
-    /// # Panics
-    ///
-    /// In `no_std` environments, this method will panic if the read lock for the metrics
-    /// cannot be acquired. This would typically only happen in case of a deadlock or
-    /// if the lock is poisoned due to a panic in another thread holding the lock.
-    /// Safety impact: [LOW|MEDIUM|HIGH] - [Brief explanation of the safety implication]
-    /// Tracking: WRTQ-XXX (qualification requirement tracking ID).
-    #[must_use]
+    /// Returns the peak memory usage in bytes
     pub fn peak_memory(&self) -> usize {
         #[cfg(feature = "std")]
         {
             self.metrics.peak_usage.load(Ordering::Relaxed)
         }
+
         #[cfg(not(feature = "std"))]
         {
-            self.metrics.peak_usage
+            // Use read() method with WrtRwLock
+            let metrics = self.metrics.read();
+            metrics.peak_usage
         }
     }
 
-    /// Returns the memory access count for profiling
-    ///
-    /// # Panics
-    ///
-    /// In `no_std` environments, this method will panic if the read lock for the metrics
-    /// cannot be acquired. This would typically only happen in case of a deadlock or
-    /// Safety impact: [LOW|MEDIUM|HIGH] - [Brief explanation of the safety implication]
-    /// Tracking: WRTQ-XXX (qualification requirement tracking ID).
-    /// if the lock is poisoned due to a panic in another thread holding the lock.
-    #[must_use]
+    /// Returns the total number of memory accesses
     pub fn access_count(&self) -> u64 {
         #[cfg(feature = "std")]
         {
             self.metrics.access_count.load(Ordering::Relaxed)
         }
+
         #[cfg(not(feature = "std"))]
         {
-            self.metrics.access_count
+            // Use read() method with WrtRwLock
+            let metrics = self.metrics.read();
+            metrics.access_count
         }
     }
 
-    /// Increments the access counter and tracks access patterns
+    /// Increment the access count for memory operations
     fn increment_access_count(&self, offset: usize, len: usize) {
         #[cfg(feature = "std")]
         {
-            self.metrics.track_access(offset, len);
+            self.metrics.access_count.fetch_add(1, Ordering::Relaxed);
+            self.metrics
+                .max_access_size
+                .fetch_max(len, Ordering::Relaxed);
+            self.metrics
+                .last_access_offset
+                .store(offset, Ordering::Relaxed);
+            self.metrics
+                .last_access_length
+                .store(len, Ordering::Relaxed);
         }
+
         #[cfg(not(feature = "std"))]
         {
-            let mut metrics = self.metrics.write().expect("Failed to acquire write lock");
-            metrics.track_access(offset, len);
+            // Use write() method with WrtRwLock
+            let mut metrics = self.metrics.write();
+            metrics.access_count += 1;
+            metrics.max_access_size = metrics.max_access_size.max(len);
+            metrics.last_access_offset = offset;
+            metrics.last_access_length = len;
         }
     }
 
-    /// Updates the peak memory usage if the current usage is higher
+    /// Update the peak memory usage statistic
     fn update_peak_memory(&self) {
         let current_size = self.size_in_bytes();
+
         #[cfg(feature = "std")]
         {
-            self.metrics.update_peak_usage(current_size);
+            let mut current_peak = self.metrics.peak_usage.load(Ordering::Relaxed);
+            while current_size > current_peak {
+                match self.metrics.peak_usage.compare_exchange(
+                    current_peak,
+                    current_size,
+                    Ordering::Relaxed,
+                    Ordering::Relaxed,
+                ) {
+                    Ok(_) => break,
+                    Err(actual) => current_peak = actual,
+                }
+            }
         }
+
         #[cfg(not(feature = "std"))]
         {
-            let mut metrics = self.metrics.write().expect("Failed to acquire write lock");
-            metrics.update_peak_usage(current_size);
+            // Use write() method with WrtRwLock
+            let mut metrics = self.metrics.write();
+            metrics.peak_usage = metrics.peak_usage.max(current_size);
         }
     }
 
-    /// Grows the memory by the given number of pages
+    /// Returns the maximum size of any memory access
+    pub fn max_access_size(&self) -> usize {
+        #[cfg(feature = "std")]
+        {
+            self.metrics.max_access_size.load(Ordering::Relaxed)
+        }
+
+        #[cfg(not(feature = "std"))]
+        {
+            // Use read() method with WrtRwLock
+            let metrics = self.metrics.read();
+            metrics.max_access_size
+        }
+    }
+
+    /// Returns the number of unique memory regions accessed
+    pub fn unique_regions(&self) -> usize {
+        #[cfg(feature = "std")]
+        {
+            self.metrics.unique_regions.load(Ordering::Relaxed)
+        }
+
+        #[cfg(not(feature = "std"))]
+        {
+            // Use read() method with WrtRwLock
+            let metrics = self.metrics.read();
+            metrics.unique_regions
+        }
+    }
+
+    /// Returns the offset of the most recent memory access
+    pub fn last_access_offset(&self) -> usize {
+        #[cfg(feature = "std")]
+        {
+            self.metrics.last_access_offset.load(Ordering::Relaxed)
+        }
+
+        #[cfg(not(feature = "std"))]
+        {
+            // Use read() method with WrtRwLock
+            let metrics = self.metrics.read();
+            metrics.last_access_offset
+        }
+    }
+
+    /// Returns the length of the most recent memory access
+    pub fn last_access_length(&self) -> usize {
+        #[cfg(feature = "std")]
+        {
+            self.metrics.last_access_length.load(Ordering::Relaxed)
+        }
+
+        #[cfg(not(feature = "std"))]
+        {
+            // Use read() method with WrtRwLock
+            let metrics = self.metrics.read();
+            metrics.last_access_length
+        }
+    }
+
+    /// Grows memory by the given number of pages
     ///
     /// # Arguments
     ///
@@ -400,48 +506,67 @@ impl Memory {
     ///
     /// # Returns
     ///
-    /// The previous size in pages
+    /// The previous number of pages if successful, error otherwise
     ///
     /// # Errors
     ///
-    /// Returns an error if the memory cannot be grown (e.g., exceeds max size)
+    /// Returns an error if the memory cannot be grown
     pub fn grow(&mut self, pages: u32) -> Result<u32> {
-        // Check if growing would overflow
+        // Return early if not growing
+        if pages == 0 {
+            return Ok(self.current_pages);
+        }
+
+        // Check that growing wouldn't exceed max pages
         let new_page_count = self.current_pages.checked_add(pages).ok_or_else(|| {
             Error::new(
-                ErrorCategory::Validation,
-                codes::VALIDATION_ERROR,
-                "Memory size overflow",
+                ErrorCategory::Memory,
+                codes::MEMORY_GROW_ERROR,
+                "Memory growth would overflow",
             )
         })?;
 
-        // Check if the new size exceeds the maximum size
+        // Check against the maximum allowed by type
         if let Some(max) = self.ty.limits.max {
             if new_page_count > max {
                 return Err(Error::new(
-                    ErrorCategory::Validation,
-                    codes::VALIDATION_ERROR,
-                    format!(
-                        "Cannot grow memory beyond maximum size: {} > {}",
-                        new_page_count, max
-                    ),
+                    ErrorCategory::Resource,
+                    codes::RESOURCE_LIMIT_EXCEEDED,
+                    format!("Exceeded maximum memory size: {} > {}", new_page_count, max),
                 ));
             }
         }
 
-        // Grow the memory
-        let old_size = self.current_pages;
+        // Check against the absolute maximum (4GB)
+        if new_page_count > MAX_PAGES {
+            return Err(Error::new(
+                ErrorCategory::Resource,
+                codes::RESOURCE_LIMIT_EXCEEDED,
+                format!(
+                    "Exceeded maximum memory size: {} > {}",
+                    new_page_count, MAX_PAGES
+                ),
+            ));
+        }
+
+        // Calculate the new size in bytes
+        let old_size = self.data.size();
         let new_size = new_page_count as usize * PAGE_SIZE;
+
+        // Resize the underlying data
         self.data.resize(new_size, 0);
+
+        // Update the page count
+        let old_pages = self.current_pages;
         self.current_pages = new_page_count;
 
         // Update peak memory usage
         self.update_peak_memory();
 
-        Ok(old_size)
+        Ok(old_pages)
     }
 
-    /// Reads memory into a buffer
+    /// Read data from memory into a buffer
     ///
     /// # Arguments
     ///
@@ -450,32 +575,34 @@ impl Memory {
     ///
     /// # Returns
     ///
-    /// Ok(()) if the read was successful
+    /// Ok(()) if successful, error otherwise
     ///
     /// # Errors
     ///
-    /// Returns an error if the read is out of bounds
+    /// Returns an error if the memory access is invalid
     pub fn read(&self, offset: u32, buffer: &mut [u8]) -> Result<()> {
+        // Empty read is always successful
         if buffer.is_empty() {
             return Ok(());
         }
 
-        if !self.verify_bounds(offset, buffer.len() as u32) {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::VALIDATION_ERROR,
-                "Memory access out of bounds",
-            ));
-        }
+        // Calculate total size and verify bounds
+        let offset_usize = offset as usize;
+        let size = buffer.len();
 
-        self.increment_access_count(offset as usize, buffer.len());
+        // Track this access for profiling
+        self.increment_access_count(offset_usize, size);
 
-        let offset = offset as usize;
-        buffer.copy_from_slice(&self.data[offset..offset + buffer.len()]);
+        // Use safe memory get_slice to get a verified slice
+        let safe_slice = self.data.get_slice(offset_usize, size)?;
+
+        // Copy from the safe slice to the buffer
+        buffer.copy_from_slice(safe_slice.data()?);
+
         Ok(())
     }
 
-    /// Writes memory from a buffer
+    /// Write data from a buffer into memory
     ///
     /// # Arguments
     ///
@@ -484,28 +611,49 @@ impl Memory {
     ///
     /// # Returns
     ///
-    /// Ok(()) if the write was successful
+    /// Ok(()) if successful, error otherwise
     ///
     /// # Errors
     ///
-    /// Returns an error if the write is out of bounds
+    /// Returns an error if the memory access is invalid
     pub fn write(&mut self, offset: u32, buffer: &[u8]) -> Result<()> {
+        // Empty write is always successful
         if buffer.is_empty() {
             return Ok(());
         }
 
-        if !self.verify_bounds(offset, buffer.len() as u32) {
+        // Calculate total size and verify bounds
+        let offset_usize = offset as usize;
+        let size = buffer.len();
+        let end = offset_usize.checked_add(size).ok_or_else(|| {
+            Error::new(
+                ErrorCategory::Memory,
+                codes::MEMORY_OUT_OF_BOUNDS,
+                "Memory write would overflow",
+            )
+        })?;
+
+        // Verify the access is within memory bounds
+        if end > self.size_in_bytes() {
             return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::VALIDATION_ERROR,
-                "Memory access out of bounds",
+                ErrorCategory::Memory,
+                codes::MEMORY_OUT_OF_BOUNDS,
+                format!(
+                    "Memory access out of bounds: offset={}, size={}",
+                    offset, size
+                ),
             ));
         }
 
-        self.increment_access_count(offset as usize, buffer.len());
+        // Track this access for profiling
+        self.increment_access_count(offset_usize, size);
 
-        let offset = offset as usize;
-        self.data[offset..offset + buffer.len()].copy_from_slice(buffer);
+        // Use the SafeMemoryHandler's write_data method for efficient direct writing
+        self.data.write_data(offset_usize, buffer)?;
+
+        // Update the peak memory usage
+        self.update_peak_memory();
+
         Ok(())
     }
 
@@ -533,8 +681,11 @@ impl Memory {
 
         self.increment_access_count(offset as usize, 1);
 
+        // Use SafeMemoryHandler to get a safe slice
         let offset = offset as usize;
-        Ok(self.data[offset])
+        let slice = self.data.get_slice(offset, 1)?;
+        let data = slice.data()?;
+        Ok(data[0])
     }
 
     /// Sets a byte in memory
@@ -562,20 +713,37 @@ impl Memory {
 
         self.increment_access_count(offset as usize, 1);
 
-        let offset = offset as usize;
-        self.data[offset] = value;
-        Ok(())
+        // This is a simpler case - just write a single byte
+        // using the write method which handles all the safety checks
+        self.write(offset, &[value])
     }
 
-    /// Verify that an access is within bounds
+    /// Verifies that a memory access is within bounds
+    ///
+    /// # Arguments
+    ///
+    /// * `offset` - The offset to access
+    /// * `len` - The length to access
+    ///
+    /// # Returns
+    ///
+    /// True if the access is within bounds, false otherwise
     fn verify_bounds(&self, offset: u32, len: u32) -> bool {
-        // First check for overflow in the addition
-        match offset.checked_add(len) {
-            // Then check if the end is within bounds
-            Some(end) => (end as usize) <= self.data.len(),
-            // If we had overflow, it's definitely out of bounds
-            None => false,
+        if len == 0 {
+            return true;
         }
+
+        // Get current data size
+        let data_size = self.data.len();
+
+        // Get the last byte that would be accessed
+        let end_offset = match offset.checked_add(len) {
+            Some(end) => end as usize,
+            None => return false, // Overflow
+        };
+
+        // Check if the end offset is within bounds (inclusive)
+        end_offset <= data_size
     }
 
     /// Check alignment for memory accesses
@@ -590,13 +758,13 @@ impl Memory {
 
         let addr = addr as usize;
         let access_size = access_size as usize;
-        if addr + access_size > self.data.len() {
+        if addr + access_size > self.data.size() {
             return Err(Error::new(
                 ErrorCategory::Validation,
                 codes::VALIDATION_ERROR,
                 format!(
                     "Memory access out of bounds: address {addr} + size {access_size} exceeds memory size {}",
-                    self.data.len()
+                    self.data.size()
                 )
             ));
         }
@@ -604,43 +772,66 @@ impl Memory {
         Ok(())
     }
 
-    /// Get a safe slice of memory with integrity checking
+    /// Gets a memory-safe slice from memory at the specified address
+    ///
+    /// This is the preferred method for accessing memory when safety is important.
+    /// The returned SafeSlice includes integrity verification to prevent memory corruption.
     ///
     /// # Arguments
     ///
-    /// * `addr` - The starting address
-    /// * `len` - The length of the slice
+    /// * `addr` - The address to read from
+    /// * `len` - The length of the slice to read
     ///
     /// # Returns
     ///
-    /// A safe slice with integrity checking
+    /// A SafeSlice referencing the memory region with integrity verification
+    ///
+    /// # Safety
+    ///
+    /// This method is safer than using buffer() as it performs integrity checks
+    /// on the returned slice, which helps detect memory corruption.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use wrt_runtime::Memory;
+    /// # use wrt_error::Result;
+    /// # fn example(memory: &Memory) -> Result<()> {
+    /// // Get a safe slice from memory
+    /// let slice = memory.get_safe_slice(0, 10)?;
+    ///
+    /// // Access the data (this performs integrity verification)
+    /// let data = slice.data()?;
+    /// # Ok(())
+    /// # }
+    /// ```
     ///
     /// # Errors
     ///
-    /// Returns an error if the address is out of bounds
+    /// Returns an error if the slice is out of bounds
     pub fn get_safe_slice(
         &self,
         addr: u32,
         len: usize,
     ) -> Result<wrt_types::safe_memory::SafeSlice> {
-        if (addr as usize) + len > self.data.len() {
+        if !self.verify_bounds(addr, len as u32) {
             return Err(Error::new(
-                ErrorCategory::Memory,
-                codes::OUT_OF_BOUNDS_ERROR,
-                format!(
-                    "Memory access out of bounds: addr={}, len={}, size={}",
-                    addr,
-                    len,
-                    self.data.len()
-                ),
+                ErrorCategory::Validation,
+                codes::VALIDATION_ERROR,
+                "Memory access out of bounds for safe slice",
             ));
         }
 
-        // Create a new SafeSlice with standard verification
-        Ok(wrt_types::safe_memory::SafeSlice::with_verification_level(
-            &self.data[addr as usize..addr as usize + len],
-            wrt_types::verification::VerificationLevel::Standard,
-        ))
+        self.increment_access_count(addr as usize, len);
+
+        // Get the slice first
+        let mut slice = self.data.get_slice(addr as usize, len)?;
+
+        // Explicitly set the verification level to match the memory's level
+        // This ensures consistent verification behavior
+        slice.set_verification_level(self.verification_level);
+
+        Ok(slice)
     }
 
     /// Creates a copy of this memory instance and applies a mutation function
@@ -672,8 +863,11 @@ impl Memory {
     where
         F: FnOnce(u32, &[u8]) -> Result<()> + Send + 'static,
     {
+        // Get the current memory data
+        let data = self.data.to_vec()?;
+
         // Execute the hook immediately with current state
-        hook(self.current_pages, &self.data)?;
+        hook(self.current_pages, &data)?;
 
         // In a full implementation, we would store the hook for later use
         // but for now we just run it once to validate the current state
@@ -689,8 +883,11 @@ impl Memory {
     where
         F: FnOnce(u32, &[u8]) -> Result<()> + Send + 'static,
     {
+        // Get the current memory data
+        let data = self.data.to_vec()?;
+
         // Execute the hook immediately with current state
-        hook(self.current_pages, &self.data)?;
+        hook(self.current_pages, &data)?;
 
         // In a full implementation, we would store the hook for later use
         // but for now we just run it once to validate the current state
@@ -698,32 +895,25 @@ impl Memory {
         Ok(())
     }
 
-    /// Verify the integrity of the memory instance
-    ///
-    /// This checks that the memory size is consistent with the number of pages.
-    ///
-    /// # Returns
-    ///
-    /// Ok(()) if the memory is valid
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the memory integrity check fails
+    /// Verify data integrity
     pub fn verify_integrity(&self) -> Result<()> {
+        // Get the expected size
         let expected_size = self.current_pages as usize * PAGE_SIZE;
-        if self.data.len() != expected_size {
+
+        // Verify memory size is consistent
+        if self.data.size() != expected_size {
             return Err(Error::new(
                 ErrorCategory::Validation,
                 codes::VALIDATION_ERROR,
                 format!(
-                    "Memory integrity check failed: expected size {} (pages: {}), got {}",
+                    "Memory size mismatch: expected {}, got {}",
                     expected_size,
-                    self.current_pages,
-                    self.data.len()
+                    self.data.size()
                 ),
             ));
         }
 
+        // Check memory integrity
         Ok(())
     }
 
@@ -750,7 +940,7 @@ impl Memory {
     ) -> Result<()> {
         // Bounds check for source
         let src_end = match src_addr.checked_add(size) {
-            Some(end) if end <= src_mem.data.len() => end,
+            Some(end) if end <= src_mem.data.size() => end,
             _ => {
                 return Err(Error::new(
                     ErrorCategory::Memory,
@@ -765,7 +955,7 @@ impl Memory {
 
         // Bounds check for destination
         let dst_end = match dst_addr.checked_add(size) {
-            Some(end) if end <= self.data.len() => end,
+            Some(end) if end <= self.data.size() => end,
             _ => {
                 return Err(Error::new(
                     ErrorCategory::Memory,
@@ -779,59 +969,120 @@ impl Memory {
         };
 
         // Increment the access count for both memories
-        self.increment_access_count(src_addr, size);
+        self.increment_access_count(dst_addr, size);
         src_mem.increment_access_count(src_addr, size);
 
-        // Special case for overlapping regions in the same memory
-        if Arc::ptr_eq(&src_mem, &Arc::new(self.clone())) {
-            // Handle the overlapping case using copy_within
-            self.data.copy_within(src_addr..src_addr + size, dst_addr);
-        } else {
-            // Handle the non-overlapping case
-            let src_slice = &src_mem.data[src_addr..src_addr + size];
-            self.data[dst_addr..dst_addr + size].copy_from_slice(src_slice);
-        }
+        // Use SafeSlice for source memory access
+        let src_slice = src_mem.data.get_slice(src_addr, size)?;
+        let src_data = src_slice.data()?;
+
+        // Handle overlapping regions safely by using a temporary buffer
+        let mut temp_buf = Vec::with_capacity(size);
+        temp_buf.extend_from_slice(src_data);
+
+        // Get destination memory data
+        let mut dst_data = self.data.to_vec()?;
+
+        // Copy from temporary buffer to destination
+        dst_data[dst_addr..dst_addr + size].copy_from_slice(&temp_buf);
+
+        // Update destination memory
+        self.data.clear();
+        self.data.add_data(&dst_data);
 
         // Update peak memory usage
         self.update_peak_memory();
 
+        // Verify integrity if full verification is enabled
+        if self.verification_level == VerificationLevel::Full {
+            self.data.verify_integrity()?;
+        }
+
         Ok(())
     }
 
-    /// Fill memory with a repeated value
+    /// Fill memory with a byte value
     ///
     /// This method implements the memory.fill instruction from the WebAssembly bulk memory operations proposal.
     ///
     /// # Arguments
     ///
-    /// * `dst` - The destination address
+    /// * `dst` - The destination address in memory
     /// * `val` - The byte value to fill with
     /// * `size` - The number of bytes to fill
     ///
-    /// # Errors
+    /// # Returns
     ///
-    /// Returns an error if the destination range is out of bounds
+    /// Ok(()) if successful
+    ///
+    /// Returns an error if the memory access is invalid
     pub fn fill(&mut self, dst: usize, val: u8, size: usize) -> Result<()> {
-        // Bounds check
-        let dst_end = match dst.checked_add(size) {
-            Some(end) if end <= self.data.len() => end,
-            _ => {
-                return Err(Error::new(
-                    ErrorCategory::Memory,
-                    codes::MEMORY_ACCESS_OUT_OF_BOUNDS,
-                    format!(
-                        "Memory access out of bounds: address={}, size={}",
-                        dst, size
-                    ),
-                ))
-            }
-        };
+        // Handle empty fill
+        if size == 0 {
+            return Ok(());
+        }
 
-        // Increment the access count
+        // Verify destination is within bounds
+        let end = dst.checked_add(size).ok_or_else(|| {
+            Error::new(
+                ErrorCategory::Memory,
+                codes::MEMORY_OUT_OF_BOUNDS,
+                "Memory fill would overflow",
+            )
+        })?;
+
+        if end > self.size_in_bytes() {
+            return Err(Error::new(
+                ErrorCategory::Memory,
+                codes::MEMORY_OUT_OF_BOUNDS,
+                format!("Memory fill out of bounds: dst={}, size={}", dst, size),
+            ));
+        }
+
+        // Track this access for profiling
         self.increment_access_count(dst, size);
 
-        // Fill the memory
-        self.data[dst..dst + size].fill(val);
+        // Create a safety-bounded buffer size to avoid excessive memory usage
+        const MAX_CHUNK_SIZE: usize = 4096;
+
+        // Fill in chunks to avoid excessive memory usage while maintaining safety
+        let mut remaining = size;
+        let mut current_dst = dst;
+
+        while remaining > 0 {
+            let chunk_size = remaining.min(MAX_CHUNK_SIZE);
+
+            // For each chunk, create a properly sized fill buffer
+            let fill_buffer = vec![val; chunk_size];
+
+            // Write directly to the data handler with safety verification
+            // Get a safe slice of the appropriate size and location
+            let slice_data = self.data.get_slice(current_dst, chunk_size)?;
+
+            // Use the safe memory handler's internal methods to write
+            self.data
+                .provider()
+                .verify_access(current_dst, chunk_size)?;
+
+            // Create a temporary safety-verified buffer for the operation
+            let mut temp_data = self.data.to_vec()?;
+            temp_data[current_dst..current_dst + chunk_size].fill(val);
+
+            // Update the memory handler with the new data
+            let mut new_data = SafeMemoryHandler::new(temp_data);
+            new_data.set_verification_level(self.verification_level);
+
+            // Verify integrity based on verification level
+            if self.verification_level.should_verify(150) {
+                new_data.verify_integrity()?;
+            }
+
+            // Replace the data handler
+            self.data = new_data;
+
+            current_dst += chunk_size;
+            remaining -= chunk_size;
+        }
 
         // Update peak memory usage
         self.update_peak_memory();
@@ -865,13 +1116,13 @@ impl Memory {
                         "Source data access out of bounds: address={}, size={}",
                         src, size
                     ),
-                ))
+                ));
             }
         };
 
         // Destination bounds check
         let dst_end = match dst.checked_add(size) {
-            Some(end) if end <= self.data.len() => end,
+            Some(end) if end <= self.data.size() => end,
             _ => {
                 return Err(Error::new(
                     ErrorCategory::Memory,
@@ -880,18 +1131,97 @@ impl Memory {
                         "Destination memory access out of bounds: address={}, size={}",
                         dst, size
                     ),
-                ))
+                ));
             }
         };
 
-        // Increment the access count
-        self.increment_access_count(dst, size);
+        // Handle zero-size initialization
+        if size == 0 {
+            return Ok(());
+        }
 
-        // Copy the data
-        self.data[dst..dst + size].copy_from_slice(&data[src..src + size]);
+        // For small copies, we can use set_byte directly - this provides maximum safety
+        // with acceptable performance for small operations
+        if size <= 32 {
+            // Create a safe copy of the source data for integrity
+            let src_data = SafeSlice::new(&data[src..src + size]);
+
+            // Verify the source data integrity
+            src_data.verify_integrity()?;
+
+            // Access source data safely
+            let verified_data = src_data.data()?;
+
+            for (i, &byte) in verified_data.iter().enumerate().take(size) {
+                self.set_byte((dst + i) as u32, byte)?;
+            }
+
+            // Update metrics to reflect the entire operation rather than just the last byte
+            self.update_access_metrics(dst, size);
+            return Ok(());
+        }
+
+        // For larger copies, use chunked processing to maintain memory safety
+        // without excessive temporary allocations
+        const MAX_CHUNK_SIZE: usize = 4096;
+        let mut remaining = size;
+        let mut src_offset = src;
+        let mut dst_offset = dst;
+
+        while remaining > 0 {
+            let chunk_size = remaining.min(MAX_CHUNK_SIZE);
+
+            // Create a safe slice for the source chunk to verify its integrity
+            let src_slice = SafeSlice::new(&data[src_offset..src_offset + chunk_size]);
+            src_slice.verify_integrity()?;
+
+            // Get the source data after verification
+            let src_data = src_slice.data()?;
+
+            // Verify destination access is valid using the SafeMemoryHandler
+            self.data.provider().verify_access(dst_offset, chunk_size)?;
+
+            // Apply the write in chunks with verification
+            let mut memory_data = self.data.to_vec()?;
+
+            // Use explicit indices to ensure safety
+            for i in 0..chunk_size {
+                if dst_offset + i < memory_data.len() {
+                    memory_data[dst_offset + i] = src_data[i];
+                } else {
+                    return Err(Error::new(
+                        ErrorCategory::Memory,
+                        codes::MEMORY_OUT_OF_BOUNDS,
+                        "Memory access out of bounds during init",
+                    ));
+                }
+            }
+
+            // Create a new safe memory handler with the updated data
+            let mut new_handler = SafeMemoryHandler::new(memory_data);
+
+            // Set the same verification level as the current handler
+            new_handler.set_verification_level(self.verification_level);
+
+            // Verify integrity if needed based on verification level
+            if self.verification_level.should_verify(180) {
+                new_handler.verify_integrity()?;
+            }
+
+            // Replace the current data handler
+            self.data = new_handler;
+
+            // Update for next chunk
+            src_offset += chunk_size;
+            dst_offset += chunk_size;
+            remaining -= chunk_size;
+        }
 
         // Update peak memory usage
         self.update_peak_memory();
+
+        // Ensure all metrics reflect the entire init operation
+        self.update_access_metrics(dst, size);
 
         Ok(())
     }
@@ -909,7 +1239,7 @@ impl Memory {
     /// # Errors
     ///
     /// Returns an error if the read is out of bounds
-    pub fn read_i32(&self, addr: u32) -> Result<i32> {
+    pub fn read_i32(&self, addr: u32) -> Result<i32, wrt_error::Error> {
         let mut buffer = [0; 4];
         self.read(addr, &mut buffer)?;
         Ok(i32::from_le_bytes(buffer))
@@ -928,7 +1258,7 @@ impl Memory {
     /// # Errors
     ///
     /// Returns an error if the read is out of bounds
-    pub fn read_i64(&self, addr: u32) -> Result<i64> {
+    pub fn read_i64(&self, addr: u32) -> Result<i64, wrt_error::Error> {
         let mut buffer = [0; 8];
         self.read(addr, &mut buffer)?;
         Ok(i64::from_le_bytes(buffer))
@@ -947,7 +1277,7 @@ impl Memory {
     /// # Errors
     ///
     /// Returns an error if the read is out of bounds
-    pub fn read_f32(&self, addr: u32) -> Result<f32> {
+    pub fn read_f32(&self, addr: u32) -> Result<f32, wrt_error::Error> {
         let value = self.read_i32(addr)?;
         Ok(f32::from_bits(value as u32))
     }
@@ -965,7 +1295,7 @@ impl Memory {
     /// # Errors
     ///
     /// Returns an error if the read is out of bounds
-    pub fn read_f64(&self, addr: u32) -> Result<f64> {
+    pub fn read_f64(&self, addr: u32) -> Result<f64, wrt_error::Error> {
         let value = self.read_i64(addr)?;
         Ok(f64::from_bits(value as u64))
     }
@@ -983,7 +1313,7 @@ impl Memory {
     /// # Errors
     ///
     /// Returns an error if the read is out of bounds
-    pub fn read_i8(&self, addr: u32) -> Result<i8> {
+    pub fn read_i8(&self, addr: u32) -> Result<i8, wrt_error::Error> {
         let mut buffer = [0; 1];
         self.read(addr, &mut buffer)?;
         Ok(i8::from_le_bytes(buffer))
@@ -1002,7 +1332,7 @@ impl Memory {
     /// # Errors
     ///
     /// Returns an error if the read is out of bounds
-    pub fn read_u8(&self, addr: u32) -> Result<u8> {
+    pub fn read_u8(&self, addr: u32) -> Result<u8, wrt_error::Error> {
         let mut buffer = [0; 1];
         self.read(addr, &mut buffer)?;
         Ok(u8::from_le_bytes(buffer))
@@ -1021,7 +1351,7 @@ impl Memory {
     /// # Errors
     ///
     /// Returns an error if the read is out of bounds
-    pub fn read_i16(&self, addr: u32) -> Result<i16> {
+    pub fn read_i16(&self, addr: u32) -> Result<i16, wrt_error::Error> {
         let mut buffer = [0; 2];
         self.read(addr, &mut buffer)?;
         Ok(i16::from_le_bytes(buffer))
@@ -1040,7 +1370,7 @@ impl Memory {
     /// # Errors
     ///
     /// Returns an error if the read is out of bounds
-    pub fn read_u16(&self, addr: u32) -> Result<u16> {
+    pub fn read_u16(&self, addr: u32) -> Result<u16, wrt_error::Error> {
         let mut buffer = [0; 2];
         self.read(addr, &mut buffer)?;
         Ok(u16::from_le_bytes(buffer))
@@ -1059,7 +1389,7 @@ impl Memory {
     /// # Errors
     ///
     /// Returns an error if the read is out of bounds
-    pub fn read_u32(&self, addr: u32) -> Result<u32> {
+    pub fn read_u32(&self, addr: u32) -> Result<u32, wrt_error::Error> {
         let mut buffer = [0; 4];
         self.read(addr, &mut buffer)?;
         Ok(u32::from_le_bytes(buffer))
@@ -1078,7 +1408,7 @@ impl Memory {
     /// # Errors
     ///
     /// Returns an error if the read is out of bounds
-    pub fn read_u64(&self, addr: u32) -> Result<u64> {
+    pub fn read_u64(&self, addr: u32) -> Result<u64, wrt_error::Error> {
         let mut buffer = [0; 8];
         self.read(addr, &mut buffer)?;
         Ok(u64::from_le_bytes(buffer))
@@ -1097,7 +1427,7 @@ impl Memory {
     /// # Errors
     ///
     /// Returns an error if the read is out of bounds
-    pub fn read_v128(&self, addr: u32) -> Result<[u8; 16]> {
+    pub fn read_v128(&self, addr: u32) -> Result<[u8; 16], wrt_error::Error> {
         let mut buffer = [0; 16];
         self.read(addr, &mut buffer)?;
         Ok(buffer)
@@ -1303,11 +1633,21 @@ impl Memory {
 
     /// Sets the verification level for memory operations
     ///
+    /// This controls how much verification is performed during memory operations:
+    /// - None: No verification (fastest, least safe)
+    /// - Sampling: Verification on a random subset of operations
+    /// - Standard: Normal verification level (default)
+    /// - Full: Maximum verification (slowest, most safe)
+    ///
     /// # Arguments
     ///
     /// * `level` - The new verification level
     pub fn set_verification_level(&mut self, level: VerificationLevel) {
+        // Update our own verification level
         self.verification_level = level;
+
+        // Propagate to the memory handler
+        self.data.set_verification_level(level);
     }
 
     /// Gets the current verification level
@@ -1320,117 +1660,121 @@ impl Memory {
         self.verification_level
     }
 
-    /// Gets the maximum size of any access
-    #[must_use]
-    pub fn max_access_size(&self) -> usize {
-        #[cfg(feature = "std")]
-        {
-            self.metrics.max_access_size.load(Ordering::Relaxed)
-        }
-        #[cfg(not(feature = "std"))]
-        {
-            self.metrics.max_access_size
-        }
-    }
-
-    /// Gets the number of unique regions accessed
-    #[must_use]
-    pub fn unique_regions(&self) -> usize {
-        #[cfg(feature = "std")]
-        {
-            self.metrics.unique_regions.load(Ordering::Relaxed)
-        }
-        #[cfg(not(feature = "std"))]
-        {
-            self.metrics.unique_regions
-        }
-    }
-
-    /// Gets the last access offset
-    #[must_use]
-    pub fn last_access_offset(&self) -> usize {
-        #[cfg(feature = "std")]
-        {
-            self.metrics.last_access_offset.load(Ordering::Relaxed)
-        }
-        #[cfg(not(feature = "std"))]
-        {
-            self.metrics.last_access_offset
-        }
-    }
-
-    /// Gets the last access length
-    #[must_use]
-    pub fn last_access_length(&self) -> usize {
-        #[cfg(feature = "std")]
-        {
-            self.metrics.last_access_length.load(Ordering::Relaxed)
-        }
-        #[cfg(not(feature = "std"))]
-        {
-            self.metrics.last_access_length
-        }
-    }
-
-    /// Get statistics about memory usage
-    ///
-    /// This provides information about memory access patterns and usage.
+    /// Get the memory statistics
     fn memory_stats(&self) -> MemoryStats {
+        MemoryStats {
+            total_size: self.data.size(),
+            access_count: self.access_count() as usize, // Convert u64 to usize
+            unique_regions: self.unique_regions(),
+            max_access_size: self.max_access_size(),
+        }
+    }
+
+    // Note: This functionality is now handled in update_access_metrics
+
+    /// Update all access metrics in one operation
+    fn update_access_metrics(&self, offset: usize, len: usize) {
         #[cfg(feature = "std")]
-        let stats = MemoryStats {
-            total_size: self.data.len(),
-            access_count: self.metrics.access_count.load(Ordering::Relaxed) as usize,
-            unique_regions: self.metrics.unique_regions.load(Ordering::Relaxed),
-            max_access_size: self.metrics.max_access_size.load(Ordering::Relaxed),
-        };
+        {
+            self.metrics
+                .max_access_size
+                .fetch_max(len, Ordering::Relaxed);
+            self.metrics
+                .last_access_offset
+                .store(offset, Ordering::Relaxed);
+            self.metrics
+                .last_access_length
+                .store(len, Ordering::Relaxed);
+        }
 
         #[cfg(not(feature = "std"))]
-        let stats = {
-            let metrics = self.metrics.read();
-            MemoryStats {
-                total_size: self.data.len(),
-                access_count: metrics.access_count as usize,
-                unique_regions: metrics.unique_regions,
-                max_access_size: metrics.max_access_size,
-            }
-        };
-
-        stats
-    }
-}
-
-// Implementation of Clone for Memory
-impl Clone for Memory {
-    fn clone(&self) -> Self {
-        Self {
-            ty: self.ty.clone(),
-            data: self.data.clone(),
-            current_pages: self.current_pages,
-            debug_name: self.debug_name.clone(),
-            #[cfg(feature = "std")]
-            metrics: MemoryMetrics::new(self.size_in_bytes()),
-            #[cfg(not(feature = "std"))]
-            metrics: RwLock::new(MemoryMetrics::new(self.size_in_bytes())),
-            verification_level: self.verification_level,
+        {
+            // Use write() method with WrtRwLock
+            let mut metrics = self.metrics.write();
+            metrics.max_access_size = metrics.max_access_size.max(len);
+            metrics.last_access_offset = offset;
+            metrics.last_access_length = len;
         }
+    }
+
+    /// Get safety statistics for this memory instance
+    ///
+    /// This returns detailed statistics about memory usage and safety checks
+    ///
+    /// # Returns
+    ///
+    /// A string containing the statistics
+    pub fn safety_stats(&self) -> String {
+        let memory_stats = self.memory_stats();
+        let access_count = self.access_count();
+        let peak_memory = self.peak_memory();
+        let max_access = self.max_access_size();
+        let unique_regions = self.unique_regions();
+
+        format!(
+            "Memory Safety Stats:\n\
+             - Size: {} bytes ({} pages)\n\
+             - Peak usage: {} bytes\n\
+             - Access count: {}\n\
+             - Unique regions: {}\n\
+             - Max access size: {} bytes\n\
+             - Verification level: {:?}",
+            self.size_in_bytes(),
+            self.current_pages,
+            peak_memory,
+            access_count,
+            unique_regions,
+            max_access,
+            self.verification_level
+        )
+    }
+
+    /// Returns a SafeSlice representing the entire memory
+    ///
+    /// Unlike `buffer()`, this does not create a copy of the memory data,
+    /// making it more efficient for read-only access to memory.
+    ///
+    /// # Returns
+    ///
+    /// A SafeSlice covering the entire memory buffer
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the memory is corrupted or integrity checks fail
+    pub fn as_safe_slice(&self) -> Result<wrt_types::safe_memory::SafeSlice> {
+        self.data.get_slice(0, self.size_in_bytes())
     }
 }
 
 impl MemoryProvider for Memory {
     fn borrow_slice(&self, offset: usize, len: usize) -> Result<SafeSlice<'_>> {
-        self.get_safe_slice(offset as u32, len)
-    }
-
-    fn verify_access(&self, offset: usize, len: usize) -> Result<()> {
-        if offset + len > self.data.len() {
+        // Verify bounds
+        if offset + len > self.data.size() {
             return Err(Error::new(
                 ErrorCategory::Memory,
                 codes::MEMORY_ACCESS_OUT_OF_BOUNDS,
                 format!(
-                    "Memory access out of bounds: addr={}, len={}, size={}",
+                    "Memory access out of bounds: offset={}, len={}, size={}",
                     offset,
                     len,
-                    self.data.len()
+                    self.data.size()
+                ),
+            ));
+        }
+
+        self.data.get_slice(offset, len)
+    }
+
+    fn verify_access(&self, offset: usize, len: usize) -> Result<()> {
+        if offset + len > self.data.size() {
+            return Err(Error::new(
+                ErrorCategory::Memory,
+                codes::MEMORY_ACCESS_OUT_OF_BOUNDS,
+                format!(
+                    "Memory access out of bounds: offset={}, len={}, size={}",
+                    offset,
+                    len,
+                    self.data.size()
                 ),
             ));
         }
@@ -1438,7 +1782,7 @@ impl MemoryProvider for Memory {
     }
 
     fn size(&self) -> usize {
-        self.data.len()
+        self.data.size()
     }
 }
 
@@ -1463,7 +1807,9 @@ impl MemorySafety for Memory {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use wrt_types::safe_memory::SafeSlice;
     use wrt_types::types::Limits;
+    use wrt_types::verification::VerificationLevel;
 
     #[test]
     fn test_memory_creation() {
@@ -1647,5 +1993,49 @@ mod tests {
         assert_eq!(memory.max_access_size(), 5);
         assert_eq!(memory.last_access_offset(), 0);
         assert_eq!(memory.last_access_length(), 5);
+    }
+
+    #[test]
+    fn test_memory_safety_features() -> Result<()> {
+        use wrt_types::verification::VerificationLevel;
+
+        // Create a memory with a specific verification level
+        let mem_type = MemoryType {
+            limits: wrt_types::types::Limits {
+                min: 1,
+                max: Some(2),
+            },
+        };
+        let mut memory = Memory::new(mem_type)?;
+        memory.set_verification_level(VerificationLevel::Full);
+
+        // Write some data
+        memory.write(0, &[1, 2, 3, 4])?;
+
+        // Read the data back
+        let mut buffer = [0; 4];
+        memory.read(0, &mut buffer)?;
+        assert_eq!(buffer, [1, 2, 3, 4]);
+
+        // Test fill operation
+        memory.fill(4, 0x42, 4)?;
+
+        // Read the filled data
+        let mut buffer = [0; 4];
+        memory.read(4, &mut buffer)?;
+        assert_eq!(buffer, [0x42, 0x42, 0x42, 0x42]);
+
+        // Test memory growth
+        let old_pages = memory.grow(1)?;
+        assert_eq!(old_pages, 1);
+        assert_eq!(memory.size(), 2);
+
+        // Verify integrity
+        memory.verify_integrity()?;
+
+        // Print safety stats
+        println!("{}", memory.safety_stats());
+
+        Ok(())
     }
 }
