@@ -1,9 +1,4 @@
-use core::{
-    cell::UnsafeCell,
-    fmt,
-    ops::{Deref, DerefMut},
-    sync::atomic::{AtomicBool, Ordering},
-};
+use crate::prelude::*;
 
 /// A simple, non-reentrant spinlock mutex suitable for `no_std` environments.
 ///
@@ -156,12 +151,7 @@ impl<T: ?Sized> Drop for WrtMutexGuard<'_, T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    // Use alloc types for tests when not using std
-    #[cfg(not(feature = "std"))]
-    use alloc::{string::String, vec};
-    // Use std types when std feature is enabled
-    #[cfg(feature = "std")]
-    use std::{string::String, vec, vec::Vec};
+    use crate::prelude::*;
 
     #[test]
     fn test_mutex_creation() {

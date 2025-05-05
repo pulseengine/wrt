@@ -1,9 +1,9 @@
 [package]
 name = "wrt-intercept"
-version = "0.2.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
 description = "Host interception for WebAssembly Runtime (WRT)"
-license = "MIT OR Apache-2.0"
+license.workspace = true
 repository = "https://github.com/avrabe/wrt"
 documentation = "https://docs.rs/wrt-intercept"
 keywords = ["wasm", "webassembly", "runtime", "interception"]

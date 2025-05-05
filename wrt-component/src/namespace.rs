@@ -2,11 +2,7 @@
 //!
 //! This module provides the Namespace type for organizing imports and exports.
 
-#[cfg(feature = "std")]
-use std::string::{String, ToString};
-
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::string::{String, ToString};
+use crate::prelude::*;
 
 /// Represents a namespace for component imports and exports
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -87,7 +83,7 @@ impl ToString for Namespace {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "std"))]
 mod tests {
     use super::*;
 

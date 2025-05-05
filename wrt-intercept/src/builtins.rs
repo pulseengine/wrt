@@ -1,21 +1,9 @@
-// Built-in interception for WebAssembly Component Model
-//
-// This module provides facilities for intercepting built-in function calls
-// in the WebAssembly Component Model implementation.
+//! Built-in interception for WebAssembly Component Model
+//!
+//! This module provides facilities for intercepting built-in function calls
+//! in the WebAssembly Component Model implementation.
 
-// When no_std but alloc is available
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::string::ToString;
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::{boxed::Box, string::String, sync::Arc, vec::Vec};
-
-#[cfg(feature = "std")]
-use std::{boxed::Box, string::String, sync::Arc, vec::Vec};
-
-use wrt_error::{Error, Result};
-use wrt_types::builtin::BuiltinType;
-use wrt_types::component_value::ComponentValue;
-use wrt_types::values::Value;
+use crate::prelude::*;
 
 /// Context for built-in interception
 ///

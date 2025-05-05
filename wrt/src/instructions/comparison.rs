@@ -8,7 +8,7 @@
 use crate::{
     behavior::{FrameBehavior, StackBehavior},
     error::{kinds, Error, Result},
-    values::Value,
+    prelude::TypesValue as Value,
     StacklessEngine,
 };
 

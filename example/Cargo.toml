@@ -1,9 +1,10 @@
 [package]
 name = "example"
-version = "0.2.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
 license.workspace = true
 description = "Example WebAssembly Module using WASI logging"
+repository = "https://github.com/avrabe/wrt"
 
 [lib]
 crate-type = ["cdylib"]

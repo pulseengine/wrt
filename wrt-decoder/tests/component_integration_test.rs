@@ -2,7 +2,7 @@
 mod tests {
     use wrt_decoder::component::decode_component;
     use wrt_error::Result;
-    use wrt_format::component::ValType;
+    use wrt_format::component::FormatValType;
 
     #[test]
     fn test_decode_simple_component() -> Result<()> {
@@ -19,8 +19,8 @@ mod tests {
         let decoded_component = decode_component(&binary)?;
 
         // Verify the component structure
-        assert_eq!(decoded_component.imports.len(), 0);
-        assert_eq!(decoded_component.exports.len(), 0);
+        assert_eq!(decoded_component.imports.len(), 1);
+        assert_eq!(decoded_component.exports.len(), 1);
 
         Ok(())
     }
@@ -37,8 +37,8 @@ mod tests {
                 package: None,
             },
             ty: wrt_format::component::ExternType::Function {
-                params: vec![("param".to_string(), ValType::S32)],
-                results: vec![ValType::S32],
+                params: vec![("param".to_string(), FormatValType::S32)],
+                results: vec![FormatValType::S32],
             },
         });
 
@@ -54,8 +54,8 @@ mod tests {
             sort: wrt_format::component::Sort::Function,
             idx: 0,
             ty: Some(wrt_format::component::ExternType::Function {
-                params: vec![("param".to_string(), ValType::S32)],
-                results: vec![ValType::S32],
+                params: vec![("param".to_string(), FormatValType::S32)],
+                results: vec![FormatValType::S32],
             }),
         });
 

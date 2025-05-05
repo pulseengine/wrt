@@ -3,8 +3,7 @@
 //! This module provides type definitions for WebAssembly types.
 //! Most core types are re-exported from wrt-types.
 
-use crate::format;
-use wrt_error::{codes, Error, ErrorCategory, Result};
+use wrt_error::Result;
 // Import types from wrt-types
 pub use wrt_types::{BlockType, FuncType, RefType, ValueType};
 
@@ -40,70 +39,40 @@ pub struct Limits {
     /// Shared memory flag, used for memory types
     /// When true, memory can be shared between threads and requires max to be set
     pub shared: bool,
-    /// Memory index type (i32 or i64)
-    /// Standard WebAssembly 1.0 uses i32 addressing (up to 4GiB)
-    /// The Memory64 extension uses i64 addressing (beyond 4GiB)
-    pub memory_index_type: MemoryIndexType,
+    /// Whether this limit is for a 64-bit memory
+    pub memory64: bool,
 }
 
 /// Parser-specific block type for binary format
 #[derive(Debug, Clone, PartialEq)]
 pub enum FormatBlockType {
     /// No return value (void)
-    None,
+    Empty,
     /// Single return value
-    Value(ValueType),
+    ValueType(ValueType),
     /// Function type reference
-    FuncType(u32),
-    /// I32 value type (used in binary format)
-    I32,
-    /// I64 value type (used in binary format)
-    I64,
-    /// F32 value type (used in binary format)
-    F32,
-    /// F64 value type (used in binary format)
-    F64,
+    TypeIndex(u32),
+    /// Function type (used for complex block types)
+    FuncType(FuncType),
 }
 
 impl From<FormatBlockType> for BlockType {
     fn from(bt: FormatBlockType) -> Self {
         match bt {
-            FormatBlockType::None => BlockType::Empty,
-            FormatBlockType::Value(vt) => BlockType::Value(vt),
-            FormatBlockType::FuncType(idx) => BlockType::TypeIndex(idx),
-            FormatBlockType::I32 => BlockType::Value(ValueType::I32),
-            FormatBlockType::I64 => BlockType::Value(ValueType::I64),
-            FormatBlockType::F32 => BlockType::Value(ValueType::F32),
-            FormatBlockType::F64 => BlockType::Value(ValueType::F64),
+            FormatBlockType::Empty => BlockType::Empty,
+            FormatBlockType::ValueType(vt) => BlockType::Value(vt),
+            FormatBlockType::TypeIndex(idx) => BlockType::TypeIndex(idx),
+            FormatBlockType::FuncType(func_type) => BlockType::FuncType(func_type),
         }
     }
 }
 
-/// Parse a value type byte to a ValueType enum
+/// Parse a value type byte to a ValueType enum using the conversion module
 pub fn parse_value_type(byte: u8) -> Result<ValueType> {
-    match byte {
-        0x7F => Ok(ValueType::I32),
-        0x7E => Ok(ValueType::I64),
-        0x7D => Ok(ValueType::F32),
-        0x7C => Ok(ValueType::F64),
-        0x70 => Ok(ValueType::FuncRef),
-        0x6F => Ok(ValueType::ExternRef),
-        _ => Err(Error::new(
-            ErrorCategory::Validation,
-            codes::PARSE_ERROR,
-            format!("Invalid value type byte: 0x{:02x}", byte),
-        )),
-    }
+    crate::conversion::parse_value_type(byte)
 }
 
-/// Convert a ValueType to its binary representation
+/// Convert a ValueType to its binary representation using the conversion module
 pub fn value_type_to_byte(value_type: ValueType) -> u8 {
-    match value_type {
-        ValueType::I32 => 0x7F,
-        ValueType::I64 => 0x7E,
-        ValueType::F32 => 0x7D,
-        ValueType::F64 => 0x7C,
-        ValueType::FuncRef => 0x70,
-        ValueType::ExternRef => 0x6F,
-    }
+    crate::conversion::format_value_type(value_type)
 }

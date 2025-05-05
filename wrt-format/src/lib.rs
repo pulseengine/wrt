@@ -1,17 +1,20 @@
-//! WebAssembly format handling for WRT.
+//! WebAssembly format handling for WRT
 //!
-//! This crate provides utilities for working with WebAssembly binary formats,
-//! including serialization and deserialization of WebAssembly modules and state.
+//! This crate defines and handles the WebAssembly binary format specifications,
+//! including type encodings, section layouts, and module structures.
+//!
+//! It is designed to work in both std and no_std environments when configured
+//! with the appropriate feature flags.
 
 #![cfg_attr(not(feature = "std"), no_std)]
-#![warn(clippy::missing_panics_doc)]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 
 // Import std when available
 #[cfg(feature = "std")]
 extern crate std;
 
-// Import alloc for no_std
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
+// Import alloc for no_std environments with allocation
+#[cfg(all(feature = "alloc", not(feature = "std")))]
 extern crate alloc;
 
 // Import std/alloc collections based on feature flag
@@ -36,7 +39,7 @@ pub use alloc::{
 };
 
 // Re-export core types from wrt-types
-pub use wrt_types::{safe_memory::SafeSlice, BlockType, FuncType, RefType, ValueType};
+pub use wrt_types::{BlockType, FuncType, RefType, ValueType};
 // Re-export error types from wrt-types error_convert module
 pub use wrt_types::error_convert::{Error, ErrorCategory};
 // Re-export Result type from wrt-types
@@ -53,10 +56,16 @@ pub mod component;
 pub mod component_conversion;
 /// Compression utilities for WebAssembly modules
 pub mod compression;
+/// Conversion utilities for type system standardization
+pub mod conversion;
 /// Error utilities for working with wrt-error types
 pub mod error;
 /// WebAssembly module format
 pub mod module;
+/// Common imports for convenience
+pub mod prelude;
+/// Safe memory operations
+pub mod safe_memory;
 pub mod section;
 pub mod state;
 pub mod types;
@@ -67,11 +76,17 @@ pub mod version;
 
 pub use component::Component;
 pub use compression::{rle_decode, rle_encode, CompressionType};
+// Re-export conversion utilities
+pub use conversion::{
+    block_type_to_format_block_type, format_block_type_to_block_type, format_limits_to_wrt_limits,
+    wrt_limits_to_format_limits,
+};
 pub use error::{parse_error, runtime_error, type_error, validation_error, IntoError};
 pub use module::Module;
 pub use section::{CustomSection, Section};
 pub use state::{create_state_section, extract_state_section, StateSection};
-pub use types::{parse_value_type, value_type_to_byte, FormatBlockType, Limits, MemoryIndexType};
+// Use the conversion module versions for consistency
+pub use types::{FormatBlockType, Limits, MemoryIndexType};
 pub use validation::Validatable;
 pub use version::{
     ComponentModelFeature, ComponentModelVersion, FeatureStatus, VersionInfo, STATE_VERSION,
@@ -106,4 +121,55 @@ pub fn uses_experimental_features(binary: &[u8]) -> bool {
 
     let mut info = VersionInfo::from_version_bytes(version_bytes);
     info.detect_experimental_features(binary)
+}
+
+// Deprecated: use conversion utilities instead
+#[deprecated(
+    since = "0.2.0",
+    note = "Use conversion::parse_value_type instead for better type conversion"
+)]
+pub use types::parse_value_type;
+#[deprecated(
+    since = "0.2.0",
+    note = "Use conversion::value_type_to_byte instead for better type conversion"
+)]
+pub use types::value_type_to_byte;
+
+// For formal verification when the 'kani' feature is enabled
+#[cfg(feature = "kani")]
+pub mod verification {
+    use kani_verifier::*;
+
+    /// Verify LEB128 encoding and decoding
+    #[kani::proof]
+    fn verify_leb128_roundtrip() {
+        let value: u32 = kani::any();
+        // Limit to reasonable values for test
+        kani::assume(value <= 0xFFFF);
+
+        let encoded = super::binary::write_leb128_u32(value);
+        let (decoded, _) = super::binary::read_leb128_u32(&encoded, 0).unwrap();
+
+        assert_eq!(value, decoded);
+    }
+}
+
+// Import safe memory types from wrt-types for memory safety
+#[cfg(feature = "safety")]
+pub use wrt_types::safe_memory::{MemoryProvider, SafeSlice, SafeStack, StdMemoryProvider};
+
+// Import additional memory types based on features
+#[cfg(all(feature = "safety", not(feature = "std")))]
+pub use wrt_types::safe_memory::NoStdMemoryProvider;
+
+/// Create a safe slice from binary data
+#[cfg(feature = "safety")]
+pub fn safe_slice(data: &[u8]) -> wrt_types::safe_memory::SafeSlice<'_> {
+    wrt_types::safe_memory::SafeSlice::new(data)
+}
+
+/// Get the default verification level for memory operations
+#[cfg(feature = "safety")]
+pub fn default_verification_level() -> wrt_types::verification::VerificationLevel {
+    wrt_types::verification::VerificationLevel::Standard
 }

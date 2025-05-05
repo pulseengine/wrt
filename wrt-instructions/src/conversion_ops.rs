@@ -3,16 +3,7 @@
 //! This module provides pure implementations for WebAssembly conversion instructions,
 //! including type conversions between numeric types.
 
-use crate::{instruction_traits::PureInstruction, Error, Result, Value};
-use wrt_error::kinds;
-
-// When no_std but alloc is available
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::string::ToString;
-
-// When std is available
-#[cfg(feature = "std")]
-use std::string::ToString;
+use crate::prelude::*;
 
 /// Represents a pure conversion operation for WebAssembly.
 #[derive(Debug, Clone)]
@@ -101,13 +92,19 @@ impl<T: ConversionContext> PureInstruction<T, Error> for ConversionOp {
                 })?;
 
                 if a.is_nan() {
-                    return Err(Error::from(kinds::conversion_error(
+                    return Err(wrt_error::Error::new(
+                        wrt_error::ErrorCategory::Type,
+                        wrt_error::codes::CONVERSION_ERROR,
                         "NaN cannot be converted to integer",
-                    )));
+                    ));
                 }
 
                 if a >= (i32::MAX as f32) + 1.0 || a < (i32::MIN as f32) {
-                    return Err(Error::from(kinds::integer_overflow_error()));
+                    return Err(wrt_error::Error::new(
+                        wrt_error::ErrorCategory::Runtime,
+                        wrt_error::codes::CONVERSION_ERROR,
+                        "Integer overflow",
+                    ));
                 }
 
                 context.push_conversion_value(Value::I32(a as i32))
@@ -118,13 +115,19 @@ impl<T: ConversionContext> PureInstruction<T, Error> for ConversionOp {
                 })?;
 
                 if a.is_nan() {
-                    return Err(Error::from(kinds::conversion_error(
+                    return Err(wrt_error::Error::new(
+                        wrt_error::ErrorCategory::Type,
+                        wrt_error::codes::CONVERSION_ERROR,
                         "NaN cannot be converted to integer",
-                    )));
+                    ));
                 }
 
                 if a >= (u32::MAX as f32) + 1.0 || a < 0.0 {
-                    return Err(Error::from(kinds::integer_overflow_error()));
+                    return Err(wrt_error::Error::new(
+                        wrt_error::ErrorCategory::Runtime,
+                        wrt_error::codes::CONVERSION_ERROR,
+                        "Integer overflow",
+                    ));
                 }
 
                 context.push_conversion_value(Value::I32(a as u32 as i32))
@@ -199,13 +202,19 @@ impl<T: ConversionContext> PureInstruction<T, Error> for ConversionOp {
                 })?;
 
                 if a.is_nan() {
-                    return Err(Error::from(kinds::conversion_error(
+                    return Err(wrt_error::Error::new(
+                        wrt_error::ErrorCategory::Type,
+                        wrt_error::codes::CONVERSION_ERROR,
                         "NaN cannot be converted to integer",
-                    )));
+                    ));
                 }
 
                 if a >= (i32::MAX as f64) + 1.0 || a < (i32::MIN as f64) {
-                    return Err(Error::from(kinds::integer_overflow_error()));
+                    return Err(wrt_error::Error::new(
+                        wrt_error::ErrorCategory::Runtime,
+                        wrt_error::codes::CONVERSION_ERROR,
+                        "Integer overflow",
+                    ));
                 }
 
                 context.push_conversion_value(Value::I32(a as i32))
@@ -217,40 +226,252 @@ impl<T: ConversionContext> PureInstruction<T, Error> for ConversionOp {
     }
 }
 
+/// I32WrapI64 conversion operation
+pub struct I32WrapI64(pub Value);
+
+/// I64ExtendI32S conversion operation
+pub struct I64ExtendI32S(pub Value);
+
+/// I64ExtendI32U conversion operation
+pub struct I64ExtendI32U(pub Value);
+
+/// I64TruncF32S conversion operation
+pub struct I64TruncF32S(pub Value);
+
+/// I64TruncF32U conversion operation
+pub struct I64TruncF32U(pub Value);
+
+/// I64TruncF64S conversion operation
+pub struct I64TruncF64S(pub Value);
+
+/// I64TruncF64U conversion operation
+pub struct I64TruncF64U(pub Value);
+
+/// I64ReinterpretF64 conversion operation
+pub struct I64ReinterpretF64(pub Value);
+
+impl TryInto<Value> for I32WrapI64 {
+    type Error = Error;
+
+    fn try_into(self) -> Result<Value> {
+        match self.0 {
+            Value::I64(val) => Ok(Value::I32((val & 0xFFFFFFFF) as i32)),
+            _ => Err(wrt_error::Error::new(
+                wrt_error::ErrorCategory::Type,
+                wrt_error::codes::CONVERSION_ERROR,
+                format!("Expected I64, got {:?}", self.0),
+            )),
+        }
+    }
+}
+
+impl TryInto<Value> for I64ExtendI32S {
+    type Error = Error;
+
+    fn try_into(self) -> Result<Value> {
+        match self.0 {
+            Value::I32(val) => Ok(Value::I64(val as i64)),
+            _ => Err(wrt_error::Error::new(
+                wrt_error::ErrorCategory::Type,
+                wrt_error::codes::CONVERSION_ERROR,
+                format!("Expected I32, got {:?}", self.0),
+            )),
+        }
+    }
+}
+
+impl TryInto<Value> for I64ExtendI32U {
+    type Error = Error;
+
+    fn try_into(self) -> Result<Value> {
+        match self.0 {
+            Value::I32(val) => {
+                // Convert to u32 to ensure proper unsigned semantics
+                let val_u32 = val as u32;
+                // Note: This is a direct conversion, no need to check for overflow
+                // since u32::MAX cannot overflow u32
+                Ok(Value::I64(val_u32 as i64))
+            }
+            _ => Err(wrt_error::Error::new(
+                wrt_error::ErrorCategory::Type,
+                wrt_error::codes::CONVERSION_ERROR,
+                format!("Expected I32, got {:?}", self.0),
+            )),
+        }
+    }
+}
+
+impl TryInto<Value> for I64TruncF32S {
+    type Error = Error;
+
+    fn try_into(self) -> Result<Value> {
+        match self.0 {
+            Value::F32(val) => {
+                if val.is_nan() {
+                    return Err(wrt_error::Error::new(
+                        wrt_error::ErrorCategory::Type,
+                        wrt_error::codes::CONVERSION_ERROR,
+                        "NaN cannot be converted to integer",
+                    ));
+                }
+                if val >= (i64::MAX as f32) + 1.0 || val < (i64::MIN as f32) {
+                    return Err(wrt_error::Error::new(
+                        wrt_error::ErrorCategory::Runtime,
+                        wrt_error::codes::CONVERSION_ERROR,
+                        "Integer overflow",
+                    ));
+                }
+                Ok(Value::I64(val as i64))
+            }
+            _ => Err(wrt_error::Error::new(
+                wrt_error::ErrorCategory::Type,
+                wrt_error::codes::CONVERSION_ERROR,
+                format!("Expected F32, got {:?}", self.0),
+            )),
+        }
+    }
+}
+
+impl TryInto<Value> for I64TruncF32U {
+    type Error = Error;
+
+    fn try_into(self) -> Result<Value> {
+        match self.0 {
+            Value::F32(val) => {
+                if val.is_nan() {
+                    return Err(wrt_error::Error::new(
+                        wrt_error::ErrorCategory::Type,
+                        wrt_error::codes::CONVERSION_ERROR,
+                        "NaN cannot be converted to integer",
+                    ));
+                }
+                if val >= (u64::MAX as f32) + 1.0 || val < 0.0 {
+                    return Err(wrt_error::Error::new(
+                        wrt_error::ErrorCategory::Runtime,
+                        wrt_error::codes::CONVERSION_ERROR,
+                        "Integer overflow",
+                    ));
+                }
+                Ok(Value::I64(val as u64 as i64))
+            }
+            _ => Err(wrt_error::Error::new(
+                wrt_error::ErrorCategory::Type,
+                wrt_error::codes::CONVERSION_ERROR,
+                format!("Expected F32, got {:?}", self.0),
+            )),
+        }
+    }
+}
+
+impl TryInto<Value> for I64TruncF64S {
+    type Error = Error;
+
+    fn try_into(self) -> Result<Value> {
+        match self.0 {
+            Value::F64(val) => {
+                if val.is_nan() {
+                    return Err(wrt_error::Error::new(
+                        wrt_error::ErrorCategory::Type,
+                        wrt_error::codes::CONVERSION_ERROR,
+                        "NaN cannot be converted to integer",
+                    ));
+                }
+                if val >= (i64::MAX as f64) + 1.0 || val < (i64::MIN as f64) {
+                    return Err(wrt_error::Error::new(
+                        wrt_error::ErrorCategory::Runtime,
+                        wrt_error::codes::CONVERSION_ERROR,
+                        "Integer overflow",
+                    ));
+                }
+                Ok(Value::I64(val as i64))
+            }
+            _ => Err(wrt_error::Error::new(
+                wrt_error::ErrorCategory::Type,
+                wrt_error::codes::CONVERSION_ERROR,
+                format!("Expected F64, got {:?}", self.0),
+            )),
+        }
+    }
+}
+
+impl TryInto<Value> for I64TruncF64U {
+    type Error = Error;
+
+    fn try_into(self) -> Result<Value> {
+        match self.0 {
+            Value::F64(val) => {
+                if val.is_nan() {
+                    return Err(wrt_error::Error::new(
+                        wrt_error::ErrorCategory::Type,
+                        wrt_error::codes::CONVERSION_ERROR,
+                        "NaN cannot be converted to integer",
+                    ));
+                }
+                if val >= (u64::MAX as f64) + 1.0 || val < 0.0 {
+                    return Err(wrt_error::Error::new(
+                        wrt_error::ErrorCategory::Runtime,
+                        wrt_error::codes::CONVERSION_ERROR,
+                        "Integer overflow",
+                    ));
+                }
+                Ok(Value::I64(val as u64 as i64))
+            }
+            _ => Err(wrt_error::Error::new(
+                wrt_error::ErrorCategory::Type,
+                wrt_error::codes::CONVERSION_ERROR,
+                format!("Expected F64, got {:?}", self.0),
+            )),
+        }
+    }
+}
+
+impl TryInto<Value> for I64ReinterpretF64 {
+    type Error = Error;
+
+    fn try_into(self) -> Result<Value> {
+        match self.0 {
+            Value::F64(val) => {
+                let bits = val.to_bits();
+                Ok(Value::I64(bits as i64))
+            }
+            _ => Err(wrt_error::Error::new(
+                wrt_error::ErrorCategory::Type,
+                wrt_error::codes::CONVERSION_ERROR,
+                format!("Expected F64, got {:?}", self.0),
+            )),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use wrt_error::kinds;
 
-    // Import Vec and collections based on feature flags
-    #[cfg(feature = "std")]
-    use std::collections::VecDeque;
-
-    #[cfg(all(not(feature = "std"), feature = "alloc"))]
-    use alloc::collections::VecDeque;
-
+    // Create a mock context for testing
     struct MockExecutionContext {
-        stack: VecDeque<Value>,
+        stack: Vec<Value>,
     }
 
     impl MockExecutionContext {
         fn new() -> Self {
-            Self {
-                stack: VecDeque::new(),
-            }
+            Self { stack: Vec::new() }
         }
     }
 
     impl ConversionContext for MockExecutionContext {
-        fn push_conversion_value(&mut self, value: Value) -> Result<()> {
-            self.stack.push_back(value);
-            Ok(())
+        fn pop_conversion_value(&mut self) -> Result<Value> {
+            self.stack.pop().ok_or_else(|| {
+                Error::from(wrt_error::Error::new(
+                    wrt_error::ErrorCategory::Core,
+                    wrt_error::codes::STACK_UNDERFLOW,
+                    "Stack underflow",
+                ))
+            })
         }
 
-        fn pop_conversion_value(&mut self) -> Result<Value> {
-            self.stack
-                .pop_back()
-                .ok_or_else(|| Error::from(kinds::stack_underflow()))
+        fn push_conversion_value(&mut self, value: Value) -> Result<()> {
+            self.stack.push(value);
+            Ok(())
         }
     }
 

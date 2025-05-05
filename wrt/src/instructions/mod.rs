@@ -31,8 +31,8 @@ use crate::{
     error::{kinds, Error, Result},
     instructions_adapter::execute_pure_instruction,
     memory::{DataDrop, Load, LoadSigned, LoadUnsigned, MemoryInit, Store, StoreTruncated},
+    prelude::TypesValue as Value,
     stackless::StacklessEngine,
-    values::Value,
 };
 
 // Import pure instruction implementations

@@ -2,15 +2,11 @@
 //!
 //! This module provides the Export type for component exports.
 
-#[cfg(feature = "std")]
-use std::string::String;
-
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::string::String;
-
 use crate::component::ExternValue;
-use std::collections::HashMap;
+use crate::prelude::*;
+use crate::type_conversion::bidirectional;
 use wrt_format::component::ExternType;
+use wrt_types::ExternType as RuntimeExternType;
 
 /// Export from a component
 #[derive(Debug, Clone)]
@@ -85,9 +81,24 @@ impl Export {
     pub fn set_attribute(&mut self, name: String, value: String) {
         self.attributes.insert(name, value);
     }
+
+    /// Convert the export type to a runtime extern type
+    pub fn to_runtime_type(&self) -> Result<RuntimeExternType> {
+        bidirectional::format_to_runtime_extern_type(&self.ty)
+    }
+
+    /// Create a new export from a RuntimeExternType
+    pub fn from_runtime_type(
+        name: String,
+        ty: RuntimeExternType,
+        value: ExternValue,
+    ) -> Result<Self> {
+        let format_type = bidirectional::runtime_to_format_extern_type(&ty)?;
+        Ok(Self::new(name, format_type, value))
+    }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "std"))]
 mod tests {
     use super::*;
     use crate::component::{ExternValue, FunctionValue};

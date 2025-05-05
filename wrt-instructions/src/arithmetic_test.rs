@@ -3,6 +3,7 @@ use crate::{
     instruction_traits::PureInstruction,
     Error, Value,
 };
+use wrt_error::{codes, ErrorCategory};
 
 // Import Vec based on feature flags
 #[cfg(feature = "std")]
@@ -28,9 +29,13 @@ impl ArithmeticContext for SimpleContext {
     }
 
     fn pop_arithmetic_value(&mut self) -> crate::Result<Value> {
-        self.stack
-            .pop()
-            .ok_or_else(|| Error::new(wrt_error::kinds::StackUnderflow))
+        self.stack.pop().ok_or_else(|| {
+            Error::new(
+                ErrorCategory::Runtime,
+                codes::STACK_UNDERFLOW,
+                "Stack underflow",
+            )
+        })
     }
 }
 

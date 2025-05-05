@@ -51,16 +51,8 @@
 //! assert_eq!(result, Value::I32(42));
 //! ```
 
-use crate::{Error, Result, Value, ValueType};
-use wrt_error::kinds;
+use crate::prelude::*;
 use wrt_runtime::Memory;
-
-// When no_std but alloc is available
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::{format, string::ToString};
-
-#[cfg(feature = "std")]
-use std::{format, string::ToString};
 
 /// Memory load operation
 #[derive(Debug, Clone)]
@@ -313,8 +305,8 @@ impl MemoryLoad {
             )
         })?;
 
-        // Check alignment
-        memory.check_alignment(effective_addr, self.width / 8, self.align)?;
+        // Check alignment and bounds
+        memory.check_alignment(effective_addr, self.width, self.align)?;
 
         // Perform the load based on the value type and width
         match (self.value_type, self.width) {
@@ -602,21 +594,25 @@ impl MemoryStore {
             Value::I32(a) => *a as u32,
             Value::I64(a) => *a as u32, // Truncate to u32 as per WebAssembly spec
             _ => {
-                return Err(Error::from(kinds::validation_error(
+                return Err(wrt_error::Error::new(
+                    wrt_error::ErrorCategory::Validation,
+                    wrt_error::codes::VALIDATION_ERROR,
                     "Invalid address type for memory store".to_string(),
-                )))
+                ))
             }
         };
 
         // Calculate effective address
         let effective_addr = addr.checked_add(self.offset).ok_or_else(|| {
-            Error::from(kinds::validation_error(
+            wrt_error::Error::new(
+                wrt_error::ErrorCategory::Validation,
+                wrt_error::codes::VALIDATION_ERROR,
                 "Memory address overflow".to_string(),
-            ))
+            )
         })?;
 
-        // Check alignment
-        memory.check_alignment(effective_addr, self.width / 8, self.align)?;
+        // Check alignment and bounds
+        memory.check_alignment(effective_addr, self.width, self.align)?;
 
         // Perform the store based on the value type and width
         match (self.value_type, self.width, value) {
@@ -663,10 +659,14 @@ impl MemoryStore {
             }
 
             // Type mismatch or invalid combinations
-            _ => Err(Error::from(kinds::validation_error(format!(
-                "Invalid memory store: expected {:?} with width {}, got {:?}",
-                self.value_type, self.width, value
-            )))),
+            _ => Err(wrt_error::Error::new(
+                wrt_error::ErrorCategory::Validation,
+                wrt_error::codes::VALIDATION_ERROR,
+                format!(
+                    "Invalid memory store: expected {:?} with width {}, got {:?}",
+                    self.value_type, self.width, value
+                ),
+            )),
         }
     }
 }

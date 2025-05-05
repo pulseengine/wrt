@@ -3,8 +3,9 @@ use crate::{
     error::{kinds, Error, Result},
     stackless::StacklessEngine,
     types::*,
-    Value,
 };
+
+use crate::prelude::TypesValue as Value;
 
 // Import RefType from wrt_types
 use wrt_types::types::RefType;

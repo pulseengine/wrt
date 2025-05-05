@@ -2,15 +2,12 @@
 //!
 //! This module provides the Import type for component imports.
 
-#[cfg(feature = "std")]
-use std::{collections::HashMap, string::String};
-
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::{collections::HashMap, string::String};
-
 use crate::component::ExternValue;
 use crate::namespace::Namespace;
+use crate::prelude::*;
+use crate::type_conversion::bidirectional;
 use wrt_format::component::ExternType;
+use wrt_types::ExternType as RuntimeExternType;
 
 /// Import to a component
 #[derive(Debug, Clone)]
@@ -44,6 +41,22 @@ impl Import {
         } else {
             format!("{}.{}", ns_str, self.name)
         }
+    }
+
+    /// Convert the import type to a runtime extern type
+    pub fn to_runtime_type(&self) -> Result<RuntimeExternType> {
+        bidirectional::format_to_runtime_extern_type(&self.ty)
+    }
+
+    /// Create a new import from a RuntimeExternType
+    pub fn from_runtime_type(
+        namespace: Namespace,
+        name: String,
+        ty: RuntimeExternType,
+        value: ExternValue,
+    ) -> Result<Self> {
+        let format_type = bidirectional::runtime_to_format_extern_type(&ty)?;
+        Ok(Self::new(namespace, name, format_type, value))
     }
 }
 
@@ -88,7 +101,7 @@ impl ImportCollection {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "std"))]
 mod tests {
     use super::*;
     use crate::component::{ExternValue, FunctionValue};

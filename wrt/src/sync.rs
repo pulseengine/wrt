@@ -1,22 +1,14 @@
 // Synchronization primitives for WRT.
-// Re-exports synchronization primitives from the wrt-sync crate.
+// Re-exports synchronization primitives from the wrt-sync crate through our prelude.
 
-// Re-export the mutex and rwlock types from wrt-sync
-pub use wrt_sync::{
-    WrtMutex as Mutex, WrtMutexGuard as MutexGuard, WrtRwLock as RwLock,
-    WrtRwLockReadGuard as RwLockReadGuard, WrtRwLockWriteGuard as RwLockWriteGuard,
+// Re-export the mutex and rwlock types from our prelude
+pub use crate::prelude::{Mutex, MutexGuard, RwLock, RwLockReadGuard, RwLockWriteGuard};
+
+// For std compatibility when needed
+#[cfg(feature = "std")]
+pub use std::sync::{Mutex as StdMutex, MutexGuard as StdMutexGuard};
+#[cfg(feature = "std")]
+pub use std::sync::{
+    RwLock as StdRwLock, RwLockReadGuard as StdRwLockReadGuard,
+    RwLockWriteGuard as StdRwLockWriteGuard,
 };
-
-// Optional std-only exports when running on std
-#[cfg(feature = "std")]
-pub use wrt_sync::{
-    WrtParkingRwLock as ParkingRwLock, WrtParkingRwLockReadGuard as ParkingRwLockReadGuard,
-    WrtParkingRwLockWriteGuard as ParkingRwLockWriteGuard,
-};
-
-// Also re-export directly from the root for convenience in other files
-#[cfg(feature = "std")]
-pub use wrt_sync::WrtParkingRwLock;
-
-#[cfg(feature = "std")]
-pub use wrt_sync::{WrtParkingRwLockReadGuard, WrtParkingRwLockWriteGuard};

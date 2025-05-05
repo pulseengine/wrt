@@ -1,19 +1,20 @@
 [package]
 name = "wrtd"
-version = "0.2.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
 license = { workspace = true }
 description = "WebAssembly Runtime Daemon (std-only host implementation)"
+repository = "https://github.com/avrabe/wrt"
 
 [dependencies]
-wrt = { path = "../wrt", version = "0.2.0", features = ["std"] }
-wrt-component = { path = "../wrt-component", version = "0.2.0", features = ["std"] }
-wrt-intercept = { path = "../wrt-intercept", version = "0.2.0", features = ["std"] }
+wrt = { workspace = true, features = ["std"] }
+wrt-component = { workspace = true, features = ["std"] }
+wrt-intercept = { workspace = true, features = ["std"] }
 # Standard library dependencies
 clap = { version = "4.5.37", features = ["derive"] }
 tracing = "0.1"
 tracing-subscriber = { version= "0.3", features = ["json"] }
-anyhow = "1.0"
+anyhow = { workspace = true }
 once_cell = "1.18"
 
 [lints.rust]

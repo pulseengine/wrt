@@ -1,7 +1,7 @@
 use crate::{
-    behavior::{FrameBehavior, StackBehavior},
+    behavior::{ControlFlow, FrameBehavior, StackBehavior},
     error::{self, kinds, Error, Result},
-    values::Value,
+    prelude::TypesValue as Value,
     StacklessEngine,
 };
 
@@ -152,12 +152,14 @@ pub fn i32_div_s(
     match (a, b) {
         (Value::I32(a), Value::I32(b)) => {
             if b == 0 {
-                return Err(Error::new(kinds::Trap(
+                return Err(Error::new(crate::error::kinds::TrapError(
                     "integer division by zero".to_string(),
                 )));
             }
             if a == i32::MIN && b == -1 {
-                return Err(Error::new(kinds::Trap("integer overflow".to_string())));
+                return Err(Error::new(crate::error::kinds::TrapError(
+                    "integer overflow".to_string(),
+                )));
             }
             _stack.push(Value::I32(a.wrapping_div(b)))?;
             Ok(())
@@ -176,7 +178,7 @@ pub fn i32_div_u(
     match (a, b) {
         (Value::I32(a), Value::I32(b)) => {
             if b == 0 {
-                return Err(Error::new(kinds::Trap(
+                return Err(Error::new(crate::error::kinds::TrapError(
                     "integer division by zero".to_string(),
                 )));
             }
@@ -199,7 +201,7 @@ pub fn i32_rem_s(
     match (a, b) {
         (Value::I32(a), Value::I32(b)) => {
             if b == 0 {
-                return Err(Error::new(kinds::Trap(
+                return Err(Error::new(crate::error::kinds::TrapError(
                     "integer division by zero".to_string(),
                 )));
             }
@@ -220,7 +222,7 @@ pub fn i32_rem_u(
     match (a, b) {
         (Value::I32(a), Value::I32(b)) => {
             if b == 0 {
-                return Err(Error::new(kinds::Trap(
+                return Err(Error::new(crate::error::kinds::TrapError(
                     "integer division by zero".to_string(),
                 )));
             }
@@ -551,7 +553,7 @@ pub fn i64_div_s(_stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior)
     match (a, b) {
         (Value::I64(a), Value::I64(b)) => {
             if b == 0 {
-                return Err(Error::new(kinds::Trap(
+                return Err(Error::new(crate::error::kinds::TrapError(
                     "integer division by zero".to_string(),
                 )));
             }
@@ -572,7 +574,7 @@ pub fn i64_div_u(_stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior)
     match (a, b) {
         (Value::I64(a), Value::I64(b)) => {
             if b == 0 {
-                return Err(Error::new(kinds::Trap(
+                return Err(Error::new(crate::error::kinds::TrapError(
                     "integer division by zero".to_string(),
                 )));
             }
@@ -593,7 +595,7 @@ pub fn i64_rem_s(_stack: &mut dyn StackBehavior, _frame: &mut dyn FrameBehavior)
     match (a, b) {
         (Value::I64(a), Value::I64(b)) => {
             if b == 0 {
-                return Err(Error::new(kinds::Trap(
+                return Err(Error::new(crate::error::kinds::TrapError(
                     "integer division by zero".to_string(),
                 )));
             }
@@ -616,7 +618,7 @@ pub fn i64_rem_u(
     match (a, b) {
         (Value::I64(a), Value::I64(b)) => {
             if b == 0 {
-                return Err(Error::new(kinds::Trap(
+                return Err(Error::new(crate::error::kinds::TrapError(
                     "integer division by zero".to_string(),
                 )));
             }

@@ -766,3 +766,30 @@ qualification-status:
 # Set up development environment
 setup-dev: setup-rust-targets setup-wasm-tools setup-hooks setup-llvm-cov
     @echo "Development environment set up successfully"
+
+# ----------------- Test Registry Commands -----------------
+
+# Build the test registry and runner
+build-test-registry:
+    cargo build -p wrt-test-registry --features runner
+
+# Run the unified test registry with the CLI runner
+# This will run all tests in the registry
+# Arguments:
+#   --category=<category>  Only run tests in the specified category (e.g. "decoder")
+#   --name=<name>          Only run tests with names containing the specified string
+#   --no-std               Skip tests that require the standard library
+run-unified-tests *ARGS="":
+    cargo run -p wrt-test-registry --features runner --bin wrt-test-runner -- {{ARGS}}
+
+# List all tests in the test registry
+list-tests *ARGS="":
+    cargo run -p wrt-test-registry --features runner --bin wrt-test-runner -- list {{ARGS}}
+
+# Run decoder-specific tests using the test registry
+test-decoder:
+    cargo run -p wrt-test-registry --features runner --bin wrt-test-runner -- --category=decoder
+
+# Run instruction decoder tests
+test-instruction-decoder:
+    cargo run -p wrt-test-registry --features runner --bin wrt-test-runner -- --category=instruction-decoder

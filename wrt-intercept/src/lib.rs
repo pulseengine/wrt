@@ -55,34 +55,29 @@
 //! ```
 
 #![cfg_attr(not(feature = "std"), no_std)]
+#![warn(missing_docs)]
 #![warn(clippy::missing_panics_doc)]
+
+//! # Interception Layer for WebAssembly Component Linking
+//!
+//! This crate provides a flexible interception mechanism for WebAssembly
+//! component linking in the WebAssembly Runtime (WRT). It allows
+//! intercepting function calls between components and between components
+//! and the host.
 
 // When no_std but alloc is available
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 extern crate alloc;
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::{boxed::Box, string::String, sync::Arc, vec::Vec};
+// Verify required features when using no_std
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+compile_error!("The 'alloc' feature must be enabled when using no_std");
 
-#[cfg(feature = "std")]
-use std::{boxed::Box, string::String, sync::Arc, vec::Vec};
-
-// Reexports for convenience
-pub use wrt_error::{Error, Result};
-pub use wrt_types::values::Value;
-pub use wrt_types::ComponentValue;
-
-// Import HashMap if using std
-#[cfg(feature = "std")]
-use std::collections::HashMap;
+// Include prelude for unified imports
+pub mod prelude;
 
 // Include built-in interception module
 pub mod builtins;
-
-// Re-export built-in interception types
-pub use builtins::{
-    BeforeBuiltinResult, BuiltinInterceptor, BuiltinSerialization, InterceptContext,
-};
 
 // Built-in strategy implementations
 pub mod strategies;
@@ -91,7 +86,8 @@ pub mod strategies;
 #[cfg(all(not(coverage), any(doc, feature = "kani")))]
 pub mod verify;
 
-use wrt_types::resource::ResourceCanonicalOperation;
+// Re-export from prelude for convenience
+pub use prelude::*;
 
 /// Strategy pattern for intercepting component linking
 pub trait LinkInterceptorStrategy: Send + Sync {
@@ -506,16 +502,16 @@ impl LinkInterceptor {
     ) -> Result<Vec<u8>> {
         let mut modified_data = serialized_data.to_vec();
 
-        // Apply each modification in sequence
         for modification in modifications {
             match modification {
                 Modification::Replace { offset, data } => {
-                    if offset + data.len() > modified_data.len() {
+                    let end_offset = offset + data.len();
+                    if end_offset > modified_data.len() {
                         return Err(Error::new(
                             wrt_error::ErrorCategory::Validation,
                             wrt_error::codes::VALIDATION_ERROR,
                             wrt_error::kinds::ValidationError(format!(
-                                "Modification offset out of bounds: {} + {} > {}",
+                                "Replacement range out of bounds: {} + {} > {}",
                                 offset,
                                 data.len(),
                                 modified_data.len()
@@ -523,38 +519,44 @@ impl LinkInterceptor {
                         ));
                     }
 
-                    modified_data[offset..offset + data.len()].copy_from_slice(data);
+                    // Fixed version without borrowing issues
+                    let start = *offset;
+                    let end = start + data.len();
+                    modified_data[start..end].copy_from_slice(data);
                 }
                 Modification::Insert { offset, data } => {
-                    if offset > modified_data.len() {
+                    let start = *offset;
+                    if start > modified_data.len() {
                         return Err(Error::new(
                             wrt_error::ErrorCategory::Validation,
                             wrt_error::codes::VALIDATION_ERROR,
                             wrt_error::kinds::ValidationError(format!(
                                 "Insertion offset out of bounds: {} > {}",
-                                offset,
+                                start,
                                 modified_data.len()
                             )),
                         ));
                     }
 
-                    modified_data.splice(offset..offset, data.iter().cloned());
+                    modified_data.splice(start..start, data.iter().cloned());
                 }
                 Modification::Remove { offset, length } => {
-                    if offset + length > modified_data.len() {
+                    let start = *offset;
+                    let end = start + length;
+                    if end > modified_data.len() {
                         return Err(Error::new(
                             wrt_error::ErrorCategory::Validation,
                             wrt_error::codes::VALIDATION_ERROR,
                             wrt_error::kinds::ValidationError(format!(
                                 "Removal range out of bounds: {} + {} > {}",
-                                offset,
+                                start,
                                 length,
                                 modified_data.len()
                             )),
                         ));
                     }
 
-                    modified_data.drain(offset..offset + length);
+                    modified_data.drain(start..end);
                 }
             }
         }
@@ -576,11 +578,26 @@ pub struct InterceptionResult {
 #[derive(Debug, Clone)]
 pub enum Modification {
     /// Replace data at an offset
-    Replace { offset: usize, data: Vec<u8> },
+    Replace {
+        /// Byte offset where the replacement starts
+        offset: usize,
+        /// New data to insert at the offset
+        data: Vec<u8>,
+    },
     /// Insert data at an offset
-    Insert { offset: usize, data: Vec<u8> },
+    Insert {
+        /// Byte offset where to insert data
+        offset: usize,
+        /// Data to insert at the offset
+        data: Vec<u8>,
+    },
     /// Remove data at an offset with a given length
-    Remove { offset: usize, length: usize },
+    Remove {
+        /// Byte offset where to start removing data
+        offset: usize,
+        /// Number of bytes to remove
+        length: usize,
+    },
 }
 
 #[cfg(feature = "std")]

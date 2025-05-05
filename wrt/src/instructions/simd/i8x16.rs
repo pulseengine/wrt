@@ -10,7 +10,7 @@ use std::cmp;
 use core::cmp;
 
 use crate::behavior::{FrameBehavior, StackBehavior};
-use crate::values::Value;
+use crate::prelude::TypesValue as Value;
 use crate::StacklessEngine;
 use wrt_error::kinds;
 use wrt_error::{Error, Result};
@@ -23,7 +23,7 @@ pub fn i8x16_splat(stack: &mut impl StackBehavior, _frame: &mut impl FrameBehavi
     let value = match stack.pop()? {
         Value::I32(v) => v as i8,
         _ => {
-            return Err(Error::new(kinds::InvalidTypeError(
+            return Err(Error::new(crate::error::kinds::InvalidTypeError(
                 "Expected i32 for i8x16.splat".into(),
             )))
         }
@@ -109,7 +109,7 @@ pub fn i8x16_replace_lane(
     let replacement = match stack.pop()? {
         Value::I32(v) => v as i8,
         _ => {
-            return Err(Error::new(kinds::InvalidTypeError(
+            return Err(Error::new(crate::error::kinds::InvalidTypeError(
                 "Expected i32 for replacement value".into(),
             )))
         }

@@ -3,10 +3,8 @@
 //! This module contains implementations for all WebAssembly bit counting instructions,
 //! including operations for counting leading and trailing zeros and ones.
 
-use crate::error::kinds::ExecutionError;
-use crate::error::Error;
-use crate::values::Value;
-use crate::Vec;
+use crate::error::{kinds, Error};
+use crate::prelude::{TypesValue as Value, Vec};
 
 /// Execute an i32.clz instruction
 ///
@@ -14,11 +12,12 @@ use crate::Vec;
 pub fn i32_clz(stack: &mut Vec<Value>) -> Result<(), Error> {
     let Value::I32(value) = stack
         .pop()
-        .ok_or(Error::new(ExecutionError("Stack underflow".into())))?
+        .ok_or(Error::new(kinds::STACK_UNDERFLOW, "Stack underflow".into()))?
     else {
-        return Err(Error::new(ExecutionError(
+        return Err(Error::new(
+            kinds::EXECUTION_ERROR,
             "Expected i32 for i32.clz".into(),
-        )));
+        ));
     };
 
     stack.push(Value::I32(value.leading_zeros() as i32));
@@ -31,11 +30,12 @@ pub fn i32_clz(stack: &mut Vec<Value>) -> Result<(), Error> {
 pub fn i32_ctz(stack: &mut Vec<Value>) -> Result<(), Error> {
     let Value::I32(value) = stack
         .pop()
-        .ok_or(Error::new(ExecutionError("Stack underflow".into())))?
+        .ok_or(Error::new(kinds::STACK_UNDERFLOW, "Stack underflow".into()))?
     else {
-        return Err(Error::new(ExecutionError(
+        return Err(Error::new(
+            kinds::EXECUTION_ERROR,
             "Expected i32 for i32.ctz".into(),
-        )));
+        ));
     };
 
     stack.push(Value::I32(value.trailing_zeros() as i32));
@@ -48,11 +48,12 @@ pub fn i32_ctz(stack: &mut Vec<Value>) -> Result<(), Error> {
 pub fn i32_popcnt(stack: &mut Vec<Value>) -> Result<(), Error> {
     let Value::I32(value) = stack
         .pop()
-        .ok_or(Error::new(ExecutionError("Stack underflow".into())))?
+        .ok_or(Error::new(kinds::STACK_UNDERFLOW, "Stack underflow".into()))?
     else {
-        return Err(Error::new(ExecutionError(
+        return Err(Error::new(
+            kinds::EXECUTION_ERROR,
             "Expected i32 for i32.popcnt".into(),
-        )));
+        ));
     };
 
     stack.push(Value::I32(value.count_ones() as i32));
@@ -65,11 +66,12 @@ pub fn i32_popcnt(stack: &mut Vec<Value>) -> Result<(), Error> {
 pub fn i64_clz(stack: &mut Vec<Value>) -> Result<(), Error> {
     let Value::I64(value) = stack
         .pop()
-        .ok_or(Error::new(ExecutionError("Stack underflow".into())))?
+        .ok_or(Error::new(kinds::STACK_UNDERFLOW, "Stack underflow".into()))?
     else {
-        return Err(Error::new(ExecutionError(
+        return Err(Error::new(
+            kinds::EXECUTION_ERROR,
             "Expected i64 for i64.clz".into(),
-        )));
+        ));
     };
 
     stack.push(Value::I64(i64::from(value.leading_zeros())));
@@ -82,11 +84,12 @@ pub fn i64_clz(stack: &mut Vec<Value>) -> Result<(), Error> {
 pub fn i64_ctz(stack: &mut Vec<Value>) -> Result<(), Error> {
     let Value::I64(value) = stack
         .pop()
-        .ok_or(Error::new(ExecutionError("Stack underflow".into())))?
+        .ok_or(Error::new(kinds::STACK_UNDERFLOW, "Stack underflow".into()))?
     else {
-        return Err(Error::new(ExecutionError(
+        return Err(Error::new(
+            kinds::EXECUTION_ERROR,
             "Expected i64 for i64.ctz".into(),
-        )));
+        ));
     };
 
     stack.push(Value::I64(i64::from(value.trailing_zeros())));
@@ -99,11 +102,12 @@ pub fn i64_ctz(stack: &mut Vec<Value>) -> Result<(), Error> {
 pub fn i64_popcnt(stack: &mut Vec<Value>) -> Result<(), Error> {
     let Value::I64(value) = stack
         .pop()
-        .ok_or(Error::new(ExecutionError("Stack underflow".into())))?
+        .ok_or(Error::new(kinds::STACK_UNDERFLOW, "Stack underflow".into()))?
     else {
-        return Err(Error::new(ExecutionError(
+        return Err(Error::new(
+            kinds::EXECUTION_ERROR,
             "Expected i64 for i64.popcnt".into(),
-        )));
+        ));
     };
 
     stack.push(Value::I64(i64::from(value.count_ones())));

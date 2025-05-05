@@ -4,14 +4,12 @@ use crate::{
         ControlFlow, FrameBehavior, InstructionExecutor, Label,
         /* NullBehavior, */ StackBehavior,
     },
-    error::kinds::{ExecutionError, ExportNotFoundError, ParseError, StackUnderflowError},
     error::{kinds, Error, Result},
     instructions::Instruction,
-    module::{Function, Module},
+    module::{ExportKind, Function, Module},
+    prelude::TypesValue as Value,
     stackless::StacklessStack,
     stackless_frame::StacklessFrame,
-    values::Value,
-    ExportKind,
 };
 use wrt_runtime::{GlobalType, Memory, Table};
 use wrt_types::values::Value as RuntimeValue;
@@ -464,7 +462,7 @@ pub fn parse_float<T: Into<f64> + From<f64>>(value_str: &str) -> Result<T> {
         // Parse as decimal float
         match clean_str.parse::<f64>() {
             Ok(val) => Ok(T::from(val)),
-            Err(_) => Err(Error::new(ParseError(format!(
+            Err(_) => Err(Error::new(crate::error::kinds::ParseError(format!(
                 "Invalid float format: {}",
                 value_str
             )))),
@@ -482,7 +480,7 @@ fn parse_hex_float_internal(hex_str: &str) -> Result<f64> {
     } else if hex_str.starts_with("+0x") {
         (false, &hex_str[3..])
     } else {
-        return Err(Error::new(ParseError(format!(
+        return Err(Error::new(crate::error::kinds::ParseError(format!(
             "Invalid hex float format: {}",
             hex_str
         ))));
@@ -491,7 +489,7 @@ fn parse_hex_float_internal(hex_str: &str) -> Result<f64> {
     // Split into integer and fractional parts
     let parts: Vec<&str> = hex_str.split('.').collect();
     if parts.len() > 2 {
-        return Err(Error::new(ParseError(format!(
+        return Err(Error::new(crate::error::kinds::ParseError(format!(
             "Invalid hex float format, multiple decimal points: {}",
             hex_str
         ))));
@@ -532,7 +530,7 @@ fn parse_hex_float_internal(hex_str: &str) -> Result<f64> {
 
         if !int_part.is_empty() {
             u64::from_str_radix(int_part, 16).map_err(|_| {
-                Error::new(ParseError(format!(
+                Error::new(crate::error::kinds::ParseError(format!(
                     "Invalid hex integer part: {}",
                     int_part
                 )))
@@ -555,7 +553,7 @@ fn parse_hex_float_internal(hex_str: &str) -> Result<f64> {
         if !frac_part.is_empty() {
             // Convert hex fraction to decimal
             let frac_val = u64::from_str_radix(frac_part, 16).map_err(|_| {
-                Error::new(ParseError(format!(
+                Error::new(crate::error::kinds::ParseError(format!(
                     "Invalid hex fractional part: {}",
                     frac_part
                 )))
@@ -599,7 +597,12 @@ pub fn execute_export_function(
     let export = exports
         .iter()
         .find(|export| export.name == export_name.unwrap())
-        .ok_or_else(|| Error::new(ExportNotFoundError(export_name.unwrap().to_string())))?;
+        .ok_or_else(|| {
+            Error::new(
+                kinds::EXPORT_NOT_FOUND_ERROR,
+                export_name.unwrap().to_string(),
+            )
+        })?;
 
     if export.kind == ExportKind::Function {
         let func_idx = export.index;
@@ -688,9 +691,10 @@ pub fn execute_export_function(
                     break;
                 }
                 ControlFlow::Call { .. } => {
-                    return Err(Error::new(ExecutionError(
+                    return Err(Error::new(
+                        kinds::EXECUTION_ERROR,
                         "Unexpected ControlFlow::Call in execute_export_function".to_string(),
-                    )));
+                    ));
                 }
             }
 
@@ -727,7 +731,10 @@ pub fn execute_export_function(
             if stack_len >= results_count {
                 stack_values[stack_len - results_count..].to_vec()
             } else {
-                return Err(Error::new(StackUnderflowError));
+                return Err(Error::new(
+                    kinds::STACK_UNDERFLOW,
+                    "Stack underflow during result extraction".to_string(),
+                ));
             }
         } else {
             Vec::new()
@@ -736,7 +743,10 @@ pub fn execute_export_function(
         trace!("Final results: {:?}", results);
         Ok(results)
     } else {
-        Err(ExecutionError("Invalid export kind".to_string()).into())
+        Err(Error::new(
+            kinds::EXECUTION_ERROR,
+            "Invalid export kind".to_string(),
+        ))
     }
 }
 

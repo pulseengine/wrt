@@ -3,18 +3,27 @@
 //! This module provides bounded collection types that are designed for
 //! functional safety with built-in size limits and verification features.
 
+#[cfg(feature = "alloc")]
+extern crate alloc;
+
+// For std environment
 #[cfg(feature = "std")]
-use std::{fmt, hash, mem, string::String, vec::Vec};
-
-#[cfg(not(feature = "std"))]
-use core::{fmt, hash, mem};
-
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::{
-    boxed::Box,
+use std::{
+    fmt, hash, mem,
     string::{String, ToString},
     vec::Vec,
 };
+
+// For no_std with alloc
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use alloc::{
+    string::{String, ToString},
+    vec::Vec,
+};
+
+// For no_std environment
+#[cfg(not(feature = "std"))]
+use core::{fmt, hash, mem};
 
 // Use the HashMap that's re-exported in lib.rs - works for both std and no_std
 #[allow(unused_imports)]

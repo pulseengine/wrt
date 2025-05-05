@@ -3,7 +3,6 @@
 //! This module contains implementations for all WebAssembly instructions,
 //! including loads, stores, and memory management operations.
 
-use crate::behavior::ControlFlow;
 use crate::{
     behavior::{ControlFlow, FrameBehavior, InstructionExecutor, StackBehavior},
     error::{kinds, Error, Result},
@@ -11,16 +10,13 @@ use crate::{
     memory::{self, Memory},
     module::{Data, Module},
     module_instance::ModuleInstance,
+    prelude::{v128, TypesValue as Value},
     stackless::StacklessEngine,
     types::{GlobalType, MemoryType, ValueType},
-    values::Value,
 };
 use std::marker::PhantomData;
 use std::sync::Arc;
-use wrt_error::{Error, Result};
-use wrt_types::v128;
 use wrt_types::Limits;
-use wrt_types::Value;
 
 // Define the constant locally
 const WASM_PAGE_SIZE: u32 = 65536;
@@ -1149,8 +1145,8 @@ fn offset_in_bounds(offset: u32, size: u32, mem_size: u32) -> Result<()> {
 
 impl<F, T> InstructionExecutor for StoreTruncated<F, T>
 where
-    F: Copy + Into<i64> + 'static,
-    T: Copy + 'static,
+    F: Copy + Into<i64> + 'static + std::fmt::Debug,
+    T: Copy + 'static + std::fmt::Debug,
     i64: From<T>,
 {
     fn execute(
@@ -1259,7 +1255,7 @@ pub fn i64_store32(engine: &mut StacklessEngine, offset: u32, align: u32) -> Res
 pub fn store_vector(
     memory: &mut Memory,
     effective_addr: u32,
-    value: v128,
+    value: [u8; 16],
     align: u32,
 ) -> Result<()> {
     memory.check_alignment(effective_addr, 16, align)?;

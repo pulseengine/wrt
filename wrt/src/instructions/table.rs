@@ -6,8 +6,8 @@
 use crate::{
     behavior::{ControlFlow, FrameBehavior, StackBehavior},
     error::{kinds, Error, Result},
+    prelude::TypesValue as Value,
     stackless::StacklessEngine,
-    values::Value,
 };
 // These wasmparser imports likely don't exist in newer versions
 // use wasmparser::{TableInit, TableCopy, ElemDrop, TableFill};

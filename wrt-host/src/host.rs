@@ -1,17 +1,15 @@
-// Built-in function host implementation for WebAssembly components.
-//
-// This module provides the functionality for executing built-in functions
-// as defined in the WebAssembly Component Model.
+//! Built-in function host implementation for WebAssembly components.
+//!
+//! This module provides the functionality for executing built-in functions
+//! as defined in the WebAssembly Component Model.
 
-use crate::{Arc, Box, HashMap, String, ToString, Vec};
-use core::any::Any;
-use wrt_error::{kinds, Error, Result};
-use wrt_intercept::{BeforeBuiltinResult, BuiltinInterceptor, InterceptContext};
-use wrt_types::builtin::BuiltinType;
-use wrt_types::component_value::ComponentValue;
-use wrt_types::values::Value;
+// Use the prelude for consistent imports
+use crate::prelude::*;
 
 /// Converts wrt_types::values::Value to wrt_types::component_value::ComponentValue
+///
+/// This function converts WebAssembly core values to Component Model values
+/// with support for both std and no_std environments.
 fn convert_to_component_values(values: &[Value]) -> Vec<ComponentValue> {
     values
         .iter()
@@ -27,6 +25,9 @@ fn convert_to_component_values(values: &[Value]) -> Vec<ComponentValue> {
 }
 
 /// Converts wrt_types::component_value::ComponentValue to wrt_types::values::Value
+///
+/// This function converts Component Model values to WebAssembly core values
+/// with support for both std and no_std environments.
 fn convert_from_component_values(values: &[ComponentValue]) -> Vec<Value> {
     values
         .iter()
@@ -189,7 +190,11 @@ impl BuiltinHost {
                     // After interceptor - convert result to component values and back
                     let component_result = match &result {
                         Ok(values) => Ok(convert_to_component_values(values)),
-                        Err(e) => Err(Error::new(e.to_string())),
+                        Err(e) => Err(Error::new(
+                            ErrorCategory::Runtime,
+                            codes::RUNTIME_ERROR,
+                            e.to_string(),
+                        )),
                     };
 
                     let modified_result =
@@ -227,10 +232,16 @@ impl BuiltinHost {
         }
 
         // No handler or fallback found
-        Err(Error::new(kinds::ExecutionError(crate::format!(
-            "Built-in function {} not implemented",
-            builtin_name
-        ))))
+        Err(Error::new(
+            ErrorCategory::Runtime,
+            codes::RUNTIME_ERROR,
+            #[cfg(feature = "std")]
+            format!("Built-in function {} not implemented", builtin_name),
+            #[cfg(all(feature = "alloc", not(feature = "std")))]
+            alloc::format!("Built-in function {} not implemented", builtin_name),
+            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            "Built-in function not implemented",
+        ))
     }
 }
 

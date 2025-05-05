@@ -3,17 +3,8 @@
 //! This module provides a registry for callbacks that can be invoked from
 //! WebAssembly components, including host functions and interceptors.
 
-use core::any::Any;
-
-// Use the re-exported types from lib.rs
-use crate::{fmt, format, Arc, Box, HashMap, String, ToString, Vec};
-use wrt_error::{kinds, Error, Result};
-use wrt_intercept::LinkInterceptor;
-use wrt_types::values::Value;
-
-use crate::function::HostFunctionHandler;
-use crate::host::BuiltinHost;
-use wrt_types::builtin::BuiltinType;
+// Use the prelude for consistent imports
+use crate::prelude::*;
 
 /// Types of callbacks that can be registered
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -71,8 +62,8 @@ impl CallbackRegistry {
     pub fn new() -> Self {
         Self {
             callbacks: HashMap::new(),
-            host_functions: HashMap::new(),
             interceptor: None,
+            host_functions: HashMap::new(),
         }
     }
 
@@ -155,7 +146,7 @@ impl CallbackRegistry {
         if let Some(interceptor) = self.get_interceptor() {
             interceptor.intercept_call(
                 "host",
-                &format!("{}::{}", module_name, function_name),
+                &function_key(module_name, function_name),
                 args,
                 |modified_args| {
                     self.call_host_function_internal(
@@ -185,9 +176,17 @@ impl CallbackRegistry {
             }
         }
 
-        Err(Error::new(kinds::ExecutionError(format!(
-            "Host function {module_name}.{function_name} not found"
-        ))))
+        // Return error if the function is not found
+        Err(Error::new(
+            ErrorCategory::Runtime,
+            codes::RUNTIME_ERROR,
+            #[cfg(feature = "std")]
+            format!("Host function {module_name}.{function_name} not found"),
+            #[cfg(all(feature = "alloc", not(feature = "std")))]
+            alloc::format!("Host function {module_name}.{function_name} not found"),
+            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            "Host function not found",
+        ))
     }
 
     /// Get all registered module names
@@ -308,7 +307,15 @@ mod tests {
         let mut engine = ();
         let result =
             registry.call_host_function(&mut engine, "test_module", "test_function", vec![]);
-        assert_eq!(result, Ok(vec![Value::I32(42)]));
+
+        // Fix the assertion to not rely on PartialEq for Error type
+        match result {
+            Ok(values) => {
+                assert_eq!(values.len(), 1);
+                assert!(matches!(values[0], Value::I32(42)));
+            }
+            Err(_) => panic!("Expected successful function call"),
+        }
 
         // Test calling a nonexistent function
         let err = registry.call_host_function(&mut engine, "nonexistent", "function", vec![]);
@@ -385,5 +392,37 @@ mod tests {
         // Should work now
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), vec![Value::I32(55)]);
+    }
+}
+
+/// Generate a unique function key from module and function names
+///
+/// This function creates a unique identifier for a function by combining
+/// the module name and function name. It's used to lookup functions in
+/// registries and for interception.
+///
+/// # Arguments
+///
+/// * `module_name` - The name of the module containing the function
+/// * `function_name` - The name of the function
+///
+/// # Returns
+///
+/// A string in the format `module_name::function_name`
+pub fn function_key(module_name: &str, function_name: &str) -> String {
+    #[cfg(feature = "std")]
+    return format!("{}::{}", module_name, function_name);
+
+    #[cfg(all(feature = "alloc", not(feature = "std")))]
+    return alloc::format!("{}::{}", module_name, function_name);
+
+    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    {
+        // Fallback for environments without allocation
+        // This is a simplified version that won't work for all cases
+        let mut result = String::from(module_name);
+        result.push_str("::");
+        result.push_str(function_name);
+        result
     }
 }

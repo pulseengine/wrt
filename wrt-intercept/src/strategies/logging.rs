@@ -3,27 +3,13 @@
 //! This strategy logs function calls between components and hosts.
 //! It can be configured to log arguments, results, timing, etc.
 
-use core::fmt::Display;
 use core::time::Duration;
 
+// Import the prelude for unified access to standard types
+use crate::prelude::*;
+
 #[cfg(feature = "std")]
-use std::{
-    sync::{Arc, Mutex},
-    time::Instant,
-    vec::Vec,
-};
-
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::{
-    string::{String, ToString},
-    sync::{Arc, Mutex},
-    vec::Vec,
-};
-
-use wrt_error::Result;
-use wrt_types::values::Value;
-
-use crate::LinkInterceptorStrategy;
+use std::time::Instant;
 
 /// Trait for formatting values in logging output
 pub trait ValueFormatter: Clone + Send + Sync {

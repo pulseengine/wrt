@@ -1,11 +1,10 @@
-// Memory optimization strategies for WebAssembly Component Model
-//
-// This module provides memory optimization strategies for cross-component
-// communication in the WebAssembly Component Model.
+//! Memory optimization strategies for WebAssembly Component Model
+//!
+//! This module provides memory optimization strategies for cross-component
+//! communication in the WebAssembly Component Model.
 
+use crate::prelude::*;
 use crate::resources::{BufferPool, MemoryStrategy};
-use std::sync::{Arc, RwLock};
-use wrt_error::{kinds, Error, Result};
 
 /// Trait defining a memory optimization strategy
 pub trait MemoryOptimizationStrategy: Send + Sync {
@@ -77,13 +76,17 @@ impl MemoryOptimizationStrategy for ZeroCopyStrategy {
     ) -> Result<()> {
         // Check bounds
         if offset + size > source.len() || size > destination.len() {
-            return Err(Error::new(kinds::OutOfBoundsAccess(format!(
-                "Memory bounds exceeded: offset={}, size={}, source_len={}, dest_len={}",
-                offset,
-                size,
-                source.len(),
-                destination.len()
-            ))));
+            return Err(Error::new(
+                ErrorCategory::Memory,
+                codes::MEMORY_OUT_OF_BOUNDS,
+                kinds::OutOfBoundsAccess(format!(
+                    "Memory bounds exceeded: offset={}, size={}, source_len={}, dest_len={}",
+                    offset,
+                    size,
+                    source.len(),
+                    destination.len()
+                )),
+            ));
         }
 
         // In a true zero-copy implementation, we would use memory mapping or other mechanisms
@@ -177,21 +180,29 @@ impl MemoryOptimizationStrategy for BoundedCopyStrategy {
     ) -> Result<()> {
         // Check bounds
         if offset + size > source.len() || size > destination.len() {
-            return Err(Error::new(kinds::OutOfBoundsAccess(format!(
-                "Memory bounds exceeded: offset={}, size={}, source_len={}, dest_len={}",
-                offset,
-                size,
-                source.len(),
-                destination.len()
-            ))));
+            return Err(Error::new(
+                ErrorCategory::Memory,
+                codes::MEMORY_OUT_OF_BOUNDS,
+                kinds::OutOfBoundsAccess(format!(
+                    "Memory bounds exceeded: offset={}, size={}, source_len={}, dest_len={}",
+                    offset,
+                    size,
+                    source.len(),
+                    destination.len()
+                )),
+            ));
         }
 
         // Check maximum copy size
         if size > self.max_copy_size {
-            return Err(Error::new(kinds::ResourceLimitExceeded(format!(
-                "Copy size {} exceeds maximum allowed size {}",
-                size, self.max_copy_size
-            ))));
+            return Err(Error::new(
+                ErrorCategory::Resource,
+                codes::RESOURCE_LIMIT_EXCEEDED,
+                kinds::ResourceLimitExceeded(format!(
+                    "Copy size {} exceeds maximum allowed size {}",
+                    size, self.max_copy_size
+                )),
+            ));
         }
 
         // Perform the copy directly
@@ -259,21 +270,29 @@ impl MemoryOptimizationStrategy for FullIsolationStrategy {
     ) -> Result<()> {
         // Check bounds
         if offset + size > source.len() || size > destination.len() {
-            return Err(Error::new(kinds::OutOfBoundsAccess(format!(
-                "Memory bounds exceeded: offset={}, size={}, source_len={}, dest_len={}",
-                offset,
-                size,
-                source.len(),
-                destination.len()
-            ))));
+            return Err(Error::new(
+                ErrorCategory::Memory,
+                codes::MEMORY_OUT_OF_BOUNDS,
+                kinds::OutOfBoundsAccess(format!(
+                    "Memory bounds exceeded: offset={}, size={}, source_len={}, dest_len={}",
+                    offset,
+                    size,
+                    source.len(),
+                    destination.len()
+                )),
+            ));
         }
 
         // Check maximum copy size
         if size > self.max_copy_size {
-            return Err(Error::new(kinds::ResourceLimitExceeded(format!(
-                "Copy size {} exceeds maximum allowed size {}",
-                size, self.max_copy_size
-            ))));
+            return Err(Error::new(
+                ErrorCategory::Resource,
+                codes::RESOURCE_LIMIT_EXCEEDED,
+                kinds::ResourceLimitExceeded(format!(
+                    "Copy size {} exceeds maximum allowed size {}",
+                    size, self.max_copy_size
+                )),
+            ));
         }
 
         // Full validation and sanitization

@@ -14,8 +14,8 @@ use crate::{
     error::{self, kinds, Error, Result},
     global::Global,
     module::Module,
+    prelude::TypesValue as Value,
     stackless_frame::StacklessFrame,
-    values::Value,
     StacklessEngine,
 };
 

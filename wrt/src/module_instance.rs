@@ -6,8 +6,8 @@ use crate::{
     memory,
     module::Element,
     module::{Data, Module, OtherExport},
+    prelude::TypesValue as Value,
     types::FuncType,
-    values::Value,
 };
 use std::sync::Arc;
 use wrt_runtime::{Memory, Table};

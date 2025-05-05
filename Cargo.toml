@@ -16,6 +16,7 @@ members = [
     "wrt-instructions",
     "wrt-intercept", "test-control-instructions",
     "wrt-verification-tool",
+    "wrt-test-registry",
 ]
 resolver = "2"  # Use edition 2021 resolver
 
@@ -28,6 +29,21 @@ license = "MIT"
 [workspace.dependencies]
 anyhow = "1.0"
 wit-bindgen = "0.41.0"
+
+# Internal crate versions
+wrt = { path = "wrt", version = "0.2.0" }
+wrt-error = { path = "wrt-error", version = "0.2.0" }
+wrt-sync = { path = "wrt-sync", version = "0.2.0" }
+wrt-format = { path = "wrt-format", version = "0.2.0" }
+wrt-types = { path = "wrt-types", version = "0.2.0" }
+wrt-decoder = { path = "wrt-decoder", version = "0.2.0" }
+wrt-runtime = { path = "wrt-runtime", version = "0.2.0" }
+wrt-logging = { path = "wrt-logging", version = "0.2.0" }
+wrt-instructions = { path = "wrt-instructions", version = "0.2.0" }
+wrt-component = { path = "wrt-component", version = "0.2.0" }
+wrt-host = { path = "wrt-host", version = "0.2.0" }
+wrt-intercept = { path = "wrt-intercept", version = "0.2.0" }
+wrt-test-registry = { path = "wrt-test-registry", version = "0.2.0" }
 
 [workspace.lints.rust]
 unexpected_cfgs = { level = "allow", check-cfg = ['cfg(test)'] }

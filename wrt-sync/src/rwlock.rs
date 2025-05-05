@@ -1,13 +1,4 @@
-use core::{
-    cell::UnsafeCell,
-    fmt,
-    hint::spin_loop,
-    ops::{Deref, DerefMut},
-    sync::atomic::{AtomicUsize, Ordering},
-};
-
-#[cfg(feature = "std")]
-use std::{sync::atomic::AtomicBool, sync::Arc, thread, vec::Vec};
+use crate::prelude::*;
 
 /// A simple, `no_std` compatible Read-Write Lock using atomics.
 ///
@@ -16,6 +7,37 @@ use std::{sync::atomic::AtomicBool, sync::Arc, thread, vec::Vec};
 /// or priority inversion. Use with caution.
 const WRITE_LOCK_STATE: usize = usize::MAX;
 
+/// A non-blocking, atomic read-write lock for no_std environments.
+///
+/// This read-write lock provides reader-preference locking with minimal overhead,
+/// making it suitable for use in embedded systems and other no_std contexts.
+///
+/// # Examples
+///
+/// ```
+/// use wrt_sync::WrtRwLock;
+///
+/// // Create a new RwLock
+/// let lock = WrtRwLock::new(42);
+///
+/// // Acquire a read lock
+/// let reader = lock.read();
+/// assert_eq!(*reader, 42);
+///
+/// // Release the read lock by dropping the guard
+/// drop(reader);
+///
+/// // Acquire a write lock
+/// let mut writer = lock.write();
+/// *writer = 100;
+///
+/// // Release the write lock by dropping the guard
+/// drop(writer);
+///
+/// // Verify the new value with another reader
+/// let reader = lock.read();
+/// assert_eq!(*reader, 100);
+/// ```
 pub struct WrtRwLock<T: ?Sized> {
     /// Atomically tracks the lock state.
     /// Encoding:
@@ -214,6 +236,24 @@ impl<T: ?Sized + fmt::Debug> fmt::Debug for WrtRwLock<T> {
 
 // ======= Parking-based Implementation (for std environments) =======
 #[cfg(feature = "std")]
+/// A thread-parking read-write lock for std environments.
+///
+/// This implementation extends the basic RwLock by adding thread-parking capabilities,
+/// making it more efficient in std environments where threads need to wait on locks.
+/// This version is only available when the `std` feature is enabled.
+///
+/// # Examples
+///
+/// ```
+/// # #[cfg(feature = "std")]
+/// # {
+/// use wrt_sync::WrtParkingRwLock;
+///
+/// let lock = WrtParkingRwLock::new(42);
+/// let reader = lock.read();
+/// assert_eq!(*reader, 42);
+/// # }
+/// ```
 pub struct WrtParkingRwLock<T: ?Sized> {
     /// Atomically tracks the lock state.
     /// Encoding:
@@ -321,12 +361,18 @@ unsafe impl<T: ?Sized + Send + Sync> Sync for WrtParkingRwLock<T> {}
 
 #[cfg(feature = "std")]
 #[clippy::has_significant_drop]
+/// A read guard for `WrtParkingRwLock` that provides shared read access.
+///
+/// When this guard is dropped, the lock is automatically released.
 pub struct WrtParkingRwLockReadGuard<'a, T: ?Sized + 'a> {
     lock: &'a WrtParkingRwLock<T>,
 }
 
 #[cfg(feature = "std")]
 #[clippy::has_significant_drop]
+/// A write guard for `WrtParkingRwLock` that provides exclusive write access.
+///
+/// When this guard is dropped, the lock is automatically released.
 pub struct WrtParkingRwLockWriteGuard<'a, T: ?Sized + 'a> {
     lock: &'a WrtParkingRwLock<T>,
 }
@@ -559,12 +605,7 @@ impl<T: ?Sized> DerefMut for WrtParkingRwLockWriteGuard<'_, T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    // Use alloc types for tests when not using std
-    #[cfg(not(feature = "std"))]
-    use alloc::string::String;
-    // Use std types when std feature is enabled
-    #[cfg(feature = "std")]
-    use std::{string::String, vec, vec::Vec};
+    use crate::prelude::*;
 
     #[test]
     fn test_rwlock_new_read() {

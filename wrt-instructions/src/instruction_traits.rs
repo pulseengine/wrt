@@ -3,7 +3,7 @@
 //! This module provides traits that define the interfaces for pure instruction implementations.
 //! These traits establish a clear boundary between instruction implementations and runtime details.
 
-use crate::Result;
+use crate::prelude::*;
 
 /// Trait for pure instruction execution.
 ///

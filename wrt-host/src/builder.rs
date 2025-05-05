@@ -4,18 +4,8 @@
 //! of the `CallbackRegistry` with the appropriate built-in functions, interceptors,
 //! and other configuration options.
 
-use core::any::Any;
-
-// Use the re-exported types from lib.rs
-use crate::{format, Arc, Box, HashSet, String, ToString, Vec};
-use wrt_error::{codes, ErrorCategory, WrtError};
-use wrt_intercept::{BuiltinInterceptor, LinkInterceptor};
-use wrt_types::builtin::BuiltinType;
-use wrt_types::values::Value;
-
-use crate::callback::{CallbackRegistry, CallbackType};
-use crate::function::HostFunctionHandler;
-use crate::host::BuiltinHost;
+// Use the prelude for consistent imports
+use crate::prelude::*;
 
 /// Builder for configuring and creating instances of `CallbackRegistry` with built-in support.
 ///
@@ -58,8 +48,14 @@ impl HostBuilder {
             builtin_interceptor: None,
             link_interceptor: None,
             strict_validation: false,
+            #[cfg(feature = "std")]
             component_name: String::from("default"),
+            #[cfg(all(feature = "alloc", not(feature = "std")))]
+            component_name: "default".into(),
+            #[cfg(feature = "std")]
             host_id: String::from("default"),
+            #[cfg(all(feature = "alloc", not(feature = "std")))]
+            host_id: "default".into(),
             fallback_handlers: Vec::new(),
         }
     }
@@ -181,10 +177,20 @@ impl HostBuilder {
         if self.strict_validation {
             for &builtin_type in &self.required_builtins {
                 if !self.is_builtin_implemented(builtin_type) {
-                    return Err(WrtError::runtime_error(format!(
+                    #[cfg(feature = "std")]
+                    return Err(Error::runtime_error(format!(
                         "Required built-in {} is not implemented",
                         builtin_type.name()
                     )));
+
+                    #[cfg(all(feature = "alloc", not(feature = "std")))]
+                    return Err(Error::runtime_error(alloc::format!(
+                        "Required built-in {} is not implemented",
+                        builtin_type.name()
+                    )));
+
+                    #[cfg(not(any(feature = "std", feature = "alloc")))]
+                    return Err(Error::runtime_error("Required built-in is not implemented"));
                 }
             }
         }
@@ -208,7 +214,14 @@ impl HostBuilder {
     ///
     /// This is used for context in built-in interception
     pub fn with_component_name(mut self, name: &str) -> Self {
-        self.component_name = String::from(name);
+        #[cfg(feature = "std")]
+        {
+            self.component_name = String::from(name);
+        }
+        #[cfg(all(feature = "alloc", not(feature = "std")))]
+        {
+            self.component_name = name.into();
+        }
         self
     }
 
@@ -216,7 +229,14 @@ impl HostBuilder {
     ///
     /// This is used for context in built-in interception
     pub fn with_host_id(mut self, id: &str) -> Self {
-        self.host_id = String::from(id);
+        #[cfg(feature = "std")]
+        {
+            self.host_id = String::from(id);
+        }
+        #[cfg(all(feature = "alloc", not(feature = "std")))]
+        {
+            self.host_id = id.into();
+        }
         self
     }
 
@@ -362,6 +382,7 @@ mod tests {
         assert!(result.is_ok());
     }
 
+    #[cfg(feature = "std")]
     #[test]
     fn test_link_interceptor() {
         // Creating a simple mock interceptor for testing
@@ -447,6 +468,7 @@ mod tests {
         assert_eq!(result.unwrap(), vec![Value::I32(99)]);
     }
 
+    #[cfg(feature = "std")]
     #[test]
     fn test_builder_with_interceptor() {
         use std::sync::Arc;
@@ -499,10 +521,30 @@ mod tests {
     }
 }
 
-pub fn runtime_error(message: &str) -> WrtError {
-    WrtError::runtime_error(message.to_string())
+/// Create a runtime error with the specified message
+///
+/// This function properly handles both std and no_std environments
+pub fn runtime_error(message: &str) -> Error {
+    #[cfg(feature = "std")]
+    return Error::runtime_error(message.to_string());
+
+    #[cfg(all(feature = "alloc", not(feature = "std")))]
+    return Error::runtime_error(alloc::string::ToString::to_string(message));
+
+    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    return Error::runtime_error(message);
 }
 
-pub fn runtime_error_with_context(message: &str, context: &str) -> WrtError {
-    WrtError::runtime_error(format!("{}: {}", message, context))
+/// Create a runtime error with a context string
+///
+/// This function properly handles both std and no_std environments
+pub fn runtime_error_with_context(message: &str, context: &str) -> Error {
+    #[cfg(feature = "std")]
+    return Error::runtime_error(format!("{}: {}", message, context));
+
+    #[cfg(all(feature = "alloc", not(feature = "std")))]
+    return Error::runtime_error(alloc::format!("{}: {}", message, context));
+
+    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    return Error::runtime_error(message);
 }

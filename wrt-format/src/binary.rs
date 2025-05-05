@@ -2,19 +2,18 @@
 //
 // This module provides utilities for working with the WebAssembly binary format.
 
+// Core modules
+use core::str;
+
+// Import from crate::lib re-exports to ensure proper features
+use crate::{format, vec, Box, String, ToString, Vec};
+
 use crate::component::ValType;
-use crate::error::parse_error;
+use crate::error::{parse_error, to_wrt_error};
 use crate::module::Module;
 use crate::types::FormatBlockType;
 use wrt_error::Result;
-
-#[cfg(feature = "std")]
-use std::{string::String, vec::Vec};
-
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::{format, string::String, vec::Vec};
-
-use core::str;
+use wrt_types::ValueType;
 
 /// Magic bytes for WebAssembly modules: \0asm
 pub const WASM_MAGIC: [u8; 4] = [0x00, 0x61, 0x73, 0x6D];
@@ -102,6 +101,169 @@ pub const MEMORY_SIZE: u8 = 0x3F;
 pub const MEMORY_GROW: u8 = 0x40;
 pub const MEMORY_COPY: u8 = 0xFC;
 pub const MEMORY_FILL: u8 = 0xFD;
+
+/// WebAssembly numeric operation instructions
+/// i32 binops
+pub const I32_EQZ: u8 = 0x45;
+pub const I32_EQ: u8 = 0x46;
+pub const I32_NE: u8 = 0x47;
+pub const I32_LT_S: u8 = 0x48;
+pub const I32_LT_U: u8 = 0x49;
+pub const I32_GT_S: u8 = 0x4A;
+pub const I32_GT_U: u8 = 0x4B;
+pub const I32_LE_S: u8 = 0x4C;
+pub const I32_LE_U: u8 = 0x4D;
+pub const I32_GE_S: u8 = 0x4E;
+pub const I32_GE_U: u8 = 0x4F;
+
+/// i64 binops
+pub const I64_EQZ: u8 = 0x50;
+pub const I64_EQ: u8 = 0x51;
+pub const I64_NE: u8 = 0x52;
+pub const I64_LT_S: u8 = 0x53;
+pub const I64_LT_U: u8 = 0x54;
+pub const I64_GT_S: u8 = 0x55;
+pub const I64_GT_U: u8 = 0x56;
+pub const I64_LE_S: u8 = 0x57;
+pub const I64_LE_U: u8 = 0x58;
+pub const I64_GE_S: u8 = 0x59;
+pub const I64_GE_U: u8 = 0x5A;
+
+/// f32 binops
+pub const F32_EQ: u8 = 0x5B;
+pub const F32_NE: u8 = 0x5C;
+pub const F32_LT: u8 = 0x5D;
+pub const F32_GT: u8 = 0x5E;
+pub const F32_LE: u8 = 0x5F;
+pub const F32_GE: u8 = 0x60;
+
+/// f64 binops
+pub const F64_EQ: u8 = 0x61;
+pub const F64_NE: u8 = 0x62;
+pub const F64_LT: u8 = 0x63;
+pub const F64_GT: u8 = 0x64;
+pub const F64_LE: u8 = 0x65;
+pub const F64_GE: u8 = 0x66;
+
+/// i32 unary operations
+pub const I32_CLZ: u8 = 0x67;
+pub const I32_CTZ: u8 = 0x68;
+pub const I32_POPCNT: u8 = 0x69;
+
+/// i32 binary operations
+pub const I32_ADD: u8 = 0x6A;
+pub const I32_SUB: u8 = 0x6B;
+pub const I32_MUL: u8 = 0x6C;
+pub const I32_DIV_S: u8 = 0x6D;
+pub const I32_DIV_U: u8 = 0x6E;
+pub const I32_REM_S: u8 = 0x6F;
+pub const I32_REM_U: u8 = 0x70;
+pub const I32_AND: u8 = 0x71;
+pub const I32_OR: u8 = 0x72;
+pub const I32_XOR: u8 = 0x73;
+pub const I32_SHL: u8 = 0x74;
+pub const I32_SHR_S: u8 = 0x75;
+pub const I32_SHR_U: u8 = 0x76;
+pub const I32_ROTL: u8 = 0x77;
+pub const I32_ROTR: u8 = 0x78;
+
+/// i64 unary operations
+pub const I64_CLZ: u8 = 0x79;
+pub const I64_CTZ: u8 = 0x7A;
+pub const I64_POPCNT: u8 = 0x7B;
+
+/// i64 binary operations
+pub const I64_ADD: u8 = 0x7C;
+pub const I64_SUB: u8 = 0x7D;
+pub const I64_MUL: u8 = 0x7E;
+pub const I64_DIV_S: u8 = 0x7F;
+pub const I64_DIV_U: u8 = 0x80;
+pub const I64_REM_S: u8 = 0x81;
+pub const I64_REM_U: u8 = 0x82;
+pub const I64_AND: u8 = 0x83;
+pub const I64_OR: u8 = 0x84;
+pub const I64_XOR: u8 = 0x85;
+pub const I64_SHL: u8 = 0x86;
+pub const I64_SHR_S: u8 = 0x87;
+pub const I64_SHR_U: u8 = 0x88;
+pub const I64_ROTL: u8 = 0x89;
+pub const I64_ROTR: u8 = 0x8A;
+
+/// f32 unary operations
+pub const F32_ABS: u8 = 0x8B;
+pub const F32_NEG: u8 = 0x8C;
+pub const F32_CEIL: u8 = 0x8D;
+pub const F32_FLOOR: u8 = 0x8E;
+pub const F32_TRUNC: u8 = 0x8F;
+pub const F32_NEAREST: u8 = 0x90;
+pub const F32_SQRT: u8 = 0x91;
+
+/// f32 binary operations
+pub const F32_ADD: u8 = 0x92;
+pub const F32_SUB: u8 = 0x93;
+pub const F32_MUL: u8 = 0x94;
+pub const F32_DIV: u8 = 0x95;
+pub const F32_MIN: u8 = 0x96;
+pub const F32_MAX: u8 = 0x97;
+pub const F32_COPYSIGN: u8 = 0x98;
+
+/// f64 unary operations
+pub const F64_ABS: u8 = 0x99;
+pub const F64_NEG: u8 = 0x9A;
+pub const F64_CEIL: u8 = 0x9B;
+pub const F64_FLOOR: u8 = 0x9C;
+pub const F64_TRUNC: u8 = 0x9D;
+pub const F64_NEAREST: u8 = 0x9E;
+pub const F64_SQRT: u8 = 0x9F;
+
+/// f64 binary operations
+pub const F64_ADD: u8 = 0xA0;
+pub const F64_SUB: u8 = 0xA1;
+pub const F64_MUL: u8 = 0xA2;
+pub const F64_DIV: u8 = 0xA3;
+pub const F64_MIN: u8 = 0xA4;
+pub const F64_MAX: u8 = 0xA5;
+pub const F64_COPYSIGN: u8 = 0xA6;
+
+/// Conversion operations
+pub const I32_WRAP_I64: u8 = 0xA7;
+pub const I32_TRUNC_F32_S: u8 = 0xA8;
+pub const I32_TRUNC_F32_U: u8 = 0xA9;
+pub const I32_TRUNC_F64_S: u8 = 0xAA;
+pub const I32_TRUNC_F64_U: u8 = 0xAB;
+pub const I64_EXTEND_I32_S: u8 = 0xAC;
+pub const I64_EXTEND_I32_U: u8 = 0xAD;
+pub const I64_TRUNC_F32_S: u8 = 0xAE;
+pub const I64_TRUNC_F32_U: u8 = 0xAF;
+pub const I64_TRUNC_F64_S: u8 = 0xB0;
+pub const I64_TRUNC_F64_U: u8 = 0xB1;
+pub const F32_CONVERT_I32_S: u8 = 0xB2;
+pub const F32_CONVERT_I32_U: u8 = 0xB3;
+pub const F32_CONVERT_I64_S: u8 = 0xB4;
+pub const F32_CONVERT_I64_U: u8 = 0xB5;
+pub const F32_DEMOTE_F64: u8 = 0xB6;
+pub const F64_CONVERT_I32_S: u8 = 0xB7;
+pub const F64_CONVERT_I32_U: u8 = 0xB8;
+pub const F64_CONVERT_I64_S: u8 = 0xB9;
+pub const F64_CONVERT_I64_U: u8 = 0xBA;
+pub const F64_PROMOTE_F32: u8 = 0xBB;
+pub const I32_REINTERPRET_F32: u8 = 0xBC;
+pub const I64_REINTERPRET_F64: u8 = 0xBD;
+pub const F32_REINTERPRET_I32: u8 = 0xBE;
+pub const F64_REINTERPRET_I64: u8 = 0xBF;
+
+/// Saturating truncation operations (used with 0xFC prefix)
+pub const I32_TRUNC_SAT_F32_S: u8 = 0x00;
+pub const I32_TRUNC_SAT_F32_U: u8 = 0x01;
+pub const I32_TRUNC_SAT_F64_S: u8 = 0x02;
+pub const I32_TRUNC_SAT_F64_U: u8 = 0x03;
+pub const I64_TRUNC_SAT_F32_S: u8 = 0x04;
+pub const I64_TRUNC_SAT_F32_U: u8 = 0x05;
+pub const I64_TRUNC_SAT_F64_S: u8 = 0x06;
+pub const I64_TRUNC_SAT_F64_U: u8 = 0x07;
+
+/// Supported WebAssembly version - 1.0
+pub const WASM_SUPPORTED_VERSION: [u8; 4] = [0x01, 0x00, 0x00, 0x00];
 
 //==========================================================================
 // WebAssembly Component Model Binary Format
@@ -229,15 +391,15 @@ pub const VAL_TYPE_ERROR_CONTEXT_TAG: u8 = 0x64;
 pub fn parse_binary(bytes: &[u8]) -> Result<Module> {
     // Verify magic bytes
     if bytes.len() < 8 {
-        return Err(parse_error("WebAssembly binary too short").into());
+        return Err(to_wrt_error(parse_error("WebAssembly binary too short")));
     }
 
     if bytes[0..4] != WASM_MAGIC {
-        return Err(parse_error("Invalid WebAssembly magic bytes").into());
+        return Err(to_wrt_error(parse_error("Invalid WebAssembly magic bytes")));
     }
 
     if bytes[4..8] != WASM_VERSION {
-        return Err(parse_error("Unsupported WebAssembly version").into());
+        return Err(to_wrt_error(parse_error("Unsupported WebAssembly version")));
     }
 
     // Create an empty module with the binary stored
@@ -285,7 +447,9 @@ pub fn read_leb128_u32(bytes: &[u8], pos: usize) -> Result<(u32, usize)> {
 
     loop {
         if pos + offset >= bytes.len() {
-            return Err(parse_error("Truncated LEB128 integer".to_string()).into());
+            return Err(to_wrt_error(parse_error(
+                "Truncated LEB128 integer".to_string(),
+            )));
         }
 
         let byte = bytes[pos + offset];
@@ -302,7 +466,9 @@ pub fn read_leb128_u32(bytes: &[u8], pos: usize) -> Result<(u32, usize)> {
 
         // Guard against malformed/malicious LEB128
         if shift >= 32 {
-            return Err(parse_error("LEB128 integer too large".to_string()).into());
+            return Err(to_wrt_error(parse_error(
+                "LEB128 integer too large".to_string(),
+            )));
         }
     }
 
@@ -320,7 +486,9 @@ pub fn read_leb128_i32(bytes: &[u8], pos: usize) -> Result<(i32, usize)> {
 
     loop {
         if pos + offset >= bytes.len() {
-            return Err(parse_error("Truncated LEB128 integer".to_string()).into());
+            return Err(to_wrt_error(parse_error(
+                "Truncated LEB128 integer".to_string(),
+            )));
         }
 
         byte = bytes[pos + offset];
@@ -337,7 +505,9 @@ pub fn read_leb128_i32(bytes: &[u8], pos: usize) -> Result<(i32, usize)> {
 
         // Guard against malformed/malicious LEB128
         if shift >= 32 {
-            return Err(parse_error("LEB128 integer too large".to_string()).into());
+            return Err(to_wrt_error(parse_error(
+                "LEB128 integer too large".to_string(),
+            )));
         }
     }
 
@@ -361,7 +531,9 @@ pub fn read_leb128_i64(bytes: &[u8], pos: usize) -> Result<(i64, usize)> {
 
     loop {
         if pos + offset >= bytes.len() {
-            return Err(parse_error("Truncated LEB128 integer".to_string()).into());
+            return Err(to_wrt_error(parse_error(
+                "Truncated LEB128 integer".to_string(),
+            )));
         }
 
         byte = bytes[pos + offset];
@@ -378,7 +550,9 @@ pub fn read_leb128_i64(bytes: &[u8], pos: usize) -> Result<(i64, usize)> {
 
         // Guard against malformed/malicious LEB128
         if shift >= 64 {
-            return Err(parse_error("LEB128 integer too large".to_string()).into());
+            return Err(to_wrt_error(parse_error(
+                "LEB128 integer too large".to_string(),
+            )));
         }
     }
 
@@ -515,7 +689,9 @@ pub fn read_leb128_u64(bytes: &[u8], pos: usize) -> Result<(u64, usize)> {
 
     loop {
         if offset >= bytes.len() {
-            return Err(parse_error("Unexpected end of LEB128 sequence".to_string()).into());
+            return Err(to_wrt_error(parse_error(
+                "Unexpected end of LEB128 sequence".to_string(),
+            )));
         }
 
         byte = bytes[offset];
@@ -535,9 +711,9 @@ pub fn read_leb128_u64(bytes: &[u8], pos: usize) -> Result<(u64, usize)> {
         // Ensure we don't exceed 64 bits (10 bytes)
         if shift >= 64 {
             if byte & 0x7F != 0 {
-                return Err(
-                    parse_error("LEB128 sequence exceeds maximum u64 value".to_string()).into(),
-                );
+                return Err(to_wrt_error(parse_error(
+                    "LEB128 sequence exceeds maximum u64 value".to_string(),
+                )));
             }
             break;
         }
@@ -576,7 +752,7 @@ pub fn write_leb128_u64(value: u64) -> Vec<u8> {
 /// Read a 32-bit IEEE 754 float from a byte array
 pub fn read_f32(bytes: &[u8], pos: usize) -> Result<(f32, usize)> {
     if pos + 4 > bytes.len() {
-        return Err(parse_error("Not enough bytes to read f32").into());
+        return Err(to_wrt_error(parse_error("Not enough bytes to read f32")));
     }
 
     let mut buf = [0; 4];
@@ -588,7 +764,7 @@ pub fn read_f32(bytes: &[u8], pos: usize) -> Result<(f32, usize)> {
 /// Read a 64-bit IEEE 754 float from a byte array
 pub fn read_f64(bytes: &[u8], pos: usize) -> Result<(f64, usize)> {
     if pos + 8 > bytes.len() {
-        return Err(parse_error("Not enough bytes to read f64").into());
+        return Err(to_wrt_error(parse_error("Not enough bytes to read f64")));
     }
 
     let mut buf = [0; 8];
@@ -615,7 +791,10 @@ pub fn write_f64(value: f64) -> Vec<u8> {
 pub fn validate_utf8(bytes: &[u8]) -> Result<()> {
     match str::from_utf8(bytes) {
         Ok(_) => Ok(()),
-        Err(e) => Err(parse_error(format!("Invalid UTF-8 sequence: {}", e)).into()),
+        Err(e) => Err(to_wrt_error(parse_error(format!(
+            "Invalid UTF-8 sequence: {}",
+            e
+        )))),
     }
 }
 
@@ -624,7 +803,7 @@ pub fn validate_utf8(bytes: &[u8]) -> Result<()> {
 /// This reads a length-prefixed string (used in WebAssembly names).
 pub fn read_string(bytes: &[u8], pos: usize) -> Result<(String, usize)> {
     if pos >= bytes.len() {
-        return Err(parse_error("String exceeds buffer bounds").into());
+        return Err(to_wrt_error(parse_error("String exceeds buffer bounds")));
     }
 
     // Read the string length
@@ -634,7 +813,7 @@ pub fn read_string(bytes: &[u8], pos: usize) -> Result<(String, usize)> {
 
     // Ensure the string fits in the buffer
     if str_end > bytes.len() {
-        return Err(parse_error("String exceeds buffer bounds").into());
+        return Err(to_wrt_error(parse_error("String exceeds buffer bounds")));
     }
 
     // Extract the string bytes
@@ -643,7 +822,10 @@ pub fn read_string(bytes: &[u8], pos: usize) -> Result<(String, usize)> {
     // Convert to a Rust string
     match str::from_utf8(string_bytes) {
         Ok(s) => Ok((s.to_string(), len_size + str_len as usize)),
-        Err(e) => Err(parse_error(format!("Invalid UTF-8 in string: {}", e)).into()),
+        Err(e) => Err(to_wrt_error(parse_error(format!(
+            "Invalid UTF-8 in string: {}",
+            e
+        )))),
     }
 }
 
@@ -710,7 +892,9 @@ where
 /// The position should point to the start of the section content.
 pub fn read_section_header(bytes: &[u8], pos: usize) -> Result<(u8, u32, usize)> {
     if pos >= bytes.len() {
-        return Err(parse_error("Attempted to read past end of binary".to_string()).into());
+        return Err(to_wrt_error(parse_error(
+            "Attempted to read past end of binary".to_string(),
+        )));
     }
 
     let id = bytes[pos];
@@ -733,24 +917,23 @@ pub fn write_section_header(id: u8, content_size: u32) -> Vec<u8> {
     result
 }
 
-/// Parse a block type value
+/// Parse a block type from a byte array
 pub fn parse_block_type(bytes: &[u8], pos: usize) -> Result<(FormatBlockType, usize)> {
     if pos >= bytes.len() {
-        return Err(
-            parse_error("Unexpected end of input when parsing block type".to_string()).into(),
-        );
+        return Err(to_wrt_error(parse_error(
+            "Unexpected end of input when reading block type",
+        )));
     }
 
-    // Look at the first byte
     let byte = bytes[pos];
     let block_type = match byte {
         // Empty block type
-        0x40 => (FormatBlockType::None, 1),
+        0x40 => (FormatBlockType::Empty, 1),
         // Value type-based block type
-        0x7F => (FormatBlockType::I32, 1),
-        0x7E => (FormatBlockType::I64, 1),
-        0x7D => (FormatBlockType::F32, 1),
-        0x7C => (FormatBlockType::F64, 1),
+        0x7F => (FormatBlockType::ValueType(ValueType::I32), 1),
+        0x7E => (FormatBlockType::ValueType(ValueType::I64), 1),
+        0x7D => (FormatBlockType::ValueType(ValueType::F32), 1),
+        0x7C => (FormatBlockType::ValueType(ValueType::F64), 1),
         // Function type reference
         _ => {
             // If the byte is not a value type, it's a function type reference
@@ -759,16 +942,15 @@ pub fn parse_block_type(bytes: &[u8], pos: usize) -> Result<(FormatBlockType, us
 
             // Type references are negative
             if value >= 0 {
-                return Err(parse_error(format!(
+                return Err(to_wrt_error(parse_error(format!(
                     "Invalid block type index: expected negative value, got {}",
                     value
-                ))
-                .into());
+                ))));
             }
 
             // Convert to function type index (positive)
             let func_type_idx = (-value - 1) as u32;
-            (FormatBlockType::FuncType(func_type_idx), size)
+            (FormatBlockType::TypeIndex(func_type_idx), size)
         }
     };
 
@@ -783,9 +965,9 @@ pub fn read_component_valtype(
     use crate::component::ValType;
 
     if pos >= bytes.len() {
-        return Err(
-            parse_error("Unexpected end of input when reading component value type").into(),
-        );
+        return Err(to_wrt_error(parse_error(
+            "Unexpected end of input when reading component value type",
+        )));
     }
 
     let byte = bytes[pos];
@@ -932,7 +1114,10 @@ pub fn read_component_valtype(
             Ok((ValType::Borrow(idx), next_pos))
         }
         COMPONENT_VALTYPE_ERROR_CONTEXT => Ok((ValType::ErrorContext, new_pos)),
-        _ => Err(parse_error(format!("Invalid component value type: 0x{:02x}", byte)).into()),
+        _ => Err(to_wrt_error(parse_error(format!(
+            "Invalid component value type: 0x{:02x}",
+            byte
+        )))),
     }
 }
 
@@ -1057,21 +1242,29 @@ pub fn write_component_valtype(val_type: &crate::component::ValType) -> Vec<u8> 
 /// Parse a WebAssembly component binary into a Component structure
 pub fn parse_component_binary(bytes: &[u8]) -> Result<crate::component::Component> {
     if bytes.len() < 8 {
-        return Err(parse_error("WebAssembly component binary too short").into());
+        return Err(to_wrt_error(parse_error(
+            "WebAssembly component binary too short",
+        )));
     }
 
     // Check magic bytes
     if bytes[0..4] != COMPONENT_MAGIC {
-        return Err(parse_error("Invalid WebAssembly component magic bytes").into());
+        return Err(to_wrt_error(parse_error(
+            "Invalid WebAssembly component magic bytes",
+        )));
     }
 
     // Check version
     if bytes[4..8] != COMPONENT_VERSION {
-        return Err(parse_error("Unsupported WebAssembly component version").into());
+        return Err(to_wrt_error(parse_error(
+            "Unsupported WebAssembly component version",
+        )));
     }
 
     if bytes.len() < 10 {
-        return Err(parse_error("Invalid WebAssembly component layer").into());
+        return Err(to_wrt_error(parse_error(
+            "Invalid WebAssembly component layer",
+        )));
     }
 
     // Create an empty component with the binary stored
@@ -1164,6 +1357,32 @@ impl BinaryFormat {
     pub fn encode_leb_i64(value: i64) -> Vec<u8> {
         write_leb128_i64(value)
     }
+}
+
+/// Read a WebAssembly string name without allocating a new String
+/// Returns the byte slice containing the name and the total bytes read (including length)
+pub fn read_name(bytes: &[u8], pos: usize) -> Result<(&[u8], usize)> {
+    // Ensure we have enough bytes to read the string length
+    if pos >= bytes.len() {
+        return Err(to_wrt_error(parse_error(
+            "Unexpected end of input while reading name length",
+        )));
+    }
+
+    // Read the string length
+    let (name_len, len_size) = read_leb128_u32(bytes, pos)?;
+    let name_start = pos + len_size;
+
+    // Ensure we have enough bytes to read the string
+    if name_start + name_len as usize > bytes.len() {
+        return Err(to_wrt_error(parse_error(
+            "Unexpected end of input while reading name content",
+        )));
+    }
+
+    // Return the slice containing the name and the total bytes read
+    let name_slice = &bytes[name_start..name_start + name_len as usize];
+    Ok((name_slice, len_size + name_len as usize))
 }
 
 #[cfg(test)]

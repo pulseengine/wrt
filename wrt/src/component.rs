@@ -1,6 +1,6 @@
 use crate::error::{Error, Result};
-use crate::values::Value;
-use crate::{Global, Table};
+use crate::prelude::TypesValue as Value;
+use crate::{global::Global, table::Table};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::RwLock;

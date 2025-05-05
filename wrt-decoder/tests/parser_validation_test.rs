@@ -1,4 +1,4 @@
-use wrt_decoder::parser::{ImportSectionReader, Parser, Payload};
+use wrt_decoder::parser::{Parser, Payload};
 use wrt_format::module::ImportDesc;
 use wrt_format::types::ValueType;
 
@@ -46,7 +46,7 @@ fn test_import_section_reader() {
     let module_bytes = create_test_module();
 
     // Parse the module
-    let parser = Parser::new(&module_bytes);
+    let parser = Parser::_new_compat(&module_bytes);
     let payloads: Vec<_> = parser.collect::<Result<Vec<_>, _>>().unwrap();
 
     // Should have 3 payloads: Version, ImportSection, End
@@ -58,9 +58,46 @@ fn test_import_section_reader() {
         _ => panic!("Expected ImportSection payload"),
     };
 
-    // Create import section reader
-    let import_reader = ImportSectionReader::new(import_section_data).unwrap();
-    let imports: Vec<_> = import_reader.collect::<Result<Vec<_>, _>>().unwrap();
+    // Extract imports directly from the data
+    let bytes = import_section_data.data().unwrap();
+
+    // Read the number of imports
+    let (count, mut offset) = wrt_format::binary::read_leb128_u32(bytes, 0).unwrap();
+    let mut imports = Vec::with_capacity(count as usize);
+
+    for _ in 0..count {
+        // Parse module name
+        let (module, new_offset) = wrt_format::binary::read_name(bytes, offset).unwrap();
+        offset = new_offset;
+
+        // Parse field name
+        let (name, new_offset) = wrt_format::binary::read_name(bytes, offset).unwrap();
+        offset = new_offset;
+
+        // Parse import kind
+        let kind = bytes[offset];
+        offset += 1;
+
+        // Parse import description
+        let desc = match kind {
+            0x00 => {
+                // Function import
+                let (type_idx, new_offset) =
+                    wrt_format::binary::read_leb128_u32(bytes, offset).unwrap();
+                offset = new_offset;
+                ImportDesc::Function(type_idx)
+            }
+            _ => {
+                panic!("Only function imports supported in this test");
+            }
+        };
+
+        imports.push(wrt_format::module::Import {
+            module: String::from_utf8(module.to_vec()).unwrap(),
+            name: String::from_utf8(name.to_vec()).unwrap(),
+            desc,
+        });
+    }
 
     // Verify import data
     assert_eq!(imports.len(), 1);

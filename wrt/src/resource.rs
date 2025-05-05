@@ -6,7 +6,7 @@
 
 use crate::{
     error::{kinds, Error, Result},
-    format, String, Vec,
+    prelude::{format, String, Vec},
 };
 #[cfg(not(feature = "std"))]
 use alloc::sync::Arc;

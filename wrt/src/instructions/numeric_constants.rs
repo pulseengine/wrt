@@ -4,7 +4,7 @@
 //! including operations for pushing constant values onto the stack.
 
 use crate::error::Error;
-use crate::values::Value;
+use crate::prelude::TypesValue as Value;
 use crate::Vec;
 
 /// Execute an i32.const instruction

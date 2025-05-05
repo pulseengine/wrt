@@ -1,9 +1,9 @@
 [package]
 name = "wrt-host"
-version = "0.2.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
 description = "Host function infrastructure for the WebAssembly Runtime (WRT)"
-license = "MIT"
+license.workspace = true
 repository = "https://github.com/avrabe/wrt"
 documentation = "https://docs.rs/wrt-host"
 keywords = ["wasm", "webassembly", "runtime", "host", "component-model"]
@@ -13,17 +13,17 @@ categories = ["wasm", "no-std"]
 wrt-error = { path = "../wrt-error", version = "0.2.0" }
 wrt-types = { path = "../wrt-types", version = "0.2.0" }
 wrt-intercept = { path = "../wrt-intercept", version = "0.2.0" }
+wrt-sync = { path = "../wrt-sync", version = "0.2.0" }
 
 # Std dependencies
 log = { version = "0.4", optional = true }
-parking_lot = { version = "0.12", optional = true }
 
 # Feature gates
 [features]
 default = ["std"]
-std = ["log", "parking_lot", "wrt-error/std", "wrt-types/std", "wrt-intercept/std"]
-no_std = ["wrt-error/no_std", "wrt-types/no_std", "wrt-intercept/no_std"]
-alloc = ["wrt-error/alloc", "wrt-types/alloc", "wrt-intercept/alloc"]
+std = ["log", "wrt-error/std", "wrt-types/std", "wrt-intercept/std", "wrt-sync/std"]
+no_std = ["wrt-error/no_std", "wrt-types/no_std", "wrt-intercept/no_std", "wrt-sync/no_std"]
+alloc = ["wrt-error/alloc", "wrt-types/alloc", "wrt-intercept/alloc", "wrt-sync/alloc"]
 kani = ["wrt-intercept/kani"]
 
 [lints.rust]

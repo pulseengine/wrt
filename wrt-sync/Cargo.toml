@@ -1,9 +1,13 @@
 [package]
 name = "wrt-sync"
-version = "0.2.0"
-edition = "2021"
-license = "MIT"
-description = "no_std synchronization primitives (Mutex, RwLock) for the WRT project."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Synchronization primitives (Mutex, RwLock) for the WRT WebAssembly runtime with no_std support"
+repository = "https://github.com/avrabe/wrt"
+documentation = "https://docs.rs/wrt-sync"
+keywords = ["wasm", "webassembly", "runtime", "no-std", "sync"]
+categories = ["wasm", "no-std", "concurrency"]
 
 [lib]
 name = "wrt_sync"
@@ -25,6 +29,8 @@ std = []
 alloc = ["dep:alloc"]
 # For complete no_std support
 no_std = []
+# Optional feature for formal verification using Kani
+kani = ["dep:kani-verifier"]
 
 [lints.rust]
 unexpected_cfgs = { level = "allow", check-cfg = ['cfg(test)', 'cfg(kani)', 'cfg(coverage)', 'cfg(doc)'] }
@@ -34,3 +40,7 @@ unexpected_cfgs = { level = "allow", check-cfg = ['cfg(test)', 'cfg(kani)', 'cfg
 [package.metadata.kani]
 enabled-checks = ["assertion", "overflow"]
 default-unwind = 3
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]

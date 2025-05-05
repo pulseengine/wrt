@@ -2,7 +2,7 @@
 
 use wrt_decoder::component::{decode_component, encode_component};
 use wrt_error::Result;
-use wrt_format::component::{ValType, Value};
+use wrt_format::component::{FormatValType, Value};
 
 /// Create a simple component with values of different types
 fn create_test_component() -> Result<wrt_format::component::Component> {
@@ -12,35 +12,35 @@ fn create_test_component() -> Result<wrt_format::component::Component> {
     component.values = vec![
         // Boolean value (true)
         Value {
-            ty: ValType::Bool,
+            ty: FormatValType::Bool,
             data: vec![0x01],
             expression: None,
             name: None,
         },
         // Boolean value (false)
         Value {
-            ty: ValType::Bool,
+            ty: FormatValType::Bool,
             data: vec![0x00],
             expression: None,
             name: None,
         },
         // S32 value (42)
         Value {
-            ty: ValType::S32,
+            ty: FormatValType::S32,
             data: vec![0x2A, 0x00, 0x00, 0x00],
             expression: None,
             name: None,
         },
         // String value ("Hello, WebAssembly!")
         Value {
-            ty: ValType::String,
+            ty: FormatValType::String,
             data: "Hello, WebAssembly!".as_bytes().to_vec(),
             expression: None,
             name: None,
         },
         // List of S32 values
         Value {
-            ty: ValType::List(Box::new(ValType::S32)),
+            ty: FormatValType::List(Box::new(FormatValType::S32)),
             data: {
                 // List with 3 items: [1, 2, 3]
                 let mut data = vec![];
@@ -62,7 +62,7 @@ fn create_test_component() -> Result<wrt_format::component::Component> {
         },
         // Option type (Some(42))
         Value {
-            ty: ValType::Option(Box::new(ValType::S32)),
+            ty: FormatValType::Option(Box::new(FormatValType::S32)),
             data: {
                 // Some variant (tag = 1)
                 let mut data = vec![0x01];
@@ -75,14 +75,14 @@ fn create_test_component() -> Result<wrt_format::component::Component> {
         },
         // Option type (None)
         Value {
-            ty: ValType::Option(Box::new(ValType::S32)),
+            ty: FormatValType::Option(Box::new(FormatValType::S32)),
             data: vec![0x00], // None variant (tag = 0)
             expression: None,
             name: None,
         },
         // Result type (Ok(42))
         Value {
-            ty: ValType::Result(Box::new(ValType::S32)),
+            ty: FormatValType::Result(Box::new(FormatValType::S32)),
             data: {
                 // Ok variant (tag = 0)
                 let mut data = vec![0x00];
@@ -95,7 +95,7 @@ fn create_test_component() -> Result<wrt_format::component::Component> {
         },
         // Result type (Error)
         Value {
-            ty: ValType::Result(Box::new(ValType::S32)),
+            ty: FormatValType::Result(Box::new(FormatValType::S32)),
             data: vec![0x01], // Error variant (tag = 1)
             expression: None,
             name: None,

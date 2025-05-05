@@ -1,9 +1,9 @@
 [package]
 name = "wrt-types"
-version = "0.2.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
 description = "Type definitions for WebAssembly Runtime (WRT)"
-license = "MIT OR Apache-2.0"
+license.workspace = true
 repository = "https://github.com/avrabe/wrt"
 
 [features]
@@ -20,8 +20,8 @@ default = [
 std = ["wrt-error/std", "log"]
 # Allocator support for no_std environments
 alloc = ["dep:alloc", "wrt-error/alloc"]
-# No standard library support (includes alloc since most no_std code needs allocation)
-no_std = ["wrt-error/no_std", "alloc"]
+# No standard library support (using alloc since most no_std code needs allocation)
+no_std = ["alloc", "wrt-error/no_std"]
 # Optional feature to bypass some safety checks in performance-critical paths
 optimize = []
 # Additional safety features for ASIL-B compliance

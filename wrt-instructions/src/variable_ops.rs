@@ -3,7 +3,7 @@
 //! This module provides pure implementations for WebAssembly variable access instructions,
 //! including local and global variable operations.
 
-use crate::{instruction_traits::PureInstruction, Error, Result, Value};
+use crate::prelude::*;
 
 // ToString is brought in through the prelude for both std and no_std configurations
 // so we don't need explicit imports
@@ -75,7 +75,6 @@ impl<T: VariableContext> PureInstruction<T, Error> for VariableOp {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use wrt_error::kinds;
 
     // Import Vec and vec! based on feature flags
     #[cfg(feature = "std")]
@@ -106,10 +105,13 @@ mod tests {
 
     impl VariableContext for MockVariableContext {
         fn get_local(&self, index: u32) -> Result<Value> {
-            self.locals
-                .get(index as usize)
-                .cloned()
-                .ok_or_else(|| Error::new(kinds::InvalidLocalIndexError(index)))
+            self.locals.get(index as usize).cloned().ok_or_else(|| {
+                Error::new(
+                    ErrorCategory::Resource,
+                    codes::INVALID_FUNCTION_INDEX,
+                    format!("Invalid local index: {}", index),
+                )
+            })
         }
 
         fn set_local(&mut self, index: u32, value: Value) -> Result<()> {
@@ -117,15 +119,22 @@ mod tests {
                 *local = value;
                 Ok(())
             } else {
-                Err(Error::new(kinds::InvalidLocalIndexError(index)))
+                Err(Error::new(
+                    ErrorCategory::Resource,
+                    codes::INVALID_FUNCTION_INDEX,
+                    format!("Invalid local index: {}", index),
+                ))
             }
         }
 
         fn get_global(&self, index: u32) -> Result<Value> {
-            self.globals
-                .get(index as usize)
-                .cloned()
-                .ok_or_else(|| Error::new(kinds::InvalidGlobalIndexError(index)))
+            self.globals.get(index as usize).cloned().ok_or_else(|| {
+                Error::new(
+                    ErrorCategory::Resource,
+                    codes::INVALID_FUNCTION_INDEX,
+                    format!("Invalid global index: {}", index),
+                )
+            })
         }
 
         fn set_global(&mut self, index: u32, value: Value) -> Result<()> {
@@ -133,7 +142,11 @@ mod tests {
                 *global = value;
                 Ok(())
             } else {
-                Err(Error::new(kinds::InvalidGlobalIndexError(index)))
+                Err(Error::new(
+                    ErrorCategory::Resource,
+                    codes::INVALID_FUNCTION_INDEX,
+                    format!("Invalid global index: {}", index),
+                ))
             }
         }
 
@@ -143,9 +156,13 @@ mod tests {
         }
 
         fn pop_value(&mut self) -> Result<Value> {
-            self.stack
-                .pop()
-                .ok_or_else(|| Error::new(kinds::StackUnderflowError))
+            self.stack.pop().ok_or_else(|| {
+                Error::new(
+                    ErrorCategory::Runtime,
+                    codes::STACK_UNDERFLOW,
+                    "Stack underflow",
+                )
+            })
         }
     }
 

@@ -5,6 +5,13 @@ extern crate std;
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 extern crate alloc;
 
+// Import ToString trait implementations
+#[cfg(feature = "std")]
+use std::string::ToString;
+
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+use alloc::string::ToString;
+
 // Use alloc String if alloc is enabled but not std
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 pub use alloc::format;
@@ -83,6 +90,10 @@ pub struct TypeMismatch(pub String);
 /// Invalid table index error
 #[derive(Debug, Clone)]
 pub struct InvalidTableIndexError(pub u32);
+
+/// Invalid local index error
+#[derive(Debug, Clone)]
+pub struct InvalidLocalIndexError(pub u32);
 
 /// Resource error for resource access or creation issues
 #[derive(Debug, Clone)]

@@ -1,9 +1,9 @@
 [package]
 name = "wrt-instructions"
-version = "0.2.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
 description = "WebAssembly instruction implementations for the WRT runtime"
-license = "MIT OR Apache-2.0"
+license.workspace = true
 repository = "https://github.com/avrabe/wrt"
 
 [features]

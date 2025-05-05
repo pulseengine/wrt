@@ -3,13 +3,12 @@
 //! This module contains implementations for all WebAssembly parametric instructions,
 //! including operations for stack manipulation and control flow.
 
-use crate::behavior::ControlFlow;
 use crate::{
-    behavior::{FrameBehavior, InstructionExecutor, StackBehavior},
+    behavior::{ControlFlow, FrameBehavior, InstructionExecutor, StackBehavior},
     error::{kinds, Error, Result},
+    prelude::TypesValue as Value,
     stackless::StacklessEngine,
     types::ValueType,
-    values::Value,
 };
 use log::trace;
 

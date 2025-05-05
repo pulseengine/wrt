@@ -1,8 +1,8 @@
 use crate::error::{Error, Result};
-use crate::module::Module;
-use crate::types::*;
 use crate::instructions::Instruction;
-use crate::{String, Vec};
+use crate::module::Module;
+use crate::prelude::{String, Vec};
+use crate::types::*;
 
 /// Validates a WebAssembly module
 pub fn validate_module(module: &Module) -> Result<()> {
@@ -94,7 +94,10 @@ fn validate_functions(module: &Module) -> Result<()> {
 fn validate_tables(module: &Module) -> Result<()> {
     for (idx, table) in module.tables.iter().enumerate() {
         // Validate element type
-        if !matches!(table.element_type, ValueType::FuncRef | ValueType::ExternRef) {
+        if !matches!(
+            table.element_type,
+            ValueType::FuncRef | ValueType::ExternRef
+        ) {
             return Err(Error::Validation(format!(
                 "Table {} has invalid element type",
                 idx

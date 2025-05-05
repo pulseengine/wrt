@@ -20,12 +20,16 @@ mod once_cell {
     use core::cell::UnsafeCell;
     use core::sync::atomic::{AtomicBool, Ordering};
 
+    /// A cell that can be initialized only once with thread-safety guarantees.
+    ///
+    /// This provides similar functionality to std::sync::OnceLock but for no_std environments.
     pub struct OnceCell<T> {
         is_initialized: AtomicBool,
         value: UnsafeCell<Option<T>>,
     }
 
     impl<T> OnceCell<T> {
+        /// Creates a new empty OnceCell.
         pub const fn new() -> Self {
             Self {
                 is_initialized: AtomicBool::new(false),
@@ -33,6 +37,10 @@ mod once_cell {
             }
         }
 
+        /// Gets the value if initialized, or initializes it with the provided function.
+        ///
+        /// If multiple threads call this method with the same cell, only one will execute
+        /// the initialization function. All other threads will block until initialization completes.
         pub fn get_or_init<F>(&self, f: F) -> &T
         where
             F: FnOnce() -> T,
@@ -66,7 +74,7 @@ mod once_cell {
 }
 
 #[cfg(not(feature = "std"))]
-use self::once_cell::OnceCell as OnceLock;
+pub use self::once_cell::OnceCell;
 
 /// Operation types that can be tracked for fuel consumption
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

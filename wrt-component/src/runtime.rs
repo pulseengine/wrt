@@ -3,16 +3,10 @@
 //! This module provides simplified implementations of runtime types
 //! needed for the component model implementation.
 
-use wrt_error::{kinds, Error, Result};
-use wrt_types::types::{Limits, ValueType};
+use crate::prelude::*;
+
 // Re-export Memory and Table from wrt-runtime
 pub use wrt_runtime::{GlobalType, Memory, MemoryType, Table, TableType};
-
-#[cfg(feature = "std")]
-use std::{string::String, vec::Vec};
-
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::{string::String, vec::Vec};
 
 /// WebAssembly function type
 #[derive(Debug, Clone, PartialEq)]
@@ -46,9 +40,11 @@ impl Global {
     /// Sets the global value
     pub fn set(&mut self, value: u64) -> Result<()> {
         if !self.ty.mutable {
-            return Err(Error::new(kinds::ValidationError(
-                "Cannot modify immutable global".to_string(),
-            )));
+            return Err(Error::new(
+                ErrorCategory::Validation,
+                codes::VALIDATION_ERROR,
+                kinds::ValidationError("Cannot modify immutable global".to_string()),
+            ));
         }
 
         self.value = value;

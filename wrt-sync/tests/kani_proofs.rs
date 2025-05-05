@@ -5,9 +5,11 @@
 //! and require the Kani verifier to be installed.
 
 #![cfg(feature = "kani")]
+
 #[cfg(feature = "kani")]
 use kani;
-use wrt_sync::*; // Import your Mutex/RwLock // Import kani library
+use wrt_sync::prelude::*;
+use wrt_sync::*;
 
 // --- WrtMutex Harnesses ---
 

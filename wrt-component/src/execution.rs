@@ -1,19 +1,9 @@
-// Execution time limit implementation for Component Model
-//
-// This module provides mechanisms to enforce execution time limits for component
-// operations, specifically supporting the start function requirements.
+//! Execution time limit implementation for Component Model
+//!
+//! This module provides mechanisms to enforce execution time limits for component
+//! operations, specifically supporting the start function requirements.
 
-#[cfg(feature = "std")]
-use std::sync::Arc;
-#[cfg(feature = "std")]
-use std::time::{Duration, Instant};
-
-#[cfg(not(feature = "std"))]
-use alloc::sync::Arc;
-#[cfg(not(feature = "std"))]
-use core::time::Duration;
-
-use wrt_error::{kinds, Error, Result};
+use crate::prelude::*;
 
 /// Represents the outcome of a time-bounded execution
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -88,9 +78,11 @@ impl TimeBoundedContext {
     /// Check if execution is still within time bounds
     pub fn check_time_bounds(&self) -> Result<()> {
         if self.terminated {
-            return Err(Error::new(kinds::ExecutionLimitExceeded(
-                "Execution was terminated".to_string(),
-            )));
+            return Err(Error::new(
+                ErrorCategory::Runtime,
+                codes::EXECUTION_LIMIT_EXCEEDED,
+                kinds::ExecutionLimitExceeded("Execution was terminated".to_string()),
+            ));
         }
 
         #[cfg(feature = "std")]
@@ -99,20 +91,28 @@ impl TimeBoundedContext {
             let elapsed_ms = elapsed.as_millis() as u64;
 
             if elapsed_ms > time_limit_ms {
-                return Err(Error::new(kinds::ExecutionTimeoutError(format!(
-                    "Execution time limit exceeded: {} ms (limit: {} ms)",
-                    elapsed_ms, time_limit_ms
-                ))));
+                return Err(Error::new(
+                    ErrorCategory::Runtime,
+                    codes::EXECUTION_TIMEOUT,
+                    kinds::ExecutionTimeoutError(format!(
+                        "Execution time limit exceeded: {} ms (limit: {} ms)",
+                        elapsed_ms, time_limit_ms
+                    )),
+                ));
             }
         }
 
         #[cfg(not(feature = "std"))]
         if let Some(fuel_limit) = self.config.fuel_limit {
             if self.elapsed_fuel > fuel_limit {
-                return Err(Error::new(kinds::ExecutionLimitExceeded(format!(
-                    "Execution fuel limit exceeded: {} (limit: {})",
-                    self.elapsed_fuel, fuel_limit
-                ))));
+                return Err(Error::new(
+                    ErrorCategory::Runtime,
+                    codes::EXECUTION_LIMIT_EXCEEDED,
+                    kinds::ExecutionLimitExceeded(format!(
+                        "Execution fuel limit exceeded: {} (limit: {})",
+                        self.elapsed_fuel, fuel_limit
+                    )),
+                ));
             }
         }
 
@@ -122,9 +122,11 @@ impl TimeBoundedContext {
     /// Extend the time limit (if allowed)
     pub fn extend_time_limit(&mut self, additional_ms: u64) -> Result<()> {
         if !self.config.allow_extension {
-            return Err(Error::new(kinds::ExecutionTimeoutError(
-                "Time limit extension not allowed".to_string(),
-            )));
+            return Err(Error::new(
+                ErrorCategory::Runtime,
+                codes::EXECUTION_TIMEOUT,
+                kinds::ExecutionTimeoutError("Time limit extension not allowed".to_string()),
+            ));
         }
 
         if let Some(current_limit) = self.config.time_limit_ms {
@@ -132,9 +134,11 @@ impl TimeBoundedContext {
             Ok(())
         } else {
             // If no limit is set, there's nothing to extend
-            Err(Error::new(kinds::ExecutionTimeoutError(
-                "Cannot extend unlimited time".to_string(),
-            )))
+            Err(Error::new(
+                ErrorCategory::Runtime,
+                codes::EXECUTION_TIMEOUT,
+                kinds::ExecutionTimeoutError("Cannot extend unlimited time".to_string()),
+            ))
         }
     }
 

@@ -3,8 +3,9 @@
 //! This module provides re-exports and adapters for wrt-runtime Global
 
 // Re-export Global and GlobalType from wrt-runtime
-use crate::values::Value;
-use wrt_error::{kinds::ExecutionError, Error, Result};
+use crate::error::kinds;
+use crate::prelude::TypesValue as Value;
+use wrt_error::{Error, Result};
 pub use wrt_runtime::{Global, GlobalType};
 use wrt_types::types::ValueType;
 
@@ -12,7 +13,7 @@ use wrt_types::types::ValueType;
 pub fn new_global(ty: GlobalType, value: Value) -> Result<Global> {
     // Check that the value matches the global type
     if !value.matches_type(&ty.value_type) {
-        return Err(Error::new(ExecutionError(format!(
+        return Err(Error::new(kinds::ExecutionError(format!(
             "Value type {:?} does not match global type {:?}",
             value.type_(),
             ty.value_type
