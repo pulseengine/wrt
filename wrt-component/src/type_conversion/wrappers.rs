@@ -1,49 +1,40 @@
-/// Type wrapper implementations for Component Model types
-///
-/// This module provides wrapper types for Component Model types to avoid
-/// orphan rule violations when implementing conversions between different
-/// representations.
-///
-/// # Orphan Rules
-///
-/// Rust's orphan rules prevent implementing traits for types from a different
-/// crate unless the trait is defined in the current crate. This module defines
-/// local wrapper types around external types to enable safe trait implementations.
-///
-/// # Examples
-///
-/// ```
-/// use wrt_component::type_conversion::wrappers::{
-///     RuntimeComponentType, FormatComponentType
-/// };
-/// use wrt_types::component::ComponentType as TypesComponentType;
-/// use wrt_format::component::ComponentTypeDefinition;
-///
-/// // Create a wrapper around a runtime type
-/// let rt_type = TypesComponentType {
-///     imports: vec![],
-///     exports: vec![],
-///     instances: vec![],
-/// };
-/// let wrapper = RuntimeComponentType::new(rt_type);
-///
-/// // Get the underlying type
-/// let inner_type = wrapper.into_inner();
-/// ```
+//! Type wrapper implementations for Component Model types
+//!
+//! This module provides wrapper types for Component Model types to avoid
+//! orphan rule violations when implementing conversions between different
+//! representations.
+//!
+//! # Orphan Rules
+//!
+//! Rust's orphan rules prevent implementing traits for types from a different
+//! crate unless the trait is defined in the current crate. This module defines
+//! local wrapper types around external types to enable safe trait implementations.
+//!
+//! # Examples
+//!
+//! ```
+//! use wrt_component::type_conversion::wrappers::{
+//!     RuntimeComponentType, FormatComponentType
+//! };
+//! use wrt_types::component::ComponentType as TypesComponentType;
+//! use wrt_format::component::ComponentTypeDefinition;
+//!
+//! // Create a wrapper around a runtime type
+//! let rt_type = TypesComponentType {
+//!     imports: vec![],
+//!     exports: vec![],
+//!     instances: vec![],
+//! };
+//! let wrapper = RuntimeComponentType::new(rt_type);
+//!
+//! // Get the underlying type
+//! let inner_type = wrapper.into_inner();
+//! ```
 
-#[cfg(feature = "std")]
-use std::collections::HashMap;
+use crate::prelude::*;
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::collections::BTreeMap as HashMap;
-
-// Import common types from wrt_types to ensure no_std compatibility
-use wrt_types::{Box, String, Vec};
-
-use wrt_error::{kinds, Error, Result};
+// Additional imports
 use wrt_format::component::{ComponentTypeDefinition, ExternType as FormatExternType};
-use wrt_types::component::{ComponentType, InstanceType};
-use wrt_types::ExternType as TypesExternType;
 
 use super::bidirectional::{
     format_to_runtime_extern_type, runtime_to_format_extern_type, IntoFormatType, IntoRuntimeType,
@@ -359,9 +350,11 @@ impl TryFrom<ComponentTypeDefinition> for RuntimeComponentType {
                 let format_type = FormatComponentType::new(imports, exports);
                 format_type.try_into()
             }
-            _ => Err(Error::new(kinds::ValidationError(
+            _ => Err(Error::new(
+                ErrorCategory::Validation,
+                codes::VALIDATION_ERROR,
                 "Expected Component type definition".to_string(),
-            ))),
+            )),
         }
     }
 }
@@ -375,9 +368,11 @@ impl TryFrom<ComponentTypeDefinition> for RuntimeInstanceType {
                 let format_type = FormatInstanceType::new(exports);
                 format_type.try_into()
             }
-            _ => Err(Error::new(kinds::ValidationError(
+            _ => Err(Error::new(
+                ErrorCategory::Validation,
+                codes::VALIDATION_ERROR,
                 "Expected Instance type definition".to_string(),
-            ))),
+            )),
         }
     }
 }

@@ -14,7 +14,7 @@ use wrt_format::component::{
 };
 use wrt_types::{
     component::{ComponentType, FuncType, InstanceType},
-    component_value::ValType as TypesValType,
+    component_value::ValType,
     types::ValueType,
     ExternType as TypesExternType,
 };
@@ -28,31 +28,31 @@ use super::wrappers::{
 pub fn register_valtype_conversions(registry: &mut TypeConversionRegistry) {
     // Format ValType to Types ValType - primitive types
     registry.register(
-        |format_val_type: &FormatValType| -> Result<TypesValType, ConversionError> {
+        |format_val_type: &FormatValType| -> Result<ValType, ConversionError> {
             match format_val_type {
-                FormatValType::Bool => Ok(TypesValType::Bool),
-                FormatValType::S8 => Ok(TypesValType::S8),
-                FormatValType::U8 => Ok(TypesValType::U8),
-                FormatValType::S16 => Ok(TypesValType::S16),
-                FormatValType::U16 => Ok(TypesValType::U16),
-                FormatValType::S32 => Ok(TypesValType::S32),
-                FormatValType::U32 => Ok(TypesValType::U32),
-                FormatValType::S64 => Ok(TypesValType::S64),
-                FormatValType::U64 => Ok(TypesValType::U64),
-                FormatValType::F32 => Ok(TypesValType::F32),
-                FormatValType::F64 => Ok(TypesValType::F64),
-                FormatValType::Char => Ok(TypesValType::Char),
-                FormatValType::String => Ok(TypesValType::String),
-                FormatValType::Ref(idx) => Ok(TypesValType::Ref(*idx)),
-                FormatValType::Flags(names) => Ok(TypesValType::Flags(names.clone())),
-                FormatValType::Enum(cases) => Ok(TypesValType::Enum(cases.clone())),
-                FormatValType::Own(idx) => Ok(TypesValType::Own(*idx)),
-                FormatValType::Borrow(idx) => Ok(TypesValType::Borrow(*idx)),
+                FormatValType::Bool => Ok(ValType::Bool),
+                FormatValType::S8 => Ok(ValType::S8),
+                FormatValType::U8 => Ok(ValType::U8),
+                FormatValType::S16 => Ok(ValType::S16),
+                FormatValType::U16 => Ok(ValType::U16),
+                FormatValType::S32 => Ok(ValType::S32),
+                FormatValType::U32 => Ok(ValType::U32),
+                FormatValType::S64 => Ok(ValType::S64),
+                FormatValType::U64 => Ok(ValType::U64),
+                FormatValType::F32 => Ok(ValType::F32),
+                FormatValType::F64 => Ok(ValType::F64),
+                FormatValType::Char => Ok(ValType::Char),
+                FormatValType::String => Ok(ValType::String),
+                FormatValType::Ref(idx) => Ok(ValType::Ref(*idx)),
+                FormatValType::Flags(names) => Ok(ValType::Flags(names.clone())),
+                FormatValType::Enum(cases) => Ok(ValType::Enum(cases.clone())),
+                FormatValType::Own(idx) => Ok(ValType::Own(*idx)),
+                FormatValType::Borrow(idx) => Ok(ValType::Borrow(*idx)),
                 // Complex types handled elsewhere or not supported
                 _ => Err(ConversionError {
                     kind: ConversionErrorKind::NotImplemented,
                     source_type: "FormatValType",
-                    target_type: "TypesValType",
+                    target_type: "ValType",
                     context: Some(
                         "Complex type conversion requires registry capabilities".to_string(),
                     ),
@@ -64,30 +64,30 @@ pub fn register_valtype_conversions(registry: &mut TypeConversionRegistry) {
 
     // Types ValType to Format ValType - primitive types
     registry.register(
-        |types_val_type: &TypesValType| -> Result<FormatValType, ConversionError> {
+        |types_val_type: &ValType| -> Result<FormatValType, ConversionError> {
             match types_val_type {
-                TypesValType::Bool => Ok(FormatValType::Bool),
-                TypesValType::S8 => Ok(FormatValType::S8),
-                TypesValType::U8 => Ok(FormatValType::U8),
-                TypesValType::S16 => Ok(FormatValType::S16),
-                TypesValType::U16 => Ok(FormatValType::U16),
-                TypesValType::S32 => Ok(FormatValType::S32),
-                TypesValType::U32 => Ok(FormatValType::U32),
-                TypesValType::S64 => Ok(FormatValType::S64),
-                TypesValType::U64 => Ok(FormatValType::U64),
-                TypesValType::F32 => Ok(FormatValType::F32),
-                TypesValType::F64 => Ok(FormatValType::F64),
-                TypesValType::Char => Ok(FormatValType::Char),
-                TypesValType::String => Ok(FormatValType::String),
-                TypesValType::Ref(idx) => Ok(FormatValType::Ref(*idx)),
-                TypesValType::Flags(names) => Ok(FormatValType::Flags(names.clone())),
-                TypesValType::Enum(cases) => Ok(FormatValType::Enum(cases.clone())),
-                TypesValType::Own(idx) => Ok(FormatValType::Own(*idx)),
-                TypesValType::Borrow(idx) => Ok(FormatValType::Borrow(*idx)),
+                ValType::Bool => Ok(FormatValType::Bool),
+                ValType::S8 => Ok(FormatValType::S8),
+                ValType::U8 => Ok(FormatValType::U8),
+                ValType::S16 => Ok(FormatValType::S16),
+                ValType::U16 => Ok(FormatValType::U16),
+                ValType::S32 => Ok(FormatValType::S32),
+                ValType::U32 => Ok(FormatValType::U32),
+                ValType::S64 => Ok(FormatValType::S64),
+                ValType::U64 => Ok(FormatValType::U64),
+                ValType::F32 => Ok(FormatValType::F32),
+                ValType::F64 => Ok(FormatValType::F64),
+                ValType::Char => Ok(FormatValType::Char),
+                ValType::String => Ok(FormatValType::String),
+                ValType::Ref(idx) => Ok(FormatValType::Ref(*idx)),
+                ValType::Flags(names) => Ok(FormatValType::Flags(names.clone())),
+                ValType::Enum(cases) => Ok(FormatValType::Enum(cases.clone())),
+                ValType::Own(idx) => Ok(FormatValType::Own(*idx)),
+                ValType::Borrow(idx) => Ok(FormatValType::Borrow(*idx)),
                 // Complex types handled elsewhere or not supported
                 _ => Err(ConversionError {
                     kind: ConversionErrorKind::NotImplemented,
-                    source_type: "TypesValType",
+                    source_type: "ValType",
                     target_type: "FormatValType",
                     context: Some(
                         "Complex type conversion requires registry capabilities".to_string(),
@@ -142,16 +142,16 @@ pub fn register_valtype_conversions(registry: &mut TypeConversionRegistry) {
         },
     );
 
-    // ValueType to TypesValType conversion
+    // ValueType to ValType conversion
     registry.register(
-        |value_type: &ValueType| -> Result<TypesValType, ConversionError> {
+        |value_type: &ValueType| -> Result<ValType, ConversionError> {
             match value_type {
-                ValueType::I32 => Ok(TypesValType::S32),
-                ValueType::I64 => Ok(TypesValType::S64),
-                ValueType::F32 => Ok(TypesValType::F32),
-                ValueType::F64 => Ok(TypesValType::F64),
-                ValueType::FuncRef => Ok(TypesValType::Own(0)), // Default to resource type 0
-                ValueType::ExternRef => Ok(TypesValType::Ref(0)), // Default to type index 0
+                ValueType::I32 => Ok(ValType::S32),
+                ValueType::I64 => Ok(ValType::S64),
+                ValueType::F32 => Ok(ValType::F32),
+                ValueType::F64 => Ok(ValType::F64),
+                ValueType::FuncRef => Ok(ValType::Own(0)), // Default to resource type 0
+                ValueType::ExternRef => Ok(ValType::Ref(0)), // Default to type index 0
             }
         },
     );
@@ -179,14 +179,14 @@ mod tests {
         // Test Format to Types ValType
         let format_val_type = FormatValType::S32;
         let types_val_type = registry
-            .convert::<FormatValType, TypesValType>(&format_val_type)
+            .convert::<FormatValType, ValType>(&format_val_type)
             .unwrap();
-        assert!(matches!(types_val_type, TypesValType::S32));
+        assert!(matches!(types_val_type, ValType::S32));
 
         // Test Types to Format ValType
-        let types_val_type = TypesValType::Bool;
+        let types_val_type = ValType::Bool;
         let format_val_type = registry
-            .convert::<TypesValType, FormatValType>(&types_val_type)
+            .convert::<ValType, FormatValType>(&types_val_type)
             .unwrap();
         assert!(matches!(format_val_type, FormatValType::Bool));
 
