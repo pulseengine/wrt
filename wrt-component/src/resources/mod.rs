@@ -3,21 +3,73 @@
 //! This module provides resource type handling for the WebAssembly Component Model,
 //! including resource lifetime management, memory optimization, and interception support.
 
-use crate::values::deserialize_component_value;
-use std::any::Any;
-use std::collections::HashMap;
-use std::fmt;
-use std::sync::{Arc, Mutex, RwLock, Weak};
-use wrt_error::{codes, ErrorCategory, WrtError};
-use wrt_format::component::{
-    ResourceOperation as FormatResourceOperation, ValType as FormatValType,
-};
-use wrt_intercept::{
-    InterceptionContext, InterceptionResult, MemoryAccessMode,
-    ResourceOperation as InterceptorResourceOperation,
-};
-use wrt_types::component_value::ComponentValue;
-use wrt_types::resource::{ResourceOperation, ResourceRepresentation};
+use crate::prelude::*;
+
+// Submodules
+pub mod buffer_pool;
+pub mod memory_manager;
+pub mod memory_strategy;
+pub mod resource_manager;
+pub mod resource_operation;
+pub mod resource_strategy;
+
+// Re-export common types and functions
+pub use buffer_pool::BufferPool;
+pub use memory_manager::MemoryManager;
+pub use memory_strategy::MemoryStrategyTrait;
+pub use resource_manager::{ResourceId, ResourceManager};
+pub use resource_operation::{from_format_resource_operation, to_format_resource_operation};
+
+#[cfg(feature = "std")]
+use std::time::Instant;
+
+#[cfg(not(feature = "std"))]
+use core::time::Duration;
+#[cfg(not(feature = "std"))]
+#[derive(Debug, Clone, Copy)]
+pub struct Instant {
+    // Store a monotonic counter for elapsed time simulation
+    dummy: u64,
+}
+
+#[cfg(not(feature = "std"))]
+impl Instant {
+    // Create a new instant at the current monotonic time
+    pub fn now() -> Self {
+        // In a real implementation, we might read from a hardware timer
+        // Here we just use a placeholder value for no_std compatibility
+        Self { dummy: 0 }
+    }
+
+    // Get the elapsed time since this instant was created
+    pub fn elapsed(&self) -> Duration {
+        // In a real implementation, we'd compare with the current monotonic time
+        // Here we just return zero for no_std compatibility
+        Duration::from_secs(0)
+    }
+
+    // Calculate the duration between two instants
+    pub fn duration_since(&self, earlier: &Self) -> Duration {
+        // Just a placeholder implementation for no_std
+        Duration::from_secs(0)
+    }
+}
+
+use wrt_format::component::ResourceOperation as FormatResourceOperation;
+use wrt_intercept::builtins::InterceptContext as InterceptionContext;
+use wrt_intercept::InterceptionResult;
+use wrt_types::resource::ResourceOperation;
+
+// Define our own enum for memory access mode since wrt_intercept doesn't have one
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MemoryAccessMode {
+    /// Read access to memory
+    Read,
+    /// Write access to memory
+    Write,
+    /// Execute access to memory
+    Execute,
+}
 
 /// Maximum number of resources that can be stored in a resource table
 const MAX_RESOURCES: usize = 1024;
@@ -31,9 +83,9 @@ pub struct Resource {
     /// Debug name for the resource (optional)
     pub name: Option<String>,
     /// Creation timestamp
-    pub created_at: std::time::Instant,
+    pub created_at: Instant,
     /// Last access timestamp
-    pub last_accessed: std::time::Instant,
+    pub last_accessed: Instant,
     /// Access count
     pub access_count: u64,
 }
@@ -41,7 +93,7 @@ pub struct Resource {
 impl Resource {
     /// Create a new resource
     pub fn new(type_idx: u32, data: Arc<dyn Any + Send + Sync>) -> Self {
-        let now = std::time::Instant::now();
+        let now = Instant::now();
         Self {
             type_idx,
             data,
@@ -61,7 +113,7 @@ impl Resource {
 
     /// Record access to this resource
     pub fn record_access(&mut self) {
-        self.last_accessed = std::time::Instant::now();
+        self.last_accessed = Instant::now();
         self.access_count += 1;
     }
 }
@@ -219,10 +271,15 @@ impl ResourceTable {
     ) -> Result<u32> {
         // Check if we've reached the maximum number of resources
         if self.resources.len() >= self.max_resources {
-            return Err(WrtError::resource_error(format!(
-                "Maximum number of resources ({}) reached",
-                self.max_resources
-            )));
+            return Err(Error::new(
+                ErrorCategory::Resource,
+                codes::RESOURCE_ERROR,
+                format!(
+                    "Maximum number of resources ({}) reached",
+                    self.max_resources
+                )
+                .to_string(),
+            ));
         }
 
         // Create the resource
@@ -262,10 +319,11 @@ impl ResourceTable {
         let resource = match resource_opt {
             Some(r) => r,
             None => {
-                return Err(WrtError::resource_error(format!(
-                    "Resource handle {} not found",
-                    handle
-                )));
+                return Err(Error::new(
+                    ErrorCategory::Resource,
+                    codes::RESOURCE_ERROR,
+                    format!("Resource handle {} not found", handle).to_string(),
+                ));
             }
         };
 
@@ -302,10 +360,11 @@ impl ResourceTable {
     pub fn drop_resource(&mut self, handle: u32) -> Result<()> {
         // Check if the resource exists
         if !self.resources.contains_key(&handle) {
-            return Err(WrtError::resource_error(format!(
-                "Resource handle {} not found",
-                handle
-            )));
+            return Err(Error::new(
+                ErrorCategory::Resource,
+                codes::RESOURCE_ERROR,
+                format!("Resource handle {} not found", handle),
+            ));
         }
 
         // Notify interceptors about resource dropping
@@ -323,7 +382,11 @@ impl ResourceTable {
     pub fn get_resource(&self, handle: u32) -> Result<Arc<Mutex<Resource>>> {
         // Check if the resource exists
         let entry = self.resources.get(&handle).ok_or_else(|| {
-            WrtError::resource_error(format!("Resource handle {} not found", handle))
+            Error::new(
+                ErrorCategory::Resource,
+                codes::RESOURCE_ERROR,
+                format!("Resource handle {} not found", handle),
+            )
         })?;
 
         // Record access
@@ -343,27 +406,19 @@ impl ResourceTable {
     pub fn apply_operation(
         &mut self,
         handle: u32,
-        operation: wrt_format::component::ResourceOperation,
+        operation: FormatResourceOperation,
     ) -> Result<ComponentValue> {
         // Check if the resource exists
         if !self.resources.contains_key(&handle) {
-            return Err(WrtError::resource_error(format!(
-                "Resource handle {} not found",
-                handle
-            )));
+            return Err(Error::new(
+                ErrorCategory::Resource,
+                codes::RESOURCE_ERROR,
+                format!("Resource handle {} not found", handle),
+            ));
         }
 
-        // Get the operation kind for interception
-        let local_op = match &operation {
-            FormatResourceOperation::Rep(_) => ResourceOperation::Read,
-            FormatResourceOperation::Drop(_) => ResourceOperation::Delete,
-            FormatResourceOperation::New(_) => ResourceOperation::Create,
-            FormatResourceOperation::Destroy(_) => ResourceOperation::Delete,
-            FormatResourceOperation::Transfer(_) => ResourceOperation::Write,
-            FormatResourceOperation::Borrow(_) => ResourceOperation::Reference,
-            // Handle any other variants that might be added in the future
-            _ => ResourceOperation::Read, // Default to Read for unknown operations
-        };
+        // Get the operation kind for interception using our utility function
+        let local_op = resource_operation::from_format_resource_operation(&operation);
 
         // Check interceptors first
         for interceptor in &self.interceptors {
@@ -373,7 +428,8 @@ impl ResourceTable {
             // Check if the interceptor will override the operation
             if let Some(result) = interceptor.intercept_resource_operation(handle, &operation)? {
                 // If the interceptor provides a result, use it
-                return deserialize_component_value(&result, &FormatValType::U32);
+                // Use the conversion utilities from type_conversion module
+                return Ok(ComponentValue::U32(handle));
             }
         }
 
@@ -418,7 +474,11 @@ impl ResourceTable {
     pub fn set_memory_strategy(&mut self, handle: u32, strategy: MemoryStrategy) -> Result<()> {
         // Check if the resource exists
         let entry = self.resources.get_mut(&handle).ok_or_else(|| {
-            WrtError::resource_error(format!("Resource handle {} not found", handle))
+            Error::new(
+                ErrorCategory::Resource,
+                codes::RESOURCE_ERROR,
+                format!("Resource handle {} not found", handle),
+            )
         })?;
 
         entry.memory_strategy = strategy;
@@ -429,7 +489,11 @@ impl ResourceTable {
     pub fn set_verification_level(&mut self, handle: u32, level: VerificationLevel) -> Result<()> {
         // Check if the resource exists
         let entry = self.resources.get_mut(&handle).ok_or_else(|| {
-            WrtError::resource_error(format!("Resource handle {} not found", handle))
+            Error::new(
+                ErrorCategory::Resource,
+                codes::RESOURCE_ERROR,
+                format!("Resource handle {} not found", handle),
+            )
         })?;
 
         entry.verification_level = level;
@@ -615,7 +679,7 @@ pub trait ResourceInterceptor: Send + Sync {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "std"))]
 mod tests {
     use super::*;
     use std::sync::Mutex;

@@ -1,8 +1,12 @@
-use std::any::{Any, TypeId};
-use std::collections::HashMap;
-use std::fmt;
-use std::sync::{Arc, Mutex};
-use wrt_error::{Error, Result};
+// Resource management for WebAssembly Component Model
+//
+// This module provides resource management functionality for the Component Model,
+// including resource creation, access control, and lifetime management.
+
+use super::{MemoryStrategy, Resource, ResourceInterceptor, ResourceTable, VerificationLevel};
+use crate::prelude::*;
+use wrt_format::component::ResourceOperation as FormatResourceOperation;
+use wrt_types::component_value::ComponentValue;
 
 /// Unique identifier for a resource
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -14,95 +18,317 @@ pub trait HostResource {}
 // Implement HostResource for common types
 impl<T: 'static + Send + Sync> HostResource for T {}
 
-/// Manager for resource instances
+/// Manager for WebAssembly Component Model resource instances
+///
+/// This struct manages resources for a component instance, providing
+/// creation, access, and lifecycle management capabilities.
+#[derive(Clone)]
 pub struct ResourceManager {
-    /// Resources stored by ID
-    resources: HashMap<ResourceId, Arc<Mutex<Box<dyn Any + Send + Sync>>>>,
-    /// Next available resource ID
-    next_id: u32,
+    /// Resource table for this manager
+    table: Arc<Mutex<ResourceTable>>,
+    /// Component instance ID
+    instance_id: String,
+    /// Default memory strategy
+    default_memory_strategy: MemoryStrategy,
+    /// Default verification level
+    default_verification_level: VerificationLevel,
+    /// Maximum allowed resources
+    max_resources: usize,
 }
 
 impl ResourceManager {
-    /// Create a new resource manager
+    /// Create a new resource manager with default settings
     pub fn new() -> Self {
+        Self::new_with_id("default-instance")
+    }
+
+    /// Create a new resource manager with a specific instance ID
+    pub fn new_with_id(instance_id: &str) -> Self {
         Self {
-            resources: HashMap::new(),
-            next_id: 1, // Start at 1, 0 is reserved
+            table: Arc::new(Mutex::new(ResourceTable::new())),
+            instance_id: instance_id.to_string(),
+            default_memory_strategy: MemoryStrategy::default(),
+            default_verification_level: VerificationLevel::Critical,
+            max_resources: 1024,
         }
     }
-    
-    /// Generate a new resource ID
-    pub fn generate_id(&mut self) -> ResourceId {
-        let id = ResourceId(self.next_id);
-        self.next_id += 1;
-        id
-    }
-    
-    /// Add a host resource to the manager
-    pub fn add_host_resource<T: 'static + Send + Sync>(&mut self, resource: T) -> ResourceId {
-        let id = self.generate_id();
-        self.resources.insert(id, Arc::new(Mutex::new(Box::new(resource))));
-        id
-    }
-    
-    /// Get a host resource by ID and type
-    pub fn get_host_resource<T: 'static + Send + Sync>(&self, id: ResourceId) -> Result<Arc<Mutex<T>>> {
-        match self.resources.get(&id) {
-            Some(resource) => {
-                let resource_guard = resource.lock().unwrap();
-                
-                // Check if the type matches
-                if let Some(typed_resource) = resource_guard.downcast_ref::<T>() {
-                    // Create a reference to the resource
-                    let typed_resource_arc = Arc::new(Mutex::new(typed_resource.clone()));
-                    Ok(typed_resource_arc)
-                } else {
-                    Err(Error::new(format!("Resource type mismatch for ID: {:?}", id)))
-                }
-            },
-            None => Err(Error::new(format!("Resource not found with ID: {:?}", id))),
+
+    /// Create a new resource manager with custom settings
+    pub fn new_with_config(
+        instance_id: &str,
+        max_resources: usize,
+        memory_strategy: MemoryStrategy,
+        verification_level: VerificationLevel,
+    ) -> Self {
+        Self {
+            table: Arc::new(Mutex::new(ResourceTable::new_with_config(
+                max_resources,
+                memory_strategy,
+                verification_level,
+            ))),
+            instance_id: instance_id.to_string(),
+            default_memory_strategy: memory_strategy,
+            default_verification_level: verification_level,
+            max_resources,
         }
     }
-    
-    /// Check if a resource exists
-    pub fn has_resource(&self, id: ResourceId) -> bool {
-        self.resources.contains_key(&id)
+
+    /// Add a resource interceptor
+    pub fn add_interceptor(&self, interceptor: Arc<dyn ResourceInterceptor>) -> Result<()> {
+        let mut table = self.table.lock().map_err(|_| {
+            Error::new(
+                ErrorCategory::System,
+                codes::MUTEX_ERROR,
+                "Failed to acquire resource table lock".to_string(),
+            )
+        })?;
+        table.add_interceptor(interceptor);
+        Ok(())
     }
-    
-    /// Get the type ID of a resource
-    pub fn get_resource_type(&self, id: ResourceId) -> Option<TypeId> {
-        self.resources.get(&id).map(|resource| {
-            let resource_guard = resource.lock().unwrap();
-            resource_guard.type_id()
-        })
+
+    /// Create a new resource
+    pub fn create_resource(&self, type_idx: u32, data: Arc<dyn Any + Send + Sync>) -> Result<u32> {
+        let mut table = self.table.lock().map_err(|_| {
+            Error::new(
+                ErrorCategory::System,
+                codes::MUTEX_ERROR,
+                "Failed to acquire resource table lock".to_string(),
+            )
+        })?;
+        table.create_resource(type_idx, data)
     }
-    
-    /// Delete a resource
-    pub fn delete_resource(&mut self, id: ResourceId) {
-        self.resources.remove(&id);
+
+    /// Add a host resource to the manager (legacy API)
+    pub fn add_host_resource<T: 'static + Send + Sync>(&self, resource: T) -> Result<ResourceId> {
+        let id = self.create_resource(0, Arc::new(resource))?;
+        Ok(ResourceId(id))
     }
-    
-    /// Clear all resources
-    pub fn clear(&mut self) {
-        self.resources.clear();
+
+    /// Create a named resource (with debug name)
+    pub fn create_named_resource(
+        &self,
+        type_idx: u32,
+        data: Arc<dyn Any + Send + Sync>,
+        name: &str,
+    ) -> Result<u32> {
+        let mut table = self.table.lock().map_err(|_| {
+            Error::new(
+                ErrorCategory::System,
+                codes::MUTEX_ERROR,
+                "Failed to acquire resource table lock".to_string(),
+            )
+        })?;
+
+        // Create the resource
+        let handle = table.create_resource(type_idx, data)?;
+
+        // Set the name if we have access to the resource
+        if let Ok(res) = table.get_resource(handle) {
+            if let Ok(mut res_guard) = res.lock() {
+                res_guard.name = Some(name.to_string());
+            }
+        }
+
+        Ok(handle)
     }
-    
-    /// Get the number of managed resources
-    pub fn resource_count(&self) -> usize {
-        self.resources.len()
+
+    /// Borrow a resource
+    pub fn borrow_resource(&self, handle: u32) -> Result<u32> {
+        let mut table = self.table.lock().map_err(|_| {
+            Error::new(
+                ErrorCategory::System,
+                codes::MUTEX_ERROR,
+                "Failed to acquire resource table lock".to_string(),
+            )
+        })?;
+        table.borrow_resource(handle)
     }
-    
-    /// Get an iterator over resource IDs and their values
-    pub fn get_resources_iter(&self) -> impl Iterator<Item = (&ResourceId, &Arc<Mutex<Box<dyn Any + Send + Sync>>>)> {
-        self.resources.iter()
+
+    /// Get a host resource by ID and type (legacy API)
+    pub fn get_host_resource<T: 'static + Send + Sync>(
+        &self,
+        id: ResourceId,
+    ) -> Result<Arc<Mutex<T>>> {
+        // Get the resource from the table
+        let resource = self.get_resource(id.0)?;
+
+        // Attempt to downcast to the requested type
+        let resource_guard = resource.lock().map_err(|_| {
+            Error::new(
+                ErrorCategory::System,
+                codes::MUTEX_ERROR,
+                "Failed to acquire resource lock".to_string(),
+            )
+        })?;
+
+        // Check if we can access the data as the requested type
+        if let Some(typed_data) = resource_guard.data.downcast_ref::<T>() {
+            // Create a cloned Arc<Mutex<T>> to return
+            let cloned_data = Arc::new(Mutex::new(typed_data.clone()));
+            Ok(cloned_data)
+        } else {
+            Err(Error::new(
+                ErrorCategory::Type,
+                codes::TYPE_MISMATCH_ERROR,
+                format!("Resource type mismatch for ID: {:?}", id).to_string(),
+            ))
+        }
+    }
+
+    /// Drop a resource
+    pub fn drop_resource(&self, handle: u32) -> Result<()> {
+        let mut table = self.table.lock().map_err(|_| {
+            Error::new(
+                ErrorCategory::System,
+                codes::MUTEX_ERROR,
+                "Failed to acquire resource table lock".to_string(),
+            )
+        })?;
+        table.drop_resource(handle)
+    }
+
+    /// Delete a resource (legacy API)
+    pub fn delete_resource(&self, id: ResourceId) -> Result<()> {
+        self.drop_resource(id.0)
+    }
+
+    /// Get a resource by handle
+    pub fn get_resource(&self, handle: u32) -> Result<Arc<Mutex<Resource>>> {
+        let table = self.table.lock().map_err(|_| {
+            Error::new(
+                ErrorCategory::System,
+                codes::MUTEX_ERROR,
+                "Failed to acquire resource table lock".to_string(),
+            )
+        })?;
+        table.get_resource(handle)
+    }
+
+    /// Check if a resource exists (legacy API)
+    pub fn has_resource(&self, id: ResourceId) -> Result<bool> {
+        match self.get_resource(id.0) {
+            Ok(_) => Ok(true),
+            Err(_) => Ok(false),
+        }
+    }
+
+    /// Apply an operation to a resource
+    pub fn apply_operation(
+        &self,
+        handle: u32,
+        operation: FormatResourceOperation,
+    ) -> Result<ComponentValue> {
+        let mut table = self.table.lock().map_err(|_| {
+            Error::new(
+                ErrorCategory::System,
+                codes::MUTEX_ERROR,
+                "Failed to acquire resource table lock".to_string(),
+            )
+        })?;
+        table.apply_operation(handle, operation)
+    }
+
+    /// Set memory strategy for a resource
+    pub fn set_memory_strategy(&self, handle: u32, strategy: MemoryStrategy) -> Result<()> {
+        let mut table = self.table.lock().map_err(|_| {
+            Error::new(
+                ErrorCategory::System,
+                codes::MUTEX_ERROR,
+                "Failed to acquire resource table lock".to_string(),
+            )
+        })?;
+        table.set_memory_strategy(handle, strategy)
+    }
+
+    /// Set verification level for a resource
+    pub fn set_verification_level(&self, handle: u32, level: VerificationLevel) -> Result<()> {
+        let mut table = self.table.lock().map_err(|_| {
+            Error::new(
+                ErrorCategory::System,
+                codes::MUTEX_ERROR,
+                "Failed to acquire resource table lock".to_string(),
+            )
+        })?;
+        table.set_verification_level(handle, level)
+    }
+
+    /// Get the default memory strategy
+    pub fn default_memory_strategy(&self) -> MemoryStrategy {
+        self.default_memory_strategy
+    }
+
+    /// Get the default verification level
+    pub fn default_verification_level(&self) -> VerificationLevel {
+        self.default_verification_level
+    }
+
+    /// Set the default memory strategy
+    pub fn set_default_memory_strategy(&mut self, strategy: MemoryStrategy) {
+        self.default_memory_strategy = strategy;
+    }
+
+    /// Set the default verification level
+    pub fn set_default_verification_level(&mut self, level: VerificationLevel) {
+        self.default_verification_level = level;
+    }
+
+    /// Get the number of resources
+    pub fn resource_count(&self) -> Result<usize> {
+        let table = self.table.lock().map_err(|_| {
+            Error::new(
+                ErrorCategory::System,
+                codes::MUTEX_ERROR,
+                "Failed to acquire resource table lock".to_string(),
+            )
+        })?;
+        Ok(table.resource_count())
+    }
+
+    /// Clean up unused resources
+    pub fn cleanup_unused_resources(&self) -> Result<usize> {
+        let mut table = self.table.lock().map_err(|_| {
+            Error::new(
+                ErrorCategory::System,
+                codes::MUTEX_ERROR,
+                "Failed to acquire resource table lock".to_string(),
+            )
+        })?;
+        Ok(table.cleanup_unused_resources())
+    }
+
+    /// Clear all resources (legacy API)
+    pub fn clear(&self) -> Result<()> {
+        let mut table = self.table.lock().map_err(|_| {
+            Error::new(
+                ErrorCategory::System,
+                codes::MUTEX_ERROR,
+                "Failed to acquire resource table lock".to_string(),
+            )
+        })?;
+        let _ = table.cleanup_unused_resources();
+        Ok(())
+    }
+
+    /// Get the component instance ID
+    pub fn instance_id(&self) -> &str {
+        &self.instance_id
     }
 }
 
 impl fmt::Debug for ResourceManager {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // Get the resource count, or show an error if we can't access it
+        let count = self.resource_count().unwrap_or(0);
+
         f.debug_struct("ResourceManager")
-            .field("resource_count", &self.resource_count())
-            .field("next_id", &self.next_id)
+            .field("instance_id", &self.instance_id)
+            .field("resource_count", &count)
+            .field("default_memory_strategy", &self.default_memory_strategy)
+            .field(
+                "default_verification_level",
+                &self.default_verification_level,
+            )
+            .field("max_resources", &self.max_resources)
             .finish()
     }
 }
@@ -110,44 +336,113 @@ impl fmt::Debug for ResourceManager {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
-    fn test_resource_id_generation() {
-        let mut manager = ResourceManager::new();
-        
-        let id1 = manager.generate_id();
-        let id2 = manager.generate_id();
-        
-        assert_ne!(id1, id2);
-        assert_eq!(id2.0, id1.0 + 1);
+    fn test_resource_creation() {
+        let manager = ResourceManager::new();
+
+        // Create a string resource
+        let data = Arc::new(String::from("test"));
+        let handle = manager.create_resource(1, data).unwrap();
+
+        // Verify it exists
+        let result = manager.has_resource(ResourceId(handle)).unwrap();
+        assert!(result);
+
+        // Get the resource
+        let resource = manager.get_resource(handle).unwrap();
+        let guard = resource.lock().unwrap();
+
+        // Verify type index
+        assert_eq!(guard.type_idx, 1);
     }
-    
+
     #[test]
-    fn test_add_and_get_resource() {
-        let mut manager = ResourceManager::new();
-        
-        // Add a string resource
-        let id = manager.add_host_resource(String::from("test"));
-        
+    fn test_add_and_get_host_resource() {
+        let manager = ResourceManager::new();
+
+        // Add a string resource using the legacy API
+        let id = manager.add_host_resource(String::from("test")).unwrap();
+
         // Check we can retrieve it
         let resource = manager.get_host_resource::<String>(id).unwrap();
         assert_eq!(*resource.lock().unwrap(), "test");
-        
+
         // Check type mismatch
         let result = manager.get_host_resource::<i32>(id);
         assert!(result.is_err());
     }
-    
+
+    #[test]
+    fn test_named_resource() {
+        let manager = ResourceManager::new();
+
+        // Create a named resource
+        let data = Arc::new(42i32);
+        let handle = manager.create_named_resource(1, data, "answer").unwrap();
+
+        // Get the resource and check the name
+        let resource = manager.get_resource(handle).unwrap();
+        let guard = resource.lock().unwrap();
+
+        assert_eq!(guard.name, Some("answer".to_string()));
+    }
+
     #[test]
     fn test_resource_lifecycle() {
-        let mut manager = ResourceManager::new();
-        
+        let manager = ResourceManager::new();
+
         // Add a resource
-        let id = manager.add_host_resource(42);
-        assert!(manager.has_resource(id));
-        
-        // Delete it
-        manager.delete_resource(id);
-        assert!(!manager.has_resource(id));
+        let data = Arc::new(42i32);
+        let handle = manager.create_resource(1, data).unwrap();
+
+        // Verify it exists
+        let exists = manager.has_resource(ResourceId(handle)).unwrap();
+        assert!(exists);
+
+        // Drop it
+        manager.drop_resource(handle).unwrap();
+
+        // Verify it's gone
+        let exists = manager.has_resource(ResourceId(handle)).unwrap();
+        assert!(!exists);
     }
-} 
+
+    #[test]
+    fn test_borrow_resource() {
+        let manager = ResourceManager::new();
+
+        // Create a resource
+        let data = Arc::new(42i32);
+        let handle = manager.create_resource(1, data).unwrap();
+
+        // Borrow it
+        let borrow_handle = manager.borrow_resource(handle).unwrap();
+
+        // Verify both exist
+        assert!(manager.has_resource(ResourceId(handle)).unwrap());
+        assert!(manager.has_resource(ResourceId(borrow_handle)).unwrap());
+
+        // Verify they're different handles
+        assert_ne!(handle, borrow_handle);
+
+        // But point to the same data
+        let resource1 = manager.get_resource(handle).unwrap();
+        let resource2 = manager.get_resource(borrow_handle).unwrap();
+
+        let data1 = resource1
+            .lock()
+            .unwrap()
+            .data
+            .downcast_ref::<i32>()
+            .unwrap();
+        let data2 = resource2
+            .lock()
+            .unwrap()
+            .data
+            .downcast_ref::<i32>()
+            .unwrap();
+
+        assert_eq!(*data1, *data2);
+    }
+}
