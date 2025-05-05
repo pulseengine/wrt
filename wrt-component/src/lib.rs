@@ -12,43 +12,47 @@
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 extern crate alloc;
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::{boxed::Box, string::String, vec::Vec};
+// Verify that we have alloc when using no_std
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+compile_error!("The 'alloc' feature must be enabled when using no_std");
 
-#[cfg(feature = "std")]
-use std::{boxed::Box, string::String, vec::Vec};
-
-#[cfg(feature = "std")]
-use std::sync::Arc;
-
-#[cfg(not(feature = "std"))]
-use alloc::sync::Arc;
-
-// Reexports for convenience
-pub use wrt_error::{Error, Result};
-pub use wrt_host::CallbackRegistry;
+// Export our prelude module for consistent imports
+pub mod prelude;
 
 // Export modules
 pub mod builtins;
 pub mod canonical;
 pub mod component;
+pub mod component_registry;
 pub mod execution;
 pub mod export;
+pub mod export_map;
+pub mod factory;
 pub mod host;
 pub mod import;
+pub mod import_map;
 pub mod instance;
+pub mod modules;
 pub mod namespace;
 pub mod parser;
 pub mod resources;
 pub mod runtime;
 pub mod strategies;
 pub mod type_conversion;
+pub mod types;
 pub mod values;
 
-// Reexport types
+// Include verification module when the kani feature is enabled
+#[cfg(feature = "kani")]
+pub mod verify;
+
+// Re-export core types and functionality for convenience
 pub use builtins::{BuiltinHandler, BuiltinRegistry};
 pub use canonical::CanonicalABI;
+pub use component::{Component, ExternValue, FunctionValue, GlobalValue, MemoryValue, TableValue};
+pub use component_registry::ComponentRegistry;
 pub use export::Export;
+pub use factory::ComponentFactory;
 pub use host::Host;
 pub use import::Import;
 pub use instance::InstanceValue;
@@ -59,31 +63,26 @@ pub use strategies::memory::{
     BoundedCopyStrategy, FullIsolationStrategy, MemoryOptimizationStrategy, ZeroCopyStrategy,
 };
 pub use type_conversion::{
-    format_to_types_component_type, format_to_types_extern_type, format_val_type_to_value_type,
-    runtime_to_format_extern_type as types_to_format_extern_type, types_to_format_component_type,
-    types_valtype_to_format_valtype, value_type_to_format_val_type, IntoFormatType,
-    IntoRuntimeType,
+    complete_format_to_types_extern_type, complete_types_to_format_extern_type,
+    format_to_runtime_extern_type as format_to_types_extern_type, format_to_types_valtype,
+    format_val_type_to_value_type, format_valtype_to_types_valtype,
+    runtime_to_format_extern_type as types_to_format_extern_type,
+    types_componentvalue_to_core_value, types_componentvalue_to_format_constvalue,
+    types_valtype_to_format_valtype, types_valtype_to_valuetype, value_type_to_format_val_type,
+    value_type_to_types_valtype, IntoFormatType, IntoRuntimeType,
 };
+pub use types::ComponentInstance;
 pub use values::{
     component_to_core_value, component_value_to_value, core_to_component_value,
     deserialize_component_value, encode_component_value as serialize_component_value,
     format_valtype_to_common_valtype, value_to_component_value,
 };
+pub use wrt_error::{codes, Error, ErrorCategory, Result};
+pub use wrt_host::CallbackRegistry;
 pub use wrt_types::builtin::BuiltinType;
 pub use wrt_types::component::ComponentType;
 pub use wrt_types::types::ValueType;
 pub use wrt_types::values::Value;
-
-// Include verification module when the kani feature is enabled
-#[cfg(feature = "kani")]
-pub mod verify;
-
-pub use component::Component;
-pub use component::ExternValue;
-pub use component::FunctionValue;
-pub use component::GlobalValue;
-pub use component::MemoryValue;
-pub use component::TableValue;
 
 /// Debug logging macro - conditionally compiled
 #[macro_export]
