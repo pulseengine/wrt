@@ -4,6 +4,7 @@
 //! resource types, including resource tables, lifetime management, and
 //! reference counting.
 
+use crate::prelude::Mutex;
 use crate::{
     error::{kinds, Error, Result},
     prelude::{format, String, Vec},
@@ -16,7 +17,6 @@ use std::collections::HashMap;
 use std::fmt;
 #[cfg(feature = "std")]
 use std::sync::Arc;
-use std::sync::Mutex;
 
 /// A unique identifier for a resource instance
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

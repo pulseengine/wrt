@@ -12,14 +12,16 @@ std = [
     "wrt-error/std", 
     "wrt-types/std",
     "wrt-runtime/std",
+    "wrt-sync/std",
 ]
 no_std = [
     "wrt-error/no_std", 
     "wrt-types/no_std",
     "wrt-runtime/no_std",
+    "wrt-sync/no_std",
     "alloc",
 ]
-alloc = ["wrt-error/alloc", "wrt-types/alloc", "wrt-runtime/alloc", "dep:alloc"]
+alloc = ["wrt-error/alloc", "wrt-types/alloc", "wrt-runtime/alloc", "wrt-sync/alloc", "dep:alloc"]
 optimize = ["wrt-types/optimize", "wrt-runtime/optimize"]
 safety = ["wrt-types/safety", "wrt-runtime/safety"]
 
@@ -27,6 +29,7 @@ safety = ["wrt-types/safety", "wrt-runtime/safety"]
 wrt-error = { path = "../wrt-error", version = "0.2.0" }
 wrt-types = { path = "../wrt-types", version = "0.2.0" }
 wrt-runtime = { path = "../wrt-runtime", version = "0.2.0" }
+wrt-sync = { path = "../wrt-sync", version = "0.2.0" }
 
 # No-std support
 alloc = { version = "1.0.0", optional = true, package = "rustc-std-workspace-alloc" }

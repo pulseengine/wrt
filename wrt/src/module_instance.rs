@@ -143,9 +143,58 @@ impl ModuleInstance {
     /// Gets a table by index
     pub fn get_table_mut(&mut self, idx: usize) -> Result<Arc<Table>> {
         self.tables
-            .get(idx)
+            .get_mut(idx)
             .cloned()
             .ok_or_else(|| Error::new(kinds::InvalidTableIndexError(idx as u32)))
+    }
+
+    /// Set a value in the table at the specified index
+    pub fn table_set(
+        &mut self,
+        table_idx: usize,
+        elem_idx: u32,
+        value: Option<Value>,
+    ) -> Result<()> {
+        // Get a reference to the table
+        let table = self.get_table_mut(table_idx)?;
+
+        // Since we can't mutate the Arc<Table> directly, we need to use a workaround
+        // Create a mutable clone of the table
+        let mut table_clone = (*table).clone();
+
+        // Perform the operation on the clone
+        let result = table_clone.set(elem_idx, value);
+
+        // Replace the original table with the modified clone
+        if result.is_ok() {
+            if let Some(table_ref) = self.tables.get_mut(table_idx) {
+                *table_ref = Arc::new(table_clone);
+            }
+        }
+
+        result
+    }
+
+    /// Grow the table by the specified amount
+    pub fn table_grow(&mut self, table_idx: usize, delta: u32, init_value: Value) -> Result<u32> {
+        // Get a reference to the table
+        let table = self.get_table_mut(table_idx)?;
+
+        // Since we can't mutate the Arc<Table> directly, we need to use a workaround
+        // Create a mutable clone of the table
+        let mut table_clone = (*table).clone();
+
+        // Perform the operation on the clone
+        let result = table_clone.grow(delta, init_value);
+
+        // Replace the original table with the modified clone
+        if let Ok(_) = result {
+            if let Some(table_ref) = self.tables.get_mut(table_idx) {
+                *table_ref = Arc::new(table_clone);
+            }
+        }
+
+        result
     }
 
     /// Sets a global value by index (modifies Arc<Global>)

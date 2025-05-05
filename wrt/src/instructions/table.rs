@@ -129,10 +129,10 @@ pub fn table_init(
         .checked_add(n)
         .map_or(true, |end| end as usize > element_segment.items.len())
     {
-        return Err(Error::new(kinds::TableAccessOutOfBoundsError {
-            table_idx: dst_table_idx,
-            element_idx: elem_idx as usize,
-        }));
+        return Err(Error::new(kinds::TableAccessOutOfBoundsError(
+            dst_table_idx,
+            elem_idx as usize,
+        )));
     }
     // Compare end (u32) with table.size() (usize) correctly
     if dst
@@ -150,20 +150,20 @@ pub fn table_init(
             .items
             .get((src + i) as usize)
             .ok_or_else(|| {
-                Error::new(kinds::TableAccessOutOfBoundsError {
-                    table_idx: dst_table_idx,
-                    element_idx: (src + i) as usize,
-                })
+                Error::new(kinds::TableAccessOutOfBoundsError(
+                    dst_table_idx,
+                    (src + i) as usize,
+                ))
             })?;
 
         let value_to_set = Value::FuncRef(Some(*elem_item));
         table
             .set((dst + i) as u32, Some(value_to_set))
             .map_err(|e| {
-                Error::new(kinds::TableAccessOutOfBoundsError {
-                    table_idx: dst_table_idx,
-                    element_idx: (src + i) as usize,
-                })
+                Error::new(kinds::TableAccessOutOfBoundsError(
+                    dst_table_idx,
+                    (src + i) as usize,
+                ))
             })?;
     }
 
