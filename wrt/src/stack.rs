@@ -1,8 +1,14 @@
 use crate::behavior::{self, Label as BehaviorLabel, StackBehavior};
-use wrt_error::{Error, Result, kinds};
-use crate::values::Value;
+use crate::prelude::TypesValue as Value;
 use crate::StacklessEngine;
+use wrt_error::{kinds, Error, Result};
+
+// Import Vec for standard stack
+#[cfg(feature = "std")]
 use std::vec::Vec;
+
+// Import SafeStack for memory-safe stack
+use wrt_types::safe_memory::SafeStack;
 
 /// Represents a control flow label on the stack (e.g., for blocks, loops, ifs).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -47,6 +53,8 @@ impl From<Label> for BehaviorLabel {
     }
 }
 
+// Implementation for standard Vec-based stack (when std feature is enabled)
+#[cfg(feature = "std")]
 impl StackBehavior for Vec<Value> {
     fn push(&mut self, value: Value) -> Result<(), Error> {
         self.push(value);
@@ -54,15 +62,18 @@ impl StackBehavior for Vec<Value> {
     }
 
     fn pop(&mut self) -> Result<Value, Error> {
-        self.pop().ok_or_else(|| Error::new(kinds::StackUnderflowError))
+        self.pop()
+            .ok_or_else(|| Error::new(kinds::StackUnderflowError))
     }
 
     fn peek(&self) -> Result<&Value, Error> {
-        self.last().ok_or_else(|| Error::new(kinds::StackUnderflowError))
+        self.last()
+            .ok_or_else(|| Error::new(kinds::StackUnderflowError))
     }
 
     fn peek_mut(&mut self) -> Result<&mut Value, Error> {
-        self.last_mut().ok_or_else(|| Error::new(kinds::StackUnderflowError))
+        self.last_mut()
+            .ok_or_else(|| Error::new(kinds::StackUnderflowError))
     }
 
     fn values(&self) -> &[Value] {
@@ -83,12 +94,16 @@ impl StackBehavior for Vec<Value> {
 
     fn push_label(&mut self, label: BehaviorLabel) -> Result<(), Error> {
         // Stack doesn't track labels directly - unsupported operation
-        Err(Error::new(kinds::NotImplementedError("push_label not supported on raw stack".to_string())))
+        Err(Error::new(kinds::NotImplementedError(
+            "push_label not supported on raw stack".to_string(),
+        )))
     }
 
     fn pop_label(&mut self) -> Result<BehaviorLabel, Error> {
         // Stack doesn't track labels directly - unsupported operation
-        Err(Error::new(kinds::NotImplementedError("pop_label not supported on raw stack".to_string())))
+        Err(Error::new(kinds::NotImplementedError(
+            "pop_label not supported on raw stack".to_string(),
+        )))
     }
 
     fn get_label(&self, _index: usize) -> Option<&BehaviorLabel> {
@@ -112,7 +127,9 @@ impl StackBehavior for Vec<Value> {
 
     fn pop_frame_label(&mut self) -> Result<BehaviorLabel, Error> {
         // Stack doesn't track frame labels directly - unsupported operation
-        Err(Error::new(kinds::NotImplementedError("pop_frame_label not supported on raw stack".to_string())))
+        Err(Error::new(kinds::NotImplementedError(
+            "pop_frame_label not supported on raw stack".to_string(),
+        )))
     }
 
     fn execute_function_call_direct(
@@ -123,6 +140,122 @@ impl StackBehavior for Vec<Value> {
         _args: Vec<Value>,
     ) -> Result<Vec<Value>, Error> {
         // Raw stack can't execute functions
-        Err(Error::new(kinds::NotImplementedError("Function calls not supported on raw stack".to_string())))
+        Err(Error::new(kinds::NotImplementedError(
+            "Function calls not supported on raw stack".to_string(),
+        )))
+    }
+
+    fn as_any(&mut self) -> &mut dyn std::any::Any {
+        self
+    }
+}
+
+// Implementation for SafeStack-based stack (usable in both std and no_std environments)
+impl StackBehavior for SafeStack<Value> {
+    fn push(&mut self, value: Value) -> Result<(), Error> {
+        self.push(value)
+            .map_err(|e| Error::new(kinds::StackOverflowError))
+    }
+
+    fn pop(&mut self) -> Result<Value, Error> {
+        self.pop()
+            .map_err(|_| Error::new(kinds::StackUnderflowError))
+    }
+
+    fn peek(&self) -> Result<&Value, Error> {
+        // SafeStack doesn't provide a direct reference to elements
+        // We'd need additional caching of the last value to support this
+        Err(Error::new(kinds::NotImplementedError(
+            "peek with reference not supported for SafeStack".to_string(),
+        )))
+    }
+
+    fn peek_mut(&mut self) -> Result<&mut Value, Error> {
+        // SafeStack doesn't provide a direct mutable reference to elements
+        // We'd need additional caching of the last value to support this
+        Err(Error::new(kinds::NotImplementedError(
+            "peek_mut with reference not supported for SafeStack".to_string(),
+        )))
+    }
+
+    fn values(&self) -> &[Value] {
+        // SafeStack doesn't provide direct reference to values
+        // This is a placeholder that returns an empty slice
+        &[]
+    }
+
+    fn values_mut(&mut self) -> &mut [Value] {
+        // SafeStack doesn't provide direct mutable reference to values
+        // This is a placeholder that returns an empty slice
+        &mut []
+    }
+
+    fn len(&self) -> usize {
+        self.len()
+    }
+
+    fn is_empty(&self) -> bool {
+        self.is_empty()
+    }
+
+    fn push_label(&mut self, label: BehaviorLabel) -> Result<(), Error> {
+        // Stack doesn't track labels directly - unsupported operation
+        Err(Error::new(kinds::NotImplementedError(
+            "push_label not supported on raw stack".to_string(),
+        )))
+    }
+
+    fn pop_label(&mut self) -> Result<BehaviorLabel, Error> {
+        // Stack doesn't track labels directly - unsupported operation
+        Err(Error::new(kinds::NotImplementedError(
+            "pop_label not supported on raw stack".to_string(),
+        )))
+    }
+
+    fn get_label(&self, _index: usize) -> Option<&BehaviorLabel> {
+        // Stack doesn't track labels directly
+        None
+    }
+
+    fn push_n(&mut self, values: &[Value]) {
+        for value in values {
+            // Ignore errors for now
+            let _ = self.push(value.clone());
+        }
+    }
+
+    fn pop_n(&mut self, n: usize) -> Vec<Value> {
+        let mut result = Vec::with_capacity(n);
+        for _ in 0..n {
+            match self.pop() {
+                Ok(value) => result.push(value),
+                Err(_) => break,
+            }
+        }
+        result
+    }
+
+    fn pop_frame_label(&mut self) -> Result<BehaviorLabel, Error> {
+        // Stack doesn't track frame labels directly - unsupported operation
+        Err(Error::new(kinds::NotImplementedError(
+            "pop_frame_label not supported on raw stack".to_string(),
+        )))
+    }
+
+    fn execute_function_call_direct(
+        &mut self,
+        _engine: &mut StacklessEngine,
+        _caller_instance_idx: u32,
+        _func_idx: u32,
+        _args: Vec<Value>,
+    ) -> Result<Vec<Value>, Error> {
+        // Raw stack can't execute functions
+        Err(Error::new(kinds::NotImplementedError(
+            "Function calls not supported on raw stack".to_string(),
+        )))
+    }
+
+    fn as_any(&mut self) -> &mut dyn std::any::Any {
+        self
     }
 }
