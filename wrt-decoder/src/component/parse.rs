@@ -8,6 +8,54 @@ use wrt_format::component::{
 use wrt_format::module::Module;
 use wrt_types::resource;
 
+// Define a macro for conditionally selecting format based on environment
+#[cfg(feature = "std")]
+macro_rules! env_format {
+    ($($arg:tt)*) => {
+        format!($($arg)*)
+    };
+}
+
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+macro_rules! env_format {
+    ($($arg:tt)*) => {
+        alloc::format!($($arg)*)
+    };
+}
+
+#[cfg(not(any(feature = "std", feature = "alloc")))]
+macro_rules! env_format {
+    ($($arg:tt)*) => {
+        // For environments without formatting capabilities,
+        // create a static string (this is not ideal but provides a fallback)
+        "format error (no formatting available in this environment)"
+    };
+}
+
+// Define a helper function for converting format strings to String
+fn format_to_string(message: &str, value: impl core::fmt::Display) -> String {
+    #[cfg(feature = "std")]
+    {
+        format!("{}: {}", message, value)
+    }
+
+    #[cfg(all(feature = "alloc", not(feature = "std")))]
+    {
+        alloc::format!("{}: {}", message, value)
+    }
+
+    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    {
+        let mut s = String::new();
+        s.push_str(message);
+        s.push_str(": ");
+        // For no_std without alloc, we'll just append a placeholder
+        // since we can't use the Display trait without allocation
+        s.push_str("[value]");
+        s
+    }
+}
+
 /// Parse a core module section
 pub fn parse_core_module_section(bytes: &[u8]) -> Result<(Vec<Module>, usize)> {
     // Read a vector of modules
@@ -131,10 +179,9 @@ fn parse_core_instance_expr(
                         wrt_format::component::CoreSort::Instance
                     }
                     _ => {
-                        return Err(Error::parse_error_from_kind(kinds::ParseError(format!(
-                            "Invalid core sort kind: {:#x}",
-                            kind_byte
-                        ))));
+                        return Err(Error::parse_error_from_kind(kinds::ParseError(
+                            format_to_string("Invalid core sort kind", kind_byte),
+                        )));
                     }
                 };
 
@@ -150,10 +197,9 @@ fn parse_core_instance_expr(
                 offset,
             ))
         }
-        _ => Err(Error::parse_error_from_kind(kinds::ParseError(format!(
-            "Invalid core instance expression tag: {:#x}",
-            tag
-        )))),
+        _ => Err(Error::parse_error_from_kind(kinds::ParseError(
+            env_format!("Invalid core instance expression tag: {:#x}", tag),
+        ))),
     }
 }
 
@@ -215,10 +261,9 @@ fn parse_core_type_definition(
                     binary::FUNCREF_TYPE => wrt_format::types::ValueType::FuncRef,
                     binary::EXTERNREF_TYPE => wrt_format::types::ValueType::ExternRef,
                     _ => {
-                        return Err(Error::parse_error_from_kind(kinds::ParseError(format!(
-                            "Invalid value type: {:#x}",
-                            bytes[offset]
-                        ))));
+                        return Err(Error::parse_error_from_kind(kinds::ParseError(
+                            format_to_string("Invalid value type", bytes[offset]),
+                        )));
                     }
                 };
 
@@ -248,10 +293,9 @@ fn parse_core_type_definition(
                     binary::FUNCREF_TYPE => wrt_format::types::ValueType::FuncRef,
                     binary::EXTERNREF_TYPE => wrt_format::types::ValueType::ExternRef,
                     _ => {
-                        return Err(Error::parse_error_from_kind(kinds::ParseError(format!(
-                            "Invalid value type: {:#x}",
-                            bytes[offset]
-                        ))));
+                        return Err(Error::parse_error_from_kind(kinds::ParseError(
+                            format_to_string("Invalid value type", bytes[offset]),
+                        )));
                     }
                 };
 
@@ -362,10 +406,9 @@ fn parse_core_extern_type(bytes: &[u8]) -> Result<(wrt_format::component::CoreEx
                 binary::FUNCREF_TYPE => wrt_format::types::ValueType::FuncRef,
                 binary::EXTERNREF_TYPE => wrt_format::types::ValueType::ExternRef,
                 _ => {
-                    return Err(Error::parse_error_from_kind(kinds::ParseError(format!(
-                        "Invalid table element type: {:#x}",
-                        bytes[offset]
-                    ))));
+                    return Err(Error::parse_error_from_kind(kinds::ParseError(
+                        format_to_string("Invalid table element type", bytes[offset]),
+                    )));
                 }
             };
             offset += 1;
@@ -455,10 +498,9 @@ fn parse_core_extern_type(bytes: &[u8]) -> Result<(wrt_format::component::CoreEx
                 binary::FUNCREF_TYPE => wrt_format::types::ValueType::FuncRef,
                 binary::EXTERNREF_TYPE => wrt_format::types::ValueType::ExternRef,
                 _ => {
-                    return Err(Error::parse_error_from_kind(kinds::ParseError(format!(
-                        "Invalid global value type: {:#x}",
-                        bytes[offset]
-                    ))));
+                    return Err(Error::parse_error_from_kind(kinds::ParseError(
+                        format_to_string("Invalid global value type", bytes[offset]),
+                    )));
                 }
             };
             offset += 1;
@@ -513,10 +555,9 @@ pub fn parse_component_section(bytes: &[u8]) -> Result<(Vec<Component>, usize)> 
         match crate::component::decode_component(component_bytes) {
             Ok(component) => components.push(component),
             Err(e) => {
-                return Err(Error::parse_error_from_kind(kinds::ParseError(format!(
-                    "Failed to parse nested component: {}",
-                    e
-                ))));
+                return Err(Error::parse_error_from_kind(kinds::ParseError(
+                    format_to_string("Failed to parse nested component", e),
+                )));
             }
         }
 
@@ -635,10 +676,9 @@ fn parse_instance_expr(bytes: &[u8]) -> Result<(wrt_format::component::InstanceE
                 offset,
             ))
         }
-        _ => Err(Error::parse_error_from_kind(kinds::ParseError(format!(
-            "Invalid instance expression tag: {:#x}",
-            tag
-        )))),
+        _ => Err(Error::parse_error_from_kind(kinds::ParseError(
+            format_to_string("Invalid instance expression tag", tag),
+        ))),
     }
 }
 
@@ -654,10 +694,9 @@ fn parse_sort(sort_byte: u8) -> Result<wrt_format::component::Sort> {
         binary::COMPONENT_SORT_COMPONENT => Ok(wrt_format::component::Sort::Component),
         binary::COMPONENT_SORT_VALUE => Ok(wrt_format::component::Sort::Value),
         binary::COMPONENT_SORT_TYPE => Ok(wrt_format::component::Sort::Type),
-        _ => Err(Error::parse_error_from_kind(kinds::ParseError(format!(
-            "Invalid sort byte: {:#x}",
-            sort_byte
-        )))),
+        _ => Err(Error::parse_error_from_kind(kinds::ParseError(
+            format_to_string("Invalid sort byte", sort_byte),
+        ))),
     }
 }
 
@@ -757,10 +796,9 @@ fn parse_canon_operation(bytes: &[u8]) -> Result<(wrt_format::component::CanonOp
                 offset,
             ))
         }
-        _ => Err(Error::parse_error_from_kind(kinds::ParseError(format!(
-            "Invalid canon operation tag: {:#x}",
-            tag
-        )))),
+        _ => Err(Error::parse_error_from_kind(kinds::ParseError(
+            format_to_string("Invalid canon operation tag", tag),
+        ))),
     }
 }
 
@@ -800,10 +838,9 @@ fn parse_lift_options(bytes: &[u8]) -> Result<(wrt_format::component::LiftOption
             0x02 => wrt_format::component::StringEncoding::Latin1,
             0x03 => wrt_format::component::StringEncoding::ASCII,
             _ => {
-                return Err(Error::parse_error_from_kind(kinds::ParseError(format!(
-                    "Invalid string encoding: {:#x}",
-                    encoding_byte
-                ))));
+                return Err(Error::parse_error_from_kind(kinds::ParseError(
+                    format_to_string("Invalid string encoding", encoding_byte),
+                )));
             }
         };
 
@@ -865,10 +902,9 @@ fn parse_lower_options(bytes: &[u8]) -> Result<(wrt_format::component::LowerOpti
             0x02 => wrt_format::component::StringEncoding::Latin1,
             0x03 => wrt_format::component::StringEncoding::ASCII,
             _ => {
-                return Err(Error::parse_error_from_kind(kinds::ParseError(format!(
-                    "Invalid string encoding: {:#x}",
-                    encoding_byte
-                ))));
+                return Err(Error::parse_error_from_kind(kinds::ParseError(
+                    format_to_string("Invalid string encoding", encoding_byte),
+                )));
             }
         };
 
@@ -937,10 +973,9 @@ fn parse_resource_operation(bytes: &[u8]) -> Result<(resource::ResourceCanonical
                 offset,
             ))
         }
-        _ => Err(Error::parse_error_from_kind(kinds::ParseError(format!(
-            "Invalid resource operation tag: {}",
-            tag
-        )))),
+        _ => Err(Error::parse_error_from_kind(kinds::ParseError(
+            format_to_string("Invalid resource operation tag", tag),
+        ))),
     }
 }
 
@@ -1133,10 +1168,9 @@ fn parse_component_type_definition(
                 offset,
             ))
         }
-        _ => Err(Error::parse_error_from_kind(kinds::ParseError(format!(
-            "Invalid component type form: {:#x}",
-            form
-        )))),
+        _ => Err(Error::parse_error_from_kind(kinds::ParseError(
+            format_to_string("Invalid component type form", form),
+        ))),
     }
 }
 
@@ -1224,9 +1258,10 @@ fn parse_resource_representation(
                 let (idx, bytes_read) = match binary::read_leb128_u32(bytes, offset) {
                     Ok(result) => result,
                     Err(e) => {
-                        return Err(Error::parse_error(format!(
+                        return Err(Error::parse_error(env_format!(
                             "Failed to read type index {} in resource aggregate representation: {}",
-                            i, e
+                            i,
+                            e
                         )))
                     }
                 };
@@ -1242,7 +1277,7 @@ fn parse_resource_representation(
 
             Ok((repr, offset))
         }
-        _ => Err(Error::parse_error(format!(
+        _ => Err(Error::parse_error(env_format!(
             "Invalid resource representation tag: {:#x}",
             tag
         ))),
@@ -1401,7 +1436,7 @@ fn parse_extern_type(bytes: &[u8]) -> Result<(wrt_format::component::ExternType,
                 offset,
             ))
         }
-        _ => Err(Error::parse_error(format!(
+        _ => Err(Error::parse_error(env_format!(
             "Invalid external type tag: {:#x}",
             tag
         ))),
@@ -1606,7 +1641,7 @@ fn parse_val_type(bytes: &[u8]) -> Result<(wrt_format::component::ValType, usize
             // Error context type
             Ok((wrt_format::component::ValType::ErrorContext, offset))
         }
-        _ => Err(Error::parse_error(format!(
+        _ => Err(Error::parse_error(env_format!(
             "Invalid value type tag: {:#x}",
             tag
         ))),
@@ -2223,10 +2258,9 @@ fn parse_alias_target(bytes: &[u8]) -> Result<(wrt_format::component::AliasTarge
                 binary::COMPONENT_CORE_SORT_MODULE => wrt_format::component::CoreSort::Module,
                 binary::COMPONENT_CORE_SORT_INSTANCE => wrt_format::component::CoreSort::Instance,
                 _ => {
-                    return Err(Error::parse_error_from_kind(kinds::ParseError(format!(
-                        "Invalid core sort kind: {:#x}",
-                        kind_byte
-                    ))));
+                    return Err(Error::parse_error_from_kind(kinds::ParseError(
+                        env_format!("Invalid core sort kind: {:#x}", kind_byte),
+                    )));
                 }
             };
 

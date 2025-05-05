@@ -1,18 +1,20 @@
-//! WebAssembly Component Model validation.
+//! WebAssembly Component model validation
 //!
-//! This module provides validation functions for WebAssembly Component Model
-//! components, ensuring they follow the Component Model specification.
+//! This module provides validation for WebAssembly Component Model components.
+//! It verifies that components conform to the Component Model specification.
 
 use wrt_error::{codes, Error, ErrorCategory, Result};
-use wrt_format::component::Component;
 
-#[cfg(not(feature = "std"))]
-use alloc::collections::HashMap;
-
-// Use our prelude instead of conditional imports
+// Import prelude for String and other types
 use crate::prelude::*;
 
-/// Configuration for component validation
+// Import component model types
+use crate::component::Component;
+
+/// Validation configuration for component model validation
+///
+/// This allows controlling which features of the Component Model are validated,
+/// in case some implementations don't support the full model.
 #[derive(Debug, Clone)]
 pub struct ValidationConfig {
     /// Enable value section validation (🪙)
@@ -31,12 +33,12 @@ impl Default for ValidationConfig {
 }
 
 impl ValidationConfig {
-    /// Create a new validation configuration with default settings
+    /// Create a new validation config with default settings
     pub fn new() -> Self {
         Self::default()
     }
 
-    /// Create a validation configuration with all features enabled
+    /// Create a validation config with all features enabled
     pub fn all_enabled() -> Self {
         Self {
             enable_value_section: true,
@@ -44,7 +46,7 @@ impl ValidationConfig {
         }
     }
 
-    /// Create a validation configuration with only MVP features enabled
+    /// Create a validation config with only MVP features enabled
     pub fn mvp_only() -> Self {
         Self {
             enable_value_section: false,
@@ -53,22 +55,24 @@ impl ValidationConfig {
     }
 }
 
-/// Validate a WebAssembly Component with custom validation configuration
+/// Validate a component with specific configuration options
 pub fn validate_component_with_config(
-    component: &Component,
-    config: &ValidationConfig,
+    _component: &Component,
+    _config: &ValidationConfig,
 ) -> Result<()> {
-    // For now, just return Ok as a placeholder implementation
-    // The full implementation would validate the component against the config
+    // Placeholder implementation
     Ok(())
 }
 
-/// Validate a WebAssembly Component using default configuration
+/// Validate a component with default configuration
 pub fn validate_component(component: &Component) -> Result<()> {
     validate_component_with_config(component, &ValidationConfig::default())
 }
 
-/// Create a validation error with the given message
-fn validation_error(message: String) -> Error {
-    Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR, message)
+fn validation_error(message: impl Into<String>) -> Error {
+    Error::new(
+        ErrorCategory::Validation,
+        codes::VALIDATION_ERROR,
+        message.into(),
+    )
 }
