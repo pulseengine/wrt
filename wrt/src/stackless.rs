@@ -8,39 +8,38 @@
 //! and allows for pausing and resuming execution at any point.
 
 use crate::{
-    behavior::{ControlFlow, ControlFlowBehavior, InstructionExecutor, Label},
-    error::kinds::{InvalidInstanceIndexError, PoisonedLockError},
+    behavior::{ControlFlow as ControlFlowTrait, InstructionExecutor, Label},
+    error::kinds::InvalidInstanceIndexError,
     execution::ExecutionStats,
-    global::Global,
-    instructions::{instruction_type::Instruction as InstructionType, Instruction},
-    interface,
-    module::{Data, Element, ExportKind, Function, Import, Module, OtherExport},
+    instructions::instruction_type::Instruction as InstructionType,
+    module::{ExportKind, Module},
     module_instance::ModuleInstance,
-    resource::ResourceTable,
+    prelude::{Mutex, MutexGuard, TypesValue as Value},
     stackless_frame::StacklessFrame,
-    types::*,
-    values::Value,
-    ControlFlow as ControlFlowTrait,
 };
-// Import from wrt-logging instead of local logging module
-use wrt_logging::{CloneableFn, HostFunctionHandler, LogOperation};
-// Import directly from wrt_error and wrt_sync
 use core::mem;
 use log::trace;
-use parking_lot::Mutex as ParkingLotMutex;
 use std::collections::HashMap;
 use std::sync::Arc;
 use wrt_error::kinds;
 use wrt_error::{Error, Result};
-use wrt_runtime::{Memory, Table};
-use wrt_sync::EngineMutex;
 use wrt_types::{BoundedCapacity, BoundedVec, VerificationLevel};
 
-// Add these imports to fix host function handler imports
-use wrt_host::function::CloneableFn;
-use wrt_host::CallbackRegistry;
-use wrt_sync::WrtMutex;
-use wrt_types::types::{ExternType, FuncType, MemoryType, TableType};
+// Add type definitions for callbacks and host function handlers
+pub type CloneableFn = Box<dyn Fn(&[Value]) -> Result<Value> + Send + Sync + 'static>;
+
+/// Log operation types for component model
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum LogOperation {
+    /// Function was called
+    Called,
+    /// Function returned
+    Returned,
+}
+
+// Import types from wrt_types directly to avoid ambiguity
+use crate::prelude::FuncType;
+use wrt_types::ExternType;
 
 // Define constants for maximum sizes
 /// Maximum number of values on the operand stack
@@ -133,7 +132,7 @@ pub struct StacklessCallbackRegistry {
     /// Names of exports that are known to be callbacks
     pub export_names: HashMap<String, HashMap<String, LogOperation>>,
     /// Registered callback functions
-    pub callbacks: HashMap<String, HostFunctionHandler>,
+    pub callbacks: HashMap<String, CloneableFn>,
 }
 
 impl Default for StacklessCallbackRegistry {
@@ -165,11 +164,11 @@ pub struct StacklessEngine {
     /// Execution statistics
     stats: ExecutionStats,
     /// Callback registry for host functions (logging, etc.)
-    callbacks: Arc<ParkingLotMutex<StacklessCallbackRegistry>>,
+    callbacks: Arc<Mutex<StacklessCallbackRegistry>>,
     /// Maximum call depth for function calls
     max_call_depth: Option<usize>,
     /// Use the alias EngineMutex for the instance map
-    pub(crate) instances: Arc<ParkingLotMutex<Vec<Arc<ModuleInstance>>>>,
+    pub(crate) instances: Arc<Mutex<Vec<Arc<ModuleInstance>>>>,
     /// Verification level for bounded collections
     verification_level: VerificationLevel,
 }
@@ -375,9 +374,9 @@ impl StacklessEngine {
             exec_stack: StacklessStack::new(dummy_module.clone(), 0),
             fuel: None,
             stats: ExecutionStats::default(),
-            callbacks: Arc::new(ParkingLotMutex::new(StacklessCallbackRegistry::default())),
+            callbacks: Arc::new(Mutex::new(StacklessCallbackRegistry::default())),
             max_call_depth: None,
-            instances: Arc::new(ParkingLotMutex::new(Vec::new())),
+            instances: Arc::new(Mutex::new(Vec::new())),
             verification_level: VerificationLevel::Standard,
         }
     }
@@ -437,14 +436,8 @@ impl StacklessEngine {
         instance_idx: usize,
         memory_idx: usize,
     ) -> Option<Arc<dyn crate::memory_adapter::MemoryAdapter>> {
-        // Try to get the instance
-        let instances_guard = match self.instances.try_lock() {
-            Some(guard) => guard,
-            None => {
-                log::debug!("Failed to acquire lock on instances");
-                return None;
-            }
-        };
+        // Get the instances map
+        let instances_guard = self.instances.lock();
 
         // Get the instance
         let instance = match instances_guard.get(instance_idx) {
@@ -463,14 +456,18 @@ impl StacklessEngine {
                 let memory_clone = memory.clone();
 
                 // Create a memory adapter with the current verification level
-                let adapter = Arc::new(
-                    crate::memory_adapter::SafeMemoryAdapter::with_verification_level(
-                        memory_clone,
-                        self.verification_level,
-                    ),
-                );
-
-                Some(adapter as Arc<dyn crate::memory_adapter::MemoryAdapter>)
+                match crate::memory_adapter::SafeMemoryAdapter::with_verification_level(
+                    memory_clone,
+                    self.verification_level,
+                ) {
+                    Ok(adapter) => {
+                        Some(Arc::new(adapter) as Arc<dyn crate::memory_adapter::MemoryAdapter>)
+                    }
+                    Err(err) => {
+                        log::debug!("Failed to create memory adapter: {:?}", err);
+                        None
+                    }
+                }
             }
             Err(err) => {
                 log::debug!("Failed to get memory at index {}: {:?}", memory_idx, err);
@@ -793,7 +790,7 @@ impl StacklessEngine {
     pub fn register_callback(
         &mut self,
         export_name: &str,
-        callback: HostFunctionHandler,
+        callback: CloneableFn,
     ) -> Result<(), Error> {
         let mut registry = self.callbacks.lock();
         if registry.callbacks.contains_key(export_name) {
@@ -826,7 +823,7 @@ impl StacklessEngine {
     fn find_callback_locked(
         registry: &StacklessCallbackRegistry,
         export_name: &str,
-    ) -> Option<HostFunctionHandler> {
+    ) -> Option<CloneableFn> {
         registry.callbacks.get(export_name).cloned()
     }
 
@@ -1091,12 +1088,12 @@ impl StacklessEngine {
         })
     }
 
-    pub fn callbacks_lock(&self) -> parking_lot::MutexGuard<'_, StacklessCallbackRegistry> {
+    pub fn callbacks_lock(&self) -> MutexGuard<'_, StacklessCallbackRegistry> {
         self.callbacks.lock()
     }
 
     /// Public accessor for the callbacks lock
-    pub fn get_callbacks_lock(&self) -> parking_lot::MutexGuard<'_, StacklessCallbackRegistry> {
+    pub fn get_callbacks_lock(&self) -> MutexGuard<'_, StacklessCallbackRegistry> {
         self.callbacks.lock()
     }
 
@@ -1625,54 +1622,5 @@ impl Clone for StacklessStack {
     }
 }
 
-/// Apply the branch instruction to the call stack
-fn apply_branch(
-    stack: &mut StacklessExecutionStack,
-    frame_idx: usize,
-    to_block: Option<usize>,
-    keep_values: Option<usize>,
-) -> Result<()> {
-    // Caching value stack to ensure branch continuity
-    let value_cache: Vec<Value> = stack.values.to_vec();
-
-    if let Some(frame_idx) = stack.current_frame_idx() {
-        let frame = stack
-            .frames
-            .get(frame_idx)
-            .ok_or_else(|| Error::new(wrt_error::kinds::StackUnderflow))?
-            .clone();
-
-        // Execute the branch
-        stack.state = handle_branch(frame, to_block, keep_values, &value_cache)?;
-
-        // Store the updated frame
-        if frame_idx < stack.frames.len() {
-            stack.frames.set(frame_idx, frame)?;
-        } else {
-            return Err(Error::new(wrt_error::kinds::StackUnderflow));
-        }
-        Ok(())
-    } else {
-        Err(Error::new(kinds::StackUnderflow))
-    }
-}
-
-/// Handle a branch instruction
-fn handle_branch(
-    frame: StacklessFrame,
-    to_block: Option<usize>,
-    keep_values: Option<usize>,
-    value_cache: &[Value],
-) -> Result<StacklessExecutionState> {
-    // If to_block is Some, we're jumping to a specific block
-    if let Some(block_idx) = to_block {
-        // Create branching state with necessary info
-        Ok(StacklessExecutionState::Branching {
-            depth: block_idx as u32,
-            values: value_cache.to_vec(),
-        })
-    } else {
-        // If no specific block, mark as Completed
-        Ok(StacklessExecutionState::Completed)
-    }
-}
+// These functions were using undefined types, so they've been removed.
+// They should be reimplemented later when needed.

@@ -12,17 +12,17 @@ use crate::{
     global::Global,
     instructions::instruction_type::Instruction,
     module::{Data, Element, Function, Module},
+    prelude::TypesValue as Value,
     stackless::StacklessEngine,
     types::{BlockType, FuncType, ValueType},
-    values::Value,
 };
 
 // Import from helper crates
-use wrt_runtime::memory::MemoryArcExt;
 use wrt_runtime::{Memory, Table};
-use wrt_sync;
+// Import from prelude for sync primitives
+use crate::prelude::MutexGuard;
 // Import the bounded collections and the capacity trait
-use wrt_types::{BoundedCapacity, BoundedVec, Checksummed, Validatable, VerificationLevel};
+use wrt_types::{BoundedCapacity, BoundedVec, Validatable, VerificationLevel};
 
 /// The maximum number of local variables in a function
 const MAX_LOCALS: usize = 1024;
@@ -661,6 +661,26 @@ impl ControlFlowBehavior for StacklessFrame {
 
 // Implement FrameBehavior trait for StacklessFrame
 impl FrameBehavior for StacklessFrame {
+    fn push_label(&mut self, label: Label) -> Result<(), Error> {
+        self.label_stack.push(label).map_err(|e| {
+            Error::new(kinds::ExecutionError(format!(
+                "Label stack overflow error: {:?}",
+                e
+            )))
+        })?;
+        Ok(())
+    }
+
+    fn pop_label(&mut self) -> Result<Label, Error> {
+        self.label_stack
+            .pop()
+            .ok_or_else(|| Error::new(kinds::LabelStackUnderflowError))
+    }
+
+    fn get_label(&self, depth: usize) -> Option<&Label> {
+        self.get_label_at_depth(depth)
+    }
+
     fn locals(&mut self) -> &mut Vec<Value> {
         // We need to adapt the BoundedVec to work with the existing interface
         // that expects a Vec. This is a compatibility layer.
@@ -875,7 +895,14 @@ impl FrameBehavior for StacklessFrame {
         engine: &StacklessEngine,
     ) -> Result<()> {
         let memory = self.get_memory(0, engine)?;
-        memory.arc_write_i32(addr as u32, value)
+        let memory_clone = memory.clone();
+        if let Some(mut_memory) = Arc::get_mut(&mut memory_clone.clone()) {
+            mut_memory.write_i32(addr as u32, value)
+        } else {
+            Err(Error::new(kinds::ExecutionError(
+                "Cannot get mutable access to memory for writing i32".to_string(),
+            )))
+        }
     }
 
     fn store_i64(
@@ -886,7 +913,14 @@ impl FrameBehavior for StacklessFrame {
         engine: &StacklessEngine,
     ) -> Result<()> {
         let memory = self.get_memory(0, engine)?;
-        memory.arc_write_i64(addr as u32, value)
+        let memory_clone = memory.clone();
+        if let Some(mut_memory) = Arc::get_mut(&mut memory_clone.clone()) {
+            mut_memory.write_i64(addr as u32, value)
+        } else {
+            Err(Error::new(kinds::ExecutionError(
+                "Cannot get mutable access to memory for writing i64".to_string(),
+            )))
+        }
     }
 
     fn store_f32(
@@ -897,7 +931,14 @@ impl FrameBehavior for StacklessFrame {
         engine: &StacklessEngine,
     ) -> Result<()> {
         let memory = self.get_memory(0, engine)?;
-        memory.arc_write_f32(addr as u32, value)
+        let memory_clone = memory.clone();
+        if let Some(mut_memory) = Arc::get_mut(&mut memory_clone.clone()) {
+            mut_memory.write_f32(addr as u32, value)
+        } else {
+            Err(Error::new(kinds::ExecutionError(
+                "Cannot get mutable access to memory for writing f32".to_string(),
+            )))
+        }
     }
 
     fn store_f64(
@@ -908,7 +949,14 @@ impl FrameBehavior for StacklessFrame {
         engine: &StacklessEngine,
     ) -> Result<()> {
         let memory = self.get_memory(0, engine)?;
-        memory.arc_write_f64(addr as u32, value)
+        let memory_clone = memory.clone();
+        if let Some(mut_memory) = Arc::get_mut(&mut memory_clone.clone()) {
+            mut_memory.write_f64(addr as u32, value)
+        } else {
+            Err(Error::new(kinds::ExecutionError(
+                "Cannot get mutable access to memory for writing f64".to_string(),
+            )))
+        }
     }
 
     fn store_i8(
@@ -919,7 +967,14 @@ impl FrameBehavior for StacklessFrame {
         engine: &StacklessEngine,
     ) -> Result<()> {
         let memory = self.get_memory(0, engine)?;
-        memory.arc_write_u8(addr as u32, value as u8)
+        let memory_clone = memory.clone();
+        if let Some(mut_memory) = Arc::get_mut(&mut memory_clone.clone()) {
+            mut_memory.write_u8(addr as u32, value as u8)
+        } else {
+            Err(Error::new(kinds::ExecutionError(
+                "Cannot get mutable access to memory for writing i8".to_string(),
+            )))
+        }
     }
 
     fn store_u8(
@@ -930,7 +985,14 @@ impl FrameBehavior for StacklessFrame {
         engine: &StacklessEngine,
     ) -> Result<()> {
         let memory = self.get_memory(0, engine)?;
-        memory.arc_write_u8(addr as u32, value)
+        let memory_clone = memory.clone();
+        if let Some(mut_memory) = Arc::get_mut(&mut memory_clone.clone()) {
+            mut_memory.write_u8(addr as u32, value)
+        } else {
+            Err(Error::new(kinds::ExecutionError(
+                "Cannot get mutable access to memory for writing u8".to_string(),
+            )))
+        }
     }
 
     fn store_i16(
@@ -941,7 +1003,14 @@ impl FrameBehavior for StacklessFrame {
         engine: &StacklessEngine,
     ) -> Result<()> {
         let memory = self.get_memory(0, engine)?;
-        memory.arc_write_u16(addr as u32, value as u16)
+        let memory_clone = memory.clone();
+        if let Some(mut_memory) = Arc::get_mut(&mut memory_clone.clone()) {
+            mut_memory.write_u16(addr as u32, value as u16)
+        } else {
+            Err(Error::new(kinds::ExecutionError(
+                "Cannot get mutable access to memory for writing i16".to_string(),
+            )))
+        }
     }
 
     fn store_u16(
@@ -952,7 +1021,14 @@ impl FrameBehavior for StacklessFrame {
         engine: &StacklessEngine,
     ) -> Result<()> {
         let memory = self.get_memory(0, engine)?;
-        memory.arc_write_u16(addr as u32, value)
+        let memory_clone = memory.clone();
+        if let Some(mut_memory) = Arc::get_mut(&mut memory_clone.clone()) {
+            mut_memory.write_u16(addr as u32, value)
+        } else {
+            Err(Error::new(kinds::ExecutionError(
+                "Cannot get mutable access to memory for writing u16".to_string(),
+            )))
+        }
     }
 
     fn store_v128(
@@ -963,7 +1039,14 @@ impl FrameBehavior for StacklessFrame {
         engine: &StacklessEngine,
     ) -> Result<()> {
         let memory = self.get_memory(0, engine)?;
-        memory.arc_write_v128(addr as u32, value)
+        let memory_clone = memory.clone();
+        if let Some(mut_memory) = Arc::get_mut(&mut memory_clone.clone()) {
+            mut_memory.write_v128(addr as u32, value)
+        } else {
+            Err(Error::new(kinds::ExecutionError(
+                "Cannot get mutable access to memory for writing v128".to_string(),
+            )))
+        }
     }
 
     fn get_function_type(&self, func_idx: u32) -> Result<FuncType> {
@@ -981,7 +1064,25 @@ impl FrameBehavior for StacklessFrame {
 
     fn memory_grow(&mut self, pages: u32, engine: &StacklessEngine) -> Result<u32> {
         let memory = self.get_memory(0, engine)?;
-        memory.arc_grow(pages)
+        // Store the previous size for return value
+        let previous_size = memory.size();
+
+        // Clone the memory to get a mutable version
+        let memory_clone = memory.clone();
+
+        // Try to get mutable access to the Arc
+        if let Some(mut_memory) = Arc::get_mut(&mut memory_clone.clone()) {
+            // Grow the memory
+            mut_memory.grow(pages)?;
+
+            // Return the previous size
+            Ok(previous_size)
+        } else {
+            // Return an error if we can't get mutable access
+            Err(Error::new(kinds::ExecutionError(
+                "Cannot get mutable access to memory for growing".to_string(),
+            )))
+        }
     }
 
     fn table_get(&self, table_idx: u32, idx: u32, engine: &StacklessEngine) -> Result<Value> {
