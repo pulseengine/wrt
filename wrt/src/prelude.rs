@@ -41,6 +41,7 @@ pub use alloc::{
 };
 
 // Sync primitives from wrt-sync for both std and no_std
+// Import the WrtMutex, WrtMutexGuard from wrt_sync
 pub use wrt_sync::{
     WrtMutex as Mutex, WrtMutexGuard as MutexGuard, WrtRwLock as RwLock,
     WrtRwLockReadGuard as RwLockReadGuard, WrtRwLockWriteGuard as RwLockWriteGuard,

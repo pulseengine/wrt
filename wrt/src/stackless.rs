@@ -8,8 +8,8 @@
 //! and allows for pausing and resuming execution at any point.
 
 use crate::{
-    behavior::{ControlFlow as ControlFlowTrait, InstructionExecutor, Label},
-    error::kinds::InvalidInstanceIndexError,
+    behavior::{ControlFlow as ControlFlowTrait, InstructionExecutor, Label, StackBehavior},
+    error::kinds,
     execution::ExecutionStats,
     instructions::instruction_type::Instruction as InstructionType,
     module::{ExportKind, Module},
@@ -21,7 +21,9 @@ use core::mem;
 use log::trace;
 use std::collections::HashMap;
 use std::sync::Arc;
-use wrt_error::kinds;
+use wrt_error::{
+    out_of_bounds_error, poisoned_lock_error, resource_error, runtime_error, validation_error,
+};
 use wrt_error::{Error, Result};
 use wrt_types::{BoundedCapacity, BoundedVec, VerificationLevel};
 
@@ -205,7 +207,7 @@ impl StacklessStack {
     pub fn validate(&self) -> Result<(), Error> {
         // Validate operand stack
         self.values.validate().map_err(|e| {
-            Error::new(kinds::ExecutionError(format!(
+            Error::new(crate::error::kinds::ExecutionError(format!(
                 "Value stack validation failed: {}",
                 e
             )))
@@ -213,7 +215,7 @@ impl StacklessStack {
 
         // Validate label stack
         self.labels.validate().map_err(|e| {
-            Error::new(kinds::ExecutionError(format!(
+            Error::new(crate::error::kinds::ExecutionError(format!(
                 "Label stack validation failed: {}",
                 e
             )))
@@ -221,7 +223,7 @@ impl StacklessStack {
 
         // Validate frame stack
         self.frames.validate().map_err(|e| {
-            Error::new(kinds::ExecutionError(format!(
+            Error::new(crate::error::kinds::ExecutionError(format!(
                 "Frame stack validation failed: {}",
                 e
             )))
@@ -230,7 +232,7 @@ impl StacklessStack {
         // Validate each frame
         for (i, frame) in self.frames.iter().enumerate() {
             if let Err(e) = frame.validate() {
-                return Err(Error::new(kinds::ExecutionError(format!(
+                return Err(Error::new(crate::error::kinds::ExecutionError(format!(
                     "Frame {} validation failed: {}",
                     i, e
                 ))));
@@ -250,7 +252,7 @@ impl StacklessStack {
     /// Pushes a value onto the stack
     pub fn push(&mut self, value: Value) -> Result<(), Error> {
         self.values.push(value).map_err(|_| {
-            Error::new(kinds::ExecutionError(format!(
+            Error::new(crate::error::kinds::ExecutionError(format!(
                 "Stack overflow, maximum values: {}",
                 MAX_VALUES
             )))
@@ -261,7 +263,7 @@ impl StacklessStack {
     pub fn pop(&mut self) -> Result<Value, Error> {
         self.values
             .pop()
-            .ok_or_else(|| Error::new(kinds::StackUnderflowError))
+            .ok_or_else(|| Error::new(crate::error::kinds::StackUnderflowError()))
     }
 
     /// Pushes a label onto the control stack
@@ -276,7 +278,7 @@ impl StacklessStack {
         };
 
         self.labels.push(label).map_err(|_| {
-            Error::new(kinds::ExecutionError(format!(
+            Error::new(crate::error::kinds::ExecutionError(format!(
                 "Label stack overflow, maximum labels: {}",
                 MAX_LABELS
             )))
@@ -287,7 +289,7 @@ impl StacklessStack {
     pub fn pop_label(&mut self) -> Result<Label, Error> {
         self.labels
             .pop()
-            .ok_or_else(|| Error::new(kinds::StackUnderflowError))
+            .ok_or_else(|| Error::new(crate::error::kinds::StackUnderflowError()))
     }
 
     /// Gets a label at the specified depth
@@ -326,7 +328,7 @@ impl StacklessStack {
     pub fn peek(&self) -> Result<&Value, Error> {
         let len = self.values.len();
         if len == 0 {
-            return Err(Error::new(kinds::StackUnderflowError));
+            return Err(Error::new(crate::error::kinds::StackUnderflowError()));
         }
 
         Ok(self.values.get(len - 1).unwrap())
@@ -336,7 +338,7 @@ impl StacklessStack {
     pub fn peek_mut(&mut self) -> Result<&mut Value, Error> {
         let len = self.values.len();
         if len == 0 {
-            return Err(Error::new(kinds::StackUnderflowError));
+            return Err(Error::new(crate::error::kinds::StackUnderflowError()));
         }
 
         Ok(self.values.get_mut(len - 1).unwrap())
@@ -355,7 +357,7 @@ impl StacklessStack {
                 return Ok(label.clone());
             }
         }
-        Err(Error::new(kinds::StackUnderflowError))
+        Err(Error::new(crate::error::kinds::StackUnderflowError()))
     }
 }
 
@@ -514,7 +516,7 @@ impl StacklessEngine {
         let adapter = match self.get_memory_adapter(instance_idx, memory_idx as usize) {
             Some(adapter) => adapter,
             None => {
-                return Err(Error::new(kinds::ResourceError(format!(
+                return Err(Error::new(resource_error(format!(
                     "Memory not found: instance {}, memory {}",
                     instance_idx, memory_idx
                 ))))
@@ -522,16 +524,13 @@ impl StacklessEngine {
         };
 
         // Get memory size
-        let memory_size = adapter.byte_size().map_err(|e| {
-            Error::new(kinds::ResourceError(format!(
-                "Failed to get memory size: {}",
-                e
-            )))
-        })?;
+        let memory_size = adapter
+            .byte_size()
+            .map_err(|e| Error::new(resource_error(format!("Failed to get memory size: {}", e))))?;
 
         // Check bounds
         if offset + size > memory_size {
-            return Err(Error::new(kinds::OutOfBoundsError(format!(
+            return Err(Error::new(out_of_bounds_error(format!(
                 "Memory access out of bounds: offset={}, size={}, memory_size={}",
                 offset, size, memory_size
             ))));
@@ -540,10 +539,7 @@ impl StacklessEngine {
         // Validate memory integrity if using full verification
         if matches!(self.verification_level, VerificationLevel::Full) {
             adapter.verify_integrity().map_err(|e| {
-                Error::new(kinds::ValidationError(format!(
-                    "Memory validation failed: {}",
-                    e
-                )))
+                Error::new(validation_error(format!("Memory validation failed: {}", e)))
             })?;
         }
 
@@ -663,9 +659,9 @@ impl StacklessEngine {
         F: FnOnce(&ModuleInstance) -> Result<R, Error>,
     {
         let instances_guard = self.instances.lock();
-        let instance = instances_guard
-            .get(instance_idx)
-            .ok_or_else(|| Error::new(kinds::InvalidInstanceIndexError(instance_idx)))?;
+        let instance = instances_guard.get(instance_idx).ok_or_else(|| {
+            Error::new(crate::error::kinds::InvalidInstanceIndexError(instance_idx))
+        })?;
         f(instance)
     }
 
@@ -675,14 +671,14 @@ impl StacklessEngine {
         F: FnOnce(&mut ModuleInstance) -> Result<R, Error>,
     {
         let mut instances_guard = self.instances.lock();
-        let instance = instances_guard
-            .get_mut(instance_idx)
-            .ok_or_else(|| Error::new(kinds::InvalidInstanceIndexError(instance_idx)))?;
+        let instance = instances_guard.get_mut(instance_idx).ok_or_else(|| {
+            Error::new(crate::error::kinds::InvalidInstanceIndexError(instance_idx))
+        })?;
         // Attempt to get a mutable reference from Arc, might fail if Arc is shared
         if let Some(instance_mut) = Arc::get_mut(instance) {
             f(instance_mut)
         } else {
-            Err(Error::new(kinds::ExecutionError(
+            Err(Error::new(crate::error::kinds::ExecutionError(
                 "Cannot get mutable access to shared ModuleInstance".into(),
             ))) // Corrected error
         }
@@ -700,7 +696,7 @@ impl StacklessEngine {
         // Initialize memories
         // Need read access to module's memory definitions
         let module_memories = module_arc.memories.read().map_err(|_| {
-            Error::new(kinds::PoisonedLockError(
+            Error::new(poisoned_lock_error(
                 "Module memories lock poisoned".to_string(),
             ))
         })?;
@@ -711,14 +707,14 @@ impl StacklessEngine {
         drop(module_memories); // Release read lock
 
         // TODO: Initialize tables similarly
-        // let module_tables = module_arc.tables.read().map_err(|_| Error::new(kinds::PoisonedLock))?;
+        // let module_tables = module_arc.tables.read().map_err(|_| Error::new(poisoned_lock_error("Module tables lock poisoned".to_string())))?;
         // for table_arc in module_tables.iter() {
         //     instance.tables.push(table_arc.clone()); // Assuming Table can be cloned or needs Arc::new
         // }
         // drop(module_tables);
 
         // TODO: Initialize globals similarly
-        // let module_globals = module_arc.globals.read().map_err(|_| Error::new(kinds::PoisonedLock))?;
+        // let module_globals = module_arc.globals.read().map_err(|_| Error::new(poisoned_lock_error("Module globals lock poisoned".to_string())))?;
         // for global_arc in module_globals.iter() {
         //     instance.globals.push(global_arc.clone()); // Assuming Global can be cloned or needs Arc::new
         // }
@@ -734,12 +730,12 @@ impl StacklessEngine {
             if let Some(inst_mut) = Arc::get_mut(inst_mut_arc) {
                 inst_mut.module_idx = instance_idx as u32; // Assign via mutable reference
             } else {
-                return Err(Error::new(kinds::ExecutionError(
+                return Err(Error::new(crate::error::kinds::ExecutionError(
                     "Failed to get mutable access to newly added instance Arc".into(),
                 )));
             }
         } else {
-            return Err(Error::new(kinds::ExecutionError(
+            return Err(Error::new(crate::error::kinds::ExecutionError(
                 "Failed to find newly added instance after push".into(),
             )));
         }
@@ -758,13 +754,13 @@ impl StacklessEngine {
                     // instance_mut.execute_start_function(self, start_func_idx)?;
                     println!("Warning: Start function execution is not yet fully implemented in instantiate.");
                 } else {
-                    return Err(Error::new(kinds::ExecutionError(
+                    return Err(Error::new(crate::error::kinds::ExecutionError(
                         "Failed to get mutable access to newly added instance for start function"
                             .into(),
                     )));
                 }
             } else {
-                return Err(Error::new(kinds::ExecutionError(
+                return Err(Error::new(crate::error::kinds::ExecutionError(
                     "Failed to find newly added instance for start function".into(),
                 )));
             }
@@ -794,7 +790,7 @@ impl StacklessEngine {
     ) -> Result<(), Error> {
         let mut registry = self.callbacks.lock();
         if registry.callbacks.contains_key(export_name) {
-            return Err(Error::new(kinds::ExecutionError(
+            return Err(Error::new(crate::error::kinds::ExecutionError(
                 format!("Callback already registered for export: {}", export_name).into(),
             )));
         }
@@ -831,10 +827,9 @@ impl StacklessEngine {
     pub fn call_export(&mut self, export_name: &str, args: &[Value]) -> Result<Vec<Value>, Error> {
         let instance_idx = self.exec_stack.instance_idx;
         let instances_guard = self.instances.lock();
-        let instance_arc = instances_guard
-            .get(instance_idx)
-            .cloned()
-            .ok_or_else(|| Error::new(kinds::InvalidInstanceIndexError(instance_idx)))?; // Cast to usize
+        let instance_arc = instances_guard.get(instance_idx).cloned().ok_or_else(|| {
+            Error::new(crate::error::kinds::InvalidInstanceIndexError(instance_idx))
+        })?; // Cast to usize
         drop(instances_guard); // Release lock early
 
         let export = instance_arc
@@ -842,7 +837,9 @@ impl StacklessEngine {
             .exports
             .iter()
             .find(|e| e.name == export_name)
-            .ok_or_else(|| Error::new(kinds::ExportNotFoundError(export_name.to_string())))?;
+            .ok_or_else(|| {
+                Error::new(runtime_error(format!("Export not found: {}", export_name)))
+            })?;
 
         match export.kind {
             ExportKind::Function => {
@@ -850,7 +847,7 @@ impl StacklessEngine {
                 self.call_function(instance_idx as u32, func_idx, args)
             }
             _ => {
-                Err(Error::new(kinds::ExportNotFoundError(format!(
+                Err(Error::new(runtime_error(format!(
                     "Export '{export_name}' is not a function (kind: {:?})",
                     export.kind
                 )))) // Use tuple struct syntax
@@ -871,7 +868,12 @@ impl StacklessEngine {
             instances_guard
                 .get(instance_idx as usize)
                 .cloned() // Clone the Arc<ModuleInstance>
-                .ok_or_else(|| Error::new(kinds::InvalidInstanceIndexError(instance_idx as usize)))? // Cast to usize
+                .ok_or_else(|| {
+                    Error::new(runtime_error(format!(
+                        "Invalid instance index: {}",
+                        instance_idx
+                    )))
+                })? // Cast to usize
                 .module
                 .clone()
         }; // Lock released here
@@ -895,7 +897,7 @@ impl StacklessEngine {
                 drop(registry_lock);
                 // TODO: Actually call the host function - requires plumbing HostFunc context/env
                 // For now, return NotImplementedError correctly
-                return Err(Error::new(kinds::NotImplementedError(
+                return Err(Error::new(runtime_error(
                     "Host function callback invocation".to_string(),
                 )));
             }
@@ -905,7 +907,7 @@ impl StacklessEngine {
 
         // Use push with error handling for bounded vector
         self.exec_stack.frames.push(frame).map_err(|_| {
-            Error::new(kinds::ExecutionError(format!(
+            Error::new(crate::error::kinds::ExecutionError(format!(
                 "Call stack overflow, maximum frames: {}",
                 MAX_FRAMES
             )))
@@ -919,7 +921,7 @@ impl StacklessEngine {
             Ok(StacklessExecutionState::Completed) => {
                 // Access stack via self.exec_stack
                 let current_frame = self.exec_stack.frames.last().ok_or_else(|| {
-                    Error::new(kinds::ExecutionError(
+                    Error::new(crate::error::kinds::ExecutionError(
                         "Frame stack empty after function completion".into(),
                     ))
                 })?;
@@ -927,7 +929,7 @@ impl StacklessEngine {
                 let arity = func_type.results.len();
 
                 if self.exec_stack.values.len() < arity {
-                    return Err(Error::new(kinds::StackUnderflowError));
+                    return Err(Error::new(crate::error::kinds::StackUnderflowError()));
                 }
                 let results = self
                     .exec_stack
@@ -935,7 +937,7 @@ impl StacklessEngine {
                     .split_off(self.exec_stack.values.len() - arity);
                 Ok(results)
             }
-            Ok(state) => Err(Error::new(kinds::ExecutionError(
+            Ok(state) => Err(Error::new(crate::error::kinds::ExecutionError(
                 format!("Execution finished in unexpected state: {:?}", state).into(),
             ))),
             Err(e) => Err(e),
@@ -973,34 +975,44 @@ impl StacklessEngine {
                 return Ok(());
             }
             StacklessExecutionState::Trapped => {
-                return Err(Error::new(kinds::WasmTrap));
+                return Err(Error::new(runtime_error("WASM trap".to_string())));
             }
             StacklessExecutionState::Completed => {
                 return Ok(());
             }
-            StacklessExecutionState::Running {
-                instruction_idx,
-                frame_idx,
-                ..
-            } => {
-                // ... existing code until the affected part ...
+            StacklessExecutionState::Running => {
+                // Get the current instruction and frame information
+                let current_frame = self.current_frame()?;
+                let func_idx = current_frame.func_idx;
 
-                // Fix the issues with mem::replace
-                if next_instruction_idx >= instructions.len() as u32 {
+                // Get the function from the module
+                let function = current_frame
+                    .module
+                    .functions
+                    .get(func_idx as usize)
+                    .ok_or_else(|| Error::new(kinds::InvalidFunctionIndexError(func_idx)))?;
+
+                // Get the instructions from the function
+                let instructions = &function.code;
+                let current_pc = self.exec_stack.pc;
+
+                // Execute the current instruction
+                // This would normally process the instruction at the current PC and determine the next PC
+
+                // For now, just increment the PC as a simple implementation
+                let next_pc = current_pc + 1;
+
+                // Check if we've reached the end of the instructions
+                if next_pc >= instructions.len() {
+                    // No more instructions, complete execution
                     mem::replace(
                         &mut self.exec_stack.state,
                         StacklessExecutionState::Completed,
                     );
                     return Ok(());
                 } else {
-                    // Update the instruction index
-                    if let StacklessExecutionState::Running {
-                        ref mut instruction_idx,
-                        ..
-                    } = self.exec_stack.state
-                    {
-                        *instruction_idx = next_instruction_idx;
-                    }
+                    // Update the PC
+                    self.exec_stack.pc = next_pc;
                 }
             }
             // Fix the ? operator issue
@@ -1045,18 +1057,20 @@ impl StacklessEngine {
 
     /// Returns an immutable reference to the current (top) execution frame.
     pub fn current_frame(&self) -> Result<&StacklessFrame, Error> {
-        self.exec_stack
-            .frames
-            .last()
-            .ok_or_else(|| Error::new(kinds::ExecutionError("Call stack empty".to_string())))
+        self.exec_stack.frames.last().ok_or_else(|| {
+            Error::new(crate::error::kinds::ExecutionError(
+                "Call stack empty".to_string(),
+            ))
+        })
     }
 
     /// Returns a mutable reference to the current (top) execution frame.
     pub fn current_frame_mut(&mut self) -> Result<&mut StacklessFrame, Error> {
-        self.exec_stack
-            .frames
-            .last_mut()
-            .ok_or_else(|| Error::new(kinds::ExecutionError("Call stack empty".to_string())))
+        self.exec_stack.frames.last_mut().ok_or_else(|| {
+            Error::new(crate::error::kinds::ExecutionError(
+                "Call stack empty".to_string(),
+            ))
+        })
     }
 
     fn pop_n(&mut self, n: usize) -> Vec<Value> {
@@ -1077,7 +1091,7 @@ impl StacklessEngine {
                 return Ok(label.clone());
             }
         }
-        Err(Error::new(kinds::StackUnderflowError))
+        Err(Error::new(crate::error::kinds::StackUnderflowError()))
     }
 
     /// Get the current instance being executed
@@ -1103,7 +1117,7 @@ impl StacklessEngine {
         _instance_idx: usize,
         _args: Vec<Value>,
     ) -> Result<Vec<Value>> {
-        Err(Error::new(kinds::NotImplementedError(
+        Err(Error::new(runtime_error(
             "invoke_host_function".to_string(),
         )))
     }
@@ -1114,7 +1128,7 @@ impl StacklessEngine {
         _idx: u32,
         _instance_idx: usize,
     ) -> Result<u32> {
-        Err(Error::new(kinds::NotImplementedError(
+        Err(Error::new(runtime_error(
             "get_func_ref_from_table".to_string(),
         )))
     }
@@ -1126,7 +1140,7 @@ impl StacklessEngine {
         instruction: &InstructionType,
     ) -> Result<ControlFlowTrait, Error> {
         if stack.frames.is_empty() {
-            return Err(Error::new(kinds::ExecutionError(
+            return Err(Error::new(crate::error::kinds::ExecutionError(
                 "No frames on stack".to_string(),
             )));
         }
@@ -1138,7 +1152,7 @@ impl StacklessEngine {
         let mut frame = stack
             .frames
             .get(frame_idx)
-            .ok_or_else(|| Error::new(kinds::StackUnderflow))?
+            .ok_or_else(|| Error::new(crate::error::kinds::StackUnderflowError()))?
             .clone();
         let mut engine_clone = self.clone();
 
@@ -1218,7 +1232,7 @@ impl StacklessEngine {
 
         // Push the new frame onto the stack
         self.exec_stack.frames.push(new_frame).map_err(|_| {
-            Error::new(kinds::ExecutionError(format!(
+            Error::new(crate::error::kinds::ExecutionError(format!(
                 "Call stack overflow, maximum frames: {}",
                 MAX_FRAMES
             )))
@@ -1235,7 +1249,7 @@ impl StacklessEngine {
         if let Some(frame) = self.exec_stack.frames.last() {
             Ok(frame.func_idx)
         } else {
-            Err(Error::new(kinds::StackUnderflowError))
+            Err(Error::new(crate::error::kinds::StackUnderflowError()))
         }
     }
 
@@ -1248,14 +1262,14 @@ impl StacklessEngine {
 
         if let Some(max_depth) = self.max_call_depth {
             if self.exec_stack.frames.len() >= max_depth {
-                return Err(Error::new(kinds::StackOverflowError));
+                return Err(Error::new(runtime_error("Stack overflow".to_string())));
             }
         }
 
         self.exec_stack
             .frames
             .push(frame)
-            .map_err(|_| Error::new(kinds::StackOverflowError))
+            .map_err(|_| Error::new(runtime_error("Stack overflow".to_string())))
     }
 
     /// Restore the previous context (after returning from a function)
@@ -1264,7 +1278,7 @@ impl StacklessEngine {
         self.exec_stack
             .frames
             .pop()
-            .ok_or_else(|| Error::new(kinds::StackUnderflowError))?;
+            .ok_or_else(|| Error::new(crate::error::kinds::StackUnderflowError()))?;
 
         // Update current function index if we have a frame
         if let Some(frame) = self.exec_stack.frames.last() {
@@ -1290,7 +1304,7 @@ impl StacklessEngine {
                 if op_fuel >= fuel {
                     self.fuel = Some(0);
                     self.stats.fuel_exhausted_count += 1;
-                    return Err(Error::new(kinds::InsufficientFuelError(
+                    return Err(Error::new(runtime_error(
                         "Insufficient fuel for operation".into(),
                     )));
                 } else {
@@ -1307,9 +1321,7 @@ impl StacklessEngine {
             // Check if we have fuel left
             if fuel == 0 {
                 self.stats.fuel_exhausted_count += 1;
-                return Err(Error::new(kinds::InsufficientFuelError(
-                    "Insufficient fuel".into(),
-                )));
+                return Err(Error::new(runtime_error("Insufficient fuel".into())));
             }
         }
 
@@ -1423,7 +1435,7 @@ impl StackBehavior for StacklessEngine {
 impl StackBehavior for StacklessStack {
     fn push(&mut self, value: Value) -> Result<(), Error> {
         self.values.push(value).map_err(|_| {
-            Error::new(kinds::ExecutionError(format!(
+            Error::new(crate::error::kinds::ExecutionError(format!(
                 "Stack overflow, maximum values: {}",
                 MAX_VALUES
             )))
@@ -1433,19 +1445,19 @@ impl StackBehavior for StacklessStack {
     fn pop(&mut self) -> Result<Value, Error> {
         self.values
             .pop()
-            .ok_or_else(|| Error::new(kinds::StackUnderflowError))
+            .ok_or_else(|| Error::new(crate::error::kinds::StackUnderflowError()))
     }
 
     fn peek(&self) -> Result<&Value, Error> {
         self.values
             .last()
-            .ok_or_else(|| Error::new(kinds::StackUnderflowError))
+            .ok_or_else(|| Error::new(crate::error::kinds::StackUnderflowError()))
     }
 
     fn peek_mut(&mut self) -> Result<&mut Value, Error> {
         self.values
             .last_mut()
-            .ok_or_else(|| Error::new(kinds::StackUnderflowError))
+            .ok_or_else(|| Error::new(crate::error::kinds::StackUnderflowError()))
     }
 
     fn values(&self) -> &[Value] {
@@ -1466,7 +1478,7 @@ impl StackBehavior for StacklessStack {
 
     fn push_label(&mut self, label: Label) -> Result<(), Error> {
         self.labels.push(label).map_err(|_| {
-            Error::new(kinds::ExecutionError(format!(
+            Error::new(crate::error::kinds::ExecutionError(format!(
                 "Label stack overflow, maximum labels: {}",
                 MAX_LABELS
             )))
@@ -1476,7 +1488,7 @@ impl StackBehavior for StacklessStack {
     fn pop_label(&mut self) -> Result<Label, Error> {
         self.labels
             .pop()
-            .ok_or_else(|| Error::new(kinds::StackUnderflowError))
+            .ok_or_else(|| Error::new(crate::error::kinds::StackUnderflowError()))
     }
 
     fn get_label(&self, index: usize) -> Option<&Label> {
@@ -1515,7 +1527,7 @@ impl StackBehavior for StacklessStack {
                 return Ok(label.clone());
             }
         }
-        Err(Error::new(kinds::StackUnderflowError))
+        Err(Error::new(crate::error::kinds::StackUnderflowError()))
     }
 
     fn execute_function_call_direct(

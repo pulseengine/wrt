@@ -49,7 +49,7 @@ impl SafeMemoryAdapter {
     /// Create a new memory adapter with the given memory type
     pub fn new(memory_type: RuntimeMemoryType) -> WrtResult<crate::memory::Memory> {
         let memory = RuntimeMemory::new(memory_type)
-            .map_err(|e| WrtError::new(error_kinds::MemoryCreationError(format!("{e}"))))?;
+            .map_err(|e| WrtError::new(crate::error::kinds::MemoryCreationError(format!("{e}"))))?;
 
         // Create a new adapter with the memory
         let arc_memory = Arc::new(memory);
@@ -161,7 +161,7 @@ impl MemoryAdapter for SafeMemoryAdapter {
         // But for now we'll use this simplified approach
         let memory_clone = self.memory.clone();
         let mut_memory = Arc::get_mut(&mut memory_clone.clone()).ok_or_else(|| {
-            WrtError::new(error_kinds::MemoryAccessError(
+            WrtError::new(crate::error::kinds::MemoryAccessError(
                 "Failed to get mutable access to memory for grow operation".to_string(),
             ))
         })?;

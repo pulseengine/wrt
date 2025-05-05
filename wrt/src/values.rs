@@ -7,6 +7,7 @@
 
 // Use the prelude to import common types
 use crate::prelude::*;
+use crate::types::Value;
 
 // Re-export appropriate types from wrt-types (now through prelude)
 // pub use wrt_types::types::ValueType;

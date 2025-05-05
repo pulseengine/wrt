@@ -100,6 +100,9 @@ pub use crate::types::BlockType;
 
 // Import types from prelude with explicit namespace
 use prelude::{RuntimeMemoryType, RuntimeTableType, TypesMemoryType, TypesTableType};
+// Import both Limits types to handle type conversion properly
+use wrt_runtime::types::Limits as RuntimeLimits;
+use wrt_types::types::Limits as TypesLimits;
 
 /// Version of the WebAssembly Core specification implemented
 pub const CORE_VERSION: &str = "1.0";
@@ -158,8 +161,12 @@ pub fn new_module() -> prelude::WrtResult<Module> {
 /// A new memory instance.
 pub fn new_memory(mem_type: TypesMemoryType) -> Memory {
     // Convert from wrt-types MemoryType to wrt-runtime MemoryType
+    // Need to convert between different Limits types
     let runtime_mem_type = RuntimeMemoryType {
-        limits: mem_type.limits.clone(),
+        limits: RuntimeLimits {
+            min: mem_type.limits.min,
+            max: mem_type.limits.max,
+        },
     };
 
     Memory::new(runtime_mem_type).unwrap()
@@ -176,11 +183,16 @@ pub fn new_memory(mem_type: TypesMemoryType) -> Memory {
 /// A new memory adapter instance.
 pub fn new_memory_adapter(mem_type: TypesMemoryType) -> Memory {
     // Convert from wrt-types MemoryType to wrt-runtime MemoryType
+    // Need to convert between different Limits types
     let runtime_mem_type = RuntimeMemoryType {
-        limits: mem_type.limits.clone(),
+        limits: RuntimeLimits {
+            min: mem_type.limits.min,
+            max: mem_type.limits.max,
+        },
     };
 
-    memory_adapter::MemoryAdapter::new(runtime_mem_type).unwrap()
+    // Use the concrete SafeMemoryAdapter implementation
+    memory_adapter::SafeMemoryAdapter::new(runtime_mem_type).unwrap()
 }
 
 /// Create a new WebAssembly table with the given type.
@@ -194,10 +206,17 @@ pub fn new_memory_adapter(mem_type: TypesMemoryType) -> Memory {
 /// A new table instance.
 pub fn new_table(table_type: TypesTableType) -> Table {
     // Convert from wrt-types TableType to wrt-runtime TableType
+    // Need to convert between different Limits types
     let runtime_table_type = RuntimeTableType {
         element_type: table_type.element_type,
-        limits: table_type.limits.clone(),
+        limits: RuntimeLimits {
+            min: table_type.limits.min,
+            max: table_type.limits.max,
+        },
     };
 
-    Table::new(runtime_table_type).unwrap()
+    // Create a default value based on the element type
+    let default_value = wrt_types::values::Value::default_for_type(&table_type.element_type);
+
+    Table::new(runtime_table_type, default_value).unwrap()
 }

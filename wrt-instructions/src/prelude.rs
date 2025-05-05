@@ -25,7 +25,7 @@ pub use std::{
     collections::{HashMap, HashSet},
     format,
     string::{String, ToString},
-    sync::{Arc, Mutex, RwLock},
+    sync::Arc,
     vec,
     vec::Vec,
 };
@@ -42,9 +42,11 @@ pub use alloc::{
     vec::Vec,
 };
 
-// Import synchronization primitives for no_std
-#[cfg(not(feature = "std"))]
-pub use wrt_sync::{Mutex, RwLock};
+// Import synchronization primitives for both std and no_std
+pub use wrt_sync::{
+    WrtMutex as Mutex, WrtMutexGuard as MutexGuard, WrtRwLock as RwLock,
+    WrtRwLockReadGuard as RwLockReadGuard, WrtRwLockWriteGuard as RwLockWriteGuard,
+};
 
 // Re-export from wrt-error
 pub use wrt_error::{codes, kinds, Error, ErrorCategory, Result};

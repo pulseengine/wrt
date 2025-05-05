@@ -16,6 +16,7 @@ use crate::{
     stackless::StacklessEngine,
     types::{BlockType, FuncType, ValueType},
 };
+use wrt_error::invalid_type;
 
 // Import from helper crates
 use wrt_runtime::{Memory, Table};
@@ -84,7 +85,7 @@ impl StacklessFrame {
         // Check argument types
         for (i, (arg, param_type)) in args.iter().zip(func_type.params.iter()).enumerate() {
             if !arg.matches_type(param_type) {
-                return Err(Error::new(kinds::InvalidType(format!(
+                return Err(Error::new(invalid_type(format!(
                     "Function {func_idx}: Argument {} type mismatch: expected {:?}, got {:?}",
                     i,
                     param_type,
@@ -131,7 +132,11 @@ impl StacklessFrame {
         // First, look up the function to get its type index and locals
         let function = match module.functions.get(func_idx as usize) {
             Some(f) => f,
-            None => return Err(Error::new(kinds::FunctionNotFound(func_idx))),
+            None => {
+                return Err(Error::new(kinds::FunctionNotFoundError(
+                    func_idx.to_string(),
+                )))
+            }
         };
 
         // Get the function type
@@ -151,7 +156,7 @@ impl StacklessFrame {
 
         // Validate arguments
         if args.len() != params_len {
-            return Err(Error::new(kinds::InvalidType(format!(
+            return Err(Error::new(invalid_type(format!(
                 "Function expects {} arguments, but {} provided",
                 params_len,
                 args.len()
@@ -229,7 +234,7 @@ impl StacklessFrame {
     pub fn get_function(&self) -> Result<&Function> {
         self.module
             .get_function(self.func_idx)
-            .ok_or_else(|| Error::new(kinds::FunctionNotFound(self.func_idx)))
+            .ok_or_else(|| Error::new(kinds::FunctionNotFoundError(self.func_idx.to_string())))
     }
 
     /// Retrieves the instruction at the specified program counter for the current function.
@@ -281,7 +286,7 @@ impl StacklessFrame {
             pc += 1;
         }
 
-        Err(Error::new(kinds::Execution(format!(
+        Err(Error::new(kinds::ExecutionError(format!(
             "Unmatched If at PC {} in function {}",
             self.pc, self.func_idx
         ))))
@@ -310,7 +315,7 @@ impl StacklessFrame {
             }
             pc += 1;
         }
-        Err(Error::new(kinds::Execution(format!(
+        Err(Error::new(kinds::ExecutionError(format!(
             "Unmatched block starting near PC {} in function {}",
             self.pc, self.func_idx
         ))))
@@ -392,19 +397,19 @@ impl StackBehavior for StacklessFrame {
     fn pop(&mut self) -> Result<Value> {
         self.locals
             .pop()
-            .ok_or_else(|| Error::new(kinds::StackUnderflow))
+            .ok_or_else(|| Error::new(kinds::StackUnderflowError()))
     }
 
     fn peek(&self) -> Result<&Value> {
         self.locals
             .get(self.locals.len().checked_sub(1).unwrap_or(0))
-            .ok_or_else(|| Error::new(kinds::StackUnderflow))
+            .ok_or_else(|| Error::new(kinds::StackUnderflowError()))
     }
 
     fn peek_mut(&mut self) -> Result<&mut Value> {
         let len = self.locals.len();
         if len == 0 {
-            return Err(Error::new(kinds::StackUnderflow));
+            return Err(Error::new(kinds::StackUnderflowError()));
         }
         Ok(self.locals.get_mut(len - 1).unwrap())
     }
@@ -437,7 +442,7 @@ impl StackBehavior for StacklessFrame {
     fn pop_label(&mut self) -> Result<Label, Error> {
         self.label_stack
             .pop()
-            .ok_or_else(|| Error::new(kinds::LabelStackUnderflowError))
+            .ok_or_else(|| Error::new(kinds::StackUnderflowError()))
     }
 
     fn get_label(&self, depth: usize) -> Option<&Label> {
@@ -606,14 +611,14 @@ impl ControlFlowBehavior for StacklessFrame {
         let depth = depth as usize;
 
         if depth >= self.label_stack.len() {
-            return Err(Error::new(kinds::InvalidLabelIndexError(depth)));
+            return Err(Error::new(kinds::InvalidLocalIndexError(depth as u32)));
         }
 
         let label_idx = self.label_stack.len() - 1 - depth;
         let label = self
             .label_stack
             .get(label_idx)
-            .ok_or_else(|| Error::new(kinds::InvalidLabelIndexError(depth)))?;
+            .ok_or_else(|| Error::new(kinds::InvalidLocalIndexError(depth as u32)))?;
 
         // The rest of the method remains unchanged
         let target_pc = label.continuation_pc;
@@ -674,7 +679,7 @@ impl FrameBehavior for StacklessFrame {
     fn pop_label(&mut self) -> Result<Label, Error> {
         self.label_stack
             .pop()
-            .ok_or_else(|| Error::new(kinds::LabelStackUnderflowError))
+            .ok_or_else(|| Error::new(kinds::StackUnderflowError()))
     }
 
     fn get_label(&self, depth: usize) -> Option<&Label> {
@@ -691,7 +696,7 @@ impl FrameBehavior for StacklessFrame {
         self.locals
             .get(idx)
             .cloned()
-            .ok_or_else(|| Error::new(kinds::InvalidLocalIndex(idx)))
+            .ok_or_else(|| Error::new(kinds::InvalidLocalIndexError(idx as u32)))
     }
 
     fn set_local(&mut self, idx: usize, value: Value) -> Result<()> {
@@ -699,7 +704,7 @@ impl FrameBehavior for StacklessFrame {
             *local = value;
             Ok(())
         } else {
-            Err(Error::new(kinds::InvalidLocalIndex(idx)))
+            Err(Error::new(kinds::InvalidLocalIndexError(idx as u32)))
         }
     }
 
@@ -1108,8 +1113,8 @@ impl FrameBehavior for StacklessFrame {
     ) -> Result<()> {
         engine
             .with_instance_mut(self.instance_idx as usize, |instance| {
-                let table = instance.get_table_mut(table_idx as usize)?;
-                table.set(idx, Some(value))
+                // Use the new table_set method
+                instance.table_set(table_idx as usize, idx, Some(value))
             })
             .and_then(|inner_result| Ok(inner_result))
     }
@@ -1132,8 +1137,8 @@ impl FrameBehavior for StacklessFrame {
     ) -> Result<u32> {
         engine
             .with_instance_mut(self.instance_idx as usize, |instance| {
-                let table = instance.get_table_mut(table_idx as usize)?;
-                table.grow(delta, value) // Pass the default value for new elements
+                // Use the new table_grow method
+                instance.table_grow(table_idx as usize, delta, value)
             })
             .and_then(|inner_result| Ok(inner_result))
     }
