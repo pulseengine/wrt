@@ -150,11 +150,18 @@ pub struct InstanceValue {
 /// Represents a runtime instance for executing WebAssembly code
 #[derive(Debug)]
 pub struct RuntimeInstance {
-    // Runtime implementation details would go here in a concrete implementation
-    // Fields might include:
-    // - Reference to WebAssembly module instance
-    // - Memory and table instances
-    // - Execution context
+    /// Functions exported by this runtime
+    functions: HashMap<String, ExternValue>,
+    /// Memory exported by this runtime
+    memories: HashMap<String, MemoryValue>,
+    /// Tables exported by this runtime
+    tables: HashMap<String, TableValue>,
+    /// Globals exported by this runtime
+    globals: HashMap<String, GlobalValue>,
+    /// Runtime module instance (will be implemented as needed)
+    module_instance: Option<Arc<RwLock<ModuleInstance>>>,
+    /// Verification level for memory operations
+    verification_level: VerificationLevel,
 }
 
 impl Default for RuntimeInstance {
@@ -166,17 +173,136 @@ impl Default for RuntimeInstance {
 impl RuntimeInstance {
     /// Creates a new runtime instance
     pub fn new() -> Self {
-        Self {}
+        Self {
+            functions: HashMap::new(),
+            memories: HashMap::new(),
+            tables: HashMap::new(),
+            globals: HashMap::new(),
+            module_instance: None,
+            verification_level: VerificationLevel::Standard,
+        }
+    }
+
+    /// Register an exported function
+    pub fn register_function(&mut self, name: String, function: ExternValue) -> Result<()> {
+        if let ExternValue::Function(_) = &function {
+            self.functions.insert(name, function);
+            Ok(())
+        } else {
+            Err(Error::new(
+                ErrorCategory::Validation,
+                codes::VALIDATION_ERROR,
+                format!("Expected function value, got {:?}", function),
+            ))
+        }
+    }
+
+    /// Register an exported memory
+    pub fn register_memory(&mut self, name: String, memory: MemoryValue) -> Result<()> {
+        self.memories.insert(name, memory);
+        Ok(())
     }
 
     /// Executes a function in the runtime
-    pub fn execute_function(&self, _name: &str, _args: Vec<Value>) -> Result<Vec<Value>> {
-        // Implementation would depend on the specific runtime
-        Err(Error::new(
-            ErrorCategory::System,
-            codes::NOT_IMPLEMENTED,
-            format!("Function execution not implemented in this runtime"),
-        ))
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - Name of the function to execute
+    /// * `args` - Arguments to pass to the function
+    ///
+    /// # Returns
+    ///
+    /// The result values from the function execution
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the function cannot be executed
+    pub fn execute_function(&self, name: &str, args: Vec<Value>) -> Result<Vec<Value>> {
+        // Look up the function in our registered functions
+        let function = self.functions.get(name).ok_or_else(|| {
+            Error::new(
+                ErrorCategory::Function,
+                codes::FUNCTION_NOT_FOUND,
+                format!("Function {} not found in runtime", name),
+            )
+        })?;
+
+        // Get the function value
+        if let ExternValue::Function(func_value) = function {
+            // Validate arguments based on function signature
+            if args.len() != func_value.ty.params.len() {
+                return Err(Error::new(
+                    ErrorCategory::Validation,
+                    codes::VALIDATION_ERROR,
+                    format!(
+                        "Expected {} arguments, got {}",
+                        func_value.ty.params.len(),
+                        args.len()
+                    ),
+                ));
+            }
+
+            // Type check arguments
+            for (i, (arg, param_type)) in args.iter().zip(func_value.ty.params.iter()).enumerate() {
+                let arg_type = arg.value_type();
+                let expected_type = &param_type;
+
+                if !self.is_type_compatible(&arg_type, expected_type) {
+                    return Err(Error::new(
+                        ErrorCategory::Validation,
+                        codes::VALIDATION_ERROR,
+                        format!(
+                            "Type mismatch for argument {}: expected {:?}, got {:?}",
+                            i, expected_type, arg_type
+                        ),
+                    ));
+                }
+            }
+
+            // Execute the function via the module instance if available
+            if let Some(module_instance) = &self.module_instance {
+                // This would delegate to the actual module instance in a full implementation
+                // This interface will be extended as needed
+
+                #[cfg(feature = "std")]
+                debug!(
+                    "Module instance execution not yet implemented for function: {}",
+                    name
+                );
+
+                // For MVP, we need to return that execution isn't implemented
+                // without hard-coding specific function behavior
+                return Err(Error::new(
+                    ErrorCategory::System,
+                    codes::IMPLEMENTATION_LIMIT,
+                    "Module instance execution not yet implemented".to_string(),
+                ));
+            }
+
+            // If we reach here, there's no module instance to handle the execution,
+            // so we need a structured way to handle user-provided function execution.
+
+            // Return a not implemented error for now
+            // This will be extended to support function resolution from registered callbacks
+            Err(Error::new(
+                ErrorCategory::System,
+                codes::NOT_IMPLEMENTED,
+                format!("Function execution using registered handlers not implemented yet"),
+            ))
+        } else {
+            Err(Error::new(
+                ErrorCategory::Validation,
+                codes::VALIDATION_ERROR,
+                format!("Expected function, got {:?}", function),
+            ))
+        }
+    }
+
+    /// Check if a value type is compatible with a format value type
+    fn is_type_compatible(&self, value_type: &ValueType, expected_type: &ValueType) -> bool {
+        // For MVP, we'll do simple equality check
+        // This can be extended later to handle more complex type compatibility rules
+        value_type == expected_type
     }
 
     /// Reads memory
@@ -198,6 +324,12 @@ impl RuntimeInstance {
             "Memory operations not implemented in this runtime",
         ))
     }
+}
+
+// Private helper struct for implementing the module instance
+// This is just a placeholder for now
+struct ModuleInstance {
+    // Implementation details would go here
 }
 
 /// Helper function to convert FormatValType to ValueType
@@ -809,5 +941,162 @@ pub fn convert_verification_level(
         wrt_types::VerificationLevel::Sampling => crate::resources::VerificationLevel::Critical,
         wrt_types::VerificationLevel::Standard => crate::resources::VerificationLevel::Critical,
         wrt_types::VerificationLevel::Full => crate::resources::VerificationLevel::Full,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_runtime_instance_creation() {
+        let runtime = RuntimeInstance::new();
+        assert!(runtime.functions.is_empty());
+        assert!(runtime.memories.is_empty());
+        assert!(runtime.tables.is_empty());
+        assert!(runtime.globals.is_empty());
+        assert!(runtime.module_instance.is_none());
+    }
+
+    #[test]
+    fn test_register_function() {
+        let mut runtime = RuntimeInstance::new();
+        let func_type = wrt_runtime::func::FuncType {
+            params: vec![ValueType::I32, ValueType::I32],
+            results: vec![ValueType::I32],
+        };
+        let func_value = FunctionValue {
+            ty: func_type,
+            export_name: "test_function".to_string(),
+        };
+        let extern_value = ExternValue::Function(func_value);
+
+        assert!(runtime
+            .register_function("test_function".to_string(), extern_value)
+            .is_ok());
+        assert_eq!(runtime.functions.len(), 1);
+        assert!(runtime.functions.contains_key("test_function"));
+    }
+
+    #[test]
+    fn test_function_not_found() {
+        let runtime = RuntimeInstance::new();
+
+        // Try to execute a non-existent function
+        let args = vec![Value::I32(1)];
+        let result = runtime.execute_function("nonexistent", args);
+
+        // Verify the error
+        assert!(result.is_err());
+        match result {
+            Err(e) => {
+                assert_eq!(e.category(), ErrorCategory::Function);
+                assert!(e.to_string().contains("not found"));
+            }
+            _ => panic!("Expected an error"),
+        }
+    }
+
+    #[test]
+    fn test_argument_count_validation() {
+        let mut runtime = RuntimeInstance::new();
+
+        // Create and register a function expecting 2 arguments
+        let func_type = wrt_runtime::func::FuncType {
+            params: vec![ValueType::I32, ValueType::I32],
+            results: vec![ValueType::I32],
+        };
+        let func_value = FunctionValue {
+            ty: func_type,
+            export_name: "test_func".to_string(),
+        };
+        let extern_value = ExternValue::Function(func_value);
+
+        runtime
+            .register_function("test_func".to_string(), extern_value)
+            .unwrap();
+
+        // Call with wrong number of arguments
+        let args = vec![Value::I32(1)]; // Only one argument
+        let result = runtime.execute_function("test_func", args);
+
+        // Verify the error
+        assert!(result.is_err());
+        match result {
+            Err(e) => {
+                assert_eq!(e.category(), ErrorCategory::Validation);
+                assert!(e.to_string().contains("Expected 2 arguments"));
+            }
+            _ => panic!("Expected an error"),
+        }
+    }
+
+    #[test]
+    fn test_argument_type_validation() {
+        let mut runtime = RuntimeInstance::new();
+
+        // Create and register a function expecting I32 arguments
+        let func_type = wrt_runtime::func::FuncType {
+            params: vec![ValueType::I32, ValueType::I32],
+            results: vec![ValueType::I32],
+        };
+        let func_value = FunctionValue {
+            ty: func_type,
+            export_name: "test_func".to_string(),
+        };
+        let extern_value = ExternValue::Function(func_value);
+
+        runtime
+            .register_function("test_func".to_string(), extern_value)
+            .unwrap();
+
+        // Call with wrong argument types
+        let args = vec![Value::I32(1), Value::F32(2.0)]; // Second arg is F32
+        let result = runtime.execute_function("test_func", args);
+
+        // Verify the error
+        assert!(result.is_err());
+        match result {
+            Err(e) => {
+                assert_eq!(e.category(), ErrorCategory::Validation);
+                assert!(e.to_string().contains("Type mismatch for argument"));
+            }
+            _ => panic!("Expected an error"),
+        }
+    }
+
+    #[test]
+    fn test_function_not_implemented() {
+        let mut runtime = RuntimeInstance::new();
+
+        // Create and register a function
+        let func_type = wrt_runtime::func::FuncType {
+            params: vec![ValueType::I32, ValueType::I32],
+            results: vec![ValueType::I32],
+        };
+        let func_value = FunctionValue {
+            ty: func_type,
+            export_name: "test_func".to_string(),
+        };
+        let extern_value = ExternValue::Function(func_value);
+
+        runtime
+            .register_function("test_func".to_string(), extern_value)
+            .unwrap();
+
+        // Call with correct arguments
+        let args = vec![Value::I32(1), Value::I32(2)];
+        let result = runtime.execute_function("test_func", args);
+
+        // Verify we get a NOT_IMPLEMENTED error
+        assert!(result.is_err());
+        match result {
+            Err(e) => {
+                assert_eq!(e.category(), ErrorCategory::System);
+                assert_eq!(e.code(), codes::NOT_IMPLEMENTED);
+                assert!(e.to_string().contains("not implemented"));
+            }
+            _ => panic!("Expected a not implemented error"),
+        }
     }
 }
