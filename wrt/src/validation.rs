@@ -167,7 +167,7 @@ fn validate_memories(module: &Module) -> Result<()> {
 }
 
 fn validate_globals(module: &Module) -> Result<()> {
-    for (idx, global) in module.globals.iter().enumerate() {
+    for (idx, _global) in module.globals.iter().enumerate() {
         // Validate global type - since we can't directly access the global's type
         // We'll skip detailed validation until we have proper global type access
         if false {  // Bypassing this validation for now
