@@ -95,7 +95,7 @@ impl NameMap {
 
             // Parse name
             if current_offset >= data.len() {
-                return Err(Error::parse_error("Truncated name in name map".to_string()).into());
+                return Err(Error::parse_error("Truncated name in name map".to_string()));
             }
 
             // Use wrt-format's read_string to parse the name
@@ -154,8 +154,7 @@ pub fn parse_component_name_section(data: &[u8]) -> Result<ComponentNameSection>
             return Err(Error::parse_error(format!(
                 "Component name subsection size {} exceeds data size",
                 subsection_size
-            ))
-            .into());
+            )));
         }
 
         let subsection_data = &data[subsection_start..subsection_end];
@@ -226,7 +225,7 @@ pub fn parse_component_name_section(data: &[u8]) -> Result<ComponentNameSection>
 
 fn parse_sort(bytes: &[u8], pos: usize) -> Result<(SortIdentifier, usize)> {
     if pos >= bytes.len() {
-        return Err(Error::parse_error("Unexpected end of input".to_string()).into());
+        return Err(Error::parse_error("Unexpected end of input".to_string()));
     }
 
     let sort_byte = bytes[pos];
@@ -244,9 +243,10 @@ fn parse_sort(bytes: &[u8], pos: usize) -> Result<(SortIdentifier, usize)> {
         10 => SortIdentifier::CoreInstance,
         11 => SortIdentifier::Value,
         _ => {
-            return Err(
-                Error::parse_error(format!("Invalid sort identifier: {}", sort_byte)).into(),
-            );
+            return Err(Error::parse_error(format!(
+                "Invalid sort identifier: {}",
+                sort_byte
+            )));
         }
     };
 

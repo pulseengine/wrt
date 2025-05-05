@@ -1,3 +1,4 @@
+use crate::prelude::*;
 use wrt_error::{codes, Error, ErrorCategory, Result};
 use wrt_format::binary;
 use wrt_format::component::Component;

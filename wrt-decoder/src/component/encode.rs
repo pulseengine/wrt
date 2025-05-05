@@ -19,7 +19,7 @@ pub fn encode_component(component: &Component) -> Result<Vec<u8>> {
 
 fn encode_sections(component: &Component, binary: &mut Vec<u8>) -> Result<()> {
     // If the component has a name, add a name section
-    if let Some(name) = &component.name {
+    if component.name.is_some() {
         // Create a name section with the component name
         let name_section = crate::component::name_section::ComponentNameSection {
             component_name: component.name.clone(),
@@ -175,8 +175,52 @@ fn encode_import_section(imports: &[wrt_format::component::Import]) -> Result<Ve
 
     // Encode each import
     for import in imports {
-        // Write import name
-        data.extend_from_slice(&binary::write_string(&import.name.full_path()));
+        // Write namespace
+        data.extend_from_slice(&binary::write_string(&import.name.namespace));
+
+        // Write name
+        data.extend_from_slice(&binary::write_string(&import.name.name));
+
+        // Write nested namespaces flag and contents (if any)
+        if import.name.nested.is_empty() {
+            data.push(0); // No nested namespaces
+        } else {
+            data.push(1); // Has nested namespaces
+
+            // Write count of nested namespaces
+            data.extend_from_slice(&binary::write_leb128_u32(import.name.nested.len() as u32));
+
+            // Write each nested namespace
+            for nested in &import.name.nested {
+                data.extend_from_slice(&binary::write_string(nested));
+            }
+        }
+
+        // Write package flag and contents (if any)
+        if let Some(package) = &import.name.package {
+            data.push(1); // Has package
+
+            // Write package name
+            data.extend_from_slice(&binary::write_string(&package.name));
+
+            // Write version flag and value (if any)
+            if let Some(version) = &package.version {
+                data.push(1); // Has version
+                data.extend_from_slice(&binary::write_string(version));
+            } else {
+                data.push(0); // No version
+            }
+
+            // Write hash flag and value (if any)
+            if let Some(hash) = &package.hash {
+                data.push(1); // Has hash
+                data.extend_from_slice(&binary::write_string(hash));
+            } else {
+                data.push(0); // No hash
+            }
+        } else {
+            data.push(0); // No package
+        }
 
         // Write import type
         encode_extern_type(&import.ty, &mut data)?;
@@ -397,7 +441,9 @@ fn encode_val_type(ty: &wrt_format::component::ValType, data: &mut Vec<u8>) -> R
         wrt_format::component::ValType::Void => {
             // There doesn't seem to be a Void tag in the binary constants
             // We'll need to add this or map it to the appropriate value
-            return Err(Error::validation_error("Void type encoding not yet implemented").into());
+            return Err(Error::validation_error(
+                "Void type encoding not yet implemented",
+            ));
         }
         wrt_format::component::ValType::ErrorContext => {
             data.push(binary::VAL_TYPE_ERROR_CONTEXT_TAG);
@@ -434,18 +480,57 @@ fn encode_export_section(exports: &[wrt_format::component::Export]) -> Result<Ve
 
     // Encode each export
     for export in exports {
-        // Write export name
-        data.extend_from_slice(&binary::write_string(&export.name.full_path()));
+        // Write export basic name
+        data.extend_from_slice(&binary::write_string(&export.name.name));
 
-        // Write sort
+        // Prepare flags
+        let mut flags: u8 = 0;
+        if export.name.is_resource {
+            flags |= 0x01;
+        }
+        if export.name.semver.is_some() {
+            flags |= 0x02;
+        }
+        if export.name.integrity.is_some() {
+            flags |= 0x04;
+        }
+        if !export.name.nested.is_empty() {
+            flags |= 0x08;
+        }
+
+        // Write flags
+        data.push(flags);
+
+        // Write semver if present
+        if let Some(semver) = &export.name.semver {
+            data.extend_from_slice(&binary::write_string(semver));
+        }
+
+        // Write integrity if present
+        if let Some(integrity) = &export.name.integrity {
+            data.extend_from_slice(&binary::write_string(integrity));
+        }
+
+        // Write nested namespaces if present
+        if !export.name.nested.is_empty() {
+            // Write count of nested namespaces
+            data.extend_from_slice(&binary::write_leb128_u32(export.name.nested.len() as u32));
+
+            // Write each nested namespace
+            for nested in &export.name.nested {
+                data.extend_from_slice(&binary::write_string(nested));
+            }
+        }
+
+        // Write sort byte
         data.push(sort_to_u8(&export.sort));
 
         // Write index
         data.extend_from_slice(&binary::write_leb128_u32(export.idx));
 
-        // Write declared type if present
+        // Write type flag and type (if present)
         if let Some(ty) = &export.ty {
-            data.push(1); // Type is present
+            data.push(1); // Has type
             encode_extern_type(ty, &mut data)?;
         } else {
             data.push(0); // No type
@@ -456,6 +541,9 @@ fn encode_export_section(exports: &[wrt_format::component::Export]) -> Result<Ve
 }
 
 /// Convert FormatValType to ValType
+///
+/// This function properly handles the conversion between different ValType representations
+/// without creating references to temporary values.
 fn format_val_type_to_val_type(
     val_type: &wrt_format::component::FormatValType,
 ) -> wrt_format::component::ValType {
@@ -473,52 +561,80 @@ fn format_val_type_to_val_type(
         wrt_format::component::FormatValType::F64 => wrt_format::component::ValType::F64,
         wrt_format::component::FormatValType::Char => wrt_format::component::ValType::Char,
         wrt_format::component::FormatValType::String => wrt_format::component::ValType::String,
-        wrt_format::component::FormatValType::Ref(idx) => wrt_format::component::ValType::Ref(*idx),
+        wrt_format::component::FormatValType::Ref(idx) => {
+            // Clone the value to avoid reference to temporary
+            let idx_value = *idx;
+            wrt_format::component::ValType::Ref(idx_value)
+        }
         wrt_format::component::FormatValType::List(inner) => {
-            wrt_format::component::ValType::List(Box::new(format_val_type_to_val_type(inner)))
+            // Create a new boxed value instead of referencing the inner value
+            let inner_val_type = format_val_type_to_val_type(inner);
+            wrt_format::component::ValType::List(Box::new(inner_val_type))
         }
         wrt_format::component::FormatValType::FixedList(inner, len) => {
-            wrt_format::component::ValType::FixedList(
-                Box::new(format_val_type_to_val_type(inner)),
-                *len,
-            )
-        }
-        wrt_format::component::FormatValType::Tuple(items) => {
-            wrt_format::component::ValType::Tuple(
-                items.iter().map(format_val_type_to_val_type).collect(),
-            )
-        }
-        wrt_format::component::FormatValType::Option(inner) => {
-            wrt_format::component::ValType::Option(Box::new(format_val_type_to_val_type(inner)))
-        }
-        wrt_format::component::FormatValType::Result(ok) => {
-            wrt_format::component::ValType::Result(Box::new(format_val_type_to_val_type(ok)))
+            // Clone the values to avoid references to temporaries
+            let inner_val_type = format_val_type_to_val_type(inner);
+            let len_value = *len;
+            wrt_format::component::ValType::FixedList(Box::new(inner_val_type), len_value)
         }
         wrt_format::component::FormatValType::Record(fields) => {
-            wrt_format::component::ValType::Record(
-                fields
-                    .iter()
-                    .map(|(name, ty)| (name.clone(), format_val_type_to_val_type(ty)))
-                    .collect(),
-            )
+            // Create new vectors of fields to avoid references to temporaries
+            let mut new_fields = Vec::with_capacity(fields.len());
+            for (name, field_type) in fields {
+                let new_name = name.clone();
+                let new_field_type = format_val_type_to_val_type(field_type);
+                new_fields.push((new_name, new_field_type));
+            }
+            wrt_format::component::ValType::Record(new_fields)
         }
         wrt_format::component::FormatValType::Variant(cases) => {
-            wrt_format::component::ValType::Variant(
-                cases
-                    .iter()
-                    .map(|(name, ty)| (name.clone(), ty.as_ref().map(format_val_type_to_val_type)))
-                    .collect(),
-            )
+            // Create new vectors of cases to avoid references to temporaries
+            let mut new_cases = Vec::with_capacity(cases.len());
+            for (name, case_type) in cases {
+                let new_name = name.clone();
+                let new_case_type = case_type
+                    .as_ref()
+                    .map(|val_type| format_val_type_to_val_type(val_type));
+                new_cases.push((new_name, new_case_type));
+            }
+            wrt_format::component::ValType::Variant(new_cases)
+        }
+        wrt_format::component::FormatValType::Tuple(types) => {
+            // Create new vectors of types to avoid references to temporaries
+            let new_types = types.iter().map(format_val_type_to_val_type).collect();
+            wrt_format::component::ValType::Tuple(new_types)
         }
         wrt_format::component::FormatValType::Flags(names) => {
-            wrt_format::component::ValType::Flags(names.clone())
+            // Clone the names to avoid references to temporaries
+            let new_names = names.clone();
+            wrt_format::component::ValType::Flags(new_names)
         }
         wrt_format::component::FormatValType::Enum(names) => {
-            wrt_format::component::ValType::Enum(names.clone())
+            // Clone the names to avoid references to temporaries
+            let new_names = names.clone();
+            wrt_format::component::ValType::Enum(new_names)
         }
-        wrt_format::component::FormatValType::Own(idx) => wrt_format::component::ValType::Own(*idx),
-        wrt_format::component::FormatValType::Borrow(idx) => {
-            wrt_format::component::ValType::Borrow(*idx)
+        wrt_format::component::FormatValType::Option(inner) => {
+            // Create a new boxed value instead of referencing the inner value
+            let inner_val_type = format_val_type_to_val_type(inner);
+            wrt_format::component::ValType::Option(Box::new(inner_val_type))
+        }
+        wrt_format::component::FormatValType::Result(inner) => {
+            // Handle Result with either Ok or Err value
+            // We assume inner is not None for this implementation
+            // since we're dealing with boxed values
+            let inner_val_type = format_val_type_to_val_type(inner);
+            wrt_format::component::ValType::Result(Box::new(inner_val_type))
+        }
+        wrt_format::component::FormatValType::Own(resource_idx) => {
+            // Clone the resource index to avoid reference to temporary
+            let idx_value = *resource_idx;
+            wrt_format::component::ValType::Own(idx_value)
+        }
+        wrt_format::component::FormatValType::Borrow(resource_idx) => {
+            // Clone the resource index to avoid reference to temporary
+            let idx_value = *resource_idx;
+            wrt_format::component::ValType::Borrow(idx_value)
         }
         wrt_format::component::FormatValType::Void => wrt_format::component::ValType::Void,
         wrt_format::component::FormatValType::ErrorContext => {
@@ -594,7 +710,9 @@ mod tests {
         // Add an import
         let import = Import {
             name: ImportName::new("test_namespace".to_string(), "test_import".to_string()),
-            ty: wrt_format::component::ExternType::Value(ValType::String),
+            ty: wrt_format::component::ExternType::Value(
+                wrt_format::component::FormatValType::String,
+            ),
         };
         component.imports.push(import);
 
