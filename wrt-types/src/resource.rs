@@ -1,31 +1,33 @@
-//! WebAssembly Component Model resource operations
+//! Resource type definitions for the Component Model
 //!
-//! This module defines the core resource operations available in the
-//! WebAssembly Component Model, as well as utility methods for working with them.
-
-use core::fmt;
-use core::str::FromStr;
-
-// Import different types based on available features
-#[cfg(feature = "std")]
-use std::string::String;
-#[cfg(feature = "std")]
-use std::vec::Vec;
+//! This module provides types for working with WebAssembly Component Model resources.
+//! Resources in the Component Model are handles to external entities or capabilities.
 
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
-extern crate alloc;
+use alloc::format;
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 use alloc::string::String;
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 use alloc::vec::Vec;
-
-#[cfg(not(feature = "alloc"))]
-use core::fmt::Write;
+use core::fmt;
+#[cfg(feature = "std")]
+#[cfg(feature = "std")]
+#[cfg(not(feature = "std"))]
+#[allow(unused_imports)]
+use core::fmt::{Debug, Write};
+#[cfg(not(feature = "std"))]
+use core::str::FromStr;
+#[cfg(feature = "std")]
+#[allow(unused_imports)]
+use std::fmt::{Debug, Write};
+#[cfg(feature = "std")]
+use std::string::String;
 
 // optional imports
+#[cfg(feature = "component-model-resources")]
+use crate::bounded::BoundedVec;
 
-#[cfg(feature = "alloc")]
-use crate::format;
+use wrt_error::Result;
 
 /// Resource identifier
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -122,7 +124,7 @@ impl fmt::Display for ResourceOperation {
     }
 }
 
-impl FromStr for ResourceOperation {
+impl core::str::FromStr for ResourceOperation {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -186,7 +188,7 @@ impl fmt::Display for ResourceRepresentation {
     }
 }
 
-impl FromStr for ResourceRepresentation {
+impl core::str::FromStr for ResourceRepresentation {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
