@@ -1,7 +1,9 @@
-/// Type conversion utilities for Component Model types
-///
-/// This module provides bidirectional conversion between different
-/// representations of Component Model types across crate boundaries.
+//! Type conversion utilities for Component Model types
+//!
+//! This module provides bidirectional conversion between different
+//! representations of Component Model types across crate boundaries.
+
+use crate::prelude::*;
 // Re-export the bidirectional module
 pub mod bidirectional;
 
