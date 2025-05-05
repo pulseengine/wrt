@@ -1,31 +1,13 @@
-// Canonical ABI Implementation for WebAssembly Component Model
-//
-// This module provides the implementation of the Canonical ABI used
-// in the WebAssembly Component Model to interface between components.
+//! Canonical ABI Implementation for WebAssembly Component Model
+//!
+//! This module provides the implementation of the Canonical ABI used
+//! in the WebAssembly Component Model to interface between components.
 
-use crate::resources::{BufferPool, MemoryStrategy, ResourceTable, VerificationLevel};
-use std::any::Any;
-use std::sync::Arc;
-use wrt_error::{kinds, Error, Result};
-use wrt_format::component::{ResourceOperation as FormatResourceOperation, ValType};
-use wrt_intercept::{LinkInterceptor, LinkInterceptorStrategy};
+use crate::prelude::*;
+
+// Additional dependencies not in prelude
 use wrt_runtime::Memory;
-use wrt_types::values::Value;
-use wrt_types::values::Value;
-
-#[cfg(feature = "std")]
-use std::{
-    collections::HashMap,
-    sync::{Mutex, RwLock},
-    vec::Vec,
-};
-
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::{
-    collections::BTreeMap as HashMap,
-    sync::{Arc, Mutex, RwLock},
-    vec::Vec,
-};
+use wrt_types::resource::ResourceOperation as FormatResourceOperation;
 
 // Maximum allowed allocation size for safety
 const MAX_BUFFER_SIZE: usize = 10 * 1024 * 1024; // 10MB

@@ -44,9 +44,10 @@
 //! let error = helpers::create_memory_access_error(100, 32, 64, "load");
 //!
 //! // Direct error creation
-//! let error = Error::execution_error("Failed to execute instruction");
+//! let error = Error::runtime_error("Failed to execute instruction");
 //! ```
 
+// Enable no_std when std feature is not enabled
 #![cfg_attr(not(feature = "std"), no_std)]
 #![warn(clippy::missing_panics_doc)]
 
@@ -54,15 +55,18 @@
 #[cfg(feature = "std")]
 extern crate std;
 
-// Import alloc when needed for no_std
+// Import alloc when needed for no_std with allocation
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 extern crate alloc;
+
+// Core imports from errors.rs will handle needed imports
 
 // Modules
 pub mod context;
 pub mod errors;
 pub mod helpers;
 pub mod kinds;
+pub mod prelude;
 
 // Include verification module conditionally, but exclude during coverage builds
 #[cfg(all(not(coverage), doc))]
@@ -86,6 +90,25 @@ pub use kinds::{
     resource_error, runtime_error, validation_error, ComponentError, InvalidType, OutOfBoundsError,
     ParseError, PoisonedLockError, ResourceError, RuntimeError, ValidationError,
 };
+
+/// Error conversion trait for converting between error types
+///
+/// This trait provides a standardized way to convert between error types
+/// across the WRT codebase. It is used to ensure a consistent error
+/// handling approach across all crates.
+pub trait FromError<E> {
+    /// Convert from the source error type to the target error type
+    fn from_error(error: E) -> Self;
+}
+
+/// Error conversion trait for converting to specific error categories
+///
+/// This trait provides a way to convert any error to a specific error
+/// category, which is useful for creating category-specific errors.
+pub trait ToErrorCategory {
+    /// Convert the error to a specific category
+    fn to_category(&self) -> ErrorCategory;
+}
 
 #[cfg(all(test, feature = "alloc"))]
 mod tests {

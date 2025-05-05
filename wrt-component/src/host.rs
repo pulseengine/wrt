@@ -2,17 +2,10 @@
 //!
 //! This module provides the Host type for managing host functions.
 
-#[cfg(feature = "std")]
-use std::{collections::HashMap, string::String, vec::Vec};
+use crate::prelude::*;
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::{collections::BTreeMap as HashMap, string::String, vec::Vec};
-
-use wrt_error::{kinds, Error, Result};
 use wrt_format::component::ExternType;
 use wrt_host::callback::CallbackType;
-use wrt_host::CallbackRegistry;
-use wrt_types::values::Value;
 
 /// Represents a function provided by the host
 #[derive(Debug, Clone)]
@@ -66,10 +59,11 @@ impl Host {
         target: &mut dyn core::any::Any,
     ) -> Result<Vec<Value>> {
         let function = self.functions.get(name).ok_or_else(|| {
-            Error::new(kinds::ExecutionError(format!(
-                "Host function not found: {}",
-                name
-            )))
+            Error::new(
+                ErrorCategory::Runtime,
+                codes::EXECUTION_ERROR,
+                kinds::ExecutionError(format!("Host function not found: {}", name)),
+            )
         })?;
 
         match &function.implementation {
@@ -79,10 +73,11 @@ impl Host {
                 // Note: Registry access needs to be correctly implemented with the proper type
                 registry.call_host_function(target, "wrt_component", callback_name, args)
             }
-            HostFunctionImpl::Trap(message) => Err(Error::new(kinds::ExecutionError(format!(
-                "Function {} trapped: {}",
-                name, message
-            )))),
+            HostFunctionImpl::Trap(message) => Err(Error::new(
+                ErrorCategory::Runtime,
+                codes::EXECUTION_ERROR,
+                kinds::ExecutionError(format!("Function {} trapped: {}", name, message)),
+            )),
         }
     }
 }

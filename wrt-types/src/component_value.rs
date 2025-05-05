@@ -12,8 +12,8 @@ use wrt_error::{Error, ErrorCategory};
 #[cfg(feature = "std")]
 use std::{boxed::Box, format, string::String, vec, vec::Vec};
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::{boxed::Box, format, string::String, string::ToString, vec, vec::Vec};
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use alloc::{boxed::Box, format, string::String, vec, vec::Vec};
 
 use crate::Value;
 
@@ -792,28 +792,25 @@ pub fn deserialize_component_values(data: &[u8], types: &[ValType]) -> Result<Ve
     Ok(result)
 }
 
+/// Create a type conversion error with a descriptive message.
+///
+/// This is a helper function used for type conversion errors within the component model.
 pub fn conversion_error(message: &str) -> Error {
-    Error::new(
-        ErrorCategory::Type,
-        3001, // TYPE_MISMATCH
-        format!("Type conversion error: {}", message),
-    )
+    Error::invalid_type(format!("Type conversion error: {}", message))
 }
 
+/// Create a component encoding error with a descriptive message.
+///
+/// This is a helper function used for encoding errors within the component model.
 pub fn encoding_error(message: &str) -> Error {
-    Error::new(
-        ErrorCategory::Component,
-        3002, // ENCODING_ERROR
-        format!("Component encoding error: {}", message),
-    )
+    Error::component_error(format!("Component encoding error: {}", message))
 }
 
+/// Create a component decoding error with a descriptive message.
+///
+/// This is a helper function used for decoding errors within the component model.
 pub fn decoding_error(message: &str) -> Error {
-    Error::new(
-        ErrorCategory::Component,
-        3002, // ENCODING_ERROR
-        format!("Component decoding error: {}", message),
-    )
+    Error::component_error(format!("Component decoding error: {}", message))
 }
 
 #[cfg(test)]

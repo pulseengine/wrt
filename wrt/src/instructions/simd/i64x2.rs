@@ -4,7 +4,7 @@
 //! that operate on 128-bit vectors as two 64-bit integer lanes.
 
 use crate::behavior::{FrameBehavior, StackBehavior};
-use crate::values::{Value, Value::*};
+use crate::prelude::TypesValue as Value;
 use crate::StacklessEngine;
 use wrt_error::{kinds, Error, Result};
 
@@ -45,7 +45,7 @@ pub fn i64x2_splat(
     let value = match stack.pop()? {
         Value::I64(v) => v,
         _ => {
-            return Err(Error::new(kinds::InvalidTypeError(
+            return Err(Error::new(crate::error::kinds::InvalidTypeError(
                 "Expected i64 for i64x2.splat".into(),
             )))
         }
@@ -110,7 +110,7 @@ pub fn i64x2_replace_lane(
     let replacement = match stack.pop()? {
         Value::I64(v) => v,
         _ => {
-            return Err(Error::new(kinds::InvalidTypeError(
+            return Err(Error::new(crate::error::kinds::InvalidTypeError(
                 "Expected i64 for replacement value".into(),
             )))
         }

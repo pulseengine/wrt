@@ -14,24 +14,25 @@ pub use i32x4::*;
 mod i64x2;
 pub use i64x2::*;
 
-use crate::execution::ExecutionContext;
-use crate::format;
 use crate::{
-    behavior::{ControlFlow, InstructionExecutor},
+    behavior::{
+        ControlFlow, ControlFlowBehavior, FrameBehavior, InstructionExecutor, StackBehavior,
+    },
     error::{kinds, Error, Result},
-    values::v128,
-};
-use crate::{
-    behavior::{ControlFlowBehavior, FrameBehavior, StackBehavior},
-    values::Value,
-    StacklessEngine, // Import
+    prelude::TypesValue as Value,
+    StacklessEngine,
 };
 #[cfg(not(feature = "std"))]
 use alloc::vec;
 use std::borrow::BorrowMut; // Added import
 use std::ops::Neg; // Added import for Neg trait
 use std::ops::{Add, BitAnd, BitOr, BitXor, Div, Mul, Not, Sub};
-use wasmparser::MemArg; // Removed ValType import
+// Define our own MemArg struct instead of depending on wasmparser
+#[derive(Debug, Clone, Copy)]
+pub struct MemArg {
+    pub offset: u64,
+    pub align: u32,
+}
 
 // Define V128 type alias and helper functions
 pub type V128 = [u8; 16];

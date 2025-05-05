@@ -2,6 +2,19 @@
 //!
 //! A pure Rust implementation of the WebAssembly runtime, supporting the WebAssembly Core
 //! and Component Model specifications.
+//!
+//! WRT is designed to be compatible with both std and no_std environments, making it
+//! suitable for a wide range of applications, from server-side WebAssembly execution
+//! to embedded systems and bare-metal environments.
+//!
+//! ## Features
+//!
+//! - Full WebAssembly Core specification support
+//! - Component Model implementation
+//! - Stackless execution engine for environments with limited stack space
+//! - no_std compatibility
+//! - Comprehensive error handling
+//! - Safe memory implementation
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![deny(clippy::all)]
@@ -20,132 +33,73 @@ extern crate std;
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 extern crate alloc;
 
-// Import and re-export types from std when available
+// Define debug_println macro for conditional debug printing
 #[cfg(feature = "std")]
-pub use std::{
-    boxed::Box,
-    collections::HashMap,
-    format,
-    string::{String, ToString},
-    sync::Arc,
-    vec::Vec,
-};
-
-// Import and re-export types for no_std environment
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-pub use alloc::{
-    boxed::Box,
-    collections::BTreeMap as HashMap,
-    format,
-    string::{String, ToString},
-    sync::Arc,
-    vec::Vec,
-};
-
-/// Re-export needed traits and types at crate level
-pub use wrt_error::{kinds, Error, Result};
-
-// Import and re-export from wrt-runtime
-pub use wrt_runtime::{FuncType, GlobalType, Memory, MemoryType, Table, TableType, PAGE_SIZE};
-
-// Use runtime Global directly
-pub use wrt_runtime::global::Global;
-
-// Core WebAssembly modules
-
-/// Macro for debugging print statements that only compile with the "std" feature
 #[macro_export]
 macro_rules! debug_println {
     ($($arg:tt)*) => {
-        #[cfg(feature = "std")]
-        eprintln!($($arg)*);
-    }
+        if cfg!(debug_assertions) {
+            println!($($arg)*);
+        }
+    };
 }
 
-/// Module for WebAssembly component model implementation
-pub mod component;
+#[cfg(not(feature = "std"))]
+#[macro_export]
+macro_rules! debug_println {
+    ($($arg:tt)*) => {{
+        // No-op in no_std environments unless we implement a different printing mechanism
+    }};
+}
 
-/// Module for WebAssembly error handling
-pub mod error;
+// Include prelude module for consistent imports across crates
+pub mod prelude;
+// Don't glob-import the prelude to avoid name conflicts
+// We'll use qualified imports instead
 
-/// Module for WebAssembly execution
-pub mod execution;
+// Core module imports
+mod behavior;
+mod component;
+mod decoder_integration;
+mod error;
+mod execution;
+mod format_adapter;
+mod global;
+mod instructions;
+mod instructions_adapter;
+mod interface;
+mod memory;
+mod memory_adapter;
+mod module;
+mod module_instance;
+mod resource;
+mod serialization;
+mod shared_instructions;
+mod stack;
+mod stackless;
+mod stackless_extensions;
+mod stackless_frame;
+mod sync;
+mod table;
+mod types;
+mod validation;
+mod values;
 
-/// Module for WebAssembly global variables
-pub mod global;
+// Public exports with careful naming to avoid conflicts
+pub use crate::behavior::InstructionExecutor;
+pub use crate::component::{Component, Host, InstanceValue};
+pub use crate::execution::ExecutionStats;
+pub use crate::global::Global;
+pub use crate::instructions::Instruction;
+pub use crate::memory::Memory;
+pub use crate::module::{ExportKind, Function, Import, Module, OtherExport};
+pub use crate::stackless::StacklessEngine;
+pub use crate::stackless_frame::StacklessFrame;
+pub use crate::table::Table;
+pub use crate::types::BlockType;
 
-/// Module for WebAssembly instructions
-pub mod instructions;
-
-/// Module for WebAssembly Component Model interface types
-pub mod interface;
-
-/// Module for WebAssembly linear memory
-pub mod memory;
-
-/// Module for WebAssembly module definitions
-pub mod module;
-
-/// Module for WebAssembly Component Model resource handling
-pub mod resource;
-
-/// Module for WebAssembly serialization
-#[cfg(feature = "serialization")]
-pub mod serialization;
-
-/// Adapter for WebAssembly format handling
-pub mod format_adapter;
-
-/// Adapter for WebAssembly instructions to use pure implementations
-pub mod instructions_adapter;
-
-/// Integration layer for wrt-decoder with functional safety
-pub mod decoder_integration;
-
-/// Module for WebAssembly table
-pub mod table;
-
-/// Module for WebAssembly type definitions
-pub mod types;
-
-/// Module for WebAssembly runtime values
-pub mod values;
-
-/// Module for WebAssembly synchronization primitives in no_std environment
-pub mod sync;
-
-/// Shared instruction implementations for all engines
-pub mod shared_instructions;
-
-/// Module for WebAssembly behavior
-pub mod behavior;
-
-/// Module for WebAssembly module instance
-pub mod module_instance;
-
-/// Module for WebAssembly stackless frame
-pub mod stackless_frame;
-
-/// Module for WebAssembly stackless execution engine
-pub mod stackless;
-
-/// Module for WebAssembly stackless memory adapter
-pub mod memory_adapter;
-
-// Public exports
-pub use crate::{stackless::StacklessEngine, stackless_frame::StacklessFrame};
-pub use behavior::InstructionExecutor;
-pub use component::{Component, Host, InstanceValue};
-pub use execution::ExecutionStats;
-pub use instructions::{types::BlockType, Instruction};
-pub use module::{ExportKind, Function, Import, Module, OtherExport};
-pub use types::{ComponentType, ExternType};
-
-// Use wrt_types values
-pub use wrt_types::values::Value;
-
-// Reexport wrt_types types to avoid duplicate imports in user code
-pub use wrt_types::types::Limits;
+// Import types from prelude with explicit namespace
+use prelude::{RuntimeMemoryType, RuntimeTableType, TypesMemoryType, TypesTableType};
 
 /// Version of the WebAssembly Core specification implemented
 pub const CORE_VERSION: &str = "1.0";
@@ -153,111 +107,97 @@ pub const CORE_VERSION: &str = "1.0";
 /// Version of the WebAssembly Component Model specification implemented
 pub const COMPONENT_VERSION: &str = "0.1.0";
 
-/// Uses execution engine implementation instead of redefining
-pub use execution::Engine as ExecutionEngine;
+/// Execution engine for WebAssembly modules
+///
+/// This type represents an execution engine that can be used to run WebAssembly modules.
+#[derive(Debug, Clone, Copy)]
+pub struct ExecutionEngine;
 
-/// Creates a new WebAssembly engine
-#[must_use]
+/// Create a new execution engine for WebAssembly modules.
+///
+/// This function creates a new execution engine that can be used to run
+/// WebAssembly modules.
+///
+/// # Returns
+///
+/// A new execution engine.
 pub fn new_engine() -> ExecutionEngine {
-    let module = Module::new().expect("Failed to create new empty module");
-    ExecutionEngine::new(module)
+    ExecutionEngine
 }
 
-/// Creates a new stackless WebAssembly engine
+/// Create a new stackless execution engine for WebAssembly modules.
 ///
-/// The stackless engine uses a state machine approach instead of recursion,
-/// making it suitable for environments with limited stack space and for `no_std` contexts.
-/// It also supports fuel-bounded execution for controlled resource usage.
-#[must_use]
+/// This function creates a new stackless execution engine that can be used to run
+/// WebAssembly modules in environments with limited stack space.
+///
+/// # Returns
+///
+/// A new stackless execution engine.
 pub fn new_stackless_engine() -> stackless::StacklessEngine {
     stackless::StacklessEngine::new()
 }
 
-/// Creates a new WebAssembly module
-#[must_use]
-pub fn new_module() -> Result<Module> {
+/// Create a new, empty WebAssembly module.
+///
+/// # Returns
+///
+/// A `WrtResult` containing the new module, or an error if the module
+/// could not be created.
+pub fn new_module() -> prelude::WrtResult<Module> {
     Module::new()
 }
 
-/// Creates a new WebAssembly memory instance
+/// Create a new WebAssembly memory with the given type.
 ///
-/// This now uses the wrt-runtime Memory implementation
-#[must_use]
-pub fn new_memory(mem_type: MemoryType) -> Memory {
-    Memory::new(mem_type).expect("Failed to create new memory instance")
+/// # Arguments
+///
+/// * `mem_type` - The type of memory to create.
+///
+/// # Returns
+///
+/// A new memory instance.
+pub fn new_memory(mem_type: TypesMemoryType) -> Memory {
+    // Convert from wrt-types MemoryType to wrt-runtime MemoryType
+    let runtime_mem_type = RuntimeMemoryType {
+        limits: mem_type.limits.clone(),
+    };
+
+    Memory::new(runtime_mem_type).unwrap()
 }
 
-/// Creates a new WebAssembly memory adapter
+/// Create a new WebAssembly memory adapter with the given type.
 ///
-/// For backward compatibility
-#[must_use]
-pub fn new_memory_adapter(mem_type: MemoryType) -> Memory {
-    Memory::new(mem_type).expect("Failed to create new memory adapter")
+/// # Arguments
+///
+/// * `mem_type` - The type of memory to create.
+///
+/// # Returns
+///
+/// A new memory adapter instance.
+pub fn new_memory_adapter(mem_type: TypesMemoryType) -> Memory {
+    // Convert from wrt-types MemoryType to wrt-runtime MemoryType
+    let runtime_mem_type = RuntimeMemoryType {
+        limits: mem_type.limits.clone(),
+    };
+
+    memory_adapter::MemoryAdapter::new(runtime_mem_type).unwrap()
 }
 
-/// Create a new table with the specified type
+/// Create a new WebAssembly table with the given type.
 ///
-/// # Parameters
+/// # Arguments
 ///
-/// * `table_type` - The type of the table to create
-#[must_use]
-pub fn new_table(table_type: TableType) -> Table {
-    Table::new(table_type).expect("Failed to create new table")
+/// * `table_type` - The type of table to create.
+///
+/// # Returns
+///
+/// A new table instance.
+pub fn new_table(table_type: TypesTableType) -> Table {
+    // Convert from wrt-types TableType to wrt-runtime TableType
+    let runtime_table_type = RuntimeTableType {
+        element_type: table_type.element_type,
+        limits: table_type.limits.clone(),
+    };
+
+    Table::new(runtime_table_type).unwrap()
 }
-
-/// Create a new table adapter with the specified type
-///
-/// This function exists to maintain backward compatibility with
-/// code that uses the older memory adapter API.
-///
-/// # Parameters
-///
-/// * `table_type` - The type of the table adapter to create
-#[must_use]
-pub fn new_table_adapter(table_type: TableType) -> Table {
-    Table::new(table_type).expect("Failed to create new table adapter")
-}
-
-/// Creates a new WebAssembly global with the specified type and value
-#[must_use]
-pub fn new_global(global_type: GlobalType, value: Value) -> Result<Global> {
-    Global::new(global_type, value)
-}
-
-/// Creates an empty globals vector
-#[must_use]
-pub fn new_globals() -> Vec<Arc<Global>> {
-    Vec::new()
-}
-
-// Explicit type re-exports to avoid ambiguity
-#[cfg(feature = "std")]
-pub use {
-    behavior::{ControlFlow, ControlFlowBehavior, FrameBehavior, Label, StackBehavior},
-    interface::Interface,
-    module_instance::ModuleInstance,
-};
-
-// Re-export types from wrt-logging
-pub use wrt_logging::{LogLevel, LogOperation};
-// Re-export CallbackRegistry only if std feature is enabled
-#[cfg(feature = "std")]
-pub use wrt_logging::CallbackRegistry;
-
-// List of module re-exports
-pub use crate::{
-    // error::Error, // Already imported above
-    // error::Result, // Already imported above
-    // execution::ExecutionStats, // Already imported in mod declarations
-    // global::Global, // Already imported above
-    // interface::Interface, // Already imported above
-    module::ExportValue,
-    // module::Function, // Already imported in mod declarations
-    // module::Import, // Already imported in mod declarations
-    // module::ImportType, // Commented out to fix compilation error
-    // module::Module, // Already imported in mod declarations
-    // module::OtherExport, // Already imported in mod declarations
-    resource::ResourceTable,
-    // stackless::StacklessEngine, // Already imported in mod declarations
-    // values::Value, // Already imported in mod declarations
-};

@@ -1,52 +1,70 @@
-# wrt-logging
+# WRT Logging
 
-Logging infrastructure for the WebAssembly Runtime (WRT).
+Logging infrastructure for the WebAssembly Runtime (WRT) with support for both standard and `no_std` environments.
 
-This crate provides logging functionality for WebAssembly components, allowing components to log messages to the host environment. It extends the wrt-host crate with logging-specific capabilities.
+This crate provides logging functionality for WebAssembly components, allowing them to log messages to the host environment. It's designed to work seamlessly with the WRT ecosystem and extends the `wrt-host` crate with logging-specific capabilities.
 
 ## Features
 
-- `std` (default): Enables standard library features
-- `alloc`: Enables allocation features for no_std environments with an allocator
-- `no_std`: Builds without the standard library for embedded environments
-- `kani`: Enables formal verification using Kani
+- **Component Logging** - Enable WebAssembly components to log messages to the host
+- **Log Levels** - Support for different log levels (Debug, Info, Warning, Error)
+- **Custom Handlers** - Extensible architecture for custom log handlers
+- **Std/No-std Support** - Works in both standard and `no_std` environments
+- **Integration** - Seamless integration with the WRT component model
 
 ## Usage
 
-```rust
-use wrt_host::CallbackRegistry;
-use wrt_logging::{LogLevel, LogOperation, LoggingExt};
+Add this crate to your `Cargo.toml`:
 
-// Create a callback registry
-let mut registry = CallbackRegistry::new();
-
-// Register a log handler
-registry.register_log_handler(|log_op| {
-    println!("[{}] {}: {}", 
-        log_op.component_id.unwrap_or_default(),
-        log_op.level.as_str(),
-        log_op.message
-    );
-});
-
-// Log a message
-registry.handle_log(LogOperation::new(
-    LogLevel::Info,
-    "Hello from component".to_string(),
-));
+```toml
+[dependencies]
+wrt-logging = "0.2.0"
 ```
 
-## Component Model Integration
+### Example
 
-This crate provides a standardized way for components to log information to the host environment, 
-following the patterns established in the [WebAssembly Component Model](https://github.com/WebAssembly/component-model).
+```rust
+use wrt_logging::{LogHandler, LogLevel, LogOperation};
+use wrt_host::CallbackRegistry;
 
-## no_std Support
+// Create a custom log handler
+struct MyLogHandler;
 
-This crate supports no_std environments with the `no_std` feature. When used without `std`,
-you must enable the `alloc` feature and provide an allocator.
+impl LogHandler for MyLogHandler {
+    fn handle_log(&self, level: LogLevel, message: &str) -> wrt_logging::Result<()> {
+        match level {
+            LogLevel::Debug => println!("DEBUG: {}", message),
+            LogLevel::Info => println!("INFO: {}", message),
+            LogLevel::Warning => println!("WARN: {}", message),
+            LogLevel::Error => println!("ERROR: {}", message),
+        }
+        Ok(())
+    }
+}
 
-## Verification
+// Register the log handler with a component
+fn register_logging(registry: &mut CallbackRegistry) {
+    let handler = Box::new(MyLogHandler);
+    registry.register_log_handler(handler);
+}
+```
 
-This crate supports formal verification using [Kani](https://github.com/model-checking/kani).
-Enable the `kani` feature to include verification harnesses. 
+## Feature Flags
+
+- `std` (default): Use the standard library
+- `alloc`: Enable allocation support without std
+- `no_std`: Enable complete no_std support
+- `kani`: Enable formal verification support using Kani
+
+## No-std Usage
+
+To use this crate in a `no_std` environment:
+
+```toml
+[dependencies]
+wrt-logging = { version = "0.2.0", default-features = false, features = ["no_std", "alloc"] }
+```
+
+## License
+
+This project is licensed under the MIT License. 

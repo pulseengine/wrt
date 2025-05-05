@@ -4,16 +4,7 @@
 //! including add, subtract, multiply, divide, and remainder operations for
 //! various numeric types.
 
-use crate::{instruction_traits::PureInstruction, Error, Result, Value};
-use wrt_error::kinds;
-
-// When no_std but alloc is available
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::string::ToString;
-
-// When std is available
-#[cfg(feature = "std")]
-use std::string::ToString;
+use crate::prelude::*;
 
 /// Represents a pure arithmetic operation for WebAssembly.
 #[derive(Debug, Clone)]
@@ -204,10 +195,18 @@ impl<T: ArithmeticContext> PureInstruction<T, Error> for ArithmeticOp {
                 })?;
 
                 if b == 0 {
-                    return Err(Error::from(kinds::division_by_zero_error()));
+                    return Err(wrt_error::Error::new(
+                        wrt_error::ErrorCategory::Runtime,
+                        wrt_error::codes::RUNTIME_ERROR,
+                        "Division by zero",
+                    ));
                 }
                 if a == i32::MIN && b == -1 {
-                    return Err(Error::from(kinds::integer_overflow_error()));
+                    return Err(wrt_error::Error::new(
+                        wrt_error::ErrorCategory::Runtime,
+                        wrt_error::codes::CONVERSION_ERROR,
+                        "Integer overflow",
+                    ));
                 }
 
                 context.push_arithmetic_value(Value::I32(a.wrapping_div(b)))
@@ -221,7 +220,11 @@ impl<T: ArithmeticContext> PureInstruction<T, Error> for ArithmeticOp {
                 })?;
 
                 if b == 0 {
-                    return Err(Error::from(kinds::division_by_zero_error()));
+                    return Err(wrt_error::Error::new(
+                        wrt_error::ErrorCategory::Runtime,
+                        wrt_error::codes::RUNTIME_ERROR,
+                        "Division by zero",
+                    ));
                 }
 
                 context.push_arithmetic_value(Value::I32(a.wrapping_div(b) as i32))
@@ -235,7 +238,11 @@ impl<T: ArithmeticContext> PureInstruction<T, Error> for ArithmeticOp {
                 })?;
 
                 if b == 0 {
-                    return Err(Error::from(kinds::division_by_zero_error()));
+                    return Err(wrt_error::Error::new(
+                        wrt_error::ErrorCategory::Runtime,
+                        wrt_error::codes::RUNTIME_ERROR,
+                        "Division by zero",
+                    ));
                 }
 
                 context.push_arithmetic_value(Value::I32(a.wrapping_rem(b)))
@@ -249,7 +256,11 @@ impl<T: ArithmeticContext> PureInstruction<T, Error> for ArithmeticOp {
                 })?;
 
                 if b == 0 {
-                    return Err(Error::from(kinds::division_by_zero_error()));
+                    return Err(wrt_error::Error::new(
+                        wrt_error::ErrorCategory::Runtime,
+                        wrt_error::codes::RUNTIME_ERROR,
+                        "Division by zero",
+                    ));
                 }
 
                 context.push_arithmetic_value(Value::I32(a.wrapping_rem(b) as i32))

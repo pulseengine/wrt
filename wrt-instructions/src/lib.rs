@@ -24,16 +24,16 @@
 #![warn(missing_docs)]
 #![warn(clippy::missing_panics_doc)]
 
+// Verify required features when using no_std
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+compile_error!("The 'alloc' feature must be enabled when using no_std");
+
 // When no_std but alloc is available
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 extern crate alloc;
 
-// Make standard utilities available for either std or alloc
-#[cfg(feature = "std")]
-pub use std::{boxed::Box, format, string::String, vec, vec::Vec};
-
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-pub use alloc::{boxed::Box, format, string::String, vec, vec::Vec};
+// Import prelude for common type access
+pub mod prelude;
 
 pub mod arithmetic_ops;
 pub mod comparison_ops;
@@ -56,3 +56,6 @@ pub use wrt_types::values::Value;
 pub use wrt_types::BlockType;
 pub use wrt_types::RefType;
 pub use wrt_types::Result as TypesResult;
+
+// Re-export prelude for convenience
+pub use prelude::*;

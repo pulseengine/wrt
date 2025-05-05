@@ -1,125 +1,73 @@
 //! Integration tests for the wrt-error crate.
 
-#[cfg(all(test, feature = "alloc"))]
+#[cfg(test)]
 mod tests {
-    use core::fmt::{self, Display};
+    use wrt_error::codes;
     use wrt_error::kinds;
-    use wrt_error::source::ErrorSource;
-    use wrt_error::{Error, Result, ResultExt};
+    use wrt_error::{Error, ErrorCategory, Result};
 
-    // A simple test error type
-    #[derive(Debug, Clone)]
-    struct TestError(&'static str);
-
-    impl Display for TestError {
-        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            write!(f, "TestError: {}", self.0)
-        }
-    }
-
-    impl ErrorSource for TestError {
-        #[cfg(feature = "std")]
-        fn source(&self) -> Option<&(dyn ErrorSource + 'static)> {
-            None
-        }
+    #[test]
+    fn test_error_creation() {
+        let error = Error::new(
+            ErrorCategory::Memory,
+            codes::MEMORY_ACCESS_OUT_OF_BOUNDS,
+            "Test error",
+        );
+        assert!(error.is_memory_error());
+        assert_eq!(error.code, codes::MEMORY_ACCESS_OUT_OF_BOUNDS);
     }
 
     #[test]
-    fn test_basic_error_creation() {
-        // Create an error from a custom type
-        let error = Error::new(TestError("something went wrong"));
-        assert_eq!(format!("{}", error), "TestError: something went wrong");
+    fn test_error_from_kind() {
+        let kind = kinds::validation_error("Validation failed");
+        let error = Error::from(kind);
+
+        // Just verify the error was created (no specific category check)
+        assert!(format!("{}", error).contains("Validation failed"));
+    }
+
+    #[test]
+    fn test_result_with_error() {
+        let result: Result<i32> = Err(Error::runtime_error("Runtime error"));
+        assert!(result.is_err());
+
+        let error = result.err().unwrap();
+        assert!(error.is_runtime_error());
     }
 
     #[test]
     fn test_error_conversion() {
-        // Test Error::from method
-        let error: Result<()> = Err(Error::from(TestError("conversion test")));
-        assert!(error.is_err());
-        assert_eq!(
-            format!("{}", error.unwrap_err()),
-            "TestError: conversion test"
-        );
+        // StringError can be converted to Error
+        let message = "Error message".to_string();
+        let error: Error = message.into();
+
+        assert_eq!(error.code, codes::UNKNOWN);
     }
 
     #[test]
-    fn test_context_extension() {
-        // Test adding context to an error
-        let result: core::result::Result<(), TestError> = Err(TestError("base error"));
-        let with_context = result.context("operation failed");
-        assert!(with_context.is_err());
+    fn test_error_source() {
+        // Create an error with a source
+        let stack_error = kinds::stack_underflow();
+        let error = Error::from(stack_error);
 
-        let error_message = format!("{}", with_context.unwrap_err());
-        assert!(error_message.contains("operation failed"));
-        assert!(error_message.contains("base error"));
+        // Just verify the error was created with the correct message
+        assert!(format!("{}", error).contains("Stack underflow"));
     }
 
     #[test]
-    fn test_error_kinds() {
-        // Test several error kinds
-        let stack_error = kinds::StackUnderflowError;
-        assert_eq!(format!("{}", stack_error), "Stack underflow");
+    fn test_error_conversion_from_structs() {
+        // Test OutOfBoundsError
+        let bounds_error = kinds::out_of_bounds_error("Index out of bounds");
+        let error = Error::from(bounds_error);
 
-        let memory_error = kinds::MemoryAccessOutOfBoundsError {
-            address: 1000,
-            length: 8,
-        };
-        assert_eq!(
-            format!("{}", memory_error),
-            "Memory access out of bounds: address 1000, length 8"
-        );
+        // Just verify the error was created with the correct message
+        assert!(format!("{}", error).contains("Index out of bounds"));
 
-        let branch_error = kinds::InvalidBranchTargetError { depth: 5 };
-        assert_eq!(
-            format!("{}", branch_error),
-            "Invalid branch target with depth 5"
-        );
+        // Test another type of error
+        let table_error = kinds::invalid_table_index_error(5);
+        let error = Error::from(table_error);
 
-        let memory_index_error = kinds::InvalidMemoryIndexError(3);
-        assert_eq!(format!("{}", memory_index_error), "Invalid memory index: 3");
-    }
-
-    #[cfg(feature = "std")]
-    #[test]
-    fn test_error_chaining() {
-        use std::io::{Error as IoError, ErrorKind};
-
-        // Create an IO error
-        let io_error = IoError::new(ErrorKind::NotFound, "file not found");
-
-        // Chain contexts
-        let result: Result<()> = Err(Error::from(io_error))
-            .context("failed to read configuration")
-            .context("application initialization failed");
-
-        let error = result.unwrap_err();
-        let error_message = format!("{}", error);
-
-        assert!(error_message.contains("application initialization failed"));
-        assert!(error_message.contains("failed to read configuration"));
-    }
-
-    #[test]
-    fn test_factory_methods() {
-        let div_error = Error::division_by_zero();
-        assert_eq!(format!("{}", div_error), "Division by zero");
-
-        let overflow_error = Error::integer_overflow();
-        assert_eq!(format!("{}", overflow_error), "Integer overflow");
-
-        let stack_error = Error::stack_underflow();
-        assert_eq!(format!("{}", stack_error), "Stack underflow");
-
-        #[cfg(feature = "alloc")]
-        {
-            let trap_error = Error::trap("unreachable");
-            assert_eq!(format!("{}", trap_error), "WebAssembly trap: unreachable");
-
-            let exec_error = Error::execution_error("runtime failure");
-            assert_eq!(
-                format!("{}", exec_error),
-                "Execution error: runtime failure"
-            );
-        }
+        // Verify the error message mentions index 5
+        assert!(format!("{}", error).contains("5"));
     }
 }

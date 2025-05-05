@@ -3,23 +3,12 @@
 //! This module provides types and utilities for working with the WebAssembly
 //! Component Model binary format.
 
-#[cfg(feature = "std")]
-use std::{boxed::Box, format, string::String, vec::Vec};
-
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::{
-    boxed::Box,
-    format,
-    string::{String, ToString},
-    vec,
-    vec::Vec,
-};
+// Import from crate::lib re-exports to ensure proper features
+use crate::{format, Box, String, Vec};
 
 use crate::module::Module;
 use crate::types::ValueType;
 use crate::validation::Validatable;
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::fmt::Display;
 use wrt_error::{Error, Result};
 use wrt_types::resource::{ResourceDrop, ResourceNew, ResourceRep, ResourceRepresentation};
 // Re-export ValType from wrt-types

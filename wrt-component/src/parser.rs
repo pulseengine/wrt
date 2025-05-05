@@ -1,13 +1,10 @@
-// WebAssembly module parser using wrt-decoder
-//
-// This module provides functionality to parse WebAssembly modules
-// using the project's own wrt-decoder implementation.
+//! WebAssembly module parser using wrt-decoder
+//!
+//! This module provides functionality to parse WebAssembly modules
+//! using the project's own wrt-decoder implementation.
 
+use crate::prelude::*;
 use wrt_decoder::{Parser, Payload};
-use wrt_error::{kinds, Error, Result};
-use wrt_types::builtin::BuiltinType;
-
-use std::collections::HashSet;
 
 /// Scan a WebAssembly module for built-in imports
 ///
@@ -30,10 +27,14 @@ pub fn scan_for_builtins(binary: &[u8]) -> Result<Vec<String>> {
                     {
                         Ok(reader) => reader,
                         Err(err) => {
-                            return Err(Error::new(kinds::DecodingError(format!(
-                                "Failed to create import section reader: {}",
-                                err
-                            ))));
+                            return Err(Error::new(
+                                ErrorCategory::Parse,
+                                codes::DECODING_ERROR,
+                                kinds::DecodingError(format!(
+                                    "Failed to create import section reader: {}",
+                                    err
+                                )),
+                            ));
                         }
                     };
 
@@ -45,10 +46,14 @@ pub fn scan_for_builtins(binary: &[u8]) -> Result<Vec<String>> {
                             }
                         }
                         Err(err) => {
-                            return Err(Error::new(kinds::DecodingError(format!(
-                                "Failed to parse import during built-in scan: {}",
-                                err
-                            ))));
+                            return Err(Error::new(
+                                ErrorCategory::Parse,
+                                codes::DECODING_ERROR,
+                                kinds::DecodingError(format!(
+                                    "Failed to parse import during built-in scan: {}",
+                                    err
+                                )),
+                            ));
                         }
                     }
                 }
@@ -57,10 +62,14 @@ pub fn scan_for_builtins(binary: &[u8]) -> Result<Vec<String>> {
                 break;
             }
             Err(err) => {
-                return Err(Error::new(kinds::DecodingError(format!(
-                    "Failed to parse module during built-in scan: {}",
-                    err
-                ))));
+                return Err(Error::new(
+                    ErrorCategory::Parse,
+                    codes::DECODING_ERROR,
+                    kinds::DecodingError(format!(
+                        "Failed to parse module during built-in scan: {}",
+                        err
+                    )),
+                ));
             }
             _ => {} // Skip other payload types
         }

@@ -22,7 +22,7 @@ fn test_safe_memory_adapter() {
     let memory = Arc::new(Memory::new(memory_type).unwrap());
 
     // Create a SafeMemoryAdapter
-    let adapter = SafeMemoryAdapter::new(memory.clone());
+    let adapter = SafeMemoryAdapter::new(memory.clone()).unwrap();
 
     // Test basic operations
     let data = [1, 2, 3, 4, 5];
@@ -52,9 +52,11 @@ fn test_safe_memory_adapter_verification_levels() {
 
     // Create adapters with different verification levels
     let adapter_none =
-        SafeMemoryAdapter::with_verification_level(memory.clone(), VerificationLevel::None);
+        SafeMemoryAdapter::with_verification_level(memory.clone(), VerificationLevel::None)
+            .unwrap();
     let adapter_full =
-        SafeMemoryAdapter::with_verification_level(memory.clone(), VerificationLevel::Full);
+        SafeMemoryAdapter::with_verification_level(memory.clone(), VerificationLevel::Full)
+            .unwrap();
 
     // Both should work for basic operations
     let data = [1, 2, 3, 4, 5];

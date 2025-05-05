@@ -1,8 +1,9 @@
 [package]
 name = "xtask"
-version = "0.2.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
 publish = false
+repository = "https://github.com/avrabe/wrt"
 
 [features]
 default = []

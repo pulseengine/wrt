@@ -3,12 +3,8 @@
 //! This module provides the core infrastructure for host functions
 //! that can be called from WebAssembly components.
 
-use core::any::Any;
-
-// Use the re-exported types from lib.rs
-use crate::{Box, Vec};
-use wrt_error::Result;
-use wrt_types::values::Value;
+// Use the prelude for consistent imports
+use crate::prelude::*;
 
 /// A trait for functions that can be cloned and operate on `Vec<Value>`.
 /// This is used for storing host functions that can be called by the Wasm engine.

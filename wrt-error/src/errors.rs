@@ -31,6 +31,7 @@ use std::boxed::Box;
 use std::string::String;
 
 use crate::kinds;
+use crate::{FromError, ToErrorCategory};
 
 /// Error categories for WRT operations
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -55,7 +56,7 @@ pub enum ErrorCategory {
     Parse,
 }
 
-/// Base trait for all error types
+/// Base trait for all error types - std version with Send+Sync
 #[cfg(feature = "std")]
 pub trait ErrorSource: fmt::Debug + Send + Sync {
     /// Get the error code
@@ -125,9 +126,9 @@ impl Clone for Error {
 }
 
 impl Error {
-    /// Create a new error
+    /// Create a new error with allocation support
     #[cfg(feature = "alloc")]
-    pub fn new(category: ErrorCategory, code: u16, message: impl Into<String>) -> Self {
+    pub fn new<S: Into<String>>(category: ErrorCategory, code: u16, message: S) -> Self {
         Self {
             category,
             code,
@@ -138,7 +139,7 @@ impl Error {
 
     /// Create a new error in no_std mode (no message, no source)
     #[cfg(not(feature = "alloc"))]
-    pub fn new(category: ErrorCategory, code: u16, _message: impl core::fmt::Display) -> Self {
+    pub fn new<D: core::fmt::Display>(category: ErrorCategory, code: u16, _message: D) -> Self {
         Self { category, code }
     }
 
@@ -471,7 +472,7 @@ impl ErrorSource for Error {
     fn source(&self) -> Option<&(dyn ErrorSource + 'static)> {
         self.source.as_ref().map(|s| {
             let ptr: *const dyn ErrorSource = &**s as *const dyn ErrorSource;
-            unsafe { &*(ptr as *const (dyn ErrorSource + 'static)) }
+            unsafe { &*ptr }
         })
     }
 
@@ -490,17 +491,18 @@ impl ErrorSource for Error {
 pub mod codes {
     // Core WebAssembly errors (1000-1999)
     pub const STACK_UNDERFLOW: u16 = 1000;
-    pub const UNALIGNED_MEMORY_ACCESS: u16 = 1001;
-    pub const INVALID_MEMORY_ACCESS: u16 = 1002;
-    pub const INVALID_INSTANCE_INDEX: u16 = 1003;
-    pub const EXECUTION_ERROR: u16 = 1004;
-    pub const NOT_IMPLEMENTED: u16 = 1005;
-    pub const MEMORY_ACCESS_ERROR: u16 = 1006;
-    pub const INITIALIZATION_ERROR: u16 = 1007;
-    pub const TYPE_MISMATCH: u16 = 1008;
-    pub const PARSE_ERROR: u16 = 1009;
-    pub const INVALID_VERSION: u16 = 1010;
-    pub const OUT_OF_BOUNDS_ERROR: u16 = 1011;
+    pub const STACK_OVERFLOW: u16 = 1001;
+    pub const UNALIGNED_MEMORY_ACCESS: u16 = 1002;
+    pub const INVALID_MEMORY_ACCESS: u16 = 1003;
+    pub const INVALID_INSTANCE_INDEX: u16 = 1004;
+    pub const EXECUTION_ERROR: u16 = 1005;
+    pub const NOT_IMPLEMENTED: u16 = 1006;
+    pub const MEMORY_ACCESS_ERROR: u16 = 1007;
+    pub const INITIALIZATION_ERROR: u16 = 1008;
+    pub const TYPE_MISMATCH: u16 = 1009;
+    pub const PARSE_ERROR: u16 = 1010;
+    pub const INVALID_VERSION: u16 = 1011;
+    pub const OUT_OF_BOUNDS_ERROR: u16 = 1012;
 
     // Component Model errors (2000-2999)
     pub const INVALID_FUNCTION_INDEX: u16 = 2000;
@@ -809,5 +811,117 @@ impl From<kinds::TypeMismatch> for Error {
 impl From<kinds::InvalidTableIndexError> for Error {
     fn from(e: kinds::InvalidTableIndexError) -> Self {
         Self::from_kind(e, codes::OUT_OF_BOUNDS_ERROR, ErrorCategory::Memory)
+    }
+}
+
+// Implement the ToErrorCategory trait for Error
+impl ToErrorCategory for Error {
+    fn to_category(&self) -> ErrorCategory {
+        self.category
+    }
+}
+
+// Implement FromError for Error (self conversion)
+impl FromError<Error> for Error {
+    fn from_error(error: Error) -> Self {
+        error
+    }
+}
+
+// Standard implementation of FromError for common error types
+#[cfg(feature = "std")]
+impl FromError<std::io::Error> for Error {
+    fn from_error(error: std::io::Error) -> Self {
+        #[cfg(feature = "alloc")]
+        {
+            Self::system_error(format!("IO error: {}", error))
+        }
+        #[cfg(not(feature = "alloc"))]
+        {
+            Self::system_error("IO error")
+        }
+    }
+}
+
+// Implement FromError for string types when alloc is available
+#[cfg(feature = "alloc")]
+impl FromError<String> for Error {
+    fn from_error(error: String) -> Self {
+        Self::runtime_error(error)
+    }
+}
+
+// Implement FromError for &str
+impl FromError<&str> for Error {
+    fn from_error(error: &str) -> Self {
+        #[cfg(feature = "alloc")]
+        {
+            Self::runtime_error(error)
+        }
+        #[cfg(not(feature = "alloc"))]
+        {
+            Self::runtime_error(error)
+        }
+    }
+}
+
+// Add FromError implementations for the kinds error types
+#[cfg(feature = "alloc")]
+impl FromError<kinds::ValidationError> for Error {
+    fn from_error(error: kinds::ValidationError) -> Self {
+        Self::new(ErrorCategory::Validation, codes::VALIDATION_ERROR, error.0)
+    }
+}
+
+#[cfg(feature = "alloc")]
+impl FromError<kinds::ParseError> for Error {
+    fn from_error(error: kinds::ParseError) -> Self {
+        Self::new(ErrorCategory::Runtime, codes::PARSE_ERROR, error.0)
+    }
+}
+
+#[cfg(feature = "alloc")]
+impl FromError<kinds::OutOfBoundsError> for Error {
+    fn from_error(error: kinds::OutOfBoundsError) -> Self {
+        Self::new(ErrorCategory::Memory, codes::MEMORY_OUT_OF_BOUNDS, error.0)
+    }
+}
+
+#[cfg(feature = "alloc")]
+impl FromError<kinds::InvalidType> for Error {
+    fn from_error(error: kinds::InvalidType) -> Self {
+        Self::new(ErrorCategory::Type, codes::TYPE_MISMATCH_ERROR, error.0)
+    }
+}
+
+#[cfg(feature = "alloc")]
+impl FromError<kinds::ResourceError> for Error {
+    fn from_error(error: kinds::ResourceError) -> Self {
+        Self::new(ErrorCategory::Resource, codes::RESOURCE_ERROR, error.0)
+    }
+}
+
+#[cfg(feature = "alloc")]
+impl FromError<kinds::ComponentError> for Error {
+    fn from_error(error: kinds::ComponentError) -> Self {
+        Self::new(
+            ErrorCategory::Component,
+            codes::COMPONENT_LINKING_ERROR,
+            error.0,
+        )
+    }
+}
+
+#[cfg(feature = "alloc")]
+impl FromError<kinds::RuntimeError> for Error {
+    fn from_error(error: kinds::RuntimeError) -> Self {
+        Self::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, error.0)
+    }
+}
+
+#[cfg(feature = "alloc")]
+impl FromError<kinds::PoisonedLockError> for Error {
+    fn from_error(error: kinds::PoisonedLockError) -> Self {
+        Self::from_kind(error, codes::POISONED_LOCK, ErrorCategory::Runtime)
     }
 }

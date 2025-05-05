@@ -1,23 +1,18 @@
 [package]
 name = "wrt"
-version = "0.2.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
 description = "Pure Rust WebAssembly runtime supporting Core and Component Model specs"
-license = "MIT"
+license.workspace = true
 repository = "https://github.com/avrabe/wrt"
 
 [dependencies]
 # Core allowed/necessary dependencies
 log = { version = "0.4", optional = true }
-anyhow = { workspace = true, optional = true }
-serde = { version = "1.0", features = ["derive"], optional = true }
-wat = { version = "1.229.0", optional = true }
-serde_json = { version = "1.0", optional = true }
-bincode = { version = "2.0", optional = true }
 # Error handling
 wrt-error = { path = "../wrt-error", version = "0.2.0" }
 # Synchronization primitives
-wrt-sync = { path = "../wrt-sync", version = "0.2.0" }
+wrt-sync = { path = "../wrt-sync", version = "0.2.0", features = ["std"] }
 # Format handling (no longer optional)
 wrt-format = { path = "../wrt-format", version = "0.2.0" }
 # Shared type definitions
@@ -30,14 +25,6 @@ wrt-runtime = { path = "../wrt-runtime", version = "0.2.0" }
 wrt-logging = { path = "../wrt-logging", version = "0.2.0" }
 # Instruction implementations
 wrt-instructions = { path = "../wrt-instructions", version = "0.2.0" }
-# WASI dependencies (optional)
-wasi-common = { version = "17.0.3", optional = true }
-wasi-cap-std-sync = { version = "17.0.3", optional = true }
-cap-std = { version = "2.0.0", optional = true }
-wasi = { version = "0.11.0", optional = true }
-# Other required dependencies
-parking_lot = { version = "0.12" } # Required for stackless.rs
-wasmparser = { version = "0.227.1", optional = true } # Updated to match the wast crate version
 
 [lib]
 name = "wrt"
@@ -46,7 +33,7 @@ bench = false
 
 [dev-dependencies]
 criterion = "0.5"
-wast = { version = "228.0.0", features = ["wasm-module", "component-model"] }
+wast = { version = "229.0.0" }
 tempfile = "3.8"
 tracing = "0.1"
 tracing-subscriber = "0.3"
@@ -73,9 +60,9 @@ unexpected_cfgs = { level = "allow", check-cfg = ['cfg(test)'] }
 # Core features
 default = ["minimal", "alloc", "std"]
 # Minimal feature set
-minimal = ["dep:anyhow", "dep:log", "wrt-types/std", "wrt-decoder/minimal"]
+minimal = ["dep:log", "wrt-types/std", "wrt-decoder/minimal"]
 # Full std feature
-std = ["minimal", "dep:wasmparser", "alloc", 
+std = ["minimal", "alloc", 
        "wrt-error/std", 
        "wrt-sync/std", 
        "wrt-format/std", 
@@ -113,12 +100,8 @@ safety = ["wrt-types/safety",
           "wrt-decoder/safety", 
           "wrt-format/safety", 
           "wrt-runtime/safety", 
-          "wrt-instructions/safety"]
-# Optional features dependent on std
-serialization = ["dep:serde", "dep:bincode", "dep:serde_json", "alloc", "std"]
-wasi = ["dep:wasi-common", "dep:wasi-cap-std-sync", "dep:cap-std", "dep:wasi", "std"]
-wat-parsing = ["dep:wat", "std", "wrt-decoder/wat"]
-component-json = ["dep:serde", "dep:serde_json", "std"]
+          "wrt-instructions/safety",
+          "alloc"]
 # Proposal features (mostly placeholders/unused for now)
 relaxed_simd = []
 gc = []
@@ -144,4 +127,3 @@ path = "tests/rounding_test.rs"
 [[example]]
 name = "checkpoint"
 path = "examples/checkpoint.rs"
-required-features = ["serialization"]

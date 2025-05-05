@@ -126,10 +126,7 @@ pub fn create_state_section(
     section_data.extend_from_slice(&compressed_data);
 
     // Create custom section with name and data
-    Ok(CustomSection {
-        name: section_type.name(),
-        data: section_data,
-    })
+    Ok(CustomSection::new(section_type.name(), section_data))
 }
 
 /// Extract state data from a custom section
@@ -143,8 +140,11 @@ pub fn extract_state_section(section: &CustomSection) -> Result<(StateHeader, Ve
         )
     })?;
 
+    // Get the data
+    let data = &section.data;
+
     // Parse header
-    if section.data.len() < 17 {
+    if data.len() < 17 {
         return Err(Error::new(
             ErrorCategory::Validation,
             codes::PARSE_ERROR,
@@ -153,7 +153,7 @@ pub fn extract_state_section(section: &CustomSection) -> Result<(StateHeader, Ve
     }
 
     // Verify magic bytes
-    if section.data[0..4] != *STATE_MAGIC {
+    if data[0..4] != *STATE_MAGIC {
         return Err(Error::new(
             ErrorCategory::Validation,
             codes::PARSE_ERROR,
@@ -162,12 +162,7 @@ pub fn extract_state_section(section: &CustomSection) -> Result<(StateHeader, Ve
     }
 
     // Parse version
-    let version = u32::from_le_bytes([
-        section.data[4],
-        section.data[5],
-        section.data[6],
-        section.data[7],
-    ]);
+    let version = u32::from_le_bytes([data[4], data[5], data[6], data[7]]);
 
     // Version check
     if version != STATE_VERSION {
@@ -176,7 +171,7 @@ pub fn extract_state_section(section: &CustomSection) -> Result<(StateHeader, Ve
     }
 
     // Parse section type
-    let parsed_section_type = StateSection::from_u32(section.data[8] as u32).ok_or_else(|| {
+    let parsed_section_type = StateSection::from_u32(data[8] as u32).ok_or_else(|| {
         Error::new(
             ErrorCategory::Validation,
             codes::PARSE_ERROR,
@@ -194,7 +189,7 @@ pub fn extract_state_section(section: &CustomSection) -> Result<(StateHeader, Ve
     }
 
     // Parse compression type
-    let compression_type = match CompressionType::from_u8(section.data[9]) {
+    let compression_type = match CompressionType::from_u8(data[9]) {
         Some(t) => t,
         None => {
             return Err(Error::new(
@@ -206,23 +201,13 @@ pub fn extract_state_section(section: &CustomSection) -> Result<(StateHeader, Ve
     };
 
     // Parse uncompressed size
-    let uncompressed_size = u32::from_le_bytes([
-        section.data[10],
-        section.data[11],
-        section.data[12],
-        section.data[13],
-    ]);
+    let uncompressed_size = u32::from_le_bytes([data[10], data[11], data[12], data[13]]);
 
     // Parse compressed size
-    let compressed_size = u32::from_le_bytes([
-        section.data[14],
-        section.data[15],
-        section.data[16],
-        section.data[17],
-    ]);
+    let compressed_size = u32::from_le_bytes([data[14], data[15], data[16], data[17]]);
 
     // Extract the compressed data
-    if section.data.len() < 18 + compressed_size as usize {
+    if data.len() < 18 + compressed_size as usize {
         return Err(Error::new(
             ErrorCategory::Validation,
             codes::PARSE_ERROR,
@@ -230,7 +215,7 @@ pub fn extract_state_section(section: &CustomSection) -> Result<(StateHeader, Ve
         ));
     }
 
-    let compressed_data = &section.data[18..18 + compressed_size as usize];
+    let compressed_data = &data[18..18 + compressed_size as usize];
 
     // Decompress the data
     let decompressed_data = match compression_type {

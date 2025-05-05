@@ -1,805 +1,538 @@
-//! Streaming parser for WebAssembly modules
+//! Streaming parser for WebAssembly modules and components
 //!
-//! This module provides a streaming parser interface for WebAssembly modules,
-//! allowing for efficient incremental processing of module sections without
-//! requiring the entire module to be parsed at once.
+//! This module provides a streaming parser interface for WebAssembly modules and components,
+//! allowing for efficient incremental processing without requiring the entire binary
+//! to be parsed at once.
 
+use crate::module::Module;
 use crate::prelude::*;
-use crate::section_error::{self};
-use wrt_error::{Result};
-use wrt_format::binary::read_leb128_u32;
-use wrt_format::section::*;
-use wrt_format::module::{Import, ImportDesc, Table, Global};
-use wrt_format::types::{ValueType};
-use wrt_types::types::GlobalType;
-use wrt_format::types::parse_value_type;
+use crate::section_error;
+use crate::utils::{self, BinaryType};
+use wrt_error::{codes, Error, ErrorCategory, Result};
+use wrt_format::section::CustomSection;
+use wrt_types::safe_memory::SafeSlice;
+
+// Comment out conflicting imports
+/*
+use crate::module::{
+    parse_type_section,
+    parse_import_section,
+    parse_function_section,
+    parse_table_section,
+    parse_memory_section,
+    parse_global_section,
+    parse_export_section,
+    parse_element_section,
+    parse_code_section,
+    parse_data_section
+};
+*/
+
+// Section ID constants
+pub const CUSTOM_ID: u8 = 0;
+pub const TYPE_ID: u8 = 1;
+pub const IMPORT_ID: u8 = 2;
+pub const FUNCTION_ID: u8 = 3;
+pub const TABLE_ID: u8 = 4;
+pub const MEMORY_ID: u8 = 5;
+pub const GLOBAL_ID: u8 = 6;
+pub const EXPORT_ID: u8 = 7;
+pub const START_ID: u8 = 8;
+pub const ELEMENT_ID: u8 = 9;
+pub const CODE_ID: u8 = 10;
+pub const DATA_ID: u8 = 11;
 
 /// Represents a payload produced by the WebAssembly parser
 #[derive(Debug)]
 pub enum Payload<'a> {
     /// WebAssembly version
-    Version(u32),
-    
+    Version(u32, &'a [u8]),
+
     /// Type section
-    TypeSection(&'a [u8], usize),
-    
+    TypeSection(SafeSlice<'a>, usize),
+
     /// Import section
-    ImportSection(&'a [u8], usize),
-    
+    ImportSection(SafeSlice<'a>, usize),
+
     /// Function section
-    FunctionSection(&'a [u8], usize),
-    
+    FunctionSection(SafeSlice<'a>, usize),
+
     /// Table section
-    TableSection(&'a [u8], usize),
-    
+    TableSection(SafeSlice<'a>, usize),
+
     /// Memory section
-    MemorySection(&'a [u8], usize),
-    
+    MemorySection(SafeSlice<'a>, usize),
+
     /// Global section
-    GlobalSection(&'a [u8], usize),
-    
+    GlobalSection(SafeSlice<'a>, usize),
+
     /// Export section
-    ExportSection(&'a [u8], usize),
-    
+    ExportSection(SafeSlice<'a>, usize),
+
     /// Start section
     StartSection(u32),
-    
+
     /// Element section
-    ElementSection(&'a [u8], usize),
-    
+    ElementSection(SafeSlice<'a>, usize),
+
     /// Code section
-    CodeSection(&'a [u8], usize),
-    
+    CodeSection(SafeSlice<'a>, usize),
+
     /// Data section
-    DataSection(&'a [u8], usize),
-    
+    DataSection(SafeSlice<'a>, usize),
+
+    /// Data count section (for bulk memory operations)
+    DataCountSection {
+        /// Number of data segments
+        count: u32,
+    },
+
     /// Custom section
     CustomSection {
         /// Name of the custom section
         name: String,
         /// Data of the custom section
-        data: &'a [u8],
+        data: SafeSlice<'a>,
         /// Size of the data
         size: usize,
     },
-    
+
+    /// Component section (for component model)
+    ComponentSection {
+        /// Component data
+        data: SafeSlice<'a>,
+        /// Size of the data
+        size: usize,
+    },
+
     /// End of module
     End,
 }
 
-/// A streaming parser for WebAssembly modules
-///
-/// This parser iterates through sections of a WebAssembly module, yielding
-/// each section as a `Payload` instance. This allows for efficient processing
-/// of modules without requiring the entire module to be parsed at once.
+/// WebAssembly binary parser
 pub struct Parser<'a> {
-    /// The WebAssembly binary data
-    binary: &'a [u8],
-    
     /// Current offset in the binary
     current_offset: usize,
-    
-    /// Whether the parser has processed the header
-    header_processed: bool,
+    /// Binary data to parse (raw byte slice for better no_std compatibility)
+    binary: Option<&'a [u8]>,
+    /// Whether to skip unknown custom sections
+    skip_unknown_custom: bool,
+    /// Whether the version has been read
+    version_read: bool,
+    /// Whether the parser has finished processing
+    finished: bool,
+    /// Type of binary (core module or component)
+    binary_type: Option<BinaryType>,
 }
 
 impl<'a> Parser<'a> {
-    /// Create a new parser for a WebAssembly binary
-    pub fn new(binary: &'a [u8]) -> Self {
+    /// Create a new parser for the given binary data
+    pub fn new(binary: impl Into<Option<&'a [u8]>>, skip_unknown_custom: bool) -> Self {
+        // Convert into Option
+        let binary = binary.into();
+
+        // Determine binary type if binary is provided
+        let binary_type = binary.and_then(|data| utils::detect_binary_type(data).ok());
+
         Self {
-            binary,
             current_offset: 0,
-            header_processed: false,
+            binary,
+            skip_unknown_custom,
+            version_read: false,
+            finished: false,
+            binary_type,
         }
     }
-    
+
+    /// Convenient constructor that takes a slice directly (for backward compatibility)
+    #[deprecated(since = "0.2.0", note = "Use Parser::new(Some(binary), false) instead")]
+    pub fn with_binary(binary: &'a [u8]) -> Self {
+        Self::new(Some(binary), false)
+    }
+
+    /// INTERNAL USE ONLY: For compatibility with tests that use the old API
+    /// This is not part of the public API and will be removed
+    /// Do not use this method in new code!
+    pub fn _new_compat(binary: &'a [u8]) -> Self {
+        Self::new(Some(binary), false)
+    }
+
     /// Get the current offset in the binary
     pub fn current_offset(&self) -> usize {
         self.current_offset
     }
-    
-    /// Create an import section reader from an import section payload
-    pub fn create_import_section_reader(payload: &Payload<'a>) -> Result<ImportSectionReader<'a>> {
-        match payload {
-            Payload::ImportSection(data, _) => ImportSectionReader::new(data),
-            _ => Err(section_error::invalid_section(
-                IMPORT_ID,
-                0,
-                "Expected import section payload",
-            )),
+
+    /// Get the detected binary type
+    pub fn binary_type(&self) -> Option<BinaryType> {
+        self.binary_type
+    }
+
+    /// Create a new parser from a SafeSlice
+    pub fn from_safe_slice(slice: SafeSlice<'a>) -> Self {
+        // Convert SafeSlice to &[u8] for parsing
+        // Use data() to access the underlying bytes, handling error gracefully
+        let binary = slice.data().ok();
+        Self::new(binary, false)
+    }
+
+    /// Read the next payload from the binary
+    pub fn read(&mut self) -> Result<Option<Payload<'a>>> {
+        match self.next() {
+            Some(Ok(payload)) => Ok(Some(payload)),
+            Some(Err(e)) => Err(e),
+            None => Ok(None),
         }
     }
-    
+
     /// Process the WebAssembly header
     fn process_header(&mut self) -> Result<Payload<'a>> {
-        // Verify the binary has at least a header
-        if self.binary.len() < 8 {
-            return Err(section_error::unexpected_end(0, 8, self.binary.len()));
-        }
-        
-        // Verify magic bytes
-        let expected_magic = [0x00, 0x61, 0x73, 0x6D]; // \0asm
-        let actual_magic = &self.binary[0..4];
-        if actual_magic != expected_magic {
-            let mut actual_magic_array = [0; 4];
-            actual_magic_array.copy_from_slice(actual_magic);
-            return Err(section_error::invalid_magic(0, expected_magic, actual_magic_array));
-        }
-        
-        // Read version
-        let version_bytes = &self.binary[4..8];
-        let version = u32::from_le_bytes(version_bytes.try_into().unwrap());
-        
-        // Advance past the header
-        self.current_offset = 8;
-        self.header_processed = true;
-        
-        Ok(Payload::Version(version))
-    }
-    
-    /// Process a custom section
-    fn process_custom_section(&mut self, section_size: usize) -> Result<Payload<'a>> {
-        let _section_start = self.current_offset;
-        
-        // Read the string's length
-        let (name_len, name_len_size) = read_leb128_u32(self.binary, self.current_offset)?;
-        self.current_offset += name_len_size;
-        
-        // Ensure we have enough bytes for the name
-        if self.current_offset + name_len as usize > self.binary.len() {
-            return Err(section_error::unexpected_end(
-                self.current_offset,
-                name_len as usize,
-                self.binary.len() - self.current_offset,
-            ));
-        }
-        
-        // Read the name
-        let name_bytes = &self.binary[self.current_offset..self.current_offset + name_len as usize];
-        let name = match std::str::from_utf8(name_bytes) {
-            Ok(s) => s.to_string(),
-            Err(_) => return Err(section_error::invalid_section(
-                CUSTOM_ID,
-                self.current_offset,
-                "Invalid UTF-8 in custom section name",
-            )),
+        // Get the underlying data safely
+        let data = match self.binary {
+            Some(binary) => binary,
+            None => return Err(section_error::binary_required(0)),
         };
-        self.current_offset += name_len as usize;
-        
-        // The data follows the name
-        let name_total_size = name_len_size + name_len as usize;
-        let data_size = section_size - name_total_size;
-        let data = &self.binary[self.current_offset..self.current_offset + data_size];
-        
-        // Advance past the data
-        self.current_offset += data_size;
-        
-        Ok(Payload::CustomSection {
-            name,
-            data,
-            size: data_size,
-        })
+
+        // Check if binary has at least 8 bytes (magic + version)
+        if data.len() < 8 {
+            return Err(section_error::unexpected_end(0, 8, data.len()));
+        }
+
+        // Check based on binary type
+        match self.binary_type {
+            Some(BinaryType::CoreModule) => {
+                // Core WebAssembly module
+                utils::verify_binary_header(data)?;
+                self.current_offset = 8;
+                self.version_read = true;
+                Ok(Payload::Version(1, data))
+            }
+            Some(BinaryType::Component) => {
+                // Component Model component
+                // Verify component header (similarly to module header)
+                if data[0..4] != [0x00, 0x63, 0x6D, 0x70] {
+                    return Err(Error::new(
+                        ErrorCategory::Parse,
+                        codes::PARSE_ERROR,
+                        "Invalid Component Model magic number",
+                    ));
+                }
+
+                if data[4..8] != [0x01, 0x00, 0x00, 0x00] {
+                    return Err(Error::new(
+                        ErrorCategory::Parse,
+                        codes::PARSE_ERROR,
+                        "Unsupported Component version",
+                    ));
+                }
+
+                self.current_offset = 8;
+                self.version_read = true;
+                Ok(Payload::Version(1, data))
+            }
+            None => {
+                // Try to detect binary type
+                self.binary_type = Some(utils::detect_binary_type(data)?);
+                self.process_header()
+            }
+        }
     }
-    
-    /// Process a standard (non-custom) section
-    fn process_standard_section(&mut self, id: u8, section_size: usize) -> Result<Payload<'a>> {
-        let data = &self.binary[self.current_offset..self.current_offset + section_size];
-        let result = match id {
-            TYPE_ID => Payload::TypeSection(data, section_size),
-            IMPORT_ID => Payload::ImportSection(data, section_size),
-            FUNCTION_ID => Payload::FunctionSection(data, section_size),
-            TABLE_ID => Payload::TableSection(data, section_size),
-            MEMORY_ID => Payload::MemorySection(data, section_size),
-            GLOBAL_ID => Payload::GlobalSection(data, section_size),
-            EXPORT_ID => Payload::ExportSection(data, section_size),
-            START_ID => {
-                // Start section contains a single u32 index
+
+    /// Process a section (delegate to the appropriate parser)
+    fn process_section(&mut self, section_id: u8, section_size: usize) -> Result<Payload<'a>> {
+        // Get the binary data safely
+        let binary_data = match self.binary {
+            Some(binary) => binary,
+            None => return Err(section_error::binary_required(0)),
+        };
+
+        // Store section data for processing
+        let data = &binary_data[self.current_offset..self.current_offset + section_size];
+        let start_offset = self.current_offset;
+
+        // Always advance the offset past this section to prevent infinite loops
+        self.current_offset += section_size;
+
+        // Delegate based on binary type
+        match self.binary_type {
+            Some(BinaryType::CoreModule) => {
+                // Process section based on ID for core modules
+                self.process_core_section(section_id, data, section_size, start_offset)
+            }
+            Some(BinaryType::Component) => {
+                // Process section based on ID for components
+                self.process_component_section(section_id, data, section_size, start_offset)
+            }
+            None => {
+                // We shouldn't get here, but just in case...
+                Err(Error::new(
+                    ErrorCategory::Parse,
+                    codes::PARSE_ERROR,
+                    "Binary type not detected",
+                ))
+            }
+        }
+    }
+
+    /// Process a core module section
+    fn process_core_section(
+        &mut self,
+        section_id: u8,
+        data: &'a [u8],
+        section_size: usize,
+        start_offset: usize,
+    ) -> Result<Payload<'a>> {
+        match section_id {
+            0x00 => {
+                // Custom section - parse and return
+                let mut module = Module::new();
+                // Updated to use module methods directly for now, as decoder_core::parse is being reorganized
+                let (name, bytes_read) = crate::utils::read_name_as_string(data, 0)?;
+                module.custom_sections.push(CustomSection {
+                    name,
+                    data: data[bytes_read..].to_vec(),
+                });
+
+                // Extract the name and data from the parsed section
+                if let Some(custom_section) = module.custom_sections.first() {
+                    Ok(Payload::CustomSection {
+                        name: custom_section.name.clone(),
+                        data: SafeSlice::new(data),
+                        size: section_size,
+                    })
+                } else {
+                    Err(Error::new(
+                        ErrorCategory::Parse,
+                        codes::PARSE_ERROR,
+                        "Failed to parse custom section",
+                    ))
+                }
+            }
+            0x01 => Ok(Payload::TypeSection(SafeSlice::new(data), section_size)),
+            0x02 => Ok(Payload::ImportSection(SafeSlice::new(data), section_size)),
+            0x03 => Ok(Payload::FunctionSection(SafeSlice::new(data), section_size)),
+            0x04 => Ok(Payload::TableSection(SafeSlice::new(data), section_size)),
+            0x05 => Ok(Payload::MemorySection(SafeSlice::new(data), section_size)),
+            0x06 => Ok(Payload::GlobalSection(SafeSlice::new(data), section_size)),
+            0x07 => Ok(Payload::ExportSection(SafeSlice::new(data), section_size)),
+            0x08 => {
+                // Start section - parse directly
                 if section_size == 0 {
                     return Err(section_error::invalid_section(
-                        id,
-                        self.current_offset,
+                        section_id,
+                        start_offset,
                         "Start section cannot be empty",
                     ));
                 }
-                
-                let (start_index, _) = read_leb128_u32(self.binary, self.current_offset)?;
-                Payload::StartSection(start_index)
+
+                let (start_index, _) = wrt_format::binary::read_leb128_u32(data, 0)?;
+                Ok(Payload::StartSection(start_index))
             }
-            ELEMENT_ID => Payload::ElementSection(data, section_size),
-            CODE_ID => Payload::CodeSection(data, section_size),
-            DATA_ID => Payload::DataSection(data, section_size),
+            0x09 => Ok(Payload::ElementSection(SafeSlice::new(data), section_size)),
+            0x0A => Ok(Payload::CodeSection(SafeSlice::new(data), section_size)),
+            0x0B => Ok(Payload::DataSection(SafeSlice::new(data), section_size)),
+            0x0C => {
+                // Data count section
+                if section_size == 0 {
+                    return Err(section_error::invalid_section(
+                        section_id,
+                        start_offset,
+                        "Data count section cannot be empty",
+                    ));
+                }
+
+                let (count, _) = wrt_format::binary::read_leb128_u32(data, 0)?;
+                Ok(Payload::DataCountSection { count })
+            }
             _ => {
-                // Unknown section - treat it like a custom section but without a name
-                Payload::CustomSection {
-                    name: format!("unknown_{}", id),
-                    data,
-                    size: section_size,
+                // Unknown section
+                if self.skip_unknown_custom {
+                    self.next().ok_or_else(|| {
+                        Error::new(
+                            ErrorCategory::Parse,
+                            codes::PARSE_ERROR,
+                            "No more sections to parse",
+                        )
+                    })?
+                } else {
+                    Ok(Payload::CustomSection {
+                        name: format!("unknown_{}", section_id),
+                        data: SafeSlice::new(data),
+                        size: section_size,
+                    })
                 }
             }
-        };
-        
-        // Advance past the section
-        self.current_offset += section_size;
-        
-        Ok(result)
+        }
+    }
+
+    /// Process a component section
+    fn process_component_section(
+        &mut self,
+        section_id: u8,
+        data: &'a [u8],
+        section_size: usize,
+        _start_offset: usize,
+    ) -> Result<Payload<'a>> {
+        // For component model parsing, we'll delegate to the component parser
+        // but wrap the result in our Payload type
+        match section_id {
+            0x00 => {
+                // Custom section - use similar code as for core modules
+                let (name, bytes_read) = utils::read_name_as_string(data, 0)?;
+                let section_data = &data[bytes_read..];
+
+                Ok(Payload::CustomSection {
+                    name,
+                    data: SafeSlice::new(section_data),
+                    size: section_size - bytes_read,
+                })
+            }
+            _ => {
+                // For all other component sections, package them as ComponentSection
+                // The component parser will handle them later
+                Ok(Payload::ComponentSection {
+                    data: SafeSlice::new(data),
+                    size: section_size,
+                })
+            }
+        }
     }
 }
 
 impl<'a> Iterator for Parser<'a> {
     type Item = Result<Payload<'a>>;
-    
+
     fn next(&mut self) -> Option<Self::Item> {
-        // Process header if not done yet
-        if !self.header_processed {
-            return Some(self.process_header());
-        }
-        
-        // Check if we've reached the end
-        if self.current_offset >= self.binary.len() {
-            return Some(Ok(Payload::End));
-        }
-        
-        // Read section ID
-        let id = match self.binary.get(self.current_offset) {
-            Some(&id) => id,
-            None => return Some(Ok(Payload::End)),
-        };
-        self.current_offset += 1;
-        
-        // Read section size
-        let (section_size, size_bytes) = match read_leb128_u32(self.binary, self.current_offset) {
-            Ok((size, bytes)) => (size as usize, bytes),
-            Err(e) => return Some(Err(e)),
-        };
-        self.current_offset += size_bytes;
-        
-        // Check if section extends beyond the end of the binary
-        if self.current_offset + section_size > self.binary.len() {
-            return Some(Err(section_error::section_size_exceeds_module(
-                id,
-                section_size as u32,
-                self.binary.len() - self.current_offset,
-                self.current_offset - size_bytes - 1, // Position of section ID
-            )));
-        }
-        
-        // Process section based on ID
-        let result = if id == CUSTOM_ID {
-            self.process_custom_section(section_size)
-        } else {
-            self.process_standard_section(id, section_size)
-        };
-        
-        Some(result)
-    }
-}
-
-/// Specialized reader for import section entries
-pub struct ImportSectionReader<'a> {
-    /// The raw section data
-    data: &'a [u8],
-    
-    /// Number of entries in the section
-    count: u32,
-    
-    /// Current entry index
-    current: u32,
-    
-    /// Current offset within the section data
-    offset: usize,
-}
-
-impl<'a> ImportSectionReader<'a> {
-    /// Create a new import section reader
-    pub fn new(data: &'a [u8]) -> Result<Self> {
-        // Read the count of entries
-        let (count, count_size) = read_leb128_u32(data, 0)?;
-        
-        Ok(Self {
-            data,
-            count,
-            current: 0,
-            offset: count_size,
-        })
-    }
-    
-    /// Get the total number of entries
-    pub fn count(&self) -> u32 {
-        self.count
-    }
-}
-
-/// Helper function to read a name string from binary data
-fn read_name(data: &[u8], offset: usize) -> Result<(String, usize)> {
-    // Read the string's length
-    let (name_len, name_len_size) = read_leb128_u32(data, offset)?;
-    let name_offset = offset + name_len_size;
-    
-    // Ensure we have enough bytes for the name
-    if name_offset + name_len as usize > data.len() {
-        return Err(section_error::unexpected_end(
-            name_offset, 
-            name_len as usize,
-            data.len() - name_offset,
-        ));
-    }
-    
-    // Read the name
-    let name_bytes = &data[name_offset..name_offset + name_len as usize];
-    let name = match std::str::from_utf8(name_bytes) {
-        Ok(s) => s.to_string(),
-        Err(_) => return Err(section_error::invalid_utf8(name_offset)),
-    };
-    
-    Ok((name, name_len_size + name_len as usize))
-}
-
-impl<'a> Iterator for ImportSectionReader<'a> {
-    type Item = Result<Import>;
-    
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.current >= self.count {
+        // If we've finished, return None
+        if self.finished {
             return None;
         }
-        
-        self.current += 1;
-        
-        // Read module name
-        let (module_name, module_name_size) = match read_name(self.data, self.offset) {
-            Ok((name, size)) => (name, size),
-            Err(e) => return Some(Err(e)),
-        };
-        self.offset += module_name_size;
-        
-        // Read field name
-        let (field_name, field_name_size) = match read_name(self.data, self.offset) {
-            Ok((name, size)) => (name, size),
-            Err(e) => return Some(Err(e)),
-        };
-        self.offset += field_name_size;
-        
-        // Read import kind byte
-        if self.offset >= self.data.len() {
+
+        // If we haven't processed the header yet, start with that
+        if !self.version_read {
+            return Some(self.process_header());
+        }
+
+        // Check if we've reached the end of the binary
+        if self.current_offset >= self.binary.as_ref().map_or(0, |v| v.len()) {
+            self.finished = true;
+            return Some(Ok(Payload::End));
+        }
+
+        // Ensure we have at least 1 byte left (section ID)
+        if self.current_offset + 1 > self.binary.as_ref().map_or(0, |v| v.len()) {
+            self.finished = true;
             return Some(Err(section_error::unexpected_end(
-                self.offset,
+                self.current_offset,
                 1,
                 0,
             )));
         }
-        
-        let import_kind = self.data[self.offset];
-        self.offset += 1;
-        
-        // Parse based on import kind
-        let desc = match import_kind {
-            0x00 => {
-                // Function import
-                let (type_idx, type_idx_size) = match read_leb128_u32(self.data, self.offset) {
-                    Ok((idx, size)) => (idx, size),
-                    Err(e) => return Some(Err(e)),
-                };
-                self.offset += type_idx_size;
-                
-                ImportDesc::Function(type_idx)
-            },
-            0x01 => {
-                // Table import
-                let element_type = match self.data.get(self.offset) {
-                    Some(&0x70) => ValueType::FuncRef,
-                    Some(&0x6F) => ValueType::ExternRef,
-                    Some(&ty) => return Some(Err(section_error::invalid_value_type(ty, self.offset))),
-                    None => return Some(Err(section_error::unexpected_end(self.offset, 1, 0))),
-                };
-                self.offset += 1;
 
-                // Parse limits
-                let (limits, limits_size) = match crate::sections::parsers::parse_limits(&self.data[self.offset..]) {
-                    Ok((limits, size)) => (limits, size),
-                    Err(e) => return Some(Err(e)),
-                };
-                self.offset += limits_size;
-                
-                ImportDesc::Table(Table {
-                    element_type,
-                    limits,
-                })
-            },
-            0x02 => {
-                // Memory import
-                let (memory, memory_size) = match crate::sections::parsers::parse_memory_type(&self.data[self.offset..]) {
-                    Ok((memory, size)) => (memory, size),
-                    Err(e) => return Some(Err(e)),
-                };
-                self.offset += memory_size;
-                
-                ImportDesc::Memory(memory)
-            },
-            0x03 => {
-                // Global import
-                let value_type = match self.data.get(self.offset) {
-                    Some(&byte) => match parse_value_type(byte) {
-                        Ok(ty) => ty,
-                        Err(e) => return Some(Err(e)),
-                    },
-                    None => return Some(Err(section_error::unexpected_end(self.offset, 1, 0))),
-                };
-                self.offset += 1;
-                
-                // Read mutable flag
-                let mutable = match self.data.get(self.offset) {
-                    Some(&0) => false,
-                    Some(&1) => true,
-                    Some(&other) => return Some(Err(section_error::invalid_mutability(other, self.offset))),
-                    None => return Some(Err(section_error::unexpected_end(self.offset, 1, 0))),
-                };
-                self.offset += 1;
-                
-                let global_type = GlobalType { 
-                    value_type, 
-                    mutable 
-                };
-                
-                // Globals in imports have empty init expressions (they're initialized by the host)
-                ImportDesc::Global(Global {
-                    global_type,
-                    init: Vec::new(),
-                })
-            },
-            _ => return Some(Err(section_error::invalid_import_kind(import_kind, self.offset - 1))),
+        // Read the section ID
+        let section_id = self.binary.as_ref().unwrap()[self.current_offset];
+        self.current_offset += 1;
+
+        // Read section size
+        if self.current_offset >= self.binary.as_ref().map_or(0, |v| v.len()) {
+            self.finished = true;
+            return Some(Err(section_error::unexpected_end(
+                self.current_offset,
+                1,
+                0,
+            )));
+        }
+
+        // Use read_leb128_u32 for the section size
+        let section_size_result =
+            wrt_format::binary::read_leb128_u32(self.binary.as_ref().unwrap(), self.current_offset);
+
+        let (section_size, size_len) = match section_size_result {
+            Ok(result) => result,
+            Err(e) => {
+                self.finished = true;
+                return Some(Err(e));
+            }
         };
-        
-        Some(Ok(Import {
-            module: module_name,
-            name: field_name,
-            desc,
-        }))
+
+        self.current_offset += size_len;
+
+        // Ensure the section fits in the binary
+        if self.current_offset + section_size as usize > self.binary.as_ref().map_or(0, |v| v.len())
+        {
+            self.finished = true;
+            return Some(Err(section_error::section_too_large(
+                section_id,
+                section_size,
+                self.current_offset,
+            )));
+        }
+
+        // Process the section based on its ID and the binary type
+        // Handle any ? operator errors properly in this context
+        match self.process_section(section_id, section_size as usize) {
+            Ok(payload) => Some(Ok(payload)),
+            Err(e) => {
+                self.finished = true;
+                Some(Err(e))
+            }
+        }
     }
 }
 
-/// Helper function to calculate the size of a LEB128 encoded value
-fn varuint_size(value: u32) -> usize {
-    let mut size = 1;
-    let mut val = value >> 7;
-    while val != 0 {
-        size += 1;
-        val >>= 7;
+/// Parse a module using the streaming parser
+///
+/// This function takes a binary and parses it into a Module structure,
+/// using the appropriate parser based on the binary format.
+///
+/// # Arguments
+///
+/// * `binary` - The WebAssembly binary data
+///
+/// # Returns
+///
+/// * `Result<Module>` - The parsed module or an error
+pub fn parse_module(binary: &[u8]) -> Result<Module> {
+    // Detect binary type
+    match utils::detect_binary_type(binary)? {
+        BinaryType::CoreModule => {
+            // Use the core module parser
+            // Use module's own decode method instead
+            crate::module::decode_module_with_binary(binary)
+        }
+        BinaryType::Component => {
+            // Return an error - this function is specifically for core modules
+            Err(Error::new(
+                ErrorCategory::Parse,
+                codes::PARSE_ERROR,
+                "Cannot parse a Component Model binary as a core module",
+            ))
+        }
     }
-    size
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::WASM_MAGIC;
-    use wrt_format::binary::WASM_VERSION;
-    
-    // Helper to create a minimal valid WebAssembly module with specific sections
-    fn create_test_module(sections: &[(u8, Vec<u8>)]) -> Vec<u8> {
-        let mut module = Vec::new();
-        
-        // Add header
-        module.extend_from_slice(&WASM_MAGIC);
-        module.extend_from_slice(&WASM_VERSION);
-        
-        // Add sections
-        for (id, data) in sections {
-            module.push(*id);
-            
-            // Write the size as LEB128
-            let mut size = data.len();
-            loop {
-                let mut byte = (size & 0x7F) as u8;
-                size >>= 7;
-                if size != 0 {
-                    byte |= 0x80;
-                }
-                module.push(byte);
-                if size == 0 {
-                    break;
-                }
-            }
-            
-            // Add the section data
-            module.extend_from_slice(data);
+/// Parse a component using the streaming parser
+///
+/// # Arguments
+///
+/// * `binary` - The WebAssembly Component Model binary data
+///
+/// # Returns
+///
+/// * `Result<Component>` - The parsed component or an error
+pub fn parse_component(binary: &[u8]) -> Result<wrt_format::component::Component> {
+    // Detect binary type
+    match utils::detect_binary_type(binary)? {
+        BinaryType::CoreModule => {
+            // Return an error - this function is specifically for components
+            Err(Error::new(
+                ErrorCategory::Parse,
+                codes::PARSE_ERROR,
+                "Cannot parse a core module as a Component Model component",
+            ))
         }
-        
-        module
-    }
-    
-    // Helper to create LEB128 encoded u32
-    fn create_leb128_u32(value: u32) -> Vec<u8> {
-        let mut result = Vec::new();
-        let mut val = value;
-        loop {
-            let mut byte = (val & 0x7F) as u8;
-            val >>= 7;
-            if val != 0 {
-                byte |= 0x80;
-            }
-            result.push(byte);
-            if val == 0 {
-                break;
-            }
-        }
-        result
-    }
-    
-    // Helper to encode a name string with LEB128 length prefix
-    fn encode_name(name: &str) -> Vec<u8> {
-        let mut result = create_leb128_u32(name.len() as u32);
-        result.extend_from_slice(name.as_bytes());
-        result
-    }
-    
-    #[test]
-    fn test_import_section_reader() {
-        // Create an import section with:
-        // 1. Function import from "env" / "func1" with type index 0
-        // 2. Memory import from "env" / "memory" with min=1, max=2
-        // 3. Table import from "env" / "table" with element_type=funcref, min=1, max=None
-        // 4. Global import from "env" / "global" with type=i32, mutable=true
-        
-        let mut import_section = Vec::new();
-        
-        // Count of imports (4)
-        import_section.extend_from_slice(&[0x04]);
-        
-        // Import 1: Function from "env"/"func1" with type index 0
-        import_section.extend_from_slice(&encode_name("env"));
-        import_section.extend_from_slice(&encode_name("func1"));
-        import_section.extend_from_slice(&[0x00]); // Function import
-        import_section.extend_from_slice(&create_leb128_u32(0)); // Type index 0
-        
-        // Import 2: Memory from "env"/"memory" with min=1, max=2
-        import_section.extend_from_slice(&encode_name("env"));
-        import_section.extend_from_slice(&encode_name("memory"));
-        import_section.extend_from_slice(&[0x02]); // Memory import
-        import_section.extend_from_slice(&[0x01]); // Has max
-        import_section.extend_from_slice(&create_leb128_u32(1)); // Min pages = 1
-        import_section.extend_from_slice(&create_leb128_u32(2)); // Max pages = 2
-        
-        // Import 3: Table from "env"/"table" with element_type=funcref, min=1, max=None
-        import_section.extend_from_slice(&encode_name("env"));
-        import_section.extend_from_slice(&encode_name("table"));
-        import_section.extend_from_slice(&[0x01]); // Table import
-        import_section.extend_from_slice(&[0x70]); // funcref
-        import_section.extend_from_slice(&[0x00]); // No max
-        import_section.extend_from_slice(&create_leb128_u32(1)); // Min = 1
-        
-        // Import 4: Global from "env"/"global" with type=i32, mutable=true
-        import_section.extend_from_slice(&encode_name("env"));
-        import_section.extend_from_slice(&encode_name("global"));
-        import_section.extend_from_slice(&[0x03]); // Global import
-        import_section.extend_from_slice(&[0x7F]); // i32
-        import_section.extend_from_slice(&[0x01]); // mutable = true
-        
-        // Create a module with just the import section
-        let module = create_test_module(&[(IMPORT_ID, import_section)]);
-        
-        // Create a parser and find the import section
-        let mut parser = Parser::new(&module);
-        
-        // Skip version
-        parser.next().unwrap().unwrap();
-        
-        // Get import section
-        let payload = parser.next().unwrap().unwrap();
-        
-        match &payload {
-            Payload::ImportSection(_, _) => {} // Expected
-            other => panic!("Unexpected payload: {:?}", other),
-        }
-        
-        // Create an import section reader
-        let reader = Parser::create_import_section_reader(&payload).unwrap();
-        assert_eq!(reader.count, 4);
-        
-        // Collect all imports
-        let imports: Vec<_> = reader.collect::<Result<Vec<_>>>().unwrap();
-        assert_eq!(imports.len(), 4);
-        
-        // Check the first import (function)
-        assert_eq!(imports[0].module, "env");
-        assert_eq!(imports[0].name, "func1");
-        match &imports[0].desc {
-            ImportDesc::Function(idx) => assert_eq!(*idx, 0),
-            other => panic!("Unexpected import desc: {:?}", other),
-        }
-        
-        // Check the second import (memory)
-        assert_eq!(imports[1].module, "env");
-        assert_eq!(imports[1].name, "memory");
-        match &imports[1].desc {
-            ImportDesc::Memory(memory) => {
-                assert_eq!(memory.limits.min, 1);
-                assert_eq!(memory.limits.max, Some(2));
-                assert_eq!(memory.shared, false);
-            }
-            other => panic!("Unexpected import desc: {:?}", other),
-        }
-        
-        // Check the third import (table)
-        assert_eq!(imports[2].module, "env");
-        assert_eq!(imports[2].name, "table");
-        match &imports[2].desc {
-            ImportDesc::Table(table) => {
-                assert_eq!(table.element_type, ValueType::FuncRef);
-                assert_eq!(table.limits.min, 1);
-                assert_eq!(table.limits.max, None);
-            }
-            other => panic!("Unexpected import desc: {:?}", other),
-        }
-        
-        // Check the fourth import (global)
-        assert_eq!(imports[3].module, "env");
-        assert_eq!(imports[3].name, "global");
-        match &imports[3].desc {
-            ImportDesc::Global(global) => {
-                assert_eq!(global.global_type.value_type, ValueType::I32);
-                assert_eq!(global.global_type.mutable, true);
-            }
-            other => panic!("Unexpected import desc: {:?}", other),
+        BinaryType::Component => {
+            // Use the component parser
+            crate::component::decode_component(binary)
         }
     }
-    
-    #[test]
-    fn test_parser_header() {
-        // Create a minimal valid module
-        let module = create_test_module(&[]);
-        
-        // Create a parser and get the first item
-        let mut parser = Parser::new(&module);
-        let result = parser.next().unwrap().unwrap();
-        
-        // Check that we got a version payload
-        match result {
-            Payload::Version(1) => {} // Expected result
-            other => panic!("Unexpected payload: {:?}", other),
-        }
-        
-        // Check that the next item is End
-        let result = parser.next().unwrap().unwrap();
-        match result {
-            Payload::End => {} // Expected result
-            other => panic!("Unexpected payload: {:?}", other),
-        }
-    }
-    
-    #[test]
-    fn test_parser_sections() {
-        // Create a module with multiple sections
-        let type_section = vec![0x01, 0x60, 0x00, 0x00]; // 1 type, func() -> ()
-        let function_section = vec![0x01, 0x00]; // 1 function, type index 0
-        let code_section = vec![0x01, 0x04, 0x00, 0x0B]; // 1 function, empty body
-        
-        let module = create_test_module(&[
-            (TYPE_ID, type_section),
-            (FUNCTION_ID, function_section),
-            (CODE_ID, code_section),
-        ]);
-        
-        // Create a parser - limit the number of iterations to avoid infinite loops
-        let mut parser = Parser::new(&module);
-        let mut payloads = Vec::new();
-        
-        // Collect up to 10 payloads to prevent potential infinite loops
-        for _ in 0..10 {
-            match parser.next() {
-                Some(Ok(payload)) => {
-                    let is_end = matches!(payload, Payload::End);
-                    payloads.push(payload);
-                    if is_end {
-                        break;
-                    }
-                },
-                Some(Err(e)) => panic!("Parser error: {:?}", e),
-                None => break,
-            }
-        }
-        
-        // Check we got the expected number of payloads (version + 3 sections + end)
-        assert_eq!(payloads.len(), 5);
-        
-        // Check the types of the payloads
-        match &payloads[0] {
-            Payload::Version(1) => {} // Expected
-            other => panic!("Unexpected first payload: {:?}", other),
-        }
-        
-        match &payloads[1] {
-            Payload::TypeSection(_, _) => {} // Expected
-            other => panic!("Unexpected second payload: {:?}", other),
-        }
-        
-        match &payloads[2] {
-            Payload::FunctionSection(_, _) => {} // Expected
-            other => panic!("Unexpected third payload: {:?}", other),
-        }
-        
-        match &payloads[3] {
-            Payload::CodeSection(_, _) => {} // Expected
-            other => panic!("Unexpected fourth payload: {:?}", other),
-        }
-        
-        match &payloads[4] {
-            Payload::End => {} // Expected
-            other => panic!("Unexpected fifth payload: {:?}", other),
-        }
-    }
-    
-    #[test]
-    fn test_parser_custom_section() {
-        // Create a module with a custom section
-        let mut custom_data = Vec::new();
-        
-        // Name "test"
-        custom_data.push(4); // name length
-        custom_data.extend_from_slice(b"test");
-        
-        // Some data
-        custom_data.extend_from_slice(b"custom data");
-        
-        let module = create_test_module(&[(CUSTOM_ID, custom_data)]);
-        
-        // Create a parser and check the payloads
-        let mut parser = Parser::new(&module);
-        
-        // Skip version
-        parser.next().unwrap().unwrap();
-        
-        // Check custom section
-        let payload = parser.next().unwrap().unwrap();
-        match payload {
-            Payload::CustomSection { name, data, size } => {
-                assert_eq!(name, "test");
-                assert_eq!(data, b"custom data");
-                assert_eq!(size, 11); // "custom data".len()
-            }
-            other => panic!("Unexpected payload: {:?}", other),
-        }
-        
-        // Check end
-        let payload = parser.next().unwrap().unwrap();
-        match payload {
-            Payload::End => {} // Expected
-            other => panic!("Unexpected payload: {:?}", other),
-        }
-    }
-    
-    #[test]
-    fn test_parser_invalid_header() {
-        // Create an invalid module (wrong magic)
-        let mut module = vec![0x01, 0x61, 0x73, 0x6D]; // wrong first byte
-        module.extend_from_slice(&WASM_VERSION);
-        
-        // Create a parser and check it fails
-        let mut parser = Parser::new(&module);
-        let result = parser.next().unwrap();
-        assert!(result.is_err());
-    }
-    
-    #[test]
-    fn test_parser_section_too_large() {
-        // Create a module with a section that extends beyond the end
-        let mut module = Vec::new();
-        
-        // Add header
-        module.extend_from_slice(&WASM_MAGIC);
-        module.extend_from_slice(&WASM_VERSION);
-        
-        // Add a section with a size that's too large
-        module.push(TYPE_ID);
-        module.push(0xFF); // Size of 127, but we'll only include 5 bytes
-        module.extend_from_slice(&[0x01, 0x60, 0x00, 0x00, 0x00]); // Truncated data
-        
-        // Create a parser and check it fails when processing the section
-        let mut parser = Parser::new(&module);
-        
-        // Skip version
-        parser.next().unwrap().unwrap();
-        
-        // Check section fails
-        let result = parser.next().unwrap();
-        assert!(result.is_err());
-    }
-} 
+}

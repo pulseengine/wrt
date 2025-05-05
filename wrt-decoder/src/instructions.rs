@@ -3,15 +3,15 @@
 //! This module provides types and functions for parsing and encoding WebAssembly instructions.
 
 use crate::prelude::*;
-use crate::types::BlockType;
-use wrt_error::{kinds, Error, Result};
+use wrt_error::{Error, Result};
 use wrt_format::binary;
+use wrt_format::binary::parse_block_type;
 use wrt_format::types::value_type_to_byte;
 
 #[cfg(feature = "std")]
 use std::vec;
 
-#[cfg(not(feature = "std"))]
+#[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::vec;
 
 /// WebAssembly instruction enumeration
@@ -221,7 +221,7 @@ pub enum Instruction {
 }
 
 /// Parse a sequence of WebAssembly instructions
-pub fn parse_instructions(bytes: &[u8]) -> Result<Vec<Instruction>> {
+pub fn parse_instructions(bytes: &[u8]) -> Result<(Vec<Instruction>, usize)> {
     let mut result = Vec::new();
     let mut offset = 0;
 
@@ -229,39 +229,77 @@ pub fn parse_instructions(bytes: &[u8]) -> Result<Vec<Instruction>> {
         let (instruction, bytes_read) = parse_instruction(&bytes[offset..])?;
         result.push(instruction);
         offset += bytes_read;
+
+        // Check for END opcode (0x0B)
+        if offset < bytes.len() && bytes[offset] == binary::END {
+            // Consume the END instruction
+            offset += 1;
+            break;
+        }
     }
 
-    Ok(result)
+    Ok((result, offset))
 }
 
 /// Parse a single WebAssembly instruction
 pub fn parse_instruction(bytes: &[u8]) -> Result<(Instruction, usize)> {
     if bytes.is_empty() {
-        return Err(Error::new(kinds::ParseError(
+        return Err(Error::new(
+            wrt_error::ErrorCategory::Parse,
+            wrt_error::codes::PARSE_ERROR,
             "Empty instruction bytes".to_string(),
-        )));
+        ));
     }
 
     let opcode = bytes[0];
+
     match opcode {
         // Control instructions
         binary::UNREACHABLE => Ok((Instruction::Unreachable, 1)),
         binary::NOP => Ok((Instruction::Nop, 1)),
         binary::BLOCK => {
-            let (block_type, bytes_read) = parse_block_type(&bytes[1..])?;
-            let (instructions, instructions_bytes_read) = parse_instructions(&bytes[1 + bytes_read..])?;
-            Ok((Instruction::Block(block_type, instructions), 1 + bytes_read + instructions_bytes_read))
+            let (block_type, bytes_read) = parse_block_type(&bytes[1..], 0)?;
+            let bytes_consumed = 1 + bytes_read;
+            let (instructions, instructions_bytes_read) =
+                parse_instructions(&bytes[bytes_consumed..])?;
+            Ok((
+                Instruction::Block(block_type.into(), instructions),
+                bytes_consumed + instructions_bytes_read,
+            ))
         }
         binary::LOOP => {
-            let (block_type, bytes_read) = parse_block_type(&bytes[1..])?;
-            let (instructions, instructions_bytes_read) = parse_instructions(&bytes[1 + bytes_read..])?;
-            Ok((Instruction::Loop(block_type, instructions), 1 + bytes_read + instructions_bytes_read))
+            let (block_type, bytes_read) = parse_block_type(&bytes[1..], 0)?;
+            let bytes_consumed = 1 + bytes_read;
+            let (instructions, instructions_bytes_read) =
+                parse_instructions(&bytes[bytes_consumed..])?;
+            Ok((
+                Instruction::Loop(block_type.into(), instructions),
+                bytes_consumed + instructions_bytes_read,
+            ))
         }
         binary::IF => {
-            let (block_type, bytes_read) = parse_block_type(&bytes[1..])?;
-            let (then_instructions, then_bytes_read) = parse_instructions(&bytes[1 + bytes_read..])?;
-            let (else_instructions, else_bytes_read) = parse_instructions(&bytes[1 + bytes_read + then_bytes_read..])?;
-            Ok((Instruction::If(block_type, then_instructions, else_instructions), 1 + bytes_read + then_bytes_read + else_bytes_read))
+            let (block_type, bytes_read) = parse_block_type(&bytes[1..], 0)?;
+            let mut bytes_consumed = 1 + bytes_read;
+
+            let (then_instructions, then_bytes_read) =
+                parse_instructions_until_else_or_end(&bytes[bytes_consumed..])?;
+            bytes_consumed += then_bytes_read;
+
+            let (else_instructions, else_bytes_read) =
+                if bytes_consumed < bytes.len() && bytes[bytes_consumed] == binary::ELSE {
+                    // else branch
+                    bytes_consumed += 1;
+                    let (instrs, br) = parse_instructions_until_end(&bytes[bytes_consumed..])?;
+                    (instrs, br)
+                } else {
+                    (Vec::new(), 0)
+                };
+
+            let total_bytes_read = bytes_consumed + else_bytes_read;
+            Ok((
+                Instruction::If(block_type.into(), then_instructions, else_instructions),
+                total_bytes_read,
+            ))
         }
         binary::BR => {
             let (label_idx, bytes_read) = binary::read_leb128_u32(bytes, 1)?;
@@ -281,7 +319,10 @@ pub fn parse_instruction(bytes: &[u8]) -> Result<(Instruction, usize)> {
                 offset += bytes_read;
             }
             let (default_label, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
-            Ok((Instruction::BrTable(labels, default_label), offset + bytes_read))
+            Ok((
+                Instruction::BrTable(labels, default_label),
+                offset + bytes_read,
+            ))
         }
         binary::RETURN => Ok((Instruction::Return, 1)),
         binary::CALL => {
@@ -290,8 +331,18 @@ pub fn parse_instruction(bytes: &[u8]) -> Result<(Instruction, usize)> {
         }
         binary::CALL_INDIRECT => {
             let (type_idx, bytes_read) = binary::read_leb128_u32(bytes, 1)?;
+            if 1 + bytes_read >= bytes.len() {
+                return Err(Error::new(
+                    wrt_error::ErrorCategory::Parse,
+                    wrt_error::codes::PARSE_ERROR,
+                    "Unexpected end of bytes in call_indirect instruction".to_string(),
+                ));
+            }
             let table_idx = bytes[1 + bytes_read];
-            Ok((Instruction::CallIndirect(type_idx, table_idx), 2 + bytes_read))
+            Ok((
+                Instruction::CallIndirect(type_idx, table_idx),
+                2 + bytes_read,
+            ))
         }
 
         // Variable instructions
@@ -320,124 +371,196 @@ pub fn parse_instruction(bytes: &[u8]) -> Result<(Instruction, usize)> {
         binary::I32_LOAD => {
             let (align, bytes_read) = binary::read_leb128_u32(bytes, 1)?;
             let (offset, bytes_read2) = binary::read_leb128_u32(bytes, 1 + bytes_read)?;
-            Ok((Instruction::I32Load(offset, align), 1 + bytes_read + bytes_read2))
+            Ok((
+                Instruction::I32Load(align, offset),
+                1 + bytes_read + bytes_read2,
+            ))
         }
         binary::I64_LOAD => {
             let (align, bytes_read) = binary::read_leb128_u32(bytes, 1)?;
             let (offset, bytes_read2) = binary::read_leb128_u32(bytes, 1 + bytes_read)?;
-            Ok((Instruction::I64Load(offset, align), 1 + bytes_read + bytes_read2))
+            Ok((
+                Instruction::I64Load(align, offset),
+                1 + bytes_read + bytes_read2,
+            ))
         }
         binary::F32_LOAD => {
             let (align, bytes_read) = binary::read_leb128_u32(bytes, 1)?;
             let (offset, bytes_read2) = binary::read_leb128_u32(bytes, 1 + bytes_read)?;
-            Ok((Instruction::F32Load(offset, align), 1 + bytes_read + bytes_read2))
+            Ok((
+                Instruction::F32Load(align, offset),
+                1 + bytes_read + bytes_read2,
+            ))
         }
         binary::F64_LOAD => {
             let (align, bytes_read) = binary::read_leb128_u32(bytes, 1)?;
             let (offset, bytes_read2) = binary::read_leb128_u32(bytes, 1 + bytes_read)?;
-            Ok((Instruction::F64Load(offset, align), 1 + bytes_read + bytes_read2))
+            Ok((
+                Instruction::F64Load(align, offset),
+                1 + bytes_read + bytes_read2,
+            ))
         }
         binary::I32_LOAD8_S => {
             let (align, bytes_read) = binary::read_leb128_u32(bytes, 1)?;
             let (offset, bytes_read2) = binary::read_leb128_u32(bytes, 1 + bytes_read)?;
-            Ok((Instruction::I32Load8S(offset, align), 1 + bytes_read + bytes_read2))
+            Ok((
+                Instruction::I32Load8S(align, offset),
+                1 + bytes_read + bytes_read2,
+            ))
         }
         binary::I32_LOAD8_U => {
             let (align, bytes_read) = binary::read_leb128_u32(bytes, 1)?;
             let (offset, bytes_read2) = binary::read_leb128_u32(bytes, 1 + bytes_read)?;
-            Ok((Instruction::I32Load8U(offset, align), 1 + bytes_read + bytes_read2))
+            Ok((
+                Instruction::I32Load8U(align, offset),
+                1 + bytes_read + bytes_read2,
+            ))
         }
         binary::I32_LOAD16_S => {
             let (align, bytes_read) = binary::read_leb128_u32(bytes, 1)?;
             let (offset, bytes_read2) = binary::read_leb128_u32(bytes, 1 + bytes_read)?;
-            Ok((Instruction::I32Load16S(offset, align), 1 + bytes_read + bytes_read2))
+            Ok((
+                Instruction::I32Load16S(align, offset),
+                1 + bytes_read + bytes_read2,
+            ))
         }
         binary::I32_LOAD16_U => {
             let (align, bytes_read) = binary::read_leb128_u32(bytes, 1)?;
             let (offset, bytes_read2) = binary::read_leb128_u32(bytes, 1 + bytes_read)?;
-            Ok((Instruction::I32Load16U(offset, align), 1 + bytes_read + bytes_read2))
+            Ok((
+                Instruction::I32Load16U(align, offset),
+                1 + bytes_read + bytes_read2,
+            ))
         }
         binary::I64_LOAD8_S => {
             let (align, bytes_read) = binary::read_leb128_u32(bytes, 1)?;
             let (offset, bytes_read2) = binary::read_leb128_u32(bytes, 1 + bytes_read)?;
-            Ok((Instruction::I64Load8S(offset, align), 1 + bytes_read + bytes_read2))
+            Ok((
+                Instruction::I64Load8S(align, offset),
+                1 + bytes_read + bytes_read2,
+            ))
         }
         binary::I64_LOAD8_U => {
             let (align, bytes_read) = binary::read_leb128_u32(bytes, 1)?;
             let (offset, bytes_read2) = binary::read_leb128_u32(bytes, 1 + bytes_read)?;
-            Ok((Instruction::I64Load8U(offset, align), 1 + bytes_read + bytes_read2))
+            Ok((
+                Instruction::I64Load8U(align, offset),
+                1 + bytes_read + bytes_read2,
+            ))
         }
         binary::I64_LOAD16_S => {
             let (align, bytes_read) = binary::read_leb128_u32(bytes, 1)?;
             let (offset, bytes_read2) = binary::read_leb128_u32(bytes, 1 + bytes_read)?;
-            Ok((Instruction::I64Load16S(offset, align), 1 + bytes_read + bytes_read2))
+            Ok((
+                Instruction::I64Load16S(align, offset),
+                1 + bytes_read + bytes_read2,
+            ))
         }
         binary::I64_LOAD16_U => {
             let (align, bytes_read) = binary::read_leb128_u32(bytes, 1)?;
             let (offset, bytes_read2) = binary::read_leb128_u32(bytes, 1 + bytes_read)?;
-            Ok((Instruction::I64Load16U(offset, align), 1 + bytes_read + bytes_read2))
+            Ok((
+                Instruction::I64Load16U(align, offset),
+                1 + bytes_read + bytes_read2,
+            ))
         }
         binary::I64_LOAD32_S => {
             let (align, bytes_read) = binary::read_leb128_u32(bytes, 1)?;
             let (offset, bytes_read2) = binary::read_leb128_u32(bytes, 1 + bytes_read)?;
-            Ok((Instruction::I64Load32S(offset, align), 1 + bytes_read + bytes_read2))
+            Ok((
+                Instruction::I64Load32S(align, offset),
+                1 + bytes_read + bytes_read2,
+            ))
         }
         binary::I64_LOAD32_U => {
             let (align, bytes_read) = binary::read_leb128_u32(bytes, 1)?;
             let (offset, bytes_read2) = binary::read_leb128_u32(bytes, 1 + bytes_read)?;
-            Ok((Instruction::I64Load32U(offset, align), 1 + bytes_read + bytes_read2))
+            Ok((
+                Instruction::I64Load32U(align, offset),
+                1 + bytes_read + bytes_read2,
+            ))
         }
         binary::I32_STORE => {
             let (align, bytes_read) = binary::read_leb128_u32(bytes, 1)?;
             let (offset, bytes_read2) = binary::read_leb128_u32(bytes, 1 + bytes_read)?;
-            Ok((Instruction::I32Store(offset, align), 1 + bytes_read + bytes_read2))
+            Ok((
+                Instruction::I32Store(align, offset),
+                1 + bytes_read + bytes_read2,
+            ))
         }
         binary::I64_STORE => {
             let (align, bytes_read) = binary::read_leb128_u32(bytes, 1)?;
             let (offset, bytes_read2) = binary::read_leb128_u32(bytes, 1 + bytes_read)?;
-            Ok((Instruction::I64Store(offset, align), 1 + bytes_read + bytes_read2))
+            Ok((
+                Instruction::I64Store(align, offset),
+                1 + bytes_read + bytes_read2,
+            ))
         }
         binary::F32_STORE => {
             let (align, bytes_read) = binary::read_leb128_u32(bytes, 1)?;
             let (offset, bytes_read2) = binary::read_leb128_u32(bytes, 1 + bytes_read)?;
-            Ok((Instruction::F32Store(offset, align), 1 + bytes_read + bytes_read2))
+            Ok((
+                Instruction::F32Store(align, offset),
+                1 + bytes_read + bytes_read2,
+            ))
         }
         binary::F64_STORE => {
             let (align, bytes_read) = binary::read_leb128_u32(bytes, 1)?;
             let (offset, bytes_read2) = binary::read_leb128_u32(bytes, 1 + bytes_read)?;
-            Ok((Instruction::F64Store(offset, align), 1 + bytes_read + bytes_read2))
+            Ok((
+                Instruction::F64Store(align, offset),
+                1 + bytes_read + bytes_read2,
+            ))
         }
         binary::I32_STORE8 => {
             let (align, bytes_read) = binary::read_leb128_u32(bytes, 1)?;
             let (offset, bytes_read2) = binary::read_leb128_u32(bytes, 1 + bytes_read)?;
-            Ok((Instruction::I32Store8(offset, align), 1 + bytes_read + bytes_read2))
+            Ok((
+                Instruction::I32Store8(align, offset),
+                1 + bytes_read + bytes_read2,
+            ))
         }
         binary::I32_STORE16 => {
             let (align, bytes_read) = binary::read_leb128_u32(bytes, 1)?;
             let (offset, bytes_read2) = binary::read_leb128_u32(bytes, 1 + bytes_read)?;
-            Ok((Instruction::I32Store16(offset, align), 1 + bytes_read + bytes_read2))
+            Ok((
+                Instruction::I32Store16(align, offset),
+                1 + bytes_read + bytes_read2,
+            ))
         }
         binary::I64_STORE8 => {
             let (align, bytes_read) = binary::read_leb128_u32(bytes, 1)?;
             let (offset, bytes_read2) = binary::read_leb128_u32(bytes, 1 + bytes_read)?;
-            Ok((Instruction::I64Store8(offset, align), 1 + bytes_read + bytes_read2))
+            Ok((
+                Instruction::I64Store8(align, offset),
+                1 + bytes_read + bytes_read2,
+            ))
         }
         binary::I64_STORE16 => {
             let (align, bytes_read) = binary::read_leb128_u32(bytes, 1)?;
             let (offset, bytes_read2) = binary::read_leb128_u32(bytes, 1 + bytes_read)?;
-            Ok((Instruction::I64Store16(offset, align), 1 + bytes_read + bytes_read2))
+            Ok((
+                Instruction::I64Store16(align, offset),
+                1 + bytes_read + bytes_read2,
+            ))
         }
         binary::I64_STORE32 => {
             let (align, bytes_read) = binary::read_leb128_u32(bytes, 1)?;
             let (offset, bytes_read2) = binary::read_leb128_u32(bytes, 1 + bytes_read)?;
-            Ok((Instruction::I64Store32(offset, align), 1 + bytes_read + bytes_read2))
+            Ok((
+                Instruction::I64Store32(align, offset),
+                1 + bytes_read + bytes_read2,
+            ))
         }
         binary::MEMORY_SIZE => Ok((Instruction::MemorySize, 1)),
         binary::MEMORY_GROW => Ok((Instruction::MemoryGrow, 1)),
         binary::MEMORY_COPY => {
             let (dst_memory_idx, bytes_read) = binary::read_leb128_u32(bytes, 1)?;
             let (src_memory_idx, bytes_read2) = binary::read_leb128_u32(bytes, 1 + bytes_read)?;
-            Ok((Instruction::MemoryCopy(dst_memory_idx, src_memory_idx), 1 + bytes_read + bytes_read2))
+            Ok((
+                Instruction::MemoryCopy(dst_memory_idx, src_memory_idx),
+                1 + bytes_read + bytes_read2,
+            ))
         }
         binary::MEMORY_FILL => {
             let (memory_idx, bytes_read) = binary::read_leb128_u32(bytes, 1)?;
@@ -595,20 +718,22 @@ pub fn parse_instruction(bytes: &[u8]) -> Result<(Instruction, usize)> {
         binary::F32_REINTERPRET_I32 => Ok((Instruction::F32ReinterpretI32, 1)),
         binary::F64_REINTERPRET_I64 => Ok((Instruction::F64ReinterpretI64, 1)),
 
-        // Saturating truncation instructions
-        binary::I32_TRUNC_SAT_F32_S => Ok((Instruction::I32TruncSatF32S, 1)),
-        binary::I32_TRUNC_SAT_F32_U => Ok((Instruction::I32TruncSatF32U, 1)),
-        binary::I32_TRUNC_SAT_F64_S => Ok((Instruction::I32TruncSatF64S, 1)),
-        binary::I32_TRUNC_SAT_F64_U => Ok((Instruction::I32TruncSatF64U, 1)),
-        binary::I64_TRUNC_SAT_F32_S => Ok((Instruction::I64TruncSatF32S, 1)),
-        binary::I64_TRUNC_SAT_F32_U => Ok((Instruction::I64TruncSatF32U, 1)),
-        binary::I64_TRUNC_SAT_F64_S => Ok((Instruction::I64TruncSatF64S, 1)),
-        binary::I64_TRUNC_SAT_F64_U => Ok((Instruction::I64TruncSatF64U, 1)),
+        // Saturating truncation instructions in their own match arm
+        x if x == binary::I32_TRUNC_SAT_F32_S => Ok((Instruction::I32TruncSatF32S, 1)),
+        x if x == binary::I32_TRUNC_SAT_F32_U => Ok((Instruction::I32TruncSatF32U, 1)),
+        x if x == binary::I32_TRUNC_SAT_F64_S => Ok((Instruction::I32TruncSatF64S, 1)),
+        x if x == binary::I32_TRUNC_SAT_F64_U => Ok((Instruction::I32TruncSatF64U, 1)),
+        x if x == binary::I64_TRUNC_SAT_F32_S => Ok((Instruction::I64TruncSatF32S, 1)),
+        x if x == binary::I64_TRUNC_SAT_F32_U => Ok((Instruction::I64TruncSatF32U, 1)),
+        x if x == binary::I64_TRUNC_SAT_F64_S => Ok((Instruction::I64TruncSatF64S, 1)),
+        x if x == binary::I64_TRUNC_SAT_F64_U => Ok((Instruction::I64TruncSatF64U, 1)),
 
-        _ => Err(Error::new(kinds::ParseError(format!(
-            "Unknown instruction opcode: {:#x}",
-            opcode
-        )))),
+        // Unknown instruction
+        _ => Err(Error::new(
+            wrt_error::ErrorCategory::Parse,
+            wrt_error::codes::PARSE_ERROR,
+            format!("Unknown opcode: 0x{:02x}", opcode),
+        )),
     }
 }
 
@@ -646,11 +771,14 @@ pub fn encode_instruction(instruction: &Instruction) -> Result<Vec<u8>> {
                 BlockType::Value(val_type) => bytes.push(value_type_to_byte(*val_type)),
                 BlockType::TypeIndex(idx) => {
                     bytes.extend_from_slice(&binary::write_leb128_i32(*idx as i32))
-                },
+                }
                 BlockType::FuncType(_) => {
-                    return Err(Error::new(kinds::EncodingError(
-                        "Cannot directly encode BlockType::FuncType - use TypeIndex instead".into(),
-                    )))
+                    return Err(Error::new(
+                        wrt_error::ErrorCategory::Parse,
+                        wrt_error::codes::ENCODING_ERROR,
+                        "Cannot directly encode BlockType::FuncType - use TypeIndex instead"
+                            .to_string(),
+                    ));
                 }
             }
 
@@ -673,11 +801,14 @@ pub fn encode_instruction(instruction: &Instruction) -> Result<Vec<u8>> {
                 BlockType::Value(val_type) => bytes.push(value_type_to_byte(*val_type)),
                 BlockType::TypeIndex(idx) => {
                     bytes.extend_from_slice(&binary::write_leb128_i32(*idx as i32))
-                },
+                }
                 BlockType::FuncType(_) => {
-                    return Err(Error::new(kinds::EncodingError(
-                        "Cannot directly encode BlockType::FuncType - use TypeIndex instead".into(),
-                    )))
+                    return Err(Error::new(
+                        wrt_error::ErrorCategory::Parse,
+                        wrt_error::codes::ENCODING_ERROR,
+                        "Cannot directly encode BlockType::FuncType - use TypeIndex instead"
+                            .to_string(),
+                    ));
                 }
             }
 
@@ -700,11 +831,14 @@ pub fn encode_instruction(instruction: &Instruction) -> Result<Vec<u8>> {
                 BlockType::Value(val_type) => bytes.push(value_type_to_byte(*val_type)),
                 BlockType::TypeIndex(idx) => {
                     bytes.extend_from_slice(&binary::write_leb128_i32(*idx as i32))
-                },
+                }
                 BlockType::FuncType(_) => {
-                    return Err(Error::new(kinds::EncodingError(
-                        "Cannot directly encode BlockType::FuncType - use TypeIndex instead".into(),
-                    )))
+                    return Err(Error::new(
+                        wrt_error::ErrorCategory::Parse,
+                        wrt_error::codes::ENCODING_ERROR,
+                        "Cannot directly encode BlockType::FuncType - use TypeIndex instead"
+                            .to_string(),
+                    ));
                 }
             }
 
@@ -966,10 +1100,14 @@ pub fn encode_instruction(instruction: &Instruction) -> Result<Vec<u8>> {
             result.push(*table_idx);
             Ok(result)
         }
-        _ => Err(Error::new(kinds::EncodingError(format!(
-            "Encoding not implemented for instruction: {:?}",
-            instruction
-        )))),
+        _ => Err(Error::new(
+            wrt_error::ErrorCategory::Parse,
+            wrt_error::codes::ENCODING_ERROR,
+            format!(
+                "Encoding not implemented for instruction: {:?}",
+                instruction
+            ),
+        )),
     }
 }
 
@@ -985,9 +1123,11 @@ pub fn parse_locals(bytes: &[u8]) -> Result<(Vec<(u32, u8)>, usize)> {
 
         // Read type
         if offset >= bytes.len() {
-            return Err(Error::new(kinds::ParseError(
+            return Err(Error::new(
+                wrt_error::ErrorCategory::Parse,
+                wrt_error::codes::PARSE_ERROR,
                 "Unexpected end of locals bytes".to_string(),
-            )));
+            ));
         }
         let local_type = bytes[offset];
         offset += 1;
@@ -998,15 +1138,57 @@ pub fn parse_locals(bytes: &[u8]) -> Result<(Vec<(u32, u8)>, usize)> {
     Ok((locals, offset))
 }
 
+/// Parse instructions until an ELSE (0x05) or END (0x0B) opcode is encountered
+fn parse_instructions_until_else_or_end(bytes: &[u8]) -> Result<(Vec<Instruction>, usize)> {
+    let mut instructions = Vec::new();
+    let mut offset = 0;
+
+    while offset < bytes.len() {
+        // Check for ELSE or END opcodes
+        if bytes[offset] == binary::ELSE || bytes[offset] == binary::END {
+            break;
+        }
+
+        // Parse the next instruction
+        let (instruction, bytes_read) = parse_instruction(&bytes[offset..])?;
+        instructions.push(instruction);
+        offset += bytes_read;
+    }
+
+    Ok((instructions, offset))
+}
+
+/// Parse instructions until an END (0x0B) opcode is encountered
+fn parse_instructions_until_end(bytes: &[u8]) -> Result<(Vec<Instruction>, usize)> {
+    let mut instructions = Vec::new();
+    let mut offset = 0;
+
+    while offset < bytes.len() {
+        // Check for END opcode
+        if bytes[offset] == binary::END {
+            // Skip the END opcode in the byte count
+            offset += 1;
+            break;
+        }
+
+        // Parse the next instruction
+        let (instruction, bytes_read) = parse_instruction(&bytes[offset..])?;
+        instructions.push(instruction);
+        offset += bytes_read;
+    }
+
+    Ok((instructions, offset))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ValueType;
+    use wrt_error::Result;
 
     #[cfg(feature = "std")]
     use std::vec;
 
-    #[cfg(not(feature = "std"))]
+    #[cfg(all(feature = "alloc", not(feature = "std")))]
     use alloc::vec;
 
     #[test]

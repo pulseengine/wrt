@@ -1,27 +1,43 @@
 //! Tests the integration of wrt-error with the main wrt crate.
 //!
-//! This file is a placeholder for now since we haven't yet modified the wrt crate
-//! to use wrt-error directly.
+//! This file tests the error handling functionality in the context of how it would be used
+//! in the main wrt crate.
 
-// These tests require the alloc feature to be enabled since they use Error
-#[cfg(all(test, feature = "alloc"))]
+#[cfg(test)]
 mod tests {
-    use wrt_error::Error;
+    use wrt_error::kinds;
+    use wrt_error::{Error, Result};
 
     #[test]
-    fn test_error_creation() {
-        // This is a simple test to verify the wrt-error crate works properly
-        // Future tests could use the wrt crate directly once it's updated to use wrt-error
-        let error = Error::division_by_zero();
-        assert_eq!(format!("{}", error), "Division by zero");
+    fn test_error_conversion() {
+        // Create an error from a kind
+        let div_error = kinds::division_by_zero_error();
+        let error = Error::from(div_error);
+        // Assert that the error message contains the expected text
+        assert!(format!("{}", error).contains("Division by zero"));
+
+        // Create an error from a memory access error
+        let mem_error = kinds::MemoryAccessOutOfBoundsError {
+            address: 0x1000,
+            length: 8,
+        };
+        let error = Error::from(mem_error);
+        assert!(error.is_memory_error());
+
+        // Create an error using a factory method
+        let error = Error::memory_error("Memory access failed");
+        assert!(error.is_memory_error());
     }
 
     #[test]
-    fn test_memory_error_creation() {
-        let error = Error::memory_access_out_of_bounds(0x1000, 8);
-        assert_eq!(
-            format!("{}", error),
-            "Memory access out of bounds: address 4096, length 8"
-        );
+    fn test_result_operations() {
+        // Create a success result
+        let success: Result<i32> = Ok(42);
+        assert_eq!(success.unwrap(), 42);
+
+        // Create an error result
+        let failure: Result<i32> = Err(Error::validation_error("Validation failed"));
+        assert!(failure.is_err());
+        assert!(failure.err().unwrap().is_validation_error());
     }
 }

@@ -1,8 +1,8 @@
 //! Table manipulation logic.
 //! This module provides re-exports and convenience functions for wrt-runtime Table implementation.
 
-use crate::values::Value;
-use crate::Result;
+use crate::error::Result;
+use crate::prelude::TypesValue as Value;
 
 // Re-export table types from wrt-runtime
 pub use wrt_runtime::{Table, TableType};
@@ -61,7 +61,7 @@ pub fn create_table_with_name(table_type: TableType, name: &str) -> Result<Table
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::values::Value;
+    use crate::prelude::TypesValue as Value;
     use crate::ValueType;
     #[cfg(not(feature = "std"))]
     use alloc::vec;

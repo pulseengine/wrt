@@ -3,13 +3,13 @@ use crate::{
     decoder_integration,
     error::{kinds, Error, Result},
     global::Global,
-    instructions::{types::BlockType, Instruction},
+    instructions::Instruction,
     memory::Memory,
+    prelude::{
+        BlockType, ExternType, FuncType, GlobalType, MemoryType, String, TableType,
+        TypesValue as Value, ValueType, Vec,
+    },
     table::Table,
-    types::{ExternType, GlobalType, MemoryType, TableType},
-    types::{FuncType, ValueType},
-    values::Value,
-    String, Vec,
 };
 
 use std::collections::HashMap;

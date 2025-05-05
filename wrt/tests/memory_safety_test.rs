@@ -15,7 +15,7 @@ fn test_safe_memory_adapter() -> Result<()> {
     let memory = Arc::new(RuntimeMemory::new(1)?); // 1 page
 
     // Create a safe memory adapter
-    let adapter = SafeMemoryAdapter::new(memory.clone());
+    let adapter = SafeMemoryAdapter::new(memory.clone())?;
 
     // Test basic properties
     assert_eq!(adapter.size()?, 1);
@@ -44,7 +44,7 @@ fn test_safe_memory_adapter_out_of_bounds() -> Result<()> {
     let memory = Arc::new(RuntimeMemory::new(1)?); // 1 page
 
     // Create a safe memory adapter
-    let adapter = SafeMemoryAdapter::new(memory.clone());
+    let adapter = SafeMemoryAdapter::new(memory.clone())?;
 
     // Attempt out-of-bounds access
     let result = adapter.load(65530, 10);
@@ -65,11 +65,11 @@ fn test_adapter_verification_levels() -> Result<()> {
 
     // Create adapters with different verification levels
     let none_adapter =
-        SafeMemoryAdapter::with_verification_level(memory.clone(), VerificationLevel::None);
+        SafeMemoryAdapter::with_verification_level(memory.clone(), VerificationLevel::None)?;
     let standard_adapter =
-        SafeMemoryAdapter::with_verification_level(memory.clone(), VerificationLevel::Standard);
+        SafeMemoryAdapter::with_verification_level(memory.clone(), VerificationLevel::Standard)?;
     let full_adapter =
-        SafeMemoryAdapter::with_verification_level(memory.clone(), VerificationLevel::Full);
+        SafeMemoryAdapter::with_verification_level(memory.clone(), VerificationLevel::Full)?;
 
     // Test store and load with each adapter
     let data = vec![1, 2, 3, 4, 5];

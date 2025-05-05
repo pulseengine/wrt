@@ -1,81 +1,103 @@
 //! WebAssembly module representation
 //!
-//! This module provides the main Module structure and functions for decoding
-//! WebAssembly binary modules into structured representations.
+//! This module provides a high-level representation of a WebAssembly module,
+//! including all its sections, types, and functions.
+//!
+//! It serves as the bridge between the binary format (handled by wrt-format)
+//! and the runtime representation (using wrt-types).
 
-use crate::{
-    prelude::{format, String, ToString, Vec},
-    sections::*,
-    WASM_MAGIC,
+use wrt_error::{codes, Error, ErrorCategory, Result};
+use wrt_format::{
+    binary::{WASM_MAGIC, WASM_VERSION},
+    module::{Data, Element, Export, Global, Import, ImportDesc, Memory, Table},
 };
-use wrt_error::{kinds, Error, Result, WrtError, codes, ErrorCategory};
-use wrt_format::binary;
-use wrt_format::types::parse_value_type;
-use wrt_types::types::GlobalType;
+use wrt_types::{safe_memory::SafeSlice, types::FuncType};
 
-/// WebAssembly binary format version
-pub const WASM_VERSION: [u8; 4] = [0x01, 0x00, 0x00, 0x00];
+use crate::conversion::{format_error_to_wrt_error, format_func_type_to_types_func_type};
+use crate::prelude::*;
+use crate::Parser;
+use wrt_format::section::CustomSection;
 
-/// Represents a parsed WebAssembly module
-#[derive(Debug, Clone, Default)]
+// Import DataMode directly to avoid reimport issues
+pub use wrt_format::module::DataMode;
+
+/// Code section entry representing a function body
+#[derive(Debug, Clone)]
+pub struct CodeSection {
+    /// Size of the code section entry
+    pub body_size: u32,
+    /// Function body as raw bytes, will be parsed into instructions later
+    /// Using Vec<u8> to allow for storage in the Module structure
+    /// In the future this could be changed to use a safer bounded type
+    pub body: Vec<u8>,
+}
+
+/// Module struct representing a parsed WebAssembly module
+#[derive(Debug, Clone)]
 pub struct Module {
-    /// WebAssembly binary format version
+    /// Module version
     pub version: u32,
-    /// Module types (function signatures)
+    /// Module types section - function types
     pub types: Vec<FuncType>,
-    /// Imported functions, tables, memories, and globals
-    pub imports: Vec<Import>,
-    /// Function definitions (type indices)
-    pub functions: Vec<Function>,
-    /// Table definitions
+    /// Function section - function type indices
+    pub functions: Vec<u32>,
+    /// Tables section
     pub tables: Vec<Table>,
-    /// Memory definitions
+    /// Memory section
     pub memories: Vec<Memory>,
-    /// Global variable definitions
+    /// Global section
     pub globals: Vec<Global>,
-    /// Element segments for tables
+    /// Element section
     pub elements: Vec<Element>,
-    /// Data segments for memories
+    /// Data section
     pub data: Vec<Data>,
     /// Start function index
     pub start: Option<u32>,
+    /// Import section
+    pub imports: Vec<Import>,
+    /// Export section
+    pub exports: Vec<Export>,
+    /// Code section
+    pub code: Vec<CodeSection>,
     /// Custom sections
     pub custom_sections: Vec<CustomSection>,
-    /// Exports (functions, tables, memories, and globals)
-    pub exports: Vec<Export>,
-    /// Optional name for the module, often derived from the custom "name" section.
+    /// Raw binary if available, using SafeSlice for memory safety
+    pub binary: Option<SafeSlice<'static>>,
+    /// Module name from the name section, if present
     pub name: Option<String>,
-    /// Original binary (if available)
-    pub binary: Option<Vec<u8>>,
-    /// Code section (function bodies)
-    pub code: Vec<Code>,
+}
+
+impl Default for Module {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Module {
-    /// Create a new, empty module
+    /// Create a new empty module
     pub fn new() -> Self {
         Self {
-            version: super::WASM_SUPPORTED_VERSION,
+            version: wrt_format::binary::WASM_VERSION[0] as u32, // Use WASM_VERSION from wrt-format
             types: Vec::new(),
-            imports: Vec::new(),
             functions: Vec::new(),
             tables: Vec::new(),
             memories: Vec::new(),
             globals: Vec::new(),
-            exports: Vec::new(),
-            start: None,
             elements: Vec::new(),
             data: Vec::new(),
+            start: None,
+            imports: Vec::new(),
+            exports: Vec::new(),
+            code: Vec::new(),
             custom_sections: Vec::new(),
             binary: None,
             name: None,
-            code: Vec::new(),
         }
     }
 
-    /// Creates a module from binary data
-    pub fn from_binary(bytes: &[u8]) -> Result<Self> {
-        decode_module(bytes)
+    /// Creates a module from binary data and stores the original binary
+    pub fn from_binary(bytes: &[u8]) -> Result<Module> {
+        decode_module_with_binary(bytes)
     }
 
     /// Converts the module to binary format
@@ -85,7 +107,7 @@ impl Module {
 
     /// Validates the module structure
     pub fn validate(&self) -> Result<()> {
-        crate::validation::validate_module(self)
+        crate::decoder_core::validate::validate_module(self)
     }
 
     /// Returns true if the module has a custom section with the given name
@@ -104,16 +126,8 @@ impl Module {
 
     /// Adds a custom section to the module
     pub fn add_custom_section(&mut self, name: String, data: Vec<u8>) {
-        self.custom_sections.push(CustomSection { name, data });
-    }
-
-    /// Sets the module name
-    pub fn set_name(&mut self, name: String) {
-        self.name = Some(name.clone());
-
-        // Also update the name section if it exists
-        // Note: In a complete implementation, you would encode the name properly here
-        self.add_custom_section("name".to_string(), name.into_bytes());
+        self.custom_sections
+            .push(CustomSection::from_bytes(name, &data));
     }
 
     /// Finds the index of an export by name
@@ -122,6 +136,10 @@ impl Module {
     }
 
     /// Extracts function names from the name section if available
+    ///
+    /// # Returns
+    ///
+    /// * `Result<Vec<(u32, String)>>` - Vector of function index and name pairs
     pub fn extract_function_names(&self) -> Result<Vec<(u32, String)>> {
         let name_section = self.get_custom_section("name");
 
@@ -130,9 +148,8 @@ impl Module {
             return Ok(Vec::new());
         }
 
-        // In a complete implementation, you would parse the name section here
-        // For now, return an empty vector
-        Ok(Vec::new())
+        let section = name_section.unwrap();
+        crate::name_section::extract_function_names(&section.data)
     }
 
     /// Whether this module uses memory
@@ -164,862 +181,675 @@ impl Module {
         imported_funcs + self.functions.len()
     }
 
-    /// Creates a zero-copy view of memory for a data section
-    /// This allows the runtime to directly use the binary data without copying
-    pub fn get_data_view(&self, data_idx: usize) -> Option<&[u8]> {
+    /// Gets memory content for a data section
+    /// Returns a copy of the data section's contents
+    pub fn get_data_view(&self, data_idx: usize) -> Option<Result<Vec<u8>>> {
         if data_idx >= self.data.len() {
             return None;
         }
 
-        Some(&self.data[data_idx].init)
+        // Get the data section
+        let data = &self.data[data_idx];
+
+        // Handle based on data mode
+        match &data.mode {
+            DataMode::Active => {
+                // For active segments, check if offset is available
+                if data.offset.is_empty() {
+                    return Some(Err(Error::new(
+                        ErrorCategory::Runtime,
+                        codes::MEMORY_ACCESS_ERROR,
+                        "Data segment offset is not a constant expression",
+                    )));
+                }
+
+                // Return a copy of the data
+                // In future versions this should use a SafeSlice or other bounded type
+                // rather than creating a new Vec<u8>
+                Some(Ok(data.init.to_vec()))
+            }
+            // Passive data segments
+            DataMode::Passive => {
+                // Return a copy of the data
+                // In future versions this should use a SafeSlice or other bounded type
+                // rather than creating a new Vec<u8>
+                Some(Ok(data.init.to_vec()))
+            }
+        }
     }
 
-    /// Creates a zero-copy view of the module binary
-    /// This allows the runtime to directly use the binary without copying
-    pub fn get_binary_view(&self) -> Option<&[u8]> {
-        self.binary.as_deref()
+    /// Gets the binary data as a SafeSlice
+    pub fn get_binary_view(&self) -> Option<Result<Vec<u8>>> {
+        match &self.binary {
+            Some(binary) => {
+                // Get the data and convert to Vec<u8>
+                // In future versions this should return the SafeSlice directly
+                // rather than converting to Vec<u8>
+                match binary.data() {
+                    Ok(slice) => Some(Ok(slice.to_vec())),
+                    Err(e) => Some(Err(e)),
+                }
+            }
+            None => None,
+        }
     }
 
-    /// Encode the module to binary format
-    ///
-    /// This is a basic implementation for testing purposes only.
-    pub fn encode(&self) -> wrt_error::Result<Vec<u8>> {
-        // For now, we'll create a minimal module that can be decoded
-        use wrt_format::binary::{
-            write_leb128_u32, write_string, CUSTOM_SECTION_ID, WASM_MAGIC, WASM_VERSION,
-        };
+    /// Gets the binary data as a slice
+    pub fn get_binary(&self) -> Option<Result<&[u8]>> {
+        self.binary.as_ref().map(|binary| binary.data())
+    }
 
-        let mut result = Vec::new();
+    /// Gets the binary data as a byte vector
+    pub fn as_safe_slice(&self) -> Option<Result<Vec<u8>>> {
+        self.get_binary_view()
+    }
 
-        // Add the magic bytes and version
-        result.extend_from_slice(&WASM_MAGIC);
-        result.extend_from_slice(&WASM_VERSION);
-
-        // For testing purposes, we'll just add a custom section
-        let custom_section_name = "test_roundtrip";
-        let custom_section_content = b"roundtrip_test";
-
-        // Create the custom section content
-        let mut section_content = Vec::new();
-        section_content.extend_from_slice(&write_string(custom_section_name));
-        section_content.extend_from_slice(custom_section_content);
-
-        // Add the custom section
-        result.push(CUSTOM_SECTION_ID);
-        result.extend_from_slice(&write_leb128_u32(section_content.len() as u32));
-        result.extend_from_slice(&section_content);
-
-        Ok(result)
+    /// Encodes the module to binary format
+    pub fn encode(&self) -> Result<Vec<u8>> {
+        encode_module(self)
     }
 }
 
-/// Decodes a WebAssembly binary module
-///
-/// This function parses a WebAssembly binary format and constructs a Module structure.
-///
-/// # Panics
-///
-/// This function will panic if it attempts to access the last element of an empty
-/// custom_sections vector, which can happen if the implementation tries to process
-/// a custom section before any custom sections have been added to the module.
-/// Safety impact: [LOW|MEDIUM|HIGH] - [Brief explanation of the safety implication]
-/// Tracking: WRTQ-XXX (qualification requirement tracking ID).
+/// Decode a WebAssembly module from binary format
 pub fn decode_module(bytes: &[u8]) -> Result<Module> {
-    // Verify magic bytes and version
-    if bytes.len() < 8 {
-        return Err(WrtError::parse_error("WebAssembly binary too short".to_string()));
-    }
+    let parser = Parser::new(Some(bytes), false);
+    let (mut module, _) = parse_module(parser)?;
 
-    if bytes[0..4] != WASM_MAGIC {
-        return Err(WrtError::parse_error("Invalid WebAssembly magic bytes".to_string()));
-    }
+    // Create a owned copy of the binary data
+    // This approach uses Box::leak to create a 'static reference, which is not ideal
+    // but is used as a temporary solution until proper memory management is implemented
+    let binary_copy = bytes.to_vec();
+    let binary_ref = Box::new(binary_copy);
+    let leaked_ref = Box::leak(binary_ref);
+    let binary_slice = SafeSlice::new(leaked_ref);
 
-    if bytes[4..8] != WASM_VERSION {
-        return Err(WrtError::parse_error("Unsupported WebAssembly version".to_string()));
-    }
+    // Store the binary in the module
+    module.binary = Some(binary_slice);
+    Ok(module)
+}
 
-    let mut module = Module::new();
-    module.binary = Some(bytes.to_vec());
+/// Decode a WebAssembly module from binary format and store the original binary
+pub fn decode_module_with_binary(binary: &[u8]) -> Result<Module> {
+    let parser = Parser::new(Some(binary), false);
+    let (mut module, _) = parse_module(parser)?;
 
-    // Parse sections
-    let mut offset = 8;
-    while offset < bytes.len() {
-        let section_id = bytes[offset];
-        offset += 1;
+    // Create a owned copy of the binary data
+    // This approach uses Box::leak to create a 'static reference, which is not ideal
+    // but is used as a temporary solution until proper memory management is implemented
+    let binary_copy = binary.to_vec();
+    let binary_ref = Box::new(binary_copy);
+    let leaked_ref = Box::leak(binary_ref);
+    let binary_slice = SafeSlice::new(leaked_ref);
 
-        let (size, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
-        offset += bytes_read;
-
-        let section_start = offset;
-        let section_end = section_start + size as usize;
-
-        if section_end > bytes.len() {
-            return Err(WrtError::parse_error(format!(
-                "Section size {} for section ID {} exceeds binary size",
-                size, section_id
-            )));
-        }
-
-        let section_bytes = &bytes[section_start..section_end];
-
-        match section_id {
-            0x00 => {
-                // Custom section
-                let (name, bytes_read) = binary::read_string(section_bytes, 0)?;
-                let data = section_bytes[bytes_read..].to_vec();
-                module.custom_sections.push(CustomSection { name, data });
-
-                // Extract module name if present
-                if module.custom_sections.last().unwrap().name == "name" {
-                    // In a complete implementation, you would parse the name section here
-                }
-            }
-            0x01 => {
-                // Type section
-                let (types, _) = parse_type_section(section_bytes)?;
-                module.types = types;
-            }
-            0x02 => {
-                // Import section
-                let (imports, _) = parse_import_section_bytes(section_bytes)?;
-                module.imports = imports;
-            }
-            0x03 => {
-                // Function section
-                let (functions, _) = parse_function_section(section_bytes)?;
-                module.functions = functions;
-            }
-            0x04 => {
-                // Table section
-                let (tables, _) = parse_table_section(section_bytes)?;
-                module.tables = tables;
-            }
-            0x05 => {
-                // Memory section
-                let (memories, _) = parse_memory_section(section_bytes)?;
-                module.memories = memories;
-            }
-            0x06 => {
-                // Global section
-                let (globals, _) = parse_global_section(section_bytes)?;
-                module.globals = globals;
-            }
-            0x07 => {
-                // Export section
-                let (exports, _) = parse_export_section(section_bytes)?;
-                module.exports = exports;
-            }
-            0x08 => {
-                // Start section
-                let (start, _) = binary::read_leb128_u32(section_bytes, 0)?;
-                module.start = Some(start);
-            }
-            0x09 => {
-                // Element section
-                let (elements, _) = parse_element_section(section_bytes)?;
-                module.elements = elements;
-            }
-            0x0A => {
-                // Code section
-                let (code, _) = parse_code_section(section_bytes)?;
-                module.code = code;
-            }
-            0x0B => {
-                // Data section
-                let (data, _) = parse_data_section(section_bytes)?;
-                module.data = data;
-            }
-            _ => {
-                // Unknown section, ignore but warn
-                #[cfg(feature = "std")]
-                {
-                    // Only use logging when std is available
-                    // We should add an optional log dependency with the appropriate feature flag
-                    // For now, just silence the warning in no_std mode
-                }
-            }
-        }
-
-        offset = section_end;
-    }
-
-    // Validate the basic structure now that we've parsed everything
-    if module.functions.len() != module.code.len() && !module.functions.is_empty() {
-        return Err(WrtError::parse_error(format!(
-            "Function and code section counts mismatch: {} functions but {} code entries",
-            module.functions.len(),
-            module.code.len()
-        )));
-    }
+    // Store the binary in the module
+    module.binary = Some(binary_slice);
 
     Ok(module)
 }
 
-/// Encodes a WebAssembly binary module
+/// Parse the type section from a binary slice
+///
+/// # Arguments
+///
+/// * `bytes` - Binary slice to parse
+///
+/// # Returns
+///
+/// * `Result<(Vec<FuncType>, usize)>` - Parsed types and bytes consumed
+fn parse_type_section(bytes: &[u8]) -> Result<(Vec<FuncType>, usize)> {
+    let types = crate::sections::parsers::parse_type_section(bytes)?;
+    // Count bytes consumed - this would be implemented in a full version
+    let consumed = bytes.len();
+    Ok((types, consumed))
+}
+
+/// Parse the data section from a binary slice
+///
+/// # Arguments
+///
+/// * `bytes` - Binary slice to parse
+///
+/// # Returns
+///
+/// * `Result<(Vec<Data>, usize)>` - Parsed data segments and bytes consumed
+fn parse_data_section(bytes: &[u8]) -> Result<(Vec<Data>, usize)> {
+    let data = crate::sections::parsers::parse_data_section(bytes)?;
+    // Count bytes consumed - this would be implemented in a full version
+    let consumed = bytes.len();
+    Ok((data, consumed))
+}
+
+/// Initialize memory with data segments
+///
+/// # Arguments
+///
+/// * `module` - Module containing memory definitions
+/// * `data_segments` - Data segments to initialize memory with
+///
+/// # Returns
+///
+/// * `Result<()>` - Success or error
+fn initialize_memory(_module: &Module, _data_segments: &[Data]) -> Result<()> {
+    // This would be implemented in the runtime
+    Ok(())
+}
+
+/// Encode a custom section to binary format
+///
+/// # Arguments
+///
+/// * `result` - Binary vector to append to
+/// * `section` - Custom section to encode
+///
+/// # Returns
+///
+/// * `Result<()>` - Success or error
+fn encode_custom_section(result: &mut Vec<u8>, section: &CustomSection) -> Result<()> {
+    // Write section ID
+    result.push(wrt_format::binary::CUSTOM_SECTION_ID);
+
+    // Write section size placeholder (will be filled in later)
+    let size_offset = result.len();
+    result.extend_from_slice(&[0, 0, 0, 0]); // Placeholder for section size
+
+    // Write name length and name
+    write_string(result, &section.name)?;
+
+    // Write section data
+    result.extend_from_slice(&section.data);
+
+    // Go back and write the section size
+    let section_size = result.len() - size_offset - 4;
+    let size_bytes = section_size.to_le_bytes();
+    result[size_offset..size_offset + 4].copy_from_slice(&size_bytes);
+
+    Ok(())
+}
+
+/// Encode a WebAssembly module to binary format
+///
+/// # Arguments
+///
+/// * `module` - Module to encode
+///
+/// # Returns
+///
+/// * `Result<Vec<u8>>` - Binary representation of the module
 pub fn encode_module(module: &Module) -> Result<Vec<u8>> {
+    // This would ideally use SafeMemory types, but for the final binary output
+    // we need a Vec<u8> that can be returned as the serialized representation
     let mut result = Vec::new();
 
-    // Write magic number and version
+    // Write module header
     result.extend_from_slice(&WASM_MAGIC);
     result.extend_from_slice(&WASM_VERSION);
 
-    // Write custom sections that appear before any known section
-    for section in module.custom_sections.iter() {
-        // Skip name section and other sections that should appear at the end
-        if section.name == "name" {
-            continue;
-        }
+    // For a complete implementation, each section would be encoded here
+
+    // Encode custom sections
+    for section in &module.custom_sections {
         encode_custom_section(&mut result, section)?;
-    }
-
-    // Add type section if not empty
-    if !module.types.is_empty() {
-        // placeholder - will be implemented in the future
-    }
-
-    // The rest of the sections would be encoded here
-    // ...
-
-    // Write name section at the end if it exists
-    for section in module.custom_sections.iter() {
-        if section.name == "name" {
-            encode_custom_section(&mut result, section)?;
-        }
     }
 
     Ok(result)
 }
 
-/// Encodes a custom section
-fn encode_custom_section(result: &mut Vec<u8>, section: &CustomSection) -> Result<()> {
-    // Write section ID (0)
-    result.push(0x00);
-
-    // Create a temporary buffer for the section content
-    let mut content = Vec::new();
-
-    // Write section name
-    let name_bytes = binary::write_string(&section.name);
-    content.extend_from_slice(&name_bytes);
-
-    // Write section data
-    content.extend_from_slice(&section.data);
-
-    // Write section size
-    let size_bytes = binary::write_leb128_u32(content.len() as u32);
-    result.extend_from_slice(&size_bytes);
-
-    // Write section content
-    result.extend_from_slice(&content);
-
-    Ok(())
-}
-
-// The following functions are placeholders and will be implemented in the future
-
-fn parse_type_section(bytes: &[u8]) -> Result<(Vec<FuncType>, usize)> {
-    // Placeholder - in a real implementation, you would parse the section properly
-    Ok((Vec::new(), bytes.len()))
-}
-
-/// Internal function to parse import section bytes
-fn parse_import_section_bytes(bytes: &[u8]) -> Result<(Vec<Import>, usize)> {
-    let mut offset = 0;
-    
-    // Read the number of imports
-    let (count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
-    offset += bytes_read;
-    
-    let mut imports = Vec::with_capacity(count as usize);
-    
-    // Parse each import
-    for _ in 0..count {
-        // Read module name string
-        let (module_name, bytes_read) = binary::read_string(bytes, offset)?;
-        offset += bytes_read;
-        
-        // Read field/name string
-        let (field_name, bytes_read) = binary::read_string(bytes, offset)?;
-        offset += bytes_read;
-        
-        // Read import kind/type (1 byte)
-        if offset >= bytes.len() {
-            return Err(WrtError::parse_error("Unexpected end of import section".to_string()));
-        }
-        
-        let import_type = bytes[offset];
-        offset += 1;
-        
-        // Parse import descriptor based on the type
-        let desc = match import_type {
-            0x00 => {
-                // Function import
-                let (type_idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
-                offset += bytes_read;
-                ImportDesc::Function(type_idx)
-            },
-            0x01 => {
-                // Table import
-                let (table_type, bytes_read) = parsers::parse_table_type(&bytes[offset..])?;
-                offset += bytes_read;
-                ImportDesc::Table(table_type)
-            },
-            0x02 => {
-                // Memory import
-                let (memory_type, bytes_read) = parsers::parse_memory_type(&bytes[offset..])?;
-                offset += bytes_read;
-                ImportDesc::Memory(memory_type)
-            },
-            0x03 => {
-                // Global import
-                // Get the value type (1 byte)
-                if offset >= bytes.len() {
-                    return Err(WrtError::parse_error("Unexpected end of global import".to_string()));
-                }
-                
-                let val_type = parse_value_type(bytes[offset])?;
-                offset += 1;
-                
-                // Get mutability (1 byte)
-                if offset >= bytes.len() {
-                    return Err(WrtError::parse_error("Unexpected end of global import mutability".to_string()));
-                }
-                
-                let mutability = bytes[offset] != 0;
-                offset += 1;
-                
-                // Create global import
-                let global_type = GlobalType {
-                    value_type: val_type,
-                    mutable: mutability,
-                };
-                
-                ImportDesc::Global(Global {
-                    global_type,
-                    init: Vec::new(), // No initialization for imports
-                })
-            },
-            _ => {
-                return Err(WrtError::parse_error(format!("Invalid import type: {}", import_type)));
-            }
-        };
-        
-        // Create and add the import to our list
-        let import = Import {
-            module: module_name,
-            name: field_name,
-            desc,
-        };
-        
-        imports.push(import);
-    }
-    
-    Ok((imports, offset))
-}
-
-/// Parse the import section from a WebAssembly binary
-///
-/// This function parses the import section of a WebAssembly module given the section offset and size.
-/// It returns a vector of Import structures representing all imports defined in the section.
-///
-/// # Parameters
-///
-/// * `binary` - The complete WebAssembly binary data
-/// * `section_offset` - Offset in the binary where the import section content starts (after section id and size)
-/// * `section_size` - Size of the import section content in bytes
-///
-/// # Returns
-///
-/// A Result containing either a vector of Import structures or an Error
-pub fn parse_import_section(
-    binary: &[u8],
-    section_offset: usize,
-    section_size: usize,
-) -> Result<Vec<Import>> {
-    if section_offset + section_size > binary.len() {
-        return Err(WrtError::parse_error("Import section extends beyond binary size".to_string()));
-    }
-    
-    // Use the existing parse_import_section function with the section bytes
-    let section_bytes = &binary[section_offset..section_offset + section_size];
-    let (imports, parsed_size) = parse_import_section_bytes(section_bytes)?;
-    
-    // Verify that we consumed the entire section
-    if parsed_size != section_size {
-        return Err(WrtError::parse_error(format!("Import section parsing incomplete. Parsed {} bytes out of {}", parsed_size, section_size)));
-    }
-    
-    Ok(imports)
-}
-
-fn parse_function_section(bytes: &[u8]) -> Result<(Vec<Function>, usize)> {
-    // Placeholder - in a real implementation, you would parse the section properly
-    Ok((Vec::new(), bytes.len()))
-}
-
-fn parse_table_section(bytes: &[u8]) -> Result<(Vec<Table>, usize)> {
-    // Placeholder - in a real implementation, you would parse the section properly
-    Ok((Vec::new(), bytes.len()))
-}
-
-/// Parse the memory section from WebAssembly binary format
-///
-/// According to the WebAssembly Core Specification (Binary Format):
-/// https://webassembly.github.io/spec/core/bikeshed/#binary-memsec
-///
-/// The memory section has the following format:
-/// - Section ID: 5 (Memory)
-/// - Contents: Vector of memory entries
-///   - Each memory entry:
-///     - Flags byte: bit 0 = has_max, bit 1 = is_shared, bit 2 = is_memory64, bits 3-7 reserved (must be 0)
-///     - Min size: u32 (memory32) or u64 (memory64) in units of pages (64KiB)
-///     - Max size: Optional u32 (memory32) or u64 (memory64) in units of pages (present if has_max)
-///
-/// WebAssembly 1.0 allows at most one memory per module.
-fn parse_memory_section(bytes: &[u8]) -> Result<(Vec<Memory>, usize)> {
-    let mut offset = 0;
-    let mut memories = Vec::new();
-
-    // Read the number of memories
-    if offset >= bytes.len() {
-        return Err(WrtError::parse_error("Unexpected end of memory section bytes".to_string()));
-    }
-
-    let (count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
-    offset += bytes_read;
-
-    // WebAssembly 1.0 only allows a maximum of 1 memory per module
-    if count > 1 {
-        return Err(WrtError::parse_error("Multiple memories are not supported in WebAssembly 1.0".to_string()));
-    }
-
-    // Parse each memory type
-    for _ in 0..count {
-        if offset >= bytes.len() {
-            return Err(WrtError::parse_error("Unexpected end of memory section bytes".to_string()));
-        }
-
-        let (memory, bytes_read) = parsers::parse_memory_type(&bytes[offset..])?;
-        offset += bytes_read;
-        memories.push(memory);
-    }
-
-    Ok((memories, offset))
-}
-
-fn parse_global_section(bytes: &[u8]) -> Result<(Vec<Global>, usize)> {
-    // Placeholder - in a real implementation, you would parse the section properly
-    Ok((Vec::new(), bytes.len()))
-}
-
-fn parse_export_section(bytes: &[u8]) -> Result<(Vec<Export>, usize)> {
-    // Placeholder - in a real implementation, you would parse the section properly
-    Ok((Vec::new(), bytes.len()))
-}
-
-fn parse_element_section(bytes: &[u8]) -> Result<(Vec<Element>, usize)> {
-    // Placeholder - in a real implementation, you would parse the section properly
-    Ok((Vec::new(), bytes.len()))
-}
-
-fn parse_code_section(bytes: &[u8]) -> Result<(Vec<Code>, usize)> {
-    // Placeholder - in a real implementation, you would parse the section properly
-    Ok((Vec::new(), bytes.len()))
-}
-
-fn parse_data_section(bytes: &[u8]) -> Result<(Vec<Data>, usize)> {
-    let mut offset = 0;
-    let mut data_segments = Vec::new();
-
-    // Read count
-    if offset >= bytes.len() {
-        return Err(WrtError::parse_error("Unexpected end of data section bytes".to_string()));
-    }
-    let (count, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
-    offset += bytes_read;
-
-    // Parse each data segment
-    for _ in 0..count {
-        if offset >= bytes.len() {
-            return Err(WrtError::parse_error("Unexpected end of data section bytes".to_string()));
-        }
-
-        // Read flags (indicates active vs. passive and memory index encoding)
-        let flags = bytes[offset];
-        offset += 1;
-
-        // Parse based on segment type
-        match flags {
-            0x00 => {
-                // Active segment with memory index 0
-                // Read offset expression
-                let (expr_size, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
-                offset += bytes_read;
-
-                if offset + expr_size as usize > bytes.len() {
-                    return Err(WrtError::parse_error("Offset expression exceeds data section size".to_string()));
-                }
-
-                let offset_expr = bytes[offset..offset + expr_size as usize].to_vec();
-                offset += expr_size as usize;
-
-                // Read init data
-                let (data_size, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
-                offset += bytes_read;
-
-                if offset + data_size as usize > bytes.len() {
-                    return Err(WrtError::parse_error("Data segment exceeds data section size".to_string()));
-                }
-
-                let init_data = bytes[offset..offset + data_size as usize].to_vec();
-                offset += data_size as usize;
-
-                data_segments.push(Data {
-                    mode: DataMode::Active,
-                    memory_idx: 0,
-                    offset: offset_expr,
-                    init: init_data,
-                });
-            }
-            0x01 => {
-                // Passive segment
-                // Read init data
-                let (data_size, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
-                offset += bytes_read;
-
-                if offset + data_size as usize > bytes.len() {
-                    return Err(WrtError::parse_error("Data segment exceeds data section size".to_string()));
-                }
-
-                let init_data = bytes[offset..offset + data_size as usize].to_vec();
-                offset += data_size as usize;
-
-                data_segments.push(Data {
-                    mode: DataMode::Passive,
-                    memory_idx: 0,      // Not used for passive segments
-                    offset: Vec::new(), // Not used for passive segments
-                    init: init_data,
-                });
-            }
-            0x02 => {
-                // Active segment with explicit memory index
-                // Read memory index
-                let (memory_idx, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
-                offset += bytes_read;
-
-                // Read offset expression
-                let (expr_size, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
-                offset += bytes_read;
-
-                if offset + expr_size as usize > bytes.len() {
-                    return Err(WrtError::parse_error("Offset expression exceeds data section size".to_string()));
-                }
-
-                let offset_expr = bytes[offset..offset + expr_size as usize].to_vec();
-                offset += expr_size as usize;
-
-                // Read init data
-                let (data_size, bytes_read) = binary::read_leb128_u32(bytes, offset)?;
-                offset += bytes_read;
-
-                if offset + data_size as usize > bytes.len() {
-                    return Err(WrtError::parse_error("Data segment exceeds data section size".to_string()));
-                }
-
-                let init_data = bytes[offset..offset + data_size as usize].to_vec();
-                offset += data_size as usize;
-
-                data_segments.push(Data {
-                    mode: DataMode::Active,
-                    memory_idx,
-                    offset: offset_expr,
-                    init: init_data,
-                });
-            }
-            _ => {
-                return Err(WrtError::parse_error(format!("Invalid data segment flags: 0x{:02x}", flags)));
-            }
-        }
-    }
-
-    Ok((data_segments, offset))
-}
-
-// Section encoding functions (placeholders for a full implementation)
-
-#[allow(dead_code)]
-fn encode_type_section(_result: &mut [u8], _types: &[FuncType]) -> Result<()> {
-    // Placeholder implementation
-    Ok(())
-}
-
-#[allow(dead_code)]
-fn encode_import_section(_result: &mut [u8], _imports: &[Import]) -> Result<()> {
-    // Placeholder implementation
-    Ok(())
-}
-
-#[allow(dead_code)]
-fn encode_function_section(_result: &mut [u8], _functions: &[Function]) -> Result<()> {
-    // Placeholder implementation
-    Ok(())
-}
-
-#[allow(dead_code)]
-fn encode_table_section(_result: &mut [u8], _tables: &[Table]) -> Result<()> {
-    // Placeholder implementation
-    Ok(())
-}
-
-/// Encode the memory section to WebAssembly binary format
-///
-/// According to the WebAssembly Core Specification (Binary Format):
-/// https://webassembly.github.io/spec/core/bikeshed/#binary-memsec
-///
-/// The memory section has the following format:
-/// - Section ID: 5 (Memory)
-/// - Contents: Vector of memory entries
-///   - Each memory entry:
-///     - Flags byte: bit 0 = has_max, bit 1 = is_shared, bit 2 = is_memory64, bits 3-7 reserved (must be 0)
-///     - Min size: u32 (memory32) or u64 (memory64) in units of pages (64KiB)
-///     - Max size: Optional u32 (memory32) or u64 (memory64) in units of pages (present if has_max)
-///
-/// Validation rules:
-/// - WebAssembly 1.0 allows at most one memory per module
-/// - Shared memories must have a maximum size specified
-/// - The maximum size must be greater than or equal to the minimum size
-/// - For memory32, min and max must not exceed 65536 pages (4GiB)
-#[allow(dead_code)]
-fn encode_memory_section(_result: &mut [u8], _memories: &[Memory]) -> Result<()> {
-    // Note: This function is not implemented for &mut [u8] because it needs to extend the buffer
-    // dynamically. A proper implementation would use a different design pattern, such as
-    // returning a Vec<u8> instead of modifying a slice.
-
-    // Skip processing for now
-    Ok(())
-}
-
-#[allow(dead_code)]
-fn encode_global_section(_result: &mut [u8], _globals: &[Global]) -> Result<()> {
-    // Placeholder implementation
-    Ok(())
-}
-
-#[allow(dead_code)]
-fn encode_export_section(_result: &mut [u8], _exports: &[Export]) -> Result<()> {
-    // Placeholder implementation
-    Ok(())
-}
-
-#[allow(dead_code)]
-fn encode_start_section(_result: &mut [u8], _start: u32) -> Result<()> {
-    // Placeholder implementation
-    Ok(())
-}
-
-#[allow(dead_code)]
-fn encode_element_section(_result: &mut [u8], _elements: &[Element]) -> Result<()> {
-    // Placeholder implementation
-    Ok(())
-}
-
-#[allow(dead_code)]
-fn encode_code_section(_result: &mut [u8], _code: &[Code]) -> Result<()> {
-    // Placeholder implementation
-    Ok(())
-}
-
-#[allow(dead_code)]
-fn encode_data_section(_result: &mut [u8], _data: &[Data]) -> Result<()> {
-    // Placeholder implementation
-    Ok(())
-}
-
-/// Initialize memory from data segments
-///
-/// This function applies active data segments to the given memory.
-/// It needs to be called during module instantiation to set up the initial memory state.
+/// Create a parse error with the given message
 ///
 /// # Arguments
 ///
-/// * `memory_data` - The memory data buffer to initialize
-/// * `data_segments` - The data segments to apply
-/// * `globals` - Global values needed to evaluate constant expressions
+/// * `message` - Error message
 ///
 /// # Returns
 ///
-/// * `Ok(())` if initialization succeeded
-/// * `Err(_)` if an error occurred
-pub fn initialize_memory(
-    memory_data: &mut [u8],
-    data_segments: &[Data],
-    globals: &[(ValueType, u64)], // Simplified globals representation: (type, value)
-) -> Result<()> {
-    // Process each active data segment
-    for (i, segment) in data_segments.iter().enumerate() {
-        if matches!(segment.mode, DataMode::Passive) {
-            // Skip passive segments
-            continue;
-        }
+/// * `Error` - Parse error
+pub fn parse_error(message: &str) -> Error {
+    Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, message)
+}
 
-        // Evaluate the offset expression
-        let offset = evaluate_const_expr(&segment.offset, globals)?;
+/// Create a parse error with the given message and context
+///
+/// # Arguments
+///
+/// * `message` - Error message
+/// * `context` - Additional context
+///
+/// # Returns
+///
+/// * `Error` - Parse error with context
+pub fn parse_error_with_context(message: &str, context: &str) -> Error {
+    Error::new(
+        ErrorCategory::Parse,
+        codes::PARSE_ERROR,
+        format!("{}: {}", message, context),
+    )
+}
 
-        // Convert to u32 (this is safe because WebAssembly memory is always < 2^32 bytes)
-        let offset_u32 = match offset {
-            ConstValue::I32(val) => val as u32,
-            ConstValue::I64(val) => {
-                if val > (u32::MAX as i64) {
-                    return Err(WrtError::runtime_error(format!(
-                        "Memory offset in data segment {} exceeds 32-bit limit",
-                        i
-                    )));
-                }
-                val as u32
-            }
-            _ => {
-                return Err(WrtError::runtime_error(format!(
-                    "Invalid offset type in data segment {}",
-                    i
-                )));
-            }
-        };
+/// Create a parse error with the given message and position
+///
+/// # Arguments
+///
+/// * `message` - Error message
+/// * `position` - Position in the binary
+///
+/// # Returns
+///
+/// * `Error` - Parse error with position
+pub fn parse_error_with_position(message: &str, position: usize) -> Error {
+    Error::new(
+        ErrorCategory::Parse,
+        codes::PARSE_ERROR,
+        format!("{} at position {}", message, position),
+    )
+}
 
-        // Check if the segment fits in memory
-        if offset_u32 as usize + segment.init.len() > memory_data.len() {
-            return Err(WrtError::runtime_error(
-                format!(
-                    "Data segment {} extends beyond memory size (offset: {}, length: {}, memory size: {})",
-                    i, offset_u32, segment.init.len(), memory_data.len()
-                )
-            ));
-        }
+/// Create a runtime error with the given message
+///
+/// # Arguments
+///
+/// * `message` - Error message
+///
+/// # Returns
+///
+/// * `Error` - Runtime error
+pub fn runtime_error(message: &str) -> Error {
+    Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, message)
+}
 
-        // Copy the segment data to memory
-        let dest_start = offset_u32 as usize;
-        let dest_end = dest_start + segment.init.len();
-        memory_data[dest_start..dest_end].copy_from_slice(&segment.init);
+/// Create a runtime error with the given message and context
+///
+/// # Arguments
+///
+/// * `message` - Error message
+/// * `context` - Additional context
+///
+/// # Returns
+///
+/// * `Error` - Runtime error with context
+pub fn runtime_error_with_context(message: &str, context: &str) -> Error {
+    Error::new(
+        ErrorCategory::Runtime,
+        codes::RUNTIME_ERROR,
+        format!("{}: {}", message, context),
+    )
+}
+
+/// Create a runtime error with the given message and type
+///
+/// # Arguments
+///
+/// * `message` - Error message
+/// * `type_name` - Type name
+///
+/// # Returns
+///
+/// * `Error` - Runtime error with type
+pub fn runtime_error_with_type(message: &str, type_name: &str) -> Error {
+    Error::new(
+        ErrorCategory::Runtime,
+        codes::RUNTIME_ERROR,
+        format!("{} (type: {})", message, type_name),
+    )
+}
+
+/// Wrapper for custom sections with additional functionality
+#[derive(Debug, Clone)]
+pub struct CustomSectionWrapper {
+    /// Name of the custom section
+    pub name: String,
+    /// Data of the custom section
+    pub data: Vec<u8>,
+}
+
+impl CustomSectionWrapper {
+    /// Create a new custom section wrapper
+    pub fn new(name: String, data: Vec<u8>) -> Self {
+        Self { name, data }
     }
+
+    /// Create a custom section wrapper from bytes
+    pub fn from_bytes(name: String, data: &[u8]) -> Self {
+        let mut vec = Vec::with_capacity(data.len());
+        vec.extend_from_slice(data);
+        Self { name, data: vec }
+    }
+
+    /// Get the data as a slice
+    pub fn get_data(&self) -> Result<&[u8]> {
+        Ok(&self.data)
+    }
+
+    /// Get the size of the data
+    pub fn size(&self) -> usize {
+        self.data.len()
+    }
+
+    /// Check if the section has the given name
+    pub fn has_name(&self, name: &str) -> bool {
+        self.name == name
+    }
+
+    /// Get the data as a slice
+    pub fn data(&self) -> &[u8] {
+        &self.data
+    }
+}
+
+// Internal module for parsing sections
+mod parsers {
+    use super::*;
+
+    type WrtResult<T> = Result<T>;
+
+    /// Parse a type section
+    pub fn parse_type_section(bytes: &[u8]) -> WrtResult<Vec<FuncType>> {
+        // This would call into wrt_format parsers
+        // and convert to wrt_types types
+        let format_types = crate::sections::parsers::parse_type_section(bytes)
+            .map_err(format_error_to_wrt_error)?;
+
+        #[cfg(any(feature = "std", feature = "alloc"))]
+        {
+            // Convert format types to runtime types
+            let types = format_types
+                .into_iter()
+                .map(|t| format_func_type_to_types_func_type(&t))
+                .collect();
+
+            Ok(types)
+        }
+
+        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        {
+            // For no_std without alloc, we'd need a different approach
+            // that doesn't require Vec
+            Err(Error::new(
+                ErrorCategory::Runtime,
+                codes::UNSUPPORTED_OPERATION,
+                "Type section parsing requires alloc",
+            ))
+        }
+    }
+
+    /// Parse an import section
+    pub fn parse_import_section(bytes: &[u8]) -> WrtResult<Vec<Import>> {
+        // Forward to wrt_format parser
+        crate::sections::parsers::parse_import_section(bytes).map_err(format_error_to_wrt_error)
+    }
+
+    /// Parse a function section
+    pub fn parse_function_section(bytes: &[u8]) -> WrtResult<Vec<u32>> {
+        // Forward to wrt_format parser
+        let format_funcs = crate::sections::parsers::parse_function_section(bytes)
+            .map_err(format_error_to_wrt_error)?;
+
+        Ok(format_funcs)
+    }
+
+    /// Parse a table section
+    pub fn parse_table_section(bytes: &[u8]) -> WrtResult<Vec<Table>> {
+        // Forward to wrt_format parser
+        crate::sections::parsers::parse_table_section(bytes).map_err(format_error_to_wrt_error)
+    }
+
+    /// Parse a memory section
+    pub fn parse_memory_section(bytes: &[u8]) -> WrtResult<Vec<Memory>> {
+        // Forward to wrt_format parser
+        crate::sections::parsers::parse_memory_section(bytes).map_err(format_error_to_wrt_error)
+    }
+
+    /// Parse a global section
+    pub fn parse_global_section(bytes: &[u8]) -> WrtResult<Vec<Global>> {
+        // Forward to wrt_format parser
+        crate::sections::parsers::parse_global_section(bytes).map_err(format_error_to_wrt_error)
+    }
+
+    /// Parse an export section
+    pub fn parse_export_section(bytes: &[u8]) -> WrtResult<Vec<Export>> {
+        // Forward to wrt_format parser
+        crate::sections::parsers::parse_export_section(bytes).map_err(format_error_to_wrt_error)
+    }
+
+    /// Parse an element section
+    pub fn parse_element_section(bytes: &[u8]) -> WrtResult<Vec<Element>> {
+        // Forward to wrt_format parser
+        crate::sections::parsers::parse_element_section(bytes).map_err(format_error_to_wrt_error)
+    }
+
+    /// Parse a code section
+    pub fn parse_code_section(bytes: &[u8]) -> WrtResult<Vec<CodeSection>> {
+        // This would call into wrt_format parsers
+        // and convert to our CodeSection type
+        let format_code = crate::sections::parsers::parse_code_section(bytes)
+            .map_err(format_error_to_wrt_error)?;
+
+        #[cfg(any(feature = "std", feature = "alloc"))]
+        {
+            // Convert format code to our CodeSection type
+            let code = format_code
+                .into_iter()
+                .map(|body_vec| CodeSection {
+                    body_size: body_vec.len() as u32,
+                    body: body_vec,
+                })
+                .collect();
+
+            Ok(code)
+        }
+
+        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        {
+            // For no_std without alloc, we'd need a different approach
+            Err(Error::new(
+                ErrorCategory::Runtime,
+                codes::UNSUPPORTED_OPERATION,
+                "Code section parsing requires alloc",
+            ))
+        }
+    }
+
+    /// Parse a data section
+    pub fn parse_data_section(bytes: &[u8]) -> WrtResult<Vec<Data>> {
+        // Forward to wrt_format parser
+        crate::sections::parsers::parse_data_section(bytes).map_err(format_error_to_wrt_error)
+    }
+}
+
+// Helper function to write a string to a binary vector
+fn write_string(result: &mut Vec<u8>, s: &str) -> Result<()> {
+    let bytes = s.as_bytes();
+    let len = bytes.len();
+
+    // Write the length as LEB128
+    let len_bytes = wrt_format::binary::write_leb128_u32(len as u32);
+    result.extend_from_slice(&len_bytes);
+
+    // Write the string
+    result.extend_from_slice(bytes);
 
     Ok(())
 }
 
-/// Constant expression value
-#[derive(Debug, Clone)]
-pub enum ConstValue {
-    /// 32-bit integer constant
-    I32(i32),
-    /// 64-bit integer constant
-    I64(i64),
-    /// 32-bit float constant
-    F32(f32),
-    /// 64-bit float constant
-    F64(f64),
-}
+/// Parse a module using the parser
+///
+/// # Arguments
+///
+/// * `parser` - Parser to use
+///
+/// # Returns
+///
+/// * `Result<(Module, Vec<u8>)>` - Parsed module and any remaining bytes
+fn parse_module(mut parser: crate::parser::Parser<'_>) -> Result<(Module, Vec<u8>)> {
+    let mut module = Module::new();
+    let mut saw_version = false;
 
-/// Evaluate a constant expression (limited to simple cases)
-fn evaluate_const_expr(expr: &[u8], globals: &[(ValueType, u64)]) -> Result<ConstValue> {
-    // Ensure the expression is not empty and ends with end opcode
-    if expr.is_empty() || expr[expr.len() - 1] != 0x0B {
-        return Err(WrtError::runtime_error("Invalid constant expression format".to_string()));
+    // Process each payload from the parser
+    while let Some(payload) = parser.read()? {
+        match payload {
+            crate::parser::Payload::Version(version, _) => {
+                module.version = version;
+                saw_version = true;
+            }
+            crate::parser::Payload::TypeSection(data, _) => {
+                let data_slice = data.data()?;
+                let types = crate::sections::parsers::parse_type_section(data_slice)?;
+                module.types = types;
+            }
+            crate::parser::Payload::ImportSection(data, _) => {
+                let data_slice = data.data()?;
+                let imports = crate::sections::parsers::parse_import_section(data_slice)?;
+                module.imports = imports;
+            }
+            crate::parser::Payload::FunctionSection(data, _) => {
+                let data_slice = data.data()?;
+                let functions = crate::sections::parsers::parse_function_section(data_slice)?;
+                module.functions = functions;
+            }
+            crate::parser::Payload::TableSection(data, _) => {
+                let data_slice = data.data()?;
+                let tables = crate::sections::parsers::parse_table_section(data_slice)?;
+                module.tables = tables;
+            }
+            crate::parser::Payload::MemorySection(data, _) => {
+                let data_slice = data.data()?;
+                let memories = crate::sections::parsers::parse_memory_section(data_slice)?;
+                module.memories = memories;
+            }
+            crate::parser::Payload::GlobalSection(data, _) => {
+                let data_slice = data.data()?;
+                let globals = crate::sections::parsers::parse_global_section(data_slice)?;
+                module.globals = globals;
+            }
+            crate::parser::Payload::ExportSection(data, _) => {
+                let data_slice = data.data()?;
+                let exports = crate::sections::parsers::parse_export_section(data_slice)?;
+                module.exports = exports;
+            }
+            crate::parser::Payload::StartSection(start) => {
+                module.start = Some(start);
+            }
+            crate::parser::Payload::ElementSection(data, _) => {
+                let data_slice = data.data()?;
+                let elements = crate::sections::parsers::parse_element_section(data_slice)?;
+                module.elements = elements;
+            }
+            crate::parser::Payload::CodeSection(data, _) => {
+                let data_slice = data.data()?;
+                let raw_code = crate::sections::parsers::parse_code_section(data_slice)?;
+                // Convert raw Vec<Vec<u8>> to Vec<CodeSection>
+                let code_sections = raw_code
+                    .into_iter()
+                    .map(|body_vec| CodeSection {
+                        body_size: body_vec.len() as u32,
+                        body: body_vec,
+                    })
+                    .collect();
+                module.code = code_sections;
+            }
+            crate::parser::Payload::DataSection(data, _) => {
+                let data_slice = data.data()?;
+                let data = crate::sections::parsers::parse_data_section(data_slice)?;
+                module.data = data;
+            }
+            crate::parser::Payload::CustomSection { name, data, .. } => {
+                let data_slice = data.data()?;
+                let custom = CustomSection::from_bytes(name, data_slice);
+
+                // If this is a name section, try to extract the module name
+                if custom.name == "name" {
+                    if let Ok(name) = crate::name_section::extract_module_name(&custom.data) {
+                        module.name = Some(name);
+                    }
+                }
+
+                module.custom_sections.push(custom);
+            }
+            crate::parser::Payload::End => {
+                break;
+            }
+            crate::parser::Payload::DataCountSection { .. } => {
+                // Data count section is not stored directly in the module
+                // It's used during validation
+            }
+            crate::parser::Payload::ComponentSection { .. } => {
+                // Component sections aren't handled in core module parsing
+            }
+        }
     }
 
-    // Handle common constant expressions
-    match expr[0] {
-        // i32.const
-        0x41 => {
-            // Parse the i32 value (LEB128 encoded)
-            let (value, _) = binary::read_leb128_i32(expr, 1)?;
-            Ok(ConstValue::I32(value))
-        }
-
-        // i64.const
-        0x42 => {
-            // Parse the i64 value (LEB128 encoded)
-            let (value, _) = binary::read_leb128_i64(expr, 1)?;
-            Ok(ConstValue::I64(value))
-        }
-
-        // f32.const
-        0x43 => {
-            if expr.len() < 5 {
-                // opcode + 4 bytes
-                return Err(WrtError::runtime_error("Invalid f32.const expression".to_string()));
-            }
-
-            // Parse the f32 value (IEEE 754 encoded)
-            let bits = u32::from_le_bytes([expr[1], expr[2], expr[3], expr[4]]);
-            Ok(ConstValue::F32(f32::from_bits(bits)))
-        }
-
-        // f64.const
-        0x44 => {
-            if expr.len() < 9 {
-                // opcode + 8 bytes
-                return Err(WrtError::runtime_error("Invalid f64.const expression".to_string()));
-            }
-
-            // Parse the f64 value (IEEE 754 encoded)
-            let bits = u64::from_le_bytes([
-                expr[1], expr[2], expr[3], expr[4], expr[5], expr[6], expr[7], expr[8],
-            ]);
-            Ok(ConstValue::F64(f64::from_bits(bits)))
-        }
-
-        // global.get
-        0x23 => {
-            // Parse the global index (LEB128 encoded)
-            let (global_idx, _) = binary::read_leb128_u32(expr, 1)?;
-
-            // Look up the global value
-            if global_idx as usize >= globals.len() {
-                return Err(WrtError::runtime_error(format!(
-                    "Global index {} out of bounds",
-                    global_idx
-                )));
-            }
-
-            // Convert the global value to the appropriate type
-            let (global_type, global_value) = &globals[global_idx as usize];
-            match global_type {
-                ValueType::I32 => Ok(ConstValue::I32(*global_value as i32)),
-                ValueType::I64 => Ok(ConstValue::I64(*global_value as i64)),
-                ValueType::F32 => Ok(ConstValue::F32(f32::from_bits(*global_value as u32))),
-                ValueType::F64 => Ok(ConstValue::F64(f64::from_bits(*global_value))),
-                _ => Err(WrtError::runtime_error(format!(
-                    "Unsupported global type {:?}",
-                    global_type
-                ))),
-            }
-        }
-
-        _ => Err(WrtError::runtime_error(format!(
-            "Unsupported constant expression opcode: 0x{:02x}",
-            expr[0]
-        ))),
+    // Check that we saw a version
+    if !saw_version {
+        return Err(parse_error("Missing WebAssembly version"));
     }
+
+    // We don't have any remaining bytes in this implementation
+    Ok((module, Vec::new()))
 }
 
-pub fn parse_error(message: &str) -> WrtError {
-    WrtError::parse_error(message.to_string())
-}
+/// Encode data section
+fn encode_data_section(module: &Module) -> Vec<u8> {
+    let mut result = Vec::new();
 
-pub fn parse_error_with_context(message: &str, context: &str) -> WrtError {
-    WrtError::parse_error(format!("{}: {}", message, context))
-}
+    // Skip if no data segments
+    if module.data.is_empty() {
+        return result;
+    }
 
-pub fn parse_error_with_position(message: &str, position: usize) -> WrtError {
-    WrtError::parse_error(format!("{} at position {}", message, position))
-}
+    // Encode section ID
+    result.push(Section::Data as u8);
 
-pub fn runtime_error(message: &str) -> WrtError {
-    WrtError::runtime_error(message.to_string())
-}
+    // Encode data count
+    let _data_count = module.data.len();
+    let mut encoded_data = Vec::new();
 
-pub fn runtime_error_with_context(message: &str, context: &str) -> WrtError {
-    WrtError::runtime_error(format!("{}: {}", message, context))
-}
+    // Encode each data segment
+    for data in &module.data {
+        let mut segment = Vec::new();
 
-pub fn runtime_error_with_type(message: &str, type_name: &str) -> WrtError {
-    WrtError::runtime_error(format!("{} for type {}", message, type_name))
+        // Encode data mode
+        match &data.mode {
+            DataMode::Passive => {
+                segment.push(0x01); // Passive data flag
+            }
+            DataMode::Active => {
+                segment.push(0x00); // Active data flag
+
+                // Encode memory index
+                let memory_idx_encoded = wrt_format::binary::write_leb128_u32(data.memory_idx);
+                segment.extend_from_slice(&memory_idx_encoded);
+
+                // Encode the initialization expression
+                // Here we should encode the offset expression
+                // For simplicity, just assume it's an i32.const
+                segment.push(0x41); // i32.const opcode
+
+                // Assuming the first byte of the offset expression is an i32 value
+                let offset_value = if !data.offset.is_empty() {
+                    data.offset[0] as i32
+                } else {
+                    0
+                };
+                let offset_encoded = wrt_format::binary::write_leb128_i32(offset_value);
+                segment.extend_from_slice(&offset_encoded);
+
+                segment.push(0x0B); // end opcode
+            }
+        }
+
+        // Encode data bytes (using init field from data)
+        // Directly extend with the data bytes instead of using a non-existent write_bytes function
+        segment.extend_from_slice(&data.init);
+
+        // Add to encoded data
+        encoded_data.extend_from_slice(&segment);
+    }
+
+    // Encode section size
+    let section_size = wrt_format::binary::write_leb128_u32(encoded_data.len() as u32);
+    result.extend_from_slice(&section_size);
+
+    // Add encoded data
+    result.extend_from_slice(&encoded_data);
+
+    result
 }

@@ -3,25 +3,43 @@
 //! This module provides an implementation of WebAssembly tables,
 //! which store function references or externref values.
 
+use crate::prelude::*;
 use crate::types::TableType;
-use crate::{Error, Result};
-use wrt_error::{errors::codes, kinds, ErrorCategory};
-use wrt_types::values::Value;
-
-use std::sync::Arc;
-#[cfg(feature = "std")]
-use std::vec::Vec;
-
-#[cfg(not(feature = "std"))]
-use alloc::vec::Vec;
 
 /// Represents a WebAssembly table instance
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Table {
     /// The table type
     pub ty: TableType,
-    /// The elements in the table
-    elements: Vec<Option<Value>>,
+    /// The elements in the table - using SafeStack instead of Vec for memory safety
+    elements: SafeStack<Option<Value>>,
+    /// A debug name for diagnostics
+    debug_name: Option<String>,
+    /// Verification level for table operations
+    verification_level: VerificationLevel,
+}
+
+impl Clone for Table {
+    fn clone(&self) -> Self {
+        // Get elements as a Vec
+        let elements_vec = self.elements.to_vec().unwrap_or_default();
+
+        // Create a new SafeStack with the same elements
+        let mut new_elements = SafeStack::with_capacity(elements_vec.len());
+        new_elements.set_verification_level(self.verification_level);
+
+        for elem in elements_vec {
+            new_elements.push(elem).unwrap();
+        }
+
+        // Create a new instance with the same properties
+        Self {
+            ty: self.ty.clone(),
+            elements: new_elements,
+            debug_name: self.debug_name.clone(),
+            verification_level: self.verification_level,
+        }
+    }
 }
 
 impl Table {
@@ -53,12 +71,45 @@ impl Table {
         }
 
         let initial_size = ty.limits.min as usize;
-        let mut elements = Vec::with_capacity(initial_size);
+        let mut elements = SafeStack::with_capacity(initial_size);
 
         // Initialize with None (null) elements
-        elements.resize(initial_size, None);
+        for _ in 0..initial_size {
+            elements.push(None)?;
+        }
 
-        Ok(Self { ty, elements })
+        Ok(Self {
+            ty,
+            elements,
+            verification_level: VerificationLevel::default(),
+            debug_name: None,
+        })
+    }
+
+    /// Creates a new table with the specified capacity and element type
+    ///
+    /// # Arguments
+    ///
+    /// * `capacity` - The initial capacity of the table
+    /// * `element_type` - The element type for the table
+    ///
+    /// # Returns
+    ///
+    /// A new table instance
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the table cannot be created
+    pub fn with_capacity(capacity: u32, element_type: &ValueType) -> Result<Self> {
+        let table_type = TableType {
+            element_type: *element_type,
+            limits: Limits {
+                min: capacity,
+                max: Some(capacity * 2), // Allow doubling as max
+            },
+        };
+
+        Self::new(table_type, Value::FuncRef(None))
     }
 
     /// Gets the size of the table
@@ -93,10 +144,32 @@ impl Table {
                 "Table access out of bounds",
             ));
         }
-        Ok(self.elements[idx].clone())
+
+        // Implement verification if needed based on verification level
+        if self.verification_level.should_verify(128) {
+            // Verify table integrity - this is a simplified version
+            // In a real implementation, we would do more thorough checks
+            if idx >= self.elements.len() {
+                return Err(Error::new(
+                    ErrorCategory::Validation,
+                    codes::VALIDATION_ERROR,
+                    "Table integrity check failed: index out of bounds",
+                ));
+            }
+        }
+
+        // Use SafeStack's get method instead of direct indexing
+        match self.elements.get(idx) {
+            Ok(val) => Ok(val.clone()),
+            Err(_) => Err(Error::new(
+                ErrorCategory::Runtime,
+                codes::INVALID_FUNCTION_INDEX,
+                "Table access failed during safe memory operation",
+            )),
+        }
     }
 
-    /// Sets an element in the table
+    /// Sets an element at the specified index
     ///
     /// # Arguments
     ///
@@ -105,11 +178,11 @@ impl Table {
     ///
     /// # Returns
     ///
-    /// Ok(()) if the operation was successful
+    /// Ok(()) if the set was successful
     ///
     /// # Errors
     ///
-    /// Returns an error if the index is out of bounds or if the value type doesn't match
+    /// Returns an error if the index is out of bounds or if the value type doesn't match the table element type
     pub fn set(&mut self, idx: u32, value: Option<Value>) -> Result<()> {
         let idx = idx as usize;
         if idx >= self.elements.len() {
@@ -127,14 +200,16 @@ impl Table {
                     ErrorCategory::Validation,
                     codes::VALIDATION_ERROR,
                     format!(
-                        "Value type doesn't match table element type: {:?} vs {:?}",
+                        "Element type doesn't match table element type: {:?} vs {:?}",
                         val, self.ty.element_type
                     ),
                 ));
             }
         }
 
-        self.elements[idx] = value;
+        // Use SafeStack's set method to update the element directly
+        self.elements.set(idx, value)?;
+
         Ok(())
     }
 
@@ -153,43 +228,76 @@ impl Table {
     ///
     /// Returns an error if the table cannot be grown
     pub fn grow(&mut self, delta: u32, init_value: Value) -> Result<u32> {
-        // Verify the init value matches the element type
+        // Check that init_value has the correct type
         if !init_value.matches_type(&self.ty.element_type) {
             return Err(Error::new(
                 ErrorCategory::Validation,
                 codes::VALIDATION_ERROR,
                 format!(
-                    "Init value type doesn't match table element type: {:?} vs {:?}",
+                    "Initial value type doesn't match table element type: {:?} vs {:?}",
                     init_value, self.ty.element_type
                 ),
             ));
         }
 
+        // Get current size
         let old_size = self.size();
-        let new_size = old_size.checked_add(delta).ok_or_else(|| {
-            Error::new(
-                ErrorCategory::Validation,
-                codes::VALIDATION_ERROR,
-                "Table size overflow",
-            )
-        })?;
 
-        // Check against the maximum
+        // Calculate new size
+        let new_size = match old_size.checked_add(delta) {
+            Some(size) => size,
+            None => {
+                return Err(Error::new(
+                    ErrorCategory::Resource,
+                    codes::RESOURCE_LIMIT_EXCEEDED,
+                    "Table size overflow",
+                ));
+            }
+        };
+
+        // Check against table max limit if defined
         if let Some(max) = self.ty.limits.max {
             if new_size > max {
                 return Err(Error::new(
-                    ErrorCategory::Validation,
-                    codes::VALIDATION_ERROR,
-                    format!(
-                        "Cannot grow table beyond maximum size: {} > {}",
-                        new_size, max
-                    ),
+                    ErrorCategory::Resource,
+                    codes::RESOURCE_LIMIT_EXCEEDED,
+                    format!("Table size exceeds maximum: {} > {}", new_size, max),
                 ));
             }
         }
 
-        // Grow the table
-        self.elements.resize(new_size as usize, None);
+        // Add new elements directly to the SafeStack
+        for _ in 0..delta {
+            self.elements.push(Some(init_value.clone()))?;
+        }
+
+        // Verify integrity if needed based on verification level
+        if self.verification_level.should_verify(200) {
+            // Ensure the new size is correct
+            if self.elements.len() != new_size as usize {
+                return Err(Error::new(
+                    ErrorCategory::Validation,
+                    codes::VALIDATION_ERROR,
+                    format!(
+                        "Table integrity check failed: expected size {} but got {}",
+                        new_size,
+                        self.elements.len()
+                    ),
+                ));
+            }
+
+            // Verify the type of the last element added
+            if let Ok(Some(last)) = self.elements.get(self.elements.len() - 1) {
+                if !last.matches_type(&self.ty.element_type) {
+                    return Err(Error::new(
+                        ErrorCategory::Validation,
+                        codes::VALIDATION_ERROR,
+                        "Table integrity check failed: element type mismatch after grow",
+                    ));
+                }
+            }
+        }
+
         Ok(old_size)
     }
 
@@ -198,7 +306,7 @@ impl Table {
     /// # Arguments
     ///
     /// * `idx` - The index to set
-    /// * `func_idx` - The function index
+    /// * `func_idx` - The function index to set
     ///
     /// # Returns
     ///
@@ -206,31 +314,29 @@ impl Table {
     ///
     /// # Errors
     ///
-    /// Returns an error if the index is out of bounds or if the table type isn't funcref
+    /// Returns an error if the index is out of bounds or the table element type isn't a funcref
     pub fn set_func(&mut self, idx: u32, func_idx: u32) -> Result<()> {
-        let new_value = Value::func_ref(Some(func_idx));
-        self.set(idx, Some(new_value))
+        // Set a function reference value
+        self.set(idx, Some(Value::func_ref(Some(func_idx))))
     }
 
-    /// Initializes a range of elements from a vector
+    /// Initialize a range of elements in the table
     ///
     /// # Arguments
     ///
-    /// * `offset` - The offset to start initializing at
-    /// * `init` - The values to initialize with
+    /// * `offset` - The starting offset
+    /// * `init` - The elements to initialize with
     ///
     /// # Returns
     ///
-    /// Ok(()) if the operation was successful
+    /// Ok(()) if successful
     ///
     /// # Errors
     ///
-    /// Returns an error if the offset + init.len() is out of bounds or if any value type doesn't match
+    /// Returns an error if the operation fails
     pub fn init(&mut self, offset: u32, init: &[Option<Value>]) -> Result<()> {
         let offset = offset as usize;
-        let end = offset + init.len();
-
-        if end > self.elements.len() {
+        if offset > self.elements.len() {
             return Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::INVALID_FUNCTION_INDEX,
@@ -238,7 +344,19 @@ impl Table {
             ));
         }
 
-        // Check all values match the element type
+        let end = offset + init.len();
+        if end > self.elements.len() {
+            return Err(Error::new(
+                ErrorCategory::Runtime,
+                codes::INVALID_FUNCTION_INDEX,
+                "Table initialization would go out of bounds",
+            ));
+        }
+
+        // Create a safe copy of the elements
+        let mut elements_vec = self.elements.to_vec()?;
+
+        // Type check all values
         for (i, value) in init.iter().enumerate() {
             if let Some(val) = value {
                 if !val.matches_type(&self.ty.element_type) {
@@ -246,124 +364,208 @@ impl Table {
                         ErrorCategory::Validation,
                         codes::VALIDATION_ERROR,
                         format!(
-                            "Value at index {} type doesn't match table element type: {:?} vs {:?}",
-                            i, val, self.ty.element_type
+                            "Element type doesn't match table element type: {:?} vs {:?}",
+                            val, self.ty.element_type
                         ),
                     ));
                 }
+
+                // Update the element at the appropriate position
+                elements_vec[offset + i] = Some(val.clone());
+            } else {
+                // Set to None (null reference)
+                elements_vec[offset + i] = None;
             }
         }
 
-        // Copy the values
-        for (i, value) in init.iter().enumerate() {
-            self.elements[offset + i] = value.clone();
+        // Create a new SafeStack with the updated elements
+        let mut new_stack = SafeStack::with_capacity(elements_vec.len());
+        new_stack.set_verification_level(self.verification_level);
+
+        // Push the elements to the new stack
+        for element in elements_vec.iter() {
+            new_stack.push(element.clone())?;
         }
 
-        Ok(())
-    }
-
-    /// Copies elements from one range to another
-    ///
-    /// # Arguments
-    ///
-    /// * `dst` - The destination offset
-    /// * `src` - The source offset
-    /// * `len` - The number of elements to copy
-    ///
-    /// # Returns
-    ///
-    /// Ok(()) if the operation was successful
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if either range is out of bounds
-    pub fn copy(&mut self, dst: u32, src: u32, len: u32) -> Result<()> {
-        if len == 0 {
-            return Ok(());
-        }
-
-        let dst = dst as usize;
-        let src = src as usize;
-        let len = len as usize;
-
-        let dst_end = dst + len;
-        let src_end = src + len;
-
-        if dst_end > self.elements.len() || src_end > self.elements.len() {
-            return Err(Error::new(
-                ErrorCategory::Runtime,
-                codes::INVALID_FUNCTION_INDEX,
-                "Table access out of bounds",
-            ));
-        }
-
-        // Handle overlapping ranges
-        let mut temp = Vec::with_capacity(len);
-        for i in 0..len {
-            temp.push(self.elements[src + i].clone());
-        }
-
-        self.elements[dst..(len + dst)].clone_from_slice(&temp[..len]);
-
-        Ok(())
-    }
-
-    /// Fills a range of elements with a value
-    ///
-    /// # Arguments
-    ///
-    /// * `offset` - The offset to start filling at
-    /// * `len` - The number of elements to fill
-    /// * `value` - The value to fill with
-    ///
-    /// # Returns
-    ///
-    /// Ok(()) if the operation was successful
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the offset + len is out of bounds or if the value type doesn't match
-    pub fn fill(&mut self, offset: u32, len: u32, value: Option<Value>) -> Result<()> {
-        if len == 0 {
-            return Ok(());
-        }
-
-        let offset = offset as usize;
-        let len = len as usize;
-        let end = offset + len;
-
-        if end > self.elements.len() {
-            return Err(Error::new(
-                ErrorCategory::Runtime,
-                codes::INVALID_FUNCTION_INDEX,
-                "Table access out of bounds",
-            ));
-        }
-
-        // If value is Some, check that it matches the element type
-        if let Some(ref val) = value {
-            if !val.matches_type(&self.ty.element_type) {
+        // Verify integrity if needed based on verification level
+        if self.verification_level.should_verify(200) {
+            // Ensure all elements are pushed correctly
+            if new_stack.len() != elements_vec.len() {
                 return Err(Error::new(
                     ErrorCategory::Validation,
                     codes::VALIDATION_ERROR,
-                    format!(
-                        "Value type doesn't match table element type: {:?} vs {:?}",
-                        val, self.ty.element_type
-                    ),
+                    "Table integrity check failed: element count mismatch after initialization",
                 ));
             }
         }
 
-        // Fill the range
-        for i in offset..end {
-            self.elements[i] = value.clone();
-        }
+        // Replace the elements with the new stack
+        self.elements = new_stack;
 
         Ok(())
     }
+
+    /// Copy elements from one region of a table to another
+    pub fn copy_elements(&mut self, dst: usize, src: usize, len: usize) -> Result<()> {
+        // Verify bounds
+        if src + len > self.elements.len() || dst + len > self.elements.len() {
+            return Err(Error::new(
+                ErrorCategory::Runtime,
+                codes::RUNTIME_ERROR,
+                format!(
+                    "table element copy out of bounds: src={}, dst={}, len={}",
+                    src, dst, len
+                ),
+            ));
+        }
+
+        // Handle the case where regions don't overlap or no elements to copy
+        if len == 0 {
+            return Ok(());
+        }
+
+        // Create temporary stack to store elements during copy
+        let mut temp_stack = SafeStack::with_capacity(len);
+        temp_stack.set_verification_level(self.verification_level);
+
+        // Read source elements into temporary stack
+        for i in 0..len {
+            temp_stack.push(self.elements.get(src + i)?)?;
+        }
+
+        // Create a new stack for the full result
+        let mut result_stack = SafeStack::with_capacity(self.elements.len());
+        result_stack.set_verification_level(self.verification_level);
+
+        // Copy elements with the updated values
+        for i in 0..self.elements.len() {
+            if i >= dst && i < dst + len {
+                // This is in the destination range, use value from temp_stack
+                result_stack.push(temp_stack.get(i - dst)?)?;
+            } else {
+                // Outside destination range, use original value
+                result_stack.push(self.elements.get(i)?)?;
+            }
+        }
+
+        // Replace the elements stack
+        self.elements = result_stack;
+
+        Ok(())
+    }
+
+    /// Fill a range of elements with a given value
+    pub fn fill_elements(&mut self, offset: usize, value: Option<Value>, len: usize) -> Result<()> {
+        // Verify bounds
+        if offset + len > self.elements.len() {
+            return Err(Error::new(
+                ErrorCategory::Runtime,
+                codes::RUNTIME_ERROR,
+                format!("table fill out of bounds: offset={}, len={}", offset, len),
+            ));
+        }
+
+        // Handle empty fill
+        if len == 0 {
+            return Ok(());
+        }
+
+        // Create a new stack with the filled elements
+        let mut result_stack = SafeStack::with_capacity(self.elements.len());
+        result_stack.set_verification_level(self.verification_level);
+
+        // Copy elements with fill applied
+        for i in 0..self.elements.len() {
+            if i >= offset && i < offset + len {
+                // This is in the fill range
+                result_stack.push(value.clone())?;
+            } else {
+                // Outside fill range, use original value
+                result_stack.push(self.elements.get(i)?)?;
+            }
+        }
+
+        // Replace the elements stack
+        self.elements = result_stack;
+
+        Ok(())
+    }
+
+    /// Sets the verification level for this table
+    ///
+    /// # Arguments
+    ///
+    /// * `level` - The verification level to set
+    pub fn set_verification_level(&mut self, level: VerificationLevel) {
+        self.verification_level = level;
+        // Pass the verification level to the SafeStack
+        self.elements.set_verification_level(level);
+    }
+
+    /// Gets the current verification level for this table
+    ///
+    /// # Returns
+    ///
+    /// The current verification level
+    #[must_use]
+    pub fn verification_level(&self) -> VerificationLevel {
+        self.verification_level
+    }
+
+    /// Sets an element at the given index.
+    pub fn init_element(&mut self, idx: usize, value: Option<Value>) -> Result<()> {
+        // Check bounds
+        if idx >= self.elements.len() {
+            return Err(Error::new(
+                ErrorCategory::Runtime,
+                codes::INVALID_FUNCTION_INDEX,
+                format!("table element index out of bounds: {}", idx),
+            ));
+        }
+
+        // Set the element directly without converting to/from Vec
+        self.elements.get(idx)?; // Verify access is valid
+
+        // Create temporary stack to hold all elements
+        let mut temp_stack = SafeStack::with_capacity(self.elements.len());
+        temp_stack.set_verification_level(self.verification_level);
+
+        // Copy elements, replacing the one at idx
+        for i in 0..self.elements.len() {
+            if i == idx {
+                temp_stack.push(value.clone())?;
+            } else {
+                temp_stack.push(self.elements.get(i)?)?;
+            }
+        }
+
+        // Replace the old stack with the new one
+        self.elements = temp_stack;
+
+        Ok(())
+    }
+
+    /// Get safety statistics for this table instance
+    ///
+    /// This returns detailed statistics about table usage and safety checks
+    ///
+    /// # Returns
+    ///
+    /// A string containing the statistics
+    pub fn safety_stats(&self) -> String {
+        format!(
+            "Table Safety Stats:\n\
+             - Size: {} elements\n\
+             - Element type: {:?}\n\
+             - Verification level: {:?}",
+            self.elements.len(),
+            self.ty.element_type,
+            self.verification_level
+        )
+    }
 }
 
-/// Extension trait for Arc<Table> to simplify access to table operations
+/// Extension trait for `Arc<Table>` to simplify access to table operations
 #[cfg(feature = "std")]
 pub trait ArcTableExt {
     /// Get the size of the table
@@ -438,7 +640,7 @@ impl ArcTableExt for Arc<Table> {
         let mut table_clone = self.as_ref().clone();
 
         // Return the result from the mutation
-        table_clone.copy(dst, src, len)
+        table_clone.copy_elements(dst as usize, src as usize, len as usize)
     }
 
     fn fill(&self, offset: u32, len: u32, value: Option<Value>) -> Result<()> {
@@ -446,7 +648,7 @@ impl ArcTableExt for Arc<Table> {
         let mut table_clone = self.as_ref().clone();
 
         // Return the result from the mutation
-        table_clone.fill(offset, len, value)
+        table_clone.fill_elements(offset as usize, value, len as usize)
     }
 }
 
@@ -456,6 +658,7 @@ mod tests {
     #[cfg(not(feature = "std"))]
     use alloc::vec;
     use wrt_types::types::{Limits, ValueType};
+    use wrt_types::verification::VerificationLevel;
 
     fn create_test_table_type(min: u32, max: Option<u32>) -> TableType {
         TableType {
@@ -467,7 +670,7 @@ mod tests {
     #[test]
     fn test_table_creation() {
         let table_type = create_test_table_type(10, Some(20));
-        let init_value = Value::FuncRef(None);
+        let init_value = Value::func_ref(None);
         let table = Table::new(table_type.clone(), init_value.clone()).unwrap();
 
         assert_eq!(table.ty, table_type);
@@ -482,11 +685,10 @@ mod tests {
     #[test]
     fn test_table_get_set() {
         let table_type = create_test_table_type(5, Some(10));
-        let mut table = Table::new(table_type, Value::FuncRef(None)).unwrap();
+        let mut table = Table::new(table_type, Value::func_ref(None)).unwrap();
 
         let func_idx = 42;
-        let func_ref = FuncRef { index: func_idx };
-        let new_value = Value::FuncRef(Some(func_ref));
+        let new_value = Value::func_ref(Some(func_idx));
         table.set(3, Some(new_value.clone())).unwrap();
 
         // Get it back
@@ -498,7 +700,7 @@ mod tests {
         assert!(result.is_err());
 
         // Try to set out of bounds
-        let result = table.set(10, Some(Value::FuncRef(None)));
+        let result = table.set(10, Some(Value::func_ref(None)));
         assert!(result.is_err());
 
         // Try to set wrong type
@@ -563,7 +765,7 @@ mod tests {
         }
 
         // Copy values
-        table.copy(2, 0, 3).unwrap();
+        table.copy_elements(2, 0, 3).unwrap();
 
         // Check copied values
         for i in 0..3 {
@@ -572,7 +774,7 @@ mod tests {
         }
 
         // Test out of bounds copy
-        let result = table.copy(3, 0, 3);
+        let result = table.copy_elements(3, 0, 3);
         assert!(result.is_err());
     }
 
@@ -583,7 +785,7 @@ mod tests {
 
         // Fill a range with a value
         let fill_value = Some(Value::func_ref(Some(42)));
-        table.fill(1, 3, fill_value.clone()).unwrap();
+        table.fill_elements(1, fill_value.clone(), 3).unwrap();
 
         // Check filled values
         for i in 1..4 {
@@ -592,7 +794,7 @@ mod tests {
         }
 
         // Test out of bounds fill
-        let result = table.fill(0, 10, Some(Value::func_ref(None)));
+        let result = table.fill_elements(0, Some(Value::func_ref(None)), 10);
         assert!(result.is_err());
     }
 
@@ -635,6 +837,86 @@ mod tests {
 
         // Test copy
         arc_table.copy(2, 0, 2)?;
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_table_safe_operations() -> Result<()> {
+        // Create a table type
+        let table_type = TableType {
+            element_type: ValueType::FuncRef,
+            limits: Limits {
+                min: 5,
+                max: Some(10),
+            },
+        };
+
+        // Create a table
+        let mut table = Table::new(table_type, Value::func_ref(None))?;
+
+        // Set verification level
+        table.set_verification_level(VerificationLevel::Full);
+
+        // Set some values
+        table.set(1, Some(Value::func_ref(Some(42))))?;
+        table.set(2, Some(Value::func_ref(Some(43))))?;
+
+        // Get them back
+        let val1 = table.get(1)?;
+        let val2 = table.get(2)?;
+
+        // Verify values
+        assert_eq!(val1, Some(Value::func_ref(Some(42))));
+        assert_eq!(val2, Some(Value::func_ref(Some(43))));
+
+        // Test fill operation
+        table.fill_elements(3, Some(Value::func_ref(Some(99))), 2)?;
+        assert_eq!(table.get(3)?, Some(Value::func_ref(Some(99))));
+        assert_eq!(table.get(4)?, Some(Value::func_ref(Some(99))));
+
+        // Test copy operation
+        table.copy_elements(0, 3, 2)?;
+        assert_eq!(table.get(0)?, Some(Value::func_ref(Some(99))));
+        assert_eq!(table.get(1)?, Some(Value::func_ref(Some(99))));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_table_memory_safety() -> Result<()> {
+        use wrt_types::types::ValueType;
+        use wrt_types::verification::VerificationLevel;
+
+        // Create a table with a specific verification level
+        let mut table = Table::with_capacity(5, &ValueType::FuncRef)?;
+        table.set_verification_level(VerificationLevel::Full);
+
+        // Initialize elements
+        let value1 = Some(Value::func_ref(Some(1)));
+        let value2 = Some(Value::func_ref(Some(2)));
+
+        // Test push operation with safety checking
+        table.init_element(0, value1.clone())?;
+        table.init_element(1, value2.clone())?;
+
+        // Verify elements
+        assert_eq!(table.get(0)?, value1);
+        assert_eq!(table.get(1)?, value2);
+
+        // Test copy with safety checking
+        table.copy_elements(2, 0, 2)?;
+        assert_eq!(table.get(2)?, value1);
+        assert_eq!(table.get(3)?, value2);
+
+        // Test fill with safety checking
+        let fill_value = Some(Value::func_ref(Some(42)));
+        table.fill_elements(1, fill_value.clone(), 2)?;
+        assert_eq!(table.get(1)?, fill_value);
+        assert_eq!(table.get(2)?, fill_value);
+
+        // Print safety stats
+        println!("{}", table.safety_stats());
 
         Ok(())
     }

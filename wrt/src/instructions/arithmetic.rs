@@ -10,8 +10,8 @@ use crate::{
     behavior::{ControlFlow, ControlFlowBehavior, FrameBehavior, NullBehavior, StackBehavior},
     error::{kinds, Error, Result},
     memory::PAGE_SIZE,
+    prelude::TypesValue as Value,
     stackless::StacklessEngine,
-    values::Value,
 };
 
 // Import the pure implementations from wrt-instructions

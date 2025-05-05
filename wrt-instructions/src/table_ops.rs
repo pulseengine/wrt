@@ -3,17 +3,9 @@
 //! This module provides pure implementations for WebAssembly table access instructions,
 //! including get, set, grow, and size operations.
 
-use crate::{instruction_traits::PureInstruction, Error, Result, Value};
-use wrt_error::kinds;
+use crate::prelude::*;
+use wrt_error::{codes, ErrorCategory};
 use wrt_types::values::{ExternRef, FuncRef};
-
-// When no_std but alloc is available
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::string::ToString;
-
-// When std is available
-#[cfg(feature = "std")]
-use std::string::ToString;
 
 /// Represents a reference value in WebAssembly
 #[derive(Debug, Clone, PartialEq)]
@@ -114,11 +106,19 @@ impl<T: TableContext> PureInstruction<T, Error> for TableOp {
         match self {
             Self::TableGet(table_index) => {
                 let index = context.pop_table_value()?.as_i32().ok_or_else(|| {
-                    Error::invalid_type("Expected I32 for table.get index".to_string())
+                    Error::new(
+                        ErrorCategory::Type,
+                        codes::INVALID_TYPE,
+                        "Invalid table type",
+                    )
                 })?;
 
                 if index < 0 {
-                    return Err(Error::from(kinds::invalid_table_index_error(index as u32)));
+                    return Err(Error::new(
+                        ErrorCategory::Resource,
+                        codes::RESOURCE_ERROR,
+                        format!("Invalid table index: {}", index as u32),
+                    ));
                 }
 
                 let ref_val = context.get_table_element(*table_index, index as u32)?;
@@ -134,11 +134,19 @@ impl<T: TableContext> PureInstruction<T, Error> for TableOp {
             Self::TableSet(table_index) => {
                 let value = context.pop_table_value()?;
                 let index = context.pop_table_value()?.as_i32().ok_or_else(|| {
-                    Error::invalid_type("Expected I32 for table.set index".to_string())
+                    Error::new(
+                        ErrorCategory::Type,
+                        codes::INVALID_TYPE,
+                        "Invalid table type",
+                    )
                 })?;
 
                 if index < 0 {
-                    return Err(Error::from(kinds::invalid_table_index_error(index as u32)));
+                    return Err(Error::new(
+                        ErrorCategory::Resource,
+                        codes::RESOURCE_ERROR,
+                        format!("Invalid table index: {}", index as u32),
+                    ));
                 }
 
                 let ref_val = match value {
@@ -147,9 +155,11 @@ impl<T: TableContext> PureInstruction<T, Error> for TableOp {
                     Value::ExternRef(Some(extern_ref)) => RefValue::ExternRef(extern_ref.index),
                     Value::ExternRef(None) => RefValue::Null,
                     _ => {
-                        return Err(Error::invalid_type(
-                            "Expected reference type for table.set value".to_string(),
-                        ))
+                        return Err(Error::new(
+                            ErrorCategory::Type,
+                            codes::INVALID_TYPE,
+                            "Invalid table type",
+                        ));
                     }
                 };
 
@@ -161,14 +171,20 @@ impl<T: TableContext> PureInstruction<T, Error> for TableOp {
             }
             Self::TableGrow(table_index) => {
                 let delta = context.pop_table_value()?.as_i32().ok_or_else(|| {
-                    Error::invalid_type("Expected I32 for table.grow delta".to_string())
+                    Error::new(
+                        ErrorCategory::Type,
+                        codes::INVALID_TYPE,
+                        "Invalid table type",
+                    )
                 })?;
                 let init_value = context.pop_table_value()?;
 
                 if delta < 0 {
-                    return Err(Error::from(kinds::invalid_type(
-                        "Table grow delta must be non-negative",
-                    )));
+                    return Err(Error::new(
+                        ErrorCategory::Type,
+                        codes::INVALID_TYPE,
+                        "Invalid table type",
+                    ));
                 }
 
                 let ref_val = match init_value {
@@ -177,9 +193,11 @@ impl<T: TableContext> PureInstruction<T, Error> for TableOp {
                     Value::ExternRef(Some(extern_ref)) => RefValue::ExternRef(extern_ref.index),
                     Value::ExternRef(None) => RefValue::Null,
                     _ => {
-                        return Err(Error::invalid_type(
-                            "Expected reference type for table.grow init value".to_string(),
-                        ))
+                        return Err(Error::new(
+                            ErrorCategory::Type,
+                            codes::INVALID_TYPE,
+                            "Invalid table type",
+                        ));
                     }
                 };
 
@@ -188,19 +206,30 @@ impl<T: TableContext> PureInstruction<T, Error> for TableOp {
             }
             Self::TableFill(table_index) => {
                 let len = context.pop_table_value()?.as_i32().ok_or_else(|| {
-                    Error::invalid_type("Expected I32 for table.fill length".to_string())
+                    Error::new(
+                        ErrorCategory::Type,
+                        codes::INVALID_TYPE,
+                        "Invalid table type",
+                    )
                 })?;
                 let val = context.pop_table_value()?;
                 let dst = context.pop_table_value()?.as_i32().ok_or_else(|| {
-                    Error::invalid_type("Expected I32 for table.fill destination".to_string())
+                    Error::new(
+                        ErrorCategory::Type,
+                        codes::INVALID_TYPE,
+                        "Invalid table type",
+                    )
                 })?;
 
                 if dst < 0 || len < 0 {
-                    return Err(Error::from(kinds::invalid_table_index_error(if dst < 0 {
-                        dst as u32
-                    } else {
-                        len as u32
-                    })));
+                    return Err(Error::new(
+                        ErrorCategory::Resource,
+                        codes::RESOURCE_ERROR,
+                        format!(
+                            "Invalid table index: {}",
+                            if dst < 0 { dst as u32 } else { len as u32 }
+                        ),
+                    ));
                 }
 
                 let ref_val = match val {
@@ -209,9 +238,11 @@ impl<T: TableContext> PureInstruction<T, Error> for TableOp {
                     Value::ExternRef(Some(extern_ref)) => RefValue::ExternRef(extern_ref.index),
                     Value::ExternRef(None) => RefValue::Null,
                     _ => {
-                        return Err(Error::invalid_type(
-                            "Expected reference type for table.fill value".to_string(),
-                        ))
+                        return Err(Error::new(
+                            ErrorCategory::Type,
+                            codes::INVALID_TYPE,
+                            "Invalid table type",
+                        ));
                     }
                 };
 
@@ -222,23 +253,42 @@ impl<T: TableContext> PureInstruction<T, Error> for TableOp {
                 src_table,
             } => {
                 let len = context.pop_table_value()?.as_i32().ok_or_else(|| {
-                    Error::invalid_type("Expected I32 for table.copy length".to_string())
+                    Error::new(
+                        ErrorCategory::Type,
+                        codes::INVALID_TYPE,
+                        "Invalid table type",
+                    )
                 })?;
                 let src = context.pop_table_value()?.as_i32().ok_or_else(|| {
-                    Error::invalid_type("Expected I32 for table.copy source".to_string())
+                    Error::new(
+                        ErrorCategory::Type,
+                        codes::INVALID_TYPE,
+                        "Invalid table type",
+                    )
                 })?;
                 let dst = context.pop_table_value()?.as_i32().ok_or_else(|| {
-                    Error::invalid_type("Expected I32 for table.copy destination".to_string())
+                    Error::new(
+                        ErrorCategory::Type,
+                        codes::INVALID_TYPE,
+                        "Invalid table type",
+                    )
                 })?;
 
                 if dst < 0 || src < 0 || len < 0 {
-                    return Err(Error::from(kinds::invalid_table_index_error(if dst < 0 {
-                        dst as u32
-                    } else if src < 0 {
-                        src as u32
-                    } else {
-                        len as u32
-                    })));
+                    return Err(Error::new(
+                        ErrorCategory::Resource,
+                        codes::RESOURCE_ERROR,
+                        format!(
+                            "Invalid table index: {}",
+                            if dst < 0 {
+                                dst as u32
+                            } else if src < 0 {
+                                src as u32
+                            } else {
+                                len as u32
+                            }
+                        ),
+                    ));
                 }
 
                 context.copy_table(*dst_table, dst as u32, *src_table, src as u32, len as u32)
@@ -248,23 +298,42 @@ impl<T: TableContext> PureInstruction<T, Error> for TableOp {
                 elem_index,
             } => {
                 let len = context.pop_table_value()?.as_i32().ok_or_else(|| {
-                    Error::invalid_type("Expected I32 for table.init length".to_string())
+                    Error::new(
+                        ErrorCategory::Type,
+                        codes::INVALID_TYPE,
+                        "Invalid table type",
+                    )
                 })?;
                 let src = context.pop_table_value()?.as_i32().ok_or_else(|| {
-                    Error::invalid_type("Expected I32 for table.init source".to_string())
+                    Error::new(
+                        ErrorCategory::Type,
+                        codes::INVALID_TYPE,
+                        "Invalid table type",
+                    )
                 })?;
                 let dst = context.pop_table_value()?.as_i32().ok_or_else(|| {
-                    Error::invalid_type("Expected I32 for table.init destination".to_string())
+                    Error::new(
+                        ErrorCategory::Type,
+                        codes::INVALID_TYPE,
+                        "Invalid table type",
+                    )
                 })?;
 
                 if dst < 0 || src < 0 || len < 0 {
-                    return Err(Error::from(kinds::invalid_table_index_error(if dst < 0 {
-                        dst as u32
-                    } else if src < 0 {
-                        src as u32
-                    } else {
-                        len as u32
-                    })));
+                    return Err(Error::new(
+                        ErrorCategory::Resource,
+                        codes::RESOURCE_ERROR,
+                        format!(
+                            "Invalid table index: {}",
+                            if dst < 0 {
+                                dst as u32
+                            } else if src < 0 {
+                                src as u32
+                            } else {
+                                len as u32
+                            }
+                        ),
+                    ));
                 }
 
                 context.init_table_from_elem(
@@ -331,12 +400,18 @@ mod tests {
                 if let Some(elem) = table.get(elem_index as usize) {
                     Ok(elem.clone())
                 } else {
-                    Err(Error::new(kinds::InvalidTableIndexError(elem_index)))
+                    Err(Error::new(
+                        ErrorCategory::Resource,
+                        codes::RESOURCE_ERROR,
+                        format!("Invalid table index: {}", elem_index),
+                    ))
                 }
             } else {
-                Err(Error::new(kinds::InvalidTypeError(
-                    "Invalid table".to_string(),
-                )))
+                Err(Error::new(
+                    ErrorCategory::Resource,
+                    codes::RESOURCE_ERROR,
+                    format!("Invalid table index: {}", table_index),
+                ))
             }
         }
 
@@ -351,12 +426,18 @@ mod tests {
                     *elem = value;
                     Ok(())
                 } else {
-                    Err(Error::new(kinds::InvalidTableIndexError(elem_index)))
+                    Err(Error::new(
+                        ErrorCategory::Resource,
+                        codes::RESOURCE_ERROR,
+                        format!("Invalid table index: {}", elem_index),
+                    ))
                 }
             } else {
-                Err(Error::new(kinds::InvalidTypeError(
-                    "Invalid table".to_string(),
-                )))
+                Err(Error::new(
+                    ErrorCategory::Resource,
+                    codes::RESOURCE_ERROR,
+                    format!("Invalid table index: {}", table_index),
+                ))
             }
         }
 
@@ -364,9 +445,11 @@ mod tests {
             if let Some(table) = self.tables.get(table_index as usize) {
                 Ok(table.len() as u32)
             } else {
-                Err(Error::new(kinds::InvalidTypeError(
-                    "Invalid table".to_string(),
-                )))
+                Err(Error::new(
+                    ErrorCategory::Resource,
+                    codes::RESOURCE_ERROR,
+                    format!("Invalid table index: {}", table_index),
+                ))
             }
         }
 
@@ -385,9 +468,11 @@ mod tests {
 
                 Ok(old_size)
             } else {
-                Err(Error::new(kinds::InvalidTypeError(
-                    "Invalid table".to_string(),
-                )))
+                Err(Error::new(
+                    ErrorCategory::Resource,
+                    codes::RESOURCE_ERROR,
+                    format!("Invalid table index: {}", table_index),
+                ))
             }
         }
 
@@ -400,7 +485,11 @@ mod tests {
         ) -> Result<()> {
             if let Some(table) = self.tables.get_mut(table_index as usize) {
                 if dst as usize + len as usize > table.len() {
-                    return Err(Error::new(kinds::InvalidTableIndexError(dst)));
+                    return Err(Error::new(
+                        ErrorCategory::Resource,
+                        codes::RESOURCE_ERROR,
+                        format!("Invalid table index: {}", dst),
+                    ));
                 }
 
                 for i in 0..len {
@@ -409,9 +498,11 @@ mod tests {
 
                 Ok(())
             } else {
-                Err(Error::new(kinds::InvalidTypeError(
-                    "Invalid table".to_string(),
-                )))
+                Err(Error::new(
+                    ErrorCategory::Resource,
+                    codes::RESOURCE_ERROR,
+                    format!("Invalid table index: {}", table_index),
+                ))
             }
         }
 
@@ -425,9 +516,20 @@ mod tests {
         ) -> Result<()> {
             // First, check if indexes are valid
             if dst_table as usize >= self.tables.len() || src_table as usize >= self.tables.len() {
-                return Err(Error::new(kinds::InvalidTypeError(
-                    "Invalid table index".to_string(),
-                )));
+                return Err(Error::new(
+                    ErrorCategory::Resource,
+                    codes::RESOURCE_ERROR,
+                    format!(
+                        "Invalid table index: {}",
+                        if dst_table < 0 {
+                            dst_table as u32
+                        } else if src_table < 0 {
+                            src_table as u32
+                        } else {
+                            len
+                        }
+                    ),
+                ));
             }
 
             // Get the needed information from source table
@@ -435,7 +537,11 @@ mod tests {
                 let src_table = &self.tables[src_table as usize];
 
                 if src_index as usize + len as usize > src_table.len() {
-                    return Err(Error::new(kinds::InvalidTableIndexError(src_index)));
+                    return Err(Error::new(
+                        ErrorCategory::Resource,
+                        codes::RESOURCE_ERROR,
+                        format!("Invalid table index: {}", src_index),
+                    ));
                 }
 
                 src_table[src_index as usize..(src_index as usize + len as usize)].to_vec()
@@ -444,7 +550,11 @@ mod tests {
             // Now modify destination table
             let dst_table = &mut self.tables[dst_table as usize];
             if dst_index as usize + len as usize > dst_table.len() {
-                return Err(Error::new(kinds::InvalidTableIndexError(dst_index)));
+                return Err(Error::new(
+                    ErrorCategory::Resource,
+                    codes::RESOURCE_ERROR,
+                    format!("Invalid table index: {}", dst_index),
+                ));
             }
 
             for i in 0..len as usize {
@@ -463,18 +573,30 @@ mod tests {
             len: u32,
         ) -> Result<()> {
             if elem_index as usize >= self.elem_segments.len() {
-                return Err(Error::new(kinds::InvalidElementIndexError(elem_index)));
+                return Err(Error::new(
+                    ErrorCategory::Resource,
+                    codes::RESOURCE_ERROR,
+                    format!("Invalid element index: {}", elem_index),
+                ));
             }
 
             let elem_segment = &self.elem_segments[elem_index as usize];
 
             if src as usize + len as usize > elem_segment.len() {
-                return Err(Error::new(kinds::InvalidTableIndexError(src)));
+                return Err(Error::new(
+                    ErrorCategory::Resource,
+                    codes::RESOURCE_ERROR,
+                    format!("Invalid table index: {}", src),
+                ));
             }
 
             if let Some(table) = self.tables.get_mut(table_index as usize) {
                 if dst as usize + len as usize > table.len() {
-                    return Err(Error::new(kinds::InvalidTableIndexError(dst)));
+                    return Err(Error::new(
+                        ErrorCategory::Resource,
+                        codes::RESOURCE_ERROR,
+                        format!("Invalid table index: {}", dst),
+                    ));
                 }
 
                 for i in 0..len {
@@ -484,15 +606,21 @@ mod tests {
 
                 Ok(())
             } else {
-                Err(Error::new(kinds::InvalidTypeError(
-                    "Invalid table".to_string(),
-                )))
+                Err(Error::new(
+                    ErrorCategory::Resource,
+                    codes::RESOURCE_ERROR,
+                    format!("Invalid table index: {}", table_index),
+                ))
             }
         }
 
         fn drop_elem(&mut self, elem_index: u32) -> Result<()> {
             if elem_index as usize >= self.elem_segments.len() {
-                return Err(Error::new(kinds::InvalidElementIndexError(elem_index)));
+                return Err(Error::new(
+                    ErrorCategory::Resource,
+                    codes::RESOURCE_ERROR,
+                    format!("Invalid element index: {}", elem_index),
+                ));
             }
 
             // Just clear the element segment, but keep the entry in the vec for simplicity
@@ -506,9 +634,13 @@ mod tests {
         }
 
         fn pop_table_value(&mut self) -> Result<Value> {
-            self.stack
-                .pop()
-                .ok_or_else(|| Error::new(kinds::StackUnderflowError))
+            self.stack.pop().ok_or_else(|| {
+                Error::new(
+                    ErrorCategory::Runtime,
+                    codes::STACK_UNDERFLOW,
+                    "Stack underflow",
+                )
+            })
         }
     }
 

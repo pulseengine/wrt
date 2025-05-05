@@ -8,8 +8,8 @@
 // coverage testing.
 #[cfg(any(doc, kani))]
 pub mod kani_verification {
-    use crate::source::ErrorSource;
     use crate::Result;
+    use crate::{ErrorCategory, ErrorSource};
 
     // Only import Error and ResultExt when alloc is available
     #[cfg(feature = "alloc")]
@@ -31,6 +31,20 @@ pub mod kani_verification {
         #[cfg(feature = "std")]
         fn source(&self) -> Option<&(dyn ErrorSource + 'static)> {
             None
+        }
+
+        fn code(&self) -> u16 {
+            // Use a fixed code for verification errors
+            9999
+        }
+
+        fn message(&self) -> &str {
+            self.0
+        }
+
+        fn category(&self) -> ErrorCategory {
+            // Use validation category for verification errors
+            ErrorCategory::Validation
         }
     }
 

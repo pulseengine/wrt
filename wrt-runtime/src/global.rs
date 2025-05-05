@@ -2,9 +2,8 @@
 //!
 //! This module provides the implementation for WebAssembly globals.
 
-use wrt_error::{codes, kinds, Error, ErrorCategory, Result};
+use crate::prelude::*;
 use wrt_types::types::GlobalType as TypesGlobalType;
-use wrt_types::values::Value;
 
 /// Represents a WebAssembly global variable
 #[derive(Debug, Clone, PartialEq)]

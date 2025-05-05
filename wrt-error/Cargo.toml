@@ -4,6 +4,7 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "Error handling for the WRT WebAssembly runtime"
+repository = "https://github.com/avrabe/wrt"
 
 [lib]
 name = "wrt_error"
@@ -21,7 +22,7 @@ default = ["std"]
 alloc = []
 # Standard library features (includes alloc)
 std = ["alloc"]
-# For complete no_std/no_alloc support
+# For no_std support
 no_std = []
 # Optional integration with other libraries
 wasmparser = ["dep:wasmparser", "std"]

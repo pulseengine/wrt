@@ -2,7 +2,7 @@
 //!
 //! This module defines the core type structures for WebAssembly runtime.
 
-use wrt_types::types::{Limits, ValueType};
+use crate::prelude::*;
 
 /// Represents a WebAssembly memory type
 #[derive(Debug, Clone, PartialEq)]

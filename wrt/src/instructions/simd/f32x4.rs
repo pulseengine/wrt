@@ -6,7 +6,7 @@
 use std::ops::{Add, BitAnd, BitOr, BitXor, Div, Mul, Sub};
 
 use crate::behavior::{FrameBehavior, StackBehavior};
-use crate::values::Value;
+use crate::prelude::TypesValue as Value;
 use crate::StacklessEngine;
 use wrt_error::{kinds, Error, Result};
 
@@ -36,7 +36,7 @@ pub fn f32x4_splat(stack: &mut impl StackBehavior, _frame: &mut impl FrameBehavi
     let value = match stack.pop()? {
         Value::F32(v) => v,
         _ => {
-            return Err(Error::new(kinds::InvalidTypeError(
+            return Err(Error::new(crate::error::kinds::InvalidTypeError(
                 "Expected f32 for f32x4.splat".into(),
             )))
         }
@@ -101,7 +101,7 @@ pub fn f32x4_replace_lane(
     let replacement = match stack.pop()? {
         Value::F32(v) => v,
         _ => {
-            return Err(Error::new(kinds::InvalidTypeError(
+            return Err(Error::new(crate::error::kinds::InvalidTypeError(
                 "Expected f32 for replacement value".into(),
             )))
         }

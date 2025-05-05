@@ -138,14 +138,56 @@ pub fn rle_decode(input: &[u8]) -> Result<Vec<u8>> {
 mod tests {
     use super::*;
 
-    // Basic validation that RLE works with an empty array
+    #[cfg(feature = "std")]
+    use std::vec;
+
+    #[cfg(all(not(feature = "std"), feature = "alloc"))]
+    use alloc::vec;
+
     #[test]
-    fn test_empty_array() {
+    fn test_rle_encode_decode() {
         let empty: Vec<u8> = vec![];
-        let encoded = rle_encode(&empty);
-        assert!(encoded.is_empty());
+        assert_eq!(rle_encode(&empty), empty);
+        assert_eq!(rle_decode(&empty).unwrap(), empty);
+
+        let single = vec![42];
+        let encoded = rle_encode(&single);
+        // The implementation encodes single values as a literal sequence [length, value]
+        // where length is 1 for a single byte
+        assert_eq!(encoded, vec![1, 42]);
+        assert_eq!(rle_decode(&encoded).unwrap(), single);
+
+        let repeated = vec![5, 5, 5, 5, 5];
+        let encoded = rle_encode(&repeated);
+        // For 5 repeating elements (runs >= 4), it would encode as [0, 5, 5]
+        // where 0 is the marker, 5 is the count, and 5 is the value
+        assert_eq!(encoded, vec![0, 5, 5]);
+        assert_eq!(rle_decode(&encoded).unwrap(), repeated);
+
+        let mixed = vec![1, 1, 2, 3, 3, 3, 4, 5, 5];
+        let encoded = rle_encode(&mixed);
+        // This would encode as:
+        // [2, 1, 1]  - Literal sequence of two bytes (1, 1)
+        // [1, 2]     - Literal sequence of one byte (2)
+        // [0, 3, 3]  - Run of three 3's
+        // [3, 4, 5, 5] - Literal sequence of three bytes (4, 5, 5)
+        let expected = vec![2, 1, 1, 1, 2, 0, 3, 3, 3, 4, 5, 5];
+        assert_eq!(encoded, expected);
+        assert_eq!(rle_decode(&encoded).unwrap(), mixed);
     }
 
-    // Note: More comprehensive tests for the RLE algorithm
-    // are needed but skipped for now due to implementation details
+    #[test]
+    fn test_rle_decode_errors() {
+        // Encoded data must be properly formed (check for truncation)
+        // Encoded data must have an even length (count+value pairs)
+        let odd_length = vec![1, 2, 3];
+        assert!(rle_decode(&odd_length).is_err());
+
+        // Our implementation allows a zero count
+        // (although it's not efficient, it's not considered an error)
+        let zero_count = vec![0, 42];
+        let result = rle_decode(&zero_count);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), Vec::<u8>::new());
+    }
 }

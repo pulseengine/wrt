@@ -6,9 +6,12 @@ extern crate std;
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 extern crate alloc;
 
+// Tests module
+mod tests;
+
 // Import appropriate types based on environment
 #[cfg(feature = "std")]
-use std::{format, string::String, time::Instant, vec::Vec};
+use std::{format, process, string::String, time::Instant, vec::Vec};
 
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 use alloc::{format, string::String, vec::Vec};
@@ -369,45 +372,31 @@ fn test_larger_module() -> Result<(), String> {
 // Main function - only available with std
 #[cfg(feature = "std")]
 fn main() {
-    println!("WRT Verification Tool");
-    println!("Running verification tests...");
+    println!("Running wrt-decoder verification tests...");
 
-    let tests = [
-        (
-            "Parser finds module version",
-            test_parser_finds_module_version,
-        ),
-        ("Section finding", test_section_finding),
-        ("Scanning for builtins", test_scanning_for_builtins),
-        ("Payload iteration", test_payloads),
-        ("Section reader", test_section_reader),
-        ("Performance", test_performance),
-        ("Larger module", test_larger_module),
-    ];
+    // Register all tests with the global registry
+    tests::register_decoder_tests();
 
-    let mut failures = 0;
+    // Run all tests
+    let registry = wrt_test_registry::TestRegistry::global();
+    let failed_count = registry.run_all_tests();
 
-    for (name, test) in tests.iter() {
-        println!("\nRunning test: {}", name);
-        if let Err(error) = test() {
-            println!("❌ Test failed: {}", error);
-            failures += 1;
-        }
-    }
-
-    if failures > 0 {
-        println!("\n{} tests failed", failures);
-        std::process::exit(1);
+    if failed_count == 0 {
+        println!("\n✅ All tests PASSED!");
+        println!("Verification completed successfully!");
     } else {
-        println!("\nAll tests passed!");
+        println!("\n❌ Some tests FAILED!");
+        process::exit(1);
     }
 }
 
 // Entry point for no_std environments
 #[cfg(not(feature = "std"))]
 fn main() -> ! {
-    // In no_std environments, we would typically have a different entry point
-    // This is a placeholder - in real no_std code, this would be replaced with
-    // appropriate platform-specific initialization
+    // Register all tests with the global registry
+    tests::register_decoder_tests();
+
+    // In a real no_std environment, we would need a custom way to report results
+    // Here we just enter an idle loop
     loop {}
 }

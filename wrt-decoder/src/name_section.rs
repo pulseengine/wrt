@@ -1,14 +1,16 @@
 //! WebAssembly name section handling
 //!
-//! This module provides utilities for parsing and generating the WebAssembly name section.
-//! The name section is a custom section that provides debug information.
+//! This module provides utilities for working with WebAssembly name sections,
+//! which contain debug information about functions, locals, etc.
 
-use crate::prelude::{format, String, Vec};
-use wrt_error::{kinds, Error, Result, WrtError, codes, ErrorCategory};
+use crate::prelude::*;
+use wrt_error::{codes, Error, ErrorCategory, Result};
 use wrt_format::binary;
 
-#[cfg(not(feature = "std"))]
-use alloc::vec;
+/// Subsection types in the name section
+pub const FUNCTION_SUBSECTION: u8 = 1;
+pub const LOCAL_SUBSECTION: u8 = 2;
+pub const MODULE_SUBSECTION: u8 = 0;
 
 /// WebAssembly name section types
 pub const NAME_MODULE: u8 = 0;
@@ -48,10 +50,11 @@ pub fn parse_name_section(data: &[u8]) -> Result<NameSection> {
         let subsection_end = subsection_start + subsection_size as usize;
 
         if subsection_end > data.len() {
-            return Err(Error::new(kinds::ParseError(format!(
-                "Name subsection size {} exceeds data size",
-                subsection_size
-            ))));
+            return Err(Error::new(
+                ErrorCategory::Parse,
+                codes::PARSE_ERROR,
+                format!("Name subsection size {} exceeds data size", subsection_size),
+            ));
         }
 
         let subsection_data = &data[subsection_start..subsection_end];
@@ -212,7 +215,8 @@ pub fn generate_name_section(name_section: &NameSection) -> Result<Vec<u8>> {
         // Function local names
         for &(func_idx, ref locals) in &name_section.local_names {
             local_name_data.extend_from_slice(&binary::write_leb128_u32(func_idx));
-            local_name_data.extend_from_slice(&binary::write_leb128_u32(locals.len() as u32));
+            let locals_len: u32 = locals.len() as u32;
+            local_name_data.extend_from_slice(&binary::write_leb128_u32(locals_len));
 
             for &(local_idx, ref name) in locals {
                 local_name_data.extend_from_slice(&binary::write_leb128_u32(local_idx));
@@ -247,16 +251,48 @@ pub fn create_function_names_section(names: &[(u32, String)]) -> Result<Vec<u8>>
     generate_name_section(&name_section)
 }
 
-pub fn parse_error(message: &str) -> WrtError {
-    WrtError::parse_error(message.to_string())
+/// Create a parse error
+pub fn parse_error(message: &str) -> Error {
+    Error::new(
+        ErrorCategory::Parse,
+        codes::PARSE_ERROR,
+        message.to_string(),
+    )
 }
 
-pub fn parse_error_with_context(message: &str, context: &str) -> WrtError {
-    WrtError::parse_error(format!("{}: {}", message, context))
+/// Create a parse error with context
+pub fn parse_error_with_context(message: &str, context: &str) -> Error {
+    Error::new(
+        ErrorCategory::Parse,
+        codes::PARSE_ERROR,
+        format!("{}: {}", message, context),
+    )
 }
 
-pub fn parse_error_with_position(message: &str, position: usize) -> WrtError {
-    WrtError::parse_error(format!("{} at position {}", message, position))
+/// Create a parse error with position
+pub fn parse_error_with_position(message: &str, position: usize) -> Error {
+    Error::new(
+        ErrorCategory::Parse,
+        codes::PARSE_ERROR,
+        format!("{} at position {}", message, position),
+    )
+}
+
+/// Extract the module name from a name section payload
+pub fn extract_module_name(data: &[u8]) -> Result<String> {
+    // Parse the name section
+    let name_section = parse_name_section(data)?;
+
+    // Return the module name or error
+    if let Some(name) = name_section.module_name {
+        Ok(name)
+    } else {
+        Err(Error::new(
+            ErrorCategory::Parse,
+            codes::PARSE_ERROR,
+            "No module name found in name section",
+        ))
+    }
 }
 
 #[cfg(test)]

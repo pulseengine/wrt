@@ -13,9 +13,9 @@ use crate::{
     },
     error::{kinds, Error, Result},
     module::{self, Data, Element, ExportKind},
+    prelude::TypesValue as Value,
     stackless_frame::StacklessFrame,
     types::{BlockType, FuncType, ValueType},
-    values::{Value, Value::*},
     StacklessEngine,
 };
 use log::trace;
@@ -66,7 +66,7 @@ impl<'a> ControlContext for RuntimeControlContext<'a> {
     }
 
     fn get_block_depth(&self) -> usize {
-        self.frame.get_label_count()
+        self.frame.label_stack.len()
     }
 
     fn enter_block(&mut self, block_type: ControlBlock) -> wrt_instructions::Result<()> {
@@ -95,7 +95,7 @@ impl<'a> ControlContext for RuntimeControlContext<'a> {
             ControlBlock::Try(_) => {
                 // Not supported yet
                 Err(wrt_instructions::Error::new(
-                    wrt_error::kinds::ExecutionError("Try blocks not supported yet".to_string()),
+                    crate::error::kinds::ExecutionError("Try blocks not supported yet".to_string()),
                 ))
             }
         }
@@ -137,9 +137,58 @@ impl<'a> ControlContext for RuntimeControlContext<'a> {
     }
 
     fn trap(&mut self, message: &str) -> wrt_instructions::Result<()> {
-        Err(wrt_instructions::Error::new(wrt_error::kinds::Trap(
-            message.to_string(),
-        )))
+        Err(wrt_instructions::Error::new(
+            crate::error::kinds::TrapError(message.to_string()),
+        ))
+    }
+
+    fn get_current_block(&self) -> Option<&wrt_instructions::control_ops::Block> {
+        // Static block instances to return references to
+        // We need to use static because we can't return references to temporaries
+        static mut BLOCK: wrt_instructions::control_ops::Block =
+            wrt_instructions::control_ops::Block::Block(
+                wrt_instructions::control_ops::ControlBlockType::ValueType(None),
+            );
+        static mut LOOP_BLOCK: wrt_instructions::control_ops::Block =
+            wrt_instructions::control_ops::Block::Loop(
+                wrt_instructions::control_ops::ControlBlockType::ValueType(None),
+            );
+        static mut IF_BLOCK: wrt_instructions::control_ops::Block =
+            wrt_instructions::control_ops::Block::If(
+                wrt_instructions::control_ops::ControlBlockType::ValueType(None),
+            );
+        static mut TRY_BLOCK: wrt_instructions::control_ops::Block =
+            wrt_instructions::control_ops::Block::Try(
+                wrt_instructions::control_ops::ControlBlockType::ValueType(None),
+            );
+
+        // Get the current (most recent) label from the frame's label stack
+        if self.frame.label_stack.is_empty() {
+            return None;
+        }
+
+        // Get the last label in the stack
+        let label = self.frame.label_stack.last().unwrap();
+
+        // Return a reference to the appropriate static block based on label type
+        // SAFETY: This is safe because the static blocks have 'static lifetime
+        // and we're carefully controlling access to them
+        unsafe {
+            if label.is_loop {
+                // It's a loop block
+                Some(&LOOP_BLOCK)
+            } else if label.is_if {
+                // It's an if block
+                Some(&IF_BLOCK)
+            } else {
+                // It's a regular block
+                Some(&BLOCK)
+            }
+        }
+
+        // Note: This implementation is a simplification that doesn't preserve the
+        // actual block type information. A more complete implementation would need
+        // to store the original ControlBlock alongside the Label in the frame.
     }
 }
 
@@ -791,9 +840,12 @@ pub(crate) fn br(label_idx: u32, engine: &mut StacklessEngine) -> Result<Control
     let stack = &mut engine.exec_stack;
 
     // Get the label from stack before getting the frame
-    let label = stack
-        .get_label(label_idx as usize)
-        .ok_or_else(|| Error::new(kinds::Trap(format!("Invalid label index: {}", label_idx))))?;
+    let label = stack.get_label(label_idx as usize).ok_or_else(|| {
+        Error::new(kinds::TrapError(format!(
+            "Invalid label index: {}",
+            label_idx
+        )))
+    })?;
 
     let (target_pc, arity, values_to_pop) = (label.pc, label.arity, 0);
 
@@ -874,7 +926,7 @@ pub fn call_indirect(
         let table_ref = &*table; // Dereference Arc<Table>
 
         if table_entry_idx < 0 || table_entry_idx as usize >= table_ref.size() as usize {
-            return Err(Error::new(kinds::Trap(
+            return Err(Error::new(kinds::TrapError(
                 "indirect call table index out of bounds".to_string(),
             )));
         }
@@ -890,10 +942,10 @@ pub fn call_indirect(
             Some(Value::FuncRef(None)) => Err(Error::new(kinds::InvalidFunctionType(format!(
                 "Invalid function reference in call_indirect: null reference"
             )))),
-            None => Err(Error::new(kinds::Trap(
+            None => Err(Error::new(kinds::TrapError(
                 "uninitialized element in table".to_string(),
             ))), // Handle None case explicitly
-            _ => Err(Error::new(kinds::Trap(
+            _ => Err(Error::new(kinds::TrapError(
                 "indirect call type mismatch - expected funcref".to_string(),
             ))), // Handle other Some(Value) variants
         }
@@ -906,7 +958,7 @@ pub fn call_indirect(
     })?;
 
     if expected_type != actual_type {
-        return Err(Error::new(kinds::Trap(
+        return Err(Error::new(kinds::TrapError(
             "indirect call type mismatch".to_string(),
         )));
     }
@@ -931,9 +983,12 @@ fn branch(
     values_to_pop: usize,
 ) -> Result<ControlFlow> {
     // Get the label from stack
-    let label = stack
-        .get_label(label_idx as usize)
-        .ok_or_else(|| Error::new(kinds::Trap(format!("Invalid label index: {}", label_idx))))?;
+    let label = stack.get_label(label_idx as usize).ok_or_else(|| {
+        Error::new(kinds::TrapError(format!(
+            "Invalid label index: {}",
+            label_idx
+        )))
+    })?;
 
     let (target_pc, arity, values_to_pop) = (label.pc, label.arity, values_to_pop);
 

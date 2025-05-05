@@ -9,4 +9,6 @@ mod stats;
 
 pub use firewall::{FirewallConfig, FirewallRule, FirewallStrategy};
 pub use logging::LoggingStrategy;
+
+#[cfg(feature = "std")]
 pub use stats::StatisticsStrategy;

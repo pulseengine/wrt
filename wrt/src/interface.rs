@@ -12,9 +12,11 @@ use crate::{
     memory::{Memory, PAGE_SIZE},
     module::{ExportKind, ExportValue, Function, Import, Module},
     module_instance::ModuleInstance,
+    prelude::{
+        TypesComponentType as ComponentType, TypesInstanceType as InstanceType, TypesValue as Value,
+    },
     resource::{ResourceId, ResourceTable},
-    types::{ComponentType, InstanceType, ValueType},
-    values::Value,
+    types::ValueType,
 };
 
 // Import std when available

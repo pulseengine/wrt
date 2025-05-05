@@ -2,29 +2,16 @@
 //!
 //! This strategy collects metrics on function calls between components and hosts.
 //! It can track call counts, error rates, performance metrics, etc.
+//!
+//! Note: This strategy requires the `std` feature.
+
+use crate::prelude::*;
 
 #[cfg(feature = "std")]
-use std::{
-    collections::HashMap,
-    sync::{Arc, Mutex, RwLock},
-    time::{Duration, Instant},
-    vec::Vec,
-};
-
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::{
-    collections::BTreeMap as HashMap,
-    string::{String, ToString},
-    sync::{Arc, Mutex, RwLock},
-    vec::Vec,
-};
-
-use wrt_error::Result;
-use wrt_types::values::Value;
-
-use crate::LinkInterceptorStrategy;
+use std::time::{Duration, Instant};
 
 /// Statistics collected for a function
+#[cfg(feature = "std")]
 #[derive(Debug, Clone, Default)]
 pub struct FunctionStats {
     /// Number of times the function was called
@@ -44,6 +31,7 @@ pub struct FunctionStats {
 }
 
 /// Configuration for the statistics strategy
+#[cfg(feature = "std")]
 #[derive(Debug, Clone)]
 pub struct StatisticsConfig {
     /// Whether to track timings
@@ -54,6 +42,7 @@ pub struct StatisticsConfig {
     pub max_functions: usize,
 }
 
+#[cfg(feature = "std")]
 impl Default for StatisticsConfig {
     fn default() -> Self {
         Self {
@@ -70,9 +59,9 @@ pub struct StatisticsStrategy {
     /// Configuration for this strategy
     config: StatisticsConfig,
     /// Statistics for each function
-    stats: RwLock<HashMap<String, FunctionStats>>,
+    stats: std::sync::RwLock<HashMap<String, FunctionStats>>,
     /// Cache of currently executing functions with their start times
-    executing: Mutex<HashMap<String, Instant>>,
+    executing: std::sync::Mutex<HashMap<String, std::time::Instant>>,
 }
 
 #[cfg(feature = "std")]
@@ -82,13 +71,14 @@ impl Default for StatisticsStrategy {
     }
 }
 
+#[cfg(feature = "std")]
 impl StatisticsStrategy {
     /// Create a new statistics strategy with default configuration
     pub fn new() -> Self {
         Self {
             config: StatisticsConfig::default(),
-            stats: RwLock::new(HashMap::new()),
-            executing: Mutex::new(HashMap::new()),
+            stats: std::sync::RwLock::new(HashMap::new()),
+            executing: std::sync::Mutex::new(HashMap::new()),
         }
     }
 
@@ -96,8 +86,8 @@ impl StatisticsStrategy {
     pub fn with_config(config: StatisticsConfig) -> Self {
         Self {
             config,
-            stats: RwLock::new(HashMap::new()),
-            executing: Mutex::new(HashMap::new()),
+            stats: std::sync::RwLock::new(HashMap::new()),
+            executing: std::sync::Mutex::new(HashMap::new()),
         }
     }
 
@@ -268,9 +258,11 @@ mod tests {
             .before_call(source, target, function, &args)
             .unwrap();
         thread::sleep(Duration::from_millis(5)); // Simulate some work
-        let result = Err(wrt_error::Error::new(wrt_error::kinds::ExecutionError(
-            "Test error".to_string(),
-        )));
+        let result = Err(wrt_error::Error::new(
+            wrt_error::ErrorCategory::Runtime,
+            wrt_error::codes::RUNTIME_ERROR,
+            "Test error",
+        ));
         let _ = strategy.after_call(source, target, function, &args, result);
 
         // Check statistics

@@ -1,7 +1,7 @@
-use wrt_decoder::component::{decode_component, encode_component};
-use wrt_decoder::component_name_section::{
+use wrt_decoder::component::component_name_section::{
     generate_component_name_section, parse_component_name_section, ComponentNameSection,
 };
+use wrt_decoder::component::{decode_component, encode_component};
 use wrt_format::binary;
 use wrt_format::component::{Component, Sort};
 

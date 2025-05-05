@@ -8,13 +8,8 @@
 // coverage testing.
 #[cfg(any(doc, kani))]
 pub mod kani_verification {
+    use crate::prelude::*;
     use crate::*;
-
-    // Import format macro from core or std
-    #[cfg(not(feature = "std"))]
-    use core::fmt::Write;
-    #[cfg(feature = "std")]
-    use std::format; // For no_std format!
 
     // --- WrtMutex Verification ---
 

@@ -3,15 +3,7 @@
 //! This module provides pure implementations for WebAssembly comparison instructions,
 //! including equality, inequality, and relational operations for various numeric types.
 
-use crate::{instruction_traits::PureInstruction, Error, Result, Value};
-
-// When no_std but alloc is available
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::string::ToString;
-
-// When std is available
-#[cfg(feature = "std")]
-use std::string::ToString;
+use crate::prelude::*;
 
 /// Represents a pure comparison operation for WebAssembly.
 #[derive(Debug, Clone)]

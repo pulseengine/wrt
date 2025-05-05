@@ -12,35 +12,21 @@
 #[cfg(feature = "std")]
 extern crate std;
 
-// Import alloc for no_std
+// Import alloc for no_std with allocation
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 extern crate alloc;
 
-// Core re-exports based on environment
-#[cfg(feature = "std")]
-pub use std::{
-    boxed::Box, collections::HashMap, fmt, format, string::String, string::ToString, vec, vec::Vec,
-};
+// Prelude module for consistent imports across std and no_std environments
+pub mod prelude;
 
-// Export ToString trait for no_std code
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-pub use core::fmt;
-
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-pub use alloc::{
-    boxed::Box, collections::BTreeMap as HashMap, format, string::String, string::ToString, vec,
-    vec::Vec,
-};
-
-// Make sure the necessary types are available for no_std builds
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-pub use alloc::{borrow, rc, sync};
+// Re-export common types from prelude
+pub use prelude::*;
 
 // Re-export error related types for convenience
-pub use wrt_error::{kinds, Error as WrtErrorBase};
+pub use wrt_error::{kinds, Error};
 
-// Create a Result type alias using wrt_error::Error
-pub type WrtResult<T> = core::result::Result<T, WrtErrorBase>;
+/// Result type alias for WRT operations using wrt_error::Error
+pub type WrtResult<T> = core::result::Result<T, Error>;
 
 // Core modules
 /// Bounded collections for memory safety
@@ -51,6 +37,8 @@ pub mod builtin;
 pub mod component;
 /// WebAssembly Component Model value types
 pub mod component_value;
+/// Type conversion utilities
+pub mod conversion;
 /// Conversions between wrt_error and wrt_types
 pub mod error_convert;
 /// Operation tracking and fuel metering
@@ -80,20 +68,25 @@ pub use component::{
     ResourceType, TableType,
 };
 pub use component_value::ComponentValue;
-pub use error_convert::{Error, ErrorCategory};
+// Re-export conversion utilities
+pub use conversion::{
+    binary_to_val_type, ref_type_to_val_type, val_type_to_binary, val_type_to_ref_type,
+};
+pub use error_convert::ErrorCategory;
 pub use operations::{
     global_fuel_consumed, global_operation_summary, record_global_operation,
     reset_global_operations, OperationSummary, OperationTracking, OperationType,
 };
-pub use safe_memory::{MemoryProvider, SafeSlice};
+#[cfg(not(feature = "std"))]
+pub use safe_memory::NoStdMemoryProvider;
+#[cfg(feature = "std")]
+pub use safe_memory::StdMemoryProvider;
+pub use safe_memory::{MemoryProvider, SafeMemoryHandler, SafeSlice, SafeStack};
 pub use traits::{FromFormat, ToFormat};
 pub use types::{BlockType, FuncType, RefType, ValueType};
 pub use validation::{BoundedCapacity, Checksummed, Validatable};
 pub use values::Value;
 pub use verification::{Checksum, VerificationLevel};
-
-// Create a Result type alias using our own Error type
-pub type Result<T> = core::result::Result<T, Error>;
 
 /// The WebAssembly binary format magic number: \0asm
 pub const WASM_MAGIC: [u8; 4] = [0x00, 0x61, 0x73, 0x6D];

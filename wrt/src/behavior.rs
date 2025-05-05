@@ -8,16 +8,17 @@ use crate::{
     global::Global,
     module::{Data, Element, Function},
     stackless::StacklessEngine,
-    types::BlockType,
-    types::FuncType,
-    types::MemoryType,
-    values::Value,
+};
+
+// Import from prelude
+use crate::prelude::{
+    BlockType, FuncType, InstructionType, Limits, MemoryType, Mutex, MutexGuard,
+    TypesValue as Value,
 };
 
 use wrt_runtime::Memory;
 use wrt_runtime::Table;
 use wrt_types::safe_memory::SafeSlice;
-use wrt_types::types::Limits;
 
 /// Represents the outcome of executing a single instruction, guiding the engine's next action.
 #[derive(Debug)]
@@ -158,7 +159,7 @@ pub trait FrameBehavior: Send + Sync + std::fmt::Debug + Any {
     ) -> Result<(), Error>;
 
     /// Get mutable access to a global's value
-    fn get_global_mut(&mut self, idx: usize) -> Result<wrt_sync::WrtMutexGuard<Value>, Error>;
+    fn get_global_mut(&mut self, idx: usize) -> Result<MutexGuard<Value>, Error>;
 
     /// Get a memory instance by index
     fn get_memory(&self, idx: usize, engine: &StacklessEngine) -> Result<Arc<Memory>, Error>;
@@ -529,6 +530,7 @@ pub struct Frame {
 // Static memory type for NullBehavior (no need for once_cell)
 static NULL_MEMORY_TYPE: MemoryType = MemoryType {
     limits: Limits { min: 0, max: None },
+    shared: false,
 };
 
 /// Placeholder implementation for behaviors when no real implementation is needed.
@@ -996,7 +998,7 @@ impl FrameBehavior for NullBehavior {
         &mut []
     }
 
-    fn get_global_mut(&mut self, _index: usize) -> Result<wrt_sync::WrtMutexGuard<Value>, Error> {
+    fn get_global_mut(&mut self, _index: usize) -> Result<MutexGuard<Value>, Error> {
         Err(Error::new(kinds::ExecutionError(
             "Cannot get_global_mut from NullBehavior frame".to_string(),
         )))
@@ -1179,42 +1181,72 @@ pub trait EngineBehavior {
 
 // Implementation of EngineBehavior for StacklessEngine will be in stackless.rs
 
-/// Execute instruction by index on behalf of frame
-fn execute_with_idx(
-    &mut self,
-    _stack: &mut dyn StackBehavior,
-    _frame_idx: usize,
-    _engine: &mut StacklessEngine,
-    instruction: &InstructionType,
-) -> Result<ControlFlow, Error> {
-    // Default implementation delegates to the instruction's execute method
-    instruction.execute(self, self.frame_idx(), _engine)
+/// Additional behavior trait for module operations
+pub trait ModuleBehavior {
+    /// Execute instruction by index on behalf of frame
+    fn execute_with_idx(
+        &mut self,
+        stack: &mut dyn StackBehavior,
+        frame_idx: usize,
+        engine: &mut StacklessEngine,
+        instruction: &InstructionType,
+    ) -> Result<ControlFlow, Error>;
+
+    /// Get a table element by index
+    fn table_elem_get(&self, table_idx: u32, idx: u32) -> Result<Value, Error>;
+
+    /// Push a label onto the context's label stack
+    fn push_label(&mut self, label: Label) -> Result<(), Error>;
+
+    /// Get the label at the specified depth
+    fn get_label(&self, depth: usize) -> Option<&Label>;
+
+    /// Default implementation for executing instructions (override for custom behavior)
+    fn on_instruction(
+        &mut self,
+        stack: &mut dyn StackBehavior,
+        frame_idx: usize,
+        engine: &mut StacklessEngine,
+        instruction: &InstructionType,
+    ) -> Result<ControlFlow, Error>;
 }
 
-/// Placeholder for table_elem_get (this should be replaced with actual implementation)
-fn table_elem_get(&self, _table_idx: u32, _idx: u32) -> Result<Value, Error> {
-    Err(Error::new(kinds::NotImplementedError(
-        "table_elem_get not implemented".to_string(),
-    )))
-}
+// Default implementation for the NullBehavior
+impl ModuleBehavior for NullBehavior {
+    fn execute_with_idx(
+        &mut self,
+        _stack: &mut dyn StackBehavior,
+        _frame_idx: usize,
+        _engine: &mut StacklessEngine,
+        instruction: &InstructionType,
+    ) -> Result<ControlFlow, Error> {
+        // Default implementation delegates to the instruction's execute method
+        instruction.execute(self, self.frame_idx(), _engine)
+    }
 
-/// Push a label onto the context's label stack
-fn push_label(&mut self, _label: Label) -> Result<(), Error> {
-    unimplemented!()
-}
+    fn table_elem_get(&self, _table_idx: u32, _idx: u32) -> Result<Value, Error> {
+        Err(Error::new(kinds::NotImplementedError(
+            "table_elem_get not implemented".to_string(),
+        )))
+    }
 
-/// Get the label at the specified depth
-fn get_label(&self, _depth: usize) -> Option<&Label> {
-    None
-}
+    fn push_label(&mut self, _label: Label) -> Result<(), Error> {
+        Err(Error::new(kinds::NotImplementedError(
+            "push_label not implemented".to_string(),
+        )))
+    }
 
-/// Default implementation for executing instructions (override for custom behavior)
-fn on_instruction(
-    &mut self,
-    _stack: &mut dyn StackBehavior,
-    _frame_idx: usize,
-    _engine: &mut StacklessEngine,
-    instruction: &InstructionType,
-) -> Result<ControlFlow, Error> {
-    instruction.execute(self, _frame_idx, _engine)
+    fn get_label(&self, _depth: usize) -> Option<&Label> {
+        None
+    }
+
+    fn on_instruction(
+        &mut self,
+        _stack: &mut dyn StackBehavior,
+        _frame_idx: usize,
+        _engine: &mut StacklessEngine,
+        instruction: &InstructionType,
+    ) -> Result<ControlFlow, Error> {
+        instruction.execute(self, _frame_idx, _engine)
+    }
 }

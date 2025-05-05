@@ -5,16 +5,8 @@
 
 #![allow(clippy::match_single_binding)]
 
-use crate::{instruction_traits::PureInstruction, Error, Result, Value};
-use wrt_types::types::{BlockType, FuncType, ValueType};
-
-// When no_std but alloc is available
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::{string::ToString, vec::Vec};
-
-// When std is available
-#[cfg(feature = "std")]
-use std::{string::ToString, vec::Vec};
+use crate::prelude::*;
+use wrt_types::types::{FuncType, ValueType};
 
 /// Branch target information
 #[derive(Debug, Clone)]
@@ -226,7 +218,6 @@ impl<T: ControlContext> PureInstruction<T, Error> for ControlOp {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use wrt_error::kinds;
     use wrt_types::types::ValueType;
 
     // Import Vec and vec! based on feature flags
@@ -271,9 +262,13 @@ mod tests {
         }
 
         fn pop_control_value(&mut self) -> Result<Value> {
-            self.stack
-                .pop()
-                .ok_or_else(|| Error::new(kinds::StackUnderflowError))
+            self.stack.pop().ok_or_else(|| {
+                Error::new(
+                    ErrorCategory::Runtime,
+                    codes::STACK_UNDERFLOW,
+                    "Stack underflow",
+                )
+            })
         }
 
         fn get_block_depth(&self) -> usize {
@@ -286,9 +281,13 @@ mod tests {
         }
 
         fn exit_block(&mut self) -> Result<Block> {
-            self.blocks
-                .pop()
-                .ok_or_else(|| Error::new(kinds::InvalidBranchTargetError { depth: 0 }))
+            self.blocks.pop().ok_or_else(|| {
+                Error::new(
+                    ErrorCategory::Runtime,
+                    codes::EXECUTION_ERROR,
+                    format!("Invalid branch target with depth: {}", self.blocks.len()),
+                )
+            })
         }
 
         fn branch(&mut self, target: BranchTarget) -> Result<()> {
@@ -313,7 +312,11 @@ mod tests {
 
         fn trap(&mut self, _message: &str) -> Result<()> {
             self.trapped = true;
-            Err(Error::new(kinds::Trap("Execution trapped".to_string())))
+            Err(Error::new(
+                ErrorCategory::Runtime,
+                codes::EXECUTION_ERROR,
+                "Execution trapped",
+            ))
         }
 
         fn get_current_block(&self) -> Option<&Block> {

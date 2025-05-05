@@ -1,9 +1,10 @@
 [package]
 name = "test-control-instructions"
-version = "0.1.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
 description = "Test utilities for WebAssembly control instructions"
 license = "MIT"
+repository = "https://github.com/avrabe/wrt"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -12,6 +13,7 @@ wrt-decoder = { path = "../wrt-decoder", version = "0.2.0" }
 wrt-format = { path = "../wrt-format", version = "0.2.0" }
 wrt-types = { path = "../wrt-types", version = "0.2.0" }
 wrt-error = { path = "../wrt-error", version = "0.2.0" }
+wrt-test-registry = { path = "../wrt-test-registry", version = "0.2.0" }
 # For alloc support in no_std
 alloc = { version = "1.0.0", optional = true, package = "rustc-std-workspace-alloc" }
 
@@ -21,21 +23,24 @@ std = [
     "wrt-decoder/std", 
     "wrt-format/std", 
     "wrt-types/std", 
-    "wrt-error/std"
+    "wrt-error/std",
+    "wrt-test-registry/std"
 ]
 no_std = [
     "alloc",
     "wrt-decoder/no_std", 
     "wrt-format/no_std", 
     "wrt-types/no_std", 
-    "wrt-error/no_std"
+    "wrt-error/no_std",
+    "wrt-test-registry/no_std"
 ]
 alloc = [
     "dep:alloc",
     "wrt-decoder/alloc", 
     "wrt-format/alloc", 
     "wrt-types/alloc", 
-    "wrt-error/alloc"
+    "wrt-error/alloc",
+    "wrt-test-registry/alloc"
 ]
 
 [lints.rust]

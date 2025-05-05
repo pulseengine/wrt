@@ -1,32 +1,60 @@
 //! Module for WebAssembly values.
 //!
-//! This module provides definitions for WebAssembly runtime values.
+//! This module provides definitions and utilities for WebAssembly runtime values.
+//! It re-exports and extends the Value type from wrt-types.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-#[cfg(not(feature = "std"))]
-extern crate alloc;
+// Use the prelude to import common types
+use crate::prelude::*;
 
-// Re-export appropriate types from wrt-types
-pub use wrt_types::types::ValueType;
-pub use wrt_types::values::{ExternRef, FuncRef, Value, V128};
+// Re-export appropriate types from wrt-types (now through prelude)
+// pub use wrt_types::types::ValueType;
+// pub use wrt_types::values::{ExternRef, FuncRef, Value, V128};
 
-// Import std when available
+/// This module contains utility functions for working with WebAssembly values
+/// and extends the functionality of the Value type from wrt-types.
+///
+/// Rather than redefining the Value type, we use the one from wrt-types,
+/// which implements the standard value types for WebAssembly:
+/// - i32: 32-bit integer
+/// - i64: 64-bit integer
+/// - f32: 32-bit float
+/// - f64: 64-bit float
+/// - v128: 128-bit vector
+/// - Ref: Reference types (funcref, externref)
+
+// Implementation for Vec-based stack when std is available
 #[cfg(feature = "std")]
-use std::fmt;
+pub type ValueStack = Vec<Value>;
 
-// Import alloc for no_std
-#[cfg(not(feature = "std"))]
-use core::fmt;
+// Implementation for SafeStack-based stack for memory safety
+#[cfg(feature = "safety")]
+pub type ValueStack = SafeStack<Value>;
 
-// Convenience re-exports for error types
-pub use crate::error::{Error, Result};
-
-use crate::error::kinds;
-#[cfg(not(feature = "std"))]
-use alloc::vec::Vec;
+/// Create a new standard value stack
 #[cfg(feature = "std")]
-use std::vec::Vec;
+pub fn new_value_stack() -> ValueStack {
+    Vec::new()
+}
+
+/// Create a new safety-enhanced value stack
+#[cfg(feature = "safety")]
+pub fn new_value_stack() -> ValueStack {
+    SafeStack::new()
+}
+
+/// Create a new value stack with the specified capacity
+#[cfg(feature = "std")]
+pub fn new_value_stack_with_capacity(capacity: usize) -> ValueStack {
+    Vec::with_capacity(capacity)
+}
+
+/// Create a new safety-enhanced value stack with the specified capacity
+#[cfg(feature = "safety")]
+pub fn new_value_stack_with_capacity(capacity: usize) -> ValueStack {
+    SafeStack::with_capacity(capacity)
+}
 
 /// Create a helper function to create a v128 value
 /// Helper function to create a new V128 value
@@ -46,16 +74,15 @@ mod tests {
         let f32_val = Value::F32(3.14);
         let f64_val = Value::F64(3.14);
         let v128_val = Value::V128([1; 16]);
-        let func_ref_val = Value::FuncRef(Some(FuncRef::new(0)));
-        let extern_ref_val = Value::ExternRef(Some(ExternRef::new(0)));
+        let func_ref_val = Value::FuncRef(Some(FuncRef::from_index(0)));
+        let extern_ref_val = Value::ExternRef(Some(ExternRef { index: 0 }));
 
-        assert_eq!(i32_val.ty(), ValueType::I32);
-        assert_eq!(i64_val.ty(), ValueType::I64);
-        assert_eq!(f32_val.ty(), ValueType::F32);
-        assert_eq!(f64_val.ty(), ValueType::F64);
-        assert_eq!(v128_val.ty(), ValueType::V128);
-        assert_eq!(func_ref_val.ty(), ValueType::FuncRef);
-        assert_eq!(extern_ref_val.ty(), ValueType::ExternRef);
+        assert_eq!(i32_val.type_(), ValueType::I32);
+        assert_eq!(i64_val.type_(), ValueType::I64);
+        assert_eq!(f32_val.type_(), ValueType::F32);
+        assert_eq!(f64_val.type_(), ValueType::F64);
+        assert!(func_ref_val.matches_type(&ValueType::FuncRef));
+        assert!(extern_ref_val.matches_type(&ValueType::ExternRef));
     }
 
     #[test]
@@ -110,8 +137,8 @@ mod tests {
 
     #[test]
     fn test_reference_value_extraction() {
-        let func_ref_val = Value::FuncRef(Some(FuncRef::new(42)));
-        let extern_ref_val = Value::ExternRef(Some(ExternRef::new(42)));
+        let func_ref_val = Value::FuncRef(Some(FuncRef::from_index(42)));
+        let extern_ref_val = Value::ExternRef(Some(ExternRef { index: 42 }));
 
         assert_eq!(func_ref_val.as_func_ref(), Some(Some(42)));
         assert_eq!(func_ref_val.as_extern_ref(), None);
@@ -131,8 +158,8 @@ mod tests {
         let i64_val = Value::I64(42);
         let f32_val = Value::F32(3.14);
         let f64_val = Value::F64(3.14);
-        let func_ref_val = Value::FuncRef(Some(FuncRef::new(42)));
-        let extern_ref_val = Value::ExternRef(Some(ExternRef::new(42)));
+        let func_ref_val = Value::FuncRef(Some(FuncRef::from_index(42)));
+        let extern_ref_val = Value::ExternRef(Some(ExternRef { index: 42 }));
 
         assert_eq!(format!("{}", i32_val), "i32(42)");
         assert_eq!(format!("{}", i64_val), "i64(42)");

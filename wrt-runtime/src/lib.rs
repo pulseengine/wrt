@@ -4,7 +4,6 @@
 //! shared between both the core WebAssembly and Component Model implementations.
 
 #![cfg_attr(not(feature = "std"), no_std)]
-#![cfg_attr(feature = "kani-verifier", feature(kani))]
 #![deny(unsafe_code)]
 #![warn(missing_docs)]
 #![warn(clippy::missing_panics_doc)]
@@ -14,24 +13,18 @@
 extern crate std;
 
 // Import alloc for no_std
-#[cfg(not(feature = "std"))]
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
 extern crate alloc;
 
-// Core re-exports based on environment
-#[cfg(feature = "std")]
-pub use std::{boxed::Box, collections::HashMap, string::String, vec::Vec};
-
-#[cfg(not(feature = "std"))]
-pub use alloc::{boxed::Box, collections::BTreeMap as HashMap, string::String, vec::Vec};
-
-// Re-export error types for convenience
-pub use wrt_error::{Error, Result};
+// Re-export prelude module publicly
+pub use prelude::*;
 
 // Core modules
 pub mod func;
 pub mod global;
 pub mod memory;
 pub mod memory_helpers;
+pub mod prelude;
 pub mod table;
 pub mod types;
 
@@ -52,9 +45,8 @@ pub mod component_impl;
 pub mod component_traits;
 
 // Internal modules
-// Tests should be created when needed
-// #[cfg(test)]
-// mod tests;
+#[cfg(test)]
+mod tests;
 
 // Re-export trait definitions
 pub use component_traits::{
@@ -62,6 +54,7 @@ pub use component_traits::{
 };
 
 // Re-export implementations
-pub use component_impl::{
-    ComponentInstanceImpl, ComponentRuntimeImpl, DefaultHostFunctionFactory, HostFunctionImpl,
-};
+pub use component_impl::{ComponentRuntimeImpl, DefaultHostFunctionFactory};
+
+// Re-export prelude for convenience
+pub use prelude::*;

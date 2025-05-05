@@ -1,69 +1,78 @@
-# wrt-decoder
+# WebAssembly Runtime (WRT) Decoder
 
-High-level WebAssembly module decoder for wrt runtime.
-
-## Overview
-
-The `wrt-decoder` crate is responsible for handling all WebAssembly binary reading and writing operations in the wrt ecosystem. It provides a clean high-level API for decoding WebAssembly modules from binary format, validating them, and encoding them back to binary when needed.
-
-This crate sits between the low-level format handling in `wrt-format` and the runtime execution in `wrt`.
-
-## Key Features
-
-- Decoding WebAssembly modules from binary format
-- Encoding WebAssembly modules back to binary format
-- Validating WebAssembly modules against the specification
-- Providing memory-efficient zero-copy access to module data
-- Supporting WebAssembly Component Model (planned)
+A modular WebAssembly binary decoder supporting both core modules and Component Model components.
 
 ## Architecture
 
-The architecture follows a clean separation of concerns:
+The decoder consists of several key components:
 
-- `wrt-format`: Low-level binary format operations and structures
-- `wrt-decoder`: High-level module processing and validation (this crate)
-- `wrt`: Runtime execution of WebAssembly modules
+### 1. Utilities (`utils.rs`)
+
+Contains shared functionality used across all parsers:
+- Binary type detection (core module vs component)
+- Header verification
+- Name parsing
+- LEB128 utilities
+
+### 2. Core Module Parsing (`decoder_core/parse.rs`)
+
+A streamlined parser dedicated to core WebAssembly modules:
+- Parses all standard sections (types, imports, functions, etc.)
+- Creates structured Module representations
+- Provides focused core module functionality
+
+### 3. Component Model Parsing (`component/parse.rs`)
+
+A specialized parser for WebAssembly Component Model components:
+- Parses component-specific sections
+- Handles more complex data structures unique to the component model
+- Leverages core module parsing when appropriate
+
+### 4. Unified Streaming Interface (`parser.rs`)
+
+A higher-level API providing a consistent streaming parser interface:
+- Detects binary type automatically
+- Delegates to the appropriate specialized parser
+- Returns structured section payloads for both types
+- Supports incremental parsing
 
 ## Usage
 
-```rust
-use wrt_decoder::{decode, validate, encode, Module};
-use wrt_error::Result;
+For general parsing, use the streaming interface:
 
-// Decode a WebAssembly binary
-fn process_wasm(bytes: &[u8]) -> Result<()> {
-    // Decode the module
-    let module = decode(bytes)?;
-    
-    // Validate the module
-    validate(bytes)?;
-    
-    // Access module components
-    println!("Module has {} functions", module.functions.len());
-    
-    // Encode the module back to binary
-    let binary = encode(&module)?;
-    
-    Ok(())
+```rust
+use wrt_decoder::parser::{Parser, Payload};
+
+// Create a parser
+let parser = Parser::new(Some(wasm_binary), false);
+
+// Process sections as they're parsed
+for payload in parser {
+    match payload? {
+        Payload::Version(version, _) => println!("WebAssembly version: {}", version),
+        Payload::TypeSection(data, size) => /* Process type section */,
+        Payload::CustomSection { name, data, size } => /* Process custom section */,
+        Payload::ComponentSection { data, size } => /* Process component section */,
+        // ...other sections...
+        Payload::End => break,
+    }
 }
 ```
 
-## Zero-Copy Operations
-
-The decoder is designed to allow for zero-copy operations where possible, reducing memory usage when passing data between the decoder and the runtime:
+For complete parsing in one step:
 
 ```rust
-// Get a view of the binary data without copying
-let binary_view = module.get_binary_view();
+// For core modules:
+let module = wrt_decoder::parser::parse_module(wasm_binary)?;
 
-// Get a view of data segments without copying
-let data_view = module.get_data_view(0);
+// For components:
+let component = wrt_decoder::parser::parse_component(wasm_binary)?;
 ```
 
-## WebAssembly Features Supported
+## Design Principles
 
-- WebAssembly Core 1.0 specification
-- Reference types
-- SIMD operations
-- Multi-value returns
-- Component Model (planned) 
+1. **Separation of Concerns**: Core module and component parsing are kept separate
+2. **Code Reuse**: Common functionality is shared via utilities
+3. **Format Detection**: Binary type is automatically detected
+4. **Streaming Capability**: Incremental parsing for memory efficiency
+5. **Consistent Interface**: Unified API hiding implementation details 

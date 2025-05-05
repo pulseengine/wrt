@@ -2,18 +2,12 @@
 //!
 //! This module provides a minimal execution context for pure instruction implementations.
 //! It defines interfaces that can be implemented by different execution engines.
+//!
+//! This implementation supports both std and no_std environments.
 
-use crate::{
-    arithmetic_ops::ArithmeticContext, comparison_ops::ComparisonContext, Result, Value, ValueType,
-};
-
-// Imports for alloc
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::{format, vec::Vec};
-
-// Imports for std
-#[cfg(feature = "std")]
-use std::{format, vec::Vec};
+use crate::arithmetic_ops::ArithmeticContext;
+use crate::comparison_ops::ComparisonContext;
+use crate::prelude::*;
 
 /// A trait defining a minimal execution context for pure instructions.
 ///
@@ -54,41 +48,103 @@ pub trait PureExecutionContext {
 }
 
 /// A general-purpose execution context for pure instructions
+///
+/// This context manages a stack of WebAssembly values and supports the
+/// basic operations needed to execute WebAssembly instructions.
+///
+/// # Examples
+///
+/// ```
+/// use wrt_instructions::execution::ExecutionContext;
+/// use wrt_instructions::execution::PureExecutionContext;
+/// use wrt_types::values::Value;
+///
+/// let mut context = ExecutionContext::new();
+/// context.push_value(Value::I32(42)).unwrap();
+/// let value = context.pop_value().unwrap();
+/// assert_eq!(value, Value::I32(42));
+/// ```
 #[derive(Default)]
 pub struct ExecutionContext {
+    #[cfg(feature = "safety")]
+    stack: BoundedVec<Value, 1024>, // Using a reasonably large size for WASM stack
+    #[cfg(not(feature = "safety"))]
     stack: Vec<Value>,
 }
 
 impl ExecutionContext {
-    /// Creates a new ExecutionContext
+    /// Creates a new ExecutionContext with an empty stack
     pub fn new() -> Self {
-        Self { stack: Vec::new() }
+        Self {
+            #[cfg(feature = "safety")]
+            stack: BoundedVec::new(),
+            #[cfg(not(feature = "safety"))]
+            stack: Vec::new(),
+        }
     }
 
-    /// Returns the current stack
+    /// Returns the current stack as a slice
     pub fn stack(&self) -> &[Value] {
-        &self.stack
+        #[cfg(feature = "safety")]
+        return self.stack.as_ref();
+        #[cfg(not(feature = "safety"))]
+        return &self.stack;
     }
 }
 
 impl PureExecutionContext for ExecutionContext {
     fn push_value(&mut self, value: Value) -> Result<()> {
-        self.stack.push(value);
+        #[cfg(feature = "safety")]
+        {
+            self.stack.push(value).map_err(|_| {
+                Error::new(
+                    ErrorCategory::Core,
+                    codes::STACK_OVERFLOW,
+                    "Stack overflow: bounded capacity exceeded",
+                )
+            })?;
+        }
+
+        #[cfg(not(feature = "safety"))]
+        {
+            self.stack.push(value);
+        }
+
         Ok(())
     }
 
     fn pop_value(&mut self) -> Result<Value> {
-        self.stack
-            .pop()
-            .ok_or_else(|| crate::Error::from(wrt_error::kinds::stack_underflow()))
+        #[cfg(feature = "safety")]
+        {
+            self.stack.pop().ok_or_else(|| {
+                Error::new(
+                    ErrorCategory::Core,
+                    codes::STACK_UNDERFLOW,
+                    "Stack underflow",
+                )
+            })
+        }
+
+        #[cfg(not(feature = "safety"))]
+        {
+            self.stack.pop().ok_or_else(|| {
+                Error::new(
+                    ErrorCategory::Core,
+                    codes::STACK_UNDERFLOW,
+                    "Stack underflow",
+                )
+            })
+        }
     }
 
     fn pop_value_expected(&mut self, expected_type: ValueType) -> Result<Value> {
         let value = PureExecutionContext::pop_value(self)?;
         if value.value_type() != expected_type {
-            return Err(crate::Error::from(wrt_error::kinds::type_mismatch(
+            return Err(Error::new(
+                ErrorCategory::Type,
+                codes::TYPE_MISMATCH,
                 format!("Expected {expected_type:?}, got {:?}", value.value_type()),
-            )));
+            ));
         }
         Ok(value)
     }
@@ -117,8 +173,12 @@ impl ComparisonContext for ExecutionContext {
 /// A minimal implementation of the PureExecutionContext for testing.
 ///
 /// This implementation is used for testing pure instruction implementations.
+/// It provides a simplified execution context with basic stack operations.
 #[cfg(test)]
 pub struct TestExecutionContext {
+    #[cfg(feature = "safety")]
+    stack: BoundedVec<Value, 1024>,
+    #[cfg(not(feature = "safety"))]
     stack: Vec<Value>,
 }
 
@@ -131,36 +191,79 @@ impl Default for TestExecutionContext {
 
 #[cfg(test)]
 impl TestExecutionContext {
-    /// Creates a new TestExecutionContext.
+    /// Creates a new TestExecutionContext with an empty stack.
     pub fn new() -> Self {
-        Self { stack: Vec::new() }
+        Self {
+            #[cfg(feature = "safety")]
+            stack: BoundedVec::new(),
+            #[cfg(not(feature = "safety"))]
+            stack: Vec::new(),
+        }
     }
 
-    /// Returns the current stack.
+    /// Returns a reference to the current stack as a slice.
     pub fn stack(&self) -> &[Value] {
-        &self.stack
+        #[cfg(feature = "safety")]
+        return self.stack.as_ref();
+        #[cfg(not(feature = "safety"))]
+        return &self.stack;
     }
 }
 
 #[cfg(test)]
 impl PureExecutionContext for TestExecutionContext {
     fn push_value(&mut self, value: Value) -> Result<()> {
-        self.stack.push(value);
+        #[cfg(feature = "safety")]
+        {
+            self.stack.push(value).map_err(|_| {
+                Error::new(
+                    ErrorCategory::Core,
+                    codes::STACK_OVERFLOW,
+                    "Stack overflow: bounded capacity exceeded",
+                )
+            })?;
+        }
+
+        #[cfg(not(feature = "safety"))]
+        {
+            self.stack.push(value);
+        }
+
         Ok(())
     }
 
     fn pop_value(&mut self) -> Result<Value> {
-        self.stack
-            .pop()
-            .ok_or_else(|| crate::Error::from(wrt_error::kinds::stack_underflow()))
+        #[cfg(feature = "safety")]
+        {
+            self.stack.pop().ok_or_else(|| {
+                Error::new(
+                    ErrorCategory::Core,
+                    codes::STACK_UNDERFLOW,
+                    "Stack underflow",
+                )
+            })
+        }
+
+        #[cfg(not(feature = "safety"))]
+        {
+            self.stack.pop().ok_or_else(|| {
+                Error::new(
+                    ErrorCategory::Core,
+                    codes::STACK_UNDERFLOW,
+                    "Stack underflow",
+                )
+            })
+        }
     }
 
     fn pop_value_expected(&mut self, expected_type: ValueType) -> Result<Value> {
         let value = PureExecutionContext::pop_value(self)?;
         if value.value_type() != expected_type {
-            return Err(crate::Error::from(wrt_error::kinds::type_mismatch(
+            return Err(Error::new(
+                ErrorCategory::Type,
+                codes::TYPE_MISMATCH,
                 format!("Expected {expected_type:?}, got {:?}", value.value_type()),
-            )));
+            ));
         }
         Ok(value)
     }

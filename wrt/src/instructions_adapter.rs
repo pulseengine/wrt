@@ -9,8 +9,8 @@
 use crate::{
     behavior::{ControlFlow, FrameBehavior, StackBehavior},
     error::{kinds, Error, Result},
+    prelude::TypesValue as Value,
     stackless::StacklessEngine,
-    values::Value,
 };
 
 use wrt_instructions::{execution::PureExecutionContext, instruction_traits::PureInstruction};

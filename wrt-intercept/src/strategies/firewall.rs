@@ -3,26 +3,7 @@
 //! This strategy enforces security rules for function calls between
 //! components and hosts. It can allow or deny calls based on various criteria.
 
-#[cfg(feature = "std")]
-use std::{
-    collections::{HashMap, HashSet},
-    string::String,
-    sync::{Arc, RwLock},
-    vec::Vec,
-};
-
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::{
-    collections::{BTreeMap as HashMap, BTreeSet as HashSet},
-    string::{String, ToString},
-    sync::{Arc, RwLock},
-    vec::Vec,
-};
-
-use wrt_error::{kinds, Error, Result};
-use wrt_types::values::Value;
-
-use crate::LinkInterceptorStrategy;
+use crate::prelude::*;
 
 /// A rule to enforce on function calls
 #[derive(Debug, Clone)]
@@ -160,7 +141,6 @@ impl FirewallStrategy {
     }
 }
 
-#[cfg(feature = "std")]
 impl LinkInterceptorStrategy for FirewallStrategy {
     fn before_call(
         &self,
@@ -169,16 +149,73 @@ impl LinkInterceptorStrategy for FirewallStrategy {
         function: &str,
         args: &[Value],
     ) -> Result<Vec<Value>> {
-        // Check if the function call is allowed
-        if !self.is_allowed(source, target, function) {
-            return Err(Error::new(
-                wrt_error::ErrorCategory::Runtime,
-                wrt_error::codes::RUNTIME_ERROR,
-                kinds::RuntimeError(format!(
-                    "Security error: Function call from '{}' to '{}::{}' is not allowed by firewall policy",
-                    source, target, function
-                ))
-            ));
+        #[cfg(feature = "std")]
+        {
+            // Check if the function call is allowed
+            if !self.is_allowed(source, target, function) {
+                return Err(Error::new(
+                    ErrorCategory::Runtime,
+                    codes::RUNTIME_ERROR,
+                    format!(
+                        "Security error: Function call from '{}' to '{}::{}' is not allowed by firewall policy",
+                        source, target, function
+                    )
+                ));
+            }
+        }
+
+        // In no_std mode, we use a simpler implementation that applies rules directly
+        #[cfg(all(not(feature = "std"), feature = "alloc"))]
+        {
+            // Start with default policy
+            let mut allowed = self.config.default_allow;
+
+            // Apply rules in order
+            for rule in &self.config.rules {
+                match rule {
+                    FirewallRule::AllowFunction(s, t, f) => {
+                        if s == source && t == target && f == function {
+                            allowed = true;
+                        }
+                    }
+                    FirewallRule::AllowSource(s, t) => {
+                        if s == source && t == target {
+                            allowed = true;
+                        }
+                    }
+                    FirewallRule::AllowTarget(t) => {
+                        if t == target {
+                            allowed = true;
+                        }
+                    }
+                    FirewallRule::DenyFunction(s, t, f) => {
+                        if s == source && t == target && f == function {
+                            allowed = false;
+                        }
+                    }
+                    FirewallRule::DenySource(s, t) => {
+                        if s == source && t == target {
+                            allowed = false;
+                        }
+                    }
+                    FirewallRule::DenyTarget(t) => {
+                        if t == target {
+                            allowed = false;
+                        }
+                    }
+                }
+            }
+
+            if !allowed {
+                return Err(Error::new(
+                    ErrorCategory::Runtime,
+                    codes::RUNTIME_ERROR,
+                    format!(
+                        "Security error: Function call from '{}' to '{}::{}' is not allowed by firewall policy",
+                        source, target, function
+                    )
+                ));
+            }
         }
 
         // Check parameters if configured
