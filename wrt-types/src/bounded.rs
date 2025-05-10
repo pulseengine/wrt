@@ -114,6 +114,16 @@ pub enum BoundedError {
 
     /// Serialization error
     Serialization(crate::traits::SerializationError),
+
+    /// Index out of bounds
+    IndexOutOfBounds {
+        /// Type of collection being accessed
+        collection_type: String,
+        /// Index that was attempted
+        index: usize,
+        /// Length of the collection
+        len: usize,
+    },
 }
 
 impl fmt::Display for BoundedError {
@@ -144,6 +154,13 @@ impl fmt::Display for BoundedError {
                 write!(f, "Validation failure: {}", msg)
             }
             Self::Serialization(s_err) => write!(f, "Serialization error: {}", s_err),
+            Self::IndexOutOfBounds { collection_type, index, len } => {
+                write!(
+                    f,
+                    "Index out of bounds in {}: attempted index {}, length is {}",
+                    collection_type, index, len
+                )
+            }
         }
     }
 }
@@ -200,6 +217,17 @@ impl From<BoundedError> for wrt_error::Error {
                 wrt_error::codes::SERIALIZATION_ERROR,
                 s_err.to_string(),
             ),
+            BoundedError::IndexOutOfBounds { collection_type, index, len } => {
+                let msg = format!(
+                    "Index out of bounds in {}: attempted index {}, length is {}",
+                    collection_type, index, len
+                );
+                wrt_error::Error::new(
+                    wrt_error::ErrorCategory::Core,
+                    wrt_error::codes::OUT_OF_BOUNDS_ERROR,
+                    msg,
+                )
+            }
         }
     }
 }
@@ -250,7 +278,7 @@ where
 
     /// Creates a new `BoundedStack` with the given memory provider and verification level.
     pub fn with_verification_level(provider: P, level: VerificationLevel) -> Self {
-        let elem_size = T::SERIALIZED_SIZE;
+        let elem_size = <T as FromBytes>::SERIALIZED_SIZE;
         // It's good practice to ensure the provider has enough capacity, though SafeMemoryHandler might also check.
         // let required_bytes = N_ELEMENTS.saturating_mul(elem_size);
         // if provider.capacity() < required_bytes { ... handle error or panic ... }
@@ -272,8 +300,7 @@ where
     /// Returns `BoundedError::CapacityExceeded` if the stack is full.
     /// Returns `BoundedError::Serialization` if serialization of `item` fails.
     pub fn push(&mut self, item: T) -> core::result::Result<(), BoundedError> {
-        record_global_operation(OperationType::CollectionPush, self.verification_level);
-
+        record_global_operation(OperationType::CollectionWrite, self.verification_level);
         if self.length >= N_ELEMENTS {
             return Err(BoundedError::CapacityExceeded {
                 collection_type: "BoundedStack".to_string(),
@@ -281,26 +308,18 @@ where
                 attempted_size: self.length + 1,
             });
         }
-
         if self.elem_size > 0 {
-            let offset = self.length.saturating_mul(self.elem_size);
-            let mut slice_mut: SafeSliceMut<'_> =
-                self.handler.borrow_slice_mut(offset, self.elem_size).map_err(|e| {
-                    BoundedError::ValidationFailure(format!("Memory borrow failed for push: {}", e))
-                })?;
-
-            item.write_bytes(slice_mut.as_mut_slice())?; // This returns SerializationError, which From converts to BoundedError
-            item.update_checksum(&mut self.checksum); // Checksum the original item
-        } else {
-            // For ZSTs, no bytes are written, but we still conceptually add it.
-            // Checksumming a ZST should be a no-op or a fixed value change.
-            item.update_checksum(&mut self.checksum);
+            let offset = self.length * self.elem_size;
+            // Get mutable slice and write directly
+            let mut safe_slice_mut = self.handler.get_slice_mut(offset, self.elem_size)
+                .map_err(|e| BoundedError::ValidationFailure(e.to_string()))?;
+            item.write_bytes(safe_slice_mut.as_mut_slice()).map_err(BoundedError::from)?;
+            // Mark as modified if SafeSliceMut requires it for checksumming (depends on its API)
+            // safe_slice_mut.mark_modified(); // Example if needed
         }
-
         self.length += 1;
-
-        if self.verification_level >= VerificationLevel::Balanced {
-            // For higher verification, might re-verify checksum or parts of the stack.
+        if self.verification_level.should_verify(importance::HIGH) {
+            self.recalculate_checksum();
         }
         Ok(())
     }
@@ -344,24 +363,38 @@ where
     ///
     /// Returns `None` if the stack is empty.
     /// Can return `Err(BoundedError::Serialization)` if deserialization fails.
-    pub fn peek(&self) -> core::result::Result<Option<T>, BoundedError> {
+    pub fn peek(&self) -> Option<T> {
         record_global_operation(OperationType::CollectionPeek, self.verification_level);
         if self.length == 0 {
-            return Ok(None);
+            return None;
         }
-
-        let item = if self.elem_size > 0 {
-            // Peek at the last valid element's data
-            let offset = (self.length - 1).saturating_mul(self.elem_size);
-            let slice: SafeSlice<'_> =
-                self.handler.borrow_slice(offset, self.elem_size).map_err(|e| {
-                    BoundedError::ValidationFailure(format!("Memory borrow failed for peek: {}", e))
-                })?;
-            T::from_bytes(slice.as_slice())?
+        if self.elem_size > 0 {
+            let offset = (self.length - 1) * self.elem_size;
+            // Change to get_slice
+            match self.handler.get_slice(offset, self.elem_size) {
+                Ok(safe_slice) => {
+                    // It's important that from_bytes doesn't need a mutable buffer here
+                    // and that it correctly handles potential errors from malformed data.
+                    match T::from_bytes(safe_slice.data()) {
+                        Ok(item) => Some(item),
+                        Err(_e) => {
+                            // Optionally log or handle deserialization error
+                            // For now, consistent with pop, treat as None or error
+                            None // Or return a Result here
+                        }
+                    }
+                }
+                Err(_e) => {
+                    // Log or handle error from get_slice
+                    None // Or return a Result here
+                }
+            }
         } else {
-            T::from_bytes(&[])?
-        };
-        Ok(Some(item))
+            // For Zero-sized types, if they are stored/represented
+            // This branch might need adjustment based on how ZSTs are handled
+            // If T::from_bytes can return a ZST instance, it might work.
+            T::from_bytes(&[]).ok() // Example for ZST
+        }
     }
 
     /// Returns the current verification level.
@@ -441,7 +474,7 @@ where
                                 // For now, we might just skip this item in checksum calculation,
                                 // or mark the checksum as invalid. Let's skip.
                                 // A robust system might have specific error handling here.
-                                if self.verification_level >= VerificationLevel::Paranoid {
+                                if self.verification_level >= VerificationLevel::Redundant {
                                     // Consider logging or panicking if an element can't be deserialized
                                     // during checksum recalculation, as it implies data corruption.
                                 }
@@ -450,7 +483,7 @@ where
                     }
                     Err(_) => {
                         // Memory borrow failed. Similar to above, data might be inaccessible.
-                        if self.verification_level >= VerificationLevel::Paranoid {
+                        if self.verification_level >= VerificationLevel::Redundant {
                             // Log or handle error
                         }
                     }
@@ -610,27 +643,20 @@ where
     }
 
     /// Creates a new `BoundedVec` with a specific verification level.
-    pub fn with_verification_level(provider: P, level: VerificationLevel) -> Self {
-        record_global_operation(OperationType::CollectionCreate, level);
-        let elem_size = T::SERIALIZED_SIZE;
-        // Ensure provider has enough capacity for N_ELEMENTS * elem_size if elem_size > 0
-        // For ZSTs (elem_size == 0), capacity check is different or might rely on N_ELEMENTS only.
-        if elem_size > 0 && provider.capacity() < N_ELEMENTS * elem_size {
-            // This should ideally panic or return a Result, but constructor signature is Self.
-            // For now, we rely on runtime checks in push/insert. A better approach might be
-            // a `try_new` constructor or for the provider to be pre-sized.
-        }
-
-        let mut new_vec = Self {
-            handler: SafeMemoryHandler::new(provider, level),
+    pub fn with_verification_level(provider: P, verification_level: VerificationLevel) -> Self {
+        let elem_size = <T as ToBytes>::SERIALIZED_SIZE; // Disambiguated
+        let mut vec = Self {
+            handler: SafeMemoryHandler::new(provider, verification_level),
             length: 0,
-            elem_size,
+            elem_size, // Now correctly sourced
             checksum: Checksum::default(),
-            verification_level: level,
+            verification_level,
             _phantom: PhantomData,
         };
-        new_vec.recalculate_checksum(); // Initialize checksum
-        new_vec
+        if vec.verification_level.should_verify(importance::INITIALIZATION) {
+            vec.recalculate_checksum();
+        }
+        vec
     }
 
     /// Appends an element to the back of the collection.
@@ -647,14 +673,16 @@ where
                 attempted_size: self.length + 1,
             });
         }
-        if self.elem_size > 0 { // Only write if not a ZST
+        if self.elem_size > 0 {
             let offset = self.length * self.elem_size;
-            let mut buffer = [0u8; <T as ToBytes>::SERIALIZED_SIZE]; // Disambiguated
-            item.write_bytes(&mut buffer).map_err(BoundedError::from)?;
-            self.handler.write_data(offset, &buffer).map_err(|e| BoundedError::ValidationFailure(e.to_string()))?;
+            let mut safe_slice_mut = self.handler.get_slice_mut(offset, self.elem_size)
+                .map_err(|e| BoundedError::ValidationFailure(e.to_string()))?;
+            item.write_bytes(safe_slice_mut.as_mut_slice()).map_err(BoundedError::from)?;
         }
         self.length += 1;
-        self.recalculate_checksum();
+        if self.verification_level.should_verify(importance::HIGH) {
+            self.recalculate_checksum();
+        }
         Ok(())
     }
 
@@ -690,27 +718,100 @@ where
     /// # Errors
     /// Returns `BoundedError::Serialization` if the item cannot be deserialized.
     /// Returns `BoundedError::InvalidAccess` indirectly through handler/slice errors if underlying read fails.
-    pub fn get(&self, index: usize) -> core::result::Result<Option<T>, BoundedError> {
+    pub fn get(&self, index: usize) -> Option<T> {
         record_global_operation(OperationType::CollectionRead, self.verification_level);
         if index >= self.length {
-            return Ok(None);
+            return None;
         }
-        let item = if self.elem_size > 0 { // Only read if not a ZST
+        if self.elem_size > 0 {
             let offset = index * self.elem_size;
-            let mut buffer = [0u8; <T as FromBytes>::SERIALIZED_SIZE]; // Disambiguated
-            let slice_view = self.handler.get_slice(offset, self.elem_size).map_err(|e| BoundedError::ValidationFailure(e.to_string()))?;
-            let data_bytes = slice_view.data().map_err(|e| BoundedError::ValidationFailure(e.to_string()))?;
-            buffer.copy_from_slice(data_bytes);
-            T::from_bytes(&buffer).map_err(BoundedError::from)?
+            // Change to get_slice
+            match self.handler.get_slice(offset, self.elem_size) {
+                Ok(safe_slice) => T::from_bytes(safe_slice.data()).ok(),
+                Err(_) => None, // Error fetching slice
+            }
         } else {
-            T::from_bytes(&[]).map_err(BoundedError::from)?
-        };
-        Ok(Some(item))
+            T::from_bytes(&[]).ok() // For ZSTs
+        }
     }
 
-    // get_mut would be more complex as it requires modifying in place and updating checksums.
-    // It might return a temporary owned value or a proxy object that handles checksum on drop/commit.
-    // For simplicity, direct get_mut is omitted but could be added with careful checksum handling.
+    /// Inserts an element at a given position in the vector.
+    ///
+    /// # Errors
+    /// Returns `BoundedError::CapacityExceeded` if the vector is full.
+    /// Returns `BoundedError::IndexOutOfBounds` if the index is out of bounds.
+    /// Returns `BoundedError::Serialization` if the item cannot be serialized.
+    pub fn insert_at(&mut self, index: usize, item: T) -> core::result::Result<(), BoundedError> {
+        record_global_operation(OperationType::CollectionWrite, self.verification_level);
+        if self.length >= N_ELEMENTS {
+            return Err(BoundedError::CapacityExceeded {
+                collection_type: "BoundedVec".to_string(),
+                capacity: N_ELEMENTS,
+                attempted_size: self.length + 1,
+            });
+        }
+        if index > self.length { // Allow inserting at self.length (same as push)
+            return Err(BoundedError::IndexOutOfBounds {
+                collection_type: "BoundedVec".to_string(),
+                index,
+                len: self.length,
+            });
+        }
+
+        if self.elem_size > 0 {
+            // Shift elements to the right if inserting not at the end
+            if index < self.length {
+                let src_offset = index * self.elem_size;
+                let dst_offset = (index + 1) * self.elem_size;
+                // Number of bytes to move is (length - index) * elem_size
+                let count = (self.length - index) * self.elem_size;
+                self.handler.copy_within(src_offset, dst_offset, count)
+                    .map_err(|e| BoundedError::ValidationFailure(e.to_string()))?;
+            }
+            // Write the new item
+            let offset = index * self.elem_size;
+            let mut safe_slice_mut = self.handler.get_slice_mut(offset, self.elem_size)
+                .map_err(|e| BoundedError::ValidationFailure(e.to_string()))?;
+            item.write_bytes(safe_slice_mut.as_mut_slice()).map_err(BoundedError::from)?;
+        }
+        // If elem_size is 0 (ZST), we still increment length. No bytes are moved or written.
+
+        self.length += 1;
+        if self.verification_level.should_verify(importance::HIGH) {
+            self.recalculate_checksum();
+        }
+        Ok(())
+    }
+
+    /// Sets an element at a given position in the vector.
+    ///
+    /// # Errors
+    /// Returns `BoundedError::IndexOutOfBounds` if the index is out of bounds.
+    /// Returns `BoundedError::Serialization` if the item cannot be serialized.
+    pub fn set_at(&mut self, index: usize, item: T) -> core::result::Result<(), BoundedError> {
+        record_global_operation(OperationType::CollectionWrite, self.verification_level);
+        if index >= self.length {
+            return Err(BoundedError::IndexOutOfBounds {
+                collection_type: "BoundedVec".to_string(),
+                index,
+                len: self.length,
+            });
+        }
+        if self.elem_size > 0 {
+            let offset = index * self.elem_size;
+            let mut safe_slice_mut = self.handler.get_slice_mut(offset, self.elem_size)
+                .map_err(|e| BoundedError::ValidationFailure(e.to_string()))?;
+            item.write_bytes(safe_slice_mut.as_mut_slice()).map_err(BoundedError::from)?;
+        }
+        // For ZSTs, set_at effectively does nothing to the data if elem_size is 0,
+        // but the item itself might have changed if T has internal state not reflected in its size.
+        // The checksum will be recalculated regardless.
+
+        if self.verification_level.should_verify(importance::HIGH) {
+            self.recalculate_checksum(); // Data changed (or conceptually changed for ZSTs), recalculate.
+        }
+        Ok(())
+    }
 
     /// Clears the vector, removing all values.
     pub fn clear(&mut self) {
@@ -1008,7 +1109,7 @@ mod tests {
     fn bounded_stack_specifics_refactored() {
         let provider = create_std_provider(TestItem::SERIALIZED_SIZE * 2);
         let mut stack: BoundedStack<TestItem, 2, _> =
-            BoundedStack::with_verification_level(provider, VerificationLevel::Paranoid);
+            BoundedStack::with_verification_level(provider, VerificationLevel::Redundant);
         assert_eq!(stack.len(), 0);
         assert!(stack.is_empty());
 

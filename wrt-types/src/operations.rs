@@ -83,6 +83,8 @@ pub enum OperationType {
     CollectionRead,
     /// Collection element write operation
     CollectionWrite,
+    /// Collection peek operation
+    CollectionPeek,
 }
 
 impl OperationType {
@@ -108,11 +110,12 @@ impl OperationType {
             OperationType::Arithmetic => 1,
             OperationType::Other => 1,
             OperationType::CollectionCreate => 5,
-            OperationType::CollectionClear => 3,
+            OperationType::CollectionClear => 5,
             OperationType::CollectionTruncate => 3,
             OperationType::CollectionIterate => 1,
             OperationType::CollectionRead => 1,
-            OperationType::CollectionWrite => 1,
+            OperationType::CollectionWrite => 2,
+            OperationType::CollectionPeek => 1,
         }
     }
 
@@ -141,8 +144,9 @@ impl OperationType {
             OperationType::CollectionClear => 150,
             OperationType::CollectionTruncate => 150,
             OperationType::CollectionIterate => 100,
-            OperationType::CollectionRead => 100,
-            OperationType::CollectionWrite => 100,
+            OperationType::CollectionRead => importance::MEDIUM,
+            OperationType::CollectionWrite => importance::HIGH,
+            OperationType::CollectionPeek => importance::LOW,
         }
     }
 
@@ -319,6 +323,9 @@ impl OperationCounter {
             }
             OperationType::CollectionWrite => {
                 self.collection_inserts.fetch_add(1, Ordering::Relaxed)
+            }
+            OperationType::CollectionPeek => {
+                self.collection_lookups.fetch_add(1, Ordering::Relaxed)
             }
         };
 
