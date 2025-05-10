@@ -13,12 +13,12 @@ jobs:
   check:
     name: Check (${{ matrix.os }})
     strategy:
-      fail-fast: false  # Don't stop all jobs if one fails
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         include:
           - os: windows-latest
-            continue-on-error: true  # Allow Windows to fail without stopping the workflow
+            continue-on-error: true
     runs-on: ${{ matrix.os }}
     continue-on-error: ${{ matrix.continue-on-error || false }}
     steps:
@@ -43,10 +43,8 @@ jobs:
         run: |
           if command -v just &> /dev/null; then
             echo "JUST_INSTALLED=true" >> $GITHUB_ENV
-            echo "Just is already installed"
           else
             echo "JUST_INSTALLED=false" >> $GITHUB_ENV
-            echo "Just needs to be installed"
           fi
       - name: Check if just is available (Windows)
         if: runner.os == 'Windows'
@@ -55,28 +53,26 @@ jobs:
         run: |
           if (Get-Command just -ErrorAction SilentlyContinue) {
             echo "JUST_INSTALLED=true" | Out-File -FilePath $env:GITHUB_ENV -Append
-            echo "Just is already installed"
           } else {
             echo "JUST_INSTALLED=false" | Out-File -FilePath $env:GITHUB_ENV -Append
-            echo "Just needs to be installed"
           }
       - name: Install just
         if: env.JUST_INSTALLED != 'true'
         run: cargo install just --locked
       - name: Setup Rust targets
-        run: just setup-ci-minimal
+        run: just setup-rust-targets
       - name: Run cargo check
         run: just check
 
   test:
     name: Test Suite (${{ matrix.os }})
     strategy:
-      fail-fast: false  # Don't stop all jobs if one fails
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         include:
           - os: windows-latest
-            continue-on-error: true  # Allow Windows to fail without stopping the workflow
+            continue-on-error: true
     runs-on: ${{ matrix.os }}
     continue-on-error: ${{ matrix.continue-on-error || false }}
     steps:
@@ -97,26 +93,22 @@ jobs:
           override: true
       - name: Check if just is available (Unix)
         if: runner.os != 'Windows'
-        id: check-just-unix
+        id: check-just-unix-test
         run: |
           if command -v just &> /dev/null; then
             echo "JUST_INSTALLED=true" >> $GITHUB_ENV
-            echo "Just is already installed"
           else
             echo "JUST_INSTALLED=false" >> $GITHUB_ENV
-            echo "Just needs to be installed"
           fi
       - name: Check if just is available (Windows)
         if: runner.os == 'Windows'
-        id: check-just-windows
+        id: check-just-windows-test
         shell: powershell
         run: |
           if (Get-Command just -ErrorAction SilentlyContinue) {
             echo "JUST_INSTALLED=true" | Out-File -FilePath $env:GITHUB_ENV -Append
-            echo "Just is already installed"
           } else {
             echo "JUST_INSTALLED=false" | Out-File -FilePath $env:GITHUB_ENV -Append
-            echo "Just needs to be installed"
           }
       - name: Install just
         if: env.JUST_INSTALLED != 'true'
@@ -126,20 +118,22 @@ jobs:
           python-version: '3.x'
       - name: Install Python dependencies
         run: just setup-python-deps
-      - name: Setup Rust targets
-        run: just setup-ci-minimal
+      - name: Setup Rust targets and WASM tools
+        run: |
+          just setup-rust-targets
+          just setup-wasm-tools
       - name: Run tests
         run: just test
 
   style:
-    name: Code Style and Organization (${{ matrix.os }})
+    name: Compliance Checks (${{ matrix.os }})
     strategy:
-      fail-fast: false  # Don't stop all jobs if one fails
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         include:
           - os: windows-latest
-            continue-on-error: true  # Allow Windows to fail without stopping the workflow
+            continue-on-error: true
     runs-on: ${{ matrix.os }}
     continue-on-error: ${{ matrix.continue-on-error || false }}
     steps:
@@ -161,37 +155,32 @@ jobs:
           components: clippy
       - name: Check if just is available (Unix)
         if: runner.os != 'Windows'
-        id: check-just-unix
+        id: check-just-unix-style
         run: |
           if command -v just &> /dev/null; then
             echo "JUST_INSTALLED=true" >> $GITHUB_ENV
-            echo "Just is already installed"
           else
             echo "JUST_INSTALLED=false" >> $GITHUB_ENV
-            echo "Just needs to be installed"
           fi
       - name: Check if just is available (Windows)
         if: runner.os == 'Windows'
-        id: check-just-windows
+        id: check-just-windows-style
         shell: powershell
         run: |
           if (Get-Command just -ErrorAction SilentlyContinue) {
             echo "JUST_INSTALLED=true" | Out-File -FilePath $env:GITHUB_ENV -Append
-            echo "Just is already installed"
           } else {
             echo "JUST_INSTALLED=false" | Out-File -FilePath $env:GITHUB_ENV -Append
-            echo "Just needs to be installed"
           }
       - name: Install just
         if: env.JUST_INSTALLED != 'true'
         run: cargo install just --locked
-      - name: Setup Rust targets
-        run: just setup-ci-minimal
-      - name: Check code style
-        run: just check
-        env:
-          # Disable error documentation checks for now
-          CLIPPY_DENY_WARNINGS: false
+      - name: Setup Rust targets and WASM tools
+        run: |
+          just setup-rust-targets
+          just setup-wasm-tools
+      - name: Run main CI checks (format, headers, clippy, deny, etc.)
+        run: just ci-main
       - name: Check imports (Unix only)
         if: runner.os != 'Windows'
         run: just check-imports
@@ -199,12 +188,12 @@ jobs:
   udeps:
     name: Unused Dependencies (${{ matrix.os }})
     strategy:
-      fail-fast: false  # Don't stop all jobs if one fails
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         include:
           - os: windows-latest
-            continue-on-error: true  # Allow Windows to fail without stopping the workflow
+            continue-on-error: true
     runs-on: ${{ matrix.os }}
     continue-on-error: ${{ matrix.continue-on-error || false }}
     steps:
@@ -225,44 +214,40 @@ jobs:
           override: true
       - name: Check if just is available (Unix)
         if: runner.os != 'Windows'
-        id: check-just-unix
+        id: check-just-unix-udeps
         run: |
           if command -v just &> /dev/null; then
             echo "JUST_INSTALLED=true" >> $GITHUB_ENV
-            echo "Just is already installed"
           else
             echo "JUST_INSTALLED=false" >> $GITHUB_ENV
-            echo "Just needs to be installed"
           fi
       - name: Check if just is available (Windows)
         if: runner.os == 'Windows'
-        id: check-just-windows
+        id: check-just-windows-udeps
         shell: powershell
         run: |
           if (Get-Command just -ErrorAction SilentlyContinue) {
             echo "JUST_INSTALLED=true" | Out-File -FilePath $env:GITHUB_ENV -Append
-            echo "Just is already installed"
           } else {
             echo "JUST_INSTALLED=false" | Out-File -FilePath $env:GITHUB_ENV -Append
-            echo "Just needs to be installed"
           }
       - name: Install just
         if: env.JUST_INSTALLED != 'true'
         run: cargo install just --locked
+      - name: Install cargo-udeps
+        run: cargo install cargo-udeps --locked
+      - name: Setup Rust targets
+        run: just setup-rust-targets
       - name: Check for unused dependencies
-        run: just check-udeps
+        run: just udeps
 
-  docs:
-    name: Documentation (${{ matrix.os }})
+  security_audit:
+    name: Security Audit (${{ matrix.os }})
     strategy:
-      fail-fast: false  # Don't stop all jobs if one fails
+      fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-        include:
-          - os: windows-latest
-            continue-on-error: true  # Allow Windows to fail without stopping the workflow
+        os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
-    continue-on-error: ${{ matrix.continue-on-error || false }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/cache@v4
@@ -281,69 +266,100 @@ jobs:
           override: true
       - name: Check if just is available (Unix)
         if: runner.os != 'Windows'
-        id: check-just-unix
+        id: check-just-unix-audit
         run: |
           if command -v just &> /dev/null; then
             echo "JUST_INSTALLED=true" >> $GITHUB_ENV
-            echo "Just is already installed"
           else
             echo "JUST_INSTALLED=false" >> $GITHUB_ENV
-            echo "Just needs to be installed"
           fi
-      - name: Check if just is available (Windows)
-        if: runner.os == 'Windows'
-        id: check-just-windows
-        shell: powershell
+      - name: Install just
+        if: env.JUST_INSTALLED != 'true'
+        run: cargo install just --locked
+      - name: Install cargo-audit
+        run: cargo install cargo-audit --locked
+      - name: Run cargo audit
+        run: just audit
+
+  spell_check:
+    name: Spell Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install cspell
+        run: npm install -g cspell@latest
+      - name: Run cspell
+        run: just spell-check
+
+  docs_build_check:
+    name: Documentation Build Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+      - name: Check if just is available (Unix)
+        if: runner.os != 'Windows'
+        id: check-just-unix-docs
         run: |
-          if (Get-Command just -ErrorAction SilentlyContinue) {
-            echo "JUST_INSTALLED=true" | Out-File -FilePath $env:GITHUB_ENV -Append
-            echo "Just is already installed"
-          } else {
-            echo "JUST_INSTALLED=false" | Out-File -FilePath $env:GITHUB_ENV -Append
-            echo "Just needs to be installed"
-          }
+          if command -v just &> /dev/null; then
+            echo "JUST_INSTALLED=true" >> $GITHUB_ENV
+          else
+            echo "JUST_INSTALLED=false" >> $GITHUB_ENV
+          fi
       - name: Install just
         if: env.JUST_INSTALLED != 'true'
         run: cargo install just --locked
       - uses: actions/setup-python@v5
         with:
           python-version: '3.x'
-      - name: Install Python dependencies
-        run: just setup-python-deps
-      # Install Java for PlantUML
-      - name: Set up JDK
+      - name: Setup Java for PlantUML
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
-      # Install PlantUML and other dependencies
-      - name: Setup Rust targets and dependencies
+      - name: Install Python dependencies and PlantUML (Debian/Ubuntu)
         run: |
-          just setup-ci-minimal
-          # Install PlantUML on Linux
-          if [ "$RUNNER_OS" == "Linux" ]; then
-            sudo apt-get update
-            sudo apt-get install -y plantuml
-          # Install PlantUML on macOS
-          elif [ "$RUNNER_OS" == "macOS" ]; then
-            brew install plantuml
-          # Install PlantUML on Windows
-          elif [ "$RUNNER_OS" == "Windows" ]; then
-            # Download and extract PlantUML JAR
-            mkdir -p $HOME/plantuml
-            curl -L https://github.com/plantuml/plantuml/releases/download/v1.2023.13/plantuml-1.2023.13.jar -o $HOME/plantuml/plantuml.jar
-            echo "#!/bin/sh" > $HOME/plantuml/plantuml
-            echo "java -jar $HOME/plantuml/plantuml.jar \"\$@\"" >> $HOME/plantuml/plantuml
-            chmod +x $HOME/plantuml/plantuml
-            echo "$HOME/plantuml" >> $GITHUB_PATH
-          fi
-        shell: bash
-      - name: Build docs with diagrams
-        run: |
-          just docs-with-diagrams
-          just check-docs
-      - name: Build Rust API docs
-        run: cargo doc --no-deps
+          just setup-python-deps
+          sudo apt-get update && sudo apt-get install -y plantuml
+      - name: Check documentation build (Rust and Sphinx)
+        run: just ci-doc-check
+
+# Consider a separate workflow for miri and kani on a schedule or manual trigger
+# due to their potentially long run times.
+# Example placeholder:
+#  extended_checks:
+#    name: Extended Static Analysis (Miri, Kani)
+#    runs-on: ubuntu-latest
+#    steps:
+#      - uses: actions/checkout@v4
+#      - uses: actions-rs/toolchain@v1
+#        with:
+#          toolchain: stable # or nightly if Kani/Miri need it
+#          components: miri, kani # if available as components
+#      - name: Install just
+#        run: cargo install just --locked
+#      - name: Install Kani (if not component)
+#        # run: cargo install kani-verifier --version x.y.z
+#      - name: Run Miri checks
+#        run: just ci-miri
+#      - name: Run Kani checks
+#        run: just ci-kani
 
 # Coverage job is still Linux-only as tarpaulin only supports Linux
   coverage:
