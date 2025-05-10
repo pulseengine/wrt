@@ -47,7 +47,7 @@ jobs:
       - name: Install xtask dependencies (if any, e.g. for xtask itself)
         run: cargo build --package xtask # Ensures xtask and its direct deps are built/cached
       - name: Run CI Integrity Checks (lint, fmt, deny, spell, headers, etc.)
-        run: cargo xtask CiIntegrityChecks
+        run: cargo xtask ci-integrity-checks
       - name: Setup Java for PlantUML (if CheckDocsStrict Dagger pipeline needs it from host - unlikely)
         uses: actions/setup-java@v4
         if: false # Assuming Dagger pipeline for docs is self-contained
@@ -60,7 +60,7 @@ jobs:
           sudo apt-get update && sudo apt-get install -y python3-pip plantuml
           pip3 install -r docs/source/requirements.txt
       - name: Run Strict Documentation Check (Daggerized)
-        run: cargo xtask CheckDocsStrict
+        run: cargo xtask check-docs-strict
 
   core_tests_and_analysis:
     name: Core Tests, Analysis & Coverage
@@ -92,7 +92,7 @@ jobs:
       - name: Install xtask dependencies
         run: cargo build --package xtask
       - name: Run Tests (Daggerized)
-        run: cargo xtask RunTests
+        run: cargo xtask run-tests
       - name: Check Unused Dependencies (Daggerized, uses Nightly internally)
         run: cargo xtask UDeps
       - name: Run Security Audit (Daggerized)
