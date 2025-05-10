@@ -673,26 +673,26 @@ pub fn i64_eqz(val: i64) -> Result<i32> {
 /// Follows IEEE 754 arithmetic for NaN propagation, infinities, etc.
 #[inline]
 pub fn f32_add(lhs: FloatBits32, rhs: FloatBits32) -> Result<FloatBits32> {
-    Ok(FloatBits32::new(lhs.value() + rhs.value()))
+    Ok(FloatBits32::from_float(lhs.value() + rhs.value()))
 }
 
 /// f32.sub: Subtract two f32 values.
 #[inline]
 pub fn f32_sub(lhs: FloatBits32, rhs: FloatBits32) -> Result<FloatBits32> {
-    Ok(FloatBits32::new(lhs.value() - rhs.value()))
+    Ok(FloatBits32::from_float(lhs.value() - rhs.value()))
 }
 
 /// f32.mul: Multiply two f32 values.
 #[inline]
 pub fn f32_mul(lhs: FloatBits32, rhs: FloatBits32) -> Result<FloatBits32> {
-    Ok(FloatBits32::new(lhs.value() * rhs.value()))
+    Ok(FloatBits32::from_float(lhs.value() * rhs.value()))
 }
 
 /// f32.div: Divide two f32 values.
 /// Division by zero yields +/-infinity or NaN as per IEEE 754.
 #[inline]
 pub fn f32_div(lhs: FloatBits32, rhs: FloatBits32) -> Result<FloatBits32> {
-    Ok(FloatBits32::new(lhs.value() / rhs.value()))
+    Ok(FloatBits32::from_float(lhs.value() / rhs.value()))
 }
 
 /// f32.abs: Absolute value of an f32.
