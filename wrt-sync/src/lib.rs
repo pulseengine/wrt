@@ -117,7 +117,7 @@ pub use rwlock::{WrtRwLock, WrtRwLockReadGuard, WrtRwLockWriteGuard};
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub use rwlock::parking_impl::{
-    ParkingLockError, WrtParkingRwLock, WrtParkingRwLockReadGuard, WrtParkingRwLockWriteGuard,
+    PoisonError, WrtParkingRwLock, WrtParkingRwLockReadGuard, WrtParkingRwLockWriteGuard,
 };
 
 // Conditional re-export for the basic (spin-lock) RwLock and its guards
