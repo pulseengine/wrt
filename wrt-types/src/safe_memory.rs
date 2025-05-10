@@ -337,7 +337,7 @@ impl<'a> SafeSliceMut<'a> {
 /// This trait abstracts over different memory allocation strategies,
 /// allowing both std and no_std environments to share the same interface.
 /// It combines raw access, safety features, and informational methods.
-pub trait MemoryProvider: core::fmt::Debug {
+pub trait MemoryProvider: Send + Sync + Debug {
     /// Borrows a slice of memory with safety guarantees.
     /// The returned `SafeSlice` will have its verification level typically
     /// initialized by the provider or a wrapping handler.
@@ -369,6 +369,12 @@ pub trait MemoryProvider: core::fmt::Debug {
 
     /// Gets statistics about memory usage from this provider.
     fn memory_stats(&self) -> MemoryStats;
+
+    /// Gets a mutable slice from the underlying memory provider.
+    fn get_slice_mut(&mut self, offset: usize, len: usize) -> Result<SafeSliceMut<'_>>;
+
+    /// Copies data within the memory provider from a source offset to a destination offset.
+    fn copy_within(&mut self, src_offset: usize, dst_offset: usize, len: usize) -> Result<()>;
 
     // TODO: Consider if methods like `resize`, `clear_data_in_range` are needed on this trait
     // if SafeMemoryHandler is to delegate them generally. For BoundedVec, these might not be
@@ -606,6 +612,13 @@ impl MemoryProvider for StdMemoryProvider {
         SafeSlice::with_verification_level(slice, self.verification_level)
     }
 
+    fn get_slice_mut(&mut self, offset: usize, len: usize) -> Result<SafeSliceMut<'_>> {
+        record_global_operation(OperationType::MemoryWrite, self.verification_level);
+        self.verify_access(offset, len)?;
+        let slice = &mut self.data[offset..offset + len];
+        SafeSliceMut::new(slice)
+    }
+
     fn write_data(&mut self, offset: usize, data_to_write: &[u8]) -> Result<()> {
         record_global_operation(OperationType::MemoryWrite, self.verification_level);
         self.track_access(offset, data_to_write.len());
@@ -691,6 +704,24 @@ impl MemoryProvider for StdMemoryProvider {
 
     fn memory_stats(&self) -> MemoryStats {
         self.memory_stats()
+    }
+
+    fn copy_within(&mut self, src_offset: usize, dst_offset: usize, len: usize) -> Result<()> {
+        record_global_operation(OperationType::MemoryWrite, self.verification_level);
+        // Verify both source and destination ranges
+        self.verify_access(src_offset, len)?;
+        self.verify_access(dst_offset, len)?;
+        // Ensure total capacity is not exceeded by dst_offset + len
+        if dst_offset.checked_add(len).map_or(true, |end| end > self.data.len()) {
+            return Err(Error::memory_error(format!(
+                "copy_within destination out of bounds: offset {}, len {}, capacity {}",
+                dst_offset, len, self.data.len()
+            )));
+        }
+        
+        self.data.copy_within(src_offset..src_offset + len, dst_offset);
+        // Checksums on individual SafeSlices are not managed here; BoundedVec recalculates its own.
+        Ok(())
     }
 }
 
@@ -854,6 +885,40 @@ impl<const N: usize> NoStdMemoryProvider<N> {
             max_access_size: length,
         }
     }
+
+    fn get_slice_mut(&mut self, offset: usize, len: usize) -> Result<SafeSliceMut<'_>> {
+        record_global_operation(OperationType::MemoryWrite, self.verification_level);
+        self.verify_access(offset, len)?;
+        let slice = &mut self.data[offset..offset + len];
+        SafeSliceMut::new(slice)
+    }
+
+    fn copy_within(&mut self, src_offset: usize, dst_offset: usize, len: usize) -> Result<()> {
+        record_global_operation(OperationType::MemoryWrite, self.verification_level);
+        self.verify_access(src_offset, len)?;
+        self.verify_access(dst_offset, len)?;
+
+        if src_offset.checked_add(len).map_or(true, |end| end > self.used) ||
+           dst_offset.checked_add(len).map_or(true, |end| end > N) {
+            return Err(Error::memory_error("copy_within source or destination out of bounds"));
+        }
+
+        // Manual copy_within to handle potential overlaps correctly for [u8]
+        if src_offset == dst_offset { return Ok(()); }
+
+        if src_offset < dst_offset {
+            // Copy backwards
+            for i in (0..len).rev() {
+                self.data[dst_offset + i] = self.data[src_offset + i];
+            }
+        } else {
+            // Copy forwards
+            for i in 0..len {
+                self.data[dst_offset + i] = self.data[src_offset + i];
+            }
+        }
+        Ok(())
+    }
 }
 
 #[cfg(not(feature = "std"))]
@@ -984,6 +1049,33 @@ impl<const N: usize> MemoryProvider for NoStdMemoryProvider<N> {
 
     fn memory_stats(&self) -> MemoryStats {
         self.memory_stats()
+    }
+
+    fn copy_within(&mut self, src_offset: usize, dst_offset: usize, len: usize) -> Result<()> {
+        record_global_operation(OperationType::MemoryWrite, self.verification_level);
+        self.verify_access(src_offset, len)?;
+        self.verify_access(dst_offset, len)?;
+
+        if src_offset.checked_add(len).map_or(true, |end| end > self.used) ||
+           dst_offset.checked_add(len).map_or(true, |end| end > N) {
+            return Err(Error::memory_error("copy_within source or destination out of bounds"));
+        }
+
+        // Manual copy_within to handle potential overlaps correctly for [u8]
+        if src_offset == dst_offset { return Ok(()); }
+
+        if src_offset < dst_offset {
+            // Copy backwards
+            for i in (0..len).rev() {
+                self.data[dst_offset + i] = self.data[src_offset + i];
+            }
+        } else {
+            // Copy forwards
+            for i in 0..len {
+                self.data[dst_offset + i] = self.data[src_offset + i];
+            }
+        }
+        Ok(())
     }
 }
 
@@ -1160,6 +1252,20 @@ impl<P: MemoryProvider> SafeMemoryHandler<P> {
         &mut self.provider
     }
 
+    /// Gets a mutable slice from the underlying memory provider.
+    pub fn get_slice_mut(&mut self, offset: usize, len: usize) -> Result<SafeSliceMut<'_>> {
+        record_global_operation(OperationType::MemoryWrite, self.verification_level);
+        self.provider.verify_access(offset, len)?;
+        self.provider.get_slice_mut(offset, len)
+    }
+
+    /// Copies data within the memory provider from a source offset to a destination offset.
+    pub fn copy_within(&mut self, src_offset: usize, dst_offset: usize, len: usize) -> Result<()> {
+        record_global_operation(OperationType::MemoryWrite, self.verification_level);
+        // Provider should verify access internally
+        self.provider.copy_within(src_offset, dst_offset, len)
+    }
+
     // TODO: Review other methods that were on the concrete SafeMemoryHandler versions
     // (e.g., resize, clear, to_vec, add_data for StdMemoryProvider version) and decide if they
     // should be on the MemoryProvider trait and delegated here, or if they are provider-specific
@@ -1299,6 +1405,39 @@ mod fault_injection {
 
         fn memory_stats(&self) -> MemoryStats {
             self.inner_provider.memory_stats()
+        }
+
+        fn get_slice_mut(&mut self, offset: usize, len: usize) -> Result<SafeSliceMut<'_>> {
+            record_global_operation(OperationType::MemoryWrite, self.verification_level);
+            self.verify_access(offset, len)?;
+            self.inner_provider.get_slice_mut(offset, len)
+        }
+
+        fn copy_within(&mut self, src_offset: usize, dst_offset: usize, len: usize) -> Result<()> {
+            record_global_operation(OperationType::MemoryWrite, self.verification_level);
+            self.verify_access(src_offset, len)?;
+            self.verify_access(dst_offset, len)?;
+
+            if src_offset.checked_add(len).map_or(true, |end| end > self.inner_provider.size()) ||
+               dst_offset.checked_add(len).map_or(true, |end| end > self.inner_provider.capacity()) {
+                return Err(Error::memory_error("copy_within source or destination out of bounds"));
+            }
+
+            // Manual copy_within to handle potential overlaps correctly for [u8]
+            if src_offset == dst_offset { return Ok(()); }
+
+            if src_offset < dst_offset {
+                // Copy backwards
+                for i in (0..len).rev() {
+                    self.inner_provider.data[dst_offset + i] = self.inner_provider.data[src_offset + i];
+                }
+            } else {
+                // Copy forwards
+                for i in 0..len {
+                    self.inner_provider.data[dst_offset + i] = self.inner_provider.data[src_offset + i];
+                }
+            }
+            Ok(())
         }
     }
 }

@@ -379,7 +379,7 @@ impl ComponentValue {
             },
             Self::Own(idx) => ValType::Own(*idx),
             Self::Borrow(idx) => ValType::Borrow(*idx),
-            Self::ErrorContext(_) => ValType::ErrorContext,
+            Self::ErrorContext(_ctx) => ValType::ErrorContext,
         }
     }
 
@@ -524,7 +524,7 @@ impl ComponentValue {
         value: &Value,
         // Assuming a store or similar context might be needed for FuncRef/ExternRef resolution
         _store: &ComponentValueStore, // Placeholder if needed for refs
-    ) -> Result<ComponentValue, Error> {
+    ) -> Result<ComponentValue> {
         match (cv_type, value) {
             (ComponentValType::Bool, Value::I32(v)) => Ok(ComponentValue::Bool(v != 0)),
             (ComponentValType::S8, Value::I32(v)) => Ok(ComponentValue::S8(v as i8)),
@@ -566,7 +566,7 @@ impl ComponentValue {
     }
 
     /// Convert this component value to a WebAssembly core value
-    pub fn to_core_value(cv: &ComponentValue, store: &mut ComponentValueStore) -> Result<Value, Error> {
+    pub fn to_core_value(cv: &ComponentValue, store: &mut ComponentValueStore) -> Result<Value> {
         match cv {
             ComponentValue::Void => Err(Error::type_error("Cannot convert Void to Core Value")),
             ComponentValue::Bool(v) => Ok(Value::I32(i32::from(*v))),
@@ -585,14 +585,39 @@ impl ComponentValue {
             ComponentValue::List(values) => Ok(Value::Ref(store.add_list(values)?)), // Changed self to store
             ComponentValue::Record(fields) => Ok(Value::Ref(store.add_record(fields)?)), // Changed self to store
             ComponentValue::Variant(case_idx, value) => Ok(Value::Ref(store.add_variant(*case_idx, value.as_deref())?)), // Changed, added deref
-            ComponentValue::Tuple(v) => Ok(Value::Ref(store.add_tuple(v)?)), // Changed self to store
-            ComponentValue::Flags(flags) => Ok(Value::Ref(store.add_flags(flags)?)), // Changed self to store
-            ComponentValue::Enum(case_idx) => Ok(Value::Ref(store.add_enum(*case_idx)?)), // Changed
-            ComponentValue::Option(opt) => Ok(Value::Ref(store.add_option(opt.as_deref())?)), // Changed, added deref
-            ComponentValue::Result(res) => Ok(Value::Ref(store.add_result(res.as_ref().map(|(ok, err)| (ok.as_deref(), err.as_deref())))?)), // Changed, added derefs
-            ComponentValue::Own(h) => Ok(Value::Ref(*h)), // Changed, dereferenced h
-            ComponentValue::Borrow(b) => Ok(Value::Ref(*b)), // Changed, dereferenced b
-            ComponentValue::ErrorContext(ctx) => Ok(Value::Ref(store.add_error_context(ctx)?)), // Changed
+            ComponentValue::Tuple(values) => {
+                let core_values: Result<Vec<Value>> = values.iter().map(|cv| Self::to_core_value(cv, store)).collect();
+                Ok(Value::Ref(store.add_tuple(core_values?)?))
+            }
+            ComponentValue::Flags(flags) => Ok(Value::Ref(store.add_flags(flags.clone())?)), // Assuming flags are simple enough or add_flags handles it
+            ComponentValue::Enum(case) => Ok(Value::Ref(store.add_enum(case.clone())?)), // Assuming add_enum takes String
+            ComponentValue::Option(opt_val) => {
+                match opt_val {
+                    Some(cv_box) => {
+                        let core_v = Self::to_core_value(cv_box.as_ref(), store)?;
+                        Ok(Value::Ref(store.add_option(Some(core_v))?))
+                    }
+                    None => Ok(Value::Ref(store.add_option(None)?)),
+                }
+            }
+            ComponentValue::Result(res_val) => { // res_val is &core::result::Result<Box<ComponentValue>, Box<ComponentValue>>
+                match res_val.as_ref() { // .as_ref() gives Result<&Box<ComponentValue>, &Box<ComponentValue>>
+                    Ok(ok_cv_box) => {
+                        let core_ok_v = Self::to_core_value(ok_cv_box.as_ref(), store)?;
+                        Ok(Value::Ref(store.add_result(Some(core_ok_v), None)?))
+                    }
+                    Err(err_cv_box) => {
+                        let core_err_v = Self::to_core_value(err_cv_box.as_ref(), store)?;
+                        Ok(Value::Ref(store.add_result(None, Some(core_err_v))?))
+                    }
+                }
+            }
+            ComponentValue::Own(handle) => Ok(Value::Ref(*handle)), // Assuming Own handle maps directly to a Ref handle in core
+            ComponentValue::Borrow(handle) => Ok(Value::Ref(*handle)), // Same for Borrow
+            ComponentValue::ErrorContext(_ctx) => {
+                // TODO: How to represent ErrorContext in core Value? Maybe a specific Ref type or skip?
+                Err(Error::unimplemented("ComponentValue::ErrorContext to core Value conversion"))
+            }
         }
     }
 }
