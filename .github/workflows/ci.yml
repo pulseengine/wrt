@@ -123,7 +123,7 @@ jobs:
           just setup-rust-targets
           just setup-wasm-tools
       - name: Run tests
-        run: just test
+        run: cargo xtask RunTests
 
   style:
     name: Compliance Checks (${{ matrix.os }})
@@ -184,7 +184,13 @@ jobs:
       - name: Check imports (Unix only)
         if: runner.os != 'Windows'
         run: just check-imports
-          
+      - name: Install Python dependencies and PlantUML (Debian/Ubuntu)
+        run: |
+          just setup-python-deps
+          sudo apt-get update && sudo apt-get install -y plantuml
+      - name: Check documentation build (Rust and Sphinx)
+        run: cargo xtask CheckDocsStrict
+
   udeps:
     name: Unused Dependencies (${{ matrix.os }})
     strategy:
@@ -338,7 +344,7 @@ jobs:
           just setup-python-deps
           sudo apt-get update && sudo apt-get install -y plantuml
       - name: Check documentation build (Rust and Sphinx)
-        run: just ci-doc-check
+        run: cargo xtask CheckDocsStrict
 
 # Consider a separate workflow for miri and kani on a schedule or manual trigger
 # due to their potentially long run times.
