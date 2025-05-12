@@ -14,6 +14,7 @@ name = "wrt_sync"
 path = "src/lib.rs"
 
 [dependencies]
+wrt-error = { path = "../wrt-error", version = "0.2.0", default-features = false }
 # No external dependencies needed
 # Only used for formal verification when 'kani' feature is enabled
 kani-verifier = { version = "0.61.0", optional = true }
@@ -24,11 +25,11 @@ alloc = { version = "1.0.0", optional = true, package = "rustc-std-workspace-all
 default = ["std"]
 # The 'std' feature enables Rust standard library functionality like thread parking
 # This allows for more efficient locking when locks are held for longer periods
-std = []
+std = ["alloc", "wrt-error/std"]
 # For allocation support without std
-alloc = ["dep:alloc"]
+alloc = ["dep:alloc", "wrt-error/alloc"]
 # For complete no_std support
-no_std = []
+no_std = ["wrt-error/no_std"]
 # Performance optimization
 optimize = []
 # Safety features
