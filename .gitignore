@@ -28,3 +28,6 @@ implementation_summary.md
 decoder.agent.prompt.md decoder.plan.md
 
 **/.claude/settings.local.json
+
+# Generated Sphinx-Needs source requirements file
+docs/source/implementation/source_requirements.rst
