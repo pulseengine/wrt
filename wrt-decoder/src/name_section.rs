@@ -3,9 +3,10 @@
 //! This module provides utilities for working with WebAssembly name sections,
 //! which contain debug information about functions, locals, etc.
 
-use crate::prelude::*;
 use wrt_error::{codes, Error, ErrorCategory, Result};
 use wrt_format::binary;
+
+use crate::prelude::*;
 
 /// Subsection types in the name section
 pub const FUNCTION_SUBSECTION: u8 = 1;
@@ -182,9 +183,8 @@ pub fn generate_name_section(name_section: &NameSection) -> Result<Vec<u8>> {
         let mut func_name_data = Vec::new();
 
         // Count
-        func_name_data.extend_from_slice(&binary::write_leb128_u32(
-            name_section.function_names.len() as u32,
-        ));
+        func_name_data
+            .extend_from_slice(&binary::write_leb128_u32(name_section.function_names.len() as u32));
 
         // Function names
         for &(index, ref name) in &name_section.function_names {
@@ -208,9 +208,8 @@ pub fn generate_name_section(name_section: &NameSection) -> Result<Vec<u8>> {
         let mut local_name_data = Vec::new();
 
         // Count
-        local_name_data.extend_from_slice(&binary::write_leb128_u32(
-            name_section.local_names.len() as u32,
-        ));
+        local_name_data
+            .extend_from_slice(&binary::write_leb128_u32(name_section.local_names.len() as u32));
 
         // Function local names
         for &(func_idx, ref locals) in &name_section.local_names {
@@ -242,31 +241,20 @@ pub fn extract_function_names(data: &[u8]) -> Result<Vec<(u32, String)>> {
 
 /// Set function names in a module's name section
 pub fn create_function_names_section(names: &[(u32, String)]) -> Result<Vec<u8>> {
-    let name_section = NameSection {
-        module_name: None,
-        function_names: names.to_vec(),
-        local_names: Vec::new(),
-    };
+    let name_section =
+        NameSection { module_name: None, function_names: names.to_vec(), local_names: Vec::new() };
 
     generate_name_section(&name_section)
 }
 
 /// Create a parse error
 pub fn parse_error(message: &str) -> Error {
-    Error::new(
-        ErrorCategory::Parse,
-        codes::PARSE_ERROR,
-        message.to_string(),
-    )
+    Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, message.to_string())
 }
 
 /// Create a parse error with context
 pub fn parse_error_with_context(message: &str, context: &str) -> Error {
-    Error::new(
-        ErrorCategory::Parse,
-        codes::PARSE_ERROR,
-        format!("{}: {}", message, context),
-    )
+    Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, format!("{}: {}", message, context))
 }
 
 /// Create a parse error with position

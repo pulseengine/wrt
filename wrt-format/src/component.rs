@@ -4,15 +4,17 @@
 //! Component Model binary format.
 
 // Import from crate::lib re-exports to ensure proper features
-use crate::{format, Box, String, Vec};
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+use alloc::{boxed::Box, string::String, vec::Vec};
+#[cfg(feature = "std")]
+use std::{boxed::Box, string::String, vec::Vec};
 
-use crate::module::Module;
-use crate::types::ValueType;
-use crate::validation::Validatable;
 use wrt_error::{Error, Result};
-use wrt_types::resource::{ResourceDrop, ResourceNew, ResourceRep, ResourceRepresentation};
 // Re-export ValType from wrt-types
 pub use wrt_types::component_value::ValType;
+use wrt_types::resource::{ResourceDrop, ResourceNew, ResourceRep, ResourceRepresentation};
+
+use crate::{module::Module, types::ValueType, validation::Validatable};
 
 /// WebAssembly Component Model component definition
 #[derive(Debug, Clone)]

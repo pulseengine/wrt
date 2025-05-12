@@ -3,9 +3,12 @@
 //! This module provides memory optimization strategies for cross-component
 //! communication in the WebAssembly Component Model.
 
-use crate::prelude::*;
-use crate::resources::{BufferPool, MemoryStrategy};
 use wrt_error::kinds::{OutOfBoundsAccess, ResourceLimitExceeded};
+
+use crate::{
+    prelude::*,
+    resources::{BufferPool, MemoryStrategy},
+};
 
 /// Trait defining a memory optimization strategy
 pub trait MemoryOptimizationStrategy: Send + Sync {
@@ -15,7 +18,8 @@ pub trait MemoryOptimizationStrategy: Send + Sync {
     /// Get the memory strategy type used by this strategy
     fn memory_strategy_type(&self) -> MemoryStrategy;
 
-    /// Copy memory from source to destination with strategy-specific optimizations
+    /// Copy memory from source to destination with strategy-specific
+    /// optimizations
     fn copy_memory(
         &self,
         source: &[u8],
@@ -38,9 +42,9 @@ pub trait MemoryOptimizationStrategy: Send + Sync {
 
 /// Zero-copy memory optimization strategy
 ///
-/// This strategy avoids copying data when possible, using direct memory references
-/// for highest performance. Only suitable for trusted components running in the same
-/// memory space with strong isolation guarantees.
+/// This strategy avoids copying data when possible, using direct memory
+/// references for highest performance. Only suitable for trusted components
+/// running in the same memory space with strong isolation guarantees.
 #[derive(Debug, Clone)]
 pub struct ZeroCopyStrategy {
     /// Minimum trust level required for this strategy
@@ -90,8 +94,9 @@ impl MemoryOptimizationStrategy for ZeroCopyStrategy {
             ));
         }
 
-        // In a true zero-copy implementation, we would use memory mapping or other mechanisms
-        // to avoid copying. For this implementation, we still do a copy but could optimize further.
+        // In a true zero-copy implementation, we would use memory mapping or other
+        // mechanisms to avoid copying. For this implementation, we still do a
+        // copy but could optimize further.
         destination[..size].copy_from_slice(&source[offset..offset + size]);
 
         Ok(())
@@ -117,8 +122,8 @@ impl MemoryOptimizationStrategy for ZeroCopyStrategy {
 /// Bounded-copy memory optimization strategy
 ///
 /// This strategy uses bounded copies with buffer pooling for good performance
-/// while maintaining strong security boundaries. Suitable for standard components
-/// with moderate trust levels.
+/// while maintaining strong security boundaries. Suitable for standard
+/// components with moderate trust levels.
 #[derive(Debug)]
 pub struct BoundedCopyStrategy {
     /// Buffer pool for temporary allocations
@@ -297,7 +302,8 @@ impl MemoryOptimizationStrategy for FullIsolationStrategy {
             let byte = source[offset + i];
 
             // Example validation (could be more complex in real implementation)
-            // For demonstration, we make sure it's a valid ASCII value if it's a printable character
+            // For demonstration, we make sure it's a valid ASCII value if it's a printable
+            // character
             if byte >= 32 && byte < 127 {
                 // Valid ASCII printable character
                 destination[i] = byte;
@@ -328,8 +334,8 @@ impl MemoryOptimizationStrategy for FullIsolationStrategy {
     }
 }
 
-/// Creates the appropriate memory optimization strategy based on the relationship
-/// between components
+/// Creates the appropriate memory optimization strategy based on the
+/// relationship between components
 pub fn create_memory_strategy(
     source_trust_level: u8,
     destination_trust_level: u8,
@@ -372,7 +378,8 @@ mod tests {
         // Test appropriateness
         assert!(strategy.is_appropriate_for(3, 3, true)); // Trusted components in same runtime
         assert!(!strategy.is_appropriate_for(3, 3, false)); // Trusted components in different runtimes
-        assert!(!strategy.is_appropriate_for(2, 3, true)); // Mixed trust in same runtime
+        assert!(!strategy.is_appropriate_for(2, 3, true)); // Mixed trust in
+                                                           // same runtime
     }
 
     #[test]
@@ -393,7 +400,8 @@ mod tests {
         // Test appropriateness
         assert!(strategy.is_appropriate_for(1, 1, true)); // Standard trust in same runtime
         assert!(strategy.is_appropriate_for(1, 1, false)); // Standard trust in different runtimes
-        assert!(!strategy.is_appropriate_for(0, 1, true)); // Mixed trust with untrusted component
+        assert!(!strategy.is_appropriate_for(0, 1, true)); // Mixed trust with
+                                                           // untrusted component
     }
 
     #[test]

@@ -1,10 +1,12 @@
 //! Execution time limit implementation for Component Model
 //!
-//! This module provides mechanisms to enforce execution time limits for component
-//! operations, specifically supporting the start function requirements.
+//! This module provides mechanisms to enforce execution time limits for
+//! component operations, specifically supporting the start function
+//! requirements.
+
+use wrt_error::kinds::{ExecutionLimitExceeded, ExecutionTimeoutError};
 
 use crate::prelude::*;
-use wrt_error::kinds::{ExecutionLimitExceeded, ExecutionTimeoutError};
 
 /// Represents the outcome of a time-bounded execution
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -213,8 +215,9 @@ where
 
 #[cfg(all(test, feature = "std"))]
 mod tests {
-    use super::*;
     use std::thread;
+
+    use super::*;
 
     #[test]
     fn test_time_bounded_execution_success() {

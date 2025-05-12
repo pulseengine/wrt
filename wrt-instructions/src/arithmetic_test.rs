@@ -1,16 +1,16 @@
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+use alloc::vec::Vec;
+// Import Vec based on feature flags
+#[cfg(feature = "std")]
+use std::vec::Vec;
+
+use wrt_error::{codes, ErrorCategory};
+
 use crate::{
     arithmetic_ops::{ArithmeticContext, ArithmeticOp},
     instruction_traits::PureInstruction,
     Error, Value,
 };
-use wrt_error::{codes, ErrorCategory};
-
-// Import Vec based on feature flags
-#[cfg(feature = "std")]
-use std::vec::Vec;
-
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::vec::Vec;
 
 struct SimpleContext {
     stack: Vec<Value>,

@@ -2,9 +2,9 @@
 //!
 //! Functions for decoding WebAssembly core modules from binary format.
 
-use crate::module::Module;
-use crate::parser::Parser;
 use wrt_error::Result;
+
+use crate::{module::Module, parser::Parser};
 
 /// Initialize a default parser config
 pub fn default_parser_config() -> crate::decoder_core::config::ParserConfig {
@@ -45,7 +45,8 @@ pub fn decode_module(binary: &[u8]) -> Result<Module> {
 /// Decode a WebAssembly module from binary data without validation
 ///
 /// This function decodes a module without validating it, which can be useful
-/// for certain use cases where validation is not required or will be done later.
+/// for certain use cases where validation is not required or will be done
+/// later.
 ///
 /// # Arguments
 ///

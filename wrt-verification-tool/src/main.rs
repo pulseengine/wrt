@@ -1,7 +1,9 @@
 // WRT - wrt-verification-tool
-// SW-REQ-ID: [SW-REQ-ID-wrt-verification-tool]
+// Module: WRT Verification Tool
+// SW-REQ-ID: REQ_QUAL_005
+// SW-REQ-ID: REQ_DEV_003
 //
-// Copyright (c) 2025 Ralf Anton Beier
+// Copyright (c) 2024 Ralf Anton Beier
 // Licensed under the MIT license.
 // SPDX-License-Identifier: MIT
 
@@ -18,11 +20,10 @@ extern crate alloc;
 mod tests;
 
 // Import appropriate types based on environment
-#[cfg(feature = "std")]
-use std::{format, process, string::String, time::Instant, vec::Vec};
-
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 use alloc::{format, string::String, vec::Vec};
+#[cfg(feature = "std")]
+use std::{format, process, string::String, time::Instant, vec::Vec};
 
 use wrt_decoder::{find_section, Parser, Payload};
 
@@ -266,7 +267,8 @@ fn create_large_test_module() -> Vec<u8> {
 
     // Add 100 function types
     for _ in 0..100 {
-        types.extend_from_slice(&[0x60, 0x01, 0x7F, 0x01, 0x7F]); // (param i32) (result i32)
+        types.extend_from_slice(&[0x60, 0x01, 0x7F, 0x01, 0x7F]); // (param i32)
+                                                                  // (result i32)
     }
 
     // Add length of section content

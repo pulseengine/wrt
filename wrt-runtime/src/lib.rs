@@ -1,7 +1,10 @@
 // WRT - wrt-runtime
-// SW-REQ-ID: [SW-REQ-ID-wrt-runtime]
+// Module: Core WebAssembly Runtime
+// SW-REQ-ID: REQ_001
+// SW-REQ-ID: REQ_002
+// SW-REQ-ID: REQ_MEM_SAFETY_001
 //
-// Copyright (c) 2025 Ralf Anton Beier
+// Copyright (c) 2024 Ralf Anton Beier
 // Licensed under the MIT license.
 // SPDX-License-Identifier: MIT
 

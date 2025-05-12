@@ -9,10 +9,12 @@
 // coverage testing.
 #[cfg(any(doc, feature = "kani"))]
 pub mod proofs {
-    use crate::{LinkInterceptor, LinkInterceptorStrategy};
     use std::sync::Arc;
+
     use wrt_error::Result;
     use wrt_types::values::Value;
+
+    use crate::{LinkInterceptor, LinkInterceptorStrategy};
 
     /// A simple strategy for verification
     struct TestStrategy {

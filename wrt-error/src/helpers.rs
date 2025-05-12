@@ -5,7 +5,6 @@
 
 // Re-export error kind creation functions
 pub use crate::kinds::*;
-
 // Import ErrorCategory and Error for compatibility functions
 #[cfg(feature = "alloc")]
 use crate::Error;
@@ -17,13 +16,13 @@ extern crate std;
 extern crate alloc;
 
 #[cfg(feature = "alloc")]
+use alloc::format as alloc_format;
+#[cfg(feature = "alloc")]
 use alloc::string::ToString;
 
-#[cfg(feature = "alloc")]
-use alloc::format as alloc_format;
-
 // For backward compatibility - simple error creation functions
-/// Creates a simple validation error. Deprecated: use `Error::validation_error` instead.
+/// Creates a simple validation error. Deprecated: use `Error::validation_error`
+/// instead.
 #[cfg(feature = "alloc")]
 #[deprecated(since = "0.2.0", note = "use Error::validation_error instead")]
 pub fn create_simple_validation_error<T: core::fmt::Display>(message: T) -> Error {
@@ -37,42 +36,48 @@ pub fn create_simple_type_error<T: core::fmt::Display>(message: T) -> Error {
     Error::type_error(message.to_string())
 }
 
-/// Creates a simple memory error. Deprecated: use `Error::memory_error` instead.
+/// Creates a simple memory error. Deprecated: use `Error::memory_error`
+/// instead.
 #[cfg(feature = "alloc")]
 #[deprecated(since = "0.2.0", note = "use Error::memory_error instead")]
 pub fn create_simple_memory_error<T: core::fmt::Display>(message: T) -> Error {
     Error::memory_error(message.to_string())
 }
 
-/// Creates a simple resource error. Deprecated: use `Error::resource_error` instead.
+/// Creates a simple resource error. Deprecated: use `Error::resource_error`
+/// instead.
 #[cfg(feature = "alloc")]
 #[deprecated(since = "0.2.0", note = "use Error::resource_error instead")]
 pub fn create_simple_resource_error<T: core::fmt::Display>(message: T) -> Error {
     Error::resource_error(message.to_string())
 }
 
-/// Creates a simple component error. Deprecated: use `Error::component_error` instead.
+/// Creates a simple component error. Deprecated: use `Error::component_error`
+/// instead.
 #[cfg(feature = "alloc")]
 #[deprecated(since = "0.2.0", note = "use Error::component_error instead")]
 pub fn create_simple_component_error<T: core::fmt::Display>(message: T) -> Error {
     Error::component_error(message.to_string())
 }
 
-/// Creates a simple runtime error. Deprecated: use `Error::runtime_error` instead.
+/// Creates a simple runtime error. Deprecated: use `Error::runtime_error`
+/// instead.
 #[cfg(feature = "alloc")]
 #[deprecated(since = "0.2.0", note = "use Error::runtime_error instead")]
 pub fn create_simple_runtime_error<T: core::fmt::Display>(message: T) -> Error {
     Error::runtime_error(message.to_string())
 }
 
-/// Creates a simple system error. Deprecated: use `Error::system_error` instead.
+/// Creates a simple system error. Deprecated: use `Error::system_error`
+/// instead.
 #[cfg(feature = "alloc")]
 #[deprecated(since = "0.2.0", note = "use Error::system_error instead")]
 pub fn create_simple_system_error<T: core::fmt::Display>(message: T) -> Error {
     Error::system_error(message.to_string())
 }
 
-/// Creates a resource limit error. Deprecated: use `Error::resource_error` with a formatted message instead.
+/// Creates a resource limit error. Deprecated: use `Error::resource_error` with
+/// a formatted message instead.
 #[cfg(feature = "alloc")]
 #[deprecated(since = "0.2.0", note = "use Error::resource_error with formatted message instead")]
 #[must_use]
@@ -82,7 +87,8 @@ pub fn create_resource_limit_error(resource_type: &str, current: usize, limit: u
     ))
 }
 
-/// Creates a memory access error. Deprecated: use `Error::memory_error` with a formatted message instead.
+/// Creates a memory access error. Deprecated: use `Error::memory_error` with a
+/// formatted message instead.
 #[cfg(feature = "alloc")]
 #[deprecated(since = "0.2.0", note = "use Error::memory_error with formatted message instead")]
 #[must_use]
@@ -93,11 +99,13 @@ pub fn create_memory_access_error(
     operation: &str,
 ) -> Error {
     Error::memory_error(alloc_format!(
-        "Memory access out of bounds during {operation}: address={address}, size={size}, memory_size={memory_size}"
+        "Memory access out of bounds during {operation}: address={address}, size={size}, \
+         memory_size={memory_size}"
     ))
 }
 
-/// Creates a type mismatch error. Deprecated: use `Error::type_error` with a formatted message instead.
+/// Creates a type mismatch error. Deprecated: use `Error::type_error` with a
+/// formatted message instead.
 #[cfg(feature = "alloc")]
 #[deprecated(since = "0.2.0", note = "use Error::type_error with formatted message instead")]
 #[must_use]
@@ -107,7 +115,8 @@ pub fn create_type_mismatch_error(expected: &str, actual: &str, context: &str) -
     ))
 }
 
-/// Creates an index error. Deprecated: use `Error::core_error` with a formatted message instead.
+/// Creates an index error. Deprecated: use `Error::core_error` with a formatted
+/// message instead.
 #[cfg(feature = "alloc")]
 #[deprecated(since = "0.2.0", note = "use Error::core_error with formatted message instead")]
 #[must_use]
@@ -115,7 +124,8 @@ pub fn create_index_error(index_type: &str, index: usize) -> Error {
     Error::core_error(alloc_format!("Invalid {index_type} index: {index}"))
 }
 
-/// Creates a bounded error (capacity exceeded). Deprecated: use `Error::resource_error` with a formatted message instead.
+/// Creates a bounded error (capacity exceeded). Deprecated: use
+/// `Error::resource_error` with a formatted message instead.
 #[cfg(feature = "alloc")]
 #[deprecated(since = "0.2.0", note = "use Error::resource_error with formatted message instead")]
 pub fn convert_bounded_error<E: core::fmt::Display, T: core::fmt::Display>(
@@ -127,7 +137,8 @@ pub fn convert_bounded_error<E: core::fmt::Display, T: core::fmt::Display>(
     ))
 }
 
-/// Creates a bounded index error (index out of bounds). Deprecated: use `Error::core_error` with a formatted message instead.
+/// Creates a bounded index error (index out of bounds). Deprecated: use
+/// `Error::core_error` with a formatted message instead.
 #[cfg(feature = "alloc")]
 #[deprecated(since = "0.2.0", note = "use Error::core_error with formatted message instead")]
 pub fn convert_bounded_index_error<I: core::fmt::Display, M: core::fmt::Display>(

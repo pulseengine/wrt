@@ -3,14 +3,18 @@
 //! This module provides utilities for serializing and deserializing WebAssembly
 //! runtime state using custom sections.
 
-use crate::compression::{rle_decode, rle_encode, CompressionType};
-use crate::section::CustomSection;
-use crate::version::{STATE_MAGIC, STATE_VERSION};
-use crate::{format, String, Vec};
-use wrt_error::{codes, Error, ErrorCategory, Result};
-
 #[cfg(not(feature = "std"))]
 use alloc::string::ToString;
+
+use wrt_error::{codes, Error, ErrorCategory, Result};
+
+use crate::{
+    compression::{rle_decode, rle_encode, CompressionType},
+    format,
+    section::CustomSection,
+    version::{STATE_MAGIC, STATE_VERSION},
+    String, Vec,
+};
 
 /// Constants for state section names
 pub const STATE_SECTION_PREFIX: &str = "wrt-state";
@@ -264,7 +268,8 @@ pub fn has_state_sections(custom_sections: &[CustomSection]) -> bool {
 ///
 /// # Returns
 ///
-/// `true` if the name matches one of the `StateSection` variants, `false` otherwise.
+/// `true` if the name matches one of the `StateSection` variants, `false`
+/// otherwise.
 pub fn is_state_section_name(name: &str) -> bool {
     StateSection::from_name(name).is_some()
 }

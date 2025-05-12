@@ -1,16 +1,12 @@
 //! Decoder integration for wrt
 //!
-//! This module provides the integration layer between wrt-decoder and wrt-runtime,
-//! handling the safe and efficient decoding of WebAssembly modules.
+//! This module provides the integration layer between wrt-decoder and
+//! wrt-runtime, handling the safe and efficient decoding of WebAssembly
+//! modules.
 //!
-//! The implementation delegates to the specialized crates (wrt-decoder for decoding,
-//! wrt-runtime for module building) to avoid code duplication and maintain clean
-//! separation of concerns.
-
-use crate::prelude::*;
-
-// Re-export the module loading functionality from wrt-runtime
-pub use wrt_runtime::module_builder::load_module_from_binary;
+//! The implementation delegates to the specialized crates (wrt-decoder for
+//! decoding, wrt-runtime for module building) to avoid code duplication and
+//! maintain clean separation of concerns.
 
 // Re-export useful decoder functions for convenience
 pub use wrt_decoder::{
@@ -18,11 +14,15 @@ pub use wrt_decoder::{
     runtime_adapter::{convert_to_runtime_module, RuntimeModuleBuilder},
     validate,
 };
+// Re-export the module loading functionality from wrt-runtime
+pub use wrt_runtime::module_builder::load_module_from_binary;
+
+use crate::prelude::*;
 
 /// Load a module from a binary buffer
 ///
-/// This is a convenience function that delegates to wrt-runtime's module builder,
-/// which implements the RuntimeModuleBuilder trait from wrt-decoder.
+/// This is a convenience function that delegates to wrt-runtime's module
+/// builder, which implements the RuntimeModuleBuilder trait from wrt-decoder.
 ///
 /// # Arguments
 ///

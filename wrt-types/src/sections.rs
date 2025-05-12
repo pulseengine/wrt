@@ -1,6 +1,7 @@
 // WRT - wrt-types
 // Module: WebAssembly Section Definitions
-// SW-REQ-ID: REQ_WASM_CORE_003 (Example: Relates to Wasm binary format structure)
+// SW-REQ-ID: REQ_018
+// SW-REQ-ID: REQ_WASM_001
 //
 // Copyright (c) 2024 Ralf Anton Beier
 // Licensed under the MIT license.
@@ -9,8 +10,9 @@
 //! Module representing WASM module sections with built-in
 //! safety verification built in.
 
-use crate::safe_memory::SafeSlice;
 use wrt_error::{codes, Error, ErrorCategory, Result};
+
+use crate::safe_memory::SafeSlice;
 
 /// WebAssembly section ID values
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -163,6 +165,7 @@ pub struct Section<'a> {
 
 impl<'a> Section<'a> {
     /// Create a new section
+    #[must_use]
     pub fn new(id: SectionId, data: SafeSlice<'a>, size: u32, offset: u32) -> Self {
         Self { id, data, size, offset }
     }

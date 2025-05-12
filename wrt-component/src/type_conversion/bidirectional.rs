@@ -26,24 +26,22 @@
 //! let format_func_again = runtime_to_format_extern_type(&runtime_func).unwrap();
 //! ```
 
-use crate::prelude::*;
-
 // Explicitly import the types we need to avoid confusion
 use wrt_error::kinds::{InvalidArgumentError, NotImplementedError};
-use wrt_format::component::ExternType as FormatExternType;
-use wrt_format::component::ValType as FormatValType;
 use wrt_format::component::{
-    ComponentTypeDefinition, ConstValue as FormatConstValue,
-    ResourceOperation as FormatResourceOperation, ResourceRepresentation,
+    ComponentTypeDefinition, ConstValue as FormatConstValue, ExternType as FormatExternType,
+    ResourceOperation as FormatResourceOperation, ResourceRepresentation, ValType as FormatValType,
 };
-use wrt_types::component::FuncType as TypesFuncType;
-use wrt_types::component::{ComponentType, InstanceType};
-use wrt_types::component_value::ComponentValue;
-use wrt_types::component_value::ValType as TypesValType;
-use wrt_types::resource::{ResourceOperation, ResourceType};
-use wrt_types::types::ValueType;
-use wrt_types::values::Value;
-use wrt_types::ExternType as TypesExternType;
+use wrt_types::{
+    component::{ComponentType, FuncType as TypesFuncType, InstanceType},
+    component_value::{ComponentValue, ValType as TypesValType},
+    resource::{ResourceOperation, ResourceType},
+    types::ValueType,
+    values::Value,
+    ExternType as TypesExternType,
+};
+
+use crate::prelude::*;
 
 // Helper functions to handle type conversions with correct parameters
 
@@ -264,7 +262,8 @@ pub fn value_type_to_types_valtype(value_type: &ValueType) -> TypesValType {
 
 /// Convert FormatValType to TypesValType
 ///
-/// Comprehensive conversion from format value type to runtime component value type.
+/// Comprehensive conversion from format value type to runtime component value
+/// type.
 ///
 /// # Arguments
 ///
@@ -290,7 +289,8 @@ pub fn format_valtype_to_types_valtype(format_val_type: &FormatValType) -> Types
 
 /// Format type to types ValType helper function
 ///
-/// This is a public entry point for the helper function to ensure compatibility.
+/// This is a public entry point for the helper function to ensure
+/// compatibility.
 ///
 /// # Arguments
 ///
@@ -305,7 +305,8 @@ pub fn format_to_types_valtype(val_type: &TypesValType) -> TypesValType {
 
 /// Convert TypesValType to FormatValType
 ///
-/// Comprehensive conversion from runtime component value type to format value type.
+/// Comprehensive conversion from runtime component value type to format value
+/// type.
 ///
 /// # Arguments
 ///
@@ -443,8 +444,8 @@ pub fn format_to_runtime_extern_type(
             Ok(TypesExternType::Function(TypesFuncType::new(converted_params, converted_results)))
         }
         FormatExternType::Value(val_type) => {
-            // Convert to most appropriate TypesExternType - likely Function with no params/results
-            // Could be mapped as constant global in the future
+            // Convert to most appropriate TypesExternType - likely Function with no
+            // params/results Could be mapped as constant global in the future
             let value_type = format_val_type_to_value_type(val_type).unwrap_or(ValueType::I32);
             Ok(TypesExternType::Global(wrt_types::component::GlobalType {
                 value_type,
@@ -722,7 +723,8 @@ impl IntoFormatType<FormatValType> for TypesValType {
 
 /// Convert FormatConstValue to TypesComponentValue
 ///
-/// Comprehensive conversion from format constant value to runtime component value.
+/// Comprehensive conversion from format constant value to runtime component
+/// value.
 ///
 /// # Arguments
 ///
@@ -765,7 +767,8 @@ pub fn format_constvalue_to_types_componentvalue(
 
 /// Convert TypesComponentValue to FormatConstValue
 ///
-/// Comprehensive conversion from runtime component value to format constant value.
+/// Comprehensive conversion from runtime component value to format constant
+/// value.
 ///
 /// # Arguments
 ///
@@ -872,8 +875,9 @@ pub fn types_componentvalue_to_core_value(
         ComponentValue::S32(v) => Ok(wrt_types::values::Value::I32(*v)),
         ComponentValue::U32(v) => {
             // For U32, check if it represents a reference value (e.g., resource handle)
-            // For now, we'll treat all U32 as potential references to maintain compatibility
-            // A more sophisticated approach might involve checking the context
+            // For now, we'll treat all U32 as potential references to maintain
+            // compatibility A more sophisticated approach might involve
+            // checking the context
             if let Some(resource_index) = is_resource_reference(*v) {
                 Ok(wrt_types::values::Value::Ref(resource_index))
             } else {
@@ -899,7 +903,8 @@ pub fn types_componentvalue_to_core_value(
 /// a registry of resource handles or use contextual information.
 fn is_resource_reference(value: u32) -> Option<u32> {
     // For now, we'll always return None, defaulting to treating U32 as I32
-    // In a more complete implementation, this would check if the value is a valid resource handle
+    // In a more complete implementation, this would check if the value is a valid
+    // resource handle
     None
 }
 
@@ -907,9 +912,11 @@ fn is_resource_reference(value: u32) -> Option<u32> {
 pub use format_to_runtime_extern_type as format_to_types_extern_type;
 pub use runtime_to_format_extern_type as types_to_format_extern_type;
 
-/// Complete bidirectional conversion between wrt_types::ExternType and wrt_format::component::ExternType
+/// Complete bidirectional conversion between wrt_types::ExternType and
+/// wrt_format::component::ExternType
 ///
-/// This function handles all ExternType variants comprehensively, fixing previous compatibility issues.
+/// This function handles all ExternType variants comprehensively, fixing
+/// previous compatibility issues.
 ///
 /// # Arguments
 ///
@@ -917,7 +924,8 @@ pub use runtime_to_format_extern_type as types_to_format_extern_type;
 ///
 /// # Returns
 ///
-/// * Result containing the converted wrt_format::component::ExternType or an error
+/// * Result containing the converted wrt_format::component::ExternType or an
+///   error
 pub fn complete_types_to_format_extern_type(
     types_extern_type: &wrt_types::ExternType,
 ) -> Result<wrt_format::component::ExternType> {
@@ -1008,9 +1016,11 @@ pub fn complete_types_to_format_extern_type(
     }
 }
 
-/// Complete bidirectional conversion from wrt_format::component::ExternType to wrt_types::ExternType
+/// Complete bidirectional conversion from wrt_format::component::ExternType to
+/// wrt_types::ExternType
 ///
-/// This function handles all ExternType variants comprehensively, fixing previous compatibility issues.
+/// This function handles all ExternType variants comprehensively, fixing
+/// previous compatibility issues.
 ///
 /// # Arguments
 ///
@@ -1024,7 +1034,8 @@ pub fn complete_format_to_types_extern_type(
 ) -> Result<wrt_types::ExternType> {
     match format_extern_type {
         FormatExternType::Function { params, results } => {
-            // Convert parameter types - create an empty vector and then convert and add each parameter
+            // Convert parameter types - create an empty vector and then convert and add
+            // each parameter
             let mut param_types = Vec::new();
             for (_, format_val_type) in params {
                 // First convert to TypesValType, then to ValueType if needed
@@ -1044,7 +1055,8 @@ pub fn complete_format_to_types_extern_type(
                 }
             }
 
-            // Convert result types - create an empty vector and then convert and add each result
+            // Convert result types - create an empty vector and then convert and add each
+            // result
             let mut result_types = Vec::new();
             for format_val_type in results {
                 // First convert to TypesValType, then to ValueType if needed

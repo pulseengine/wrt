@@ -1,7 +1,9 @@
 // WRT - wrt-format
-// SW-REQ-ID: [SW-REQ-ID-wrt-format]
+// Module: WebAssembly Binary Format Definitions
+// SW-REQ-ID: REQ_021
+// SW-REQ-ID: REQ_013
 //
-// Copyright (c) 2025 Ralf Anton Beier
+// Copyright (c) 2024 Ralf Anton Beier
 // Licensed under the MIT license.
 // SPDX-License-Identifier: MIT
 
@@ -27,6 +29,15 @@ extern crate std;
 extern crate alloc;
 
 // Import std/alloc collections based on feature flag
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+pub use alloc::{
+    boxed::Box,
+    collections::{BTreeMap as HashMap, BTreeSet as HashSet},
+    fmt, format,
+    string::{String, ToString},
+    vec,
+    vec::Vec,
+};
 #[cfg(feature = "std")]
 pub use std::{
     boxed::Box,
@@ -37,24 +48,14 @@ pub use std::{
     vec::Vec,
 };
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-pub use alloc::{
-    boxed::Box,
-    collections::{BTreeMap as HashMap, BTreeSet as HashSet},
-    fmt, format,
-    string::{String, ToString},
-    vec,
-    vec::Vec,
-};
-
-// Re-export core types from wrt-types
-pub use wrt_types::{BlockType, FuncType, RefType, ValueType};
 // Re-export error types directly from wrt-error
 pub use wrt_error::{Error, ErrorCategory};
-// Re-export Result type from wrt-types
-pub use wrt_types::Result;
 // Re-export resource types from wrt-types
 pub use wrt_types::resource::ResourceRepresentation;
+// Re-export Result type from wrt-types
+pub use wrt_types::Result;
+// Re-export core types from wrt-types
+pub use wrt_types::{BlockType, FuncType, RefType, ValueType};
 
 /// WebAssembly binary format parsing and access
 pub mod binary;
@@ -83,6 +84,14 @@ pub mod validation;
 pub mod verify;
 pub mod version;
 
+// Re-export binary constants
+pub use binary::{
+    read_leb128_u32, read_string, write_leb128_u32, write_string, COMPONENT_CORE_SORT_FUNC,
+    COMPONENT_CORE_SORT_GLOBAL, COMPONENT_CORE_SORT_INSTANCE, COMPONENT_CORE_SORT_MEMORY,
+    COMPONENT_CORE_SORT_MODULE, COMPONENT_CORE_SORT_TABLE, COMPONENT_CORE_SORT_TYPE,
+    COMPONENT_MAGIC, COMPONENT_SORT_COMPONENT, COMPONENT_SORT_CORE, COMPONENT_SORT_FUNC,
+    COMPONENT_SORT_INSTANCE, COMPONENT_SORT_TYPE, COMPONENT_SORT_VALUE, COMPONENT_VERSION,
+};
 pub use component::Component;
 pub use compression::{rle_decode, rle_encode, CompressionType};
 // Re-export conversion utilities
@@ -95,6 +104,8 @@ pub use error::{
     wrt_validation_error as validation_error,
 };
 pub use module::Module;
+// Re-export safe memory utilities
+pub use safe_memory::safe_slice;
 pub use section::{CustomSection, Section};
 pub use state::{create_state_section, extract_state_section, is_state_section_name, StateSection};
 // Use the conversion module versions for consistency
@@ -103,17 +114,6 @@ pub use validation::Validatable;
 pub use version::{
     ComponentModelFeature, ComponentModelVersion, FeatureStatus, VersionInfo, STATE_VERSION,
 };
-// Re-export binary constants
-pub use binary::{
-    read_leb128_u32, read_string, write_leb128_u32, write_string, COMPONENT_CORE_SORT_FUNC,
-    COMPONENT_CORE_SORT_GLOBAL, COMPONENT_CORE_SORT_INSTANCE, COMPONENT_CORE_SORT_MEMORY,
-    COMPONENT_CORE_SORT_MODULE, COMPONENT_CORE_SORT_TABLE, COMPONENT_CORE_SORT_TYPE,
-    COMPONENT_MAGIC, COMPONENT_SORT_COMPONENT, COMPONENT_SORT_CORE, COMPONENT_SORT_FUNC,
-    COMPONENT_SORT_INSTANCE, COMPONENT_SORT_TYPE, COMPONENT_SORT_VALUE, COMPONENT_VERSION,
-};
-
-// Re-export safe memory utilities
-pub use safe_memory::safe_slice;
 
 // Public functions for feature detection
 /// Check if a component model feature is available in a binary

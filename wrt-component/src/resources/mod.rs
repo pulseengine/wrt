@@ -1,10 +1,12 @@
 //! Component Model resource type implementation
 //!
-//! This module provides resource type handling for the WebAssembly Component Model,
-//! including resource lifetime management, memory optimization, and interception support.
+//! This module provides resource type handling for the WebAssembly Component
+//! Model, including resource lifetime management, memory optimization, and
+//! interception support.
+
+use std::sync::Weak;
 
 use crate::prelude::*;
-use std::sync::Weak;
 
 // Submodules
 pub mod buffer_pool;
@@ -15,17 +17,16 @@ pub mod resource_operation;
 pub mod resource_strategy;
 
 // Re-export common types and functions
+#[cfg(not(feature = "std"))]
+use core::time::Duration;
+#[cfg(feature = "std")]
+use std::time::Instant;
+
 pub use buffer_pool::BufferPool;
 pub use memory_manager::MemoryManager;
 pub use memory_strategy::MemoryStrategyTrait;
 pub use resource_manager::{ResourceId, ResourceManager};
 pub use resource_operation::{from_format_resource_operation, to_format_resource_operation};
-
-#[cfg(feature = "std")]
-use std::time::Instant;
-
-#[cfg(not(feature = "std"))]
-use core::time::Duration;
 #[cfg(not(feature = "std"))]
 #[derive(Debug, Clone, Copy)]
 pub struct Instant {
@@ -57,11 +58,11 @@ impl Instant {
 }
 
 use wrt_format::component::ResourceOperation as FormatResourceOperation;
-use wrt_intercept::builtins::InterceptContext as InterceptionContext;
-use wrt_intercept::InterceptionResult;
+use wrt_intercept::{builtins::InterceptContext as InterceptionContext, InterceptionResult};
 use wrt_types::resource::ResourceOperation;
 
-// Define our own enum for memory access mode since wrt_intercept doesn't have one
+// Define our own enum for memory access mode since wrt_intercept doesn't have
+// one
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MemoryAccessMode {
     /// Read access to memory
@@ -656,8 +657,9 @@ pub trait ResourceInterceptor: Send + Sync {
 
 #[cfg(all(test, feature = "std"))]
 mod tests {
-    use super::*;
     use std::sync::Mutex;
+
+    use super::*;
 
     struct TestData {
         value: i32,

@@ -1,9 +1,11 @@
-use crate::prelude::*;
 use wrt_error::Result;
-use wrt_format::binary;
-use wrt_format::component::{CoreSort, Sort};
+use wrt_format::{
+    binary,
+    component::{CoreSort, Sort},
+};
 
 use super::types::ModuleInfo;
+use crate::prelude::*;
 
 /// Extract embedded WebAssembly modules from a component binary
 pub fn extract_embedded_modules(bytes: &[u8]) -> Result<Vec<Vec<u8>>> {

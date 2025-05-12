@@ -123,7 +123,8 @@ impl CallbackRegistry {
     ///
     /// # Errors
     ///
-    /// Returns an error if the host function is not found or fails during execution
+    /// Returns an error if the host function is not found or fails during
+    /// execution
     pub fn call_host_function(
         &self,
         engine: &mut dyn Any,
@@ -231,7 +232,8 @@ impl CallbackRegistry {
     ///
     /// # Errors
     ///
-    /// Returns an error if the built-in is not implemented or fails during execution
+    /// Returns an error if the built-in is not implemented or fails during
+    /// execution
     pub fn call_builtin_function(
         &self,
         engine: &mut dyn Any,
@@ -276,9 +278,9 @@ impl Clone for CallbackRegistry {
 
 #[cfg(test)]
 mod tests {
+    use wrt_types::{builtin::BuiltinType, values::Value};
+
     use super::*;
-    use wrt_types::builtin::BuiltinType;
-    use wrt_types::values::Value;
 
     #[test]
     fn test_callback_registry() {

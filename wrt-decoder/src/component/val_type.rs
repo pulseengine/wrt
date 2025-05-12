@@ -2,10 +2,10 @@
 //!
 //! This module provides helpers for encoding component value types.
 
-use crate::prelude::*;
 use wrt_error::{codes, Error, ErrorCategory, Result};
-use wrt_format::binary;
-use wrt_format::component::ValType;
+use wrt_format::{binary, component::ValType};
+
+use crate::prelude::*;
 
 /// Helper function to encode a value type to binary format
 pub fn encode_val_type(result: &mut Vec<u8>, val_type: &ValType) -> Result<()> {
@@ -92,7 +92,8 @@ pub fn encode_val_type(result: &mut Vec<u8>, val_type: &ValType) -> Result<()> {
         }
         ValType::Char => result.push(0x16),
         ValType::FixedList(inner, size) => {
-            // Fixed-length lists are encoded as a list tag followed by the element type and size
+            // Fixed-length lists are encoded as a list tag followed by the element type and
+            // size
             result.push(0x17); // Example tag for fixed list
             encode_val_type(result, inner)?;
 

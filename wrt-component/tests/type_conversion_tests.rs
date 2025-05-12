@@ -205,7 +205,8 @@ fn test_format_to_runtime_extern_type() {
         TypesExternType::Resource(resource_type) => {
             match resource_type {
                 ResourceType::Indexed(repr, _) => {
-                    assert_eq!(repr, 0); // Representation should be mapped to index
+                    assert_eq!(repr, 0); // Representation should be mapped to
+                                         // index
                 }
                 _ => panic!("Expected indexed resource type"),
             }
@@ -214,7 +215,8 @@ fn test_format_to_runtime_extern_type() {
     }
 }
 
-/// Test roundtrip conversion from runtime extern type to format extern type and back
+/// Test roundtrip conversion from runtime extern type to format extern type and
+/// back
 #[test]
 fn test_extern_type_roundtrip() {
     // Create a function type

@@ -1,8 +1,6 @@
 #![allow(dead_code)]
 
-use std::error::Error;
-use std::fs;
-use std::path::Path;
+use std::{error::Error, fs, path::Path};
 
 use crate::qualification::{parse_requirements, parse_specifications, Relationship};
 

@@ -1,16 +1,16 @@
 //! Error handling module for format specification
 //!
-//! This module provides error handling functionality for the format specification.
+//! This module provides error handling functionality for the format
+//! specification.
 
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+use alloc::{format, string::String};
 use core::fmt;
-use wrt_error::Error;
-
 // Import String and format macro for both std and no_std
 #[cfg(feature = "std")]
 use std::{format, string::String};
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::{format, string::String};
+use wrt_error::Error;
 
 /// Module for error codes
 pub mod codes {
@@ -78,8 +78,9 @@ pub fn wrt_parse_error(message: impl Into<String>) -> Error {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use wrt_error::{ErrorCategory, ErrorSource};
+
+    use super::*;
 
     #[test]
     fn test_error_creation() {

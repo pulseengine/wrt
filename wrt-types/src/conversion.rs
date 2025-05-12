@@ -1,6 +1,6 @@
 // WRT - wrt-types
 // Module: Type Conversion Utilities
-// SW-REQ-ID: REQ_WASM_CORE_004 (Example: Relates to type system consistency)
+// SW-REQ-ID: REQ_018
 //
 // Copyright (c) 2024 Ralf Anton Beier
 // Licensed under the MIT license.
@@ -14,13 +14,15 @@
 #[cfg(feature = "alloc")]
 extern crate alloc;
 
-use crate::{BlockType, FuncType, RefType, ValueType};
 use wrt_error::{codes, Error, Result};
 
-/// Convert RefType to ValueType
+use crate::{BlockType, FuncType, RefType, ValueType};
+
+/// Convert `RefType` to `ValueType`
 ///
 /// Provides a standard way to convert between reference types
 /// and value types across all crates.
+#[must_use]
 pub fn ref_type_to_val_type(ref_type: RefType) -> ValueType {
     match ref_type {
         RefType::Funcref => ValueType::FuncRef,
@@ -28,7 +30,7 @@ pub fn ref_type_to_val_type(ref_type: RefType) -> ValueType {
     }
 }
 
-/// Convert ValueType to RefType
+/// Convert `ValueType` to `RefType`
 ///
 /// Provides a standard way to convert between value types
 /// and reference types across all crates.
@@ -46,9 +48,9 @@ pub fn val_type_to_ref_type(val_type: ValueType) -> Result<RefType> {
 
 /// Block type utilities for converting between different representations
 pub mod block_type {
-    use super::*;
+    use super::BlockType;
 
-    /// Convert a FormatBlockType (from wrt-format) to BlockType
+    /// Convert a `FormatBlockType` (from wrt-format) to `BlockType`
     ///
     /// This utility makes it easier to work with block types across
     /// different modules without duplicating conversion logic.
@@ -56,23 +58,23 @@ pub mod block_type {
         format_block_type.to_block_type()
     }
 
-    /// Trait for types that can be converted to BlockType
+    /// Trait for types that can be converted to `BlockType`
     ///
     /// This trait allows for standardized conversion from different
-    /// representations of block types to the core BlockType enum.
+    /// representations of block types to the core `BlockType` enum.
     pub trait ConvertToBlockType {
-        /// Convert to BlockType
+        /// Convert to `BlockType`
         fn to_block_type(&self) -> BlockType;
     }
 }
 
-/// FuncType utilities for working with function types consistently
+/// `FuncType` utilities for working with function types consistently
 pub mod func_type {
-    use super::*;
-    use crate::Result;
-
     #[cfg(not(feature = "std"))]
     use alloc::vec::Vec;
+
+    use super::{FuncType, ValueType};
+    use crate::Result;
 
     /// Verify that a function type conforms to WebAssembly constraints
     ///
@@ -95,10 +97,10 @@ pub mod func_type {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     #[cfg(not(feature = "std"))]
     use alloc::vec;
+
+    use super::*;
 
     #[test]
     fn test_val_type_conversions() {

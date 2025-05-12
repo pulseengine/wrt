@@ -1,5 +1,5 @@
-/// This file provides a simple test that checks if any proposal features are enabled.
-/// The real proposal tests are in wast_tests.rs.
+/// This file provides a simple test that checks if any proposal features are
+/// enabled. The real proposal tests are in wast_tests.rs.
 
 /// Run all available tests for all enabled proposal features
 /// This is a convenience function to run everything with detailed reporting

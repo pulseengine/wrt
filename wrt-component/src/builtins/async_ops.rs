@@ -6,13 +6,8 @@
 // - async.poll: Poll an async value for completion
 // - async.wait: Wait for an async value to complete
 
-#[cfg(feature = "component-model-async")]
-use wrt_error::{kinds::AsyncError, Error, Result};
-#[cfg(feature = "component-model-async")]
-use wrt_types::builtin::BuiltinType;
-#[cfg(feature = "component-model-async")]
-use wrt_types::component_value::ComponentValue;
-
+#[cfg(all(feature = "component-model-async", not(feature = "std"), feature = "alloc"))]
+use alloc::{boxed::Box, collections::HashMap, sync::Arc, vec::Vec};
 #[cfg(all(feature = "component-model-async", feature = "std"))]
 use std::{
     boxed::Box,
@@ -24,8 +19,12 @@ use std::{
     vec::Vec,
 };
 
-#[cfg(all(feature = "component-model-async", not(feature = "std"), feature = "alloc"))]
-use alloc::{boxed::Box, collections::HashMap, sync::Arc, vec::Vec};
+#[cfg(feature = "component-model-async")]
+use wrt_error::{kinds::AsyncError, Error, Result};
+#[cfg(feature = "component-model-async")]
+use wrt_types::builtin::BuiltinType;
+#[cfg(feature = "component-model-async")]
+use wrt_types::component_value::ComponentValue;
 
 #[cfg(feature = "component-model-async")]
 use crate::builtins::BuiltinHandler;
@@ -213,7 +212,8 @@ impl Future for AsyncValueFuture {
 
         match store.get_status(id) {
             Ok(AsyncStatus::Ready) => Poll::Ready(store.get_result(id)),
-            Ok(AsyncStatus::Failed) => Poll::Ready(store.get_result(id)), // This will return the error
+            Ok(AsyncStatus::Failed) => Poll::Ready(store.get_result(id)), // This will return
+            // the error
             Ok(AsyncStatus::Pending) => {
                 // Register the waker and return Pending
                 let _ = store.set_waker(id, cx.waker().clone());

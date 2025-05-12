@@ -1,9 +1,11 @@
-use crate::Query;
+use std::fs;
+
 use anyhow::{Context, Result};
 use dagger_sdk::HostDirectoryOpts;
 use serde::Deserialize;
-use std::fs;
 use tracing::info;
+
+use crate::Query;
 
 #[derive(Deserialize, Debug)]
 struct ToolchainConfig {

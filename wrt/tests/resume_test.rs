@@ -1,14 +1,15 @@
 #[cfg(test)]
 mod resume_tests {
     use wat;
-    use wrt::error::Result;
-    use wrt::execution::ExecutionState;
-    use wrt::instructions::Instruction;
-    use wrt::module::Function;
-    use wrt::types::{FuncType, ValueType};
-    use wrt::values::Value;
-    use wrt::Module;
-    use wrt::StacklessEngine;
+    use wrt::{
+        error::Result,
+        execution::ExecutionState,
+        instructions::Instruction,
+        module::Function,
+        types::{FuncType, ValueType},
+        values::Value,
+        Module, StacklessEngine,
+    };
 
     #[test]
     fn test_pause_on_fuel_exhaustion() -> Result<()> {

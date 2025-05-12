@@ -1,15 +1,20 @@
 //! Integration tests for memory safety implementations.
 //!
-//! These tests verify that our memory and table implementations properly use safe memory structures.
+//! These tests verify that our memory and table implementations properly use
+//! safe memory structures.
 
 use wrt_error::Result;
-use wrt_runtime::memory::Memory;
-use wrt_runtime::table::Table;
-use wrt_runtime::types::{MemoryType, TableType};
-use wrt_types::safe_memory::{SafeMemoryHandler, SafeSlice};
-use wrt_types::types::{Limits, ValueType};
-use wrt_types::values::Value;
-use wrt_types::verification::VerificationLevel;
+use wrt_runtime::{
+    memory::Memory,
+    table::Table,
+    types::{MemoryType, TableType},
+};
+use wrt_types::{
+    safe_memory::{SafeMemoryHandler, SafeSlice},
+    types::{Limits, ValueType},
+    values::Value,
+    verification::VerificationLevel,
+};
 
 #[test]
 fn test_memory_with_safe_memory_handler() -> Result<()> {

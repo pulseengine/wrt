@@ -2,8 +2,7 @@
 //!
 //! This module provides factory functionality to create components.
 
-use crate::component::Component;
-use crate::prelude::*;
+use crate::{component::Component, prelude::*};
 
 /// Factory for creating WebAssembly components
 #[derive(Debug, Default)]

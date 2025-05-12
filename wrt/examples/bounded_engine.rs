@@ -1,7 +1,8 @@
 //! Example demonstrating the bounded collections in the StacklessEngine
 //!
 //! This example shows how to use the StacklessEngine with bounded collections,
-//! and how to configure the verification level for different safety/performance tradeoffs.
+//! and how to configure the verification level for different safety/performance
+//! tradeoffs.
 
 use wrt::{stackless::StacklessEngine, values::Value, Module, Result};
 use wrt_types::VerificationLevel;

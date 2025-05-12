@@ -1,7 +1,9 @@
 // WRT - wrt-component
-// SW-REQ-ID: [SW-REQ-ID-wrt-component]
+// Module: WebAssembly Component Model Implementation
+// SW-REQ-ID: REQ_019
+// SW-REQ-ID: REQ_002
 //
-// Copyright (c) 2025 Ralf Anton Beier
+// Copyright (c) 2024 Ralf Anton Beier
 // Licensed under the MIT license.
 // SPDX-License-Identifier: MIT
 
@@ -77,11 +79,9 @@ pub use type_conversion::{
     format_to_types_extern_type, format_val_type_to_value_type, format_valtype_to_types_valtype,
     types_componentvalue_to_core_value, types_componentvalue_to_format_constvalue,
     types_to_format_extern_type, types_valtype_to_format_valtype, value_type_to_format_val_type,
-    value_type_to_types_valtype, IntoFormatType, IntoRuntimeType,
-};
-pub use type_conversion::{
-    FormatComponentType, FormatInstanceType, IntoFormatComponentType, IntoFormatInstanceType,
-    IntoRuntimeComponentType, IntoRuntimeInstanceType, RuntimeComponentType, RuntimeInstanceType,
+    value_type_to_types_valtype, FormatComponentType, FormatInstanceType, IntoFormatComponentType,
+    IntoFormatInstanceType, IntoFormatType, IntoRuntimeComponentType, IntoRuntimeInstanceType,
+    IntoRuntimeType, RuntimeComponentType, RuntimeInstanceType,
 };
 pub use types::ComponentInstance;
 pub use values::{
@@ -92,10 +92,9 @@ pub use values::{
 };
 pub use wrt_error::{codes, Error, ErrorCategory, Result};
 pub use wrt_host::CallbackRegistry;
-pub use wrt_types::builtin::BuiltinType;
-pub use wrt_types::component::ComponentType;
-pub use wrt_types::types::ValueType;
-pub use wrt_types::values::Value;
+pub use wrt_types::{
+    builtin::BuiltinType, component::ComponentType, types::ValueType, values::Value,
+};
 
 /// Debug logging macro - conditionally compiled
 #[macro_export]

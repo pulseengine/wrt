@@ -1,11 +1,15 @@
 // See: https://lib.rs/crates/dagger-sdk and https://github.com/dagger/dagger/blob/main/sdk/rust/crates/dagger-sdk/examples/first-pipeline/main.rs
-use crate::Query;
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
+
 use anyhow::{anyhow, bail, Result as AnyhowResult};
 use dagger_sdk::HostDirectoryOpts;
-use std::fs;
-use std::path::{Path, PathBuf};
 use tempfile::TempDir;
 use tracing::{error, info, instrument, warn};
+
+use crate::Query;
 
 // const MDBOOK_IMAGE: &str = "localhost/obrunsm/mdbook-extended:latest";
 // const NETLIFY_IMAGE: &str = "netlify/cli:latest";
@@ -135,10 +139,7 @@ async fn run_docs_version_pipeline(
 
     let sphinx_source_dir = client.host().directory_opts(
         docs_src_path_in_worktree_str,
-        HostDirectoryOpts {
-            exclude: Some(vec!["./.git", "**/target", "**/.DS_Store"]),
-            include: None,
-        },
+        HostDirectoryOpts { exclude: None, include: None },
     );
 
     let docs_container = client
@@ -146,7 +147,7 @@ async fn run_docs_version_pipeline(
         .from("sphinxdoc/sphinx:latest")
         .with_mounted_directory("/docs_src", sphinx_source_dir)
         .with_workdir("/docs_src")
-        .with_exec(vec!["pip", "install", "-r", "requirements.txt"])
+        .with_exec(vec!["pip", "install", "-r", "../requirements.txt"])
         .with_exec(vec!["sphinx-build", "-b", "html", ".", "../_build/html"]);
 
     let exit_code = anyhow::Context::context(
@@ -216,92 +217,131 @@ async fn run_docs_version_pipeline(
 pub async fn check_docs_strict_pipeline(client: &Query) -> AnyhowResult<()> {
     info!("Starting Daggerized strict documentation check pipeline...");
 
-    let base_path = anyhow::Context::context(
-        std::env::current_dir(),
-        "Failed to get current directory for check_docs_strict_pipeline",
-    )?;
-    let mount_dir_path = base_path.clone();
-
-    let host_dir_path_str = mount_dir_path.to_str().ok_or_else(|| {
-        anyhow!("Mount directory path for Dagger is not valid UTF-8: {:?}", mount_dir_path)
-    })?;
+    // Get the project root directory, canonicalized
+    let current_dir = std::env::current_dir()?;
+    let host_dir_path = current_dir.canonicalize()?;
+    let host_dir_path_str = host_dir_path
+        .to_str()
+        .ok_or_else(|| anyhow::anyhow!("Failed to convert workspace root path to string"))?;
 
     let project_src_dir = client.host().directory_opts(
-        host_dir_path_str,
+        host_dir_path_str, // Use canonicalized absolute path
         HostDirectoryOpts {
-            exclude: Some(vec![
-                "./.git",
-                ".idea",
-                ".DS_Store",
-                "target",
-                ".cargo/git",
-                ".cargo/registry",
-                "**/*.crc",
-                ".vscode",
-                ".zephyr-venv",
-                ".zephyrproject",
-                "docs/_build",
-            ]),
-            include: None,
+            exclude: Some(vec!["./target", "./.git", "./.cargo"]),
+            include: Some(vec!["./wrt*", "./docs", "./Cargo.toml", "./Cargo.lock"]),
         },
     );
 
-    let requirements_path = "docs/source/requirements.txt";
-
-    let build_cmd = vec![
-        "sphinx-build",
-        "-W",
-        "-E",
-        "-a",
-        "-b",
-        "html",
-        "docs/source",
-        "docs/_build/html_strict_check",
-    ];
-
-    let container = client
+    let python_image = "python:3.11-slim";
+    let python_container = client
         .container()
-        .from("sphinxdoc/sphinx:latest")
-        .with_mounted_directory("/src", project_src_dir)
-        .with_workdir("/src")
-        .with_exec(vec!["pip", "install", "-r", requirements_path])
-        .with_exec(build_cmd);
+        .from(python_image)
+        // Install build tools, then Rust/Cargo
+        .with_exec(vec!["apt-get", "update"])
+        .with_exec(vec!["apt-get", "install", "-y", "curl", "build-essential", "gcc"])
+        // Ensure sh can find curl and gcc for the rustup script
+        .with_env_variable("PATH", "/usr/bin:/usr/local/bin:$PATH")
+        .with_exec(vec![
+            "sh",
+            "-c",
+            "curl --proto =https --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y",
+        ])
+        // Add Cargo to PATH, ensure Python's bin and system bins are still there, and set CC
+        .with_env_variable("PATH", "/root/.cargo/bin:/usr/local/bin:/usr/bin:$PATH")
+        .with_env_variable("CC", "gcc")
+        .with_env_variable("RUST_BACKTRACE", "1")
+        .with_mounted_directory("/wrt", project_src_dir.id().await?)
+        .with_workdir("/wrt")
+        .with_exec(vec!["pip", "install", "-r", "docs/requirements.txt"])
+        .with_exec(vec![
+            "sphinx-build",
+            "-E",
+            "-a",
+            "-b",
+            "html",
+            "docs/source",
+            "docs/_build/html_strict_check",
+        ]);
 
-    let exit_code = anyhow::Context::context(
-        container.exit_code().await,
-        "Failed to get exit code from Sphinx strict check container",
-    )?;
+    let exit_code_result = python_container.exit_code().await;
 
-    if exit_code == 0 {
-        info!("Sphinx strict check passed.");
-        Ok(())
-    } else {
-        let stderr = container
-            .stderr()
-            .await
-            .unwrap_or_else(|e| format!("Failed to fetch stderr after Sphinx failure: {:?}", e));
-        error!("Sphinx strict check failed with exit code {}. Stderr: {}", exit_code, stderr);
-        bail!("Sphinx strict check failed. Exit code: {}. Stderr: {}", exit_code, stderr)
+    match exit_code_result {
+        Ok(exit_code) => {
+            if exit_code == 0 {
+                info!("Sphinx strict check passed.");
+                Ok(())
+            } else {
+                let stderr_result = python_container.stderr().await;
+                match stderr_result {
+                    Ok(stderr_output) => {
+                        error!(
+                            "Sphinx strict check failed with exit code {}. Stderr: {}",
+                            exit_code, stderr_output
+                        );
+                        bail!(
+                            "Sphinx strict check failed. Exit code: {}. Stderr: {}",
+                            exit_code,
+                            stderr_output
+                        )
+                    }
+                    Err(e) => {
+                        error!(
+                            "Sphinx strict check failed with exit code {}. Additionally, failed \
+                             to fetch stderr: {:?}",
+                            exit_code, e
+                        );
+                        bail!(
+                            "Sphinx strict check failed with exit code {}. Failed to fetch \
+                             stderr: {:?}",
+                            exit_code,
+                            e
+                        )
+                    }
+                }
+            }
+        }
+        Err(e) => {
+            error!("Failed to get exit code from Sphinx strict check container: {:?}", e);
+            // Attempt to get stdout/stderr even if exit_code failed, as they might contain
+            // clues
+            let stdout_dbg = python_container
+                .stdout()
+                .await
+                .unwrap_or_else(|dbg_e| format!("Failed to get stdout for debugging: {:?}", dbg_e));
+            let stderr_dbg = python_container
+                .stderr()
+                .await
+                .unwrap_or_else(|dbg_e| format!("Failed to get stderr for debugging: {:?}", dbg_e));
+            error!(
+                "Attempted to get container logs for debugging. Stdout: {}. Stderr: {}",
+                stdout_dbg, stderr_dbg
+            );
+            // Use anyhow::Error::new(e) to wrap the original error and add context.
+            Err(anyhow::Error::new(e).context(
+                "Failed to get exit code from Sphinx strict check container (outer error)",
+            ))
+        }
     }
 }
 
 // Helper function to manage temporary git worktree removal
-// Not strictly necessary with TempDir.close() but can be expanded for more robust cleanup
-// fn cleanup_worktree(worktree_path: &Path, version: &str) -> AnyhowResult<()> {
-//     info!(\"Cleaning up worktree for version {}: {:?}\", version, worktree_path);
-//     std::process::Command::new(\"git\")
-//         .args(&[\"worktree\", \"remove\", \"--force\", worktree_path.to_str().context(\"Invalid worktree path for cleanup\")?])
+// Not strictly necessary with TempDir.close() but can be expanded for more
+// robust cleanup fn cleanup_worktree(worktree_path: &Path, version: &str) ->
+// AnyhowResult<()> {     info!(\"Cleaning up worktree for version {}: {:?}\",
+// version, worktree_path);     std::process::Command::new(\"git\")
+//         .args(&[\"worktree\", \"remove\", \"--force\",
+// worktree_path.to_str().context(\"Invalid worktree path for cleanup\")?])
 //         .status()
-//         .context(format!(\"Failed to cleanup git worktree at {:?}\", worktree_path))
-//         .and_then(|status| {
+//         .context(format!(\"Failed to cleanup git worktree at {:?}\",
+// worktree_path))         .and_then(|status| {
 //             if status.success() {
 //                 Ok(())
 //             } else {
-//                 Err(anyhow!(\"Git worktree remove command failed for {:?} with status {}\", worktree_path, status))
-//             }
+//                 Err(anyhow!(\"Git worktree remove command failed for {:?}
+// with status {}\", worktree_path, status))             }
 //         })?;
-//     // TempDir will also attempt to remove its directory when it goes out of scope.
-//     Ok(())
+//     // TempDir will also attempt to remove its directory when it goes out of
+// scope.     Ok(())
 // }
 
 // TODO: Add unit tests for this pipeline
@@ -309,12 +349,15 @@ pub async fn check_docs_strict_pipeline(client: &Query) -> AnyhowResult<()> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::fs;
+
     use tempfile::tempdir;
 
+    use super::*;
+
     #[tokio::test]
-    #[ignore] // Test requires Docker/Dagger, network access for git clone, and a valid repo_url.
+    #[ignore] // Test requires Docker/Dagger, network access for git clone, and a valid
+              // repo_url.
     async fn test_run_docs_pipeline_main_branch_mocked_env() {
         let temp_output_dir = tempdir().unwrap();
         let output_dir = temp_output_dir.path().to_path_buf();
@@ -328,14 +371,21 @@ mod tests {
         fs::write(dummy_docs_dir.join("index.html"), dummy_html_content).unwrap();
 
         // Create a justfile that copies the pre-made dummy content
-        fs::write(base_path.join("justfile"), 
-            format!("docs:\n    @echo 'Building dummy docs for main branch'\n    @mkdir -p docs/_build/html\n    @cp -r {}/* docs/_build/html/", dummy_docs_dir.parent().unwrap().to_str().unwrap())
-        ).unwrap();
+        fs::write(
+            base_path.join("justfile"),
+            format!(
+                "docs:\n    @echo 'Building dummy docs for main branch'\n    @mkdir -p \
+                 docs/_build/html\n    @cp -r {}/* docs/_build/html/",
+                dummy_docs_dir.parent().unwrap().to_str().unwrap()
+            ),
+        )
+        .unwrap();
 
         let versions = vec!["main".to_string()];
 
         // Ensure DOCKER_HOST is set if not using default, e.g., for Colima:
-        // std::env::set_var("DOCKER_HOST", "unix:///Users/YOUR_USER/.colima/default/docker.sock");
+        // std::env::set_var("DOCKER_HOST",
+        // "unix:///Users/YOUR_USER/.colima/default/docker.sock");
 
         let result = run_docs_pipeline(base_path.clone(), output_dir.clone(), versions).await;
 
@@ -350,13 +400,18 @@ mod tests {
             assert!(content.contains(dummy_html_content), "Output HTML content mismatch");
             println!("Test test_run_docs_pipeline_main_branch_mocked_env PASSED (with Dagger)");
         } else {
-            let err_msg = format!("Test test_run_docs_pipeline_main_branch_mocked_env failed (Dagger connection or build error): {:?}", result.err().unwrap());
+            let err_msg = format!(
+                "Test test_run_docs_pipeline_main_branch_mocked_env failed (Dagger connection or \
+                 build error): {:?}",
+                result.err().unwrap()
+            );
             eprintln!("{}", err_msg);
             // For CI, we'd want this to panic to fail the test run clearly.
             panic!("{}", err_msg);
         }
     }
 
-    // TODO: Add tests for specific versions (git clone branch) using a mock git server or a public test repo.
-    // TODO: Add tests for error handling (e.g., git clone fails, Dagger export fails)
+    // TODO: Add tests for specific versions (git clone branch) using a mock git
+    // server or a public test repo. TODO: Add tests for error handling
+    // (e.g., git clone fails, Dagger export fails)
 }

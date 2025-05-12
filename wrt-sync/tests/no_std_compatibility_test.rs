@@ -1,6 +1,7 @@
 //! Test no_std compatibility for wrt-sync
 //!
-//! This file validates that the wrt-sync crate works correctly in no_std environments.
+//! This file validates that the wrt-sync crate works correctly in no_std
+//! environments.
 
 // For testing in a no_std environment
 #![cfg_attr(not(feature = "std"), no_std)]
@@ -14,7 +15,6 @@ mod tests {
     // Import necessary types for no_std environment
     #[cfg(all(not(feature = "std"), feature = "alloc"))]
     use alloc::{format, string::String};
-
     #[cfg(feature = "std")]
     use std::string::String;
 

@@ -4,12 +4,11 @@
 //! It can be configured to log arguments, results, timing, etc.
 
 use core::time::Duration;
+#[cfg(feature = "std")]
+use std::time::Instant;
 
 // Import the prelude for unified access to standard types
 use crate::prelude::*;
-
-#[cfg(feature = "std")]
-use std::time::Instant;
 
 /// Trait for formatting values in logging output
 pub trait ValueFormatter: Clone + Send + Sync {
@@ -291,8 +290,9 @@ impl LogSink for LogCrateSink {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::sync::{Arc, Mutex};
+
+    use super::*;
 
     struct TestSink {
         logs: Mutex<Vec<String>>,

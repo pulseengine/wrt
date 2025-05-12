@@ -2,13 +2,9 @@
 
 //! Instructions adapter for wrt
 //!
-//! This adapter bridges between `wrt` execution context and `wrt-instructions` execution context.
-//! It provides the necessary adapters to use implementations from `wrt-instructions`
-//! in the wrt runtime.
-
-use crate::prelude::*;
-use crate::stackless::StacklessEngine;
-use crate::stackless_frame::StacklessFrame;
+//! This adapter bridges between `wrt` execution context and `wrt-instructions`
+//! execution context. It provides the necessary adapters to use implementations
+//! from `wrt-instructions` in the wrt runtime.
 
 /// Re-export instruction types and traits from wrt-instructions
 pub use wrt_instructions::{
@@ -22,6 +18,8 @@ pub use wrt_instructions::{
     numeric::NumericInstruction,
     Instruction, InstructionExecutable,
 };
+
+use crate::{prelude::*, stackless::StacklessEngine, stackless_frame::StacklessFrame};
 
 /// Execution context adapter for instructions
 ///

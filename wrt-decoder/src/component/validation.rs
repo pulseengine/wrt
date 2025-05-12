@@ -3,13 +3,12 @@
 //! This module provides validation for WebAssembly Component Model components.
 //! It verifies that components conform to the Component Model specification.
 
-use wrt_error::{Result};
-
-// Import prelude for String and other types
-use crate::prelude::*;
+use wrt_error::Result;
 
 // Import component model types
 use crate::component::Component;
+// Import prelude for String and other types
+use crate::prelude::*;
 
 /// Validation configuration for component model validation
 ///
@@ -25,10 +24,7 @@ pub struct ValidationConfig {
 
 impl Default for ValidationConfig {
     fn default() -> Self {
-        Self {
-            enable_value_section: true,
-            enable_resource_types: true,
-        }
+        Self { enable_value_section: true, enable_resource_types: true }
     }
 }
 
@@ -40,18 +36,12 @@ impl ValidationConfig {
 
     /// Create a validation config with all features enabled
     pub fn all_enabled() -> Self {
-        Self {
-            enable_value_section: true,
-            enable_resource_types: true,
-        }
+        Self { enable_value_section: true, enable_resource_types: true }
     }
 
     /// Create a validation config with only MVP features enabled
     pub fn mvp_only() -> Self {
-        Self {
-            enable_value_section: false,
-            enable_resource_types: false,
-        }
+        Self { enable_value_section: false, enable_resource_types: false }
     }
 }
 

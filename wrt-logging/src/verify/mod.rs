@@ -3,9 +3,10 @@
 //! This module contains verification harnesses for the wrt-logging crate.
 //! It is only included when the `kani` feature is enabled.
 
-use super::*;
 use wrt_error::Result;
 use wrt_host::CallbackRegistry;
+
+use super::*;
 
 #[cfg(kani)]
 #[kani::proof]

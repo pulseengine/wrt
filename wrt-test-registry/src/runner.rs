@@ -1,16 +1,19 @@
 //! Command line test runner for wrt-test-registry
 //!
-//! This runner provides a unified interface for running tests in the wrt-test-registry.
-//! It is designed to work with both standard and no_std environments.
+//! This runner provides a unified interface for running tests in the
+//! wrt-test-registry. It is designed to work with both standard and no_std
+//! environments.
 //!
-//! The runner follows the modular design and safety principles of the WRT project:
+//! The runner follows the modular design and safety principles of the WRT
+//! project:
 //! - Uses `wrt-error` for consistent error handling
 //! - Uses `wrt-types` bounded collections for memory safety
 //! - Follows the implementation sequence
 
-use crate::prelude::*;
 use clap::{Parser, Subcommand};
 use colored::Colorize;
+
+use crate::prelude::*;
 
 /// Command-line interface for running WebAssembly Runtime (WRT) tests.
 #[derive(Parser)]
@@ -79,7 +82,8 @@ fn main() {
             eprintln!(
                 "{}",
                 format!(
-                    "Invalid verification level: {}. Valid options are: none, sampling, standard, full",
+                    "Invalid verification level: {}. Valid options are: none, sampling, standard, \
+                     full",
                     cli.verification
                 )
                 .red()
@@ -92,8 +96,9 @@ fn main() {
     if let Err(e) = registry.set_verification_level(verification_level) {
         eprintln!("{}", format!("Failed to set verification level: {}", e).red());
         // Decide if this is a fatal error for the runner
-        // For now, we'll print the error and continue with the default or previously set level.
-        // std::process::exit(1); // Optionally exit if setting level is critical
+        // For now, we'll print the error and continue with the default or
+        // previously set level. std::process::exit(1); // Optionally
+        // exit if setting level is critical
     }
 
     match cli.command {

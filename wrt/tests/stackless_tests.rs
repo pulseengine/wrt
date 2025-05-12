@@ -117,8 +117,8 @@ fn test_direct_memory_operations() -> Result<()> {
                 // Add read lock
                 println!("  [{:3}]: {}", i, instance.memories[0].data.read().unwrap()[i as usize]);
             }
-            // Comment out stack assertion - Stackless model manages stack differently
-            // assert_eq!(instance.stack.len(), 0);
+            // Comment out stack assertion - Stackless model manages stack
+            // differently assert_eq!(instance.stack.len(), 0);
             // assert!(result.is_ok());
             // assert_eq!(result.unwrap(), vec![wrt::Value::I32(42)]);
         }

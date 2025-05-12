@@ -39,20 +39,17 @@ pub use bidirectional::{
     types_valtype_to_format_valtype, value_type_to_format_val_type, value_type_to_types_valtype,
     IntoFormatType, IntoRuntimeType,
 };
-
-// Re-export wrapper types for easy access
-pub use wrappers::{
-    FormatComponentType, FormatInstanceType, IntoFormatComponentType, IntoFormatInstanceType,
-    IntoRuntimeComponentType, IntoRuntimeInstanceType, RuntimeComponentType, RuntimeInstanceType,
-};
-
 // Re-export registry types for easy access
 pub use registry::{
     Conversion, ConversionError, ConversionErrorKind, Convertible, TypeConversionRegistry,
 };
-
 // Re-export registry conversion functions
 pub use registry_conversions::{
     register_component_instancetype_conversions, register_externtype_conversions,
     register_valtype_conversions,
+};
+// Re-export wrapper types for easy access
+pub use wrappers::{
+    FormatComponentType, FormatInstanceType, IntoFormatComponentType, IntoFormatInstanceType,
+    IntoRuntimeComponentType, IntoRuntimeInstanceType, RuntimeComponentType, RuntimeInstanceType,
 };

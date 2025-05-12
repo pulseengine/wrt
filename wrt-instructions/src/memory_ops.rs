@@ -1,18 +1,21 @@
 //! Memory operations for WebAssembly instructions.
 //!
-//! This module provides implementations for WebAssembly memory access instructions,
-//! including load and store operations for various value types.
+//! This module provides implementations for WebAssembly memory access
+//! instructions, including load and store operations for various value types.
 //!
 //! # Memory Operation Architecture
 //!
-//! This module separates memory operations from the underlying memory implementation,
-//! allowing different execution engines to share the same memory access code. The key
-//! components are:
+//! This module separates memory operations from the underlying memory
+//! implementation, allowing different execution engines to share the same
+//! memory access code. The key components are:
 //!
-//! - `MemoryLoad`: Handles all WebAssembly load operations with various data types and widths
-//! - `MemoryStore`: Handles all WebAssembly store operations with various data types and widths
+//! - `MemoryLoad`: Handles all WebAssembly load operations with various data
+//!   types and widths
+//! - `MemoryStore`: Handles all WebAssembly store operations with various data
+//!   types and widths
 //!
-//! Both structures work with the `Memory` implementation from the `wrt-runtime` crate.
+//! Both structures work with the `Memory` implementation from the `wrt-runtime`
+//! crate.
 //!
 //! # Features
 //!
@@ -24,8 +27,9 @@
 //!
 //! # Memory Safety
 //!
-//! All memory operations perform proper bounds and alignment checking before accessing
-//! memory. This ensures that WebAssembly's memory safety guarantees are preserved.
+//! All memory operations perform proper bounds and alignment checking before
+//! accessing memory. This ensures that WebAssembly's memory safety guarantees
+//! are preserved.
 //!
 //! # Usage
 //!
@@ -590,9 +594,10 @@ impl MemoryStore {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use wrt_runtime::MemoryType;
     use wrt_types::types::Limits;
+
+    use super::*;
 
     /// Mock memory implementation for testing
     struct MockMemory {

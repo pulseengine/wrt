@@ -1,14 +1,16 @@
 //! Utilities for working with custom sections, particularly state sections.
 
-use crate::prelude::*;
+// Ensure wrt_error items are in scope, typically via crate::prelude or direct
+// use
+use wrt_error::{codes, Error, ErrorCategory, Result};
 use wrt_format::{
     create_state_section as format_create_state_section,
     extract_state_section as format_extract_state_section, CompressionType, CustomSection,
     StateSection,
 };
 use wrt_types::bounded::BoundedVec;
-// Ensure wrt_error items are in scope, typically via crate::prelude or direct use
-use wrt_error::{codes, Error, ErrorCategory, Result};
+
+use crate::prelude::*;
 
 /// Placeholder for the maximum expected size of a state section.
 /// TODO: Determine the appropriate maximum size for state section data.
@@ -34,11 +36,7 @@ pub fn create_engine_state_section(
     data: &[u8],
     use_compression: bool,
 ) -> Result<CustomSection> {
-    let compression = if use_compression {
-        CompressionType::RLE
-    } else {
-        CompressionType::None
-    };
+    let compression = if use_compression { CompressionType::RLE } else { CompressionType::None };
     format_create_state_section(section_type, data, compression)
 }
 
@@ -51,7 +49,8 @@ pub fn create_engine_state_section(
 /// # Arguments
 ///
 /// * `custom_section` - The custom section to process.
-/// * `expected_section_type` - The `StateSection` enum variant identifying the expected type.
+/// * `expected_section_type` - The `StateSection` enum variant identifying the
+///   expected type.
 ///
 /// # Returns
 ///
@@ -74,7 +73,8 @@ pub fn get_data_from_state_section(
 
     let (_compression_type, raw_data) = format_extract_state_section(custom_section)?;
 
-    // Check if raw_data exceeds MAX_STATE_SECTION_SIZE before attempting to create BoundedVec
+    // Check if raw_data exceeds MAX_STATE_SECTION_SIZE before attempting to create
+    // BoundedVec
     if raw_data.len() > MAX_STATE_SECTION_SIZE {
         return Err(Error::new(
             ErrorCategory::Capacity,
@@ -91,9 +91,9 @@ pub fn get_data_from_state_section(
 
     for byte_val in raw_data.iter() {
         bounded_data.push(*byte_val).map_err(|capacity_error| {
-            // This should ideally not be reached if the raw_data.len() check above is correct
-            // and MAX_STATE_SECTION_SIZE is the actual const capacity of BoundedVec.
-            // Mapping CapacityError to our standard Error type.
+            // This should ideally not be reached if the raw_data.len() check above is
+            // correct and MAX_STATE_SECTION_SIZE is the actual const capacity
+            // of BoundedVec. Mapping CapacityError to our standard Error type.
             Error::new(
                 ErrorCategory::Capacity,
                 codes::CAPACITY_EXCEEDED,
@@ -108,4 +108,4 @@ pub fn get_data_from_state_section(
     }
 
     Ok(bounded_data)
-} 
+}

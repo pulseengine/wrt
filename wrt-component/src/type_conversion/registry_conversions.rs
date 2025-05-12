@@ -1,13 +1,13 @@
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+use alloc::{string::String, vec, vec::Vec};
 /// Registry-based type conversions
 ///
-/// This module implements conversions between format and runtime types using the
-/// TypeConversionRegistry, providing a consistent and extensible approach to type conversion.
+/// This module implements conversions between format and runtime types using
+/// the TypeConversionRegistry, providing a consistent and extensible approach
+/// to type conversion.
 
 #[cfg(feature = "std")]
 use std::{string::String, vec, vec::Vec};
-
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::{string::String, vec, vec::Vec};
 
 use wrt_format::component::{
     ComponentTypeDefinition, ExternType as FormatExternType, ValType as FormatValType,
@@ -19,9 +19,11 @@ use wrt_types::{
     ExternType as TypesExternType,
 };
 
-use super::registry::{ConversionError, ConversionErrorKind, TypeConversionRegistry};
-use super::wrappers::{
-    FormatComponentType, FormatInstanceType, RuntimeComponentType, RuntimeInstanceType,
+use super::{
+    registry::{ConversionError, ConversionErrorKind, TypeConversionRegistry},
+    wrappers::{
+        FormatComponentType, FormatInstanceType, RuntimeComponentType, RuntimeInstanceType,
+    },
 };
 
 /// Register ValType conversions in the TypeConversionRegistry
@@ -145,7 +147,8 @@ pub fn register_externtype_conversions(registry: &mut TypeConversionRegistry) {
     // Minimal implementation to support our simple tests
 }
 
-/// Register ComponentType and InstanceType conversions in the TypeConversionRegistry
+/// Register ComponentType and InstanceType conversions in the
+/// TypeConversionRegistry
 pub fn register_component_instancetype_conversions(registry: &mut TypeConversionRegistry) {
     // Minimal implementation to support our simple tests
 }

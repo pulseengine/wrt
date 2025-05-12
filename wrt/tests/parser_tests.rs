@@ -1,6 +1,7 @@
-use wrt::module::Module;
-use wrt::types::ExternType;
-use wrt::types::ValueType;
+use wrt::{
+    module::Module,
+    types::{ExternType, ValueType},
+};
 
 #[cfg(test)]
 mod tests {

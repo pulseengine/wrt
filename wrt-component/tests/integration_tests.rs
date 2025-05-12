@@ -1,7 +1,5 @@
-use wrt_component::parser;
-use wrt_component::Error;
-use wrt_decoder::Error as DecoderError;
-use wrt_decoder::Parser;
+use wrt_component::{parser, Error};
+use wrt_decoder::{Error as DecoderError, Parser};
 
 /// Helper to create a complex test module with multiple section types
 fn create_complex_test_module() -> Vec<u8> {
@@ -111,8 +109,8 @@ fn create_truncated_module() -> Vec<u8> {
     // Type section start, but truncated
     module.extend_from_slice(&[
         0x01, 0x05, // Type section ID and size
-        0x01, // Number of types
-              // Missing data here...
+        0x01, /* Number of types
+               * Missing data here... */
     ]);
 
     module

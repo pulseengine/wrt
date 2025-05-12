@@ -1,16 +1,17 @@
 // Test to verify compatibility between std and no_std modes
 // This file should work with both feature sets
 
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use alloc::vec::Vec;
 #[cfg(feature = "std")]
 use std::vec::Vec;
 
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-use alloc::vec::Vec;
-
 use wrt_decoder::parser::Parser;
 use wrt_format::binary::{WASM_MAGIC, WASM_VERSION};
-use wrt_types::safe_memory::{MemoryProvider, SafeSlice, StdMemoryProvider};
-use wrt_types::verification::VerificationLevel;
+use wrt_types::{
+    safe_memory::{MemoryProvider, SafeSlice, StdMemoryProvider},
+    verification::VerificationLevel,
+};
 
 #[test]
 fn test_wasm_header_parsing() {

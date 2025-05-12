@@ -1,9 +1,7 @@
-use wrt_component::error::Error as ComponentError;
-use wrt_component::parser;
-use wrt_component::Error;
-use wrt_decoder::section_reader::SectionReader;
-use wrt_decoder::Error as DecoderError;
-use wrt_decoder::{ModuleParser, Parser, Payload};
+use wrt_component::{error::Error as ComponentError, parser, Error};
+use wrt_decoder::{
+    section_reader::SectionReader, Error as DecoderError, ModuleParser, Parser, Payload,
+};
 use wrt_types::values::Value;
 
 /// Helper to create a WebAssembly module with various import types

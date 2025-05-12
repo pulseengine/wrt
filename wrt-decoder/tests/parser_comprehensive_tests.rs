@@ -1,9 +1,10 @@
-use wrt_decoder::parser::{Parser, Payload};
-use wrt_decoder::prelude::*;
-use wrt_decoder::section_reader::SectionReader;
+use wrt_decoder::{
+    parser::{Parser, Payload},
+    prelude::*,
+    section_reader::SectionReader,
+};
 use wrt_error::{Error, Result};
-use wrt_format::module::Import;
-use wrt_format::module::ImportDesc;
+use wrt_format::module::{Import, ImportDesc};
 
 /// Create a WebAssembly module header with magic bytes and version
 fn create_wasm_header() -> Vec<u8> {
@@ -330,7 +331,8 @@ fn test_invalid_import_section() {
     let module_bytes = create_invalid_import_module();
     let mut parser = Parser::new(Some(&module_bytes), true); // Enable error recovery for this test
 
-    // Attempt to parse the module, expecting an error during import section processing
+    // Attempt to parse the module, expecting an error during import section
+    // processing
     let result = std::panic::catch_unwind(move || {
         // Collect results, allowing errors to be accumulated if error recovery is on
         parser.collect::<Result<Vec<_>>>() // MODIFIED

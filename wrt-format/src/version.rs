@@ -1,7 +1,7 @@
 //! Version information for wrt-format.
 //!
-//! This module provides utilities for handling versioning and feature detection in WebAssembly
-//! Component Model binaries.
+//! This module provides utilities for handling versioning and feature detection
+//! in WebAssembly Component Model binaries.
 
 use crate::HashMap;
 
@@ -67,7 +67,8 @@ pub enum FeatureStatus {
     FullySupported,
 }
 
-/// Holds information about a Component Model binary version and supported features
+/// Holds information about a Component Model binary version and supported
+/// features
 #[derive(Debug, Clone)]
 pub struct VersionInfo {
     /// The detected version

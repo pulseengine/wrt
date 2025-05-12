@@ -5,9 +5,7 @@
 
 #[cfg(test)]
 mod tests {
-    use std::env;
-    use std::path::PathBuf;
-    use std::process::Command;
+    use std::{env, path::PathBuf, process::Command};
 
     // Helper function to run wrtd with specified arguments
     fn run_wrtd(wasm_file: &str, fuel: Option<u64>, call: Option<&str>) -> (bool, String) {
@@ -43,7 +41,8 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "Current implementation requires valid component binary file. Updated in a separate PR."]
+    #[ignore = "Current implementation requires valid component binary file. Updated in a separate \
+                PR."]
     fn test_fuel_bounded_execution() {
         // Path to a test WebAssembly file that executes a large number of instructions
         let test_wasm = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap())
@@ -102,14 +101,14 @@ mod tests {
         // so we'll just verify that we received the function result
         assert!(output_str.contains("Function result:"));
 
-        // If statistics are present (which would happen if we were using a real module),
-        // they would have this format, but we're not testing that right now since we're
-        // falling back to the mock component
+        // If statistics are present (which would happen if we were using a real
+        // module), they would have this format, but we're not testing
+        // that right now since we're falling back to the mock component
         //
-        // NOTE: In a real scenario with a valid WebAssembly module, you would uncomment these:
-        // assert!(output_str.contains("=== Execution Statistics ==="));
-        // assert!(output_str.contains("Instructions executed:"));
-        // assert!(output_str.contains("Fuel consumed:"));
+        // NOTE: In a real scenario with a valid WebAssembly module, you would
+        // uncomment these: assert!(output_str.contains("=== Execution
+        // Statistics ===")); assert!(output_str.contains("Instructions
+        // executed:")); assert!(output_str.contains("Fuel consumed:"));
         // assert!(output_str.contains("Current memory usage:"));
         // assert!(output_str.contains("Peak memory usage:"));
     }

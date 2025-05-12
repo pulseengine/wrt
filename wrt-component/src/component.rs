@@ -1,16 +1,14 @@
 //! Component Model implementation for the WebAssembly Runtime.
 //!
-//! This module provides types and implementations for the WebAssembly Component Model.
-
-use crate::prelude::*;
+//! This module provides types and implementations for the WebAssembly Component
+//! Model.
 
 #[cfg(feature = "std")]
 use log::{debug, error, info, trace, warn};
-
+// Import wrt_decoder types for decode and parse
+use wrt_decoder::component::decode::Component as DecodedComponent;
 // Additional imports that aren't in the prelude
 use wrt_format::component::ExternType as FormatExternType;
-use wrt_types::resource::ResourceOperation as FormatResourceOperation;
-
 // These imports are temporarily commented out until we fix them
 // ComponentSection, ComponentTypeDefinition as FormatComponentTypeDefinition,
 // ComponentTypeSection, ExportSection, ImportSection, InstanceSection,
@@ -29,11 +27,11 @@ use wrt_runtime::{
     memory::Memory,
     table::Table,
 };
+use wrt_types::resource::ResourceOperation as FormatResourceOperation;
 
-// Import RwLock from prelude (it will be std::sync::RwLock or a no_std equivalent from the prelude)
-
+// Import RwLock from prelude (it will be std::sync::RwLock or a no_std equivalent from the
+// prelude)
 use crate::execution::{run_with_time_bounds, TimeBoundedConfig, TimeBoundedOutcome};
-
 // VecDeque comes from prelude (std::collections or alloc::collections based on features)
 
 // core::str is already imported via prelude
@@ -44,11 +42,7 @@ use crate::type_conversion::bidirectional::{
     convert_format_to_types_valtype, convert_format_valtype_to_valuetype,
     convert_types_to_format_valtype, extern_type_to_func_type,
 };
-
-use crate::debug_println;
-
-// Import wrt_decoder types for decode and parse
-use wrt_decoder::component::decode::Component as DecodedComponent;
+use crate::{debug_println, prelude::*};
 
 // Define type aliases for missing types
 type ComponentDecoder = fn(&[u8]) -> wrt_error::Result<wrt_format::component::Component>;
@@ -280,7 +274,8 @@ impl RuntimeInstance {
             // so we need a structured way to handle user-provided function execution.
 
             // Return a not implemented error for now
-            // This will be extended to support function resolution from registered callbacks
+            // This will be extended to support function resolution from registered
+            // callbacks
             Err(Error::new(
                 ErrorCategory::System,
                 codes::NOT_IMPLEMENTED,
@@ -774,7 +769,8 @@ impl BuiltinRequirements {
         vec![]
     }
 
-    /// Check if the requirements can be satisfied with the given available built-ins
+    /// Check if the requirements can be satisfied with the given available
+    /// built-ins
     pub fn can_be_satisfied(&self, available: &HashSet<BuiltinType>) -> bool {
         self.requirements.iter().all(|req| available.contains(req))
     }
@@ -868,7 +864,8 @@ fn extract_embedded_modules(bytes: &[u8]) -> Result<Vec<Vec<u8>>> {
     match wrt_decoder::component::decode_component(bytes) {
         Ok(component) => {
             // Extract modules from component
-            // Let's create a simple mock implementation since component doesn't have modules()
+            // Let's create a simple mock implementation since component doesn't have
+            // modules()
             let modules = Vec::new(); // Create an empty vector as a placeholder
             Ok(modules)
         }
@@ -886,8 +883,9 @@ fn extract_embedded_modules(bytes: &[u8]) -> Result<Vec<Vec<u8>>> {
 pub fn component_value_to_value(
     component_value: &wrt_types::ComponentValue,
 ) -> wrt_intercept::Value {
-    use crate::type_conversion::types_componentvalue_to_core_value;
     use wrt_intercept::Value;
+
+    use crate::type_conversion::types_componentvalue_to_core_value;
 
     // Use the new conversion function
     types_componentvalue_to_core_value(component_value).unwrap_or(Value::I32(0))
@@ -896,8 +894,9 @@ pub fn component_value_to_value(
 
 /// Convert a runtime value to a component value
 pub fn value_to_component_value(value: &wrt_intercept::Value) -> wrt_types::ComponentValue {
-    use crate::type_conversion::core_value_to_types_componentvalue;
     use wrt_types::ComponentValue;
+
+    use crate::type_conversion::core_value_to_types_componentvalue;
 
     // Use the new conversion function
     core_value_to_types_componentvalue(value).unwrap_or(ComponentValue::Void) // Provide a sensible default on error

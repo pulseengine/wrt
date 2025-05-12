@@ -1,7 +1,8 @@
 // WRT - wrt-logging
-// SW-REQ-ID: [SW-REQ-ID-wrt-logging]
+// Module: Logging Infrastructure
+// SW-REQ-ID: REQ_017
 //
-// Copyright (c) 2025 Ralf Anton Beier
+// Copyright (c) 2024 Ralf Anton Beier
 // Licensed under the MIT license.
 // SPDX-License-Identifier: MIT
 
@@ -18,8 +19,10 @@
 //!
 //! ## Features
 //!
-//! - **Component Logging**: Enable WebAssembly components to log messages to the host
-//! - **Log Levels**: Support for different log levels (Debug, Info, Warning, Error)
+//! - **Component Logging**: Enable WebAssembly components to log messages to
+//!   the host
+//! - **Log Levels**: Support for different log levels (Debug, Info, Warning,
+//!   Error)
 //! - **Custom Handlers**: Extensible architecture for custom log handlers
 //! - **Std/No-std Support**: Works in both standard and `no_std` environments
 //!
@@ -63,7 +66,6 @@ extern crate alloc;
 
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 use alloc::{boxed::Box, string::String, vec::Vec};
-
 #[cfg(feature = "std")]
 use std::{boxed::Box, string::String, vec::Vec};
 

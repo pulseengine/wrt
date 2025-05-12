@@ -3,9 +3,10 @@
 //! This module provides functionality to parse WebAssembly modules
 //! using the project's own wrt-decoder implementation.
 
-use crate::prelude::*;
 use wrt_decoder::{Parser, Payload};
 use wrt_error::kinds::DecodingError;
+
+use crate::prelude::*;
 
 /// Scan a WebAssembly module for built-in imports
 ///
@@ -76,7 +77,8 @@ pub fn scan_for_builtins(binary: &[u8]) -> Result<Vec<String>> {
     Ok(builtin_imports)
 }
 
-/// Scan a WebAssembly binary for built-in imports and map them to built-in types
+/// Scan a WebAssembly binary for built-in imports and map them to built-in
+/// types
 ///
 /// # Arguments
 ///

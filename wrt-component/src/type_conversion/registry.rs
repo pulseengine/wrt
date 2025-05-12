@@ -1,3 +1,12 @@
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+use alloc::{
+    any::{Any, TypeId},
+    boxed::Box,
+    collections::BTreeMap as HashMap,
+    fmt,
+    marker::PhantomData,
+    sync::Arc,
+};
 /// Type Conversion Registry
 ///
 /// This module implements a central registry for type conversions between
@@ -8,16 +17,6 @@ use std::{
     any::{Any, TypeId},
     boxed::Box,
     collections::HashMap,
-    fmt,
-    marker::PhantomData,
-    sync::Arc,
-};
-
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::{
-    any::{Any, TypeId},
-    boxed::Box,
-    collections::BTreeMap as HashMap,
     fmt,
     marker::PhantomData,
     sync::Arc,

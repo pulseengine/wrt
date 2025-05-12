@@ -1,24 +1,23 @@
 //! WebAssembly module format.
 //!
-//! This module provides types and utilities for working with WebAssembly modules.
-
-#[cfg(feature = "std")]
-use std::{string::String, vec::Vec};
-
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::{string::String, vec::Vec};
-
-use crate::section::CustomSection;
-use crate::types::CoreWasmVersion;
-use crate::types::FormatGlobalType;
-use crate::types::Limits;
-use wrt_error::{codes, Error, ErrorCategory, Result};
-use wrt_types::{types::GlobalType, RefType, ValueType};
+//! This module provides types and utilities for working with WebAssembly
+//! modules.
 
 #[cfg(not(feature = "std"))]
 use alloc::string::ToString;
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+use alloc::{string::String, vec::Vec};
+#[cfg(feature = "std")]
+use std::{string::String, vec::Vec};
 
-use crate::validation::Validatable;
+use wrt_error::{codes, Error, ErrorCategory, Result};
+use wrt_types::{types::GlobalType, RefType, ValueType};
+
+use crate::{
+    section::CustomSection,
+    types::{CoreWasmVersion, FormatGlobalType, Limits},
+    validation::Validatable,
+};
 
 /// WebAssembly function definition
 #[derive(Debug, Clone)]
@@ -92,10 +91,12 @@ pub struct Data {
 /// Represents the initialization items for an element segment.
 #[derive(Debug, Clone)]
 pub enum ElementInit {
-    /// A vector of function indices (for funcref element type when expressions are not used).
+    /// A vector of function indices (for funcref element type when expressions
+    /// are not used).
     FuncIndices(Vec<u32>),
-    /// A vector of initialization expressions (for externref, or funcref with expressions).
-    /// Each expression is a raw byte vector, representing a const expr.
+    /// A vector of initialization expressions (for externref, or funcref with
+    /// expressions). Each expression is a raw byte vector, representing a
+    /// const expr.
     Expressions(Vec<Vec<u8>>),
 }
 
@@ -109,7 +110,8 @@ pub enum ElementMode {
         /// Offset expression (raw bytes of a const expr).
         offset_expr: Vec<u8>,
     },
-    /// Passive segment: elements are not actively placed in a table at instantiation.
+    /// Passive segment: elements are not actively placed in a table at
+    /// instantiation.
     Passive,
     /// Declared segment: elements are declared but not available at runtime
     /// until explicitly instantiated. Useful for some linking scenarios.
@@ -252,7 +254,8 @@ impl Module {
 
     /// Convert a WebAssembly binary to a Module.
     ///
-    /// This is a convenience method that wraps Binary::from_bytes + Module::from_binary
+    /// This is a convenience method that wraps Binary::from_bytes +
+    /// Module::from_binary
     pub fn from_bytes(_wasm_bytes: &[u8]) -> Result<Self> {
         Err(Error::new(
             ErrorCategory::Validation,

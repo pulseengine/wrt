@@ -1,7 +1,9 @@
 // WRT - wrt-test-registry
-// SW-REQ-ID: [SW-REQ-ID-wrt-test-registry]
+// Module: WRT Test Registry and Framework
+// SW-REQ-ID: REQ_QUAL_001
+// SW-REQ-ID: REQ_QUAL_003
 //
-// Copyright (c) 2025 Ralf Anton Beier
+// Copyright (c) 2024 Ralf Anton Beier
 // Licensed under the MIT license.
 // SPDX-License-Identifier: MIT
 
@@ -9,9 +11,9 @@
 
 //! Test registry for WebAssembly Runtime Testing
 //!
-//! This module provides a unified testing framework for the WebAssembly Runtime.
-//! The framework is designed to work in both std and no_std environments,
-//! allowing for consistent testing across all target platforms.
+//! This module provides a unified testing framework for the WebAssembly
+//! Runtime. The framework is designed to work in both std and no_std
+//! environments, allowing for consistent testing across all target platforms.
 //!
 //! ## Features
 //!
@@ -169,8 +171,8 @@ impl TestRegistry {
     ///
     /// # Returns
     ///
-    /// Returns `Ok(())` if the test was registered successfully, or an `Error` with appropriate
-    /// error code and category if registration failed.
+    /// Returns `Ok(())` if the test was registered successfully, or an `Error`
+    /// with appropriate error code and category if registration failed.
     pub fn register(&self, test: Box<dyn TestCase>) -> Result<()> {
         #[cfg(feature = "std")]
         {
@@ -220,7 +222,8 @@ impl TestRegistry {
                 Err(Error::new(
                     ErrorCategory::Concurrency,
                     codes::CONCURRENCY_INITIALIZATION_FAILURE,
-                    "Test registry already initialized - cannot add tests after initialization in no_std mode",
+                    "Test registry already initialized - cannot add tests after initialization in \
+                     no_std mode",
                 ))
             }
         }
@@ -381,19 +384,22 @@ impl TestRegistry {
             if self.verification_level.set(level).is_ok() {
                 Ok(())
             } else {
-                // It was already set. Check if the existing value is different from the new one.
+                // It was already set. Check if the existing value is different from the new
+                // one.
                 match self.verification_level.get() {
                     Some(existing_level) if *existing_level != level => {
                         // Already set to a DIFFERENT value, this is an error.
                         Err(Error::new(
                             ErrorCategory::Configuration,
                             codes::CONFIGURATION_ERROR, // Assuming such a code exists
-                            "Verification level already set to a different value in this no_std configuration",
+                            "Verification level already set to a different value in this no_std \
+                             configuration",
                         ))
                     }
                     _ => {
-                        // Either already set to the SAME value, or get() failed (should not happen if set() failed).
-                        // If it's the same, it's fine. Consider this Ok.
+                        // Either already set to the SAME value, or get() failed (should not happen
+                        // if set() failed). If it's the same, it's fine.
+                        // Consider this Ok.
                         Ok(())
                     }
                 }

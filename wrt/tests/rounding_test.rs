@@ -1,4 +1,5 @@
 use std::path::Path;
+
 use wrt::{
     execution::{f32_nearest, f64_nearest},
     Module, Result, Value,

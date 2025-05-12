@@ -3,10 +3,10 @@
 //! This module provides simplified implementations of runtime types
 //! needed for the component model implementation.
 
-use crate::prelude::*;
-
 // Import from wrt-types instead of wrt-runtime
 use wrt_types::component::{GlobalType, MemoryType, TableType};
+
+use crate::prelude::*;
 
 /// WebAssembly function type
 #[derive(Debug, Clone, PartialEq)]

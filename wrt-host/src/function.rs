@@ -7,7 +7,8 @@
 use crate::prelude::*;
 
 /// A trait for functions that can be cloned and operate on `Vec<Value>`.
-/// This is used for storing host functions that can be called by the Wasm engine.
+/// This is used for storing host functions that can be called by the Wasm
+/// engine.
 pub trait FnWithVecValue: Send + Sync {
     /// Calls the function with the given target and arguments.
     fn call(&self, target: &mut dyn Any, args: Vec<Value>) -> Result<Vec<Value>>;

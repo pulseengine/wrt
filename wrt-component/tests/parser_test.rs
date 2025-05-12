@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+
 use wrt_component::parser;
 use wrt_error::Result;
 use wrt_types::builtin::BuiltinType;

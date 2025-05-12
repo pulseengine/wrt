@@ -1,6 +1,7 @@
 //! Test no_std compatibility for wrt-format
 //!
-//! This file validates that the wrt-format crate works correctly in no_std environments.
+//! This file validates that the wrt-format crate works correctly in no_std
+//! environments.
 
 // For testing in a no_std environment
 #![cfg_attr(not(feature = "std"), no_std)]
@@ -14,7 +15,6 @@ mod tests {
     // Import necessary types for no_std environment
     #[cfg(all(not(feature = "std"), feature = "alloc"))]
     use alloc::{format, string::String, vec, vec::Vec};
-
     #[cfg(feature = "std")]
     use std::{vec, vec::Vec};
 
@@ -26,7 +26,6 @@ mod tests {
         section::{CustomSection, CUSTOM_ID, FUNCTION_ID, IMPORT_ID, TYPE_ID},
         types::{FormatBlockType, Limits},
     };
-
     // Import from wrt-types for ValueType and ValType
     use wrt_types::{component_value::ValType, ValueType};
 

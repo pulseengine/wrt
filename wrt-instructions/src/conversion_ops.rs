@@ -1,7 +1,7 @@
 //! Conversion operations for WebAssembly instructions.
 //!
-//! This module provides pure implementations for WebAssembly conversion instructions,
-//! including type conversions between numeric types.
+//! This module provides pure implementations for WebAssembly conversion
+//! instructions, including type conversions between numeric types.
 
 use crate::prelude::*;
 

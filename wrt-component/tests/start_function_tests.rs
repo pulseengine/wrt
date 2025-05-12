@@ -1,7 +1,10 @@
 #![deny(warnings)]
 
-use std::sync::{Arc, Mutex};
-use std::time::Duration;
+use std::{
+    sync::{Arc, Mutex},
+    time::Duration,
+};
+
 use wrt_component::{
     CanonicalABI, Component, ComponentOptions, ComponentValue, ExecutionTimeoutError,
 };
@@ -278,7 +281,8 @@ fn test_memory_strategy_selection() {
     component.options = options;
 
     // This is an indirect test through execute_start
-    // In a real implementation, the memory strategy would be applied during execution
+    // In a real implementation, the memory strategy would be applied during
+    // execution
     let result = component.execute_start();
     assert!(result.is_ok());
 }

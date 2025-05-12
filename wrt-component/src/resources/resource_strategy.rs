@@ -1,5 +1,6 @@
-use crate::resources::{MemoryStrategy, ResourceOperation};
 use wrt_error::Result;
+
+use crate::resources::{MemoryStrategy, ResourceOperation};
 
 /// Trait for resource access strategies
 pub trait ResourceStrategy: Send + Sync {

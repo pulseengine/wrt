@@ -177,70 +177,70 @@ impl BuiltinSerialization {
         Ok(result)
     }
 
-    // NOTE: The following two functions (serialize_args, supported_serialization_types) were erroneously added
-    // by a previous edit and should be removed if they are not part of the original DefaultBuiltinSerialization.
-    // For now, I am commenting them out to ensure the build doesn't break, but they should be deleted if not needed.
-    /*
-    fn serialize_args(
-        &self,
-        context: &InterceptContext,
-        args: &[ComponentValue],
-        types: &[ValType],
-    ) -> Result<Vec<u8>> {
-        let mut bytes = Vec::new();
-        for (index, value) in args.iter().enumerate() {
-            match types.get(index) {
-                Some(ty) => match ty {
-                    ValType::S32 => {
-                        if let Some(ComponentValue::S32(val)) = args.get(index) {
-                            bytes.extend_from_slice(&val.to_le_bytes());
-                        }
-                    }
-                    ValType::S64 => {
-                        if let Some(ComponentValue::S64(val)) = args.get(index) {
-                            bytes.extend_from_slice(&val.to_le_bytes());
-                        }
-                    }
-                    ValType::F32 => {
-                        if let Some(ComponentValue::F32(val)) = args.get(index) {
-                            bytes.extend_from_slice(&val.to_le_bytes());
-                        }
-                    }
-                    ValType::F64 => {
-                        if let Some(ComponentValue::F64(val)) = args.get(index) {
-                            bytes.extend_from_slice(&val.to_le_bytes());
-                        }
-                    }
-                    _ => {
-                        return Err(Error::new(
-                            wrt_error::ErrorCategory::Type,
-                            wrt_error::codes::INVALID_TYPE,
-                            "Unsupported value type for serialization",
-                        ))
-                    }
-                },
-                None => {
-                    return Err(Error::new(
-                        wrt_error::ErrorCategory::Type,
-                        wrt_error::codes::INVALID_TYPE,
-                        "Index out of bounds for serialization",
-                    ))
-                }
-            }
-        }
-        Ok(bytes)
-    }
-
-    fn supported_serialization_types() -> Vec<ValType> {
-        // Example: only basic numeric types are supported for now
-        vec![
-            ValType::S32,
-            ValType::S64,
-            ValType::F32,
-            ValType::F64,
-        ]
-    }
-    */
+    // NOTE: The following two functions (serialize_args,
+    // supported_serialization_types) were erroneously added by a previous edit
+    // and should be removed if they are not part of the original
+    // DefaultBuiltinSerialization. For now, I am commenting them out to ensure
+    // the build doesn't break, but they should be deleted if not needed.
+    // fn serialize_args(
+    // &self,
+    // context: &InterceptContext,
+    // args: &[ComponentValue],
+    // types: &[ValType],
+    // ) -> Result<Vec<u8>> {
+    // let mut bytes = Vec::new();
+    // for (index, value) in args.iter().enumerate() {
+    // match types.get(index) {
+    // Some(ty) => match ty {
+    // ValType::S32 => {
+    // if let Some(ComponentValue::S32(val)) = args.get(index) {
+    // bytes.extend_from_slice(&val.to_le_bytes());
+    // }
+    // }
+    // ValType::S64 => {
+    // if let Some(ComponentValue::S64(val)) = args.get(index) {
+    // bytes.extend_from_slice(&val.to_le_bytes());
+    // }
+    // }
+    // ValType::F32 => {
+    // if let Some(ComponentValue::F32(val)) = args.get(index) {
+    // bytes.extend_from_slice(&val.to_le_bytes());
+    // }
+    // }
+    // ValType::F64 => {
+    // if let Some(ComponentValue::F64(val)) = args.get(index) {
+    // bytes.extend_from_slice(&val.to_le_bytes());
+    // }
+    // }
+    // _ => {
+    // return Err(Error::new(
+    // wrt_error::ErrorCategory::Type,
+    // wrt_error::codes::INVALID_TYPE,
+    // "Unsupported value type for serialization",
+    // ))
+    // }
+    // },
+    // None => {
+    // return Err(Error::new(
+    // wrt_error::ErrorCategory::Type,
+    // wrt_error::codes::INVALID_TYPE,
+    // "Index out of bounds for serialization",
+    // ))
+    // }
+    // }
+    // }
+    // Ok(bytes)
+    // }
+    //
+    // fn supported_serialization_types() -> Vec<ValType> {
+    // Example: only basic numeric types are supported for now
+    // vec![
+    // ValType::S32,
+    // ValType::S64,
+    // ValType::F32,
+    // ValType::F64,
+    // ]
+    // }
 }
 
 /// The BuiltinInterceptor trait defines methods for intercepting and
@@ -256,8 +256,8 @@ pub trait BuiltinInterceptor: Send + Sync {
     ///
     /// # Returns
     ///
-    /// A `Result` containing potentially modified arguments, or a complete result
-    /// if the built-in execution should be bypassed
+    /// A `Result` containing potentially modified arguments, or a complete
+    /// result if the built-in execution should be bypassed
     fn before_builtin(
         &self,
         context: &InterceptContext,

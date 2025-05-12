@@ -2,14 +2,14 @@
 //!
 //! This module provides the instance types for component instances.
 
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+use alloc::{string::String, vec::Vec};
 #[cfg(feature = "std")]
 use std::{string::String, vec::Vec};
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::{string::String, vec::Vec};
+use wrt_format::component::ComponentTypeDefinition;
 
 use crate::export::Export;
-use wrt_format::component::ComponentTypeDefinition;
 
 /// Represents an instance value in a component
 #[derive(Debug)]
@@ -41,10 +41,11 @@ impl InstanceValue {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::component::{ExternValue, FunctionValue};
     use wrt::types::FuncType;
     use wrt_format::component::{ExternType, ValType};
+
+    use super::*;
+    use crate::component::{ExternValue, FunctionValue};
 
     #[test]
     fn test_instance_value() {

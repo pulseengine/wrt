@@ -1,15 +1,16 @@
 //! Error handling for WebAssembly section parsing
 //!
-//! This module provides error types for handling WebAssembly section parsing errors.
-
-use crate::prelude::*;
-use wrt_error::{codes, Error, ErrorCategory};
-
-#[cfg(feature = "std")]
-use std::string::ToString;
+//! This module provides error types for handling WebAssembly section parsing
+//! errors.
 
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 use alloc::string::ToString;
+#[cfg(feature = "std")]
+use std::string::ToString;
+
+use wrt_error::{codes, Error, ErrorCategory};
+
+use crate::prelude::*;
 
 /// Specialized error enum for section parsing failures
 #[derive(Debug, Clone, PartialEq)]
@@ -21,18 +22,10 @@ pub enum SectionError {
     InvalidSection { id: u8, offset: usize, msg: String },
 
     /// Error when unexpected end of data is encountered
-    UnexpectedEnd {
-        offset: usize,
-        expected: usize,
-        actual: usize,
-    },
+    UnexpectedEnd { offset: usize, expected: usize, actual: usize },
 
     /// Error when section content is malformed
-    MalformedContent {
-        offset: usize,
-        section_id: u8,
-        msg: String,
-    },
+    MalformedContent { offset: usize, section_id: u8, msg: String },
 
     /// Error when a section size exceeds the module size
     SectionSizeExceedsModule {
@@ -43,25 +36,13 @@ pub enum SectionError {
     },
 
     /// Error when an incorrect magic header is encountered
-    InvalidMagic {
-        offset: usize,
-        expected: [u8; 4],
-        actual: [u8; 4],
-    },
+    InvalidMagic { offset: usize, expected: [u8; 4], actual: [u8; 4] },
 
     /// Error when an unsupported version is encountered
-    UnsupportedVersion {
-        offset: usize,
-        expected: [u8; 4],
-        actual: [u8; 4],
-    },
+    UnsupportedVersion { offset: usize, expected: [u8; 4], actual: [u8; 4] },
 
     /// Error when an invalid value is encountered in a section
-    InvalidValue {
-        offset: usize,
-        section_id: u8,
-        description: String,
-    },
+    InvalidValue { offset: usize, section_id: u8, description: String },
 }
 
 /// Extension trait to convert section errors to wrt_error::Error
@@ -73,75 +54,71 @@ pub trait SectionErrorExt {
 impl SectionErrorExt for SectionError {
     fn to_error(self) -> Error {
         match self {
-            SectionError::MissingSection { id, description } => {
-                Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    format!("Missing section (ID: 0x{:02x}): {}", id, description)
-                )
-            },
-            SectionError::InvalidSection { id, offset, msg } => {
-                Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    format!("Invalid section (ID: 0x{:02x}) at offset 0x{:x}: {}", id, offset, msg)
-                )
-            },
-            SectionError::UnexpectedEnd { offset, expected, actual } => {
-                Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    format!(
-                        "Unexpected end of data at offset 0x{:x}: expected {} bytes, but only {} available",
-                        offset, expected, actual
-                    )
-                )
-            },
-            SectionError::MalformedContent { offset, section_id, msg } => {
-                Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    format!("Malformed content in section (ID: 0x{:02x}) at offset 0x{:x}: {}", 
-                        section_id, offset, msg
-                    )
-                )
-            },
-            SectionError::SectionSizeExceedsModule { section_id, section_size, module_size, offset } => {
-                Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    format!("Section size exceeds module size: section (ID: 0x{:02x}) at offset 0x{:x} has size {}, but only {} bytes remain in module", 
-                        section_id, offset, section_size, module_size
-                    )
-                )
-            },
-            SectionError::InvalidMagic { offset, expected, actual } => {
-                Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    format!("Invalid WebAssembly magic bytes at offset 0x{:x}: expected {:?}, found {:?}", 
-                        offset, expected, actual
-                    )
-                )
-            },
-            SectionError::UnsupportedVersion { offset, expected, actual } => {
-                Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    format!("Unsupported WebAssembly version at offset 0x{:x}: expected {:?}, found {:?}", 
-                        offset, expected, actual
-                    )
-                )
-            },
-            SectionError::InvalidValue { offset, section_id, description } => {
-                Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    format!("Invalid value in section (ID: 0x{:02x}) at offset 0x{:x}: {}", 
-                        section_id, offset, description
-                    )
-                )
-            },
+            SectionError::MissingSection { id, description } => Error::new(
+                ErrorCategory::Parse,
+                codes::PARSE_ERROR,
+                format!("Missing section (ID: 0x{:02x}): {}", id, description),
+            ),
+            SectionError::InvalidSection { id, offset, msg } => Error::new(
+                ErrorCategory::Parse,
+                codes::PARSE_ERROR,
+                format!("Invalid section (ID: 0x{:02x}) at offset 0x{:x}: {}", id, offset, msg),
+            ),
+            SectionError::UnexpectedEnd { offset, expected, actual } => Error::new(
+                ErrorCategory::Parse,
+                codes::PARSE_ERROR,
+                format!(
+                    "Unexpected end of data at offset 0x{:x}: expected {} bytes, but only {} \
+                     available",
+                    offset, expected, actual
+                ),
+            ),
+            SectionError::MalformedContent { offset, section_id, msg } => Error::new(
+                ErrorCategory::Parse,
+                codes::PARSE_ERROR,
+                format!(
+                    "Malformed content in section (ID: 0x{:02x}) at offset 0x{:x}: {}",
+                    section_id, offset, msg
+                ),
+            ),
+            SectionError::SectionSizeExceedsModule {
+                section_id,
+                section_size,
+                module_size,
+                offset,
+            } => Error::new(
+                ErrorCategory::Parse,
+                codes::PARSE_ERROR,
+                format!(
+                    "Section size exceeds module size: section (ID: 0x{:02x}) at offset 0x{:x} \
+                     has size {}, but only {} bytes remain in module",
+                    section_id, offset, section_size, module_size
+                ),
+            ),
+            SectionError::InvalidMagic { offset, expected, actual } => Error::new(
+                ErrorCategory::Parse,
+                codes::PARSE_ERROR,
+                format!(
+                    "Invalid WebAssembly magic bytes at offset 0x{:x}: expected {:?}, found {:?}",
+                    offset, expected, actual
+                ),
+            ),
+            SectionError::UnsupportedVersion { offset, expected, actual } => Error::new(
+                ErrorCategory::Parse,
+                codes::PARSE_ERROR,
+                format!(
+                    "Unsupported WebAssembly version at offset 0x{:x}: expected {:?}, found {:?}",
+                    offset, expected, actual
+                ),
+            ),
+            SectionError::InvalidValue { offset, section_id, description } => Error::new(
+                ErrorCategory::Parse,
+                codes::PARSE_ERROR,
+                format!(
+                    "Invalid value in section (ID: 0x{:02x}) at offset 0x{:x}: {}",
+                    section_id, offset, description
+                ),
+            ),
         }
     }
 }
@@ -160,10 +137,7 @@ pub fn invalid_section(id: u8, offset: usize, msg: &str) -> Error {
     Error::new(
         ErrorCategory::Parse,
         codes::PARSE_ERROR,
-        format!(
-            "Invalid section (ID: 0x{:02x}) at offset 0x{:x}: {}",
-            id, offset, msg
-        ),
+        format!("Invalid section (ID: 0x{:02x}) at offset 0x{:x}: {}", id, offset, msg),
     )
 }
 
@@ -201,9 +175,11 @@ pub fn section_size_exceeds_module(
     Error::new(
         ErrorCategory::Parse,
         codes::PARSE_ERROR,
-        format!("Section size exceeds module size: section (ID: 0x{:02x}) at offset 0x{:x} has size {}, but only {} bytes remain in module", 
+        format!(
+            "Section size exceeds module size: section (ID: 0x{:02x}) at offset 0x{:x} has size \
+             {}, but only {} bytes remain in module",
             section_id, offset, section_size, module_size
-        )
+        ),
     )
 }
 
@@ -212,9 +188,11 @@ pub fn section_too_large(section_id: u8, section_size: u32, offset: usize) -> Er
     Error::new(
         ErrorCategory::Parse,
         codes::PARSE_ERROR,
-        format!("Section too large: section (ID: 0x{:02x}) at offset 0x{:x} has size {} which exceeds maximum allowed size", 
+        format!(
+            "Section too large: section (ID: 0x{:02x}) at offset 0x{:x} has size {} which exceeds \
+             maximum allowed size",
             section_id, offset, section_size
-        )
+        ),
     )
 }
 
@@ -289,30 +267,19 @@ pub fn invalid_mutability(mutability_byte: u8, offset: usize) -> Error {
     SectionError::InvalidValue {
         offset,
         section_id: 2, // Import section (or 6 for global section)
-        description: format!(
-            "Invalid mutability flag: 0x{:02x}, expected 0 or 1",
-            mutability_byte
-        ),
+        description: format!("Invalid mutability flag: 0x{:02x}, expected 0 or 1", mutability_byte),
     }
     .to_error()
 }
 
 /// Create an invalid section ID error
 pub fn invalid_section_id(id: u8) -> Error {
-    Error::new(
-        ErrorCategory::Parse,
-        codes::PARSE_ERROR,
-        format!("Invalid section ID: {}", id),
-    )
+    Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, format!("Invalid section ID: {}", id))
 }
 
 /// Create an invalid section size error
 pub fn invalid_section_size(size: u32) -> Error {
-    Error::new(
-        ErrorCategory::Parse,
-        codes::PARSE_ERROR,
-        format!("Invalid section size: {}", size),
-    )
+    Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, format!("Invalid section size: {}", size))
 }
 
 /// Create an invalid section order error
@@ -320,65 +287,38 @@ pub fn invalid_section_order(expected: u8, got: u8) -> Error {
     Error::new(
         ErrorCategory::Parse,
         codes::PARSE_ERROR,
-        format!(
-            "Invalid section order: expected section ID {} but got {}",
-            expected, got
-        ),
+        format!("Invalid section order: expected section ID {} but got {}", expected, got),
     )
 }
 
 /// Create an invalid section content error
 pub fn invalid_section_content(message: &str) -> Error {
-    Error::new(
-        ErrorCategory::Parse,
-        codes::PARSE_ERROR,
-        message.to_string(),
-    )
+    Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, message.to_string())
 }
 
 /// Create an invalid section name error
 pub fn invalid_section_name(name: &str) -> Error {
-    Error::new(
-        ErrorCategory::Parse,
-        codes::PARSE_ERROR,
-        format!("Invalid section name: {}", name),
-    )
+    Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, format!("Invalid section name: {}", name))
 }
 
 /// Create an invalid section data error
 pub fn invalid_section_data(message: &str) -> Error {
-    Error::new(
-        ErrorCategory::Parse,
-        codes::PARSE_ERROR,
-        message.to_string(),
-    )
+    Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, message.to_string())
 }
 
 /// Create an invalid section format error
 pub fn invalid_section_format(message: &str) -> Error {
-    Error::new(
-        ErrorCategory::Parse,
-        codes::PARSE_ERROR,
-        message.to_string(),
-    )
+    Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, message.to_string())
 }
 
 /// Create a parse error
 pub fn parse_error(message: &str) -> Error {
-    Error::new(
-        ErrorCategory::Parse,
-        codes::PARSE_ERROR,
-        message.to_string(),
-    )
+    Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, message.to_string())
 }
 
 /// Create a parse error with context
 pub fn parse_error_with_context(message: &str, context: &str) -> Error {
-    Error::new(
-        ErrorCategory::Parse,
-        codes::PARSE_ERROR,
-        format!("{}: {}", message, context),
-    )
+    Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, format!("{}: {}", message, context))
 }
 
 /// Create a parse error with position

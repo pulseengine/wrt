@@ -1,8 +1,6 @@
 #![allow(dead_code)]
 
-use std::error::Error;
-use std::fs;
-use std::path::Path;
+use std::{error::Error, fs, path::Path};
 
 pub fn run(output_path: &Path) -> Result<(), Box<dyn Error>> {
     println!("Generating qualification assessment report...");
@@ -25,20 +23,28 @@ pub fn run(output_path: &Path) -> Result<(), Box<dyn Error>> {
 fn generate_assessment_report() -> String {
     let mut content = String::from("Qualification Assessment\n=======================\n\n");
 
-    content.push_str("This document assesses the qualification status of the WebAssembly Runtime (WRT) project.\n\n");
+    content.push_str(
+        "This document assesses the qualification status of the WebAssembly Runtime (WRT) \
+         project.\n\n",
+    );
 
     // Introduction section
     content.push_str("Introduction\n------------\n\n");
-    content.push_str("This assessment evaluates the implementation status of qualification materials required for the \
-                    certification process. It provides a comprehensive overview of the current qualification status \
-                    and identifies areas for improvement.\n\n");
+    content.push_str(
+        "This assessment evaluates the implementation status of qualification materials required \
+         for the certification process. It provides a comprehensive overview of the current \
+         qualification status and identifies areas for improvement.\n\n",
+    );
 
     // Qualification requirements assessment
     content.push_str("Qualification Status\n-------------------\n\n");
 
     content.push_str(".. needtable::\n");
     content.push_str("   :columns: id;title;status\n");
-    content.push_str("   :filter: id in ['QUAL_001', 'QUAL_002', 'QUAL_003', 'QUAL_004', 'QUAL_005', 'QUAL_006', 'QUAL_007', 'QUAL_008']\n\n");
+    content.push_str(
+        "   :filter: id in ['QUAL_001', 'QUAL_002', 'QUAL_003', 'QUAL_004', 'QUAL_005', \
+         'QUAL_006', 'QUAL_007', 'QUAL_008']\n\n",
+    );
 
     // Qualification materials assessment
     content.push_str("Qualification Materials Assessment\n--------------------------------\n\n");
@@ -51,13 +57,22 @@ fn generate_assessment_report() -> String {
     content.push_str("     - Assessment\n");
     content.push_str("   * - Evaluation Plan\n");
     content.push_str("     - Partial\n");
-    content.push_str("     - The requirements document includes partial evaluation criteria, but a comprehensive evaluation plan is needed.\n");
+    content.push_str(
+        "     - The requirements document includes partial evaluation criteria, but a \
+         comprehensive evaluation plan is needed.\n",
+    );
     content.push_str("   * - Evaluation Report\n");
     content.push_str("     - Not Started\n");
-    content.push_str("     - Evaluation report needs to be created to document hazard assessment and risk analysis.\n");
+    content.push_str(
+        "     - Evaluation report needs to be created to document hazard assessment and risk \
+         analysis.\n",
+    );
     content.push_str("   * - Qualification Plan\n");
     content.push_str("     - Started\n");
-    content.push_str("     - Initial qualification plan established in qualification.rst but needs further detail for standards compliance.\n");
+    content.push_str(
+        "     - Initial qualification plan established in qualification.rst but needs further \
+         detail for standards compliance.\n",
+    );
     content.push_str("   * - Qualification Report\n");
     content.push_str("     - Not Started\n");
     content.push_str(
@@ -65,7 +80,10 @@ fn generate_assessment_report() -> String {
     );
     content.push_str("   * - Traceability Matrix\n");
     content.push_str("     - Partial\n");
-    content.push_str("     - Requirements linkage exists in requirements.rst, but a comprehensive traceability matrix is needed.\n");
+    content.push_str(
+        "     - Requirements linkage exists in requirements.rst, but a comprehensive traceability \
+         matrix is needed.\n",
+    );
     content.push_str("   * - Document List\n");
     content.push_str("     - Not Started\n");
     content.push_str(
@@ -73,10 +91,16 @@ fn generate_assessment_report() -> String {
     );
     content.push_str("   * - Internal Procedures\n");
     content.push_str("     - Partial\n");
-    content.push_str("     - Some procedures exist in the justfile but need to be formalized in documentation.\n");
+    content.push_str(
+        "     - Some procedures exist in the justfile but need to be formalized in \
+         documentation.\n",
+    );
     content.push_str("   * - Technical Report\n");
     content.push_str("     - Not Started\n");
-    content.push_str("     - Technical report needs to be created to document architecture validation and performance analysis.\n");
+    content.push_str(
+        "     - Technical report needs to be created to document architecture validation and \
+         performance analysis.\n",
+    );
 
     // Gap analysis and next steps
     content.push_str("\nGap Analysis\n-----------\n\n");

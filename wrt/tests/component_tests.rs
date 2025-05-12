@@ -1,12 +1,11 @@
-use wrt::interface::{CanonicalABI, InterfaceValue};
-use wrt::resource::ResourceData;
-use wrt::resource::ResourceRepresentation;
-use wrt::resource::ResourceTable;
-use wrt::resource::ResourceType;
-use wrt::types::*;
-use wrt::{Component, Error, Result, ValueType};
-
 use std::sync::Arc;
+
+use wrt::{
+    interface::{CanonicalABI, InterfaceValue},
+    resource::{ResourceData, ResourceRepresentation, ResourceTable, ResourceType},
+    types::*,
+    Component, Error, Result, ValueType,
+};
 
 #[test]
 fn test_component_instantiation() -> Result<()> {
@@ -170,7 +169,8 @@ fn test_component_types() {
 
 #[test]
 fn test_component_binary_parsing() -> Result<()> {
-    // Create a minimal component binary with just the header and mandatory component-type-section
+    // Create a minimal component binary with just the header and mandatory
+    // component-type-section
     let component_binary = [
         // Component magic number and version
         0x00, 0x61, 0x73, 0x6D, // magic
@@ -215,8 +215,8 @@ fn test_component_validation() -> Result<()> {
     let invalid_binary = [
         // Valid magic and version
         0x00, 0x61, 0x73, 0x6D, // magic
-        0x0D, 0x00, 0x01, 0x00, // component model version
-              // No sections
+        0x0D, 0x00, 0x01, 0x00, /* component model version
+               * No sections */
     ];
 
     // Loading should fail

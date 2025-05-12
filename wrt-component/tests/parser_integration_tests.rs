@@ -1,6 +1,4 @@
-use wrt_decoder::section_reader::SectionReader;
-use wrt_decoder::Parser;
-use wrt_decoder::Payload;
+use wrt_decoder::{section_reader::SectionReader, Parser, Payload};
 
 // Helper to create a complex test module with multiple section types
 fn create_complex_test_module() -> Vec<u8> {
@@ -110,8 +108,8 @@ fn create_truncated_module() -> Vec<u8> {
     // Type section start, but truncated
     module.extend_from_slice(&[
         0x01, 0x05, // Type section ID and size
-        0x01, // Number of types
-              // Missing data here...
+        0x01, /* Number of types
+               * Missing data here... */
     ]);
 
     module
@@ -174,7 +172,8 @@ fn test_invalid_section_size() {
     let mut reader = SectionReader::new(&module).unwrap();
     let result = reader.next_section();
 
-    // The first section (ID 1, type section) should be readable but will have an invalid size
+    // The first section (ID 1, type section) should be readable but will have an
+    // invalid size
     assert!(result.is_ok());
 
     // Reading all sections should fail

@@ -157,9 +157,10 @@ impl LinkInterceptorStrategy for FirewallStrategy {
                     ErrorCategory::Runtime,
                     codes::RUNTIME_ERROR,
                     format!(
-                        "Security error: Function call from '{}' to '{}::{}' is not allowed by firewall policy",
+                        "Security error: Function call from '{}' to '{}::{}' is not allowed by \
+                         firewall policy",
                         source, target, function
-                    )
+                    ),
                 ));
             }
         }
@@ -211,9 +212,10 @@ impl LinkInterceptorStrategy for FirewallStrategy {
                     ErrorCategory::Runtime,
                     codes::RUNTIME_ERROR,
                     format!(
-                        "Security error: Function call from '{}' to '{}::{}' is not allowed by firewall policy",
+                        "Security error: Function call from '{}' to '{}::{}' is not allowed by \
+                         firewall policy",
                         source, target, function
-                    )
+                    ),
                 ));
             }
         }

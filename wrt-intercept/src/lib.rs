@@ -1,7 +1,9 @@
 // WRT - wrt-intercept
-// SW-REQ-ID: [SW-REQ-ID-wrt-intercept]
+// Module: Function Call Interception Layer
+// SW-REQ-ID: REQ_017
+// SW-REQ-ID: REQ_VERIFY_005
 //
-// Copyright (c) 2025 Ralf Anton Beier
+// Copyright (c) 2024 Ralf Anton Beier
 // Licensed under the MIT license.
 // SPDX-License-Identifier: MIT
 
@@ -20,7 +22,8 @@
 //! at function call boundaries. This enables various use cases:
 //!
 //! - Security monitoring and firewalls
-//! - Performance optimization with shared-nothing or shared-everything strategies
+//! - Performance optimization with shared-nothing or shared-everything
+//!   strategies
 //! - Logging and telemetry
 //! - Debugging and tracing
 //!
@@ -111,7 +114,8 @@ pub trait LinkInterceptorStrategy: Send + Sync {
     ///
     /// # Returns
     ///
-    /// * `Result<Vec<Value>>` - Potentially modified arguments to use for the call
+    /// * `Result<Vec<Value>>` - Potentially modified arguments to use for the
+    ///   call
     fn before_call(
         &self,
         source: &str,
@@ -173,7 +177,8 @@ pub trait LinkInterceptorStrategy: Send + Sync {
     ///
     /// # Returns
     ///
-    /// * `Result<Option<Vec<u8>>>` - Serialized value if lifting was handled, None if it should proceed normally
+    /// * `Result<Option<Vec<u8>>>` - Serialized value if lifting was handled,
+    ///   None if it should proceed normally
     fn intercept_lift(
         &self,
         _ty: &ValType,
@@ -194,7 +199,8 @@ pub trait LinkInterceptorStrategy: Send + Sync {
     ///
     /// # Returns
     ///
-    /// * `Result<bool>` - True if the lowering was handled, false if it should proceed normally
+    /// * `Result<bool>` - True if the lowering was handled, false if it should
+    ///   proceed normally
     fn intercept_lower(
         &self,
         _value_type: &ValType,
@@ -224,7 +230,8 @@ pub trait LinkInterceptorStrategy: Send + Sync {
     ///
     /// # Returns
     ///
-    /// * `Result<Option<Vec<u8>>>` - Serialized result values if call was handled, None if it should proceed normally
+    /// * `Result<Option<Vec<u8>>>` - Serialized result values if call was
+    ///   handled, None if it should proceed normally
     fn intercept_function_call(
         &self,
         _function_name: &str,
@@ -244,7 +251,8 @@ pub trait LinkInterceptorStrategy: Send + Sync {
     ///
     /// # Returns
     ///
-    /// * `Result<Option<Vec<u8>>>` - Modified serialized results if modified, None if they should be returned as is
+    /// * `Result<Option<Vec<u8>>>` - Modified serialized results if modified,
+    ///   None if they should be returned as is
     fn intercept_function_result(
         &self,
         _function_name: &str,
@@ -263,7 +271,8 @@ pub trait LinkInterceptorStrategy: Send + Sync {
     ///
     /// # Returns
     ///
-    /// * `Result<Option<Vec<u8>>>` - Serialized result value if operation was handled, None if it should proceed normally
+    /// * `Result<Option<Vec<u8>>>` - Serialized result value if operation was
+    ///   handled, None if it should proceed normally
     fn intercept_resource_operation(
         &self,
         _handle: u32,
@@ -280,7 +289,8 @@ pub trait LinkInterceptorStrategy: Send + Sync {
     ///
     /// # Returns
     ///
-    /// * `Option<u8>` - The preferred memory strategy (0=ZeroCopy, 1=BoundedCopy, 2=FullIsolation), or None to use the default
+    /// * `Option<u8>` - The preferred memory strategy (0=ZeroCopy,
+    ///   1=BoundedCopy, 2=FullIsolation), or None to use the default
     fn get_memory_strategy(&self, _handle: u32) -> Option<u8> {
         None
     }
@@ -289,11 +299,13 @@ pub trait LinkInterceptorStrategy: Send + Sync {
     ///
     /// # Arguments
     ///
-    /// * `component_name` - The name of the component whose start function is executed
+    /// * `component_name` - The name of the component whose start function is
+    ///   executed
     ///
     /// # Returns
     ///
-    /// * `Result<Option<Vec<u8>>>` - Serialized values to use as the result, None to execute normally
+    /// * `Result<Option<Vec<u8>>>` - Serialized values to use as the result,
+    ///   None to execute normally
     fn before_start(&self, _component_name: &str) -> Result<Option<Vec<u8>>> {
         Ok(None)
     }
@@ -302,13 +314,15 @@ pub trait LinkInterceptorStrategy: Send + Sync {
     ///
     /// # Arguments
     ///
-    /// * `component_name` - The name of the component whose start function was executed
+    /// * `component_name` - The name of the component whose start function was
+    ///   executed
     /// * `result_types` - The types of the results
     /// * `result_data` - The serialized result values, if any
     ///
     /// # Returns
     ///
-    /// * `Result<Option<Vec<u8>>>` - Modified serialized values to use as the final result, None to use the original result
+    /// * `Result<Option<Vec<u8>>>` - Modified serialized values to use as the
+    ///   final result, None to use the original result
     fn after_start(
         &self,
         _component_name: &str,
@@ -397,7 +411,8 @@ impl LinkInterceptor {
     ///
     /// # Returns
     ///
-    /// * `Result<Vec<Value>>` - The result of the function call after interception
+    /// * `Result<Vec<Value>>` - The result of the function call after
+    ///   interception
     pub fn intercept_call<F>(
         &self,
         target: &str,
@@ -447,7 +462,8 @@ impl LinkInterceptor {
     ///
     /// # Returns
     ///
-    /// * `Option<&dyn LinkInterceptorStrategy>` - The first strategy, or None if none exists
+    /// * `Option<&dyn LinkInterceptorStrategy>` - The first strategy, or None
+    ///   if none exists
     pub fn get_strategy(&self) -> Option<&dyn LinkInterceptorStrategy> {
         self.strategies.first().map(|s| s.as_ref())
     }

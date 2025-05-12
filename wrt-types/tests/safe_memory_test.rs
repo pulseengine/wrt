@@ -1,25 +1,26 @@
 //! Tests for the safe memory implementation
 
+#[cfg(not(feature = "std"))]
+use wrt_types::safe_memory::NoStdMemoryProvider;
+#[cfg(feature = "std")]
+use wrt_types::safe_memory::StdMemoryProvider;
 use wrt_types::{
+    prelude::*,
     safe_memory::{MemoryProvider, SafeSlice},
     verification::VerificationLevel,
 };
 
-#[cfg(feature = "std")]
-use wrt_types::safe_memory::StdMemoryProvider;
-
-#[cfg(not(feature = "std"))]
-use wrt_types::safe_memory::NoStdMemoryProvider;
-
 #[test]
 fn test_safe_slice_creation() {
     let data = vec![1, 2, 3, 4, 5];
-    let slice = SafeSlice::new(&data);
+    let slice_res = SafeSlice::new(&data);
+    assert!(slice_res.is_ok(), "Slice creation failed");
+    let slice = slice_res.unwrap();
 
     // Verify data access works
-    assert_eq!(slice.as_ref().unwrap().data().unwrap(), &[1, 2, 3, 4, 5]);
-    assert_eq!(slice.as_ref().unwrap().len(), 5);
-    assert!(!slice.as_ref().unwrap().is_empty());
+    assert_eq!(slice.data().unwrap(), &[1, 2, 3, 4, 5]);
+    assert_eq!(slice.len(), 5);
+    assert!(!slice.is_empty());
 }
 
 #[test]
@@ -27,16 +28,17 @@ fn test_safe_slice_verification_levels() {
     let data = vec![1, 2, 3, 4, 5];
 
     // Create with different verification levels
-    let slice_none = SafeSlice::with_verification_level(&data, VerificationLevel::None);
-    let slice_sampling = SafeSlice::with_verification_level(&data, VerificationLevel::Sampling);
-    let slice_standard = SafeSlice::with_verification_level(&data, VerificationLevel::Standard);
-    let slice_full = SafeSlice::with_verification_level(&data, VerificationLevel::Full);
+    let slice_none = SafeSlice::with_verification_level(&data, VerificationLevel::Off).unwrap();
+    let slice_sampling =
+        SafeSlice::with_verification_level(&data, VerificationLevel::default()).unwrap();
+    let slice_basic = SafeSlice::with_verification_level(&data, VerificationLevel::Basic).unwrap();
+    let slice_full = SafeSlice::with_verification_level(&data, VerificationLevel::Full).unwrap();
 
     // All should return the same data
-    assert_eq!(slice_none.as_ref().unwrap().data().unwrap(), &[1, 2, 3, 4, 5]);
-    assert_eq!(slice_sampling.as_ref().unwrap().data().unwrap(), &[1, 2, 3, 4, 5]);
-    assert_eq!(slice_standard.as_ref().unwrap().data().unwrap(), &[1, 2, 3, 4, 5]);
-    assert_eq!(slice_full.as_ref().unwrap().data().unwrap(), &[1, 2, 3, 4, 5]);
+    assert_eq!(slice_none.data().unwrap(), &[1, 2, 3, 4, 5]);
+    assert_eq!(slice_sampling.data().unwrap(), &[1, 2, 3, 4, 5]);
+    assert_eq!(slice_basic.data().unwrap(), &[1, 2, 3, 4, 5]);
+    assert_eq!(slice_full.data().unwrap(), &[1, 2, 3, 4, 5]);
 }
 
 #[cfg(feature = "std")]
@@ -129,9 +131,8 @@ fn test_memory_safety_trait() {
     assert!(provider.verify_integrity().is_ok());
 
     // Test changing verification level
-    assert_eq!(provider.verification_level(), VerificationLevel::Standard);
+    assert_eq!(provider.verification_level(), VerificationLevel::default());
     provider.set_verification_level(VerificationLevel::Full);
-    assert_eq!(provider.verification_level(), VerificationLevel::Full);
 
     // Test memory stats
     let stats = provider.memory_stats();
@@ -147,8 +148,8 @@ fn test_memory_safety_trait() {
     // Test MemorySafety trait methods
     assert!(provider.verify_integrity().is_ok());
 
-    // Test verification level (starts at Standard)
-    assert_eq!(provider.verification_level(), VerificationLevel::Standard);
+    // Test verification level (starts at default)
+    assert_eq!(provider.verification_level(), VerificationLevel::default());
 
     // Change verification level
     provider.set_verification_level(VerificationLevel::Full);

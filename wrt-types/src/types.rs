@@ -1,6 +1,6 @@
 // WRT - wrt-types
 // Module: Core WebAssembly Type Definitions
-// SW-REQ-ID: REQ_WASM_CORE_001 (Example: Relates to core Wasm type system)
+// SW-REQ-ID: REQ_018
 //
 // Copyright (c) 2024 Ralf Anton Beier
 // Licensed under the MIT license.
@@ -8,70 +8,70 @@
 
 //! WebAssembly type definitions
 //!
-//! This module defines core WebAssembly types and utilities for working with them,
-//! including function types, block types, value types, and reference types.
+//! This module defines core WebAssembly types and utilities for working with
+//! them, including function types, block types, value types, and reference
+//! types.
 
 #![allow(unused_imports)]
 
 #[cfg(not(feature = "std"))]
 extern crate alloc;
 
-use core::fmt;
-#[cfg(feature = "std")]
-use core::hash::Hasher as StdHasher;
-#[cfg(feature = "std")]
-use core::str::FromStr;
-
-#[cfg(feature = "std")]
-use std::collections::HashMap;
-#[cfg(feature = "std")]
-use std::collections::HashSet;
-#[cfg(feature = "std")]
-use std::{string::String, string::ToString, vec::Vec};
-
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 use alloc::collections::BTreeMap as HashMap;
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 use alloc::collections::BTreeSet as HashSet;
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use alloc::fmt::{Debug, Display};
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use alloc::format;
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 use alloc::vec;
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 use alloc::{string::String, string::ToString, vec::Vec}; // For vec! macro
-
-use crate::conversion;
-use crate::sections::Section;
-use crate::values::Value;
-use crate::Result;
-
-// Import wrt_error types
-use wrt_error::{Error, ErrorCategory};
-
+use core::fmt;
+#[cfg(not(any(feature = "std", feature = "alloc")))]
+use core::fmt::{Debug, Display};
+#[cfg(feature = "std")]
+use core::hash::Hasher as StdHasher;
+#[cfg(feature = "std")]
+use core::str::FromStr;
+#[cfg(feature = "std")]
+use std::collections::HashMap;
+#[cfg(feature = "std")]
+use std::collections::HashSet;
 // Use proper imports for std or no_std environments
 #[cfg(feature = "std")]
 use std::fmt::{Debug, Display};
 #[cfg(feature = "std")]
 use std::format;
+#[cfg(feature = "std")]
+use std::{string::String, string::ToString, vec::Vec};
 
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-use alloc::fmt::{Debug, Display};
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-use alloc::format;
-
-#[cfg(not(any(feature = "std", feature = "alloc")))]
-use core::fmt::{Debug, Display};
+// Import wrt_error types
+use wrt_error::{Error, ErrorCategory};
 
 // Import BoundedVec and other necessary types
 use crate::bounded::BoundedVec;
+use crate::{
+    conversion,
+    prelude::{BoundedCapacity, Eq, Ord, PartialEq, TryFrom},
+    sections::Section,
+    values::Value,
+    Result,
+};
 
 /// Index for a type in the types section.
 pub type TypeIdx = u32;
-/// Index for a function, referring to both imported and module-defined functions.
+/// Index for a function, referring to both imported and module-defined
+/// functions.
 pub type FuncIdx = u32;
 /// Index for a table.
 pub type TableIdx = u32;
 /// Index for a memory.
 pub type MemIdx = u32;
-/// Index for a global variable, referring to both imported and module-defined globals.
+/// Index for a global variable, referring to both imported and module-defined
+/// globals.
 pub type GlobalIdx = u32;
 /// Index for an element segment.
 pub type ElemIdx = u32;
@@ -97,7 +97,8 @@ impl Hasher {
     fn update(&mut self, bytes: &[u8]) {
         for &byte in bytes {
             self.hash ^= u32::from(byte);
-            self.hash = self.hash.wrapping_mul(0x0100_0193); // FNV prime for 32-bit
+            self.hash = self.hash.wrapping_mul(0x0100_0193); // FNV prime for
+                                                             // 32-bit
         }
     }
 
@@ -108,6 +109,7 @@ impl Hasher {
 
 /// WebAssembly value types
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub enum ValueType {
     /// 32-bit integer
     I32,
@@ -145,7 +147,7 @@ impl ValueType {
             _ => Err(Error::new(
                 ErrorCategory::Parse,
                 wrt_error::codes::PARSE_INVALID_VALTYPE_BYTE,
-                format!("Invalid value type byte: {:#02x}", byte),
+                format!("Invalid value type byte: {byte:#02x}"),
             )),
         }
     }
@@ -154,6 +156,7 @@ impl ValueType {
     ///
     /// Uses the standardized conversion utility for consistency
     /// across all crates.
+    #[must_use]
     pub fn to_binary(self) -> u8 {
         match self {
             ValueType::I32 => 0x7F,
@@ -231,6 +234,7 @@ impl BlockType {
     }
 
     /// Returns the type index if this is a type reference
+    #[must_use]
     pub fn as_type_index(&self) -> Option<u32> {
         match self {
             Self::TypeIndex(idx) => Some(*idx),
@@ -238,7 +242,8 @@ impl BlockType {
         }
     }
 
-    /// Creates a `BlockType` from a `ValueType` option (None = Empty, Some = Value)
+    /// Creates a `BlockType` from a `ValueType` option (None = Empty, Some =
+    /// Value)
     #[must_use]
     pub fn from_value_type_option(vt: Option<ValueType>) -> Self {
         match vt {
@@ -349,6 +354,7 @@ impl FuncType {
     }
 
     /// Get the hash value for this function type
+    #[must_use]
     pub fn hash(&self) -> u32 {
         self.type_hash
     }
@@ -426,6 +432,7 @@ impl FuncType {
     }
 
     /// Execute type checking for function parameters
+    #[must_use]
     pub fn check_params(&self, params: &[ValueType]) -> bool {
         if params.len() != self.params.len() {
             return false;
@@ -439,6 +446,7 @@ impl FuncType {
     }
 
     /// Execute type checking for function results
+    #[must_use]
     pub fn check_results(&self, results: &[ValueType]) -> bool {
         if results.len() != self.results.len() {
             return false;
@@ -569,7 +577,8 @@ pub struct GlobalType {
     /// Whether the global is mutable
     pub mutable: bool,
     /// Add initial value for the global, parsed from `init_expr`
-    /// This assumes the `init_expr` is a constant expression evaluable by the decoder.
+    /// This assumes the `init_expr` is a constant expression evaluable by the
+    /// decoder.
     pub initial_value: Value,
 }
 
@@ -616,7 +625,8 @@ pub struct Import {
     pub module: String,
     /// The name of the item to import.
     pub name: String,
-    /// The descriptor of the imported item (function, table, memory, or global).
+    /// The descriptor of the imported item (function, table, memory, or
+    /// global).
     pub desc: ImportDesc,
 }
 
@@ -639,7 +649,8 @@ pub enum ImportDesc {
 pub struct Export {
     /// The name under which the item is exported.
     pub name: String,
-    /// The descriptor of the exported item (function, table, memory, or global).
+    /// The descriptor of the exported item (function, table, memory, or
+    /// global).
     pub desc: ExportDesc,
 }
 
@@ -653,8 +664,8 @@ pub enum ExportDesc {
     /// An exported memory, with its memory index.
     Memory(u32), // memory_idx
     /// An exported global, with its global index.
-    Global(u32), // global_idx
-                 // Tag(u32),    // Placeholder for future Tag support
+    Global(u32), /* global_idx
+                  * Tag(u32),    // Placeholder for future Tag support */
 }
 
 /// Represents an element segment for table initialization.
@@ -675,12 +686,15 @@ pub enum ElementMode {
     Active {
         /// The index of the table to initialize.
         table_index: u32,
-        /// The offset within the table where initialization occurs, evaluated from a const expression.
+        /// The offset within the table where initialization occurs, evaluated
+        /// from a const expression.
         offset: Value, // Parsed from offset_expr (must be a constant expression)
     },
-    /// Passive segment whose elements can be copied into a table using `table.init`.
+    /// Passive segment whose elements can be copied into a table using
+    /// `table.init`.
     Passive,
-    /// Declared segment whose elements are available to the host or via `ref.func`.
+    /// Declared segment whose elements are available to the host or via
+    /// `ref.func`.
     Declared,
 }
 
@@ -700,10 +714,12 @@ pub enum DataMode {
     Active {
         /// The index of the memory to initialize (should be 0 in MVP).
         memory_index: u32, // Should be 0 in MVP.
-        /// The offset within memory where initialization occurs, evaluated from a const expression.
+        /// The offset within memory where initialization occurs, evaluated from
+        /// a const expression.
         offset: Value, // Parsed from offset_expr (must be a constant expression)
     },
-    /// Passive segment whose data can be copied into memory using `memory.init`.
+    /// Passive segment whose data can be copied into memory using
+    /// `memory.init`.
     Passive,
 }
 
@@ -728,7 +744,8 @@ impl CustomSection {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct MemArg {
     /// The alignment of the memory access, stored as `2^align_exponent`.
-    /// Actual alignment is `1 << align_exponent`. Max 32 for V128, 8 for others typically.
+    /// Actual alignment is `1 << align_exponent`. Max 32 for V128, 8 for others
+    /// typically.
     pub align_exponent: u32,
     /// The constant offset added to the address operand.
     pub offset: u32,
@@ -1268,7 +1285,7 @@ pub enum Instruction {
     /// WebAssembly instruction.
     I8x16Ne,
     /// WebAssembly instruction.
-    I8x16LtS, /* ... up to F64x2Ge ... */
+    I8x16LtS, // ... up to F64x2Ge ...
     /// WebAssembly instruction.
     V128Not,
     /// WebAssembly instruction.
@@ -1281,10 +1298,10 @@ pub enum Instruction {
     V128Xor,
     /// WebAssembly instruction.
     V128Bitselect,
-    /* ... SIMD Fabs, Fneg, Fsqrt, Fadd, Fsub, Fmul, Fdiv, Fmin, Fmax, Fpmin, Fpmax ... */
-    /* ... SIMD Iadd, Isub, Imul, Imin, Imax, AvgrU, Q15MulRSatS, Extmul, ExtaddPairwise ... */
-    /* ... SIMD IShl, IShrS, IShrU ... */
-    /* ... SIMD Conversions (trunc_sat, narrow, widen, demote, promote) ... */
+    // ... SIMD Fabs, Fneg, Fsqrt, Fadd, Fsub, Fmul, Fdiv, Fmin, Fmax, Fpmin, Fpmax ... */
+    // ... SIMD Iadd, Isub, Imul, Imin, Imax, AvgrU, Q15MulRSatS, Extmul, ExtaddPairwise ... */
+    // ... SIMD IShl, IShrS, IShrU ... */
+    // ... SIMD Conversions (trunc_sat, narrow, widen, demote, promote) ...
     /// WebAssembly instruction.
     AnyTrue,
     /// WebAssembly instruction.
@@ -1349,7 +1366,8 @@ pub enum Instruction {
     // ... more atomic RMW operations ...
 }
 
-/// A sequence of WebAssembly instructions, typically forming a function body or an initializer expression.
+/// A sequence of WebAssembly instructions, typically forming a function body or
+/// an initializer expression.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Expr {
     /// Instructions in the expression.
@@ -1385,8 +1403,8 @@ pub struct Module {
     /// Imported functions, tables, memories, and globals.
     pub imports: Vec<Import>,
 
-    /// For each function defined in the module, its type index into the `types` vector.
-    /// The order corresponds to the `code_entries` vector.
+    /// For each function defined in the module, its type index into the `types`
+    /// vector. The order corresponds to the `code_entries` vector.
     pub funcs: Vec<TypeIdx>,
 
     /// Table definitions.
@@ -1422,7 +1440,8 @@ pub struct Module {
     // Potentially add fields for other sections like:
     // pub name_section: Option<NameSection>, // Define NameSection struct
     // pub producers_section: Option<ProducersSection>, // Define ProducersSection struct
-    // etc. or keep them in custom_sections if their structure is not strictly enforced for the runtime.
+    // etc. or keep them in custom_sections if their structure is not strictly enforced for the
+    // runtime.
 }
 
 #[cfg(test)]
@@ -1477,7 +1496,8 @@ mod tests {
 
         let unlimited = Limits::new(5, None);
         assert!(unlimited.check_size(5));
-        assert!(unlimited.check_size(1_000_000)); // Corrected: 1000000 to 1_000_000
+        assert!(unlimited.check_size(1_000_000)); // Corrected: 1000000 to
+                                                  // 1_000_000
     }
 
     #[test]

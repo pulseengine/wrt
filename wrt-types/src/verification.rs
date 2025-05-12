@@ -1,6 +1,7 @@
 // WRT - wrt-types
 // Module: Verification Utilities
-// SW-REQ-ID: REQ_INTEGRITY_001 (Example: Relates to data integrity checks)
+// SW-REQ-ID: REQ_VERIFY_001
+// SW-REQ-ID: REQ_VERIFY_003
 //
 // Copyright (c) 2024 Ralf Anton Beier
 // Licensed under the MIT license.
@@ -13,20 +14,17 @@
 //! functional safety.
 
 // Conditionally import from std or core
-#[cfg(feature = "std")]
-use std::fmt;
-
 #[cfg(not(feature = "std"))]
 use core::fmt;
-
+#[cfg(not(feature = "std"))]
+use core::sync::atomic::{AtomicU32, Ordering};
+#[cfg(feature = "std")]
+use std::fmt;
 #[cfg(feature = "std")]
 use std::sync::atomic::{AtomicU32, Ordering};
 
-#[cfg(not(feature = "std"))]
-use core::sync::atomic::{AtomicU32, Ordering};
-
 /// Defines the level of verification to apply for checksums and other checks.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Default)]
 #[repr(u8)]
 pub enum VerificationLevel {
     /// No verification checks are performed.
@@ -44,6 +42,7 @@ pub enum VerificationLevel {
 
 impl VerificationLevel {
     /// Returns the byte representation of the verification level.
+    #[must_use]
     pub fn to_byte(self) -> u8 {
         self as u8
     }
@@ -55,6 +54,7 @@ impl VerificationLevel {
     pub fn should_verify(&self, operation_importance: u8) -> bool {
         match self {
             Self::Off => false,
+            Self::Basic => operation_importance > 0, // Basic verifies if there's any importance
             Self::Sampling => {
                 // Simple sampling strategy: verify based on importance
                 // Higher importance = higher chance of being verified
@@ -67,14 +67,17 @@ impl VerificationLevel {
                 (current % 256) < u32::from(operation_importance)
             }
             Self::Full => true,
-            _ => false,
+            Self::Redundant => true, // Redundant implies Full for standard verification checks
         }
     }
 
     /// Check if full redundant verification should be performed
     #[must_use]
     pub fn should_verify_redundant(&self) -> bool {
-        matches!(self, Self::Full)
+        // This check is specifically for *additional* redundant checks,
+        // not the standard checks covered by should_verify.
+        // Test `test_should_validate_redundant` asserts that Full should pass this.
+        matches!(self, Self::Full | Self::Redundant)
     }
 }
 

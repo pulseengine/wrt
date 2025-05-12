@@ -5,10 +5,10 @@
 //! all WRT components.
 
 // Use our prelude for consistent imports
-use crate::prelude::*;
-
 // Re-export the memory adapter types from wrt-runtime
 pub use wrt_runtime::memory_adapter::{MemoryAdapter, SafeMemoryAdapter, StdMemoryProvider};
+
+use crate::prelude::*;
 
 /// Create a new memory adapter with the given memory type
 ///

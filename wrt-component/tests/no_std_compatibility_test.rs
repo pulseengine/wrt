@@ -1,6 +1,7 @@
 //! Test no_std compatibility for wrt-component
 //!
-//! This file validates that the wrt-component crate works correctly in no_std environments.
+//! This file validates that the wrt-component crate works correctly in no_std
+//! environments.
 
 // For testing in a no_std environment
 #![cfg_attr(not(feature = "std"), no_std)]
@@ -14,7 +15,6 @@ mod tests {
     // Import necessary types for no_std environment
     #[cfg(all(not(feature = "std"), feature = "alloc"))]
     use alloc::{boxed::Box, format, string::String, vec, vec::Vec};
-
     #[cfg(feature = "std")]
     use std::{boxed::Box, string::String, vec, vec::Vec};
 
@@ -30,7 +30,6 @@ mod tests {
             ResourceOperation,
         },
     };
-
     // Import from wrt-types
     use wrt_types::{
         component_value::{ComponentValue, ValType},

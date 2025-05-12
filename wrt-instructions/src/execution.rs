@@ -1,18 +1,18 @@
 //! Pure execution context for WebAssembly instructions.
 //!
-//! This module provides a minimal execution context for pure instruction implementations.
-//! It defines interfaces that can be implemented by different execution engines.
+//! This module provides a minimal execution context for pure instruction
+//! implementations. It defines interfaces that can be implemented by different
+//! execution engines.
 //!
 //! This implementation supports both std and no_std environments.
 
-use crate::arithmetic_ops::ArithmeticContext;
-use crate::comparison_ops::ComparisonContext;
-use crate::prelude::*;
+use crate::{arithmetic_ops::ArithmeticContext, comparison_ops::ComparisonContext, prelude::*};
 
 /// A trait defining a minimal execution context for pure instructions.
 ///
-/// This trait provides the minimal interface required for executing pure instructions.
-/// It is designed to be implemented by different execution engines according to their needs.
+/// This trait provides the minimal interface required for executing pure
+/// instructions. It is designed to be implemented by different execution
+/// engines according to their needs.
 pub trait PureExecutionContext {
     /// Pushes a value onto the stack.
     ///
@@ -43,7 +43,8 @@ pub trait PureExecutionContext {
     /// # Returns
     ///
     /// * `Ok(Value)` - The popped value
-    /// * `Err(Error)` - If an error occurred (e.g., stack underflow or type mismatch)
+    /// * `Err(Error)` - If an error occurred (e.g., stack underflow or type
+    ///   mismatch)
     fn pop_value_expected(&mut self, expected_type: ValueType) -> Result<Value>;
 }
 

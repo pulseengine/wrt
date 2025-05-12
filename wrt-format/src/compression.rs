@@ -1,19 +1,19 @@
 //! Compression utilities for WebAssembly state serialization.
 //!
 //! This module provides compression algorithms for WebAssembly state data,
-//! focusing on run-length encoding (RLE) which is efficient for memory sections.
-
-use crate::Vec;
-use wrt_error::{codes, Error, ErrorCategory, Result};
-
-#[cfg(feature = "std")]
-use std::cmp;
-
-#[cfg(not(feature = "std"))]
-use core::cmp;
+//! focusing on run-length encoding (RLE) which is efficient for memory
+//! sections.
 
 #[cfg(not(feature = "std"))]
 use alloc::string::ToString;
+#[cfg(not(feature = "std"))]
+use core::cmp;
+#[cfg(feature = "std")]
+use std::cmp;
+
+use wrt_error::{codes, Error, ErrorCategory, Result};
+
+use crate::Vec;
 
 /// Supported compression types
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -141,13 +141,12 @@ pub fn rle_decode(input: &[u8]) -> Result<Vec<u8>> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
+    #[cfg(all(not(feature = "std"), feature = "alloc"))]
+    use alloc::vec;
     #[cfg(feature = "std")]
     use std::vec;
 
-    #[cfg(all(not(feature = "std"), feature = "alloc"))]
-    use alloc::vec;
+    use super::*;
 
     #[test]
     fn test_rle_encode_decode() {
@@ -157,8 +156,8 @@ mod tests {
 
         let single = vec![42];
         let encoded = rle_encode(&single);
-        // The implementation encodes single values as a literal sequence [length, value]
-        // where length is 1 for a single byte
+        // The implementation encodes single values as a literal sequence [length,
+        // value] where length is 1 for a single byte
         assert_eq!(encoded, vec![1, 42]);
         assert_eq!(rle_decode(&encoded).unwrap(), single);
 
@@ -196,6 +195,7 @@ mod tests {
         // Test for a zero-length RLE sequence with zero count
         let zero_count = vec![0, 0, 42]; // RLE sequence: [0x00, count=0, value=42]
         let result = rle_decode(&zero_count).unwrap();
-        assert_eq!(result, vec![]); // Should decode to empty array since count is 0
+        assert_eq!(result, vec![]); // Should decode to empty array since count
+                                    // is 0
     }
 }

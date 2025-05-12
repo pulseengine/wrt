@@ -1,6 +1,4 @@
-use wrt::behavior::NullBehavior;
-use wrt::instructions::comparison;
-use wrt::{Error, Result, Value};
+use wrt::{behavior::NullBehavior, instructions::comparison, Error, Result, Value};
 
 #[test]
 fn test_direct_i64_comparison() -> Result<()> {

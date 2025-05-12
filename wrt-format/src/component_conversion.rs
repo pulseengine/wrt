@@ -1,7 +1,7 @@
 // Component format conversion module
 //
-// This module provides direct conversion between binary format types and runtime types
-// without requiring intermediate conversions.
+// This module provides direct conversion between binary format types and
+// runtime types without requiring intermediate conversions.
 
 use wrt_error::Result;
 use wrt_types::ValueType;

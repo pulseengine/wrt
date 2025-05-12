@@ -2,9 +2,9 @@
 //!
 //! This module provides component model type definitions.
 
-use crate::component::Component;
-use crate::prelude::*;
 use wrt_error::kinds::InvalidState;
+
+use crate::{component::Component, prelude::*};
 
 /// Represents an instantiated component
 #[derive(Debug)]

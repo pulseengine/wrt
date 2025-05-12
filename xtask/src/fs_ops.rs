@@ -1,8 +1,8 @@
 // Logic copied from previous fs-utils/src/main.rs
+use std::{fs, path::Path};
+
 use anyhow::{Context, Result};
 use fs_extra::dir;
-use std::fs;
-use std::path::Path;
 use walkdir::{DirEntry, WalkDir};
 
 pub fn rmrf(path: &Path) -> Result<()> {
@@ -106,14 +106,12 @@ pub fn count_files(directory: &Path, pattern: &str) -> Result<()> {
     Ok(())
 }
 
-/*
-pub fn file_size(path: &Path) -> Result<()> {
-    let metadata = fs::metadata(path).with_context(|| format!("Failed to get metadata for {:?}", path))?;
-    let size = metadata.len();
-    info!("Size of {:?}: {} bytes", path, size);
-    Ok(())
-}
-*/
+// pub fn file_size(path: &Path) -> Result<()> {
+// let metadata = fs::metadata(path).with_context(|| format!("Failed to get
+// metadata for {:?}", path))?; let size = metadata.len();
+// info!("Size of {:?}: {} bytes", path, size);
+// Ok(())
+// }
 
 pub fn copy_file(source: &Path, destination: &Path) -> Result<()> {
     println!("Copying file from {} to {}...", source.display(), destination.display());
@@ -135,7 +133,8 @@ pub fn copy_file(source: &Path, destination: &Path) -> Result<()> {
     Ok(())
 }
 
-// Create an alias for the copy_file function as cp to maintain backward compatibility
+// Create an alias for the copy_file function as cp to maintain backward
+// compatibility
 pub fn cp(source: &Path, destination: &Path) -> Result<()> {
     copy_file(source, destination)
 }

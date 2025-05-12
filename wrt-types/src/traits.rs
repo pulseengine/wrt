@@ -1,24 +1,23 @@
 // WRT - wrt-types
 // Module: Common Conversion Traits
-// SW-REQ-ID: REQ_WASM_CORE_004 (Example: Relates to type system consistency and conversions)
+// SW-REQ-ID: REQ_VERIFY_003
+// SW-REQ-ID: REQ_018
 //
 // Copyright (c) 2024 Ralf Anton Beier
 // Licensed under the MIT license.
 // SPDX-License-Identifier: MIT
 
-#[cfg(feature = "std")]
-use std::fmt;
-
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 use core::fmt;
-
 #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
-use core::fmt; // For cases with no_std and no alloc, fmt is still in core
+use core::fmt;
+#[cfg(feature = "std")]
+use std::fmt; // For cases with no_std and no alloc, fmt is still in core
 
-//! Common traits for type conversions
-//!
-//! This module provides common traits used for type conversions between format
-//! and runtime representations.
+// Common traits for type conversions
+//
+// This module provides common traits used for type conversions between format
+// and runtime representations.
 
 /// Trait for types that can be converted from a format representation
 pub trait FromFormat<T> {
@@ -43,8 +42,9 @@ pub trait ToFormat<T>: Sized {
 pub trait Checksummable {
     /// Updates the given checksum with the byte representation of self.
     ///
-    /// How a type is converted to bytes for checksumming is specific to its implementation.
-    /// For complex types, this should be a defined, stable serialization.
+    /// How a type is converted to bytes for checksumming is specific to its
+    /// implementation. For complex types, this should be a defined, stable
+    /// serialization.
     fn update_checksum(&self, checksum: &mut crate::verification::Checksum);
 }
 
@@ -86,35 +86,36 @@ impl Checksummable for alloc::string::String {
     }
 }
 
-// Example for arrays (might need a helper or be specific if T itself is not [u8; N])
-// This generic impl would require T to be Checksummable itself, which is not what item_as_bytes_slice did.
-// The original item_as_bytes_slice directly took bytes of T.
-// For arrays of primitives, the macro above handles the primitives.
-// If T is a struct, it would need its own Checksummable impl.
+// Example for arrays (might need a helper or be specific if T itself is not
+// [u8; N]) This generic impl would require T to be Checksummable itself, which
+// is not what item_as_bytes_slice did. The original item_as_bytes_slice
+// directly took bytes of T. For arrays of primitives, the macro above handles
+// the primitives. If T is a struct, it would need its own Checksummable impl.
 
-// For a generic array of known-size primitives, this might be useful if direct byte repr is okay:
-// impl<T, const N: usize> Checksummable for [T; N]
+// For a generic array of known-size primitives, this might be useful if direct
+// byte repr is okay: impl<T, const N: usize> Checksummable for [T; N]
 // where
-//     T: Copy + Sized, // Add more bounds if needed, e.g. Pod if bytemuck was allowed
-// {
+//     T: Copy + Sized, // Add more bounds if needed, e.g. Pod if bytemuck was
+// allowed {
 //     fn update_checksum(&self, checksum: &mut crate::verification::Checksum) {
 //         // This is unsafe if T is not POD. We are avoiding unsafe.
-//         // So, this generic impl is problematic without further constraints or a safe way
-//         // to get bytes. If T itself is Checksummable:
+//         // So, this generic impl is problematic without further constraints
+// or a safe way         // to get bytes. If T itself is Checksummable:
 //         // for item in self.iter() {
 //         //     item.update_checksum(checksum);
 //         // }
-//         // However, the original code did a direct memory dump of T for checksum.
-//         // The new trait shifts responsibility to T to provide its bytes.
-//         // For arrays of primitives, the checksum will be based on each element's checksum.
+//         // However, the original code did a direct memory dump of T for
+// checksum.         // The new trait shifts responsibility to T to provide its
+// bytes.         // For arrays of primitives, the checksum will be based on
+// each element's checksum.
 
 //         // If we assume this is an array of bytes, or T is u8:
 //         // if core::mem::size_of::<T>() == 1 {
-//         //    let bytes: &[u8] = unsafe { core::slice::from_raw_parts(self.as_ptr() as *const u8, N) };
-//         //    checksum.update_slice(bytes);
-//         // }
-//         // This still uses unsafe. Best to rely on T implementing Checksummable and iterate if it's not &[u8].
-//     }
+//         //    let bytes: &[u8] = unsafe {
+// core::slice::from_raw_parts(self.as_ptr() as *const u8, N) };         //
+// checksum.update_slice(bytes);         // }
+//         // This still uses unsafe. Best to rely on T implementing
+// Checksummable and iterate if it's not &[u8].     }
 // }
 
 // New traits for safe serialization/deserialization to/from bytes
@@ -122,28 +123,31 @@ impl Checksummable for alloc::string::String {
 /// Trait for types that can be safely converted into a byte slice.
 /// Used for storing generic types in byte-oriented safe memory abstractions.
 pub trait ToBytes {
-    /// The exact number of bytes required to represent any instance of this type.
+    /// The exact number of bytes required to represent any instance of this
+    /// type.
     const SERIALIZED_SIZE: usize;
 
     /// Serializes the instance into the provided buffer.
     /// The buffer must be exactly `SERIALIZED_SIZE` bytes long.
     ///
     /// # Errors
-    /// Returns an error if the buffer is not the correct size or serialization fails.
+    /// Returns an error if the buffer is not the correct size or serialization
+    /// fails.
     fn write_bytes(&self, buffer: &mut [u8]) -> core::result::Result<(), SerializationError>;
 }
 
 /// Trait for types that can be safely reconstructed from a byte slice.
 pub trait FromBytes: Sized {
-    /// The exact number of bytes required to represent any instance of this type.
-    /// Must match `ToBytes::SERIALIZED_SIZE` if both are implemented.
+    /// The exact number of bytes required to represent any instance of this
+    /// type. Must match `ToBytes::SERIALIZED_SIZE` if both are implemented.
     const SERIALIZED_SIZE: usize;
 
     /// Reconstructs an instance from the provided byte slice.
     /// The byte slice must be exactly `SERIALIZED_SIZE` bytes long.
     ///
     /// # Errors
-    /// Returns an error if deserialization fails (e.g., invalid format, incorrect size).
+    /// Returns an error if deserialization fails (e.g., invalid format,
+    /// incorrect size).
     fn from_bytes(bytes: &[u8]) -> core::result::Result<Self, SerializationError>;
 }
 
@@ -169,7 +173,7 @@ impl fmt::Display for SerializationError {
             SerializationError::InvalidFormat => {
                 write!(f, "Invalid data format for deserialization")
             }
-            SerializationError::Custom(s) => write!(f, "Serialization error: {}", s),
+            SerializationError::Custom(s) => write!(f, "Serialization error: {s}"),
         }
     }
 }
@@ -237,10 +241,10 @@ impl FromBytes for bool {
 impl ToBytes for () {
     const SERIALIZED_SIZE: usize = 0;
     fn write_bytes(&self, buffer: &mut [u8]) -> core::result::Result<(), SerializationError> {
-        if !buffer.is_empty() {
-            Err(SerializationError::IncorrectSize)
-        } else {
+        if buffer.is_empty() {
             Ok(())
+        } else {
+            Err(SerializationError::IncorrectSize)
         }
     }
 }
@@ -248,23 +252,24 @@ impl ToBytes for () {
 impl FromBytes for () {
     const SERIALIZED_SIZE: usize = 0;
     fn from_bytes(bytes: &[u8]) -> core::result::Result<Self, SerializationError> {
-        if !bytes.is_empty() {
-            Err(SerializationError::IncorrectSize)
-        } else {
+        if bytes.is_empty() {
             Ok(())
+        } else {
+            Err(SerializationError::IncorrectSize)
         }
     }
 }
 
-// Example for arrays - this still needs T: ToBytes + FromBytes + Default + Copy for a generic fixed-size array.
-// For now, users would implement ToBytes/FromBytes for their specific [T; N] structs if needed,
-// or BoundedVec would handle elements of type T that are ToBytes/FromBytes.
+// Example for arrays - this still needs T: ToBytes + FromBytes + Default + Copy
+// for a generic fixed-size array. For now, users would implement
+// ToBytes/FromBytes for their specific [T; N] structs if needed, or BoundedVec
+// would handle elements of type T that are ToBytes/FromBytes.
 
 // Comment out the old generic Checksummable for [T;N] as it was problematic.
 // // impl<T, const N: usize> Checksummable for [T; N]
 // // where
 // //     T: Copy + Sized,
 // // {
-// //     fn update_checksum(&self, checksum: &mut crate::verification::Checksum) {
-// //     }
+// //     fn update_checksum(&self, checksum: &mut
+// crate::verification::Checksum) { //     }
 // // }

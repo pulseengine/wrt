@@ -4,11 +4,8 @@
 // Component Model built-ins, including resource handling, async operations,
 // error contexts, and threading.
 
-use wrt_error::{Error, Result};
-use wrt_intercept::{BeforeBuiltinResult, BuiltinInterceptor, InterceptContext};
-use wrt_types::builtin::BuiltinType;
-use wrt_types::component_value::ComponentValue;
-
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+use alloc::{boxed::Box, sync::Arc, vec::Vec};
 #[cfg(feature = "std")]
 use std::{
     boxed::Box,
@@ -16,8 +13,9 @@ use std::{
     vec::Vec,
 };
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::{boxed::Box, sync::Arc, vec::Vec};
+use wrt_error::{Error, Result};
+use wrt_intercept::{BeforeBuiltinResult, BuiltinInterceptor, InterceptContext};
+use wrt_types::{builtin::BuiltinType, component_value::ComponentValue};
 
 use crate::resources::ResourceManager;
 
@@ -301,9 +299,10 @@ impl Clone for BuiltinRegistry {
 
 #[cfg(test)]
 mod tests {
+    use wrt_types::component_value::ComponentValue;
+
     use super::*;
     use crate::resources::ResourceManager;
-    use wrt_types::component_value::ComponentValue;
 
     // Simple test handler implementation
     struct TestHandler {

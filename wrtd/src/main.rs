@@ -1,7 +1,9 @@
 // WRT - wrtd
-// SW-REQ-ID: [SW-REQ-ID-wrtd]
+// Module: WebAssembly Runtime Daemon
+// SW-REQ-ID: REQ_008
+// SW-REQ-ID: REQ_007
 //
-// Copyright (c) 2025 Ralf Anton Beier
+// Copyright (c) 2024 Ralf Anton Beier
 // Licensed under the MIT license.
 // SPDX-License-Identifier: MIT
 
@@ -9,7 +11,8 @@
 
 //! # WebAssembly Runtime Daemon (wrtd)
 //!
-//! A daemon process that coordinates WebAssembly module execution and provides system services.
+//! A daemon process that coordinates WebAssembly module execution and provides
+//! system services.
 //!
 //! This daemon provides:
 //! - Loading and execution of WebAssembly modules
@@ -23,14 +26,16 @@
 //! wrtd <wasm-file> [--call <function>] [--fuel <amount>] [--stats]
 //! ```
 //!
-//! The daemon will load the specified WebAssembly module and execute it, providing
-//! any necessary system services and managing its lifecycle.
+//! The daemon will load the specified WebAssembly module and execute it,
+//! providing any necessary system services and managing its lifecycle.
 //!
-//! The `--fuel` option limits execution to the specified amount of computational resources.
-//! This enables bounded execution and prevents infinite loops or excessive resource consumption.
-//! If execution runs out of fuel, it will be paused and can be resumed with a higher fuel limit.
+//! The `--fuel` option limits execution to the specified amount of
+//! computational resources. This enables bounded execution and prevents
+//! infinite loops or excessive resource consumption. If execution runs out of
+//! fuel, it will be paused and can be resumed with a higher fuel limit.
 //!
-//! The `--stats` option enables execution statistics reporting, displaying information such as:
+//! The `--stats` option enables execution statistics reporting, displaying
+//! information such as:
 //! - Number of instructions executed
 //! - Amount of fuel consumed (when using the `--fuel` option)
 //! - Memory usage (current and peak)
@@ -39,20 +44,19 @@
 #![warn(missing_docs)]
 #![warn(rustdoc::missing_doc_code_examples)]
 
-use once_cell::sync::Lazy;
-use std::collections::HashMap;
-use std::env;
-use std::fmt;
-use std::fs;
-use std::path::PathBuf;
-use std::sync::Mutex;
-use std::time::{Duration, Instant};
+use std::{
+    collections::HashMap,
+    env, fmt, fs,
+    path::PathBuf,
+    sync::Mutex,
+    time::{Duration, Instant},
+};
 
 use anyhow::{anyhow, Context, Result};
 use clap::Parser;
+use once_cell::sync::Lazy;
 use tracing::{debug, error, info, warn, Level};
 use tracing_subscriber::fmt::format::FmtSpan;
-
 use wrt::{
     logging::LogLevel,
     module::{ExportKind, Function, Module},
@@ -60,7 +64,6 @@ use wrt::{
     values::Value,
     StacklessEngine,
 };
-
 // Add direct imports for helper crates
 use wrt_component;
 use wrt_intercept;
@@ -140,8 +143,8 @@ impl From<wrt::Error> for WrtErrorWrapper {
     }
 }
 
-// We can't implement From<wrt::Error> for anyhow::Error directly due to orphan rules
-// Instead we'll use a helper function
+// We can't implement From<wrt::Error> for anyhow::Error directly due to orphan
+// rules Instead we'll use a helper function
 fn wrt_err_to_anyhow(err: wrt::Error) -> anyhow::Error {
     anyhow!("WRT Error: {}", err)
 }
@@ -187,7 +190,8 @@ fn main() -> Result<()> {
 
     timings.insert("parse_module".to_string(), start_time.elapsed());
 
-    // Analyze component interfaces to determine available functions and their signatures
+    // Analyze component interfaces to determine available functions and their
+    // signatures
     analyze_component_interfaces(&module);
 
     // If only analyzing component interfaces, exit now
@@ -420,8 +424,11 @@ fn execute_component_function(
                         {
                             let params = format_value_types(&func_type.params);
                             let results = format_value_types(&func_type.results);
-                            debug!("  Export[{}]: {} - function idx: {}, type: (params: [{}], results: [{}])",
-                                i, export.name, export.index, params, results);
+                            debug!(
+                                "  Export[{}]: {} - function idx: {}, type: (params: [{}], \
+                                 results: [{}])",
+                                i, export.name, export.index, params, results
+                            );
 
                             if export.name == func_name {
                                 debug!("Found export with matching name: {}", func_name);
@@ -542,7 +549,8 @@ fn execute_component_function(
             let execution_time = Duration::from_millis(0); // Placeholder
             error!("Function execution failed after {:?}: {}", execution_time, e);
 
-            // Even though execution failed, we'll display a message to indicate how close we got
+            // Even though execution failed, we'll display a message to indicate how close
+            // we got
             info!("Component execution attempted but encountered errors.");
             info!("Showing a default result since the real execution failed");
 
@@ -698,7 +706,10 @@ fn display_stackless_execution_stats(engine: &StacklessEngine) {
             "Note: WebAssembly Component Model support requires valid core modules in components."
         );
         warn!("      The runtime extracts and executes the core module from component binaries.");
-        warn!("      If execution fails, check if the component contains a valid core WebAssembly module.");
+        warn!(
+            "      If execution fails, check if the component contains a valid core WebAssembly \
+             module."
+        );
     }
 
     if stats.fuel_consumed > 0 {

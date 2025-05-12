@@ -1,11 +1,14 @@
-use crate::Query;
+use std::fs; // Added for file operations
+
 use anyhow::{bail, Context, Result};
 use dagger_sdk::HostDirectoryOpts;
 use serde::Deserialize;
-use std::fs; // Added for file operations
-use tracing::info; // Added for TOML deserialization
+use tracing::info;
 
-// Structs for deserializing rust-toolchain.toml (copied from ci_integrity_checks.rs)
+use crate::Query; // Added for TOML deserialization
+
+// Structs for deserializing rust-toolchain.toml (copied from
+// ci_integrity_checks.rs)
 #[derive(Deserialize, Debug)]
 struct ToolchainConfig {
     toolchain: ToolchainDetails,
@@ -17,7 +20,8 @@ struct ToolchainDetails {
     version: Option<String>,
 }
 
-// Function to read and parse rust-toolchain.toml (copied from ci_integrity_checks.rs)
+// Function to read and parse rust-toolchain.toml (copied from
+// ci_integrity_checks.rs)
 fn get_rust_version_from_toolchain_file() -> Result<(String, String)> {
     let toml_str =
         fs::read_to_string("rust-toolchain.toml").context("Failed to read rust-toolchain.toml")?;
@@ -47,15 +51,15 @@ pub async fn run(client: &Query) -> Result<()> {
         ".",
         HostDirectoryOpts {
             exclude: Some(vec![
-                ".git ",
+                ".git",
                 "target",
-                ".vscode ",
-                ".idea ",
-                ".DS_Store ",
-                ".cargo/git ",
-                ".cargo/registry ",
-                ".zephyr-venv ",
-                ".zephyrproject ",
+                ".vscode",
+                ".idea",
+                ".DS_Store",
+                ".cargo/git",
+                ".cargo/registry",
+                ".zephyr-venv",
+                ".zephyrproject",
             ]),
             include: None,
         },
@@ -64,20 +68,21 @@ pub async fn run(client: &Query) -> Result<()> {
     let base_container = client
         .container()
         .from(&rust_image) // Use dynamic rust_image
-        .with_mounted_directory("/src ", src_dir)
-        .with_workdir("/src ")
+        .with_mounted_directory("/src", src_dir)
+        .with_workdir("/src")
         .with_exec(vec!["rustup", "target", "add", "wasm32-wasip2"]);
 
     // Define test configurations
-    // TODO: Adjust these configurations based on your project's actual feature setup.
+    // TODO: Adjust these configurations based on your project's actual feature
+    // setup.
     let test_configs = vec![
         TestConfig {
-            name: "Default features ".to_string(),
+            name: "Default features".to_string(),
             features: None,
             no_default_features: false,
         },
         TestConfig {
-            name: "No default features ".to_string(),
+            name: "No default features".to_string(),
             features: None, // Or specify a minimal feature set if needed for no_std
             no_default_features: true,
         },
@@ -94,16 +99,17 @@ pub async fn run(client: &Query) -> Result<()> {
 
     for config in test_configs {
         info!("Running tests for config: {}", config.name);
-        let mut cargo_test_cmd = vec!["cargo", "test", "--workspace "]; // Start with base command
+        let mut cargo_test_cmd = vec!["cargo", "test", "--workspace"];
 
         if config.no_default_features {
-            cargo_test_cmd.push("--no-default-features ");
+            cargo_test_cmd.push("--no-default-features");
         }
         if let Some(features_str) = &config.features {
-            cargo_test_cmd.push("--features ");
+            cargo_test_cmd.push("--features");
             cargo_test_cmd.push(features_str);
         }
-        // Add --all-targets if your tests generally support it, or remove if it causes issues with some feature sets.
+        // Add --all-targets if your tests generally support it, or remove if it causes
+        // issues with some feature sets.
         cargo_test_cmd.push("--all-targets");
 
         info!(command = ?cargo_test_cmd, "Executing test command ");
@@ -116,8 +122,9 @@ pub async fn run(client: &Query) -> Result<()> {
             Err(e) => {
                 info!("ERROR: Tests FAILED for config: {}. Error: {:?}", config.name, e);
                 overall_success = false;
-                // Decide if you want to stop on first failure or run all configs.
-                // For CI, usually any failure means the whole step fails. Here we continue to report all.
+                // Decide if you want to stop on first failure or run all
+                // configs. For CI, usually any failure means
+                // the whole step fails. Here we continue to report all.
             }
         }
     }

@@ -1,12 +1,13 @@
 //! Control flow operations for WebAssembly instructions.
 //!
-//! This module provides pure implementations for WebAssembly control flow instructions,
-//! including block, loop, if, branch, and return operations.
+//! This module provides pure implementations for WebAssembly control flow
+//! instructions, including block, loop, if, branch, and return operations.
 
 #![allow(clippy::match_single_binding)]
 
-use crate::prelude::*;
 use wrt_types::types::{FuncType, ValueType};
+
+use crate::prelude::*;
 
 /// Branch target information
 #[derive(Debug, Clone)]
@@ -32,7 +33,8 @@ impl From<BlockType> for ControlBlockType {
             BlockType::Empty => ControlBlockType::ValueType(None),
             BlockType::Value(vt) => ControlBlockType::ValueType(Some(vt)),
             BlockType::FuncType(ft) => ControlBlockType::FuncType(ft),
-            BlockType::TypeIndex(_) => ControlBlockType::ValueType(None), // Default handling for type indices
+            BlockType::TypeIndex(_) => ControlBlockType::ValueType(None), /* Default handling for
+                                                                           * type indices */
         }
     }
 }
@@ -216,18 +218,17 @@ impl<T: ControlContext> PureInstruction<T, Error> for ControlOp {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use wrt_types::types::ValueType;
-
+    #[cfg(all(not(feature = "std"), feature = "alloc"))]
+    use alloc::vec;
+    #[cfg(all(not(feature = "std"), feature = "alloc"))]
+    use alloc::vec::Vec;
     // Import Vec and vec! based on feature flags
     #[cfg(feature = "std")]
     use std::vec::Vec;
 
-    #[cfg(all(not(feature = "std"), feature = "alloc"))]
-    use alloc::vec::Vec;
+    use wrt_types::types::ValueType;
 
-    #[cfg(all(not(feature = "std"), feature = "alloc"))]
-    use alloc::vec;
+    use super::*;
 
     // A simplified control context for testing
     struct MockControlContext {

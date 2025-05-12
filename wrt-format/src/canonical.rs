@@ -2,11 +2,10 @@
 //!
 //! This module implements the Canonical ABI for WebAssembly component model.
 
-#[cfg(feature = "std")]
-use std::{boxed::Box, string::String, vec, vec::Vec};
-
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 use alloc::{boxed::Box, string::String, string::ToString, vec, vec::Vec};
+#[cfg(feature = "std")]
+use std::{boxed::Box, string::String, vec, vec::Vec};
 
 use wrt_types::component_value::ValType;
 

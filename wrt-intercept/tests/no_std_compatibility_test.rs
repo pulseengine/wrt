@@ -1,6 +1,7 @@
 //! Test no_std compatibility for wrt-intercept
 //!
-//! This file validates that the wrt-intercept crate works correctly in no_std environments.
+//! This file validates that the wrt-intercept crate works correctly in no_std
+//! environments.
 
 // For testing in a no_std environment
 #![cfg_attr(not(feature = "std"), no_std)]
@@ -10,13 +11,13 @@
 extern crate alloc;
 
 // Global imports for the test file
-use alloc::boxed::Box;
-use alloc::collections::BTreeMap as HashMap; // For no_std contexts where HashMap might be BTreeMap
-use alloc::string::ToString;
-use alloc::sync::Arc;
-use alloc::vec;
+use alloc::collections::BTreeMap as HashMap; /* For no_std contexts where HashMap might be
+                                               * BTreeMap */
+use alloc::{boxed::Box, string::ToString, sync::Arc, vec};
 use core::sync::atomic::{AtomicUsize, Ordering};
 
+#[cfg(feature = "std")]
+use wrt_intercept::strategies::StatisticsStrategy;
 // Import directly from the wrt_intercept crate
 use wrt_intercept::{
     builtins::{BuiltinSerialization, InterceptContext},
@@ -31,12 +32,11 @@ use wrt_intercept::{
     }, // aliased strategies
 };
 
-#[cfg(feature = "std")]
-use wrt_intercept::strategies::StatisticsStrategy;
-
 #[cfg(test)]
 mod tests {
     // Use explicit wrt_intercept:: paths
+    #[cfg(feature = "std")]
+    use wrt_intercept::strategies::StatisticsStrategy;
     use wrt_intercept::{
         builtins::{BuiltinSerialization, InterceptContext},
         prelude::{
@@ -48,10 +48,7 @@ mod tests {
             self as intercept_strategies, DefaultValueFormatter, FirewallConfig, FirewallRule,
             FirewallStrategy, LoggingConfig,
         },
-    };
-
-    #[cfg(feature = "std")]
-    use wrt_intercept::strategies::StatisticsStrategy; // Also inside mod tests for consistency if used here
+    }; // Also inside mod tests for consistency if used here
 
     // Global alloc/core imports are at the top of the file
     // These are now correctly resolved by the compiler from the top-level imports.

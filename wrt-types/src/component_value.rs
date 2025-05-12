@@ -1,6 +1,7 @@
 // WRT - wrt-types
 // Module: WebAssembly Component Model Value Types
-// SW-REQ-ID: REQ_WASM_COMPONENT_002 (Example: Relates to component model values)
+// SW-REQ-ID: REQ_019
+// SW-REQ-ID: REQ_021
 //
 // Copyright (c) 2024 Ralf Anton Beier
 // Licensed under the MIT license.
@@ -8,29 +9,29 @@
 
 //! WebAssembly Component Model value types
 //!
-//! This module defines the runtime value types used in WebAssembly Component Model
-//! implementations.
+//! This module defines the runtime value types used in WebAssembly Component
+//! Model implementations.
 
 #![allow(clippy::derive_partial_eq_without_eq)]
 
 use core::fmt;
-use wrt_error::Result;
-use wrt_error::{Error, ErrorCategory};
+
+use wrt_error::{Error, ErrorCategory, Result};
 
 // #[cfg(feature = "std")]
 // use std::{boxed::Box, format, string::String, vec, vec::Vec}; // Removed
 
 // #[cfg(all(feature = "alloc", not(feature = "std")))]
 // use alloc::{boxed::Box, format, string::String, vec, vec::Vec}; // Removed
-
 use crate::prelude::ToString;
-use crate::prelude::*;
-
-use crate::Value;
-use crate::{FloatBits32, FloatBits64};
-use crate::types::ValueType;
-use crate::types::ComponentValType;
-use wrt_error::{codes, Error, ErrorCategory};
+// use crate::types::ValueType; // This seems unused here in favor of local ValType for
+// component model use crate::types::ComponentValType; // Remove this, use local ValType
+use crate::ComponentValueStore;
+use crate::{
+    prelude::{format, str, vec, Box, Debug, Eq, PartialEq, String, Vec},
+    values::{FloatBits32, FloatBits64},
+    Value,
+};
 
 /// A Component Model value type
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -159,66 +160,79 @@ impl Eq for ComponentValue {}
 
 impl ComponentValue {
     /// Create a new void value
+    #[must_use]
     pub fn void() -> Self {
         Self::Void
     }
 
     /// Create a new boolean value
+    #[must_use]
     pub fn bool(v: bool) -> Self {
         Self::Bool(v)
     }
 
     /// Create a new signed 8-bit integer value
+    #[must_use]
     pub fn s8(v: i8) -> Self {
         Self::S8(v)
     }
 
     /// Create a new unsigned 8-bit integer value
+    #[must_use]
     pub fn u8(v: u8) -> Self {
         Self::U8(v)
     }
 
     /// Create a new signed 16-bit integer value
+    #[must_use]
     pub fn s16(v: i16) -> Self {
         Self::S16(v)
     }
 
     /// Create a new unsigned 16-bit integer value
+    #[must_use]
     pub fn u16(v: u16) -> Self {
         Self::U16(v)
     }
 
     /// Create a new signed 32-bit integer value
+    #[must_use]
     pub fn s32(v: i32) -> Self {
         Self::S32(v)
     }
 
     /// Create a new unsigned 32-bit integer value
+    #[must_use]
     pub fn u32(v: u32) -> Self {
         Self::U32(v)
     }
 
     /// Create a new signed 64-bit integer value
+    #[must_use]
     pub fn s64(v: i64) -> Self {
         Self::S64(v)
     }
 
     /// Create a new unsigned 64-bit integer value
+    #[must_use]
     pub fn u64(v: u64) -> Self {
         Self::U64(v)
     }
 
     /// Create a new 32-bit float value
+    #[must_use]
     pub fn f32(v: f32) -> Self {
         Self::F32(v)
     }
 
     /// Create a new 64-bit float value
+    #[must_use]
     pub fn f64(v: f64) -> Self {
         Self::F64(v)
     }
 
     /// Create a new character value
+    #[must_use]
     pub fn char(v: char) -> Self {
         Self::Char(v)
     }
@@ -229,6 +243,7 @@ impl ComponentValue {
     }
 
     /// Create a new list value
+    #[must_use]
     pub fn list(v: Vec<ComponentValue>) -> Self {
         Self::List(v)
     }
@@ -246,6 +261,7 @@ impl ComponentValue {
     }
 
     /// Create a new record value
+    #[must_use]
     pub fn record(v: Vec<(String, ComponentValue)>) -> Self {
         Self::Record(v)
     }
@@ -256,11 +272,13 @@ impl ComponentValue {
     }
 
     /// Create a new tuple value
+    #[must_use]
     pub fn tuple(v: Vec<ComponentValue>) -> Self {
         Self::Tuple(v)
     }
 
     /// Create a new flags value
+    #[must_use]
     pub fn flags(v: Vec<(String, bool)>) -> Self {
         Self::Flags(v)
     }
@@ -271,46 +289,55 @@ impl ComponentValue {
     }
 
     /// Create a new option value (some)
+    #[must_use]
     pub fn some(v: ComponentValue) -> Self {
         Self::Option(Some(Box::new(v)))
     }
 
     /// Create a new option value (none)
+    #[must_use]
     pub fn none() -> Self {
         Self::Option(None)
     }
 
     /// Create a new result value (ok)
+    #[must_use]
     pub fn ok(v: ComponentValue) -> Self {
         Self::Result(Ok(Box::new(v)))
     }
 
     /// Create a new result value (err)
+    #[must_use]
     pub fn err(v: ComponentValue) -> Self {
         Self::Result(Err(Box::new(v)))
     }
 
     /// Create a new handle value
+    #[must_use]
     pub fn handle(v: u32) -> Self {
         Self::Own(v)
     }
 
     /// Create a new borrow value
+    #[must_use]
     pub fn borrow(v: u32) -> Self {
         Self::Borrow(v)
     }
 
     /// Create a new error context value
+    #[must_use]
     pub fn error_context(v: Vec<ComponentValue>) -> Self {
         Self::ErrorContext(v)
     }
 
     /// Check if this value is of the void type
+    #[must_use]
     pub fn is_void(&self) -> bool {
         matches!(self, Self::Void)
     }
 
     /// Get the type of this component value
+    #[must_use]
     pub fn get_type(&self) -> ValType {
         match self {
             Self::Void => ValType::Void,
@@ -355,7 +382,7 @@ impl ComponentValue {
                 ValType::Variant(cases)
             }
             Self::Tuple(items) => {
-                let item_types = items.iter().map(|v| v.get_type()).collect();
+                let item_types = items.iter().map(ComponentValue::get_type).collect();
                 ValType::Tuple(item_types)
             }
             Self::Flags(flags) => {
@@ -384,6 +411,7 @@ impl ComponentValue {
     }
 
     /// Check if this value matches the specified type
+    #[must_use]
     pub fn matches_type(&self, value_type: &ValType) -> bool {
         match (self, value_type) {
             // Handle Void type
@@ -518,50 +546,41 @@ impl ComponentValue {
         }
     }
 
-    /// Convert a WebAssembly core value to a component value
+    /// Convert a WebAssembly core value to a component value of the given type.
     pub fn from_core_value(
-        cv_type: &ComponentValType,
+        cv_type: &ValType,
         value: &Value,
         // Assuming a store or similar context might be needed for FuncRef/ExternRef resolution
         _store: &ComponentValueStore, // Placeholder if needed for refs
     ) -> Result<ComponentValue> {
         match (cv_type, value) {
-            (ComponentValType::Bool, Value::I32(v)) => Ok(ComponentValue::Bool(v != 0)),
-            (ComponentValType::S8, Value::I32(v)) => Ok(ComponentValue::S8(v as i8)),
-            (ComponentValType::U8, Value::I32(v)) => Ok(ComponentValue::U8(v as u8)),
-            (ComponentValType::S16, Value::I32(v)) => Ok(ComponentValue::S16(v as i16)),
-            (ComponentValType::U16, Value::I32(v)) => Ok(ComponentValue::U16(v as u16)),
-            (ComponentValType::S32, Value::I32(v)) => Ok(ComponentValue::S32(v)),
-            (ComponentValType::U32, Value::I32(v)) => Ok(ComponentValue::U32(v as u32)),
-            (ComponentValType::S64, Value::I64(v)) => Ok(ComponentValue::S64(v)),
-            (ComponentValType::U64, Value::I64(v)) => Ok(ComponentValue::U64(v as u64)),
-            (ComponentValType::F32, Value::F32(v)) => Ok(ComponentValue::F32(v.value())),
-            (ComponentValType::F64, Value::F64(v)) => Ok(ComponentValue::F64(v.value())),
-            (ComponentValType::Char, Value::I32(v)) => {
-                char::from_u32(v as u32)
-                    .map(ComponentValue::Char)
-                    .ok_or_else(|| Error::type_error("invalid char value"))
+            (ValType::Bool, Value::I32(v)) => Ok(ComponentValue::Bool(*v != 0)),
+            (ValType::S8, Value::I32(v)) => Ok(ComponentValue::S8(*v as i8)),
+            (ValType::U8, Value::I32(v)) => Ok(ComponentValue::U8(*v as u8)),
+            (ValType::S16, Value::I32(v)) => Ok(ComponentValue::S16(*v as i16)),
+            (ValType::U16, Value::I32(v)) => Ok(ComponentValue::U16(*v as u16)),
+            (ValType::S32, Value::I32(v)) => Ok(ComponentValue::S32(*v)),
+            (ValType::U32, Value::I32(v)) => Ok(ComponentValue::U32(*v as u32)),
+            (ValType::S64, Value::I64(v)) => Ok(ComponentValue::S64(*v)),
+            (ValType::U64, Value::I64(v)) => Ok(ComponentValue::U64(*v as u64)),
+            (ValType::F32, Value::F32(v)) => Ok(ComponentValue::F32(v.value())),
+            (ValType::F64, Value::F64(v)) => Ok(ComponentValue::F64(v.value())),
+            (ValType::Char, Value::I32(v)) => char::from_u32(*v as u32)
+                .map(ComponentValue::Char)
+                .ok_or_else(|| Error::type_error("invalid char value")),
+            (ValType::String, Value::Ref(handle)) => {
+                let s_ref = _store.get_string(*handle)?;
+                Ok(ComponentValue::String(s_ref.clone()))
             }
-            (ComponentValType::String, Value::Ref(handle)) => {
-                // Assuming String is stored as a sequence of chars or similar
-                // This needs a way to get string data from Value::Ref and store
-                if let Some(core_val_ref) = store.get_ref(*handle) {
-                    if let Value::String(s) = core_val_ref {
-                        Ok(ComponentValue::String(s.clone()))
-                    } else {
-                         Err(Error::type_error(
-                            format!("expected string for Value::Ref for ComponentValType::String, handle={:?}, found_type={:?}", handle, core_val_ref.value_type())
-                        ))
-                    }
-                } else {
-                    Err(Error::type_error(
-                        format!("invalid Value::Ref handle for ComponentValType::String, handle={:?}", handle)
-                    ))
-                }
-            }
-            // TODO: Handle List, Record, Variant, Tuple, Flags, Enum, Option, Result, Handle (Own, Borrow)
-            // These will likely involve looking up data from the store using Value::Ref(idx)
-            _ => Err(Error::type_error(format!("Mismatched types or unimplemented conversion from core Value to ComponentValue. Target: {:?}, Source: {:?}", cv_type, value.value_type()))),
+            // TODO: Handle List, Record, Variant, Tuple, Flags, Enum, Option, Result, Handle (Own,
+            // Borrow) These will likely involve looking up data from the store using
+            // Value::Ref(idx)
+            _ => Err(Error::type_error(format!(
+                "Mismatched types or unimplemented conversion from core Value to ComponentValue. \
+                 Target: {:?}, Source: {:?}",
+                cv_type,
+                value.value_type()
+            ))),
         }
     }
 
@@ -581,27 +600,34 @@ impl ComponentValue {
             ComponentValue::F32(v) => Ok(Value::F32(FloatBits32::from_float(*v))),
             ComponentValue::F64(v) => Ok(Value::F64(FloatBits64::from_float(*v))),
             ComponentValue::Char(v) => Ok(Value::I32(*v as i32)),
-            ComponentValue::String(s) => Ok(Value::Ref(store.add_string(s)?)), // Changed self to store
-            ComponentValue::List(values) => Ok(Value::Ref(store.add_list(values)?)), // Changed self to store
-            ComponentValue::Record(fields) => Ok(Value::Ref(store.add_record(fields)?)), // Changed self to store
-            ComponentValue::Variant(case_idx, value) => Ok(Value::Ref(store.add_variant(*case_idx, value.as_deref())?)), // Changed, added deref
+            ComponentValue::String(s) => Ok(Value::Ref(store.add_string(s)?)), // Changed self
+            // to store
+            ComponentValue::List(values) => Ok(Value::Ref(store.add_list(values)?)),
+            ComponentValue::FixedList(values, _len) => Ok(Value::Ref(store.add_list(values)?)),
+            ComponentValue::Record(fields) => Ok(Value::Ref(store.add_record(fields)?)),
+            ComponentValue::Variant(case_name, value) => {
+                Ok(Value::Ref(store.add_variant(case_name, value.as_deref())?))
+            }
             ComponentValue::Tuple(values) => {
-                let core_values: Result<Vec<Value>> = values.iter().map(|cv| Self::to_core_value(cv, store)).collect();
-                Ok(Value::Ref(store.add_tuple(core_values?)?))
+                let core_values = values
+                    .iter()
+                    .map(|cv| Self::to_core_value(cv, store))
+                    .collect::<Result<Vec<_>>>()?;
+                Ok(Value::Ref(store.add_tuple(core_values)?))
             }
-            ComponentValue::Flags(flags) => Ok(Value::Ref(store.add_flags(flags.clone())?)), // Assuming flags are simple enough or add_flags handles it
-            ComponentValue::Enum(case) => Ok(Value::Ref(store.add_enum(case.clone())?)), // Assuming add_enum takes String
-            ComponentValue::Option(opt_val) => {
-                match opt_val {
-                    Some(cv_box) => {
-                        let core_v = Self::to_core_value(cv_box.as_ref(), store)?;
-                        Ok(Value::Ref(store.add_option(Some(core_v))?))
-                    }
-                    None => Ok(Value::Ref(store.add_option(None)?)),
+            ComponentValue::Flags(flags) => Ok(Value::Ref(store.add_flags(flags.clone())?)), /* Assuming flags are simple enough or add_flags handles it */
+            ComponentValue::Enum(case) => Ok(Value::Ref(store.add_enum(case.clone())?)), /* Assuming add_enum takes String */
+            ComponentValue::Option(opt_val) => match opt_val {
+                Some(cv_box) => {
+                    let core_v = Self::to_core_value(cv_box.as_ref(), store)?;
+                    Ok(Value::Ref(store.add_option(Some(core_v))?))
                 }
-            }
-            ComponentValue::Result(res_val) => { // res_val is &core::result::Result<Box<ComponentValue>, Box<ComponentValue>>
-                match res_val.as_ref() { // .as_ref() gives Result<&Box<ComponentValue>, &Box<ComponentValue>>
+                None => Ok(Value::Ref(store.add_option(None)?)),
+            },
+            ComponentValue::Result(res_val) => {
+                // res_val is &core::result::Result<Box<ComponentValue>, Box<ComponentValue>>
+                match res_val.as_ref() {
+                    // .as_ref() gives Result<&Box<ComponentValue>, &Box<ComponentValue>>
                     Ok(ok_cv_box) => {
                         let core_ok_v = Self::to_core_value(ok_cv_box.as_ref(), store)?;
                         Ok(Value::Ref(store.add_result(Some(core_ok_v), None)?))
@@ -612,11 +638,16 @@ impl ComponentValue {
                     }
                 }
             }
-            ComponentValue::Own(handle) => Ok(Value::Ref(*handle)), // Assuming Own handle maps directly to a Ref handle in core
+            ComponentValue::Own(handle) => Ok(Value::Ref(*handle)), // Assuming Own handle maps
+            // directly to a Ref handle
+            // in core
             ComponentValue::Borrow(handle) => Ok(Value::Ref(*handle)), // Same for Borrow
             ComponentValue::ErrorContext(_ctx) => {
-                // TODO: How to represent ErrorContext in core Value? Maybe a specific Ref type or skip?
-                Err(Error::unimplemented("ComponentValue::ErrorContext to core Value conversion"))
+                // TODO: How to represent ErrorContext in core Value? Maybe a specific Ref type
+                // or skip?
+                Err(Error::type_error(
+                    "ComponentValue::ErrorContext to core Value conversion not implemented",
+                ))
             }
         }
     }
@@ -627,36 +658,36 @@ impl fmt::Display for ComponentValue {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             ComponentValue::Void => write!(f, "void"),
-            ComponentValue::Bool(b) => write!(f, "{}", b),
-            ComponentValue::S8(n) => write!(f, "{}i8", n),
-            ComponentValue::U8(n) => write!(f, "{}u8", n),
-            ComponentValue::S16(n) => write!(f, "{}i16", n),
-            ComponentValue::U16(n) => write!(f, "{}u16", n),
-            ComponentValue::S32(n) => write!(f, "{}i32", n),
-            ComponentValue::U32(n) => write!(f, "{}u32", n),
-            ComponentValue::S64(n) => write!(f, "{}i64", n),
-            ComponentValue::U64(n) => write!(f, "{}u64", n),
-            ComponentValue::F32(n) => write!(f, "{}f32", n),
-            ComponentValue::F64(n) => write!(f, "{}f64", n),
-            ComponentValue::Char(c) => write!(f, "'{}'", c),
-            ComponentValue::String(s) => write!(f, "\"{}\"", s),
+            ComponentValue::Bool(b) => write!(f, "{b}"),
+            ComponentValue::S8(n) => write!(f, "{n}i8"),
+            ComponentValue::U8(n) => write!(f, "{n}u8"),
+            ComponentValue::S16(n) => write!(f, "{n}i16"),
+            ComponentValue::U16(n) => write!(f, "{n}u16"),
+            ComponentValue::S32(n) => write!(f, "{n}i32"),
+            ComponentValue::U32(n) => write!(f, "{n}u32"),
+            ComponentValue::S64(n) => write!(f, "{n}i64"),
+            ComponentValue::U64(n) => write!(f, "{n}u64"),
+            ComponentValue::F32(n) => write!(f, "{n}f32"),
+            ComponentValue::F64(n) => write!(f, "{n}f64"),
+            ComponentValue::Char(c) => write!(f, "'{c}'"),
+            ComponentValue::String(s) => write!(f, "\"{s}\""),
             ComponentValue::List(v) => {
                 write!(f, "[")?;
                 for (i, val) in v.iter().enumerate() {
                     if i > 0 {
                         write!(f, ", ")?;
                     }
-                    write!(f, "{}", val)?;
+                    write!(f, "{val}")?;
                 }
                 write!(f, "]")
             }
             ComponentValue::FixedList(v, len) => {
-                write!(f, "[{}: ", len)?;
+                write!(f, "[{len}: ")?;
                 for (i, val) in v.iter().enumerate() {
                     if i > 0 {
                         write!(f, ", ")?;
                     }
-                    write!(f, "{}", val)?;
+                    write!(f, "{val}")?;
                 }
                 write!(f, "]")
             }
@@ -666,14 +697,14 @@ impl fmt::Display for ComponentValue {
                     if i > 0 {
                         write!(f, ", ")?;
                     }
-                    write!(f, "{}: {}", name, val)?;
+                    write!(f, "{name}: {val}")?;
                 }
                 write!(f, "}}")
             }
             ComponentValue::Variant(case, val) => {
-                write!(f, "{}(", case)?;
+                write!(f, "{case}(")?;
                 if let Some(v) = val {
-                    write!(f, "{}", v)?;
+                    write!(f, "{v}")?;
                 }
                 write!(f, ")")
             }
@@ -683,7 +714,7 @@ impl fmt::Display for ComponentValue {
                     if i > 0 {
                         write!(f, ", ")?;
                     }
-                    write!(f, "{}", val)?;
+                    write!(f, "{val}")?;
                 }
                 write!(f, ")")
             }
@@ -695,30 +726,30 @@ impl fmt::Display for ComponentValue {
                         if !first {
                             write!(f, ", ")?;
                         }
-                        write!(f, "{}", name)?;
+                        write!(f, "{name}")?;
                         first = false;
                     }
                 }
                 write!(f, "}}")
             }
-            ComponentValue::Enum(case) => write!(f, "{}", case),
+            ComponentValue::Enum(case) => write!(f, "{case}"),
             ComponentValue::Option(opt) => match opt {
-                Some(v) => write!(f, "some({})", v),
+                Some(v) => write!(f, "some({v})"),
                 None => write!(f, "none"),
             },
             ComponentValue::Result(res) => match res {
-                Ok(v) => write!(f, "ok({})", v),
-                Err(e) => write!(f, "err({})", e),
+                Ok(v) => write!(f, "ok({v})"),
+                Err(e) => write!(f, "err({e})"),
             },
-            ComponentValue::Own(h) => write!(f, "handle({})", h),
-            ComponentValue::Borrow(b) => write!(f, "borrow({})", b),
+            ComponentValue::Own(h) => write!(f, "handle({h})"),
+            ComponentValue::Borrow(b) => write!(f, "borrow({b})"),
             ComponentValue::ErrorContext(ctx) => {
                 write!(f, "error_context(")?;
                 for (i, val) in ctx.iter().enumerate() {
                     if i > 0 {
                         write!(f, ", ")?;
                     }
-                    write!(f, "{}", val)?;
+                    write!(f, "{val}")?;
                 }
                 write!(f, ")")
             }
@@ -757,7 +788,7 @@ pub fn serialize_component_values(values: &[ComponentValue]) -> Result<Vec<u8>> 
                 return Err(Error::new(
                     ErrorCategory::Component,
                     3002, // ENCODING_ERROR
-                    format!("Serialization not implemented for this type: {:?}", value),
+                    format!("Serialization not implemented for this type: {value:?}"),
                 ));
             }
         }
@@ -864,7 +895,7 @@ pub fn deserialize_component_values(data: &[u8], types: &[ValType]) -> Result<Ve
                 return Err(Error::new(
                     ErrorCategory::Component,
                     3002, // ENCODING_ERROR
-                    format!("Deserialization not implemented for type tag: {}", type_tag),
+                    format!("Deserialization not implemented for type tag: {type_tag}"),
                 ));
             }
         }
@@ -875,21 +906,27 @@ pub fn deserialize_component_values(data: &[u8], types: &[ValType]) -> Result<Ve
 
 /// Create a type conversion error with a descriptive message.
 ///
-/// This is a helper function used for type conversion errors within the component model.
+/// This is a helper function used for type conversion errors within the
+/// component model.
+#[must_use]
 pub fn conversion_error(message: &str) -> Error {
-    Error::invalid_type(format!("Type conversion error: {}", message))
+    Error::invalid_type(format!("Type conversion error: {message}"))
 }
 
 /// Create a component encoding error with a descriptive message.
 ///
-/// This is a helper function used for encoding errors within the component model.
+/// This is a helper function used for encoding errors within the component
+/// model.
+#[must_use]
 pub fn encoding_error(message: &str) -> Error {
-    Error::component_error(format!("Component encoding error: {}", message))
+    Error::component_error(format!("Component encoding error: {message}"))
 }
 
 /// Create a component decoding error with a descriptive message.
 ///
-/// This is a helper function used for decoding errors within the component model.
+/// This is a helper function used for decoding errors within the component
+/// model.
+#[must_use]
 pub fn decoding_error(message: &str) -> Error {
     Error::new(ErrorCategory::Parse, wrt_error::codes::DECODING_ERROR, message.to_string())
 }
@@ -897,8 +934,9 @@ pub fn decoding_error(message: &str) -> Error {
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::panic)]
 mod tests {
-    use super::*;
     use core::f32::consts::PI;
+
+    use super::*;
 
     #[test]
     fn test_primitive_value_type_matching() {
@@ -919,16 +957,22 @@ mod tests {
     #[test]
     fn test_conversion_between_core_and_component() {
         let i32_val = Value::I32(42);
-        let f64_val = Value::F64(FloatBits64::new(123.456));
+        let f64_val = Value::F64(FloatBits64::from_float(123.456));
 
-        let i32_comp_val = ComponentValue::from_core_value(&ComponentValType::S32, &i32_val, &ComponentValueStore::new()).unwrap();
-        let f64_comp_val = ComponentValue::from_core_value(&ComponentValType::F64, &f64_val, &ComponentValueStore::new()).unwrap();
+        let i32_comp_val =
+            ComponentValue::from_core_value(&ValType::S32, &i32_val, &ComponentValueStore::new())
+                .unwrap();
+        let f64_comp_val =
+            ComponentValue::from_core_value(&ValType::F64, &f64_val, &ComponentValueStore::new())
+                .unwrap();
 
         assert_eq!(i32_comp_val, ComponentValue::S32(42));
         assert_eq!(f64_comp_val, ComponentValue::F64(123.456));
 
-        let i32_core_val = ComponentValue::to_core_value(&i32_comp_val, &mut ComponentValueStore::new()).unwrap();
-        let f64_core_val = ComponentValue::to_core_value(&f64_comp_val, &mut ComponentValueStore::new()).unwrap();
+        let i32_core_val =
+            ComponentValue::to_core_value(&i32_comp_val, &mut ComponentValueStore::new()).unwrap();
+        let f64_core_val =
+            ComponentValue::to_core_value(&f64_comp_val, &mut ComponentValueStore::new()).unwrap();
 
         assert_eq!(i32_core_val, i32_val);
         assert_eq!(f64_core_val, f64_val);
