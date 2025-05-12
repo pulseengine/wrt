@@ -1,0 +1,20 @@
+[decoder]
+crate   = "wrt-decoder"
+test    = "cargo test -p wrt-decoder --no-default-features --features no_std"
+std_build   = "cargo build -p wrt-decoder --features std --all-targets"
+nostd_build = "cargo build -p wrt-decoder --no-default-features --features no_std,alloc --all-targets"
+clippy = "cargo clippy -p wrt-decoder --all-targets --all-features -- -D warnings"
+
+[runtime]
+crate   = "wrt-runtime"
+test    = "cargo test -p wrt-runtime --all-features"
+std_build   = "cargo build -p wrt-runtime --features std --all-targets"
+nostd_build = "cargo build -p wrt-runtime --no-default-features --features no_std,alloc --all-targets"
+clippy = "cargo clippy -p wrt-runtime --all-targets --all-features -- -D warnings"
+
+[component]
+crate   = "wrt-component"
+test    = "cargo test -p wrt-component --features component_model"
+std_build   = "cargo build -p wrt-component --features std --all-targets"
+nostd_build = "cargo build -p wrt-component --no-default-features --features no_std,alloc --all-targets"
+clippy = "cargo clippy -p wrt-component --all-targets --all-features -- -D warnings" 

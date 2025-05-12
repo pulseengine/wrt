@@ -1,0 +1,15 @@
+FROM rust:1.78-slim
+
+# Tools: git, patch, python + deps
+RUN apt-get update && apt-get install -y git patch build-essential curl && \
+    pip install --no-cache-dir langgraph==0.4.0 anthropic==0.22 ghapi tomli==2.0 gitpython unidiff markdown
+
+ENV PYTHONUNBUFFERED=1 \
+    CARGO_TERM_COLOR=always \
+    RUSTFLAGS="-Dwarnings" \
+    DEBIAN_FRONTEND=noninteractive
+
+WORKDIR /workspace
+
+# entrypoint defined by GH Action – e.g. python .ai/flows/runtime_flow.py
+CMD ["bash"] 
