@@ -2,17 +2,14 @@
 //!
 //! This module provides types for representing log levels in component logging.
 
-#[cfg(feature = "std")]
-use std::str::FromStr;
-
-#[cfg(not(feature = "std"))]
-use core::str::FromStr;
-
-#[cfg(feature = "std")]
-use std::string::String;
-
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 use alloc::string::String;
+#[cfg(not(feature = "std"))]
+use core::str::FromStr;
+#[cfg(feature = "std")]
+use std::str::FromStr;
+#[cfg(feature = "std")]
+use std::string::String;
 
 /// Log levels for WebAssembly component logging
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -90,7 +87,8 @@ impl FromStr for LogLevel {
 }
 
 impl LogLevel {
-    /// Creates a `LogLevel` from a string, defaulting to Info for invalid levels
+    /// Creates a `LogLevel` from a string, defaulting to Info for invalid
+    /// levels
     #[must_use]
     pub fn from_string_or_default(s: &str) -> Self {
         Self::from_str(s).unwrap_or(Self::Info)

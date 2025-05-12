@@ -2,9 +2,7 @@ use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use wrt::load_module_from_binary;
 use wrt_runtime::module::Module;
 use wrt_test_registry::{TestCase, TestConfig, TestRegistry, TestResult, TestStats};
-use wrt_types::bounded::BoundedVec;
-use wrt_types::prelude::*;
-use wrt_types::verification::VerificationLevel;
+use wrt_types::{bounded::BoundedVec, prelude::*, verification::VerificationLevel};
 
 struct BenchmarkTestCase {
     name: &'static str,

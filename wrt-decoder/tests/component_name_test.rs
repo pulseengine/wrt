@@ -1,9 +1,13 @@
-use wrt_decoder::component::component_name_section::{
-    generate_component_name_section, parse_component_name_section, ComponentNameSection,
+use wrt_decoder::component::{
+    component_name_section::{
+        generate_component_name_section, parse_component_name_section, ComponentNameSection,
+    },
+    decode_component, encode_component,
 };
-use wrt_decoder::component::{decode_component, encode_component};
-use wrt_format::binary;
-use wrt_format::component::{Component, Sort};
+use wrt_format::{
+    binary,
+    component::{Component, Sort},
+};
 
 #[test]
 fn test_component_name_section() {
@@ -24,8 +28,8 @@ fn test_component_name_section() {
     assert_eq!(decoded.name, Some("test_component".to_string()));
 }
 
-// Let's create our own ComponentNameSection for testing since we don't know the exact structure
-// This matches what the test is expecting
+// Let's create our own ComponentNameSection for testing since we don't know the
+// exact structure This matches what the test is expecting
 #[derive(Default)]
 struct TestComponentNameSection {
     pub component_name: Option<String>,
@@ -53,7 +57,8 @@ fn test_standalone_name_section() {
         type_names: Vec::new(),
     };
 
-    // For this test, we'll just convert our test struct to the real ComponentNameSection
+    // For this test, we'll just convert our test struct to the real
+    // ComponentNameSection
     let component_name_section = ComponentNameSection {
         component_name: original.component_name.clone(),
         sort_names: original.sort_names.clone(),
@@ -79,7 +84,8 @@ fn test_standalone_name_section() {
         let (sort1, names1) = &original.sort_names[i];
         let (_sort2, names2) = &decoded.sort_names[i];
 
-        // Compare sorts (using debug representation since Sort doesn't implement PartialEq)
+        // Compare sorts (using debug representation since Sort doesn't implement
+        // PartialEq)
         assert!(matches!(sort1, _sort2));
 
         // Compare name maps

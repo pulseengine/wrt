@@ -1,6 +1,7 @@
 //! WebAssembly module handling for components
 //!
-//! This module provides functionality to handle WebAssembly modules within components.
+//! This module provides functionality to handle WebAssembly modules within
+//! components.
 
 use crate::prelude::*;
 

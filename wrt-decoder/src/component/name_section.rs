@@ -1,12 +1,13 @@
 //! WebAssembly Component Model name section handling
 //!
-//! This module provides utilities for parsing and generating the WebAssembly Component Model name section.
-//! The name section is a custom section that provides debug information for components.
+//! This module provides utilities for parsing and generating the WebAssembly
+//! Component Model name section. The name section is a custom section that
+//! provides debug information for components.
 
-use crate::prelude::*;
-use crate::{Error, Result};
 use wrt_format::binary;
 use wrt_types::ToString;
+
+use crate::{prelude::*, Error, Result};
 
 /// WebAssembly Component Model name section subsection types
 pub const COMPONENT_NAME_COMPONENT: u8 = 0;
@@ -72,9 +73,7 @@ pub struct NameMap {
 
 impl NameMap {
     pub fn new() -> Self {
-        Self {
-            entries: Vec::new(),
-        }
+        Self { entries: Vec::new() }
     }
 
     pub fn parse(data: &[u8], offset: usize) -> Result<(Self, usize)> {
@@ -243,10 +242,7 @@ fn parse_sort(bytes: &[u8], pos: usize) -> Result<(SortIdentifier, usize)> {
         10 => SortIdentifier::CoreInstance,
         11 => SortIdentifier::Value,
         _ => {
-            return Err(Error::parse_error(format!(
-                "Invalid sort identifier: {}",
-                sort_byte
-            )));
+            return Err(Error::parse_error(format!("Invalid sort identifier: {}", sort_byte)));
         }
     };
 
@@ -419,18 +415,10 @@ mod tests {
         let mut name_section = ComponentNameSection::default();
 
         let mut name_map = NameMap::new();
-        name_map.entries.push(NameMapEntry {
-            index: 0,
-            name: "func0".to_string(),
-        });
-        name_map.entries.push(NameMapEntry {
-            index: 1,
-            name: "func1".to_string(),
-        });
+        name_map.entries.push(NameMapEntry { index: 0, name: "func0".to_string() });
+        name_map.entries.push(NameMapEntry { index: 1, name: "func1".to_string() });
 
-        name_section
-            .sort_names
-            .push((SortIdentifier::Function, name_map));
+        name_section.sort_names.push((SortIdentifier::Function, name_map));
 
         let bytes = generate_component_name_section(&name_section).unwrap();
         let parsed = parse_component_name_section(&bytes).unwrap();

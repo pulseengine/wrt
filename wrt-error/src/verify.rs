@@ -1,7 +1,8 @@
 //! Formal verification for the error handling system using Kani.
 //!
-//! This module contains proofs that verify core properties of the error handling system.
-//! These proofs only run with Kani and are isolated from normal compilation and testing.
+//! This module contains proofs that verify core properties of the error
+//! handling system. These proofs only run with Kani and are isolated from
+//! normal compilation and testing.
 
 // Only compile Kani verification code when documentation is being generated
 // or when explicitly running cargo kani. This prevents interference with
@@ -9,16 +10,14 @@
 #[cfg(any(doc, kani))]
 /// Kani verification proofs for error handling.
 pub mod kani_verification {
-    use crate::Result;
-    use crate::{ErrorCategory, ErrorSource};
+    #[cfg(feature = "alloc")]
+    use alloc::format;
+    use core::fmt::{self, Debug, Display};
 
     // Only import Error and ResultExt when alloc is available
     #[cfg(feature = "alloc")]
     use crate::{Error, ResultExt};
-    #[cfg(feature = "alloc")]
-    use alloc::format;
-
-    use core::fmt::{self, Debug, Display};
+    use crate::{ErrorCategory, ErrorSource, Result};
 
     // A simple test error for verification
     #[derive(Debug, Clone)]

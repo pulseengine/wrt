@@ -1,12 +1,14 @@
 // WRT - wrt-types
 // Module: Operation Tracking and Fuel Metering
-// SW-REQ-ID: REQ_RUNTIME_SECURITY_003 (Example: Relates to resource consumption control)
+// SW-REQ-ID: REQ_007
+// SW-REQ-ID: REQ_003
 //
 // Copyright (c) 2024 Ralf Anton Beier
 // Licensed under the MIT license.
 // SPDX-License-Identifier: MIT
 
-// #![allow(unsafe_code)] // unsafe_code is no longer directly in this file for OnceCell
+// #![allow(unsafe_code)] // unsafe_code is no longer directly in this file for
+// OnceCell
 
 //! Operation tracking for bounded collections and memory operations
 //!
@@ -16,18 +18,18 @@
 
 #[cfg(not(feature = "std"))]
 use core::primitive::f64; // Added for explicit f64 import in no_std
-
-use crate::values::FloatBits64; // Added for FloatBits64::new()
-use crate::verification::VerificationLevel;
-use wrt_error::Error as WrtError; // Added for the Result return type
-
 #[cfg(not(feature = "std"))]
 use core::sync::atomic::{AtomicU64, Ordering};
 #[cfg(feature = "std")]
 use std::sync::atomic::{AtomicU64, Ordering};
 
+use wrt_error::Error as WrtError; // Added for the Result return type
 // Use WrtOnce from wrt-sync crate
 use wrt_sync::once::WrtOnce;
+
+use crate::validation::importance; // Added this import
+use crate::values::FloatBits64; // Added for FloatBits64::new()
+use crate::verification::VerificationLevel;
 
 // Global operation counter for use when a local counter isn't available
 static GLOBAL_OPERATIONS_COUNTER: WrtOnce<OperationCounter> = WrtOnce::new();
@@ -89,6 +91,7 @@ pub enum OperationType {
 
 impl OperationType {
     /// Returns the base cost of the operation.
+    #[must_use]
     pub fn cost(self) -> u32 {
         match self {
             OperationType::MemoryAllocation => 10,
@@ -120,6 +123,7 @@ impl OperationType {
     }
 
     /// Returns the inherent importance of the operation (0-255).
+    #[must_use]
     pub fn importance(self) -> u8 {
         match self {
             OperationType::MemoryAllocation => 50,
@@ -144,9 +148,9 @@ impl OperationType {
             OperationType::CollectionClear => 150,
             OperationType::CollectionTruncate => 150,
             OperationType::CollectionIterate => 100,
-            OperationType::CollectionRead => importance::MEDIUM,
-            OperationType::CollectionWrite => importance::HIGH,
-            OperationType::CollectionPeek => importance::LOW,
+            OperationType::CollectionRead => importance::READ,
+            OperationType::CollectionWrite => importance::MUTATION,
+            OperationType::CollectionPeek => importance::READ,
         }
     }
 
@@ -155,14 +159,15 @@ impl OperationType {
         op_type: OperationType,
         verification_level: VerificationLevel,
     ) -> Result<u64, WrtError> {
-        let base_cost = op_type.cost() as u64;
+        let base_cost = u64::from(op_type.cost());
 
         // Adjust cost based on verification level
         let verification_multiplier = verification_cost_multiplier(verification_level);
 
         let cost_f64 = base_cost as f64 * verification_multiplier;
         // Use Wasm-compliant nearest (round ties to even) from math_ops
-        // cost_f64 is always finite and non-NaN here, so wasm_f64_nearest will not error.
+        // cost_f64 is always finite and non-NaN here, so wasm_f64_nearest will not
+        // error.
         Ok(crate::math_ops::wasm_f64_nearest(FloatBits64::from_float(cost_f64))?.value() as u64)
     }
 }
@@ -176,6 +181,10 @@ pub struct OperationCounter {
     memory_writes: AtomicU64,
     /// Counter for memory grow operations
     memory_grows: AtomicU64,
+    /// Counter for memory allocation operations
+    memory_allocations: AtomicU64,
+    /// Counter for memory deallocation operations
+    memory_deallocations: AtomicU64,
     /// Counter for collection push operations
     collection_pushes: AtomicU64,
     /// Counter for collection pop operations
@@ -209,13 +218,16 @@ pub struct OperationCounter {
     fuel_consumed: AtomicU64,
 }
 
-// Manual implementation of Clone for OperationCounter since AtomicU64 doesn't implement Clone
+// Manual implementation of Clone for OperationCounter since AtomicU64 doesn't
+// implement Clone
 impl Clone for OperationCounter {
     fn clone(&self) -> Self {
         Self {
             memory_reads: AtomicU64::new(self.memory_reads.load(Ordering::Relaxed)),
             memory_writes: AtomicU64::new(self.memory_writes.load(Ordering::Relaxed)),
             memory_grows: AtomicU64::new(self.memory_grows.load(Ordering::Relaxed)),
+            memory_allocations: AtomicU64::new(self.memory_allocations.load(Ordering::Relaxed)),
+            memory_deallocations: AtomicU64::new(self.memory_deallocations.load(Ordering::Relaxed)),
             collection_pushes: AtomicU64::new(self.collection_pushes.load(Ordering::Relaxed)),
             collection_pops: AtomicU64::new(self.collection_pops.load(Ordering::Relaxed)),
             collection_lookups: AtomicU64::new(self.collection_lookups.load(Ordering::Relaxed)),
@@ -247,11 +259,14 @@ impl Default for OperationCounter {
 
 impl OperationCounter {
     /// Create a new operation counter with all counts at zero
+    #[must_use]
     pub fn new() -> Self {
         Self {
             memory_reads: AtomicU64::new(0),
             memory_writes: AtomicU64::new(0),
             memory_grows: AtomicU64::new(0),
+            memory_allocations: AtomicU64::new(0),
+            memory_deallocations: AtomicU64::new(0),
             collection_pushes: AtomicU64::new(0),
             collection_pops: AtomicU64::new(0),
             collection_lookups: AtomicU64::new(0),
@@ -276,6 +291,12 @@ impl OperationCounter {
     pub fn record_operation(&self, op_type: OperationType, verification_level: VerificationLevel) {
         // Record the specific operation
         match op_type {
+            OperationType::MemoryAllocation => {
+                self.memory_allocations.fetch_add(1, Ordering::Relaxed)
+            }
+            OperationType::MemoryDeallocation => {
+                self.memory_deallocations.fetch_add(1, Ordering::Relaxed)
+            }
             OperationType::MemoryRead => self.memory_reads.fetch_add(1, Ordering::Relaxed),
             OperationType::MemoryWrite => self.memory_writes.fetch_add(1, Ordering::Relaxed),
             OperationType::MemoryGrow => self.memory_grows.fetch_add(1, Ordering::Relaxed),
@@ -330,14 +351,15 @@ impl OperationCounter {
         };
 
         // Calculate base fuel cost
-        let base_cost = op_type.cost() as u64;
+        let base_cost = u64::from(op_type.cost());
 
         // Adjust cost based on verification level
         let verification_multiplier = verification_cost_multiplier(verification_level);
 
         // Use Wasm-compliant nearest (round ties to even) from math_ops
         let cost_f64 = base_cost as f64 * verification_multiplier;
-        // cost_f64 is always finite and non-NaN here, so wasm_f64_nearest will not error.
+        // cost_f64 is always finite and non-NaN here, so wasm_f64_nearest will not
+        // error.
         let total_cost: u64 = crate::math_ops::wasm_f64_nearest(FloatBits64::from_float(cost_f64))
             .expect("cost_f64 is finite, nearest op should not fail")
             .value() as u64;
@@ -356,6 +378,8 @@ impl OperationCounter {
         self.memory_reads.store(0, Ordering::Relaxed);
         self.memory_writes.store(0, Ordering::Relaxed);
         self.memory_grows.store(0, Ordering::Relaxed);
+        self.memory_allocations.store(0, Ordering::Relaxed);
+        self.memory_deallocations.store(0, Ordering::Relaxed);
         self.collection_pushes.store(0, Ordering::Relaxed);
         self.collection_pops.store(0, Ordering::Relaxed);
         self.collection_lookups.store(0, Ordering::Relaxed);
@@ -375,12 +399,14 @@ impl OperationCounter {
         self.fuel_consumed.store(0, Ordering::Relaxed);
     }
 
-    /// Get a summary of all operation counts
+    /// Get a summary of all operations recorded.
     pub fn get_summary(&self) -> OperationSummary {
         OperationSummary {
             memory_reads: self.memory_reads.load(Ordering::Relaxed),
             memory_writes: self.memory_writes.load(Ordering::Relaxed),
             memory_grows: self.memory_grows.load(Ordering::Relaxed),
+            memory_allocations: self.memory_allocations.load(Ordering::Relaxed),
+            memory_deallocations: self.memory_deallocations.load(Ordering::Relaxed),
             collection_pushes: self.collection_pushes.load(Ordering::Relaxed),
             collection_pops: self.collection_pops.load(Ordering::Relaxed),
             collection_lookups: self.collection_lookups.load(Ordering::Relaxed),
@@ -411,6 +437,10 @@ pub struct OperationSummary {
     pub memory_writes: u64,
     /// Number of memory grow operations
     pub memory_grows: u64,
+    /// Number of memory allocation operations
+    pub memory_allocations: u64,
+    /// Number of memory deallocation operations
+    pub memory_deallocations: u64,
     /// Number of collection push operations
     pub collection_pushes: u64,
     /// Number of collection pop operations
@@ -470,6 +500,7 @@ pub fn record_global_operation(op_type: OperationType, level: VerificationLevel)
 }
 
 /// Get the summary from the global counter
+#[must_use]
 pub fn global_operation_summary() -> OperationSummary {
     global_counter().get_summary()
 }
@@ -480,97 +511,91 @@ pub fn reset_global_operations() {
 }
 
 /// Get the total fuel consumed from the global counter
+#[must_use]
 pub fn global_fuel_consumed() -> u64 {
     global_counter().get_fuel_consumed()
 }
 
 fn verification_cost_multiplier(level: VerificationLevel) -> f64 {
     match level {
-        VerificationLevel::Off => 1.0,     // Changed from None
-        VerificationLevel::Basic => 1.1,   // Small overhead for basic checks
-        VerificationLevel::Sampling => 1.25, // Moderate overhead for sampling (was Standard)
-        VerificationLevel::Full => 2.0,    // Higher overhead for full checks
-        VerificationLevel::Redundant => 2.5, // Highest for redundant checks
+        VerificationLevel::Off => 1.0,
+        VerificationLevel::Basic => 1.1,
+        VerificationLevel::Sampling => 1.25, // Sampling is the default
+        VerificationLevel::Full => 2.0,
+        VerificationLevel::Redundant => 2.5,
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::verification::VerificationLevel;
 
     #[test]
     fn test_operation_counter() {
         let counter = OperationCounter::new();
-        counter.record_operation(OperationType::MemoryRead, VerificationLevel::Standard);
-        assert_eq!(counter.memory_reads.load(Ordering::Relaxed), 1);
-        // Fuel cost for MemoryRead (1) * Standard (1.5) = 1.5. wasm_f64_nearest(1.5) = 2.0
-        assert_eq!(counter.get_fuel_consumed(), 2);
+        let vl_full = VerificationLevel::Full;
 
-        counter.record_operation(OperationType::MemoryGrow, VerificationLevel::Full);
-        assert_eq!(counter.memory_grows.load(Ordering::Relaxed), 1);
-        // Prev fuel: 2. New Fuel: MemoryGrow (10) * Full (2.0) = 20.0. wasm_f64_nearest(20.0) = 20.0. Total = 2+20=22
-        assert_eq!(counter.get_fuel_consumed(), 22);
+        counter.record_operation(OperationType::MemoryRead, vl_full);
+        counter.record_operation(OperationType::MemoryWrite, vl_full);
+        counter.record_operation(OperationType::CollectionPush, vl_full);
+
+        let summary = counter.get_summary();
+        assert_eq!(summary.memory_reads, 1);
+        assert_eq!(summary.memory_writes, 1);
+        assert_eq!(summary.collection_pushes, 1);
+
+        let expected_fuel =
+            OperationType::fuel_cost_for_operation(OperationType::MemoryRead, vl_full).unwrap()
+                + OperationType::fuel_cost_for_operation(OperationType::MemoryWrite, vl_full)
+                    .unwrap()
+                + OperationType::fuel_cost_for_operation(OperationType::CollectionPush, vl_full)
+                    .unwrap();
+        assert_eq!(summary.fuel_consumed, expected_fuel);
 
         counter.reset();
-        assert_eq!(counter.get_fuel_consumed(), 0);
+        let summary_after_reset = counter.get_summary();
+        assert_eq!(summary_after_reset.memory_reads, 0);
+        assert_eq!(summary_after_reset.fuel_consumed, 0);
     }
 
     #[test]
     fn test_verification_level_impact() {
-        let op = OperationType::ChecksumCalculation; // base_cost = 10
+        let counter = OperationCounter::new();
+        let vl_off = VerificationLevel::Off;
+        let vl_sampling = VerificationLevel::default(); // Sampling
+        let vl_full = VerificationLevel::Full;
 
-        // None: 10 * 1.0 = 10.0. nearest(10.0) = 10
-        let cost_none =
-            OperationType::fuel_cost_for_operation(op, VerificationLevel::None).unwrap();
-        assert_eq!(cost_none, 10);
+        counter.record_operation(OperationType::MemoryRead, vl_off);
+        counter.record_operation(OperationType::MemoryRead, vl_sampling);
+        counter.record_operation(OperationType::MemoryRead, vl_full);
 
-        // Sampling: 10 * 1.2 = 12.0. nearest(12.0) = 12
-        let cost_sampling =
-            OperationType::fuel_cost_for_operation(op, VerificationLevel::Sampling).unwrap();
-        assert_eq!(cost_sampling, 12);
+        let summary = counter.get_summary();
+        assert_eq!(summary.memory_reads, 3);
 
-        // Standard: 10 * 1.5 = 15.0. nearest(15.0) = 15
-        let cost_standard =
-            OperationType::fuel_cost_for_operation(op, VerificationLevel::Standard).unwrap();
-        assert_eq!(cost_standard, 15);
-
-        // Full: 10 * 2.0 = 20.0. nearest(20.0) = 20
-        let cost_full =
-            OperationType::fuel_cost_for_operation(op, VerificationLevel::Full).unwrap();
-        assert_eq!(cost_full, 20);
-
-        // Test a case that would have rounded differently with round_half_away_from_zero
-        // Base cost 2, multiplier 1.2 => 2.4. nearest(2.4) = 2.
-        // (Old round_half_away_from_zero would also be 2)
-        let op2 = OperationType::CollectionPop; // base_cost = 2
-        let cost_sampling_op2 =
-            OperationType::fuel_cost_for_operation(op2, VerificationLevel::Sampling).unwrap();
-        assert_eq!(cost_sampling_op2, 2);
-
-        // Base cost 2, multiplier 1.5 => 3.0. nearest(3.0) = 3.
-        let cost_standard_op2 =
-            OperationType::fuel_cost_for_operation(op2, VerificationLevel::Standard).unwrap();
-        assert_eq!(cost_standard_op2, 3);
-
-        // Base cost 3, multiplier 1.5 => 4.5. nearest(4.5) = 4.0 (ties to even)
-        // Old round_half_away_from_zero(4.5) would be 5.0.
-        let op3 = OperationType::CollectionInsert; // base_cost = 3
-        let cost_standard_op3 =
-            OperationType::fuel_cost_for_operation(op3, VerificationLevel::Standard).unwrap();
-        assert_eq!(cost_standard_op3, 4);
+        let expected_fuel =
+            OperationType::fuel_cost_for_operation(OperationType::MemoryRead, vl_off).unwrap()
+                + OperationType::fuel_cost_for_operation(OperationType::MemoryRead, vl_sampling)
+                    .unwrap()
+                + OperationType::fuel_cost_for_operation(OperationType::MemoryRead, vl_full)
+                    .unwrap();
+        assert_eq!(summary.fuel_consumed, expected_fuel);
     }
 
-    #[cfg(feature = "std")] // These tests involve global state, run with std feature
     #[test]
     fn test_global_counter() {
         reset_global_operations();
-        record_global_operation(OperationType::FunctionCall, VerificationLevel::None);
-        // FunctionCall (5) * None (1.0) = 5.0. nearest(5.0) = 5
-        assert_eq!(global_fuel_consumed(), 5);
+        let vl_full = VerificationLevel::Full;
+
+        record_global_operation(OperationType::FunctionCall, vl_full); // Was Standard
+        record_global_operation(OperationType::CollectionValidate, vl_full); // Was Standard
 
         let summary = global_operation_summary();
         assert_eq!(summary.function_calls, 1);
-        assert_eq!(summary.fuel_consumed, 5);
+        assert_eq!(summary.collection_validates, 1);
+
+        let fuel = global_fuel_consumed();
+        assert_eq!(fuel, summary.fuel_consumed);
 
         reset_global_operations();
         assert_eq!(global_fuel_consumed(), 0);

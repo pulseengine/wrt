@@ -1,10 +1,9 @@
-use wrt_error::Result;
-
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+use alloc::vec::Vec;
 #[cfg(feature = "std")]
 use std::vec::Vec;
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::vec::Vec;
+use wrt_error::Result;
 
 /// Trait for types that can be validated
 pub trait Validatable {

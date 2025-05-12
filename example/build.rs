@@ -1,5 +1,4 @@
-use std::fs;
-use std::path::Path;
+use std::{fs, path::Path};
 
 fn main() {
     // Tell Cargo to rerun this build script if the WIT files change

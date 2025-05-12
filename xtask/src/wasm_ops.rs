@@ -1,8 +1,11 @@
 // Logic copied from previous wasm-utils/src/main.rs
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    time::SystemTime,
+};
+
 use anyhow::{bail, Context, Result};
-use std::fs;
-use std::path::{Path, PathBuf};
-use std::time::SystemTime;
 use walkdir::WalkDir;
 
 /// Builds all .wat files found recursively in the given directory.
@@ -25,7 +28,8 @@ pub fn build_all_wat(dir: &Path) -> Result<()> {
     Ok(())
 }
 
-/// Checks if all .wasm files are up-to-date relative to their .wat counterparts.
+/// Checks if all .wasm files are up-to-date relative to their .wat
+/// counterparts.
 pub fn check_all_wat(dir: &Path) -> Result<()> {
     println!("Checking WASM files are up-to-date in {}", dir.display());
     let mut needs_rebuild = false;
@@ -121,7 +125,8 @@ pub fn wat_to_wasm_path(wat_path: &Path) -> Result<PathBuf> {
     Ok(wat_path.with_extension("wasm"))
 }
 
-/// Checks if the WAT file needs conversion (WASM doesn't exist or WAT is newer).
+/// Checks if the WAT file needs conversion (WASM doesn't exist or WAT is
+/// newer).
 fn needs_conversion(wat_path: &Path, wasm_path: &Path) -> Result<bool> {
     if !wasm_path.exists() {
         return Ok(true);

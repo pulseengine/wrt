@@ -1,19 +1,15 @@
 //! Formal verification for the WebAssembly format handling using Kani.
 //!
-//! This module contains proofs that verify core properties of the format handling system.
-//! These proofs only run with Kani and are isolated from normal compilation and testing.
+//! This module contains proofs that verify core properties of the format
+//! handling system. These proofs only run with Kani and are isolated from
+//! normal compilation and testing.
 
 // Only compile Kani verification code when documentation is being generated
 // or when explicitly running cargo kani. This prevents interference with
 // coverage testing.
 #[cfg(any(doc, kani))]
 pub mod kani_verification {
-    use crate::binary::*;
-    use crate::compression::*;
-    use crate::module::*;
-    use crate::section::*;
-    use crate::state::*;
-    use crate::*;
+    use crate::{binary::*, compression::*, module::*, section::*, state::*, *};
 
     /// Verify RLE compression round-trip
     #[cfg_attr(kani, kani::proof)]

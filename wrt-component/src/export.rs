@@ -2,11 +2,10 @@
 //!
 //! This module provides the Export type for component exports.
 
-use crate::component::ExternValue;
-use crate::prelude::*;
-use crate::type_conversion::bidirectional;
 use wrt_format::component::ExternType;
 use wrt_types::ExternType as RuntimeExternType;
+
+use crate::{component::ExternValue, prelude::*, type_conversion::bidirectional};
 
 /// Export from a component
 #[derive(Debug, Clone)]
@@ -82,9 +81,10 @@ impl Export {
 
 #[cfg(all(test, feature = "std"))]
 mod tests {
+    use wrt_format::component::{ExternType, ValType};
+
     use super::*;
     use crate::component::{ExternValue, FunctionValue};
-    use wrt_format::component::{ExternType, ValType};
 
     #[test]
     fn test_export_creation() {

@@ -1,23 +1,23 @@
-use std::env;
-use std::fmt::Write as FmtWrite;
-use std::fs;
-use std::io;
+use std::{env, fmt::Write as FmtWrite, fs, io};
 
+use crossterm::{
+    event::{self, Event, KeyCode, KeyEventKind},
+    terminal::{disable_raw_mode, enable_raw_mode},
+};
+use ratatui::{
+    layout::{Alignment, Constraint, Direction, Layout, Rect},
+    prelude::*,
+    style::{Color, Modifier, Style, Stylize},
+    widgets::{Block, Borders, List, ListItem, Paragraph, StatefulWidget, Widget},
+};
+use strum::{Display, EnumIter, FromRepr, IntoEnumIterator};
+use tui_nodes::{Connection, LineType, NodeGraph, NodeLayout};
 use wrt_component::component::{
     AliasInfo, Component, ComponentSummary, CoreInstanceInfo, CoreModuleInfo, ExtendedExportInfo,
     ExtendedImportInfo, ModuleExportInfo, ModuleImportInfo,
 };
 use wrt_decoder::ProducersSection;
 use wrt_error::{Error, Result};
-
-use crossterm::event::{self, Event, KeyCode, KeyEventKind};
-use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
-use ratatui::layout::{Alignment, Constraint, Direction, Layout, Rect};
-use ratatui::prelude::*;
-use ratatui::style::{Color, Modifier, Style, Stylize};
-use ratatui::widgets::{Block, Borders, List, ListItem, Paragraph, StatefulWidget, Widget};
-use strum::{Display, EnumIter, FromRepr, IntoEnumIterator};
-use tui_nodes::{Connection, LineType, NodeGraph, NodeLayout};
 use wrt_format::module::ImportDesc;
 
 /// Main state struct for the application
@@ -760,7 +760,8 @@ impl App {
         graph
     }
 
-    /// Build the details graph showing detailed information about a specific entity
+    /// Build the details graph showing detailed information about a specific
+    /// entity
     fn build_details_graph(&self, width: u16, height: u16) -> NodeGraph<'static> {
         let mut nodes = Vec::new();
         let mut connections = Vec::new();
@@ -948,7 +949,8 @@ impl App {
 
         // Create detailed debug content
         let component_info = format!(
-            "Component file size: {}\nModules: {}\nInstances: {}\nImports: {}\nExports: {}\nAliases: {}",
+            "Component file size: {}\nModules: {}\nInstances: {}\nImports: {}\nExports: \
+             {}\nAliases: {}",
             self.component_bytes.as_ref().map_or(0, |b| b.len()),
             self.component_summary.core_modules_count,
             self.component_summary.core_instances_count,
@@ -1113,7 +1115,8 @@ impl App {
                     % if self.debug_mode {
                         SelectedView::iter().count()
                     } else {
-                        SelectedView::iter().count() - 1 // Skip Debug view when not in debug mode
+                        SelectedView::iter().count() - 1 // Skip Debug view when
+                                                         // not in debug mode
                     };
                 self.selected_view =
                     SelectedView::from_repr(next_idx).unwrap_or(self.selected_view);
@@ -1123,7 +1126,8 @@ impl App {
                 let max_idx = if self.debug_mode {
                     SelectedView::iter().count()
                 } else {
-                    SelectedView::iter().count() - 1 // Skip Debug view when not in debug mode
+                    SelectedView::iter().count() - 1 // Skip Debug view when not
+                                                     // in debug mode
                 };
                 let prev_idx = if current_idx == 0 { max_idx - 1 } else { current_idx - 1 };
                 self.selected_view =
@@ -1257,20 +1261,28 @@ impl App {
 
         // Render status bar
         let mut status_text = match self.selected_view {
-            SelectedView::Overview =>
-                "1-6: Switch Views | Tab/←→: Navigate Views | f: Focus Mode | q: Quit".to_string(),
-            SelectedView::Modules =>
-                "1-6: Switch Views | Tab/←→: Navigate Views | f: Focus Mode | ↑↓: Select Module | Enter: Details | q: Quit".to_string(),
-            SelectedView::Imports =>
-                "1-6: Switch Views | Tab/←→: Navigate Views | f: Focus Mode | ↑↓: Select Import | Enter: Details | q: Quit".to_string(),
-            SelectedView::Exports =>
-                "1-6: Switch Views | Tab/←→: Navigate Views | f: Focus Mode | ↑↓: Select Export | Enter: Details | q: Quit".to_string(),
-            SelectedView::Producers =>
-                "1-6: Switch Views | Tab/←→: Navigate Views | f: Focus Mode | ↑↓: Select Producer | Enter: View Producer Details (Languages, Tools, SDKs) | q: Quit".to_string(),
-            SelectedView::Details =>
-                "1-6: Switch Views | Tab/←→: Navigate Views | q: Quit".to_string(),
-            SelectedView::Debug =>
-                "1-7: Switch Views | Tab/←→: Navigate Views | q: Quit".to_string(),
+            SelectedView::Overview => {
+                "1-6: Switch Views | Tab/←→: Navigate Views | f: Focus Mode | q: Quit".to_string()
+            }
+            SelectedView::Modules => "1-6: Switch Views | Tab/←→: Navigate Views | f: Focus Mode \
+                                      | ↑↓: Select Module | Enter: Details | q: Quit"
+                .to_string(),
+            SelectedView::Imports => "1-6: Switch Views | Tab/←→: Navigate Views | f: Focus Mode \
+                                      | ↑↓: Select Import | Enter: Details | q: Quit"
+                .to_string(),
+            SelectedView::Exports => "1-6: Switch Views | Tab/←→: Navigate Views | f: Focus Mode \
+                                      | ↑↓: Select Export | Enter: Details | q: Quit"
+                .to_string(),
+            SelectedView::Producers => "1-6: Switch Views | Tab/←→: Navigate Views | f: Focus \
+                                        Mode | ↑↓: Select Producer | Enter: View Producer Details \
+                                        (Languages, Tools, SDKs) | q: Quit"
+                .to_string(),
+            SelectedView::Details => {
+                "1-6: Switch Views | Tab/←→: Navigate Views | q: Quit".to_string()
+            }
+            SelectedView::Debug => {
+                "1-7: Switch Views | Tab/←→: Navigate Views | q: Quit".to_string()
+            }
         };
 
         // Modify status bar text to include debug key when debug mode is enabled
@@ -1386,7 +1398,8 @@ fn main() -> io::Result<()> {
         return Ok(());
     }
 
-    // Find the component path (first argument that's not a flag or the program name)
+    // Find the component path (first argument that's not a flag or the program
+    // name)
     let component_path = match args
         .iter()
         .find(|arg| !arg.starts_with('-') && !arg.ends_with("component_graph_view"))
@@ -1520,7 +1533,11 @@ fn main() -> io::Result<()> {
                                         println!("  No producers section found in module #{}", idx);
                                     }
                                     Err(e) => {
-                                        println!("  Error extracting producers section from module #{}: {}", idx, e);
+                                        println!(
+                                            "  Error extracting producers section from module \
+                                             #{}: {}",
+                                            idx, e
+                                        );
                                     }
                                 }
                             }

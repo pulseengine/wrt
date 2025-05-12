@@ -1,7 +1,7 @@
-use crate::prelude::*;
 use wrt_error::Result;
-use wrt_format::binary;
-use wrt_format::component::Component;
+use wrt_format::{binary, component::Component};
+
+use crate::prelude::*;
 
 /// Encode a WebAssembly Component Model component into binary format
 pub fn encode_component(component: &Component) -> Result<Vec<u8>> {
@@ -441,9 +441,7 @@ fn encode_val_type(ty: &wrt_format::component::ValType, data: &mut Vec<u8>) -> R
         wrt_format::component::ValType::Void => {
             // There doesn't seem to be a Void tag in the binary constants
             // We'll need to add this or map it to the appropriate value
-            return Err(Error::validation_error(
-                "Void type encoding not yet implemented",
-            ));
+            return Err(Error::validation_error("Void type encoding not yet implemented"));
         }
         wrt_format::component::ValType::ErrorContext => {
             data.push(binary::VAL_TYPE_ERROR_CONTEXT_TAG);
@@ -542,8 +540,8 @@ fn encode_export_section(exports: &[wrt_format::component::Export]) -> Result<Ve
 
 /// Convert FormatValType to ValType
 ///
-/// This function properly handles the conversion between different ValType representations
-/// without creating references to temporary values.
+/// This function properly handles the conversion between different ValType
+/// representations without creating references to temporary values.
 fn format_val_type_to_val_type(
     val_type: &wrt_format::component::FormatValType,
 ) -> wrt_format::component::ValType {
@@ -643,11 +641,12 @@ fn format_val_type_to_val_type(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use wrt_format::component::{
         Component, CoreInlineExport, CoreInstance, CoreInstanceExpr, CoreSort, Export, ExportName,
         Import, ImportName, Sort,
     };
+
+    use super::*;
 
     #[test]
     fn test_encode_empty_component() {

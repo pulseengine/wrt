@@ -1,6 +1,4 @@
-use wrt::memory::Memory;
-use wrt::types::MemoryType;
-use wrt::Result;
+use wrt::{memory::Memory, types::MemoryType, Result};
 
 #[test]
 fn test_memory_operations() -> Result<()> {

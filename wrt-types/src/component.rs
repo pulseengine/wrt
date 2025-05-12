@@ -1,6 +1,6 @@
 // WRT - wrt-types
 // Module: WebAssembly Component Model Core Types
-// SW-REQ-ID: REQ_WASM_COMPONENT_001 (Example: Relates to core component structures)
+// SW-REQ-ID: REQ_019
 //
 // Copyright (c) 2024 Ralf Anton Beier
 // Licensed under the MIT license.
@@ -9,11 +9,13 @@
 //! Defines the core types for the WebAssembly Component Model such as
 //! ComponentType, InstanceType, ExternType, etc.
 
-use crate::types::FuncType;
-use crate::types::ValueType;
-use crate::{String, Vec};
 #[cfg(not(feature = "std"))]
 use alloc::string::ToString;
+
+use crate::{
+    types::{FuncType, ValueType},
+    String, Vec,
+};
 
 /// Represents a component type
 #[derive(Debug, Clone)]
@@ -28,6 +30,7 @@ pub struct ComponentType {
 
 impl ComponentType {
     /// Creates a new component type with the specified imports and exports
+    #[must_use]
     pub fn new(
         imports: Vec<(String, String, ExternType)>,
         exports: Vec<(String, ExternType)>,
@@ -36,6 +39,7 @@ impl ComponentType {
     }
 
     /// Creates an empty component type
+    #[must_use]
     pub fn empty() -> Self {
         Self { imports: Vec::new(), exports: Vec::new(), instances: Vec::new() }
     }
@@ -179,6 +183,7 @@ pub struct ImportDefinition {
 }
 
 /// Type compatibility checking
+#[must_use]
 pub fn types_are_compatible(a: &ExternType, b: &ExternType) -> bool {
     match (a, b) {
         (ExternType::Function(a_ty), ExternType::Function(b_ty)) => {
@@ -191,12 +196,14 @@ pub fn types_are_compatible(a: &ExternType, b: &ExternType) -> bool {
         (ExternType::Instance(a_ty), ExternType::Instance(b_ty)) => {
             instance_types_match(a_ty, b_ty)
         }
-        (ExternType::Component(_), ExternType::Component(_)) => true, // Basic compatibility for now
+        (ExternType::Component(_), ExternType::Component(_)) => true, // Basic compatibility for
+        // now
         _ => false,
     }
 }
 
 /// Check if two function types are compatible
+#[must_use]
 pub fn func_types_compatible(a: &FuncType, b: &FuncType) -> bool {
     if a.params.len() != b.params.len() || a.results.len() != b.results.len() {
         return false;
@@ -218,6 +225,7 @@ pub fn func_types_compatible(a: &FuncType, b: &FuncType) -> bool {
 }
 
 /// Check if two instance types match for linking
+#[must_use]
 pub fn instance_types_match(a: &InstanceType, b: &InstanceType) -> bool {
     if a.exports.len() != b.exports.len() {
         return false;

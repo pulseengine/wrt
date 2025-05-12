@@ -1,12 +1,12 @@
 //! Log operation for the WebAssembly Runtime.
 //!
-//! This module provides types for representing log operations in component logging.
-
-#[cfg(feature = "std")]
-use std::string::String;
+//! This module provides types for representing log operations in component
+//! logging.
 
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 use alloc::string::String;
+#[cfg(feature = "std")]
+use std::string::String;
 
 use crate::level::LogLevel;
 

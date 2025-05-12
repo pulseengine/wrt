@@ -1,12 +1,13 @@
 use std::sync::Arc;
+
 use wrt_error::Result;
-use wrt_runtime::memory::Memory;
-use wrt_runtime::table::Table;
-use wrt_runtime::types::MemoryType;
-use wrt_types::safe_memory::SafeSlice;
-use wrt_types::types::{Limits, ValueType};
-use wrt_types::values::{FuncRef, Value};
-use wrt_types::verification::VerificationLevel;
+use wrt_runtime::{memory::Memory, table::Table, types::MemoryType};
+use wrt_types::{
+    safe_memory::SafeSlice,
+    types::{Limits, ValueType},
+    values::{FuncRef, Value},
+    verification::VerificationLevel,
+};
 
 #[test]
 fn test_safe_memory_integration() -> Result<()> {

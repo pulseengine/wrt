@@ -1,9 +1,9 @@
 //! Export mapping for the WebAssembly Component Model
 //!
-//! This module provides functionality to map between different export representations.
+//! This module provides functionality to map between different export
+//! representations.
 
-use crate::export::Export;
-use crate::prelude::*;
+use crate::{export::Export, prelude::*};
 
 /// Map of export names to exports
 #[derive(Debug, Default)]

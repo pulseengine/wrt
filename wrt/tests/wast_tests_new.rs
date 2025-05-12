@@ -1,7 +1,10 @@
-use std::fs;
-use std::path::{Path, PathBuf};
-use wast::core::{NanPattern, WastArgCore, WastRetCore};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
+
 use wast::{
+    core::{NanPattern, WastArgCore, WastRetCore},
     parser::{self, ParseBuffer},
     Wast, WastArg, WastDirective, WastExecute, WastRet,
 };
@@ -118,7 +121,8 @@ fn test_wast_directive(
     }
 }
 
-// Helper function to compare Wasm values, especially floats with tolerance and NaN handling
+// Helper function to compare Wasm values, especially floats with tolerance and
+// NaN handling
 fn compare_wasm_values(actual: &Value, expected: &Value) -> bool {
     match (actual, expected) {
         (Value::F32(a), Value::F32(e)) => {
@@ -214,8 +218,9 @@ fn load_passing_tests() -> std::collections::HashSet<PathBuf> {
 
     println!("Loaded {} tests from wast_passed.md", passing_tests.len());
 
-    // Another potential issue: relative paths in wast_passed.md are relative to the workspace root
-    // Let's make sure we're using absolute paths by resolving them against the workspace root
+    // Another potential issue: relative paths in wast_passed.md are relative to the
+    // workspace root Let's make sure we're using absolute paths by resolving
+    // them against the workspace root
     passing_tests
         .into_iter()
         .map(|path| if path.is_absolute() { path } else { workspace_root.join(path) })
@@ -290,7 +295,8 @@ fn test_wast_files() -> Result<(), Error> {
 
             println!("Found WAST file: {}", rel_display_path.display());
 
-            // Check both the absolute path and a version reconstructed from the relative path
+            // Check both the absolute path and a version reconstructed from the relative
+            // path
             let rel_path_from_workspace = workspace_root.join(&rel_display_path);
 
             // Only run tests that are in the passing_tests list

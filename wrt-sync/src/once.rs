@@ -1,8 +1,9 @@
-// #![allow(unsafe_code)] // Allow unsafe for UnsafeCell, raw pointers, and Send/Sync impls
+// #![allow(unsafe_code)] // Allow unsafe for UnsafeCell, raw pointers, and
+// Send/Sync impls
 
 // WRT - wrt-sync
-// Module: OnceCell Implementation
-// SW-REQ-ID: N/A (Derived from foundational sync primitives)
+// Module: OnceCell - A one-time initialization primitive
+// SW-REQ-ID: REQ_CONCURRENCY_001
 //
 // Copyright (c) 2024 Ralf Anton Beier
 // Licensed under the MIT license.
@@ -13,36 +14,38 @@
 //! This module provides a `WrtOnce<T>` type that allows for safe, one-time
 //! initialization of a value, typically used for global statics.
 
-use crate::mutex::WrtMutex; // Using the WrtMutex from this crate. Removed WrtMutexGuard as it's not used directly here.
-use core::cell::UnsafeCell;
-use core::fmt;
-use core::mem::MaybeUninit;
+use core::{cell::UnsafeCell, fmt, mem::MaybeUninit};
+
+use crate::mutex::WrtMutex; // Using the WrtMutex from this crate. Removed WrtMutexGuard as
+                            // it's not used directly here.
 
 /// A synchronization primitive which can be written to only once.
 ///
-/// This type is analogous to `std::sync::OnceLock` or `once_cell::sync::OnceCell`.
+/// This type is analogous to `std::sync::OnceLock` or
+/// `once_cell::sync::OnceCell`.
 ///
 /// # Safety
-/// This implementation uses `UnsafeCell` to store the actual data `T` once initialized.
-/// The `WrtMutex<bool>` (`initialized_lock`) is used to ensure that the initialization
-/// logic runs at most once. After initialization, the data is considered immutable
-/// and references can be safely given out.
+/// This implementation uses `UnsafeCell` to store the actual data `T` once
+/// initialized. The `WrtMutex<bool>` (`initialized_lock`) is used to ensure
+/// that the initialization logic runs at most once. After initialization, the
+/// data is considered immutable and references can be safely given out.
 pub struct WrtOnce<T> {
     mutex: WrtMutex<()>, // Used as a traditional lock for the initialization check
     data: UnsafeCell<MaybeUninit<T>>,
     initialized: AtomicBool, // Tracks if `data` is initialized
 }
 
-// Safety: `WrtOnce<T>` is Send if T is Send because the data is protected by the mutex
-// during initialization and then accessed via shared references. The AtomicBool is Send.
-// UnsafeCell<MaybeUninit<T>> is Send if T is Send.
+// Safety: `WrtOnce<T>` is Send if T is Send because the data is protected by
+// the mutex during initialization and then accessed via shared references. The
+// AtomicBool is Send. UnsafeCell<MaybeUninit<T>> is Send if T is Send.
 unsafe impl<T: Send> Send for WrtOnce<T> {}
 
 // Safety: `WrtOnce<T>` is Sync if T is Send and Sync.
-// `Send` is required for `T` to be stored. `Sync` is required for `&T` to be `Send`.
-// The mutex ensures exclusive access during initialization.
+// `Send` is required for `T` to be stored. `Sync` is required for `&T` to be
+// `Send`. The mutex ensures exclusive access during initialization.
 // Once initialized, `data` is accessed immutably. AtomicBool is Sync.
-// UnsafeCell<MaybeUninit<T>> is Sync if T is Send + Sync (as &MaybeUninit<T> needs to be Sync).
+// UnsafeCell<MaybeUninit<T>> is Sync if T is Send + Sync (as &MaybeUninit<T>
+// needs to be Sync).
 unsafe impl<T: Send + Sync> Sync for WrtOnce<T> {}
 
 impl<T> WrtOnce<T> {
@@ -57,13 +60,14 @@ impl<T> WrtOnce<T> {
         }
     }
 
-    /// Gets the reference to the underlying value, initializing it if necessary.
+    /// Gets the reference to the underlying value, initializing it if
+    /// necessary.
     ///
     /// If `WrtOnce` is already initialized, this method returns immediately.
-    /// Otherwise, it calls `f` to initialize the value, and then returns a reference.
-    /// If multiple threads attempt to initialize the same `WrtOnce` concurrently,
-    /// only one thread will execute `f()`, and others will block until initialization
-    /// is complete.
+    /// Otherwise, it calls `f` to initialize the value, and then returns a
+    /// reference. If multiple threads attempt to initialize the same
+    /// `WrtOnce` concurrently, only one thread will execute `f()`, and
+    /// others will block until initialization is complete.
     pub fn get_or_init<F>(&self, f: F) -> &T
     where
         F: FnOnce() -> T,
@@ -73,15 +77,16 @@ impl<T> WrtOnce<T> {
         // by the initializing thread is also visible.
         if self.initialized.load(Ordering::Acquire) {
             // Safety: `initialized` is true, so `data` has been initialized.
-            // The Acquire load synchronizes with the Release store by the initializing thread.
-            // It's safe to assume `data` contains a valid `T`.
+            // The Acquire load synchronizes with the Release store by the initializing
+            // thread. It's safe to assume `data` contains a valid `T`.
             return unsafe { self.get_unchecked() };
         }
 
         // Slow path: acquire lock and attempt initialization.
         let _guard = self.mutex.lock(); // Lock to ensure only one thread initializes.
 
-        // Double-check: another thread might have initialized while we were waiting for the lock.
+        // Double-check: another thread might have initialized while we were waiting for
+        // the lock.
         if self.initialized.load(Ordering::Relaxed) {
             // Relaxed is fine here, guarded by mutex.
             // Safety: Same as above fast path, but now under lock.
@@ -117,9 +122,10 @@ impl<T> WrtOnce<T> {
 
     /// # Safety
     ///
-    /// Caller must ensure that the `WrtOnce<T>` has been initialized prior to calling this.
-    /// This is typically ensured by checking `initialized.load(Ordering::Acquire)` first,
-    /// or by virtue of program logic (e.g., after `get_or_init` has completed).
+    /// Caller must ensure that the `WrtOnce<T>` has been initialized prior to
+    /// calling this. This is typically ensured by checking
+    /// `initialized.load(Ordering::Acquire)` first, or by virtue of program
+    /// logic (e.g., after `get_or_init` has completed).
     #[inline]
     unsafe fn get_unchecked(&self) -> &T {
         // Safety: The caller guarantees that `data` is initialized.
@@ -145,8 +151,8 @@ impl<T: fmt::Debug> fmt::Debug for WrtOnce<T> {
 }
 
 // It's good practice to ensure Drop is handled, though for `MaybeUninit<T>`
-// where T might need dropping, if WrtOnce itself is dropped, the T inside MaybeUninit
-// should be dropped if it was initialized.
+// where T might need dropping, if WrtOnce itself is dropped, the T inside
+// MaybeUninit should be dropped if it was initialized.
 impl<T> Drop for WrtOnce<T> {
     fn drop(&mut self) {
         // If initialized, take the value and drop it.
@@ -162,5 +168,6 @@ impl<T> Drop for WrtOnce<T> {
     }
 }
 
-// Re-import core items used by the module that might not be in scope otherwise in no_std
+// Re-import core items used by the module that might not be in scope otherwise
+// in no_std
 use core::sync::atomic::{AtomicBool, Ordering};

@@ -1,23 +1,37 @@
 //! Prelude module for wrt-decoder
 //!
-//! This module provides a unified set of imports for both std and no_std environments.
-//! It re-exports commonly used types and traits to ensure consistency across all crates
-//! in the WRT project and simplify imports in individual modules.
+//! This module provides a unified set of imports for both std and no_std
+//! environments. It re-exports commonly used types and traits to ensure
+//! consistency across all crates in the WRT project and simplify imports in
+//! individual modules.
 
 // Core imports for both std and no_std environments
+// Re-export from alloc when no_std but alloc is available
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+pub use alloc::{
+    borrow::Cow,
+    boxed::Box,
+    collections::{BTreeMap, BTreeSet},
+    format,
+    rc::Rc,
+    string::{String, ToString},
+    sync::Arc,
+    vec,
+    vec::Vec,
+};
+#[cfg(not(feature = "std"))]
+pub use core::result::Result as StdResult;
 pub use core::{
     any::Any,
     cmp::{Eq, Ord, PartialEq, PartialOrd},
     convert::{From, Into, TryFrom, TryInto},
     fmt,
-    fmt::Debug,
-    fmt::Display,
+    fmt::{Debug, Display},
     marker::PhantomData,
     mem,
     ops::{Deref, DerefMut},
     slice, str,
 };
-
 // Re-export from std when the std feature is enabled
 #[cfg(feature = "std")]
 pub use std::{
@@ -34,41 +48,14 @@ pub use std::{
     vec::Vec,
 };
 
-// Re-export from alloc when no_std but alloc is available
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-pub use alloc::{
-    borrow::Cow,
-    boxed::Box,
-    collections::{BTreeMap, BTreeSet},
-    format,
-    rc::Rc,
-    string::{String, ToString},
-    sync::Arc,
-    vec,
-    vec::Vec,
-};
-
-#[cfg(not(feature = "std"))]
-pub use core::result::Result as StdResult;
-
 // Import synchronization primitives for no_std
 //#[cfg(not(feature = "std"))]
-//pub use wrt_sync::{Mutex, RwLock};
+// pub use wrt_sync::{Mutex, RwLock};
 
 // Re-export from wrt-error
 pub use wrt_error::{codes, kinds, Error, ErrorCategory, Result};
-
-// Re-export from wrt-types
-pub use wrt_types::{
-    // Component model types
-    component_value::{ComponentValue, ValType},
-    // SafeMemory types
-    safe_memory::{SafeMemoryHandler, SafeSlice, SafeStack},
-    // Types
-    types::{BlockType, FuncType, GlobalType, MemoryType, RefType, TableType, ValueType},
-    values::Value,
-};
-
+// Re-export format module for compatibility
+pub use wrt_format as format;
 // Re-export from wrt-format
 pub use wrt_format::{
     // Binary utilities
@@ -79,8 +66,8 @@ pub use wrt_format::{
     },
     // Conversion utilities
     conversion::{
-        block_type_to_format_block_type, format_block_type_to_block_type, parse_value_type,
-        format_value_type as value_type_to_byte,
+        block_type_to_format_block_type, format_block_type_to_block_type,
+        format_value_type as value_type_to_byte, parse_value_type,
     },
     // Module types
     module::{
@@ -92,10 +79,19 @@ pub use wrt_format::{
     // Format-specific types
     types::{FormatBlockType, Limits, MemoryIndexType},
 };
-
 // Conversion utilities from wrt-types
 #[cfg(feature = "conversion")]
 pub use wrt_types::conversion::{ref_type_to_val_type, val_type_to_ref_type};
+// Re-export from wrt-types
+pub use wrt_types::{
+    // Component model types
+    component_value::{ComponentValue, ValType},
+    // SafeMemory types
+    safe_memory::{SafeMemoryHandler, SafeSlice, SafeStack},
+    // Types
+    types::{BlockType, FuncType, GlobalType, MemoryType, RefType, TableType, ValueType},
+    values::Value,
+};
 
 // Re-export from this crate
 pub use crate::{
@@ -106,6 +102,3 @@ pub use crate::{
     // Utils
     utils,
 };
-
-// Re-export format module for compatibility
-pub use wrt_format as format;

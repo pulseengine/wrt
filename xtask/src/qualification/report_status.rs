@@ -1,8 +1,6 @@
 #![allow(dead_code)]
 
-use std::error::Error;
-use std::fs;
-use std::path::Path;
+use std::{error::Error, fs, path::Path};
 
 pub fn run() -> Result<(), Box<dyn Error>> {
     println!("Generating qualification status report...");

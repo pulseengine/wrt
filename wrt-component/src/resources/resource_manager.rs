@@ -1,13 +1,13 @@
 // Resource management for WebAssembly Component Model
 //
-// This module provides resource management functionality for the Component Model,
-// including resource creation, access control, and lifetime management.
+// This module provides resource management functionality for the Component
+// Model, including resource creation, access control, and lifetime management.
+
+use wrt_error::kinds::PoisonedLockError;
+use wrt_types::{component_value::ComponentValue, ResourceOperation as FormatResourceOperation};
 
 use super::{MemoryStrategy, Resource, ResourceInterceptor, ResourceTable, VerificationLevel};
 use crate::prelude::*;
-use wrt_error::kinds::PoisonedLockError;
-use wrt_types::component_value::ComponentValue;
-use wrt_types::ResourceOperation as FormatResourceOperation;
 
 /// Unique identifier for a resource
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]

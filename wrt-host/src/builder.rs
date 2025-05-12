@@ -1,16 +1,18 @@
 //! Builder pattern for constructing and configuring WebAssembly hosts.
 //!
-//! This module provides a builder pattern for creating and configuring instances
-//! of the `CallbackRegistry` with the appropriate built-in functions, interceptors,
-//! and other configuration options.
+//! This module provides a builder pattern for creating and configuring
+//! instances of the `CallbackRegistry` with the appropriate built-in functions,
+//! interceptors, and other configuration options.
 
 // Use the prelude for consistent imports
 use crate::prelude::*;
 
-/// Builder for configuring and creating instances of `CallbackRegistry` with built-in support.
+/// Builder for configuring and creating instances of `CallbackRegistry` with
+/// built-in support.
 ///
-/// This builder pattern allows for fluent configuration of a WebAssembly host environment,
-/// including built-in functions, interceptors, and validation of required capabilities.
+/// This builder pattern allows for fluent configuration of a WebAssembly host
+/// environment, including built-in functions, interceptors, and validation of
+/// required capabilities.
 #[derive(Default)]
 pub struct HostBuilder {
     /// The callback registry being built
@@ -72,7 +74,8 @@ impl HostBuilder {
 
     /// Register a host function.
     ///
-    /// This method registers a host function with the specified module and function name.
+    /// This method registers a host function with the specified module and
+    /// function name.
     pub fn with_host_function(
         mut self,
         module_name: &str,
@@ -169,8 +172,8 @@ impl HostBuilder {
     ///
     /// # Errors
     ///
-    /// Returns an error if strict validation is enabled and any required built-in
-    /// is not implemented.
+    /// Returns an error if strict validation is enabled and any required
+    /// built-in is not implemented.
     pub fn validate(&self) -> Result<()> {
         if self.strict_validation {
             for &builtin_type in &self.required_builtins {
@@ -198,7 +201,8 @@ impl HostBuilder {
 
     /// Build the callback registry.
     ///
-    /// This method creates a `CallbackRegistry` instance based on the current configuration.
+    /// This method creates a `CallbackRegistry` instance based on the current
+    /// configuration.
     ///
     /// # Errors
     ///
@@ -272,7 +276,8 @@ impl HostBuilder {
         }
 
         // Register all built-in handlers from the registry
-        // Since BuiltinType doesn't have an all() method, we'll check for each known type
+        // Since BuiltinType doesn't have an all() method, we'll check for each known
+        // type
         let builtin_types = [
             BuiltinType::ResourceCreate,
             BuiltinType::ResourceDrop,
@@ -307,8 +312,9 @@ impl HostBuilder {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use wrt_types::values::Value;
+
+    use super::*;
 
     #[test]
     fn test_builder_basics() {
@@ -378,6 +384,7 @@ mod tests {
     fn test_link_interceptor() {
         // Creating a simple mock interceptor for testing
         use std::sync::Arc;
+
         use wrt_intercept::{LinkInterceptor, LinkInterceptorStrategy};
         use wrt_types::values::Value;
 
@@ -463,6 +470,7 @@ mod tests {
     #[test]
     fn test_builder_with_interceptor() {
         use std::sync::Arc;
+
         use wrt_intercept::{BeforeBuiltinResult, BuiltinInterceptor, InterceptContext};
         use wrt_types::component_value::ComponentValue;
 

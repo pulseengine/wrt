@@ -635,7 +635,7 @@ impl StacklessFrame {
             }
         }
         Ok(())
-    }
+    }}
 
     fn table_fill(&mut self, table_idx: u32, engine: &mut StacklessEngine) -> Result<()> {
         let n_val = engine.value_stack.pop().map_err(|e| Error::new(codes::RUNTIME_STACK_UNDERFLOW, format!("table.fill count: {}", e)))?;

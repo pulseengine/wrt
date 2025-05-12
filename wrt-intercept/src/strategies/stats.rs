@@ -1,14 +1,14 @@
 //! Statistics strategy for intercepting component function calls
 //!
-//! This strategy collects metrics on function calls between components and hosts.
-//! It can track call counts, error rates, performance metrics, etc.
+//! This strategy collects metrics on function calls between components and
+//! hosts. It can track call counts, error rates, performance metrics, etc.
 //!
 //! Note: This strategy requires the `std` feature.
 
-use crate::prelude::*;
-
 #[cfg(feature = "std")]
 use std::time::{Duration, Instant};
+
+use crate::prelude::*;
 
 /// Statistics collected for a function
 #[cfg(feature = "std")]
@@ -226,8 +226,9 @@ impl LinkInterceptorStrategy for StatisticsStrategy {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::thread;
+
+    use super::*;
 
     #[test]
     fn test_statistics_strategy() {

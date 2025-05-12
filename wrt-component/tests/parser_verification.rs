@@ -1,5 +1,4 @@
-use wrt_decoder::find_section;
-use wrt_decoder::{Parser, Payload};
+use wrt_decoder::{find_section, Parser, Payload};
 
 // Create a minimal WebAssembly module
 fn create_minimal_module() -> Vec<u8> {

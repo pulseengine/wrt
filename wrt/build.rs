@@ -1,8 +1,8 @@
-use std::env;
-use std::fs;
-use std::io;
-use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::{
+    env, fs, io,
+    path::{Path, PathBuf},
+    process::Command,
+};
 
 const TESTSUITE_REPO_URL: &str = "https://github.com/WebAssembly/testsuite.git";
 const TESTSUITE_DIR: &str = "testsuite";

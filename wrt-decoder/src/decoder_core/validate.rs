@@ -3,8 +3,6 @@
 //! This module provides functionality for validating WebAssembly modules
 //! according to the WebAssembly specification.
 
-use crate::module::Module;
-use crate::prelude::*;
 // Use the proper imports from wrt_format instead of local sections
 use wrt_error::{codes, kinds, Error, ErrorCategory, Result};
 use wrt_format::types::CoreWasmVersion;
@@ -13,24 +11,28 @@ use wrt_format::types::CoreWasmVersion;
 
 // Explicitly use types from wrt_types for clarity in this validation context
 use wrt_types::types::{
-    ImportDesc as TypesImportDesc,
-    ExportDesc as TypesExportDesc,
-    TableType as TypesTableType,
-    MemoryType as TypesMemoryType,
-    GlobalType as TypesGlobalType,
-    Limits as TypesLimits,
-    FuncType as TypesFuncType,
-    ValueType as TypesValueType, // Already in prelude, but good for explicitness if needed below
-    DataMode as TypesDataMode,    // For DataSegment validation later
+    DataMode as TypesDataMode,       // For DataSegment validation later
     ElementMode as TypesElementMode, // Added for validate_elements
-    RefType as TypesRefType,         // Added for validate_elements
-    // Add other wrt_types::types as needed for other validation functions
+    ExportDesc as TypesExportDesc,
+    FuncType as TypesFuncType,
+    GlobalType as TypesGlobalType,
+    ImportDesc as TypesImportDesc,
+    Limits as TypesLimits,
+    MemoryType as TypesMemoryType,
+    RefType as TypesRefType, /* Added for validate_elements
+                              * Add other wrt_types::types as needed for other validation
+                              * functions */
+    TableType as TypesTableType,
+    ValueType as TypesValueType, // Already in prelude, but good for explicitness if needed below
 };
-// For types that are only defined in wrt_format and are used as arguments to validation helpers
-// that specifically operate on format-level details (if any, most should operate on wrt_types).
-// For now, let's assume most validation helpers will be adapted to wrt_types.
-// If a validation function *must* take a wrt_format type, it should be explicitly imported here or qualified.
-// Example: use wrt_format::module::Global as FormatGlobal;
+
+use crate::{module::Module, prelude::*};
+// For types that are only defined in wrt_format and are used as arguments to
+// validation helpers that specifically operate on format-level details (if any,
+// most should operate on wrt_types). For now, let's assume most validation
+// helpers will be adapted to wrt_types. If a validation function *must* take a
+// wrt_format type, it should be explicitly imported here or qualified. Example:
+// use wrt_format::module::Global as FormatGlobal;
 
 /// Validation configuration options
 #[derive(Debug, Clone)]
@@ -51,7 +53,8 @@ pub struct ValidationConfig {
     pub verify_memory_limits: bool,
     /// Whether to verify table limits
     pub verify_table_limits: bool,
-    /// Whether to perform strict validation (true) or relaxed validation (false)
+    /// Whether to perform strict validation (true) or relaxed validation
+    /// (false)
     pub strict: bool,
     /// Maximum number of locals in a function
     pub max_locals: u32,
@@ -177,8 +180,9 @@ pub fn validate_module_with_config(module: &Module, config: &ValidationConfig) -
         }
     } else {
         // If it's not Wasm 3.0, the type_info_section should not have been parsed.
-        // The parser should ideally prevent this section from being populated in Module for V2_0.
-        // If it still gets populated due to lenient parsing of unknown sections, this is a validation error.
+        // The parser should ideally prevent this section from being populated in Module
+        // for V2_0. If it still gets populated due to lenient parsing of
+        // unknown sections, this is a validation error.
         if module.type_info_section.is_some() {
             return Err(kinds::validation_error(
                 "TypeInformation section (ID 15) is invalid for non-Wasm3.0 modules",
@@ -254,17 +258,15 @@ fn validate_types(module: &Module) -> Result<()> {
 fn validate_value_type(value_type: &TypesValueType, context: &str) -> Result<()> {
     // In MVPv1, only i32, i64, f32, and f64 are valid
     match value_type {
-        TypesValueType::I32 | TypesValueType::I64 | TypesValueType::F32 | TypesValueType::F64 => Ok(()),
+        TypesValueType::I32 | TypesValueType::I64 | TypesValueType::F32 | TypesValueType::F64 => {
+            Ok(())
+        }
         TypesValueType::FuncRef | TypesValueType::ExternRef | TypesValueType::V128 => {
             // Reference types and V128 are part of later specifications
             Err(Error::new(
                 ErrorCategory::Validation,
                 codes::VALIDATION_ERROR,
-                format!(
-                    "Підтримка \"{}\": type {:?} not supported in MVPv1",
-                    context,
-                    value_type
-                ),
+                format!("Підтримка \"{}\": type {:?} not supported in MVPv1", context, value_type),
             ))
         }
     }
@@ -303,8 +305,8 @@ fn validate_func_type(func_type: &TypesFuncType, type_idx: usize) -> Result<()> 
 /// Validate the imports section of a WebAssembly module
 fn validate_imports(module: &Module) -> Result<()> {
     for (idx, import) in module.imports.iter().enumerate() {
-        // Existing UTF-8 validation for import.name and import.module should remain if present.
-        // Example of what might exist or should be added:
+        // Existing UTF-8 validation for import.name and import.module should remain if
+        // present. Example of what might exist or should be added:
         // if validate_utf8(import.name.as_bytes()).is_err() { /* ... error ... */ }
         // if validate_utf8(import.module.as_bytes()).is_err() { /* ... error ... */ }
 
@@ -316,32 +318,42 @@ fn validate_imports(module: &Module) -> Result<()> {
                         &format!("import {}", idx),
                     ));
                 }
-                // Further validation: module.types[*type_idx] should represent a FuncType.
-                // This depends on how module.types is populated (e.g. if it stores wrt_types::FuncType or similar).
+                // Further validation: module.types[*type_idx] should represent
+                // a FuncType. This depends on how module.types
+                // is populated (e.g. if it stores wrt_types::FuncType or
+                // similar).
             }
             wrt_format::module::ImportDesc::Table(table_type) => {
                 // table_type is wrt_format::module::Table
                 validate_value_type(&table_type.element_type, "imported table element type")?;
-                if !matches!(table_type.element_type, TypesValueType::FuncRef | TypesValueType::ExternRef) {
+                if !matches!(
+                    table_type.element_type,
+                    TypesValueType::FuncRef | TypesValueType::ExternRef
+                ) {
                     return Err(validation_error_with_context(
                         "Imported table has invalid element type (must be funcref or externref)",
                         &format!("import {}", idx),
                     ));
                 }
-                // TODO: Validate table_type.limits (e.g., using a version of validate_limits)
-                // validate_format_limits(&table_type.limits, config.max_table_size)?; 
+                // TODO: Validate table_type.limits (e.g., using a version of
+                // validate_limits) validate_format_limits(&
+                // table_type.limits, config.max_table_size)?;
             }
             wrt_format::module::ImportDesc::Memory(memory_type) => {
                 // memory_type is wrt_format::module::Memory
-                // TODO: Validate memory_type.limits (e.g., using a version of validate_limits)
-                // validate_format_limits(&memory_type.limits, config.max_memory_size)?; 
-                // TODO: Validate memory_type.shared (e.g. if shared, max must be present)
+                // TODO: Validate memory_type.limits (e.g., using a version of
+                // validate_limits) validate_format_limits(&
+                // memory_type.limits, config.max_memory_size)?;
+                // TODO: Validate memory_type.shared (e.g. if shared, max must
+                // be present)
             }
             wrt_format::module::ImportDesc::Global(global_type) => {
                 // global_type is wrt_format::types::FormatGlobalType
-                // validate_value_type is already version-aware for I16x8 due to previous changes.
+                // validate_value_type is already version-aware for I16x8 due to previous
+                // changes.
                 validate_value_type(&global_type.value_type, "imported global type")?;
-                // MVP disallows mutable imported globals, but Wasm spec evolved. For now, allow as per struct.
+                // MVP disallows mutable imported globals, but Wasm spec
+                // evolved. For now, allow as per struct.
             }
             // Hypothetical Finding F6: Validate Tag import
             wrt_format::module::ImportDesc::Tag(type_idx) => {
@@ -353,11 +365,16 @@ fn validate_imports(module: &Module) -> Result<()> {
                 }
                 if *type_idx as usize >= module.types.len() {
                     return Err(validation_error_with_context(
-                        &format!("Imported tag uses out-of-bounds type index: {} (max types {}).", type_idx, module.types.len()),
+                        &format!(
+                            "Imported tag uses out-of-bounds type index: {} (max types {}).",
+                            type_idx,
+                            module.types.len()
+                        ),
                         &format!("import {} ('{}' from '{}')", idx, import.name, import.module),
                     ));
                 }
-                // TODO: Ensure module.types[*type_idx] is a function type, if module.types stores FuncType objects.
+                // TODO: Ensure module.types[*type_idx] is a function type, if
+                // module.types stores FuncType objects.
             }
         }
     }
@@ -432,9 +449,11 @@ fn validate_exports(module: &Module) -> Result<()> {
             }
             wrt_format::module::ExportKind::Global => {
                 validate_global_idx(module, export.index, idx)?;
-                // Additionally, exported globals must not be mutable in Wasm MVP.
-                // This rule might have changed. Check current spec if strict validation is needed.
-                // If module.globals[export.index].global_type.mutable { ... error ... }
+                // Additionally, exported globals must not be mutable in Wasm
+                // MVP. This rule might have changed. Check
+                // current spec if strict validation is needed.
+                // If module.globals[export.index].global_type.mutable { ...
+                // error ... }
             }
             // Hypothetical Finding F6: Validate Tag export
             wrt_format::module::ExportKind::Tag => {
@@ -445,26 +464,35 @@ fn validate_exports(module: &Module) -> Result<()> {
                     ));
                 }
                 // In the Wasm Tag proposal, exported tags refer to a tag definition index.
-                // The current `wrt-format::module::Export` struct has `index: u32` which would be this tag_idx.
-                // We need to validate this `export.index` against a (yet undefined) list of tags in the module.
-                // For now, let's assume there's a `module.tags` (Vec<TagDefinition>) or similar.
-                // This part of validation is incomplete without knowing how tags are defined in the module structure.
-                // For example: if export.index as usize >= module.defined_tags.len() { ... error ... }
+                // The current `wrt-format::module::Export` struct has `index: u32` which would
+                // be this tag_idx. We need to validate this `export.index`
+                // against a (yet undefined) list of tags in the module.
+                // For now, let's assume there's a `module.tags` (Vec<TagDefinition>) or
+                // similar. This part of validation is incomplete without
+                // knowing how tags are defined in the module structure.
+                // For example: if export.index as usize >= module.defined_tags.len() { ...
+                // error ... }
 
-                // A common pattern for tags is that they also have an associated function type signature.
-                // If the `export.index` for a Tag export actually refers to a type_index (for its signature)
-                // rather than a separate tag definition index, then the validation would be:
+                // A common pattern for tags is that they also have an associated function type
+                // signature. If the `export.index` for a Tag export actually
+                // refers to a type_index (for its signature) rather than a
+                // separate tag definition index, then the validation would be:
                 // if export.index as usize >= module.types.len() {
                 //     return Err(validation_error_with_context(...));
                 // }
                 // And ensure module.types[export.index] is a function type.
-                // Given ExportKind::Tag was added to wrt-format without changing Export struct, export.index is used.
-                // Let's assume for now `export.index` for a Tag refers to a type index (its function signature).
+                // Given ExportKind::Tag was added to wrt-format without changing Export struct,
+                // export.index is used. Let's assume for now `export.index` for
+                // a Tag refers to a type index (its function signature).
                 if export.index as usize >= module.types.len() {
-                     return Err(validation_error_with_context(
+                    return Err(validation_error_with_context(
                         &format!(
-                            "Exported tag '{}' (idx {}) refers to an out-of-bounds type index: {} (max types {}).", 
-                            export.name, idx, export.index, module.types.len()
+                            "Exported tag '{}' (idx {}) refers to an out-of-bounds type index: {} \
+                             (max types {}).",
+                            export.name,
+                            idx,
+                            export.index,
+                            module.types.len()
                         ),
                         &format!("export {} ('{}')", idx, export.name),
                     ));
@@ -637,33 +665,39 @@ fn validate_elements(module: &Module) -> Result<()> {
     for (i, elem) in module.elements.iter().enumerate() {
         match &elem.mode {
             TypesElementMode::Active { table_index, offset } => {
-                // In MVP, only table 0 is allowed for active segments implicitly defined with prefix 0x00.
-                // The ElementSegment in wrt_types directly stores table_index and offset from the parsed init_expr.
+                // In MVP, only table 0 is allowed for active segments implicitly defined with
+                // prefix 0x00. The ElementSegment in wrt_types directly stores
+                // table_index and offset from the parsed init_expr.
                 // If elem.table_idx was > 0 for an MVP-style segment, it would be an issue, but
-                // our wrt_format::binary::parse_element for 0x00 prefix hardcodes table_idx to 0.
-                // More complex element segments (types 0x01-0x07) would require different checks.
+                // our wrt_format::binary::parse_element for 0x00 prefix hardcodes table_idx to
+                // 0. More complex element segments (types 0x01-0x07) would
+                // require different checks.
                 if *table_index != 0 {
-                    // This case should ideally not be hit if parsing only MVP 0x00 prefix from format layer
-                    // or if conversion logic correctly maps other format segment types.
+                    // This case should ideally not be hit if parsing only MVP 0x00 prefix from
+                    // format layer or if conversion logic correctly maps other
+                    // format segment types.
                     return Err(Error::new(
                         ErrorCategory::Validation,
                         codes::VALIDATION_ERROR,
                         format!(
-                            "Element segment {} targets non-zero table index {} (MVP only supports table 0 for this form)",
+                            "Element segment {} targets non-zero table index {} (MVP only \
+                             supports table 0 for this form)",
                             i, table_index
                         ),
                     ));
                 }
                 validate_table_idx(module, *table_index, i)?;
                 // Validate offset (must be a const expression resulting in i32)
-                // elem.offset is already a wrt_types::values::Value, so its const_expr nature was checked at conversion.
+                // elem.offset is already a wrt_types::values::Value, so its const_expr nature
+                // was checked at conversion.
                 if offset.value_type() != TypesValueType::I32 {
                     return Err(Error::new(
                         ErrorCategory::Validation,
                         codes::TYPE_MISMATCH_ERROR,
                         format!(
                             "Element segment {} offset expression must be I32, got {:?}",
-                            i, offset.value_type()
+                            i,
+                            offset.value_type()
                         ),
                     ));
                 }
@@ -683,7 +717,8 @@ fn validate_elements(module: &Module) -> Result<()> {
         }
 
         // Validate function indices in items
-        for (j, func_idx) in elem.items.iter().enumerate() { // Use elem.items
+        for (j, func_idx) in elem.items.iter().enumerate() {
+            // Use elem.items
             validate_func_idx(module, *func_idx, j)?;
         }
     }
@@ -701,7 +736,8 @@ fn validate_data(module: &Module) -> Result<()> {
                         ErrorCategory::Validation,
                         codes::VALIDATION_ERROR,
                         format!(
-                            "Data segment {} targets non-zero memory index {} (MVP only supports memory 0)",
+                            "Data segment {} targets non-zero memory index {} (MVP only supports \
+                             memory 0)",
                             i, memory_index
                         ),
                     ));
@@ -709,22 +745,25 @@ fn validate_data(module: &Module) -> Result<()> {
                 validate_memory_idx(module, *memory_index, i)?;
                 // Validate offset (must be a const expression resulting in i32)
                 if offset.value_type() != TypesValueType::I32 {
-                     return Err(Error::new(
+                    return Err(Error::new(
                         ErrorCategory::Validation,
                         codes::TYPE_MISMATCH_ERROR,
                         format!(
                             "Data segment {} offset expression must be I32, got {:?}",
-                            i, offset.value_type()
+                            i,
+                            offset.value_type()
                         ),
                     ));
                 }
             }
             TypesDataMode::Passive => {
-                // Passive segments are fine, no memory index or offset to validate here directly.
+                // Passive segments are fine, no memory index or offset to
+                // validate here directly.
             }
         }
-        // data_segment.init is Vec<u8>, no specific validation here other than it exists.
-        // Max data segment size checks could be added if needed, based on config.
+        // data_segment.init is Vec<u8>, no specific validation here other than
+        // it exists. Max data segment size checks could be added if
+        // needed, based on config.
     }
     Ok(())
 }
@@ -814,20 +853,24 @@ fn validate_global_type(global: &TypesGlobalType) -> Result<()> {
             ErrorCategory::Validation,
             codes::TYPE_MISMATCH_ERROR, // Specific error code
             format!(
-                "Global init_expr type mismatch: global declared as {:?}, but init_expr evaluated to {:?}",
+                "Global init_expr type mismatch: global declared as {:?}, but init_expr evaluated \
+                 to {:?}",
                 global.value_type,
                 global.initial_value.value_type()
             ),
         ));
     }
 
-    // The const_expr validation for global.initial_value itself (i.e., ensuring it *was* derived from a const expr)
-    // is tricky to do here because `global.initial_value` is already a `wrt_types::values::Value`.
-    // This validation step is typically performed during the parsing and conversion phase
-    // (e.g., in `wrt-decoder/src/conversion.rs` when converting `wrt_format::module::Global` to `wrt_types::types::GlobalType`).
-    // For now, we trust that the conversion layer has ensured `initial_value` is valid per const expr rules.
-    // If deeper validation of the Value itself against const expr rules is needed here,
-    // it would require inspecting the Value and knowing its origin or having more context.
+    // The const_expr validation for global.initial_value itself (i.e., ensuring it
+    // *was* derived from a const expr) is tricky to do here because
+    // `global.initial_value` is already a `wrt_types::values::Value`.
+    // This validation step is typically performed during the parsing and conversion
+    // phase (e.g., in `wrt-decoder/src/conversion.rs` when converting
+    // `wrt_format::module::Global` to `wrt_types::types::GlobalType`). For now,
+    // we trust that the conversion layer has ensured `initial_value` is valid per
+    // const expr rules. If deeper validation of the Value itself against const
+    // expr rules is needed here, it would require inspecting the Value and
+    // knowing its origin or having more context.
     Ok(())
 }
 
@@ -908,12 +951,13 @@ pub fn validation_error_with_type(message: &str, type_name: &str) -> Error {
 /// New helper for wrt_types::types::ImportGlobalType
 fn validate_import_global_type(global_type: &wrt_types::types::ImportGlobalType) -> Result<()> {
     validate_value_type(&global_type.value_type, "imported global")?;
-    // Mutability of imported globals is allowed by spec, though MVP had restrictions.
-    // wrt_types::types::ImportGlobalType allows mutable.
+    // Mutability of imported globals is allowed by spec, though MVP had
+    // restrictions. wrt_types::types::ImportGlobalType allows mutable.
     Ok(())
 }
 
-/// Hypothetical Finding F5: New function to validate the TypeInformation section
+/// Hypothetical Finding F5: New function to validate the TypeInformation
+/// section
 fn validate_type_information_section(module: &Module) -> Result<()> {
     if let Some(section) = &module.type_info_section {
         for entry in &section.entries {
@@ -922,13 +966,15 @@ fn validate_type_information_section(module: &Module) -> Result<()> {
                     ErrorCategory::Validation,
                     codes::INVALID_TYPE_INDEX, // Using a more specific code
                     format!(
-                        "TypeInformationSection: entry refers to type_index {} which is out of bounds (max types {}).",
+                        "TypeInformationSection: entry refers to type_index {} which is out of \
+                         bounds (max types {}).",
                         entry.type_index,
                         module.types.len()
                     ),
                 ));
             }
-            // TODO: Add validation for entry.name (e.g., UTF-8 validity, length) if Wasm 3.0 spec requires.
+            // TODO: Add validation for entry.name (e.g., UTF-8 validity,
+            // length) if Wasm 3.0 spec requires.
         }
     }
     Ok(())

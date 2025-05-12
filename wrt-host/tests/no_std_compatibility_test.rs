@@ -1,6 +1,7 @@
 //! Test no_std compatibility for wrt-host
 //!
-//! This file validates that the wrt-host crate works correctly in no_std environments.
+//! This file validates that the wrt-host crate works correctly in no_std
+//! environments.
 
 // For testing in a no_std environment
 #![cfg_attr(not(feature = "std"), no_std)]
@@ -14,10 +15,11 @@ mod tests {
     // Import necessary types for no_std environment
     #[cfg(all(not(feature = "std"), feature = "alloc"))]
     use alloc::{boxed::Box, format, string::String, vec, vec::Vec};
-
     #[cfg(feature = "std")]
     use std::{boxed::Box, string::String, vec, vec::Vec};
 
+    // Import from wrt-types and wrt-error
+    use wrt_error::{codes, Error, ErrorCategory, Result};
     // Import from wrt-host
     use wrt_host::{
         builder::HostBuilder,
@@ -25,9 +27,6 @@ mod tests {
         function::{CloneableFn, HostFunctionHandler},
         host::BuiltinHost,
     };
-
-    // Import from wrt-types and wrt-error
-    use wrt_error::{codes, Error, ErrorCategory, Result};
     use wrt_types::values::Value;
 
     // Test host function

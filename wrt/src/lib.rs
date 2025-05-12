@@ -1,5 +1,8 @@
 // WRT - wrt
-// SW-REQ-ID: [SW-REQ-ID-wrt]
+// Module: Main WRT Library Integration
+// SW-REQ-ID: REQ_OVERVIEW_001
+// SW-REQ-ID: REQ_OVERVIEW_002
+// SW-REQ-ID: REQ_016
 //
 // Copyright (c) 2024 Ralf Anton Beier
 // Licensed under the MIT license.
@@ -9,12 +12,12 @@
 
 //! WebAssembly Runtime (WRT)
 //!
-//! A pure Rust implementation of the WebAssembly runtime, supporting the WebAssembly Core
-//! and Component Model specifications.
+//! A pure Rust implementation of the WebAssembly runtime, supporting the
+//! WebAssembly Core and Component Model specifications.
 //!
-//! WRT is designed to be compatible with both std and no_std environments, making it
-//! suitable for a wide range of applications, from server-side WebAssembly execution
-//! to embedded systems and bare-metal environments.
+//! WRT is designed to be compatible with both std and no_std environments,
+//! making it suitable for a wide range of applications, from server-side
+//! WebAssembly execution to embedded systems and bare-metal environments.
 //!
 //! ## Features
 //!
@@ -73,7 +76,8 @@ macro_rules! debug_println {
 #[macro_export]
 macro_rules! debug_println {
     ($($arg:tt)*) => {{
-        // No-op in no_std environments unless we implement a different printing mechanism
+        // No-op in no_std environments unless we implement a different printing
+        // mechanism
     }};
 }
 
@@ -96,8 +100,8 @@ pub const COMPONENT_VERSION: &str = "0.1.0";
 
 /// Create a new stackless execution engine for WebAssembly modules.
 ///
-/// This function creates a new stackless execution engine that can be used to run
-/// WebAssembly modules in environments with limited stack space.
+/// This function creates a new stackless execution engine that can be used to
+/// run WebAssembly modules in environments with limited stack space.
 ///
 /// # Returns
 ///
@@ -172,6 +176,7 @@ pub fn new_table(table_type: ComponentTableType) -> Table {
 /// A Result containing the runtime module or an error
 pub fn load_module_from_binary(binary: &[u8]) -> Result<Module> {
     // Directly use the function re-exported by the prelude from wrt_runtime
-    // The types `Result` and `Module` are also from the prelude (originating in wrt_error and wrt_runtime)
+    // The types `Result` and `Module` are also from the prelude (originating in
+    // wrt_error and wrt_runtime)
     prelude::load_module_from_binary(binary)
 }

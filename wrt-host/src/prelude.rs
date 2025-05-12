@@ -1,23 +1,33 @@
 //! Prelude module for wrt-host
 //!
-//! This module provides a unified set of imports for both std and no_std environments.
-//! It re-exports commonly used types and traits to ensure consistency across all crates
-//! in the WRT project and simplify imports in individual modules.
+//! This module provides a unified set of imports for both std and no_std
+//! environments. It re-exports commonly used types and traits to ensure
+//! consistency across all crates in the WRT project and simplify imports in
+//! individual modules.
 
 // Core imports for both std and no_std environments
+// Re-export from alloc when no_std but alloc is available
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+pub use alloc::{
+    boxed::Box,
+    collections::{BTreeMap as HashMap, BTreeSet as HashSet},
+    format,
+    string::{String, ToString},
+    sync::Arc,
+    vec,
+    vec::Vec,
+};
 pub use core::{
     any::Any,
     cmp::{Eq, Ord, PartialEq, PartialOrd},
     convert::{TryFrom, TryInto},
     fmt,
-    fmt::Debug,
-    fmt::Display,
+    fmt::{Debug, Display},
     marker::PhantomData,
     mem,
     ops::{Deref, DerefMut},
     slice, str,
 };
-
 // Re-export from std when the std feature is enabled
 #[cfg(feature = "std")]
 pub use std::{
@@ -30,25 +40,16 @@ pub use std::{
     vec::Vec,
 };
 
-// Re-export from alloc when no_std but alloc is available
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-pub use alloc::{
-    boxed::Box,
-    collections::{BTreeMap as HashMap, BTreeSet as HashSet},
-    format,
-    string::{String, ToString},
-    sync::Arc,
-    vec,
-    vec::Vec,
+// Re-export from wrt-error
+pub use wrt_error::{codes, kinds, Error, ErrorCategory, Result};
+// Re-export from wrt-intercept
+pub use wrt_intercept::{
+    BeforeBuiltinResult, BuiltinInterceptor, InterceptContext, LinkInterceptor,
+    LinkInterceptorStrategy,
 };
-
 // Import synchronization primitives for no_std
 #[cfg(not(feature = "std"))]
 pub use wrt_sync::{Mutex, RwLock};
-
-// Re-export from wrt-error
-pub use wrt_error::{codes, kinds, Error, ErrorCategory, Result};
-
 // Re-export from wrt-types
 pub use wrt_types::{
     // Builtin types
@@ -62,12 +63,6 @@ pub use wrt_types::{
     values::Value,
     // Verification types
     verification::VerificationLevel,
-};
-
-// Re-export from wrt-intercept
-pub use wrt_intercept::{
-    BeforeBuiltinResult, BuiltinInterceptor, InterceptContext, LinkInterceptor,
-    LinkInterceptorStrategy,
 };
 
 // Re-export from this crate

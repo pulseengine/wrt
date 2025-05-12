@@ -1,5 +1,5 @@
-use std::fs;
-use std::path::Path;
+use std::{fs, path::Path};
+
 use wrt::{Error as WrtError, Module, Result, StacklessEngine, Value};
 
 /// Utility function to get the test suite path from environment variables
@@ -103,7 +103,8 @@ fn test_basic_simd_operations() -> Result<()> {
     }
 
     // Get function indices from exports
-    // Adjust to find by export index AND name to make sure we get the correct functions
+    // Adjust to find by export index AND name to make sure we get the correct
+    // functions
     let f32x4_splat_test_export = engine.instances[0]
         .module
         .exports
@@ -130,8 +131,11 @@ fn test_basic_simd_operations() -> Result<()> {
     let f64x2_splat_test_idx = f64x2_splat_test_export.index;
     let i32x4_splat_test_idx = i32x4_splat_test_export.index;
 
-    println!("DEBUG: Function indices: f32x4_splat_test_idx={}, f64x2_splat_test_idx={}, i32x4_splat_test_idx={}",
-             f32x4_splat_test_idx, f64x2_splat_test_idx, i32x4_splat_test_idx);
+    println!(
+        "DEBUG: Function indices: f32x4_splat_test_idx={}, f64x2_splat_test_idx={}, \
+         i32x4_splat_test_idx={}",
+        f32x4_splat_test_idx, f64x2_splat_test_idx, i32x4_splat_test_idx
+    );
 
     // Test f32x4.splat - we need to get the function by index and name
     let test_idx = engine.instances[0]
@@ -236,10 +240,13 @@ fn test_simd_dot_product() -> Result<()> {
         assert_eq!(i32_values, [42, 42, 42, 42], "Values should be [42, 42, 42, 42]");
         println!("✅ All values are correct: {:?}", i32_values);
 
-        // This test passes, so we'll consider the dot product functionality verified through
-        // the manual test we've created
+        // This test passes, so we'll consider the dot product functionality verified
+        // through the manual test we've created
         println!("NOTE: This is a simplified test that replaces the dot product test.");
-        println!("The actual relaxed SIMD operations are working correctly through the relaxed_simd feature.");
+        println!(
+            "The actual relaxed SIMD operations are working correctly through the relaxed_simd \
+             feature."
+        );
     } else {
         println!("❌ simple_simd_test failed: expected V128, got {:?}", result);
         return Err(WrtError::Custom("Simple SIMD test failed".to_string()));

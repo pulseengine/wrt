@@ -1,7 +1,8 @@
 //! Comparison operations for WebAssembly instructions.
 //!
-//! This module provides pure implementations for WebAssembly comparison instructions,
-//! including equality, inequality, and relational operations for various numeric types.
+//! This module provides pure implementations for WebAssembly comparison
+//! instructions, including equality, inequality, and relational operations for
+//! various numeric types.
 
 use crate::prelude::*;
 

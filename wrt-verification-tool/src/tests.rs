@@ -7,11 +7,10 @@ extern crate std;
 extern crate alloc;
 
 // Import appropriate types based on environment
-#[cfg(feature = "std")]
-use std::{format, string::String, time::Instant, vec::Vec};
-
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 use alloc::{format, string::String, vec::Vec};
+#[cfg(feature = "std")]
+use std::{format, string::String, time::Instant, vec::Vec};
 
 use wrt_decoder::{find_section, Parser, Payload};
 use wrt_test_registry::{assert_eq_test, assert_test, register_test};

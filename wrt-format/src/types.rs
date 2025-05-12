@@ -37,7 +37,8 @@ pub struct Limits {
     /// Maximum size (optional, required for shared memories)
     pub max: Option<u64>,
     /// Shared memory flag, used for memory types
-    /// When true, memory can be shared between threads and requires max to be set
+    /// When true, memory can be shared between threads and requires max to be
+    /// set
     pub shared: bool,
     /// Whether this limit is for a 64-bit memory
     pub memory64: bool,
@@ -91,8 +92,8 @@ pub enum CoreWasmVersion {
     #[default]
     V2_0, // Assumes 0x01 0x00 0x00 0x00 version bytes
     /// WebAssembly Core Specification 3.0 (Draft)
-    V3_0, // Assumes 0x03 0x00 0x00 0x00 version bytes (hypothetical)
-          // Potentially an Unknown or Other variant if needed
+    V3_0, /* Assumes 0x03 0x00 0x00 0x00 version bytes (hypothetical)
+           * Potentially an Unknown or Other variant if needed */
 }
 
 impl CoreWasmVersion {

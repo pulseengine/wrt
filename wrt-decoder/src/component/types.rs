@@ -1,10 +1,10 @@
-use crate::prelude::*;
-
 // Re-export the main component types from wrt-format for convenience
 pub use wrt_format::component::{
     Component, ComponentType, CoreExternType, CoreInstance, CoreType, Export, ExternType, Import,
     Instance, Start, ValType,
 };
+
+use crate::prelude::*;
 
 /// Trait for component analysis capabilities
 pub trait ComponentAnalyzer {

@@ -2,14 +2,14 @@
 //!
 //! This module provides types for handling logs from WebAssembly components.
 
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+use alloc::{boxed::Box, string::String};
 #[cfg(feature = "std")]
 use std::{boxed::Box, string::String};
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::{boxed::Box, string::String};
+use wrt_host::{callback::CallbackType, CallbackRegistry};
 
 use crate::operation::LogOperation;
-use wrt_host::{callback::CallbackType, CallbackRegistry};
 
 /// Function type for handling log operations
 pub type LogHandler = Box<dyn Fn(LogOperation) + Send + Sync>;
@@ -49,9 +49,10 @@ impl LoggingExt for CallbackRegistry {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::{Arc, Mutex};
+
     use super::*;
     use crate::level::LogLevel;
-    use std::sync::{Arc, Mutex};
 
     #[test]
     fn test_logging_extension() {

@@ -1,7 +1,5 @@
-use crate::prelude::*;
 use wrt_error::{codes, Error, ErrorCategory, Result};
-use wrt_format::binary;
-use wrt_format::component::Component;
+use wrt_format::{binary, component::Component};
 
 use super::parse::{
     parse_alias_section, parse_canon_section, parse_component_section,
@@ -9,8 +7,10 @@ use super::parse::{
     parse_core_type_section, parse_export_section, parse_import_section, parse_instance_section,
     parse_start_section, parse_value_section,
 };
+use crate::prelude::*;
 
-/// Decode a WebAssembly Component Model binary into a structured component representation
+/// Decode a WebAssembly Component Model binary into a structured component
+/// representation
 pub fn decode_component(bytes: &[u8]) -> Result<Component> {
     let mut component = Component::new();
     let mut offset;
@@ -98,7 +98,8 @@ pub fn decode_component(bytes: &[u8]) -> Result<Component> {
                         }
                     }
                     Err(_) => {
-                        // Continue parsing even if custom section name can't be read
+                        // Continue parsing even if custom section name can't be
+                        // read
                     }
                 }
             }
@@ -109,7 +110,8 @@ pub fn decode_component(bytes: &[u8]) -> Result<Component> {
                         component.modules.extend(modules);
                     }
                     Err(_) => {
-                        // Continue parsing other sections even if this one fails
+                        // Continue parsing other sections even if this one
+                        // fails
                     }
                 }
             }
@@ -250,11 +252,7 @@ pub fn decode_error(message: &str) -> Error {
 
 /// Helper function to create a decode error with context
 pub fn decode_error_with_context(message: &str, context: &str) -> Error {
-    Error::new(
-        ErrorCategory::Parse,
-        codes::DECODING_ERROR,
-        format!("{}: {}", message, context),
-    )
+    Error::new(ErrorCategory::Parse, codes::DECODING_ERROR, format!("{}: {}", message, context))
 }
 
 /// Helper function to create a decode error with position
@@ -268,20 +266,12 @@ pub fn decode_error_with_position(message: &str, position: usize) -> Error {
 
 /// Helper function to create a decode error with type
 pub fn decode_error_with_type(message: &str, type_name: &str) -> Error {
-    Error::new(
-        ErrorCategory::Parse,
-        codes::DECODING_ERROR,
-        format!("{}: {}", message, type_name),
-    )
+    Error::new(ErrorCategory::Parse, codes::DECODING_ERROR, format!("{}: {}", message, type_name))
 }
 
 /// Helper function to create a decode error with value
 pub fn decode_error_with_value(message: &str, value: &str) -> Error {
-    Error::new(
-        ErrorCategory::Parse,
-        codes::DECODING_ERROR,
-        format!("{}: {}", message, value),
-    )
+    Error::new(ErrorCategory::Parse, codes::DECODING_ERROR, format!("{}: {}", message, value))
 }
 
 /// Helper function to create a parse error
@@ -291,11 +281,7 @@ pub fn parse_error(message: &str) -> Error {
 
 /// Helper function to create a parse error with context
 pub fn parse_error_with_context(message: &str, context: &str) -> Error {
-    Error::new(
-        ErrorCategory::Parse,
-        codes::PARSE_ERROR,
-        format!("{}: {}", message, context),
-    )
+    Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, format!("{}: {}", message, context))
 }
 
 /// Helper function to create a parse error with position

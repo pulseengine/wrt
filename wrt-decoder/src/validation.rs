@@ -3,15 +3,18 @@
 //! This module provides functionality for validating WebAssembly modules
 //! against the WebAssembly specification.
 
-use crate::decoder_core::validate::validate_module as core_validate_module;
-use crate::decoder_core::validate::ValidationConfig;
-use crate::module::Module;
 use wrt_error::Result;
+
+use crate::{
+    decoder_core::validate::{validate_module as core_validate_module, ValidationConfig},
+    module::Module,
+};
 
 /// Validate a WebAssembly module
 ///
-/// This function checks if a WebAssembly module is valid according to the WebAssembly
-/// specification. It delegates to the core validation implementation.
+/// This function checks if a WebAssembly module is valid according to the
+/// WebAssembly specification. It delegates to the core validation
+/// implementation.
 ///
 /// # Arguments
 ///
@@ -26,8 +29,8 @@ pub fn validate_module(module: &Module) -> Result<()> {
 
 /// Validate a WebAssembly module with specific validation configuration
 ///
-/// This function checks if a WebAssembly module is valid according to the WebAssembly
-/// specification, using the provided validation configuration.
+/// This function checks if a WebAssembly module is valid according to the
+/// WebAssembly specification, using the provided validation configuration.
 ///
 /// # Arguments
 ///

@@ -1,15 +1,15 @@
 //! Formal verification for the synchronization primitives using Kani.
 //!
-//! This module contains proofs that verify core properties of the mutex and rwlock implementations.
-//! These proofs only run with Kani and are isolated from normal compilation and testing.
+//! This module contains proofs that verify core properties of the mutex and
+//! rwlock implementations. These proofs only run with Kani and are isolated
+//! from normal compilation and testing.
 
 // Only compile Kani verification code when documentation is being generated
 // or when explicitly running cargo kani. This prevents interference with
 // coverage testing.
 #[cfg(any(doc, kani))]
 pub mod kani_verification {
-    use crate::prelude::*;
-    use crate::*;
+    use crate::{prelude::*, *};
 
     // --- WrtMutex Verification ---
 

@@ -1,6 +1,7 @@
 // WRT - wrt-types
 // Module: WebAssembly Component Model Built-in Types
-// SW-REQ-ID: REQ_WASM_COMPONENT_001 (Example: Relates to component model built-ins)
+// SW-REQ-ID: REQ_019
+// SW-REQ-ID: REQ_020
 //
 // Copyright (c) 2024 Ralf Anton Beier
 // Licensed under the MIT license.
@@ -9,16 +10,14 @@
 //! WebAssembly Component Model built-in type definitions
 //!
 //! This module defines the built-in types and operations available in the
-//! WebAssembly Component Model, as well as utility methods for working with them.
-
-use core::fmt;
-use core::str::FromStr;
-
-#[cfg(feature = "std")]
-use std::{vec, vec::Vec};
+//! WebAssembly Component Model, as well as utility methods for working with
+//! them.
 
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 use alloc::{vec, vec::Vec};
+use core::{fmt, str::FromStr};
+#[cfg(feature = "std")]
+use std::{vec, vec::Vec};
 
 /// Enumeration of all supported WebAssembly Component Model built-in functions
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -120,6 +119,7 @@ impl FromStr for BuiltinType {
 
 impl BuiltinType {
     /// Get the name of the built-in as a string
+    #[must_use]
     pub fn name(&self) -> &'static str {
         match self {
             // Resource built-ins
@@ -155,11 +155,13 @@ impl BuiltinType {
     }
 
     /// Parse a string into a built-in type (convenience method)
+    #[must_use]
     pub fn parse(s: &str) -> Option<Self> {
         Self::from_str(s).ok()
     }
 
     /// Check if this built-in is available in the current configuration
+    #[must_use]
     pub fn is_available(&self) -> bool {
         match self {
             // Resource built-ins are always available
@@ -184,6 +186,7 @@ impl BuiltinType {
     }
 
     /// Get all available built-in types in the current configuration
+    #[must_use]
     pub fn all_available() -> Vec<Self> {
         // Create a vector with the resource built-ins which are always available
         #[allow(unused_mut)]

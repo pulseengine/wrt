@@ -1,7 +1,8 @@
 // WRT - wrt-instructions
-// SW-REQ-ID: [SW-REQ-ID-wrt-instructions]
+// Module: WebAssembly Instruction Implementations
+// SW-REQ-ID: REQ_001
 //
-// Copyright (c) 2025 Ralf Anton Beier
+// Copyright (c) 2024 Ralf Anton Beier
 // Licensed under the MIT license.
 // SPDX-License-Identifier: MIT
 
@@ -59,29 +60,22 @@ pub mod variable_ops;
 mod arithmetic_test;
 
 // Re-exports for convenience
-pub use wrt_error::{Error, Result};
-pub use wrt_types::types::ValueType;
-pub use wrt_types::values::Value;
-pub use wrt_types::BlockType;
-pub use wrt_types::RefType;
-pub use wrt_types::Result as TypesResult;
-
 // Re-export prelude for convenience
 pub use prelude::*;
+pub use wrt_error::{Error, Result};
+pub use wrt_types::{types::ValueType, values::Value, BlockType, RefType, Result as TypesResult};
 
-// Re-export main execution trait and specific Op enums
-pub use crate::execution::PureExecutionContext;
-pub use crate::instruction_traits::PureInstruction;
-
-pub use crate::arithmetic_ops::ArithmeticOp;
-pub use crate::comparison_ops::ComparisonOp;
 pub use crate::control_ops::{
     Block as ControlFlowBlock, BranchTarget, ControlBlockType, ControlOp,
 }; // Renamed Block to ControlFlowBlock to avoid clashes
-pub use crate::conversion_ops::ConversionOp;
+// Re-export main execution trait and specific Op enums
+pub use crate::execution::PureExecutionContext;
 pub use crate::memory_ops::{MemoryLoad, MemoryStore}; // Removed MemoryArg
-pub use crate::table_ops::TableOp;
-pub use crate::variable_ops::VariableOp;
+pub use crate::{
+    arithmetic_ops::ArithmeticOp, comparison_ops::ComparisonOp, conversion_ops::ConversionOp,
+    instruction_traits::PureInstruction, table_ops::TableOp, variable_ops::VariableOp,
+};
 
-// If there's a combined Instruction enum, export it here. Otherwise, runtime will use the Ops.
-// pub enum Instruction { Arithmetic(ArithmeticOp), Control(ControlOp), ... }
+// If there's a combined Instruction enum, export it here. Otherwise, runtime
+// will use the Ops. pub enum Instruction { Arithmetic(ArithmeticOp),
+// Control(ControlOp), ... }

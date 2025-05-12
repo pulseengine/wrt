@@ -4,10 +4,8 @@
 // - error.new: Create a new error context
 // - error.trace: Get the trace from an error context
 
-use wrt_error::{codes, kinds::ValidationError, Error, ErrorCategory, Result, WrtError};
-use wrt_types::builtin::BuiltinType;
-use wrt_types::component_value::ComponentValue;
-
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+use alloc::{boxed::Box, collections::HashMap, string::String, sync::Arc, vec::Vec};
 #[cfg(feature = "std")]
 use std::{
     boxed::Box,
@@ -17,8 +15,8 @@ use std::{
     vec::Vec,
 };
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::{boxed::Box, collections::HashMap, string::String, sync::Arc, vec::Vec};
+use wrt_error::{codes, kinds::ValidationError, Error, ErrorCategory, Result, WrtError};
+use wrt_types::{builtin::BuiltinType, component_value::ComponentValue};
 
 use super::BuiltinHandler;
 

@@ -1,7 +1,9 @@
-//! Compatibility tests for WebAssembly Runtime in both std and no_std environments
+//! Compatibility tests for WebAssembly Runtime in both std and no_std
+//! environments
 //!
-//! This module contains tests that validate consistent behavior across std and no_std
-//! environments, ensuring that we can rely on the same semantics in both contexts.
+//! This module contains tests that validate consistent behavior across std and
+//! no_std environments, ensuring that we can rely on the same semantics in both
+//! contexts.
 
 use crate::prelude::*;
 
@@ -417,48 +419,55 @@ fn test_verification_levels(config: &TestConfig) -> TestResult {
             // No verification means we can skip the check or it's a no-op
             // verify_integrity should still be callable and return Ok.
             memory_handler.verify_integrity()?;
-            // Consider asserting something about operations count if possible to ensure no work was done.
+            // Consider asserting something about operations count if possible
+            // to ensure no work was done.
         }
         VerificationLevel::Sampling => {
             // For sampling, verify_integrity might do work or not.
-            // It's hard to make a deterministic assertion here without knowing the sampling details
-            // or having a way to force/observe the sampling decision for a test.
-            // For now, just ensure it can be called.
+            // It's hard to make a deterministic assertion here without knowing the sampling
+            // details or having a way to force/observe the sampling decision
+            // for a test. For now, just ensure it can be called.
             memory_handler.verify_integrity()?;
-            // If possible, one could try to run it multiple times and check if ops count varies,
-            // but that's more complex than a simple unit test.
+            // If possible, one could try to run it multiple times and check if
+            // ops count varies, but that's more complex than a
+            // simple unit test.
         }
         VerificationLevel::Standard => {
             // Standard verification should check basic integrity
             memory_handler.verify_integrity()?;
 
             // Attempt to corrupt memory (unsafe, for testing purposes)
-            // This part is tricky because direct memory corruption might not always be caught
-            // by `Standard` level, or its detection might not be guaranteed to fail `verify_integrity`.
-            // The original comment "With standard verification, we might not catch all corruptions
-            // so we can't reliably test this behavior" is important.
-            // For now, ensure verify_integrity runs.
-            // If a specific corruption scenario *should* be caught by Standard, that would be a more specific test.
+            // This part is tricky because direct memory corruption might not
+            // always be caught by `Standard` level, or its
+            // detection might not be guaranteed to fail `verify_integrity`.
+            // The original comment "With standard verification, we might not
+            // catch all corruptions so we can't reliably test this
+            // behavior" is important. For now, ensure
+            // verify_integrity runs. If a specific corruption
+            // scenario *should* be caught by Standard, that would be a more
+            // specific test.
         }
         VerificationLevel::Full => {
             // Full verification should perform thorough checks.
             memory_handler.verify_integrity()?;
 
-            // If we corrupt memory here, Full verification should ideally catch it.
-            // This requires a careful setup for corruption that Full is designed to detect.
-            // Example (conceptual, actual corruption needs care):
-            // if config.is_std { // Guard unsafe operations
-            //     let raw_ptr = memory_handler.provider().as_ptr() as *mut u8;
+            // If we corrupt memory here, Full verification should ideally catch
+            // it. This requires a careful setup for corruption that
+            // Full is designed to detect. Example (conceptual,
+            // actual corruption needs care): if config.is_std { //
+            // Guard unsafe operations     let raw_ptr =
+            // memory_handler.provider().as_ptr() as *mut u8;
             //     unsafe {
-            //         if !raw_ptr.is_null() && memory_handler.provider().len() > 100 {
-            //             *raw_ptr.add(100) = 255; // Corrupt a byte
-            //         }
+            //         if !raw_ptr.is_null() && memory_handler.provider().len()
+            // > 100 {             *raw_ptr.add(100) = 255; //
+            // Corrupt a byte         }
             //     }
-            //     // After known corruption, verify_integrity at Full level should ideally fail.
-            //     // assert_test!(memory_handler.verify_integrity().is_err());
-            //     // However, this depends on the checksum implementation and what it covers.
-            //     // For now, just call it. More specific tests would be needed for corruption detection.
-            // }
+            //     // After known corruption, verify_integrity at Full level
+            // should ideally fail.     // assert_test!
+            // (memory_handler.verify_integrity().is_err());     // However,
+            // this depends on the checksum implementation and what it covers.
+            //     // For now, just call it. More specific tests would be needed
+            // for corruption detection. }
         }
     }
 

@@ -330,8 +330,8 @@ pub const INVALID_STATE: u16 = 7020;
 pub const VALUE_OUT_OF_RANGE: u16 = 6015;
 
 /// Codes representing WebAssembly runtime trap conditions.
-/// These are used when an operation cannot complete normally due to a runtime error
-/// defined by the WebAssembly specification.
+/// These are used when an operation cannot complete normally due to a runtime
+/// error defined by the WebAssembly specification.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[repr(u16)] // Optional: if we want to map them to specific numeric codes easily
 pub enum TrapCode {
@@ -345,9 +345,11 @@ pub enum TrapCode {
     IndirectCallSignatureMismatch = 4,
     /// Integer division by zero.
     IntegerDivideByZero = 5,
-    /// Integer overflow during conversion from a float, or float is NaN/Infinity.
+    /// Integer overflow during conversion from a float, or float is
+    /// NaN/Infinity.
     InvalidConversionToInteger = 6,
-    /// Integer overflow for an operation that traps on overflow (e.g. `i32.div_s` specific case).
+    /// Integer overflow for an operation that traps on overflow (e.g.
+    /// `i32.div_s` specific case).
     IntegerOverflow = 7,
     /// Out-of-bounds memory access.
     MemoryOutOfBounds = 8,
@@ -385,15 +387,17 @@ impl TrapCode {
     }
 }
 
-// It might also be useful to have a way to convert TrapCode into a general Error
-// This is a sketch and might need adjustment based on how Error is structured.
-// Assuming Error::new takes an ErrorCategory, a code (we can use TrapCode as u16), and a message.
+// It might also be useful to have a way to convert TrapCode into a general
+// Error This is a sketch and might need adjustment based on how Error is
+// structured. Assuming Error::new takes an ErrorCategory, a code (we can use
+// TrapCode as u16), and a message.
 impl From<TrapCode> for crate::Error {
     fn from(trap_code: TrapCode) -> Self {
         Self::new(
             crate::ErrorCategory::RuntimeTrap,
-            trap_code as u16,    // Use the discriminant value as the code
-            trap_code.message(), // trap_code.message() returns &'static str which fulfills Into<String>
+            trap_code as u16, // Use the discriminant value as the code
+            trap_code.message(), /* trap_code.message() returns &'static str which fulfills
+                               * Into<String> */
         )
     }
 }

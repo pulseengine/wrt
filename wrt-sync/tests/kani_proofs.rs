@@ -1,15 +1,15 @@
 //! Integration tests using Kani verification for wrt-sync.
 //!
-//! This file contains integration tests that verify the behavior of the synchronization primitives
-//! using the Kani verification framework. These tests only run when the 'kani' feature is enabled
-//! and require the Kani verifier to be installed.
+//! This file contains integration tests that verify the behavior of the
+//! synchronization primitives using the Kani verification framework. These
+//! tests only run when the 'kani' feature is enabled and require the Kani
+//! verifier to be installed.
 
 #![cfg(feature = "kani")]
 
 #[cfg(feature = "kani")]
 use kani;
-use wrt_sync::prelude::*;
-use wrt_sync::*;
+use wrt_sync::{prelude::*, *};
 
 // --- WrtMutex Harnesses ---
 
@@ -149,7 +149,8 @@ fn verify_rwlock_read_unlocks_for_write() {
     {
         let r1 = lock.read();
         assert_eq!(*r1, 11);
-        // Create another read guard to ensure count > 1 logic is exercised if applicable
+        // Create another read guard to ensure count > 1 logic is exercised if
+        // applicable
         {
             let r2 = lock.read();
             assert_eq!(*r2, 11);
@@ -166,8 +167,8 @@ fn verify_rwlock_read_unlocks_for_write() {
     }
 }
 
-// Note: Verifying blocking behaviour (e.g., read blocks write) directly with Kani
-// is tricky because Kani explores one execution path at a time sequentially.
-// The best we can do is verify state transitions, as done in the standard tests.
-// Kani *will* verify that the spin loops don't cause memory safety issues or panics
-// within the unwinding bound.
+// Note: Verifying blocking behaviour (e.g., read blocks write) directly with
+// Kani is tricky because Kani explores one execution path at a time
+// sequentially. The best we can do is verify state transitions, as done in the
+// standard tests. Kani *will* verify that the spin loops don't cause memory
+// safety issues or panics within the unwinding bound.

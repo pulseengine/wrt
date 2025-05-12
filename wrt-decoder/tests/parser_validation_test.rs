@@ -1,5 +1,7 @@
-use wrt_decoder::parser::{Parser, Payload};
-use wrt_decoder::prelude::*;
+use wrt_decoder::{
+    parser::{Parser, Payload},
+    prelude::*,
+};
 use wrt_format::module::ImportDesc;
 
 // Create a minimal valid WebAssembly module with an import section

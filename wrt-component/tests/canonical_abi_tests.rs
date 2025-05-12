@@ -679,8 +679,8 @@ fn test_extern_type_conversion() {
         _ => panic!("Expected Function type, got {:?}", runtime_func),
     }
 
-    // Test roundtrip conversion from runtime extern type to format extern type and back
-    // Create a function type
+    // Test roundtrip conversion from runtime extern type to format extern type and
+    // back Create a function type
     let params = vec![ValueType::I32, ValueType::I64];
     let results = vec![ValueType::F32];
     let func_type = TypesFuncType::new(params, results);
@@ -714,7 +714,8 @@ fn test_extern_type_conversion() {
         TypesExternType::Resource(resource_type) => {
             match resource_type {
                 ResourceType::Indexed(repr, _) => {
-                    assert_eq!(repr, 0); // Representation should be mapped to index
+                    assert_eq!(repr, 0); // Representation should be mapped to
+                                         // index
                 }
                 _ => panic!("Expected indexed resource type"),
             }

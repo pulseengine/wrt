@@ -6,10 +6,8 @@
 // - resource.rep: Get the representation of a resource
 // - resource.get: Get a resource handle
 
-use wrt_error::{Error, Result};
-use wrt_types::builtin::BuiltinType;
-use wrt_types::component_value::ComponentValue;
-
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+use alloc::{boxed::Box, sync::Arc, vec::Vec};
 #[cfg(feature = "std")]
 use std::{
     boxed::Box,
@@ -17,11 +15,13 @@ use std::{
     vec::Vec,
 };
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::{boxed::Box, sync::Arc, vec::Vec};
+use wrt_error::{Error, Result};
+use wrt_types::{builtin::BuiltinType, component_value::ComponentValue};
 
-use crate::builtins::BuiltinHandler;
-use crate::resources::{ResourceId, ResourceManager};
+use crate::{
+    builtins::BuiltinHandler,
+    resources::{ResourceId, ResourceManager},
+};
 
 /// Handler for the resource.create built-in function
 pub struct ResourceCreateHandler {

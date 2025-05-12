@@ -8,9 +8,11 @@ mod integration_tests {
         ExternType as TypesExternType,
     };
 
-    use super::super::registry::TypeConversionRegistry;
-    use super::super::wrappers::{
-        FormatComponentType, FormatInstanceType, RuntimeComponentType, RuntimeInstanceType,
+    use super::super::{
+        registry::TypeConversionRegistry,
+        wrappers::{
+            FormatComponentType, FormatInstanceType, RuntimeComponentType, RuntimeInstanceType,
+        },
     };
 
     #[test]
@@ -47,7 +49,8 @@ mod integration_tests {
             registry.convert::<TypesValType, FormatValType>(&types_type).unwrap();
 
         // The structure should be preserved after round-trip conversion
-        // (In a real test, we'd do deep comparison, but that would require implementing PartialEq)
+        // (In a real test, we'd do deep comparison, but that would require implementing
+        // PartialEq)
         if let FormatValType::Record(fields) = &format_type_back {
             assert_eq!(fields.len(), 3);
             assert!(fields.iter().any(|(name, _)| name == "person"));

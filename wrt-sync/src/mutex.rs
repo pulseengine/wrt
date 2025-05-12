@@ -6,8 +6,9 @@ use crate::prelude::{fmt, AtomicBool, Deref, DerefMut, Ordering, UnsafeCell};
 /// A simple, non-reentrant spinlock mutex suitable for `no_std` environments.
 ///
 /// WARNING: This is a basic implementation. It does not handle contention well
-/// (it just spins aggressively) and lacks features like deadlock detection or poisoning.
-/// Use with caution and consider alternatives if contention is expected to be high.
+/// (it just spins aggressively) and lacks features like deadlock detection or
+/// poisoning. Use with caution and consider alternatives if contention is
+/// expected to be high.
 pub struct WrtMutex<T: ?Sized> {
     locked: AtomicBool,
     data: UnsafeCell<T>,
@@ -39,7 +40,8 @@ impl<T> WrtMutex<T> {
 impl<T: ?Sized> WrtMutex<T> {
     /// Acquires the lock, spinning until it is available.
     ///
-    /// This function will block the current execution context until the lock is acquired.
+    /// This function will block the current execution context until the lock is
+    /// acquired.
     ///
     /// # Returns
     ///
@@ -48,15 +50,18 @@ impl<T: ?Sized> WrtMutex<T> {
     /// # Panics
     ///
     /// This function does not panic.
-    /// Safety impact: [LOW|MEDIUM|HIGH] - [Brief explanation of the safety implication]
-    /// Tracking: WRTQ-XXX (qualification requirement tracking ID).
+    /// Safety impact: [LOW|MEDIUM|HIGH] - [Brief explanation of the safety
+    /// implication] Tracking: WRTQ-XXX (qualification requirement tracking
+    /// ID).
     #[inline]
     pub fn lock(&self) -> WrtMutexGuard<'_, T> {
         // Spin until the lock is acquired.
-        // Use compare_exchange_weak for potentially better performance on some platforms.
+        // Use compare_exchange_weak for potentially better performance on some
+        // platforms.
         // - Acquire ordering on success: Ensures that subsequent reads of the data
         //   happen *after* the lock is acquired.
-        // - Relaxed ordering on failure: We don't need guarantees on failure, just retry.
+        // - Relaxed ordering on failure: We don't need guarantees on failure, just
+        //   retry.
         while self
             .locked
             .compare_exchange_weak(false, true, Ordering::Acquire, Ordering::Relaxed)
@@ -69,44 +74,41 @@ impl<T: ?Sized> WrtMutex<T> {
     }
 
     // Optional: Implement try_lock if needed later
-    /*
-    pub fn try_lock(&self) -> Option<WrtMutexGuard<'_, T>> {
-        if self
-            .locked
-            .compare_exchange(false, true, Ordering::Acquire, Ordering::Relaxed)
-            .is_ok()
-        {
-            Some(WrtMutexGuard { mutex: self })
-        } else {
-            None
-        }
-    }
-    */
+    // pub fn try_lock(&self) -> Option<WrtMutexGuard<'_, T>> {
+    // if self
+    // .locked
+    // .compare_exchange(false, true, Ordering::Acquire, Ordering::Relaxed)
+    // .is_ok()
+    // {
+    // Some(WrtMutexGuard { mutex: self })
+    // } else {
+    // None
+    // }
+    // }
 
     // Optional: Implement into_inner if needed later
-    /*
-    pub fn into_inner(self) -> T where T: Sized {
-        // Note: This consumes the mutex. Ensure no guards exist.
-        // This is simpler without poisoning checks.
-        self.data.into_inner()
-    }
-    */
+    // pub fn into_inner(self) -> T where T: Sized {
+    // Note: This consumes the mutex. Ensure no guards exist.
+    // This is simpler without poisoning checks.
+    // self.data.into_inner()
+    // }
 }
 
 impl<T: ?Sized + fmt::Debug> fmt::Debug for WrtMutex<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // Attempt a non-blocking check for Debug representation if possible,
         // otherwise indicate locked status. Avoids deadlocking Debug.
-        // Use load with relaxed ordering as we don't need synchronization guarantees here,
-        // just a snapshot of the state for debugging.
+        // Use load with relaxed ordering as we don't need synchronization guarantees
+        // here, just a snapshot of the state for debugging.
         if self.locked.load(Ordering::Relaxed) {
             f.debug_struct("WrtMutex").field("data", &"<locked>").finish()
         } else {
             // Temporarily try to acquire the lock for reading the value.
-            // This is imperfect as it might briefly show unlocked even if locked immediately after.
-            // A try_lock approach would be better if implemented.
-            // Safety: We are only reading for debug purposes, and the lock check
-            // makes data races less likely, though not impossible in edge cases.
+            // This is imperfect as it might briefly show unlocked even if locked
+            // immediately after. A try_lock approach would be better if
+            // implemented. Safety: We are only reading for debug purposes, and
+            // the lock check makes data races less likely, though not
+            // impossible in edge cases.
             f.debug_struct("WrtMutex").field("data", unsafe { &&*self.data.get() }).finish()
         }
     }
@@ -138,19 +140,21 @@ impl<T: ?Sized> Drop for WrtMutexGuard<'_, T> {
     #[inline]
     fn drop(&mut self) {
         // Release the lock.
-        // - Release ordering: Ensures that all writes to the data *before* this
-        //   point are visible to other threads *after* they acquire the lock.
+        // - Release ordering: Ensures that all writes to the data *before* this point
+        //   are visible to other threads *after* they acquire the lock.
         self.mutex.locked.store(false, Ordering::Release);
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     // use crate::prelude::*;
-    // For std-specific parts of tests, ensure std imports are scoped or handled by feature flags.
+    // For std-specific parts of tests, ensure std imports are scoped or handled by
+    // feature flags.
     #[cfg(feature = "std")]
     use std::{sync::Arc, thread};
+
+    use super::*;
 
     #[test]
     fn test_mutex_creation() {

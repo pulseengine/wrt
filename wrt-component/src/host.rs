@@ -2,10 +2,10 @@
 //!
 //! This module provides the Host type for managing host functions.
 
-use crate::prelude::*;
-
 use wrt_format::component::ExternType;
 use wrt_host::callback::CallbackType;
+
+use crate::prelude::*;
 
 /// Represents a function provided by the host
 #[derive(Debug, Clone)]
@@ -82,8 +82,9 @@ impl Host {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use wrt_format::component::ValType;
+
+    use super::*;
 
     #[test]
     fn test_host_function_management() {

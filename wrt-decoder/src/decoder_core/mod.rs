@@ -1,6 +1,7 @@
 /// Core WebAssembly module handling
 ///
-/// This module re-exports functionality for working with core WebAssembly modules.
+/// This module re-exports functionality for working with core WebAssembly
+/// modules.
 // Re-export name section handling
 pub use crate::name_section;
 
@@ -10,15 +11,12 @@ pub mod encode;
 pub mod validate;
 
 // Re-export decode functionality
-pub use crate::module::decode_module_with_binary as decode_module;
+// Re-export validation functionality
+pub use validate::{validate_module, validate_module_with_config, ValidationConfig};
 
+pub use crate::module::decode_module_with_binary as decode_module;
 // Re-export encode functionality
 pub use crate::module::encode_module;
-
-// Re-export validation functionality
-pub use validate::validate_module;
-pub use validate::validate_module_with_config;
-pub use validate::ValidationConfig;
 
 /// Configuration types for the decoder
 pub mod config {
@@ -37,11 +35,7 @@ pub mod config {
 
     impl Default for ParserConfig {
         fn default() -> Self {
-            Self {
-                validate: true,
-                max_nesting_level: 100,
-                track_function_count: true,
-            }
+            Self { validate: true, max_nesting_level: 100, track_function_count: true }
         }
     }
 

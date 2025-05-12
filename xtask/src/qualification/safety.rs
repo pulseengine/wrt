@@ -1,8 +1,6 @@
 #![allow(dead_code)]
 
-use std::error::Error;
-use std::fs;
-use std::path::Path;
+use std::{error::Error, fs, path::Path};
 
 pub fn run(output_path: &Path) -> Result<(), Box<dyn Error>> {
     println!("Generating safety analysis report...");
@@ -31,9 +29,11 @@ fn generate_safety_report() -> String {
 
     // Introduction section
     content.push_str("Introduction\n------------\n\n");
-    content.push_str("This safety analysis identifies potential hazards that could arise from the use of the WRT \
-                    runtime in safety-critical applications and evaluates their potential impact. It also identifies \
-                    mitigation strategies to address these hazards.\n\n");
+    content.push_str(
+        "This safety analysis identifies potential hazards that could arise from the use of the \
+         WRT runtime in safety-critical applications and evaluates their potential impact. It \
+         also identifies mitigation strategies to address these hazards.\n\n",
+    );
 
     // Hazard identification section
     content.push_str("Hazard Identification\n--------------------\n\n");
@@ -49,18 +49,29 @@ fn generate_safety_report() -> String {
     content.push_str("   :id: SAFETY_001\n");
     content.push_str("   :item_status: mitigated\n");
     content.push_str("   :links: REQ_003, REQ_007\n\n");
-    content.push_str("   **Hazard**: A WebAssembly module could enter an infinite loop, causing the host system \
-                    to become unresponsive or consume excessive resources.\n\n");
-    content.push_str("   **Mitigation**: The WRT implements bounded execution using the fuel mechanism (REQ_003, REQ_007), \
-                    ensuring that execution will always yield back control flow after a configurable number of operations.\n\n");
+    content.push_str(
+        "   **Hazard**: A WebAssembly module could enter an infinite loop, causing the host \
+         system to become unresponsive or consume excessive resources.\n\n",
+    );
+    content.push_str(
+        "   **Mitigation**: The WRT implements bounded execution using the fuel mechanism \
+         (REQ_003, REQ_007), ensuring that execution will always yield back control flow after a \
+         configurable number of operations.\n\n",
+    );
 
     content.push_str(".. safety:: Memory Access Violations\n");
     content.push_str("   :id: SAFETY_002\n");
     content.push_str("   :item_status: mitigated\n");
     content.push_str("   :links: REQ_018\n\n");
-    content.push_str("   **Hazard**: Improper memory access could lead to data corruption or system crashes.\n\n");
-    content.push_str("   **Mitigation**: The WRT implements strict memory bounds checking as part of the WebAssembly \
-                    specification compliance. All memory accesses are validated before execution.\n\n");
+    content.push_str(
+        "   **Hazard**: Improper memory access could lead to data corruption or system \
+         crashes.\n\n",
+    );
+    content.push_str(
+        "   **Mitigation**: The WRT implements strict memory bounds checking as part of the \
+         WebAssembly specification compliance. All memory accesses are validated before \
+         execution.\n\n",
+    );
 
     content.push_str(".. safety:: Resource Exhaustion\n");
     content.push_str("   :id: SAFETY_003\n");
@@ -69,18 +80,25 @@ fn generate_safety_report() -> String {
     content.push_str(
         "   **Hazard**: A WebAssembly module could exhaust system resources such as memory.\n\n",
     );
-    content.push_str("   **Mitigation**: The WRT implements resource limits and tracking, ensuring that memory \
-                    allocation is bounded and monitored. The efficient operand stack implementation (REQ_024) \
-                    minimizes memory overhead.\n\n");
+    content.push_str(
+        "   **Mitigation**: The WRT implements resource limits and tracking, ensuring that memory \
+         allocation is bounded and monitored. The efficient operand stack implementation \
+         (REQ_024) minimizes memory overhead.\n\n",
+    );
 
     content.push_str(".. safety:: Interface Type Mismatch\n");
     content.push_str("   :id: SAFETY_004\n");
     content.push_str("   :item_status: mitigated\n");
     content.push_str("   :links: REQ_014, REQ_019\n\n");
-    content.push_str("   **Hazard**: Type mismatches at component interfaces could lead to incorrect data interpretation \
-                    and potentially unsafe operations.\n\n");
-    content.push_str("   **Mitigation**: The WRT strictly validates type compatibility as part of the Component Model \
-                    implementation. Interface types are checked during component instantiation.\n\n");
+    content.push_str(
+        "   **Hazard**: Type mismatches at component interfaces could lead to incorrect data \
+         interpretation and potentially unsafe operations.\n\n",
+    );
+    content.push_str(
+        "   **Mitigation**: The WRT strictly validates type compatibility as part of the \
+         Component Model implementation. Interface types are checked during component \
+         instantiation.\n\n",
+    );
 
     // Risk assessment section
     content.push_str("Risk Assessment\n---------------\n\n");
@@ -148,7 +166,10 @@ fn generate_safety_report() -> String {
     content.push_str("Safety Requirement Relationships\n-----------------------------\n\n");
 
     content.push_str(".. needflow::\n");
-    content.push_str("   :filter: id in ['SAFETY_001', 'SAFETY_002', 'SAFETY_003', 'SAFETY_004', 'REQ_001', 'REQ_003', 'REQ_007', 'REQ_014', 'REQ_018', 'REQ_019', 'REQ_024']\n\n");
+    content.push_str(
+        "   :filter: id in ['SAFETY_001', 'SAFETY_002', 'SAFETY_003', 'SAFETY_004', 'REQ_001', \
+         'REQ_003', 'REQ_007', 'REQ_014', 'REQ_018', 'REQ_019', 'REQ_024']\n\n",
+    );
 
     content
 }

@@ -5,9 +5,12 @@ use std::{
     rc::Rc,
     sync::{Arc, Mutex, RwLock},
 };
-use wrt_component::resources::{BufferPool, MemoryStrategy, VerificationLevel};
-use wrt_component::strategies::{
-    BoundedCopyStrategy, FullIsolationStrategy, MemoryOptimizationStrategy, ZeroCopyStrategy,
+
+use wrt_component::{
+    resources::{BufferPool, MemoryStrategy, VerificationLevel},
+    strategies::{
+        BoundedCopyStrategy, FullIsolationStrategy, MemoryOptimizationStrategy, ZeroCopyStrategy,
+    },
 };
 use wrt_error::Result;
 

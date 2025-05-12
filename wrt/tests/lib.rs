@@ -1,17 +1,16 @@
-use std::fs;
-use std::path::Path;
-use std::str::FromStr;
-use std::sync::{Arc, Mutex};
-use std::thread;
-use wrt::logging::{LogLevel, LogOperation};
-use wrt::Module;
-use wrt::StacklessEngine;
-use wrt::*;
+use std::{
+    fs,
+    path::Path,
+    str::FromStr,
+    sync::{Arc, Mutex},
+    thread,
+};
+
 use wrt::{
-    behavior::NullBehavior,
-    behavior::{ControlFlowBehavior, FrameBehavior, StackBehavior},
+    behavior::{ControlFlowBehavior, FrameBehavior, NullBehavior, StackBehavior},
     execution::Engine,
-    Error, Global,
+    logging::{LogLevel, LogOperation},
+    Error, Global, Module, StacklessEngine, *,
 };
 
 // Include our WebAssembly spec test modules

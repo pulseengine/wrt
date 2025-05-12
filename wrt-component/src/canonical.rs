@@ -3,16 +3,15 @@
 //! This module provides the implementation of the Canonical ABI used
 //! in the WebAssembly Component Model to interface between components.
 
-use crate::prelude::*;
-
-// Additional dependencies not in prelude
-use wrt_runtime::Memory;
-use wrt_types::resource::ResourceOperation as FormatResourceOperation;
-
 // Import error kinds from wrt-error
 use wrt_error::kinds::{
     InvalidValue, NotImplementedError, OutOfBoundsAccess, ValueOutOfRangeError,
 };
+// Additional dependencies not in prelude
+use wrt_runtime::Memory;
+use wrt_types::resource::ResourceOperation as FormatResourceOperation;
+
+use crate::prelude::*;
 
 // Maximum allowed allocation size for safety
 const MAX_BUFFER_SIZE: usize = 10 * 1024 * 1024; // 10MB
@@ -107,7 +106,8 @@ impl CanonicalABI {
                 if strategy.should_intercept_canonical() {
                     if let Some(value) = strategy.intercept_lift(ty, addr, memory_bytes)? {
                         // Convert the strategy's result into a Value
-                        // This is a placeholder - actual implementation would depend on the return format
+                        // This is a placeholder - actual implementation would depend on the return
+                        // format
                         return Ok(value); // Placeholder
                     }
                 }
@@ -1022,7 +1022,8 @@ mod tests {
 
 /// Comprehensive Value handling for canonical ABI compatibility
 ///
-/// This function ensures proper conversion between the different Value representations.
+/// This function ensures proper conversion between the different Value
+/// representations.
 ///
 /// # Arguments
 ///
@@ -1421,7 +1422,8 @@ pub fn convert_value_for_canonical_abi(
     }
 }
 
-/// Helper function to get a numeric value from Value with appropriate type conversion
+/// Helper function to get a numeric value from Value with appropriate type
+/// conversion
 fn get_number_value(value: &wrt_types::values::Value) -> Result<i64> {
     if let Some(v) = value.as_i32() {
         Ok(v as i64)

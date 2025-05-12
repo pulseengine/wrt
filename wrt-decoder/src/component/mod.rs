@@ -33,10 +33,9 @@ pub use types::{
 pub use utils::*;
 pub use val_type::encode_val_type;
 pub use validation::{validate_component, validate_component_with_config, ValidationConfig};
-
-use crate::prelude::*;
-use crate::utils::BinaryType;
 use wrt_error::{codes, Error, ErrorCategory, Result};
+
+use crate::{prelude::*, utils::BinaryType};
 
 /// Decode a component from binary data
 ///

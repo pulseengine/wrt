@@ -3,9 +3,7 @@
 
 #[cfg(test)]
 mod tests {
-    use wrt_error::codes;
-    use wrt_error::kinds;
-    use wrt_error::{Error, ErrorCategory, Result};
+    use wrt_error::{codes, kinds, Error, ErrorCategory, Result};
 
     #[test]
     fn test_error_creation() {

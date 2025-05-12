@@ -1,8 +1,10 @@
+use std::collections::HashMap;
+
+use wrt_error::{Error, Result};
+
 use crate::resources::{
     MemoryStrategy, ResourceId, ResourceManager, ResourceOperation, ResourceStrategy,
 };
-use std::collections::HashMap;
-use wrt_error::{Error, Result};
 
 /// Manager for memory access strategies
 pub struct MemoryManager {

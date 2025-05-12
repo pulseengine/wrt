@@ -1,21 +1,20 @@
 //! A detailed WebAssembly analyzer using wrt ecosystem
 //!
-//! This example demonstrates how to use wrt-decoder, wrt-component, and wrt-format
-//! to analyze WebAssembly modules and components in depth.
+//! This example demonstrates how to use wrt-decoder, wrt-component, and
+//! wrt-format to analyze WebAssembly modules and components in depth.
 
-use std::env;
-use std::fs;
-use std::path::Path;
-use std::str;
-use wrt_decoder::component::{
-    analyze_component, analyze_component_extended, extract_embedded_modules, is_valid_module,
-    ComponentAnalyzer, ComponentSummary, ExtendedExportInfo, ExtendedImportInfo, ModuleExportInfo,
-    ModuleImportInfo,
+use std::{env, fs, path::Path, str};
+
+use wrt_decoder::{
+    component::{
+        analyze_component, analyze_component_extended, extract_embedded_modules, is_valid_module,
+        ComponentAnalyzer, ComponentSummary, ExtendedExportInfo, ExtendedImportInfo,
+        ModuleExportInfo, ModuleImportInfo,
+    },
+    Module,
 };
-use wrt_decoder::Module;
 use wrt_error::Result;
-use wrt_format::binary;
-use wrt_format::wasmparser::SectionId;
+use wrt_format::{binary, wasmparser::SectionId};
 
 /// Displays a hexadecimal dump of a portion of a binary slice.
 fn hex_dump(data: &[u8], offset: usize, len: usize) {
@@ -246,7 +245,8 @@ fn analyze_module(binary: &[u8]) -> Result<()> {
     Ok(())
 }
 
-/// Parses and displays information from the name section of a WebAssembly module.
+/// Parses and displays information from the name section of a WebAssembly
+/// module.
 fn parse_name_section(module: &Module) -> Result<()> {
     println!("\n=== Name Section Analysis ===");
 

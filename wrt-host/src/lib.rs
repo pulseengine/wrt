@@ -1,7 +1,9 @@
 // WRT - wrt-host
-// SW-REQ-ID: [SW-REQ-ID-wrt-host]
+// Module: Host Function Interface
+// SW-REQ-ID: REQ_009
+// SW-REQ-ID: REQ_010
 //
-// Copyright (c) 2025 Ralf Anton Beier
+// Copyright (c) 2024 Ralf Anton Beier
 // Licensed under the MIT license.
 // SPDX-License-Identifier: MIT
 
@@ -9,9 +11,9 @@
 
 //! Host function infrastructure for the WebAssembly Runtime (WRT).
 //!
-//! This crate provides the core infrastructure for registering and managing host functions
-//! that can be called from WebAssembly components. It follows the Component Model specification
-//! for host functions and the Canonical ABI.
+//! This crate provides the core infrastructure for registering and managing
+//! host functions that can be called from WebAssembly components. It follows
+//! the Component Model specification for host functions and the Canonical ABI.
 //!
 //! ## Features
 //!
@@ -65,6 +67,5 @@ pub use builder::HostBuilder;
 pub use callback::{CallbackRegistry, CallbackType};
 pub use function::{CloneableFn, HostFunctionHandler};
 pub use host::BuiltinHost;
-
 // Re-export prelude for convenience
 pub use prelude::*;

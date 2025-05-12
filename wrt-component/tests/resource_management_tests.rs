@@ -5,6 +5,7 @@ use std::{
     rc::Rc,
     sync::{Arc, Mutex},
 };
+
 use wrt_component::{
     resources::{
         BufferPool, HostResource, MemoryManager, MemoryStrategy, ResourceId, ResourceManager,
@@ -250,8 +251,8 @@ fn test_memory_manager_integration() {
 
     // Check if original is modified
     let original = resource_manager.get_host_resource::<Vec<u8>>(id).unwrap();
-    // Note: actual behavior depends on implementation; this test assumes reference
-    // strategy allows direct writes
+    // Note: actual behavior depends on implementation; this test assumes
+    // reference strategy allows direct writes
 }
 
 /// Test ComponentValue for resource representation
@@ -302,7 +303,8 @@ fn test_resource_error_handling() {
     assert!(result.is_err());
 }
 
-/// Test thread safety of resource manager (when compiled with --features="thread-safe")
+/// Test thread safety of resource manager (when compiled with
+/// --features="thread-safe")
 #[test]
 #[cfg(feature = "thread-safe")]
 fn test_thread_safety() {

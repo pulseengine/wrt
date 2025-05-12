@@ -1,12 +1,12 @@
 //! WebAssembly section handling.
 //!
-//! This module provides types and utilities for working with WebAssembly sections.
-
-#[cfg(feature = "std")]
-use std::{string::String, vec::Vec};
+//! This module provides types and utilities for working with WebAssembly
+//! sections.
 
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 use alloc::{string::String, vec::Vec};
+#[cfg(feature = "std")]
+use std::{string::String, vec::Vec};
 
 // Use wrt_types error handling
 use wrt_types::Result;
@@ -267,15 +267,16 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    #[cfg(all(not(feature = "std"), feature = "alloc"))]
+    use alloc::{string::ToString, vec};
     #[cfg(feature = "std")]
     use std::string::ToString;
     #[cfg(feature = "std")]
     use std::vec;
+
     use wrt_types::safe_memory::SafeSlice;
 
-    #[cfg(all(not(feature = "std"), feature = "alloc"))]
-    use alloc::{string::ToString, vec};
+    use super::*;
 
     #[test]
     fn test_section_id_conversion() {

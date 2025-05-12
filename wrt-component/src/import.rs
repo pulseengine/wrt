@@ -2,12 +2,12 @@
 //!
 //! This module provides the Import type for component imports.
 
-use crate::component::ExternValue;
-use crate::namespace::Namespace;
-use crate::prelude::*;
-use crate::type_conversion::bidirectional;
 use wrt_format::component::ExternType;
 use wrt_types::ExternType as RuntimeExternType;
+
+use crate::{
+    component::ExternValue, namespace::Namespace, prelude::*, type_conversion::bidirectional,
+};
 
 /// Import to a component
 #[derive(Debug, Clone)]
@@ -96,10 +96,11 @@ impl ImportCollection {
 
 #[cfg(all(test, feature = "std"))]
 mod tests {
-    use super::*;
-    use crate::component::{ExternValue, FunctionValue};
     use wrt_format::component::{ExternType, ValType};
     use wrt_runtime::func::FuncType;
+
+    use super::*;
+    use crate::component::{ExternValue, FunctionValue};
 
     #[test]
     fn test_import_identifier() {

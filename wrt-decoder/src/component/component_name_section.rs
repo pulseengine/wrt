@@ -1,12 +1,12 @@
 //! WebAssembly Component Model name section
 //!
-//! This module provides utilities for encoding and decoding custom name sections
-//! in WebAssembly Component Model binaries.
+//! This module provides utilities for encoding and decoding custom name
+//! sections in WebAssembly Component Model binaries.
+
+use wrt_error::{codes, Error, ErrorCategory, Result};
+use wrt_format::{binary, component::Sort};
 
 use crate::prelude::*;
-use wrt_error::{codes, Error, ErrorCategory, Result};
-use wrt_format::binary;
-use wrt_format::component::Sort;
 
 /// Component name section
 #[derive(Default, Debug, Clone)]
@@ -118,11 +118,7 @@ pub fn generate_component_name_section(section: &ComponentNameSection) -> Result
 
     // Write canonical names
     if !section.canonical_names.is_empty() {
-        write_name_map(
-            &mut result,
-            subsection::CANONICAL_NAMES,
-            &section.canonical_names,
-        );
+        write_name_map(&mut result, subsection::CANONICAL_NAMES, &section.canonical_names);
     }
 
     // Write type names

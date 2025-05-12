@@ -6,7 +6,8 @@
 // Use the prelude for consistent imports
 use crate::prelude::*;
 
-/// Converts wrt_types::values::Value to wrt_types::component_value::ComponentValue
+/// Converts wrt_types::values::Value to
+/// wrt_types::component_value::ComponentValue
 ///
 /// This function converts WebAssembly core values to Component Model values
 /// with support for both std and no_std environments.
@@ -24,7 +25,8 @@ fn convert_to_component_values(values: &[Value]) -> Vec<ComponentValue> {
         .collect()
 }
 
-/// Converts wrt_types::component_value::ComponentValue to wrt_types::values::Value
+/// Converts wrt_types::component_value::ComponentValue to
+/// wrt_types::values::Value
 ///
 /// This function converts Component Model values to WebAssembly core values
 /// with support for both std and no_std environments.
@@ -163,7 +165,8 @@ impl BuiltinHost {
     ///
     /// # Errors
     ///
-    /// Returns an error if the built-in is not implemented or fails during execution
+    /// Returns an error if the built-in is not implemented or fails during
+    /// execution
     pub fn call_builtin(
         &self,
         engine: &mut dyn Any,
@@ -259,8 +262,9 @@ impl Clone for BuiltinHost {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use wrt_types::values::Value;
+
+    use super::*;
 
     #[test]
     fn test_builtin_host_basics() {

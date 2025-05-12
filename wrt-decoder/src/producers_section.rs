@@ -1,12 +1,13 @@
 //! WebAssembly producers section handling
 //!
-//! This module provides utilities for parsing and generating the WebAssembly producers section.
-//! The producers section is a custom section that provides information about the tools
-//! that produced the WebAssembly module.
+//! This module provides utilities for parsing and generating the WebAssembly
+//! producers section. The producers section is a custom section that provides
+//! information about the tools that produced the WebAssembly module.
 
-use crate::prelude::{String, Vec};
 use wrt_error::Result;
 use wrt_format::binary;
+
+use crate::prelude::{String, Vec};
 
 /// Field name for the language field in producers section
 pub const FIELD_LANGUAGE: &str = "language";
@@ -38,11 +39,7 @@ pub struct ProducersSection {
 impl ProducersSection {
     /// Creates a new empty producers section
     pub fn new() -> Self {
-        Self {
-            languages: Vec::new(),
-            processed_by: Vec::new(),
-            sdks: Vec::new(),
-        }
+        Self { languages: Vec::new(), processed_by: Vec::new(), sdks: Vec::new() }
     }
 
     /// Adds a language entry to the producers section
@@ -176,10 +173,8 @@ pub fn extract_producers_section(
     module: &crate::module::Module,
 ) -> Result<Option<ProducersSection>> {
     // Find the producers custom section
-    let producers_section = module
-        .custom_sections
-        .iter()
-        .find(|section| section.name == "producers");
+    let producers_section =
+        module.custom_sections.iter().find(|section| section.name == "producers");
 
     if let Some(section) = producers_section {
         // Parse the producers section
@@ -193,11 +188,11 @@ pub fn extract_producers_section(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::prelude::{ToString, Vec};
-
     #[cfg(not(feature = "std"))]
     use alloc::vec;
+
+    use super::*;
+    use crate::prelude::{ToString, Vec};
 
     #[test]
     fn test_parse_producers_section() {

@@ -1,21 +1,24 @@
 // WebAssembly binary format utilities
 //
-// This module provides utilities for working with the WebAssembly binary format.
+// This module provides utilities for working with the WebAssembly binary
+// format.
 
 // Core modules
 use core::str;
 
+use wrt_error::{
+    codes, errors::codes::UNIMPLEMENTED_PARSING_FEATURE, Error, ErrorCategory, Result,
+};
+use wrt_types::{RefType, ValueType};
+
+use crate::{
+    component::ValType,
+    error::{parse_error, to_wrt_error},
+    module::{Data, DataMode, Element, ElementInit, ElementMode, Module},
+    types::{FormatBlockType, Limits},
+};
 // Import from crate::lib re-exports to ensure proper features
 use crate::{format, vec, Box, String, ToString, Vec};
-
-use crate::component::ValType;
-use crate::error::parse_error;
-use crate::error::to_wrt_error;
-use crate::module::{Data, DataMode, Element, ElementInit, ElementMode, Module};
-use crate::types::{FormatBlockType, Limits};
-use wrt_error::errors::codes::UNIMPLEMENTED_PARSING_FEATURE;
-use wrt_error::{codes, Error, ErrorCategory, Result};
-use wrt_types::{RefType, ValueType};
 
 /// Magic bytes for WebAssembly modules: \0asm
 pub const WASM_MAGIC: [u8; 4] = [0x00, 0x61, 0x73, 0x6D];
@@ -110,7 +113,8 @@ pub const I64_STORE32: u8 = 0x3E;
 pub const MEMORY_SIZE: u8 = 0x3F;
 pub const MEMORY_GROW: u8 = 0x40;
 
-/// FC-prefixed opcodes (Wasm 2.0: Bulk Memory, Non-trapping Float-to-Int Conversions, Table ops)
+/// FC-prefixed opcodes (Wasm 2.0: Bulk Memory, Non-trapping Float-to-Int
+/// Conversions, Table ops)
 pub const PREFIX_FC: u8 = 0xFC;
 // Non-trapping Float-to-Int Conversions (FC prefix)
 pub const I32_TRUNC_SAT_F32_S_SUFFIX: u8 = 0x00;
@@ -936,8 +940,8 @@ pub fn write_string(value: &str) -> Vec<u8> {
 
 /// Read a vector from a byte array
 ///
-/// This is a generic function that reads a length-prefixed vector from a byte array,
-/// using the provided function to read each element.
+/// This is a generic function that reads a length-prefixed vector from a byte
+/// array, using the provided function to read each element.
 pub fn read_vector<T, F>(bytes: &[u8], pos: usize, read_elem: F) -> Result<(Vec<T>, usize)>
 where
     F: Fn(&[u8], usize) -> Result<(T, usize)>,
@@ -958,8 +962,8 @@ where
 
 /// Write a vector to a byte array
 ///
-/// This is a generic function that writes a length-prefixed vector to a byte array,
-/// using the provided function to write each element.
+/// This is a generic function that writes a length-prefixed vector to a byte
+/// array, using the provided function to write each element.
 pub fn write_vector<T, F>(elements: &[T], write_elem: F) -> Vec<u8>
 where
     F: Fn(&T) -> Vec<u8>,
@@ -979,8 +983,8 @@ where
 
 /// Read a section header from a byte array
 ///
-/// Returns a tuple containing the section ID, size, and new position after the header.
-/// The position should point to the start of the section content.
+/// Returns a tuple containing the section ID, size, and new position after the
+/// header. The position should point to the start of the section content.
 pub fn read_section_header(bytes: &[u8], pos: usize) -> Result<(u8, u32, usize)> {
     if pos >= bytes.len() {
         return Err(to_wrt_error(parse_error("Attempted to read past end of binary".to_string())));
@@ -1438,7 +1442,8 @@ impl BinaryFormat {
 }
 
 /// Read a WebAssembly string name without allocating a new String
-/// Returns the byte slice containing the name and the total bytes read (including length)
+/// Returns the byte slice containing the name and the total bytes read
+/// (including length)
 pub fn read_name(bytes: &[u8], pos: usize) -> Result<(&[u8], usize)> {
     // Ensure we have enough bytes to read the string length
     if pos >= bytes.len() {
@@ -1488,7 +1493,8 @@ pub fn parse_limits(
     } else {
         None
     };
-    // Ignoring shared and memory64 flags for now as they are not in wrt_format::types::Limits directly
+    // Ignoring shared and memory64 flags for now as they are not in
+    // wrt_format::types::Limits directly
 
     Ok((
         crate::types::Limits {
@@ -1501,8 +1507,9 @@ pub fn parse_limits(
     ))
 }
 
-/// Parses an initialization expression (a sequence of instructions terminated by END).
-/// Returns the bytes of the expression (including END) and the number of bytes read.
+/// Parses an initialization expression (a sequence of instructions terminated
+/// by END). Returns the bytes of the expression (including END) and the number
+/// of bytes read.
 pub fn parse_init_expr(bytes: &[u8], mut offset: usize) -> Result<(Vec<u8>, usize)> {
     let start_offset = offset;
     let mut depth = 0;
@@ -1577,7 +1584,8 @@ pub fn parse_init_expr(bytes: &[u8], mut offset: usize) -> Result<(Vec<u8>, usiz
             // Other opcodes that might appear in const expressions depending on enabled features.
             // For Wasm 2.0, only the above are generally considered constant.
             // Vector ops (v128.const) could also be here if SIMD consts are allowed.
-            _ => { /* other opcodes - assuming they have no immediates or are invalid in const expr */
+            _ => { // other opcodes - assuming they have no immediates or are
+                 // invalid in const expr
             }
         }
     }
@@ -1613,8 +1621,18 @@ pub fn parse_element_segment(bytes: &[u8], mut offset: usize) -> Result<(Element
                 )
             })?;
             offset = next_offset;
-            let (func_indices, next_offset) = read_vector(bytes, offset, read_leb128_u32)
-                .map_err(|e| Error::new(ErrorCategory::Parse, wrt_error::codes::PARSE_ERROR, format!("(offset {}): Failed to read func_indices for element segment (type 0): {}", offset, e)))?;
+            let (func_indices, next_offset) =
+                read_vector(bytes, offset, read_leb128_u32).map_err(|e| {
+                    Error::new(
+                        ErrorCategory::Parse,
+                        wrt_error::codes::PARSE_ERROR,
+                        format!(
+                            "(offset {}): Failed to read func_indices for element segment (type \
+                             0): {}",
+                            offset, e
+                        ),
+                    )
+                })?;
             offset = next_offset;
 
             if bytes.get(offset).copied() != Some(END) {
@@ -1639,12 +1657,31 @@ pub fn parse_element_segment(bytes: &[u8], mut offset: usize) -> Result<(Element
             offset = next_offset;
             if elemkind_byte != 0x00 {
                 // Only funcref is supported for now
-                return Err(Error::new(ErrorCategory::Parse, wrt_error::codes::NOT_IMPLEMENTED, format!("(offset {}): Unsupported elemkind 0x{:02X} for element segment (type 1), only funcref (0x00) supported here.", offset -1, elemkind_byte)));
+                return Err(Error::new(
+                    ErrorCategory::Parse,
+                    wrt_error::codes::NOT_IMPLEMENTED,
+                    format!(
+                        "(offset {}): Unsupported elemkind 0x{:02X} for element segment (type 1), \
+                         only funcref (0x00) supported here.",
+                        offset - 1,
+                        elemkind_byte
+                    ),
+                ));
             }
             element_type = RefType::FuncRef; // funcref
 
-            let (exprs_vec, next_offset) = read_vector(bytes, offset, parse_init_expr)
-                .map_err(|e| Error::new(ErrorCategory::Parse, wrt_error::codes::PARSE_ERROR, format!("(offset {}): Failed to read expressions for element segment (type 1): {}", offset, e)))?;
+            let (exprs_vec, next_offset) =
+                read_vector(bytes, offset, parse_init_expr).map_err(|e| {
+                    Error::new(
+                        ErrorCategory::Parse,
+                        wrt_error::codes::PARSE_ERROR,
+                        format!(
+                            "(offset {}): Failed to read expressions for element segment (type \
+                             1): {}",
+                            offset, e
+                        ),
+                    )
+                })?;
             offset = next_offset;
 
             if bytes.get(offset).copied() != Some(END) {
@@ -1691,12 +1728,31 @@ pub fn parse_element_segment(bytes: &[u8], mut offset: usize) -> Result<(Element
             offset = next_offset;
             if elemkind_byte != 0x00 {
                 // Only funcref is supported for now
-                return Err(Error::new(ErrorCategory::Parse, wrt_error::codes::NOT_IMPLEMENTED, format!("(offset {}): Unsupported elemkind 0x{:02X} for element segment (type 2), only funcref (0x00) supported here.", offset-1, elemkind_byte)));
+                return Err(Error::new(
+                    ErrorCategory::Parse,
+                    wrt_error::codes::NOT_IMPLEMENTED,
+                    format!(
+                        "(offset {}): Unsupported elemkind 0x{:02X} for element segment (type 2), \
+                         only funcref (0x00) supported here.",
+                        offset - 1,
+                        elemkind_byte
+                    ),
+                ));
             }
             element_type = RefType::FuncRef; // funcref
 
-            let (exprs_vec, next_offset) = read_vector(bytes, offset, parse_init_expr)
-                .map_err(|e| Error::new(ErrorCategory::Parse, wrt_error::codes::PARSE_ERROR, format!("(offset {}): Failed to read expressions for element segment (type 2): {}", offset, e)))?;
+            let (exprs_vec, next_offset) =
+                read_vector(bytes, offset, parse_init_expr).map_err(|e| {
+                    Error::new(
+                        ErrorCategory::Parse,
+                        wrt_error::codes::PARSE_ERROR,
+                        format!(
+                            "(offset {}): Failed to read expressions for element segment (type \
+                             2): {}",
+                            offset, e
+                        ),
+                    )
+                })?;
             offset = next_offset;
 
             if bytes.get(offset).copied() != Some(END) {
@@ -1720,12 +1776,31 @@ pub fn parse_element_segment(bytes: &[u8], mut offset: usize) -> Result<(Element
             offset = next_offset;
             if elemkind_byte != 0x00 {
                 // Only funcref is supported for now
-                return Err(Error::new(ErrorCategory::Parse, wrt_error::codes::NOT_IMPLEMENTED, format!("(offset {}): Unsupported elemkind 0x{:02X} for element segment (type 3), only funcref (0x00) supported here.", offset-1, elemkind_byte)));
+                return Err(Error::new(
+                    ErrorCategory::Parse,
+                    wrt_error::codes::NOT_IMPLEMENTED,
+                    format!(
+                        "(offset {}): Unsupported elemkind 0x{:02X} for element segment (type 3), \
+                         only funcref (0x00) supported here.",
+                        offset - 1,
+                        elemkind_byte
+                    ),
+                ));
             }
             element_type = RefType::FuncRef; // funcref
 
-            let (exprs_vec, next_offset) = read_vector(bytes, offset, parse_init_expr)
-                .map_err(|e| Error::new(ErrorCategory::Parse, wrt_error::codes::PARSE_ERROR, format!("(offset {}): Failed to read expressions for element segment (type 3): {}", offset, e)))?;
+            let (exprs_vec, next_offset) =
+                read_vector(bytes, offset, parse_init_expr).map_err(|e| {
+                    Error::new(
+                        ErrorCategory::Parse,
+                        wrt_error::codes::PARSE_ERROR,
+                        format!(
+                            "(offset {}): Failed to read expressions for element segment (type \
+                             3): {}",
+                            offset, e
+                        ),
+                    )
+                })?;
             offset = next_offset;
 
             if bytes.get(offset).copied() != Some(END) {
@@ -1745,7 +1820,8 @@ pub fn parse_element_segment(bytes: &[u8], mut offset: usize) -> Result<(Element
         }
         0x04 => {
             // Active with tableidx 0 (encoded in prefix): expr vec(funcidx) end
-            let table_idx = 0; // Implicitly table 0 due to prefix for some interpretations, though spec shows tableidx field
+            let table_idx = 0; // Implicitly table 0 due to prefix for some interpretations, though spec shows
+                               // tableidx field
             let (offset_expr, next_offset) = parse_init_expr(bytes, offset).map_err(|e| {
                 Error::new(
                     ErrorCategory::Parse,
@@ -1757,8 +1833,18 @@ pub fn parse_element_segment(bytes: &[u8], mut offset: usize) -> Result<(Element
                 )
             })?;
             offset = next_offset;
-            let (func_indices, next_offset) = read_vector(bytes, offset, read_leb128_u32)
-                .map_err(|e| Error::new(ErrorCategory::Parse, wrt_error::codes::PARSE_ERROR, format!("(offset {}): Failed to read func_indices for element segment (type 4): {}", offset, e)))?;
+            let (func_indices, next_offset) =
+                read_vector(bytes, offset, read_leb128_u32).map_err(|e| {
+                    Error::new(
+                        ErrorCategory::Parse,
+                        wrt_error::codes::PARSE_ERROR,
+                        format!(
+                            "(offset {}): Failed to read func_indices for element segment (type \
+                             4): {}",
+                            offset, e
+                        ),
+                    )
+                })?;
             offset = next_offset;
 
             if bytes.get(offset).copied() != Some(END) {
@@ -1795,8 +1881,18 @@ pub fn parse_element_segment(bytes: &[u8], mut offset: usize) -> Result<(Element
                 .try_into()
                 .map_err(to_wrt_error)?;
 
-            let (exprs_vec, next_offset) = read_vector(bytes, offset, parse_init_expr)
-                .map_err(|e| Error::new(ErrorCategory::Parse, wrt_error::codes::PARSE_ERROR, format!("(offset {}): Failed to read expressions for element segment (type 5): {}", offset, e)))?;
+            let (exprs_vec, next_offset) =
+                read_vector(bytes, offset, parse_init_expr).map_err(|e| {
+                    Error::new(
+                        ErrorCategory::Parse,
+                        wrt_error::codes::PARSE_ERROR,
+                        format!(
+                            "(offset {}): Failed to read expressions for element segment (type \
+                             5): {}",
+                            offset, e
+                        ),
+                    )
+                })?;
             offset = next_offset;
 
             if bytes.get(offset).copied() != Some(END) {
@@ -1855,8 +1951,18 @@ pub fn parse_element_segment(bytes: &[u8], mut offset: usize) -> Result<(Element
                 .try_into()
                 .map_err(to_wrt_error)?;
 
-            let (exprs_vec, next_offset) = read_vector(bytes, offset, parse_init_expr)
-                .map_err(|e| Error::new(ErrorCategory::Parse, wrt_error::codes::PARSE_ERROR, format!("(offset {}): Failed to read expressions for element segment (type 6): {}", offset, e)))?;
+            let (exprs_vec, next_offset) =
+                read_vector(bytes, offset, parse_init_expr).map_err(|e| {
+                    Error::new(
+                        ErrorCategory::Parse,
+                        wrt_error::codes::PARSE_ERROR,
+                        format!(
+                            "(offset {}): Failed to read expressions for element segment (type \
+                             6): {}",
+                            offset, e
+                        ),
+                    )
+                })?;
             offset = next_offset;
 
             if bytes.get(offset).copied() != Some(END) {
@@ -1892,8 +1998,18 @@ pub fn parse_element_segment(bytes: &[u8], mut offset: usize) -> Result<(Element
                 .try_into()
                 .map_err(to_wrt_error)?;
 
-            let (exprs_vec, next_offset) = read_vector(bytes, offset, parse_init_expr)
-                .map_err(|e| Error::new(ErrorCategory::Parse, wrt_error::codes::PARSE_ERROR, format!("(offset {}): Failed to read expressions for element segment (type 7): {}", offset, e)))?;
+            let (exprs_vec, next_offset) =
+                read_vector(bytes, offset, parse_init_expr).map_err(|e| {
+                    Error::new(
+                        ErrorCategory::Parse,
+                        wrt_error::codes::PARSE_ERROR,
+                        format!(
+                            "(offset {}): Failed to read expressions for element segment (type \
+                             7): {}",
+                            offset, e
+                        ),
+                    )
+                })?;
             offset = next_offset;
 
             if bytes.get(offset).copied() != Some(END) {

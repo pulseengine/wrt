@@ -1,9 +1,9 @@
 //! Import mapping for the WebAssembly Component Model
 //!
-//! This module provides functionality to map between different import representations.
+//! This module provides functionality to map between different import
+//! representations.
 
-use crate::import::Import;
-use crate::prelude::*;
+use crate::{import::Import, prelude::*};
 
 /// Map of import names to imports
 #[derive(Debug, Default)]

@@ -1,8 +1,8 @@
 //! Arithmetic operations for WebAssembly instructions.
 //!
-//! This module provides pure implementations for WebAssembly arithmetic instructions,
-//! including add, subtract, multiply, divide, and remainder operations for
-//! various numeric types.
+//! This module provides pure implementations for WebAssembly arithmetic
+//! instructions, including add, subtract, multiply, divide, and remainder
+//! operations for various numeric types.
 
 use crate::prelude::*;
 

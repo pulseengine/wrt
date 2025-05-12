@@ -1,6 +1,7 @@
 // WRT - wrt-types
 // Module: WebAssembly Component Model Resources
-// SW-REQ-ID: REQ_WASM_COMPONENT_003 (Example: Relates to component model resources)
+// SW-REQ-ID: REQ_020
+// SW-REQ-ID: REQ_019
 //
 // Copyright (c) 2024 Ralf Anton Beier
 // Licensed under the MIT license.
@@ -8,9 +9,9 @@
 
 //! Resource types for WebAssembly Component Model
 //!
-//! This module defines types for working with WebAssembly Component Model resources.
-//! Resources are first-class values that can represent external entities like files,
-//! network connections, or other system resources.
+//! This module defines types for working with WebAssembly Component Model
+//! resources. Resources are first-class values that can represent external
+//! entities like files, network connections, or other system resources.
 
 #[cfg(feature = "alloc")]
 use alloc::{format, vec::Vec};
@@ -24,8 +25,7 @@ use std::fmt::Debug;
 // optional imports
 // #[cfg(feature = "component-model-resources")]
 // use crate::bounded::BoundedVec;
-
-use crate::prelude::*;
+use crate::prelude::{str, Eq, PartialEq, String};
 
 /// Resource identifier
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -84,6 +84,7 @@ pub enum ResourceCanonicalOperation {
 
 impl ResourceOperation {
     /// Check if the operation requires read access
+    #[must_use]
     pub fn requires_read(&self) -> bool {
         matches!(
             self,
@@ -92,6 +93,7 @@ impl ResourceOperation {
     }
 
     /// Check if the operation requires write access
+    #[must_use]
     pub fn requires_write(&self) -> bool {
         matches!(
             self,
@@ -103,6 +105,7 @@ impl ResourceOperation {
     }
 
     /// Get the string representation of the operation
+    #[must_use]
     pub fn as_str(&self) -> &'static str {
         match self {
             ResourceOperation::Read => "read",
@@ -134,7 +137,7 @@ impl core::str::FromStr for ResourceOperation {
             "delete" => Ok(ResourceOperation::Delete),
             "reference" => Ok(ResourceOperation::Reference),
             "dereference" => Ok(ResourceOperation::Dereference),
-            _ => Err(format!("Unknown resource operation: {}", s)),
+            _ => Err(format!("Unknown resource operation: {s}")),
         }
     }
 }
@@ -159,6 +162,7 @@ pub enum ResourceRepresentation {
 
 impl ResourceRepresentation {
     /// Get the string representation of the representation type
+    #[must_use]
     pub fn as_str(&self) -> &'static str {
         match self {
             ResourceRepresentation::Handle32 => "handle32",
@@ -205,7 +209,7 @@ impl core::str::FromStr for ResourceRepresentation {
                     Err(format!("Unknown resource representation: {}", s))
                 }
             }
-            _ => Err(format!("Unknown resource representation: {}", s)),
+            _ => Err(format!("Unknown resource representation: {s}")),
         }
     }
 }

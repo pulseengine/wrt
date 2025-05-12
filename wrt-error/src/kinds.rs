@@ -6,23 +6,20 @@ extern crate std;
 extern crate alloc;
 
 // Import ToString trait implementations
-#[cfg(feature = "std")]
-use std::string::ToString;
-
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::string::ToString;
-
 // Use alloc String if alloc is enabled but not std
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 pub use alloc::format;
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 pub use alloc::string::String;
-
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+use alloc::string::ToString;
 // Use std String if std is enabled
 #[cfg(feature = "std")]
 pub use std::format;
 #[cfg(feature = "std")]
 pub use std::string::String;
+#[cfg(feature = "std")]
+use std::string::ToString;
 
 /// A minimal string type for no-std/no-alloc environments.
 #[cfg(not(any(feature = "std", feature = "alloc")))]
@@ -44,7 +41,8 @@ impl String {
     }
 }
 
-// Implement From for &'static str in no_std mode - just creates an empty placeholder
+// Implement From for &'static str in no_std mode - just creates an empty
+// placeholder
 #[cfg(not(any(feature = "std", feature = "alloc")))]
 impl From<&'static str> for String {
     fn from(_value: &'static str) -> Self {
@@ -225,7 +223,8 @@ pub struct ResourceLimitExceeded(pub String);
 #[derive(Debug, Clone)]
 pub struct InvalidArgumentError(pub String);
 
-/// Error when a Wasm 3.0 specific construct is encountered in a Wasm 2.0 module or context.
+/// Error when a Wasm 3.0 specific construct is encountered in a Wasm 2.0 module
+/// or context.
 #[derive(Debug, Clone)]
 pub struct UnsupportedWasm30ConstructInWasm20Module {
     /// Name or description of the Wasm 3.0 construct.
@@ -265,7 +264,8 @@ pub struct UnknownOpcodeForVersion {
     pub opcode_byte2: Option<u8>,
 }
 
-/// Error for an invalid import/export kind byte for the detected/specified Wasm version.
+/// Error for an invalid import/export kind byte for the detected/specified Wasm
+/// version.
 #[derive(Debug, Clone)]
 pub struct InvalidImportExportKindForVersion {
     /// Major version number of Wasm.
@@ -933,7 +933,8 @@ impl core::fmt::Display for InvalidArgumentError {
     }
 }
 
-/// Implementation of the Display trait for `UnsupportedWasm30ConstructInWasm20Module`
+/// Implementation of the Display trait for
+/// `UnsupportedWasm30ConstructInWasm20Module`
 impl core::fmt::Display for UnsupportedWasm30ConstructInWasm20Module {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         #[cfg(any(feature = "std", feature = "alloc"))]
@@ -955,7 +956,8 @@ impl core::fmt::Display for InvalidWasm30InstructionImmediate {
     }
 }
 
-/// Implementation of the Display trait for `MalformedWasm30TypeInformationSection`
+/// Implementation of the Display trait for
+/// `MalformedWasm30TypeInformationSection`
 impl core::fmt::Display for MalformedWasm30TypeInformationSection {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         #[cfg(any(feature = "std", feature = "alloc"))]
@@ -1130,14 +1132,16 @@ impl From<InvalidArgumentError> for String {
 
 // --- START Wasm 2.0 Specific Errors ---
 
-/// Error when a Wasm 2.0 specific construct is encountered in a context that does not support it (e.g. Wasm 1.0).
+/// Error when a Wasm 2.0 specific construct is encountered in a context that
+/// does not support it (e.g. Wasm 1.0).
 #[derive(Debug, Clone)]
 pub struct UnsupportedWasm20Feature {
     /// Name or description of the Wasm 2.0 feature.
     pub feature_name: String,
 }
 
-/// Error for malformed or invalid usage of reference types (externref, funcref).
+/// Error for malformed or invalid usage of reference types (externref,
+/// funcref).
 #[derive(Debug, Clone)]
 pub struct InvalidReferenceTypeUsage {
     /// Detailed message about the invalid usage.
@@ -1147,7 +1151,8 @@ pub struct InvalidReferenceTypeUsage {
 /// Error related to Wasm 2.0 bulk memory or table operations.
 #[derive(Debug, Clone)]
 pub struct BulkOperationError {
-    /// Name of the bulk operation instruction (e.g., "memory.copy", "table.init").
+    /// Name of the bulk operation instruction (e.g., "memory.copy",
+    /// "table.init").
     pub operation_name: String,
     /// Detailed message about the error.
     pub reason: String,
@@ -1158,7 +1163,8 @@ pub struct BulkOperationError {
 pub struct SimdOperationError {
     /// Name of the SIMD instruction.
     pub instruction_name: String,
-    /// Detailed message about the SIMD error (e.g., invalid lane index, type mismatch).
+    /// Detailed message about the SIMD error (e.g., invalid lane index, type
+    /// mismatch).
     pub reason: String,
 }
 
@@ -1193,7 +1199,8 @@ pub fn invalid_reference_type_usage(message: impl Into<String>) -> InvalidRefere
     InvalidReferenceTypeUsage { message: message.into() }
 }
 
-/// Fallback: Creates a new `InvalidReferenceTypeUsage` error (no-std, no-alloc).
+/// Fallback: Creates a new `InvalidReferenceTypeUsage` error (no-std,
+/// no-alloc).
 #[cfg(not(any(feature = "std", feature = "alloc")))]
 pub fn invalid_reference_type_usage(
     _message: impl core::fmt::Display,

@@ -1,5 +1,6 @@
-use crate::resources::{ResourceOperation, ResourceStrategy};
 use wrt_error::{Error, Result};
+
+use crate::resources::{ResourceOperation, ResourceStrategy};
 
 /// Memory strategy for resource operations
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

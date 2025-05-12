@@ -1,19 +1,11 @@
-// use anyhow::Result;
-// use std::fs::{self};
-// use std::net::SocketAddr;
-// use std::path::PathBuf;
-// use std::str::FromStr;
+use anyhow::Result;
+use dagger_sdk::Query;
+use tracing::info;
 
-// All functions and structs that used the above imports have been removed or commented out.
-// The file should now be empty or only contain comments.
+use crate::dagger_pipelines::docs_pipeline::check_docs_strict_pipeline;
 
-/*
-#[derive(Serialize)]
-struct SwitcherEntry {
-    name: String,
-    version: String,
-    url: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    preferred: Option<bool>,
+#[tracing::instrument(name = "check_docs_strict_task", skip_all, err)]
+pub async fn check_docs_strict(client: &Query) -> Result<()> {
+    info!("Executing strict documentation check via Dagger pipeline...");
+    check_docs_strict_pipeline(client).await
 }
-*/

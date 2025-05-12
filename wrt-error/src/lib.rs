@@ -1,7 +1,9 @@
 // WRT - wrt-error
-// SW-REQ-ID: [SW-REQ-ID-wrt-error]
+// Module: WRT Error Handling
+// SW-REQ-ID: REQ_004
+// SW-REQ-ID: REQ_ERROR_001
 //
-// Copyright (c) 2024 [Your Name/Organization]
+// Copyright (c) 2024 Ralf Anton Beier
 // Licensed under the MIT license.
 // SPDX-License-Identifier: MIT
 
@@ -9,12 +11,14 @@
 
 //! WRT Error handling library
 //!
-//! This library provides a comprehensive error handling system for the WRT runtime.
-//! It includes error types, helper functions, and utilities for creating and managing errors.
+//! This library provides a comprehensive error handling system for the WRT
+//! runtime. It includes error types, helper functions, and utilities for
+//! creating and managing errors.
 //!
 //! # Error Categories
 //!
-//! Errors are organized into several categories, each with its own range of error codes:
+//! Errors are organized into several categories, each with its own range of
+//! error codes:
 //!
 //! ## Core Errors (1000-1008)
 //! - Stack underflow
@@ -43,7 +47,8 @@
 //!
 //! # Usage
 //!
-//! The library provides both low-level error types and high-level helper functions:
+//! The library provides both low-level error types and high-level helper
+//! functions:
 //!
 //! ```
 //! # #[cfg(feature = "alloc")]
@@ -104,16 +109,15 @@ pub mod prelude;
 pub mod verify;
 
 // Re-export key types
-pub use errors::Error;
-pub use errors::{ErrorCategory, ErrorSource};
-
 #[cfg(feature = "alloc")]
 pub use context::ResultExt;
+pub use errors::{Error, ErrorCategory, ErrorSource};
 
 /// A specialized `Result` type for WRT operations.
 ///
-/// When the `alloc` feature is enabled, this defaults to using `wrt_error::Error` as the error type.
-/// When `alloc` is not available, the specific error type must be provided.
+/// When the `alloc` feature is enabled, this defaults to using
+/// `wrt_error::Error` as the error type. When `alloc` is not available, the
+/// specific error type must be provided.
 pub type Result<T> = core::result::Result<T, Error>;
 
 // Re-export error kinds for convenience
@@ -166,3 +170,6 @@ mod tests {
 
 // Re-export additional helpers
 pub use helpers::*;
+
+/// A placeholder function.
+pub const fn placeholder() {}

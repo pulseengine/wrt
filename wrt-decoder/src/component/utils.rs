@@ -1,7 +1,6 @@
-use crate::prelude::*;
-use crate::{Error, Result};
-use wrt_format::binary;
-use wrt_format::component::ValType;
+use wrt_format::{binary, component::ValType};
+
+use crate::{prelude::*, Error, Result};
 
 /// Add a section to the binary with the given ID and content
 pub fn add_section(binary: &mut Vec<u8>, section_id: u8, content: &[u8]) {
@@ -37,15 +36,11 @@ pub fn is_valid_integrity(integrity: &str) -> bool {
 /// Check if the binary is a WebAssembly component
 pub fn is_component(bytes: &[u8]) -> Result<bool> {
     if bytes.len() < 8 {
-        return Err(Error::parse_error(
-            "Binary too short for WebAssembly header".to_string(),
-        ));
+        return Err(Error::parse_error("Binary too short for WebAssembly header".to_string()));
     }
 
     if bytes[0..4] != binary::WASM_MAGIC {
-        return Err(Error::parse_error(
-            "Invalid WebAssembly magic bytes".to_string(),
-        ));
+        return Err(Error::parse_error("Invalid WebAssembly magic bytes".to_string()));
     }
 
     // Check for component layer
@@ -76,10 +71,7 @@ pub fn parse_val_type(bytes: &[u8], offset: usize) -> Result<(ValType, usize)> {
         0x0B => ValType::Char,
         0x0C => ValType::String,
         _ => {
-            return Err(Error::parse_error(format!(
-                "Unknown ValType byte: {:#x}",
-                val_type_byte
-            )));
+            return Err(Error::parse_error(format!("Unknown ValType byte: {:#x}", val_type_byte)));
         }
     };
 

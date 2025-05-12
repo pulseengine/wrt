@@ -5,10 +5,8 @@
 // - threading.join: Join a thread (wait for its completion)
 // - threading.sync: Create a synchronization primitive
 
-use wrt_error::{kinds::ThreadingError, Error, Result};
-use wrt_types::builtin::BuiltinType;
-use wrt_types::component_value::ComponentValue;
-
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+use alloc::{boxed::Box, collections::HashMap, string::String, sync::Arc, vec::Vec};
 #[cfg(feature = "std")]
 use std::{
     boxed::Box,
@@ -21,8 +19,8 @@ use std::{
     vec::Vec,
 };
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::{boxed::Box, collections::HashMap, string::String, sync::Arc, vec::Vec};
+use wrt_error::{kinds::ThreadingError, Error, Result};
+use wrt_types::{builtin::BuiltinType, component_value::ComponentValue};
 
 use super::BuiltinHandler;
 
@@ -816,9 +814,9 @@ pub fn create_threading_handlers(
 #[cfg(test)]
 #[cfg(feature = "std")]
 mod tests {
+    use std::{thread::sleep, time::Duration};
+
     use super::*;
-    use std::thread::sleep;
-    use std::time::Duration;
 
     // Helper function for executing a "function" in tests
     fn test_executor(function_id: u32, args: Vec<ComponentValue>) -> Result<Vec<ComponentValue>> {

@@ -5,10 +5,12 @@
 
 #[cfg(feature = "serialization")]
 fn main() -> wrt::error::Result<()> {
-    use wrt::error::Result;
-    use wrt::module::Module;
-    use wrt::serialization::{deserialize_from_module, serialize_to_module};
-    use wrt::stackless::StacklessEngine;
+    use wrt::{
+        error::Result,
+        module::Module,
+        serialization::{deserialize_from_module, serialize_to_module},
+        stackless::StacklessEngine,
+    };
 
     println!("WebAssembly Runtime State Checkpoint Example");
 

@@ -1,15 +1,17 @@
 //! Component Model value handling
 //!
-//! This module provides implementations for Component Model value types, including
-//! serialization/deserialization, conversion, and runtime representation.
-
-use crate::prelude::*;
+//! This module provides implementations for Component Model value types,
+//! including serialization/deserialization, conversion, and runtime
+//! representation.
 
 // Import the various types we need explicitly to avoid confusion
 use wrt_format::component::ValType as FormatValType;
-use wrt_types::component_value::ComponentValue;
-use wrt_types::component_value::ValType as TypesValType;
-use wrt_types::values::Value;
+use wrt_types::{
+    component_value::{ComponentValue, ValType as TypesValType},
+    values::Value,
+};
+
+use crate::prelude::*;
 
 // Use TypesValType for the canonical ValType
 type CanonicalValType = TypesValType;
@@ -1115,7 +1117,8 @@ mod tests {
             let format_type = convert_common_to_format_valtype(&value.get_type());
             let decoded = deserialize_component_value(&encoded, &format_type).unwrap();
 
-            // Only check bools since we only implemented deserialization for a subset of types
+            // Only check bools since we only implemented deserialization for a subset of
+            // types
             if let ComponentValue::Bool(_) = value {
                 assert_eq!(value, decoded);
             }

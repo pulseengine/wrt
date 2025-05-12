@@ -1,6 +1,7 @@
 //! Test `no_std` compatibility for wrt-error
 //!
-//! This file validates that the wrt-error crate works correctly in `no_std` environments.
+//! This file validates that the wrt-error crate works correctly in `no_std`
+//! environments.
 
 // For testing in a no_std environment
 #![cfg_attr(not(feature = "std"), no_std)]
@@ -15,18 +16,15 @@ mod tests {
     // Import necessary types for no_std environment
     #[cfg(all(not(feature = "std"), feature = "alloc"))]
     use alloc::{format, string::ToString};
-
     #[cfg(feature = "std")]
     use std::string::ToString;
-
-    // Import from wrt-error
-    use wrt_error::{codes, Error, ErrorCategory, Result};
 
     // Only import ResultExt when using alloc feature
     #[cfg(feature = "alloc")]
     use wrt_error::context::ResultExt;
-
     use wrt_error::kinds;
+    // Import from wrt-error
+    use wrt_error::{codes, Error, ErrorCategory, Result};
 
     #[test]
     fn test_error_creation() {

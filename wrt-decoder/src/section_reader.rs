@@ -4,16 +4,18 @@
 //! identifying and extracting section data without parsing the entire module.
 
 use wrt_error::Result;
-use wrt_format::binary;
-use wrt_format::section::{
-    CODE_ID, CUSTOM_ID, DATA_COUNT_ID, DATA_ID, ELEMENT_ID, EXPORT_ID, FUNCTION_ID, GLOBAL_ID,
-    IMPORT_ID, MEMORY_ID, START_ID, TABLE_ID, TYPE_ID,
+use wrt_format::{
+    binary,
+    section::{
+        CODE_ID, CUSTOM_ID, DATA_COUNT_ID, DATA_ID, ELEMENT_ID, EXPORT_ID, FUNCTION_ID, GLOBAL_ID,
+        IMPORT_ID, MEMORY_ID, START_ID, TABLE_ID, TYPE_ID,
+    },
 };
+use wrt_types::ToString;
+
 // Deprecated, use From trait implementation instead
 // use wrt_types::error_convert::convert_to_wrt_error;
 use crate::prelude::String;
-use wrt_types::ToString;
-
 use crate::section_error::{self};
 
 /// Represents a section payload in a WebAssembly module
@@ -82,11 +84,7 @@ impl<'a> SectionReader<'a> {
         let mut actual_magic = [0u8; 4];
         actual_magic.copy_from_slice(&binary[0..4]);
         if actual_magic != binary::WASM_MAGIC {
-            return Err(section_error::invalid_magic(
-                0,
-                binary::WASM_MAGIC,
-                actual_magic,
-            ));
+            return Err(section_error::invalid_magic(0, binary::WASM_MAGIC, actual_magic));
         }
 
         // Verify version
@@ -101,10 +99,7 @@ impl<'a> SectionReader<'a> {
         }
 
         // Start after the header
-        Ok(Self {
-            binary,
-            current_offset: 8,
-        })
+        Ok(Self { binary, current_offset: 8 })
     }
 
     /// Reset the reader position to the beginning of sections (after header)
@@ -114,9 +109,10 @@ impl<'a> SectionReader<'a> {
 
     /// Find the next section of the specified type
     ///
-    /// Returns the section offset and size if found, or None if no matching section
-    /// is found or the end of the module is reached. The offset points to the
-    /// beginning of the section content (after the section header).
+    /// Returns the section offset and size if found, or None if no matching
+    /// section is found or the end of the module is reached. The offset
+    /// points to the beginning of the section content (after the section
+    /// header).
     ///
     /// This function starts searching from the current position and continues
     /// until it finds a matching section or reaches the end of the module.
@@ -209,7 +205,8 @@ impl<'a> SectionReader<'a> {
 
     /// Get the next section as a SectionPayload
     ///
-    /// This provides a more structured view of the section data based on its type.
+    /// This provides a more structured view of the section data based on its
+    /// type.
     pub fn next_payload(&mut self) -> Result<Option<SectionPayload<'a>>> {
         match self.next_section()? {
             Some((id, offset, size)) => {
@@ -222,10 +219,7 @@ impl<'a> SectionReader<'a> {
                         // For custom sections, extract the name
                         let (name, bytes_read) = binary::read_string(data, 0)?;
                         let data = &data[bytes_read..];
-                        Ok(Some(SectionPayload::Custom {
-                            name: name.to_string(),
-                            data,
-                        }))
+                        Ok(Some(SectionPayload::Custom { name: name.to_string(), data }))
                     }
                     TYPE_ID => Ok(Some(SectionPayload::Type(data))),
                     IMPORT_ID => Ok(Some(SectionPayload::Import(data))),
@@ -248,9 +242,9 @@ impl<'a> SectionReader<'a> {
 
     /// Find a custom section with the specified name
     ///
-    /// Returns the section content offset and size if found, or None if no matching
-    /// custom section is found. The offset points to the beginning of the section
-    /// content (after the name).
+    /// Returns the section content offset and size if found, or None if no
+    /// matching custom section is found. The offset points to the beginning
+    /// of the section content (after the name).
     ///
     /// This function searches from the beginning of the module.
     pub fn find_custom_section(&mut self, name: &str) -> Result<Option<(usize, usize)>> {
@@ -324,7 +318,8 @@ impl<'a> SectionReader<'a> {
 /// Find an import section in a WebAssembly binary
 ///
 /// Returns the section offset and size if found.
-/// The offset points to the beginning of the section content (after the section header).
+/// The offset points to the beginning of the section content (after the section
+/// header).
 pub fn find_import_section(binary: &[u8]) -> Result<Option<(usize, usize)>> {
     let mut reader = SectionReader::new(binary)?;
     reader.find_section(IMPORT_ID)
@@ -332,8 +327,9 @@ pub fn find_import_section(binary: &[u8]) -> Result<Option<(usize, usize)>> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use wrt_format::section::{CUSTOM_ID, TABLE_ID};
+
+    use super::*;
 
     /// Create a simple test module with a custom section
     fn create_test_module() -> Vec<u8> {
@@ -485,19 +481,13 @@ mod tests {
         println!("Examining all sections in sequence:");
         reader.reset();
         while let Ok(Some((id, offset, size))) = reader.next_section() {
-            println!(
-                "Section ID: 0x{:02x}, offset: {}, size: {}",
-                id, offset, size
-            );
+            println!("Section ID: 0x{:02x}, offset: {}, size: {}", id, offset, size);
             if id == CUSTOM_ID {
                 // Try to read the custom section name
                 let section_data = &module[offset..offset + size];
                 if !section_data.is_empty() {
                     if let Ok((name, name_size)) = binary::read_string(section_data, 0) {
-                        println!(
-                            "  Custom section name: '{}', name size: {}",
-                            name, name_size
-                        );
+                        println!("  Custom section name: '{}', name size: {}", name, name_size);
                         println!(
                             "  Data: {:?}",
                             &section_data[name_size.min(section_data.len())..]

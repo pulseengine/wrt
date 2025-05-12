@@ -1,12 +1,14 @@
 //! Traits for WebAssembly instruction implementation.
 //!
-//! This module provides traits that define the interfaces for pure instruction implementations.
-//! These traits establish a clear boundary between instruction implementations and runtime details.
+//! This module provides traits that define the interfaces for pure instruction
+//! implementations. These traits establish a clear boundary between instruction
+//! implementations and runtime details.
 
 /// Trait for pure instruction execution.
 ///
-/// This trait defines the interface for executing a pure instruction with a given context.
-/// The context type is generic, allowing different execution engines to provide their own context.
+/// This trait defines the interface for executing a pure instruction with a
+/// given context. The context type is generic, allowing different execution
+/// engines to provide their own context.
 pub trait PureInstruction<T, E> {
     /// Executes the instruction with the given context.
     ///
@@ -23,8 +25,9 @@ pub trait PureInstruction<T, E> {
 
 /// Trait for pure memory instructions.
 ///
-/// This trait defines the interface for executing a pure memory instruction with a given memory.
-/// The memory type is generic, allowing different execution engines to provide their own memory.
+/// This trait defines the interface for executing a pure memory instruction
+/// with a given memory. The memory type is generic, allowing different
+/// execution engines to provide their own memory.
 pub trait PureMemoryInstruction<T, E> {
     /// Executes the memory instruction with the given memory.
     ///

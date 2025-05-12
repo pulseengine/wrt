@@ -1,8 +1,8 @@
-use crate::prelude::*;
-use wrt_types::ResourceOperation;
-
 // Re-export ResourceOperation for convenience
 pub use wrt_types::resource::ResourceOperation;
+use wrt_types::ResourceOperation;
+
+use crate::prelude::*;
 
 /// Convert from local ResourceOperation enum to format ResourceOperation
 pub fn to_format_resource_operation(
@@ -64,8 +64,9 @@ pub fn format_to_core_resource_operation(op: &ResourceOperation) -> wrt_types::R
 
 #[cfg(feature = "safe-memory")]
 mod safe_memory {
-    use crate::prelude::*;
     use wrt_types::ResourceOperation as FormatOp;
+
+    use crate::prelude::*;
 
     /// Convert a Core ResourceOperation to a Format ResourceOperation
     pub fn core_to_format_resource_operation(op: &wrt_types::ResourceOperation) -> FormatOp {
@@ -88,9 +89,10 @@ mod safe_memory {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use wrt_format::component::ResourceOperation as FormatOp;
     use wrt_types::resource::{ResourceDrop, ResourceNew, ResourceRep};
+
+    use super::*;
 
     #[test]
     fn test_operation_permissions() {

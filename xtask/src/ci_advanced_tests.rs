@@ -1,13 +1,15 @@
-use crate::Query;
 use anyhow::{Context, Result};
 use dagger_sdk::HostDirectoryOpts;
 use tracing::info;
 
-// TODO: Determine if a nightly toolchain is required or beneficial for Kani/Miri.
-// If so, change this to something like "rustlang/rust:nightly"
+use crate::Query;
+
+// TODO: Determine if a nightly toolchain is required or beneficial for
+// Kani/Miri. If so, change this to something like "rustlang/rust:nightly"
 const RUST_IMAGE: &str = "rust:latest";
-// TODO: Define which LLVM version is compatible/desired for llvm-cov, especially if using a specific Rust toolchain.
-// This might involve installing specific clang/llvm versions in the container.
+// TODO: Define which LLVM version is compatible/desired for llvm-cov,
+// especially if using a specific Rust toolchain. This might involve installing
+// specific clang/llvm versions in the container.
 
 pub async fn run(client: &Query) -> Result<()> {
     info!("Starting CI advanced tests pipeline (Kani, Miri, Coverage)...");
@@ -34,13 +36,15 @@ pub async fn run(client: &Query) -> Result<()> {
         .container()
         .from(RUST_IMAGE)
         .with_exec(vec!["apt-get", "update", "-y"])
-        // TODO: Install Kani prerequisites if any (e.g., CBMC, specific Python versions if not in base image)
-        // Example: .with_exec(vec!["apt-get", "install", "-y", "git", "cmake", "ninja-build", "python3", "pip", "...other Kani deps..."])
-        //          .with_exec(vec!["pip", "install", "kani-queries"]) // If Kani has Python components
-        // TODO: Install llvm-cov and its dependencies (e.g., clang, llvm).
+        // TODO: Install Kani prerequisites if any (e.g., CBMC, specific Python versions if not in
+        // base image) Example: .with_exec(vec!["apt-get", "install", "-y", "git", "cmake",
+        // "ninja-build", "python3", "pip", "...other Kani deps..."])
+        //          .with_exec(vec!["pip", "install", "kani-queries"]) // If Kani has Python
+        // components TODO: Install llvm-cov and its dependencies (e.g., clang, llvm).
         // This might be complex if specific versions are needed.
-        // It's often easier to use a base image that already has these (e.g., a CI image for Rust with code coverage tools).
-        // For now, assuming cargo-llvm-cov can be installed via cargo directly.
+        // It's often easier to use a base image that already has these (e.g., a CI image for Rust
+        // with code coverage tools). For now, assuming cargo-llvm-cov can be installed via
+        // cargo directly.
         .with_exec(vec![
             "cargo",
             "install",
@@ -54,9 +58,10 @@ pub async fn run(client: &Query) -> Result<()> {
 
     // --- Kani ---
     info!("Running Kani proofs...");
-    // TODO: Refine Kani command based on project needs (e.g., specific targets, features, unstable flags)
-    // TODO: Capture and report Kani results properly (e.g., parse JSON output).
-    // TODO: Decide on error handling: should failure stop the whole pipeline or just be reported?
+    // TODO: Refine Kani command based on project needs (e.g., specific targets,
+    // features, unstable flags) TODO: Capture and report Kani results properly
+    // (e.g., parse JSON output). TODO: Decide on error handling: should failure
+    // stop the whole pipeline or just be reported?
     container = container.with_exec(vec![
         "cargo",
         "kani",
@@ -68,7 +73,8 @@ pub async fn run(client: &Query) -> Result<()> {
         // "--json-final-results", // For machine-readable output
         // "--output-format", "terse", // Example option
     ]);
-    // TODO: Process Kani output (e.g., check exit code, parse results file if created)
+    // TODO: Process Kani output (e.g., check exit code, parse results file if
+    // created)
 
     // --- Miri ---
     info!("Running Miri tests...");
@@ -90,8 +96,8 @@ pub async fn run(client: &Query) -> Result<()> {
     // TODO: Define MCDC threshold and implement check if desired.
     // TODO: Handle partial coverage if some crates fail to build/test (complex).
     // TODO: Determine if Kani/Miri can output coverage data compatible for merging.
-    // TODO: Decide on which reports to generate (html, json, lcov for Coveralls/Codecov).
-    // TODO: Store coverage reports as artifacts.
+    // TODO: Decide on which reports to generate (html, json, lcov for
+    // Coveralls/Codecov). TODO: Store coverage reports as artifacts.
 
     // Clean previous coverage runs
     container = container.with_exec(vec!["cargo", "llvm-cov", "clean", "--workspace"]);
@@ -120,7 +126,8 @@ pub async fn run(client: &Query) -> Result<()> {
         "/src/target/llvm-cov/coverage.json",
     ]);
 
-    // Define the directory to be exported before syncing/executing the container fully.
+    // Define the directory to be exported before syncing/executing the container
+    // fully.
     let coverage_artifacts_dir = container.directory("/src/target/llvm-cov");
 
     // Final execution to ensure all commands run.
@@ -135,7 +142,7 @@ pub async fn run(client: &Query) -> Result<()> {
         .context("Failed to export llvm-cov reports")?;
 
     info!("Advanced tests pipeline completed.");
-    // TODO: Summarize results from Kani, Miri, Coverage and return a meaningful Result.
-    // For now, success means the Dagger pipeline executed.
+    // TODO: Summarize results from Kani, Miri, Coverage and return a meaningful
+    // Result. For now, success means the Dagger pipeline executed.
     Ok(())
 }

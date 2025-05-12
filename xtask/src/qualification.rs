@@ -1,10 +1,9 @@
 #![allow(dead_code)]
 
+use std::{error::Error, fs, path::Path};
+
 use anyhow::Result;
 use clap::{Arg, ArgMatches, Command};
-use std::error::Error;
-use std::fs;
-use std::path::Path;
 use xshell::Shell;
 
 pub mod assess;

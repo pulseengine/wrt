@@ -1,15 +1,19 @@
 //! Format-specific type conversion utilities
 //!
-//! This module provides standardized type conversion between format-specific types
-//! in wrt-format and core types in wrt-types. This helps eliminate duplication and
-//! ensure consistency across crates.
+//! This module provides standardized type conversion between format-specific
+//! types in wrt-format and core types in wrt-types. This helps eliminate
+//! duplication and ensure consistency across crates.
 
-use crate::error::{parse_error, wrt_validation_error};
-use crate::format;
-use crate::types::{FormatBlockType, Limits};
 use core::fmt;
+
 use wrt_error::{Error, Result};
 use wrt_types::{BlockType, ValueType};
+
+use crate::{
+    error::{parse_error, wrt_validation_error},
+    format,
+    types::{FormatBlockType, Limits},
+};
 
 /// Convert from FormatBlockType to BlockType
 ///
@@ -92,8 +96,10 @@ pub fn format_limits_to_wrt_limits(
 ///
 /// # Arguments
 /// * `limits` - The wrt_types::Limits to convert
-/// * `shared` - Whether the memory is shared (only applicable for memory limits)
-/// * `memory64` - Whether the memory uses 64-bit addressing (only applicable for memory limits)
+/// * `shared` - Whether the memory is shared (only applicable for memory
+///   limits)
+/// * `memory64` - Whether the memory uses 64-bit addressing (only applicable
+///   for memory limits)
 ///
 /// # Returns
 /// A format-specific Limits
@@ -105,7 +111,8 @@ pub fn wrt_limits_to_format_limits(
     Limits { min: limits.min as u64, max: limits.max.map(|m| m as u64), shared, memory64 }
 }
 
-/// A shorthand function for converting wrt_types::Limits to format Limits with default parameters
+/// A shorthand function for converting wrt_types::Limits to format Limits with
+/// default parameters
 ///
 /// # Arguments
 /// * `limits` - The wrt_types::Limits to convert
@@ -117,7 +124,8 @@ pub fn types_limits_to_format_limits(limits: &wrt_types::types::Limits) -> Limit
 }
 
 /// A shorthand function for converting format Limits to wrt_types::Limits
-/// Alias for format_limits_to_wrt_limits for consistency with types_limits_to_format_limits
+/// Alias for format_limits_to_wrt_limits for consistency with
+/// types_limits_to_format_limits
 ///
 /// # Arguments
 /// * `limits` - The format Limits to convert
@@ -149,7 +157,8 @@ pub fn format_value_type(val_type: ValueType) -> u8 {
     val_type.to_binary()
 }
 
-/// Convert a type to another type, suitable for use in conversion trait implementations
+/// Convert a type to another type, suitable for use in conversion trait
+/// implementations
 pub fn convert<T, U, E, F>(value: T, converter: F) -> Result<U>
 where
     F: FnOnce(T) -> core::result::Result<U, E>,
@@ -204,8 +213,9 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use wrt_types::ValueType;
+
+    use super::*;
 
     #[test]
     fn test_format_block_type_conversion() {

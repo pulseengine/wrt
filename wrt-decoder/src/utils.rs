@@ -3,14 +3,16 @@
 //! This module contains shared functionality used by both the core WebAssembly
 //! module parser and the Component Model parser.
 
-use crate::prelude::String;
 use wrt_error::{codes, Error, ErrorCategory, Result};
 use wrt_format::binary::{is_valid_wasm_header, read_name, WASM_MAGIC, WASM_VERSION};
 
+use crate::prelude::String;
+
 /// Read a WebAssembly name string from binary data
 pub fn read_name_as_string(data: &[u8], offset: usize) -> Result<(String, usize)> {
-    // There's no decode_string in wrt-format, so we use read_name and convert to a String
-    // We could use read_string directly, but keeping this function for backward compatibility
+    // There's no decode_string in wrt-format, so we use read_name and convert to a
+    // String We could use read_string directly, but keeping this function for
+    // backward compatibility
     let (name_bytes, bytes_read) = read_name(data, offset)?;
 
     // Convert the bytes to a string
@@ -109,11 +111,7 @@ pub fn detect_binary_type(data: &[u8]) -> Result<BinaryType> {
                 ))
             }
         }
-        _ => Err(Error::new(
-            ErrorCategory::Parse,
-            codes::PARSE_ERROR,
-            "Invalid binary format",
-        )),
+        _ => Err(Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, "Invalid binary format")),
     }
 }
 

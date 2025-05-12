@@ -2,11 +2,13 @@ use std::{
     // path::{Path, PathBuf}, // Remove unused
     sync::{Arc, Mutex},
 };
+
 use wrt::{Error as WrtError, Module, Result, StacklessEngine, Value};
 
 #[test]
 fn test_v128_load_store() -> Result<()> {
-    // Create a WebAssembly module with SIMD instructions that tests loading and storing a v128 value
+    // Create a WebAssembly module with SIMD instructions that tests loading and
+    // storing a v128 value
     let wat = r#"
     (module
       (memory 1)

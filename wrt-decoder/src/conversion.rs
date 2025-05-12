@@ -1,22 +1,20 @@
 //! Conversion utilities for WASM types
 //!
-//! This module contains functions to convert between format types and runtime types.
+//! This module contains functions to convert between format types and runtime
+//! types.
 
-use wrt_error::errors::codes;
-use wrt_error::{Error, ErrorCategory, Result};
-use wrt_format::{section::CustomSection, Error as WrtFormatError, ValueType as FormatValueType};
-
+use wrt_error::{errors::codes, Error, ErrorCategory, Result};
 // Import RefType directly from wrt-format
 use wrt_format::RefType as FormatRefType;
-
-// Import common types from prelude
-use crate::prelude::*;
-
+use wrt_format::{section::CustomSection, Error as WrtFormatError, ValueType as FormatValueType};
 // Import types from wrt-types
 use wrt_types::{
     types::{FuncType, GlobalType, Limits, MemoryType, RefType, TableType},
     ValueType,
 };
+
+// Import common types from prelude
+use crate::prelude::*;
 
 /// Convert a format binary value type to runtime value type
 ///
@@ -58,11 +56,7 @@ pub fn value_type_to_byte(val_type: &ValueType) -> u8 {
 pub fn format_error_to_wrt_error<E: Debug>(error: E) -> Error {
     let code = codes::PARSE_ERROR; // Default to generic parse error
 
-    Error::new(
-        ErrorCategory::Parse,
-        code,
-        format!("Format error: {error:?}"),
-    )
+    Error::new(ErrorCategory::Parse, code, format!("Format error: {error:?}"))
 }
 
 /// Convert a format error into a wrt error
@@ -124,7 +118,9 @@ pub fn format_value_type_to_value_type(format_type: &FormatValueType) -> ValueTy
         FormatValueType::I64 => ValueType::I64,
         FormatValueType::F32 => ValueType::F32,
         FormatValueType::F64 => ValueType::F64,
-        FormatValueType::V128 => unimplemented!("V128 to ValueType (format) mapping is not yet defined"),
+        FormatValueType::V128 => {
+            unimplemented!("V128 to ValueType (format) mapping is not yet defined")
+        }
         FormatValueType::FuncRef => ValueType::FuncRef,
         FormatValueType::ExternRef => ValueType::ExternRef,
     }
@@ -145,18 +141,12 @@ pub fn value_type_to_format_value_type(value_type: &ValueType) -> FormatValueTyp
 
 /// Convert a sequence of format value types to runtime value types
 pub fn format_value_types_to_value_types(format_types: &[FormatValueType]) -> Vec<ValueType> {
-    format_types
-        .iter()
-        .map(format_value_type_to_value_type)
-        .collect()
+    format_types.iter().map(format_value_type_to_value_type).collect()
 }
 
 /// Convert format limits to runtime limits
 pub fn format_limits_to_types_limits(format_limits: &wrt_format::types::Limits) -> Limits {
-    Limits {
-        min: format_limits.min as u32,
-        max: format_limits.max.map(|m| m as u32),
-    }
+    Limits { min: format_limits.min as u32, max: format_limits.max.map(|m| m as u32) }
 }
 
 /// Convert runtime limits to format limits
@@ -285,9 +275,8 @@ pub fn format_import_desc_to_types_import_desc(
                 mutable: format_global.mutable,
             };
             Ok(wrt_types::types::ImportDesc::Global(types_import_global_type))
-        }
-        // wrt_format::module::ImportDesc::Tag is not yet in wrt_types::types::ImportDesc
-        // Add if/when Tag support is complete in wrt-types
+        } /* wrt_format::module::ImportDesc::Tag is not yet in wrt_types::types::ImportDesc
+           * Add if/when Tag support is complete in wrt-types */
     }
 }
 
@@ -319,21 +308,15 @@ pub fn format_export_to_types_export(
         }
         wrt_format::module::ExportKind::Global => {
             wrt_types::types::ExportDesc::Global(format_export.index)
-        }
-        // wrt_format::module::ExportKind::Tag not yet in wrt_types::types::ExportDesc
+        } // wrt_format::module::ExportKind::Tag not yet in wrt_types::types::ExportDesc
     };
-    Ok(wrt_types::types::Export {
-        name: format_export.name.clone(),
-        desc: types_export_desc,
-    })
+    Ok(wrt_types::types::Export { name: format_export.name.clone(), desc: types_export_desc })
 }
 
 // --- Const Expression Parsing ---
 // This is a simplified version focusing on *.const instructions.
 // It assumes the input `expr_bytes` is the raw init expression (opcodes + end).
-pub(crate) fn parse_and_evaluate_const_expr(
-    expr_bytes: &[u8],
-) -> Result<wrt_types::values::Value> {
+pub(crate) fn parse_and_evaluate_const_expr(expr_bytes: &[u8]) -> Result<wrt_types::values::Value> {
     // Ensure there's at least one byte for instruction and one for END.
     if expr_bytes.len() < 2 {
         return Err(Error::new(
@@ -346,17 +329,21 @@ pub(crate) fn parse_and_evaluate_const_expr(
     // Check for END opcode at the end of the expression
     // Global init expressions are `expr END` where expr is a single instruction.
     // Data/Element offsets are also `expr END`.
-    // The parse_instructions function in instructions.rs already handles the END opcode if present within its input.
-    // So we can pass expr_bytes directly to it.
+    // The parse_instructions function in instructions.rs already handles the END
+    // opcode if present within its input. So we can pass expr_bytes directly to
+    // it.
 
-    // Let's assume expr_bytes is just the sequence of instructions *without* the final END
-    // if the section parser already consumes the END. Or, if parse_instructions expects it.
-    // The spec for init_expr says "expr must be a constant expression".
-    // A constant expression is an instruction sequence that produces a single value of the required type
-    // and consists of a single `i*.const`, `f*.const`, `ref.null`, `ref.func`, or `global.get` instruction.
-    // The `code` section parsing for function bodies already uses parse_instructions which expects an END.
-    // Global init_expr, data offset, element offset are `expr`, and this `expr` is further defined as sequence of instructions terminated by `end`.
-    // So, parse_instructions should be suitable here.
+    // Let's assume expr_bytes is just the sequence of instructions *without* the
+    // final END if the section parser already consumes the END. Or, if
+    // parse_instructions expects it. The spec for init_expr says "expr must be
+    // a constant expression". A constant expression is an instruction sequence
+    // that produces a single value of the required type and consists of a
+    // single `i*.const`, `f*.const`, `ref.null`, `ref.func`, or `global.get`
+    // instruction. The `code` section parsing for function bodies already uses
+    // parse_instructions which expects an END. Global init_expr, data offset,
+    // element offset are `expr`, and this `expr` is further defined as sequence of
+    // instructions terminated by `end`. So, parse_instructions should be
+    // suitable here.
 
     let (instructions, _bytes_read) = crate::instructions::parse_instructions(expr_bytes)?;
 
@@ -369,31 +356,37 @@ pub(crate) fn parse_and_evaluate_const_expr(
     }
 
     if instructions.len() > 1 {
-        // Technically, Wasm allows multiple instructions if they resolve to one value on stack (e.g. drop; i32.const 1)
-        // But for MVP constant expressions, it's usually a single producing instruction.
-        // For simplicity and strictness for now, let's expect one main producer instruction.
+        // Technically, Wasm allows multiple instructions if they resolve to one value
+        // on stack (e.g. drop; i32.const 1) But for MVP constant expressions,
+        // it's usually a single producing instruction. For simplicity and
+        // strictness for now, let's expect one main producer instruction.
         // Or, we'd need a mini-evaluator here.
-        // The spec says "a single X.const instruction, a global.get instruction, or a ref.null instruction".
-        // So, a single instruction is the correct expectation for MVP constant expressions.
+        // The spec says "a single X.const instruction, a global.get instruction, or a
+        // ref.null instruction". So, a single instruction is the correct
+        // expectation for MVP constant expressions.
         return Err(Error::new(
             ErrorCategory::Parse,
             codes::PARSE_ERROR,
-            format!("Constant expression must be a single instruction, found {}", instructions.len()),
+            format!(
+                "Constant expression must be a single instruction, found {}",
+                instructions.len()
+            ),
         ));
     }
 
-    match instructions.first().unwrap() { // Safe due to len checks
+    match instructions.first().unwrap() {
+        // Safe due to len checks
         crate::instructions::Instruction::I32Const(val) => Ok(wrt_types::values::Value::I32(*val)),
         crate::instructions::Instruction::I64Const(val) => Ok(wrt_types::values::Value::I64(*val)),
-        crate::instructions::Instruction::F32Const(val) => Ok(wrt_types::values::Value::F32(*val)), // Assuming Instruction enum stores f32 directly
-        crate::instructions::Instruction::F64Const(val) => Ok(wrt_types::values::Value::F64(*val)), // Assuming Instruction enum stores f64 directly
+        crate::instructions::Instruction::F32Const(val) => Ok(wrt_types::values::Value::F32(*val)), /* Assuming Instruction enum stores f32 directly */
+        crate::instructions::Instruction::F64Const(val) => Ok(wrt_types::values::Value::F64(*val)), /* Assuming Instruction enum stores f64 directly */
         // TODO: Handle ref.null <type> -> Value::RefNull( соответствующий RefType из wrt_types)
         // TODO: Handle ref.func <idx> -> Value::FuncRef(FuncRefValue::Actual(idx)) or similar
         // TODO: Handle global.get <imported_global_idx> (this requires context of imported globals)
         ref instr => Err(Error::new(
-            ErrorCategory::Parse, 
-            codes::UNSUPPORTED_CONST_EXPR_OPERATION, 
-            format!("Unsupported instruction in constant expression: {:?}", instr)
+            ErrorCategory::Parse,
+            codes::UNSUPPORTED_CONST_EXPR_OPERATION,
+            format!("Unsupported instruction in constant expression: {:?}", instr),
         )),
     }
 }
@@ -423,11 +416,12 @@ pub fn format_data_to_types_data_segment(
 pub fn format_element_to_types_element_segment(
     format_element: &wrt_format::module::Element,
 ) -> Result<wrt_types::types::ElementSegment> {
-    // Assuming wrt_format::module::Element always represents an active, funcref element segment
-    // as per its current structure: { table_idx: u32, offset: Vec<u8>, init: Vec<u32> }
+    // Assuming wrt_format::module::Element always represents an active, funcref
+    // element segment as per its current structure: { table_idx: u32, offset:
+    // Vec<u8>, init: Vec<u32> }
 
     let offset_value = parse_and_evaluate_const_expr(&format_element.offset)?;
-    
+
     let types_element_mode = wrt_types::types::ElementMode::Active {
         table_index: format_element.table_idx,
         offset: offset_value,
@@ -436,7 +430,8 @@ pub fn format_element_to_types_element_segment(
     // For MVP, elements are funcrefs. wrt_format::Element implicitly means funcref.
     let types_element_type = wrt_types::types::RefType::Funcref;
 
-    // items are directly from format_element.init (which is Vec<u32> of func indices)
+    // items are directly from format_element.init (which is Vec<u32> of func
+    // indices)
     let types_items: Vec<u32> = format_element.init.clone();
 
     Ok(wrt_types::types::ElementSegment {

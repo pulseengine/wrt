@@ -9,21 +9,19 @@ use std::string::ToString;
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 extern crate alloc;
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::string::ToString;
-
-/// Unified error handling system for WRT
-///
-/// This module provides a comprehensive error handling system that covers all error cases
-/// across the WRT codebase. It includes error types, categories, and helper functions.
-use core::fmt;
-
 // Use alloc if alloc feature is enabled
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 use alloc::boxed::Box;
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 use alloc::string::String;
-
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+use alloc::string::ToString;
+/// Unified error handling system for WRT
+///
+/// This module provides a comprehensive error handling system that covers all
+/// error cases across the WRT codebase. It includes error types, categories,
+/// and helper functions.
+use core::fmt;
 // Use std if std feature is enabled
 #[cfg(feature = "std")]
 use std::boxed::Box;
@@ -33,14 +31,14 @@ use std::string::String;
 // For no_std without alloc, use the String struct from kinds
 #[cfg(not(any(feature = "std", feature = "alloc")))]
 use crate::kinds::String;
-
-use crate::kinds;
-use crate::prelude::{str, Debug, Eq, PartialEq};
-use crate::{FromError, ToErrorCategory};
-
 // Only import 'format' if std or alloc is enabled
 #[cfg(any(feature = "std", feature = "alloc"))]
 use crate::prelude::format;
+use crate::{
+    kinds,
+    prelude::{str, Debug, Eq, PartialEq},
+    FromError, ToErrorCategory,
+};
 
 /// Error categories for WRT operations
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -380,8 +378,8 @@ impl Error {
 
     /// Creates a new error with a specific message.
     ///
-    /// This is typically used when the error category and code are contextually known
-    /// or less important than the specific message.
+    /// This is typically used when the error category and code are contextually
+    /// known or less important than the specific message.
     /// Defaults to `ErrorCategory::Unknown` and `codes::UNKNOWN`.
     // Create a new error with just a message - for legacy error patterns
     #[cfg(feature = "alloc")]
@@ -391,8 +389,8 @@ impl Error {
 
     /// Creates a new error with a specific message (no_std, no-alloc version).
     ///
-    /// This is typically used when the error category and code are contextually known
-    /// or less important than the specific message.
+    /// This is typically used when the error category and code are contextually
+    /// known or less important than the specific message.
     /// Defaults to `ErrorCategory::Unknown` and `codes::UNKNOWN`.
     // Create a new error with just a message - for no_std
     #[cfg(not(feature = "alloc"))]
@@ -432,7 +430,8 @@ impl Error {
         Self::new(ErrorCategory::Resource, code, message)
     }
 
-    /// Creates a new resource error with a specific code and message (no alloc).
+    /// Creates a new resource error with a specific code and message (no
+    /// alloc).
     #[cfg(not(feature = "alloc"))]
     pub fn resource_error_with_code(code: u16, _message: impl core::fmt::Display) -> Self {
         Self::new(ErrorCategory::Resource, code, "resource error")
@@ -447,7 +446,8 @@ impl Error {
         Self::new(ErrorCategory::Validation, code, message)
     }
 
-    /// Creates a new validation error with a specific code and message (no alloc).
+    /// Creates a new validation error with a specific code and message (no
+    /// alloc).
     #[cfg(not(feature = "alloc"))]
     pub fn validation_error_with_code(code: u16, _message: impl core::fmt::Display) -> Self {
         Self::new(ErrorCategory::Validation, code, "validation error")
@@ -522,7 +522,8 @@ impl Error {
         Self::new(ErrorCategory::Component, code, message)
     }
 
-    /// Creates a new component error with a specific code and message (no alloc).
+    /// Creates a new component error with a specific code and message (no
+    /// alloc).
     #[cfg(not(feature = "alloc"))]
     pub fn component_error_with_code(code: u16, _message: impl core::fmt::Display) -> Self {
         Self::new(ErrorCategory::Component, code, "component error")

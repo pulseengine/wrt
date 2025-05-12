@@ -1,23 +1,24 @@
 //! Tests for operation tracking functionality in `wrt_types`.
-///
 /// This module contains tests for the operation tracking features,
 /// including fuel consumption calculation and global operation counter.
 #[cfg(test)]
 mod tests {
-    use wrt_types::operations::{
-        global_fuel_consumed, global_operation_summary, record_global_operation,
-        reset_global_operations, OperationCounter, OperationType,
+    use wrt_types::{
+        operations::{
+            global_fuel_consumed, global_operation_summary, record_global_operation,
+            reset_global_operations, OperationCounter, OperationType,
+        },
+        verification::VerificationLevel,
     };
-    use wrt_types::verification::VerificationLevel;
 
     #[test]
     fn test_operation_counter() {
         let counter = OperationCounter::new();
 
         // Record some operations
-        counter.record_operation(OperationType::MemoryRead, VerificationLevel::Standard);
-        counter.record_operation(OperationType::MemoryWrite, VerificationLevel::Standard);
-        counter.record_operation(OperationType::CollectionPush, VerificationLevel::Standard);
+        counter.record_operation(OperationType::MemoryRead, VerificationLevel::Full);
+        counter.record_operation(OperationType::MemoryWrite, VerificationLevel::Full);
+        counter.record_operation(OperationType::CollectionPush, VerificationLevel::Full);
 
         // Get the summary
         let summary = counter.get_summary();
@@ -28,9 +29,17 @@ mod tests {
         assert_eq!(summary.collection_pushes, 1);
 
         // Fuel consumed should be sum of operations with verification multiplier
-        let expected_fuel = (OperationType::MemoryRead.fuel_cost() as f64 * 1.5).round() as u64
-            + (OperationType::MemoryWrite.fuel_cost() as f64 * 1.5).round() as u64
-            + (OperationType::CollectionPush.fuel_cost() as f64 * 1.5).round() as u64;
+        let vl_full = VerificationLevel::Full;
+        let expected_fuel =
+            (OperationType::fuel_cost_for_operation(OperationType::MemoryRead, vl_full).unwrap()
+                as f64)
+                .round() as u64
+                + (OperationType::fuel_cost_for_operation(OperationType::MemoryWrite, vl_full)
+                    .unwrap() as f64)
+                    .round() as u64
+                + (OperationType::fuel_cost_for_operation(OperationType::CollectionPush, vl_full)
+                    .unwrap() as f64)
+                    .round() as u64;
 
         assert_eq!(summary.fuel_consumed, expected_fuel);
 
@@ -44,11 +53,14 @@ mod tests {
     #[test]
     fn test_verification_level_impact() {
         let counter = OperationCounter::new();
+        let vl_off = VerificationLevel::Off;
+        let vl_sampling = VerificationLevel::default(); // Sampling
+        let vl_full = VerificationLevel::Full;
 
         // Same operation with different verification levels
-        counter.record_operation(OperationType::MemoryRead, VerificationLevel::None);
-        counter.record_operation(OperationType::MemoryRead, VerificationLevel::Standard);
-        counter.record_operation(OperationType::MemoryRead, VerificationLevel::Full);
+        counter.record_operation(OperationType::MemoryRead, vl_off); // Was None
+        counter.record_operation(OperationType::MemoryRead, vl_sampling); // Was Standard
+        counter.record_operation(OperationType::MemoryRead, vl_full);
 
         // The fuel cost should reflect the different verification levels
         let summary = counter.get_summary();
@@ -56,10 +68,17 @@ mod tests {
         // Memory reads should be 3
         assert_eq!(summary.memory_reads, 3);
 
-        // Expected fuel: 1*1.0 + 1*1.5 + 1*2.0 = 4.5 -> 5 (rounded)
-        let expected_fuel = (OperationType::MemoryRead.fuel_cost() as f64 * 1.0).round() as u64
-            + (OperationType::MemoryRead.fuel_cost() as f64 * 1.5).round() as u64
-            + (OperationType::MemoryRead.fuel_cost() as f64 * 2.0).round() as u64;
+        // Expected fuel for Off, Sampling, Full
+        let expected_fuel =
+            (OperationType::fuel_cost_for_operation(OperationType::MemoryRead, vl_off).unwrap()
+                as f64)
+                .round() as u64
+                + (OperationType::fuel_cost_for_operation(OperationType::MemoryRead, vl_sampling)
+                    .unwrap() as f64)
+                    .round() as u64
+                + (OperationType::fuel_cost_for_operation(OperationType::MemoryRead, vl_full)
+                    .unwrap() as f64)
+                    .round() as u64;
 
         assert_eq!(summary.fuel_consumed, expected_fuel);
     }
@@ -68,10 +87,11 @@ mod tests {
     fn test_global_counter() {
         // Reset global counter
         reset_global_operations();
+        let vl_full = VerificationLevel::Full;
 
         // Record some operations
-        record_global_operation(OperationType::FunctionCall, VerificationLevel::Standard);
-        record_global_operation(OperationType::CollectionValidate, VerificationLevel::Standard);
+        record_global_operation(OperationType::FunctionCall, vl_full); // Was Standard
+        record_global_operation(OperationType::CollectionValidate, vl_full); // Was Standard
 
         // Get global summary
         let summary = global_operation_summary();
@@ -92,6 +112,7 @@ mod tests {
     #[test]
     fn test_operation_types() {
         // Test that all operation types have meaningful fuel costs
+        let vl_full = VerificationLevel::Full;
         for op_type in [
             OperationType::MemoryRead,
             OperationType::MemoryWrite,
@@ -110,7 +131,7 @@ mod tests {
             OperationType::Other,
         ] {
             // Fuel cost should be positive
-            assert!(op_type.fuel_cost() > 0);
+            assert!(OperationType::fuel_cost_for_operation(op_type, vl_full).unwrap() > 0);
 
             // Importance should be within reasonable range
             assert!(op_type.importance() > 0);

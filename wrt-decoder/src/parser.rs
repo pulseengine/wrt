@@ -1,32 +1,33 @@
 //! Streaming parser for WebAssembly modules and components
 //!
-//! This module provides a streaming parser interface for WebAssembly modules and components,
-//! allowing for efficient incremental processing without requiring the entire binary
-//! to be parsed at once.
+//! This module provides a streaming parser interface for WebAssembly modules
+//! and components, allowing for efficient incremental processing without
+//! requiring the entire binary to be parsed at once.
 
-use crate::module::Module;
-use crate::prelude::*;
-use crate::section_error;
-use crate::utils::{self, BinaryType};
 use wrt_error::{codes, Error, ErrorCategory, Result};
 use wrt_format::section::CustomSection;
 use wrt_types::safe_memory::SafeSlice;
 
-// Comment out conflicting imports
-/*
-use crate::module::{
-    parse_type_section,
-    parse_import_section,
-    parse_function_section,
-    parse_table_section,
-    parse_memory_section,
-    parse_global_section,
-    parse_export_section,
-    parse_element_section,
-    parse_code_section,
-    parse_data_section
+use crate::{
+    module::Module,
+    prelude::*,
+    section_error,
+    utils::{self, BinaryType},
 };
-*/
+
+// Comment out conflicting imports
+// use crate::module::{
+// parse_type_section,
+// parse_import_section,
+// parse_function_section,
+// parse_table_section,
+// parse_memory_section,
+// parse_global_section,
+// parse_export_section,
+// parse_element_section,
+// parse_code_section,
+// parse_data_section
+// };
 
 // Section ID constants
 pub const CUSTOM_ID: u8 = 0;
@@ -144,7 +145,8 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Convenient constructor that takes a slice directly (for backward compatibility)
+    /// Convenient constructor that takes a slice directly (for backward
+    /// compatibility)
     #[deprecated(since = "0.2.0", note = "Use Parser::new(Some(binary), false) instead")]
     pub fn with_binary(binary: &'a [u8]) -> Self {
         Self::new(Some(binary), false)
@@ -285,12 +287,12 @@ impl<'a> Parser<'a> {
             0x00 => {
                 // Custom section - parse and return
                 let mut module = Module::new();
-                // Updated to use module methods directly for now, as decoder_core::parse is being reorganized
+                // Updated to use module methods directly for now, as decoder_core::parse is
+                // being reorganized
                 let (name, bytes_read) = crate::utils::read_name_as_string(data, 0)?;
-                module.custom_sections.push(CustomSection {
-                    name,
-                    data: data[bytes_read..].to_vec(),
-                });
+                module
+                    .custom_sections
+                    .push(CustomSection { name, data: data[bytes_read..].to_vec() });
 
                 // Extract the name and data from the parsed section
                 if let Some(custom_section) = module.custom_sections.first() {
@@ -389,10 +391,7 @@ impl<'a> Parser<'a> {
             _ => {
                 // For all other component sections, package them as ComponentSection
                 // The component parser will handle them later
-                Ok(Payload::ComponentSection {
-                    data: SafeSlice::new(data),
-                    size: section_size,
-                })
+                Ok(Payload::ComponentSection { data: SafeSlice::new(data), size: section_size })
             }
         }
     }
@@ -421,11 +420,7 @@ impl<'a> Iterator for Parser<'a> {
         // Ensure we have at least 1 byte left (section ID)
         if self.current_offset + 1 > self.binary.as_ref().map_or(0, |v| v.len()) {
             self.finished = true;
-            return Some(Err(section_error::unexpected_end(
-                self.current_offset,
-                1,
-                0,
-            )));
+            return Some(Err(section_error::unexpected_end(self.current_offset, 1, 0)));
         }
 
         // Read the section ID
@@ -435,11 +430,7 @@ impl<'a> Iterator for Parser<'a> {
         // Read section size
         if self.current_offset >= self.binary.as_ref().map_or(0, |v| v.len()) {
             self.finished = true;
-            return Some(Err(section_error::unexpected_end(
-                self.current_offset,
-                1,
-                0,
-            )));
+            return Some(Err(section_error::unexpected_end(self.current_offset, 1, 0)));
         }
 
         // Use read_leb128_u32 for the section size

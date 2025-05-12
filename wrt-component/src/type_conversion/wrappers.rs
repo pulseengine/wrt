@@ -8,7 +8,8 @@
 //!
 //! Rust's orphan rules prevent implementing traits for types from a different
 //! crate unless the trait is defined in the current crate. This module defines
-//! local wrapper types around external types to enable safe trait implementations.
+//! local wrapper types around external types to enable safe trait
+//! implementations.
 //!
 //! # Examples
 //!
@@ -31,14 +32,13 @@
 //! let inner_type = wrapper.into_inner();
 //! ```
 
-use crate::prelude::*;
-
 // Additional imports
 use wrt_format::component::{ComponentTypeDefinition, ExternType as FormatExternType};
 
 use super::bidirectional::{
     format_to_runtime_extern_type, runtime_to_format_extern_type, IntoFormatType, IntoRuntimeType,
 };
+use crate::prelude::*;
 
 /// Wrapper around wrt_types::component::ComponentType
 #[derive(Debug, Clone)]

@@ -1,6 +1,8 @@
 use wrt_component::parser;
-use wrt_decoder::types::{Import, ImportDesc};
-use wrt_decoder::{Error, Parser, Payload, SectionReader};
+use wrt_decoder::{
+    types::{Import, ImportDesc},
+    Error, Parser, Payload, SectionReader,
+};
 
 /// Helper to create a WebAssembly module header
 fn create_wasm_header() -> Vec<u8> {
@@ -181,7 +183,8 @@ fn test_parser_basic_module() {
         .collect();
 
     // Check section order
-    assert_eq!(section_ids, vec![1, 2, 3, 7, 10]); // Type, Import, Function, Export, Code
+    assert_eq!(section_ids, vec![1, 2, 3, 7, 10]); // Type, Import, Function,
+                                                   // Export, Code
 }
 
 #[test]

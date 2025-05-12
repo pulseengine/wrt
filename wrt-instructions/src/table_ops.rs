@@ -1,11 +1,12 @@
 //! Table operations for WebAssembly instructions.
 //!
-//! This module provides pure implementations for WebAssembly table access instructions,
-//! including get, set, grow, and size operations.
+//! This module provides pure implementations for WebAssembly table access
+//! instructions, including get, set, grow, and size operations.
 
-use crate::prelude::*;
 use wrt_error::{codes, ErrorCategory};
 use wrt_types::values::{ExternRef, FuncRef};
+
+use crate::prelude::*;
 
 /// Represents a reference value in WebAssembly
 #[derive(Debug, Clone, PartialEq)]
@@ -301,17 +302,15 @@ impl<T: TableContext> PureInstruction<T, Error> for TableOp {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
+    #[cfg(all(not(feature = "std"), feature = "alloc"))]
+    use alloc::vec;
+    #[cfg(all(not(feature = "std"), feature = "alloc"))]
+    use alloc::vec::Vec;
     // Import Vec and vec! based on feature flags
     #[cfg(feature = "std")]
     use std::vec::Vec;
 
-    #[cfg(all(not(feature = "std"), feature = "alloc"))]
-    use alloc::vec::Vec;
-
-    #[cfg(all(not(feature = "std"), feature = "alloc"))]
-    use alloc::vec;
+    use super::*;
 
     // Mock table context for testing
     struct MockTableContext {

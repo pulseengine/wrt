@@ -1,6 +1,7 @@
 //! Tests for memory safety integration
 
 use std::sync::Arc;
+
 use wrt::{
     memory_adapter::{DefaultMemoryAdapter, MemoryAdapter, SafeMemoryAdapter},
     stackless::StacklessEngine,

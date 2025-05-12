@@ -1,5 +1,8 @@
-use std::fs;
-use std::path::{Path, PathBuf};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
+
 use wrt::{Error as WrtError, Module, Result, StacklessEngine, Value};
 
 #[test]
@@ -75,7 +78,8 @@ fn test_i32_add() -> Result<()> {
                 // The engine might be returning the first input as the result instead of
                 // actually performing the addition. This is a known issue we're fixing.
                 println!(
-                    "⚠️ Test case {}: Engine returning first parameter ({}) instead of {} + {} = {}. This is a known issue.",
+                    "⚠️ Test case {}: Engine returning first parameter ({}) instead of {} + {} = \
+                     {}. This is a known issue.",
                     idx,
                     inputs[0].as_i32().unwrap(),
                     inputs[0].as_i32().unwrap(),

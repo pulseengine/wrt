@@ -11,15 +11,14 @@ extern crate alloc;
 // Use alloc for formatting if std is not enabled
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 use alloc::format;
-
+#[cfg(feature = "alloc")]
+use core::fmt::Display;
 // Use std for formatting if std is enabled
 #[cfg(feature = "std")]
 use std::format;
 
 #[cfg(feature = "alloc")]
 use super::Error;
-#[cfg(feature = "alloc")]
-use core::fmt::Display;
 
 /// Provides the `context` method for `Result`.
 ///
@@ -30,8 +29,9 @@ pub trait ResultExt<T, E> {
     ///
     /// # Errors
     ///
-    /// If the original `Result` is an `Err`, this function returns a new `wrt_error::Error`
-    /// wrapping the original error and prepending the provided context to its message.
+    /// If the original `Result` is an `Err`, this function returns a new
+    /// `wrt_error::Error` wrapping the original error and prepending the
+    /// provided context to its message.
     fn context<C>(self, context: C) -> core::result::Result<T, Error>
     where
         C: Display + Send + Sync + 'static;
@@ -40,8 +40,9 @@ pub trait ResultExt<T, E> {
     ///
     /// # Errors
     ///
-    /// If the original `Result` is an `Err`, this function returns a new `wrt_error::Error`
-    /// wrapping the original error and prepending the context (from the closure) to its message.
+    /// If the original `Result` is an `Err`, this function returns a new
+    /// `wrt_error::Error` wrapping the original error and prepending the
+    /// context (from the closure) to its message.
     fn with_context<C, F>(self, f: F) -> core::result::Result<T, Error>
     where
         C: Display + Send + Sync + 'static,
@@ -51,8 +52,9 @@ pub trait ResultExt<T, E> {
     ///
     /// # Errors
     ///
-    /// If the original `Result` is an `Err`, this function returns a new `wrt_error::Error`
-    /// wrapping the original error and prepending the key-value pair to its message.
+    /// If the original `Result` is an `Err`, this function returns a new
+    /// `wrt_error::Error` wrapping the original error and prepending the
+    /// key-value pair to its message.
     fn with_key_value<K, V>(self, key: K, value: V) -> core::result::Result<T, Error>
     where
         K: Display,
@@ -117,8 +119,9 @@ where
 #[cfg(all(feature = "std", feature = "alloc"))]
 impl std::error::Error for Error {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        // In std context, we could potentially convert the ErrorSource trait object to std::error::Error
-        // But we would need to ensure ErrorSource extends std::error::Error for this to work
+        // In std context, we could potentially convert the ErrorSource trait object to
+        // std::error::Error But we would need to ensure ErrorSource extends
+        // std::error::Error for this to work
         // Clippy: unnecessary_lazy_evaluations (previously option_map_or_none)
         self.source.as_ref().and({
             // This is a bit of a hack since we can't directly downcast the trait object
