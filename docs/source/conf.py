@@ -3,6 +3,8 @@ import sys
 import platform
 import json
 import subprocess
+import pathlib
+import re
 sys.path.insert(0, os.path.abspath('../..'))
 
 project = 'WRT'
@@ -23,7 +25,6 @@ def get_versions():
         result = subprocess.run(['git', 'tag'], stdout=subprocess.PIPE, universal_newlines=True)
         if result.returncode == 0:
             # Only include semantic version tags (x.y.z)
-            import re
             tags = result.stdout.strip().split('\n')
             for tag in tags:
                 if re.match(r'^\d+\.\d+\.\d+$', tag):
@@ -76,13 +77,17 @@ def setup(app):
     # Add our custom CSS
     app.add_css_file('css/custom.css')
     
+    # Register the dynamic function for extracting requirements
+    from sphinx_needs.api.configuration import add_dynamic_function
+    add_dynamic_function(app, extract_reqs)
+    
     return {'version': '0.1', 'parallel_read_safe': True}
 
 extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.viewcode',
     'sphinx.ext.napoleon',
-    'sphinx_needs',  # Temporarily disabled to focus on diagrams
+    'sphinx_needs',
     'myst_parser',
     'sphinxcontrib.plantuml',
     "sphinxcontrib_rust",
@@ -151,6 +156,7 @@ needs_types = [
     dict(directive="qual", title="Qualification", prefix="QUAL_", color="#9370DB", style="node"),
     dict(directive="constraint", title="Constraint", prefix="CNST_", color="#4682B4", style="node"),
     dict(directive="panic", title="Panic", prefix="WRTQ_", color="#E74C3C", style="node"),
+    dict(directive="src",  title="Source file",  prefix="SRC_", color="#C6C6FF", style="node"),
 ]
 
 # Add ID regex pattern for sphinx-needs
@@ -165,7 +171,9 @@ needs_extra_options = [
     'safety_impact',
     'item_status',
     'handling_strategy',
-    'last_updated'
+    'last_updated',
+    'file',
+    'implements',
 ]
 
 # Allow all sphinx-needs options for all directives
@@ -199,42 +207,109 @@ needs_id_length = 7
 needs_title_optional = True
 needs_file_pattern = '**/*.rst'
 
-# Additional debug settings for sphinx-needs
-needs_debug_processing = True
-needs_debug_event_handler = True
+# New extra links configuration
+needs_extra_links = [
+    dict(
+        option   = "realizes",
+        incoming = "is realized by",
+        outgoing = "realizes",
+        style    = "solid,#006A6A",
+    ),
+]
 
+# Regular expression for finding requirement IDs
+REQ_RE = re.compile(r"SW-REQ-ID\\s*:\\s*(REQ_\\w+)", re.I)
+
+# Initialize source_suffix before attempting to modify it
 source_suffix = {
-    ".rst": "restructuredtext",
-    ".md": "markdown",
-    ".txt": "markdown", # Optional
+    '.rst': 'restructuredtext',
+    '.md': 'markdown',
+    # Add .txt if you use it for markdown, or remove if not needed
+    # '.txt': 'markdown', 
 }
 
-# See docs/compatibility for details on these extensions.
-myst_enable_extensions = {
-    "attrs_block",
-    "colon_fence",
-    "html_admonition",
-    "replacements",
-    "smartquotes",
-    "strikethrough",
-    "tasklist",
+# Ensure myst_parser is configured for .md files (it should be by default if in extensions)
+# but explicitly adding/checking source_suffix is good practice.
+if isinstance(source_suffix, dict):
+    if '.md' not in source_suffix:
+        source_suffix['.md'] = 'markdown'
+elif isinstance(source_suffix, list): # if it's a list of extensions
+    if '.md' not in source_suffix:
+        source_suffix.append('.md')
+else: # if it's a single string or not set as expected
+    source_suffix = {
+        '.rst': 'restructuredtext',
+        '.md': 'markdown',
+    }
+
+# Dynamic function to extract requirement IDs from a file
+def extract_reqs(app, need, needs, *args, **kwargs):
+    """
+    Return all REQ_xxx IDs that occur in the file given via :file:.
+    Called as a *dynamic function* during the build.
+    """
+    relative_file_path_from_doc_source = need.get("file")
+    if not relative_file_path_from_doc_source:
+        return ""
+
+    # Construct the absolute path to the source file.
+    # app.confdir is the directory of conf.py (e.g., /path/to/workspace/docs/source)
+    # relative_file_path_from_doc_source is like '../../wrt/src/some_file.rs'
+    # So, Path(app.confdir) / relative_file_path_from_doc_source gives the absolute path.
+    absolute_src_file_path = (pathlib.Path(app.confdir) / relative_file_path_from_doc_source).resolve()
+    
+    try:
+        text = absolute_src_file_path.read_text(errors="ignore")
+        ids  = REQ_RE.findall(text)
+        return ";".join(sorted(set(ids)))  # needs wants ';' as separator
+    except FileNotFoundError:
+        print(f"WARNING: [extract_reqs] File not found: {absolute_src_file_path} (original path in need: {relative_file_path_from_doc_source})")
+        return ""
+    except Exception as e:
+        print(f"ERROR: [extract_reqs] Could not read file {absolute_src_file_path}: {e}")
+        return ""
+
+# Configuration to make specific strings in RST linkable
+needs_string_links = {
+    # Link REQ_XXX to its definition
+    "req_inline": {
+        "regex": r"(?P<value>REQ_\w+)",
+        "link_url": "#{{value}}",
+        "link_name": "{{value}}",
+        "options": [],
+    },
+    # Link file paths in :file: option to GitHub
+    "source_file_link": {
+        "regex": r"^(?P<value>(?:\.\.\/)*[a-zA-Z0-9_\-\/]+\.rs)$",
+        "link_url": "https://github.com/avrabe/wrt2/blob/main/{{value.replace('../../', '')}}",
+        "link_name": "{{value}}",
+        "options": ["file"],
+    }
 }
+
 # Rust documentation configuration
 rust_crates = {
-    "wrt-error": os.path.abspath("../../wrt-error"),
-    "wrt": os.path.abspath("../../wrt"),
-    "wrt-sync": os.path.abspath("../../wrt-sync"),
-    "wrt-format": os.path.abspath("../../wrt-format"),
-    "wrt-decoder": os.path.abspath("../../wrt-decoder"),
-    "wrt-common": os.path.abspath("../../wrt-common"),
-    "wrt-component": os.path.abspath("../../wrt-component"),
-    "wrt-host": os.path.abspath("../../wrt-host"),
-    "wrt-instructions": os.path.abspath("../../wrt-instructions"),
-    "wrt-intercept": os.path.abspath("../../wrt-intercept"),
-    "wrt-logging": os.path.abspath("../../wrt-logging"),
-    "wrt-runtime": os.path.abspath("../../wrt-runtime"),
-    "wrt-types": os.path.abspath("../../wrt-types"),
-    "wrtd": os.path.abspath("../../wrtd"),
+    "wrt-error": "/wrt/wrt-error",
+    # "wrt": "/wrt/wrt",
+    # "wrt-component": "/wrt/wrt-component",
+    # "wrt-decoder": "/wrt/wrt-decoder",
+    # "wrt-format": "/wrt/wrt-format",
+    # "wrt-host": "/wrt/wrt-host",
+    # "wrt-instructions": "/wrt/wrt-instructions",
+    # "wrt-intercept": "/wrt/wrt-intercept",
+    # "wrt-logging": "/wrt/wrt-logging",
+    # "wrt-runtime": "/wrt/wrt-runtime",
+    # "wrt-sync": "/wrt/wrt-sync",
+    # "wrt-types": "/wrt/wrt-types",
+    # Add other crates here if needed, e.g.:
+    # "wrt-test-registry": "/wrt/wrt-test-registry",
+    # "wrtd": "/wrt/wrtd",
 }
-rust_doc_dir = "docs/source/"
+
+# Directory where sphinx-rustdocgen will place generated .md files.
+# This path is relative to conf.py (docs/source/)
+rust_doc_dir = "_generated_rust_docs" 
+
+# Assuming Rust doc comments are written in Markdown.
+# If they are in reStructuredText, this can be set to "rst" or omitted (default).
 rust_rustdoc_fmt = "md"
