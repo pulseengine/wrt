@@ -28,6 +28,10 @@ extern crate std;
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 extern crate alloc;
 
+// Conditionally import log if std feature is enabled
+#[cfg(feature = "std")]
+extern crate log;
+
 // Prelude module for consistent imports across std and no_std environments
 pub mod prelude;
 
@@ -70,8 +74,6 @@ pub mod values;
 /// Verification and integrity checking
 pub mod verification;
 
-pub mod math_ops;
-
 // Re-export the most important types
 pub use bounded::{BoundedStack, BoundedVec, CapacityError};
 pub use builtin::BuiltinType;
@@ -85,13 +87,17 @@ pub use component_value_store::ComponentValueStore;
 pub use conversion::{ref_type_to_val_type, val_type_to_ref_type};
 pub use operations::{
     global_fuel_consumed, global_operation_summary, record_global_operation,
-    reset_global_operations, Summary as OperationSummary, Tracking as OperationTracking, Type as OperationType,
+    reset_global_operations, Summary as OperationSummary, Tracking as OperationTracking,
+    Type as OperationType,
 };
 #[cfg(not(feature = "std"))]
 pub use safe_memory::NoStdProvider;
 #[cfg(feature = "std")]
 pub use safe_memory::StdProvider;
-pub use safe_memory::{Handler as SafeMemoryHandler, Provider as MemoryProvider, Slice as SafeSlice, SliceMut as SafeSliceMut, Stats as MemoryStats};
+pub use safe_memory::{
+    Handler as SafeMemoryHandler, Provider as MemoryProvider, Slice as SafeSlice,
+    SliceMut as SafeSliceMut, Stats as MemoryStats,
+};
 pub use traits::{FromFormat, ToFormat};
 pub use types::{BlockType, FuncType, RefType, ValueType};
 pub use validation::{BoundedCapacity, Checksummed, Validatable};
@@ -113,8 +119,6 @@ pub const WASM_VERSION: u32 = 2;
 
 #[cfg(feature = "component-model-values")]
 pub use component_value::ValType;
-// Re-export key types
-pub use values::{FloatBits32, FloatBits64};
 
 #[cfg(test)]
 mod tests {

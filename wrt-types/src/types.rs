@@ -1446,13 +1446,14 @@ pub struct Module {
 #[cfg(test)]
 #[allow(clippy::unwrap_used)]
 mod tests {
-    use super::*;
-    use proptest::prelude::*;
-
     #[cfg(all(feature = "alloc", not(feature = "std")))]
     use alloc::{boxed::Box, vec};
     #[cfg(feature = "std")]
     use std::boxed::Box;
+
+    use proptest::prelude::*;
+
+    use super::*;
 
     impl Arbitrary for ValueType {
         type Parameters = ();

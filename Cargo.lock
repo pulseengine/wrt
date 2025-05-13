@@ -2611,6 +2611,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde_bytes"
+version = "0.11.17"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8437fd221bde2d4ca316d61b90e337e9e702b3820b87d63caa9ba6c02bd06d96"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "serde_derive"
 version = "1.0.219"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4419,6 +4428,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "wrt-math"
+version = "0.2.0"
+dependencies = [
+ "log",
+ "rustc-std-workspace-alloc",
+ "wrt-error",
+]
+
+[[package]]
+name = "wrt-platform"
+version = "0.2.0"
+dependencies = [
+ "wrt-error",
+]
+
+[[package]]
 name = "wrt-runtime"
 version = "0.2.0"
 dependencies = [
@@ -4473,7 +4498,10 @@ dependencies = [
  "proptest",
  "proptest-derive",
  "rustc-std-workspace-alloc",
+ "serde",
+ "serde_bytes",
  "wrt-error",
+ "wrt-math",
  "wrt-sync",
 ]
 

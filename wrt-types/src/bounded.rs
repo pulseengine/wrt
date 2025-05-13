@@ -34,8 +34,6 @@ use std::{
     // vec::Vec, // Removed
 };
 
-use crate::MemoryProvider; // Added import for the MemoryProvider trait alias
-
 // Use the HashMap that's re-exported in lib.rs - works for both std and no_std
 #[allow(unused_imports)]
 use crate::operations;
@@ -47,9 +45,11 @@ use crate::prelude::ToString;
 // Removing as per unused_import warning
 #[cfg(not(feature = "std"))]
 use crate::safe_memory::NoStdProvider;
-use crate::safe_memory::{SafeMemoryHandler, SafeSlice}; // Removed MemoryProvider, Stats as MemoryStats
-use crate::traits::{FromBytes, ToBytes, SerializationError}; // Added SerializationError
+use crate::safe_memory::{SafeMemoryHandler, SafeSlice}; /* Removed MemoryProvider, Stats as
+                                                          * MemoryStats */
+use crate::traits::{FromBytes, SerializationError, ToBytes}; // Added SerializationError
 use crate::validation::{importance, BoundedCapacity, Checksummed}; // Removed Validatable
+use crate::MemoryProvider; /* Added import for the MemoryProvider trait alias */
 use crate::{
     operations::{record_global_operation, Type as OperationType},
     prelude::{format, Debug, Eq, PartialEq, String},

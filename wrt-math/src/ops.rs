@@ -1,9 +1,9 @@
-// WRT - wrt-types
+// WRT - wrt-math
 // Module: WebAssembly Math Operations
 // SW-REQ-ID: N/A (Will be defined by safety analysis for math functions if
 // critical)
 //
-// Copyright (c) 2024 Ralf Anton Beier
+// Copyright (c) 2024 Your Name/Organization // TODO: Update with actual author
 // Licensed under the MIT license.
 // SPDX-License-Identifier: MIT
 
@@ -13,12 +13,20 @@
 //! instructions. It operates on primitive Rust types and `FloatBits` wrappers,
 //! returning `Result` with `TrapCode` for Wasm-defined trapping behavior.
 
+// Lints from original file & Cargo.toml for wrt-math
 #![allow(clippy::float_arithmetic)] // Wasm spec requires float ops
+#![allow(clippy::cast_possible_truncation)] // Needed for conversions
+#![allow(clippy::cast_sign_loss)] // Needed for conversions/shifts
+#![allow(clippy::cast_possible_wrap)] // Needed for conversions/shifts/counts
+#![allow(clippy::manual_range_contains)] // Used in float->int conversion checks
+#![allow(clippy::float_cmp)] // Float comparisons are inherent
+#![allow(clippy::missing_const_for_fn)] // Polyfills/float ops often cannot be const
 
 // TrapCode and WrtError are fundamental for Wasm math ops.
 use wrt_error::{codes::TrapCode, Error as WrtError, Result};
 
-use crate::values::{FloatBits32, FloatBits64};
+// Use FloatBits from the float_bits module in this crate
+use crate::float_bits::{FloatBits32, FloatBits64};
 
 // --- Start of no_std math polyfills for trunc ---
 #[cfg(not(feature = "std"))]
@@ -38,6 +46,7 @@ mod no_std_math_trunc {
         let exponent_bits = (bits & exponent_mask) >> 23;
 
         if exponent_bits == 0xFF {
+            // NaN or Inf already handled
             return f_val;
         }
 
@@ -45,15 +54,23 @@ mod no_std_math_trunc {
         let exponent = biased_exponent - 127;
 
         if exponent < 0 {
-            return f32::from_bits(sign);
+            // Number is < 1.0 (and not 0), truncates to +/-0.0
+            return f32::from_bits(sign); // Return +/-0.0
         }
 
+        // Number of fractional bits to clear
+        // Max is 23 (full mantissa if exponent is 0, means val < 2.0 and >= 1.0)
+        // Min is 0 (if exponent >= 23, means val is an integer or larger)
         let fractional_bits_count = 23 - exponent;
 
         if fractional_bits_count <= 0 {
+            // Already an integer or exponent too large
             return f_val;
         }
 
+        // Create mask to clear fractional bits.
+        // E.g., if fractional_bits_count = 5, we want to clear the 5 LSBs of mantissa.
+        // Mask should be ...11100000. (1 << 5) - 1 = 0b11111. !0b11111 = ...11100000
         let clear_mask = !((1u32 << fractional_bits_count) - 1);
         let new_mantissa_bits = (bits & mantissa_mask) & clear_mask;
 
@@ -63,10 +80,9 @@ mod no_std_math_trunc {
     // Polyfill for f64::trunc
     pub(super) fn trunc_f64_polyfill(d_val: f64) -> f64 {
         if d_val.is_nan() || d_val.is_infinite() || d_val == 0.0 {
-            // Use inherent methods on f64
             return d_val;
         }
-        let bits = d_val.to_bits(); // Use inherent method on f64
+        let bits = d_val.to_bits();
         let sign_mask = 0x8000_0000_0000_0000u64;
         let exponent_mask = 0x7FF0_0000_0000_0000u64;
         let mantissa_mask = 0x000F_FFFF_FFFF_FFFFu64;
@@ -75,6 +91,7 @@ mod no_std_math_trunc {
         let exponent_bits_u64 = (bits & exponent_mask) >> 52;
 
         if exponent_bits_u64 == 0x7FF {
+            // NaN or Inf
             return d_val;
         }
 
@@ -82,12 +99,14 @@ mod no_std_math_trunc {
         let exponent = biased_exponent - 1023;
 
         if exponent < 0 {
-            return f64::from_bits(sign);
+            // Number is < 1.0 (and not 0), truncates to +/-0.0
+            return f64::from_bits(sign); // Return +/-0.0
         }
 
         let fractional_bits_count = 52 - exponent;
 
         if fractional_bits_count <= 0 {
+            // Already an integer or exponent too large
             return d_val;
         }
 
@@ -111,8 +130,10 @@ mod no_std_math_rounding {
         }
         let t = trunc_f32_polyfill(f_val);
         if f_val >= 0.0 || t == f_val {
+            // If positive or already an integer
             t
         } else {
+            // Negative and not an integer
             t - 1.0
         }
     }
@@ -124,8 +145,10 @@ mod no_std_math_rounding {
         }
         let t = trunc_f32_polyfill(f_val);
         if f_val <= 0.0 || t == f_val {
+            // If negative or already an integer
             t
         } else {
+            // Positive and not an integer
             t + 1.0
         }
     }
@@ -136,20 +159,30 @@ mod no_std_math_rounding {
             return f_val;
         }
 
+        // Basic idea: if fractional part is 0.5, round to the even integer.
+        // Otherwise, round to the nearest integer.
         let fl = floor_f32_polyfill(f_val);
-        let fr = f_val - fl;
+        let fr = f_val - fl; // Fractional part (0.0 to <1.0)
+
         if fr < 0.5 {
             return fl;
         }
         if fr > 0.5 {
-            return ceil_f32_polyfill(f_val);
+            // This is ceil_f32_polyfill(f_val)
+            return fl + 1.0;
         }
 
-        let ce = fl + 1.0;
+        // At this point, fr == 0.5. Round to even.
+        // If fl is even, return fl. If fl is odd, return fl + 1.0 (which is ceil).
+        let ce = fl + 1.0; // This is ceil_f32_polyfill(f_val)
+                           // Check if fl is even: fl % 2.0 == 0.0
+                           // An even number divided by 2 is an integer.
         let half_fl = fl / 2.0;
         if half_fl == trunc_f32_polyfill(half_fl) {
+            // fl is even
             fl
         } else {
+            // fl is odd
             ce
         }
     }
@@ -193,14 +226,18 @@ mod no_std_math_rounding {
             return fl;
         }
         if fr > 0.5 {
-            return ceil_f64_polyfill(d_val);
+            // This is ceil_f64_polyfill(d_val)
+            return fl + 1.0;
         }
 
-        let ce = fl + 1.0;
+        // fr == 0.5, round to even
+        let ce = fl + 1.0; // This is ceil_f64_polyfill(d_val)
         let half_fl = fl / 2.0;
         if half_fl == trunc_f64_polyfill(half_fl) {
+            // fl is even
             fl
         } else {
+            // fl is odd
             ce
         }
     }
@@ -210,12 +247,13 @@ mod no_std_math_rounding {
 // --- Start of no_std math polyfills for sqrt ---
 #[cfg(not(feature = "std"))]
 mod no_std_math_sqrt {
-    use crate::values::{FloatBits32, FloatBits64}; // Keep for NAN const access
+    use crate::float_bits::{FloatBits32, FloatBits64}; // Keep for NAN const access
 
     // Polyfill for f32::sqrt using Newton-Raphson method
     pub(super) fn sqrt_f32_polyfill(f_val: f32) -> f32 {
         if f_val.is_nan() {
             // Wasm spec: "if z is a NaN, then return a canonical NaN".
+            // Our FloatBits32::NAN.value() should be a canonical NaN.
             return FloatBits32::NAN.value();
         }
         if f_val < 0.0 {
@@ -249,12 +287,15 @@ mod no_std_math_sqrt {
         // Perform a fixed number of iterations. 8 for f32.
         let mut prev_y;
         for _ in 0..8 {
+            // 8 iterations chosen for f32
             prev_y = y;
             if y == 0.0 {
-                // Should ideally not be reached if f_val > 0 and initial y > 0
+                // Avoid division by zero if y somehow becomes 0
+                // This case should ideally not be reached if f_val > 0 and initial y > 0
                 // This implies f_val is extremely small, or an issue occurred.
                 // Result for very small positive f_val should be very small positive.
-                return 0.0; // Or handle as an underflow to 0.
+                return 0.0f32.copysign(f_val); // Or handle as an underflow to
+                                               // 0, preserving sign.
             }
             y = (y + f_val / y) * 0.5;
             if y == prev_y {
@@ -288,15 +329,18 @@ mod no_std_math_sqrt {
         // Initial guess
         let mut y: f64 = if d_val > 1.0 { d_val * 0.5 } else { 1.0 };
         if y == 0.0 {
+            // Should only happen if d_val was extremely small
             y = f64::MIN_POSITIVE;
         }
 
         // Newton-Raphson iterations. 12 for f64.
         let mut prev_y;
         for _ in 0..12 {
+            // 12 iterations chosen for f64
             prev_y = y;
             if y == 0.0 {
-                return 0.0;
+                // Avoid division by zero
+                return 0.0f64.copysign(d_val);
             }
             y = (y + d_val / y) * 0.5;
             if y == prev_y {
@@ -311,7 +355,6 @@ mod no_std_math_sqrt {
 
 // --- Compatibility wrappers for float functions (std vs no_std polyfill) ---
 
-#[allow(clippy::missing_const_for_fn)] // Float ops / polyfills are not const
 #[inline]
 fn f32_trunc_compat(f: f32) -> f32 {
     #[cfg(feature = "std")]
@@ -324,7 +367,6 @@ fn f32_trunc_compat(f: f32) -> f32 {
     }
 }
 
-#[allow(clippy::missing_const_for_fn)] // Float ops / polyfills are not const
 #[inline]
 fn f32_ceil_compat(f: f32) -> f32 {
     #[cfg(feature = "std")]
@@ -337,7 +379,6 @@ fn f32_ceil_compat(f: f32) -> f32 {
     }
 }
 
-#[allow(clippy::missing_const_for_fn)] // Float ops / polyfills are not const
 #[inline]
 fn f32_floor_compat(f: f32) -> f32 {
     #[cfg(feature = "std")]
@@ -350,12 +391,12 @@ fn f32_floor_compat(f: f32) -> f32 {
     }
 }
 
-#[allow(clippy::missing_const_for_fn)] // Float ops / polyfills are not const
 #[inline]
 fn f32_round_ties_to_even_compat(f: f32) -> f32 {
     #[cfg(feature = "std")]
     {
-        f.round() // Rust's f32::round() is round half to even
+        // Rust's f32::round behavior is round half to even.
+        f.round()
     }
     #[cfg(not(feature = "std"))]
     {
@@ -363,7 +404,6 @@ fn f32_round_ties_to_even_compat(f: f32) -> f32 {
     }
 }
 
-#[allow(clippy::missing_const_for_fn)] // Float ops / polyfills are not const
 #[inline]
 fn f32_sqrt_compat(f: f32) -> f32 {
     #[cfg(feature = "std")]
@@ -376,8 +416,7 @@ fn f32_sqrt_compat(f: f32) -> f32 {
     }
 }
 
-// Conditional wrapper for f64::trunc (not used yet, but for completeness)
-#[allow(clippy::missing_const_for_fn)] // Float ops / polyfills are not const
+// Conditional wrapper for f64::trunc
 #[inline]
 fn f64_trunc_compat(d: f64) -> f64 {
     #[cfg(feature = "std")]
@@ -390,7 +429,6 @@ fn f64_trunc_compat(d: f64) -> f64 {
     }
 }
 
-#[allow(clippy::missing_const_for_fn)] // Float ops / polyfills are not const
 #[inline]
 fn f64_ceil_compat(d: f64) -> f64 {
     #[cfg(feature = "std")]
@@ -403,7 +441,6 @@ fn f64_ceil_compat(d: f64) -> f64 {
     }
 }
 
-#[allow(clippy::missing_const_for_fn)] // Float ops / polyfills are not const
 #[inline]
 fn f64_floor_compat(d: f64) -> f64 {
     #[cfg(feature = "std")]
@@ -416,12 +453,12 @@ fn f64_floor_compat(d: f64) -> f64 {
     }
 }
 
-#[allow(clippy::missing_const_for_fn)] // Float ops / polyfills are not const
 #[inline]
 fn f64_round_ties_to_even_compat(d: f64) -> f64 {
     #[cfg(feature = "std")]
     {
-        d.round() // Rust's f64::round() is round half to even
+        // Rust's f64::round behavior is round half to even.
+        d.round()
     }
     #[cfg(not(feature = "std"))]
     {
@@ -429,7 +466,6 @@ fn f64_round_ties_to_even_compat(d: f64) -> f64 {
     }
 }
 
-#[allow(clippy::missing_const_for_fn)] // Float ops / polyfills are not const
 #[inline]
 fn f64_sqrt_compat(d: f64) -> f64 {
     #[cfg(feature = "std")]
@@ -443,16 +479,18 @@ fn f64_sqrt_compat(d: f64) -> f64 {
 }
 
 // Manual signum for no_std, or std version
+// This was dead code in the original file, but kept for completeness if signum
+// is needed.
 #[cfg(feature = "std")]
 #[inline(always)]
-#[allow(dead_code)] // Allow dead code for this specific function
+#[allow(dead_code)]
 fn f64_signum_compat(x: f64) -> f64 {
     x.signum()
 }
 
 #[cfg(not(feature = "std"))]
 #[inline(always)]
-#[allow(dead_code)] // Allow dead code for this specific function
+#[allow(dead_code)]
 fn f64_signum_compat(x: f64) -> f64 {
     if x.is_nan() {
         return x;
@@ -469,7 +507,6 @@ fn f64_signum_compat(x: f64) -> f64 {
 // --- Helper for Traps ---
 
 /// Helper function to create a WRT trap error.
-#[allow(clippy::missing_const_for_fn)] // Cannot be const because Error::new is not const
 #[inline]
 fn trap(code: TrapCode) -> WrtError {
     // Using specific category and code for traps
@@ -490,7 +527,7 @@ pub fn i32_add(lhs: i32, rhs: i32) -> Result<i32> {
 }
 
 /// i32.sub: Subtract two i32 values.
-/// Traps on signed overflow.
+/// Traps on signed overflow (which Rust's `checked_sub` handles).
 ///
 /// # Errors
 ///
@@ -524,11 +561,16 @@ pub fn i32_div_s(lhs: i32, rhs: i32) -> Result<i32> {
     if rhs == 0 {
         return Err(trap(TrapCode::IntegerDivideByZero));
     }
+    // Specific Wasm trap condition: min_signed / -1 overflows.
+    // Rust's `wrapping_div` for i32::MIN / -1 results in i32::MIN,
+    // but Wasm requires a trap here.
     if lhs == i32::MIN && rhs == -1 {
         return Err(trap(TrapCode::IntegerOverflow));
     }
-    Ok(lhs.wrapping_div(rhs)) // Standard Rust division truncates towards zero,
-                              // as per Wasm.
+    // Standard Rust division truncates towards zero, as per Wasm.
+    // wrapping_div handles i32::MIN / -1 by returning i32::MIN,
+    // which we've already trapped for above. For other cases, it's fine.
+    Ok(lhs.wrapping_div(rhs))
 }
 
 /// `i32.div_u`: Unsigned i32 division.
@@ -542,7 +584,8 @@ pub fn i32_div_u(lhs: u32, rhs: u32) -> Result<u32> {
     if rhs == 0 {
         return Err(trap(TrapCode::IntegerDivideByZero));
     }
-    Ok(lhs / rhs) // Standard Rust unsigned division, as per Wasm.
+    // Standard Rust unsigned division, as per Wasm.
+    Ok(lhs / rhs)
 }
 
 /// `i32.rem_s`: Signed i32 remainder.
@@ -557,7 +600,8 @@ pub fn i32_rem_s(lhs: i32, rhs: i32) -> Result<i32> {
     if rhs == 0 {
         return Err(trap(TrapCode::IntegerDivideByZero));
     }
-    // `i32::MIN % -1` result is 0 in Rust, which is correct by Wasm spec.
+    // Wasm spec for `i32.rem_s` with `i32::MIN` and `-1`: result is 0.
+    // Rust's `wrapping_rem(i32::MIN, -1)` is 0.
     Ok(lhs.wrapping_rem(rhs))
 }
 
@@ -606,62 +650,61 @@ pub fn i32_xor(lhs: i32, rhs: i32) -> Result<i32> {
 }
 
 /// i32.shl: Shift left (logical) i32 value.
-/// Shift amount is masked to 5 bits (0-31).
+/// Shift amount `k` is taken modulo 32.
 ///
 /// # Errors
 ///
 /// This function does not return an error.
 #[inline]
-#[allow(clippy::cast_sign_loss)]
 pub fn i32_shl(lhs: i32, rhs: i32) -> Result<i32> {
-    Ok(lhs.wrapping_shl(rhs as u32 & 0x1F))
+    // Wasm: `k` is `rhs as u32`. Shift amount is `k mod 32`.
+    // Rust's `wrapping_shl` effectively does this by masking `rhs` to relevant
+    // bits.
+    Ok(lhs.wrapping_shl(rhs as u32))
 }
 
 /// `i32.shr_s`: Shift right (arithmetic) signed i32 value.
-/// Shift amount is masked to 5 bits (0-31).
+/// Shift amount `k` is taken modulo 32.
 ///
 /// # Errors
 ///
 /// This function does not return an error.
 #[inline]
-#[allow(clippy::cast_sign_loss)]
 pub fn i32_shr_s(lhs: i32, rhs: i32) -> Result<i32> {
-    Ok(lhs.wrapping_shr(rhs as u32 & 0x1F))
+    Ok(lhs.wrapping_shr(rhs as u32))
 }
 
 /// `i32.shr_u`: Shift right (logical) unsigned i32 value (acting on i32 bits).
-/// Shift amount is masked to 5 bits (0-31).
+/// Shift amount `k` is taken modulo 32.
 ///
 /// # Errors
 ///
 /// This function does not return an error.
 #[inline]
-#[allow(clippy::cast_possible_wrap, clippy::cast_sign_loss)]
 pub fn i32_shr_u(lhs: i32, rhs: i32) -> Result<i32> {
     // Perform as u32 to ensure logical shift, then cast back to i32.
-    Ok((lhs as u32).wrapping_shr(rhs as u32 & 0x1F) as i32)
+    Ok((lhs as u32).wrapping_shr(rhs as u32) as i32)
 }
 
 /// i32.rotl: Rotate left i32 value.
-/// Rotate amount is effectively modulo 32.
+/// Rotate amount `k` is taken modulo 32.
 ///
 /// # Errors
 ///
 /// This function does not return an error.
 #[inline]
-#[allow(clippy::cast_sign_loss)]
 pub fn i32_rotl(lhs: i32, rhs: i32) -> Result<i32> {
+    // `rhs as u32` correctly handles the effective modulo 32 for rotate_left.
     Ok(lhs.rotate_left(rhs as u32))
 }
 
 /// i32.rotr: Rotate right i32 value.
-/// Rotate amount is effectively modulo 32.
+/// Rotate amount `k` is taken modulo 32.
 ///
 /// # Errors
 ///
 /// This function does not return an error.
 #[inline]
-#[allow(clippy::cast_sign_loss)]
 pub fn i32_rotr(lhs: i32, rhs: i32) -> Result<i32> {
     Ok(lhs.rotate_right(rhs as u32))
 }
@@ -672,7 +715,6 @@ pub fn i32_rotr(lhs: i32, rhs: i32) -> Result<i32> {
 ///
 /// This function does not return an error.
 #[inline]
-#[allow(clippy::cast_possible_wrap)]
 pub fn i32_clz(val: i32) -> Result<i32> {
     Ok(val.leading_zeros() as i32)
 }
@@ -683,7 +725,6 @@ pub fn i32_clz(val: i32) -> Result<i32> {
 ///
 /// This function does not return an error.
 #[inline]
-#[allow(clippy::cast_possible_wrap)]
 pub fn i32_ctz(val: i32) -> Result<i32> {
     Ok(val.trailing_zeros() as i32)
 }
@@ -694,7 +735,6 @@ pub fn i32_ctz(val: i32) -> Result<i32> {
 ///
 /// This function does not return an error.
 #[inline]
-#[allow(clippy::cast_possible_wrap)]
 pub fn i32_popcnt(val: i32) -> Result<i32> {
     Ok(val.count_ones() as i32)
 }
@@ -745,7 +785,7 @@ pub fn i64_mul(lhs: i64, rhs: i64) -> Result<i64> {
 }
 
 /// `i64.div_s`: Signed i64 division.
-/// Traps on division by zero or signed overflow (`i64::MIN / -1`).
+/// Traps on division by zero or signed overflow (`i64::MIN` / -1).
 ///
 /// # Errors
 /// - `Err(TrapCode::IntegerDivideByZero)` if `rhs` is 0.
@@ -758,7 +798,8 @@ pub fn i64_div_s(lhs: i64, rhs: i64) -> Result<i64> {
     if lhs == i64::MIN && rhs == -1 {
         return Err(trap(TrapCode::IntegerOverflow));
     }
-    Ok(lhs.wrapping_div(rhs)) // Wasm division truncates. Rust's wrapping_div does this.
+    // Wasm division truncates. Rust's wrapping_div does this.
+    Ok(lhs.wrapping_div(rhs))
 }
 
 /// `i64.div_u`: Unsigned i64 division.
@@ -772,7 +813,7 @@ pub fn i64_div_u(lhs: u64, rhs: u64) -> Result<u64> {
     if rhs == 0 {
         return Err(trap(TrapCode::IntegerDivideByZero));
     }
-    Ok(lhs / rhs) // Standard Rust unsigned division, as per Wasm.
+    Ok(lhs / rhs)
 }
 
 /// `i64.rem_s`: Signed i64 remainder.
@@ -836,61 +877,56 @@ pub fn i64_xor(lhs: i64, rhs: i64) -> Result<i64> {
 }
 
 /// i64.shl: Shift left (logical) i64 value.
-/// Shift amount is masked to 6 bits (0-63).
+/// Shift amount `k` is taken modulo 64.
 ///
 /// # Errors
 ///
 /// This function does not return an error.
 #[inline]
-#[allow(clippy::cast_sign_loss)]
 pub fn i64_shl(lhs: i64, rhs: i64) -> Result<i64> {
-    Ok(lhs.wrapping_shl(rhs as u32 & 0x3F))
+    Ok(lhs.wrapping_shl(rhs as u32))
 }
 
 /// `i64.shr_s`: Shift right (arithmetic) signed i64 value.
-/// Shift amount is masked to 6 bits (0-63).
+/// Shift amount `k` is taken modulo 64.
 ///
 /// # Errors
 ///
 /// This function does not return an error.
 #[inline]
-#[allow(clippy::cast_sign_loss)]
 pub fn i64_shr_s(lhs: i64, rhs: i64) -> Result<i64> {
-    Ok(lhs.wrapping_shr(rhs as u32 & 0x3F))
+    Ok(lhs.wrapping_shr(rhs as u32))
 }
 
 /// `i64.shr_u`: Shift right (logical) unsigned i64 value (acting on i64 bits).
-/// Shift amount is masked to 6 bits (0-63).
+/// Shift amount `k` is taken modulo 64.
 ///
 /// # Errors
 ///
 /// This function does not return an error.
 #[inline]
-#[allow(clippy::cast_possible_wrap, clippy::cast_sign_loss)]
 pub fn i64_shr_u(lhs: i64, rhs: i64) -> Result<i64> {
-    Ok((lhs as u64).wrapping_shr(rhs as u32 & 0x3F) as i64)
+    Ok((lhs as u64).wrapping_shr(rhs as u32) as i64)
 }
 
 /// i64.rotl: Rotate left i64 value.
-/// Rotate amount is effectively modulo 64.
+/// Rotate amount `k` is taken modulo 64.
 ///
 /// # Errors
 ///
 /// This function does not return an error.
 #[inline]
-#[allow(clippy::cast_sign_loss)]
 pub fn i64_rotl(lhs: i64, rhs: i64) -> Result<i64> {
     Ok(lhs.rotate_left(rhs as u32))
 }
 
 /// i64.rotr: Rotate right i64 value.
-/// Rotate amount is effectively modulo 64.
+/// Rotate amount `k` is taken modulo 64.
 ///
 /// # Errors
 ///
 /// This function does not return an error.
 #[inline]
-#[allow(clippy::cast_sign_loss)]
 pub fn i64_rotr(lhs: i64, rhs: i64) -> Result<i64> {
     Ok(lhs.rotate_right(rhs as u32))
 }
@@ -901,7 +937,6 @@ pub fn i64_rotr(lhs: i64, rhs: i64) -> Result<i64> {
 ///
 /// This function does not return an error.
 #[inline]
-#[allow(clippy::cast_possible_wrap)]
 pub fn i64_clz(val: i64) -> Result<i64> {
     Ok(i64::from(val.leading_zeros()))
 }
@@ -912,7 +947,6 @@ pub fn i64_clz(val: i64) -> Result<i64> {
 ///
 /// This function does not return an error.
 #[inline]
-#[allow(clippy::cast_possible_wrap)]
 pub fn i64_ctz(val: i64) -> Result<i64> {
     Ok(i64::from(val.trailing_zeros()))
 }
@@ -923,12 +957,12 @@ pub fn i64_ctz(val: i64) -> Result<i64> {
 ///
 /// This function does not return an error.
 #[inline]
-#[allow(clippy::cast_possible_wrap)]
 pub fn i64_popcnt(val: i64) -> Result<i64> {
     Ok(i64::from(val.count_ones()))
 }
 
 /// i64.eqz: Check if i64 value is zero. Returns 1 if zero, 0 otherwise.
+/// (Wasm `i64.eqz` returns `i32`)
 ///
 /// # Errors
 ///
@@ -983,11 +1017,8 @@ pub fn f32_div(lhs: FloatBits32, rhs: FloatBits32) -> Result<FloatBits32> {
 }
 
 /// f32.abs: Absolute value of an f32.
-/// Note: Wasm `abs` propagates `NaNs` differently from Rust's `f32::abs` in
-/// some cases (e.g. sign bit of `NaN`). However, for non-NaN values, it's
-/// straightforward. Wasm `abs` clears the sign bit. If the input is canonical
-/// `NaN`, result is canonical `NaN`. If input is sNaN, result is canonical
-/// `NaN`.
+/// Wasm `abs` clears the sign bit. If the input is canonical `NaN`, result is
+/// canonical `NaN`. If input is sNaN, result is canonical `NaN`.
 ///
 /// # Errors
 ///
@@ -996,14 +1027,12 @@ pub fn f32_div(lhs: FloatBits32, rhs: FloatBits32) -> Result<FloatBits32> {
 pub fn wasm_f32_abs(val: FloatBits32) -> Result<FloatBits32> {
     let f = val.value();
     if f.is_nan() {
-        // Ensure canonical NaN representation for result
         // Wasm spec: "if z is a NaN, then return a canonical NaN"
-        // For simplicity, FloatBits32::NAN should represent canonical NaN.
         Ok(FloatBits32::NAN)
     } else {
-        // Clears the sign bit, equivalent to f.abs() for non-NaNs.
+        // Clears the sign bit. For non-NaNs, f.abs() does this.
         // Rust's f32::abs preserves NaN payload but clears sign bit.
-        // Wasm expects canonical NaN on NaN input.
+        // Wasm expects canonical NaN on NaN input, which is handled above.
         Ok(FloatBits32::from_float(f.abs()))
     }
 }
@@ -1056,6 +1085,8 @@ pub fn wasm_f32_floor(val: FloatBits32) -> Result<FloatBits32> {
 /// This function does not currently return an error.
 #[inline]
 pub fn wasm_f32_trunc(val: FloatBits32) -> Result<FloatBits32> {
+    // Note: f32_trunc_compat returns f32, we need to ensure bit patterns are
+    // preserved if that's critical. .to_bits().from_bits() ensures this.
     Ok(FloatBits32::from_bits(f32_trunc_compat(val.value()).to_bits()))
 }
 
@@ -1087,24 +1118,25 @@ pub fn wasm_f32_sqrt(val: FloatBits32) -> Result<FloatBits32> {
 ///
 /// This function does not currently return an error.
 #[inline]
-#[allow(clippy::float_cmp)]
 pub fn wasm_f32_min(lhs: FloatBits32, rhs: FloatBits32) -> Result<FloatBits32> {
     let l = lhs.value();
     let r = rhs.value();
+
     if l.is_nan() || r.is_nan() {
         Ok(FloatBits32::NAN)
     } else if l == r && l == 0.0 {
-        // Handle +0.0 vs -0.0
-        // If l is -0.0 or r is -0.0 (or both), result should be -0.0
-        // l.is_sign_negative() || r.is_sign_negative() implies one is -0.0 if they are
-        // both 0.0
+        // Special handling for +0.0 and -0.0
+        // Wasm: min(-0.0, +0.0) is -0.0. min(+0.0, -0.0) is -0.0.
+        // If l is -0.0 (negative sign bit), it's smaller or equal.
         if l.is_sign_negative() {
             Ok(lhs)
         } else {
             Ok(rhs)
-        } // if l is -0, return it, else r (which could be -0 or +0)
+        } // If l is +0.0, r must be -0.0 or +0.0
     } else {
-        Ok(FloatBits32::from_float(if l < r { l } else { r }))
+        // Standard comparison for non-NaN, non-zero cases.
+        // Rust's f32::min behaves correctly for Wasm's non-NaN requirements.
+        Ok(FloatBits32::from_float(l.min(r)))
     }
 }
 
@@ -1116,56 +1148,56 @@ pub fn wasm_f32_min(lhs: FloatBits32, rhs: FloatBits32) -> Result<FloatBits32> {
 ///
 /// This function does not currently return an error.
 #[inline]
-#[allow(clippy::float_cmp)]
 pub fn wasm_f32_max(lhs: FloatBits32, rhs: FloatBits32) -> Result<FloatBits32> {
     let l = lhs.value();
     let r = rhs.value();
+
     if l.is_nan() || r.is_nan() {
         Ok(FloatBits32::NAN)
     } else if l == r && l == 0.0 {
-        // Handle +0.0 vs -0.0
-        // If l is +0.0 or r is +0.0 (or both), result should be +0.0
+        // Special handling for +0.0 and -0.0
+        // Wasm: max(-0.0, +0.0) is +0.0. max(+0.0, -0.0) is +0.0.
+        // If l is +0.0 (positive sign bit), it's greater or equal.
         if l.is_sign_positive() {
             Ok(lhs)
         } else {
             Ok(rhs)
-        } // if l is +0, return it, else r (which could be +0 or -0)
+        } // If l is -0.0, r must be +0.0 or -0.0
     } else {
-        Ok(FloatBits32::from_float(if l > r { l } else { r }))
+        // Rust's f32::max behaves correctly for Wasm's non-NaN requirements.
+        Ok(FloatBits32::from_float(l.max(r)))
     }
 }
 
 // --- F64 Operations ---
 
-/// f64.nearest: Round to nearest integer, ties to even.
-/// Follows IEEE 754-2008 `roundToIntegralTiesToEven`.
-///
-/// # Errors
-///
-/// This function does not currently return an error.
+/// f64.add: Add two f64 values.
 #[inline]
-pub fn wasm_f64_nearest(val: FloatBits64) -> Result<FloatBits64> {
-    let x = val.value();
+pub fn f64_add(lhs: FloatBits64, rhs: FloatBits64) -> Result<FloatBits64> {
+    Ok(FloatBits64::from_float(lhs.value() + rhs.value()))
+}
 
-    if x.is_nan() || x.is_infinite() || x == 0.0 {
-        return Ok(val);
-    }
+/// f64.sub: Subtract two f64 values.
+#[inline]
+pub fn f64_sub(lhs: FloatBits64, rhs: FloatBits64) -> Result<FloatBits64> {
+    Ok(FloatBits64::from_float(lhs.value() - rhs.value()))
+}
 
-    // Use the compatibility wrapper for round (ties to even)
-    let rounded_val = f64_round_ties_to_even_compat(x);
+/// f64.mul: Multiply two f64 values.
+#[inline]
+pub fn f64_mul(lhs: FloatBits64, rhs: FloatBits64) -> Result<FloatBits64> {
+    Ok(FloatBits64::from_float(lhs.value() * rhs.value()))
+}
 
-    // The Wasm fN.nearest instruction directly corresponds to roundTiesToEven.
-    // Our f64_round_ties_to_even_compat (whether std or polyfill) implements this.
-    Ok(FloatBits64::from_float(rounded_val))
+/// f64.div: Divide two f64 values.
+#[inline]
+pub fn f64_div(lhs: FloatBits64, rhs: FloatBits64) -> Result<FloatBits64> {
+    Ok(FloatBits64::from_float(lhs.value() / rhs.value()))
 }
 
 /// f64.abs: Absolute value of an f64.
 /// Wasm `abs` clears the sign bit. If the input is canonical `NaN`, result is
-/// canonical `NaN`. If input is sNaN, result is canonical `NaN`.
-///
-/// # Errors
-///
-/// This function does not currently return an error.
+/// canonical `NaN`.
 #[inline]
 pub fn wasm_f64_abs(val: FloatBits64) -> Result<FloatBits64> {
     let d = val.value();
@@ -1177,75 +1209,59 @@ pub fn wasm_f64_abs(val: FloatBits64) -> Result<FloatBits64> {
 }
 
 /// f64.neg: Negate an f64 value.
-///
-/// # Errors
-///
-/// This function does not currently return an error.
 #[inline]
 pub fn wasm_f64_neg(val: FloatBits64) -> Result<FloatBits64> {
     Ok(FloatBits64::from_float(-val.value()))
 }
 
 /// f64.copysign: Copy sign from one f64 to another.
-/// result has magnitude of lhs, sign of rhs.
-///
-/// # Errors
-///
-/// This function does not currently return an error.
 #[inline]
 pub fn wasm_f64_copysign(lhs: FloatBits64, rhs: FloatBits64) -> Result<FloatBits64> {
     Ok(FloatBits64::from_float(lhs.value().copysign(rhs.value())))
 }
 
 /// f64.ceil: Ceiling of an f64 value.
-///
-/// # Errors
-///
-/// This function does not currently return an error.
 #[inline]
 pub fn wasm_f64_ceil(val: FloatBits64) -> Result<FloatBits64> {
     Ok(FloatBits64::from_float(f64_ceil_compat(val.value())))
 }
 
 /// f64.floor: Floor of an f64 value.
-///
-/// # Errors
-///
-/// This function does not currently return an error.
 #[inline]
 pub fn wasm_f64_floor(val: FloatBits64) -> Result<FloatBits64> {
     Ok(FloatBits64::from_float(f64_floor_compat(val.value())))
 }
 
 /// f64.trunc: Truncate f64 value (to integer towards zero).
-///
-/// # Errors
-///
-/// This function does not currently return an error.
 #[inline]
 pub fn wasm_f64_trunc(val: FloatBits64) -> Result<FloatBits64> {
-    Ok(FloatBits64::from_float(f64_trunc_compat(val.value())))
+    Ok(FloatBits64::from_bits(f64_trunc_compat(val.value()).to_bits()))
+}
+
+/// f64.nearest: Round to nearest integer, ties to even.
+/// Follows IEEE 754-2008 `roundToIntegralTiesToEven`.
+#[inline]
+pub fn wasm_f64_nearest(val: FloatBits64) -> Result<FloatBits64> {
+    let x = val.value();
+    // Wasm spec: NaN -> canonical NaN; +/-Inf -> +/-Inf; +/-0 -> +/-0
+    if x.is_nan() {
+        return Ok(FloatBits64::NAN);
+    }
+    if x.is_infinite() || x == 0.0 {
+        return Ok(val);
+    }
+
+    Ok(FloatBits64::from_float(f64_round_ties_to_even_compat(x)))
 }
 
 /// f64.sqrt: Square root of an f64 value.
-///
-/// # Errors
-///
-/// This function does not currently return an error.
 #[inline]
 pub fn wasm_f64_sqrt(val: FloatBits64) -> Result<FloatBits64> {
     Ok(FloatBits64::from_float(f64_sqrt_compat(val.value())))
 }
 
 /// f64.min: Minimum of two f64 values (WASM semantics).
-/// If either operand is `NaN`, result is canonical `NaN`.
-/// -0.0 is less than +0.0.
-///
-/// # Errors
-///
-/// This function does not currently return an error.
 #[inline]
-#[allow(clippy::float_cmp)]
 pub fn wasm_f64_min(lhs: FloatBits64, rhs: FloatBits64) -> Result<FloatBits64> {
     let l = lhs.value();
     let r = rhs.value();
@@ -1258,19 +1274,12 @@ pub fn wasm_f64_min(lhs: FloatBits64, rhs: FloatBits64) -> Result<FloatBits64> {
             Ok(rhs)
         }
     } else {
-        Ok(FloatBits64::from_float(if l < r { l } else { r }))
+        Ok(FloatBits64::from_float(l.min(r)))
     }
 }
 
 /// f64.max: Maximum of two f64 values (WASM semantics).
-/// If either operand is `NaN`, result is canonical `NaN`.
-/// +0.0 is greater than -0.0.
-///
-/// # Errors
-///
-/// This function does not currently return an error.
 #[inline]
-#[allow(clippy::float_cmp)]
 pub fn wasm_f64_max(lhs: FloatBits64, rhs: FloatBits64) -> Result<FloatBits64> {
     let l = lhs.value();
     let r = rhs.value();
@@ -1283,174 +1292,126 @@ pub fn wasm_f64_max(lhs: FloatBits64, rhs: FloatBits64) -> Result<FloatBits64> {
             Ok(rhs)
         }
     } else {
-        Ok(FloatBits64::from_float(if l > r { l } else { r }))
+        Ok(FloatBits64::from_float(l.max(r)))
     }
 }
 
 // --- Float Comparisons (all return i32: 0 for false, 1 for true) ---
 
 // F32 Comparisons
-#[inline]
 /// WebAssembly f32.eq operation.
-///
-/// # Errors
-///
-/// This function does not currently return an error.
-#[allow(clippy::float_cmp)]
+#[inline]
 pub fn f32_eq(lhs: FloatBits32, rhs: FloatBits32) -> Result<i32> {
     let l = lhs.value();
     let r = rhs.value();
-    Ok(i32::from(!l.is_nan() && !r.is_nan() && l == r))
+    // Wasm: NaN == X is false. NaN == NaN is false.
+    // Standard Rust `l == r` handles this correctly for non-NaNs.
+    // If either is NaN, `l == r` is false.
+    Ok(i32::from(l == r))
 }
 
-#[inline]
 /// WebAssembly f32.ne operation.
-///
-/// # Errors
-///
-/// This function does not currently return an error.
-#[allow(clippy::float_cmp)]
+#[inline]
 pub fn f32_ne(lhs: FloatBits32, rhs: FloatBits32) -> Result<i32> {
     let l = lhs.value();
     let r = rhs.value();
-    let eq_val = i32::from(!l.is_nan() && !r.is_nan() && l == r);
-    Ok(i32::from(eq_val == 0))
+    // Wasm: NaN != X is true. NaN != NaN is true.
+    // Standard Rust `l != r` handles this correctly.
+    Ok(i32::from(l != r))
 }
 
-#[inline]
 /// WebAssembly f32.lt operation.
-///
-/// # Errors
-///
-/// This function does not currently return an error.
+#[inline]
 pub fn f32_lt(lhs: FloatBits32, rhs: FloatBits32) -> Result<i32> {
     let l = lhs.value();
     let r = rhs.value();
-    Ok(i32::from(!l.is_nan() && !r.is_nan() && l < r))
+    // Wasm: if either is NaN, result is false.
+    // Rust `l < r` is false if either is NaN.
+    Ok(i32::from(l < r))
 }
 
-#[inline]
 /// WebAssembly f32.gt operation.
-///
-/// # Errors
-///
-/// This function does not currently return an error.
+#[inline]
 pub fn f32_gt(lhs: FloatBits32, rhs: FloatBits32) -> Result<i32> {
     let l = lhs.value();
     let r = rhs.value();
-    Ok(i32::from(!l.is_nan() && !r.is_nan() && l > r))
+    Ok(i32::from(l > r))
 }
 
-#[inline]
 /// WebAssembly f32.le operation.
-///
-/// # Errors
-///
-/// This function does not currently return an error.
+#[inline]
 pub fn f32_le(lhs: FloatBits32, rhs: FloatBits32) -> Result<i32> {
     let l = lhs.value();
     let r = rhs.value();
-    Ok(i32::from(!l.is_nan() && !r.is_nan() && l <= r))
+    Ok(i32::from(l <= r))
 }
 
-#[inline]
 /// WebAssembly f32.ge operation.
-///
-/// # Errors
-///
-/// This function does not currently return an error.
+#[inline]
 pub fn f32_ge(lhs: FloatBits32, rhs: FloatBits32) -> Result<i32> {
     let l = lhs.value();
     let r = rhs.value();
-    Ok(i32::from(!l.is_nan() && !r.is_nan() && l >= r))
+    Ok(i32::from(l >= r))
 }
 
 // F64 Comparisons
-#[inline]
 /// WebAssembly f64.eq operation.
-///
-/// # Errors
-///
-/// This function does not currently return an error.
-#[allow(clippy::float_cmp)]
+#[inline]
 pub fn f64_eq(lhs: FloatBits64, rhs: FloatBits64) -> Result<i32> {
     let l = lhs.value();
     let r = rhs.value();
-    Ok(i32::from(!l.is_nan() && !r.is_nan() && l == r))
+    Ok(i32::from(l == r))
 }
 
-#[inline]
 /// WebAssembly f64.ne operation.
-///
-/// # Errors
-///
-/// This function does not currently return an error.
-#[allow(clippy::float_cmp)]
+#[inline]
 pub fn f64_ne(lhs: FloatBits64, rhs: FloatBits64) -> Result<i32> {
     let l = lhs.value();
     let r = rhs.value();
-    let eq_val = i32::from(!l.is_nan() && !r.is_nan() && l == r);
-    Ok(i32::from(eq_val == 0))
+    Ok(i32::from(l != r))
 }
 
-#[inline]
 /// WebAssembly f64.lt operation.
-///
-/// # Errors
-///
-/// This function does not currently return an error.
+#[inline]
 pub fn f64_lt(lhs: FloatBits64, rhs: FloatBits64) -> Result<i32> {
     let l = lhs.value();
     let r = rhs.value();
-    Ok(i32::from(!l.is_nan() && !r.is_nan() && l < r))
+    Ok(i32::from(l < r))
 }
 
-#[inline]
 /// WebAssembly f64.gt operation.
-///
-/// # Errors
-///
-/// This function does not currently return an error.
+#[inline]
 pub fn f64_gt(lhs: FloatBits64, rhs: FloatBits64) -> Result<i32> {
     let l = lhs.value();
     let r = rhs.value();
-    Ok(i32::from(!l.is_nan() && !r.is_nan() && l > r))
+    Ok(i32::from(l > r))
 }
 
-#[inline]
 /// WebAssembly f64.le operation.
-///
-/// # Errors
-///
-/// This function does not currently return an error.
+#[inline]
 pub fn f64_le(lhs: FloatBits64, rhs: FloatBits64) -> Result<i32> {
     let l = lhs.value();
     let r = rhs.value();
-    Ok(i32::from(!l.is_nan() && !r.is_nan() && l <= r))
+    Ok(i32::from(l <= r))
 }
 
-#[inline]
 /// WebAssembly f64.ge operation.
-///
-/// # Errors
-///
-/// This function does not currently return an error.
+#[inline]
 pub fn f64_ge(lhs: FloatBits64, rhs: FloatBits64) -> Result<i32> {
     let l = lhs.value();
     let r = rhs.value();
-    Ok(i32::from(!l.is_nan() && !r.is_nan() && l >= r))
+    Ok(i32::from(l >= r))
 }
 
 // --- Saturating Float to Integer Conversions ---
+// These return the integer directly, not a Result<T>, as saturation implies no
+// trap.
 
+/// Converts an f32 to i32 using saturating truncation (Wasm semantics
+/// `i32.trunc_sat_f32_s`). NaN -> 0. +/-Inf -> respective min/max. Out of range
+/// -> respective min/max.
 #[inline]
 #[must_use = "Saturating conversion result must be used"]
-#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss, clippy::cast_possible_wrap)]
-/// Converts an f32 to i32 using saturating truncation (Wasm semantics).
-///
-/// # Errors
-///
-/// This function does not return an error; out-of-range or NaN values saturate.
 pub fn i32_trunc_sat_f32_s(val: FloatBits32) -> i32 {
     let f = val.value();
     if f.is_nan() {
@@ -1462,47 +1423,84 @@ pub fn i32_trunc_sat_f32_s(val: FloatBits32) -> i32 {
             i32::MIN
         }
     } else {
-        let trunc = f.trunc();
-        if !(-2_147_483_648.0_f32..2_147_483_648.0_f32).contains(&trunc) {
-            if f.is_sign_positive() {
+        let trunc = f32_trunc_compat(f);
+        // Check against the valid range for i32 represented as f32
+        // i32::MIN as f32 is -2147483600.0 (approx)
+        // i32::MAX as f32 is 2147483600.0 (approx)
+        // A more precise range check:
+        if trunc >= (i32::MIN as f32) && trunc <= (i32::MAX as f32) {
+            // Check if it's precisely representable or within the range for direct cast
+            if trunc >= -2_147_483_648.0_f32 && trunc < 2_147_483_648.0_f32 {
+                // Wasm spec Table 15
+                trunc as i32
+            } else if trunc == -2_147_483_648.0_f32 {
+                // exactly i32::MIN
+                i32::MIN
+            } else if f.is_sign_positive() {
+                // Positive out of precise range
                 i32::MAX
             } else {
+                // Negative out of precise range
                 i32::MIN
             }
+        } else if f.is_sign_positive() {
+            // Positive out of representable f32 range for i32
+            i32::MAX
         } else {
-            trunc as i32
+            // Negative out of representable f32 range for i32
+            i32::MIN
         }
     }
 }
 
+/// Converts an f32 to u32 using saturating truncation (Wasm semantics
+/// `i32.trunc_sat_f32_u`). NaN -> 0. +/-Inf -> 0 if negative Inf, u32::MAX if
+/// positive Inf. Out of range -> 0 or u32::MAX. Returns i32 as per Wasm return
+/// type for these instructions.
 #[inline]
 #[must_use = "Saturating conversion result must be used"]
-#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss, clippy::cast_possible_wrap)]
-/// Converts an f32 to u32 using saturating truncation (Wasm semantics).
-///
-/// # Errors
-///
-/// This function does not return an error; out-of-range or NaN values saturate.
 pub fn i32_trunc_sat_f32_u(val: FloatBits32) -> i32 {
+    // Wasm returns i32
     let f = val.value();
-    if f.is_nan() || f.is_infinite() {
-        return 0;
+    if f.is_nan() {
+        0
+    } else if f.is_infinite() {
+        if f.is_sign_positive() {
+            u32::MAX as i32
+        } else {
+            0
+        } // Negative infinity saturates to 0 for unsigned
+    } else {
+        let trunc = f32_trunc_compat(f);
+        // Check against valid range for u32 represented as f32
+        // u32::MIN (0) as f32 is 0.0
+        // u32::MAX as f32 is 4294967300.0 (approx)
+        if trunc > (u32::MIN as f32) && trunc < (u32::MAX as f32) {
+            // Wasm spec Table 15 range
+            // Further check based on spec: (0.0, 4294967296.0)
+            if trunc > 0.0_f32 && trunc < 4_294_967_296.0_f32 {
+                trunc as u32 as i32
+            } else if trunc <= 0.0_f32 {
+                // Includes -0.0
+                0
+            } else {
+                // >= 2^32
+                u32::MAX as i32
+            }
+        } else if trunc <= (u32::MIN as f32) {
+            // Includes negative numbers and -0.0
+            0
+        } else {
+            // Greater than or equal to u32::MAX as f32
+            u32::MAX as i32
+        }
     }
-    let f_trunc = f32_trunc_compat(f);
-    if !(0.0..4_294_967_296.0_f32).contains(&f_trunc) {
-        return i32::MAX;
-    }
-    f_trunc as u32 as i32
 }
 
+/// Converts an f32 to i64 using saturating truncation (Wasm
+/// `i64.trunc_sat_f32_s`).
 #[inline]
 #[must_use = "Saturating conversion result must be used"]
-#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-/// Converts an f32 to i64 using saturating truncation (Wasm semantics).
-///
-/// # Errors
-///
-/// This function does not return an error; out-of-range or NaN values saturate.
 pub fn i64_trunc_sat_f32_s(val: FloatBits32) -> i64 {
     let f = val.value();
     if f.is_nan() {
@@ -1514,125 +1512,201 @@ pub fn i64_trunc_sat_f32_s(val: FloatBits32) -> i64 {
             i64::MIN
         }
     } else {
-        let trunc = f.trunc();
-        if !(-9_223_372_036_854_775_808.0_f32..9_223_372_036_854_775_808.0_f32).contains(&trunc) {
-            if f.is_sign_positive() {
-                i64::MAX
-            } else {
-                i64::MIN
-            }
-        } else {
+        let trunc = f32_trunc_compat(f);
+        // i64::MIN/MAX are not precisely representable as f32 for their full range.
+        // Wasm spec Table 15 range: (-9223372036854775808.0, 9223372036854775808.0)
+        // f32 cannot represent these bounds exactly.
+        // If f > i64::MAX as f32 (approx 9.223372E18), saturate to i64::MAX.
+        // If f < i64::MIN as f32 (approx -9.223372E18), saturate to i64::MIN.
+        const I64_MAX_AS_F32: f32 = 9223372036854775808.0_f32; // i64::MAX (2^63 - 1)
+        const I64_MIN_AS_F32: f32 = -9223372036854775808.0_f32; // i64::MIN (-2^63)
+
+        if trunc >= I64_MIN_AS_F32 && trunc < I64_MAX_AS_F32 {
             trunc as i64
+        } else if trunc == I64_MIN_AS_F32 {
+            // Check exact bound for MIN
+            i64::MIN
+        } else if trunc >= I64_MAX_AS_F32 {
+            // Handles values >= MAX bound
+            i64::MAX
+        } else {
+            // Handles values < MIN bound
+            i64::MIN
         }
     }
 }
 
+/// Converts an f32 to u64 using saturating truncation (Wasm
+/// `i64.trunc_sat_f32_u`). Returns i64 as per Wasm.
 #[inline]
 #[must_use = "Saturating conversion result must be used"]
-#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss, clippy::cast_possible_wrap)]
-/// Converts an f32 to u64 using saturating truncation (Wasm semantics).
-///
-/// # Errors
-///
-/// This function does not return an error; out-of-range or NaN values saturate.
 pub fn i64_trunc_sat_f32_u(val: FloatBits32) -> i64 {
+    // Wasm returns i64
     let f = val.value();
-    if f.is_nan() || f.is_infinite() {
-        return 0;
+    if f.is_nan() {
+        0
+    } else if f.is_infinite() {
+        if f.is_sign_positive() {
+            u64::MAX as i64
+        } else {
+            0
+        }
+    } else {
+        let trunc = f32_trunc_compat(f);
+        // Wasm spec Table 15 range: (0.0, 18446744073709551616.0)
+        const U64_MAX_AS_F32: f32 = 18446744073709551616.0_f32; // u64::MAX (2^64 - 1)
+
+        if trunc > 0.0_f32 && trunc < U64_MAX_AS_F32 {
+            trunc as u64 as i64
+        } else if trunc <= 0.0_f32 {
+            // Includes negative numbers and -0.0
+            0
+        } else {
+            // >= U64_MAX_AS_F32
+            u64::MAX as i64
+        }
     }
-    let f_trunc = f32_trunc_compat(f);
-    if !(0.0..18_446_744_073_709_551_616.0_f32).contains(&f_trunc) {
-        return i64::MAX;
-    }
-    f_trunc as u64 as i64
 }
 
-#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-/// Converts an f64 to i32 using saturating truncation (Wasm semantics).
-///
-/// # Errors
-///
-/// This function does not return an error; out-of-range or NaN values saturate.
+/// Converts an f64 to i32 using saturating truncation (Wasm
+/// `i32.trunc_sat_f64_s`). Returns i32.
+#[inline]
+#[must_use = "Saturating conversion result must be used"]
 pub fn i32_trunc_sat_f64_s(val: FloatBits64) -> i32 {
     let f = val.value();
-    if f.is_nan() || f.is_infinite() {
-        return 0;
-    }
-    let f_trunc = f64_trunc_compat(f);
-    if !(-2_147_483_648.0_f64..2_147_483_648.0_f64).contains(&f_trunc) {
-        // Saturate out-of-range values
+    if f.is_nan() {
+        0
+    } else if f.is_infinite() {
         if f.is_sign_positive() {
-            return i32::MAX;
+            i32::MAX
+        } else {
+            i32::MIN
         }
-        // Else removed, this is the default for out-of-range negative floats
-        return i32::MIN;
+    } else {
+        let trunc = f64_trunc_compat(f);
+        // Wasm spec Table 15 range: (-2147483648.0, 2147483648.0)
+        if trunc >= -2_147_483_648.0_f64 && trunc < 2_147_483_648.0_f64 {
+            trunc as i32
+        } else if trunc == -2_147_483_648.0_f64 {
+            // Exactly i32::MIN
+            i32::MIN
+        } else if trunc >= 2_147_483_648.0_f64 {
+            i32::MAX
+        } else {
+            // trunc < -2147483648.0
+            i32::MIN
+        }
     }
-    // In range
-    f_trunc as i32
 }
 
+/// Converts an f64 to u32 using saturating truncation (Wasm
+/// `i32.trunc_sat_f64_u`). Returns i32 as per Wasm.
 #[inline]
 #[must_use = "Saturating conversion result must be used"]
-#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss, clippy::cast_possible_wrap)]
-/// Converts an f64 to u32 using saturating truncation (Wasm semantics).
-///
-/// # Errors
-///
-/// This function does not return an error; out-of-range or NaN values saturate.
 pub fn i32_trunc_sat_f64_u(val: FloatBits64) -> i32 {
+    // Wasm returns i32
     let f = val.value();
-    if f.is_nan() || f.is_infinite() {
-        return 0;
+    if f.is_nan() {
+        0
+    } else if f.is_infinite() {
+        if f.is_sign_positive() {
+            u32::MAX as i32
+        } else {
+            0
+        }
+    } else {
+        let trunc = f64_trunc_compat(f);
+        // Wasm spec Table 15 range: (0.0, 4294967296.0)
+        if trunc > 0.0_f64 && trunc < 4_294_967_296.0_f64 {
+            trunc as u32 as i32
+        } else if trunc <= 0.0_f64 {
+            0
+        } else {
+            // >= 2^32
+            u32::MAX as i32
+        }
     }
-    let f_trunc = f64_trunc_compat(f);
-    if !(0.0..4_294_967_296.0_f64).contains(&f_trunc) {
-        return i32::MAX;
-    }
-    f_trunc as u32 as i32
 }
 
-#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-/// Converts an f64 to i64 using saturating truncation (Wasm semantics).
-///
-/// # Errors
-///
-/// This function does not return an error; out-of-range or NaN values saturate.
+/// Converts an f64 to i64 using saturating truncation (Wasm
+/// `i64.trunc_sat_f64_s`).
+#[inline]
+#[must_use = "Saturating conversion result must be used"]
 pub fn i64_trunc_sat_f64_s(val: FloatBits64) -> i64 {
     let f = val.value();
-    if f.is_nan() || f.is_infinite() {
-        return 0;
-    }
-    let f_trunc = f64_trunc_compat(f);
-    if !(-9_223_372_036_854_775_808.0_f64..9_223_372_036_854_775_808.0_f64).contains(&f_trunc) {
-        // Saturate out-of-range values
+    if f.is_nan() {
+        0
+    } else if f.is_infinite() {
         if f.is_sign_positive() {
-            return i64::MAX;
+            i64::MAX
+        } else {
+            i64::MIN
         }
-        // Else removed, this is the default for out-of-range negative floats
-        return i64::MIN;
+    } else {
+        let trunc = f64_trunc_compat(f);
+        // Wasm spec Table 15 range: (-9223372036854775808.0, 9223372036854775808.0)
+        // i64::MIN is -2^63, i64::MAX is 2^63 - 1
+        // For f64, these are precisely representable.
+        if trunc >= (i64::MIN as f64) && trunc < (i64::MAX as f64) {
+            // Max is exclusive here due to how f64 to i64 cast might handle edge.
+            // If trunc is exactly i64::MAX as f64, it should cast to i64::MAX.
+            // If trunc is slightly less than i64::MIN as f64, it should cast to i64::MIN.
+            if trunc == (i64::MAX as f64) {
+                // Check for exact MAX value
+                i64::MAX
+            } else {
+                trunc as i64
+            }
+        } else if trunc == (i64::MIN as f64) && i64::MIN as f64 == trunc {
+            // Ensure exact i64::MIN
+            i64::MIN
+        } else if trunc >= (i64::MAX as f64) {
+            i64::MAX
+        } else {
+            // trunc < (i64::MIN as f64)
+            i64::MIN
+        }
     }
-    // In range
-    f_trunc as i64
 }
 
+/// Converts an f64 to u64 using saturating truncation (Wasm
+/// `i64.trunc_sat_f64_u`). Returns i64 as per Wasm.
 #[inline]
 #[must_use = "Saturating conversion result must be used"]
-#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss, clippy::cast_possible_wrap)]
-/// Converts an f64 to u64 using saturating truncation (Wasm semantics).
-///
-/// # Errors
-///
-/// This function does not return an error; out-of-range or NaN values saturate.
 pub fn i64_trunc_sat_f64_u(val: FloatBits64) -> i64 {
+    // Wasm returns i64
     let f = val.value();
-    if f.is_nan() || f.is_infinite() {
-        return 0;
+    if f.is_nan() {
+        0
+    } else if f.is_infinite() {
+        if f.is_sign_positive() {
+            u64::MAX as i64
+        } else {
+            0
+        }
+    } else {
+        let trunc = f64_trunc_compat(f);
+        // Wasm spec Table 15 range: (0.0, 18446744073709551616.0) which is 2^64
+        // u64::MAX is 2^64 - 1
+        if trunc > 0.0_f64 && trunc < (u64::MAX as f64) {
+            // If trunc < u64::MAX precisely
+            // If trunc is precisely u64::MAX, then (trunc as u64) is u64::MAX
+            // If trunc is slightly less than 2^64 but rounds to 2^64 for f64
+            // then (trunc as u64) will be u64::MAX.
+            // The spec range is (0, 2^64).
+            if trunc >= 18_446_744_073_709_551_616.0_f64 {
+                // 2^64
+                u64::MAX as i64 // Saturate
+            } else {
+                trunc as u64 as i64
+            }
+        } else if trunc <= 0.0_f64 {
+            0
+        } else {
+            // >= u64::MAX as f64, or >= 2^64
+            u64::MAX as i64
+        }
     }
-    let f_trunc = f64_trunc_compat(f);
-    if !(0.0..18_446_744_073_709_551_616.0_f64).contains(&f_trunc) {
-        return i64::MAX;
-    }
-    f_trunc as u64 as i64
 }
 
 // --- Trapping Float to Integer Conversions ---
@@ -1642,38 +1716,60 @@ pub fn i64_trunc_sat_f64_u(val: FloatBits64) -> i64 {
 ///
 /// # Errors
 /// - `Err(TrapCode::InvalidConversionToInteger)` if `val` is `NaN` or Infinity.
-/// - `Err(TrapCode::IntegerOverflow)` if the truncated value is out of `i32` range.
+/// - `Err(TrapCode::IntegerOverflow)` if the truncated value is out of `i32`
+///   range.
 #[inline]
-#[allow(clippy::manual_range_contains)]
-#[allow(clippy::cast_possible_truncation)]
 pub fn i32_trunc_f32_s(val: FloatBits32) -> Result<i32> {
     let f = val.value();
     if f.is_nan() || f.is_infinite() {
         return Err(trap(TrapCode::InvalidConversionToInteger));
     }
     let f_trunc = f32_trunc_compat(f);
-    if !(-2_147_483_648.0_f32..2_147_483_648.0_f32).contains(&f_trunc) {
-        return Err(trap(TrapCode::IntegerOverflow));
+    // Wasm spec: "if trunc_s(z) is out of range of T, then trap"
+    // Range for i32 is [-2147483648, 2147483647]
+    // Check against f32 representations of these bounds.
+    // f_trunc must be >= -2147483648.0 and <= 2147483647.0 (approx)
+    // More precisely, use the spec's table range:
+    // not in (-2147483648.0, 2147483648.0) then trap for f32->i32
+    // This means f_trunc must be >= -2147483648.0 AND < 2147483648.0
+    // Or more simply, if f_trunc < i32::MIN as f32 or f_trunc > i32::MAX as f32
+    // (roughly)
+    if f_trunc < -2_147_483_648.0_f32 || f_trunc >= 2_147_483_648.0_f32 {
+        // Special case for i32::MIN: -2147483648.0f32 as i32 is i32::MIN
+        if f_trunc == -2_147_483_648.0_f32 {
+            // This is valid
+        } else {
+            return Err(trap(TrapCode::IntegerOverflow));
+        }
     }
     Ok(f_trunc as i32)
 }
 
-/// `i32.trunc_f32_u`: Truncate f32 to unsigned i32 (u32), trapping on invalid input.
+/// `i32.trunc_f32_u`: Truncate f32 to unsigned i32 (u32), trapping on invalid
+/// input.
 ///
 /// # Errors
 /// - `Err(TrapCode::InvalidConversionToInteger)` if `val` is `NaN` or Infinity.
-/// - `Err(TrapCode::IntegerOverflow)` if the truncated value is out of `u32` range.
+/// - `Err(TrapCode::IntegerOverflow)` if the truncated value is out of `u32`
+///   range.
 #[inline]
-#[allow(clippy::manual_range_contains)]
-#[allow(clippy::cast_possible_truncation)]
 pub fn i32_trunc_f32_u(val: FloatBits32) -> Result<u32> {
     let f = val.value();
     if f.is_nan() || f.is_infinite() {
         return Err(trap(TrapCode::InvalidConversionToInteger));
     }
     let f_trunc = f32_trunc_compat(f);
-    if !(0.0..4_294_967_296.0_f32).contains(&f_trunc) {
-        return Err(trap(TrapCode::IntegerOverflow));
+    // Range for u32 is [0, 4294967295]
+    // Wasm spec table range for f32->u32: not in (0.0, 4294967296.0) then trap
+    // This means f_trunc must be >= 0.0 AND < 4294967296.0
+    // (Note: -0.0 should also be handled as in range, converting to 0)
+    if f_trunc < 0.0_f32 || f_trunc >= 4_294_967_296.0_f32 {
+        // Check for -0.0 case explicitly, as (f_trunc < 0.0) would be true
+        if f_trunc == 0.0 && f_trunc.is_sign_negative() {
+            // -0.0 is fine, becomes 0u32
+        } else {
+            return Err(trap(TrapCode::IntegerOverflow));
+        }
     }
     Ok(f_trunc as u32)
 }
@@ -1682,38 +1778,47 @@ pub fn i32_trunc_f32_u(val: FloatBits32) -> Result<u32> {
 ///
 /// # Errors
 /// - `Err(TrapCode::InvalidConversionToInteger)` if `val` is `NaN` or Infinity.
-/// - `Err(TrapCode::IntegerOverflow)` if the truncated value is out of `i32` range.
+/// - `Err(TrapCode::IntegerOverflow)` if the truncated value is out of `i32`
+///   range.
 #[inline]
-#[allow(clippy::manual_range_contains)]
-#[allow(clippy::cast_possible_truncation)]
 pub fn i32_trunc_f64_s(val: FloatBits64) -> Result<i32> {
     let d = val.value();
     if d.is_nan() || d.is_infinite() {
         return Err(trap(TrapCode::InvalidConversionToInteger));
     }
     let d_trunc = f64_trunc_compat(d);
-    if !(-2_147_483_648.0_f64..2_147_483_648.0_f64).contains(&d_trunc) {
-        return Err(trap(TrapCode::IntegerOverflow));
+    // Wasm spec table range: not in (-2147483648.0, 2147483648.0) for f64->i32
+    if d_trunc < -2_147_483_648.0_f64 || d_trunc >= 2_147_483_648.0_f64 {
+        if d_trunc == -2_147_483_648.0_f64 {
+            // valid
+        } else {
+            return Err(trap(TrapCode::IntegerOverflow));
+        }
     }
     Ok(d_trunc as i32)
 }
 
-/// `i32.trunc_f64_u`: Truncate f64 to unsigned i32 (u32), trapping on invalid input.
+/// `i32.trunc_f64_u`: Truncate f64 to unsigned i32 (u32), trapping on invalid
+/// input.
 ///
 /// # Errors
 /// - `Err(TrapCode::InvalidConversionToInteger)` if `val` is `NaN` or Infinity.
-/// - `Err(TrapCode::IntegerOverflow)` if the truncated value is out of `u32` range.
+/// - `Err(TrapCode::IntegerOverflow)` if the truncated value is out of `u32`
+///   range.
 #[inline]
-#[allow(clippy::manual_range_contains)]
-#[allow(clippy::cast_possible_truncation)]
 pub fn i32_trunc_f64_u(val: FloatBits64) -> Result<u32> {
     let d = val.value();
     if d.is_nan() || d.is_infinite() {
         return Err(trap(TrapCode::InvalidConversionToInteger));
     }
     let d_trunc = f64_trunc_compat(d);
-    if !(0.0..4_294_967_296.0_f64).contains(&d_trunc) {
-        return Err(trap(TrapCode::IntegerOverflow));
+    // Wasm spec table range: not in (0.0, 4294967296.0) for f64->u32
+    if d_trunc < 0.0_f64 || d_trunc >= 4_294_967_296.0_f64 {
+        if d_trunc == 0.0 && d_trunc.is_sign_negative() {
+            // -0.0 is fine
+        } else {
+            return Err(trap(TrapCode::IntegerOverflow));
+        }
     }
     Ok(d_trunc as u32)
 }
@@ -1722,38 +1827,55 @@ pub fn i32_trunc_f64_u(val: FloatBits64) -> Result<u32> {
 ///
 /// # Errors
 /// - `Err(TrapCode::InvalidConversionToInteger)` if `val` is `NaN` or Infinity.
-/// - `Err(TrapCode::IntegerOverflow)` if the truncated value is out of `i64` range.
+/// - `Err(TrapCode::IntegerOverflow)` if the truncated value is out of `i64`
+///   range.
 #[inline]
-#[allow(clippy::manual_range_contains)]
-#[allow(clippy::cast_possible_truncation)]
 pub fn i64_trunc_f32_s(val: FloatBits32) -> Result<i64> {
     let f = val.value();
     if f.is_nan() || f.is_infinite() {
         return Err(trap(TrapCode::InvalidConversionToInteger));
     }
     let f_trunc = f32_trunc_compat(f);
-    if !(-9_223_372_036_854_775_808.0_f32..9_223_372_036_854_775_808.0_f32).contains(&f_trunc) {
-        return Err(trap(TrapCode::IntegerOverflow));
+    // Wasm spec table range: not in (-9223372036854775808.0, 9223372036854775808.0)
+    // for f32->i64 These bounds are not precisely representable by f32.
+    // Check if f_trunc is outside the representable range of i64.
+    // i64::MIN as f32 is approx -9.223372E18
+    // i64::MAX as f32 is approx  9.223372E18
+    const I64_MAX_AS_F32: f32 = 9223372036854775808.0_f32;
+    const I64_MIN_AS_F32: f32 = -9223372036854775808.0_f32;
+
+    if f_trunc < I64_MIN_AS_F32 || f_trunc >= I64_MAX_AS_F32 {
+        if f_trunc == I64_MIN_AS_F32 { // Check for exact lower bound
+             // This is okay, will become i64::MIN
+        } else {
+            return Err(trap(TrapCode::IntegerOverflow));
+        }
     }
     Ok(f_trunc as i64)
 }
 
-/// `i64.trunc_f32_u`: Truncate f32 to unsigned i64 (u64), trapping on invalid input.
+/// `i64.trunc_f32_u`: Truncate f32 to unsigned i64 (u64), trapping on invalid
+/// input.
 ///
 /// # Errors
 /// - `Err(TrapCode::InvalidConversionToInteger)` if `val` is `NaN` or Infinity.
-/// - `Err(TrapCode::IntegerOverflow)` if the truncated value is out of `u64` range.
+/// - `Err(TrapCode::IntegerOverflow)` if the truncated value is out of `u64`
+///   range.
 #[inline]
-#[allow(clippy::manual_range_contains)]
-#[allow(clippy::cast_possible_truncation)]
 pub fn i64_trunc_f32_u(val: FloatBits32) -> Result<u64> {
     let f = val.value();
     if f.is_nan() || f.is_infinite() {
         return Err(trap(TrapCode::InvalidConversionToInteger));
     }
     let f_trunc = f32_trunc_compat(f);
-    if !(0.0..18_446_744_073_709_551_616.0_f32).contains(&f_trunc) {
-        return Err(trap(TrapCode::IntegerOverflow));
+    // Wasm spec table range: not in (0.0, 18446744073709551616.0) for f32->u64
+    const U64_MAX_AS_F32: f32 = 18446744073709551616.0_f32; // 2^64
+    if f_trunc < 0.0_f32 || f_trunc >= U64_MAX_AS_F32 {
+        if f_trunc == 0.0 && f_trunc.is_sign_negative() {
+            // -0.0 is fine
+        } else {
+            return Err(trap(TrapCode::IntegerOverflow));
+        }
     }
     Ok(f_trunc as u64)
 }
@@ -1762,38 +1884,62 @@ pub fn i64_trunc_f32_u(val: FloatBits32) -> Result<u64> {
 ///
 /// # Errors
 /// - `Err(TrapCode::InvalidConversionToInteger)` if `val` is `NaN` or Infinity.
-/// - `Err(TrapCode::IntegerOverflow)` if the truncated value is out of `i64` range.
+/// - `Err(TrapCode::IntegerOverflow)` if the truncated value is out of `i64`
+///   range.
 #[inline]
-#[allow(clippy::manual_range_contains)]
-#[allow(clippy::cast_possible_truncation)]
 pub fn i64_trunc_f64_s(val: FloatBits64) -> Result<i64> {
     let d = val.value();
     if d.is_nan() || d.is_infinite() {
         return Err(trap(TrapCode::InvalidConversionToInteger));
     }
     let d_trunc = f64_trunc_compat(d);
-    if !(-9_223_372_036_854_775_808.0_f64..9_223_372_036_854_775_808.0_f64).contains(&d_trunc) {
-        return Err(trap(TrapCode::IntegerOverflow));
+    // Wasm spec table range: not in (-9223372036854775808.0, 9223372036854775808.0)
+    // for f64->i64 These are i64::MIN and (i64::MAX + 1) as f64.
+    if d_trunc < (i64::MIN as f64) || d_trunc >= ((i64::MAX as f64) + 1.0) {
+        // Check carefully against exact f64 repr of i64 bounds
+        // Test: (i64::MIN as f64) is -9223372036854776000.0
+        // Test: (i64::MAX as f64) is  9223372036854776000.0
+        // The spec implies the range of representable values, not the casted bounds.
+        // Let's use the numeric literals from spec's Table 15 for bounds check.
+        if d_trunc < -9_223_372_036_854_775_808.0_f64 || d_trunc >= 9_223_372_036_854_775_808.0_f64
+        {
+            if d_trunc == -9_223_372_036_854_775_808.0_f64 { // i64::MIN
+                 // okay
+            } else {
+                return Err(trap(TrapCode::IntegerOverflow));
+            }
+        }
     }
     Ok(d_trunc as i64)
 }
 
-/// `i64.trunc_f64_u`: Truncate f64 to unsigned i64 (u64), trapping on invalid input.
+/// `i64.trunc_f64_u`: Truncate f64 to unsigned i64 (u64), trapping on invalid
+/// input.
 ///
 /// # Errors
 /// - `Err(TrapCode::InvalidConversionToInteger)` if `val` is `NaN` or Infinity.
-/// - `Err(TrapCode::IntegerOverflow)` if the truncated value is out of `u64` range.
+/// - `Err(TrapCode::IntegerOverflow)` if the truncated value is out of `u64`
+///   range.
 #[inline]
-#[allow(clippy::manual_range_contains)]
-#[allow(clippy::cast_possible_truncation)]
 pub fn i64_trunc_f64_u(val: FloatBits64) -> Result<u64> {
     let d = val.value();
     if d.is_nan() || d.is_infinite() {
         return Err(trap(TrapCode::InvalidConversionToInteger));
     }
     let d_trunc = f64_trunc_compat(d);
-    if !(0.0..18_446_744_073_709_551_616.0_f64).contains(&d_trunc) {
-        return Err(trap(TrapCode::IntegerOverflow));
+    // Wasm spec table range: not in (0.0, 18446744073709551616.0) for f64->u64
+    // This is (0, 2^64).
+    if d_trunc < 0.0_f64 || d_trunc >= 18_446_744_073_709_551_616.0_f64 {
+        if d_trunc == 0.0 && d_trunc.is_sign_negative() {
+            // -0.0 is fine
+        } else {
+            return Err(trap(TrapCode::IntegerOverflow));
+        }
     }
     Ok(d_trunc as u64)
 }
+
+// TODO: Add tests for all math operations, including edge cases for
+// no_std polyfills, NaN propagation, trapping conditions, and saturation.
+// Consider property-based testing.
+// Specific Wasm testsuite cases should be covered.

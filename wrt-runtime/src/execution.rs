@@ -83,7 +83,7 @@ impl ExecutionStats {
     /// Use gas and check if limit is exceeded
     pub fn use_gas(&mut self, amount: u64) -> Result<()> {
         self.gas_used = self.gas_used.saturating_add(amount);
-        
+
         if self.is_gas_exceeded() {
             return Err(Error::new(
                 ErrorCategory::Runtime,
@@ -91,10 +91,10 @@ impl ExecutionStats {
                 format!("Gas limit of {} exceeded (used {})", self.gas_limit, self.gas_used),
             ));
         }
-        
+
         Ok(())
     }
-    
+
     /// Set gas limit
     pub fn set_gas_limit(&mut self, limit: u64) {
         self.gas_limit = limit;
@@ -128,20 +128,22 @@ impl ExecutionContext {
     /// Enter a function
     pub fn enter_function(&mut self) -> Result<()> {
         self.function_depth += 1;
-        
+
         if self.function_depth > self.max_function_depth {
             self.trapped = true;
             return Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::CALL_STACK_EXHAUSTED,
-                format!("Call stack exhausted: depth {} exceeds maximum {}", 
-                        self.function_depth, self.max_function_depth),
+                format!(
+                    "Call stack exhausted: depth {} exceeds maximum {}",
+                    self.function_depth, self.max_function_depth
+                ),
             ));
         }
-        
+
         self.stats.increment_function_calls(1);
         self.stats.update_stack_depth(self.function_depth);
-        
+
         Ok(())
     }
 
@@ -161,4 +163,4 @@ impl ExecutionContext {
     pub fn set_trapped(&mut self, trapped: bool) {
         self.trapped = trapped;
     }
-} 
+}

@@ -4,9 +4,7 @@
 //! with integrated memory safety features for WebAssembly memory instances.
 
 // Use our prelude for consistent imports
-use crate::prelude::*;
-use crate::memory::Memory;
-use crate::memory_helpers::ArcMemoryExt;
+use crate::{memory::Memory, memory_helpers::ArcMemoryExt, prelude::*};
 
 /// Memory adapter interface for working with memory
 pub trait MemoryAdapter: Debug + Send + Sync {
@@ -54,40 +52,46 @@ pub struct StdMemoryProvider {
 impl StdMemoryProvider {
     /// Create a new standard memory provider
     pub fn new(data: &[u8]) -> Self {
-        Self {
-            verification_level: VerificationLevel::Standard,
-        }
+        Self { verification_level: VerificationLevel::Standard }
     }
-    
+
     /// Create a safe slice of memory with verification
-    pub fn create_safe_slice<'a>(&self, buffer: &'a [u8], offset: usize, len: usize) -> Result<BoundedVec<u8, 65536>> {
+    pub fn create_safe_slice<'a>(
+        &self,
+        buffer: &'a [u8],
+        offset: usize,
+        len: usize,
+    ) -> Result<BoundedVec<u8, 65536>> {
         if offset + len > buffer.len() {
-            return Err(Error::from(kinds::OutOfBoundsError(
-                format!("Memory access out of bounds: offset={}, len={}, buffer_len={}", 
-                        offset, len, buffer.len())
-            )));
+            return Err(Error::from(kinds::OutOfBoundsError(format!(
+                "Memory access out of bounds: offset={}, len={}, buffer_len={}",
+                offset,
+                len,
+                buffer.len()
+            ))));
         }
-        
+
         // Instead of returning a reference, copy the data into a BoundedVec
         let mut bounded_vec = BoundedVec::with_verification_level(self.verification_level);
-        
+
         for i in offset..(offset + len) {
-            bounded_vec.push(buffer[i])
-                .map_err(|_| Error::new(
+            bounded_vec.push(buffer[i]).map_err(|_| {
+                Error::new(
                     ErrorCategory::Memory,
                     codes::MEMORY_ACCESS_OUT_OF_BOUNDS,
                     "Failed to push byte to bounded vector",
-                ))?;
+                )
+            })?;
         }
-        
+
         Ok(bounded_vec)
     }
-    
+
     /// Set the verification level
     pub fn set_verification_level(&mut self, level: VerificationLevel) {
         self.verification_level = level;
     }
-    
+
     /// Get the current verification level
     pub fn verification_level(&self) -> VerificationLevel {
         self.verification_level
@@ -105,11 +109,8 @@ impl SafeMemoryAdapter {
         let provider = StdMemoryProvider::new(&data);
 
         // Return a Memory adapter
-        let adapter = SafeMemoryAdapter {
-            memory: arc_memory,
-            provider,
-        };
-        
+        let adapter = SafeMemoryAdapter { memory: arc_memory, provider };
+
         Ok(Arc::new(adapter))
     }
 
@@ -160,17 +161,19 @@ impl MemoryAdapter for SafeMemoryAdapter {
         let start = offset as usize;
         let end = start + len as usize;
 
-        // Create a new BoundedVec with the data 
-        let mut bounded_vec = BoundedVec::with_verification_level(self.provider.verification_level());
-        
+        // Create a new BoundedVec with the data
+        let mut bounded_vec =
+            BoundedVec::with_verification_level(self.provider.verification_level());
+
         // Copy the data from the buffer into the bounded vector
         for i in start..end {
-            bounded_vec.push(buffer[i])
-                .map_err(|_| Error::new(
+            bounded_vec.push(buffer[i]).map_err(|_| {
+                Error::new(
                     ErrorCategory::Memory,
                     codes::MEMORY_ACCESS_OUT_OF_BOUNDS,
                     "Failed to push byte to bounded vector",
-                ))?;
+                )
+            })?;
         }
 
         Ok(bounded_vec)
@@ -226,7 +229,8 @@ impl MemoryAdapter for SafeMemoryAdapter {
         }
     }
 
-    // Change the return type to BoundedVec instead of SafeSlice to avoid lifetime issues
+    // Change the return type to BoundedVec instead of SafeSlice to avoid lifetime
+    // issues
     fn borrow_slice(&self, offset: usize, len: usize) -> Result<BoundedVec<u8, 65536>> {
         // Check that the range is valid
         self.check_range(offset as u32, len as u32)?;
@@ -237,4 +241,4 @@ impl MemoryAdapter for SafeMemoryAdapter {
         // Create a new BoundedVec with the copied data
         self.provider.create_safe_slice(&buffer, offset, len)
     }
-} 
+}

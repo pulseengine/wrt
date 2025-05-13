@@ -2,18 +2,18 @@
 //!
 //! This file provides a concrete implementation of the component runtime.
 
-use crate::component_traits::{
-    ComponentInstance, ComponentRuntime, HostFunction, HostFunctionFactory,
-};
-use crate::prelude::*;
-use std::collections::HashMap;
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
+
 use wrt_types::{
-    component::ComponentType,
-    component::ExternType,
+    component::{ComponentType, ExternType},
     safe_memory::{SafeMemoryHandler, SafeSlice, SafeStack},
     types::FuncType,
     Value, VerificationLevel,
+};
+
+use crate::{
+    component_traits::{ComponentInstance, ComponentRuntime, HostFunction, HostFunctionFactory},
+    prelude::*,
 };
 
 /// Host function implementation
@@ -99,11 +99,10 @@ pub struct DefaultHostFunctionFactory {
 }
 
 impl DefaultHostFunctionFactory {
-    /// Create a new DefaultHostFunctionFactory with a specific verification level
+    /// Create a new DefaultHostFunctionFactory with a specific verification
+    /// level
     pub fn with_verification_level(level: VerificationLevel) -> Self {
-        Self {
-            verification_level: level,
-        }
+        Self { verification_level: level }
     }
 }
 
@@ -150,17 +149,16 @@ impl ComponentRuntime for ComponentRuntimeImpl {
         // Safety-enhanced push operation with verification
         if self.verification_level.should_verify(128) {
             // Perform pre-push integrity verification
-            self.verify_integrity()
-                .expect("ComponentRuntime integrity check failed");
+            self.verify_integrity().expect("ComponentRuntime integrity check failed");
         }
 
-        // Push to Vec (can't use SafeStack since HostFunctionFactory doesn't implement Clone)
+        // Push to Vec (can't use SafeStack since HostFunctionFactory doesn't implement
+        // Clone)
         self.host_factories.push(factory);
 
         if self.verification_level.should_verify(128) {
             // Perform post-push integrity verification
-            self.verify_integrity()
-                .expect("ComponentRuntime integrity check failed after push");
+            self.verify_integrity().expect("ComponentRuntime integrity check failed after push");
         }
     }
 
@@ -178,7 +176,7 @@ impl ComponentRuntime for ComponentRuntimeImpl {
         // Collect host function names and types for tracking
         let mut host_function_names = Vec::new();
         let mut host_functions = HashMap::new();
-        
+
         for name in self.host_functions.keys() {
             host_function_names.push(name.clone());
             if let Some(func) = self.host_functions.get(name) {
@@ -211,8 +209,7 @@ impl ComponentRuntime for ComponentRuntimeImpl {
         };
 
         // Insert the function into the host functions map
-        self.host_functions
-            .insert(name.to_string(), Box::new(func_impl));
+        self.host_functions.insert(name.to_string(), Box::new(func_impl));
 
         Ok(())
     }
@@ -250,8 +247,9 @@ impl ComponentRuntimeImpl {
         // This is a placeholder for actual integrity verification
         if self.verification_level.should_verify(200) {
             // Perform a deeper verification
-            // In a real implementation, this would check that all host factories
-            // have valid state, that all registered host functions are consistent, etc.
+            // In a real implementation, this would check that all host
+            // factories have valid state, that all registered host
+            // functions are consistent, etc.
         }
 
         Ok(())
@@ -296,7 +294,7 @@ impl ComponentInstance for ComponentInstanceImpl {
             // Create an empty SafeStack for the result
             let mut result = wrt_types::safe_memory::SafeStack::with_capacity(1);
             result.set_verification_level(self.verification_level);
-            
+
             // For testing purposes, just return a constant value
             match name {
                 "hello" => {
@@ -316,7 +314,7 @@ impl ComponentInstance for ComponentInstanceImpl {
                     }
                 }
             }
-            
+
             return Ok(result);
         }
 
@@ -446,11 +444,11 @@ impl ComponentInstance for ComponentInstanceImpl {
 
 #[cfg(test)]
 mod tests {
+    use wrt_types::{
+        safe_memory::SafeStack, types::FuncType, verification::VerificationLevel, Value,
+    };
+
     use super::*;
-    use wrt_types::safe_memory::SafeStack;
-    use wrt_types::types::FuncType;
-    use wrt_types::verification::VerificationLevel;
-    use wrt_types::Value;
 
     // A simple host function for testing - returns SafeStack
     struct TestHostFunctionFactory {
@@ -459,9 +457,7 @@ mod tests {
 
     impl TestHostFunctionFactory {
         fn new(level: VerificationLevel) -> Self {
-            Self {
-                verification_level: level,
-            }
+            Self { verification_level: level }
         }
     }
 
@@ -528,9 +524,8 @@ mod tests {
         assert_eq!(runtime.factory_count(), 0);
 
         // Register host function factories
-        runtime.register_host_factory(Box::new(TestHostFunctionFactory::new(
-            VerificationLevel::Full,
-        )));
+        runtime
+            .register_host_factory(Box::new(TestHostFunctionFactory::new(VerificationLevel::Full)));
 
         // Verify integrity
         runtime.verify_integrity()?;
@@ -558,11 +553,8 @@ mod tests {
     #[test]
     fn test_component_instance_memory() -> Result<()> {
         // Create a component type for testing
-        let component_type = ComponentType {
-            imports: Vec::new(),
-            exports: Vec::new(),
-            instances: Vec::new(),
-        };
+        let component_type =
+            ComponentType { imports: Vec::new(), exports: Vec::new(), instances: Vec::new() };
 
         // Create a component instance with enough memory
         let mut data = vec![0; 100]; // Initialize with 100 bytes

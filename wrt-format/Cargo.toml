@@ -4,14 +4,14 @@ version.workspace = true
 edition.workspace = true
 description = "WebAssembly format handling for WRT"
 license.workspace = true
-repository = "https://github.com/avrabe/wrt"
+repository.workspace = true
 readme = "README.md"
 keywords = ["wasm", "webassembly", "format", "binary", "no-std"]
 categories = ["wasm", "parsing", "data-structures", "no-std", "embedded"]
 
 [dependencies]
-wrt-error = { path = "../wrt-error", version = "0.2.0", default-features = false }
-wrt-types = { path = "../wrt-types", version = "0.2.0", default-features = false }
+wrt-error = { path = "../wrt-error", workspace = true, default-features = false }
+wrt-types = { path = "../wrt-types", workspace = true, default-features = false }
 
 [dev-dependencies]
 # For property testing

@@ -12,8 +12,9 @@
 
 //! WebAssembly Runtime (WRT) - Runtime Implementation
 //!
-//! This crate provides the core runtime types and implementations for WebAssembly,
-//! shared between both the core WebAssembly and Component Model implementations.
+//! This crate provides the core runtime types and implementations for
+//! WebAssembly, shared between both the core WebAssembly and Component Model
+//! implementations.
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![deny(unsafe_code)]
@@ -52,10 +53,14 @@ pub use global::Global;
 pub use memory::Memory;
 pub use memory_adapter::{MemoryAdapter, SafeMemoryAdapter, StdMemoryProvider};
 pub use memory_helpers::ArcMemoryExt;
-pub use module::{Data, Element, Export, ExportItem, ExportKind, Function, Import, Module, OtherExport};
-pub use module_builder::{ModuleBuilder, load_module_from_binary};
+pub use module::{
+    Data, Element, Export, ExportItem, ExportKind, Function, Import, Module, OtherExport,
+};
+pub use module_builder::{load_module_from_binary, ModuleBuilder};
 pub use module_instance::ModuleInstance;
-pub use stackless::{StacklessCallbackRegistry, StacklessEngine, StacklessExecutionState, StacklessFrame};
+pub use stackless::{
+    StacklessCallbackRegistry, StacklessEngine, StacklessExecutionState, StacklessFrame,
+};
 pub use table::Table;
 
 /// The WebAssembly memory page size (64KiB)
@@ -71,9 +76,8 @@ pub mod component_traits;
 mod tests;
 
 // Re-export trait definitions
+// Re-export implementations
+pub use component_impl::{ComponentRuntimeImpl, DefaultHostFunctionFactory};
 pub use component_traits::{
     ComponentInstance, ComponentRuntime, HostFunction, HostFunctionFactory,
 };
-
-// Re-export implementations
-pub use component_impl::{ComponentRuntimeImpl, DefaultHostFunctionFactory};

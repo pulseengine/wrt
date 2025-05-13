@@ -4,7 +4,7 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 description = "Synchronization primitives (Mutex, RwLock) for the WRT WebAssembly runtime with no_std support"
-repository = "https://github.com/avrabe/wrt"
+repository.workspace = true
 documentation = "https://docs.rs/wrt-sync"
 keywords = ["wasm", "webassembly", "runtime", "no-std", "sync"]
 categories = ["wasm", "no-std", "concurrency"]
@@ -14,7 +14,7 @@ name = "wrt_sync"
 path = "src/lib.rs"
 
 [dependencies]
-wrt-error = { path = "../wrt-error", version = "0.2.0", default-features = false }
+wrt-error = { path = "../wrt-error", workspace = true, default-features = false }
 # No external dependencies needed
 # Only used for formal verification when 'kani' feature is enabled
 kani-verifier = { version = "0.61.0", optional = true }

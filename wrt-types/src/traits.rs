@@ -14,9 +14,8 @@ use core::fmt;
 #[cfg(feature = "std")]
 use std::fmt; // For cases with no_std and no alloc, fmt is still in core
 
-use crate::types::ValueType;
 use crate::Error; // Use the error type defined in this crate's lib.rs
-use crate::WrtResult; // Import WrtResult from lib.rs
+use crate::{types::ValueType, WrtResult}; // Import WrtResult from lib.rs
 
 // Common traits for type conversions
 //
@@ -52,7 +51,8 @@ pub trait Checksummable {
     fn update_checksum(&self, checksum: &mut crate::verification::Checksum);
 }
 
-/// Trait for types that can be converted to/from little-endian byte representation
+/// Trait for types that can be converted to/from little-endian byte
+/// representation
 pub trait LittleEndian: Sized {
     /// Convert from little-endian bytes
     fn from_le_bytes(bytes: &[u8]) -> WrtResult<Self>;

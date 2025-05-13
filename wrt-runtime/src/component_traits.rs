@@ -1,5 +1,4 @@
-use crate::func::FuncType;
-use crate::prelude::*;
+use crate::{func::FuncType, prelude::*};
 
 /// Represents a runtime component instance
 pub trait ComponentInstance {

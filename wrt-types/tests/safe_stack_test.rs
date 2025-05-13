@@ -2,31 +2,29 @@
 
 #![cfg(all(test, feature = "alloc"))] // Only run these tests when alloc is available
 
+// This import is for no_std, but if no no_std tests use it from this file, it
+// might still be warned.
+#[cfg(not(feature = "std"))]
+use wrt_types::safe_memory::NoStdMemoryProvider;
+// Commented out unused imports from original warnings
+// use wrt_types::prelude::Checksummed;
+// use wrt_types::validation::BoundedCapacity;
+// use wrt_types::verification::VerificationLevel; // Was part of verification::{Checksum,
+// VerificationLevel} const U32_SIZE: usize = core::mem::size_of::<u32>();
+#[cfg(feature = "std")]
+use wrt_types::safe_memory::StdMemoryProvider;
 #[cfg(feature = "std")]
 use wrt_types::{
-    bounded::{BoundedStack, CapacityError /*, CHECKSUM_SIZE */},
+    bounded::{BoundedStack, CapacityError /* , CHECKSUM_SIZE */},
     safe_memory::MemoryProvider,
     WrtResult,
 };
-
-// Imports presumably used by TestValue impls (Checksummable, ToBytes, FromBytes) which are not std-gated
+// Imports presumably used by TestValue impls (Checksummable, ToBytes, FromBytes) which are not
+// std-gated
 use wrt_types::{
     traits::{Checksummable, FromBytes, SerializationError, ToBytes},
     verification::Checksum,
 };
-
-// Commented out unused imports from original warnings
-// use wrt_types::prelude::Checksummed;
-// use wrt_types::validation::BoundedCapacity;
-// use wrt_types::verification::VerificationLevel; // Was part of verification::{Checksum, VerificationLevel}
-// const U32_SIZE: usize = core::mem::size_of::<u32>();
-
-#[cfg(feature = "std")]
-use wrt_types::safe_memory::StdMemoryProvider;
-
-// This import is for no_std, but if no no_std tests use it from this file, it might still be warned.
-#[cfg(not(feature = "std"))]
-use wrt_types::safe_memory::NoStdMemoryProvider;
 
 #[derive(Debug, Clone, PartialEq)]
 struct TestValue {

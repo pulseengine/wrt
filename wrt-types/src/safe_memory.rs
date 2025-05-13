@@ -72,8 +72,8 @@ impl<'a> Slice<'a> {
     ///
     /// # Errors
     ///
-    /// Returns an error if the initial integrity verification fails (e.g., checksum
-    /// computation error or validation failure upon creation).
+    /// Returns an error if the initial integrity verification fails (e.g.,
+    /// checksum computation error or validation failure upon creation).
     ///
     /// # Panics
     ///
@@ -404,8 +404,7 @@ impl<'a> SliceMut<'a> {
                 Ok(())
             } else {
                 Err(Error::validation_error(format!(
-                    "Memory corruption detected: checksum mismatch (SliceMut). Expected {}, \
-                     got {}",
+                    "Memory corruption detected: checksum mismatch (SliceMut). Expected {}, got {}",
                     self.checksum, current_checksum
                 )))
             }
@@ -436,7 +435,8 @@ impl<'a> SliceMut<'a> {
 
         if end > self.length {
             return Err(Error::memory_error(format!(
-                "Invalid mutable sub-slice range: start {start}, len {len} (end {end} > actual_len {})",
+                "Invalid mutable sub-slice range: start {start}, len {len} (end {end} > \
+                 actual_len {})",
                 self.length
             )));
         }
@@ -456,9 +456,9 @@ impl<'a> SliceMut<'a> {
     ///
     /// Returning a raw pointer bypasses Rust's borrow checking rules.
     /// The caller must ensure that the pointer is used safely:
-    /// - The pointer must not be used after the `SliceMut` it originated
-    ///   from is dropped or modified in a way that invalidates the pointer
-    ///   (e.g., if the underlying provider reallocates).
+    /// - The pointer must not be used after the `SliceMut` it originated from
+    ///   is dropped or modified in a way that invalidates the pointer (e.g., if
+    ///   the underlying provider reallocates).
     /// - Accesses through the pointer must be within the bounds of the original
     ///   slice.
     /// - Data races must be prevented if the same memory region can be accessed
@@ -467,12 +467,14 @@ impl<'a> SliceMut<'a> {
     ///   checksum. `update_checksum()` must be called afterwards if integrity
     ///   checks are still required.
     ///
-    /// This method should only be used when strictly necessary, typically for FFI
-    /// or performance-critical code where invariants are manually upheld.
+    /// This method should only be used when strictly necessary, typically for
+    /// FFI or performance-critical code where invariants are manually
+    /// upheld.
     #[must_use]
     pub fn get_ptr_mut(&self, offset: usize) -> Option<*mut u8> {
         // Check if offset is within the bounds of the slice
-        if offset < self.length { // Check against self.length for consistency
+        if offset < self.length {
+            // Check against self.length for consistency
             // .as_ptr() gets a raw pointer to the start.
             // .wrapping_add(offset) calculates the pointer offset, wrapping on overflow
             // (though overflow shouldn't happen here due to the bounds check).
@@ -573,7 +575,8 @@ pub trait Provider: Send + Sync + Debug {
     /// # Errors
     ///
     /// Returns an error if the source or destination ranges are invalid or out
-    /// of bounds, or if the copy operation fails due to internal provider issues.
+    /// of bounds, or if the copy operation fails due to internal provider
+    /// issues.
     fn copy_within(&mut self, src_offset: usize, dst_offset: usize, len: usize) -> Result<()>;
 
     /// Ensures the provider's internal accounting of used space extends up to
@@ -582,8 +585,8 @@ pub trait Provider: Send + Sync + Debug {
     ///
     /// # Errors
     ///
-    /// Returns an error if the requested offset is beyond the provider's capacity
-    /// or if the operation fails internally.
+    /// Returns an error if the requested offset is beyond the provider's
+    /// capacity or if the operation fails internally.
     fn ensure_used_up_to(&mut self, byte_offset: usize) -> Result<()>;
 }
 
@@ -737,18 +740,21 @@ impl StdProvider {
         // Track memory allocation-like operation as resize can allocate
         record_global_operation(OperationType::MemoryAllocation, self.verification_level);
         self.data.resize(new_size, value);
-        // Checksum needs to be re-evaluated by consumer if they are using SliceMut over this.
+        // Checksum needs to be re-evaluated by consumer if they are using SliceMut over
+        // this.
         Ok(())
     }
 
     /// Track an access to a memory region.
-    /// This is an internal helper and does not return Result, assumes locks succeed or logs ignore.
+    /// This is an internal helper and does not return Result, assumes locks
+    /// succeed or logs ignore.
     fn track_access(&self, offset: usize, len: usize) {
         self.access_count.fetch_add(1, Ordering::Relaxed);
         self.max_access_size.fetch_max(len, Ordering::Relaxed);
 
         if let Ok(mut log) = self.access_log.lock() {
-            if log.len() < 1000 { // Cap log size
+            if log.len() < 1000 {
+                // Cap log size
                 log.push((offset, len));
             }
         }
@@ -794,10 +800,7 @@ impl StdProvider {
     /// Get detailed memory statistics
     pub fn memory_stats(&self) -> Stats {
         // Lock the hash set to read its size accurately
-        let unique_regions_count = self
-            .regions_hash
-            .lock()
-            .map_or(0, |guard| guard.len()); // Handle potential lock poisoning
+        let unique_regions_count = self.regions_hash.lock().map_or(0, |guard| guard.len()); // Handle potential lock poisoning
 
         Stats {
             total_size: self.data.capacity(),
@@ -952,7 +955,8 @@ impl Provider for StdProvider {
     fn verify_integrity(&self) -> Result<()> {
         record_global_operation(OperationType::CollectionValidate, self.verification_level);
         // For StdProvider, integrity is primarily managed by Slice/SliceMut.
-        // This could be extended if StdProvider had its own global checksums or canaries.
+        // This could be extended if StdProvider had its own global checksums or
+        // canaries.
         Ok(())
     }
 
@@ -978,7 +982,8 @@ impl Provider for StdProvider {
     /// # Errors
     ///
     /// Returns an error if the source or destination ranges are invalid or out
-    /// of bounds, or if the copy operation fails due to internal provider issues.
+    /// of bounds, or if the copy operation fails due to internal provider
+    /// issues.
     fn copy_within(&mut self, src_offset: usize, dst_offset: usize, len: usize) -> Result<()> {
         record_global_operation(OperationType::MemoryWrite, self.verification_level); // Treat as write
 
@@ -1001,16 +1006,18 @@ impl Provider for StdProvider {
     ///
     /// # Errors
     ///
-    /// Returns an error if the requested offset is beyond the provider's capacity
-    /// or if the operation fails internally (e.g. Vec realloc fail, though rare).
-    /// Currently, it will try to resize if `byte_offset` is beyond current length.
+    /// Returns an error if the requested offset is beyond the provider's
+    /// capacity or if the operation fails internally (e.g. Vec realloc
+    /// fail, though rare). Currently, it will try to resize if
+    /// `byte_offset` is beyond current length.
     fn ensure_used_up_to(&mut self, byte_offset: usize) -> Result<()> {
         record_global_operation(OperationType::MemoryGrow, self.verification_level);
         if byte_offset > self.data.len() {
-            // This implies the logical size is growing. We need to ensure the Vec has this capacity
-            // and then logically extend its reported size. For Vec, this might mean resizing.
-            // For simplicity, let's ensure it can contain `byte_offset` by resizing.
-            // This might be more involved depending on exact semantics (zeroing new memory, etc.)
+            // This implies the logical size is growing. We need to ensure the Vec has this
+            // capacity and then logically extend its reported size. For Vec,
+            // this might mean resizing. For simplicity, let's ensure it can
+            // contain `byte_offset` by resizing. This might be more involved
+            // depending on exact semantics (zeroing new memory, etc.)
             // For now, assume if it's used up to an offset, it means it should exist.
             if byte_offset > self.data.capacity() {
                 // Attempt to reserve additional space if byte_offset exceeds capacity.
@@ -1023,11 +1030,13 @@ impl Provider for StdProvider {
             }
             // If ensure_used_up_to means the valid data now extends to byte_offset,
             // and new bytes should be zeroed or initialized:
-            if byte_offset > self.data.len() { // Check again after potential reserve
-                 // This is a simplification; actual behavior for uninitialized parts might differ.
-                 // For now, we just ensure length, which Vec::resize does.
-                 // If the intent is just to mark as used, not necessarily initialize,
-                 // this might be different. For Vec, length implies initialized.
+            if byte_offset > self.data.len() {
+                // Check again after potential reserve
+                // This is a simplification; actual behavior for uninitialized parts might
+                // differ. For now, we just ensure length, which Vec::resize
+                // does. If the intent is just to mark as used, not necessarily
+                // initialize, this might be different. For Vec, length implies
+                // initialized.
                 self.data.resize(byte_offset, 0); // Fill new space with 0
             }
         }
@@ -1036,7 +1045,8 @@ impl Provider for StdProvider {
     }
 }
 
-/// Memory provider using a fixed-size array, suitable for `no_std` environments.
+/// Memory provider using a fixed-size array, suitable for `no_std`
+/// environments.
 ///
 /// Note: This provider does not perform heap allocations.
 pub struct NoStdProvider<const N: usize> {
@@ -1090,7 +1100,8 @@ impl<const N: usize> NoStdProvider<N> {
     ///
     /// # Errors
     ///
-    /// Returns an error if the provided data length exceeds the fixed capacity `N`.
+    /// Returns an error if the provided data length exceeds the fixed capacity
+    /// `N`.
     pub fn set_data(&mut self, data: &[u8]) -> Result<()> {
         if data.len() > N {
             return Err(Error::memory_error(format!(
@@ -1162,7 +1173,8 @@ impl<const N: usize> NoStdProvider<N> {
     /// # Errors
     ///
     /// Returns an error if the internal `used` counter exceeds the fixed
-    /// capacity `N`, or if the last recorded access was out of the `used` bounds.
+    /// capacity `N`, or if the last recorded access was out of the `used`
+    /// bounds.
     pub fn verify_integrity(&self) -> Result<()> {
         // Track validation operation
         record_global_operation(OperationType::CollectionValidate, self.verification_level);

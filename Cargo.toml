@@ -10,6 +10,7 @@ members = [
     "wrt-types",
     "wrt-decoder",
     "wrt-component",
+    "wrt-math",
     "wrt-host",
     "wrt-logging",
     "wrt-runtime",
@@ -17,14 +18,16 @@ members = [
     "wrt-intercept", "test-control-instructions",
     "wrt-verification-tool",
     "wrt-test-registry",
+    "wrt-platform",
 ]
 resolver = "2"  # Use edition 2021 resolver
 
 [workspace.package]
-version = "0.2.0"
+authors = ["The WRT Project Developers"]
 edition = "2021"
-rust-version = "1.86.0"
 license = "MIT"
+repository = "placeholder/repo.git" # TODO: Replace with actual repo URL
+version = "0.2.0" # Updated to 0.2.0 for consistency
 
 [workspace.dependencies]
 anyhow = "1.0"
@@ -32,19 +35,22 @@ wit-bindgen = "0.41.0"
 dagger-sdk = { version = "0.18.6", features = ["codegen"] }
 
 # Internal crate versions
-wrt = { path = "wrt", version = "0.2.0" }
-wrt-error = { path = "wrt-error", version = "0.2.0" }
-wrt-sync = { path = "wrt-sync", version = "0.2.0" }
-wrt-format = { path = "wrt-format", version = "0.2.0" }
-wrt-types = { path = "wrt-types", version = "0.2.0" }
-wrt-decoder = { path = "wrt-decoder", version = "0.2.0" }
-wrt-runtime = { path = "wrt-runtime", version = "0.2.0" }
-wrt-logging = { path = "wrt-logging", version = "0.2.0" }
-wrt-instructions = { path = "wrt-instructions", version = "0.2.0" }
-wrt-component = { path = "wrt-component", version = "0.2.0" }
-wrt-host = { path = "wrt-host", version = "0.2.0" }
-wrt-intercept = { path = "wrt-intercept", version = "0.2.0" }
-wrt-test-registry = { path = "wrt-test-registry", version = "0.2.0" }
+wrt = { path = "wrt", workspace = true }
+wrt-error = { path = "wrt-error", workspace = true }
+wrt-sync = { path = "wrt-sync", workspace = true }
+wrt-format = { path = "wrt-format", workspace = true }
+wrt-types = { path = "wrt-types", workspace = true }
+wrt-decoder = { path = "wrt-decoder", workspace = true }
+wrt-runtime = { path = "wrt-runtime", workspace = true }
+wrt-logging = { path = "wrt-logging", workspace = true }
+wrt-instructions = { path = "wrt-instructions", workspace = true }
+wrt-component = { path = "wrt-component", workspace = true }
+wrt-host = { path = "wrt-host", workspace = true }
+wrt-intercept = { path = "wrt-intercept", workspace = true }
+wrt-test-registry = { path = "wrt-test-registry", workspace = true }
+wrt-math = { path = "wrt-math", workspace = true }
+wrt-platform = { path = "wrt-platform", workspace = true }
+wrt-verification-tool = { path = "wrt-verification-tool", workspace = true }
 
 [workspace.lints.rust]
 unexpected_cfgs = { level = "allow", check-cfg = ['cfg(test)'] }

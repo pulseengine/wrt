@@ -2,31 +2,40 @@
 name = "wrt-types"
 version.workspace = true
 edition.workspace = true
-description = "Type definitions for WebAssembly Runtime (WRT)"
+description = "Core types for the WebAssembly Runtime (WRT), including values, types, and references."
 license.workspace = true
-repository = "https://github.com/avrabe/wrt"
-readme = "README.md"
-keywords = ["wasm", "webassembly", "types", "no_std", "component-model", "safety"]
-categories = ["wasm", "no-std", "embedded", "science::math"]
+repository.workspace = true
+keywords = ["wasm", "webassembly", "types", "no_std", "safety"]
+categories = ["wasm", "no-std", "embedded"]
 
 [features]
 # Default features for standard environments
 default = [
     "std", 
-    "log", 
+    "dep:log",
     "component-model-core", 
     "component-model-values", 
     "component-model-fixed-lists", 
     "component-model-namespaces",
-    "wrt-sync/std"
+    "wrt-sync/std",
+    "wrt-math/std"
 ]
 # Standard library support
-std = ["alloc", "wrt-error/std", "log", "wrt-sync/std"]
+std = [
+    "alloc",
+    "dep:log",
+    "wrt-error/std",
+    "wrt-math/std"
+]
 # Allocator support for no_std environments
-alloc = ["dep:alloc", "wrt-error/alloc", "wrt-sync/alloc"]
+alloc = [
+    "dep:alloc",
+    "wrt-error/alloc",
+    "wrt-math/alloc"
+]
 
 # No standard library support (using alloc since most no_std code needs allocation)
-no_std = ["alloc", "wrt-error/no_std", "wrt-sync/alloc"]
+no_std = ["alloc", "wrt-error/no_std", "wrt-math/no_std"]
 # Optional feature to bypass some safety checks in performance-critical paths
 optimize = []
 # Additional safety features for ASIL-B compliance
@@ -45,8 +54,9 @@ component-model-error-context = []  # 📝 Error context types and operations
 component-model-threading = []  # 🧵 Threading operations
 
 [dependencies]
-wrt-error = { path = "../wrt-error", version = "0.2.0", default-features = false }
-wrt-sync = { path = "../wrt-sync", version = "0.2.0", default-features = false, features = ["alloc"] }
+wrt-error = { path = "../wrt-error", workspace = true, default-features = false }
+wrt-sync = { path = "../wrt-sync", workspace = true, default-features = false, features = ["alloc"] }
+wrt-math = { path = "../wrt-math", workspace = true, default-features = false }
 
 # For formal verification
 kani-verifier = { version = "0.61.0", optional = true }
@@ -55,6 +65,9 @@ kani-verifier = { version = "0.61.0", optional = true }
 alloc = { version = "1.0.0", optional = true, package = "rustc-std-workspace-alloc" }
 
 log = { version = "0.4", optional = true }
+
+serde = { version = "1.0", features = ["derive"], optional = true }
+serde_bytes = { version = "0.11", optional = true }
 
 [dev-dependencies]
 proptest = { version = "1.4.0", default-features = false, features = ["alloc"] }
