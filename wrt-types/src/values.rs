@@ -15,11 +15,18 @@
 use alloc;
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 use alloc::boxed::Box;
+#[cfg(feature = "alloc")]
+use alloc::vec::Vec;
 #[cfg(not(feature = "std"))]
 #[allow(unused_imports)]
 use core::cell::RefCell;
 #[cfg(not(feature = "std"))]
 use core::fmt;
+use core::{
+    cmp::Ordering,
+    fmt::{self, Display},
+    hash::{Hash, Hasher},
+};
 // Conditional imports for different environments
 #[cfg(feature = "std")]
 use std;
@@ -35,106 +42,17 @@ use std::fmt;
 #[cfg(feature = "std")]
 use std::thread_local;
 
+use wrt_error::{codes, ErrorCategory, ErrorKind};
+
 // #[cfg(all(not(feature = "std"), feature = "alloc"))]
 // use alloc::format; // Removed: format! should come from prelude
-use crate::types::ValueType as Type;
-use crate::{
-    prelude::{str, Debug, Eq, Ord, PartialEq, PartialOrd},
-    WrtResult,
-};
-use wrt_error::{codes, ErrorKind, ErrorCategory};
 use crate::traits::LittleEndian as TraitLittleEndian; // Alias trait
 use crate::types::{RefType, ValueType}; // Import ValueType
-use core::cmp::Ordering;
-use core::fmt::{self, Display};
-use core::hash::{Hash, Hasher};
-
-#[cfg(feature = "alloc")]
-use alloc::vec::Vec;
-
-/// Wrapper for f32 that implements Hash, `PartialEq`, and Eq based on bit
-/// patterns.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
-#[repr(transparent)]
-pub struct FloatBits32(pub u32);
-
-impl FloatBits32 {
-    /// Represents a canonical Not-a-Number (`NaN`) value for f32.
-    /// The specific bit pattern for canonical `NaN` can vary, but this is a
-    /// common one. (Sign bit 0, exponent all 1s, significand MSB 1, rest 0)
-    pub const NAN: Self = FloatBits32(0x7fc0_0000);
-
-    /// Creates a new `FloatBits32` from an `f32` value.
-    #[must_use]
-    pub fn from_float(val: f32) -> Self {
-        Self(val.to_bits())
-    }
-
-    /// Returns the `f32` value represented by this `FloatBits32`.
-    #[must_use]
-    pub const fn value(self) -> f32 {
-        f32::from_bits(self.0)
-    }
-
-    /// Returns the underlying `u32` bits of this `FloatBits32`.
-    #[must_use]
-    pub const fn to_bits(self) -> u32 {
-        self.0
-    }
-
-    /// Creates a `FloatBits32` from raw `u32` bits.
-    #[must_use]
-    pub const fn from_bits(bits: u32) -> Self {
-        Self(bits)
-    }
-}
-impl core::hash::Hash for FloatBits32 {
-    fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
-        self.0.hash(state);
-    }
-}
-
-/// Wrapper for f64 that implements Hash, `PartialEq`, and Eq based on bit
-/// patterns.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
-#[repr(transparent)]
-pub struct FloatBits64(pub u64);
-
-impl FloatBits64 {
-    /// Represents a canonical Not-a-Number (`NaN`) value for f64.
-    /// The specific bit pattern for canonical `NaN` can vary, but this is a
-    /// common one. (Sign bit 0, exponent all 1s, significand MSB 1, rest 0)
-    pub const NAN: Self = FloatBits64(0x7ff8_0000_0000_0000);
-
-    /// Creates a new `FloatBits64` from an `f64` value.
-    #[must_use]
-    pub fn from_float(val: f64) -> Self {
-        Self(val.to_bits())
-    }
-
-    /// Returns the `f64` value represented by this `FloatBits64`.
-    #[must_use]
-    pub const fn value(self) -> f64 {
-        f64::from_bits(self.0)
-    }
-
-    /// Returns the underlying `u64` bits of this `FloatBits64`.
-    #[must_use]
-    pub const fn to_bits(self) -> u64 {
-        self.0
-    }
-
-    /// Creates a `FloatBits64` from raw `u64` bits.
-    #[must_use]
-    pub const fn from_bits(bits: u64) -> Self {
-        Self(bits)
-    }
-}
-impl core::hash::Hash for FloatBits64 {
-    fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
-        self.0.hash(state);
-    }
-}
+use crate::{
+    prelude::{str, Debug, Eq, Ord, PartialEq, PartialOrd},
+    types::ValueType as Type,
+    WrtResult,
+};
 
 /// Represents a WebAssembly runtime value
 #[derive(Debug, Clone, core::hash::Hash)]
@@ -302,10 +220,7 @@ impl Value {
     pub fn into_i32(self) -> WrtResult<i32> {
         match self {
             Self::I32(val) => Ok(val),
-            _ => Err(WrtError::new(
-                ErrorKind::ConversionError,
-                "Value is not an i32",
-            )),
+            _ => Err(WrtError::new(ErrorKind::ConversionError, "Value is not an i32")),
         }
     }
 
@@ -541,10 +456,7 @@ impl Value {
             Self::F32(val) => {
                 let f = val.value();
                 if f.is_nan() || f.is_infinite() || f < (i32::MIN as f32) || f > (i32::MAX as f32) {
-                    Err(WrtError::new(
-                        ErrorKind::ConversionError,
-                        "Invalid f32 to i32 conversion",
-                    ))
+                    Err(WrtError::new(ErrorKind::ConversionError, "Invalid f32 to i32 conversion"))
                 } else {
                     Ok(f as i32)
                 }
@@ -563,10 +475,7 @@ impl Value {
             Self::F64(val) => {
                 let f = val.value();
                 if f.is_nan() || f.is_infinite() || f < (i64::MIN as f64) || f > (i64::MAX as f64) {
-                    Err(WrtError::new(
-                        ErrorKind::ConversionError,
-                        "Invalid f64 to i64 conversion",
-                    ))
+                    Err(WrtError::new(ErrorKind::ConversionError, "Invalid f64 to i64 conversion"))
                 } else {
                     Ok(f as i64)
                 }
@@ -679,19 +588,20 @@ impl Value {
             .map(|bits| Value::F64(FloatBits64::from_bits(bits))),
             ValueType::V128 => bytes
                 .try_into()
-                .map_err(|_| WrtError::new(ErrorKind::DeserializationError, "Failed to read v128 bytes"))
+                .map_err(|_| {
+                    WrtError::new(ErrorKind::DeserializationError, "Failed to read v128 bytes")
+                })
                 .map(|b: [u8; 16]| Value::V128(V128::new(b))),
             ValueType::I16x8 => bytes
                 .try_into()
-                .map_err(|_| WrtError::new(ErrorKind::DeserializationError, "Failed to read i16x8 bytes"))
+                .map_err(|_| {
+                    WrtError::new(ErrorKind::DeserializationError, "Failed to read i16x8 bytes")
+                })
                 .map(|b: [u8; 16]| Value::I16x8(V128::new(b))),
             _ => unreachable!(),
         }
         .map_err(|e: WrtError| {
-            WrtError::new(
-                e.kind(),
-                format!("Deserialization failed for {:?}: {}", ty, e.message())
-            )
+            WrtError::new(e.kind(), format!("Deserialization failed for {:?}: {}", ty, e.message()))
         })
     }
 }
@@ -950,8 +860,8 @@ impl AsRef<[u8]> for Value {
     }
 }
 
-/// Trait for types that can be serialized to and deserialized from little-endian
-/// bytes.
+/// Trait for types that can be serialized to and deserialized from
+/// little-endian bytes.
 pub trait LittleEndian: Sized {
     /// Creates an instance from little-endian bytes.
     fn from_le_bytes(bytes: &[u8]) -> WrtResult<Self>;
@@ -986,36 +896,6 @@ impl TraitLittleEndian for i64 {
     #[cfg(feature = "alloc")]
     fn to_le_bytes(&self) -> WrtResult<Vec<u8>> {
         Ok(i64::to_le_bytes(*self).to_vec())
-    }
-}
-
-impl TraitLittleEndian for FloatBits32 {
-    fn from_le_bytes(bytes: &[u8]) -> WrtResult<Self> {
-        bytes
-            .try_into()
-            .map(u32::from_le_bytes)
-            .map(FloatBits32::from_bits)
-            .map_err(|_| WrtError::new(ErrorKind::DeserializationError, "Invalid bytes for f32"))
-    }
-
-    #[cfg(feature = "alloc")]
-    fn to_le_bytes(&self) -> WrtResult<Vec<u8>> {
-        Ok(self.0.to_le_bytes().to_vec())
-    }
-}
-
-impl TraitLittleEndian for FloatBits64 {
-    fn from_le_bytes(bytes: &[u8]) -> WrtResult<Self> {
-        bytes
-            .try_into()
-            .map(u64::from_le_bytes)
-            .map(FloatBits64::from_bits)
-            .map_err(|_| WrtError::new(ErrorKind::DeserializationError, "Invalid bytes for f64"))
-    }
-
-    #[cfg(feature = "alloc")]
-    fn to_le_bytes(&self) -> WrtResult<Vec<u8>> {
-        Ok(self.0.to_le_bytes().to_vec())
     }
 }
 
@@ -1091,34 +971,13 @@ mod tests {
     fn test_default_for_type() {
         assert_eq!(Value::default_for_type(&ValueType::I32), Value::I32(0));
         assert_eq!(Value::default_for_type(&ValueType::I64), Value::I64(0));
-        assert_eq!(
-            Value::default_for_type(&ValueType::F32),
-            Value::F32(FloatBits32(0))
-        );
-        assert_eq!(
-            Value::default_for_type(&ValueType::F64),
-            Value::F64(FloatBits64(0))
-        );
-        assert_eq!(
-            Value::default_for_type(&ValueType::V128),
-            Value::V128(V128::zero())
-        );
-        assert_eq!(
-            Value::default_for_type(&ValueType::I16x8),
-            Value::I16x8(V128::zero())
-        );
-        assert_eq!(
-            Value::default_for_type(&ValueType::FuncRef),
-            Value::FuncRef(None)
-        );
-        assert_eq!(
-            Value::default_for_type(&ValueType::ExternRef),
-            Value::ExternRef(None)
-        );
-        assert_eq!(
-            Value::default_for_type(&ValueType::Ref(RefType::Func)),
-            Value::Ref(0)
-        );
+        assert_eq!(Value::default_for_type(&ValueType::F32), Value::F32(FloatBits32(0)));
+        assert_eq!(Value::default_for_type(&ValueType::F64), Value::F64(FloatBits64(0)));
+        assert_eq!(Value::default_for_type(&ValueType::V128), Value::V128(V128::zero()));
+        assert_eq!(Value::default_for_type(&ValueType::I16x8), Value::I16x8(V128::zero()));
+        assert_eq!(Value::default_for_type(&ValueType::FuncRef), Value::FuncRef(None));
+        assert_eq!(Value::default_for_type(&ValueType::ExternRef), Value::ExternRef(None));
+        assert_eq!(Value::default_for_type(&ValueType::Ref(RefType::Func)), Value::Ref(0));
     }
 
     #[test]
@@ -1133,7 +992,10 @@ mod tests {
             Value::F32(FloatBits32::from_float(f32::NAN))
         );
         assert_ne!(Value::F32(FloatBits32::from_float(1.0)), Value::F32(FloatBits32::NAN));
-        assert_eq!(Value::F32(FloatBits32::from_float(1.0)), Value::F32(FloatBits32::from_float(1.0)));
+        assert_eq!(
+            Value::F32(FloatBits32::from_float(1.0)),
+            Value::F32(FloatBits32::from_float(1.0))
+        );
 
         let v1 = V128::new([1; 16]);
         let v2 = V128::new([2; 16]);

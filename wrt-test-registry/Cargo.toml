@@ -2,10 +2,10 @@
 name = "wrt-test-registry"
 version.workspace = true
 edition.workspace = true
-authors = ["WRT Team"]
+authors.workspace = true
 description = "Test Framework for the WebAssembly Runtime (WRT)"
 license.workspace = true
-repository = "https://github.com/avrabe/wrt"
+repository.workspace = true
 readme = "README.md"
 keywords = ["webassembly", "wasm", "testing", "no_std", "wrt"]
 categories = ["wasm", "no-std", "development-tools::testing"]
@@ -46,17 +46,17 @@ no_std = []
 
 [dependencies]
 # Core crates
-wrt-error = { path = "../wrt-error", default-features = false }
-wrt-types = { path = "../wrt-types", default-features = false }
-wrt-format = { path = "../wrt-format", default-features = false }
-wrt-decoder = { path = "../wrt-decoder", default-features = false }
-wrt-sync = { path = "../wrt-sync", default-features = false }
-wrt-instructions = { path = "../wrt-instructions", default-features = false }
-wrt-intercept = { path = "../wrt-intercept", default-features = false }
-wrt-host = { path = "../wrt-host", default-features = false }
-wrt-component = { path = "../wrt-component", default-features = false }
-wrt-runtime = { path = "../wrt-runtime", default-features = false }
-wrt = { path = "../wrt", default-features = false }
+wrt-error = { path = "../wrt-error", default-features = false, workspace = true }
+wrt-types = { path = "../wrt-types", default-features = false, workspace = true }
+wrt-format = { path = "../wrt-format", default-features = false, workspace = true }
+wrt-decoder = { path = "../wrt-decoder", default-features = false, workspace = true }
+wrt-sync = { path = "../wrt-sync", default-features = false, workspace = true }
+wrt-instructions = { path = "../wrt-instructions", default-features = false, workspace = true }
+wrt-intercept = { path = "../wrt-intercept", default-features = false, workspace = true }
+wrt-host = { path = "../wrt-host", default-features = false, workspace = true }
+wrt-component = { path = "../wrt-component", default-features = false, workspace = true }
+wrt-runtime = { path = "../wrt-runtime", default-features = false, workspace = true }
+wrt = { path = "../wrt", default-features = false, workspace = true }
 
 # Dependencies with features
 once_cell = { version = "1.8", default-features = false }

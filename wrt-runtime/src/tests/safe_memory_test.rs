@@ -1,27 +1,28 @@
 #[cfg(test)]
 mod tests {
-    use crate::component_impl::ComponentRuntimeImpl;
-    use crate::component_traits::ComponentRuntime;
-    use crate::memory::Memory;
-    use crate::table::Table;
-    use crate::types::{MemoryType, TableType};
     use std::sync::Arc;
+
     use wrt_error::Result;
-    use wrt_types::safe_memory::{SafeMemoryHandler, SafeStack};
-    use wrt_types::types::{Limits, ValueType};
-    use wrt_types::values::{FuncRef, Value};
-    use wrt_types::verification::VerificationLevel;
+    use wrt_types::{
+        safe_memory::{SafeMemoryHandler, SafeStack},
+        types::{Limits, ValueType},
+        values::{FuncRef, Value},
+        verification::VerificationLevel,
+    };
+
+    use crate::{
+        component_impl::ComponentRuntimeImpl,
+        component_traits::ComponentRuntime,
+        memory::Memory,
+        table::Table,
+        types::{MemoryType, TableType},
+    };
 
     // Test SafeMemoryHandler usage in Memory
     #[test]
     fn test_memory_safety() -> Result<()> {
         // Create memory with different verification levels
-        let mem_type = MemoryType {
-            limits: Limits {
-                min: 1,
-                max: Some(2),
-            },
-        };
+        let mem_type = MemoryType { limits: Limits { min: 1, max: Some(2) } };
 
         // Create with standard verification
         let mut memory = Memory::new(mem_type.clone())?;
@@ -56,10 +57,7 @@ mod tests {
         // Create table type
         let table_type = TableType {
             element_type: ValueType::FuncRef,
-            limits: Limits {
-                min: 10,
-                max: Some(20),
-            },
+            limits: Limits { min: 10, max: Some(20) },
         };
 
         // Create table with different verification levels
@@ -108,11 +106,7 @@ mod tests {
                 _name: &str,
                 ty: &crate::func::FuncType,
             ) -> Result<Box<dyn crate::component_traits::HostFunction>> {
-                Err(wrt_error::Error::new(
-                    wrt_error::ErrorCategory::Runtime,
-                    0,
-                    "Test function",
-                ))
+                Err(wrt_error::Error::new(wrt_error::ErrorCategory::Runtime, 0, "Test function"))
             }
         }
 
@@ -157,8 +151,8 @@ mod tests {
         assert_eq!(stack.len(), 3);
 
         let last = stack.pop()?;
-        // Instead of asserting specific content, just check the popped value is a String
-        // The value may be serialized differently than the original
+        // Instead of asserting specific content, just check the popped value is a
+        // String The value may be serialized differently than the original
         assert!(!last.is_empty(), "Expected popped value to be non-empty");
 
         assert_eq!(stack.len(), 2);

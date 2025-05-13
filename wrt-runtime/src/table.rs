@@ -3,9 +3,12 @@
 //! This module provides an implementation of WebAssembly tables,
 //! which store function references or externref values.
 
+use wrt_types::{
+    types::{Limits as WrtLimits, TableType as WrtTableType, ValueType as WrtValueType},
+    values::Value as WrtValue,
+};
+
 use crate::prelude::*;
-use wrt_types::types::{TableType as WrtTableType, ValueType as WrtValueType, Limits as WrtLimits};
-use wrt_types::values::Value as WrtValue;
 
 /// A WebAssembly table is a vector of opaque values of a single type.
 #[derive(Debug)]
@@ -39,9 +42,10 @@ impl Clone for Table {
 
 impl PartialEq for Table {
     fn eq(&self, other: &Self) -> bool {
-        if self.ty != other.ty 
+        if self.ty != other.ty
             || self.debug_name != other.debug_name
-            || self.verification_level != other.verification_level {
+            || self.verification_level != other.verification_level
+        {
             return false;
         }
         let self_elements = self.elements.to_vec().unwrap_or_default();
@@ -59,11 +63,13 @@ impl Table {
             WrtValueType::FuncRef => Some(WrtValue::FuncRef(None)),
             WrtValueType::ExternRef => Some(WrtValue::ExternRef(None)),
             // Other types are not allowed in tables as per current Wasm spec for element_type
-            _ => return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::INVALID_TYPE,
-                format!("Invalid element type for table: {:?}", ty.element_type),
-            )),
+            _ => {
+                return Err(Error::new(
+                    ErrorCategory::Validation,
+                    codes::INVALID_TYPE,
+                    format!("Invalid element type for table: {:?}", ty.element_type),
+                ))
+            }
         };
 
         let initial_size = ty.limits.min as usize;
@@ -99,10 +105,7 @@ impl Table {
     pub fn with_capacity(capacity: u32, element_type: &WrtValueType) -> Result<Self> {
         let table_type = WrtTableType {
             element_type: *element_type,
-            limits: WrtLimits {
-                min: capacity,
-                max: Some(capacity),
-            },
+            limits: WrtLimits { min: capacity, max: Some(capacity) },
         };
         Self::new(table_type)
     }
@@ -177,7 +180,8 @@ impl Table {
     ///
     /// # Errors
     ///
-    /// Returns an error if the index is out of bounds or if the value type doesn't match the table element type
+    /// Returns an error if the index is out of bounds or if the value type
+    /// doesn't match the table element type
     pub fn set(&mut self, idx: u32, value: Option<WrtValue>) -> Result<()> {
         let idx = idx as usize;
         if idx >= self.elements.len() {
@@ -195,7 +199,8 @@ impl Table {
                     codes::VALIDATION_ERROR,
                     format!(
                         "Element value type {:?} doesn't match table element type {:?}",
-                        val.value_type(), self.ty.element_type
+                        val.value_type(),
+                        self.ty.element_type
                     ),
                 ));
             }
@@ -225,19 +230,26 @@ impl Table {
                 codes::VALIDATION_ERROR,
                 format!(
                     "Grow operation init value type {:?} doesn't match table element type {:?}",
-                    init_value_from_arg.value_type(), self.ty.element_type
+                    init_value_from_arg.value_type(),
+                    self.ty.element_type
                 ),
             ));
         }
 
         let old_size = self.size();
-        let new_size = old_size.checked_add(delta).ok_or_else(|| Error::new(ErrorCategory::Runtime, codes::TABLE_TOO_LARGE, "Table size overflow"))?;
+        let new_size = old_size.checked_add(delta).ok_or_else(|| {
+            Error::new(ErrorCategory::Runtime, codes::TABLE_TOO_LARGE, "Table size overflow")
+        })?;
 
         if let Some(max) = self.ty.limits.max {
             if new_size > max {
                 // As per spec, grow should return -1 (or an error indicating failure)
                 // For now, let's return an error. The runtime execution might interpret this.
-                return Err(Error::new(ErrorCategory::Runtime, codes::TABLE_TOO_LARGE, "Table grow exceeds maximum limit"));
+                return Err(Error::new(
+                    ErrorCategory::Runtime,
+                    codes::TABLE_TOO_LARGE,
+                    "Table grow exceeds maximum limit",
+                ));
             }
         }
 
@@ -245,8 +257,9 @@ impl Table {
         for _ in 0..delta {
             self.elements.push(Some(init_value_from_arg.clone()))?;
         }
-        // Update the min limit in the table type if it changes due to growth (spec is a bit unclear if ty should reflect current size)
-        // For now, ty.limits.min reflects the *initial* min. Current size is self.size().
+        // Update the min limit in the table type if it changes due to growth (spec is a
+        // bit unclear if ty should reflect current size) For now, ty.limits.min
+        // reflects the *initial* min. Current size is self.size().
 
         Ok(old_size)
     }
@@ -264,10 +277,15 @@ impl Table {
     ///
     /// # Errors
     ///
-    /// Returns an error if the index is out of bounds or the table element type isn't a funcref
+    /// Returns an error if the index is out of bounds or the table element type
+    /// isn't a funcref
     pub fn set_func(&mut self, idx: u32, func_idx: u32) -> Result<()> {
         if self.ty.element_type != WrtValueType::FuncRef {
-            return Err(Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Table element type is not FuncRef"));
+            return Err(Error::new(
+                ErrorCategory::Type,
+                codes::INVALID_TYPE,
+                "Table element type is not FuncRef",
+            ));
         }
         self.set(idx, Some(WrtValue::FuncRef(Some(func_idx))))
     }
@@ -288,12 +306,20 @@ impl Table {
     /// Returns an error if the operation fails
     pub fn init(&mut self, offset: u32, init_data: &[Option<WrtValue>]) -> Result<()> {
         if offset as usize + init_data.len() > self.elements.len() {
-            return Err(Error::new(ErrorCategory::Runtime, codes::TABLE_ACCESS_OOB, "Table init out of bounds"));
+            return Err(Error::new(
+                ErrorCategory::Runtime,
+                codes::TABLE_ACCESS_OOB,
+                "Table init out of bounds",
+            ));
         }
         for (i, val_opt) in init_data.iter().enumerate() {
             if let Some(val) = val_opt {
                 if !val.matches_type(&self.ty.element_type) {
-                    return Err(Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR, "Table init value type mismatch"));
+                    return Err(Error::new(
+                        ErrorCategory::Validation,
+                        codes::VALIDATION_ERROR,
+                        "Table init value type mismatch",
+                    ));
                 }
             }
             self.elements.set((offset as usize) + i, val_opt.clone())?;
@@ -308,10 +334,7 @@ impl Table {
             return Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::RUNTIME_ERROR,
-                format!(
-                    "table element copy out of bounds: src={}, dst={}, len={}",
-                    src, dst, len
-                ),
+                format!("table element copy out of bounds: src={}, dst={}, len={}", src, dst, len),
             ));
         }
 
@@ -351,7 +374,12 @@ impl Table {
     }
 
     /// Fill a range of elements with a given value
-    pub fn fill_elements(&mut self, offset: usize, value: Option<WrtValue>, len: usize) -> Result<()> {
+    pub fn fill_elements(
+        &mut self,
+        offset: usize,
+        value: Option<WrtValue>,
+        len: usize,
+    ) -> Result<()> {
         // Verify bounds
         if offset + len > self.elements.len() {
             return Err(Error::new(
@@ -450,10 +478,8 @@ impl Table {
     /// A string containing the statistics
     pub fn safety_stats(&self) -> String {
         format!(
-            "Table Safety Stats:\n\
-             - Size: {} elements\n\
-             - Element type: {:?}\n\
-             - Verification level: {:?}",
+            "Table Safety Stats:\n- Size: {} elements\n- Element type: {:?}\n- Verification \
+             level: {:?}",
             self.elements.len(),
             self.ty.element_type,
             self.verification_level
@@ -550,17 +576,18 @@ impl ArcTableExt for Arc<Table> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     #[cfg(not(feature = "std"))]
     use alloc::vec;
-    use wrt_types::types::{Limits, ValueType};
-    use wrt_types::verification::VerificationLevel;
+
+    use wrt_types::{
+        types::{Limits, ValueType},
+        verification::VerificationLevel,
+    };
+
+    use super::*;
 
     fn create_test_table_type(min: u32, max: Option<u32>) -> TableType {
-        TableType {
-            element_type: ValueType::FuncRef,
-            limits: Limits { min, max },
-        }
+        TableType { element_type: ValueType::FuncRef, limits: Limits { min, max } }
     }
 
     #[test]
@@ -722,10 +749,7 @@ mod tests {
         assert_eq!(value, None); // The clone-and-mutate pattern returns results but doesn't modify the original
 
         // Test init
-        let init_values = vec![
-            Some(Value::func_ref(Some(1))),
-            Some(Value::func_ref(Some(2))),
-        ];
+        let init_values = vec![Some(Value::func_ref(Some(1))), Some(Value::func_ref(Some(2)))];
         arc_table.init(0, &init_values)?;
 
         // Test fill
@@ -742,10 +766,7 @@ mod tests {
         // Create a table type
         let table_type = TableType {
             element_type: ValueType::FuncRef,
-            limits: Limits {
-                min: 5,
-                max: Some(10),
-            },
+            limits: Limits { min: 5, max: Some(10) },
         };
 
         // Create a table
@@ -781,8 +802,7 @@ mod tests {
 
     #[test]
     fn test_table_memory_safety() -> Result<()> {
-        use wrt_types::types::ValueType;
-        use wrt_types::verification::VerificationLevel;
+        use wrt_types::{types::ValueType, verification::VerificationLevel};
 
         // Create a table with a specific verification level
         let mut table = Table::with_capacity(5, &ValueType::FuncRef)?;

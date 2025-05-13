@@ -4,7 +4,7 @@ version.workspace = true
 edition.workspace = true
 description = "Host interception for WebAssembly Runtime (WRT)"
 license.workspace = true
-repository = "https://github.com/avrabe/wrt"
+repository.workspace = true
 documentation = "https://docs.rs/wrt-intercept"
 keywords = ["wasm", "webassembly", "runtime", "interception"]
 categories = ["wasm", "no-std"]
@@ -16,9 +16,9 @@ panic = "abort"
 panic = "abort"
 
 [dependencies]
-wrt-error = { path = "../wrt-error", version = "0.2.0", default-features = false }
-wrt-types = { path = "../wrt-types", version = "0.2.0", default-features = false }
-wrt-sync = { path = "../wrt-sync", version = "0.2.0", default-features = false }
+wrt-error = { path = "../wrt-error", workspace = true, default-features = false }
+wrt-types = { path = "../wrt-types", workspace = true, default-features = false }
+wrt-sync = { path = "../wrt-sync", workspace = true, default-features = false }
 
 # Optional dependencies
 log = { version = "0.4", optional = true }

@@ -1,0 +1,50 @@
+# WRT - wrt-platform
+# Module: Cargo Configuration
+# SW-REQ-ID: REQ_PLATFORM_001
+#
+# Copyright (c) 2025 The WRT Project Developers
+# Licensed under the MIT license.
+# SPDX-License-Identifier: MIT
+
+[package]
+name = "wrt-platform"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Platform Abstraction Layer (Memory, Synchronization) for WRT."
+readme = "README.md"
+# repository = "..." # Add repository URL later
+# homepage = "..." # Add homepage URL later
+# documentation = "..." # Add docs URL later
+keywords = ["webassembly", "wasm", "runtime", "platform", "memory", "sync"]
+categories = ["wasm", "os"]
+
+[dependencies]
+wrt-error = { workspace = true } # Assuming wrt-error is in workspace.dependencies
+
+# Optional dependencies for specific platform features if needed later
+# libc = { version = "0.2", optional = true }
+
+[features]
+default = ["std"]
+# Enable standard library features (like Vec, Mutex, Condvar for fallback)
+std = []
+# Platform-specific features to be added later
+# platform-macos = ["libc"]
+# platform-linux = ["libc"]
+# platform-qnx = []
+# platform-zephyr = []
+# platform-baremetal = []
+# arm-hardening = [] # If any platform code depends on this
+
+[lib]
+crate-type = ["rlib", "staticlib"] # staticlib for C ABI helper if needed later
+
+# Ensure panic=abort for safety profiles
+[profile.release]
+panic = "abort"
+
+[profile.test]
+panic = "abort" 

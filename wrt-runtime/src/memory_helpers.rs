@@ -3,9 +3,6 @@
 //! This module provides extension traits to simplify working with `Arc<Memory>`
 //! instances, reducing the need for explicit dereferencing and borrowing.
 
-use crate::prelude::*;
-use crate::Memory;
-
 // Import Arc from appropriate source based on feature flags
 #[cfg(not(feature = "std"))]
 use alloc::sync::Arc;
@@ -13,8 +10,9 @@ use alloc::sync::Arc;
 use std::sync::Arc;
 
 use wrt_error::{Error, Result};
-use wrt_types::safe_memory::SafeStack;
-use wrt_types::values::Value;
+use wrt_types::{safe_memory::SafeStack, values::Value};
+
+use crate::{prelude::*, Memory};
 
 /// Extension trait for `Arc<Memory>` to simplify access to memory operations
 pub trait ArcMemoryExt {
@@ -41,10 +39,7 @@ pub trait ArcMemoryExt {
     ) -> Result<wrt_types::safe_memory::SafeStack<u8>>;
 
     /// Read bytes from memory (legacy method, prefer read_bytes_safe)
-    #[deprecated(
-        since = "0.2.0",
-        note = "Use read_bytes_safe instead for enhanced memory safety"
-    )]
+    #[deprecated(since = "0.2.0", note = "Use read_bytes_safe instead for enhanced memory safety")]
     fn read_bytes(&self, offset: u32, len: u32) -> Result<Vec<u8>>;
 
     /// Write bytes to memory
@@ -158,7 +153,7 @@ pub trait ArcMemoryExt {
 
     /// Write bytes to memory at the given offset
     fn write_via_callback(&self, offset: u32, buffer: &[u8]) -> Result<()>;
-    
+
     /// Grow memory by the given number of pages
     fn grow_via_callback(&self, pages: u32) -> Result<u32>;
 }
@@ -197,7 +192,8 @@ impl ArcMemoryExt for Arc<Memory> {
         // Get a memory-safe slice directly instead of creating a temporary buffer
         let safe_slice = self.as_ref().get_safe_slice(offset, len as usize)?;
 
-        // Create a SafeStack from the verified slice data with appropriate verification level
+        // Create a SafeStack from the verified slice data with appropriate verification
+        // level
         let mut safe_stack = wrt_types::safe_memory::SafeStack::with_capacity(len as usize);
 
         // Set verification level to match memory's level
@@ -224,8 +220,9 @@ impl ArcMemoryExt for Arc<Memory> {
 
         // Perform final validation if high verification level is enabled
         if verification_level.should_verify(200) {
-            // This would perform a redundant integrity check in a real implementation
-            // but we'll let the SafeStack handle that internally
+            // This would perform a redundant integrity check in a real
+            // implementation but we'll let the SafeStack handle
+            // that internally
         }
 
         // Return the verified buffer
@@ -253,8 +250,7 @@ impl ArcMemoryExt for Arc<Memory> {
 
     fn write_bytes(&self, offset: u32, bytes: &[u8]) -> Result<()> {
         // Use clone_and_mutate pattern to simplify thread-safe operations
-        self.as_ref()
-            .clone_and_mutate(|mem| mem.write(offset, bytes))
+        self.as_ref().clone_and_mutate(|mem| mem.write(offset, bytes))
     }
 
     fn grow(&self, pages: u32) -> Result<u32> {
@@ -308,68 +304,57 @@ impl ArcMemoryExt for Arc<Memory> {
 
     fn write_i32(&self, addr: u32, value: i32) -> Result<()> {
         // Use clone_and_mutate pattern for thread-safe operations
-        self.as_ref()
-            .clone_and_mutate(|mem| mem.write_i32(addr, value))
+        self.as_ref().clone_and_mutate(|mem| mem.write_i32(addr, value))
     }
 
     fn write_i64(&self, addr: u32, value: i64) -> Result<()> {
         // Use clone_and_mutate pattern for thread-safe operations
-        self.as_ref()
-            .clone_and_mutate(|mem| mem.write_i64(addr, value))
+        self.as_ref().clone_and_mutate(|mem| mem.write_i64(addr, value))
     }
 
     fn write_f32(&self, addr: u32, value: f32) -> Result<()> {
         // Use clone_and_mutate pattern for thread-safe operations
-        self.as_ref()
-            .clone_and_mutate(|mem| mem.write_f32(addr, value))
+        self.as_ref().clone_and_mutate(|mem| mem.write_f32(addr, value))
     }
 
     fn write_f64(&self, addr: u32, value: f64) -> Result<()> {
         // Use clone_and_mutate pattern for thread-safe operations
-        self.as_ref()
-            .clone_and_mutate(|mem| mem.write_f64(addr, value))
+        self.as_ref().clone_and_mutate(|mem| mem.write_f64(addr, value))
     }
 
     fn write_i8(&self, addr: u32, value: i8) -> Result<()> {
         // Use clone_and_mutate pattern for thread-safe operations
-        self.as_ref()
-            .clone_and_mutate(|mem| mem.write_i8(addr, value))
+        self.as_ref().clone_and_mutate(|mem| mem.write_i8(addr, value))
     }
 
     fn write_u8(&self, addr: u32, value: u8) -> Result<()> {
         // Use clone_and_mutate pattern for thread-safe operations
-        self.as_ref()
-            .clone_and_mutate(|mem| mem.write_u8(addr, value))
+        self.as_ref().clone_and_mutate(|mem| mem.write_u8(addr, value))
     }
 
     fn write_i16(&self, addr: u32, value: i16) -> Result<()> {
         // Use clone_and_mutate pattern for thread-safe operations
-        self.as_ref()
-            .clone_and_mutate(|mem| mem.write_i16(addr, value))
+        self.as_ref().clone_and_mutate(|mem| mem.write_i16(addr, value))
     }
 
     fn write_u16(&self, addr: u32, value: u16) -> Result<()> {
         // Use clone_and_mutate pattern for thread-safe operations
-        self.as_ref()
-            .clone_and_mutate(|mem| mem.write_u16(addr, value))
+        self.as_ref().clone_and_mutate(|mem| mem.write_u16(addr, value))
     }
 
     fn write_u32(&self, addr: u32, value: u32) -> Result<()> {
         // Use clone_and_mutate pattern for thread-safe operations
-        self.as_ref()
-            .clone_and_mutate(|mem| mem.write_u32(addr, value))
+        self.as_ref().clone_and_mutate(|mem| mem.write_u32(addr, value))
     }
 
     fn write_u64(&self, addr: u32, value: u64) -> Result<()> {
         // Use clone_and_mutate pattern for thread-safe operations
-        self.as_ref()
-            .clone_and_mutate(|mem| mem.write_u64(addr, value))
+        self.as_ref().clone_and_mutate(|mem| mem.write_u64(addr, value))
     }
 
     fn write_v128(&self, addr: u32, value: [u8; 16]) -> Result<()> {
         // Use clone_and_mutate pattern for thread-safe operations
-        self.as_ref()
-            .clone_and_mutate(|mem| mem.write_v128(addr, value))
+        self.as_ref().clone_and_mutate(|mem| mem.write_v128(addr, value))
     }
 
     fn check_alignment(&self, offset: u32, access_size: u32, align: u32) -> Result<()> {
@@ -486,10 +471,7 @@ impl ArcMemoryExt for Arc<Memory> {
                 return Err(wrt_error::Error::new(
                     wrt_error::ErrorCategory::Type,
                     wrt_error::errors::codes::TYPE_MISMATCH_ERROR,
-                    format!(
-                        "Unsupported value type for reading from memory: {:?}",
-                        value_type
-                    ),
+                    format!("Unsupported value type for reading from memory: {:?}", value_type),
                 ))
             }
         };
@@ -510,7 +492,8 @@ impl ArcMemoryExt for Arc<Memory> {
 
         // Verify the final stack if high verification is enabled
         if verification_level.should_verify(200) {
-            // This would perform a redundant integrity check in a real implementation
+            // This would perform a redundant integrity check in a real
+            // implementation
         }
 
         Ok(result)
@@ -522,15 +505,16 @@ impl ArcMemoryExt for Arc<Memory> {
         let mut current_buffer = self.buffer()?;
         let start = offset as usize;
         let end = start + buffer.len();
-        
+
         if end > current_buffer.len() {
             return Err(Error::from(kinds::MemoryAccessOutOfBoundsError {
                 address: start as u64,
                 length: buffer.len() as u64,
             }));
         }
-        
-        // Update the memory through the mutex/lock mechanism in the Memory implementation
+
+        // Update the memory through the mutex/lock mechanism in the Memory
+        // implementation
         self.update_buffer(|mem_buffer| {
             for (i, &byte) in buffer.iter().enumerate() {
                 mem_buffer[start + i] = byte;
@@ -538,35 +522,30 @@ impl ArcMemoryExt for Arc<Memory> {
             Ok(())
         })
     }
-    
+
     fn grow_via_callback(&self, _pages: u32) -> Result<u32> {
         // Memory::grow_memory requires &mut self.
         // Arc<Memory> cannot provide &mut Memory without interior mutability
         // or Arc::get_mut, which this trait signature doesn't allow.
         Err(Error::system_error_with_code(
             codes::UNSUPPORTED_OPERATION,
-            "grow_via_callback on Arc<Memory> is not supported without interior mutability in Memory for its data.",
+            "grow_via_callback on Arc<Memory> is not supported without interior mutability in \
+             Memory for its data.",
         ))
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use wrt_types::{types::Limits, verification::VerificationLevel};
+
     use super::*;
-    use crate::memory::Memory;
-    use crate::types::MemoryType;
-    use wrt_types::types::Limits;
-    use wrt_types::verification::VerificationLevel;
+    use crate::{memory::Memory, types::MemoryType};
 
     #[test]
     fn test_arc_memory_extensions() -> Result<()> {
         // Create a memory instance
-        let mem_type = MemoryType {
-            limits: Limits {
-                min: 1,
-                max: Some(2),
-            },
-        };
+        let mem_type = MemoryType { limits: Limits { min: 1, max: Some(2) } };
         let memory = Memory::new(mem_type)?;
         let arc_memory = Arc::new(memory);
 
@@ -575,8 +554,9 @@ mod tests {
         assert_eq!(arc_memory.size_in_bytes(), 65536);
         assert_eq!(arc_memory.debug_name(), None);
 
-        // NOTE: When using ArcMemoryExt, clone_and_mutate pattern means changes don't affect the original
-        // Let's test the interface methods instead of actual data changes
+        // NOTE: When using ArcMemoryExt, clone_and_mutate pattern means changes don't
+        // affect the original Let's test the interface methods instead of
+        // actual data changes
 
         // Test reading initial zero data
         let initial_data = arc_memory.read_bytes_safe(0, 3)?;
@@ -585,7 +565,8 @@ mod tests {
         assert_eq!(initial_data.get(1)?, 0);
         assert_eq!(initial_data.get(2)?, 0);
 
-        // Calling write_bytes should return Ok result even though it doesn't modify original
+        // Calling write_bytes should return Ok result even though it doesn't modify
+        // original
         assert!(arc_memory.write_bytes(0, &[1, 2, 3]).is_ok());
 
         // Test memory growth also returns success
@@ -601,12 +582,7 @@ mod tests {
     #[test]
     fn test_read_bytes_safe() -> Result<()> {
         // Create a memory instance
-        let mem_type = MemoryType {
-            limits: Limits {
-                min: 1,
-                max: Some(2),
-            },
-        };
+        let mem_type = MemoryType { limits: Limits { min: 1, max: Some(2) } };
         let mut memory = Memory::new(mem_type)?;
 
         // Initialize memory with some test data
@@ -643,12 +619,7 @@ mod tests {
     #[test]
     fn test_read_values_as_safe_stack() -> Result<()> {
         // Create a memory instance
-        let mem_type = MemoryType {
-            limits: Limits {
-                min: 1,
-                max: Some(2),
-            },
-        };
+        let mem_type = MemoryType { limits: Limits { min: 1, max: Some(2) } };
         let mut memory = Memory::new(mem_type)?;
 
         // Initialize memory with i32 test values: 1, 2, 3
@@ -673,18 +644,14 @@ mod tests {
 
     #[test]
     fn test_write_via_callback() -> Result<()> {
-        let memory_type = MemoryType {
-            minimum: 1,
-            maximum: Some(2),
-            shared: false,
-        };
-        
+        let memory_type = MemoryType { minimum: 1, maximum: Some(2), shared: false };
+
         let memory = Arc::new(Memory::new(memory_type).unwrap());
         let test_data = [1, 2, 3, 4, 5];
-        
+
         // Write data
         memory.write_via_callback(0, &test_data).unwrap();
-        
+
         // Read it back to verify
         let buffer = memory.buffer().unwrap();
         for (i, &byte) in test_data.iter().enumerate() {
@@ -692,25 +659,21 @@ mod tests {
         }
         Ok(())
     }
-    
+
     #[test]
     fn test_grow_via_callback() -> Result<()> {
-        let memory_type = MemoryType {
-            minimum: 1,
-            maximum: Some(2),
-            shared: false,
-        };
-        
+        let memory_type = MemoryType { minimum: 1, maximum: Some(2), shared: false };
+
         let memory = Arc::new(Memory::new(memory_type).unwrap());
         let initial_size = memory.size();
-        
+
         // Grow memory
         let previous_size = memory.grow_via_callback(1).unwrap();
-        
+
         // Verify growth
         assert_eq!(previous_size, initial_size);
         assert_eq!(memory.size(), initial_size + 1);
-        
+
         Ok(())
     }
 }

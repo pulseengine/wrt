@@ -4,7 +4,7 @@ version.workspace = true
 edition.workspace = true
 description = "Pure Rust WebAssembly runtime supporting Core and Component Model specs"
 license.workspace = true
-repository = "https://github.com/avrabe/wrt"
+repository.workspace = true
 readme = "../README.md"
 keywords = ["webassembly", "wasm", "runtime", "no_std", "component-model"]
 categories = ["wasm", "no-std", "embedded", "web-programming"]
@@ -13,27 +13,27 @@ categories = ["wasm", "no-std", "embedded", "web-programming"]
 # Core allowed/necessary dependencies
 log = { version = "0.4", optional = true }
 # Error handling
-wrt-error = { path = "../wrt-error", version = "0.2.0" }
+wrt-error = { workspace = true }
 # Core type definitions
-wrt-types = { path = "../wrt-types", version = "0.2.0" }
+wrt-types = { workspace = true }
 # Format specifications
-wrt-format = { path = "../wrt-format", version = "0.2.0" }
+wrt-format = { workspace = true }
 # Binary parsing
-wrt-decoder = { path = "../wrt-decoder", version = "0.2.0" }
+wrt-decoder = { workspace = true }
 # Instruction encoding/decoding
-wrt-instructions = { path = "../wrt-instructions", version = "0.2.0" }
+wrt-instructions = { workspace = true }
 # Synchronization primitives
-wrt-sync = { path = "../wrt-sync", version = "0.2.0" }
+wrt-sync = { workspace = true }
 # Function interception
-wrt-intercept = { path = "../wrt-intercept", version = "0.2.0" }
+wrt-intercept = { workspace = true }
 # Host interface
-wrt-host = { path = "../wrt-host", version = "0.2.0" }
+wrt-host = { workspace = true }
 # Component model
-wrt-component = { path = "../wrt-component", version = "0.2.0" }
+wrt-component = { workspace = true }
 # Runtime execution
-wrt-runtime = { path = "../wrt-runtime", version = "0.2.0" }
+wrt-runtime = { workspace = true }
 # Logging functionality
-wrt-logging = { path = "../wrt-logging", version = "0.2.0" }
+wrt-logging = { workspace = true }
 
 [lib]
 name = "wrt"
@@ -61,6 +61,9 @@ harness = false
 
 [package.metadata.cargo-udeps.ignore]
 dev-dependencies = ["criterion"]
+
+[profile.dev]
+panic = "abort"
 
 [profile.release]
 panic = "abort"

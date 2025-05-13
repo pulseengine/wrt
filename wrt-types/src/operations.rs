@@ -156,8 +156,9 @@ impl Type {
     ///
     /// # Errors
     ///
-    /// This function currently does not return errors but is prepared for future
-    /// extensions where cost calculation might fail (e.g., invalid inputs).
+    /// This function currently does not return errors but is prepared for
+    /// future extensions where cost calculation might fail (e.g., invalid
+    /// inputs).
     pub fn fuel_cost_for_operation(
         op_type: Type,
         verification_level: VerificationLevel,
@@ -320,9 +321,7 @@ impl Counter {
                 self.collection_pops.fetch_add(1, Ordering::Relaxed);
             }
             // Merged CollectionLookup, CollectionRead, CollectionPeek
-            Type::CollectionLookup
-            | Type::CollectionRead
-            | Type::CollectionPeek => {
+            Type::CollectionLookup | Type::CollectionRead | Type::CollectionPeek => {
                 self.collection_lookups.fetch_add(1, Ordering::Relaxed);
             }
             // Merged CollectionInsert, CollectionWrite
@@ -376,11 +375,12 @@ impl Counter {
                 self.fuel_consumed.fetch_add(cost, Ordering::Relaxed);
             }
             Err(_e) => {
-                // Log error if fuel calculation fails (should not happen currently)
-                // Consider using a proper logging facade if available
-                // eprintln!("Error calculating fuel cost: {}", e);
-                // Or use log crate if enabled:
-                // log::error!("Error calculating fuel cost: {}", e);
+                // Log error if fuel calculation fails (should not happen
+                // currently) Consider using a proper logging
+                // facade if available eprintln!("Error
+                // calculating fuel cost: {}", e); Or use log
+                // crate if enabled: log::error!("Error
+                // calculating fuel cost: {}", e);
             }
         }
     }
@@ -535,17 +535,18 @@ pub fn global_fuel_consumed() -> u64 {
 
 /// Get the scaled cost multiplier for a given verification level.
 ///
-/// Multipliers are scaled by 100 (e.g., 1.25 becomes 125) to allow integer arithmetic.
+/// Multipliers are scaled by 100 (e.g., 1.25 becomes 125) to allow integer
+/// arithmetic.
 ///
 /// # Errors
 ///
 /// This function is infallible.
 fn verification_cost_multiplier_scaled(level: &VerificationLevel) -> u64 {
     match level {
-        VerificationLevel::Off => 100,        // 1.00 * 100
-        VerificationLevel::Basic => 110,      // 1.10 * 100
+        VerificationLevel::Off => 100,       // 1.00 * 100
+        VerificationLevel::Basic => 110,     // 1.10 * 100
         VerificationLevel::Sampling => 125,  // 1.25 * 100
-        VerificationLevel::Full => 200,       // 2.00 * 100
+        VerificationLevel::Full => 200,      // 2.00 * 100
         VerificationLevel::Redundant => 250, // 2.50 * 100
     }
 }
@@ -569,12 +570,9 @@ mod tests {
         assert_eq!(summary.memory_writes, 1);
         assert_eq!(summary.collection_pushes, 1);
 
-        let expected_fuel =
-            Type::fuel_cost_for_operation(Type::MemoryRead, vl_full).unwrap()
-                + Type::fuel_cost_for_operation(Type::MemoryWrite, vl_full)
-                    .unwrap()
-                + Type::fuel_cost_for_operation(Type::CollectionPush, vl_full)
-                    .unwrap();
+        let expected_fuel = Type::fuel_cost_for_operation(Type::MemoryRead, vl_full).unwrap()
+            + Type::fuel_cost_for_operation(Type::MemoryWrite, vl_full).unwrap()
+            + Type::fuel_cost_for_operation(Type::CollectionPush, vl_full).unwrap();
         assert_eq!(summary.fuel_consumed, expected_fuel);
 
         counter.reset();
@@ -597,12 +595,9 @@ mod tests {
         let summary = counter.get_summary();
         assert_eq!(summary.memory_reads, 3);
 
-        let expected_fuel =
-            Type::fuel_cost_for_operation(Type::MemoryRead, vl_off).unwrap()
-                + Type::fuel_cost_for_operation(Type::MemoryRead, vl_sampling)
-                    .unwrap()
-                + Type::fuel_cost_for_operation(Type::MemoryRead, vl_full)
-                    .unwrap();
+        let expected_fuel = Type::fuel_cost_for_operation(Type::MemoryRead, vl_off).unwrap()
+            + Type::fuel_cost_for_operation(Type::MemoryRead, vl_sampling).unwrap()
+            + Type::fuel_cost_for_operation(Type::MemoryRead, vl_full).unwrap();
         assert_eq!(summary.fuel_consumed, expected_fuel);
     }
 

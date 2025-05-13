@@ -1,14 +1,16 @@
 //! Stackless WebAssembly execution engine
 //!
-//! This module implements a stackless version of the WebAssembly execution engine
-//! that doesn't rely on the host language's call stack, making it suitable for
-//! environments with limited stack space and for no_std contexts.
+//! This module implements a stackless version of the WebAssembly execution
+//! engine that doesn't rely on the host language's call stack, making it
+//! suitable for environments with limited stack space and for no_std contexts.
 
-use crate::execution::ExecutionStats;
-use crate::module::{ExportKind, Module};
-use crate::module_instance::ModuleInstance;
-use crate::prelude::*;
-use crate::stackless::frame::StacklessFrame;
+use crate::{
+    execution::ExecutionStats,
+    module::{ExportKind, Module},
+    module_instance::ModuleInstance,
+    prelude::*,
+    stackless::frame::StacklessFrame,
+};
 
 // Define constants for maximum sizes
 /// Maximum number of values on the operand stack
@@ -40,10 +42,7 @@ pub enum LogOperation {
 
 impl Default for StacklessCallbackRegistry {
     fn default() -> Self {
-        Self {
-            export_names: HashMap::new(),
-            callbacks: HashMap::new(),
-        }
+        Self { export_names: HashMap::new(), callbacks: HashMap::new() }
     }
 }
 
@@ -122,7 +121,8 @@ pub struct StacklessStack {
     pub pc: usize,
     /// Function index
     pub func_idx: u32,
-    /// Capacity of the stack (no longer needed, kept for backward compatibility)
+    /// Capacity of the stack (no longer needed, kept for backward
+    /// compatibility)
     pub capacity: usize,
 }
 
@@ -183,38 +183,40 @@ impl StacklessEngine {
             verification_level: VerificationLevel::Standard,
         }
     }
-    
+
     /// Get the current state of the engine
     pub fn state(&self) -> &StacklessExecutionState {
         &self.exec_stack.state
     }
-    
+
     /// Get the execution statistics
     pub fn stats(&self) -> &ExecutionStats {
         &self.stats
     }
-    
+
     /// Set the fuel for bounded execution
     pub fn set_fuel(&mut self, fuel: Option<u64>) {
         self.fuel = fuel;
     }
-    
+
     /// Get the remaining fuel
     pub fn remaining_fuel(&self) -> Option<u64> {
         self.fuel
     }
-    
+
     /// Instantiate a module in the engine
     pub fn instantiate(&mut self, module: Module) -> Result<usize> {
-        let mut instances = self.instances.lock()
+        let mut instances = self
+            .instances
+            .lock()
             .map_err(|_| create_simple_runtime_error("Mutex poisoned when instantiating module"))?;
-        
+
         let instance_idx = instances.len();
         let instance = Arc::new(ModuleInstance::new(module, instance_idx));
-        
+
         instances.push(instance);
         Ok(instance_idx)
     }
 }
 
-// Rest of the implementation will be added in subsequent updates 
+// Rest of the implementation will be added in subsequent updates

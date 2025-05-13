@@ -4,18 +4,18 @@ version.workspace = true
 edition.workspace = true
 description = "WebAssembly module decoder for wrt runtime"
 license.workspace = true
-repository = "https://github.com/avrabe/wrt"
+repository.workspace = true
 readme = "README.md"
 keywords = ["wasm", "webassembly", "decoder", "parser", "runtime"]
 categories = ["wasm", "parsing", "no-std", "embedded"]
 
 [dependencies]
 # Error handling
-wrt-error = { path = "../wrt-error", version = "0.2.0", default-features = false }
+wrt-error = { path = "../wrt-error", workspace = true, default-features = false }
 # Format handling
-wrt-format = { path = "../wrt-format", version = "0.2.0", default-features = false }
+wrt-format = { path = "../wrt-format", workspace = true, default-features = false }
 # Shared type definitions
-wrt-types = { path = "../wrt-types", version = "0.2.0", default-features = false }
+wrt-types = { path = "../wrt-types", workspace = true, default-features = false }
 
 # Core dependencies
 log = { version = "0.4", optional = true }

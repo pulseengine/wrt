@@ -49,7 +49,10 @@ pub use std::{
 };
 
 // Re-export from wrt-error
+pub use wrt_error::prelude::*;
 pub use wrt_error::{codes, kinds, Error, ErrorCategory, Result};
+// Re-export from wrt-math
+pub use wrt_math::prelude::*;
 
 // Re-export from this crate
 pub use crate::{
