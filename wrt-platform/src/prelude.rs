@@ -11,15 +11,25 @@
 //! This module re-exports the core traits and types for convenient use.
 
 // Re-export core error type (already re-exported in lib.rs, but good practice)
-pub use wrt_error::Error;
+pub use wrt_error::{Error, ErrorCategory, Result};
 
-// Re-export memory allocator trait and fallback implementation
-#[cfg(feature = "std")]
-pub use crate::memory::FallbackAllocator;
-// Re-export sync trait and fallback implementation
-#[cfg(feature = "std")]
-pub use crate::sync::FallbackFutex;
+// Platform-specific re-exports based on features and targets
+#[cfg(all(feature = "platform-macos", feature = "use-libc", target_os = "macos"))]
+pub use crate::macos_memory::{MacOsAllocator, MacOsAllocatorBuilder};
+#[cfg(all(feature = "platform-macos", not(feature = "use-libc"), target_os = "macos"))]
+pub use crate::macos_memory_no_libc::{MacOsAllocator, MacOsAllocatorBuilder};
+#[cfg(all(feature = "platform-macos", feature = "use-libc", target_os = "macos"))]
+pub use crate::macos_sync::{MacOsFutex, MacOsFutexBuilder};
+#[cfg(all(feature = "platform-macos", not(feature = "use-libc"), target_os = "macos"))]
+pub use crate::macos_sync_no_libc::{MacOsFutex, MacOsFutexBuilder};
+// Re-export memory allocator trait and Wasm page size constant
+// Re-export sync trait
 pub use crate::{
-    memory::{PageAllocator, WASM_PAGE_SIZE},
+    memory::{
+        NoStdProvider, NoStdProviderBuilder, PageAllocator, VerificationLevel, WASM_PAGE_SIZE,
+    },
+    memory_optimizations::{
+        MemoryOptimization, PlatformMemoryOptimizer, PlatformOptimizedProviderBuilder,
+    },
     sync::FutexLike,
 };
