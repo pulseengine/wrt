@@ -3,13 +3,12 @@
 // Licensed under the MIT license.
 // SPDX-License-Identifier: MIT
 
-use crate::prelude::*;
-
 #[cfg(feature = "std")]
 use wrt_format::component::ResourceOperation as FormatResourceOperation;
 
 #[cfg(feature = "std")]
 use super::Resource;
+use crate::prelude::*;
 
 /// Trait for intercepting resource operations
 #[cfg(feature = "std")]
