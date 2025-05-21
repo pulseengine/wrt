@@ -1,3 +1,7 @@
+// Copyright (c) 2025 Ralf Anton Beier
+// Licensed under the MIT license.
+// SPDX-License-Identifier: MIT
+
 //! Built-in function host implementation for WebAssembly components.
 //!
 //! This module provides the functionality for executing built-in functions

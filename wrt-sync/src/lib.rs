@@ -13,17 +13,13 @@
 #![warn(missing_docs)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
-// Allow `alloc` crate usage when no_std
+// Allow `alloc` crate usage when no_std AND "alloc" feature is enabled
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 extern crate alloc;
 
-// Conditionally use `std` for tests or specific features
+// Conditionally use `std` for tests or specific features (std implies alloc)
 #[cfg(feature = "std")]
 extern crate std;
-
-// Verify required features
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
-compile_error!("The 'alloc' feature must be enabled when using no_std");
 
 /// Synchronization primitives for Wasmtime, supporting both std and `no_std`
 /// environments.
@@ -70,8 +66,10 @@ pub mod once;
 ///
 /// This module re-exports commonly used items for convenience.
 pub mod prelude {
+    // Exports for no_std + alloc environment
     #[cfg(all(not(feature = "std"), feature = "alloc"))]
-    pub use alloc::{sync::Arc, vec::Vec};
+    pub use alloc::{boxed::Box, sync::Arc, vec::Vec};
+    // Common core items for no_std (with or without alloc)
     #[cfg(not(feature = "std"))]
     pub use core::{
         cell::UnsafeCell,
@@ -79,14 +77,18 @@ pub mod prelude {
         ops::{Deref, DerefMut},
         sync::atomic::{AtomicBool, AtomicUsize, Ordering},
     };
+    // Exports for std environment (which implies alloc and provides its own versions)
     #[cfg(feature = "std")]
     pub use std::{
+        boxed::Box,
         cell::UnsafeCell,
         fmt,
         ops::{Deref, DerefMut},
         sync::{
             atomic::{AtomicBool, AtomicUsize, Ordering},
             Arc,
+            // Note: Mutex, RwLock from std::sync are not re-exported here
+            // to avoid conflict with wrt_sync's own types.
         },
         thread::{self, park as park_thread, sleep, yield_now, JoinHandle},
         time::Duration,
@@ -112,14 +114,13 @@ pub mod verify;
 // Re-export types for convenience
 pub use mutex::{WrtMutex, WrtMutexGuard};
 pub use once::WrtOnce;
-/// Publicly exported synchronization primitives when the `std` feature is
-/// enabled.
+// Publicly exported synchronization primitives when the `std` feature is
+// enabled. These are the parking versions.
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub use rwlock::parking_impl::{
     WrtParkingRwLock, WrtParkingRwLockReadGuard, WrtParkingRwLockWriteGuard,
 };
-pub use rwlock::{WrtRwLock, WrtRwLockReadGuard, WrtRwLockWriteGuard};
-
-// Conditional re-export for the basic (spin-lock) RwLock and its guards
+// Re-export the basic (spin-lock) RwLock and its guards.
 // These are always available as they don't depend on std for parking.
+pub use rwlock::{WrtRwLock, WrtRwLockReadGuard, WrtRwLockWriteGuard};
