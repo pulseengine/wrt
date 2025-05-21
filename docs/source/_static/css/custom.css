@@ -1,17 +1,22 @@
 /* Version switcher styles */
 .version-switcher {
-  display: inline-block;
-  margin-right: 10px;
-  margin-bottom: 10px;
+  display: inline-flex;
+  align-items: center;
+  margin-right: 15px;
+  margin-left: 10px;
+  margin-bottom: 0;
 }
 
 .version-switcher select {
-  padding: 5px 10px;
-  border-radius: 4px;
-  border: 1px solid #ccc;
-  background-color: #f8f9fa;
+  padding: 0.3rem 0.6rem;
   font-size: 0.9em;
+  border-radius: 4px;
+  border: 1px solid var(--wrt-border-color, #ccc);
+  background-color: var(--wrt-bg-color, #f8f9fa);
+  color: var(--wrt-text-color, #333);
   cursor: pointer;
+  height: auto;
+  line-height: 1.5;
 }
 
 /* Dark mode support */
@@ -25,9 +30,38 @@
 
 /* Custom CSS for WRT documentation */
 
+:root {
+    --wrt-bg-color: #FFFFFF;
+    --wrt-text-color: #343a40;
+    --wrt-heading-color: #2c3e50; /* Existing good heading color */
+    --wrt-primary-accent-color: #6A11CB; /* Deep Purple */
+    --wrt-secondary-accent-color: #00C9A7; /* Vibrant Teal */
+    --wrt-border-color: #DEE2E6; /* Light Gray */
+    
+    --wrt-code-bg-color: #F8F9FA; /* Very Light Gray - existing */
+    --wrt-code-text-color: #343a40; /* Dark Gray for code text */
+    --wrt-inline-code-bg-color: #E9ECEF; /* Slightly Darker Light Gray */
+    --wrt-inline-code-text-color: #D6336C; /* Magenta/Pink */
+
+    --wrt-note-bg-color: #F3E8FF; /* Light Purple */
+    --wrt-note-border-color: var(--wrt-primary-accent-color);
+    --wrt-warning-bg-color: #FFF9C4; /* Light Yellow */
+    --wrt-warning-border-color: #FFC107; /* Amber/Yellow */
+    --wrt-danger-bg-color: #FFEBEE; /* Light Pink/Red */
+    --wrt-danger-border-color: #D32F2F; /* Deep Red */
+
+    --wrt-link-color: var(--wrt-primary-accent-color);
+    --wrt-link-hover-color: #4D0D9A; /* Darker Purple for hover */
+}
+
+body { /* Apply base text and background colors */
+    color: var(--wrt-text-color);
+    background-color: var(--wrt-bg-color);
+}
+
 /* Make titles more prominent */
 h1, h2, h3, h4, h5, h6 {
-    color: #2c3e50;
+    color: var(--wrt-heading-color);
     font-weight: bold;
     margin-top: 1.5em;
     margin-bottom: 0.5em;
@@ -35,26 +69,27 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Add a border below h1 and h2 headings */
 h1, h2 {
-    border-bottom: 1px solid #eaecef;
+    border-bottom: 1px solid var(--wrt-border-color);
     padding-bottom: 0.3em;
 }
 
 /* Style code blocks */
 pre {
-    background-color: #f8f9fa;
-    border-left: 3px solid #3498db;
+    background-color: var(--wrt-code-bg-color);
+    border-left: 3px solid var(--wrt-primary-accent-color);
     padding: 1em;
     margin: 1em 0;
     overflow: auto;
+    color: var(--wrt-code-text-color); /* Ensure code text has good contrast */
 }
 
 /* Style inline code */
 code {
-    background-color: #f8f9fa;
+    background-color: var(--wrt-inline-code-bg-color);
     border-radius: 3px;
     padding: 0.2em 0.4em;
     font-size: 0.9em;
-    color: #e83e8c;
+    color: var(--wrt-inline-code-text-color);
 }
 
 /* Style note, warning, and danger admonitions */
@@ -66,18 +101,18 @@ code {
 }
 
 .admonition.note {
-    background-color: #f8f9fa;
-    border-color: #3498db;
+    background-color: var(--wrt-note-bg-color);
+    border-color: var(--wrt-note-border-color);
 }
 
 .admonition.warning {
-    background-color: #fff3cd;
-    border-color: #f39c12;
+    background-color: var(--wrt-warning-bg-color);
+    border-color: var(--wrt-warning-border-color);
 }
 
 .admonition.danger {
-    background-color: #f8d7da;
-    border-color: #e74c3c;
+    background-color: var(--wrt-danger-bg-color);
+    border-color: var(--wrt-danger-border-color);
 }
 
 /* Style the title of admonitions */
@@ -91,16 +126,19 @@ table {
     border-collapse: collapse;
     width: 100%;
     margin: 1em 0;
+    border: 1px solid var(--wrt-border-color); /* Add outer border to table */
 }
 
 th, td {
-    border: 1px solid #dfe2e5;
+    border: 1px solid var(--wrt-border-color);
     padding: 0.5em 1em;
+    text-align: left; /* Ensure text alignment */
 }
 
 th {
-    background-color: #f8f9fa;
+    background-color: var(--wrt-code-bg-color); /* Use code bg for header for consistency */
     font-weight: bold;
+    color: var(--wrt-heading-color); /* Use heading color for header text */
 }
 
 /* Style icons */
@@ -148,4 +186,309 @@ svg {
     .content {
         margin-left: 0;
     }
+}
+
+/* Regular Text Font - Atkinson Hyperlegible Next */
+@font-face {
+    font-family: 'Atkinson Hyperlegible Next';
+    src: url('../fonts/AtkinsonHyperlegibleNext-Regular.woff2') format('woff2');
+    font-weight: normal; /* 400 */
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Atkinson Hyperlegible Next';
+    src: url('../fonts/AtkinsonHyperlegibleNext-RegularItalic.woff2') format('woff2');
+    font-weight: normal; /* 400 */
+    font-style: italic;
+}
+
+@font-face {
+    font-family: 'Atkinson Hyperlegible Next';
+    src: url('../fonts/AtkinsonHyperlegibleNext-Light.woff2') format('woff2');
+    font-weight: 300;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Atkinson Hyperlegible Next';
+    src: url('../fonts/AtkinsonHyperlegibleNext-LightItalic.woff2') format('woff2');
+    font-weight: 300;
+    font-style: italic;
+}
+
+@font-face {
+    font-family: 'Atkinson Hyperlegible Next';
+    src: url('../fonts/AtkinsonHyperlegibleNext-Medium.woff2') format('woff2');
+    font-weight: 500;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Atkinson Hyperlegible Next';
+    src: url('../fonts/AtkinsonHyperlegibleNext-MediumItalic.woff2') format('woff2');
+    font-weight: 500;
+    font-style: italic;
+}
+
+@font-face {
+    font-family: 'Atkinson Hyperlegible Next';
+    src: url('../fonts/AtkinsonHyperlegibleNext-Bold.woff2') format('woff2');
+    font-weight: bold; /* 700 */
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Atkinson Hyperlegible Next';
+    src: url('../fonts/AtkinsonHyperlegibleNext-BoldItalic.woff2') format('woff2');
+    font-weight: bold; /* 700 */
+    font-style: italic;
+}
+
+@font-face {
+    font-family: 'Atkinson Hyperlegible Next';
+    src: url('../fonts/AtkinsonHyperlegibleNext-ExtraLight.woff2') format('woff2');
+    font-weight: 200;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Atkinson Hyperlegible Next';
+    src: url('../fonts/AtkinsonHyperlegibleNext-ExtraLightItalic.woff2') format('woff2');
+    font-weight: 200;
+    font-style: italic;
+}
+
+@font-face {
+    font-family: 'Atkinson Hyperlegible Next';
+    src: url('../fonts/AtkinsonHyperlegibleNext-SemiBold.woff2') format('woff2');
+    font-weight: 600;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Atkinson Hyperlegible Next';
+    src: url('../fonts/AtkinsonHyperlegibleNext-SemiBoldItalic.woff2') format('woff2');
+    font-weight: 600;
+    font-style: italic;
+}
+
+@font-face {
+    font-family: 'Atkinson Hyperlegible Next';
+    src: url('../fonts/AtkinsonHyperlegibleNext-ExtraBold.woff2') format('woff2');
+    font-weight: 800;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Atkinson Hyperlegible Next';
+    src: url('../fonts/AtkinsonHyperlegibleNext-ExtraBoldItalic.woff2') format('woff2');
+    font-weight: 800;
+    font-style: italic;
+}
+
+
+/* Monospace Font - Atkinson Hyperlegible Mono */
+@font-face {
+    font-family: 'Atkinson Hyperlegible Mono';
+    src: url('../fonts/AtkinsonHyperlegibleMono-Regular.woff2') format('woff2');
+    font-weight: normal; /* 400 */
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Atkinson Hyperlegible Mono';
+    src: url('../fonts/AtkinsonHyperlegibleMono-RegularItalic.woff2') format('woff2');
+    font-weight: normal; /* 400 */
+    font-style: italic;
+}
+
+@font-face {
+    font-family: 'Atkinson Hyperlegible Mono';
+    src: url('../fonts/AtkinsonHyperlegibleMono-Light.woff2') format('woff2');
+    font-weight: 300;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Atkinson Hyperlegible Mono';
+    src: url('../fonts/AtkinsonHyperlegibleMono-LightItalic.woff2') format('woff2');
+    font-weight: 300;
+    font-style: italic;
+}
+
+@font-face {
+    font-family: 'Atkinson Hyperlegible Mono';
+    src: url('../fonts/AtkinsonHyperlegibleMono-Medium.woff2') format('woff2');
+    font-weight: 500;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Atkinson Hyperlegible Mono';
+    src: url('../fonts/AtkinsonHyperlegibleMono-MediumItalic.woff2') format('woff2');
+    font-weight: 500;
+    font-style: italic;
+}
+
+@font-face {
+    font-family: 'Atkinson Hyperlegible Mono';
+    src: url('../fonts/AtkinsonHyperlegibleMono-Bold.woff2') format('woff2');
+    font-weight: bold; /* 700 */
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Atkinson Hyperlegible Mono';
+    src: url('../fonts/AtkinsonHyperlegibleMono-BoldItalic.woff2') format('woff2');
+    font-weight: bold; /* 700 */
+    font-style: italic;
+}
+
+@font-face {
+    font-family: 'Atkinson Hyperlegible Mono';
+    src: url('../fonts/AtkinsonHyperlegibleMono-ExtraLight.woff2') format('woff2');
+    font-weight: 200;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Atkinson Hyperlegible Mono';
+    src: url('../fonts/AtkinsonHyperlegibleMono-ExtraLightItalic.woff2') format('woff2');
+    font-weight: 200;
+    font-style: italic;
+}
+
+@font-face {
+    font-family: 'Atkinson Hyperlegible Mono';
+    src: url('../fonts/AtkinsonHyperlegibleMono-SemiBold.woff2') format('woff2');
+    font-weight: 600;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Atkinson Hyperlegible Mono';
+    src: url('../fonts/AtkinsonHyperlegibleMono-SemiBoldItalic.woff2') format('woff2');
+    font-weight: 600;
+    font-style: italic;
+}
+
+@font-face {
+    font-family: 'Atkinson Hyperlegible Mono';
+    src: url('../fonts/AtkinsonHyperlegibleMono-ExtraBold.woff2') format('woff2');
+    font-weight: 800;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'Atkinson Hyperlegible Mono';
+    src: url('../fonts/AtkinsonHyperlegibleMono-ExtraBoldItalic.woff2') format('woff2');
+    font-weight: 800;
+    font-style: italic;
+}
+
+
+/* Apply the fonts */
+body {
+    font-family: 'Atkinson Hyperlegible Next', sans-serif;
+}
+
+pre, code, tt, .rst-content .literalblock, .rst-content pre.literal-block, .rst-content tt.literal, div[class^="highlight-"] pre, code.literal {
+    font-family: 'Atkinson Hyperlegible Mono', Consolas, Menlo, 'DejaVu Sans Mono', 'Bitstream Vera Sans Mono', monospace;
+}
+
+/* You might want to adjust line-height for better readability with the new fonts */
+body {
+    line-height: 1.6;
+}
+
+pre, code, tt, .rst-content .literalblock, .rst-content pre.literal-block, .rst-content tt.literal, div[class^="highlight-"] pre, code.literal {
+    line-height: 1.4; /* Adjust as needed */
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: 'Atkinson Hyperlegible Next', sans-serif; /* Ensure headings also use the main font */
+}
+
+/* Example of using a specific weight for headings if desired */
+/*
+h1 {
+    font-weight: 800; // ExtraBold
+}
+h2 {
+    font-weight: 700; // Bold
+}
+*/
+
+/* Example of using a specific weight for strong/bold text if desired */
+/*
+strong, b {
+    font-weight: 700; // Bold
+}
+*/
+
+/* Style links */
+a {
+    color: var(--wrt-link-color);
+    text-decoration: none;
+}
+
+a:hover {
+    color: var(--wrt-link-hover-color);
+    text-decoration: underline;
+}
+
+/* Custom CSS for Pulseengine (WRT Edition) documentation */
+
+/* Reduce font size and padding for the project name in the navbar */
+.navbar-brand {
+    font-size: 1.1rem;
+    padding-top: 0;
+    padding-bottom: 0;
+    margin-right: 0.5rem;
+    margin-left: 0;
+    margin-bottom: 0;
+    display: inline-flex;
+    align-items: center;
+    height: var(--pst-header-height);
+    line-height: var(--pst-header-height);
+}
+
+/* If the project name is text and not an image logo, you might target the specific element */
+.navbar-brand span.navbar-brand-text {
+    font-size: 1.1rem;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+/* Ensure the navbar-nav itself (which contains start, center, end) uses flex */
+.navbar-nav {
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+/* Adjust navbar-start to ensure items are in a row and centered */
+.navbar-nav > .navbar-start {
+    display: flex;
+    align-items: center;
+    flex-grow: 0;
+}
+
+/* Adjust navbar-end to push items to the right and align them */
+.navbar-nav > .navbar-end {
+    display: flex;
+    align-items: center;
+    margin-left: auto;
+}
+
+/* Ensure the primary sidebar (left) is always visible and has a reasonable width */
+.bd-sidebar-primary {
+    min-width: 250px;
+    width: 20%;
+}
+
+/* Optional: Adjust main content area if sidebar width changes significantly */
+.bd-main .bd-content {
+    /* margin-left: 22%; Adjust if you changed sidebar width significantly */
 } 

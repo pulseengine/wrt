@@ -7,15 +7,38 @@ import pathlib
 import re
 sys.path.insert(0, os.path.abspath('../..'))
 
-project = 'WRT'
-copyright = '2024, WRT Contributors'
+project = 'Pulseengine (WRT Edition)'
+copyright = '2025, WRT Contributors'
 author = 'WRT Contributors'
-release = '0.1.0'
+# release = '0.1.0' # This will be set dynamically
 
 # Version configuration
-# Read current version from environment or default to 'main'
+# DOCS_VERSION is set by the Dagger pipeline (e.g., "main", "v0.1.0", "local")
+# It's already used for current_version for the switcher.
+# We'll use it to set 'release' and 'version' for Sphinx metadata.
+
+# Default to 'main' if DOCS_VERSION is not set (e.g. local manual build)
+# The Dagger pipeline will always set DOCS_VERSION.
+docs_build_env_version = os.environ.get('DOCS_VERSION', 'main')
+
+if docs_build_env_version.lower() in ['main', 'local']:
+    release = 'dev'  # Full version string for 'main' or 'local'
+    version = 'dev'  # Shorter X.Y version
+else:
+    # Process semantic versions like "v0.1.0" or "0.1.0"
+    parsed_release = docs_build_env_version.lstrip('v')
+    release = parsed_release  # Full version string, e.g., "0.1.0"
+    version_parts = parsed_release.split('.')
+    if len(version_parts) >= 2:
+        version = f"{version_parts[0]}.{version_parts[1]}"  # Shorter X.Y, e.g., "0.1"
+    else:
+        version = parsed_release  # Fallback if not in X.Y.Z or similar format
+
+# current_version is used by the theme for matching in the version switcher
 current_version = os.environ.get('DOCS_VERSION', 'main')
-version_path_prefix = os.environ.get('DOCS_VERSION_PATH_PREFIX', '/wrt')
+# version_path_prefix is used by the theme to construct the URL to switcher.json
+# The Dagger pipeline sets this to "/"
+version_path_prefix = os.environ.get('DOCS_VERSION_PATH_PREFIX', '/')
 
 # Function to get available versions
 def get_versions():
@@ -109,19 +132,34 @@ html_theme_options = {
     },
     # Place the version switcher in the navbar
     "navbar_start": ["navbar-logo", "version-switcher"],
+    # Remove items from the center of the navbar (moves main nav to sidebar)
+    "navbar_center": [],
+    # Ensure search button is present. Other defaults like theme-switcher, icon-links can be added if desired.
+    "navbar_end": ["search-button", "theme-switcher"], 
     # Test configuration - disable in production
-    "check_switcher": False,
+    "check_switcher": True,
     # Control navigation bar behavior
-    "navbar_align": "content",
+    "navbar_align": "content", # Default, keep or adjust as needed
     "use_navbar_nav_drop_shadow": True,
     # Control the sidebar navigation
     "navigation_with_keys": True,
-    "show_nav_level": 1,
-    "show_toc_level": 2,
-    # Only show in the sidebar the current page's TOC
-    "collapse_navigation": True,
+    "show_nav_level": 2, # Show more levels in the left sidebar nav
+    "show_toc_level": 2, # On-page TOC levels
+    # Collapse navigation to only show current page's children in sidebar
+    "collapse_navigation": True, # Set to False if you want full tree always visible
     "show_prev_next": True,
 }
+
+# Sidebar configuration
+html_sidebars = {
+    "**": ["sidebar-nav-bs.html", "sidebar-ethical-ads.html"] # Ensures main nav is in sidebar
+}
+
+# ADDED FOR DEBUGGING
+print(f"[DEBUG] conf.py: current_version (for version_match) = '{current_version}'")
+print(f"[DEBUG] conf.py: version_path_prefix = '{version_path_prefix}'")
+print(f"[DEBUG] conf.py: Calculated switcher json_url = '{html_theme_options['switcher']['json_url']}'")
+# END DEBUGGING
 
 # PlantUML configuration
 # Using the installed plantuml executable

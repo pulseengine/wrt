@@ -5,9 +5,9 @@ Product Overview
 .. image:: ../_static/icons/logo.svg
    :width: 120px
    :align: right
-   :alt: SentryPulse Engine (WRT Edition) Logo
+   :alt: Pulseengine (WRT Edition) Logo
 
-Welcome to the SentryPulse Engine (WRT Edition) documentation. This section provides an overview of the product, its features, and architecture.
+Welcome to the Pulseengine (WRT Edition) documentation. This section provides an overview of the product, its features, and architecture.
 
 .. contents:: On this page
    :local:
@@ -23,9 +23,9 @@ Welcome to the SentryPulse Engine (WRT Edition) documentation. This section prov
 Introduction
 ------------
 
-**SentryPulse Engine (WRT Edition): Precision Runtime for Mission-Critical Systems**
+**Pulseengine (WRT Edition): Precision Runtime for Mission-Critical Systems**
 
-SentryPulse Engine (WRT Edition), or SPE_wrt for short, builds on our solid foundation—the interpreted WebAssembly runtime known as **wrt**—to offer an engine engineered for environments where every cycle matters. Drawing on hard-core, time-tested engineering principles and decades of experience in system reliability, SentryPulse delivers deterministic behavior, continuous oversight, and relentless precision, all essential for systems in IoT, medicine, automotive, and avionics.
+Pulseengine (WRT Edition), or PE_wrt for short, builds on our solid foundation—the interpreted WebAssembly runtime known as **wrt**—to offer an engine engineered for environments where every cycle matters. Drawing on hard-core, time-tested engineering principles and decades of experience in system reliability, Pulseengine delivers deterministic behavior, continuous oversight, and relentless precision, all essential for systems in IoT, medicine, automotive, and avionics.
 
 Key Capabilities
 ----------------
