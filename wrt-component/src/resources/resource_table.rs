@@ -6,7 +6,9 @@ use wrt_intercept::{builtins::InterceptContext as InterceptionContext, Intercept
 use wrt_types::resource::ResourceOperation;
 
 use super::{
-    buffer_pool::BufferPool, resource_operation::{from_format_resource_operation, to_format_resource_operation}
+    buffer_pool::BufferPool,
+    resource_operation::{from_format_resource_operation, to_format_resource_operation},
+    size_class_buffer_pool::SizeClassBufferPool
 };
 
 /// Maximum number of resources that can be stored in a resource table
@@ -123,6 +125,46 @@ pub enum VerificationLevel {
     Full,
 }
 
+/// Trait for buffer pools that can be used by ResourceTable
+pub trait BufferPoolTrait: Send + Sync {
+    /// Allocate a buffer of at least the specified size
+    fn allocate(&mut self, size: usize) -> Vec<u8>;
+    
+    /// Return a buffer to the pool
+    fn return_buffer(&mut self, buffer: Vec<u8>);
+    
+    /// Reset the buffer pool
+    fn reset(&mut self);
+}
+
+impl BufferPoolTrait for BufferPool {
+    fn allocate(&mut self, size: usize) -> Vec<u8> {
+        self.allocate(size)
+    }
+    
+    fn return_buffer(&mut self, buffer: Vec<u8>) {
+        self.return_buffer(buffer)
+    }
+    
+    fn reset(&mut self) {
+        self.reset()
+    }
+}
+
+impl BufferPoolTrait for SizeClassBufferPool {
+    fn allocate(&mut self, size: usize) -> Vec<u8> {
+        self.allocate(size)
+    }
+    
+    fn return_buffer(&mut self, buffer: Vec<u8>) {
+        self.return_buffer(buffer)
+    }
+    
+    fn reset(&mut self) {
+        self.reset()
+    }
+}
+
 /// Resource table for tracking resource instances
 #[derive(Clone)]
 pub struct ResourceTable {
@@ -137,7 +179,7 @@ pub struct ResourceTable {
     /// Default verification level
     default_verification_level: VerificationLevel,
     /// Buffer pool for bounded copy operations
-    buffer_pool: Arc<Mutex<BufferPool>>,
+    buffer_pool: Arc<Mutex<dyn BufferPoolTrait + Send + Sync>>,
     /// Interceptors for resource operations
     interceptors: Vec<Arc<dyn ResourceInterceptor>>,
 }
@@ -164,7 +206,20 @@ impl ResourceTable {
             max_resources: MAX_RESOURCES,
             default_memory_strategy: MemoryStrategy::default(),
             default_verification_level: VerificationLevel::Critical,
-            buffer_pool: Arc::new(Mutex::new(BufferPool::new(4096))),
+            buffer_pool: Arc::new(Mutex::new(BufferPool::new(4096))) as Arc<Mutex<dyn BufferPoolTrait + Send + Sync>>,
+            interceptors: Vec::new(),
+        }
+    }
+    
+    /// Create a new resource table with optimized size-class buffer pool
+    pub fn new_with_optimized_memory() -> Self {
+        Self {
+            resources: HashMap::new(),
+            next_handle: 1,
+            max_resources: MAX_RESOURCES,
+            default_memory_strategy: MemoryStrategy::default(),
+            default_verification_level: VerificationLevel::Critical,
+            buffer_pool: Arc::new(Mutex::new(SizeClassBufferPool::new())) as Arc<Mutex<dyn BufferPoolTrait + Send + Sync>>,
             interceptors: Vec::new(),
         }
     }
@@ -181,7 +236,24 @@ impl ResourceTable {
             max_resources,
             default_memory_strategy: memory_strategy,
             default_verification_level: verification_level,
-            buffer_pool: Arc::new(Mutex::new(BufferPool::new(4096))),
+            buffer_pool: Arc::new(Mutex::new(BufferPool::new(4096))) as Arc<Mutex<dyn BufferPoolTrait + Send + Sync>>,
+            interceptors: Vec::new(),
+        }
+    }
+    
+    /// Create a new resource table with custom settings and optimized memory
+    pub fn new_with_config_and_optimized_memory(
+        max_resources: usize,
+        memory_strategy: MemoryStrategy,
+        verification_level: VerificationLevel,
+    ) -> Self {
+        Self {
+            resources: HashMap::new(),
+            next_handle: 1,
+            max_resources,
+            default_memory_strategy: memory_strategy,
+            default_verification_level: verification_level,
+            buffer_pool: Arc::new(Mutex::new(SizeClassBufferPool::new())) as Arc<Mutex<dyn BufferPoolTrait + Send + Sync>>,
             interceptors: Vec::new(),
         }
     }
@@ -450,6 +522,11 @@ impl ResourceTable {
     /// Return a buffer to the pool
     pub fn return_buffer(&mut self, buffer: Vec<u8>) {
         self.buffer_pool.lock().unwrap().return_buffer(buffer)
+    }
+    
+    /// Reset the buffer pool, clearing all pooled buffers
+    pub fn reset_buffer_pool(&mut self) {
+        self.buffer_pool.lock().unwrap().reset()
     }
 
     /// Get memory strategy from interceptors

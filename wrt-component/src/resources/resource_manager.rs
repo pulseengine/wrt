@@ -35,12 +35,19 @@ pub struct ResourceManager {
     default_verification_level: VerificationLevel,
     /// Maximum allowed resources
     max_resources: usize,
+    /// Whether to use optimized memory management
+    use_optimized_memory: bool,
 }
 
 impl ResourceManager {
     /// Create a new resource manager with default settings
     pub fn new() -> Self {
         Self::new_with_id("default-instance")
+    }
+    
+    /// Create a new resource manager with optimized memory management
+    pub fn new_optimized() -> Self {
+        Self::new_with_id_and_optimized_memory("default-instance")
     }
 
     /// Create a new resource manager with a specific instance ID
@@ -51,6 +58,19 @@ impl ResourceManager {
             default_memory_strategy: MemoryStrategy::default(),
             default_verification_level: VerificationLevel::Critical,
             max_resources: 1024,
+            use_optimized_memory: false,
+        }
+    }
+    
+    /// Create a new resource manager with a specific instance ID and optimized memory
+    pub fn new_with_id_and_optimized_memory(instance_id: &str) -> Self {
+        Self {
+            table: Arc::new(Mutex::new(ResourceTable::new_with_optimized_memory())),
+            instance_id: instance_id.to_string(),
+            default_memory_strategy: MemoryStrategy::default(),
+            default_verification_level: VerificationLevel::Critical,
+            max_resources: 1024,
+            use_optimized_memory: true,
         }
     }
 
@@ -71,6 +91,28 @@ impl ResourceManager {
             default_memory_strategy: memory_strategy,
             default_verification_level: verification_level,
             max_resources,
+            use_optimized_memory: false,
+        }
+    }
+    
+    /// Create a new resource manager with custom settings and optimized memory
+    pub fn new_with_config_and_optimized_memory(
+        instance_id: &str,
+        max_resources: usize,
+        memory_strategy: MemoryStrategy,
+        verification_level: VerificationLevel,
+    ) -> Self {
+        Self {
+            table: Arc::new(Mutex::new(ResourceTable::new_with_config_and_optimized_memory(
+                max_resources,
+                memory_strategy,
+                verification_level,
+            ))),
+            instance_id: instance_id.to_string(),
+            default_memory_strategy: memory_strategy,
+            default_verification_level: verification_level,
+            max_resources,
+            use_optimized_memory: true,
         }
     }
 
@@ -314,6 +356,26 @@ impl ResourceManager {
     pub fn instance_id(&self) -> &str {
         &self.instance_id
     }
+    
+    /// Get a reference to the resource table
+    pub fn get_resource_table(&self) -> Arc<Mutex<ResourceTable>> {
+        Arc::clone(&self.table)
+    }
+    
+    /// Create a new resource arena that uses this manager's resource table
+    pub fn create_arena(&self) -> ResourceArena {
+        ResourceArena::new(Arc::clone(&self.table))
+    }
+    
+    /// Create a new resource arena with the given name
+    pub fn create_named_arena(&self, name: &str) -> ResourceArena {
+        ResourceArena::new_with_name(Arc::clone(&self.table), name)
+    }
+    
+    /// Check if this manager is using optimized memory
+    pub fn uses_optimized_memory(&self) -> bool {
+        self.use_optimized_memory
+    }
 }
 
 impl fmt::Debug for ResourceManager {
@@ -327,6 +389,7 @@ impl fmt::Debug for ResourceManager {
             .field("default_memory_strategy", &self.default_memory_strategy)
             .field("default_verification_level", &self.default_verification_level)
             .field("max_resources", &self.max_resources)
+            .field("optimized_memory", &self.use_optimized_memory)
             .finish()
     }
 }
