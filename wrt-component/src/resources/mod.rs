@@ -13,11 +13,16 @@ pub mod buffer_pool;
 pub mod memory_access;
 pub mod memory_manager;
 pub mod memory_strategy;
+pub mod resource_arena;
 pub mod resource_interceptor;
 pub mod resource_manager;
 pub mod resource_operation;
 pub mod resource_strategy;
 pub mod resource_table;
+pub mod size_class_buffer_pool;
+
+#[cfg(test)]
+mod tests;
 
 // Re-export common types and functions
 #[cfg(not(feature = "std"))]
@@ -28,11 +33,13 @@ use std::time::Instant;
 pub use buffer_pool::BufferPool;
 pub use memory_access::MemoryAccessMode;
 pub use memory_manager::MemoryManager;
+pub use resource_arena::ResourceArena;
 pub use resource_interceptor::ResourceInterceptor;
 pub use resource_manager::{ResourceId, ResourceManager};
 pub use resource_operation::{from_format_resource_operation, to_format_resource_operation};
 pub use resource_strategy::ResourceStrategy;
 pub use resource_table::{MemoryStrategy, Resource, ResourceTable, VerificationLevel};
+pub use size_class_buffer_pool::{SizeClassBufferPool, BufferPoolStats};
 
 #[cfg(not(feature = "std"))]
 #[derive(Debug, Clone, Copy)]
