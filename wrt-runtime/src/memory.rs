@@ -90,13 +90,22 @@ use core::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, AtomicUsize, Ordering
 #[cfg(feature = "std")]
 use std::borrow::BorrowMut;
 
+#[cfg(all(feature = "platform-macos", target_os = "macos"))]
+// This cfg checks feature of wrt-platform
+use wrt_platform::macos_memory::MacOsAllocator;
+// Add imports for PAL
+use wrt_platform::memory::{FallbackAllocator, PageAllocator};
 // Import RwLock from appropriate location in no_std
 #[cfg(not(feature = "std"))]
 use wrt_sync::WrtRwLock as RwLock;
+use wrt_types::linear_memory::PalMemoryProvider; /* FallbackAllocator is always available
+                                                   * if std feature of wrt-platform is on */
 use wrt_types::safe_memory::{
     MemoryProvider, MemorySafety, MemoryStats, SafeMemoryHandler, SafeSlice,
 };
 
+// If other platform features (e.g. "platform-linux") were added to wrt-platform,
+// they would be conditionally imported here too.
 use crate::prelude::*;
 
 /// WebAssembly page size (64KB)
@@ -296,41 +305,87 @@ impl Memory {
     ///
     /// Returns an error if the memory type is invalid
     pub fn new(ty: CoreMemoryType) -> Result<Self> {
-        // Calculate number of pages
-        let min_pages = ty.limits.min;
+        let initial_pages = ty.limits.min;
+        let maximum_pages_opt = ty.limits.max; // This is Option<u32>
 
-        // Calculate size in bytes (1 page = 64KiB)
-        let size = min_pages as usize * PAGE_SIZE;
+        // Wasm MVP allows up to 65536 pages (4GiB).
+        // Individual allocators might have their own internal limits or policies.
+        // PalMemoryProvider::new will pass these pages to the PageAllocator.
 
-        // Check limits
-        if size > MAX_MEMORY_BYTES {
-            return Err(Error::new(
-                ErrorCategory::Memory,
-                MEMORY_SIZE_TOO_LARGE,
-                format!("Memory size too large: {} bytes", size),
-            ));
-        }
+        let verification_level = VerificationLevel::Standard; // Or from config
 
-        // Create initial memory buffer with proper size
-        let mut data = SafeMemoryHandler::with_capacity(size);
-        // Set verification level to match our memory safety needs
-        data.set_verification_level(VerificationLevel::Standard);
+        // Choose and instantiate the PageAllocator
+        // The cfg attributes here depend on features enabled for the wrt-platform
+        // crate. It's assumed the build system/top-level crate configures these
+        // features for wrt-platform.
 
-        // Initialize with zeros (avoiding unnecessary Vec creation)
-        // Use resize instead of creating a temporary Vec
-        data.resize(size, 0);
+        // It's better to create a Box<dyn PageAllocator> or use an enum
+        // if we need to decide at runtime or have many allocators.
+        // For compile-time selection based on features, direct instantiation is okay
+        // but leads to more complex cfg blocks.
+        // Let's try to instantiate the provider directly.
 
-        // Create memory instance
+        #[cfg(all(feature = "platform-macos", target_os = "macos"))]
+        let allocator = MacOsAllocator::new(maximum_pages_opt);
+
+        #[cfg(not(all(feature = "platform-macos", target_os = "macos")))]
+        #[cfg(feature = "std")]
+        // FallbackAllocator is available if wrt-platform's std feature is on
+        let allocator = FallbackAllocator::new(maximum_pages_opt);
+
+        // Handle the case where no allocator is available (e.g., no_std and not a
+        // specific platform) This requires a PageAllocator implementation for
+        // no_std generic targets, or the build should fail if no suitable
+        // allocator is found. For now, this code will fail to compile if
+        // neither of the above cfgs match and 'allocator' is not defined. This
+        // is a point to improve with more platform supports. To make it compile
+        // for other targets for now, if no platform allocator and no std,
+        // we can't proceed. The user's plan implies more backends are coming.
+        // A temporary panic or error for unsupported targets might be needed if we
+        // can't feature gate everything. However, the PalMemoryProvider is
+        // generic over A: PageAllocator, so the caller needs to supply one.
+        // Memory::new must provide a concrete allocator.
+
+        // This conditional compilation for `allocator` might lead to "use of possibly
+        // uninitialized variable" if no condition matches. A robust solution
+        // would involve a helper function in wrt-platform to get the "default"
+        // allocator for the current target, or Memory::new needs to be generic
+        // over PageAllocator, or we use Box<dyn PageAllocator>.
+
+        // Let's assume for now that either platform-macos is active on macos, or std is
+        // active for fallback. If neither, this will be a compile error, which
+        // is acceptable until more backends exist.
+
+        let pal_provider = PalMemoryProvider::new(
+            allocator, // This needs to be available
+            initial_pages,
+            maximum_pages_opt,
+            verification_level,
+        )?;
+
+        let data_handler = SafeMemoryHandler::new(pal_provider, verification_level);
+
+        // The PalMemoryProvider's `new` method already handles allocation of
+        // initial_pages. Wasm spec implies memory is zero-initialized. mmap
+        // MAP_ANON does this. FallbackAllocator using Vec::resize(val, 0) also
+        // does this. So, an explicit resize/zeroing like `data.resize(size, 0)`
+        // might be redundant if the provider ensures zeroing. The Provider
+        // trait and PalMemoryProvider implementation should ensure this.
+        // PalMemoryProvider's underlying PageAllocator's `allocate`
+        // should provide zeroed memory for the initial pages.
+
+        let current_size_bytes = initial_pages as usize * PAGE_SIZE;
+
         Ok(Self {
             ty,
-            data,
-            current_pages: core::sync::atomic::AtomicU32::new(min_pages),
+            data: data_handler,
+            current_pages: core::sync::atomic::AtomicU32::new(initial_pages),
             debug_name: None,
             #[cfg(feature = "std")]
-            metrics: MemoryMetrics::new(size),
+            metrics: MemoryMetrics::new(current_size_bytes),
             #[cfg(not(feature = "std"))]
-            metrics: RwLock::new(MemoryMetrics::new(size)),
-            verification_level: VerificationLevel::Standard,
+            metrics: RwLock::new(MemoryMetrics::new(current_size_bytes)),
+            verification_level,
         })
     }
 

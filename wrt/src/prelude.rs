@@ -17,6 +17,7 @@ pub use alloc::{
     vec,
     vec::Vec,
 };
+// No replacement for Box, Arc in no_std/no_alloc mode - must be handled specially
 pub use core::{
     any::Any,
     cmp::{Eq, Ord, PartialEq, PartialOrd},
@@ -110,6 +111,10 @@ pub use wrt_sync::{
     WrtMutex as Mutex, WrtMutexGuard as MutexGuard, WrtRwLock as RwLock,
     WrtRwLockReadGuard as RwLockReadGuard, WrtRwLockWriteGuard as RwLockWriteGuard,
 };
+#[cfg(not(any(feature = "std", feature = "alloc")))]
+pub use wrt_types::bounded::{BoundedString as String, BoundedVec as Vec};
+#[cfg(not(any(feature = "std", feature = "alloc")))]
+pub use wrt_types::bounded_collections::BoundedSet as HashSet;
 // Re-export from wrt-types (core type definitions)
 pub use wrt_types::{
     // Bounded collections (safety-first alternatives to standard collections)
@@ -130,3 +135,7 @@ pub use wrt_types::{
     values::{v128, Value, V128},
     verification::{Checksum, VerificationLevel},
 };
+
+// For no_std/no_alloc environments, use our bounded collections
+#[cfg(not(any(feature = "std", feature = "alloc")))]
+pub use crate::no_std_hashmap::BoundedHashMap as HashMap;

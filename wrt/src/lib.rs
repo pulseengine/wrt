@@ -4,7 +4,7 @@
 // SW-REQ-ID: REQ_OVERVIEW_002
 // SW-REQ-ID: REQ_016
 //
-// Copyright (c) 2024 Ralf Anton Beier
+// Copyright (c) 2025 Ralf Anton Beier
 // Licensed under the MIT license.
 // SPDX-License-Identifier: MIT
 
@@ -88,6 +88,19 @@ pub mod prelude;
 pub mod decoder_integration;
 pub mod instructions_adapter;
 pub mod memory_adapter;
+
+// No_std implementation modules
+#[cfg(not(any(feature = "std", feature = "alloc")))]
+pub mod no_std_hashmap;
+
+// Resources implementation - std vs no_std
+#[cfg(any(feature = "std", feature = "alloc"))]
+pub mod resource; // WebAssembly component model resource types with std/alloc
+
+#[cfg(not(any(feature = "std", feature = "alloc")))]
+pub mod resource_nostd; // No_std/no_alloc compatible resource implementation
+#[cfg(not(any(feature = "std", feature = "alloc")))]
+pub use resource_nostd as resource; // Use resource_nostd as resource when no_std/no_alloc
 
 // Re-export all public types and functionality through the prelude
 pub use crate::prelude::*;
