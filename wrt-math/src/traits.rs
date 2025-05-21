@@ -5,7 +5,7 @@
 
 //! Common traits used within the wrt-math crate.
 
-use crate::prelude::*;
+use crate::prelude::Result; // Specific import for WrtMathResult (aliased wrt_error::Result)
 
 /// Trait for types that can be converted to/from little-endian byte
 /// representation. TODO: This trait is also defined in wrt-types. Consolidate
