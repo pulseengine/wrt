@@ -33,6 +33,9 @@ kani = ["dep:kani-verifier"]
 # Feature for platform-backed linear memory
 platform-memory = ["dep:wrt-platform"]
 
+# Safe memory implementations
+safe-memory = []
+
 # Component Model features
 component-model-core = []  # Basic component model support
 component-model-values = []  # 🪙 Experimental values
