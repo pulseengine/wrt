@@ -28,26 +28,6 @@ extern crate std;
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 extern crate alloc;
 
-// Import std/alloc collections based on feature flag
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-pub use alloc::{
-    boxed::Box,
-    collections::{BTreeMap as HashMap, BTreeSet as HashSet},
-    fmt, format,
-    string::{String, ToString},
-    vec,
-    vec::Vec,
-};
-#[cfg(feature = "std")]
-pub use std::{
-    boxed::Box,
-    collections::{HashMap, HashSet},
-    fmt, format,
-    string::{String, ToString},
-    vec,
-    vec::Vec,
-};
-
 // Re-export error types directly from wrt-error
 pub use wrt_error::{Error, ErrorCategory};
 // Re-export resource types from wrt-types

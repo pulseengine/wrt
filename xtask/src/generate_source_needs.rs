@@ -1,9 +1,4 @@
-use std::{
-    collections::HashSet,
-    fs,
-    io::Write,
-    path::{Path, PathBuf},
-};
+use std::{fs, io::Write, path::Path};
 
 use anyhow::Result;
 use clap::Parser;

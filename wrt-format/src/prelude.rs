@@ -6,20 +6,10 @@
 //! individual modules.
 
 // Core imports for both std and no_std environments
-// Re-export from alloc when no_std but alloc is available
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-pub use alloc::{
-    boxed::Box,
-    collections::{BTreeMap as HashMap, BTreeSet as HashSet},
-    format,
-    string::{String, ToString},
-    sync::Arc,
-    vec,
-    vec::Vec,
-};
 // Import synchronization primitives for no_std
-// For a no_std implementation, we should use appropriate no_std compatible sync primitives
-// since wrt-sync is not implemented yet, we use spin-based locks as a placeholder
+// For a no_std implementation, we should use appropriate no_std compatible sync
+// primitives since wrt-sync is not implemented yet, we use spin-based locks as
+// a placeholder
 #[cfg(not(feature = "std"))]
 pub use core::cell::{Cell, RefCell};
 pub use core::{
@@ -32,17 +22,6 @@ pub use core::{
     mem,
     ops::{Deref, DerefMut},
     slice, str,
-};
-// Re-export from std when the std feature is enabled
-#[cfg(feature = "std")]
-pub use std::{
-    boxed::Box,
-    collections::{HashMap, HashSet},
-    format,
-    string::{String, ToString},
-    sync::{Arc, Mutex, RwLock},
-    vec,
-    vec::Vec,
 };
 
 // Re-export from wrt-error
@@ -106,14 +85,21 @@ pub fn safe_slice_with_verification(
     wrt_types::safe_memory::SafeSlice::with_verification_level(data, level)
 }
 
-/// Create a memory provider from a byte vector
-#[cfg(feature = "safety")]
-pub fn memory_provider(data: Vec<u8>) -> wrt_types::safe_memory::StdMemoryProvider {
-    wrt_types::safe_memory::StdMemoryProvider::new(data)
+/// Create a memory provider from a byte slice (changed from Vec<u8>)
+#[cfg(all(feature = "safety", feature = "std"))] // StdMemoryProvider likely needs std
+pub fn memory_provider(data: &[u8]) -> wrt_types::safe_memory::StdMemoryProvider {
+    // StdMemoryProvider::new takes Vec, this needs adjustment or StdMemoryProvider
+    // needs a from_slice For now, let's assume StdMemoryProvider can be created
+    // from a slice or this function is std-only. This function is problematic
+    // if StdMemoryProvider strictly needs owned Vec. A proper fix would be for
+    // StdMemoryProvider to have a method that takes a slice if appropriate,
+    // or this helper should be cfg-gated more strictly or use a different provider
+    // for no_std. Tentatively, creating a Vec here if std is available.
+    wrt_types::safe_memory::StdMemoryProvider::new(data.to_vec())
 }
 
 /// Create a memory provider with specific capacity
-#[cfg(feature = "safety")]
+#[cfg(all(feature = "safety", feature = "std"))] // StdMemoryProvider likely needs std
 pub fn memory_provider_with_capacity(capacity: usize) -> wrt_types::safe_memory::StdMemoryProvider {
     wrt_types::safe_memory::StdMemoryProvider::with_capacity(capacity)
 }
@@ -124,23 +110,6 @@ pub trait Prelude {}
 /// Standard prelude for the format library
 pub mod std_prelude {
     // External crate imports
-    #[cfg(all(not(feature = "std"), feature = "alloc"))]
-    pub use alloc::{
-        boxed::Box,
-        format,
-        string::{String, ToString},
-        vec,
-        vec::Vec,
-    };
-    #[cfg(feature = "std")]
-    pub use std::{
-        boxed::Box,
-        format,
-        string::{String, ToString},
-        vec,
-        vec::Vec,
-    };
-
     // Result type
     pub use wrt_error::Result;
     // Base types from wrt_types - fix incorrect paths
@@ -157,14 +126,6 @@ pub mod std_prelude {
         },
         // Verification
         verification::VerificationLevel,
-    };
-    #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
-    pub use wrt_types::{
-        // format,
-        string::String,
-        string::ToString,
-        unsafe_vec::UnsafeVec as Vec,
-        Box,
     };
 
     // Explicitly re-export conversion utilities
@@ -185,28 +146,11 @@ pub mod std_prelude {
     };
 }
 
-/// Implementation of the Prelude trait for the standard prelude
-impl Prelude for std_prelude::String {}
-
-/// Implementation of the Prelude trait for the standard prelude
-impl Prelude for std_prelude::Vec<u8> {}
-
 impl Prelude for crate::component::Component {}
-
-impl Prelude for crate::module::Module {}
 
 /// No-std prelude for the format library
 pub mod no_std_prelude {
     // External crate imports
-    #[cfg(all(not(feature = "std"), feature = "alloc"))]
-    pub use alloc::{
-        boxed::Box,
-        format,
-        string::{String, ToString},
-        vec,
-        vec::Vec,
-    };
-
     // Base error types from wrt_error
     pub use wrt_error::{codes, kinds, Error, ErrorCategory, FromError, Result, ToErrorCategory};
     // Base types from wrt_types - fix incorrect paths
@@ -223,14 +167,6 @@ pub mod no_std_prelude {
         },
         // Verification
         verification::VerificationLevel,
-    };
-    #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
-    pub use wrt_types::{
-        // format,
-        string::String,
-        string::ToString,
-        unsafe_vec::UnsafeVec as Vec,
-        Box,
     };
 
     // Explicitly re-export conversion utilities

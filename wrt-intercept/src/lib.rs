@@ -3,7 +3,7 @@
 // SW-REQ-ID: REQ_017
 // SW-REQ-ID: REQ_VERIFY_005
 //
-// Copyright (c) 2024 Ralf Anton Beier
+// Copyright (c) 2025 Ralf Anton Beier
 // Licensed under the MIT license.
 // SPDX-License-Identifier: MIT
 

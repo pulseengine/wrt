@@ -3,7 +3,7 @@
 // SW-REQ-ID: REQ_007
 // SW-REQ-ID: REQ_003
 //
-// Copyright (c) 2024 Ralf Anton Beier
+// Copyright (c) 2025 Ralf Anton Beier
 // Licensed under the MIT license.
 // SPDX-License-Identifier: MIT
 
@@ -16,12 +16,7 @@
 //! on bounded collections and memory, supporting WCET analysis and fuel
 //! consumption calculations.
 
-#[cfg(not(feature = "std"))]
-use core::primitive::f64; // Added for explicit f64 import in no_std
-#[cfg(not(feature = "std"))]
 use core::sync::atomic::{AtomicU64, Ordering};
-#[cfg(feature = "std")]
-use std::sync::atomic::{AtomicU64, Ordering};
 
 use wrt_error::Error as WrtError; // Added for the Result return type
 // Use WrtOnce from wrt-sync crate
@@ -376,11 +371,9 @@ impl Counter {
             }
             Err(_e) => {
                 // Log error if fuel calculation fails (should not happen
-                // currently) Consider using a proper logging
-                // facade if available eprintln!("Error
-                // calculating fuel cost: {}", e); Or use log
-                // crate if enabled: log::error!("Error
-                // calculating fuel cost: {}", e);
+                // currently)
+                // Consider using a proper logging facade if available
+                // eprintln!("Error calculating fuel cost: {}", e);
             }
         }
     }

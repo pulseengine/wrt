@@ -9,6 +9,12 @@ use core::str;
 use wrt_error::{
     codes, errors::codes::UNIMPLEMENTED_PARSING_FEATURE, Error, ErrorCategory, Result,
 };
+// Import BoundedVec and WasmName if needed for read_string or other parsing into owned bounded
+// buffers
+use wrt_types::bounded::WasmName; /* Assuming BoundedString is not directly used, or add if
+                                    * needed. */
+use wrt_types::safe_memory::MemoryProvider; // For WasmName if it takes a provider
+use wrt_types::traits::BytesWriter; // For write functions
 use wrt_types::{RefType, ValueType};
 
 use crate::{
@@ -17,8 +23,7 @@ use crate::{
     module::{Data, DataMode, Element, ElementInit, ElementMode, Module},
     types::{FormatBlockType, Limits},
 };
-// Import from crate::lib re-exports to ensure proper features
-use crate::{format, vec, Box, String, ToString, Vec};
+// REMOVED: use crate::{format, vec, Box, String, ToString, Vec};
 
 /// Magic bytes for WebAssembly modules: \0asm
 pub const WASM_MAGIC: [u8; 4] = [0x00, 0x61, 0x73, 0x6D];
@@ -899,7 +904,7 @@ pub fn validate_utf8(bytes: &[u8]) -> Result<()> {
 /// Read a string from a byte array
 ///
 /// This reads a length-prefixed string (used in WebAssembly names).
-pub fn read_string(bytes: &[u8], pos: usize) -> Result<(String, usize)> {
+pub fn read_string(bytes: &[u8], pos: usize) -> Result<(&[u8], usize)> {
     if pos >= bytes.len() {
         return Err(to_wrt_error(parse_error("String exceeds buffer bounds")));
     }

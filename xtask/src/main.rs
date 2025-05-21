@@ -88,10 +88,14 @@ pub struct PublishDocsDaggerArgs {
     pub output_dir: String,
     #[clap(
         long,
-        default_value = "main",
-        help = "Comma-separated list of versions (branches/tags) to build docs for."
+        help = "One or more versions (branches/tags) to build docs for (e.g., --versions main v0.1.0). Defaults to 'main' if none specified.",
+        num_args = 1.., // Expect one or more values after --versions
+        default_missing_value = "main" // If --versions is present but no values, or if not present at all (requires careful thought on clap's default_value_t)
+                                      // A better approach for default might be to handle it post-parsing if versions vec is empty.
+                                      // For now, let's ensure it takes multiple values.
+                                      // Consider clap(default_values_t = vec!["main".to_string()]) if that's desired.
     )]
-    pub versions: String,
+    pub versions: Vec<String>, // Changed to Vec<String>
 }
 
 #[derive(Debug, Parser)]
@@ -183,7 +187,11 @@ async fn main() -> Result<()> {
                                     &query_client,
                                     workspace_root_for_closure_dagger,
                                     PathBuf::from(args.output_dir),
-                                    args.versions.split(',').map(String::from).collect(),
+                                    if args.versions.is_empty() {
+                                        vec!["main".to_string()]
+                                    } else {
+                                        args.versions.clone()
+                                    },
                                 )
                                 .await
                             }
