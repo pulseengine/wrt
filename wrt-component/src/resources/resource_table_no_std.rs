@@ -3,12 +3,13 @@
 // Licensed under the MIT license.
 // SPDX-License-Identifier: MIT
 
-use crate::prelude::*;
-use wrt_types::bounded::{BoundedVec, BoundedCollection};
+use wrt_types::bounded::{BoundedCollection, BoundedVec};
+
 use super::{
     bounded_buffer_pool::{BoundedBufferPool, MAX_BUFFERS_PER_CLASS},
-    resource_interceptor::ResourceInterceptor
+    resource_interceptor::ResourceInterceptor,
 };
+use crate::prelude::*;
 
 /// Maximum resources in the table
 pub const MAX_RESOURCES: usize = 64;
@@ -31,10 +32,10 @@ pub enum VerificationLevel {
 pub trait BufferPoolTrait {
     /// Allocate a buffer of at least the specified size
     fn allocate(&mut self, size: usize) -> Result<BoundedVec<u8, MAX_BUFFERS_PER_CLASS>>;
-    
+
     /// Return a buffer to the pool
     fn return_buffer(&mut self, buffer: BoundedVec<u8, MAX_BUFFERS_PER_CLASS>) -> Result<()>;
-    
+
     /// Reset the buffer pool
     fn reset(&mut self);
 }
@@ -43,11 +44,11 @@ impl BufferPoolTrait for BoundedBufferPool {
     fn allocate(&mut self, size: usize) -> Result<BoundedVec<u8, MAX_BUFFERS_PER_CLASS>> {
         self.allocate(size)
     }
-    
+
     fn return_buffer(&mut self, buffer: BoundedVec<u8, MAX_BUFFERS_PER_CLASS>) -> Result<()> {
         self.return_buffer(buffer)
     }
-    
+
     fn reset(&mut self) {
         self.reset()
     }
@@ -184,7 +185,7 @@ impl ResourceTable {
             interceptors: BoundedVec::new(),
         }
     }
-    
+
     /// Add a resource interceptor
     pub fn add_interceptor(&mut self, interceptor: Box<dyn ResourceInterceptor>) -> Result<()> {
         if self.interceptors.len() >= MAX_INTERCEPTORS {
@@ -194,7 +195,7 @@ impl ResourceTable {
                 format!("Maximum number of interceptors ({}) reached", MAX_INTERCEPTORS),
             ));
         }
-        
+
         self.interceptors.push(interceptor).map_err(|_| {
             Error::new(
                 ErrorCategory::Resource,
@@ -203,7 +204,7 @@ impl ResourceTable {
             )
         })
     }
-    
+
     /// Create a new resource
     pub fn create_resource(
         &mut self,
@@ -218,27 +219,28 @@ impl ResourceTable {
                 format!("Maximum number of resources ({}) reached", MAX_RESOURCES),
             ));
         }
-        
+
         // Create the resource
         let resource = Resource::new(type_idx, data);
-        
+
         // Notify interceptors about resource creation
         for interceptor in self.interceptors.iter_mut() {
             interceptor.on_resource_create(type_idx, &resource)?;
         }
-        
+
         // Assign a handle
         let handle = self.next_handle;
         self.next_handle += 1;
-        
+
         // Create the entry
         let entry = ResourceEntry {
             resource: Box::new(Mutex::new(resource)),
-            memory_strategy: self.get_strategy_from_interceptors(handle)
+            memory_strategy: self
+                .get_strategy_from_interceptors(handle)
                 .unwrap_or(self.default_memory_strategy),
             verification_level: self.default_verification_level,
         };
-        
+
         // Add to our collections
         self.resource_handles.push(handle).map_err(|_| {
             Error::new(
@@ -247,22 +249,22 @@ impl ResourceTable {
                 format!("Failed to add resource handle to table"),
             )
         })?;
-        
+
         self.resource_entries.push(entry).map_err(|_| {
             // Remove the handle we just added
             let last_idx = self.resource_handles.len() - 1;
             self.resource_handles.remove(last_idx);
-            
+
             Error::new(
                 ErrorCategory::Resource,
                 codes::RESOURCE_ERROR,
                 format!("Failed to add resource entry to table"),
             )
         })?;
-        
+
         Ok(handle)
     }
-    
+
     /// Drop a resource
     pub fn drop_resource(&mut self, handle: u32) -> Result<()> {
         // Find the resource index
@@ -273,19 +275,19 @@ impl ResourceTable {
                 format!("Resource handle {} not found", handle),
             )
         })?;
-        
+
         // Notify interceptors about resource dropping
         for interceptor in self.interceptors.iter_mut() {
             interceptor.on_resource_drop(handle)?;
         }
-        
+
         // Remove the entry
         self.resource_handles.remove(idx);
         self.resource_entries.remove(idx);
-        
+
         Ok(())
     }
-    
+
     /// Get a resource by handle
     pub fn get_resource(&self, handle: u32) -> Result<Box<Mutex<Resource>>> {
         // Find the resource index
@@ -296,20 +298,20 @@ impl ResourceTable {
                 format!("Resource handle {} not found", handle),
             )
         })?;
-        
+
         // Get the entry
         let entry = &self.resource_entries[idx];
-        
+
         // Record access
         if let Ok(mut resource) = entry.resource.lock() {
             resource.record_access();
         }
-        
+
         // Notify interceptors about resource access
         for interceptor in self.interceptors.iter() {
             interceptor.on_resource_access(handle)?;
         }
-        
+
         // Create a copy of the resource mutex
         let resource_copy = Box::new(Mutex::new(Resource {
             type_idx: entry.resource.lock().unwrap().type_idx,
@@ -319,10 +321,10 @@ impl ResourceTable {
             last_accessed: entry.resource.lock().unwrap().last_accessed,
             access_count: entry.resource.lock().unwrap().access_count,
         }));
-        
+
         Ok(resource_copy)
     }
-    
+
     /// Set memory strategy for a resource
     pub fn set_memory_strategy(&mut self, handle: u32, strategy: MemoryStrategy) -> Result<()> {
         // Find the resource index
@@ -333,13 +335,13 @@ impl ResourceTable {
                 format!("Resource handle {} not found", handle),
             )
         })?;
-        
+
         // Update the strategy
         self.resource_entries[idx].memory_strategy = strategy;
-        
+
         Ok(())
     }
-    
+
     /// Set verification level for a resource
     pub fn set_verification_level(&mut self, handle: u32, level: VerificationLevel) -> Result<()> {
         // Find the resource index
@@ -350,33 +352,33 @@ impl ResourceTable {
                 format!("Resource handle {} not found", handle),
             )
         })?;
-        
+
         // Update the level
         self.resource_entries[idx].verification_level = level;
-        
+
         Ok(())
     }
-    
+
     /// Get the number of resources in the table
     pub fn resource_count(&self) -> usize {
         self.resource_entries.len()
     }
-    
+
     /// Get a buffer from the pool
     pub fn get_buffer(&mut self, size: usize) -> Result<BoundedVec<u8, MAX_BUFFERS_PER_CLASS>> {
         self.buffer_pool.lock().unwrap().allocate(size)
     }
-    
+
     /// Return a buffer to the pool
     pub fn return_buffer(&mut self, buffer: BoundedVec<u8, MAX_BUFFERS_PER_CLASS>) -> Result<()> {
         self.buffer_pool.lock().unwrap().return_buffer(buffer)
     }
-    
+
     /// Reset the buffer pool
     pub fn reset_buffer_pool(&mut self) {
         self.buffer_pool.lock().unwrap().reset()
     }
-    
+
     /// Get memory strategy from interceptors
     pub fn get_strategy_from_interceptors(&self, handle: u32) -> Option<MemoryStrategy> {
         for interceptor in self.interceptors.iter() {
@@ -388,7 +390,7 @@ impl ResourceTable {
         }
         None
     }
-    
+
     /// Find the index of a resource by handle
     fn find_resource_index(&self, handle: u32) -> Option<usize> {
         self.resource_handles.iter().position(|&h| h == handle)
@@ -410,35 +412,33 @@ impl Debug for ResourceTable {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     struct TestInterceptor {
         executed_operations: BoundedVec<String, 32>,
     }
-    
+
     impl TestInterceptor {
         fn new() -> Self {
-            Self {
-                executed_operations: BoundedVec::new(),
-            }
+            Self { executed_operations: BoundedVec::new() }
         }
     }
-    
+
     impl ResourceInterceptor for TestInterceptor {
         fn on_resource_create(&mut self, type_idx: u32, _resource: &Resource) -> Result<()> {
             self.executed_operations.push(format!("create:{}", type_idx)).unwrap();
             Ok(())
         }
-        
+
         fn on_resource_drop(&mut self, handle: u32) -> Result<()> {
             self.executed_operations.push(format!("drop:{}", handle)).unwrap();
             Ok(())
         }
-        
+
         fn on_resource_access(&mut self, handle: u32) -> Result<()> {
             self.executed_operations.push(format!("access:{}", handle)).unwrap();
             Ok(())
         }
-        
+
         fn get_memory_strategy(&self, handle: u32) -> Option<u8> {
             if handle % 2 == 0 {
                 Some(1) // BoundedCopy for even handles
@@ -447,80 +447,80 @@ mod tests {
             }
         }
     }
-    
+
     #[test]
     fn test_resource_creation() {
         let mut table = ResourceTable::new();
         let data = Box::new(42i32);
-        
+
         let handle = table.create_resource(1, data).unwrap();
         assert_eq!(handle, 1);
         assert_eq!(table.resource_count(), 1);
-        
+
         let resource = table.get_resource(handle).unwrap();
         let resource = resource.lock().unwrap();
         assert_eq!(resource.type_idx, 1);
-        
+
         let data = resource.data.downcast_ref::<i32>().unwrap();
         assert_eq!(*data, 42);
     }
-    
+
     #[test]
     fn test_resource_dropping() {
         let mut table = ResourceTable::new();
         let data = Box::new(42i32);
-        
+
         let handle = table.create_resource(1, data).unwrap();
         assert_eq!(table.resource_count(), W);
-        
+
         table.drop_resource(handle).unwrap();
         assert_eq!(table.resource_count(), 0);
-        
+
         assert!(table.get_resource(handle).is_err());
     }
-    
+
     #[test]
     fn test_memory_strategy() {
         let mut table = ResourceTable::new();
         let data = Box::new(42i32);
-        
+
         let handle = table.create_resource(1, data).unwrap();
-        
+
         // Default strategy is BoundedCopy
         table.set_memory_strategy(handle, MemoryStrategy::ZeroCopy).unwrap();
-        
+
         // Invalid handle should fail
         assert!(table.set_memory_strategy(999, MemoryStrategy::ZeroCopy).is_err());
     }
-    
+
     #[test]
     fn test_resource_count_limit() {
         let mut table = ResourceTable::new();
-        
+
         // Create MAX_RESOURCES resources
         for i in 0..MAX_RESOURCES {
             let data = Box::new(i);
             let _ = table.create_resource(1, data).unwrap();
         }
-        
+
         // Try to create one more - should fail
         let data = Box::new(100);
         assert!(table.create_resource(1, data).is_err());
     }
-    
+
     #[test]
     fn test_resource_interceptor() {
         let mut table = ResourceTable::new();
         let interceptor = Box::new(TestInterceptor::new());
-        
+
         table.add_interceptor(interceptor).unwrap();
-        
+
         let data = Box::new(42i32);
         let handle = table.create_resource(1, data).unwrap();
-        
+
         // Access the resource
         let _resource = table.get_resource(handle).unwrap();
-        
+
         // Check operations - would rely on inspecting the interceptor
         // but for simplicity we'll just check that the resource exists
         assert!(table.find_resource_index(handle).is_some());
