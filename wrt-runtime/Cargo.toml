@@ -37,14 +37,9 @@ std = [
     "wrt-sync/std",
     "wrt-types/std",
 ]
-no_std = [
-    "wrt-decoder/no_std",
-    "wrt-host/no_std",
-    "wrt-instructions/no_std",
-    "wrt-intercept/no_std",
-    "wrt-platform/no_std",
-    "wrt-types/no_std",
-]
+# For compatibility with verification script
+# This is a no-op since the crate is no_std by default
+no_std = []
 alloc = [
     "dep:alloc",
     "wrt-decoder/alloc",
