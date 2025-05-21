@@ -1,9 +1,18 @@
-use wrt_format::component::ResourceOperation as FormatResourceOperation;
-use wrt_error::Result;
+// WRT - wrt-component
+// Copyright (c) 2025 Ralf Anton Beier
+// Licensed under the MIT license.
+// SPDX-License-Identifier: MIT
 
+use crate::prelude::*;
+
+#[cfg(feature = "std")]
+use wrt_format::component::ResourceOperation as FormatResourceOperation;
+
+#[cfg(feature = "std")]
 use super::Resource;
 
 /// Trait for intercepting resource operations
+#[cfg(feature = "std")]
 pub trait ResourceInterceptor: Send + Sync {
     /// Called when a resource is created
     fn on_resource_create(&self, type_idx: u32, resource: &Resource) -> Result<()>;
@@ -33,5 +42,23 @@ pub trait ResourceInterceptor: Send + Sync {
         operation: &FormatResourceOperation,
     ) -> Result<Option<Vec<u8>>> {
         Ok(None)
+    }
+}
+
+/// Trait for intercepting resource operations (no_std compatible)
+#[cfg(not(feature = "std"))]
+pub trait ResourceInterceptor {
+    /// Called when a resource is created
+    fn on_resource_create(&mut self, type_idx: u32, resource: &super::Resource) -> Result<()>;
+
+    /// Called when a resource is dropped
+    fn on_resource_drop(&mut self, handle: u32) -> Result<()>;
+
+    /// Called when a resource is accessed
+    fn on_resource_access(&mut self, handle: u32) -> Result<()>;
+
+    /// Get memory strategy for a resource
+    fn get_memory_strategy(&self, handle: u32) -> Option<u8> {
+        None
     }
 }

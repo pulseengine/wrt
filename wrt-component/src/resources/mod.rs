@@ -4,51 +4,83 @@
 //! Model, including resource lifetime management, memory optimization, and
 //! interception support.
 
+#[cfg(feature = "std")]
 use std::sync::Weak;
 
 use crate::prelude::*;
 
 // Submodules
+#[cfg(feature = "std")]
 pub mod buffer_pool;
+#[cfg(feature = "std")]
 pub mod memory_access;
-pub mod memory_manager;
 pub mod memory_strategy;
+#[cfg(feature = "std")]
 pub mod resource_arena;
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+pub mod resource_arena_no_std;
 pub mod resource_interceptor;
+#[cfg(feature = "std")]
 pub mod resource_manager;
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+pub mod resource_manager_no_std;
 pub mod resource_operation;
 pub mod resource_strategy;
+#[cfg(feature = "std")]
 pub mod resource_table;
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+pub mod resource_table_no_std;
+#[cfg(feature = "std")]
 pub mod size_class_buffer_pool;
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+pub mod bounded_buffer_pool;
 
 #[cfg(test)]
 mod tests;
 
-// Re-export common types and functions
-#[cfg(not(feature = "std"))]
-use core::time::Duration;
+// Re-export for use of std features
 #[cfg(feature = "std")]
-use std::time::Instant;
-
 pub use buffer_pool::BufferPool;
+#[cfg(feature = "std")]
 pub use memory_access::MemoryAccessMode;
-pub use memory_manager::MemoryManager;
+#[cfg(feature = "std")]
 pub use resource_arena::ResourceArena;
-pub use resource_interceptor::ResourceInterceptor;
-pub use resource_manager::{ResourceId, ResourceManager};
-pub use resource_operation::{from_format_resource_operation, to_format_resource_operation};
-pub use resource_strategy::ResourceStrategy;
-pub use resource_table::{MemoryStrategy, Resource, ResourceTable, VerificationLevel};
+#[cfg(feature = "std")]
+pub use resource_table::{BufferPoolTrait, MemoryStrategy, Resource, ResourceTable, VerificationLevel};
+#[cfg(feature = "std")]
 pub use size_class_buffer_pool::{SizeClassBufferPool, BufferPoolStats};
 
-#[cfg(not(feature = "std"))]
+// Re-export for no_std feature
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+pub use bounded_buffer_pool::{BoundedBufferPool, BoundedBufferStats as BufferPoolStats};
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+pub use resource_arena_no_std::ResourceArena;
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+pub use resource_table_no_std::{
+    BufferPoolTrait, MemoryStrategy, Resource, ResourceTable, VerificationLevel
+};
+
+// Common re-exports for both std and no_std
+pub use memory_strategy::MemoryStrategy as MemoryStrategyTrait;
+pub use resource_interceptor::ResourceInterceptor;
+pub use resource_operation::{from_format_resource_operation, to_format_resource_operation};
+pub use resource_strategy::ResourceStrategy;
+
+// Export ResourceId and ResourceManager based on feature flags
+#[cfg(feature = "std")]
+pub use resource_manager::{ResourceId, ResourceManager};
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+pub use resource_manager_no_std::{ResourceId, ResourceManager};
+
+/// Timestamp implementation for no_std
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
 #[derive(Debug, Clone, Copy)]
 pub struct Instant {
     // Store a monotonic counter for elapsed time simulation
     dummy: u64,
 }
 
-#[cfg(not(feature = "std"))]
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
 impl Instant {
     // Create a new instant at the current monotonic time
     pub fn now() -> Self {
