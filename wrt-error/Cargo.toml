@@ -17,23 +17,15 @@ path = "src/lib.rs"
 # No external dependencies
 
 [features]
-default = ["std"]
-# For allocation support without std
-alloc = []
-# Standard library features (includes alloc)
-std = ["alloc"]
-# For no_std support
-no_std = ["alloc"]
+default = []
 # Performance optimization
 optimize = []
 # Safety features
-safety = ["alloc"]
-
-[profile.release]
-panic = "abort"
-
-[profile.test]
-panic = "abort"
+safety = []
+# Standard library support
+std = []
+# Allocation support
+alloc = []
 
 [lints.rust]
 unexpected_cfgs = { level = "allow", check-cfg = ['cfg(test)', 'cfg(kani)', 'cfg(coverage)', 'cfg(doc)'] }

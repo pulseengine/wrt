@@ -10,29 +10,23 @@ keywords = ["wasm", "webassembly", "runtime", "host", "component-model"]
 categories = ["wasm", "no-std"]
 
 [dependencies]
-wrt-error = { path = "../wrt-error", workspace = true, default-features = false }
-wrt-types = { path = "../wrt-types", workspace = true, default-features = false }
-wrt-intercept = { path = "../wrt-intercept", workspace = true, default-features = false }
-wrt-sync = { path = "../wrt-sync", workspace = true, default-features = false }
+wrt-error = { workspace = true, default-features = false }
+wrt-types = { workspace = true, default-features = false }
+wrt-intercept = { workspace = true, default-features = false }
+wrt-sync = { workspace = true, default-features = false }
 
 # Std dependencies
 log = { version = "0.4", optional = true }
 
 # Feature gates
 [features]
-default = ["std"]
-std = ["log", "wrt-error/std", "wrt-types/std", "wrt-intercept/std", "wrt-sync/std"]
-no_std = ["wrt-error/no_std", "wrt-types/no_std", "wrt-intercept/no_std", "wrt-sync/no_std"]
-alloc = ["wrt-error/alloc", "wrt-types/alloc", "wrt-intercept/alloc", "wrt-sync/alloc"]
-optimize = ["wrt-error/optimize", "wrt-types/optimize", "wrt-intercept/optimize", "wrt-sync/optimize"]
-safety = ["wrt-error/safety", "wrt-types/safety", "wrt-intercept/safety", "wrt-sync/safety", "alloc"]
+default = []
+std = ["log", "wrt-types/std", "wrt-intercept/std", "wrt-sync/std"]
+no_std = ["wrt-types/no_std", "wrt-intercept/no_std"]
+alloc = ["wrt-types/alloc", "wrt-intercept/alloc", "wrt-sync/alloc"]
+optimize = ["wrt-types/optimize", "wrt-intercept/optimize"]
+safety = ["wrt-types/safety", "wrt-intercept/safety", "alloc"]
 kani = ["wrt-intercept/kani"]
-
-[profile.release]
-panic = "abort"
-
-[profile.test]
-panic = "abort"
 
 [lints.rust]
 unexpected_cfgs = { level = "allow", check-cfg = ['cfg(test)', 'cfg(kani)', 'cfg(coverage)', 'cfg(doc)'] }

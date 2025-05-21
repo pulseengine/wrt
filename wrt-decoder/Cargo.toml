@@ -11,11 +11,11 @@ categories = ["wasm", "parsing", "no-std", "embedded"]
 
 [dependencies]
 # Error handling
-wrt-error = { path = "../wrt-error", workspace = true, default-features = false }
+wrt-error = { workspace = true, default-features = false }
 # Format handling
-wrt-format = { path = "../wrt-format", workspace = true, default-features = false }
+wrt-format = { workspace = true, default-features = false }
 # Shared type definitions
-wrt-types = { path = "../wrt-types", workspace = true, default-features = false }
+wrt-types = { workspace = true, default-features = false }
 
 # Core dependencies
 log = { version = "0.4", optional = true }
@@ -30,17 +30,11 @@ hex = "0.4"
 wat = "1.229.0"
 
 [features]
-default = [
-    "minimal",
-    "std",
-    "component-model-core",
-    "component-model-values"
-]
-minimal = ["dep:log"]
-std = ["wrt-error/std", "wrt-format/std", "wrt-types/std"]
-alloc = ["wrt-error/alloc", "wrt-format/alloc", "wrt-types/alloc"]
-no_std = ["wrt-error/no_std", "wrt-format/no_std", "wrt-types/no_std"]
-optimize = ["wrt-types/optimize", "wrt-format/optimize"]
+default = []
+std = ["wrt-format/std", "wrt-types/std"]
+alloc = ["wrt-format/alloc", "wrt-types/alloc"]
+no_std = ["wrt-format/no_std", "wrt-types/no_std"]
+optimize = []
 safety = ["wrt-types/safety", "wrt-format/safety"]
 wat = ["dep:wat", "std"]
 
@@ -61,12 +55,6 @@ component-model-all = [
 # Type conversion feature
 conversion = ["wrt-format/conversion"]
 
-[profile.release]
-panic = "abort"
-
-[profile.test]
-panic = "abort"
-
 [lints.rust]
 unexpected_cfgs = { level = "allow", check-cfg = ['cfg(test)', 'cfg(kani)', 'cfg(coverage)', 'cfg(doc)'] }
 # Rule 1
@@ -77,24 +65,25 @@ unsafe_code = "forbid"
 
 [lints.clippy]
 # Rule 1: Language subset
-inline_asm_x86_att_syntax = "warn"
+inline_asm_x86_att_syntax = "deny"
 transmute_ptr_to_ref = "deny"
 type_id = "deny"
-dyn_trait = "warn"
-float_arithmetic = "warn"
+dyn_trait = "deny"
+float_arithmetic = "deny"
 # Rule 2: Unsafe usage
-ptr_offset_with_cast = "warn"
+ptr_offset_with_cast = "deny"
 # Rule 3: Error handling & panics
-unwrap_used = "warn"
-panic = "warn" # Also covers Rule 4
-result_unit_err = "warn"
-let_underscore_drop = "warn"
+unwrap_used = "deny"
+panic = "deny" # Also covers Rule 4
+expect_used = "deny"
+result_unit_err = "deny"
+let_underscore_drop = "deny"
 must_use_candidate = "warn"
 must_use_unit = "warn"
 # Rule 4: Control-flow soundness
-match_wildcard_for_single_variants = "warn"
-never_loop = "warn"
-unreachable = "warn" # Also related to Rule 4
+match_wildcard_for_single_variants = "deny"
+never_loop = "deny"
+unreachable = "deny" # Also related to Rule 4
 # Rule 5: Memory & concurrency safety
 static_mut_reference = "deny"
 arc_mutate = "deny"

@@ -12,38 +12,40 @@ categories = ["wasm", "development-tools::testing"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-wrt-decoder = { path = "../wrt-decoder", version = "0.2.0" }
-wrt-format = { path = "../wrt-format", version = "0.2.0" }
-wrt-types = { path = "../wrt-types", version = "0.2.0" }
-wrt-error = { path = "../wrt-error", version = "0.2.0" }
-wrt-test-registry = { path = "../wrt-test-registry", version = "0.2.0" }
+wrt = { workspace = true, default-features = false }
+wrt-runtime = { workspace = true, default-features = false }
+wrt-instructions = { workspace = true, default-features = false }
+wrt-decoder = { workspace = true, default-features = false }
+wrt-format = { workspace = true, default-features = false }
+wrt-types = { workspace = true, default-features = false }
+wrt-error = { workspace = true, default-features = false }
+wrt-test-registry = { workspace = true, default-features = false }
 # For alloc support in no_std
 alloc = { version = "1.0.0", optional = true, package = "rustc-std-workspace-alloc" }
 
 [features]
 default = ["std"]
 std = [
-    "wrt-decoder/std", 
-    "wrt-format/std", 
-    "wrt-types/std", 
-    "wrt-error/std",
-    "wrt-test-registry/std"
+    "dep:alloc",
+    "wrt/std",
+    "wrt-runtime/std",
+    "wrt-types/std",
+    "wrt-decoder/std",
+    "wrt-instructions/std",
 ]
 no_std = [
-    "alloc",
-    "wrt-decoder/no_std", 
-    "wrt-format/no_std", 
-    "wrt-types/no_std", 
-    "wrt-error/no_std",
-    "wrt-test-registry/no_std"
+    "wrt/no_std",
+    "wrt-runtime/no_std",
+    "wrt-types/no_std",
+    "wrt-decoder/no_std",
+    "wrt-instructions/no_std",
 ]
 alloc = [
-    "dep:alloc",
-    "wrt-decoder/alloc", 
-    "wrt-format/alloc", 
-    "wrt-types/alloc", 
-    "wrt-error/alloc",
-    "wrt-test-registry/alloc"
+    "wrt/alloc",
+    "wrt-runtime/alloc",
+    "wrt-types/alloc",
+    "wrt-decoder/alloc",
+    "wrt-instructions/alloc",
 ]
 
 [lints.rust]

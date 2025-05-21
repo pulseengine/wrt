@@ -10,24 +10,18 @@ keywords = ["wasm", "webassembly", "verification", "formal-methods", "testing"]
 categories = ["wasm", "development-tools", "development-tools::testing"]
 
 [dependencies]
-wrt-decoder = { path = "../wrt-decoder", workspace = true }
-wrt-test-registry = { path = "../wrt-test-registry", workspace = true }
+wrt-decoder = { workspace = true }
+wrt-test-registry = { workspace = true }
 # For alloc support in no_std
 alloc = { version = "1.0.0", optional = true, package = "rustc-std-workspace-alloc" }
 # Feature-gated std dependencies
 log = { version = "0.4", optional = true }
 
 [features]
-default = ["std"]
+default = []
 std = ["wrt-decoder/std", "log", "wrt-test-registry/std"]
 no_std = ["wrt-decoder/no_std", "alloc", "wrt-decoder/alloc", "wrt-test-registry/no_std"]
 alloc = ["dep:alloc", "wrt-decoder/alloc", "wrt-test-registry/alloc"]
-
-[profile.release]
-panic = "abort"
-
-[profile.test]
-panic = "abort"
 
 [lints.rust]
 unexpected_cfgs = { level = "allow", check-cfg = ['cfg(test)'] }

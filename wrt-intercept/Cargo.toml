@@ -9,16 +9,10 @@ documentation = "https://docs.rs/wrt-intercept"
 keywords = ["wasm", "webassembly", "runtime", "interception"]
 categories = ["wasm", "no-std"]
 
-[profile.release]
-panic = "abort"
-
-[profile.test]
-panic = "abort"
-
 [dependencies]
-wrt-error = { path = "../wrt-error", workspace = true, default-features = false }
-wrt-types = { path = "../wrt-types", workspace = true, default-features = false }
-wrt-sync = { path = "../wrt-sync", workspace = true, default-features = false }
+wrt-error = { workspace = true, default-features = false }
+wrt-types = { workspace = true, default-features = false }
+wrt-sync = { workspace = true, default-features = false }
 
 # Optional dependencies
 log = { version = "0.4", optional = true }
@@ -30,12 +24,12 @@ chrono = "0.4"  # For examples
 pretty_assertions = "1.4.0"
 
 [features]
-default = ["std"]
-std = ["wrt-error/std", "wrt-types/std", "wrt-sync/std", "log"]
-no_std = ["alloc", "wrt-error/no_std", "wrt-types/no_std", "wrt-sync/no_std"]
-alloc = ["wrt-error/alloc", "wrt-types/alloc", "wrt-sync/alloc"]
-optimize = ["wrt-error/optimize", "wrt-types/optimize", "wrt-sync/optimize"]
-safety = ["wrt-error/safety", "wrt-types/safety", "wrt-sync/safety", "alloc"]
+default = []
+std = ["wrt-types/std", "wrt-sync/std", "log"]
+no_std = ["alloc", "wrt-types/no_std"]
+alloc = ["wrt-types/alloc", "wrt-sync/alloc"]
+optimize = ["wrt-types/optimize"]
+safety = ["wrt-types/safety", "alloc"]
 kani = ["dep:kani-verifier"]
 
 [lints]
@@ -61,7 +55,7 @@ clippy.dyn_trait = "warn" # Rule 1
 clippy.ptr_offset_with_cast = "warn" # Rule 2
 clippy.result_unit_err = "warn" # Rule 3
 clippy.let_underscore_drop = "warn" # Rule 3
-clippy.must_use = { level = "warn", options = { "ignore- मुख्य-functions" = true } } # Rule 3
+clippy.must_use = "warn" # Rule 3
 clippy.static_mut_reference = "deny" # Rule 5
 clippy.arc_mutate = "deny" # Rule 5
 clippy.missing_docs_in_private_items = "allow" # To be reviewed if too noisy

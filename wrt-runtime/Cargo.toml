@@ -11,13 +11,14 @@ keywords = ["wasm", "webassembly", "runtime", "component-model"]
 categories = ["wasm", "no-std"]
 
 [dependencies]
-wrt-error = { path = "../wrt-error", workspace = true, default-features = false }
-wrt-types = { path = "../wrt-types", workspace = true, default-features = false }
-wrt-sync = { path = "../wrt-sync", workspace = true, default-features = false }
-wrt-decoder = { path = "../wrt-decoder", workspace = true, default-features = false }
-wrt-instructions = { path = "../wrt-instructions", workspace = true, default-features = false }
-wrt-host = { path = "../wrt-host", workspace = true, default-features = false }
-wrt-intercept = { path = "../wrt-intercept", workspace = true, default-features = false }
+wrt-error = { workspace = true, default-features = false }
+wrt-types = { workspace = true, default-features = false }
+wrt-sync = { workspace = true, default-features = false }
+wrt-decoder = { workspace = true, default-features = false }
+wrt-instructions = { workspace = true, default-features = false }
+wrt-host = { workspace = true, default-features = false }
+wrt-intercept = { workspace = true, default-features = false }
+wrt-platform = { workspace = true, default-features = false }
 
 # No-std support
 alloc = { version = "1.0.0", optional = true, package = "rustc-std-workspace-alloc" }
@@ -25,34 +26,34 @@ alloc = { version = "1.0.0", optional = true, package = "rustc-std-workspace-all
 # No additional dependencies for now
 
 [features]
-default = ["std"]
+default = []
 std = [
-    "wrt-error/std",
-    "wrt-types/std",
-    "wrt-sync/std",
+    "dep:alloc",
     "wrt-decoder/std",
-    "wrt-instructions/std",
     "wrt-host/std",
+    "wrt-instructions/std",
     "wrt-intercept/std",
+    "wrt-platform/std",
+    "wrt-sync/std",
+    "wrt-types/std",
 ]
 no_std = [
-    "wrt-error/no_std",
-    "wrt-types/no_std",
-    "wrt-sync/no_std",
     "wrt-decoder/no_std",
-    "wrt-instructions/no_std",
     "wrt-host/no_std",
+    "wrt-instructions/no_std",
     "wrt-intercept/no_std",
+    "wrt-platform/no_std",
+    "wrt-types/no_std",
 ]
 alloc = [
-    "wrt-error/alloc",
-    "wrt-types/alloc",
-    "wrt-sync/alloc",
+    "dep:alloc",
     "wrt-decoder/alloc",
-    "wrt-instructions/alloc",
     "wrt-host/alloc",
+    "wrt-instructions/alloc",
     "wrt-intercept/alloc",
-    "dep:alloc"
+    "wrt-platform/alloc",
+    "wrt-sync/alloc",
+    "wrt-types/alloc",
 ]
 optimize = [
     "wrt-types/optimize",
@@ -70,12 +71,8 @@ safety = [
 ]
 kani = []
 kani-verifier = []
-
-[profile.release]
-panic = "abort"
-
-[profile.test]
-panic = "abort"
+platform-macos = ["wrt-platform/platform-macos"]
+helper-mode = ["wrt-platform/helper-mode"]
 
 [lints.rust]
 unexpected_cfgs = { level = "allow", check-cfg = ['cfg(test)'] }

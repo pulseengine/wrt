@@ -10,8 +10,8 @@ keywords = ["wasm", "webassembly", "format", "binary", "no-std"]
 categories = ["wasm", "parsing", "data-structures", "no-std", "embedded"]
 
 [dependencies]
-wrt-error = { path = "../wrt-error", workspace = true, default-features = false }
-wrt-types = { path = "../wrt-types", workspace = true, default-features = false }
+wrt-error = { workspace = true, default-features = false }
+wrt-types = { workspace = true, default-features = false }
 
 [dev-dependencies]
 # For property testing
@@ -23,16 +23,10 @@ version = "0.61.0"
 optional = true
 
 [features]
-default = [
-    "std",
-    "component-model-core",
-    "component-model-values",
-    "component-model-fixed-lists",
-    "component-model-namespaces"
-]
-std = ["wrt-error/std", "wrt-types/std"]
-no_std = ["wrt-error/no_std", "wrt-types/no_std"]
-alloc = ["wrt-error/alloc", "wrt-types/alloc"]
+default = []
+std = ["wrt-types/std"]
+no_std = ["wrt-types/no_std"]
+alloc = ["wrt-types/alloc"]
 optimize = ["wrt-types/optimize"]
 safety = ["wrt-types/safety"]
 # The 'kani' feature enables formal verification with the Kani verifier
@@ -64,18 +58,6 @@ component-model-all = [
 
 # Type conversion feature
 conversion = []
-
-[profile.dev]
-panic = "abort"
-
-[profile.release]
-panic = "abort"
-
-[profile.test]
-panic = "abort"
-
-[profile.bench]
-panic = "abort"
 
 # Config for linting
 [lints.rust]

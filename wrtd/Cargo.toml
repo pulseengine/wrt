@@ -20,12 +20,6 @@ tracing-subscriber = { version= "0.3", features = ["json"] }
 anyhow = { workspace = true }
 once_cell = "1.18"
 
-[profile.release]
-panic = "abort"
-
-[profile.test]
-panic = "abort"
-
 [lints.rust]
 unexpected_cfgs = { level = "allow", check-cfg = ['cfg(test)'] }
 # Rule 1

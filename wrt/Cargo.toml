@@ -12,6 +12,7 @@ categories = ["wasm", "no-std", "embedded", "web-programming"]
 [dependencies]
 # Core allowed/necessary dependencies
 log = { version = "0.4", optional = true }
+alloc = { version = "1.0.0", optional = true, package = "rustc-std-workspace-alloc" }
 # Error handling
 wrt-error = { workspace = true }
 # Core type definitions
@@ -34,6 +35,10 @@ wrt-component = { workspace = true }
 wrt-runtime = { workspace = true }
 # Logging functionality
 wrt-logging = { workspace = true }
+# Platform abstraction layer
+wrt-platform = { workspace = true }
+# Math operations
+wrt-math = { workspace = true }
 
 [lib]
 name = "wrt"
@@ -62,19 +67,10 @@ harness = false
 [package.metadata.cargo-udeps.ignore]
 dev-dependencies = ["criterion"]
 
-[profile.dev]
-panic = "abort"
-
-[profile.release]
-panic = "abort"
-
-[profile.test]
-panic = "abort"
-
 [lints.rust]
 unexpected_cfgs = { level = "allow", check-cfg = ['cfg(test)'] }
 # Rule 1
-pointer_cast = "deny"
+# pointer_cast = "deny" # Removed as it's an unknown lint
 # Rule 9
 missing_docs = "deny"
 unsafe_code = "forbid"
@@ -109,46 +105,49 @@ debug_assert_with_mut_call = "warn"
 
 [features]
 # Core features
-default = ["minimal", "alloc", "std"]
+default = []
 # Minimal feature set
-minimal = ["dep:log", "wrt-types/std", "wrt-decoder/minimal"]
+minimal = ["dep:log", "wrt-decoder/no_std"]
 # Full std feature
-std = ["minimal", "alloc", 
-       "wrt-error/std", 
-       "wrt-sync/std", 
-       "wrt-format/std", 
-       "wrt-types/std", 
-       "wrt-decoder/std", 
-       "wrt-runtime/std", 
-       "wrt-logging/std", 
-       "wrt-instructions/std",
-       "wrt-intercept/std",
-       "wrt-host/std",
-       "wrt-component/std"]
+std = [
+    "wrt-runtime/std",
+    "wrt-host/std",
+    "wrt-logging/std",
+    "wrt-types/std",
+    "wrt-sync/std",
+    "wrt-format/std",
+    "wrt-decoder/std",
+    "wrt-math/std",
+    "wrt-component/std",
+    "wrt-instructions/std",
+    "wrt-intercept/std",
+    "log/std",
+]
 # alloc feature for heap allocation
-alloc = ["wrt-error/alloc", 
-         "wrt-sync/alloc", 
-         "wrt-format/alloc", 
-         "wrt-types/alloc", 
-         "wrt-decoder/alloc", 
-         "wrt-runtime/alloc", 
-         "wrt-logging/alloc", 
-         "wrt-instructions/alloc",
-         "wrt-intercept/alloc",
-         "wrt-host/alloc",
-         "wrt-component/alloc"]
+alloc = [
+    "wrt-runtime/alloc",
+    "wrt-host/alloc",
+    "wrt-logging/alloc",
+    "wrt-types/alloc",
+    "wrt-sync/alloc",
+    "wrt-format/alloc",
+    "wrt-decoder/alloc",
+    "wrt-math/alloc",
+    "wrt-component/alloc",
+    "wrt-instructions/alloc",
+    "wrt-intercept/alloc",
+    "dep:alloc",
+]
 # no_std support
-no_std = ["wrt-error/no_std", 
-          "wrt-sync/no_std", 
-          "wrt-format/no_std", 
-          "wrt-types/no_std", 
+no_std = ["wrt-format/no_std", 
           "wrt-decoder/no_std", 
           "wrt-runtime/no_std", 
           "wrt-logging/no_std", 
           "wrt-instructions/no_std",
           "wrt-intercept/no_std",
           "wrt-host/no_std",
-          "wrt-component/no_std"]
+          "wrt-component/no_std",
+          ]
 # Optimization for non-safety-critical paths
 optimize = ["wrt-types/optimize", 
             "wrt-decoder/optimize", 
@@ -168,6 +167,9 @@ safety = ["wrt-types/safety",
           "wrt-host/safety",
           "wrt-component/safety",
           "alloc"]
+# Platform and Helper Mode Features
+helper-mode = ["wrt-platform/helper-mode", "alloc"]
+platform-macos = ["wrt-platform/platform-macos", "alloc"]
 # Proposal features (mostly placeholders/unused for now)
 relaxed_simd = []
 gc = []

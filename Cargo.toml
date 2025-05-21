@@ -35,22 +35,22 @@ wit-bindgen = "0.41.0"
 dagger-sdk = { version = "0.18.6", features = ["codegen"] }
 
 # Internal crate versions
-wrt = { path = "wrt", workspace = true }
-wrt-error = { path = "wrt-error", workspace = true }
-wrt-sync = { path = "wrt-sync", workspace = true }
-wrt-format = { path = "wrt-format", workspace = true }
-wrt-types = { path = "wrt-types", workspace = true }
-wrt-decoder = { path = "wrt-decoder", workspace = true }
-wrt-runtime = { path = "wrt-runtime", workspace = true }
-wrt-logging = { path = "wrt-logging", workspace = true }
-wrt-instructions = { path = "wrt-instructions", workspace = true }
-wrt-component = { path = "wrt-component", workspace = true }
-wrt-host = { path = "wrt-host", workspace = true }
-wrt-intercept = { path = "wrt-intercept", workspace = true }
-wrt-test-registry = { path = "wrt-test-registry", workspace = true }
-wrt-math = { path = "wrt-math", workspace = true }
-wrt-platform = { path = "wrt-platform", workspace = true }
-wrt-verification-tool = { path = "wrt-verification-tool", workspace = true }
+wrt = { path = "wrt", version = "0.2.0", default-features = false }
+wrt-error = { path = "wrt-error", version = "0.2.0", default-features = false }
+wrt-sync = { path = "wrt-sync", version = "0.2.0", default-features = false }
+wrt-format = { path = "wrt-format", version = "0.2.0", default-features = false }
+wrt-types = { path = "wrt-types", version = "0.2.0", default-features = false }
+wrt-decoder = { path = "wrt-decoder", version = "0.2.0", default-features = false }
+wrt-runtime = { path = "wrt-runtime", version = "0.2.0", default-features = false }
+wrt-logging = { path = "wrt-logging", version = "0.2.0", default-features = false }
+wrt-instructions = { path = "wrt-instructions", version = "0.2.0", default-features = false }
+wrt-component = { path = "wrt-component", version = "0.2.0", default-features = false }
+wrt-host = { path = "wrt-host", version = "0.2.0", default-features = false }
+wrt-intercept = { path = "wrt-intercept", version = "0.2.0", default-features = false }
+wrt-test-registry = { path = "wrt-test-registry", version = "0.2.0", default-features = false }
+wrt-math = { path = "wrt-math", version = "0.2.0", default-features = false }
+wrt-platform = { path = "wrt-platform", version = "0.2.0", default-features = false }
+wrt-verification-tool = { path = "wrt-verification-tool", version = "0.2.0", default-features = false }
 
 [workspace.lints.rust]
 unexpected_cfgs = { level = "allow", check-cfg = ['cfg(test)'] }
@@ -61,20 +61,20 @@ unused_macros = "allow"
 
 # Workspace-level profiles inherit by members unless overridden.
 # Setting panic=abort globally for safety.
-[workspace.profile.dev]
+[profile.dev]
 panic = "abort"
 # Inherits other settings from Cargo's defaults
 
-[workspace.profile.release]
+[profile.release]
 panic = "abort"
 strip = true  # Reduce binary size
 lto = true    # Link-Time Optimization
 codegen-units = 1 # Maximize optimization opportunities
 
-[workspace.profile.test]
+[profile.test]
 panic = "abort"
 # Inherits other settings from Cargo's defaults (e.g., debug assertions enabled)
 
-[workspace.profile.bench]
+[profile.bench]
 panic = "abort"
 # Inherits from release profile by default, but we ensure panic=abort here too.
