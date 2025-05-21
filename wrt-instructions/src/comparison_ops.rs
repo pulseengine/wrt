@@ -1,3 +1,7 @@
+// Copyright (c) 2025 Ralf Anton Beier
+// Licensed under the MIT license.
+// SPDX-License-Identifier: MIT
+
 //! Comparison operations for WebAssembly instructions.
 //!
 //! This module provides pure implementations for WebAssembly comparison
