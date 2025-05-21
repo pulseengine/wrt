@@ -1,3 +1,7 @@
+// Copyright (c) 2025 Ralf Anton Beier
+// Licensed under the MIT license.
+// SPDX-License-Identifier: MIT
+
 //! Callback registry for host functions.
 //!
 //! This module provides a registry for callbacks that can be invoked from

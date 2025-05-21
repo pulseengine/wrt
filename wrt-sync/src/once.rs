@@ -35,17 +35,25 @@ pub struct WrtOnce<T> {
     initialized: AtomicBool, // Tracks if `data` is initialized
 }
 
-// Safety: `WrtOnce<T>` is Send if T is Send because the data is protected by
-// the mutex during initialization and then accessed via shared references. The
-// AtomicBool is Send. UnsafeCell<MaybeUninit<T>> is Send if T is Send.
+/// # Safety
+/// This implementation of `Send` for `WrtOnce<T>` is safe if `T` is `Send`,
+/// because access to the inner `UnsafeCell<MaybeUninit<T>>` data is
+/// synchronized. During initialization, the `mutex` ensures exclusive access.
+/// After initialization (`initialized` is true), the data is treated as
+/// immutable and accessed via shared references (`&T`), which is safe. The
+/// `AtomicBool` (`initialized`) is also `Send`.
 unsafe impl<T: Send> Send for WrtOnce<T> {}
 
-// Safety: `WrtOnce<T>` is Sync if T is Send and Sync.
-// `Send` is required for `T` to be stored. `Sync` is required for `&T` to be
-// `Send`. The mutex ensures exclusive access during initialization.
-// Once initialized, `data` is accessed immutably. AtomicBool is Sync.
-// UnsafeCell<MaybeUninit<T>> is Sync if T is Send + Sync (as &MaybeUninit<T>
-// needs to be Sync).
+/// # Safety
+/// This implementation of `Sync` for `WrtOnce<T>` is safe if `T` is `Send +
+/// Sync`. `Send` is required because `T` is stored and potentially moved across
+/// threads during initialization. `Sync` is required because after
+/// initialization, `&T` can be shared across threads. Access to the inner
+/// `UnsafeCell<MaybeUninit<T>>` data is synchronized: during initialization,
+/// the `mutex` ensures exclusive access. After initialization (`initialized` is
+/// true), the data is accessed via `&T`. If `T` is `Sync`, then `&T` is `Send`,
+/// allowing `&WrtOnce<T>` to be `Sync`. The `AtomicBool` (`initialized`) is
+/// also `Sync`.
 unsafe impl<T: Send + Sync> Sync for WrtOnce<T> {}
 
 impl<T> WrtOnce<T> {
@@ -79,6 +87,12 @@ impl<T> WrtOnce<T> {
             // Safety: `initialized` is true, so `data` has been initialized.
             // The Acquire load synchronizes with the Release store by the initializing
             // thread. It's safe to assume `data` contains a valid `T`.
+            // # Safety
+            // This `unsafe` block calls `get_unchecked`. It is safe because
+            // `self.initialized` was loaded with `Ordering::Acquire` and found
+            // to be true. This synchronizes with the `Ordering::Release` store
+            // in `get_or_init` after the data is written, ensuring that the
+            // data is initialized and visible.
             return unsafe { self.get_unchecked() };
         }
 
@@ -90,11 +104,24 @@ impl<T> WrtOnce<T> {
         if self.initialized.load(Ordering::Relaxed) {
             // Relaxed is fine here, guarded by mutex.
             // Safety: Same as above fast path, but now under lock.
+            // # Safety
+            // This `unsafe` block calls `get_unchecked`. It is safe because
+            // `self.initialized` is checked under the protection of
+            // `self.mutex`. If true, the data has been initialized by another
+            // thread. The lock ensures memory visibility.
             return unsafe { self.get_unchecked() };
         }
 
         // We are the thread to initialize it.
         let value = f();
+        // # Safety
+        // This `unsafe` block writes to the `UnsafeCell<MaybeUninit<T>>` via
+        // `get().write()`. It is safe because:
+        // 1. The `self.mutex` is held, ensuring exclusive access for initialization.
+        // 2. `self.initialized` is false at this point (checked before and under lock),
+        //    so we are the designated initializer.
+        // 3. `MaybeUninit::write` is the correct way to initialize a `MaybeUninit`
+        //    value.
         unsafe {
             // Write the initialized value.
             (*self.data.get()).write(value);
@@ -105,6 +132,10 @@ impl<T> WrtOnce<T> {
         self.initialized.store(true, Ordering::Release);
 
         // Safety: We just initialized it.
+        // # Safety
+        // This `unsafe` block calls `get_unchecked`. It is safe because we have just
+        // written to `self.data` and set `self.initialized` to true within the
+        // critical section protected by `self.mutex`.
         unsafe { self.get_unchecked() }
     }
 
@@ -114,6 +145,10 @@ impl<T> WrtOnce<T> {
     pub fn get(&self) -> Option<&T> {
         if self.initialized.load(Ordering::Acquire) {
             // Safety: `initialized` is true, so `data` has been initialized.
+            // # Safety
+            // This `unsafe` block calls `get_unchecked`. It is safe for the same reasons
+            // as in the fast path of `get_or_init`: `self.initialized` is true (checked
+            // with `Ordering::Acquire`), ensuring data is initialized and visible.
             Some(unsafe { self.get_unchecked() })
         } else {
             None
@@ -131,6 +166,11 @@ impl<T> WrtOnce<T> {
         // Safety: The caller guarantees that `data` is initialized.
         // `MaybeUninit::assume_init_ref` is the correct way to get a reference
         // from an initialized `MaybeUninit`.
+        // # Safety
+        // This `unsafe` block accesses the `UnsafeCell<MaybeUninit<T>>` and calls
+        // `assume_init_ref()`. This is safe because the method contract of
+        // `get_unchecked` (an `unsafe fn`) requires the caller to guarantee
+        // that the data has been initialized.
         (*self.data.get()).assume_init_ref()
     }
 }
@@ -159,6 +199,14 @@ impl<T> Drop for WrtOnce<T> {
         // Relaxed ordering is fine for the load, as `drop` has exclusive access.
         if *self.initialized.get_mut() {
             // get_mut provides safe access to the bool
+            // # Safety
+            // This `unsafe` block accesses the `UnsafeCell<MaybeUninit<T>>` and calls
+            // `assume_init_drop()`. It is safe because:
+            // 1. `&mut self` guarantees exclusive access during drop.
+            // 2. `*self.initialized.get_mut()` is true, meaning the data was initialized.
+            // 3. `assume_init_drop()` is the correct way to drop an initialized value held
+            //    in `MaybeUninit` when the `MaybeUninit` itself is being dropped or its
+            //    lifetime ends.
             unsafe {
                 // Safety: We have exclusive access (`&mut self`) and `initialized` is true,
                 // so `data` contains an initialized `T`.

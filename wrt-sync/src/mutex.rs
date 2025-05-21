@@ -25,8 +25,16 @@ pub struct WrtMutexGuard<'a, T: ?Sized + 'a> {
 // Implementations
 
 // Allow the mutex to be shared across threads.
-// Safety: Access to the UnsafeCell data is protected by the atomic lock.
+/// # Safety
+/// Access to the `UnsafeCell` data is protected by the atomic `locked` flag.
+/// The `Send` trait is safe because the `WrtMutex` ensures that only one thread
+/// can access the data at a time (if `T` is `Send`).
 unsafe impl<T: ?Sized + Send> Send for WrtMutex<T> {}
+/// # Safety
+/// Access to the `UnsafeCell` data is protected by the atomic `locked` flag.
+/// The `Sync` trait is safe because the `WrtMutex` ensures that all accesses
+/// (read or write) are synchronized through the lock (if `T` is `Send`).
+/// If `T` is also `Sync`, then `&WrtMutex<T>` can be safely shared.
 unsafe impl<T: ?Sized + Send> Sync for WrtMutex<T> {}
 
 impl<T> WrtMutex<T> {
@@ -103,12 +111,14 @@ impl<T: ?Sized + fmt::Debug> fmt::Debug for WrtMutex<T> {
         if self.locked.load(Ordering::Relaxed) {
             f.debug_struct("WrtMutex").field("data", &"<locked>").finish()
         } else {
-            // Temporarily try to acquire the lock for reading the value.
-            // This is imperfect as it might briefly show unlocked even if locked
-            // immediately after. A try_lock approach would be better if
-            // implemented. Safety: We are only reading for debug purposes, and
-            // the lock check makes data races less likely, though not
-            // impossible in edge cases.
+            // # Safety
+            // This `unsafe` block is used for debug printing. It accesses the
+            // `UnsafeCell` data. While a `locked.load()` check is performed,
+            // there's a small race window where the lock could be acquired by
+            // another thread between the check and `data.get()`. However, this
+            // is for a non-critical debug representation. `data.get()` itself
+            // is safe as it only returns a raw pointer. Dereferencing it is
+            // the unsafe part, justified by the debug context.
             f.debug_struct("WrtMutex").field("data", unsafe { &&*self.data.get() }).finish()
         }
     }
@@ -120,8 +130,11 @@ impl<T: ?Sized> Deref for WrtMutexGuard<'_, T> {
     type Target = T;
     #[inline]
     fn deref(&self) -> &Self::Target {
-        // Safety: The guard exists only when the lock is held,
-        // guaranteeing exclusive access to the data.
+        // # Safety
+        // This `unsafe` block dereferences the raw pointer from `UnsafeCell::get()`.
+        // It is safe because a `WrtMutexGuard` can only be created if the
+        // associated `WrtMutex` is locked. The existence of the guard guarantees
+        // exclusive (for `&mut`) or shared (for `&`) access to the data.
         unsafe { &*self.mutex.data.get() }
     }
 }
@@ -129,8 +142,11 @@ impl<T: ?Sized> Deref for WrtMutexGuard<'_, T> {
 impl<T: ?Sized> DerefMut for WrtMutexGuard<'_, T> {
     #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
-        // Safety: The guard exists only when the lock is held,
-        // guaranteeing exclusive access to the data.
+        // # Safety
+        // This `unsafe` block dereferences the raw pointer from `UnsafeCell::get()`
+        // for mutable access. It is safe because a `WrtMutexGuard` can only
+        // be created if the associated `WrtMutex` is locked. The existence of the
+        // guard guarantees exclusive access to the data.
         unsafe { &mut *self.mutex.data.get() }
     }
 }

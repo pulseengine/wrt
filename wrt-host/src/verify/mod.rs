@@ -1,3 +1,7 @@
+// Copyright (c) 2025 Ralf Anton Beier
+// Licensed under the MIT license.
+// SPDX-License-Identifier: MIT
+
 //! Verification module for wrt-host using Kani.
 //!
 //! This module contains verification harnesses for the wrt-host crate.

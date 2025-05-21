@@ -1,9 +1,4 @@
-// WRT - wrt-host
-// Module: Host Function Interface
-// SW-REQ-ID: REQ_009
-// SW-REQ-ID: REQ_010
-//
-// Copyright (c) 2024 Ralf Anton Beier
+// Copyright (c) 2025 Ralf Anton Beier
 // Licensed under the MIT license.
 // SPDX-License-Identifier: MIT
 

@@ -1,3 +1,7 @@
+// Copyright (c) 2025 Ralf Anton Beier
+// Licensed under the MIT license.
+// SPDX-License-Identifier: MIT
+
 //! Test no_std compatibility for wrt-host
 //!
 //! This file validates that the wrt-host crate works correctly in no_std

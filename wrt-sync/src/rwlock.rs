@@ -10,6 +10,20 @@ use core::{
     ops::{Deref, DerefMut},
     sync::atomic::{AtomicUsize, Ordering},
 };
+// REMOVED: #[cfg(feature = "alloc")]
+// REMOVED: use alloc::borrow::Cow; // Unused import
+// REMOVED: #[cfg(all(not(feature = "alloc"), feature = "std"))]
+// REMOVED: use std::borrow::Cow; // Unused, as Cow was only for error messages which are now
+// static.
+
+// These are used by parking_impl which is feature-gated by std (which implies alloc)
+#[cfg(feature = "std")]
+use std::sync::Arc;
+#[cfg(feature = "std")]
+use std::vec::Vec;
+
+#[cfg(feature = "std")] // Gate this import as it's only used by parking_impl (std-gated)
+use wrt_error::{codes, Error, ErrorCategory, Result}; // Keep this top-level import
 
 /// A simple, `no_std` compatible Read-Write Lock using atomics.
 ///
@@ -75,7 +89,18 @@ pub struct WrtRwLockWriteGuard<'a, T: ?Sized + 'a> {
 
 // Allow the lock to be shared across threads.
 // Safety: Requires correct implementation of locking mechanisms.
+/// # Safety
+/// This implementation of `Send` for `WrtRwLock<T>` is safe if `T` is `Send +
+/// Sync`. Access to the `UnsafeCell` data is protected by the atomic `state`
+/// variable, ensuring that data races do not occur. `T` must be `Sync` because
+/// multiple readers can access it concurrently.
 unsafe impl<T: ?Sized + Send + Sync> Send for WrtRwLock<T> {}
+/// # Safety
+/// This implementation of `Sync` for `WrtRwLock<T>` is safe if `T` is `Send +
+/// Sync`. The atomic `state` variable ensures that access to the `UnsafeCell`
+/// data is synchronized. Multiple threads can safely hold references
+/// (`&WrtRwLock<T>`) and access the data via read or write guards, which manage
+/// the lock state.
 unsafe impl<T: ?Sized + Send + Sync> Sync for WrtRwLock<T> {}
 
 impl<T> WrtRwLock<T> {
@@ -186,6 +211,11 @@ impl<T: ?Sized> Deref for WrtRwLockReadGuard<'_, T> {
     #[inline]
     fn deref(&self) -> &Self::Target {
         // Safety: Guard ensures read lock is held.
+        // # Safety
+        // This `unsafe` block dereferences the raw pointer from `UnsafeCell::get()`.
+        // It is safe because a `WrtRwLockReadGuard` only exists when a read lock
+        // is held on the associated `WrtRwLock`. This guarantees shared, read-only
+        // access to the data is valid.
         unsafe { &*self.lock.data.get() }
     }
 }
@@ -207,6 +237,13 @@ impl<T: ?Sized> Deref for WrtRwLockWriteGuard<'_, T> {
     #[inline]
     fn deref(&self) -> &Self::Target {
         // Safety: Guard ensures write lock is held.
+        // # Safety
+        // This `unsafe` block dereferences the raw pointer from `UnsafeCell::get()`.
+        // It is safe because a `WrtRwLockWriteGuard` only exists when a write lock
+        // is held on the associated `WrtRwLock`. This guarantees shared (for `&` access
+        // via `deref`) or exclusive (for `&mut` access via `deref_mut`) access to data.
+        // In this `deref` case, it provides a shared reference from an exclusive lock
+        // context.
         unsafe { &*self.lock.data.get() }
     }
 }
@@ -215,6 +252,10 @@ impl<T: ?Sized> DerefMut for WrtRwLockWriteGuard<'_, T> {
     #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
         // Safety: Guard ensures write lock is held.
+        // # Safety
+        // This `unsafe` block dereferences the raw pointer from `UnsafeCell::get()`
+        // for mutable access. It is safe because a `WrtRwLockWriteGuard` only
+        // exists when a write lock is held, guaranteeing exclusive access to the data.
         unsafe { &mut *self.lock.data.get() }
     }
 }
@@ -234,20 +275,12 @@ impl<T: ?Sized + fmt::Debug> fmt::Debug for WrtRwLock<T> {
         // Attempt a non-blocking read for Debug representation if possible,
         // otherwise indicate locked status. Avoids deadlocking Debug.
         if let Some(guard) = self.try_read() {
+            // Access data through the guard for Debug formatting.
+            // No direct unsafe access needed here as guard provides safe access.
             f.debug_struct("WrtRwLock").field("data", &&*guard).finish()
         } else {
-            // Could be write-locked or contended.
-            let state = self.state.load(Ordering::Relaxed);
-            let mut ds = f.debug_struct("WrtRwLock");
-            if state == WRITE_LOCK_STATE {
-                ds.field("state", &"WriteLocked");
-            } else if state == 0 {
-                ds.field("state", &"Unlocked(contended)");
-            } else {
-                ds.field("state", &format_args!("ReadLocked({state}) (contended)"));
-            }
-            ds.field("data", &"<locked>");
-            ds.finish()
+            // Could also try_write to see if it's exclusively locked, but for simplicity:
+            f.debug_struct("WrtRwLock").field("data", &"<locked>").finish()
         }
     }
 }
@@ -261,21 +294,24 @@ impl<T: ?Sized + fmt::Debug> fmt::Debug for WrtRwLock<T> {
 /// locks. It maintains fairness by waking writers before readers if both are
 /// waiting.
 pub mod parking_impl {
+    // Replace wildcard import with explicit imports
+    // Removed Cow from this list as it is no longer used.
     use core::sync::atomic::{AtomicBool, AtomicUsize, Ordering}; // Use Ordering directly
     use core::{
         cell::UnsafeCell as CoreUnsafeCell,
         fmt as CoreFmt,
         ops::{Deref as CoreDeref, DerefMut as CoreDerefMut},
     };
-    use std::{
-        sync::{Arc, RwLock as StdRwLock},
-        thread::{self, Thread},
-    };
+    // std specific items, now directly used because of cfg(feature = "std") on the module
+    use std::sync::RwLock as StdRwLock;
+    use std::thread::{self, Thread};
 
-    use wrt_error::{kinds::poisoned_lock_error, Result}; // Result is already wrt_error::Error specialized // Import for direct use
+    use super::{codes, Arc, Error, ErrorCategory, Result, Vec}; // Keep alias for clarity if preferred
 
     const UNLOCKED: usize = 0;
-    const WRITE_LOCKED: usize = usize::MAX - 1; // Max value for readers, special marker for writer
+    // REMOVED: const WRITE_LOCKED as it was unused and outer module's
+    // WRITE_LOCK_STATE is used. const WRITE_LOCKED: usize = usize::MAX - 1; //
+    // Max value for readers, special marker for writer
 
     /// A `RwLock` that uses `std::thread::park` for blocking.
     pub struct WrtParkingRwLock<T: ?Sized> {
@@ -291,6 +327,14 @@ pub mod parking_impl {
         writer: StdRwLock<Option<Thread>>,
     }
 
+    // Static error messages - Corrected syntax
+    const POISONED_READER_QUEUE_MSG: &str = "RwLock readers queue poisoned";
+    const POISONED_WRITER_QUEUE_MSG: &str = "RwLock writer queue poisoned";
+    const POISONED_READER_UNREGISTER_MSG: &str = "RwLock readers queue poisoned for unregister";
+    const POISONED_WRITER_UNREGISTER_MSG: &str = "RwLock writer queue poisoned for unregister";
+    const POISONED_WRITER_WAKE_MSG: &str = "RwLock writer queue poisoned for wake";
+    const POISONED_READER_WAKE_MSG: &str = "RwLock readers queue poisoned for wake";
+
     impl WaitQueue {
         fn new() -> Self {
             Self { readers: StdRwLock::new(Vec::new()), writer: StdRwLock::new(None) }
@@ -299,16 +343,25 @@ pub mod parking_impl {
         fn register_reader(&self) -> Result<()> {
             self.readers
                 .write()
-                .map_err(|e| poisoned_lock_error(format!("RwLock readers queue poisoned: {e}")))?
+                .map_err(|_e| {
+                    Error::new(
+                        ErrorCategory::Concurrency, // Corrected Category
+                        codes::POISONED_LOCK,
+                        POISONED_READER_QUEUE_MSG, // Static message
+                    )
+                })?
                 .push(thread::current());
             Ok(())
         }
 
         fn register_writer(&self) -> Result<bool> {
-            let mut writer_guard = self
-                .writer
-                .write()
-                .map_err(|e| poisoned_lock_error(format!("RwLock writer queue poisoned: {e}")))?;
+            let mut writer_guard = self.writer.write().map_err(|_e| {
+                Error::new(
+                    ErrorCategory::Concurrency, // Corrected Category
+                    codes::POISONED_LOCK,
+                    POISONED_WRITER_QUEUE_MSG, // Static message
+                )
+            })?;
             if writer_guard.is_some() {
                 return Ok(false); // Writer already present
             }
@@ -320,18 +373,24 @@ pub mod parking_impl {
             let current_thread_id = thread::current().id();
             self.readers
                 .write()
-                .map_err(|e| {
-                    poisoned_lock_error(format!(
-                        "RwLock readers queue poisoned for unregister: {e}"
-                    ))
+                .map_err(|_e| {
+                    Error::new(
+                        ErrorCategory::Concurrency, // Corrected Category
+                        codes::POISONED_LOCK,
+                        POISONED_READER_UNREGISTER_MSG, // Static message
+                    )
                 })?
                 .retain(|t| t.id() != current_thread_id);
             Ok(())
         }
 
         fn unregister_writer(&self) -> Result<()> {
-            let mut writer_guard = self.writer.write().map_err(|e| {
-                poisoned_lock_error(format!("RwLock writer queue poisoned for unregister: {e}"))
+            let mut writer_guard = self.writer.write().map_err(|_e| {
+                Error::new(
+                    ErrorCategory::Concurrency, // Corrected Category
+                    codes::POISONED_LOCK,
+                    POISONED_WRITER_UNREGISTER_MSG, // Static message
+                )
             })?;
             *writer_guard = None;
             Ok(())
@@ -341,8 +400,12 @@ pub mod parking_impl {
             if let Some(writer_thread) = self
                 .writer
                 .write()
-                .map_err(|e| {
-                    poisoned_lock_error(format!("RwLock writer queue poisoned for wake: {e}"))
+                .map_err(|_e| {
+                    Error::new(
+                        ErrorCategory::Concurrency, // Corrected Category
+                        codes::POISONED_LOCK,
+                        POISONED_WRITER_WAKE_MSG, // Static message
+                    )
                 })?
                 .take()
             {
@@ -352,8 +415,12 @@ pub mod parking_impl {
         }
 
         fn wake_readers(&self) -> Result<()> {
-            let readers_guard = self.readers.read().map_err(|e| {
-                poisoned_lock_error(format!("RwLock readers queue poisoned for wake: {e}"))
+            let readers_guard = self.readers.read().map_err(|_e| {
+                Error::new(
+                    ErrorCategory::Concurrency, // Corrected Category
+                    codes::POISONED_LOCK,
+                    POISONED_READER_WAKE_MSG, // Static message
+                )
             })?;
             for reader_thread in readers_guard.iter() {
                 reader_thread.unpark();
@@ -365,7 +432,15 @@ pub mod parking_impl {
     /// Safety: The underlying Send/Sync traits of T ensure data integrity.
     /// The atomic operations and careful state management ensure safe
     /// concurrent access.
+    /// # Safety
+    /// `Send` is safe if `T` is `Send + Sync` because the internal
+    /// `Arc<WaitQueue>` and `CoreUnsafeCell<T>` are managed in a
+    /// thread-safe manner. Access to `data` is guarded by the lock state.
     unsafe impl<T: ?Sized + Send + Sync> Send for WrtParkingRwLock<T> {}
+    /// # Safety
+    /// `Sync` is safe if `T` is `Send + Sync` for similar reasons to `Send`.
+    /// The lock state and synchronization primitives ensure that multiple
+    /// threads can safely interact with the lock.
     unsafe impl<T: ?Sized + Send + Sync> Sync for WrtParkingRwLock<T> {}
 
     /// A guard that provides read access to data protected by a
@@ -516,19 +591,21 @@ pub mod parking_impl {
         type Target = T;
         #[inline]
         fn deref(&self) -> &Self::Target {
+            // # Safety
+            // Access to data is safe because the existence of the guard implies the read
+            // lock is held.
             unsafe { &*self.lock.data.get() }
         }
     }
 
     impl<T: ?Sized> Drop for WrtParkingRwLockReadGuard<'_, T> {
-        #[inline]
         fn drop(&mut self) {
-            let prev_state = self.lock.state.fetch_sub(1, Ordering::Release);
-            // If this was the last reader and a writer is waiting, wake the writer.
-            if prev_state == 1 && self.lock.writer_waiting.load(Ordering::Acquire) {
-                let _ = self.lock.waiters.wake_writer(); // Result can be
-                                                         // ignored if queue is
-                                                         // poisoned
+            let old_state = self.lock.state.fetch_sub(1, core::sync::atomic::Ordering::Release);
+            if old_state == 1
+                && self.lock.writer_waiting.load(core::sync::atomic::Ordering::Acquire)
+            {
+                // Last reader out, and a writer is waiting. Wake the writer.
+                self.lock.waiters.wake_writer().ok();
             }
         }
     }
@@ -537,6 +614,9 @@ pub mod parking_impl {
         type Target = T;
         #[inline]
         fn deref(&self) -> &Self::Target {
+            // # Safety
+            // Access to data is safe because the existence of the guard implies the write
+            // lock is held.
             unsafe { &*self.lock.data.get() }
         }
     }
@@ -544,45 +624,37 @@ pub mod parking_impl {
     impl<T: ?Sized> CoreDerefMut for WrtParkingRwLockWriteGuard<'_, T> {
         #[inline]
         fn deref_mut(&mut self) -> &mut Self::Target {
+            // # Safety
+            // Access to data is safe because the existence of the guard implies the write
+            // lock is held.
             unsafe { &mut *self.lock.data.get() }
         }
     }
 
     impl<T: ?Sized> Drop for WrtParkingRwLockWriteGuard<'_, T> {
-        #[inline]
         fn drop(&mut self) {
-            self.lock.state.store(0, Ordering::Release);
-            self.lock.writer_waiting.store(false, Ordering::Relaxed);
-            // Prefer waking readers first, then a writer.
-            let _ = self.lock.waiters.wake_readers();
-            let _ = self.lock.waiters.wake_writer();
+            self.lock.state.store(0, core::sync::atomic::Ordering::Release);
+            // Wake up any waiting readers or a writer. Readers are prioritized if present.
+            let readers_woken_or_attempted =
+                self.lock.waiters.wake_readers().map(|_| true).unwrap_or_else(|_err| {
+                    // Log _err if necessary
+                    false // If wake_readers failed, assume no readers were
+                          // effectively woken for this logic
+                });
+
+            if !readers_woken_or_attempted {
+                self.lock.waiters.wake_writer().ok();
+            }
         }
     }
 
     impl<T: ?Sized + CoreFmt::Debug> CoreFmt::Debug for WrtParkingRwLock<T> {
         fn fmt(&self, f: &mut CoreFmt::Formatter<'_>) -> CoreFmt::Result {
-            let state_val = self.state.load(Ordering::Relaxed);
-            let is_writer_waiting = self.writer_waiting.load(Ordering::Relaxed);
-
-            let mut d = f.debug_struct("WrtParkingRwLock");
-            if state_val == WRITE_LOCKED {
-                d.field("state", &"WriteLocked");
-            } else if state_val == 0 {
-                d.field("state", &"Unlocked");
-            } else {
-                d.field("state", &format_args!("ReadLocked({})", state_val));
-            }
-            d.field("writer_waiting", &is_writer_waiting);
-            // Optionally, try to show data if lock is not contended for debug purposes.
-            // This is tricky and can lead to deadlocks or stale data if not careful.
-            // For simplicity, we just show <locked> or try_read.
             if let Some(guard) = self.try_read() {
-                // Use try_read to avoid blocking Debug
-                d.field("data", &&*guard);
+                f.debug_struct("WrtParkingRwLock").field("data", &&*guard).finish()
             } else {
-                d.field("data", &"<locked_or_contended>");
+                f.debug_struct("WrtParkingRwLock").field("data", &"<locked>").finish()
             }
-            d.finish()
         }
     }
 
