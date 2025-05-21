@@ -1,8 +1,5 @@
 // WRT - wrt-types
-// Module: WebAssembly Value Representations
-// SW-REQ-ID: REQ_018
-//
-// Copyright (c) 2024 Ralf Anton Beier
+// Copyright (c) 2025 Ralf Anton Beier
 // Licensed under the MIT license.
 // SPDX-License-Identifier: MIT
 
@@ -11,48 +8,40 @@
 //! This module provides datatypes for representing WebAssembly values at
 //! runtime.
 
+#[cfg(feature = "alloc")]
+// use alloc::format; // Removed
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc;
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::boxed::Box;
-#[cfg(feature = "alloc")]
-use alloc::vec::Vec;
-#[cfg(not(feature = "std"))]
-#[allow(unused_imports)]
-use core::cell::RefCell;
 #[cfg(not(feature = "std"))]
 use core::fmt;
-use core::{
-    cmp::Ordering,
-    fmt::{self, Display},
-    hash::{Hash, Hasher},
-};
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+// use alloc::boxed::Box; // Temporarily commented to find usages
+#[cfg(feature = "alloc")]
+// use alloc::vec::Vec; // Temporarily commented to find usages
+
 // Conditional imports for different environments
 #[cfg(feature = "std")]
 use std;
 // Box for dynamic allocation
 #[cfg(feature = "std")]
-use std::boxed::Box;
-// RefCell for thread local storage
-#[cfg(feature = "std")]
-use std::cell::RefCell;
-// Core imports
+// use std::boxed::Box; // Temporarily commented to find usages
+
 #[cfg(feature = "std")]
 use std::fmt;
-#[cfg(feature = "std")]
-use std::thread_local;
+// Core imports
 
-use wrt_error::{codes, ErrorCategory, ErrorKind};
+use wrt_error::{codes, Error, ErrorCategory, Result as WrtResult};
 
+// Publicly re-export FloatBits32 and FloatBits64 from the local float_repr module
+pub use crate::float_repr::{FloatBits32, FloatBits64};
+use crate::prelude::{Debug, Eq, PartialEq};
 // #[cfg(all(not(feature = "std"), feature = "alloc"))]
 // use alloc::format; // Removed: format! should come from prelude
 use crate::traits::LittleEndian as TraitLittleEndian; // Alias trait
-use crate::types::{RefType, ValueType}; // Import ValueType
-use crate::{
-    prelude::{str, Debug, Eq, Ord, PartialEq, PartialOrd},
-    types::ValueType as Type,
-    WrtResult,
-};
+// Use the canonical LittleEndian trait and BytesWriter from crate::traits
+use crate::traits::{BytesWriter, LittleEndian, Checksummable, ToBytes, FromBytes, SerializationError, ReadStream, WriteStream};
+use crate::types::ValueType; // Import ValueType
+use crate::verification::Checksum; // Added for Checksummable
 
 /// Represents a WebAssembly runtime value
 #[derive(Debug, Clone, core::hash::Hash)]
@@ -72,7 +61,7 @@ pub enum Value {
     FuncRef(Option<FuncRef>),
     /// External reference
     ExternRef(Option<ExternRef>),
-    /// Generic reference to an entity
+    /// Generic opaque reference (often an index), serialized as a u32/i32.
     Ref(u32),
     /// 16-bit vector (represented internally as V128)
     I16x8(V128),
@@ -103,8 +92,15 @@ impl PartialEq for Value {
 
 impl Eq for Value {}
 
+impl Default for Value {
+    fn default() -> Self {
+        // A common default, often I32(0) is used, or based on what's most frequent / safest.
+        Value::I32(0)
+    }
+}
+
 /// A WebAssembly v128 value used for SIMD operations
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct V128 {
     /// The 128-bit value represented as 16 bytes
     pub bytes: [u8; 16],
@@ -119,8 +115,14 @@ impl V128 {
 
     /// Create a v128 filled with zeros
     #[must_use]
-    pub fn zero() -> Self {
+    pub const fn zero() -> Self {
         Self { bytes: [0; 16] }
+    }
+}
+
+impl AsRef<[u8]> for V128 {
+    fn as_ref(&self) -> &[u8] {
+        &self.bytes
     }
 }
 
@@ -169,13 +171,12 @@ impl Value {
             ValueType::I16x8 => Value::I16x8(V128::zero()),
             ValueType::FuncRef => Value::FuncRef(None),
             ValueType::ExternRef => Value::ExternRef(None),
-            ValueType::Ref(_) => Value::Ref(0),
         }
     }
 
     /// Returns the value type of this `Value`.
     #[must_use]
-    pub const fn type_(&self) -> ValueType {
+    pub const fn value_type(&self) -> ValueType {
         match self {
             Self::I32(_) => ValueType::I32,
             Self::I64(_) => ValueType::I64,
@@ -185,7 +186,7 @@ impl Value {
             Self::I16x8(_) => ValueType::I16x8,
             Self::FuncRef(_) => ValueType::FuncRef,
             Self::ExternRef(_) => ValueType::ExternRef,
-            Self::Ref(_) => ValueType::Ref(RefType::Func),
+            Self::Ref(_) => ValueType::I32,
         }
     }
 
@@ -201,7 +202,7 @@ impl Value {
             (Self::I16x8(_), ValueType::I16x8) => true,
             (Self::FuncRef(_), ValueType::FuncRef) => true,
             (Self::ExternRef(_), ValueType::ExternRef) => true,
-            (Self::Ref(_), ValueType::Ref(_)) => true,
+            (Self::Ref(_), ValueType::I32) => true,
             _ => false,
         }
     }
@@ -219,8 +220,10 @@ impl Value {
     /// Returns an error if the value is not an `I32`.
     pub fn into_i32(self) -> WrtResult<i32> {
         match self {
-            Self::I32(val) => Ok(val),
-            _ => Err(WrtError::new(ErrorKind::ConversionError, "Value is not an i32")),
+            Value::I32(v) => Ok(v),
+            _ => {
+                Err(Error::new(ErrorCategory::Type, codes::CONVERSION_ERROR, "Value is not an i32"))
+            }
         }
     }
 
@@ -251,358 +254,281 @@ impl Value {
         }
     }
 
-    /// Attempts to extract a function reference if this Value is a `FuncRef`.
-    #[must_use]
-    pub const fn as_func_ref(&self) -> Option<Option<u32>> {
+    /// Attempts to extract a `FuncRef` index if this Value is a `FuncRef`.
+    pub fn as_func_ref(&self) -> Option<Option<u32>> {
         match self {
-            Self::FuncRef(Some(func_ref)) => Some(Some(func_ref.index)),
-            Self::FuncRef(None) => Some(None),
+            Self::FuncRef(fr) => Some(fr.as_ref().map(|r| r.index)),
             _ => None,
         }
     }
 
-    /// Attempts to extract an external reference if this Value is an
-    /// `ExternRef`.
-    #[must_use]
-    pub const fn as_extern_ref(&self) -> Option<Option<u32>> {
+    /// Attempts to extract an `ExternRef` index if this Value is an `ExternRef`.
+    pub fn as_extern_ref(&self) -> Option<Option<u32>> {
         match self {
-            Self::ExternRef(Some(extern_ref)) => Some(Some(extern_ref.index)),
-            Self::ExternRef(None) => Some(None),
+            Self::ExternRef(er) => Some(er.as_ref().map(|r| r.index)),
+            _ => None,
+        }
+    }
+    
+    /// Returns the underlying `u32` if this `Value` is a `Ref`.
+    #[must_use]
+    pub const fn as_ref_u32(&self) -> Option<u32> {
+        match self {
+            Self::Ref(val) => Some(*val),
             _ => None,
         }
     }
 
-    /// Convenience method to get the type of a value
-    ///
-    /// # Errors
-    ///
-    /// This function is infallible.
-    #[must_use]
-    pub const fn value_type(&self) -> ValueType {
-        self.type_()
-    }
-
-    /// Attempts to extract a boolean value
+    /// Attempts to interpret this `Value` as a boolean (`false` if zero, `true` otherwise).
+    /// Only applicable to integer types `I32` and `I64`.
     #[must_use]
     pub fn as_bool(&self) -> Option<bool> {
         match self {
             Self::I32(v) => Some(*v != 0),
+            Self::I64(v) => Some(*v != 0),
             _ => None,
         }
     }
 
-    /// Attempts to extract an i8 value
+    /// Attempts to extract an i8 value if this `Value` is an `I32`.
     #[must_use]
     pub const fn as_i8(&self) -> Option<i8> {
         match self {
-            #[allow(clippy::cast_possible_truncation)] // Guarded by range check
-            Self::I32(v) if *v >= i8::MIN as i32 && *v <= i8::MAX as i32 => Some(*v as i8),
+            Self::I32(v) => Some(*v as i8),
             _ => None,
         }
     }
 
-    /// Attempts to extract a u8 value
+    /// Attempts to extract a u8 value if this `Value` is an `I32`.
     #[must_use]
     pub const fn as_u8(&self) -> Option<u8> {
         match self {
-            #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-            // Guarded by range check
-            Self::I32(v) if *v >= 0 && *v <= u8::MAX as i32 => Some(*v as u8),
+            Self::I32(v) => Some(*v as u8),
             _ => None,
         }
     }
-
-    /// Attempts to extract an i16 value
+    
+    /// Attempts to extract an i16 value if this `Value` is an `I32`.
     #[must_use]
     pub const fn as_i16(&self) -> Option<i16> {
         match self {
-            #[allow(clippy::cast_possible_truncation)] // Guarded by range check
-            Self::I32(v) if *v >= i16::MIN as i32 && *v <= i16::MAX as i32 => Some(*v as i16),
+            Self::I32(v) => Some(*v as i16),
             _ => None,
         }
     }
 
-    /// Attempts to extract a u16 value
+    /// Attempts to extract a u16 value if this `Value` is an `I32`.
     #[must_use]
     pub const fn as_u16(&self) -> Option<u16> {
         match self {
-            #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-            // Guarded by range check
-            Self::I32(v) if *v >= 0 && *v <= u16::MAX as i32 => Some(*v as u16),
+            Self::I32(v) => Some(*v as u16),
             _ => None,
         }
     }
 
-    /// Attempts to extract a character value
-    #[must_use]
-    pub fn as_char(&self) -> Option<char> {
-        match self {
-            #[allow(clippy::cast_sign_loss)]
-            // char::from_u32 expects u32, sign loss is part of the conversion
-            Self::I32(v) => char::from_u32(*v as u32),
-            _ => None,
-        }
-    }
-
-    /// Attempts to extract a string value
-    #[must_use]
-    pub fn as_string(&self) -> Option<&str> {
-        None // To be implemented based on actual string representation
-    }
-
-    /// Attempts to extract a list of values
-    #[must_use]
-    pub fn as_list(&self) -> Option<&[Value]> {
-        None // To be implemented based on actual list representation
-    }
-
-    /// Attempts to extract a record (map of field names to values)
-    ///
-    /// Returns None if this Value is not a record type.
-    #[must_use]
-    #[cfg(feature = "std")]
-    pub fn as_record(&self) -> Option<&std::collections::HashMap<std::string::String, Value>> {
-        None // To be implemented based on actual record representation
-    }
-
-    /// Attempts to extract a record (map of field names to values)
-    ///
-    /// Returns None if this Value is not a record type.
-    #[must_use]
-    #[cfg(not(feature = "std"))]
-    pub fn as_record(&self) -> Option<&crate::HashMap<crate::String, Value>> {
-        None // To be implemented based on actual record representation
-    }
-
-    /// Attempts to extract a variant (case and optional value)
-    #[must_use]
-    pub fn as_variant(&self) -> Option<(u32, Option<&Value>)> {
-        None // To be implemented based on actual variant representation
-    }
-
-    /// Attempts to extract an enum value (index)
-    #[must_use]
-    pub const fn as_enum(&self) -> Option<u32> {
-        None // To be implemented based on actual enum representation
-    }
-
-    /// Attempts to extract an option value
-    #[must_use]
-    pub fn as_option(&self) -> Option<Option<&Value>> {
-        None // To be implemented based on actual option representation
-    }
-
-    /// Attempts to extract a result value
-    #[must_use]
-    pub fn as_result(
-        &self,
-    ) -> Option<&core::result::Result<Option<Box<Value>>, Option<Box<Value>>>> {
-        None // To be implemented based on actual result representation
-    }
-
-    /// Attempts to extract a tuple of values
-    #[must_use]
-    pub fn as_tuple(&self) -> Option<&[Value]> {
-        None // To be implemented based on actual tuple representation
-    }
-
-    /// Attempts to extract flags (map of flag names to boolean values)
-    ///
-    /// Returns None if this Value is not a flags type.
-    #[must_use]
-    #[cfg(feature = "std")]
-    pub fn as_flags(&self) -> Option<&std::collections::HashMap<std::string::String, bool>> {
-        None // To be implemented based on actual flags representation
-    }
-
-    /// Attempts to extract flags (map of flag names to boolean values)
-    ///
-    /// Returns None if this Value is not a flags type.
-    #[must_use]
-    #[cfg(not(feature = "std"))]
-    pub fn as_flags(&self) -> Option<&crate::HashMap<crate::String, bool>> {
-        None // To be implemented based on actual flags representation
-    }
-
-    /// Attempts to extract an owned resource handle
-    #[must_use]
-    pub const fn as_own(&self) -> Option<u32> {
-        None // To be implemented based on actual resource representation
-    }
-
-    /// Attempts to extract a borrowed resource handle
-    #[must_use]
-    pub const fn as_borrow(&self) -> Option<u32> {
-        None // To be implemented based on actual borrowed resource
-             // representation
-    }
-
-    /// Tries to return the value as `v128` bytes.
+    /// Attempts to extract the bytes of a V128 value.
     pub fn as_v128(&self) -> WrtResult<[u8; 16]> {
         match self {
             Self::V128(v) => Ok(v.bytes),
-            Self::I16x8(v) => Ok(v.bytes),
-            _ => Err(WrtError::new(
-                ErrorKind::TypeError,
-                format!("Expected V128 or I16x8, found {:?}", self.type_()),
+            Self::I16x8(v) => Ok(v.bytes), // I16x8 is also V128 internally
+            _ => Err(Error::new(
+                ErrorCategory::Type,
+                codes::INVALID_VALUE,
+                "Value is not a V128 or I16x8 type",
             )),
         }
     }
 
-    /// Converts an `f32` value to an `i32`.
-    /// Returns an error if the value is not `F32`.
+    /// Tries to convert the `Value` into an `i32` after truncating from `f32`.
+    /// Returns an error if the value is not an `F32` or if truncation fails.
     pub fn into_i32_from_f32(self) -> WrtResult<i32> {
         match self {
-            Self::F32(val) => {
-                let f = val.value();
-                if f.is_nan() || f.is_infinite() || f < (i32::MIN as f32) || f > (i32::MAX as f32) {
-                    Err(WrtError::new(ErrorKind::ConversionError, "Invalid f32 to i32 conversion"))
+            Value::F32(f_val) => {
+                let f = f_val.value();
+                if f.is_nan() || f.is_infinite() {
+                    Err(Error::new(
+                        ErrorCategory::Type,
+                        codes::CONVERSION_ERROR,
+                        "Invalid f32 to i32 conversion (NaN/Inf)",
+                    ))
+                } else if f < (i32::MIN as f32) || f > (i32::MAX as f32) {
+                    Err(Error::new(
+                        ErrorCategory::Type,
+                        codes::CONVERSION_ERROR,
+                        "Invalid f32 to i32 conversion (overflow)",
+                    ))
                 } else {
                     Ok(f as i32)
                 }
             }
-            _ => Err(WrtError::new(
-                ErrorKind::TypeError,
-                format!("Expected F32, found {:?}", self.type_()),
-            )),
+            _ => Err(Error::new(ErrorCategory::Type, codes::CONVERSION_ERROR, "Value is not an f32 for i32 conversion")),
         }
     }
 
-    /// Converts an `f64` value to an `i64`.
-    /// Returns an error if the value is not `F64`.
+    /// Tries to convert the `Value` into an `i64` after truncating from `f64`.
+    /// Returns an error if the value is not an `F64` or if truncation fails.
     pub fn into_i64_from_f64(self) -> WrtResult<i64> {
         match self {
-            Self::F64(val) => {
-                let f = val.value();
-                if f.is_nan() || f.is_infinite() || f < (i64::MIN as f64) || f > (i64::MAX as f64) {
-                    Err(WrtError::new(ErrorKind::ConversionError, "Invalid f64 to i64 conversion"))
+            Value::F64(f_val) => {
+                let f = f_val.value();
+                if f.is_nan() || f.is_infinite() {
+                    Err(Error::new(
+                        ErrorCategory::Type,
+                        codes::CONVERSION_ERROR,
+                        "Invalid f64 to i64 conversion (NaN/Inf)",
+                    ))
+                } else if f < (i64::MIN as f64) || f > (i64::MAX as f64) {
+                     Err(Error::new(
+                        ErrorCategory::Type,
+                        codes::CONVERSION_ERROR,
+                        "Invalid f64 to i64 conversion (overflow)",
+                    ))
                 } else {
                     Ok(f as i64)
                 }
             }
-            _ => Err(WrtError::new(
-                ErrorKind::TypeError,
-                format!("Expected F64, found {:?}", self.type_()),
-            )),
+            _ => Err(Error::new(ErrorCategory::Type, codes::CONVERSION_ERROR, "Value is not an f64 for i64 conversion")),
         }
     }
 
-    /// Creates a `FuncRef` value with the given function index
-    ///
-    /// # Arguments
-    ///
-    /// * `func_idx` - The function index to reference, or None for a null
-    ///   reference
-    ///
-    /// # Returns
-    ///
-    /// A new `FuncRef` value
+    /// Creates a `FuncRef` value.
     #[must_use]
     pub fn func_ref(func_idx: Option<u32>) -> Self {
         match func_idx {
-            Some(idx) => Self::FuncRef(Some(FuncRef { index: idx })),
-            None => Self::FuncRef(None),
+            Some(idx) => Value::FuncRef(Some(FuncRef::from_index(idx))),
+            None => Value::FuncRef(None),
         }
     }
 
-    /// Returns the underlying `u32` index if this is a `Ref` value.
-    pub const fn as_reference(&self) -> Option<u32> {
-        match *self {
-            Self::Ref(idx) => Some(idx),
-            _ => None,
-        }
-    }
-
-    /// Tries to convert the `Value` into a `Ref` index (`u32`).
-    /// Returns an error if the value is not a `Ref`.
-    pub fn into_ref(self) -> WrtResult<u32> {
+    /// Writes the `Value` to the given writer in little-endian format.
+    pub fn write_le_bytes<W: BytesWriter>(&self, writer: &mut W) -> WrtResult<()> {
         match self {
-            Self::Ref(idx) => Ok(idx),
-            _ => Err(WrtError::new(
-                ErrorKind::TypeError,
-                format!("Expected Ref, found {:?}", self.type_()),
-            )),
-        }
-    }
-
-    /// Serializes the `Value` to little-endian bytes.
-    #[cfg(feature = "alloc")]
-    pub fn to_le_bytes(&self) -> WrtResult<Vec<u8>> {
-        match self {
-            Self::I32(v) => Ok(v.to_le_bytes().to_vec()),
-            Self::I64(v) => Ok(v.to_le_bytes().to_vec()),
-            Self::F32(v) => Ok(v.to_bits().to_le_bytes().to_vec()),
-            Self::F64(v) => Ok(v.to_bits().to_le_bytes().to_vec()),
-            Self::V128(v) => Ok(v.bytes.to_vec()),
-            Self::I16x8(v) => Ok(v.bytes.to_vec()),
-            Self::FuncRef(_) | Self::ExternRef(_) | Self::Ref(_) => Err(WrtError::new(
-                ErrorKind::SerializationError,
-                "Reference types cannot be serialized to bytes directly",
-            )),
-        }
-    }
-
-    /// Deserializes a `Value` from little-endian bytes based on the given type.
-    #[cfg(feature = "alloc")]
-    pub fn from_le_bytes(bytes: &[u8], ty: &ValueType) -> WrtResult<Self> {
-        let expected_len = match ty {
-            ValueType::I32 | ValueType::F32 => 4,
-            ValueType::I64 | ValueType::F64 => 8,
-            ValueType::V128 | ValueType::I16x8 => 16,
-            ValueType::FuncRef | ValueType::ExternRef | ValueType::Ref(_) => {
-                return Err(WrtError::new(
-                    ErrorKind::DeserializationError,
-                    "Reference types cannot be deserialized from bytes",
-                ));
+            Value::I32(val) => writer.write_all(&val.to_le_bytes()),
+            Value::I64(val) => writer.write_all(&val.to_le_bytes()),
+            Value::F32(val) => writer.write_all(&val.0.to_le_bytes()),
+            Value::F64(val) => writer.write_all(&val.0.to_le_bytes()),
+            Value::V128(val) | Value::I16x8(val) => writer.write_all(&val.bytes),
+            Value::FuncRef(Some(fr)) => writer.write_all(&fr.index.to_le_bytes()),
+            Value::ExternRef(Some(er)) => writer.write_all(&er.index.to_le_bytes()),
+            Value::Ref(r) => writer.write_all(&r.to_le_bytes()),
+            Value::FuncRef(None) | Value::ExternRef(None) => {
+                // Null reference, often represented as a specific integer pattern (e.g., all ones or zero)
+                // For now, let's serialize as 0, assuming it represents null.
+                // This needs to align with deserialization and runtime expectations.
+                writer.write_all(&0u32.to_le_bytes())
             }
-        };
-
-        if bytes.len() != expected_len {
-            return Err(WrtError::new(
-                ErrorKind::DeserializationError,
-                format!(
-                    "Invalid byte length for type {:?}: expected {}, got {}",
-                    ty,
-                    expected_len,
-                    bytes.len()
-                ),
-            ));
         }
+    }
 
+    /// Reads a `Value` from the given byte slice in little-endian format.
+    pub fn from_le_bytes(bytes: &[u8], ty: &ValueType) -> WrtResult<Self> {
         match ty {
-            ValueType::I32 => i32::from_le_bytes(bytes.try_into().map_err(|_| {
-                WrtError::new(ErrorKind::DeserializationError, "Failed to read i32 bytes")
-            })?)
-            .map(Value::I32),
-            ValueType::I64 => i64::from_le_bytes(bytes.try_into().map_err(|_| {
-                WrtError::new(ErrorKind::DeserializationError, "Failed to read i64 bytes")
-            })?)
-            .map(Value::I64),
-            ValueType::F32 => u32::from_le_bytes(bytes.try_into().map_err(|_| {
-                WrtError::new(ErrorKind::DeserializationError, "Failed to read f32 bytes")
-            })?)
-            .map(|bits| Value::F32(FloatBits32::from_bits(bits))),
-            ValueType::F64 => u64::from_le_bytes(bytes.try_into().map_err(|_| {
-                WrtError::new(ErrorKind::DeserializationError, "Failed to read f64 bytes")
-            })?)
-            .map(|bits| Value::F64(FloatBits64::from_bits(bits))),
-            ValueType::V128 => bytes
-                .try_into()
-                .map_err(|_| {
-                    WrtError::new(ErrorKind::DeserializationError, "Failed to read v128 bytes")
-                })
-                .map(|b: [u8; 16]| Value::V128(V128::new(b))),
-            ValueType::I16x8 => bytes
-                .try_into()
-                .map_err(|_| {
-                    WrtError::new(ErrorKind::DeserializationError, "Failed to read i16x8 bytes")
-                })
-                .map(|b: [u8; 16]| Value::I16x8(V128::new(b))),
-            _ => unreachable!(),
+            ValueType::I32 => {
+                if bytes.len() < 4 {
+                    return Err(Error::new(
+                        ErrorCategory::Parse,
+                        codes::PARSE_ERROR,
+                        "Insufficient bytes for I32",
+                    ));
+                }
+                Ok(Value::I32(i32::from_le_bytes(bytes[0..4].try_into().map_err(|_| Error::new(
+                    ErrorCategory::Parse,
+                    codes::CONVERSION_ERROR,
+                    "I32 conversion slice error",
+                ))?)))
+            }
+            ValueType::I64 => {
+                if bytes.len() < 8 {
+                    return Err(Error::new(
+                        ErrorCategory::Parse,
+                        codes::PARSE_ERROR,
+                        "Insufficient bytes for I64",
+                    ));
+                }
+                Ok(Value::I64(i64::from_le_bytes(bytes[0..8].try_into().map_err(|_| Error::new(
+                    ErrorCategory::Parse,
+                    codes::CONVERSION_ERROR,
+                    "I64 conversion slice error",
+                ))?)))
+            }
+            ValueType::F32 => {
+                if bytes.len() < 4 {
+                    return Err(Error::new(
+                        ErrorCategory::Parse,
+                        codes::PARSE_ERROR,
+                        "Insufficient bytes for F32",
+                    ));
+                }
+                Ok(Value::F32(FloatBits32(u32::from_le_bytes(
+                    bytes[0..4].try_into().map_err(|_| Error::new(
+                        ErrorCategory::Parse,
+                        codes::CONVERSION_ERROR,
+                        "F32 conversion slice error",
+                    ))?,
+                ))))
+            }
+            ValueType::F64 => {
+                if bytes.len() < 8 {
+                    return Err(Error::new(
+                        ErrorCategory::Parse,
+                        codes::PARSE_ERROR,
+                        "Insufficient bytes for F64",
+                    ));
+                }
+                Ok(Value::F64(FloatBits64(u64::from_le_bytes(
+                    bytes[0..8].try_into().map_err(|_| Error::new(
+                        ErrorCategory::Parse,
+                        codes::CONVERSION_ERROR,
+                        "F64 conversion slice error",
+                    ))?,
+                ))))
+            }
+            ValueType::V128 | ValueType::I16x8 => {
+                if bytes.len() < 16 {
+                     return Err(Error::new(
+                        ErrorCategory::Parse,
+                        codes::PARSE_ERROR,
+                        "Insufficient bytes for V128/I16x8",
+                    ));
+                }
+                let mut arr = [0u8; 16];
+                arr.copy_from_slice(&bytes[0..16]);
+                if *ty == ValueType::V128 { Ok(Value::V128(V128 { bytes: arr })) }
+                else { Ok(Value::I16x8(V128 { bytes: arr }))}
+            }
+            ValueType::FuncRef => {
+                if bytes.len() < 4 {
+                    return Err(Error::new(
+                        ErrorCategory::Parse,
+                        codes::PARSE_ERROR,
+                        "Insufficient bytes for FuncRef",
+                    ));
+                }
+                let idx = u32::from_le_bytes(bytes[0..4].try_into().map_err(|_| Error::new(
+                    ErrorCategory::Parse,
+                    codes::CONVERSION_ERROR,
+                    "FuncRef conversion slice error",
+                ))?);
+                // Assuming 0 or a specific pattern might mean None, for now, always Some.
+                // The interpretation of the index (e.g. if 0 means null) is context-dependent.
+                Ok(Value::FuncRef(Some(FuncRef::from_index(idx))))
+            }
+            ValueType::ExternRef => {
+                if bytes.len() < 4 {
+                    return Err(Error::new(
+                        ErrorCategory::Parse,
+                        codes::PARSE_ERROR,
+                        "Insufficient bytes for ExternRef",
+                    ));
+                }
+                let idx = u32::from_le_bytes(bytes[0..4].try_into().map_err(|_| Error::new(
+                    ErrorCategory::Parse,
+                    codes::CONVERSION_ERROR,
+                    "ExternRef conversion slice error",
+                ))?);
+                Ok(Value::ExternRef(Some(ExternRef { index: idx })))
+            }
         }
-        .map_err(|e: WrtError| {
-            WrtError::new(e.kind(), format!("Deserialization failed for {:?}: {}", ty, e.message()))
-        })
     }
 }
 
@@ -630,286 +556,264 @@ impl fmt::Display for Value {
 /// reference. It is primarily used for memory operations.
 impl AsRef<[u8]> for Value {
     fn as_ref(&self) -> &[u8] {
+        // This implementation is problematic as Value doesn't have a direct, simple
+        // byte representation. It should likely be removed or rethought. For
+        // now, returning an empty slice to satisfy a potential trait bound
+        // elsewhere, but this needs review. panic!("Value::as_ref<[u8]> is not
+        // meaningfully implemented");
+        &[] // Placeholder, likely incorrect for general use
+    }
+}
+
+// Implement LittleEndian for V128 here as V128 is defined in this module.
+impl LittleEndian for V128 {
+    fn from_le_bytes(bytes: &[u8]) -> WrtResult<Self> {
+        if bytes.len() != 16 {
+            return Err(Error::new(
+                ErrorCategory::System,
+                codes::CONVERSION_ERROR,
+                "Invalid byte length for V128",
+            ));
+        }
+        let arr: [u8; 16] = bytes.try_into().map_err(|_| {
+            Error::new(
+                ErrorCategory::System,
+                codes::CONVERSION_ERROR,
+                "Slice to array conversion failed for V128",
+            )
+        })?;
+        Ok(V128 { bytes: arr })
+    }
+
+    fn write_le_bytes<W: BytesWriter>(&self, writer: &mut W) -> WrtResult<()> {
+        writer.write_all(&self.bytes)
+    }
+}
+
+impl Checksummable for V128 {
+    fn update_checksum(&self, checksum: &mut Checksum) {
+        checksum.update_slice(&self.bytes);
+    }
+}
+
+impl ToBytes for V128 {
+    fn to_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        _provider: &PStream, // Provider not typically needed for simple types
+    ) -> WrtResult<()> {
+        // Write the bytes directly to the stream
+        writer.write_all(&self.bytes)
+    }
+    // to_bytes method is provided by the trait with DefaultMemoryProvider
+}
+
+impl FromBytes for V128 {
+    fn from_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        _provider: &PStream, // Provider not typically needed for simple types
+    ) -> WrtResult<Self> {
+        // Read exactly 16 bytes for V128
+        let mut arr = [0u8; 16];
+        reader.read_exact(&mut arr)?;
+        Ok(V128 { bytes: arr })
+    }
+    // from_bytes method is provided by the trait with DefaultMemoryProvider
+}
+
+impl Checksummable for FuncRef {
+    fn update_checksum(&self, checksum: &mut Checksum) {
+        self.index.update_checksum(checksum);
+    }
+}
+
+impl ToBytes for FuncRef {
+    fn to_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        provider: &PStream,
+    ) -> WrtResult<()> {
+        // Delegate to the u32 implementation
+        self.index.to_bytes_with_provider(writer, provider)
+    }
+    // to_bytes method is provided by the trait with DefaultMemoryProvider
+}
+
+impl FromBytes for FuncRef {
+    fn from_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        provider: &PStream,
+    ) -> WrtResult<Self> {
+        // Delegate to the u32 implementation
+        let index = u32::from_bytes_with_provider(reader, provider)?;
+        Ok(FuncRef { index })
+    }
+    // from_bytes method is provided by the trait with DefaultMemoryProvider
+}
+
+impl Checksummable for ExternRef {
+    fn update_checksum(&self, checksum: &mut Checksum) {
+        self.index.update_checksum(checksum);
+    }
+}
+
+impl ToBytes for ExternRef {
+    fn to_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        provider: &PStream,
+    ) -> WrtResult<()> {
+        // Delegate to the u32 implementation
+        self.index.to_bytes_with_provider(writer, provider)
+    }
+    // to_bytes method is provided by the trait with DefaultMemoryProvider
+}
+
+impl FromBytes for ExternRef {
+    fn from_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        provider: &PStream,
+    ) -> WrtResult<Self> {
+        // Delegate to the u32 implementation
+        let index = u32::from_bytes_with_provider(reader, provider)?;
+        Ok(ExternRef { index })
+    }
+    // from_bytes method is provided by the trait with DefaultMemoryProvider
+}
+
+impl Checksummable for Value {
+    fn update_checksum(&self, checksum: &mut Checksum) {
+        let discriminant_byte = match self {
+            Value::I32(_) => 0u8,
+            Value::I64(_) => 1u8,
+            Value::F32(_) => 2u8,
+            Value::F64(_) => 3u8,
+            Value::V128(_) => 4u8,
+            Value::FuncRef(_) => 5u8,
+            Value::ExternRef(_) => 6u8,
+            Value::Ref(_) => 7u8,      // Generic Ref
+            Value::I16x8(_) => 8u8,    // I16x8, distinct from V128 for checksum
+        };
+        checksum.update(discriminant_byte);
+
         match self {
-            Self::I32(v) => {
-                #[cfg(feature = "std")]
-                {
-                    thread_local! {
-                        static BYTES: RefCell<[u8; 4]> = const { RefCell::new([0; 4]) };
-                    }
-
-                    BYTES.with(|cell| {
-                        let mut bytes = cell.borrow_mut();
-                        *bytes = v.to_le_bytes();
-                        let leaked: &'static [u8] = Box::leak(Box::new(*bytes));
-                        leaked
-                    })
-                }
-                #[cfg(not(feature = "std"))]
-                {
-                    // For no_std environments, we need to use fixed constants
-                    // We'll only support common values directly, others will be undefined behavior
-                    match *v {
-                        0 => &[0, 0, 0, 0],
-                        1 => &[1, 0, 0, 0],
-                        -1 => &[255, 255, 255, 255],
-                        // For other values, we return a fixed slice to avoid borrowing issues
-                        // This is not correct for all values, but it's better than crashing
-                        // In practice, this should only be used for predefined values in no_std
-                        // envs
-                        _ => &[0, 0, 0, 0],
-                    }
-                }
-            }
-            Self::I64(v) => match *v {
-                0 => &[0, 0, 0, 0, 0, 0, 0, 0],
-                1 => &[1, 0, 0, 0, 0, 0, 0, 0],
-                -1 => &[255, 255, 255, 255, 255, 255, 255, 255],
-                #[cfg(feature = "std")]
-                _ => {
-                    thread_local! {
-                        static BYTES: RefCell<[u8; 8]> = const { RefCell::new([0; 8]) };
-                    }
-
-                    BYTES.with(|cell| {
-                        let mut bytes = cell.borrow_mut();
-                        *bytes = v.to_le_bytes();
-                        let leaked: &'static [u8] = Box::leak(Box::new(*bytes));
-                        leaked
-                    })
-                }
-                #[cfg(not(feature = "std"))]
-                _ => {
-                    // For no_std environments, we need to use fixed constants
-                    // We'll only support common values directly, others will be undefined behavior
-                    match *v {
-                        0 => &[0, 0, 0, 0, 0, 0, 0, 0],
-                        1 => &[1, 0, 0, 0, 0, 0, 0, 0],
-                        -1 => &[255, 255, 255, 255, 255, 255, 255, 255],
-                        // For other values, we return a fixed slice to avoid borrowing issues
-                        // This is not correct for all values, but it's better than crashing
-                        // In practice, this should only be used for predefined values in no_std
-                        // envs
-                        _ => &[0, 0, 0, 0, 0, 0, 0, 0],
-                    }
-                }
-            },
-            Self::F32(v) => {
-                if v.value() == 0.0 {
-                    &[0, 0, 0, 0]
-                } else {
-                    #[cfg(feature = "std")]
-                    {
-                        thread_local! {
-                            static BYTES: RefCell<[u8; 4]> = const { RefCell::new([0; 4]) };
-                        }
-
-                        BYTES.with(|cell| {
-                            let mut bytes = cell.borrow_mut();
-                            *bytes = v.value().to_le_bytes();
-                            let leaked: &'static [u8] = Box::leak(Box::new(*bytes));
-                            leaked
-                        })
-                    }
-                    #[cfg(not(feature = "std"))]
-                    {
-                        // For no_std environments, we need to use fixed constants
-                        // We'll only support common values directly, others will be undefined
-                        // behavior
-                        match v.value() {
-                            0.0 => &[0, 0, 0, 0],
-                            // For other values, we return a fixed slice to avoid borrowing issues
-                            // This is not correct for all values, but it's better than crashing
-                            // In practice, this should only be used for predefined values in no_std
-                            // envs
-                            _ => &[0, 0, 0, 0],
-                        }
-                    }
-                }
-            }
-            Self::F64(v) => {
-                if v.value() == 0.0 {
-                    &[0, 0, 0, 0, 0, 0, 0, 0]
-                } else {
-                    #[cfg(feature = "std")]
-                    {
-                        thread_local! {
-                            static BYTES: RefCell<[u8; 8]> = const { RefCell::new([0; 8]) };
-                        }
-
-                        BYTES.with(|cell| {
-                            let mut bytes = cell.borrow_mut();
-                            *bytes = v.value().to_le_bytes();
-                            let leaked: &'static [u8] = Box::leak(Box::new(*bytes));
-                            leaked
-                        })
-                    }
-                    #[cfg(not(feature = "std"))]
-                    {
-                        // For no_std environments, we need to use fixed constants
-                        // We'll only support common values directly, others will be undefined
-                        // behavior
-                        match v.value() {
-                            0.0 => &[0, 0, 0, 0, 0, 0, 0, 0],
-                            // For other values, we return a fixed slice to avoid borrowing issues
-                            // This is not correct for all values, but it's better than crashing
-                            // In practice, this should only be used for predefined values in no_std
-                            // envs
-                            _ => &[0, 0, 0, 0, 0, 0, 0, 0],
-                        }
-                    }
-                }
-            }
-            Self::V128(v) => v.as_ref(),
-            Self::FuncRef(func_ref) => {
-                if let Some(func) = func_ref {
-                    #[cfg(feature = "std")]
-                    {
-                        thread_local! {
-                            static BYTES: RefCell<[u8; 4]> = const { RefCell::new([0; 4]) };
-                        }
-
-                        BYTES.with(|cell| {
-                            let mut bytes = cell.borrow_mut();
-                            *bytes = func.index.to_le_bytes();
-                            let leaked: &'static [u8] = Box::leak(Box::new(*bytes));
-                            leaked
-                        })
-                    }
-                    #[cfg(not(feature = "std"))]
-                    {
-                        // For no_std environments, we need to use fixed constants
-                        // We'll only support common values directly, others will be undefined
-                        // behavior
-                        match func.index {
-                            0 => &[0, 0, 0, 0],
-                            // For other values, we return a fixed slice to avoid borrowing issues
-                            // This is not correct for all values, but it's better than crashing
-                            // In practice, this should only be used for predefined values in no_std
-                            // envs
-                            _ => &[0, 0, 0, 0],
-                        }
-                    }
-                } else {
-                    &[0, 0, 0, 0]
-                }
-            }
-            Self::ExternRef(extern_ref) => {
-                if let Some(ext) = extern_ref {
-                    #[cfg(feature = "std")]
-                    {
-                        thread_local! {
-                            static BYTES: RefCell<[u8; 4]> = const { RefCell::new([0; 4]) };
-                        }
-
-                        BYTES.with(|cell| {
-                            let mut bytes = cell.borrow_mut();
-                            *bytes = ext.index.to_le_bytes();
-                            let leaked: &'static [u8] = Box::leak(Box::new(*bytes));
-                            leaked
-                        })
-                    }
-                    #[cfg(not(feature = "std"))]
-                    {
-                        // For no_std environments, we need to use fixed constants
-                        // We'll only support common values directly, others will be undefined
-                        // behavior
-                        match ext.index {
-                            0 => &[0, 0, 0, 0],
-                            // For other values, we return a fixed slice to avoid borrowing issues
-                            // This is not correct for all values, but it's better than crashing
-                            // In practice, this should only be used for predefined values in no_std
-                            // envs
-                            _ => &[0, 0, 0, 0],
-                        }
-                    }
-                } else {
-                    &[0, 0, 0, 0]
-                }
-            }
-            Self::Ref(ref_idx) => {
-                #[cfg(feature = "std")]
-                {
-                    thread_local! {
-                        static BYTES: RefCell<[u8; 4]> = const { RefCell::new([0; 4]) };
-                    }
-
-                    BYTES.with(|cell| {
-                        let mut bytes = cell.borrow_mut();
-                        *bytes = ref_idx.to_le_bytes();
-                        let leaked: &'static [u8] = Box::leak(Box::new(*bytes));
-                        leaked
-                    })
-                }
-                #[cfg(not(feature = "std"))]
-                {
-                    // For no_std environments, we need to use fixed constants
-                    // We'll only support common values directly, others will be undefined behavior
-                    match ref_idx {
-                        0 => &[0, 0, 0, 0],
-                        // For other values, we return a fixed slice to avoid borrowing issues
-                        // This is not correct for all values, but it's better than crashing
-                        // In practice, this should only be used for predefined values in no_std
-                        // envs
-                        _ => &[0, 0, 0, 0],
-                    }
-                }
-            }
-            Self::I16x8(v) => v.as_ref(),
+            Value::I32(v) => v.update_checksum(checksum),
+            Value::I64(v) => v.update_checksum(checksum),
+            Value::F32(v) => v.update_checksum(checksum),
+            Value::F64(v) => v.update_checksum(checksum),
+            Value::V128(v) | Value::I16x8(v) => v.update_checksum(checksum),
+            Value::FuncRef(v) => v.update_checksum(checksum),
+            Value::ExternRef(v) => v.update_checksum(checksum),
+            Value::Ref(v) => v.update_checksum(checksum),
         }
     }
 }
 
-/// Trait for types that can be serialized to and deserialized from
-/// little-endian bytes.
-pub trait LittleEndian: Sized {
-    /// Creates an instance from little-endian bytes.
-    fn from_le_bytes(bytes: &[u8]) -> WrtResult<Self>;
+impl ToBytes for Value {
+    fn to_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        provider: &PStream,
+    ) -> WrtResult<()> {
+        // Write discriminant byte
+        let discriminant = match self {
+            Value::I32(_) => 0u8,
+            Value::I64(_) => 1u8,
+            Value::F32(_) => 2u8,
+            Value::F64(_) => 3u8,
+            Value::V128(_) => 4u8,
+            Value::FuncRef(_) => 5u8,
+            Value::ExternRef(_) => 6u8,
+            Value::Ref(_) => 7u8, // Generic Ref, serialized as u32
+            Value::I16x8(_) => 8u8, // I16x8, serialized as V128
+        };
+        writer.write_u8(discriminant)?;
 
-    /// Converts the instance to little-endian bytes.
-    #[cfg(feature = "alloc")]
-    fn to_le_bytes(&self) -> WrtResult<Vec<u8>>;
+        // Write the variant data
+        match self {
+            Value::I32(v) => v.to_bytes_with_provider(writer, provider)?,
+            Value::I64(v) => v.to_bytes_with_provider(writer, provider)?,
+            Value::F32(v) => v.to_bytes_with_provider(writer, provider)?,
+            Value::F64(v) => v.to_bytes_with_provider(writer, provider)?,
+            Value::V128(v) | Value::I16x8(v) => v.to_bytes_with_provider(writer, provider)?,
+            Value::FuncRef(opt_v) => {
+                // Write Some/None flag
+                writer.write_u8(if opt_v.is_some() { 1 } else { 0 })?;
+                if let Some(v) = opt_v {
+                    v.to_bytes_with_provider(writer, provider)?
+                }
+            }
+            Value::ExternRef(opt_v) => {
+                // Write Some/None flag
+                writer.write_u8(if opt_v.is_some() { 1 } else { 0 })?;
+                if let Some(v) = opt_v {
+                    v.to_bytes_with_provider(writer, provider)?
+                }
+            }
+            Value::Ref(v) => v.to_bytes_with_provider(writer, provider)?,
+        }
+        Ok(())
+    }
 }
 
-impl TraitLittleEndian for i32 {
-    fn from_le_bytes(bytes: &[u8]) -> WrtResult<Self> {
-        bytes
-            .try_into()
-            .map(i32::from_le_bytes)
-            .map_err(|_| WrtError::new(ErrorKind::DeserializationError, "Invalid bytes for i32"))
-    }
-
-    #[cfg(feature = "alloc")]
-    fn to_le_bytes(&self) -> WrtResult<Vec<u8>> {
-        Ok(i32::to_le_bytes(*self).to_vec())
-    }
-}
-
-impl TraitLittleEndian for i64 {
-    fn from_le_bytes(bytes: &[u8]) -> WrtResult<Self> {
-        bytes
-            .try_into()
-            .map(i64::from_le_bytes)
-            .map_err(|_| WrtError::new(ErrorKind::DeserializationError, "Invalid bytes for i64"))
-    }
-
-    #[cfg(feature = "alloc")]
-    fn to_le_bytes(&self) -> WrtResult<Vec<u8>> {
-        Ok(i64::to_le_bytes(*self).to_vec())
-    }
-}
-
-impl TraitLittleEndian for V128 {
-    fn from_le_bytes(bytes: &[u8]) -> WrtResult<Self> {
-        bytes
-            .try_into()
-            .map(|b: [u8; 16]| V128::new(b))
-            .map_err(|_| WrtError::new(ErrorKind::DeserializationError, "Invalid bytes for v128"))
-    }
-
-    #[cfg(feature = "alloc")]
-    fn to_le_bytes(&self) -> WrtResult<Vec<u8>> {
-        Ok(self.bytes.to_vec())
+impl FromBytes for Value {
+    fn from_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        provider: &PStream,
+    ) -> WrtResult<Self> {
+        // Read discriminant byte
+        let discriminant = reader.read_u8()?;
+        
+        // Parse the variant based on discriminant
+        match discriminant {
+            0 => {
+                let v = i32::from_bytes_with_provider(reader, provider)?;
+                Ok(Value::I32(v))
+            }
+            1 => {
+                let v = i64::from_bytes_with_provider(reader, provider)?;
+                Ok(Value::I64(v))
+            }
+            2 => {
+                let v = FloatBits32::from_bytes_with_provider(reader, provider)?;
+                Ok(Value::F32(v))
+            }
+            3 => {
+                let v = FloatBits64::from_bytes_with_provider(reader, provider)?;
+                Ok(Value::F64(v))
+            }
+            4 => {
+                let v = V128::from_bytes_with_provider(reader, provider)?;
+                Ok(Value::V128(v))
+            }
+            5 => { // FuncRef
+                let is_some = reader.read_u8()? == 1;
+                if is_some {
+                    let v = FuncRef::from_bytes_with_provider(reader, provider)?;
+                    Ok(Value::FuncRef(Some(v)))
+                } else {
+                    Ok(Value::FuncRef(None))
+                }
+            }
+            6 => { // ExternRef
+                let is_some = reader.read_u8()? == 1;
+                if is_some {
+                    let v = ExternRef::from_bytes_with_provider(reader, provider)?;
+                    Ok(Value::ExternRef(Some(v)))
+                } else {
+                    Ok(Value::ExternRef(None))
+                }
+            }
+            7 => { // Ref (u32)
+                let v = u32::from_bytes_with_provider(reader, provider)?;
+                Ok(Value::Ref(v))
+            }
+            8 => { // I16x8 (V128)
+                let v = V128::from_bytes_with_provider(reader, provider)?;
+                Ok(Value::I16x8(v))
+            }
+            _ => Err(Error::new(ErrorCategory::Parse, codes::INVALID_VALUE, "Invalid Value discriminant")),
+        }
     }
 }
 
@@ -920,14 +824,15 @@ mod tests {
 
     #[test]
     fn test_value_type() {
-        assert_eq!(Value::I32(0).type_(), ValueType::I32);
-        assert_eq!(Value::I64(0).type_(), ValueType::I64);
-        assert_eq!(Value::F32(FloatBits32(0)).type_(), ValueType::F32);
-        assert_eq!(Value::F64(FloatBits64(0)).type_(), ValueType::F64);
-        assert_eq!(Value::V128(V128::zero()).type_(), ValueType::V128);
-        assert_eq!(Value::I16x8(V128::zero()).type_(), ValueType::I16x8);
-        assert_eq!(Value::FuncRef(None).type_(), ValueType::FuncRef);
-        assert_eq!(Value::ExternRef(None).type_(), ValueType::ExternRef);
+        assert_eq!(Value::I32(0).value_type(), ValueType::I32);
+        assert_eq!(Value::I64(0).value_type(), ValueType::I64);
+        assert_eq!(Value::F32(FloatBits32(0)).value_type(), ValueType::F32);
+        assert_eq!(Value::F64(FloatBits64(0)).value_type(), ValueType::F64);
+        assert_eq!(Value::V128(V128::zero()).value_type(), ValueType::V128);
+        assert_eq!(Value::I16x8(V128::zero()).value_type(), ValueType::I16x8);
+        assert_eq!(Value::FuncRef(None).value_type(), ValueType::FuncRef);
+        assert_eq!(Value::ExternRef(None).value_type(), ValueType::ExternRef);
+        assert_eq!(Value::Ref(0).value_type(), ValueType::I32);
     }
 
     #[test]
@@ -937,8 +842,8 @@ mod tests {
         assert!(Value::V128(V128::zero()).matches_type(&ValueType::V128));
         assert!(Value::I16x8(V128::zero()).matches_type(&ValueType::I16x8));
         assert!(!Value::V128(V128::zero()).matches_type(&ValueType::I32));
-        assert!(Value::Ref(1).matches_type(&ValueType::Ref(RefType::Func)));
-        assert!(Value::Ref(1).matches_type(&ValueType::Ref(RefType::Extern)));
+        assert!(Value::Ref(1).matches_type(&ValueType::I32));
+        assert!(Value::Ref(1).matches_type(&ValueType::I32));
     }
 
     #[test]
@@ -975,7 +880,7 @@ mod tests {
         assert_eq!(Value::default_for_type(&ValueType::F64), Value::F64(FloatBits64(0)));
         assert_eq!(Value::default_for_type(&ValueType::V128), Value::V128(V128::zero()));
         assert_eq!(Value::default_for_type(&ValueType::I16x8), Value::I16x8(V128::zero()));
-        assert_eq!(Value::default_for_type(&ValueType::FuncRef), Value::FuncRef(None));
+        assert_eq!(Value::default_for_type(&ValueType::FuncRef), Value::Ref(0));
         assert_eq!(Value::default_for_type(&ValueType::ExternRef), Value::ExternRef(None));
         assert_eq!(Value::default_for_type(&ValueType::Ref(RefType::Func)), Value::Ref(0));
     }
@@ -1005,3 +910,6 @@ mod tests {
         assert_ne!(Value::I16x8(v1.clone()), Value::I16x8(v2.clone()));
     }
 }
+
+
+

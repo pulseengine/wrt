@@ -1,8 +1,5 @@
 // WRT - wrt-types
-// Module: Core WebAssembly Type Definitions
-// SW-REQ-ID: REQ_018
-//
-// Copyright (c) 2024 Ralf Anton Beier
+// Copyright (c) 2025 Ralf Anton Beier
 // Licensed under the MIT license.
 // SPDX-License-Identifier: MIT
 
@@ -12,54 +9,87 @@
 //! them, including function types, block types, value types, and reference
 //! types.
 
-#![allow(unused_imports)]
+use core::fmt::{self, Display, Write};
+use core::hash::{Hash, Hasher as CoreHasher};
+use core::marker::PhantomData;
+use core::str::FromStr;
+use core::ops::RangeInclusive;
 
-#[cfg(not(feature = "std"))]
+#[cfg(feature = "alloc")]
 extern crate alloc;
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::collections::BTreeMap as HashMap;
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::collections::BTreeSet as HashSet;
 #[cfg(all(feature = "alloc", not(feature = "std")))]
-use alloc::fmt::{Debug, Display};
+use alloc::collections::{BTreeMap, BTreeSet};
 #[cfg(all(feature = "alloc", not(feature = "std")))]
-use alloc::format;
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::vec;
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::{string::String, string::ToString, vec::Vec}; // For vec! macro
-use core::fmt;
-#[cfg(not(any(feature = "std", feature = "alloc")))]
-use core::fmt::{Debug, Display};
-#[cfg(feature = "std")]
-use core::hash::Hasher as StdHasher;
-#[cfg(feature = "std")]
-use core::str::FromStr;
-#[cfg(feature = "std")]
-use std::collections::HashMap;
-#[cfg(feature = "std")]
-use std::collections::HashSet;
-// Use proper imports for std or no_std environments
-#[cfg(feature = "std")]
-use std::fmt::{Debug, Display};
-#[cfg(feature = "std")]
-use std::format;
-#[cfg(feature = "std")]
-use std::{string::String, string::ToString, vec::Vec};
+use alloc::string::{String as AllocString, ToString as AllocToString};
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use alloc::vec::Vec as AllocVec;
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use alloc::{format, vec};
 
-// Import wrt_error types
+#[cfg(feature = "std")]
+use std::collections::{HashMap, HashSet};
+#[cfg(feature = "std")]
+use std::string::{String, ToString};
+#[cfg(feature = "std")]
+use std::vec::Vec;
+
+// Import error types
 use wrt_error::{Error, ErrorCategory};
+use crate::WrtResult;
 
-// Import BoundedVec and other necessary types
-use crate::bounded::BoundedVec;
-use crate::{
-    conversion,
-    prelude::{BoundedCapacity, Eq, Ord, PartialEq, TryFrom},
-    sections::Section,
-    values::Value,
-    Result,
+// Import bounded types
+use crate::bounded::{BoundedError, BoundedErrorKind, BoundedString, BoundedVec, WasmName, MAX_WASM_NAME_LENGTH};
+use crate::component::{ComponentAliasOuterKind, ComponentType, CoreType, Export, ExternKind, ExternType};
+use crate::safe_memory::{NoStdProvider, Provider};
+use crate::traits::{
+    Checksummable, FromBytes, ToBytes, SerializationError, ReadStream, WriteStream, DefaultMemoryProvider,
 };
+use crate::{
+    codes,
+    prelude::{BoundedCapacity, Eq, Ord, PartialEq, TryFrom},
+    validation::Validatable,
+    values::Value,
+    verification::Checksum,
+    MemoryProvider,
+};
+use crate::bounded::{
+    MAX_CUSTOM_SECTION_DATA_SIZE,
+    MAX_WASM_MODULE_NAME_LENGTH as MAX_MODULE_NAME_LEN,
+    MAX_WASM_ITEM_NAME_LENGTH as MAX_ITEM_NAME_LEN,
+};
+
+// Alias WrtResult as Result for this module
+type Result<T> = WrtResult<T>;
+
+// Constants for array bounds in serializable types
+pub const MAX_PARAMS_IN_FUNC_TYPE: usize = 128;
+pub const MAX_RESULTS_IN_FUNC_TYPE: usize = 128;
+// Add other MAX constants as they become necessary, e.g. for Instructions,
+// Module fields etc. For BrTable in Instruction:
+pub const MAX_BR_TABLE_TARGETS: usize = 256;
+// For SelectTyped in Instruction: (WASM MVP select is 1 type, or untyped)
+pub const MAX_SELECT_TYPES: usize = 1;
+
+// Constants for Module structure limits
+pub const MAX_TYPES_IN_MODULE: usize = 1024;
+pub const MAX_FUNCS_IN_MODULE: usize = 1024; // Max functions (imports + defined)
+pub const MAX_IMPORTS_IN_MODULE: usize = 1024;
+pub const MAX_EXPORTS_IN_MODULE: usize = 1024;
+pub const MAX_TABLES_IN_MODULE: usize = 16;
+pub const MAX_MEMORIES_IN_MODULE: usize = 16;
+pub const MAX_GLOBALS_IN_MODULE: usize = 1024;
+pub const MAX_ELEMENT_SEGMENTS_IN_MODULE: usize = 1024;
+pub const MAX_DATA_SEGMENTS_IN_MODULE: usize = 1024;
+pub const MAX_LOCALS_PER_FUNCTION: usize = 512; // Max local entries per function
+pub const MAX_INSTRUCTIONS_PER_FUNCTION: usize = 8192; // Max instructions in a function body/expr
+pub const MAX_ELEMENT_INDICES_PER_SEGMENT: usize = 8192; // Max func indices in an element segment
+pub const MAX_DATA_SEGMENT_LENGTH: usize = 65536; // Max bytes in a data segment (active/passive)
+pub const MAX_TAGS_IN_MODULE: usize = 1024;
+pub const MAX_CUSTOM_SECTIONS_IN_MODULE: usize = 64;
+// MAX_CUSTOM_SECTION_DATA_SIZE, MAX_MODULE_NAME_LEN, and MAX_ITEM_NAME_LEN are now imported from bounded.rs
+
+pub const DEFAULT_FUNC_TYPE_PROVIDER_CAPACITY: usize = 256;
 
 /// Index for a type in the types section.
 pub type TypeIdx = u32;
@@ -81,11 +111,19 @@ pub type DataIdx = u32;
 pub type LocalIdx = u32;
 /// Index for a label in control flow instructions (e.g., branches).
 pub type LabelIdx = u32; // For branches
+/// Index for an exception tag.
+pub type TagIdx = u32;
 
 /// Internal hasher for `FuncType`, may be removed or replaced.
-#[derive(Default, Debug)]
+#[derive(Default)] // Simplified Debug for Hasher
 struct Hasher {
     hash: u32,
+}
+
+impl core::fmt::Debug for Hasher {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Hasher").field("hash", &self.hash).finish()
+    }
 }
 
 #[allow(dead_code)]
@@ -108,9 +146,10 @@ impl Hasher {
 }
 
 /// WebAssembly value types
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default, Hash)]
 pub enum ValueType {
     /// 32-bit integer
+    #[default]
     I32,
     /// 64-bit integer
     I64,
@@ -126,6 +165,22 @@ pub enum ValueType {
     FuncRef,
     /// External reference
     ExternRef,
+}
+
+impl core::fmt::Debug for ValueType {
+    // Manual debug to avoid depending on alloc::format! in derived Debug
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::I32 => write!(f, "I32"),
+            Self::I64 => write!(f, "I64"),
+            Self::F32 => write!(f, "F32"),
+            Self::F64 => write!(f, "F64"),
+            Self::V128 => write!(f, "V128"),
+            Self::I16x8 => write!(f, "I16x8"),
+            Self::FuncRef => write!(f, "FuncRef"),
+            Self::ExternRef => write!(f, "ExternRef"),
+        }
+    }
 }
 
 impl ValueType {
@@ -144,9 +199,11 @@ impl ValueType {
             0x70 => Ok(ValueType::FuncRef),
             0x6F => Ok(ValueType::ExternRef),
             _ => Err(Error::new(
+                // Replace format!
                 ErrorCategory::Parse,
                 wrt_error::codes::PARSE_INVALID_VALTYPE_BYTE,
-                format!("Invalid value type byte: {byte:#02x}"),
+                // A static string, or pass byte to error for later formatting
+                "Invalid value type byte", // Potential: Add byte as context to Error
             )),
         }
     }
@@ -185,75 +242,55 @@ impl ValueType {
     }
 }
 
-impl fmt::Display for ValueType {
+impl Display for ValueType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::I32 => write!(f, "i32"),
-            Self::I64 => write!(f, "i64"),
-            Self::F32 => write!(f, "f32"),
-            Self::F64 => write!(f, "f64"),
-            Self::V128 => write!(f, "v128"),
-            Self::I16x8 => write!(f, "i16x8"),
-            Self::FuncRef => write!(f, "funcref"),
-            Self::ExternRef => write!(f, "externref"),
-        }
+        core::fmt::Debug::fmt(self, f)
     }
 }
 
-/// WebAssembly block type for control flow instructions
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum BlockType {
-    /// No values are returned (void/empty)
-    Empty,
-    /// A single value of the specified type is returned
-    Value(ValueType),
-    /// Multiple values are returned according to the function type
-    FuncType(FuncType),
-    /// Reference to a function type by index
-    TypeIndex(u32),
-}
-
-impl BlockType {
-    /// Returns the `ValueType` if this is a single-value block type
-    #[must_use]
-    pub fn as_value_type(&self) -> Option<ValueType> {
-        match self {
-            Self::Value(vt) => Some(*vt),
-            _ => None,
-        }
-    }
-
-    /// Returns the `FuncType` if this is a multi-value block type
-    #[must_use]
-    pub fn as_func_type(&self) -> Option<&FuncType> {
-        match self {
-            Self::FuncType(ft) => Some(ft),
-            _ => None,
-        }
-    }
-
-    /// Returns the type index if this is a type reference
-    #[must_use]
-    pub fn as_type_index(&self) -> Option<u32> {
-        match self {
-            Self::TypeIndex(idx) => Some(*idx),
-            _ => None,
-        }
-    }
-
-    /// Creates a `BlockType` from a `ValueType` option (None = Empty, Some =
-    /// Value)
-    #[must_use]
-    pub fn from_value_type_option(vt: Option<ValueType>) -> Self {
-        match vt {
-            Some(vt) => Self::Value(vt),
-            None => Self::Empty,
-        }
+impl Checksummable for ValueType {
+    fn update_checksum(&self, checksum: &mut Checksum) {
+        checksum.update_slice(&[self.to_binary()]);
     }
 }
 
-/// WebAssembly reference types
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+impl ToBytes for ValueType {
+    fn to_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        _provider: &PStream,
+    ) -> WrtResult<()> {
+        writer.write_u8(self.to_binary())
+    }
+
+    #[cfg(feature = "default-provider")]
+    fn to_bytes<'a>(&self, writer: &mut WriteStream<'a>) -> WrtResult<()> {
+        let default_provider = DefaultMemoryProvider::default();
+        self.to_bytes_with_provider(writer, &default_provider)
+    }
+}
+
+impl FromBytes for ValueType {
+    fn from_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        _provider: &PStream,
+    ) -> WrtResult<Self> {
+        let byte = reader.read_u8()?;
+        ValueType::from_binary(byte)
+    }
+
+    #[cfg(feature = "default-provider")]
+    fn from_bytes<'a>(reader: &mut ReadStream<'a>) -> WrtResult<Self> {
+        let default_provider = DefaultMemoryProvider::default();
+        Self::from_bytes_with_provider(reader, &default_provider)
+    }
+}
+
+/// WebAssembly reference types (funcref, externref)
+///
+/// These are subtypes of `ValueType` and used in table elements, function
+/// returns, etc.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum RefType {
     /// Function reference type
     Funcref,
@@ -261,1283 +298,1382 @@ pub enum RefType {
     Externref,
 }
 
-impl From<RefType> for ValueType {
-    fn from(rt: RefType) -> Self {
-        conversion::ref_type_to_val_type(rt)
+impl RefType {
+    // ... from_binary, to_binary (if they exist, or adapt ValueType's)
+    pub fn to_value_type(self) -> ValueType {
+        match self {
+            RefType::Funcref => ValueType::FuncRef,
+            RefType::Externref => ValueType::ExternRef,
+        }
+    }
+    pub fn from_value_type(vt: ValueType) -> Result<Self> {
+        match vt {
+            ValueType::FuncRef => Ok(RefType::Funcref),
+            ValueType::ExternRef => Ok(RefType::Externref),
+            _ => Err(Error::new(
+                ErrorCategory::Type,
+                wrt_error::codes::TYPE_INVALID_CONVERSION,
+                "Cannot convert ValueType to RefType",
+            )),
+        }
+    }
+}
+impl Checksummable for RefType {
+    fn update_checksum(&self, checksum: &mut Checksum) {
+        checksum.update_slice(&[self.to_value_type().to_binary()]);
     }
 }
 
+impl ToBytes for RefType {
+    fn to_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        _provider: &PStream,
+    ) -> WrtResult<()> {
+        let val_type: ValueType = (*self).into();
+        val_type.to_bytes_with_provider(writer, _provider)
+    }
+
+    #[cfg(feature = "default-provider")]
+    fn to_bytes<'a>(&self, writer: &mut WriteStream<'a>) -> WrtResult<()> {
+        let default_provider = DefaultMemoryProvider::default();
+        self.to_bytes_with_provider(writer, &default_provider)
+    }
+}
+
+impl FromBytes for RefType {
+    fn from_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        _provider: &PStream,
+    ) -> WrtResult<Self> {
+        let value_type = ValueType::from_bytes_with_provider(reader, _provider)?;
+        RefType::try_from(value_type).map_err(Error::from)
+    }
+
+    #[cfg(feature = "default-provider")]
+    fn from_bytes<'a>(reader: &mut ReadStream<'a>) -> WrtResult<Self> {
+        let default_provider = DefaultMemoryProvider::default();
+        Self::from_bytes_with_provider(reader, &default_provider)
+    }
+}
+
+impl From<RefType> for ValueType {
+    fn from(rt: RefType) -> Self {
+        match rt {
+            RefType::Funcref => ValueType::FuncRef,
+            RefType::Externref => ValueType::ExternRef,
+        }
+    }
+}
 impl TryFrom<ValueType> for RefType {
-    type Error = wrt_error::Error;
+    type Error = crate::Error; // Use the crate's Error type
 
     fn try_from(vt: ValueType) -> core::result::Result<Self, Self::Error> {
         match vt {
             ValueType::FuncRef => Ok(RefType::Funcref),
             ValueType::ExternRef => Ok(RefType::Externref),
-            _ => Err(wrt_error::Error::new(
-                wrt_error::ErrorCategory::Type,
-                wrt_error::codes::TYPE_MISMATCH_ERROR,
-                "Cannot convert value type to RefType",
+            _ => Err(Error::new(
+                ErrorCategory::Type,
+                wrt_error::codes::TYPE_INVALID_CONVERSION,
+                "ValueType cannot be converted to RefType",
             )),
         }
     }
 }
 
-/// Maximum parameters allowed in a function type
-pub const MAX_FUNC_TYPE_PARAMS: usize = 128;
-/// Maximum results allowed in a function type
-pub const MAX_FUNC_TYPE_RESULTS: usize = 128;
+/// Maximum number of parameters allowed in a function type by this
+/// implementation.
+pub const MAX_FUNC_TYPE_PARAMS: usize = MAX_PARAMS_IN_FUNC_TYPE; // Use the new constant
+/// Maximum number of results allowed in a function type by this implementation.
+pub const MAX_FUNC_TYPE_RESULTS: usize = MAX_RESULTS_IN_FUNC_TYPE; // Use the new constant
 
-/// WebAssembly function type
+/// Represents the type of a WebAssembly function.
 ///
-/// Represents a function's parameter and result types.
-#[derive(Clone)]
-pub struct FuncType {
-    /// Parameter types
-    pub params: Vec<ValueType>,
-    /// Result types
-    pub results: Vec<ValueType>,
-    /// Type hash for validation
-    type_hash: u32,
+/// It defines the parameter types and result types of a function.
+/// This version is adapted for alloc-free operation by using fixed-size arrays.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct FuncType<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> {
+    pub params: BoundedVec<ValueType, MAX_PARAMS_IN_FUNC_TYPE, P>,
+    pub results: BoundedVec<ValueType, MAX_RESULTS_IN_FUNC_TYPE, P>,
 }
 
-impl FuncType {
-    /// Create a new function type with capacity checking
-    pub fn new(params: Vec<ValueType>, results: Vec<ValueType>) -> Result<Self> {
-        // Check capacity limits to ensure safety
-        if params.len() > MAX_FUNC_TYPE_PARAMS {
-            return Err(Error::new(
-                ErrorCategory::Capacity,
-                1013, // Capacity exceeded error code
-                format!(
-                    "Too many parameters in function type: {}, max is {}",
-                    params.len(),
-                    MAX_FUNC_TYPE_PARAMS
-                ),
-            ));
-        }
-
-        if results.len() > MAX_FUNC_TYPE_RESULTS {
-            return Err(Error::new(
-                ErrorCategory::Capacity,
-                1013, // Capacity exceeded error code
-                format!(
-                    "Too many results in function type: {}, max is {}",
-                    results.len(),
-                    MAX_FUNC_TYPE_RESULTS
-                ),
-            ));
-        }
-
-        let mut func_type = Self { params, results, type_hash: 0 };
-        func_type.compute_hash();
-        Ok(func_type)
-    }
-
-    /// Compute the hash of this function type
+impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> FuncType<P> {
+    /// Creates a new `FuncType` with the given parameter and result types.
     ///
-    /// This is used for validation during execution.
-    fn compute_hash(&mut self) {
-        // Simple hash for now
-        let param_hash: u32 = self.params.iter().enumerate().fold(0, |acc, (i, vt)| {
-            let byte = u32::from(vt.to_binary());
-            acc.wrapping_add(byte.wrapping_mul(i as u32 + 1))
-        });
-
-        let result_hash: u32 = self.results.iter().enumerate().fold(0, |acc, (i, vt)| {
-            let byte = u32::from(vt.to_binary());
-            acc.wrapping_add(byte.wrapping_mul(i as u32 + 100))
-        });
-
-        self.type_hash = param_hash.wrapping_add(result_hash);
+    /// # Errors
+    ///
+    /// Returns an error if creating the internal bounded vectors fails (e.g., due to provider issues).
+    pub fn new(
+        provider: P,
+        params_iter: impl IntoIterator<Item = ValueType>,
+        results_iter: impl IntoIterator<Item = ValueType>,
+    ) -> WrtResult<Self> {
+        let mut params = BoundedVec::new(provider.clone()).map_err(Error::from)?;
+        for vt in params_iter {
+            params.push(vt).map_err(Error::from)?;
+        }
+        let mut results = BoundedVec::new(provider).map_err(Error::from)?;
+        for vt in results_iter {
+            results.push(vt).map_err(Error::from)?;
+        }
+        Ok(Self { params, results })
     }
 
-    /// Get the hash value for this function type
-    #[must_use]
-    pub fn hash(&self) -> u32 {
-        self.type_hash
-    }
-
-    /// Verify the function type's constraints are satisfied
-    pub fn verify(&self) -> Result<()> {
-        // Additional validation could be added here
+    /// Verifies the function type.
+    /// Placeholder implementation.
+    pub fn verify(&self) -> WrtResult<()> {
+        // TODO: Implement actual verification logic for FuncType
+        // e.g., check constraints on params/results if any beyond BoundedVec capacity.
         Ok(())
     }
+}
 
-    /// Check if this function type matches another function type
-    pub fn matches(&self, other: &Self) -> Result<bool> {
-        self.verify()?;
-        other.verify()?;
-
-        // Hash comparison is a fast way to check equality
-        Ok(self.type_hash == other.type_hash)
+impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> Default for FuncType<P> {
+    fn default() -> Self {
+        let provider = P::default();
+        // This expect is problematic for safety if P::default() or BoundedVec::new can fail.
+        // For now, to proceed with compilation, but this needs review.
+        let params = BoundedVec::new(provider.clone())
+            .expect("Default provider should allow BoundedVec creation for FuncType params");
+        let results = BoundedVec::new(provider)
+            .expect("Default provider should allow BoundedVec creation for FuncType results");
+        Self { params, results }
     }
+}
 
-    /// Validate that the given parameters match this function type
-    pub fn validate_params(&self, params: &[Value]) -> core::result::Result<(), wrt_error::Error> {
-        if params.len() != self.params.len() {
-            return Err(wrt_error::Error::new(
-                wrt_error::ErrorCategory::Type,
-                6001, // TYPE_MISMATCH_ERROR
-                format!(
-                    "Parameter count mismatch: expected {}, got {}",
-                    self.params.len(),
-                    params.len()
-                ),
-            ));
+impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> Checksummable for FuncType<P> {
+    fn update_checksum(&self, checksum: &mut Checksum) {
+        // Update checksum with params
+        checksum.update_slice(&(self.params.len() as u32).to_le_bytes());
+        for param in self.params.iter() {
+            param.update_checksum(checksum);
         }
-
-        for (expected_type, param) in self.params.iter().zip(params.iter()) {
-            if !param.matches_type(expected_type) {
-                return Err(wrt_error::Error::type_error(format!(
-                    "Parameter type mismatch: expected {:?}, got {:?}",
-                    expected_type,
-                    param.value_type()
-                )));
-            }
+        // Update checksum with results
+        checksum.update_slice(&(self.results.len() as u32).to_le_bytes());
+        for result in self.results.iter() {
+            result.update_checksum(checksum);
         }
-
-        Ok(())
     }
+}
 
-    /// Validate that the given results match this function type
-    pub fn validate_results(
+impl<PFunc: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> ToBytes for FuncType<PFunc> {
+    fn to_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
         &self,
-        results: &[Value],
-    ) -> core::result::Result<(), wrt_error::Error> {
-        if results.len() != self.results.len() {
-            return Err(wrt_error::Error::new(
-                wrt_error::ErrorCategory::Type,
-                6001, // TYPE_MISMATCH_ERROR
-                format!(
-                    "Result count mismatch: expected {}, got {}",
-                    self.results.len(),
-                    results.len()
-                ),
-            ));
-        }
-
-        for (expected_type, result) in self.results.iter().zip(results.iter()) {
-            if !result.matches_type(expected_type) {
-                return Err(wrt_error::Error::type_error(format!(
-                    "Result type mismatch: expected {:?}, got {:?}",
-                    expected_type,
-                    result.value_type()
-                )));
-            }
-        }
-
+        writer: &mut WriteStream<'a>,
+        stream_provider: &PStream, 
+    ) -> WrtResult<()> {
+        writer.write_u8(0x60)?; // FuncType prefix
+        self.params.to_bytes_with_provider(writer, stream_provider)?;
+        self.results.to_bytes_with_provider(writer, stream_provider)?;
         Ok(())
     }
 
-    /// Execute type checking for function parameters
-    #[must_use]
-    pub fn check_params(&self, params: &[ValueType]) -> bool {
-        if params.len() != self.params.len() {
-            return false;
+    #[cfg(feature = "default-provider")]
+    fn to_bytes<'a>(&self, writer: &mut WriteStream<'a>) -> WrtResult<()> {
+        let default_provider = DefaultMemoryProvider::default();
+        self.to_bytes_with_provider(writer, &default_provider)
+    }
+}
+
+impl<PFunc: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> FromBytes for FuncType<PFunc> {
+    fn from_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        stream_provider: &PStream, 
+    ) -> WrtResult<Self> {
+        let prefix = reader.read_u8()?;
+        if prefix != 0x60 {
+            return Err(Error::new(
+                ErrorCategory::Parse,
+                codes::DECODING_ERROR,
+                "Invalid FuncType prefix",
+            ));
         }
-        for (param, expected_type) in params.iter().zip(self.params.iter()) {
-            if param != expected_type {
-                return false;
+        // PFunc must be Default + Clone for BoundedVec::from_bytes_with_provider
+        // if BoundedVec needs to create its own provider. Here, we pass stream_provider.
+        let params = BoundedVec::<ValueType, MAX_FUNC_TYPE_PARAMS, PFunc>::from_bytes_with_provider(reader, stream_provider)?;
+        let results = BoundedVec::<ValueType, MAX_FUNC_TYPE_RESULTS, PFunc>::from_bytes_with_provider(reader, stream_provider)?;
+
+        Ok(FuncType { params, results })
+    }
+
+    #[cfg(feature = "default-provider")]
+    fn from_bytes<'a>(reader: &mut ReadStream<'a>) -> WrtResult<Self> {
+        let default_provider = DefaultMemoryProvider::default();
+        Self::from_bytes_with_provider(reader, &default_provider)
+    }
+}
+
+// Display and Debug impls follow...
+
+/// A WebAssembly instruction (basic placeholder).
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum Instruction<P: MemoryProvider + Clone + core::fmt::Debug + PartialEq + Eq + Default> {
+    Unreachable,
+    Nop,
+    Block, // Represents the start of a block, type is on stack or from validation
+    Loop,  // Represents the start of a loop, type is on stack or from validation
+    If,    // Represents an if, type is on stack or from validation
+    Else,
+    End,
+    Br(LabelIdx),
+    BrIf(LabelIdx),
+    BrTable {
+        targets: BoundedVec<LabelIdx, MAX_BR_TABLE_TARGETS, P>,
+        default_target: LabelIdx,
+    },
+    Return,
+    Call(FuncIdx),
+    CallIndirect(TypeIdx, TableIdx),
+
+    // Placeholder for more instructions
+    LocalGet(LocalIdx),
+    LocalSet(LocalIdx),
+    LocalTee(LocalIdx),
+    GlobalGet(GlobalIdx),
+    GlobalSet(GlobalIdx),
+
+    I32Const(i32),
+    I64Const(i64),
+    // ... other consts, loads, stores, numeric ops ...
+
+    #[doc(hidden)]
+    _Phantom(core::marker::PhantomData<P>),
+}
+
+impl<P: MemoryProvider + Clone + core::fmt::Debug + PartialEq + Eq + Default> Default for Instruction<P> {
+    fn default() -> Self {
+        Instruction::Nop // Nop is a safe default
+    }
+}
+
+impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq + Default> Checksummable for Instruction<P> {
+    fn update_checksum(&self, checksum: &mut Checksum) {
+        // This is a complex operation, as each instruction variant has a different
+        // binary representation. For a robust checksum, each variant should be
+        // serialized to its byte form and then update the checksum.
+        // Placeholder: update with a discriminant or simple representation.
+        match self {
+            Instruction::Unreachable => checksum.update_slice(&[0x00]),
+            Instruction::Nop => checksum.update_slice(&[0x01]),
+            Instruction::Block => checksum.update_slice(&[0x02]), // Type info is external
+            Instruction::Loop => checksum.update_slice(&[0x03]),  // Type info is external
+            Instruction::If => checksum.update_slice(&[0x04]),    // Type info is external
+            Instruction::Else => checksum.update_slice(&[0x05]),
+            Instruction::End => checksum.update_slice(&[0x0B]),
+            Instruction::Br(idx) => {
+                checksum.update_slice(&[0x0C]);
+                idx.update_checksum(checksum);
             }
-        }
-        true
-    }
-
-    /// Execute type checking for function results
-    #[must_use]
-    pub fn check_results(&self, results: &[ValueType]) -> bool {
-        if results.len() != self.results.len() {
-            return false;
-        }
-        for (result, expected_type) in results.iter().zip(self.results.iter()) {
-            if result != expected_type {
-                return false;
+            Instruction::BrIf(idx) => {
+                checksum.update_slice(&[0x0D]);
+                idx.update_checksum(checksum);
             }
-        }
-        true
-    }
-}
-
-// Implement PartialEq for FuncType
-impl PartialEq for FuncType {
-    fn eq(&self, other: &Self) -> bool {
-        // If hashes are the same, they're equal
-        if self.type_hash == other.type_hash {
-            return true;
-        }
-
-        // Otherwise, do a structural comparison
-        if self.params.len() != other.params.len() || self.results.len() != other.results.len() {
-            return false;
-        }
-
-        // Compare all params
-        for (a, b) in self.params.iter().zip(other.params.iter()) {
-            if a != b {
-                return false;
+            Instruction::BrTable { targets, default_target } => {
+                checksum.update_slice(&[0x0E]);
+                targets.update_checksum(checksum);
+                default_target.update_checksum(checksum);
             }
-        }
-
-        // Compare all results
-        for (a, b) in self.results.iter().zip(other.results.iter()) {
-            if a != b {
-                return false;
+            Instruction::Return => checksum.update_slice(&[0x0F]),
+            Instruction::Call(idx) => {
+                checksum.update_slice(&[0x10]);
+                idx.update_checksum(checksum);
             }
+            Instruction::CallIndirect(type_idx, table_idx) => {
+                checksum.update_slice(&[0x11]);
+                type_idx.update_checksum(checksum);
+                table_idx.update_checksum(checksum);
+            }
+            Instruction::LocalGet(idx) | Instruction::LocalSet(idx) | Instruction::LocalTee(idx) => {
+                checksum.update_slice(&[if matches!(self, Instruction::LocalGet(_)) { 0x20 }
+                                      else if matches!(self, Instruction::LocalSet(_)) { 0x21 }
+                                      else { 0x22 }]);
+                idx.update_checksum(checksum);
+            }
+            Instruction::GlobalGet(idx) | Instruction::GlobalSet(idx) => {
+                checksum.update_slice(&[if matches!(self, Instruction::GlobalGet(_)) { 0x23 } else { 0x24 }]);
+                idx.update_checksum(checksum);
+            }
+            Instruction::I32Const(val) => { checksum.update_slice(&[0x41]); val.update_checksum(checksum); }
+            Instruction::I64Const(val) => { checksum.update_slice(&[0x42]); val.update_checksum(checksum); }
+            // Add other instruction checksum logic here
+            Instruction::_Phantom(_) => { /* No data to checksum for PhantomData */ }
         }
-
-        true
     }
 }
 
-// Implement Eq for FuncType
-impl Eq for FuncType {}
-
-impl fmt::Debug for FuncType {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "FuncType({} -> {}, hash=0x{:08x})",
-            func_params_to_string(&self.params),
-            func_results_to_string(&self.results),
-            self.type_hash
-        )
-    }
-}
-
-/// Convert function parameters to a string representation
-fn func_params_to_string(params: &[ValueType]) -> String {
-    if params.is_empty() {
-        return "[]".to_string();
-    }
-
-    let mut result = String::new();
-    result.push('[');
-
-    for (i, param) in params.iter().enumerate() {
-        if i > 0 {
-            result.push_str(", ");
+impl<P_Instr: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq + Default> ToBytes for Instruction<P_Instr> {
+    fn to_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        stream_provider: &PStream,
+    ) -> WrtResult<()> {
+        // Actual serialization logic for instructions
+        // This will be complex and depends on the instruction format.
+        // For now, a placeholder.
+        match self {
+            Instruction::Unreachable => writer.write_u8(0x00)?,
+            Instruction::Nop => writer.write_u8(0x01)?,
+            Instruction::Block => writer.write_u8(0x02)?, // Placeholder, needs blocktype
+            Instruction::Loop => writer.write_u8(0x03)?, // Placeholder, needs blocktype
+            Instruction::If => writer.write_u8(0x04)?, // Placeholder, needs blocktype
+            Instruction::Else => writer.write_u8(0x05)?,
+            Instruction::End => writer.write_u8(0x0B)?,
+            Instruction::Br(idx) => {
+                writer.write_u8(0x0C)?;
+                writer.write_u32_le(*idx)?;
+            }
+            Instruction::BrIf(idx) => {
+                writer.write_u8(0x0D)?;
+                writer.write_u32_le(*idx)?;
+            }
+            Instruction::BrTable { targets, default_target } => {
+                writer.write_u8(0x0E)?;
+                targets.to_bytes_with_provider(writer, stream_provider)?;
+                writer.write_u32_le(*default_target)?;
+            }
+            Instruction::Return => writer.write_u8(0x0F)?,
+            Instruction::Call(idx) => {
+                writer.write_u8(0x10)?;
+                writer.write_u32_le(*idx)?;
+            }
+            Instruction::CallIndirect(type_idx, table_idx) => {
+                writer.write_u8(0x11)?;
+                writer.write_u32_le(*type_idx)?;
+                writer.write_u32_le(*table_idx)?;
+            }
+            Instruction::LocalGet(idx) => { writer.write_u8(0x20)?; writer.write_u32_le(*idx)?; }
+            Instruction::LocalSet(idx) => { writer.write_u8(0x21)?; writer.write_u32_le(*idx)?; }
+            Instruction::LocalTee(idx) => { writer.write_u8(0x22)?; writer.write_u32_le(*idx)?; }
+            Instruction::GlobalGet(idx) => { writer.write_u8(0x23)?; writer.write_u32_le(*idx)?; }
+            Instruction::GlobalSet(idx) => { writer.write_u8(0x24)?; writer.write_u32_le(*idx)?; }
+            Instruction::I32Const(val) => { writer.write_u8(0x41)?; writer.write_i32_le(*val)?; }
+            Instruction::I64Const(val) => { writer.write_u8(0x42)?; writer.write_i64_le(*val)?; }
+            // ... many more instructions
+            Instruction::_Phantom(_) => { /* This variant should not be serialized */ return Err(SerializationError::Custom("Cannot serialize _Phantom instruction variant").into()); }
         }
-        result.push_str(&param.to_string());
+        Ok(())
     }
 
-    result.push(']');
-    result
+    #[cfg(feature = "default-provider")]
+    fn to_bytes<'a>(&self, writer: &mut WriteStream<'a>) -> WrtResult<()> {
+        let default_provider = DefaultMemoryProvider::default();
+        self.to_bytes_with_provider(writer, &default_provider)
+    }
 }
 
-/// Convert function results to a string representation
-fn func_results_to_string(results: &[ValueType]) -> String {
-    if results.is_empty() {
-        return "[]".to_string();
-    }
-
-    // Single result is shown without brackets for readability
-    if results.len() == 1 {
-        return results[0].to_string();
-    }
-
-    let mut result = String::new();
-    result.push('[');
-
-    for (i, res) in results.iter().enumerate() {
-        if i > 0 {
-            result.push_str(", ");
+impl<P_Instr: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq + Default> FromBytes for Instruction<P_Instr> {
+    fn from_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        stream_provider: &PStream,
+    ) -> WrtResult<Self> {
+        // Actual deserialization logic
+        // Placeholder
+        let opcode = reader.read_u8()?;
+        match opcode {
+            0x00 => Ok(Instruction::Unreachable),
+            0x01 => Ok(Instruction::Nop),
+            0x02 => Ok(Instruction::Block), // Placeholder
+            0x03 => Ok(Instruction::Loop),  // Placeholder
+            0x04 => Ok(Instruction::If),    // Placeholder
+            0x05 => Ok(Instruction::Else),
+            0x0B => Ok(Instruction::End),
+            0x0C => Ok(Instruction::Br(reader.read_u32_le()?)),
+            0x0D => Ok(Instruction::BrIf(reader.read_u32_le()?)),
+            0x0E => {
+                let targets = BoundedVec::from_bytes_with_provider(reader, stream_provider)?;
+                let default_target = reader.read_u32_le()?;
+                Ok(Instruction::BrTable{ targets, default_target })
+            }
+            0x0F => Ok(Instruction::Return),
+            0x10 => Ok(Instruction::Call(reader.read_u32_le()?)),
+            0x11 => Ok(Instruction::CallIndirect(reader.read_u32_le()?, reader.read_u32_le()?)),
+            0x20 => Ok(Instruction::LocalGet(reader.read_u32_le()?)),
+            0x21 => Ok(Instruction::LocalSet(reader.read_u32_le()?)),
+            0x22 => Ok(Instruction::LocalTee(reader.read_u32_le()?)),
+            0x23 => Ok(Instruction::GlobalGet(reader.read_u32_le()?)),
+            0x24 => Ok(Instruction::GlobalSet(reader.read_u32_le()?)),
+            0x41 => Ok(Instruction::I32Const(reader.read_i32_le()?)),
+            0x42 => Ok(Instruction::I64Const(reader.read_i64_le()?)),
+            // ... many more instructions
+            _ => Err(SerializationError::InvalidFormat.into()),
         }
-        result.push_str(&res.to_string());
     }
 
-    result.push(']');
-    result
+    #[cfg(feature = "default-provider")]
+    fn from_bytes<'a>(reader: &mut ReadStream<'a>) -> WrtResult<Self> {
+        let default_provider = DefaultMemoryProvider::default();
+        Self::from_bytes_with_provider(reader, &default_provider)
+    }
 }
 
-/// Represents the type of a memory, including its limits and shared status.
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
-pub struct MemoryType {
-    /// Memory limits
-    pub limits: Limits,
-    /// Whether the memory can be shared between instances
-    pub shared: bool,
-}
+pub type InstructionSequence<P> =
+    BoundedVec<Instruction<P>, MAX_INSTRUCTIONS_PER_FUNCTION, P>;
 
-/// Represents the type of a table, including its limits and element type.
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
-pub struct TableType {
-    /// Table limits
-    pub limits: Limits,
-    /// Type of elements in the table
-    pub element_type: ValueType,
-}
-
-/// Represents the type of a WebAssembly global variable.
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
-pub struct GlobalType {
-    /// Type of values stored in the global
+/// Represents a local variable entry in a function body.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub struct LocalEntry {
+    pub count: u32,
     pub value_type: ValueType,
-    /// Whether the global is mutable
-    pub mutable: bool,
-    /// Add initial value for the global, parsed from `init_expr`
-    /// This assumes the `init_expr` is a constant expression evaluable by the
-    /// decoder.
-    pub initial_value: Value,
 }
 
-/// Defines the limits for a table or memory.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)] // Added Hash, kept Copy, PartialEq, Eq
-pub struct Limits {
-    /// Minimum size (required)
-    pub min: u32,
-    /// Maximum size (optional)
-    pub max: Option<u32>,
-}
-
-impl Limits {
-    /// Create new limits with minimum and optional maximum
-    #[must_use]
-    pub fn new(min: u32, max: Option<u32>) -> Self {
-        Self { min, max }
-    }
-
-    /// Check if a size is within the limits
-    #[must_use]
-    pub fn check_size(&self, size: u32) -> bool {
-        size >= self.min
-            && match self.max {
-                Some(max) => size <= max,
-                None => true,
-            }
+impl Checksummable for LocalEntry {
+    fn update_checksum(&self, checksum: &mut Checksum) {
+        self.count.update_checksum(checksum);
+        self.value_type.update_checksum(checksum);
     }
 }
 
-/// Describes the type of a global variable for import purposes.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct ImportGlobalType {
-    /// Type of values stored in the global.
-    pub value_type: ValueType,
-    /// Whether the global is mutable.
-    pub mutable: bool,
+impl ToBytes for LocalEntry {
+    fn to_bytes_with_provider<'a, P_Stream: crate::MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        stream_provider: &P_Stream, 
+    ) -> WrtResult<()> {
+        writer.write_u32_le(self.count)?; 
+        self.value_type.to_bytes_with_provider(writer, stream_provider)?;
+        Ok(())
+    }
+
+    #[cfg(feature = "default-provider")]
+    fn to_bytes<'a>(&self, writer: &mut WriteStream<'a>) -> WrtResult<()> {
+        let provider = DefaultMemoryProvider::default();
+        self.to_bytes_with_provider(writer, &provider)
+    }
+}
+
+impl FromBytes for LocalEntry {
+    fn from_bytes_with_provider<'a, P_Stream: crate::MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        stream_provider: &P_Stream, 
+    ) -> WrtResult<Self> {
+        let count = reader.read_u32_le()?; 
+        let value_type = ValueType::from_bytes_with_provider(reader, stream_provider)?;
+        Ok(LocalEntry { count, value_type })
+    }
+
+    #[cfg(feature = "default-provider")]
+    fn from_bytes<'a>(reader: &mut ReadStream<'a>) -> WrtResult<Self> {
+        let provider = DefaultMemoryProvider::default();
+        Self::from_bytes_with_provider(reader, &provider)
+    }
+}
+
+/// Represents a custom section in a WebAssembly module.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct CustomSection<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> {
+    pub name: WasmName<MAX_WASM_NAME_LENGTH, P>,
+    pub data: BoundedVec<u8, MAX_CUSTOM_SECTION_DATA_SIZE, P>,
+}
+
+impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> Default for CustomSection<P> {
+    fn default() -> Self {
+        Self {
+            name: WasmName::default(), // Requires P: Default + Clone
+            data: BoundedVec::new(P::default()).expect("Default BoundedVec for CustomSection data failed"),
+        }
+    }
+}
+
+impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> CustomSection<P> {
+    /// Creates a new `CustomSection` from a name and data.
+    pub fn new(provider: P, name_str: &str, data: &[u8]) -> Result<Self> {
+        // Create WasmName for the section name
+        let name = WasmName::from_str_truncate(name_str, P::default()) // Assuming P can be defaulted here for WasmName
+            .map_err(|e| {
+                // Log or convert BoundedError to crate::Error
+                // For now, creating a generic error:
+                Error::new(
+                    ErrorCategory::Memory, // Or a more specific category like `Resource` or `Validation`
+                    wrt_error::codes::SYSTEM_ERROR, // Was INTERNAL_ERROR
+                    "Failed to create WasmName for custom section name",
+                )
+            })?;
+
+        // Create BoundedVec for the section data
+        let mut data_vec =
+            BoundedVec::<u8, MAX_CUSTOM_SECTION_DATA_SIZE, P>::new(provider.clone()) // Use cloned provider for data_vec
+                .map_err(|e| {
+                    // Log or convert WrtError from BoundedVec::new to crate::Error
+                    Error::new(
+                        ErrorCategory::Memory,
+                        wrt_error::codes::SYSTEM_ERROR, // Was INTERNAL_ERROR
+                        "Failed to initialize BoundedVec for custom section data",
+                    )
+                })?;
+
+        data_vec.try_extend_from_slice(data).map_err(|e| {
+            // Log or convert BoundedError from try_extend_from_slice to crate::Error
+            Error::new(
+                ErrorCategory::Memory,
+                wrt_error::codes::SYSTEM_ERROR, // Was INTERNAL_ERROR
+                "Failed to extend BoundedVec for custom section data",
+            )
+        })?;
+
+        Ok(Self { name, data: data_vec })
+    }
+
+    /// Creates a new `CustomSection` from a name string and a data slice,
+    /// assuming a default provider can be obtained.
+    /// This is a convenience function and might only be suitable for `std` or test environments.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the name or data cannot be stored due to capacity
+    /// limits.
+    #[cfg(any(feature = "std", feature = "alloc", test))]
+    pub fn from_name_and_data(name_str: &str, data_slice: &[u8]) -> Result<Self>
+    where
+        P: Default, // Ensure P can be defaulted for this convenience function
+    {
+        let provider = P::default();
+        let name = WasmName::from_str_truncate(name_str, provider.clone()).map_err(|_| {
+            Error::new(
+                ErrorCategory::Memory,
+                wrt_error::codes::SYSTEM_ERROR, // Was INTERNAL_ERROR
+                "Failed to create WasmName for custom section",
+            )
+        })?;
+
+        let mut data_bounded_vec =
+            BoundedVec::<u8, MAX_CUSTOM_SECTION_DATA_SIZE, P>::new(provider).map_err(|_| {
+                Error::new(
+                    ErrorCategory::Memory,
+                    wrt_error::codes::SYSTEM_ERROR, // Was INTERNAL_ERROR
+                    "Failed to create BoundedVec for custom section data",
+                )
+            })?;
+
+        data_bounded_vec.try_extend_from_slice(data_slice).map_err(|_| {
+            Error::new(
+                ErrorCategory::Memory,
+                wrt_error::codes::SYSTEM_ERROR, // Was INTERNAL_ERROR
+                "Failed to extend BoundedVec for custom section data",
+            )
+        })?;
+
+        Ok(CustomSection { name, data: data_bounded_vec })
+    }
+
+    pub fn name_as_str(&self) -> core::result::Result<&str, BoundedError> {
+        self.name.as_str()
+    }
+
+    pub fn data(&self) -> BoundedVec<u8, MAX_CUSTOM_SECTION_DATA_SIZE, P> {
+        self.data.clone()
+    }
+}
+
+impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> Checksummable for CustomSection<P> {
+    fn update_checksum(&self, checksum: &mut Checksum) {
+        self.name.update_checksum(checksum);
+        self.data.update_checksum(checksum);
+    }
+}
+
+impl<PCustom: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> ToBytes for CustomSection<PCustom> {
+    fn to_bytes_with_provider<'a, P_Stream: crate::MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        stream_provider: &P_Stream,
+    ) -> WrtResult<()> {
+        self.name.to_bytes_with_provider(writer, stream_provider)?;
+        self.data.to_bytes_with_provider(writer, stream_provider)?;
+        Ok(())
+    }
+
+    #[cfg(feature = "default-provider")]
+    fn to_bytes<'a>(&self, writer: &mut WriteStream<'a>) -> WrtResult<()> {
+        let provider = DefaultMemoryProvider::default();
+        self.to_bytes_with_provider(writer, &provider)
+    }
+}
+
+impl<PCustom: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> FromBytes for CustomSection<PCustom> {
+    fn from_bytes_with_provider<'a, P_Stream: crate::MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        stream_provider: &P_Stream, 
+    ) -> WrtResult<Self> {
+        let name = WasmName::<MAX_WASM_NAME_LENGTH, PCustom>::from_bytes_with_provider(reader, stream_provider)?;
+        let data = BoundedVec::<u8, MAX_CUSTOM_SECTION_DATA_SIZE, PCustom>::from_bytes_with_provider(reader, stream_provider)?;
+        Ok(CustomSection { name, data })
+    }
+
+    #[cfg(feature = "default-provider")]
+    fn from_bytes<'a>(reader: &mut ReadStream<'a>) -> WrtResult<Self> {
+        let provider = DefaultMemoryProvider::default();
+        Self::from_bytes_with_provider(reader, &provider)
+    }
+}
+
+/// Represents the body of a WebAssembly function.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct FuncBody<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> {
+    /// Local variable declarations.
+    pub locals: BoundedVec<LocalEntry, MAX_LOCALS_PER_FUNCTION, P>,
+    /// The sequence of instructions (the function's code).
+    pub body: InstructionSequence<P>,
+}
+
+impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> Default for FuncBody<P> {
+    fn default() -> Self {
+        Self {
+            locals: BoundedVec::new(P::default()).expect("Default BoundedVec for locals failed"),
+            body: BoundedVec::new(P::default()).expect("Default BoundedVec for body failed"),
+        }
+    }
+}
+
+impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> Checksummable for FuncBody<P> {
+    fn update_checksum(&self, checksum: &mut Checksum) {
+        self.locals.update_checksum(checksum);
+        self.body.update_checksum(checksum);
+    }
+}
+
+impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> ToBytes for FuncBody<P> {
+    fn to_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        provider: &PStream,
+    ) -> WrtResult<()> {
+        self.locals.to_bytes_with_provider(writer, provider)?;
+        self.body.to_bytes_with_provider(writer, provider)?;
+        Ok(())
+    }
+    // Default to_bytes method will be used if #cfg(feature = "default-provider") is active
+}
+
+impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> FromBytes for FuncBody<P> {
+    fn from_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        provider: &PStream,
+    ) -> WrtResult<Self> {
+        let locals = BoundedVec::<LocalEntry, MAX_LOCALS_PER_FUNCTION, P>::from_bytes_with_provider(reader, provider)?;
+        let body = BoundedVec::<Instruction<P>, MAX_INSTRUCTIONS_PER_FUNCTION, P>::from_bytes_with_provider(reader, provider)?;
+        Ok(FuncBody { locals, body })
+    }
+    // Default from_bytes method will be used if #cfg(feature = "default-provider") is active
 }
 
 /// Represents an import in a WebAssembly module.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Import {
-    /// The module name from which to import.
-    pub module: String,
-    /// The name of the item to import.
-    pub name: String,
-    /// The descriptor of the imported item (function, table, memory, or
-    /// global).
-    pub desc: ImportDesc,
+pub struct Import<P: MemoryProvider + Default + Clone + PartialEq + Eq> {
+    pub module_name: WasmName<MAX_MODULE_NAME_LEN, P>,
+    pub item_name: WasmName<MAX_ITEM_NAME_LEN, P>,
+    pub desc: ImportDesc<P>,
 }
 
-/// Describes the kind of an imported item.
+impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> Default for Import<P> {
+    fn default() -> Self {
+        Self {
+            module_name: WasmName::default(),
+            item_name: WasmName::default(),
+            desc: ImportDesc::default(),
+        }
+    }
+}
+
+impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> Import<P> {
+    /// Creates a new `Import` with the given module name, item name, and import
+    /// description.
+    pub fn new(provider: P, module_name_str: &str, item_name_str: &str, desc: ImportDesc<P>) -> Result<Self> {
+        let module_name = WasmName::from_str(module_name_str, provider.clone())
+            .map_err(|e| match e.kind {
+                BoundedErrorKind::CapacityExceeded => Error::new(
+                    ErrorCategory::Capacity,
+                    wrt_error::codes::CAPACITY_EXCEEDED,
+                    "Import module name too long"
+                ),
+                _ => Error::new(
+                    ErrorCategory::Validation,
+                    wrt_error::codes::INVALID_VALUE,
+                    "Failed to create module name for import from BoundedError"
+                )
+            })?;
+        let item_name = WasmName::from_str(item_name_str, provider)
+            .map_err(|e| match e.kind {
+                BoundedErrorKind::CapacityExceeded => Error::new(
+                    ErrorCategory::Capacity,
+                    wrt_error::codes::CAPACITY_EXCEEDED,
+                    "Import item name too long"
+                ),
+                _ => Error::new(
+                    ErrorCategory::Validation,
+                    wrt_error::codes::INVALID_VALUE,
+                    "Failed to create item name for import from BoundedError"
+                )
+            })?;
+        Ok(Self { module_name, item_name, desc })
+    }
+}
+
+impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> Checksummable for Import<P> {
+    fn update_checksum(&self, checksum: &mut Checksum) {
+        self.module_name.update_checksum(checksum);
+        self.item_name.update_checksum(checksum);
+        self.desc.update_checksum(checksum);
+    }
+}
+
+/// Describes the type of an imported item.
+// This enum was previously defined around line 1134. We are making it P-generic here.
+// And it will use the newly defined TableType, MemoryType, GlobalType.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum ImportDesc {
+pub enum ImportDesc<P: MemoryProvider + PartialEq + Eq> {
     /// An imported function, with its type index.
-    Function(u32), // type_index
-    /// An imported table, with its table type.
-    Table(TableType),
-    /// An imported memory, with its memory type.
-    Memory(MemoryType),
-    /// An imported global, with its global type.
-    Global(ImportGlobalType),
-    // Tag(u32), // Placeholder for future Tag support
+    Function(TypeIdx),
+    /// An imported table.
+    Table(TableType), // Uses locally defined TableType
+    /// An imported memory.
+    Memory(MemoryType), // Uses locally defined MemoryType
+    /// An imported global.
+    Global(GlobalType), // Uses locally defined GlobalType
+    /// An imported external value (used in component model).
+    Extern(ExternTypePlaceholder), // Using placeholder
+    /// An imported resource (used in component model).
+    Resource(ResourceTypePlaceholder), // Using placeholder
+    #[doc(hidden)]
+    _Phantom(core::marker::PhantomData<P>),
 }
 
-/// Represents an export in a WebAssembly module.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Export {
-    /// The name under which the item is exported.
-    pub name: String,
-    /// The descriptor of the exported item (function, table, memory, or
-    /// global).
-    pub desc: ExportDesc,
+impl<P: MemoryProvider + PartialEq + Eq> Checksummable for ImportDesc<P> {
+    fn update_checksum(&self, checksum: &mut Checksum) {
+        match self {
+            ImportDesc::Function(idx) => {
+                checksum.update(0);
+                idx.update_checksum(checksum);
+            }
+            ImportDesc::Table(tt) => {
+                checksum.update(1);
+                tt.update_checksum(checksum);
+            }
+            ImportDesc::Memory(mt) => {
+                checksum.update(2);
+                mt.update_checksum(checksum);
+            }
+            ImportDesc::Global(gt) => {
+                checksum.update(3);
+                gt.update_checksum(checksum);
+            }
+            ImportDesc::Extern(etp) => {
+                checksum.update(4);
+                etp.update_checksum(checksum);
+            }
+            ImportDesc::Resource(rtp) => {
+                checksum.update(5);
+                rtp.update_checksum(checksum);
+            }
+            ImportDesc::_Phantom(_) => { /* No checksum update for phantom data */ }
+        }
+    }
+}
+
+impl<P: MemoryProvider + PartialEq + Eq> Default for ImportDesc<P> {
+    fn default() -> Self {
+        ImportDesc::Function(0) // Default to function import with type index 0
+    }
+}
+
+impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ToBytes for Import<P> {
+    fn to_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        provider: &PStream,
+    ) -> WrtResult<()> {
+        self.module_name.to_bytes_with_provider(writer, provider)?;
+        self.item_name.to_bytes_with_provider(writer, provider)?;
+        self.desc.to_bytes_with_provider(writer, provider)?;
+        Ok(())
+    }
+    // Default to_bytes method will be used if #cfg(feature = "default-provider") is active
+}
+
+impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> FromBytes for Import<P> {
+    fn from_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        stream_provider: &PStream,
+    ) -> WrtResult<Self> {
+        let module_name = WasmName::<MAX_MODULE_NAME_LEN, P>::from_bytes_with_provider(reader, stream_provider)?;
+        let item_name = WasmName::<MAX_ITEM_NAME_LEN, P>::from_bytes_with_provider(reader, stream_provider)?;
+        let desc = ImportDesc::<P>::from_bytes_with_provider(reader, stream_provider)?;
+        Ok(Import { module_name, item_name, desc })
+    }
+    // Default from_bytes method will be used if #cfg(feature = "default-provider") is active
 }
 
 /// Describes the kind of an exported item.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)] // Removed Default
 pub enum ExportDesc {
-    /// An exported function, with its function index.
-    Function(u32), // func_idx
-    /// An exported table, with its table index.
-    Table(u32), // table_idx
-    /// An exported memory, with its memory index.
-    Memory(u32), // memory_idx
-    /// An exported global, with its global index.
-    Global(u32), /* global_idx
-                  * Tag(u32),    // Placeholder for future Tag support */
+    /// An exported function.
+    // Removed #[default]
+    Func(FuncIdx),
+    /// An exported table.
+    Table(TableIdx),
+    /// An exported memory.
+    Mem(MemIdx),
+    /// An exported global.
+    Global(GlobalIdx),
+    /// An exported tag (exception).
+    Tag(TagIdx),
 }
 
-/// Represents an element segment for table initialization.
-#[derive(Debug, Clone, PartialEq)] // Eq may not be derivable if Value in ElementMode::Active is not Eq
-pub struct ElementSegment {
-    /// The mode of the element segment (active, passive, or declared).
-    pub mode: ElementMode,
-    /// The type of elements in the segment (e.g., `FuncRef`).
-    pub element_type: RefType, // In MVP, this is always FuncRef.
-    /// The items (function indices for `FuncRef`) in the segment.
-    pub items: Vec<u32>, // Function indices for FuncRef elements.
-}
-
-/// Describes the mode of an element segment.
-#[derive(Debug, Clone, PartialEq)] // Eq may not be derivable if Value is not Eq
-pub enum ElementMode {
-    /// Active segment that initializes a table region at a given offset.
-    Active {
-        /// The index of the table to initialize.
-        table_index: u32,
-        /// The offset within the table where initialization occurs, evaluated
-        /// from a const expression.
-        offset: Value, // Parsed from offset_expr (must be a constant expression)
-    },
-    /// Passive segment whose elements can be copied into a table using
-    /// `table.init`.
-    Passive,
-    /// Declared segment whose elements are available to the host or via
-    /// `ref.func`.
-    Declared,
-}
-
-/// Represents a data segment for memory initialization.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct DataSegment {
-    /// The mode of the data segment (active or passive).
-    pub mode: DataMode,
-    /// The initial data bytes of the segment.
-    pub init: Vec<u8>, // Initial data.
-}
-
-/// Describes the mode of a data segment.
-#[derive(Debug, Clone, PartialEq, Eq)] // Requires Value to be Eq if it were part of DataMode for active
-pub enum DataMode {
-    /// Active segment that initializes a memory region at a given offset.
-    Active {
-        /// The index of the memory to initialize (should be 0 in MVP).
-        memory_index: u32, // Should be 0 in MVP.
-        /// The offset within memory where initialization occurs, evaluated from
-        /// a const expression.
-        offset: Value, // Parsed from offset_expr (must be a constant expression)
-    },
-    /// Passive segment whose data can be copied into memory using
-    /// `memory.init`.
-    Passive,
-}
-
-/// Represents a custom section in a WebAssembly module.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct CustomSection {
-    /// The name of the custom section.
-    pub name: String,
-    /// The raw byte data of the custom section.
-    pub data: Vec<u8>,
-}
-
-impl CustomSection {
-    /// Creates a new `CustomSection` from a name and byte slice.
-    #[must_use]
-    pub fn from_bytes(name: String, data: &[u8]) -> Self {
-        Self { name, data: data.to_vec() }
+impl Default for ExportDesc {
+    fn default() -> Self {
+        // Default to exporting a function with index 0, as it's common.
+        // Or choose a more semantically "empty" or "none" default if applicable.
+        ExportDesc::Func(0)
     }
 }
 
-/// Memory argument for load/store instructions
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct MemArg {
-    /// The alignment of the memory access, stored as `2^align_exponent`.
-    /// Actual alignment is `1 << align_exponent`. Max 32 for V128, 8 for others
-    /// typically.
-    pub align_exponent: u32,
-    /// The constant offset added to the address operand.
-    pub offset: u32,
-    /// Memory index (for multi-memory proposal, typically 0).
-    pub memory_index: MemIdx,
+impl Checksummable for ExportDesc {
+    fn update_checksum(&self, checksum: &mut Checksum) {
+        match self {
+            ExportDesc::Func(idx) => { checksum.update(0x00); checksum.update_slice(&idx.to_le_bytes()); }
+            ExportDesc::Table(idx) => { checksum.update(0x01); checksum.update_slice(&idx.to_le_bytes()); }
+            ExportDesc::Mem(idx) => { checksum.update(0x02); checksum.update_slice(&idx.to_le_bytes()); }
+            ExportDesc::Global(idx) => { checksum.update(0x03); checksum.update_slice(&idx.to_le_bytes()); }
+            ExportDesc::Tag(idx) => { checksum.update(0x04); checksum.update_slice(&idx.to_le_bytes()); }
+        }
+    }
 }
 
-/// An instruction in a WebAssembly function body.
-/// This enum aims to cover Wasm Core 2.0.
-#[derive(Debug, Clone, PartialEq)]
-pub enum Instruction {
-    // Control Instructions
-    /// WebAssembly instruction.
-    Unreachable,
-    /// WebAssembly instruction.
-    Nop,
-    /// WebAssembly instruction.
-    Block(BlockType), // Marks start of a block
-    /// WebAssembly instruction.
-    Loop(BlockType), // Marks start of a loop
-    /// WebAssembly instruction.
-    If(BlockType), // Marks start of an if block
-    /// WebAssembly instruction.
-    Else, // Marks start of an else clause
-    /// WebAssembly instruction.
-    End, // Marks end of Block/Loop/If/Else
-
-    /// WebAssembly instruction.
-    Br(LabelIdx), // Branch to a given label index
-    /// WebAssembly instruction.
-    BrIf(LabelIdx), // Conditional branch
-    /// WebAssembly instruction.
-    BrTable(Vec<LabelIdx>, LabelIdx), // Indirect branch table
-
-    /// WebAssembly instruction.
-    Return,
-    /// WebAssembly instruction.
-    Call(FuncIdx),
-    /// WebAssembly instruction.
-    CallIndirect(TypeIdx, TableIdx), // type_idx, table_idx
-
-    // Reference Instructions
-    /// WebAssembly instruction.
-    RefNull(RefType),
-    /// WebAssembly instruction.
-    RefIsNull,
-    /// WebAssembly instruction.
-    RefFunc(FuncIdx),
-
-    // Parametric Instructions
-    /// WebAssembly instruction.
-    Drop,
-    /// WebAssembly instruction.
-    Select, // Untyped select
-    /// WebAssembly instruction.
-    SelectTyped(Vec<ValueType>), // Typed select (takes a vector of types, must be one)
-
-    // Variable Instructions
-    /// WebAssembly instruction.
-    LocalGet(LocalIdx),
-    /// WebAssembly instruction.
-    LocalSet(LocalIdx),
-    /// WebAssembly instruction.
-    LocalTee(LocalIdx),
-    /// WebAssembly instruction.
-    GlobalGet(GlobalIdx),
-    /// WebAssembly instruction.
-    GlobalSet(GlobalIdx),
-
-    // Table Instructions
-    /// WebAssembly instruction.
-    TableGet(TableIdx),
-    /// WebAssembly instruction.
-    TableSet(TableIdx),
-    /// WebAssembly instruction.
-    TableSize(TableIdx),
-    /// WebAssembly instruction.
-    TableGrow(TableIdx),
-    /// WebAssembly instruction.
-    TableFill(TableIdx),
-    /// WebAssembly instruction.
-    TableCopy(TableIdx, TableIdx), // target_table_idx, source_table_idx
-    /// WebAssembly instruction.
-    TableInit(ElemIdx, TableIdx), // elem_idx, table_idx
-    /// WebAssembly instruction.
-    ElemDrop(ElemIdx), // New: For elem.drop
-    /// WebAssembly instruction.
-    DataDrop(DataIdx), // New: For data.drop
-
-    // Memory Instructions (using MemArg)
-    /// WebAssembly instruction.
-    I32Load(MemArg),
-    /// WebAssembly instruction.
-    I64Load(MemArg),
-    /// WebAssembly instruction.
-    F32Load(MemArg),
-    /// WebAssembly instruction.
-    F64Load(MemArg),
-    /// WebAssembly instruction.
-    I32Load8S(MemArg),
-    /// WebAssembly instruction.
-    I32Load8U(MemArg),
-    /// WebAssembly instruction.
-    I32Load16S(MemArg),
-    /// WebAssembly instruction.
-    I32Load16U(MemArg),
-    /// WebAssembly instruction.
-    I64Load8S(MemArg),
-    /// WebAssembly instruction.
-    I64Load8U(MemArg),
-    /// WebAssembly instruction.
-    I64Load16S(MemArg),
-    /// WebAssembly instruction.
-    I64Load16U(MemArg),
-    /// WebAssembly instruction.
-    I64Load32S(MemArg),
-    /// WebAssembly instruction.
-    I64Load32U(MemArg),
-    /// WebAssembly instruction.
-    I32Store(MemArg),
-    /// WebAssembly instruction.
-    I64Store(MemArg),
-    /// WebAssembly instruction.
-    F32Store(MemArg),
-    /// WebAssembly instruction.
-    F64Store(MemArg),
-    /// WebAssembly instruction.
-    I32Store8(MemArg),
-    /// WebAssembly instruction.
-    I32Store16(MemArg),
-    /// WebAssembly instruction.
-    I64Store8(MemArg),
-    /// WebAssembly instruction.
-    I64Store16(MemArg),
-    /// WebAssembly instruction.
-    I64Store32(MemArg),
-
-    /// WebAssembly instruction.
-    MemorySize(MemIdx), // mem_idx (usually 0)
-    /// WebAssembly instruction.
-    MemoryGrow(MemIdx), // mem_idx (usually 0)
-    /// WebAssembly instruction.
-    MemoryFill(MemIdx), // mem_idx (usually 0)
-    /// WebAssembly instruction.
-    MemoryCopy(MemIdx, MemIdx), // target_mem_idx, source_mem_idx
-    /// WebAssembly instruction.
-    MemoryInit(DataIdx, MemIdx), // data_idx, mem_idx
-
-    // Numeric Constants
-    /// WebAssembly instruction.
-    I32Const(i32),
-    /// WebAssembly instruction.
-    I64Const(i64),
-    /// WebAssembly instruction.
-    F32Const(f32), // Stored as u32 bits
-    /// WebAssembly instruction.
-    F64Const(f64), // Stored as u64 bits
-
-    // Numeric Operations (examples, list should be exhaustive)
-    /// WebAssembly instruction.
-    I32Eqz,
-    /// WebAssembly instruction.
-    I32Eq,
-    /// WebAssembly instruction.
-    I32Ne,
-    /// WebAssembly instruction.
-    I32LtS,
-    /// WebAssembly instruction.
-    I32LtU,
-    /// WebAssembly instruction.
-    I32GtS,
-    /// WebAssembly instruction.
-    I32GtU,
-    /// WebAssembly instruction.
-    I32LeS,
-    /// WebAssembly instruction.
-    I32LeU,
-    /// WebAssembly instruction.
-    I32GeS,
-    /// WebAssembly instruction.
-    I32GeU,
-    /// WebAssembly instruction.
-    I32Clz,
-    /// WebAssembly instruction.
-    I32Ctz,
-    /// WebAssembly instruction.
-    I32Popcnt,
-    /// WebAssembly instruction.
-    I32Add,
-    /// WebAssembly instruction.
-    I32Sub,
-    /// WebAssembly instruction.
-    I32Mul,
-    /// WebAssembly instruction.
-    I32DivS,
-    /// WebAssembly instruction.
-    I32DivU,
-    /// WebAssembly instruction.
-    I32RemS,
-    /// WebAssembly instruction.
-    I32RemU,
-    /// WebAssembly instruction.
-    I32And,
-    /// WebAssembly instruction.
-    I32Or,
-    /// WebAssembly instruction.
-    I32Xor,
-    /// WebAssembly instruction.
-    I32Shl,
-    /// WebAssembly instruction.
-    I32ShrS,
-    /// WebAssembly instruction.
-    I32ShrU,
-    /// WebAssembly instruction.
-    I32Rotl,
-    /// WebAssembly instruction.
-    I32Rotr,
-
-    /// WebAssembly instruction.
-    I64Eqz,
-    /// WebAssembly instruction.
-    I64Eq,
-    /// WebAssembly instruction.
-    I64Ne,
-    /// WebAssembly instruction.
-    I64LtS,
-    /// WebAssembly instruction.
-    I64LtU,
-    /// WebAssembly instruction.
-    I64GtS,
-    /// WebAssembly instruction.
-    I64GtU,
-    /// WebAssembly instruction.
-    I64LeS,
-    /// WebAssembly instruction.
-    I64LeU,
-    /// WebAssembly instruction.
-    I64GeS,
-    /// WebAssembly instruction.
-    I64GeU,
-    /// WebAssembly instruction.
-    I64Clz,
-    /// WebAssembly instruction.
-    I64Ctz,
-    /// WebAssembly instruction.
-    I64Popcnt,
-    /// WebAssembly instruction.
-    I64Add,
-    /// WebAssembly instruction.
-    I64Sub,
-    /// WebAssembly instruction.
-    I64Mul,
-    /// WebAssembly instruction.
-    I64DivS,
-    /// WebAssembly instruction.
-    I64DivU,
-    /// WebAssembly instruction.
-    I64RemS,
-    /// WebAssembly instruction.
-    I64RemU,
-    /// WebAssembly instruction.
-    I64And,
-    /// WebAssembly instruction.
-    I64Or,
-    /// WebAssembly instruction.
-    I64Xor,
-    /// WebAssembly instruction.
-    I64Shl,
-    /// WebAssembly instruction.
-    I64ShrS,
-    /// WebAssembly instruction.
-    I64ShrU,
-    /// WebAssembly instruction.
-    I64Rotl,
-    /// WebAssembly instruction.
-    I64Rotr,
-
-    /// WebAssembly instruction.
-    F32Eq,
-    /// WebAssembly instruction.
-    F32Ne,
-    /// WebAssembly instruction.
-    F32Lt,
-    /// WebAssembly instruction.
-    F32Gt,
-    /// WebAssembly instruction.
-    F32Le,
-    /// WebAssembly instruction.
-    F32Ge,
-    /// WebAssembly instruction.
-    F32Abs,
-    /// WebAssembly instruction.
-    F32Neg,
-    /// WebAssembly instruction.
-    F32Ceil,
-    /// WebAssembly instruction.
-    F32Floor,
-    /// WebAssembly instruction.
-    F32Trunc,
-    /// WebAssembly instruction.
-    F32Nearest,
-    /// WebAssembly instruction.
-    F32Sqrt,
-    /// WebAssembly instruction.
-    F32Add,
-    /// WebAssembly instruction.
-    F32Sub,
-    /// WebAssembly instruction.
-    F32Mul,
-    /// WebAssembly instruction.
-    F32Div,
-    /// WebAssembly instruction.
-    F32Min,
-    /// WebAssembly instruction.
-    F32Max,
-    /// WebAssembly instruction.
-    F32Copysign,
-
-    /// WebAssembly instruction.
-    F64Eq,
-    /// WebAssembly instruction.
-    F64Ne,
-    /// WebAssembly instruction.
-    F64Lt,
-    /// WebAssembly instruction.
-    F64Gt,
-    /// WebAssembly instruction.
-    F64Le,
-    /// WebAssembly instruction.
-    F64Ge,
-    /// WebAssembly instruction.
-    F64Abs,
-    /// WebAssembly instruction.
-    F64Neg,
-    /// WebAssembly instruction.
-    F64Ceil,
-    /// WebAssembly instruction.
-    F64Floor,
-    /// WebAssembly instruction.
-    F64Trunc,
-    /// WebAssembly instruction.
-    F64Nearest,
-    /// WebAssembly instruction.
-    F64Sqrt,
-    /// WebAssembly instruction.
-    F64Add,
-    /// WebAssembly instruction.
-    F64Sub,
-    /// WebAssembly instruction.
-    F64Mul,
-    /// WebAssembly instruction.
-    F64Div,
-    /// WebAssembly instruction.
-    F64Min,
-    /// WebAssembly instruction.
-    F64Max,
-    /// WebAssembly instruction.
-    F64Copysign,
-
-    // Conversions
-    /// WebAssembly instruction.
-    I32WrapI64,
-    /// WebAssembly instruction.
-    I32TruncF32S,
-    /// WebAssembly instruction.
-    I32TruncF32U,
-    /// WebAssembly instruction.
-    I32TruncF64S,
-    /// WebAssembly instruction.
-    I32TruncF64U,
-    /// WebAssembly instruction.
-    I64ExtendI32S,
-    /// WebAssembly instruction.
-    I64ExtendI32U,
-    /// WebAssembly instruction.
-    I64TruncF32S,
-    /// WebAssembly instruction.
-    I64TruncF32U,
-    /// WebAssembly instruction.
-    I64TruncF64S,
-    /// WebAssembly instruction.
-    I64TruncF64U,
-    /// WebAssembly instruction.
-    F32ConvertI32S,
-    /// WebAssembly instruction.
-    F32ConvertI32U,
-    /// WebAssembly instruction.
-    F32ConvertI64S,
-    /// WebAssembly instruction.
-    F32ConvertI64U,
-    /// WebAssembly instruction.
-    F32DemoteF64,
-    /// WebAssembly instruction.
-    F64ConvertI32S,
-    /// WebAssembly instruction.
-    F64ConvertI32U,
-    /// WebAssembly instruction.
-    F64ConvertI64S,
-    /// WebAssembly instruction.
-    F64ConvertI64U,
-    /// WebAssembly instruction.
-    F64PromoteF32,
-    /// WebAssembly instruction.
-    I32ReinterpretF32,
-    /// WebAssembly instruction.
-    I64ReinterpretF64,
-    /// WebAssembly instruction.
-    F32ReinterpretI32,
-    /// WebAssembly instruction.
-    F64ReinterpretI64,
-
-    // Saturating Truncation Conversions (prefix 0xFC)
-    /// WebAssembly instruction.
-    I32TruncSatF32S,
-    /// WebAssembly instruction.
-    I32TruncSatF32U,
-    /// WebAssembly instruction.
-    I32TruncSatF64S,
-    /// WebAssembly instruction.
-    I32TruncSatF64U,
-    /// WebAssembly instruction.
-    I64TruncSatF32S,
-    /// WebAssembly instruction.
-    I64TruncSatF32U,
-    /// WebAssembly instruction.
-    I64TruncSatF64S,
-    /// WebAssembly instruction.
-    I64TruncSatF64U,
-
-    // Sign Extension Operations (prefix 0xFC) - Part of Wasm 2.0
-    /// WebAssembly instruction.
-    I32Extend8S,
-    /// WebAssembly instruction.
-    I32Extend16S,
-    /// WebAssembly instruction.
-    I64Extend8S,
-    /// WebAssembly instruction.
-    I64Extend16S,
-    /// WebAssembly instruction.
-    I64Extend32S,
-
-    // SIMD Instructions (prefix 0xFD) - Selected examples, needs full list from spec
-    /// WebAssembly instruction.
-    V128Load(MemArg),
-    /// WebAssembly instruction.
-    V128Load8Splat(MemArg),
-    /// WebAssembly instruction.
-    V128Load16Splat(MemArg),
-    /// WebAssembly instruction.
-    V128Load32Splat(MemArg),
-    /// WebAssembly instruction.
-    V128Load64Splat(MemArg),
-    /// WebAssembly instruction.
-    V128Load8x8S(MemArg),
-    /// WebAssembly instruction.
-    V128Load8x8U(MemArg),
-    /// WebAssembly instruction.
-    V128Load16x4S(MemArg),
-    /// WebAssembly instruction.
-    V128Load16x4U(MemArg),
-    /// WebAssembly instruction.
-    V128Load32x2S(MemArg),
-    /// WebAssembly instruction.
-    V128Load32x2U(MemArg),
-    /// WebAssembly instruction.
-    V128Load32Zero(MemArg),
-    /// WebAssembly instruction.
-    V128Load64Zero(MemArg),
-    /// WebAssembly instruction.
-    V128Store(MemArg),
-    /// WebAssembly instruction.
-    V128Load8Lane(MemArg, u8), // MemArg, lane_idx
-    /// WebAssembly instruction.
-    V128Load16Lane(MemArg, u8),
-    /// WebAssembly instruction.
-    V128Load32Lane(MemArg, u8),
-    /// WebAssembly instruction.
-    V128Load64Lane(MemArg, u8),
-    /// WebAssembly instruction.
-    V128Store8Lane(MemArg, u8),
-    /// WebAssembly instruction.
-    V128Store16Lane(MemArg, u8),
-    /// WebAssembly instruction.
-    V128Store32Lane(MemArg, u8),
-    /// WebAssembly instruction.
-    V128Store64Lane(MemArg, u8),
-
-    /// WebAssembly instruction.
-    V128Const([u8; 16]), // Represents a 128-bit constant
-    /// WebAssembly instruction.
-    I8x16Shuffle([u8; 16]), // Lane indices for shuffle
-
-    /// WebAssembly instruction.
-    I8x16Splat,
-    /// WebAssembly instruction.
-    F32x4Splat,
-    /// WebAssembly instruction.
-    I16x8Splat,
-    /// WebAssembly instruction.
-    F64x2Splat,
-    /// WebAssembly instruction.
-    I32x4Splat,
-    /// WebAssembly instruction.
-    I64x2Splat, // Splat operations
-    /// WebAssembly instruction.
-    I8x16ExtractLaneS(u8),
-    /// WebAssembly instruction.
-    I8x16ExtractLaneU(u8), // Extract lane operations
-    /// WebAssembly instruction.
-    I16x8ExtractLaneS(u8),
-    /// WebAssembly instruction.
-    I16x8ExtractLaneU(u8),
-    /// WebAssembly instruction.
-    I32x4ExtractLane(u8),
-    /// WebAssembly instruction.
-    I64x2ExtractLane(u8),
-    /// WebAssembly instruction.
-    F32x4ExtractLane(u8),
-    /// WebAssembly instruction.
-    F64x2ExtractLane(u8),
-    /// WebAssembly instruction.
-    I8x16ReplaceLane(u8),
-    /// WebAssembly instruction.
-    I16x8ReplaceLane(u8), // Replace lane operations
-    /// WebAssembly instruction.
-    I32x4ReplaceLane(u8),
-    /// WebAssembly instruction.
-    I64x2ReplaceLane(u8),
-    /// WebAssembly instruction.
-    F32x4ReplaceLane(u8),
-    /// WebAssembly instruction.
-    F64x2ReplaceLane(u8),
-
-    // Many more SIMD arithmetic, bitwise, comparison, conversion ops like:
-    /// WebAssembly instruction.
-    I8x16Eq,
-    /// WebAssembly instruction.
-    I8x16Ne,
-    /// WebAssembly instruction.
-    I8x16LtS, // ... up to F64x2Ge ...
-    /// WebAssembly instruction.
-    V128Not,
-    /// WebAssembly instruction.
-    V128And,
-    /// WebAssembly instruction.
-    V128AndNot,
-    /// WebAssembly instruction.
-    V128Or,
-    /// WebAssembly instruction.
-    V128Xor,
-    /// WebAssembly instruction.
-    V128Bitselect,
-    // ... SIMD Fabs, Fneg, Fsqrt, Fadd, Fsub, Fmul, Fdiv, Fmin, Fmax, Fpmin, Fpmax ... */
-    // ... SIMD Iadd, Isub, Imul, Imin, Imax, AvgrU, Q15MulRSatS, Extmul, ExtaddPairwise ... */
-    // ... SIMD IShl, IShrS, IShrU ... */
-    // ... SIMD Conversions (trunc_sat, narrow, widen, demote, promote) ...
-    /// WebAssembly instruction.
-    AnyTrue,
-    /// WebAssembly instruction.
-    AllTrue,
-    /// WebAssembly instruction.
-    Bitmask,
-
-    // Tail Call Instructions (prefix 0xFC)
-    /// WebAssembly instruction.
-    ReturnCall(FuncIdx),
-    /// WebAssembly instruction.
-    ReturnCallIndirect(TypeIdx, TableIdx),
-
-    // Atomic Memory Instructions (prefix 0xFE) - Selected examples
-    /// WebAssembly instruction.
-    MemoryAtomicNotify(MemArg), // align, offset (from MemArg)
-    /// WebAssembly instruction.
-    MemoryAtomicWait32(MemArg), // align, offset
-    /// WebAssembly instruction.
-    MemoryAtomicWait64(MemArg), // align, offset
-    // Atomic RMW operations
-    /// WebAssembly instruction.
-    I32AtomicLoad(MemArg),
-    /// WebAssembly instruction.
-    I64AtomicLoad(MemArg),
-    /// WebAssembly instruction.
-    I32AtomicLoad8U(MemArg),
-    /// WebAssembly instruction.
-    I32AtomicLoad16U(MemArg),
-    /// WebAssembly instruction.
-    I64AtomicLoad8U(MemArg),
-    /// WebAssembly instruction.
-    I64AtomicLoad16U(MemArg),
-    /// WebAssembly instruction.
-    I64AtomicLoad32U(MemArg),
-    /// WebAssembly instruction.
-    I32AtomicStore(MemArg),
-    /// WebAssembly instruction.
-    I64AtomicStore(MemArg),
-    /// WebAssembly instruction.
-    I32AtomicStore8(MemArg),
-    /// WebAssembly instruction.
-    I32AtomicStore16(MemArg),
-    /// WebAssembly instruction.
-    I64AtomicStore8(MemArg),
-    /// WebAssembly instruction.
-    I64AtomicStore16(MemArg),
-    /// WebAssembly instruction.
-    I64AtomicStore32(MemArg),
-    // RMW variants: Add, Sub, And, Or, Xor, Xchg, Cmpxchg
-    // e.g., I32AtomicRmwAdd(MemArg), I64AtomicRmw8uCmpxchg(MemArg)
-    // This list needs to be fully populated based on the Atomic spec.
-    // For brevity, only a few are listed.
-    /// WebAssembly instruction.
-    I32AtomicRmwAdd(MemArg),
-    /// WebAssembly instruction.
-    I64AtomicRmwAdd(MemArg),
-    /// WebAssembly instruction.
-    I32AtomicRmwCmpxchg(MemArg),
-    /// WebAssembly instruction.
-    I64AtomicRmwCmpxchg(MemArg),
-    // ... more atomic RMW operations ...
+impl ToBytes for ExportDesc {
+    fn to_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        _provider: &PStream, // Provider not used for u32 or simple enums over u32
+    ) -> WrtResult<()> {
+        match self {
+            ExportDesc::Func(idx) => {
+                writer.write_u8(0)?; // Tag for Func
+                writer.write_u32_le(*idx)?;
+            }
+            ExportDesc::Table(idx) => {
+                writer.write_u8(1)?; // Tag for Table
+                writer.write_u32_le(*idx)?;
+            }
+            ExportDesc::Mem(idx) => {
+                writer.write_u8(2)?; // Tag for Mem
+                writer.write_u32_le(*idx)?;
+            }
+            ExportDesc::Global(idx) => {
+                writer.write_u8(3)?; // Tag for Global
+                writer.write_u32_le(*idx)?;
+            }
+            ExportDesc::Tag(idx) => {
+                writer.write_u8(4)?; // Tag for Tag
+                writer.write_u32_le(*idx)?;
+            }
+        }
+        Ok(())
+    }
+    // Default to_bytes method will be used if #cfg(feature = "default-provider") is active
 }
 
-/// A sequence of WebAssembly instructions, typically forming a function body or
-/// an initializer expression.
-#[derive(Debug, Clone, PartialEq)]
-pub struct Expr {
-    /// Instructions in the expression.
-    pub instructions: Vec<Instruction>,
+impl FromBytes for ExportDesc {
+    fn from_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        _provider: &PStream, // Provider not used
+    ) -> WrtResult<Self> {
+        let tag = reader.read_u8()?;
+        match tag {
+            0 => Ok(ExportDesc::Func(reader.read_u32_le()?)),
+            1 => Ok(ExportDesc::Table(reader.read_u32_le()?)),
+            2 => Ok(ExportDesc::Mem(reader.read_u32_le()?)),
+            3 => Ok(ExportDesc::Global(reader.read_u32_le()?)),
+            4 => Ok(ExportDesc::Tag(reader.read_u32_le()?)),
+            _ => Err(Error::new(
+                ErrorCategory::Parse,
+                codes::INVALID_VALUE, // Or a more specific code for invalid enum tag
+                "Invalid tag for ExportDesc deserialization",
+            )),
+        }
+    }
+    // Default from_bytes method will be used if #cfg(feature = "default-provider") is active
 }
 
-/// Represents an entry for local variables in a function's code section.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct LocalEntry {
-    /// Number of locals of this type.
-    pub count: u32,
-    /// Type of the locals.
+/// Placeholder for ExternType and ResourceType from component.rs
+/// These will need to be P-generic or use P-generic types.
+/// For now, we define stubs so ImportDesc can compile.
+/// In a real scenario, these would be properly defined in wrt-component
+/// and made P-generic if they contain collections.
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub struct ExternTypePlaceholder; // Placeholder
+
+impl Checksummable for ExternTypePlaceholder {
+    fn update_checksum(&self, _checksum: &mut Checksum) { /* TODO: Implement actual checksum logic */ }
+}
+
+impl ToBytes for ExternTypePlaceholder { 
+    fn to_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        &self,
+        _writer: &mut WriteStream<'a>,
+        _provider: &PStream,
+    ) -> WrtResult<()> {
+        Ok(()) // Writes nothing
+    }
+    // Default to_bytes method will be used if #cfg(feature = "default-provider") is active
+}
+
+impl FromBytes for ExternTypePlaceholder { 
+    fn from_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        _reader: &mut ReadStream<'a>,
+        _provider: &PStream,
+    ) -> WrtResult<Self> {
+        Ok(ExternTypePlaceholder) // Reads nothing
+    }
+    // Default from_bytes method will be used if #cfg(feature = "default-provider") is active
+}
+
+/// Placeholder for resource types in the component model.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub struct ResourceTypePlaceholder; // Placeholder
+
+impl Checksummable for ResourceTypePlaceholder {
+    fn update_checksum(&self, _checksum: &mut Checksum) { /* TODO: Implement actual checksum logic */ }
+}
+
+impl ToBytes for ResourceTypePlaceholder { 
+    fn to_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        &self,
+        _writer: &mut WriteStream<'a>,
+        _provider: &PStream,
+    ) -> WrtResult<()> {
+        Ok(()) // Writes nothing
+    }
+    // Default to_bytes method will be used if #cfg(feature = "default-provider") is active
+}
+
+impl FromBytes for ResourceTypePlaceholder { 
+    fn from_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        _reader: &mut ReadStream<'a>,
+        _provider: &PStream,
+    ) -> WrtResult<Self> {
+        Ok(ResourceTypePlaceholder) // Reads nothing
+    }
+    // Default from_bytes method will be used if #cfg(feature = "default-provider") is active
+}
+
+/// Represents the size limits of a table or memory.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub struct Limits {
+    pub min: u32,
+    pub max: Option<u32>,
+}
+
+impl Limits {
+    pub const fn new(min: u32, max: Option<u32>) -> Self {
+        Self { min, max }
+    }
+}
+
+impl Checksummable for Limits {
+    fn update_checksum(&self, checksum: &mut Checksum) {
+        checksum.update_slice(&self.min.to_le_bytes());
+        if let Some(max_val) = self.max {
+            checksum.update(1);
+            checksum.update_slice(&max_val.to_le_bytes());
+        } else {
+            checksum.update(0);
+        }
+    }
+}
+
+impl ToBytes for Limits {
+    fn to_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        _provider: &PStream, // Provider not directly used for simple types like u32 or Option<u32> that wrap primitives
+    ) -> WrtResult<()> {
+        writer.write_u32_le(self.min)?;
+        if let Some(max_val) = self.max {
+            writer.write_u8(1)?; // Indicate Some(max_val)
+            writer.write_u32_le(max_val)?;
+        } else {
+            writer.write_u8(0)?; // Indicate None
+        }
+        Ok(())
+    }
+    // Default to_bytes method will be used if #cfg(feature = "default-provider") is active
+}
+
+impl FromBytes for Limits {
+    fn from_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        _provider: &PStream, // Provider not directly used here
+    ) -> WrtResult<Self> {
+        let min = reader.read_u32_le()?;
+        let has_max_flag = reader.read_u8()?;
+        let max = match has_max_flag {
+            1 => Some(reader.read_u32_le()?), 
+            0 => None,
+            _ => {
+                return Err(Error::new(
+                    ErrorCategory::Parse,
+                    codes::INVALID_VALUE,
+                    "Invalid flag for Option<u32> in Limits deserialization",
+                ));
+            }
+        };
+        Ok(Limits { min, max })
+    }
+    // Default from_bytes method will be used if #cfg(feature = "default-provider") is active
+}
+
+/// Describes a table in a WebAssembly module, including its element type and limits.
+///
+/// Tables are arrays of references that can be accessed by WebAssembly code.
+/// They are primarily used for implementing indirect function calls and storing
+/// references to host objects.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
+pub struct TableType { // No P generic anymore
+    /// The type of elements stored in the table (e.g., `FuncRef`, `ExternRef`).
+    pub element_type: RefType,
+    /// The size limits of the table, specifying initial and optional maximum size.
+    pub limits: Limits,
+}
+
+// Generic constructor, still valid as it doesn't depend on P.
+impl TableType { // No P generic anymore
+    /// Creates a new `TableType` with a specific element type and limits.
+    /// This const fn is suitable for static initializers.
+    pub const fn new(element_type: RefType, limits: Limits) -> Self {
+        Self {
+            element_type,
+            limits,
+        }
+    }
+}
+
+// Trait implementations for TableType
+impl Checksummable for TableType {
+    fn update_checksum(&self, checksum: &mut Checksum) {
+        self.element_type.update_checksum(checksum);
+        self.limits.update_checksum(checksum);
+    }
+}
+
+impl ToBytes for TableType {
+    fn to_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        provider: &PStream,
+    ) -> WrtResult<()> {
+        self.element_type.to_bytes_with_provider(writer, provider)?;
+        self.limits.to_bytes_with_provider(writer, provider)?;
+        Ok(())
+    }
+    // Default to_bytes method will be used if #cfg(feature = "default-provider") is active
+}
+
+impl FromBytes for TableType {
+    fn from_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        provider: &PStream,
+    ) -> WrtResult<Self> {
+        let element_type = RefType::from_bytes_with_provider(reader, provider)?;
+        let limits = Limits::from_bytes_with_provider(reader, provider)?;
+        Ok(TableType { element_type, limits })
+    }
+    // Default from_bytes method will be used if #cfg(feature = "default-provider") is active
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Hash)]
+pub struct MemoryType {
+    pub limits: Limits,
+    pub shared: bool,
+}
+
+impl MemoryType {
+    pub const fn new(limits: Limits, shared: bool) -> Self {
+        Self { limits, shared }
+    }
+}
+
+impl Checksummable for MemoryType {
+    fn update_checksum(&self, checksum: &mut Checksum) {
+        self.limits.update_checksum(checksum);
+        checksum.update(self.shared as u8);
+    }
+}
+
+impl ToBytes for MemoryType {
+    fn to_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        provider: &PStream,
+    ) -> WrtResult<()> {
+        self.limits.to_bytes_with_provider(writer, provider)?;
+        writer.write_u8(self.shared as u8)?;
+        Ok(())
+    }
+    // Default to_bytes method will be used if #cfg(feature = "default-provider") is active
+}
+
+impl FromBytes for MemoryType {
+    fn from_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        provider: &PStream,
+    ) -> WrtResult<Self> {
+        let limits = Limits::from_bytes_with_provider(reader, provider)?;
+        let shared_byte = reader.read_u8()?;
+        let shared = match shared_byte {
+            0 => false,
+            1 => true,
+            _ => {
+                return Err(Error::new(
+                    ErrorCategory::Parse,
+                    codes::INVALID_VALUE,
+                    "Invalid boolean flag for MemoryType.shared",
+                ));
+            }
+        };
+        Ok(MemoryType { limits, shared })
+    }
+    // Default from_bytes method will be used if #cfg(feature = "default-provider") is active
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Hash)]
+pub struct GlobalType {
     pub value_type: ValueType,
+    pub mutable: bool,
 }
 
-/// Code for a single WebAssembly function defined in the module.
-#[derive(Debug, Clone, PartialEq)]
-pub struct Code {
-    /// Local variable declarations for this function.
-    pub locals: Vec<LocalEntry>,
-    /// The instruction sequence (body) of the function.
-    pub body: Expr,
+impl GlobalType {
+    pub const fn new(value_type: ValueType, mutable: bool) -> Self {
+        Self { value_type, mutable }
+    }
 }
 
-/// Represents a complete WebAssembly Module.
-#[derive(Debug, Clone, PartialEq)]
-pub struct Module {
-    // pub magic: u32, // Often omitted in higher-level representations
-    // pub version: u32, // Often omitted
-    /// Function types defined in the module.
-    pub types: Vec<FuncType>,
+impl Checksummable for GlobalType {
+    fn update_checksum(&self, checksum: &mut Checksum) {
+        self.value_type.update_checksum(checksum);
+        checksum.update(self.mutable as u8);
+    }
+}
 
-    /// Imported functions, tables, memories, and globals.
-    pub imports: Vec<Import>,
+impl ToBytes for GlobalType {
+    fn to_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        provider: &PStream,
+    ) -> WrtResult<()> {
+        self.value_type.to_bytes_with_provider(writer, provider)?;
+        writer.write_u8(self.mutable as u8)?;
+        Ok(())
+    }
+    // Default to_bytes method will be used if #cfg(feature = "default-provider") is active
+}
 
-    /// For each function defined in the module, its type index into the `types`
-    /// vector. The order corresponds to the `code_entries` vector.
-    pub funcs: Vec<TypeIdx>,
+impl FromBytes for GlobalType {
+    fn from_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        provider: &PStream,
+    ) -> WrtResult<Self> {
+        let value_type = ValueType::from_bytes_with_provider(reader, provider)?;
+        let mutable_byte = reader.read_u8()?;
+        let mutable = match mutable_byte {
+            0 => false,
+            1 => true,
+            _ => {
+                return Err(Error::new(
+                    ErrorCategory::Parse,
+                    codes::INVALID_VALUE,
+                    "Invalid boolean flag for GlobalType.mutable",
+                ));
+            }
+        };
+        Ok(GlobalType { value_type, mutable })
+    }
+    // Default from_bytes method will be used if #cfg(feature = "default-provider") is active
+}
 
-    /// Table definitions.
-    pub tables: Vec<TableType>,
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Hash)]
+pub struct Tag {
+    pub type_idx: TypeIdx,
+}
 
-    /// Memory definitions.
-    pub memories: Vec<MemoryType>,
+impl Tag {
+    pub fn new(type_idx: TypeIdx) -> Self {
+        Self { type_idx }
+    }
+}
 
-    /// Global variable definitions (includes initial value).
-    pub globals: Vec<GlobalType>,
+impl Checksummable for Tag {
+    fn update_checksum(&self, checksum: &mut Checksum) {
+        self.type_idx.update_checksum(checksum);
+    }
+}
 
-    /// Exported items.
-    pub exports: Vec<Export>,
+impl ToBytes for Tag {
+    fn to_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        _provider: &PStream, // Provider not used for simple u32
+    ) -> WrtResult<()> {
+        writer.write_u32_le(self.type_idx)?;
+        Ok(())
+    }
+    // Default to_bytes method will be used if #cfg(feature = "default-provider") is active
+}
 
-    /// Start function index, if specified.
-    pub start: Option<FuncIdx>,
+impl FromBytes for Tag {
+    fn from_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        _provider: &PStream, // Provider not used for simple u32
+    ) -> WrtResult<Self> {
+        let type_idx = reader.read_u32_le()?;
+        Ok(Tag { type_idx })
+    }
+    // Default from_bytes method will be used if #cfg(feature = "default-provider") is active
+}
 
-    /// Element segments for table initialization.
-    pub elements: Vec<ElementSegment>,
-
-    /// Code entries for functions defined in this module.
-    /// The order corresponds to the `funcs` vector (type associations).
-    pub code_entries: Vec<Code>,
-
-    /// Data segments for memory initialization.
-    pub data_segments: Vec<DataSegment>, // Renamed from 'data'
-
-    /// Data count, if the `DataCount` section was present.
+/// Represents a WebAssembly Module structure.
+#[derive(Debug, Clone, PartialEq, Hash)] // Module itself cannot be Eq easily due to provider. P must be Eq for fields.
+pub struct Module<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> {
+    /// Types section: A list of function types defined in the module.
+    pub types: BoundedVec<FuncType<P>, MAX_TYPES_IN_MODULE, P>,
+    /// Imports section: A list of imports declared by the module.
+    pub imports: BoundedVec<Import<P>, MAX_IMPORTS_IN_MODULE, P>,
+    /// Functions section: A list of type indices for functions defined in the module.
+    pub functions: BoundedVec<TypeIdx, MAX_FUNCS_IN_MODULE, P>,
+    /// Tables section: A list of table types defined in the module.
+    pub tables: BoundedVec<TableType, MAX_TABLES_IN_MODULE, P>,
+    /// Memories section: A list of memory types defined in the module.
+    pub memories: BoundedVec<MemoryType, MAX_MEMORIES_IN_MODULE, P>,
+    /// Globals section: A list of global variables defined in the module.
+    pub globals: BoundedVec<GlobalType, MAX_GLOBALS_IN_MODULE, P>,
+    /// Exports section: A list of exports declared by the module.
+    pub exports: BoundedVec<Export<P>, MAX_EXPORTS_IN_MODULE, P>,
+    /// Start function: An optional index to a function that is executed when the module is instantiated.
+    pub start_func: Option<FuncIdx>,
+    /// Function bodies section: A list of code bodies for functions defined in the module.
+    pub func_bodies: BoundedVec<FuncBody<P>, MAX_FUNCS_IN_MODULE, P>, // Changed from code_entries
+    /// Data count section: An optional count of data segments, required if data segments are present.
     pub data_count: Option<u32>,
-
-    /// Custom sections.
-    pub custom_sections: Vec<CustomSection>,
-    // Potentially add fields for other sections like:
-    // pub name_section: Option<NameSection>, // Define NameSection struct
-    // pub producers_section: Option<ProducersSection>, // Define ProducersSection struct
-    // etc. or keep them in custom_sections if their structure is not strictly enforced for the
-    // runtime.
+    /// Custom sections: A list of custom sections with arbitrary binary data.
+    pub custom_sections: BoundedVec<CustomSection<P>, MAX_CUSTOM_SECTIONS_IN_MODULE, P>,
+    /// Tags section: A list of exception tags.
+    pub tags: BoundedVec<Tag, MAX_TAGS_IN_MODULE, P>,
+    /// The memory provider instance.
+    provider: P,
 }
 
-#[cfg(test)]
-#[allow(clippy::unwrap_used)]
-mod tests {
-    #[cfg(all(feature = "alloc", not(feature = "std")))]
-    use alloc::{boxed::Box, vec};
-    #[cfg(feature = "std")]
-    use std::boxed::Box;
-
-    use proptest::prelude::*;
-
-    use super::*;
-
-    impl Arbitrary for ValueType {
-        type Parameters = ();
-        type Strategy = BoxedStrategy<Self>;
-
-        fn arbitrary_with(_args: Self::Parameters) -> Self::Strategy {
-            prop_oneof![
-                Just(ValueType::I32),
-                Just(ValueType::I64),
-                Just(ValueType::F32),
-                Just(ValueType::F64),
-                Just(ValueType::V128),
-                Just(ValueType::I16x8),
-                Just(ValueType::FuncRef),
-                Just(ValueType::ExternRef),
-            ]
-            .boxed()
+impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> Module<P> {
+    /// Creates a new, empty `Module` with the given memory provider.
+    pub fn new(provider: P) -> Self {
+        Self {
+            types: BoundedVec::new(provider.clone()).expect("Failed to init types BoundedVec"),
+            imports: BoundedVec::new(provider.clone()).expect("Failed to init imports BoundedVec"),
+            functions: BoundedVec::new(provider.clone()).expect("Failed to init functions BoundedVec"),
+            tables: BoundedVec::new(provider.clone()).expect("Failed to init tables BoundedVec"),
+            memories: BoundedVec::new(provider.clone()).expect("Failed to init memories BoundedVec"),
+            globals: BoundedVec::new(provider.clone()).expect("Failed to init globals BoundedVec"),
+            exports: BoundedVec::new(provider.clone()).expect("Failed to init exports BoundedVec"),
+            start_func: None,
+            func_bodies: BoundedVec::new(provider.clone()).expect("Failed to init func_bodies BoundedVec"),
+            data_count: None,
+            custom_sections: BoundedVec::new(provider.clone()).expect("Failed to init custom_sections BoundedVec"),
+            tags: BoundedVec::new(provider.clone()).expect("Failed to init tags BoundedVec"),
+            provider,
         }
     }
 
-    #[test]
-    fn test_value_type_conversions() {
-        let i32_val = ValueType::I32;
-        let binary = i32_val.to_binary();
-        let roundtrip = ValueType::from_binary(binary).unwrap();
-        assert_eq!(i32_val, roundtrip);
-
-        // Test all value types
-        let types = vec![
-            ValueType::I32,
-            ValueType::I64,
-            ValueType::F32,
-            ValueType::F64,
-            ValueType::V128,
-            ValueType::I16x8,
-            ValueType::FuncRef,
-            ValueType::ExternRef,
-        ];
-
-        for vt in types {
-            let binary = vt.to_binary();
-            let roundtrip = ValueType::from_binary(binary).unwrap();
-            assert_eq!(vt, roundtrip);
-        }
-    }
-
-    #[test]
-    fn test_func_type_verification() {
-        let func_type =
-            FuncType::new(vec![ValueType::I32, ValueType::I64], vec![ValueType::F32]).unwrap();
-
-        // This should pass verification
-        assert!(func_type.verify().is_ok());
-
-        // TODO: Add more tests for hash verification with tampering
-    }
-
-    #[test]
-    fn test_limits() {
-        let limited = Limits::new(10, Some(20));
-        assert!(limited.check_size(10));
-        assert!(limited.check_size(20));
-        assert!(!limited.check_size(5));
-        assert!(!limited.check_size(21));
-
-        let unlimited = Limits::new(5, None);
-        assert!(unlimited.check_size(5));
-        assert!(unlimited.check_size(1_000_000)); // Corrected: 1000000 to
-                                                  // 1_000_000
-    }
-
-    #[test]
-    fn test_type_equality() {
-        // Equal function types
-        let func_type1 =
-            FuncType::new(vec![ValueType::I32, ValueType::I64], vec![ValueType::F32]).unwrap();
-        // Same function type should be equal
-        let func_type2 =
-            FuncType::new(vec![ValueType::I32, ValueType::I64], vec![ValueType::F32]).unwrap();
-        // Different function type
-        let func_type3 = FuncType::new(vec![ValueType::I32], vec![ValueType::F32]).unwrap();
-
-        assert_eq!(func_type1, func_type2);
-        assert_ne!(func_type1, func_type3);
-        assert_ne!(func_type2, func_type3);
+    /// Returns a clone of the memory provider used by this module.
+    pub fn provider(&self) -> P {
+        self.provider.clone()
     }
 }
+
+// If P: Default is available, we can provide a Default impl for Module.
+impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> Default for Module<P> {
+    fn default() -> Self {
+        let provider = P::default();
+        Self::new(provider)
+    }
+}
+
+impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> Checksummable for Module<P> {
+    fn update_checksum(&self, checksum: &mut Checksum) {
+        // Helper to update checksum for a BoundedVec of Checksummable items
+        fn update_vec_checksum<
+            T: Checksummable + ToBytes + FromBytes + Default + Clone + core::fmt::Debug + PartialEq + Eq,
+            const N: usize,
+            Prov: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq,
+        >(
+            vec: &BoundedVec<T, N, Prov>,
+            checksum: &mut Checksum,
+        ) {
+            checksum.update_slice(&(vec.len() as u32).to_le_bytes());
+            for i in 0..vec.len() {
+                if let Some(item) = vec.get(i) {
+                    item.update_checksum(checksum);
+                }
+            }
+        }
+        // Helper for BoundedVec<TypeIdx, ...>
+        fn update_idx_vec_checksum<const N: usize, Prov: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq>(
+            vec: &BoundedVec<TypeIdx, N, Prov>,
+            checksum: &mut Checksum,
+        ) {
+            checksum.update_slice(&(vec.len() as u32).to_le_bytes());
+            for i in 0..vec.len() {
+                if let Some(item) = vec.get(i) {
+                    checksum.update_slice(&item.to_le_bytes());
+                }
+            }
+        }
+
+        update_vec_checksum(&self.types, checksum);
+        update_vec_checksum(&self.imports, checksum);
+        update_idx_vec_checksum(&self.functions, checksum);
+        update_vec_checksum(&self.tables, checksum);
+        update_vec_checksum(&self.memories, checksum);
+        update_vec_checksum(&self.globals, checksum);
+        update_vec_checksum(&self.exports, checksum);
+        if let Some(start_func_idx) = self.start_func {
+            checksum.update_slice(&[1]);
+            checksum.update_slice(&start_func_idx.to_le_bytes());
+        } else {
+            checksum.update_slice(&[0]);
+        }
+        update_vec_checksum(&self.func_bodies, checksum);
+        if let Some(data_cnt) = self.data_count {
+            checksum.update_slice(&[1]);
+            checksum.update_slice(&data_cnt.to_le_bytes());
+        } else {
+            checksum.update_slice(&[0]);
+        }
+        update_vec_checksum(&self.custom_sections, checksum);
+        update_vec_checksum(&self.tags, checksum);
+        // Not checksumming the provider itself, as it's about memory management, not content.
+    }
+}
+
+// Note: Duplicate implementation removed
+// impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> ToBytes for Import<P> {...}
+
+// Note: Duplicate implementation removed
+// impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> FromBytes for Import<P> {...}
+
+/// Represents the type of a block, loop, or if instruction.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)] // Removed Default
+pub enum BlockType {
+    /// The block type is a single value type for the result.
+    /// `None` indicates an empty result type (no result).
+    // Removed #[default]
+    Value(Option<ValueType>),
+    /// The block type is an index into the type section, indicating a function type.
+    FuncType(TypeIdx),
+}
+
+impl Default for BlockType {
+    fn default() -> Self {
+        // Default to an empty result type (no value).
+        BlockType::Value(None)
+    }
+}
+
+// Duplicate implementation removed completely

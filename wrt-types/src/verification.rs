@@ -3,7 +3,7 @@
 // SW-REQ-ID: REQ_VERIFY_001
 // SW-REQ-ID: REQ_VERIFY_003
 //
-// Copyright (c) 2024 Ralf Anton Beier
+// Copyright (c) 2025 Ralf Anton Beier
 // Licensed under the MIT license.
 // SPDX-License-Identifier: MIT
 
@@ -23,8 +23,12 @@ use std::fmt;
 #[cfg(feature = "std")]
 use std::sync::atomic::{AtomicU32, Ordering};
 
+use crate::traits::{FromBytes, ToBytes, WriteStream, ReadStream, SerializationError};
+use crate::WrtResult;
+use wrt_error::{Error, codes, ErrorCategory};
+
 /// Defines the level of verification to apply for checksums and other checks.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Default, Hash)]
 #[repr(u8)]
 pub enum VerificationLevel {
     /// No verification checks are performed.
@@ -78,6 +82,33 @@ impl VerificationLevel {
         // not the standard checks covered by should_verify.
         // Test `test_should_validate_redundant` asserts that Full should pass this.
         matches!(self, Self::Full | Self::Redundant)
+    }
+}
+
+impl ToBytes for VerificationLevel {
+    fn to_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        _provider: &PStream,
+    ) -> WrtResult<()> {
+        writer.write_u8(self.to_byte())
+    }
+}
+
+impl FromBytes for VerificationLevel {
+    fn from_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        _provider: &PStream,
+    ) -> WrtResult<Self> {
+        let byte = reader.read_u8()?;
+        match byte {
+            0 => Ok(VerificationLevel::Off),
+            1 => Ok(VerificationLevel::Basic),
+            2 => Ok(VerificationLevel::Full),
+            3 => Ok(VerificationLevel::Sampling),
+            4 => Ok(VerificationLevel::Redundant),
+            _ => Err(SerializationError::InvalidEnumValue.into()),
+        }
     }
 }
 
@@ -147,11 +178,47 @@ impl Checksum {
     pub fn verify(&self, expected: &Self) -> bool {
         self == expected
     }
+
+    /// Create a checksum from a u32 value
+    #[must_use]
+    pub fn from_value(value: u32) -> Self {
+        Self {
+            a: value & 0xFFFF,
+            b: value >> 16,
+        }
+    }
 }
 
 impl fmt::Display for Checksum {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:08x}", self.value())
+    }
+}
+
+impl ToBytes for Checksum {
+    fn to_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        _provider: &PStream, // Provider not directly used for u32
+    ) -> WrtResult<()> {
+        writer.write_u32_le(self.value())
+    }
+}
+
+impl FromBytes for Checksum {
+    fn from_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        _provider: &PStream, // Provider not directly used for u32
+    ) -> WrtResult<Self> {
+        let value = reader.read_u32_le()?;
+        Ok(Checksum::from_value(value))
+    }
+}
+
+impl core::hash::Hash for Checksum {
+    fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
+        self.a.hash(state);
+        self.b.hash(state);
     }
 }
 

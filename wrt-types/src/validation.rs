@@ -3,7 +3,7 @@
 // SW-REQ-ID: REQ_VERIFY_002
 // SW-REQ-ID: REQ_VERIFY_003
 //
-// Copyright (c) 2024 Ralf Anton Beier
+// Copyright (c) 2025 Ralf Anton Beier
 // Licensed under the MIT license.
 // SPDX-License-Identifier: MIT
 
@@ -17,12 +17,59 @@
 #[cfg(feature = "alloc")]
 extern crate alloc;
 
+// Added BoundedVec for tests
+#[cfg(test)]
+use crate::bounded::BoundedVec;
+#[cfg(test)]
+use crate::safe_memory::NoStdProvider;
 #[cfg(all(feature = "alloc", not(feature = "std")))]
-use alloc::format;
+// use alloc::format; // Removed
 #[cfg(feature = "alloc")]
-use alloc::string::String;
+// use alloc::string::String; // Removed
+use crate::verification::{Checksum, VerificationLevel}; // For test provider
+use crate::{
+    prelude::{Debug /* Removed format, ToString as _ToString */}, 
+};
 
+// Add general imports here if not already present globally
 use crate::verification::{Checksum, VerificationLevel};
+
+// START NEW CODE: ValidationError enum
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ValidationError {
+    ChecksumMismatch { expected: Checksum, actual: Checksum, description: &'static str },
+    // Other validation errors can be added here if needed
+}
+
+impl core::fmt::Display for ValidationError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            Self::ChecksumMismatch { expected, actual, description } => {
+                // core::write! is more limited than format!
+                // Consider a more structured error or a simple string construction
+                // For now, just basic info.
+                write!(f, "Checksum mismatch in ")?;
+                f.write_str(description)?;
+                write!(f, ": expected {}, actual {}", expected, actual)
+            }
+        }
+    }
+}
+
+impl From<ValidationError> for crate::Error {
+    fn from(err: ValidationError) -> Self {
+        match err {
+            ValidationError::ChecksumMismatch { description, .. } => {
+                crate::Error::new(
+                    crate::ErrorCategory::Validation,
+                    crate::codes::CHECKSUM_MISMATCH, // Use the defined constant CHECKSUM_MISMATCH
+                    description,                  // Using description as the primary message part
+                )
+            }
+        }
+    }
+}
+// END NEW CODE: ValidationError enum
 
 /// Trait for types that can be validated for data integrity
 ///
@@ -155,29 +202,35 @@ where
 }
 
 /// Validation result type to centralize error handling
-#[cfg(feature = "alloc")]
-pub type ValidationResult = Result<(), String>;
+// #[cfg(feature = "alloc")] // Removed cfg_attr
+// pub type ValidationResult = Result<(), String>; // Old
+pub type ValidationResult = core::result::Result<(), ValidationError>; // New: Always use ValidationError
 
 /// Helper to validate a checksum against an expected value
-#[cfg(feature = "alloc")]
+// #[cfg(feature = "alloc")] // Removed cfg_attr
 pub fn validate_checksum(
     actual: Checksum,
     expected: Checksum,
-    description: &str,
+    description: &'static str, // Changed to &'static str
 ) -> ValidationResult {
     if actual == expected {
         Ok(())
     } else {
-        Err(format!("Checksum mismatch in {description}: expected {expected}, actual {actual}"))
+        // Err(format!("Checksum mismatch in {description}: expected {expected}, actual
+        // {actual}")) // Old
+        Err(ValidationError::ChecksumMismatch { expected, actual, description })
+        // New
     }
 }
 
 #[cfg(test)]
 mod tests {
-    #[cfg(not(feature = "std"))]
-    use alloc::vec;
-
     use super::*;
+    // For BoundedVec tests
+    #[cfg(feature = "std")]
+    use crate::safe_memory::StdProvider;
+
+    const TEST_CAPACITY: usize = 10; // For BoundedVec in tests
 
     #[test]
     fn test_should_validate() {
@@ -213,10 +266,14 @@ mod tests {
 
     #[test]
     fn test_calculate_keyed_checksum() {
-        let items = vec![
-            ("key1".as_bytes(), "value1".as_bytes()),
-            ("key2".as_bytes(), "value2".as_bytes()),
-        ];
+        // let items = vec![ // Old
+        //     ("key1".as_bytes(), "value1".as_bytes()),
+        //     ("key2".as_bytes(), "value2".as_bytes()),
+        // ];
+
+        // New: Using a fixed-size array for test data
+        let items: [(&[u8], &[u8]); 2] =
+            [("key1".as_bytes(), "value1".as_bytes()), ("key2".as_bytes(), "value2".as_bytes())];
 
         let checksum = calculate_keyed_checksum(&items);
 
@@ -230,20 +287,26 @@ mod tests {
         assert_eq!(checksum, expected);
     }
 
-    #[cfg(feature = "alloc")]
+    // #[cfg(feature = "alloc")] // Test should run always now
     #[test]
     fn test_validate_checksum() {
         let checksum1 = Checksum::new();
-        let checksum2 = {
-            let mut cs = Checksum::new();
-            cs.update(1);
-            cs
-        };
+        let mut checksum2_val = Checksum::new();
+        checksum2_val.update(1); // Make it different
+        let checksum2 = checksum2_val;
 
         // Same checksums should validate
-        assert!(validate_checksum(checksum1, checksum1, "test").is_ok());
+        assert!(validate_checksum(checksum1, checksum1, "test_same").is_ok());
 
         // Different checksums should fail
-        assert!(validate_checksum(checksum1, checksum2, "test").is_err());
+        let err_result = validate_checksum(checksum1, checksum2, "test_diff");
+        assert!(err_result.is_err());
+        match err_result {
+            Err(ValidationError::ChecksumMismatch { expected, actual, description }) => {
+                assert_eq!(expected, checksum1);
+                assert_eq!(actual, checksum2);
+                assert_eq!(description, "test_diff");
+            } // _ => panic!("Unexpected error type"), // Not needed if only one variant
+        }
     }
 }
