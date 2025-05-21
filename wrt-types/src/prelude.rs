@@ -1,8 +1,5 @@
 // WRT - wrt-types
-// Module: Prelude for Common Imports
-// SW-REQ-ID: N/A (Prelude, not directly implementing a specific requirement)
-//
-// Copyright (c) 2024 Ralf Anton Beier
+// Copyright (c) 2025 Ralf Anton Beier
 // Licensed under the MIT license.
 // SPDX-License-Identifier: MIT
 
@@ -18,51 +15,70 @@
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 pub use alloc::{
     boxed::Box,
-    collections::{BTreeMap as HashMap, BTreeSet as HashSet},
+    collections::{BTreeMap, BTreeSet},
     format,
     string::{String, ToString},
     sync::Arc,
     vec,
     vec::Vec,
 };
-pub use core::{
-    any::Any,
-    cmp::{Eq, Ord, PartialEq, PartialOrd},
-    convert::{TryFrom, TryInto},
-    fmt,
-    fmt::{Debug, Display},
-    marker::PhantomData,
-    mem,
-    ops::{Deref, DerefMut},
-    slice, str,
-};
-// Re-export from std when the std feature is enabled
-#[cfg(feature = "std")]
-pub use std::{
-    boxed::Box,
-    collections::{HashMap, HashSet},
-    format,
-    string::{String, ToString},
-    sync::{Arc, Mutex, RwLock},
-    vec,
-    vec::Vec,
-};
+#[cfg(feature = "use-hashbrown")]
+pub use hashbrown::HashMap;
 
-// Re-export from wrt-error
+// When neither std nor alloc is available, we provide a pure no_std SimpleHashMap
+#[cfg(not(any(feature = "std", feature = "alloc")))]
+pub use crate::no_std_hashmap::SimpleHashMap;
+// Consumers must explicitly use core::* or bounded types.
+
+// Explicitly re-export common core traits and types
+pub use core::any::Any;
+pub use core::cmp::{Eq, Ord, PartialEq, PartialOrd};
+pub use core::convert::{TryFrom, TryInto};
+pub use core::fmt::{self, Debug, Display, Write};
+pub use core::hash::Hash;
+pub use core::clone::Clone;
+pub use core::default::Default;
+pub use core::marker::{PhantomData, Sized, Copy};
+pub use core::mem;
+pub use core::ops::{Deref, DerefMut};
+pub use core::slice;
+pub use core::str;
+
+// Re-export from std when the std feature is enabled
+// Only include these imports when std feature is enabled
+#[cfg(feature = "std")]
+pub use std::{boxed::Box, collections::{HashMap, HashSet, BTreeMap, BTreeSet}, string::{String, ToString}, sync::{Arc, Mutex, RwLock}, vec, vec::Vec, format};
+
+// If only no_std (and not alloc) is active, common collections like Vec, String, Box, HashMap, HashSet, Arc
+// are NOT exported by this prelude. Users should use bounded types or core types directly.
+
+// Re-export from wrt_error
 pub use wrt_error::prelude::*;
 pub use wrt_error::{codes, kinds, Error, ErrorCategory, Result};
-// Re-export from wrt-math
-pub use wrt_math::prelude::*;
+
+// Re-export from wrt_sync, only if the feature is active
+// #[cfg(feature = "wrt-sync")] // Or a more specific feature if wrt-sync is always a dep
+
+// Re-export platform-specific memory builders if the feature is enabled
+#[cfg(feature = "platform-memory")]
+pub use crate::memory_builder::{LinearMemoryBuilder, PalMemoryProviderBuilder};
 
 // Re-export from this crate
 pub use crate::{
     // Bounded collections
-    bounded::{BoundedStack, BoundedVec, CapacityError},
+    bounded::{BoundedStack, BoundedString, BoundedVec, CapacityError, WasmName},
+    // Builder patterns
+    builder::{BoundedBuilder, MemoryBuilder, NoStdProviderBuilder, ResourceBuilder, StringBuilder, ResourceItemBuilder},
     // Builtin types
     builtin::BuiltinType,
     // Component model types
-    component::{ComponentType, ExternType, InstanceType, Limits, Namespace, ResourceType},
+    component::{ComponentType, ExternType, InstanceType, /*Limits,*/ Namespace, ResourceType},
     component_value::{ComponentValue, ValType},
+    component_value_store::{ComponentValueStore, ValueRef},
+    component_value_store_builder::ComponentValueStoreBuilder,
+    // Component builders (alloc-dependent) 
+    #[cfg(feature = "alloc")]
+    component_builder::{ComponentTypeBuilder, ExportBuilder, ImportBuilder, NamespaceBuilder},
     // Conversion utilities
     conversion::{ref_type_to_val_type, val_type_to_ref_type},
     // Resource types
@@ -73,9 +89,9 @@ pub use crate::{
     traits::{FromFormat, ToFormat},
     // Common types (BlockType, FuncType, GlobalType, MemoryType, TableType, ValueType are already
     // here)
-    types::{BlockType, FuncType, GlobalType, MemoryType, RefType, TableType, ValueType},
+    types::{/*BlockType,*/ FuncType, GlobalType, Limits, MemoryType, RefType, TableType, ValueType},
     // Validation traits
-    validation::{BoundedCapacity, Checksummed, Validatable},
+    validation::{BoundedCapacity, Checksummed, Validatable, /*ValidationContext,*/ ValidationError, ValidationResult, /*ValidOutput*/},
     // Value representations
     values::{FloatBits32, FloatBits64, Value},
     // Verification types
