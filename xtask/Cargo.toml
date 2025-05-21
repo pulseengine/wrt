@@ -36,6 +36,7 @@ toml = "0.7.6"
 syn = { version = "2.0.34", features = ["parsing", "full", "extra-traits"] }
 regex = "1.9.5"
 chrono = "0.4.24"
+semver = "1.0"
 
 # Add tokio for async runtime needed by dagger-sdk
 tokio = { version = "1.37.0", features = ["full"] }

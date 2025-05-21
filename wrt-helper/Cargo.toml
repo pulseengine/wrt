@@ -1,0 +1,54 @@
+[package]
+name = "wrt-helper"
+version.workspace = true
+edition.workspace = true
+description = "Helper library for WRT AOT runtime, providing C ABI for complex Wasm operations."
+readme = "README.md"
+license.workspace = true
+repository.workspace = true
+keywords = ["wasm", "webassembly", "aot", "runtime", "cabi", "no_std"]
+categories = ["wasm", "no-std", "embedded"]
+
+[features]
+default = ["std"]
+
+# Standard library support (can be disabled for no_std environments)
+std = [
+    "alloc",
+    "wrt-types/std",
+    # Add other std dependencies if needed, e.g., for PAL backends
+]
+
+# Allocator support for no_std environments
+alloc = [
+    "wrt-types/alloc",
+    # Add other alloc dependencies if needed
+]
+
+# For bare-metal or RTOS where even `alloc` might not be available initially or for certain parts.
+# This crate aims to be #![no_std] compatible.
+no_std = [
+    "wrt-types/no_std",
+    # Potentially "alloc" if a global allocator is provided by the environment
+]
+
+# Feature to select the target platform for PAL
+platform-macos = []
+platform-linux = []
+platform-qnx = []
+platform-zephyr = []
+platform-baremetal = []
+
+# Optional Arm Hardening features (passed via PAL or compiler flags)
+arm-hardening = []
+
+[dependencies]
+wrt-types = { path = "../wrt-types", workspace = true, default-features = false }
+# libc = { version = "0.2", default-features = false, optional = true } # For C types if needed
+
+# PAL dependency - this will be a new crate or an existing one
+# wrt-platform = { path = "../wrt-platform", optional = true }
+
+
+[lints]
+workspace = true 

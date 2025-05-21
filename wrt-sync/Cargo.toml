@@ -2,68 +2,75 @@
 name = "wrt-sync"
 version.workspace = true
 edition.workspace = true
+authors.workspace = true
 license.workspace = true
-description = "Synchronization primitives (Mutex, RwLock) for the WRT WebAssembly runtime with no_std support"
 repository.workspace = true
-documentation = "https://docs.rs/wrt-sync"
-keywords = ["wasm", "webassembly", "runtime", "no-std", "sync"]
-categories = ["wasm", "no-std", "concurrency"]
+description = "Synchronization primitives for WRT, supporting std and no_std environments."
+keywords = ["wasm", "webassembly", "sync", "mutex", "rwlock", "no_std"]
+categories = ["concurrency", "no-std", "wasm"]
+# documentation = "..." # Add docs URL later
+readme = "README.md"
 
 [lib]
 name = "wrt_sync"
 path = "src/lib.rs"
 
 [dependencies]
-wrt-error = { path = "../wrt-error", workspace = true, default-features = false }
+wrt-error = { workspace = true, default-features = false } # Ensure wrt-error is also alloc-free by default
+
+# Optional: parking_lot for std-based advanced mutexes/rwlocks
+parking_lot = { version = "0.12", optional = true }
+
+# The alloc crate, made optional
+alloc = { package = "rustc-std-workspace-alloc", version = "1.0.0", optional = true }
+
 # No external dependencies needed
 # Only used for formal verification when 'kani' feature is enabled
 kani-verifier = { version = "0.61.0", optional = true }
-# For alloc support
-alloc = { version = "1.0.0", optional = true, package = "rustc-std-workspace-alloc" }
 
 [features]
-default = ["std"]
-# The 'std' feature enables Rust standard library functionality like thread parking
-# This allows for more efficient locking when locks are held for longer periods
-std = ["alloc", "wrt-error/std"]
-# For allocation support without std
-alloc = ["dep:alloc", "wrt-error/alloc"]
-# For complete no_std support
-no_std = ["wrt-error/no_std"]
-# Performance optimization
-optimize = []
-# Safety features
-safety = ["alloc"]
-# Optional feature for formal verification using Kani
+default = [] # No features enabled by default, ensuring no_std without alloc
+
+# Feature to enable types and functionalities requiring the `alloc` crate
+# This is explicitly opted into when `std` is not available but allocation is.
+alloc = ["dep:alloc"]
+
+# Feature to enable standard library support, which implies `alloc`
+std = ["alloc", "dep:parking_lot"] # "std" implies "alloc"
+
+# Feature for Kani verification (optional)
 kani = ["dep:kani-verifier"]
 
+# Potentially a feature for platform-specific futex support via wrt-platform
+# platform-futex = ["wrt-platform"] # Assuming wrt-platform is a dependency
+
 [lints.rust]
-unexpected_cfgs = { level = "allow", check-cfg = ['cfg(test)', 'cfg(kani)', 'cfg(coverage)', 'cfg(doc)'] }
-# Rule 1
-# pointer_cast = "deny" // Removed, not a standard lint
-# Rule 9
+unsafe_code = "allow"
+unexpected_cfgs = { level = "allow", check-cfg = ['cfg(feature, values("kani"))', 'cfg(coverage)', 'cfg(doc)'] }
 missing_docs = "deny"
 
 [lints.clippy]
-# Rule 1: Language subset
-inline_asm_x86_att_syntax = "warn"
+# Critical lints
+inline_asm_x86_att_syntax = "deny"
 transmute_ptr_to_ref = "deny"
-float_arithmetic = "warn"
-# Rule 2: Unsafe usage
-ptr_offset_with_cast = "warn"
-# Rule 3: Error handling & panics
+# Safety and correctness
+float_arithmetic = "deny" # No floats in sync primitives
+ptr_offset_with_cast = "deny"
+# Robustness
 unwrap_used = "deny"
-panic = "deny"
-result_unit_err = "warn"
+expect_used = "deny"
+panic = "deny" # Should use Result types
+todo = "deny"
+unimplemented = "deny"
+result_unit_err = "deny" # Error types should convey meaning
+# Style and best practices
 must_use_candidate = "warn"
-must_use_unit = "warn"
-# Rule 4: Control-flow soundness
-match_wildcard_for_single_variants = "warn"
-never_loop = "warn"
+must_use_unit = "warn" # For functions returning Result<(), E>
+match_wildcard_for_single_variants = "deny"
+never_loop = "deny" # Use `loop` for intentional infinite loops only
 unreachable = "deny"
-# Rule 8: Static analysis gates (CI)
-pedantic = "warn"
-# Rule 9: Documentation
+# Pedantic lints (consider enabling selectively)
+# pedantic = "warn" # Enable for stricter checks
 debug_assert_with_mut_call = "warn"
 
 # Configuration for Kani verification

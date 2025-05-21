@@ -2,7 +2,7 @@
 # Module: Cargo Configuration
 # SW-REQ-ID: REQ_PLATFORM_001
 #
-# Copyright (c) 2025 The WRT Project Developers
+# Copyright (c) 2025 Ralf Anton Beier
 # Licensed under the MIT license.
 # SPDX-License-Identifier: MIT
 
@@ -23,28 +23,31 @@ categories = ["wasm", "os"]
 
 [dependencies]
 wrt-error = { workspace = true } # Assuming wrt-error is in workspace.dependencies
-
-# Optional dependencies for specific platform features if needed later
-# libc = { version = "0.2", optional = true }
+libc = { version = "0.2", optional = true }
 
 [features]
-default = ["std"]
-# Enable standard library features (like Vec, Mutex, Condvar for fallback)
-std = []
-# Platform-specific features to be added later
-# platform-macos = ["libc"]
+default = [] # No std/alloc by default
+
+# Standard features for cross-crate compatibility
+std = ["wrt-error/std"]
+alloc = ["wrt-error/alloc"]
+no_std = []
+
+# Use libc for system calls (optional)
+use-libc = ["dep:libc"]
+
+# Platform-specific features
+platform-macos = [] # platform-macos no longer activates alloc by default
 # platform-linux = ["libc"]
 # platform-qnx = []
 # platform-zephyr = []
 # platform-baremetal = []
 # arm-hardening = [] # If any platform code depends on this
+helper-mode = [] # Added for C-ABI runtime
 
 [lib]
 crate-type = ["rlib", "staticlib"] # staticlib for C ABI helper if needed later
 
-# Ensure panic=abort for safety profiles
-[profile.release]
-panic = "abort"
-
-[profile.test]
-panic = "abort" 
+[lints.rust]
+unsafe_code = "allow"
+# Add other lints as needed, consistent with workspace 

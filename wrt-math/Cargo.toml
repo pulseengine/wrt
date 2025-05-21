@@ -12,30 +12,22 @@ keywords = ["webassembly", "wasm", "math", "no_std"]
 categories = ["wasm", "no-std"]
 
 [features]
-default = ["std"]
+default = []
 # Standard library support - enables use of std::f32/f64 math functions
-std = ["alloc", "wrt-error/std"]
+std = ["alloc"]
 # Allocator support (implicitly enabled by std)
-alloc = ["dep:alloc", "wrt-error/alloc"]
+alloc = ["dep:alloc"]
 # Explicit no_std feature (useful for testing)
-no_std = ["alloc", "wrt-error/no_std"]
+no_std = ["alloc"]
 
 [dependencies]
-wrt-error = { path = "../wrt-error", workspace = true, default-features = false }
+wrt-error = { workspace = true, default-features = false }
 
 # No-std support
 alloc = { version = "1.0.0", optional = true, package = "rustc-std-workspace-alloc" }
 
-log = { version = "0.4", optional = true } # Optional logging if needed later
-
 [dev-dependencies]
 # Add development dependencies here
-
-[profile.release]
-panic = "abort"
-
-[profile.test]
-panic = "abort"
 
 [lints.rust]
 unexpected_cfgs = { level = "allow", check-cfg = ['cfg(test)', 'cfg(kani)', 'cfg(coverage)', 'cfg(doc)'] }
@@ -62,7 +54,7 @@ match_wildcard_for_single_variants = "deny"
 never_loop = "deny"
 unreachable = "deny"
 # Rule 5.2
-static_mut_ref = "deny" # Check correct name (static_mut_refs in rust lint)
+# static_mut_refs = "deny" # This is a rustc lint, covered in [lints.rust]
 # Rule 5.5
 arc_with_non_send_sync = "deny" # Check correct name
 # Rule 9.2
@@ -78,6 +70,7 @@ float_arithmetic = "warn" # Wasm requires float ops, so warn initially
 cast_possible_truncation = "allow" # Needed for conversions
 cast_sign_loss = "allow" # Needed for conversions/shifts
 cast_possible_wrap = "allow" # Needed for conversions/shifts/counts
+cast_precision_loss = "allow"
 manual_range_contains = "allow" # Used in float->int conversion checks
 float_cmp = "allow" # Float comparisons are inherent
 missing_const_for_fn = "allow" # Polyfills/float ops often cannot be const 
