@@ -7,8 +7,6 @@
 // Licensed under the MIT license.
 // SPDX-License-Identifier: MIT
 
-#![forbid(unsafe_code)] // Rule 2
-
 //! WRT Error handling library
 //!
 //! This library provides a comprehensive error handling system for the WRT
@@ -51,24 +49,23 @@
 //! functions:
 //!
 //! ```
-//! # #[cfg(feature = "alloc")]
-//! # {
+//! // No alloc or std feature needed for this example as Error and kinds use &'static str
 //! use wrt_error::{Error, kinds};
 //!
 //! // Using helper functions for common errors
 //! let error = Error::new(
 //!     wrt_error::ErrorCategory::Core,
 //!     wrt_error::codes::INVALID_FUNCTION_INDEX,
-//!     "Invalid function index: 42".to_string()
+//!     "Invalid function index: 42"
 //! );
 //!
 //! // Using kind functions for common errors
 //! let index_error = kinds::invalid_index_error("function");
 //! let memory_error = kinds::memory_access_error("Memory access out of bounds");
-//! # }
 //! ```
 
-#![cfg_attr(not(feature = "std"), no_std)]
+#![no_std]
+#![forbid(unsafe_code)] // Rule 2
 #![deny(clippy::all)]
 #![deny(clippy::perf)]
 #![deny(clippy::nursery)]
@@ -79,18 +76,9 @@
 #![allow(clippy::negative_feature_names)]
 #![allow(clippy::module_name_repetitions)]
 
-//! Core error types for WRT
-
-// Import external crates when std feature is enabled
+// Standard library support
 #[cfg(feature = "std")]
 extern crate std;
-
-// Always import core
-extern crate core;
-
-// Import alloc when either std or alloc is enabled
-#[cfg(any(feature = "std", feature = "alloc"))]
-extern crate alloc;
 
 /// Error codes for wrt
 pub mod codes;
@@ -109,15 +97,13 @@ pub mod prelude;
 pub mod verify;
 
 // Re-export key types
-#[cfg(feature = "alloc")]
-pub use context::ResultExt;
 pub use errors::{Error, ErrorCategory, ErrorSource};
 
 /// A specialized `Result` type for WRT operations.
 ///
-/// When the `alloc` feature is enabled, this defaults to using
-/// `wrt_error::Error` as the error type. When `alloc` is not available, the
-/// specific error type must be provided.
+/// This type alias uses `wrt_error::Error` as the error type.
+/// It is suitable for `no_std` environments as `wrt_error::Error`
+/// does not rely on dynamic allocations.
 pub type Result<T> = core::result::Result<T, Error>;
 
 // Re-export error kinds for convenience
@@ -144,28 +130,6 @@ pub trait FromError<E> {
 pub trait ToErrorCategory {
     /// Convert the error to a specific category
     fn to_category(&self) -> ErrorCategory;
-}
-
-#[cfg(all(test, feature = "alloc"))]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_error_categories() {
-        let resource_err = Error::resource_error("Resource not found");
-        assert!(resource_err.is_resource_error());
-        assert!(!resource_err.is_memory_error());
-
-        let memory_err = Error::memory_error("Memory access out of bounds");
-        assert!(memory_err.is_memory_error());
-        assert!(!memory_err.is_resource_error());
-    }
-
-    #[test]
-    fn test_error_codes() {
-        let err = Error::resource_error("Test error");
-        assert_eq!(err.code, codes::RESOURCE_ERROR);
-    }
 }
 
 // Re-export additional helpers

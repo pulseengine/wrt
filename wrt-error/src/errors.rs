@@ -1,39 +1,19 @@
-// Import from std when available
-#[cfg(feature = "std")]
-extern crate std;
+// WRT - wrt-error
+// Module: WRT Error Types
+// SW-REQ-ID: REQ_004
+// SW-REQ-ID: REQ_ERROR_001
+//
+// Copyright (c) 2024 Ralf Anton Beier
+// Licensed under the MIT license.
+// SPDX-License-Identifier: MIT
 
-#[cfg(feature = "std")]
-use std::string::ToString;
-
-// Import from alloc when not using std but using alloc
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-extern crate alloc;
-
-// Use alloc if alloc feature is enabled
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::boxed::Box;
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::string::String;
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::string::ToString;
 /// Unified error handling system for WRT
 ///
 /// This module provides a comprehensive error handling system that covers all
 /// error cases across the WRT codebase. It includes error types, categories,
 /// and helper functions.
 use core::fmt;
-// Use std if std feature is enabled
-#[cfg(feature = "std")]
-use std::boxed::Box;
-#[cfg(feature = "std")]
-use std::string::String;
 
-// For no_std without alloc, use the String struct from kinds
-#[cfg(not(any(feature = "std", feature = "alloc")))]
-use crate::kinds::String;
-// Only import 'format' if std or alloc is enabled
-#[cfg(any(feature = "std", feature = "alloc"))]
-use crate::prelude::format;
 use crate::{
     kinds,
     prelude::{str, Debug, Eq, PartialEq},
@@ -71,137 +51,37 @@ pub enum ErrorCategory {
     RuntimeTrap = 13,
 }
 
-/// Base trait for all error types - std version with Send+Sync
-#[cfg(feature = "std")]
+/// Base trait for all error types - `no_std` version
 pub trait ErrorSource: fmt::Debug + Send + Sync {
     /// Get the error code
     fn code(&self) -> u16;
 
     /// Get the error message
-    fn message(&self) -> &str;
+    fn message(&self) -> &'static str;
 
     /// Get the error category
     fn category(&self) -> ErrorCategory;
-
-    /// Get the source error if any
-    fn source(&self) -> Option<&(dyn ErrorSource + 'static)> {
-        None
-    }
-}
-
-/// Base trait for all error types - no_std version
-#[cfg(not(feature = "std"))]
-pub trait ErrorSource: fmt::Debug {
-    /// Get the error code
-    fn code(&self) -> u16;
-
-    /// Get the error message
-    fn message(&self) -> &str;
-
-    /// Get the error category
-    fn category(&self) -> ErrorCategory;
-
-    /// Get the source error if any
-    fn source(&self) -> Option<&(dyn ErrorSource + 'static)> {
-        None
-    }
 }
 
 /// WRT Error type
 ///
 /// This is the main error type for the WebAssembly Runtime.
 /// It provides categorized errors with error codes and optional messages.
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct Error {
     /// Error category
     pub category: ErrorCategory,
     /// Error code
     pub code: u16,
     /// Error message
-    #[cfg(feature = "alloc")]
-    pub message: String,
-    /// Optional source error
-    #[cfg(all(feature = "alloc", feature = "std"))]
-    pub source: Option<Box<dyn ErrorSource + Send + Sync + 'static>>,
-    /// Optional source error (no_std version)
-    #[cfg(all(feature = "alloc", not(feature = "std")))]
-    pub source: Option<Box<dyn ErrorSource + 'static>>,
-}
-
-#[cfg(feature = "alloc")]
-impl Clone for Error {
-    fn clone(&self) -> Self {
-        let base_error = Self::new(self.category, self.code, self.message.clone());
-
-        #[cfg(feature = "std")]
-        {
-            if self.source.is_some() {
-                let mut error_with_source = base_error;
-                error_with_source.source =
-                    Some(Box::new(Self::with_message("Source error (cloned)")));
-                return error_with_source;
-            }
-        }
-        base_error
-    }
+    pub message: &'static str,
 }
 
 impl Error {
-    /// Create a new error with allocation support
-    #[cfg(feature = "alloc")]
-    pub fn new<S: Into<String>>(category: ErrorCategory, code: u16, message: S) -> Self {
-        Self { category, code, message: message.into(), source: None }
-    }
-
-    /// Create a new error in no_std mode (no message, no source)
-    #[cfg(not(feature = "alloc"))]
-    pub fn new<D: core::fmt::Display>(category: ErrorCategory, code: u16, _message: D) -> Self {
-        Self { category, code }
-    }
-
-    /// Create a new error from a kinds type
-    #[cfg(feature = "alloc")]
-    pub fn from_kind<K: core::fmt::Display>(kind: K, code: u16, category: ErrorCategory) -> Self {
-        Self { category, code, message: kind.to_string(), source: None }
-    }
-
-    /// Create a new error from a kinds type in no_std mode (no message storage)
-    #[cfg(not(feature = "alloc"))]
-    pub fn from_kind<K: core::fmt::Display>(_kind: K, code: u16, category: ErrorCategory) -> Self {
-        Self { category, code }
-    }
-
-    /// Create a new error with a source
-    #[cfg(all(feature = "alloc", feature = "std"))]
-    pub fn with_source(
-        category: ErrorCategory,
-        code: u16,
-        message: impl Into<String>,
-        source: Box<dyn ErrorSource + Send + Sync>,
-    ) -> Self {
-        Self { category, code, message: message.into(), source: Some(source) }
-    }
-
-    /// Create a new error with a source (no_std version)
-    #[cfg(all(feature = "alloc", not(feature = "std")))]
-    pub fn with_source(
-        category: ErrorCategory,
-        code: u16,
-        message: impl Into<String>,
-        source: Box<dyn ErrorSource>,
-    ) -> Self {
-        Self { category, code, message: message.into(), source: Some(source) }
-    }
-
-    /// Create a new error with a source in no_std mode (ignores source)
-    #[cfg(not(feature = "alloc"))]
-    pub fn with_source(
-        category: ErrorCategory,
-        code: u16,
-        _message: impl core::fmt::Display,
-        _source: impl core::fmt::Debug,
-    ) -> Self {
-        Self { category, code }
+    /// Create a new error.
+    #[must_use]
+    pub const fn new(category: ErrorCategory, code: u16, message: &'static str) -> Self {
+        Self { category, code, message }
     }
 
     /// Check if this is a resource error
@@ -252,301 +132,81 @@ impl Error {
         self.category == ErrorCategory::Component
     }
 
-    // Factory methods for std/alloc environments
+    // Factory methods
 
-    /// Create a resource error - std/alloc version
-    #[cfg(feature = "alloc")]
-    pub fn resource_error(message: impl Into<String>) -> Self {
+    /// Create a resource error
+    #[must_use]
+    pub const fn resource_error(message: &'static str) -> Self {
         Self::new(ErrorCategory::Resource, codes::RESOURCE_ERROR, message)
     }
 
-    /// Create a memory error - std/alloc version
-    #[cfg(feature = "alloc")]
-    pub fn memory_error(message: impl Into<String>) -> Self {
+    /// Create a memory error
+    #[must_use]
+    pub const fn memory_error(message: &'static str) -> Self {
         Self::new(ErrorCategory::Memory, codes::MEMORY_OUT_OF_BOUNDS, message)
     }
 
-    /// Create a validation error - std/alloc version
-    #[cfg(feature = "alloc")]
-    pub fn validation_error(message: impl Into<String>) -> Self {
+    /// Create a validation error
+    #[must_use]
+    pub const fn validation_error(message: &'static str) -> Self {
         Self::new(ErrorCategory::Validation, codes::VALIDATION_ERROR, message)
     }
 
-    /// Create a type error - std/alloc version
-    #[cfg(feature = "alloc")]
-    pub fn type_error(message: impl Into<String>) -> Self {
+    /// Create a type error
+    #[must_use]
+    pub const fn type_error(message: &'static str) -> Self {
         Self::new(ErrorCategory::Type, codes::TYPE_MISMATCH_ERROR, message)
     }
 
-    /// Create a runtime error - std/alloc version
-    #[cfg(feature = "alloc")]
-    pub fn runtime_error(message: impl Into<String>) -> Self {
+    /// Create a runtime error
+    #[must_use]
+    pub const fn runtime_error(message: &'static str) -> Self {
         Self::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, message)
     }
 
-    /// Create a system error - std/alloc version
-    #[cfg(feature = "alloc")]
-    pub fn system_error(message: impl Into<String>) -> Self {
+    /// Create a system error
+    #[must_use]
+    pub const fn system_error(message: &'static str) -> Self {
         Self::new(ErrorCategory::System, codes::SYSTEM_ERROR, message)
     }
 
-    /// Create a core error - std/alloc version
-    #[cfg(feature = "alloc")]
-    pub fn core_error(message: impl Into<String>) -> Self {
+    /// Create a core error
+    #[must_use]
+    pub const fn core_error(message: &'static str) -> Self {
         Self::new(ErrorCategory::Core, codes::EXECUTION_ERROR, message)
     }
 
-    /// Create a component error - std/alloc version
-    #[cfg(feature = "alloc")]
-    pub fn component_error(message: impl Into<String>) -> Self {
+    /// Create a component error
+    #[must_use]
+    pub const fn component_error(message: &'static str) -> Self {
         Self::new(ErrorCategory::Component, codes::COMPONENT_TYPE_MISMATCH, message)
     }
 
     /// Create a parse error
-    #[cfg(feature = "alloc")]
-    pub fn parse_error(message: impl Into<String>) -> Self {
+    #[must_use]
+    pub const fn parse_error(message: &'static str) -> Self {
         Self::new(ErrorCategory::Parse, codes::PARSE_ERROR, message)
     }
 
     /// Create an invalid type error
-    #[cfg(feature = "alloc")]
-    pub fn invalid_type(message: impl Into<String>) -> Self {
-        Self::new(ErrorCategory::Type, codes::INVALID_TYPE, message)
-    }
-
-    /// Create an invalid type error - no_std version
-    #[cfg(not(feature = "alloc"))]
-    pub fn invalid_type(message: impl core::fmt::Display) -> Self {
-        Self::new(ErrorCategory::Type, codes::INVALID_TYPE, message)
-    }
-
-    // Factory methods for no_std mode
-
-    /// Create a resource error - no_std version
-    #[cfg(not(feature = "alloc"))]
-    pub fn resource_error(message: impl core::fmt::Display) -> Self {
-        Self::new(ErrorCategory::Resource, codes::RESOURCE_ERROR, message)
-    }
-
-    /// Create a memory error - no_std version
-    #[cfg(not(feature = "alloc"))]
-    pub fn memory_error(message: impl core::fmt::Display) -> Self {
-        Self::new(ErrorCategory::Memory, codes::MEMORY_OUT_OF_BOUNDS, message)
-    }
-
-    /// Create a validation error - no_std version
-    #[cfg(not(feature = "alloc"))]
-    pub fn validation_error(message: impl core::fmt::Display) -> Self {
-        Self::new(ErrorCategory::Validation, codes::VALIDATION_ERROR, message)
-    }
-
-    /// Create a type error - no_std version
-    #[cfg(not(feature = "alloc"))]
-    pub fn type_error(message: impl core::fmt::Display) -> Self {
-        Self::new(ErrorCategory::Type, codes::TYPE_MISMATCH_ERROR, message)
-    }
-
-    /// Create a runtime error - no_std version
-    #[cfg(not(feature = "alloc"))]
-    pub fn runtime_error(message: impl core::fmt::Display) -> Self {
-        Self::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, message)
-    }
-
-    /// Create a system error - no_std version
-    #[cfg(not(feature = "alloc"))]
-    pub fn system_error(message: impl core::fmt::Display) -> Self {
-        Self::new(ErrorCategory::System, codes::SYSTEM_ERROR, message)
-    }
-
-    /// Create a core error - no_std version
-    #[cfg(not(feature = "alloc"))]
-    pub fn core_error(message: impl core::fmt::Display) -> Self {
-        Self::new(ErrorCategory::Core, codes::EXECUTION_ERROR, message)
-    }
-
-    /// No allocation version of component_error
-    #[cfg(not(feature = "alloc"))]
-    pub fn component_error(message: impl core::fmt::Display) -> Self {
-        Self::new(ErrorCategory::Component, codes::COMPONENT_TYPE_MISMATCH, message)
-    }
-
-    /// No allocation version of parse_error
-    #[cfg(not(feature = "alloc"))]
-    pub fn parse_error(message: impl core::fmt::Display) -> Self {
-        Self::new(ErrorCategory::Parse, codes::PARSE_ERROR, message)
-    }
-
-    /// Creates a new error with a specific message.
-    ///
-    /// This is typically used when the error category and code are contextually
-    /// known or less important than the specific message.
-    /// Defaults to `ErrorCategory::Unknown` and `codes::UNKNOWN`.
-    // Create a new error with just a message - for legacy error patterns
-    #[cfg(feature = "alloc")]
-    pub fn with_message(message: impl Into<String>) -> Self {
-        Self::new(ErrorCategory::Unknown, codes::UNKNOWN, message)
-    }
-
-    /// Creates a new error with a specific message (no_std, no-alloc version).
-    ///
-    /// This is typically used when the error category and code are contextually
-    /// known or less important than the specific message.
-    /// Defaults to `ErrorCategory::Unknown` and `codes::UNKNOWN`.
-    // Create a new error with just a message - for no_std
-    #[cfg(not(feature = "alloc"))]
-    pub fn with_message(message: impl core::fmt::Display) -> Self {
-        Self::new(ErrorCategory::Unknown, codes::UNKNOWN, message)
-    }
-
-    /// Creates a new legacy error with a specific message.
-    ///
-    /// This function is for compatibility or specific legacy error scenarios.
-    /// Defaults to `ErrorCategory::Unknown` and `codes::UNKNOWN`.
-    // Create a new legacy-style error (unknown category, unknown code)
-    #[cfg(feature = "alloc")]
-    pub fn new_legacy(message: impl Into<String> + core::fmt::Display) -> Self {
-        // Create a generic error with unknown category and code
-        Self::new(ErrorCategory::Unknown, codes::UNKNOWN, message)
-    }
-
-    /// Creates a new legacy error (no_std, no-alloc version).
-    ///
-    /// This function is for compatibility or specific legacy error scenarios.
-    /// Defaults to `ErrorCategory::Unknown` and `codes::UNKNOWN`.
-    // Create a new legacy-style error (unknown category, unknown code) for no_std
-    #[cfg(not(feature = "alloc"))]
-    pub fn new_legacy(message: impl core::fmt::Display) -> Self {
-        // Create a generic error with unknown category and code
-        Self::new(ErrorCategory::Unknown, codes::UNKNOWN, message)
-    }
-
-    // Quick factory methods for different error categories with default code
-    /// Creates a new resource error with a specific code and message.
-    #[cfg(feature = "alloc")]
-    pub fn resource_error_with_code(
-        code: u16,
-        message: impl Into<String> + core::fmt::Display,
-    ) -> Self {
-        Self::new(ErrorCategory::Resource, code, message)
-    }
-
-    /// Creates a new resource error with a specific code and message (no
-    /// alloc).
-    #[cfg(not(feature = "alloc"))]
-    pub fn resource_error_with_code(code: u16, _message: impl core::fmt::Display) -> Self {
-        Self::new(ErrorCategory::Resource, code, "resource error")
-    }
-
-    /// Creates a new validation error with a specific code and message.
-    #[cfg(feature = "alloc")]
-    pub fn validation_error_with_code(
-        code: u16,
-        message: impl Into<String> + core::fmt::Display,
-    ) -> Self {
-        Self::new(ErrorCategory::Validation, code, message)
-    }
-
-    /// Creates a new validation error with a specific code and message (no
-    /// alloc).
-    #[cfg(not(feature = "alloc"))]
-    pub fn validation_error_with_code(code: u16, _message: impl core::fmt::Display) -> Self {
-        Self::new(ErrorCategory::Validation, code, "validation error")
-    }
-
-    /// Creates a new type error with a specific code and message.
-    #[cfg(feature = "alloc")]
-    pub fn type_error_with_code(
-        code: u16,
-        message: impl Into<String> + core::fmt::Display,
-    ) -> Self {
-        Self::new(ErrorCategory::Type, code, message)
-    }
-
-    /// Creates a new type error with a specific code and message (no alloc).
-    #[cfg(not(feature = "alloc"))]
-    pub fn type_error_with_code(code: u16, _message: impl core::fmt::Display) -> Self {
-        Self::new(ErrorCategory::Type, code, "type error")
-    }
-
-    /// Creates a new runtime error with a specific code and message.
-    #[cfg(feature = "alloc")]
-    pub fn runtime_error_with_code(
-        code: u16,
-        message: impl Into<String> + core::fmt::Display,
-    ) -> Self {
-        Self::new(ErrorCategory::Runtime, code, message)
-    }
-
-    /// Creates a new runtime error with a specific code and message (no alloc).
-    #[cfg(not(feature = "alloc"))]
-    pub fn runtime_error_with_code(code: u16, _message: impl core::fmt::Display) -> Self {
-        Self::new(ErrorCategory::Runtime, code, "runtime error")
-    }
-
-    /// Creates a new system error with a specific code and message.
-    #[cfg(feature = "alloc")]
-    pub fn system_error_with_code(
-        code: u16,
-        message: impl Into<String> + core::fmt::Display,
-    ) -> Self {
-        Self::new(ErrorCategory::System, code, message)
-    }
-
-    /// Creates a new system error with a specific code and message (no alloc).
-    #[cfg(not(feature = "alloc"))]
-    pub fn system_error_with_code(code: u16, _message: impl core::fmt::Display) -> Self {
-        Self::new(ErrorCategory::System, code, "system error")
-    }
-
-    /// Creates a new core error with a specific code and message.
-    #[cfg(feature = "alloc")]
-    pub fn core_error_with_code(
-        code: u16,
-        message: impl Into<String> + core::fmt::Display,
-    ) -> Self {
-        Self::new(ErrorCategory::Core, code, message)
-    }
-
-    /// Creates a new core error with a specific code and message (no alloc).
-    #[cfg(not(feature = "alloc"))]
-    pub fn core_error_with_code(code: u16, _message: impl core::fmt::Display) -> Self {
-        Self::new(ErrorCategory::Core, code, "core error")
-    }
-
-    /// Creates a new component error with a specific code and message.
-    #[cfg(feature = "alloc")]
-    pub fn component_error_with_code(
-        code: u16,
-        message: impl Into<String> + core::fmt::Display,
-    ) -> Self {
-        Self::new(ErrorCategory::Component, code, message)
-    }
-
-    /// Creates a new component error with a specific code and message (no
-    /// alloc).
-    #[cfg(not(feature = "alloc"))]
-    pub fn component_error_with_code(code: u16, _message: impl core::fmt::Display) -> Self {
-        Self::new(ErrorCategory::Component, code, "component error")
-    }
-
-    /// Helper function to create a parse error from a `ParseError` kind
-    #[cfg(feature = "alloc")]
     #[must_use]
-    pub fn parse_error_from_kind(kind: crate::kinds::ParseError) -> Self {
-        Self::from_kind(kind, codes::PARSE_ERROR, ErrorCategory::Validation)
+    pub const fn invalid_type_error(message: &'static str) -> Self {
+        Self::new(ErrorCategory::Type, codes::INVALID_TYPE, message)
     }
+
+    // Note: Methods like `with_message`, `new_legacy`, `*_with_code`,
+    // and `parse_error_from_kind` have been removed as they were
+    // dependent on `alloc` or dynamic messages not suitable for `&'static str`.
+    // They can be re-added if versions compatible with `&'static str` messages are
+    // designed.
 }
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        #[cfg(feature = "alloc")]
-        {
-            write!(f, "{} (code: {})", self.message, self.code)
-        }
-        #[cfg(not(feature = "alloc"))]
-        {
-            write!(f, "Error category {:?} (code: {})", self.category, self.code)
-        }
+        // Assuming ErrorCategory has a suitable Display trait (e.g., derives it or
+        // implements it to show its name) For now, using Debug print for
+        // category, can be refined if ErrorCategory has Display.
+        write!(f, "[{:?}][E{:04X}] {}", self.category, self.code, self.message)
     }
 }
 
@@ -555,34 +215,14 @@ impl ErrorSource for Error {
         self.code
     }
 
-    #[cfg(feature = "alloc")]
-    fn message(&self) -> &str {
-        &self.message
-    }
-
-    #[cfg(not(feature = "alloc"))]
-    fn message(&self) -> &str {
-        ""
+    // Unify message() to return the &'static str from the struct
+    fn message(&self) -> &'static str {
+        // Ensure return type is &'static str
+        self.message
     }
 
     fn category(&self) -> ErrorCategory {
         self.category
-    }
-
-    #[cfg(all(feature = "alloc", feature = "std"))]
-    fn source(&self) -> Option<&(dyn ErrorSource + 'static)> {
-        // Safe implementation without unsafe code
-        self.source.as_ref().map(|s| &**s as &(dyn ErrorSource + 'static))
-    }
-
-    #[cfg(all(feature = "alloc", not(feature = "std")))]
-    fn source(&self) -> Option<&(dyn ErrorSource + 'static)> {
-        self.source.as_ref().map(|s| s.as_ref())
-    }
-
-    #[cfg(not(feature = "alloc"))]
-    fn source(&self) -> Option<&(dyn ErrorSource + 'static)> {
-        None
     }
 }
 
@@ -723,236 +363,134 @@ pub mod codes {
     pub const TAIL_CALL_ERROR: u16 = 1104;
 }
 
-#[cfg(all(test, feature = "alloc"))]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_error_creation() {
-        let err = Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, "Test runtime error");
-        assert_eq!(err.category, ErrorCategory::Runtime);
-        assert_eq!(err.code, codes::RUNTIME_ERROR);
-        assert_eq!(err.message, "Test runtime error");
-    }
-
-    #[test]
-    fn test_error_with_source() {
-        let source_err =
-            Error::new(ErrorCategory::Memory, codes::MEMORY_OUT_OF_BOUNDS, "Memory out of bounds");
-
-        let err = Error::with_source(
-            ErrorCategory::Runtime,
-            codes::RUNTIME_ERROR,
-            "Runtime error with source",
-            Box::new(source_err),
-        );
-
-        assert_eq!(err.category, ErrorCategory::Runtime);
-        assert_eq!(err.code, codes::RUNTIME_ERROR);
-        assert_eq!(err.message, "Runtime error with source");
-        assert!(err.source.is_some());
-    }
-
-    #[test]
-    fn test_error_category_checks() {
-        let err = Error::memory_error("Test memory error");
-        assert!(err.is_memory_error());
-        assert!(!err.is_resource_error());
-    }
-
-    #[test]
-    fn test_error_display() {
-        let err = Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, "Test runtime error");
-        assert_eq!(format!("{err}"), "Test runtime error (code: 7000)");
-    }
-
-    #[test]
-    fn test_factory_methods() {
-        let resource_err = Error::resource_error("Resource error");
-        assert_eq!(resource_err.category, ErrorCategory::Resource);
-        assert_eq!(resource_err.code, codes::RESOURCE_ERROR);
-
-        let memory_err = Error::memory_error("Memory error");
-        assert_eq!(memory_err.category, ErrorCategory::Memory);
-        assert_eq!(memory_err.code, codes::MEMORY_OUT_OF_BOUNDS);
-    }
-}
-
-#[cfg(feature = "alloc")]
-impl From<String> for Error {
-    fn from(message: String) -> Self {
-        Self::new(ErrorCategory::Runtime, codes::UNKNOWN, message)
-    }
-}
-
-#[cfg(feature = "alloc")]
-impl From<&str> for Error {
-    fn from(message: &str) -> Self {
-        Self::new(ErrorCategory::Runtime, codes::UNKNOWN, message)
-    }
-}
-
-#[cfg(all(feature = "alloc", feature = "std"))]
-impl<T: ErrorSource + Send + Sync + 'static> From<Box<T>> for Error {
-    fn from(source: Box<T>) -> Self {
-        let category = source.category();
-        let code = source.code();
-        let message = source.message().to_string();
-
-        // Safe conversion using standard downcasting approach
-        let source_box: Box<dyn ErrorSource + Send + Sync + 'static> = source;
-
-        Self { category, code, message, source: Some(source_box) }
-    }
-}
-
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-impl<T: ErrorSource + 'static> From<Box<T>> for Error {
-    fn from(source: Box<T>) -> Self {
-        let category = source.category();
-        let code = source.code();
-        let message = source.message().to_string();
-
-        Self { category, code, message, source: Some(source) }
-    }
-}
-
-// Implement From for standard error types
 impl From<core::fmt::Error> for Error {
     fn from(_: core::fmt::Error) -> Self {
-        #[cfg(feature = "alloc")]
-        return Self::new(ErrorCategory::System, codes::SYSTEM_ERROR, "Formatting error");
-
-        #[cfg(not(feature = "alloc"))]
-        return Self::new(ErrorCategory::System, codes::SYSTEM_ERROR, "");
-    }
-}
-
-#[cfg(feature = "std")]
-impl From<std::io::Error> for Error {
-    fn from(e: std::io::Error) -> Self {
-        Self::new(
-            ErrorCategory::System,
-            codes::SYSTEM_ERROR,
-            #[cfg(feature = "alloc")]
-            alloc::format!("IO error: {e}"),
-            #[cfg(not(feature = "alloc"))]
-            "IO error",
-        )
+        Self::new(ErrorCategory::System, codes::SYSTEM_ERROR, "Formatting error (static)")
     }
 }
 
 // Conversion helpers for error kinds
-#[cfg(feature = "alloc")]
+
+// -- From<kinds::X> for Error implementations --
 impl From<kinds::ValidationError> for Error {
-    fn from(e: kinds::ValidationError) -> Self {
-        Self::new(ErrorCategory::Validation, codes::VALIDATION_ERROR, e.0)
+    fn from(_e: kinds::ValidationError) -> Self {
+        Self::new(ErrorCategory::Validation, codes::VALIDATION_ERROR, "Validation error from kind")
     }
 }
 
-#[cfg(feature = "alloc")]
 impl From<kinds::ParseError> for Error {
-    fn from(e: kinds::ParseError) -> Self {
-        Self::new(ErrorCategory::Runtime, codes::PARSE_ERROR, e.0)
+    fn from(_e: kinds::ParseError) -> Self {
+        Self::new(ErrorCategory::Runtime, codes::PARSE_ERROR, "Parse error from kind")
     }
 }
 
-#[cfg(feature = "alloc")]
 impl From<kinds::OutOfBoundsError> for Error {
-    fn from(e: kinds::OutOfBoundsError) -> Self {
-        Self::new(ErrorCategory::Memory, codes::MEMORY_OUT_OF_BOUNDS, e.0)
+    fn from(_e: kinds::OutOfBoundsError) -> Self {
+        Self::new(
+            ErrorCategory::Memory,
+            codes::MEMORY_OUT_OF_BOUNDS,
+            "Out of bounds error from kind",
+        )
     }
 }
 
-#[cfg(feature = "alloc")]
 impl From<kinds::InvalidType> for Error {
-    fn from(e: kinds::InvalidType) -> Self {
-        Self::new(ErrorCategory::Type, codes::TYPE_MISMATCH_ERROR, e.0)
+    fn from(_e: kinds::InvalidType) -> Self {
+        Self::new(ErrorCategory::Type, codes::TYPE_MISMATCH_ERROR, "Invalid type error from kind")
     }
 }
 
-#[cfg(feature = "alloc")]
 impl From<kinds::ResourceError> for Error {
-    fn from(e: kinds::ResourceError) -> Self {
-        Self::new(ErrorCategory::Resource, codes::RESOURCE_ERROR, e.0)
+    fn from(_e: kinds::ResourceError) -> Self {
+        Self::new(ErrorCategory::Resource, codes::RESOURCE_ERROR, "Resource error from kind")
     }
 }
 
-#[cfg(feature = "alloc")]
 impl From<kinds::ComponentError> for Error {
-    fn from(e: kinds::ComponentError) -> Self {
-        Self::new(ErrorCategory::Component, codes::COMPONENT_LINKING_ERROR, e.0)
+    fn from(_e: kinds::ComponentError) -> Self {
+        Self::new(
+            ErrorCategory::Component,
+            codes::COMPONENT_LINKING_ERROR,
+            "Component error from kind",
+        )
     }
 }
 
-#[cfg(feature = "alloc")]
 impl From<kinds::RuntimeError> for Error {
-    fn from(e: kinds::RuntimeError) -> Self {
-        Self::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, e.0)
+    fn from(_e: kinds::RuntimeError) -> Self {
+        Self::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, "Runtime error from kind")
     }
 }
 
-#[cfg(feature = "alloc")]
 impl From<kinds::PoisonedLockError> for Error {
-    fn from(e: kinds::PoisonedLockError) -> Self {
-        Self::from_kind(e, codes::POISONED_LOCK, ErrorCategory::Runtime)
+    fn from(_e: kinds::PoisonedLockError) -> Self {
+        Self::new(ErrorCategory::Runtime, codes::POISONED_LOCK, "Poisoned lock error from kind")
     }
 }
 
-#[cfg(feature = "alloc")]
 impl From<kinds::TypeMismatchError> for Error {
-    fn from(e: kinds::TypeMismatchError) -> Self {
-        Self::from_kind(e, codes::TYPE_MISMATCH_ERROR, ErrorCategory::Type)
+    fn from(_e: kinds::TypeMismatchError) -> Self {
+        Self::new(ErrorCategory::Type, codes::TYPE_MISMATCH_ERROR, "Type mismatch error from kind")
     }
 }
 
-#[cfg(feature = "alloc")]
 impl From<kinds::MemoryAccessOutOfBoundsError> for Error {
-    fn from(e: kinds::MemoryAccessOutOfBoundsError) -> Self {
-        Self::from_kind(e, codes::MEMORY_ACCESS_OUT_OF_BOUNDS, ErrorCategory::Memory)
+    fn from(_e: kinds::MemoryAccessOutOfBoundsError) -> Self {
+        Self::new(
+            ErrorCategory::Memory,
+            codes::MEMORY_ACCESS_OUT_OF_BOUNDS,
+            "Memory access out of bounds error from kind",
+        )
     }
 }
 
-#[cfg(feature = "alloc")]
 impl From<kinds::TableAccessOutOfBounds> for Error {
-    fn from(e: kinds::TableAccessOutOfBounds) -> Self {
-        Self::from_kind(e, codes::OUT_OF_BOUNDS_ERROR, ErrorCategory::Memory)
+    fn from(_e: kinds::TableAccessOutOfBounds) -> Self {
+        Self::new(
+            ErrorCategory::Memory,
+            codes::OUT_OF_BOUNDS_ERROR,
+            "Table access out of bounds error from kind",
+        )
     }
 }
 
 impl From<kinds::ConversionError> for Error {
-    fn from(e: kinds::ConversionError) -> Self {
-        Self::from_kind(e, codes::CONVERSION_ERROR, ErrorCategory::System)
+    fn from(_e: kinds::ConversionError) -> Self {
+        Self::new(ErrorCategory::System, codes::CONVERSION_ERROR, "Conversion error from kind")
     }
 }
 
 impl From<kinds::DivisionByZeroError> for Error {
-    fn from(e: kinds::DivisionByZeroError) -> Self {
-        Self::from_kind(e, codes::RUNTIME_ERROR, ErrorCategory::Runtime)
+    fn from(_e: kinds::DivisionByZeroError) -> Self {
+        Self::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, "Division by zero error from kind")
     }
 }
 
 impl From<kinds::IntegerOverflowError> for Error {
-    fn from(e: kinds::IntegerOverflowError) -> Self {
-        Self::from_kind(e, codes::RUNTIME_ERROR, ErrorCategory::Runtime)
+    fn from(_e: kinds::IntegerOverflowError) -> Self {
+        Self::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, "Integer overflow error from kind")
     }
 }
 
 impl From<kinds::StackUnderflow> for Error {
-    fn from(e: kinds::StackUnderflow) -> Self {
-        Self::from_kind(e, codes::STACK_UNDERFLOW, ErrorCategory::Runtime)
+    fn from(_e: kinds::StackUnderflow) -> Self {
+        Self::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow error from kind")
     }
 }
 
 impl From<kinds::TypeMismatch> for Error {
-    fn from(e: kinds::TypeMismatch) -> Self {
-        Self::from_kind(e, codes::TYPE_MISMATCH_ERROR, ErrorCategory::Type)
+    fn from(_e: kinds::TypeMismatch) -> Self {
+        Self::new(ErrorCategory::Type, codes::TYPE_MISMATCH_ERROR, "Type mismatch from kind")
     }
 }
 
 impl From<kinds::InvalidTableIndexError> for Error {
-    fn from(e: kinds::InvalidTableIndexError) -> Self {
-        Self::from_kind(e, codes::OUT_OF_BOUNDS_ERROR, ErrorCategory::Memory)
+    fn from(_e: kinds::InvalidTableIndexError) -> Self {
+        Self::new(
+            ErrorCategory::Memory,
+            codes::OUT_OF_BOUNDS_ERROR,
+            "Invalid table index error from kind",
+        )
     }
 }
 
@@ -970,303 +508,262 @@ impl FromError<Self> for Error {
     }
 }
 
-// Standard implementation of FromError for common error types
-#[cfg(feature = "std")]
-impl FromError<std::io::Error> for Error {
-    fn from_error(error: std::io::Error) -> Self {
-        #[cfg(feature = "alloc")]
-        {
-            Self::system_error(alloc::format!("IO error: {error}"))
-        }
-        #[cfg(not(feature = "alloc"))]
-        {
-            Self::system_error("IO error")
-        }
-    }
-}
-
-// Implement FromError for string types when alloc is available
-#[cfg(feature = "alloc")]
-impl FromError<String> for Error {
-    fn from_error(error: String) -> Self {
-        Self::runtime_error(error)
-    }
-}
-
-// Implement FromError for &str
-impl FromError<&str> for Error {
-    fn from_error(error: &str) -> Self {
-        #[cfg(feature = "alloc")]
-        {
-            Self::runtime_error(error)
-        }
-        #[cfg(not(feature = "alloc"))]
-        {
-            Self::runtime_error(error)
-        }
-    }
-}
-
-// Add FromError implementations for the kinds error types
-#[cfg(feature = "alloc")]
+// -- FromError<kinds::X> for Error implementations --
 impl FromError<kinds::ValidationError> for Error {
-    fn from_error(error: kinds::ValidationError) -> Self {
-        Self::new(ErrorCategory::Validation, codes::VALIDATION_ERROR, error.0)
+    fn from_error(_error: kinds::ValidationError) -> Self {
+        Self::new(
+            ErrorCategory::Validation,
+            codes::VALIDATION_ERROR,
+            "Validation error from kind (FromError)",
+        )
     }
 }
 
-#[cfg(feature = "alloc")]
 impl FromError<kinds::ParseError> for Error {
-    fn from_error(error: kinds::ParseError) -> Self {
-        Self::new(ErrorCategory::Runtime, codes::PARSE_ERROR, error.0)
+    fn from_error(_error: kinds::ParseError) -> Self {
+        Self::new(ErrorCategory::Runtime, codes::PARSE_ERROR, "Parse error from kind (FromError)")
     }
 }
 
-#[cfg(feature = "alloc")]
 impl FromError<kinds::OutOfBoundsError> for Error {
-    fn from_error(error: kinds::OutOfBoundsError) -> Self {
-        Self::new(ErrorCategory::Memory, codes::MEMORY_OUT_OF_BOUNDS, error.0)
-    }
-}
-
-#[cfg(feature = "alloc")]
-impl FromError<kinds::InvalidType> for Error {
-    fn from_error(error: kinds::InvalidType) -> Self {
-        Self::new(ErrorCategory::Type, codes::TYPE_MISMATCH_ERROR, error.0)
-    }
-}
-
-#[cfg(feature = "alloc")]
-impl FromError<kinds::ResourceError> for Error {
-    fn from_error(error: kinds::ResourceError) -> Self {
-        Self::new(ErrorCategory::Resource, codes::RESOURCE_ERROR, error.0)
-    }
-}
-
-#[cfg(feature = "alloc")]
-impl FromError<kinds::ComponentError> for Error {
-    fn from_error(error: kinds::ComponentError) -> Self {
-        Self::new(ErrorCategory::Component, codes::COMPONENT_LINKING_ERROR, error.0)
-    }
-}
-
-#[cfg(feature = "alloc")]
-impl FromError<kinds::RuntimeError> for Error {
-    fn from_error(error: kinds::RuntimeError) -> Self {
-        Self::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, error.0)
-    }
-}
-
-#[cfg(feature = "alloc")]
-impl FromError<kinds::PoisonedLockError> for Error {
-    fn from_error(error: kinds::PoisonedLockError) -> Self {
-        Self::from_kind(error, codes::POISONED_LOCK, ErrorCategory::Runtime)
-    }
-}
-
-// Add FromError implementations for the new error types
-#[cfg(feature = "alloc")]
-impl FromError<kinds::ArithmeticError> for Error {
-    fn from_error(error: kinds::ArithmeticError) -> Self {
-        Self::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, error.0)
-    }
-}
-
-#[cfg(feature = "alloc")]
-impl FromError<kinds::MemoryAccessError> for Error {
-    fn from_error(error: kinds::MemoryAccessError) -> Self {
-        Self::new(ErrorCategory::Memory, codes::MEMORY_ACCESS_ERROR, error.0)
-    }
-}
-
-#[cfg(feature = "alloc")]
-impl FromError<kinds::ResourceExhaustionError> for Error {
-    fn from_error(error: kinds::ResourceExhaustionError) -> Self {
-        Self::new(ErrorCategory::Resource, codes::RESOURCE_LIMIT_EXCEEDED, error.0)
-    }
-}
-
-#[cfg(feature = "alloc")]
-impl FromError<kinds::InvalidIndexError> for Error {
-    fn from_error(error: kinds::InvalidIndexError) -> Self {
-        Self::new(ErrorCategory::Validation, codes::OUT_OF_BOUNDS_ERROR, error.0)
-    }
-}
-
-#[cfg(feature = "alloc")]
-impl FromError<kinds::ExecutionError> for Error {
-    fn from_error(error: kinds::ExecutionError) -> Self {
-        Self::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, error.0)
-    }
-}
-
-#[cfg(feature = "alloc")]
-impl FromError<kinds::StackUnderflowError> for Error {
-    fn from_error(error: kinds::StackUnderflowError) -> Self {
-        Self::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, error.0)
-    }
-}
-
-#[cfg(feature = "alloc")]
-impl FromError<kinds::ExportNotFoundError> for Error {
-    fn from_error(error: kinds::ExportNotFoundError) -> Self {
-        Self::new(ErrorCategory::Runtime, codes::RESOURCE_NOT_FOUND, error.0)
-    }
-}
-
-#[cfg(feature = "alloc")]
-impl FromError<kinds::InvalidInstanceIndexError> for Error {
-    fn from_error(error: kinds::InvalidInstanceIndexError) -> Self {
-        Self::new(
-            ErrorCategory::Runtime,
-            codes::INVALID_INSTANCE_INDEX,
-            format!("Invalid instance index: {}", error.0),
-        )
-    }
-}
-
-#[cfg(feature = "alloc")]
-impl FromError<kinds::InvalidFunctionIndexError> for Error {
-    fn from_error(error: kinds::InvalidFunctionIndexError) -> Self {
-        Self::new(
-            ErrorCategory::Runtime,
-            codes::INVALID_FUNCTION_INDEX,
-            format!("Invalid function index: {}", error.0),
-        )
-    }
-}
-
-#[cfg(feature = "alloc")]
-impl FromError<kinds::InvalidElementIndexError> for Error {
-    fn from_error(error: kinds::InvalidElementIndexError) -> Self {
-        Self::new(
-            ErrorCategory::Runtime,
-            codes::OUT_OF_BOUNDS_ERROR,
-            format!("Invalid element index: {}", error.0),
-        )
-    }
-}
-
-#[cfg(feature = "alloc")]
-impl FromError<kinds::InvalidMemoryIndexError> for Error {
-    fn from_error(error: kinds::InvalidMemoryIndexError) -> Self {
+    fn from_error(_error: kinds::OutOfBoundsError) -> Self {
         Self::new(
             ErrorCategory::Memory,
             codes::MEMORY_OUT_OF_BOUNDS,
-            format!("Invalid memory index: {}", error.0),
+            "Out of bounds error from kind (FromError)",
         )
     }
 }
 
-#[cfg(feature = "alloc")]
+impl FromError<kinds::InvalidType> for Error {
+    fn from_error(_error: kinds::InvalidType) -> Self {
+        Self::new(
+            ErrorCategory::Type,
+            codes::TYPE_MISMATCH_ERROR,
+            "Invalid type error from kind (FromError)",
+        )
+    }
+}
+
+impl FromError<kinds::ResourceError> for Error {
+    fn from_error(_error: kinds::ResourceError) -> Self {
+        Self::new(
+            ErrorCategory::Resource,
+            codes::RESOURCE_ERROR,
+            "Resource error from kind (FromError)",
+        )
+    }
+}
+
+impl FromError<kinds::ComponentError> for Error {
+    fn from_error(_error: kinds::ComponentError) -> Self {
+        Self::new(
+            ErrorCategory::Component,
+            codes::COMPONENT_LINKING_ERROR,
+            "Component error from kind (FromError)",
+        )
+    }
+}
+
+impl FromError<kinds::RuntimeError> for Error {
+    fn from_error(_error: kinds::RuntimeError) -> Self {
+        Self::new(
+            ErrorCategory::Runtime,
+            codes::RUNTIME_ERROR,
+            "Runtime error from kind (FromError)",
+        )
+    }
+}
+
+impl FromError<kinds::PoisonedLockError> for Error {
+    fn from_error(_error: kinds::PoisonedLockError) -> Self {
+        Self::new(
+            ErrorCategory::Runtime,
+            codes::POISONED_LOCK,
+            "Poisoned lock error from kind (FromError)",
+        )
+    }
+}
+
+impl FromError<kinds::ArithmeticError> for Error {
+    fn from_error(_error: kinds::ArithmeticError) -> Self {
+        Self::new(
+            ErrorCategory::Runtime,
+            codes::EXECUTION_ERROR,
+            "Arithmetic error from kind (FromError)",
+        )
+    }
+}
+
+impl FromError<kinds::MemoryAccessError> for Error {
+    fn from_error(_error: kinds::MemoryAccessError) -> Self {
+        Self::new(
+            ErrorCategory::Memory,
+            codes::MEMORY_ACCESS_ERROR,
+            "Memory access error from kind (FromError)",
+        )
+    }
+}
+
+impl FromError<kinds::ResourceExhaustionError> for Error {
+    fn from_error(_error: kinds::ResourceExhaustionError) -> Self {
+        Self::new(
+            ErrorCategory::Resource,
+            codes::RESOURCE_LIMIT_EXCEEDED,
+            "Resource exhaustion error from kind (FromError)",
+        )
+    }
+}
+
+impl FromError<kinds::InvalidIndexError> for Error {
+    fn from_error(_error: kinds::InvalidIndexError) -> Self {
+        Self::new(
+            ErrorCategory::Validation,
+            codes::OUT_OF_BOUNDS_ERROR,
+            "Invalid index error from kind (FromError)",
+        )
+    }
+}
+
+impl FromError<kinds::ExecutionError> for Error {
+    fn from_error(_error: kinds::ExecutionError) -> Self {
+        Self::new(
+            ErrorCategory::Runtime,
+            codes::EXECUTION_ERROR,
+            "Execution error from kind (FromError)",
+        )
+    }
+}
+
+impl FromError<kinds::StackUnderflowError> for Error {
+    fn from_error(_error: kinds::StackUnderflowError) -> Self {
+        Self::new(
+            ErrorCategory::Runtime,
+            codes::STACK_UNDERFLOW,
+            "Stack underflow error from kind (FromError)",
+        )
+    }
+}
+
+impl FromError<kinds::ExportNotFoundError> for Error {
+    fn from_error(_error: kinds::ExportNotFoundError) -> Self {
+        Self::new(
+            ErrorCategory::Runtime,
+            codes::RESOURCE_NOT_FOUND,
+            "Export not found error from kind (FromError)",
+        )
+    }
+}
+
+impl FromError<kinds::InvalidInstanceIndexError> for Error {
+    fn from_error(_error: kinds::InvalidInstanceIndexError) -> Self {
+        Self::new(
+            ErrorCategory::Runtime,
+            codes::INVALID_INSTANCE_INDEX,
+            "Invalid instance index error from kind (FromError)",
+        )
+    }
+}
+
+impl FromError<kinds::InvalidFunctionIndexError> for Error {
+    fn from_error(_error: kinds::InvalidFunctionIndexError) -> Self {
+        Self::new(
+            ErrorCategory::Runtime,
+            codes::INVALID_FUNCTION_INDEX,
+            "Invalid function index error from kind (FromError)",
+        )
+    }
+}
+
+impl FromError<kinds::InvalidElementIndexError> for Error {
+    fn from_error(_error: kinds::InvalidElementIndexError) -> Self {
+        Self::new(
+            ErrorCategory::Runtime,
+            codes::OUT_OF_BOUNDS_ERROR,
+            "Invalid element index error from kind (FromError)",
+        )
+    }
+}
+
+impl FromError<kinds::InvalidMemoryIndexError> for Error {
+    fn from_error(_error: kinds::InvalidMemoryIndexError) -> Self {
+        Self::new(
+            ErrorCategory::Memory,
+            codes::MEMORY_OUT_OF_BOUNDS,
+            "Invalid memory index error from kind (FromError)",
+        )
+    }
+}
+
 impl FromError<kinds::InvalidGlobalIndexError> for Error {
-    fn from_error(error: kinds::InvalidGlobalIndexError) -> Self {
+    fn from_error(_error: kinds::InvalidGlobalIndexError) -> Self {
         Self::new(
             ErrorCategory::Runtime,
             codes::OUT_OF_BOUNDS_ERROR,
-            format!("Invalid global index: {}", error.0),
+            "Invalid global index error from kind (FromError)",
         )
     }
 }
 
-#[cfg(feature = "alloc")]
 impl FromError<kinds::InvalidDataSegmentIndexError> for Error {
-    fn from_error(error: kinds::InvalidDataSegmentIndexError) -> Self {
+    fn from_error(_error: kinds::InvalidDataSegmentIndexError) -> Self {
         Self::new(
             ErrorCategory::Runtime,
             codes::OUT_OF_BOUNDS_ERROR,
-            format!("Invalid data segment index: {}", error.0),
+            "Invalid data segment index error from kind (FromError)",
         )
     }
 }
 
-#[cfg(feature = "alloc")]
 impl FromError<kinds::InvalidFunctionTypeError> for Error {
-    fn from_error(e: kinds::InvalidFunctionTypeError) -> Self {
-        Self::type_error_with_code(codes::INVALID_FUNCTION_TYPE, e.0)
+    fn from_error(_e: kinds::InvalidFunctionTypeError) -> Self {
+        Self::new(
+            ErrorCategory::Type,
+            codes::INVALID_FUNCTION_TYPE,
+            "Invalid function type error from kind (FromError)",
+        )
     }
 }
 
 // --- START Wasm 2.0 From Impls ---
-
 impl From<kinds::UnsupportedWasm20Feature> for Error {
-    fn from(e: kinds::UnsupportedWasm20Feature) -> Self {
-        #[cfg(any(feature = "std", feature = "alloc"))]
-        {
-            Self::validation_error_with_code(
-                codes::UNSUPPORTED_WASM20_FEATURE_ERROR,
-                e.feature_name,
-            )
-        }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
-        {
-            Self::validation_error_with_code(
-                codes::UNSUPPORTED_WASM20_FEATURE_ERROR,
-                "unsupported wasm20 feature",
-            )
-        }
+    fn from(_e: kinds::UnsupportedWasm20Feature) -> Self {
+        Self::new(
+            ErrorCategory::Validation,
+            codes::UNSUPPORTED_WASM20_FEATURE_ERROR,
+            "Unsupported Wasm 2.0 feature",
+        )
     }
 }
 
 impl From<kinds::InvalidReferenceTypeUsage> for Error {
-    fn from(e: kinds::InvalidReferenceTypeUsage) -> Self {
-        #[cfg(any(feature = "std", feature = "alloc"))]
-        {
-            Self::type_error_with_code(codes::INVALID_REFERENCE_TYPE_USAGE_ERROR, e.message)
-        }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
-        {
-            Self::type_error_with_code(
-                codes::INVALID_REFERENCE_TYPE_USAGE_ERROR,
-                "invalid reference type usage",
-            )
-        }
+    fn from(_e: kinds::InvalidReferenceTypeUsage) -> Self {
+        Self::new(
+            ErrorCategory::Type,
+            codes::INVALID_REFERENCE_TYPE_USAGE_ERROR,
+            "Invalid reference type usage",
+        )
     }
 }
 
 impl From<kinds::BulkOperationError> for Error {
-    fn from(e: kinds::BulkOperationError) -> Self {
-        #[cfg(any(feature = "std", feature = "alloc"))]
-        {
-            Self::runtime_error_with_code(
-                codes::BULK_OPERATION_ERROR,
-                format!("Bulk op '{}' failed: {}", e.operation_name, e.reason),
-            )
-        }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
-        {
-            Self::runtime_error_with_code(codes::BULK_OPERATION_ERROR, "Bulk operation error")
-        }
+    fn from(_e: kinds::BulkOperationError) -> Self {
+        Self::new(ErrorCategory::Runtime, codes::BULK_OPERATION_ERROR, "Bulk operation error")
     }
 }
 
 impl From<kinds::SimdOperationError> for Error {
-    fn from(e: kinds::SimdOperationError) -> Self {
-        #[cfg(any(feature = "std", feature = "alloc"))]
-        {
-            Self::runtime_error_with_code(
-                codes::SIMD_OPERATION_ERROR,
-                format!("SIMD op '{}' error: {}", e.instruction_name, e.reason),
-            )
-        }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
-        {
-            Self::runtime_error_with_code(codes::SIMD_OPERATION_ERROR, "SIMD operation error")
-        }
+    fn from(_e: kinds::SimdOperationError) -> Self {
+        Self::new(ErrorCategory::Runtime, codes::SIMD_OPERATION_ERROR, "SIMD operation error")
     }
 }
 
 impl From<kinds::TailCallError> for Error {
-    fn from(e: kinds::TailCallError) -> Self {
-        #[cfg(any(feature = "std", feature = "alloc"))]
-        {
-            Self::validation_error_with_code(codes::TAIL_CALL_ERROR, e.message)
-        }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
-        {
-            Self::validation_error_with_code(codes::TAIL_CALL_ERROR, "tail call error")
-        }
+    fn from(_e: kinds::TailCallError) -> Self {
+        Self::new(ErrorCategory::Validation, codes::TAIL_CALL_ERROR, "Tail call error")
     }
 }
-
 // --- END Wasm 2.0 From Impls ---
+
+#[cfg(feature = "std")]
+impl std::error::Error for Error {}

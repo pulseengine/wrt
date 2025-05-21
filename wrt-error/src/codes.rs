@@ -1,3 +1,12 @@
+// WRT - wrt-error
+// Module: WRT Error Codes
+// SW-REQ-ID: REQ_004
+// SW-REQ-ID: REQ_ERROR_001
+//
+// Copyright (c) 2024 Ralf Anton Beier
+// Licensed under the MIT license.
+// SPDX-License-Identifier: MIT
+
 //! Error codes for WRT
 
 /// Stack underflow error
@@ -136,6 +145,8 @@ pub const VALIDATION_LIMIT_MAX_EXCEEDS_U32: u16 = 5023;
 pub const VALIDATION_LIMIT_MAX_LESS_THAN_MIN: u16 = 5024;
 /// Validation: Invalid custom section name
 pub const VALIDATION_INVALID_CUSTOM_SECTION_NAME: u16 = 5025;
+/// Validation: Custom section data too long
+pub const VALIDATION_CUSTOM_SECTION_DATA_TOO_LONG: u16 = 5026;
 
 // Type error codes (6000-6999)
 /// Invalid type error
@@ -154,6 +165,25 @@ pub const PARSE_INVALID_TABLE_INDEX_TYPE: u16 = 6005;
 pub const PARSE_INVALID_MEMORY_INDEX_TYPE: u16 = 6006;
 /// Parse invalid global index type error
 pub const PARSE_INVALID_GLOBAL_INDEX_TYPE: u16 = 6007;
+/// Invalid value error
+pub const INVALID_VALUE: u16 = 6010;
+/// Value out of range for target type
+pub const VALUE_OUT_OF_RANGE: u16 = 6015;
+/// Type invalid conversion
+pub const TYPE_INVALID_CONVERSION: u16 = 6016;
+/// Type parameter count mismatch
+pub const TYPE_PARAM_COUNT_MISMATCH: u16 = 6017;
+/// Type parameter type mismatch
+pub const TYPE_PARAM_TYPE_MISMATCH: u16 = 6018;
+/// Type result count mismatch
+pub const TYPE_RESULT_COUNT_MISMATCH: u16 = 6019;
+/// Type result type mismatch
+pub const TYPE_RESULT_TYPE_MISMATCH: u16 = 6020;
+/// Invalid byte length for a given type or operation
+pub const INVALID_BYTE_LENGTH: u16 = 6021;
+/// Capacity of a bounded collection (e.g., BoundedVec, BoundedString) was
+/// exceeded during an operation like push or extend.
+pub const BOUNDED_COLLECTION_CAPACITY: u16 = 6022;
 
 // Runtime error codes (7000-7999)
 /// Runtime error
@@ -188,9 +218,18 @@ pub const CONCURRENCY_LOCK_FAILURE: u16 = 8004;
 pub const CONCURRENCY_INITIALIZATION_FAILURE: u16 = 8005;
 /// Capacity limit exceeded
 pub const CAPACITY_LIMIT_EXCEEDED: u16 = 8006;
-
 /// Serialization error
 pub const SERIALIZATION_ERROR: u16 = 8007;
+/// System call interrupted error
+pub const SYSTEM_CALL_INTERRUPTED: u16 = 8008;
+/// Generic concurrency error
+pub const CONCURRENCY_ERROR: u16 = 8009;
+/// Implementation defined limit was exceeded
+pub const IMPLEMENTATION_LIMIT: u16 = 8010;
+/// Buffer provided is too small for the operation
+pub const BUFFER_TOO_SMALL: u16 = 8011;
+/// Operation attempted on an object in an unexpected or invalid state
+pub const UNEXPECTED_STATE: u16 = 8012;
 
 // Unknown error code
 /// Unknown error
@@ -259,6 +298,8 @@ pub const MEMORY_GROW_FAILURE: u16 = 8404;
 pub const MEMORY_ALIGNMENT_ERROR_CODE: u16 = 8405;
 /// Memory size limit error
 pub const MEMORY_SIZE_LIMIT_ERROR: u16 = 8406;
+/// Memory deallocation error
+pub const MEMORY_DEALLOCATION_ERROR: u16 = 8407;
 
 // Runtime trap errors (8600-8699)
 /// Runtime trap error
@@ -308,26 +349,14 @@ pub const COMPONENT_INVALID_STATE_ERROR: u16 = 9007;
 /// Component resource limit error
 pub const COMPONENT_RESOURCE_LIMIT_ERROR: u16 = 9008;
 
-/// Invalid value error
-pub const INVALID_VALUE: u16 = 6010;
-
-/// Out of bounds error
-pub const OUT_OF_BOUNDS: u16 = 1020;
-
 /// Mutex error
 pub const MUTEX_ERROR: u16 = 7010;
 
 /// Function not found error
 pub const FUNCTION_NOT_FOUND: u16 = 2010;
 
-/// Implementation limit reached error
-pub const IMPLEMENTATION_LIMIT: u16 = 8010;
-
 /// Invalid state error
 pub const INVALID_STATE: u16 = 7020;
-
-/// Value out of range error
-pub const VALUE_OUT_OF_RANGE: u16 = 6015;
 
 /// Codes representing WebAssembly runtime trap conditions.
 /// These are used when an operation cannot complete normally due to a runtime

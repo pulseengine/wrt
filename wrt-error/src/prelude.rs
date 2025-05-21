@@ -1,3 +1,12 @@
+// WRT - wrt-error
+// Module: WRT Error Prelude
+// SW-REQ-ID: REQ_004
+// SW-REQ-ID: REQ_ERROR_001
+//
+// Copyright (c) 2024 Ralf Anton Beier
+// Licensed under the MIT license.
+// SPDX-License-Identifier: MIT
+
 //! Prelude module for wrt-error
 //!
 //! This module provides a unified set of imports for both std and `no_std`
@@ -7,15 +16,15 @@
 
 // Core imports for both std and no_std environments
 // Re-export from alloc when no_std but alloc is available
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-pub use alloc::{
-    boxed::Box,
-    collections::{BTreeMap as HashMap, BTreeSet as HashSet},
-    format,
-    string::{String, ToString},
-    vec,
-    vec::Vec,
-};
+// #[cfg(all(not(feature = \"std\"), feature = \"alloc\"))]
+// pub use alloc::{
+//     boxed::Box,
+//     collections::{BTreeMap as HashMap, BTreeSet as HashSet},
+//     format,
+//     string::{String, ToString},
+//     vec,
+//     vec::Vec,
+// };
 pub use core::{
     any::Any,
     cmp::{Eq, Ord, PartialEq, PartialOrd},
@@ -27,20 +36,18 @@ pub use core::{
     ops::{Deref, DerefMut},
     slice, str,
 };
-// Re-export from std when the std feature is enabled
-#[cfg(feature = "std")]
-pub use std::{
-    boxed::Box,
-    collections::{HashMap, HashSet},
-    format,
-    string::{String, ToString},
-    vec,
-    vec::Vec,
-};
 
-// Conditionally re-export ResultExt
-#[cfg(feature = "alloc")]
-pub use crate::context::ResultExt;
+// Re-export from std when the std feature is enabled
+// #[cfg(feature = \"std\")]
+// pub use std::{
+//     boxed::Box,
+//     collections::{HashMap, HashSet},
+//     format,
+//     string::{String, ToString},
+//     vec,
+//     vec::Vec,
+// };
+
 // Re-export helper functions for creating errors
 pub use crate::helpers::*;
 // Re-export error types from this crate

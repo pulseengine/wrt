@@ -14,57 +14,21 @@ extern crate alloc;
 #[allow(clippy::unwrap_used, clippy::unnecessary_literal_unwrap, clippy::panic)]
 mod tests {
     // Import necessary types for no_std environment
-    #[cfg(all(not(feature = "std"), feature = "alloc"))]
-    use alloc::{format, string::ToString};
-    #[cfg(feature = "std")]
-    use std::string::ToString;
+    // #[cfg(all(not(feature = "std"), feature = "alloc"))]
+    // use alloc::{format, string::ToString};
 
-    // Only import ResultExt when using alloc feature
-    #[cfg(feature = "alloc")]
-    use wrt_error::context::ResultExt;
-    use wrt_error::kinds;
     // Import from wrt-error
-    use wrt_error::{codes, Error, ErrorCategory, Result};
+    use wrt_error::{codes, kinds, Error, ErrorCategory, Result};
 
     #[test]
     fn test_error_creation() {
         // Create an error
-        let error = Error::new(
-            ErrorCategory::Core,
-            codes::INVALID_MEMORY_ACCESS,
-            #[cfg(any(feature = "std", feature = "alloc"))]
-            "Invalid memory access".to_string(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
-            "Invalid memory access",
-        );
+        let error =
+            Error::new(ErrorCategory::Core, codes::INVALID_MEMORY_ACCESS, "Invalid memory access");
 
         // Verify error properties
         assert_eq!(error.category, ErrorCategory::Core);
         assert_eq!(error.code, codes::INVALID_MEMORY_ACCESS);
-        #[cfg(feature = "alloc")]
-        assert_eq!(error.message, "Invalid memory access");
-    }
-
-    // Only run this test when alloc feature is enabled
-    #[test]
-    #[cfg(feature = "alloc")]
-    fn test_error_with_context() {
-        // Create an error with context
-        let result: Result<()> = Err(Error::new(
-            ErrorCategory::Core,
-            codes::INVALID_MEMORY_ACCESS,
-            "Invalid memory access".to_string(),
-        ));
-
-        // Add context using key-value
-        let result_with_context = result.with_key_value("test", 42);
-
-        // Verify the error remains
-        assert!(result_with_context.is_err());
-
-        // Check the error message contains the key and value
-        let err_message = format!("{}", result_with_context.unwrap_err());
-        assert!(err_message.contains("test: 42"));
     }
 
     #[test]
@@ -75,14 +39,8 @@ mod tests {
         assert_eq!(ok_result.unwrap(), 42);
 
         // Test error result
-        let error = Error::new(
-            ErrorCategory::Core,
-            codes::INVALID_MEMORY_ACCESS,
-            #[cfg(any(feature = "std", feature = "alloc"))]
-            "Invalid memory access".to_string(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
-            "Invalid memory access",
-        );
+        let error =
+            Error::new(ErrorCategory::Core, codes::INVALID_MEMORY_ACCESS, "Invalid memory access");
 
         let err_result: Result<i32> = Err(error);
         assert!(err_result.is_err());
@@ -103,15 +61,82 @@ mod tests {
     #[test]
     fn test_error_kind() {
         let validation_error = kinds::validation_error("Validation error");
-        let _memory_error = kinds::memory_access_error("Memory error");
-        let _runtime_error = kinds::runtime_error("Runtime error");
+        let memory_error = kinds::memory_access_error("Memory error");
+        let runtime_error = kinds::runtime_error("Runtime error");
 
-        assert!(format!("{validation_error:?}").contains("ValidationError"));
+        let type_name_validation = core::any::type_name_of_val(&validation_error);
+        assert!(type_name_validation.contains("ValidationError"));
+
+        let type_name_memory = core::any::type_name_of_val(&memory_error);
+        // Note: kinds::memory_access_error creates a kinds::MemoryAccessError struct
+        assert!(type_name_memory.contains("MemoryAccessError"));
+
+        let type_name_runtime = core::any::type_name_of_val(&runtime_error);
+        assert!(type_name_runtime.contains("RuntimeError"));
     }
 
     // Helper to get the concrete type
     #[allow(dead_code)]
     fn types_of<T>(_: T) -> T {
         panic!("This function should never be called")
+    }
+
+    // Test basic error creation (no_std)
+    #[test]
+    fn test_error_creation_no_std() {
+        let error = Error::new(
+            ErrorCategory::Core,
+            codes::COMPONENT_INSTANTIATION_ERROR,
+            "Invalid memory access",
+        );
+        assert_eq!(error.category, ErrorCategory::Core);
+        assert_eq!(error.code, codes::COMPONENT_INSTANTIATION_ERROR);
+
+        let result: Result<()> = Err(Error::new(
+            ErrorCategory::Core,
+            codes::COMPONENT_INSTANTIATION_ERROR,
+            "Invalid memory access",
+        ));
+        match result {
+            Ok(()) => panic!("Expected error, got Ok"),
+            Err(e) => {
+                assert_eq!(e.category, ErrorCategory::Core);
+                assert_eq!(e.code, codes::COMPONENT_INSTANTIATION_ERROR);
+                assert_eq!(e.message, "Invalid memory access");
+            }
+        }
+    }
+
+    #[test]
+    fn test_error_handling_no_std() {
+        type Result<T> = core::result::Result<T, Error>;
+
+        let result: Result<()> = Err(Error::new(
+            ErrorCategory::Core,
+            codes::COMPONENT_INSTANTIATION_ERROR,
+            "Invalid memory access",
+        ));
+
+        match result {
+            Err(e) => {
+                assert_eq!(e.category, ErrorCategory::Core);
+                assert_eq!(e.code, codes::COMPONENT_INSTANTIATION_ERROR);
+                assert_eq!(e.message, "Invalid memory access");
+            }
+            Ok(()) => panic!("Expected an error"),
+        }
+    }
+
+    // Test error creation and handling with different error types (no_std)
+    #[test]
+    fn test_complex_error_no_std() {
+        let error = Error::new(
+            ErrorCategory::Resource,
+            codes::RESOURCE_LIMIT_EXCEEDED,
+            "Invalid memory access",
+        );
+
+        assert_eq!(error.category, ErrorCategory::Resource);
+        assert_eq!(error.code, codes::RESOURCE_LIMIT_EXCEEDED);
     }
 }

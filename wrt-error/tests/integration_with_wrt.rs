@@ -1,3 +1,7 @@
+// Copyright (c) 2025 Ralf Anton Beier
+// Licensed under the MIT license.
+// SPDX-License-Identifier: MIT
+
 //! Integration tests for wrt-error with the main wrt crate.
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 extern crate alloc;
@@ -6,7 +10,7 @@ extern crate alloc;
 //
 // This file tests the error handling functionality in the context of how it
 // would be used
-/// in the main wrt crate.
+// in the main wrt crate.
 
 #[cfg(test)]
 #[allow(
@@ -45,10 +49,13 @@ mod tests {
 
         #[test]
         fn test_error_conversion_memory() {
-            let mem_error = kinds::MemoryAccessOutOfBoundsError { address: 100, length: 32 };
-            // In std mode, plain format! is from std.
-            let error = Error::memory_error(format!("Memory error: {mem_error}"));
+            // let _mem_error = kinds::MemoryAccessOutOfBoundsError { address: 100, length:
+            // 32 }; // Removed this line In std mode, plain format! is from
+            // std. Provide a static string for Error::memory_error
+            let error = Error::memory_error("Test memory access out of bounds: addr 100, len 32");
             assert!(error.is_memory_error());
+            // Optionally, assert the message if it needs to be specific and static
+            assert_eq!(error.message, "Test memory access out of bounds: addr 100, len 32");
         }
 
         #[test]
