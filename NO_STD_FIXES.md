@@ -12,6 +12,7 @@ This document summarizes the issues found and fixes made to improve no_std compa
 
 - **wrt-runtime**:
   - Updated `no_std` feature to be a no-op instead of propagating non-existent features
+  - Added missing `safe-memory` feature
 
 - **wrt-decoder**:
   - Removed compile-time error that prevented using the crate in pure no_std mode
@@ -19,6 +20,9 @@ This document summarizes the issues found and fixes made to improve no_std compa
 
 - **wrt-logging**:
   - Updated `no_std` feature to be a no-op for consistency
+
+- **wrt-format**:
+  - Added missing `safe-memory` feature to fix dependency resolution
 
 ### 2. Verification Script Updates
 
