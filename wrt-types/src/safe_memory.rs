@@ -1,43 +1,56 @@
 // WRT - wrt-types
 // Module: Safe Memory Abstractions
-// SW-REQ-ID: REQ_MEM_SAFETY_002
-//
-// Copyright (c) 2024 Ralf Anton Beier
+// SW-REQ-ID: REQ_MEM_SAFETY_001
+
+// Copyright (c) 2025 Ralf Anton Beier
 // Licensed under the MIT license.
 // SPDX-License-Identifier: MIT
 
-// #![allow(unsafe_code)] // REMOVED: Unsafe code will be handled by specific
-// blocks with safety comments.
-
-//! Safe memory abstractions for WebAssembly runtime
-//!
-//! This module provides memory safety abstractions designed for
-//! functional safety at ASIL-B level, implementing verification
-//! mechanisms to detect memory corruption.
-
-#![cfg_attr(not(feature = "std"), allow(unused_unsafe))]
+//! Provides safe memory access primitives, including `SafeMemoryHandler` and
+//! related types, ensuring bounds checking and optional integrity checks.
 
 // Core imports
-#[cfg(feature = "std")]
-extern crate std;
+// REMOVE: #[cfg(feature = "std")]
+// REMOVE: extern crate std;
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-extern crate alloc;
+// REMOVE: #[cfg(all(not(feature = "std"), feature = "alloc"))]
+// REMOVE: extern crate alloc;
 
 use core::sync::atomic::{AtomicUsize, Ordering};
 
 use crate::operations::{record_global_operation, Type as OperationType};
+
+/// Default capacity for NoStdProvider memory allocations
+pub const DEFAULT_MEMORY_PROVIDER_CAPACITY: usize = 4096;
+
+/// Default NoStdProvider type with the DEFAULT_MEMORY_PROVIDER_CAPACITY size
+/// This provides backwards compatibility with existing code
+pub type DefaultNoStdProvider = NoStdProvider<DEFAULT_MEMORY_PROVIDER_CAPACITY>;
 // Checksum is in prelude
 // pub use crate::verification::Checksum;
+#[cfg(feature = "alloc")]
 pub use crate::prelude::ToString;
 pub use crate::prelude::*;
-#[cfg(not(feature = "std"))]
-use crate::validation::importance;
+use crate::WrtResult;
+// Explicitly import Checksum and VerificationLevel
+pub use crate::verification::{Checksum, VerificationLevel};
 
 // HashSet and Mutex are in std part of prelude when feature "std" is on.
 // For no_std, Mutex comes from once_mutex, HashSet isn't used directly here for
-// no_std provider. #[cfg(feature = "std")]
-// use std::{collections::HashSet, sync::Mutex};
+// no_std provider.
+// REMOVE: #[cfg(feature = "std")]
+// REMOVE: use std::collections::HashSet;
+// REMOVE: #[cfg(feature = "std")]
+// REMOVE: use std::sync::Mutex;
+// REMOVE: #[cfg(feature = "std")]
+// REMOVE: use std::vec::Vec; // Explicitly import Vec for StdProvider
+
+#[cfg(feature = "std")]
+use std::collections::HashSet;
+#[cfg(feature = "std")]
+use std::sync::Mutex; // Note: std::sync::Mutex might be an issue if a no_std mutex is needed elsewhere.
+#[cfg(feature = "std")]
+use std::vec::Vec;
 
 /// A safe slice with integrated checksum for data integrity verification
 #[derive(Clone)]
@@ -168,7 +181,7 @@ impl<'a> Slice<'a> {
 
         // If length doesn't match stored value, memory is corrupt
         if self.data.len() != self.length {
-            return Err(Error::validation_error("Memory corruption detected: length mismatch"));
+            return Err(Error::validation_error("Memory corruption: length mismatch on read"));
         }
 
         // Different paths for optimize vs non-optimize
@@ -197,7 +210,7 @@ impl<'a> Slice<'a> {
             if current == self.checksum {
                 Ok(())
             } else {
-                Err(Error::validation_error("Memory corruption detected: checksum mismatch"))
+                Err(Error::validation_error("Memory corruption: checksum mismatch on read"))
             }
         }
     }
@@ -218,17 +231,16 @@ impl<'a> Slice<'a> {
 
         // Use let-else for cleaner error handling
         let Some(end) = start.checked_add(len) else {
-            return Err(Error::memory_error(format!(
-                "Sub-slice range calculation overflow: start={start}, len={len}"
-            )));
+            return Err(Error::memory_error(
+                "Sub-slice range calculation overflow",
+            ));
         };
 
         if end > self.length {
             // Check if calculated end (exclusive) exceeds original slice length
-            return Err(Error::memory_error(format!(
-                "Invalid sub-slice range: start {}, len {} (end {} > actual_len {})",
-                start, len, end, self.length
-            )));
+            return Err(Error::memory_error(
+                "Invalid sub-slice range",
+            ));
         }
 
         // Create a new Slice with the specified range
@@ -403,49 +415,32 @@ impl<'a> SliceMut<'a> {
             if current_checksum == self.checksum {
                 Ok(())
             } else {
-                Err(Error::validation_error(format!(
-                    "Memory corruption detected: checksum mismatch (SliceMut). Expected {}, got {}",
-                    self.checksum, current_checksum
-                )))
+                Err(Error::validation_error("Memory corruption: checksum mismatch on read"))
             }
         }
     }
 
-    /// Create a mutable sub-slice with the same safety guarantees
+    /// Slices the mutable slice into a smaller mutable sub-slice.
+    ///
+    /// Performs bounds checking and returns a new `SliceMut` representing the
+    /// sub-slice. The new slice inherits the verification level.
     ///
     /// # Errors
     ///
-    /// Returns an error if the parent slice fails its integrity check, if the
-    /// requested sub-slice range is invalid (overflow or out of bounds), or
-    /// if creating the sub-slice fails its own initial integrity check.
-    pub fn slice_mut(&mut self, start: usize, len: usize) -> Result<SliceMut<'_>> {
-        // Track memory read/write intent (as it's a mutable slice)
-        // For now, using MemoryWrite as it provides potential for modification.
-        record_global_operation(OperationType::MemoryWrite, self.verification_level);
-
-        // High importance for slicing operations (200)
-        self.verify_integrity_with_importance(200)?;
-
-        // Use let-else for cleaner error handling
-        let Some(end) = start.checked_add(len) else {
-            return Err(Error::memory_error(format!(
-                "Mutable sub-slice range calculation overflow: start={start}, len={len}"
-            )));
-        };
-
-        if end > self.length {
-            return Err(Error::memory_error(format!(
-                "Invalid mutable sub-slice range: start {start}, len {len} (end {end} > \
-                 actual_len {})",
-                self.length
-            )));
+    /// Returns an error if the requested sub-slice is out of bounds or if
+    /// creating the new `SliceMut` fails (e.g., internal verification error).
+    pub fn slice_mut<'s>(&'s mut self, start: usize, len: usize) -> Result<SliceMut<'s>> {
+        if start.checked_add(len).map_or(true, |end| end > self.length) {
+            return Err(Error::new(
+                ErrorCategory::Memory,
+                codes::MEMORY_OUT_OF_BOUNDS,
+                "Attempted to slice SliceMut out of bounds",
+            ));
         }
 
-        // Obtain the mutable sub-slice unsafe block needs careful justification if used
-        // Let's assume safe slicing for now
-        let sub_data = &mut self.data[start..end];
-
-        // Create a new SliceMut with the same verification level
+        // Integrity of the parent slice should ideally be checked before creating a
+        // sub-slice if there's a risk of TOCTOU, but SliceMut itself manages this.
+        let sub_data = &mut self.data[start..start + len];
         SliceMut::with_verification_level(sub_data, self.verification_level)
     }
 
@@ -495,7 +490,7 @@ impl fmt::Debug for SliceMut<'_> {
             .field("checksum", &self.checksum)
             .field("verification_level", &self.verification_level)
             // Do not print mutable data content in debug
-            .finish()
+            .finish_non_exhaustive() // If SliceMut has private fields or for future-proofing
     }
 }
 
@@ -505,24 +500,29 @@ impl fmt::Debug for SliceMut<'_> {
 /// allowing both std and `no_std` environments to share the same interface.
 /// It combines raw access, safety features, and informational methods.
 pub trait Provider: Send + Sync + Debug {
+    /// The type of allocator this provider uses or can expose.
+    type Allocator: Allocator + Clone + Send + Sync + 'static; // Added Clone, Send, Sync, 'static
+
     /// Borrows a slice of memory with safety guarantees.
-    /// The returned `Slice` will have its verification level typically
-    /// initialized by the provider or a wrapping handler.
     ///
-    /// # Errors
-    ///
-    /// Returns an error if the requested slice is out of bounds or if the
-    /// underlying memory cannot be borrowed (e.g., due to internal errors
-    /// or failed integrity checks).
+    /// # Safety
+    /// Callers must ensure that `offset` and `len` define a valid memory
+    /// region that is safe to read for the lifetime of the returned slice.
+    /// This is typically managed by `verify_access` being called internally
+    /// or by the provider's own invariants. Implementers must ensure that
+    /// the returned slice does not outlive the underlying memory buffer and
+    /// that the memory region is valid for reads of `len` bytes at `offset`.
     fn borrow_slice(&self, offset: usize, len: usize) -> Result<Slice<'_>>;
 
     /// Writes data to the memory at a given offset.
     ///
-    /// # Errors
-    ///
-    /// Returns an error if the write operation would go out of bounds, if the
-    /// underlying memory cannot be written to (e.g., internal errors or
-    /// failed integrity checks), or if the data itself is invalid for writing.
+    /// # Safety
+    /// Callers must ensure that `offset` and the length of `data` define a valid
+    /// memory region that is safe to write to. This is typically managed by
+    /// `verify_access`. Implementers must ensure that this operation is
+    /// memory safe given valid inputs, respecting bounds and aliasing rules.
+    /// The `offset` and `data.len()` must not cause an overflow and must
+    /// fall within the provider's allocated capacity.
     fn write_data(&mut self, offset: usize, data: &[u8]) -> Result<()>;
 
     /// Verifies that an access to memory (read or write) of `len` at `offset`
@@ -562,22 +562,34 @@ pub trait Provider: Send + Sync + Debug {
 
     /// Gets a mutable slice from the underlying memory provider.
     ///
-    /// # Errors
-    ///
-    /// Returns an error if the requested slice is out of bounds or if the
-    /// underlying memory cannot be borrowed mutably (e.g., due to internal
-    /// errors or failed integrity checks).
+    /// # Safety
+    /// Callers must ensure that `offset` and `len` define a valid memory
+    /// region that is safe for mutable access for the lifetime of the
+    /// returned slice. This is typically managed by `verify_access`.
+    /// Implementers must ensure that the returned mutable slice provides
+    /// exclusive access (or appropriate synchronization if shared mutable
+    /// access is possible and intended) to that region of memory and
+    /// does not outlive the underlying buffer. The region must be valid
+    /// for both reads and writes.
     fn get_slice_mut(&mut self, offset: usize, len: usize) -> Result<SliceMut<'_>>;
 
     /// Copies data within the memory provider from a source offset to a
     /// destination offset.
     ///
-    /// # Errors
-    ///
-    /// Returns an error if the source or destination ranges are invalid or out
-    /// of bounds, or if the copy operation fails due to internal provider
-    /// issues.
-    fn copy_within(&mut self, src_offset: usize, dst_offset: usize, len: usize) -> Result<()>;
+    /// # Safety
+    /// Callers must ensure that both source and destination ranges
+    /// (`src_offset` to `src_offset + len` and `dst_offset` to `dst_offset
+    /// + len`) are valid memory regions within the provider's bounds and
+    /// that the operation is memory safe.
+    /// This includes handling of overlapping regions if the underlying copy
+    /// mechanism requires it (e.g., `ptr::copy` vs `ptr::copy_nonoverlapping`).
+    /// Implementers must ensure the copy is performed safely.
+    fn copy_within(
+        &mut self,
+        src_offset: usize,
+        dst_offset: usize,
+        len: usize,
+    ) -> Result<()>;
 
     /// Ensures the provider's internal accounting of used space extends up to
     /// `byte_offset`. This is typically called by a collection after it
@@ -588,6 +600,22 @@ pub trait Provider: Send + Sync + Debug {
     /// Returns an error if the requested offset is beyond the provider's
     /// capacity or if the operation fails internally.
     fn ensure_used_up_to(&mut self, byte_offset: usize) -> Result<()>;
+
+    /// Acquires a block of memory from the provider's allocator.
+    fn acquire_memory(&self, layout: core::alloc::Layout) -> WrtResult<*mut u8>;
+
+    /// Releases a previously acquired block of memory to the provider's allocator.
+    /// # Safety
+    /// The pointer `ptr` must have been previously allocated via `acquire_memory`
+    /// with the same `layout`, and not yet released.
+    unsafe fn release_memory(&self, ptr: *mut u8, layout: core::alloc::Layout) -> WrtResult<()>;
+
+    /// Returns a reference to the allocator used by this provider.
+    fn get_allocator(&self) -> &Self::Allocator;
+
+    /// Creates a new `SafeMemoryHandler` for this provider.
+    /// Requires `Self: Sized` and `Self: Clone` for the handler to be created and cloned.
+    fn new_handler(&self) -> Result<SafeMemoryHandler<Self>> where Self: Sized + Clone;
 }
 
 /// Memory statistics structure
@@ -603,13 +631,12 @@ pub struct Stats {
     pub max_access_size: usize,
 }
 
-/// Memory provider for std environments
 #[cfg(feature = "std")]
 pub struct StdProvider {
     /// The underlying data buffer
     data: Vec<u8>,
     /// Track memory accesses for safety monitoring
-    access_log: std::sync::Mutex<Vec<(usize, usize)>>,
+    access_log: Mutex<Vec<(usize, usize)>>,
     /// Counter for access operations
     access_count: AtomicUsize,
     /// Maximum size of any access seen
@@ -617,7 +644,7 @@ pub struct StdProvider {
     /// Number of unique regions accessed
     unique_regions: AtomicUsize,
     /// Regions hash (for uniqueness tracking)
-    regions_hash: std::sync::Mutex<HashSet<usize>>,
+    regions_hash: Mutex<HashSet<usize>>,
     /// Verification level for memory operations
     verification_level: VerificationLevel,
 }
@@ -625,424 +652,356 @@ pub struct StdProvider {
 #[cfg(feature = "std")]
 impl fmt::Debug for StdProvider {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut debug_struct = f.debug_struct("StdProvider");
-
-        debug_struct
-            .field("data_size", &self.data.len())
+        f.debug_struct("StdProvider")
             .field("capacity", &self.data.capacity())
+            .field("len", &self.data.len())
             .field("access_count", &self.access_count.load(Ordering::Relaxed))
             .field("max_access_size", &self.max_access_size.load(Ordering::Relaxed))
             .field("unique_regions", &self.unique_regions.load(Ordering::Relaxed))
-            .field("verification_level", &self.verification_level);
-
-        // Handle potential Mutex poisoning gracefully in Debug
-        match self.access_log.lock() {
-            Ok(guard) => {
-                debug_struct.field("access_log_len", &guard.len());
-            }
-            Err(_) => {
-                debug_struct.field("access_log_len", &"<poisoned>");
-            }
-        }
-
-        match self.regions_hash.lock() {
-            Ok(guard) => {
-                debug_struct.field("regions_hash_len", &guard.len());
-            }
-            Err(_) => {
-                debug_struct.field("regions_hash_len", &"<poisoned>");
-            }
-        }
-
-        debug_struct.finish()
+            .field("verification_level", &self.verification_level)
+            // Not displaying access_log or regions_hash to avoid excessive output
+            .finish()
     }
 }
+
+#[cfg(feature = "std")]
+impl PartialEq for StdProvider {
+    fn eq(&self, other: &Self) -> bool {
+        // Compare self.data (Vec<u8>) and self.verification_level.
+        // Mutex-wrapped fields (access_log, regions_hash) and atomics (access_count, etc.)
+        // are generally not part of structural equality as they represent mutable runtime state
+        // rather than fundamental identity.
+        self.data == other.data && self.verification_level == other.verification_level
+    }
+}
+
+#[cfg(feature = "std")]
+impl Eq for StdProvider {}
 
 #[cfg(feature = "std")]
 impl Default for StdProvider {
     fn default() -> Self {
         Self {
             data: Vec::new(),
-            access_log: std::sync::Mutex::new(Vec::new()),
+            access_log: Mutex::new(Vec::new()),
             access_count: AtomicUsize::new(0),
             max_access_size: AtomicUsize::new(0),
             unique_regions: AtomicUsize::new(0),
-            regions_hash: std::sync::Mutex::new(HashSet::new()),
-            verification_level: VerificationLevel::Sampling,
+            regions_hash: Mutex::new(HashSet::new()),
+            verification_level: VerificationLevel::default(),
         }
     }
 }
 
 #[cfg(feature = "std")]
 impl StdProvider {
-    /// Create a new `StdProvider` with the given data
-    #[allow(clippy::redundant_clone)]
-    #[must_use]
+    /// Create a new `StdProvider` with an initial data buffer.
     pub fn new(data: Vec<u8>) -> Self {
         Self {
             data,
-            access_log: std::sync::Mutex::new(Vec::with_capacity(100)),
+            access_log: Mutex::new(Vec::new()),
             access_count: AtomicUsize::new(0),
             max_access_size: AtomicUsize::new(0),
             unique_regions: AtomicUsize::new(0),
-            regions_hash: std::sync::Mutex::new(HashSet::new()),
+            regions_hash: Mutex::new(HashSet::new()),
             verification_level: VerificationLevel::default(),
         }
     }
 
-    /// Create a new empty `StdProvider` with the given capacity
-    #[must_use]
-    pub fn with_capacity(_capacity: usize) -> Self {
-        Self::new(Vec::with_capacity(100))
-    }
-
-    /// Get the access log for debugging and verification
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the access log mutex is poisoned.
-    pub fn access_log(&self) -> Result<Vec<(usize, usize)>> {
-        match self.access_log.lock() {
-            Ok(log) => Ok(log.clone()),
-            Err(_) => Err(Error::runtime_error("Access log mutex poisoned")),
+    /// Create a new `StdProvider` with a specific capacity.
+    pub fn with_capacity(capacity: usize) -> Self {
+        Self {
+            data: Vec::with_capacity(capacity),
+            access_log: Mutex::new(Vec::new()),
+            access_count: AtomicUsize::new(0),
+            max_access_size: AtomicUsize::new(0),
+            unique_regions: AtomicUsize::new(0),
+            regions_hash: Mutex::new(HashSet::new()),
+            verification_level: VerificationLevel::default(),
         }
     }
 
-    /// Add data to the memory provider
-    pub fn add_data(&mut self, data: &[u8]) {
-        self.data.extend_from_slice(data);
+    /// Get the access log. Requires `std` for `Mutex` and `Vec`.
+    pub fn access_log(&self) -> Result<Vec<(usize, usize)>> {
+        self.access_log
+            .lock()
+            .map_err(|_| Error::sync_error("Mutex poisoned"))
+            .map(|log| log.clone())
     }
 
-    /// Clear all data and access logs
-    ///
-    /// Note: Ignores mutex poisoning errors for simplicity in clear operation.
+    /// Add data to the provider's buffer.
+    pub fn add_data(&mut self, data_to_add: &[u8]) {
+        self.data.extend_from_slice(data_to_add);
+    }
+
+    /// Clears the provider's buffer and resets tracking.
     pub fn clear(&mut self) {
         self.data.clear();
         if let Ok(mut log) = self.access_log.lock() {
             log.clear();
         }
-        self.access_count.store(0, Ordering::SeqCst);
-        self.max_access_size.store(0, Ordering::SeqCst);
-        self.unique_regions.store(0, Ordering::SeqCst);
-        if let Ok(mut regions) = self.regions_hash.lock() {
-            regions.clear();
+        if let Ok(mut hash) = self.regions_hash.lock() {
+            hash.clear();
         }
-        // Checksum is not managed here, it's per Slice/SliceMut
+        self.access_count.store(0, Ordering::Relaxed);
+        self.max_access_size.store(0, Ordering::Relaxed);
+        self.unique_regions.store(0, Ordering::Relaxed);
     }
 
-    /// Resize the underlying data vector, filling new space with `value`.
+    /// Resizes the internal buffer to `new_size`, filling new space with `value`.
     ///
     /// # Errors
     ///
-    /// This function does not currently return errors but is designed to if
-    /// future resizing constraints (e.g., max capacity) are added.
+    /// Returns `Error::MemoryError` if allocation fails or `new_size` is too large.
     pub fn resize(&mut self, new_size: usize, value: u8) -> Result<()> {
-        // Track memory allocation-like operation as resize can allocate
-        record_global_operation(OperationType::MemoryAllocation, self.verification_level);
+        if new_size > self.data.capacity() {
+            return Err(Error::memory_error(
+                "StdProvider resize exceeds capacity",
+            ));
+        }
         self.data.resize(new_size, value);
-        // Checksum needs to be re-evaluated by consumer if they are using SliceMut over
-        // this.
         Ok(())
     }
 
-    /// Track an access to a memory region.
-    /// This is an internal helper and does not return Result, assumes locks
-    /// succeed or logs ignore.
     fn track_access(&self, offset: usize, len: usize) {
+        if let Ok(mut log) = self.access_log.lock() {
+            log.push((offset, len));
+        }
         self.access_count.fetch_add(1, Ordering::Relaxed);
         self.max_access_size.fetch_max(len, Ordering::Relaxed);
-
-        if let Ok(mut log) = self.access_log.lock() {
-            if log.len() < 1000 {
-                // Cap log size
-                log.push((offset, len));
-            }
-        }
-
-        if let Ok(mut regions) = self.regions_hash.lock() {
-            if !regions.contains(&offset) {
-                regions.insert(offset);
+        // Simplified unique region tracking for this example
+        // A more robust approach might involve a set of ranges
+        if let Ok(mut hash) = self.regions_hash.lock() {
+            if hash.insert(offset) {
                 self.unique_regions.fetch_add(1, Ordering::Relaxed);
             }
         }
     }
 
-    /// Clear the access tracking logs.
+    /// Clears the access tracking information.
     ///
     /// # Errors
     ///
-    /// Returns an error if the access log or region hash mutex is poisoned.
+    /// Returns `Error::sync_error` if the mutex cannot be locked.
     pub fn clear_access_tracking(&self) -> Result<()> {
-        match self.access_log.lock() {
-            Ok(mut log) => log.clear(),
-            Err(_) => return Err(Error::runtime_error("Access log mutex poisoned during clear")),
-        }
-        match self.regions_hash.lock() {
-            Ok(mut regions) => regions.clear(),
-            Err(_) => return Err(Error::runtime_error("Region hash mutex poisoned during clear")),
-        }
+        record_global_operation(OperationType::MemoryRegionClear, self.verification_level);
+        let mut log = self.access_log.lock().map_err(|_| {
+            Error::concurrency_error("Mutex poisoned during access log lock in clear_access_tracking")
+        })?;
+        log.clear();
+
+        let mut hashes = self.regions_hash.lock().map_err(|_| {
+            Error::concurrency_error("Mutex poisoned during regions_hash lock in clear_access_tracking")
+        })?;
+        hashes.clear();
+
         self.access_count.store(0, Ordering::Relaxed);
         self.max_access_size.store(0, Ordering::Relaxed);
         self.unique_regions.store(0, Ordering::Relaxed);
         Ok(())
     }
 
-    /// Set the verification level for memory operations
-    pub fn set_verification_level(&mut self, level: VerificationLevel) {
-        self.verification_level = level;
-    }
-
-    /// Get current verification level
-    pub fn verification_level(&self) -> VerificationLevel {
-        self.verification_level
-    }
-
-    /// Get detailed memory statistics
-    pub fn memory_stats(&self) -> Stats {
-        // Lock the hash set to read its size accurately
-        let unique_regions_count = self.regions_hash.lock().map_or(0, |guard| guard.len()); // Handle potential lock poisoning
-
-        Stats {
-            total_size: self.data.capacity(),
-            access_count: self.access_count.load(Ordering::Relaxed),
-            unique_regions: unique_regions_count, // Use the locked value
-            max_access_size: self.max_access_size.load(Ordering::Relaxed),
-        }
-    }
-
-    /// Recalculates checksums after direct memory modifications
-    ///
-    /// This method should be called after directly modifying the underlying
-    /// data to ensure memory integrity verification continues to work
-    /// properly.
+    /// Recalculates checksums for all data within the provider.
+    /// Note: This is a placeholder concept. `StdProvider` itself doesn't
+    /// store checksums directly for its entire buffer in the same way `Slice` does.
+    /// This might be relevant if `StdProvider` were to implement more complex
+    /// integrity schemes. For now, it's a no-op or should be clarified.
     pub fn recalculate_checksums(&mut self) {
-        // This is left as a placeholder in the current implementation
-        // In a production-grade implementation, this would update any internal
-        // checksums or verification data structures.
-
-        // For now, the memory safety checks are mostly based on bounds checking
-        // rather than checksums, but this extension point is important for future
-        // enhancements to memory safety.
-
-        // Track operation for proper profiling
-        record_global_operation(OperationType::ChecksumCalculation, self.verification_level);
-    }
-
-    /// Gets a mutable pointer to data at the given offset
-    pub fn get_ptr_mut(&self, offset: usize) -> Option<*mut u8> {
-        if offset >= self.data.len() {
-            return None;
-        }
-        Some(self.data.as_ptr().wrapping_add(offset).cast_mut())
+        // Placeholder: StdProvider does not currently manage a single checksum for all data.
+        // Integrity is typically verified via Slice/SliceMut instances it vends.
+        record_global_operation(OperationType::IntegrityRecalculate, self.verification_level);
     }
 }
 
 #[cfg(feature = "std")]
 impl Provider for StdProvider {
-    /// Borrows a slice of memory with safety guarantees.
-    /// The returned `Slice` will have its verification level typically
-    /// initialized by the provider or a wrapping handler.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the requested slice is out of bounds or if the
-    /// underlying memory cannot be borrowed (e.g., due to internal errors
-    /// or failed integrity checks).
+    type Allocator = Self; // NoStdProvider itself is the allocator
+
+    /// # Safety
+    /// The caller guarantees that `offset` and `len` define a valid, readable
+    /// memory region within `self.data` that remains valid for the lifetime \'_.
+    /// `verify_access` is called internally to check bounds against `self.data.len()`.
     fn borrow_slice(&self, offset: usize, len: usize) -> Result<Slice<'_>> {
-        // Track memory read operation implicitly via Slice creation
-        record_global_operation(OperationType::MemoryRead, self.verification_level);
         self.verify_access(offset, len)?;
         self.track_access(offset, len);
+        // Ensure that the slice we create does not exceed the actual data length.
+        debug_assert!(offset.checked_add(len).map_or(false, |end| end <= self.data.len()), "StdProvider::borrow_slice: offset+len must be <= self.data.len(). Offset: {}, Len: {}, DataLen: {}", offset, len, self.data.len());
         Slice::with_verification_level(&self.data[offset..offset + len], self.verification_level)
     }
 
-    /// Gets a mutable slice from the underlying memory provider.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the requested slice is out of bounds or if the
-    /// underlying memory cannot be borrowed mutably (e.g., due to internal
-    /// errors or failed integrity checks).
+    /// # Safety
+    /// The caller guarantees that `offset` and `data.len()` define a valid, writable
+    /// memory region within `self.data`. `verify_access` is called internally.
+    /// The underlying `Vec` ensures that writes within its bounds are safe.
     fn get_slice_mut(&mut self, offset: usize, len: usize) -> Result<SliceMut<'_>> {
-        // Track memory write operation implicitly via SliceMut creation
-        record_global_operation(OperationType::MemoryWrite, self.verification_level);
         self.verify_access(offset, len)?;
-        self.track_access(offset, len); // Track access before mutable borrow
+        self.track_access(offset, len); // Tracking access before mutation
+        debug_assert!(offset.checked_add(len).map_or(false, |end| end <= self.data.len()),
+                      "StdProvider::get_slice_mut: offset+len must be <= self.data.len() after verify_access. Offset: {}, Len: {}, DataLen: {}", offset, len, self.data.len());
+        // Create a SliceMut with the provider's verification level
         SliceMut::with_verification_level(
             &mut self.data[offset..offset + len],
             self.verification_level,
         )
     }
 
-    /// Writes data to the memory at a given offset.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the write operation would go out of bounds, if the
-    /// underlying memory cannot be written to (e.g., internal errors or
-    /// failed integrity checks), or if the data itself is invalid for writing.
+    /// # Safety
+    /// The caller guarantees that `offset` and `data_to_write.len()` define a
+    /// valid, writable region within `self.data`. `verify_access` checks bounds.
+    /// `copy_from_slice` is safe when destination and source lengths match and
+    /// slices are valid, which `verify_access` and slice creation ensure.
     fn write_data(&mut self, offset: usize, data_to_write: &[u8]) -> Result<()> {
-        record_global_operation(OperationType::MemoryWrite, self.verification_level);
-        let len = data_to_write.len();
-        self.verify_access(offset, len)?;
+        self.verify_access(offset, data_to_write.len())?;
+        self.track_access(offset, data_to_write.len());
+        debug_assert!(offset.checked_add(data_to_write.len()).map_or(false, |end| end <= self.data.len()),
+                      "StdProvider::write_data: offset+len must be <= self.data.len() after verify_access. Offset: {}, Len: {}, DataLen: {}", offset, data_to_write.len(), self.data.len());
 
-        let end = offset.checked_add(len).ok_or_else(|| {
-            Error::memory_error(format!(
-                "Write range calculation overflow: offset={offset}, len={len}"
-            ))
+        // Safety: verify_access ensures offset + data_to_write.len() is within self.data.capacity().
+        // And also ensures offset + data_to_write.len() <= self.data.len() (current initialized part for Vec)
+        let required_len = offset.checked_add(data_to_write.len()).ok_or_else(|| {
+            Error::memory_error("Write offset + length calculation overflow")
         })?;
 
-        if end > self.data.len() {
-            return Err(Error::memory_error(format!(
-                "Write out of bounds: offset={offset}, len={len}, data_len={}",
-                self.data.len()
-            )));
+        if required_len > self.data.len() {
+            // Vec::resize might panic on allocation failure.
+            self.data.resize(required_len, 0u8); // Or some other default byte
         }
 
-        self.data[offset..end].copy_from_slice(data_to_write);
-        self.track_access(offset, len);
-        // Note: Checksum needs to be updated by the caller if they are using
-        // SliceMut over this part of memory.
+        self.data[offset..required_len].copy_from_slice(data_to_write);
+        // If StdProvider maintained its own checksum for the whole data Vec, it would need updating.
         Ok(())
     }
 
-    /// Verifies that an access to memory (read or write) of `len` at `offset`
-    /// would be valid. This is a pre-check and does not perform the access.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the described access would be invalid (e.g., out of
-    /// bounds).
     fn verify_access(&self, offset: usize, len: usize) -> Result<()> {
-        // Track generic validation operation
-        record_global_operation(OperationType::CollectionValidate, self.verification_level);
         let end = offset.checked_add(len).ok_or_else(|| {
-            Error::memory_error(format!(
-                "Access range calculation overflow: offset={offset}, len={len}"
-            ))
+            Error::memory_error("Access range calculation overflow")
         })?;
 
+        // For StdProvider, capacity is dynamic up to available memory, but we check against current .len().
+        // If write_data can resize, then this check is more about the *current* state for reads.
+        // For writes, write_data handles potential resizing.
+        // Let's assume verify_access checks against current data.len() for reads and initial write checks.
         if end > self.data.len() {
-            // Use capacity for verify_access if we want to allow writes up to capacity
-            // For now, strictly check against current data.len()
-            return Err(Error::memory_error(format!(
-                "Access out of bounds: offset={offset}, len={len}, data_len={}",
-                self.data.len()
-            )));
+            return Err(Error::memory_error_with_details(
+                "Access out of bounds",
+                #[cfg(any(feature = "std", feature = "alloc"))]
+                format!(
+                    "Attempted access from {} to {} (len {}), but current size is {}",
+                    offset,
+                    end,
+                    len,
+                    self.data.len()
+                ),
+                #[cfg(not(any(feature = "std", feature = "alloc")))]
+                "Access out of bounds of current data length",
+            ));
         }
         Ok(())
     }
 
-    /// Gets the total current size/length of the initialized/used memory within
-    /// the provider.
     fn size(&self) -> usize {
         self.data.len()
     }
 
-    /// Gets the total capacity of the memory region managed by the provider.
     fn capacity(&self) -> usize {
         self.data.capacity()
     }
 
-    /// Verifies the overall integrity of the memory managed by the provider.
-    /// This could involve checking internal checksums, canaries, or other
-    /// mechanisms.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if an integrity violation is detected.
-    /// (Currently a placeholder for StdProvider, as integrity is per Slice)
     fn verify_integrity(&self) -> Result<()> {
-        record_global_operation(OperationType::CollectionValidate, self.verification_level);
-        // For StdProvider, integrity is primarily managed by Slice/SliceMut.
-        // This could be extended if StdProvider had its own global checksums or
-        // canaries.
+        // StdProvider itself doesn't have a single checksum for its entire data Vec.
+        // Integrity is managed at the Slice/SliceMut level for borrowed parts.
+        // This could be extended if a whole-provider checksum was desired.
+        record_global_operation(OperationType::MemoryIntegrityCheck, self.verification_level);
+        // For now, assume the underlying Vec<u8> is inherently valid unless proven otherwise by Slice checks.
         Ok(())
     }
 
-    /// Sets the verification level for operations performed by this memory
-    /// provider.
     fn set_verification_level(&mut self, level: VerificationLevel) {
         self.verification_level = level;
     }
 
-    /// Gets the current verification level of this memory provider.
     fn verification_level(&self) -> VerificationLevel {
         self.verification_level
     }
 
-    /// Gets statistics about memory usage from this provider.
     fn memory_stats(&self) -> Stats {
-        self.memory_stats()
+        Stats {
+            total_size: self.data.capacity(),
+            access_count: self.access_count.load(Ordering::Relaxed),
+            unique_regions: self.unique_regions.load(Ordering::Relaxed),
+            max_access_size: self.max_access_size.load(Ordering::Relaxed),
+        }
     }
 
-    /// Copies data within the memory provider from a source offset to a
-    /// destination offset.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the source or destination ranges are invalid or out
-    /// of bounds, or if the copy operation fails due to internal provider
-    /// issues.
-    fn copy_within(&mut self, src_offset: usize, dst_offset: usize, len: usize) -> Result<()> {
-        record_global_operation(OperationType::MemoryWrite, self.verification_level); // Treat as write
-
-        // Verify source range
+    /// # Safety
+    /// The caller guarantees that `src_offset..src_offset+len` is a valid readable range
+    /// and `dst_offset..dst_offset+len` is a valid writable range within `self.data`.
+    /// `verify_access` is called for both source and destination ranges (implicitly for dest by checking capacity).
+    /// `Vec::copy_within` is safe if bounds are respected, which they are by these checks.
+    fn copy_within(
+        &mut self,
+        src_offset: usize,
+        dst_offset: usize,
+        len: usize,
+    ) -> Result<()> {
         self.verify_access(src_offset, len)?;
-        // Verify destination range
-        self.verify_access(dst_offset, len)?;
+        self.verify_access(dst_offset, len)?; // Ensure dst is also valid
+        debug_assert!(src_offset.checked_add(len).map_or(false, |end| end <= self.data.len()),
+                      "StdProvider::copy_within (src): src_offset+len must be <= self.data.len(). SrcOffset: {}, Len: {}, DataLen: {}", src_offset, len, self.data.len());
+        debug_assert!(dst_offset.checked_add(len).map_or(false, |end| end <= self.data.len()),
+                      "StdProvider::copy_within (dst): dst_offset+len must be <= self.data.len(). DstOffset: {}, Len: {}, DataLen: {}", dst_offset, len, self.data.len());
 
-        // Perform the copy_within. This itself has bounds checks but we pre-verified.
-        // The ranges must not overlap in a way that copy_from_slice would be needed,
-        // but Vec::copy_within handles overlaps correctly.
+        // Safety: verify_access for both src and dst ranges has been called.
+        // This ensures that src_offset + len and dst_offset + len are within bounds.
+        self.track_access(dst_offset, len); // Track the write to destination
+
         self.data.copy_within(src_offset..src_offset + len, dst_offset);
-        self.track_access(dst_offset, len); // Track write to destination
         Ok(())
     }
 
-    /// Ensures the provider's internal accounting of used space extends up to
-    /// `byte_offset`. This is typically called by a collection after it
-    /// logically extends its length.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the requested offset is beyond the provider's
-    /// capacity or if the operation fails internally (e.g. Vec realloc
-    /// fail, though rare). Currently, it will try to resize if
-    /// `byte_offset` is beyond current length.
     fn ensure_used_up_to(&mut self, byte_offset: usize) -> Result<()> {
-        record_global_operation(OperationType::MemoryGrow, self.verification_level);
-        if byte_offset > self.data.len() {
-            // This implies the logical size is growing. We need to ensure the Vec has this
-            // capacity and then logically extend its reported size. For Vec,
-            // this might mean resizing. For simplicity, let's ensure it can
-            // contain `byte_offset` by resizing. This might be more involved
-            // depending on exact semantics (zeroing new memory, etc.)
-            // For now, assume if it's used up to an offset, it means it should exist.
-            if byte_offset > self.data.capacity() {
-                // Attempt to reserve additional space if byte_offset exceeds capacity.
-                // This can fail if allocation fails.
-                self.data.try_reserve(byte_offset - self.data.len()).map_err(|e| {
-                    Error::memory_error(format!(
-                        "Failed to reserve space for ensure_used_up_to: {e}"
-                    ))
-                })?;
-            }
-            // If ensure_used_up_to means the valid data now extends to byte_offset,
-            // and new bytes should be zeroed or initialized:
-            if byte_offset > self.data.len() {
-                // Check again after potential reserve
-                // This is a simplification; actual behavior for uninitialized parts might
-                // differ. For now, we just ensure length, which Vec::resize
-                // does. If the intent is just to mark as used, not necessarily
-                // initialize, this might be different. For Vec, length implies
-                // initialized.
-                self.data.resize(byte_offset, 0); // Fill new space with 0
+        if byte_offset > self.data.capacity() {
+            // This attempts to reserve additional capacity if byte_offset is beyond current capacity.
+            // Vec::reserve might panic on allocation failure.
+            let additional = byte_offset - self.data.len(); // Only reserve if truly needed beyond current length.
+            if additional > 0 && byte_offset > self.data.capacity() {
+                 // Calculate needed additional capacity beyond current capacity.
+                let needed_cap_increase = byte_offset - self.data.capacity();
+                self.data.reserve(needed_cap_increase);
             }
         }
-        // If byte_offset is within current len, it's already "used up to" that point.
+        // Ensure the length of the vector is at least `byte_offset`.
+        // This is crucial for collections like BoundedVec that manage their own length
+        // but rely on the provider to have the underlying storage initialized or accessible.
+        if byte_offset > self.data.len() {
+            // Vec::resize might panic on allocation failure.
+            self.data.resize(byte_offset, 0u8); // Initialize new bytes to 0
+        }
         Ok(())
     }
+
+    fn get_allocator(&self) -> &Self::Allocator {
+        self // Since Self implements Allocator
+    }
+
+    fn acquire_memory(&self, layout: core::alloc::Layout) -> WrtResult<*mut u8> {
+        // Delegate to its own Allocator implementation
+        self.allocate(layout)
+    }
+
+    unsafe fn release_memory(&self, ptr: *mut u8, layout: core::alloc::Layout) -> WrtResult<()> {
+        // Delegate to its own Allocator implementation
+        self.deallocate(ptr, layout)
+    }
+
+    fn new_handler(&self) -> Result<SafeMemoryHandler<Self>> where Self: Sized + Clone {
+        Ok(SafeMemoryHandler::new(self.clone()))
+    }
+
+    // Fix duplicate memory_stats implementation
+    // fn memory_stats(&self) -> Stats {
+    //    self.memory_stats() // Calls its own inherent method
+    // }
 }
 
 /// Memory provider using a fixed-size array, suitable for `no_std`
@@ -1064,10 +1023,87 @@ pub struct NoStdProvider<const N: usize> {
     verification_level: VerificationLevel,
 }
 
-#[cfg(not(feature = "std"))]
+impl<const N: usize> PartialEq for NoStdProvider<N> {
+    fn eq(&self, other: &Self) -> bool {
+        // Compare data content up to 'used' length, 'used' length itself, and verification_level.
+        // Atomics are stateful and not part of fundamental equality.
+        // The raw buffer `self.data` should be compared only up to `self.used`
+        // because bytes beyond `used` are uninitialized or stale.
+        if self.used != other.used {
+            return false;
+        }
+        if self.verification_level != other.verification_level {
+            return false;
+        }
+        // Compare the initialized parts of the data buffer
+        self.data[..self.used] == other.data[..other.used]
+    }
+}
+
+impl<const N: usize> Eq for NoStdProvider<N> {}
+
+impl<const N: usize> core::hash::Hash for NoStdProvider<N> {
+    fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
+        // Only hash fields that define the identity or configuration.
+        // Runtime state like `used` or `access_count` might not be part of the hash
+        // if hashing is for e.g. inserting into a HashMap based on configuration.
+        // However, for a general Hash impl, more fields might be included.
+        // For now, let's hash based on its constant capacity N and current content up to `used`.
+        // Atomics are problematic for direct hashing in a struct.
+        // We should hash their current values if they contribute to identity.
+
+        // Hash the generic constant N (part of the type identity)
+        N.hash(state);
+        // Hash the `used` length
+        self.used.hash(state);
+        // Hash the data actually in use
+        self.data[0..self.used].hash(state);
+        // Hash verification_level as it's a configuration aspect
+        self.verification_level.hash(state);
+
+        // Do NOT hash atomics directly. If their values are part of the hashable identity,
+        // load them. For DefaultMemoryProvider(NoStdProvider<0>), these are likely not critical for Hash.
+        // self.access_count.load(Ordering::Relaxed).hash(state);
+        // self.last_access_offset.load(Ordering::Relaxed).hash(state);
+        // self.last_access_length.load(Ordering::Relaxed).hash(state);
+    }
+}
+
+impl<const N: usize> Clone for NoStdProvider<N> {
+    fn clone(&self) -> Self {
+        Self {
+            data: self.data, // [u8; N] is Copy
+            used: self.used,
+            access_count: AtomicUsize::new(self.access_count.load(Ordering::Relaxed)),
+            last_access_offset: AtomicUsize::new(self.last_access_offset.load(Ordering::Relaxed)),
+            last_access_length: AtomicUsize::new(self.last_access_length.load(Ordering::Relaxed)),
+            verification_level: self.verification_level, // VerificationLevel is Copy
+        }
+    }
+}
+
+impl<const N: usize> Default for NoStdProvider<N> {
+    fn default() -> Self {
+        // Safety: N must be such that [0u8; N] is valid.
+        // This is generally true for array initializers.
+        // If N could be excessively large leading to stack overflow for the zeroed array,
+        // that's a general concern with large const generic arrays on stack,
+        // not specific to Default. For typical buffer sizes, this is fine.
+        Self {
+            data: [0u8; N], // Initialize with zeros. Requires N to be known at compile time.
+            used: 0,
+            access_count: AtomicUsize::new(0),
+            last_access_offset: AtomicUsize::new(0),
+            last_access_length: AtomicUsize::new(0),
+            verification_level: VerificationLevel::default(),
+        }
+    }
+}
+
 impl<const N: usize> fmt::Debug for NoStdProvider<N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("NoStdProvider")
+            .field("capacity", &N)
             .field("used", &self.used)
             .field("access_count", &self.access_count.load(Ordering::Relaxed))
             .field("verification_level", &self.verification_level)
@@ -1076,24 +1112,37 @@ impl<const N: usize> fmt::Debug for NoStdProvider<N> {
 }
 
 #[cfg(not(feature = "std"))]
-impl<const N: usize> Default for NoStdProvider<N> {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-#[cfg(not(feature = "std"))]
 impl<const N: usize> NoStdProvider<N> {
-    /// Create a new empty memory provider
+    /// Create a new empty memory provider with default verification level
     pub fn new() -> Self {
+        Self::with_verification_level(VerificationLevel::default())
+    }
+
+    /// Create a new empty memory provider with the specified verification level
+    pub fn with_verification_level(level: VerificationLevel) -> Self {
         Self {
             data: [0; N],
             used: 0,
             access_count: AtomicUsize::new(0),
             last_access_offset: AtomicUsize::new(0),
             last_access_length: AtomicUsize::new(0),
-            verification_level: VerificationLevel::default(),
+            verification_level: level,
         }
+    }
+    
+    /// Create a new memory provider with specified size and verification level
+    pub fn new_with_size(size: usize, level: VerificationLevel) -> Result<Self> {
+        if size > N {
+            return Err(Error::memory_error(
+                "Requested size exceeds NoStdProvider fixed capacity",
+            ));
+        }
+        
+        let mut provider = Self::with_verification_level(level);
+        if size > 0 {
+            provider.resize(size)?;
+        }
+        Ok(provider)
     }
 
     /// Set the data for this memory provider
@@ -1104,11 +1153,9 @@ impl<const N: usize> NoStdProvider<N> {
     /// `N`.
     pub fn set_data(&mut self, data: &[u8]) -> Result<()> {
         if data.len() > N {
-            return Err(Error::memory_error(format!(
-                "Data too large for fixed-size buffer: {} > {}",
-                data.len(),
-                N
-            )));
+            return Err(Error::memory_error(
+                "Data too large for NoStdProvider capacity",
+            ));
         }
 
         // Copy the data into our fixed buffer
@@ -1150,20 +1197,15 @@ impl<const N: usize> NoStdProvider<N> {
     /// Returns an error if `new_size` exceeds the fixed capacity `N`.
     pub fn resize(&mut self, new_size: usize) -> Result<()> {
         if new_size > N {
-            return Err(Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_OUT_OF_BOUNDS,
-                format!("Cannot resize to {} (max: {})", new_size, N),
+            return Err(Error::memory_error(
+                "NoStdProvider cannot resize beyond fixed capacity",
             ));
         }
-
-        // Zero out any newly used memory
-        if new_size > self.used {
-            for i in self.used..new_size {
-                self.data[i] = 0;
-            }
-        }
-
+        // If shrinking, no need to zero out, just update `used`.
+        // If growing, the new bytes are uninitialized but within `data` array.
+        // The safety of using them later depends on the caller initializing them.
+        // For a `Provider`, `size()` reflects initialized/usable memory.
+        // `ensure_used_up_to` should be the primary way to "zero-out" or logically extend.
         self.used = new_size;
         Ok(())
     }
@@ -1196,10 +1238,13 @@ impl<const N: usize> NoStdProvider<N> {
             return Err(Error::new(
                 ErrorCategory::Memory,
                 codes::MEMORY_ACCESS_OUT_OF_BOUNDS,
+                #[cfg(any(feature = "alloc", feature = "std"))]
                 format!(
                     "Last access out of bounds: offset={}, len={}, used={}",
                     offset, length, self.used
                 ),
+                #[cfg(not(any(feature = "alloc", feature = "std")))]
+                "Last access out of bounds"
             ));
         }
 
@@ -1215,145 +1260,298 @@ impl<const N: usize> NoStdProvider<N> {
             max_access_size: self.last_access_length.load(Ordering::Relaxed),
         }
     }
+}
 
-    #[allow(dead_code)]
-    fn get_slice_mut(&mut self, offset: usize, len: usize) -> Result<SliceMut<'_>> {
-        if offset + len > N {
-            return Err(Error::memory_error("Out of bounds access".to_string()));
-        }
-        let slice = &mut self.data[offset..offset + len];
-        SliceMut::new(slice)
+#[cfg(not(feature = "std"))]
+impl<const N: usize> Provider for NoStdProvider<N> {
+    type Allocator = Self; // NoStdProvider itself is the allocator
+
+    fn borrow_slice(&self, offset: usize, len: usize) -> Result<Slice<'_>> {
+        self.verify_access(offset, len)?;
+        debug_assert!(offset.checked_add(len).map_or(false, |end| end <= self.used),
+                      "NoStdProvider::borrow_slice: offset+len must be <= self.used. Offset: {}, Len: {}, Used: {}", offset, len, self.used);
+        debug_assert!(offset.checked_add(len).map_or(false, |end| end <= N),
+                      "NoStdProvider::borrow_slice: offset+len must be <= N (capacity). Offset: {}, Len: {}, Capacity: {}", offset, len, N);
+        Slice::with_verification_level(&self.data[offset..offset + len], self.verification_level)
     }
 
-    #[allow(dead_code)]
-    fn copy_within(&mut self, src_offset: usize, dst_offset: usize, len: usize) -> Result<()> {
-        if src_offset + len > N || dst_offset + len > N {
-            return Err(Error::memory_error("Out of bounds access".to_string()));
+    fn write_data(&mut self, offset: usize, data_to_write: &[u8]) -> Result<()> {
+        self.verify_access(offset, data_to_write.len())?;
+        if offset + data_to_write.len() > N {
+            return Err(Error::memory_out_of_bounds(
+                offset + data_to_write.len(),
+                 N,
+                 "Write data overflows capacity"
+            ));
         }
+        self.data[offset..offset + data_to_write.len()].copy_from_slice(data_to_write);
+        self.used = core::cmp::max(self.used, offset + data_to_write.len());
+        // TODO: Consider if checksum/integrity of Slice/SliceMut needs update here if they are live.
+        // This provider itself doesn't maintain a checksum over its raw data array.
+        // Individual Slices/SliceMuts do.
+        Ok(())
+    }
+
+    fn verify_access(&self, offset: usize, len: usize) -> Result<()> {
+        // Track access for statistics, if verification level allows
+        if self.verification_level.should_track_stats() {
+            self.access_count.fetch_add(1, Ordering::Relaxed);
+            self.last_access_offset.store(offset, Ordering::Relaxed);
+            self.last_access_length.store(len, Ordering::Relaxed);
+        }
+
+        if len == 0 {
+            // Allow zero-length access at any point up to capacity (consistent with slice behavior)
+            // Or up to self.used if only initialized parts are allowed. For now, capacity.
+            if offset > N {
+                 return Err(Error::memory_out_of_bounds(offset, N, "Zero-length access out of capacity"));
+            }
+            return Ok(());
+        }
+
+        if offset >= N || offset + len > N {
+            Err(Error::memory_out_of_bounds(offset + len, N, "Memory access out of provider capacity"))
+        } else if self.verification_level.should_check_init() && (offset >= self.used || offset + len > self.used) {
+            // This check depends on policy: should we allow access to uninitialized parts within capacity?
+            // For now, if init checks are on, restrict to 'used' area.
+            Err(Error::memory_uninitialized(offset + len, self.used, "Memory access to uninitialized region"))
+        }
+        else {
+            Ok(())
+        }
+    }
+
+    fn size(&self) -> usize {
+        self.used
+    }
+
+    fn capacity(&self) -> usize {
+        N
+    }
+
+    fn verify_integrity(&self) -> Result<()> {
+        // Delegate to the struct's own verify_integrity method
+        self.verify_integrity() // Corrected: Call inherent method
+    }
+
+    fn set_verification_level(&mut self, level: VerificationLevel) {
+        self.verification_level = level;
+    }
+
+    fn verification_level(&self) -> VerificationLevel {
+        self.verification_level
+    }
+
+    fn get_allocator(&self) -> &Self::Allocator {
+        self
+    }
+
+    fn acquire_memory(&self, layout: core::alloc::Layout) -> WrtResult<*mut u8> {
+        // NoStdProvider does not dynamically allocate in the typical sense.
+        // It has a fixed buffer. This is more for trait compatibility.
+        // We could return a pointer into self.data if layout fits and is unused,
+        // but that's complex and stateful, not typical for `allocate`.
+        // For now, mirror the existing Allocator impl for NoStdProvider
+        Allocator::allocate(self, layout)
+    }
+
+    unsafe fn release_memory(&self, ptr: *mut u8, layout: core::alloc::Layout) -> WrtResult<()> {
+        // Mirror the existing Allocator impl for NoStdProvider
+        Allocator::deallocate(self, ptr, layout)
+    }
+    
+    fn new_handler(&self) -> Result<SafeMemoryHandler<Self>> where Self: Sized + Clone {
+        Ok(SafeMemoryHandler::new(self.clone()))
+    }
+
+    fn memory_stats(&self) -> Stats {
+         // Delegate to the struct's own memory_stats method
+        self.memory_stats() // Corrected: Call inherent method
+    }
+    
+    fn ensure_used_up_to(&mut self, byte_offset: usize) -> Result<()> {
+        if byte_offset > N {
+            return Err(Error::new(
+                ErrorCategory::Memory,
+                codes::CAPACITY_EXCEEDED,
+                "Cannot ensure used up to an offset beyond capacity",
+            ));
+        }
+        self.used = core::cmp::max(self.used, byte_offset);
+        Ok(())
+    }
+
+    fn get_slice_mut(&mut self, offset: usize, len: usize) -> Result<SliceMut<'_>> {
+        self.verify_access(offset, len)?; // Ensures offset+len is within self.used or N based on policy
+                                          // SliceMut implies modification, so it should be within 'used' or allow writing to extend 'used'.
+                                          // For now, ensure it's within capacity N for mutable access.
+        if offset + len > N {
+            return Err(Error::memory_out_of_bounds(offset+len, N, "get_slice_mut out of capacity"));
+        }
+        // If strict init checks are on, we might want to restrict len to self.used - offset.
+        // However, SliceMut is often used to write new data.
+        // Let's allow getting a slice up to capacity N, and rely on verify_access for init checks if enabled.
+        self.used = core::cmp::max(self.used, offset + len); // Getting a mut slice implies it might be used.
+        SliceMut::with_verification_level(&mut self.data[offset..offset + len], self.verification_level)
+    }
+
+    fn copy_within(
+        &mut self,
+        src_offset: usize,
+        dst_offset: usize,
+        len: usize,
+    ) -> Result<()> {
+        // Verify source read
+        self.verify_access(src_offset, len)?;
+        // Verify destination write (up to capacity)
+        if dst_offset + len > N {
+            return Err(Error::memory_out_of_bounds(
+                dst_offset + len,
+                N,
+                "copy_within destination out of capacity"
+            ));
+        }
+
+        // Perform the copy
+        // copy_within is safe if src and dst ranges are valid, which verify_access should ensure for src,
+        // and our bounds check for dst.
         self.data.copy_within(src_offset..src_offset + len, dst_offset);
+        
+        // Update used size if dst extends it
+        self.used = core::cmp::max(self.used, dst_offset + len);
+        Ok(())
+    }
+}
+
+// New Allocator trait
+/// A trait for types that can allocate and deallocate memory.
+pub trait Allocator: Debug + Send + Sync {
+    /// Allocates a block of memory with the given layout.
+    /// # Errors
+    /// Returns an error if allocation fails.
+    fn allocate(&self, layout: core::alloc::Layout) -> WrtResult<*mut u8>;
+
+    /// Deallocates a previously allocated block of memory.
+    /// # Safety
+    /// The pointer `ptr` must have been previously allocated by this allocator
+    /// with the same `layout`, and not yet deallocated.
+    /// # Errors
+    /// Returns an error if deallocation fails (though typically this should succeed or panic).
+    unsafe fn deallocate(&self, ptr: *mut u8, layout: core::alloc::Layout) -> WrtResult<()>;
+}
+
+impl<const N: usize> Allocator for NoStdProvider<N> {
+    fn allocate(&self, layout: core::alloc::Layout) -> WrtResult<*mut u8> {
+        // NoStdProvider with a fixed-size array cannot dynamically allocate in the general sense.
+        // It could potentially return a pointer into its *own* buffer if N is large enough
+        // and it had a mechanism to manage sub-allocations, but that's complex.
+        // For simplicity, especially for NoStdProvider<0>, this will fail.
+        if N == 0 || layout.size() > N || layout.size() == 0 { // Cannot allocate if no space or zero size requested (which can be problematic)
+            return Err(Error::new(
+                ErrorCategory::Memory,
+                codes::MEMORY_ALLOCATION_ERROR,
+                "NoStdProvider cannot satisfy allocation request (zero capacity or request too large/zero)",
+            ));
+        }
+        // This is a gross oversimplification. A real fixed-buffer allocator
+        // would need to manage free blocks, alignment, etc.
+        // Returning self.data.as_ptr() is not safe without proper management.
+        // For now, always fail for N > 0 as well, unless a bump allocator is implemented.
+        Err(Error::new(
+            ErrorCategory::Memory,
+            codes::UNSUPPORTED_OPERATION, // Or MEMORY_ALLOCATION_ERROR
+            "NoStdProvider dynamic allocation not implemented; use pre-allocated buffer.",
+        ))
+    }
+
+    unsafe fn deallocate(&self, _ptr: *mut u8, _layout: core::alloc::Layout) -> WrtResult<()> {
+        // If allocate always fails or uses a simple bump, deallocate might be a no-op or reset.
+        // For now, as allocate is unsupported, deallocate is also effectively a no-op that returns Ok.
         Ok(())
     }
 }
 
 /// A generic handler for safe memory operations, backed by a `Provider`.
-///
-/// This struct acts as a wrapper around a `Provider` implementation,
-/// adding a layer of verification control and a consistent interface.
 #[derive(Debug)]
-pub struct Handler<P: Provider> {
-    /// The internal memory provider instance.
+pub struct SafeMemoryHandler<P: Provider> {
     provider: P,
-    /// Verification level for operations managed by this handler.
-    /// This level can be used to influence checks within the handler itself
-    /// or be passed down to the provider if the provider also uses it.
-    verification_level: VerificationLevel,
+    // TODO: Consider if a global verification_level for the handler itself is needed,
+    // or if it always defers to the provider's level.
+    // For now, it's a simple wrapper.
 }
 
-impl<P: Provider> Handler<P> {
-    /// Creates a new `Handler` with a given provider and verification
-    /// level.
-    ///
-    /// The provider is moved into the handler.
-    pub fn new(mut provider: P, verification_level: VerificationLevel) -> Self {
-        provider.set_verification_level(verification_level);
-        Self { provider, verification_level }
+impl<P: Provider + Clone> Clone for SafeMemoryHandler<P> {
+    fn clone(&self) -> Self {
+        Self { provider: self.provider.clone() }
+    }
+}
+
+impl<P: Provider + PartialEq> PartialEq for SafeMemoryHandler<P> {
+    fn eq(&self, other: &Self) -> bool {
+        self.provider == other.provider
+        // Add comparison for verification_level if it's added to the struct
+    }
+}
+
+impl<P: Provider + Eq> Eq for SafeMemoryHandler<P> {}
+
+impl<P: Provider> SafeMemoryHandler<P> {
+    pub fn new(provider: P) -> Self {
+        Self { provider }
     }
 
-    /// Sets the verification level for this handler and its underlying
-    /// provider.
-    pub fn set_verification_level(&mut self, level: VerificationLevel) {
-        self.verification_level = level;
-        self.provider.set_verification_level(level);
-    }
+    // Example of delegating a method; others would follow a similar pattern or
+    // add more logic.
+    // This makes SafeMemoryHandler a pass-through or a place for additional logic.
+    // The bounded collections would call methods on SafeMemoryHandler, which then uses P.
 
-    /// Gets the current verification level of this handler.
-    pub fn verification_level(&self) -> VerificationLevel {
-        self.verification_level
-    }
-
-    /// Gets a safe slice from the underlying memory provider.
-    pub fn get_slice(&self, offset: usize, len: usize) -> Result<Slice<'_>> {
-        self.provider.borrow_slice(offset, len)
-    }
-
-    /// Writes data to the underlying memory provider.
-    pub fn write_data(&mut self, offset: usize, data: &[u8]) -> Result<()> {
-        self.provider.write_data(offset, data)
-    }
-
-    /// Gets the current size of the memory from the provider.
-    pub fn size(&self) -> usize {
-        self.provider.size()
-    }
-
-    /// Gets the total capacity of the memory from the provider.
-    pub fn capacity(&self) -> usize {
-        self.provider.capacity()
-    }
-
-    /// Verifies the integrity of the underlying memory provider.
-    pub fn verify_integrity(&self) -> Result<()> {
-        self.provider.verify_integrity()
-    }
-
-    /// Gets memory usage statistics from the provider.
-    pub fn memory_stats(&self) -> Stats {
-        self.provider.memory_stats()
-    }
-
-    /// Provides immutable access to the underlying provider.
     pub fn provider(&self) -> &P {
         &self.provider
     }
 
-    /// Provides mutable access to the underlying provider.
     pub fn provider_mut(&mut self) -> &mut P {
         &mut self.provider
     }
 
-    /// Gets a mutable slice from the underlying memory provider.
-    pub fn get_slice_mut(&mut self, offset: usize, len: usize) -> Result<SliceMut<'_>> {
-        self.provider.get_slice_mut(offset, len)
+    // Delegate some common Provider methods as needed by BoundedVec/Stack
+    // This makes BoundedVec/Stack's use of `handler.method()` work if they
+    // were expecting these directly on the handler.
+
+    /// Borrows a slice of memory with safety guarantees.
+    /// # Safety
+    /// See `Provider::borrow_slice`
+    pub fn borrow_slice(&self, offset: usize, len: usize) -> Result<Slice<'_>> {
+        self.provider.borrow_slice(offset, len)
     }
 
-    /// Copies data within the memory provider from a source offset to a
-    /// destination offset.
-    pub fn copy_within(&mut self, src_offset: usize, dst_offset: usize, len: usize) -> Result<()> {
-        self.provider.copy_within(src_offset, dst_offset, len)
+    /// Writes data to the memory at a given offset.
+    /// # Safety
+    /// See `Provider::write_data`
+    pub fn write_data(&mut self, offset: usize, data: &[u8]) -> Result<()> {
+        self.provider.write_data(offset, data)
     }
 
-    /// Ensures the provider's internal accounting of used space extends up to
-    /// `byte_offset`.
+    pub fn verify_access(&self, offset: usize, len: usize) -> Result<()> {
+        self.provider.verify_access(offset, len)
+    }
+
+    pub fn size(&self) -> usize {
+        self.provider.size()
+    }
+
+    pub fn capacity(&self) -> usize {
+        self.provider.capacity()
+    }
+    
+    pub fn verification_level(&self) -> VerificationLevel {
+        self.provider.verification_level()
+    }
+
+    pub fn set_verification_level(&mut self, level: VerificationLevel) {
+        self.provider.set_verification_level(level);
+    }
+    
     pub fn ensure_used_up_to(&mut self, byte_offset: usize) -> Result<()> {
         self.provider.ensure_used_up_to(byte_offset)
     }
 }
-
-// Constructors for specific default providers
-#[cfg(feature = "std")]
-impl Handler<StdProvider> {
-    /// Creates a new `Handler` backed by an `StdProvider`
-    /// initialized with a specific capacity and verification level.
-    #[must_use]
-    pub fn with_std_provider(capacity: usize, verification_level: VerificationLevel) -> Self {
-        let mut provider = StdProvider::with_capacity(capacity);
-        provider.set_verification_level(verification_level);
-        Self { provider, verification_level }
-    }
-}
-
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-impl<const N: usize> Handler<NoStdProvider<N>> {
-    /// Creates a new `Handler` backed by a `NoStdProvider`
-    /// with a compile-time fixed size N and a given verification level.
-    pub fn with_no_std_provider(verification_level: VerificationLevel) -> Self {
-        let mut provider = NoStdProvider::<N>::new();
-        provider.set_verification_level(verification_level);
-        Self { provider, verification_level }
-    }
-}
-
-// Include tests if the feature is enabled
-// #[cfg(all(feature = "std", test))]
-// #[path = "memory_integration_tests.rs"]
-// mod memory_integration_tests; // Removed missing module

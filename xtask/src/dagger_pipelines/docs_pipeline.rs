@@ -38,12 +38,12 @@ pub async fn run_docs_pipeline(
     )?;
 
     let mut build_futures = Vec::new();
-    for (i, version) in versions.iter().enumerate() {
+    for (_i, version) in versions.iter().enumerate() {
         let client_clone = client.clone();
         let output_dir_clone = output_dir.clone();
         let base_path_clone = base_path.clone();
         let version_clone = version.clone();
-        let is_main = i == 0;
+        let is_main = version_clone == "main";
 
         build_futures.push(tokio::spawn(async move {
             run_docs_version_pipeline(
@@ -76,79 +76,291 @@ pub async fn run_docs_pipeline(
         bail!("One or more documentation versions failed to build/export. See logs for details.");
     }
 
+    // After all versions are successfully built, copy the root_index.html
+    let root_index_src_path = base_path.join("docs").join("source").join("root_index.html");
+    let root_index_dest_path = output_dir.join("index.html");
+    if root_index_src_path.exists() {
+        anyhow::Context::context(
+            fs::copy(&root_index_src_path, &root_index_dest_path),
+            format!(
+                "Failed to copy root_index.html from {:?} to {:?}",
+                root_index_src_path, root_index_dest_path
+            ),
+        )?;
+        info!("Copied root redirect index.html to {:?}", root_index_dest_path);
+    } else {
+        warn!("Root redirect index.html not found at {:?}, skipping copy.", root_index_src_path);
+    }
+
+    // Generate switcher.json
+    // The `version_path_prefix` in conf.py is used by the theme to *construct* the
+    // full URL to switcher.json. The `version` field within switcher.json
+    // entries should be relative paths from where switcher.json is located. So,
+    // if switcher.json is at the root of docs_artifact_final, then "./main/",
+    // "./v0.1.0/" are correct.
+    if let Err(e) = generate_switcher_json(&output_dir, &versions, "./") {
+        warn!(
+            "Failed to generate switcher.json: {:?}. Version switcher in docs might not work \
+             correctly.",
+            e
+        );
+        // Decide if this should be a hard error: bail!(e.context("Failed to
+        // generate switcher.json"));
+    }
+
     info!("All documentation versions built and exported successfully.");
+    Ok(())
+}
+
+// Helper function to generate switcher.json
+#[derive(serde::Serialize)]
+struct SwitcherEntry {
+    name: String,
+    version: String, // This will be the plain version string, e.g., "local", "main"
+    url: String,     // This will be the absolute URL from server root, e.g., "/local/", "/main/"
+}
+
+fn generate_switcher_json(
+    output_dir: &Path,
+    built_versions: &[String],
+    _base_url_prefix: &str, /* No longer used for constructing the URL path itself, but kept for
+                             * signature stability if needed elsewhere. */
+) -> AnyhowResult<()> {
+    if built_versions.is_empty() {
+        info!("No versions provided to generate switcher.json, skipping.");
+        return Ok(());
+    }
+
+    // Identify the latest semver tag to mark as stable
+    let mut latest_semver_tag: Option<semver::Version> = None;
+    for v_str in built_versions {
+        if v_str.starts_with('v') {
+            if let Ok(parsed_ver) = semver::Version::parse(&v_str[1..]) {
+                if latest_semver_tag.as_ref().map_or(true, |latest| parsed_ver > *latest) {
+                    latest_semver_tag = Some(parsed_ver);
+                }
+            }
+        }
+    }
+    let latest_semver_tag_str = latest_semver_tag.as_ref().map(|v| format!("v{}", v));
+
+    let mut entries = Vec::new();
+    for version_str in built_versions {
+        let name = if version_str == "local" {
+            // Handle "local" version
+            "Local (uncommitted)".to_string()
+        } else if version_str == "main" {
+            "main (development)".to_string()
+        } else if Some(version_str.clone()) == latest_semver_tag_str {
+            format!("{} (stable)", version_str)
+        } else {
+            version_str.clone()
+        };
+
+        let plain_version = version_str.trim_end_matches('/').to_string();
+        // Construct the absolute URL path from server root, ensuring it ends with a
+        // slash.
+        let absolute_url = format!("/{}/", plain_version);
+
+        entries.push(SwitcherEntry { name, version: plain_version, url: absolute_url });
+    }
+
+    // Sort entries: "Local" first, then "main", then semver tags in descending
+    // order, then others alphabetically.
+    entries.sort_by(|a, b| {
+        let a_is_local = a.name.starts_with("Local");
+        let b_is_local = b.name.starts_with("Local");
+        let a_is_main = a.name.starts_with("main");
+        let b_is_main = b.name.starts_with("main");
+
+        if a_is_local && !b_is_local {
+            return std::cmp::Ordering::Less;
+        } // Local first
+        if !a_is_local && b_is_local {
+            return std::cmp::Ordering::Greater;
+        }
+
+        if a_is_main && !b_is_main {
+            return std::cmp::Ordering::Less;
+        } // Then main
+        if !a_is_main && b_is_main {
+            return std::cmp::Ordering::Greater;
+        }
+
+        // Extract version string for semver parsing (e.g., from "v1.2.3 (stable)" ->
+        // "1.2.3")
+        let re = regex::Regex::new(r"v?(\d+\.\d+\.\d+)").unwrap(); // Simple regex for semver part
+
+        let a_semver_str = re.captures(&a.name).and_then(|caps| caps.get(1)).map(|m| m.as_str());
+        let b_semver_str = re.captures(&b.name).and_then(|caps| caps.get(1)).map(|m| m.as_str());
+
+        if let (Some(a_sv_str), Some(b_sv_str)) = (a_semver_str, b_semver_str) {
+            if let (Ok(a_ver), Ok(b_ver)) =
+                (semver::Version::parse(a_sv_str), semver::Version::parse(b_sv_str))
+            {
+                return b_ver.cmp(&a_ver); // Descending for versions
+            }
+        }
+        a.name.cmp(&b.name) // Fallback to alphabetical
+    });
+
+    let switcher_file_path = output_dir.join("switcher.json");
+    let file = anyhow::Context::context(
+        fs::File::create(&switcher_file_path),
+        format!("Failed to create switcher.json at {:?}", switcher_file_path),
+    )?;
+    anyhow::Context::context(
+        serde_json::to_writer_pretty(file, &entries),
+        "Failed to write switcher.json",
+    )?;
+
+    info!("Generated switcher.json at {:?}", switcher_file_path);
     Ok(())
 }
 
 #[instrument(name = "docs_version_pipeline", skip_all, fields(version = % version), err)]
 async fn run_docs_version_pipeline(
     client: &Query,
-    _base_path: &Path,
+    base_path: &Path,
     output_dir: &Path,
     version: &str,
-    is_main_branch: bool,
+    _is_main_branch: bool,
 ) -> AnyhowResult<()> {
     info!("Running docs pipeline for version: {}", version);
-    let version_docs_path = output_dir.join(version);
+    let version_docs_output_path = output_dir.join(version);
     anyhow::Context::context(
-        fs::create_dir_all(&version_docs_path),
-        format!("Failed to create version directory for {}", version),
+        fs::create_dir_all(&version_docs_output_path),
+        format!("Failed to create version output directory for {}", version),
     )?;
 
-    let worktree_path = anyhow::Context::context(
-        TempDir::new(),
-        "Failed to create temporary directory for git worktree",
-    )?;
-    info!("Created temporary worktree at: {:?} for version: {}", worktree_path.path(), version);
+    let docs_src_host_path_str: String;
+    // This guard will ensure TempDir is cleaned up when it goes out of scope if a
+    // worktree was created.
+    let _worktree_temp_dir_guard: Option<TempDir> = if version == "local" {
+        let local_docs_dir = base_path.join("docs");
+        info!("Using local docs directory for version 'local' from: {:?}", local_docs_dir);
+        docs_src_host_path_str = local_docs_dir
+            .to_str()
+            .ok_or_else(|| anyhow!("Local docs path is not valid UTF-8: {:?}", local_docs_dir))?
+            .to_string();
+        None // No TempDir needed for "local" version
+    } else {
+        // Existing git worktree logic for actual git versions (main, tags, etc.)
+        let temp_dir = anyhow::Context::context(
+            TempDir::new(),
+            "Failed to create temporary directory for git worktree",
+        )?;
+        info!("Created temporary worktree at: {:?} for version: {}", temp_dir.path(), version);
+        let worktree_path_str = temp_dir.path().to_str().ok_or_else(|| {
+            anyhow!("Temporary worktree path is not valid UTF-8: {:?}", temp_dir.path())
+        })?;
 
-    let worktree_path_str = worktree_path
-        .path()
-        .to_str()
-        .ok_or_else(|| anyhow!("Invalid worktree path: not valid UTF-8"))?;
+        // Verify the version exists as a git ref before attempting to create a worktree
+        info!("Verifying git version/ref: {}", version);
+        let verify_version_cmd_args = ["rev-parse", "--verify", version];
+        let verify_output = anyhow::Context::context(
+            std::process::Command::new("git").args(&verify_version_cmd_args).output(),
+            format!("Failed to execute git rev-parse command for version {}", version),
+        )?;
 
-    let git_checkout_cmd_args = ["worktree", "add", "--detach", worktree_path_str, version];
+        if !verify_output.status.success() {
+            let stderr = String::from_utf8_lossy(&verify_output.stderr);
+            error!(
+                "Git rev-parse command failed for version {}: {}\\nStdout: {}\\nStderr: {}",
+                version,
+                verify_output.status,
+                String::from_utf8_lossy(&verify_output.stdout),
+                stderr
+            );
+            bail!(
+                "Git rev-parse --verify failed for version: {}. Is it a valid git reference \
+                 (branch, tag, commit hash)? Stderr: {}",
+                version,
+                stderr
+            );
+        }
+        info!("Successfully verified git version/ref: {}", version);
 
-    info!("Running git command: git {:?}", git_checkout_cmd_args);
-    let checkout_output = anyhow::Context::context(
-        std::process::Command::new("git").args(&git_checkout_cmd_args).output(),
-        format!("Failed to execute git worktree command for version {}", version),
-    )?;
+        let git_checkout_cmd_args = ["worktree", "add", "--detach", worktree_path_str, version];
 
-    if !checkout_output.status.success() {
-        let stderr = String::from_utf8_lossy(&checkout_output.stderr);
-        error!(
-            "Git worktree command failed for version {}: {}\\nStdout: {}\\nStderr: {}",
-            version,
-            checkout_output.status,
-            String::from_utf8_lossy(&checkout_output.stdout),
-            stderr
-        );
-        bail!(
-            "Git worktree add command failed with status {} for version: {}. Stderr: {}",
-            checkout_output.status,
-            version,
-            stderr
-        );
-    }
-    info!("Successfully checked out version {} to {:?}", version, worktree_path.path());
+        info!("Running git command: git {:?}", git_checkout_cmd_args);
+        let checkout_output = anyhow::Context::context(
+            std::process::Command::new("git").args(&git_checkout_cmd_args).output(),
+            format!("Failed to execute git worktree command for version {}", version),
+        )?;
 
-    let docs_src_path_buf = worktree_path.path().join("docs/source");
-    let docs_src_path_in_worktree_str = docs_src_path_buf
-        .to_str()
-        .ok_or_else(|| anyhow!("Invalid docs source path in worktree: not valid UTF-8"))?;
+        if !checkout_output.status.success() {
+            let stderr = String::from_utf8_lossy(&checkout_output.stderr);
+            error!(
+                "Git worktree command failed for version {}: {}\\nStdout: {}\\nStderr: {}",
+                version,
+                checkout_output.status,
+                String::from_utf8_lossy(&checkout_output.stdout),
+                stderr
+            );
+            bail!(
+                "Git worktree add command failed with status {} for version: {}. Stderr: {}",
+                checkout_output.status,
+                version,
+                stderr
+            );
+        }
+        info!("Successfully checked out version {} to {:?}", version, temp_dir.path());
 
-    let sphinx_source_dir = client.host().directory_opts(
-        docs_src_path_in_worktree_str,
-        HostDirectoryOpts { exclude: None, include: None },
+        let worktree_docs_dir = temp_dir.path().join("docs");
+        docs_src_host_path_str = worktree_docs_dir
+            .to_str()
+            .ok_or_else(|| {
+                anyhow!("Worktree docs path is not valid UTF-8: {:?}", worktree_docs_dir)
+            })?
+            .to_string();
+        Some(temp_dir) // temp_dir is now owned by the guard and will be cleaned
+                       // up on drop.
+    };
+
+    // Dagger directory for WORKTREE/docs or local/docs
+    let docs_dagger_dir = client.host().directory_opts(
+        &docs_src_host_path_str, // This is now correctly sourced based on 'version'
+        HostDirectoryOpts { exclude: None, include: None }, /* This will include both 'source'
+                                  * and 'requirements.txt' */
     );
 
     let docs_container = client
         .container()
         .from("sphinxdoc/sphinx:latest")
-        .with_mounted_directory("/docs_src", sphinx_source_dir)
-        .with_workdir("/docs_src")
-        .with_exec(vec!["pip", "install", "-r", "../requirements.txt"])
-        .with_exec(vec!["sphinx-build", "-b", "html", ".", "../_build/html"]);
+        // Mount WORKTREE/docs to /mounted_docs first, then set workdir
+        .with_mounted_directory("/mounted_docs", docs_dagger_dir)
+        .with_workdir("/mounted_docs/source")
+        // Pass the current version to Sphinx so it can set version_match correctly
+        .with_env_variable("DOCS_VERSION", version)
+        // Set prefix to / for local serving from docs_artifact_final root. Adjust if serving from a
+        // subpath like /wrt/.
+        .with_env_variable("DOCS_VERSION_PATH_PREFIX", "/")
+        // Install build-essential (for linker cc), curl, then rustup, source its env, and then run
+        // pip install.
+        .with_exec(vec![
+            "sh",
+            "-c",
+            "\
+            apt-get update && apt-get install -y build-essential curl && \
+            export CARGO_HOME=/root/.cargo && \
+            export RUSTUP_HOME=/root/.rustup && \
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && \
+            . $CARGO_HOME/env && \
+            pip install -r ../requirements.txt",
+        ])
+        // Similarly, install build-essential, curl, rustup, source env, and run sphinx-build.
+        .with_exec(vec![
+            "sh",
+            "-c",
+            "\
+            apt-get update && apt-get install -y build-essential curl && \
+            export CARGO_HOME=/root/.cargo && \
+            export RUSTUP_HOME=/root/.rustup && \
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && \
+            . $CARGO_HOME/env && \
+            sphinx-build -vv -b html . ../_build/html",
+        ]);
 
     let exit_code = anyhow::Context::context(
         docs_container.exit_code().await,
@@ -173,8 +385,11 @@ async fn run_docs_version_pipeline(
     }
     info!("Sphinx build successful for version: {}", version);
 
+    // The relative path "../_build/html" is from the workdir
+    // "/mounted_docs/source", so it correctly points to
+    // "/mounted_docs/_build/html" in the container.
     let built_docs_dir = docs_container.directory("../_build/html");
-    let export_path_str = version_docs_path
+    let export_path_str = version_docs_output_path
         .to_str()
         .ok_or_else(|| anyhow!("Invalid version_docs_path: not valid UTF-8"))?;
 
@@ -187,28 +402,10 @@ async fn run_docs_version_pipeline(
     )?;
     info!("Exported docs for version {} to {}", version, export_path_str);
 
-    if is_main_branch {
-        info!("Version {} is main branch, copying to root output dir: {:?}", version, output_dir);
-        let main_branch_output_path_str = output_dir
-            .to_str()
-            .ok_or_else(|| anyhow!("Invalid root output path: not valid UTF-8"))?;
-        anyhow::Context::context(
-            built_docs_dir.export(main_branch_output_path_str).await,
-            format!(
-                "Failed to export main branch docs to root for version {} to {}",
-                version, main_branch_output_path_str
-            ),
-        )?;
-        info!(
-            "Exported main branch docs for version {} to {}",
-            version, main_branch_output_path_str
-        );
-    }
-
-    let path_for_logging = worktree_path.path().to_path_buf();
-    if let Err(e) = worktree_path.close() {
-        warn!("Failed to remove temporary worktree at {:?}: {}", path_for_logging, e);
-    }
+    // No explicit cleanup of _worktree_temp_dir_guard needed here as Drop will
+    // handle it. The previous explicit .close() call for worktree_path is
+    // removed. If detailed error reporting on cleanup is needed later, .close()
+    // can be called on the Option<TempDir>.
 
     Ok(())
 }

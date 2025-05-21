@@ -3,21 +3,30 @@
 // SW-REQ-ID: REQ_019
 // SW-REQ-ID: REQ_020
 //
-// Copyright (c) 2024 Ralf Anton Beier
+// Copyright (c) 2025 Ralf Anton Beier
 // Licensed under the MIT license.
 // SPDX-License-Identifier: MIT
 
-//! WebAssembly Component Model built-in type definitions
-//!
-//! This module defines the built-in types and operations available in the
-//! WebAssembly Component Model, as well as utility methods for working with
-//! them.
-
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::{vec, vec::Vec};
 use core::{fmt, str::FromStr};
-#[cfg(feature = "std")]
-use std::{vec, vec::Vec};
+
+use crate::prelude::*;
+use crate::verification::Checksum;
+use crate::traits::{ToBytes, FromBytes, Checksummable, SerializationError, WriteStream, ReadStream};
+use crate::types::ValueType;
+use crate::WrtResult;
+
+use crate::bounded::BoundedVec;
+use crate::safe_memory::NoStdProvider;
+
+use wrt_error::{Error as WrtError, ErrorCategory, codes};
+
+/// Maximum number of BuiltinType variants, used for BoundedVec capacity.
+const MAX_BUILTIN_TYPES: usize = 13;
+
+// Calculate a suitable capacity for the NoStdProvider.
+// Each BuiltinType takes 1 byte (serialized_size).
+// BoundedVec itself might have a small overhead, but provider capacity is for raw bytes.
+const ALL_AVAILABLE_PROVIDER_CAPACITY: usize = MAX_BUILTIN_TYPES * 1; // BuiltinType::default().serialized_size() is 1
 
 /// Enumeration of all supported WebAssembly Component Model built-in functions
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -66,6 +75,113 @@ pub enum BuiltinType {
     ThreadingSync,
 }
 
+impl Default for BuiltinType {
+    fn default() -> Self {
+        BuiltinType::ResourceCreate
+    }
+}
+
+impl Checksummable for BuiltinType {
+    fn update_checksum(&self, checksum: &mut Checksum) {
+        let discriminant_byte = match self {
+            // Assign distinct, stable byte values for each variant
+            BuiltinType::ResourceCreate => 0x01,
+            BuiltinType::ResourceDrop => 0x02,
+            BuiltinType::ResourceRep => 0x03,
+            BuiltinType::ResourceGet => 0x04,
+            #[cfg(feature = "component-model-async")]
+            BuiltinType::AsyncNew => 0x05,
+            #[cfg(feature = "component-model-async")]
+            BuiltinType::AsyncGet => 0x06,
+            #[cfg(feature = "component-model-async")]
+            BuiltinType::AsyncPoll => 0x07,
+            #[cfg(feature = "component-model-async")]
+            BuiltinType::AsyncWait => 0x08,
+            #[cfg(feature = "component-model-error-context")]
+            BuiltinType::ErrorNew => 0x09,
+            #[cfg(feature = "component-model-error-context")]
+            BuiltinType::ErrorTrace => 0x0A,
+            #[cfg(feature = "component-model-threading")]
+            BuiltinType::ThreadingSpawn => 0x0B,
+            #[cfg(feature = "component-model-threading")]
+            BuiltinType::ThreadingJoin => 0x0C,
+            #[cfg(feature = "component-model-threading")]
+            BuiltinType::ThreadingSync => 0x0D,
+        };
+        checksum.update_slice(&[discriminant_byte]); // Use update_slice for &[u8]
+    }
+}
+
+impl ToBytes for BuiltinType {
+    fn to_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        _provider: &PStream,
+    ) -> WrtResult<()> {
+        let byte_val = match self {
+            BuiltinType::ResourceCreate => 0,
+            BuiltinType::ResourceDrop => 1,
+            BuiltinType::ResourceRep => 2,
+            BuiltinType::ResourceGet => 3,
+            #[cfg(feature = "component-model-async")]
+            BuiltinType::AsyncNew => 4,
+            #[cfg(feature = "component-model-async")]
+            BuiltinType::AsyncGet => 5,
+            #[cfg(feature = "component-model-async")]
+            BuiltinType::AsyncPoll => 6,
+            #[cfg(feature = "component-model-async")]
+            BuiltinType::AsyncWait => 7,
+            #[cfg(feature = "component-model-error-context")]
+            BuiltinType::ErrorNew => 8,
+            #[cfg(feature = "component-model-error-context")]
+            BuiltinType::ErrorTrace => 9,
+            #[cfg(feature = "component-model-threading")]
+            BuiltinType::ThreadingSpawn => 10,
+            #[cfg(feature = "component-model-threading")]
+            BuiltinType::ThreadingJoin => 11,
+            #[cfg(feature = "component-model-threading")]
+            BuiltinType::ThreadingSync => 12,
+        };
+        writer.write_u8(byte_val).map_err(|e| {
+            e
+        })
+    }
+}
+
+impl FromBytes for BuiltinType {
+    fn from_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        _provider: &PStream,
+    ) -> WrtResult<Self> {
+        let val = reader.read_u8()?;
+        match val {
+            0 => Ok(BuiltinType::ResourceCreate),
+            1 => Ok(BuiltinType::ResourceDrop),
+            2 => Ok(BuiltinType::ResourceRep),
+            3 => Ok(BuiltinType::ResourceGet),
+            #[cfg(feature = "component-model-async")]
+            4 => Ok(BuiltinType::AsyncNew),
+            #[cfg(feature = "component-model-async")]
+            5 => Ok(BuiltinType::AsyncGet),
+            #[cfg(feature = "component-model-async")]
+            6 => Ok(BuiltinType::AsyncPoll),
+            #[cfg(feature = "component-model-async")]
+            7 => Ok(BuiltinType::AsyncWait),
+            #[cfg(feature = "component-model-error-context")]
+            8 => Ok(BuiltinType::ErrorNew),
+            #[cfg(feature = "component-model-error-context")]
+            9 => Ok(BuiltinType::ErrorTrace),
+            #[cfg(feature = "component-model-threading")]
+            10 => Ok(BuiltinType::ThreadingSpawn),
+            #[cfg(feature = "component-model-threading")]
+            11 => Ok(BuiltinType::ThreadingJoin),
+            #[cfg(feature = "component-model-threading")]
+            12 => Ok(BuiltinType::ThreadingSync),
+            _ => Err(SerializationError::InvalidFormat.into()),
+        }
+    }
+}
+
 /// Error returned when parsing a built-in type fails
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ParseBuiltinError;
@@ -79,7 +195,7 @@ impl fmt::Display for ParseBuiltinError {
 impl FromStr for BuiltinType {
     type Err = ParseBuiltinError;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+    fn from_str(s: &str) -> core::result::Result<Self, Self::Err> {
         match s {
             // Resource built-ins
             "resource.create" => Ok(Self::ResourceCreate),
@@ -187,34 +303,41 @@ impl BuiltinType {
 
     /// Get all available built-in types in the current configuration
     #[must_use]
-    pub fn all_available() -> Vec<Self> {
-        // Create a vector with the resource built-ins which are always available
-        #[allow(unused_mut)]
-        let mut result =
-            vec![Self::ResourceCreate, Self::ResourceDrop, Self::ResourceRep, Self::ResourceGet];
+    pub fn all_available() -> BoundedVec<Self, MAX_BUILTIN_TYPES, NoStdProvider<ALL_AVAILABLE_PROVIDER_CAPACITY>> {
+        let provider = NoStdProvider::<ALL_AVAILABLE_PROVIDER_CAPACITY>::new();
+        let mut result: BoundedVec<Self, MAX_BUILTIN_TYPES, _> = 
+            BoundedVec::new(provider).expect("Static BoundedVec init failed for BuiltinType::all_available");
+
+        // These pushes are infallible as MAX_BUILTIN_TYPES is calculated to hold all
+        // possible variants, and item_serialized_size (1) * MAX_BUILTIN_TYPES fits provider capacity.
+        // BoundedVec::push returns Result<(), BoundedError>, so use expect or proper handling.
+        result.push(Self::ResourceCreate).expect("Static capacity push failed");
+        result.push(Self::ResourceDrop).expect("Static capacity push failed");
+        result.push(Self::ResourceRep).expect("Static capacity push failed");
+        result.push(Self::ResourceGet).expect("Static capacity push failed");
 
         // Async built-ins
         #[cfg(feature = "component-model-async")]
         {
-            result.push(Self::AsyncNew);
-            result.push(Self::AsyncGet);
-            result.push(Self::AsyncPoll);
-            result.push(Self::AsyncWait);
+            result.push(Self::AsyncNew).expect("Static capacity push failed");
+            result.push(Self::AsyncGet).expect("Static capacity push failed");
+            result.push(Self::AsyncPoll).expect("Static capacity push failed");
+            result.push(Self::AsyncWait).expect("Static capacity push failed");
         }
 
         // Error Context built-ins
         #[cfg(feature = "component-model-error-context")]
         {
-            result.push(Self::ErrorNew);
-            result.push(Self::ErrorTrace);
+            result.push(Self::ErrorNew).expect("Static capacity push failed");
+            result.push(Self::ErrorTrace).expect("Static capacity push failed");
         }
 
         // Threading built-ins
         #[cfg(feature = "component-model-threading")]
         {
-            result.push(Self::ThreadingSpawn);
-            result.push(Self::ThreadingJoin);
-            result.push(Self::ThreadingSync);
+            result.push(Self::ThreadingSpawn).expect("Static capacity push failed");
+            result.push(Self::ThreadingJoin).expect("Static capacity push failed");
+            result.push(Self::ThreadingSync).expect("Static capacity push failed");
         }
 
         result

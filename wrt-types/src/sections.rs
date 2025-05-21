@@ -3,7 +3,7 @@
 // SW-REQ-ID: REQ_018
 // SW-REQ-ID: REQ_WASM_001
 //
-// Copyright (c) 2024 Ralf Anton Beier
+// Copyright (c) 2025 Ralf Anton Beier
 // Licensed under the MIT license.
 // SPDX-License-Identifier: MIT
 
@@ -12,7 +12,7 @@
 
 use wrt_error::{codes, Error, ErrorCategory, Result};
 
-use crate::safe_memory::SafeSlice;
+use crate::SafeSlice;
 
 /// WebAssembly section ID values
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

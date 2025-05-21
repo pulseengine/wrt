@@ -6,7 +6,7 @@
 
 // SW-REQ-ID: REQ_PERF_001
 //
-// Copyright (c) 2024 The WRT Contributors
+// Copyright (c) 2025 Ralf Anton Beier
 // Licensed under the MIT license.
 // SPDX-License-Identifier: MIT
 

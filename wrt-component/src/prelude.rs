@@ -74,6 +74,13 @@ pub use wrt_intercept::{
 // Import synchronization primitives for no_std
 #[cfg(not(feature = "std"))]
 pub use wrt_sync::{Mutex, RwLock};
+// Import component builders and resource builders with proper feature gates
+#[cfg(feature = "alloc")]
+pub use wrt_types::builder::ResourceItemBuilder;
+#[cfg(feature = "alloc")]
+pub use wrt_types::component_builder::{
+    ComponentTypeBuilder, ExportBuilder, ImportBuilder, NamespaceBuilder,
+};
 // Re-export from wrt-types
 pub use wrt_types::{
     bounded::{BoundedStack, BoundedVec},

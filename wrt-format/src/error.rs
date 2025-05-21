@@ -3,13 +3,13 @@
 //! This module provides error handling functionality for the format
 //! specification.
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::{format, string::String};
+// REMOVED alloc/std String and format imports
+// #[cfg(all(not(feature = "std"), feature = "alloc"))]
+// use alloc::{format, string::String};
 use core::fmt;
-// Import String and format macro for both std and no_std
-#[cfg(feature = "std")]
-use std::{format, string::String};
 
+// #[cfg(feature = "std")]
+// use std::{format, string::String};
 use wrt_error::Error;
 
 /// Module for error codes
@@ -25,28 +25,32 @@ pub mod codes {
 }
 
 /// Create a simple parse error with the given message
-pub fn parse_error(message: impl Into<String>) -> Error {
+pub fn parse_error(message: &'static str) -> Error {
     Error::parse_error(message)
 }
 
 /// Create a new runtime error with the given message
-pub fn runtime_error(message: impl Into<String>) -> Error {
+pub fn runtime_error(message: &'static str) -> Error {
     Error::runtime_error(message)
 }
 
 /// Create a new validation error with the given message
-pub fn validation_error(message: impl Into<String>) -> Error {
+pub fn validation_error(message: &'static str) -> Error {
     Error::validation_error(message)
 }
 
 /// Create a new type error with the given message
-pub fn type_error(message: impl Into<String>) -> Error {
+pub fn type_error(message: &'static str) -> Error {
     Error::type_error(message)
 }
 
 /// Convert an error to a WRT error
-pub fn to_wrt_error<E: fmt::Display>(err: E) -> Error {
-    Error::system_error(format!("{}", err))
+// This function is problematic without format! or a way to get a static string
+// from E. For now, it will assume E provides a static str or this function
+// needs to be re-evaluated. A common pattern for E: fmt::Display is to have E
+// be an enum where each variant can provide a static description.
+pub fn to_wrt_error(message: &'static str) -> Error {
+    Error::system_error(message)
 }
 
 /// Trait for converting a type to a WRT error
@@ -56,23 +60,23 @@ pub trait IntoError {
 }
 
 /// Create a new runtime error with the given message
-pub fn wrt_runtime_error(message: impl Into<String>) -> Error {
+pub fn wrt_runtime_error(message: &'static str) -> Error {
     Error::runtime_error(message)
 }
 
 /// Create a new validation error with the given message
-pub fn wrt_validation_error(message: impl Into<String>) -> Error {
+pub fn wrt_validation_error(message: &'static str) -> Error {
     Error::validation_error(message)
 }
 
 /// Create a new type error with the given message
-pub fn wrt_type_error(message: impl Into<String>) -> Error {
+pub fn wrt_type_error(message: &'static str) -> Error {
     Error::type_error(message)
 }
 
 /// Create a parse error with the given message
 #[deprecated(since = "0.2.0", note = "use Error::parse_error instead")]
-pub fn wrt_parse_error(message: impl Into<String>) -> Error {
+pub fn wrt_parse_error(message: &'static str) -> Error {
     parse_error(message)
 }
 
