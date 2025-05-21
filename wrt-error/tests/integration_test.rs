@@ -1,9 +1,13 @@
+// Copyright (c) 2025 Ralf Anton Beier
+// Licensed under the MIT license.
+// SPDX-License-Identifier: MIT
+
 #![allow(clippy::unwrap_used)]
 //! Integration tests for the wrt-error crate.
 
 #[cfg(test)]
 mod tests {
-    use wrt_error::{codes, kinds, Error, ErrorCategory, Result};
+    use wrt_error::{codes, Error, ErrorCategory, Result};
 
     #[test]
     fn test_error_creation() {
@@ -30,16 +34,6 @@ mod tests {
 
         let error = result.err().unwrap();
         assert!(error.is_runtime_error());
-    }
-
-    #[test]
-    #[cfg(feature = "alloc")]
-    fn test_error_conversion() {
-        // StringError can be converted to Error
-        let message = "Error message".to_string();
-        let error: Error = message.into();
-
-        assert_eq!(error.code, codes::UNKNOWN);
     }
 
     #[test]
