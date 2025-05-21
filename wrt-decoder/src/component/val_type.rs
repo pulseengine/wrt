@@ -1,3 +1,7 @@
+// Copyright (c) 2025 Ralf Anton Beier
+// Licensed under the MIT license.
+// SPDX-License-Identifier: MIT
+
 //! WebAssembly Component Model value type encoding utilities
 //!
 //! This module provides helpers for encoding component value types.

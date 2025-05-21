@@ -1,3 +1,7 @@
+// Copyright (c) 2025 Ralf Anton Beier
+// Licensed under the MIT license.
+// SPDX-License-Identifier: MIT
+
 //! Streaming parser for WebAssembly modules and components
 //!
 //! This module provides a streaming parser interface for WebAssembly modules

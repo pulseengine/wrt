@@ -1,3 +1,7 @@
+// Copyright (c) 2025 Ralf Anton Beier
+// Licensed under the MIT license.
+// SPDX-License-Identifier: MIT
+
 //! Section reader for WebAssembly modules
 //!
 //! This module provides a reader for WebAssembly module sections. It allows

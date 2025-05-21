@@ -1,3 +1,7 @@
+// Copyright (c) 2025 Ralf Anton Beier
+// Licensed under the MIT license.
+// SPDX-License-Identifier: MIT
+
 // Example demonstrating the enhanced error handling in section_error.rs
 
 use wrt_decoder::section_error::{

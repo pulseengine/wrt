@@ -1,3 +1,7 @@
+// Copyright (c) 2025 Ralf Anton Beier
+// Licensed under the MIT license.
+// SPDX-License-Identifier: MIT
+
 //! WebAssembly core module parsing and validation
 //!
 //! This module provides a high-level API for parsing and validating

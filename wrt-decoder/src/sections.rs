@@ -1,3 +1,7 @@
+// Copyright (c) 2025 Ralf Anton Beier
+// Licensed under the MIT license.
+// SPDX-License-Identifier: MIT
+
 //! Section parsers for WebAssembly binary format
 //!
 //! This module contains parsers for various sections in WebAssembly modules.

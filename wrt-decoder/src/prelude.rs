@@ -1,3 +1,7 @@
+// Copyright (c) 2025 Ralf Anton Beier
+// Licensed under the MIT license.
+// SPDX-License-Identifier: MIT
+
 //! Prelude module for wrt-decoder
 //!
 //! This module provides a unified set of imports for both std and no_std

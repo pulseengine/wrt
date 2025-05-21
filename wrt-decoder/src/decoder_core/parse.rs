@@ -1,3 +1,7 @@
+// Copyright (c) 2025 Ralf Anton Beier
+// Licensed under the MIT license.
+// SPDX-License-Identifier: MIT
+
 //! WebAssembly Core Module Parser
 //!
 //! Functions for parsing WebAssembly core modules from binary format.

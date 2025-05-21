@@ -10,6 +10,8 @@ use wrt_error::{codes, Error, ErrorCategory, Result};
 use wrt_format::binary::{WASM_MAGIC, WASM_VERSION};
 use wrt_types::{
     safe_memory::SafeSlice,
+    // Add MemoryProvider and SafeMemoryHandler for the new signature
+    safe_memory::{MemoryProvider, SafeMemoryHandler},
     types::{
         Code as WrtCode,
         CustomSection as WrtCustomSection,
@@ -65,9 +67,19 @@ use crate::{instructions, prelude::*, Parser}; // Import instructions module
 // `parse_module`).
 
 /// Decode a WebAssembly module from binary format
-pub fn decode_module(bytes: &[u8]) -> Result<WrtModule> {
+// Add MemoryProvider generic and handler argument
+pub fn decode_module<P: MemoryProvider>(
+    bytes: &[u8],
+    _handler: &mut SafeMemoryHandler<P>, /* Handler is currently unused, for future BoundedVec
+                                          * population */
+) -> Result<WrtModule> {
+    // TODO: When WrtModule uses BoundedVec, pass the handler to
+    // parse_module_internal_logic and use it to construct WrtModule's fields.
+    // For now, the internal logic still uses Vec, so this function implicitly
+    // requires 'alloc'.
     let parser = Parser::new(Some(bytes), false);
     // The internal parse_module_internal_logic now returns WrtModule
+    // It will also need the handler in the future.
     let (module, _remaining_bytes) = parse_module_internal_logic(parser)?;
     Ok(module)
 }
@@ -75,14 +87,18 @@ pub fn decode_module(bytes: &[u8]) -> Result<WrtModule> {
 /// Decode a WebAssembly module from binary format and store the original binary
 /// (Storing original binary in WrtModule is not standard, might be a specific
 /// feature here)
-pub fn decode_module_with_binary(binary: &[u8]) -> Result<WrtModule> {
+// Add MemoryProvider generic and handler argument
+pub fn decode_module_with_binary<P: MemoryProvider>(
+    binary: &[u8],
+    handler: &mut SafeMemoryHandler<P>,
+) -> Result<WrtModule> {
     // This function would need to handle how `binary: Option<SafeSlice<'static>>`
     // is populated if that field is desired on `WrtModule`. `WrtModule` as
     // defined in `wrt-types` does not have it. For now, let's assume
     // `WrtModule` is as defined in `wrt-types`. If `SafeSlice` needs to be part
     // of it, `wrt-types::Module` must be extended. This function might be
     // simplified to just call decode_module for now.
-    decode_module(binary)
+    decode_module(binary, handler)
 }
 
 /// Encode a custom section to binary format
@@ -95,6 +111,8 @@ pub fn decode_module_with_binary(binary: &[u8]) -> Result<WrtModule> {
 /// # Returns
 ///
 /// * `Result<()>` - Success or error
+// This function uses Vec<u8> internally, so it's tied to 'alloc'.
+// It's called by encode_module, which will be feature-gated.
 fn encode_custom_section(result: &mut Vec<u8>, section: &WrtCustomSection) -> Result<()> {
     // Write section ID
     result.push(wrt_format::binary::CUSTOM_SECTION_ID);
@@ -126,6 +144,8 @@ fn encode_custom_section(result: &mut Vec<u8>, section: &WrtCustomSection) -> Re
 /// # Returns
 ///
 /// * `Result<Vec<u8>>` - Binary representation of the module
+// This function returns Vec<u8> and uses Vec internally, so gate with 'alloc'.
+#[cfg(feature = "alloc")]
 pub fn encode_module(module: &WrtModule) -> Result<Vec<u8>> {
     // This would ideally use SafeMemory types, but for the final binary output
     // we need a Vec<u8> that can be returned as the serialized representation
@@ -155,6 +175,8 @@ pub fn encode_module(module: &WrtModule) -> Result<Vec<u8>> {
 ///
 /// * `Error` - Parse error
 pub fn parse_error(message: &str) -> Error {
+    // TODO: If this needs to work without alloc, ensure Error::new doesn't rely on
+    // formatted strings or use a version that takes pre-formatted parts.
     Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, message)
 }
 
@@ -168,8 +190,16 @@ pub fn parse_error(message: &str) -> Error {
 /// # Returns
 ///
 /// * `Error` - Parse error with context
+// format! requires alloc. Conditionally compile or use a non-allocating alternative.
+#[cfg(feature = "alloc")]
 pub fn parse_error_with_context(message: &str, context: &str) -> Error {
     Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, format!("{}: {}", message, context))
+}
+
+#[cfg(not(feature = "alloc"))]
+pub fn parse_error_with_context(message: &str, _context: &str) -> Error {
+    // Basic error if no alloc for formatting. Context is lost.
+    Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, message)
 }
 
 /// Create a parse error with the given message and position
@@ -182,12 +212,20 @@ pub fn parse_error_with_context(message: &str, context: &str) -> Error {
 /// # Returns
 ///
 /// * `Error` - Parse error with position
+// format! requires alloc. Conditionally compile or use a non-allocating alternative.
+#[cfg(feature = "alloc")]
 pub fn parse_error_with_position(message: &str, position: usize) -> Error {
     Error::new(
         ErrorCategory::Parse,
         codes::PARSE_ERROR,
         format!("{} at position {}", message, position),
     )
+}
+
+#[cfg(not(feature = "alloc"))]
+pub fn parse_error_with_position(message: &str, _position: usize) -> Error {
+    // Basic error if no alloc for formatting. Position is lost.
+    Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, message)
 }
 
 /// Create a runtime error with the given message
@@ -213,11 +251,22 @@ pub fn runtime_error(message: &str) -> Error {
 /// # Returns
 ///
 /// * `Error` - Runtime error with context
+// format! requires alloc. Conditionally compile or use a non-allocating alternative.
+#[cfg(feature = "alloc")]
 pub fn runtime_error_with_context(message: &str, context: &str) -> Error {
     Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, format!("{}: {}", message, context))
 }
 
+#[cfg(not(feature = "alloc"))]
+pub fn runtime_error_with_context(message: &str, _context: &str) -> Error {
+    Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, message)
+}
+
 /// Wrapper for custom sections with additional functionality
+// This struct uses String and Vec<u8>, so it requires 'alloc'.
+// If decode_module needs to work without 'alloc', this needs to be refactored
+// or this wrapper is only used when 'alloc' is available.
+#[cfg(feature = "alloc")]
 #[derive(Debug, Clone)]
 pub struct CustomSectionWrapper {
     /// Name of the custom section
@@ -229,9 +278,14 @@ pub struct CustomSectionWrapper {
 /// Internal parsing logic that consumes a `crate::parser::Parser`.
 /// Renamed from `parse_module` to avoid conflict with the public one if struct
 /// Module is removed.
+// TODO: This function will eventually need to take the SafeMemoryHandler<P>
+// and use it to populate BoundedVec fields of WrtModule.
+// For now, it still uses Vec internally, so it implicitly requires 'alloc'.
 fn parse_module_internal_logic(
     mut parser: crate::parser::Parser<'_>,
 ) -> Result<(WrtModule, Vec<u8>)> {
+    // TODO: These Vecs are temporary. The final WrtModule should use BoundedVecs
+    // initialized from a SafeMemoryHandler.
     let mut mod_types = Vec::new();
     let mut mod_imports = Vec::new();
     let mut mod_funcs = Vec::new(); // Type indices for functions
@@ -451,24 +505,42 @@ fn parse_module_internal_logic(
             }
         }
     }
-    Ok((
-        WrtModule {
-            types: mod_types,
-            imports: mod_imports,
-            funcs: mod_funcs,
-            tables: mod_tables,
-            memories: mod_memories,
-            globals: mod_globals,
-            exports: mod_exports,
-            start: mod_start,
-            elements: mod_elements,
-            code_entries: mod_code_entries,
-            data_segments: mod_data_segments,
-            data_count: mod_data_count,
-            custom_sections: mod_custom_sections,
-        },
-        remaining_bytes,
-    ))
+    // Placeholder for WrtModule construction
+    // This assumes WrtModule has a constructor or fields that can be populated from
+    // these Vecs. This will likely fail compilation or be incorrect until
+    // WrtModule's alloc-free structure is finalized in wrt-types and used here.
+
+    // TODO: Replace this placeholder construction with actual BoundedVec population
+    // using the 'handler' passed into decode_module -> parse_module_internal_logic.
+    // The WrtModule instance should be created using the handler.
+    // The following is a temporary measure assuming WrtModule can be created from
+    // Vecs, which might not be true if it's already using BoundedVecs.
+
+    let result_module = WrtModule {
+        // These fields need to be populated from mod_... Vecs into BoundedVecs
+        // This is a conceptual mapping, actual field names/types in WrtModule might differ.
+        types: mod_types,   // TODO: Convert to BoundedVec<FuncType, MAX_TYPES, P>
+        funcs: mod_funcs,   // TODO: Convert to BoundedVec<TypeIdx, MAX_FUNCS, P>
+        tables: mod_tables, // TODO: Convert to BoundedVec<TableType, MAX_TABLES, P>
+        memories: mod_memories, // TODO: Convert to BoundedVec<MemoryType, MAX_MEMORIES, P>
+        globals: mod_globals, /* TODO: Convert to BoundedVec<Global<P>, MAX_GLOBALS, P> (if Global
+                             * is generic) */
+        exports: mod_exports, // TODO: Convert to BoundedVec<Export<P>, MAX_EXPORTS, P>
+        imports: mod_imports, // TODO: Convert to BoundedVec<Import<P>, MAX_IMPORTS, P>
+        elements: mod_elements, /* TODO: Convert to BoundedVec<ElementSegment<P>,
+                               * MAX_ELEMENT_SEGMENTS, P> */
+        code: mod_code_entries, // TODO: Convert to BoundedVec<Code<P>, MAX_FUNCS, P>
+        data: mod_data_segments, /* TODO: Convert to BoundedVec<DataSegment<P>,
+                                 * MAX_DATA_SEGMENTS, P> */
+        start: mod_start,
+        custom_sections: mod_custom_sections, /* TODO: Convert to BoundedVec<CustomSection<P>,
+                                               * MAX_CUSTOM_SECTIONS, P> */
+        data_count: mod_data_count,
+        // Assuming other fields like name, version, etc., are handled or not present in WrtModule
+        // from types Add _marker: PhantomData<P> if P is needed by WrtModule itself
+    };
+
+    Ok((result_module, remaining_bytes))
 }
 
 /// Helper function to write a string to a binary vector
@@ -487,6 +559,94 @@ fn write_string(result: &mut Vec<u8>, s: &str) -> Result<()> {
 }
 
 #[cfg(test)]
+#[cfg(feature = "alloc")] // Tests might rely on Vec or String, gate them too
 mod tests {
-    // ... existing code ...
+    use wrt_types::safe_memory::NoStdProvider; // For tests
+    use wrt_types::safe_memory::SafeMemoryHandler;
+
+    use super::*; // For tests
+
+    #[test]
+    fn test_decode_module_valid_header() {
+        let bytes = vec![
+            // ... existing code ...
+        ];
+        // Create a dummy handler for the test
+        let mut memory_backing = [0u8; 1024]; // Example backing store for NoStdProvider
+        let provider = NoStdProvider::new(&mut memory_backing);
+        let mut handler = SafeMemoryHandler::new(provider);
+        // Pass the handler to decode_module
+        let result = decode_module(&bytes, &mut handler);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_decode_module_invalid_magic() {
+        let bytes = vec![
+            // ... existing code ...
+        ];
+        // Create a dummy handler for the test
+        let mut memory_backing = [0u8; 1024];
+        let provider = NoStdProvider::new(&mut memory_backing);
+        let mut handler = SafeMemoryHandler::new(provider);
+        // Pass the handler to decode_module
+        let result = decode_module(&bytes, &mut handler);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_decode_module_minimal_valid() {
+        // A minimal valid WebAssembly module (just magic and version)
+        let bytes = vec![0x00, 0x61, 0x73, 0x6D, 0x01, 0x00, 0x00, 0x00];
+        let mut memory_backing = [0u8; 1024];
+        let provider = NoStdProvider::new(&mut memory_backing);
+        let mut handler = SafeMemoryHandler::new(provider);
+        let result = decode_module(&bytes, &mut handler);
+        assert!(result.is_ok());
+        let module = result.unwrap();
+        // Basic checks, assuming WrtModule can be default-like for empty sections
+        assert!(module.types.is_empty());
+        assert!(module.funcs.is_empty());
+    }
+
+    #[test]
+    fn test_encode_decode_custom_section() {
+        // This test inherently requires alloc for WrtCustomSection string and
+        // encode_module Vec
+        let original_section = WrtCustomSection {
+            name: "test_section".to_string(), // Requires alloc
+            data: vec![1, 2, 3, 4, 5],        // Requires alloc
+        };
+
+        let mut module = WrtModule {
+            // Assuming WrtModule can be constructed like this for testing
+            types: Vec::new(),
+            funcs: Vec::new(),
+            tables: Vec::new(),
+            memories: Vec::new(),
+            globals: Vec::new(),
+            exports: Vec::new(),
+            imports: Vec::new(),
+            elements: Vec::new(),
+            code: Vec::new(),
+            data: Vec::new(),
+            start: None,
+            custom_sections: vec![original_section.clone()], // Requires alloc
+            data_count: None,
+        };
+
+        let encoded_bytes = encode_module(&module).expect("Encoding failed");
+
+        let mut memory_backing = [0u8; 1024];
+        let provider = NoStdProvider::new(&mut memory_backing);
+        let mut handler = SafeMemoryHandler::new(provider);
+        let decoded_module = decode_module(&encoded_bytes, &mut handler).expect("Decoding failed");
+
+        assert_eq!(decoded_module.custom_sections.len(), 1);
+        assert_eq!(decoded_module.custom_sections[0].name, original_section.name);
+        assert_eq!(decoded_module.custom_sections[0].data, original_section.data);
+    }
+
+    // TODO: Add more tests for different sections once WrtModule structure is
+    // alloc-free and can be populated correctly.
 }

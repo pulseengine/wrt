@@ -1,3 +1,7 @@
+// Copyright (c) 2025 Ralf Anton Beier
+// Licensed under the MIT license.
+// SPDX-License-Identifier: MIT
+
 //! Adapter for runtime integration with the WRT decoder.
 //!
 //! This module provides traits and structures to facilitate the integration of

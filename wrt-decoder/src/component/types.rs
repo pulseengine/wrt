@@ -1,3 +1,7 @@
+// Copyright (c) 2025 Ralf Anton Beier
+// Licensed under the MIT license.
+// SPDX-License-Identifier: MIT
+
 // Re-export the main component types from wrt-format for convenience
 pub use wrt_format::component::{
     Component, ComponentType, CoreExternType, CoreInstance, CoreType, Export, ExternType, Import,

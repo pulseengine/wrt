@@ -1,3 +1,7 @@
+// Copyright (c) 2025 Ralf Anton Beier
+// Licensed under the MIT license.
+// SPDX-License-Identifier: MIT
+
 use wrt_format::{binary, component::ValType};
 
 use crate::{prelude::*, Error, Result};
