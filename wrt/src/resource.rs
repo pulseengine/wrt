@@ -4,19 +4,21 @@
 //! resource types, including resource tables, lifetime management, and
 //! reference counting.
 
-use crate::prelude::Mutex;
-use crate::{
-    error::{kinds, Error, Result},
-    prelude::{format, String, Vec},
-};
 #[cfg(not(feature = "std"))]
 use alloc::sync::Arc;
-use std::any::Any;
-use std::cmp::{Eq, PartialEq};
-use std::collections::HashMap;
-use std::fmt;
 #[cfg(feature = "std")]
 use std::sync::Arc;
+use std::{
+    any::Any,
+    cmp::{Eq, PartialEq},
+    collections::HashMap,
+    fmt,
+};
+
+use crate::{
+    error::{kinds, Error, Result},
+    prelude::{format, Mutex, String, Vec},
+};
 
 /// A unique identifier for a resource instance
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -124,12 +126,7 @@ impl ResourceTable {
         let id = ResourceId(self.next_id);
         self.next_id += 1;
 
-        let resource = Resource {
-            resource_type,
-            id,
-            data,
-            ref_count: 1,
-        };
+        let resource = Resource { resource_type, id, data, ref_count: 1 };
 
         // Find an empty slot or add to the end
         let index = self.resources.iter().position(std::option::Option::is_none);
@@ -146,19 +143,13 @@ impl ResourceTable {
     pub fn get(&self, id: ResourceId) -> Result<&Resource> {
         let index = id.0 as usize - 1;
         if index >= self.resources.len() {
-            return Err(kinds::ExecutionError(format!(
-                "Invalid resource ID: {:?}",
-                id
-            )).into());
+            return Err(kinds::ExecutionError(format!("Invalid resource ID: {:?}", id)).into());
         }
 
         if let Some(ref resource) = self.resources[index] {
             Ok(resource)
         } else {
-            Err(kinds::ExecutionError(format!(
-                "Resource not found: {:?}",
-                id
-            )).into())
+            Err(kinds::ExecutionError(format!("Resource not found: {:?}", id)).into())
         }
     }
 
@@ -166,19 +157,13 @@ impl ResourceTable {
     pub fn get_mut(&mut self, id: ResourceId) -> Result<&mut Resource> {
         let index = id.0 as usize - 1;
         if index >= self.resources.len() {
-            return Err(kinds::ExecutionError(format!(
-                "Invalid resource ID: {:?}",
-                id
-            )).into());
+            return Err(kinds::ExecutionError(format!("Invalid resource ID: {:?}", id)).into());
         }
 
         if let Some(ref mut resource) = self.resources[index] {
             Ok(resource)
         } else {
-            Err(kinds::ExecutionError(format!(
-                "Resource not found: {:?}",
-                id
-            )).into())
+            Err(kinds::ExecutionError(format!("Resource not found: {:?}", id)).into())
         }
     }
 
@@ -193,10 +178,7 @@ impl ResourceTable {
     pub fn drop_ref(&mut self, id: ResourceId) -> Result<()> {
         let index = id.0 as usize - 1;
         if index >= self.resources.len() {
-            return Err(kinds::ExecutionError(format!(
-                "Invalid resource ID: {:?}",
-                id
-            )).into());
+            return Err(kinds::ExecutionError(format!("Invalid resource ID: {:?}", id)).into());
         }
 
         let drop_resource = {
@@ -311,19 +293,11 @@ mod tests {
 
         // Resources should have correct data
         let resource1 = table.get(id1).unwrap();
-        let data1 = resource1
-            .data
-            .as_any()
-            .downcast_ref::<SimpleResourceData>()
-            .unwrap();
+        let data1 = resource1.data.as_any().downcast_ref::<SimpleResourceData>().unwrap();
         assert_eq!(data1.value, 42);
 
         let resource2 = table.get(id2).unwrap();
-        let data2 = resource2
-            .data
-            .as_any()
-            .downcast_ref::<SimpleResourceData>()
-            .unwrap();
+        let data2 = resource2.data.as_any().downcast_ref::<SimpleResourceData>().unwrap();
         assert_eq!(data2.value, 84);
     }
 }
