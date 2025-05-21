@@ -68,4 +68,4 @@ Refer to the main WRT project documentation for detailed safety guidelines.
 
 Licensed under the MIT license. See the [LICENSE](LICENSE) file for details.
 
-Copyright (c) 2025 The WRT Project Developers 
+Copyright (c) 2025 Ralf Anton Beier 

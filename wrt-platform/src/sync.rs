@@ -8,19 +8,9 @@
 
 //! Provides traits and implementations for platform-specific synchronization.
 
-#![cfg_attr(not(feature = "std"), no_std)]
+use core::{fmt::Debug, time::Duration};
 
-use core::{
-    fmt::Debug,
-    sync::atomic::{AtomicU32, Ordering},
-    time::Duration,
-};
-#[cfg(feature = "std")]
-use std::sync::{Condvar, Mutex};
-
-use wrt_error::codes; // Import error codes
-
-use crate::prelude::{Error, ErrorCategory, Result};
+use crate::prelude::Result;
 
 /// A trait abstracting futex-like operations.
 ///
@@ -40,8 +30,11 @@ pub trait FutexLike: Send + Sync + Debug {
     /// # Returns
     ///
     /// * `Ok(())` if the wait was successful (either woken or value changed).
-    /// * `Err(Error::Concurrency(...))` if a lock was poisoned.
-    /// * `Err(Error::System(...))` if a timeout occurred.
+    ///
+    /// # Errors
+    ///
+    /// * Returns `Err(Error::Concurrency(...))` if a lock was poisoned.
+    /// * Returns `Err(Error::System(...))` if a timeout occurred.
     fn wait(&self, expected: u32, timeout: Option<Duration>) -> Result<()>;
 
     /// Wakes `count` waiters blocked on this futex.
@@ -54,217 +47,175 @@ pub trait FutexLike: Send + Sync + Debug {
     /// # Returns
     ///
     /// * `Ok(())` if the wake signal was sent.
-    /// * `Err(Error::Concurrency(...))` if a lock was poisoned (relevant for
-    ///   fallback).
+    ///
+    /// # Errors
+    ///
+    /// * Returns `Err(Error::Concurrency(...))` if a lock was poisoned
+    ///   (relevant for fallback).
     fn wake(&self, count: u32) -> Result<()>;
 }
 
-/// A fallback `FutexLike` implementation using `std::sync::{Mutex, Condvar}`.
-///
-/// This is suitable for platforms where `std` is available but specialized
-/// futex operations are not, or for testing.
-#[cfg(feature = "std")]
-#[derive(Debug, Default)]
-pub struct FallbackFutex {
-    value: AtomicU32,
-    mutex: Mutex<()>, // Mutex for Condvar
-    condvar: Condvar,
+/// Result type for timeout-based operations.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TimeoutResult {
+    /// The operation completed before the timeout expired.
+    Notified,
+    /// The operation timed out.
+    TimedOut,
 }
 
-#[cfg(feature = "std")]
-impl FallbackFutex {
-    /// Creates a new `FallbackFutex` initialized with `initial_value`.
-    #[must_use]
+/// A simple spin-wait implementation of the `FutexLike` trait.
+///
+/// This implementation is not as efficient as platform-specific implementations
+/// for real-world use, but it works on any platform including embedded systems.
+/// It's intended as a fallback when more efficient implementations are not
+/// available.
+#[derive(Debug)]
+pub struct SpinFutex {
+    /// The atomic value used for synchronization
+    value: core::sync::atomic::AtomicU32,
+    /// Padding to ensure the value is on its own cache line
+    _padding: [u8; 60], // 64 - sizeof(AtomicU32)
+}
+
+impl SpinFutex {
+    /// Creates a new `SpinFutex` with the given initial value.
     pub fn new(initial_value: u32) -> Self {
-        Self {
-            value: AtomicU32::new(initial_value),
-            mutex: Mutex::new(()),
-            condvar: Condvar::new(),
-        }
+        Self { value: core::sync::atomic::AtomicU32::new(initial_value), _padding: [0; 60] }
+    }
+
+    /// Gets the current value.
+    pub fn get(&self) -> u32 {
+        self.value.load(core::sync::atomic::Ordering::Acquire)
+    }
+
+    /// Sets a new value.
+    pub fn set(&self, new_value: u32) {
+        self.value.store(new_value, core::sync::atomic::Ordering::Release);
     }
 }
 
-#[cfg(feature = "std")]
-impl FutexLike for FallbackFutex {
-    fn wait(&self, expected: u32, timeout: Option<Duration>) -> Result<()> {
-        let mut guard = self.mutex.lock().map_err(|_| {
-            Error::new(
-                ErrorCategory::Concurrency,
-                codes::POISONED_LOCK,
-                "Mutex poisoned during futex wait",
-            )
-        })?;
+/// Builder for `SpinFutex`.
+#[derive(Debug)]
+pub struct SpinFutexBuilder {
+    initial_value: u32,
+}
 
-        // Check the condition *after* acquiring the lock.
-        if self.value.load(Ordering::Relaxed) != expected {
-            // Value changed before or during lock acquisition, don't wait.
+impl Default for SpinFutexBuilder {
+    fn default() -> Self {
+        Self { initial_value: 0 }
+    }
+}
+
+impl SpinFutexBuilder {
+    /// Creates a new builder with default settings.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Sets the initial value for the futex.
+    pub fn with_initial_value(mut self, value: u32) -> Self {
+        self.initial_value = value;
+        self
+    }
+
+    /// Builds and returns a configured `SpinFutex`.
+    pub fn build(self) -> SpinFutex {
+        SpinFutex::new(self.initial_value)
+    }
+}
+
+impl FutexLike for SpinFutex {
+    fn wait(&self, expected: u32, timeout: Option<Duration>) -> Result<()> {
+        use core::sync::atomic::Ordering;
+
+        // Check if the current value matches the expected value
+        if self.value.load(Ordering::Acquire) != expected {
+            // Value has changed, no need to wait
             return Ok(());
         }
 
-        match timeout {
+        // Calculate timeout in iterations (very rough estimation)
+        let max_iterations = match timeout {
+            Some(duration) if duration.as_micros() == 0 => 1, // Just check once
             Some(duration) => {
-                let (_new_guard, wait_result) =
-                    self.condvar.wait_timeout(guard, duration).map_err(|_| {
-                        Error::new(
-                            ErrorCategory::Concurrency,
-                            codes::POISONED_LOCK,
-                            "Mutex poisoned during timed futex wait",
-                        )
-                    })?;
-                if wait_result.timed_out() {
-                    Err(Error::new(
-                        // Use Error::new for timeout as well
-                        ErrorCategory::System,    // System for timeout
-                        codes::EXECUTION_TIMEOUT, // Specific code for timeout
-                        "Futex wait timed out",
-                    ))
-                } else {
-                    Ok(())
-                }
+                // Rough estimate: 1000 iterations ~= 1ms on a typical system
+                // This is obviously not accurate but gives us some scaling
+                (duration.as_micros() as u64) * 1000 / 1000
             }
-            None => {
-                self.condvar.wait(guard).map_err(|_| {
-                    Error::new(
-                        ErrorCategory::Concurrency,
-                        codes::POISONED_LOCK,
-                        "Mutex poisoned during indefinite futex wait",
-                    )
-                })?;
-                Ok(())
+            None => u64::MAX, // Effectively infinite
+        };
+
+        // Spin until value changes or timeout
+        for _ in 0..max_iterations {
+            // Small delay to reduce CPU usage
+            for _ in 0..100 {
+                core::hint::spin_loop();
             }
+
+            // Check if value has changed
+            if self.value.load(Ordering::Acquire) != expected {
+                return Ok(());
+            }
+        }
+
+        // If we get here, we've timed out
+        if timeout.is_some() {
+            // Return a system error for timeout
+            Err(wrt_error::Error::system_error("Operation timed out"))
+        } else {
+            // Should never reach here with infinite timeout
+            Ok(())
         }
     }
 
-    fn wake(&self, count: u32) -> Result<()> {
-        let _guard = self.mutex.lock().map_err(|_| {
-            Error::new(
-                ErrorCategory::Concurrency,
-                codes::POISONED_LOCK,
-                "Mutex poisoned during futex wake",
-            )
-        })?;
-
-        if count == 0 {
-            // Do nothing if count is 0
-        } else if count == u32::MAX || count > 1 {
-            // Simplified: if count is not 1, wake all.
-            // More precise would be to loop `count` times for notify_one,
-            // but condvar doesn't guarantee waking distinct threads.
-            // Waking all is safer for count > 1.
-            self.condvar.notify_all();
-        } else {
-            // count == 1
-            self.condvar.notify_one();
-        }
+    fn wake(&self, _count: u32) -> Result<()> {
+        // For a spin-wait implementation, we don't need to do anything
+        // except ensure memory visibility
+        core::sync::atomic::fence(core::sync::atomic::Ordering::SeqCst);
         Ok(())
     }
 }
 
 #[cfg(test)]
-#[cfg(feature = "std")]
+#[allow(clippy::panic)]
+#[allow(clippy::expect_used)]
 mod tests {
+    use core::time::Duration;
+
+    use wrt_error::{ErrorCategory, ErrorSource};
+
     use super::*;
-    use crate::prelude::sync::Arc; // For Arc in multithreaded tests
-    use crate::prelude::thread; // For thread::spawn
 
     #[test]
-    fn futex_new() {
-        let futex = FallbackFutex::new(5);
-        assert_eq!(futex.value.load(Ordering::Relaxed), 5);
+    fn test_spin_futex() {
+        let futex = SpinFutex::new(42);
+
+        // Test get and set
+        assert_eq!(futex.get(), 42);
+        futex.set(123);
+        assert_eq!(futex.get(), 123);
+
+        // Test wait and wake
+        futex.set(0);
+        // Value is 0, expected is 1, should return immediately
+        let result = futex.wait(1, Some(Duration::from_micros(0)));
+        assert!(result.is_ok());
+
+        // Value is 0, expected is 0, should wait until timeout
+        let result = futex.wait(0, Some(Duration::from_micros(1)));
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err().category(), ErrorCategory::System);
+
+        // Test wake (doesn't do much in SpinFutex but should not fail)
+        futex.wake(1).expect("Wake should succeed");
+        futex.wake(u32::MAX).expect("Wake all should succeed");
     }
 
     #[test]
-    fn futex_wait_value_mismatch_returns_ok() {
-        let futex = FallbackFutex::new(0);
-        // Try to wait for value 1 when it's 0
-        let result = futex.wait(1, Some(Duration::from_millis(10)));
-        assert!(result.is_ok(), "Wait should return Ok if value mismatches, not block");
-    }
+    fn test_spin_futex_builder() {
+        let futex = SpinFutexBuilder::new().with_initial_value(42).build();
 
-    #[test]
-    fn futex_wait_timeout() {
-        let futex = FallbackFutex::new(0);
-        // Wait for value 0, should timeout
-        let result = futex.wait(0, Some(Duration::from_millis(10)));
-        match result {
-            Err(e) if e.category == ErrorCategory::System && e.code == codes::EXECUTION_TIMEOUT => {
-                // Expected timeout
-            }
-            _ => panic!("Expected timeout error, got {:?}", result),
-        }
-    }
-
-    #[test]
-    fn futex_wake_one() {
-        let futex = Arc::new(FallbackFutex::new(0));
-        let futex_clone = Arc::clone(&futex);
-
-        let handle = thread::spawn(move || {
-            thread::sleep(Duration::from_millis(10)); // Give time for main thread to wait
-            futex_clone.value.store(1, Ordering::Relaxed);
-            let wake_res = futex_clone.wake(1);
-            assert!(wake_res.is_ok());
-        });
-
-        // Wait for value 0, should be woken when value becomes 1
-        let wait_res = futex.wait(0, Some(Duration::from_secs(1)));
-        assert!(wait_res.is_ok(), "Wait failed: {:?}", wait_res.err());
-
-        handle.join().unwrap();
-        assert_eq!(futex.value.load(Ordering::Relaxed), 1);
-    }
-
-    #[test]
-    fn futex_wake_all() {
-        let futex = Arc::new(FallbackFutex::new(0));
-        let mut handles = vec![];
-
-        for _ in 0..3 {
-            let futex_clone = Arc::clone(&futex);
-            handles.push(thread::spawn(move || {
-                let wait_res = futex_clone.wait(0, Some(Duration::from_secs(1)));
-                assert!(wait_res.is_ok(), "Thread wait failed: {:?}", wait_res.err());
-            }));
-        }
-
-        thread::sleep(Duration::from_millis(50)); // Give threads time to wait
-        futex.value.store(1, Ordering::Relaxed); // Change value (optional, good practice)
-        let wake_res = futex.wake(u32::MAX); // Wake all
-        assert!(wake_res.is_ok());
-
-        for handle in handles {
-            handle.join().unwrap();
-        }
-    }
-
-    #[test]
-    fn futex_wake_zero_does_nothing() {
-        let futex = Arc::new(FallbackFutex::new(0));
-        let futex_clone = Arc::clone(&futex);
-
-        let handle = thread::spawn(move || {
-            // This thread will wait, but should timeout as wake(0) does nothing
-            let wait_res = futex_clone.wait(0, Some(Duration::from_millis(50)));
-            match wait_res {
-                Err(e)
-                    if e.category == ErrorCategory::System
-                        && e.code == codes::EXECUTION_TIMEOUT =>
-                {
-                    // Expected timeout
-                }
-                _ => {
-                    panic!("Expected timeout error as wake(0) should not wake, got {:?}", wait_res)
-                }
-            }
-        });
-
-        thread::sleep(Duration::from_millis(10));
-        let wake_res = futex.wake(0);
-        assert!(wake_res.is_ok());
-
-        handle.join().unwrap();
+        assert_eq!(futex.get(), 42);
     }
 }
-
-#[cfg(feature = "std")]
-pub use fallback_std::FallbackFutex;
