@@ -1,23 +1,7 @@
 use wrt_error::{Error, Result};
 
 use crate::resources::{ResourceOperation, ResourceStrategy};
-
-/// Memory strategy for resource operations
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum MemoryStrategy {
-    /// Zero-copy strategy for trusted components
-    ZeroCopy,
-    /// Bounded-copy strategy with buffer pooling
-    BoundedCopy,
-    /// Full isolation with validation
-    Isolated,
-    /// Copy strategy - creates a copy of memory for safety
-    Copy,
-    /// Reference strategy - provides a direct reference to memory
-    Reference,
-    /// Full isolation with complete memory validation
-    FullIsolation,
-}
+use super::resource_table::MemoryStrategy;
 
 impl ResourceStrategy for MemoryStrategy {
     fn memory_strategy_type(&self) -> MemoryStrategy {
