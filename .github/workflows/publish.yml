@@ -53,39 +53,33 @@ jobs:
           override: true
           components: llvm-tools-preview # if needed by llvm-cov
 
-      - name: Check if just is available
-        id: check-just
-        run: |
-            if command -v just &> /dev/null; then
-              echo "JUST_INSTALLED=true" >> $GITHUB_ENV
-              echo "Just is already installed"
-            else
-              echo "JUST_INSTALLED=false" >> $GITHUB_ENV
-              echo "Just needs to be installed"
-            fi
-            
-      - name: Install just
-        if: env.JUST_INSTALLED != 'true'
-        run: cargo install just --locked
-        
-      - name: Get versions to build
+      - name: Determine versions to build
         id: get-versions
         run: |
-          VERSIONS_STRING=""
+          VERSIONS_TO_PASS=""
           if [ -n "${{ github.event.inputs.version }}" ]; then
-            VERSIONS_STRING="${{ github.event.inputs.version }}"
-            echo "::notice::Building specific version(s) from input: $VERSIONS_STRING"
+            VERSIONS_TO_PASS="${{ github.event.inputs.version }}"
+            echo "::notice::Using specific version(s) from input: $VERSIONS_TO_PASS"
+          elif [[ "${{ github.ref_type }}" == "tag" ]]; then
+            VERSIONS_TO_PASS="${{ github.ref_name }}"
+            echo "::notice::Building docs for tag: $VERSIONS_TO_PASS"
+          elif [[ "${{ github.ref_name }}" == "main" && "${{ github.ref_type }}" == "branch" ]]; then
+            VERSIONS_TO_PASS="main"
+            echo "::notice::Building docs for main branch"
+          elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            # This case handles manual trigger where inputs.version was empty (default)
+            VERSIONS_TO_PASS="main"
+            echo "::notice::Manual trigger with no specific version input, defaulting to build 'main'."
           else
-            echo "::notice::Building docs for 'main' and all Git tags."
-            TAGS=$(git tag --sort=-v:refname)
-            VERSIONS_STRING="main"
-            for TAG_NAME in $TAGS; do
-              VERSIONS_STRING="$VERSIONS_STRING $TAG_NAME"
-            done
+            echo "::error::Could not determine a version to build. Event: ${{ github.event_name }}, Ref: ${{ github.ref }} (Name: ${{ github.ref_name }}, Type: ${{ github.ref_type }})"
+            exit 1
           fi
-          UNIQUE_VERSIONS=$(echo "$VERSIONS_STRING" | xargs -n1 | sort -u | xargs)
+          
+          # If VERSIONS_TO_PASS can contain multiple space-separated versions (e.g. from input), ensure uniqueness.
+          # The xtask expects space-separated versions.
+          UNIQUE_VERSIONS=$(echo "$VERSIONS_TO_PASS" | xargs -n1 | sort -u | xargs)
           echo "VERSIONS_TO_BUILD=$UNIQUE_VERSIONS" >> $GITHUB_ENV
-          echo "Final list of versions to build: $UNIQUE_VERSIONS"
+          echo "Final list of versions to build for xtask: $UNIQUE_VERSIONS"
 
       - name: Build documentation via Dagger and xtask
         run: |
