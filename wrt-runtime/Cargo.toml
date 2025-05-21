@@ -57,6 +57,11 @@ optimize = [
     "wrt-host/optimize",
     "wrt-intercept/optimize",
 ]
+
+# Safe memory implementations
+safe-memory = [
+    "wrt-types/safe-memory",
+]
 safety = [
     "wrt-types/safety",
     "wrt-decoder/safety",
