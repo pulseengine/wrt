@@ -20,6 +20,7 @@ This chapter describes the software architecture of the WRT system. The architec
    resource_management
    intercept_system
    safe_memory
+   no_std_collections
    hardening
    logging
    safety

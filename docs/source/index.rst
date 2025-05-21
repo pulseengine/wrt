@@ -3,26 +3,25 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to SPE_wrt's documentation!
-===================================
+Welcome to Pulseengine (WRT Edition)'s documentation!
+=====================================================
 
 .. image:: _static/icons/logo.svg
    :width: 120px
    :align: center
-   :alt: SentryPulse Engine (WRT Edition) Logo
+   :alt: Pulseengine (WRT Edition) Logo
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
    :caption: Main Navigation
 
    overview/index
    requirements/index
    binary
-   requirements
    safety/index
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
    :caption: Additional Documentation
    :hidden:
 
