@@ -1,3 +1,7 @@
+// Copyright (c) 2025 Ralf Anton Beier
+// Licensed under the MIT license.
+// SPDX-License-Identifier: MIT
+
 //! Utilities for working with custom sections, particularly state sections.
 
 // Ensure wrt_error items are in scope, typically via crate::prelude or direct

@@ -1,3 +1,7 @@
+// Copyright (c) 2025 Ralf Anton Beier
+// Licensed under the MIT license.
+// SPDX-License-Identifier: MIT
+
 //! WebAssembly Component model validation
 //!
 //! This module provides validation for WebAssembly Component Model components.
