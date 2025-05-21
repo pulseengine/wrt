@@ -10,13 +10,13 @@ keywords = ["wasm", "webassembly", "runtime", "component-model"]
 categories = ["wasm", "no-std"]
 
 [dependencies]
-wrt-error = { path = "../wrt-error", workspace = true }
-wrt-format = { path = "../wrt-format", workspace = true }
-wrt-host = { path = "../wrt-host", workspace = true }
-wrt-types = { path = "../wrt-types", workspace = true }
-wrt-intercept = { path = "../wrt-intercept", workspace = true }
-wrt-decoder = { path = "../wrt-decoder", workspace = true }
-wrt-runtime = { path = "../wrt-runtime", workspace = true }
+wrt-error = { workspace = true }
+wrt-format = { workspace = true }
+wrt-host = { workspace = true }
+wrt-types = { workspace = true }
+wrt-intercept = { workspace = true }
+wrt-decoder = { workspace = true }
+wrt-runtime = { workspace = true }
 
 # No-std support
 alloc = { version = "1.0.0", optional = true, package = "rustc-std-workspace-alloc" }
@@ -26,39 +26,50 @@ log = { version = "0.4", optional = true }
 futures = { version = "0.3", optional = true }
 
 [dev-dependencies]
-ratatui = "0.29.0"
-crossterm = "0.27.0"
-strum = { version = "0.26", features = ["derive"] }
-tui-nodes = "0.8.0"
 
 [features]
-default = ["std"]
+default = []
 std = [
-    "wrt-error/std",
     "wrt-format/std",
     "wrt-host/std",
-    "wrt-types/std",
     "wrt-intercept/std",
     "wrt-decoder/std",
     "wrt-runtime/std",
-    "log",
+    "dep:log",
 ]
 no_std = [
-    "wrt-error/no_std",
     "wrt-format/no_std",
-    "wrt-host/no_std",
-    "wrt-types/no_std",
-    "wrt-intercept/no_std",
     "wrt-decoder/no_std",
     "wrt-runtime/no_std",
-    "alloc"
 ]
-alloc = ["wrt-error/alloc", "wrt-format/alloc", "wrt-host/alloc", "wrt-types/alloc", "wrt-intercept/alloc", "wrt-decoder/alloc", "wrt-runtime/alloc", "dep:alloc"]
+alloc = [
+    "wrt-format/alloc",
+    "wrt-host/alloc",
+    "wrt-intercept/alloc",
+    "wrt-decoder/alloc",
+    "wrt-runtime/alloc",
+    "dep:alloc"
+]
 kani = ["wrt-host/kani", "wrt-intercept/kani"]
 
 # Performance and safety features
-optimize = ["wrt-error/optimize", "wrt-format/optimize", "wrt-host/optimize", "wrt-types/optimize", "wrt-intercept/optimize", "wrt-decoder/optimize", "wrt-runtime/optimize"]
-safety = ["wrt-error/safety", "wrt-format/safety", "wrt-host/safety", "wrt-types/safety", "wrt-intercept/safety", "wrt-decoder/safety", "wrt-runtime/safety", "alloc"]
+optimize = [
+    "wrt-format/optimize",
+    "wrt-host/optimize",
+    "wrt-types/optimize",
+    "wrt-intercept/optimize",
+    "wrt-decoder/optimize",
+    "wrt-runtime/optimize"
+]
+safety = [
+    "wrt-format/safety",
+    "wrt-host/safety",
+    "wrt-types/safety",
+    "wrt-intercept/safety",
+    "wrt-decoder/safety",
+    "wrt-runtime/safety",
+    "alloc"
+]
 
 # Component Model features
 component-model-core = ["wrt-format/component-model-core"]
@@ -82,20 +93,9 @@ path = "examples/component_info_simple.rs"
 required-features = ["std"]
 
 [[example]]
-name = "component_graph_view"
-path = "examples/component_graph_view.rs"
-required-features = ["std"]
-
-[[example]]
 name = "interceptor_example"
 path = "examples/interceptor_example.rs"
 required-features = ["std"]
-
-[profile.release]
-panic = "abort"
-
-[profile.test]
-panic = "abort"
 
 [lints.rust]
 unexpected_cfgs = { level = "allow", check-cfg = ['cfg(test)'] }
