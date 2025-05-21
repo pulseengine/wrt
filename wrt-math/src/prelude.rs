@@ -52,8 +52,9 @@ pub use core::{
 
 // Consider re-exporting core/std items if commonly used within this crate's context
 // and not already covered by a workspace-level prelude.
-#[cfg(feature = "std")]
-pub use std::{};
+// #[cfg(feature = "std")]  // This empty import was causing a warning
+// pub use std::{};
+
 // Re-export from std when the std feature is enabled
 #[cfg(feature = "std")]
 pub use std::{
@@ -71,7 +72,8 @@ pub use wrt_error::prelude::*;
 // It's often useful to have a `crate_alias` for macro usage or clarity
 #[doc(hidden)]
 pub use crate as wrt_math;
-pub use crate::float_bits::{FloatBits32, FloatBits64};
+// pub use crate::float_bits::{FloatBits32, FloatBits64}; // This is duplicated below
+
 // Re-export from this crate's modules
 pub use crate::{
     float_bits::{FloatBits32, FloatBits64},

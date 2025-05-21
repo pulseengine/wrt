@@ -1,32 +1,31 @@
 // WRT - wrt-math
-// Module: WebAssembly Math Operations
-// SW-REQ-ID: N/A (Will be defined by safety analysis for math functions if
-// critical)
+// Module: Math Operations
+// SW-REQ-ID: REQ_018 (Wasm numeric operations)
 //
-// Copyright (c) 2024 Your Name/Organization // TODO: Update with actual author
+// Copyright (c) 2024 Your Name/Organization
 // Licensed under the MIT license.
 // SPDX-License-Identifier: MIT
 
-//! WebAssembly Math Operations
-//!
 //! This module implements the executable logic for WebAssembly numeric
 //! instructions. It operates on primitive Rust types and `FloatBits` wrappers,
 //! returning `Result` with `TrapCode` for Wasm-defined trapping behavior.
 
-// Lints from original file & Cargo.toml for wrt-math
-#![allow(clippy::float_arithmetic)] // Wasm spec requires float ops
-#![allow(clippy::cast_possible_truncation)] // Needed for conversions
-#![allow(clippy::cast_sign_loss)] // Needed for conversions/shifts
-#![allow(clippy::cast_possible_wrap)] // Needed for conversions/shifts/counts
-#![allow(clippy::manual_range_contains)] // Used in float->int conversion checks
-#![allow(clippy::float_cmp)] // Float comparisons are inherent
-#![allow(clippy::missing_const_for_fn)] // Polyfills/float ops often cannot be const
+// Conditionally import std or core items for f32/f64
+#[cfg(not(feature = "std"))]
+use core::{f32, f64};
+#[cfg(feature = "std")]
+use std::{f32, f64};
 
-// TrapCode and WrtError are fundamental for Wasm math ops.
 use wrt_error::{codes::TrapCode, Error as WrtError, Result};
 
-// Use FloatBits from the float_bits module in this crate
-use crate::float_bits::{FloatBits32, FloatBits64};
+// Import necessary items from this crate's prelude and wrt-error
+use crate::prelude::{FloatBits32, FloatBits64}; // Result, TrapCode, WrtError should come
+                                                // via wrt_error directly or be aliased in
+                                                // prelude
+
+// Module-level constants for Wasm conversion boundaries
+const I64_MAX_AS_F32: f32 = 9_223_372_036_854_775_808.0_f32;
+const I64_MIN_AS_F32: f32 = -9_223_372_036_854_775_808.0_f32;
 
 // --- Start of no_std math polyfills for trunc ---
 #[cfg(not(feature = "std"))]
@@ -482,14 +481,12 @@ fn f64_sqrt_compat(d: f64) -> f64 {
 // This was dead code in the original file, but kept for completeness if signum
 // is needed.
 #[cfg(feature = "std")]
-#[inline(always)]
 #[allow(dead_code)]
 fn f64_signum_compat(x: f64) -> f64 {
     x.signum()
 }
 
 #[cfg(not(feature = "std"))]
-#[inline(always)]
 #[allow(dead_code)]
 fn f64_signum_compat(x: f64) -> f64 {
     if x.is_nan() {
@@ -1502,6 +1499,7 @@ pub fn i32_trunc_sat_f32_u(val: FloatBits32) -> i32 {
 #[inline]
 #[must_use = "Saturating conversion result must be used"]
 pub fn i64_trunc_sat_f32_s(val: FloatBits32) -> i64 {
+    // Wasm returns i64
     let f = val.value();
     if f.is_nan() {
         0
@@ -1513,13 +1511,10 @@ pub fn i64_trunc_sat_f32_s(val: FloatBits32) -> i64 {
         }
     } else {
         let trunc = f32_trunc_compat(f);
-        // i64::MIN/MAX are not precisely representable as f32 for their full range.
         // Wasm spec Table 15 range: (-9223372036854775808.0, 9223372036854775808.0)
         // f32 cannot represent these bounds exactly.
         // If f > i64::MAX as f32 (approx 9.223372E18), saturate to i64::MAX.
         // If f < i64::MIN as f32 (approx -9.223372E18), saturate to i64::MIN.
-        const I64_MAX_AS_F32: f32 = 9223372036854775808.0_f32; // i64::MAX (2^63 - 1)
-        const I64_MIN_AS_F32: f32 = -9223372036854775808.0_f32; // i64::MIN (-2^63)
 
         if trunc >= I64_MIN_AS_F32 && trunc < I64_MAX_AS_F32 {
             trunc as i64
@@ -1554,7 +1549,7 @@ pub fn i64_trunc_sat_f32_u(val: FloatBits32) -> i64 {
     } else {
         let trunc = f32_trunc_compat(f);
         // Wasm spec Table 15 range: (0.0, 18446744073709551616.0)
-        const U64_MAX_AS_F32: f32 = 18446744073709551616.0_f32; // u64::MAX (2^64 - 1)
+        const U64_MAX_AS_F32: f32 = 18_446_744_073_709_551_616.0_f32; // u64::MAX (2^64 - 1)
 
         if trunc > 0.0_f32 && trunc < U64_MAX_AS_F32 {
             trunc as u64 as i64
@@ -1657,7 +1652,8 @@ pub fn i64_trunc_sat_f64_s(val: FloatBits64) -> i64 {
             } else {
                 trunc as i64
             }
-        } else if trunc == (i64::MIN as f64) && i64::MIN as f64 == trunc {
+        } else if trunc == (i64::MIN as f64) {
+            // Simplified boolean expression
             // Ensure exact i64::MIN
             i64::MIN
         } else if trunc >= (i64::MAX as f64) {
@@ -1841,8 +1837,6 @@ pub fn i64_trunc_f32_s(val: FloatBits32) -> Result<i64> {
     // Check if f_trunc is outside the representable range of i64.
     // i64::MIN as f32 is approx -9.223372E18
     // i64::MAX as f32 is approx  9.223372E18
-    const I64_MAX_AS_F32: f32 = 9223372036854775808.0_f32;
-    const I64_MIN_AS_F32: f32 = -9223372036854775808.0_f32;
 
     if f_trunc < I64_MIN_AS_F32 || f_trunc >= I64_MAX_AS_F32 {
         if f_trunc == I64_MIN_AS_F32 { // Check for exact lower bound
@@ -1869,7 +1863,7 @@ pub fn i64_trunc_f32_u(val: FloatBits32) -> Result<u64> {
     }
     let f_trunc = f32_trunc_compat(f);
     // Wasm spec table range: not in (0.0, 18446744073709551616.0) for f32->u64
-    const U64_MAX_AS_F32: f32 = 18446744073709551616.0_f32; // 2^64
+    const U64_MAX_AS_F32: f32 = 18_446_744_073_709_551_616.0_f32; // 2^64
     if f_trunc < 0.0_f32 || f_trunc >= U64_MAX_AS_F32 {
         if f_trunc == 0.0 && f_trunc.is_sign_negative() {
             // -0.0 is fine

@@ -12,7 +12,16 @@
 #![deny(clippy::todo, clippy::unimplemented)]
 #![warn(clippy::pedantic)]
 // Allow specific lints necessary for low-level math/Wasm ops, matching Cargo.toml
-#![allow(clippy::float_arithmetic, clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+#![allow(clippy::float_arithmetic)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::cast_sign_loss)]
+#![allow(clippy::cast_possible_wrap)]
+#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::float_cmp)]
+// Allow documentation and other noisy lints temporarily to focus on core logic
+#![allow(clippy::missing_errors_doc)] // TODO: Add detailed error docs
+#![allow(clippy::doc_markdown)] // TODO: Fix all doc markdown issues
+#![allow(clippy::items_after_statements)] // TODO: Revisit and move consts to module level properly
 
 // Import std when available
 #[cfg(feature = "std")]

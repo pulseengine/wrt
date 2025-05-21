@@ -14,4 +14,4 @@ focusing on correctness and compatibility with `no_std` environments.
 
 Licensed under the MIT license (LICENSE-MIT).
 
-Copyright (c) 2025 R T 
+Copyright (c) 2025 Ralf Anton Beier 
