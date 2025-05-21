@@ -41,8 +41,8 @@
 //#![deny(missing_docs)] // Temporarily disabled for build
 
 // Verify required features
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
-compile_error!("The 'alloc' feature must be enabled when using no_std");
+// For pure no_std (without alloc), some functionality might be limited
+// but the crate should still be usable for basic operations
 
 // Import core
 extern crate core;

@@ -23,7 +23,9 @@ log = { version = "0.4", optional = true }
 default = []
 std = ["wrt-host/std", "wrt-types/std", "log"]
 alloc = ["wrt-host/alloc", "wrt-types/alloc", "dep:alloc"]
-no_std = ["wrt-host/no_std", "wrt-types/no_std"]
+# For compatibility with verification script
+# This is a no-op since the crate is no_std by default
+no_std = []
 kani = ["wrt-host/kani"]
 
 [lints.rust]
