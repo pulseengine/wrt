@@ -1,3 +1,7 @@
+// Copyright (c) 2025 Ralf Anton Beier
+// Licensed under the MIT license.
+// SPDX-License-Identifier: MIT
+
 //! Pure execution context for WebAssembly instructions.
 //!
 //! This module provides a minimal execution context for pure instruction
