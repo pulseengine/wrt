@@ -91,8 +91,7 @@ pub use crate::{
         Namespace,
         ResourceType,
     },
-    // Component builders (alloc-dependent)
-    component_builder,
+    // Component builders (alloc-dependent) - handled in lib.rs with proper feature gates
     component_value::{ComponentValue, ValType},
     component_value_store::{ComponentValueStore, ValueRef},
     component_value_store_builder::ComponentValueStoreBuilder,
@@ -133,3 +132,7 @@ pub use crate::{
     SafeMemoryHandler,
     SafeSlice,
 };
+
+// Feature-gated re-exports that can't be included in the main use block
+#[cfg(feature = "alloc")]
+pub use crate::component_builder::{ComponentTypeBuilder, ExportBuilder, ImportBuilder, NamespaceBuilder};

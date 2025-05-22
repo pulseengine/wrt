@@ -34,6 +34,34 @@ use alloc::vec::Vec;
 // This module provides common traits used for type conversions between format
 // and runtime representations.
 
+/// A writer that counts the number of bytes written without storing them.
+/// Used for calculating serialized sizes.
+struct CountingWriter {
+    count: usize,
+}
+
+impl CountingWriter {
+    fn new() -> Self {
+        Self { count: 0 }
+    }
+    
+    fn bytes_written(&self) -> usize {
+        self.count
+    }
+}
+
+impl BytesWriter for CountingWriter {
+    fn write_byte(&mut self, _byte: u8) -> WrtResult<()> {
+        self.count += 1;
+        Ok(())
+    }
+    
+    fn write_all(&mut self, bytes: &[u8]) -> WrtResult<()> {
+        self.count += bytes.len();
+        Ok(())
+    }
+}
+
 /// Trait for types that can be converted from a format representation
 pub trait FromFormat<T> {
     /// Convert from a format representation
@@ -144,6 +172,20 @@ impl Checksummable for alloc::string::String {
 
 /// Trait for types that can be serialized to bytes.
 pub trait ToBytes: Sized {
+    /// Returns the size in bytes required to serialize this type.
+    /// This should be a constant for fixed-size types.
+    /// Default implementation uses a temporary buffer to calculate size.
+    fn serialized_size(&self) -> usize {
+        // Default implementation - serialize to a counting writer to get size
+        let mut counter = CountingWriter::new();
+        let provider = NoStdProvider;
+        if self.to_bytes_with_provider(&mut WriteStream::new(&mut counter), &provider).is_ok() {
+            counter.bytes_written()
+        } else {
+            0 // Fallback if serialization fails
+        }
+    }
+
     /// Serializes the type into a byte stream using a provided memory stream
     /// and memory provider for stream operations.
     fn to_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
@@ -236,6 +278,10 @@ macro_rules! impl_bytes_for_primitive {
     ($($T:ty => $read_method:ident, $write_method:ident);* $(;)?) => {
         $(
             impl ToBytes for $T {
+                fn serialized_size(&self) -> usize {
+                    core::mem::size_of::<$T>()
+                }
+
                 fn to_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
                     &self,
                     writer: &mut WriteStream<'a>,
@@ -278,9 +324,9 @@ impl_bytes_for_primitive! {
 
 // Corrected ToBytes for bool
 impl ToBytes for bool {
-    // True: 1, False: 0
-    // const SERIALIZED_SIZE: usize = 1; // SERIALIZED_SIZE is not part of this
-    // ToBytes trait definition
+    fn serialized_size(&self) -> usize {
+        1
+    }
 
     fn to_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
         &self,
@@ -314,8 +360,9 @@ impl FromBytes for bool {
 
 // Corrected ToBytes for ()
 impl ToBytes for () {
-    // const SERIALIZED_SIZE: usize = 0; // SERIALIZED_SIZE is not part of this
-    // ToBytes trait definition
+    fn serialized_size(&self) -> usize {
+        0
+    }
 
     fn to_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
         &self,
@@ -561,6 +608,10 @@ where
     A: ToBytes,
     B: ToBytes,
 {
+    fn serialized_size(&self) -> usize {
+        self.0.serialized_size() + self.1.serialized_size()
+    }
+
     fn to_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
         &self,
         writer: &mut WriteStream<'a>,
@@ -593,6 +644,13 @@ where
 
 // Implementations for Option<T>
 impl<T: ToBytes> ToBytes for Option<T> {
+    fn serialized_size(&self) -> usize {
+        match self {
+            Some(value) => 1 + value.serialized_size(), // 1 byte for tag + value size
+            None => 1, // 1 byte for tag
+        }
+    }
+
     fn to_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
         &self,
         writer: &mut WriteStream<'a>,
@@ -637,6 +695,10 @@ impl<T: FromBytes> FromBytes for Option<T> {
 /// A marker trait to seal other traits, preventing external implementations.
 
 impl ToBytes for char {
+    fn serialized_size(&self) -> usize {
+        4 // char is serialized as u32
+    }
+
     fn to_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
         &self,
         writer: &mut WriteStream<'a>,
@@ -1091,6 +1153,10 @@ impl<T: Checksummable> Checksummable for Option<T> {
 
 #[cfg(feature = "alloc")]
 impl ToBytes for alloc::string::String {
+    fn serialized_size(&self) -> usize {
+        4 + self.len() // 4 bytes for length + string bytes
+    }
+
     fn to_bytes_with_provider<'a, PStream: RootMemoryProvider>(
         &self,
         writer: &mut WriteStream<'a>,

@@ -17,6 +17,10 @@
 
 use core::ptr::{self, NonNull};
 
+// Safety: NonNull<u8> is safe to send between threads as it's just a pointer wrapper
+unsafe impl Send for LinuxArm64MteAllocator {}
+unsafe impl Sync for LinuxArm64MteAllocator {}
+
 use wrt_error::{codes, Error, ErrorCategory, Result};
 
 use crate::memory::{PageAllocator, WASM_PAGE_SIZE};
@@ -268,7 +272,7 @@ impl LinuxArm64MteAllocator {
         if result != 0 {
             return Err(Error::new(
                 ErrorCategory::System,
-                codes::MEMORY_PROTECTION_ERROR,
+                codes::RUNTIME_MEMORY_INTEGRITY_ERROR,
                 "Failed to set up guard page protection",
             ));
         }

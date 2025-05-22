@@ -39,6 +39,8 @@ pub enum Type {
     MemoryRead,
     /// Memory write operation
     MemoryWrite,
+    /// Memory copy operation
+    MemoryCopy,
     /// Memory grow operation
     MemoryGrow,
     /// Collection push operation
