@@ -11,11 +11,12 @@ use wrt_error::{
 };
 // Import BoundedVec and WasmName if needed for read_string or other parsing into owned bounded
 // buffers
-use wrt_types::bounded::WasmName; /* Assuming BoundedString is not directly used, or add if
-                                    * needed. */
-use wrt_types::safe_memory::MemoryProvider; // For WasmName if it takes a provider
-use wrt_types::traits::BytesWriter; // For write functions
-use wrt_types::{RefType, ValueType};
+use wrt_foundation::bounded::WasmName; /* Assuming BoundedString is not directly used, or
+                                         * add if
+                                         * needed. */
+use wrt_foundation::safe_memory::MemoryProvider; // For WasmName if it takes a provider
+use wrt_foundation::traits::BytesWriter; // For write functions
+use wrt_foundation::{RefType, ValueType};
 
 use crate::{
     component::ValType,

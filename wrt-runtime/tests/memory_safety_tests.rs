@@ -4,16 +4,16 @@
 //! safe memory structures.
 
 use wrt_error::Result;
-use wrt_runtime::{
-    memory::Memory,
-    table::Table,
-    types::{MemoryType, TableType},
-};
-use wrt_types::{
+use wrt_foundation::{
     safe_memory::{SafeMemoryHandler, SafeSlice},
     types::{Limits, ValueType},
     values::Value,
     verification::VerificationLevel,
+};
+use wrt_runtime::{
+    memory::Memory,
+    table::Table,
+    types::{MemoryType, TableType},
 };
 
 #[test]

@@ -6,7 +6,7 @@ use wrt_component::{
     ComponentValue,
 };
 use wrt_error::Error;
-use wrt_types::values::{Integer, Real, Value};
+use wrt_foundation::values::{Integer, Real, Value};
 
 /// Tests for encoding/decoding simple primitive types
 #[test]
@@ -503,7 +503,7 @@ fn test_type_conversion_bidirectional() {
     use wrt_format::component::{
         ExternType as FormatExternType, ResourceRepresentation, ValType as FormatValType,
     };
-    use wrt_types::{
+    use wrt_foundation::{
         component::ResourceType,
         component_value::ValType as TypesValType,
         types::{FuncType as TypesFuncType, ValueType},
@@ -598,7 +598,7 @@ fn test_complex_type_conversions() {
     use wrt_format::component::{
         ExternType as FormatExternType, ResourceRepresentation, ValType as FormatValType,
     };
-    use wrt_types::{
+    use wrt_foundation::{
         component::ResourceType,
         component_value::ValType as TypesValType,
         types::{FuncType as TypesFuncType, ValueType},
@@ -656,7 +656,7 @@ fn test_extern_type_conversion() {
     use wrt_format::component::{
         ExternType as FormatExternType, ResourceRepresentation, ValType as FormatValType,
     };
-    use wrt_types::{
+    use wrt_foundation::{
         component::ResourceType,
         component_value::ValType as TypesValType,
         types::{FuncType as TypesFuncType, ValueType},
@@ -729,7 +729,7 @@ fn test_extern_type_conversion() {
 fn test_conversion_traits() {
     use wrt_component::type_conversion::bidirectional::*;
     use wrt_format::component::{ExternType as FormatExternType, ValType as FormatValType};
-    use wrt_types::{
+    use wrt_foundation::{
         types::{FuncType as TypesFuncType, ValueType},
         ExternType as TypesExternType,
     };

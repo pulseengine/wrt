@@ -7,7 +7,7 @@
 use core::{fmt, marker::PhantomData};
 
 use wrt_error::{codes, Error, Result};
-use wrt_types::{bounded::BoundedVec, MemoryProvider};
+use wrt_foundation::{bounded::BoundedVec, MemoryProvider};
 
 /// A simple key-value pair for use in bounded hash maps
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -182,7 +182,7 @@ impl<'a, K, V, const N: usize, P: MemoryProvider + Default + Clone + PartialEq +
 
 #[cfg(test)]
 mod tests {
-    use wrt_types::safe_memory::NoStdProvider;
+    use wrt_foundation::safe_memory::NoStdProvider;
 
     use super::*;
 

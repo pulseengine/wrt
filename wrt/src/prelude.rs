@@ -63,6 +63,30 @@ pub use wrt_format::{
     binary, component::Component as FormatComponent, is_state_section_name,
     module::Module as FormatModule, validation::Validatable as FormatValidatable, StateSection,
 };
+#[cfg(not(any(feature = "std", feature = "alloc")))]
+pub use wrt_foundation::bounded::{BoundedString as String, BoundedVec as Vec};
+#[cfg(not(any(feature = "std", feature = "alloc")))]
+pub use wrt_foundation::bounded_collections::BoundedSet as HashSet;
+// Re-export from wrt-foundation (core foundation library)
+pub use wrt_foundation::{
+    // Bounded collections (safety-first alternatives to standard collections)
+    bounded::{BoundedError, BoundedHashMap, BoundedStack, BoundedVec, CapacityError},
+    component::{
+        ComponentType, ExternType, GlobalType as ComponentGlobalType, InstanceType,
+        MemoryType as ComponentMemoryType, TableType as ComponentTableType,
+    },
+    component_value::{ComponentValue, ValType},
+    // Safe memory types - prioritizing these over standard collections
+    safe_memory::{
+        MemoryProvider, MemorySafety, MemoryStats, MemoryVerification, SafeMemoryHandler,
+        SafeSlice, SafeStack,
+    },
+    // Core types
+    types::{BlockType, FuncType, GlobalType, Limits, MemoryType, RefType, TableType, ValueType},
+    validation::{BoundedCapacity, Checksummed, Validatable as TypesValidatable},
+    values::{v128, Value, V128},
+    verification::{Checksum, VerificationLevel},
+};
 // Re-export from wrt-host (host interface)
 pub use wrt_host::{
     environment::{Environment, HostEnvironment},
@@ -110,30 +134,6 @@ pub use wrt_sync::{concurrency::ThreadSafe, sync_primitives::SyncAccess};
 pub use wrt_sync::{
     WrtMutex as Mutex, WrtMutexGuard as MutexGuard, WrtRwLock as RwLock,
     WrtRwLockReadGuard as RwLockReadGuard, WrtRwLockWriteGuard as RwLockWriteGuard,
-};
-#[cfg(not(any(feature = "std", feature = "alloc")))]
-pub use wrt_types::bounded::{BoundedString as String, BoundedVec as Vec};
-#[cfg(not(any(feature = "std", feature = "alloc")))]
-pub use wrt_types::bounded_collections::BoundedSet as HashSet;
-// Re-export from wrt-types (core type definitions)
-pub use wrt_types::{
-    // Bounded collections (safety-first alternatives to standard collections)
-    bounded::{BoundedError, BoundedHashMap, BoundedStack, BoundedVec, CapacityError},
-    component::{
-        ComponentType, ExternType, GlobalType as ComponentGlobalType, InstanceType,
-        MemoryType as ComponentMemoryType, TableType as ComponentTableType,
-    },
-    component_value::{ComponentValue, ValType},
-    // Safe memory types - prioritizing these over standard collections
-    safe_memory::{
-        MemoryProvider, MemorySafety, MemoryStats, MemoryVerification, SafeMemoryHandler,
-        SafeSlice, SafeStack,
-    },
-    // Core types
-    types::{BlockType, FuncType, GlobalType, Limits, MemoryType, RefType, TableType, ValueType},
-    validation::{BoundedCapacity, Checksummed, Validatable as TypesValidatable},
-    values::{v128, Value, V128},
-    verification::{Checksum, VerificationLevel},
 };
 
 // For no_std/no_alloc environments, use our bounded collections

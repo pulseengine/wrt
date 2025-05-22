@@ -3,7 +3,7 @@
 // This module provides the core runtime implementation of WebAssembly modules
 // used by the runtime execution engine.
 
-use wrt_types::{
+use wrt_foundation::{
     types::{
         CustomSection as WrtCustomSection, DataMode as WrtDataMode, DataSegment as WrtDataSegment,
         ElementMode as WrtElementMode, ElementSegment as WrtElementSegment,
@@ -171,13 +171,13 @@ impl Module {
         })
     }
 
-    /// Creates a runtime Module from a wrt_types::types::Module.
+    /// Creates a runtime Module from a wrt_foundation::types::Module.
     /// This is the primary constructor after decoding.
-    pub fn from_wrt_module(wrt_module: &wrt_types::types::Module) -> Result<Self> {
+    pub fn from_wrt_module(wrt_module: &wrt_foundation::types::Module) -> Result<Self> {
         let mut runtime_module = Self::new()?;
 
         if let Some(name) = &wrt_module.name {
-            // Assuming Module in wrt_types has an optional name
+            // Assuming Module in wrt_foundation has an optional name
             runtime_module.name = Some(name.clone());
         }
         runtime_module.start = wrt_module.start;
@@ -203,15 +203,17 @@ impl Module {
                     ExternType::Function(ft)
                 }
                 WrtImportDesc::Table(tt) => {
-                    ExternType::Table(wrt_types::component::TableType::from_core(tt))
+                    ExternType::Table(wrt_foundation::component::TableType::from_core(tt))
                 }
                 WrtImportDesc::Memory(mt) => {
-                    ExternType::Memory(wrt_types::component::MemoryType::from_core(mt))
+                    ExternType::Memory(wrt_foundation::component::MemoryType::from_core(mt))
                 }
-                WrtImportDesc::Global(gt) => ExternType::Global(wrt_types::component::GlobalType {
-                    value_type: gt.value_type,
-                    mutable: gt.mutable,
-                }),
+                WrtImportDesc::Global(gt) => {
+                    ExternType::Global(wrt_foundation::component::GlobalType {
+                        value_type: gt.value_type,
+                        mutable: gt.mutable,
+                    })
+                }
             };
             runtime_module.imports.entry(import_def.module.clone()).or_default().insert(
                 import_def.name.clone(),
@@ -230,10 +232,10 @@ impl Module {
             // Find the corresponding type_idx from wrt_module.funcs.
             // This assumes wrt_module.funcs has the type indices for functions defined in
             // this module, and wrt_module.code_entries aligns with this.
-            // A direct link or combined struct in wrt_types::Module would be better.
+            // A direct link or combined struct in wrt_foundation::Module would be better.
             // For now, we assume that the i-th code_entry corresponds to the i-th func type
             // index in wrt_module.funcs (after accounting for imported
-            // functions). This needs clarification in wrt_types::Module structure.
+            // functions). This needs clarification in wrt_foundation::Module structure.
             // Let's assume wrt_module.funcs contains type indices for *defined* functions
             // and code_entries matches this.
             let func_idx_in_defined_funcs = runtime_module.functions.len(); // 0-indexed among defined functions
@@ -298,10 +300,10 @@ impl Module {
             // requires instantiation-time evaluation. This is a placeholder and
             // needs robust implementation.
             let items_resolved = match &element_def.items {
-                wrt_types::types::ElementItems::Functions(indices) => {
+                wrt_foundation::types::ElementItems::Functions(indices) => {
                     indices.iter().filter_map(|&opt_idx| opt_idx).collect()
                 }
-                wrt_types::types::ElementItems::Expressions(exprs) => {
+                wrt_foundation::types::ElementItems::Expressions(exprs) => {
                     // TODO: Evaluate expressions to get function indices. Placeholder:
                     vec![] // This is incorrect, expressions need evaluation.
                 }
@@ -479,7 +481,7 @@ impl Module {
         item_name: &str,
         table_type: WrtTableType,
     ) -> Result<()> {
-        let component_table_type = wrt_types::component::TableType::from_core(&table_type);
+        let component_table_type = wrt_foundation::component::TableType::from_core(&table_type);
         let import_struct = crate::module::Import::new(
             module_name.to_string(),
             item_name.to_string(),
@@ -499,7 +501,7 @@ impl Module {
         item_name: &str,
         memory_type: WrtMemoryType,
     ) -> Result<()> {
-        let component_memory_type = wrt_types::component::MemoryType::from_core(&memory_type);
+        let component_memory_type = wrt_foundation::component::MemoryType::from_core(&memory_type);
         let import_struct = crate::module::Import::new(
             module_name.to_string(),
             item_name.to_string(),
@@ -519,7 +521,7 @@ impl Module {
         item_name: &str,
         format_global: wrt_format::module::Global,
     ) -> Result<()> {
-        let component_global_type = wrt_types::component::GlobalType {
+        let component_global_type = wrt_foundation::component::GlobalType {
             value_type: format_global.global_type.value_type,
             mutable: format_global.global_type.mutable,
         };
@@ -770,11 +772,17 @@ impl Default for WrtExpr {
 }
 
 // Ensure ExternType is available
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+use alloc::collections::BTreeMap as HashMap; // For BTreeMap in Module struct
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+use alloc::sync::Arc; // For Arc<Table/Memory/Global>
+#[cfg(feature = "std")]
 use std::collections::HashMap; // For HashMaps in Module struct
+#[cfg(feature = "std")]
 use std::sync::Arc; // For Arc<Table/Memory/Global>
 
 use wrt_error::{codes, Error, ErrorCategory, Result};
-use wrt_types::component::ExternType; // For error handling
+use wrt_foundation::component::ExternType; // For error handling
 
 // Ensure local `crate::module::Import` struct is defined
 // Ensure local `crate::module::Export` struct is defined
@@ -788,7 +796,7 @@ pub fn add_import_runtime_global(
     item_name: &str,
     global_type: WrtImportGlobalType,
 ) -> Result<()> {
-    let component_global_type = wrt_types::component::GlobalType {
+    let component_global_type = wrt_foundation::component::GlobalType {
         value_type: global_type.value_type,
         mutable: global_type.mutable,
     };
@@ -805,7 +813,7 @@ pub fn add_import_runtime_global(
 }
 
 // New method for ModuleBuilder
-pub fn add_runtime_export(&mut self, export: wrt_types::types::Export) -> Result<()> {
+pub fn add_runtime_export(&mut self, export: wrt_foundation::types::Export) -> Result<()> {
     let kind = match export.desc {
         WrtExportDesc::Func(_) => ExportKind::Function,
         WrtExportDesc::Table(_) => ExportKind::Table,
@@ -830,10 +838,10 @@ pub fn add_runtime_element(&mut self, element_segment: WrtElementSegment) -> Res
     // indices. This is a placeholder and assumes items can be derived or
     // handled during instantiation.
     let items_resolved = match &element_segment.items {
-        wrt_types::types::ElementItems::Functions(indices) => {
+        wrt_foundation::types::ElementItems::Functions(indices) => {
             indices.iter().filter_map(|&opt_idx| opt_idx).collect()
         }
-        wrt_types::types::ElementItems::Expressions(_exprs) => {
+        wrt_foundation::types::ElementItems::Expressions(_exprs) => {
             // This requires evaluation context (e.g., globals) which is not available here.
             // Instantiation phase should handle this. For now, maybe store expressions or
             // error.

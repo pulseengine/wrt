@@ -1,8 +1,8 @@
 use wrt_runtime::{Memory, MemoryType, Table, TableType};
-use wrt_types::safe_memory::{SafeMemoryHandler, SafeStack};
-use wrt_types::types::{ExternType, Limits, ValType};
-use wrt_types::values::Value;
-use wrt_types::verification::VerificationLevel;
+use wrt_foundation::safe_memory::{SafeMemoryHandler, SafeStack};
+use wrt_foundation::types::{ExternType, Limits, ValType};
+use wrt_foundation::values::Value;
+use wrt_foundation::verification::VerificationLevel;
 use wrt_error::Result;
 
 // Integration test to verify safe memory implementation works across components

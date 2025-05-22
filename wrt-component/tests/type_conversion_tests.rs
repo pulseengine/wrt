@@ -4,7 +4,7 @@ use wrt_component::type_conversion::bidirectional::*;
 use wrt_format::component::{
     ExternType as FormatExternType, ResourceRepresentation, ValType as FormatValType,
 };
-use wrt_types::{
+use wrt_foundation::{
     component::ResourceType,
     component_value::ValType as TypesValType,
     types::{FuncType as TypesFuncType, ValueType},

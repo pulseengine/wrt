@@ -18,6 +18,10 @@ mod tests {
     #[cfg(feature = "std")]
     use std::{string::String, vec, vec::Vec};
 
+    // Import from wrt-foundation
+    use wrt_foundation::{
+        bounded::BoundedVec, safe_memory::SafeStack, types::ValueType, values::Value,
+    };
     // Import from wrt-instructions
     use wrt_instructions::{
         arithmetic_ops::ArithmeticOp,
@@ -30,8 +34,6 @@ mod tests {
         table_ops::TableOp,
         variable_ops::VariableOp,
     };
-    // Import from wrt-types
-    use wrt_types::{bounded::BoundedVec, safe_memory::SafeStack, types::ValueType, values::Value};
 
     // Mock execution environment for testing
     struct MockExecutionEnvironment {

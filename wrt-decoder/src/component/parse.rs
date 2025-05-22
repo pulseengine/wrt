@@ -11,7 +11,7 @@ use wrt_format::{
     },
     module::Module,
 };
-use wrt_types::resource;
+use wrt_foundation::resource;
 
 use crate::prelude::*;
 

@@ -292,7 +292,7 @@ fn test_type_system(_config: &TestConfig) -> TestResult {
 
 /// Test limits conversion between format and types
 fn test_limits_conversion(_config: &TestConfig) -> TestResult {
-    // Create wrt-types limits
+    // Create wrt-foundation limits
     let type_limits = Limits { min: 1, max: Some(10) };
 
     // Convert to format limits

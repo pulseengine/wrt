@@ -10,21 +10,21 @@
 //! types into runtime-compatible representations.
 
 use wrt_error::{codes, Error, ErrorCategory, Result};
-// Remove direct imports from wrt_format if builder now takes wrt_types
+// Remove direct imports from wrt_format if builder now takes wrt_foundation
 // use wrt_format::module::{Data, Element, Export, Global, Import};
 // use wrt_format::section::CustomSection;
 
-// These are already wrt_types::types due to the `use` below
-use wrt_types::types::{
+// These are already wrt_foundation::types due to the `use` below
+use wrt_foundation::types::{
     CustomSection as WrtCustomSection,   // Alias for clarity
     DataSegment as WrtDataSegment,       // Alias for clarity
     ElementSegment as WrtElementSegment, // Alias for clarity
     Export as WrtExport,                 // Alias for clarity
-    FuncType,                            // Already wrt_types::types::FuncType
+    FuncType,                            // Already wrt_foundation::types::FuncType
     GlobalType as WrtGlobalType,         // Alias for clarity
     Import as WrtImport,                 // Alias for clarity
-    MemoryType,                          // Already wrt_types::types::MemoryType
-    TableType,                           // Already wrt_types::types::TableType
+    MemoryType,                          // Already wrt_foundation::types::MemoryType
+    TableType,                           // Already wrt_foundation::types::TableType
 };
 
 // use alloc::string::String; // Should come from prelude

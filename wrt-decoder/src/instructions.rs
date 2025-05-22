@@ -10,7 +10,7 @@
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::{vec, vec::Vec}; // Ensure Vec is available
 // Removed: use wrt_format::types::value_type_to_byte; // Not directly used after refactor,
-// ValueType::to_binary is in wrt_types
+// ValueType::to_binary is in wrt_foundation
 #[cfg(feature = "std")]
 use std::{vec, vec::Vec}; // Ensure Vec is available
 
@@ -19,8 +19,8 @@ use wrt_format::binary::{
     self, parse_block_type as parse_format_block_type, parse_vec, read_f32, read_f64, read_leb_i32,
     read_leb_i64, read_leb_u32, read_u32, read_u8,
 };
-// Use the canonical types from wrt_types
-use wrt_types::types::{
+// Use the canonical types from wrt_foundation
+use wrt_foundation::types::{
     self as CoreTypes, BlockType as CoreBlockType, DataIdx, ElemIdx, FuncIdx, GlobalIdx,
     Instruction, LabelIdx, LocalIdx, MemArg as CoreMemArg, MemIdx, RefType as CoreRefType,
     TableIdx, TypeIdx, ValueType as CoreValueType,
@@ -274,7 +274,7 @@ pub fn parse_instruction(bytes: &[u8]) -> Result<(CoreTypes::Instruction, usize)
         0x11 => {
             let type_idx = read_operand!(read_leb_u32);
             let table_idx = read_operand!(read_u8); // Wasm spec: table_idx is u32, but often 0. LEB encoded.
-                                                    // wrt-types uses TableIdx (u32). Decoder was u8. This needs care.
+                                                    // wrt-foundation uses TableIdx (u32). Decoder was u8. This needs care.
                                                     // Table index is indeed LEB128 u32. read_u8 is wrong.
             current_offset -= 1; // backtrack the u8 read.
             let table_idx_u32 = read_operand!(read_leb_u32);
@@ -757,15 +757,15 @@ pub fn parse_locals(bytes: &[u8]) -> Result<(Vec<CoreTypes::LocalEntry>, usize)>
 
 // The encode functions are removed as wrt-decoder's primary role is decoding.
 // Encoding, if needed, would be a separate concern, possibly in wrt-format or a
-// dedicated encoder lib using wrt-types.
+// dedicated encoder lib using wrt-foundation.
 
 // The test module also needs significant updates to reflect the new Instruction
 // type and parsing logic. For now, it's commented out.
 // #[cfg(test)]
 // mod tests {
 // use super::*;
-// use wrt_types::types::{BlockType, ValueType as CoreValueType, Instruction as
-// CoreInstruction, MemArg as CoreMemArg};
+// use wrt_foundation::types::{BlockType, ValueType as CoreValueType,
+// Instruction as CoreInstruction, MemArg as CoreMemArg};
 //
 // Helper for tests: converts a slice of CoreInstruction to bytes
 // This is complex and would require a new encode_instructions for

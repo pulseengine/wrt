@@ -8,11 +8,12 @@ use std::vec::Vec;
 
 use wrt_decoder::parser::Parser;
 use wrt_format::binary::{WASM_MAGIC, WASM_VERSION};
-use wrt_types::{
+use wrt_foundation::{
     safe_memory::{MemoryProvider, SafeSlice, StdMemoryProvider},
     verification::VerificationLevel,
 };
 
+#[cfg(any(feature = "std", feature = "alloc"))]
 #[test]
 fn test_wasm_header_parsing() {
     // Create a minimal valid WebAssembly module with just the header
@@ -62,6 +63,7 @@ fn test_wasm_header_parsing() {
     }
 }
 
+#[cfg(any(feature = "std", feature = "alloc"))]
 #[test]
 fn test_verification_levels() {
     // Create a minimal valid WebAssembly module with just the header
@@ -80,4 +82,29 @@ fn test_verification_levels() {
     Parser::from_safe_slice(sampling_slice).next().unwrap().unwrap();
     Parser::from_safe_slice(standard_slice).next().unwrap().unwrap();
     Parser::from_safe_slice(full_slice).next().unwrap().unwrap();
+}
+
+// Add a simple test that runs in pure no_std mode (no alloc)
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[test]
+fn test_pure_nostd_header_validation() {
+    // In pure no_std mode, we can still use SafeSlice with static data
+    let wasm_header = [
+        // WASM_MAGIC
+        0x00, 0x61, 0x73, 0x6d, // WASM_VERSION
+        0x01, 0x00, 0x00, 0x00,
+    ];
+
+    // We can validate the header
+    let safe_slice = SafeSlice::new(&wasm_header);
+    let mut parser = Parser::from_safe_slice(safe_slice);
+
+    // Check the version payload
+    let version_payload = parser.next().unwrap().unwrap();
+    match version_payload {
+        wrt_decoder::parser::Payload::Version(1, _) => {
+            // This is correct
+        }
+        other => panic!("Unexpected payload: {:?}", other),
+    }
 }

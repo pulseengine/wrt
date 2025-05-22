@@ -12,7 +12,7 @@ use crate::{
     stackless_frame::StacklessFrame,
 };
 use wrt_runtime::{GlobalType, Memory, Table};
-use wrt_types::values::Value as RuntimeValue;
+use wrt_foundation::values::Value as RuntimeValue;
 
 #[cfg(feature = "std")]
 use std::{option::Option, string::ToString, sync::Arc};
@@ -127,7 +127,7 @@ impl ExecutionStats {
     }
 
     /// Update stats from operation summary
-    pub fn update_from_operations(&mut self, ops: wrt_types::OperationSummary) {
+    pub fn update_from_operations(&mut self, ops: wrt_foundation::OperationSummary) {
         self.memory_reads = ops.memory_reads;
         self.memory_writes = ops.memory_writes;
         self.memory_grows = ops.memory_grows;

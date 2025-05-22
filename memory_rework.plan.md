@@ -105,7 +105,7 @@ Hand-off — what the agent does next
 
 
 2.  Implement the macOS platform back-end (`PageAllocator` / `FutexLike` traits).
-3.  Refactor `wrt-types` (`LinearMemory`) to use the PAL; adjust all callers.
+3.  Refactor `wrt-foundation` (`LinearMemory`) to use the PAL; adjust all callers.
 4.  Refine `docs/source/architecture/memory_model.rst`:
     *   Fully describe the new `LinearMemory`/`PageAllocator` interaction.
     *   Embed the `memory.grow` sequence diagram.

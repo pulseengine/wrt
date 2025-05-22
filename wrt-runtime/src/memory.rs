@@ -60,7 +60,7 @@
 //!
 //! ```no_run
 //! use wrt_runtime::{Memory, MemoryType};
-//! use wrt_types::types::Limits;
+//! use wrt_foundation::types::Limits;
 //!
 //! // Create a memory type with initial 1 page (64KB) and max 2 pages
 //! let mem_type = MemoryType {
@@ -84,12 +84,19 @@
 //! ```
 
 // Import BorrowMut for SafeMemoryHandler
-#[cfg(all(feature = "alloc", not(feature = "std")))] // Should also work for no_std + alloc
+#[cfg(not(feature = "std"))]
 use core::borrow::BorrowMut;
 use core::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, AtomicUsize, Ordering};
 #[cfg(feature = "std")]
 use std::borrow::BorrowMut;
 
+use wrt_foundation::linear_memory::PalMemoryProvider; /* FallbackAllocator is always
+                                                        * available
+                                                        * if std feature of wrt-platform is
+                                                        * on */
+use wrt_foundation::safe_memory::{
+    MemoryProvider, MemorySafety, MemoryStats, SafeMemoryHandler, SafeSlice,
+};
 #[cfg(all(feature = "platform-macos", target_os = "macos"))]
 // This cfg checks feature of wrt-platform
 use wrt_platform::macos_memory::MacOsAllocator;
@@ -98,11 +105,6 @@ use wrt_platform::memory::{FallbackAllocator, PageAllocator};
 // Import RwLock from appropriate location in no_std
 #[cfg(not(feature = "std"))]
 use wrt_sync::WrtRwLock as RwLock;
-use wrt_types::linear_memory::PalMemoryProvider; /* FallbackAllocator is always available
-                                                   * if std feature of wrt-platform is on */
-use wrt_types::safe_memory::{
-    MemoryProvider, MemorySafety, MemoryStats, SafeMemoryHandler, SafeSlice,
-};
 
 // If other platform features (e.g. "platform-linux") were added to wrt-platform,
 // they would be conditionally imported here too.
@@ -924,7 +926,7 @@ impl Memory {
         &self,
         addr: u32,
         len: usize,
-    ) -> Result<wrt_types::safe_memory::SafeSlice> {
+    ) -> Result<wrt_foundation::safe_memory::SafeSlice> {
         if !self.verify_bounds(addr, len as u32) {
             return Err(Error::new(
                 ErrorCategory::Validation,
@@ -1844,7 +1846,7 @@ impl Memory {
     /// # Errors
     ///
     /// Returns an error if the memory is corrupted or integrity checks fail
-    pub fn as_safe_slice(&self) -> Result<wrt_types::safe_memory::SafeSlice> {
+    pub fn as_safe_slice(&self) -> Result<wrt_foundation::safe_memory::SafeSlice> {
         self.data.get_slice(0, self.size_in_bytes())
     }
 
@@ -1949,7 +1951,7 @@ impl MemorySafety for Memory {
 
 #[cfg(test)]
 mod tests {
-    use wrt_types::{safe_memory::SafeSlice, types::Limits, verification::VerificationLevel};
+    use wrt_foundation::{safe_memory::SafeSlice, types::Limits, verification::VerificationLevel};
 
     use super::*;
 
@@ -2087,10 +2089,11 @@ mod tests {
 
     #[test]
     fn test_memory_safety_features() -> Result<()> {
-        use wrt_types::verification::VerificationLevel;
+        use wrt_foundation::verification::VerificationLevel;
 
         // Create a memory with a specific verification level
-        let mem_type = MemoryType { limits: wrt_types::types::Limits { min: 1, max: Some(2) } };
+        let mem_type =
+            MemoryType { limits: wrt_foundation::types::Limits { min: 1, max: Some(2) } };
         let mut memory = Memory::new(mem_type)?;
         memory.set_verification_level(VerificationLevel::Full);
 

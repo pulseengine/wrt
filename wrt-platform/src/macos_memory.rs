@@ -359,7 +359,8 @@ mod tests {
     use wrt_error::ErrorSource;
 
     use super::*;
-    use crate::memory::PageAllocator; // Ensure PageAllocator trait is in scope // Import ErrorSource trait for error method access
+    use crate::memory::PageAllocator; // Ensure PageAllocator trait is in scope // Import ErrorSource trait for error
+                                      // method access
 
     #[test]
     fn macos_allocator_new() {

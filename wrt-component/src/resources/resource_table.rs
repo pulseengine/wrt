@@ -1,8 +1,8 @@
 use std::sync::Weak;
 
 use wrt_format::component::ResourceOperation as FormatResourceOperation;
+use wrt_foundation::resource::ResourceOperation;
 use wrt_intercept::{builtins::InterceptContext as InterceptionContext, InterceptionResult};
-use wrt_types::resource::ResourceOperation;
 
 use super::{
     buffer_pool::BufferPool,

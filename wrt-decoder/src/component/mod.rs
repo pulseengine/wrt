@@ -10,9 +10,12 @@
 pub mod analysis;
 pub mod component_name_section;
 pub mod decode;
+// Add no_alloc module for no-std, no-alloc support
+pub mod decode_no_alloc;
 mod encode;
 pub mod name_section;
 mod parse;
+pub mod section;
 pub mod types;
 pub mod utils;
 pub mod val_type;

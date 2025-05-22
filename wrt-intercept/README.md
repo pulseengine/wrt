@@ -82,7 +82,7 @@ To create a custom strategy, implement the `LinkInterceptorStrategy` trait:
 use std::sync::Arc;
 use wrt_intercept::{LinkInterceptorStrategy, LinkInterceptor};
 use wrt_error::Result;
-use wrt_types::values::Value;
+use wrt_foundation::values::Value;
 
 struct MyCustomStrategy {
     // Your strategy's state

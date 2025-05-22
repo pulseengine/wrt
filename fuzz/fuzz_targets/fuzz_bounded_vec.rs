@@ -3,7 +3,7 @@
 use arbitrary::Arbitrary;
 use libfuzzer_sys::fuzz_target;
 use std::panic;
-use wrt_types::{
+use wrt_foundation::{
     bounded_collections::BoundedVec,
     verification::VerificationLevel,
 };

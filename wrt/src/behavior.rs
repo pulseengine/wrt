@@ -23,8 +23,8 @@ use crate::{
 // These should come from prelude (wrt_runtime::Memory, wrt_runtime::Table)
 use wrt_runtime::Memory; 
 use wrt_runtime::Table;
-// SafeSlice is in prelude from wrt_types::safe_memory
-// use wrt_types::safe_memory::SafeSlice;
+// SafeSlice is in prelude from wrt_foundation::safe_memory
+// use wrt_foundation::safe_memory::SafeSlice;
 
 /// Represents the outcome of executing a single instruction, guiding the engine's next action.
 #[derive(Debug)]

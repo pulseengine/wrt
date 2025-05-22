@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod simple_tests {
     use wrt_format::component::ValType as FormatValType;
-    use wrt_types::component_value::ValType as TypesValType;
+    use wrt_foundation::component_value::ValType as TypesValType;
 
     use super::super::registry::TypeConversionRegistry;
 

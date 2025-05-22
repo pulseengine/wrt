@@ -22,8 +22,9 @@ mod tests {
     #[cfg(feature = "std")]
     use std::{boxed::Box, string::String, vec, vec::Vec};
 
-    // Import from wrt-types and wrt-error
+    // Import from wrt-foundation and wrt-error
     use wrt_error::{codes, Error, ErrorCategory, Result};
+    use wrt_foundation::values::Value;
     // Import from wrt-host
     use wrt_host::{
         builder::HostBuilder,
@@ -31,7 +32,6 @@ mod tests {
         function::{CloneableFn, HostFunctionHandler},
         host::BuiltinHost,
     };
-    use wrt_types::values::Value;
 
     // Test host function
     fn test_host_function(params: &[Value]) -> Result<Value> {

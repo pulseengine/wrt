@@ -7,8 +7,8 @@ use wrt_error::{errors::codes, Error, ErrorCategory, Result};
 // Import RefType directly from wrt-format
 use wrt_format::RefType as FormatRefType;
 use wrt_format::{section::CustomSection, Error as WrtFormatError, ValueType as FormatValueType};
-// Import types from wrt-types
-use wrt_types::{
+// Import types from wrt-foundation
+use wrt_foundation::{
     types::{FuncType, GlobalType, Limits, MemoryType, RefType, TableType},
     ValueType,
 };
@@ -19,7 +19,7 @@ use crate::prelude::*;
 /// Convert a format binary value type to runtime value type
 ///
 /// This function maps the binary format value types (from wrt-format)
-/// to the runtime value types (from wrt-types).
+/// to the runtime value types (from wrt-foundation).
 pub fn byte_to_value_type(byte: u8) -> Result<ValueType> {
     match byte {
         0x7F => Ok(ValueType::I32),
@@ -38,7 +38,7 @@ pub fn byte_to_value_type(byte: u8) -> Result<ValueType> {
 
 /// Convert a runtime value type to format binary value type
 ///
-/// This function maps the runtime value types (from wrt-types)
+/// This function maps the runtime value types (from wrt-foundation)
 /// to the binary format value types (from wrt-format).
 pub fn value_type_to_byte(val_type: &ValueType) -> u8 {
     match val_type {
@@ -162,8 +162,8 @@ pub fn types_limits_to_format_limits(types_limits: &Limits) -> wrt_format::types
 /// Convert format limits to component limits
 pub fn format_limits_to_component_limits(
     format_limits: &wrt_format::types::Limits,
-) -> wrt_types::component::Limits {
-    wrt_types::component::Limits {
+) -> wrt_foundation::component::Limits {
+    wrt_foundation::component::Limits {
         min: format_limits.min as u32,
         max: format_limits.max.map(|m| m as u32),
     }
@@ -171,7 +171,7 @@ pub fn format_limits_to_component_limits(
 
 /// Convert component limits to format limits
 pub fn component_limits_to_format_limits(
-    comp_limits: &wrt_types::component::Limits,
+    comp_limits: &wrt_foundation::component::Limits,
 ) -> wrt_format::types::Limits {
     wrt_format::types::Limits {
         min: comp_limits.min as u64,
@@ -212,7 +212,7 @@ pub fn format_global_to_types_global(
     let initial_value = parse_and_evaluate_const_expr(&format_global.init)?;
 
     // format_global.global_type is wrt_format::types::FormatGlobalType
-    // which has value_type: wrt_types::ValueType and mutable: bool
+    // which has value_type: wrt_foundation::ValueType and mutable: bool
     let declared_value_type = format_global.global_type.value_type;
 
     if initial_value.value_type() != declared_value_type {
@@ -256,35 +256,35 @@ pub fn format_table_type_to_types_table_type(format_type: &wrt_format::module::T
 
 pub fn format_import_desc_to_types_import_desc(
     format_desc: &wrt_format::module::ImportDesc,
-) -> Result<wrt_types::types::ImportDesc> {
+) -> Result<wrt_foundation::types::ImportDesc> {
     match format_desc {
         wrt_format::module::ImportDesc::Function(type_idx) => {
-            Ok(wrt_types::types::ImportDesc::Function(*type_idx))
+            Ok(wrt_foundation::types::ImportDesc::Function(*type_idx))
         }
         wrt_format::module::ImportDesc::Table(format_table) => {
             let types_table_type = format_table_type_to_types_table_type(format_table);
-            Ok(wrt_types::types::ImportDesc::Table(types_table_type))
+            Ok(wrt_foundation::types::ImportDesc::Table(types_table_type))
         }
         wrt_format::module::ImportDesc::Memory(format_memory) => {
             let types_memory_type = format_memory_type_to_types_memory_type(format_memory);
-            Ok(wrt_types::types::ImportDesc::Memory(types_memory_type))
+            Ok(wrt_foundation::types::ImportDesc::Memory(types_memory_type))
         }
         wrt_format::module::ImportDesc::Global(format_global) => {
-            let types_import_global_type = wrt_types::types::ImportGlobalType {
+            let types_import_global_type = wrt_foundation::types::ImportGlobalType {
                 value_type: format_global.value_type,
                 mutable: format_global.mutable,
             };
-            Ok(wrt_types::types::ImportDesc::Global(types_import_global_type))
-        } /* wrt_format::module::ImportDesc::Tag is not yet in wrt_types::types::ImportDesc
-           * Add if/when Tag support is complete in wrt-types */
+            Ok(wrt_foundation::types::ImportDesc::Global(types_import_global_type))
+        } /* wrt_format::module::ImportDesc::Tag is not yet in wrt_foundation::types::ImportDesc
+           * Add if/when Tag support is complete in wrt-foundation */
     }
 }
 
 pub fn format_import_to_types_import(
     format_import: &wrt_format::module::Import,
-) -> Result<wrt_types::types::Import> {
+) -> Result<wrt_foundation::types::Import> {
     let types_desc = format_import_desc_to_types_import_desc(&format_import.desc)?;
-    Ok(wrt_types::types::Import {
+    Ok(wrt_foundation::types::Import {
         module: format_import.module.clone(),
         name: format_import.name.clone(),
         desc: types_desc,
@@ -295,28 +295,30 @@ pub fn format_import_to_types_import(
 
 pub fn format_export_to_types_export(
     format_export: &wrt_format::module::Export,
-) -> Result<wrt_types::types::Export> {
+) -> Result<wrt_foundation::types::Export> {
     let types_export_desc = match format_export.kind {
         wrt_format::module::ExportKind::Function => {
-            wrt_types::types::ExportDesc::Function(format_export.index)
+            wrt_foundation::types::ExportDesc::Function(format_export.index)
         }
         wrt_format::module::ExportKind::Table => {
-            wrt_types::types::ExportDesc::Table(format_export.index)
+            wrt_foundation::types::ExportDesc::Table(format_export.index)
         }
         wrt_format::module::ExportKind::Memory => {
-            wrt_types::types::ExportDesc::Memory(format_export.index)
+            wrt_foundation::types::ExportDesc::Memory(format_export.index)
         }
         wrt_format::module::ExportKind::Global => {
-            wrt_types::types::ExportDesc::Global(format_export.index)
-        } // wrt_format::module::ExportKind::Tag not yet in wrt_types::types::ExportDesc
+            wrt_foundation::types::ExportDesc::Global(format_export.index)
+        } // wrt_format::module::ExportKind::Tag not yet in wrt_foundation::types::ExportDesc
     };
-    Ok(wrt_types::types::Export { name: format_export.name.clone(), desc: types_export_desc })
+    Ok(wrt_foundation::types::Export { name: format_export.name.clone(), desc: types_export_desc })
 }
 
 // --- Const Expression Parsing ---
 // This is a simplified version focusing on *.const instructions.
 // It assumes the input `expr_bytes` is the raw init expression (opcodes + end).
-pub(crate) fn parse_and_evaluate_const_expr(expr_bytes: &[u8]) -> Result<wrt_types::values::Value> {
+pub(crate) fn parse_and_evaluate_const_expr(
+    expr_bytes: &[u8],
+) -> Result<wrt_foundation::values::Value> {
     // Ensure there's at least one byte for instruction and one for END.
     if expr_bytes.len() < 2 {
         return Err(Error::new(
@@ -376,13 +378,22 @@ pub(crate) fn parse_and_evaluate_const_expr(expr_bytes: &[u8]) -> Result<wrt_typ
 
     match instructions.first().unwrap() {
         // Safe due to len checks
-        crate::instructions::Instruction::I32Const(val) => Ok(wrt_types::values::Value::I32(*val)),
-        crate::instructions::Instruction::I64Const(val) => Ok(wrt_types::values::Value::I64(*val)),
-        crate::instructions::Instruction::F32Const(val) => Ok(wrt_types::values::Value::F32(*val)), /* Assuming Instruction enum stores f32 directly */
-        crate::instructions::Instruction::F64Const(val) => Ok(wrt_types::values::Value::F64(*val)), /* Assuming Instruction enum stores f64 directly */
-        // TODO: Handle ref.null <type> -> Value::RefNull( соответствующий RefType из wrt_types)
-        // TODO: Handle ref.func <idx> -> Value::FuncRef(FuncRefValue::Actual(idx)) or similar
-        // TODO: Handle global.get <imported_global_idx> (this requires context of imported globals)
+        crate::instructions::Instruction::I32Const(val) => {
+            Ok(wrt_foundation::values::Value::I32(*val))
+        }
+        crate::instructions::Instruction::I64Const(val) => {
+            Ok(wrt_foundation::values::Value::I64(*val))
+        }
+        crate::instructions::Instruction::F32Const(val) => {
+            Ok(wrt_foundation::values::Value::F32(*val))
+        } // Assuming Instruction enum stores f32 directly
+        crate::instructions::Instruction::F64Const(val) => {
+            Ok(wrt_foundation::values::Value::F64(*val))
+        } // Assuming Instruction enum stores f64 directly
+        // TODO: Handle ref.null <type> -> Value::RefNull( соответствующий RefType из
+        // wrt_foundation) TODO: Handle ref.func <idx> ->
+        // Value::FuncRef(FuncRefValue::Actual(idx)) or similar TODO: Handle global.get
+        // <imported_global_idx> (this requires context of imported globals)
         ref instr => Err(Error::new(
             ErrorCategory::Parse,
             codes::UNSUPPORTED_CONST_EXPR_OPERATION,
@@ -394,19 +405,19 @@ pub(crate) fn parse_and_evaluate_const_expr(expr_bytes: &[u8]) -> Result<wrt_typ
 // --- Data Segment Conversion ---
 pub fn format_data_to_types_data_segment(
     format_data: &wrt_format::module::Data,
-) -> Result<wrt_types::types::DataSegment> {
+) -> Result<wrt_foundation::types::DataSegment> {
     let types_data_mode = match format_data.mode {
         wrt_format::module::DataMode::Active => {
             let offset_value = parse_and_evaluate_const_expr(&format_data.offset)?;
-            wrt_types::types::DataMode::Active {
+            wrt_foundation::types::DataMode::Active {
                 memory_index: format_data.memory_idx, // Use from format_data directly
                 offset: offset_value,
             }
         }
-        wrt_format::module::DataMode::Passive => wrt_types::types::DataMode::Passive,
+        wrt_format::module::DataMode::Passive => wrt_foundation::types::DataMode::Passive,
     };
 
-    Ok(wrt_types::types::DataSegment {
+    Ok(wrt_foundation::types::DataSegment {
         mode: types_data_mode,
         init: format_data.init.clone(), // Directly clone the byte vector
     })
@@ -415,26 +426,26 @@ pub fn format_data_to_types_data_segment(
 // --- Element Segment Conversion ---
 pub fn format_element_to_types_element_segment(
     format_element: &wrt_format::module::Element,
-) -> Result<wrt_types::types::ElementSegment> {
+) -> Result<wrt_foundation::types::ElementSegment> {
     // Assuming wrt_format::module::Element always represents an active, funcref
     // element segment as per its current structure: { table_idx: u32, offset:
     // Vec<u8>, init: Vec<u32> }
 
     let offset_value = parse_and_evaluate_const_expr(&format_element.offset)?;
 
-    let types_element_mode = wrt_types::types::ElementMode::Active {
+    let types_element_mode = wrt_foundation::types::ElementMode::Active {
         table_index: format_element.table_idx,
         offset: offset_value,
     };
 
     // For MVP, elements are funcrefs. wrt_format::Element implicitly means funcref.
-    let types_element_type = wrt_types::types::RefType::Funcref;
+    let types_element_type = wrt_foundation::types::RefType::Funcref;
 
     // items are directly from format_element.init (which is Vec<u32> of func
     // indices)
     let types_items: Vec<u32> = format_element.init.clone();
 
-    Ok(wrt_types::types::ElementSegment {
+    Ok(wrt_foundation::types::ElementSegment {
         mode: types_element_mode,
         element_type: types_element_type,
         items: types_items,

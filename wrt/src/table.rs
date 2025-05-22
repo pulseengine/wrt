@@ -6,7 +6,7 @@ use crate::prelude::TypesValue as Value;
 
 // Re-export table types from wrt-runtime
 pub use wrt_runtime::{Table, TableType};
-pub use wrt_types::types::Limits;
+pub use wrt_foundation::types::Limits;
 
 // Alias for backward compatibility
 pub type TableAdapter = Table;
@@ -31,7 +31,7 @@ pub fn create_table(table_type: TableType) -> Result<Table> {
     let element_type = table_type.element_type;
     Table::new(
         table_type,
-        wrt_types::values::Value::default_for_type(&element_type),
+        wrt_foundation::values::Value::default_for_type(&element_type),
     )
 }
 
@@ -124,7 +124,7 @@ mod tests {
         let table_type = create_test_table_type(10, Some(20));
         let mut table = Table::new(
             table_type,
-            wrt_types::values::Value::default_for_type(&ValueType::FuncRef),
+            wrt_foundation::values::Value::default_for_type(&ValueType::FuncRef),
         )?;
 
         // Get initial value (should be None)
@@ -150,7 +150,7 @@ mod tests {
         let table_type = create_test_table_type(10, Some(20));
         let mut table = Table::new(
             table_type,
-            wrt_types::values::Value::default_for_type(&ValueType::FuncRef),
+            wrt_foundation::values::Value::default_for_type(&ValueType::FuncRef),
         )?;
 
         // Initialize a range
@@ -178,7 +178,7 @@ mod tests {
         let table_type = create_test_table_type(10, Some(20));
         let mut table = Table::new(
             table_type,
-            wrt_types::values::Value::default_for_type(&ValueType::FuncRef),
+            wrt_foundation::values::Value::default_for_type(&ValueType::FuncRef),
         )?;
 
         // Initialize source values
@@ -213,7 +213,7 @@ mod tests {
         let table_type = create_test_table_type(10, Some(20));
         let mut table = Table::new(
             table_type,
-            wrt_types::values::Value::default_for_type(&ValueType::FuncRef),
+            wrt_foundation::values::Value::default_for_type(&ValueType::FuncRef),
         )?;
 
         // Fill a range

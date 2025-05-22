@@ -26,8 +26,8 @@ mod tests {
         section::{CustomSection, CUSTOM_ID, FUNCTION_ID, IMPORT_ID, TYPE_ID},
         types::{FormatBlockType, Limits},
     };
-    // Import from wrt-types for ValueType and ValType
-    use wrt_types::{component_value::ValType, ValueType};
+    // Import from wrt-foundation for ValueType and ValType
+    use wrt_foundation::{component_value::ValType, ValueType};
 
     #[test]
     fn test_binary_constants() {
@@ -95,7 +95,7 @@ mod tests {
 
     #[test]
     fn test_value_types() {
-        // Test ValueType enum from wrt-types
+        // Test ValueType enum from wrt-foundation
         assert_ne!(ValueType::I32, ValueType::I64);
         assert_ne!(ValueType::F32, ValueType::F64);
 
@@ -131,10 +131,10 @@ mod tests {
 
         // Test memory provider
         let provider = memory_provider(buffer.clone());
-        let provider_slice = wrt_types::safe_memory::MemoryProvider::borrow_slice(
+        let provider_slice = wrt_foundation::safe_memory::MemoryProvider::borrow_slice(
             &provider,
             0,
-            wrt_types::safe_memory::MemoryProvider::size(&provider),
+            wrt_foundation::safe_memory::MemoryProvider::size(&provider),
         )
         .unwrap();
 

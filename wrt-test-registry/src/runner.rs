@@ -7,7 +7,7 @@
 //! The runner follows the modular design and safety principles of the WRT
 //! project:
 //! - Uses `wrt-error` for consistent error handling
-//! - Uses `wrt-types` bounded collections for memory safety
+//! - Uses `wrt-foundation` bounded collections for memory safety
 //! - Follows the implementation sequence
 
 use clap::{Parser, Subcommand};

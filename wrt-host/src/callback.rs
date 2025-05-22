@@ -282,7 +282,7 @@ impl Clone for CallbackRegistry {
 
 #[cfg(test)]
 mod tests {
-    use wrt_types::{builtin::BuiltinType, values::Value};
+    use wrt_foundation::{builtin::BuiltinType, values::Value};
 
     use super::*;
 

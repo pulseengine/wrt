@@ -16,7 +16,7 @@ WRT is a pure Rust implementation of a WebAssembly runtime that supports both th
 ## Project Structure
 
 - `wrt/` - Main WRT library (often a facade or re-exporting common types)
-- `wrt-<feature>/` - Various crates implementing specific features and components of the WRT ecosystem (e.g., `wrt-runtime/`, `wrt-component/`, `wrt-types/`, etc.)
+- `wrt-<feature>/` - Various crates implementing specific features and components of the WRT ecosystem (e.g., `wrt-runtime/`, `wrt-component/`, `wrt-foundation/`, etc.)
 - `wrtd/` - WebAssembly Runtime Daemon for executing modules
 - `example/` - Example Component Model implementation and usage
 - `docs/` - Documentation including requirements and specifications

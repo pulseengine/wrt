@@ -42,13 +42,10 @@ pub use std::{
 
 // Re-export from wrt-error
 pub use wrt_error::{codes, kinds, Error, ErrorCategory, Result};
-// Import synchronization primitives for no_std
-#[cfg(not(feature = "std"))]
-pub use wrt_sync::{Mutex, RwLock};
-// Re-export from wrt-types (for component model)
-pub use wrt_types::component_value::ValType;
-// Re-export from wrt-types
-pub use wrt_types::{
+// Re-export from wrt-foundation (for component model)
+pub use wrt_foundation::component_value::ValType;
+// Re-export from wrt-foundation
+pub use wrt_foundation::{
     builtin::BuiltinType,
     component_value::ComponentValue,
     resource::ResourceCanonicalOperation,
@@ -57,6 +54,9 @@ pub use wrt_types::{
     // Core types
     values::Value,
 };
+// Import synchronization primitives for no_std
+#[cfg(not(feature = "std"))]
+pub use wrt_sync::{Mutex, RwLock};
 
 // Conditional imports
 #[cfg(feature = "std")]

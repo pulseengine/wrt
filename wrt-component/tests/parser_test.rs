@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use wrt_component::parser;
 use wrt_error::Result;
-use wrt_types::builtin::BuiltinType;
+use wrt_foundation::builtin::BuiltinType;
 
 // Helper to create a minimal test module with an import
 fn create_test_module(module_name: &str, import_name: &str) -> Vec<u8> {

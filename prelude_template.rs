@@ -63,8 +63,8 @@ pub use wrt_error::{
     Result,
 };
 
-// Re-export from wrt-types
-pub use wrt_types::{
+// Re-export from wrt-foundation
+pub use wrt_foundation::{
     // SafeMemory types
     safe_memory::{SafeMemoryHandler, SafeSlice, SafeStack},
     // Verification types
@@ -74,7 +74,7 @@ pub use wrt_types::{
     values::Value,
     // Component model types
     component_value::{ComponentValue, ValType},
-    // Add other wrt-types imports specific to this crate
+    // Add other wrt-foundation imports specific to this crate
 };
 
 // Re-export from wrt-format

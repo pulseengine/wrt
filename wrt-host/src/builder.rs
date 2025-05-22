@@ -316,7 +316,7 @@ impl HostBuilder {
 
 #[cfg(test)]
 mod tests {
-    use wrt_types::values::Value;
+    use wrt_foundation::values::Value;
 
     use super::*;
 
@@ -389,8 +389,8 @@ mod tests {
         // Creating a simple mock interceptor for testing
         use std::sync::Arc;
 
+        use wrt_foundation::values::Value;
         use wrt_intercept::{LinkInterceptor, LinkInterceptorStrategy};
-        use wrt_types::values::Value;
 
         #[derive(Clone)]
         struct MockStrategy;
@@ -475,8 +475,8 @@ mod tests {
     fn test_builder_with_interceptor() {
         use std::sync::Arc;
 
+        use wrt_foundation::component_value::ComponentValue;
         use wrt_intercept::{BeforeBuiltinResult, BuiltinInterceptor, InterceptContext};
-        use wrt_types::component_value::ComponentValue;
 
         struct TestInterceptor;
 

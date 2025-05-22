@@ -41,7 +41,7 @@
 //! # use std::sync::Arc;
 //! # use wrt_intercept::{LinkInterceptor, LinkInterceptorStrategy};
 //! # use wrt_error::Result;
-//! # use wrt_types::values::Value;
+//! # use wrt_foundation::values::Value;
 //! # struct MyStrategy;
 //! # impl LinkInterceptorStrategy for MyStrategy {
 //! #     fn before_call(&self, _source: &str, _target: &str, _function: &str, args: &[Value]) -> Result<Vec<Value>> {

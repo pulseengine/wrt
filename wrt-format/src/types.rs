@@ -1,11 +1,11 @@
 //! WebAssembly type definitions.
 //!
 //! This module provides type definitions for WebAssembly types.
-//! Most core types are re-exported from wrt-types.
+//! Most core types are re-exported from wrt-foundation.
 
 use wrt_error::Result;
-// Import types from wrt-types
-pub use wrt_types::{BlockType, FuncType, RefType, ValueType};
+// Import types from wrt-foundation
+pub use wrt_foundation::{BlockType, FuncType, RefType, ValueType};
 
 /// WebAssembly memory index type (standard or 64-bit)
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -81,7 +81,7 @@ pub fn value_type_to_byte(value_type: ValueType) -> u8 {
 /// Type for a global variable in the binary format.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FormatGlobalType {
-    pub value_type: ValueType, // This is wrt_types::ValueType re-exported in this file
+    pub value_type: ValueType, // This is wrt_foundation::ValueType re-exported in this file
     pub mutable: bool,
 }
 

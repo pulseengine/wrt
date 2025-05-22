@@ -16,7 +16,7 @@ use std::{
 };
 
 use wrt_error::{codes, kinds::ValidationError, Error, ErrorCategory, Result, WrtError};
-use wrt_types::{builtin::BuiltinType, component_value::ComponentValue};
+use wrt_foundation::{builtin::BuiltinType, component_value::ComponentValue};
 
 use super::BuiltinHandler;
 

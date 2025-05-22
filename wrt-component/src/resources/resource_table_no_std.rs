@@ -3,11 +3,16 @@
 // Licensed under the MIT license.
 // SPDX-License-Identifier: MIT
 
-use wrt_types::bounded::{BoundedCollection, BoundedVec};
+use wrt_format::component::ResourceOperation as FormatResourceOperation;
+use wrt_foundation::{
+    bounded::{BoundedCollection, BoundedVec},
+    component_value::ComponentValue,
+};
 
 use super::{
     bounded_buffer_pool::{BoundedBufferPool, MAX_BUFFERS_PER_CLASS},
     resource_interceptor::ResourceInterceptor,
+    resource_operation_no_std::{from_format_resource_operation, to_format_resource_operation},
 };
 use crate::prelude::*;
 
@@ -163,9 +168,9 @@ pub struct ResourceTable {
     /// Next available resource handle
     next_handle: u32,
     /// Default memory strategy
-    default_memory_strategy: MemoryStrategy,
+    pub default_memory_strategy: MemoryStrategy,
     /// Default verification level
-    default_verification_level: VerificationLevel,
+    pub default_verification_level: VerificationLevel,
     /// Buffer pool for bounded copy operations
     buffer_pool: Box<Mutex<dyn BufferPoolTrait>>,
     /// Interceptors for resource operations
@@ -325,6 +330,73 @@ impl ResourceTable {
         Ok(resource_copy)
     }
 
+    /// Apply an operation to a resource
+    pub fn apply_operation(
+        &mut self,
+        handle: u32,
+        operation: FormatResourceOperation,
+    ) -> Result<ComponentValue> {
+        // Find the resource index
+        let idx = self.find_resource_index(handle).ok_or_else(|| {
+            Error::new(
+                ErrorCategory::Resource,
+                codes::RESOURCE_ERROR,
+                format!("Resource handle {} not found", handle),
+            )
+        })?;
+
+        // Get the operation kind for interception
+        let local_op = from_format_resource_operation(&operation);
+
+        // Check interceptors first
+        for interceptor in self.interceptors.iter_mut() {
+            // Pass the format operation to interceptors
+            interceptor.on_resource_operation(handle, &operation)?;
+
+            // Check if the interceptor will override the operation
+            if let Some(result) = interceptor.intercept_resource_operation(handle, &operation)? {
+                // If the interceptor provides a result, use it
+                return Ok(ComponentValue::U32(handle));
+            }
+        }
+
+        // Apply the operation based on the resource
+        match operation {
+            FormatResourceOperation::Rep(_) => {
+                // Representation operation - convert resource to its representation
+                Ok(ComponentValue::U32(handle))
+            }
+            FormatResourceOperation::Drop(_) => {
+                // Drop operation - remove the resource from the table
+                // Since we're already in apply_operation, we call drop_resource separately
+                self.drop_resource(handle)?;
+                Ok(ComponentValue::Void)
+            }
+            FormatResourceOperation::Destroy(_) => {
+                // Destroy operation - similar to drop but may perform cleanup
+                self.drop_resource(handle)?;
+                Ok(ComponentValue::Void)
+            }
+            FormatResourceOperation::New(_) => {
+                // New operation - creates a resource from its representation
+                Ok(ComponentValue::U32(handle))
+            }
+            FormatResourceOperation::Transfer => {
+                // Transfer operation - transfers ownership
+                Ok(ComponentValue::U32(handle))
+            }
+            FormatResourceOperation::Borrow => {
+                // Borrow operation - temporarily borrows the resource
+                Ok(ComponentValue::U32(handle))
+            }
+            _ => Err(Error::new(
+                ErrorCategory::Operation,
+                codes::UNSUPPORTED_OPERATION,
+                format!("Unsupported resource operation"),
+            )),
+        }
+    }
+
     /// Set memory strategy for a resource
     pub fn set_memory_strategy(&mut self, handle: u32, strategy: MemoryStrategy) -> Result<()> {
         // Find the resource index
@@ -439,6 +511,34 @@ mod tests {
             Ok(())
         }
 
+        fn on_resource_operation(
+            &mut self,
+            handle: u32,
+            _operation: &FormatResourceOperation,
+        ) -> Result<()> {
+            self.executed_operations.push(format!("operation:{}", handle)).unwrap();
+            Ok(())
+        }
+
+        fn intercept_resource_operation(
+            &mut self,
+            handle: u32,
+            _operation: &FormatResourceOperation,
+        ) -> Result<Option<BoundedVec<u8, MAX_BUFFERS_PER_CLASS>>> {
+            self.executed_operations.push(format!("intercept:{}", handle)).unwrap();
+
+            // Special case for testing
+            if handle == 42 {
+                let mut vec = BoundedVec::new();
+                vec.push(1).unwrap();
+                vec.push(2).unwrap();
+                vec.push(3).unwrap();
+                Ok(Some(vec))
+            } else {
+                Ok(None)
+            }
+        }
+
         fn get_memory_strategy(&self, handle: u32) -> Option<u8> {
             if handle % 2 == 0 {
                 Some(1) // BoundedCopy for even handles
@@ -471,7 +571,7 @@ mod tests {
         let data = Box::new(42i32);
 
         let handle = table.create_resource(1, data).unwrap();
-        assert_eq!(table.resource_count(), W);
+        assert_eq!(table.resource_count(), 1);
 
         table.drop_resource(handle).unwrap();
         assert_eq!(table.resource_count(), 0);
@@ -509,6 +609,51 @@ mod tests {
     }
 
     #[test]
+    fn test_apply_operation() {
+        let mut table = ResourceTable::new();
+        let data = Box::new(42i32);
+
+        let handle = table.create_resource(1, data).unwrap();
+
+        // Test Rep operation
+        let result = table
+            .apply_operation(
+                handle,
+                FormatResourceOperation::Rep(wrt_foundation::resource::ResourceRep { type_idx: 1 }),
+            )
+            .unwrap();
+
+        if let ComponentValue::U32(h) = result {
+            assert_eq!(h, handle);
+        } else {
+            panic!("Expected U32 result");
+        }
+
+        // Test Borrow operation
+        let result = table.apply_operation(handle, FormatResourceOperation::Borrow).unwrap();
+        if let ComponentValue::U32(h) = result {
+            assert_eq!(h, handle);
+        } else {
+            panic!("Expected U32 result");
+        }
+
+        // Test Drop operation
+        let result = table
+            .apply_operation(
+                handle,
+                FormatResourceOperation::Drop(wrt_foundation::resource::ResourceDrop {
+                    type_idx: 1,
+                }),
+            )
+            .unwrap();
+
+        assert!(matches!(result, ComponentValue::Void));
+
+        // Resource should be dropped now
+        assert_eq!(table.resource_count(), 0);
+    }
+
+    #[test]
     fn test_resource_interceptor() {
         let mut table = ResourceTable::new();
         let interceptor = Box::new(TestInterceptor::new());
@@ -521,8 +666,34 @@ mod tests {
         // Access the resource
         let _resource = table.get_resource(handle).unwrap();
 
-        // Check operations - would rely on inspecting the interceptor
-        // but for simplicity we'll just check that the resource exists
+        // Apply an operation
+        table
+            .apply_operation(
+                handle,
+                FormatResourceOperation::Rep(wrt_foundation::resource::ResourceRep { type_idx: 1 }),
+            )
+            .unwrap();
+
+        // Resource should exist and interceptor should have been called
         assert!(table.find_resource_index(handle).is_some());
+    }
+
+    #[test]
+    fn test_interceptor_strategy() {
+        let mut table = ResourceTable::new();
+        let interceptor = Box::new(TestInterceptor::new());
+
+        table.add_interceptor(interceptor).unwrap();
+
+        // Create resources with even and odd handles
+        let handle1 = 1; // Odd
+        let handle2 = 2; // Even
+
+        // Check strategy selection
+        let strategy1 = table.get_strategy_from_interceptors(handle1);
+        let strategy2 = table.get_strategy_from_interceptors(handle2);
+
+        assert_eq!(strategy1, None);
+        assert_eq!(strategy2, Some(MemoryStrategy::BoundedCopy));
     }
 }

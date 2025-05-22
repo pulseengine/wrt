@@ -10,7 +10,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::RwLock;
 use wrt_runtime::Memory;
-use wrt_types::{
+use wrt_foundation::{
     ComponentType, ExternType, FuncType, GlobalType, InstanceType, MemoryType, Namespace,
     TableType, ValueType,
 };
@@ -234,7 +234,7 @@ impl Component {
                 ))));
             }
 
-            if !wrt_types::component::types_are_compatible(import_type, &import.ty) {
+            if !wrt_foundation::component::types_are_compatible(import_type, &import.ty) {
                 return Err(Error::new(kinds::ValidationError(format!(
                     "Import {import_name} has incompatible type"
                 ))));
@@ -292,7 +292,7 @@ impl Component {
                         ty: global_type.clone(),
                         global: Global::new(
                             global_type.clone(),
-                            Value::convert_from_wrt_types(&wrt_types::Value::default_for_type(
+                            Value::convert_from_wrt_foundation(&wrt_foundation::Value::default_for_type(
                                 &global_type.value_type,
                             )),
                         )?,
@@ -335,7 +335,7 @@ impl Component {
         for export in &mut self.exports {
             // If this export is implemented by an import, link them
             if let Some(import) = self.imports.iter().find(|i| i.name == export.name) {
-                if wrt_types::component::types_are_compatible(&export.ty, &import.ty) {
+                if wrt_foundation::component::types_are_compatible(&export.ty, &import.ty) {
                     // Only link if the import is not already linked to another export
                     export.value = import.value.clone();
                     debug_println!("Linked export {} to import", export.name);
@@ -355,7 +355,7 @@ impl Component {
                 // Try to find a matching import or export in the component
                 if let Some(import) = self.imports.iter().find(|i| i.name == export.name) {
                     // We found a matching import, link it
-                    if wrt_types::component::types_are_compatible(&export.ty, &import.ty) {
+                    if wrt_foundation::component::types_are_compatible(&export.ty, &import.ty) {
                         export.value = import.value.clone();
                         debug_println!(
                             "Linked instance export {} to component import",
@@ -366,7 +366,7 @@ impl Component {
                     self.exports.iter().find(|e| e.name == export.name)
                 {
                     // We found a matching export, link it
-                    if wrt_types::component::types_are_compatible(&export.ty, &comp_export.ty) {
+                    if wrt_foundation::component::types_are_compatible(&export.ty, &comp_export.ty) {
                         export.value = comp_export.value.clone();
                         debug_println!(
                             "Linked instance export {} to component export",
@@ -389,7 +389,7 @@ impl Component {
                 if let Some(_instance) = self
                     .instances
                     .iter()
-                    .find(|i| wrt_types::component::instance_types_match(instance_type, i.ty))
+                    .find(|i| wrt_foundation::component::instance_types_match(instance_type, i.ty))
                 {
                     // Replace the placeholder with a proper instance reference
                     // This is still a placeholder since we don't have a proper instance value type
@@ -634,7 +634,7 @@ impl Component {
         match &value {
             ExternValue::Function(func) => {
                 if let ExternType::Function(export_func_type) = &ty {
-                    if !wrt_types::component::func_types_compatible(&func.ty, export_func_type) {
+                    if !wrt_foundation::component::func_types_compatible(&func.ty, export_func_type) {
                         return Err(Error::new(kinds::ValidationError(format!(
                             "Function type mismatch for export {name}"
                         ))));
@@ -716,7 +716,7 @@ impl Component {
         // Check that all declared exports are provided
         for (name, ty) in &self.component_type.exports {
             if let Some(export) = self.exports.iter().find(|e| e.name == *name) {
-                if !wrt_types::component::types_are_compatible(ty, &export.ty) {
+                if !wrt_foundation::component::types_are_compatible(ty, &export.ty) {
                     return Err(Error::new(kinds::ValidationError(format!(
                         "Export {name} has incompatible type"
                     ))));
@@ -820,29 +820,29 @@ fn debug_println(_msg: &str) {
     // This function is currently unused but kept for future debugging
 }
 
-// Add conversion helpers between wrt_types values and internal values
+// Add conversion helpers between wrt_foundation values and internal values
 impl Value {
-    fn convert_from_wrt_types(value: &wrt_types::Value) -> Self {
+    fn convert_from_wrt_foundation(value: &wrt_foundation::Value) -> Self {
         match value {
-            wrt_types::Value::I32(val) => Self::I32(*val),
-            wrt_types::Value::I64(val) => Self::I64(*val),
-            wrt_types::Value::F32(val) => Self::F32(*val),
-            wrt_types::Value::F64(val) => Self::F64(*val),
-            wrt_types::Value::V128(val) => Self::V128(*val),
-            wrt_types::Value::FuncRef(_) => Self::FuncRef(0),
-            wrt_types::Value::ExternRef(_) => Self::ExternRef(0),
+            wrt_foundation::Value::I32(val) => Self::I32(*val),
+            wrt_foundation::Value::I64(val) => Self::I64(*val),
+            wrt_foundation::Value::F32(val) => Self::F32(*val),
+            wrt_foundation::Value::F64(val) => Self::F64(*val),
+            wrt_foundation::Value::V128(val) => Self::V128(*val),
+            wrt_foundation::Value::FuncRef(_) => Self::FuncRef(0),
+            wrt_foundation::Value::ExternRef(_) => Self::ExternRef(0),
         }
     }
 
-    fn convert_to_wrt_types(&self) -> wrt_types::Value {
+    fn convert_to_wrt_foundation(&self) -> wrt_foundation::Value {
         match self {
-            Self::I32(val) => wrt_types::Value::I32(*val),
-            Self::I64(val) => wrt_types::Value::I64(*val),
-            Self::F32(val) => wrt_types::Value::F32(*val),
-            Self::F64(val) => wrt_types::Value::F64(*val),
-            Self::V128(val) => wrt_types::Value::V128(*val),
-            Self::FuncRef(val) => wrt_types::Value::FuncRef(Some(*val as u32)),
-            Self::ExternRef(val) => wrt_types::Value::ExternRef(Some(*val as u32)),
+            Self::I32(val) => wrt_foundation::Value::I32(*val),
+            Self::I64(val) => wrt_foundation::Value::I64(*val),
+            Self::F32(val) => wrt_foundation::Value::F32(*val),
+            Self::F64(val) => wrt_foundation::Value::F64(*val),
+            Self::V128(val) => wrt_foundation::Value::V128(*val),
+            Self::FuncRef(val) => wrt_foundation::Value::FuncRef(Some(*val as u32)),
+            Self::ExternRef(val) => wrt_foundation::Value::ExternRef(Some(*val as u32)),
         }
     }
 }

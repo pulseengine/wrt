@@ -14,8 +14,8 @@ use std::{
 };
 
 use wrt_error::{Error, Result};
+use wrt_foundation::{builtin::BuiltinType, component_value::ComponentValue};
 use wrt_intercept::{BeforeBuiltinResult, BuiltinInterceptor, InterceptContext};
-use wrt_types::{builtin::BuiltinType, component_value::ComponentValue};
 
 use crate::resources::ResourceManager;
 
@@ -299,7 +299,7 @@ impl Clone for BuiltinRegistry {
 
 #[cfg(test)]
 mod tests {
-    use wrt_types::component_value::ComponentValue;
+    use wrt_foundation::component_value::ComponentValue;
 
     use super::*;
     use crate::resources::ResourceManager;
@@ -399,7 +399,7 @@ mod tests {
     #[cfg(feature = "component-model-async")]
     #[test]
     fn test_async_builtin_integration() {
-        use wrt_types::builtin::BuiltinType;
+        use wrt_foundation::builtin::BuiltinType;
 
         let registry = BuiltinRegistry::new(
             "test-component",

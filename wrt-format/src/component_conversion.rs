@@ -4,7 +4,7 @@
 // runtime types without requiring intermediate conversions.
 
 use wrt_error::Result;
-use wrt_types::ValueType;
+use wrt_foundation::ValueType;
 
 // Import the properly re-exported ValType
 use crate::component::ValType as FormatValType;

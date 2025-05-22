@@ -130,8 +130,8 @@ pub fn run_generate_source_needs(_args: GenerateSourceNeedsArgs, sh: &Shell) -> 
 
             // 2. :file: path relative from output_file_path.parent() to file_path
             // Example: output_file_path.parent() = /ws/docs/source/implementation
-            //          file_path                 = /ws/wrt-types/src/lib.rs
-            //          result                    = ../../wrt-types/src/lib.rs
+            //          file_path                 = /ws/wrt-foundation/src/lib.rs
+            //          result                    = ../../wrt-foundation/src/lib.rs
             let path_for_file_attr = pathdiff::diff_paths(file_path, output_dir.as_path())
                 .ok_or_else(|| {
                     anyhow::anyhow!(

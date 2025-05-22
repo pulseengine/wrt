@@ -91,9 +91,22 @@ pub mod level;
 /// with log operations, which encapsulate log messages and their metadata.
 pub mod operation;
 
+/// Minimal logging handler for pure no_std environments.
+///
+/// This module provides a minimal implementation of logging functionality
+/// that works in pure no_std environments without allocation.
+pub mod minimal_handler;
+
 // Reexport types
 pub use handler::{LogHandler, LoggingExt};
 pub use level::LogLevel;
+// Reexport minimal_handler types for pure no_std environments
+#[cfg(not(any(feature = "std", feature = "alloc")))]
+pub use minimal_handler::{MinimalLogHandler, MinimalLogMessage};
+// For convenience, we also reexport when alloc or std is available
+#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg_attr(docsrs, doc(cfg(any(feature = "std", feature = "alloc"))))]
+pub use minimal_handler::{MinimalLogHandler, MinimalLogMessage};
 pub use operation::LogOperation;
 
 // Include verification module when the kani feature is enabled

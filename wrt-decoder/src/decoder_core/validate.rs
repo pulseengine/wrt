@@ -13,8 +13,8 @@ use wrt_format::types::CoreWasmVersion;
 // REMOVED: use wrt_format::module::{DataMode, ExportKind, Global, ImportDesc, Memory, Table};
 // REMOVED: use wrt_format::types::{FuncType, Limits};
 
-// Explicitly use types from wrt_types for clarity in this validation context
-use wrt_types::types::{
+// Explicitly use types from wrt_foundation for clarity in this validation context
+use wrt_foundation::types::{
     DataMode as TypesDataMode,       // For DataSegment validation later
     ElementMode as TypesElementMode, // Added for validate_elements
     ExportDesc as TypesExportDesc,
@@ -24,7 +24,7 @@ use wrt_types::types::{
     Limits as TypesLimits,
     MemoryType as TypesMemoryType,
     RefType as TypesRefType, /* Added for validate_elements
-                              * Add other wrt_types::types as needed for other validation
+                              * Add other wrt_foundation::types as needed for other validation
                               * functions */
     TableType as TypesTableType,
     ValueType as TypesValueType, // Already in prelude, but good for explicitness if needed below
@@ -33,10 +33,10 @@ use wrt_types::types::{
 use crate::{module::Module, prelude::*};
 // For types that are only defined in wrt_format and are used as arguments to
 // validation helpers that specifically operate on format-level details (if any,
-// most should operate on wrt_types). For now, let's assume most validation
-// helpers will be adapted to wrt_types. If a validation function *must* take a
-// wrt_format type, it should be explicitly imported here or qualified. Example:
-// use wrt_format::module::Global as FormatGlobal;
+// most should operate on wrt_foundation). For now, let's assume most validation
+// helpers will be adapted to wrt_foundation. If a validation function *must*
+// take a wrt_format type, it should be explicitly imported here or qualified.
+// Example: use wrt_format::module::Global as FormatGlobal;
 
 /// Validation configuration options
 #[derive(Debug, Clone)]
@@ -324,7 +324,7 @@ fn validate_imports(module: &Module) -> Result<()> {
                 }
                 // Further validation: module.types[*type_idx] should represent
                 // a FuncType. This depends on how module.types
-                // is populated (e.g. if it stores wrt_types::FuncType or
+                // is populated (e.g. if it stores wrt_foundation::FuncType or
                 // similar).
             }
             wrt_format::module::ImportDesc::Table(table_type) => {
@@ -670,7 +670,7 @@ fn validate_elements(module: &Module) -> Result<()> {
         match &elem.mode {
             TypesElementMode::Active { table_index, offset } => {
                 // In MVP, only table 0 is allowed for active segments implicitly defined with
-                // prefix 0x00. The ElementSegment in wrt_types directly stores
+                // prefix 0x00. The ElementSegment in wrt_foundation directly stores
                 // table_index and offset from the parsed init_expr.
                 // If elem.table_idx was > 0 for an MVP-style segment, it would be an issue, but
                 // our wrt_format::binary::parse_element for 0x00 prefix hardcodes table_idx to
@@ -692,8 +692,8 @@ fn validate_elements(module: &Module) -> Result<()> {
                 }
                 validate_table_idx(module, *table_index, i)?;
                 // Validate offset (must be a const expression resulting in i32)
-                // elem.offset is already a wrt_types::values::Value, so its const_expr nature
-                // was checked at conversion.
+                // elem.offset is already a wrt_foundation::values::Value, so its const_expr
+                // nature was checked at conversion.
                 if offset.value_type() != TypesValueType::I32 {
                     return Err(Error::new(
                         ErrorCategory::Validation,
@@ -867,14 +867,14 @@ fn validate_global_type(global: &TypesGlobalType) -> Result<()> {
 
     // The const_expr validation for global.initial_value itself (i.e., ensuring it
     // *was* derived from a const expr) is tricky to do here because
-    // `global.initial_value` is already a `wrt_types::values::Value`.
+    // `global.initial_value` is already a `wrt_foundation::values::Value`.
     // This validation step is typically performed during the parsing and conversion
     // phase (e.g., in `wrt-decoder/src/conversion.rs` when converting
-    // `wrt_format::module::Global` to `wrt_types::types::GlobalType`). For now,
-    // we trust that the conversion layer has ensured `initial_value` is valid per
-    // const expr rules. If deeper validation of the Value itself against const
-    // expr rules is needed here, it would require inspecting the Value and
-    // knowing its origin or having more context.
+    // `wrt_format::module::Global` to `wrt_foundation::types::GlobalType`). For
+    // now, we trust that the conversion layer has ensured `initial_value` is
+    // valid per const expr rules. If deeper validation of the Value itself
+    // against const expr rules is needed here, it would require inspecting the
+    // Value and knowing its origin or having more context.
     Ok(())
 }
 
@@ -952,11 +952,13 @@ pub fn validation_error_with_type(message: &str, type_name: &str) -> Error {
     )
 }
 
-/// New helper for wrt_types::types::ImportGlobalType
-fn validate_import_global_type(global_type: &wrt_types::types::ImportGlobalType) -> Result<()> {
+/// New helper for wrt_foundation::types::ImportGlobalType
+fn validate_import_global_type(
+    global_type: &wrt_foundation::types::ImportGlobalType,
+) -> Result<()> {
     validate_value_type(&global_type.value_type, "imported global")?;
     // Mutability of imported globals is allowed by spec, though MVP had
-    // restrictions. wrt_types::types::ImportGlobalType allows mutable.
+    // restrictions. wrt_foundation::types::ImportGlobalType allows mutable.
     Ok(())
 }
 

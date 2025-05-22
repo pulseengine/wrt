@@ -57,7 +57,7 @@ impl wrt_test_registry::TestCase for CoreFeaturesTest {
         assert_eq_test!(read_buffer, test_data, "Memory read/write should work correctly");
         
         // Test table functionality
-        let table_type = wrt::TableType::new(wrt_types::reference::RefType::FuncRef, 10, Some(20));
+        let table_type = wrt::TableType::new(wrt_foundation::reference::RefType::FuncRef, 10, Some(20));
         let table = wrt::new_table(table_type);
         
         assert_eq_test!(table.size(), 10, "Initial table size should be 10");

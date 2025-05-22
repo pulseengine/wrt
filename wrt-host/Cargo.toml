@@ -11,7 +11,7 @@ categories = ["wasm", "no-std"]
 
 [dependencies]
 wrt-error = { workspace = true, default-features = false }
-wrt-types = { workspace = true, default-features = false }
+wrt-foundation = { workspace = true, default-features = false }
 wrt-intercept = { workspace = true, default-features = false }
 wrt-sync = { workspace = true, default-features = false }
 
@@ -21,11 +21,11 @@ log = { version = "0.4", optional = true }
 # Feature gates
 [features]
 default = []
-std = ["log", "wrt-types/std", "wrt-intercept/std", "wrt-sync/std"]
-no_std = ["wrt-types/no_std", "wrt-intercept/no_std"]
-alloc = ["wrt-types/alloc", "wrt-intercept/alloc", "wrt-sync/alloc"]
-optimize = ["wrt-types/optimize", "wrt-intercept/optimize"]
-safety = ["wrt-types/safety", "wrt-intercept/safety", "alloc"]
+std = ["log", "wrt-foundation/std", "wrt-intercept/std", "wrt-sync/std"]
+no_std = ["wrt-foundation/no_std", "wrt-intercept/no_std"]
+alloc = ["wrt-foundation/alloc", "wrt-intercept/alloc", "wrt-sync/alloc"]
+optimize = ["wrt-foundation/optimize", "wrt-intercept/optimize"]
+safety = ["wrt-foundation/safety", "wrt-intercept/safety", "alloc"]
 kani = ["wrt-intercept/kani"]
 
 [lints.rust]

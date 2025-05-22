@@ -12,7 +12,7 @@ use std::{string::String, vec, vec::Vec};
 use wrt_format::component::{
     ComponentTypeDefinition, ExternType as FormatExternType, ValType as FormatValType,
 };
-use wrt_types::{
+use wrt_foundation::{
     component::{ComponentType, FuncType, InstanceType},
     component_value::ValType,
     types::ValueType,

@@ -220,16 +220,18 @@ pub const CONCURRENCY_INITIALIZATION_FAILURE: u16 = 8005;
 pub const CAPACITY_LIMIT_EXCEEDED: u16 = 8006;
 /// Serialization error
 pub const SERIALIZATION_ERROR: u16 = 8007;
+/// Deserialization error
+pub const DESERIALIZATION_ERROR: u16 = 8008;
 /// System call interrupted error
-pub const SYSTEM_CALL_INTERRUPTED: u16 = 8008;
+pub const SYSTEM_CALL_INTERRUPTED: u16 = 8009;
 /// Generic concurrency error
-pub const CONCURRENCY_ERROR: u16 = 8009;
+pub const CONCURRENCY_ERROR: u16 = 8010;
 /// Implementation defined limit was exceeded
-pub const IMPLEMENTATION_LIMIT: u16 = 8010;
+pub const IMPLEMENTATION_LIMIT: u16 = 8011;
 /// Buffer provided is too small for the operation
-pub const BUFFER_TOO_SMALL: u16 = 8011;
+pub const BUFFER_TOO_SMALL: u16 = 8012;
 /// Operation attempted on an object in an unexpected or invalid state
-pub const UNEXPECTED_STATE: u16 = 8012;
+pub const UNEXPECTED_STATE: u16 = 8013;
 
 // Unknown error code
 /// Unknown error

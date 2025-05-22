@@ -4,13 +4,13 @@
 //! instances, reducing the need for explicit dereferencing and borrowing.
 
 // Import Arc from appropriate source based on feature flags
-#[cfg(not(feature = "std"))]
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
 use alloc::sync::Arc;
 #[cfg(feature = "std")]
 use std::sync::Arc;
 
 use wrt_error::{Error, Result};
-use wrt_types::{safe_memory::SafeStack, values::Value};
+use wrt_foundation::{safe_memory::SafeStack, values::Value};
 
 use crate::{prelude::*, Memory};
 
@@ -36,7 +36,7 @@ pub trait ArcMemoryExt {
         &self,
         offset: u32,
         len: u32,
-    ) -> Result<wrt_types::safe_memory::SafeStack<u8>>;
+    ) -> Result<wrt_foundation::safe_memory::SafeStack<u8>>;
 
     /// Read bytes from memory (legacy method, prefer read_bytes_safe)
     #[deprecated(since = "0.2.0", note = "Use read_bytes_safe instead for enhanced memory safety")]
@@ -118,7 +118,7 @@ pub trait ArcMemoryExt {
     fn check_alignment(&self, offset: u32, access_size: u32, align: u32) -> Result<()>;
 
     /// Read standard WebAssembly value
-    fn read_value(&self, addr: u32, value_type: wrt_types::types::ValueType) -> Result<Value>;
+    fn read_value(&self, addr: u32, value_type: wrt_foundation::types::ValueType) -> Result<Value>;
 
     /// Write standard WebAssembly value
     fn write_value(&self, addr: u32, value: Value) -> Result<()>;
@@ -147,9 +147,9 @@ pub trait ArcMemoryExt {
     fn read_values_as_safe_stack(
         &self,
         addr: u32,
-        value_type: wrt_types::types::ValueType,
+        value_type: wrt_foundation::types::ValueType,
         count: usize,
-    ) -> Result<wrt_types::safe_memory::SafeStack<Value>>;
+    ) -> Result<wrt_foundation::safe_memory::SafeStack<Value>>;
 
     /// Write bytes to memory at the given offset
     fn write_via_callback(&self, offset: u32, buffer: &[u8]) -> Result<()>;
@@ -183,10 +183,10 @@ impl ArcMemoryExt for Arc<Memory> {
         &self,
         offset: u32,
         len: u32,
-    ) -> Result<wrt_types::safe_memory::SafeStack<u8>> {
+    ) -> Result<wrt_foundation::safe_memory::SafeStack<u8>> {
         // Early return for zero-length reads
         if len == 0 {
-            return Ok(wrt_types::safe_memory::SafeStack::new());
+            return Ok(wrt_foundation::safe_memory::SafeStack::new());
         }
 
         // Get a memory-safe slice directly instead of creating a temporary buffer
@@ -194,7 +194,7 @@ impl ArcMemoryExt for Arc<Memory> {
 
         // Create a SafeStack from the verified slice data with appropriate verification
         // level
-        let mut safe_stack = wrt_types::safe_memory::SafeStack::with_capacity(len as usize);
+        let mut safe_stack = wrt_foundation::safe_memory::SafeStack::with_capacity(len as usize);
 
         // Set verification level to match memory's level
         let verification_level = self.as_ref().verification_level();
@@ -361,12 +361,12 @@ impl ArcMemoryExt for Arc<Memory> {
         self.as_ref().check_alignment(offset, access_size, align)
     }
 
-    fn read_value(&self, addr: u32, value_type: wrt_types::types::ValueType) -> Result<Value> {
+    fn read_value(&self, addr: u32, value_type: wrt_foundation::types::ValueType) -> Result<Value> {
         match value_type {
-            wrt_types::types::ValueType::I32 => self.read_i32(addr).map(Value::I32),
-            wrt_types::types::ValueType::I64 => self.read_i64(addr).map(Value::I64),
-            wrt_types::types::ValueType::F32 => self.read_f32(addr).map(Value::F32),
-            wrt_types::types::ValueType::F64 => self.read_f64(addr).map(Value::F64),
+            wrt_foundation::types::ValueType::I32 => self.read_i32(addr).map(Value::I32),
+            wrt_foundation::types::ValueType::I64 => self.read_i64(addr).map(Value::I64),
+            wrt_foundation::types::ValueType::F32 => self.read_f32(addr).map(Value::F32),
+            wrt_foundation::types::ValueType::F64 => self.read_f64(addr).map(Value::F64),
             // V128 doesn't exist in ValueType enum, so we'll handle it separately
             _ => Err(wrt_error::Error::new(
                 wrt_error::ErrorCategory::Type,
@@ -451,11 +451,11 @@ impl ArcMemoryExt for Arc<Memory> {
     fn read_values_as_safe_stack(
         &self,
         addr: u32,
-        value_type: wrt_types::types::ValueType,
+        value_type: wrt_foundation::types::ValueType,
         count: usize,
-    ) -> Result<wrt_types::safe_memory::SafeStack<Value>> {
+    ) -> Result<wrt_foundation::safe_memory::SafeStack<Value>> {
         // Create a SafeStack to store the values
-        let mut result = wrt_types::safe_memory::SafeStack::with_capacity(count);
+        let mut result = wrt_foundation::safe_memory::SafeStack::with_capacity(count);
 
         // Set verification level to match memory's level
         let verification_level = self.as_ref().verification_level();
@@ -463,10 +463,10 @@ impl ArcMemoryExt for Arc<Memory> {
 
         // Calculate size of each value in bytes
         let value_size = match value_type {
-            wrt_types::types::ValueType::I32 => 4,
-            wrt_types::types::ValueType::I64 => 8,
-            wrt_types::types::ValueType::F32 => 4,
-            wrt_types::types::ValueType::F64 => 8,
+            wrt_foundation::types::ValueType::I32 => 4,
+            wrt_foundation::types::ValueType::I64 => 8,
+            wrt_foundation::types::ValueType::F32 => 4,
+            wrt_foundation::types::ValueType::F64 => 8,
             _ => {
                 return Err(wrt_error::Error::new(
                     wrt_error::ErrorCategory::Type,
@@ -537,7 +537,7 @@ impl ArcMemoryExt for Arc<Memory> {
 
 #[cfg(test)]
 mod tests {
-    use wrt_types::{types::Limits, verification::VerificationLevel};
+    use wrt_foundation::{types::Limits, verification::VerificationLevel};
 
     use super::*;
     use crate::{memory::Memory, types::MemoryType};
@@ -631,7 +631,7 @@ mod tests {
 
         // Read array of 3 i32 values using SafeStack
         let values =
-            arc_memory.read_values_as_safe_stack(0, wrt_types::types::ValueType::I32, 3)?;
+            arc_memory.read_values_as_safe_stack(0, wrt_foundation::types::ValueType::I32, 3)?;
 
         // Verify content
         assert_eq!(values.len(), 3);

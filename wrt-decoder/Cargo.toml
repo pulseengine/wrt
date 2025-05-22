@@ -14,8 +14,8 @@ categories = ["wasm", "parsing", "no-std", "embedded"]
 wrt-error = { workspace = true, default-features = false }
 # Format handling
 wrt-format = { workspace = true, default-features = false }
-# Shared type definitions
-wrt-types = { workspace = true, default-features = false }
+# Foundation library 
+wrt-foundation = { workspace = true, default-features = false }
 
 # Core dependencies
 log = { version = "0.4", optional = true }
@@ -31,13 +31,13 @@ wat = "1.229.0"
 
 [features]
 default = []
-std = ["wrt-format/std", "wrt-types/std"]
-alloc = ["wrt-format/alloc", "wrt-types/alloc"]
+std = ["wrt-format/std", "wrt-foundation/std"]
+alloc = ["wrt-format/alloc", "wrt-foundation/alloc"]
 # For compatibility with verification script
 # This is a no-op since the crate is no_std by default
 no_std = []
 optimize = []
-safety = ["wrt-types/safety", "wrt-format/safety"]
+safety = ["wrt-foundation/safety", "wrt-format/safety"]
 wat = ["dep:wat", "std"]
 
 # Component Model features

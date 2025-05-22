@@ -24,6 +24,9 @@ This document summarizes the issues found and fixes made to improve no_std compa
 - **wrt-format**:
   - Added missing `safe-memory` feature to fix dependency resolution
 
+- **wrt-foundation**:
+  - Added missing `safe-memory` feature
+
 ### 2. Verification Script Updates
 
 - Updated `verify_no_std.sh` to correctly handle crates that are no_std by default
@@ -36,7 +39,7 @@ Confirmed proper no_std support in:
 1. `wrt-error`: Already fully no_std compatible
 2. `wrt-math`: No issues found
 3. `wrt-sync`: Properly handles std/no_std/alloc configurations
-4. `wrt-types`: Uses bounded collections for no_std environments
+4. `wrt-foundation`: Uses bounded collections for no_std environments
 5. `wrt-platform`: Properly handles platform-specific code
 
 ## Partially Supported Components

@@ -9,7 +9,7 @@
 
 #![allow(clippy::match_single_binding)]
 
-use wrt_types::types::{FuncType, ValueType};
+use wrt_foundation::types::{FuncType, ValueType};
 
 use crate::prelude::*;
 
@@ -230,7 +230,7 @@ mod tests {
     #[cfg(feature = "std")]
     use std::vec::Vec;
 
-    use wrt_types::types::ValueType;
+    use wrt_foundation::types::ValueType;
 
     use super::*;
 

@@ -11,7 +11,7 @@ categories = ["wasm", "parsing", "data-structures", "no-std", "embedded"]
 
 [dependencies]
 wrt-error = { workspace = true, default-features = false }
-wrt-types = { workspace = true, default-features = false }
+wrt-foundation = { workspace = true, default-features = false }
 
 [dev-dependencies]
 # For property testing
@@ -24,24 +24,24 @@ optional = true
 
 [features]
 default = []
-std = ["wrt-types/std"]
-no_std = ["wrt-types/no_std"]
-alloc = ["wrt-types/alloc"]
-optimize = ["wrt-types/optimize"]
-safety = ["wrt-types/safety"]
+std = ["wrt-foundation/std"]
+no_std = ["wrt-foundation/no_std"]
+alloc = ["wrt-foundation/alloc"]
+optimize = ["wrt-foundation/optimize"]
+safety = ["wrt-foundation/safety"]
 # The 'kani' feature enables formal verification with the Kani verifier
 kani = ["dep:kani-verifier"]
 
 # Component Model features
-component-model-core = ["wrt-types/component-model-core"]
-component-model-values = ["wrt-types/component-model-values"]
-component-model-resources = ["wrt-types/component-model-resources"]
+component-model-core = ["wrt-foundation/component-model-core"]
+component-model-values = ["wrt-foundation/component-model-values"]
+component-model-resources = ["wrt-foundation/component-model-resources"]
 component-model-canonical = []
-component-model-fixed-lists = ["wrt-types/component-model-fixed-lists"]
-component-model-error-context = ["wrt-types/component-model-error-context"]
-component-model-async = ["wrt-types/component-model-async"]
-component-model-threading = ["wrt-types/component-model-threading"]
-component-model-namespaces = ["wrt-types/component-model-namespaces"]
+component-model-fixed-lists = ["wrt-foundation/component-model-fixed-lists"]
+component-model-error-context = ["wrt-foundation/component-model-error-context"]
+component-model-async = ["wrt-foundation/component-model-async"]
+component-model-threading = ["wrt-foundation/component-model-threading"]
+component-model-namespaces = ["wrt-foundation/component-model-namespaces"]
 
 # Grouped features
 component-model-all = [
@@ -60,7 +60,7 @@ component-model-all = [
 conversion = []
 
 # Safe memory implementations
-safe-memory = ["wrt-types/safe-memory"]
+safe-memory = ["wrt-foundation/safe-memory"]
 
 # Config for linting
 [lints.rust]

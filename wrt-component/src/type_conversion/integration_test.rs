@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod integration_tests {
     use wrt_format::component::{ExternType as FormatExternType, ValType as FormatValType};
-    use wrt_types::{
+    use wrt_foundation::{
         component::{ComponentType, FuncType, InstanceType},
         component_value::ValType as TypesValType,
         types::ValueType,

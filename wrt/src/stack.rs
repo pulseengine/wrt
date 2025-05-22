@@ -8,7 +8,7 @@ use wrt_error::{kinds, Error, Result};
 use std::vec::Vec;
 
 // Import SafeStack for memory-safe stack
-use wrt_types::safe_memory::SafeStack;
+use wrt_foundation::safe_memory::SafeStack;
 
 /// Represents a control flow label on the stack (e.g., for blocks, loops, ifs).
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -5,7 +5,7 @@
 The WRT (WebAssembly Runtime) project consists of several crates that handle different aspects of WebAssembly:
 
 - `wrt-error`: Error handling shared across all crates
-- `wrt-types`: Core and runtime types shared across all crates
+- `wrt-foundation`: Core and runtime types shared across all crates
 - `wrt-format`: Binary format specifications
 - `wrt-decoder`: Parsing and decoding WebAssembly binaries
 - `wrt-instructions`: WebAssembly instruction encoding/decoding
@@ -43,7 +43,7 @@ The current structure has issues with inconsistent support for std and no_std co
 
 ### Phase 1: Fix Core Dependencies
 
-1. Ensure `wrt-error` and `wrt-types` fully support no_std:
+1. Ensure `wrt-error` and `wrt-foundation` fully support no_std:
    
    ```rust
    // In wrt-error/src/lib.rs
@@ -67,7 +67,7 @@ The current structure has issues with inconsistent support for std and no_std co
 2. Create proper prelude modules in base crates:
    
    ```rust
-   // In wrt-types/src/prelude.rs
+   // In wrt-foundation/src/prelude.rs
    // Re-export commonly used types with appropriate conditional compilation
    
    #[cfg(feature = "std")]
@@ -98,15 +98,15 @@ The current structure has issues with inconsistent support for std and no_std co
    default = ["std"]
    std = [
        "wrt-error/std",
-       "wrt-types/std"
+       "wrt-foundation/std"
    ]
    alloc = [
        "wrt-error/alloc",
-       "wrt-types/alloc"
+       "wrt-foundation/alloc"
    ]
    no_std = [
        "wrt-error/no_std",
-       "wrt-types/no_std",
+       "wrt-foundation/no_std",
        "alloc"
    ]
    ```
@@ -149,7 +149,7 @@ The current structure has issues with inconsistent support for std and no_std co
 2. Create consistent error constructors for all crates:
    
    ```rust
-   // In wrt-types/src/error.rs
+   // In wrt-foundation/src/error.rs
    
    pub fn parse_error(message: &str) -> Error {
        Error::new(ErrorCategory::Parse, 0, Some(message))
@@ -185,7 +185,7 @@ The current structure has issues with inconsistent support for std and no_std co
 1. Create a comprehensive type mapping system:
    
    ```rust
-   // In wrt-types/src/conversion.rs
+   // In wrt-foundation/src/conversion.rs
    
    /// Convert from ValType to FormatValType
    pub fn val_type_to_format_val_type(val_type: ValType) -> FormatValType {
@@ -208,7 +208,7 @@ The current structure has issues with inconsistent support for std and no_std co
 
 2. Move type definitions to appropriate locations:
    
-   - Core types should be in `wrt-types`
+   - Core types should be in `wrt-foundation`
    - Format-specific types should be in `wrt-format`
    - Decoder-specific types should be in `wrt-decoder`
 
@@ -217,7 +217,7 @@ The current structure has issues with inconsistent support for std and no_std co
    ```rust
    // In wrt-decoder/src/component/parse.rs
    
-   use wrt_types::{ValType, prelude::*};
+   use wrt_foundation::{ValType, prelude::*};
    use wrt_format::{FormatValType, conversion::format_val_type_to_val_type};
    ```
 
@@ -299,7 +299,7 @@ The current structure has issues with inconsistent support for std and no_std co
    // In wrt/src/lib.rs
    
    // Re-export all public functionality
-   pub use wrt_types::*;
+   pub use wrt_foundation::*;
    pub use wrt_decoder::*;
    pub use wrt_format::*;
    pub use wrt_host::*;
@@ -370,7 +370,7 @@ The implementation will proceed in order of dependency, starting from the most f
 
 1. `wrt-error`: Error handling foundation
 6. `wrt-sync`: Synchronization primitives
-2. `wrt-types`: Core and runtime type definitions 
+2. `wrt-foundation`: Core and runtime type definitions 
 3. `wrt-format`: Format specifications
 4. `wrt-decoder`: Binary parsing
 5. `wrt-instructions`: Instruction encoding/decoding

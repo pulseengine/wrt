@@ -5,7 +5,7 @@
 //! modules.
 
 use wrt_decoder::{module::CodeSection, runtime_adapter::RuntimeModuleBuilder};
-use wrt_types::types::{
+use wrt_foundation::types::{
     CustomSection as WrtCustomSection, DataSegment as WrtDataSegment,
     ElementSegment as WrtElementSegment, Export as WrtExport, FuncType,
     GlobalType as WrtGlobalType, Import as WrtImport, ImportDesc as WrtImportDesc,

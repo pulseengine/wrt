@@ -15,10 +15,10 @@ use wrt_format::{
         IMPORT_ID, MEMORY_ID, START_ID, TABLE_ID, TYPE_ID,
     },
 };
-use wrt_types::ToString;
+use wrt_foundation::ToString;
 
 // Deprecated, use From trait implementation instead
-// use wrt_types::error_convert::convert_to_wrt_error;
+// use wrt_foundation::error_convert::convert_to_wrt_error;
 use crate::prelude::String;
 use crate::section_error::{self};
 

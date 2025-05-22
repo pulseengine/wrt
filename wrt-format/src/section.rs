@@ -8,8 +8,8 @@ use alloc::{string::String, vec::Vec};
 #[cfg(feature = "std")]
 use std::{string::String, vec::Vec};
 
-// Use wrt_types error handling
-use wrt_types::Result;
+// Use wrt_foundation error handling
+use wrt_foundation::Result;
 // Import the prelude for conditional imports
 
 /// WebAssembly section ID constants
@@ -274,7 +274,7 @@ mod tests {
     #[cfg(feature = "std")]
     use std::vec;
 
-    use wrt_types::safe_memory::SafeSlice;
+    use wrt_foundation::safe_memory::SafeSlice;
 
     use super::*;
 

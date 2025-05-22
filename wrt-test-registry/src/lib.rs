@@ -28,7 +28,7 @@
 //! The test registry follows the modular design of the WRT project:
 //!
 //! - Uses `wrt-error` for consistent error handling
-//! - Uses `wrt-types` for bounded collections and safety-first primitives
+//! - Uses `wrt-foundation` for bounded collections and safety-first primitives
 //! - Tests each module independently through direct imports rather than wrt
 
 #![cfg_attr(not(feature = "std"), no_std)]

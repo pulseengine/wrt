@@ -20,7 +20,7 @@ CRATES=(
   "wrt-math"
   "wrt-sync"
   "wrt-error"
-  "wrt-types"
+  "wrt-foundation"
   "wrt-format"
   "wrt-decoder"
   "wrt-instructions"
@@ -157,7 +157,7 @@ for crate in "${CRATES[@]}"; do
         run_test_pattern "$crate" "$config" "integration_test"
         run_test_pattern "$crate" "$config" "no_std_compatibility_test"
         ;;
-      "wrt-types")
+      "wrt-foundation")
         run_test_pattern "$crate" "$config" "bounded_collections_test"
         run_test_pattern "$crate" "$config" "safe_memory_test"
         run_test_pattern "$crate" "$config" "safe_stack_test"

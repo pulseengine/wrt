@@ -30,12 +30,12 @@ extern crate alloc;
 
 // Re-export error types directly from wrt-error
 pub use wrt_error::{Error, ErrorCategory};
-// Re-export resource types from wrt-types
-pub use wrt_types::resource::ResourceRepresentation;
-// Re-export Result type from wrt-types
-pub use wrt_types::Result;
-// Re-export core types from wrt-types
-pub use wrt_types::{BlockType, FuncType, RefType, ValueType};
+// Re-export resource types from wrt-foundation
+pub use wrt_foundation::resource::ResourceRepresentation;
+// Re-export Result type from wrt-foundation
+pub use wrt_foundation::Result;
+// Re-export core types from wrt-foundation
+pub use wrt_foundation::{BlockType, FuncType, RefType, ValueType};
 
 /// WebAssembly binary format parsing and access
 pub mod binary;

@@ -1,5 +1,5 @@
 [package]
-name = "wrt-types-fuzz"
+name = "wrt-foundation-fuzz"
 version = "0.0.0"
 publish = false
 edition = "2021"
@@ -13,7 +13,7 @@ members = ["."]
 [dependencies]
 libfuzzer-sys = "0.4"
 arbitrary = { version = "1", features = ["derive"] }
-wrt-types = { path = ".." }
+wrt-foundation = { path = ".." }
 
 # For memory testing
 wrt-runtime = { path = "../../wrt-runtime" }

@@ -2,13 +2,13 @@ use std::sync::Arc;
 
 use wrt_component::{Component, ComponentType};
 use wrt_error::Result;
+use wrt_foundation::values::Value;
 use wrt_host::{function::CloneableFn, CallbackRegistry};
 use wrt_intercept::{
     strategies::{FirewallBuilder, LoggingStrategy, StatisticsStrategy},
     LinkInterceptor,
 };
 use wrt_runtime::RuntimeInstance;
-use wrt_types::values::Value;
 
 fn main() -> Result<()> {
     // Create a mock component type

@@ -4,11 +4,11 @@
 //! including all its sections, types, and functions.
 //!
 //! It serves as the bridge between the binary format (handled by wrt-format)
-//! and the runtime representation (using wrt-types).
+//! and the runtime representation (using wrt-foundation).
 
 use wrt_error::{codes, Error, ErrorCategory, Result};
 use wrt_format::binary::{WASM_MAGIC, WASM_VERSION};
-use wrt_types::{
+use wrt_foundation::{
     safe_memory::SafeSlice,
     // Add MemoryProvider and SafeMemoryHandler for the new signature
     safe_memory::{MemoryProvider, SafeMemoryHandler},
@@ -28,7 +28,7 @@ use wrt_types::{
         ImportDesc as TypesImportDesc,
         LocalEntry as WrtLocalEntry,
         MemoryType,
-        // Import the canonical Module, Code, Expr, LocalEntry from wrt_types
+        // Import the canonical Module, Code, Expr, LocalEntry from wrt_foundation
         Module as WrtModule,
         TableType,
         TypeIdx,   // Added TypeIdx for funcs field
@@ -44,9 +44,9 @@ use crate::{instructions, prelude::*, Parser}; // Import instructions module
 // unused after refactor.
 
 /// Module struct representing a parsed WebAssembly module.
-/// This struct will now mirror wrt_types::types::Module's relevant fields for
-/// the output. The internal parsing function `parse_module` will construct an
-/// instance of `WrtModule`. The struct defined here is effectively a
+/// This struct will now mirror wrt_foundation::types::Module's relevant fields
+/// for the output. The internal parsing function `parse_module` will construct
+/// an instance of `WrtModule`. The struct defined here is effectively a
 /// placeholder for the type `WrtModule`.
 // Instead of redefining Module here, the functions that return `Module` will return `WrtModule`.
 // The local `struct Module` will be removed.
@@ -54,8 +54,8 @@ use crate::{instructions, prelude::*, Parser}; // Import instructions module
 // Functions like `decode_module` will now return `Result<WrtModule>`
 // Functions like `encode_module` will take `&WrtModule`
 
-// Default impl for WrtModule might be better in wrt-types or not needed if constructed by parser.
-// impl Default for WrtModule { // This should be for WrtModule if needed
+// Default impl for WrtModule might be better in wrt-foundation or not needed if constructed by
+// parser. impl Default for WrtModule { // This should be for WrtModule if needed
 // fn default() -> Self {
 // Self::new() // WrtModule would need a ::new()
 // }
@@ -67,7 +67,14 @@ use crate::{instructions, prelude::*, Parser}; // Import instructions module
 // `parse_module`).
 
 /// Decode a WebAssembly module from binary format
+///
+/// # Notes
+///
+/// This function requires either the `std` or `alloc` feature to be enabled.
+/// In pure no_std environments without alloc, this function will return an
+/// error.
 // Add MemoryProvider generic and handler argument
+#[cfg(any(feature = "std", feature = "alloc"))]
 pub fn decode_module<P: MemoryProvider>(
     bytes: &[u8],
     _handler: &mut SafeMemoryHandler<P>, /* Handler is currently unused, for future BoundedVec
@@ -84,21 +91,63 @@ pub fn decode_module<P: MemoryProvider>(
     Ok(module)
 }
 
+/// Decode a WebAssembly module from binary format
+///
+/// # Notes
+///
+/// This is a no-op implementation for pure no_std environments without alloc.
+/// It returns an error indicating that this function requires allocation
+/// support.
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+pub fn decode_module<P: MemoryProvider>(
+    _bytes: &[u8],
+    _handler: &mut SafeMemoryHandler<P>,
+) -> Result<WrtModule> {
+    Err(Error::new(
+        ErrorCategory::Runtime,
+        codes::UNSUPPORTED_OPERATION,
+        "decode_module requires 'std' or 'alloc' feature to be enabled",
+    ))
+}
+
 /// Decode a WebAssembly module from binary format and store the original binary
-/// (Storing original binary in WrtModule is not standard, might be a specific
-/// feature here)
-// Add MemoryProvider generic and handler argument
+///
+/// # Notes
+///
+/// This function requires either the `std` or `alloc` feature to be enabled.
+/// In pure no_std environments without alloc, this function will return an
+/// error.
+#[cfg(any(feature = "std", feature = "alloc"))]
 pub fn decode_module_with_binary<P: MemoryProvider>(
     binary: &[u8],
     handler: &mut SafeMemoryHandler<P>,
 ) -> Result<WrtModule> {
     // This function would need to handle how `binary: Option<SafeSlice<'static>>`
     // is populated if that field is desired on `WrtModule`. `WrtModule` as
-    // defined in `wrt-types` does not have it. For now, let's assume
-    // `WrtModule` is as defined in `wrt-types`. If `SafeSlice` needs to be part
-    // of it, `wrt-types::Module` must be extended. This function might be
-    // simplified to just call decode_module for now.
+    // defined in `wrt-foundation` does not have it. For now, let's assume
+    // `WrtModule` is as defined in `wrt-foundation`. If `SafeSlice` needs to be
+    // part of it, `wrt-foundation::Module` must be extended. This function
+    // might be simplified to just call decode_module for now.
     decode_module(binary, handler)
+}
+
+/// Decode a WebAssembly module from binary format and store the original binary
+///
+/// # Notes
+///
+/// This is a no-op implementation for pure no_std environments without alloc.
+/// It returns an error indicating that this function requires allocation
+/// support.
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+pub fn decode_module_with_binary<P: MemoryProvider>(
+    _binary: &[u8],
+    _handler: &mut SafeMemoryHandler<P>,
+) -> Result<WrtModule> {
+    Err(Error::new(
+        ErrorCategory::Runtime,
+        codes::UNSUPPORTED_OPERATION,
+        "decode_module_with_binary requires 'std' or 'alloc' feature to be enabled",
+    ))
 }
 
 /// Encode a custom section to binary format
@@ -508,7 +557,8 @@ fn parse_module_internal_logic(
     // Placeholder for WrtModule construction
     // This assumes WrtModule has a constructor or fields that can be populated from
     // these Vecs. This will likely fail compilation or be incorrect until
-    // WrtModule's alloc-free structure is finalized in wrt-types and used here.
+    // WrtModule's alloc-free structure is finalized in wrt-foundation and used
+    // here.
 
     // TODO: Replace this placeholder construction with actual BoundedVec population
     // using the 'handler' passed into decode_module -> parse_module_internal_logic.
@@ -561,8 +611,8 @@ fn write_string(result: &mut Vec<u8>, s: &str) -> Result<()> {
 #[cfg(test)]
 #[cfg(feature = "alloc")] // Tests might rely on Vec or String, gate them too
 mod tests {
-    use wrt_types::safe_memory::NoStdProvider; // For tests
-    use wrt_types::safe_memory::SafeMemoryHandler;
+    use wrt_foundation::safe_memory::NoStdProvider; // For tests
+    use wrt_foundation::safe_memory::SafeMemoryHandler;
 
     use super::*; // For tests
 

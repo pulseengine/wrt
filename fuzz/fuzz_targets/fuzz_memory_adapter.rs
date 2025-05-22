@@ -5,7 +5,7 @@ use libfuzzer_sys::fuzz_target;
 use std::{panic, sync::Arc};
 use wrt::memory_adapter::{MemoryAdapter, SafeMemoryAdapter};
 use wrt_runtime::Memory;
-use wrt_types::verification::VerificationLevel;
+use wrt_foundation::verification::VerificationLevel;
 
 #[derive(Arbitrary, Debug)]
 enum Operation {

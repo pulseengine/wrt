@@ -41,8 +41,18 @@
 //#![deny(missing_docs)] // Temporarily disabled for build
 
 // Verify required features
-// For pure no_std (without alloc), some functionality might be limited
-// but the crate should still be usable for basic operations
+// This crate can be used in pure no_std (without alloc) environments,
+// though most functionality requires the 'alloc' feature for heap allocations.
+// The following capabilities are supported in each environment:
+//
+// 1. std (default): Full functionality
+// 2. no_std + alloc: Full functionality except for std-specific features
+// 3. pure no_std (without alloc): Limited to basic operations:
+//    - Binary header validation
+//    - Simple parsing operations that don't require allocation
+//    - SafeSlice-based operations
+//
+// Functions that require 'alloc' will return an error in pure no_std mode.
 
 // Import core
 extern crate core;
@@ -74,8 +84,22 @@ pub mod utils;
 pub mod validation;
 pub mod wasm;
 
+// Dedicated module for no_alloc decoding
+pub mod decoder_no_alloc;
+
 // Re-exports from error crate
 // Re-export conversion utilities
+// Re-export component no_alloc functions for all environments
+pub use component::decode_no_alloc::{
+    decode_component_header, extract_component_section_info, validate_component_no_alloc,
+    verify_component_header, ComponentHeader, ComponentSectionId, ComponentSectionInfo,
+    ComponentValidatorType, COMPONENT_MAGIC, MAX_COMPONENT_SIZE,
+};
+// Re-export simplified component types for no_alloc use
+pub use component::section::{
+    ComponentExport, ComponentImport, ComponentInstance, ComponentSection, ComponentType,
+    ComponentValueType,
+};
 pub use conversion::{
     byte_to_value_type, component_limits_to_format_limits, convert_to_wrt_error,
     format_error_to_wrt_error, format_func_type_to_types_func_type, format_global_to_types_global,
@@ -87,6 +111,11 @@ pub use conversion::{
 };
 // Re-export custom section utilities
 pub use custom_section_utils::{create_engine_state_section, get_data_from_state_section};
+// Re-export no_alloc functions for all environments
+pub use decoder_no_alloc::{
+    create_memory_provider, decode_module_header, extract_section_info, validate_module_no_alloc,
+    verify_wasm_header, SectionId, SectionInfo, ValidatorType, WasmModuleHeader, MAX_MODULE_SIZE,
+};
 // Re-export important module types and functions
 pub use module::{
     decode_module_with_binary as decode_module, decode_module_with_binary, encode_module, Module,
@@ -110,17 +139,14 @@ pub use wrt_format::module::{Data, DataMode, Element, Export, Import, ImportDesc
 pub use wrt_format::module::{Function, Global, Memory, Table};
 pub use wrt_format::section::{CustomSection, Section};
 // Re-export safe_memory for backward compatibility
-pub use wrt_types::safe_memory;
+pub use wrt_foundation::safe_memory;
 // Re-export the SafeSlice type and other memory safety types
-pub use wrt_types::safe_memory::{MemoryProvider, SafeSlice, StdMemoryProvider};
+pub use wrt_foundation::safe_memory::{MemoryProvider, SafeSlice, StdMemoryProvider};
 // Re-export core types for easier access
-pub use wrt_types::types::{FuncType, GlobalType, Limits, MemoryType, RefType, TableType};
-// Re-exports from wrt_types
-pub use wrt_types::{
-    component::{ComponentType, ExternType},
-    resource::ResourceId,
-    types::ValueType,
-    values::Value,
+pub use wrt_foundation::types::{FuncType, GlobalType, Limits, MemoryType, RefType, TableType};
+// Re-exports from wrt_foundation
+pub use wrt_foundation::{
+    component::ExternType, resource::ResourceId, types::ValueType, values::Value,
 };
 
 // Re-export validation from validation module

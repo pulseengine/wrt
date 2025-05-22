@@ -17,7 +17,7 @@
 //! use wrt_component::type_conversion::wrappers::{
 //!     RuntimeComponentType, FormatComponentType
 //! };
-//! use wrt_types::component::ComponentType as TypesComponentType;
+//! use wrt_foundation::component::ComponentType as TypesComponentType;
 //! use wrt_format::component::ComponentTypeDefinition;
 //!
 //! // Create a wrapper around a runtime type
@@ -40,7 +40,7 @@ use super::bidirectional::{
 };
 use crate::prelude::*;
 
-/// Wrapper around wrt_types::component::ComponentType
+/// Wrapper around wrt_foundation::component::ComponentType
 #[derive(Debug, Clone)]
 pub struct RuntimeComponentType {
     /// The wrapped component type
@@ -56,7 +56,7 @@ pub struct FormatComponentType {
     pub exports: Vec<(String, FormatExternType)>,
 }
 
-/// Wrapper around wrt_types::component::InstanceType
+/// Wrapper around wrt_foundation::component::InstanceType
 #[derive(Debug, Clone)]
 pub struct RuntimeInstanceType {
     /// The wrapped instance type

@@ -7,9 +7,9 @@ use std::sync::Arc;
 use wrt_error::Result;
 use wrt_runtime::memory::Memory;
 use wrt_runtime::types::MemoryType;
-use wrt_types::safe_memory::MemoryProvider;
-use wrt_types::types::Limits;
-use wrt_types::verification::VerificationLevel;
+use wrt_foundation::safe_memory::MemoryProvider;
+use wrt_foundation::types::Limits;
+use wrt_foundation::verification::VerificationLevel;
 
 // Import memory adapters
 use wrt::memory_adapter::{DefaultMemoryAdapter, MemoryAdapter, SafeMemoryAdapter};

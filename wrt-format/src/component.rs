@@ -10,9 +10,9 @@ use alloc::{boxed::Box, string::String, vec::Vec};
 use std::{boxed::Box, string::String, vec::Vec};
 
 use wrt_error::{Error, Result};
-// Re-export ValType from wrt-types
-pub use wrt_types::component_value::ValType;
-use wrt_types::resource::{ResourceDrop, ResourceNew, ResourceRep, ResourceRepresentation};
+// Re-export ValType from wrt-foundation
+pub use wrt_foundation::component_value::ValType;
+use wrt_foundation::resource::{ResourceDrop, ResourceNew, ResourceRep, ResourceRepresentation};
 
 use crate::{module::Module, types::ValueType, validation::Validatable};
 

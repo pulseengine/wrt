@@ -42,9 +42,48 @@ pub mod macos_sync;
 #[cfg(all(feature = "platform-macos", not(feature = "use-libc"), target_os = "macos"))]
 pub mod macos_sync_no_libc;
 
+// QNX-specific modules
+#[cfg(all(feature = "platform-qnx", target_os = "nto"))]
+pub mod qnx_arena;
+#[cfg(all(feature = "platform-qnx", target_os = "nto"))]
+pub mod qnx_memory;
+#[cfg(all(feature = "platform-qnx", target_os = "nto"))]
+pub mod qnx_partition;
+#[cfg(all(feature = "platform-qnx", target_os = "nto"))]
+pub mod qnx_sync;
+
+// Linux-specific modules
+#[cfg(all(feature = "platform-linux", target_os = "linux"))]
+pub mod linux_memory;
+#[cfg(all(
+    feature = "platform-linux",
+    feature = "linux-mte",
+    target_arch = "aarch64",
+    target_os = "linux"
+))]
+pub mod linux_memory_arm64_mte;
+#[cfg(all(feature = "platform-linux", target_os = "linux"))]
+pub mod linux_sync;
+
 // Publicly export items via the prelude
 // Publicly export the core traits and the fallback implementations
 // Export macOS specific implementations if enabled and on macOS
+// Export Linux specific implementations if enabled and on Linux
+#[cfg(all(
+    feature = "platform-linux",
+    target_os = "linux",
+    not(all(feature = "linux-mte", target_arch = "aarch64"))
+))]
+pub use linux_memory::{LinuxAllocator, LinuxAllocatorBuilder};
+#[cfg(all(
+    feature = "platform-linux",
+    feature = "linux-mte",
+    target_arch = "aarch64",
+    target_os = "linux"
+))]
+pub use linux_memory_arm64_mte::{LinuxArm64MteAllocator, LinuxArm64MteAllocatorBuilder, MteMode};
+#[cfg(all(feature = "platform-linux", target_os = "linux"))]
+pub use linux_sync::{LinuxFutex, LinuxFutexBuilder};
 #[cfg(all(feature = "platform-macos", feature = "use-libc", target_os = "macos"))]
 pub use macos_memory::{MacOsAllocator, MacOsAllocatorBuilder};
 #[cfg(all(feature = "platform-macos", not(feature = "use-libc"), target_os = "macos"))]
@@ -61,6 +100,17 @@ pub use memory_optimizations::{
     MemoryOptimization, PlatformMemoryOptimizer, PlatformOptimizedProviderBuilder,
 };
 pub use prelude::*;
+#[cfg(all(feature = "platform-qnx", target_os = "nto"))]
+pub use qnx_arena::{QnxArenaAllocator, QnxArenaAllocatorBuilder, QnxMallocOption};
+// Export QNX specific implementations if enabled and on QNX
+#[cfg(all(feature = "platform-qnx", target_os = "nto"))]
+pub use qnx_memory::{QnxAllocator, QnxAllocatorBuilder, QnxMapFlags, QnxProtFlags};
+#[cfg(all(feature = "platform-qnx", target_os = "nto"))]
+pub use qnx_partition::{
+    PartitionGuard, QnxMemoryPartition, QnxMemoryPartitionBuilder, QnxPartitionFlags,
+};
+#[cfg(all(feature = "platform-qnx", target_os = "nto"))]
+pub use qnx_sync::{QnxFutex, QnxFutexBuilder, QnxSyncPriority};
 pub use sync::{FutexLike, SpinFutex, SpinFutexBuilder, TimeoutResult}; /* FutexLike is always available */
 // Re-export core error type (also available via prelude)
 pub use wrt_error::Error; // This is fine as wrt_error::Error is always available
@@ -101,6 +151,45 @@ mod tests {
         // Just making sure the builder returns an allocator
         // We can't test its settings without accessing private fields
         assert_eq!(core::mem::size_of_val(&allocator) > 0, true);
+    }
+
+    #[cfg(all(feature = "platform-linux", target_os = "linux"))]
+    #[test]
+    fn test_linux_allocator_builder() {
+        let allocator =
+            LinuxAllocatorBuilder::new().with_maximum_pages(100).with_guard_pages(true).build();
+
+        // Just making sure the builder returns an allocator
+        // We can't test its settings without accessing private fields
+        assert_eq!(core::mem::size_of_val(&allocator) > 0, true);
+    }
+
+    #[cfg(all(
+        feature = "platform-linux",
+        feature = "linux-mte",
+        target_arch = "aarch64",
+        target_os = "linux"
+    ))]
+    #[test]
+    fn test_linux_arm64_mte_allocator_builder() {
+        let allocator = LinuxArm64MteAllocatorBuilder::new()
+            .with_maximum_pages(100)
+            .with_guard_pages(true)
+            .with_mte_mode(MteMode::Synchronous)
+            .build();
+
+        // Just making sure the builder returns an allocator
+        // We can't test its settings without accessing private fields
+        assert_eq!(core::mem::size_of_val(&allocator) > 0, true);
+    }
+
+    #[cfg(all(feature = "platform-linux", target_os = "linux"))]
+    #[test]
+    fn test_linux_futex_builder() {
+        let futex = LinuxFutexBuilder::new().with_initial_value(42).build();
+
+        // Test that the futex was created with the correct initial value
+        assert_eq!(futex.load(core::sync::atomic::Ordering::Relaxed), 42);
     }
 }
 

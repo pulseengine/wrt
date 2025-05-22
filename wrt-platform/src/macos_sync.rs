@@ -57,10 +57,10 @@ extern "C" {
 /// `_ulock_wake`.
 #[derive(Debug)]
 pub struct MacOsFutex {
-    addr: AtomicU32,    /* The address we wait/wake on.
-                         * On macOS, _ulock_wait takes a pointer to the value and the value
-                         * itself. We'll use the address of this
-                         * AtomicU32. */
+    addr: AtomicU32, /* The address we wait/wake on.
+                      * On macOS, _ulock_wait takes a pointer to the value and the value
+                      * itself. We'll use the address of this
+                      * AtomicU32. */
     _padding: [u8; 60], /* Padding to ensure the atomic is on its own cache line (64 - size of
                          * AtomicU32) */
 }
@@ -187,8 +187,8 @@ impl MacOsFutex {
 
         match ret {
             0 => Ok(()),
-            libc::ESRCH => Ok(()), /* No such process; no threads were waiting. Not an error for
-                                     * wake. */
+            libc::ESRCH => Ok(()), // No such process; no threads were waiting. Not an error for
+            // wake.
             libc::EINTR => Err(Error::new(
                 ErrorCategory::System,
                 codes::SYSTEM_CALL_INTERRUPTED,

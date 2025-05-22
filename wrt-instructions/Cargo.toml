@@ -12,21 +12,21 @@ categories = ["wasm", "emulators", "no-std", "embedded"]
 [features]
 default = []
 std = [
-    "wrt-types/std",
+    "wrt-foundation/std",
     "wrt-sync/std",
     "dep:log",
 ]
 no_std = [
-    "wrt-types/no_std",
+    "wrt-foundation/no_std",
     "alloc",
 ]
-alloc = ["wrt-types/alloc", "wrt-sync/alloc", "dep:alloc"]
-optimize = ["wrt-types/optimize"]
-safety = ["wrt-types/safety"]
+alloc = ["wrt-foundation/alloc", "wrt-sync/alloc", "dep:alloc"]
+optimize = ["wrt-foundation/optimize"]
+safety = ["wrt-foundation/safety"]
 
 [dependencies]
 wrt-error = { workspace = true }
-wrt-types = { workspace = true }
+wrt-foundation = { workspace = true }
 wrt-sync = { workspace = true }
 log = { version = "0.4", optional = true }
 

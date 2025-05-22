@@ -567,7 +567,7 @@ fn parse_import_section(module: &mut Module, data: &[u8]) -> Result<()> {
                 // The `Global` struct in `wrt-format` currently takes `FormatGlobalType`,
                 // which itself takes a `ValueType`.
                 // The `Global` in `ImportDesc` in `wrt-format` should probably take `FormatGlobalType` too.
-                // For now, assuming ImportDesc::Global needs wrt_types::types::GlobalType or similar that we can construct.
+                // For now, assuming ImportDesc::Global needs wrt_foundation::types::GlobalType or similar that we can construct.
                 // Let's ensure the structure in wrt-format::module::ImportDesc::Global is compatible or adjust here.
                 // From wrt-format/src/module.rs: pub enum ImportDesc { ..., Global(FormatGlobalType), ... }
                 // From wrt-format/src/types.rs: pub struct FormatGlobalType { pub value_type: ValueType, pub mutable: bool }
@@ -872,7 +872,7 @@ fn parse_global_section(module: &mut Module, data: &[u8]) -> Result<()> {
         let init = data[expr_start..offset].to_vec();
         
         let global = Global {
-            global_type: wrt_types::types::GlobalType {
+            global_type: wrt_foundation::types::GlobalType {
                 value_type,
                 mutable,
             },
