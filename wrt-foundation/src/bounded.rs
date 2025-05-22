@@ -602,10 +602,7 @@ where
             })?;
 
         self.handler.write_data(offset, &item_bytes_buffer[..bytes_written]).map_err(|e| {
-            BoundedError::new(
-                BoundedErrorKind::SliceError,
-                e.message().unwrap_or("Write data failed"),
-            )
+            BoundedError::new(BoundedErrorKind::SliceError, "Write data failed: error occurred")
         })?;
 
         self.length += 1;
@@ -1030,10 +1027,7 @@ where
             })?;
 
         self.provider.write_data(offset, &item_bytes_buffer[..bytes_written]).map_err(|e| {
-            BoundedError::new(
-                BoundedErrorKind::SliceError,
-                e.message().unwrap_or("Write data failed"),
-            )
+            BoundedError::new(BoundedErrorKind::SliceError, "Write data failed: error occurred")
         })?;
 
         self.length += 1;
@@ -2854,11 +2848,8 @@ where
 {
     fn serialized_size(&self) -> usize {
         // Length (u32) + checksum + items
-        4 + self.checksum.serialized_size() + (self.length * if self.length > 0 { 
-            T::default().serialized_size() 
-        } else { 
-            0 
-        })
+        4 + self.checksum.serialized_size()
+            + (self.length * if self.length > 0 { T::default().serialized_size() } else { 0 })
     }
 
     fn to_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
@@ -3674,8 +3665,9 @@ impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq>
     }
 }
 
-// Note: This impl block was removed due to overlapping type bounds with the main impl block.
-// All necessary methods are already defined in the main impl block.
+// Note: This impl block was removed due to overlapping type bounds with the
+// main impl block. All necessary methods are already defined in the main impl
+// block.
 
 // ... (other BoundedVec impl methods, make sure to use `Error::` where it was
 // `Error::` before) For example, in BoundedVec::get:
@@ -3760,7 +3752,8 @@ where
     P: MemoryProvider + Clone + PartialEq + Eq,
 {
     // This impl block provides methods with additional constraints
-    // The verify_item_checksum_at_offset method is already defined in the main impl block
+    // The verify_item_checksum_at_offset method is already defined in the main impl
+    // block
 }
 
 // Alloc-dependent methods for BoundedString

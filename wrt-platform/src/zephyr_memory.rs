@@ -1,6 +1,6 @@
 #![allow(unsafe_code)]
 // Allow unsafe FFI calls to Zephyr kernel
-// WRT - wrt-platform  
+// WRT - wrt-platform
 // Module: Zephyr Memory Management
 // SW-REQ-ID: REQ_PLATFORM_001, REQ_MEMORY_001
 //
@@ -8,7 +8,8 @@
 // Licensed under the MIT license.
 // SPDX-License-Identifier: MIT
 
-//! Zephyr RTOS-specific `PageAllocator` implementation using Zephyr kernel APIs.
+//! Zephyr RTOS-specific `PageAllocator` implementation using Zephyr kernel
+//! APIs.
 //!
 //! This implementation provides memory allocation for WebAssembly pages using
 //! Zephyr's heap management and memory domains, supporting no_std/no_alloc
@@ -80,13 +81,23 @@ extern "C" {
     fn k_heap_free(heap: *mut ZephyrHeap, mem: *mut u8);
 
     /// Initialize a memory domain
-    fn k_mem_domain_init(domain: *mut ZephyrMemDomain, num_parts: u8, parts: *mut ZephyrMemPartition) -> i32;
+    fn k_mem_domain_init(
+        domain: *mut ZephyrMemDomain,
+        num_parts: u8,
+        parts: *mut ZephyrMemPartition,
+    ) -> i32;
 
     /// Add a partition to a memory domain
-    fn k_mem_domain_add_partition(domain: *mut ZephyrMemDomain, part: *mut ZephyrMemPartition) -> i32;
+    fn k_mem_domain_add_partition(
+        domain: *mut ZephyrMemDomain,
+        part: *mut ZephyrMemPartition,
+    ) -> i32;
 
     /// Remove a partition from a memory domain
-    fn k_mem_domain_remove_partition(domain: *mut ZephyrMemDomain, part: *mut ZephyrMemPartition) -> i32;
+    fn k_mem_domain_remove_partition(
+        domain: *mut ZephyrMemDomain,
+        part: *mut ZephyrMemPartition,
+    ) -> i32;
 
     /// Get the system heap
     fn k_heap_sys_get() -> *mut ZephyrHeap;
@@ -132,7 +143,8 @@ pub struct ZephyrAllocator {
     current_partition: Option<ZephyrMemPartition>,
 }
 
-// Safety: ZephyrAllocator only contains pointers to Zephyr kernel objects which are thread-safe
+// Safety: ZephyrAllocator only contains pointers to Zephyr kernel objects which
+// are thread-safe
 unsafe impl Send for ZephyrAllocator {}
 unsafe impl Sync for ZephyrAllocator {}
 
@@ -183,13 +195,14 @@ impl ZephyrAllocator {
 
         // In a real Zephyr implementation, memory domains would be statically allocated
         // using K_MEM_DOMAIN_DEFINE() macro or stack-allocated. For demonstration,
-        // we'll use a placeholder approach that would work in the actual embedded context.
-        
+        // we'll use a placeholder approach that would work in the actual embedded
+        // context.
+
         // Note: In real usage, domain would be a static or stack variable:
         // static K_MEM_DOMAIN_DEFINE(my_domain);
         // For now, we'll use a null pointer to indicate this limitation
         let domain: *mut ZephyrMemDomain = core::ptr::null_mut();
-        
+
         if !domain.is_null() {
             // Create memory partition
             let partition = ZephyrMemPartition {
@@ -211,10 +224,11 @@ impl ZephyrAllocator {
             self.memory_domain = NonNull::new(domain);
             self.current_partition = Some(partition);
         } else {
-            // Memory domains not available - log this for debugging in real implementation
-            // For now, continue without memory domain isolation
+            // Memory domains not available - log this for debugging in real
+            // implementation For now, continue without memory
+            // domain isolation
         }
-        
+
         Ok(())
     }
 
@@ -225,9 +239,9 @@ impl ZephyrAllocator {
                 // Remove partition from domain
                 k_mem_domain_remove_partition(domain.as_ptr(), &partition as *const _ as *mut _);
             }
-            
-            // In real Zephyr implementation, static domains don't need explicit cleanup
-            // The kernel handles this automatically
+
+            // In real Zephyr implementation, static domains don't need explicit
+            // cleanup The kernel handles this automatically
         }
         Ok(())
     }
@@ -254,10 +268,7 @@ pub struct ZephyrAllocatorBuilder {
 
 impl Default for ZephyrAllocatorBuilder {
     fn default() -> Self {
-        Self {
-            config: ZephyrAllocatorConfig::default(),
-            maximum_pages: None,
-        }
+        Self { config: ZephyrAllocatorConfig::default(), maximum_pages: None }
     }
 }
 
@@ -331,7 +342,8 @@ impl PageAllocator for ZephyrAllocator {
 
         // Add space for guard regions if enabled
         if self.config.use_guard_regions {
-            reserve_bytes = reserve_bytes.checked_add(2 * WASM_PAGE_SIZE)
+            reserve_bytes = reserve_bytes
+                .checked_add(2 * WASM_PAGE_SIZE)
                 .ok_or_else(|| Error::memory_error("Guard region size overflow"))?;
         }
 
@@ -350,7 +362,7 @@ impl PageAllocator for ZephyrAllocator {
                 self.heap,
                 WASM_PAGE_SIZE, // alignment
                 reserve_bytes,  // size
-                K_NO_WAIT,     // don't block
+                K_NO_WAIT,      // don't block
             )
         };
 

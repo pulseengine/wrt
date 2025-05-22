@@ -17,7 +17,8 @@
 
 use core::ptr::{self, NonNull};
 
-// Safety: NonNull<u8> is safe to send between threads as it's just a pointer wrapper
+// Safety: NonNull<u8> is safe to send between threads as it's just a pointer
+// wrapper
 unsafe impl Send for LinuxAllocator {}
 unsafe impl Sync for LinuxAllocator {}
 

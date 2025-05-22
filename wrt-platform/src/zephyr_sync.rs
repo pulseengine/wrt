@@ -106,7 +106,8 @@ pub struct ZephyrFutex {
     _padding: [u8; 56], // Adjust for embedded cache line sizes
 }
 
-// Safety: ZephyrFutex contains only atomic values and Zephyr kernel objects which are thread-safe
+// Safety: ZephyrFutex contains only atomic values and Zephyr kernel objects
+// which are thread-safe
 unsafe impl Send for ZephyrFutex {}
 unsafe impl Sync for ZephyrFutex {}
 
@@ -114,14 +115,11 @@ impl ZephyrFutex {
     /// Creates a new `ZephyrFutex` with the given initial value.
     pub fn new(initial_value: u32) -> Self {
         // In a real implementation, this would use static allocation or a memory pool
-        // For demonstration, we'll simulate with null pointer (would need actual kernel object)
+        // For demonstration, we'll simulate with null pointer (would need actual kernel
+        // object)
         let futex_obj = core::ptr::null_mut();
 
-        let mut futex = Self {
-            value: AtomicU32::new(initial_value),
-            futex_obj,
-            _padding: [0; 56],
-        };
+        let mut futex = Self { value: AtomicU32::new(initial_value), futex_obj, _padding: [0; 56] };
 
         // Initialize the Zephyr futex object
         // SAFETY: In real usage, futex_obj would point to valid kernel object memory
@@ -153,11 +151,9 @@ impl ZephyrFutex {
 
         match result {
             0 => Ok(()), // Success - woken up
-            ETIMEDOUT => Err(Error::new(
-                ErrorCategory::System,
-                codes::SYSTEM_ERROR,
-                "Futex wait timed out",
-            )),
+            ETIMEDOUT => {
+                Err(Error::new(ErrorCategory::System, codes::SYSTEM_ERROR, "Futex wait timed out"))
+            }
             EAGAIN => {
                 // Value changed before we could wait - this is success
                 Ok(())
@@ -276,11 +272,7 @@ impl FutexLike for ZephyrFutex {
 
 impl fmt::Display for ZephyrFutex {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "ZephyrFutex({})",
-            self.value.load(core::sync::atomic::Ordering::Relaxed)
-        )
+        write!(f, "ZephyrFutex({})", self.value.load(core::sync::atomic::Ordering::Relaxed))
     }
 }
 
@@ -327,9 +319,7 @@ impl FutexLike for ZephyrSemaphoreFutex {
         // In real implementation, would use k_sem_take() with timeout
         // For now, use busy wait fallback
         let start_time = unsafe { k_uptime_ticks() };
-        let timeout_ticks = timeout
-            .map(|d| d.as_millis() as i64)
-            .unwrap_or(i64::MAX);
+        let timeout_ticks = timeout.map(|d| d.as_millis() as i64).unwrap_or(i64::MAX);
 
         loop {
             if self.value.load(core::sync::atomic::Ordering::Acquire) != expected {

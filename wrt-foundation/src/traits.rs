@@ -34,34 +34,6 @@ use alloc::vec::Vec;
 // This module provides common traits used for type conversions between format
 // and runtime representations.
 
-/// A writer that counts the number of bytes written without storing them.
-/// Used for calculating serialized sizes.
-struct CountingWriter {
-    count: usize,
-}
-
-impl CountingWriter {
-    fn new() -> Self {
-        Self { count: 0 }
-    }
-    
-    fn bytes_written(&self) -> usize {
-        self.count
-    }
-}
-
-impl BytesWriter for CountingWriter {
-    fn write_byte(&mut self, _byte: u8) -> WrtResult<()> {
-        self.count += 1;
-        Ok(())
-    }
-    
-    fn write_all(&mut self, bytes: &[u8]) -> WrtResult<()> {
-        self.count += bytes.len();
-        Ok(())
-    }
-}
-
 /// Trait for types that can be converted from a format representation
 pub trait FromFormat<T> {
     /// Convert from a format representation
@@ -174,16 +146,9 @@ impl Checksummable for alloc::string::String {
 pub trait ToBytes: Sized {
     /// Returns the size in bytes required to serialize this type.
     /// This should be a constant for fixed-size types.
-    /// Default implementation uses a temporary buffer to calculate size.
+    /// Default implementation returns 0 - types should override this.
     fn serialized_size(&self) -> usize {
-        // Default implementation - serialize to a counting writer to get size
-        let mut counter = CountingWriter::new();
-        let provider = NoStdProvider;
-        if self.to_bytes_with_provider(&mut WriteStream::new(&mut counter), &provider).is_ok() {
-            counter.bytes_written()
-        } else {
-            0 // Fallback if serialization fails
-        }
+        0 // Default fallback - should be overridden by implementations
     }
 
     /// Serializes the type into a byte stream using a provided memory stream
@@ -647,7 +612,7 @@ impl<T: ToBytes> ToBytes for Option<T> {
     fn serialized_size(&self) -> usize {
         match self {
             Some(value) => 1 + value.serialized_size(), // 1 byte for tag + value size
-            None => 1, // 1 byte for tag
+            None => 1,                                  // 1 byte for tag
         }
     }
 

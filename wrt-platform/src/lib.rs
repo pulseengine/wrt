@@ -117,15 +117,14 @@ pub use qnx_partition::{
 };
 #[cfg(all(feature = "platform-qnx", target_os = "nto"))]
 pub use qnx_sync::{QnxFutex, QnxFutexBuilder, QnxSyncPriority};
-
+pub use sync::{FutexLike, SpinFutex, SpinFutexBuilder, TimeoutResult}; /* FutexLike is always available */
+// Re-export core error type (also available via prelude)
+pub use wrt_error::Error;
 // Export Zephyr specific implementations if enabled
 #[cfg(feature = "platform-zephyr")]
 pub use zephyr_memory::{ZephyrAllocator, ZephyrAllocatorBuilder, ZephyrMemoryFlags};
 #[cfg(feature = "platform-zephyr")]
-pub use zephyr_sync::{ZephyrFutex, ZephyrFutexBuilder, ZephyrSemaphoreFutex};
-pub use sync::{FutexLike, SpinFutex, SpinFutexBuilder, TimeoutResult}; /* FutexLike is always available */
-// Re-export core error type (also available via prelude)
-pub use wrt_error::Error; // This is fine as wrt_error::Error is always available
+pub use zephyr_sync::{ZephyrFutex, ZephyrFutexBuilder, ZephyrSemaphoreFutex}; // This is fine as wrt_error::Error is always available
 
 #[cfg(test)]
 #[allow(clippy::panic)] // Allow panics in the test module
