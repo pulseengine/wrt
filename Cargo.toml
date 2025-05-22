@@ -60,7 +60,8 @@ unused_mut = "allow"
 unused_macros = "allow"
 
 # Workspace-level profiles inherit by members unless overridden.
-# Setting panic=abort globally for safety.
+# Setting panic=abort for production profiles (dev/release) for safety and deterministic behavior.
+# Test and bench profiles intentionally use default panic handling for proper test framework operation.
 [profile.dev]
 panic = "abort"
 # Inherits other settings from Cargo's defaults
@@ -71,10 +72,12 @@ strip = true  # Reduce binary size
 lto = true    # Link-Time Optimization
 codegen-units = 1 # Maximize optimization opportunities
 
+# Note: panic setting is intentionally omitted for test and bench profiles
+# Tests and benchmarks need panic handling for proper error reporting and measurement
 [profile.test]
-panic = "abort"
 # Inherits other settings from Cargo's defaults (e.g., debug assertions enabled)
+# panic setting is not specified - let Rust handle this appropriately for tests
 
 [profile.bench]
-panic = "abort"
-# Inherits from release profile by default, but we ensure panic=abort here too.
+# Inherits from release profile by default
+# panic setting is not specified - let Rust handle this appropriately for benchmarks
