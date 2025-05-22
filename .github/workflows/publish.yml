@@ -46,12 +46,21 @@ jobs:
           dagger version
           
       - name: Setup Rust toolchain
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
-          profile: minimal
-          toolchain: nightly # Ensure this matches what xtask/Dagger pipeline might expect
-          override: true
-          components: llvm-tools-preview # if needed by llvm-cov
+          toolchain: stable
+          components: llvm-tools-preview
+
+      - name: Cache cargo dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Determine versions to build
         id: get-versions
