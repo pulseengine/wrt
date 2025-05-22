@@ -12,7 +12,7 @@ use wrt_format::{
     extract_state_section as format_extract_state_section, CompressionType, CustomSection,
     StateSection,
 };
-use wrt_types::bounded::BoundedVec;
+use wrt_foundation::bounded::BoundedVec;
 
 use crate::prelude::*;
 

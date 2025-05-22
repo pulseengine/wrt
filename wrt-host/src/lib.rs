@@ -21,7 +21,7 @@
 //!
 //! ```rust,no_run
 //! # use wrt_host::prelude::*;
-//! # use wrt_types::Value;
+//! # use wrt_foundation::Value;
 //!
 //! // Create a host builder
 //! let builder = HostBuilder::new()

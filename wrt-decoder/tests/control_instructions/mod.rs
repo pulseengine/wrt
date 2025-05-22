@@ -1,6 +1,6 @@
 use wrt_decoder::instructions::{Instruction, encode_instruction, parse_instruction};
 use wrt_decoder::types::BlockType;
-use wrt_types::ValueType;
+use wrt_foundation::ValueType;
 
 #[test]
 fn test_parse_encode_block() {

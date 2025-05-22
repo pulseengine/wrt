@@ -19,7 +19,7 @@ mod tests {
     use std::string::String;
 
     // Import from wrt-sync
-    use wrt_sync::{Mutex, RwLock};
+    use wrt_sync::{WrtMutex as Mutex, WrtRwLock as RwLock};
 
     #[test]
     fn test_mutex_operations() {
@@ -28,7 +28,7 @@ mod tests {
 
         // Lock the mutex
         {
-            let mut lock = mutex.lock().unwrap();
+            let mut lock = mutex.lock();
             assert_eq!(*lock, 42);
 
             // Modify the value
@@ -36,7 +36,7 @@ mod tests {
         }
 
         // Verify the value changed
-        let lock = mutex.lock().unwrap();
+        let lock = mutex.lock();
         assert_eq!(*lock, 100);
     }
 
@@ -47,61 +47,55 @@ mod tests {
 
         // Acquire read lock
         {
-            let read_lock = rwlock.read().unwrap();
+            let read_lock = rwlock.read();
             assert_eq!(*read_lock, "test");
         }
 
         // Acquire write lock
         {
-            let mut write_lock = rwlock.write().unwrap();
+            let mut write_lock = rwlock.write();
             write_lock.push_str("_modified");
         }
 
         // Verify the value changed
-        let read_lock = rwlock.read().unwrap();
+        let read_lock = rwlock.read();
         assert_eq!(*read_lock, "test_modified");
     }
 
+    // Note: The WrtMutex implementation doesn't currently have try_lock,
+    // so we're using lock() instead
     #[test]
-    fn test_mutex_try_lock() {
+    fn test_mutex_locking() {
         // Create a mutex
         let mutex = Mutex::new(42);
 
-        // Try to lock the mutex
-        match mutex.try_lock() {
-            Ok(lock) => {
-                assert_eq!(*lock, 42);
-            }
-            Err(_) => {
-                panic!("try_lock should succeed when mutex is not locked");
-            }
-        }
+        // Lock the mutex
+        let lock = mutex.lock();
+        assert_eq!(*lock, 42);
     }
 
+    // Note: The WrtRwLock implementation doesn't currently have try_read/try_write,
+    // so we're using read()/write() instead
     #[test]
-    fn test_rwlock_try_read_write() {
+    fn test_rwlock_read_write() {
         // Create a read-write lock
         let rwlock = RwLock::new(42);
 
-        // Try to acquire read lock
-        match rwlock.try_read() {
-            Ok(lock) => {
-                assert_eq!(*lock, 42);
-            }
-            Err(_) => {
-                panic!("try_read should succeed when rwlock is not locked");
-            }
+        // Acquire read lock
+        {
+            let lock = rwlock.read();
+            assert_eq!(*lock, 42);
         }
 
-        // Try to acquire write lock
-        match rwlock.try_write() {
-            Ok(mut lock) => {
-                *lock = 100;
-                assert_eq!(*lock, 100);
-            }
-            Err(_) => {
-                panic!("try_write should succeed when rwlock is not locked for writing");
-            }
+        // Acquire write lock
+        {
+            let mut lock = rwlock.write();
+            *lock = 100;
+            assert_eq!(*lock, 100);
         }
+
+        // Verify the value changed
+        let lock = rwlock.read();
+        assert_eq!(*lock, 100);
     }
 }

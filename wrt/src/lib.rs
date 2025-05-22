@@ -33,7 +33,7 @@
 //! WRT follows a modular design with specialized crates:
 //!
 //! - `wrt-error`: Error handling foundation
-//! - `wrt-types`: Core and runtime type definitions
+//! - `wrt-foundation`: Core foundation library (previously wrt-foundation)
 //! - `wrt-format`: Format specifications
 //! - `wrt-decoder`: Binary parsing
 //! - `wrt-sync`: Synchronization primitives

@@ -38,7 +38,7 @@ Refactor all crates in the `wrt` project for strict `no_std` support (excluding 
 Follow this exact order, as it respects the internal crate dependency tree. Complete all steps for each crate before proceeding to the next.
 
 wrt-error - Error handling: done. 
-wrt-types - Core type definitions
+wrt-foundation - Core type definitions
 wrt-sync - Synchronization primitives
 wrt-logging - Logging utilities
 wrt-math - Mathematical operations
@@ -81,7 +81,7 @@ wrt - The main WebAssembly runtime crate
 - [ ] Type and error handling is unified across crates
 - [ ] All `wrt-runtime` math goes through `wrt-math`
 - [ ] WASM 2.0 instructions implemented ([WASM 2.0 Spec](https://www.w3.org/TR/wasm-core-2))
-- [ ] Only `wrt-decoder` uses `wrt-format`; other crates interact via `wrt-types`
+- [ ] Only `wrt-decoder` uses `wrt-format`; other crates interact via `wrt-foundation`
 
 ---
 
@@ -115,7 +115,7 @@ wrt - The main WebAssembly runtime crate
 - [ ] No `unreachable_unchecked`
 
 ### 5. Memory & Concurrency
-- [ ] use types from wrt-types and wrt-platform.
+- [ ] use types from wrt-foundation and wrt-platform.
 - [ ] No `alloc`, `Vec`, `Arc`
 - [ ] No `static mut`
 - [ ] Use `Atomic*`, priority-safe mutexes

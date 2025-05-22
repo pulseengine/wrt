@@ -6,7 +6,7 @@
 #[cfg(test)]
 mod tests {
     use wrt::{
-        // Core types from wrt-types
+        // Core types from wrt-foundation
         types::{FuncType, ValueType},
         values::Value,
         resource::{Resource, ResourceId},
@@ -48,7 +48,7 @@ mod tests {
 
     #[test]
     fn test_core_type_integration() {
-        // Test ValueType and FuncType from wrt-types
+        // Test ValueType and FuncType from wrt-foundation
         let i32_type = ValueType::I32;
         let i64_type = ValueType::I64;
         
@@ -63,7 +63,7 @@ mod tests {
     
     #[test]
     fn test_value_integration() {
-        // Test Value from wrt-types
+        // Test Value from wrt-foundation
         let i32_val = Value::I32(42);
         let f64_val = Value::F64(3.14159);
         
@@ -73,13 +73,13 @@ mod tests {
     
     #[test]
     fn test_bounded_container_integration() {
-        // Test BoundedVec from wrt-types
+        // Test BoundedVec from wrt-foundation
         let mut vec = BoundedVec::<u32, 5>::new();
         assert!(vec.push(1).is_ok());
         assert!(vec.push(2).is_ok());
         assert_eq!(vec.len(), 2);
         
-        // Test BoundedStack from wrt-types
+        // Test BoundedStack from wrt-foundation
         let mut stack = BoundedStack::<u32, 5>::new();
         assert!(stack.push(1).is_ok());
         assert!(stack.push(2).is_ok());
@@ -88,7 +88,7 @@ mod tests {
     
     #[test]
     fn test_resource_integration() {
-        // Test Resource from wrt-types
+        // Test Resource from wrt-foundation
         let resource_id = ResourceId::new(42);
         assert_eq!(resource_id.get(), 42);
     }

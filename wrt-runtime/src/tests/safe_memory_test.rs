@@ -3,7 +3,7 @@ mod tests {
     use std::sync::Arc;
 
     use wrt_error::Result;
-    use wrt_types::{
+    use wrt_foundation::{
         safe_memory::{SafeMemoryHandler, SafeStack},
         types::{Limits, ValueType},
         values::{FuncRef, Value},

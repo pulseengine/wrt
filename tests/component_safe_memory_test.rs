@@ -4,7 +4,7 @@
 //! uses safe memory structures and verification levels.
 
 use wrt_component::component::{Component, WrtComponentType};
-use wrt_types::verification::VerificationLevel;
+use wrt_foundation::verification::VerificationLevel;
 use wrt_error::Result;
 use std::sync::Arc;
 

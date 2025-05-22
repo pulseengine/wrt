@@ -11,7 +11,7 @@ use alloc::{string::String, vec::Vec};
 use std::{string::String, vec::Vec};
 
 use wrt_error::{codes, Error, ErrorCategory, Result};
-use wrt_types::{types::GlobalType, RefType, ValueType};
+use wrt_foundation::{types::GlobalType, RefType, ValueType};
 
 use crate::{
     section::CustomSection,

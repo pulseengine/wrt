@@ -102,6 +102,7 @@ pub struct MacOSFeatures {
     /// Whether memory protection features can be used
     can_use_memory_protection: bool,
     /// Optimal page size on this system
+    #[allow(dead_code)] // Used for future optimizations
     page_size: usize,
 }
 
@@ -153,7 +154,7 @@ impl MemoryProvider for MacOSOptimizedProvider {
     }
 
     // These methods are no longer needed as we've removed the dependency on
-    // wrt_types::safe_memory Instead, we directly use read_data and write_data
+    // wrt_foundation::safe_memory Instead, we directly use read_data and write_data
 
     fn write_data(&mut self, offset: usize, data: &[u8]) -> WrtResult<usize> {
         // Use optimized copy if possible
@@ -241,8 +242,8 @@ impl PlatformMemoryOptimizer for MacOSOptimizedProvider {
 
     fn supports_optimization(&self, optimization: MemoryOptimization) -> bool {
         match optimization {
-            MemoryOptimization::ZeroCopy => false, /* macOS doesn't support true zero-copy in
-                                                     * userspace */
+            MemoryOptimization::ZeroCopy => false, // macOS doesn't support true zero-copy in
+            // userspace
             MemoryOptimization::HardwareAcceleration => self.features.has_avx,
             MemoryOptimization::AlignmentOptimization => true,
             MemoryOptimization::SecureZeroing => true,
@@ -326,7 +327,7 @@ impl MemoryProvider for LinuxOptimizedProvider {
     }
 
     // These methods are no longer needed as we've removed the dependency on
-    // wrt_types::safe_memory Instead, we directly use read_data and write_data
+    // wrt_foundation::safe_memory Instead, we directly use read_data and write_data
 
     fn write_data(&mut self, offset: usize, data: &[u8]) -> WrtResult<usize> {
         if self.features.has_avx && data.len() >= 32 {
@@ -710,7 +711,7 @@ impl PlatformOptimizedProviderBuilder<LinuxOptimizedProvider> {
 /// memory optimizations. In the current version, this is a placeholder for
 /// future development.
 pub mod optimized_collections {
-    // TODO: Add integration with wrt-types BoundedVec, BoundedMap, etc.
+    // TODO: Add integration with wrt-foundation BoundedVec, BoundedMap, etc.
     // This will be implemented in a future version that properly handles
     // the dependency structure between crates
 }

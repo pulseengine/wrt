@@ -28,12 +28,12 @@ pub use core::{
 pub use wrt_error::{codes, kinds, Error, ErrorCategory, FromError, Result, ToErrorCategory};
 // No-std memory provider
 #[cfg(all(feature = "safety", not(feature = "std")))]
-pub use wrt_types::safe_memory::NoStdMemoryProvider;
+pub use wrt_foundation::safe_memory::NoStdMemoryProvider;
 // Conditional imports for safety features
 #[cfg(feature = "safety")]
-pub use wrt_types::safe_memory::{MemoryProvider, StdMemoryProvider};
-// Re-export from wrt-types
-pub use wrt_types::{
+pub use wrt_foundation::safe_memory::{MemoryProvider, StdMemoryProvider};
+// Re-export from wrt-foundation
+pub use wrt_foundation::{
     // Component model types
     component_value::{ComponentValue, ValType},
     // Verification types
@@ -72,22 +72,22 @@ pub use crate::{
 
 /// Create a SafeSlice from a byte slice
 #[cfg(feature = "safety")]
-pub fn safe_slice(data: &[u8]) -> wrt_types::safe_memory::SafeSlice<'_> {
-    wrt_types::safe_memory::SafeSlice::new(data)
+pub fn safe_slice(data: &[u8]) -> wrt_foundation::safe_memory::SafeSlice<'_> {
+    wrt_foundation::safe_memory::SafeSlice::new(data)
 }
 
 /// Create a SafeSlice with specific verification level
 #[cfg(feature = "safety")]
 pub fn safe_slice_with_verification(
     data: &[u8],
-    level: wrt_types::verification::VerificationLevel,
-) -> wrt_types::safe_memory::SafeSlice<'_> {
-    wrt_types::safe_memory::SafeSlice::with_verification_level(data, level)
+    level: wrt_foundation::verification::VerificationLevel,
+) -> wrt_foundation::safe_memory::SafeSlice<'_> {
+    wrt_foundation::safe_memory::SafeSlice::with_verification_level(data, level)
 }
 
 /// Create a memory provider from a byte slice (changed from Vec<u8>)
 #[cfg(all(feature = "safety", feature = "std"))] // StdMemoryProvider likely needs std
-pub fn memory_provider(data: &[u8]) -> wrt_types::safe_memory::StdMemoryProvider {
+pub fn memory_provider(data: &[u8]) -> wrt_foundation::safe_memory::StdMemoryProvider {
     // StdMemoryProvider::new takes Vec, this needs adjustment or StdMemoryProvider
     // needs a from_slice For now, let's assume StdMemoryProvider can be created
     // from a slice or this function is std-only. This function is problematic
@@ -95,13 +95,15 @@ pub fn memory_provider(data: &[u8]) -> wrt_types::safe_memory::StdMemoryProvider
     // StdMemoryProvider to have a method that takes a slice if appropriate,
     // or this helper should be cfg-gated more strictly or use a different provider
     // for no_std. Tentatively, creating a Vec here if std is available.
-    wrt_types::safe_memory::StdMemoryProvider::new(data.to_vec())
+    wrt_foundation::safe_memory::StdMemoryProvider::new(data.to_vec())
 }
 
 /// Create a memory provider with specific capacity
 #[cfg(all(feature = "safety", feature = "std"))] // StdMemoryProvider likely needs std
-pub fn memory_provider_with_capacity(capacity: usize) -> wrt_types::safe_memory::StdMemoryProvider {
-    wrt_types::safe_memory::StdMemoryProvider::with_capacity(capacity)
+pub fn memory_provider_with_capacity(
+    capacity: usize,
+) -> wrt_foundation::safe_memory::StdMemoryProvider {
+    wrt_foundation::safe_memory::StdMemoryProvider::with_capacity(capacity)
 }
 
 /// The prelude trait
@@ -112,8 +114,8 @@ pub mod std_prelude {
     // External crate imports
     // Result type
     pub use wrt_error::Result;
-    // Base types from wrt_types - fix incorrect paths
-    pub use wrt_types::{
+    // Base types from wrt_foundation - fix incorrect paths
+    pub use wrt_foundation::{
         // These types appear to be from the component module
         component::ComponentType,
         // Import valtype from component_value
@@ -153,8 +155,8 @@ pub mod no_std_prelude {
     // External crate imports
     // Base error types from wrt_error
     pub use wrt_error::{codes, kinds, Error, ErrorCategory, FromError, Result, ToErrorCategory};
-    // Base types from wrt_types - fix incorrect paths
-    pub use wrt_types::{
+    // Base types from wrt_foundation - fix incorrect paths
+    pub use wrt_foundation::{
         // These types appear to be from the component module
         component::ComponentType,
         // Import valtype from component_value

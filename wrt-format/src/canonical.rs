@@ -7,7 +7,7 @@ use alloc::{boxed::Box, string::String, string::ToString, vec, vec::Vec};
 #[cfg(feature = "std")]
 use std::{boxed::Box, string::String, vec, vec::Vec};
 
-use wrt_types::component_value::ValType;
+use wrt_foundation::component_value::ValType;
 
 /// Canonical ABI memory layout for component types
 #[derive(Debug, Clone)]

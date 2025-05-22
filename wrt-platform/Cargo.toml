@@ -38,8 +38,9 @@ use-libc = ["dep:libc"]
 
 # Platform-specific features
 platform-macos = [] # platform-macos no longer activates alloc by default
-# platform-linux = ["libc"]
-# platform-qnx = []
+platform-linux = [] # Linux support with direct syscalls
+linux-mte = [] # Enhanced ARM64 MTE support for Linux
+platform-qnx = [] # QNX Neutrino RTOS support
 # platform-zephyr = []
 # platform-baremetal = []
 # arm-hardening = [] # If any platform code depends on this

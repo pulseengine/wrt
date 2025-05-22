@@ -9,6 +9,7 @@ use log::{debug, error, info, trace, warn};
 use wrt_decoder::component::decode::Component as DecodedComponent;
 // Additional imports that aren't in the prelude
 use wrt_format::component::ExternType as FormatExternType;
+use wrt_foundation::resource::ResourceOperation as FormatResourceOperation;
 // These imports are temporarily commented out until we fix them
 // ComponentSection, ComponentTypeDefinition as FormatComponentTypeDefinition,
 // ComponentTypeSection, ExportSection, ImportSection, InstanceSection,
@@ -27,7 +28,6 @@ use wrt_runtime::{
     memory::Memory,
     table::Table,
 };
-use wrt_types::resource::ResourceOperation as FormatResourceOperation;
 
 // Import RwLock from prelude (it will be std::sync::RwLock or a no_std equivalent from the
 // prelude)
@@ -62,7 +62,7 @@ pub struct WrtComponentType {
     /// Component instances
     pub instances: Vec<wrt_format::component::ComponentTypeDefinition>,
     /// Verification level for this component type
-    pub verification_level: wrt_types::verification::VerificationLevel,
+    pub verification_level: wrt_foundation::verification::VerificationLevel,
 }
 
 impl WrtComponentType {
@@ -72,7 +72,7 @@ impl WrtComponentType {
             imports: Vec::new(),
             exports: Vec::new(),
             instances: Vec::new(),
-            verification_level: wrt_types::verification::VerificationLevel::Standard,
+            verification_level: wrt_foundation::verification::VerificationLevel::Standard,
         }
     }
 
@@ -82,17 +82,20 @@ impl WrtComponentType {
             imports: Vec::new(),
             exports: Vec::new(),
             instances: Vec::new(),
-            verification_level: wrt_types::verification::VerificationLevel::Standard,
+            verification_level: wrt_foundation::verification::VerificationLevel::Standard,
         }
     }
 
     /// Set the verification level for memory operations
-    pub fn set_verification_level(&mut self, level: wrt_types::verification::VerificationLevel) {
+    pub fn set_verification_level(
+        &mut self,
+        level: wrt_foundation::verification::VerificationLevel,
+    ) {
         self.verification_level = level;
     }
 
     /// Get the current verification level
-    pub fn verification_level(&self) -> wrt_types::verification::VerificationLevel {
+    pub fn verification_level(&self) -> wrt_foundation::verification::VerificationLevel {
         self.verification_level
     }
 }
@@ -129,7 +132,7 @@ pub struct Component {
     /// Original binary
     pub(crate) original_binary: Option<Vec<u8>>,
     /// Verification level for all operations
-    pub(crate) verification_level: wrt_types::verification::VerificationLevel,
+    pub(crate) verification_level: wrt_foundation::verification::VerificationLevel,
 }
 
 /// Represents an instance value
@@ -716,19 +719,22 @@ impl Component {
             resource_table: ResourceTable::new(),
             built_in_requirements: None,
             original_binary: None,
-            verification_level: wrt_types::verification::VerificationLevel::Standard,
+            verification_level: wrt_foundation::verification::VerificationLevel::Standard,
         }
     }
 
     /// Set the verification level for memory operations
-    pub fn set_verification_level(&mut self, level: wrt_types::verification::VerificationLevel) {
+    pub fn set_verification_level(
+        &mut self,
+        level: wrt_foundation::verification::VerificationLevel,
+    ) {
         self.verification_level = level;
         // Propagate to resource table
         self.resource_table.set_verification_level(convert_verification_level(level));
     }
 
     /// Get the current verification level
-    pub fn verification_level(&self) -> wrt_types::verification::VerificationLevel {
+    pub fn verification_level(&self) -> wrt_foundation::verification::VerificationLevel {
         self.verification_level
     }
 }
@@ -881,7 +887,7 @@ fn extract_embedded_modules(bytes: &[u8]) -> Result<Vec<Vec<u8>>> {
 
 /// Convert a component value to a runtime value
 pub fn component_value_to_value(
-    component_value: &wrt_types::ComponentValue,
+    component_value: &wrt_foundation::ComponentValue,
 ) -> wrt_intercept::Value {
     use wrt_intercept::Value;
 
@@ -893,8 +899,8 @@ pub fn component_value_to_value(
 }
 
 /// Convert a runtime value to a component value
-pub fn value_to_component_value(value: &wrt_intercept::Value) -> wrt_types::ComponentValue {
-    use wrt_types::ComponentValue;
+pub fn value_to_component_value(value: &wrt_intercept::Value) -> wrt_foundation::ComponentValue {
+    use wrt_foundation::ComponentValue;
 
     use crate::type_conversion::core_value_to_types_componentvalue;
 
@@ -905,20 +911,24 @@ pub fn value_to_component_value(value: &wrt_intercept::Value) -> wrt_types::Comp
 /// Convert parameter to value type
 pub fn convert_param_to_value_type(
     param: &wrt_format::component::ValType,
-) -> wrt_types::types::ValueType {
+) -> wrt_foundation::types::ValueType {
     crate::type_conversion::format_val_type_to_value_type(param)
-        .unwrap_or(wrt_types::types::ValueType::I32)
+        .unwrap_or(wrt_foundation::types::ValueType::I32)
 }
 
 /// Convert verification level
 pub fn convert_verification_level(
-    level: wrt_types::VerificationLevel,
+    level: wrt_foundation::VerificationLevel,
 ) -> crate::resources::VerificationLevel {
     match level {
-        wrt_types::VerificationLevel::None => crate::resources::VerificationLevel::None,
-        wrt_types::VerificationLevel::Sampling => crate::resources::VerificationLevel::Critical,
-        wrt_types::VerificationLevel::Standard => crate::resources::VerificationLevel::Critical,
-        wrt_types::VerificationLevel::Full => crate::resources::VerificationLevel::Full,
+        wrt_foundation::VerificationLevel::None => crate::resources::VerificationLevel::None,
+        wrt_foundation::VerificationLevel::Sampling => {
+            crate::resources::VerificationLevel::Critical
+        }
+        wrt_foundation::VerificationLevel::Standard => {
+            crate::resources::VerificationLevel::Critical
+        }
+        wrt_foundation::VerificationLevel::Full => crate::resources::VerificationLevel::Full,
     }
 }
 

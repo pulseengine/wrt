@@ -15,20 +15,20 @@ default = ["std"]
 # Standard library support (can be disabled for no_std environments)
 std = [
     "alloc",
-    "wrt-types/std",
+    "wrt-foundation/std",
     # Add other std dependencies if needed, e.g., for PAL backends
 ]
 
 # Allocator support for no_std environments
 alloc = [
-    "wrt-types/alloc",
+    "wrt-foundation/alloc",
     # Add other alloc dependencies if needed
 ]
 
 # For bare-metal or RTOS where even `alloc` might not be available initially or for certain parts.
 # This crate aims to be #![no_std] compatible.
 no_std = [
-    "wrt-types/no_std",
+    "wrt-foundation/no_std",
     # Potentially "alloc" if a global allocator is provided by the environment
 ]
 
@@ -43,7 +43,7 @@ platform-baremetal = []
 arm-hardening = []
 
 [dependencies]
-wrt-types = { path = "../wrt-types", workspace = true, default-features = false }
+wrt-foundation = { path = "../wrt-foundation", workspace = true, default-features = false }
 # libc = { version = "0.2", default-features = false, optional = true } # For C types if needed
 
 # PAL dependency - this will be a new crate or an existing one

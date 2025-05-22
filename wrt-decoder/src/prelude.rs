@@ -83,11 +83,11 @@ pub use wrt_format::{
     // Format-specific types
     types::{FormatBlockType, Limits, MemoryIndexType},
 };
-// Conversion utilities from wrt-types
+// Conversion utilities from wrt-foundation
 #[cfg(feature = "conversion")]
-pub use wrt_types::conversion::{ref_type_to_val_type, val_type_to_ref_type};
-// Re-export from wrt-types
-pub use wrt_types::{
+pub use wrt_foundation::conversion::{ref_type_to_val_type, val_type_to_ref_type};
+// Re-export from wrt-foundation
+pub use wrt_foundation::{
     // Component model types
     component_value::{ComponentValue, ValType},
     // SafeMemory types
@@ -99,8 +99,12 @@ pub use wrt_types::{
 
 // Re-export from this crate
 pub use crate::{
+    // Component model no-alloc support
+    component::decode_no_alloc,
     // Decoder core
     decoder_core::validate,
+    // No-alloc support
+    decoder_no_alloc,
     // Module types
     module::Module,
     // Utils

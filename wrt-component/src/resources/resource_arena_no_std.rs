@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: MIT
 
 use wrt_error::kinds::PoisonedLockError;
-use wrt_types::bounded::BoundedVec;
+use wrt_foundation::bounded::BoundedVec;
 
 use super::{ResourceId, ResourceTable};
 use crate::prelude::*;

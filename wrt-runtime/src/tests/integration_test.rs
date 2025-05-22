@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
     use wrt_error::Result;
-    use wrt_types::{types::FuncType, ComponentType, ExternType, Value, ValueType};
+    use wrt_foundation::{types::FuncType, ComponentType, ExternType, Value, ValueType};
 
     use crate::{ComponentRuntime, ComponentRuntimeImpl};
 
@@ -126,8 +126,8 @@ mod tests {
             imports: Vec::new(),
             exports: vec![(
                 "memory".to_string(),
-                ExternType::Memory(wrt_types::MemoryType {
-                    limits: wrt_types::Limits { min: 1, max: Some(2) },
+                ExternType::Memory(wrt_foundation::MemoryType {
+                    limits: wrt_foundation::Limits { min: 1, max: Some(2) },
                     shared: false,
                 }),
             )],

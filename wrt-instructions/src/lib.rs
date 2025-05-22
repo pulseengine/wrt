@@ -63,7 +63,9 @@ mod arithmetic_test;
 // Re-export prelude for convenience
 pub use prelude::*;
 pub use wrt_error::{Error, Result};
-pub use wrt_types::{types::ValueType, values::Value, BlockType, RefType, Result as TypesResult};
+pub use wrt_foundation::{
+    types::ValueType, values::Value, BlockType, RefType, Result as TypesResult,
+};
 
 pub use crate::control_ops::{
     Block as ControlFlowBlock, BranchTarget, ControlBlockType, ControlOp,

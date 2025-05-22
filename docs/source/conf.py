@@ -338,7 +338,7 @@ rust_crates = {
     # "wrt-logging": "/wrt/wrt-logging",
     # "wrt-runtime": "/wrt/wrt-runtime",
     # "wrt-sync": "/wrt/wrt-sync",
-    # "wrt-types": "/wrt/wrt-types",
+    # "wrt-foundation": "/wrt/wrt-foundation",
     # Add other crates here if needed, e.g.:
     # "wrt-test-registry": "/wrt/wrt-test-registry",
     # "wrtd": "/wrt/wrtd",

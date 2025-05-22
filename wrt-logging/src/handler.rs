@@ -48,6 +48,7 @@ impl LoggingExt for CallbackRegistry {
 }
 
 #[cfg(test)]
+#[cfg(feature = "std")]
 mod tests {
     use std::sync::{Arc, Mutex};
 
@@ -86,5 +87,47 @@ mod tests {
         assert_eq!(received.len(), 2);
         assert_eq!(received[0], (LogLevel::Info, "info message".to_string()));
         assert_eq!(received[1], (LogLevel::Error, "error message".to_string()));
+    }
+}
+
+// Test module for no_std environments with alloc
+#[cfg(test)]
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+mod no_std_alloc_tests {
+    use alloc::vec::Vec;
+    use core::cell::RefCell;
+
+    use super::*;
+    use crate::level::LogLevel;
+
+    #[test]
+    fn test_no_std_logging_extension() {
+        let mut registry = CallbackRegistry::new();
+
+        // Test without handler
+        assert!(!registry.has_log_handler());
+
+        // Logging without handler should not panic
+        registry.handle_log(LogOperation::new(LogLevel::Info, "test message".to_string()));
+
+        // Use RefCell instead of Mutex for no_std
+        let received = RefCell::new(Vec::new());
+
+        registry.register_log_handler(move |log_op| {
+            received.borrow_mut().push((log_op.level, log_op.message));
+        });
+
+        // Test with handler
+        assert!(registry.has_log_handler());
+
+        // Log some messages
+        registry.handle_log(LogOperation::new(LogLevel::Info, "info message".to_string()));
+        registry.handle_log(LogOperation::new(LogLevel::Error, "error message".to_string()));
+
+        // Check received messages
+        let borrowed = received.borrow();
+        assert_eq!(borrowed.len(), 2);
+        assert_eq!(borrowed[0], (LogLevel::Info, "info message".to_string()));
+        assert_eq!(borrowed[1], (LogLevel::Error, "error message".to_string()));
     }
 }

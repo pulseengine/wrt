@@ -14,7 +14,7 @@ use wrt_format::{
     },
     types::ValueType as FormatValueType,
 };
-use wrt_types::types::{
+use wrt_foundation::types::{
     DataSegment as WrtDataSegment, ElementSegment as WrtElementSegment, Export as WrtExport,
     FuncType as WrtFuncType, GlobalType as WrtGlobalType, Import as WrtImport,
     MemoryType as WrtMemoryType, TableType as WrtTableType,
@@ -208,7 +208,7 @@ pub mod parsers {
             });
         }
 
-        // Convert all wrt_format::module::Import to wrt_types::types::Import
+        // Convert all wrt_format::module::Import to wrt_foundation::types::Import
         format_imports
             .into_iter()
             .map(|fi| crate::conversion::format_import_to_types_import(&fi))

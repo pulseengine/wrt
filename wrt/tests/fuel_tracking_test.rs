@@ -10,7 +10,7 @@ use wrt::{
     values::Value,
     StacklessEngine,
 };
-use wrt_types::{
+use wrt_foundation::{
     global_operation_summary, record_global_operation, reset_global_operations, BoundedVec,
     OperationType, VerificationLevel,
 };

@@ -8,7 +8,7 @@
 //! instructions, including get, set, grow, and size operations.
 
 use wrt_error::{codes, ErrorCategory};
-use wrt_types::values::{ExternRef, FuncRef};
+use wrt_foundation::values::{ExternRef, FuncRef};
 
 use crate::prelude::*;
 

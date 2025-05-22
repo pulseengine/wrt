@@ -46,16 +46,8 @@ pub use std::{
 
 // Re-export from wrt-error
 pub use wrt_error::{codes, kinds, Error, ErrorCategory, Result};
-// Re-export from wrt-intercept
-pub use wrt_intercept::{
-    BeforeBuiltinResult, BuiltinInterceptor, InterceptContext, LinkInterceptor,
-    LinkInterceptorStrategy,
-};
-// Import synchronization primitives for no_std
-#[cfg(not(feature = "std"))]
-pub use wrt_sync::{Mutex, RwLock};
-// Re-export from wrt-types
-pub use wrt_types::{
+// Re-export from wrt-foundation
+pub use wrt_foundation::{
     // Builtin types
     builtin::BuiltinType,
     // Component model types
@@ -68,6 +60,14 @@ pub use wrt_types::{
     // Verification types
     verification::VerificationLevel,
 };
+// Re-export from wrt-intercept
+pub use wrt_intercept::{
+    BeforeBuiltinResult, BuiltinInterceptor, InterceptContext, LinkInterceptor,
+    LinkInterceptorStrategy,
+};
+// Import synchronization primitives for no_std
+#[cfg(not(feature = "std"))]
+pub use wrt_sync::{Mutex, RwLock};
 
 // Re-export from this crate
 pub use crate::{

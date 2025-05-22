@@ -288,7 +288,7 @@ Core functionality qualification:
 * Formal verification of critical algorithms
 * Performance bounds validation
 
-wrt-types
+wrt-foundation
 ^^^^^^^^^
 
 Type system qualification:

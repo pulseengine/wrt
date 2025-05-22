@@ -2,7 +2,7 @@ use wrt_component::{error::Error as ComponentError, parser, Error};
 use wrt_decoder::{
     section_reader::SectionReader, Error as DecoderError, ModuleParser, Parser, Payload,
 };
-use wrt_types::values::Value;
+use wrt_foundation::values::Value;
 
 /// Helper to create a WebAssembly module with various import types
 fn create_module_with_imports() -> Vec<u8> {

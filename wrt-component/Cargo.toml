@@ -13,7 +13,7 @@ categories = ["wasm", "no-std"]
 wrt-error = { workspace = true }
 wrt-format = { workspace = true }
 wrt-host = { workspace = true }
-wrt-types = { workspace = true }
+wrt-foundation = { workspace = true }
 wrt-intercept = { workspace = true }
 wrt-decoder = { workspace = true }
 wrt-runtime = { workspace = true }
@@ -41,7 +41,7 @@ std = [
     "wrt-runtime/std",
     "wrt-sync/std",
     "wrt-error/std",
-    "wrt-types/std",
+    "wrt-foundation/std",
     "dep:log",
 ]
 
@@ -59,18 +59,18 @@ alloc = [
     "wrt-runtime/alloc",
     "wrt-sync/alloc",
     "wrt-error/alloc",
-    "wrt-types/alloc",
+    "wrt-foundation/alloc",
     "dep:alloc"
 ]
 
 # Verification with Kani
-kani = ["wrt-host/kani", "wrt-intercept/kani", "wrt-types/kani"]
+kani = ["wrt-host/kani", "wrt-intercept/kani", "wrt-foundation/kani"]
 
 # Performance and safety features
 optimize = [
     "wrt-format/optimize",
     "wrt-host/optimize",
-    "wrt-types/optimize",
+    "wrt-foundation/optimize",
     "wrt-intercept/optimize",
     "wrt-decoder/optimize",
     "wrt-runtime/optimize"
@@ -80,7 +80,7 @@ optimize = [
 safety = [
     "wrt-format/safety",
     "wrt-host/safety",
-    "wrt-types/safety",
+    "wrt-foundation/safety",
     "wrt-intercept/safety",
     "wrt-decoder/safety",
     "wrt-runtime/safety",
@@ -92,7 +92,7 @@ debug-log = []
 
 # Safe memory implementations
 safe-memory = [
-    "wrt-types/safe-memory",
+    "wrt-foundation/safe-memory",
     "wrt-format/safe-memory",
     "wrt-runtime/safe-memory",
 ]
@@ -101,9 +101,9 @@ safe-memory = [
 component-model-core = ["wrt-format/component-model-core"]
 component-model-values = ["wrt-format/component-model-values"]
 component-model-resources = ["wrt-format/component-model-resources"]
-component-model-async = ["wrt-types/component-model-async", "futures"]
-component-model-error-context = ["wrt-types/component-model-error-context"]
-component-model-threading = ["wrt-types/component-model-threading"]
+component-model-async = ["wrt-foundation/component-model-async", "futures"]
+component-model-error-context = ["wrt-foundation/component-model-error-context"]
+component-model-threading = ["wrt-foundation/component-model-threading"]
 component-model-all = [
     "component-model-core",
     "component-model-values",
@@ -123,10 +123,6 @@ name = "interceptor_example"
 path = "examples/interceptor_example.rs"
 required-features = ["std"]
 
-[[example]]
-name = "component_graph_view"
-path = "examples/component_graph_view.rs"
-required-features = ["std"]
 
 [lints.rust]
 unexpected_cfgs = { level = "allow", check-cfg = ['cfg(test)'] }

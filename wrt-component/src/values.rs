@@ -6,7 +6,7 @@
 
 // Import the various types we need explicitly to avoid confusion
 use wrt_format::component::ValType as FormatValType;
-use wrt_types::{
+use wrt_foundation::{
     component_value::{ComponentValue, ValType as TypesValType},
     traits::{ReadStream, WriteStream},
     values::Value,
@@ -390,7 +390,7 @@ pub fn serialize_component_value(value: &ComponentValue) -> Result<Vec<u8>> {
 }
 
 /// Serialize a component value using the WriteStream interface
-pub fn serialize_component_value_with_stream<'a, P: wrt_types::MemoryProvider>(
+pub fn serialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProvider>(
     value: &ComponentValue,
     writer: &mut WriteStream<'a>,
     provider: &P,
@@ -1107,7 +1107,7 @@ pub fn deserialize_component_value(
 }
 
 /// Deserialize a component value using the ReadStream interface
-pub fn deserialize_component_value_with_stream<'a, P: wrt_types::MemoryProvider>(
+pub fn deserialize_component_value_with_stream<'a, P: wrt_foundation::MemoryProvider>(
     reader: &mut ReadStream<'a>,
     format_type: &FormatValType,
     provider: &P,
@@ -1508,7 +1508,7 @@ pub fn serialize_component_values(values: &[ComponentValue]) -> Result<Vec<u8>> 
 }
 
 /// Serialize multiple component values using a WriteStream
-pub fn serialize_component_values_with_stream<'a, P: wrt_types::MemoryProvider>(
+pub fn serialize_component_values_with_stream<'a, P: wrt_foundation::MemoryProvider>(
     values: &[ComponentValue],
     writer: &mut WriteStream<'a>,
     provider: &P,
@@ -1595,7 +1595,7 @@ pub fn deserialize_component_values(
 }
 
 /// Deserialize multiple component values using a ReadStream
-pub fn deserialize_component_values_with_stream<'a, P: wrt_types::MemoryProvider>(
+pub fn deserialize_component_values_with_stream<'a, P: wrt_foundation::MemoryProvider>(
     reader: &mut ReadStream<'a>,
     types: &[FormatValType],
     provider: &P,
@@ -1710,7 +1710,7 @@ pub fn size_in_bytes(ty: &FormatValType) -> usize {
 
 #[cfg(test)]
 mod tests {
-    use wrt_types::safe_memory::{NoStdProvider, SafeMemoryHandler, Slice, SliceMut};
+    use wrt_foundation::safe_memory::{NoStdProvider, SafeMemoryHandler, Slice, SliceMut};
 
     use super::*;
 

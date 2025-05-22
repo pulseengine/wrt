@@ -3,7 +3,7 @@
 //! This module provides the Import type for component imports.
 
 use wrt_format::component::ExternType;
-use wrt_types::ExternType as RuntimeExternType;
+use wrt_foundation::ExternType as RuntimeExternType;
 
 use crate::{
     component::ExternValue, namespace::Namespace, prelude::*, type_conversion::bidirectional,
@@ -114,8 +114,8 @@ mod tests {
             },
             ExternValue::Function(FunctionValue {
                 ty: FuncType {
-                    params: vec![wrt_types::types::ValueType::I32],
-                    results: vec![wrt_types::types::ValueType::I32],
+                    params: vec![wrt_foundation::types::ValueType::I32],
+                    results: vec![wrt_foundation::types::ValueType::I32],
                 },
                 export_name: "fetch".to_string(),
             }),
@@ -133,7 +133,10 @@ mod tests {
                 results: vec![],
             },
             ExternValue::Function(FunctionValue {
-                ty: FuncType { params: vec![wrt_types::types::ValueType::I32], results: vec![] },
+                ty: FuncType {
+                    params: vec![wrt_foundation::types::ValueType::I32],
+                    results: vec![],
+                },
                 export_name: "print".to_string(),
             }),
         );
@@ -155,8 +158,8 @@ mod tests {
             },
             ExternValue::Function(FunctionValue {
                 ty: FuncType {
-                    params: vec![wrt_types::types::ValueType::I32],
-                    results: vec![wrt_types::types::ValueType::I32],
+                    params: vec![wrt_foundation::types::ValueType::I32],
+                    results: vec![wrt_foundation::types::ValueType::I32],
                 },
                 export_name: "fetch".to_string(),
             }),
@@ -171,8 +174,8 @@ mod tests {
             },
             ExternValue::Function(FunctionValue {
                 ty: FuncType {
-                    params: vec![wrt_types::types::ValueType::I32],
-                    results: vec![wrt_types::types::ValueType::I32],
+                    params: vec![wrt_foundation::types::ValueType::I32],
+                    results: vec![wrt_foundation::types::ValueType::I32],
                 },
                 export_name: "read".to_string(),
             }),

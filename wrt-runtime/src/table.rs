@@ -3,7 +3,7 @@
 //! This module provides an implementation of WebAssembly tables,
 //! which store function references or externref values.
 
-use wrt_types::{
+use wrt_foundation::{
     types::{Limits as WrtLimits, TableType as WrtTableType, ValueType as WrtValueType},
     values::Value as WrtValue,
 };
@@ -579,7 +579,7 @@ mod tests {
     #[cfg(not(feature = "std"))]
     use alloc::vec;
 
-    use wrt_types::{
+    use wrt_foundation::{
         types::{Limits, ValueType},
         verification::VerificationLevel,
     };
@@ -802,7 +802,7 @@ mod tests {
 
     #[test]
     fn test_table_memory_safety() -> Result<()> {
-        use wrt_types::{types::ValueType, verification::VerificationLevel};
+        use wrt_foundation::{types::ValueType, verification::VerificationLevel};
 
         // Create a table with a specific verification level
         let mut table = Table::with_capacity(5, &ValueType::FuncRef)?;

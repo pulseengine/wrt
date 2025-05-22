@@ -12,7 +12,7 @@ pub mod proofs {
     use std::sync::Arc;
 
     use wrt_error::Result;
-    use wrt_types::values::Value;
+    use wrt_foundation::values::Value;
 
     use crate::{LinkInterceptor, LinkInterceptorStrategy};
 

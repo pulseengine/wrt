@@ -62,7 +62,7 @@ pub trait PureExecutionContext {
 /// ```
 /// use wrt_instructions::execution::ExecutionContext;
 /// use wrt_instructions::execution::PureExecutionContext;
-/// use wrt_types::values::Value;
+/// use wrt_foundation::values::Value;
 ///
 /// let mut context = ExecutionContext::new();
 /// context.push_value(Value::I32(42)).unwrap();

@@ -20,7 +20,7 @@ pub use alloc::{
     // Add any other alloc-specific imports needed by this crate
 };
 #[cfg(not(feature = "std"))]
-pub use core::{};
+// No specific core-only imports needed here
 // Project: WRT
 // Module: wrt-math::prelude (SW-REQ-ID-TBD)
 
@@ -42,7 +42,7 @@ pub use core::{
                                                     * specific crate */
 };
 // Re-export relevant error types or result aliases if any specific to math ops
-// For now, users will use wrt_error::Result directly or via wrt_types::WrtResult
+// For now, users will use wrt_error::Result directly or via wrt_foundation::WrtResult
 
 // Re-export fundamental math operations if desired for a flat import structure
 // Example (if ops module contains public functions like i32_add):

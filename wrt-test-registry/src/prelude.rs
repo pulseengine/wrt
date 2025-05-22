@@ -77,6 +77,25 @@ pub use wrt_format::{
     runtime::RuntimeLimits,
     validation::Validatable as FormatValidatable,
 };
+// 2. Re-export from wrt-foundation (core type definitions)
+pub use wrt_foundation::{
+    // Bounded collections (safety-first alternatives to standard collections)
+    bounded::{BoundedError, BoundedHashMap, BoundedStack, BoundedVec, CapacityError},
+    component::{
+        ComponentType, ExternType, GlobalType as ComponentGlobalType, InstanceType,
+        MemoryType as ComponentMemoryType, TableType as ComponentTableType,
+    },
+    component_value::{ComponentValue, ValType},
+    // Safe memory types
+    safe_memory::{
+        MemoryProvider, MemorySafety, MemoryStats, SafeMemoryHandler, SafeSlice, SafeStack,
+    },
+    // Core types
+    types::{BlockType, FuncType, GlobalType, Limits, MemoryType, RefType, TableType, ValueType},
+    validation::{BoundedCapacity, Checksummed, Validatable as TypesValidatable},
+    values::{v128, Value, V128},
+    verification::{Checksum, VerificationLevel},
+};
 // 8. Re-export from wrt-host (host interface)
 pub use wrt_host::{
     environment::{Environment, HostEnvironment},
@@ -123,25 +142,6 @@ pub use wrt_sync::{concurrency::ThreadSafe, sync_primitives::SyncAccess};
 pub use wrt_sync::{
     WrtMutex as Mutex, WrtMutexGuard as MutexGuard, WrtRwLock as RwLock,
     WrtRwLockReadGuard as RwLockReadGuard, WrtRwLockWriteGuard as RwLockWriteGuard,
-};
-// 2. Re-export from wrt-types (core type definitions)
-pub use wrt_types::{
-    // Bounded collections (safety-first alternatives to standard collections)
-    bounded::{BoundedError, BoundedHashMap, BoundedStack, BoundedVec, CapacityError},
-    component::{
-        ComponentType, ExternType, GlobalType as ComponentGlobalType, InstanceType,
-        MemoryType as ComponentMemoryType, TableType as ComponentTableType,
-    },
-    component_value::{ComponentValue, ValType},
-    // Safe memory types
-    safe_memory::{
-        MemoryProvider, MemorySafety, MemoryStats, SafeMemoryHandler, SafeSlice, SafeStack,
-    },
-    // Core types
-    types::{BlockType, FuncType, GlobalType, Limits, MemoryType, RefType, TableType, ValueType},
-    validation::{BoundedCapacity, Checksummed, Validatable as TypesValidatable},
-    values::{v128, Value, V128},
-    verification::{Checksum, VerificationLevel},
 };
 
 // Do not import from wrt directly to avoid circular dependencies

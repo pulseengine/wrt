@@ -3,7 +3,7 @@
 // Licensed under the MIT license.
 // SPDX-License-Identifier: MIT
 
-use wrt_types::bounded::BoundedVec;
+use wrt_foundation::bounded::BoundedVec;
 
 use crate::prelude::*;
 

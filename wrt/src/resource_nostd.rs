@@ -7,7 +7,7 @@
 use core::{fmt, marker::PhantomData};
 
 use wrt_error::{codes, Error, Result};
-use wrt_types::{
+use wrt_foundation::{
     bounded::{BoundedStack, BoundedString, BoundedVec, WasmName},
     resource::{ResourceId, ResourceItem, ResourceType},
     safe_memory::{NoStdProvider, SafeMemoryHandler},

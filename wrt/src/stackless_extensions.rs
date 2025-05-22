@@ -12,7 +12,7 @@ pub enum ExecutionResult {
     /// Extension execution is paused and can be resumed
     Paused,
     /// Extension execution returned a value
-    Value(Vec<wrt_types::values::Value>),
+    Value(Vec<wrt_foundation::values::Value>),
     /// Extension execution encountered an error
     Error(String),
 }

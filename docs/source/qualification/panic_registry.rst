@@ -84,7 +84,7 @@ Panic Details
    :safety_impact: MEDIUM - Memory corruption could cause system instability
    :last_updated: 2025-04-25
 
-   **File:** wrt-types/src/safe_memory.rs
+   **File:** wrt-foundation/src/safe_memory.rs
    **Line:** 50
    **Function:** new
 
@@ -98,7 +98,7 @@ Panic Details
    :safety_impact: LOW - This function does not actually panic
    :last_updated: 2025-04-25
 
-   **File:** wrt-types/src/bounded.rs
+   **File:** wrt-foundation/src/bounded.rs
    **Line:** 196
    **Function:** push
 

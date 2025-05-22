@@ -6,10 +6,10 @@
 use wrt_runtime::memory::Memory;
 use wrt_runtime::table::Table;
 use wrt_runtime::types::{MemoryType, TableType};
-use wrt_types::safe_memory::{SafeMemoryHandler, SafeStack, SafeSlice};
-use wrt_types::verification::VerificationLevel;
-use wrt_types::types::{Limits, ValueType};
-use wrt_types::values::Value;
+use wrt_foundation::safe_memory::{SafeMemoryHandler, SafeStack, SafeSlice};
+use wrt_foundation::verification::VerificationLevel;
+use wrt_foundation::types::{Limits, ValueType};
+use wrt_foundation::values::Value;
 use wrt_error::Result;
 
 #[test]

@@ -22,9 +22,9 @@ use std::{
 #[cfg(feature = "component-model-async")]
 use wrt_error::{kinds::AsyncError, Error, Result};
 #[cfg(feature = "component-model-async")]
-use wrt_types::builtin::BuiltinType;
+use wrt_foundation::builtin::BuiltinType;
 #[cfg(feature = "component-model-async")]
-use wrt_types::component_value::ComponentValue;
+use wrt_foundation::component_value::ComponentValue;
 
 #[cfg(feature = "component-model-async")]
 use crate::builtins::BuiltinHandler;

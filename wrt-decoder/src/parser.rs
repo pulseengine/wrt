@@ -10,7 +10,7 @@
 
 use wrt_error::{codes, Error, ErrorCategory, Result};
 use wrt_format::section::CustomSection;
-use wrt_types::safe_memory::SafeSlice;
+use wrt_foundation::safe_memory::SafeSlice;
 
 use crate::{
     module::Module,

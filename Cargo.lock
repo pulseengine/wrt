@@ -113,12 +113,12 @@ dependencies = [
 
 [[package]]
 name = "anstyle-wincon"
-version = "3.0.7"
+version = "3.0.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ca3534e77181a9cc07539ad51f2141fe32f6c3ffd4df76db8ad92346b003ae4e"
+checksum = "6680de5231bd6ee4c6191b8a1325daa282b415391ec9d3a37bd34f2060dc73fa"
 dependencies = [
  "anstyle",
- "once_cell",
+ "once_cell_polyfill",
  "windows-sys 0.59.0",
 ]
 
@@ -228,9 +228,9 @@ checksum = "bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a"
 
 [[package]]
 name = "bitflags"
-version = "2.9.0"
+version = "2.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5c8214115b7bf84099f1309324e63141d4c5d7cc26862f97a0a857dbefe165bd"
+checksum = "1b8e56985ec62d17e9c1001dc89c88ecd7dc08e47eba5ec7c29c7b5eeecde967"
 
 [[package]]
 name = "bitmaps"
@@ -299,9 +299,9 @@ checksum = "37b2a672a2cb129a2e41c10b1224bb368f9f37a2b16b612598138befd7b37eb5"
 
 [[package]]
 name = "cc"
-version = "1.2.22"
+version = "1.2.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "32db95edf998450acc7881c932f94cd9b05c87b4b2599e8bab064753da4acfd1"
+checksum = "5f4ac86a9e5bc1e2b3449ab9d7d3a6a405e3d1bb28d7b9be8614f55846ae3766"
 dependencies = [
  "shlex",
 ]
@@ -605,9 +605,9 @@ dependencies = [
 
 [[package]]
 name = "dagger-sdk"
-version = "0.18.7"
+version = "0.18.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8d8471ad204969980be4cbf78faae3103d45db6285fce0319d3f13d66d35c516"
+checksum = "78f1abe1c90d5e0828a0dd42bb704ed3622d47d510a8e29a933ffda3296090c2"
 dependencies = [
  "async-trait",
  "base64",
@@ -824,9 +824,9 @@ checksum = "877a4ace8713b0bcf2a4e7eec82529c029f1d0619886d18145fea96c3ffe5c0f"
 
 [[package]]
 name = "errno"
-version = "0.3.11"
+version = "0.3.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "976dd42dc7e85965fe702eb8164f21f450704bdde31faefd6471dba214cb594e"
+checksum = "cea14ef9355e3beab063703aa9dab15afd25f0667c341310c1e5274bb1d0da18"
 dependencies = [
  "libc",
  "windows-sys 0.59.0",
@@ -1078,7 +1078,7 @@ version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0bf760ebf69878d9fd8f110c89703d90ce35095324d1f1edcb595c63945ee757"
 dependencies = [
- "bitflags 2.9.0",
+ "bitflags 2.9.1",
  "ignore",
  "walkdir",
 ]
@@ -1389,9 +1389,9 @@ checksum = "00210d6893afc98edb752b664b8890f0ef174c8adbb8d0be9710fa66fbbf72d3"
 
 [[package]]
 name = "icu_properties"
-version = "2.0.0"
+version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2549ca8c7241c82f59c80ba2a6f415d931c5b58d24fb8412caa1a1f02c49139a"
+checksum = "016c619c1eeb94efb86809b015c58f479963de65bdb6253345c1a1276f22e32b"
 dependencies = [
  "displaydoc",
  "icu_collections",
@@ -1405,9 +1405,9 @@ dependencies = [
 
 [[package]]
 name = "icu_properties_data"
-version = "2.0.0"
+version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8197e866e47b68f8f7d95249e172903bec06004b18b2937f1095d40a0c57de04"
+checksum = "298459143998310acd25ffe6810ed544932242d3f07083eee1084d83a71bd632"
 
 [[package]]
 name = "icu_provider"
@@ -1583,9 +1583,9 @@ checksum = "4a5f13b858c8d314ee3e8f639011f7ccefe71f97f96e50151fb991f267928e2c"
 
 [[package]]
 name = "jiff"
-version = "0.2.13"
+version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f02000660d30638906021176af16b17498bd0d12813dbfe7b276d8bc7f3c0806"
+checksum = "a194df1107f33c79f4f93d02c80798520551949d59dfad22b6157048a88cca93"
 dependencies = [
  "jiff-static",
  "log",
@@ -1596,9 +1596,9 @@ dependencies = [
 
 [[package]]
 name = "jiff-static"
-version = "0.2.13"
+version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f3c30758ddd7188629c6713fc45d1188af4f44c90582311d0c8d8c9907f60c48"
+checksum = "6c6e1db7ed32c6c71b759497fae34bf7933636f75a251b9e736555da426f6442"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1656,7 +1656,7 @@ version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c0ff37bd590ca25063e35af745c343cb7a0271906fb7b37e4813e8f79f00268d"
 dependencies = [
- "bitflags 2.9.0",
+ "bitflags 2.9.1",
  "libc",
  "redox_syscall",
 ]
@@ -1774,6 +1774,15 @@ name = "once_cell"
 version = "1.21.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "42f5e15c9953c5e4ccceeb2e7382a716482c34515315f7b03532b8b4e8393d2d"
+
+[[package]]
+name = "once_cell_polyfill"
+version = "1.70.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2611b99ab098a31bdc8be48b4f1a285ca0ced28bd5b4f23e45efa8c63b09efa5"
+dependencies = [
+ "once_cell",
+]
 
 [[package]]
 name = "oorandom"
@@ -2060,7 +2069,7 @@ checksum = "14cae93065090804185d3b75f0bf93b8eeda30c7a9b4a33d3bdb3988d6229e50"
 dependencies = [
  "bit-set",
  "bit-vec",
- "bitflags 2.9.0",
+ "bitflags 2.9.1",
  "lazy_static",
  "num-traits",
  "rand",
@@ -2178,7 +2187,7 @@ version = "0.5.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "928fca9cf2aa042393a8325b9ead81d2f0df4cb12e1e24cef072922ccd99c5af"
 dependencies = [
- "bitflags 2.9.0",
+ "bitflags 2.9.1",
 ]
 
 [[package]]
@@ -2311,7 +2320,7 @@ version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c71e83d6afe7ff64890ec6b71d6a69bb8a610ab78ce364b3352876bb4c801266"
 dependencies = [
- "bitflags 2.9.0",
+ "bitflags 2.9.1",
  "errno",
  "libc",
  "linux-raw-sys",
@@ -2754,10 +2763,10 @@ dependencies = [
  "wrt-decoder",
  "wrt-error",
  "wrt-format",
+ "wrt-foundation",
  "wrt-instructions",
  "wrt-runtime",
  "wrt-test-registry",
- "wrt-types",
 ]
 
 [[package]]
@@ -3449,7 +3458,7 @@ dependencies = [
  "addr2line",
  "anyhow",
  "arbitrary",
- "bitflags 2.9.0",
+ "bitflags 2.9.1",
  "bytesize",
  "clap",
  "clap_complete",
@@ -3490,7 +3499,7 @@ version = "0.227.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0f51cad774fb3c9461ab9bccc9c62dfb7388397b5deda31bf40e8108ccd678b2"
 dependencies = [
- "bitflags 2.9.0",
+ "bitflags 2.9.1",
  "hashbrown 0.15.3",
  "indexmap 2.9.0",
  "semver",
@@ -3502,7 +3511,7 @@ version = "0.229.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0cc3b1f053f5d41aa55640a1fa9b6d1b8a9e4418d118ce308d20e24ff3575a8c"
 dependencies = [
- "bitflags 2.9.0",
+ "bitflags 2.9.1",
  "indexmap 2.9.0",
  "semver",
 ]
@@ -3513,7 +3522,7 @@ version = "0.230.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "808198a69b5a0535583370a51d459baa14261dfab04800c4864ee9e1a14346ed"
 dependencies = [
- "bitflags 2.9.0",
+ "bitflags 2.9.1",
  "hashbrown 0.15.3",
  "indexmap 2.9.0",
  "semver",
@@ -3615,9 +3624,9 @@ checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
 
 [[package]]
 name = "windows-core"
-version = "0.61.0"
+version = "0.61.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4763c1de310c86d75a878046489e2e5ba02c649d185f21c67d4cf8a56d098980"
+checksum = "c0fdd3ddb90610c7638aa2b3a3ab2904fb9e5cdbecc643ddb3647212781c4ae3"
 dependencies = [
  "windows-implement",
  "windows-interface",
@@ -3656,18 +3665,18 @@ checksum = "76840935b766e1b0a05c0066835fb9ec80071d4c09a16f6bd5f7e655e3c14c38"
 
 [[package]]
 name = "windows-result"
-version = "0.3.2"
+version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c64fd11a4fd95df68efcfee5f44a294fe71b8bc6a91993e2791938abcc712252"
+checksum = "56f42bd332cc6c8eac5af113fc0c1fd6a8fd2aa08a0119358686e5160d0586c6"
 dependencies = [
  "windows-link",
 ]
 
 [[package]]
 name = "windows-strings"
-version = "0.4.0"
+version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7a2ba9642430ee452d5a7aa78d72907ebe8cfda358e8cb7918a2050581322f97"
+checksum = "56e6c93f3a0c3b36176cb1327a4958a0353d5d166c2a35cb268ace15e91d3b57"
 dependencies = [
  "windows-link",
 ]
@@ -3866,7 +3875,7 @@ version = "0.39.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6f42320e61fe2cfd34354ecb597f86f413484a798ba44a8ca1165c58d42da6c1"
 dependencies = [
- "bitflags 2.9.0",
+ "bitflags 2.9.1",
 ]
 
 [[package]]
@@ -3875,7 +3884,7 @@ version = "0.41.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c4db52a11d4dfb0a59f194c064055794ee6564eb1ced88c25da2cf76e50c5621"
 dependencies = [
- "bitflags 2.9.0",
+ "bitflags 2.9.1",
  "futures",
  "once_cell",
 ]
@@ -3918,7 +3927,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "635c3adc595422cbf2341a17fb73a319669cc8d33deed3a48368a841df86b676"
 dependencies = [
  "anyhow",
- "bitflags 2.9.0",
+ "bitflags 2.9.1",
  "indexmap 2.9.0",
  "log",
  "serde",
@@ -3937,7 +3946,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b607b15ead6d0e87f5d1613b4f18c04d4e80ceeada5ffa608d8360e6909881df"
 dependencies = [
  "anyhow",
- "bitflags 2.9.0",
+ "bitflags 2.9.1",
  "indexmap 2.9.0",
  "log",
  "serde",
@@ -4043,6 +4052,7 @@ dependencies = [
  "wrt-decoder",
  "wrt-error",
  "wrt-format",
+ "wrt-foundation",
  "wrt-host",
  "wrt-instructions",
  "wrt-intercept",
@@ -4051,7 +4061,6 @@ dependencies = [
  "wrt-platform",
  "wrt-runtime",
  "wrt-sync",
- "wrt-types",
 ]
 
 [[package]]
@@ -4064,10 +4073,11 @@ dependencies = [
  "wrt-decoder",
  "wrt-error",
  "wrt-format",
+ "wrt-foundation",
  "wrt-host",
  "wrt-intercept",
  "wrt-runtime",
- "wrt-types",
+ "wrt-sync",
 ]
 
 [[package]]
@@ -4082,7 +4092,7 @@ dependencies = [
  "wat",
  "wrt-error",
  "wrt-format",
- "wrt-types",
+ "wrt-foundation",
 ]
 
 [[package]]
@@ -4096,7 +4106,22 @@ dependencies = [
  "kani-verifier",
  "proptest",
  "wrt-error",
- "wrt-types",
+ "wrt-foundation",
+]
+
+[[package]]
+name = "wrt-foundation"
+version = "0.2.0"
+dependencies = [
+ "criterion",
+ "hashbrown 0.14.5",
+ "kani-verifier",
+ "log",
+ "proptest",
+ "proptest-derive",
+ "wrt-error",
+ "wrt-platform",
+ "wrt-sync",
 ]
 
 [[package]]
@@ -4105,9 +4130,9 @@ version = "0.2.0"
 dependencies = [
  "log",
  "wrt-error",
+ "wrt-foundation",
  "wrt-intercept",
  "wrt-sync",
- "wrt-types",
 ]
 
 [[package]]
@@ -4118,8 +4143,8 @@ dependencies = [
  "proptest",
  "rustc-std-workspace-alloc",
  "wrt-error",
+ "wrt-foundation",
  "wrt-sync",
- "wrt-types",
 ]
 
 [[package]]
@@ -4131,8 +4156,8 @@ dependencies = [
  "log",
  "pretty_assertions",
  "wrt-error",
+ "wrt-foundation",
  "wrt-sync",
- "wrt-types",
 ]
 
 [[package]]
@@ -4142,8 +4167,8 @@ dependencies = [
  "log",
  "rustc-std-workspace-alloc",
  "wrt-error",
+ "wrt-foundation",
  "wrt-host",
- "wrt-types",
 ]
 
 [[package]]
@@ -4170,12 +4195,12 @@ dependencies = [
  "rustc-std-workspace-alloc",
  "wrt-decoder",
  "wrt-error",
+ "wrt-foundation",
  "wrt-host",
  "wrt-instructions",
  "wrt-intercept",
  "wrt-platform",
  "wrt-sync",
- "wrt-types",
 ]
 
 [[package]]
@@ -4204,26 +4229,11 @@ dependencies = [
  "wrt-decoder",
  "wrt-error",
  "wrt-format",
+ "wrt-foundation",
  "wrt-host",
  "wrt-instructions",
  "wrt-intercept",
  "wrt-runtime",
- "wrt-sync",
- "wrt-types",
-]
-
-[[package]]
-name = "wrt-types"
-version = "0.2.0"
-dependencies = [
- "criterion",
- "hashbrown 0.14.5",
- "kani-verifier",
- "log",
- "proptest",
- "proptest-derive",
- "wrt-error",
- "wrt-platform",
  "wrt-sync",
 ]
 

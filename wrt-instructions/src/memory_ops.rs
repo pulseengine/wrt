@@ -41,7 +41,7 @@
 //! use wrt_instructions::memory_ops::{MemoryLoad, MemoryStore};
 //! use wrt_instructions::Value;
 //! use wrt_runtime::Memory;
-//! use wrt_types::types::Limits;
+//! use wrt_foundation::types::Limits;
 //!
 //! // Create a memory instance
 //! let mem_type = MemoryType {
@@ -598,8 +598,8 @@ impl MemoryStore {
 
 #[cfg(test)]
 mod tests {
+    use wrt_foundation::types::Limits;
     use wrt_runtime::MemoryType;
-    use wrt_types::types::Limits;
 
     use super::*;
 

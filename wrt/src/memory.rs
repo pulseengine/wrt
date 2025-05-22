@@ -16,7 +16,7 @@
 //!
 //! ```no_run
 //! use wrt::{Memory, MemoryType};
-//! use wrt_types::types::Limits;
+//! use wrt_foundation::types::Limits;
 //!
 //! // Create a memory type with initial 1 page (64KB) and max 2 pages
 //! let mem_type = MemoryType {
@@ -46,8 +46,8 @@ use crate::{
 };
 
 use wrt_error::Result as WrtResult;
-use wrt_types::safe_memory::{MemoryProvider, MemorySafety, SafeSlice};
-use wrt_types::verification::VerificationLevel;
+use wrt_foundation::safe_memory::{MemoryProvider, MemorySafety, SafeSlice};
+use wrt_foundation::verification::VerificationLevel;
 
 // Re-export memory types from wrt-runtime
 pub use wrt_runtime::{Memory, MemoryType, PAGE_SIZE};
@@ -176,7 +176,7 @@ pub fn verify_memory_integrity(memory: &Memory) -> Result<()> {
 /// # Returns
 ///
 /// Memory statistics
-pub fn get_memory_stats(memory: &Memory) -> wrt_types::safe_memory::MemoryStats {
+pub fn get_memory_stats(memory: &Memory) -> wrt_foundation::safe_memory::MemoryStats {
     memory.memory_stats()
 }
 
@@ -818,7 +818,7 @@ impl InstructionExecutor for DataDrop {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use wrt_types::types::Limits;
+    use wrt_foundation::types::Limits;
 
     #[test]
     fn test_create_memory() {

@@ -11,7 +11,7 @@ categories = ["wasm", "no-std"]
 
 [dependencies]
 wrt-error = { workspace = true, default-features = false }
-wrt-types = { workspace = true, default-features = false }
+wrt-foundation = { workspace = true, default-features = false }
 wrt-sync = { workspace = true, default-features = false }
 
 # Optional dependencies
@@ -25,11 +25,11 @@ pretty_assertions = "1.4.0"
 
 [features]
 default = []
-std = ["wrt-types/std", "wrt-sync/std", "log"]
-no_std = ["alloc", "wrt-types/no_std"]
-alloc = ["wrt-types/alloc", "wrt-sync/alloc"]
-optimize = ["wrt-types/optimize"]
-safety = ["wrt-types/safety", "alloc"]
+std = ["wrt-foundation/std", "wrt-sync/std", "log"]
+no_std = ["alloc", "wrt-foundation/no_std"]
+alloc = ["wrt-foundation/alloc", "wrt-sync/alloc"]
+optimize = ["wrt-foundation/optimize"]
+safety = ["wrt-foundation/safety", "alloc"]
 kani = ["dep:kani-verifier"]
 
 [lints]

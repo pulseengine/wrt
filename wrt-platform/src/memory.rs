@@ -13,10 +13,11 @@ use core::{fmt::Debug, ptr::NonNull};
 use wrt_error::Result;
 
 // Definitions are now local to this file.
-// REMOVED: use wrt_types::memory_traits::{PageAllocator, WASM_PAGE_SIZE};
+// REMOVED: use wrt_foundation::memory_traits::{PageAllocator, WASM_PAGE_SIZE};
 
-// Import verification level from wrt-types if available, otherwise define our
-// own Define our own VerificationLevel since we don't depend on wrt-types
+// Import verification level from wrt-foundation if available, otherwise define
+// our own Define our own VerificationLevel since we don't depend on
+// wrt-foundation
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 /// Verification level for resource and memory safety
 pub enum VerificationLevel {
@@ -38,7 +39,7 @@ impl Default for VerificationLevel {
     }
 }
 
-// START DEFINITIONS MOVED FROM wrt-types/src/memory_traits.rs
+// START DEFINITIONS MOVED FROM wrt-foundation/src/memory_traits.rs
 // (and originally present here before being moved out)
 
 /// Represents a single WebAssembly page (64 KiB).
@@ -270,7 +271,7 @@ impl MemoryProvider for NoStdProvider {
     }
 }
 
-// END DEFINITIONS MOVED FROM wrt-types/src/memory_traits.rs
+// END DEFINITIONS MOVED FROM wrt-foundation/src/memory_traits.rs
 
 #[cfg(test)]
 #[allow(clippy::panic, clippy::unwrap_used)] // Allow panic/unwrap in tests

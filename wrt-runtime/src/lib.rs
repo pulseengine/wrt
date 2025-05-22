@@ -77,6 +77,9 @@ mod tests;
 
 // Re-export trait definitions
 // Re-export implementations
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+pub use component_impl::no_alloc::MinimalComponent;
+#[cfg(any(feature = "std", feature = "alloc"))]
 pub use component_impl::{ComponentRuntimeImpl, DefaultHostFunctionFactory};
 pub use component_traits::{
     ComponentInstance, ComponentRuntime, HostFunction, HostFunctionFactory,

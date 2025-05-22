@@ -41,8 +41,8 @@ jobs:
       
       - name: Setup Dagger CLI
         run: |
-          cd /usr/local/bin # Or another directory in PATH
-          curl -L https://dl.dagger.io/dagger/install.sh | sudo sh
+          curl -L https://dl.dagger.io/dagger/install.sh | sh
+          export PATH=$PATH:$HOME/.dagger/bin
           dagger version
           
       - name: Setup Rust toolchain
@@ -86,6 +86,8 @@ jobs:
           echo "Building documentation for versions: ${{ env.VERSIONS_TO_BUILD }}"
           # Ensure xtask is compiled
           cargo build --package xtask
+          # Add Dagger to PATH
+          export PATH=$PATH:$HOME/.dagger/bin
           # Run the Dagger pipeline via xtask
           # The xtask command will handle connecting to Dagger and running the pipeline.
           # Output will be in ./docs_artifact (default or as specified)

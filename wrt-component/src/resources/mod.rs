@@ -27,7 +27,10 @@ pub mod resource_interceptor;
 pub mod resource_manager;
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 pub mod resource_manager_no_std;
+#[cfg(feature = "std")]
 pub mod resource_operation;
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+pub mod resource_operation_no_std;
 pub mod resource_strategy;
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 pub mod resource_strategy_no_std;
@@ -41,32 +44,40 @@ pub mod size_class_buffer_pool;
 #[cfg(test)]
 mod tests;
 
-// Re-export for use of std features
 // Re-export for no_std feature
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 pub use bounded_buffer_pool::{BoundedBufferPool, BoundedBufferStats as BufferPoolStats};
+// Re-export for std feature
 #[cfg(feature = "std")]
 pub use buffer_pool::BufferPool;
 #[cfg(feature = "std")]
 pub use memory_access::MemoryAccessMode;
 // Common re-exports for both std and no_std
 pub use memory_strategy::MemoryStrategy as MemoryStrategyTrait;
+// Export ResourceArena based on feature flags
 #[cfg(feature = "std")]
 pub use resource_arena::ResourceArena;
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 pub use resource_arena_no_std::ResourceArena;
 // Export Builder types
 pub use resource_builder::{ResourceBuilder, ResourceManagerBuilder, ResourceTableBuilder};
+// Export ResourceInterceptor
 pub use resource_interceptor::ResourceInterceptor;
 // Export ResourceId and ResourceManager based on feature flags
 #[cfg(feature = "std")]
 pub use resource_manager::{ResourceId, ResourceManager};
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 pub use resource_manager_no_std::{ResourceId, ResourceManager};
+// Export resource_operation based on feature flags
+#[cfg(feature = "std")]
 pub use resource_operation::{from_format_resource_operation, to_format_resource_operation};
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+pub use resource_operation_no_std::{from_format_resource_operation, to_format_resource_operation};
+// Export ResourceStrategy
 pub use resource_strategy::ResourceStrategy;
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 pub use resource_strategy_no_std::{ResourceStrategyNoStd, MAX_BUFFER_SIZE};
+// Export ResourceTable components based on feature flags
 #[cfg(feature = "std")]
 pub use resource_table::{
     BufferPoolTrait, MemoryStrategy, Resource, ResourceTable, VerificationLevel,
@@ -75,6 +86,7 @@ pub use resource_table::{
 pub use resource_table_no_std::{
     BufferPoolTrait, MemoryStrategy, Resource, ResourceTable, VerificationLevel,
 };
+// Export size class buffer pool for std environment
 #[cfg(feature = "std")]
 pub use size_class_buffer_pool::{BufferPoolStats, SizeClassBufferPool};
 

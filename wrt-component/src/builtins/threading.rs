@@ -20,7 +20,7 @@ use std::{
 };
 
 use wrt_error::{kinds::ThreadingError, Error, Result};
-use wrt_types::{builtin::BuiltinType, component_value::ComponentValue};
+use wrt_foundation::{builtin::BuiltinType, component_value::ComponentValue};
 
 use super::BuiltinHandler;
 

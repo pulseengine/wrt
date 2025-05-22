@@ -22,7 +22,7 @@ std = [
     "wrt-intercept/std",
     "wrt-runtime/std",
     "wrt-sync/std",
-    "wrt-types/std",
+    "wrt-foundation/std",
     "dep:ctor",
     "dep:inventory",
     "dep:serde_json",
@@ -40,7 +40,7 @@ alloc = [
     "wrt-intercept/alloc",
     "wrt-runtime/alloc",
     "wrt-sync/alloc",
-    "wrt-types/alloc",
+    "wrt-foundation/alloc",
     "dep:ctor",
     "dep:inventory",
     "dep:serde_json",
@@ -51,7 +51,7 @@ no_std = []
 [dependencies]
 # Core crates
 wrt-error = { default-features = false, workspace = true }
-wrt-types = { default-features = false, workspace = true }
+wrt-foundation = { default-features = false, workspace = true }
 wrt-format = { default-features = false, workspace = true }
 wrt-decoder = { default-features = false, workspace = true }
 wrt-sync = { default-features = false, workspace = true }

@@ -7,9 +7,9 @@
 use wrt_error::kinds::{
     InvalidValue, NotImplementedError, OutOfBoundsAccess, ValueOutOfRangeError,
 };
+use wrt_foundation::resource::ResourceOperation as FormatResourceOperation;
 // Additional dependencies not in prelude
 use wrt_runtime::Memory;
-use wrt_types::resource::ResourceOperation as FormatResourceOperation;
 
 use crate::prelude::*;
 
@@ -121,7 +121,7 @@ impl CanonicalABI {
     /// Lower a Value into the WebAssembly memory
     pub fn lower(
         &self,
-        value: &wrt_types::values::Value,
+        value: &wrt_foundation::values::Value,
         addr: u32,
         resource_table: &ResourceTable,
         memory_bytes: &mut [u8],
@@ -166,13 +166,13 @@ impl CanonicalABI {
         addr: u32,
         resource_table: &ResourceTable,
         memory_bytes: &[u8],
-    ) -> Result<wrt_types::values::Value> {
+    ) -> Result<wrt_foundation::values::Value> {
         match ty {
             ValType::Bool => {
                 // Boolean values are stored as i32 (0=false, non-zero=true)
                 let value = self.lift_s32(addr, memory_bytes)?;
                 if let Some(v) = value.as_i32() {
-                    return Ok(wrt_types::values::Value::I32(if v != 0 { 1 } else { 0 }));
+                    return Ok(wrt_foundation::values::Value::I32(if v != 0 { 1 } else { 0 }));
                 }
                 Err(Error::new(
                     ErrorCategory::Runtime,
@@ -354,7 +354,7 @@ impl CanonicalABI {
         Ok(Value::U16(v))
     }
 
-    fn lift_s32(&self, addr: u32, memory_bytes: &[u8]) -> Result<wrt_types::values::Value> {
+    fn lift_s32(&self, addr: u32, memory_bytes: &[u8]) -> Result<wrt_foundation::values::Value> {
         self.check_bounds(addr, 4, memory_bytes)?;
         let bytes = &memory_bytes[addr as usize..addr as usize + 4];
         let value = i32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]);
@@ -366,7 +366,7 @@ impl CanonicalABI {
             metrics.max_lift_bytes = metrics.max_lift_bytes.max(4);
         }
 
-        Ok(wrt_types::values::Value::I32(value))
+        Ok(wrt_foundation::values::Value::I32(value))
     }
 
     fn lift_u32(&self, addr: u32, memory_bytes: &[u8]) -> Result<Value> {
@@ -380,7 +380,7 @@ impl CanonicalABI {
         Ok(Value::U32(v))
     }
 
-    fn lift_s64(&self, addr: u32, memory_bytes: &[u8]) -> Result<wrt_types::values::Value> {
+    fn lift_s64(&self, addr: u32, memory_bytes: &[u8]) -> Result<wrt_foundation::values::Value> {
         self.check_bounds(addr, 8, memory_bytes)?;
         let bytes = &memory_bytes[addr as usize..addr as usize + 8];
         let value = i64::from_le_bytes([
@@ -394,7 +394,7 @@ impl CanonicalABI {
             metrics.max_lift_bytes = metrics.max_lift_bytes.max(8);
         }
 
-        Ok(wrt_types::values::Value::I64(value))
+        Ok(wrt_foundation::values::Value::I64(value))
     }
 
     fn lift_u64(&self, addr: u32, memory_bytes: &[u8]) -> Result<Value> {
@@ -412,7 +412,7 @@ impl CanonicalABI {
         Ok(Value::U64(v))
     }
 
-    fn lift_f32(&self, addr: u32, memory_bytes: &[u8]) -> Result<wrt_types::values::Value> {
+    fn lift_f32(&self, addr: u32, memory_bytes: &[u8]) -> Result<wrt_foundation::values::Value> {
         self.check_bounds(addr, 4, memory_bytes)?;
         let bytes = &memory_bytes[addr as usize..addr as usize + 4];
         let value = f32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]);
@@ -424,10 +424,10 @@ impl CanonicalABI {
             metrics.max_lift_bytes = metrics.max_lift_bytes.max(4);
         }
 
-        Ok(wrt_types::values::Value::F32(value))
+        Ok(wrt_foundation::values::Value::F32(value))
     }
 
-    fn lift_f64(&self, addr: u32, memory_bytes: &[u8]) -> Result<wrt_types::values::Value> {
+    fn lift_f64(&self, addr: u32, memory_bytes: &[u8]) -> Result<wrt_foundation::values::Value> {
         self.check_bounds(addr, 8, memory_bytes)?;
         let bytes = &memory_bytes[addr as usize..addr as usize + 8];
         let value = f64::from_le_bytes([
@@ -441,7 +441,7 @@ impl CanonicalABI {
             metrics.max_lift_bytes = metrics.max_lift_bytes.max(8);
         }
 
-        Ok(wrt_types::values::Value::F64(value))
+        Ok(wrt_foundation::values::Value::F64(value))
     }
 
     fn lift_char(&self, addr: u32, memory_bytes: &[u8]) -> Result<Value> {
@@ -1034,17 +1034,17 @@ mod tests {
 ///
 /// Result containing the converted Value
 pub fn convert_value_for_canonical_abi(
-    value: &wrt_types::values::Value,
+    value: &wrt_foundation::values::Value,
     target_type: &wrt_format::component::ValType,
-) -> Result<wrt_types::values::Value> {
+) -> Result<wrt_foundation::values::Value> {
     // First convert the format ValType to a component-friendly ValType
     let component_type = crate::values::convert_format_to_common_valtype(target_type);
 
     // Now convert the value based on the component type
     match &component_type {
-        wrt_types::component_value::ValType::Bool => {
+        wrt_foundation::component_value::ValType::Bool => {
             if let Some(b) = value.as_bool() {
-                Ok(wrt_types::values::Value::Bool(b))
+                Ok(wrt_foundation::values::Value::Bool(b))
             } else {
                 Err(Error::new(
                     ErrorCategory::Runtime,
@@ -1053,12 +1053,12 @@ pub fn convert_value_for_canonical_abi(
                 ))
             }
         }
-        wrt_types::component_value::ValType::S8 => {
+        wrt_foundation::component_value::ValType::S8 => {
             if let Some(v) = value.as_i8() {
-                Ok(wrt_types::values::Value::S8(v))
+                Ok(wrt_foundation::values::Value::S8(v))
             } else if let Some(i) = value.as_i32() {
                 if i >= i8::MIN as i32 && i <= i8::MAX as i32 {
-                    Ok(wrt_types::values::Value::S8(i as i8))
+                    Ok(wrt_foundation::values::Value::S8(i as i8))
                 } else {
                     Err(Error::new(
                         ErrorCategory::Runtime,
@@ -1074,12 +1074,12 @@ pub fn convert_value_for_canonical_abi(
                 ))
             }
         }
-        wrt_types::component_value::ValType::U8 => {
+        wrt_foundation::component_value::ValType::U8 => {
             if let Some(v) = value.as_u8() {
-                Ok(wrt_types::values::Value::U8(v))
+                Ok(wrt_foundation::values::Value::U8(v))
             } else if let Some(i) = value.as_i32() {
                 if i >= 0 && i <= u8::MAX as i32 {
-                    Ok(wrt_types::values::Value::U8(i as u8))
+                    Ok(wrt_foundation::values::Value::U8(i as u8))
                 } else {
                     Err(Error::new(
                         ErrorCategory::Runtime,
@@ -1095,12 +1095,12 @@ pub fn convert_value_for_canonical_abi(
                 ))
             }
         }
-        wrt_types::component_value::ValType::S16 => {
+        wrt_foundation::component_value::ValType::S16 => {
             if let Some(v) = value.as_i16() {
-                Ok(wrt_types::values::Value::S16(v))
+                Ok(wrt_foundation::values::Value::S16(v))
             } else if let Some(i) = value.as_i32() {
                 if i >= i16::MIN as i32 && i <= i16::MAX as i32 {
-                    Ok(wrt_types::values::Value::S16(i as i16))
+                    Ok(wrt_foundation::values::Value::S16(i as i16))
                 } else {
                     Err(Error::new(
                         ErrorCategory::Runtime,
@@ -1116,12 +1116,12 @@ pub fn convert_value_for_canonical_abi(
                 ))
             }
         }
-        wrt_types::component_value::ValType::U16 => {
+        wrt_foundation::component_value::ValType::U16 => {
             if let Some(v) = value.as_u16() {
-                Ok(wrt_types::values::Value::U16(v))
+                Ok(wrt_foundation::values::Value::U16(v))
             } else if let Some(i) = value.as_i32() {
                 if i >= 0 && i <= u16::MAX as i32 {
-                    Ok(wrt_types::values::Value::U16(i as u16))
+                    Ok(wrt_foundation::values::Value::U16(i as u16))
                 } else {
                     Err(Error::new(
                         ErrorCategory::Runtime,
@@ -1137,12 +1137,12 @@ pub fn convert_value_for_canonical_abi(
                 ))
             }
         }
-        wrt_types::component_value::ValType::S32 => {
+        wrt_foundation::component_value::ValType::S32 => {
             if let Some(v) = value.as_i32() {
-                Ok(wrt_types::values::Value::S32(v))
+                Ok(wrt_foundation::values::Value::S32(v))
             } else if let Some(v) = value.as_i64() {
                 if v >= i32::MIN as i64 && v <= i32::MAX as i64 {
-                    Ok(wrt_types::values::Value::S32(v as i32))
+                    Ok(wrt_foundation::values::Value::S32(v as i32))
                 } else {
                     Err(Error::new(
                         ErrorCategory::Runtime,
@@ -1158,12 +1158,12 @@ pub fn convert_value_for_canonical_abi(
                 ))
             }
         }
-        wrt_types::component_value::ValType::U32 => {
+        wrt_foundation::component_value::ValType::U32 => {
             if let Some(v) = value.as_u32() {
-                Ok(wrt_types::values::Value::U32(v))
+                Ok(wrt_foundation::values::Value::U32(v))
             } else if let Some(i) = value.as_i64() {
                 if i >= 0 && i <= u32::MAX as i64 {
-                    Ok(wrt_types::values::Value::U32(i as u32))
+                    Ok(wrt_foundation::values::Value::U32(i as u32))
                 } else {
                     Err(Error::new(
                         ErrorCategory::Runtime,
@@ -1179,11 +1179,11 @@ pub fn convert_value_for_canonical_abi(
                 ))
             }
         }
-        wrt_types::component_value::ValType::S64 => {
+        wrt_foundation::component_value::ValType::S64 => {
             if let Some(v) = value.as_i64() {
-                Ok(wrt_types::values::Value::S64(v))
+                Ok(wrt_foundation::values::Value::S64(v))
             } else if let Some(v) = value.as_i32() {
-                Ok(wrt_types::values::Value::S64(v as i64))
+                Ok(wrt_foundation::values::Value::S64(v as i64))
             } else {
                 Err(Error::new(
                     ErrorCategory::Runtime,
@@ -1192,12 +1192,12 @@ pub fn convert_value_for_canonical_abi(
                 ))
             }
         }
-        wrt_types::component_value::ValType::U64 => {
+        wrt_foundation::component_value::ValType::U64 => {
             if let Some(v) = value.as_u64() {
-                Ok(wrt_types::values::Value::U64(v))
+                Ok(wrt_foundation::values::Value::U64(v))
             } else if let Some(i) = value.as_i64() {
                 if i >= 0 {
-                    Ok(wrt_types::values::Value::U64(i as u64))
+                    Ok(wrt_foundation::values::Value::U64(i as u64))
                 } else {
                     Err(Error::new(
                         ErrorCategory::Runtime,
@@ -1213,15 +1213,15 @@ pub fn convert_value_for_canonical_abi(
                 ))
             }
         }
-        wrt_types::component_value::ValType::F32 => {
+        wrt_foundation::component_value::ValType::F32 => {
             if let Some(v) = value.as_f32() {
-                Ok(wrt_types::values::Value::F32(v))
+                Ok(wrt_foundation::values::Value::F32(v))
             } else if let Some(v) = value.as_f64() {
-                Ok(wrt_types::values::Value::F32(v as f32))
+                Ok(wrt_foundation::values::Value::F32(v as f32))
             } else if let Some(v) = value.as_i32() {
-                Ok(wrt_types::values::Value::F32(v as f32))
+                Ok(wrt_foundation::values::Value::F32(v as f32))
             } else if let Some(v) = value.as_i64() {
-                Ok(wrt_types::values::Value::F32(v as f32))
+                Ok(wrt_foundation::values::Value::F32(v as f32))
             } else {
                 Err(Error::new(
                     ErrorCategory::Runtime,
@@ -1230,15 +1230,15 @@ pub fn convert_value_for_canonical_abi(
                 ))
             }
         }
-        wrt_types::component_value::ValType::F64 => {
+        wrt_foundation::component_value::ValType::F64 => {
             if let Some(v) = value.as_f64() {
-                Ok(wrt_types::values::Value::F64(v))
+                Ok(wrt_foundation::values::Value::F64(v))
             } else if let Some(v) = value.as_f32() {
-                Ok(wrt_types::values::Value::F64(v as f64))
+                Ok(wrt_foundation::values::Value::F64(v as f64))
             } else if let Some(v) = value.as_i32() {
-                Ok(wrt_types::values::Value::F64(v as f64))
+                Ok(wrt_foundation::values::Value::F64(v as f64))
             } else if let Some(v) = value.as_i64() {
-                Ok(wrt_types::values::Value::F64(v as f64))
+                Ok(wrt_foundation::values::Value::F64(v as f64))
             } else {
                 Err(Error::new(
                     ErrorCategory::Runtime,
@@ -1247,12 +1247,12 @@ pub fn convert_value_for_canonical_abi(
                 ))
             }
         }
-        wrt_types::component_value::ValType::Char => {
+        wrt_foundation::component_value::ValType::Char => {
             if let Some(c) = value.as_char() {
-                Ok(wrt_types::values::Value::Char(c))
+                Ok(wrt_foundation::values::Value::Char(c))
             } else if let Some(i) = value.as_i32() {
                 if let Some(c) = char::from_u32(i as u32) {
-                    Ok(wrt_types::values::Value::Char(c))
+                    Ok(wrt_foundation::values::Value::Char(c))
                 } else {
                     Err(Error::new(
                         ErrorCategory::Runtime,
@@ -1271,9 +1271,9 @@ pub fn convert_value_for_canonical_abi(
                 ))
             }
         }
-        wrt_types::component_value::ValType::String => {
+        wrt_foundation::component_value::ValType::String => {
             if let Some(s) = value.as_str() {
-                Ok(wrt_types::values::Value::String(s.to_string()))
+                Ok(wrt_foundation::values::Value::String(s.to_string()))
             } else {
                 Err(Error::new(
                     ErrorCategory::Runtime,
@@ -1282,14 +1282,14 @@ pub fn convert_value_for_canonical_abi(
                 ))
             }
         }
-        wrt_types::component_value::ValType::List(inner_type) => {
+        wrt_foundation::component_value::ValType::List(inner_type) => {
             if let Some(list) = value.as_list() {
                 let mut converted_list = Vec::new();
                 for item in list {
                     let converted_item = convert_value_for_canonical_abi(item, &inner_type)?;
                     converted_list.push(converted_item);
                 }
-                Ok(wrt_types::values::Value::List(converted_list))
+                Ok(wrt_foundation::values::Value::List(converted_list))
             } else {
                 Err(Error::new(
                     ErrorCategory::Runtime,
@@ -1298,7 +1298,7 @@ pub fn convert_value_for_canonical_abi(
                 ))
             }
         }
-        wrt_types::component_value::ValType::Record(fields) => {
+        wrt_foundation::component_value::ValType::Record(fields) => {
             if let Some(record) = value.as_record() {
                 let mut converted_record = HashMap::new();
                 for (field_name, field_type) in fields {
@@ -1314,7 +1314,7 @@ pub fn convert_value_for_canonical_abi(
                         ));
                     }
                 }
-                Ok(wrt_types::values::Value::Record(converted_record))
+                Ok(wrt_foundation::values::Value::Record(converted_record))
             } else {
                 Err(Error::new(
                     ErrorCategory::Runtime,
@@ -1323,7 +1323,7 @@ pub fn convert_value_for_canonical_abi(
                 ))
             }
         }
-        wrt_types::component_value::ValType::Tuple(types) => {
+        wrt_foundation::component_value::ValType::Tuple(types) => {
             if let Some(tuple) = value.as_tuple() {
                 if tuple.len() != types.len() {
                     return Err(Error::new(
@@ -1341,7 +1341,7 @@ pub fn convert_value_for_canonical_abi(
                     let converted_item = convert_value_for_canonical_abi(item, item_type)?;
                     converted_tuple.push(converted_item);
                 }
-                Ok(wrt_types::values::Value::Tuple(converted_tuple))
+                Ok(wrt_foundation::values::Value::Tuple(converted_tuple))
             } else {
                 Err(Error::new(
                     ErrorCategory::Runtime,
@@ -1350,7 +1350,7 @@ pub fn convert_value_for_canonical_abi(
                 ))
             }
         }
-        wrt_types::component_value::ValType::Flags(names) => {
+        wrt_foundation::component_value::ValType::Flags(names) => {
             if let Some(flags) = value.as_flags() {
                 // Verify all required flags are present
                 for name in names {
@@ -1385,7 +1385,7 @@ pub fn convert_value_for_canonical_abi(
                         ));
                     }
                 }
-                Ok(wrt_types::values::Value::Flags(converted_flags))
+                Ok(wrt_foundation::values::Value::Flags(converted_flags))
             } else {
                 Err(Error::new(
                     ErrorCategory::Runtime,
@@ -1394,10 +1394,10 @@ pub fn convert_value_for_canonical_abi(
                 ))
             }
         }
-        wrt_types::component_value::ValType::Variant(cases) => {
+        wrt_foundation::component_value::ValType::Variant(cases) => {
             if let Some((discriminant, payload)) = value.as_variant() {
                 if discriminant < cases.len() as u32 {
-                    Ok(wrt_types::values::Value::Variant(discriminant, payload.map(Box::new)))
+                    Ok(wrt_foundation::values::Value::Variant(discriminant, payload.map(Box::new)))
                 } else {
                     Err(Error::new(
                         ErrorCategory::Runtime,
@@ -1416,7 +1416,7 @@ pub fn convert_value_for_canonical_abi(
                 ))
             }
         }
-        wrt_types::component_value::ValType::Void => Ok(wrt_types::values::Value::Void),
+        wrt_foundation::component_value::ValType::Void => Ok(wrt_foundation::values::Value::Void),
         // All types are now handled
         _ => Ok(value.clone()),
     }
@@ -1424,7 +1424,7 @@ pub fn convert_value_for_canonical_abi(
 
 /// Helper function to get a numeric value from Value with appropriate type
 /// conversion
-fn get_number_value(value: &wrt_types::values::Value) -> Result<i64> {
+fn get_number_value(value: &wrt_foundation::values::Value) -> Result<i64> {
     if let Some(v) = value.as_i32() {
         Ok(v as i64)
     } else if let Some(v) = value.as_i64() {
@@ -1441,7 +1441,7 @@ fn get_number_value(value: &wrt_types::values::Value) -> Result<i64> {
 }
 
 /// Helper function to get a floating point value from Value
-fn get_float_value(value: &wrt_types::values::Value) -> Result<f64> {
+fn get_float_value(value: &wrt_foundation::values::Value) -> Result<f64> {
     if let Some(v) = value.as_f32() {
         Ok(v as f64)
     } else if let Some(v) = value.as_f64() {
@@ -1461,15 +1461,15 @@ fn get_float_value(value: &wrt_types::values::Value) -> Result<f64> {
 
 /// Convert a value to the appropriate type for use in the canonical ABI
 pub fn convert_value_for_type(
-    value: &wrt_types::values::Value,
+    value: &wrt_foundation::values::Value,
     ty: &ValType,
-) -> Result<wrt_types::values::Value> {
+) -> Result<wrt_foundation::values::Value> {
     match ty {
         ValType::Bool => {
             if let Some(val) = value.as_bool() {
-                Ok(wrt_types::values::Value::I32(if val { 1 } else { 0 }))
+                Ok(wrt_foundation::values::Value::I32(if val { 1 } else { 0 }))
             } else if let Ok(num) = get_number_value(value) {
-                Ok(wrt_types::values::Value::I32(if num != 0 { 1 } else { 0 }))
+                Ok(wrt_foundation::values::Value::I32(if num != 0 { 1 } else { 0 }))
             } else {
                 Err(Error::new(
                     ErrorCategory::Runtime,
@@ -1480,10 +1480,10 @@ pub fn convert_value_for_type(
         }
         ValType::S8 | ValType::U8 | ValType::S16 | ValType::U16 | ValType::S32 | ValType::U32 => {
             if let Some(v) = value.as_i32() {
-                Ok(wrt_types::values::Value::I32(v))
+                Ok(wrt_foundation::values::Value::I32(v))
             } else if let Some(v) = value.as_i64() {
                 if v >= i32::MIN as i64 && v <= i32::MAX as i64 {
-                    Ok(wrt_types::values::Value::I32(v as i32))
+                    Ok(wrt_foundation::values::Value::I32(v as i32))
                 } else {
                     Err(Error::new(
                         ErrorCategory::Runtime,
@@ -1493,7 +1493,7 @@ pub fn convert_value_for_type(
                 }
             } else if let Some(v) = value.as_f32() {
                 if v >= i32::MIN as f32 && v <= i32::MAX as f32 {
-                    Ok(wrt_types::values::Value::I32(v as i32))
+                    Ok(wrt_foundation::values::Value::I32(v as i32))
                 } else {
                     Err(Error::new(
                         ErrorCategory::Runtime,
@@ -1503,7 +1503,7 @@ pub fn convert_value_for_type(
                 }
             } else if let Some(v) = value.as_f64() {
                 if v >= i32::MIN as f64 && v <= i32::MAX as f64 {
-                    Ok(wrt_types::values::Value::I32(v as i32))
+                    Ok(wrt_foundation::values::Value::I32(v as i32))
                 } else {
                     Err(Error::new(
                         ErrorCategory::Runtime,
@@ -1521,12 +1521,12 @@ pub fn convert_value_for_type(
         }
         ValType::S64 | ValType::U64 => {
             if let Some(v) = value.as_i64() {
-                Ok(wrt_types::values::Value::I64(v))
+                Ok(wrt_foundation::values::Value::I64(v))
             } else if let Some(v) = value.as_i32() {
-                Ok(wrt_types::values::Value::I64(v as i64))
+                Ok(wrt_foundation::values::Value::I64(v as i64))
             } else if let Some(v) = value.as_f32() {
                 if v >= i64::MIN as f32 && v <= i64::MAX as f32 {
-                    Ok(wrt_types::values::Value::I64(v as i64))
+                    Ok(wrt_foundation::values::Value::I64(v as i64))
                 } else {
                     Err(Error::new(
                         ErrorCategory::Runtime,
@@ -1536,7 +1536,7 @@ pub fn convert_value_for_type(
                 }
             } else if let Some(v) = value.as_f64() {
                 if v >= i64::MIN as f64 && v <= i64::MAX as f64 {
-                    Ok(wrt_types::values::Value::I64(v as i64))
+                    Ok(wrt_foundation::values::Value::I64(v as i64))
                 } else {
                     Err(Error::new(
                         ErrorCategory::Runtime,
@@ -1554,14 +1554,14 @@ pub fn convert_value_for_type(
         }
         ValType::F32 => {
             if let Some(v) = value.as_f32() {
-                Ok(wrt_types::values::Value::F32(v))
+                Ok(wrt_foundation::values::Value::F32(v))
             } else if let Some(v) = value.as_f64() {
                 // Check if value fits in f32 range
-                Ok(wrt_types::values::Value::F32(v as f32))
+                Ok(wrt_foundation::values::Value::F32(v as f32))
             } else if let Some(v) = value.as_i32() {
-                Ok(wrt_types::values::Value::F32(v as f32))
+                Ok(wrt_foundation::values::Value::F32(v as f32))
             } else if let Some(v) = value.as_i64() {
-                Ok(wrt_types::values::Value::F32(v as f32))
+                Ok(wrt_foundation::values::Value::F32(v as f32))
             } else {
                 Err(Error::new(
                     ErrorCategory::Runtime,
@@ -1572,13 +1572,13 @@ pub fn convert_value_for_type(
         }
         ValType::F64 => {
             if let Some(v) = value.as_f64() {
-                Ok(wrt_types::values::Value::F64(v))
+                Ok(wrt_foundation::values::Value::F64(v))
             } else if let Some(v) = value.as_f32() {
-                Ok(wrt_types::values::Value::F64(v as f64))
+                Ok(wrt_foundation::values::Value::F64(v as f64))
             } else if let Some(v) = value.as_i32() {
-                Ok(wrt_types::values::Value::F64(v as f64))
+                Ok(wrt_foundation::values::Value::F64(v as f64))
             } else if let Some(v) = value.as_i64() {
-                Ok(wrt_types::values::Value::F64(v as f64))
+                Ok(wrt_foundation::values::Value::F64(v as f64))
             } else {
                 Err(Error::new(
                     ErrorCategory::Runtime,

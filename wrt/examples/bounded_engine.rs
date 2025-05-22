@@ -5,7 +5,7 @@
 //! tradeoffs.
 
 use wrt::{stackless::StacklessEngine, values::Value, Module, Result};
-use wrt_types::VerificationLevel;
+use wrt_foundation::VerificationLevel;
 
 fn main() -> Result<()> {
     println!("Bounded Collections Example");

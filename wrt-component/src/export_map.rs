@@ -17,7 +17,7 @@ pub struct ExportMap {
 #[derive(Debug)]
 pub struct SafeExportMap {
     /// Name-to-export mapping with safe memory guarantees
-    exports: wrt_types::safe_memory::SafeStack<(String, Arc<Export>)>,
+    exports: wrt_foundation::safe_memory::SafeStack<(String, Arc<Export>)>,
 }
 
 impl ExportMap {
@@ -72,7 +72,7 @@ impl ExportMap {
 impl SafeExportMap {
     /// Create a new empty export map
     pub fn new() -> Self {
-        Self { exports: wrt_types::safe_memory::SafeStack::new() }
+        Self { exports: wrt_foundation::safe_memory::SafeStack::new() }
     }
 
     /// Add an export to the map
@@ -186,7 +186,10 @@ impl SafeExportMap {
     }
 
     /// Set the verification level for memory operations
-    pub fn set_verification_level(&mut self, level: wrt_types::verification::VerificationLevel) {
+    pub fn set_verification_level(
+        &mut self,
+        level: wrt_foundation::verification::VerificationLevel,
+    ) {
         self.exports.set_verification_level(level);
     }
 }

@@ -3,7 +3,7 @@
 //! This module provides the Export type for component exports.
 
 use wrt_format::component::ExternType;
-use wrt_types::ExternType as RuntimeExternType;
+use wrt_foundation::ExternType as RuntimeExternType;
 
 use crate::{component::ExternValue, prelude::*, type_conversion::bidirectional};
 

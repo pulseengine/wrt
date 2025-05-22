@@ -22,8 +22,8 @@ mod tests {
     // Import from wrt-error
     use wrt_error::{Error, ErrorCategory, Result};
     
-    // Import from wrt-types
-    use wrt_types::{
+    // Import from wrt-foundation
+    use wrt_foundation::{
         values::Value,
         ValueType,
         types::FuncType,

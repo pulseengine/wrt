@@ -2,8 +2,8 @@
 //!
 //! This module provides the implementation for WebAssembly globals.
 
-// Use WrtGlobalType directly from wrt_types, and WrtValueType, WrtValue
-use wrt_types::{
+// Use WrtGlobalType directly from wrt_foundation, and WrtValueType, WrtValue
+use wrt_foundation::{
     types::{GlobalType as WrtGlobalType, ValueType as WrtValueType},
     values::Value as WrtValue,
 };
@@ -81,7 +81,7 @@ impl Global {
 }
 
 // The local `GlobalType` struct is no longer needed as we use WrtGlobalType
-// from wrt_types directly. /// Represents a WebAssembly global type
+// from wrt_foundation directly. /// Represents a WebAssembly global type
 // #[derive(Debug, Clone, PartialEq)]
 // pub struct GlobalType { ... } // REMOVED
 // impl GlobalType { ... } // REMOVED

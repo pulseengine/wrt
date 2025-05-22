@@ -4,7 +4,9 @@
 // Model, including resource creation, access control, and lifetime management.
 
 use wrt_error::kinds::PoisonedLockError;
-use wrt_types::{component_value::ComponentValue, ResourceOperation as FormatResourceOperation};
+use wrt_foundation::{
+    component_value::ComponentValue, ResourceOperation as FormatResourceOperation,
+};
 
 use super::{MemoryStrategy, Resource, ResourceInterceptor, ResourceTable, VerificationLevel};
 use crate::prelude::*;

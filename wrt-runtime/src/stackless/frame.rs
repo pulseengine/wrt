@@ -6,10 +6,8 @@ use core::fmt::Debug;
 // Imports from wrt crates
 use wrt_decoder::instructions::Instruction;
 use wrt_error::{codes, Error};
-// Re-export Label for convenience if it's commonly used with frames
-pub use wrt_instructions::control_ops::BranchTarget as Label;
-use wrt_types::values::FuncRef;
-use wrt_types::{
+use wrt_foundation::values::FuncRef;
+use wrt_foundation::{
     safe_memory::SafeSlice, // Added SafeSlice
     BlockType,
     BoundedCapacity,
@@ -19,6 +17,8 @@ use wrt_types::{
     ValueType,
     VerificationLevel,
 }; // Added FuncRef
+// Re-export Label for convenience if it's commonly used with frames
+pub use wrt_instructions::control_ops::BranchTarget as Label;
 
 // Internal imports
 use super::engine::StacklessEngine;

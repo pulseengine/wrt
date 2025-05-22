@@ -6,7 +6,7 @@
 //! These tests verify that the platform-specific optimizations work correctly
 //! with bounded collections and other components.
 
-use wrt_types::{
+use wrt_foundation::{
     BoundedQueue, BoundedMap, BoundedSet, BoundedDeque, BoundedBitSet,
     BoundedBuilder, StringBuilder, ResourceBuilder, MemoryBuilder, NoStdProviderBuilder,
     VerificationLevel, NoStdProvider, bounded::{BoundedVec, BoundedString, WasmName},

@@ -26,4 +26,4 @@ This section contains the API documentation for all SPE_wrt libraries and compon
    ../wrt-decoder/lib
    ../wrt-common/lib
    ../wrt-intercept/lib
-   ../wrt-types/lib 
+   ../wrt-foundation/lib 

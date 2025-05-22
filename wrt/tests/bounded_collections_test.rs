@@ -4,7 +4,7 @@ use wrt::{
     stackless::{StacklessEngine, StacklessExecutionState},
     Error as WrtError, Module, Result,
 };
-use wrt_types::VerificationLevel;
+use wrt_foundation::VerificationLevel;
 
 #[test]
 fn test_stackless_engine_with_verification_levels() -> Result<()> {

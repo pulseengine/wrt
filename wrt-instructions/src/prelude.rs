@@ -46,13 +46,8 @@ pub use std::{
 
 // Re-export from wrt-error
 pub use wrt_error::{codes, kinds, Error, ErrorCategory, Result};
-// Import synchronization primitives for both std and no_std
-pub use wrt_sync::{
-    WrtMutex as Mutex, WrtMutexGuard as MutexGuard, WrtRwLock as RwLock,
-    WrtRwLockReadGuard as RwLockReadGuard, WrtRwLockWriteGuard as RwLockWriteGuard,
-};
-// Re-export from wrt-types
-pub use wrt_types::{
+// Re-export from wrt-foundation
+pub use wrt_foundation::{
     bounded::{BoundedStack, BoundedVec},
     // SafeMemory types
     safe_memory::{SafeMemoryHandler, SafeSlice, SafeStack},
@@ -63,6 +58,11 @@ pub use wrt_types::{
     verification::VerificationLevel,
     // Result type
     Result as TypesResult,
+};
+// Import synchronization primitives for both std and no_std
+pub use wrt_sync::{
+    WrtMutex as Mutex, WrtMutexGuard as MutexGuard, WrtRwLock as RwLock,
+    WrtRwLockReadGuard as RwLockReadGuard, WrtRwLockWriteGuard as RwLockWriteGuard,
 };
 
 // Re-export instruction specific types

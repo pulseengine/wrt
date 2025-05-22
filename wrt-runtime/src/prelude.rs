@@ -67,6 +67,28 @@ pub use wrt_format::{
     },
     section::CustomSection as FormatCustomSection,
 };
+// Re-export from wrt-foundation for core types
+pub use wrt_foundation::component::{ComponentType, ExternType};
+// Re-export core types from wrt_foundation instead of wrt_format
+pub use wrt_foundation::types::{
+    CustomSection, /* Assuming this is the intended replacement for FormatCustomSection
+                   * Add other direct re-exports from wrt_foundation::types if they were
+                   * previously from wrt_format::module e.g., DataSegment,
+                   * ElementSegment, Export, GlobalType, Import, MemoryType, TableType,
+                   * FuncType For now, only replacing what was directly
+                   * aliased or used in a way that implies a direct replacement need. */
+};
+pub use wrt_foundation::{
+    prelude::{
+        BlockType, BoundedStack, BoundedVec, ComponentValue, FuncType,
+        GlobalType as CoreGlobalType, MemoryType as CoreMemoryType, ResourceType,
+        SafeMemoryHandler, SafeSlice, SafeStack, TableType as CoreTableType,
+        ValType as ComponentValType, Value, ValueType, VerificationLevel,
+    },
+    safe_memory::{MemorySafety, MemoryStats},
+    types::Limits,
+    values::V128,
+};
 // Re-export from wrt-host (for runtime host interaction items)
 pub use wrt_host::prelude::CallbackRegistry as HostFunctionRegistry;
 pub use wrt_host::prelude::HostFunctionHandler as HostFunction;
@@ -79,28 +101,6 @@ pub use wrt_intercept::prelude::LinkInterceptorStrategy as InterceptStrategy;
 // Synchronization primitives for no_std (if alloc is enabled but not std)
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 pub use wrt_sync::prelude::{Mutex, MutexGuard, RwLock, RwLockReadGuard, RwLockWriteGuard};
-// Re-export from wrt-types for core types
-pub use wrt_types::component::{ComponentType, ExternType};
-// Re-export core types from wrt_types instead of wrt_format
-pub use wrt_types::types::{
-    CustomSection, /* Assuming this is the intended replacement for FormatCustomSection
-                   * Add other direct re-exports from wrt_types::types if they were previously
-                   * from wrt_format::module e.g., DataSegment,
-                   * ElementSegment, Export, GlobalType, Import, MemoryType, TableType,
-                   * FuncType For now, only replacing what was directly
-                   * aliased or used in a way that implies a direct replacement need. */
-};
-pub use wrt_types::{
-    prelude::{
-        BlockType, BoundedStack, BoundedVec, ComponentValue, FuncType,
-        GlobalType as CoreGlobalType, MemoryType as CoreMemoryType, ResourceType,
-        SafeMemoryHandler, SafeSlice, SafeStack, TableType as CoreTableType,
-        ValType as ComponentValType, Value, ValueType, VerificationLevel,
-    },
-    safe_memory::{MemorySafety, MemoryStats},
-    types::Limits,
-    values::V128,
-};
 
 // Execution related types defined in wrt-runtime
 pub use crate::execution::{ExecutionContext, ExecutionStats}; /* Removed ExecutionResult as
@@ -111,9 +111,9 @@ pub use crate::execution::{ExecutionContext, ExecutionStats}; /* Removed Executi
 // widely.
 
 // Core runtime structures
-// pub use crate::func::Function; // Removed: func.rs only re-exports FuncType from wrt_types,
-// which is already in prelude. RuntimeFunction (from module.rs) is the primary Function struct
-// for the runtime.
+// pub use crate::func::Function; // Removed: func.rs only re-exports FuncType from
+// wrt_foundation, which is already in prelude. RuntimeFunction (from module.rs) is the primary
+// Function struct for the runtime.
 pub use crate::global::Global;
 // Adapters and helpers if they are part of the public API exported by this prelude
 pub use crate::memory_adapter::MemoryAdapter;
@@ -135,5 +135,5 @@ pub use crate::{
 // // ... and others }; // REMOVED
 // pub use wrt_format::section::CustomSection as FormatCustomSection; // REMOVED
 // pub use wrt_format::component::Component as FormatComponent; // REMOVED
-// (Component model types should come from wrt_component or wrt_types if
+// (Component model types should come from wrt_component or wrt_foundation if
 // foundational)

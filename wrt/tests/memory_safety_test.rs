@@ -7,8 +7,8 @@ use wrt::{
     stackless::StacklessEngine,
     Error as WrtError, Module, Result,
 };
+use wrt_foundation::verification::VerificationLevel;
 use wrt_runtime::Memory as RuntimeMemory;
-use wrt_types::verification::VerificationLevel;
 
 #[test]
 fn test_safe_memory_adapter() -> Result<()> {

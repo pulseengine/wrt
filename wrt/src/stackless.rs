@@ -37,7 +37,7 @@ use log::trace;
 pub type CloneableFn = Box<dyn Fn(&[Value]) -> Result<Value> + Send + Sync + 'static>;
 
 // This LogOperation is specific to stackless engine's callback logging.
-// It is different from wrt_types::operations::OperationType.
+// It is different from wrt_foundation::operations::OperationType.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum LogOperation {
     /// Function was called
@@ -77,8 +77,8 @@ use crate::memory_adapter::MemoryAdapter; // This refers to a local module wrt/s
 //     OutOfBoundsError, PoisonedLockError, ResourceError, RuntimeError, ValidationError,
 // };
 
-// Validatable is re-exported by prelude from wrt_types.
-// use wrt_types::Validatable;
+// Validatable is re-exported by prelude from wrt_foundation.
+// use wrt_foundation::Validatable;
 
 // Fix other imports
 // WrtMutex and WrtMutexGuard are re-exported as Mutex and MutexGuard by prelude if cfg(not(feature = "std"))
@@ -691,7 +691,7 @@ impl StacklessEngine {
                             self.validate()?;
 
                             // Update execution stats with operation stats
-                            let op_stats = wrt_types::global_operation_summary();
+                            let op_stats = wrt_foundation::global_operation_summary();
                             self.stats.memory_operations +=
                                 op_stats.memory_reads + op_stats.memory_writes;
                             self.stats.function_calls += op_stats.function_calls;
@@ -707,7 +707,7 @@ impl StacklessEngine {
                             self.validate()?;
 
                             // Update execution stats with operation stats
-                            let op_stats = wrt_types::global_operation_summary();
+                            let op_stats = wrt_foundation::global_operation_summary();
                             self.stats.memory_operations +=
                                 op_stats.memory_reads + op_stats.memory_writes;
                             self.stats.function_calls += op_stats.function_calls;
@@ -729,7 +729,7 @@ impl StacklessEngine {
     pub fn set_fuel(&mut self, fuel: Option<u64>) {
         self.fuel = fuel;
         // Reset operation tracking when setting fuel
-        wrt_types::reset_global_operations();
+        wrt_foundation::reset_global_operations();
     }
 
     /// Gets the remaining fuel
@@ -1049,8 +1049,8 @@ impl StacklessEngine {
         self.check_fuel()?;
 
         // Track function call operation
-        wrt_types::record_global_operation(
-            wrt_types::OperationType::FunctionCall,
+        wrt_foundation::record_global_operation(
+            wrt_foundation::OperationType::FunctionCall,
             self.verification_level,
         );
 
@@ -1349,7 +1349,7 @@ impl StacklessEngine {
     fn check_fuel(&mut self) -> Result<(), Error> {
         if let Some(fuel) = self.fuel {
             // Get the fuel consumed by operations since last check
-            let op_fuel = wrt_types::global_fuel_consumed();
+            let op_fuel = wrt_foundation::global_fuel_consumed();
 
             // Subtract operation fuel
             if op_fuel > 0 {
@@ -1366,7 +1366,7 @@ impl StacklessEngine {
                 self.stats.fuel_consumed += op_fuel;
 
                 // Reset operation tracking for next check
-                wrt_types::reset_global_operations();
+                wrt_foundation::reset_global_operations();
             }
 
             // Check if we have fuel left

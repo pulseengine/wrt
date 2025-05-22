@@ -26,7 +26,7 @@ All notable changes to this project will be documented in this file.
 ### 🚜 Refactor
 
 - *(wrt-error)* Improve error handling system
-- *(wrt-types)* Update type system implementation
+- *(wrt-foundation)* Update type system implementation
 - *(instructions)* Implement pure instruction traits and operations
 - Extract pure control flow operations to wrt-instructions
 - Update format module for improved resource handling

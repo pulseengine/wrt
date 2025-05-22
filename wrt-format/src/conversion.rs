@@ -1,13 +1,13 @@
 //! Format-specific type conversion utilities
 //!
 //! This module provides standardized type conversion between format-specific
-//! types in wrt-format and core types in wrt-types. This helps eliminate
+//! types in wrt-format and core types in wrt-foundation. This helps eliminate
 //! duplication and ensure consistency across crates.
 
 use core::fmt;
 
 use wrt_error::{Error, Result};
-use wrt_types::{BlockType, ValueType};
+use wrt_foundation::{BlockType, ValueType};
 
 use crate::{
     error::{parse_error, wrt_validation_error},
@@ -41,12 +41,12 @@ pub fn block_type_to_format_block_type(block_type: &BlockType) -> FormatBlockTyp
     }
 }
 
-/// Convert from format-specific Limits to wrt_types::Limits
+/// Convert from format-specific Limits to wrt_foundation::Limits
 ///
 /// Validates and converts format limits to core limits.
 pub fn format_limits_to_wrt_limits(
     limits: &crate::types::Limits,
-) -> Result<wrt_types::types::Limits> {
+) -> Result<wrt_foundation::types::Limits> {
     if limits.memory64 {
         return Err(Error::new(
             wrt_error::ErrorCategory::Validation,
@@ -87,15 +87,15 @@ pub fn format_limits_to_wrt_limits(
         }
     }
 
-    Ok(wrt_types::types::Limits { min: min_u32, max: max_u32 })
+    Ok(wrt_foundation::types::Limits { min: min_u32, max: max_u32 })
 }
 
-/// Convert from wrt_types::Limits to format-specific Limits
+/// Convert from wrt_foundation::Limits to format-specific Limits
 ///
 /// Converts core limits to format-specific limits.
 ///
 /// # Arguments
-/// * `limits` - The wrt_types::Limits to convert
+/// * `limits` - The wrt_foundation::Limits to convert
 /// * `shared` - Whether the memory is shared (only applicable for memory
 ///   limits)
 /// * `memory64` - Whether the memory uses 64-bit addressing (only applicable
@@ -104,26 +104,26 @@ pub fn format_limits_to_wrt_limits(
 /// # Returns
 /// A format-specific Limits
 pub fn wrt_limits_to_format_limits(
-    limits: &wrt_types::types::Limits,
+    limits: &wrt_foundation::types::Limits,
     shared: bool,
     memory64: bool,
 ) -> Limits {
     Limits { min: limits.min as u64, max: limits.max.map(|m| m as u64), shared, memory64 }
 }
 
-/// A shorthand function for converting wrt_types::Limits to format Limits with
-/// default parameters
+/// A shorthand function for converting wrt_foundation::Limits to format Limits
+/// with default parameters
 ///
 /// # Arguments
-/// * `limits` - The wrt_types::Limits to convert
+/// * `limits` - The wrt_foundation::Limits to convert
 ///
 /// # Returns
 /// A format-specific Limits with shared=false and memory64=false
-pub fn types_limits_to_format_limits(limits: &wrt_types::types::Limits) -> Limits {
+pub fn types_limits_to_format_limits(limits: &wrt_foundation::types::Limits) -> Limits {
     wrt_limits_to_format_limits(limits, false, false)
 }
 
-/// A shorthand function for converting format Limits to wrt_types::Limits
+/// A shorthand function for converting format Limits to wrt_foundation::Limits
 /// Alias for format_limits_to_wrt_limits for consistency with
 /// types_limits_to_format_limits
 ///
@@ -131,8 +131,8 @@ pub fn types_limits_to_format_limits(limits: &wrt_types::types::Limits) -> Limit
 /// * `limits` - The format Limits to convert
 ///
 /// # Returns
-/// A Result containing wrt_types::Limits
-pub fn format_limits_to_types_limits(limits: &Limits) -> Result<wrt_types::types::Limits> {
+/// A Result containing wrt_foundation::Limits
+pub fn format_limits_to_types_limits(limits: &Limits) -> Result<wrt_foundation::types::Limits> {
     format_limits_to_wrt_limits(limits)
 }
 
@@ -213,7 +213,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use wrt_types::ValueType;
+    use wrt_foundation::ValueType;
 
     use super::*;
 
@@ -244,9 +244,9 @@ mod tests {
 
     #[test]
     fn test_limits_conversion() {
-        // Test wrt-types Limits -> FormatLimits
-        let wrt_limits_min = wrt_types::types::Limits { min: 10, max: None };
-        let wrt_limits_both = wrt_types::types::Limits { min: 10, max: Some(20) };
+        // Test wrt-foundation Limits -> FormatLimits
+        let wrt_limits_min = wrt_foundation::types::Limits { min: 10, max: None };
+        let wrt_limits_both = wrt_foundation::types::Limits { min: 10, max: Some(20) };
 
         let format_limits_min = wrt_limits_to_format_limits(&wrt_limits_min, false, false);
         let format_limits_both = wrt_limits_to_format_limits(&wrt_limits_both, false, false);
@@ -271,7 +271,7 @@ mod tests {
         assert_eq!(format_limits_mem64.shared, false);
         assert_eq!(format_limits_mem64.memory64, true);
 
-        // Test FormatLimits -> wrt-types Limits
+        // Test FormatLimits -> wrt-foundation Limits
         let wrt_limits_min_2 = format_limits_to_wrt_limits(&format_limits_min).unwrap();
         let wrt_limits_both_2 = format_limits_to_wrt_limits(&format_limits_both).unwrap();
 

@@ -20,7 +20,7 @@ CRATES=(
   "wrt-error"
   "wrt-sync"
   "wrt-format"
-  "wrt-types"
+  "wrt-foundation"
   "wrt-decoder"
   "wrt-runtime"
   "wrt-logging"
