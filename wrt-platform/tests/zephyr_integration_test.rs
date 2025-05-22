@@ -1,7 +1,8 @@
 //! Integration tests for Zephyr RTOS platform implementations.
 //!
-//! These tests verify that the Zephyr memory allocator and futex implementations
-//! compile and can be instantiated correctly for embedded systems.
+//! These tests verify that the Zephyr memory allocator and futex
+//! implementations compile and can be instantiated correctly for embedded
+//! systems.
 
 #[cfg(feature = "platform-zephyr")]
 mod zephyr_tests {
@@ -25,13 +26,11 @@ mod zephyr_tests {
     #[test]
     fn test_zephyr_allocator_configuration() {
         // Test different memory attribute configurations
-        let read_only_allocator = ZephyrAllocatorBuilder::new()
-            .with_memory_attributes(ZephyrMemoryFlags::Read)
-            .build();
+        let read_only_allocator =
+            ZephyrAllocatorBuilder::new().with_memory_attributes(ZephyrMemoryFlags::Read).build();
 
-        let read_write_allocator = ZephyrAllocatorBuilder::new()
-            .with_memory_attributes(ZephyrMemoryFlags::Write)
-            .build();
+        let read_write_allocator =
+            ZephyrAllocatorBuilder::new().with_memory_attributes(ZephyrMemoryFlags::Write).build();
 
         // All should build successfully
         assert!(core::mem::size_of_val(&read_only_allocator) > 0);
@@ -40,9 +39,7 @@ mod zephyr_tests {
 
     #[test]
     fn test_zephyr_futex_creation() {
-        let futex = ZephyrFutexBuilder::new()
-            .with_initial_value(42)
-            .build();
+        let futex = ZephyrFutexBuilder::new().with_initial_value(42).build();
 
         // Verify the futex was created successfully
         assert!(core::mem::size_of_val(&futex) > 0);
@@ -68,10 +65,8 @@ mod zephyr_tests {
 
     #[test]
     fn test_zephyr_allocator_with_custom_heap() {
-        let allocator = ZephyrAllocatorBuilder::new()
-            .with_custom_heap(true)
-            .with_maximum_pages(50)
-            .build();
+        let allocator =
+            ZephyrAllocatorBuilder::new().with_custom_heap(true).with_maximum_pages(50).build();
 
         // Verify the allocator was created with custom heap configuration
         assert!(core::mem::size_of_val(&allocator) > 0);
@@ -94,15 +89,15 @@ mod zephyr_tests {
 fn test_zephyr_platform_compilation() {
     // This test ensures our Zephyr platform code compiles correctly
     // even when the feature flags are enabled on non-Zephyr platforms
-    
+
     #[cfg(feature = "platform-zephyr")]
     {
         // The modules should be available for import
         use wrt_platform::*;
-        
+
         // Basic verification that types exist
         let _ = core::mem::size_of::<NoStdProvider>();
-        
+
         // Zephyr-specific types should be available
         let _ = core::mem::size_of::<ZephyrAllocatorBuilder>();
         let _ = core::mem::size_of::<ZephyrFutexBuilder>();

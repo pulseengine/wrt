@@ -18,10 +18,11 @@
 extern crate alloc;
 
 // Added BoundedVec for tests
+use wrt_error::ErrorCategory;
+
 #[cfg(test)]
 use crate::bounded::BoundedVec;
 use crate::prelude::{Debug /* Removed format, ToString as _ToString */};
-use wrt_error::ErrorCategory;
 #[cfg(test)]
 use crate::safe_memory::NoStdProvider;
 #[cfg(all(feature = "alloc", not(feature = "std")))]

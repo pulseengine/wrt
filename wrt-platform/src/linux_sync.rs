@@ -8,8 +8,8 @@
 // Licensed under the MIT license.
 // SPDX-License-Identifier: MIT
 
-//! Linux-specific `FutexLike` implementation using direct futex syscalls without
-//! libc.
+//! Linux-specific `FutexLike` implementation using direct futex syscalls
+//! without libc.
 //!
 //! This implementation provides wait/notify synchronization using Linux futex
 //! system calls directly, supporting no_std/no_alloc environments.
@@ -51,10 +51,7 @@ struct TimeSpec {
 impl TimeSpec {
     /// Create a new TimeSpec from Duration
     fn from_duration(duration: Duration) -> Self {
-        Self {
-            tv_sec: duration.as_secs() as i64,
-            tv_nsec: duration.subsec_nanos() as i64,
-        }
+        Self { tv_sec: duration.as_secs() as i64, tv_nsec: duration.subsec_nanos() as i64 }
     }
 
     /// Create a zero timeout (immediate)
@@ -75,17 +72,15 @@ pub struct LinuxFutex {
     _padding: [u8; 60], // 64 - sizeof(AtomicU32)
 }
 
-// Safety: LinuxFutex only contains AtomicU32 and padding, which are safe to send/sync
+// Safety: LinuxFutex only contains AtomicU32 and padding, which are safe to
+// send/sync
 unsafe impl Send for LinuxFutex {}
 unsafe impl Sync for LinuxFutex {}
 
 impl LinuxFutex {
     /// Creates a new `LinuxFutex` with the given initial value.
     pub fn new(initial_value: u32) -> Self {
-        Self {
-            value: AtomicU32::new(initial_value),
-            _padding: [0; 60],
-        }
+        Self { value: AtomicU32::new(initial_value), _padding: [0; 60] }
     }
 
     /// Direct syscall implementation of futex
@@ -135,14 +130,7 @@ impl LinuxFutex {
         // Call futex wake
         // SAFETY: We're calling futex wake with valid parameters.
         let result = unsafe {
-            Self::futex(
-                addr,
-                FUTEX_WAKE_PRIVATE,
-                count,
-                core::ptr::null(),
-                core::ptr::null(),
-                0,
-            )
+            Self::futex(addr, FUTEX_WAKE_PRIVATE, count, core::ptr::null(), core::ptr::null(), 0)
         };
 
         if result >= 0 {
@@ -203,25 +191,14 @@ impl FutexLike for LinuxFutex {
         // SAFETY: We're calling futex with valid parameters. addr points to self.value,
         // which is valid for the lifetime of self.
         let result = unsafe {
-            Self::futex(
-                addr,
-                FUTEX_WAIT_PRIVATE,
-                expected,
-                timeout_ptr,
-                core::ptr::null(),
-                0,
-            )
+            Self::futex(addr, FUTEX_WAIT_PRIVATE, expected, timeout_ptr, core::ptr::null(), 0)
         };
 
         match result {
             0 => Ok(()), // Woken up by notify
             -110 => {
                 // ETIMEDOUT - convert to system error as per trait contract
-                Err(Error::new(
-                    ErrorCategory::System,
-                    codes::SYSTEM_ERROR,
-                    "Futex wait timed out",
-                ))
+                Err(Error::new(ErrorCategory::System, codes::SYSTEM_ERROR, "Futex wait timed out"))
             }
             -11 => {
                 // EAGAIN - value changed before we could wait, this is success
@@ -247,10 +224,6 @@ impl FutexLike for LinuxFutex {
 
 impl fmt::Display for LinuxFutex {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "LinuxFutex({})",
-            self.value.load(core::sync::atomic::Ordering::Relaxed)
-        )
+        write!(f, "LinuxFutex({})", self.value.load(core::sync::atomic::Ordering::Relaxed))
     }
 }

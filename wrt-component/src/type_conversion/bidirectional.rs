@@ -840,8 +840,8 @@ pub fn core_value_to_types_componentvalue(
         wrt_foundation::values::Value::I64(v) => Ok(ComponentValue::S64(*v)),
         wrt_foundation::values::Value::F32(v) => Ok(ComponentValue::F32(*v)),
         wrt_foundation::values::Value::F64(v) => Ok(ComponentValue::F64(*v)),
-        wrt_foundation::values::Value::Ref(v) => Ok(ComponentValue::U32(*v)), /* Map reference
-                                                                                * to U32 */
+        wrt_foundation::values::Value::Ref(v) => Ok(ComponentValue::U32(*v)), // Map reference
+        // to U32
         _ => Err(Error::new(
             ErrorCategory::Type,
             codes::CONVERSION_ERROR,

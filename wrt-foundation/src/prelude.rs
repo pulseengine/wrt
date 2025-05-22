@@ -61,6 +61,11 @@ pub use hashbrown::HashMap;
 pub use wrt_error::prelude::*;
 pub use wrt_error::{codes, kinds, Error, ErrorCategory, Result};
 
+// Feature-gated re-exports that can't be included in the main use block
+#[cfg(feature = "alloc")]
+pub use crate::component_builder::{
+    ComponentTypeBuilder, ExportBuilder, ImportBuilder, NamespaceBuilder,
+};
 // Re-export from wrt_sync, only if the feature is active
 // #[cfg(feature = "wrt-sync")] // Or a more specific feature if wrt-sync is always a dep
 
@@ -132,7 +137,3 @@ pub use crate::{
     SafeMemoryHandler,
     SafeSlice,
 };
-
-// Feature-gated re-exports that can't be included in the main use block
-#[cfg(feature = "alloc")]
-pub use crate::component_builder::{ComponentTypeBuilder, ExportBuilder, ImportBuilder, NamespaceBuilder};
