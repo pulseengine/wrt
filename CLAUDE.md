@@ -15,10 +15,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Build all: `just build` or `cargo build`
 - Build specific crate: `cargo build -p wrt|wrtd|example`
 - Clean: `just clean` or `cargo clean`
-- Run tests: `just test` or `cargo test`
+- Run tests: `just ci-test` or `cargo test`
 - Run single test: `cargo test -p wrt -- test_name --nocapture`
 - Format code: `just fmt` or `cargo fmt`
-- Lint: `just check` or `cargo clippy`
+- Format check: `just fmt-check`
+- Main CI checks: `just ci-main`
+- Full CI suite: `just ci-full`
 - Typecheck: `cargo check`
 
 ## Code Style Guidelines

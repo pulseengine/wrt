@@ -21,6 +21,7 @@ extern crate alloc;
 #[cfg(test)]
 use crate::bounded::BoundedVec;
 use crate::prelude::{Debug /* Removed format, ToString as _ToString */};
+use wrt_error::ErrorCategory;
 #[cfg(test)]
 use crate::safe_memory::NoStdProvider;
 #[cfg(all(feature = "alloc", not(feature = "std")))]
@@ -58,7 +59,7 @@ impl From<ValidationError> for crate::Error {
         match err {
             ValidationError::ChecksumMismatch { description, .. } => {
                 crate::Error::new(
-                    crate::ErrorCategory::Validation,
+                    ErrorCategory::Validation,
                     crate::codes::CHECKSUM_MISMATCH, // Use the defined constant CHECKSUM_MISMATCH
                     description,                     /* Using description as the primary message
                                                       * part */

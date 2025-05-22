@@ -16,7 +16,7 @@ package "Memory Subsystem" {
     Memory --> MemArcExt : implements
   }
   
-  package "wrt-types" {
+  package "wrt-foundation" {
     [Limits] as Limits
     [MemoryTypes] as MemTypes
     [SafeMemory] as SafeMem

@@ -434,7 +434,7 @@ impl From<crate::Error> for BoundedError {
     fn from(err: crate::Error) -> Self {
         // Determine a BoundedErrorKind based on the wrt_error::Error
         // This is a basic mapping; more sophisticated mapping might be needed.
-        let kind = match err.category() {
+        let kind = match err.category {
             WrtErrorCategory::Capacity => BoundedErrorKind::CapacityExceeded,
             WrtErrorCategory::Memory => BoundedErrorKind::SliceError, // Or another memory
             // related kind
@@ -536,14 +536,14 @@ where
             // correctly. For now, consider it an invalid configuration for
             // typical BoundedStack usage.
             return Err(crate::Error::new(
-                WrtErrorCategory::Initialization, // Corrected Category
+                WrtErrorCategory::Memory, // Corrected Category - changed from Initialization
                 codes::INITIALIZATION_ERROR,
                 "Cannot create BoundedStack with zero-sized items and non-zero element count",
             ));
         }
 
         let memory_needed = N_ELEMENTS.saturating_mul(item_serialized_size);
-        let handler = SafeMemoryHandler::new(provider_arg, memory_needed)?;
+        let handler = SafeMemoryHandler::new(provider_arg);
 
         // Record creation operation
         record_global_operation(OperationType::CollectionCreate, level);
@@ -968,7 +968,7 @@ where
         let item_size = T::default().serialized_size();
         if item_size == 0 && N_ELEMENTS > 0 {
             return Err(crate::Error::new(
-                WrtErrorCategory::Initialization, // Corrected Category
+                WrtErrorCategory::Memory, // Corrected Category - changed from Initialization
                 codes::INITIALIZATION_ERROR,
                 "Cannot create BoundedVec with zero-sized items and non-zero element count",
             ));
@@ -2852,6 +2852,15 @@ impl<T, const N_ELEMENTS: usize, P: MemoryProvider + Clone + PartialEq + Eq> ToB
 where
     T: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
 {
+    fn serialized_size(&self) -> usize {
+        // Length (u32) + checksum + items
+        4 + self.checksum.serialized_size() + (self.length * if self.length > 0 { 
+            T::default().serialized_size() 
+        } else { 
+            0 
+        })
+    }
+
     fn to_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
         &self,
         writer: &mut WriteStream<'a>,
@@ -3665,48 +3674,8 @@ impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq>
     }
 }
 
-impl<T, const N_ELEMENTS: usize, P: MemoryProvider + Clone + PartialEq + Eq>
-    BoundedVec<T, N_ELEMENTS, P>
-where
-    T: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
-{
-    // ... (existing methods) ...
-
-    /// Helper to get a mutable slice for an item at a given index.
-    /// This is a conceptual helper; actual implementation depends on
-    /// SafeMemoryHandler's API.
-    fn get_item_mut_slice_for_write(&mut self, index: usize) -> WrtResult<SliceMut<'_>> {
-        if index >= self.length {
-            return Err(crate::Error::index_out_of_bounds(index, self.length));
-        }
-        let offset = index.saturating_mul(self.item_serialized_size);
-        // This assumes provider has a method like `get_mut_slice`,
-        // or we use the handler if BoundedVec owns one.
-        // Since BoundedVec<T, N, P> has `provider: P`, P needs to offer this.
-        // This design is a bit tricky. Let's assume `P` can provide a mutable slice.
-        // This will likely require `P` to have methods for this or `BoundedVec` needs a
-        // `SafeMemoryHandler`. For now, this will cause an error as `P` doesn't
-        // have `get_slice_mut`. This indicates a deeper refactoring might be
-        // needed for direct item deserialization.
-
-        // Placeholder: In a real scenario, SafeMemoryHandler owned by BoundedVec would
-        // be used. For now, let's assume this is part of a strategy that will
-        // be refined. If BoundedVec holds a SafeMemoryHandler 'handler' field:
-        // self.handler.get_slice_mut(offset, self.item_serialized_size)
-        // If P directly offers it (unlikely for a generic P without more bounds):
-        // self.provider.get_slice_mut(offset, self.item_serialized_size) // This won't
-        // compile
-
-        // Fallback to an error indicating this path is not yet fully implemented for
-        // direct write
-        Err(crate::Error::new(
-            WrtErrorCategory::NotImplemented,
-            codes::NOT_IMPLEMENTED,
-            "Direct mutable slice access for item write not fully implemented on BoundedVec \
-             provider",
-        ))
-    }
-}
+// Note: This impl block was removed due to overlapping type bounds with the main impl block.
+// All necessary methods are already defined in the main impl block.
 
 // ... (other BoundedVec impl methods, make sure to use `Error::` where it was
 // `Error::` before) For example, in BoundedVec::get:
@@ -3790,57 +3759,8 @@ where
     T: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
     P: MemoryProvider + Clone + PartialEq + Eq,
 {
-    /// Helper to get a mutable slice for an item at a given index.
-    fn get_item_mut_slice_for_write(&mut self, index: usize) -> WrtResult<SliceMut<'_>> {
-        if index >= self.length {
-            return Err(crate::Error::index_out_of_bounds(index, self.length));
-        }
-        let offset = index.saturating_mul(self.item_serialized_size);
-        self.provider.get_slice_mut(offset, self.item_serialized_size)
-    }
-
-    /// Method to verify checksum for a single item
-    fn verify_item_checksum_at_offset(&self, offset: usize) -> WrtResult<()> {
-        if !self.provider.verification_level().should_verify_redundant() {
-            return Ok(());
-        }
-
-        match self.provider.borrow_slice(offset, self.item_serialized_size) {
-            Ok(slice_view) => {
-                let mut stream = ReadStream::new(slice_view);
-                let item = T::from_bytes_with_provider(&mut stream, &self.provider)?;
-                let mut stored_checksum_bytes = [0u8; Checksum::SERIALIZED_SIZE];
-                let checksum_offset = offset + self.item_serialized_size;
-
-                match self.provider.borrow_slice(checksum_offset, Checksum::SERIALIZED_SIZE) {
-                    Ok(checksum_slice_view) => {
-                        let mut checksum_read_stream = ReadStream::new(checksum_slice_view);
-                        let stored_checksum = Checksum::from_bytes_with_provider(
-                            &mut checksum_read_stream,
-                            &self.provider,
-                        )?;
-
-                        let mut current_checksum = Checksum::new();
-                        item.update_checksum(&mut current_checksum);
-
-                        if current_checksum == stored_checksum {
-                            Ok(())
-                        } else {
-                            Err(crate::Error::validation_error(
-                                "Checksum mismatch for BoundedVec item during iteration",
-                            ))
-                        }
-                    }
-                    Err(_) => Err(crate::Error::memory_error(
-                        "Failed to read stored checksum for BoundedVec item",
-                    )),
-                }
-            }
-            Err(_) => Err(crate::Error::memory_error(
-                "Failed to read item for checksum verification in BoundedVec",
-            )),
-        }
-    }
+    // This impl block provides methods with additional constraints
+    // The verify_item_checksum_at_offset method is already defined in the main impl block
 }
 
 // Alloc-dependent methods for BoundedString
