@@ -47,7 +47,7 @@ bench = false
 
 [dev-dependencies]
 criterion = "0.5"
-wast = { version = "229.0.0" }
+wast = { version = "230.0.0" }
 tempfile = "3.8"
 tracing = "0.1"
 tracing-subscriber = "0.3"
