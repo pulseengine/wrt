@@ -19,7 +19,6 @@ use alloc::string::ToString;
 ///
 /// This module provides bounded collection types that are designed for
 /// functional safety with built-in size limits and verification features.
-
 // Make these constants available in all configurations
 /// Maximum length for WebAssembly names (e.g., import/export names, custom
 /// section names). Chosen as a reasonable upper limit, often Wasm tools have
@@ -613,7 +612,7 @@ where
         }
 
         let bytes_written = {
-            let mut buffer_slice =
+            let buffer_slice =
                 SliceMut::new(&mut item_bytes_buffer[..item_size]).map_err(|_| {
                     BoundedError::new(BoundedErrorKind::ConversionError, "Failed to create slice")
                 })?;
@@ -1058,7 +1057,7 @@ where
         }
 
         let bytes_written = {
-            let mut buffer_slice =
+            let buffer_slice =
                 SliceMut::new(&mut item_bytes_buffer[..item_size]).map_err(|_| {
                     BoundedError::new(BoundedErrorKind::ConversionError, "Failed to create slice")
                 })?;
@@ -1296,7 +1295,7 @@ where
             Ok(slice_view) => {
                 let mut stream = ReadStream::new(slice_view);
                 let item = T::from_bytes_with_provider(&mut stream, &self.provider)?;
-                let mut stored_checksum_bytes = [0u8; 4]; // Checksum is u32, 4 bytes
+                let stored_checksum_bytes = [0u8; 4]; // Checksum is u32, 4 bytes
                 let checksum_offset = offset + self.item_serialized_size;
 
                 match self.provider.borrow_slice(checksum_offset, 4) {
@@ -1443,7 +1442,7 @@ where
         }
 
         let bytes_written = {
-            let mut buffer_slice =
+            let buffer_slice =
                 SliceMut::new(&mut item_bytes_buffer[..item_size]).map_err(|_| {
                     BoundedError::new(BoundedErrorKind::ConversionError, "Failed to create slice")
                 })?;
@@ -1556,7 +1555,7 @@ where
             }
 
             let bytes_written = {
-                let mut buffer_slice =
+                let buffer_slice =
                     SliceMut::new(&mut item_bytes_buffer[..item_size]).map_err(|_| {
                         BoundedError::new(
                             BoundedErrorKind::ConversionError,
@@ -1598,7 +1597,7 @@ where
         }
 
         let bytes_written = {
-            let mut buffer_slice =
+            let buffer_slice =
                 SliceMut::new(&mut item_bytes_buffer[..item_size]).map_err(|_| {
                     BoundedError::new(BoundedErrorKind::ConversionError, "Failed to create slice")
                 })?;
@@ -1719,7 +1718,7 @@ where
             }
 
             let bytes_written = {
-                let mut buffer_slice =
+                let buffer_slice =
                     SliceMut::new(&mut item_bytes_buffer[..item_size]).map_err(|_| {
                         BoundedError::new(
                             BoundedErrorKind::ConversionError,
@@ -2081,9 +2080,8 @@ where
         if self.item_serialized_size == 0 {
             if self.is_empty() {
                 return Ok(Err(0));
-            } else {
-                return Ok(Ok(0)); // All ZSTs are equal
             }
+            return Ok(Ok(0)); // All ZSTs are equal
         }
 
         let mut size = self.length;
@@ -2174,16 +2172,15 @@ where
         if self.item_serialized_size == 0 {
             if self.is_empty() {
                 return Ok(Err(0));
-            } else {
-                // Apply comparator to ZST to get consistent behavior
-                let zst = T::default();
-                let ordering = f(&zst);
-                return Ok(match ordering {
-                    core::cmp::Ordering::Equal => Ok(0),
-                    core::cmp::Ordering::Greater => Err(0),
-                    core::cmp::Ordering::Less => Err(1),
-                });
             }
+            // Apply comparator to ZST to get consistent behavior
+            let zst = T::default();
+            let ordering = f(&zst);
+            return Ok(match ordering {
+                core::cmp::Ordering::Equal => Ok(0),
+                core::cmp::Ordering::Greater => Err(0),
+                core::cmp::Ordering::Less => Err(1),
+            });
         }
 
         let mut size = self.length;

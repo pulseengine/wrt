@@ -37,23 +37,16 @@ use std::vec::Vec;
 use wrt_error::{Error, ErrorCategory};
 
 // Import bounded types
-use crate::bounded::{
-    BoundedError, BoundedErrorKind, BoundedString, BoundedVec, WasmName, MAX_WASM_NAME_LENGTH,
-};
+use crate::bounded::{BoundedError, BoundedVec, WasmName, MAX_WASM_NAME_LENGTH};
 use crate::{
     bounded::{
         MAX_CUSTOM_SECTION_DATA_SIZE, MAX_WASM_ITEM_NAME_LENGTH as MAX_ITEM_NAME_LEN,
         MAX_WASM_MODULE_NAME_LENGTH as MAX_MODULE_NAME_LEN,
     },
     codes,
-    component::{ComponentAliasOuterKind, ComponentType, CoreType, Export, ExternKind, ExternType},
+    component::Export,
     prelude::{BoundedCapacity, Eq, Ord, PartialEq, TryFrom},
-    safe_memory::{NoStdProvider, Provider},
-    traits::{
-        Checksummable, DefaultMemoryProvider, FromBytes, ReadStream, SerializationError, ToBytes,
-        Validatable, WriteStream,
-    },
-    values::Value,
+    traits::{Checksummable, FromBytes, ReadStream, SerializationError, ToBytes, WriteStream},
     verification::Checksum,
     MemoryProvider, WrtResult,
 };

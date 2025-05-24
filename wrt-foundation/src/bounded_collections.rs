@@ -17,13 +17,9 @@
 #[cfg(not(feature = "std"))]
 use core::fmt;
 use core::marker::PhantomData;
-#[cfg(feature = "std")]
-use std::fmt;
 
 #[cfg(feature = "alloc")]
 extern crate alloc;
-#[cfg(feature = "alloc")]
-use alloc::format;
 #[cfg(feature = "alloc")]
 use alloc::string::String;
 #[cfg(feature = "alloc")]
@@ -31,12 +27,12 @@ use alloc::vec::Vec;
 
 // Crate-level imports
 use crate::{
-    bounded::{BoundedError, BoundedErrorKind, BoundedVec, CapacityError},
+    bounded::{BoundedError, BoundedErrorKind, BoundedVec},
     codes,
     operations::{record_global_operation, Type as OperationType},
-    safe_memory::{NoStdProvider, SafeMemoryHandler, Slice, SliceMut},
+    safe_memory::{SafeMemoryHandler, SliceMut},
     traits::BoundedCapacity,
-    traits::{Checksummable, FromBytes, ReadStream, SerializationError, ToBytes, WriteStream},
+    traits::{Checksummable, FromBytes, ReadStream, ToBytes, WriteStream},
     verification::{Checksum, VerificationLevel},
     Error, ErrorCategory, MemoryProvider, WrtResult,
 };
@@ -1190,7 +1186,6 @@ pub struct BoundedBitSet<const N_BITS: usize> {
 }
 
 #[cfg(feature = "alloc")]
-#[cfg(feature = "alloc")]
 impl<const N_BITS: usize> Default for BoundedBitSet<N_BITS> {
     fn default() -> Self {
         // Calculate storage size (N_BITS/32 rounded up)
@@ -1206,7 +1201,6 @@ impl<const N_BITS: usize> Default for BoundedBitSet<N_BITS> {
     }
 }
 
-#[cfg(feature = "alloc")]
 #[cfg(feature = "alloc")]
 impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
     /// Creates a new empty `BoundedBitSet`.
@@ -1854,7 +1848,6 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
     /// assert_eq!(bitset.next_clear_bit(25), Some(30));
     /// assert_eq!(bitset.next_clear_bit(31), None); // Assuming all bits beyond 30 are set
     /// ```
-
     /// Sets multiple bits in one operation.
     ///
     /// This is more efficient than calling `set` multiple times.
@@ -2173,23 +2166,10 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
             if let Some(next_set) = self.next_set_bit(current) {
                 if next_set < end_index {
                     return Ok(Some(next_set));
-                } else {
-                    break; // Next set bit is beyond our range
                 }
-            } else {
-                break; // No more set bits
+                break; // Next set bit is beyond our range
             }
-
-            // Avoid infinite loop if next_set_bit returns the same index
-            if let Some(next_set) = self.next_set_bit(current) {
-                if next_set <= current {
-                    current += 1;
-                } else {
-                    current = next_set + 1;
-                }
-            } else {
-                break;
-            }
+            break; // No more set bits
         }
 
         Ok(None)
@@ -2707,7 +2687,6 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
 // Implement standard traits for the new collections
 
 #[cfg(feature = "alloc")]
-#[cfg(feature = "alloc")]
 impl<const N_BITS: usize> BoundedCapacity for BoundedBitSet<N_BITS> {
     fn capacity(&self) -> usize {
         N_BITS
@@ -2877,7 +2856,6 @@ impl<'a, const N_BITS: usize> Iterator for BitSetZerosIterator<'a, N_BITS> {
 }
 
 /// Implement PartialEq for BoundedBitSet
-#[cfg(feature = "alloc")]
 #[cfg(feature = "alloc")]
 impl<const N_BITS: usize> PartialEq for BoundedBitSet<N_BITS> {
     fn eq(&self, other: &Self) -> bool {
