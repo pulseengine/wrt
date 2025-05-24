@@ -56,7 +56,7 @@ pub async fn run_ci_coverage(client: &Query) -> Result<()> {
             "cargo llvm-cov test --package wrt-error --json --output-path \
              /src/target/coverage/coverage.json || echo \
              '{\"version\":\"0.1.0\",\"coverage_type\":\"ci\",\"summary\":{\"line\":{\"count\":0,\\
-             "covered\":0,\"percentage\":0.0}},\"files\":[]}' > /src/target/coverage/coverage.json",
+             \"covered\":0,\"percentage\":0.0}},\"files\":[]}' > /src/target/coverage/coverage.json",
         ]);
 
     // Get the coverage directory
