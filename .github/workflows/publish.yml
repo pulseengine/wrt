@@ -47,9 +47,19 @@ jobs:
         run: |
           curl -L https://dl.dagger.io/dagger/install.sh | sh
           echo "$HOME/.dagger/bin" >> $GITHUB_PATH
-      - name: Check Dagger version
-        run: dagger version
           
+      - name: Start Docker service (required for Dagger)
+        run: |
+          # Ensure Docker is running
+          sudo systemctl status docker || sudo systemctl start docker
+          docker version
+      - name: Check Dagger version
+        run: |
+          export PATH="$(pwd)/bin:$PATH"
+          pwd
+          find . -name "dagger"
+          dagger version
+          echo $PATH          
       - name: Setup Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -81,9 +91,9 @@ jobs:
             VERSIONS_TO_PASS="main"
             echo "::notice::Building docs for main branch"
           elif [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            # For pull requests, build as 'pr-test' version
-            VERSIONS_TO_PASS="pr-test"
-            echo "::notice::Building docs for pull request (test only)"
+            # For pull requests, build as 'local' version to use local working directory
+            VERSIONS_TO_PASS="local"
+            echo "::notice::Building docs for pull request using local working directory"
           elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             # This case handles manual trigger where inputs.version was empty (default)
             VERSIONS_TO_PASS="main"
@@ -105,26 +115,33 @@ jobs:
           # Ensure xtask is compiled
           cargo build --package xtask
           # Add Dagger to PATH
-          export PATH=$PATH:$HOME/.dagger/bin
+          export PATH="$HOME/.dagger/bin:$(pwd)/bin:$PATH"
+          echo $PATH
           # Run quick coverage analysis to generate coverage.json for docs
           ./target/debug/xtask coverage
         env:
           RUST_LOG: info
+          RUST_BACKTRACE: 1
+          # Dagger configuration
+          _EXPERIMENTAL_DAGGER_CLOUD_TOKEN: ""
+          DAGGER_LOG_LEVEL: info
+          # CI environment flag
+          CI: true
 
       - name: Build documentation via Dagger and xtask
         run: |
           echo "Building documentation for versions: ${{ env.VERSIONS_TO_BUILD }}"
-          # Add Dagger to PATH
-          export PATH=$PATH:$HOME/.dagger/bin
-          # Run the Dagger pipeline via xtask
-          # The xtask command will handle connecting to Dagger and running the pipeline.
-          # Output will be in ./docs_artifact (default or as specified)
+          export PATH="$HOME/.dagger/bin:$(pwd)/bin:$PATH"
           ./target/debug/xtask publish-docs-dagger --versions "${{ env.VERSIONS_TO_BUILD }}" --output-dir ./docs_artifact_final
         env:
-          # DAGGER_LOG_FORMAT: plain # Optional: for cleaner logs in CI
-          RUST_LOG: info # Optional: set log level for xtask/dagger-rs logs
-          # If your Dagger pipeline needs access to GitHub token for private repos, etc.
-          # GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Dagger often picks this up via docker credentials
+          RUST_LOG: info
+          RUST_BACKTRACE: 1
+          # Dagger configuration
+          _EXPERIMENTAL_DAGGER_CLOUD_TOKEN: ""
+          DAGGER_LOG_LEVEL: info
+          DAGGER_LOG_FORMAT: plain
+          # CI environment flag
+          CI: true
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
