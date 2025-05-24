@@ -3,9 +3,8 @@
 //! This strategy logs function calls between components and hosts.
 //! It can be configured to log arguments, results, timing, etc.
 
-use core::time::Duration;
 #[cfg(feature = "std")]
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 // Import the prelude for unified access to standard types
 use crate::prelude::*;
@@ -25,8 +24,8 @@ impl ValueFormatter for DefaultValueFormatter {
         match value {
             Value::I32(v) => format!("I32({})", v),
             Value::I64(v) => format!("I64({})", v),
-            Value::F32(v) => format!("F32({})", v),
-            Value::F64(v) => format!("F64({})", v),
+            Value::F32(v) => format!("F32({})", f32::from_bits(v.0)),
+            Value::F64(v) => format!("F64({})", f64::from_bits(v.0)),
             // Add other value types as needed
             _ => format!("{:?}", value),
         }
