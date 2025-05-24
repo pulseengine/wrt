@@ -4,6 +4,8 @@ Testing and Safety Verification
 
 WRT includes specialized tools for testing, validation, and safety verification.
 
+For detailed test coverage information and quality assurance processes, see :doc:`test_coverage`.
+
 .. spec:: Testing and Safety Verification
    :id: SPEC_010
    :links: REQ_QA_001, REQ_QA_002, REQ_QA_003, REQ_SAFETY_001, REQ_SAFETY_002

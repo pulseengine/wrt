@@ -40,20 +40,6 @@
 #![warn(clippy::missing_panics_doc)]
 //#![deny(missing_docs)] // Temporarily disabled for build
 
-// Verify required features
-// This crate can be used in pure no_std (without alloc) environments,
-// though most functionality requires the 'alloc' feature for heap allocations.
-// The following capabilities are supported in each environment:
-//
-// 1. std (default): Full functionality
-// 2. no_std + alloc: Full functionality except for std-specific features
-// 3. pure no_std (without alloc): Limited to basic operations:
-//    - Binary header validation
-//    - Simple parsing operations that don't require allocation
-//    - SafeSlice-based operations
-//
-// Functions that require 'alloc' will return an error in pure no_std mode.
-
 // Import core
 extern crate core;
 
@@ -84,12 +70,21 @@ pub mod utils;
 pub mod validation;
 pub mod wasm;
 
+// CFI metadata generation
+pub mod cfi_metadata;
+
 // Dedicated module for no_alloc decoding
 pub mod decoder_no_alloc;
 
 // Re-exports from error crate
 // Re-export conversion utilities
 // Re-export component no_alloc functions for all environments
+// Re-export CFI metadata types and functions
+pub use cfi_metadata::{
+    CfiMetadata, CfiMetadataGenerator, CfiProtectionConfig, CfiProtectionLevel,
+    ControlFlowTargetType, FunctionCfiInfo, IndirectCallSite, LandingPadRequirement,
+    ProtectionInstruction, ReturnSite, ValidationRequirement,
+};
 pub use component::decode_no_alloc::{
     decode_component_header, extract_component_section_info, validate_component_no_alloc,
     verify_component_header, ComponentHeader, ComponentSectionId, ComponentSectionInfo,

@@ -2,38 +2,352 @@
 Platform Layer
 ==============
 
-This section describes the platform abstraction layer introduced to support multiple operating systems and execution environments.
+The WRT Platform Abstraction Layer (PAL) provides a unified interface for platform-specific operations across diverse operating systems and embedded environments. This layer enables WRT to run efficiently on everything from traditional POSIX systems to bare-metal embedded platforms.
 
-Background & Motivation
+Core Architecture
+-----------------
+
+The platform layer is built around two fundamental traits:
+
+**PageAllocator**
+  Manages WebAssembly memory pages (64 KiB each) with platform-specific optimizations:
+  
+  * Memory allocation and deallocation
+  * Page growth and shrinking
+  * Memory protection (guard pages, access control)
+  * Hardware security features (MTE, MPK)
+  * Verification levels for safety-critical systems
+
+**FutexLike**
+  Provides efficient synchronization primitives:
+  
+  * Atomic wait/wake operations
+  * Timeout support
+  * Platform-optimized implementations
+  * Real-time guarantees where available
+
+Supported Platforms
+-------------------
+
+Linux (x86_64, aarch64)
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+* **Memory**: ``mmap``/``munmap`` with ``MAP_ANONYMOUS``
+* **Sync**: Native ``futex`` system calls
+* **ARM64 Features**: 
+  
+  - Memory Tagging Extension (MTE) support via ``PROT_MTE``
+  - Synchronous, asynchronous, and asymmetric MTE modes
+  - Hardware-accelerated memory safety
+
+.. code-block:: rust
+
+   // Linux allocator with MTE support
+   let allocator = LinuxArm64MteAllocatorBuilder::new()
+       .with_maximum_pages(100)
+       .with_guard_pages(true)
+       .with_mte_mode(MteMode::Synchronous)
+       .build()?;
+
+macOS (x86_64, aarch64)
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+* **Memory**: ``mmap``/``munmap`` via libc or direct syscalls
+* **Sync**: ``__ulock_wait``/``__ulock_wake`` private APIs
+* **Features**:
+  
+  - Guard page support
+  - Memory tagging (simulated)
+  - No-libc mode for reduced dependencies
+
+.. code-block:: rust
+
+   // macOS allocator with guard pages
+   let allocator = MacOsAllocatorBuilder::new()
+       .with_maximum_pages(100)
+       .with_guard_pages(true)
+       .build()?;
+
+QNX 7.1 (aarch64)
+^^^^^^^^^^^^^^^^^^
+
+* **Memory**: Advanced arena allocator with partitioning
+* **Sync**: ``SyncCondvar`` APIs with priority inheritance
+* **Features**:
+  
+  - Memory partitions for isolation
+  - Arena-based allocation for determinism
+  - Real-time priority support
+  - See :doc:`qnx_platform` for details
+
+.. code-block:: rust
+
+   // QNX with memory partitioning
+   let partition = QnxMemoryPartitionBuilder::new()
+       .with_partition_name("wasm_runtime")
+       .with_size(16 * 1024 * 1024)
+       .with_flags(QnxPartitionFlags::LOCKED)
+       .build()?;
+
+Zephyr RTOS
+^^^^^^^^^^^^
+
+* **Memory**: ``k_mem_map``/``k_mem_unmap`` with memory domains
+* **Sync**: ``k_futex_wait``/``k_futex_wake`` primitives
+* **Features**:
+  
+  - Memory domain isolation
+  - Guard regions
+  - Real-time guarantees
+  - Minimal overhead
+
+.. code-block:: rust
+
+   // Zephyr with memory domains
+   let allocator = ZephyrAllocatorBuilder::new()
+       .with_maximum_pages(64)
+       .with_memory_domains(true)
+       .with_guard_regions(true)
+       .build()?;
+
+Tock OS
+^^^^^^^^
+
+* **Memory**: Grant-based allocation with MPU enforcement
+* **Sync**: IPC-based futex or semaphore fallback
+* **Features**:
+  
+  - Hardware memory protection
+  - Capability-based security
+  - Static memory allocation
+  - Formal verification support
+
+.. code-block:: rust
+
+   // Tock with full verification
+   let allocator = TockAllocatorBuilder::new()
+       .with_maximum_pages(32)
+       .with_verification_level(VerificationLevel::Full)
+       .build()?;
+
+Fallback Implementation
+^^^^^^^^^^^^^^^^^^^^^^^
+
+* **Memory**: Static buffer allocation
+* **Sync**: Spin-based futex
+* **Features**:
+  
+  - No OS dependencies
+  - Suitable for bare-metal
+  - Configurable spin limits
+
+Zero-Cost Platform Abstraction
+-------------------------------
+
+The platform layer includes a compile-time abstraction that supports different paradigms with zero runtime overhead:
+
+**Platform Paradigms**
+
+* **Posix**: Traditional OS with dynamic allocation (Linux, macOS, QNX)
+* **SecurityFirst**: Static allocation with hardware isolation (Tock)
+* **RealTime**: Deterministic behavior with priority support (Zephyr)
+* **BareMetal**: Minimal abstraction for embedded systems
+
+.. code-block:: rust
+
+   // Compile-time platform selection
+   use wrt_platform::{platform_select, PlatformConfig};
+   
+   // Auto-selects best paradigm based on features
+   let platform = platform_select::create_auto_platform();
+   
+   // Or explicitly choose a paradigm
+   let config = PlatformConfig::<paradigm::RealTime>::new()
+       .with_max_pages(256)
+       .with_rt_priority(10);
+   let platform = RealtimePlatform::new(config);
+
+Hardware Security Features
+--------------------------
+
+The platform layer provides abstractions for modern CPU security features:
+
+ARM Architecture
+^^^^^^^^^^^^^^^^
+
+* **Pointer Authentication (PAC)**: Hardware pointer integrity
+* **Memory Tagging Extension (MTE)**: Detect use-after-free and buffer overflows
+* **Branch Target Identification (BTI)**: Control flow integrity
+* **TrustZone**: Secure/non-secure world separation
+
+.. code-block:: rust
+
+   use wrt_platform::hardware_optimizations::arm::*;
+   
+   // Enable BTI for control flow integrity
+   let bti = BranchTargetIdentification::enable()?;
+   bti.optimize_memory(code_ptr, code_size)?;
+
+Intel x86_64
+^^^^^^^^^^^^
+
+* **Control-flow Enforcement Technology (CET)**: Shadow stack and IBT
+* **Memory Protection Keys (MPK)**: Fine-grained memory protection
+* **TSX**: Hardware transactional memory
+* **TXT**: Trusted execution technology
+
+.. code-block:: rust
+
+   use wrt_platform::hardware_optimizations::intel::*;
+   
+   // Enable CET shadow stack
+   let cet = ControlFlowEnforcement::enable()?;
+
+RISC-V
+^^^^^^
+
+* **Physical Memory Protection (PMP)**: Hardware memory access control
+* **Control Flow Integrity (CFI)**: Landing pads and shadow stack
+* **Cryptographic Extensions**: Hardware acceleration
+
+.. code-block:: rust
+
+   use wrt_platform::hardware_optimizations::riscv::*;
+   
+   // Configure PMP entries
+   let pmp = PhysicalMemoryProtection::enable()?;
+
+Advanced Synchronization
 ------------------------
 
-The original WRT interpreter assumed a POSIX-like OS. The new AOT translator requires a runtime helper library that can run on diverse environments (macOS, Linux, QNX, Zephyr, bare-metal) and expose a stable C ABI.
+The platform layer includes advanced synchronization primitives:
 
-Modern Arm hardening features (PAC/BTI, MTE) also require OS-specific memory mapping flags (e.g., `PROT_MTE` on Linux).
+* **Lock-Free Allocator**: Wait-free memory allocation
+* **Priority Inheritance Mutex**: Prevents priority inversion
+* **Advanced RwLock**: Reader-writer lock with upgrades
+* **Lock-Free Queues**: MPSC and SPSC implementations (requires alloc)
 
-This rework introduces a platform abstraction layer (`wrt_platform`) to isolate OS-specific code behind compile-time feature flags.
+.. code-block:: rust
 
-Design
-------
+   use wrt_platform::advanced_sync::*;
+   
+   // Priority inheritance mutex for real-time systems
+   let mutex = PriorityInheritanceMutex::new(data, Priority::new(10));
 
-The platform layer provides abstract traits for OS-dependent functionality:
+Runtime Detection
+-----------------
 
-*   **`PageAllocator`**: Handles allocation, growth, and protection of memory pages (typically 64 KiB Wasm pages). Implementations use OS-specific mechanisms like `mmap` (Linux/macOS/QNX) or custom allocators (bare-metal).
-*   **`FutexLike`**: Provides synchronization primitives similar to Linux futexes, abstracting over mechanisms like `futex` (Linux), `__ulock_wait` (macOS), `SyncCondvar*` (QNX), `k_futex_wait` (Zephyr), or spin-loops (bare-metal).
+The platform layer can detect capabilities at runtime:
 
-Implementations are selected at compile time using feature flags (e.g., `platform-linux`, `platform-macos`).
+.. code-block:: rust
 
-The `wrt-helper` library exposes C-ABI functions (like `wrt_memory_grow`, `wrt_atomic_wait`) that internally use these platform traits.
+   use wrt_platform::runtime_detection::PlatformDetector;
+   
+   let mut detector = PlatformDetector::new();
+   let caps = detector.detect()?;
+   
+   println!("Page size: {}", caps.memory.page_size);
+   println!("Has MTE: {}", caps.security.memory_tagging);
+   println!("Recommended paradigm: {}", caps.recommended_paradigm());
 
-Supported Platforms (Phased Implementation)
--------------------------------------------
+Formal Verification
+-------------------
 
-1.  **macOS arm64**: `mmap` for memory, `__ulock_wait` for futex.
-2.  **Linux aarch64**: `mmap` (with `PROT_MTE` if enabled), `futex` syscalls.
-3.  **QNX 7.1 aarch64**: `mmap` (with `MAP_LAZY`), `SyncCondvar*` APIs.
-4.  **Bare-metal (EL1-N) / Zephyr**: Bump allocator, WFE/SEVL spin futex / `k_futex_*` primitives.
+The platform layer includes extensive formal verification annotations:
+
+* **Memory Safety**: Verified bounds checking and lifetime management
+* **Concurrency**: Data race freedom and deadlock prevention
+* **Real-Time**: WCET analysis and priority inversion prevention
+* **Security**: Information flow and side-channel resistance
+
+.. code-block:: rust
+
+   use wrt_platform::formal_verification::annotations::*;
+   
+   #[verified_memory_safe]
+   #[constant_time]
+   fn secure_allocate(size: usize) -> Result<*mut u8, Error> {
+       // Implementation with formal guarantees
+   }
+
+Side-Channel Resistance
+-----------------------
+
+The platform layer provides defenses against timing and cache attacks:
+
+* **Constant-Time Operations**: No data-dependent branches
+* **Cache-Aware Allocation**: Minimize information leakage
+* **Access Pattern Obfuscation**: Hide memory access patterns
+
+.. code-block:: rust
+
+   use wrt_platform::side_channel_resistance::*;
+   
+   // Constant-time memory comparison
+   let equal = constant_time::compare_memory(ptr1, ptr2, size);
+   
+   // Cache-line aligned allocation
+   let buffer = cache_aware_allocation::allocate_aligned(size)?;
+
+Performance Validation
+----------------------
+
+Compile-time and runtime performance validation:
+
+.. code-block:: rust
+
+   use wrt_platform::performance_validation::*;
+   
+   // Compile-time checks
+   CompileTimeValidator::validate_zero_cost();
+   
+   // Runtime benchmarking
+   let validator = PerformanceValidator::new();
+   let results = validator.benchmark_all()?;
+
+Configuration Examples
+----------------------
+
+Common platform configurations:
+
+.. code-block:: rust
+
+   // High-security embedded system
+   let secure_config = PlatformConfig::<paradigm::SecurityFirst>::new()
+       .with_max_pages(128)
+       .with_static_allocation(8 * 1024 * 1024)
+       .with_isolation_level(IsolationLevel::Hardware);
+   
+   // Real-time control system
+   let rt_config = PlatformConfig::<paradigm::RealTime>::new()
+       .with_max_pages(64)
+       .with_rt_priority(20);
+   
+   // Cloud deployment
+   let cloud_config = PlatformConfig::<paradigm::Posix>::new()
+       .with_max_pages(4096)
+       .with_guard_pages(true);
+
+Error Handling
+--------------
+
+All platform operations use consistent error handling:
+
+.. code-block:: rust
+
+   match allocator.allocate(10) {
+       Ok(ptr) => println!("Allocated at {:?}", ptr),
+       Err(e) if e.code() == wrt_error::codes::OUT_OF_MEMORY => {
+           println!("Out of memory");
+       }
+       Err(e) => return Err(e),
+   }
 
 References
 ----------
 
-*   Zephyr futex API: `k_futex_wait/k_futex_wake` docs (docs.zephyrproject.org) 
+* :doc:`qnx_platform` - QNX-specific platform features
+* :doc:`hardening` - Security hardening features
+* ARM Architecture Reference Manual - PAC/BTI/MTE specifications
+* Intel 64 and IA-32 Architectures SDM - CET/MPK documentation
+* RISC-V Privileged Architecture - PMP specification 
