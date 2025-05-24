@@ -4,7 +4,7 @@ use anyhow::{Context as _, Result};
 use clap::Parser;
 use dagger_sdk::{connect_opts, Config, Query};
 use eyre::eyre;
-use tracing::Level;
+use tracing::{info, Level};
 use tracing_subscriber::FmtSubscriber;
 use xshell::Shell;
 
@@ -15,6 +15,8 @@ mod ci_advanced_tests;
 mod ci_integrity_checks;
 mod ci_static_analysis;
 mod coverage;
+mod coverage_simple;
+mod coverage_ci;
 mod dagger_pipelines;
 mod fmt_check;
 mod fs_ops;
@@ -64,6 +66,7 @@ pub enum Command {
     CiIntegrityChecks,
     Coverage,
     CoverageComprehensive,
+    CoverageSimple,
     GenerateCoverageSummary,
     CheckDocsStrict,
     FmtCheck,
@@ -180,6 +183,11 @@ async fn main() -> Result<()> {
             }
             return Ok(());
         }
+        Command::CoverageSimple => {
+            // Generate simple coverage without Dagger
+            coverage_simple::generate_simple_coverage()?;
+            return Ok(());
+        }
         _ => {
             // Continue to Dagger handling
         }
@@ -233,7 +241,20 @@ async fn main() -> Result<()> {
                             Command::CiIntegrityChecks => {
                                 ci_integrity_checks::run(&query_client).await
                             }
-                            Command::Coverage => coverage::run_quick_coverage(&query_client).await,
+                            Command::Coverage => {
+                                // Use CI-optimized coverage if we're in CI environment
+                                if std::env::var("CI").is_ok() {
+                                    info!("Detected CI environment, using CI-optimized coverage");
+                                    coverage_ci::run_ci_coverage(&query_client).await
+                                } else {
+                                    // Add a timeout for coverage generation
+                                    tokio::time::timeout(
+                                        std::time::Duration::from_secs(300), // 5 minute timeout
+                                        coverage::run_quick_coverage(&query_client)
+                                    ).await
+                                    .map_err(|_| anyhow::anyhow!("Coverage generation timed out after 5 minutes"))?
+                                }
+                            },
                             Command::CoverageComprehensive => {
                                 coverage::run_comprehensive_coverage(&query_client).await
                             }
