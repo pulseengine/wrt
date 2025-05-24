@@ -189,10 +189,7 @@ impl HostBuilder {
                     )));
 
                     #[cfg(all(feature = "alloc", not(feature = "std")))]
-                    return Err(Error::runtime_error(alloc::format!(
-                        "Required built-in {} is not implemented",
-                        builtin_type.name()
-                    )));
+                    return Err(Error::runtime_error("Required built-in is not implemented"));
 
                     #[cfg(not(any(feature = "std", feature = "alloc")))]
                     return Err(Error::runtime_error("Required built-in is not implemented"));
@@ -527,27 +524,14 @@ mod tests {
 /// Create a runtime error with the specified message
 ///
 /// This function properly handles both std and no_std environments
-pub fn runtime_error(message: &str) -> Error {
-    #[cfg(feature = "std")]
-    return Error::runtime_error(message.to_string());
-
-    #[cfg(all(feature = "alloc", not(feature = "std")))]
-    return Error::runtime_error(alloc::string::ToString::to_string(message));
-
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
-    return Error::runtime_error(message);
+pub fn runtime_error(message: &'static str) -> Error {
+    Error::runtime_error(message)
 }
 
 /// Create a runtime error with a context string
 ///
 /// This function properly handles both std and no_std environments
-pub fn runtime_error_with_context(message: &str, context: &str) -> Error {
-    #[cfg(feature = "std")]
-    return Error::runtime_error(format!("{}: {}", message, context));
-
-    #[cfg(all(feature = "alloc", not(feature = "std")))]
-    return Error::runtime_error(alloc::format!("{}: {}", message, context));
-
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
-    return Error::runtime_error(message);
+pub fn runtime_error_with_context(_message: &str, _context: &str) -> Error {
+    // In no_std environments, we use a static error message
+    Error::runtime_error("Runtime error with context")
 }

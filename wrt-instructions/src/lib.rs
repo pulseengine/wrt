@@ -34,9 +34,8 @@
 #![warn(missing_docs)]
 #![warn(clippy::missing_panics_doc)]
 
-// Verify required features when using no_std
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
-compile_error!("The 'alloc' feature must be enabled when using no_std");
+// Note: This crate supports no_std without alloc, using bounded collections
+// from wrt-foundation
 
 // When no_std but alloc is available
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
@@ -55,6 +54,9 @@ pub mod memory_ops;
 pub mod table_ops;
 pub mod variable_ops;
 
+// CFI-enhanced control flow operations
+pub mod cfi_control_ops;
+
 // Test module for arithmetic operations
 #[cfg(test)]
 mod arithmetic_test;
@@ -67,6 +69,12 @@ pub use wrt_foundation::{
     types::ValueType, values::Value, BlockType, RefType, Result as TypesResult,
 };
 
+// Re-export CFI control flow operations
+pub use crate::cfi_control_ops::{
+    CfiControlFlowOps, CfiControlFlowProtection, CfiExecutionContext, CfiLandingPad,
+    CfiProtectedBranchTarget, CfiProtectionLevel, CfiTargetProtection, CfiTargetType,
+    DefaultCfiControlFlowOps,
+};
 pub use crate::control_ops::{
     Block as ControlFlowBlock, BranchTarget, ControlBlockType, ControlOp,
 }; // Renamed Block to ControlFlowBlock to avoid clashes

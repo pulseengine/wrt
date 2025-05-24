@@ -16,10 +16,8 @@ std = [
     "wrt-sync/std",
     "dep:log",
 ]
-no_std = [
-    "wrt-foundation/no_std",
-    "alloc",
-]
+# This crate is no_std by default, this feature is a no-op for compatibility
+no_std = []
 alloc = ["wrt-foundation/alloc", "wrt-sync/alloc", "dep:alloc"]
 optimize = ["wrt-foundation/optimize"]
 safety = ["wrt-foundation/safety"]
@@ -58,7 +56,7 @@ must_use_unit = "warn"
 match_wildcard_for_single_variants = "warn"
 never_loop = "warn"
 unreachable = "warn"
-static_mut_reference = "deny"
+static_mut_refs = "deny"
 arc_mutate = "deny"
 pedantic = "warn"
 debug_assert_with_mut_call = "warn" 

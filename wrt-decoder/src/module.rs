@@ -522,6 +522,9 @@ fn parse_module_internal_logic(
                     }
                     crate::parser::Payload::CustomSection { name, data, size: _ } => {
                         if let Ok(data_bytes) = data.data() {
+                            // TODO: When debug section support is added to WrtModule,
+                            // check if name starts with ".debug_" and handle specially
+                            // For now, store all custom sections as-is
                             mod_custom_sections
                                 .push(WrtCustomSection { name, data: data_bytes.to_vec() });
                         } else {

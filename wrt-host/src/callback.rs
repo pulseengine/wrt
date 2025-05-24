@@ -171,16 +171,7 @@ impl CallbackRegistry {
         }
 
         // Return error if the function is not found
-        Err(Error::new(
-            ErrorCategory::Runtime,
-            codes::RUNTIME_ERROR,
-            #[cfg(feature = "std")]
-            format!("Host function {module_name}.{function_name} not found"),
-            #[cfg(all(feature = "alloc", not(feature = "std")))]
-            alloc::format!("Host function {module_name}.{function_name} not found"),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
-            "Host function not found",
-        ))
+        Err(Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, "Host function not found"))
     }
 
     /// Get all registered module names

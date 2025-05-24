@@ -1,8 +1,10 @@
 [package]
 name = "wrt-foundation-fuzz"
-version = "0.0.0"
+version = "0.2.0"
 publish = false
 edition = "2021"
+authors = ["The WRT Project Developers"]
+license = "MIT"
 
 [package.metadata]
 cargo-fuzz = true

@@ -15,16 +15,18 @@ use crate::prelude::*;
 ///
 /// This function converts WebAssembly core values to Component Model values
 /// with support for both std and no_std environments.
-fn convert_to_component_values(values: &[Value]) -> Vec<ComponentValue> {
+fn convert_to_component_values(
+    values: &[Value],
+) -> Vec<ComponentValue<wrt_foundation::NoStdProvider<64>>> {
     values
         .iter()
         .map(|v| match v {
-            Value::I32(i) => ComponentValue::s32(*i),
-            Value::I64(i) => ComponentValue::s64(*i),
-            Value::F32(f) => ComponentValue::f32(*f),
-            Value::F64(f) => ComponentValue::f64(*f),
+            Value::I32(i) => ComponentValue::S32(*i),
+            Value::I64(i) => ComponentValue::S64(*i),
+            Value::F32(f) => ComponentValue::F32(wrt_foundation::FloatBits32(f.to_bits())),
+            Value::F64(f) => ComponentValue::F64(wrt_foundation::FloatBits64(f.to_bits())),
             // Add other conversions as needed
-            _ => ComponentValue::s32(0), // Default fallback
+            _ => ComponentValue::S32(0), // Default fallback
         })
         .collect()
 }
@@ -34,7 +36,9 @@ fn convert_to_component_values(values: &[Value]) -> Vec<ComponentValue> {
 ///
 /// This function converts Component Model values to WebAssembly core values
 /// with support for both std and no_std environments.
-fn convert_from_component_values(values: &[ComponentValue]) -> Vec<Value> {
+fn convert_from_component_values(
+    values: &[ComponentValue<wrt_foundation::NoStdProvider<64>>],
+) -> Vec<Value> {
     values
         .iter()
         .map(|v| match v {
@@ -198,7 +202,7 @@ impl BuiltinHost {
                         Err(e) => Err(Error::new(
                             ErrorCategory::Runtime,
                             codes::RUNTIME_ERROR,
-                            e.to_string(),
+                            "Runtime error during interception",
                         )),
                     };
 
@@ -240,11 +244,6 @@ impl BuiltinHost {
         Err(Error::new(
             ErrorCategory::Runtime,
             codes::RUNTIME_ERROR,
-            #[cfg(feature = "std")]
-            format!("Built-in function {} not implemented", builtin_name),
-            #[cfg(all(feature = "alloc", not(feature = "std")))]
-            alloc::format!("Built-in function {} not implemented", builtin_name),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
             "Built-in function not implemented",
         ))
     }

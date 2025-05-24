@@ -81,9 +81,8 @@
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 extern crate alloc;
 
-// Verify required features when using no_std
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
-compile_error!("The 'alloc' feature must be enabled when using no_std");
+// Note: This crate supports no_std without alloc, using bounded collections
+// from wrt-foundation
 
 // Include prelude for unified imports
 pub mod prelude;
@@ -181,7 +180,7 @@ pub trait LinkInterceptorStrategy: Send + Sync {
     ///   None if it should proceed normally
     fn intercept_lift(
         &self,
-        _ty: &ValType,
+        _ty: &ValType<wrt_foundation::NoStdProvider<64>>,
         _addr: u32,
         _memory_bytes: &[u8],
     ) -> Result<Option<Vec<u8>>> {
@@ -203,7 +202,7 @@ pub trait LinkInterceptorStrategy: Send + Sync {
     ///   proceed normally
     fn intercept_lower(
         &self,
-        _value_type: &ValType,
+        _value_type: &ValType<wrt_foundation::NoStdProvider<64>>,
         _value_data: &[u8],
         _addr: u32,
         _memory_bytes: &mut [u8],
@@ -235,7 +234,7 @@ pub trait LinkInterceptorStrategy: Send + Sync {
     fn intercept_function_call(
         &self,
         _function_name: &str,
-        _arg_types: &[ValType],
+        _arg_types: &[ValType<wrt_foundation::NoStdProvider<64>>],
         _arg_data: &[u8],
     ) -> Result<Option<Vec<u8>>> {
         Ok(None)
@@ -256,7 +255,7 @@ pub trait LinkInterceptorStrategy: Send + Sync {
     fn intercept_function_result(
         &self,
         _function_name: &str,
-        _result_types: &[ValType],
+        _result_types: &[ValType<wrt_foundation::NoStdProvider<64>>],
         _result_data: &[u8],
     ) -> Result<Option<Vec<u8>>> {
         Ok(None)
@@ -326,7 +325,7 @@ pub trait LinkInterceptorStrategy: Send + Sync {
     fn after_start(
         &self,
         _component_name: &str,
-        _result_types: &[ValType],
+        _result_types: &[ValType<wrt_foundation::NoStdProvider<64>>],
         _result_data: Option<&[u8]>,
     ) -> Result<Option<Vec<u8>>> {
         Ok(None)
@@ -355,8 +354,8 @@ pub trait LinkInterceptorStrategy: Send + Sync {
         &self,
         component_name: &str,
         func_name: &str,
-        args: &[ComponentValue],
-        results: &[ComponentValue],
+        args: &[ComponentValue<wrt_foundation::NoStdProvider<64>>],
+        results: &[ComponentValue<wrt_foundation::NoStdProvider<64>>],
     ) -> Result<Option<Vec<Modification>>> {
         // Default implementation returns no modifications
         Ok(None)
@@ -484,8 +483,8 @@ impl LinkInterceptor {
         &self,
         component_name: String,
         func_name: &str,
-        args: &[ComponentValue],
-        results: &[ComponentValue],
+        args: &[ComponentValue<wrt_foundation::NoStdProvider<64>>],
+        results: &[ComponentValue<wrt_foundation::NoStdProvider<64>>],
     ) -> Result<InterceptionResult> {
         // Create default result (no modifications)
         let mut result = InterceptionResult { modified: false, modifications: Vec::new() };
@@ -529,12 +528,7 @@ impl LinkInterceptor {
                         return Err(Error::new(
                             wrt_error::ErrorCategory::Validation,
                             wrt_error::codes::VALIDATION_ERROR,
-                            wrt_error::kinds::ValidationError(format!(
-                                "Replacement range out of bounds: {} + {} > {}",
-                                offset,
-                                data.len(),
-                                modified_data.len()
-                            )),
+                            "Replacement range out of bounds",
                         ));
                     }
 
@@ -549,11 +543,7 @@ impl LinkInterceptor {
                         return Err(Error::new(
                             wrt_error::ErrorCategory::Validation,
                             wrt_error::codes::VALIDATION_ERROR,
-                            wrt_error::kinds::ValidationError(format!(
-                                "Insertion offset out of bounds: {} > {}",
-                                start,
-                                modified_data.len()
-                            )),
+                            "Insertion offset out of bounds",
                         ));
                     }
 
@@ -566,12 +556,7 @@ impl LinkInterceptor {
                         return Err(Error::new(
                             wrt_error::ErrorCategory::Validation,
                             wrt_error::codes::VALIDATION_ERROR,
-                            wrt_error::kinds::ValidationError(format!(
-                                "Removal range out of bounds: {} + {} > {}",
-                                start,
-                                length,
-                                modified_data.len()
-                            )),
+                            "Removal range out of bounds",
                         ));
                     }
 
@@ -692,7 +677,7 @@ mod tests {
 
         fn intercept_lift(
             &self,
-            _ty: &ValType,
+            _ty: &ValType<wrt_foundation::NoStdProvider<64>>,
             _addr: u32,
             _memory_bytes: &[u8],
         ) -> Result<Option<Vec<u8>>> {
@@ -701,7 +686,7 @@ mod tests {
 
         fn intercept_lower(
             &self,
-            _value_type: &ValType,
+            _value_type: &ValType<wrt_foundation::NoStdProvider<64>>,
             _value_data: &[u8],
             _addr: u32,
             _memory_bytes: &mut [u8],
@@ -716,7 +701,7 @@ mod tests {
         fn intercept_function_call(
             &self,
             _function_name: &str,
-            _arg_types: &[ValType],
+            _arg_types: &[ValType<wrt_foundation::NoStdProvider<64>>],
             _arg_data: &[u8],
         ) -> Result<Option<Vec<u8>>> {
             Ok(None)
@@ -725,7 +710,7 @@ mod tests {
         fn intercept_function_result(
             &self,
             _function_name: &str,
-            _result_types: &[ValType],
+            _result_types: &[ValType<wrt_foundation::NoStdProvider<64>>],
             _result_data: &[u8],
         ) -> Result<Option<Vec<u8>>> {
             Ok(None)
@@ -750,7 +735,7 @@ mod tests {
         fn after_start(
             &self,
             _component_name: &str,
-            _result_types: &[ValType],
+            _result_types: &[ValType<wrt_foundation::NoStdProvider<64>>],
             _result_data: Option<&[u8]>,
         ) -> Result<Option<Vec<u8>>> {
             Ok(None)

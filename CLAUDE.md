@@ -41,3 +41,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Break cyclic references with Box<T> for recursive types
 - Use conventional commits: `type(scope): short summary`
 - Thoroughly document public API with doc comments
+
+## Memories
+- can you build and test it

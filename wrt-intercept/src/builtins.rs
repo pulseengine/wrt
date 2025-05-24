@@ -74,15 +74,17 @@ impl BuiltinSerialization {
     /// # Returns
     ///
     /// A `Result` containing the serialized bytes or an error
-    pub fn serialize(values: &[ComponentValue]) -> Result<Vec<u8>> {
+    pub fn serialize(
+        values: &[ComponentValue<wrt_foundation::NoStdProvider<64>>],
+    ) -> Result<Vec<u8>> {
         // Simple implementation for now - convert to bytes
         let mut result = Vec::new();
         for value in values {
             let bytes = match value {
                 ComponentValue::S32(v) => v.to_le_bytes().to_vec(),
                 ComponentValue::S64(v) => v.to_le_bytes().to_vec(),
-                ComponentValue::F32(v) => v.to_le_bytes().to_vec(),
-                ComponentValue::F64(v) => v.to_le_bytes().to_vec(),
+                ComponentValue::F32(v) => v.0.to_le_bytes().to_vec(),
+                ComponentValue::F64(v) => v.0.to_le_bytes().to_vec(),
                 _ => {
                     return Err(Error::new(
                         wrt_error::ErrorCategory::Type,
@@ -106,7 +108,10 @@ impl BuiltinSerialization {
     /// # Returns
     ///
     /// A `Result` containing the deserialized values or an error
-    pub fn deserialize(bytes: &[u8], types: &[ValType]) -> Result<Vec<ComponentValue>> {
+    pub fn deserialize(
+        bytes: &[u8],
+        types: &[ValType<wrt_foundation::NoStdProvider<64>>],
+    ) -> Result<Vec<ComponentValue<wrt_foundation::NoStdProvider<64>>>> {
         let mut result = Vec::new();
         let mut offset = 0;
 
@@ -148,7 +153,9 @@ impl BuiltinSerialization {
                     }
                     let mut buf = [0u8; 4];
                     buf.copy_from_slice(&bytes[offset..offset + 4]);
-                    result.push(ComponentValue::F32(f32::from_le_bytes(buf)));
+                    result.push(ComponentValue::F32(wrt_foundation::FloatBits32(
+                        f32::from_le_bytes(buf).to_bits(),
+                    )));
                     offset += 4;
                 }
                 ValType::F64 => {
@@ -161,7 +168,9 @@ impl BuiltinSerialization {
                     }
                     let mut buf = [0u8; 8];
                     buf.copy_from_slice(&bytes[offset..offset + 8]);
-                    result.push(ComponentValue::F64(f64::from_le_bytes(buf)));
+                    result.push(ComponentValue::F64(wrt_foundation::FloatBits64(
+                        f64::from_le_bytes(buf).to_bits(),
+                    )));
                     offset += 8;
                 }
                 _ => {
@@ -261,7 +270,7 @@ pub trait BuiltinInterceptor: Send + Sync {
     fn before_builtin(
         &self,
         context: &InterceptContext,
-        args: &[ComponentValue],
+        args: &[ComponentValue<wrt_foundation::NoStdProvider<64>>],
     ) -> Result<BeforeBuiltinResult>;
 
     /// Called after a built-in function has been invoked
@@ -278,9 +287,9 @@ pub trait BuiltinInterceptor: Send + Sync {
     fn after_builtin(
         &self,
         context: &InterceptContext,
-        args: &[ComponentValue],
-        result: Result<Vec<ComponentValue>>,
-    ) -> Result<Vec<ComponentValue>>;
+        args: &[ComponentValue<wrt_foundation::NoStdProvider<64>>],
+        result: Result<Vec<ComponentValue<wrt_foundation::NoStdProvider<64>>>>,
+    ) -> Result<Vec<ComponentValue<wrt_foundation::NoStdProvider<64>>>>;
 
     /// Clone this interceptor
     ///
@@ -293,9 +302,9 @@ pub trait BuiltinInterceptor: Send + Sync {
 /// Result of the `before_builtin` method
 pub enum BeforeBuiltinResult {
     /// Continue with the built-in execution using the provided arguments
-    Continue(Vec<ComponentValue>),
+    Continue(Vec<ComponentValue<wrt_foundation::NoStdProvider<64>>>),
     /// Skip the built-in execution and use these values as the result
-    Bypass(Vec<ComponentValue>),
+    Bypass(Vec<ComponentValue<wrt_foundation::NoStdProvider<64>>>),
 }
 
 #[cfg(test)]

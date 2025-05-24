@@ -42,9 +42,8 @@
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 extern crate alloc;
 
-// Verify required features when using no_std
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
-compile_error!("The 'alloc' feature must be enabled when using no_std");
+// Note: This crate supports no_std without alloc, using bounded collections
+// from wrt-foundation
 
 // Export modules
 pub mod builder;

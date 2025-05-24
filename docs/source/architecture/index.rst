@@ -1,96 +1,163 @@
-=====================
+================================
 Software Architecture
-=====================
+================================
 
 .. image:: ../_static/icons/wrt_architecture.svg
    :width: 64px
    :align: right
-   :alt: WRT Architecture Icon
+   :alt: Architecture Icon
 
-This chapter describes the software architecture of the WRT system. The architecture is designed to meet the requirements specified in the :doc:`../requirements` section and the safety requirements in the :doc:`../safety_requirements` section.
+This section provides a comprehensive view of the Pulseengine (WRT Edition) software architecture following ASPICE SWE.2 guidelines. The architecture is designed to be teachable, traceable, and suitable for safety-critical systems.
+
+.. admonition:: Architecture Organization
+   :class: note
+
+   This documentation follows ASPICE SWE.2 base practices:
+   
+   - **BP1**: Develop software architectural design
+   - **BP2**: Allocate software requirements  
+   - **BP3**: Define interfaces
+   - **BP4**: Describe dynamic behavior
+   - **BP5**: Define resource consumption objectives
+   - **BP6**: Evaluate alternative architectures
+
+Quick Navigation
+----------------
+
+.. grid:: 2
+   :gutter: 3
+
+   .. grid-item-card:: 🏗️ Architectural Design
+      :link: 01_architectural_design/overview
+      :link-type: doc
+
+      System decomposition, components, layers, and patterns
+
+   .. grid-item-card:: 📊 Requirements Allocation
+      :link: 02_requirements_allocation/allocation_matrix
+      :link-type: doc
+
+      Mapping requirements to architectural components
+
+   .. grid-item-card:: 🔌 Interface Definitions
+      :link: 03_interfaces/interface_catalog
+      :link-type: doc
+
+      Component interfaces, APIs, and contracts
+
+   .. grid-item-card:: 🔄 Dynamic Behavior
+      :link: 04_dynamic_behavior/interaction_flows
+      :link-type: doc
+
+      Runtime behavior, state machines, and sequences
+
+   .. grid-item-card:: 📈 Resource Management
+      :link: 05_resource_management/resource_overview
+      :link-type: doc
+
+      Memory, CPU, and I/O resource budgets
+
+   .. grid-item-card:: 🤔 Design Decisions
+      :link: 06_design_decisions/decision_log
+      :link-type: doc
+
+      Architectural decisions, trade-offs, and rationale
+
+Key Architectural Decisions
+---------------------------
+
+.. arch_decision:: Multi-Environment Support Strategy
+   :id: ARCH_DEC_CORE_001
+   :status: accepted
+   :tags: core, portability
+
+   **Decision**: Support four environment configurations:
+   
+   1. **std** - Full standard library support
+   2. **no_std + alloc** - No standard library, but dynamic allocation
+   3. **no_std + no_alloc** - Only static allocation with bounded collections
+   4. **bare_metal** - Minimal runtime for embedded systems
+
+   **Rationale**: Different deployment scenarios require different trade-offs between functionality and resource constraints.
 
 .. toctree::
    :maxdepth: 2
-   :caption: Architecture Topics:
+   :hidden:
+   :caption: Architectural Design (BP1)
 
+   01_architectural_design/overview
+   01_architectural_design/components
+   01_architectural_design/layers
+   01_architectural_design/patterns
+
+.. toctree::
+   :maxdepth: 2
+   :hidden:
+   :caption: Requirements Allocation (BP2)
+
+   02_requirements_allocation/allocation_matrix
+   02_requirements_allocation/traceability
+   02_requirements_allocation/coverage_analysis
+
+.. toctree::
+   :maxdepth: 2
+   :hidden:
+   :caption: Interface Definitions (BP3)
+
+   03_interfaces/interface_catalog
+   03_interfaces/external_interfaces
+   03_interfaces/internal_interfaces
+   03_interfaces/api_contracts
+   03_interfaces/data_types
+
+.. toctree::
+   :maxdepth: 2
+   :hidden:
+   :caption: Dynamic Behavior (BP4)
+
+   04_dynamic_behavior/interaction_flows
+   04_dynamic_behavior/state_machines
+   04_dynamic_behavior/sequence_diagrams
+   04_dynamic_behavior/concurrency_model
+
+.. toctree::
+   :maxdepth: 2
+   :hidden:
+   :caption: Resource Management (BP5)
+
+   05_resource_management/resource_overview
+   05_resource_management/memory_budgets
+   05_resource_management/cpu_budgets
+   05_resource_management/io_constraints
+
+.. toctree::
+   :maxdepth: 2
+   :hidden:
+   :caption: Design Decisions (BP6)
+
+   06_design_decisions/decision_log
+   06_design_decisions/adr/index
+   06_design_decisions/alternatives
+   06_design_decisions/trade_offs
+
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+   :caption: Legacy Documentation
+
+   cli
+   component_model
    core_runtime
+   intercept_system
+   logging
    memory_model
    platform_layer
-   component_model
+   qnx_platform
    resource_management
-   intercept_system
    safe_memory
-   no_std_collections
-   hardening
-   logging
    safety
-   cli
+   hardening
    testing
-
-.. _system-overview:
-
-System Overview
----------------
-
-WRT is a WebAssembly runtime implementation with a focus on bounded execution, bare-metal support, and component model capabilities. The architecture is organized into several key subsystems, detailed in the pages linked above.
-
-.. _system-component-diagram:
-
-.. spec:: System Component Diagram
-   :id: SPEC_001
-   :links: REQ_PLATFORM_001, REQ_HELPER_ABI_001, REQ_014, REQ_018, REQ_MEM_SAFETY_001, REQ_RESOURCE_001
-   
-   .. note::
-      This diagram will be updated to reflect the new platform layer and memory model.
-
-   .. uml::
-      
-      @startuml
-      package "WRT System (Current)" {
-        [Core Runtime] as Core
-        [Component Model] as Component
-        [Memory Subsystem (Vec<u8>)] as Memory
-        [Resource Management] as Resources
-        [Safety Layer] as Safety
-        [WASI Interfaces] as WASI
-        [CLI (WRTD)] as CLI
-        
-        Core --> Memory
-        Component --> Core
-        Safety --> Core
-        Safety --> Memory
-        Resources --> Memory
-        CLI --> Core
-        CLI --> Component
-        WASI --> Core
-      }
-      @enduml
-
-Development Status
-------------------
-
-The current implementation status of the WRT architecture is as follows:
-
-.. needtable::
-   :columns: id;title;status;links
-   :filter: type == 'impl'
-
-Architecture-Requirement Mapping
---------------------------------
-
-The following diagram shows how the architectural components map to requirements:
-
-.. needflow::
-   :filter: id in ['SPEC_001', 'SPEC_002', 'SPEC_003', 'SPEC_004', 'SPEC_005', 'SPEC_006', 'SPEC_007', 'SPEC_008', 'SPEC_009', 'SPEC_010', 'IMPL_001', 'IMPL_002', 'IMPL_003', 'IMPL_004', 'IMPL_005', 'IMPL_006', 'IMPL_007', 'IMPL_008', 'IMPL_009', 'IMPL_010', 'IMPL_011', 'IMPL_012', 'REQ_PLATFORM_001', 'REQ_HELPER_ABI_001', 'REQ_005', 'REQ_006', 'REQ_007', 'REQ_014', 'REQ_015', 'REQ_016', 'REQ_018', 'REQ_019', 'REQ_020', 'REQ_021', 'REQ_022', 'REQ_023', 'REQ_024', 'REQ_MEM_SAFETY_001', 'REQ_MEM_SAFETY_002', 'REQ_MEM_SAFETY_003', 'REQ_RESOURCE_001', 'REQ_RESOURCE_002', 'REQ_RESOURCE_003', 'REQ_RESOURCE_004', 'REQ_RESOURCE_005', 'REQ_ERROR_001', 'REQ_ERROR_002', 'REQ_ERROR_003', 'REQ_ERROR_004', 'REQ_ERROR_005', 'REQ_VERIFY_001', 'REQ_VERIFY_002', 'REQ_VERIFY_003', 'REQ_VERIFY_004', 'REQ_QA_001', 'REQ_QA_002', 'REQ_QA_003', 'REQ_SAFETY_001', 'REQ_SAFETY_002']
-   :name: architecture_requirement_mapping
-
-.. _safety-architecture-mapping:
-
-Safety-Architecture Mapping
----------------------------
-
-The following diagram shows the relationship between safety requirements and architectural components:
-
-.. needflow::
-   :filter: id in ['SPEC_002', 'SPEC_007', 'SPEC_008', 'SPEC_009', 'SPEC_010', 'IMPL_MEMORY_SAFETY_001', 'IMPL_RESOURCE_SAFETY_001', 'IMPL_ERROR_HANDLING_RECOVERY_001', 'IMPL_VERIFICATION_001', 'IMPL_SAFETY_TESTING_001', 'REQ_MEM_SAFETY_001', 'REQ_MEM_SAFETY_002', 'REQ_MEM_SAFETY_003', 'REQ_RESOURCE_001', 'REQ_RESOURCE_002', 'REQ_RESOURCE_003', 'REQ_RESOURCE_004', 'REQ_RESOURCE_005', 'REQ_ERROR_001', 'REQ_ERROR_002', 'REQ_ERROR_003', 'REQ_ERROR_004', 'REQ_ERROR_005', 'REQ_VERIFY_001', 'REQ_VERIFY_002', 'REQ_VERIFY_003', 'REQ_VERIFY_004', 'REQ_QA_001', 'REQ_QA_002', 'REQ_QA_003', 'REQ_SAFETY_001', 'REQ_SAFETY_002', 'IMPL_BOUNDS_001', 'IMPL_SAFE_SLICE_001', 'IMPL_ADAPTER_001', 'IMPL_WASM_MEM_001', 'IMPL_LIMITS_001', 'IMPL_FUEL_001', 'IMPL_ERROR_HANDLING_001', 'IMPL_RECOVERY_001', 'IMPL_SAFETY_TEST_001', 'IMPL_FUZZ_001']
-   :name: safety_architecture_mapping 
+   no_std_collections
+   test_coverage
+   cfi_hardening

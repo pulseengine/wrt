@@ -124,3 +124,7 @@ pub use rwlock::parking_impl::{
 // Re-export the basic (spin-lock) RwLock and its guards.
 // These are always available as they don't depend on std for parking.
 pub use rwlock::{WrtRwLock, WrtRwLockReadGuard, WrtRwLockWriteGuard};
+
+// Convenience aliases for easier importing
+pub type Mutex<T> = WrtMutex<T>;
+pub type RwLock<T> = WrtRwLock<T>;
