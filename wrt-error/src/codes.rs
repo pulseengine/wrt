@@ -42,11 +42,11 @@ pub const EXECUTION_INVALID_FRAME: u16 = 1014;
 /// Execution reader not implemented error
 pub const EXECUTION_READER_NOT_IMPLEMENTED: u16 = 1015;
 /// Capacity exceeded
-pub const CAPACITY_EXCEEDED: u16 = 1013;
+pub const CAPACITY_EXCEEDED: u16 = 1016;
 /// Gas limit exceeded
-pub const GAS_LIMIT_EXCEEDED: u16 = 1014;
+pub const GAS_LIMIT_EXCEEDED: u16 = 1017;
 /// Call stack exhausted
-pub const CALL_STACK_EXHAUSTED: u16 = 1015;
+pub const CALL_STACK_EXHAUSTED: u16 = 1018;
 
 // Component model error codes (2000-2999)
 /// Invalid function index error
@@ -181,7 +181,7 @@ pub const TYPE_RESULT_COUNT_MISMATCH: u16 = 6019;
 pub const TYPE_RESULT_TYPE_MISMATCH: u16 = 6020;
 /// Invalid byte length for a given type or operation
 pub const INVALID_BYTE_LENGTH: u16 = 6021;
-/// Capacity of a bounded collection (e.g., BoundedVec, BoundedString) was
+/// Capacity of a bounded collection (e.g., `BoundedVec`, `BoundedString`) was
 /// exceeded during an operation like push or extend.
 pub const BOUNDED_COLLECTION_CAPACITY: u16 = 6022;
 
@@ -292,6 +292,8 @@ pub const VALIDATION_MEMORY_ACCESS_ERROR: u16 = 8214;
 pub const VALIDATION_START_FUNCTION_ERROR: u16 = 8215;
 
 // Memory errors (8400-8499)
+/// General memory error
+pub const MEMORY_ERROR: u16 = 8400;
 /// Memory allocation error
 pub const MEMORY_ALLOCATION_ERROR: u16 = 8403;
 /// Memory grow failure error
@@ -336,6 +338,10 @@ pub const SYSTEM_IO_ERROR_CODE: u16 = 8801;
 pub const SYSTEM_RESOURCE_LIMIT_ERROR: u16 = 8802;
 /// System unsupported feature error
 pub const SYSTEM_UNSUPPORTED_FEATURE_ERROR: u16 = 8803;
+
+// Security errors (8900-8999)
+/// Control Flow Integrity violation
+pub const CFI_VIOLATION: u16 = 8900;
 
 // Component errors (9000-9099)
 /// Component invalid type error

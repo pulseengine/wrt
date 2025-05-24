@@ -3,13 +3,19 @@
 //! This module provides types and utilities for working with WebAssembly
 //! sections.
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
+// Import collection types
+#[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::{string::String, vec::Vec};
 #[cfg(feature = "std")]
 use std::{string::String, vec::Vec};
 
 // Use wrt_foundation error handling
 use wrt_foundation::Result;
+#[cfg(not(any(feature = "alloc", feature = "std")))]
+use wrt_foundation::{BoundedCapacity, MemoryProvider, NoStdProvider};
+
+#[cfg(not(any(feature = "alloc", feature = "std")))]
+use crate::{WasmString, WasmVec};
 // Import the prelude for conditional imports
 
 /// WebAssembly section ID constants
@@ -81,6 +87,7 @@ impl SectionId {
 }
 
 /// WebAssembly section
+#[cfg(any(feature = "alloc", feature = "std"))]
 #[derive(Debug, Clone)]
 pub enum Section {
     /// Custom section
@@ -111,7 +118,52 @@ pub enum Section {
     DataCount(Vec<u8>),
 }
 
-/// WebAssembly custom section
+/// WebAssembly section (no_std version)
+#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[derive(Debug, Clone)]
+pub enum Section<P: MemoryProvider + Clone + Default + Eq = NoStdProvider<1024>> {
+    /// Custom section
+    Custom(CustomSection<P>),
+    /// Type section
+    Type(WasmVec<u8, P>),
+    /// Import section
+    Import(WasmVec<u8, P>),
+    /// Function section
+    Function(WasmVec<u8, P>),
+    /// Table section
+    Table(WasmVec<u8, P>),
+    /// Memory section
+    Memory(WasmVec<u8, P>),
+    /// Global section
+    Global(WasmVec<u8, P>),
+    /// Export section
+    Export(WasmVec<u8, P>),
+    /// Start section
+    Start(WasmVec<u8, P>),
+    /// Element section
+    Element(WasmVec<u8, P>),
+    /// Code section
+    Code(WasmVec<u8, P>),
+    /// Data section
+    Data(WasmVec<u8, P>),
+    /// Data count section
+    DataCount(WasmVec<u8, P>),
+}
+
+/// WebAssembly custom section - Pure No_std Version
+#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[derive(Debug, Clone)]
+pub struct CustomSection<
+    P: wrt_foundation::MemoryProvider + Clone + Default + Eq = wrt_foundation::NoStdProvider<1024>,
+> {
+    /// Section name
+    pub name: crate::WasmString<P>,
+    /// Section data
+    pub data: crate::WasmVec<u8, P>,
+}
+
+/// WebAssembly custom section - With Allocation
+#[cfg(any(feature = "alloc", feature = "std"))]
 #[derive(Debug, Clone)]
 pub struct CustomSection {
     /// Section name
@@ -120,6 +172,7 @@ pub struct CustomSection {
     pub data: Vec<u8>,
 }
 
+#[cfg(any(feature = "alloc", feature = "std"))]
 impl CustomSection {
     /// Create a new custom section
     pub fn new(name: String, data: Vec<u8>) -> Self {
@@ -150,6 +203,45 @@ impl CustomSection {
     /// Get access to the section data as a safe slice
     pub fn get_data(&self) -> Result<&[u8]> {
         Ok(&self.data)
+    }
+}
+
+#[cfg(not(any(feature = "alloc", feature = "std")))]
+impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> CustomSection<P> {
+    /// Create a new custom section
+    pub fn new(name: crate::WasmString<P>, data: crate::WasmVec<u8, P>) -> Self {
+        Self { name, data }
+    }
+
+    /// Create a new custom section from raw bytes
+    pub fn from_bytes(name: &str, data: &[u8], provider: P) -> wrt_foundation::Result<Self> {
+        let bounded_name =
+            crate::WasmString::<P>::from_str(name, provider.clone()).map_err(|_| {
+                wrt_foundation::Error::new(
+                    wrt_error::ErrorCategory::Memory,
+                    wrt_error::codes::MEMORY_ERROR,
+                    "Failed to create bounded string",
+                )
+            })?;
+
+        let mut bounded_data = crate::WasmVec::<u8, P>::new(provider)?;
+        bounded_data.extend_from_slice(data)?;
+
+        Ok(Self { name: bounded_name, data: bounded_data })
+    }
+
+    /// Get section data length
+    pub fn data_len(&self) -> wrt_foundation::Result<usize> {
+        Ok(self.data.len())
+    }
+
+    /// Copy section data to a slice
+    pub fn copy_data_to_slice(&self, dest: &mut [u8]) -> wrt_foundation::Result<usize> {
+        let src = self.data.as_internal_slice()?;
+        let src_ref = src.as_ref();
+        let copy_len = core::cmp::min(dest.len(), src_ref.len());
+        dest[..copy_len].copy_from_slice(&src_ref[..copy_len]);
+        Ok(copy_len)
     }
 }
 
@@ -241,6 +333,7 @@ pub fn parse_component_section_header(
 }
 
 /// Write a component section header to binary
+#[cfg(any(feature = "alloc", feature = "std"))]
 pub fn write_component_section_header(
     section_type: ComponentSectionType,
     content_size: u32,
@@ -252,6 +345,7 @@ pub fn write_component_section_header(
 }
 
 /// Format a component section with content
+#[cfg(any(feature = "alloc", feature = "std"))]
 pub fn format_component_section<F>(section_type: ComponentSectionType, content_fn: F) -> Vec<u8>
 where
     F: FnOnce() -> Vec<u8>,
@@ -268,6 +362,7 @@ where
 #[cfg(test)]
 mod tests {
     #[cfg(all(not(feature = "std"), feature = "alloc"))]
+    #[cfg(all(feature = "alloc", not(feature = "std")))]
     use alloc::{string::ToString, vec};
     #[cfg(feature = "std")]
     use std::string::ToString;

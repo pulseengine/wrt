@@ -163,22 +163,21 @@ impl<P: Provider> AtomicMemoryOps<P> {
         // Verify that the destination access is valid
         handler.verify_access(dst_offset, len)?;
 
-        // First, read the source data into a local buffer to avoid potential overlap
-        // issues
-        let source_slice = handler.borrow_slice(src_offset, len)?;
-        let source_data = source_slice.data()?;
-
-        // Create a temporary buffer for the data
-        let mut buffer = [0u8; 256];
-
-        // Handle copying in chunks if needed
+        // Handle copying in chunks to avoid overlapping borrows
         let mut remaining = len;
         let mut src_pos = 0;
         let mut dst_pos = 0;
 
         while remaining > 0 {
-            let chunk_size = core::cmp::min(remaining, buffer.len());
-            buffer[..chunk_size].copy_from_slice(&source_data[src_pos..src_pos + chunk_size]);
+            let chunk_size = core::cmp::min(remaining, 256); // Use fixed buffer size
+
+            // Read source data in a scoped block to drop the immutable borrow
+            let mut buffer = [0u8; 256];
+            {
+                let source_slice = handler.borrow_slice(src_offset + src_pos, chunk_size)?;
+                let source_data = source_slice.data()?;
+                buffer[..chunk_size].copy_from_slice(&source_data[..chunk_size]);
+            } // source_slice is dropped here, releasing immutable borrow
 
             // Write to the destination atomically with checksum update
             let mut dst_slice =

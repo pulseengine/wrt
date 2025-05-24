@@ -4,27 +4,35 @@
 // format.
 
 // Core modules
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use alloc::{string::String, vec::Vec};
 use core::str;
+// Conditional imports for different environments
+#[cfg(feature = "std")]
+use std::{string::String, vec::Vec};
 
 use wrt_error::{
     codes, errors::codes::UNIMPLEMENTED_PARSING_FEATURE, Error, ErrorCategory, Result,
 };
-// Import BoundedVec and WasmName if needed for read_string or other parsing into owned bounded
-// buffers
 use wrt_foundation::bounded::WasmName; /* Assuming BoundedString is not directly used, or
                                          * add if
                                          * needed. */
-use wrt_foundation::safe_memory::MemoryProvider; // For WasmName if it takes a provider
 use wrt_foundation::traits::BytesWriter; // For write functions
+use wrt_foundation::MemoryProvider; // For WasmName if it takes a provider
+// For pure no_std mode, use bounded collections directly where needed
+#[cfg(not(any(feature = "alloc", feature = "std")))]
+use wrt_foundation::{BoundedString, BoundedVec};
 use wrt_foundation::{RefType, ValueType};
 
+#[cfg(any(feature = "alloc", feature = "std"))]
 use crate::{
     component::ValType,
-    error::{parse_error, to_wrt_error},
     module::{Data, DataMode, Element, ElementInit, ElementMode, Module},
+};
+use crate::{
+    error::{parse_error, to_wrt_error},
     types::{FormatBlockType, Limits},
 };
-// REMOVED: use crate::{format, vec, Box, String, ToString, Vec};
 
 /// Magic bytes for WebAssembly modules: \0asm
 pub const WASM_MAGIC: [u8; 4] = [0x00, 0x61, 0x73, 0x6D];
@@ -509,18 +517,19 @@ pub const VAL_TYPE_ERROR_CONTEXT_TAG: u8 = 0x64;
 /// Parse a WebAssembly binary into a module
 ///
 /// This is a placeholder that will be implemented fully in Phase 1.
+#[cfg(any(feature = "alloc", feature = "std"))]
 pub fn parse_binary(bytes: &[u8]) -> Result<Module> {
     // Verify magic bytes
     if bytes.len() < 8 {
-        return Err(to_wrt_error(parse_error("WebAssembly binary too short")));
+        return Err(parse_error("WebAssembly binary too short"));
     }
 
     if bytes[0..4] != WASM_MAGIC {
-        return Err(to_wrt_error(parse_error("Invalid WebAssembly magic bytes")));
+        return Err(parse_error("Invalid WebAssembly magic bytes"));
     }
 
     if bytes[4..8] != WASM_VERSION {
-        return Err(to_wrt_error(parse_error("Unsupported WebAssembly version")));
+        return Err(parse_error("Unsupported WebAssembly version"));
     }
 
     // Create an empty module with the binary stored
@@ -533,34 +542,8 @@ pub fn parse_binary(bytes: &[u8]) -> Result<Module> {
     Ok(module)
 }
 
-/// Generate a WebAssembly binary from a module
-///
-/// This is a placeholder that will be implemented fully in Phase 1.
-pub fn generate_binary(module: &Module) -> Result<Vec<u8>> {
-    // If we have the original binary and haven't modified the module,
-    // we can just return it
-    if let Some(binary) = &module.binary {
-        return Ok(binary.clone());
-    }
-
-    // Create a minimal valid module
-    let mut binary = Vec::with_capacity(8);
-
-    // Magic bytes
-    binary.extend_from_slice(&WASM_MAGIC);
-
-    // Version
-    binary.extend_from_slice(&WASM_VERSION);
-
-    // Generate sections (placeholder)
-    // This will be implemented in Phase 1
-
-    Ok(binary)
-}
-
-/// Read a LEB128 unsigned integer from a byte array
-///
-/// This function will be used when implementing the full binary parser.
+/// Read a LEB128 encoded unsigned 32-bit integer from bytes (no allocation
+/// needed)
 pub fn read_leb128_u32(bytes: &[u8], pos: usize) -> Result<(u32, usize)> {
     let mut result = 0u32;
     let mut shift = 0;
@@ -568,122 +551,1726 @@ pub fn read_leb128_u32(bytes: &[u8], pos: usize) -> Result<(u32, usize)> {
 
     loop {
         if pos + offset >= bytes.len() {
-            return Err(to_wrt_error(parse_error("Truncated LEB128 integer".to_string())));
+            return Err(parse_error("LEB128 exceeds buffer bounds"));
         }
 
         let byte = bytes[pos + offset];
         offset += 1;
 
-        // Apply 7 bits from this byte
         result |= ((byte & 0x7F) as u32) << shift;
-        shift += 7;
 
         // Check for continuation bit
-        if byte & 0x80 == 0 {
+        if (byte & 0x80) == 0 {
             break;
         }
 
-        // Guard against malformed/malicious LEB128
+        shift += 7;
+
+        // Prevent overflow
         if shift >= 32 {
-            return Err(to_wrt_error(parse_error("LEB128 integer too large".to_string())));
+            return Err(parse_error("LEB128 overflow"));
         }
     }
 
     Ok((result, offset))
 }
 
-/// Read a LEB128 signed integer from a byte array
-///
-/// This function will be used when implementing the full binary parser.
-pub fn read_leb128_i32(bytes: &[u8], pos: usize) -> Result<(i32, usize)> {
-    let mut result = 0i32;
-    let mut shift = 0;
-    let mut offset = 0;
-    let mut byte;
+/// Read a string from bytes (returns slice, no allocation)
+pub fn read_string(bytes: &[u8], pos: usize) -> Result<(&[u8], usize)> {
+    if pos >= bytes.len() {
+        return Err(parse_error("String exceeds buffer bounds"));
+    }
 
-    loop {
-        if pos + offset >= bytes.len() {
-            return Err(to_wrt_error(parse_error("Truncated LEB128 integer".to_string())));
+    // Read the string length
+    let (length, length_size) = read_leb128_u32(bytes, pos)?;
+    let string_start = pos + length_size;
+    let string_end = string_start + length as usize;
+
+    if string_end > bytes.len() {
+        return Err(parse_error("String data exceeds buffer bounds"));
+    }
+
+    Ok((&bytes[string_start..string_end], length_size + length as usize))
+}
+
+// Functions requiring Vec/String/Box are only available with allocation
+#[cfg(any(feature = "alloc", feature = "std"))]
+pub mod with_alloc {
+    use super::*;
+
+    /// Generate a WebAssembly binary from a module
+    ///
+    /// This is a placeholder that will be implemented fully in Phase 1.
+    #[cfg(any(feature = "alloc", feature = "std"))]
+    pub fn generate_binary(module: &Module) -> Result<Vec<u8>> {
+        // If we have the original binary and haven't modified the module,
+        // we can just return it
+        if let Some(binary) = &module.binary {
+            return Ok(binary.clone());
         }
 
-        byte = bytes[pos + offset];
+        // Create a minimal valid module
+        let mut binary = Vec::with_capacity(8);
+
+        // Magic bytes
+        binary.extend_from_slice(&WASM_MAGIC);
+
+        // Version
+        binary.extend_from_slice(&WASM_VERSION);
+
+        // Generate sections (placeholder)
+        // This will be implemented in Phase 1
+
+        Ok(binary)
+    }
+
+    /// Read a LEB128 unsigned integer from a byte array
+    ///
+    /// This function will be used when implementing the full binary parser.
+    pub fn read_leb128_u32(bytes: &[u8], pos: usize) -> Result<(u32, usize)> {
+        let mut result = 0u32;
+        let mut shift = 0;
+        let mut offset = 0;
+
+        loop {
+            if pos + offset >= bytes.len() {
+                return Err(parse_error("Truncated LEB128 integer"));
+            }
+
+            let byte = bytes[pos + offset];
+            offset += 1;
+
+            // Apply 7 bits from this byte
+            result |= ((byte & 0x7F) as u32) << shift;
+            shift += 7;
+
+            // Check for continuation bit
+            if byte & 0x80 == 0 {
+                break;
+            }
+
+            // Guard against malformed/malicious LEB128
+            if shift >= 32 {
+                return Err(parse_error("LEB128 integer too large"));
+            }
+        }
+
+        Ok((result, offset))
+    }
+
+    /// Read a LEB128 signed integer from a byte array
+    ///
+    /// This function will be used when implementing the full binary parser.
+    pub fn read_leb128_i32(bytes: &[u8], pos: usize) -> Result<(i32, usize)> {
+        let mut result = 0i32;
+        let mut shift = 0;
+        let mut offset = 0;
+        let mut byte;
+
+        loop {
+            if pos + offset >= bytes.len() {
+                return Err(parse_error("Truncated LEB128 integer"));
+            }
+
+            byte = bytes[pos + offset];
+            offset += 1;
+
+            // Apply 7 bits from this byte
+            result |= ((byte & 0x7F) as i32) << shift;
+            shift += 7;
+
+            // Check for continuation bit
+            if byte & 0x80 == 0 {
+                break;
+            }
+
+            // Guard against malformed/malicious LEB128
+            if shift >= 32 {
+                return Err(parse_error("LEB128 integer too large"));
+            }
+        }
+
+        // Sign extend if needed
+        if shift < 32 && (byte & 0x40) != 0 {
+            // The result is negative, sign extend it
+            result |= !0 << shift;
+        }
+
+        Ok((result, offset))
+    }
+
+    /// Read a LEB128 signed 64-bit integer from a byte array
+    ///
+    /// This function will be used when implementing the full binary parser.
+    pub fn read_leb128_i64(bytes: &[u8], pos: usize) -> Result<(i64, usize)> {
+        let mut result = 0i64;
+        let mut shift = 0;
+        let mut offset = 0;
+        let mut byte;
+
+        loop {
+            if pos + offset >= bytes.len() {
+                return Err(parse_error("Truncated LEB128 integer"));
+            }
+
+            byte = bytes[pos + offset];
+            offset += 1;
+
+            // Apply 7 bits from this byte
+            result |= ((byte & 0x7F) as i64) << shift;
+            shift += 7;
+
+            // Check for continuation bit
+            if byte & 0x80 == 0 {
+                break;
+            }
+
+            // Guard against malformed/malicious LEB128
+            if shift >= 64 {
+                return Err(parse_error("LEB128 integer too large"));
+            }
+        }
+
+        // Sign extend if needed
+        if shift < 64 && (byte & 0x40) != 0 {
+            // The result is negative, sign extend it
+            result |= !0 << shift;
+        }
+
+        Ok((result, offset))
+    }
+
+    /// Write a LEB128 unsigned integer to a byte array
+    ///
+    /// This function will be used when implementing the full binary generator.
+    #[cfg(any(feature = "alloc", feature = "std"))]
+    pub fn write_leb128_u32(value: u32) -> Vec<u8> {
+        if value == 0 {
+            return vec![0];
+        }
+
+        let mut result = Vec::new();
+        let mut value = value;
+
+        while value != 0 {
+            let mut byte = (value & 0x7F) as u8;
+            value >>= 7;
+
+            if value != 0 {
+                byte |= 0x80;
+            }
+
+            result.push(byte);
+        }
+
+        result
+    }
+
+    /// Write a LEB128 signed integer to a byte array
+    ///
+    /// This function will be used when implementing the full binary generator.
+    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(any(feature = "alloc", feature = "std"))]
+    pub fn write_leb128_i32(value: i32) -> Vec<u8> {
+        let mut result = Vec::new();
+        let mut value = value;
+        let mut more = true;
+
+        while more {
+            let mut byte = (value & 0x7f) as u8;
+            value >>= 7;
+
+            // If the original value is negative, we need to sign extend
+            let is_sign_bit_set = (byte & 0x40) != 0;
+            let sign_extended_value = if value == 0 && !is_sign_bit_set {
+                0
+            } else if value == -1 && is_sign_bit_set {
+                -1
+            } else {
+                value
+            };
+
+            more = sign_extended_value != 0 && sign_extended_value != -1;
+
+            if more {
+                byte |= 0x80;
+            }
+
+            result.push(byte);
+        }
+
+        result
+    }
+
+    /// Write a LEB128 signed 64-bit integer to a byte array
+    ///
+    /// This function will be used when implementing the full binary formatter.
+    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(any(feature = "alloc", feature = "std"))]
+    pub fn write_leb128_i64(value: i64) -> Vec<u8> {
+        let mut result = Vec::new();
+        let mut value = value;
+        let mut more = true;
+
+        while more {
+            let mut byte = (value & 0x7f) as u8;
+            value >>= 7;
+
+            // If the original value is negative, we need to sign extend
+            let is_sign_bit_set = (byte & 0x40) != 0;
+            let sign_extended_value = if value == 0 && !is_sign_bit_set {
+                0
+            } else if value == -1 && is_sign_bit_set {
+                -1
+            } else {
+                value
+            };
+
+            more = sign_extended_value != 0 && sign_extended_value != -1;
+
+            if more {
+                byte |= 0x80;
+            }
+
+            result.push(byte);
+        }
+
+        result
+    }
+
+    /// Check if a binary has a valid WebAssembly header
+    ///
+    /// This function validates that the binary starts with the WASM_MAGIC and
+    /// has a supported version.
+    pub fn is_valid_wasm_header(bytes: &[u8]) -> bool {
+        if bytes.len() < 8 {
+            return false;
+        }
+
+        // Check magic bytes
+        if bytes[0..4] != WASM_MAGIC {
+            return false;
+        }
+
+        // Check version
+        if bytes[4..8] != WASM_VERSION && bytes[4..8] != [0x0A, 0x6D, 0x73, 0x63] {
+            return false;
+        }
+
+        true
+    }
+
+    /// Read a LEB128 unsigned 64-bit integer from a byte array
+    pub fn read_leb128_u64(bytes: &[u8], pos: usize) -> Result<(u64, usize)> {
+        let mut result: u64 = 0;
+        let mut shift: u32 = 0;
+        let mut offset = pos;
+        let mut byte;
+
+        loop {
+            if offset >= bytes.len() {
+                return Err(parse_error("Unexpected end of LEB128 sequence"));
+            }
+
+            byte = bytes[offset];
+            offset += 1;
+
+            // Apply the 7 bits from the current byte
+            result |= ((byte & 0x7F) as u64) << shift;
+
+            // If the high bit is not set, we're done
+            if byte & 0x80 == 0 {
+                break;
+            }
+
+            // Otherwise, shift for the next 7 bits
+            shift += 7;
+
+            // Ensure we don't exceed 64 bits (10 bytes)
+            if shift >= 64 {
+                if byte & 0x7F != 0 {
+                    return Err(parse_error("LEB128 sequence exceeds maximum u64 value"));
+                }
+                break;
+            }
+        }
+
+        Ok((result, offset - pos))
+    }
+
+    /// Write a LEB128 unsigned 64-bit integer to a byte array
+    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(any(feature = "alloc", feature = "std"))]
+    pub fn write_leb128_u64(value: u64) -> Vec<u8> {
+        let mut result = Vec::new();
+        let mut value = value;
+
+        loop {
+            let mut byte = (value & 0x7F) as u8;
+            value >>= 7;
+
+            // If there are more bits to write, set the high bit
+            if value != 0 {
+                byte |= 0x80;
+            }
+
+            result.push(byte);
+
+            // If no more bits, we're done
+            if value == 0 {
+                break;
+            }
+        }
+
+        result
+    }
+
+    /// IEEE 754 floating point handling
+    ///
+    /// Read a 32-bit IEEE 754 float from a byte array
+    pub fn read_f32(bytes: &[u8], pos: usize) -> Result<(f32, usize)> {
+        if pos + 4 > bytes.len() {
+            return Err(parse_error("Not enough bytes to read f32"));
+        }
+
+        let mut buf = [0; 4];
+        buf.copy_from_slice(&bytes[pos..pos + 4]);
+        let value = f32::from_le_bytes(buf);
+        Ok((value, pos + 4))
+    }
+
+    /// Read a 64-bit IEEE 754 float from a byte array
+    pub fn read_f64(bytes: &[u8], pos: usize) -> Result<(f64, usize)> {
+        if pos + 8 > bytes.len() {
+            return Err(parse_error("Not enough bytes to read f64"));
+        }
+
+        let mut buf = [0; 8];
+        buf.copy_from_slice(&bytes[pos..pos + 8]);
+        let value = f64::from_le_bytes(buf);
+        Ok((value, pos + 8))
+    }
+
+    /// Write a 32-bit IEEE 754 float to a byte array
+    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(any(feature = "alloc", feature = "std"))]
+    pub fn write_f32(value: f32) -> Vec<u8> {
+        let bytes = value.to_le_bytes();
+        bytes.to_vec()
+    }
+
+    /// Write a 64-bit IEEE 754 float to a byte array
+    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(any(feature = "alloc", feature = "std"))]
+    pub fn write_f64(value: f64) -> Vec<u8> {
+        let bytes = value.to_le_bytes();
+        bytes.to_vec()
+    }
+
+    /// UTF-8 string validation and parsing
+    ///
+    /// Validate that a byte slice contains valid UTF-8
+    pub fn validate_utf8(bytes: &[u8]) -> Result<()> {
+        match str::from_utf8(bytes) {
+            Ok(_) => Ok(()),
+            Err(_) => Err(parse_error("Invalid UTF-8 sequence")),
+        }
+    }
+
+    /// Read a string from a byte array
+    ///
+    /// This reads a length-prefixed string (used in WebAssembly names).
+    pub fn read_string(bytes: &[u8], pos: usize) -> Result<(&[u8], usize)> {
+        if pos >= bytes.len() {
+            return Err(parse_error("String exceeds buffer bounds"));
+        }
+
+        // Read the string length
+        let (str_len, len_size) = read_leb128_u32(bytes, pos)?;
+        let str_start = pos + len_size;
+        let str_end = str_start + str_len as usize;
+
+        // Ensure the string fits in the buffer
+        if str_end > bytes.len() {
+            return Err(parse_error("String exceeds buffer bounds"));
+        }
+
+        // Extract the string bytes
+        let string_bytes = &bytes[str_start..str_end];
+
+        // Convert to a Rust string
+        match str::from_utf8(string_bytes) {
+            Ok(s) => Ok((s, len_size + str_len as usize)),
+            Err(_) => Err(parse_error("Invalid UTF-8 in string")),
+        }
+    }
+
+    /// Write a WebAssembly UTF-8 string (length prefixed)
+    #[cfg(any(feature = "alloc", feature = "std"))]
+    pub fn write_string(value: &str) -> Vec<u8> {
+        let mut result = Vec::new();
+
+        // Write the length as LEB128
+        let length = value.len() as u32;
+        result.extend_from_slice(&write_leb128_u32(length));
+
+        // Write the string bytes
+        result.extend_from_slice(value.as_bytes());
+
+        result
+    }
+
+    /// Read a vector from a byte array
+    ///
+    /// This is a generic function that reads a length-prefixed vector from a
+    /// byte array, using the provided function to read each element.
+    #[cfg(any(feature = "alloc", feature = "std"))]
+    pub fn read_vector<T, F>(bytes: &[u8], pos: usize, read_elem: F) -> Result<(Vec<T>, usize)>
+    where
+        F: Fn(&[u8], usize) -> Result<(T, usize)>,
+    {
+        // Read the vector length
+        let (count, mut offset) = read_leb128_u32(bytes, pos)?;
+        let mut result = Vec::with_capacity(count as usize);
+
+        // Read each element
+        for _ in 0..count {
+            let (elem, elem_size) = read_elem(bytes, pos + offset)?;
+            result.push(elem);
+            offset += elem_size;
+        }
+
+        Ok((result, offset))
+    }
+
+    /// Write a vector to a byte array
+    ///
+    /// This is a generic function that writes a length-prefixed vector to a
+    /// byte array, using the provided function to write each element.
+    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(any(feature = "alloc", feature = "std"))]
+    pub fn write_vector<T, F>(elements: &[T], write_elem: F) -> Vec<u8>
+    where
+        F: Fn(&T) -> Vec<u8>,
+    {
+        let mut result = Vec::new();
+
+        // Write the vector length
+        result.extend_from_slice(&write_leb128_u32(elements.len() as u32));
+
+        // Write each element
+        for elem in elements {
+            result.extend_from_slice(&write_elem(elem));
+        }
+
+        result
+    }
+
+    /// Read a section header from a byte array
+    ///
+    /// Returns a tuple containing the section ID, size, and new position after
+    /// the header. The position should point to the start of the section
+    /// content.
+    pub fn read_section_header(bytes: &[u8], pos: usize) -> Result<(u8, u32, usize)> {
+        if pos >= bytes.len() {
+            return Err(parse_error("Attempted to read past end of binary"));
+        }
+
+        let id = bytes[pos];
+        let (payload_len, len_size) = read_leb128_u32(bytes, pos + 1)?;
+        Ok((id, payload_len, pos + 1 + len_size))
+    }
+
+    /// Write a section header to a byte array
+    ///
+    /// Writes the section ID and content size as a LEB128 unsigned integer.
+    #[cfg(any(feature = "alloc", feature = "std"))]
+    pub fn write_section_header(id: u8, content_size: u32) -> Vec<u8> {
+        let mut result = Vec::new();
+
+        // Write section ID
+        result.push(id);
+
+        // Write section size
+        result.extend_from_slice(&write_leb128_u32(content_size));
+
+        result
+    }
+
+    /// Parse a block type from a byte array
+    pub fn parse_block_type(bytes: &[u8], pos: usize) -> Result<(FormatBlockType, usize)> {
+        if pos >= bytes.len() {
+            return Err(parse_error("Unexpected end of input when reading block type"));
+        }
+
+        let byte = bytes[pos];
+        let block_type = match byte {
+            // Empty block type
+            0x40 => (FormatBlockType::Empty, 1),
+            // Value type-based block type
+            0x7F => (FormatBlockType::ValueType(ValueType::I32), 1),
+            0x7E => (FormatBlockType::ValueType(ValueType::I64), 1),
+            0x7D => (FormatBlockType::ValueType(ValueType::F32), 1),
+            0x7C => (FormatBlockType::ValueType(ValueType::F64), 1),
+            // Function type reference
+            _ => {
+                // If the byte is not a value type, it's a function type reference
+                // which is encoded as a signed LEB128 value
+                let (value, size) = read_leb128_i32(bytes, pos)?;
+
+                // Type references are negative
+                if value >= 0 {
+                    return Err(parse_error("Invalid block type index: expected negative value"));
+                }
+
+                // Convert to function type index (positive)
+                let func_type_idx = (-value - 1) as u32;
+                (FormatBlockType::TypeIndex(func_type_idx), size)
+            }
+        };
+
+        Ok(block_type)
+    }
+
+    /// Read a Component Model value type from a byte array
+    #[cfg(any(feature = "alloc", feature = "std"))]
+    pub fn read_component_valtype(
+        bytes: &[u8],
+        pos: usize,
+    ) -> Result<(crate::component::ValType, usize)> {
+        use crate::component::ValType;
+
+        if pos >= bytes.len() {
+            return Err(parse_error("Unexpected end of input when reading component value type"));
+        }
+
+        let byte = bytes[pos];
+        let mut new_pos = pos + 1;
+
+        match byte {
+            COMPONENT_VALTYPE_BOOL => Ok((ValType::Bool, new_pos)),
+            COMPONENT_VALTYPE_S8 => Ok((ValType::S8, new_pos)),
+            COMPONENT_VALTYPE_U8 => Ok((ValType::U8, new_pos)),
+            COMPONENT_VALTYPE_S16 => Ok((ValType::S16, new_pos)),
+            COMPONENT_VALTYPE_U16 => Ok((ValType::U16, new_pos)),
+            COMPONENT_VALTYPE_S32 => Ok((ValType::S32, new_pos)),
+            COMPONENT_VALTYPE_U32 => Ok((ValType::U32, new_pos)),
+            COMPONENT_VALTYPE_S64 => Ok((ValType::S64, new_pos)),
+            COMPONENT_VALTYPE_U64 => Ok((ValType::U64, new_pos)),
+            COMPONENT_VALTYPE_F32 => Ok((ValType::F32, new_pos)),
+            COMPONENT_VALTYPE_F64 => Ok((ValType::F64, new_pos)),
+            COMPONENT_VALTYPE_CHAR => Ok((ValType::Char, new_pos)),
+            COMPONENT_VALTYPE_STRING => Ok((ValType::String, new_pos)),
+            COMPONENT_VALTYPE_REF => {
+                let (idx, next_pos) = read_leb128_u32(bytes, new_pos)?;
+                Ok((ValType::Ref(idx), next_pos))
+            }
+            COMPONENT_VALTYPE_RECORD => {
+                let (count, next_pos) = read_leb128_u32(bytes, new_pos)?;
+                new_pos = next_pos;
+
+                let mut fields = Vec::with_capacity(count as usize);
+                for _ in 0..count {
+                    let (name, next_pos) = read_string(bytes, new_pos)?;
+                    new_pos = next_pos;
+
+                    let (val_type, next_pos) = read_component_valtype(bytes, new_pos)?;
+                    new_pos = next_pos;
+
+                    fields.push((name, val_type));
+                }
+
+                Ok((ValType::Record(fields), new_pos))
+            }
+            COMPONENT_VALTYPE_VARIANT => {
+                let (count, next_pos) = read_leb128_u32(bytes, new_pos)?;
+                new_pos = next_pos;
+
+                let mut cases = Vec::with_capacity(count as usize);
+                for _ in 0..count {
+                    let (name, next_pos) = read_string(bytes, new_pos)?;
+                    new_pos = next_pos;
+
+                    let (has_type, next_pos) = read_leb128_u32(bytes, new_pos)?;
+                    new_pos = next_pos;
+
+                    let val_type = if has_type == 1 {
+                        let (val_type, next_pos) = read_component_valtype(bytes, new_pos)?;
+                        new_pos = next_pos;
+                        Some(val_type)
+                    } else {
+                        None
+                    };
+
+                    cases.push((name, val_type));
+                }
+
+                Ok((ValType::Variant(cases), new_pos))
+            }
+            COMPONENT_VALTYPE_LIST => {
+                let (val_type, next_pos) = read_component_valtype(bytes, new_pos)?;
+                Ok((ValType::List(Box::new(val_type)), next_pos))
+            }
+            COMPONENT_VALTYPE_FIXED_LIST => {
+                let (val_type, next_pos) = read_component_valtype(bytes, new_pos)?;
+                new_pos = next_pos;
+
+                let (length, next_pos) = read_leb128_u32(bytes, new_pos)?;
+                Ok((ValType::FixedList(Box::new(val_type), length), next_pos))
+            }
+            COMPONENT_VALTYPE_TUPLE => {
+                let (count, next_pos) = read_leb128_u32(bytes, new_pos)?;
+                new_pos = next_pos;
+
+                let mut elements = Vec::with_capacity(count as usize);
+                for _ in 0..count {
+                    let (val_type, next_pos) = read_component_valtype(bytes, new_pos)?;
+                    new_pos = next_pos;
+                    elements.push(val_type);
+                }
+
+                Ok((ValType::Tuple(elements), new_pos))
+            }
+            COMPONENT_VALTYPE_FLAGS => {
+                let (count, next_pos) = read_leb128_u32(bytes, new_pos)?;
+                new_pos = next_pos;
+
+                let mut names = Vec::with_capacity(count as usize);
+                for _ in 0..count {
+                    let (name, next_pos) = read_string(bytes, new_pos)?;
+                    new_pos = next_pos;
+                    names.push(name);
+                }
+
+                Ok((ValType::Flags(names), new_pos))
+            }
+            COMPONENT_VALTYPE_ENUM => {
+                let (count, next_pos) = read_leb128_u32(bytes, new_pos)?;
+                new_pos = next_pos;
+
+                let mut names = Vec::with_capacity(count as usize);
+                for _ in 0..count {
+                    let (name, next_pos) = read_string(bytes, new_pos)?;
+                    new_pos = next_pos;
+                    names.push(name);
+                }
+
+                Ok((ValType::Enum(names), new_pos))
+            }
+            COMPONENT_VALTYPE_OPTION => {
+                let (val_type, next_pos) = read_component_valtype(bytes, new_pos)?;
+                Ok((ValType::Option(Box::new(val_type)), next_pos))
+            }
+            COMPONENT_VALTYPE_RESULT => {
+                let (val_type, next_pos) = read_component_valtype(bytes, new_pos)?;
+                Ok((ValType::Result(Box::new(val_type)), next_pos))
+            }
+            COMPONENT_VALTYPE_RESULT_ERR => {
+                // Convert to regular Result for backward compatibility
+                let (val_type, next_pos) = read_component_valtype(bytes, new_pos)?;
+                Ok((ValType::Result(Box::new(val_type)), next_pos))
+            }
+            COMPONENT_VALTYPE_RESULT_BOTH => {
+                // Convert to regular Result for backward compatibility
+                let (ok_type, next_pos) = read_component_valtype(bytes, new_pos)?;
+                new_pos = next_pos;
+
+                // Read the error type but use only the ok_type
+                let (_, next_pos) = read_component_valtype(bytes, new_pos)?;
+                Ok((ValType::Result(Box::new(ok_type)), next_pos))
+            }
+            COMPONENT_VALTYPE_OWN => {
+                let (idx, next_pos) = read_leb128_u32(bytes, new_pos)?;
+                Ok((ValType::Own(idx), next_pos))
+            }
+            COMPONENT_VALTYPE_BORROW => {
+                let (idx, next_pos) = read_leb128_u32(bytes, new_pos)?;
+                Ok((ValType::Borrow(idx), next_pos))
+            }
+            COMPONENT_VALTYPE_ERROR_CONTEXT => Ok((ValType::ErrorContext, new_pos)),
+            _ => Err(parse_error("Invalid component value type")),
+        }
+    }
+
+    /// Write a Component Model value type to a byte array
+    #[cfg(any(feature = "alloc", feature = "std"))]
+    pub fn write_component_valtype(val_type: &crate::component::ValType) -> Vec<u8> {
+        match val_type {
+            ValType::Bool => vec![COMPONENT_VALTYPE_BOOL],
+            ValType::S8 => vec![COMPONENT_VALTYPE_S8],
+            ValType::U8 => vec![COMPONENT_VALTYPE_U8],
+            ValType::S16 => vec![COMPONENT_VALTYPE_S16],
+            ValType::U16 => vec![COMPONENT_VALTYPE_U16],
+            ValType::S32 => vec![COMPONENT_VALTYPE_S32],
+            ValType::U32 => vec![COMPONENT_VALTYPE_U32],
+            ValType::S64 => vec![COMPONENT_VALTYPE_S64],
+            ValType::U64 => vec![COMPONENT_VALTYPE_U64],
+            ValType::F32 => vec![COMPONENT_VALTYPE_F32],
+            ValType::F64 => vec![COMPONENT_VALTYPE_F64],
+            ValType::Char => vec![COMPONENT_VALTYPE_CHAR],
+            ValType::String => vec![COMPONENT_VALTYPE_STRING],
+            ValType::Ref(idx) => {
+                let mut result = vec![COMPONENT_VALTYPE_REF];
+                result.extend_from_slice(&write_leb128_u32(*idx));
+                result
+            }
+            ValType::Record(fields) => {
+                let mut result = vec![COMPONENT_VALTYPE_RECORD];
+                result.extend_from_slice(&write_leb128_u32(fields.len() as u32));
+                for (name, field_type) in fields {
+                    result.extend_from_slice(&write_string(name));
+                    result.extend_from_slice(&write_component_valtype(field_type));
+                }
+                result
+            }
+            ValType::Variant(cases) => {
+                let mut result = vec![COMPONENT_VALTYPE_VARIANT];
+                result.extend_from_slice(&write_leb128_u32(cases.len() as u32));
+                for (name, case_type) in cases {
+                    result.extend_from_slice(&write_string(name));
+                    match case_type {
+                        Some(ty) => {
+                            result.push(1); // Has type flag
+                            result.extend_from_slice(&write_component_valtype(ty));
+                        }
+                        None => {
+                            result.push(0); // No type flag
+                        }
+                    }
+                }
+                result
+            }
+            ValType::List(element_type) => {
+                let mut result = vec![COMPONENT_VALTYPE_LIST];
+                result.extend_from_slice(&write_component_valtype(element_type));
+                result
+            }
+            ValType::FixedList(element_type, length) => {
+                let mut result = vec![COMPONENT_VALTYPE_FIXED_LIST];
+                result.extend_from_slice(&write_component_valtype(element_type));
+                result.extend_from_slice(&write_leb128_u32(*length));
+                result
+            }
+            ValType::Tuple(types) => {
+                let mut result = vec![COMPONENT_VALTYPE_TUPLE];
+                result.extend_from_slice(&write_leb128_u32(types.len() as u32));
+                for ty in types {
+                    result.extend_from_slice(&write_component_valtype(ty));
+                }
+                result
+            }
+            ValType::Flags(names) => {
+                let mut result = vec![COMPONENT_VALTYPE_FLAGS];
+                result.extend_from_slice(&write_leb128_u32(names.len() as u32));
+                for name in names {
+                    result.extend_from_slice(&write_string(name));
+                }
+                result
+            }
+            ValType::Enum(names) => {
+                let mut result = vec![COMPONENT_VALTYPE_ENUM];
+                result.extend_from_slice(&write_leb128_u32(names.len() as u32));
+                for name in names {
+                    result.extend_from_slice(&write_string(name));
+                }
+                result
+            }
+            ValType::Option(inner) => {
+                let mut result = vec![COMPONENT_VALTYPE_OPTION];
+                result.extend_from_slice(&write_component_valtype(inner));
+                result
+            }
+            ValType::Result(ok_type) => {
+                let mut result = vec![COMPONENT_VALTYPE_RESULT];
+                result.extend_from_slice(&write_component_valtype(ok_type));
+                result
+            }
+            ValType::ResultErr(err_type) => {
+                let mut result = vec![COMPONENT_VALTYPE_RESULT_ERR];
+                result.extend_from_slice(&write_component_valtype(err_type));
+                result
+            }
+            ValType::ResultBoth(ok_type, err_type) => {
+                let mut result = vec![COMPONENT_VALTYPE_RESULT_BOTH];
+                result.extend_from_slice(&write_component_valtype(ok_type));
+                result.extend_from_slice(&write_component_valtype(err_type));
+                result
+            }
+            ValType::Own(type_idx) => {
+                let mut result = vec![COMPONENT_VALTYPE_OWN];
+                result.extend_from_slice(&write_leb128_u32(*type_idx));
+                result
+            }
+            ValType::Borrow(type_idx) => {
+                let mut result = vec![COMPONENT_VALTYPE_BORROW];
+                result.extend_from_slice(&write_leb128_u32(*type_idx));
+                result
+            }
+            ValType::Void => vec![COMPONENT_VALTYPE_ERROR_CONTEXT],
+            ValType::ErrorContext => vec![COMPONENT_VALTYPE_ERROR_CONTEXT],
+        }
+    }
+
+    /// Parse a WebAssembly component binary into a Component structure
+    pub fn parse_component_binary(bytes: &[u8]) -> Result<crate::component::Component> {
+        if bytes.len() < 8 {
+            return Err(parse_error("WebAssembly component binary too short"));
+        }
+
+        // Check magic bytes
+        if bytes[0..4] != COMPONENT_MAGIC {
+            return Err(parse_error("Invalid WebAssembly component magic bytes"));
+        }
+
+        // Check version
+        if bytes[4..8] != COMPONENT_VERSION {
+            return Err(parse_error("Unsupported WebAssembly component version"));
+        }
+
+        if bytes.len() < 10 {
+            return Err(parse_error("Invalid WebAssembly component layer"));
+        }
+
+        // Create an empty component with the binary stored
+        let mut component = crate::component::Component::new();
+        component.binary = Some(bytes.to_vec());
+
+        // In a real implementation, we would parse the sections here
+        // This will be fully implemented in the future
+
+        Ok(component)
+    }
+
+    /// Generate a WebAssembly component binary from a component
+    pub fn generate_component_binary(component: &crate::component::Component) -> Result<Vec<u8>> {
+        // If we have the original binary and haven't modified the component,
+        // we can just return it
+        if let Some(binary) = &component.binary {
+            return Ok(binary.clone());
+        }
+
+        // Create a minimal valid component
+        let mut binary = Vec::with_capacity(8);
+
+        // Magic bytes
+        binary.extend_from_slice(&COMPONENT_MAGIC);
+
+        // Version and layer
+        binary.extend_from_slice(&COMPONENT_VERSION);
+
+        // Generate sections
+        // This is a placeholder - full implementation will be added in the future
+
+        // In a complete implementation, we would encode all sections:
+        // - Core module sections
+        // - Core instance sections
+        // - Core type sections
+        // - Component sections
+        // - Instance sections
+        // - Alias sections
+        // - Type sections
+        // - Canon sections
+        // - Start sections
+        // - Import sections
+        // - Export sections
+        // - Value sections
+
+        Ok(binary)
+    }
+
+    /// Binary format utilities for WebAssembly
+    pub struct BinaryFormat;
+
+    impl BinaryFormat {
+        /// Decode an unsigned 32-bit LEB128 integer
+        pub fn decode_leb_u32(bytes: &[u8]) -> Result<(u32, usize)> {
+            read_leb128_u32(bytes, 0)
+        }
+
+        /// Decode a signed 32-bit LEB128 integer
+        pub fn decode_leb_i32(bytes: &[u8]) -> Result<(i32, usize)> {
+            read_leb128_i32(bytes, 0)
+        }
+
+        /// Decode an unsigned 64-bit LEB128 integer
+        pub fn decode_leb_u64(bytes: &[u8]) -> Result<(u64, usize)> {
+            read_leb128_u64(bytes, 0)
+        }
+
+        /// Decode a signed 64-bit LEB128 integer
+        pub fn decode_leb_i64(bytes: &[u8]) -> Result<(i64, usize)> {
+            read_leb128_i64(bytes, 0)
+        }
+
+        /// Encode an unsigned 32-bit LEB128 integer
+        pub fn encode_leb_u32(value: u32) -> Vec<u8> {
+            write_leb128_u32(value)
+        }
+
+        /// Encode a signed 32-bit LEB128 integer
+        pub fn encode_leb_i32(value: i32) -> Vec<u8> {
+            write_leb128_i32(value)
+        }
+
+        /// Encode an unsigned 64-bit LEB128 integer
+        pub fn encode_leb_u64(value: u64) -> Vec<u8> {
+            write_leb128_u64(value)
+        }
+
+        /// Encode a signed 64-bit LEB128 integer
+        pub fn encode_leb_i64(value: i64) -> Vec<u8> {
+            write_leb128_i64(value)
+        }
+    }
+
+    /// Read a WebAssembly string name without allocating a new String
+    /// Returns the byte slice containing the name and the total bytes read
+    /// (including length)
+    pub fn read_name(bytes: &[u8], pos: usize) -> Result<(&[u8], usize)> {
+        // Ensure we have enough bytes to read the string length
+        if pos >= bytes.len() {
+            return Err(parse_error("Unexpected end of input while reading name length"));
+        }
+
+        // Read the string length
+        let (name_len, len_size) = read_leb128_u32(bytes, pos)?;
+        let name_start = pos + len_size;
+
+        // Ensure we have enough bytes to read the string
+        if name_start + name_len as usize > bytes.len() {
+            return Err(parse_error("Unexpected end of input while reading name content"));
+        }
+
+        // Return the slice containing the name and the total bytes read
+        let name_slice = &bytes[name_start..name_start + name_len as usize];
+        Ok((name_slice, len_size + name_len as usize))
+    }
+
+    // STUB for parsing limits - to be fully implemented in wrt-format
+    // Should parse wrt_format::types::Limits
+    pub fn parse_limits(
+        bytes: &[u8],
+        offset: usize,
+    ) -> wrt_error::Result<(crate::types::Limits, usize)> {
+        if offset + 1 > bytes.len() {
+            // Need at least flags byte
+            return Err(Error::new(
+                ErrorCategory::Parse,
+                codes::PARSE_ERROR,
+                "Unexpected end of limits",
+            ));
+        }
+        let flags = bytes[offset];
+        let mut current_offset = offset + 1;
+
+        let (min, new_offset) = read_leb128_u32(bytes, current_offset)?;
+        current_offset = new_offset;
+
+        let max = if (flags & 0x01) != 0 {
+            let (val, new_offset) = read_leb128_u32(bytes, current_offset)?;
+            current_offset = new_offset;
+            Some(val)
+        } else {
+            None
+        };
+        // Ignoring shared and memory64 flags for now as they are not in
+        // wrt_format::types::Limits directly
+
+        Ok((
+            crate::types::Limits {
+                min: min.into(),
+                max: max.map(Into::into),
+                shared: false,
+                memory64: false,
+            }, // Assuming default shared/memory64
+            current_offset,
+        ))
+    }
+
+    /// Parses an initialization expression (a sequence of instructions
+    /// terminated by END). Returns the bytes of the expression (including
+    /// END) and the number of bytes read.
+    #[cfg(any(feature = "alloc", feature = "std"))]
+    pub fn parse_init_expr(bytes: &[u8], mut offset: usize) -> Result<(Vec<u8>, usize)> {
+        let start_offset = offset;
+        let mut depth = 0;
+
+        loop {
+            if offset >= bytes.len() {
+                return Err(parse_error(format!(
+                    "(offset {}): Unexpected end of data in init_expr",
+                    offset
+                )));
+            }
+            let opcode = bytes[offset];
+            // We must advance offset *before* parsing immediates for that opcode.
+            offset += 1;
+
+            match opcode {
+                END if depth == 0 => break, // Found the end of this expression
+                BLOCK | LOOP | IF => depth += 1,
+                END => {
+                    // End of a nested block
+                    if depth == 0 {
+                        // Should have been caught by the case above
+                        return Err(parse_error(format!(
+                            "(offset {}): Mismatched END in init_expr",
+                            offset - 1
+                        )));
+                    }
+                    depth -= 1;
+                }
+                // Skip immediates for known const instructions
+                I32_CONST => {
+                    let (_, off) = read_leb128_i32(bytes, offset)?;
+                    offset = off;
+                }
+                I64_CONST => {
+                    let (_, off) = read_leb128_i64(bytes, offset)?;
+                    offset = off;
+                }
+                F32_CONST => {
+                    if offset + 4 > bytes.len() {
+                        return Err(parse_error(format!(
+                            "(offset {}): EOF in f32.const immediate",
+                            offset
+                        )));
+                    }
+                    offset += 4;
+                }
+                F64_CONST => {
+                    if offset + 8 > bytes.len() {
+                        return Err(parse_error(format!(
+                            "(offset {}): EOF in f64.const immediate",
+                            offset
+                        )));
+                    }
+                    offset += 8;
+                }
+                REF_NULL => {
+                    // 0xD0 ht:heap_type
+                    if offset >= bytes.len() {
+                        return Err(parse_error(format!(
+                            "(offset {}): EOF in ref.null immediate",
+                            offset
+                        )));
+                    }
+                    offset += 1; // heap_type
+                }
+                REF_FUNC | GLOBAL_GET => {
+                    // 0xD2 f:funcidx or 0x23 x:globalidx
+                    let (_, off) = read_leb128_u32(bytes, offset)?;
+                    offset = off;
+                }
+                // Other opcodes that might appear in const expressions depending on enabled
+                // features. For Wasm 2.0, only the above are generally considered
+                // constant. Vector ops (v128.const) could also be here if SIMD
+                // consts are allowed.
+                _ => { // other opcodes - assuming they have no immediates or are
+                     // invalid in const expr
+                }
+            }
+        }
+        Ok((bytes[start_offset..offset].to_vec(), offset))
+    }
+
+    /// Parses an element segment from the binary format.
+    /// Reference: https://webassembly.github.io/spec/core/binary/modules.html#element-section
+    #[cfg(any(feature = "alloc", feature = "std"))]
+    pub fn parse_element_segment(bytes: &[u8], mut offset: usize) -> Result<(Element, usize)> {
+        let (prefix_val, next_offset) = read_leb128_u32(bytes, offset).map_err(|e| {
+            Error::new(
+                ErrorCategory::Parse,
+                wrt_error::codes::PARSE_ERROR,
+                format!("Failed to read element segment prefix at offset {}: {}", offset, e),
+            )
+        })?;
+        offset = next_offset;
+
+        let (element_type, init, mode): (RefType, ElementInit, crate::module::ElementMode);
+
+        match prefix_val {
+            0x00 => {
+                // MVP Active: expr vec(funcidx) end; tableidx is 0, elemkind is funcref
+                let table_idx = 0;
+                let (offset_expr, next_offset) = parse_init_expr(bytes, offset).map_err(|e| {
+                    Error::new(
+                        ErrorCategory::Parse,
+                        wrt_error::codes::PARSE_ERROR,
+                        format!(
+                            "(offset {}): Failed to parse offset_expr for element segment (type \
+                             0): {}",
+                            offset, e
+                        ),
+                    )
+                })?;
+                offset = next_offset;
+                let (func_indices, next_offset) = read_vector(bytes, offset, read_leb128_u32)
+                    .map_err(|e| {
+                        Error::new(
+                            ErrorCategory::Parse,
+                            wrt_error::codes::PARSE_ERROR,
+                            format!(
+                                "(offset {}): Failed to read func_indices for element segment \
+                                 (type 0): {}",
+                                offset, e
+                            ),
+                        )
+                    })?;
+                offset = next_offset;
+
+                if bytes.get(offset).copied() != Some(END) {
+                    return Err(Error::new(
+                        ErrorCategory::Parse,
+                        wrt_error::codes::PARSE_ERROR,
+                        format!(
+                            "(offset {}): Expected END opcode after active element segment (type \
+                             0)",
+                            offset
+                        ),
+                    ));
+                }
+                offset += 1; // Consume END
+
+                element_type = RefType::Funcref;
+                init = ElementInit::FuncIndices(func_indices);
+                mode = crate::module::ElementMode::Active { table_index: table_idx, offset_expr };
+            }
+            0x01 => {
+                // Passive: elemkind vec(expr) end
+                let (elemkind_byte, next_offset) = read_u8(bytes, offset)?;
+                offset = next_offset;
+                if elemkind_byte != 0x00 {
+                    // Only funcref is supported for now
+                    return Err(Error::new(
+                        ErrorCategory::Parse,
+                        wrt_error::codes::NOT_IMPLEMENTED,
+                        format!(
+                            "(offset {}): Unsupported elemkind 0x{:02X} for element segment (type \
+                             1), only funcref (0x00) supported here.",
+                            offset - 1,
+                            elemkind_byte
+                        ),
+                    ));
+                }
+                element_type = RefType::FuncRef; // funcref
+
+                let (exprs_vec, next_offset) = read_vector(bytes, offset, parse_init_expr)
+                    .map_err(|e| {
+                        Error::new(
+                            ErrorCategory::Parse,
+                            wrt_error::codes::PARSE_ERROR,
+                            format!(
+                                "(offset {}): Failed to read expressions for element segment \
+                                 (type 1): {}",
+                                offset, e
+                            ),
+                        )
+                    })?;
+                offset = next_offset;
+
+                if bytes.get(offset).copied() != Some(END) {
+                    return Err(Error::new(
+                        ErrorCategory::Parse,
+                        wrt_error::codes::PARSE_ERROR,
+                        format!(
+                            "(offset {}): Expected END opcode after passive element segment (type \
+                             1)",
+                            offset
+                        ),
+                    ));
+                }
+                offset += 1; // Consume END
+
+                init = ElementInit::Expressions(exprs_vec);
+                mode = crate::module::ElementMode::Passive;
+            }
+            0x02 => {
+                // Active with tableidx: tableidx expr elemkind vec(expr) end
+                let (table_idx, next_offset) = read_leb128_u32(bytes, offset).map_err(|e| {
+                    Error::new(
+                        ErrorCategory::Parse,
+                        wrt_error::codes::PARSE_ERROR,
+                        format!(
+                            "(offset {}): Failed to read table_idx for element segment (type 2): \
+                             {}",
+                            offset, e
+                        ),
+                    )
+                })?;
+                offset = next_offset;
+                let (offset_expr, next_offset) = parse_init_expr(bytes, offset).map_err(|e| {
+                    Error::new(
+                        ErrorCategory::Parse,
+                        wrt_error::codes::PARSE_ERROR,
+                        format!(
+                            "(offset {}): Failed to parse offset_expr for element segment (type \
+                             2): {}",
+                            offset, e
+                        ),
+                    )
+                })?;
+                offset = next_offset;
+
+                let (elemkind_byte, next_offset) = read_u8(bytes, offset)?;
+                offset = next_offset;
+                if elemkind_byte != 0x00 {
+                    // Only funcref is supported for now
+                    return Err(Error::new(
+                        ErrorCategory::Parse,
+                        wrt_error::codes::NOT_IMPLEMENTED,
+                        format!(
+                            "(offset {}): Unsupported elemkind 0x{:02X} for element segment (type \
+                             2), only funcref (0x00) supported here.",
+                            offset - 1,
+                            elemkind_byte
+                        ),
+                    ));
+                }
+                element_type = RefType::FuncRef; // funcref
+
+                let (exprs_vec, next_offset) = read_vector(bytes, offset, parse_init_expr)
+                    .map_err(|e| {
+                        Error::new(
+                            ErrorCategory::Parse,
+                            wrt_error::codes::PARSE_ERROR,
+                            format!(
+                                "(offset {}): Failed to read expressions for element segment \
+                                 (type 2): {}",
+                                offset, e
+                            ),
+                        )
+                    })?;
+                offset = next_offset;
+
+                if bytes.get(offset).copied() != Some(END) {
+                    return Err(Error::new(
+                        ErrorCategory::Parse,
+                        wrt_error::codes::PARSE_ERROR,
+                        format!(
+                            "(offset {}): Expected END opcode after active element segment (type \
+                             2)",
+                            offset
+                        ),
+                    ));
+                }
+                offset += 1; // Consume END
+
+                init = ElementInit::Expressions(exprs_vec);
+                mode = crate::module::ElementMode::Active { table_index: table_idx, offset_expr };
+            }
+            0x03 => {
+                // Declared: elemkind vec(expr) end
+                let (elemkind_byte, next_offset) = read_u8(bytes, offset)?;
+                offset = next_offset;
+                if elemkind_byte != 0x00 {
+                    // Only funcref is supported for now
+                    return Err(Error::new(
+                        ErrorCategory::Parse,
+                        wrt_error::codes::NOT_IMPLEMENTED,
+                        format!(
+                            "(offset {}): Unsupported elemkind 0x{:02X} for element segment (type \
+                             3), only funcref (0x00) supported here.",
+                            offset - 1,
+                            elemkind_byte
+                        ),
+                    ));
+                }
+                element_type = RefType::FuncRef; // funcref
+
+                let (exprs_vec, next_offset) = read_vector(bytes, offset, parse_init_expr)
+                    .map_err(|e| {
+                        Error::new(
+                            ErrorCategory::Parse,
+                            wrt_error::codes::PARSE_ERROR,
+                            format!(
+                                "(offset {}): Failed to read expressions for element segment \
+                                 (type 3): {}",
+                                offset, e
+                            ),
+                        )
+                    })?;
+                offset = next_offset;
+
+                if bytes.get(offset).copied() != Some(END) {
+                    return Err(Error::new(
+                        ErrorCategory::Parse,
+                        wrt_error::codes::PARSE_ERROR,
+                        format!(
+                            "(offset {}): Expected END opcode after declared element segment \
+                             (type 3)",
+                            offset
+                        ),
+                    ));
+                }
+                offset += 1; // Consume END
+
+                init = ElementInit::Expressions(exprs_vec);
+                mode = crate::module::ElementMode::Declared;
+            }
+            0x04 => {
+                // Active with tableidx 0 (encoded in prefix): expr vec(funcidx) end
+                let table_idx = 0; // Implicitly table 0 due to prefix for some interpretations, though spec shows
+                                   // tableidx field
+                let (offset_expr, next_offset) = parse_init_expr(bytes, offset).map_err(|e| {
+                    Error::new(
+                        ErrorCategory::Parse,
+                        wrt_error::codes::PARSE_ERROR,
+                        format!(
+                            "(offset {}): Failed to parse offset_expr for element segment (type \
+                             4): {}",
+                            offset, e
+                        ),
+                    )
+                })?;
+                offset = next_offset;
+                let (func_indices, next_offset) = read_vector(bytes, offset, read_leb128_u32)
+                    .map_err(|e| {
+                        Error::new(
+                            ErrorCategory::Parse,
+                            wrt_error::codes::PARSE_ERROR,
+                            format!(
+                                "(offset {}): Failed to read func_indices for element segment \
+                                 (type 4): {}",
+                                offset, e
+                            ),
+                        )
+                    })?;
+                offset = next_offset;
+
+                if bytes.get(offset).copied() != Some(END) {
+                    return Err(Error::new(
+                        ErrorCategory::Parse,
+                        wrt_error::codes::PARSE_ERROR,
+                        format!(
+                            "(offset {}): Expected END opcode after active element segment (type \
+                             4)",
+                            offset
+                        ),
+                    ));
+                }
+                offset += 1; // Consume END
+
+                element_type = RefType::Funcref;
+                init = ElementInit::FuncIndices(func_indices);
+                mode = crate::module::ElementMode::Active { table_index: table_idx, offset_expr };
+            }
+            0x05 => {
+                // Passive: reftype vec(expr) end
+                let rt_byte = bytes.get(offset).copied().ok_or_else(|| {
+                    Error::new(
+                        ErrorCategory::Parse,
+                        wrt_error::codes::PARSE_ERROR,
+                        format!(
+                            "(offset {}): Unexpected EOF reading reftype for element segment \
+                             (type 5)",
+                            offset
+                        ),
+                    )
+                })?;
+                offset += 1;
+                element_type = ValueType::from_binary(rt_byte)
+                    .map_err(to_wrt_error)?
+                    .try_into()
+                    .map_err(to_wrt_error)?;
+
+                let (exprs_vec, next_offset) = read_vector(bytes, offset, parse_init_expr)
+                    .map_err(|e| {
+                        Error::new(
+                            ErrorCategory::Parse,
+                            wrt_error::codes::PARSE_ERROR,
+                            format!(
+                                "(offset {}): Failed to read expressions for element segment \
+                                 (type 5): {}",
+                                offset, e
+                            ),
+                        )
+                    })?;
+                offset = next_offset;
+
+                if bytes.get(offset).copied() != Some(END) {
+                    return Err(Error::new(
+                        ErrorCategory::Parse,
+                        wrt_error::codes::PARSE_ERROR,
+                        format!(
+                            "(offset {}): Expected END opcode after passive element segment (type \
+                             5)",
+                            offset
+                        ),
+                    ));
+                }
+                offset += 1; // Consume END
+
+                init = ElementInit::Expressions(exprs_vec);
+                mode = crate::module::ElementMode::Passive;
+            }
+            0x06 => {
+                // Active with tableidx: tableidx expr reftype vec(expr) end
+                let (table_idx, next_offset) = read_leb128_u32(bytes, offset).map_err(|e| {
+                    Error::new(
+                        ErrorCategory::Parse,
+                        wrt_error::codes::PARSE_ERROR,
+                        format!(
+                            "(offset {}): Failed to read table_idx for element segment (type 6): \
+                             {}",
+                            offset, e
+                        ),
+                    )
+                })?;
+                offset = next_offset;
+                let (offset_expr, next_offset) = parse_init_expr(bytes, offset).map_err(|e| {
+                    Error::new(
+                        ErrorCategory::Parse,
+                        wrt_error::codes::PARSE_ERROR,
+                        format!(
+                            "(offset {}): Failed to parse offset_expr for element segment (type \
+                             6): {}",
+                            offset, e
+                        ),
+                    )
+                })?;
+                offset = next_offset;
+
+                let rt_byte = bytes.get(offset).copied().ok_or_else(|| {
+                    Error::new(
+                        ErrorCategory::Parse,
+                        wrt_error::codes::PARSE_ERROR,
+                        format!(
+                            "(offset {}): Unexpected EOF reading reftype for element segment \
+                             (type 6)",
+                            offset
+                        ),
+                    )
+                })?;
+                offset += 1;
+                element_type = ValueType::from_binary(rt_byte)
+                    .map_err(to_wrt_error)?
+                    .try_into()
+                    .map_err(to_wrt_error)?;
+
+                let (exprs_vec, next_offset) = read_vector(bytes, offset, parse_init_expr)
+                    .map_err(|e| {
+                        Error::new(
+                            ErrorCategory::Parse,
+                            wrt_error::codes::PARSE_ERROR,
+                            format!(
+                                "(offset {}): Failed to read expressions for element segment \
+                                 (type 6): {}",
+                                offset, e
+                            ),
+                        )
+                    })?;
+                offset = next_offset;
+
+                if bytes.get(offset).copied() != Some(END) {
+                    return Err(Error::new(
+                        ErrorCategory::Parse,
+                        wrt_error::codes::PARSE_ERROR,
+                        format!(
+                            "(offset {}): Expected END opcode after active element segment (type \
+                             6)",
+                            offset
+                        ),
+                    ));
+                }
+                offset += 1; // Consume END
+
+                init = ElementInit::Expressions(exprs_vec);
+                mode = crate::module::ElementMode::Active { table_index: table_idx, offset_expr };
+            }
+            0x07 => {
+                // Declared: reftype vec(expr) end
+                let rt_byte = bytes.get(offset).copied().ok_or_else(|| {
+                    Error::new(
+                        ErrorCategory::Parse,
+                        wrt_error::codes::PARSE_ERROR,
+                        format!(
+                            "(offset {}): Unexpected EOF reading reftype for element segment \
+                             (type 7)",
+                            offset
+                        ),
+                    )
+                })?;
+                offset += 1;
+                element_type = ValueType::from_binary(rt_byte)
+                    .map_err(to_wrt_error)?
+                    .try_into()
+                    .map_err(to_wrt_error)?;
+
+                let (exprs_vec, next_offset) = read_vector(bytes, offset, parse_init_expr)
+                    .map_err(|e| {
+                        Error::new(
+                            ErrorCategory::Parse,
+                            wrt_error::codes::PARSE_ERROR,
+                            format!(
+                                "(offset {}): Failed to read expressions for element segment \
+                                 (type 7): {}",
+                                offset, e
+                            ),
+                        )
+                    })?;
+                offset = next_offset;
+
+                if bytes.get(offset).copied() != Some(END) {
+                    return Err(Error::new(
+                        ErrorCategory::Parse,
+                        wrt_error::codes::PARSE_ERROR,
+                        format!(
+                            "(offset {}): Expected END opcode after declared element segment \
+                             (type 7)",
+                            offset
+                        ),
+                    ));
+                }
+                offset += 1; // Consume END
+
+                init = ElementInit::Expressions(exprs_vec);
+                mode = crate::module::ElementMode::Declared;
+            }
+            _ => {
+                return Err(Error::new(
+                    ErrorCategory::Parse,
+                    wrt_error::codes::NOT_IMPLEMENTED,
+                    format!(
+                        "(offset {}): Invalid element segment prefix: 0x{:02X}",
+                        offset.saturating_sub(1),
+                        prefix_val
+                    ),
+                ))
+            }
+        }
+
+        Ok((Element { mode, element_type, init, table_idx }, offset))
+    }
+
+    /// Parses a data segment from the binary format.
+    #[cfg(any(feature = "alloc", feature = "std"))]
+    pub fn parse_data(bytes: &[u8], mut offset: usize) -> Result<(Data, usize)> {
+        if offset >= bytes.len() {
+            return Err(Error::new(
+                ErrorCategory::Parse,
+                codes::PARSE_ERROR,
+                "Unexpected end of bytes when parsing data segment prefix",
+            ));
+        }
+
+        let prefix = bytes[offset];
         offset += 1;
 
-        // Apply 7 bits from this byte
-        result |= ((byte & 0x7F) as i32) << shift;
-        shift += 7;
+        match prefix {
+            0x00 => {
+                // Active data segment for memory 0
+                let memory_idx = 0; // Implicit memory index 0
+                let (offset_expr, bytes_read_offset) = parse_init_expr(bytes, offset)?;
+                offset += bytes_read_offset;
 
-        // Check for continuation bit
-        if byte & 0x80 == 0 {
-            break;
-        }
+                let (init_byte_count, bytes_read_count) = read_leb128_u32(bytes, offset)?;
+                offset += bytes_read_count;
 
-        // Guard against malformed/malicious LEB128
-        if shift >= 32 {
-            return Err(to_wrt_error(parse_error("LEB128 integer too large".to_string())));
+                if offset + (init_byte_count as usize) > bytes.len() {
+                    return Err(Error::new(
+                        ErrorCategory::Parse,
+                        codes::PARSE_ERROR,
+                        "Data segment init bytes extend beyond data",
+                    ));
+                }
+                let init_data = bytes[offset..offset + (init_byte_count as usize)].to_vec();
+                offset += init_byte_count as usize;
+
+                Ok((
+                    Data {
+                        mode: DataMode::Active,
+                        memory_idx,
+                        offset: offset_expr,
+                        init: init_data,
+                    },
+                    offset,
+                ))
+            }
+            0x01 => {
+                // Passive data segment
+                let (init_byte_count, bytes_read_count) = read_leb128_u32(bytes, offset)?;
+                offset += bytes_read_count;
+
+                if offset + (init_byte_count as usize) > bytes.len() {
+                    return Err(Error::new(
+                        ErrorCategory::Parse,
+                        codes::PARSE_ERROR,
+                        "Passive data segment init bytes extend beyond data",
+                    ));
+                }
+                let init_data = bytes[offset..offset + (init_byte_count as usize)].to_vec();
+                offset += init_byte_count as usize;
+
+                Ok((
+                    Data {
+                        mode: DataMode::Passive,
+                        memory_idx: 0, // Not applicable for passive, conventionally 0
+                        offset: Vec::new(), // Not applicable for passive
+                        init: init_data,
+                    },
+                    offset,
+                ))
+            }
+            0x02 => {
+                // Active data segment with explicit memory index
+                let (memory_idx, bytes_read_mem_idx) = read_leb128_u32(bytes, offset)?;
+                offset += bytes_read_mem_idx;
+
+                let (offset_expr, bytes_read_offset) = parse_init_expr(bytes, offset)?;
+                offset += bytes_read_offset;
+
+                let (init_byte_count, bytes_read_count) = read_leb128_u32(bytes, offset)?;
+                offset += bytes_read_count;
+
+                if offset + (init_byte_count as usize) > bytes.len() {
+                    return Err(Error::new(
+                        ErrorCategory::Parse,
+                        codes::PARSE_ERROR,
+                        "Data segment init bytes extend beyond data",
+                    ));
+                }
+                let init_data = bytes[offset..offset + (init_byte_count as usize)].to_vec();
+                offset += init_byte_count as usize;
+
+                Ok((
+                    Data {
+                        mode: DataMode::Active,
+                        memory_idx,
+                        offset: offset_expr,
+                        init: init_data,
+                    },
+                    offset,
+                ))
+            }
+            _ => Err(Error::new(
+                ErrorCategory::Parse,
+                UNIMPLEMENTED_PARSING_FEATURE,
+                format!("Unsupported data segment prefix: 0x{:02X}", prefix),
+            )),
         }
     }
+} // End of with_alloc module
 
-    // Sign extend if needed
-    if shift < 32 && (byte & 0x40) != 0 {
-        // The result is negative, sign extend it
-        result |= !0 << shift;
-    }
+// No-std write functions
 
-    Ok((result, offset))
-}
-
-/// Read a LEB128 signed 64-bit integer from a byte array
+/// Write a LEB128 unsigned integer to a byte array (no_std version)
 ///
-/// This function will be used when implementing the full binary parser.
-pub fn read_leb128_i64(bytes: &[u8], pos: usize) -> Result<(i64, usize)> {
-    let mut result = 0i64;
-    let mut shift = 0;
-    let mut offset = 0;
-    let mut byte;
-
-    loop {
-        if pos + offset >= bytes.len() {
-            return Err(to_wrt_error(parse_error("Truncated LEB128 integer".to_string())));
-        }
-
-        byte = bytes[pos + offset];
-        offset += 1;
-
-        // Apply 7 bits from this byte
-        result |= ((byte & 0x7F) as i64) << shift;
-        shift += 7;
-
-        // Check for continuation bit
-        if byte & 0x80 == 0 {
-            break;
-        }
-
-        // Guard against malformed/malicious LEB128
-        if shift >= 64 {
-            return Err(to_wrt_error(parse_error("LEB128 integer too large".to_string())));
-        }
+/// Returns the number of bytes written to the buffer.
+/// Buffer must be at least 5 bytes long (max size for u32 LEB128).
+#[cfg(not(any(feature = "alloc", feature = "std")))]
+pub fn write_leb128_u32_to_slice(value: u32, buffer: &mut [u8]) -> Result<usize> {
+    if buffer.len() < 5 {
+        return Err(parse_error("Buffer too small for LEB128 encoding"));
     }
 
-    // Sign extend if needed
-    if shift < 64 && (byte & 0x40) != 0 {
-        // The result is negative, sign extend it
-        result |= !0 << shift;
-    }
-
-    Ok((result, offset))
-}
-
-/// Write a LEB128 unsigned integer to a byte array
-///
-/// This function will be used when implementing the full binary generator.
-pub fn write_leb128_u32(value: u32) -> Vec<u8> {
     if value == 0 {
-        return vec![0];
+        buffer[0] = 0;
+        return Ok(1);
     }
 
-    let mut result = Vec::new();
     let mut value = value;
+    let mut position = 0;
 
     while value != 0 {
         let mut byte = (value & 0x7F) as u8;
@@ -693,1457 +2280,77 @@ pub fn write_leb128_u32(value: u32) -> Vec<u8> {
             byte |= 0x80;
         }
 
-        result.push(byte);
+        buffer[position] = byte;
+        position += 1;
     }
 
-    result
+    Ok(position)
 }
 
-/// Write a LEB128 signed integer to a byte array
+/// Write a string to a byte array in WebAssembly format (no_std version)
 ///
-/// This function will be used when implementing the full binary generator.
-pub fn write_leb128_i32(value: i32) -> Vec<u8> {
-    let mut result = Vec::new();
-    let mut value = value;
-    let mut more = true;
+/// The format is: length (LEB128) followed by UTF-8 bytes
+/// Returns the number of bytes written.
+#[cfg(not(any(feature = "alloc", feature = "std")))]
+pub fn write_string_to_slice(value: &str, buffer: &mut [u8]) -> Result<usize> {
+    let str_bytes = value.as_bytes();
+    let length = str_bytes.len() as u32;
 
-    while more {
-        let mut byte = (value & 0x7f) as u8;
-        value >>= 7;
+    // First calculate how many bytes we need for the length
+    let mut length_buffer = [0u8; 5];
+    let length_bytes = write_leb128_u32_to_slice(length, &mut length_buffer)?;
 
-        // If the original value is negative, we need to sign extend
-        let is_sign_bit_set = (byte & 0x40) != 0;
-        let sign_extended_value = if value == 0 && !is_sign_bit_set {
-            0
-        } else if value == -1 && is_sign_bit_set {
-            -1
-        } else {
-            value
-        };
-
-        more = sign_extended_value != 0 && sign_extended_value != -1;
-
-        if more {
-            byte |= 0x80;
-        }
-
-        result.push(byte);
+    // Check if buffer is large enough
+    let total_size = length_bytes + str_bytes.len();
+    if buffer.len() < total_size {
+        return Err(parse_error("Buffer too small for string encoding"));
     }
 
-    result
-}
-
-/// Write a LEB128 signed 64-bit integer to a byte array
-///
-/// This function will be used when implementing the full binary formatter.
-pub fn write_leb128_i64(value: i64) -> Vec<u8> {
-    let mut result = Vec::new();
-    let mut value = value;
-    let mut more = true;
-
-    while more {
-        let mut byte = (value & 0x7f) as u8;
-        value >>= 7;
-
-        // If the original value is negative, we need to sign extend
-        let is_sign_bit_set = (byte & 0x40) != 0;
-        let sign_extended_value = if value == 0 && !is_sign_bit_set {
-            0
-        } else if value == -1 && is_sign_bit_set {
-            -1
-        } else {
-            value
-        };
-
-        more = sign_extended_value != 0 && sign_extended_value != -1;
-
-        if more {
-            byte |= 0x80;
-        }
-
-        result.push(byte);
-    }
-
-    result
-}
-
-/// Check if a binary has a valid WebAssembly header
-///
-/// This function validates that the binary starts with the WASM_MAGIC and
-/// has a supported version.
-pub fn is_valid_wasm_header(bytes: &[u8]) -> bool {
-    if bytes.len() < 8 {
-        return false;
-    }
-
-    // Check magic bytes
-    if bytes[0..4] != WASM_MAGIC {
-        return false;
-    }
-
-    // Check version
-    if bytes[4..8] != WASM_VERSION && bytes[4..8] != [0x0A, 0x6D, 0x73, 0x63] {
-        return false;
-    }
-
-    true
-}
-
-/// Read a LEB128 unsigned 64-bit integer from a byte array
-pub fn read_leb128_u64(bytes: &[u8], pos: usize) -> Result<(u64, usize)> {
-    let mut result: u64 = 0;
-    let mut shift: u32 = 0;
-    let mut offset = pos;
-    let mut byte;
-
-    loop {
-        if offset >= bytes.len() {
-            return Err(to_wrt_error(parse_error("Unexpected end of LEB128 sequence".to_string())));
-        }
-
-        byte = bytes[offset];
-        offset += 1;
-
-        // Apply the 7 bits from the current byte
-        result |= ((byte & 0x7F) as u64) << shift;
-
-        // If the high bit is not set, we're done
-        if byte & 0x80 == 0 {
-            break;
-        }
-
-        // Otherwise, shift for the next 7 bits
-        shift += 7;
-
-        // Ensure we don't exceed 64 bits (10 bytes)
-        if shift >= 64 {
-            if byte & 0x7F != 0 {
-                return Err(to_wrt_error(parse_error(
-                    "LEB128 sequence exceeds maximum u64 value".to_string(),
-                )));
-            }
-            break;
-        }
-    }
-
-    Ok((result, offset - pos))
-}
-
-/// Write a LEB128 unsigned 64-bit integer to a byte array
-pub fn write_leb128_u64(value: u64) -> Vec<u8> {
-    let mut result = Vec::new();
-    let mut value = value;
-
-    loop {
-        let mut byte = (value & 0x7F) as u8;
-        value >>= 7;
-
-        // If there are more bits to write, set the high bit
-        if value != 0 {
-            byte |= 0x80;
-        }
-
-        result.push(byte);
-
-        // If no more bits, we're done
-        if value == 0 {
-            break;
-        }
-    }
-
-    result
-}
-
-/// IEEE 754 floating point handling
-///
-/// Read a 32-bit IEEE 754 float from a byte array
-pub fn read_f32(bytes: &[u8], pos: usize) -> Result<(f32, usize)> {
-    if pos + 4 > bytes.len() {
-        return Err(to_wrt_error(parse_error("Not enough bytes to read f32")));
-    }
-
-    let mut buf = [0; 4];
-    buf.copy_from_slice(&bytes[pos..pos + 4]);
-    let value = f32::from_le_bytes(buf);
-    Ok((value, pos + 4))
-}
-
-/// Read a 64-bit IEEE 754 float from a byte array
-pub fn read_f64(bytes: &[u8], pos: usize) -> Result<(f64, usize)> {
-    if pos + 8 > bytes.len() {
-        return Err(to_wrt_error(parse_error("Not enough bytes to read f64")));
-    }
-
-    let mut buf = [0; 8];
-    buf.copy_from_slice(&bytes[pos..pos + 8]);
-    let value = f64::from_le_bytes(buf);
-    Ok((value, pos + 8))
-}
-
-/// Write a 32-bit IEEE 754 float to a byte array
-pub fn write_f32(value: f32) -> Vec<u8> {
-    let bytes = value.to_le_bytes();
-    bytes.to_vec()
-}
-
-/// Write a 64-bit IEEE 754 float to a byte array
-pub fn write_f64(value: f64) -> Vec<u8> {
-    let bytes = value.to_le_bytes();
-    bytes.to_vec()
-}
-
-/// UTF-8 string validation and parsing
-///
-/// Validate that a byte slice contains valid UTF-8
-pub fn validate_utf8(bytes: &[u8]) -> Result<()> {
-    match str::from_utf8(bytes) {
-        Ok(_) => Ok(()),
-        Err(e) => Err(to_wrt_error(parse_error(format!("Invalid UTF-8 sequence: {}", e)))),
-    }
-}
-
-/// Read a string from a byte array
-///
-/// This reads a length-prefixed string (used in WebAssembly names).
-pub fn read_string(bytes: &[u8], pos: usize) -> Result<(&[u8], usize)> {
-    if pos >= bytes.len() {
-        return Err(to_wrt_error(parse_error("String exceeds buffer bounds")));
-    }
-
-    // Read the string length
-    let (str_len, len_size) = read_leb128_u32(bytes, pos)?;
-    let str_start = pos + len_size;
-    let str_end = str_start + str_len as usize;
-
-    // Ensure the string fits in the buffer
-    if str_end > bytes.len() {
-        return Err(to_wrt_error(parse_error("String exceeds buffer bounds")));
-    }
-
-    // Extract the string bytes
-    let string_bytes = &bytes[str_start..str_end];
-
-    // Convert to a Rust string
-    match str::from_utf8(string_bytes) {
-        Ok(s) => Ok((s.to_string(), len_size + str_len as usize)),
-        Err(e) => Err(to_wrt_error(parse_error(format!("Invalid UTF-8 in string: {}", e)))),
-    }
-}
-
-/// Write a WebAssembly UTF-8 string (length prefixed)
-pub fn write_string(value: &str) -> Vec<u8> {
-    let mut result = Vec::new();
-
-    // Write the length as LEB128
-    let length = value.len() as u32;
-    result.extend_from_slice(&write_leb128_u32(length));
+    // Write the length
+    buffer[..length_bytes].copy_from_slice(&length_buffer[..length_bytes]);
 
     // Write the string bytes
-    result.extend_from_slice(value.as_bytes());
+    buffer[length_bytes..total_size].copy_from_slice(str_bytes);
 
-    result
+    Ok(total_size)
 }
 
-/// Read a vector from a byte array
-///
-/// This is a generic function that reads a length-prefixed vector from a byte
-/// array, using the provided function to read each element.
-pub fn read_vector<T, F>(bytes: &[u8], pos: usize, read_elem: F) -> Result<(Vec<T>, usize)>
-where
-    F: Fn(&[u8], usize) -> Result<(T, usize)>,
-{
-    // Read the vector length
-    let (count, mut offset) = read_leb128_u32(bytes, pos)?;
-    let mut result = Vec::with_capacity(count as usize);
+/// Write a LEB128 u32 to a BoundedVec (no_std version)
+#[cfg(not(any(feature = "alloc", feature = "std")))]
+pub fn write_leb128_u32_bounded<
+    const N: usize,
+    P: wrt_foundation::MemoryProvider + Clone + Default + Eq,
+>(
+    value: u32,
+    vec: &mut wrt_foundation::BoundedVec<u8, N, P>,
+) -> Result<()> {
+    let mut buffer = [0u8; 5];
+    let bytes_written = write_leb128_u32_to_slice(value, &mut buffer)?;
 
-    // Read each element
-    for _ in 0..count {
-        let (elem, elem_size) = read_elem(bytes, pos + offset)?;
-        result.push(elem);
-        offset += elem_size;
+    for i in 0..bytes_written {
+        vec.push(buffer[i]).map_err(|_| parse_error("BoundedVec capacity exceeded"))?;
     }
 
-    Ok((result, offset))
+    Ok(())
 }
 
-/// Write a vector to a byte array
-///
-/// This is a generic function that writes a length-prefixed vector to a byte
-/// array, using the provided function to write each element.
-pub fn write_vector<T, F>(elements: &[T], write_elem: F) -> Vec<u8>
-where
-    F: Fn(&T) -> Vec<u8>,
-{
-    let mut result = Vec::new();
-
-    // Write the vector length
-    result.extend_from_slice(&write_leb128_u32(elements.len() as u32));
-
-    // Write each element
-    for elem in elements {
-        result.extend_from_slice(&write_elem(elem));
-    }
-
-    result
-}
-
-/// Read a section header from a byte array
-///
-/// Returns a tuple containing the section ID, size, and new position after the
-/// header. The position should point to the start of the section content.
-pub fn read_section_header(bytes: &[u8], pos: usize) -> Result<(u8, u32, usize)> {
-    if pos >= bytes.len() {
-        return Err(to_wrt_error(parse_error("Attempted to read past end of binary".to_string())));
-    }
-
-    let id = bytes[pos];
-    let (payload_len, len_size) = read_leb128_u32(bytes, pos + 1)?;
-    Ok((id, payload_len, pos + 1 + len_size))
-}
-
-/// Write a section header to a byte array
-///
-/// Writes the section ID and content size as a LEB128 unsigned integer.
-pub fn write_section_header(id: u8, content_size: u32) -> Vec<u8> {
-    let mut result = Vec::new();
-
-    // Write section ID
-    result.push(id);
-
-    // Write section size
-    result.extend_from_slice(&write_leb128_u32(content_size));
-
-    result
-}
-
-/// Parse a block type from a byte array
-pub fn parse_block_type(bytes: &[u8], pos: usize) -> Result<(FormatBlockType, usize)> {
-    if pos >= bytes.len() {
-        return Err(to_wrt_error(parse_error("Unexpected end of input when reading block type")));
-    }
-
-    let byte = bytes[pos];
-    let block_type = match byte {
-        // Empty block type
-        0x40 => (FormatBlockType::Empty, 1),
-        // Value type-based block type
-        0x7F => (FormatBlockType::ValueType(ValueType::I32), 1),
-        0x7E => (FormatBlockType::ValueType(ValueType::I64), 1),
-        0x7D => (FormatBlockType::ValueType(ValueType::F32), 1),
-        0x7C => (FormatBlockType::ValueType(ValueType::F64), 1),
-        // Function type reference
-        _ => {
-            // If the byte is not a value type, it's a function type reference
-            // which is encoded as a signed LEB128 value
-            let (value, size) = read_leb128_i32(bytes, pos)?;
-
-            // Type references are negative
-            if value >= 0 {
-                return Err(to_wrt_error(parse_error(format!(
-                    "Invalid block type index: expected negative value, got {}",
-                    value
-                ))));
-            }
-
-            // Convert to function type index (positive)
-            let func_type_idx = (-value - 1) as u32;
-            (FormatBlockType::TypeIndex(func_type_idx), size)
-        }
-    };
-
-    Ok(block_type)
-}
-
-/// Read a Component Model value type from a byte array
-pub fn read_component_valtype(
-    bytes: &[u8],
-    pos: usize,
-) -> Result<(crate::component::ValType, usize)> {
-    use crate::component::ValType;
-
-    if pos >= bytes.len() {
-        return Err(to_wrt_error(parse_error(
-            "Unexpected end of input when reading component value type",
-        )));
-    }
-
-    let byte = bytes[pos];
-    let mut new_pos = pos + 1;
-
-    match byte {
-        COMPONENT_VALTYPE_BOOL => Ok((ValType::Bool, new_pos)),
-        COMPONENT_VALTYPE_S8 => Ok((ValType::S8, new_pos)),
-        COMPONENT_VALTYPE_U8 => Ok((ValType::U8, new_pos)),
-        COMPONENT_VALTYPE_S16 => Ok((ValType::S16, new_pos)),
-        COMPONENT_VALTYPE_U16 => Ok((ValType::U16, new_pos)),
-        COMPONENT_VALTYPE_S32 => Ok((ValType::S32, new_pos)),
-        COMPONENT_VALTYPE_U32 => Ok((ValType::U32, new_pos)),
-        COMPONENT_VALTYPE_S64 => Ok((ValType::S64, new_pos)),
-        COMPONENT_VALTYPE_U64 => Ok((ValType::U64, new_pos)),
-        COMPONENT_VALTYPE_F32 => Ok((ValType::F32, new_pos)),
-        COMPONENT_VALTYPE_F64 => Ok((ValType::F64, new_pos)),
-        COMPONENT_VALTYPE_CHAR => Ok((ValType::Char, new_pos)),
-        COMPONENT_VALTYPE_STRING => Ok((ValType::String, new_pos)),
-        COMPONENT_VALTYPE_REF => {
-            let (idx, next_pos) = read_leb128_u32(bytes, new_pos)?;
-            Ok((ValType::Ref(idx), next_pos))
-        }
-        COMPONENT_VALTYPE_RECORD => {
-            let (count, next_pos) = read_leb128_u32(bytes, new_pos)?;
-            new_pos = next_pos;
-
-            let mut fields = Vec::with_capacity(count as usize);
-            for _ in 0..count {
-                let (name, next_pos) = read_string(bytes, new_pos)?;
-                new_pos = next_pos;
-
-                let (val_type, next_pos) = read_component_valtype(bytes, new_pos)?;
-                new_pos = next_pos;
-
-                fields.push((name, val_type));
-            }
-
-            Ok((ValType::Record(fields), new_pos))
-        }
-        COMPONENT_VALTYPE_VARIANT => {
-            let (count, next_pos) = read_leb128_u32(bytes, new_pos)?;
-            new_pos = next_pos;
-
-            let mut cases = Vec::with_capacity(count as usize);
-            for _ in 0..count {
-                let (name, next_pos) = read_string(bytes, new_pos)?;
-                new_pos = next_pos;
-
-                let (has_type, next_pos) = read_leb128_u32(bytes, new_pos)?;
-                new_pos = next_pos;
-
-                let val_type = if has_type == 1 {
-                    let (val_type, next_pos) = read_component_valtype(bytes, new_pos)?;
-                    new_pos = next_pos;
-                    Some(val_type)
-                } else {
-                    None
-                };
-
-                cases.push((name, val_type));
-            }
-
-            Ok((ValType::Variant(cases), new_pos))
-        }
-        COMPONENT_VALTYPE_LIST => {
-            let (val_type, next_pos) = read_component_valtype(bytes, new_pos)?;
-            Ok((ValType::List(Box::new(val_type)), next_pos))
-        }
-        COMPONENT_VALTYPE_FIXED_LIST => {
-            let (val_type, next_pos) = read_component_valtype(bytes, new_pos)?;
-            new_pos = next_pos;
-
-            let (length, next_pos) = read_leb128_u32(bytes, new_pos)?;
-            Ok((ValType::FixedList(Box::new(val_type), length), next_pos))
-        }
-        COMPONENT_VALTYPE_TUPLE => {
-            let (count, next_pos) = read_leb128_u32(bytes, new_pos)?;
-            new_pos = next_pos;
-
-            let mut elements = Vec::with_capacity(count as usize);
-            for _ in 0..count {
-                let (val_type, next_pos) = read_component_valtype(bytes, new_pos)?;
-                new_pos = next_pos;
-                elements.push(val_type);
-            }
-
-            Ok((ValType::Tuple(elements), new_pos))
-        }
-        COMPONENT_VALTYPE_FLAGS => {
-            let (count, next_pos) = read_leb128_u32(bytes, new_pos)?;
-            new_pos = next_pos;
-
-            let mut names = Vec::with_capacity(count as usize);
-            for _ in 0..count {
-                let (name, next_pos) = read_string(bytes, new_pos)?;
-                new_pos = next_pos;
-                names.push(name);
-            }
-
-            Ok((ValType::Flags(names), new_pos))
-        }
-        COMPONENT_VALTYPE_ENUM => {
-            let (count, next_pos) = read_leb128_u32(bytes, new_pos)?;
-            new_pos = next_pos;
-
-            let mut names = Vec::with_capacity(count as usize);
-            for _ in 0..count {
-                let (name, next_pos) = read_string(bytes, new_pos)?;
-                new_pos = next_pos;
-                names.push(name);
-            }
-
-            Ok((ValType::Enum(names), new_pos))
-        }
-        COMPONENT_VALTYPE_OPTION => {
-            let (val_type, next_pos) = read_component_valtype(bytes, new_pos)?;
-            Ok((ValType::Option(Box::new(val_type)), next_pos))
-        }
-        COMPONENT_VALTYPE_RESULT => {
-            let (val_type, next_pos) = read_component_valtype(bytes, new_pos)?;
-            Ok((ValType::Result(Box::new(val_type)), next_pos))
-        }
-        COMPONENT_VALTYPE_RESULT_ERR => {
-            // Convert to regular Result for backward compatibility
-            let (val_type, next_pos) = read_component_valtype(bytes, new_pos)?;
-            Ok((ValType::Result(Box::new(val_type)), next_pos))
-        }
-        COMPONENT_VALTYPE_RESULT_BOTH => {
-            // Convert to regular Result for backward compatibility
-            let (ok_type, next_pos) = read_component_valtype(bytes, new_pos)?;
-            new_pos = next_pos;
-
-            // Read the error type but use only the ok_type
-            let (_, next_pos) = read_component_valtype(bytes, new_pos)?;
-            Ok((ValType::Result(Box::new(ok_type)), next_pos))
-        }
-        COMPONENT_VALTYPE_OWN => {
-            let (idx, next_pos) = read_leb128_u32(bytes, new_pos)?;
-            Ok((ValType::Own(idx), next_pos))
-        }
-        COMPONENT_VALTYPE_BORROW => {
-            let (idx, next_pos) = read_leb128_u32(bytes, new_pos)?;
-            Ok((ValType::Borrow(idx), next_pos))
-        }
-        COMPONENT_VALTYPE_ERROR_CONTEXT => Ok((ValType::ErrorContext, new_pos)),
-        _ => {
-            Err(to_wrt_error(parse_error(format!("Invalid component value type: 0x{:02x}", byte))))
-        }
-    }
-}
-
-/// Write a Component Model value type to a byte array
-pub fn write_component_valtype(val_type: &crate::component::ValType) -> Vec<u8> {
-    match val_type {
-        ValType::Bool => vec![COMPONENT_VALTYPE_BOOL],
-        ValType::S8 => vec![COMPONENT_VALTYPE_S8],
-        ValType::U8 => vec![COMPONENT_VALTYPE_U8],
-        ValType::S16 => vec![COMPONENT_VALTYPE_S16],
-        ValType::U16 => vec![COMPONENT_VALTYPE_U16],
-        ValType::S32 => vec![COMPONENT_VALTYPE_S32],
-        ValType::U32 => vec![COMPONENT_VALTYPE_U32],
-        ValType::S64 => vec![COMPONENT_VALTYPE_S64],
-        ValType::U64 => vec![COMPONENT_VALTYPE_U64],
-        ValType::F32 => vec![COMPONENT_VALTYPE_F32],
-        ValType::F64 => vec![COMPONENT_VALTYPE_F64],
-        ValType::Char => vec![COMPONENT_VALTYPE_CHAR],
-        ValType::String => vec![COMPONENT_VALTYPE_STRING],
-        ValType::Ref(idx) => {
-            let mut result = vec![COMPONENT_VALTYPE_REF];
-            result.extend_from_slice(&write_leb128_u32(*idx));
-            result
-        }
-        ValType::Record(fields) => {
-            let mut result = vec![COMPONENT_VALTYPE_RECORD];
-            result.extend_from_slice(&write_leb128_u32(fields.len() as u32));
-            for (name, field_type) in fields {
-                result.extend_from_slice(&write_string(name));
-                result.extend_from_slice(&write_component_valtype(field_type));
-            }
-            result
-        }
-        ValType::Variant(cases) => {
-            let mut result = vec![COMPONENT_VALTYPE_VARIANT];
-            result.extend_from_slice(&write_leb128_u32(cases.len() as u32));
-            for (name, case_type) in cases {
-                result.extend_from_slice(&write_string(name));
-                match case_type {
-                    Some(ty) => {
-                        result.push(1); // Has type flag
-                        result.extend_from_slice(&write_component_valtype(ty));
-                    }
-                    None => {
-                        result.push(0); // No type flag
-                    }
-                }
-            }
-            result
-        }
-        ValType::List(element_type) => {
-            let mut result = vec![COMPONENT_VALTYPE_LIST];
-            result.extend_from_slice(&write_component_valtype(element_type));
-            result
-        }
-        ValType::FixedList(element_type, length) => {
-            let mut result = vec![COMPONENT_VALTYPE_FIXED_LIST];
-            result.extend_from_slice(&write_component_valtype(element_type));
-            result.extend_from_slice(&write_leb128_u32(*length));
-            result
-        }
-        ValType::Tuple(types) => {
-            let mut result = vec![COMPONENT_VALTYPE_TUPLE];
-            result.extend_from_slice(&write_leb128_u32(types.len() as u32));
-            for ty in types {
-                result.extend_from_slice(&write_component_valtype(ty));
-            }
-            result
-        }
-        ValType::Flags(names) => {
-            let mut result = vec![COMPONENT_VALTYPE_FLAGS];
-            result.extend_from_slice(&write_leb128_u32(names.len() as u32));
-            for name in names {
-                result.extend_from_slice(&write_string(name));
-            }
-            result
-        }
-        ValType::Enum(names) => {
-            let mut result = vec![COMPONENT_VALTYPE_ENUM];
-            result.extend_from_slice(&write_leb128_u32(names.len() as u32));
-            for name in names {
-                result.extend_from_slice(&write_string(name));
-            }
-            result
-        }
-        ValType::Option(inner) => {
-            let mut result = vec![COMPONENT_VALTYPE_OPTION];
-            result.extend_from_slice(&write_component_valtype(inner));
-            result
-        }
-        ValType::Result(ok_type) => {
-            let mut result = vec![COMPONENT_VALTYPE_RESULT];
-            result.extend_from_slice(&write_component_valtype(ok_type));
-            result
-        }
-        ValType::ResultErr(err_type) => {
-            let mut result = vec![COMPONENT_VALTYPE_RESULT_ERR];
-            result.extend_from_slice(&write_component_valtype(err_type));
-            result
-        }
-        ValType::ResultBoth(ok_type, err_type) => {
-            let mut result = vec![COMPONENT_VALTYPE_RESULT_BOTH];
-            result.extend_from_slice(&write_component_valtype(ok_type));
-            result.extend_from_slice(&write_component_valtype(err_type));
-            result
-        }
-        ValType::Own(type_idx) => {
-            let mut result = vec![COMPONENT_VALTYPE_OWN];
-            result.extend_from_slice(&write_leb128_u32(*type_idx));
-            result
-        }
-        ValType::Borrow(type_idx) => {
-            let mut result = vec![COMPONENT_VALTYPE_BORROW];
-            result.extend_from_slice(&write_leb128_u32(*type_idx));
-            result
-        }
-        ValType::Void => vec![COMPONENT_VALTYPE_ERROR_CONTEXT],
-        ValType::ErrorContext => vec![COMPONENT_VALTYPE_ERROR_CONTEXT],
-    }
-}
-
-/// Parse a WebAssembly component binary into a Component structure
-pub fn parse_component_binary(bytes: &[u8]) -> Result<crate::component::Component> {
-    if bytes.len() < 8 {
-        return Err(to_wrt_error(parse_error("WebAssembly component binary too short")));
-    }
-
-    // Check magic bytes
-    if bytes[0..4] != COMPONENT_MAGIC {
-        return Err(to_wrt_error(parse_error("Invalid WebAssembly component magic bytes")));
-    }
-
-    // Check version
-    if bytes[4..8] != COMPONENT_VERSION {
-        return Err(to_wrt_error(parse_error("Unsupported WebAssembly component version")));
-    }
-
-    if bytes.len() < 10 {
-        return Err(to_wrt_error(parse_error("Invalid WebAssembly component layer")));
-    }
-
-    // Create an empty component with the binary stored
-    let mut component = crate::component::Component::new();
-    component.binary = Some(bytes.to_vec());
-
-    // In a real implementation, we would parse the sections here
-    // This will be fully implemented in the future
-
-    Ok(component)
-}
-
-/// Generate a WebAssembly component binary from a component
-pub fn generate_component_binary(component: &crate::component::Component) -> Result<Vec<u8>> {
-    // If we have the original binary and haven't modified the component,
-    // we can just return it
-    if let Some(binary) = &component.binary {
-        return Ok(binary.clone());
-    }
-
-    // Create a minimal valid component
-    let mut binary = Vec::with_capacity(8);
-
-    // Magic bytes
-    binary.extend_from_slice(&COMPONENT_MAGIC);
-
-    // Version and layer
-    binary.extend_from_slice(&COMPONENT_VERSION);
-
-    // Generate sections
-    // This is a placeholder - full implementation will be added in the future
-
-    // In a complete implementation, we would encode all sections:
-    // - Core module sections
-    // - Core instance sections
-    // - Core type sections
-    // - Component sections
-    // - Instance sections
-    // - Alias sections
-    // - Type sections
-    // - Canon sections
-    // - Start sections
-    // - Import sections
-    // - Export sections
-    // - Value sections
-
-    Ok(binary)
-}
-
-/// Binary format utilities for WebAssembly
-pub struct BinaryFormat;
-
-impl BinaryFormat {
-    /// Decode an unsigned 32-bit LEB128 integer
-    pub fn decode_leb_u32(bytes: &[u8]) -> Result<(u32, usize)> {
-        read_leb128_u32(bytes, 0)
-    }
-
-    /// Decode a signed 32-bit LEB128 integer
-    pub fn decode_leb_i32(bytes: &[u8]) -> Result<(i32, usize)> {
-        read_leb128_i32(bytes, 0)
-    }
-
-    /// Decode an unsigned 64-bit LEB128 integer
-    pub fn decode_leb_u64(bytes: &[u8]) -> Result<(u64, usize)> {
-        read_leb128_u64(bytes, 0)
-    }
-
-    /// Decode a signed 64-bit LEB128 integer
-    pub fn decode_leb_i64(bytes: &[u8]) -> Result<(i64, usize)> {
-        read_leb128_i64(bytes, 0)
-    }
-
-    /// Encode an unsigned 32-bit LEB128 integer
-    pub fn encode_leb_u32(value: u32) -> Vec<u8> {
-        write_leb128_u32(value)
-    }
-
-    /// Encode a signed 32-bit LEB128 integer
-    pub fn encode_leb_i32(value: i32) -> Vec<u8> {
-        write_leb128_i32(value)
-    }
-
-    /// Encode an unsigned 64-bit LEB128 integer
-    pub fn encode_leb_u64(value: u64) -> Vec<u8> {
-        write_leb128_u64(value)
-    }
-
-    /// Encode a signed 64-bit LEB128 integer
-    pub fn encode_leb_i64(value: i64) -> Vec<u8> {
-        write_leb128_i64(value)
-    }
-}
-
-/// Read a WebAssembly string name without allocating a new String
-/// Returns the byte slice containing the name and the total bytes read
-/// (including length)
-pub fn read_name(bytes: &[u8], pos: usize) -> Result<(&[u8], usize)> {
-    // Ensure we have enough bytes to read the string length
-    if pos >= bytes.len() {
-        return Err(to_wrt_error(parse_error("Unexpected end of input while reading name length")));
-    }
-
-    // Read the string length
-    let (name_len, len_size) = read_leb128_u32(bytes, pos)?;
-    let name_start = pos + len_size;
-
-    // Ensure we have enough bytes to read the string
-    if name_start + name_len as usize > bytes.len() {
-        return Err(to_wrt_error(parse_error(
-            "Unexpected end of input while reading name content",
-        )));
-    }
-
-    // Return the slice containing the name and the total bytes read
-    let name_slice = &bytes[name_start..name_start + name_len as usize];
-    Ok((name_slice, len_size + name_len as usize))
-}
-
-// STUB for parsing limits - to be fully implemented in wrt-format
-// Should parse wrt_format::types::Limits
-pub fn parse_limits(
-    bytes: &[u8],
-    offset: usize,
-) -> wrt_error::Result<(crate::types::Limits, usize)> {
-    if offset + 1 > bytes.len() {
-        // Need at least flags byte
-        return Err(Error::new(
-            ErrorCategory::Parse,
-            codes::PARSE_ERROR,
-            "Unexpected end of limits",
-        ));
-    }
-    let flags = bytes[offset];
-    let mut current_offset = offset + 1;
-
-    let (min, new_offset) = read_leb128_u32(bytes, current_offset)?;
-    current_offset = new_offset;
-
-    let max = if (flags & 0x01) != 0 {
-        let (val, new_offset) = read_leb128_u32(bytes, current_offset)?;
-        current_offset = new_offset;
-        Some(val)
-    } else {
-        None
-    };
-    // Ignoring shared and memory64 flags for now as they are not in
-    // wrt_format::types::Limits directly
-
-    Ok((
-        crate::types::Limits {
-            min: min.into(),
-            max: max.map(Into::into),
-            shared: false,
-            memory64: false,
-        }, // Assuming default shared/memory64
-        current_offset,
-    ))
-}
-
-/// Parses an initialization expression (a sequence of instructions terminated
-/// by END). Returns the bytes of the expression (including END) and the number
-/// of bytes read.
-pub fn parse_init_expr(bytes: &[u8], mut offset: usize) -> Result<(Vec<u8>, usize)> {
-    let start_offset = offset;
-    let mut depth = 0;
-
-    loop {
-        if offset >= bytes.len() {
-            return Err(parse_error(format!(
-                "(offset {}): Unexpected end of data in init_expr",
-                offset
-            )));
-        }
-        let opcode = bytes[offset];
-        // We must advance offset *before* parsing immediates for that opcode.
-        offset += 1;
-
-        match opcode {
-            END if depth == 0 => break, // Found the end of this expression
-            BLOCK | LOOP | IF => depth += 1,
-            END => {
-                // End of a nested block
-                if depth == 0 {
-                    // Should have been caught by the case above
-                    return Err(parse_error(format!(
-                        "(offset {}): Mismatched END in init_expr",
-                        offset - 1
-                    )));
-                }
-                depth -= 1;
-            }
-            // Skip immediates for known const instructions
-            I32_CONST => {
-                let (_, off) = read_leb128_i32(bytes, offset)?;
-                offset = off;
-            }
-            I64_CONST => {
-                let (_, off) = read_leb128_i64(bytes, offset)?;
-                offset = off;
-            }
-            F32_CONST => {
-                if offset + 4 > bytes.len() {
-                    return Err(parse_error(format!(
-                        "(offset {}): EOF in f32.const immediate",
-                        offset
-                    )));
-                }
-                offset += 4;
-            }
-            F64_CONST => {
-                if offset + 8 > bytes.len() {
-                    return Err(parse_error(format!(
-                        "(offset {}): EOF in f64.const immediate",
-                        offset
-                    )));
-                }
-                offset += 8;
-            }
-            REF_NULL => {
-                // 0xD0 ht:heap_type
-                if offset >= bytes.len() {
-                    return Err(parse_error(format!(
-                        "(offset {}): EOF in ref.null immediate",
-                        offset
-                    )));
-                }
-                offset += 1; // heap_type
-            }
-            REF_FUNC | GLOBAL_GET => {
-                // 0xD2 f:funcidx or 0x23 x:globalidx
-                let (_, off) = read_leb128_u32(bytes, offset)?;
-                offset = off;
-            }
-            // Other opcodes that might appear in const expressions depending on enabled features.
-            // For Wasm 2.0, only the above are generally considered constant.
-            // Vector ops (v128.const) could also be here if SIMD consts are allowed.
-            _ => { // other opcodes - assuming they have no immediates or are
-                 // invalid in const expr
-            }
-        }
-    }
-    Ok((bytes[start_offset..offset].to_vec(), offset))
-}
-
-/// Parses an element segment from the binary format.
-/// Reference: https://webassembly.github.io/spec/core/binary/modules.html#element-section
-pub fn parse_element_segment(bytes: &[u8], mut offset: usize) -> Result<(Element, usize)> {
-    let (prefix_val, next_offset) = read_leb128_u32(bytes, offset).map_err(|e| {
-        Error::new(
-            ErrorCategory::Parse,
-            wrt_error::codes::PARSE_ERROR,
-            format!("Failed to read element segment prefix at offset {}: {}", offset, e),
-        )
-    })?;
-    offset = next_offset;
-
-    let (element_type, init, mode): (RefType, ElementInit, crate::module::ElementMode);
-
-    match prefix_val {
-        0x00 => {
-            // MVP Active: expr vec(funcidx) end; tableidx is 0, elemkind is funcref
-            let table_idx = 0;
-            let (offset_expr, next_offset) = parse_init_expr(bytes, offset).map_err(|e| {
-                Error::new(
-                    ErrorCategory::Parse,
-                    wrt_error::codes::PARSE_ERROR,
-                    format!(
-                        "(offset {}): Failed to parse offset_expr for element segment (type 0): {}",
-                        offset, e
-                    ),
-                )
-            })?;
-            offset = next_offset;
-            let (func_indices, next_offset) =
-                read_vector(bytes, offset, read_leb128_u32).map_err(|e| {
-                    Error::new(
-                        ErrorCategory::Parse,
-                        wrt_error::codes::PARSE_ERROR,
-                        format!(
-                            "(offset {}): Failed to read func_indices for element segment (type \
-                             0): {}",
-                            offset, e
-                        ),
-                    )
-                })?;
-            offset = next_offset;
-
-            if bytes.get(offset).copied() != Some(END) {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    wrt_error::codes::PARSE_ERROR,
-                    format!(
-                        "(offset {}): Expected END opcode after active element segment (type 0)",
-                        offset
-                    ),
-                ));
-            }
-            offset += 1; // Consume END
-
-            element_type = RefType::Funcref;
-            init = ElementInit::FuncIndices(func_indices);
-            mode = crate::module::ElementMode::Active { table_index: table_idx, offset_expr };
-        }
-        0x01 => {
-            // Passive: elemkind vec(expr) end
-            let (elemkind_byte, next_offset) = read_u8(bytes, offset)?;
-            offset = next_offset;
-            if elemkind_byte != 0x00 {
-                // Only funcref is supported for now
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    wrt_error::codes::NOT_IMPLEMENTED,
-                    format!(
-                        "(offset {}): Unsupported elemkind 0x{:02X} for element segment (type 1), \
-                         only funcref (0x00) supported here.",
-                        offset - 1,
-                        elemkind_byte
-                    ),
-                ));
-            }
-            element_type = RefType::FuncRef; // funcref
-
-            let (exprs_vec, next_offset) =
-                read_vector(bytes, offset, parse_init_expr).map_err(|e| {
-                    Error::new(
-                        ErrorCategory::Parse,
-                        wrt_error::codes::PARSE_ERROR,
-                        format!(
-                            "(offset {}): Failed to read expressions for element segment (type \
-                             1): {}",
-                            offset, e
-                        ),
-                    )
-                })?;
-            offset = next_offset;
-
-            if bytes.get(offset).copied() != Some(END) {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    wrt_error::codes::PARSE_ERROR,
-                    format!(
-                        "(offset {}): Expected END opcode after passive element segment (type 1)",
-                        offset
-                    ),
-                ));
-            }
-            offset += 1; // Consume END
-
-            init = ElementInit::Expressions(exprs_vec);
-            mode = crate::module::ElementMode::Passive;
-        }
-        0x02 => {
-            // Active with tableidx: tableidx expr elemkind vec(expr) end
-            let (table_idx, next_offset) = read_leb128_u32(bytes, offset).map_err(|e| {
-                Error::new(
-                    ErrorCategory::Parse,
-                    wrt_error::codes::PARSE_ERROR,
-                    format!(
-                        "(offset {}): Failed to read table_idx for element segment (type 2): {}",
-                        offset, e
-                    ),
-                )
-            })?;
-            offset = next_offset;
-            let (offset_expr, next_offset) = parse_init_expr(bytes, offset).map_err(|e| {
-                Error::new(
-                    ErrorCategory::Parse,
-                    wrt_error::codes::PARSE_ERROR,
-                    format!(
-                        "(offset {}): Failed to parse offset_expr for element segment (type 2): {}",
-                        offset, e
-                    ),
-                )
-            })?;
-            offset = next_offset;
-
-            let (elemkind_byte, next_offset) = read_u8(bytes, offset)?;
-            offset = next_offset;
-            if elemkind_byte != 0x00 {
-                // Only funcref is supported for now
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    wrt_error::codes::NOT_IMPLEMENTED,
-                    format!(
-                        "(offset {}): Unsupported elemkind 0x{:02X} for element segment (type 2), \
-                         only funcref (0x00) supported here.",
-                        offset - 1,
-                        elemkind_byte
-                    ),
-                ));
-            }
-            element_type = RefType::FuncRef; // funcref
-
-            let (exprs_vec, next_offset) =
-                read_vector(bytes, offset, parse_init_expr).map_err(|e| {
-                    Error::new(
-                        ErrorCategory::Parse,
-                        wrt_error::codes::PARSE_ERROR,
-                        format!(
-                            "(offset {}): Failed to read expressions for element segment (type \
-                             2): {}",
-                            offset, e
-                        ),
-                    )
-                })?;
-            offset = next_offset;
-
-            if bytes.get(offset).copied() != Some(END) {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    wrt_error::codes::PARSE_ERROR,
-                    format!(
-                        "(offset {}): Expected END opcode after active element segment (type 2)",
-                        offset
-                    ),
-                ));
-            }
-            offset += 1; // Consume END
-
-            init = ElementInit::Expressions(exprs_vec);
-            mode = crate::module::ElementMode::Active { table_index: table_idx, offset_expr };
-        }
-        0x03 => {
-            // Declared: elemkind vec(expr) end
-            let (elemkind_byte, next_offset) = read_u8(bytes, offset)?;
-            offset = next_offset;
-            if elemkind_byte != 0x00 {
-                // Only funcref is supported for now
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    wrt_error::codes::NOT_IMPLEMENTED,
-                    format!(
-                        "(offset {}): Unsupported elemkind 0x{:02X} for element segment (type 3), \
-                         only funcref (0x00) supported here.",
-                        offset - 1,
-                        elemkind_byte
-                    ),
-                ));
-            }
-            element_type = RefType::FuncRef; // funcref
-
-            let (exprs_vec, next_offset) =
-                read_vector(bytes, offset, parse_init_expr).map_err(|e| {
-                    Error::new(
-                        ErrorCategory::Parse,
-                        wrt_error::codes::PARSE_ERROR,
-                        format!(
-                            "(offset {}): Failed to read expressions for element segment (type \
-                             3): {}",
-                            offset, e
-                        ),
-                    )
-                })?;
-            offset = next_offset;
-
-            if bytes.get(offset).copied() != Some(END) {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    wrt_error::codes::PARSE_ERROR,
-                    format!(
-                        "(offset {}): Expected END opcode after declared element segment (type 3)",
-                        offset
-                    ),
-                ));
-            }
-            offset += 1; // Consume END
-
-            init = ElementInit::Expressions(exprs_vec);
-            mode = crate::module::ElementMode::Declared;
-        }
-        0x04 => {
-            // Active with tableidx 0 (encoded in prefix): expr vec(funcidx) end
-            let table_idx = 0; // Implicitly table 0 due to prefix for some interpretations, though spec shows
-                               // tableidx field
-            let (offset_expr, next_offset) = parse_init_expr(bytes, offset).map_err(|e| {
-                Error::new(
-                    ErrorCategory::Parse,
-                    wrt_error::codes::PARSE_ERROR,
-                    format!(
-                        "(offset {}): Failed to parse offset_expr for element segment (type 4): {}",
-                        offset, e
-                    ),
-                )
-            })?;
-            offset = next_offset;
-            let (func_indices, next_offset) =
-                read_vector(bytes, offset, read_leb128_u32).map_err(|e| {
-                    Error::new(
-                        ErrorCategory::Parse,
-                        wrt_error::codes::PARSE_ERROR,
-                        format!(
-                            "(offset {}): Failed to read func_indices for element segment (type \
-                             4): {}",
-                            offset, e
-                        ),
-                    )
-                })?;
-            offset = next_offset;
-
-            if bytes.get(offset).copied() != Some(END) {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    wrt_error::codes::PARSE_ERROR,
-                    format!(
-                        "(offset {}): Expected END opcode after active element segment (type 4)",
-                        offset
-                    ),
-                ));
-            }
-            offset += 1; // Consume END
-
-            element_type = RefType::Funcref;
-            init = ElementInit::FuncIndices(func_indices);
-            mode = crate::module::ElementMode::Active { table_index: table_idx, offset_expr };
-        }
-        0x05 => {
-            // Passive: reftype vec(expr) end
-            let rt_byte = bytes.get(offset).copied().ok_or_else(|| {
-                Error::new(
-                    ErrorCategory::Parse,
-                    wrt_error::codes::PARSE_ERROR,
-                    format!(
-                        "(offset {}): Unexpected EOF reading reftype for element segment (type 5)",
-                        offset
-                    ),
-                )
-            })?;
-            offset += 1;
-            element_type = ValueType::from_binary(rt_byte)
-                .map_err(to_wrt_error)?
-                .try_into()
-                .map_err(to_wrt_error)?;
-
-            let (exprs_vec, next_offset) =
-                read_vector(bytes, offset, parse_init_expr).map_err(|e| {
-                    Error::new(
-                        ErrorCategory::Parse,
-                        wrt_error::codes::PARSE_ERROR,
-                        format!(
-                            "(offset {}): Failed to read expressions for element segment (type \
-                             5): {}",
-                            offset, e
-                        ),
-                    )
-                })?;
-            offset = next_offset;
-
-            if bytes.get(offset).copied() != Some(END) {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    wrt_error::codes::PARSE_ERROR,
-                    format!(
-                        "(offset {}): Expected END opcode after passive element segment (type 5)",
-                        offset
-                    ),
-                ));
-            }
-            offset += 1; // Consume END
-
-            init = ElementInit::Expressions(exprs_vec);
-            mode = crate::module::ElementMode::Passive;
-        }
-        0x06 => {
-            // Active with tableidx: tableidx expr reftype vec(expr) end
-            let (table_idx, next_offset) = read_leb128_u32(bytes, offset).map_err(|e| {
-                Error::new(
-                    ErrorCategory::Parse,
-                    wrt_error::codes::PARSE_ERROR,
-                    format!(
-                        "(offset {}): Failed to read table_idx for element segment (type 6): {}",
-                        offset, e
-                    ),
-                )
-            })?;
-            offset = next_offset;
-            let (offset_expr, next_offset) = parse_init_expr(bytes, offset).map_err(|e| {
-                Error::new(
-                    ErrorCategory::Parse,
-                    wrt_error::codes::PARSE_ERROR,
-                    format!(
-                        "(offset {}): Failed to parse offset_expr for element segment (type 6): {}",
-                        offset, e
-                    ),
-                )
-            })?;
-            offset = next_offset;
-
-            let rt_byte = bytes.get(offset).copied().ok_or_else(|| {
-                Error::new(
-                    ErrorCategory::Parse,
-                    wrt_error::codes::PARSE_ERROR,
-                    format!(
-                        "(offset {}): Unexpected EOF reading reftype for element segment (type 6)",
-                        offset
-                    ),
-                )
-            })?;
-            offset += 1;
-            element_type = ValueType::from_binary(rt_byte)
-                .map_err(to_wrt_error)?
-                .try_into()
-                .map_err(to_wrt_error)?;
-
-            let (exprs_vec, next_offset) =
-                read_vector(bytes, offset, parse_init_expr).map_err(|e| {
-                    Error::new(
-                        ErrorCategory::Parse,
-                        wrt_error::codes::PARSE_ERROR,
-                        format!(
-                            "(offset {}): Failed to read expressions for element segment (type \
-                             6): {}",
-                            offset, e
-                        ),
-                    )
-                })?;
-            offset = next_offset;
-
-            if bytes.get(offset).copied() != Some(END) {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    wrt_error::codes::PARSE_ERROR,
-                    format!(
-                        "(offset {}): Expected END opcode after active element segment (type 6)",
-                        offset
-                    ),
-                ));
-            }
-            offset += 1; // Consume END
-
-            init = ElementInit::Expressions(exprs_vec);
-            mode = crate::module::ElementMode::Active { table_index: table_idx, offset_expr };
-        }
-        0x07 => {
-            // Declared: reftype vec(expr) end
-            let rt_byte = bytes.get(offset).copied().ok_or_else(|| {
-                Error::new(
-                    ErrorCategory::Parse,
-                    wrt_error::codes::PARSE_ERROR,
-                    format!(
-                        "(offset {}): Unexpected EOF reading reftype for element segment (type 7)",
-                        offset
-                    ),
-                )
-            })?;
-            offset += 1;
-            element_type = ValueType::from_binary(rt_byte)
-                .map_err(to_wrt_error)?
-                .try_into()
-                .map_err(to_wrt_error)?;
-
-            let (exprs_vec, next_offset) =
-                read_vector(bytes, offset, parse_init_expr).map_err(|e| {
-                    Error::new(
-                        ErrorCategory::Parse,
-                        wrt_error::codes::PARSE_ERROR,
-                        format!(
-                            "(offset {}): Failed to read expressions for element segment (type \
-                             7): {}",
-                            offset, e
-                        ),
-                    )
-                })?;
-            offset = next_offset;
-
-            if bytes.get(offset).copied() != Some(END) {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    wrt_error::codes::PARSE_ERROR,
-                    format!(
-                        "(offset {}): Expected END opcode after declared element segment (type 7)",
-                        offset
-                    ),
-                ));
-            }
-            offset += 1; // Consume END
-
-            init = ElementInit::Expressions(exprs_vec);
-            mode = crate::module::ElementMode::Declared;
-        }
-        _ => {
-            return Err(Error::new(
-                ErrorCategory::Parse,
-                wrt_error::codes::NOT_IMPLEMENTED,
-                format!(
-                    "(offset {}): Invalid element segment prefix: 0x{:02X}",
-                    offset.saturating_sub(1),
-                    prefix_val
-                ),
-            ))
-        }
-    }
-
-    Ok((Element { mode, element_type, init, table_idx }, offset))
-}
-
-/// Parses a data segment from the binary format.
-pub fn parse_data(bytes: &[u8], mut offset: usize) -> Result<(Data, usize)> {
-    if offset >= bytes.len() {
-        return Err(Error::new(
-            ErrorCategory::Parse,
-            codes::PARSE_ERROR,
-            "Unexpected end of bytes when parsing data segment prefix",
-        ));
-    }
-
-    let prefix = bytes[offset];
-    offset += 1;
-
-    match prefix {
-        0x00 => {
-            // Active data segment for memory 0
-            let memory_idx = 0; // Implicit memory index 0
-            let (offset_expr, bytes_read_offset) = parse_init_expr(bytes, offset)?;
-            offset += bytes_read_offset;
-
-            let (init_byte_count, bytes_read_count) = read_leb128_u32(bytes, offset)?;
-            offset += bytes_read_count;
-
-            if offset + (init_byte_count as usize) > bytes.len() {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Data segment init bytes extend beyond data",
-                ));
-            }
-            let init_data = bytes[offset..offset + (init_byte_count as usize)].to_vec();
-            offset += init_byte_count as usize;
-
-            Ok((
-                Data { mode: DataMode::Active, memory_idx, offset: offset_expr, init: init_data },
-                offset,
-            ))
-        }
-        0x01 => {
-            // Passive data segment
-            let (init_byte_count, bytes_read_count) = read_leb128_u32(bytes, offset)?;
-            offset += bytes_read_count;
-
-            if offset + (init_byte_count as usize) > bytes.len() {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Passive data segment init bytes extend beyond data",
-                ));
-            }
-            let init_data = bytes[offset..offset + (init_byte_count as usize)].to_vec();
-            offset += init_byte_count as usize;
-
-            Ok((
-                Data {
-                    mode: DataMode::Passive,
-                    memory_idx: 0,      // Not applicable for passive, conventionally 0
-                    offset: Vec::new(), // Not applicable for passive
-                    init: init_data,
-                },
-                offset,
-            ))
-        }
-        0x02 => {
-            // Active data segment with explicit memory index
-            let (memory_idx, bytes_read_mem_idx) = read_leb128_u32(bytes, offset)?;
-            offset += bytes_read_mem_idx;
-
-            let (offset_expr, bytes_read_offset) = parse_init_expr(bytes, offset)?;
-            offset += bytes_read_offset;
-
-            let (init_byte_count, bytes_read_count) = read_leb128_u32(bytes, offset)?;
-            offset += bytes_read_count;
-
-            if offset + (init_byte_count as usize) > bytes.len() {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    codes::PARSE_ERROR,
-                    "Data segment init bytes extend beyond data",
-                ));
-            }
-            let init_data = bytes[offset..offset + (init_byte_count as usize)].to_vec();
-            offset += init_byte_count as usize;
-
-            Ok((
-                Data { mode: DataMode::Active, memory_idx, offset: offset_expr, init: init_data },
-                offset,
-            ))
-        }
-        _ => Err(Error::new(
-            ErrorCategory::Parse,
-            UNIMPLEMENTED_PARSING_FEATURE,
-            format!("Unsupported data segment prefix: 0x{:02X}", prefix),
-        )),
-    }
+/// Write a string to a BoundedVec (no_std version)
+#[cfg(not(any(feature = "alloc", feature = "std")))]
+pub fn write_string_bounded<
+    const N: usize,
+    P: wrt_foundation::MemoryProvider + Clone + Default + Eq,
+>(
+    value: &str,
+    vec: &mut wrt_foundation::BoundedVec<u8, N, P>,
+) -> Result<()> {
+    // Write length
+    write_leb128_u32_bounded(value.len() as u32, vec)?;
+
+    // Write string bytes
+    vec.extend_from_slice(value.as_bytes())
+        .map_err(|_| parse_error("BoundedVec capacity exceeded"))?;
+
+    Ok(())
 }
 
 #[cfg(test)]

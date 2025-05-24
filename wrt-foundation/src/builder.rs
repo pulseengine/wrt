@@ -32,7 +32,7 @@ use wrt_error::Result;
 // Import error codes
 use crate::codes;
 #[cfg(feature = "alloc")]
-use crate::prelude::String;
+use crate::prelude::{String, ToString};
 // Crate-level imports
 use crate::{
     bounded::{BoundedStack, BoundedString, BoundedVec, WasmName},
@@ -46,7 +46,7 @@ use crate::{
     },
     traits::{Checksummable, FromBytes, ToBytes},
     verification::{Checksum, VerificationLevel},
-    Error, MemoryProvider, WrtResult,
+    Error, ErrorCategory, MemoryProvider, WrtResult,
 };
 
 /// Generic builder for bounded collections.
@@ -234,16 +234,16 @@ impl<P: MemoryProvider + Default + Clone + Eq + fmt::Debug> ResourceBuilder<P> {
     pub fn build(self) -> WrtResult<Resource<P>> {
         let id = self.id.ok_or_else(|| {
             Error::new_static(
-                codes::VALIDATION_ERROR, /* Using VALIDATION_ERROR instead of missing
-                                          * MISSING_REQUIRED_VALUE */
+                ErrorCategory::Validation,
+                codes::VALIDATION_ERROR,
                 "Resource ID is required",
             )
         })?;
 
         let repr = self.repr.ok_or_else(|| {
             Error::new_static(
-                codes::VALIDATION_ERROR, /* Using VALIDATION_ERROR instead of missing
-                                          * MISSING_REQUIRED_VALUE */
+                ErrorCategory::Validation,
+                codes::VALIDATION_ERROR,
                 "Resource representation is required",
             )
         })?;
@@ -346,7 +346,11 @@ impl<P: MemoryProvider + Default + Clone + Eq + fmt::Debug> ResourceTypeBuilder<
     /// Builds a ResourceType with the configured settings.
     pub fn build(self) -> Result<ResourceType<P>> {
         let variant = self.variant.ok_or_else(|| {
-            Error::new_static(codes::VALIDATION_ERROR, "Resource type variant is required")
+            Error::new_static(
+                ErrorCategory::Validation,
+                codes::VALIDATION_ERROR,
+                "Resource type variant is required",
+            )
         })?;
 
         match variant {
@@ -372,7 +376,11 @@ impl<P: MemoryProvider + Default + Clone + Eq + fmt::Debug> ResourceTypeBuilder<
     /// Builds a ResourceType with the configured settings.
     pub fn build(self) -> Result<ResourceType<P>> {
         let variant = self.variant.ok_or_else(|| {
-            Error::new_static(codes::VALIDATION_ERROR, "Resource type variant is required")
+            Error::new_static(
+                ErrorCategory::Validation,
+                codes::VALIDATION_ERROR,
+                "Resource type variant is required",
+            )
         })?;
 
         match variant {
@@ -439,12 +447,20 @@ impl<P: MemoryProvider + Default + Clone + Eq + fmt::Debug> ResourceItemBuilder<
 
     /// Builds a ResourceItem with the configured settings.
     pub fn build(self) -> Result<ResourceItem<P>> {
-        let id = self
-            .id
-            .ok_or_else(|| Error::new_static(codes::VALIDATION_ERROR, "Resource ID is required"))?;
+        let id = self.id.ok_or_else(|| {
+            Error::new_static(
+                ErrorCategory::Validation,
+                codes::VALIDATION_ERROR,
+                "Resource ID is required",
+            )
+        })?;
 
         let type_ = self.type_.ok_or_else(|| {
-            Error::new_static(codes::VALIDATION_ERROR, "Resource type is required")
+            Error::new_static(
+                ErrorCategory::Validation,
+                codes::VALIDATION_ERROR,
+                "Resource type is required",
+            )
         })?;
 
         let name = match self.name {

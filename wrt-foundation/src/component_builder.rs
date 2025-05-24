@@ -25,12 +25,12 @@ use crate::{
     bounded::{BoundedString, BoundedVec, WasmName, MAX_WASM_NAME_LENGTH},
     component::{
         ComponentAlias, ComponentInstance, ComponentType, CoreInstance, CoreType, Export,
-        ExternType, Import, ImportKey, Namespace, ResourceType, MAX_COMPONENT_ALIASES,
-        MAX_COMPONENT_EXPORTS, MAX_COMPONENT_IMPORTS, MAX_COMPONENT_INSTANCES, MAX_COMPONENT_TYPES,
-        MAX_CORE_INSTANCES, MAX_CORE_TYPES, MAX_NAMESPACE_ELEMENTS, MAX_NAME_LEN,
+        ExternType, Import, ImportKey, Namespace, MAX_COMPONENT_ALIASES, MAX_COMPONENT_EXPORTS,
+        MAX_COMPONENT_IMPORTS, MAX_COMPONENT_INSTANCES, MAX_COMPONENT_TYPES, MAX_CORE_INSTANCES,
+        MAX_CORE_TYPES, MAX_NAMESPACE_ELEMENTS, MAX_NAME_LEN,
     },
     component_type_store::TypeRef,
-    resource::{Resource, ResourceRepr},
+    resource::{Resource, ResourceRepr, ResourceType},
     verification::VerificationLevel,
     Error, MemoryProvider, WrtResult,
 };
@@ -506,9 +506,18 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ResourceTypeBuilder<P
 
         match variant {
             ResourceTypeVariant::Record(field_names) => {
-                let mut fields = BoundedVec::new(self.provider)?;
+                let mut fields = BoundedVec::new(self.provider.clone())?;
                 for field in field_names {
-                    fields.push(field)?;
+                    // Convert BoundedString<MAX_WASM_NAME_LENGTH, P> to
+                    // BoundedString<MAX_RESOURCE_FIELD_NAME_LEN, P>
+                    let field_str = field.as_str().map_err(Error::from)?;
+                    let provider_clone = self.provider.clone();
+                    let converted_field = BoundedString::<
+                        { crate::resource::MAX_RESOURCE_FIELD_NAME_LEN },
+                        P,
+                    >::from_str(field_str, provider_clone)
+                    .map_err(Error::from)?;
+                    fields.push(converted_field)?;
                 }
                 Ok(ResourceType::Record(fields))
             }

@@ -602,25 +602,41 @@ pub const fn tail_call_error(message: &'static str) -> TailCallError {
 
 impl core::fmt::Display for ValidationError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "{}", self.0)
+        if self.0.is_empty() {
+            write!(f, "Validation error")
+        } else {
+            write!(f, "{}", self.0)
+        }
     }
 }
 
 impl core::fmt::Display for OutOfBoundsError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "{}", self.0)
+        if self.0.is_empty() {
+            write!(f, "Out of bounds error")
+        } else {
+            write!(f, "{}", self.0)
+        }
     }
 }
 
 impl core::fmt::Display for ParseError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "{}", self.0)
+        if self.0.is_empty() {
+            write!(f, "Parse error")
+        } else {
+            write!(f, "{}", self.0)
+        }
     }
 }
 
 impl core::fmt::Display for InvalidType {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "{}", self.0)
+        if self.0.is_empty() {
+            write!(f, "Invalid type")
+        } else {
+            write!(f, "{}", self.0)
+        }
     }
 }
 
@@ -668,25 +684,41 @@ impl core::fmt::Display for InvalidLocalIndexError {
 
 impl core::fmt::Display for ResourceError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "{}", self.0)
+        if self.0.is_empty() {
+            write!(f, "Resource error")
+        } else {
+            write!(f, "{}", self.0)
+        }
     }
 }
 
 impl core::fmt::Display for ComponentError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "{}", self.0)
+        if self.0.is_empty() {
+            write!(f, "Component error")
+        } else {
+            write!(f, "{}", self.0)
+        }
     }
 }
 
 impl core::fmt::Display for RuntimeError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "{}", self.0)
+        if self.0.is_empty() {
+            write!(f, "Runtime error")
+        } else {
+            write!(f, "{}", self.0)
+        }
     }
 }
 
 impl core::fmt::Display for PoisonedLockError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "{}", self.0)
+        if self.0.is_empty() {
+            write!(f, "Poisoned lock error")
+        } else {
+            write!(f, "{}", self.0)
+        }
     }
 }
 
@@ -716,7 +748,11 @@ impl core::fmt::Display for ArithmeticError {
 
 impl core::fmt::Display for MemoryAccessError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "{}", self.0)
+        if self.0.is_empty() {
+            write!(f, "Memory access error")
+        } else {
+            write!(f, "{}", self.0)
+        }
     }
 }
 

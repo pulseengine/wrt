@@ -14,8 +14,8 @@ use crate::prelude::format;
 use crate::{
     bounded::BoundedVec,
     component::{ComponentType, CoreModuleType, InstanceType}, // Add other types as needed
+    traits::BoundedCapacity,                                  // Added import
     traits::{FromBytes, ReadStream, ToBytes, WriteStream},    // Added imports
-    validation::BoundedCapacity,                              // Added import
     MemoryProvider,
 };
 
@@ -93,9 +93,6 @@ impl<P: MemoryProvider + Clone + Default + Eq> ComponentTypeStore<P> {
                 Error::new(
                     wrt_error::ErrorCategory::Memory,
                     codes::MEMORY_ALLOCATION_ERROR,
-                    #[cfg(any(feature = "std", feature = "alloc"))]
-                    format!("Failed to create BoundedVec for component_types: {:?}", e),
-                    #[cfg(not(any(feature = "std", feature = "alloc")))]
                     "Failed to create BoundedVec for component_types",
                 )
             })?,
@@ -103,9 +100,6 @@ impl<P: MemoryProvider + Clone + Default + Eq> ComponentTypeStore<P> {
                 Error::new(
                     wrt_error::ErrorCategory::Memory,
                     codes::MEMORY_ALLOCATION_ERROR,
-                    #[cfg(any(feature = "std", feature = "alloc"))]
-                    format!("Failed to create BoundedVec for instance_types: {:?}", e),
-                    #[cfg(not(any(feature = "std", feature = "alloc")))]
                     "Failed to create BoundedVec for instance_types",
                 )
             })?,
@@ -113,9 +107,6 @@ impl<P: MemoryProvider + Clone + Default + Eq> ComponentTypeStore<P> {
                 Error::new(
                     wrt_error::ErrorCategory::Memory,
                     codes::MEMORY_ALLOCATION_ERROR,
-                    #[cfg(any(feature = "std", feature = "alloc"))]
-                    format!("Failed to create BoundedVec for core_module_types: {:?}", e),
-                    #[cfg(not(any(feature = "std", feature = "alloc")))]
                     "Failed to create BoundedVec for core_module_types",
                 )
             })?,
@@ -130,9 +121,6 @@ impl<P: MemoryProvider + Clone + Default + Eq> ComponentTypeStore<P> {
             Error::new(
                 wrt_error::ErrorCategory::Resource,
                 codes::RESOURCE_LIMIT_EXCEEDED,
-                #[cfg(any(feature = "std", feature = "alloc"))]
-                format!("Failed to add component type to store: {:?}", e),
-                #[cfg(not(any(feature = "std", feature = "alloc")))]
                 "Failed to add component type to store",
             )
         })?;
@@ -142,7 +130,7 @@ impl<P: MemoryProvider + Clone + Default + Eq> ComponentTypeStore<P> {
     /// Resolves a `TypeRef` to a reference to a `ComponentType`.
     pub fn resolve_component_type(&self, type_ref: TypeRef) -> Option<ComponentType<P>> {
         if type_ref.is_some() {
-            self.component_types.get(type_ref.0 as usize)
+            self.component_types.get(type_ref.0 as usize).ok()
         } else {
             None
         }
@@ -151,13 +139,10 @@ impl<P: MemoryProvider + Clone + Default + Eq> ComponentTypeStore<P> {
     /// Adds an `InstanceType` to the store and returns a `TypeRef` to it.
     pub fn add_instance_type(&mut self, itype: InstanceType<P>) -> WrtResult<TypeRef> {
         let index = self.instance_types.len() as u32;
-        self.instance_types.push(itype).map_err(|e| {
+        self.instance_types.push(itype).map_err(|_e| {
             Error::new(
                 wrt_error::ErrorCategory::Resource,
                 codes::RESOURCE_LIMIT_EXCEEDED,
-                #[cfg(any(feature = "std", feature = "alloc"))]
-                format!("Failed to add instance type to store: {:?}", e),
-                #[cfg(not(any(feature = "std", feature = "alloc")))]
                 "Failed to add instance type to store",
             )
         })?;
@@ -167,7 +152,7 @@ impl<P: MemoryProvider + Clone + Default + Eq> ComponentTypeStore<P> {
     /// Resolves a `TypeRef` to a reference to an `InstanceType`.
     pub fn resolve_instance_type(&self, type_ref: TypeRef) -> Option<InstanceType<P>> {
         if type_ref.is_some() {
-            self.instance_types.get(type_ref.0 as usize)
+            self.instance_types.get(type_ref.0 as usize).ok()
         } else {
             None
         }
@@ -176,13 +161,10 @@ impl<P: MemoryProvider + Clone + Default + Eq> ComponentTypeStore<P> {
     /// Adds a `CoreModuleType` to the store and returns a `TypeRef` to it.
     pub fn add_core_module_type(&mut self, cmtype: CoreModuleType<P>) -> WrtResult<TypeRef> {
         let index = self.core_module_types.len() as u32;
-        self.core_module_types.push(cmtype).map_err(|e| {
+        self.core_module_types.push(cmtype).map_err(|_e| {
             Error::new(
                 wrt_error::ErrorCategory::Resource,
                 codes::RESOURCE_LIMIT_EXCEEDED,
-                #[cfg(any(feature = "std", feature = "alloc"))]
-                format!("Failed to add core module type to store: {:?}", e),
-                #[cfg(not(any(feature = "std", feature = "alloc")))]
                 "Failed to add core module type to store",
             )
         })?;
@@ -192,7 +174,7 @@ impl<P: MemoryProvider + Clone + Default + Eq> ComponentTypeStore<P> {
     /// Resolves a `TypeRef` to a reference to a `CoreModuleType`.
     pub fn resolve_core_module_type(&self, type_ref: TypeRef) -> Option<CoreModuleType<P>> {
         if type_ref.is_some() {
-            self.core_module_types.get(type_ref.0 as usize)
+            self.core_module_types.get(type_ref.0 as usize).ok()
         } else {
             None
         }

@@ -484,6 +484,18 @@ impl<'a> SliceMut<'a> {
     }
 }
 
+impl<'a> AsRef<[u8]> for Slice<'a> {
+    fn as_ref(&self) -> &[u8] {
+        self.data
+    }
+}
+
+impl<'a> AsRef<[u8]> for SliceMut<'a> {
+    fn as_ref(&self) -> &[u8] {
+        self.data
+    }
+}
+
 impl fmt::Debug for SliceMut<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("SliceMut")
@@ -602,10 +614,13 @@ pub trait Provider: Send + Sync + fmt::Debug {
     fn acquire_memory(&self, layout: core::alloc::Layout) -> WrtResult<*mut u8>;
 
     /// Releases a previously acquired block of memory to the provider's
-    /// allocator. # Safety
+    /// allocator.
+    ///
+    /// # Safety
+    /// This method encapsulates unsafe operations internally.
     /// The pointer `ptr` must have been previously allocated via
     /// `acquire_memory` with the same `layout`, and not yet released.
-    unsafe fn release_memory(&self, ptr: *mut u8, layout: core::alloc::Layout) -> WrtResult<()>;
+    fn release_memory(&self, ptr: *mut u8, layout: core::alloc::Layout) -> WrtResult<()>;
 
     /// Returns a reference to the allocator used by this provider.
     fn get_allocator(&self) -> &Self::Allocator;
@@ -1281,12 +1296,6 @@ impl<const N: usize> NoStdProvider<N> {
             return Err(Error::new(
                 ErrorCategory::Memory,
                 codes::MEMORY_ACCESS_OUT_OF_BOUNDS,
-                #[cfg(any(feature = "alloc", feature = "std"))]
-                format!(
-                    "Last access out of bounds: offset={}, len={}, used={}",
-                    offset, length, self.used
-                ),
-                #[cfg(not(any(feature = "alloc", feature = "std")))]
                 "Last access out of bounds",
             ));
         }
@@ -1333,11 +1342,7 @@ impl<const N: usize> Provider for NoStdProvider<N> {
     fn write_data(&mut self, offset: usize, data_to_write: &[u8]) -> Result<()> {
         self.verify_access(offset, data_to_write.len())?;
         if offset + data_to_write.len() > N {
-            return Err(Error::memory_out_of_bounds(
-                offset + data_to_write.len(),
-                N,
-                "Write data overflows capacity",
-            ));
+            return Err(Error::memory_out_of_bounds("Write data overflows capacity"));
         }
         self.data[offset..offset + data_to_write.len()].copy_from_slice(data_to_write);
         self.used = core::cmp::max(self.used, offset + data_to_write.len());
@@ -1360,32 +1365,20 @@ impl<const N: usize> Provider for NoStdProvider<N> {
             // behavior) Or up to self.used if only initialized parts are
             // allowed. For now, capacity.
             if offset > N {
-                return Err(Error::memory_out_of_bounds(
-                    offset,
-                    N,
-                    "Zero-length access out of capacity",
-                ));
+                return Err(Error::memory_out_of_bounds("Zero-length access out of capacity"));
             }
             return Ok(());
         }
 
         if offset >= N || offset + len > N {
-            Err(Error::memory_out_of_bounds(
-                offset + len,
-                N,
-                "Memory access out of provider capacity",
-            ))
+            Err(Error::memory_out_of_bounds("Memory access out of provider capacity"))
         } else if self.verification_level.should_check_init()
             && (offset >= self.used || offset + len > self.used)
         {
             // This check depends on policy: should we allow access to uninitialized parts
             // within capacity? For now, if init checks are on, restrict to
             // 'used' area.
-            Err(Error::memory_uninitialized(
-                offset + len,
-                self.used,
-                "Memory access to uninitialized region",
-            ))
+            Err(Error::memory_uninitialized("Memory access to uninitialized region"))
         } else {
             Ok(())
         }
@@ -1425,8 +1418,9 @@ impl<const N: usize> Provider for NoStdProvider<N> {
         Allocator::allocate(self, layout)
     }
 
-    unsafe fn release_memory(&self, ptr: *mut u8, layout: core::alloc::Layout) -> WrtResult<()> {
+    fn release_memory(&self, ptr: *mut u8, layout: core::alloc::Layout) -> WrtResult<()> {
         // Mirror the existing Allocator impl for NoStdProvider
+        // Safety: This encapsulates the unsafe operation internally
         Allocator::deallocate(self, ptr, layout)
     }
 
@@ -1460,11 +1454,7 @@ impl<const N: usize> Provider for NoStdProvider<N> {
                                           // to extend 'used'. For now, ensure
                                           // it's within capacity N for mutable access.
         if offset + len > N {
-            return Err(Error::memory_out_of_bounds(
-                offset + len,
-                N,
-                "get_slice_mut out of capacity",
-            ));
+            return Err(Error::memory_out_of_bounds("get_slice_mut out of capacity"));
         }
         // If strict init checks are on, we might want to restrict len to self.used -
         // offset. However, SliceMut is often used to write new data.
@@ -1482,11 +1472,7 @@ impl<const N: usize> Provider for NoStdProvider<N> {
         self.verify_access(src_offset, len)?;
         // Verify destination write (up to capacity)
         if dst_offset + len > N {
-            return Err(Error::memory_out_of_bounds(
-                dst_offset + len,
-                N,
-                "copy_within destination out of capacity",
-            ));
+            return Err(Error::memory_out_of_bounds("copy_within destination out of capacity"));
         }
 
         // Perform the copy
@@ -1509,13 +1495,16 @@ pub trait Allocator: fmt::Debug + Send + Sync {
     fn allocate(&self, layout: core::alloc::Layout) -> WrtResult<*mut u8>;
 
     /// Deallocates a previously allocated block of memory.
+    ///
     /// # Safety
+    /// This method encapsulates unsafe operations internally.
     /// The pointer `ptr` must have been previously allocated by this allocator
     /// with the same `layout`, and not yet deallocated.
+    ///
     /// # Errors
     /// Returns an error if deallocation fails (though typically this should
     /// succeed or panic).
-    unsafe fn deallocate(&self, ptr: *mut u8, layout: core::alloc::Layout) -> WrtResult<()>;
+    fn deallocate(&self, ptr: *mut u8, layout: core::alloc::Layout) -> WrtResult<()>;
 }
 
 impl<const N: usize> Allocator for NoStdProvider<N> {
@@ -1546,10 +1535,11 @@ impl<const N: usize> Allocator for NoStdProvider<N> {
         ))
     }
 
-    unsafe fn deallocate(&self, _ptr: *mut u8, _layout: core::alloc::Layout) -> WrtResult<()> {
+    fn deallocate(&self, _ptr: *mut u8, _layout: core::alloc::Layout) -> WrtResult<()> {
         // If allocate always fails or uses a simple bump, deallocate might be a no-op
         // or reset. For now, as allocate is unsupported, deallocate is also
         // effectively a no-op that returns Ok.
+        // Safety: This encapsulates unsafe operations internally
         Ok(())
     }
 }
@@ -1638,4 +1628,20 @@ impl<P: Provider> SafeMemoryHandler<P> {
     pub fn ensure_used_up_to(&mut self, byte_offset: usize) -> Result<()> {
         self.provider.ensure_used_up_to(byte_offset)
     }
+
+    /// Get a slice from the memory handler
+    pub fn get_slice(&self, offset: usize, len: usize) -> Result<Slice<'_>> {
+        self.provider.borrow_slice(offset, len)
+    }
+
+    /// Get a mutable slice from the memory handler
+    pub fn get_slice_mut(&mut self, offset: usize, len: usize) -> Result<SliceMut<'_>> {
+        self.provider.get_slice_mut(offset, len)
+    }
 }
+
+// Re-export SafeStack as an alias for BoundedStack
+// Re-export NoStdMemoryProvider as an alias for NoStdProvider
+pub use NoStdProvider as NoStdMemoryProvider;
+
+pub use crate::bounded::BoundedStack as SafeStack;

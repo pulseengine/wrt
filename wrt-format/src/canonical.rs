@@ -1,6 +1,9 @@
 //! WebAssembly Component Model canonical ABI.
 //!
 //! This module implements the Canonical ABI for WebAssembly component model.
+//!
+//! Note: This module is only available with std or alloc features due to
+//! extensive use of dynamic collections.
 
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 use alloc::{boxed::Box, string::String, string::ToString, vec, vec::Vec};
@@ -8,6 +11,11 @@ use alloc::{boxed::Box, string::String, string::ToString, vec, vec::Vec};
 use std::{boxed::Box, string::String, vec, vec::Vec};
 
 use wrt_foundation::component_value::ValType;
+#[cfg(not(any(feature = "alloc", feature = "std")))]
+use wrt_foundation::{BoundedString, BoundedVec, MemoryProvider, NoStdProvider};
+
+#[cfg(not(any(feature = "alloc", feature = "std")))]
+use crate::{WasmString, WasmVec};
 
 /// Canonical ABI memory layout for component types
 #[derive(Debug, Clone)]

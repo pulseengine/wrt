@@ -53,9 +53,8 @@ use crate::{
     safe_memory::{NoStdProvider, Provider},
     traits::{
         Checksummable, DefaultMemoryProvider, FromBytes, ReadStream, SerializationError, ToBytes,
-        WriteStream,
+        Validatable, WriteStream,
     },
-    validation::Validatable,
     values::Value,
     verification::Checksum,
     MemoryProvider, WrtResult,
@@ -293,9 +292,10 @@ impl FromBytes for ValueType {
 ///
 /// These are subtypes of `ValueType` and used in table elements, function
 /// returns, etc.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum RefType {
     /// Function reference type
+    #[default]
     Funcref,
     /// External reference type
     Externref,
@@ -1084,8 +1084,8 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> Import<P> {
         desc: ImportDesc<P>,
     ) -> Result<Self> {
         let module_name =
-            WasmName::from_str(module_name_str, provider.clone()).map_err(|e| match e.kind {
-                BoundedErrorKind::CapacityExceeded => Error::new(
+            WasmName::from_str(module_name_str, provider.clone()).map_err(|e| match e {
+                SerializationError::Custom(_) => Error::new(
                     ErrorCategory::Capacity,
                     wrt_error::codes::CAPACITY_EXCEEDED,
                     "Import module name too long",
@@ -1093,11 +1093,11 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> Import<P> {
                 _ => Error::new(
                     ErrorCategory::Validation,
                     wrt_error::codes::INVALID_VALUE,
-                    "Failed to create module name for import from BoundedError",
+                    "Failed to create module name for import from SerializationError",
                 ),
             })?;
-        let item_name = WasmName::from_str(item_name_str, provider).map_err(|e| match e.kind {
-            BoundedErrorKind::CapacityExceeded => Error::new(
+        let item_name = WasmName::from_str(item_name_str, provider).map_err(|e| match e {
+            SerializationError::Custom(_) => Error::new(
                 ErrorCategory::Capacity,
                 wrt_error::codes::CAPACITY_EXCEEDED,
                 "Import item name too long",
@@ -1105,7 +1105,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> Import<P> {
             _ => Error::new(
                 ErrorCategory::Validation,
                 wrt_error::codes::INVALID_VALUE,
-                "Failed to create item name for import from BoundedError",
+                "Failed to create item name for import from SerializationError",
             ),
         })?;
         Ok(Self { module_name, item_name, desc })
@@ -1176,6 +1176,73 @@ impl<P: MemoryProvider + PartialEq + Eq> Checksummable for ImportDesc<P> {
 impl<P: MemoryProvider + PartialEq + Eq> Default for ImportDesc<P> {
     fn default() -> Self {
         ImportDesc::Function(0) // Default to function import with type index 0
+    }
+}
+
+impl<P: MemoryProvider + PartialEq + Eq> ToBytes for ImportDesc<P> {
+    fn to_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        provider: &PStream,
+    ) -> WrtResult<()> {
+        match self {
+            ImportDesc::Function(idx) => {
+                writer.write_u8(0)?; // Tag for Function
+                writer.write_u32_le(*idx)?;
+            }
+            ImportDesc::Table(tt) => {
+                writer.write_u8(1)?; // Tag for Table
+                tt.to_bytes_with_provider(writer, provider)?;
+            }
+            ImportDesc::Memory(mt) => {
+                writer.write_u8(2)?; // Tag for Memory
+                mt.to_bytes_with_provider(writer, provider)?;
+            }
+            ImportDesc::Global(gt) => {
+                writer.write_u8(3)?; // Tag for Global
+                gt.to_bytes_with_provider(writer, provider)?;
+            }
+            ImportDesc::Extern(et) => {
+                writer.write_u8(4)?; // Tag for Extern
+                et.to_bytes_with_provider(writer, provider)?;
+            }
+            ImportDesc::Resource(rt) => {
+                writer.write_u8(5)?; // Tag for Resource
+                rt.to_bytes_with_provider(writer, provider)?;
+            }
+            ImportDesc::_Phantom(_) => {
+                writer.write_u8(255)?; // Tag for phantom (should not occur in
+                                       // real data)
+            }
+        }
+        Ok(())
+    }
+}
+
+impl<P: MemoryProvider + PartialEq + Eq> FromBytes for ImportDesc<P> {
+    fn from_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        provider: &PStream,
+    ) -> WrtResult<Self> {
+        let tag = reader.read_u8()?;
+        match tag {
+            0 => Ok(ImportDesc::Function(reader.read_u32_le()?)),
+            1 => Ok(ImportDesc::Table(TableType::from_bytes_with_provider(reader, provider)?)),
+            2 => Ok(ImportDesc::Memory(MemoryType::from_bytes_with_provider(reader, provider)?)),
+            3 => Ok(ImportDesc::Global(GlobalType::from_bytes_with_provider(reader, provider)?)),
+            4 => Ok(ImportDesc::Extern(ExternTypePlaceholder::from_bytes_with_provider(
+                reader, provider,
+            )?)),
+            5 => Ok(ImportDesc::Resource(ResourceTypePlaceholder::from_bytes_with_provider(
+                reader, provider,
+            )?)),
+            255 => Ok(ImportDesc::_Phantom(core::marker::PhantomData)),
+            _ => Err(Error::new_static(
+                ErrorCategory::Parse,
+                codes::PARSE_ERROR,
+                "Invalid ImportDesc tag",
+            )),
+        }
     }
 }
 
@@ -1774,7 +1841,7 @@ impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> Ch
         ) {
             checksum.update_slice(&(vec.len() as u32).to_le_bytes());
             for i in 0..vec.len() {
-                if let Some(item) = vec.get(i) {
+                if let Ok(item) = vec.get(i) {
                     item.update_checksum(checksum);
                 }
             }
@@ -1789,7 +1856,7 @@ impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> Ch
         ) {
             checksum.update_slice(&(vec.len() as u32).to_le_bytes());
             for i in 0..vec.len() {
-                if let Some(item) = vec.get(i) {
+                if let Ok(item) = vec.get(i) {
                     checksum.update_slice(&item.to_le_bytes());
                 }
             }

@@ -22,7 +22,7 @@ use wrt_error::Error as WrtError; // Added for the Result return type
 // Use WrtOnce from wrt-sync crate
 use wrt_sync::once::WrtOnce;
 
-use crate::validation::importance; // Added this import
+use crate::traits::importance; // Added this import
 use crate::verification::VerificationLevel;
 
 // Global operation counter for use when a local counter isn't available
@@ -94,6 +94,7 @@ impl Type {
             Type::MemoryDeallocation => 8,
             Type::MemoryRead => 1,
             Type::MemoryWrite => 2,
+            Type::MemoryCopy => 3,
             Type::MemoryGrow => 50,
             Type::CollectionPush => 5,
             Type::CollectionPop => 5,
@@ -127,6 +128,7 @@ impl Type {
             | Type::MemoryGrow
             | Type::CollectionValidate => importance::CRITICAL,
             Type::MemoryWrite
+            | Type::MemoryCopy
             | Type::CollectionPush
             | Type::CollectionPop
             | Type::CollectionInsert
@@ -306,6 +308,9 @@ impl Counter {
                 self.memory_reads.fetch_add(1, Ordering::Relaxed);
             }
             Type::MemoryWrite => {
+                self.memory_writes.fetch_add(1, Ordering::Relaxed);
+            }
+            Type::MemoryCopy => {
                 self.memory_writes.fetch_add(1, Ordering::Relaxed);
             }
             Type::MemoryGrow => {

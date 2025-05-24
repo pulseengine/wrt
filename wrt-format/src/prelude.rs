@@ -26,30 +26,32 @@ pub use core::{
 
 // Re-export from wrt-error
 pub use wrt_error::{codes, kinds, Error, ErrorCategory, FromError, Result, ToErrorCategory};
-// No-std memory provider
-#[cfg(all(feature = "safety", not(feature = "std")))]
-pub use wrt_foundation::safe_memory::NoStdMemoryProvider;
 // Conditional imports for safety features
 #[cfg(feature = "safety")]
-pub use wrt_foundation::safe_memory::{MemoryProvider, StdMemoryProvider};
+pub use wrt_foundation::MemoryProvider;
+// No-std memory provider
+#[cfg(all(feature = "safety", not(feature = "std")))]
+pub use wrt_foundation::NoStdProvider as NoStdMemoryProvider;
+#[cfg(feature = "std")]
+pub use wrt_foundation::StdProvider as StdMemoryProvider;
 // Re-export from wrt-foundation
 pub use wrt_foundation::{
     // Component model types
     component_value::{ComponentValue, ValType},
     // Verification types
     verification::VerificationLevel,
+    BoundedStack,
     // SafeMemory types
     SafeMemoryHandler,
     SafeSlice,
-    SafeStack,
 };
+#[cfg(not(any(feature = "alloc", feature = "std")))]
+pub use wrt_foundation::{BoundedMap, BoundedString, BoundedVec};
 
 // Re-export from this crate's modules
 pub use crate::{
     // Binary module constants and functions
-    binary::{
-        read_leb128_u32, read_string, write_leb128_u32, write_string, WASM_MAGIC, WASM_VERSION,
-    },
+    binary::{read_leb128_u32, read_string, WASM_MAGIC, WASM_VERSION},
     // Conversion utilities
     conversion::{
         block_type_to_format_block_type, convert, format_block_type_to_block_type,
@@ -67,6 +69,9 @@ pub use crate::{
         IMPORT_ID, MEMORY_ID, START_ID, TABLE_ID, TYPE_ID,
     },
 };
+// Re-export collection types for no_std
+#[cfg(not(any(feature = "alloc", feature = "std")))]
+pub use crate::{WasmString, WasmVec};
 
 // Helper functions for memory safety
 
@@ -87,7 +92,7 @@ pub fn safe_slice_with_verification(
 
 /// Create a memory provider from a byte slice (changed from Vec<u8>)
 #[cfg(all(feature = "safety", feature = "std"))] // StdMemoryProvider likely needs std
-pub fn memory_provider(data: &[u8]) -> wrt_foundation::safe_memory::StdMemoryProvider {
+pub fn memory_provider(data: &[u8]) -> wrt_foundation::StdProvider {
     // StdMemoryProvider::new takes Vec, this needs adjustment or StdMemoryProvider
     // needs a from_slice For now, let's assume StdMemoryProvider can be created
     // from a slice or this function is std-only. This function is problematic
@@ -95,15 +100,13 @@ pub fn memory_provider(data: &[u8]) -> wrt_foundation::safe_memory::StdMemoryPro
     // StdMemoryProvider to have a method that takes a slice if appropriate,
     // or this helper should be cfg-gated more strictly or use a different provider
     // for no_std. Tentatively, creating a Vec here if std is available.
-    wrt_foundation::safe_memory::StdMemoryProvider::new(data.to_vec())
+    wrt_foundation::StdProvider::new(data.to_vec())
 }
 
 /// Create a memory provider with specific capacity
 #[cfg(all(feature = "safety", feature = "std"))] // StdMemoryProvider likely needs std
-pub fn memory_provider_with_capacity(
-    capacity: usize,
-) -> wrt_foundation::safe_memory::StdMemoryProvider {
-    wrt_foundation::safe_memory::StdMemoryProvider::with_capacity(capacity)
+pub fn memory_provider_with_capacity(capacity: usize) -> wrt_foundation::StdProvider {
+    wrt_foundation::StdProvider::with_capacity(capacity)
 }
 
 /// The prelude trait
@@ -142,16 +145,17 @@ pub mod std_prelude {
         wrt_type_error, wrt_validation_error, IntoError,
     };
     // Format types - fix incorrect modules
-    pub use crate::{
-        binary, component::Component, module::Module, types::FormatBlockType,
-        validation::Validatable,
-    };
+    pub use crate::{binary, types::FormatBlockType, validation::Validatable};
+    #[cfg(any(feature = "alloc", feature = "std"))]
+    pub use crate::{component::Component, module::Module};
 }
 
+#[cfg(any(feature = "alloc", feature = "std"))]
 impl Prelude for crate::component::Component {}
 
 /// No-std prelude for the format library
 pub mod no_std_prelude {
+    // Re-export collection types for no_std
     // External crate imports
     // Base error types from wrt_error
     pub use wrt_error::{codes, kinds, Error, ErrorCategory, FromError, Result, ToErrorCategory};
@@ -170,6 +174,8 @@ pub mod no_std_prelude {
         // Verification
         verification::VerificationLevel,
     };
+    #[cfg(not(any(feature = "alloc", feature = "std")))]
+    pub use wrt_foundation::{BoundedMap, BoundedString, BoundedVec};
 
     // Explicitly re-export conversion utilities
     pub use crate::conversion::{
@@ -183,8 +189,9 @@ pub mod no_std_prelude {
         wrt_type_error, wrt_validation_error, IntoError,
     };
     // Format types - fix incorrect modules
-    pub use crate::{
-        binary, component::Component, module::Module, types::FormatBlockType,
-        validation::Validatable,
-    };
+    pub use crate::{binary, types::FormatBlockType, validation::Validatable};
+    #[cfg(any(feature = "alloc", feature = "std"))]
+    pub use crate::{component::Component, module::Module};
+    #[cfg(not(any(feature = "alloc", feature = "std")))]
+    pub use crate::{WasmString, WasmVec};
 }
