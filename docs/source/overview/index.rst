@@ -18,6 +18,7 @@ Welcome to the Pulseengine (WRT Edition) documentation. This section provides an
    :caption: In this section:
 
    features
+   ../getting_started/index
    ../architecture
 
 Introduction
