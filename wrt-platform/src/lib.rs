@@ -29,8 +29,17 @@
 // Module declarations
 pub mod memory;
 pub mod memory_optimizations;
+pub mod performance_validation;
+pub mod platform_abstraction;
 pub mod prelude;
+pub mod runtime_detection;
 pub mod sync;
+
+// Enhanced platform features
+pub mod advanced_sync;
+pub mod formal_verification;
+pub mod hardware_optimizations;
+pub mod side_channel_resistance;
 
 // Platform-specific modules
 #[cfg(all(feature = "platform-macos", feature = "use-libc", target_os = "macos"))]
@@ -71,10 +80,33 @@ pub mod zephyr_memory;
 #[cfg(feature = "platform-zephyr")]
 pub mod zephyr_sync;
 
+// Tock OS-specific modules
+#[cfg(feature = "platform-tock")]
+pub mod tock_memory;
+#[cfg(feature = "platform-tock")]
+pub mod tock_sync;
+
 // Publicly export items via the prelude
 // Publicly export the core traits and the fallback implementations
 // Export macOS specific implementations if enabled and on macOS
 // Export Linux specific implementations if enabled and on Linux
+pub use advanced_sync::{
+    AdvancedRwLock, LockFreeAllocator, Priority, PriorityInheritanceMutex, MAX_PRIORITY,
+    MIN_PRIORITY,
+};
+#[cfg(feature = "alloc")]
+pub use advanced_sync::{LockFreeMpscQueue, WaitFreeSpscQueue};
+pub use formal_verification::{
+    annotations, concurrency_verification, integration_verification, memory_verification,
+    realtime_verification, security_verification,
+};
+// Export specific CFI/BTI types for easy access
+pub use hardware_optimizations::arm::{BranchTargetIdentification, BtiExceptionLevel, BtiMode};
+pub use hardware_optimizations::riscv::{CfiExceptionMode, ControlFlowIntegrity};
+// Export enhanced platform features
+pub use hardware_optimizations::{
+    arm, compile_time, intel, riscv, HardwareOptimization, HardwareOptimizer, SecurityLevel,
+};
 #[cfg(all(
     feature = "platform-linux",
     target_os = "linux",
@@ -105,6 +137,13 @@ pub use memory::{
 pub use memory_optimizations::{
     MemoryOptimization, PlatformMemoryOptimizer, PlatformOptimizedProviderBuilder,
 };
+// Export performance validation (for testing and benchmarking)
+pub use performance_validation::{BenchmarkResult, CompileTimeValidator, PerformanceValidator}; /* This is fine as wrt_error::Error is always available */
+// Export hybrid platform abstraction
+pub use platform_abstraction::{
+    paradigm, platform_select, BaremetalPlatform, IsolationLevel, PlatformAbstraction,
+    PlatformConfig, PosixPlatform, RealtimePlatform, SecurityPlatform, UnifiedPlatform,
+};
 pub use prelude::*;
 #[cfg(all(feature = "platform-qnx", target_os = "nto"))]
 pub use qnx_arena::{QnxArenaAllocator, QnxArenaAllocatorBuilder, QnxMallocOption};
@@ -117,14 +156,28 @@ pub use qnx_partition::{
 };
 #[cfg(all(feature = "platform-qnx", target_os = "nto"))]
 pub use qnx_sync::{QnxFutex, QnxFutexBuilder, QnxSyncPriority};
+// Export runtime detection
+pub use runtime_detection::{
+    MemoryCapabilities, PlatformCapabilities, PlatformDetector, RealtimeCapabilities,
+    SecurityCapabilities, SyncCapabilities,
+};
+pub use side_channel_resistance::{
+    access_obfuscation, cache_aware_allocation, constant_time, platform_integration, AttackVector,
+    ResistanceLevel,
+};
 pub use sync::{FutexLike, SpinFutex, SpinFutexBuilder, TimeoutResult}; /* FutexLike is always available */
+// Export Tock OS specific implementations if enabled
+#[cfg(feature = "platform-tock")]
+pub use tock_memory::{TockAllocator, TockAllocatorBuilder};
+#[cfg(feature = "platform-tock")]
+pub use tock_sync::{TockFutex, TockFutexBuilder, TockSemaphoreFutex};
 // Re-export core error type (also available via prelude)
 pub use wrt_error::Error;
 // Export Zephyr specific implementations if enabled
 #[cfg(feature = "platform-zephyr")]
 pub use zephyr_memory::{ZephyrAllocator, ZephyrAllocatorBuilder, ZephyrMemoryFlags};
 #[cfg(feature = "platform-zephyr")]
-pub use zephyr_sync::{ZephyrFutex, ZephyrFutexBuilder, ZephyrSemaphoreFutex}; // This is fine as wrt_error::Error is always available
+pub use zephyr_sync::{ZephyrFutex, ZephyrFutexBuilder, ZephyrSemaphoreFutex};
 
 #[cfg(test)]
 #[allow(clippy::panic)] // Allow panics in the test module
@@ -232,6 +285,82 @@ mod tests {
 
         // Test that the semaphore futex was created successfully
         assert_eq!(core::mem::size_of_val(&futex) > 0, true);
+    }
+
+    #[cfg(feature = "platform-tock")]
+    #[test]
+    fn test_tock_allocator_builder() {
+        let builder = TockAllocatorBuilder::new()
+            .with_maximum_pages(64)
+            .with_verification_level(VerificationLevel::Full);
+
+        assert_eq!(builder.maximum_pages, 64);
+        assert_eq!(builder.verification_level, VerificationLevel::Full);
+    }
+
+    #[cfg(feature = "platform-tock")]
+    #[test]
+    fn test_tock_futex_builder() {
+        let futex = TockFutexBuilder::new().with_initial_value(123).with_ipc(true).build().unwrap();
+
+        assert_eq!(futex.load(), 123);
+    }
+
+    #[test]
+    fn test_hybrid_platform_abstraction() {
+        use crate::platform_abstraction::*;
+
+        // Test configuration creation for different paradigms
+        let posix_config =
+            PlatformConfig::<paradigm::Posix>::new().with_max_pages(1024).with_guard_pages(true);
+        assert_eq!(posix_config.max_pages, 1024);
+        assert!(posix_config.guard_pages);
+
+        let security_config = PlatformConfig::<paradigm::SecurityFirst>::new()
+            .with_max_pages(512)
+            .with_static_allocation(64 * 1024)
+            .with_isolation_level(IsolationLevel::Hardware);
+        assert_eq!(security_config.max_pages, 512);
+        assert_eq!(security_config.static_allocation_size, Some(64 * 1024));
+        assert_eq!(security_config.isolation_level, Some(IsolationLevel::Hardware));
+
+        let realtime_config =
+            PlatformConfig::<paradigm::RealTime>::new().with_max_pages(256).with_rt_priority(10);
+        assert_eq!(realtime_config.max_pages, 256);
+        assert_eq!(realtime_config.rt_priority, Some(10));
+    }
+
+    #[test]
+    fn test_platform_auto_selection() {
+        use crate::platform_abstraction::platform_select;
+
+        // Test that we can create auto-selected platform
+        let _platform = platform_select::create_auto_platform();
+
+        // The actual type will depend on which features are enabled
+        // This test mainly ensures the compilation works
+    }
+
+    #[test]
+    fn test_runtime_detection() {
+        use crate::runtime_detection::PlatformDetector;
+
+        let mut detector = PlatformDetector::new();
+        let capabilities = detector.detect().unwrap();
+
+        // Test that we can detect basic capabilities
+        assert!(capabilities.memory.allocation_granularity > 0);
+        assert!(capabilities.supports_wasm_runtime());
+
+        let paradigm = capabilities.recommended_paradigm();
+        assert!(paradigm == "SecurityFirst" || paradigm == "RealTime" || paradigm == "Posix");
+
+        // Test caching works
+        let capabilities2 = detector.detect().unwrap();
+        assert_eq!(
+            capabilities.memory.allocation_granularity,
+            capabilities2.memory.allocation_granularity
+        );
     }
 }
 
