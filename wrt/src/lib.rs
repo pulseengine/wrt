@@ -85,6 +85,8 @@ macro_rules! debug_println {
 pub mod prelude;
 
 // Module adapters for integration between specialized crates
+#[cfg(feature = "std")] // CFI integration requires std features currently
+pub mod cfi_integration;
 pub mod decoder_integration;
 pub mod instructions_adapter;
 pub mod memory_adapter;
@@ -192,4 +194,61 @@ pub fn load_module_from_binary(binary: &[u8]) -> Result<Module> {
     // The types `Result` and `Module` are also from the prelude (originating in
     // wrt_error and wrt_runtime)
     prelude::load_module_from_binary(binary)
+}
+
+/// Create a new CFI-protected execution engine with default settings.
+///
+/// This function creates a CFI-protected WebAssembly execution engine
+/// that provides Control Flow Integrity protection against ROP/JOP attacks.
+///
+/// # Returns
+///
+/// A Result containing the CFI-protected engine or an error
+#[cfg(feature = "std")]
+pub fn new_cfi_protected_engine() -> Result<cfi_integration::CfiProtectedEngine> {
+    cfi_integration::new_cfi_engine()
+}
+
+/// Execute a WebAssembly module with CFI protection.
+///
+/// This is a high-level convenience function that loads and executes
+/// a WebAssembly module with comprehensive CFI protection.
+///
+/// # Arguments
+///
+/// * `binary` - The WebAssembly binary to execute
+/// * `function_name` - The name of the function to execute
+///
+/// # Returns
+///
+/// A Result containing the CFI execution result or an error
+#[cfg(feature = "std")]
+pub fn execute_with_cfi_protection(
+    binary: &[u8],
+    function_name: &str,
+) -> Result<cfi_integration::CfiExecutionResult> {
+    cfi_integration::execute_module_with_cfi(binary, function_name)
+}
+
+/// Execute a WebAssembly module with custom CFI configuration.
+///
+/// This function provides fine-grained control over CFI protection settings
+/// for WebAssembly execution.
+///
+/// # Arguments
+///
+/// * `binary` - The WebAssembly binary to execute
+/// * `function_name` - The name of the function to execute
+/// * `config` - CFI configuration options
+///
+/// # Returns
+///
+/// A Result containing the CFI execution result or an error
+#[cfg(feature = "std")]
+pub fn execute_with_cfi_config(
+    binary: &[u8],
+    function_name: &str,
+    config: cfi_integration::CfiConfiguration,
+) -> Result<cfi_integration::CfiExecutionResult> {
+    cfi_integration::execute_module_with_cfi_config(binary, function_name, config)
 }

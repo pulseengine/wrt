@@ -4,6 +4,11 @@
 //! which represents a runtime instance of a WebAssembly module with its own
 //! memory, tables, globals, and functions.
 
+#[cfg(feature = "debug-full")]
+use wrt_debug::FunctionInfo;
+#[cfg(feature = "debug")]
+use wrt_debug::{DwarfDebugInfo, LineInfo};
+
 use crate::{global::Global, memory::Memory, module::Module, prelude::*, table::Table};
 
 /// Represents a runtime instance of a WebAssembly module
@@ -21,6 +26,9 @@ pub struct ModuleInstance {
     instance_id: usize,
     /// Imported instance indices to resolve imports
     imports: HashMap<String, HashMap<String, (usize, usize)>>,
+    /// Debug information (optional)
+    #[cfg(feature = "debug")]
+    debug_info: Option<DwarfDebugInfo<'static>>,
 }
 
 impl ModuleInstance {
@@ -33,6 +41,8 @@ impl ModuleInstance {
             globals: Arc::new(Mutex::new(Vec::new())),
             instance_id,
             imports: HashMap::new(),
+            #[cfg(feature = "debug")]
+            debug_info: None,
         }
     }
 
@@ -147,5 +157,41 @@ impl crate::stackless::extensions::ModuleInstance for ModuleInstance {
 
     fn function_type(&self, idx: u32) -> Result<FuncType> {
         self.function_type(idx)
+    }
+
+    /// Initialize debug information for this instance
+    #[cfg(feature = "debug")]
+    pub fn init_debug_info(&mut self, module_bytes: &'static [u8]) -> Result<()> {
+        let mut debug_info = DwarfDebugInfo::new(module_bytes);
+
+        // TODO: Extract debug section offsets from the module
+        // For now, this is a placeholder that would need module parsing integration
+
+        self.debug_info = Some(debug_info);
+        Ok(())
+    }
+
+    /// Get line information for a given program counter
+    #[cfg(feature = "debug")]
+    pub fn get_line_info(&mut self, pc: u32) -> Result<Option<LineInfo>> {
+        if let Some(ref mut debug_info) = self.debug_info {
+            debug_info
+                .find_line_info(pc)
+                .map_err(|e| create_simple_runtime_error(&format!("Debug info error: {}", e)))
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// Get function information for a given program counter
+    #[cfg(feature = "debug-full")]
+    pub fn get_function_info(&self, pc: u32) -> Option<&FunctionInfo> {
+        self.debug_info.as_ref()?.find_function_info(pc)
+    }
+
+    /// Check if debug information is available
+    #[cfg(feature = "debug")]
+    pub fn has_debug_info(&self) -> bool {
+        self.debug_info.as_ref().map_or(false, |di| di.has_debug_info())
     }
 }

@@ -33,6 +33,7 @@ extern crate alloc;
 pub use prelude::*;
 
 // Core modules
+pub mod cfi_engine;
 pub mod execution;
 pub mod func;
 pub mod global;
@@ -47,6 +48,10 @@ pub mod stackless;
 pub mod table;
 
 // Re-export commonly used types
+pub use cfi_engine::{
+    CfiEngineStatistics, CfiExecutionEngine, CfiExecutionResult, CfiViolationPolicy,
+    CfiViolationType, ExecutionResult,
+};
 pub use execution::{ExecutionContext, ExecutionStats};
 pub use func::FuncType;
 pub use global::Global;

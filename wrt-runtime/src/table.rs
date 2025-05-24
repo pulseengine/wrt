@@ -29,7 +29,13 @@ impl Clone for Table {
         let mut new_elements = SafeStack::with_capacity(elements_vec.len());
         new_elements.set_verification_level(self.verification_level);
         for elem in elements_vec {
-            new_elements.push(elem).unwrap();
+            // If push fails, we've already allocated the capacity so this should not fail
+            // unless we're out of memory, in which case panicking is appropriate
+            if new_elements.push(elem).is_err() {
+                // In Clone implementation, we can't return an error, so panic is appropriate
+                // for an out-of-memory condition
+                panic!("Failed to clone table: out of memory");
+            }
         }
         Self {
             ty: self.ty.clone(),
