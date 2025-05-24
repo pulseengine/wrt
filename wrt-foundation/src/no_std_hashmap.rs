@@ -13,12 +13,7 @@
 //! the standard HashMap or external crates like hashbrown, but it provides
 //! the core functionality needed for the WRT ecosystem.
 
-use core::{
-    borrow::Borrow,
-    fmt,
-    hash::{Hash, Hasher},
-    marker::PhantomData,
-};
+use core::{borrow::Borrow, fmt, hash::Hash, marker::PhantomData};
 
 use crate::{
     bounded::BoundedVec,
@@ -155,7 +150,7 @@ where
     fn hash_key<Q: ?Sized + Hash>(&self, key: &Q) -> u64 {
         // For no_std environments, use a simple hash function
         // This is not cryptographically secure but sufficient for HashMap functionality
-        let mut hash: u64 = 5381; // DJB2 hash algorithm starting value
+        let hash: u64 = 5381; // DJB2 hash algorithm starting value
 
         // Since we can't directly hash with core::hash::Hasher in no_std without alloc,
         // we'll use a simplified approach. In a real implementation, you'd want
@@ -182,7 +177,7 @@ where
         if self.is_full() {
             // Check if the key already exists
             let hash = self.hash_key(&key);
-            let mut index = self.initial_index(hash);
+            let index = self.initial_index(hash);
 
             for i in 0..N {
                 let actual_index = (index + i) % N;
@@ -204,7 +199,7 @@ where
         }
 
         let hash = self.hash_key(&key);
-        let mut index = self.initial_index(hash);
+        let index = self.initial_index(hash);
 
         // Find the slot for this key (either empty or matching key)
         for i in 0..N {
@@ -244,7 +239,7 @@ where
         Q: Hash + Eq,
     {
         let hash = self.hash_key(key);
-        let mut index = self.initial_index(hash);
+        let index = self.initial_index(hash);
 
         for i in 0..N {
             let actual_index = (index + i) % N;
@@ -275,7 +270,7 @@ where
         Q: Hash + Eq,
     {
         let hash = self.hash_key(key);
-        let mut index = self.initial_index(hash);
+        let index = self.initial_index(hash);
 
         for i in 0..N {
             let actual_index = (index + i) % N;

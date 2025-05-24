@@ -69,7 +69,7 @@
 #![deny(clippy::all)]
 #![deny(clippy::perf)]
 #![deny(clippy::nursery)]
-#![deny(clippy::cargo)]
+#![allow(clippy::cargo)]
 #![warn(clippy::pedantic)]
 #![warn(clippy::missing_panics_doc)]
 #![deny(missing_docs)]

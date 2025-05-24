@@ -38,10 +38,9 @@ pub use crate::float_repr::{FloatBits32, FloatBits64};
 use crate::traits::LittleEndian as TraitLittleEndian; // Alias trait
 // Use the canonical LittleEndian trait and BytesWriter from crate::traits
 use crate::traits::{
-    BytesWriter, Checksummable, FromBytes, LittleEndian, ReadStream, SerializationError, ToBytes,
-    WriteStream,
+    BytesWriter, Checksummable, FromBytes, LittleEndian, ReadStream, ToBytes, WriteStream,
 };
-use crate::types::{RefType, ValueType}; // Import ValueType and RefType
+use crate::types::ValueType; // Import ValueType and RefType
 use crate::{
     prelude::{Debug, Eq, PartialEq},
     verification::Checksum,

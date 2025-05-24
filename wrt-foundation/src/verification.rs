@@ -23,8 +23,6 @@ use std::fmt;
 #[cfg(feature = "std")]
 use std::sync::atomic::{AtomicU32, Ordering};
 
-use wrt_error::{codes, Error, ErrorCategory};
-
 use crate::{
     traits::{FromBytes, ReadStream, SerializationError, ToBytes, WriteStream},
     WrtResult,

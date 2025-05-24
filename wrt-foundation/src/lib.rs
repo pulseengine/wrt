@@ -52,11 +52,9 @@ extern crate alloc;
 // #![deny(pointer_cast)] // Removed, as it's not a standard lint
 // #![deny(alloc_instead_of_core)] // TODO: Verify this lint or implement if
 // custom
-
 // Conditionally import log if std feature is enabled
 // #[cfg(feature = "std")] // Removed
 // extern crate log; // Removed
-
 // Prelude module for consistent imports across std and no_std environments
 pub mod prelude;
 
