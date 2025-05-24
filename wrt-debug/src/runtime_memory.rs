@@ -1,13 +1,13 @@
-/// Runtime memory inspection implementation
-/// Provides safe memory access and heap analysis capabilities
-
 #![cfg(feature = "runtime-memory")]
 
-use crate::runtime_api::{DebugMemory, RuntimeState};
 use wrt_foundation::{
     bounded::{BoundedVec, MAX_DWARF_FILE_TABLE},
     NoStdProvider,
 };
+
+/// Runtime memory inspection implementation
+/// Provides safe memory access and heap analysis capabilities
+use crate::runtime_api::{DebugMemory, RuntimeState};
 
 /// Memory region information
 #[derive(Debug, Clone)]
@@ -91,9 +91,7 @@ impl<'a> MemoryInspector<'a> {
 
     /// Find which region contains an address
     pub fn find_region(&self, addr: u32) -> Option<&MemoryRegion> {
-        self.regions.iter().find(|r| {
-            addr >= r.start && addr < r.start.saturating_add(r.size)
-        })
+        self.regions.iter().find(|r| addr >= r.start && addr < r.start.saturating_add(r.size))
     }
 
     /// Check if an address is valid
@@ -109,18 +107,14 @@ impl<'a> MemoryInspector<'a> {
     pub fn read_memory(&self, addr: u32, len: usize) -> Option<MemoryView<'_>> {
         let memory = self.memory?;
         let data = memory.read_bytes(addr, len)?;
-        
-        Some(MemoryView {
-            address: addr,
-            data,
-            region: self.find_region(addr),
-        })
+
+        Some(MemoryView { address: addr, data, region: self.find_region(addr) })
     }
 
     /// Read a null-terminated string
     pub fn read_cstring(&self, addr: u32, max_len: usize) -> Option<CStringView<'_>> {
         let memory = self.memory?;
-        
+
         // Find string length
         let mut len = 0;
         for i in 0..max_len {
@@ -133,7 +127,7 @@ impl<'a> MemoryInspector<'a> {
                 return None;
             }
         }
-        
+
         let data = memory.read_bytes(addr, len)?;
         Some(CStringView { address: addr, data })
     }
@@ -152,7 +146,7 @@ impl<'a> MemoryInspector<'a> {
         for alloc in self.allocations.iter() {
             stats.total_allocations += 1;
             stats.total_bytes += alloc.size;
-            
+
             if alloc.allocated {
                 stats.active_allocations += 1;
                 stats.allocated_bytes += alloc.size;
@@ -172,39 +166,34 @@ impl<'a> MemoryInspector<'a> {
     /// Find allocation containing address
     pub fn find_allocation(&self, addr: u32) -> Option<&HeapAllocation> {
         self.allocations.iter().find(|alloc| {
-            alloc.allocated && 
-            addr >= alloc.address && 
-            addr < alloc.address.saturating_add(alloc.size)
+            alloc.allocated
+                && addr >= alloc.address
+                && addr < alloc.address.saturating_add(alloc.size)
         })
     }
 
     /// Dump memory in hex format
     pub fn dump_hex(&self, addr: u32, len: usize) -> MemoryDump {
-        MemoryDump {
-            inspector: self,
-            address: addr,
-            length: len,
-        }
+        MemoryDump { inspector: self, address: addr, length: len }
     }
 
     /// Analyze stack usage
     pub fn analyze_stack(&self, state: &dyn RuntimeState) -> StackAnalysis {
         let sp = state.sp();
-        
+
         // Find stack region
-        let stack_region = self.regions.iter()
-            .find(|r| r.region_type == MemoryRegionType::Stack);
-        
+        let stack_region = self.regions.iter().find(|r| r.region_type == MemoryRegionType::Stack);
+
         let (stack_base, stack_size) = if let Some(region) = stack_region {
             (region.start + region.size, region.size)
         } else {
             // Assume default WASM stack
             (0x10000, 0x10000) // 64KB at 64KB offset
         };
-        
+
         let used = stack_base.saturating_sub(sp);
         let free = sp.saturating_sub(stack_base - stack_size);
-        
+
         StackAnalysis {
             stack_pointer: sp,
             stack_base,
@@ -290,19 +279,19 @@ impl<'a> MemoryDump<'a> {
     {
         let mut addr = self.address & !0xF; // Align to 16 bytes
         let end = self.address + self.length as u32;
-        
+
         while addr < end {
             // Address
             let mut hex_buf = [0u8; 8];
             writer(format_hex_u32(addr, &mut hex_buf))?;
             writer(": ")?;
-            
+
             // Hex bytes
             for i in 0..16 {
                 if i == 8 {
                     writer(" ")?;
                 }
-                
+
                 let byte_addr = addr + i;
                 if byte_addr >= self.address && byte_addr < end {
                     if let Some(view) = self.inspector.read_memory(byte_addr, 1) {
@@ -316,9 +305,9 @@ impl<'a> MemoryDump<'a> {
                 }
                 writer(" ")?;
             }
-            
+
             writer(" |")?;
-            
+
             // ASCII representation
             for i in 0..16 {
                 let byte_addr = addr + i;
@@ -337,11 +326,11 @@ impl<'a> MemoryDump<'a> {
                     writer(" ")?;
                 }
             }
-            
+
             writer("|\n")?;
             addr += 16;
         }
-        
+
         Ok(())
     }
 }
@@ -350,10 +339,10 @@ impl<'a> MemoryDump<'a> {
 fn format_hex_u8(n: u8, buf: &mut [u8; 2]) -> &str {
     let high = (n >> 4) & 0xF;
     let low = n & 0xF;
-    
+
     buf[0] = if high < 10 { b'0' + high } else { b'a' + high - 10 };
     buf[1] = if low < 10 { b'0' + low } else { b'a' + low - 10 };
-    
+
     core::str::from_utf8(buf).unwrap_or("??")
 }
 
@@ -373,24 +362,28 @@ mod tests {
     #[test]
     fn test_memory_regions() {
         let mut inspector = MemoryInspector::new();
-        
+
         // Add memory regions
-        inspector.add_region(MemoryRegion {
-            start: 0x0,
-            size: 0x10000,
-            region_type: MemoryRegionType::LinearMemory,
-            writable: true,
-            name: "main",
-        }).unwrap();
-        
-        inspector.add_region(MemoryRegion {
-            start: 0x10000,
-            size: 0x10000,
-            region_type: MemoryRegionType::Stack,
-            writable: true,
-            name: "stack",
-        }).unwrap();
-        
+        inspector
+            .add_region(MemoryRegion {
+                start: 0x0,
+                size: 0x10000,
+                region_type: MemoryRegionType::LinearMemory,
+                writable: true,
+                name: "main",
+            })
+            .unwrap();
+
+        inspector
+            .add_region(MemoryRegion {
+                start: 0x10000,
+                size: 0x10000,
+                region_type: MemoryRegionType::Stack,
+                writable: true,
+                name: "stack",
+            })
+            .unwrap();
+
         // Test region lookup
         assert!(inspector.find_region(0x5000).is_some());
         assert!(inspector.find_region(0x15000).is_some());
@@ -400,29 +393,35 @@ mod tests {
     #[test]
     fn test_heap_stats() {
         let mut inspector = MemoryInspector::new();
-        
+
         // Add allocations
-        inspector.add_allocation(HeapAllocation {
-            address: 0x1000,
-            size: 256,
-            allocated: true,
-            id: Some(1),
-        }).unwrap();
-        
-        inspector.add_allocation(HeapAllocation {
-            address: 0x2000,
-            size: 512,
-            allocated: true,
-            id: Some(2),
-        }).unwrap();
-        
-        inspector.add_allocation(HeapAllocation {
-            address: 0x3000,
-            size: 128,
-            allocated: false,
-            id: Some(3),
-        }).unwrap();
-        
+        inspector
+            .add_allocation(HeapAllocation {
+                address: 0x1000,
+                size: 256,
+                allocated: true,
+                id: Some(1),
+            })
+            .unwrap();
+
+        inspector
+            .add_allocation(HeapAllocation {
+                address: 0x2000,
+                size: 512,
+                allocated: true,
+                id: Some(2),
+            })
+            .unwrap();
+
+        inspector
+            .add_allocation(HeapAllocation {
+                address: 0x3000,
+                size: 128,
+                allocated: false,
+                id: Some(3),
+            })
+            .unwrap();
+
         let stats = inspector.heap_stats();
         assert_eq!(stats.total_allocations, 3);
         assert_eq!(stats.active_allocations, 2);

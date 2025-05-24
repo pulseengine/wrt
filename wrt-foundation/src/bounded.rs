@@ -155,27 +155,23 @@ use crate::operations::{self, record_global_operation};
 // #[cfg(feature = "std")]
 // use crate::prelude::Vec; // This was added in a previous step for owned Vec, keep it. <--
 // Removing as per unused_import warning
-#[cfg(not(feature = "std"))]
-use crate::safe_memory::NoStdProvider;
+// NoStdProvider is imported where it's actually used
 // use crate::safe_memory::SafeMemory; // Remove this if it was added
 use crate::safe_memory::SafeMemoryHandler; // Ensure this is imported
 use crate::safe_memory::SliceMut; // IMPORT ADDED
-use crate::traits::{importance, BoundedCapacity, Checksummed}; // Moved from validation to traits module
-use crate::traits::{BytesWriter, SerializationError}; // Added BytesWriter
+use crate::traits::{importance, BoundedCapacity, Checksummed, SerializationError}; // Moved from validation to traits module
 use crate::MemoryProvider; // Added import for the MemoryProvider trait alias
 use crate::{
     codes,
-    prelude::{Clone, Debug, Default, Display, Eq, Ord, PartialEq, PartialOrd, Sized},
+    prelude::{Clone, Debug, Default, Display, Eq, Ord, PartialEq, Sized},
     safe_memory::Slice,
     traits::{ReadStream, WriteStream},
 };
 use crate::{
     operations::Type as OperationType,
-    traits::{
-        BytesWriter as BytesWriterTrait, Checksummable, DefaultMemoryProvider, FromBytes, ToBytes,
-    },
-    verification::{Checksum, Hasher as VerificationHasher, VerificationLevel}, /* Removed Checksum here if it's only used via the trait, otherwise keep if directly instantiated */
-    Error,     // Import WrtError re-exported as Error from lib.rs
+    traits::{Checksummable, FromBytes, ToBytes},
+    verification::{Checksum, VerificationLevel},
+    // Error is available through prelude
     WrtResult, // Import WrtResult for the crate
 }; // Renamed Hasher to CoreHasher to avoid conflict if P also brings a Hasher
    // use std::collections::hash_map::RandomState; // For a default hasher -
@@ -277,6 +273,7 @@ impl BoundedError {
         {
             // In no_std without alloc, we cannot format `value`.
             // Provide a generic static message.
+            let _ = value; // Suppress unused warning
             Self::new(BoundedErrorKind::InvalidCapacity, "Invalid capacity provided")
         }
     }
@@ -369,6 +366,12 @@ impl BoundedError {
     #[cfg(not(any(feature = "alloc", feature = "std")))]
     pub fn message(&self) -> &str {
         self.description_static
+    }
+}
+
+impl Display for BoundedError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{}", self.message())
     }
 }
 

@@ -17,7 +17,8 @@ use wrt_debug::prelude::*;
 const MODULE_BYTES: &[u8] = &[
     // WASM magic and version
     0x00, 0x61, 0x73, 0x6D, // \0asm
-    0x01, 0x00, 0x00, 0x00, /* version 1
+    0x01, 0x00, 0x00,
+    0x00, /* version 1
            * ... rest of module with debug sections */
 ];
 

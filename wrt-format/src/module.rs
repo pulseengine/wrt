@@ -30,7 +30,7 @@ use crate::{
 
 /// WebAssembly function definition - Pure No_std Version
 #[cfg(not(any(feature = "alloc", feature = "std")))]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Function<
     P: wrt_foundation::MemoryProvider + Clone + Default + Eq = wrt_foundation::NoStdProvider<1024>,
 > {
@@ -40,6 +40,64 @@ pub struct Function<
     pub locals: crate::WasmVec<ValueType, P>,
     /// Function body (WebAssembly bytecode instructions)
     pub code: crate::WasmVec<u8, P>,
+}
+
+#[cfg(not(any(feature = "alloc", feature = "std")))]
+impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> Default for Function<P> {
+    fn default() -> Self {
+        Function { type_idx: 0, locals: crate::WasmVec::new(), code: crate::WasmVec::new() }
+    }
+}
+
+#[cfg(not(any(feature = "alloc", feature = "std")))]
+impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::traits::Checksummable
+    for Function<P>
+{
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        checksum.update(&self.type_idx.to_le_bytes());
+        self.locals.update_checksum(checksum);
+        self.code.update_checksum(checksum);
+    }
+}
+
+#[cfg(not(any(feature = "alloc", feature = "std")))]
+impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::traits::ToBytes
+    for Function<P>
+{
+    fn to_bytes_with_provider<PStream>(
+        &self,
+        stream: &mut wrt_foundation::traits::WriteStream,
+        provider: &PStream,
+    ) -> Result<(), wrt_error::Error>
+    where
+        PStream: wrt_foundation::MemoryProvider,
+    {
+        stream.write(&self.type_idx.to_le_bytes())?;
+        self.locals.to_bytes_with_provider(stream, provider)?;
+        self.code.to_bytes_with_provider(stream, provider)?;
+        Ok(())
+    }
+}
+
+#[cfg(not(any(feature = "alloc", feature = "std")))]
+impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::traits::FromBytes
+    for Function<P>
+{
+    fn from_bytes_with_provider<PStream>(
+        stream: &mut wrt_foundation::traits::ReadStream,
+        provider: &PStream,
+    ) -> Result<Self, wrt_error::Error>
+    where
+        PStream: wrt_foundation::MemoryProvider,
+    {
+        let mut idx_bytes = [0u8; 4];
+        stream.read(&mut idx_bytes)?;
+        let type_idx = u32::from_le_bytes(idx_bytes);
+        let locals = crate::WasmVec::from_bytes_with_provider(stream, provider)?;
+        let code = crate::WasmVec::from_bytes_with_provider(stream, provider)?;
+
+        Ok(Function { type_idx, locals, code })
+    }
 }
 
 /// WebAssembly function definition - With Allocation
@@ -83,7 +141,7 @@ pub struct Table {
 
 /// WebAssembly global definition - Pure No_std Version
 #[cfg(not(any(feature = "alloc", feature = "std")))]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Global<
     P: wrt_foundation::MemoryProvider + Clone + Default + Eq = wrt_foundation::NoStdProvider<1024>,
 > {
@@ -91,6 +149,59 @@ pub struct Global<
     pub global_type: FormatGlobalType,
     /// Initialization expression
     pub init: crate::WasmVec<u8, P>,
+}
+
+#[cfg(not(any(feature = "alloc", feature = "std")))]
+impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> Default for Global<P> {
+    fn default() -> Self {
+        Global { global_type: FormatGlobalType::default(), init: crate::WasmVec::new() }
+    }
+}
+
+#[cfg(not(any(feature = "alloc", feature = "std")))]
+impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::traits::Checksummable
+    for Global<P>
+{
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        self.global_type.update_checksum(checksum);
+        self.init.update_checksum(checksum);
+    }
+}
+
+#[cfg(not(any(feature = "alloc", feature = "std")))]
+impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::traits::ToBytes
+    for Global<P>
+{
+    fn to_bytes_with_provider<PStream>(
+        &self,
+        stream: &mut wrt_foundation::traits::WriteStream,
+        provider: &PStream,
+    ) -> Result<(), wrt_error::Error>
+    where
+        PStream: wrt_foundation::MemoryProvider,
+    {
+        self.global_type.to_bytes_with_provider(stream, provider)?;
+        self.init.to_bytes_with_provider(stream, provider)?;
+        Ok(())
+    }
+}
+
+#[cfg(not(any(feature = "alloc", feature = "std")))]
+impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::traits::FromBytes
+    for Global<P>
+{
+    fn from_bytes_with_provider<PStream>(
+        stream: &mut wrt_foundation::traits::ReadStream,
+        provider: &PStream,
+    ) -> Result<Self, wrt_error::Error>
+    where
+        PStream: wrt_foundation::MemoryProvider,
+    {
+        let global_type = FormatGlobalType::from_bytes_with_provider(stream, provider)?;
+        let init = crate::WasmVec::from_bytes_with_provider(stream, provider)?;
+
+        Ok(Global { global_type, init })
+    }
 }
 
 /// WebAssembly global definition - With Allocation
@@ -239,7 +350,7 @@ pub struct Element {
 
 /// WebAssembly export - Pure No_std Version
 #[cfg(not(any(feature = "alloc", feature = "std")))]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Export<
     P: wrt_foundation::MemoryProvider + Clone + Default + Eq = wrt_foundation::NoStdProvider<1024>,
 > {
@@ -249,6 +360,73 @@ pub struct Export<
     pub kind: ExportKind,
     /// Export index (index into the corresponding space)
     pub index: u32,
+}
+
+#[cfg(not(any(feature = "alloc", feature = "std")))]
+impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> Default for Export<P> {
+    fn default() -> Self {
+        Export { name: crate::WasmString::default(), kind: ExportKind::Function, index: 0 }
+    }
+}
+
+#[cfg(not(any(feature = "alloc", feature = "std")))]
+impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::traits::Checksummable
+    for Export<P>
+{
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        self.name.update_checksum(checksum);
+        checksum.update(&[self.kind as u8]);
+        checksum.update(&self.index.to_le_bytes());
+    }
+}
+
+#[cfg(not(any(feature = "alloc", feature = "std")))]
+impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::traits::ToBytes
+    for Export<P>
+{
+    fn to_bytes_with_provider<PStream>(
+        &self,
+        stream: &mut wrt_foundation::traits::WriteStream,
+        provider: &PStream,
+    ) -> Result<(), wrt_error::Error>
+    where
+        PStream: wrt_foundation::MemoryProvider,
+    {
+        self.name.to_bytes_with_provider(stream, provider)?;
+        stream.write(&[self.kind as u8])?;
+        stream.write(&self.index.to_le_bytes())?;
+        Ok(())
+    }
+}
+
+#[cfg(not(any(feature = "alloc", feature = "std")))]
+impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::traits::FromBytes
+    for Export<P>
+{
+    fn from_bytes_with_provider<PStream>(
+        stream: &mut wrt_foundation::traits::ReadStream,
+        provider: &PStream,
+    ) -> Result<Self, wrt_error::Error>
+    where
+        PStream: wrt_foundation::MemoryProvider,
+    {
+        let name = crate::WasmString::from_bytes_with_provider(stream, provider)?;
+        let mut kind_byte = [0u8; 1];
+        stream.read(&mut kind_byte)?;
+        let kind = match kind_byte[0] {
+            0 => ExportKind::Function,
+            1 => ExportKind::Table,
+            2 => ExportKind::Memory,
+            3 => ExportKind::Global,
+            4 => ExportKind::Tag,
+            _ => ExportKind::Function, // Default fallback
+        };
+        let mut idx_bytes = [0u8; 4];
+        stream.read(&mut idx_bytes)?;
+        let index = u32::from_le_bytes(idx_bytes);
+
+        Ok(Export { name, kind, index })
+    }
 }
 
 /// WebAssembly export - With Allocation
@@ -280,7 +458,7 @@ pub enum ExportKind {
 
 /// WebAssembly import - Pure No_std Version
 #[cfg(not(any(feature = "alloc", feature = "std")))]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Import<
     P: wrt_foundation::MemoryProvider + Clone + Default + Eq = wrt_foundation::NoStdProvider<1024>,
 > {
@@ -306,18 +484,195 @@ pub struct Import {
 
 /// WebAssembly import description - Pure No_std Version
 #[cfg(not(any(feature = "alloc", feature = "std")))]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ImportDesc<P: wrt_foundation::MemoryProvider = wrt_foundation::NoStdProvider<1024>> {
     /// Function import (type index)
-    Function(u32),
+    Function(u32, core::marker::PhantomData<P>),
     /// Table import
-    Table(Table),
+    Table(Table, core::marker::PhantomData<P>),
     /// Memory import
-    Memory(Memory),
+    Memory(Memory, core::marker::PhantomData<P>),
     /// Global import
-    Global(FormatGlobalType),
+    Global(FormatGlobalType, core::marker::PhantomData<P>),
     /// Tag import (type index)
-    Tag(u32),
+    Tag(u32, core::marker::PhantomData<P>),
+}
+
+#[cfg(not(any(feature = "alloc", feature = "std")))]
+impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> Default for ImportDesc<P> {
+    fn default() -> Self {
+        ImportDesc::Function(0, core::marker::PhantomData)
+    }
+}
+
+#[cfg(not(any(feature = "alloc", feature = "std")))]
+impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> Default for Import<P> {
+    fn default() -> Self {
+        Import {
+            module: crate::WasmString::default(),
+            name: crate::WasmString::default(),
+            desc: ImportDesc::default(),
+        }
+    }
+}
+
+#[cfg(not(any(feature = "alloc", feature = "std")))]
+impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::traits::Checksummable
+    for ImportDesc<P>
+{
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        match self {
+            ImportDesc::Function(idx, _) => {
+                checksum.update(&idx.to_le_bytes());
+            }
+            ImportDesc::Table(_, _) => {
+                checksum.update(&[0x01]);
+            }
+            ImportDesc::Memory(_, _) => {
+                checksum.update(&[0x02]);
+            }
+            ImportDesc::Global(_, _) => {
+                checksum.update(&[0x03]);
+            }
+            ImportDesc::Tag(idx, _) => {
+                checksum.update(&idx.to_le_bytes());
+            }
+        }
+    }
+}
+
+#[cfg(not(any(feature = "alloc", feature = "std")))]
+impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::traits::Checksummable
+    for Import<P>
+{
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        self.module.update_checksum(checksum);
+        self.name.update_checksum(checksum);
+        self.desc.update_checksum(checksum);
+    }
+}
+
+#[cfg(not(any(feature = "alloc", feature = "std")))]
+impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::traits::ToBytes
+    for ImportDesc<P>
+{
+    fn to_bytes_with_provider<PStream>(
+        &self,
+        stream: &mut wrt_foundation::traits::WriteStream,
+        _provider: &PStream,
+    ) -> Result<(), wrt_error::Error>
+    where
+        PStream: wrt_foundation::MemoryProvider,
+    {
+        match self {
+            ImportDesc::Function(idx, _) => {
+                stream.write(&[0x00])?; // Function type tag
+                stream.write(&idx.to_le_bytes())?;
+            }
+            ImportDesc::Table(_, _) => {
+                stream.write(&[0x01])?; // Table type tag
+            }
+            ImportDesc::Memory(_, _) => {
+                stream.write(&[0x02])?; // Memory type tag
+            }
+            ImportDesc::Global(_, _) => {
+                stream.write(&[0x03])?; // Global type tag
+            }
+            ImportDesc::Tag(idx, _) => {
+                stream.write(&[0x04])?; // Tag type tag
+                stream.write(&idx.to_le_bytes())?;
+            }
+        }
+        Ok(())
+    }
+}
+
+#[cfg(not(any(feature = "alloc", feature = "std")))]
+impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::traits::ToBytes
+    for Import<P>
+{
+    fn to_bytes_with_provider<PStream>(
+        &self,
+        stream: &mut wrt_foundation::traits::WriteStream,
+        provider: &PStream,
+    ) -> Result<(), wrt_error::Error>
+    where
+        PStream: wrt_foundation::MemoryProvider,
+    {
+        self.module.to_bytes_with_provider(stream, provider)?;
+        self.name.to_bytes_with_provider(stream, provider)?;
+        self.desc.to_bytes_with_provider(stream, provider)?;
+        Ok(())
+    }
+}
+
+#[cfg(not(any(feature = "alloc", feature = "std")))]
+impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::traits::FromBytes
+    for ImportDesc<P>
+{
+    fn from_bytes_with_provider<PStream>(
+        stream: &mut wrt_foundation::traits::ReadStream,
+        _provider: &PStream,
+    ) -> Result<Self, wrt_error::Error>
+    where
+        PStream: wrt_foundation::MemoryProvider,
+    {
+        let mut tag = [0u8; 1];
+        stream.read(&mut tag)?;
+
+        match tag[0] {
+            0x00 => {
+                // Function
+                let mut idx_bytes = [0u8; 4];
+                stream.read(&mut idx_bytes)?;
+                let idx = u32::from_le_bytes(idx_bytes);
+                Ok(ImportDesc::Function(idx, core::marker::PhantomData))
+            }
+            0x01 => {
+                // Table
+                Ok(ImportDesc::Table(Table::default(), core::marker::PhantomData))
+            }
+            0x02 => {
+                // Memory
+                Ok(ImportDesc::Memory(Memory::default(), core::marker::PhantomData))
+            }
+            0x03 => {
+                // Global
+                Ok(ImportDesc::Global(FormatGlobalType::default(), core::marker::PhantomData))
+            }
+            0x04 => {
+                // Tag
+                let mut idx_bytes = [0u8; 4];
+                stream.read(&mut idx_bytes)?;
+                let idx = u32::from_le_bytes(idx_bytes);
+                Ok(ImportDesc::Tag(idx, core::marker::PhantomData))
+            }
+            _ => Err(wrt_error::Error::new(
+                wrt_error::ErrorCategory::Validation,
+                0x1001,
+                "ImportDesc: Unknown type tag",
+            )),
+        }
+    }
+}
+
+#[cfg(not(any(feature = "alloc", feature = "std")))]
+impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::traits::FromBytes
+    for Import<P>
+{
+    fn from_bytes_with_provider<PStream>(
+        stream: &mut wrt_foundation::traits::ReadStream,
+        provider: &PStream,
+    ) -> Result<Self, wrt_error::Error>
+    where
+        PStream: wrt_foundation::MemoryProvider,
+    {
+        let module = crate::WasmString::from_bytes_with_provider(stream, provider)?;
+        let name = crate::WasmString::from_bytes_with_provider(stream, provider)?;
+        let desc = ImportDesc::from_bytes_with_provider(stream, provider)?;
+
+        Ok(Import { module, name, desc })
+    }
 }
 
 /// WebAssembly import description - With Allocation
@@ -345,6 +700,61 @@ pub struct TypeInformationEntry<
 > {
     pub type_index: u32, // Assuming TypeIdx is u32
     pub name: crate::WasmString<P>,
+}
+
+#[cfg(not(any(feature = "alloc", feature = "std")))]
+impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> Default for TypeInformationEntry<P> {
+    fn default() -> Self {
+        TypeInformationEntry { type_index: 0, name: crate::WasmString::default() }
+    }
+}
+
+#[cfg(not(any(feature = "alloc", feature = "std")))]
+impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::traits::Checksummable
+    for TypeInformationEntry<P>
+{
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        checksum.update(&self.type_index.to_le_bytes());
+        self.name.update_checksum(checksum);
+    }
+}
+
+#[cfg(not(any(feature = "alloc", feature = "std")))]
+impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::traits::ToBytes
+    for TypeInformationEntry<P>
+{
+    fn to_bytes_with_provider<PStream>(
+        &self,
+        stream: &mut wrt_foundation::traits::WriteStream,
+        provider: &PStream,
+    ) -> Result<(), wrt_error::Error>
+    where
+        PStream: wrt_foundation::MemoryProvider,
+    {
+        stream.write(&self.type_index.to_le_bytes())?;
+        self.name.to_bytes_with_provider(stream, provider)?;
+        Ok(())
+    }
+}
+
+#[cfg(not(any(feature = "alloc", feature = "std")))]
+impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::traits::FromBytes
+    for TypeInformationEntry<P>
+{
+    fn from_bytes_with_provider<PStream>(
+        stream: &mut wrt_foundation::traits::ReadStream,
+        provider: &PStream,
+    ) -> Result<Self, wrt_error::Error>
+    where
+        PStream: wrt_foundation::MemoryProvider,
+    {
+        let mut idx_bytes = [0u8; 4];
+        stream.read(&mut idx_bytes)?;
+        let type_index = u32::from_le_bytes(idx_bytes);
+        let name = crate::WasmString::from_bytes_with_provider(stream, provider)?;
+
+        Ok(TypeInformationEntry { type_index, name })
+    }
 }
 
 /// Hypothetical Finding F5: Represents an entry in the TypeInformation section

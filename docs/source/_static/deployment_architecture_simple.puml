@@ -1,0 +1,107 @@
+@startuml deployment_architecture
+title Pulseengine (WRT Edition) - Deployment Architecture
+
+skinparam node {
+    BackgroundColor #E6F3FF
+    BorderColor #5755a9
+    FontColor #2e3440
+}
+
+skinparam component {
+    BackgroundColor #FFEAA7
+    BorderColor #FDCB6E
+}
+
+skinparam artifact {
+    BackgroundColor #DFE6E9
+    BorderColor #B2BEC3
+}
+
+node "Server Environment\n(Linux/macOS)" as server {
+    node "Docker Container\n(Optional)" as docker {
+        artifact "wrtd" as wrtd_server <<Rust Binary>> {
+            note right: Full std features
+        }
+    }
+    artifact "wrt library" as wrt_lib_server <<Rust Library>> {
+        note right: Embedded in application
+    }
+}
+
+node "Embedded Linux\n(Yocto/BuildRoot)" as embedded_linux {
+    artifact "wrt" as wrt_embedded_linux <<Static Library>> {
+        note right: no_std + alloc
+    }
+    component "User Application" as app_linux <<C/C++/Rust>> {
+        note right: Safety-critical app
+    }
+}
+
+node "QNX Neutrino\n(RTOS)" as qnx_system {
+    node "QNX Partition\n(Protected)" as qnx_partition {
+        artifact "wrt" as wrt_qnx <<QNX Process>> {
+            note right: Memory partitioning
+        }
+        component "Safety App" as app_qnx <<C/C++>> {
+            note right: ISO 26262 compliant
+        }
+    }
+}
+
+node "Zephyr RTOS\n(MCU)" as zephyr_rtos {
+    node "Zephyr Kernel Space" as zephyr_kernel {
+        artifact "wrt" as wrt_zephyr <<Zephyr Module>> {
+            note right: no_std, no_alloc
+        }
+    }
+    component "RTOS Task" as app_zephyr <<C>> {
+        note right: Periodic task
+    }
+}
+
+node "Bare Metal\n(ARM Cortex-M/RISC-V)" as bare_metal {
+    artifact "wrt" as wrt_bare <<Static Library>> {
+        note right: no_std, fixed memory
+    }
+    component "Bootloader" as bootloader <<Assembly/C>> {
+        note right: Minimal runtime
+    }
+}
+
+' Memory Models
+package "Memory Models" {
+    component "Heap Allocator\n(std::alloc)" as heap_alloc
+    component "Custom Allocator\n(wrt-foundation)" as custom_alloc
+    component "Static Allocation\n(compile-time)" as static_alloc
+}
+
+' Security Features
+package "Hardware Security" {
+    component "ARM MTE\n(Memory Tagging)" as arm_mte
+    component "ARM PAC/BTI\n(Control Flow)" as arm_pac
+    component "Intel CET\n(Control Flow)" as intel_cet
+    component "QNX SecPol\n(Capability-based)" as qnx_secpol
+}
+
+' Relationships
+wrtd_server ..> heap_alloc : "Uses"
+wrt_lib_server ..> heap_alloc : "Uses"
+
+wrt_embedded_linux ..> custom_alloc : "Uses"
+app_linux --> wrt_embedded_linux : "Links"
+
+wrt_qnx ..> custom_alloc : "Uses"
+wrt_qnx ..> qnx_secpol : "Protected by"
+app_qnx --> wrt_qnx : "IPC"
+
+wrt_zephyr ..> static_alloc : "Uses"
+app_zephyr --> wrt_zephyr : "Calls"
+
+wrt_bare ..> static_alloc : "Uses"
+bootloader --> wrt_bare : "Loads"
+
+wrt_embedded_linux ..> arm_mte : "Optional"
+wrt_lib_server ..> arm_pac : "When on ARM64"
+wrt_lib_server ..> intel_cet : "When on x86_64"
+
+@enduml

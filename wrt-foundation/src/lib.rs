@@ -3,12 +3,22 @@
 //!
 //! This crate provides foundational data structures and functionalities used
 //! across the WRT ecosystem, ensuring type safety, memory safety, and
-//! consistent error handling. It supports both `std` and `no_std` environments,
-//! with optional features for the WebAssembly Component Model and formal
-//! verification.
+//! consistent error handling. It supports three configurations:
+//! - `std`: Full standard library support
+//! - `no_std` + `alloc`: No standard library but with allocation
+//! - `no_std` + `no_alloc`: Pure no_std without any allocation
+//!
+//! # Feature Flags
+//!
+//! - `std`: Enables standard library support (implies `alloc`)
+//! - `alloc`: Enables allocation support for `no_std` environments
+//! - Default: Pure `no_std` without allocation
 
 #![cfg_attr(not(feature = "std"), no_std)]
 #![forbid(unsafe_code)]
+
+// Core library is always available
+extern crate core;
 
 #[cfg(feature = "std")]
 extern crate std;
@@ -58,7 +68,7 @@ pub use wrt_error::{codes, kinds, Error, ErrorCategory};
 /// Result type alias for WRT operations using `wrt_error::Error`
 pub type WrtResult<T> = core::result::Result<T, Error>;
 
-// Core modules
+// Core modules - always available in all configurations
 /// Atomic memory operations with integrated checksumming
 pub mod atomic_memory;
 /// Bounded collections for memory safety
@@ -71,35 +81,14 @@ pub mod builder;
 pub mod builtin;
 /// WebAssembly Component Model types
 pub mod component;
-/// Builder patterns for Component Model types
-pub mod component_builder;
-/// Store for component model types
-pub mod component_type_store;
-/// WebAssembly Component Model value types
-pub mod component_value;
-pub mod component_value_store;
-/// Builder pattern for component value store
-pub mod component_value_store_builder;
 /// Type conversion utilities
 pub mod conversion;
-/// Add the new float_repr module
+/// Float representation utilities
 pub mod float_repr;
-/// Linear memory implementation using PageAllocator.
-#[cfg(feature = "platform-memory")]
-pub mod linear_memory;
-/// Memory builder patterns for platform-backed memory types
-#[cfg(feature = "platform-memory")]
-pub mod memory_builder;
-/// Custom HashMap implementation for no_std/no_alloc environments
-#[cfg(not(any(feature = "std", feature = "alloc")))]
-pub mod no_std_hashmap;
 /// Operation tracking and fuel metering
 pub mod operations;
 /// Resource management
 pub mod resource;
-/// Add the new runtime_memory module
-#[cfg(feature = "platform-memory")]
-pub mod runtime_memory;
 /// Safe memory access primitives
 pub mod safe_memory;
 /// WebAssembly section definitions
@@ -114,11 +103,44 @@ pub mod validation;
 pub mod values;
 /// Verification and integrity checking
 pub mod verification;
+
+// Modules that require allocation
+#[cfg(feature = "alloc")]
+/// Builder patterns for Component Model types
+pub mod component_builder;
+#[cfg(feature = "alloc")]
+/// Store for component model types
+pub mod component_type_store;
+#[cfg(feature = "alloc")]
+/// WebAssembly Component Model value types
+pub mod component_value;
+#[cfg(feature = "alloc")]
+pub mod component_value_store;
+#[cfg(feature = "alloc")]
+/// Builder pattern for component value store
+pub mod component_value_store_builder;
+
+// Platform-specific modules
+#[cfg(feature = "platform-memory")]
+/// Linear memory implementation using PageAllocator.
+pub mod linear_memory;
+#[cfg(feature = "platform-memory")]
+/// Memory builder patterns for platform-backed memory types
+pub mod memory_builder;
+#[cfg(feature = "platform-memory")]
+/// Runtime memory module
+pub mod runtime_memory;
+
+// Custom HashMap for pure no_std/no_alloc
+#[cfg(not(any(feature = "std", feature = "alloc")))]
+/// Custom HashMap implementation for no_std/no_alloc environments
+pub mod no_std_hashmap;
 // pub mod no_std_compat;
 
-// Re-export the most important types
+// Re-export the most important types - core types always available
 pub use atomic_memory::{AtomicMemoryExt, AtomicMemoryOps};
 pub use bounded::{BoundedStack, BoundedString, BoundedVec, CapacityError, WasmName};
+// Alloc-dependent re-exports
 #[cfg(feature = "alloc")]
 pub use bounded_collections::BoundedBitSet;
 pub use bounded_collections::{BoundedDeque, BoundedMap, BoundedQueue, BoundedSet};
@@ -130,10 +152,13 @@ pub use builtin::BuiltinType;
 pub use component::{ComponentType, ExternType, InstanceType, Namespace, ResourceType};
 #[cfg(feature = "alloc")]
 pub use component_builder::{ComponentTypeBuilder, ExportBuilder, ImportBuilder, NamespaceBuilder};
+#[cfg(feature = "alloc")]
 pub use component_type_store::{ComponentTypeStore, TypeRef};
+#[cfg(feature = "alloc")]
 pub use component_value::ComponentValue;
-// Re-export conversion utilities
+#[cfg(feature = "alloc")]
 pub use component_value_store::{ComponentValueStore, ValueRef};
+#[cfg(feature = "alloc")]
 pub use component_value_store_builder::ComponentValueStoreBuilder;
 pub use conversion::{ref_type_to_val_type, val_type_to_ref_type};
 pub use float_repr::{FloatBits32, FloatBits64};
@@ -142,12 +167,12 @@ pub use operations::{
     reset_global_operations, Summary as OperationSummary, Tracking as OperationTracking,
     Type as OperationType,
 };
-/// Re-export LinearMemory if it's intended to be a primary public type
-// #[cfg(feature = "platform-memory")] pub use runtime_memory::LinearMemory;
-pub use safe_memory::NoStdProvider;
+// Platform-specific re-exports
+#[cfg(feature = "platform-memory")]
+pub use runtime_memory::LinearMemory;
 pub use safe_memory::{
-    Provider as MemoryProvider, SafeMemoryHandler, Slice as SafeSlice, SliceMut as SafeSliceMut,
-    Stats as MemoryStats,
+    NoStdProvider, Provider as MemoryProvider, SafeMemoryHandler, Slice as SafeSlice,
+    SliceMut as SafeSliceMut, Stats as MemoryStats,
 };
 pub use traits::{BoundedCapacity, Checksummed, FromFormat, ToFormat, Validatable};
 pub use types::{
@@ -167,9 +192,6 @@ pub use types::{
 pub use values::Value;
 pub use verification::{Checksum, VerificationLevel};
 
-// Similar to LinearMemory, PalMemoryProvider needs to be no_std compatible if
-// exported
-
 /// The WebAssembly binary format magic number: \0asm
 pub const WASM_MAGIC: [u8; 4] = [0x00, 0x61, 0x73, 0x6D];
 
@@ -178,11 +200,7 @@ pub const WASM_MAGIC: [u8; 4] = [0x00, 0x61, 0x73, 0x6D];
 /// etc.
 pub const WASM_VERSION: u32 = 2;
 
-// Core feature re-exports
-// Note: These are feature-gated re-exports that shouldn't conflict with the
-// main ones #[cfg(feature = "component-model-core")]
-// pub use component::ComponentType;
-
+// Component model feature re-exports
 #[cfg(feature = "component-model-values")]
 pub use component_value::ValType;
 

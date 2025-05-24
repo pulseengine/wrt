@@ -1,6 +1,5 @@
 /// String extraction from DWARF .debug_str section
 /// Provides zero-allocation string access within no_std constraints
-
 use crate::cursor::DwarfCursor;
 use crate::error::DebugResult;
 
@@ -34,7 +33,7 @@ impl<'a> StringTable<'a> {
         let remaining = &self.data[offset..];
         let end = remaining.iter().position(|&b| b == 0)?;
         let string_bytes = &remaining[..end];
-        
+
         let string_str = core::str::from_utf8(string_bytes).ok()?;
         Some(DebugString { data: string_str })
     }
@@ -52,10 +51,7 @@ impl<'a> StringTable<'a> {
 
     /// Iterator over all strings in the table
     pub fn strings(&self) -> StringTableIterator<'a> {
-        StringTableIterator {
-            data: self.data,
-            offset: 0,
-        }
+        StringTableIterator { data: self.data, offset: 0 }
     }
 
     /// Check if the string table is empty
@@ -117,10 +113,10 @@ impl<'a> Iterator for StringTableIterator<'a> {
 
         let current_offset = self.offset as u32;
         let remaining = &self.data[self.offset..];
-        
+
         let end = remaining.iter().position(|&b| b == 0)?;
         let string_bytes = &remaining[..end];
-        
+
         if let Ok(string_str) = core::str::from_utf8(string_bytes) {
             let debug_string = DebugString { data: string_str };
             self.offset += end + 1; // Skip null terminator
@@ -144,14 +140,14 @@ pub fn read_string_ref(cursor: &mut DwarfCursor) -> DebugResult<u32> {
 pub fn read_inline_string<'a>(cursor: &mut DwarfCursor<'a>) -> DebugResult<DebugString<'a>> {
     let start = cursor.position();
     let remaining = cursor.remaining();
-    
-    let end = remaining.iter().position(|&b| b == 0)
-        .ok_or(crate::error::DebugError::InvalidData)?;
-    
+
+    let end =
+        remaining.iter().position(|&b| b == 0).ok_or(crate::error::DebugError::InvalidData)?;
+
     let string_bytes = &remaining[..end];
-    let string_str = core::str::from_utf8(string_bytes)
-        .map_err(|_| crate::error::DebugError::InvalidData)?;
-    
+    let string_str =
+        core::str::from_utf8(string_bytes).map_err(|_| crate::error::DebugError::InvalidData)?;
+
     cursor.advance(end + 1)?; // Skip string + null terminator
     Ok(DebugString { data: string_str })
 }
@@ -177,22 +173,22 @@ mod tests {
     #[test]
     fn test_string_extraction() {
         let table = StringTable::new(TEST_STRING_DATA);
-        
+
         // Test empty string at offset 0
         let empty = table.get_string(0).unwrap();
         assert_eq!(empty.as_str(), "");
         assert!(empty.is_empty());
-        
+
         // Test "hello" at offset 1
         let hello = table.get_string(1).unwrap();
         assert_eq!(hello.as_str(), "hello");
         assert_eq!(hello.len(), 5);
-        
+
         // Test "world" at offset 7
         let world = table.get_string(7).unwrap();
         assert_eq!(world.as_str(), "world");
         assert_eq!(world.len(), 5);
-        
+
         // Test "rust" at offset 13
         let rust = table.get_string(13).unwrap();
         assert_eq!(rust.as_str(), "rust");
@@ -202,10 +198,10 @@ mod tests {
     #[test]
     fn test_invalid_offsets() {
         let table = StringTable::new(TEST_STRING_DATA);
-        
+
         // Out of bounds offset
         assert!(table.get_string(1000).is_none());
-        
+
         // Offset at end of data
         assert!(table.get_string(TEST_STRING_DATA.len() as u32).is_none());
     }
@@ -214,7 +210,7 @@ mod tests {
     fn test_string_methods() {
         let table = StringTable::new(TEST_STRING_DATA);
         let hello = table.get_string(1).unwrap();
-        
+
         assert!(hello.starts_with("hel"));
         assert!(hello.ends_with("llo"));
         assert!(hello.contains("ell"));
@@ -224,7 +220,7 @@ mod tests {
     #[test]
     fn test_string_length() {
         let table = StringTable::new(TEST_STRING_DATA);
-        
+
         assert_eq!(table.get_string_length(0), Some(0)); // Empty string
         assert_eq!(table.get_string_length(1), Some(5)); // "hello"
         assert_eq!(table.get_string_length(7), Some(5)); // "world"
@@ -236,7 +232,7 @@ mod tests {
     fn test_string_iterator() {
         let table = StringTable::new(TEST_STRING_DATA);
         let strings: Vec<_> = table.strings().collect();
-        
+
         assert_eq!(strings.len(), 4);
         assert_eq!(strings[0].0, 0);
         assert_eq!(strings[0].1.as_str(), "");
@@ -252,10 +248,10 @@ mod tests {
     fn test_inline_string_reading() {
         let data = b"test_string\0more_data";
         let mut cursor = DwarfCursor::new(data);
-        
+
         let string = read_inline_string(&mut cursor).unwrap();
         assert_eq!(string.as_str(), "test_string");
-        
+
         // Cursor should be positioned after the null terminator
         assert_eq!(cursor.remaining(), b"more_data");
     }

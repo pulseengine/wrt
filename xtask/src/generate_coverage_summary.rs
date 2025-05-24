@@ -7,7 +7,9 @@ use serde::Deserialize;
 struct CoverageData {
     data: Vec<CoverageItem>,
     #[serde(rename = "type")]
+    #[allow(dead_code)]
     coverage_type: String,
+    #[allow(dead_code)]
     version: String,
 }
 
@@ -27,6 +29,7 @@ struct FileCoverage {
 struct CoverageSummary {
     lines: CoverageMetric,
     functions: CoverageMetric,
+    #[allow(dead_code)]
     branches: Option<CoverageMetric>,
 }
 

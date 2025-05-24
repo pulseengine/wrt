@@ -1,0 +1,77 @@
+@startuml high_level_decomposition
+title Pulseengine (WRT Edition) - High-Level Component Decomposition
+
+skinparam component {
+    BackgroundColor #E6F3FF
+    BorderColor #5755a9
+    FontColor #2e3440
+    ArrowColor #5755a9
+}
+
+skinparam package {
+    BackgroundColor #F8F9FA
+    BorderColor #E5E9F0
+}
+
+actor User as user
+actor "Embedded Developer" as embedded_dev
+
+package "CLI & Tools Layer" {
+    component [wrtd\nWebAssembly runtime daemon] as wrtd
+    component [wrt\nPublic API facade] as wrt_cli
+}
+
+package "Component Model Layer" {
+    component [wrt-component\nComponent Model implementation] as wrt_component
+    component [wrt-host\nHost bindings & callbacks] as wrt_host
+}
+
+package "Execution Engine Layer" {
+    component [wrt-runtime\nCore runtime engine] as wrt_runtime
+    component [wrt-instructions\nInstruction execution] as wrt_instructions
+    component [wrt-decoder\nWASM binary decoder] as wrt_decoder
+}
+
+package "Foundation Layer" {
+    component [wrt-foundation\nCore types & safe memory] as wrt_foundation
+    component [wrt-error\nError handling] as wrt_error
+    component [wrt-format\nWASM format definitions] as wrt_format
+    component [wrt-sync\nSynchronization primitives] as wrt_sync
+}
+
+package "Platform Abstraction Layer" {
+    component [wrt-platform\nOS abstraction] as wrt_platform
+    component [wrt-logging\nLogging infrastructure] as wrt_logging
+    component [wrt-intercept\nExecution interception] as wrt_intercept
+}
+
+database "WebAssembly Module" as wasm_module
+cloud "Operating System" as os_services
+
+' Relationships
+user --> wrtd : "Executes WASM via"
+embedded_dev --> wrt_cli : "Integrates via"
+wrtd --> wrt_cli : "Uses"
+wrt_cli --> wrt_component : "Orchestrates"
+wrt_cli --> wrt_runtime : "Manages"
+
+wrt_component --> wrt_host : "Binds host functions"
+wrt_component --> wrt_runtime : "Executes components"
+wrt_runtime --> wrt_instructions : "Executes"
+wrt_runtime --> wrt_decoder : "Loads modules"
+
+wrt_runtime --> wrt_foundation : "Uses safe memory"
+wrt_instructions --> wrt_foundation : "Memory operations"
+wrt_decoder --> wrt_format : "Parses format"
+
+wrt_foundation --> wrt_error : "Error handling"
+wrt_foundation --> wrt_sync : "Thread safety"
+
+wrt_runtime --> wrt_platform : "Platform services"
+wrt_runtime --> wrt_logging : "Diagnostics"
+wrt_host --> wrt_intercept : "Intercepts calls"
+
+wrtd --> wasm_module : "Loads & executes"
+wrt_platform --> os_services : "Abstracts"
+
+@enduml

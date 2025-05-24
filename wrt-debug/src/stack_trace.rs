@@ -1,6 +1,5 @@
 /// Basic stack trace support for debugging
 /// Provides the missing 3% for stack trace generation
-
 use wrt_foundation::{
     bounded::{BoundedVec, MAX_DWARF_FILE_TABLE},
     NoStdProvider,
@@ -28,9 +27,7 @@ pub struct StackTrace<'a> {
 impl<'a> StackTrace<'a> {
     /// Create a new empty stack trace
     pub fn new() -> Self {
-        Self {
-            frames: BoundedVec::new(NoStdProvider),
-        }
+        Self { frames: BoundedVec::new(NoStdProvider) }
     }
 
     /// Add a frame to the stack trace
@@ -54,7 +51,11 @@ impl<'a> StackTrace<'a> {
     }
 
     /// Format the stack trace for display
-    pub fn display<F>(&self, file_table: &'a crate::FileTable<'a>, mut writer: F) -> Result<(), core::fmt::Error>
+    pub fn display<F>(
+        &self,
+        file_table: &'a crate::FileTable<'a>,
+        mut writer: F,
+    ) -> Result<(), core::fmt::Error>
     where
         F: FnMut(&str) -> Result<(), core::fmt::Error>,
     {
@@ -112,17 +113,10 @@ impl<'a> StackTraceBuilder<'a> {
         let function = self.debug_info.find_function_info(pc);
 
         // Get line info
-        let line_info = self.debug_info.find_line_info(pc)
-            .ok()
-            .flatten();
+        let line_info = self.debug_info.find_line_info(pc).ok().flatten();
 
         // Add current frame
-        let frame = StackFrame {
-            pc,
-            function,
-            line_info,
-            depth: 0,
-        };
+        let frame = StackFrame { pc, function, line_info, depth: 0 };
 
         trace.push_frame(frame)?;
 
@@ -141,12 +135,7 @@ impl<'a> StackTraceBuilder<'a> {
         let mut trace = StackTrace::new();
 
         for (i, &pc) in pcs.iter().enumerate() {
-            let frame = StackFrame {
-                pc,
-                function: None,
-                line_info: None,
-                depth: i as u16,
-            };
+            let frame = StackFrame { pc, function: None, line_info: None, depth: i as u16 };
             trace.push_frame(frame)?;
         }
 
@@ -159,38 +148,38 @@ fn format_u16(mut n: u16, buf: &mut [u8]) -> &str {
     if n == 0 {
         return "0";
     }
-    
+
     let mut i = buf.len();
     while n > 0 && i > 0 {
         i -= 1;
         buf[i] = b'0' + (n % 10) as u8;
         n /= 10;
     }
-    
+
     core::str::from_utf8(&buf[i..]).unwrap_or("?")
 }
 
 // Helper to format u32 as hexadecimal
 fn format_hex_u32(mut n: u32, buf: &mut [u8]) -> &str {
     let mut i = buf.len();
-    
+
     if n == 0 {
         return "00000000";
     }
-    
+
     while n > 0 && i > 0 {
         i -= 1;
         let digit = (n & 0xF) as u8;
         buf[i] = if digit < 10 { b'0' + digit } else { b'a' + digit - 10 };
         n >>= 4;
     }
-    
+
     // Pad with zeros
     while i > 0 {
         i -= 1;
         buf[i] = b'0';
     }
-    
+
     core::str::from_utf8(buf).unwrap_or("????????")
 }
 
@@ -201,25 +190,22 @@ mod tests {
     #[test]
     fn test_stack_trace_display() {
         let mut trace = StackTrace::new();
-        
+
         // Add a frame with no debug info
-        let frame1 = StackFrame {
-            pc: 0x1000,
-            function: None,
-            line_info: None,
-            depth: 0,
-        };
-        
+        let frame1 = StackFrame { pc: 0x1000, function: None, line_info: None, depth: 0 };
+
         trace.push_frame(frame1).unwrap();
-        
+
         // Test minimal display
         let mut output = String::new();
         let file_table = crate::FileTable::new();
-        trace.display(&file_table, |s| {
-            output.push_str(s);
-            Ok(())
-        }).unwrap();
-        
+        trace
+            .display(&file_table, |s| {
+                output.push_str(s);
+                Ok(())
+            })
+            .unwrap();
+
         assert!(output.contains("#0 0x00001000"));
     }
 

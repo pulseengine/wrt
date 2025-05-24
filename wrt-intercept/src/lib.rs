@@ -7,8 +7,6 @@
 // Licensed under the MIT license.
 // SPDX-License-Identifier: MIT
 
-#![forbid(unsafe_code)] // Rule 2
-
 //! # Interception Layer for WebAssembly Component Linking
 //!
 //! This crate provides a flexible interception mechanism for WebAssembly
@@ -66,16 +64,13 @@
 //! // component.with_interceptor(Arc::new(interceptor));
 //! ```
 
+#![forbid(unsafe_code)] // Rule 2
 #![cfg_attr(not(feature = "std"), no_std)]
 #![deny(missing_docs)]
 #![warn(clippy::missing_panics_doc)]
 
-//! # Interception Layer for WebAssembly Component Linking
-//!
-//! This crate provides a flexible interception mechanism for WebAssembly
-//! component linking in the WebAssembly Runtime (WRT). It allows
-//! intercepting function calls between components and between components
-//! and the host.
+// Use the prelude for consistent imports
+use crate::prelude::*;
 
 // When no_std but alloc is available
 #[cfg(all(not(feature = "std"), feature = "alloc"))]

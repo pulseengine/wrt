@@ -3,7 +3,7 @@ name = "xtask"
 version.workspace = true
 edition.workspace = true
 publish = false
-repository = "https://github.com/avrabe/wrt"
+repository = "https://github.com/pulseengine/wrt"
 
 [features]
 default = []

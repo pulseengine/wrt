@@ -41,7 +41,7 @@ use crate::traits::{
     BytesWriter, Checksummable, FromBytes, LittleEndian, ReadStream, SerializationError, ToBytes,
     WriteStream,
 };
-use crate::types::ValueType; // Import ValueType
+use crate::types::{RefType, ValueType}; // Import ValueType and RefType
 use crate::{
     prelude::{Debug, Eq, PartialEq},
     verification::Checksum,
@@ -858,7 +858,7 @@ impl FromBytes for Value {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::ValueType;
+    use crate::types::{RefType, ValueType};
 
     #[test]
     fn test_value_type() {

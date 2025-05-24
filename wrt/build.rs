@@ -110,9 +110,10 @@ fn clone_testsuite(path: &Path) -> io::Result<()> {
         Command::new("git").args(["clone", TESTSUITE_REPO_URL, path.to_str().unwrap()]).status()?;
 
     if !status.success() {
-        return Err(io::Error::other(
-            format!("Failed to clone repository, exit code: {:?}", status.code()),
-        ));
+        return Err(io::Error::other(format!(
+            "Failed to clone repository, exit code: {:?}",
+            status.code()
+        )));
     }
 
     Ok(())
@@ -123,9 +124,10 @@ fn update_testsuite(path: &Path) -> io::Result<()> {
         Command::new("git").args(["pull", "origin", "master"]).current_dir(path).status()?;
 
     if !status.success() {
-        return Err(io::Error::other(
-            format!("Failed to update repository, exit code: {:?}", status.code()),
-        ));
+        return Err(io::Error::other(format!(
+            "Failed to update repository, exit code: {:?}",
+            status.code()
+        )));
     }
 
     Ok(())
@@ -135,9 +137,10 @@ fn get_commit_hash(path: &Path) -> io::Result<String> {
     let output = Command::new("git").args(["rev-parse", "HEAD"]).current_dir(path).output()?;
 
     if !output.status.success() {
-        return Err(io::Error::other(
-            format!("Failed to get commit hash, exit code: {:?}", output.status.code()),
-        ));
+        return Err(io::Error::other(format!(
+            "Failed to get commit hash, exit code: {:?}",
+            output.status.code()
+        )));
     }
 
     let hash = String::from_utf8_lossy(&output.stdout).trim().to_string();

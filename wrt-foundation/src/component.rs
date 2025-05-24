@@ -7,18 +7,58 @@
 use wrt_error::ErrorCategory;
 
 // --- Traits needed for BoundedVec items ---
-use crate::traits::{BytesWriter, FromBytes, ReadStream, SerializationError, ToBytes, WriteStream};
+use crate::traits::{FromBytes, ReadStream, SerializationError, ToBytes, WriteStream};
 use crate::{
-    bounded::{BoundedString, BoundedVec, WasmName, MAX_WASM_NAME_LENGTH},
+    bounded::{BoundedVec, WasmName, MAX_WASM_NAME_LENGTH},
     codes,
-    component_type_store::TypeRef,
-    component_value::ComponentValue,
     prelude::*,
-    traits::{Checksummable, Validatable},
-    types::{FuncType, GlobalType, MemoryType, TableType, Tag},
-    verification::Checksum,
+    traits::Checksummable,
+    types::{FuncType, GlobalType, MemoryType, TableType},
     Error, MemoryProvider, WrtResult,
 };
+#[cfg(feature = "alloc")]
+use crate::{component_type_store::TypeRef, component_value::ComponentValue};
+
+// Simple TypeRef for no-alloc environments
+#[cfg(not(feature = "alloc"))]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default, Hash)]
+pub struct TypeRef(pub u32);
+
+#[cfg(not(feature = "alloc"))]
+impl TypeRef {
+    pub const fn new(index: u32) -> Self {
+        Self(index)
+    }
+}
+
+#[cfg(not(feature = "alloc"))]
+impl Checksummable for TypeRef {
+    fn update_checksum(&self, checksum: &mut crate::verification::Checksum) {
+        self.0.update_checksum(checksum);
+    }
+}
+
+#[cfg(not(feature = "alloc"))]
+impl ToBytes for TypeRef {
+    fn to_bytes_with_provider<P: MemoryProvider>(
+        &self,
+        writer: &mut WriteStream,
+        provider: &P,
+    ) -> WrtResult<()> {
+        self.0.to_bytes_with_provider(writer, provider)
+    }
+}
+
+#[cfg(not(feature = "alloc"))]
+impl FromBytes for TypeRef {
+    fn from_bytes_with_provider<P: MemoryProvider>(
+        reader: &mut ReadStream,
+        provider: &P,
+    ) -> WrtResult<Self> {
+        let index = u32::from_bytes_with_provider(reader, provider)?;
+        Ok(Self(index))
+    }
+}
 
 // --- Capacity Constants ---
 /// Maximum number of component imports

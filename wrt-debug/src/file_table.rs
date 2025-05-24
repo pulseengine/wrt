@@ -1,11 +1,11 @@
-/// File table support for resolving file indices to paths
-/// Provides the missing 2% for source file path resolution
-
-use crate::strings::{StringTable, DebugString};
 use wrt_foundation::{
     bounded::{BoundedVec, MAX_DWARF_FILE_TABLE},
     NoStdProvider,
 };
+
+/// File table support for resolving file indices to paths
+/// Provides the missing 2% for source file path resolution
+use crate::strings::{DebugString, StringTable};
 
 /// A file entry in the DWARF file table
 #[derive(Debug, Clone)]
@@ -32,10 +32,7 @@ pub struct FileTable<'a> {
 impl<'a> FileTable<'a> {
     /// Create a new empty file table
     pub fn new() -> Self {
-        Self {
-            directories: BoundedVec::new(NoStdProvider),
-            files: BoundedVec::new(NoStdProvider),
-        }
+        Self { directories: BoundedVec::new(NoStdProvider), files: BoundedVec::new(NoStdProvider) }
     }
 
     /// Add a directory entry
@@ -72,20 +69,14 @@ impl<'a> FileTable<'a> {
     /// Returns directory + "/" + filename (or just filename if no directory)
     pub fn get_full_path(&self, file_index: u16) -> Option<FilePath<'a>> {
         let file = self.get_file(file_index)?;
-        
+
         if file.dir_index == 0 {
             // File is relative to compilation directory
-            Some(FilePath {
-                directory: None,
-                filename: file.path.clone(),
-            })
+            Some(FilePath { directory: None, filename: file.path.clone() })
         } else {
             // File has explicit directory
             let directory = self.get_directory(file.dir_index)?;
-            Some(FilePath {
-                directory: Some(directory.clone()),
-                filename: file.path.clone(),
-            })
+            Some(FilePath { directory: Some(directory.clone()), filename: file.path.clone() })
         }
     }
 
@@ -112,8 +103,7 @@ pub struct FilePath<'a> {
 impl<'a> FilePath<'a> {
     /// Check if this is a relative path
     pub fn is_relative(&self) -> bool {
-        self.directory.is_none() || 
-        !self.directory.as_ref().unwrap().as_str().starts_with('/')
+        self.directory.is_none() || !self.directory.as_ref().unwrap().as_str().starts_with('/')
     }
 
     /// Get the filename only (no directory)
@@ -147,18 +137,18 @@ mod tests {
         // Create mock string data
         let string_data = b"\0src\0lib\0main.rs\0utils.rs\0tests\0";
         let string_table = StringTable::new(string_data);
-        
+
         let mut file_table = FileTable::new();
-        
+
         // Add directories
         let src_dir = string_table.get_string(1).unwrap();
         let lib_dir = string_table.get_string(5).unwrap();
         let tests_dir = string_table.get_string(25).unwrap();
-        
+
         assert_eq!(file_table.add_directory(src_dir), Ok(1));
         assert_eq!(file_table.add_directory(lib_dir), Ok(2));
         assert_eq!(file_table.add_directory(tests_dir), Ok(3));
-        
+
         // Add files
         let main_rs = FileEntry {
             path: string_table.get_string(9).unwrap(),
@@ -166,26 +156,26 @@ mod tests {
             mod_time: 0,
             size: 0,
         };
-        
+
         let utils_rs = FileEntry {
             path: string_table.get_string(17).unwrap(),
             dir_index: 1,
             mod_time: 0,
             size: 0,
         };
-        
+
         assert_eq!(file_table.add_file(main_rs), Ok(1));
         assert_eq!(file_table.add_file(utils_rs), Ok(2));
-        
+
         // Test retrieval
         assert_eq!(file_table.file_count(), 2);
         assert_eq!(file_table.directory_count(), 3);
-        
+
         // Test full path resolution
         let path1 = file_table.get_full_path(1).unwrap();
         assert_eq!(path1.filename(), "main.rs");
         assert_eq!(path1.directory.unwrap().as_str(), "src");
-        
+
         let path2 = file_table.get_full_path(2).unwrap();
         assert_eq!(path2.filename(), "utils.rs");
         assert_eq!(path2.directory.unwrap().as_str(), "src");
@@ -195,18 +185,19 @@ mod tests {
     fn test_file_path_display() {
         let string_data = b"\0src\0main.rs\0";
         let string_table = StringTable::new(string_data);
-        
+
         let path = FilePath {
             directory: Some(string_table.get_string(1).unwrap()),
             filename: string_table.get_string(5).unwrap(),
         };
-        
+
         let mut output = String::new();
         path.display(|s| {
             output.push_str(s);
             Ok(())
-        }).unwrap();
-        
+        })
+        .unwrap();
+
         assert_eq!(output, "src/main.rs");
     }
 }

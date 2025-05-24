@@ -21,13 +21,9 @@
 
 use wrt_error::{codes, Error, Result};
 
-use crate::{
-    component_value::{ComponentValue, ValType},
-    safe_memory::NoStdProvider,
-    types::DEFAULT_FUNC_TYPE_PROVIDER_CAPACITY,
-    values::Value,
-    BlockType, FuncType, MemoryProvider, RefType, ValueType as CoreValueType,
-};
+#[cfg(feature = "alloc")]
+use crate::component_value::{ComponentValue, ValType};
+use crate::{BlockType, FuncType, RefType, ValueType as CoreValueType};
 
 /// Convert `RefType` to `ValueType`
 ///
@@ -85,12 +81,10 @@ pub mod func_type {
     // #[cfg(not(feature = "std"))]
     // use alloc::vec::Vec;
 
-    use wrt_error::Result;
+    // Result is imported through crate prelude
 
     use super::{CoreValueType as ValueType, FuncType};
-    use crate::{
-        safe_memory::NoStdProvider, types::DEFAULT_FUNC_TYPE_PROVIDER_CAPACITY, MemoryProvider,
-    };
+    use crate::{MemoryProvider, Result};
 
     /// Verify that a function type conforms to WebAssembly constraints
     ///
@@ -123,7 +117,7 @@ mod tests {
     // #[cfg(not(feature = "std"))]
     // use alloc::vec;
 
-    use wrt_error::Result;
+    // Result is imported through super::*
 
     use super::*;
     use crate::{

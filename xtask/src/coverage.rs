@@ -1,10 +1,11 @@
 use anyhow::{Context, Result};
 use dagger_sdk::HostDirectoryOpts;
-use tracing::{info, error, warn};
+use tracing::{error, info, warn};
 
 use crate::Query;
 
-// Use stable for quick coverage, nightly for comprehensive coverage with MC/DC support
+// Use stable for quick coverage, nightly for comprehensive coverage with MC/DC
+// support
 const RUST_IMAGE_STABLE: &str = "rust:1.87";
 const RUST_IMAGE_NIGHTLY: &str = "rustlang/rust:nightly";
 
@@ -200,7 +201,7 @@ pub async fn run_comprehensive_coverage(client: &Query) -> Result<()> {
 
 pub async fn run_minimal_coverage(client: &Query) -> Result<()> {
     info!("Starting minimal coverage test for single crate...");
-    
+
     let src_dir = client.host().directory_opts(
         ".",
         HostDirectoryOpts {
@@ -221,30 +222,34 @@ pub async fn run_minimal_coverage(client: &Query) -> Result<()> {
         .with_exec(vec!["mkdir", "-p", "/src/target/coverage"])
         // Test just one small crate first
         .with_exec(vec![
-            "cargo", "llvm-cov", "test",
-            "--package", "wrt-error",
+            "cargo",
+            "llvm-cov",
+            "test",
+            "--package",
+            "wrt-error",
             "--json",
-            "--output-path", "/src/target/coverage/coverage.json",
+            "--output-path",
+            "/src/target/coverage/coverage.json",
         ]);
 
     let exit_code = container.exit_code().await?;
-    
+
     if exit_code != 0 {
         let stderr = container.stderr().await.unwrap_or_default();
         error!("Minimal coverage failed: {}", stderr);
         return Err(anyhow::anyhow!("Minimal coverage failed"));
     }
-    
+
     let coverage_dir = container.directory("/src/target/coverage");
     coverage_dir.export("./target/coverage").await?;
-    
+
     info!("Minimal coverage completed successfully");
     Ok(())
 }
 
 pub async fn run_quick_coverage(client: &Query) -> Result<()> {
     info!("Starting quick coverage analysis...");
-    
+
     // First try minimal coverage to ensure the setup works
     if let Err(e) = run_minimal_coverage(client).await {
         error!("Minimal coverage failed: {}, attempting full coverage anyway", e);
@@ -254,10 +259,10 @@ pub async fn run_quick_coverage(client: &Query) -> Result<()> {
         ".",
         HostDirectoryOpts {
             exclude: Some(vec![
-                ".git", 
-                "target", 
-                ".vscode", 
-                ".idea", 
+                ".git",
+                "target",
+                ".vscode",
+                ".idea",
                 ".DS_Store",
                 "docs_output",
                 "external",
@@ -267,26 +272,34 @@ pub async fn run_quick_coverage(client: &Query) -> Result<()> {
     );
 
     info!("Building coverage container...");
-    
+
     // Build container step by step with validation
     // Use stable for quick coverage to avoid nightly issues
-    let mut container = client
-        .container()
-        .from(RUST_IMAGE_STABLE);
-    
+    let mut container = client.container().from(RUST_IMAGE_STABLE);
+
     info!("Installing system dependencies...");
-    container = container
-        .with_exec(vec!["apt-get", "update", "-y"])
-        .with_exec(vec!["apt-get", "install", "-y", "build-essential", "pkg-config", "libssl-dev"]);
-    
+    container = container.with_exec(vec!["apt-get", "update", "-y"]).with_exec(vec![
+        "apt-get",
+        "install",
+        "-y",
+        "build-essential",
+        "pkg-config",
+        "libssl-dev",
+    ]);
+
     info!("Setting up Rust toolchain...");
-    container = container
-        .with_exec(vec!["rustup", "component", "add", "llvm-tools-preview"]);
-    
+    container = container.with_exec(vec!["rustup", "component", "add", "llvm-tools-preview"]);
+
     info!("Installing cargo-llvm-cov...");
-    container = container
-        .with_exec(vec!["cargo", "install", "cargo-llvm-cov", "--version", "0.5.31", "--locked"]);
-    
+    container = container.with_exec(vec![
+        "cargo",
+        "install",
+        "cargo-llvm-cov",
+        "--version",
+        "0.5.31",
+        "--locked",
+    ]);
+
     info!("Mounting source directory...");
     container = container
         .with_mounted_directory("/src", src_dir)
@@ -295,88 +308,118 @@ pub async fn run_quick_coverage(client: &Query) -> Result<()> {
         .with_env_variable("RUST_BACKTRACE", "1")
         .with_env_variable("CARGO_TERM_COLOR", "always")
         .with_env_variable("RUSTFLAGS", "-C instrument-coverage");
-    
+
     info!("Creating coverage directory...");
-    container = container
-        .with_exec(vec!["mkdir", "-p", "/src/target/coverage"]);
-    
+    container = container.with_exec(vec!["mkdir", "-p", "/src/target/coverage"]);
+
     info!("Cleaning previous coverage data...");
-    container = container
-        .with_exec(vec!["cargo", "llvm-cov", "clean", "--workspace"]);
-    
+    container = container.with_exec(vec!["cargo", "llvm-cov", "clean", "--workspace"]);
+
     // First, try to build the workspace to catch compilation errors early
     info!("Building workspace to verify compilation...");
-    container = container
-        .with_exec(vec![
-            "cargo", "build", "--workspace",
-            "--exclude", "wrt-debug",
-            "--exclude", "wrt-verification-tool", 
-            "--exclude", "example",
-            "--exclude", "wrtd",
-        ]);
-    
+    container = container.with_exec(vec![
+        "cargo",
+        "build",
+        "--workspace",
+        "--exclude",
+        "wrt-debug",
+        "--exclude",
+        "wrt-verification-tool",
+        "--exclude",
+        "example",
+        "--exclude",
+        "wrtd",
+    ]);
+
     info!("Running coverage tests...");
     // Run tests with coverage, excluding problematic crates
-    container = container
-        .with_exec(vec![
-            "cargo", "llvm-cov", "test",
-            "--workspace",
-            "--exclude", "wrt-debug",
-            "--exclude", "wrt-verification-tool",
-            "--exclude", "example",
-            "--exclude", "wrtd",
-            "--exclude", "xtask",
-            "--no-fail-fast",  // Continue even if some tests fail
-            "--",
-            "--test-threads=1",  // Run tests sequentially to avoid race conditions
-        ]);
-    
+    container = container.with_exec(vec![
+        "cargo",
+        "llvm-cov",
+        "test",
+        "--workspace",
+        "--exclude",
+        "wrt-debug",
+        "--exclude",
+        "wrt-verification-tool",
+        "--exclude",
+        "example",
+        "--exclude",
+        "wrtd",
+        "--exclude",
+        "xtask",
+        "--no-fail-fast", // Continue even if some tests fail
+        "--",
+        "--test-threads=1", // Run tests sequentially to avoid race conditions
+    ]);
+
     info!("Generating coverage reports...");
     // Generate JSON report
-    container = container
-        .with_exec(vec![
-            "cargo", "llvm-cov", "report",
-            "--workspace",
-            "--exclude", "wrt-debug",
-            "--exclude", "wrt-verification-tool",
-            "--exclude", "example",
-            "--exclude", "wrtd",
-            "--exclude", "xtask",
-            "--json",
-            "--output-path", "/src/target/coverage/coverage.json",
-        ]);
-    
+    container = container.with_exec(vec![
+        "cargo",
+        "llvm-cov",
+        "report",
+        "--workspace",
+        "--exclude",
+        "wrt-debug",
+        "--exclude",
+        "wrt-verification-tool",
+        "--exclude",
+        "example",
+        "--exclude",
+        "wrtd",
+        "--exclude",
+        "xtask",
+        "--json",
+        "--output-path",
+        "/src/target/coverage/coverage.json",
+    ]);
+
     // Generate LCOV report
-    container = container
-        .with_exec(vec![
-            "cargo", "llvm-cov", "report", 
-            "--workspace",
-            "--exclude", "wrt-debug",
-            "--exclude", "wrt-verification-tool",
-            "--exclude", "example",
-            "--exclude", "wrtd",
-            "--exclude", "xtask",
-            "--lcov",
-            "--output-path", "/src/target/coverage/lcov.info",
-        ]);
-    
-    // Generate HTML report  
-    container = container
-        .with_exec(vec![
-            "cargo", "llvm-cov", "report",
-            "--workspace",
-            "--exclude", "wrt-debug",
-            "--exclude", "wrt-verification-tool",
-            "--exclude", "example",
-            "--exclude", "wrtd",
-            "--exclude", "xtask",
-            "--html",
-            "--output-dir", "/src/target/coverage/html",
-        ]);
+    container = container.with_exec(vec![
+        "cargo",
+        "llvm-cov",
+        "report",
+        "--workspace",
+        "--exclude",
+        "wrt-debug",
+        "--exclude",
+        "wrt-verification-tool",
+        "--exclude",
+        "example",
+        "--exclude",
+        "wrtd",
+        "--exclude",
+        "xtask",
+        "--lcov",
+        "--output-path",
+        "/src/target/coverage/lcov.info",
+    ]);
+
+    // Generate HTML report
+    container = container.with_exec(vec![
+        "cargo",
+        "llvm-cov",
+        "report",
+        "--workspace",
+        "--exclude",
+        "wrt-debug",
+        "--exclude",
+        "wrt-verification-tool",
+        "--exclude",
+        "example",
+        "--exclude",
+        "wrtd",
+        "--exclude",
+        "xtask",
+        "--html",
+        "--output-dir",
+        "/src/target/coverage/html",
+    ]);
 
     // Execute the container
     info!("Executing coverage container...");
-    
+
     // Try to sync the container, but don't fail if it doesn't work perfectly
     match container.sync().await {
         Ok(_) => info!("Container sync successful"),
@@ -385,26 +428,28 @@ pub async fn run_quick_coverage(client: &Query) -> Result<()> {
             // Don't return error here, try to export what we can
         }
     }
-    
+
     // Then check exit code
     let exit_code = container.exit_code().await.context("Failed to get container exit code")?;
-    
+
     if exit_code != 0 {
         // Try to get logs for debugging
-        let stderr = container.stderr().await.unwrap_or_else(|_| "Failed to get stderr".to_string());
-        let stdout = container.stdout().await.unwrap_or_else(|_| "Failed to get stdout".to_string());
-        
+        let stderr =
+            container.stderr().await.unwrap_or_else(|_| "Failed to get stderr".to_string());
+        let stdout =
+            container.stdout().await.unwrap_or_else(|_| "Failed to get stdout".to_string());
+
         error!("Coverage container failed with exit code {}", exit_code);
         warn!("stderr (last 1000 chars): {}", &stderr[stderr.len().saturating_sub(1000)..]);
         warn!("stdout (last 1000 chars): {}", &stdout[stdout.len().saturating_sub(1000)..]);
-        
+
         // Even if tests fail, we might still have coverage data
         warn!("Container failed but attempting to export any coverage data that was generated");
     }
-    
+
     // Try to export coverage even if some tests failed
     let coverage_dir = container.directory("/src/target/coverage");
-    
+
     info!("Exporting coverage artifacts...");
     match coverage_dir.export("./target/coverage").await {
         Ok(_) => info!("Coverage artifacts exported successfully"),

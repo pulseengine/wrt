@@ -160,9 +160,9 @@ impl<T> LockFreeMpscQueue<T> {
     }
 }
 
-#[cfg(feature = "std")]
+#[cfg(feature = "alloc")]
 unsafe impl<T: Send> Send for LockFreeMpscQueue<T> {}
-#[cfg(feature = "std")]
+#[cfg(feature = "alloc")]
 unsafe impl<T: Send> Sync for LockFreeMpscQueue<T> {}
 
 /// Lock-free memory allocator for fixed-size blocks

@@ -25,12 +25,11 @@ use crate::prelude::String;
 use crate::{
     bounded::{BoundedString, BoundedVec, WasmName, MAX_WASM_NAME_LENGTH},
     prelude::{str, Eq, PartialEq},
-    traits::{
-        Checksummable, FromBytes, ReadStream, SerializationError, ToBytes, Validatable, WriteStream,
-    },
+    safe_memory::NoStdProvider,
+    traits::{Checksummable, FromBytes, ReadStream, SerializationError, ToBytes, WriteStream},
     types::ValueType,
     verification::{Checksum, VerificationLevel},
-    MemoryProvider, NoStdProvider, WrtResult,
+    MemoryProvider, WrtResult,
 };
 
 // use crate::prelude::{format, ToString, String as PreludeString, Vec as

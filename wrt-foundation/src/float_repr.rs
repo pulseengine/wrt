@@ -12,8 +12,7 @@ use core::hash::{Hash, Hasher};
 use crate::prelude::{codes, Error, ErrorCategory, Result as WrtResult};
 use crate::{
     traits::{
-        BytesWriter, Checksummable, FromBytes, LittleEndian, ReadStream, SerializationError,
-        ToBytes, WriteStream,
+        BytesWriter, Checksummable, FromBytes, LittleEndian, ReadStream, ToBytes, WriteStream,
     },
     verification::Checksum,
 };

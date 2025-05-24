@@ -15,8 +15,8 @@ mod ci_advanced_tests;
 mod ci_integrity_checks;
 mod ci_static_analysis;
 mod coverage;
-mod coverage_simple;
 mod coverage_ci;
+mod coverage_simple;
 mod dagger_pipelines;
 mod fmt_check;
 mod fs_ops;
@@ -250,11 +250,16 @@ async fn main() -> Result<()> {
                                     // Add a timeout for coverage generation
                                     tokio::time::timeout(
                                         std::time::Duration::from_secs(300), // 5 minute timeout
-                                        coverage::run_quick_coverage(&query_client)
-                                    ).await
-                                    .map_err(|_| anyhow::anyhow!("Coverage generation timed out after 5 minutes"))?
+                                        coverage::run_quick_coverage(&query_client),
+                                    )
+                                    .await
+                                    .map_err(|_| {
+                                        anyhow::anyhow!(
+                                            "Coverage generation timed out after 5 minutes"
+                                        )
+                                    })?
                                 }
-                            },
+                            }
                             Command::CoverageComprehensive => {
                                 coverage::run_comprehensive_coverage(&query_client).await
                             }

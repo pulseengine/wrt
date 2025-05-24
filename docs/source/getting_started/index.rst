@@ -13,17 +13,6 @@ Welcome to WRT (WebAssembly Runtime)! This guide will help you install and set u
    :local:
    :depth: 2
 
-.. toctree::
-   :maxdepth: 2
-   :caption: Installation Guides:
-
-   installation
-   linux
-   macos
-   qnx
-   zephyr
-   bare_metal
-
 Prerequisites
 =============
 

@@ -13,14 +13,6 @@ Welcome to the Pulseengine (WRT Edition) documentation. This section provides an
    :local:
    :depth: 2
 
-.. toctree::
-   :maxdepth: 2
-   :caption: In this section:
-
-   features
-   ../getting_started/index
-   ../architecture
-
 Introduction
 ------------
 

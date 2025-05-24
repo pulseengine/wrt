@@ -53,25 +53,23 @@
             line-height: 1.6;
         }
         
-        .version-selector {
+        .version-selector-inline {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
             margin: 2rem 0;
-            text-align: center;
         }
         
-        .version-selector label {
-            font-weight: 600;
-            margin-right: 1rem;
-            color: var(--color-content-primary, #2e3440);
-        }
-        
-        .version-selector select {
-            padding: 0.5rem 1rem;
+        .version-selector-inline select {
+            padding: 0.75rem 1rem;
             font-size: 1rem;
             border: 1px solid var(--color-border, #e5e9f0);
             border-radius: 4px;
             background-color: var(--color-background, #ffffff);
             cursor: pointer;
-            min-width: 150px;
+            min-width: 200px;
+            height: 48px;
         }
         
         .features {
@@ -127,11 +125,21 @@
         }
         
         .footer {
-            text-align: center;
             padding: 2rem;
             border-top: 1px solid var(--color-border, #e5e9f0);
             color: var(--color-content-secondary, #4c566a);
             font-size: 0.9rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .footer-left {
+            text-align: left;
+        }
+        
+        .footer-right {
+            text-align: right;
         }
         
         .footer a {
@@ -141,6 +149,35 @@
         
         .footer a:hover {
             text-decoration: underline;
+        }
+        
+        .github-logo {
+            width: 32px;
+            height: 32px;
+            vertical-align: middle;
+            transition: opacity 0.2s ease;
+            padding: 8px; /* Ensures clear space around logo */
+        }
+        
+        .github-logo:hover {
+            opacity: 0.7; /* More subtle hover effect that doesn't modify the logo */
+        }
+        
+        .footer-right a:hover {
+            text-decoration: none; /* Prevent underline on logo hover */
+        }
+        
+        /* Mobile responsiveness for footer */
+        @media (max-width: 768px) {
+            .footer {
+                flex-direction: column;
+                text-align: center;
+                gap: 1rem;
+            }
+            
+            .footer-left, .footer-right {
+                text-align: center;
+            }
         }
         
         /* Dark mode support */
@@ -349,6 +386,9 @@
     </style>
     
     <script>
+        // Store selected version globally
+        let selectedVersion = 'local';
+        
         // Load available versions from switcher.json
         async function loadVersions() {
             try {
@@ -356,40 +396,80 @@
                 const versions = await response.json();
                 const select = document.getElementById('version-select');
                 
+                // Check if we have a local version entry
+                const hasLocal = versions.find(v => v.version === 'local');
+                // Check if we have a main version entry
+                const hasMain = versions.find(v => v.version === 'main' || v.version === 'origin/main');
+                
+                // Determine default version:
+                // 1. Use 'local' if it exists
+                // 2. Otherwise use 'main' or 'origin/main' if they exist
+                // 3. Otherwise use the first entry
+                let defaultVersion = null;
+                if (hasLocal) {
+                    defaultVersion = hasLocal;
+                } else if (hasMain) {
+                    defaultVersion = hasMain;
+                } else if (versions.length > 0) {
+                    defaultVersion = versions[0];
+                }
+                
+                // Clear existing options
+                select.innerHTML = '';
+                
+                // Add all versions
                 versions.forEach(version => {
                     const option = document.createElement('option');
-                    option.value = version.url;
+                    // For local development, use relative paths
+                    const url = version.url.startsWith('/') ? '.' + version.url : version.url;
+                    option.value = url;
                     option.textContent = version.name;
-                    if (version.version === 'local') {
+                    option.dataset.version = version.version;
+                    
+                    // Select the default version
+                    if (defaultVersion && version.version === defaultVersion.version) {
                         option.selected = true;
+                        selectedVersion = version.version;
                     }
                     select.appendChild(option);
                 });
                 
-                // Add main version if not in switcher
-                if (!versions.find(v => v.version === 'main')) {
-                    const mainOption = document.createElement('option');
-                    mainOption.value = './main/';
-                    mainOption.textContent = 'main';
-                    select.appendChild(mainOption);
-                }
+                // Update the browse documentation link
+                updateBrowseLink();
+                
             } catch (error) {
                 console.error('Failed to load versions:', error);
                 // Fallback to hardcoded versions
                 const select = document.getElementById('version-select');
                 select.innerHTML = `
-                    <option value="./local/" selected>Local (development)</option>
-                    <option value="./main/">main</option>
+                    <option value="./local/" data-version="local" selected>Local (development)</option>
+                    <option value="./main/" data-version="main">main</option>
                 `;
+                selectedVersion = 'local';
+                updateBrowseLink();
             }
         }
         
         function navigateToVersion() {
             const select = document.getElementById('version-select');
-            const url = select.value;
-            if (url) {
-                window.location.href = url;
+            const selectedOption = select.options[select.selectedIndex];
+            selectedVersion = selectedOption.dataset.version || 'local';
+            updateBrowseLink();
+        }
+        
+        function updateBrowseLink() {
+            const browseButton = document.getElementById('browse-docs-btn');
+            if (browseButton) {
+                const select = document.getElementById('version-select');
+                const url = select.value || './local/';
+                browseButton.href = url;
             }
+        }
+        
+        function browseDocumentation() {
+            const select = document.getElementById('version-select');
+            const url = select.value || './local/';
+            window.location.href = url;
         }
         
         // Logo animation functionality
@@ -532,13 +612,6 @@
             </p>
         </header>
         
-        <div class="version-selector">
-            <label for="version-select">Select Documentation Version:</label>
-            <select id="version-select" onchange="navigateToVersion()">
-                <!-- Options will be populated by JavaScript -->
-            </select>
-        </div>
-        
         <section class="features">
             <div class="feature-card">
                 <h3>🚀 Getting Started</h3>
@@ -592,18 +665,31 @@
                     <strong>wrt-error</strong> - Comprehensive error handling
                 </span>
             </div>
-            <a href="./local/" class="cta-button">Browse Documentation</a>
+            
+            <div class="version-selector-inline">
+                <select id="version-select" onchange="navigateToVersion()">
+                    <!-- Options will be populated by JavaScript -->
+                </select>
+                <a href="./local/" id="browse-docs-btn" class="cta-button" onclick="browseDocumentation(); return false;">Browse Documentation</a>
+            </div>
         </div>
     </div>
     
     <footer class="footer">
-        <p>
-            Pulseengine (WRT Edition) is licensed under the <a href="https://github.com/avrabe/wrt/blob/main/LICENSE">MIT License</a>
-            •
-            <a href="https://github.com/avrabe/wrt">GitHub Repository</a>
-            •
-            Designed for ISO 26262 ASIL-D Compliance
-        </p>
+        <div class="footer-left">
+            <p>
+                Pulseengine (WRT Edition) is licensed under the <a href="https://github.com/pulseengine/wrt/blob/main/LICENSE">MIT License</a>
+                <br>
+                Designed for ISO 26262 ASIL-D Compliance
+            </p>
+        </div>
+        <div class="footer-right">
+            <a href="https://github.com/pulseengine/wrt" title="View on GitHub" aria-label="GitHub Repository">
+                <svg class="github-logo" viewBox="0 0 16 16" version="1.1" aria-hidden="true">
+                    <path fill="currentColor" fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path>
+                </svg>
+            </a>
+        </div>
     </footer>
 </body>
 </html> 

@@ -1,8 +1,52 @@
 ==========================
-Component Definitions
+Component Definitions  
 ==========================
 
 **Teaching Point**: Each component has a single, well-defined responsibility. This page shows how the actual implementation is organized into components.
+
+.. contents:: Component Categories
+   :local:
+   :depth: 2
+
+Architectural Requirements
+--------------------------
+
+Before defining components, we establish the architectural requirements they must satisfy:
+
+.. arch_requirement:: Component Independence
+   :id: ARCH_REQ_001
+   :status: implemented
+   :priority: high
+   
+   Each component shall be independently testable and deployable with well-defined interfaces.
+
+.. arch_requirement::Component Single Responsibility
+   :id: ARCH_REQ_002
+   :status: implemented
+   :priority: high
+   
+   Each component shall have a single, well-defined responsibility following the Single Responsibility Principle.
+
+.. arch_requirement:: Platform Abstraction
+   :id: ARCH_REQ_003
+   :status: implemented
+   :priority: high
+   
+   Platform-specific code shall be isolated in dedicated abstraction layers.
+
+.. arch_requirement:: Memory Safety
+   :id: ARCH_REQ_004
+   :status: implemented
+   :priority: critical
+   
+   All components shall provide memory-safe interfaces with bounds checking and verification.
+
+.. arch_requirement:: Environment Flexibility
+   :id: ARCH_REQ_005
+   :status: implemented
+   :priority: high
+   
+   Components shall support std, no_std+alloc, and no_std environments through conditional compilation.
 
 Core Components
 ---------------
@@ -13,10 +57,11 @@ Runtime Core
 .. arch_component:: Runtime Core
    :id: ARCH_COMP_001
    :crate: wrt-runtime
-   :implements: REQ_001, REQ_002, REQ_CORE_001
+   :implements: REQ_001, REQ_002, REQ_CORE_001, ARCH_REQ_001, ARCH_REQ_002
    :provides: ARCH_IF_001, ARCH_IF_002
    :requires: ARCH_IF_010, ARCH_IF_011
    :status: implemented
+   :links: ARCH_DEC_COMP_001
 
 **Purpose**: Executes WebAssembly instructions and manages runtime state.
 
@@ -49,9 +94,10 @@ Memory Manager
 .. arch_component:: Memory Manager
    :id: ARCH_COMP_002
    :crate: wrt-foundation
-   :implements: REQ_MEM_001, REQ_MEM_SAFETY_001
+   :implements: REQ_MEM_001, REQ_MEM_SAFETY_001, ARCH_REQ_004, ARCH_REQ_005
    :provides: ARCH_IF_020, ARCH_IF_021
    :status: implemented
+   :links: ARCH_DEC_DEPLOY_001, ARCH_CON_001
 
 **Purpose**: Provides safe memory operations with verification.
 

@@ -371,23 +371,25 @@ async fn run_docs_version_pipeline(
             "sh",
             "-c",
             "\
-            apt-get update && apt-get install -y build-essential curl && \
+            apt-get update && apt-get install -y build-essential curl default-jre graphviz && \
+            curl -L -o /usr/local/bin/plantuml.jar https://github.com/plantuml/plantuml/releases/download/v1.2024.0/plantuml-1.2024.0.jar && \
+            echo '#!/bin/sh\njava -jar /usr/local/bin/plantuml.jar \"$@\"' > /usr/local/bin/plantuml && \
+            chmod +x /usr/local/bin/plantuml && \
             export CARGO_HOME=/root/.cargo && \
             export RUSTUP_HOME=/root/.rustup && \
             curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && \
             . $CARGO_HOME/env && \
             pip install -r ../requirements.txt",
         ])
-        // Similarly, install build-essential, curl, rustup, source env, and run sphinx-build.
+        // Similarly, ensure PlantUML is available and run sphinx-build.
         .with_exec(vec![
             "sh",
             "-c",
             "\
-            apt-get update && apt-get install -y build-essential curl && \
             export CARGO_HOME=/root/.cargo && \
             export RUSTUP_HOME=/root/.rustup && \
-            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && \
             . $CARGO_HOME/env && \
+            export PATH=/usr/local/bin:$PATH && \
             sphinx-build -vv -b html . ../_build/html",
         ]);
 

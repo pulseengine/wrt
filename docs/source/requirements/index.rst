@@ -13,14 +13,6 @@ This section provides a consolidated view of all system requirements and their s
    :local:
    :depth: 2
 
-.. toctree::
-   :maxdepth: 2
-   :caption: Requirement Categories:
-
-   functional
-   safety
-   qualification
-
 Requirements Overview
 ---------------------
 

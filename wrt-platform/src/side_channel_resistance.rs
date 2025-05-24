@@ -38,7 +38,6 @@
 
 use core::sync::atomic::{AtomicUsize, Ordering};
 
-
 /// Side-channel resistance levels for different security contexts
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ResistanceLevel {
@@ -71,7 +70,6 @@ pub enum AttackVector {
 
 /// Analysis: How Side-Channel Resistance Integrates with WRT Platform
 pub mod integration_analysis {
-    
 
     /// Integration with Memory Subsystem
     ///

@@ -1,16 +1,16 @@
-use anyhow::{Context, Result};
 use std::fs;
-use std::path::Path;
+
+use anyhow::{Context, Result};
 use tracing::info;
 
 /// Generate a simple coverage.json file for documentation without using Dagger
 /// This is used in CI to avoid container execution issues
 pub fn generate_simple_coverage() -> Result<()> {
     info!("Generating simple coverage data for documentation...");
-    
+
     // Create the target coverage directory
     fs::create_dir_all("target/coverage")?;
-    
+
     // Create a basic coverage.json file
     let coverage_json = r#"{
     "version": "0.1.0",
@@ -35,15 +35,14 @@ pub fn generate_simple_coverage() -> Result<()> {
     },
     "files": []
 }"#;
-    
+
     // Write the coverage.json file
-    fs::write("coverage.json", coverage_json)
-        .context("Failed to write coverage.json")?;
-    
+    fs::write("coverage.json", coverage_json).context("Failed to write coverage.json")?;
+
     // Also write to target/coverage directory
     fs::write("target/coverage/coverage.json", coverage_json)
         .context("Failed to write target/coverage/coverage.json")?;
-    
+
     info!("Simple coverage data generated successfully");
     Ok(())
 }

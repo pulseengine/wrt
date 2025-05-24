@@ -81,6 +81,7 @@ pub use crate::{
     atomic_memory::{AtomicMemoryExt, AtomicMemoryOps},
     // Bounded collections
     bounded::{BoundedStack, BoundedString, BoundedVec, CapacityError, WasmName},
+    bounded_collections::{BoundedDeque, BoundedMap, BoundedQueue, BoundedSet},
     // Builder patterns
     builder::{
         BoundedBuilder, MemoryBuilder, NoStdProviderBuilder, ResourceBuilder, ResourceItemBuilder,
@@ -96,10 +97,6 @@ pub use crate::{
         Namespace,
         ResourceType,
     },
-    // Component builders (alloc-dependent) - handled in lib.rs with proper feature gates
-    component_value::{ComponentValue, ValType},
-    component_value_store::{ComponentValueStore, ValueRef},
-    component_value_store_builder::ComponentValueStoreBuilder,
     // Conversion utilities
     conversion::{ref_type_to_val_type, val_type_to_ref_type},
     // Resource types
@@ -110,11 +107,10 @@ pub use crate::{
     safe_memory::NoStdProvider,
     // Validation traits (moved to traits module to break circular dependency)
     traits::{
-        BoundedCapacity,
-        Checksummed,
+        BoundedCapacity, Checksummed,
         Validatable, /* ValidationContext,
-                      * ValidationError and ValidationResult will be re-added when validation
-                      * module is restored */
+                     * ValidationError and ValidationResult will be re-added when validation
+                     * module is restored */
     },
     // Traits
     traits::{FromFormat, ToFormat},
@@ -138,6 +134,14 @@ pub use crate::{
     // ResourceType, // Already covered by component::* above
     SafeMemoryHandler,
     SafeSlice,
+};
+// Alloc-dependent re-exports
+#[cfg(feature = "alloc")]
+pub use crate::{
+    // Component builders
+    component_value::{ComponentValue, ValType},
+    component_value_store::{ComponentValueStore, ValueRef},
+    component_value_store_builder::ComponentValueStoreBuilder,
 };
 
 // Type aliases for no_std/no_alloc compatibility
