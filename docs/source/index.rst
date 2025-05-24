@@ -1,61 +1,169 @@
-.. wrt documentation master file, created by
-   sphinx-quickstart on Sun Mar 17 00:48:53 2024.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
+=======================================
+WebAssembly Runtime (WRT) Documentation
+=======================================
 
-Welcome to Pulseengine (WRT Edition)'s documentation!
-=====================================================
+.. raw:: html
 
-.. image:: _static/icons/logo.svg
-   :width: 120px
-   :align: center
-   :alt: Pulseengine (WRT Edition) Logo
+   <div class="landing-header">
+      <img src="_static/icons/logo.svg" alt="WRT Logo" class="landing-logo">
+      <p class="landing-subtitle">A safety-critical WebAssembly runtime for embedded systems</p>
+   </div>
+
+.. warning::
+   This documentation is for WRT version |version|. For other versions, use the version switcher in the navigation bar.
+
+User Documentation
+------------------
+
+.. grid:: 2
+   :gutter: 3
+
+   .. grid-item-card:: Getting Started
+      :link: overview/index
+      :link-type: doc
+
+      Introduction to WRT, installation, and basic usage
+
+   .. grid-item-card:: Architecture Guide
+      :link: architecture/index
+      :link-type: doc
+
+      System design, component model, and runtime architecture
+
+   .. grid-item-card:: Safety Guidelines
+      :link: safety/index
+      :link-type: doc
+
+      Safety constraints, mechanisms, and best practices
+
+   .. grid-item-card:: Binary Format
+      :link: binary
+      :link-type: doc
+
+      WebAssembly binary format specifications
+
+API Reference
+-------------
+
+.. grid:: 2
+   :gutter: 3
+
+   .. grid-item-card:: Core Runtime API
+      :link: wrt-runtime/lib
+      :link-type: doc
+
+      Core runtime components and interfaces
+
+   .. grid-item-card:: Component Model API
+      :link: wrt-component/lib
+      :link-type: doc
+
+      Component model implementation
+
+   .. grid-item-card:: Host Integration API
+      :link: wrt-host/lib
+      :link-type: doc
+
+      Host function bindings and callbacks
+
+   .. grid-item-card:: All Crates
+      :link: api/index
+      :link-type: doc
+
+      Complete API documentation for all WRT crates
+
+Qualification Material
+----------------------
+
+.. grid:: 2
+   :gutter: 3
+
+   .. grid-item-card:: Requirements
+      :link: requirements/index
+      :link-type: doc
+
+      Functional, safety, and qualification requirements
+
+   .. grid-item-card:: Qualification Plan
+      :link: qualification/plan
+      :link-type: doc
+
+      ISO 26262 ASIL-D qualification approach
+
+   .. grid-item-card:: Test Documentation
+      :link: qualification/index
+      :link-type: doc
+
+      Test cases, coverage, and verification
+
+   .. grid-item-card:: Safety Analysis
+      :link: qualification/safety_analysis
+      :link-type: doc
+
+      FMEA, FTA, and safety assessments
+
+Developer Resources
+-------------------
+
+.. grid:: 2
+   :gutter: 3
+
+   .. grid-item-card:: Development Guide
+      :link: development/index
+      :link-type: doc
+
+      Contributing guidelines and development setup
+
+   .. grid-item-card:: Examples
+      :link: examples/index
+      :link-type: doc
+
+      Code examples and tutorials
+
+   .. grid-item-card:: Changelog
+      :link: changelog
+      :link-type: doc
+
+      Release notes and version history
 
 .. toctree::
-   :maxdepth: 2
-   :caption: Main Navigation
+   :hidden:
+   :caption: User Documentation
 
    overview/index
-   requirements/index
-   binary
+   architecture/index
    safety/index
+   binary
 
 .. toctree::
-   :maxdepth: 2
-   :caption: Additional Documentation
    :hidden:
+   :caption: API Reference
 
+   wrt-runtime/lib
+   wrt-component/lib
+   wrt-host/lib
+   wrt-instructions/lib
+   wrt-logging/lib
+   api/index
+
+.. toctree::
+   :hidden:
+   :caption: Qualification
+
+   requirements/index
+   qualification/index
    safety_requirements
    safety_mechanisms
    safety_implementations
    safety_test_cases
-   qualification/index
+
+.. toctree::
+   :hidden:
+   :caption: Resources
+
    development/index
-   api/index
    changelog
-
-Quick Links
------------
-
-- :doc:`overview/features` - Product features and capabilities
-- :doc:`requirements/safety` - Safety requirements
-- :doc:`safety/constraints` - Safety constraints and guidelines
-- :doc:`architecture` - System architecture
-- :doc:`binary` - Binary format details
-- :doc:`api/index` - API documentation
-
-Project Status
---------------
-
-Requirements Status
-^^^^^^^^^^^^^^^^^^^^
-
-.. commenting out needpie directives until they can be fixed
-..
-.. .. needpie::
-..    :labels: Implemented, Partial, Not Started
-..    :filter: id =~ "REQ_.*" and status != "removed"
-
+   
 .. include:: _generated_symbols.rst
 
 .. include:: _generated_coverage_summary.rst
@@ -64,5 +172,4 @@ Indices and tables
 ==================
 
 * :ref:`genindex`
-* :ref:`modindex`
 * :ref:`search`

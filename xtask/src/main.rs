@@ -14,6 +14,7 @@ use xshell::Shell;
 mod ci_advanced_tests;
 mod ci_integrity_checks;
 mod ci_static_analysis;
+mod coverage;
 mod dagger_pipelines;
 mod fmt_check;
 mod fs_ops;
@@ -23,6 +24,7 @@ mod wasm_ops;
 mod check_imports;
 mod check_panics;
 mod docs; // Assuming docs.rs is a module
+mod generate_coverage_summary;
 mod generate_source_needs;
 mod qualification; // Assuming qualification.rs is a module, distinct from directory
 mod update_panic_registry; // Added new module
@@ -60,6 +62,9 @@ pub enum Command {
     CiStaticAnalysis,
     CiAdvancedTests,
     CiIntegrityChecks,
+    Coverage,
+    CoverageComprehensive,
+    GenerateCoverageSummary,
     CheckDocsStrict,
     FmtCheck,
     RunTests,
@@ -150,10 +155,34 @@ async fn main() -> Result<()> {
     tracing::info!("Changed directory to workspace root: {:?}", workspace_root_for_shell);
 
     // Handle non-Dagger commands first
-    if let Command::GenerateSourceNeeds(args) = &opts.command {
-        // Check specifically for our new command
-        return generate_source_needs::run_generate_source_needs(args.clone(), &sh);
-        // Assuming args is clonable or doesn't need to be
+    match &opts.command {
+        Command::GenerateSourceNeeds(args) => {
+            return generate_source_needs::run_generate_source_needs(args.clone(), &sh);
+        }
+        Command::GenerateCoverageSummary => {
+            let coverage_json = std::path::PathBuf::from("target/coverage/coverage.json");
+            let output_rst =
+                std::path::PathBuf::from("docs/source/_generated_coverage_summary.rst");
+
+            if coverage_json.exists() {
+                println!("Generating coverage summary from {:?}", coverage_json);
+                if let Err(e) = generate_coverage_summary::generate_coverage_summary_rst(
+                    &coverage_json,
+                    &output_rst,
+                ) {
+                    eprintln!("Failed to generate coverage summary: {}", e);
+                    println!("Generating placeholder instead");
+                    generate_coverage_summary::generate_placeholder_coverage_summary(&output_rst)?;
+                }
+            } else {
+                println!("No coverage data found, generating placeholder");
+                generate_coverage_summary::generate_placeholder_coverage_summary(&output_rst)?;
+            }
+            return Ok(());
+        }
+        _ => {
+            // Continue to Dagger handling
+        }
     }
     // Add other non-Dagger commands here if necessary, e.g.:
     // if let Command::Fs(args) = &opts.command { ... }
@@ -172,6 +201,8 @@ async fn main() -> Result<()> {
         | Command::CiStaticAnalysis
         | Command::CiAdvancedTests
         | Command::CiIntegrityChecks
+        | Command::Coverage
+        | Command::CoverageComprehensive
         | Command::CheckDocsStrict
         | Command::FmtCheck
         | Command::RunTests => {
@@ -201,6 +232,10 @@ async fn main() -> Result<()> {
                             Command::CiAdvancedTests => ci_advanced_tests::run(&query_client).await,
                             Command::CiIntegrityChecks => {
                                 ci_integrity_checks::run(&query_client).await
+                            }
+                            Command::Coverage => coverage::run_quick_coverage(&query_client).await,
+                            Command::CoverageComprehensive => {
+                                coverage::run_comprehensive_coverage(&query_client).await
                             }
                             Command::CheckDocsStrict => {
                                 docs::check_docs_strict(&query_client).await
