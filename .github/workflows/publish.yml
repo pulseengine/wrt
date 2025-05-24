@@ -46,8 +46,9 @@ jobs:
       - name: Setup Dagger CLI
         run: |
           curl -L https://dl.dagger.io/dagger/install.sh | sh
-          export PATH=$PATH:$HOME/.dagger/bin
-          dagger version
+          echo "$HOME/.dagger/bin" >> $GITHUB_PATH
+      - name: Check Dagger version
+        run: dagger version
           
       - name: Setup Rust toolchain
         uses: dtolnay/rust-toolchain@stable
