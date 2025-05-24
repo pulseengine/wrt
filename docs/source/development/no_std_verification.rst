@@ -1,199 +1,343 @@
-===============================
-No_std Verification Process
-===============================
+====================
+no_std Verification
+====================
 
-This document outlines the verification process for ensuring WRT crates work correctly in no_std environments.
+This comprehensive verification plan ensures that all crates in the WRT ecosystem can be built and tested in three configurations.
+
+.. contents:: Table of Contents
+   :local:
+   :depth: 2
+
+Core Verification Framework
+---------------------------
 
 Configuration Matrix
--------------------
+~~~~~~~~~~~~~~~~~~~~
 
-WRT supports three distinct configurations:
+Each crate will be verified against the following matrix:
 
-+----------------------+------------------------+----------------------------------------+
-| Configuration        | Features               | Description                            |
-+======================+========================+========================================+
-| Standard             | ``std``                | Full standard library support          |
-+----------------------+------------------------+----------------------------------------+
-| No_std with alloc    | ``no_std``, ``alloc`` | Heap allocation without std            |
-+----------------------+------------------------+----------------------------------------+
-| No_std without alloc | ``no_std``            | Bare-metal compatibility (restrictive) |
-+----------------------+------------------------+----------------------------------------+
+.. list-table:: Configuration Matrix
+   :header-rows: 1
+   :widths: 25 25 50
 
-Verification Process
--------------------
+   * - Configuration
+     - Features
+     - Description
+   * - Standard
+     - ``std``
+     - Full standard library support
+   * - No_std with alloc
+     - ``no_std, alloc``
+     - Heap allocation without std
+   * - No_std without alloc
+     - ``no_std``
+     - Bare-metal compatibility
 
-The verification process tests each crate in all applicable configurations. Not all crates support all configurations,
-but each crate should clearly document its supported environments.
-
-Automated Verification
+Verification Commands
 ~~~~~~~~~~~~~~~~~~~~~
 
-Use the verification script to test all crates:
+For each crate, run the following commands to verify compatibility:
 
-.. code-block:: bash
+**Standard Configuration**::
 
-   ./scripts/verify_no_std.sh
+    cargo build -p <crate-name> --features std
+    cargo test -p <crate-name> --features std
 
-For detailed output:
+**No_std with Alloc**::
 
-.. code-block:: bash
+    cargo build -p <crate-name> --no-default-features --features "no_std,alloc"
+    cargo test -p <crate-name> --no-default-features --features "no_std,alloc"
 
-   ./scripts/verify_no_std.sh --verbose
+**No_std without Alloc**::
 
-To continue testing even if one crate fails:
+    cargo build -p <crate-name> --no-default-features --features "no_std"
+    cargo test -p <crate-name> --no-default-features --features "no_std"
 
-.. code-block:: bash
+Crate-Specific Verification
+---------------------------
 
-   ./scripts/verify_no_std.sh --continue-on-error
+wrt-math
+~~~~~~~~
 
-Manual Verification
-~~~~~~~~~~~~~~~~~~
+This crate should work in all configurations including the most restrictive no_std without alloc::
 
-For manual verification, use the following commands for each crate:
+    # Standard
+    cargo build -p wrt-math --features std
+    cargo test -p wrt-math --features std
 
-Standard Configuration:
+    # No_std with alloc
+    cargo build -p wrt-math --no-default-features --features "no_std,alloc"
+    cargo test -p wrt-math --no-default-features --features "no_std,alloc"
 
-.. code-block:: bash
+    # No_std without alloc
+    cargo build -p wrt-math --no-default-features --features "no_std"
+    cargo test -p wrt-math --no-default-features --features "no_std"
 
-   cargo build -p <crate-name> --features std
-   cargo test -p <crate-name> --features std
+wrt-sync
+~~~~~~~~
 
-No_std with Alloc:
+Verify synchronization primitives work in all environments::
 
-.. code-block:: bash
+    # Standard
+    cargo build -p wrt-sync --features std
+    cargo test -p wrt-sync --features std
 
-   cargo build -p <crate-name> --no-default-features --features "no_std,alloc"
-   cargo test -p <crate-name> --no-default-features --features "no_std,alloc"
+    # No_std with alloc
+    cargo build -p wrt-sync --no-default-features --features "no_std,alloc"
+    cargo test -p wrt-sync --no-default-features --features "no_std,alloc"
 
-No_std without Alloc:
+    # No_std without alloc
+    cargo build -p wrt-sync --no-default-features --features "no_std"
+    cargo test -p wrt-sync --no-default-features --features "no_std"
 
-.. code-block:: bash
+wrt-error
+~~~~~~~~~
 
-   cargo build -p <crate-name> --no-default-features --features "no_std"
-   cargo test -p <crate-name> --no-default-features --features "no_std"
+::
+
+    # Standard
+    cargo build -p wrt-error --features std
+    cargo test -p wrt-error --features std
+    cargo test -p wrt-error --features std -- integration_test
+
+    # No_std with alloc
+    cargo build -p wrt-error --no-default-features --features "no_std,alloc"
+    cargo test -p wrt-error --no-default-features --features "no_std,alloc"
+    cargo test -p wrt-error --no-default-features --features "no_std,alloc" -- integration_test
+
+    # No_std without alloc 
+    cargo build -p wrt-error --no-default-features --features "no_std"
+    cargo test -p wrt-error --no-default-features --features "no_std"
+    cargo test -p wrt-error --no-default-features --features "no_std" -- no_std_compatibility_test
+
+wrt-foundation
+~~~~~~~~~~~~~~
+
+::
+
+    # Standard
+    cargo build -p wrt-foundation --features std
+    cargo test -p wrt-foundation --features std
+    cargo test -p wrt-foundation --features std -- bounded_collections_test
+    cargo test -p wrt-foundation --features std -- safe_memory_test
+    cargo test -p wrt-foundation --features std -- safe_stack_test
+
+    # No_std with alloc
+    cargo build -p wrt-foundation --no-default-features --features "no_std,alloc"
+    cargo test -p wrt-foundation --no-default-features --features "no_std,alloc"
+    cargo test -p wrt-foundation --no-default-features --features "no_std,alloc" -- bounded_collections_test
+    cargo test -p wrt-foundation --no-default-features --features "no_std,alloc" -- safe_memory_test
+
+    # No_std without alloc
+    cargo build -p wrt-foundation --no-default-features --features "no_std"
+    cargo test -p wrt-foundation --no-default-features --features "no_std"
+    cargo test -p wrt-foundation --no-default-features --features "no_std" -- safe_stack_test
+
+Additional Crates
+~~~~~~~~~~~~~~~~~
+
+Similar verification procedures apply to:
+
+- wrt-format
+- wrt-decoder
+- wrt-instructions
+- wrt-runtime
+- wrt-host
+- wrt-intercept
+- wrt-component
+- wrt-platform
+- wrt-logging
+- wrt (main crate)
 
 Integration Testing
-~~~~~~~~~~~~~~~~~~
+-------------------
 
-After verifying individual crates, run integration tests across the workspace:
+After verifying individual crates, run integration tests that use multiple crates together::
 
-.. code-block:: bash
+    # Standard
+    cargo test --workspace --features std
+    cargo test --features std -- integration_with_wrt
 
-   # Standard
-   cargo test --workspace --features std
-   
-   # No_std with alloc
-   cargo test --workspace --no-default-features --features "no_std,alloc"
-   
-   # No_std without alloc
-   cargo test --workspace --no-default-features --features "no_std"
+    # No_std with alloc
+    cargo test --workspace --no-default-features --features "no_std,alloc"
+    cargo test --no-default-features --features "no_std,alloc" -- no_std_compatibility_test
 
-Specific Test Patterns
-~~~~~~~~~~~~~~~~~~~~~
+    # No_std without alloc
+    cargo test --workspace --no-default-features --features "no_std"
 
-Each crate has specific test files targeting no_std compatibility. Run these with:
+Automated Verification Script
+-----------------------------
 
-.. code-block:: bash
+Create a shell script to automate the verification process::
 
-   cargo test -p <crate-name> --no-default-features --features "no_std" -- no_std_compatibility_test
+    #!/bin/bash
 
-Verification Points
-------------------
+    # Define configurations
+    CONFIGS=("std" "no_std,alloc" "no_std")
+    CRATES=(
+      "wrt-math"
+      "wrt-sync"
+      "wrt-error"
+      "wrt-foundation"
+      "wrt-format"
+      "wrt-decoder"
+      "wrt-instructions"
+      "wrt-runtime"
+      "wrt-host"
+      "wrt-intercept"
+      "wrt-component"
+      "wrt-platform"
+      "wrt-logging"
+      "wrt"
+    )
+
+    # Run verification for each crate in each configuration
+    for crate in "${CRATES[@]}"; do
+      echo "=== Verifying $crate ==="
+      
+      for config in "${CONFIGS[@]}"; do
+        echo "--- Configuration: $config ---"
+        
+        if [ "$config" == "std" ]; then
+          echo "Building with std..."
+          cargo build -p "$crate" --features std || { echo "Build failed!"; exit 1; }
+          
+          echo "Testing with std..."
+          cargo test -p "$crate" --features std || { echo "Tests failed!"; exit 1; }
+        else
+          echo "Building with $config..."
+          cargo build -p "$crate" --no-default-features --features "$config" || { echo "Build failed!"; exit 1; }
+          
+          echo "Testing with $config..."
+          cargo test -p "$crate" --no-default-features --features "$config" || { echo "Tests failed!"; exit 1; }
+          
+          echo "Running no_std_compatibility_test..."
+          cargo test -p "$crate" --no-default-features --features "$config" -- no_std_compatibility_test || echo "No specific no_std test found or failed"
+        fi
+      done
+    done
+
+    # Run integration tests
+    echo "=== Running integration tests ==="
+
+    for config in "${CONFIGS[@]}"; do
+      echo "--- Integration tests with $config ---"
+      
+      if [ "$config" == "std" ]; then
+        cargo test --workspace --features std || { echo "Integration tests failed!"; exit 1; }
+      else
+        cargo test --workspace --no-default-features --features "$config" || { echo "Integration tests failed!"; exit 1; }
+      fi
+    done
+
+    echo "Verification completed successfully!"
+
+Specific Verification Points
+----------------------------
 
 For each configuration, verify:
 
-1. **Memory Management**
-   
-   * Bounded collections work correctly
-   * Safe memory abstractions function properly
-   * Memory allocation respects configuration limitations
+Memory Management
+~~~~~~~~~~~~~~~~~
 
-2. **Error Handling**
-   
-   * Error propagation works without panicking
-   * Error contexts are properly handled
+- Bounded collections work correctly
+- Safe memory abstractions function properly
+- Memory allocation strategies respect configuration limitations
 
-3. **Resource Management**
-   
-   * Resource creation/destruction works as expected
-   * Resource tables function in all environments
+Error Handling
+~~~~~~~~~~~~~~
 
-4. **Component Model**
-   
-   * Component instantiation works in supported environments
-   * Component values are properly handled
+- Error propagation works without panicking
+- Error contexts are created and handled properly
 
-5. **Type Conversions**
-   
-   * Conversions between formats work correctly
-   * No unexpected allocations occur in no_alloc mode
+Resource Management
+~~~~~~~~~~~~~~~~~~~
 
-Crate Support Matrix
--------------------
+- Resource creation and destruction work as expected
+- Resource tables function in all environments
 
-+------------------+----------+-------------------+-------------------+
-| Crate            | std      | no_std with alloc | no_std no alloc   |
-+==================+==========+===================+===================+
-| wrt-math         | ✓        | ✓                 | ✓                 |
-+------------------+----------+-------------------+-------------------+
-| wrt-sync         | ✓        | ✓                 | ✓                 |
-+------------------+----------+-------------------+-------------------+
-| wrt-error        | ✓        | ✓                 | ✓                 |
-+------------------+----------+-------------------+-------------------+
-| wrt-foundation        | ✓        | ✓                 | ✓                 |
-+------------------+----------+-------------------+-------------------+
-| wrt-format       | ✓        | ✓                 | ✓                 |
-+------------------+----------+-------------------+-------------------+
-| wrt-decoder      | ✓        | ✓                 | Partial           |
-+------------------+----------+-------------------+-------------------+
-| wrt-instructions | ✓        | ✓                 | ✓                 |
-+------------------+----------+-------------------+-------------------+
-| wrt-runtime      | ✓        | ✓                 | Partial           |
-+------------------+----------+-------------------+-------------------+
-| wrt-host         | ✓        | ✓                 | No                |
-+------------------+----------+-------------------+-------------------+
-| wrt-intercept    | ✓        | ✓                 | No                |
-+------------------+----------+-------------------+-------------------+
-| wrt-component    | ✓        | ✓                 | Partial           |
-+------------------+----------+-------------------+-------------------+
-| wrt-platform     | ✓        | ✓                 | ✓                 |
-+------------------+----------+-------------------+-------------------+
-| wrt-logging      | ✓        | ✓                 | Partial           |
-+------------------+----------+-------------------+-------------------+
-| wrt (core)       | ✓        | ✓                 | ✓                 |
-+------------------+----------+-------------------+-------------------+
+Component Model
+~~~~~~~~~~~~~~~
 
-Common Issues
-------------
+- Component instantiation works across all supported environments
+- Component values are properly handled
 
-1. **Hidden std Dependencies**:
-   
-   * Use of global allocators
-   * Inadvertent use of std collections
-   * String formatting outside alloc features
+Type Conversions
+~~~~~~~~~~~~~~~~
 
-2. **Testing Issues**:
-   
-   * Test harnesses may require std
-   * Tests may need to adapt based on configuration
+- Type conversions between formats work correctly
+- No unexpected memory allocations occur in no_alloc mode
 
-3. **Resource Management**:
-   
-   * Careful handling of resources required in no_alloc mode
-   * Bounded collections used instead of growable ones
-
-CI Integration
--------------
-
-The CI pipeline automatically runs all no_std verification steps. The process is integrated into the quality gate and
-must pass before merging changes.
-
-Debug Recommendations
+Documentation Update
 --------------------
 
-When debugging no_std issues:
+After verification, ensure all crates have proper documentation regarding their no_std compatibility:
 
-1. First verify with a specific test pattern
-2. Use conditional compilation to isolate problematic code sections
-3. Check for any required dependencies when building without std
-4. Examine error messages carefully for hidden std dependencies
+1. Update each crate's README.md to clearly indicate:
+
+   - Which configurations are supported
+   - Any limitations in specific configurations
+   - Examples for using the crate in each configuration
+
+2. Add specific usage examples for no_std environments in the documentation.
+
+Additional Verification Tests
+-----------------------------
+
+Create specific tests to verify that:
+
+1. No implicit std dependencies exist
+2. No hidden allocations occur in no_alloc mode
+3. All error paths work correctly in no_std environments
+4. Resource cleanup works properly in constrained environments
+
+CI Integration
+--------------
+
+Update CI workflows to include testing for all three configurations to ensure ongoing compatibility.
+
+Runtime Performance Verification
+--------------------------------
+
+For critical components, add benchmarks that compare performance across configurations to identify any significant differences.
+
+Verification Checklist
+----------------------
+
+.. list-table:: Verification Checklist
+   :header-rows: 1
+   :widths: 50 25 25
+
+   * - Task
+     - Status
+     - Notes
+   * - Individual crate builds (std)
+     - ☐
+     - All crates build with std
+   * - Individual crate builds (no_std + alloc)
+     - ☐
+     - All crates build with alloc only
+   * - Individual crate builds (no_std)
+     - ☐
+     - All crates build bare no_std
+   * - Individual crate tests (std)
+     - ☐
+     - All tests pass with std
+   * - Individual crate tests (no_std + alloc)
+     - ☐
+     - All tests pass with alloc only
+   * - Individual crate tests (no_std)
+     - ☐
+     - All tests pass bare no_std
+   * - Integration tests (all configs)
+     - ☐
+     - Cross-crate tests pass
+   * - CI workflow updated
+     - ☐
+     - All configs tested in CI
+   * - Documentation updated
+     - ☐
+     - no_std usage documented
+   * - Performance verified
+     - ☐
+     - No regressions identified

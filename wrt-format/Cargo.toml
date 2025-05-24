@@ -25,7 +25,8 @@ optional = true
 [features]
 default = []
 std = ["wrt-foundation/std"]
-no_std = ["wrt-foundation/no_std"]
+# This crate is no_std by default, this feature is a no-op for compatibility
+no_std = []
 alloc = ["wrt-foundation/alloc"]
 optimize = ["wrt-foundation/optimize"]
 safety = ["wrt-foundation/safety"]

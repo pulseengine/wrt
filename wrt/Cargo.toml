@@ -39,6 +39,10 @@ wrt-logging = { workspace = true }
 wrt-platform = { workspace = true }
 # Math operations
 wrt-math = { workspace = true }
+# Serialization support (optional)
+serde = { version = "1.0", features = ["derive"], optional = true }
+serde_json = { version = "1.0", optional = true }
+bincode = { version = "1.3", optional = true }
 
 [lib]
 name = "wrt"
@@ -110,6 +114,7 @@ default = []
 minimal = ["dep:log", "wrt-decoder/no_std"]
 # Full std feature
 std = [
+    "wrt-error/std",
     "wrt-runtime/std",
     "wrt-host/std",
     "wrt-logging/std",
@@ -121,10 +126,12 @@ std = [
     "wrt-component/std",
     "wrt-instructions/std",
     "wrt-intercept/std",
+    "wrt-platform/std",
     "log/std",
 ]
 # alloc feature for heap allocation
 alloc = [
+    "wrt-error/alloc",
     "wrt-runtime/alloc",
     "wrt-host/alloc",
     "wrt-logging/alloc",
@@ -136,6 +143,7 @@ alloc = [
     "wrt-component/alloc",
     "wrt-instructions/alloc",
     "wrt-intercept/alloc",
+    "wrt-platform/alloc",
     "dep:alloc",
 ]
 # no_std support
@@ -170,6 +178,8 @@ safety = ["wrt-foundation/safety",
 # Platform and Helper Mode Features
 helper-mode = ["wrt-platform/helper-mode", "alloc"]
 platform-macos = ["wrt-platform/platform-macos", "alloc"]
+# Serialization support
+serialization = ["dep:serde", "dep:serde_json", "dep:bincode"]
 # Proposal features (mostly placeholders/unused for now)
 relaxed_simd = []
 gc = []

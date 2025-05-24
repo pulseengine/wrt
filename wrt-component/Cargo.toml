@@ -10,17 +10,16 @@ keywords = ["wasm", "webassembly", "runtime", "component-model"]
 categories = ["wasm", "no-std"]
 
 [dependencies]
-wrt-error = { workspace = true }
-wrt-format = { workspace = true }
-wrt-host = { workspace = true }
-wrt-foundation = { workspace = true }
-wrt-intercept = { workspace = true }
-wrt-decoder = { workspace = true }
-wrt-runtime = { workspace = true }
-wrt-sync = { workspace = true }
+wrt-error = { workspace = true, default-features = false }
+wrt-format = { workspace = true, default-features = false }
+wrt-host = { workspace = true, default-features = false }
+wrt-foundation = { workspace = true, default-features = false }
+wrt-intercept = { workspace = true, default-features = false }
+wrt-decoder = { workspace = true, default-features = false }
+wrt-runtime = { workspace = true, default-features = false }
+wrt-sync = { workspace = true, default-features = false }
 
-# No-std support
-alloc = { version = "1.0.0", optional = true, package = "rustc-std-workspace-alloc" }
+# No-std support (removed invalid alloc dependency)
 
 # Optional dependencies
 log = { version = "0.4", optional = true }
@@ -29,8 +28,8 @@ futures = { version = "0.3", optional = true }
 [dev-dependencies]
 
 [features]
-# By default, use pure no_std
-default = []
+# By default, use alloc (component model needs dynamic allocation)
+default = ["alloc"]
 
 # Standard library support
 std = [
@@ -59,8 +58,7 @@ alloc = [
     "wrt-runtime/alloc",
     "wrt-sync/alloc",
     "wrt-error/alloc",
-    "wrt-foundation/alloc",
-    "dep:alloc"
+    "wrt-foundation/alloc"
 ]
 
 # Verification with Kani
@@ -153,7 +151,7 @@ match_wildcard_for_single_variants = "warn"
 never_loop = "warn"
 unreachable = "warn" # Also related to Rule 4
 # Rule 5: Memory & concurrency safety
-static_mut_reference = "deny"
+static_mut_refs = "deny"
 arc_mutate = "deny"
 # Rule 8: Static analysis gates (CI)
 pedantic = "warn"

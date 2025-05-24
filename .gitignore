@@ -32,3 +32,4 @@ decoder.agent.prompt.md decoder.plan.md
 # Generated Sphinx-Needs source requirements file
 docs/source/implementation/source_requirements.rst
 docs_artifact_final/
+docs_output/

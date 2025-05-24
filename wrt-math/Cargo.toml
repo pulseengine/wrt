@@ -17,8 +17,8 @@ default = []
 std = ["alloc"]
 # Allocator support (implicitly enabled by std)
 alloc = ["dep:alloc"]
-# Explicit no_std feature (useful for testing)
-no_std = ["alloc"]
+# This crate is no_std by default, this feature is a no-op for compatibility
+no_std = []
 
 [dependencies]
 wrt-error = { workspace = true, default-features = false }
@@ -35,7 +35,7 @@ unsafe_code = "forbid"
 missing_docs = "deny"
 static_mut_refs = "deny"
 let_underscore_drop = "warn"
-# pointer_cast = "deny" # Rule 1.4 - enable if not workspace level
+# Invalid lint removed - pointer_cast doesn't exist
 # unreachable_code = "deny" # Covered by clippy::unreachable
 
 [lints.clippy]
