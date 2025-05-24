@@ -3,18 +3,26 @@
 //! This module provides utilities for serializing and deserializing WebAssembly
 //! runtime state using custom sections.
 
-#[cfg(not(feature = "std"))]
-use alloc::string::ToString;
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use alloc::{
+    string::{String, ToString},
+    vec::Vec,
+};
+#[cfg(feature = "std")]
+use std::{string::String, vec::Vec};
 
 use wrt_error::{codes, Error, ErrorCategory, Result};
+#[cfg(not(any(feature = "alloc", feature = "std")))]
+use wrt_foundation::{MemoryProvider, NoStdProvider};
 
 use crate::{
     compression::{rle_decode, rle_encode, CompressionType},
     format,
     section::CustomSection,
     version::{STATE_MAGIC, STATE_VERSION},
-    String, Vec,
 };
+#[cfg(not(any(feature = "alloc", feature = "std")))]
+use crate::{WasmString, WasmVec};
 
 /// Constants for state section names
 pub const STATE_SECTION_PREFIX: &str = "wrt-state";
@@ -36,6 +44,7 @@ pub enum StateSection {
 
 impl StateSection {
     /// Get the section name for this state section type
+    #[cfg(any(feature = "alloc", feature = "std"))]
     pub fn name(&self) -> String {
         match self {
             Self::Meta => format!("{}-meta", STATE_SECTION_PREFIX),
@@ -46,20 +55,27 @@ impl StateSection {
         }
     }
 
+    /// Get the section name for this state section type (no_std version)
+    #[cfg(not(any(feature = "alloc", feature = "std")))]
+    pub fn name(&self) -> &'static str {
+        match self {
+            Self::Meta => "wrt-state-meta",
+            Self::Stack => "wrt-state-stack",
+            Self::Frames => "wrt-state-frames",
+            Self::Globals => "wrt-state-globals",
+            Self::Memory => "wrt-state-memory",
+        }
+    }
+
     /// Convert a section name to a StateSection
     pub fn from_name(name: &str) -> Option<Self> {
-        if name == format!("{}-meta", STATE_SECTION_PREFIX) {
-            Some(Self::Meta)
-        } else if name == format!("{}-stack", STATE_SECTION_PREFIX) {
-            Some(Self::Stack)
-        } else if name == format!("{}-frames", STATE_SECTION_PREFIX) {
-            Some(Self::Frames)
-        } else if name == format!("{}-globals", STATE_SECTION_PREFIX) {
-            Some(Self::Globals)
-        } else if name == format!("{}-memory", STATE_SECTION_PREFIX) {
-            Some(Self::Memory)
-        } else {
-            None
+        match name {
+            "wrt-state-meta" => Some(Self::Meta),
+            "wrt-state-stack" => Some(Self::Stack),
+            "wrt-state-frames" => Some(Self::Frames),
+            "wrt-state-globals" => Some(Self::Globals),
+            "wrt-state-memory" => Some(Self::Memory),
+            _ => None,
         }
     }
 
@@ -90,6 +106,7 @@ pub struct StateHeader {
 }
 
 /// Create a custom section containing serialized state
+#[cfg(any(feature = "alloc", feature = "std"))]
 pub fn create_state_section(
     section_type: StateSection,
     data: &[u8],
@@ -134,6 +151,7 @@ pub fn create_state_section(
 }
 
 /// Extract state data from a custom section
+#[cfg(any(feature = "alloc", feature = "std"))]
 pub fn extract_state_section(section: &CustomSection) -> Result<(StateHeader, Vec<u8>)> {
     // Verify that this is a valid state section
     let section_type = StateSection::from_name(&section.name).ok_or_else(|| {

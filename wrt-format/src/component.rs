@@ -3,18 +3,19 @@
 //! This module provides types and utilities for working with the WebAssembly
 //! Component Model binary format.
 
-// Import from crate::lib re-exports to ensure proper features
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::{boxed::Box, string::String, vec::Vec};
-#[cfg(feature = "std")]
-use std::{boxed::Box, string::String, vec::Vec};
-
+// Use crate-level type aliases for collection types
 use wrt_error::{Error, Result};
 // Re-export ValType from wrt-foundation
 pub use wrt_foundation::component_value::ValType;
 use wrt_foundation::resource::{ResourceDrop, ResourceNew, ResourceRep, ResourceRepresentation};
+#[cfg(not(any(feature = "alloc", feature = "std")))]
+use wrt_foundation::NoStdProvider;
 
 use crate::{module::Module, types::ValueType, validation::Validatable};
+#[cfg(any(feature = "alloc", feature = "std"))]
+use crate::{String, Vec};
+#[cfg(not(any(feature = "alloc", feature = "std")))]
+use crate::{WasmString, WasmVec, MAX_TYPE_RECURSION_DEPTH};
 
 /// WebAssembly Component Model component definition
 #[derive(Debug, Clone)]
@@ -484,7 +485,110 @@ pub enum ExternType {
     },
 }
 
-/// Component Model value types
+/// Type reference index for recursive types (replaces Box<T>)
+pub type TypeRef = u32;
+
+/// Type registry for managing recursive types without allocation
+#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[derive(Debug, Clone)]
+pub struct TypeRegistry<P: wrt_foundation::MemoryProvider = NoStdProvider<1024>> {
+    /// Type definitions stored in a bounded vector
+    types: WasmVec<FormatValType<P>, P>,
+    /// Next available type reference
+    next_ref: TypeRef,
+}
+
+#[cfg(not(any(feature = "alloc", feature = "std")))]
+impl<P: wrt_foundation::MemoryProvider + Clone + Default> TypeRegistry<P> {
+    /// Create a new type registry
+    pub fn new() -> Result<Self, wrt_foundation::bounded::CapacityError> {
+        Ok(Self { types: WasmVec::new(P::default())?, next_ref: 0 })
+    }
+
+    /// Add a type to the registry and return its reference
+    pub fn add_type(
+        &mut self,
+        val_type: FormatValType<P>,
+    ) -> Result<TypeRef, wrt_foundation::bounded::CapacityError> {
+        let type_ref = self.next_ref;
+        self.types.push(val_type)?;
+        self.next_ref += 1;
+        Ok(type_ref)
+    }
+
+    /// Get a type by reference
+    pub fn get_type(&self, type_ref: TypeRef) -> Option<&FormatValType<P>> {
+        self.types.get(type_ref as usize)
+    }
+
+    /// Get mutable reference to a type
+    pub fn get_type_mut(&mut self, type_ref: TypeRef) -> Option<&mut FormatValType<P>> {
+        self.types.get_mut(type_ref as usize)
+    }
+}
+
+/// Component Model value types - Pure No_std Version
+#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum FormatValType<P: wrt_foundation::MemoryProvider = NoStdProvider<1024>> {
+    /// Boolean type
+    Bool,
+    /// 8-bit signed integer
+    S8,
+    /// 8-bit unsigned integer
+    U8,
+    /// 16-bit signed integer
+    S16,
+    /// 16-bit unsigned integer
+    U16,
+    /// 32-bit signed integer
+    S32,
+    /// 32-bit unsigned integer
+    U32,
+    /// 64-bit signed integer
+    S64,
+    /// 64-bit unsigned integer
+    U64,
+    /// 32-bit float
+    F32,
+    /// 64-bit float
+    F64,
+    /// Unicode character
+    Char,
+    /// String type
+    String,
+    /// Reference type
+    Ref(u32),
+    /// Record type with named fields (using type references)
+    Record(WasmVec<(WasmString<P>, TypeRef), P>),
+    /// Variant type (using type references)  
+    Variant(WasmVec<(WasmString<P>, Option<TypeRef>), P>),
+    /// List type (reference to element type)
+    List(TypeRef),
+    /// Fixed-length list type with element type and length
+    FixedList(TypeRef, u32),
+    /// Tuple type (references to element types)
+    Tuple(WasmVec<TypeRef, P>),
+    /// Flags type
+    Flags(WasmVec<WasmString<P>, P>),
+    /// Enum type
+    Enum(WasmVec<WasmString<P>, P>),
+    /// Option type (reference to inner type)
+    Option(TypeRef),
+    /// Result type (reference to ok/error types)
+    Result(TypeRef),
+    /// Own a resource
+    Own(u32),
+    /// Borrow a resource
+    Borrow(u32),
+    /// Void/empty type
+    Void,
+    /// Error context type
+    ErrorContext,
+}
+
+/// Component Model value types - With Allocation
+#[cfg(any(feature = "alloc", feature = "std"))]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FormatValType {
     /// Boolean type

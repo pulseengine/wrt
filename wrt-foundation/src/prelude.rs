@@ -106,6 +106,16 @@ pub use crate::{
     resource::ResourceOperation,
     // Safe memory types (SafeMemoryHandler, SafeSlice, SafeStack are already here from direct
     // re-exports) Sections (SectionId, SectionType, Section are usually handled by decoder)
+    // Import NoStdProvider for no_alloc type aliases
+    safe_memory::NoStdProvider,
+    // Validation traits (moved to traits module to break circular dependency)
+    traits::{
+        BoundedCapacity,
+        Checksummed,
+        Validatable, /* ValidationContext,
+                      * ValidationError and ValidationResult will be re-added when validation
+                      * module is restored */
+    },
     // Traits
     traits::{FromFormat, ToFormat},
     // Common types (BlockType, FuncType, GlobalType, MemoryType, TableType, ValueType are already
@@ -120,14 +130,6 @@ pub use crate::{
         TableType,
         ValueType,
     },
-    // Validation traits
-    validation::{
-        BoundedCapacity,
-        Checksummed,
-        Validatable, // ValidationContext,
-        ValidationError,
-        ValidationResult, // ValidOutput
-    },
     // Value representations
     values::{FloatBits32, FloatBits64, Value},
     // Verification types
@@ -137,3 +139,16 @@ pub use crate::{
     SafeMemoryHandler,
     SafeSlice,
 };
+
+// Type aliases for no_std/no_alloc compatibility
+/// Maximum number of arguments/results for WebAssembly functions
+pub const MAX_WASM_FUNCTION_PARAMS: usize = 128;
+
+/// Type alias for function argument vectors in no_alloc environments
+#[cfg(not(feature = "alloc"))]
+pub type ArgVec<T> =
+    BoundedVec<T, MAX_WASM_FUNCTION_PARAMS, NoStdProvider<{ MAX_WASM_FUNCTION_PARAMS * 16 }>>;
+
+/// Type alias for function argument vectors in alloc environments
+#[cfg(feature = "alloc")]
+pub type ArgVec<T> = Vec<T>;

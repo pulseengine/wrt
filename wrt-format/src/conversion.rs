@@ -21,10 +21,11 @@ use crate::{
 /// to the core BlockType representation.
 pub fn format_block_type_to_block_type(format_block_type: &FormatBlockType) -> BlockType {
     match format_block_type {
-        FormatBlockType::Empty => BlockType::Empty,
-        FormatBlockType::ValueType(value_type) => BlockType::Value(*value_type),
-        FormatBlockType::FuncType(func_type) => BlockType::FuncType(func_type.clone()),
-        FormatBlockType::TypeIndex(idx) => BlockType::TypeIndex(*idx),
+        FormatBlockType::Empty => BlockType::Value(None),
+        FormatBlockType::ValueType(value_type) => BlockType::Value(Some(*value_type)),
+        FormatBlockType::FuncType(_func_type) => BlockType::FuncType(0), /* TODO: proper type
+                                                                           * index mapping */
+        FormatBlockType::TypeIndex(idx) => BlockType::FuncType(*idx),
     }
 }
 
@@ -34,10 +35,9 @@ pub fn format_block_type_to_block_type(format_block_type: &FormatBlockType) -> B
 /// to the format-specific representation.
 pub fn block_type_to_format_block_type(block_type: &BlockType) -> FormatBlockType {
     match block_type {
-        BlockType::Empty => FormatBlockType::Empty,
-        BlockType::Value(value_type) => FormatBlockType::ValueType(*value_type),
-        BlockType::FuncType(func_type) => FormatBlockType::FuncType(func_type.clone()),
-        BlockType::TypeIndex(idx) => FormatBlockType::TypeIndex(*idx),
+        BlockType::Value(None) => FormatBlockType::Empty,
+        BlockType::Value(Some(value_type)) => FormatBlockType::ValueType(*value_type),
+        BlockType::FuncType(idx) => FormatBlockType::TypeIndex(*idx),
     }
 }
 
@@ -164,7 +164,7 @@ where
     F: FnOnce(T) -> core::result::Result<U, E>,
     E: fmt::Display,
 {
-    converter(value).map_err(|e| parse_error(format!("{}", e)))
+    converter(value).map_err(|_e| parse_error("Conversion error"))
 }
 
 /// Validate a format condition
@@ -228,9 +228,9 @@ mod tests {
         let block_value = format_block_type_to_block_type(&format_value);
         let block_type_idx = format_block_type_to_block_type(&format_type_idx);
 
-        assert!(matches!(block_empty, BlockType::Empty));
+        assert!(matches!(block_empty, BlockType::Value(None)));
         assert!(matches!(block_value, BlockType::Value(ValueType::I32)));
-        assert!(matches!(block_type_idx, BlockType::TypeIndex(42)));
+        assert!(matches!(block_type_idx, BlockType::FuncType(42)));
 
         // Test BlockType -> FormatBlockType
         let format_empty_2 = block_type_to_format_block_type(&block_empty);

@@ -19,7 +19,7 @@ use alloc::format;
 use wrt_error::{ErrorCategory, Result};
 
 #[cfg(feature = "alloc")]
-use crate::prelude::HashMap;
+use crate::prelude::BTreeMap;
 // Internal imports organized by module
 use crate::{
     // Bounded collections
@@ -50,7 +50,7 @@ use crate::{
     SafeMemoryHandler,
     WrtResult,
 };
-use crate::{prelude::*, validation::BoundedCapacity}; // Added import
+use crate::{prelude::*, traits::BoundedCapacity}; // Added import
 
 /// An opaque reference (index) to a `ComponentValue` within the store.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
@@ -122,33 +122,24 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ComponentValueStore<P
     /// Creates a new, empty `ComponentValueStore` with the given memory
     /// provider.
     pub fn new(provider: P) -> Result<Self> {
-        let values = BoundedVec::new(provider.clone()).map_err(|e| {
+        let values = BoundedVec::new(provider.clone()).map_err(|_e| {
             Error::new(
                 wrt_error::ErrorCategory::Memory,
                 codes::MEMORY_ALLOCATION_ERROR,
-                #[cfg(any(feature = "std", feature = "alloc"))]
-                format!("Failed to create BoundedVec for values: {:?}", e),
-                #[cfg(not(any(feature = "std", feature = "alloc")))]
                 "Failed to create BoundedVec for values",
             )
         })?;
-        let types = BoundedVec::new(provider.clone()).map_err(|e| {
+        let types = BoundedVec::new(provider.clone()).map_err(|_e| {
             Error::new(
                 wrt_error::ErrorCategory::Memory,
                 codes::MEMORY_ALLOCATION_ERROR,
-                #[cfg(any(feature = "std", feature = "alloc"))]
-                format!("Failed to create BoundedVec for types: {:?}", e),
-                #[cfg(not(any(feature = "std", feature = "alloc")))]
                 "Failed to create BoundedVec for types",
             )
         })?;
-        let type_map = BoundedVec::new(provider.clone()).map_err(|e| {
+        let type_map = BoundedVec::new(provider.clone()).map_err(|_e| {
             Error::new(
                 wrt_error::ErrorCategory::Memory,
                 codes::MEMORY_ALLOCATION_ERROR,
-                #[cfg(any(feature = "std", feature = "alloc"))]
-                format!("Failed to create BoundedVec for type_to_ref_map: {:?}", e),
-                #[cfg(not(any(feature = "std", feature = "alloc")))]
                 "Failed to create BoundedVec for type_to_ref_map",
             )
         })?;
@@ -166,13 +157,10 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ComponentValueStore<P
     /// Returns an error if the store is full or if memory allocation fails.
     pub fn add_value(&mut self, value: ComponentValue<P>) -> Result<ValueRef> {
         let index = self.values.len() as u32;
-        self.values.push(value).map_err(|e| {
+        self.values.push(value).map_err(|_e| {
             Error::new(
                 wrt_error::ErrorCategory::Resource,
                 codes::RESOURCE_LIMIT_EXCEEDED,
-                #[cfg(any(feature = "std", feature = "alloc"))]
-                format!("Failed to add value to store: {:?}", e),
-                #[cfg(not(any(feature = "std", feature = "alloc")))]
                 "Failed to add value to store",
             )
         })?;
@@ -184,7 +172,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ComponentValueStore<P
     ///
     /// Returns `None` if the `ValueRef` is invalid (e.g., out of bounds).
     pub fn resolve_value(&self, value_ref: ValueRef) -> Option<ComponentValue<P>> {
-        self.values.get(value_ref.index())
+        self.values.get(value_ref.index()).ok()
     }
 
     /// Retrieves a reference to a core `Value` by its handle.
@@ -204,19 +192,14 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ComponentValueStore<P
     /// # Errors
     /// Returns an error if the handle is invalid or the value is not a string.
     pub fn get_string<'a>(&'a self, val_ref: ValueRef) -> WrtResult<&'a str> {
-        match self.values.get(val_ref.index()) {
-            Some(ComponentValue::String(s_name)) => {
-                s_name
-                    .as_str()
-                    // .map(Cow::Borrowed) // Cow removed, returning &str directly
-                    .map_err(|_utf8_err| {
-                        // _utf8_err is not boxed or passed as source
-                        Error::new(
-                            ErrorCategory::Parse,               // Using Parse category
-                            codes::PARSE_MALFORMED_UTF8_STRING, // Using standard code
-                            "Invalid UTF-8 sequence in stored component string value",
-                        )
-                    })
+        match self.values.get(val_ref.index()).ok() {
+            Some(ComponentValue::String(_s_name)) => {
+                // Temporarily disabled due to lifetime issues in no_std mode
+                Err(Error::new(
+                    ErrorCategory::Parse,
+                    codes::PARSE_ERROR,
+                    "get_string temporarily disabled in no_std mode due to lifetime issues",
+                ))
             }
             Some(_other_val) => Err(Error::type_error(
                 // format!("Expected ComponentValue::String, found {:?}", other_val) // format!
@@ -243,14 +226,19 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ComponentValueStore<P
     where
         P: Clone, // Needed for WasmName::from_str which takes P by value
     {
-        // Create BoundedString with the target capacity for ComponentValue::String
-        let bounded_s = BoundedString::<{ crate::bounded::MAX_WASM_STRING_LENGTH }, P>::from_str(
-            s,
-            self.provider.clone(),
-        )
-        .map_err(Error::from)?; // Convert BoundedError to wrt_error::Error via From trait
+        #[cfg(any(feature = "alloc", feature = "std"))]
+        let comp_val = ComponentValue::String(s.to_string());
 
-        let comp_val = ComponentValue::String(bounded_s);
+        #[cfg(not(any(feature = "alloc", feature = "std")))]
+        let comp_val = {
+            let bounded_s =
+                BoundedString::<{ crate::bounded::MAX_WASM_STRING_LENGTH }, P>::from_str(
+                    s,
+                    self.provider.clone(),
+                )
+                .map_err(Error::from)?;
+            ComponentValue::String(bounded_s)
+        };
         let value_ref = self.add_value(comp_val)?;
         Ok(value_ref.0 as u32)
     }
@@ -425,21 +413,23 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ComponentValueStore<P
     pub fn intern_type(&mut self, ty: ValType<P>) -> Result<ValTypeRef> {
         #[cfg(feature = "alloc")]
         {
-            if let Some(existing_ref) = self.type_to_ref_map.get(&ty) {
-                return Ok(existing_ref);
+            // Search through the type_to_ref_map to find existing type
+            for i in 0..self.type_to_ref_map.len() {
+                if let Ok((stored_type, type_ref)) = self.type_to_ref_map.get(i) {
+                    if stored_type == ty {
+                        return Ok(type_ref);
+                    }
+                }
             }
         }
 
         // If not found in map (or map not used), add to BoundedVec and then to map
         let type_idx = self.types.len() as u32;
-        self.types.push(ty.clone()).map_err(|e| {
+        self.types.push(ty.clone()).map_err(|_e| {
             // ty needs to be Clone for this path
             Error::new(
                 wrt_error::ErrorCategory::Resource, // Or Capacity
                 codes::RESOURCE_LIMIT_EXCEEDED,
-                #[cfg(any(feature = "std", feature = "alloc"))]
-                format!("Failed to add type to store: {:?}", e),
-                #[cfg(not(any(feature = "std", feature = "alloc")))]
                 "Failed to add type to store",
             )
         })?;
@@ -447,22 +437,13 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ComponentValueStore<P
 
         #[cfg(feature = "alloc")]
         {
-            // Original ValType<P> `ty` was moved into BoundedVec if not found in map.
-            // We need `ty` again to insert into the map. `ty` must be Clone.
-            // The ValType<P> trait bounds already include Clone.
-            self.type_to_ref_map.insert(ty, type_ref).map_err(|e: BoundedError| {
+            // Add the type-to-ref mapping to our "map" (which is actually a BoundedVec of
+            // tuples)
+            self.type_to_ref_map.push((ty, type_ref)).map_err(|_e: BoundedError| {
                 Error::new(
-                    wrt_error::ErrorCategory::Resource, // Or Capacity
-                    match e.kind {
-                        crate::bounded::BoundedErrorKind::CapacityExceeded => {
-                            codes::CAPACITY_EXCEEDED
-                        }
-                        _ => codes::UNKNOWN, // Or more specific mapping
-                    },
-                    #[cfg(any(feature = "std", feature = "alloc"))]
-                    format!("Failed to insert type into type_to_ref_map: {:?}", e.message()),
-                    #[cfg(not(any(feature = "std", feature = "alloc")))]
-                    e.message(), // BoundedError message() returns &str
+                    wrt_error::ErrorCategory::Resource,
+                    codes::CAPACITY_EXCEEDED,
+                    "Failed to insert type into type_to_ref_map",
                 )
             })?;
         }
@@ -473,8 +454,8 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ComponentValueStore<P
     ///
     /// Returns `None` if the `ValTypeRef` is invalid (e.g., out of bounds).
     pub fn resolve_type(&self, type_ref: ValTypeRef) -> Option<ValType<P>> {
-        self.types.get(type_ref.0 as usize) // Assuming ValTypeRef.0 is the
-                                            // index
+        self.types.get(type_ref.0 as usize).ok() // Assuming ValTypeRef.0 is the
+                                                 // index
     }
 
     /// Returns a clone of the provider used by this store.

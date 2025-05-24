@@ -14,9 +14,8 @@ use crate::{
     component_type_store::TypeRef,
     component_value::ComponentValue,
     prelude::*,
-    traits::Checksummable,
+    traits::{Checksummable, Validatable},
     types::{FuncType, GlobalType, MemoryType, TableType, Tag},
-    validation::Validatable,
     verification::Checksum,
     Error, MemoryProvider, WrtResult,
 };

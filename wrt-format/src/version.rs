@@ -28,9 +28,10 @@ impl Default for ComponentModelVersion {
 }
 
 /// Feature flags for different Component Model capabilities
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd, Default)]
 pub enum ComponentModelFeature {
-    /// Core module support
+    /// Default placeholder (first variant serves as Default)
+    #[default]
     CoreModule,
     /// Core instance support
     CoreInstance,
@@ -57,9 +58,10 @@ pub enum ComponentModelFeature {
 }
 
 /// Status of feature support
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum FeatureStatus {
-    /// Feature is not available
+    /// Feature is not available (default)
+    #[default]
     Unavailable,
     /// Feature is available but experimental
     ExperimentalSupported,
@@ -69,28 +71,52 @@ pub enum FeatureStatus {
 
 /// Holds information about a Component Model binary version and supported
 /// features
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct VersionInfo {
     /// The detected version
     pub version: ComponentModelVersion,
     /// Map of features to their support status
+    #[cfg(feature = "std")]
     features: HashMap<ComponentModelFeature, FeatureStatus>,
+    #[cfg(not(feature = "std"))]
+    features: crate::HashMap<ComponentModelFeature, FeatureStatus>,
     /// Whether this binary uses any experimental features
     pub uses_experimental: bool,
 }
 
 impl Default for VersionInfo {
     fn default() -> Self {
-        let mut info = Self {
-            version: ComponentModelVersion::default(),
-            features: HashMap::new(),
-            uses_experimental: false,
-        };
+        #[cfg(feature = "std")]
+        let features = HashMap::new();
+
+        #[cfg(not(feature = "std"))]
+        let features = crate::HashMap::new(wrt_foundation::NoStdProvider::default())
+            .expect("Failed to create feature map");
+
+        let mut info =
+            Self { version: ComponentModelVersion::default(), features, uses_experimental: false };
 
         // Initialize with default feature set for V1.0
         info.initialize_v1_0_features();
 
         info
+    }
+}
+
+impl Clone for VersionInfo {
+    fn clone(&self) -> Self {
+        #[cfg(feature = "std")]
+        let features = self.features.clone();
+
+        #[cfg(not(feature = "std"))]
+        let features = {
+            let mut new_features = crate::HashMap::new(wrt_foundation::NoStdProvider::default())
+                .expect("Failed to create feature map");
+            // For now, create a new empty map since BoundedMap doesn't have Clone
+            new_features
+        };
+
+        Self { version: self.version, features, uses_experimental: self.uses_experimental }
     }
 }
 
@@ -168,14 +194,17 @@ impl VersionInfo {
     /// Check if a feature is available (either experimental or fully supported)
     pub fn is_feature_available(&self, feature: ComponentModelFeature) -> bool {
         match self.features.get(&feature) {
-            Some(status) => *status != FeatureStatus::Unavailable,
-            None => false,
+            Ok(Some(status)) => status != FeatureStatus::Unavailable,
+            _ => false,
         }
     }
 
     /// Get the status of a feature
     pub fn get_feature_status(&self, feature: ComponentModelFeature) -> FeatureStatus {
-        *self.features.get(&feature).unwrap_or(&FeatureStatus::Unavailable)
+        match self.features.get(&feature) {
+            Ok(Some(status)) => status,
+            _ => FeatureStatus::Unavailable,
+        }
     }
 
     /// Determine if the binary uses any experimental features
@@ -196,6 +225,103 @@ impl VersionInfo {
         // Add more checks for other experimental features as needed
 
         self.uses_experimental
+    }
+}
+
+// Manual trait implementations for no_std compatibility with BoundedMap
+#[cfg(not(any(feature = "alloc", feature = "std")))]
+mod no_std_traits {
+    use wrt_foundation::traits::{
+        Checksummable, FromBytes, ReadStream, SerializationError, ToBytes, WriteStream,
+    };
+
+    use super::*;
+
+    impl Checksummable for ComponentModelFeature {
+        fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+            checksum.update(*self as u8);
+        }
+    }
+
+    impl ToBytes for ComponentModelFeature {
+        fn serialized_size(&self) -> usize {
+            1 // One byte for the enum value
+        }
+
+        fn to_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+            &self,
+            writer: &mut wrt_foundation::traits::WriteStream<'a>,
+            _provider: &PStream,
+        ) -> wrt_foundation::WrtResult<()> {
+            writer.write_u8(*self as u8)
+        }
+    }
+
+    impl FromBytes for ComponentModelFeature {
+        fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+            reader: &mut wrt_foundation::traits::ReadStream<'a>,
+            _provider: &PStream,
+        ) -> wrt_foundation::WrtResult<Self> {
+            let byte = reader.read_u8()?;
+            match byte {
+                0 => Ok(ComponentModelFeature::CoreModule),
+                1 => Ok(ComponentModelFeature::CoreInstance),
+                2 => Ok(ComponentModelFeature::CoreType),
+                3 => Ok(ComponentModelFeature::ComponentType),
+                4 => Ok(ComponentModelFeature::Instance),
+                5 => Ok(ComponentModelFeature::Alias),
+                6 => Ok(ComponentModelFeature::Canon),
+                7 => Ok(ComponentModelFeature::Start),
+                8 => Ok(ComponentModelFeature::Import),
+                9 => Ok(ComponentModelFeature::Export),
+                10 => Ok(ComponentModelFeature::Value),
+                11 => Ok(ComponentModelFeature::ResourceTypes),
+                _ => Err(wrt_error::Error::new(
+                    wrt_error::ErrorCategory::Parse,
+                    wrt_error::codes::INVALID_VALUE,
+                    "Invalid ComponentModelFeature enum value",
+                )),
+            }
+        }
+    }
+
+    impl Checksummable for FeatureStatus {
+        fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+            checksum.update(*self as u8);
+        }
+    }
+
+    impl ToBytes for FeatureStatus {
+        fn serialized_size(&self) -> usize {
+            1 // One byte for the enum value
+        }
+
+        fn to_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+            &self,
+            writer: &mut wrt_foundation::traits::WriteStream<'a>,
+            _provider: &PStream,
+        ) -> wrt_foundation::WrtResult<()> {
+            writer.write_u8(*self as u8)
+        }
+    }
+
+    impl FromBytes for FeatureStatus {
+        fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+            reader: &mut wrt_foundation::traits::ReadStream<'a>,
+            _provider: &PStream,
+        ) -> wrt_foundation::WrtResult<Self> {
+            let byte = reader.read_u8()?;
+            match byte {
+                0 => Ok(FeatureStatus::Unavailable),
+                1 => Ok(FeatureStatus::ExperimentalSupported),
+                2 => Ok(FeatureStatus::FullySupported),
+                _ => Err(wrt_error::Error::new(
+                    wrt_error::ErrorCategory::Parse,
+                    wrt_error::codes::INVALID_VALUE,
+                    "Invalid FeatureStatus enum value",
+                )),
+            }
+        }
     }
 }
 

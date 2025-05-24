@@ -4,7 +4,7 @@
 //! focusing on run-length encoding (RLE) which is efficient for memory
 //! sections.
 
-#[cfg(not(feature = "std"))]
+#[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::string::ToString;
 #[cfg(not(feature = "std"))]
 use core::cmp;
@@ -12,8 +12,13 @@ use core::cmp;
 use std::cmp;
 
 use wrt_error::{codes, Error, ErrorCategory, Result};
+#[cfg(not(any(feature = "alloc", feature = "std")))]
+use wrt_foundation::{MemoryProvider, NoStdProvider};
 
+#[cfg(any(feature = "alloc", feature = "std"))]
 use crate::Vec;
+#[cfg(not(any(feature = "alloc", feature = "std")))]
+use crate::{BoundedVec, WasmVec};
 
 /// Supported compression types
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -42,6 +47,7 @@ impl CompressionType {
 /// - For literal sequences: [count, byte1, byte2, ...]
 ///
 /// Where count is a single byte (0-255)
+#[cfg(any(feature = "alloc", feature = "std"))]
 pub fn rle_encode(data: &[u8]) -> Vec<u8> {
     let mut result = Vec::new();
     let mut i = 0;
@@ -83,6 +89,7 @@ pub fn rle_encode(data: &[u8]) -> Vec<u8> {
 /// Format:
 /// - [0x00, count, value] for runs of repeated bytes
 /// - [count, byte1, byte2, ...] for literal sequences
+#[cfg(any(feature = "alloc", feature = "std"))]
 pub fn rle_decode(input: &[u8]) -> Result<Vec<u8>> {
     if input.is_empty() {
         return Ok(Vec::new());
@@ -96,7 +103,7 @@ pub fn rle_decode(input: &[u8]) -> Result<Vec<u8>> {
             return Err(Error::new(
                 ErrorCategory::Validation,
                 codes::PARSE_ERROR,
-                "Truncated RLE data".to_string(),
+                "Truncated RLE data",
             ));
         }
 
@@ -109,7 +116,7 @@ pub fn rle_decode(input: &[u8]) -> Result<Vec<u8>> {
                 return Err(Error::new(
                     ErrorCategory::Validation,
                     codes::PARSE_ERROR,
-                    "Truncated RLE sequence".to_string(),
+                    "Truncated RLE sequence",
                 ));
             }
             let count = input[i] as usize;
@@ -127,7 +134,7 @@ pub fn rle_decode(input: &[u8]) -> Result<Vec<u8>> {
                 return Err(Error::new(
                     ErrorCategory::Validation,
                     codes::PARSE_ERROR,
-                    "Truncated literal sequence".to_string(),
+                    "Truncated literal sequence",
                 ));
             }
 
@@ -139,9 +146,139 @@ pub fn rle_decode(input: &[u8]) -> Result<Vec<u8>> {
     Ok(result)
 }
 
+/// Run-length encode a byte array (no_std version)
+///
+/// This implementation uses a simple format:
+/// - For runs of 4+ identical bytes: [0x00, count, value]
+/// - For literal sequences: [count, byte1, byte2, ...]
+///
+/// Where count is a single byte (0-255)
+#[cfg(not(any(feature = "alloc", feature = "std")))]
+pub fn rle_encode<P: MemoryProvider + Clone + Default + Eq>(data: &[u8]) -> Result<WasmVec<u8, P>> {
+    let mut result = WasmVec::new(P::default()).map_err(|_| {
+        Error::new(ErrorCategory::Memory, codes::MEMORY_ERROR, "Failed to create result vector")
+    })?;
+    let mut i = 0;
+
+    while i < data.len() {
+        // Current byte to check for runs
+        let current = data[i];
+
+        // Find run length (max 255 for single-byte count)
+        let mut run_length = 1;
+        while i + run_length < data.len() && data[i + run_length] == current && run_length < 255 {
+            run_length += 1;
+        }
+
+        if run_length >= 4 {
+            // Encode as RLE: [0x00, count, value]
+            result.push(0x00).map_err(|_| {
+                Error::new(ErrorCategory::Memory, codes::MEMORY_ERROR, "Buffer overflow")
+            })?;
+            result.push(run_length as u8).map_err(|_| {
+                Error::new(ErrorCategory::Memory, codes::MEMORY_ERROR, "Buffer overflow")
+            })?;
+            result.push(current).map_err(|_| {
+                Error::new(ErrorCategory::Memory, codes::MEMORY_ERROR, "Buffer overflow")
+            })?;
+            i += run_length;
+        } else {
+            // For runs < 4 bytes, use literal encoding
+            // [count, byte1, byte2, ...]
+            let literal_length = cmp::min(255, data.len() - i);
+            result.push(literal_length as u8).map_err(|_| {
+                Error::new(ErrorCategory::Memory, codes::MEMORY_ERROR, "Buffer overflow")
+            })?;
+            for j in 0..literal_length {
+                result.push(data[i + j]).map_err(|_| {
+                    Error::new(ErrorCategory::Memory, codes::MEMORY_ERROR, "Buffer overflow")
+                })?;
+            }
+            i += literal_length;
+        }
+    }
+
+    Ok(result)
+}
+
+/// Run-length decode a byte array (no_std version)
+///
+/// This function decodes data created by rle_encode.
+/// Format:
+/// - [0x00, count, value] for runs of repeated bytes
+/// - [count, byte1, byte2, ...] for literal sequences
+#[cfg(not(any(feature = "alloc", feature = "std")))]
+pub fn rle_decode<P: MemoryProvider + Clone + Default + Eq>(
+    input: &[u8],
+) -> Result<WasmVec<u8, P>> {
+    if input.is_empty() {
+        return WasmVec::new(P::default()).map_err(|_| {
+            Error::new(ErrorCategory::Memory, codes::MEMORY_ERROR, "Failed to create result vector")
+        });
+    }
+
+    let mut result = WasmVec::new(P::default()).map_err(|_| {
+        Error::new(ErrorCategory::Memory, codes::MEMORY_ERROR, "Failed to create result vector")
+    })?;
+    let mut i = 0;
+
+    while i < input.len() {
+        if i >= input.len() {
+            return Err(Error::new(
+                ErrorCategory::Validation,
+                codes::PARSE_ERROR,
+                "Truncated RLE data",
+            ));
+        }
+
+        let control = input[i];
+        i += 1;
+
+        if control == 0x00 {
+            // RLE sequence: [0x00, count, value]
+            if i + 1 >= input.len() {
+                return Err(Error::new(
+                    ErrorCategory::Validation,
+                    codes::PARSE_ERROR,
+                    "Truncated RLE sequence",
+                ));
+            }
+            let count = input[i] as usize;
+            i += 1;
+            let value = input[i];
+            i += 1;
+
+            for _ in 0..count {
+                result.push(value).map_err(|_| {
+                    Error::new(ErrorCategory::Memory, codes::MEMORY_ERROR, "Buffer overflow")
+                })?;
+            }
+        } else {
+            // Literal sequence: [count, byte1, byte2, ...]
+            let count = control as usize;
+            if i + count > input.len() {
+                return Err(Error::new(
+                    ErrorCategory::Validation,
+                    codes::PARSE_ERROR,
+                    "Truncated literal sequence",
+                ));
+            }
+
+            for j in 0..count {
+                result.push(input[i + j]).map_err(|_| {
+                    Error::new(ErrorCategory::Memory, codes::MEMORY_ERROR, "Buffer overflow")
+                })?;
+            }
+            i += count;
+        }
+    }
+
+    Ok(result)
+}
+
 #[cfg(test)]
 mod tests {
-    #[cfg(all(not(feature = "std"), feature = "alloc"))]
+    #[cfg(all(feature = "alloc", not(feature = "std")))]
     use alloc::vec;
     #[cfg(feature = "std")]
     use std::vec;

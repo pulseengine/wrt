@@ -86,6 +86,20 @@ impl VerificationLevel {
         // Test `test_should_validate_redundant` asserts that Full should pass this.
         matches!(self, Self::Full | Self::Redundant)
     }
+
+    /// Check if statistics tracking should be enabled
+    #[must_use]
+    pub fn should_track_stats(&self) -> bool {
+        // Only track stats for Full and Redundant levels to minimize overhead
+        matches!(self, Self::Full | Self::Redundant)
+    }
+
+    /// Check if initialization checks should be performed
+    #[must_use]
+    pub fn should_check_init(&self) -> bool {
+        // Check initialization for Basic and higher verification levels
+        !matches!(self, Self::Off)
+    }
 }
 
 impl ToBytes for VerificationLevel {

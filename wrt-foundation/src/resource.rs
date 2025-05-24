@@ -25,9 +25,10 @@ use crate::prelude::String;
 use crate::{
     bounded::{BoundedString, BoundedVec, WasmName, MAX_WASM_NAME_LENGTH},
     prelude::{str, Eq, PartialEq},
-    traits::{Checksummable, FromBytes, ReadStream, SerializationError, ToBytes, WriteStream},
+    traits::{
+        Checksummable, FromBytes, ReadStream, SerializationError, ToBytes, Validatable, WriteStream,
+    },
     types::ValueType,
-    validation::Validatable,
     verification::{Checksum, VerificationLevel},
     MemoryProvider, NoStdProvider, WrtResult,
 };
@@ -149,9 +150,6 @@ impl core::str::FromStr for ResourceOperation {
             _ => Err(wrt_error::Error::new(
                 wrt_error::ErrorCategory::Parse,
                 wrt_error::codes::PARSE_ERROR,
-                #[cfg(any(feature = "std", feature = "alloc"))]
-                format!("Unknown resource operation: {s}"),
-                #[cfg(not(any(feature = "std", feature = "alloc")))]
                 "Unknown resource operation",
             )),
         }
@@ -169,14 +167,14 @@ pub enum ResourceRepresentation {
     #[cfg(feature = "alloc")]
     Record(
         BoundedVec<
-            BoundedString<MAX_RESOURCE_FIELD_NAME_LEN, NoStdProvider>,
+            BoundedString<MAX_RESOURCE_FIELD_NAME_LEN, NoStdProvider<0>>,
             MAX_RESOURCE_FIELDS,
-            NoStdProvider,
+            NoStdProvider<0>,
         >,
     ),
     /// Aggregate representation with type indices
     #[cfg(feature = "alloc")]
-    Aggregate(BoundedVec<u32, MAX_RESOURCE_AGGREGATE_IDS, NoStdProvider>),
+    Aggregate(BoundedVec<u32, MAX_RESOURCE_AGGREGATE_IDS, NoStdProvider<0>>),
     /// Record representation (no_alloc version)
     #[cfg(not(feature = "alloc"))]
     Record,
@@ -215,7 +213,15 @@ impl core::str::FromStr for ResourceRepresentation {
             "record" => {
                 #[cfg(feature = "alloc")]
                 {
-                    Ok(ResourceRepresentation::Record(BoundedVec::new()))
+                    Ok(ResourceRepresentation::Record(
+                        BoundedVec::new(NoStdProvider::default()).map_err(|_e| {
+                            wrt_error::Error::new(
+                                wrt_error::ErrorCategory::Memory,
+                                wrt_error::codes::MEMORY_ALLOCATION_ERROR,
+                                "Failed to create BoundedVec for ResourceRepresentation::Record",
+                            )
+                        })?,
+                    ))
                 }
                 #[cfg(not(feature = "alloc"))]
                 {
@@ -225,7 +231,15 @@ impl core::str::FromStr for ResourceRepresentation {
             "aggregate" => {
                 #[cfg(feature = "alloc")]
                 {
-                    Ok(ResourceRepresentation::Aggregate(BoundedVec::new()))
+                    Ok(ResourceRepresentation::Aggregate(
+                        BoundedVec::new(NoStdProvider::default()).map_err(|_e| {
+                            wrt_error::Error::new(
+                                wrt_error::ErrorCategory::Memory,
+                                wrt_error::codes::MEMORY_ALLOCATION_ERROR,
+                                "Failed to create BoundedVec for ResourceRepresentation::Aggregate",
+                            )
+                        })?,
+                    ))
                 }
                 #[cfg(not(feature = "alloc"))]
                 {
@@ -240,9 +254,6 @@ impl core::str::FromStr for ResourceRepresentation {
             _ => Err(wrt_error::Error::new(
                 wrt_error::ErrorCategory::Parse,
                 wrt_error::codes::PARSE_ERROR,
-                #[cfg(any(feature = "std", feature = "alloc"))]
-                format!("Unknown resource representation: {s}"),
-                #[cfg(not(any(feature = "std", feature = "alloc")))]
                 "Unknown resource representation",
             )),
         }

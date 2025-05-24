@@ -29,14 +29,18 @@ use crate::safe_memory::NoStdProvider;
 // use alloc::format; // Removed
 #[cfg(feature = "alloc")]
 // use alloc::string::String; // Removed
-use crate::verification::{Checksum, VerificationLevel}; // For test provider
-// Add general imports here if not already present globally
-use crate::verification::{Checksum, VerificationLevel};
+// Don't import, use fully qualified paths instead
+// Import traits from the traits module
+use crate::traits::{importance, BoundedCapacity, Checksummed, Validatable};
 
 // START NEW CODE: ValidationError enum
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ValidationError {
-    ChecksumMismatch { expected: Checksum, actual: Checksum, description: &'static str },
+    ChecksumMismatch {
+        expected: crate::verification::Checksum,
+        actual: crate::verification::Checksum,
+        description: &'static str,
+    },
     // Other validation errors can be added here if needed
 }
 
@@ -71,72 +75,6 @@ impl From<ValidationError> for crate::Error {
 }
 // END NEW CODE: ValidationError enum
 
-/// Trait for types that can be validated for data integrity
-///
-/// This trait is implemented by collection types that need to verify
-/// their internal state as part of functional safety requirements.
-pub trait Validatable {
-    /// The error type returned when validation fails
-    type Error;
-
-    /// Performs validation on this object
-    ///
-    /// Returns Ok(()) if validation passes, or an error describing
-    /// what validation check failed.
-    ///
-    /// # Errors
-    ///
-    /// Returns `Self::Error` if validation fails.
-    fn validate(&self) -> core::result::Result<(), Self::Error>;
-
-    /// Get the validation level this object is configured with
-    fn validation_level(&self) -> VerificationLevel;
-
-    /// Set the validation level for this object
-    fn set_validation_level(&mut self, level: VerificationLevel);
-}
-
-/// Trait for types that maintain checksums for validation
-pub trait Checksummed {
-    /// Get the current checksum for this object
-    fn checksum(&self) -> Checksum;
-
-    /// Force recalculation of the object's checksum
-    ///
-    /// This is useful when verification level changes from None
-    /// or after operations that bypass normal checksum updates.
-    fn recalculate_checksum(&mut self);
-
-    /// Verify the integrity by comparing stored vs calculated checksums
-    ///
-    /// Returns true if checksums match, indicating data integrity.
-    fn verify_checksum(&self) -> bool;
-}
-
-/// Trait for types with bounded capacity
-pub trait BoundedCapacity {
-    /// Get the maximum capacity this container can hold
-    fn capacity(&self) -> usize;
-
-    /// Get the current number of elements in the container
-    fn len(&self) -> usize;
-
-    /// Check if the container is empty
-    fn is_empty(&self) -> bool {
-        self.len() == 0
-    }
-
-    /// Check if the container is at maximum capacity
-    fn is_full(&self) -> bool {
-        self.len() >= self.capacity()
-    }
-
-    /// Get the remaining capacity for this container
-    fn remaining_capacity(&self) -> usize {
-        self.capacity().saturating_sub(self.len())
-    }
-}
-
 /// Helper for determining if validation should be performed
 ///
 /// This function encapsulates the logic for deciding when to perform
@@ -146,7 +84,10 @@ pub trait BoundedCapacity {
 ///
 /// Returns `Self::Error` if validation fails.
 #[must_use]
-pub fn should_validate(level: VerificationLevel, operation_importance: u8) -> bool {
+pub fn should_validate(
+    level: crate::verification::VerificationLevel,
+    operation_importance: u8,
+) -> bool {
     level.should_verify(operation_importance)
 }
 
@@ -159,41 +100,20 @@ pub fn should_validate(level: VerificationLevel, operation_importance: u8) -> bo
 ///
 /// Returns `Self::Error` if validation fails.
 #[must_use]
-pub fn should_validate_redundant(level: VerificationLevel) -> bool {
+pub fn should_validate_redundant(level: crate::verification::VerificationLevel) -> bool {
     level.should_verify_redundant()
-}
-
-/// Standard importance values for different operation types
-///
-/// These constants provide standardized importance values to use
-/// when determining validation frequency based on operation type.
-pub mod importance {
-    /// Importance for read operations (get, peek, etc.)
-    pub const READ: u8 = 100;
-
-    /// Importance for mutation operations (insert, push, etc.)
-    pub const MUTATION: u8 = 150;
-
-    /// Importance for critical operations (security-sensitive)
-    pub const CRITICAL: u8 = 200;
-
-    /// Importance for initialization operations
-    pub const INITIALIZATION: u8 = 180;
-
-    /// Importance for internal state management
-    pub const INTERNAL: u8 = 120;
 }
 
 /// Helper to calculate a checksum for a keyed collection
 ///
 /// This function computes a checksum for collections with key-value pairs,
 /// deterministically ordered by key to ensure consistent checksums.
-pub fn calculate_keyed_checksum<K, V>(items: &[(K, V)]) -> Checksum
+pub fn calculate_keyed_checksum<K, V>(items: &[(K, V)]) -> crate::verification::Checksum
 where
     K: AsRef<[u8]>,
     V: AsRef<[u8]>,
 {
-    let mut checksum = Checksum::new();
+    let mut checksum = crate::verification::Checksum::new();
     for (key, value) in items {
         checksum.update_slice(key.as_ref());
         checksum.update_slice(value.as_ref());
@@ -209,8 +129,8 @@ pub type ValidationResult = core::result::Result<(), ValidationError>; // New: A
 /// Helper to validate a checksum against an expected value
 // #[cfg(feature = "alloc")] // Removed cfg_attr
 pub fn validate_checksum(
-    actual: Checksum,
-    expected: Checksum,
+    actual: crate::verification::Checksum,
+    expected: crate::verification::Checksum,
     description: &'static str, // Changed to &'static str
 ) -> ValidationResult {
     if actual == expected {

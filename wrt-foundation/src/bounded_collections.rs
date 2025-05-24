@@ -25,6 +25,8 @@ extern crate alloc;
 #[cfg(feature = "alloc")]
 use alloc::format;
 #[cfg(feature = "alloc")]
+use alloc::string::String;
+#[cfg(feature = "alloc")]
 use alloc::vec::Vec;
 
 // Crate-level imports
@@ -32,11 +34,11 @@ use crate::{
     bounded::{BoundedError, BoundedErrorKind, BoundedVec, CapacityError},
     codes,
     operations::{record_global_operation, Type as OperationType},
-    safe_memory::{NoStdProvider, SafeMemoryHandler},
+    safe_memory::{NoStdProvider, SafeMemoryHandler, Slice, SliceMut},
+    traits::BoundedCapacity,
     traits::{Checksummable, FromBytes, ReadStream, SerializationError, ToBytes, WriteStream},
-    validation::BoundedCapacity,
     verification::{Checksum, VerificationLevel},
-    Error, MemoryProvider, WrtResult,
+    Error, ErrorCategory, MemoryProvider, WrtResult,
 };
 
 /// A bounded queue (FIFO data structure) with a fixed maximum capacity.
@@ -82,13 +84,14 @@ where
         let item_serialized_size = T::default().serialized_size();
         if item_serialized_size == 0 && N_ELEMENTS > 0 {
             return Err(Error::new_static(
+                ErrorCategory::Initialization,
                 codes::INITIALIZATION_ERROR,
                 "Cannot create BoundedQueue with zero-sized items and non-zero element count",
             ));
         }
 
         let memory_needed = N_ELEMENTS.saturating_mul(item_serialized_size);
-        let handler = SafeMemoryHandler::new(provider_arg, memory_needed)?;
+        let handler = SafeMemoryHandler::new(provider_arg);
 
         // Record creation operation
         record_global_operation(OperationType::CollectionCreate, level);
@@ -140,7 +143,9 @@ where
         }
 
         // Serialize the item
-        let bytes_written = item.write_bytes(&mut item_bytes_buffer[..item_size]).map_err(|e| {
+        let slice_mut = SliceMut::new(&mut item_bytes_buffer[..item_size])?;
+        let mut write_stream = WriteStream::new(slice_mut);
+        item.to_bytes_with_provider(&mut write_stream, self.handler.provider()).map_err(|e| {
             BoundedError::new(
                 BoundedErrorKind::ConversionError,
                 "Failed to serialize item for enqueue",
@@ -148,7 +153,7 @@ where
         })?;
 
         // Write the serialized data to the handler
-        self.handler.write_data(offset, &item_bytes_buffer[..bytes_written]).map_err(|e| {
+        self.handler.write_data(offset, &item_bytes_buffer[..item_size]).map_err(|e| {
             BoundedError::new(BoundedErrorKind::SliceError, "Failed to write data for enqueue")
         })?;
 
@@ -201,12 +206,15 @@ where
             })?;
 
         // Deserialize the item
-        let (item, _) = T::from_bytes(slice_view.as_ref()).map_err(|_| {
-            BoundedError::new(
-                BoundedErrorKind::ConversionError,
-                "Failed to deserialize item for dequeue",
-            )
-        })?;
+        let mut read_stream = ReadStream::new(slice_view);
+        let item = T::from_bytes_with_provider(&mut read_stream, self.handler.provider()).map_err(
+            |_| {
+                BoundedError::new(
+                    BoundedErrorKind::ConversionError,
+                    "Failed to deserialize item for dequeue",
+                )
+            },
+        )?;
 
         // Update checksums if needed
         if self.verification_level >= VerificationLevel::Full {
@@ -241,12 +249,15 @@ where
             })?;
 
         // Deserialize the item
-        let (item, _) = T::from_bytes(slice_view.as_ref()).map_err(|_| {
-            BoundedError::new(
-                BoundedErrorKind::ConversionError,
-                "Failed to deserialize item for peek",
-            )
-        })?;
+        let mut read_stream = ReadStream::new(slice_view);
+        let item = T::from_bytes_with_provider(&mut read_stream, self.handler.provider()).map_err(
+            |_| {
+                BoundedError::new(
+                    BoundedErrorKind::ConversionError,
+                    "Failed to deserialize item for peek",
+                )
+            },
+        )?;
 
         Ok(Some(item))
     }
@@ -302,7 +313,10 @@ where
             let offset = physical_index.saturating_mul(self.item_serialized_size);
 
             if let Ok(slice_view) = self.handler.get_slice(offset, self.item_serialized_size) {
-                if let Ok((item, _)) = T::from_bytes(slice_view.as_ref()) {
+                let mut read_stream = ReadStream::new(slice_view);
+                if let Ok(item) =
+                    T::from_bytes_with_provider(&mut read_stream, self.handler.provider())
+                {
                     item.update_checksum(&mut self.checksum);
                 }
             }
@@ -336,7 +350,10 @@ where
             let offset = physical_index.saturating_mul(self.item_serialized_size);
 
             if let Ok(slice_view) = self.handler.get_slice(offset, self.item_serialized_size) {
-                if let Ok((item, _)) = T::from_bytes(slice_view.as_ref()) {
+                let mut read_stream = ReadStream::new(slice_view);
+                if let Ok(item) =
+                    T::from_bytes_with_provider(&mut read_stream, self.handler.provider())
+                {
                     item.update_checksum(&mut current_checksum);
                 } else {
                     return false; // Deserialization failure
@@ -677,13 +694,14 @@ where
         let item_serialized_size = T::default().serialized_size();
         if item_serialized_size == 0 && N_ELEMENTS > 0 {
             return Err(Error::new_static(
+                ErrorCategory::Initialization,
                 codes::INITIALIZATION_ERROR,
                 "Cannot create BoundedDeque with zero-sized items and non-zero element count",
             ));
         }
 
         let memory_needed = N_ELEMENTS.saturating_mul(item_serialized_size);
-        let handler = SafeMemoryHandler::new(provider_arg, memory_needed)?;
+        let handler = SafeMemoryHandler::new(provider_arg);
 
         // Record creation operation
         record_global_operation(OperationType::CollectionCreate, level);
@@ -737,7 +755,9 @@ where
         }
 
         // Serialize the item
-        let bytes_written = item.write_bytes(&mut item_bytes_buffer[..item_size]).map_err(|e| {
+        let slice_mut = SliceMut::new(&mut item_bytes_buffer[..item_size])?;
+        let mut write_stream = WriteStream::new(slice_mut);
+        item.to_bytes_with_provider(&mut write_stream, self.handler.provider()).map_err(|e| {
             BoundedError::new(
                 BoundedErrorKind::ConversionError,
                 "Failed to serialize item for push_front",
@@ -745,7 +765,7 @@ where
         })?;
 
         // Write the serialized data to the handler
-        self.handler.write_data(offset, &item_bytes_buffer[..bytes_written]).map_err(|e| {
+        self.handler.write_data(offset, &item_bytes_buffer[..item_size]).map_err(|e| {
             BoundedError::new(BoundedErrorKind::SliceError, "Failed to write data for push_front")
         })?;
 
@@ -809,7 +829,9 @@ where
         }
 
         // Serialize the item
-        let bytes_written = item.write_bytes(&mut item_bytes_buffer[..item_size]).map_err(|e| {
+        let slice_mut = SliceMut::new(&mut item_bytes_buffer[..item_size])?;
+        let mut write_stream = WriteStream::new(slice_mut);
+        item.to_bytes_with_provider(&mut write_stream, self.handler.provider()).map_err(|e| {
             BoundedError::new(
                 BoundedErrorKind::ConversionError,
                 "Failed to serialize item for push_back",
@@ -817,7 +839,7 @@ where
         })?;
 
         // Write the serialized data to the handler
-        self.handler.write_data(offset, &item_bytes_buffer[..bytes_written]).map_err(|e| {
+        self.handler.write_data(offset, &item_bytes_buffer[..item_size]).map_err(|e| {
             BoundedError::new(BoundedErrorKind::SliceError, "Failed to write data for push_back")
         })?;
 
@@ -868,12 +890,14 @@ where
                 })?;
 
             // Deserialize the item
-            let (item, _) = T::from_bytes(slice_view.as_ref()).map_err(|_| {
-                BoundedError::new(
-                    BoundedErrorKind::ConversionError,
-                    "Failed to deserialize item for pop_front",
-                )
-            })?;
+            let mut read_stream = ReadStream::new(slice_view);
+            let item = T::from_bytes_with_provider(&mut read_stream, self.handler.provider())
+                .map_err(|_| {
+                    BoundedError::new(
+                        BoundedErrorKind::ConversionError,
+                        "Failed to deserialize item for pop_front",
+                    )
+                })?;
 
             item
         };
@@ -923,12 +947,14 @@ where
                 })?;
 
             // Deserialize the item
-            let (item, _) = T::from_bytes(slice_view.as_ref()).map_err(|_| {
-                BoundedError::new(
-                    BoundedErrorKind::ConversionError,
-                    "Failed to deserialize item for pop_back",
-                )
-            })?;
+            let mut read_stream = ReadStream::new(slice_view);
+            let item = T::from_bytes_with_provider(&mut read_stream, self.handler.provider())
+                .map_err(|_| {
+                    BoundedError::new(
+                        BoundedErrorKind::ConversionError,
+                        "Failed to deserialize item for pop_back",
+                    )
+                })?;
 
             item
         };
@@ -976,12 +1002,15 @@ where
             })?;
 
         // Deserialize the item
-        let (item, _) = T::from_bytes(slice_view.as_ref()).map_err(|_| {
-            BoundedError::new(
-                BoundedErrorKind::ConversionError,
-                "Failed to deserialize item for front",
-            )
-        })?;
+        let mut read_stream = ReadStream::new(slice_view);
+        let item = T::from_bytes_with_provider(&mut read_stream, self.handler.provider()).map_err(
+            |_| {
+                BoundedError::new(
+                    BoundedErrorKind::ConversionError,
+                    "Failed to deserialize item for front",
+                )
+            },
+        )?;
 
         Ok(Some(item))
     }
@@ -1014,12 +1043,15 @@ where
             })?;
 
         // Deserialize the item
-        let (item, _) = T::from_bytes(slice_view.as_ref()).map_err(|_| {
-            BoundedError::new(
-                BoundedErrorKind::ConversionError,
-                "Failed to deserialize item for back",
-            )
-        })?;
+        let mut read_stream = ReadStream::new(slice_view);
+        let item = T::from_bytes_with_provider(&mut read_stream, self.handler.provider()).map_err(
+            |_| {
+                BoundedError::new(
+                    BoundedErrorKind::ConversionError,
+                    "Failed to deserialize item for back",
+                )
+            },
+        )?;
 
         Ok(Some(item))
     }
@@ -1085,7 +1117,10 @@ where
             let offset = current_index.saturating_mul(self.item_serialized_size);
 
             if let Ok(slice_view) = self.handler.get_slice(offset, self.item_serialized_size) {
-                if let Ok((item, _)) = T::from_bytes(slice_view.as_ref()) {
+                let mut read_stream = ReadStream::new(slice_view);
+                if let Ok(item) =
+                    T::from_bytes_with_provider(&mut read_stream, self.handler.provider())
+                {
                     item.update_checksum(&mut self.checksum);
                 }
             }
@@ -1118,7 +1153,10 @@ where
             let offset = current_index.saturating_mul(self.item_serialized_size);
 
             if let Ok(slice_view) = self.handler.get_slice(offset, self.item_serialized_size) {
-                if let Ok((item, _)) = T::from_bytes(slice_view.as_ref()) {
+                let mut read_stream = ReadStream::new(slice_view);
+                if let Ok(item) =
+                    T::from_bytes_with_provider(&mut read_stream, self.handler.provider())
+                {
                     item.update_checksum(&mut current_checksum);
                 } else {
                     return false; // Deserialization failure
@@ -2967,6 +3005,7 @@ impl<const N_BITS: usize> FromBytes for BoundedBitSet<N_BITS> {
         // Validate the number of chunks
         if num_chunks > expected_chunks {
             return Err(Error::new_static(
+                ErrorCategory::Parse,
                 codes::PARSE_ERROR,
                 "Invalid number of chunks in BoundedBitSet serialization",
             ));
@@ -2997,6 +3036,7 @@ impl<const N_BITS: usize> FromBytes for BoundedBitSet<N_BITS> {
 
         if calculated_count != count {
             return Err(Error::new_static(
+                ErrorCategory::Validation,
                 codes::VALIDATION_ERROR,
                 "Count mismatch in BoundedBitSet deserialization",
             ));

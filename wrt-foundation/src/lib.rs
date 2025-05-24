@@ -53,7 +53,7 @@ pub mod prelude;
 // Re-export common types from prelude
 pub use prelude::*;
 // Re-export error related types for convenience
-pub use wrt_error::{codes, kinds, Error};
+pub use wrt_error::{codes, kinds, Error, ErrorCategory};
 
 /// Result type alias for WRT operations using `wrt_error::Error`
 pub type WrtResult<T> = core::result::Result<T, Error>;
@@ -114,6 +114,7 @@ pub mod validation;
 pub mod values;
 /// Verification and integrity checking
 pub mod verification;
+// pub mod no_std_compat;
 
 // Re-export the most important types
 pub use atomic_memory::{AtomicMemoryExt, AtomicMemoryOps};
@@ -148,7 +149,7 @@ pub use safe_memory::{
     Provider as MemoryProvider, SafeMemoryHandler, Slice as SafeSlice, SliceMut as SafeSliceMut,
     Stats as MemoryStats,
 };
-pub use traits::{FromFormat, ToFormat};
+pub use traits::{BoundedCapacity, Checksummed, FromFormat, ToFormat, Validatable};
 pub use types::{
     BlockType, // DataSegment, ElementSegment // Uncommented BlockType
     FuncType,
@@ -159,9 +160,10 @@ pub use types::{
     TableType,
     ValueType,
 };
-pub use validation::{
-    BoundedCapacity, Checksummed, Validatable, ValidationError, ValidationResult,
-};
+// Temporarily disabled validation exports due to circular dependency
+// pub use validation::{
+//     BoundedCapacity, Checksummed, Validatable, ValidationError, ValidationResult,
+// };
 pub use values::Value;
 pub use verification::{Checksum, VerificationLevel};
 

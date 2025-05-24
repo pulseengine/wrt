@@ -49,6 +49,8 @@ pub enum ErrorCategory {
     Capacity = 12,
     /// WebAssembly trap errors (specific runtime errors defined by Wasm spec)
     RuntimeTrap = 13,
+    /// Initialization errors
+    Initialization = 14,
 }
 
 /// Base trait for all error types - `no_std` version
@@ -192,6 +194,48 @@ impl Error {
     #[must_use]
     pub const fn invalid_type_error(message: &'static str) -> Self {
         Self::new(ErrorCategory::Type, codes::INVALID_TYPE, message)
+    }
+
+    /// Create an index out of bounds error
+    #[must_use]
+    pub const fn index_out_of_bounds(message: &'static str) -> Self {
+        Self::new(ErrorCategory::Memory, codes::OUT_OF_BOUNDS_ERROR, message)
+    }
+
+    /// Create a deserialization error
+    #[must_use]
+    pub const fn deserialization_error(message: &'static str) -> Self {
+        Self::new(ErrorCategory::Parse, codes::DECODING_ERROR, message)
+    }
+
+    /// Create a capacity error
+    #[must_use]
+    pub const fn capacity_error(message: &'static str) -> Self {
+        Self::new(ErrorCategory::Capacity, codes::CAPACITY_EXCEEDED, message)
+    }
+
+    /// Create an internal error
+    #[must_use]
+    pub const fn internal_error(message: &'static str) -> Self {
+        Self::new(ErrorCategory::System, codes::SYSTEM_ERROR, message)
+    }
+
+    /// Create a memory out of bounds error
+    #[must_use]
+    pub const fn memory_out_of_bounds(message: &'static str) -> Self {
+        Self::new(ErrorCategory::Memory, codes::MEMORY_OUT_OF_BOUNDS, message)
+    }
+
+    /// Create a memory uninitialized error
+    #[must_use]
+    pub const fn memory_uninitialized(message: &'static str) -> Self {
+        Self::new(ErrorCategory::Memory, codes::INITIALIZATION_ERROR, message)
+    }
+
+    /// Create a new static error with explicit parameters
+    #[must_use]
+    pub const fn new_static(category: ErrorCategory, code: u16, message: &'static str) -> Self {
+        Self::new(category, code, message)
     }
 
     // Note: Methods like `with_message`, `new_legacy`, `*_with_code`,

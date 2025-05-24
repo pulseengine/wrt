@@ -424,14 +424,6 @@ macro_rules! impl_little_endian_for_primitive {
                     return Err(wrt_error::Error::new(
                         wrt_error::ErrorCategory::Memory,
                         wrt_error::codes::BUFFER_TOO_SMALL,
-                        #[cfg(any(feature = "std", feature = "alloc"))]
-                        format!(
-                            "Buffer too small for {}. Expected at least {}, got {}.",
-                            stringify!($T),
-                            $size,
-                            bytes.len()
-                        ),
-                        #[cfg(not(any(feature = "std", feature = "alloc")))]
                         "Buffer too small for primitive type conversion"
                     ));
                 }
@@ -719,8 +711,9 @@ impl RootMemoryProvider for DefaultMemoryProvider {
         ))
     }
 
-    unsafe fn release_memory(&self, _ptr: *mut u8, _layout: core::alloc::Layout) -> WrtResult<()> {
+    fn release_memory(&self, _ptr: *mut u8, _layout: core::alloc::Layout) -> WrtResult<()> {
         // NoStdProvider<0> does not manage external allocations this way.
+        // Safety: This encapsulates unsafe operations internally
         Ok(())
     }
 
@@ -1131,10 +1124,102 @@ impl ToBytes for alloc::string::String {
         (bytes.len() as u32).to_bytes_with_provider(writer, provider)?;
         writer.write_all(bytes).map_err(|_e| {
             WrtError::new(
-                ErrorCategory::Serialization,
+                ErrorCategory::Parse,
                 codes::SERIALIZATION_ERROR, // Changed from INVALID_DATA
                 "Failed to write String data to stream",
             )
         })
     }
+}
+
+// ============================================================================
+// CORE VALIDATION TRAITS (moved from validation module to break circular
+// dependency)
+// ============================================================================
+
+/// Trait for objects that can be validated
+///
+/// This trait is implemented by collection types that need to verify
+/// their internal state as part of functional safety requirements.
+pub trait Validatable {
+    /// The error type returned when validation fails
+    type Error;
+
+    /// Performs validation on this object
+    ///
+    /// Returns Ok(()) if validation passes, or an error describing
+    /// what validation check failed.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Self::Error` if validation fails.
+    fn validate(&self) -> core::result::Result<(), Self::Error>;
+
+    /// Get the validation level this object is configured with
+    fn validation_level(&self) -> crate::verification::VerificationLevel;
+
+    /// Set the validation level for this object
+    fn set_validation_level(&mut self, level: crate::verification::VerificationLevel);
+}
+
+/// Trait for types that maintain checksums for validation
+pub trait Checksummed {
+    /// Get the current checksum for this object
+    fn checksum(&self) -> crate::verification::Checksum;
+
+    /// Force recalculation of the object's checksum
+    ///
+    /// This is useful when verification level changes from None
+    /// or after operations that bypass normal checksum updates.
+    fn recalculate_checksum(&mut self);
+
+    /// Verify the integrity by comparing stored vs calculated checksums
+    ///
+    /// Returns true if checksums match, indicating data integrity.
+    fn verify_checksum(&self) -> bool;
+}
+
+/// Trait for types with bounded capacity
+pub trait BoundedCapacity {
+    /// Get the maximum capacity this container can hold
+    fn capacity(&self) -> usize;
+
+    /// Get the current number of elements in the container
+    fn len(&self) -> usize;
+
+    /// Check if the container is empty
+    fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    /// Check if the container is at maximum capacity
+    fn is_full(&self) -> bool {
+        self.len() >= self.capacity()
+    }
+
+    /// Get the remaining capacity for this container
+    fn remaining_capacity(&self) -> usize {
+        self.capacity().saturating_sub(self.len())
+    }
+}
+
+/// Standard importance values for different operation types
+///
+/// These constants provide standardized importance values to use
+/// when determining validation frequency based on operation type.
+pub mod importance {
+    /// Importance for read operations (get, peek, etc.)
+    pub const READ: u8 = 100;
+
+    /// Importance for mutation operations (insert, push, etc.)
+    pub const MUTATION: u8 = 150;
+
+    /// Importance for critical operations (security-sensitive)
+    pub const CRITICAL: u8 = 200;
+
+    /// Importance for initialization operations
+    pub const INITIALIZATION: u8 = 180;
+
+    /// Importance for internal state management
+    pub const INTERNAL: u8 = 120;
 }
