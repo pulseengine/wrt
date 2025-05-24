@@ -3,13 +3,10 @@
 //! This module provides types for representing log levels in component logging.
 
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::string::String;
-#[cfg(not(feature = "std"))]
+use alloc::string::{String, ToString};
 use core::str::FromStr;
 #[cfg(feature = "std")]
-use std::str::FromStr;
-#[cfg(feature = "std")]
-use std::string::String;
+use std::string::{String, ToString};
 
 /// Log levels for WebAssembly component logging
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -31,21 +28,21 @@ pub enum LogLevel {
 /// Custom error for parsing log levels
 #[derive(Debug)]
 pub struct ParseLogLevelError {
-    /// The invalid log level string that was provided
-    pub invalid_level: String,
+    /// Static error message
+    pub message: &'static str,
 }
 
 #[cfg(feature = "std")]
 impl std::fmt::Display for ParseLogLevelError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Invalid log level: {}", self.invalid_level)
+        write!(f, "Invalid log level: {}", self.message)
     }
 }
 
 #[cfg(not(feature = "std"))]
 impl core::fmt::Display for ParseLogLevelError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "Invalid log level: {}", self.invalid_level)
+        write!(f, "Invalid log level: {}", self.message)
     }
 }
 
@@ -64,7 +61,7 @@ impl FromStr for LogLevel {
             "warn" | "warning" => Ok(Self::Warn),
             "error" | "err" => Ok(Self::Error),
             "critical" | "fatal" => Ok(Self::Critical),
-            _ => Err(ParseLogLevelError { invalid_level: s.to_string() }),
+            _ => Err(ParseLogLevelError { message: "Invalid log level" }),
         }
     }
 }
@@ -81,7 +78,7 @@ impl FromStr for LogLevel {
             "warn" | "warning" => Ok(Self::Warn),
             "error" | "err" => Ok(Self::Error),
             "critical" | "fatal" => Ok(Self::Critical),
-            _ => Err(ParseLogLevelError { invalid_level: s.to_string() }),
+            _ => Err(ParseLogLevelError { message: "Invalid log level" }),
         }
     }
 }
