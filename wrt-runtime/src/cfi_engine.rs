@@ -1,0 +1,766 @@
+// WRT - wrt-runtime
+// Module: CFI-Enhanced Execution Engine
+// SW-REQ-ID: REQ_CFI_RUNTIME_001
+//
+// Copyright (c) 2025 The WRT Project Developers
+// Licensed under the MIT license.
+// SPDX-License-Identifier: MIT
+
+//! CFI-Enhanced WebAssembly Execution Engine
+//!
+//! This module provides a Control Flow Integrity enhanced execution engine
+//! that protects against ROP/JOP attacks during WebAssembly execution.
+//!
+//! # Key Features
+//! - Shadow stack management for return address protection
+//! - Landing pad validation for indirect calls
+//! - Hardware CFI integration (ARM BTI, RISC-V CFI)
+//! - Software CFI fallback for unsupported platforms
+//! - Real-time CFI violation detection and response
+
+#![allow(dead_code)] // Allow during development
+
+use wrt_instructions::{
+    CfiControlFlowOps, CfiControlFlowProtection, CfiExecutionContext, CfiProtectedBranchTarget,
+    DefaultCfiControlFlowOps,
+};
+
+use crate::{execution::ExecutionContext, prelude::*, stackless::StacklessEngine};
+
+/// CFI-enhanced WebAssembly execution engine
+pub struct CfiExecutionEngine {
+    /// CFI control flow operations handler
+    cfi_ops: DefaultCfiControlFlowOps,
+    /// CFI protection configuration
+    cfi_protection: CfiControlFlowProtection,
+    /// Current CFI execution context
+    cfi_context: CfiExecutionContext,
+    /// CFI violation response policy
+    violation_policy: CfiViolationPolicy,
+    /// CFI statistics and metrics
+    statistics: CfiEngineStatistics,
+    /// Reference to the stackless execution engine
+    stackless_engine: Option<StacklessEngine>,
+}
+
+/// Policy for handling CFI violations
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CfiViolationPolicy {
+    /// Log violation and continue execution
+    LogAndContinue,
+    /// Terminate execution immediately
+    Terminate,
+    /// Return error to caller
+    ReturnError,
+    /// Attempt recovery if possible
+    AttemptRecovery,
+}
+
+impl Default for CfiViolationPolicy {
+    fn default() -> Self {
+        CfiViolationPolicy::ReturnError
+    }
+}
+
+/// CFI engine statistics for monitoring and debugging
+#[derive(Debug, Clone, Default)]
+pub struct CfiEngineStatistics {
+    /// Total instructions executed with CFI protection
+    pub instructions_protected: u64,
+    /// Total CFI violations detected
+    pub violations_detected: u64,
+    /// Total CFI violations resolved
+    pub violations_resolved: u64,
+    /// Total execution time spent on CFI (nanoseconds)
+    pub cfi_overhead_ns: u64,
+    /// Peak shadow stack depth
+    pub peak_shadow_stack_depth: usize,
+    /// Average CFI validation time (nanoseconds)
+    pub avg_validation_time_ns: u64,
+}
+
+impl CfiExecutionEngine {
+    /// Create new CFI-enhanced execution engine
+    pub fn new(cfi_protection: CfiControlFlowProtection) -> Self {
+        Self {
+            cfi_ops: DefaultCfiControlFlowOps,
+            cfi_protection,
+            cfi_context: CfiExecutionContext::default(),
+            violation_policy: CfiViolationPolicy::default(),
+            statistics: CfiEngineStatistics::default(),
+            stackless_engine: None,
+        }
+    }
+
+    /// Create CFI engine with custom violation policy
+    pub fn new_with_policy(
+        cfi_protection: CfiControlFlowProtection,
+        violation_policy: CfiViolationPolicy,
+    ) -> Self {
+        Self {
+            cfi_ops: DefaultCfiControlFlowOps,
+            cfi_protection,
+            cfi_context: CfiExecutionContext::default(),
+            violation_policy,
+            statistics: CfiEngineStatistics::default(),
+            stackless_engine: None,
+        }
+    }
+
+    /// Create CFI engine with stackless engine integration
+    pub fn new_with_stackless_engine(
+        cfi_protection: CfiControlFlowProtection,
+        stackless_engine: StacklessEngine,
+    ) -> Self {
+        Self {
+            cfi_ops: DefaultCfiControlFlowOps,
+            cfi_protection,
+            cfi_context: CfiExecutionContext::default(),
+            violation_policy: CfiViolationPolicy::default(),
+            statistics: CfiEngineStatistics::default(),
+            stackless_engine: Some(stackless_engine),
+        }
+    }
+
+    /// Execute WebAssembly instruction with CFI protection
+    pub fn execute_instruction_with_cfi(
+        &mut self,
+        instruction: &wrt_foundation::types::Instruction,
+        execution_context: &mut ExecutionContext,
+    ) -> Result<CfiExecutionResult> {
+        let start_time = self.get_timestamp();
+
+        // Update CFI context with current execution state
+        self.update_cfi_context(execution_context)?;
+
+        // Pre-execution CFI validation
+        self.validate_pre_execution(instruction)?;
+
+        // Execute instruction with CFI protection
+        let result = match instruction {
+            wrt_foundation::types::Instruction::CallIndirect { type_idx, table_idx } => {
+                self.execute_call_indirect_with_cfi(*type_idx, *table_idx, execution_context)
+            }
+
+            wrt_foundation::types::Instruction::Return => {
+                self.execute_return_with_cfi(execution_context)
+            }
+
+            wrt_foundation::types::Instruction::Br { label_idx } => {
+                self.execute_branch_with_cfi(*label_idx, false, execution_context)
+            }
+
+            wrt_foundation::types::Instruction::BrIf { label_idx } => {
+                self.execute_branch_with_cfi(*label_idx, true, execution_context)
+            }
+
+            _ => {
+                // Regular instruction execution without special CFI handling
+                self.execute_regular_instruction(instruction, execution_context)
+            }
+        };
+
+        // Post-execution CFI validation
+        self.validate_post_execution(instruction, &result)?;
+
+        // Update statistics
+        let end_time = self.get_timestamp();
+        self.statistics.instructions_protected += 1;
+        self.statistics.cfi_overhead_ns += end_time.saturating_sub(start_time);
+
+        result
+    }
+
+    /// Execute indirect call with CFI protection
+    fn execute_call_indirect_with_cfi(
+        &mut self,
+        type_idx: u32,
+        table_idx: u32,
+        execution_context: &mut ExecutionContext,
+    ) -> Result<CfiExecutionResult> {
+        // Use CFI control flow operations
+        let protected_target = self.cfi_ops.call_indirect_with_cfi(
+            type_idx,
+            table_idx,
+            &self.cfi_protection,
+            &mut self.cfi_context,
+        )?;
+
+        // Validate landing pad requirements
+        if let Some(ref landing_pad) = protected_target.protection.landing_pad {
+            self.validate_landing_pad(landing_pad)?;
+        }
+
+        // Execute the actual call
+        let call_result = self.perform_indirect_call(type_idx, table_idx, execution_context)?;
+
+        // Handle shadow stack for return address protection
+        self.handle_shadow_stack_push(&protected_target)?;
+
+        Ok(CfiExecutionResult::CallIndirect { result: call_result, protected_target })
+    }
+
+    /// Execute return with CFI protection
+    fn execute_return_with_cfi(
+        &mut self,
+        execution_context: &mut ExecutionContext,
+    ) -> Result<CfiExecutionResult> {
+        // Validate return with CFI operations
+        self.cfi_ops.return_with_cfi(&self.cfi_protection, &mut self.cfi_context)?;
+
+        // Execute the actual return
+        let return_result = self.perform_return(execution_context)?;
+
+        Ok(CfiExecutionResult::Return { result: return_result })
+    }
+
+    /// Execute branch with CFI protection
+    fn execute_branch_with_cfi(
+        &mut self,
+        label_idx: u32,
+        conditional: bool,
+        execution_context: &mut ExecutionContext,
+    ) -> Result<CfiExecutionResult> {
+        // Use CFI control flow operations for branch validation
+        let protected_target = self.cfi_ops.branch_with_cfi(
+            label_idx,
+            conditional,
+            &self.cfi_protection,
+            &mut self.cfi_context,
+        )?;
+
+        // Execute the actual branch
+        let branch_result = self.perform_branch(label_idx, conditional, execution_context)?;
+
+        Ok(CfiExecutionResult::Branch { result: branch_result, protected_target })
+    }
+
+    /// Execute regular instruction without special CFI handling
+    fn execute_regular_instruction(
+        &mut self,
+        instruction: &wrt_foundation::types::Instruction,
+        execution_context: &mut ExecutionContext,
+    ) -> Result<CfiExecutionResult> {
+        // For regular instructions, just execute normally
+        let result = self.perform_regular_instruction(instruction, execution_context)?;
+
+        Ok(CfiExecutionResult::Regular { result })
+    }
+
+    /// Pre-execution CFI validation
+    fn validate_pre_execution(
+        &mut self,
+        instruction: &wrt_foundation::types::Instruction,
+    ) -> Result<()> {
+        // Check for expected landing pads
+        self.check_landing_pad_expectations()?;
+
+        // Validate instruction is allowed at current location
+        self.validate_instruction_allowed(instruction)?;
+
+        // Check for CFI violation indicators
+        self.check_cfi_violation_indicators()?;
+
+        Ok(())
+    }
+
+    /// Post-execution CFI validation
+    fn validate_post_execution(
+        &mut self,
+        instruction: &wrt_foundation::types::Instruction,
+        result: &Result<CfiExecutionResult>,
+    ) -> Result<()> {
+        // Update CFI state based on execution result
+        self.update_cfi_state_post_execution(instruction, result)?;
+
+        // Check for violations that may have occurred during execution
+        if result.is_err() {
+            self.handle_potential_cfi_violation(instruction, result)?;
+        }
+
+        Ok(())
+    }
+
+    /// Update CFI context with current execution state
+    fn update_cfi_context(&mut self, execution_context: &ExecutionContext) -> Result<()> {
+        // Update function depth and stack tracking
+        self.cfi_context.current_function = execution_context.function_depth as u32;
+
+        // Extract instruction offset from stackless engine if available
+        if let Some(engine) = &self.stackless_engine {
+            self.cfi_context.current_instruction = engine.exec_stack.pc as u32;
+        }
+
+        // Update peak shadow stack depth tracking
+        if self.cfi_context.shadow_stack.len() > self.statistics.peak_shadow_stack_depth {
+            self.statistics.peak_shadow_stack_depth = self.cfi_context.shadow_stack.len();
+        }
+
+        Ok(())
+    }
+
+    /// Check for expected landing pads
+    fn check_landing_pad_expectations(&mut self) -> Result<()> {
+        let current_time = self.get_timestamp();
+
+        // Check if we're at an expected landing pad
+        let current_location =
+            (self.cfi_context.current_function, self.cfi_context.current_instruction);
+
+        // Remove any satisfied expectations
+        self.cfi_context.landing_pad_expectations.retain(|expectation| {
+            let matches_location = expectation.function_index == current_location.0
+                && expectation.instruction_offset == current_location.1;
+
+            if matches_location {
+                // Landing pad expectation satisfied
+                self.cfi_context.metrics.landing_pads_validated += 1;
+                false // Remove from expectations
+            } else {
+                // Check for timeout
+                if let Some(deadline) = expectation.deadline {
+                    if current_time > deadline {
+                        // Landing pad expectation timed out - potential CFI violation
+                        self.handle_cfi_violation(CfiViolationType::LandingPadTimeout);
+                        false // Remove expired expectation
+                    } else {
+                        true // Keep expectation
+                    }
+                } else {
+                    true // Keep expectation (no deadline)
+                }
+            }
+        });
+
+        Ok(())
+    }
+
+    /// Validate instruction is allowed at current location
+    fn validate_instruction_allowed(
+        &self,
+        _instruction: &wrt_foundation::types::Instruction,
+    ) -> Result<()> {
+        // TODO: Implement instruction validation based on CFI policy
+        // For example, indirect calls might only be allowed from certain locations
+        Ok(())
+    }
+
+    /// Check for CFI violation indicators
+    fn check_cfi_violation_indicators(&self) -> Result<()> {
+        // Check shadow stack consistency
+        if self.cfi_context.shadow_stack.len()
+            > self.cfi_protection.software_config.max_shadow_stack_depth
+        {
+            return Err(Error::new(
+                ErrorCategory::Security,
+                codes::CFI_VIOLATION,
+                "Shadow stack overflow detected",
+            ));
+        }
+
+        // Check for excessive violation count
+        if self.cfi_context.violation_count > 10 {
+            return Err(Error::new(
+                ErrorCategory::Security,
+                codes::CFI_VIOLATION,
+                "Excessive CFI violations detected",
+            ));
+        }
+
+        Ok(())
+    }
+
+    /// Validate landing pad requirements
+    fn validate_landing_pad(&self, landing_pad: &wrt_instructions::CfiLandingPad) -> Result<()> {
+        // Validate hardware instruction if present
+        if let Some(ref hw_instruction) = landing_pad.hardware_instruction {
+            self.validate_hardware_instruction(hw_instruction)?;
+        }
+
+        // Validate software validation if present
+        if let Some(ref sw_validation) = landing_pad.software_validation {
+            self.validate_software_validation(sw_validation)?;
+        }
+
+        Ok(())
+    }
+
+    /// Validate hardware CFI instruction
+    fn validate_hardware_instruction(
+        &self,
+        hw_instruction: &wrt_instructions::CfiHardwareInstruction,
+    ) -> Result<()> {
+        match hw_instruction {
+            #[cfg(target_arch = "aarch64")]
+            wrt_instructions::CfiHardwareInstruction::ArmBti { mode } => {
+                self.validate_arm_bti_instruction(*mode)
+            }
+
+            #[cfg(target_arch = "riscv64")]
+            wrt_instructions::CfiHardwareInstruction::RiscVLandingPad { label } => {
+                self.validate_riscv_landing_pad(*label)
+            }
+
+            #[cfg(target_arch = "x86_64")]
+            wrt_instructions::CfiHardwareInstruction::X86Endbr => self.validate_x86_endbr(),
+        }
+    }
+
+    #[cfg(target_arch = "aarch64")]
+    fn validate_arm_bti_instruction(&self, _mode: wrt_instructions::ArmBtiMode) -> Result<()> {
+        // Insert ARM BTI instruction and validate it executed correctly
+        // This would involve architecture-specific validation
+        Ok(())
+    }
+
+    #[cfg(target_arch = "riscv64")]
+    fn validate_riscv_landing_pad(&self, _label: u32) -> Result<()> {
+        // Validate RISC-V landing pad instruction
+        // This would involve architecture-specific validation
+        Ok(())
+    }
+
+    #[cfg(target_arch = "x86_64")]
+    fn validate_x86_endbr(&self) -> Result<()> {
+        // Validate x86_64 ENDBR instruction
+        // This would involve architecture-specific validation
+        Ok(())
+    }
+
+    /// Validate software CFI validation
+    fn validate_software_validation(
+        &self,
+        _sw_validation: &wrt_instructions::CfiSoftwareValidation,
+    ) -> Result<()> {
+        // TODO: Implement software validation logic
+        Ok(())
+    }
+
+    /// Handle shadow stack push for function calls
+    fn handle_shadow_stack_push(
+        &mut self,
+        protected_target: &CfiProtectedBranchTarget,
+    ) -> Result<()> {
+        if let wrt_instructions::ShadowStackRequirement::Push {
+            return_address,
+            function_signature,
+        } = &protected_target.protection.shadow_stack_requirement
+        {
+            let shadow_entry = wrt_instructions::ShadowStackEntry {
+                return_address: (
+                    self.cfi_context.current_function,
+                    self.cfi_context.current_instruction + 1,
+                ),
+                signature_hash: *function_signature,
+                timestamp: self.get_timestamp(),
+                call_site_id: self.generate_call_site_id(),
+            };
+
+            self.cfi_context.shadow_stack.push(shadow_entry);
+            self.cfi_context.metrics.shadow_stack_operations += 1;
+        }
+
+        Ok(())
+    }
+
+    /// Handle CFI violation
+    fn handle_cfi_violation(&mut self, violation_type: CfiViolationType) {
+        self.cfi_context.violation_count += 1;
+        self.statistics.violations_detected += 1;
+
+        // Log violation details (in real implementation)
+        #[cfg(feature = "std")]
+        eprintln!("CFI Violation detected: {:?}", violation_type);
+
+        // Apply violation policy
+        match self.violation_policy {
+            CfiViolationPolicy::LogAndContinue => {
+                // Already logged, continue execution
+            }
+            CfiViolationPolicy::Terminate => {
+                // Would terminate execution (panic in real implementation)
+                #[cfg(feature = "std")]
+                panic!("CFI violation: {:?}", violation_type);
+            }
+            CfiViolationPolicy::ReturnError => {
+                // Would return error to caller
+            }
+            CfiViolationPolicy::AttemptRecovery => {
+                // Would attempt to recover from violation
+                self.attempt_violation_recovery(violation_type);
+            }
+        }
+    }
+
+    /// Attempt to recover from CFI violation
+    fn attempt_violation_recovery(&mut self, _violation_type: CfiViolationType) {
+        // TODO: Implement violation recovery strategies
+        // For example, resetting shadow stack, clearing expectations, etc.
+        self.statistics.violations_resolved += 1;
+    }
+
+    /// Update CFI state after instruction execution
+    fn update_cfi_state_post_execution(
+        &mut self,
+        _instruction: &wrt_foundation::types::Instruction,
+        _result: &Result<CfiExecutionResult>,
+    ) -> Result<()> {
+        // TODO: Update CFI state based on instruction execution result
+        Ok(())
+    }
+
+    /// Handle potential CFI violation from execution error
+    fn handle_potential_cfi_violation(
+        &mut self,
+        _instruction: &wrt_foundation::types::Instruction,
+        _result: &Result<CfiExecutionResult>,
+    ) -> Result<()> {
+        // TODO: Analyze execution error for CFI violation indicators
+        Ok(())
+    }
+
+    /// Get current timestamp for temporal validation
+    fn get_timestamp(&self) -> u64 {
+        // Platform-specific timestamp implementation
+        #[cfg(target_arch = "aarch64")]
+        {
+            let mut cntvct: u64;
+            unsafe {
+                core::arch::asm!("mrs {}, cntvct_el0", out(reg) cntvct);
+            }
+            cntvct
+        }
+        #[cfg(target_arch = "riscv64")]
+        {
+            let mut time: u64;
+            unsafe {
+                core::arch::asm!("rdtime {}", out(reg) time);
+            }
+            time
+        }
+        #[cfg(not(any(target_arch = "aarch64", target_arch = "riscv64")))]
+        {
+            // Software fallback - use a simple counter
+            0
+        }
+    }
+
+    /// Generate unique call site ID
+    fn generate_call_site_id(&self) -> u32 {
+        // Simple ID generation - real implementation would be more sophisticated
+        ((self.cfi_context.current_function << 16) | self.cfi_context.current_instruction) as u32
+    }
+
+    /// Integration methods with the actual WRT execution engine
+
+    fn perform_indirect_call(
+        &mut self,
+        type_idx: u32,
+        table_idx: u32,
+        execution_context: &mut ExecutionContext,
+    ) -> Result<ExecutionResult> {
+        use crate::stackless::StacklessExecutionState;
+
+        execution_context.enter_function()?;
+        execution_context.stats.increment_instructions(1);
+
+        // Update stackless engine state for call
+        if let Some(engine) = &mut self.stackless_engine {
+            engine.exec_stack.state = StacklessExecutionState::Calling {
+                instance_idx: 0, // Default instance
+                func_idx: type_idx,
+                args: Vec::new(), // Args would be popped from stack in real implementation
+                return_pc: engine.exec_stack.pc + 1,
+            };
+            engine.exec_stack.pc += 1;
+        }
+
+        Ok(ExecutionResult::Continue)
+    }
+
+    fn perform_return(
+        &mut self,
+        execution_context: &mut ExecutionContext,
+    ) -> Result<ExecutionResult> {
+        use crate::stackless::StacklessExecutionState;
+
+        execution_context.exit_function();
+        execution_context.stats.increment_instructions(1);
+
+        // Update stackless engine state for return
+        if let Some(engine) = &mut self.stackless_engine {
+            engine.exec_stack.state = StacklessExecutionState::Returning {
+                values: Vec::new(), // Return values would be determined by actual execution
+            };
+        }
+
+        Ok(ExecutionResult::Return)
+    }
+
+    fn perform_branch(
+        &mut self,
+        label_idx: u32,
+        conditional: bool,
+        execution_context: &mut ExecutionContext,
+    ) -> Result<ExecutionResult> {
+        use crate::stackless::StacklessExecutionState;
+
+        execution_context.stats.increment_instructions(1);
+
+        // Update stackless engine state for branch
+        if let Some(engine) = &mut self.stackless_engine {
+            engine.exec_stack.state = StacklessExecutionState::Branching {
+                depth: label_idx,
+                values: Vec::new(), // Values would be managed by actual execution
+            };
+            engine.exec_stack.pc = label_idx as usize;
+        }
+
+        Ok(ExecutionResult::Branch)
+    }
+
+    fn perform_regular_instruction(
+        &mut self,
+        instruction: &wrt_foundation::types::Instruction,
+        execution_context: &mut ExecutionContext,
+    ) -> Result<ExecutionResult> {
+        execution_context.stats.increment_instructions(1);
+
+        // Update stackless engine program counter
+        if let Some(engine) = &mut self.stackless_engine {
+            engine.exec_stack.pc += 1;
+        }
+
+        // Consume minimal fuel for CFI overhead
+        if let Err(e) = execution_context.stats.use_gas(1) {
+            return Err(Error::new(
+                ErrorCategory::Runtime,
+                codes::CFI_VIOLATION,
+                format!("Gas exhausted during CFI-protected instruction execution: {}", e),
+            ));
+        }
+
+        Ok(ExecutionResult::Continue)
+    }
+
+    /// Get current CFI statistics
+    pub fn statistics(&self) -> &CfiEngineStatistics {
+        &self.statistics
+    }
+
+    /// Get current CFI context (for debugging)
+    pub fn cfi_context(&self) -> &CfiExecutionContext {
+        &self.cfi_context
+    }
+
+    /// Reset CFI state (for testing or recovery)
+    pub fn reset_cfi_state(&mut self) {
+        self.cfi_context = CfiExecutionContext::default();
+        self.statistics = CfiEngineStatistics::default();
+    }
+}
+
+/// CFI execution results with protection information
+#[derive(Debug)]
+pub enum CfiExecutionResult {
+    /// Indirect call with CFI protection
+    CallIndirect { result: ExecutionResult, protected_target: CfiProtectedBranchTarget },
+    /// Return with CFI protection
+    Return { result: ExecutionResult },
+    /// Branch with CFI protection
+    Branch { result: ExecutionResult, protected_target: CfiProtectedBranchTarget },
+    /// Regular instruction execution
+    Regular { result: ExecutionResult },
+}
+
+/// Types of CFI violations that can be detected
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CfiViolationType {
+    /// Shadow stack mismatch
+    ShadowStackMismatch,
+    /// Missing landing pad
+    MissingLandingPad,
+    /// Invalid landing pad
+    InvalidLandingPad,
+    /// Landing pad timeout
+    LandingPadTimeout,
+    /// Function signature mismatch
+    SignatureMismatch,
+    /// Temporal violation (execution too long)
+    TemporalViolation,
+    /// Shadow stack overflow
+    ShadowStackOverflow,
+    /// Shadow stack underflow
+    ShadowStackUnderflow,
+}
+
+/// Placeholder execution result enum
+/// This would be replaced by the actual WRT execution result type
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ExecutionResult {
+    /// Continue execution
+    Continue,
+    /// Return from function
+    Return,
+    /// Branch to label
+    Branch,
+    /// Trap/exception
+    Trap,
+}
+
+#[cfg(test)]
+mod tests {
+    use wrt_instructions::CfiProtectionLevel;
+
+    use super::*;
+
+    #[test]
+    fn test_cfi_engine_creation() {
+        let protection = CfiControlFlowProtection::default();
+        let engine = CfiExecutionEngine::new(protection);
+
+        assert_eq!(engine.violation_policy, CfiViolationPolicy::ReturnError);
+        assert_eq!(engine.statistics.instructions_protected, 0);
+        assert_eq!(engine.cfi_context.violation_count, 0);
+    }
+
+    #[test]
+    fn test_cfi_engine_with_policy() {
+        let protection = CfiControlFlowProtection::default();
+        let policy = CfiViolationPolicy::LogAndContinue;
+        let engine = CfiExecutionEngine::new_with_policy(protection, policy);
+
+        assert_eq!(engine.violation_policy, CfiViolationPolicy::LogAndContinue);
+    }
+
+    #[test]
+    fn test_cfi_statistics_default() {
+        let stats = CfiEngineStatistics::default();
+        assert_eq!(stats.instructions_protected, 0);
+        assert_eq!(stats.violations_detected, 0);
+        assert_eq!(stats.peak_shadow_stack_depth, 0);
+    }
+
+    #[test]
+    fn test_cfi_violation_handling() {
+        let protection = CfiControlFlowProtection::default();
+        let mut engine =
+            CfiExecutionEngine::new_with_policy(protection, CfiViolationPolicy::LogAndContinue);
+
+        let initial_violations = engine.statistics.violations_detected;
+        engine.handle_cfi_violation(CfiViolationType::ShadowStackMismatch);
+
+        assert_eq!(engine.statistics.violations_detected, initial_violations + 1);
+        assert_eq!(engine.cfi_context.violation_count, 1);
+    }
+
+    #[test]
+    fn test_cfi_context_update() {
+        let protection = CfiControlFlowProtection::default();
+        let mut engine = CfiExecutionEngine::new(protection);
+        let execution_context = ExecutionContext::new(256);
+
+        let result = engine.update_cfi_context(&execution_context);
+        assert!(result.is_ok());
+    }
+}

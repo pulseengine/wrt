@@ -50,8 +50,17 @@ pub use wrt_component::{
 };
 // Re-export from wrt-decoder (binary parsing)
 pub use wrt_decoder::{
-    create_engine_state_section, from_binary, get_data_from_state_section,
-    module::Module as DecoderModule, parse, section_reader,
+    // Standard decoder exports
+    create_engine_state_section,
+    from_binary,
+    get_data_from_state_section,
+    module::Module as DecoderModule,
+    parse,
+    section_reader,
+    // CFI-related exports
+    CfiMetadata,
+    CfiMetadataGenerator,
+    CfiProtectionConfig,
 };
 // Re-export from wrt-error (foundation crate)
 pub use wrt_error::{
@@ -99,10 +108,17 @@ pub use wrt_instructions::behavior::{
 };
 // Re-export from wrt-instructions (instruction encoding/decoding)
 pub use wrt_instructions::{
+    // Standard instruction exports
     calls::CallInstruction,
     control::ControlInstruction,
     memory_ops::{MemoryArg, MemoryLoad, MemoryStore},
     numeric::NumericInstruction,
+    // CFI-related exports
+    CfiControlFlowOps,
+    CfiControlFlowProtection,
+    CfiProtectedBranchTarget,
+    CfiProtectionLevel,
+    DefaultCfiControlFlowOps,
     Instruction,
 };
 // Re-export from wrt-intercept (function interception)
@@ -110,8 +126,13 @@ pub use wrt_intercept::{
     interceptor::{FunctionInterceptor, InterceptorRegistry},
     strategies::{DefaultInterceptStrategy, InterceptStrategy},
 };
+// Re-export from wrt-platform (platform-specific implementations)
+pub use wrt_platform::{
+    BranchTargetIdentification, BtiExceptionLevel, BtiMode, CfiExceptionMode, ControlFlowIntegrity,
+};
 // Re-export from wrt-runtime (runtime execution)
 pub use wrt_runtime::{
+    // Standard runtime exports
     component::{Component, Host, InstanceValue},
     execution::ExecutionStats,
     func::Function,
@@ -126,6 +147,13 @@ pub use wrt_runtime::{
         StacklessCallbackRegistry, StacklessEngine, StacklessExecutionState, StacklessFrame,
     },
     table::Table,
+    // CFI-related exports
+    CfiEngineStatistics,
+    CfiExecutionEngine,
+    CfiExecutionResult,
+    CfiViolationPolicy,
+    CfiViolationType,
+    ExecutionResult,
 };
 // Re-export from wrt-sync (synchronization primitives)
 pub use wrt_sync::{concurrency::ThreadSafe, sync_primitives::SyncAccess};
@@ -136,6 +164,13 @@ pub use wrt_sync::{
     WrtRwLockReadGuard as RwLockReadGuard, WrtRwLockWriteGuard as RwLockWriteGuard,
 };
 
+// Re-export CFI integration types from main wrt crate (std only currently)
+#[cfg(feature = "std")]
+pub use crate::cfi_integration::{
+    CfiConfiguration, CfiEngineStatistics as CfiIntegrationStatistics,
+    CfiExecutionResult as CfiIntegrationResult, CfiHardwareFeatures, CfiProtectedEngine,
+    CfiProtectedModule,
+};
 // For no_std/no_alloc environments, use our bounded collections
 #[cfg(not(any(feature = "std", feature = "alloc")))]
 pub use crate::no_std_hashmap::BoundedHashMap as HashMap;
