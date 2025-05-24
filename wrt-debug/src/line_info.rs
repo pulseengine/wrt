@@ -27,10 +27,7 @@ impl LineInfo {
     /// Format as "filename:line:column" for display
     /// Uses the provided file table to resolve the file index
     pub fn format_location<'a>(&self, file_table: &'a crate::FileTable<'a>) -> LocationDisplay<'a> {
-        LocationDisplay {
-            line_info: self,
-            file_table,
-        }
+        LocationDisplay { line_info: self, file_table }
     }
 }
 
@@ -52,21 +49,21 @@ impl<'a> LocationDisplay<'a> {
         } else {
             writer("<unknown>")?;
         }
-        
+
         // Add line number
         writer(":")?;
         // Format number without allocation
         let mut buf = [0u8; 10];
         let s = format_u32(self.line_info.line, &mut buf);
         writer(s)?;
-        
+
         // Add column if present
         if self.line_info.column > 0 {
             writer(":")?;
             let s = format_u32(self.line_info.column as u32, &mut buf);
             writer(s)?;
         }
-        
+
         Ok(())
     }
 }
@@ -76,14 +73,14 @@ fn format_u32(mut n: u32, buf: &mut [u8]) -> &str {
     if n == 0 {
         return "0";
     }
-    
+
     let mut i = buf.len();
     while n > 0 && i > 0 {
         i -= 1;
         buf[i] = b'0' + (n % 10) as u8;
         n /= 10;
     }
-    
+
     core::str::from_utf8(&buf[i..]).unwrap_or("?")
 }
 
@@ -101,7 +98,7 @@ mod opcodes {
     pub const DW_LNS_SET_PROLOGUE_END: u8 = 10;
     pub const DW_LNS_SET_EPILOGUE_BEGIN: u8 = 11;
     pub const DW_LNS_SET_ISA: u8 = 12;
-    
+
     pub const DW_LNE_END_SEQUENCE: u8 = 1;
     pub const DW_LNE_SET_ADDRESS: u8 = 2;
     pub const DW_LNE_DEFINE_FILE: u8 = 3;
@@ -122,7 +119,7 @@ pub struct LineNumberState {
     epilogue_begin: bool,
     isa: u32,
     discriminator: u32,
-    
+
     // Header configuration
     minimum_instruction_length: u8,
     maximum_ops_per_instruction: u8,
@@ -130,7 +127,7 @@ pub struct LineNumberState {
     line_base: i8,
     line_range: u8,
     opcode_base: u8,
-    
+
     // Standard opcode lengths (we'll store a few)
     standard_opcode_lengths: [u8; 12],
 }
@@ -159,7 +156,7 @@ impl LineNumberState {
             standard_opcode_lengths: [0; 12],
         }
     }
-    
+
     /// Reset the state machine (except header fields)
     fn reset(&mut self) {
         self.address = 0;
@@ -174,7 +171,7 @@ impl LineNumberState {
         self.isa = 0;
         self.discriminator = 0;
     }
-    
+
     /// Parse the line number program header
     fn parse_header(&mut self, cursor: &mut DwarfCursor) -> Result<()> {
         // Read unit length (32-bit for now, skip 64-bit DWARF)
@@ -186,7 +183,7 @@ impl LineNumberState {
                 "64-bit DWARF not supported",
             ));
         }
-        
+
         // Read version
         let version = cursor.read_u16()?;
         if version < 2 || version > 5 {
@@ -196,11 +193,11 @@ impl LineNumberState {
                 "Unsupported DWARF line version",
             ));
         }
-        
+
         // Read header length
         let header_length = cursor.read_u32()?;
         let header_start = cursor.position();
-        
+
         // Read header fields
         self.minimum_instruction_length = cursor.read_u8()?;
         if version >= 4 {
@@ -210,41 +207,42 @@ impl LineNumberState {
         self.line_base = cursor.read_u8()? as i8;
         self.line_range = cursor.read_u8()?;
         self.opcode_base = cursor.read_u8()?;
-        
+
         // Read standard opcode lengths
         for i in 0..self.opcode_base.saturating_sub(1).min(12) as usize {
             self.standard_opcode_lengths[i] = cursor.read_u8()?;
         }
-        
+
         // Skip the rest of the header (directories, files, etc.)
         let header_consumed = cursor.position() - header_start;
         if header_consumed < header_length as usize {
             cursor.skip(header_length as usize - header_consumed)?;
         }
-        
+
         Ok(())
     }
-    
+
     /// Execute a special opcode
     fn execute_special_opcode(&mut self, opcode: u8) -> Result<()> {
         let adjusted_opcode = opcode - self.opcode_base;
-        let address_increment = (adjusted_opcode / self.line_range) as u32 * self.minimum_instruction_length as u32;
+        let address_increment =
+            (adjusted_opcode / self.line_range) as u32 * self.minimum_instruction_length as u32;
         let line_increment = self.line_base + (adjusted_opcode % self.line_range) as i8;
-        
+
         self.address += address_increment;
         self.line = (self.line as i32 + line_increment as i32) as u32;
         self.basic_block = false;
         self.prologue_end = false;
         self.epilogue_begin = false;
         self.discriminator = 0;
-        
+
         Ok(())
     }
-    
+
     /// Execute a standard opcode
     fn execute_standard_opcode(&mut self, opcode: u8, cursor: &mut DwarfCursor) -> Result<()> {
         use opcodes::*;
-        
+
         match opcode {
             DW_LNS_COPY => {
                 self.discriminator = 0;
@@ -274,7 +272,8 @@ impl LineNumberState {
             }
             DW_LNS_CONST_ADD_PC => {
                 let adjusted_opcode = 255 - self.opcode_base;
-                let address_increment = (adjusted_opcode / self.line_range) as u32 * self.minimum_instruction_length as u32;
+                let address_increment = (adjusted_opcode / self.line_range) as u32
+                    * self.minimum_instruction_length as u32;
                 self.address += address_increment;
             }
             DW_LNS_FIXED_ADVANCE_PC => {
@@ -293,17 +292,21 @@ impl LineNumberState {
             _ => {
                 // Unknown opcode, skip its arguments
                 if opcode > 0 && opcode < self.opcode_base {
-                    let arg_count = self.standard_opcode_lengths.get((opcode - 1) as usize).copied().unwrap_or(0);
+                    let arg_count = self
+                        .standard_opcode_lengths
+                        .get((opcode - 1) as usize)
+                        .copied()
+                        .unwrap_or(0);
                     for _ in 0..arg_count {
                         cursor.read_uleb128()?;
                     }
                 }
             }
         }
-        
+
         Ok(())
     }
-    
+
     /// Find line info for a given PC without allocation
     pub fn find_line_for_pc(
         &mut self,
@@ -311,19 +314,19 @@ impl LineNumberState {
         target_pc: u32,
     ) -> Result<Option<LineInfo>> {
         let mut cursor = DwarfCursor::new(debug_line_data);
-        
+
         // Parse header
         self.parse_header(&mut cursor)?;
-        
+
         // Reset state machine
         self.reset();
-        
+
         let mut last_line_info = None;
-        
+
         // Execute line number program
         while !cursor.is_at_end() {
             let opcode = cursor.read_u8()?;
-            
+
             match opcode {
                 0 => {
                     // Extended opcode
@@ -331,10 +334,10 @@ impl LineNumberState {
                     if length == 0 {
                         continue;
                     }
-                    
+
                     let extended_opcode = cursor.read_u8()?;
                     let remaining = length - 1;
-                    
+
                     match extended_opcode {
                         opcodes::DW_LNE_END_SEQUENCE => {
                             self.end_sequence = true;
@@ -362,7 +365,7 @@ impl LineNumberState {
                     self.execute_special_opcode(opcode)?;
                 }
             }
-            
+
             // Check if we've found the target
             if self.address <= target_pc && !self.end_sequence {
                 last_line_info = Some(LineInfo {
@@ -376,12 +379,12 @@ impl LineNumberState {
                 // We've passed the target
                 break;
             }
-            
+
             if self.end_sequence {
                 self.reset();
             }
         }
-        
+
         Ok(last_line_info)
     }
 }

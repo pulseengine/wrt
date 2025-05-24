@@ -157,7 +157,6 @@ pub mod memory_verification {
 
 /// Concurrency safety verification
 pub mod concurrency_verification {
-    
 
     use super::annotations::*;
     use crate::advanced_sync::*;

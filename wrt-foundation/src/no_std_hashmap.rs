@@ -237,7 +237,7 @@ where
         Err(crate::Error::internal_error("Failed to insert into SimpleHashMap"))
     }
 
-    /// Gets a reference to the value associated with the key.
+    /// Gets a copy of the value associated with the key.
     pub fn get<Q: ?Sized>(&self, key: &Q) -> crate::WrtResult<Option<V>>
     where
         K: Borrow<Q>,
@@ -251,7 +251,7 @@ where
 
             match self.entries.get(actual_index)? {
                 Some(entry) if entry.hash == hash && entry.key.borrow() == key => {
-                    return Ok(Some(entry.value.clone()));
+                    return Ok(Some(entry.value));
                 }
                 None => {
                     // Empty slot, key doesn't exist
@@ -319,23 +319,23 @@ mod tests {
 
     #[test]
     fn test_simple_hashmap() {
-        let provider = NoStdProvider::default();
-        let mut map = SimpleHashMap::<&str, i32, 8, NoStdProvider>::new(provider).unwrap();
+        let provider = NoStdProvider::<512>::default();
+        let mut map = SimpleHashMap::<u32, i32, 8, NoStdProvider<512>>::new(provider).unwrap();
 
         // Test insertion
-        assert!(map.insert("one", 1).unwrap().is_none());
-        assert!(map.insert("two", 2).unwrap().is_none());
-        assert!(map.insert("three", 3).unwrap().is_none());
+        assert!(map.insert(1, 100).unwrap().is_none());
+        assert!(map.insert(2, 200).unwrap().is_none());
+        assert!(map.insert(3, 300).unwrap().is_none());
 
         // Test get
-        assert_eq!(map.get("one").unwrap(), Some(1));
-        assert_eq!(map.get("two").unwrap(), Some(2));
-        assert_eq!(map.get("three").unwrap(), Some(3));
-        assert_eq!(map.get("four").unwrap(), None);
+        assert_eq!(map.get(&1).unwrap(), Some(100));
+        assert_eq!(map.get(&2).unwrap(), Some(200));
+        assert_eq!(map.get(&3).unwrap(), Some(300));
+        assert_eq!(map.get(&4).unwrap(), None);
 
         // Test replacing a value
-        assert_eq!(map.insert("one", 10).unwrap(), Some(1));
-        assert_eq!(map.get("one").unwrap(), Some(10));
+        assert_eq!(map.insert(1, 1000).unwrap(), Some(100));
+        assert_eq!(map.get(&1).unwrap(), Some(1000));
 
         // Test removing a value
         assert_eq!(map.remove("two").unwrap(), Some(2));
@@ -349,13 +349,13 @@ mod tests {
         map.clear().unwrap();
         assert_eq!(map.len(), 0);
         assert!(map.is_empty());
-        assert_eq!(map.get("one").unwrap(), None);
+        assert_eq!(map.get(&1).unwrap(), None);
     }
 
     #[test]
     fn test_full_map() {
-        let provider = NoStdProvider::default();
-        let mut map = SimpleHashMap::<i32, i32, 4, NoStdProvider>::new(provider).unwrap();
+        let provider = NoStdProvider::<256>::default();
+        let mut map = SimpleHashMap::<i32, i32, 4, NoStdProvider<256>>::new(provider).unwrap();
 
         // Fill the map
         assert!(map.insert(1, 10).unwrap().is_none());

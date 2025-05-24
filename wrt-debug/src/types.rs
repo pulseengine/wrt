@@ -40,4 +40,3 @@ pub struct DebugSection {
     /// Size of the section
     pub size: u32,
 }
-

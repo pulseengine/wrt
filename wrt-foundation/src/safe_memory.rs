@@ -16,14 +16,15 @@
 // REMOVE: #[cfg(all(not(feature = "std"), feature = "alloc"))]
 // REMOVE: extern crate alloc;
 
-use core::{
-    fmt,
-    sync::atomic::{AtomicUsize, Ordering},
+use core::sync::atomic::{AtomicUsize, Ordering};
+
+// Use items from prelude to avoid shadowing
+use crate::prelude::{codes, fmt, Error, ErrorCategory};
+use crate::{
+    bounded::BoundedError,
+    operations::{record_global_operation, Type as OperationType},
 };
-
-use wrt_error::{codes, Error, ErrorCategory};
-
-use crate::operations::{record_global_operation, Type as OperationType};
+// Checksum and VerificationLevel are available through prelude
 
 /// Default capacity for NoStdProvider memory allocations
 pub const DEFAULT_MEMORY_PROVIDER_CAPACITY: usize = 4096;
@@ -53,8 +54,7 @@ use std::vec::Vec;
 #[cfg(feature = "alloc")]
 pub use crate::prelude::ToString;
 pub use crate::prelude::*;
-// Explicitly import Checksum and VerificationLevel
-pub use crate::verification::{Checksum, VerificationLevel};
+// Checksum and VerificationLevel are already imported through prelude
 use crate::WrtResult;
 
 /// A safe slice with integrated checksum for data integrity verification
@@ -665,6 +665,21 @@ pub struct StdProvider {
 }
 
 #[cfg(feature = "std")]
+impl Clone for StdProvider {
+    fn clone(&self) -> Self {
+        Self {
+            data: self.data.clone(),
+            access_log: Mutex::new(Vec::new()), // Create new empty access log
+            access_count: AtomicUsize::new(0),
+            max_access_size: AtomicUsize::new(0),
+            unique_regions: AtomicUsize::new(0),
+            regions_hash: Mutex::new(HashSet::new()),
+            verification_level: self.verification_level,
+        }
+    }
+}
+
+#[cfg(feature = "std")]
 impl fmt::Debug for StdProvider {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("StdProvider")
@@ -740,7 +755,7 @@ impl StdProvider {
     pub fn access_log(&self) -> Result<Vec<(usize, usize)>> {
         self.access_log
             .lock()
-            .map_err(|_| Error::sync_error("Mutex poisoned"))
+            .map_err(|_| Error::from(crate::kinds::PoisonedLockError("Mutex poisoned")))
             .map(|log| log.clone())
     }
 
@@ -799,18 +814,18 @@ impl StdProvider {
     ///
     /// Returns `Error::sync_error` if the mutex cannot be locked.
     pub fn clear_access_tracking(&self) -> Result<()> {
-        record_global_operation(OperationType::MemoryRegionClear, self.verification_level);
+        record_global_operation(OperationType::CollectionClear, self.verification_level);
         let mut log = self.access_log.lock().map_err(|_| {
-            Error::concurrency_error(
+            Error::from(crate::kinds::PoisonedLockError(
                 "Mutex poisoned during access log lock in clear_access_tracking",
-            )
+            ))
         })?;
         log.clear();
 
         let mut hashes = self.regions_hash.lock().map_err(|_| {
-            Error::concurrency_error(
+            Error::from(crate::kinds::PoisonedLockError(
                 "Mutex poisoned during regions_hash lock in clear_access_tracking",
-            )
+            ))
         })?;
         hashes.clear();
 
@@ -830,7 +845,7 @@ impl StdProvider {
         // Placeholder: StdProvider does not currently manage a single checksum for all
         // data. Integrity is typically verified via Slice/SliceMut instances it
         // vends.
-        record_global_operation(OperationType::IntegrityRecalculate, self.verification_level);
+        record_global_operation(OperationType::ChecksumFullRecalculation, self.verification_level);
     }
 }
 
@@ -928,18 +943,10 @@ impl Provider for StdProvider {
         // handles potential resizing. Let's assume verify_access checks against
         // current data.len() for reads and initial write checks.
         if end > self.data.len() {
-            return Err(Error::memory_error_with_details(
+            return Err(Error::new(
+                ErrorCategory::Runtime,
+                codes::MEMORY_ACCESS_ERROR,
                 "Access out of bounds",
-                #[cfg(any(feature = "std", feature = "alloc"))]
-                format!(
-                    "Attempted access from {} to {} (len {}), but current size is {}",
-                    offset,
-                    end,
-                    len,
-                    self.data.len()
-                ),
-                #[cfg(not(any(feature = "std", feature = "alloc")))]
-                "Access out of bounds of current data length",
             ));
         }
         Ok(())
@@ -957,7 +964,7 @@ impl Provider for StdProvider {
         // StdProvider itself doesn't have a single checksum for its entire data Vec.
         // Integrity is managed at the Slice/SliceMut level for borrowed parts.
         // This could be extended if a whole-provider checksum was desired.
-        record_global_operation(OperationType::MemoryIntegrityCheck, self.verification_level);
+        record_global_operation(OperationType::CollectionValidate, self.verification_level);
         // For now, assume the underlying Vec<u8> is inherently valid unless proven
         // otherwise by Slice checks.
         Ok(())
@@ -1046,7 +1053,7 @@ impl Provider for StdProvider {
         self.allocate(layout)
     }
 
-    unsafe fn release_memory(&self, ptr: *mut u8, layout: core::alloc::Layout) -> WrtResult<()> {
+    fn release_memory(&self, ptr: *mut u8, layout: core::alloc::Layout) -> WrtResult<()> {
         // Delegate to its own Allocator implementation
         self.deallocate(ptr, layout)
     }
@@ -1062,6 +1069,20 @@ impl Provider for StdProvider {
     // fn memory_stats(&self) -> Stats {
     //    self.memory_stats() // Calls its own inherent method
     // }
+}
+
+#[cfg(feature = "std")]
+impl Allocator for StdProvider {
+    fn allocate(&self, layout: core::alloc::Layout) -> WrtResult<*mut u8> {
+        // For StdProvider, we can't safely allocate raw pointers from the Vec
+        // This would require unsafe code and proper memory management
+        Err(Error::memory_error("StdProvider does not support raw allocation"))
+    }
+
+    fn deallocate(&self, _ptr: *mut u8, _layout: core::alloc::Layout) -> WrtResult<()> {
+        // For StdProvider, we can't safely deallocate raw pointers
+        Err(Error::memory_error("StdProvider does not support raw deallocation"))
+    }
 }
 
 /// Memory provider using a fixed-size array, suitable for `no_std`
@@ -1174,7 +1195,7 @@ impl<const N: usize> fmt::Debug for NoStdProvider<N> {
     }
 }
 
-#[cfg(not(feature = "std"))]
+// NoStdProvider methods are available in all configurations
 impl<const N: usize> NoStdProvider<N> {
     /// Create a new empty memory provider with default verification level
     pub fn new() -> Self {
@@ -1314,7 +1335,7 @@ impl<const N: usize> NoStdProvider<N> {
     }
 }
 
-#[cfg(not(feature = "std"))]
+// NoStdProvider implements Provider in all configurations
 impl<const N: usize> Provider for NoStdProvider<N> {
     type Allocator = Self; // NoStdProvider itself is the allocator
 

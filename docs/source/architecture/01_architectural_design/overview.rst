@@ -28,11 +28,99 @@ Pulseengine (WRT Edition) is a WebAssembly runtime designed for safety-critical 
 High-Level Architecture
 -----------------------
 
-The system follows a layered architecture with clear separation of concerns:
+The system follows a layered architecture with clear separation of concerns.
 
-.. uml:: ../../_static/system_components.puml
+Component Decomposition
+~~~~~~~~~~~~~~~~~~~~~~~
 
-**Teaching Point**: Each layer only depends on layers below it, ensuring clean dependencies.
+.. arch_decision:: Component-Based Architecture
+   :id: ARCH_DEC_COMP_001
+   :status: implemented
+   :rationale: Modular design enables independent testing, certification, and platform-specific optimization
+   :impacts: All architectural components
+   :links: ARCH_COMP_SYSTEM
+
+The following diagram shows the high-level decomposition of Pulseengine into its constituent components:
+
+.. uml:: ../../_static/high_level_decomposition_simple.puml
+
+**Teaching Point**: Each component has a single, well-defined responsibility. The layered architecture ensures that:
+
+- Higher layers depend only on lower layers
+- Each layer provides a stable interface to the layer above
+- Platform-specific code is isolated in the Platform Abstraction Layer
+
+Deployment Architecture
+~~~~~~~~~~~~~~~~~~~~~~~
+
+.. arch_decision:: Multi-Platform Deployment Strategy
+   :id: ARCH_DEC_DEPLOY_001
+   :status: implemented
+   :rationale: Different deployment environments require different memory models and security features
+   :impacts: Platform layer, memory management
+   :links: ARCH_CON_001, ARCH_CON_002
+
+Pulseengine can be deployed across various platforms with platform-specific optimizations:
+
+.. uml:: ../../_static/deployment_architecture_simple.puml
+
+**Key Deployment Configurations**:
+
+1. **Server/Desktop** (Linux, macOS)
+   
+   - Full ``std`` library support
+   - Dynamic memory allocation
+   - Multi-threading with OS primitives
+   - Hardware security features (ARM PAC/BTI, Intel CET)
+
+2. **Embedded Linux** (Yocto, BuildRoot)
+   
+   - ``no_std`` with custom allocator
+   - Bounded memory usage
+   - Optional ARM MTE support
+   - Static or dynamic linking
+
+3. **QNX Neutrino** (Automotive, Medical)
+   
+   - Memory partitioning for isolation
+   - Capability-based security
+   - Real-time scheduling
+   - ASIL-D compliance support
+
+4. **Zephyr RTOS** (IoT, Embedded)
+   
+   - ``no_std``, no heap allocation
+   - Static memory pools
+   - Minimal footprint
+   - Direct hardware access
+
+5. **Bare Metal** (Safety-critical)
+   
+   - No OS dependencies
+   - Compile-time memory allocation
+   - Deterministic execution
+   - Minimal runtime overhead
+
+Internal Module Structure
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. arch_decision:: Crate Organization Strategy
+   :id: ARCH_DEC_CRATE_001
+   :status: implemented
+   :rationale: Fine-grained crates enable selective feature inclusion and minimize dependencies
+   :impacts: Build system, dependency management
+   :links: ARCH_CON_003
+
+The following diagram shows the internal structure of key crates and their modules:
+
+.. uml:: ../../_static/crate_module_structure_simple.puml
+
+**Teaching Point**: The modular structure enables:
+
+- Selective feature compilation (e.g., exclude Component Model for embedded)
+- Platform-specific implementations behind common interfaces
+- Clear dependency boundaries for safety analysis
+- Independent testing and verification of each module
 
 Workspace Organization
 ----------------------

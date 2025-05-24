@@ -589,7 +589,7 @@ impl<const N: usize> NoStdProviderBuilder<N> {
     /// Builds a NoStdProvider with the configured settings.
     pub fn build(self) -> WrtResult<NoStdProvider<N>> {
         // Create the provider with the specified verification level
-        let mut provider = NoStdProvider::with_verification_level(self.verification_level);
+        let mut provider = NoStdProvider::<N>::with_verification_level(self.verification_level);
 
         // If an initial size was specified, resize the provider accordingly
         if let Some(size) = self.init_size {

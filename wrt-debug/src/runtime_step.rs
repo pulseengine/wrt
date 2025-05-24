@@ -1,15 +1,15 @@
-/// Runtime stepping logic implementation
-/// Provides single-step, step-over, step-into, and step-out functionality
-
 #![cfg(feature = "runtime-stepping")]
 
-use crate::{
-    runtime_api::{RuntimeState, DebugAction},
-    LineInfo,
-};
 use wrt_foundation::{
-    bounded::{BoundedVec, BoundedStack, MAX_DWARF_FILE_TABLE},
+    bounded::{BoundedStack, BoundedVec, MAX_DWARF_FILE_TABLE},
     NoStdProvider,
+};
+
+/// Runtime stepping logic implementation
+/// Provides single-step, step-over, step-into, and step-out functionality
+use crate::{
+    runtime_api::{DebugAction, RuntimeState},
+    LineInfo,
 };
 
 /// Stepping mode
@@ -75,7 +75,7 @@ impl StepController {
     /// Start stepping with given mode
     pub fn start_step(&mut self, mode: StepMode, current_line: Option<&LineInfo>) {
         self.mode = mode;
-        
+
         match mode {
             StepMode::Line | StepMode::Over | StepMode::Into => {
                 // Remember current line
@@ -108,28 +108,20 @@ impl StepController {
 
         match self.mode {
             StepMode::None => DebugAction::Continue,
-            
+
             StepMode::Instruction => {
                 // Always break on next instruction
                 self.mode = StepMode::None;
                 DebugAction::Break
             }
-            
-            StepMode::Line => {
-                self.check_line_step(current_line)
-            }
-            
-            StepMode::Over => {
-                self.check_step_over(current_line)
-            }
-            
-            StepMode::Into => {
-                self.check_step_into(current_line)
-            }
-            
-            StepMode::Out => {
-                self.check_step_out()
-            }
+
+            StepMode::Line => self.check_line_step(current_line),
+
+            StepMode::Over => self.check_step_over(current_line),
+
+            StepMode::Into => self.check_step_into(current_line),
+
+            StepMode::Out => self.check_step_out(),
         }
     }
 
@@ -148,11 +140,7 @@ impl StepController {
         }
 
         // Push frame
-        let frame = StepFrame {
-            function_idx: func_idx,
-            return_pc,
-            call_line: self.previous_line,
-        };
+        let frame = StepFrame { function_idx: func_idx, return_pc, call_line: self.previous_line };
         self.call_stack.push(frame).ok();
     }
 
@@ -203,7 +191,7 @@ impl StepController {
                 }
             }
         }
-        
+
         DebugAction::Continue
     }
 
@@ -225,7 +213,7 @@ impl StepController {
                 }
             }
         }
-        
+
         DebugAction::Continue
     }
 
@@ -246,7 +234,7 @@ impl StepController {
                 return DebugAction::Break;
             }
         }
-        
+
         DebugAction::Continue
     }
 
@@ -279,25 +267,24 @@ struct LineCacheEntry {
 impl SteppingDebugger {
     /// Create a new stepping debugger
     pub fn new() -> Self {
-        Self {
-            controller: StepController::new(),
-            line_cache: BoundedVec::new(NoStdProvider),
-        }
+        Self { controller: StepController::new(), line_cache: BoundedVec::new(NoStdProvider) }
     }
 
     /// Add line mapping to cache
-    pub fn add_line_mapping(&mut self, pc_start: u32, pc_end: u32, line_info: LineInfo) -> Result<(), ()> {
-        let entry = LineCacheEntry {
-            pc_start,
-            pc_end,
-            line_info,
-        };
+    pub fn add_line_mapping(
+        &mut self,
+        pc_start: u32,
+        pc_end: u32,
+        line_info: LineInfo,
+    ) -> Result<(), ()> {
+        let entry = LineCacheEntry { pc_start, pc_end, line_info };
         self.line_cache.push(entry).map_err(|_| ())
     }
 
     /// Find line info for PC
     pub fn find_line(&self, pc: u32) -> Option<&LineInfo> {
-        self.line_cache.iter()
+        self.line_cache
+            .iter()
             .find(|entry| pc >= entry.pc_start && pc < entry.pc_end)
             .map(|entry| &entry.line_info)
     }
@@ -339,26 +326,38 @@ mod tests {
     }
 
     impl RuntimeState for MockState {
-        fn pc(&self) -> u32 { self.pc }
-        fn sp(&self) -> u32 { 0 }
-        fn fp(&self) -> Option<u32> { None }
-        fn read_local(&self, _: u32) -> Option<u64> { None }
-        fn read_stack(&self, _: u32) -> Option<u64> { None }
-        fn current_function(&self) -> Option<u32> { None }
+        fn pc(&self) -> u32 {
+            self.pc
+        }
+        fn sp(&self) -> u32 {
+            0
+        }
+        fn fp(&self) -> Option<u32> {
+            None
+        }
+        fn read_local(&self, _: u32) -> Option<u64> {
+            None
+        }
+        fn read_stack(&self, _: u32) -> Option<u64> {
+            None
+        }
+        fn current_function(&self) -> Option<u32> {
+            None
+        }
     }
 
     #[test]
     fn test_instruction_stepping() {
         let mut controller = StepController::new();
         let state = MockState { pc: 0x1000 };
-        
+
         // Start instruction step
         controller.start_step(StepMode::Instruction, None);
-        
+
         // Should break on next instruction
         let action = controller.should_break(0x1001, &state, None);
         assert_eq!(action, DebugAction::Break);
-        
+
         // Mode should be reset
         assert_eq!(controller.mode(), StepMode::None);
     }
@@ -367,30 +366,20 @@ mod tests {
     fn test_line_stepping() {
         let mut controller = StepController::new();
         let state = MockState { pc: 0x1000 };
-        
-        let line1 = LineInfo {
-            file_index: 1,
-            line: 10,
-            column: 0,
-            is_stmt: true,
-            end_sequence: false,
-        };
-        
-        let line2 = LineInfo {
-            file_index: 1,
-            line: 11,
-            column: 0,
-            is_stmt: true,
-            end_sequence: false,
-        };
-        
+
+        let line1 =
+            LineInfo { file_index: 1, line: 10, column: 0, is_stmt: true, end_sequence: false };
+
+        let line2 =
+            LineInfo { file_index: 1, line: 11, column: 0, is_stmt: true, end_sequence: false };
+
         // Start line step
         controller.start_step(StepMode::Line, Some(&line1));
-        
+
         // Same line - continue
         let action = controller.should_break(0x1001, &state, Some(&line1));
         assert_eq!(action, DebugAction::Continue);
-        
+
         // Different line - break
         let action = controller.should_break(0x1002, &state, Some(&line2));
         assert_eq!(action, DebugAction::Break);
@@ -400,36 +389,26 @@ mod tests {
     fn test_step_over() {
         let mut controller = StepController::new();
         let state = MockState { pc: 0x1000 };
-        
-        let line1 = LineInfo {
-            file_index: 1,
-            line: 10,
-            column: 0,
-            is_stmt: true,
-            end_sequence: false,
-        };
-        
+
+        let line1 =
+            LineInfo { file_index: 1, line: 10, column: 0, is_stmt: true, end_sequence: false };
+
         // Start step over
         controller.start_step(StepMode::Over, Some(&line1));
-        
+
         // Enter function - increases depth
         controller.on_function_entry(1, 0x1100);
-        
+
         // Inside function - continue
         let action = controller.should_break(0x2000, &state, Some(&line1));
         assert_eq!(action, DebugAction::Continue);
-        
+
         // Exit function
         controller.on_function_exit();
-        
+
         // Back at original depth with new line - break
-        let line2 = LineInfo {
-            file_index: 1,
-            line: 11,
-            column: 0,
-            is_stmt: true,
-            end_sequence: false,
-        };
+        let line2 =
+            LineInfo { file_index: 1, line: 11, column: 0, is_stmt: true, end_sequence: false };
         let action = controller.should_break(0x1100, &state, Some(&line2));
         assert_eq!(action, DebugAction::Break);
     }

@@ -1,11 +1,11 @@
-/// Parameter and type information support
-/// Provides the missing 2% for parameter information
-
-use crate::strings::DebugString;
 use wrt_foundation::{
     bounded::{BoundedVec, MAX_DWARF_ABBREV_CACHE},
     NoStdProvider,
 };
+
+/// Parameter and type information support
+/// Provides the missing 2% for parameter information
+use crate::strings::DebugString;
 
 /// Basic type information
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -36,14 +36,14 @@ impl BasicType {
     /// Parse from DWARF encoding and size
     pub fn from_encoding(encoding: u8, byte_size: u8) -> Self {
         match encoding {
-            0x00 => Self::Void,           // DW_ATE_address
-            0x01 => Self::Pointer,         // DW_ATE_address
-            0x02 => Self::Bool,            // DW_ATE_boolean
-            0x04 => Self::Float(byte_size), // DW_ATE_float
-            0x05 => Self::SignedInt(byte_size), // DW_ATE_signed
+            0x00 => Self::Void,                   // DW_ATE_address
+            0x01 => Self::Pointer,                // DW_ATE_address
+            0x02 => Self::Bool,                   // DW_ATE_boolean
+            0x04 => Self::Float(byte_size),       // DW_ATE_float
+            0x05 => Self::SignedInt(byte_size),   // DW_ATE_signed
             0x07 => Self::UnsignedInt(byte_size), // DW_ATE_unsigned
             0x08 => Self::UnsignedInt(byte_size), // DW_ATE_unsigned_char
-            0x10 => Self::Reference,       // DW_ATE_UTF (reused for references)
+            0x10 => Self::Reference,              // DW_ATE_UTF (reused for references)
             _ => Self::Unknown,
         }
     }
@@ -99,9 +99,7 @@ pub struct ParameterList<'a> {
 impl<'a> ParameterList<'a> {
     /// Create a new empty parameter list
     pub fn new() -> Self {
-        Self {
-            parameters: BoundedVec::new(NoStdProvider),
-        }
+        Self { parameters: BoundedVec::new(NoStdProvider) }
     }
 
     /// Add a parameter to the list
@@ -135,26 +133,26 @@ impl<'a> ParameterList<'a> {
         F: FnMut(&str) -> Result<(), core::fmt::Error>,
     {
         writer("(")?;
-        
+
         for (i, param) in self.parameters.iter().enumerate() {
             if i > 0 {
                 writer(", ")?;
             }
-            
+
             // Parameter name
             if let Some(ref name) = param.name {
                 writer(name.as_str())?;
                 writer(": ")?;
             }
-            
+
             // Parameter type
             writer(param.param_type.type_name())?;
-            
+
             if param.is_variadic {
                 writer("...")?;
             }
         }
-        
+
         writer(")")?;
         Ok(())
     }
@@ -191,9 +189,7 @@ pub struct InlinedFunctions<'a> {
 impl<'a> InlinedFunctions<'a> {
     /// Create new inlined functions collection
     pub fn new() -> Self {
-        Self {
-            entries: BoundedVec::new(NoStdProvider),
-        }
+        Self { entries: BoundedVec::new(NoStdProvider) }
     }
 
     /// Add an inlined function
@@ -203,8 +199,7 @@ impl<'a> InlinedFunctions<'a> {
 
     /// Find all inlined functions containing the given PC
     pub fn find_at_pc(&self, pc: u32) -> impl Iterator<Item = &InlinedFunction<'a>> {
-        self.entries.iter()
-            .filter(move |f| pc >= f.low_pc && pc < f.high_pc)
+        self.entries.iter().filter(move |f| pc >= f.low_pc && pc < f.high_pc)
     }
 
     /// Get all inlined functions
@@ -241,7 +236,7 @@ mod tests {
     #[test]
     fn test_parameter_list_display() {
         let mut params = ParameterList::new();
-        
+
         // Add some test parameters
         let param1 = Parameter {
             name: None,
@@ -251,7 +246,7 @@ mod tests {
             position: 0,
             is_variadic: false,
         };
-        
+
         let param2 = Parameter {
             name: None,
             param_type: BasicType::Pointer,
@@ -260,23 +255,25 @@ mod tests {
             position: 1,
             is_variadic: false,
         };
-        
+
         params.add_parameter(param1).unwrap();
         params.add_parameter(param2).unwrap();
-        
+
         let mut output = String::new();
-        params.display(|s| {
-            output.push_str(s);
-            Ok(())
-        }).unwrap();
-        
+        params
+            .display(|s| {
+                output.push_str(s);
+                Ok(())
+            })
+            .unwrap();
+
         assert_eq!(output, "(i32, ptr)");
     }
 
     #[test]
     fn test_inlined_functions() {
         let mut inlined = InlinedFunctions::new();
-        
+
         let func = InlinedFunction {
             name: None,
             abstract_origin: 0x100,
@@ -287,13 +284,13 @@ mod tests {
             call_column: 8,
             depth: 0,
         };
-        
+
         inlined.add(func).unwrap();
-        
+
         // Test PC lookup
         assert!(inlined.has_inlined_at(0x1050));
         assert!(!inlined.has_inlined_at(0x2000));
-        
+
         let found: Vec<_> = inlined.find_at_pc(0x1050).collect();
         assert_eq!(found.len(), 1);
         assert_eq!(found[0].call_line, 42);

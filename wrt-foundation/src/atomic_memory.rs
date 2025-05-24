@@ -278,9 +278,8 @@ mod tests {
         // Perform an atomic write
         atomic_ops.atomic_write_with_checksum(0, &test_data).unwrap();
 
-        // Read back the data
-        let slice = atomic_ops.borrow_slice(0, test_data.len()).unwrap();
-        let read_data = slice.data().unwrap();
+        // Read back the data using the read_data method
+        let read_data = atomic_ops.read_data(0, test_data.len()).unwrap();
 
         // Verify the data
         assert_eq!(read_data, &test_data);
@@ -306,7 +305,7 @@ mod tests {
         assert!(handler.provider().verify_integrity().is_ok());
 
         // Manually calculate expected checksum
-        let expected_checksum = Checksum::compute(&test_data);
+        let _expected_checksum = Checksum::compute(&test_data);
 
         // Access the internal slice to check its checksum
         let slice = handler.borrow_slice(0, test_data.len()).unwrap();
@@ -334,8 +333,7 @@ mod tests {
         atomic_ops.atomic_copy_within(2, 20, 5).unwrap();
 
         // Read back the copied data
-        let slice = atomic_ops.borrow_slice(20, 5).unwrap();
-        let read_data = slice.data().unwrap();
+        let read_data = atomic_ops.read_data(20, 5).unwrap();
 
         // Verify the data was copied correctly
         assert_eq!(read_data, &[3, 4, 5, 6, 7]);

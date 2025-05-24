@@ -1,0 +1,69 @@
+@startuml high_level_decomposition
+!includeurl https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+title Pulseengine (WRT Edition) - High-Level Component Decomposition
+
+Person(user, "User", "Developer using WRT")
+Person(embedded_dev, "Embedded Developer", "Safety-critical system developer")
+
+System_Boundary(wrt_system, "Pulseengine WebAssembly Runtime") {
+    Container_Boundary(cli_layer, "CLI & Tools Layer") {
+        Component(wrtd, "wrtd", "Rust Binary", "WebAssembly runtime daemon")
+        Component(wrt_cli, "wrt", "Rust Library", "Public API facade")
+    }
+    
+    Container_Boundary(component_layer, "Component Model Layer") {
+        Component(wrt_component, "wrt-component", "Rust Library", "Component Model implementation")
+        Component(wrt_host, "wrt-host", "Rust Library", "Host bindings & callbacks")
+    }
+    
+    Container_Boundary(runtime_layer, "Execution Engine Layer") {
+        Component(wrt_runtime, "wrt-runtime", "Rust Library", "Core runtime engine")
+        Component(wrt_instructions, "wrt-instructions", "Rust Library", "Instruction execution")
+        Component(wrt_decoder, "wrt-decoder", "Rust Library", "WASM binary decoder")
+    }
+    
+    Container_Boundary(foundation_layer, "Foundation Layer") {
+        Component(wrt_foundation, "wrt-foundation", "Rust Library", "Core types & safe memory")
+        Component(wrt_error, "wrt-error", "Rust Library", "Error handling")
+        Component(wrt_format, "wrt-format", "Rust Library", "WASM format definitions")
+        Component(wrt_sync, "wrt-sync", "Rust Library", "Synchronization primitives")
+    }
+    
+    Container_Boundary(platform_layer, "Platform Abstraction Layer") {
+        Component(wrt_platform, "wrt-platform", "Rust Library", "OS abstraction")
+        Component(wrt_logging, "wrt-logging", "Rust Library", "Logging infrastructure")
+        Component(wrt_intercept, "wrt-intercept", "Rust Library", "Execution interception")
+    }
+}
+
+System_Ext(wasm_module, "WebAssembly Module", "User's WASM binary")
+System_Ext(os_services, "Operating System", "Linux/macOS/QNX/Zephyr/Bare-metal")
+
+' Relationships
+user --> wrtd : "Executes WASM via"
+embedded_dev --> wrt_cli : "Integrates via"
+wrtd --> wrt_cli : "Uses"
+wrt_cli --> wrt_component : "Orchestrates"
+wrt_cli --> wrt_runtime : "Manages"
+
+wrt_component --> wrt_host : "Binds host functions"
+wrt_component --> wrt_runtime : "Executes components"
+wrt_runtime --> wrt_instructions : "Executes"
+wrt_runtime --> wrt_decoder : "Loads modules"
+
+wrt_runtime --> wrt_foundation : "Uses safe memory"
+wrt_instructions --> wrt_foundation : "Memory operations"
+wrt_decoder --> wrt_format : "Parses format"
+
+wrt_foundation --> wrt_error : "Error handling"
+wrt_foundation --> wrt_sync : "Thread safety"
+
+wrt_runtime --> wrt_platform : "Platform services"
+wrt_runtime --> wrt_logging : "Diagnostics"
+wrt_host --> wrt_intercept : "Intercepts calls"
+
+wrtd --> wasm_module : "Loads & executes"
+wrt_platform --> os_services : "Abstracts"
+
+@enduml

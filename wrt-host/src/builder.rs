@@ -182,16 +182,6 @@ impl HostBuilder {
         if self.strict_validation {
             for &builtin_type in &self.required_builtins {
                 if !self.is_builtin_implemented(builtin_type) {
-                    #[cfg(feature = "std")]
-                    return Err(Error::runtime_error(format!(
-                        "Required built-in {} is not implemented",
-                        builtin_type.name()
-                    )));
-
-                    #[cfg(all(feature = "alloc", not(feature = "std")))]
-                    return Err(Error::runtime_error("Required built-in is not implemented"));
-
-                    #[cfg(not(any(feature = "std", feature = "alloc")))]
                     return Err(Error::runtime_error("Required built-in is not implemented"));
                 }
             }

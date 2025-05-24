@@ -30,12 +30,14 @@ use crate::{
 extern crate alloc; // Use alloc crate if "alloc" feature is on and "std" is off
 
 // Imports from prelude (which handles alloc/std gating internally)
-#[cfg(feature = "alloc")]
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
 use alloc::borrow::ToOwned;
 use core::{
     fmt,
     hash::{Hash, Hasher as CoreHasher},
 };
+#[cfg(feature = "std")]
+use std::borrow::ToOwned;
 
 // Use constants from bounded.rs
 use crate::bounded::{

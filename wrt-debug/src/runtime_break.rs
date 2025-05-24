@@ -1,18 +1,18 @@
-/// Runtime breakpoint management implementation
-/// Provides breakpoint setting, hit detection, and condition evaluation
-
 #![cfg(feature = "runtime-breakpoints")]
 
-use crate::{
-    runtime_api::{
-        Breakpoint, BreakpointId, BreakpointCondition, RuntimeState, 
-        DebugAction, RuntimeDebugger, DebugError
-    },
-    LineInfo, FileTable,
-};
 use wrt_foundation::{
     bounded::{BoundedVec, MAX_DWARF_FILE_TABLE},
     NoStdProvider,
+};
+
+/// Runtime breakpoint management implementation
+/// Provides breakpoint setting, hit detection, and condition evaluation
+use crate::{
+    runtime_api::{
+        Breakpoint, BreakpointCondition, BreakpointId, DebugAction, DebugError, RuntimeDebugger,
+        RuntimeState,
+    },
+    FileTable, LineInfo,
 };
 
 /// Breakpoint manager for runtime debugging
@@ -28,11 +28,7 @@ pub struct BreakpointManager {
 impl BreakpointManager {
     /// Create a new breakpoint manager
     pub fn new() -> Self {
-        Self {
-            breakpoints: BoundedVec::new(NoStdProvider),
-            next_id: 1,
-            enabled: true,
-        }
+        Self { breakpoints: BoundedVec::new(NoStdProvider), next_id: 1, enabled: true }
     }
 
     /// Enable or disable all breakpoints
@@ -60,8 +56,7 @@ impl BreakpointManager {
             enabled: true,
         };
 
-        self.breakpoints.push(bp)
-            .map_err(|_| DebugError::InvalidAddress)?;
+        self.breakpoints.push(bp).map_err(|_| DebugError::InvalidAddress)?;
 
         Ok(id)
     }
@@ -91,15 +86,16 @@ impl BreakpointManager {
             enabled: true,
         };
 
-        self.breakpoints.push(bp)
-            .map_err(|_| DebugError::InvalidAddress)?;
+        self.breakpoints.push(bp).map_err(|_| DebugError::InvalidAddress)?;
 
         Ok(id)
     }
 
     /// Remove a breakpoint
     pub fn remove_breakpoint(&mut self, id: BreakpointId) -> Result<(), DebugError> {
-        let pos = self.breakpoints.iter()
+        let pos = self
+            .breakpoints
+            .iter()
             .position(|bp| bp.id == id)
             .ok_or(DebugError::BreakpointNotFound)?;
 
@@ -108,8 +104,14 @@ impl BreakpointManager {
     }
 
     /// Enable/disable a specific breakpoint
-    pub fn set_breakpoint_enabled(&mut self, id: BreakpointId, enabled: bool) -> Result<(), DebugError> {
-        let bp = self.breakpoints.iter_mut()
+    pub fn set_breakpoint_enabled(
+        &mut self,
+        id: BreakpointId,
+        enabled: bool,
+    ) -> Result<(), DebugError> {
+        let bp = self
+            .breakpoints
+            .iter_mut()
             .find(|bp| bp.id == id)
             .ok_or(DebugError::BreakpointNotFound)?;
 
@@ -118,8 +120,14 @@ impl BreakpointManager {
     }
 
     /// Set a condition on a breakpoint
-    pub fn set_condition(&mut self, id: BreakpointId, condition: BreakpointCondition) -> Result<(), DebugError> {
-        let bp = self.breakpoints.iter_mut()
+    pub fn set_condition(
+        &mut self,
+        id: BreakpointId,
+        condition: BreakpointCondition,
+    ) -> Result<(), DebugError> {
+        let bp = self
+            .breakpoints
+            .iter_mut()
             .find(|bp| bp.id == id)
             .ok_or(DebugError::BreakpointNotFound)?;
 
@@ -129,18 +137,14 @@ impl BreakpointManager {
 
     /// Find breakpoint by address
     pub fn find_by_address(&self, addr: u32) -> Option<&Breakpoint> {
-        self.breakpoints.iter()
-            .find(|bp| bp.address == addr && bp.enabled)
+        self.breakpoints.iter().find(|bp| bp.address == addr && bp.enabled)
     }
 
     /// Find breakpoint by file:line
     pub fn find_by_location(&self, file_index: u16, line: u32) -> Option<&Breakpoint> {
-        self.breakpoints.iter()
-            .find(|bp| {
-                bp.enabled &&
-                bp.file_index == Some(file_index) &&
-                bp.line == Some(line)
-            })
+        self.breakpoints
+            .iter()
+            .find(|bp| bp.enabled && bp.file_index == Some(file_index) && bp.line == Some(line))
     }
 
     /// Check if we should break at this PC
@@ -150,8 +154,7 @@ impl BreakpointManager {
         }
 
         // Find matching breakpoint
-        let bp_idx = self.breakpoints.iter()
-            .position(|bp| bp.enabled && bp.address == pc)?;
+        let bp_idx = self.breakpoints.iter().position(|bp| bp.enabled && bp.address == pc)?;
 
         let bp = &mut self.breakpoints[bp_idx];
         bp.hit_count += 1;
@@ -236,7 +239,7 @@ impl DefaultDebugger {
     /// Set next action
     pub fn set_action(&mut self, action: DebugAction) {
         self.action = action;
-        
+
         match action {
             DebugAction::StepInstruction | DebugAction::StepLine => {
                 self.single_step = true;
@@ -249,7 +252,11 @@ impl DefaultDebugger {
     }
 
     /// Format breakpoint location
-    pub fn format_breakpoint<F>(&self, bp: &Breakpoint, mut writer: F) -> Result<(), core::fmt::Error>
+    pub fn format_breakpoint<F>(
+        &self,
+        bp: &Breakpoint,
+        mut writer: F,
+    ) -> Result<(), core::fmt::Error>
     where
         F: FnMut(&str) -> Result<(), core::fmt::Error>,
     {
@@ -341,14 +348,14 @@ fn format_u32(mut n: u32, buf: &mut [u8]) -> &str {
     if n == 0 {
         return "0";
     }
-    
+
     let mut i = buf.len();
     while n > 0 && i > 0 {
         i -= 1;
         buf[i] = b'0' + (n % 10) as u8;
         n /= 10;
     }
-    
+
     core::str::from_utf8(&buf[i..]).unwrap_or("?")
 }
 
@@ -368,22 +375,22 @@ mod tests {
     #[test]
     fn test_breakpoint_management() {
         let mut manager = BreakpointManager::new();
-        
+
         // Add breakpoint
         let id1 = manager.add_breakpoint(0x1000).unwrap();
         assert!(manager.find_by_address(0x1000).is_some());
-        
+
         // No duplicate
         assert!(manager.add_breakpoint(0x1000).is_err());
-        
+
         // Add line breakpoint
         let id2 = manager.add_line_breakpoint(1, 42, 0x2000).unwrap();
         assert!(manager.find_by_location(1, 42).is_some());
-        
+
         // Remove breakpoint
         manager.remove_breakpoint(id1).unwrap();
         assert!(manager.find_by_address(0x1000).is_none());
-        
+
         // List breakpoints
         assert_eq!(manager.list_breakpoints().len(), 1);
     }
@@ -391,29 +398,41 @@ mod tests {
     #[test]
     fn test_breakpoint_conditions() {
         let mut manager = BreakpointManager::new();
-        
+
         let id = manager.add_breakpoint(0x1000).unwrap();
-        
+
         // Set hit count condition
         manager.set_condition(id, BreakpointCondition::HitCount(3)).unwrap();
-        
+
         // Mock state
         struct MockState;
         impl RuntimeState for MockState {
-            fn pc(&self) -> u32 { 0x1000 }
-            fn sp(&self) -> u32 { 0 }
-            fn fp(&self) -> Option<u32> { None }
-            fn read_local(&self, _: u32) -> Option<u64> { None }
-            fn read_stack(&self, _: u32) -> Option<u64> { None }
-            fn current_function(&self) -> Option<u32> { None }
+            fn pc(&self) -> u32 {
+                0x1000
+            }
+            fn sp(&self) -> u32 {
+                0
+            }
+            fn fp(&self) -> Option<u32> {
+                None
+            }
+            fn read_local(&self, _: u32) -> Option<u64> {
+                None
+            }
+            fn read_stack(&self, _: u32) -> Option<u64> {
+                None
+            }
+            fn current_function(&self) -> Option<u32> {
+                None
+            }
         }
-        
+
         let state = MockState;
-        
+
         // Should not break on first two hits
         assert!(manager.should_break(0x1000, &state).is_none());
         assert!(manager.should_break(0x1000, &state).is_none());
-        
+
         // Should break on third hit
         assert!(manager.should_break(0x1000, &state).is_some());
     }

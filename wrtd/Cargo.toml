@@ -4,7 +4,7 @@ version.workspace = true
 edition.workspace = true
 license = { workspace = true }
 description = "WebAssembly Runtime Daemon (std-only host implementation)"
-repository = "https://github.com/avrabe/wrt"
+repository = "https://github.com/pulseengine/wrt"
 readme = "README.md"
 keywords = ["wasm", "webassembly", "daemon", "runtime", "host"]
 categories = ["wasm", "command-line-utilities", "network-programming"]

@@ -13,18 +13,6 @@ This document is the Safety Manual (SM) of the qualification material developed 
    :local:
    :depth: 2
 
-.. toctree::
-   :maxdepth: 2
-   :caption: Safety Documentation:
-
-   constraints
-   verification_strategies
-   safety_guidelines
-   performance_tuning
-   mechanisms
-   implementations
-   test_cases
-
 Safety Documentation Overview
 -----------------------------
 

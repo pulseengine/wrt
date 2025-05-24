@@ -126,5 +126,7 @@ pub use rwlock::parking_impl::{
 pub use rwlock::{WrtRwLock, WrtRwLockReadGuard, WrtRwLockWriteGuard};
 
 // Convenience aliases for easier importing
+/// Type alias for WrtMutex to provide a familiar interface
 pub type Mutex<T> = WrtMutex<T>;
+/// Type alias for WrtRwLock to provide a familiar interface
 pub type RwLock<T> = WrtRwLock<T>;

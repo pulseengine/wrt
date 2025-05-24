@@ -108,17 +108,15 @@ pub struct AbbreviationTable {
 impl AbbreviationTable {
     /// Create a new abbreviation table
     pub fn new() -> Self {
-        Self {
-            entries: BoundedVec::new(NoStdProvider),
-        }
+        Self { entries: BoundedVec::new(NoStdProvider) }
     }
-    
+
     /// Parse abbreviations from data
     pub fn parse(&mut self, data: &[u8]) -> Result<()> {
         let mut cursor = DwarfCursor::new(data);
-        
+
         self.entries.clear();
-        
+
         while !cursor.is_at_end() {
             // Read abbreviation code
             let code = cursor.read_uleb128_u32()?;
@@ -126,30 +124,27 @@ impl AbbreviationTable {
                 // Null entry marks end of abbreviations
                 break;
             }
-            
+
             // Read tag
             let tag = cursor.read_uleb128()? as u16;
-            
+
             // Read has_children flag
             let has_children = cursor.read_u8()? != 0;
-            
+
             // Read attributes
             let mut attributes = BoundedVec::new(NoStdProvider);
-            
+
             loop {
                 let name = cursor.read_uleb128()? as u16;
                 let form = cursor.read_uleb128()? as u16;
-                
+
                 if name == 0 && form == 0 {
                     // Null attribute marks end of attributes
                     break;
                 }
-                
-                let attr_spec = AttributeSpec {
-                    name,
-                    form: AttributeForm::from_u16(form),
-                };
-                
+
+                let attr_spec = AttributeSpec { name, form: AttributeForm::from_u16(form) };
+
                 attributes.push(attr_spec).map_err(|_| {
                     Error::new(
                         ErrorCategory::Capacity,
@@ -158,14 +153,9 @@ impl AbbreviationTable {
                     )
                 })?;
             }
-            
-            let abbrev = Abbreviation {
-                code,
-                tag,
-                has_children,
-                attributes,
-            };
-            
+
+            let abbrev = Abbreviation { code, tag, has_children, attributes };
+
             self.entries.push(abbrev).map_err(|_| {
                 Error::new(
                     ErrorCategory::Capacity,
@@ -174,20 +164,20 @@ impl AbbreviationTable {
                 )
             })?;
         }
-        
+
         Ok(())
     }
-    
+
     /// Find an abbreviation by code
     pub fn find(&self, code: u32) -> Option<&Abbreviation> {
         self.entries.iter().find(|abbrev| abbrev.code == code)
     }
-    
+
     /// Get the number of cached abbreviations
     pub fn len(&self) -> usize {
         self.entries.len()
     }
-    
+
     /// Check if the table is empty
     pub fn is_empty(&self) -> bool {
         self.entries.is_empty()

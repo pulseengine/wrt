@@ -12,8 +12,6 @@
 use core::{
     fmt::{self, Display, Write},
     hash::{Hash, Hasher as CoreHasher},
-    marker::PhantomData,
-    ops::RangeInclusive,
     str::FromStr,
 };
 

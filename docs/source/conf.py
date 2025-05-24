@@ -341,7 +341,7 @@ needs_string_links = {
     # Link file paths in :file: option to GitHub
     "source_file_link": {
         "regex": r"^(?P<value>(?:\.\.\/)*[a-zA-Z0-9_\-\/]+\.rs)$",
-        "link_url": "https://github.com/avrabe/wrt2/blob/main/{{value.replace('../../', '')}}",
+        "link_url": "https://github.com/pulseengine/wrt2/blob/main/{{value.replace('../../', '')}}",
         "link_name": "{{value}}",
         "options": ["file"],
     }
@@ -350,6 +350,9 @@ needs_string_links = {
 # Rust documentation configuration
 rust_crates = {
     "wrt-error": "/wrt/wrt-error",
+    "wrt-foundation": "/wrt/wrt-foundation",
+    "wrt-sync": "/wrt/wrt-sync",
+    # The following crates might have build issues or dependencies:
     # "wrt": "/wrt/wrt",
     # "wrt-component": "/wrt/wrt-component",
     # "wrt-decoder": "/wrt/wrt-decoder",
@@ -359,11 +362,8 @@ rust_crates = {
     # "wrt-intercept": "/wrt/wrt-intercept",
     # "wrt-logging": "/wrt/wrt-logging",
     # "wrt-runtime": "/wrt/wrt-runtime",
-    # "wrt-sync": "/wrt/wrt-sync",
-    # "wrt-foundation": "/wrt/wrt-foundation",
-    # Add other crates here if needed, e.g.:
-    # "wrt-test-registry": "/wrt/wrt-test-registry",
     # "wrtd": "/wrt/wrtd",
+    # "wrt-platform": "/wrt/wrt-platform",
 }
 
 # Directory where sphinx-rustdocgen will place generated .md files.

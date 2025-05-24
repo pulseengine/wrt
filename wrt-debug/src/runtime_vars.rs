@@ -1,16 +1,16 @@
-/// Runtime variable inspection implementation
-/// Provides the ability to read variable values from runtime state
-
 #![cfg(feature = "runtime-variables")]
 
-use crate::{
-    parameter::{BasicType, Parameter},
-    runtime_api::{RuntimeState, DebugMemory, VariableValue, DwarfLocation, LiveVariable},
-    strings::DebugString,
-};
 use wrt_foundation::{
     bounded::{BoundedVec, MAX_DWARF_FILE_TABLE},
     NoStdProvider,
+};
+
+/// Runtime variable inspection implementation
+/// Provides the ability to read variable values from runtime state
+use crate::{
+    parameter::{BasicType, Parameter},
+    runtime_api::{DebugMemory, DwarfLocation, LiveVariable, RuntimeState, VariableValue},
+    strings::DebugString,
 };
 
 /// Variable scope information
@@ -50,9 +50,7 @@ pub struct VariableInspector<'a> {
 impl<'a> VariableInspector<'a> {
     /// Create a new variable inspector
     pub fn new() -> Self {
-        Self {
-            variables: BoundedVec::new(NoStdProvider),
-        }
+        Self { variables: BoundedVec::new(NoStdProvider) }
     }
 
     /// Add a variable definition from DWARF
@@ -62,8 +60,7 @@ impl<'a> VariableInspector<'a> {
 
     /// Find all variables in scope at the given PC
     pub fn find_variables_at_pc(&self, pc: u32) -> impl Iterator<Item = &VariableDefinition<'a>> {
-        self.variables.iter()
-            .filter(move |var| pc >= var.scope.start_pc && pc < var.scope.end_pc)
+        self.variables.iter().filter(move |var| pc >= var.scope.start_pc && pc < var.scope.end_pc)
     }
 
     /// Read a variable's value from runtime state
@@ -140,7 +137,7 @@ impl<'a> VariableInspector<'a> {
 
         for var_def in self.find_variables_at_pc(pc) {
             let value = self.read_variable(var_def, state, memory);
-            
+
             let live_var = LiveVariable {
                 name: var_def.name.clone(),
                 var_type: var_def.var_type.clone(),
@@ -149,7 +146,7 @@ impl<'a> VariableInspector<'a> {
                 scope_start: var_def.scope.start_pc,
                 scope_end: var_def.scope.end_pc,
             };
-            
+
             live_vars.push(live_var).ok(); // Ignore capacity errors
         }
 
@@ -243,7 +240,7 @@ impl<'a> ValueDisplay<'a> {
                 writer(">")?;
             }
         }
-        
+
         Ok(())
     }
 }
@@ -252,26 +249,26 @@ impl<'a> ValueDisplay<'a> {
 fn format_i32(mut n: i32, buf: &mut [u8]) -> &str {
     let mut i = buf.len();
     let negative = n < 0;
-    
+
     if negative {
         n = -n;
     }
-    
+
     if n == 0 {
         return "0";
     }
-    
+
     while n > 0 && i > 1 {
         i -= 1;
         buf[i] = b'0' + (n % 10) as u8;
         n /= 10;
     }
-    
+
     if negative && i > 0 {
         i -= 1;
         buf[i] = b'-';
     }
-    
+
     core::str::from_utf8(&buf[i..]).unwrap_or("?")
 }
 
@@ -279,24 +276,24 @@ fn format_u32(mut n: u32, buf: &mut [u8]) -> &str {
     if n == 0 {
         return "0";
     }
-    
+
     let mut i = buf.len();
     while n > 0 && i > 0 {
         i -= 1;
         buf[i] = b'0' + (n % 10) as u8;
         n /= 10;
     }
-    
+
     core::str::from_utf8(&buf[i..]).unwrap_or("?")
 }
 
 fn format_hex_u8(n: u8, buf: &mut [u8; 2]) -> &str {
     let high = (n >> 4) & 0xF;
     let low = n & 0xF;
-    
+
     buf[0] = if high < 10 { b'0' + high } else { b'a' + high - 10 };
     buf[1] = if low < 10 { b'0' + low } else { b'a' + low - 10 };
-    
+
     core::str::from_utf8(buf).unwrap_or("??")
 }
 
@@ -331,52 +328,52 @@ mod tests {
             var_type: BasicType::SignedInt(4),
             address: None,
         };
-        
+
         let mut output = String::new();
-        ValueDisplay { value: &value }.display(|s| {
-            output.push_str(s);
-            Ok(())
-        }).unwrap();
-        
+        ValueDisplay { value: &value }
+            .display(|s| {
+                output.push_str(s);
+                Ok(())
+            })
+            .unwrap();
+
         assert_eq!(output, "42");
-        
+
         // Test boolean formatting
         value.var_type = BasicType::Bool;
         value.size = 1;
         value.bytes[0] = 1;
-        
+
         output.clear();
-        ValueDisplay { value: &value }.display(|s| {
-            output.push_str(s);
-            Ok(())
-        }).unwrap();
-        
+        ValueDisplay { value: &value }
+            .display(|s| {
+                output.push_str(s);
+                Ok(())
+            })
+            .unwrap();
+
         assert_eq!(output, "true");
     }
 
     #[test]
     fn test_variable_scope() {
         let mut inspector = VariableInspector::new();
-        
+
         let var = VariableDefinition {
             name: None,
             var_type: BasicType::SignedInt(4),
             location: DwarfLocation::Register(0),
-            scope: VariableScope {
-                start_pc: 0x1000,
-                end_pc: 0x2000,
-                depth: 0,
-            },
+            scope: VariableScope { start_pc: 0x1000, end_pc: 0x2000, depth: 0 },
             file_index: 0,
             line: 0,
         };
-        
+
         inspector.add_variable(var).unwrap();
-        
+
         // Variable should be in scope at 0x1500
         let vars: Vec<_> = inspector.find_variables_at_pc(0x1500).collect();
         assert_eq!(vars.len(), 1);
-        
+
         // Variable should not be in scope at 0x2500
         let vars: Vec<_> = inspector.find_variables_at_pc(0x2500).collect();
         assert_eq!(vars.len(), 0);

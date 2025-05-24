@@ -48,7 +48,7 @@ Dockerfile.claude / Dockerfile.cursor  # reproducible agent images
 ## One‑time setup
 ```bash
 # clone the repo
-$ git clone https://github.com/avrabe/wrt && cd wrt
+$ git clone https://github.com/pulseengine/wrt && cd wrt
 
 # build the Claude image (≈2 min on x86‑64)
 $ docker buildx build --load -f docker/Dockerfile.claude -t wrt-agent-claude .
@@ -62,7 +62,7 @@ Trigger the **runtime** agent for GitHub Issue #42:
 ```bash
 export CLAUDE_KEY="sk-ant-…"        # or CURSOR_API_KEY
 export GH_TOKEN="ghp_…"             # optional
-export GITHUB_REPOSITORY="avrabe/wrt"
+export GITHUB_REPOSITORY="pulseengine/wrt"
 export TICKET=42
 
 # If using Colima, ensure DOCKER_HOST is set:

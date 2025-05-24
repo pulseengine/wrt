@@ -1,30 +1,32 @@
+#![cfg(feature = "runtime-debug")]
+
+use wrt_foundation::{
+    bounded::{BoundedVec, MAX_DWARF_FILE_TABLE},
+    NoStdProvider,
+};
+
 /// Runtime debugging API definitions
 /// This module defines the interface between the debug information
 /// and the runtime execution engine for advanced debugging features
-
-#![cfg(feature = "runtime-debug")]
-
 use crate::{BasicType, DebugString};
-use wrt_foundation::bounded::{BoundedVec, MAX_DWARF_FILE_TABLE};
-use wrt_foundation::NoStdProvider;
 
 /// Runtime state accessible during debugging
 pub trait RuntimeState {
     /// Get current program counter
     fn pc(&self) -> u32;
-    
+
     /// Get stack pointer
     fn sp(&self) -> u32;
-    
+
     /// Get frame pointer (if available)
     fn fp(&self) -> Option<u32>;
-    
+
     /// Read local variable by index
     fn read_local(&self, index: u32) -> Option<u64>;
-    
+
     /// Read from operand stack
     fn read_stack(&self, offset: u32) -> Option<u64>;
-    
+
     /// Get current function index
     fn current_function(&self) -> Option<u32>;
 }
@@ -33,24 +35,22 @@ pub trait RuntimeState {
 pub trait DebugMemory {
     /// Read bytes from memory
     fn read_bytes(&self, addr: u32, len: usize) -> Option<&[u8]>;
-    
+
     /// Read a u32 from memory
     fn read_u32(&self, addr: u32) -> Option<u32> {
-        self.read_bytes(addr, 4).map(|bytes| {
-            u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]])
-        })
+        self.read_bytes(addr, 4)
+            .map(|bytes| u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]))
     }
-    
+
     /// Read a u64 from memory
     fn read_u64(&self, addr: u32) -> Option<u64> {
         self.read_bytes(addr, 8).map(|bytes| {
             u64::from_le_bytes([
-                bytes[0], bytes[1], bytes[2], bytes[3],
-                bytes[4], bytes[5], bytes[6], bytes[7]
+                bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],
             ])
         })
     }
-    
+
     /// Check if address is valid
     fn is_valid_address(&self, addr: u32) -> bool;
 }
@@ -72,30 +72,26 @@ impl VariableValue {
     /// Interpret as i32
     pub fn as_i32(&self) -> Option<i32> {
         if self.size >= 4 {
-            Some(i32::from_le_bytes([
-                self.bytes[0], self.bytes[1], self.bytes[2], self.bytes[3]
-            ]))
+            Some(i32::from_le_bytes([self.bytes[0], self.bytes[1], self.bytes[2], self.bytes[3]]))
         } else {
             None
         }
     }
-    
+
     /// Interpret as u32
     pub fn as_u32(&self) -> Option<u32> {
         if self.size >= 4 {
-            Some(u32::from_le_bytes([
-                self.bytes[0], self.bytes[1], self.bytes[2], self.bytes[3]
-            ]))
+            Some(u32::from_le_bytes([self.bytes[0], self.bytes[1], self.bytes[2], self.bytes[3]]))
         } else {
             None
         }
     }
-    
+
     /// Interpret as f32
     pub fn as_f32(&self) -> Option<f32> {
         self.as_u32().map(f32::from_bits)
     }
-    
+
     /// Interpret as f64
     pub fn as_f64(&self) -> Option<f64> {
         if self.size >= 8 {
@@ -190,16 +186,16 @@ pub enum DebugAction {
 pub trait RuntimeDebugger {
     /// Called when breakpoint is hit
     fn on_breakpoint(&mut self, bp: &Breakpoint, state: &dyn RuntimeState) -> DebugAction;
-    
+
     /// Called on each instruction (if enabled)
     fn on_instruction(&mut self, pc: u32, state: &dyn RuntimeState) -> DebugAction;
-    
+
     /// Called on function entry
     fn on_function_entry(&mut self, func_idx: u32, state: &dyn RuntimeState);
-    
+
     /// Called on function exit
     fn on_function_exit(&mut self, func_idx: u32, state: &dyn RuntimeState);
-    
+
     /// Called on trap/panic
     fn on_trap(&mut self, trap_code: u32, state: &dyn RuntimeState);
 }
@@ -208,25 +204,25 @@ pub trait RuntimeDebugger {
 pub trait DebuggableRuntime {
     /// Attach a debugger
     fn attach_debugger(&mut self, debugger: Box<dyn RuntimeDebugger>);
-    
+
     /// Detach current debugger
     fn detach_debugger(&mut self);
-    
+
     /// Check if debugger is attached
     fn has_debugger(&self) -> bool;
-    
+
     /// Set execution mode
     fn set_debug_mode(&mut self, enabled: bool);
-    
+
     /// Add breakpoint
     fn add_breakpoint(&mut self, bp: Breakpoint) -> Result<(), DebugError>;
-    
+
     /// Remove breakpoint
     fn remove_breakpoint(&mut self, id: BreakpointId) -> Result<(), DebugError>;
-    
+
     /// Get runtime state
     fn get_state(&self) -> Box<dyn RuntimeState>;
-    
+
     /// Get memory accessor
     fn get_memory(&self) -> Box<dyn DebugMemory>;
 }
@@ -250,7 +246,7 @@ pub enum DebugError {
 #[cfg(feature = "example-integration")]
 mod integration_example {
     use super::*;
-    
+
     /// Example: How WRT interpreter would implement RuntimeState
     struct InterpreterState<'a> {
         pc: u32,
@@ -259,20 +255,26 @@ mod integration_example {
         stack: &'a [u64],
         func_idx: u32,
     }
-    
+
     impl<'a> RuntimeState for InterpreterState<'a> {
-        fn pc(&self) -> u32 { self.pc }
-        fn sp(&self) -> u32 { self.sp }
-        fn fp(&self) -> Option<u32> { None } // WASM has no frame pointer
-        
+        fn pc(&self) -> u32 {
+            self.pc
+        }
+        fn sp(&self) -> u32 {
+            self.sp
+        }
+        fn fp(&self) -> Option<u32> {
+            None
+        } // WASM has no frame pointer
+
         fn read_local(&self, index: u32) -> Option<u64> {
             self.locals.get(index as usize).copied()
         }
-        
+
         fn read_stack(&self, offset: u32) -> Option<u64> {
             self.stack.get(offset as usize).copied()
         }
-        
+
         fn current_function(&self) -> Option<u32> {
             Some(self.func_idx)
         }

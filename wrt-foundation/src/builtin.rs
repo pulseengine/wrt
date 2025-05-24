@@ -9,14 +9,12 @@
 
 use core::{fmt, str::FromStr};
 
-use wrt_error::{codes, Error as WrtError, ErrorCategory};
-
+// Error types are imported through crate root
 use crate::{
     bounded::BoundedVec,
     prelude::*,
     safe_memory::NoStdProvider,
     traits::{Checksummable, FromBytes, ReadStream, SerializationError, ToBytes, WriteStream},
-    types::ValueType,
     verification::Checksum,
     WrtResult,
 };
@@ -306,7 +304,7 @@ impl BuiltinType {
     #[must_use]
     pub fn all_available(
     ) -> BoundedVec<Self, MAX_BUILTIN_TYPES, NoStdProvider<ALL_AVAILABLE_PROVIDER_CAPACITY>> {
-        let provider = NoStdProvider::<ALL_AVAILABLE_PROVIDER_CAPACITY>::new();
+        let provider = NoStdProvider::<ALL_AVAILABLE_PROVIDER_CAPACITY>::default();
         let mut result: BoundedVec<Self, MAX_BUILTIN_TYPES, _> = BoundedVec::new(provider)
             .expect("Static BoundedVec init failed for BuiltinType::all_available");
 

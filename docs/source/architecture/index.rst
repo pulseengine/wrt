@@ -87,6 +87,7 @@ Key Architectural Decisions
 
    01_architectural_design/overview
    01_architectural_design/components
+   01_architectural_design/interfaces
    01_architectural_design/layers
    01_architectural_design/patterns
 
