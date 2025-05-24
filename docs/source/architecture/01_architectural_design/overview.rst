@@ -1,0 +1,166 @@
+==========================
+Architectural Overview
+==========================
+
+.. image:: ../../_static/icons/wrt_architecture.svg
+   :width: 64px
+   :align: right
+   :alt: Architecture Icon
+
+**Teaching Point**: This overview shows how Pulseengine (WRT Edition) is decomposed into manageable, testable components that work together to execute WebAssembly safely.
+
+System Context
+--------------
+
+.. arch_component:: WRT System
+   :id: ARCH_COMP_SYSTEM
+   :type: system
+   :tags: core
+
+Pulseengine (WRT Edition) is a WebAssembly runtime designed for safety-critical systems. It provides:
+
+- WebAssembly Core specification execution
+- Component Model support
+- Multi-platform deployment (Linux, macOS, QNX, Zephyr, bare-metal)
+- Configurable memory allocation strategies
+- Formal safety verification
+
+High-Level Architecture
+-----------------------
+
+The system follows a layered architecture with clear separation of concerns:
+
+.. uml:: ../../_static/system_components.puml
+
+**Teaching Point**: Each layer only depends on layers below it, ensuring clean dependencies.
+
+Workspace Organization
+----------------------
+
+The implementation consists of 24 specialized crates:
+
+.. list-table:: Crate Organization
+   :header-rows: 1
+   :widths: 20 50 30
+
+   * - Category
+     - Crates
+     - Purpose
+   * - Foundation
+     - ``wrt-error``, ``wrt-foundation``, ``wrt-format``, ``wrt-sync``
+     - Core types, error handling, memory safety
+   * - Decoding
+     - ``wrt-decoder``
+     - WebAssembly binary parsing
+   * - Execution
+     - ``wrt-runtime``, ``wrt-instructions``
+     - Instruction execution and runtime
+   * - Component Model
+     - ``wrt-component``
+     - Component Model implementation
+   * - Platform
+     - ``wrt-platform``
+     - OS abstraction layer
+   * - Integration
+     - ``wrt-host``, ``wrt-intercept``, ``wrt-logging``
+     - Host integration and monitoring
+   * - Applications
+     - ``wrt``, ``wrtd``
+     - Library facade and CLI daemon
+
+Environment Support Strategy
+----------------------------
+
+.. arch_decision:: Multi-Environment Architecture
+   :id: ARCH_DEC_ENV_001
+   :status: implemented
+   :rationale: Different deployment scenarios require different resource trade-offs
+   :impacts: All components
+
+**Teaching Point**: The architecture supports four distinct environment configurations, each with specific trade-offs:
+
+1. **Full std Environment**
+   
+   .. code-block:: rust
+   
+      // All standard library features available
+      use std::collections::{HashMap, Vec};
+      use std::sync::{Arc, Mutex};
+
+   - **Use Case**: Server deployments, development
+   - **Benefits**: Full functionality, familiar APIs
+   - **Trade-offs**: Larger binary size, not suitable for embedded
+
+2. **no_std with alloc**
+   
+   .. code-block:: rust
+   
+      #![no_std]
+      extern crate alloc;
+      use alloc::vec::Vec;
+      use alloc::collections::BTreeMap as HashMap;
+
+   - **Use Case**: Embedded systems with heap
+   - **Benefits**: Dynamic allocation, smaller binary
+   - **Trade-offs**: No file I/O, threading, or OS integration
+
+3. **no_std without alloc**
+   
+   .. code-block:: rust
+   
+      #![no_std]
+      use wrt_foundation::bounded::{BoundedVec, BoundedString};
+      
+      // Fixed capacity, no heap allocation
+      let mut vec: BoundedVec<u32, 100> = BoundedVec::new();
+
+   - **Use Case**: Safety-critical embedded, bare-metal
+   - **Benefits**: Predictable memory usage, no heap fragmentation
+   - **Trade-offs**: Fixed capacity limits, manual memory management
+
+4. **Bare-metal**
+   
+   - **Use Case**: Minimal embedded systems
+   - **Benefits**: Minimal overhead, direct hardware access
+   - **Trade-offs**: Limited functionality, platform-specific
+
+Key Architectural Principles
+----------------------------
+
+.. arch_constraint:: Safety First
+   :id: ARCH_CON_001
+   :priority: high
+   
+   All components must be memory-safe and avoid undefined behavior.
+
+.. arch_constraint:: Deterministic Execution
+   :id: ARCH_CON_002
+   :priority: high
+   
+   Execution time and resource usage must be predictable.
+
+.. arch_constraint:: Modular Design
+   :id: ARCH_CON_003
+   :priority: medium
+   
+   Components must be independently testable and replaceable.
+
+Component Interaction Model
+---------------------------
+
+**Teaching Point**: Components interact through well-defined interfaces:
+
+.. code-block:: rust
+
+   // Example: How the decoder interacts with the runtime
+   let module = wrt_decoder::decode_module(&wasm_bytes)?;
+   let instance = wrt_runtime::instantiate(module, imports)?;
+   let result = instance.invoke("function_name", &args)?;
+
+Cross-References
+----------------
+
+- **Implementation Examples**: See :doc:`/examples/hello_world` for basic usage
+- **Component Details**: See :doc:`components` for detailed component descriptions
+- **Layer Architecture**: See :doc:`layers` for layer responsibilities
+- **Design Patterns**: See :doc:`patterns` for architectural patterns used
