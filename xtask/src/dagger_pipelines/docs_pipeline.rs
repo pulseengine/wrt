@@ -318,6 +318,35 @@ async fn run_docs_version_pipeline(
                        // up on drop.
     };
 
+    // Generate coverage summary before building docs
+    {
+        let docs_path = Path::new(&docs_src_host_path_str);
+        let coverage_json_path = docs_path
+            .parent()
+            .map(|p| p.join("target/coverage/coverage.json"))
+            .unwrap_or_else(|| PathBuf::from("target/coverage/coverage.json"));
+        let coverage_summary_path = docs_path.join("source/_generated_coverage_summary.rst");
+
+        if coverage_json_path.exists() {
+            info!("Generating coverage summary from {:?}", coverage_json_path);
+            if let Err(e) = crate::generate_coverage_summary::generate_coverage_summary_rst(
+                &coverage_json_path,
+                &coverage_summary_path,
+            ) {
+                warn!("Failed to generate coverage summary: {}", e);
+                // Generate placeholder instead
+                let _ = crate::generate_coverage_summary::generate_placeholder_coverage_summary(
+                    &coverage_summary_path,
+                );
+            }
+        } else {
+            info!("No coverage data found, generating placeholder");
+            let _ = crate::generate_coverage_summary::generate_placeholder_coverage_summary(
+                &coverage_summary_path,
+            );
+        }
+    }
+
     // Dagger directory for WORKTREE/docs or local/docs
     let docs_dagger_dir = client.host().directory_opts(
         &docs_src_host_path_str, // This is now correctly sourced based on 'version'

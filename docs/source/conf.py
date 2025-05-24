@@ -100,6 +100,9 @@ def setup(app):
     # Add our custom CSS
     app.add_css_file('css/custom.css')
     
+    # Add our custom JavaScript for code copy
+    app.add_js_file('js/code-copy.js')
+    
     # Register the dynamic function for extracting requirements
     from sphinx_needs.api.configuration import add_dynamic_function
     add_dynamic_function(app, extract_reqs)
@@ -114,6 +117,7 @@ extensions = [
     'myst_parser',
     'sphinxcontrib.plantuml',
     "sphinxcontrib_rust",
+    'sphinx_design',
 ]
 
 templates_path = ['_templates']
@@ -130,16 +134,16 @@ html_theme_options = {
         "json_url": f"{version_path_prefix}switcher.json",
         "version_match": current_version,
     },
-    # Place the version switcher in the navbar
-    "navbar_start": ["navbar-logo", "version-switcher"],
-    # Remove items from the center of the navbar (moves main nav to sidebar)
+    # Put logo on far left, search and utilities on the right  
+    "navbar_start": ["navbar-logo"],
+    # Keep center empty to move main nav to sidebar
     "navbar_center": [],
-    # Ensure search button is present. Other defaults like theme-switcher, icon-links can be added if desired.
-    "navbar_end": ["search-button", "theme-switcher"], 
+    # Group version switcher with search and theme switcher on the right
+    "navbar_end": ["version-switcher", "search-button", "theme-switcher"], 
     # Test configuration - disable in production
     "check_switcher": True,
     # Control navigation bar behavior
-    "navbar_align": "content", # Default, keep or adjust as needed
+    "navbar_align": "left", # Align content to left
     "use_navbar_nav_drop_shadow": True,
     # Control the sidebar navigation
     "navigation_with_keys": True,
@@ -195,6 +199,12 @@ needs_types = [
     dict(directive="constraint", title="Constraint", prefix="CNST_", color="#4682B4", style="node"),
     dict(directive="panic", title="Panic", prefix="WRTQ_", color="#E74C3C", style="node"),
     dict(directive="src",  title="Source file",  prefix="SRC_", color="#C6C6FF", style="node"),
+    # Architecture-specific types
+    dict(directive="arch_component", title="Architectural Component", prefix="ARCH_COMP_", color="#FF6B6B", style="node"),
+    dict(directive="arch_interface", title="Interface", prefix="ARCH_IF_", color="#4ECDC4", style="node"),
+    dict(directive="arch_decision", title="Design Decision", prefix="ARCH_DEC_", color="#45B7D1", style="node"),
+    dict(directive="arch_constraint", title="Design Constraint", prefix="ARCH_CON_", color="#96CEB4", style="node"),
+    dict(directive="arch_pattern", title="Design Pattern", prefix="ARCH_PAT_", color="#FECA57", style="node"),
 ]
 
 # Add ID regex pattern for sphinx-needs
@@ -212,6 +222,18 @@ needs_extra_options = [
     'last_updated',
     'file',
     'implements',
+    # Architecture-specific options
+    'crate',
+    'provides',
+    'requires',
+    'allocated_requirements',
+    'environment',
+    'variant_of',
+    'impacts',
+    'deciders',
+    'alternatives',
+    'stability',
+    'protocol',
 ]
 
 # Allow all sphinx-needs options for all directives

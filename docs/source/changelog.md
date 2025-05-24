@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased Changes
+## [unreleased]
 
 ### 🚀 Features
 
@@ -16,22 +16,90 @@ All notable changes to this project will be documented in this file.
 - Add decoder examples and improve component validation
 - Enhance host implementation with resource handling
 - Extend type system with resource type support
+- *(resource)* Implement WebAssembly Component Model resource management
+- *(memory)* Implement safe memory abstractions with integrity verification
+- *(component)* Implement component registry and module management
+- *(resources)* Implement resource management system
+- *(api)* Add prelude modules for consistent public API
+- *(types)* Implement type conversion system for components
+- *(error)* Enhance error handling and validation
+- *(component)* Implement RuntimeInstance with function execution support
+- Configure editor settings and git attributes for consistent line endings and file encoding
+- *(wrt-error)* Introduce comprehensive error code system
+- *(wrt-decoder)* Add custom section utils and runtime module adapter
+- *(wrt-runtime)* Implement new runtime module, instance, and stackless execution core
+- *(wrt-types)* Implement WebAssembly numeric math operations
+- *(wrt-sync)* Add WrtOnce for one-time initialization
+- *(wrt-test-registry)* Add prelude and criterion benchmarks
+- *(xtask)* Add Dagger CI pipelines for tests, checks, and documentation
+- *(types)* Add component_value_store and restructure math_ops
+- *(.ai)* Implement new nodes and update AI flows
+- *(resources)* Add ResourceArena and SizeClassBufferPool
+- *(resources)* Add no_std and no_alloc support for resource management
+- *(platform)* Add platform-specific memory and synchronization optimizations
+- *(types)* Add improved bounded collections and memory types with better no_std support
+- *(wrt)* Add no_std resource implementation to core runtime
+- *(helper)* Add wrt-helper crate for common utilities
+
+### 🐛 Bug Fixes
+
+- Unused variable warning in validation code
+- *(wrt-sync)* Align RwLock error type with parking_lot update (ParkingLockError -> PoisonError)
+- *(CI)* Failure in github CI build
+- *(resource)* Correct no_std implementation of resource strategy
+- Improve no_std compatibility across crates
+- Add missing safe-memory feature to wrt-format and wrt-runtime
+- Add safe-memory feature to wrt-types
+- Apply formatter and linter fixes
+- Remove panic=abort from test and bench profiles
+- Update publish workflow to use modern Rust toolchain action
 
 ### 💼 Other
 
 - *(deps)* Bump anyhow from 1.0.97 to 1.0.98
 - *(deps)* Bump wast from 227.0.1 to 229.0.0
 - *(deps)* Bump wat from 1.227.1 to 1.229.0
+- Add build scripts and documentation templates
+- Update dependencies
+- *(deps)* Bump codecov/codecov-action from 4 to 5
+- Remove obsolete references and improve documentation
+- *(deps)* Bump ctor from 0.2.9 to 0.4.2
+- *(deps)* Bump toml from 0.7.8 to 0.8.22
+- *(deps)* Bump colored from 2.2.0 to 3.0.0
 
 ### 🚜 Refactor
 
 - *(wrt-error)* Improve error handling system
-- *(wrt-foundation)* Update type system implementation
+- *(wrt-types)* Update type system implementation
 - *(instructions)* Implement pure instruction traits and operations
 - Extract pure control flow operations to wrt-instructions
 - Update format module for improved resource handling
 - Update error handling for resource operations
 - Update table and variable operations
+- *(decoder)* Reorganize decoder structure with core and WASM implementations
+- Remove obsolete files and reorganize codebase
+- *(runtime)* Improve memory and stack implementations
+- Fix import paths and update code structure
+- Remove Bazel build system and old instruction/type definitions
+- *(xtask)* Integrate Dagger, clap, and update task implementations
+- Align crates with new types, error handling, and runtime design
+- *(ci)* Overhaul GitHub Actions workflow to use Daggerized xtasks
+- *(wrt-types)* Enhance bounded collections, memory provider, and component values
+- *(xtask)* Update task scripts, remove bazel_ops and add generate_source_needs
+- *(core)* Apply widespread updates and fixes across WRT modules
+- *(wrt-types)* Major overhaul of core types, memory handling, and traits
+- Move math ops to new crate and add platform crate
+- *(resources)* Split mod.rs into separate resource-specific files
+- *(examples)* Remove component_graph_view example and its dependencies
+- *(resources)* Enhance resource management implementation with no_std support
+- *(decoder)* Improve component parsing and handling of custom sections
+- *(error)* Enhance error handling system with better context support
+- *(math)* Improve math operations with enhanced floating-point support
+- *(sync)* Improve synchronization primitives and host API with better no_std support
+- *(instructions)* Optimize instruction execution with improved type handling
+- *(runtime)* Improve memory management in core runtime
+- Finalize codebase with consistent imports and type references
+- Major workspace restructuring and no_std compatibility improvements
 
 ### 📚 Documentation
 
@@ -39,18 +107,41 @@ All notable changes to this project will be documented in this file.
 - Restructure documentation with new API and development sections
 - Add planning documents for builtins, decoder, and instructions
 - Update planning documents and implement core runtime changes
+- Add project planning and agent prompts
+- Update agent prompt with implementation sequence and success metrics
+- Update README.md
+- *(conf)* Update sphinx configuration
+- Update documentation and reorganize architecture section
+- Update documentation structure and styling
+- Add improvements summary document
+- Add custom fonts and no_std collections documentation
+- Update NO_STD_FIXES.md with additional changes
 
 ### 🧪 Testing
 
 - *(decoder)* Add tests for call_indirect and control instructions
 - *(instructions)* Add arithmetic operations test
+- Add comprehensive test suite with no_std compatibility tests
+- Remove unused memory search test
+- Add platform optimizations tests and improve test infrastructure
 
 ### ⚙️ Miscellaneous Tasks
 
 - Update GitHub workflow and dependencies
 - Update dependencies and integration for resource implementation
+- Update dependencies and configuration files
+- Update CI/CD workflows
+- Add project configuration and developer tooling docs
+- Update Rust toolchain from 1.78.0 to 1.86.0
+- Update CI workflow and Justfile to use Dagger xtasks
+- Add .ai directory for development tooling
+- Update .gitignore
+- Update dependencies and lockfile
+- Update root Cargo.toml and add/remove misc files
+- Remove obsolete BUILD files, docker files, and githooks
+- Update build configuration and project metadata
 
-## Version 0.2.0 - 2025-04-24
+## [0.2.0] - 2025-04-24
 
 ### 🚀 Features
 
@@ -250,7 +341,7 @@ All notable changes to this project will be documented in this file.
 - Update Cargo.lock with new dependencies
 - Upgrade all crates to version 0.2.0
 
-## Version 0.1.0 - 2025-03-15
+## [0.1.0] - 2025-03-15
 
 ### 🚀 Features
 
