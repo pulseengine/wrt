@@ -19,10 +19,10 @@ User Documentation
    :gutter: 3
 
    .. grid-item-card:: Getting Started
-      :link: overview/index
+      :link: getting_started/index
       :link-type: doc
 
-      Introduction to WRT, installation, and basic usage
+      Installation guides for supported platforms including Linux, macOS, QNX, Zephyr, and bare-metal environments
 
    .. grid-item-card:: Architecture Guide
       :link: architecture/index
@@ -130,6 +130,7 @@ Developer Resources
    :hidden:
    :caption: User Documentation
 
+   getting_started/index
    overview/index
    architecture/index
    safety/index
@@ -161,6 +162,7 @@ Developer Resources
    :hidden:
    :caption: Resources
 
+   examples/index
    development/index
    changelog
    
