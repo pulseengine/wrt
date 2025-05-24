@@ -1,0 +1,46 @@
+[package]
+name = "wrt-debug"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+description = "DWARF debug information support for WebAssembly Runtime (WRT)"
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+wrt-error = { workspace = true, default-features = false }
+wrt-format = { workspace = true, default-features = false }
+wrt-foundation = { workspace = true, default-features = false }
+
+[features]
+default = ["line-info"]
+std = ["wrt-error/std", "wrt-format/std", "wrt-foundation/std"]
+alloc = ["wrt-error/alloc", "wrt-format/alloc", "wrt-foundation/alloc"]
+# This crate is no_std by default, this feature is a no-op for compatibility
+no_std = []
+
+# Static debug features (no runtime needed)
+line-info = []              # Line number information support (.debug_line)
+debug-info = ["abbrev"]     # Full debug info parsing (.debug_info)
+abbrev = []                 # DWARF abbreviation table support
+function-info = ["debug-info"] # Function discovery and mapping
+static-debug = ["line-info", "debug-info", "function-info"] # All static features
+
+# Runtime debug features (requires runtime integration)
+runtime-inspection = ["static-debug"]  # Read runtime state
+runtime-variables = ["runtime-inspection"]  # Variable value inspection
+runtime-memory = ["runtime-inspection"]  # Memory inspection
+runtime-control = ["runtime-inspection"]  # Execution control
+runtime-breakpoints = ["runtime-control"]  # Breakpoint support
+runtime-stepping = ["runtime-control"]  # Step execution
+runtime-debug = ["runtime-variables", "runtime-memory", "runtime-breakpoints", "runtime-stepping"]  # All runtime features
+
+# Feature presets
+minimal = ["line-info"]  # Just crash locations
+development = ["runtime-debug"]  # Full debugging
+production = ["static-debug"]  # Error reporting only
+full-debug = ["static-debug", "runtime-debug"]  # Everything
+
+[lib]
+name = "wrt_debug"
+path = "src/lib.rs"
