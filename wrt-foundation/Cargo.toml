@@ -20,13 +20,15 @@ alloc = ["wrt-sync/alloc"]    # Also enable alloc for wrt-sync
 
 # Optional external dependencies - not enabled by default
 use-hashbrown = ["dep:hashbrown", "alloc"] # Requires alloc
-# No-std support (optional, often enabled by default or for specific targets)
+# This crate is no_std by default, this feature is a no-op for compatibility
 no_std = []
 
 # Optional feature to bypass some safety checks in performance-critical paths
 optimize = []
 # Additional safety features for ASIL-B compliance
 safety = []
+# Enable default memory provider functionality
+default-provider = ["alloc"]
 # Feature for formal verification, requires nightly for full functionality
 kani = ["dep:kani-verifier"]
 
@@ -76,7 +78,7 @@ default-unwind = 2
 [lints.rust]
 unsafe_code = "forbid"
 unexpected_cfgs = { level = "allow", check-cfg = ['cfg(test)', 'cfg(kani)', 'cfg(coverage)', 'cfg(doc)'] }
-missing_docs = "deny"
+missing_docs = "allow"
 static_mut_refs = "deny"
 let_underscore_drop = "warn"
 

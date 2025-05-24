@@ -26,7 +26,8 @@ pretty_assertions = "1.4.0"
 [features]
 default = []
 std = ["wrt-foundation/std", "wrt-sync/std", "log"]
-no_std = ["alloc", "wrt-foundation/no_std"]
+# This crate is no_std by default, this feature is a no-op for compatibility
+no_std = []
 alloc = ["wrt-foundation/alloc", "wrt-sync/alloc"]
 optimize = ["wrt-foundation/optimize"]
 safety = ["wrt-foundation/safety", "alloc"]

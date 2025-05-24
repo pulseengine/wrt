@@ -22,7 +22,8 @@ log = { version = "0.4", optional = true }
 [features]
 default = []
 std = ["log", "wrt-foundation/std", "wrt-intercept/std", "wrt-sync/std"]
-no_std = ["wrt-foundation/no_std", "wrt-intercept/no_std"]
+# This crate is no_std by default, this feature is a no-op for compatibility
+no_std = []
 alloc = ["wrt-foundation/alloc", "wrt-intercept/alloc", "wrt-sync/alloc"]
 optimize = ["wrt-foundation/optimize", "wrt-intercept/optimize"]
 safety = ["wrt-foundation/safety", "wrt-intercept/safety", "alloc"]
@@ -57,7 +58,7 @@ match_wildcard_for_single_variants = "warn"
 never_loop = "warn"
 unreachable = "warn" # Also related to Rule 4
 # Rule 5: Memory & concurrency safety
-static_mut_reference = "deny"
+static_mut_refs = "deny"
 arc_mutate = "deny"
 # Rule 8: Static analysis gates (CI)
 pedantic = "warn"

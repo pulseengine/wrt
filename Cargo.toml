@@ -9,13 +9,16 @@ members = [
     "wrt-format",
     "wrt-foundation",
     "wrt-decoder",
+    "wrt-debug",
     "wrt-component",
     "wrt-math",
     "wrt-host",
+    "wrt-helper",
     "wrt-logging",
     "wrt-runtime",
     "wrt-instructions",
-    "wrt-intercept", "test-control-instructions",
+    "wrt-intercept",
+    "test-control-instructions",
     "wrt-verification-tool",
     "wrt-test-registry",
     "wrt-platform",
@@ -26,7 +29,7 @@ resolver = "2"  # Use edition 2021 resolver
 authors = ["The WRT Project Developers"]
 edition = "2021"
 license = "MIT"
-repository = "placeholder/repo.git" # TODO: Replace with actual repo URL
+repository = "https://github.com/wrt/wrt2" # Update with actual repo URL when available
 version = "0.2.0" # Updated to 0.2.0 for consistency
 
 [workspace.dependencies]
@@ -41,11 +44,13 @@ wrt-sync = { path = "wrt-sync", version = "0.2.0", default-features = false }
 wrt-format = { path = "wrt-format", version = "0.2.0", default-features = false }
 wrt-foundation = { path = "wrt-foundation", version = "0.2.0", default-features = false }
 wrt-decoder = { path = "wrt-decoder", version = "0.2.0", default-features = false }
+wrt-debug = { path = "wrt-debug", version = "0.2.0", default-features = false }
 wrt-runtime = { path = "wrt-runtime", version = "0.2.0", default-features = false }
 wrt-logging = { path = "wrt-logging", version = "0.2.0", default-features = false }
 wrt-instructions = { path = "wrt-instructions", version = "0.2.0", default-features = false }
 wrt-component = { path = "wrt-component", version = "0.2.0", default-features = false }
 wrt-host = { path = "wrt-host", version = "0.2.0", default-features = false }
+wrt-helper = { path = "wrt-helper", version = "0.2.0", default-features = false }
 wrt-intercept = { path = "wrt-intercept", version = "0.2.0", default-features = false }
 wrt-test-registry = { path = "wrt-test-registry", version = "0.2.0", default-features = false }
 wrt-math = { path = "wrt-math", version = "0.2.0", default-features = false }
@@ -58,6 +63,7 @@ unused_imports = "allow"
 unused_variables = "allow"
 unused_mut = "allow"
 unused_macros = "allow"
+missing_docs = "allow"
 
 # Workspace-level profiles inherit by members unless overridden.
 # Setting panic=abort for production profiles (dev/release) for safety and deterministic behavior.

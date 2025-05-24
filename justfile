@@ -41,6 +41,19 @@ build-adapter-release: setup-rust-targets
 setup-rust-targets:
     rustup target add wasm32-unknown-unknown wasm32-wasip1 wasm32-wasip2 || true
 
+# ----------------- Coverage Commands -----------------
+coverage:
+    @echo "Generating quick code coverage via xtask..."
+    cargo xtask coverage
+
+coverage-comprehensive:
+    @echo "Generating comprehensive code coverage (features, platforms, MCDC, Kani)..."
+    cargo xtask coverage-comprehensive
+
+generate-coverage-summary:
+    @echo "Generating coverage summary for documentation..."
+    cargo xtask generate-coverage-summary
+
 # ----------------- Formatting Commands -----------------
 fmt:
     @echo "Formatting Rust code..."

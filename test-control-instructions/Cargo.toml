@@ -33,13 +33,8 @@ std = [
     "wrt-decoder/std",
     "wrt-instructions/std",
 ]
-no_std = [
-    "wrt/no_std",
-    "wrt-runtime/no_std",
-    "wrt-foundation/no_std",
-    "wrt-decoder/no_std",
-    "wrt-instructions/no_std",
-]
+# This crate is no_std by default, this feature is a no-op for compatibility
+no_std = []
 alloc = [
     "wrt/alloc",
     "wrt-runtime/alloc",

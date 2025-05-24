@@ -19,16 +19,15 @@ wrt-instructions = { workspace = true, default-features = false }
 wrt-host = { workspace = true, default-features = false }
 wrt-intercept = { workspace = true, default-features = false }
 wrt-platform = { workspace = true, default-features = false }
+wrt-debug = { workspace = true, default-features = false, optional = true }
 
-# No-std support
-alloc = { version = "1.0.0", optional = true, package = "rustc-std-workspace-alloc" }
+# No-std support (removed invalid alloc dependency)
 
 # No additional dependencies for now
 
 [features]
 default = []
 std = [
-    "dep:alloc",
     "wrt-decoder/std",
     "wrt-host/std",
     "wrt-instructions/std",
@@ -37,11 +36,13 @@ std = [
     "wrt-sync/std",
     "wrt-foundation/std",
 ]
+# Debug support features
+debug = ["dep:wrt-debug", "wrt-debug/line-info"]
+debug-full = ["dep:wrt-debug", "wrt-debug/full-debug"]
 # For compatibility with verification script
 # This is a no-op since the crate is no_std by default
 no_std = []
 alloc = [
-    "dep:alloc",
     "wrt-decoder/alloc",
     "wrt-host/alloc",
     "wrt-instructions/alloc",

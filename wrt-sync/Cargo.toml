@@ -37,6 +37,8 @@ alloc = ["dep:alloc"]
 
 # Feature to enable standard library support, which implies `alloc`
 std = ["alloc", "dep:parking_lot"] # "std" implies "alloc"
+# This crate is no_std by default, this feature is a no-op for compatibility
+no_std = []
 
 # Feature for Kani verification (optional)
 kani = ["dep:kani-verifier"]

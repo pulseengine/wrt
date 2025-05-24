@@ -26,6 +26,8 @@ safety = []
 std = []
 # Allocation support
 alloc = []
+# This crate is no_std by default, this feature is a no-op for compatibility
+no_std = []
 
 [lints.rust]
 unexpected_cfgs = { level = "allow", check-cfg = ['cfg(test)', 'cfg(kani)', 'cfg(coverage)', 'cfg(doc)'] }

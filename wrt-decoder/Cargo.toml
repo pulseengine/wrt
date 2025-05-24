@@ -87,7 +87,7 @@ match_wildcard_for_single_variants = "deny"
 never_loop = "deny"
 unreachable = "deny" # Also related to Rule 4
 # Rule 5: Memory & concurrency safety
-static_mut_reference = "deny"
+static_mut_refs = "deny"
 arc_mutate = "deny"
 # Rule 8: Static analysis gates (CI)
 pedantic = "warn"

@@ -8,6 +8,10 @@ on:
     tags:
       - '[0-9]+.[0-9]+.[0-9]+'
 
+  # Runs on pull requests to test the build
+  pull_request:
+    branches: ["main"]
+
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
     inputs:
@@ -75,6 +79,10 @@ jobs:
           elif [[ "${{ github.ref_name }}" == "main" && "${{ github.ref_type }}" == "branch" ]]; then
             VERSIONS_TO_PASS="main"
             echo "::notice::Building docs for main branch"
+          elif [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            # For pull requests, build as 'pr-test' version
+            VERSIONS_TO_PASS="pr-test"
+            echo "::notice::Building docs for pull request (test only)"
           elif [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             # This case handles manual trigger where inputs.version was empty (default)
             VERSIONS_TO_PASS="main"
@@ -90,11 +98,21 @@ jobs:
           echo "VERSIONS_TO_BUILD=$UNIQUE_VERSIONS" >> $GITHUB_ENV
           echo "Final list of versions to build for xtask: $UNIQUE_VERSIONS"
 
+      - name: Generate code coverage for documentation
+        run: |
+          echo "Generating code coverage for documentation inclusion"
+          # Ensure xtask is compiled
+          cargo build --package xtask
+          # Add Dagger to PATH
+          export PATH=$PATH:$HOME/.dagger/bin
+          # Run quick coverage analysis to generate coverage.json for docs
+          ./target/debug/xtask coverage
+        env:
+          RUST_LOG: info
+
       - name: Build documentation via Dagger and xtask
         run: |
           echo "Building documentation for versions: ${{ env.VERSIONS_TO_BUILD }}"
-          # Ensure xtask is compiled
-          cargo build --package xtask
           # Add Dagger to PATH
           export PATH=$PATH:$HOME/.dagger/bin
           # Run the Dagger pipeline via xtask
@@ -117,6 +135,8 @@ jobs:
           
   # Deployment job
   deploy:
+    # Only deploy when not a pull request
+    if: github.event_name != 'pull_request'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
