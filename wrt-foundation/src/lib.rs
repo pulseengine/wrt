@@ -175,6 +175,7 @@ pub use component_value::ComponentValue;
 pub use component_value_store::{ComponentValueStore, ValueRef};
 #[cfg(feature = "alloc")]
 pub use component_value_store_builder::ComponentValueStoreBuilder;
+#[cfg(any(feature = "alloc", feature = "std"))]
 pub use conversion::{ref_type_to_val_type, val_type_to_ref_type};
 pub use float_repr::{FloatBits32, FloatBits64};
 pub use operations::{

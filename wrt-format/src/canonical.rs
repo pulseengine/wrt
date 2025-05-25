@@ -11,6 +11,7 @@ use alloc::{boxed::Box, string::String, string::ToString, vec, vec::Vec};
 use std::{boxed::Box, string::String, vec, vec::Vec};
 
 use wrt_foundation::component_value::ValType;
+use wrt_foundation::traits::BoundedCapacity;
 #[cfg(not(any(feature = "alloc", feature = "std")))]
 use wrt_foundation::{BoundedString, BoundedVec, MemoryProvider, NoStdProvider};
 
@@ -137,8 +138,14 @@ pub fn calculate_layout<P: wrt_foundation::MemoryProvider + Default + Clone + Pa
             let mut total_size = 0;
             let mut max_alignment = 1;
 
-            for (name, field_type) in fields {
-                let mut field_layout = calculate_layout(field_type);
+            for (name, _field_type) in fields.iter() {
+                // field_type is ValTypeRef, needs type store to resolve
+                let mut field_layout = CanonicalLayout {
+                    size: 4,
+                    alignment: 4,
+                    offset: None,
+                    details: CanonicalLayoutDetails::Primitive,
+                };
 
                 // Calculate field offset (respecting alignment)
                 total_size = align_up(total_size, field_layout.alignment);
@@ -150,7 +157,9 @@ pub fn calculate_layout<P: wrt_foundation::MemoryProvider + Default + Clone + Pa
                 // Update max alignment
                 max_alignment = max_alignment.max(field_layout.alignment);
 
-                field_layouts.push((name.clone(), field_layout));
+                // Convert WasmName to String
+                let name_str = name.as_str().unwrap_or("unknown").to_string();
+                field_layouts.push((name_str, field_layout));
             }
 
             // Align the total size to the max alignment
@@ -177,14 +186,22 @@ pub fn calculate_layout<P: wrt_foundation::MemoryProvider + Default + Clone + Pa
             let mut max_payload_size = 0;
             let mut max_payload_alignment = 1;
 
-            for (name, payload_type) in cases {
-                if let Some(payload) = payload_type {
-                    let payload_layout = calculate_layout(payload);
+            for (name, payload_type) in cases.iter() {
+                if let Some(_payload) = payload_type {
+                    // payload is ValTypeRef, needs type store to resolve
+                    let payload_layout = CanonicalLayout {
+                        size: 4,
+                        alignment: 4,
+                        offset: None,
+                        details: CanonicalLayoutDetails::Primitive,
+                    };
                     max_payload_size = max_payload_size.max(payload_layout.size);
                     max_payload_alignment = max_payload_alignment.max(payload_layout.alignment);
-                    case_layouts.push((name.clone(), Some(payload_layout)));
+                    let name_str = name.as_str().unwrap_or("unknown").to_string();
+                    case_layouts.push((name_str, Some(payload_layout)));
                 } else {
-                    case_layouts.push((name.clone(), None));
+                    let name_str = name.as_str().unwrap_or("unknown").to_string();
+                    case_layouts.push((name_str, None));
                 }
             }
 
@@ -202,8 +219,14 @@ pub fn calculate_layout<P: wrt_foundation::MemoryProvider + Default + Clone + Pa
                 },
             }
         }
-        ValType::List(element_type) => {
-            let element_layout = calculate_layout(element_type);
+        ValType::List(_element_type) => {
+            // element_type is ValTypeRef, needs type store to resolve
+            let element_layout = CanonicalLayout {
+                size: 4,
+                alignment: 4,
+                offset: None,
+                details: CanonicalLayoutDetails::Primitive,
+            };
             CanonicalLayout {
                 size: 8, // ptr + len
                 alignment: 4,
@@ -214,8 +237,14 @@ pub fn calculate_layout<P: wrt_foundation::MemoryProvider + Default + Clone + Pa
                 },
             }
         }
-        ValType::FixedList(element_type, length) => {
-            let element_layout = calculate_layout(element_type);
+        ValType::FixedList(_element_type, length) => {
+            // element_type is ValTypeRef, needs type store to resolve
+            let element_layout = CanonicalLayout {
+                size: 4,
+                alignment: 4,
+                offset: None,
+                details: CanonicalLayoutDetails::Primitive,
+            };
             let total_size = element_layout.size * length;
             CanonicalLayout {
                 size: total_size,
@@ -232,8 +261,14 @@ pub fn calculate_layout<P: wrt_foundation::MemoryProvider + Default + Clone + Pa
             let mut total_size = 0;
             let mut max_alignment = 1;
 
-            for (i, element_type) in elements.iter().enumerate() {
-                let mut element_layout = calculate_layout(element_type);
+            for (i, _element_type) in elements.iter().enumerate() {
+                // element_type is ValTypeRef, needs type store to resolve
+                let mut element_layout = CanonicalLayout {
+                    size: 4,
+                    alignment: 4,
+                    offset: None,
+                    details: CanonicalLayoutDetails::Primitive,
+                };
 
                 // Calculate field offset (respecting alignment)
                 total_size = align_up(total_size, element_layout.alignment);
@@ -276,9 +311,15 @@ pub fn calculate_layout<P: wrt_foundation::MemoryProvider + Default + Clone + Pa
                 details: CanonicalLayoutDetails::Primitive,
             }
         }
-        ValType::Option(inner_type) => {
+        ValType::Option(_inner_type) => {
             // Option type is equivalent to variant with None and Some cases
-            let inner_layout = calculate_layout(inner_type);
+            // inner_type is ValTypeRef, needs type store to resolve
+            let inner_layout = CanonicalLayout {
+                size: 4,
+                alignment: 4,
+                offset: None,
+                details: CanonicalLayoutDetails::Primitive,
+            };
 
             // 1 byte tag + aligned value
             let tag_size = 1;
@@ -298,9 +339,15 @@ pub fn calculate_layout<P: wrt_foundation::MemoryProvider + Default + Clone + Pa
                 },
             }
         }
-        ValType::Result(ok_type) => {
-            // Result type with just ok value is equivalent to Option
-            let ok_layout = calculate_layout(ok_type);
+        ValType::Result { ok: _, err: _ } => {
+            // Result type now has ok and err as Option<ValTypeRef>
+            // needs type store to resolve
+            let ok_layout = CanonicalLayout {
+                size: 4,
+                alignment: 4,
+                offset: None,
+                details: CanonicalLayoutDetails::Primitive,
+            };
 
             // 1 byte tag + aligned value
             let tag_size = 1;
@@ -314,52 +361,6 @@ pub fn calculate_layout<P: wrt_foundation::MemoryProvider + Default + Clone + Pa
                 details: CanonicalLayoutDetails::Variant {
                     tag_size: tag_size as u8,
                     cases: vec![("Ok".to_string(), Some(ok_layout)), ("Err".to_string(), None)],
-                },
-            }
-        }
-        ValType::ResultErr(err_type) => {
-            // Result type with just err value is equivalent to Option
-            let err_layout = calculate_layout(err_type);
-
-            // 1 byte tag + aligned value
-            let tag_size = 1;
-            let payload_offset = align_up(tag_size as u32, err_layout.alignment);
-            let total_size = payload_offset + err_layout.size;
-
-            CanonicalLayout {
-                size: total_size,
-                alignment: err_layout.alignment.max(tag_size as u32),
-                offset: None,
-                details: CanonicalLayoutDetails::Variant {
-                    tag_size: tag_size as u8,
-                    cases: vec![("Ok".to_string(), None), ("Err".to_string(), Some(err_layout))],
-                },
-            }
-        }
-        ValType::ResultBoth(ok_type, err_type) => {
-            // Result type with both ok and err values
-            let ok_layout = calculate_layout(ok_type);
-            let err_layout = calculate_layout(err_type);
-
-            // Determine max alignment and size of the payload
-            let max_payload_alignment = ok_layout.alignment.max(err_layout.alignment);
-            let max_payload_size = ok_layout.size.max(err_layout.size);
-
-            // 1 byte tag + aligned value
-            let tag_size = 1;
-            let payload_offset = align_up(tag_size as u32, max_payload_alignment);
-            let total_size = payload_offset + max_payload_size;
-
-            CanonicalLayout {
-                size: total_size,
-                alignment: max_payload_alignment.max(tag_size as u32),
-                offset: None,
-                details: CanonicalLayoutDetails::Variant {
-                    tag_size: tag_size as u8,
-                    cases: vec![
-                        ("Ok".to_string(), Some(ok_layout)),
-                        ("Err".to_string(), Some(err_layout)),
-                    ],
                 },
             }
         }

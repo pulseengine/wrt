@@ -156,8 +156,8 @@ impl TockFutex {
         // In Tock, process ID would be provided by the kernel
         // For this implementation, we use a placeholder
         unsafe {
-            sync_syscall::command(sync_syscall::IPC_DRIVER_ID, sync_syscall::IPC_DISCOVER_CMD, 0, 0)
-                as u32
+            let result = sync_syscall::command(sync_syscall::IPC_DRIVER_ID, sync_syscall::IPC_DISCOVER_CMD, 0, 0);
+            u32::try_from(result).unwrap_or(0)
         }
     }
 

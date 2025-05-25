@@ -50,8 +50,6 @@ pub use wrt_error::{codes, kinds, Error, ErrorCategory, Result};
 pub use wrt_foundation::{
     // Builtin types
     builtin::BuiltinType,
-    // Component model types
-    component_value::ComponentValue,
     // SafeMemory types
     safe_memory::{SafeMemoryHandler, SafeSlice, SafeStack},
     // Common types
@@ -60,7 +58,12 @@ pub use wrt_foundation::{
     // Verification types
     verification::VerificationLevel,
 };
-// Re-export from wrt-intercept
+
+// Component model types (only available with alloc)
+#[cfg(any(feature = "std", feature = "alloc"))]
+pub use wrt_foundation::component_value::ComponentValue;
+// Re-export from wrt-intercept (only available with alloc)
+#[cfg(any(feature = "std", feature = "alloc"))]
 pub use wrt_intercept::{
     BeforeBuiltinResult, BuiltinInterceptor, InterceptContext, LinkInterceptor,
     LinkInterceptorStrategy,

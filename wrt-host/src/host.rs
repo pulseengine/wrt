@@ -15,6 +15,7 @@ use crate::prelude::*;
 ///
 /// This function converts WebAssembly core values to Component Model values
 /// with support for both std and no_std environments.
+#[cfg(any(feature = "std", feature = "alloc"))]
 fn convert_to_component_values(
     values: &[Value],
 ) -> Vec<ComponentValue<wrt_foundation::NoStdProvider<64>>> {
@@ -36,6 +37,7 @@ fn convert_to_component_values(
 ///
 /// This function converts Component Model values to WebAssembly core values
 /// with support for both std and no_std environments.
+#[cfg(any(feature = "std", feature = "alloc"))]
 fn convert_from_component_values(
     values: &[ComponentValue<wrt_foundation::NoStdProvider<64>>],
 ) -> Vec<Value> {
@@ -181,7 +183,8 @@ impl BuiltinHost {
         builtin_type: BuiltinType,
         args: Vec<Value>,
     ) -> Result<Vec<Value>> {
-        // Apply interception if available
+        // Apply interception if available and alloc is enabled
+        #[cfg(any(feature = "std", feature = "alloc"))]
         if let Some(interceptor) = &self.interceptor {
             let context = InterceptContext::new(&self.component_name, builtin_type, &self.host_id);
             let component_args = convert_to_component_values(&args);
@@ -199,7 +202,7 @@ impl BuiltinHost {
                     // After interceptor - convert result to component values and back
                     let component_result = match &result {
                         Ok(values) => Ok(convert_to_component_values(values)),
-                        Err(e) => Err(Error::new(
+                        Err(_e) => Err(Error::new(
                             ErrorCategory::Runtime,
                             codes::RUNTIME_ERROR,
                             "Runtime error during interception",
@@ -217,6 +220,13 @@ impl BuiltinHost {
             }
         } else {
             // No interceptor, just execute
+            self.execute_builtin_internal(engine, builtin_type, args)
+        }
+        
+        // For no_std without alloc, interception is not available
+        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        {
+            let _ = &self.interceptor; // Use the field to avoid warnings
             self.execute_builtin_internal(engine, builtin_type, args)
         }
     }

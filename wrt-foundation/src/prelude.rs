@@ -97,8 +97,6 @@ pub use crate::{
         Namespace,
         ResourceType,
     },
-    // Conversion utilities
-    conversion::{ref_type_to_val_type, val_type_to_ref_type},
     // Resource types
     resource::ResourceOperation,
     // Safe memory types (SafeMemoryHandler, SafeSlice, SafeStack are already here from direct
@@ -135,6 +133,11 @@ pub use crate::{
     SafeMemoryHandler,
     SafeSlice,
 };
+
+// Conversion utilities (only available with alloc/std)
+#[cfg(any(feature = "alloc", feature = "std"))]
+pub use crate::conversion::{ref_type_to_val_type, val_type_to_ref_type};
+
 // Alloc-dependent re-exports
 #[cfg(feature = "alloc")]
 pub use crate::{

@@ -46,9 +46,7 @@ pub fn format_val_type_to_value_type<
         | FormatValType::FixedList(_, _)
         | FormatValType::Tuple(_)
         | FormatValType::Option(_)
-        | FormatValType::Result(_)
-        | FormatValType::ResultErr(_)
-        | FormatValType::ResultBoth(_, _)
+        | FormatValType::Result { .. }
         | FormatValType::Own(_)
         | FormatValType::Borrow(_)
         | FormatValType::Ref(_) => Ok(ValueType::ExternRef),
@@ -69,6 +67,7 @@ pub fn value_type_to_format_val_type<
         ValueType::F32 => Ok(FormatValType::F32),
         ValueType::F64 => Ok(FormatValType::F64),
         ValueType::V128 => unimplemented!("V128 to FormatValType mapping is not yet defined"),
+        ValueType::I16x8 => unimplemented!("I16x8 to FormatValType mapping is not yet defined"),
         ValueType::FuncRef => Ok(FormatValType::Own(0)), // Map to handle
         ValueType::ExternRef => Ok(FormatValType::Own(0)), // Map to handle
     }
@@ -86,6 +85,7 @@ pub fn map_wasm_type_to_component<
         ValueType::F32 => FormatValType::F32,
         ValueType::F64 => FormatValType::F64,
         ValueType::V128 => unimplemented!("V128 to FormatValType mapping is not yet defined"),
+        ValueType::I16x8 => unimplemented!("I16x8 to FormatValType mapping is not yet defined"),
         ValueType::FuncRef => FormatValType::Own(0), // Map to handle
         ValueType::ExternRef => FormatValType::Own(0), // Map to handle
     }
@@ -97,23 +97,25 @@ mod tests {
 
     #[test]
     fn test_value_type_conversion() {
+        type TestProvider = wrt_foundation::traits::DefaultMemoryProvider;
+        
         // Test basic primitive types
-        let s32_val = FormatValType::S32;
+        let s32_val: FormatValType<TestProvider> = FormatValType::S32;
         let i32_val = format_val_type_to_value_type(&s32_val).unwrap();
         assert_eq!(i32_val, ValueType::I32);
 
-        let f64_val = FormatValType::F64;
+        let f64_val: FormatValType<TestProvider> = FormatValType::F64;
         let f64_runtime = format_val_type_to_value_type(&f64_val).unwrap();
         assert_eq!(f64_runtime, ValueType::F64);
 
         // Test complex types (all map to ExternRef)
-        let string_val = FormatValType::String;
+        let string_val: FormatValType<TestProvider> = FormatValType::String;
         let string_runtime = format_val_type_to_value_type(&string_val).unwrap();
         assert_eq!(string_runtime, ValueType::ExternRef);
 
         // Test roundtrip conversion for basic types
         let i32_val = ValueType::I32;
-        let format_val = value_type_to_format_val_type(&i32_val).unwrap();
+        let format_val: FormatValType<TestProvider> = value_type_to_format_val_type(&i32_val).unwrap();
         let roundtrip = format_val_type_to_value_type(&format_val).unwrap();
         assert_eq!(i32_val, roundtrip);
     }

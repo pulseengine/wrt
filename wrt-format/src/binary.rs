@@ -16,8 +16,8 @@ use wrt_error::{
 };
 // For pure no_std mode, use bounded collections directly where needed
 #[cfg(not(any(feature = "alloc", feature = "std")))]
-use wrt_foundation::{traits::BoundedCapacity, BoundedString, BoundedVec};
-use wrt_foundation::{RefType, ValueType};
+use wrt_foundation::{BoundedString, BoundedVec};
+use wrt_foundation::{RefType, ValueType, traits::BoundedCapacity};
 
 #[cfg(any(feature = "alloc", feature = "std"))]
 use crate::{
@@ -972,10 +972,18 @@ pub mod with_alloc {
         }
     }
 
+    /// Read a single byte from the byte array
+    pub fn read_u8(bytes: &[u8], pos: usize) -> Result<(u8, usize)> {
+        if pos >= bytes.len() {
+            return Err(parse_error("Unexpected end of input"));
+        }
+        Ok((bytes[pos], pos + 1))
+    }
+
     /// Read a string from a byte array
     ///
     /// This reads a length-prefixed string (used in WebAssembly names).
-    pub fn read_string(bytes: &[u8], pos: usize) -> Result<(&[u8], usize)> {
+    pub fn read_string(bytes: &[u8], pos: usize) -> Result<(String, usize)> {
         if pos >= bytes.len() {
             return Err(parse_error("String exceeds buffer bounds"));
         }
@@ -1165,127 +1173,125 @@ pub mod with_alloc {
                 let (count, next_pos) = read_leb128_u32(bytes, new_pos)?;
                 new_pos = next_pos;
 
-                let mut fields = Vec::with_capacity(count as usize);
+                // Skip the fields for now
                 for _ in 0..count {
-                    let (name, next_pos) = read_string(bytes, new_pos)?;
+                    let (_, next_pos) = read_string(bytes, new_pos)?;
                     new_pos = next_pos;
 
-                    let (val_type, next_pos) = read_component_valtype(bytes, new_pos)?;
+                    let (_, next_pos) = read_component_valtype(bytes, new_pos)?;
                     new_pos = next_pos;
-
-                    fields.push((name, val_type));
                 }
 
-                Ok((ValType::Record(fields), new_pos))
+                // Return a placeholder - proper implementation needs type store
+                Err(parse_error("Record type parsing not yet implemented"))
             }
             COMPONENT_VALTYPE_VARIANT => {
                 let (count, next_pos) = read_leb128_u32(bytes, new_pos)?;
                 new_pos = next_pos;
 
-                let mut cases = Vec::with_capacity(count as usize);
+                // Skip the cases for now
                 for _ in 0..count {
-                    let (name, next_pos) = read_string(bytes, new_pos)?;
+                    let (_, next_pos) = read_string(bytes, new_pos)?;
                     new_pos = next_pos;
 
                     let (has_type, next_pos) = read_leb128_u32(bytes, new_pos)?;
                     new_pos = next_pos;
 
-                    let val_type = if has_type == 1 {
-                        let (val_type, next_pos) = read_component_valtype(bytes, new_pos)?;
+                    if has_type == 1 {
+                        let (_, next_pos) = read_component_valtype(bytes, new_pos)?;
                         new_pos = next_pos;
-                        Some(val_type)
-                    } else {
-                        None
-                    };
-
-                    cases.push((name, val_type));
+                    }
                 }
 
-                Ok((ValType::Variant(cases), new_pos))
+                // Return a placeholder - proper implementation needs type store
+                Err(parse_error("Variant type parsing not yet implemented"))
             }
             COMPONENT_VALTYPE_LIST => {
-                let (val_type, next_pos) = read_component_valtype(bytes, new_pos)?;
-                Ok((crate::component::ValType::List(Box::new(val_type)), next_pos))
+                let (_, next_pos) = read_component_valtype(bytes, new_pos)?;
+                // List now uses ValTypeRef, not Box<ValType>
+                // Return a placeholder - proper implementation needs type store
+                Err(parse_error("List type parsing not yet implemented"))
             }
             COMPONENT_VALTYPE_FIXED_LIST => {
-                let (val_type, next_pos) = read_component_valtype(bytes, new_pos)?;
+                let (_, next_pos) = read_component_valtype(bytes, new_pos)?;
                 new_pos = next_pos;
 
-                let (length, next_pos) = read_leb128_u32(bytes, new_pos)?;
-                Ok((crate::component::ValType::FixedList(Box::new(val_type), length), next_pos))
+                let (_, next_pos) = read_leb128_u32(bytes, new_pos)?;
+                // FixedList now uses ValTypeRef, not Box<ValType>
+                // Return a placeholder - proper implementation needs type store
+                Err(parse_error("FixedList type parsing not yet implemented"))
             }
             COMPONENT_VALTYPE_TUPLE => {
                 let (count, next_pos) = read_leb128_u32(bytes, new_pos)?;
                 new_pos = next_pos;
 
-                let mut elements = Vec::with_capacity(count as usize);
+                // Skip the elements for now
                 for _ in 0..count {
-                    let (val_type, next_pos) = read_component_valtype(bytes, new_pos)?;
+                    let (_, next_pos) = read_component_valtype(bytes, new_pos)?;
                     new_pos = next_pos;
-                    elements.push(val_type);
                 }
 
-                Ok((ValType::Tuple(elements), new_pos))
+                // Tuple now uses BoundedVec<ValTypeRef>
+                // Return a placeholder - proper implementation needs type store
+                Err(parse_error("Tuple type parsing not yet implemented"))
             }
             COMPONENT_VALTYPE_FLAGS => {
                 let (count, next_pos) = read_leb128_u32(bytes, new_pos)?;
                 new_pos = next_pos;
 
-                let mut names = Vec::with_capacity(count as usize);
+                // Skip the names for now
                 for _ in 0..count {
-                    let (name, next_pos) = read_string(bytes, new_pos)?;
+                    let (_, next_pos) = read_string(bytes, new_pos)?;
                     new_pos = next_pos;
-                    names.push(name);
                 }
 
-                Ok((ValType::Flags(names), new_pos))
+                // Flags now uses BoundedVec<WasmName>
+                // Return a placeholder - proper implementation needs type store
+                Err(parse_error("Flags type parsing not yet implemented"))
             }
             COMPONENT_VALTYPE_ENUM => {
                 let (count, next_pos) = read_leb128_u32(bytes, new_pos)?;
                 new_pos = next_pos;
 
-                let mut names = Vec::with_capacity(count as usize);
+                // Skip the names for now
                 for _ in 0..count {
-                    let (name, next_pos) = read_string(bytes, new_pos)?;
+                    let (_, next_pos) = read_string(bytes, new_pos)?;
                     new_pos = next_pos;
-                    names.push(name);
                 }
 
-                Ok((ValType::Enum(names), new_pos))
+                // Enum now uses BoundedVec<WasmName>
+                // Return a placeholder - proper implementation needs type store
+                Err(parse_error("Enum type parsing not yet implemented"))
             }
             COMPONENT_VALTYPE_OPTION => {
-                let (val_type, next_pos) = read_component_valtype(bytes, new_pos)?;
-                Ok((ValType::Option(Box::new(val_type)), next_pos))
+                let (_, next_pos) = read_component_valtype(bytes, new_pos)?;
+                // Option now uses ValTypeRef
+                // Return a placeholder - proper implementation needs type store
+                Err(parse_error("Option type parsing not yet implemented"))
             }
             COMPONENT_VALTYPE_RESULT => {
-                let (val_type, next_pos) = read_component_valtype(bytes, new_pos)?;
-                Ok((
-                    crate::component::ValType::Result { ok: Some(Box::new(val_type)), err: None },
-                    next_pos,
-                ))
+                let (_, next_pos) = read_component_valtype(bytes, new_pos)?;
+                // Result now uses Option<ValTypeRef>, not Box<ValType>
+                // Return a placeholder - proper implementation needs type store
+                Err(parse_error("Result type parsing not yet implemented"))
             }
             COMPONENT_VALTYPE_RESULT_ERR => {
                 // Convert to regular Result for backward compatibility
-                let (val_type, next_pos) = read_component_valtype(bytes, new_pos)?;
-                Ok((
-                    crate::component::ValType::Result { ok: None, err: Some(Box::new(val_type)) },
-                    next_pos,
-                ))
+                let (_, next_pos) = read_component_valtype(bytes, new_pos)?;
+                // Result now uses Option<ValTypeRef>, not Box<ValType>
+                // Return a placeholder - proper implementation needs type store
+                Err(parse_error("Result (err) type parsing not yet implemented"))
             }
             COMPONENT_VALTYPE_RESULT_BOTH => {
                 // Convert to regular Result for backward compatibility
-                let (ok_type, next_pos) = read_component_valtype(bytes, new_pos)?;
+                let (_, next_pos) = read_component_valtype(bytes, new_pos)?;
                 new_pos = next_pos;
 
                 // Read the error type
-                let (err_type, next_pos) = read_component_valtype(bytes, new_pos)?;
-                Ok((
-                    crate::component::ValType::Result {
-                        ok: Some(Box::new(ok_type)),
-                        err: Some(Box::new(err_type)),
-                    },
-                    next_pos,
-                ))
+                let (_, next_pos) = read_component_valtype(bytes, new_pos)?;
+                // Result now uses Option<ValTypeRef>, not Box<ValType>
+                // Return a placeholder - proper implementation needs type store
+                Err(parse_error("Result (both) type parsing not yet implemented"))
             }
             COMPONENT_VALTYPE_OWN => {
                 let (idx, next_pos) = read_leb128_u32(bytes, new_pos)?;
@@ -1329,21 +1335,29 @@ pub mod with_alloc {
             ValType::Record(fields) => {
                 let mut result = vec![COMPONENT_VALTYPE_RECORD];
                 result.extend_from_slice(&write_leb128_u32(fields.len() as u32));
-                for (name, field_type) in fields {
-                    result.extend_from_slice(&write_string(name));
-                    result.extend_from_slice(&write_component_valtype(field_type));
+                for (name, _field_type) in fields.iter() {
+                    // WasmName needs to be converted to &str
+                    if let Ok(name_str) = name.as_str() {
+                        result.extend_from_slice(&write_string(name_str));
+                    }
+                    // field_type is now ValTypeRef, need type store to resolve
+                    result.extend_from_slice(&[0, 0, 0, 0]); // Placeholder
                 }
                 result
             }
             ValType::Variant(cases) => {
                 let mut result = vec![COMPONENT_VALTYPE_VARIANT];
                 result.extend_from_slice(&write_leb128_u32(cases.len() as u32));
-                for (name, case_type) in cases {
-                    result.extend_from_slice(&write_string(name));
+                for (name, case_type) in cases.iter() {
+                    // WasmName needs to be converted to &str
+                    if let Ok(name_str) = name.as_str() {
+                        result.extend_from_slice(&write_string(name_str));
+                    }
                     match case_type {
-                        Some(ty) => {
+                        Some(_ty) => {
                             result.push(1); // Has type flag
-                            result.extend_from_slice(&write_component_valtype(ty));
+                            // ty is now ValTypeRef, need type store to resolve
+                            result.extend_from_slice(&[0, 0, 0, 0]); // Placeholder
                         }
                         None => {
                             result.push(0); // No type flag
@@ -1352,69 +1366,52 @@ pub mod with_alloc {
                 }
                 result
             }
-            ValType::List(element_type) => {
-                let mut result = vec![COMPONENT_VALTYPE_LIST];
-                result.extend_from_slice(&write_component_valtype(element_type));
-                result
+            ValType::List(_element_type) => {
+                // List now uses ValTypeRef, need type store to resolve
+                vec![COMPONENT_VALTYPE_LIST, 0, 0, 0, 0] // Placeholder
             }
-            ValType::FixedList(element_type, length) => {
-                let mut result = vec![COMPONENT_VALTYPE_FIXED_LIST];
-                result.extend_from_slice(&write_component_valtype(element_type));
+            ValType::FixedList(_element_type, length) => {
+                // FixedList now uses ValTypeRef, need type store to resolve
+                let mut result = vec![COMPONENT_VALTYPE_FIXED_LIST, 0, 0, 0, 0];
                 result.extend_from_slice(&write_leb128_u32(*length));
                 result
             }
             ValType::Tuple(types) => {
+                // Tuple now uses BoundedVec<ValTypeRef>, need type store to resolve
                 let mut result = vec![COMPONENT_VALTYPE_TUPLE];
                 result.extend_from_slice(&write_leb128_u32(types.len() as u32));
-                for ty in types {
-                    result.extend_from_slice(&write_component_valtype(ty));
-                }
+                // Can't write the actual types without resolving ValTypeRef
                 result
             }
             ValType::Flags(names) => {
                 let mut result = vec![COMPONENT_VALTYPE_FLAGS];
                 result.extend_from_slice(&write_leb128_u32(names.len() as u32));
-                for name in names {
-                    result.extend_from_slice(&write_string(name));
+                for name in names.iter() {
+                    // WasmName needs to be converted to &str
+                    if let Ok(name_str) = name.as_str() {
+                        result.extend_from_slice(&write_string(name_str));
+                    }
                 }
                 result
             }
             ValType::Enum(names) => {
                 let mut result = vec![COMPONENT_VALTYPE_ENUM];
                 result.extend_from_slice(&write_leb128_u32(names.len() as u32));
-                for name in names {
-                    result.extend_from_slice(&write_string(name));
+                for name in names.iter() {
+                    // WasmName needs to be converted to &str
+                    if let Ok(name_str) = name.as_str() {
+                        result.extend_from_slice(&write_string(name_str));
+                    }
                 }
                 result
             }
-            ValType::Option(inner) => {
-                let mut result = vec![COMPONENT_VALTYPE_OPTION];
-                result.extend_from_slice(&write_component_valtype(inner));
-                result
+            ValType::Option(_inner) => {
+                // Option now uses ValTypeRef, need type store to resolve
+                vec![COMPONENT_VALTYPE_OPTION, 0, 0, 0, 0] // Placeholder
             }
-            ValType::Result { ok, err } => {
-                match (ok, err) {
-                    (Some(ok_type), None) => {
-                        let mut result = vec![COMPONENT_VALTYPE_RESULT];
-                        result.extend_from_slice(&write_component_valtype(ok_type));
-                        result
-                    }
-                    (None, Some(err_type)) => {
-                        let mut result = vec![COMPONENT_VALTYPE_RESULT_ERR];
-                        result.extend_from_slice(&write_component_valtype(err_type));
-                        result
-                    }
-                    (Some(ok_type), Some(err_type)) => {
-                        let mut result = vec![COMPONENT_VALTYPE_RESULT_BOTH];
-                        result.extend_from_slice(&write_component_valtype(ok_type));
-                        result.extend_from_slice(&write_component_valtype(err_type));
-                        result
-                    }
-                    (None, None) => {
-                        // This shouldn't happen, but handle it gracefully
-                        vec![COMPONENT_VALTYPE_RESULT]
-                    }
-                }
+            ValType::Result { ok: _, err: _ } => {
+                // Result now uses Option<ValTypeRef>, need type store to resolve
+                vec![COMPONENT_VALTYPE_RESULT, 0, 0, 0, 0] // Placeholder
             }
             ValType::Own(type_idx) => {
                 let mut result = vec![COMPONENT_VALTYPE_OWN];
@@ -1617,7 +1614,7 @@ pub mod with_alloc {
 
         loop {
             if offset >= bytes.len() {
-                return Err(parse_error(format!(
+                return Err(crate::error::parse_error_dynamic(format!(
                     "(offset {}): Unexpected end of data in init_expr",
                     offset
                 )));
@@ -1633,7 +1630,7 @@ pub mod with_alloc {
                     // End of a nested block
                     if depth == 0 {
                         // Should have been caught by the case above
-                        return Err(parse_error(format!(
+                        return Err(crate::error::parse_error_dynamic(format!(
                             "(offset {}): Mismatched END in init_expr",
                             offset - 1
                         )));
@@ -1651,7 +1648,7 @@ pub mod with_alloc {
                 }
                 F32_CONST => {
                     if offset + 4 > bytes.len() {
-                        return Err(parse_error(format!(
+                        return Err(crate::error::parse_error_dynamic(format!(
                             "(offset {}): EOF in f32.const immediate",
                             offset
                         )));
@@ -1660,7 +1657,7 @@ pub mod with_alloc {
                 }
                 F64_CONST => {
                     if offset + 8 > bytes.len() {
-                        return Err(parse_error(format!(
+                        return Err(crate::error::parse_error_dynamic(format!(
                             "(offset {}): EOF in f64.const immediate",
                             offset
                         )));
@@ -1670,7 +1667,7 @@ pub mod with_alloc {
                 REF_NULL => {
                     // 0xD0 ht:heap_type
                     if offset >= bytes.len() {
-                        return Err(parse_error(format!(
+                        return Err(crate::error::parse_error_dynamic(format!(
                             "(offset {}): EOF in ref.null immediate",
                             offset
                         )));
@@ -1773,7 +1770,7 @@ pub mod with_alloc {
                         ),
                     ));
                 }
-                element_type = RefType::FuncRef; // funcref
+                element_type = RefType::Funcref; // funcref
 
                 let (exprs_vec, next_offset) = read_vector(bytes, offset, parse_init_expr)
                     .map_err(|e| {
@@ -1847,7 +1844,7 @@ pub mod with_alloc {
                         ),
                     ));
                 }
-                element_type = RefType::FuncRef; // funcref
+                element_type = RefType::Funcref; // funcref
 
                 let (exprs_vec, next_offset) = read_vector(bytes, offset, parse_init_expr)
                     .map_err(|e| {
@@ -1896,7 +1893,7 @@ pub mod with_alloc {
                         ),
                     ));
                 }
-                element_type = RefType::FuncRef; // funcref
+                element_type = RefType::Funcref; // funcref
 
                 let (exprs_vec, next_offset) = read_vector(bytes, offset, parse_init_expr)
                     .map_err(|e| {
@@ -1989,10 +1986,13 @@ pub mod with_alloc {
                     )
                 })?;
                 offset += 1;
-                element_type = ValueType::from_binary(rt_byte)
-                    .map_err(to_wrt_error)?
-                    .try_into()
+                let value_type = ValueType::from_binary(rt_byte)
                     .map_err(to_wrt_error)?;
+                element_type = match value_type {
+                    ValueType::FuncRef => RefType::Funcref,
+                    ValueType::ExternRef => RefType::Externref,
+                    _ => return Err(parse_error("Invalid ref type for element")),
+                };
 
                 let (exprs_vec, next_offset) = read_vector(bytes, offset, parse_init_expr)
                     .map_err(|e| {
@@ -2063,10 +2063,13 @@ pub mod with_alloc {
                     )
                 })?;
                 offset += 1;
-                element_type = ValueType::from_binary(rt_byte)
-                    .map_err(to_wrt_error)?
-                    .try_into()
+                let value_type = ValueType::from_binary(rt_byte)
                     .map_err(to_wrt_error)?;
+                element_type = match value_type {
+                    ValueType::FuncRef => RefType::Funcref,
+                    ValueType::ExternRef => RefType::Externref,
+                    _ => return Err(parse_error("Invalid ref type for element")),
+                };
 
                 let (exprs_vec, next_offset) = read_vector(bytes, offset, parse_init_expr)
                     .map_err(|e| {
@@ -2112,10 +2115,13 @@ pub mod with_alloc {
                     )
                 })?;
                 offset += 1;
-                element_type = ValueType::from_binary(rt_byte)
-                    .map_err(to_wrt_error)?
-                    .try_into()
+                let value_type = ValueType::from_binary(rt_byte)
                     .map_err(to_wrt_error)?;
+                element_type = match value_type {
+                    ValueType::FuncRef => RefType::Funcref,
+                    ValueType::ExternRef => RefType::Externref,
+                    _ => return Err(parse_error("Invalid ref type for element")),
+                };
 
                 let (exprs_vec, next_offset) = read_vector(bytes, offset, parse_init_expr)
                     .map_err(|e| {

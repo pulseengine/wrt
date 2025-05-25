@@ -171,6 +171,6 @@ pub use crate::cfi_integration::{
     CfiExecutionResult as CfiIntegrationResult, CfiHardwareFeatures, CfiProtectedEngine,
     CfiProtectedModule,
 };
-// For no_std/no_alloc environments, use our bounded collections
+// For no_std/no_alloc environments, use bounded collections from wrt-foundation
 #[cfg(not(any(feature = "std", feature = "alloc")))]
-pub use crate::no_std_hashmap::BoundedHashMap as HashMap;
+pub use wrt_foundation::no_std_hashmap::BoundedHashMap as HashMap;

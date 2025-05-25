@@ -4,8 +4,11 @@
 //! components and hosts. It can allow or deny calls based on various criteria.
 
 use crate::prelude::*;
+#[cfg(not(feature = "alloc"))]
+use crate::LinkInterceptorStrategy;
 
 /// A rule to enforce on function calls
+#[cfg(feature = "alloc")]
 #[derive(Debug, Clone)]
 pub enum FirewallRule {
     /// Allow a specific function to be called (source, target, function)
@@ -22,7 +25,18 @@ pub enum FirewallRule {
     DenyTarget(String),
 }
 
+/// A rule to enforce on function calls (no_std version)
+#[cfg(not(feature = "alloc"))]
+#[derive(Debug, Clone)]
+pub enum FirewallRule {
+    /// Allow all calls (since we can't store specific rules without alloc)
+    AllowAll,
+    /// Deny all calls
+    DenyAll,
+}
+
 /// Configuration for the firewall strategy
+#[cfg(feature = "alloc")]
 #[derive(Debug, Clone, Default)]
 pub struct FirewallConfig {
     /// Default policy (true = allow by default, false = deny by default)
@@ -33,7 +47,18 @@ pub struct FirewallConfig {
     pub check_parameters: bool,
 }
 
+/// Configuration for the firewall strategy (no_std version)
+#[cfg(not(feature = "alloc"))]
+#[derive(Debug, Clone, Default)]
+pub struct FirewallConfig {
+    /// Default policy (true = allow by default, false = deny by default)
+    pub default_allow: bool,
+    /// Whether to check function parameters
+    pub check_parameters: bool,
+}
+
 /// A strategy that enforces security rules on function calls
+#[cfg(feature = "alloc")]
 pub struct FirewallStrategy {
     /// Configuration for this strategy
     config: FirewallConfig,
@@ -43,6 +68,13 @@ pub struct FirewallStrategy {
     /// Cache of denied function calls for performance
     #[cfg(feature = "std")]
     denied_functions: RwLock<HashSet<String>>,
+}
+
+/// A strategy that enforces security rules on function calls (no_std version)
+#[cfg(not(feature = "alloc"))]
+pub struct FirewallStrategy {
+    /// Configuration for this strategy
+    config: FirewallConfig,
 }
 
 impl FirewallStrategy {
@@ -58,6 +90,7 @@ impl FirewallStrategy {
     }
 
     /// Helper function to generate a unique key for a function call
+    #[cfg(feature = "alloc")]
     fn function_key(source: &str, target: &str, function: &str) -> String {
         format!("{}->{}::{}", source, target, function)
     }
@@ -141,6 +174,7 @@ impl FirewallStrategy {
     }
 }
 
+#[cfg(feature = "alloc")]
 impl LinkInterceptorStrategy for FirewallStrategy {
     fn before_call(
         &self,
@@ -161,7 +195,7 @@ impl LinkInterceptorStrategy for FirewallStrategy {
             }
         }
 
-        // In no_std mode, we use a simpler implementation that applies rules directly
+        // In alloc but no_std mode, we use a simpler implementation that applies rules directly
         #[cfg(all(not(feature = "std"), feature = "alloc"))]
         {
             // Start with default policy
@@ -211,6 +245,18 @@ impl LinkInterceptorStrategy for FirewallStrategy {
                 ));
             }
         }
+        
+        // In pure no_std mode, we just use the default policy
+        #[cfg(not(feature = "alloc"))]
+        {
+            if !self.config.default_allow {
+                return Err(Error::new(
+                    ErrorCategory::Runtime,
+                    codes::RUNTIME_ERROR,
+                    "Security error: Function call not allowed by firewall policy",
+                ));
+            }
+        }
 
         // Check parameters if configured
         if self.config.check_parameters {
@@ -245,10 +291,44 @@ impl LinkInterceptorStrategy for FirewallStrategy {
     }
 }
 
+#[cfg(not(feature = "alloc"))]
+impl LinkInterceptorStrategy for FirewallStrategy {
+    fn before_call(
+        &self,
+        _source: &str,
+        _target: &str,
+        _function: &str,
+        _args: &[Value],
+    ) -> Result<()> {
+        // In pure no_std mode, we just use the default policy
+        if !self.config.default_allow {
+            return Err(Error::new(
+                ErrorCategory::Runtime,
+                codes::RUNTIME_ERROR,
+                "Security error: Function call not allowed by firewall policy",
+            ));
+        }
+        Ok(())
+    }
+
+    fn after_call(
+        &self,
+        _source: &str,
+        _target: &str,
+        _function: &str,
+        _args: &[Value],
+        result: Result<()>,
+    ) -> Result<()> {
+        // Return unmodified result
+        result
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    #[cfg(feature = "alloc")]
     #[test]
     fn test_firewall_allow_by_default() {
         let config = FirewallConfig {
@@ -271,6 +351,7 @@ mod tests {
         assert!(result.is_err());
     }
 
+    #[cfg(feature = "alloc")]
     #[test]
     fn test_firewall_deny_by_default() {
         let config = FirewallConfig {
@@ -293,6 +374,7 @@ mod tests {
         assert!(result.is_err());
     }
 
+    #[cfg(feature = "alloc")]
     #[test]
     fn test_firewall_allow_source() {
         let config = FirewallConfig {
@@ -311,6 +393,7 @@ mod tests {
         assert!(result.is_err());
     }
 
+    #[cfg(feature = "alloc")]
     #[test]
     fn test_firewall_rule_precedence() {
         let config = FirewallConfig {

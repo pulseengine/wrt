@@ -18,7 +18,7 @@
 //! - `panic = "abort"`.
 //! - `no_std` support.
 
-#![no_std] // Rule: Enforce no_std
+#![cfg_attr(not(feature = "std"), no_std)] // Rule: Enforce no_std when std feature is not enabled
 #![deny(missing_docs)] // Rule 9: Require documentation.
 #![deny(clippy::panic)] // Rule 3: No panic!.
 #![deny(clippy::unwrap_used)] // Rule 3: No unwrap.
@@ -57,6 +57,9 @@
 #![allow(clippy::needless_range_loop)]
 #![allow(clippy::manual_div_ceil)]
 #![allow(clippy::ptr_cast_constness)]
+
+#[cfg(feature = "std")]
+extern crate std;
 
 #[cfg(feature = "alloc")]
 extern crate alloc;

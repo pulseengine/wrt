@@ -112,7 +112,7 @@ mod syscall {
 }
 
 /// Grant region representing a kernel-managed memory region
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 struct GrantRegion {
     /// Pointer to the granted memory region
     ptr: NonNull<u8>,
@@ -267,9 +267,11 @@ impl TockAllocator {
 
     /// Find suitable grant region for allocation
     fn find_grant_region(&mut self, size: usize) -> Option<NonNull<u8>> {
-        for region in &mut self.grant_regions {
-            if let Some(ptr) = region.allocate(size) {
-                return Some(ptr);
+        for i in 0..self.grant_regions_count {
+            if let Some(region) = &mut self.grant_regions[i] {
+                if let Some(ptr) = region.allocate(size) {
+                    return Some(ptr);
+                }
             }
         }
         None
@@ -356,10 +358,12 @@ impl PageAllocator for TockAllocator {
         self.set_mpu_protection(ptr.as_ptr(), size, 0)?;
 
         // Mark grant region as available
-        for region in &mut self.grant_regions {
-            if region.ptr.as_ptr() == ptr.as_ptr() {
-                region.deallocate();
-                break;
+        for i in 0..self.grant_regions_count {
+            if let Some(region) = &mut self.grant_regions[i] {
+                if region.ptr.as_ptr() == ptr.as_ptr() {
+                    region.deallocate();
+                    break;
+                }
             }
         }
 
@@ -481,7 +485,8 @@ mod tests {
 
         assert!(result.is_ok());
         let allocator = result.unwrap();
-        assert_eq!(allocator.grant_regions.len(), 1);
-        assert_eq!(allocator.grant_regions[0].size, WASM_PAGE_SIZE);
+        assert_eq!(allocator.grant_regions_count, 1);
+        assert!(allocator.grant_regions[0].is_some());
+        assert_eq!(allocator.grant_regions[0].as_ref().unwrap().size, WASM_PAGE_SIZE);
     }
 }

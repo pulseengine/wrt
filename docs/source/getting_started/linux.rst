@@ -2,430 +2,490 @@
 Linux Installation Guide
 =========================
 
-WRT provides comprehensive support for Linux distributions, from development workstations to production servers.
+WRT is a pure Rust WebAssembly runtime that supports both core WebAssembly and the Component Model. This guide covers building and using WRT on Linux systems.
 
 .. contents:: On this page
    :local:
    :depth: 2
 
-Supported Distributions
-=======================
+System Requirements
+===================
 
-**Tier 1 Support (Fully tested):**
+**Minimum Requirements:**
 
-* Ubuntu 20.04 LTS, 22.04 LTS, 24.04 LTS
-* Debian 11 (Bullseye), 12 (Bookworm)
-* CentOS Stream 8, 9
-* Red Hat Enterprise Linux 8, 9
-* Fedora 38, 39, 40
+* Linux kernel 4.14 or newer
+* glibc 2.17 or newer (or musl libc)
+* 4GB RAM (8GB recommended for development)
+* Rust 1.86.0 or newer
 
-**Tier 2 Support (Community tested):**
-
-* openSUSE Leap 15.4+
-* Arch Linux
-* Alpine Linux 3.17+
-* Amazon Linux 2
-
-Supported Architectures
-=======================
+**Supported Architectures:**
 
 * **x86_64** (Intel/AMD 64-bit) - Primary platform
 * **aarch64** (ARM 64-bit) - Full support
 * **armv7** (ARM 32-bit) - Limited support
 * **riscv64** (RISC-V 64-bit) - Experimental
 
-Installation Methods
-====================
+Prerequisites
+=============
 
-Package Manager Installation
-----------------------------
+Install system dependencies based on your distribution:
 
-**Ubuntu/Debian (APT):**
-
-.. code-block:: bash
-
-   # Add WRT repository
-   curl -fsSL https://packages.example.com/gpg.key | sudo gpg --dearmor -o /usr/share/keyrings/wrt-archive-keyring.gpg
-   echo "deb [signed-by=/usr/share/keyrings/wrt-archive-keyring.gpg] https://packages.example.com/debian $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/wrt.list
-
-   # Install WRT
-   sudo apt update
-   sudo apt install wrt-runtime wrt-dev
-
-**CentOS/RHEL/Fedora (YUM/DNF):**
+**Ubuntu/Debian:**
 
 .. code-block:: bash
 
-   # Add WRT repository
-   sudo dnf config-manager --add-repo https://packages.example.com/rpm/wrt.repo
-
-   # Install WRT
-   sudo dnf install wrt-runtime wrt-dev
-
-**Arch Linux (AUR):**
-
-.. code-block:: bash
-
-   # Using yay
-   yay -S wrt-runtime
-
-   # Using makepkg
-   git clone https://aur.archlinux.org/wrt-runtime.git
-   cd wrt-runtime
-   makepkg -si
-
-Source Installation
--------------------
-
-**Prerequisites:**
-
-.. code-block:: bash
-
-   # Ubuntu/Debian
    sudo apt update
    sudo apt install build-essential curl git pkg-config libssl-dev
 
-   # CentOS/RHEL/Fedora
+**CentOS/RHEL/Fedora:**
+
+.. code-block:: bash
+
    sudo dnf groupinstall "Development Tools"
    sudo dnf install curl git pkg-config openssl-devel
 
-   # Arch Linux
+**Arch Linux:**
+
+.. code-block:: bash
+
    sudo pacman -S base-devel curl git pkg-config openssl
 
-**Install Rust and build:**
-
-.. code-block:: bash
-
-   # Install Rust
-   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-   source ~/.cargo/env
-
-   # Install just
-   cargo install just
-
-   # Clone and build
-   git clone https://github.com/your-org/wrt.git
-   cd wrt
-   just build
-
-Distribution-Specific Notes
-==========================
-
-Ubuntu/Debian
---------------
-
-**Required packages:**
-
-.. code-block:: bash
-
-   sudo apt install build-essential curl git pkg-config libssl-dev
-
-**For embedded development:**
-
-.. code-block:: bash
-
-   sudo apt install gcc-arm-linux-gnueabihf gcc-aarch64-linux-gnu
-
-CentOS/RHEL
------------
-
-**Enable EPEL repository:**
-
-.. code-block:: bash
-
-   sudo dnf install epel-release
-
-**Required packages:**
-
-.. code-block:: bash
-
-   sudo dnf groupinstall "Development Tools"
-   sudo dnf install curl git pkg-config openssl-devel
-
-Fedora
-------
-
-**Required packages:**
-
-.. code-block:: bash
-
-   sudo dnf install @development-tools curl git pkg-config openssl-devel
-
-Alpine Linux
-------------
-
-**Required packages:**
+**Alpine Linux:**
 
 .. code-block:: bash
 
    sudo apk add build-base curl git pkgconfig openssl-dev
 
-**Note:** Alpine uses musl libc, which may require special consideration for some features.
+**Docker/Podman (for Dagger):**
 
-Security Features
-=================
-
-Linux-Specific Hardening
--------------------------
-
-WRT leverages Linux security features:
-
-**Control Flow Integrity (CFI):**
+Dagger requires a container runtime. Install one of:
 
 .. code-block:: bash
 
-   # Verify CFI support
-   cat /proc/cpuinfo | grep -E "(cet|ibp)"
+   # Docker
+   curl -fsSL https://get.docker.com | sh
+   sudo usermod -aG docker $USER
+   
+   # Or Podman (rootless alternative)
+   sudo apt install podman  # Ubuntu/Debian
+   sudo dnf install podman  # Fedora/CentOS
 
-**Memory protection:**
+Building from Source
+====================
 
-.. code-block:: bash
-
-   # Enable ASLR
-   echo 2 | sudo tee /proc/sys/kernel/randomize_va_space
-
-   # Check for hardware CFI support
-   dmesg | grep -i "control flow"
-
-**SELinux/AppArmor:**
-
-For production deployment with mandatory access controls:
-
-.. code-block:: bash
-
-   # SELinux policy (example)
-   sudo setsebool -P container_manage_cgroup on
-
-   # AppArmor profile
-   sudo aa-enforce /etc/apparmor.d/wrt-runtime
-
-Performance Optimization
-========================
-
-CPU Features
+Install Rust
 ------------
 
-**Enable CPU-specific optimizations:**
+.. code-block:: bash
+
+   # Install Rust using rustup
+   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+   source ~/.cargo/env
+
+   # Verify installation
+   rustc --version  # Should show 1.86.0 or newer
+
+Install Build Tools
+-------------------
 
 .. code-block:: bash
 
-   # Check CPU features
-   cat /proc/cpuinfo | grep flags
+   # Install just (task runner)
+   cargo install just
 
-   # Build with native optimizations
-   export RUSTFLAGS="-C target-cpu=native"
+   # Install Dagger (required for CI/testing tasks)
+   # Option 1: Using official installer
+   curl -fsSL https://dl.dagger.io/dagger/install.sh | sh
+   
+   # Option 2: Using package manager (if available)
+   # Ubuntu/Debian (via snap)
+   sudo snap install dagger
+   
+   # macOS/Linux via Homebrew
+   brew install dagger/tap/dagger
+
+   # Add dagger to PATH if using installer
+   echo 'export PATH=$HOME/.local/bin:$PATH' >> ~/.bashrc
+   source ~/.bashrc
+
+   # Verify Dagger installation
+   dagger version
+
+   # Install cargo-component for WebAssembly components (optional)
+   cargo install cargo-component --locked
+
+   # Install additional tools used by xtask
+   cargo install wasm-tools      # WASM validation and manipulation
+   cargo install cargo-llvm-cov  # Code coverage
+   cargo install cargo-deny      # Dependency auditing
+
+Clone and Build WRT
+-------------------
+
+.. code-block:: bash
+
+   # Clone the repository
+   git clone https://github.com/pulseengine/wrt.git
+   cd wrt
+
+   # Build all components
    just build
 
-**NUMA considerations:**
+   # Or build individual components:
+   just build-wrt      # Core library
+   just build-wrtd     # Runtime daemon
+   just build-example  # Example WASM component
+
+Running Tests
+-------------
 
 .. code-block:: bash
 
-   # Check NUMA topology
-   numactl --hardware
+   # Run quick tests (uses Dagger)
+   just ci-test
 
-   # Pin to specific NUMA node
-   numactl --cpunodebind=0 --membind=0 wrtd module.wasm
+   # Run full CI suite (uses Dagger)
+   just ci-full
 
-Memory Configuration
---------------------
+   # Run specific test (direct cargo)
+   cargo test -p wrt -- test_name
 
-**Huge pages support:**
+   # Run tests without Dagger
+   cargo test --workspace
 
-.. code-block:: bash
-
-   # Enable huge pages
-   echo 256 | sudo tee /proc/sys/vm/nr_hugepages
-
-   # Verify allocation
-   cat /proc/meminfo | grep Huge
-
-**Memory limits:**
+**Note:** Many CI commands use Dagger for containerized testing:
 
 .. code-block:: bash
 
-   # Set memory limits with systemd
-   sudo systemctl edit wrt-runtime.service
+   # These commands require Dagger:
+   just ci-integrity-checks  # Linting, formatting, spell check
+   just ci-static-analysis   # Clippy, deny, unused deps
+   just ci-advanced-tests    # Kani, Miri, coverage
+   just ci-doc-check        # Documentation validation
+   
+   # To see what a command does:
+   just --show ci-test
 
-Add:
+Using WRT
+=========
 
-.. code-block:: ini
+Command Line Usage (wrtd)
+-------------------------
 
-   [Service]
-   MemoryLimit=1G
-   MemoryAccounting=yes
+The `wrtd` daemon provides a command-line interface for running WebAssembly modules:
+
+.. code-block:: bash
+
+   # Show help
+   ./target/debug/wrtd --help
+
+   # Run a WebAssembly module
+   ./target/debug/wrtd module.wasm
+
+   # Run a WebAssembly component with function call
+   ./target/debug/wrtd --call namespace:package/interface#function component.wasm
+
+   # Run with fuel limit (execution steps)
+   ./target/debug/wrtd --fuel 10000 module.wasm
+
+   # Show execution statistics
+   ./target/debug/wrtd --stats module.wasm
+
+Example:
+
+.. code-block:: bash
+
+   # Build and run the example component
+   just test-wrtd-example
+
+   # This runs:
+   ./target/debug/wrtd --call example:hello/example#hello ./target/wasm32-wasip2/release/example.wasm
+
+Library Usage
+-------------
+
+Add WRT to your Rust project:
+
+.. code-block:: toml
+
+   # Cargo.toml
+   [dependencies]
+   wrt = "0.2.0"
+
+Basic usage example:
+
+.. code-block:: rust
+
+   use wrt::prelude::*;
+
+   fn main() -> Result<(), Box<dyn std::error::Error>> {
+       // Load WebAssembly bytes
+       let wasm_bytes = std::fs::read("module.wasm")?;
+       
+       // Create module from bytes
+       let module = Module::from_bytes(&wasm_bytes)?;
+       
+       // Create instance with imports
+       let mut instance = ModuleInstance::new(module, imports)?;
+       
+       // Call exported function
+       let result = instance.invoke("function_name", &args)?;
+       
+       Ok(())
+   }
 
 Development Setup
 =================
 
-IDE Configuration
------------------
-
-**VS Code with rust-analyzer:**
+VS Code Configuration
+---------------------
 
 .. code-block:: bash
 
-   # Install VS Code
+   # Install VS Code (Ubuntu/Debian)
    sudo snap install code --classic
 
    # Install rust-analyzer extension
    code --install-extension rust-lang.rust-analyzer
 
-**Vim with Rust support:**
+Create `.vscode/settings.json`:
 
-.. code-block:: bash
+.. code-block:: json
 
-   # Install vim-plug
-   curl -fLo ~/.vim/autoload/plug.vim --create-dirs \
-       https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
+   {
+     "rust-analyzer.cargo.features": "all",
+     "rust-analyzer.checkOnSave.command": "clippy"
+   }
 
-Add to `~/.vimrc`:
-
-.. code-block:: vim
-
-   call plug#begin()
-   Plug 'rust-lang/rust.vim'
-   Plug 'dense-analysis/ale'
-   call plug#end()
-
-Debugging Tools
----------------
-
-**Install debugging tools:**
-
-.. code-block:: bash
-
-   # GDB with Rust support
-   sudo apt install gdb
-
-   # Valgrind for memory debugging
-   sudo apt install valgrind
-
-   # perf for performance analysis
-   sudo apt install linux-tools-common linux-tools-generic
-
-Testing and Validation
-=======================
-
-**Run full test suite:**
-
-.. code-block:: bash
-
-   just ci-full
-
-**Platform-specific tests:**
-
-.. code-block:: bash
-
-   # Test with different glibc versions
-   cargo test --target x86_64-unknown-linux-gnu
-
-   # Test with musl
-   rustup target add x86_64-unknown-linux-musl
-   cargo test --target x86_64-unknown-linux-musl
-
-**Benchmark performance:**
-
-.. code-block:: bash
-
-   cargo bench
-
-Deployment
-==========
-
-Systemd Service
----------------
-
-Create `/etc/systemd/system/wrt-runtime.service`:
-
-.. code-block:: ini
-
-   [Unit]
-   Description=WRT WebAssembly Runtime
-   After=network.target
-
-   [Service]
-   Type=simple
-   User=wrt
-   Group=wrt
-   ExecStart=/usr/local/bin/wrtd --config /etc/wrt/config.toml
-   Restart=always
-   RestartSec=5
-
-   [Install]
-   WantedBy=multi-user.target
-
-Enable and start:
-
-.. code-block:: bash
-
-   sudo systemctl enable wrt-runtime
-   sudo systemctl start wrt-runtime
-
-Container Deployment
+Development Commands
 --------------------
 
-**Docker:**
+.. code-block:: bash
 
-.. code-block:: dockerfile
+   # Format code
+   just fmt
 
-   FROM ubuntu:22.04
-   RUN apt-get update && apt-get install -y wrt-runtime
-   COPY config.toml /etc/wrt/
-   EXPOSE 8080
-   CMD ["wrtd", "--config", "/etc/wrt/config.toml"]
+   # Check formatting (uses Dagger)
+   just fmt-check
 
-**Podman:**
+   # Run lints
+   cargo clippy --all-features
+
+   # Generate API documentation
+   cargo doc --workspace --open
+
+   # Generate full documentation site (uses Dagger)
+   cargo xtask publish-docs-dagger --output-dir ./docs_output --versions local
+
+   # Run benchmarks
+   cargo bench
+
+   # Generate code coverage (uses Dagger)
+   just coverage
+
+   # Clean build artifacts
+   just clean
+
+Debugging and Profiling
+=======================
+
+Debug Builds
+------------
 
 .. code-block:: bash
 
-   podman run -d --name wrt-runtime \
-     -v ./config.toml:/etc/wrt/config.toml:ro \
-     -p 8080:8080 \
-     wrt:latest
+   # Build with debug symbols
+   cargo build
+
+   # Run with debug logging
+   RUST_LOG=debug ./target/debug/wrtd module.wasm
+
+   # Run with GDB
+   gdb ./target/debug/wrtd
+   (gdb) run module.wasm
+
+Performance Profiling
+---------------------
+
+.. code-block:: bash
+
+   # Profile with perf
+   perf record -g ./target/release/wrtd module.wasm
+   perf report
+
+   # Profile with Valgrind
+   valgrind --tool=callgrind ./target/release/wrtd module.wasm
+
+   # Analyze cache performance
+   valgrind --tool=cachegrind ./target/release/wrtd module.wasm
+
+Advanced Features
+=================
+
+no_std Support
+--------------
+
+WRT supports `no_std` environments for embedded Linux:
+
+.. code-block:: toml
+
+   # Cargo.toml
+   [dependencies]
+   wrt = { version = "0.2.0", default-features = false }
+
+.. code-block:: rust
+
+   #![no_std]
+   use wrt::prelude::*;
+
+Cross Compilation
+-----------------
+
+Build for different targets:
+
+.. code-block:: bash
+
+   # Add target
+   rustup target add aarch64-unknown-linux-gnu
+
+   # Install cross-compilation tools
+   sudo apt install gcc-aarch64-linux-gnu
+
+   # Build for ARM64
+   cargo build --target aarch64-unknown-linux-gnu
+
+   # Or use cross tool
+   cargo install cross
+   cross build --target aarch64-unknown-linux-gnu
+
+Platform-Specific Optimizations
+-------------------------------
+
+WRT includes platform-specific optimizations for Linux:
+
+.. code-block:: bash
+
+   # Build with all optimizations
+   cargo build --release --features "platform-linux,cfi-hardware"
+
+   # Check available features
+   cargo metadata --no-deps --format-version 1 | jq '.packages[].features'
 
 Troubleshooting
 ===============
 
-Common Issues
--------------
+Build Issues
+------------
 
-**glibc version mismatch:**
-
-.. code-block:: bash
-
-   # Check glibc version
-   ldd --version
-
-   # Use static linking
-   export RUSTFLAGS="-C target-feature=+crt-static"
-
-**Permission denied:**
+**Rust version too old:**
 
 .. code-block:: bash
 
-   # Add user to appropriate groups
-   sudo usermod -a -G docker $USER
+   # Check Rust version
+   rustc --version
+   
+   # Update Rust
+   rustup update stable
 
-**Library not found:**
+**Missing dependencies:**
 
 .. code-block:: bash
 
-   # Update library cache
-   sudo ldconfig
+   # Ubuntu/Debian
+   sudo apt install build-essential pkg-config libssl-dev
+
+   # Fedora/CentOS
+   sudo dnf groupinstall "Development Tools"
+   sudo dnf install pkg-config openssl-devel
+
+**Cargo build fails:**
+
+.. code-block:: bash
+
+   # Clean and rebuild
+   cargo clean
+   cargo build
+
+   # Check for disk space
+   df -h
+
+**Dagger issues:**
+
+.. code-block:: bash
+
+   # Check if Docker is running
+   docker info
+   
+   # Or for Podman
+   podman info
+   
+   # Check Dagger version
+   dagger version
+   
+   # Clear Dagger cache if needed
+   rm -rf ~/.cache/dagger
+   
+   # Run with debug logging
+   RUST_LOG=debug,dagger_sdk=debug cargo xtask ci-test
+
+Runtime Issues
+--------------
+
+**Module fails to load:**
+
+.. code-block:: bash
+
+   # Verify WASM file
+   file module.wasm
+   
+   # Check with wasm-tools (install if needed)
+   cargo install wasm-tools
+   wasm-tools validate module.wasm
+
+**Out of memory:**
+
+.. code-block:: bash
+
+   # Check available memory
+   free -h
+   
+   # Limit WRT memory usage
+   ./target/debug/wrtd --memory-limit 100M module.wasm
 
 **Performance issues:**
 
 .. code-block:: bash
 
+   # Build in release mode
+   cargo build --release
+   
    # Check CPU governor
    cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
-
-   # Set performance mode
+   
+   # Set to performance mode
    echo performance | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
+
+Getting Help
+============
+
+Resources
+---------
+
+* **Documentation**: Full API docs at `cargo doc --open`
+* **Examples**: See the `example/` directory in the repository
+* **Tests**: Browse `tests/` for usage examples
+* **Issues**: Report bugs at https://github.com/pulseengine/wrt/issues
+
+Community
+---------
+
+* GitHub Discussions: https://github.com/pulseengine/wrt/discussions
+* Issue Tracker: https://github.com/pulseengine/wrt/issues
 
 Next Steps
 ==========
 
 * Try the :doc:`../examples/hello_world` example
-* Explore :doc:`../examples/platform/linux_features` 
-* Review :doc:`../architecture/platform_layer` for technical details
+* Learn about :doc:`../architecture/component_model`
+* Explore :doc:`../development/no_std_development` for embedded systems
+* Read the :doc:`../architecture/platform_layer` for Linux-specific optimizations

@@ -524,14 +524,14 @@ pub fn i32_add(lhs: i32, rhs: i32) -> Result<i32> {
 }
 
 /// i32.sub: Subtract two i32 values.
-/// Traps on signed overflow (which Rust's `checked_sub` handles).
+/// Performs wrapping subtraction (modulo 2^32). Does not trap on overflow.
 ///
 /// # Errors
 ///
-/// Returns `Err(TrapCode::IntegerOverflow)` if signed subtraction overflows.
+/// This function does not return an error.
 #[inline]
 pub fn i32_sub(lhs: i32, rhs: i32) -> Result<i32> {
-    lhs.checked_sub(rhs).ok_or_else(|| trap(TrapCode::IntegerOverflow))
+    Ok(lhs.wrapping_sub(rhs))
 }
 
 /// i32.mul: Multiply two i32 values.
@@ -746,6 +746,132 @@ pub fn i32_eqz(val: i32) -> Result<i32> {
     Ok(i32::from(val == 0))
 }
 
+// --- I32 Additional Arithmetic Operations ---
+
+/// i32.neg: Two's complement negation.
+/// Equivalent to 0 - value.
+///
+/// # Errors
+///
+/// This function does not return an error.
+#[inline]
+pub fn i32_neg(val: i32) -> Result<i32> {
+    Ok(val.wrapping_neg())
+}
+
+/// i32.abs: Absolute value.
+/// Note: abs(i32::MIN) wraps to i32::MIN in two's complement.
+///
+/// # Errors
+///
+/// This function does not return an error.
+#[inline]
+pub fn i32_abs(val: i32) -> Result<i32> {
+    Ok(val.wrapping_abs())
+}
+
+// --- I32 Comparison Operations ---
+
+/// i32.eq: Check if two i32 values are equal. Returns 1 if equal, 0 otherwise.
+///
+/// # Errors
+///
+/// This function does not return an error.
+#[inline]
+pub fn i32_eq(lhs: i32, rhs: i32) -> Result<i32> {
+    Ok(i32::from(lhs == rhs))
+}
+
+/// i32.ne: Check if two i32 values are not equal. Returns 1 if not equal, 0 otherwise.
+///
+/// # Errors
+///
+/// This function does not return an error.
+#[inline]
+pub fn i32_ne(lhs: i32, rhs: i32) -> Result<i32> {
+    Ok(i32::from(lhs != rhs))
+}
+
+/// i32.lt_s: Signed less than comparison. Returns 1 if lhs < rhs, 0 otherwise.
+///
+/// # Errors
+///
+/// This function does not return an error.
+#[inline]
+pub fn i32_lt_s(lhs: i32, rhs: i32) -> Result<i32> {
+    Ok(i32::from(lhs < rhs))
+}
+
+/// i32.lt_u: Unsigned less than comparison. Returns 1 if lhs < rhs, 0 otherwise.
+///
+/// # Errors
+///
+/// This function does not return an error.
+#[inline]
+pub fn i32_lt_u(lhs: u32, rhs: u32) -> Result<i32> {
+    Ok(i32::from(lhs < rhs))
+}
+
+/// i32.gt_s: Signed greater than comparison. Returns 1 if lhs > rhs, 0 otherwise.
+///
+/// # Errors
+///
+/// This function does not return an error.
+#[inline]
+pub fn i32_gt_s(lhs: i32, rhs: i32) -> Result<i32> {
+    Ok(i32::from(lhs > rhs))
+}
+
+/// i32.gt_u: Unsigned greater than comparison. Returns 1 if lhs > rhs, 0 otherwise.
+///
+/// # Errors
+///
+/// This function does not return an error.
+#[inline]
+pub fn i32_gt_u(lhs: u32, rhs: u32) -> Result<i32> {
+    Ok(i32::from(lhs > rhs))
+}
+
+/// i32.le_s: Signed less than or equal comparison. Returns 1 if lhs <= rhs, 0 otherwise.
+///
+/// # Errors
+///
+/// This function does not return an error.
+#[inline]
+pub fn i32_le_s(lhs: i32, rhs: i32) -> Result<i32> {
+    Ok(i32::from(lhs <= rhs))
+}
+
+/// i32.le_u: Unsigned less than or equal comparison. Returns 1 if lhs <= rhs, 0 otherwise.
+///
+/// # Errors
+///
+/// This function does not return an error.
+#[inline]
+pub fn i32_le_u(lhs: u32, rhs: u32) -> Result<i32> {
+    Ok(i32::from(lhs <= rhs))
+}
+
+/// i32.ge_s: Signed greater than or equal comparison. Returns 1 if lhs >= rhs, 0 otherwise.
+///
+/// # Errors
+///
+/// This function does not return an error.
+#[inline]
+pub fn i32_ge_s(lhs: i32, rhs: i32) -> Result<i32> {
+    Ok(i32::from(lhs >= rhs))
+}
+
+/// i32.ge_u: Unsigned greater than or equal comparison. Returns 1 if lhs >= rhs, 0 otherwise.
+///
+/// # Errors
+///
+/// This function does not return an error.
+#[inline]
+pub fn i32_ge_u(lhs: u32, rhs: u32) -> Result<i32> {
+    Ok(i32::from(lhs >= rhs))
+}
+
 // --- I64 Operations ---
 
 /// i64.add: Add two i64 values.
@@ -760,14 +886,14 @@ pub fn i64_add(lhs: i64, rhs: i64) -> Result<i64> {
 }
 
 /// i64.sub: Subtract two i64 values.
-/// Traps on signed overflow.
+/// Performs wrapping subtraction (modulo 2^64). Does not trap on overflow.
 ///
 /// # Errors
 ///
-/// Returns `Err(TrapCode::IntegerOverflow)` if signed subtraction overflows.
+/// This function does not return an error.
 #[inline]
 pub fn i64_sub(lhs: i64, rhs: i64) -> Result<i64> {
-    lhs.checked_sub(rhs).ok_or_else(|| trap(TrapCode::IntegerOverflow))
+    Ok(lhs.wrapping_sub(rhs))
 }
 
 /// i64.mul: Multiply two i64 values.
@@ -967,6 +1093,132 @@ pub fn i64_popcnt(val: i64) -> Result<i64> {
 #[inline]
 pub fn i64_eqz(val: i64) -> Result<i32> {
     Ok(i32::from(val == 0))
+}
+
+// --- I64 Additional Arithmetic Operations ---
+
+/// i64.neg: Two's complement negation.
+/// Equivalent to 0 - value.
+///
+/// # Errors
+///
+/// This function does not return an error.
+#[inline]
+pub fn i64_neg(val: i64) -> Result<i64> {
+    Ok(val.wrapping_neg())
+}
+
+/// i64.abs: Absolute value.
+/// Note: abs(i64::MIN) wraps to i64::MIN in two's complement.
+///
+/// # Errors
+///
+/// This function does not return an error.
+#[inline]
+pub fn i64_abs(val: i64) -> Result<i64> {
+    Ok(val.wrapping_abs())
+}
+
+// --- I64 Comparison Operations ---
+
+/// i64.eq: Check if two i64 values are equal. Returns 1 if equal, 0 otherwise.
+///
+/// # Errors
+///
+/// This function does not return an error.
+#[inline]
+pub fn i64_eq(lhs: i64, rhs: i64) -> Result<i32> {
+    Ok(i32::from(lhs == rhs))
+}
+
+/// i64.ne: Check if two i64 values are not equal. Returns 1 if not equal, 0 otherwise.
+///
+/// # Errors
+///
+/// This function does not return an error.
+#[inline]
+pub fn i64_ne(lhs: i64, rhs: i64) -> Result<i32> {
+    Ok(i32::from(lhs != rhs))
+}
+
+/// i64.lt_s: Signed less than comparison. Returns 1 if lhs < rhs, 0 otherwise.
+///
+/// # Errors
+///
+/// This function does not return an error.
+#[inline]
+pub fn i64_lt_s(lhs: i64, rhs: i64) -> Result<i32> {
+    Ok(i32::from(lhs < rhs))
+}
+
+/// i64.lt_u: Unsigned less than comparison. Returns 1 if lhs < rhs, 0 otherwise.
+///
+/// # Errors
+///
+/// This function does not return an error.
+#[inline]
+pub fn i64_lt_u(lhs: u64, rhs: u64) -> Result<i32> {
+    Ok(i32::from(lhs < rhs))
+}
+
+/// i64.gt_s: Signed greater than comparison. Returns 1 if lhs > rhs, 0 otherwise.
+///
+/// # Errors
+///
+/// This function does not return an error.
+#[inline]
+pub fn i64_gt_s(lhs: i64, rhs: i64) -> Result<i32> {
+    Ok(i32::from(lhs > rhs))
+}
+
+/// i64.gt_u: Unsigned greater than comparison. Returns 1 if lhs > rhs, 0 otherwise.
+///
+/// # Errors
+///
+/// This function does not return an error.
+#[inline]
+pub fn i64_gt_u(lhs: u64, rhs: u64) -> Result<i32> {
+    Ok(i32::from(lhs > rhs))
+}
+
+/// i64.le_s: Signed less than or equal comparison. Returns 1 if lhs <= rhs, 0 otherwise.
+///
+/// # Errors
+///
+/// This function does not return an error.
+#[inline]
+pub fn i64_le_s(lhs: i64, rhs: i64) -> Result<i32> {
+    Ok(i32::from(lhs <= rhs))
+}
+
+/// i64.le_u: Unsigned less than or equal comparison. Returns 1 if lhs <= rhs, 0 otherwise.
+///
+/// # Errors
+///
+/// This function does not return an error.
+#[inline]
+pub fn i64_le_u(lhs: u64, rhs: u64) -> Result<i32> {
+    Ok(i32::from(lhs <= rhs))
+}
+
+/// i64.ge_s: Signed greater than or equal comparison. Returns 1 if lhs >= rhs, 0 otherwise.
+///
+/// # Errors
+///
+/// This function does not return an error.
+#[inline]
+pub fn i64_ge_s(lhs: i64, rhs: i64) -> Result<i32> {
+    Ok(i32::from(lhs >= rhs))
+}
+
+/// i64.ge_u: Unsigned greater than or equal comparison. Returns 1 if lhs >= rhs, 0 otherwise.
+///
+/// # Errors
+///
+/// This function does not return an error.
+#[inline]
+pub fn i64_ge_u(lhs: u64, rhs: u64) -> Result<i32> {
+    Ok(i32::from(lhs >= rhs))
 }
 
 // --- F32 Operations ---
@@ -1931,6 +2183,240 @@ pub fn i64_trunc_f64_u(val: FloatBits64) -> Result<u64> {
         }
     }
     Ok(d_trunc as u64)
+}
+
+// --- Type Conversion Operations ---
+
+// Integer to Float Conversions
+
+/// f32.convert_i32_s: Convert signed i32 to f32.
+///
+/// # Errors
+///
+/// This function does not return an error.
+#[inline]
+pub fn f32_convert_i32_s(val: i32) -> Result<FloatBits32> {
+    Ok(FloatBits32::from_float(val as f32))
+}
+
+/// f32.convert_i32_u: Convert unsigned i32 to f32.
+///
+/// # Errors
+///
+/// This function does not return an error.
+#[inline]
+pub fn f32_convert_i32_u(val: u32) -> Result<FloatBits32> {
+    Ok(FloatBits32::from_float(val as f32))
+}
+
+/// f32.convert_i64_s: Convert signed i64 to f32.
+///
+/// # Errors
+///
+/// This function does not return an error.
+#[inline]
+pub fn f32_convert_i64_s(val: i64) -> Result<FloatBits32> {
+    Ok(FloatBits32::from_float(val as f32))
+}
+
+/// f32.convert_i64_u: Convert unsigned i64 to f32.
+///
+/// # Errors
+///
+/// This function does not return an error.
+#[inline]
+pub fn f32_convert_i64_u(val: u64) -> Result<FloatBits32> {
+    Ok(FloatBits32::from_float(val as f32))
+}
+
+/// f64.convert_i32_s: Convert signed i32 to f64.
+///
+/// # Errors
+///
+/// This function does not return an error.
+#[inline]
+pub fn f64_convert_i32_s(val: i32) -> Result<FloatBits64> {
+    Ok(FloatBits64::from_float(f64::from(val)))
+}
+
+/// f64.convert_i32_u: Convert unsigned i32 to f64.
+///
+/// # Errors
+///
+/// This function does not return an error.
+#[inline]
+pub fn f64_convert_i32_u(val: u32) -> Result<FloatBits64> {
+    Ok(FloatBits64::from_float(f64::from(val)))
+}
+
+/// f64.convert_i64_s: Convert signed i64 to f64.
+///
+/// # Errors
+///
+/// This function does not return an error.
+#[inline]
+pub fn f64_convert_i64_s(val: i64) -> Result<FloatBits64> {
+    Ok(FloatBits64::from_float(val as f64))
+}
+
+/// f64.convert_i64_u: Convert unsigned i64 to f64.
+///
+/// # Errors
+///
+/// This function does not return an error.
+#[inline]
+pub fn f64_convert_i64_u(val: u64) -> Result<FloatBits64> {
+    Ok(FloatBits64::from_float(val as f64))
+}
+
+// Float to Float Conversions
+
+/// f32.demote_f64: Demote f64 to f32.
+/// May lose precision. Follows IEEE 754 rounding rules.
+///
+/// # Errors
+///
+/// This function does not return an error.
+#[inline]
+pub fn f32_demote_f64(val: FloatBits64) -> Result<FloatBits32> {
+    Ok(FloatBits32::from_float(val.value() as f32))
+}
+
+/// f64.promote_f32: Promote f32 to f64.
+/// Exact conversion - no precision loss.
+///
+/// # Errors
+///
+/// This function does not return an error.
+#[inline]
+pub fn f64_promote_f32(val: FloatBits32) -> Result<FloatBits64> {
+    Ok(FloatBits64::from_float(f64::from(val.value())))
+}
+
+// Reinterpret (bit casting) Operations
+
+/// i32.reinterpret_f32: Reinterpret f32 bits as i32.
+///
+/// # Errors
+///
+/// This function does not return an error.
+#[inline]
+pub fn i32_reinterpret_f32(val: FloatBits32) -> Result<i32> {
+    Ok(val.to_bits() as i32)
+}
+
+/// i64.reinterpret_f64: Reinterpret f64 bits as i64.
+///
+/// # Errors
+///
+/// This function does not return an error.
+#[inline]
+pub fn i64_reinterpret_f64(val: FloatBits64) -> Result<i64> {
+    Ok(val.to_bits() as i64)
+}
+
+/// f32.reinterpret_i32: Reinterpret i32 bits as f32.
+///
+/// # Errors
+///
+/// This function does not return an error.
+#[inline]
+pub fn f32_reinterpret_i32(val: i32) -> Result<FloatBits32> {
+    Ok(FloatBits32::from_bits(val as u32))
+}
+
+/// f64.reinterpret_i64: Reinterpret i64 bits as f64.
+///
+/// # Errors
+///
+/// This function does not return an error.
+#[inline]
+pub fn f64_reinterpret_i64(val: i64) -> Result<FloatBits64> {
+    Ok(FloatBits64::from_bits(val as u64))
+}
+
+// Integer Width Conversions
+
+/// i32.wrap_i64: Wrap i64 to i32 (truncate to lower 32 bits).
+///
+/// # Errors
+///
+/// This function does not return an error.
+#[inline]
+pub fn i32_wrap_i64(val: i64) -> Result<i32> {
+    Ok(val as i32)
+}
+
+/// i64.extend_i32_s: Sign-extend i32 to i64.
+///
+/// # Errors
+///
+/// This function does not return an error.
+#[inline]
+pub fn i64_extend_i32_s(val: i32) -> Result<i64> {
+    Ok(i64::from(val))
+}
+
+/// i64.extend_i32_u: Zero-extend i32 to i64.
+///
+/// # Errors
+///
+/// This function does not return an error.
+#[inline]
+pub fn i64_extend_i32_u(val: u32) -> Result<i64> {
+    Ok(i64::from(val))
+}
+
+// Sign Extension Operations
+
+/// i32.extend8_s: Sign-extend 8-bit value to 32 bits.
+///
+/// # Errors
+///
+/// This function does not return an error.
+#[inline]
+pub fn i32_extend8_s(val: i32) -> Result<i32> {
+    Ok(i32::from(val as i8))
+}
+
+/// i32.extend16_s: Sign-extend 16-bit value to 32 bits.
+///
+/// # Errors
+///
+/// This function does not return an error.
+#[inline]
+pub fn i32_extend16_s(val: i32) -> Result<i32> {
+    Ok(i32::from(val as i16))
+}
+
+/// i64.extend8_s: Sign-extend 8-bit value to 64 bits.
+///
+/// # Errors
+///
+/// This function does not return an error.
+#[inline]
+pub fn i64_extend8_s(val: i64) -> Result<i64> {
+    Ok(i64::from(val as i8))
+}
+
+/// i64.extend16_s: Sign-extend 16-bit value to 64 bits.
+///
+/// # Errors
+///
+/// This function does not return an error.
+#[inline]
+pub fn i64_extend16_s(val: i64) -> Result<i64> {
+    Ok(i64::from(val as i16))
+}
+
+/// i64.extend32_s: Sign-extend 32-bit value to 64 bits.
+///
+/// # Errors
+///
+/// This function does not return an error.
+#[inline]
+pub fn i64_extend32_s(val: i64) -> Result<i64> {
+    Ok(i64::from(val as i32))
 }
 
 // TODO: Add tests for all math operations, including edge cases for

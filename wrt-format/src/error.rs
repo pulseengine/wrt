@@ -9,6 +9,11 @@
 
 // #[cfg(feature = "std")]
 // use std::{format, string::String};
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+use alloc::boxed::Box;
+#[cfg(feature = "std")]
+use std::boxed::Box;
+
 use wrt_error::Error;
 
 /// Module for error codes
@@ -26,6 +31,14 @@ pub mod codes {
 /// Create a simple parse error with the given message
 pub fn parse_error(message: &'static str) -> Error {
     Error::parse_error(message)
+}
+
+/// Create a parse error from a String (for dynamic messages)
+/// Note: This leaks the string memory, so use sparingly
+#[cfg(any(feature = "alloc", feature = "std"))]
+pub fn parse_error_dynamic(message: String) -> Error {
+    let leaked: &'static str = Box::leak(message.into_boxed_str());
+    Error::parse_error(leaked)
 }
 
 /// Create a new runtime error with the given message

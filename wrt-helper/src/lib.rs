@@ -3,7 +3,15 @@
 //! This crate provides common utilities and helpers for the WebAssembly
 //! Runtime.
 
-#![no_std]
+#![cfg_attr(not(feature = "std"), no_std)]
+
+// Import std when the feature is enabled
+#[cfg(feature = "std")]
+extern crate std;
+
+// Import alloc when the feature is enabled
+#[cfg(feature = "alloc")]
+extern crate alloc;
 
 /// Version of the helper crate
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

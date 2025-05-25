@@ -28,6 +28,7 @@ use crate::{BlockType, FuncType, RefType, ValueType as CoreValueType};
 ///
 /// Provides a standard way to convert between reference types
 /// and value types across all crates.
+#[cfg(any(feature = "alloc", feature = "std"))]
 #[must_use]
 pub fn ref_type_to_val_type(ref_type: RefType) -> CoreValueType {
     match ref_type {
@@ -40,6 +41,7 @@ pub fn ref_type_to_val_type(ref_type: RefType) -> CoreValueType {
 ///
 /// Provides a standard way to convert between value types
 /// and reference types across all crates.
+#[cfg(any(feature = "alloc", feature = "std"))]
 pub fn val_type_to_ref_type(val_type: CoreValueType) -> Result<RefType> {
     match val_type {
         CoreValueType::FuncRef => Ok(RefType::Funcref),
@@ -53,6 +55,7 @@ pub fn val_type_to_ref_type(val_type: CoreValueType) -> Result<RefType> {
 }
 
 /// Block type utilities for converting between different representations
+#[cfg(any(feature = "alloc", feature = "std"))]
 pub mod block_type {
     use super::BlockType;
 
@@ -75,6 +78,7 @@ pub mod block_type {
 }
 
 /// `FuncType` utilities for working with function types consistently
+#[cfg(any(feature = "alloc", feature = "std"))]
 pub mod func_type {
     // Remove Vec import, as params and results will be slices
     // #[cfg(not(feature = "std"))]

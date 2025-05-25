@@ -38,8 +38,12 @@
 #![warn(missing_docs)]
 #![warn(clippy::missing_panics_doc)]
 
-// When no_std but alloc is available
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
+// Import std when available
+#[cfg(feature = "std")]
+extern crate std;
+
+// Import alloc when available
+#[cfg(feature = "alloc")]
 extern crate alloc;
 
 // Note: This crate supports no_std without alloc, using bounded collections

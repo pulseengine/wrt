@@ -62,6 +62,7 @@ All notable changes to this project will be documented in this file.
 - *(ci)* Ensure Dagger CLI is available in PATH for all workflow steps - Use  to persist Dagger binary directory in the workflow - Split Dagger version check into a separate step to verify installation - Fixes 'dagger: command not found' error in GitHub Actions
 - *(ci)* Ensure Dagger CLI is in PATH for all steps in publish workflow
 - *(xtask)* Correct string escaping in coverage_ci.rs
+- *(docs)* Fix changelog generation for versioned documentation builds
 
 ### 💼 Other
 

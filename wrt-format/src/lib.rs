@@ -166,6 +166,9 @@ pub mod error;
 pub mod module;
 /// Common imports for convenience
 pub mod prelude;
+/// Resource handle management for Component Model
+#[cfg(any(feature = "alloc", feature = "std"))]
+pub mod resource_handle;
 /// Safe memory operations
 pub mod safe_memory;
 pub mod section;
@@ -173,8 +176,14 @@ pub mod state;
 /// Streaming parser for no_std environments
 pub mod streaming;
 pub mod types;
+/// Type storage system for Component Model
+#[cfg(any(feature = "alloc", feature = "std"))]
+pub mod type_store;
 /// Validation utilities
 pub mod validation;
+/// ValType builder utilities
+#[cfg(any(feature = "alloc", feature = "std"))]
+pub mod valtype_builder;
 pub mod verify;
 pub mod version;
 

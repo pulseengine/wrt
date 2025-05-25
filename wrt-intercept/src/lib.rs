@@ -96,6 +96,7 @@ pub mod verify;
 pub use prelude::*;
 
 /// Strategy pattern for intercepting component linking
+#[cfg(feature = "alloc")]
 pub trait LinkInterceptorStrategy: Send + Sync {
     /// Called before a function call is made
     ///
@@ -173,6 +174,7 @@ pub trait LinkInterceptorStrategy: Send + Sync {
     ///
     /// * `Result<Option<Vec<u8>>>` - Serialized value if lifting was handled,
     ///   None if it should proceed normally
+    #[cfg(feature = "alloc")]
     fn intercept_lift(
         &self,
         _ty: &ValType<wrt_foundation::NoStdProvider<64>>,
@@ -195,6 +197,7 @@ pub trait LinkInterceptorStrategy: Send + Sync {
     ///
     /// * `Result<bool>` - True if the lowering was handled, false if it should
     ///   proceed normally
+    #[cfg(feature = "alloc")]
     fn intercept_lower(
         &self,
         _value_type: &ValType<wrt_foundation::NoStdProvider<64>>,
@@ -226,6 +229,7 @@ pub trait LinkInterceptorStrategy: Send + Sync {
     ///
     /// * `Result<Option<Vec<u8>>>` - Serialized result values if call was
     ///   handled, None if it should proceed normally
+    #[cfg(feature = "alloc")]
     fn intercept_function_call(
         &self,
         _function_name: &str,
@@ -247,6 +251,7 @@ pub trait LinkInterceptorStrategy: Send + Sync {
     ///
     /// * `Result<Option<Vec<u8>>>` - Modified serialized results if modified,
     ///   None if they should be returned as is
+    #[cfg(feature = "alloc")]
     fn intercept_function_result(
         &self,
         _function_name: &str,
@@ -317,6 +322,7 @@ pub trait LinkInterceptorStrategy: Send + Sync {
     ///
     /// * `Result<Option<Vec<u8>>>` - Modified serialized values to use as the
     ///   final result, None to use the original result
+    #[cfg(feature = "alloc")]
     fn after_start(
         &self,
         _component_name: &str,
@@ -345,6 +351,7 @@ pub trait LinkInterceptorStrategy: Send + Sync {
     /// # Returns
     ///
     /// * `Result<Option<Vec<Modification>>>` - Optional modifications to apply
+    #[cfg(feature = "alloc")]
     fn process_results(
         &self,
         component_name: &str,
@@ -357,12 +364,82 @@ pub trait LinkInterceptorStrategy: Send + Sync {
     }
 }
 
+/// Simplified strategy pattern for intercepting component linking in no_std environments
+#[cfg(not(feature = "alloc"))]
+pub trait LinkInterceptorStrategy: Send + Sync {
+    /// Called before a function call is made
+    fn before_call(
+        &self,
+        source: &str,
+        target: &str,
+        function: &str,
+        args: &[Value],
+    ) -> Result<()>;
+
+    /// Called after a function call completes
+    fn after_call(
+        &self,
+        source: &str,
+        target: &str,
+        function: &str,
+        args: &[Value],
+        result: Result<()>,
+    ) -> Result<()>;
+
+    /// Determines if the normal execution should be bypassed
+    fn should_bypass(&self) -> bool {
+        false
+    }
+
+    /// Determines if the strategy should intercept canonical ABI operations
+    fn should_intercept_canonical(&self) -> bool {
+        false
+    }
+
+    /// Determines if the strategy should intercept component function calls
+    fn should_intercept_function(&self) -> bool {
+        false
+    }
+
+    /// Intercepts a resource operation
+    fn intercept_resource_operation(
+        &self,
+        _handle: u32,
+        _operation: &ResourceCanonicalOperation,
+    ) -> Result<()> {
+        Ok(())
+    }
+
+    /// Gets the preferred memory strategy for a resource or canonical operation
+    fn get_memory_strategy(&self, _handle: u32) -> Option<u8> {
+        None
+    }
+
+    /// Called before a component start function is executed
+    fn before_start(&self, _component_name: &str) -> Result<()> {
+        Ok(())
+    }
+
+    /// Called after a component start function has executed
+    fn after_start(
+        &self,
+        _component_name: &str,
+        _result_data: Option<&[u8]>,
+    ) -> Result<()> {
+        Ok(())
+    }
+}
+
 /// Main interceptor to manage connections between components/host
 #[derive(Clone)]
 pub struct LinkInterceptor {
     /// Name of this interceptor for identification
+    #[cfg(feature = "alloc")]
     name: String,
+    #[cfg(not(feature = "alloc"))]
+    name: &'static str,
     /// Collection of strategies to apply
+    #[cfg(feature = "alloc")]
     pub strategies: Vec<Arc<dyn LinkInterceptorStrategy>>,
 }
 
@@ -376,8 +453,16 @@ impl LinkInterceptor {
     /// # Returns
     ///
     /// * `Self` - A new LinkInterceptor instance
+    #[cfg_attr(not(feature = "alloc"), allow(unused_variables))]
     pub fn new(name: &str) -> Self {
-        Self { name: name.to_string(), strategies: Vec::new() }
+        Self { 
+            #[cfg(feature = "alloc")]
+            name: name.to_string(), 
+            #[cfg(not(feature = "alloc"))]
+            name: "default",
+            #[cfg(feature = "alloc")]
+            strategies: Vec::new() 
+        }
     }
 
     /// Adds a strategy to this interceptor
@@ -387,6 +472,7 @@ impl LinkInterceptor {
     /// # Arguments
     ///
     /// * `strategy` - The strategy to add
+    #[cfg(feature = "alloc")]
     pub fn add_strategy(&mut self, strategy: Arc<dyn LinkInterceptorStrategy>) {
         self.strategies.push(strategy);
     }
@@ -407,6 +493,7 @@ impl LinkInterceptor {
     ///
     /// * `Result<Vec<Value>>` - The result of the function call after
     ///   interception
+    #[cfg(feature = "alloc")]
     pub fn intercept_call<F>(
         &self,
         target: &str,
@@ -439,6 +526,7 @@ impl LinkInterceptor {
 
         result
     }
+    
 
     /// Gets the name of this interceptor
     ///
@@ -458,6 +546,7 @@ impl LinkInterceptor {
     ///
     /// * `Option<&dyn LinkInterceptorStrategy>` - The first strategy, or None
     ///   if none exists
+    #[cfg(feature = "alloc")]
     pub fn get_strategy(&self) -> Option<&dyn LinkInterceptorStrategy> {
         self.strategies.first().map(|s| s.as_ref())
     }
@@ -474,6 +563,7 @@ impl LinkInterceptor {
     /// # Returns
     ///
     /// * `Result<InterceptionResult>` - The processed interception result
+    #[cfg(feature = "alloc")]
     pub fn post_intercept(
         &self,
         component_name: String,
@@ -508,6 +598,7 @@ impl LinkInterceptor {
     /// # Returns
     ///
     /// * `Result<Vec<u8>>` - The modified serialized data
+    #[cfg(feature = "alloc")]
     pub fn apply_modifications(
         &self,
         serialized_data: &[u8],
@@ -565,6 +656,7 @@ impl LinkInterceptor {
 }
 
 /// Result of an interception operation
+#[cfg(feature = "alloc")]
 #[derive(Debug, Clone)]
 pub struct InterceptionResult {
     /// Whether the data has been modified
@@ -573,7 +665,16 @@ pub struct InterceptionResult {
     pub modifications: Vec<Modification>,
 }
 
+/// Result of an interception operation (no_std version)
+#[cfg(not(feature = "alloc"))]
+#[derive(Debug, Clone)]
+pub struct InterceptionResult {
+    /// Whether the data has been modified
+    pub modified: bool,
+}
+
 /// Modification to apply to serialized data
+#[cfg(feature = "alloc")]
 #[derive(Debug, Clone)]
 pub enum Modification {
     /// Replace data at an offset
@@ -599,6 +700,14 @@ pub enum Modification {
     },
 }
 
+/// Modification to apply to serialized data (no_std version)
+#[cfg(not(feature = "alloc"))]
+#[derive(Debug, Clone)]
+pub enum Modification {
+    /// No modifications in no_std
+    None,
+}
+
 #[cfg(feature = "std")]
 impl std::fmt::Debug for LinkInterceptor {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -609,7 +718,7 @@ impl std::fmt::Debug for LinkInterceptor {
     }
 }
 
-#[cfg(not(feature = "std"))]
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
 impl core::fmt::Debug for LinkInterceptor {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("LinkInterceptor")
@@ -619,7 +728,16 @@ impl core::fmt::Debug for LinkInterceptor {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+impl core::fmt::Debug for LinkInterceptor {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("LinkInterceptor")
+            .field("name", &self.name)
+            .finish()
+    }
+}
+
+#[cfg(all(test, feature = "alloc"))]
 mod tests {
     use super::*;
 

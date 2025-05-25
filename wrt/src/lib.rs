@@ -91,9 +91,7 @@ pub mod decoder_integration;
 pub mod instructions_adapter;
 pub mod memory_adapter;
 
-// No_std implementation modules
-#[cfg(not(any(feature = "std", feature = "alloc")))]
-pub mod no_std_hashmap;
+// No_std implementation modules are now handled by wrt-foundation
 
 // Resources implementation - std vs no_std
 #[cfg(any(feature = "std", feature = "alloc"))]
@@ -122,7 +120,7 @@ pub const COMPONENT_VERSION: &str = "0.1.0";
 ///
 /// A new stackless execution engine.
 pub fn new_stackless_engine() -> StacklessEngine {
-    StacklessEngine::new()
+    wrt_runtime::stackless::StacklessEngine::new()
 }
 
 /// Create a new, empty WebAssembly module.

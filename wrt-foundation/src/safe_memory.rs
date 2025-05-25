@@ -17,9 +17,12 @@
 // REMOVE: extern crate alloc;
 
 use core::sync::atomic::{AtomicUsize, Ordering};
+use core::fmt;
 
 use crate::operations::{record_global_operation, Type as OperationType};
-// Checksum and VerificationLevel are available through prelude
+use crate::verification::{Checksum, VerificationLevel};
+use crate::{codes, Error, ErrorCategory};
+// Result is imported through the prelude
 
 /// Default capacity for NoStdProvider memory allocations
 pub const DEFAULT_MEMORY_PROVIDER_CAPACITY: usize = 4096;

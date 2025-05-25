@@ -43,17 +43,25 @@ pub use std::{
 // Re-export from wrt-error
 pub use wrt_error::{codes, kinds, Error, ErrorCategory, Result};
 // Re-export from wrt-foundation (for component model)
+#[cfg(feature = "alloc")]
 pub use wrt_foundation::component_value::ValType;
 // Re-export from wrt-foundation
 pub use wrt_foundation::{
     builtin::BuiltinType,
-    component_value::ComponentValue,
     resource::ResourceCanonicalOperation,
     // SafeMemory types
     safe_memory::{SafeMemoryHandler, SafeSlice, SafeStack},
     // Core types
     values::Value,
 };
+
+// When no alloc, we need some basic types
+#[cfg(not(feature = "alloc"))]
+pub use wrt_foundation::bounded::BoundedVec;
+#[cfg(not(feature = "alloc"))]
+pub use wrt_foundation::BoundedMap as BoundedHashMap;
+#[cfg(feature = "alloc")]
+pub use wrt_foundation::component_value::ComponentValue;
 // Import synchronization primitives for no_std
 #[cfg(not(feature = "std"))]
 pub use wrt_sync::{Mutex, RwLock};
@@ -64,8 +72,7 @@ pub use crate::strategies::StatisticsStrategy;
 // Re-export from this crate
 pub use crate::{
     // Builtin interceptors
-    builtins::{BeforeBuiltinResult, BuiltinInterceptor, BuiltinSerialization, InterceptContext},
-
+    builtins::InterceptContext,
     // Strategies
     strategies::{FirewallConfig, FirewallRule, FirewallStrategy, LoggingStrategy},
     InterceptionResult,
@@ -75,3 +82,7 @@ pub use crate::{
     LinkInterceptorStrategy,
     Modification,
 };
+
+// Re-export builtin types when alloc is available
+#[cfg(feature = "alloc")]
+pub use crate::builtins::{BeforeBuiltinResult, BuiltinInterceptor, BuiltinSerialization};

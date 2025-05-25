@@ -16,15 +16,14 @@ default = []
 # Standard library support - enables use of std::f32/f64 math functions
 std = ["alloc"]
 # Allocator support (implicitly enabled by std)
-alloc = ["dep:alloc"]
+alloc = []
 # This crate is no_std by default, this feature is a no-op for compatibility
 no_std = []
 
 [dependencies]
 wrt-error = { workspace = true, default-features = false }
 
-# No-std support
-alloc = { version = "1.0.0", optional = true, package = "rustc-std-workspace-alloc" }
+# Note: alloc support is provided through cfg(feature = "alloc") in source code
 
 [dev-dependencies]
 # Add development dependencies here
