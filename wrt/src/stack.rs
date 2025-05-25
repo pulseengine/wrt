@@ -1,4 +1,4 @@
-use crate::behavior::{self, Label as BehaviorLabel, StackBehavior};
+use wrt_instructions::behavior::{self, Label as BehaviorLabel, StackBehavior};
 use crate::prelude::TypesValue as Value;
 use crate::StacklessEngine;
 use wrt_error::{kinds, Error, Result};
