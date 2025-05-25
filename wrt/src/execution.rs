@@ -1,9 +1,9 @@
 use wrt_runtime::stackless::StacklessEngine;
+use wrt_instructions::behavior::{
+    ControlFlow, FrameBehavior, InstructionExecutor, Label,
+    /* NullBehavior, */ StackBehavior,
+};
 use crate::{
-    behavior::{
-        ControlFlow, FrameBehavior, InstructionExecutor, Label,
-        /* NullBehavior, */ StackBehavior,
-    },
     error::{kinds, Error, Result},
     instructions::Instruction,
     module::{ExportKind, Function, Module},

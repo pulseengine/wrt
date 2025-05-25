@@ -4,8 +4,8 @@
 //! interface types and canonical ABI, including value lifting/lowering between
 //! core and component types.
 
+use wrt_instructions::behavior::FrameBehavior;
 use crate::{
-    behavior::FrameBehavior,
     error::kinds,
     error::{Error, Result},
     global::Global,

@@ -3,8 +3,8 @@
 //! This module contains implementations of WebAssembly instructions
 //! that can be shared between different engine implementations.
 
+use wrt_instructions::behavior::{ControlFlow, FrameBehavior, StackBehavior};
 use crate::{
-    behavior::{ControlFlow, FrameBehavior, StackBehavior},
     error::{kinds, Error, Result},
     prelude::TypesValue as Value,
 };
