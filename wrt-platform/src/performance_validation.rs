@@ -125,7 +125,7 @@ impl PerformanceValidator {
 
     /// Benchmark configuration object creation (should be zero-cost)
     fn benchmark_config_creation<P>() -> Result<BenchmarkResult, Error> {
-        const ITERATIONS: u32 = 100000;
+        const ITERATIONS: u32 = 100_000;
 
         // Benchmark direct struct creation
         let direct_time = Self::time_operation(|| {
@@ -180,7 +180,7 @@ impl PerformanceValidator {
         ))]
         {
             // Simulate realistic timing values for POSIX platforms
-            static mut COUNTER: u64 = 1000000; // Start at 1ms
+            static mut COUNTER: u64 = 1_000_000; // Start at 1ms
             unsafe {
                 COUNTER += 100; // Add 100ns per call
                 COUNTER
@@ -193,7 +193,7 @@ impl PerformanceValidator {
         )))]
         {
             // Simulate timing for embedded platforms
-            static mut COUNTER: u64 = 500000; // Start at 0.5ms
+            static mut COUNTER: u64 = 500_000; // Start at 0.5ms
             unsafe {
                 COUNTER += 50; // Add 50ns per call
                 COUNTER

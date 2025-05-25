@@ -19,8 +19,6 @@
 use core::sync::atomic::{AtomicUsize, Ordering};
 
 use crate::operations::{record_global_operation, Type as OperationType};
-// Use items from prelude to avoid shadowing
-use crate::prelude::{codes, fmt, Error, ErrorCategory};
 // Checksum and VerificationLevel are available through prelude
 
 /// Default capacity for NoStdProvider memory allocations

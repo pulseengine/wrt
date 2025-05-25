@@ -59,12 +59,14 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ComponentValueStoreBu
     }
 
     /// Sets the memory provider to use.
+    #[must_use]
     pub fn with_provider(mut self, provider: P) -> Self {
         self.provider = provider;
         self
     }
 
     /// Sets the verification level for safety checks.
+    #[must_use]
     pub fn with_verification_level(mut self, level: VerificationLevel) -> Self {
         self.verification_level = level;
         self
@@ -73,7 +75,8 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ComponentValueStoreBu
     /// Sets a hint for the initial capacity for stored values.
     ///
     /// This is a hint only - the actual capacity is limited by
-    /// MAX_STORE_VALUES.
+    /// `MAX_STORE_VALUES`.
+    #[must_use]
     pub fn with_initial_values_capacity(mut self, capacity: usize) -> Self {
         self.initial_values_capacity = Some(capacity.min(MAX_STORE_VALUES));
         self
@@ -81,13 +84,20 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ComponentValueStoreBu
 
     /// Sets a hint for the initial capacity for stored types.
     ///
-    /// This is a hint only - the actual capacity is limited by MAX_STORE_TYPES.
+    /// This is a hint only - the actual capacity is limited by
+    /// `MAX_STORE_TYPES`.
+    #[must_use]
     pub fn with_initial_types_capacity(mut self, capacity: usize) -> Self {
         self.initial_types_capacity = Some(capacity.min(MAX_STORE_TYPES));
         self
     }
 
-    /// Builds and returns a configured ComponentValueStore.
+    /// Builds and returns a configured `ComponentValueStore`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the component value store cannot be created with the
+    /// given provider.
     pub fn build(self) -> WrtResult<ComponentValueStore<P>> {
         // First configure the provider with the specified verification level
         let mut provider = self.provider.clone();

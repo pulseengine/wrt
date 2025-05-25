@@ -42,7 +42,7 @@ impl Default for VerificationLevel {
 // START DEFINITIONS MOVED FROM wrt-foundation/src/memory_traits.rs
 // (and originally present here before being moved out)
 
-/// Represents a single WebAssembly page (64 KiB).
+/// Represents a single WebAssembly page (64 `KiB`).
 pub const WASM_PAGE_SIZE: usize = 65536; // 64 * 1024
 
 /// Trait for platform-specific memory allocation.
@@ -66,7 +66,7 @@ pub trait PageAllocator: Debug + Send + Sync {
     ///
     /// # Arguments
     ///
-    /// * `initial_pages`: The number of Wasm pages (64 KiB) to make initially
+    /// * `initial_pages`: The number of Wasm pages (64 `KiB`) to make initially
     ///   accessible.
     /// * `maximum_pages`: An optional hint for the maximum number of pages the
     ///   memory might grow to.
@@ -144,9 +144,17 @@ pub trait MemoryProvider: Send + Sync {
     fn set_verification_level(&mut self, level: VerificationLevel);
 
     /// Writes data to the specified offset.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the write would exceed memory bounds.
     fn write_data(&mut self, offset: usize, data: &[u8]) -> wrt_error::Result<usize>;
 
     /// Reads data from the specified offset into the provided buffer.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the read would exceed memory bounds.
     fn read_data(&self, offset: usize, buffer: &mut [u8]) -> wrt_error::Result<usize>;
 }
 
@@ -154,7 +162,7 @@ pub trait MemoryProvider: Send + Sync {
 /// optimizations.
 ///
 /// This implementation uses a static buffer to store data, making it suitable
-/// for no_std environments where dynamic allocation is not available.
+/// for `no_std` environments where dynamic allocation is not available.
 #[derive(Debug)]
 pub struct NoStdProvider {
     /// The underlying buffer for storing data
@@ -164,7 +172,7 @@ pub struct NoStdProvider {
 }
 
 impl NoStdProvider {
-    /// Creates a new NoStdProvider with the specified size and verification
+    /// Creates a new `NoStdProvider` with the specified size and verification
     /// level.
     pub fn new(size: usize, verification_level: VerificationLevel) -> Self {
         // In a real implementation, we would allocate memory here
@@ -176,7 +184,7 @@ impl NoStdProvider {
         Self { buffer: unsafe { &mut DUMMY_BUFFER[0..actual_size] }, verification_level }
     }
 
-    /// Creates a new NoStdProvider with the specified verification level and
+    /// Creates a new `NoStdProvider` with the specified verification level and
     /// default size.
     pub fn with_verification_level(verification_level: VerificationLevel) -> Self {
         Self::new(4096, verification_level)

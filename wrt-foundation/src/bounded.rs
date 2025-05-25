@@ -158,7 +158,9 @@ use crate::operations::{self, record_global_operation};
 // use crate::safe_memory::SafeMemory; // Remove this if it was added
 use crate::safe_memory::SafeMemoryHandler; // Ensure this is imported
 use crate::safe_memory::SliceMut; // IMPORT ADDED
-use crate::traits::{importance, BoundedCapacity, Checksummed, SerializationError}; // Moved from validation to traits module
+use crate::traits::{
+    importance, BoundedCapacity, Checksummed, DefaultMemoryProvider, SerializationError,
+}; // Moved from validation to traits module
 use crate::MemoryProvider; // Added import for the MemoryProvider trait alias
 use crate::{
     codes,

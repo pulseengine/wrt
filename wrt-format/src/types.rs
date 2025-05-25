@@ -55,7 +55,7 @@ pub enum FormatBlockType {
     TypeIndex(u32),
     /// Function type (used for complex block types)
     #[cfg(any(feature = "alloc", feature = "std"))]
-    FuncType(wrt_foundation::FuncType<wrt_foundation::DefaultMemoryProvider>),
+    FuncType(wrt_foundation::FuncType<wrt_foundation::traits::DefaultMemoryProvider>),
     #[cfg(not(any(feature = "alloc", feature = "std")))]
     FuncType(wrt_foundation::FuncType<wrt_foundation::NoStdProvider<1024>>),
 }

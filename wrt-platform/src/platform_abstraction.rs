@@ -189,15 +189,15 @@ mod posix_impl {
 
         #[inline(always)]
         fn create_allocator(config: &Self::Config) -> Result<Self::Allocator, Error> {
-            crate::MacOsAllocatorBuilder::new()
+            Ok(crate::MacOsAllocatorBuilder::new()
                 .with_maximum_pages(config.max_pages)
                 .with_guard_pages(config.guard_pages)
-                .build()
+                .build())
         }
 
         #[inline(always)]
         fn create_synchronizer(_config: &Self::Config) -> Result<Self::Synchronizer, Error> {
-            crate::MacOsFutexBuilder::new().build()
+            Ok(crate::MacOsFutexBuilder::new().build())
         }
     }
 
@@ -273,7 +273,7 @@ mod security_impl {
                 .with_verification_level(match config.isolation_level {
                     Some(IsolationLevel::None) => crate::VerificationLevel::Off,
                     Some(IsolationLevel::Process) => crate::VerificationLevel::Standard,
-                    Some(IsolationLevel::Hardware) | Some(IsolationLevel::Verified) => {
+                    Some(IsolationLevel::Hardware | IsolationLevel::Verified) => {
                         crate::VerificationLevel::Full
                     }
                     None => crate::VerificationLevel::Full,

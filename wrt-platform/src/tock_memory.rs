@@ -152,11 +152,16 @@ impl GrantRegion {
     }
 }
 
+/// Maximum number of grant regions supported
+const MAX_GRANT_REGIONS: usize = 8;
+
 /// Tock OS page allocator using grant system
 #[derive(Debug)]
 pub struct TockAllocator {
-    /// Available grant regions
-    grant_regions: heapless::Vec<GrantRegion, 8>, // Fixed-size for no_std
+    /// Available grant regions (using array instead of heapless::Vec)
+    grant_regions: [Option<GrantRegion>; MAX_GRANT_REGIONS],
+    /// Number of active grant regions
+    grant_regions_count: usize,
     /// Current allocation pointer
     current_allocation: AtomicPtr<u8>,
     /// Current allocation size
@@ -180,7 +185,8 @@ impl TockAllocator {
         static_buffer: Option<&'static mut [u8]>,
     ) -> Result<Self, Error> {
         let mut allocator = Self {
-            grant_regions: heapless::Vec::new(),
+            grant_regions: [None; MAX_GRANT_REGIONS],
+            grant_regions_count: 0,
             current_allocation: AtomicPtr::new(core::ptr::null_mut()),
             current_size: AtomicUsize::new(0),
             maximum_pages,
@@ -204,9 +210,13 @@ impl TockAllocator {
             let region =
                 GrantRegion::new(ptr, buffer.len(), syscall::PROT_READ | syscall::PROT_WRITE);
 
-            self.grant_regions
-                .push(region)
-                .map_err(|_| Error::resource_error("Too many grant regions"))?;
+            // Add region to the array
+            if self.grant_regions_count >= MAX_GRANT_REGIONS {
+                return Err(Error::resource_error("Too many grant regions"));
+            }
+
+            self.grant_regions[self.grant_regions_count] = Some(region);
+            self.grant_regions_count += 1;
 
             return Ok(());
         }

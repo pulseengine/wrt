@@ -35,6 +35,30 @@ Memory Safety Mechanisms
 
    The safe memory adapter ensures that all memory operations are validated before execution.
 
+.. safety:: Atomic Memory Operations
+   :id: SAFETY_MEM_003
+   :status: implemented
+   :mitigation: Atomic memory operations with integrated checksumming ensure data integrity and thread safety.
+
+   Atomic operations prevent race conditions and data corruption in concurrent environments while maintaining memory integrity through checksums.
+
+Control Flow Integrity Mechanisms
+---------------------------------
+
+.. safety:: CFI Protection
+   :id: SAFETY_CFI_001
+   :status: implemented
+   :mitigation: Control Flow Integrity mechanisms prevent ROP/JOP attacks and ensure execution follows intended control flow.
+
+   CFI protection validates indirect calls and jumps to prevent control flow hijacking attacks.
+
+.. safety:: CFI Engine Integration
+   :id: SAFETY_CFI_002
+   :status: implemented
+   :mitigation: CFI is integrated into the execution engine to provide runtime protection.
+
+   The CFI engine provides hardware-assisted control flow validation where available, with software fallbacks.
+
 Resource Management Mechanisms
 ------------------------------
 
@@ -51,6 +75,13 @@ Resource Management Mechanisms
    :mitigation: All collections have explicit capacity limits with proper overflow handling.
 
    Prevents memory exhaustion by limiting collection sizes and handling capacity errors gracefully.
+
+.. safety:: Resource Interceptors
+   :id: SAFETY_RESOURCE_003
+   :status: implemented
+   :mitigation: Resource access is mediated through interceptors that can enforce policies and track usage.
+
+   Resource interceptors provide centralized control over resource allocation and usage patterns, enabling monitoring and enforcement of resource policies.
 
 Recovery Mechanisms
 -------------------
@@ -86,6 +117,30 @@ Import Safety Mechanisms
 
    Prevents invalid inputs from WebAssembly modules affecting host system stability.
 
+Verification Mechanisms
+-----------------------
+
+.. safety:: Configurable Verification Levels
+   :id: SAFETY_VERIFY_001
+   :status: implemented
+   :mitigation: Multiple verification levels allow trading safety for performance based on requirements.
+
+   Verification levels (Off, Basic, Full, Sampling, Redundant) provide configurable safety checking with deterministic sampling strategies.
+
+.. safety:: Checksum Validation
+   :id: SAFETY_VERIFY_002
+   :status: implemented
+   :mitigation: Integrated checksum validation ensures data integrity throughout operations.
+
+   Memory slices and data structures include checksum validation to detect corruption and tampering.
+
+.. safety:: Operation Importance Tracking
+   :id: SAFETY_VERIFY_003
+   :status: implemented
+   :mitigation: Critical operations receive enhanced verification based on importance values.
+
+   Operation importance influences verification sampling to ensure critical paths receive maximum protection.
+
 Unsafe Code Mechanisms
 ----------------------
 
@@ -118,9 +173,23 @@ There are currently multiple safety mechanisms implemented in the codebase:
      - Implemented
    * - Safe Memory Adapter
      - Implemented
+   * - Atomic Memory Operations
+     - Implemented
+   * - CFI Protection
+     - Implemented
+   * - CFI Engine Integration
+     - Implemented
    * - Resource Limits
      - Implemented
    * - Bounded Collections
+     - Implemented
+   * - Resource Interceptors
+     - Implemented
+   * - Configurable Verification Levels
+     - Implemented
+   * - Checksum Validation
+     - Implemented
+   * - Operation Importance Tracking
      - Implemented
    * - Error Recovery
      - Implemented

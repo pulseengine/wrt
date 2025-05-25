@@ -14,14 +14,10 @@ use core::fmt;
 use core::fmt::Debug;
 #[cfg(feature = "std")]
 use std::fmt::Debug;
-#[cfg(feature = "std")]
-use std::format;
 
 // optional imports
 // #[cfg(feature = "component-model-resources")]
 // use crate::bounded::BoundedVec;
-#[cfg(feature = "alloc")]
-use crate::prelude::String;
 use crate::{
     bounded::{BoundedString, BoundedVec, WasmName, MAX_WASM_NAME_LENGTH},
     prelude::{str, Eq, PartialEq},

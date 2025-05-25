@@ -190,7 +190,7 @@ impl CustomSection {
 
         // Add name as encoded string (name length + name bytes)
         let name_len = self.name.len() as u32;
-        let name_len_bytes = crate::binary::write_leb128_u32(name_len);
+        let name_len_bytes = crate::binary::with_alloc::write_leb128_u32(name_len);
         section_data.extend_from_slice(&name_len_bytes);
         section_data.extend_from_slice(self.name.as_bytes());
 
@@ -340,7 +340,7 @@ pub fn write_component_section_header(
 ) -> Vec<u8> {
     let mut bytes = Vec::new();
     bytes.push(section_type.id());
-    bytes.extend_from_slice(&crate::binary::write_leb128_u32(content_size));
+    bytes.extend_from_slice(&crate::binary::with_alloc::write_leb128_u32(content_size));
     bytes
 }
 

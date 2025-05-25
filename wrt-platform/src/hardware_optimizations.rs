@@ -421,6 +421,7 @@ pub mod intel {
         pub access_rights: [AccessRights; 16],
     }
 
+    /// Access rights configuration for memory protection keys
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub struct AccessRights {
         /// Allow reads
@@ -488,6 +489,7 @@ pub mod riscv {
         pub active_entries: usize,
     }
 
+    /// RISC-V Physical Memory Protection entry configuration
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub struct PmpEntry {
         /// Start address (encoded)
@@ -496,6 +498,7 @@ pub mod riscv {
         pub config: PmpConfig,
     }
 
+    /// RISC-V PMP configuration flags
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub struct PmpConfig {
         /// Read permission
@@ -508,6 +511,7 @@ pub mod riscv {
         pub address_mode: AddressMode,
     }
 
+    /// RISC-V PMP address matching mode
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub enum AddressMode {
         /// Disabled
@@ -699,21 +703,11 @@ pub mod compile_time {
 
     /// Detect hardware security level at compile time
     pub const fn detect_security_level() -> SecurityLevel {
-        #[cfg(any(
-            target_feature = "mte",
-            target_feature = "paca",
-            target_feature = "shstk",
-            target_feature = "pku"
-        ))]
+        #[cfg(any(target_feature = "mte", target_feature = "paca"))]
         {
             SecurityLevel::Advanced
         }
-        #[cfg(not(any(
-            target_feature = "mte",
-            target_feature = "paca",
-            target_feature = "shstk",
-            target_feature = "pku"
-        )))]
+        #[cfg(not(any(target_feature = "mte", target_feature = "paca")))]
         {
             SecurityLevel::Basic
         }

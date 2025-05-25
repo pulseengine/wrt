@@ -122,6 +122,7 @@ impl PlatformDetector {
     }
 
     /// Detect memory management capabilities
+    #[allow(unreachable_code)]
     fn detect_memory_capabilities(&self) -> Result<MemoryCapabilities, Error> {
         #[cfg(any(
             all(feature = "platform-linux", target_os = "linux"),
@@ -130,40 +131,40 @@ impl PlatformDetector {
         ))]
         {
             // POSIX-style platforms
-            Ok(MemoryCapabilities {
+            return Ok(MemoryCapabilities {
                 dynamic_allocation: true,
                 memory_protection: true,
                 guard_pages: true,
                 hardware_tagging: self.detect_hardware_tagging(),
                 max_memory: self.detect_max_memory(),
                 allocation_granularity: self.detect_page_size(),
-            })
+            });
         }
 
         #[cfg(feature = "platform-zephyr")]
         {
             // Real-time embedded platform
-            Ok(MemoryCapabilities {
+            return Ok(MemoryCapabilities {
                 dynamic_allocation: false,   // Zephyr uses heap, not dynamic allocation
                 memory_protection: true,     // Memory domains provide protection
                 guard_pages: true,           // Guard regions supported
                 hardware_tagging: false,     // Not typical in embedded
                 max_memory: Some(64 * 1024), // Typical embedded limit
                 allocation_granularity: 32,  // Typical alignment
-            })
+            });
         }
 
         #[cfg(feature = "platform-tock")]
         {
             // Security-first platform
-            Ok(MemoryCapabilities {
+            return Ok(MemoryCapabilities {
                 dynamic_allocation: false,   // Grant-based, not dynamic
                 memory_protection: true,     // MPU provides protection
                 guard_pages: false,          // Not applicable to grants
                 hardware_tagging: false,     // Focus on isolation, not tagging
                 max_memory: Some(16 * 1024), // Very limited embedded memory
                 allocation_granularity: 32,  // MPU alignment requirement
-            })
+            });
         }
 
         #[cfg(not(any(
@@ -175,18 +176,27 @@ impl PlatformDetector {
         )))]
         {
             // Fallback - minimal capabilities
-            Ok(MemoryCapabilities {
+            return Ok(MemoryCapabilities {
                 dynamic_allocation: false,
                 memory_protection: false,
                 guard_pages: false,
                 hardware_tagging: false,
                 max_memory: Some(4096),
                 allocation_granularity: 1,
-            })
+            });
         }
+
+        // Unreachable but needed for exhaustiveness
+        #[allow(unreachable_code)]
+        Err(Error::new(
+            wrt_error::ErrorCategory::System,
+            wrt_error::codes::UNSUPPORTED_OPERATION,
+            "Platform not configured",
+        ))
     }
 
     /// Detect synchronization capabilities
+    #[allow(unreachable_code)]
     fn detect_sync_capabilities(&self) -> Result<SyncCapabilities, Error> {
         #[cfg(any(
             all(feature = "platform-linux", target_os = "linux"),
@@ -195,37 +205,37 @@ impl PlatformDetector {
         ))]
         {
             // POSIX-style platforms
-            Ok(SyncCapabilities {
+            return Ok(SyncCapabilities {
                 futex_support: true,
                 cross_process_sync: true,
                 timeout_support: true,
                 hardware_atomics: true,
                 max_waiters: None, // Typically unlimited
-            })
+            });
         }
 
         #[cfg(feature = "platform-zephyr")]
         {
             // Real-time embedded platform
-            Ok(SyncCapabilities {
+            return Ok(SyncCapabilities {
                 futex_support: true,       // Zephyr has futex
                 cross_process_sync: false, // Single-process system
                 timeout_support: true,
                 hardware_atomics: self.detect_embedded_atomics(),
                 max_waiters: Some(32), // Limited by memory
-            })
+            });
         }
 
         #[cfg(feature = "platform-tock")]
         {
             // Security-first platform
-            Ok(SyncCapabilities {
+            return Ok(SyncCapabilities {
                 futex_support: false,     // No traditional futex
                 cross_process_sync: true, // IPC-based
                 timeout_support: true,    // Timer-based
                 hardware_atomics: self.detect_embedded_atomics(),
                 max_waiters: Some(8), // Very limited
-            })
+            });
         }
 
         #[cfg(not(any(
@@ -237,14 +247,22 @@ impl PlatformDetector {
         )))]
         {
             // Fallback - minimal capabilities
-            Ok(SyncCapabilities {
+            return Ok(SyncCapabilities {
                 futex_support: false,
                 cross_process_sync: false,
                 timeout_support: false,
                 hardware_atomics: false,
                 max_waiters: Some(1),
-            })
+            });
         }
+
+        // Unreachable but needed for exhaustiveness
+        #[allow(unreachable_code)]
+        Err(Error::new(
+            wrt_error::ErrorCategory::System,
+            wrt_error::codes::UNSUPPORTED_OPERATION,
+            "Platform not configured",
+        ))
     }
 
     /// Detect security capabilities

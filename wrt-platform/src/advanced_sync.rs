@@ -249,7 +249,7 @@ impl LockFreeAllocator {
                     Ordering::Relaxed,
                 ) {
                     Ok(_) => return NonNull::new(head as *mut u8),
-                    Err(_) => continue, // Retry due to contention
+                    Err(_) => {} // Retry due to contention
                 }
             }
         }
@@ -274,7 +274,7 @@ impl LockFreeAllocator {
                 Ordering::Relaxed,
             ) {
                 Ok(_) => return,
-                Err(_) => continue, // Retry due to contention
+                Err(_) => {} // Retry due to contention
             }
         }
     }
@@ -483,7 +483,7 @@ impl<T> AdvancedRwLock<T> {
                 Ordering::Relaxed,
             ) {
                 Ok(_) => return ReadGuard { lock: self },
-                Err(_) => continue,
+                Err(_) => {}
             }
         }
     }

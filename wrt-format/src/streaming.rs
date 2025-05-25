@@ -6,15 +6,9 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use core::marker::PhantomData;
+use wrt_foundation::MemoryProvider;
 
-use wrt_error::{codes, Error, ErrorCategory, Result};
-use wrt_foundation::{traits::BoundedCapacity, MemoryProvider, NoStdProvider};
-
-use crate::{
-    binary::{read_leb128_u32, read_string, WASM_MAGIC, WASM_VERSION},
-    WasmString, WasmVec,
-};
+use crate::binary::{WASM_MAGIC, WASM_VERSION};
 
 /// Maximum size of a section that can be processed in memory
 pub const MAX_SECTION_SIZE: usize = 64 * 1024; // 64KB

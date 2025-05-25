@@ -52,7 +52,7 @@ pub use std::{
 };
 
 #[cfg(feature = "use-hashbrown")]
-pub use hashbrown::HashMap;
+pub use hashbrown::HashMap as BHashMap;
 // If only no_std (and not alloc) is active, common collections like Vec, String, Box, HashMap,
 // HashSet, Arc are NOT exported by this prelude. Users should use bounded types or core types
 // directly.

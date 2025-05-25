@@ -10,10 +10,16 @@ use wrt_foundation::ValueType;
 use crate::component::ValType as FormatValType;
 
 // Create a wrapper type to avoid orphan rule violations
-pub struct ValTypeWrapper(pub FormatValType);
+pub struct ValTypeWrapper<P: wrt_foundation::MemoryProvider + Default + Clone + PartialEq + Eq>(
+    pub FormatValType<P>,
+);
 
 // Implement a conversion function from FormatValType to ValueType
-pub fn format_val_type_to_value_type(format_type: &FormatValType) -> Result<ValueType> {
+pub fn format_val_type_to_value_type<
+    P: wrt_foundation::MemoryProvider + Default + Clone + PartialEq + Eq,
+>(
+    format_type: &FormatValType<P>,
+) -> Result<ValueType> {
     match format_type {
         FormatValType::S8
         | FormatValType::U8
@@ -52,7 +58,11 @@ pub fn format_val_type_to_value_type(format_type: &FormatValType) -> Result<Valu
 }
 
 // Implement a conversion function from ValueType to FormatValType
-pub fn value_type_to_format_val_type(value_type: &ValueType) -> Result<FormatValType> {
+pub fn value_type_to_format_val_type<
+    P: wrt_foundation::MemoryProvider + Default + Clone + PartialEq + Eq,
+>(
+    value_type: &ValueType,
+) -> Result<FormatValType<P>> {
     match value_type {
         ValueType::I32 => Ok(FormatValType::S32),
         ValueType::I64 => Ok(FormatValType::S64),
@@ -65,7 +75,11 @@ pub fn value_type_to_format_val_type(value_type: &ValueType) -> Result<FormatVal
 }
 
 // Map a core WebAssembly ValueType to a Component Model ValType
-pub fn map_wasm_type_to_component(ty: ValueType) -> FormatValType {
+pub fn map_wasm_type_to_component<
+    P: wrt_foundation::MemoryProvider + Default + Clone + PartialEq + Eq,
+>(
+    ty: ValueType,
+) -> FormatValType<P> {
     match ty {
         ValueType::I32 => FormatValType::S32,
         ValueType::I64 => FormatValType::S64,

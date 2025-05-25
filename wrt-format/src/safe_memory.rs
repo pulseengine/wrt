@@ -5,11 +5,11 @@
 //! other crates.
 
 // Re-export the safe memory types from wrt-foundation
-#[cfg(not(feature = "std"))]
-pub use wrt_foundation::NoStdProvider as NoStdMemoryProvider;
 // Re-export memory providers matching wrt-foundation feature-gating
 #[cfg(feature = "std")]
-pub use wrt_foundation::StdProvider as StdMemoryProvider;
+pub use wrt_foundation::safe_memory::StdProvider as StdMemoryProvider;
+#[cfg(not(feature = "std"))]
+pub use wrt_foundation::NoStdProvider as NoStdMemoryProvider;
 // Re-export common memory types always
 pub use wrt_foundation::{BoundedStack as SafeStack, MemoryProvider, SafeMemoryHandler, SafeSlice};
 

@@ -60,4 +60,5 @@ harness = false
 
 [lints.rust]
 unsafe_code = "allow"
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)', 'cfg(target_feature, values("shstk", "pku"))'] }
 # Add other lints as needed, consistent with workspace 

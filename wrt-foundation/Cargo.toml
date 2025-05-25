@@ -76,7 +76,7 @@ default-unwind = 2
 
 # Ensure panic=abort for safety profiles
 [lints.rust]
-unsafe_code = "forbid"
+unsafe_code = "deny"
 unexpected_cfgs = { level = "allow", check-cfg = ['cfg(test)', 'cfg(kani)', 'cfg(coverage)', 'cfg(doc)'] }
 missing_docs = "allow"
 static_mut_refs = "deny"

@@ -46,7 +46,10 @@ use crate::{
     codes,
     component::Export,
     prelude::{BoundedCapacity, Eq, Ord, PartialEq, TryFrom},
-    traits::{Checksummable, FromBytes, ReadStream, SerializationError, ToBytes, WriteStream},
+    traits::{
+        Checksummable, DefaultMemoryProvider, FromBytes, ReadStream, SerializationError, ToBytes,
+        WriteStream,
+    },
     verification::Checksum,
     MemoryProvider, WrtResult,
 };
@@ -632,8 +635,8 @@ impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq + D
     }
 }
 
-impl<P_Instr: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq + Default>
-    ToBytes for Instruction<P_Instr>
+impl<PInstr: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq + Default> ToBytes
+    for Instruction<PInstr>
 {
     fn to_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
         &self,
@@ -721,8 +724,8 @@ impl<P_Instr: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + 
     }
 }
 
-impl<P_Instr: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq + Default>
-    FromBytes for Instruction<P_Instr>
+impl<PInstr: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq + Default>
+    FromBytes for Instruction<PInstr>
 {
     fn from_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
         reader: &mut ReadStream<'a>,
@@ -785,10 +788,10 @@ impl Checksummable for LocalEntry {
 }
 
 impl ToBytes for LocalEntry {
-    fn to_bytes_with_provider<'a, P_Stream: crate::MemoryProvider>(
+    fn to_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
         &self,
         writer: &mut WriteStream<'a>,
-        stream_provider: &P_Stream,
+        stream_provider: &PStream,
     ) -> WrtResult<()> {
         writer.write_u32_le(self.count)?;
         self.value_type.to_bytes_with_provider(writer, stream_provider)?;
@@ -803,9 +806,9 @@ impl ToBytes for LocalEntry {
 }
 
 impl FromBytes for LocalEntry {
-    fn from_bytes_with_provider<'a, P_Stream: crate::MemoryProvider>(
+    fn from_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
         reader: &mut ReadStream<'a>,
-        stream_provider: &P_Stream,
+        stream_provider: &PStream,
     ) -> WrtResult<Self> {
         let count = reader.read_u32_le()?;
         let value_type = ValueType::from_bytes_with_provider(reader, stream_provider)?;
@@ -941,10 +944,10 @@ impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> Ch
 impl<PCustom: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> ToBytes
     for CustomSection<PCustom>
 {
-    fn to_bytes_with_provider<'a, P_Stream: crate::MemoryProvider>(
+    fn to_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
         &self,
         writer: &mut WriteStream<'a>,
-        stream_provider: &P_Stream,
+        stream_provider: &PStream,
     ) -> WrtResult<()> {
         self.name.to_bytes_with_provider(writer, stream_provider)?;
         self.data.to_bytes_with_provider(writer, stream_provider)?;
@@ -961,9 +964,9 @@ impl<PCustom: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + 
 impl<PCustom: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> FromBytes
     for CustomSection<PCustom>
 {
-    fn from_bytes_with_provider<'a, P_Stream: crate::MemoryProvider>(
+    fn from_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
         reader: &mut ReadStream<'a>,
-        stream_provider: &P_Stream,
+        stream_provider: &PStream,
     ) -> WrtResult<Self> {
         let name = WasmName::<MAX_WASM_NAME_LENGTH, PCustom>::from_bytes_with_provider(
             reader,

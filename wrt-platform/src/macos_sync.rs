@@ -29,7 +29,7 @@ use wrt_error::{codes, Error, ErrorCategory, Result};
 
 // Constants for ulf_wait operations
 const ULF_WAIT: u32 = 0x0000_0001; // Matched against Apple's internal ULF_WAIT value
-const ULF_WAKE: u32 = 0x00000002; // Matched against Apple's internal ULF_WAKE value
+const ULF_WAKE: u32 = 0x0000_0002; // Matched against Apple's internal ULF_WAKE value
 
 // Additional constant for __ulock_wake if needed, though often combined with
 // ULF_WAKE flags

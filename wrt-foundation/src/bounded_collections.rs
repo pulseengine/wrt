@@ -26,13 +26,13 @@ use alloc::string::String;
 use alloc::vec::Vec;
 
 // Crate-level imports
+use crate::traits::DefaultMemoryProvider;
 use crate::{
     bounded::{BoundedError, BoundedErrorKind, BoundedVec},
     codes,
     operations::{record_global_operation, Type as OperationType},
     safe_memory::{SafeMemoryHandler, SliceMut},
-    traits::BoundedCapacity,
-    traits::{Checksummable, FromBytes, ReadStream, ToBytes, WriteStream},
+    traits::{BoundedCapacity, Checksummable, FromBytes, ReadStream, ToBytes, WriteStream},
     verification::{Checksum, VerificationLevel},
     Error, ErrorCategory, MemoryProvider, WrtResult,
 };
@@ -2889,11 +2889,9 @@ impl<const N_BITS: usize> PartialEq for BoundedBitSet<N_BITS> {
 
 /// Implement Eq for BoundedBitSet
 #[cfg(feature = "alloc")]
-#[cfg(feature = "alloc")]
 impl<const N_BITS: usize> Eq for BoundedBitSet<N_BITS> {}
 
 /// Implement Hash for BoundedBitSet
-#[cfg(feature = "alloc")]
 #[cfg(feature = "alloc")]
 impl<const N_BITS: usize> core::hash::Hash for BoundedBitSet<N_BITS> {
     fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
@@ -2909,7 +2907,6 @@ impl<const N_BITS: usize> core::hash::Hash for BoundedBitSet<N_BITS> {
 
 /// Implement Checksummable for BoundedBitSet
 #[cfg(feature = "alloc")]
-#[cfg(feature = "alloc")]
 impl<const N_BITS: usize> Checksummable for BoundedBitSet<N_BITS> {
     fn update_checksum(&self, checksum: &mut Checksum) {
         // Update with capacity and count
@@ -2924,7 +2921,6 @@ impl<const N_BITS: usize> Checksummable for BoundedBitSet<N_BITS> {
 }
 
 /// Implement ToBytes for BoundedBitSet
-#[cfg(feature = "alloc")]
 #[cfg(feature = "alloc")]
 impl<const N_BITS: usize> ToBytes for BoundedBitSet<N_BITS> {
     fn to_bytes_with_provider<'a, P: crate::MemoryProvider>(
@@ -2957,7 +2953,6 @@ impl<const N_BITS: usize> ToBytes for BoundedBitSet<N_BITS> {
 }
 
 /// Implement FromBytes for BoundedBitSet
-#[cfg(feature = "alloc")]
 #[cfg(feature = "alloc")]
 impl<const N_BITS: usize> FromBytes for BoundedBitSet<N_BITS> {
     fn from_bytes_with_provider<'a, P: crate::MemoryProvider>(

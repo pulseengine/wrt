@@ -23,8 +23,6 @@ use crate::{
 
 #[cfg(feature = "alloc")]
 extern crate alloc;
-#[cfg(feature = "alloc")]
-use alloc::vec::Vec;
 
 // Removed: use core::mem::size_of; // No longer directly needed here for
 // ToBytes/FromBytes definitions
@@ -474,11 +472,6 @@ impl_little_endian_for_primitive! {
 // Adding Error conversion for SerializationError -> wrt_error::Error
 // This will be useful if functions returning WrtResult need to propagate
 // SerializationError.
-
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-use alloc::format as alloc_format;
-#[cfg(feature = "std")]
-use std::format as std_format;
 
 impl From<SerializationError> for WrtError {
     fn from(e: SerializationError) -> Self {
