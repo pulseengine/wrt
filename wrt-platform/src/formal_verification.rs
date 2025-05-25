@@ -27,6 +27,7 @@
 //! # Usage
 //! Run verification with: `cargo kani --harness verify_memory_safety`
 
+#![allow(unexpected_cfgs)]
 #![cfg_attr(kani, allow(dead_code))]
 #![allow(dead_code)] // Allow during development
 
@@ -77,15 +78,19 @@ pub mod annotations {
     #[cfg(not(kani))]
     pub fn assert_valid_ptr<T>(_ptr: *const T) {}
 
+    /// Assert that a memory region is valid (no-op in non-Kani builds)
     #[cfg(not(kani))]
     pub fn assert_valid_memory(_ptr: *const u8, _size: usize) {}
 
+    /// Assert that a value is within bounds (no-op in non-Kani builds)
     #[cfg(not(kani))]
     pub fn assert_bounds<T: PartialOrd>(_value: T, _min: T, _max: T) {}
 
+    /// Assert that execution time is bounded (no-op in non-Kani builds)
     #[cfg(not(kani))]
     pub fn assert_bounded_execution(_max_steps: usize) {}
 
+    /// Assert no data races in concurrent access (no-op in non-Kani builds)
     #[cfg(not(kani))]
     pub fn assert_no_data_races() {}
 }
@@ -98,7 +103,7 @@ pub mod memory_verification {
     use crate::memory::PageAllocator;
 
     /// Verify memory allocator safety properties
-    pub fn verify_allocator_safety<A: PageAllocator>(allocator: &A) -> Result<(), crate::Error> {
+    pub fn verify_allocator_safety<A: PageAllocator>(_allocator: &A) -> Result<(), crate::Error> {
         // Property 1: Allocation returns valid aligned pointers or fails
         // Note: For now, commenting out allocator verification until proper trait
         // methods are defined TODO: Implement proper allocator verification
@@ -168,7 +173,7 @@ pub mod concurrency_verification {
     }
 
     /// Verify priority inheritance correctness
-    pub fn verify_priority_inheritance(mutex: &PriorityInheritanceMutex<u32>) {
+    pub fn verify_priority_inheritance(_mutex: &PriorityInheritanceMutex<u32>) {
         let low_priority: u8 = 10;
         let high_priority: u8 = 100;
 
@@ -188,7 +193,7 @@ pub mod concurrency_verification {
     }
 
     /// Verify reader-writer lock fairness
-    pub fn verify_rwlock_fairness(lock: &AdvancedRwLock<u32>) {
+    pub fn verify_rwlock_fairness(_lock: &AdvancedRwLock<u32>) {
         #[cfg(kani)]
         {
             // Property: Writers have preference over new readers
@@ -359,7 +364,7 @@ pub mod security_verification {
     }
 
     /// Verify side-channel resistance properties  
-    pub fn verify_constant_time_operation(secret_dependent: bool) {
+    pub fn verify_constant_time_operation(_secret_dependent: bool) {
         #[cfg(kani)]
         {
             // For constant-time operations, execution path shouldn't depend on secret data
@@ -400,7 +405,7 @@ pub mod integration_verification {
     pub fn verify_platform_safety() -> Result<(), Error> {
         // Verify memory subsystem
         memory_verification::verify_memory_bounds(
-            NonNull::new(0x1000 as *mut u8).unwrap(),
+            unsafe { NonNull::new_unchecked(0x1000 as *mut u8) },
             4096,
             1024,
         );
@@ -455,10 +460,14 @@ pub mod cbmc_integration {
         }
     }
 
+    /// CBMC annotations module (no-op stubs when CBMC is not enabled)
     #[cfg(not(feature = "cbmc"))]
     pub mod cbmc_annotations {
+        /// Assume a condition is true (no-op in non-CBMC builds)
         pub fn cbmc_assume(_condition: bool) {}
+        /// Assert a condition with description (no-op in non-CBMC builds)
         pub fn cbmc_assert(_condition: bool, _description: &str) {}
+        /// Cover a condition with description (no-op in non-CBMC builds)
         pub fn cbmc_cover(_condition: bool, _description: &str) {}
     }
 

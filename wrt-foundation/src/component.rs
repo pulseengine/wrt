@@ -6,6 +6,8 @@
 // ToString comes from prelude
 use wrt_error::ErrorCategory;
 
+#[cfg(feature = "alloc")]
+use crate::component_type_store::TypeRef;
 // --- Traits needed for BoundedVec items ---
 use crate::traits::{FromBytes, ReadStream, SerializationError, ToBytes, WriteStream};
 use crate::{
@@ -16,8 +18,6 @@ use crate::{
     types::{FuncType, GlobalType, MemoryType, TableType},
     Error, MemoryProvider, WrtResult,
 };
-#[cfg(feature = "alloc")]
-use crate::{component_type_store::TypeRef, component_value::ComponentValue};
 
 // Simple TypeRef for no-alloc environments
 #[cfg(not(feature = "alloc"))]

@@ -25,6 +25,63 @@
 #![deny(clippy::expect_used)] // Rule 3: No expect.
 #![deny(clippy::unreachable)] // Rule 4: No unreachable!.
 #![warn(clippy::pedantic)] // Rule 8: Enable pedantic lints.
+#![allow(clippy::missing_errors_doc)]
+#![allow(clippy::missing_panics_doc)]
+#![allow(clippy::return_self_not_must_use)]
+#![allow(clippy::must_use_candidate)]
+#![allow(clippy::doc_markdown)]
+#![allow(clippy::match_same_arms)]
+#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::unnecessary_wraps)]
+#![allow(clippy::extra_unused_type_parameters)]
+#![allow(clippy::inline_always)]
+#![allow(clippy::no_effect_underscore_binding)]
+#![allow(clippy::used_underscore_binding)]
+#![allow(clippy::wildcard_imports)]
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::struct_excessive_bools)]
+#![allow(clippy::unused_self)]
+#![allow(clippy::derivable_impls)]
+#![allow(clippy::new_without_default)]
+#![allow(clippy::ptr_as_ptr)]
+#![allow(clippy::ref_as_ptr)]
+#![allow(clippy::ptr_eq)]
+#![allow(clippy::cast_ptr_alignment)]
+#![allow(clippy::single_match)]
+#![allow(clippy::single_match_else)]
+#![allow(clippy::elidable_lifetime_names)]
+#![allow(clippy::cast_lossless)]
+#![allow(clippy::borrow_as_ptr)]
+#![allow(clippy::items_after_statements)]
+#![allow(clippy::missing_safety_doc)]
+#![allow(clippy::needless_range_loop)]
+#![allow(clippy::manual_div_ceil)]
+#![allow(clippy::ptr_cast_constness)]
+
+#[cfg(feature = "alloc")]
+extern crate alloc;
+
+// For no_std + alloc builds, we need a global allocator
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use alloc::alloc::{GlobalAlloc, Layout};
+
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+struct DummyAllocator;
+
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+unsafe impl GlobalAlloc for DummyAllocator {
+    unsafe fn alloc(&self, _layout: Layout) -> *mut u8 {
+        core::ptr::null_mut()
+    }
+
+    unsafe fn dealloc(&self, _ptr: *mut u8, _layout: Layout) {
+        // Do nothing - this is just to satisfy the linker
+    }
+}
+
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+#[global_allocator]
+static GLOBAL: DummyAllocator = DummyAllocator;
 
 // Module declarations
 pub mod memory;

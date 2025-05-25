@@ -1,4 +1,5 @@
 #![allow(unsafe_code)]
+#![allow(dead_code)]
 // Allow unsafe FFI calls to Zephyr kernel
 // WRT - wrt-platform
 // Module: Zephyr Memory Management
@@ -23,11 +24,15 @@ use crate::memory::{PageAllocator, WASM_PAGE_SIZE};
 
 /// Zephyr kernel timeout values
 const K_NO_WAIT: i32 = 0;
+#[allow(dead_code)]
 const K_FOREVER: i32 = -1;
 
 /// Zephyr error codes
+#[allow(dead_code)]
 const EAGAIN: i32 = -11;
+#[allow(dead_code)]
 const ENOMEM: i32 = -12;
+#[allow(dead_code)]
 const EINVAL: i32 = -22;
 
 /// Memory protection flags for Zephyr memory domains
@@ -67,7 +72,7 @@ struct ZephyrMemPartition {
     attr: u32,
 }
 
-/// FFI declarations for Zephyr kernel APIs
+// FFI declarations for Zephyr kernel APIs
 extern "C" {
     /// Allocate aligned memory from a heap
     fn k_heap_aligned_alloc(

@@ -340,8 +340,9 @@ pub mod cache_aware_allocation {
         total_blocks: usize,
     }
 
+    /// Cache-aligned memory block for cache-aware allocation
     #[repr(align(64))] // Cache line alignment
-    struct CacheBlock {
+    pub struct CacheBlock {
         data: [u8; 64], // One cache line
         next_free: AtomicUsize,
     }
@@ -441,7 +442,7 @@ pub mod cache_aware_allocation {
                         Ordering::Relaxed,
                     ) {
                         Ok(_) => break,
-                        Err(_) => continue,
+                        Err(_) => {}
                     }
                 }
             }
@@ -492,9 +493,13 @@ pub mod cache_aware_allocation {
     /// Allocator statistics for monitoring
     #[derive(Debug, Clone, Copy)]
     pub struct AllocatorStats {
+        /// Total number of memory blocks
         pub total_blocks: usize,
+        /// Number of blocks currently in use
         pub used_blocks: usize,
+        /// Number of free blocks available
         pub free_blocks: usize,
+        /// Size of each memory block in bytes
         pub block_size: usize,
     }
 }
@@ -647,18 +652,18 @@ pub mod platform_integration {
     }
 
     impl<P> SideChannelAwarePlatform<P> for PlatformConfig<P> {
-        fn with_side_channel_config(self, config: SideChannelConfig) -> Self {
+        fn with_side_channel_config(self, _config: SideChannelConfig) -> Self {
             // Integration with existing platform configuration
             // This would extend the PlatformConfig struct with side-channel fields
             self
         }
 
-        fn protect_against(self, vector: AttackVector) -> Self {
+        fn protect_against(self, _vector: AttackVector) -> Self {
             // Add vector to protected list
             self
         }
 
-        fn with_resistance_level(self, level: ResistanceLevel) -> Self {
+        fn with_resistance_level(self, _level: ResistanceLevel) -> Self {
             // Set resistance level
             self
         }
@@ -680,6 +685,7 @@ pub mod platform_integration {
     }
 
     /// Real-time paradigm with bounded-time side-channel resistance
+    #[must_use]
     pub fn realtime_side_channel_config() -> SideChannelConfig {
         SideChannelConfig {
             resistance_level: ResistanceLevel::Advanced,
@@ -690,6 +696,7 @@ pub mod platform_integration {
     }
 
     /// POSIX paradigm with best-effort side-channel resistance
+    #[must_use]
     pub fn posix_side_channel_config() -> SideChannelConfig {
         SideChannelConfig {
             resistance_level: ResistanceLevel::Basic,
@@ -700,6 +707,7 @@ pub mod platform_integration {
     }
 
     /// Bare-metal paradigm with hardware-optimized resistance
+    #[must_use]
     pub fn baremetal_side_channel_config() -> SideChannelConfig {
         SideChannelConfig {
             resistance_level: ResistanceLevel::Advanced,

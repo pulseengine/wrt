@@ -80,7 +80,9 @@ pub enum StringEncoding {
 }
 
 /// Calculate canonical memory layout for a value type
-pub fn calculate_layout(ty: &ValType) -> CanonicalLayout {
+pub fn calculate_layout<P: wrt_foundation::MemoryProvider + Default + Clone + PartialEq + Eq>(
+    ty: &ValType<P>,
+) -> CanonicalLayout {
     match ty {
         ValType::Bool => CanonicalLayout {
             size: 1,
@@ -409,9 +411,9 @@ pub enum TransformMode {
 #[derive(Debug, Clone)]
 pub struct TypeTransform {
     /// Original type
-    pub original: ValType,
+    pub original: ValType<wrt_foundation::traits::DefaultMemoryProvider>,
     /// Target type after transformation
-    pub target: ValType,
+    pub target: ValType<wrt_foundation::traits::DefaultMemoryProvider>,
     /// Transformation mode
     pub mode: TransformMode,
     /// Operations needed for the transformation

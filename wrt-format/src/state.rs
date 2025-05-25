@@ -155,11 +155,7 @@ pub fn create_state_section(
 pub fn extract_state_section(section: &CustomSection) -> Result<(StateHeader, Vec<u8>)> {
     // Verify that this is a valid state section
     let section_type = StateSection::from_name(&section.name).ok_or_else(|| {
-        Error::new(
-            ErrorCategory::Validation,
-            codes::PARSE_ERROR,
-            "Invalid state section name".to_string(),
-        )
+        Error::new(ErrorCategory::Validation, codes::PARSE_ERROR, "Invalid state section name")
     })?;
 
     // Get the data
@@ -170,7 +166,7 @@ pub fn extract_state_section(section: &CustomSection) -> Result<(StateHeader, Ve
         return Err(Error::new(
             ErrorCategory::Validation,
             codes::PARSE_ERROR,
-            "State section header too small".to_string(),
+            "State section header too small",
         ));
     }
 
@@ -179,7 +175,7 @@ pub fn extract_state_section(section: &CustomSection) -> Result<(StateHeader, Ve
         return Err(Error::new(
             ErrorCategory::Validation,
             codes::PARSE_ERROR,
-            "Invalid state section magic bytes".to_string(),
+            "Invalid state section magic bytes",
         ));
     }
 
@@ -194,11 +190,7 @@ pub fn extract_state_section(section: &CustomSection) -> Result<(StateHeader, Ve
 
     // Parse section type
     let parsed_section_type = StateSection::from_u32(data[8] as u32).ok_or_else(|| {
-        Error::new(
-            ErrorCategory::Validation,
-            codes::PARSE_ERROR,
-            "Invalid section type ID".to_string(),
-        )
+        Error::new(ErrorCategory::Validation, codes::PARSE_ERROR, "Invalid section type ID")
     })?;
 
     // Verify section type matches the name
@@ -206,7 +198,7 @@ pub fn extract_state_section(section: &CustomSection) -> Result<(StateHeader, Ve
         return Err(Error::new(
             ErrorCategory::Validation,
             codes::PARSE_ERROR,
-            "Section type mismatch".to_string(),
+            "Section type mismatch",
         ));
     }
 
@@ -217,7 +209,7 @@ pub fn extract_state_section(section: &CustomSection) -> Result<(StateHeader, Ve
             return Err(Error::new(
                 ErrorCategory::Validation,
                 codes::PARSE_ERROR,
-                "Unknown compression type".to_string(),
+                "Unknown compression type",
             ));
         }
     };
@@ -233,7 +225,7 @@ pub fn extract_state_section(section: &CustomSection) -> Result<(StateHeader, Ve
         return Err(Error::new(
             ErrorCategory::Validation,
             codes::PARSE_ERROR,
-            "Compressed data truncated".to_string(),
+            "Compressed data truncated",
         ));
     }
 
@@ -250,7 +242,7 @@ pub fn extract_state_section(section: &CustomSection) -> Result<(StateHeader, Ve
         return Err(Error::new(
             ErrorCategory::Validation,
             codes::PARSE_ERROR,
-            "Decompressed size mismatch".to_string(),
+            "Decompressed size mismatch",
         ));
     }
 

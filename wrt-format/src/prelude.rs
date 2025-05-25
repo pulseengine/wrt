@@ -26,14 +26,14 @@ pub use core::{
 
 // Re-export from wrt-error
 pub use wrt_error::{codes, kinds, Error, ErrorCategory, FromError, Result, ToErrorCategory};
+#[cfg(feature = "std")]
+pub use wrt_foundation::safe_memory::StdProvider as StdMemoryProvider;
 // Conditional imports for safety features
 #[cfg(feature = "safety")]
 pub use wrt_foundation::MemoryProvider;
 // No-std memory provider
 #[cfg(all(feature = "safety", not(feature = "std")))]
 pub use wrt_foundation::NoStdProvider as NoStdMemoryProvider;
-#[cfg(feature = "std")]
-pub use wrt_foundation::StdProvider as StdMemoryProvider;
 // Re-export from wrt-foundation
 pub use wrt_foundation::{
     // Component model types
@@ -92,7 +92,7 @@ pub fn safe_slice_with_verification(
 
 /// Create a memory provider from a byte slice (changed from Vec<u8>)
 #[cfg(all(feature = "safety", feature = "std"))] // StdMemoryProvider likely needs std
-pub fn memory_provider(data: &[u8]) -> wrt_foundation::StdProvider {
+pub fn memory_provider(data: &[u8]) -> wrt_foundation::safe_memory::StdProvider {
     // StdMemoryProvider::new takes Vec, this needs adjustment or StdMemoryProvider
     // needs a from_slice For now, let's assume StdMemoryProvider can be created
     // from a slice or this function is std-only. This function is problematic
@@ -100,13 +100,13 @@ pub fn memory_provider(data: &[u8]) -> wrt_foundation::StdProvider {
     // StdMemoryProvider to have a method that takes a slice if appropriate,
     // or this helper should be cfg-gated more strictly or use a different provider
     // for no_std. Tentatively, creating a Vec here if std is available.
-    wrt_foundation::StdProvider::new(data.to_vec())
+    wrt_foundation::safe_memory::StdProvider::new(data.to_vec())
 }
 
 /// Create a memory provider with specific capacity
 #[cfg(all(feature = "safety", feature = "std"))] // StdMemoryProvider likely needs std
-pub fn memory_provider_with_capacity(capacity: usize) -> wrt_foundation::StdProvider {
-    wrt_foundation::StdProvider::with_capacity(capacity)
+pub fn memory_provider_with_capacity(capacity: usize) -> wrt_foundation::safe_memory::StdProvider {
+    wrt_foundation::safe_memory::StdProvider::with_capacity(capacity)
 }
 
 /// The prelude trait

@@ -9,29 +9,24 @@ use alloc::{string::String, vec::Vec};
 use core::str;
 // Conditional imports for different environments
 #[cfg(feature = "std")]
-use std::{string::String, vec::Vec};
+use std::vec::Vec;
 
 use wrt_error::{
     codes, errors::codes::UNIMPLEMENTED_PARSING_FEATURE, Error, ErrorCategory, Result,
 };
-use wrt_foundation::bounded::WasmName; /* Assuming BoundedString is not directly used, or
-                                         * add if
-                                         * needed. */
-use wrt_foundation::traits::BytesWriter; // For write functions
-use wrt_foundation::MemoryProvider; // For WasmName if it takes a provider
 // For pure no_std mode, use bounded collections directly where needed
 #[cfg(not(any(feature = "alloc", feature = "std")))]
-use wrt_foundation::{BoundedString, BoundedVec};
+use wrt_foundation::{traits::BoundedCapacity, BoundedString, BoundedVec};
 use wrt_foundation::{RefType, ValueType};
 
 #[cfg(any(feature = "alloc", feature = "std"))]
 use crate::{
     component::ValType,
-    module::{Data, DataMode, Element, ElementInit, ElementMode, Module},
+    module::{Data, DataMode, Element, ElementInit, Module},
 };
 use crate::{
     error::{parse_error, to_wrt_error},
-    types::{FormatBlockType, Limits},
+    types::FormatBlockType,
 };
 
 /// Magic bytes for WebAssembly modules: \0asm
@@ -1000,7 +995,7 @@ pub mod with_alloc {
 
         // Convert to a Rust string
         match str::from_utf8(string_bytes) {
-            Ok(s) => Ok((s, len_size + str_len as usize)),
+            Ok(s) => Ok((s.to_string(), len_size + str_len as usize)),
             Err(_) => Err(parse_error("Invalid UTF-8 in string")),
         }
     }
@@ -1137,7 +1132,8 @@ pub mod with_alloc {
     pub fn read_component_valtype(
         bytes: &[u8],
         pos: usize,
-    ) -> Result<(crate::component::ValType, usize)> {
+    ) -> Result<(crate::component::ValType<wrt_foundation::traits::DefaultMemoryProvider>, usize)>
+    {
         use crate::component::ValType;
 
         if pos >= bytes.len() {
@@ -1209,14 +1205,14 @@ pub mod with_alloc {
             }
             COMPONENT_VALTYPE_LIST => {
                 let (val_type, next_pos) = read_component_valtype(bytes, new_pos)?;
-                Ok((ValType::List(Box::new(val_type)), next_pos))
+                Ok((crate::component::ValType::List(Box::new(val_type)), next_pos))
             }
             COMPONENT_VALTYPE_FIXED_LIST => {
                 let (val_type, next_pos) = read_component_valtype(bytes, new_pos)?;
                 new_pos = next_pos;
 
                 let (length, next_pos) = read_leb128_u32(bytes, new_pos)?;
-                Ok((ValType::FixedList(Box::new(val_type), length), next_pos))
+                Ok((crate::component::ValType::FixedList(Box::new(val_type), length), next_pos))
             }
             COMPONENT_VALTYPE_TUPLE => {
                 let (count, next_pos) = read_leb128_u32(bytes, new_pos)?;
@@ -1263,21 +1259,33 @@ pub mod with_alloc {
             }
             COMPONENT_VALTYPE_RESULT => {
                 let (val_type, next_pos) = read_component_valtype(bytes, new_pos)?;
-                Ok((ValType::Result(Box::new(val_type)), next_pos))
+                Ok((
+                    crate::component::ValType::Result { ok: Some(Box::new(val_type)), err: None },
+                    next_pos,
+                ))
             }
             COMPONENT_VALTYPE_RESULT_ERR => {
                 // Convert to regular Result for backward compatibility
                 let (val_type, next_pos) = read_component_valtype(bytes, new_pos)?;
-                Ok((ValType::Result(Box::new(val_type)), next_pos))
+                Ok((
+                    crate::component::ValType::Result { ok: None, err: Some(Box::new(val_type)) },
+                    next_pos,
+                ))
             }
             COMPONENT_VALTYPE_RESULT_BOTH => {
                 // Convert to regular Result for backward compatibility
                 let (ok_type, next_pos) = read_component_valtype(bytes, new_pos)?;
                 new_pos = next_pos;
 
-                // Read the error type but use only the ok_type
-                let (_, next_pos) = read_component_valtype(bytes, new_pos)?;
-                Ok((ValType::Result(Box::new(ok_type)), next_pos))
+                // Read the error type
+                let (err_type, next_pos) = read_component_valtype(bytes, new_pos)?;
+                Ok((
+                    crate::component::ValType::Result {
+                        ok: Some(Box::new(ok_type)),
+                        err: Some(Box::new(err_type)),
+                    },
+                    next_pos,
+                ))
             }
             COMPONENT_VALTYPE_OWN => {
                 let (idx, next_pos) = read_leb128_u32(bytes, new_pos)?;
@@ -1294,7 +1302,11 @@ pub mod with_alloc {
 
     /// Write a Component Model value type to a byte array
     #[cfg(any(feature = "alloc", feature = "std"))]
-    pub fn write_component_valtype(val_type: &crate::component::ValType) -> Vec<u8> {
+    pub fn write_component_valtype<
+        P: wrt_foundation::MemoryProvider + Default + Clone + PartialEq + Eq,
+    >(
+        val_type: &crate::component::ValType<P>,
+    ) -> Vec<u8> {
         match val_type {
             ValType::Bool => vec![COMPONENT_VALTYPE_BOOL],
             ValType::S8 => vec![COMPONENT_VALTYPE_S8],
@@ -1380,21 +1392,29 @@ pub mod with_alloc {
                 result.extend_from_slice(&write_component_valtype(inner));
                 result
             }
-            ValType::Result(ok_type) => {
-                let mut result = vec![COMPONENT_VALTYPE_RESULT];
-                result.extend_from_slice(&write_component_valtype(ok_type));
-                result
-            }
-            ValType::ResultErr(err_type) => {
-                let mut result = vec![COMPONENT_VALTYPE_RESULT_ERR];
-                result.extend_from_slice(&write_component_valtype(err_type));
-                result
-            }
-            ValType::ResultBoth(ok_type, err_type) => {
-                let mut result = vec![COMPONENT_VALTYPE_RESULT_BOTH];
-                result.extend_from_slice(&write_component_valtype(ok_type));
-                result.extend_from_slice(&write_component_valtype(err_type));
-                result
+            ValType::Result { ok, err } => {
+                match (ok, err) {
+                    (Some(ok_type), None) => {
+                        let mut result = vec![COMPONENT_VALTYPE_RESULT];
+                        result.extend_from_slice(&write_component_valtype(ok_type));
+                        result
+                    }
+                    (None, Some(err_type)) => {
+                        let mut result = vec![COMPONENT_VALTYPE_RESULT_ERR];
+                        result.extend_from_slice(&write_component_valtype(err_type));
+                        result
+                    }
+                    (Some(ok_type), Some(err_type)) => {
+                        let mut result = vec![COMPONENT_VALTYPE_RESULT_BOTH];
+                        result.extend_from_slice(&write_component_valtype(ok_type));
+                        result.extend_from_slice(&write_component_valtype(err_type));
+                        result
+                    }
+                    (None, None) => {
+                        // This shouldn't happen, but handle it gracefully
+                        vec![COMPONENT_VALTYPE_RESULT]
+                    }
+                }
             }
             ValType::Own(type_idx) => {
                 let mut result = vec![COMPONENT_VALTYPE_OWN];
@@ -2140,7 +2160,7 @@ pub mod with_alloc {
             }
         }
 
-        Ok((Element { mode, element_type, init, table_idx }, offset))
+        Ok((Element { mode, element_type, init }, offset))
     }
 
     /// Parses a data segment from the binary format.

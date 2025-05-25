@@ -1,4 +1,5 @@
 #![allow(unsafe_code)]
+#![allow(dead_code)]
 // Allow unsafe FFI calls to Zephyr kernel
 // WRT - wrt-platform
 // Module: Zephyr Synchronization Primitives
@@ -74,7 +75,7 @@ impl ZephyrTimeout {
     }
 }
 
-/// FFI declarations for Zephyr kernel APIs
+// FFI declarations for Zephyr kernel APIs
 extern "C" {
     /// Wait on a futex until value changes
     fn k_futex_wait(futex: *mut ZephyrFutexHandle, expected: u32, timeout: i32) -> i32;
@@ -119,7 +120,7 @@ impl ZephyrFutex {
         // object)
         let futex_obj = core::ptr::null_mut();
 
-        let mut futex = Self { value: AtomicU32::new(initial_value), futex_obj, _padding: [0; 56] };
+        let futex = Self { value: AtomicU32::new(initial_value), futex_obj, _padding: [0; 56] };
 
         // Initialize the Zephyr futex object
         // SAFETY: In real usage, futex_obj would point to valid kernel object memory

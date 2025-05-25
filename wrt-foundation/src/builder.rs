@@ -36,16 +36,12 @@ use crate::prelude::{String, ToString};
 // Crate-level imports
 use crate::{
     bounded::{BoundedStack, BoundedString, BoundedVec, WasmName},
-    resource::{
-        Resource, ResourceId, ResourceItem, ResourceOperation, ResourceRepr,
-        ResourceRepresentation, ResourceType, MAX_RESOURCE_AGGREGATE_IDS, MAX_RESOURCE_FIELDS,
-        MAX_RESOURCE_FIELD_NAME_LEN,
-    },
+    resource::{Resource, ResourceItem, ResourceRepr, ResourceType},
     safe_memory::{
         DefaultNoStdProvider, NoStdProvider, SafeMemoryHandler, DEFAULT_MEMORY_PROVIDER_CAPACITY,
     },
     traits::{Checksummable, FromBytes, ToBytes},
-    verification::{Checksum, VerificationLevel},
+    verification::VerificationLevel,
     Error, ErrorCategory, MemoryProvider, WrtResult,
 };
 

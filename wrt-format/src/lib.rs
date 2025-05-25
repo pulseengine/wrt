@@ -37,13 +37,7 @@ use alloc::{
     vec::Vec,
 };
 #[cfg(feature = "std")]
-use std::{
-    boxed::Box,
-    collections::HashMap,
-    format,
-    string::{String, ToString},
-    vec::Vec,
-};
+use std::{collections::HashMap, format, string::String, vec::Vec};
 
 // Re-export error types directly from wrt-error
 pub use wrt_error::{Error, ErrorCategory};
@@ -82,9 +76,7 @@ pub type ModuleData<P> = BoundedVec<crate::module::Data<P>, MAX_MODULE_DATA, P>;
 #[cfg(not(any(feature = "alloc", feature = "std")))]
 pub type ModuleCustomSections<P> = BoundedVec<crate::section::CustomSection<P>, 64, P>;
 
-// Type aliases for HashMap
-#[cfg(feature = "std")]
-pub use std::collections::HashMap;
+// Type aliases for HashMap - removed as it conflicts with import above
 #[cfg(not(feature = "std"))]
 pub type HashMap<K, V> = BoundedMap<K, V, 256, wrt_foundation::NoStdProvider<1024>>; // Default capacity
 
@@ -187,6 +179,9 @@ pub mod verify;
 pub mod version;
 
 // Re-export binary constants (always available)
+// Re-export write functions (only with alloc)
+#[cfg(any(feature = "alloc", feature = "std"))]
+pub use binary::with_alloc::{write_leb128_u32, write_string};
 pub use binary::{
     read_leb128_u32, read_string, COMPONENT_CORE_SORT_FUNC, COMPONENT_CORE_SORT_GLOBAL,
     COMPONENT_CORE_SORT_INSTANCE, COMPONENT_CORE_SORT_MEMORY, COMPONENT_CORE_SORT_MODULE,
@@ -194,9 +189,6 @@ pub use binary::{
     COMPONENT_SORT_CORE, COMPONENT_SORT_FUNC, COMPONENT_SORT_INSTANCE, COMPONENT_SORT_TYPE,
     COMPONENT_SORT_VALUE, COMPONENT_VERSION,
 };
-// Re-export write functions (only with alloc)
-#[cfg(any(feature = "alloc", feature = "std"))]
-pub use binary::{write_leb128_u32, write_string};
 // Re-export no_std write functions
 #[cfg(not(any(feature = "alloc", feature = "std")))]
 pub use binary::{
@@ -268,16 +260,15 @@ pub use types::value_type_to_byte;
 // For formal verification when the 'kani' feature is enabled
 #[cfg(feature = "kani")]
 pub mod verification {
-    use kani_verifier::*;
-
     /// Verify LEB128 encoding and decoding
+    #[cfg(all(kani, any(feature = "alloc", feature = "std")))]
     #[kani::proof]
     fn verify_leb128_roundtrip() {
         let value: u32 = kani::any();
         // Limit to reasonable values for test
         kani::assume(value <= 0xFFFF);
 
-        let encoded = super::binary::write_leb128_u32(value);
+        let encoded = super::binary::with_alloc::write_leb128_u32(value);
         let (decoded, _) = super::binary::read_leb128_u32(&encoded, 0).unwrap();
 
         assert_eq!(value, decoded);

@@ -13,9 +13,9 @@ use alloc::{
 use std::{string::String, vec::Vec};
 
 use wrt_error::{codes, Error, ErrorCategory, Result};
-use wrt_foundation::{traits::BoundedCapacity, types::GlobalType, RefType, ValueType};
 #[cfg(not(any(feature = "alloc", feature = "std")))]
 use wrt_foundation::{BoundedString, BoundedVec, MemoryProvider, NoStdProvider};
+use wrt_foundation::{RefType, ValueType};
 
 use crate::{
     section::CustomSection,
@@ -862,7 +862,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> Module<P> {
 
 /// WebAssembly module - With Allocation
 #[cfg(any(feature = "alloc", feature = "std"))]
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct Module {
     /// Function type signatures
     pub types: Vec<ValueType>,

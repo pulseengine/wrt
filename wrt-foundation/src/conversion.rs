@@ -21,8 +21,7 @@
 
 use wrt_error::{codes, Error, Result};
 
-#[cfg(feature = "alloc")]
-use crate::component_value::{ComponentValue, ValType};
+#[cfg(any(feature = "alloc", feature = "std"))]
 use crate::{BlockType, FuncType, RefType, ValueType as CoreValueType};
 
 /// Convert `RefType` to `ValueType`

@@ -347,6 +347,77 @@ async fn run_docs_version_pipeline(
         }
     }
 
+    // Generate changelog using git cliff
+    {
+        let docs_path = Path::new(&docs_src_host_path_str);
+        let changelog_path = docs_path.join("source/changelog.md");
+
+        info!("Generating changelog for version: {}", version);
+
+        // Generate changelog in the main repository, not in the worktree
+        let temp_changelog = base_path.join(format!("changelog_{}.md", version.replace("/", "_")));
+
+        // Determine git cliff arguments based on version
+        let cliff_args = if version == "local" {
+            // For local builds, generate unreleased changes
+            vec!["cliff", "--unreleased", "--output", temp_changelog.to_str().unwrap()]
+        } else {
+            // For any other version, generate the full changelog
+            // Git cliff will include all commits up to HEAD in the main repo
+            vec!["cliff", "--output", temp_changelog.to_str().unwrap()]
+        };
+
+        // Run git cliff in the main repository
+        let cliff_output =
+            std::process::Command::new("git").args(&cliff_args).current_dir(base_path).output();
+
+        match cliff_output {
+            Ok(output) => {
+                if !output.status.success() {
+                    warn!("git cliff failed: {}", String::from_utf8_lossy(&output.stderr));
+                    // Create a minimal changelog if git cliff fails
+                    let fallback_content = format!(
+                        "# Changelog\n\n## Version: {}\n\nChangelog generation failed. Please \
+                         check git cliff configuration.\n",
+                        version
+                    );
+                    if let Err(e) = fs::write(&changelog_path, fallback_content) {
+                        warn!("Failed to write fallback changelog: {}", e);
+                    }
+                } else {
+                    info!("Successfully generated changelog for version {}", version);
+                    // Copy the generated changelog to the docs directory
+                    if temp_changelog.exists() {
+                        if let Err(e) = fs::copy(&temp_changelog, &changelog_path) {
+                            warn!("Failed to copy changelog to docs: {}", e);
+                        } else {
+                            // Clean up temp file
+                            let _ = fs::remove_file(&temp_changelog);
+                        }
+                    }
+                }
+            }
+            Err(e) => {
+                warn!("Failed to run git cliff: {}", e);
+                // Create a minimal changelog if git cliff is not available
+                let fallback_content = format!(
+                    "# Changelog\n\n## Version: {}\n\ngit cliff not available. Install with: \
+                     `cargo install git-cliff`\n",
+                    version
+                );
+                if let Err(e) = fs::write(&temp_changelog, fallback_content) {
+                    warn!("Failed to write fallback changelog: {}", e);
+                } else {
+                    // Copy to docs directory
+                    if let Err(e) = fs::copy(&temp_changelog, &changelog_path) {
+                        warn!("Failed to copy fallback changelog to docs: {}", e);
+                    }
+                    let _ = fs::remove_file(&temp_changelog);
+                }
+            }
+        }
+    }
+
     // Dagger directory for WORKTREE/docs or local/docs
     let docs_dagger_dir = client.host().directory_opts(
         &docs_src_host_path_str, // This is now correctly sourced based on 'version'

@@ -6,6 +6,8 @@
 // Licensed under the MIT license.
 // SPDX-License-Identifier: MIT
 
+#![allow(unsafe_code)] // This module needs unsafe for memory operations
+
 //! Provides a Wasm linear memory implementation backed by a `PageAllocator`
 //! from the `wrt-platform` crate.
 
