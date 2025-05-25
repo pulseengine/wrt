@@ -34,6 +34,7 @@ pub mod prelude;
 // Export modules - some are conditionally compiled
 pub mod builtins;
 pub mod canonical;
+pub mod error_format;
 #[cfg(feature = "std")]
 pub mod component;
 #[cfg(all(not(feature = "std"), feature = "alloc"))]

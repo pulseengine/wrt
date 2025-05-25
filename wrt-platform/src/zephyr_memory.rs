@@ -208,7 +208,11 @@ impl ZephyrAllocator {
         // For now, we'll use a null pointer to indicate this limitation
         let domain: *mut ZephyrMemDomain = core::ptr::null_mut();
 
-        if !domain.is_null() {
+        if domain.is_null() {
+            // Memory domains not available - log this for debugging in real
+            // implementation For now, continue without memory
+            // domain isolation
+        } else {
             // Create memory partition
             let partition = ZephyrMemPartition {
                 start: ptr as usize,
@@ -228,10 +232,6 @@ impl ZephyrAllocator {
 
             self.memory_domain = NonNull::new(domain);
             self.current_partition = Some(partition);
-        } else {
-            // Memory domains not available - log this for debugging in real
-            // implementation For now, continue without memory
-            // domain isolation
         }
 
         Ok(())

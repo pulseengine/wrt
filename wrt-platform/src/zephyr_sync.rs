@@ -63,7 +63,7 @@ impl ZephyrTimeout {
     }
 
     /// Get timeout value for Zephyr APIs
-    fn as_timeout(&self) -> i32 {
+    fn as_timeout(self) -> i32 {
         if self.ticks == K_FOREVER as i64 {
             K_FOREVER
         } else if self.ticks <= 0 {
@@ -174,7 +174,7 @@ impl ZephyrFutex {
     /// Fallback busy-wait implementation for when futex is not available
     fn busy_wait_fallback(&self, expected: u32, timeout: Option<ZephyrTimeout>) -> Result<()> {
         let start_time = unsafe { k_uptime_ticks() };
-        let timeout_ticks = timeout.map(|t| t.ticks).unwrap_or(i64::MAX);
+        let timeout_ticks = timeout.map_or(i64::MAX, |t| t.ticks);
 
         loop {
             // Check if value has changed
@@ -212,7 +212,7 @@ impl ZephyrFutex {
         let result = unsafe { k_futex_wake(self.futex_obj, wake_all) };
 
         if result >= 0 {
-            Ok(result as u32) // Number of waiters woken
+            Ok(u32::try_from(result).unwrap_or(0)) // Number of waiters woken
         } else {
             Err(Error::new(
                 ErrorCategory::System,
@@ -255,10 +255,7 @@ impl ZephyrFutexBuilder {
 
 impl FutexLike for ZephyrFutex {
     fn wait(&self, expected: u32, timeout: Option<Duration>) -> Result<()> {
-        let zephyr_timeout = match timeout {
-            Some(duration) => Some(ZephyrTimeout::from_duration(duration)),
-            None => None,
-        };
+        let zephyr_timeout = timeout.map(ZephyrTimeout::from_duration);
 
         self.wait_impl(expected, zephyr_timeout)
     }
@@ -320,7 +317,7 @@ impl FutexLike for ZephyrSemaphoreFutex {
         // In real implementation, would use k_sem_take() with timeout
         // For now, use busy wait fallback
         let start_time = unsafe { k_uptime_ticks() };
-        let timeout_ticks = timeout.map(|d| d.as_millis() as i64).unwrap_or(i64::MAX);
+        let timeout_ticks = timeout.map_or(i64::MAX, |d| d.as_millis() as i64);
 
         loop {
             if self.value.load(core::sync::atomic::Ordering::Acquire) != expected {

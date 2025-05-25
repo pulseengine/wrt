@@ -36,8 +36,6 @@ pub use wrt_foundation::MemoryProvider;
 pub use wrt_foundation::NoStdProvider as NoStdMemoryProvider;
 // Re-export from wrt-foundation
 pub use wrt_foundation::{
-    // Component model types
-    component_value::{ComponentValue, ValType},
     // Verification types
     verification::VerificationLevel,
     BoundedStack,
@@ -45,6 +43,9 @@ pub use wrt_foundation::{
     SafeMemoryHandler,
     SafeSlice,
 };
+// Component model types (require alloc)
+#[cfg(feature = "alloc")]
+pub use wrt_foundation::component_value::{ComponentValue, ValType};
 #[cfg(not(any(feature = "alloc", feature = "std")))]
 pub use wrt_foundation::{BoundedMap, BoundedString, BoundedVec};
 
@@ -121,8 +122,6 @@ pub mod std_prelude {
     pub use wrt_foundation::{
         // These types appear to be from the component module
         component::ComponentType,
-        // Import valtype from component_value
-        component_value::ValType,
         // SafeMemory types
         safe_memory::{SafeMemoryHandler, SafeSlice, SafeStack},
         // Import correctly from types module
@@ -132,6 +131,9 @@ pub mod std_prelude {
         // Verification
         verification::VerificationLevel,
     };
+    // Import valtype from component_value (requires alloc)
+    #[cfg(feature = "alloc")]
+    pub use wrt_foundation::component_value::ValType;
 
     // Explicitly re-export conversion utilities
     pub use crate::conversion::{
@@ -163,8 +165,6 @@ pub mod no_std_prelude {
     pub use wrt_foundation::{
         // These types appear to be from the component module
         component::ComponentType,
-        // Import valtype from component_value
-        component_value::ValType,
         // SafeMemory types
         safe_memory::{SafeMemoryHandler, SafeSlice, SafeStack},
         // Import correctly from types module
@@ -174,6 +174,9 @@ pub mod no_std_prelude {
         // Verification
         verification::VerificationLevel,
     };
+    // Import valtype from component_value (requires alloc)
+    #[cfg(feature = "alloc")]
+    pub use wrt_foundation::component_value::ValType;
     #[cfg(not(any(feature = "alloc", feature = "std")))]
     pub use wrt_foundation::{BoundedMap, BoundedString, BoundedVec};
 

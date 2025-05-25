@@ -19,11 +19,9 @@ pub use alloc::{
     vec::Vec,
     // Add any other alloc-specific imports needed by this crate
 };
-#[cfg(not(feature = "std"))]
-// No specific core-only imports needed here
+// No specific core-only imports needed here for #[cfg(not(feature = "std"))]
 // Project: WRT
 // Module: wrt-math::prelude (SW-REQ-ID-TBD)
-
 // Prelude module for wrt-math
 //
 // This module provides a unified set of imports for both std and no_std environments.

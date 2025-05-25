@@ -274,7 +274,7 @@ impl BoundedError {
         {
             // In no_std without alloc, we cannot format `value`.
             // Provide a generic static message.
-            let _ = value; // Suppress unused warning
+            drop(value); // Suppress unused warning
             Self::new(BoundedErrorKind::InvalidCapacity, "Invalid capacity provided")
         }
     }

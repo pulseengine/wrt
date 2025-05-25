@@ -1,6 +1,6 @@
 use crate::error::{self, Error, Result};
 use crate::format_adapter;
-use crate::stackless::StacklessEngine;
+use wrt_runtime::stackless::StacklessEngine;
 use wrt_format::{CompressionType, Module as FormatModule, StateSection};
 
 /**

@@ -1,4 +1,4 @@
-use crate::stackless::StacklessEngine;
+use wrt_runtime::stackless::StacklessEngine;
 use crate::{
     behavior::{
         ControlFlow, FrameBehavior, InstructionExecutor, Label,
@@ -8,8 +8,8 @@ use crate::{
     instructions::Instruction,
     module::{ExportKind, Function, Module},
     prelude::TypesValue as Value,
-    stackless::StacklessStack,
-    stackless_frame::StacklessFrame,
+    wrt_runtime::stackless::StacklessStack,
+    wrt_runtime::stackless::StacklessFrame,
 };
 use wrt_runtime::{GlobalType, Memory, Table};
 use wrt_foundation::values::Value as RuntimeValue;

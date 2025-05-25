@@ -37,6 +37,7 @@ pub struct CallbackRegistry {
     host_functions: HashMap<String, HashMap<String, HostFunctionHandler>>,
 
     /// Optional interceptor for monitoring and modifying function calls
+    #[cfg(any(feature = "std", feature = "alloc"))]
     interceptor: Option<Arc<LinkInterceptor>>,
 }
 
@@ -64,16 +65,23 @@ impl CallbackRegistry {
     /// Create a new callback registry
     #[must_use]
     pub fn new() -> Self {
-        Self { callbacks: HashMap::new(), interceptor: None, host_functions: HashMap::new() }
+        Self { 
+            callbacks: HashMap::new(), 
+            #[cfg(any(feature = "std", feature = "alloc"))]
+            interceptor: None, 
+            host_functions: HashMap::new() 
+        }
     }
 
     /// Sets an interceptor for this registry
+    #[cfg(any(feature = "std", feature = "alloc"))]
     pub fn with_interceptor(mut self, interceptor: Arc<LinkInterceptor>) -> Self {
         self.interceptor = Some(interceptor);
         self
     }
 
     /// Get the interceptor if one is set
+    #[cfg(any(feature = "std", feature = "alloc"))]
     pub fn get_interceptor(&self) -> Option<&LinkInterceptor> {
         self.interceptor.as_ref().map(|arc| arc.as_ref())
     }
@@ -137,23 +145,26 @@ impl CallbackRegistry {
         args: Vec<Value>,
     ) -> Result<Vec<Value>> {
         // If we have an interceptor, use it to intercept the call
-        if let Some(interceptor) = self.get_interceptor() {
-            interceptor.intercept_call(
-                "host",
-                &function_key(module_name, function_name),
-                args,
-                |modified_args| {
-                    self.call_host_function_internal(
-                        engine,
-                        module_name,
-                        function_name,
-                        modified_args,
-                    )
-                },
-            )
-        } else {
-            self.call_host_function_internal(engine, module_name, function_name, args)
+        #[cfg(any(feature = "std", feature = "alloc"))]
+        {
+            if let Some(interceptor) = self.get_interceptor() {
+                return interceptor.intercept_call(
+                    "host",
+                    &function_key(module_name, function_name),
+                    args,
+                    |modified_args| {
+                        self.call_host_function_internal(
+                            engine,
+                            module_name,
+                            function_name,
+                            modified_args,
+                        )
+                    },
+                );
+            }
         }
+        
+        self.call_host_function_internal(engine, module_name, function_name, args)
     }
 
     /// Internal implementation of call_host_function without interception
@@ -229,6 +240,7 @@ impl CallbackRegistry {
     ///
     /// Returns an error if the built-in is not implemented or fails during
     /// execution
+    #[cfg(any(feature = "std", feature = "alloc"))]
     pub fn call_builtin_function(
         &self,
         engine: &mut dyn Any,
@@ -253,8 +265,11 @@ impl Clone for CallbackRegistry {
         let mut new_registry = Self::new();
 
         // Clone the interceptor if present
-        if let Some(interceptor) = &self.interceptor {
-            new_registry.interceptor = Some(interceptor.clone());
+        #[cfg(any(feature = "std", feature = "alloc"))]
+        {
+            if let Some(interceptor) = &self.interceptor {
+                new_registry.interceptor = Some(interceptor.clone());
+            }
         }
 
         // Clone host functions by creating new mappings with cloned handlers
@@ -331,6 +346,7 @@ mod tests {
         assert_eq!(*callback.unwrap(), 24);
     }
 
+    #[cfg(any(feature = "std", feature = "alloc"))]
     #[test]
     fn test_call_builtin_function() {
         // Create a registry with a host function for resource.create
@@ -404,11 +420,9 @@ pub fn function_key(module_name: &str, function_name: &str) -> String {
 
     #[cfg(not(any(feature = "std", feature = "alloc")))]
     {
-        // Fallback for environments without allocation
-        // This is a simplified version that won't work for all cases
-        let mut result = String::from(module_name);
-        result.push_str("::");
-        result.push_str(function_name);
-        result
+        // In pure no_std environments, we can't create dynamic strings
+        // This is a placeholder - in practice, we'd need a different approach
+        // or require allocation for string operations
+        "function_key"
     }
 }

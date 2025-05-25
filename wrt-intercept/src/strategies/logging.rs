@@ -8,17 +8,22 @@ use std::time::{Duration, Instant};
 
 // Import the prelude for unified access to standard types
 use crate::prelude::*;
+#[cfg(not(feature = "alloc"))]
+use crate::LinkInterceptorStrategy;
 
 /// Trait for formatting values in logging output
+#[cfg(feature = "alloc")]
 pub trait ValueFormatter: Clone + Send + Sync {
     /// Format a value for logging
     fn format_value(&self, value: &Value) -> String;
 }
 
 /// Default formatter for values
+#[cfg(feature = "alloc")]
 #[derive(Clone)]
 pub struct DefaultValueFormatter;
 
+#[cfg(feature = "alloc")]
 impl ValueFormatter for DefaultValueFormatter {
     fn format_value(&self, value: &Value) -> String {
         match value {
@@ -60,6 +65,7 @@ impl Default for LoggingConfig {
 }
 
 /// A strategy that logs function calls
+#[cfg(feature = "alloc")]
 pub struct LoggingStrategy<S: LogSink, F: ValueFormatter = DefaultValueFormatter> {
     /// Log sink to write logs to
     sink: Arc<S>,
@@ -72,7 +78,14 @@ pub struct LoggingStrategy<S: LogSink, F: ValueFormatter = DefaultValueFormatter
     timing: Arc<Mutex<Option<Instant>>>,
 }
 
-#[cfg(feature = "std")]
+/// A simple logging strategy for no_std environments
+#[cfg(not(feature = "alloc"))]
+pub struct LoggingStrategy {
+    /// Configuration
+    config: LoggingConfig,
+}
+
+#[cfg(all(feature = "std", feature = "alloc"))]
 impl<S: LogSink> LoggingStrategy<S> {
     /// Create a new logging strategy with default formatter
     pub fn new(sink: Arc<S>) -> Self {
@@ -85,7 +98,7 @@ impl<S: LogSink> LoggingStrategy<S> {
     }
 }
 
-#[cfg(feature = "std")]
+#[cfg(all(feature = "std", feature = "alloc"))]
 impl<S: LogSink, F: ValueFormatter> LoggingStrategy<S, F> {
     /// Create a new logging strategy with custom formatter
     pub fn with_formatter(sink: Arc<S>, formatter: F) -> Self {
@@ -228,12 +241,56 @@ impl<S: LogSink + 'static, F: ValueFormatter + 'static> LinkInterceptorStrategy
 }
 
 // Helper implementation for using a closure as a LogSink
+#[cfg(feature = "alloc")]
 impl<F> LogSink for F
 where
     F: Fn(&str) + Send + Sync,
 {
     fn write_log(&self, entry: &str) {
         self(entry)
+    }
+}
+
+// No-alloc implementation of LoggingStrategy
+#[cfg(not(feature = "alloc"))]
+impl LoggingStrategy {
+    /// Create a new logging strategy for no_std environments
+    pub fn new() -> Self {
+        Self {
+            config: LoggingConfig::default(),
+        }
+    }
+    
+    /// Configure the logging strategy
+    pub fn with_config(mut self, config: LoggingConfig) -> Self {
+        self.config = config;
+        self
+    }
+}
+
+#[cfg(not(feature = "alloc"))]
+impl LinkInterceptorStrategy for LoggingStrategy {
+    fn before_call(
+        &self,
+        _source: &str,
+        _target: &str,
+        _function: &str,
+        _args: &[Value],
+    ) -> Result<()> {
+        // In no_std, we can't log, just pass through
+        Ok(())
+    }
+
+    fn after_call(
+        &self,
+        _source: &str,
+        _target: &str,
+        _function: &str,
+        _args: &[Value],
+        result: Result<()>,
+    ) -> Result<()> {
+        // In no_std, we can't log, just pass through
+        result
     }
 }
 
@@ -287,7 +344,7 @@ impl LogSink for LogCrateSink {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "std"))]
 mod tests {
     use std::sync::{Arc, Mutex};
 

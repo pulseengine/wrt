@@ -24,7 +24,6 @@ categories = ["wasm", "os"]
 [dependencies]
 wrt-error = { workspace = true } # Assuming wrt-error is in workspace.dependencies
 libc = { version = "0.2", optional = true }
-heapless = { version = "0.8", optional = true }
 
 [dev-dependencies]
 criterion = { version = "0.6", features = ["html_reports"] }
@@ -46,7 +45,7 @@ platform-linux = [] # Linux support with direct syscalls
 linux-mte = [] # Enhanced ARM64 MTE support for Linux
 platform-qnx = [] # QNX Neutrino RTOS support
 platform-zephyr = [] # Zephyr RTOS support
-platform-tock = ["dep:heapless"] # Tock OS support with no_std collections
+platform-tock = [] # Tock OS support
 # platform-baremetal = []
 # arm-hardening = [] # If any platform code depends on this
 helper-mode = [] # Added for C-ABI runtime

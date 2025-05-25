@@ -1,7 +1,7 @@
 // Stackless Extensions Module
 // This module extends the stackless execution engine functionality
 
-use crate::stackless::{StacklessEngine, StacklessExecutionState};
+use wrt_runtime::stackless::{StacklessEngine, StacklessExecutionState};
 use wrt_error::{Error, Result};
 
 /// Result of executing a stackless extension

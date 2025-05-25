@@ -88,14 +88,15 @@ pub use wrt_format::{
 pub use wrt_foundation::conversion::{ref_type_to_val_type, val_type_to_ref_type};
 // Re-export from wrt-foundation
 pub use wrt_foundation::{
-    // Component model types
-    component_value::{ComponentValue, ValType},
     // SafeMemory types
     safe_memory::{SafeMemoryHandler, SafeSlice, SafeStack},
     // Types
     types::{BlockType, FuncType, GlobalType, MemoryType, RefType, TableType, ValueType},
     values::Value,
 };
+// Component model types (require alloc)
+#[cfg(feature = "alloc")]
+pub use wrt_foundation::component_value::{ComponentValue, ValType};
 
 // Re-export from this crate
 pub use crate::{

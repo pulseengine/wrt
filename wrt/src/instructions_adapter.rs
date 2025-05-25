@@ -19,7 +19,8 @@ pub use wrt_instructions::{
     Instruction, InstructionExecutable,
 };
 
-use crate::{prelude::*, stackless::StacklessEngine, stackless_frame::StacklessFrame};
+use crate::prelude::*;
+use wrt_runtime::stackless::{StacklessEngine, StacklessFrame};
 
 /// Execution context adapter for instructions
 ///

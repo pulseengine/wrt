@@ -68,7 +68,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::t
         &self,
         stream: &mut wrt_foundation::traits::WriteStream,
         provider: &PStream,
-    ) -> Result<(), wrt_error::Error>
+    ) -> Result<()>
     where
         PStream: wrt_foundation::MemoryProvider,
     {
@@ -86,7 +86,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::t
     fn from_bytes_with_provider<PStream>(
         stream: &mut wrt_foundation::traits::ReadStream,
         provider: &PStream,
-    ) -> Result<Self, wrt_error::Error>
+    ) -> Result<Self>
     where
         PStream: wrt_foundation::MemoryProvider,
     {
@@ -176,7 +176,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::t
         &self,
         stream: &mut wrt_foundation::traits::WriteStream,
         provider: &PStream,
-    ) -> Result<(), wrt_error::Error>
+    ) -> Result<()>
     where
         PStream: wrt_foundation::MemoryProvider,
     {
@@ -193,7 +193,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::t
     fn from_bytes_with_provider<PStream>(
         stream: &mut wrt_foundation::traits::ReadStream,
         provider: &PStream,
-    ) -> Result<Self, wrt_error::Error>
+    ) -> Result<Self>
     where
         PStream: wrt_foundation::MemoryProvider,
     {
@@ -286,7 +286,7 @@ pub enum ElementInit {
 /// Version
 #[cfg(not(any(feature = "alloc", feature = "std")))]
 #[derive(Debug, Clone)]
-pub enum ElementMode<P: wrt_foundation::MemoryProvider = wrt_foundation::NoStdProvider<1024>> {
+pub enum ElementMode<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq = wrt_foundation::NoStdProvider<1024>> {
     /// Active segment: associated with a table and an offset.
     Active {
         /// Index of the table to initialize.
@@ -388,7 +388,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::t
         &self,
         stream: &mut wrt_foundation::traits::WriteStream,
         provider: &PStream,
-    ) -> Result<(), wrt_error::Error>
+    ) -> Result<()>
     where
         PStream: wrt_foundation::MemoryProvider,
     {
@@ -406,7 +406,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::t
     fn from_bytes_with_provider<PStream>(
         stream: &mut wrt_foundation::traits::ReadStream,
         provider: &PStream,
-    ) -> Result<Self, wrt_error::Error>
+    ) -> Result<Self>
     where
         PStream: wrt_foundation::MemoryProvider,
     {
@@ -560,7 +560,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::t
         &self,
         stream: &mut wrt_foundation::traits::WriteStream,
         _provider: &PStream,
-    ) -> Result<(), wrt_error::Error>
+    ) -> Result<()>
     where
         PStream: wrt_foundation::MemoryProvider,
     {
@@ -595,7 +595,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::t
         &self,
         stream: &mut wrt_foundation::traits::WriteStream,
         provider: &PStream,
-    ) -> Result<(), wrt_error::Error>
+    ) -> Result<()>
     where
         PStream: wrt_foundation::MemoryProvider,
     {
@@ -613,7 +613,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::t
     fn from_bytes_with_provider<PStream>(
         stream: &mut wrt_foundation::traits::ReadStream,
         _provider: &PStream,
-    ) -> Result<Self, wrt_error::Error>
+    ) -> Result<Self>
     where
         PStream: wrt_foundation::MemoryProvider,
     {
@@ -663,7 +663,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::t
     fn from_bytes_with_provider<PStream>(
         stream: &mut wrt_foundation::traits::ReadStream,
         provider: &PStream,
-    ) -> Result<Self, wrt_error::Error>
+    ) -> Result<Self>
     where
         PStream: wrt_foundation::MemoryProvider,
     {
@@ -727,7 +727,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::t
         &self,
         stream: &mut wrt_foundation::traits::WriteStream,
         provider: &PStream,
-    ) -> Result<(), wrt_error::Error>
+    ) -> Result<()>
     where
         PStream: wrt_foundation::MemoryProvider,
     {
@@ -744,7 +744,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::t
     fn from_bytes_with_provider<PStream>(
         stream: &mut wrt_foundation::traits::ReadStream,
         provider: &PStream,
-    ) -> Result<Self, wrt_error::Error>
+    ) -> Result<Self>
     where
         PStream: wrt_foundation::MemoryProvider,
     {

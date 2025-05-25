@@ -5,6 +5,9 @@
 
 use crate::prelude::*;
 
+#[cfg(feature = "alloc")]
+use wrt_foundation::component_value::{ComponentValue, ValType};
+
 /// Context for built-in interception
 ///
 /// This struct provides context for built-in interception, including
@@ -13,11 +16,19 @@ use crate::prelude::*;
 #[derive(Debug, Clone)]
 pub struct InterceptContext {
     /// The name of the component making the built-in call
+    #[cfg(feature = "alloc")]
     pub component_name: String,
+    /// The name of the component making the built-in call (static in no_std)
+    #[cfg(not(feature = "alloc"))]
+    pub component_name: &'static str,
     /// The built-in function being called
     pub builtin_type: BuiltinType,
     /// The host environment's unique identifier
+    #[cfg(feature = "alloc")]
     pub host_id: String,
+    /// The host environment's unique identifier (static in no_std)
+    #[cfg(not(feature = "alloc"))]
+    pub host_id: &'static str,
     /// Additional context data (if any)
     #[cfg(feature = "std")]
     pub context_data: std::collections::HashMap<String, Value>,
@@ -35,11 +46,17 @@ impl InterceptContext {
     /// # Returns
     ///
     /// A new `InterceptContext` instance
-    pub fn new(component_name: &str, builtin_type: BuiltinType, host_id: &str) -> Self {
+    pub fn new(_component_name: &str, builtin_type: BuiltinType, _host_id: &str) -> Self {
         Self {
+            #[cfg(feature = "alloc")]
             component_name: component_name.to_string(),
+            #[cfg(not(feature = "alloc"))]
+            component_name: "default",
             builtin_type,
+            #[cfg(feature = "alloc")]
             host_id: host_id.to_string(),
+            #[cfg(not(feature = "alloc"))]
+            host_id: "default",
             #[cfg(feature = "std")]
             context_data: std::collections::HashMap::new(),
         }
@@ -62,8 +79,10 @@ impl InterceptContext {
 ///
 /// This struct provides methods for serializing and deserializing
 /// arguments and results for built-in function calls.
+#[cfg(feature = "alloc")]
 pub struct BuiltinSerialization;
 
+#[cfg(feature = "alloc")]
 impl BuiltinSerialization {
     /// Serialize component values to bytes
     ///
@@ -255,6 +274,7 @@ impl BuiltinSerialization {
 /// The BuiltinInterceptor trait defines methods for intercepting and
 /// potentially modifying built-in function calls in the WebAssembly
 /// Component Model implementation.
+#[cfg(feature = "alloc")]
 pub trait BuiltinInterceptor: Send + Sync {
     /// Called before a built-in function is invoked
     ///
@@ -300,6 +320,7 @@ pub trait BuiltinInterceptor: Send + Sync {
 }
 
 /// Result of the `before_builtin` method
+#[cfg(feature = "alloc")]
 pub enum BeforeBuiltinResult {
     /// Continue with the built-in execution using the provided arguments
     Continue(Vec<ComponentValue<wrt_foundation::NoStdProvider<64>>>),
@@ -313,11 +334,14 @@ mod tests {
 
     #[test]
     fn test_intercept_context() {
+        #[cfg(feature = "alloc")]
         let context =
             InterceptContext::new("test-component", BuiltinType::ResourceCreate, "test-host");
 
+        #[cfg(feature = "alloc")]
         assert_eq!(context.component_name, "test-component");
         assert_eq!(context.builtin_type, BuiltinType::ResourceCreate);
+        #[cfg(feature = "alloc")]
         assert_eq!(context.host_id, "test-host");
 
         #[cfg(feature = "std")]
@@ -329,6 +353,7 @@ mod tests {
         }
     }
 
+    #[cfg(feature = "alloc")]
     #[test]
     fn test_builtin_serialization() {
         let values = vec![

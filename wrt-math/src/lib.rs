@@ -28,7 +28,7 @@
 extern crate std;
 
 // Import alloc for no_std with allocation
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
+#[cfg(feature = "alloc")]
 extern crate alloc;
 
 // Modules

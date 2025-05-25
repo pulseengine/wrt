@@ -7,9 +7,17 @@
 //! This crate provides zero-allocation DWARF debug information parsing
 //! for WebAssembly modules in no_std environments.
 
-#![no_std]
+#![cfg_attr(not(feature = "std"), no_std)]
 #![deny(unsafe_code)]
 #![warn(missing_docs)]
+
+// Import std when available
+#[cfg(feature = "std")]
+extern crate std;
+
+// Import alloc when available
+#[cfg(feature = "alloc")]
+extern crate alloc;
 
 // Re-export commonly used types based on features
 #[cfg(feature = "abbrev")]

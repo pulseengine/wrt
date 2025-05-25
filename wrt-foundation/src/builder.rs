@@ -36,7 +36,7 @@ use crate::prelude::{String, ToString};
 // Crate-level imports
 use crate::{
     bounded::{BoundedStack, BoundedString, BoundedVec, WasmName},
-    resource::{Resource, ResourceItem, ResourceRepr, ResourceType},
+    resource::{Resource, ResourceItem, ResourceRepr, ResourceType, MAX_RESOURCE_FIELD_NAME_LEN},
     safe_memory::{
         DefaultNoStdProvider, NoStdProvider, SafeMemoryHandler, DEFAULT_MEMORY_PROVIDER_CAPACITY,
     },
@@ -334,7 +334,7 @@ impl<P: MemoryProvider + Default + Clone + Eq + fmt::Debug> ResourceTypeBuilder<
     /// Configures this as an Aggregate resource type with the given resource
     /// ID.
     pub fn as_aggregate(mut self, resource_id: u32) -> Self {
-        self.variant = Some(ResourceTypeVariant::Aggregate(resource_id));
+        self.variant = Some(ResourceTypeVariant::<P>::Aggregate(resource_id));
         self
     }
 

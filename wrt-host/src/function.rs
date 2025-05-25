@@ -25,7 +25,7 @@ impl<F> FnWithVecValue for F
 where
     F: Fn(&mut dyn Any) -> Result<Vec<Value>> + Send + Sync + Clone + 'static,
 {
-    fn call(&self, target: &mut dyn Any, args: Vec<Value>) -> Result<Vec<Value>> {
+    fn call(&self, target: &mut dyn Any, _args: Vec<Value>) -> Result<Vec<Value>> {
         // Using target but ignoring args since the function only takes target
         // This could be extended in the future to support functions that take args
         self(target)
