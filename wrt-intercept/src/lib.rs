@@ -70,7 +70,6 @@
 #![warn(clippy::missing_panics_doc)]
 
 // Use the prelude for consistent imports
-use crate::prelude::*;
 
 // When no_std but alloc is available
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
@@ -354,10 +353,10 @@ pub trait LinkInterceptorStrategy: Send + Sync {
     #[cfg(feature = "alloc")]
     fn process_results(
         &self,
-        component_name: &str,
-        func_name: &str,
-        args: &[ComponentValue<wrt_foundation::NoStdProvider<64>>],
-        results: &[ComponentValue<wrt_foundation::NoStdProvider<64>>],
+        _component_name: &str,
+        _func_name: &str,
+        _args: &[ComponentValue<wrt_foundation::NoStdProvider<64>>],
+        _results: &[ComponentValue<wrt_foundation::NoStdProvider<64>>],
     ) -> Result<Option<Vec<Modification>>> {
         // Default implementation returns no modifications
         Ok(None)

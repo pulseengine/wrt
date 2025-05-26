@@ -43,18 +43,23 @@ pub struct Function<
 }
 
 #[cfg(not(any(feature = "alloc", feature = "std")))]
-impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> Default for Function<P> {
-    fn default() -> Self {
-        Function { type_idx: 0, locals: crate::WasmVec::new(), code: crate::WasmVec::new() }
+impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> Function<P> {
+    fn new() -> wrt_foundation::Result<Self> {
+        Ok(Function { 
+            type_idx: 0, 
+            locals: crate::WasmVec::new(P::default())?, 
+            code: crate::WasmVec::new(P::default())? 
+        })
     }
 }
+
 
 #[cfg(not(any(feature = "alloc", feature = "std")))]
 impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::traits::Checksummable
     for Function<P>
 {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        checksum.update(&self.type_idx.to_le_bytes());
+        checksum.update_slice(&self.type_idx.to_le_bytes());
         self.locals.update_checksum(checksum);
         self.code.update_checksum(checksum);
     }
@@ -72,7 +77,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::t
     where
         PStream: wrt_foundation::MemoryProvider,
     {
-        stream.write(&self.type_idx.to_le_bytes())?;
+        stream.write_all(&self.type_idx.to_le_bytes())?;
         self.locals.to_bytes_with_provider(stream, provider)?;
         self.code.to_bytes_with_provider(stream, provider)?;
         Ok(())
@@ -91,7 +96,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::t
         PStream: wrt_foundation::MemoryProvider,
     {
         let mut idx_bytes = [0u8; 4];
-        stream.read(&mut idx_bytes)?;
+        stream.read_exact(&mut idx_bytes)?;
         let type_idx = u32::from_le_bytes(idx_bytes);
         let locals = crate::WasmVec::from_bytes_with_provider(stream, provider)?;
         let code = crate::WasmVec::from_bytes_with_provider(stream, provider)?;
@@ -102,7 +107,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::t
 
 /// WebAssembly function definition - With Allocation
 #[cfg(any(feature = "alloc", feature = "std"))]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Function {
     /// Type index referring to function signature
     pub type_idx: u32,
@@ -152,9 +157,12 @@ pub struct Global<
 }
 
 #[cfg(not(any(feature = "alloc", feature = "std")))]
-impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> Default for Global<P> {
-    fn default() -> Self {
-        Global { global_type: FormatGlobalType::default(), init: crate::WasmVec::new() }
+impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> Global<P> {
+    fn new() -> wrt_foundation::Result<Self> {
+        Ok(Global { 
+            global_type: FormatGlobalType::default(), 
+            init: crate::WasmVec::new(P::default())? 
+        })
     }
 }
 
@@ -206,7 +214,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::t
 
 /// WebAssembly global definition - With Allocation
 #[cfg(any(feature = "alloc", feature = "std"))]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Global {
     /// Global type
     pub global_type: FormatGlobalType,
@@ -225,9 +233,9 @@ pub enum DataMode {
 
 /// WebAssembly data segment - Pure No_std Version
 #[cfg(not(any(feature = "alloc", feature = "std")))]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Data<
-    P: wrt_foundation::MemoryProvider + Clone + Default + Eq = wrt_foundation::NoStdProvider<1024>,
+    P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq = wrt_foundation::NoStdProvider<1024>,
 > {
     /// Data mode (active or passive)
     pub mode: DataMode,
@@ -237,6 +245,124 @@ pub struct Data<
     pub offset: crate::WasmVec<u8, P>,
     /// Initial data
     pub init: crate::WasmVec<u8, P>,
+}
+
+impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> Default for Data<P> {
+    fn default() -> Self {
+        Self {
+            mode: DataMode::Passive,
+            memory_idx: 0,
+            offset: crate::WasmVec::new(P::default()).unwrap_or_else(|_| crate::WasmVec::new(P::default()).unwrap()),
+            init: crate::WasmVec::new(P::default()).unwrap_or_else(|_| crate::WasmVec::new(P::default()).unwrap())
+        }
+    }
+}
+
+// Implement Checksummable for Data
+impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> wrt_foundation::traits::Checksummable for Data<P> {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        self.mode.update_checksum(checksum);
+        checksum.update_slice(&self.memory_idx.to_le_bytes());
+        self.offset.update_checksum(checksum);
+        self.init.update_checksum(checksum);
+    }
+}
+
+// Implement ToBytes for Data
+impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> wrt_foundation::traits::ToBytes for Data<P> {
+    fn serialized_size(&self) -> usize {
+        1 + // mode discriminant
+        4 + // memory_idx
+        self.offset.serialized_size() +
+        self.init.serialized_size()
+    }
+
+    fn to_bytes_with_provider<PStream: wrt_foundation::MemoryProvider>(
+        &self,
+        stream: &mut wrt_foundation::traits::WriteStream,
+        provider: &PStream,
+    ) -> wrt_foundation::Result<()> {
+        stream.write_u8(self.mode as u8)?;
+        stream.write_all(&self.memory_idx.to_le_bytes())?;
+        self.offset.to_bytes_with_provider(stream, provider)?;
+        self.init.to_bytes_with_provider(stream, provider)?;
+        Ok(())
+    }
+}
+
+// Implement FromBytes for Data
+impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> wrt_foundation::traits::FromBytes for Data<P> {
+    fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        provider: &PStream,
+    ) -> wrt_foundation::Result<Self> {
+        let mode_byte = reader.read_u8()?;
+        let mode = match mode_byte {
+            0 => DataMode::Active,
+            1 => DataMode::Passive,
+            _ => return Err(wrt_error::Error::new(
+                wrt_error::ErrorCategory::Validation,
+                wrt_error::codes::PARSE_ERROR,
+                "Invalid DataMode discriminant",
+            )),
+        };
+        
+        let mut memory_idx_bytes = [0u8; 4];
+        reader.read_exact(&mut memory_idx_bytes)?;
+        let memory_idx = u32::from_le_bytes(memory_idx_bytes);
+        
+        let offset = crate::WasmVec::from_bytes_with_provider(reader, provider)?;
+        let init = crate::WasmVec::from_bytes_with_provider(reader, provider)?;
+        
+        Ok(Self {
+            mode,
+            memory_idx,
+            offset,
+            init,
+        })
+    }
+}
+
+// Implement Checksummable for DataMode
+impl wrt_foundation::traits::Checksummable for DataMode {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        checksum.update_slice(&[*self as u8]);
+    }
+}
+
+// Implement ToBytes for DataMode
+impl wrt_foundation::traits::ToBytes for DataMode {
+    fn serialized_size(&self) -> usize {
+        1 // Just the discriminant byte
+    }
+
+    fn to_bytes_with_provider<PStream: wrt_foundation::MemoryProvider>(
+        &self,
+        stream: &mut wrt_foundation::traits::WriteStream,
+        _provider: &PStream,
+    ) -> wrt_foundation::Result<()> {
+        stream.write_u8(*self as u8)?;
+        Ok(())
+    }
+}
+
+// Implement FromBytes for DataMode
+impl wrt_foundation::traits::FromBytes for DataMode {
+    fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        _provider: &PStream,
+    ) -> wrt_foundation::Result<Self> {
+        let discriminant = reader.read_u8()?;
+        match discriminant {
+            0 => Ok(DataMode::Active),
+            1 => Ok(DataMode::Passive),
+            _ => Err(wrt_error::Error::new(
+                wrt_error::ErrorCategory::Validation,
+                wrt_error::codes::PARSE_ERROR,
+                "Invalid DataMode discriminant",
+            )),
+        }
+    }
 }
 
 /// WebAssembly data segment - With Allocation
@@ -256,9 +382,9 @@ pub struct Data {
 /// Represents the initialization items for an element segment - Pure No_std
 /// Version
 #[cfg(not(any(feature = "alloc", feature = "std")))]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ElementInit<
-    P: wrt_foundation::MemoryProvider + Clone + Default + Eq = wrt_foundation::NoStdProvider<1024>,
+    P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq = wrt_foundation::NoStdProvider<1024>,
 > {
     /// A vector of function indices (for funcref element type when expressions
     /// are not used).
@@ -267,6 +393,98 @@ pub enum ElementInit<
     /// expressions). Each expression is a raw byte vector, representing a
     /// const expr.
     Expressions(crate::WasmVec<crate::WasmVec<u8, P>, P>),
+}
+
+impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> ElementInit<P> {
+    fn new() -> wrt_foundation::Result<Self> {
+        Ok(Self::FuncIndices(crate::WasmVec::new(P::default())?))
+    }
+}
+
+impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> Default for ElementInit<P> {
+    fn default() -> Self {
+        // For no_std, we cannot call functions that return Result in Default::default()
+        // so we provide a safe fallback
+        #[cfg(any(feature = "alloc", feature = "std"))]
+        {
+            Self::FuncIndices(Vec::new())
+        }
+        #[cfg(not(any(feature = "alloc", feature = "std")))]
+        {
+            // In pure no_std, this should not be called directly
+            // Use ElementInit::new() instead
+            panic!("ElementInit::default() cannot be used in no_std mode, use ElementInit::new() instead")
+        }
+    }
+}
+
+// Implement Checksummable for ElementInit
+impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> wrt_foundation::traits::Checksummable for ElementInit<P> {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        match self {
+            Self::FuncIndices(indices) => {
+                checksum.update_slice(&[0u8]); // discriminant
+                indices.update_checksum(checksum);
+            }
+            Self::Expressions(exprs) => {
+                checksum.update_slice(&[1u8]); // discriminant
+                exprs.update_checksum(checksum);
+            }
+        }
+    }
+}
+
+// Implement ToBytes for ElementInit
+impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> wrt_foundation::traits::ToBytes for ElementInit<P> {
+    fn serialized_size(&self) -> usize {
+        1 + match self { // 1 byte for discriminant
+            Self::FuncIndices(indices) => indices.serialized_size(),
+            Self::Expressions(exprs) => exprs.serialized_size(),
+        }
+    }
+
+    fn to_bytes_with_provider<PStream: wrt_foundation::MemoryProvider>(
+        &self,
+        stream: &mut wrt_foundation::traits::WriteStream,
+        provider: &PStream,
+    ) -> wrt_foundation::Result<()> {
+        match self {
+            Self::FuncIndices(indices) => {
+                stream.write_u8(0u8)?; // discriminant
+                indices.to_bytes_with_provider(stream, provider)?;
+            }
+            Self::Expressions(exprs) => {
+                stream.write_u8(1u8)?; // discriminant
+                exprs.to_bytes_with_provider(stream, provider)?;
+            }
+        }
+        Ok(())
+    }
+}
+
+// Implement FromBytes for ElementInit
+impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> wrt_foundation::traits::FromBytes for ElementInit<P> {
+    fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        provider: &PStream,
+    ) -> wrt_foundation::Result<Self> {
+        let discriminant = reader.read_u8()?;
+        match discriminant {
+            0 => {
+                let indices = crate::WasmVec::from_bytes_with_provider(reader, provider)?;
+                Ok(Self::FuncIndices(indices))
+            }
+            1 => {
+                let exprs = crate::WasmVec::from_bytes_with_provider(reader, provider)?;
+                Ok(Self::Expressions(exprs))
+            }
+            _ => Err(wrt_error::Error::new(
+                wrt_error::ErrorCategory::Validation,
+                wrt_error::codes::PARSE_ERROR,
+                "Invalid ElementInit discriminant",
+            )),
+        }
+    }
 }
 
 /// Represents the initialization items for an element segment - With Allocation
@@ -282,10 +500,17 @@ pub enum ElementInit {
     Expressions(Vec<Vec<u8>>),
 }
 
+#[cfg(any(feature = "alloc", feature = "std"))]
+impl Default for ElementInit {
+    fn default() -> Self {
+        Self::FuncIndices(Vec::new())
+    }
+}
+
 /// Mode for an element segment, determining how it's initialized - Pure No_std
 /// Version
 #[cfg(not(any(feature = "alloc", feature = "std")))]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ElementMode<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq = wrt_foundation::NoStdProvider<1024>> {
     /// Active segment: associated with a table and an offset.
     Active {
@@ -300,6 +525,89 @@ pub enum ElementMode<P: wrt_foundation::MemoryProvider + Clone + Default + Parti
     /// Declared segment: elements are declared but not available at runtime
     /// until explicitly instantiated. Useful for some linking scenarios.
     Declared,
+}
+
+impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> Default for ElementMode<P> {
+    fn default() -> Self {
+        Self::Passive
+    }
+}
+
+// Implement Checksummable for ElementMode
+impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> wrt_foundation::traits::Checksummable for ElementMode<P> {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        match self {
+            Self::Active { table_index, offset_expr } => {
+                checksum.update_slice(&[0u8]); // discriminant
+                checksum.update_slice(&table_index.to_le_bytes());
+                offset_expr.update_checksum(checksum);
+            }
+            Self::Passive => {
+                checksum.update_slice(&[1u8]); // discriminant
+            }
+            Self::Declared => {
+                checksum.update_slice(&[2u8]); // discriminant
+            }
+        }
+    }
+}
+
+// Implement ToBytes for ElementMode
+impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> wrt_foundation::traits::ToBytes for ElementMode<P> {
+    fn serialized_size(&self) -> usize {
+        1 + match self { // 1 byte for discriminant
+            Self::Active { offset_expr, .. } => 4 + offset_expr.serialized_size(), // 4 bytes for table_index
+            Self::Passive => 0,
+            Self::Declared => 0,
+        }
+    }
+
+    fn to_bytes_with_provider<PStream: wrt_foundation::MemoryProvider>(
+        &self,
+        stream: &mut wrt_foundation::traits::WriteStream,
+        provider: &PStream,
+    ) -> wrt_foundation::Result<()> {
+        match self {
+            Self::Active { table_index, offset_expr } => {
+                stream.write_u8(0u8)?; // discriminant
+                stream.write_all(&table_index.to_le_bytes())?;
+                offset_expr.to_bytes_with_provider(stream, provider)?;
+            }
+            Self::Passive => {
+                stream.write_u8(1u8)?; // discriminant
+            }
+            Self::Declared => {
+                stream.write_u8(2u8)?; // discriminant
+            }
+        }
+        Ok(())
+    }
+}
+
+// Implement FromBytes for ElementMode
+impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> wrt_foundation::traits::FromBytes for ElementMode<P> {
+    fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        provider: &PStream,
+    ) -> wrt_foundation::Result<Self> {
+        let discriminant = reader.read_u8()?;
+        match discriminant {
+            0 => {
+                let mut table_index_bytes = [0u8; 4];
+                reader.read_exact(&mut table_index_bytes)?;
+                let table_index = u32::from_le_bytes(table_index_bytes);
+                let offset_expr = crate::WasmVec::from_bytes_with_provider(reader, provider)?;
+                Ok(Self::Active { table_index, offset_expr })
+            }
+            1 => Ok(Self::Passive),
+            2 => Ok(Self::Declared),
+            _ => Err(wrt_error::Error::new(
+                wrt_error::ErrorCategory::Validation,
+                wrt_error::codes::PARSE_ERROR,
+                "Invalid ElementMode discriminant",
+            )),
+        }
+    }
 }
 
 /// Mode for an element segment, determining how it's initialized - With
@@ -324,9 +632,9 @@ pub enum ElementMode {
 
 /// WebAssembly element segment (Wasm 2.0 compatible) - Pure No_std Version
 #[cfg(not(any(feature = "alloc", feature = "std")))]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Element<
-    P: wrt_foundation::MemoryProvider + Clone + Default + Eq = wrt_foundation::NoStdProvider<1024>,
+    P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq = wrt_foundation::NoStdProvider<1024>,
 > {
     /// The type of elements in this segment (funcref or externref).
     pub element_type: RefType,
@@ -334,6 +642,62 @@ pub struct Element<
     pub init: ElementInit<P>,
     /// The mode of the element segment.
     pub mode: ElementMode<P>,
+}
+
+impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> Default for Element<P> {
+    fn default() -> Self {
+        Self {
+            element_type: RefType::Funcref,
+            init: ElementInit::default(),
+            mode: ElementMode::default(),
+        }
+    }
+}
+
+// Implement Checksummable for Element
+impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> wrt_foundation::traits::Checksummable for Element<P> {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        self.element_type.update_checksum(checksum);
+        self.init.update_checksum(checksum);
+        self.mode.update_checksum(checksum);
+    }
+}
+
+// Implement ToBytes for Element
+impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> wrt_foundation::traits::ToBytes for Element<P> {
+    fn serialized_size(&self) -> usize {
+        self.element_type.serialized_size() + 
+        self.init.serialized_size() + 
+        self.mode.serialized_size()
+    }
+
+    fn to_bytes_with_provider<PStream: wrt_foundation::MemoryProvider>(
+        &self,
+        stream: &mut wrt_foundation::traits::WriteStream,
+        provider: &PStream,
+    ) -> wrt_foundation::Result<()> {
+        self.element_type.to_bytes_with_provider(stream, provider)?;
+        self.init.to_bytes_with_provider(stream, provider)?;
+        self.mode.to_bytes_with_provider(stream, provider)?;
+        Ok(())
+    }
+}
+
+// Implement FromBytes for Element
+impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> wrt_foundation::traits::FromBytes for Element<P> {
+    fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        provider: &PStream,
+    ) -> wrt_foundation::Result<Self> {
+        let element_type = RefType::from_bytes_with_provider(reader, provider)?;
+        let init = ElementInit::from_bytes_with_provider(reader, provider)?;
+        let mode = ElementMode::from_bytes_with_provider(reader, provider)?;
+        Ok(Self {
+            element_type,
+            init,
+            mode,
+        })
+    }
 }
 
 /// WebAssembly element segment (Wasm 2.0 compatible) - With Allocation
@@ -375,8 +739,8 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::t
 {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
         self.name.update_checksum(checksum);
-        checksum.update(&[self.kind as u8]);
-        checksum.update(&self.index.to_le_bytes());
+        checksum.update_slice(&[self.kind as u8]);
+        checksum.update_slice(&self.index.to_le_bytes());
     }
 }
 
@@ -393,8 +757,8 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::t
         PStream: wrt_foundation::MemoryProvider,
     {
         self.name.to_bytes_with_provider(stream, provider)?;
-        stream.write(&[self.kind as u8])?;
-        stream.write(&self.index.to_le_bytes())?;
+        stream.write_u8(self.kind as u8)?;
+        stream.write_all(&self.index.to_le_bytes())?;
         Ok(())
     }
 }
@@ -412,7 +776,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::t
     {
         let name = crate::WasmString::from_bytes_with_provider(stream, provider)?;
         let mut kind_byte = [0u8; 1];
-        stream.read(&mut kind_byte)?;
+        stream.read_exact(&mut kind_byte)?;
         let kind = match kind_byte[0] {
             0 => ExportKind::Function,
             1 => ExportKind::Table,
@@ -422,7 +786,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::t
             _ => ExportKind::Function, // Default fallback
         };
         let mut idx_bytes = [0u8; 4];
-        stream.read(&mut idx_bytes)?;
+        stream.read_exact(&mut idx_bytes)?;
         let index = u32::from_le_bytes(idx_bytes);
 
         Ok(Export { name, kind, index })
@@ -523,19 +887,19 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::t
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
         match self {
             ImportDesc::Function(idx, _) => {
-                checksum.update(&idx.to_le_bytes());
+                checksum.update_slice(&idx.to_le_bytes());
             }
             ImportDesc::Table(_, _) => {
-                checksum.update(&[0x01]);
+                checksum.update_slice(&[0x01]);
             }
             ImportDesc::Memory(_, _) => {
-                checksum.update(&[0x02]);
+                checksum.update_slice(&[0x02]);
             }
             ImportDesc::Global(_, _) => {
-                checksum.update(&[0x03]);
+                checksum.update_slice(&[0x03]);
             }
             ImportDesc::Tag(idx, _) => {
-                checksum.update(&idx.to_le_bytes());
+                checksum.update_slice(&idx.to_le_bytes());
             }
         }
     }
@@ -566,21 +930,21 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::t
     {
         match self {
             ImportDesc::Function(idx, _) => {
-                stream.write(&[0x00])?; // Function type tag
-                stream.write(&idx.to_le_bytes())?;
+                stream.write_u8(0x00)?; // Function type tag
+                stream.write_all(&idx.to_le_bytes())?;
             }
             ImportDesc::Table(_, _) => {
-                stream.write(&[0x01])?; // Table type tag
+                stream.write_u8(0x01)?; // Table type tag
             }
             ImportDesc::Memory(_, _) => {
-                stream.write(&[0x02])?; // Memory type tag
+                stream.write_u8(0x02)?; // Memory type tag
             }
             ImportDesc::Global(_, _) => {
-                stream.write(&[0x03])?; // Global type tag
+                stream.write_u8(0x03)?; // Global type tag
             }
             ImportDesc::Tag(idx, _) => {
-                stream.write(&[0x04])?; // Tag type tag
-                stream.write(&idx.to_le_bytes())?;
+                stream.write_u8(0x04)?; // Tag type tag
+                stream.write_all(&idx.to_le_bytes())?;
             }
         }
         Ok(())
@@ -618,13 +982,13 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::t
         PStream: wrt_foundation::MemoryProvider,
     {
         let mut tag = [0u8; 1];
-        stream.read(&mut tag)?;
+        stream.read_exact(&mut tag)?;
 
         match tag[0] {
             0x00 => {
                 // Function
                 let mut idx_bytes = [0u8; 4];
-                stream.read(&mut idx_bytes)?;
+                stream.read_exact(&mut idx_bytes)?;
                 let idx = u32::from_le_bytes(idx_bytes);
                 Ok(ImportDesc::Function(idx, core::marker::PhantomData))
             }
@@ -643,7 +1007,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::t
             0x04 => {
                 // Tag
                 let mut idx_bytes = [0u8; 4];
-                stream.read(&mut idx_bytes)?;
+                stream.read_exact(&mut idx_bytes)?;
                 let idx = u32::from_le_bytes(idx_bytes);
                 Ok(ImportDesc::Tag(idx, core::marker::PhantomData))
             }
@@ -714,7 +1078,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::t
     for TypeInformationEntry<P>
 {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        checksum.update(&self.type_index.to_le_bytes());
+        checksum.update_slice(&self.type_index.to_le_bytes());
         self.name.update_checksum(checksum);
     }
 }
@@ -731,7 +1095,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::t
     where
         PStream: wrt_foundation::MemoryProvider,
     {
-        stream.write(&self.type_index.to_le_bytes())?;
+        stream.write_all(&self.type_index.to_le_bytes())?;
         self.name.to_bytes_with_provider(stream, provider)?;
         Ok(())
     }
@@ -749,7 +1113,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + Eq> wrt_foundation::t
         PStream: wrt_foundation::MemoryProvider,
     {
         let mut idx_bytes = [0u8; 4];
-        stream.read(&mut idx_bytes)?;
+        stream.read_exact(&mut idx_bytes)?;
         let type_index = u32::from_le_bytes(idx_bytes);
         let name = crate::WasmString::from_bytes_with_provider(stream, provider)?;
 
@@ -901,6 +1265,7 @@ impl Default for Module {
     }
 }
 
+#[cfg(any(feature = "alloc", feature = "std"))]
 impl Module {
     /// Create a new empty module
     pub fn new() -> Self {
@@ -1056,6 +1421,35 @@ impl wrt_foundation::traits::Checksummable for Table {
     }
 }
 
+// Implement ToBytes trait for Table
+impl wrt_foundation::traits::ToBytes for Table {
+    fn serialized_size(&self) -> usize {
+        self.element_type.serialized_size() + self.limits.serialized_size()
+    }
+
+    fn to_bytes_with_provider<PStream: wrt_foundation::MemoryProvider>(
+        &self,
+        stream: &mut wrt_foundation::traits::WriteStream,
+        provider: &PStream,
+    ) -> wrt_foundation::Result<()> {
+        self.element_type.to_bytes_with_provider(stream, provider)?;
+        self.limits.to_bytes_with_provider(stream, provider)?;
+        Ok(())
+    }
+}
+
+// Implement FromBytes trait for Table
+impl wrt_foundation::traits::FromBytes for Table {
+    fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        provider: &PStream,
+    ) -> wrt_foundation::Result<Self> {
+        let element_type = ValueType::from_bytes_with_provider(reader, provider)?;
+        let limits = Limits::from_bytes_with_provider(reader, provider)?;
+        Ok(Self { element_type, limits })
+    }
+}
+
 // Serialization helpers for Memory
 impl Memory {
     /// Serialize to bytes
@@ -1089,6 +1483,36 @@ impl wrt_foundation::traits::Checksummable for Memory {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
         self.limits.update_checksum(checksum);
         checksum.update_slice(&[self.shared as u8]);
+    }
+}
+
+// Implement ToBytes trait for Memory
+impl wrt_foundation::traits::ToBytes for Memory {
+    fn serialized_size(&self) -> usize {
+        self.limits.serialized_size() + 1  // +1 for shared flag
+    }
+
+    fn to_bytes_with_provider<PStream: wrt_foundation::MemoryProvider>(
+        &self,
+        stream: &mut wrt_foundation::traits::WriteStream,
+        provider: &PStream,
+    ) -> wrt_foundation::Result<()> {
+        self.limits.to_bytes_with_provider(stream, provider)?;
+        stream.write_u8(self.shared as u8)?;
+        Ok(())
+    }
+}
+
+// Implement FromBytes trait for Memory
+impl wrt_foundation::traits::FromBytes for Memory {
+    fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        provider: &PStream,
+    ) -> wrt_foundation::Result<Self> {
+        let limits = Limits::from_bytes_with_provider(reader, provider)?;
+        let shared_byte = reader.read_u8()?;
+        let shared = shared_byte != 0;
+        Ok(Self { limits, shared })
     }
 }
 

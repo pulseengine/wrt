@@ -152,14 +152,60 @@ pub enum Section<P: MemoryProvider + Clone + Default + Eq = NoStdProvider<1024>>
 
 /// WebAssembly custom section - Pure No_std Version
 #[cfg(not(any(feature = "alloc", feature = "std")))]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CustomSection<
-    P: wrt_foundation::MemoryProvider + Clone + Default + Eq = wrt_foundation::NoStdProvider<1024>,
+    P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq = wrt_foundation::NoStdProvider<1024>,
 > {
     /// Section name
     pub name: crate::WasmString<P>,
     /// Section data
     pub data: crate::WasmVec<u8, P>,
+}
+
+impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> Default for CustomSection<P> {
+    fn default() -> Self {
+        Self {
+            name: crate::WasmString::new_with_provider(P::default()),
+            data: crate::WasmVec::new_with_provider(P::default()),
+        }
+    }
+}
+
+// Implement Checksummable for CustomSection
+impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> wrt_foundation::traits::Checksummable for CustomSection<P> {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        self.name.update_checksum(checksum);
+        self.data.update_checksum(checksum);
+    }
+}
+
+// Implement ToBytes for CustomSection
+impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> wrt_foundation::traits::ToBytes for CustomSection<P> {
+    fn serialized_size(&self) -> usize {
+        self.name.serialized_size() + self.data.serialized_size()
+    }
+
+    fn to_bytes_with_provider<PStream: wrt_foundation::MemoryProvider>(
+        &self,
+        stream: &mut wrt_foundation::traits::WriteStream,
+        provider: &PStream,
+    ) -> wrt_foundation::Result<()> {
+        self.name.to_bytes_with_provider(stream, provider)?;
+        self.data.to_bytes_with_provider(stream, provider)?;
+        Ok(())
+    }
+}
+
+// Implement FromBytes for CustomSection
+impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> wrt_foundation::traits::FromBytes for CustomSection<P> {
+    fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        provider: &PStream,
+    ) -> wrt_foundation::Result<Self> {
+        let name = crate::WasmString::from_bytes_with_provider(reader, provider)?;
+        let data = crate::WasmVec::from_bytes_with_provider(reader, provider)?;
+        Ok(Self { name, data })
+    }
 }
 
 /// WebAssembly custom section - With Allocation

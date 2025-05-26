@@ -111,7 +111,7 @@ mod tests {
                 Error::new(
                     ErrorCategory::Resource,
                     codes::INVALID_FUNCTION_INDEX,
-                    format!("Invalid local index: {}", index),
+                    "Invalid local index",
                 )
             })
         }
@@ -124,7 +124,7 @@ mod tests {
                 Err(Error::new(
                     ErrorCategory::Resource,
                     codes::INVALID_FUNCTION_INDEX,
-                    format!("Invalid local index: {}", index),
+                    "Invalid local index",
                 ))
             }
         }
@@ -134,7 +134,7 @@ mod tests {
                 Error::new(
                     ErrorCategory::Resource,
                     codes::INVALID_FUNCTION_INDEX,
-                    format!("Invalid global index: {}", index),
+                    "Invalid global index",
                 )
             })
         }
@@ -147,7 +147,7 @@ mod tests {
                 Err(Error::new(
                     ErrorCategory::Resource,
                     codes::INVALID_FUNCTION_INDEX,
-                    format!("Invalid global index: {}", index),
+                    "Invalid global index",
                 ))
             }
         }

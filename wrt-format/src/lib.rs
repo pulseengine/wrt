@@ -28,10 +28,12 @@ extern crate std;
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 extern crate alloc;
 
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use alloc::boxed::Box;
+
 // Import types for internal use
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::{
-    boxed::Box,
     format,
     string::{String, ToString},
     vec::Vec,
@@ -76,9 +78,15 @@ pub type ModuleData<P> = BoundedVec<crate::module::Data<P>, MAX_MODULE_DATA, P>;
 #[cfg(not(any(feature = "alloc", feature = "std")))]
 pub type ModuleCustomSections<P> = BoundedVec<crate::section::CustomSection<P>, 64, P>;
 
-// Type aliases for HashMap - removed as it conflicts with import above
-#[cfg(not(feature = "std"))]
-pub type HashMap<K, V> = BoundedMap<K, V, 256, wrt_foundation::NoStdProvider<1024>>; // Default capacity
+// Type aliases for HashMap
+#[cfg(not(any(feature = "alloc", feature = "std")))]
+pub type HashMap<K, V> = wrt_foundation::BoundedMap<K, V, 256, wrt_foundation::NoStdProvider<1024>>; // Default capacity
+
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+pub type HashMap<K, V> = alloc::collections::BTreeMap<K, V>; // Use BTreeMap in no_std+alloc
+
+#[cfg(feature = "std")]
+pub type HashMap<K, V> = std::collections::HashMap<K, V>;
 
 // Maximum recursion depth for recursive types to replace Box<T>
 pub const MAX_TYPE_RECURSION_DEPTH: usize = 32;

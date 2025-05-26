@@ -6,8 +6,11 @@
 //! Note: This strategy requires the `std` feature.
 
 #[cfg(feature = "std")]
-use std::time::{Duration, Instant};
+use std::time::Instant;
+#[cfg(all(feature = "std", test))]
+use std::time::Duration;
 
+#[cfg(feature = "std")]
 use crate::prelude::*;
 
 /// Statistics collected for a function

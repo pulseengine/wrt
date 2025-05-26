@@ -9,9 +9,10 @@
 
 #![allow(clippy::match_single_binding)]
 
-use wrt_foundation::types::{FuncType, ValueType};
+// Remove unused imports
 
 use crate::prelude::*;
+
 
 /// Branch target information
 #[derive(Debug, Clone)]
@@ -22,26 +23,8 @@ pub struct BranchTarget {
     pub keep_values: usize,
 }
 
-/// Block types for control flow operations
-#[derive(Debug, Clone)]
-pub enum ControlBlockType {
-    /// Block with a specific function type (input/output types)
-    FuncType(FuncType),
-    /// Block with a single output type
-    ValueType(Option<ValueType>),
-}
-
-impl From<BlockType> for ControlBlockType {
-    fn from(bt: BlockType) -> Self {
-        match bt {
-            BlockType::Empty => ControlBlockType::ValueType(None),
-            BlockType::Value(vt) => ControlBlockType::ValueType(Some(vt)),
-            BlockType::FuncType(ft) => ControlBlockType::FuncType(ft),
-            BlockType::TypeIndex(_) => ControlBlockType::ValueType(None), /* Default handling for
-                                                                           * type indices */
-        }
-    }
-}
+/// Type alias for block type used in control flow
+pub type ControlBlockType = BlockType;
 
 /// Represent blocks for the execution flow
 #[derive(Debug, Clone)]
@@ -76,7 +59,10 @@ pub enum ControlOp {
     /// Branch to a label in a table
     BrTable {
         /// Table of branch target labels
+        #[cfg(feature = "alloc")]
         table: Vec<u32>,
+        #[cfg(not(feature = "alloc"))]
+        table: BoundedVec<u32, 256, wrt_foundation::DefaultNoStdProvider>,
         /// Default label to branch to if the index is out of bounds
         default: u32,
     },
@@ -140,7 +126,7 @@ impl<T: ControlContext> PureInstruction<T, Error> for ControlOp {
             Self::Loop(block_type) => context.enter_block(Block::Loop(block_type.clone())),
             Self::If(block_type) => {
                 let condition = context.pop_control_value()?.as_i32().ok_or_else(|| {
-                    Error::invalid_type("Expected I32 for if condition".to_string())
+                    Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected I32 for if condition")
                 })?;
 
                 if condition != 0 {
@@ -171,7 +157,7 @@ impl<T: ControlContext> PureInstruction<T, Error> for ControlOp {
             }
             Self::BrIf(label_idx) => {
                 let condition = context.pop_control_value()?.as_i32().ok_or_else(|| {
-                    Error::invalid_type("Expected I32 for br_if condition".to_string())
+                    Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected I32 for br_if condition")
                 })?;
 
                 if condition != 0 {
@@ -187,7 +173,7 @@ impl<T: ControlContext> PureInstruction<T, Error> for ControlOp {
             }
             Self::BrTable { table, default } => {
                 let index = context.pop_control_value()?.as_i32().ok_or_else(|| {
-                    Error::invalid_type("Expected I32 for br_table index".to_string())
+                    Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected I32 for br_table index")
                 })?;
 
                 // Determine which label to branch to
@@ -285,7 +271,7 @@ mod tests {
                 Error::new(
                     ErrorCategory::Runtime,
                     codes::EXECUTION_ERROR,
-                    format!("Invalid branch target with depth: {}", self.blocks.len()),
+                    "Invalid branch target",
                 )
             })
         }

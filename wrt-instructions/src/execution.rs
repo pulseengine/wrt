@@ -72,7 +72,7 @@ pub trait PureExecutionContext {
 #[derive(Default)]
 pub struct ExecutionContext {
     #[cfg(feature = "safety")]
-    stack: BoundedVec<Value, 1024>, // Using a reasonably large size for WASM stack
+    stack: BoundedVec<Value, 1024, wrt_foundation::DefaultNoStdProvider>, // Using a reasonably large size for WASM stack
     #[cfg(not(feature = "safety"))]
     stack: Vec<Value>,
 }
@@ -140,7 +140,7 @@ impl PureExecutionContext for ExecutionContext {
             return Err(Error::new(
                 ErrorCategory::Type,
                 codes::TYPE_MISMATCH,
-                format!("Expected {expected_type:?}, got {:?}", value.value_type()),
+                "Type mismatch: unexpected value type",
             ));
         }
         Ok(value)
@@ -174,7 +174,7 @@ impl ComparisonContext for ExecutionContext {
 #[cfg(test)]
 pub struct TestExecutionContext {
     #[cfg(feature = "safety")]
-    stack: BoundedVec<Value, 1024>,
+    stack: BoundedVec<Value, 1024, wrt_foundation::DefaultNoStdProvider>,
     #[cfg(not(feature = "safety"))]
     stack: Vec<Value>,
 }
@@ -251,7 +251,7 @@ impl PureExecutionContext for TestExecutionContext {
             return Err(Error::new(
                 ErrorCategory::Type,
                 codes::TYPE_MISMATCH,
-                format!("Expected {expected_type:?}, got {:?}", value.value_type()),
+                "Type mismatch: unexpected value type",
             ));
         }
         Ok(value)

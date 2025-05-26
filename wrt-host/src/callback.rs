@@ -206,8 +206,8 @@ impl CallbackRegistry {
     /// This method returns a set of all built-in types that are available
     /// through this registry's host functions.
     #[must_use]
-    pub fn get_available_builtins(&self) -> crate::HashSet<BuiltinType> {
-        use crate::HashSet;
+    pub fn get_available_builtins(&self) -> crate::prelude::HashSet<BuiltinType> {
+        use crate::prelude::HashSet;
 
         let mut builtins = HashSet::new();
 

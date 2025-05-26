@@ -46,7 +46,7 @@ impl InterceptContext {
     /// # Returns
     ///
     /// A new `InterceptContext` instance
-    pub fn new(_component_name: &str, builtin_type: BuiltinType, _host_id: &str) -> Self {
+    pub fn new(component_name: &str, builtin_type: BuiltinType, host_id: &str) -> Self {
         Self {
             #[cfg(feature = "alloc")]
             component_name: component_name.to_string(),

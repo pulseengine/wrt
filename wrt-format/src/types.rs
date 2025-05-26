@@ -3,6 +3,11 @@
 //! This module provides type definitions for WebAssembly types.
 //! Most core types are re-exported from wrt-foundation.
 
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use alloc::vec::Vec;
+#[cfg(feature = "std")]
+use std::vec::Vec;
+
 use wrt_error::Result;
 // Import types from wrt-foundation
 pub use wrt_foundation::{BlockType, FuncType, RefType, ValueType};
@@ -83,10 +88,53 @@ pub fn value_type_to_byte(value_type: ValueType) -> u8 {
 }
 
 /// Type for a global variable in the binary format.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct FormatGlobalType {
     pub value_type: ValueType, // This is wrt_foundation::ValueType re-exported in this file
     pub mutable: bool,
+}
+
+impl wrt_foundation::traits::Checksummable for FormatGlobalType {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        self.value_type.update_checksum(checksum);
+        checksum.update(if self.mutable { 1 } else { 0 });
+    }
+}
+
+impl wrt_foundation::traits::ToBytes for FormatGlobalType {
+    fn serialized_size(&self) -> usize {
+        self.value_type.serialized_size() + 1
+    }
+
+    fn to_bytes_with_provider<PStream: wrt_foundation::MemoryProvider>(
+        &self,
+        stream: &mut wrt_foundation::traits::WriteStream,
+        provider: &PStream,
+    ) -> wrt_foundation::Result<()> {
+        self.value_type.to_bytes_with_provider(stream, provider)?;
+        stream.write_u8(if self.mutable { 1 } else { 0 })?;
+        Ok(())
+    }
+}
+
+impl wrt_foundation::traits::FromBytes for FormatGlobalType {
+    fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+        stream: &mut wrt_foundation::traits::ReadStream<'a>,
+        provider: &PStream,
+    ) -> wrt_foundation::Result<Self> {
+        let value_type = ValueType::from_bytes_with_provider(stream, provider)?;
+        let mutable_byte = stream.read_u8()?;
+        let mutable = match mutable_byte {
+            0 => false,
+            1 => true,
+            _ => return Err(wrt_error::Error::new(
+                wrt_error::ErrorCategory::Validation,
+                wrt_error::codes::PARSE_ERROR,
+                "Invalid mutability byte"
+            )),
+        };
+        Ok(FormatGlobalType { value_type, mutable })
+    }
 }
 
 /// Represents the core WebAssembly specification version of a module.

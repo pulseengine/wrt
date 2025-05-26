@@ -13,7 +13,8 @@ use wrt_platform::memory::PageAllocator;
 use crate::{
     linear_memory::PalMemoryProvider,
     prelude::*,
-    safe_memory::{Provider, Slice, SliceMut, Stats, VerificationLevel},
+    safe_memory::{Provider, Slice, SliceMut, Stats},
+    verification::VerificationLevel,
 };
 
 /// Represents an instance of a WebAssembly linear memory.
@@ -23,11 +24,11 @@ use crate::{
 /// a `PageAllocator` allowing different backing strategies for memory
 /// allocation.
 #[derive(Debug)]
-pub struct LinearMemory<A: PageAllocator + Send + Sync> {
+pub struct LinearMemory<A: PageAllocator + Send + Sync + Clone + 'static> {
     provider: PalMemoryProvider<A>,
 }
 
-impl<A: PageAllocator + Send + Sync> LinearMemory<A> {
+impl<A: PageAllocator + Send + Sync + Clone + 'static> LinearMemory<A> {
     /// Creates a new `LinearMemory`.
     ///
     /// # Arguments

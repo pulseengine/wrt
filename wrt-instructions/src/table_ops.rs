@@ -110,7 +110,7 @@ impl<T: TableContext> PureInstruction<T, Error> for TableOp {
     fn execute(&self, context: &mut T) -> Result<()> {
         match self {
             Self::TableGet(table_index) => {
-                let index = context.pop_table_value()?.as_i32().ok_or_else(|| {
+                let index = context.pop_table_value()?.into_i32().map_err(|_| {
                     Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Invalid table type")
                 })?;
 
@@ -118,7 +118,7 @@ impl<T: TableContext> PureInstruction<T, Error> for TableOp {
                     return Err(Error::new(
                         ErrorCategory::Resource,
                         codes::RESOURCE_ERROR,
-                        format!("Invalid table index: {}", index as u32),
+                        "Invalid table index",
                     ));
                 }
 
@@ -134,7 +134,7 @@ impl<T: TableContext> PureInstruction<T, Error> for TableOp {
             }
             Self::TableSet(table_index) => {
                 let value = context.pop_table_value()?;
-                let index = context.pop_table_value()?.as_i32().ok_or_else(|| {
+                let index = context.pop_table_value()?.into_i32().map_err(|_| {
                     Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Invalid table type")
                 })?;
 
@@ -142,7 +142,7 @@ impl<T: TableContext> PureInstruction<T, Error> for TableOp {
                     return Err(Error::new(
                         ErrorCategory::Resource,
                         codes::RESOURCE_ERROR,
-                        format!("Invalid table index: {}", index as u32),
+                        "Invalid table index",
                     ));
                 }
 
@@ -167,7 +167,7 @@ impl<T: TableContext> PureInstruction<T, Error> for TableOp {
                 context.push_table_value(Value::I32(size as i32))
             }
             Self::TableGrow(table_index) => {
-                let delta = context.pop_table_value()?.as_i32().ok_or_else(|| {
+                let delta = context.pop_table_value()?.into_i32().map_err(|_| {
                     Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Invalid table type")
                 })?;
                 let init_value = context.pop_table_value()?;
@@ -198,11 +198,11 @@ impl<T: TableContext> PureInstruction<T, Error> for TableOp {
                 context.push_table_value(Value::I32(prev_size))
             }
             Self::TableFill(table_index) => {
-                let len = context.pop_table_value()?.as_i32().ok_or_else(|| {
+                let len = context.pop_table_value()?.into_i32().map_err(|_| {
                     Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Invalid table type")
                 })?;
                 let val = context.pop_table_value()?;
-                let dst = context.pop_table_value()?.as_i32().ok_or_else(|| {
+                let dst = context.pop_table_value()?.into_i32().map_err(|_| {
                     Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Invalid table type")
                 })?;
 
@@ -210,10 +210,7 @@ impl<T: TableContext> PureInstruction<T, Error> for TableOp {
                     return Err(Error::new(
                         ErrorCategory::Resource,
                         codes::RESOURCE_ERROR,
-                        format!(
-                            "Invalid table index: {}",
-                            if dst < 0 { dst as u32 } else { len as u32 }
-                        ),
+                        "Invalid table index: negative value",
                     ));
                 }
 
@@ -234,13 +231,13 @@ impl<T: TableContext> PureInstruction<T, Error> for TableOp {
                 context.fill_table(*table_index, dst as u32, ref_val, len as u32)
             }
             Self::TableCopy { dst_table, src_table } => {
-                let len = context.pop_table_value()?.as_i32().ok_or_else(|| {
+                let len = context.pop_table_value()?.into_i32().map_err(|_| {
                     Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Invalid table type")
                 })?;
-                let src = context.pop_table_value()?.as_i32().ok_or_else(|| {
+                let src = context.pop_table_value()?.into_i32().map_err(|_| {
                     Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Invalid table type")
                 })?;
-                let dst = context.pop_table_value()?.as_i32().ok_or_else(|| {
+                let dst = context.pop_table_value()?.into_i32().map_err(|_| {
                     Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Invalid table type")
                 })?;
 
@@ -248,29 +245,20 @@ impl<T: TableContext> PureInstruction<T, Error> for TableOp {
                     return Err(Error::new(
                         ErrorCategory::Resource,
                         codes::RESOURCE_ERROR,
-                        format!(
-                            "Invalid table index: {}",
-                            if dst < 0 {
-                                dst as u32
-                            } else if src < 0 {
-                                src as u32
-                            } else {
-                                len as u32
-                            }
-                        ),
+                        "Invalid table index: negative value",
                     ));
                 }
 
                 context.copy_table(*dst_table, dst as u32, *src_table, src as u32, len as u32)
             }
             Self::TableInit { table_index, elem_index } => {
-                let len = context.pop_table_value()?.as_i32().ok_or_else(|| {
+                let len = context.pop_table_value()?.into_i32().map_err(|_| {
                     Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Invalid table type")
                 })?;
-                let src = context.pop_table_value()?.as_i32().ok_or_else(|| {
+                let src = context.pop_table_value()?.into_i32().map_err(|_| {
                     Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Invalid table type")
                 })?;
-                let dst = context.pop_table_value()?.as_i32().ok_or_else(|| {
+                let dst = context.pop_table_value()?.into_i32().map_err(|_| {
                     Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Invalid table type")
                 })?;
 
@@ -278,16 +266,7 @@ impl<T: TableContext> PureInstruction<T, Error> for TableOp {
                     return Err(Error::new(
                         ErrorCategory::Resource,
                         codes::RESOURCE_ERROR,
-                        format!(
-                            "Invalid table index: {}",
-                            if dst < 0 {
-                                dst as u32
-                            } else if src < 0 {
-                                src as u32
-                            } else {
-                                len as u32
-                            }
-                        ),
+                        "Invalid table index: negative value",
                     ));
                 }
 
@@ -348,14 +327,14 @@ mod tests {
                     Err(Error::new(
                         ErrorCategory::Resource,
                         codes::RESOURCE_ERROR,
-                        format!("Invalid table index: {}", elem_index),
+                        "Invalid table index",
                     ))
                 }
             } else {
                 Err(Error::new(
                     ErrorCategory::Resource,
                     codes::RESOURCE_ERROR,
-                    format!("Invalid table index: {}", table_index),
+                    "Invalid table index",
                 ))
             }
         }
@@ -374,14 +353,14 @@ mod tests {
                     Err(Error::new(
                         ErrorCategory::Resource,
                         codes::RESOURCE_ERROR,
-                        format!("Invalid table index: {}", elem_index),
+                        "Invalid table index",
                     ))
                 }
             } else {
                 Err(Error::new(
                     ErrorCategory::Resource,
                     codes::RESOURCE_ERROR,
-                    format!("Invalid table index: {}", table_index),
+                    "Invalid table index",
                 ))
             }
         }
@@ -393,7 +372,7 @@ mod tests {
                 Err(Error::new(
                     ErrorCategory::Resource,
                     codes::RESOURCE_ERROR,
-                    format!("Invalid table index: {}", table_index),
+                    "Invalid table index",
                 ))
             }
         }
@@ -416,7 +395,7 @@ mod tests {
                 Err(Error::new(
                     ErrorCategory::Resource,
                     codes::RESOURCE_ERROR,
-                    format!("Invalid table index: {}", table_index),
+                    "Invalid table index",
                 ))
             }
         }
@@ -433,7 +412,7 @@ mod tests {
                     return Err(Error::new(
                         ErrorCategory::Resource,
                         codes::RESOURCE_ERROR,
-                        format!("Invalid table index: {}", dst),
+                        "Invalid table index",
                     ));
                 }
 
@@ -446,7 +425,7 @@ mod tests {
                 Err(Error::new(
                     ErrorCategory::Resource,
                     codes::RESOURCE_ERROR,
-                    format!("Invalid table index: {}", table_index),
+                    "Invalid table index",
                 ))
             }
         }
@@ -464,16 +443,7 @@ mod tests {
                 return Err(Error::new(
                     ErrorCategory::Resource,
                     codes::RESOURCE_ERROR,
-                    format!(
-                        "Invalid table index: {}",
-                        if dst_table < 0 {
-                            dst_table as u32
-                        } else if src_table < 0 {
-                            src_table as u32
-                        } else {
-                            len
-                        }
-                    ),
+                    "Invalid table index",
                 ));
             }
 
@@ -485,7 +455,7 @@ mod tests {
                     return Err(Error::new(
                         ErrorCategory::Resource,
                         codes::RESOURCE_ERROR,
-                        format!("Invalid table index: {}", src_index),
+                        "Invalid table index",
                     ));
                 }
 
@@ -498,7 +468,7 @@ mod tests {
                 return Err(Error::new(
                     ErrorCategory::Resource,
                     codes::RESOURCE_ERROR,
-                    format!("Invalid table index: {}", dst_index),
+                    "Invalid table index",
                 ));
             }
 
@@ -521,7 +491,7 @@ mod tests {
                 return Err(Error::new(
                     ErrorCategory::Resource,
                     codes::RESOURCE_ERROR,
-                    format!("Invalid element index: {}", elem_index),
+                    "Invalid element index",
                 ));
             }
 
@@ -531,7 +501,7 @@ mod tests {
                 return Err(Error::new(
                     ErrorCategory::Resource,
                     codes::RESOURCE_ERROR,
-                    format!("Invalid table index: {}", src),
+                    "Invalid table index",
                 ));
             }
 
@@ -540,7 +510,7 @@ mod tests {
                     return Err(Error::new(
                         ErrorCategory::Resource,
                         codes::RESOURCE_ERROR,
-                        format!("Invalid table index: {}", dst),
+                        "Invalid table index",
                     ));
                 }
 
@@ -554,7 +524,7 @@ mod tests {
                 Err(Error::new(
                     ErrorCategory::Resource,
                     codes::RESOURCE_ERROR,
-                    format!("Invalid table index: {}", table_index),
+                    "Invalid table index",
                 ))
             }
         }
@@ -564,7 +534,7 @@ mod tests {
                 return Err(Error::new(
                     ErrorCategory::Resource,
                     codes::RESOURCE_ERROR,
-                    format!("Invalid element index: {}", elem_index),
+                    "Invalid element index",
                 ));
             }
 
