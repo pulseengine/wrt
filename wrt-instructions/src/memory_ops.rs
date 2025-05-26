@@ -253,27 +253,24 @@ impl MemoryLoad {
         let addr = match addr_arg {
             Value::I32(a) => *a as u32,
             _ => {
-                return Err(Error::type_error(format!(
-                    "Memory load expects I32 address, got {:?}",
-                    addr_arg
-                )));
+                return Err(Error::type_error(
+                    "Memory load expects I32 address, got unexpected value"
+                ));
             }
         };
 
         // Calculate effective address
         let effective_addr = addr.checked_add(self.offset).ok_or_else(|| {
-            Error::memory_error(format!(
-                "Address overflow in memory.load: addr={}, offset={}",
-                addr, self.offset
-            ))
+            Error::memory_error(
+                "Address overflow in memory load"
+            )
         })?;
 
         // Verify alignment if required - make configurable later
         if self.align > 1 && effective_addr % self.align != 0 {
-            return Err(Error::memory_error(format!(
-                "Unaligned memory access: addr={}, align={}",
-                effective_addr, self.align
-            )));
+            return Err(Error::memory_error(
+                "Unaligned memory access"
+            ));
         }
 
         // Perform the load based on the type and width
@@ -368,10 +365,9 @@ impl MemoryLoad {
                 };
                 Ok(Value::I64(value))
             }
-            _ => Err(Error::type_error(format!(
-                "Unsupported memory load: type={:?}, width={}",
-                self.value_type, self.width
-            ))),
+            _ => Err(Error::type_error(
+                "Unsupported memory load operation"
+            )),
         }
     }
 }
@@ -526,27 +522,24 @@ impl MemoryStore {
         let addr = match addr_arg {
             Value::I32(a) => *a as u32,
             _ => {
-                return Err(Error::type_error(format!(
-                    "Memory store expects I32 address, got {:?}",
-                    addr_arg
-                )));
+                return Err(Error::type_error(
+                    "Memory store expects I32 address, got unexpected value"
+                ));
             }
         };
 
         // Calculate effective address
         let effective_addr = addr.checked_add(self.offset).ok_or_else(|| {
-            Error::memory_error(format!(
-                "Address overflow in memory.store: addr={}, offset={}",
-                addr, self.offset
-            ))
+            Error::memory_error(
+                "Address overflow in memory store"
+            )
         })?;
 
         // Verify alignment if required
         if self.align > 1 && effective_addr % self.align != 0 {
-            return Err(Error::memory_error(format!(
-                "Unaligned memory access: addr={}, align={}",
-                effective_addr, self.align
-            )));
+            return Err(Error::memory_error(
+                "Unaligned memory access"
+            ));
         }
 
         // Perform the store based on the type and width
@@ -588,10 +581,9 @@ impl MemoryStore {
                 let bytes = (*v as u32).to_le_bytes();
                 memory.write_bytes(effective_addr, &bytes)
             }
-            _ => Err(Error::type_error(format!(
-                "Type mismatch for memory store: expected {:?}, got {:?}",
-                self.value_type, value
-            ))),
+            _ => Err(Error::type_error(
+                "Type mismatch for memory store"
+            )),
         }
     }
 }
@@ -620,12 +612,9 @@ mod tests {
             let end = start + len as usize;
 
             if end > self.data.len() {
-                return Err(Error::from(kinds::MemoryAccessOutOfBoundsError(format!(
-                    "Memory access out of bounds: offset={}, len={}, size={}",
-                    offset,
-                    len,
-                    self.data.len()
-                ))));
+                return Err(Error::from(kinds::MemoryAccessOutOfBoundsError(
+                    "Memory access out of bounds"
+                )));
             }
 
             Ok(self.data[start..end].to_vec())
@@ -636,12 +625,9 @@ mod tests {
             let end = start + bytes.len();
 
             if end > self.data.len() {
-                return Err(Error::from(kinds::MemoryAccessOutOfBoundsError(format!(
-                    "Memory access out of bounds: offset={}, len={}, size={}",
-                    offset,
-                    bytes.len(),
-                    self.data.len()
-                ))));
+                return Err(Error::from(kinds::MemoryAccessOutOfBoundsError(
+                    "Memory access out of bounds"
+                )));
             }
 
             self.data[start..end].copy_from_slice(bytes);

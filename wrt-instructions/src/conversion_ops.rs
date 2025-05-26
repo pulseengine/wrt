@@ -116,13 +116,13 @@ impl<T: ConversionContext> PureInstruction<T, Error> for ConversionOp {
             // i32 conversions
             Self::I32WrapI64 => {
                 let a = context.pop_conversion_value()?.as_i64().ok_or_else(|| {
-                    Error::invalid_type("Expected I64 for i32.wrap_i64 operand".to_string())
+                    Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected I64 for i32.wrap_i64 operand")
                 })?;
                 context.push_conversion_value(Value::I32(a as i32))
             }
             Self::I32TruncF32S => {
                 let a = context.pop_conversion_value()?.as_f32().ok_or_else(|| {
-                    Error::invalid_type("Expected F32 for i32.trunc_f32_s operand".to_string())
+                    Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected F32 for i32.trunc_f32_s operand")
                 })?;
 
                 if a.is_nan() {
@@ -145,7 +145,7 @@ impl<T: ConversionContext> PureInstruction<T, Error> for ConversionOp {
             }
             Self::I32TruncF32U => {
                 let a = context.pop_conversion_value()?.as_f32().ok_or_else(|| {
-                    Error::invalid_type("Expected F32 for i32.trunc_f32_u operand".to_string())
+                    Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected F32 for i32.trunc_f32_u operand")
                 })?;
 
                 if a.is_nan() {
@@ -168,7 +168,7 @@ impl<T: ConversionContext> PureInstruction<T, Error> for ConversionOp {
             }
             Self::I32ReinterpretF32 => {
                 let a = context.pop_conversion_value()?.as_f32().ok_or_else(|| {
-                    Error::invalid_type("Expected F32 for i32.reinterpret_f32 operand".to_string())
+                    Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected F32 for i32.reinterpret_f32 operand")
                 })?;
 
                 let bits = a.to_bits() as i32;
@@ -178,13 +178,13 @@ impl<T: ConversionContext> PureInstruction<T, Error> for ConversionOp {
             // i64 conversions
             Self::I64ExtendI32S => {
                 let a = context.pop_conversion_value()?.as_i32().ok_or_else(|| {
-                    Error::invalid_type("Expected I32 for i64.extend_i32_s operand".to_string())
+                    Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected I32 for i64.extend_i32_s operand")
                 })?;
                 context.push_conversion_value(Value::I64(a as i64))
             }
             Self::I64ExtendI32U => {
                 let a = context.pop_conversion_value()?.as_u32().ok_or_else(|| {
-                    Error::invalid_type("Expected I32 for i64.extend_i32_u operand".to_string())
+                    Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected I32 for i64.extend_i32_u operand")
                 })?;
                 context.push_conversion_value(Value::I64(a as i64))
             }
@@ -192,19 +192,19 @@ impl<T: ConversionContext> PureInstruction<T, Error> for ConversionOp {
             // f32 conversions
             Self::F32ConvertI32S => {
                 let a = context.pop_conversion_value()?.as_i32().ok_or_else(|| {
-                    Error::invalid_type("Expected I32 for f32.convert_i32_s operand".to_string())
+                    Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected I32 for f32.convert_i32_s operand")
                 })?;
                 context.push_conversion_value(Value::F32(a as f32))
             }
             Self::F32ConvertI32U => {
                 let a = context.pop_conversion_value()?.as_u32().ok_or_else(|| {
-                    Error::invalid_type("Expected I32 for f32.convert_i32_u operand".to_string())
+                    Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected I32 for f32.convert_i32_u operand")
                 })?;
                 context.push_conversion_value(Value::F32(a as f32))
             }
             Self::F32ReinterpretI32 => {
                 let a = context.pop_conversion_value()?.as_i32().ok_or_else(|| {
-                    Error::invalid_type("Expected I32 for f32.reinterpret_i32 operand".to_string())
+                    Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected I32 for f32.reinterpret_i32 operand")
                 })?;
 
                 let float = f32::from_bits(a as u32);
@@ -214,25 +214,25 @@ impl<T: ConversionContext> PureInstruction<T, Error> for ConversionOp {
             // f64 conversions
             Self::F64ConvertI32S => {
                 let a = context.pop_conversion_value()?.as_i32().ok_or_else(|| {
-                    Error::invalid_type("Expected I32 for f64.convert_i32_s operand".to_string())
+                    Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected I32 for f64.convert_i32_s operand")
                 })?;
                 context.push_conversion_value(Value::F64(a as f64))
             }
             Self::F64ConvertI32U => {
                 let a = context.pop_conversion_value()?.as_u32().ok_or_else(|| {
-                    Error::invalid_type("Expected I32 for f64.convert_i32_u operand".to_string())
+                    Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected I32 for f64.convert_i32_u operand")
                 })?;
                 context.push_conversion_value(Value::F64(a as f64))
             }
             Self::F64PromoteF32 => {
                 let a = context.pop_conversion_value()?.as_f32().ok_or_else(|| {
-                    Error::invalid_type("Expected F32 for f64.promote_f32 operand".to_string())
+                    Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected F32 for f64.promote_f32 operand")
                 })?;
                 context.push_conversion_value(Value::F64(a as f64))
             }
             Self::I32TruncF64S => {
                 let a = context.pop_conversion_value()?.as_f64().ok_or_else(|| {
-                    Error::invalid_type("Expected F64 for i32.trunc_f64_s operand".to_string())
+                    Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected F64 for i32.trunc_f64_s operand")
                 })?;
 
                 if a.is_nan() {
@@ -290,10 +290,10 @@ impl TryInto<Value> for I32WrapI64 {
     fn try_into(self) -> Result<Value> {
         match self.0 {
             Value::I64(val) => Ok(Value::I32((val & 0xFFFFFFFF) as i32)),
-            _ => Err(wrt_error::Error::new(
-                wrt_error::ErrorCategory::Type,
-                wrt_error::codes::CONVERSION_ERROR,
-                format!("Expected I64, got {:?}", self.0),
+            _ => Err(Error::new(
+                ErrorCategory::Type,
+                codes::CONVERSION_ERROR,
+                "Expected I64, got unexpected value",
             )),
         }
     }
@@ -308,7 +308,7 @@ impl TryInto<Value> for I64ExtendI32S {
             _ => Err(wrt_error::Error::new(
                 wrt_error::ErrorCategory::Type,
                 wrt_error::codes::CONVERSION_ERROR,
-                format!("Expected I32, got {:?}", self.0),
+                "Expected I32, got unexpected value",
             )),
         }
     }
@@ -329,7 +329,7 @@ impl TryInto<Value> for I64ExtendI32U {
             _ => Err(wrt_error::Error::new(
                 wrt_error::ErrorCategory::Type,
                 wrt_error::codes::CONVERSION_ERROR,
-                format!("Expected I32, got {:?}", self.0),
+                "Expected I32, got unexpected value",
             )),
         }
     }
@@ -360,7 +360,7 @@ impl TryInto<Value> for I64TruncF32S {
             _ => Err(wrt_error::Error::new(
                 wrt_error::ErrorCategory::Type,
                 wrt_error::codes::CONVERSION_ERROR,
-                format!("Expected F32, got {:?}", self.0),
+                "Expected F32, got unexpected value",
             )),
         }
     }
@@ -391,7 +391,7 @@ impl TryInto<Value> for I64TruncF32U {
             _ => Err(wrt_error::Error::new(
                 wrt_error::ErrorCategory::Type,
                 wrt_error::codes::CONVERSION_ERROR,
-                format!("Expected F32, got {:?}", self.0),
+                "Expected F32, got unexpected value",
             )),
         }
     }
@@ -422,7 +422,7 @@ impl TryInto<Value> for I64TruncF64S {
             _ => Err(wrt_error::Error::new(
                 wrt_error::ErrorCategory::Type,
                 wrt_error::codes::CONVERSION_ERROR,
-                format!("Expected F64, got {:?}", self.0),
+                "Expected F64, got unexpected value",
             )),
         }
     }
@@ -453,7 +453,7 @@ impl TryInto<Value> for I64TruncF64U {
             _ => Err(wrt_error::Error::new(
                 wrt_error::ErrorCategory::Type,
                 wrt_error::codes::CONVERSION_ERROR,
-                format!("Expected F64, got {:?}", self.0),
+                "Expected F64, got unexpected value",
             )),
         }
     }
@@ -471,7 +471,7 @@ impl TryInto<Value> for I64ReinterpretF64 {
             _ => Err(wrt_error::Error::new(
                 wrt_error::ErrorCategory::Type,
                 wrt_error::codes::CONVERSION_ERROR,
-                format!("Expected F64, got {:?}", self.0),
+                "Expected F64, got unexpected value",
             )),
         }
     }

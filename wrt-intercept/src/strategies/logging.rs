@@ -4,7 +4,7 @@
 //! It can be configured to log arguments, results, timing, etc.
 
 #[cfg(feature = "std")]
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 // Import the prelude for unified access to standard types
 use crate::prelude::*;
@@ -38,6 +38,7 @@ impl ValueFormatter for DefaultValueFormatter {
 }
 
 /// A trait for receiving log entries
+#[cfg(feature = "alloc")]
 pub trait LogSink: Send + Sync {
     /// Write a log entry
     fn write_log(&self, entry: &str);
@@ -117,7 +118,7 @@ impl<S: LogSink, F: ValueFormatter> LoggingStrategy<S, F> {
     }
 }
 
-#[cfg(feature = "std")]
+#[cfg(all(feature = "std", feature = "alloc"))]
 impl<S: LogSink + 'static, F: ValueFormatter + 'static> LinkInterceptorStrategy
     for LoggingStrategy<S, F>
 {

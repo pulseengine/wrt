@@ -101,91 +101,91 @@ impl<T: ComparisonContext> PureInstruction<T, Error> for ComparisonOp {
             // i32 equality operations
             Self::I32Eq => {
                 let b = context.pop_comparison_value()?.as_i32().ok_or_else(|| {
-                    Error::invalid_type("Expected I32 for i32.eq operand".to_string())
+                    Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected I32 for i32.eq operand")
                 })?;
                 let a = context.pop_comparison_value()?.as_i32().ok_or_else(|| {
-                    Error::invalid_type("Expected I32 for i32.eq operand".to_string())
+                    Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected I32 for i32.eq operand")
                 })?;
                 context.push_comparison_value(Value::I32(if a == b { 1 } else { 0 }))
             }
             Self::I32Ne => {
                 let b = context.pop_comparison_value()?.as_i32().ok_or_else(|| {
-                    Error::invalid_type("Expected I32 for i32.ne operand".to_string())
+                    Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected I32 for i32.ne operand")
                 })?;
                 let a = context.pop_comparison_value()?.as_i32().ok_or_else(|| {
-                    Error::invalid_type("Expected I32 for i32.ne operand".to_string())
+                    Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected I32 for i32.ne operand")
                 })?;
                 context.push_comparison_value(Value::I32(if a != b { 1 } else { 0 }))
             }
             Self::I32LtS => {
                 let b = context.pop_comparison_value()?.as_i32().ok_or_else(|| {
-                    Error::invalid_type("Expected I32 for i32.lt_s operand".to_string())
+                    Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected I32 for i32.lt_s operand")
                 })?;
                 let a = context.pop_comparison_value()?.as_i32().ok_or_else(|| {
-                    Error::invalid_type("Expected I32 for i32.lt_s operand".to_string())
+                    Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected I32 for i32.lt_s operand")
                 })?;
                 context.push_comparison_value(Value::I32(if a < b { 1 } else { 0 }))
             }
             Self::I32LtU => {
                 let b = context.pop_comparison_value()?.as_u32().ok_or_else(|| {
-                    Error::invalid_type("Expected I32 for i32.lt_u operand".to_string())
+                    Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected I32 for i32.lt_u operand")
                 })?;
                 let a = context.pop_comparison_value()?.as_u32().ok_or_else(|| {
-                    Error::invalid_type("Expected I32 for i32.lt_u operand".to_string())
+                    Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected I32 for i32.lt_u operand")
                 })?;
                 context.push_comparison_value(Value::I32(if a < b { 1 } else { 0 }))
             }
             Self::I32GtS => {
                 let b = context.pop_comparison_value()?.as_i32().ok_or_else(|| {
-                    Error::invalid_type("Expected I32 for i32.gt_s operand".to_string())
+                    Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected I32 for i32.gt_s operand")
                 })?;
                 let a = context.pop_comparison_value()?.as_i32().ok_or_else(|| {
-                    Error::invalid_type("Expected I32 for i32.gt_s operand".to_string())
+                    Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected I32 for i32.gt_s operand")
                 })?;
                 context.push_comparison_value(Value::I32(if a > b { 1 } else { 0 }))
             }
             Self::I32GtU => {
                 let b = context.pop_comparison_value()?.as_u32().ok_or_else(|| {
-                    Error::invalid_type("Expected I32 for i32.gt_u operand".to_string())
+                    Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected I32 for i32.gt_u operand")
                 })?;
                 let a = context.pop_comparison_value()?.as_u32().ok_or_else(|| {
-                    Error::invalid_type("Expected I32 for i32.gt_u operand".to_string())
+                    Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected I32 for i32.gt_u operand")
                 })?;
                 context.push_comparison_value(Value::I32(if a > b { 1 } else { 0 }))
             }
             Self::I32LeS => {
                 let b = context.pop_comparison_value()?.as_i32().ok_or_else(|| {
-                    Error::invalid_type("Expected I32 for i32.le_s operand".to_string())
+                    Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected I32 for i32.le_s operand")
                 })?;
                 let a = context.pop_comparison_value()?.as_i32().ok_or_else(|| {
-                    Error::invalid_type("Expected I32 for i32.le_s operand".to_string())
+                    Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected I32 for i32.le_s operand")
                 })?;
                 context.push_comparison_value(Value::I32(if a <= b { 1 } else { 0 }))
             }
             Self::I32LeU => {
                 let b = context.pop_comparison_value()?.as_u32().ok_or_else(|| {
-                    Error::invalid_type("Expected I32 for i32.le_u operand".to_string())
+                    Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected I32 for i32.le_u operand")
                 })?;
                 let a = context.pop_comparison_value()?.as_u32().ok_or_else(|| {
-                    Error::invalid_type("Expected I32 for i32.le_u operand".to_string())
+                    Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected I32 for i32.le_u operand")
                 })?;
                 context.push_comparison_value(Value::I32(if a <= b { 1 } else { 0 }))
             }
             Self::I32GeS => {
                 let b = context.pop_comparison_value()?.as_i32().ok_or_else(|| {
-                    Error::invalid_type("Expected I32 for i32.ge_s operand".to_string())
+                    Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected I32 for i32.ge_s operand")
                 })?;
                 let a = context.pop_comparison_value()?.as_i32().ok_or_else(|| {
-                    Error::invalid_type("Expected I32 for i32.ge_s operand".to_string())
+                    Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected I32 for i32.ge_s operand")
                 })?;
                 context.push_comparison_value(Value::I32(if a >= b { 1 } else { 0 }))
             }
             Self::I32GeU => {
                 let b = context.pop_comparison_value()?.as_u32().ok_or_else(|| {
-                    Error::invalid_type("Expected I32 for i32.ge_u operand".to_string())
+                    Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected I32 for i32.ge_u operand")
                 })?;
                 let a = context.pop_comparison_value()?.as_u32().ok_or_else(|| {
-                    Error::invalid_type("Expected I32 for i32.ge_u operand".to_string())
+                    Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected I32 for i32.ge_u operand")
                 })?;
                 context.push_comparison_value(Value::I32(if a >= b { 1 } else { 0 }))
             }
@@ -193,19 +193,19 @@ impl<T: ComparisonContext> PureInstruction<T, Error> for ComparisonOp {
             // i64 equality operations
             Self::I64Eq => {
                 let b = context.pop_comparison_value()?.as_i64().ok_or_else(|| {
-                    Error::invalid_type("Expected I64 for i64.eq operand".to_string())
+                    Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected I64 for i64.eq operand")
                 })?;
                 let a = context.pop_comparison_value()?.as_i64().ok_or_else(|| {
-                    Error::invalid_type("Expected I64 for i64.eq operand".to_string())
+                    Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected I64 for i64.eq operand")
                 })?;
                 context.push_comparison_value(Value::I32(if a == b { 1 } else { 0 }))
             }
             Self::I64Ne => {
                 let b = context.pop_comparison_value()?.as_i64().ok_or_else(|| {
-                    Error::invalid_type("Expected I64 for i64.ne operand".to_string())
+                    Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected I64 for i64.ne operand")
                 })?;
                 let a = context.pop_comparison_value()?.as_i64().ok_or_else(|| {
-                    Error::invalid_type("Expected I64 for i64.ne operand".to_string())
+                    Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected I64 for i64.ne operand")
                 })?;
                 context.push_comparison_value(Value::I32(if a != b { 1 } else { 0 }))
             }
@@ -213,28 +213,28 @@ impl<T: ComparisonContext> PureInstruction<T, Error> for ComparisonOp {
             // f32 comparison operations
             Self::F32Eq => {
                 let b = context.pop_comparison_value()?.as_f32().ok_or_else(|| {
-                    Error::invalid_type("Expected F32 for f32.eq operand".to_string())
+                    Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected F32 for f32.eq operand")
                 })?;
                 let a = context.pop_comparison_value()?.as_f32().ok_or_else(|| {
-                    Error::invalid_type("Expected F32 for f32.eq operand".to_string())
+                    Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected F32 for f32.eq operand")
                 })?;
                 context.push_comparison_value(Value::I32(if a == b { 1 } else { 0 }))
             }
             Self::F32Ne => {
                 let b = context.pop_comparison_value()?.as_f32().ok_or_else(|| {
-                    Error::invalid_type("Expected F32 for f32.ne operand".to_string())
+                    Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected F32 for f32.ne operand")
                 })?;
                 let a = context.pop_comparison_value()?.as_f32().ok_or_else(|| {
-                    Error::invalid_type("Expected F32 for f32.ne operand".to_string())
+                    Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected F32 for f32.ne operand")
                 })?;
                 context.push_comparison_value(Value::I32(if a != b { 1 } else { 0 }))
             }
             Self::F32Lt => {
                 let b = context.pop_comparison_value()?.as_f32().ok_or_else(|| {
-                    Error::invalid_type("Expected F32 for f32.lt operand".to_string())
+                    Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected F32 for f32.lt operand")
                 })?;
                 let a = context.pop_comparison_value()?.as_f32().ok_or_else(|| {
-                    Error::invalid_type("Expected F32 for f32.lt operand".to_string())
+                    Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected F32 for f32.lt operand")
                 })?;
                 context.push_comparison_value(Value::I32(if a < b { 1 } else { 0 }))
             }
@@ -242,10 +242,10 @@ impl<T: ComparisonContext> PureInstruction<T, Error> for ComparisonOp {
             // f64 comparison operations
             Self::F64Eq => {
                 let b = context.pop_comparison_value()?.as_f64().ok_or_else(|| {
-                    Error::invalid_type("Expected F64 for f64.eq operand".to_string())
+                    Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected F64 for f64.eq operand")
                 })?;
                 let a = context.pop_comparison_value()?.as_f64().ok_or_else(|| {
-                    Error::invalid_type("Expected F64 for f64.eq operand".to_string())
+                    Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected F64 for f64.eq operand")
                 })?;
                 context.push_comparison_value(Value::I32(if a == b { 1 } else { 0 }))
             }

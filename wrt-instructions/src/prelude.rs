@@ -10,17 +10,6 @@
 //! individual modules.
 
 // Core imports for both std and no_std environments
-// Re-export from alloc when no_std but alloc is available
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-pub use alloc::{
-    boxed::Box,
-    collections::{BTreeMap as HashMap, BTreeSet as HashSet},
-    format,
-    string::{String, ToString},
-    sync::Arc,
-    vec,
-    vec::Vec,
-};
 pub use core::{
     any::Any,
     cmp::{Eq, Ord, PartialEq, PartialOrd},
@@ -32,6 +21,7 @@ pub use core::{
     ops::{Deref, DerefMut},
     slice, str,
 };
+
 // Re-export from std when the std feature is enabled
 #[cfg(feature = "std")]
 pub use std::{
@@ -43,6 +33,33 @@ pub use std::{
     vec,
     vec::Vec,
 };
+
+// Re-export from alloc when no_std but alloc is available
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+pub use alloc::{
+    boxed::Box,
+    collections::{BTreeMap as HashMap, BTreeSet as HashSet},
+    format,
+    string::{String, ToString},
+    sync::Arc,
+    vec,
+    vec::Vec,
+};
+
+// For no_std without alloc, use bounded collections
+#[cfg(not(any(feature = "std", feature = "alloc")))]
+pub use wrt_foundation::bounded::{BoundedVec as Vec};
+
+// Define format! macro for no_std without alloc
+#[cfg(not(any(feature = "std", feature = "alloc")))]
+#[macro_export]
+macro_rules! format {
+    ($($arg:tt)*) => {{
+        // In no_std without alloc, we can't allocate strings
+        // Return a static string or use write! to a fixed buffer
+        "formatted string not available in no_std without alloc"
+    }};
+}
 
 // Re-export from wrt-error
 pub use wrt_error::{codes, kinds, Error, ErrorCategory, Result};

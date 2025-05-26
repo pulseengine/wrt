@@ -92,14 +92,14 @@ impl<T, P: MemoryProvider + Default + Clone + PartialEq + Eq> ResourceTable<T, P
             .and_then(|e| e.as_mut())
             .ok_or_else(|| Error::new(
                 ErrorCategory::Resource,
-                codes::INVALID_RESOURCE_HANDLE,
+                codes::RESOURCE_INVALID_HANDLE,
                 "Invalid owned handle"
             ))?;
             
         if entry.ownership != ResourceOwnership::Owned {
             return Err(Error::new(
                 ErrorCategory::Resource,
-                codes::INVALID_RESOURCE_HANDLE,
+                codes::RESOURCE_INVALID_HANDLE,
                 "Can only borrow from owned resources"
             ));
         }
@@ -129,7 +129,7 @@ impl<T, P: MemoryProvider + Default + Clone + PartialEq + Eq> ResourceTable<T, P
             .and_then(|e| e.take())
             .ok_or_else(|| Error::new(
                 ErrorCategory::Resource,
-                codes::INVALID_RESOURCE_HANDLE,
+                codes::RESOURCE_INVALID_HANDLE,
                 "Invalid resource handle"
             ))?;
             
@@ -140,7 +140,7 @@ impl<T, P: MemoryProvider + Default + Clone + PartialEq + Eq> ResourceTable<T, P
                     self.entries[handle.0 as usize] = Some(entry);
                     return Err(Error::new(
                         ErrorCategory::Resource,
-                        codes::RESOURCE_IN_USE,
+                        codes::RESOURCE_ERROR,
                         "Cannot drop owned resource with active borrows"
                     ));
                 }

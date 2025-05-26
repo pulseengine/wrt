@@ -19,7 +19,7 @@ use wrt_platform::memory::PageAllocator;
 
 #[cfg(feature = "platform-memory")]
 use crate::{
-    linear_memory::PalMemoryProvider, runtime_memory::LinearMemory, safe_memory::VerificationLevel,
+    linear_memory::PalMemoryProvider, runtime_memory::LinearMemory, verification::VerificationLevel,
     WrtResult,
 };
 
@@ -29,7 +29,7 @@ use crate::{
 /// memory provider, including memory size limits and verification settings.
 #[cfg(feature = "platform-memory")]
 #[derive(Debug)]
-pub struct PalMemoryProviderBuilder<A: PageAllocator + Send + Sync> {
+pub struct PalMemoryProviderBuilder<A: PageAllocator + Send + Sync + Clone + 'static> {
     allocator: A,
     initial_pages: u32,
     maximum_pages: Option<u32>,
@@ -37,7 +37,7 @@ pub struct PalMemoryProviderBuilder<A: PageAllocator + Send + Sync> {
 }
 
 #[cfg(feature = "platform-memory")]
-impl<A: PageAllocator + Send + Sync> PalMemoryProviderBuilder<A> {
+impl<A: PageAllocator + Send + Sync + Clone + 'static> PalMemoryProviderBuilder<A> {
     /// Creates a new builder with the given page allocator.
     pub fn new(allocator: A) -> Self {
         Self {
@@ -83,7 +83,7 @@ impl<A: PageAllocator + Send + Sync> PalMemoryProviderBuilder<A> {
 /// instances backed by a platform allocator.
 #[cfg(feature = "platform-memory")]
 #[derive(Debug)]
-pub struct LinearMemoryBuilder<A: PageAllocator + Send + Sync> {
+pub struct LinearMemoryBuilder<A: PageAllocator + Send + Sync + Clone + 'static> {
     allocator: A,
     initial_pages: u32,
     maximum_pages: Option<u32>,
@@ -91,7 +91,7 @@ pub struct LinearMemoryBuilder<A: PageAllocator + Send + Sync> {
 }
 
 #[cfg(feature = "platform-memory")]
-impl<A: PageAllocator + Send + Sync> LinearMemoryBuilder<A> {
+impl<A: PageAllocator + Send + Sync + Clone + 'static> LinearMemoryBuilder<A> {
     /// Creates a new builder with the given page allocator.
     pub fn new(allocator: A) -> Self {
         Self {

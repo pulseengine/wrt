@@ -22,16 +22,50 @@ use wrt_platform::memory::{PageAllocator, WASM_PAGE_SIZE};
 
 use crate::{
     prelude::*,
-    safe_memory::{Provider, Slice, SliceMut, Stats, VerificationLevel},
+    safe_memory::{Allocator, Provider, SafeMemoryHandler, Slice, SliceMut, Stats},
+    verification::VerificationLevel,
+    WrtResult,
 };
+
+/// Adapter to convert `PageAllocator` to `Allocator` interface
+#[derive(Debug, Clone)]
+pub struct PageAllocatorAdapter<A> {
+    /// The underlying page allocator
+    allocator: A,
+}
+
+impl<A: PageAllocator + Send + Sync> PageAllocatorAdapter<A> {
+    /// Create a new adapter wrapping the page allocator
+    pub fn new(allocator: A) -> Self {
+        Self { allocator }
+    }
+}
+
+impl<A: PageAllocator + Send + Sync + Clone + 'static> Allocator for PageAllocatorAdapter<A> {
+    fn allocate(&self, layout: core::alloc::Layout) -> WrtResult<*mut u8> {
+        // Convert the layout to pages (rounded up)
+        let size_pages = (layout.size() + WASM_PAGE_SIZE - 1) / WASM_PAGE_SIZE;
+        let mut allocator = self.allocator.clone();
+        let (ptr, _size) = allocator.allocate(size_pages as u32, None)
+            .map_err(|_| Error::new(ErrorCategory::Memory, codes::MEMORY_OUT_OF_BOUNDS, "Failed to allocate memory"))?;
+        Ok(ptr.as_ptr())
+    }
+
+    fn deallocate(&self, ptr: *mut u8, _layout: core::alloc::Layout) -> WrtResult<()> {
+        // For simplicity, we don't implement individual deallocations for page allocators
+        // as they typically manage entire memory regions
+        Ok(())
+    }
+}
 
 /// A WebAssembly linear memory implementation using a `PageAllocator`.
 ///
 /// This struct manages a region of memory allocated and potentially grown by
 /// a platform-specific `PageAllocator`.
 #[derive(Debug)]
-pub struct PalMemoryProvider<A: PageAllocator + Send + Sync> {
+pub struct PalMemoryProvider<A: PageAllocator + Send + Sync + Clone + 'static> {
     allocator: A,
+    adapter: PageAllocatorAdapter<A>,
     base_ptr: Option<NonNull<u8>>,
     current_pages: u32,
     maximum_pages: Option<u32>,
@@ -49,15 +83,31 @@ pub struct PalMemoryProvider<A: PageAllocator + Send + Sync> {
 // serialized). The raw pointer is only ever accessed through methods that take
 // &self or &mut self, and the underlying memory operations via the
 // PageAllocator are assumed to be safe or synchronized if A is Send + Sync.
-unsafe impl<A: PageAllocator + Send + Sync> Send for PalMemoryProvider<A> {}
+unsafe impl<A: PageAllocator + Send + Sync + Clone + 'static> Send for PalMemoryProvider<A> {}
 
 // SAFETY: Similar to Send, PalMemoryProvider is Sync if A is Sync.
 // Accesses to shared state like AtomicUsize are atomic.
 // Accesses to the memory region via &self methods (like borrow_slice) provide
 // immutable slices, which is safe. Mutable access is through &mut self.
-unsafe impl<A: PageAllocator + Send + Sync> Sync for PalMemoryProvider<A> {}
+unsafe impl<A: PageAllocator + Send + Sync + Clone + 'static> Sync for PalMemoryProvider<A> {}
 
-impl<A: PageAllocator + Send + Sync> PalMemoryProvider<A> {
+impl<A: PageAllocator + Send + Sync + Clone + 'static> Clone for PalMemoryProvider<A> {
+    fn clone(&self) -> Self {
+        Self {
+            allocator: self.allocator.clone(),
+            adapter: self.adapter.clone(),
+            base_ptr: self.base_ptr,
+            current_pages: self.current_pages,
+            maximum_pages: self.maximum_pages,
+            initial_allocation_size: self.initial_allocation_size,
+            verification_level: self.verification_level,
+            access_count: AtomicUsize::new(self.access_count.load(Ordering::Relaxed)),
+            max_access_size: AtomicUsize::new(self.max_access_size.load(Ordering::Relaxed)),
+        }
+    }
+}
+
+impl<A: PageAllocator + Send + Sync + Clone + 'static> PalMemoryProvider<A> {
     /// Creates a new `PalMemoryProvider`.
     ///
     /// # Arguments
@@ -90,8 +140,11 @@ impl<A: PageAllocator + Send + Sync> PalMemoryProvider<A> {
 
         let (ptr, allocated_size) = allocator.allocate(initial_pages, maximum_pages)?;
 
+        let adapter = PageAllocatorAdapter::new(allocator.clone());
+
         Ok(Self {
             allocator,
+            adapter,
             base_ptr: Some(ptr),
             current_pages: initial_pages,
             maximum_pages,
@@ -165,7 +218,7 @@ impl<A: PageAllocator + Send + Sync> PalMemoryProvider<A> {
     }
 }
 
-impl<A: PageAllocator + Send + Sync> Provider for PalMemoryProvider<A> {
+impl<A: PageAllocator + Send + Sync + Clone + 'static> Provider for PalMemoryProvider<A> {
     fn borrow_slice(&self, offset: usize, len: usize) -> Result<Slice<'_>> {
         self.verify_access(offset, len)?;
         let Some(base_ptr) = self.base_ptr else {
@@ -302,20 +355,18 @@ impl<A: PageAllocator + Send + Sync> Provider for PalMemoryProvider<A> {
         }
 
         // Verify source and destination ranges independently first.
-        self.verify_access(src_offset, len).map_err(|e| {
-            Error::new_with_cause(
+        self.verify_access(src_offset, len).map_err(|_| {
+            Error::new(
                 ErrorCategory::Memory,
                 codes::MEMORY_ACCESS_OUT_OF_BOUNDS,
                 "Source range out of bounds for copy_within.",
-                e,
             )
         })?;
-        self.verify_access(dst_offset, len).map_err(|e| {
-            Error::new_with_cause(
+        self.verify_access(dst_offset, len).map_err(|_| {
+            Error::new(
                 ErrorCategory::Memory,
                 codes::MEMORY_ACCESS_OUT_OF_BOUNDS,
                 "Destination range out of bounds for copy_within.",
-                e,
             )
         })?;
 
@@ -380,9 +431,30 @@ impl<A: PageAllocator + Send + Sync> Provider for PalMemoryProvider<A> {
         }
         Ok(())
     }
+
+    type Allocator = PageAllocatorAdapter<A>;
+
+    fn acquire_memory(&self, layout: core::alloc::Layout) -> WrtResult<*mut u8> {
+        self.get_allocator().allocate(layout)
+    }
+
+    fn release_memory(&self, ptr: *mut u8, layout: core::alloc::Layout) -> WrtResult<()> {
+        self.get_allocator().deallocate(ptr, layout)
+    }
+
+    fn get_allocator(&self) -> &Self::Allocator {
+        &self.adapter
+    }
+
+    fn new_handler(&self) -> Result<SafeMemoryHandler<Self>>
+    where
+        Self: Sized + Clone,
+    {
+        Ok(SafeMemoryHandler::new(self.clone()))
+    }
 }
 
-impl<A: PageAllocator + Send + Sync> Drop for PalMemoryProvider<A> {
+impl<A: PageAllocator + Send + Sync + Clone + 'static> Drop for PalMemoryProvider<A> {
     fn drop(&mut self) {
         if let Some(ptr) = self.base_ptr.take() {
             // The `initial_allocation_size` stores the size returned by the

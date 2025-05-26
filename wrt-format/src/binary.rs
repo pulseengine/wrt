@@ -5,7 +5,7 @@
 
 // Core modules
 #[cfg(all(feature = "alloc", not(feature = "std")))]
-use alloc::{string::String, vec::Vec};
+use alloc::{format, string::String, vec, vec::Vec};
 use core::str;
 // Conditional imports for different environments
 #[cfg(feature = "std")]

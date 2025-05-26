@@ -6,6 +6,11 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use alloc::vec::Vec;
+#[cfg(feature = "std")]
+use std::vec::Vec;
+
 use wrt_foundation::{MemoryProvider, NoStdProvider};
 use core::marker::PhantomData;
 

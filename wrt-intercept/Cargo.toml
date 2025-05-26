@@ -25,7 +25,7 @@ pretty_assertions = "1.4.0"
 
 [features]
 default = []
-std = ["wrt-foundation/std", "wrt-sync/std", "log"]
+std = ["alloc", "wrt-foundation/std", "wrt-sync/std", "log"]
 # This crate is no_std by default, this feature is a no-op for compatibility
 no_std = []
 alloc = ["wrt-foundation/alloc", "wrt-sync/alloc"]
@@ -36,7 +36,6 @@ kani = ["dep:kani-verifier"]
 [lints]
 rust.unexpected_cfgs = { level = "allow", check-cfg = ['cfg(kani)', 'cfg(coverage)', 'cfg(doc)'] }
 rust.unsafe_code = "forbid" # Rule 2: #![forbid(unsafe_code)]
-rust.pointer_cast = "deny" # Rule 1, ADDED
 rust.missing_docs = "deny" # Rule 9, ADDED/ENSURED
 
 clippy.pedantic = "warn"

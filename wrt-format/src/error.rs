@@ -3,16 +3,10 @@
 //! This module provides error handling functionality for the format
 //! specification.
 
-// REMOVED alloc/std String and format imports
-// #[cfg(all(not(feature = "std"), feature = "alloc"))]
-// use alloc::{format, string::String};
-
-// #[cfg(feature = "std")]
-// use std::{format, string::String};
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::boxed::Box;
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use alloc::{boxed::Box, string::String};
 #[cfg(feature = "std")]
-use std::boxed::Box;
+use std::{boxed::Box, string::String};
 
 use wrt_error::Error;
 

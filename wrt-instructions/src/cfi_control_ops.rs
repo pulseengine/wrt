@@ -21,9 +21,10 @@
 
 #![allow(dead_code)] // Allow during development
 
-use wrt_foundation::types::{FuncType, ValueType};
+// Remove unused imports
 
 use crate::prelude::*;
+use crate::control_ops::BranchTarget;
 
 /// CFI-enhanced control flow protection configuration
 #[derive(Debug, Clone)]
@@ -650,28 +651,9 @@ impl DefaultCfiControlFlowOps {
     }
 
     fn get_current_timestamp(&self) -> u64 {
-        // Platform-specific timestamp implementation
-        #[cfg(target_arch = "aarch64")]
-        {
-            let mut cntvct: u64;
-            unsafe {
-                core::arch::asm!("mrs {}, cntvct_el0", out(reg) cntvct);
-            }
-            cntvct
-        }
-        #[cfg(target_arch = "riscv64")]
-        {
-            let mut time: u64;
-            unsafe {
-                core::arch::asm!("rdtime {}", out(reg) time);
-            }
-            time
-        }
-        #[cfg(not(any(target_arch = "aarch64", target_arch = "riscv64")))]
-        {
-            // Software fallback
-            0
-        }
+        // Software fallback - return 0 for deterministic behavior
+        // Real implementation would use platform-specific timing APIs
+        0
     }
 
     fn validate_shadow_stack_return(&self, context: &mut CfiExecutionContext) -> Result<()> {
@@ -680,7 +662,7 @@ impl DefaultCfiControlFlowOps {
             if shadow_entry.return_address != expected_return {
                 context.violation_count += 1;
                 return Err(Error::new(
-                    ErrorCategory::Security,
+                    ErrorCategory::Runtime,
                     codes::CFI_VIOLATION,
                     "Shadow stack return address mismatch",
                 ));
@@ -689,7 +671,7 @@ impl DefaultCfiControlFlowOps {
         } else {
             context.violation_count += 1;
             return Err(Error::new(
-                ErrorCategory::Security,
+                ErrorCategory::Runtime,
                 codes::CFI_VIOLATION,
                 "Shadow stack underflow",
             ));

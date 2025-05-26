@@ -4,6 +4,11 @@
 //! Component Model binary format.
 
 // Use crate-level type aliases for collection types
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use alloc::{boxed::Box, format};
+#[cfg(feature = "std")]
+use std::{boxed::Box, format};
+
 use wrt_error::{Error, Result};
 // Re-export ValType from wrt-foundation
 pub use wrt_foundation::component_value::ValType;
