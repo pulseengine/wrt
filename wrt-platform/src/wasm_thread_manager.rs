@@ -8,12 +8,11 @@ use core::{
     time::Duration,
 };
 
-use alloc::{boxed::Box, collections::BTreeMap, sync::Arc, vec::Vec};
+use alloc::{boxed::Box, collections::BTreeMap, string::String, sync::Arc, vec::Vec};
 
-use parking_lot::{Mutex, RwLock};
+use wrt_sync::{WrtMutex, WrtRwLock};
 
 use wrt_error::{codes, Error, ErrorCategory, Result};
-use wrt_foundation::component_value::ComponentValue;
 
 use crate::threading::{
     create_thread_pool, ExecutionMonitor, PlatformThreadPool, ResourceTracker, ThreadHandle,
@@ -41,7 +40,7 @@ pub struct WasmModuleInfo {
 #[derive(Debug, Clone)]
 pub enum ThreadExecutionResult {
     /// Thread completed successfully
-    Success(Vec<ComponentValue>),
+    Success(Vec<u8>),
     /// Thread failed with error
     Error(String),
     /// Thread was cancelled
@@ -70,7 +69,7 @@ struct ThreadInfo {
 /// Simple execution monitor implementation
 pub struct SimpleExecutionMonitor {
     /// Tracked threads
-    threads: Arc<RwLock<BTreeMap<u64, ThreadMonitorInfo>>>,
+    threads: Arc<WrtRwLock<BTreeMap<u64, ThreadMonitorInfo>>>,
     /// Monitoring enabled
     enabled: bool,
 }
@@ -88,7 +87,7 @@ impl SimpleExecutionMonitor {
     /// Create new execution monitor
     pub fn new() -> Self {
         Self {
-            threads: Arc::new(RwLock::new(BTreeMap::new())),
+            threads: Arc::new(WrtRwLock::new(BTreeMap::new())),
             enabled: true,
         }
     }
@@ -162,15 +161,15 @@ pub struct WasmThreadManager {
     /// Execution monitor
     monitor: Arc<dyn ExecutionMonitor>,
     /// Active threads
-    threads: Arc<RwLock<BTreeMap<u64, ThreadInfo>>>,
+    threads: Arc<WrtRwLock<BTreeMap<u64, ThreadInfo>>>,
     /// Module registry
-    modules: Arc<RwLock<BTreeMap<u64, WasmModuleInfo>>>,
+    modules: Arc<WrtRwLock<BTreeMap<u64, WasmModuleInfo>>>,
     /// Next thread ID
     next_thread_id: AtomicU64,
     /// Shutdown flag
-    shutdown: parking_lot::Mutex<bool>,
+    shutdown: WrtMutex<bool>,
     /// Task executor function
-    executor: Arc<dyn Fn(u32, Vec<ComponentValue>) -> Result<Vec<ComponentValue>> + Send + Sync>,
+    executor: Arc<dyn Fn(u32, Vec<u8>) -> Result<Vec<u8>> + Send + Sync>,
 }
 
 impl WasmThreadManager {
@@ -179,7 +178,7 @@ impl WasmThreadManager {
         config: ThreadPoolConfig,
         limits: ThreadingLimits,
         executor: Arc<
-            dyn Fn(u32, Vec<ComponentValue>) -> Result<Vec<ComponentValue>> + Send + Sync,
+            dyn Fn(u32, Vec<u8>) -> Result<Vec<u8>> + Send + Sync,
         >,
     ) -> Result<Self> {
         let pool = create_thread_pool(config)?;
@@ -190,10 +189,10 @@ impl WasmThreadManager {
             pool,
             resource_tracker,
             monitor,
-            threads: Arc::new(RwLock::new(BTreeMap::new())),
-            modules: Arc::new(RwLock::new(BTreeMap::new())),
+            threads: Arc::new(WrtRwLock::new(BTreeMap::new())),
+            modules: Arc::new(WrtRwLock::new(BTreeMap::new())),
             next_thread_id: AtomicU64::new(1),
-            shutdown: parking_lot::Mutex::new(false),
+            shutdown: WrtMutex::new(false),
             executor,
         })
     }
@@ -265,7 +264,7 @@ impl WasmThreadManager {
         let task = WasmTask {
             id: thread_id,
             function_id: request.function_id,
-            args: self.serialize_component_values(&request.args)?,
+            args: request.args.clone(),
             priority,
             stack_size: Some(stack_size),
             memory_limit: Some(module.memory_limit / module.max_threads.max(1)),
@@ -333,10 +332,7 @@ impl WasmThreadManager {
 
         // Join the thread
         match thread_info.handle.join() {
-            Ok(data) => {
-                let values = self.deserialize_component_values(&data)?;
-                Ok(ThreadExecutionResult::Success(values))
-            }
+            Ok(data) => Ok(ThreadExecutionResult::Success(data)),
             Err(e) => Ok(ThreadExecutionResult::Error(e.to_string())),
         }
     }
@@ -453,110 +449,15 @@ impl WasmThreadManager {
     }
 
     /// Serialize component values to bytes (simplified)
-    fn serialize_component_values(&self, values: &[ComponentValue]) -> Result<Vec<u8>> {
-        // Simplified serialization - in practice, use a proper format
-        let mut result = Vec::new();
-        for value in values {
-            match value {
-                ComponentValue::U32(v) => {
-                    result.push(0); // Type tag
-                    result.extend_from_slice(&v.to_le_bytes());
-                }
-                ComponentValue::U64(v) => {
-                    result.push(1); // Type tag
-                    result.extend_from_slice(&v.to_le_bytes());
-                }
-                ComponentValue::String(s) => {
-                    result.push(2); // Type tag
-                    let bytes = s.as_bytes();
-                    result.extend_from_slice(&(bytes.len() as u32).to_le_bytes());
-                    result.extend_from_slice(bytes);
-                }
-                _ => {
-                    return Err(Error::new(
-                        ErrorCategory::InvalidInput,
-                        codes::INVALID_PARAMETER,
-                        "Unsupported component value type",
-                    ));
-                }
-            }
-        }
-        Ok(result)
+    fn serialize_component_values(&self, values: &[u8]) -> Result<Vec<u8>> {
+        // Simple pass-through for now
+        Ok(values.to_vec())
     }
 
     /// Deserialize component values from bytes (simplified)
-    fn deserialize_component_values(&self, data: &[u8]) -> Result<Vec<ComponentValue>> {
-        let mut result = Vec::new();
-        let mut offset = 0;
-
-        while offset < data.len() {
-            if offset + 1 > data.len() {
-                break;
-            }
-
-            let type_tag = data[offset];
-            offset += 1;
-
-            match type_tag {
-                0 => {
-                    // U32
-                    if offset + 4 > data.len() {
-                        break;
-                    }
-                    let value = u32::from_le_bytes([
-                        data[offset],
-                        data[offset + 1],
-                        data[offset + 2],
-                        data[offset + 3],
-                    ]);
-                    result.push(ComponentValue::U32(value));
-                    offset += 4;
-                }
-                1 => {
-                    // U64
-                    if offset + 8 > data.len() {
-                        break;
-                    }
-                    let value = u64::from_le_bytes([
-                        data[offset],
-                        data[offset + 1],
-                        data[offset + 2],
-                        data[offset + 3],
-                        data[offset + 4],
-                        data[offset + 5],
-                        data[offset + 6],
-                        data[offset + 7],
-                    ]);
-                    result.push(ComponentValue::U64(value));
-                    offset += 8;
-                }
-                2 => {
-                    // String
-                    if offset + 4 > data.len() {
-                        break;
-                    }
-                    let len = u32::from_le_bytes([
-                        data[offset],
-                        data[offset + 1],
-                        data[offset + 2],
-                        data[offset + 3],
-                    ]) as usize;
-                    offset += 4;
-
-                    if offset + len > data.len() {
-                        break;
-                    }
-                    let string_bytes = &data[offset..offset + len];
-                    if let Ok(s) = core::str::from_utf8(string_bytes) {
-                        result.push(ComponentValue::String(s.to_string()));
-                    }
-                    offset += len;
-                }
-                _ => break, // Unknown type
-            }
-        }
-
-        Ok(result)
+    fn deserialize_component_values(&self, data: &[u8]) -> Result<Vec<u8>> {
+        // Simple pass-through for now
+        Ok(data.to_vec())
     }
 }
 
@@ -576,7 +477,7 @@ mod tests {
     use super::*;
 
     fn create_test_executor() -> Arc<
-        dyn Fn(u32, Vec<ComponentValue>) -> Result<Vec<ComponentValue>> + Send + Sync,
+        dyn Fn(u32, Vec<u8>) -> Result<Vec<u8>> + Send + Sync,
     > {
         Arc::new(|_function_id, args| Ok(args))
     }

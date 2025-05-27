@@ -7,10 +7,11 @@
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::{
     string::{String, ToString},
+    vec,
     vec::Vec,
 };
 #[cfg(feature = "std")]
-use std::{string::String, vec::Vec};
+use std::{string::String, vec, vec::Vec};
 
 use wrt_error::{codes, Error, ErrorCategory, Result};
 #[cfg(not(any(feature = "alloc", feature = "std")))]
@@ -829,8 +830,9 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> wrt_f
     }
 }
 
-// Implement FromBytes for ElementMode
-impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> wrt_foundation::traits::FromBytes for ElementMode<P> {
+// Implement FromBytes for ElementMode - no_std version
+#[cfg(not(any(feature = "alloc", feature = "std")))]
+impl wrt_foundation::traits::FromBytes for ElementMode {
     fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'a>,
         provider: &PStream,
@@ -889,7 +891,8 @@ pub struct Element<
     pub mode: ElementMode<P>,
 }
 
-impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> Default for Element<P> {
+#[cfg(not(any(feature = "alloc", feature = "std")))]
+impl Default for Element {
     fn default() -> Self {
         Self {
             element_type: RefType::Funcref,
@@ -899,8 +902,9 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> Defau
     }
 }
 
-// Implement Checksummable for Element
-impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> wrt_foundation::traits::Checksummable for Element<P> {
+// Implement Checksummable for Element - no_std version
+#[cfg(not(any(feature = "alloc", feature = "std")))]
+impl wrt_foundation::traits::Checksummable for Element {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
         self.element_type.update_checksum(checksum);
         self.init.update_checksum(checksum);
@@ -908,7 +912,8 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> wrt_f
     }
 }
 
-// Implement ToBytes for Element
+// Implement ToBytes for Element - no_std version
+#[cfg(not(any(feature = "alloc", feature = "std")))]
 impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> wrt_foundation::traits::ToBytes for Element<P> {
     fn serialized_size(&self) -> usize {
         self.element_type.serialized_size() + 
@@ -928,7 +933,8 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> wrt_f
     }
 }
 
-// Implement FromBytes for Element
+// Implement FromBytes for Element - no_std version
+#[cfg(not(any(feature = "alloc", feature = "std")))]
 impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> wrt_foundation::traits::FromBytes for Element<P> {
     fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'a>,
@@ -955,6 +961,17 @@ pub struct Element {
     pub init: ElementInit,
     /// The mode of the element segment.
     pub mode: ElementMode,
+}
+
+#[cfg(any(feature = "alloc", feature = "std"))]
+impl Default for Element {
+    fn default() -> Self {
+        Self {
+            element_type: RefType::Funcref,
+            init: ElementInit::default(),
+            mode: ElementMode::default(),
+        }
+    }
 }
 
 /// WebAssembly export - Pure No_std Version

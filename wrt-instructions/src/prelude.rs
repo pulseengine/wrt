@@ -90,12 +90,14 @@ pub use wrt_error::{codes, kinds, Error, ErrorCategory, Result};
 pub use wrt_foundation::{
     bounded::{BoundedStack, BoundedVec},
     // SafeMemory types
-    safe_memory::{SafeMemoryHandler, SafeSlice, SafeStack},
+    safe_memory::{NoStdMemoryProvider, SafeMemoryHandler, SafeSlice, SafeStack},
     // Common types
     types::{BlockType, FuncType, GlobalType, MemoryType, RefType, TableType, ValueType},
     values::{Value, FloatBits32, FloatBits64},
     // Verification types
     verification::VerificationLevel,
+    // Traits
+    traits::BoundedCapacity,
     // Result type
     Result as TypesResult,
 };

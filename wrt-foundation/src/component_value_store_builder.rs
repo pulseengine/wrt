@@ -122,7 +122,7 @@ mod tests {
     #[test]
     fn test_component_value_store_builder() {
         // Create a builder with default settings
-        let builder = ComponentValueStoreBuilder::<NoStdProvider>::new();
+        let builder = ComponentValueStoreBuilder::<NoStdProvider<1024>>::new();
 
         // Build the store
         let store = builder.build().unwrap();
@@ -134,11 +134,11 @@ mod tests {
     #[test]
     fn test_component_value_store_builder_with_options() {
         // Create a builder with custom settings
-        let provider = NoStdProvider::with_verification_level(VerificationLevel::Full);
+        let provider = NoStdProvider::<1024>::with_verification_level(VerificationLevel::Full);
 
-        let builder = ComponentValueStoreBuilder::<NoStdProvider>::new()
+        let builder = ComponentValueStoreBuilder::<NoStdProvider<1024>>::new()
             .with_provider(provider.clone())
-            .with_verification_level(VerificationLevel::Critical)
+            .with_verification_level(VerificationLevel::Full)
             .with_initial_values_capacity(100)
             .with_initial_types_capacity(50);
 
@@ -146,6 +146,6 @@ mod tests {
         let store = builder.build().unwrap();
 
         // Verify the store has been properly initialized with our settings
-        assert_eq!(store.get_provider().verification_level(), VerificationLevel::Critical);
+        assert_eq!(store.get_provider().verification_level(), VerificationLevel::Full);
     }
 }

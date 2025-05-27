@@ -162,6 +162,7 @@ pub struct CustomSection<
     pub data: crate::WasmVec<u8, P>,
 }
 
+#[cfg(not(any(feature = "alloc", feature = "std")))]
 impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> Default for CustomSection<P> {
     fn default() -> Self {
         Self {
@@ -171,7 +172,8 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> Defau
     }
 }
 
-// Implement Checksummable for CustomSection
+// Implement Checksummable for CustomSection - no_std version
+#[cfg(not(any(feature = "alloc", feature = "std")))]
 impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> wrt_foundation::traits::Checksummable for CustomSection<P> {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
         self.name.update_checksum(checksum);
@@ -179,7 +181,8 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> wrt_f
     }
 }
 
-// Implement ToBytes for CustomSection
+// Implement ToBytes for CustomSection - no_std version
+#[cfg(not(any(feature = "alloc", feature = "std")))]
 impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> wrt_foundation::traits::ToBytes for CustomSection<P> {
     fn serialized_size(&self) -> usize {
         self.name.serialized_size() + self.data.serialized_size()
@@ -196,7 +199,8 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> wrt_f
     }
 }
 
-// Implement FromBytes for CustomSection
+// Implement FromBytes for CustomSection - no_std version
+#[cfg(not(any(feature = "alloc", feature = "std")))]
 impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> wrt_foundation::traits::FromBytes for CustomSection<P> {
     fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream<'a>,
@@ -216,6 +220,16 @@ pub struct CustomSection {
     pub name: String,
     /// Section data
     pub data: Vec<u8>,
+}
+
+#[cfg(any(feature = "alloc", feature = "std"))]
+impl Default for CustomSection {
+    fn default() -> Self {
+        Self {
+            name: String::new(),
+            data: Vec::new(),
+        }
+    }
 }
 
 #[cfg(any(feature = "alloc", feature = "std"))]

@@ -53,7 +53,7 @@ pub mod mutex;
 /// # Examples
 ///
 /// ```
-/// use wrt_sync::prelude::*;
+/// use wrt_sync::{prelude::*, WrtOnce};
 /// static SOME_STATIC: WrtOnce<Vec<i32>> = WrtOnce::new();
 /// fn main() {
 ///     let data = SOME_STATIC.get_or_init(|| vec![1,2,3]);

@@ -146,10 +146,10 @@ pub fn validate_checksum(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{traits::importance, verification::{VerificationLevel, Checksum}};
     // For BoundedVec tests
     #[cfg(feature = "std")]
     use crate::safe_memory::StdProvider;
-    use crate::{traits::importance, verification::VerificationLevel};
 
     const TEST_CAPACITY: usize = 10; // For BoundedVec in tests
 

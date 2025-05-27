@@ -101,19 +101,34 @@ pub mod formal_verification;
 pub mod hardware_optimizations;
 pub mod side_channel_resistance;
 
-// Platform-agnostic threading
+// Platform-agnostic threading (requires alloc at minimum)
+#[cfg(feature = "alloc")]
 pub mod threading;
+
+// Threading with wasm support (requires both std and wrt-foundation)
+#[cfg(feature = "threading")]
 pub mod wasm_thread_manager;
 
 // Platform-specific threading implementations
-#[cfg(target_os = "nto")]
+#[cfg(all(feature = "threading", target_os = "nto"))]
 pub mod qnx_threading;
 
-#[cfg(target_os = "linux")]
+#[cfg(all(feature = "threading", target_os = "linux"))]
 pub mod linux_threading;
 
-#[cfg(all(not(target_os = "nto"), not(target_os = "linux")))]
+#[cfg(all(feature = "threading", not(target_os = "nto"), not(target_os = "linux")))]
 pub mod generic_threading;
+
+// Watchdog (requires std)
+#[cfg(feature = "std")]
+pub mod watchdog;
+
+// IPC and High Availability (require std)
+#[cfg(feature = "std")]
+pub mod ipc;
+
+#[cfg(feature = "std")]
+pub mod high_availability;
 
 // Platform-specific modules
 #[cfg(all(feature = "platform-macos", feature = "use-libc", target_os = "macos"))]

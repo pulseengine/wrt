@@ -7,10 +7,11 @@
 //! This module provides types and functions for parsing WebAssembly
 //! instructions.
 
+// Removed: use wrt_format::types::value_type_to_byte; // Not directly used
+// after refactor, ValueType::to_binary is in wrt_foundation
+
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::{vec, vec::Vec}; // Ensure Vec is available
-                            // Removed: use wrt_format::types::value_type_to_byte; // Not directly used after refactor,
-                            // ValueType::to_binary is in wrt_foundation
 #[cfg(feature = "std")]
 use std::{vec, vec::Vec}; // Ensure Vec is available
 
