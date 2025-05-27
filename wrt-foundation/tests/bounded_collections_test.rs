@@ -4,10 +4,10 @@
 // Comprehensive tests for the new bounded collections
 
 use wrt_foundation::{
-    bounded::{BoundedErrorKind, BoundedString, BoundedVec, WasmName},
+    bounded::BoundedErrorKind,
     BoundedBitSet, BoundedBuilder, BoundedDeque, BoundedMap, BoundedQueue, BoundedSet,
-    MemoryBuilder, NoStdProvider, NoStdProviderBuilder, ResourceBuilder, StringBuilder,
-    VerificationLevel,
+    MemoryBuilder, NoStdProvider, NoStdProviderBuilder, StringBuilder,
+    VerificationLevel, traits::BoundedCapacity,
 };
 
 #[cfg(not(feature = "std"))]
@@ -17,13 +17,11 @@ extern crate alloc;
 use alloc::{string::String, vec::Vec};
 #[cfg(feature = "std")]
 use std::string::String;
-#[cfg(feature = "std")]
-use std::vec::Vec;
 
 #[test]
 fn test_bounded_queue_operations() {
-    let provider = NoStdProvider::new(1024, VerificationLevel::Critical);
-    let mut queue = BoundedQueue::<u32, 5, NoStdProvider>::new(provider).unwrap();
+    let provider = NoStdProvider::<1024>::new();
+    let mut queue = BoundedQueue::<u32, 5, NoStdProvider<1024>>::new(provider).unwrap();
 
     // Check empty queue properties
     assert_eq!(queue.len(), 0);
@@ -95,8 +93,8 @@ fn test_bounded_queue_operations() {
 
 #[test]
 fn test_bounded_map_operations() {
-    let provider = NoStdProvider::new(1024, VerificationLevel::Critical);
-    let mut map = BoundedMap::<u32, String, 5, NoStdProvider>::new(provider).unwrap();
+    let provider = NoStdProvider::<1024>::new();
+    let mut map = BoundedMap::<u32, String, 5, NoStdProvider<1024>>::new(provider).unwrap();
 
     // Check empty map properties
     assert_eq!(map.len(), 0);

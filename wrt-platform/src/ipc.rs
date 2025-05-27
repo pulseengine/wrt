@@ -7,6 +7,7 @@
 use core::{fmt::Debug, time::Duration};
 
 use alloc::{boxed::Box, string::String, vec::Vec};
+use wrt_sync::WrtMutex;
 
 use wrt_error::{codes, Error, ErrorCategory, Result};
 
@@ -186,7 +187,7 @@ pub trait IpcHandler: Send + Sync {
 pub struct IpcServer {
     channel: Box<dyn IpcChannel>,
     handler: Box<dyn IpcHandler>,
-    running: parking_lot::Mutex<bool>,
+    running: WrtMutex<bool>,
 }
 
 impl IpcServer {
@@ -195,7 +196,7 @@ impl IpcServer {
         Self {
             channel,
             handler,
-            running: parking_lot::Mutex::new(false),
+            running: WrtMutex::new(false),
         }
     }
 

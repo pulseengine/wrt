@@ -5,14 +5,15 @@
 
 use core::{
     fmt::Debug,
-    sync::atomic::{AtomicU64, AtomicUsize, Ordering},
+    sync::atomic::{AtomicUsize, Ordering},
     time::Duration,
 };
 
 #[cfg(feature = "alloc")]
 use alloc::{boxed::Box, collections::BTreeMap, sync::Arc, vec::Vec};
 
-use wrt_error::{codes, Error, ErrorCategory, Result};
+use wrt_error::Result;
+use wrt_sync::WrtRwLock;
 
 /// Thread priority levels for platform-agnostic use
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -267,11 +268,11 @@ pub struct ThreadSpawnRequest {
 #[derive(Debug)]
 pub struct ResourceTracker {
     /// Threads per module
-    threads_per_module: Arc<parking_lot::RwLock<BTreeMap<u64, AtomicUsize>>>,
+    threads_per_module: Arc<WrtRwLock<BTreeMap<u64, AtomicUsize>>>,
     /// Total active threads
     total_threads: AtomicUsize,
     /// Memory usage per module
-    memory_per_module: Arc<parking_lot::RwLock<BTreeMap<u64, AtomicUsize>>>,
+    memory_per_module: Arc<WrtRwLock<BTreeMap<u64, AtomicUsize>>>,
     /// Limits
     limits: ThreadingLimits,
 }
@@ -280,9 +281,9 @@ impl ResourceTracker {
     /// Create new resource tracker
     pub fn new(limits: ThreadingLimits) -> Self {
         Self {
-            threads_per_module: Arc::new(parking_lot::RwLock::new(BTreeMap::new())),
+            threads_per_module: Arc::new(WrtRwLock::new(BTreeMap::new())),
             total_threads: AtomicUsize::new(0),
-            memory_per_module: Arc::new(parking_lot::RwLock::new(BTreeMap::new())),
+            memory_per_module: Arc::new(WrtRwLock::new(BTreeMap::new())),
             limits,
         }
     }
@@ -388,10 +389,18 @@ pub fn create_thread_pool(config: ThreadPoolConfig) -> Result<Box<dyn PlatformTh
             .map(|pool| Box::new(pool) as Box<dyn PlatformThreadPool>)
     }
     
-    #[cfg(all(not(target_os = "nto"), not(target_os = "linux")))]
+    #[cfg(all(feature = "std", not(target_os = "nto"), not(target_os = "linux")))]
     {
         super::generic_threading::GenericThreadPool::new(config)
             .map(|pool| Box::new(pool) as Box<dyn PlatformThreadPool>)
+    }
+    
+    #[cfg(all(not(feature = "std"), not(target_os = "nto"), not(target_os = "linux")))]   
+    {
+        Err(wrt_error::Error::new(
+            wrt_error::ErrorCategory::Unsupported,
+            "Thread pool creation requires std feature for generic platforms",
+        ))
     }
 }
 

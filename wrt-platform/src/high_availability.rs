@@ -10,6 +10,7 @@ use core::{
 };
 
 use alloc::{boxed::Box, string::String, vec::Vec};
+use wrt_sync::{WrtMutex, WrtRwLock};
 
 use wrt_error::{codes, Error, ErrorCategory, Result};
 
@@ -118,9 +119,10 @@ pub struct EntityId(pub u64);
 
 /// Generic high availability monitor
 pub struct GenericHaMonitor {
-    entities: parking_lot::RwLock<Vec<MonitoredEntity>>,
+    entities: WrtRwLock<Vec<MonitoredEntity>>,
     next_id: AtomicU64,
-    monitor_thread: parking_lot::Mutex<Option<std::thread::JoinHandle<()>>>,
+    #[cfg(feature = "std")]
+    monitor_thread: WrtMutex<Option<std::thread::JoinHandle<()>>>,
     running: Arc<AtomicBool>,
 }
 
@@ -128,8 +130,8 @@ struct MonitoredEntity {
     id: EntityId,
     name: String,
     conditions: Vec<(MonitorCondition, Vec<RecoveryAction>)>,
-    last_heartbeat: parking_lot::Mutex<std::time::Instant>,
-    status: parking_lot::Mutex<HealthStatus>,
+    last_heartbeat: WrtMutex<u64>, // Timestamp in milliseconds
+    status: WrtMutex<HealthStatus>,
     restart_count: AtomicU64,
     monitoring: AtomicBool,
 }
@@ -138,9 +140,10 @@ impl GenericHaMonitor {
     /// Create new HA monitor
     pub fn new() -> Self {
         Self {
-            entities: parking_lot::RwLock::new(Vec::new()),
+            entities: WrtRwLock::new(Vec::new()),
             next_id: AtomicU64::new(1),
-            monitor_thread: parking_lot::Mutex::new(None),
+            #[cfg(feature = "std")]
+            monitor_thread: WrtMutex::new(None),
             running: Arc::new(AtomicBool::new(false)),
         }
     }
@@ -186,7 +189,7 @@ impl HighAvailabilityManager for GenericHaMonitor {
             id,
             name: name.to_string(),
             conditions: Vec::new(),
-            last_heartbeat: parking_lot::Mutex::new(std::time::Instant::now()),
+            last_heartbeat: WrtMutex::new(0), // Timestamp in milliseconds
             status: parking_lot::Mutex::new(HealthStatus::Healthy),
             restart_count: AtomicU64::new(0),
             monitoring: AtomicBool::new(false),
@@ -208,7 +211,7 @@ impl HighAvailabilityManager for GenericHaMonitor {
             .find(|e| e.id == entity)
             .ok_or_else(|| {
                 Error::new(
-                    ErrorCategory::InvalidInput,
+                    ErrorCategory::InvalidParameter,
                     codes::INVALID_PARAMETER,
                     "Entity not found",
                 )
@@ -256,7 +259,7 @@ impl HighAvailabilityManager for GenericHaMonitor {
             )
         })?;
 
-        *entity.last_heartbeat.lock() = std::time::Instant::now();
+        *entity.last_heartbeat.lock() = 0; // Update timestamp
         *entity.status.lock() = HealthStatus::Healthy;
         Ok(())
     }

@@ -68,6 +68,7 @@ pub struct BuiltinHost {
     /// Host ID
     host_id: String,
     /// Interceptor for built-in calls
+    #[cfg(any(feature = "std", feature = "alloc"))]
     interceptor: Option<Arc<dyn BuiltinInterceptor>>,
     /// Built-in handlers (builtin_type_name -> handler)
     handlers:
@@ -105,6 +106,7 @@ impl BuiltinHost {
     /// # Arguments
     ///
     /// * `interceptor` - The interceptor to use
+    #[cfg(any(feature = "std", feature = "alloc"))]
     pub fn set_interceptor(&mut self, interceptor: Arc<dyn BuiltinInterceptor>) {
         self.interceptor = Some(interceptor);
     }

@@ -10,9 +10,15 @@ use core::{
     time::Duration,
 };
 
-use alloc::{boxed::Box, collections::BTreeMap, string::String, sync::Arc, vec::Vec};
+use alloc::{
+    boxed::Box,
+    collections::BTreeMap,
+    string::{String, ToString},
+    sync::Arc,
+    vec::Vec,
+};
 
-use parking_lot::{Mutex, RwLock};
+use wrt_sync::{WrtMutex, WrtRwLock};
 
 use wrt_error::{codes, Error, ErrorCategory, Result};
 
@@ -129,13 +135,13 @@ struct QnxThreadHandle {
     /// Thread ID
     tid: ffi::pthread_t,
     /// Task being executed
-    task: Arc<Mutex<Option<WasmTask>>>,
+    task: Arc<WrtMutex<Option<WasmTask>>>,
     /// Result storage
-    result: Arc<Mutex<Option<Result<Vec<u8>>>>>,
+    result: Arc<WrtMutex<Option<Result<Vec<u8>>>>>,
     /// Running flag
     running: Arc<AtomicBool>,
     /// Thread statistics
-    stats: Arc<Mutex<ThreadStats>>,
+    stats: Arc<WrtMutex<ThreadStats>>,
 }
 
 impl PlatformThreadHandle for QnxThreadHandle {
@@ -179,11 +185,11 @@ struct ThreadContext {
     /// Task to execute
     task: WasmTask,
     /// Result storage
-    result: Arc<Mutex<Option<Result<Vec<u8>>>>>,
+    result: Arc<WrtMutex<Option<Result<Vec<u8>>>>>,
     /// Running flag
     running: Arc<AtomicBool>,
     /// Stats
-    stats: Arc<Mutex<ThreadStats>>,
+    stats: Arc<WrtMutex<ThreadStats>>,
     /// Executor function
     executor: Arc<dyn Fn(WasmTask) -> Result<Vec<u8>> + Send + Sync>,
 }
@@ -195,9 +201,9 @@ pub struct QnxThreadPool {
     /// Memory partition for thread isolation
     partition: Option<QnxMemoryPartition>,
     /// Active threads
-    active_threads: Arc<RwLock<BTreeMap<u64, Box<dyn PlatformThreadHandle>>>>,
+    active_threads: Arc<WrtRwLock<BTreeMap<u64, Box<dyn PlatformThreadHandle>>>>,
     /// Thread statistics
-    stats: Arc<Mutex<ThreadPoolStats>>,
+    stats: Arc<WrtMutex<ThreadPoolStats>>,
     /// Next thread ID
     next_thread_id: AtomicU64,
     /// Shutdown flag
@@ -240,8 +246,8 @@ impl QnxThreadPool {
         Ok(Self {
             config,
             partition,
-            active_threads: Arc::new(RwLock::new(BTreeMap::new())),
-            stats: Arc::new(Mutex::new(ThreadPoolStats::default())),
+            active_threads: Arc::new(WrtRwLock::new(BTreeMap::new())),
+            stats: Arc::new(WrtMutex::new(ThreadPoolStats::default())),
             next_thread_id: AtomicU64::new(1),
             shutdown: AtomicBool::new(false),
             executor,
@@ -397,9 +403,9 @@ impl PlatformThreadPool for QnxThreadPool {
         let thread_id = self.next_thread_id.fetch_add(1, Ordering::AcqRel);
 
         // Create thread context
-        let result = Arc::new(Mutex::new(None));
+        let result = Arc::new(WrtMutex::new(None));
         let running = Arc::new(AtomicBool::new(false));
-        let stats = Arc::new(Mutex::new(ThreadStats::default()));
+        let stats = Arc::new(WrtMutex::new(ThreadStats::default()));
 
         let context = Box::new(ThreadContext {
             task,
@@ -455,7 +461,7 @@ impl PlatformThreadPool for QnxThreadPool {
         // Create handle
         let handle = Box::new(QnxThreadHandle {
             tid,
-            task: Arc::new(Mutex::new(None)),
+            task: Arc::new(WrtMutex::new(None)),
             result,
             running,
             stats,

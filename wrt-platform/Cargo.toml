@@ -23,6 +23,8 @@ categories = ["wasm", "os"]
 
 [dependencies]
 wrt-error = { workspace = true } # Assuming wrt-error is in workspace.dependencies
+wrt-sync = { workspace = true } # Add wrt-sync for synchronization primitives
+# wrt-foundation = { workspace = true, optional = true } # Temporarily disabled to fix cyclic dependency
 libc = { version = "0.2", optional = true }
 
 [dev-dependencies]
@@ -32,9 +34,12 @@ criterion = { version = "0.6", features = ["html_reports"] }
 default = [] # No std/alloc by default
 
 # Standard features for cross-crate compatibility
-std = ["wrt-error/std"]
-alloc = ["wrt-error/alloc"]
+std = ["wrt-error/std", "wrt-sync/std"] # , "wrt-foundation?/std"]
+alloc = ["wrt-error/alloc", "wrt-sync/alloc"] # , "wrt-foundation?/alloc"]
 no_std = []
+
+# Feature for threading support (requires std)
+threading = ["std"] # , "wrt-foundation"]
 
 # Use libc for system calls (optional)
 use-libc = ["dep:libc"]

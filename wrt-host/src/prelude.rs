@@ -21,6 +21,22 @@ pub use alloc::{
     vec,
     vec::Vec,
 };
+
+// For pure no_std (no alloc), use bounded collections
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+pub use wrt_foundation::{
+    bounded::{BoundedVec as Vec, BoundedString as String},
+    BoundedMap as HashMap,
+    BoundedSet as HashSet,
+};
+
+// Additional imports for pure no_std
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+pub use core::{fmt::Write as FmtWrite, marker::PhantomData as Box};
+
+// Arc is not available in pure no_std, use a placeholder
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+pub type Arc<T> = core::marker::PhantomData<T>;
 pub use core::{
     any::Any,
     cmp::{Eq, Ord, PartialEq, PartialOrd},

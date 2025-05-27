@@ -3360,16 +3360,6 @@ dependencies = [
 
 [[package]]
 name = "wasm-encoder"
-version = "0.230.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d4349d0943718e6e434b51b9639e876293093dca4b96384fb136ab5bd5ce6660"
-dependencies = [
- "leb128fmt",
- "wasmparser 0.230.0",
-]
-
-[[package]]
-name = "wasm-encoder"
 version = "0.231.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e62baf58bc14f219d1d12d082ea99860acb479b582e8f3d292d8a7c8f756091c"
@@ -3513,7 +3503,7 @@ dependencies = [
  "wasm-smith",
  "wasmparser 0.231.0",
  "wasmprinter",
- "wast 231.0.0",
+ "wast",
  "wat",
  "wit-component 0.231.0",
  "wit-encoder",
@@ -3529,17 +3519,6 @@ checksum = "0f51cad774fb3c9461ab9bccc9c62dfb7388397b5deda31bf40e8108ccd678b2"
 dependencies = [
  "bitflags 2.9.1",
  "hashbrown 0.15.3",
- "indexmap 2.9.0",
- "semver",
-]
-
-[[package]]
-name = "wasmparser"
-version = "0.230.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "808198a69b5a0535583370a51d459baa14261dfab04800c4864ee9e1a14346ed"
-dependencies = [
- "bitflags 2.9.1",
  "indexmap 2.9.0",
  "semver",
 ]
@@ -3569,19 +3548,6 @@ dependencies = [
 
 [[package]]
 name = "wast"
-version = "230.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b8edac03c5fa691551531533928443faf3dc61a44f814a235c7ec5d17b7b34f1"
-dependencies = [
- "bumpalo",
- "leb128fmt",
- "memchr",
- "unicode-width",
- "wasm-encoder 0.230.0",
-]
-
-[[package]]
-name = "wast"
 version = "231.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6258b542d232ac51c0426de6ae0efb31fc9e89f64fe3a525aff1524a06a13417"
@@ -3600,7 +3566,7 @@ version = "1.231.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "97eec2bd34dcd2a2cea1c501fed0c25171cfd02900716d8357639797fa629c2e"
 dependencies = [
- "wast 231.0.0",
+ "wast",
 ]
 
 [[package]]
@@ -3983,7 +3949,7 @@ dependencies = [
  "wasm-encoder 0.231.0",
  "wasm-metadata 0.231.0",
  "wasmparser 0.231.0",
- "wast 231.0.0",
+ "wast",
  "wat",
  "wit-parser 0.231.0",
 ]
@@ -4077,7 +4043,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "walkdir",
- "wast 231.0.0",
+ "wast",
  "wrt-component",
  "wrt-decoder",
  "wrt-error",
@@ -4229,6 +4195,7 @@ dependencies = [
  "criterion",
  "libc",
  "wrt-error",
+ "wrt-sync",
 ]
 
 [[package]]

@@ -535,11 +535,11 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ResourceTypeBuilder<P
 #[cfg(all(test, feature = "alloc"))]
 mod tests {
     use super::*;
-    use crate::safe_memory::NoStdProvider;
+    use crate::{safe_memory::NoStdProvider, traits::BoundedCapacity};
 
     #[test]
     fn test_component_type_builder() {
-        let provider = NoStdProvider::default();
+        let provider = NoStdProvider::<1024>::default();
 
         let component_type =
             ComponentTypeBuilder::new().with_provider(provider.clone()).build().unwrap();
@@ -556,7 +556,7 @@ mod tests {
 
     #[test]
     fn test_namespace_builder() {
-        let provider = NoStdProvider::default();
+        let provider = NoStdProvider::<1024>::default();
 
         // Test building from parts
         let namespace_builder = NamespaceBuilder::new()
@@ -580,7 +580,7 @@ mod tests {
 
     #[test]
     fn test_resource_type_builder() {
-        let provider = NoStdProvider::default();
+        let provider = NoStdProvider::<1024>::default();
 
         // Test record resource type
         let field_name = BoundedString::from_str("field", provider.clone()).unwrap();

@@ -1,6 +1,7 @@
 //! Type aliases for no_std compatibility
 
 use crate::prelude::*;
+use wrt_foundation::NoStdProvider;
 
 // CFI-specific types
 pub const MAX_CFI_TARGETS: usize = 16;

@@ -1003,7 +1003,7 @@ pub mod with_alloc {
 
         // Convert to a Rust string
         match str::from_utf8(string_bytes) {
-            Ok(s) => Ok((s.to_string(), len_size + str_len as usize)),
+            Ok(s) => Ok((s.into(), len_size + str_len as usize)),
             Err(_) => Err(parse_error("Invalid UTF-8 in string")),
         }
     }

@@ -2,6 +2,8 @@
 //!
 //! This module provides a fallback thread pool implementation using std::thread
 //! for platforms that don't have specialized implementations.
+//!
+//! This module is only available when the `std` feature is enabled.
 
 use core::{
     sync::atomic::{AtomicBool, AtomicU64, Ordering},
@@ -10,7 +12,7 @@ use core::{
 
 use alloc::{boxed::Box, collections::BTreeMap, sync::Arc, vec::Vec};
 
-use parking_lot::{Mutex, RwLock};
+use wrt_sync::{WrtMutex, WrtRwLock};
 
 use wrt_error::{codes, Error, ErrorCategory, Result};
 
@@ -20,15 +22,17 @@ use crate::threading::{
 };
 
 /// Generic thread handle using std::thread
+#[cfg(feature = "std")]
 struct GenericThreadHandle {
     /// Thread join handle
     handle: Option<std::thread::JoinHandle<Result<Vec<u8>>>>,
     /// Running flag
     running: Arc<AtomicBool>,
     /// Thread statistics
-    stats: Arc<Mutex<ThreadStats>>,
+    stats: Arc<WrtMutex<ThreadStats>>,
 }
 
+#[cfg(feature = "std")]
 impl PlatformThreadHandle for GenericThreadHandle {
     fn join(mut self: Box<Self>) -> Result<Vec<u8>> {
         if let Some(handle) = self.handle.take() {
@@ -59,13 +63,14 @@ impl PlatformThreadHandle for GenericThreadHandle {
 }
 
 /// Generic thread pool implementation
+#[cfg(feature = "std")]
 pub struct GenericThreadPool {
     /// Configuration
     config: ThreadPoolConfig,
     /// Active threads
-    active_threads: Arc<RwLock<BTreeMap<u64, Box<dyn PlatformThreadHandle>>>>,
+    active_threads: Arc<WrtRwLock<BTreeMap<u64, Box<dyn PlatformThreadHandle>>>>,
     /// Thread statistics
-    stats: Arc<Mutex<ThreadPoolStats>>,
+    stats: Arc<WrtMutex<ThreadPoolStats>>,
     /// Next thread ID
     next_thread_id: AtomicU64,
     /// Shutdown flag
@@ -74,6 +79,7 @@ pub struct GenericThreadPool {
     executor: Arc<dyn Fn(WasmTask) -> Result<Vec<u8>> + Send + Sync>,
 }
 
+#[cfg(feature = "std")]
 impl GenericThreadPool {
     /// Create new generic thread pool
     pub fn new(config: ThreadPoolConfig) -> Result<Self> {
@@ -82,8 +88,8 @@ impl GenericThreadPool {
 
         Ok(Self {
             config,
-            active_threads: Arc::new(RwLock::new(BTreeMap::new())),
-            stats: Arc::new(Mutex::new(ThreadPoolStats::default())),
+            active_threads: Arc::new(WrtRwLock::new(BTreeMap::new())),
+            stats: Arc::new(WrtMutex::new(ThreadPoolStats::default())),
             next_thread_id: AtomicU64::new(1),
             shutdown: AtomicBool::new(false),
             executor,
@@ -99,6 +105,7 @@ impl GenericThreadPool {
     }
 }
 
+#[cfg(feature = "std")]
 impl PlatformThreadPool for GenericThreadPool {
     fn configure(&mut self, config: ThreadPoolConfig) -> Result<()> {
         self.config = config;
@@ -130,7 +137,7 @@ impl PlatformThreadPool for GenericThreadPool {
 
         // Create shared state
         let running = Arc::new(AtomicBool::new(false));
-        let stats = Arc::new(Mutex::new(ThreadStats::default()));
+        let stats = Arc::new(WrtMutex::new(ThreadStats::default()));
 
         // Clone for thread
         let task_clone = task.clone();

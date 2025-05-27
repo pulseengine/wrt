@@ -32,9 +32,51 @@ pub enum ResourceOwnership {
     Borrowed,
 }
 
+impl wrt_foundation::traits::Checksummable for ResourceOwnership {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        match self {
+            ResourceOwnership::Owned => 0u8.update_checksum(checksum),
+            ResourceOwnership::Borrowed => 1u8.update_checksum(checksum),
+        }
+    }
+}
+
+impl wrt_foundation::traits::ToBytes for ResourceOwnership {
+    fn serialized_size(&self) -> usize {
+        1 // single byte for discriminant
+    }
+
+    fn to_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        _provider: &PStream,
+    ) -> wrt_foundation::Result<()> {
+        match self {
+            ResourceOwnership::Owned => writer.write_u8(0),
+            ResourceOwnership::Borrowed => writer.write_u8(1),
+        }
+    }
+}
+
+impl wrt_foundation::traits::FromBytes for ResourceOwnership {
+    fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        _provider: &PStream,
+    ) -> wrt_foundation::Result<Self> {
+        match reader.read_u8()? {
+            0 => Ok(ResourceOwnership::Owned),
+            1 => Ok(ResourceOwnership::Borrowed),
+            _ => Err(Error::new(ErrorCategory::InvalidInput, codes::INVALID_STATE, "Invalid ResourceOwnership discriminant")),
+        }
+    }
+}
+
 /// Resource entry in the handle table
-#[derive(Debug, Clone)]
-pub struct ResourceEntry<T> {
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ResourceEntry<T> 
+where 
+    T: Clone + PartialEq + Eq,
+{
     /// The actual resource
     pub resource: T,
     /// Ownership type
@@ -43,15 +85,71 @@ pub struct ResourceEntry<T> {
     pub ref_count: u32,
 }
 
+impl<T> wrt_foundation::traits::Checksummable for ResourceEntry<T>
+where
+    T: Clone + PartialEq + Eq + wrt_foundation::traits::Checksummable,
+{
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        self.resource.update_checksum(checksum);
+        self.ownership.update_checksum(checksum);
+        self.ref_count.update_checksum(checksum);
+    }
+}
+
+impl<T> wrt_foundation::traits::ToBytes for ResourceEntry<T>
+where
+    T: Clone + PartialEq + Eq + wrt_foundation::traits::ToBytes,
+{
+    fn serialized_size(&self) -> usize {
+        self.resource.serialized_size() + self.ownership.serialized_size() + self.ref_count.serialized_size()
+    }
+
+    fn to_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        provider: &PStream,
+    ) -> wrt_foundation::Result<()> {
+        self.resource.to_bytes_with_provider(writer, provider)?;
+        self.ownership.to_bytes_with_provider(writer, provider)?;
+        self.ref_count.to_bytes_with_provider(writer, provider)?;
+        Ok(())
+    }
+}
+
+impl<T> wrt_foundation::traits::FromBytes for ResourceEntry<T>
+where
+    T: Clone + PartialEq + Eq + wrt_foundation::traits::FromBytes,
+{
+    fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        provider: &PStream,
+    ) -> wrt_foundation::Result<Self> {
+        let resource = T::from_bytes_with_provider(reader, provider)?;
+        let ownership = ResourceOwnership::from_bytes_with_provider(reader, provider)?;
+        let ref_count = u32::from_bytes_with_provider(reader, provider)?;
+        Ok(Self {
+            resource,
+            ownership,
+            ref_count,
+        })
+    }
+}
+
 /// Resource handle table for a specific resource type
-pub struct ResourceTable<T, P: MemoryProvider + Default + Clone + PartialEq + Eq> {
+pub struct ResourceTable<T, P: MemoryProvider + Default + Clone + PartialEq + Eq> 
+where
+    T: Clone + PartialEq + Eq + wrt_foundation::traits::Checksummable + wrt_foundation::traits::ToBytes + wrt_foundation::traits::FromBytes,
+{
     /// Table entries indexed by handle
     entries: BoundedVec<Option<ResourceEntry<T>>, MAX_RESOURCES_PER_TYPE, P>,
     /// Next available handle
     next_handle: u32,
 }
 
-impl<T, P: MemoryProvider + Default + Clone + PartialEq + Eq> ResourceTable<T, P> {
+impl<T, P: MemoryProvider + Default + Clone + PartialEq + Eq> ResourceTable<T, P> 
+where
+    T: Clone + PartialEq + Eq + wrt_foundation::traits::Checksummable + wrt_foundation::traits::ToBytes + wrt_foundation::traits::FromBytes,
+{
     /// Create a new resource table
     pub fn new(provider: P) -> Result<Self, Error> {
         let mut entries = BoundedVec::new(provider)?;

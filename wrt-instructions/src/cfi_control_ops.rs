@@ -534,10 +534,10 @@ impl wrt_foundation::traits::FromBytes for CfiValidationRequirement {
             1 => Ok(Self::ShadowStackCheck),
             2 => {
                 // Deserialize Vec<u32> manually  
-                let len = reader.read_u32()? as usize;
+                let len = reader.read_u32_le()? as usize;
                 let mut valid_targets = Vec::with_capacity(len);
                 for _ in 0..len {
-                    valid_targets.push(reader.read_u32()?);
+                    valid_targets.push(reader.read_u32_le()?);
                 }
                 let valid_targets = valid_targets;
                 Ok(Self::ControlFlowTargetCheck { valid_targets })
