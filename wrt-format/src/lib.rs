@@ -30,7 +30,6 @@ extern crate alloc;
 
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::boxed::Box;
-
 // Import types for internal use
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::{
@@ -39,7 +38,7 @@ use alloc::{
     vec::Vec,
 };
 #[cfg(feature = "std")]
-use std::{collections::HashMap, format, string::String, vec::Vec};
+use std::{format, string::String, vec::Vec};
 
 // Re-export error types directly from wrt-error
 pub use wrt_error::{Error, ErrorCategory};
@@ -183,10 +182,10 @@ pub mod section;
 pub mod state;
 /// Streaming parser for no_std environments
 pub mod streaming;
-pub mod types;
 /// Type storage system for Component Model
 #[cfg(any(feature = "alloc", feature = "std"))]
 pub mod type_store;
+pub mod types;
 /// Validation utilities
 pub mod validation;
 /// ValType builder utilities

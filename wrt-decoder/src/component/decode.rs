@@ -143,8 +143,9 @@ pub fn decode_component(bytes: &[u8]) -> Result<Component> {
 
                 // If this is a component type section, also try to parse it as such
                 match parse_component_type_section(section_bytes) {
-                    Ok((_types, _)) => {
+                    Ok((types, _)) => {
                         // Add component types to component
+                        component.types.extend(types);
                     }
                     Err(_) => {
                         // Continue parsing other sections
@@ -176,9 +177,8 @@ pub fn decode_component(bytes: &[u8]) -> Result<Component> {
             binary::COMPONENT_CANON_SECTION_ID => {
                 // Canon section
                 match parse_canon_section(section_bytes) {
-                    Ok((_canons, _)) => {
-                        // Note: Component structure may not have a canons field
-                        // so this is a placeholder
+                    Ok((canons, _)) => {
+                        component.canonicals.extend(canons);
                     }
                     Err(_) => {
                         // Continue parsing other sections

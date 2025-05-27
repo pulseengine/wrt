@@ -25,6 +25,7 @@
 
 use crate::prelude::*;
 use crate::control_ops::BranchTarget;
+use crate::types::CfiTargetVec;
 
 /// CFI-enhanced control flow protection configuration
 #[derive(Debug, Clone)]
@@ -163,7 +164,10 @@ pub struct CfiProtectedBranchTarget {
     /// CFI protection requirements
     pub protection: CfiTargetProtection,
     /// Validation requirements
+    #[cfg(feature = "alloc")]
     pub validation: Vec<CfiValidationRequirement>,
+    #[cfg(not(feature = "alloc"))]
+    pub validation: crate::types::CfiRequirementVec,
 }
 
 /// CFI protection for a specific control flow target
@@ -179,9 +183,10 @@ pub struct CfiTargetProtection {
     pub temporal_validation: Option<TemporalValidation>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum CfiTargetType {
     /// Direct function call
+    #[default]
     DirectCall,
     /// Indirect function call (via table)
     IndirectCall,
@@ -195,8 +200,62 @@ pub enum CfiTargetType {
     FunctionEntry,
 }
 
+impl wrt_foundation::traits::Checksummable for CfiTargetType {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        let discriminant = match self {
+            Self::DirectCall => 0u8,
+            Self::IndirectCall => 1u8,
+            Self::Return => 2u8,
+            Self::Branch => 3u8,
+            Self::BlockEntry => 4u8,
+            Self::FunctionEntry => 5u8,
+        };
+        checksum.update_slice(&[discriminant]);
+    }
+}
+
+impl wrt_foundation::traits::ToBytes for CfiTargetType {
+    fn to_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        _provider: &PStream,
+    ) -> wrt_foundation::Result<()> {
+        let discriminant = match self {
+            Self::DirectCall => 0u8,
+            Self::IndirectCall => 1u8,
+            Self::Return => 2u8,
+            Self::Branch => 3u8,
+            Self::BlockEntry => 4u8,
+            Self::FunctionEntry => 5u8,
+        };
+        writer.write_u8(discriminant)
+    }
+}
+
+impl wrt_foundation::traits::FromBytes for CfiTargetType {
+    fn from_bytes_with_provider<PStream: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream,
+        _provider: &PStream,
+    ) -> wrt_foundation::Result<Self> {
+        let discriminant = reader.read_u8()?;
+        match discriminant {
+            0 => Ok(Self::DirectCall),
+            1 => Ok(Self::IndirectCall),
+            2 => Ok(Self::Return),
+            3 => Ok(Self::Branch),
+            4 => Ok(Self::BlockEntry),
+            5 => Ok(Self::FunctionEntry),
+            _ => Err(wrt_foundation::Error::new(
+                wrt_foundation::ErrorCategory::Validation,
+                wrt_foundation::codes::VALIDATION_ERROR,
+                "Invalid discriminant for CfiTargetType",
+            )),
+        }
+    }
+}
+
 /// CFI landing pad information
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CfiLandingPad {
     /// Landing pad identifier
     pub pad_id: u32,
@@ -205,11 +264,30 @@ pub struct CfiLandingPad {
     /// Software validation code
     pub software_validation: Option<CfiSoftwareValidation>,
     /// Expected predecessor types
+    #[cfg(feature = "alloc")]
     pub valid_predecessors: Vec<CfiTargetType>,
+    #[cfg(not(feature = "alloc"))]
+    pub valid_predecessors: crate::types::CfiTargetTypeVec,
+}
+
+impl Default for CfiLandingPad {
+    fn default() -> Self {
+        Self {
+            pad_id: 0,
+            hardware_instruction: None,
+            software_validation: None,
+            valid_predecessors: {
+                #[cfg(feature = "alloc")]
+                { Vec::new() }
+                #[cfg(not(feature = "alloc"))]
+                { crate::types::CfiTargetTypeVec::new(wrt_foundation::NoStdProvider::default()).unwrap_or_else(|_| panic!("Failed to create CfiTargetTypeVec")) }
+            },
+        }
+    }
 }
 
 /// Hardware-specific CFI instructions
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CfiHardwareInstruction {
     /// ARM BTI instruction
     #[cfg(target_arch = "aarch64")]
@@ -223,24 +301,109 @@ pub enum CfiHardwareInstruction {
 }
 
 /// Software CFI validation code
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CfiSoftwareValidation {
     /// Validation check ID
     pub check_id: u32,
     /// Expected values to validate
+    #[cfg(feature = "alloc")]
     pub expected_values: Vec<CfiExpectedValue>,
+    #[cfg(not(feature = "alloc"))]
+    pub expected_values: crate::types::CfiExpectedValueVec,
     /// Validation function
     pub validation_function: SoftwareCfiFunction,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum CfiExpectedValue {
+    /// No expected value (default)
+    #[default]
+    None,
     /// Expected function signature hash
     FunctionSignatureHash(u64),
     /// Expected return address
     ReturnAddress(u64),
     /// Expected call site identifier
     CallSiteId(u32),
+}
+
+impl wrt_foundation::traits::Checksummable for CfiExpectedValue {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        match self {
+            Self::None => checksum.update_slice(&[0u8]),
+            Self::FunctionSignatureHash(hash) => {
+                checksum.update_slice(&[1u8]);
+                checksum.update_slice(&hash.to_le_bytes());
+            }
+            Self::ReturnAddress(addr) => {
+                checksum.update_slice(&[2u8]);
+                checksum.update_slice(&addr.to_le_bytes());
+            }
+            Self::CallSiteId(id) => {
+                checksum.update_slice(&[3u8]);
+                checksum.update_slice(&id.to_le_bytes());
+            }
+        }
+    }
+}
+
+impl wrt_foundation::traits::ToBytes for CfiExpectedValue {
+    fn to_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        _provider: &PStream,
+    ) -> wrt_foundation::Result<()> {
+        match self {
+            Self::None => writer.write_u8(0u8),
+            Self::FunctionSignatureHash(hash) => {
+                writer.write_u8(1u8)?;
+                writer.write_all(&hash.to_le_bytes())
+            }
+            Self::ReturnAddress(addr) => {
+                writer.write_u8(2u8)?;
+                writer.write_all(&addr.to_le_bytes())
+            }
+            Self::CallSiteId(id) => {
+                writer.write_u8(3u8)?;
+                writer.write_all(&id.to_le_bytes())
+            }
+        }
+    }
+}
+
+impl wrt_foundation::traits::FromBytes for CfiExpectedValue {
+    fn from_bytes_with_provider<PStream: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream,
+        _provider: &PStream,
+    ) -> wrt_foundation::Result<Self> {
+        let discriminant = reader.read_u8()?;
+        match discriminant {
+            0 => Ok(Self::None),
+            1 => {
+                let mut hash_bytes = [0u8; 8];
+                reader.read_exact(&mut hash_bytes)?;
+                let hash = u64::from_le_bytes(hash_bytes);
+                Ok(Self::FunctionSignatureHash(hash))
+            }
+            2 => {
+                let mut addr_bytes = [0u8; 8];
+                reader.read_exact(&mut addr_bytes)?;
+                let addr = u64::from_le_bytes(addr_bytes);
+                Ok(Self::ReturnAddress(addr))
+            }
+            3 => {
+                let mut id_bytes = [0u8; 4];
+                reader.read_exact(&mut id_bytes)?;
+                let id = u32::from_le_bytes(id_bytes);
+                Ok(Self::CallSiteId(id))
+            }
+            _ => Err(wrt_foundation::Error::new(
+                wrt_foundation::ErrorCategory::Validation,
+                wrt_foundation::codes::VALIDATION_ERROR,
+                "Invalid discriminant for CfiExpectedValue",
+            )),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -280,18 +443,119 @@ pub struct TemporalValidation {
 }
 
 /// CFI validation requirements
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum CfiValidationRequirement {
     /// Validate function signature matches expected
     TypeSignatureCheck { expected_type_index: u32, signature_hash: u64 },
     /// Validate return address matches shadow stack
+    #[default]
     ShadowStackCheck,
     /// Validate control flow target is valid
-    ControlFlowTargetCheck { valid_targets: Vec<u32> },
+    ControlFlowTargetCheck { valid_targets: CfiTargetVec },
     /// Validate calling convention
     CallingConventionCheck,
     /// Validate temporal properties
     TemporalCheck { max_duration: u64 },
+}
+
+impl wrt_foundation::traits::Checksummable for CfiValidationRequirement {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        match self {
+            Self::TypeSignatureCheck { expected_type_index, signature_hash } => {
+                checksum.update_slice(&[0u8]);
+                checksum.update_slice(&expected_type_index.to_le_bytes());
+                checksum.update_slice(&signature_hash.to_le_bytes());
+            }
+            Self::ShadowStackCheck => checksum.update_slice(&[1u8]),
+            Self::ControlFlowTargetCheck { valid_targets } => {
+                checksum.update_slice(&[2u8]);
+                for target in valid_targets.iter() {
+                    checksum.update_slice(&target.to_le_bytes());
+                }
+            }
+            Self::CallingConventionCheck => checksum.update_slice(&[3u8]),
+            Self::TemporalCheck { max_duration } => {
+                checksum.update_slice(&[4u8]);
+                checksum.update_slice(&max_duration.to_le_bytes());
+            }
+        }
+    }
+}
+
+impl wrt_foundation::traits::ToBytes for CfiValidationRequirement {
+    fn to_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        provider: &PStream,
+    ) -> wrt_foundation::Result<()> {
+        match self {
+            Self::TypeSignatureCheck { expected_type_index, signature_hash } => {
+                writer.write_u8(0u8)?;
+                writer.write_all(&expected_type_index.to_le_bytes())?;
+                writer.write_all(&signature_hash.to_le_bytes())
+            }
+            Self::ShadowStackCheck => writer.write_u8(1u8),
+            Self::ControlFlowTargetCheck { valid_targets } => {
+                writer.write_u8(2u8)?;
+                // Serialize Vec<u32> manually
+                writer.write_u32_le(valid_targets.len() as u32)?;
+                for target in valid_targets {
+                    writer.write_u32_le(*target)?;
+                }
+                Ok(())
+            }
+            Self::CallingConventionCheck => writer.write_u8(3u8),
+            Self::TemporalCheck { max_duration } => {
+                writer.write_u8(4u8)?;
+                writer.write_all(&max_duration.to_le_bytes())
+            }
+        }
+    }
+}
+
+impl wrt_foundation::traits::FromBytes for CfiValidationRequirement {
+    fn from_bytes_with_provider<PStream: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream,
+        provider: &PStream,
+    ) -> wrt_foundation::Result<Self> {
+        let discriminant = reader.read_u8()?;
+        match discriminant {
+            0 => {
+                let mut index_bytes = [0u8; 4];
+                reader.read_exact(&mut index_bytes)?;
+                let expected_type_index = u32::from_le_bytes(index_bytes);
+                
+                let mut hash_bytes = [0u8; 8];
+                reader.read_exact(&mut hash_bytes)?;
+                let signature_hash = u64::from_le_bytes(hash_bytes);
+                
+                Ok(Self::TypeSignatureCheck { expected_type_index, signature_hash })
+            }
+            1 => Ok(Self::ShadowStackCheck),
+            2 => {
+                // Deserialize Vec<u32> manually  
+                let len = reader.read_u32()? as usize;
+                let mut valid_targets = Vec::with_capacity(len);
+                for _ in 0..len {
+                    valid_targets.push(reader.read_u32()?);
+                }
+                let valid_targets = valid_targets;
+                Ok(Self::ControlFlowTargetCheck { valid_targets })
+            }
+            3 => Ok(Self::CallingConventionCheck),
+            4 => {
+                let mut duration_bytes = [0u8; 8];
+                reader.read_exact(&mut duration_bytes)?;
+                let max_duration = u64::from_le_bytes(duration_bytes);
+                Ok(Self::TemporalCheck { max_duration })
+            }
+            _ => Err(wrt_foundation::Error::new(
+                wrt_foundation::ErrorCategory::Validation,
+                wrt_foundation::codes::VALIDATION_ERROR,
+                "Invalid discriminant for CfiValidationRequirement",
+            )),
+        }
+    }
 }
 
 /// CFI-aware control flow operations trait
@@ -345,9 +609,15 @@ pub struct CfiExecutionContext {
     /// Current instruction offset
     pub current_instruction: u32,
     /// Software shadow stack
+    #[cfg(feature = "alloc")]
     pub shadow_stack: Vec<ShadowStackEntry>,
+    #[cfg(not(feature = "alloc"))]
+    pub shadow_stack: crate::types::ShadowStackVec,
     /// Active landing pad expectations
+    #[cfg(feature = "alloc")]
     pub landing_pad_expectations: Vec<LandingPadExpectation>,
+    #[cfg(not(feature = "alloc"))]
+    pub landing_pad_expectations: crate::types::LandingPadExpectationVec,
     /// CFI violation count
     pub violation_count: u32,
     /// Performance metrics
@@ -359,8 +629,18 @@ impl Default for CfiExecutionContext {
         Self {
             current_function: 0,
             current_instruction: 0,
-            shadow_stack: Vec::new(),
-            landing_pad_expectations: Vec::new(),
+            shadow_stack: {
+                #[cfg(feature = "alloc")]
+                { Vec::new() }
+                #[cfg(not(feature = "alloc"))]
+                { crate::types::ShadowStackVec::new(wrt_foundation::NoStdProvider::default()).unwrap_or_else(|_| panic!("Failed to create ShadowStackVec")) }
+            },
+            landing_pad_expectations: {
+                #[cfg(feature = "alloc")]
+                { Vec::new() }
+                #[cfg(not(feature = "alloc"))]
+                { crate::types::LandingPadExpectationVec::new(wrt_foundation::NoStdProvider::default()).unwrap_or_else(|_| panic!("Failed to create LandingPadExpectationVec")) }
+            },
             violation_count: 0,
             metrics: CfiMetrics::default(),
         }
@@ -368,7 +648,7 @@ impl Default for CfiExecutionContext {
 }
 
 /// Shadow stack entry for software CFI
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ShadowStackEntry {
     /// Return address (function index, instruction offset)
     pub return_address: (u32, u32),
@@ -380,8 +660,66 @@ pub struct ShadowStackEntry {
     pub call_site_id: u32,
 }
 
+impl wrt_foundation::traits::Checksummable for ShadowStackEntry {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        checksum.update_slice(&self.return_address.0.to_le_bytes());
+        checksum.update_slice(&self.return_address.1.to_le_bytes());
+        checksum.update_slice(&self.signature_hash.to_le_bytes());
+        checksum.update_slice(&self.timestamp.to_le_bytes());
+        checksum.update_slice(&self.call_site_id.to_le_bytes());
+    }
+}
+
+impl wrt_foundation::traits::ToBytes for ShadowStackEntry {
+    fn to_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        _provider: &PStream,
+    ) -> wrt_foundation::Result<()> {
+        writer.write_all(&self.return_address.0.to_le_bytes())?;
+        writer.write_all(&self.return_address.1.to_le_bytes())?;
+        writer.write_all(&self.signature_hash.to_le_bytes())?;
+        writer.write_all(&self.timestamp.to_le_bytes())?;
+        writer.write_all(&self.call_site_id.to_le_bytes())
+    }
+}
+
+impl wrt_foundation::traits::FromBytes for ShadowStackEntry {
+    fn from_bytes_with_provider<PStream: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream,
+        _provider: &PStream,
+    ) -> wrt_foundation::Result<Self> {
+        let mut func_bytes = [0u8; 4];
+        reader.read_exact(&mut func_bytes)?;
+        let func_idx = u32::from_le_bytes(func_bytes);
+        
+        let mut offset_bytes = [0u8; 4];
+        reader.read_exact(&mut offset_bytes)?;
+        let offset = u32::from_le_bytes(offset_bytes);
+        
+        let mut hash_bytes = [0u8; 8];
+        reader.read_exact(&mut hash_bytes)?;
+        let signature_hash = u64::from_le_bytes(hash_bytes);
+        
+        let mut timestamp_bytes = [0u8; 8];
+        reader.read_exact(&mut timestamp_bytes)?;
+        let timestamp = u64::from_le_bytes(timestamp_bytes);
+        
+        let mut id_bytes = [0u8; 4];
+        reader.read_exact(&mut id_bytes)?;
+        let call_site_id = u32::from_le_bytes(id_bytes);
+        
+        Ok(Self {
+            return_address: (func_idx, offset),
+            signature_hash,
+            timestamp,
+            call_site_id,
+        })
+    }
+}
+
 /// Landing pad expectation for CFI validation
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LandingPadExpectation {
     /// Expected function index
     pub function_index: u32,
@@ -393,6 +731,87 @@ pub struct LandingPadExpectation {
     pub deadline: Option<u64>,
     /// Associated metadata
     pub metadata: CfiLandingPad,
+}
+
+impl Default for LandingPadExpectation {
+    fn default() -> Self {
+        Self {
+            function_index: 0,
+            instruction_offset: 0,
+            target_type: CfiTargetType::default(),
+            deadline: None,
+            metadata: CfiLandingPad::default(),
+        }
+    }
+}
+
+impl wrt_foundation::traits::Checksummable for LandingPadExpectation {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        checksum.update_slice(&self.function_index.to_le_bytes());
+        checksum.update_slice(&self.instruction_offset.to_le_bytes());
+        self.target_type.update_checksum(checksum);
+        if let Some(deadline) = self.deadline {
+            checksum.update_slice(&[1u8]); // has deadline
+            checksum.update_slice(&deadline.to_le_bytes());
+        } else {
+            checksum.update_slice(&[0u8]); // no deadline
+        }
+        // Skip metadata for now as it contains complex types
+    }
+}
+
+impl wrt_foundation::traits::ToBytes for LandingPadExpectation {
+    fn to_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        provider: &PStream,
+    ) -> wrt_foundation::Result<()> {
+        writer.write_all(&self.function_index.to_le_bytes())?;
+        writer.write_all(&self.instruction_offset.to_le_bytes())?;
+        self.target_type.to_bytes_with_provider(writer, provider)?;
+        if let Some(deadline) = self.deadline {
+            writer.write_u8(1u8)?; // has deadline
+            writer.write_all(&deadline.to_le_bytes())?;
+        } else {
+            writer.write_u8(0u8)?; // no deadline
+        }
+        // Skip metadata serialization for now
+        Ok(())
+    }
+}
+
+impl wrt_foundation::traits::FromBytes for LandingPadExpectation {
+    fn from_bytes_with_provider<PStream: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream,
+        provider: &PStream,
+    ) -> wrt_foundation::Result<Self> {
+        let mut func_bytes = [0u8; 4];
+        reader.read_exact(&mut func_bytes)?;
+        let function_index = u32::from_le_bytes(func_bytes);
+        
+        let mut offset_bytes = [0u8; 4];
+        reader.read_exact(&mut offset_bytes)?;
+        let instruction_offset = u32::from_le_bytes(offset_bytes);
+        
+        let target_type = CfiTargetType::from_bytes_with_provider(reader, provider)?;
+        
+        let has_deadline = reader.read_u8()?;
+        let deadline = if has_deadline == 1 {
+            let mut deadline_bytes = [0u8; 8];
+            reader.read_exact(&mut deadline_bytes)?;
+            Some(u64::from_le_bytes(deadline_bytes))
+        } else {
+            None
+        };
+        
+        Ok(Self {
+            function_index,
+            instruction_offset,
+            target_type,
+            deadline,
+            metadata: CfiLandingPad::default(), // Default metadata for now
+        })
+    }
 }
 
 /// CFI performance metrics
@@ -438,7 +857,12 @@ impl CfiControlFlowOps for DefaultCfiControlFlowOps {
                     shadow_stack_requirement: ShadowStackRequirement::None,
                     temporal_validation: None,
                 },
-                validation: Vec::new(),
+                validation: {
+                    #[cfg(feature = "alloc")]
+                    { Vec::new() }
+                    #[cfg(not(feature = "alloc"))]
+                    { crate::types::CfiRequirementVec::new(wrt_foundation::NoStdProvider::default()).unwrap_or_else(|_| panic!("Failed to create CfiRequirementVec")) }
+                },
             });
         }
 
@@ -473,15 +897,38 @@ impl CfiControlFlowOps for DefaultCfiControlFlowOps {
             };
 
         // Create validation requirements
+        #[cfg(any(feature = "std", feature = "alloc"))]
         let validation_requirements = vec![
             CfiValidationRequirement::TypeSignatureCheck {
                 expected_type_index: type_idx,
                 signature_hash: self.compute_signature_hash(type_idx),
             },
             CfiValidationRequirement::ControlFlowTargetCheck {
-                valid_targets: vec![table_idx], // Table entry validation
+                valid_targets: {
+                    #[cfg(feature = "alloc")]
+                    { vec![table_idx] }
+                    #[cfg(not(feature = "alloc"))]
+                    {
+                        let mut targets = CfiTargetVec::new(wrt_foundation::NoStdProvider::<1024>::default())
+                            .unwrap_or_else(|_| panic!("Failed to create CfiTargetVec"));
+                        targets.push(table_idx).unwrap_or_else(|_| panic!("Failed to push to CfiTargetVec"));
+                        targets
+                    }
+                }, // Table entry validation
             },
         ];
+        
+        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        let validation_requirements = {
+            // For no_std environments, create minimal validation
+            use wrt_foundation::BoundedVec;
+            let mut reqs = BoundedVec::<CfiValidationRequirement, 2, wrt_foundation::NoStdMemoryProvider<1024>>::new();
+            reqs.push(CfiValidationRequirement::TypeSignatureCheck {
+                expected_type_index: type_idx,
+                signature_hash: self.compute_signature_hash(type_idx),
+            }).unwrap_or_else(|_| panic!("Failed to add validation requirement"));
+            reqs
+        };
 
         // Update metrics
         context.metrics.indirect_calls_protected += 1;
@@ -540,16 +987,38 @@ impl CfiControlFlowOps for DefaultCfiControlFlowOps {
                     shadow_stack_requirement: ShadowStackRequirement::None,
                     temporal_validation: None,
                 },
-                validation: Vec::new(),
+                validation: {
+                    #[cfg(feature = "alloc")]
+                    { Vec::new() }
+                    #[cfg(not(feature = "alloc"))]
+                    { crate::types::CfiRequirementVec::new(wrt_foundation::NoStdProvider::default()).unwrap_or_else(|_| panic!("Failed to create CfiRequirementVec")) }
+                },
             });
         }
 
         // Create branch target validation
         let target_offset = self.resolve_label_to_offset(label_idx, context)?;
 
-        let validation_requirements = vec![CfiValidationRequirement::ControlFlowTargetCheck {
-            valid_targets: vec![target_offset],
-        }];
+        let validation_requirements = {
+            #[cfg(feature = "alloc")]
+            {
+                vec![CfiValidationRequirement::ControlFlowTargetCheck {
+                    valid_targets: vec![target_offset],
+                }]
+            }
+            #[cfg(not(feature = "alloc"))]
+            {
+                let mut reqs = crate::types::CfiRequirementVec::new(wrt_foundation::NoStdProvider::<1024>::default())
+                    .unwrap_or_else(|_| panic!("Failed to create CfiRequirementVec"));
+                let mut targets = crate::types::CfiTargetVec::new(wrt_foundation::NoStdProvider::<1024>::default())
+                    .unwrap_or_else(|_| panic!("Failed to create CfiTargetVec"));
+                targets.push(target_offset).unwrap_or_else(|_| panic!("Failed to push to CfiTargetVec"));
+                reqs.push(CfiValidationRequirement::ControlFlowTargetCheck {
+                    valid_targets: targets,
+                }).unwrap_or_else(|_| panic!("Failed to push to CfiRequirementVec"));
+                reqs
+            }
+        };
 
         // Update metrics
         context.metrics.branches_protected += 1;
@@ -614,7 +1083,7 @@ impl CfiControlFlowOps for DefaultCfiControlFlowOps {
                     self.validate_shadow_stack(context)?;
                 }
                 CfiValidationRequirement::ControlFlowTargetCheck { valid_targets } => {
-                    self.validate_control_flow_target(valid_targets, context)?;
+                    self.validate_control_flow_target(valid_targets.as_slice(), context)?;
                 }
                 CfiValidationRequirement::CallingConventionCheck => {
                     self.validate_calling_convention(context)?;
@@ -735,7 +1204,12 @@ impl DefaultCfiControlFlowOps {
 
         Ok(CfiSoftwareValidation {
             check_id: self.generate_cfi_check_id(context),
-            expected_values: Vec::new(), // Would be populated based on context
+            expected_values: {
+                #[cfg(feature = "alloc")]
+                { Vec::new() }
+                #[cfg(not(feature = "alloc"))]
+                { crate::types::CfiExpectedValueVec::new(wrt_foundation::NoStdProvider::default()).unwrap_or_else(|_| panic!("Failed to create CfiExpectedValueVec")) }
+            }, // Would be populated based on context
             validation_function,
         })
     }
@@ -756,16 +1230,71 @@ impl DefaultCfiControlFlowOps {
         0 // Placeholder
     }
 
-    fn determine_valid_predecessors(&self, target_type: CfiTargetType) -> Vec<CfiTargetType> {
+    fn determine_valid_predecessors(&self, target_type: CfiTargetType) -> crate::types::CfiTargetTypeVec {
         match target_type {
-            CfiTargetType::IndirectCall => vec![CfiTargetType::IndirectCall],
-            CfiTargetType::Return => vec![CfiTargetType::DirectCall, CfiTargetType::IndirectCall],
-            CfiTargetType::Branch => vec![CfiTargetType::Branch],
-            CfiTargetType::BlockEntry => vec![CfiTargetType::Branch],
+            CfiTargetType::IndirectCall => {
+                #[cfg(feature = "alloc")]
+                { vec![CfiTargetType::IndirectCall] }
+                #[cfg(not(feature = "alloc"))]
+                {
+                    let mut types = crate::types::CfiTargetTypeVec::new(wrt_foundation::NoStdProvider::<1024>::default())
+                        .unwrap_or_else(|_| panic!("Failed to create CfiTargetTypeVec"));
+                    types.push(CfiTargetType::IndirectCall).unwrap_or_else(|_| panic!("Failed to push to CfiTargetTypeVec"));
+                    types
+                }
+            },
+            CfiTargetType::Return => {
+                #[cfg(feature = "alloc")]
+                { vec![CfiTargetType::DirectCall, CfiTargetType::IndirectCall] }
+                #[cfg(not(feature = "alloc"))]
+                {
+                    let mut types = crate::types::CfiTargetTypeVec::new(wrt_foundation::NoStdProvider::<1024>::default())
+                        .unwrap_or_else(|_| panic!("Failed to create CfiTargetTypeVec"));
+                    types.push(CfiTargetType::DirectCall).unwrap_or_else(|_| panic!("Failed to push to CfiTargetTypeVec"));
+                    types.push(CfiTargetType::IndirectCall).unwrap_or_else(|_| panic!("Failed to push to CfiTargetTypeVec"));
+                    types
+                }
+            },
+            CfiTargetType::Branch => {
+                #[cfg(feature = "alloc")]
+                { vec![CfiTargetType::Branch] }
+                #[cfg(not(feature = "alloc"))]
+                {
+                    let mut types = crate::types::CfiTargetTypeVec::new(wrt_foundation::NoStdProvider::<1024>::default())
+                        .unwrap_or_else(|_| panic!("Failed to create CfiTargetTypeVec"));
+                    types.push(CfiTargetType::Branch).unwrap_or_else(|_| panic!("Failed to push to CfiTargetTypeVec"));
+                    types
+                }
+            },
+            CfiTargetType::BlockEntry => {
+                #[cfg(feature = "alloc")]
+                { vec![CfiTargetType::Branch] }
+                #[cfg(not(feature = "alloc"))]
+                {
+                    let mut types = crate::types::CfiTargetTypeVec::new(wrt_foundation::NoStdProvider::<1024>::default())
+                        .unwrap_or_else(|_| panic!("Failed to create CfiTargetTypeVec"));
+                    types.push(CfiTargetType::Branch).unwrap_or_else(|_| panic!("Failed to push to CfiTargetTypeVec"));
+                    types
+                }
+            },
             CfiTargetType::FunctionEntry => {
-                vec![CfiTargetType::DirectCall, CfiTargetType::IndirectCall]
+                #[cfg(feature = "alloc")]
+                { vec![CfiTargetType::DirectCall, CfiTargetType::IndirectCall] }
+                #[cfg(not(feature = "alloc"))]
+                {
+                    let mut types = crate::types::CfiTargetTypeVec::new(wrt_foundation::NoStdProvider::<1024>::default())
+                        .unwrap_or_else(|_| panic!("Failed to create CfiTargetTypeVec"));
+                    types.push(CfiTargetType::DirectCall).unwrap_or_else(|_| panic!("Failed to push to CfiTargetTypeVec"));
+                    types.push(CfiTargetType::IndirectCall).unwrap_or_else(|_| panic!("Failed to push to CfiTargetTypeVec"));
+                    types
+                }
             }
-            _ => Vec::new(),
+            _ => {
+                #[cfg(feature = "alloc")]
+                { Vec::new() }
+                #[cfg(not(feature = "alloc"))]
+                { crate::types::CfiTargetTypeVec::new(wrt_foundation::NoStdProvider::default()).unwrap_or_else(|_| panic!("Failed to create CfiTargetTypeVec")) }
+            },
         }
     }
 

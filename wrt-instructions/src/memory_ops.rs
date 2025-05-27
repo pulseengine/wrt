@@ -64,7 +64,11 @@ use crate::prelude::*;
 /// Memory trait defining the requirements for memory operations
 pub trait MemoryOperations {
     /// Read bytes from memory
+    #[cfg(feature = "alloc")]
     fn read_bytes(&self, offset: u32, len: u32) -> Result<Vec<u8>>;
+    
+    #[cfg(not(feature = "alloc"))]
+    fn read_bytes(&self, offset: u32, len: u32) -> Result<wrt_foundation::BoundedVec<u8, 65536, wrt_foundation::NoStdProvider<65536>>>;
 
     /// Write bytes to memory
     fn write_bytes(&mut self, offset: u32, bytes: &[u8]) -> Result<()>;
@@ -299,7 +303,7 @@ impl MemoryLoad {
                     return Err(Error::memory_error("Insufficient bytes read for f32 value"));
                 }
                 let value = f32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]);
-                Ok(Value::F32(value))
+                Ok(Value::F32(wrt_foundation::FloatBits32::from_float(value)))
             }
             (ValueType::F64, 64) => {
                 let bytes = memory.read_bytes(effective_addr, 8)?;
@@ -309,7 +313,7 @@ impl MemoryLoad {
                 let value = f64::from_le_bytes([
                     bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],
                 ]);
-                Ok(Value::F64(value))
+                Ok(Value::F64(wrt_foundation::FloatBits64::from_float(value)))
             }
             (ValueType::I32, 8) => {
                 let bytes = memory.read_bytes(effective_addr, 1)?;
@@ -553,11 +557,11 @@ impl MemoryStore {
                 memory.write_bytes(effective_addr, &bytes)
             }
             (ValueType::F32, 32, Value::F32(v)) => {
-                let bytes = v.to_le_bytes();
+                let bytes = v.to_bits().to_le_bytes();
                 memory.write_bytes(effective_addr, &bytes)
             }
             (ValueType::F64, 64, Value::F64(v)) => {
-                let bytes = v.to_le_bytes();
+                let bytes = v.to_bits().to_le_bytes();
                 memory.write_bytes(effective_addr, &bytes)
             }
 

@@ -100,28 +100,28 @@ impl<T: ComparisonContext> PureInstruction<T, Error> for ComparisonOp {
         match self {
             // i32 equality operations
             Self::I32Eq => {
-                let b = context.pop_comparison_value()?.as_i32().ok_or_else(|| {
+                let b = context.pop_comparison_value()?.into_i32().map_err(|_| {
                     Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected I32 for i32.eq operand")
                 })?;
-                let a = context.pop_comparison_value()?.as_i32().ok_or_else(|| {
+                let a = context.pop_comparison_value()?.into_i32().map_err(|_| {
                     Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected I32 for i32.eq operand")
                 })?;
                 context.push_comparison_value(Value::I32(if a == b { 1 } else { 0 }))
             }
             Self::I32Ne => {
-                let b = context.pop_comparison_value()?.as_i32().ok_or_else(|| {
+                let b = context.pop_comparison_value()?.into_i32().map_err(|_| {
                     Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected I32 for i32.ne operand")
                 })?;
-                let a = context.pop_comparison_value()?.as_i32().ok_or_else(|| {
+                let a = context.pop_comparison_value()?.into_i32().map_err(|_| {
                     Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected I32 for i32.ne operand")
                 })?;
                 context.push_comparison_value(Value::I32(if a != b { 1 } else { 0 }))
             }
             Self::I32LtS => {
-                let b = context.pop_comparison_value()?.as_i32().ok_or_else(|| {
+                let b = context.pop_comparison_value()?.into_i32().map_err(|_| {
                     Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected I32 for i32.lt_s operand")
                 })?;
-                let a = context.pop_comparison_value()?.as_i32().ok_or_else(|| {
+                let a = context.pop_comparison_value()?.into_i32().map_err(|_| {
                     Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected I32 for i32.lt_s operand")
                 })?;
                 context.push_comparison_value(Value::I32(if a < b { 1 } else { 0 }))
@@ -136,10 +136,10 @@ impl<T: ComparisonContext> PureInstruction<T, Error> for ComparisonOp {
                 context.push_comparison_value(Value::I32(if a < b { 1 } else { 0 }))
             }
             Self::I32GtS => {
-                let b = context.pop_comparison_value()?.as_i32().ok_or_else(|| {
+                let b = context.pop_comparison_value()?.into_i32().map_err(|_| {
                     Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected I32 for i32.gt_s operand")
                 })?;
-                let a = context.pop_comparison_value()?.as_i32().ok_or_else(|| {
+                let a = context.pop_comparison_value()?.into_i32().map_err(|_| {
                     Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected I32 for i32.gt_s operand")
                 })?;
                 context.push_comparison_value(Value::I32(if a > b { 1 } else { 0 }))
@@ -154,10 +154,10 @@ impl<T: ComparisonContext> PureInstruction<T, Error> for ComparisonOp {
                 context.push_comparison_value(Value::I32(if a > b { 1 } else { 0 }))
             }
             Self::I32LeS => {
-                let b = context.pop_comparison_value()?.as_i32().ok_or_else(|| {
+                let b = context.pop_comparison_value()?.into_i32().map_err(|_| {
                     Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected I32 for i32.le_s operand")
                 })?;
-                let a = context.pop_comparison_value()?.as_i32().ok_or_else(|| {
+                let a = context.pop_comparison_value()?.into_i32().map_err(|_| {
                     Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected I32 for i32.le_s operand")
                 })?;
                 context.push_comparison_value(Value::I32(if a <= b { 1 } else { 0 }))
@@ -172,10 +172,10 @@ impl<T: ComparisonContext> PureInstruction<T, Error> for ComparisonOp {
                 context.push_comparison_value(Value::I32(if a <= b { 1 } else { 0 }))
             }
             Self::I32GeS => {
-                let b = context.pop_comparison_value()?.as_i32().ok_or_else(|| {
+                let b = context.pop_comparison_value()?.into_i32().map_err(|_| {
                     Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected I32 for i32.ge_s operand")
                 })?;
-                let a = context.pop_comparison_value()?.as_i32().ok_or_else(|| {
+                let a = context.pop_comparison_value()?.into_i32().map_err(|_| {
                     Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected I32 for i32.ge_s operand")
                 })?;
                 context.push_comparison_value(Value::I32(if a >= b { 1 } else { 0 }))

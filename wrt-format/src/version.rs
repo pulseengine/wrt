@@ -194,16 +194,18 @@ impl VersionInfo {
     /// Check if a feature is available (either experimental or fully supported)
     pub fn is_feature_available(&self, feature: ComponentModelFeature) -> bool {
         match self.features.get(&feature) {
-            Some(status) => *status != FeatureStatus::Unavailable,
-            None => false,
+            Ok(Some(status)) => *status != FeatureStatus::Unavailable,
+            Ok(None) => false,
+            Err(_) => false,
         }
     }
 
     /// Get the status of a feature
     pub fn get_feature_status(&self, feature: ComponentModelFeature) -> FeatureStatus {
         match self.features.get(&feature) {
-            Some(status) => *status,
-            None => FeatureStatus::Unavailable,
+            Ok(Some(status)) => *status,
+            Ok(None) => FeatureStatus::Unavailable,
+            Err(_) => FeatureStatus::Unavailable,
         }
     }
 

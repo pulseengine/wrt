@@ -12,7 +12,10 @@ use wrt_foundation::{
     values::Value,
 };
 
-use crate::prelude::*;
+use crate::{
+    memory_layout::{calculate_layout, MemoryLayout},
+    prelude::*,
+};
 
 // Use TypesValType for the canonical ValType
 type CanonicalValType = TypesValType;
@@ -1823,4 +1826,9 @@ mod tests {
             panic!("Expected String values");
         }
     }
+}
+
+/// Calculate the size in bytes of a value type for memory layout purposes
+pub fn size_in_bytes(ty: &FormatValType) -> usize {
+    calculate_layout(ty).size
 }

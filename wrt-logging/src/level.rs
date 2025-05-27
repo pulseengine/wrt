@@ -2,11 +2,7 @@
 //!
 //! This module provides types for representing log levels in component logging.
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::string::{String, ToString};
 use core::str::FromStr;
-#[cfg(feature = "std")]
-use std::string::{String, ToString};
 
 /// Log levels for WebAssembly component logging
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]

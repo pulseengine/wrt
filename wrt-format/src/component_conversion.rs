@@ -98,7 +98,7 @@ mod tests {
     #[test]
     fn test_value_type_conversion() {
         type TestProvider = wrt_foundation::traits::DefaultMemoryProvider;
-        
+
         // Test basic primitive types
         let s32_val: FormatValType<TestProvider> = FormatValType::S32;
         let i32_val = format_val_type_to_value_type(&s32_val).unwrap();
@@ -115,7 +115,8 @@ mod tests {
 
         // Test roundtrip conversion for basic types
         let i32_val = ValueType::I32;
-        let format_val: FormatValType<TestProvider> = value_type_to_format_val_type(&i32_val).unwrap();
+        let format_val: FormatValType<TestProvider> =
+            value_type_to_format_val_type(&i32_val).unwrap();
         let roundtrip = format_val_type_to_value_type(&format_val).unwrap();
         assert_eq!(i32_val, roundtrip);
     }

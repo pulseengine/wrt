@@ -40,10 +40,6 @@ extern crate alloc;
 // Note: This crate supports no_std without alloc, using bounded collections
 // from wrt-foundation
 
-// When no_std but alloc is available
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-extern crate alloc;
-
 // Import prelude for common type access
 pub mod prelude;
 
@@ -52,7 +48,7 @@ pub mod comparison_ops;
 pub mod control_ops;
 pub mod conversion_ops;
 pub mod error_utils;
-pub mod execution;
+// pub mod execution; // Temporarily disabled due to compilation issues
 pub mod instruction_traits;
 pub mod memory_ops;
 pub mod table_ops;
@@ -88,7 +84,7 @@ pub use crate::control_ops::{
     // BranchTarget is already exported from control_ops above
 }; // Renamed Block to ControlFlowBlock to avoid clashes
 // Re-export main execution trait and specific Op enums
-pub use crate::execution::PureExecutionContext;
+// pub use crate::execution::PureExecutionContext; // Temporarily disabled
 pub use crate::memory_ops::{MemoryLoad, MemoryStore}; // Removed MemoryArg
 pub use crate::{
     arithmetic_ops::ArithmeticOp, comparison_ops::ComparisonOp, conversion_ops::ConversionOp,

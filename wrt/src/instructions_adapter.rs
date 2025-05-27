@@ -18,9 +18,9 @@ pub use wrt_instructions::{
     numeric::NumericInstruction,
     Instruction, InstructionExecutable,
 };
+use wrt_runtime::stackless::{StacklessEngine, StacklessFrame};
 
 use crate::prelude::*;
-use wrt_runtime::stackless::{StacklessEngine, StacklessFrame};
 
 /// Execution context adapter for instructions
 ///

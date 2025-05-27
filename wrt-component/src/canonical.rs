@@ -11,7 +11,13 @@ use wrt_foundation::resource::ResourceOperation as FormatResourceOperation;
 // Additional dependencies not in prelude
 use wrt_runtime::Memory;
 
-use crate::prelude::*;
+use crate::{
+    memory_layout::{calculate_layout, MemoryLayout},
+    prelude::*,
+    string_encoding::{
+        lift_string_with_options, lower_string_with_options, CanonicalStringOptions, StringEncoding,
+    },
+};
 
 // Maximum allowed allocation size for safety
 const MAX_BUFFER_SIZE: usize = 10 * 1024 * 1024; // 10MB
@@ -29,6 +35,8 @@ pub struct CanonicalABI {
     interceptor: Option<Arc<LinkInterceptor>>,
     /// Metrics for canonical operations
     metrics: Arc<Mutex<CanonicalMetrics>>,
+    /// String encoding options
+    string_options: CanonicalStringOptions,
 }
 
 /// Metrics for canonical operations
@@ -57,6 +65,7 @@ impl CanonicalABI {
             verification_level: VerificationLevel::Critical,
             interceptor: None,
             metrics: Arc::new(Mutex::new(CanonicalMetrics::default())),
+            string_options: CanonicalStringOptions::default(),
         }
     }
 
@@ -80,6 +89,12 @@ impl CanonicalABI {
     /// Set the interceptor for canonical operations
     pub fn with_interceptor(mut self, interceptor: Arc<LinkInterceptor>) -> Self {
         self.interceptor = Some(interceptor);
+        self
+    }
+
+    /// Set the string encoding options
+    pub fn with_string_encoding(mut self, encoding: StringEncoding) -> Self {
+        self.string_options.encoding = encoding;
         self
     }
 
@@ -180,23 +195,40 @@ impl CanonicalABI {
                     "Expected i32 for bool".to_string(),
                 ))
             }
-            ValType::S8
-            | ValType::U8
-            | ValType::S16
-            | ValType::U16
-            | ValType::S32
-            | ValType::U32 => self.lift_s32(addr, memory_bytes),
-            ValType::S64 | ValType::U64 => self.lift_s64(addr, memory_bytes),
+            ValType::S8 => self.lift_s8(addr, memory_bytes),
+            ValType::U8 => self.lift_u8(addr, memory_bytes),
+            ValType::S16 => self.lift_s16(addr, memory_bytes),
+            ValType::U16 => self.lift_u16(addr, memory_bytes),
+            ValType::S32 => self.lift_s32(addr, memory_bytes),
+            ValType::U32 => self.lift_u32(addr, memory_bytes),
+            ValType::S64 => self.lift_s64(addr, memory_bytes),
+            ValType::U64 => self.lift_u64(addr, memory_bytes),
             ValType::F32 => self.lift_f32(addr, memory_bytes),
             ValType::F64 => self.lift_f64(addr, memory_bytes),
-            // For all other types, return a not implemented error for now
+            ValType::Char => self.lift_char(addr, memory_bytes),
+            ValType::String => self.lift_string(addr, memory_bytes),
+            ValType::List(inner_ty) => self.lift_list(inner_ty, addr, resource_table, memory_bytes),
+            ValType::Record(fields) => self.lift_record(fields, addr, resource_table, memory_bytes),
+            ValType::Tuple(types) => self.lift_tuple(types, addr, resource_table, memory_bytes),
+            ValType::Variant(cases) => self.lift_variant(cases, addr, resource_table, memory_bytes),
+            ValType::Enum(cases) => self.lift_enum(cases, addr, memory_bytes),
+            ValType::Option(inner_ty) => {
+                self.lift_option(inner_ty, addr, resource_table, memory_bytes)
+            }
+            ValType::Result(ok_ty, err_ty) => self.lift_result(
+                ok_ty.as_ref(),
+                err_ty.as_ref(),
+                addr,
+                resource_table,
+                memory_bytes,
+            ),
+            ValType::Flags(names) => self.lift_flags(names, addr, memory_bytes),
+            ValType::Own(_) => self.lift_resource(addr, resource_table, memory_bytes),
+            ValType::Borrow(_) => self.lift_borrow(addr, resource_table, memory_bytes),
             _ => Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::NOT_IMPLEMENTED,
-                NotImplementedError(format!(
-                    "Lifting type {:?} is not implemented in simplified version",
-                    ty
-                )),
+                NotImplementedError(format!("Lifting type {:?} is not implemented", ty)),
             )),
         }
     }
@@ -217,7 +249,8 @@ impl CanonicalABI {
             values.push(Box::new(value));
 
             // Advance address based on the size of the current type
-            current_addr += crate::values::size_in_bytes(ty) as u32;
+            let layout = calculate_layout(ty);
+            current_addr += layout.size as u32;
         }
 
         Ok(Value::Tuple(values))
@@ -260,7 +293,8 @@ impl CanonicalABI {
             values.push(Box::new(value));
 
             // Advance address based on the size of inner type
-            current_addr += crate::values::size_in_bytes(inner_ty) as u32;
+            let layout = calculate_layout(inner_ty);
+            current_addr += layout.size as u32;
         }
 
         Ok(Value::List(values))
@@ -465,64 +499,103 @@ impl CanonicalABI {
     }
 
     fn lift_string(&self, addr: u32, memory_bytes: &[u8]) -> Result<Value> {
-        // String format in canonical ABI:
-        // - 4 bytes length prefix (u32)
-        // - UTF-8 encoded string data
-        self.check_bounds(addr, 4, memory_bytes)?;
-
-        let len = u32::from_le_bytes([
-            memory_bytes[addr as usize],
-            memory_bytes[addr as usize + 1],
-            memory_bytes[addr as usize + 2],
-            memory_bytes[addr as usize + 3],
-        ]) as usize;
-
-        // Check bounds for the string content
-        self.check_bounds(addr + 4, len as u32, memory_bytes)?;
-
-        // Extract the string bytes
-        let string_bytes = &memory_bytes[(addr as usize + 4)..(addr as usize + 4 + len)];
-
-        // Convert to a Rust string
-        match std::str::from_utf8(string_bytes) {
-            Ok(s) => Ok(Value::String(s.to_string())),
-            Err(e) => Err(Error::new(
-                ErrorCategory::Runtime,
-                codes::INVALID_TYPE,
-                format!("Invalid UTF-8 string: {}", e),
-            )),
-        }
+        // Use the string encoding support
+        let string = lift_string_with_options(addr, memory_bytes, &self.string_options)?;
+        Ok(Value::String(string))
     }
 
     // Complex type lifting operations
     fn lift_list(
         &self,
-        _inner_ty: &Box<ValType>,
-        _addr: u32,
-        _resource_table: &ResourceTable,
-        _memory_bytes: &[u8],
+        inner_ty: &Box<ValType>,
+        addr: u32,
+        resource_table: &ResourceTable,
+        memory_bytes: &[u8],
     ) -> Result<Value> {
-        // Placeholder implementation
-        Err(Error::new(
-            ErrorCategory::Runtime,
-            codes::NOT_IMPLEMENTED,
-            NotImplementedError("List lifting not yet implemented".to_string()),
-        ))
+        // List format in canonical ABI:
+        // - 4 bytes pointer to data
+        // - 4 bytes length
+        self.check_bounds(addr, 8, memory_bytes)?;
+
+        let data_ptr = u32::from_le_bytes([
+            memory_bytes[addr as usize],
+            memory_bytes[addr as usize + 1],
+            memory_bytes[addr as usize + 2],
+            memory_bytes[addr as usize + 3],
+        ]);
+
+        let length = u32::from_le_bytes([
+            memory_bytes[addr as usize + 4],
+            memory_bytes[addr as usize + 5],
+            memory_bytes[addr as usize + 6],
+            memory_bytes[addr as usize + 7],
+        ]) as usize;
+
+        // Validate the length
+        if length > MAX_BUFFER_SIZE {
+            return Err(Error::new(
+                ErrorCategory::Runtime,
+                codes::OUT_OF_BOUNDS_ERROR,
+                format!("List length {} exceeds maximum allowed size", length),
+            ));
+        }
+
+        // Calculate element size
+        let element_size = calculate_layout(inner_ty).size as u32;
+        let total_size = element_size.checked_mul(length as u32).ok_or_else(|| {
+            Error::new(
+                ErrorCategory::Runtime,
+                codes::OUT_OF_BOUNDS_ERROR,
+                "List size overflow".to_string(),
+            )
+        })?;
+
+        // Check bounds for the entire list data
+        self.check_bounds(data_ptr, total_size, memory_bytes)?;
+
+        // Lift each element
+        let mut values = Vec::new();
+        let mut current_addr = data_ptr;
+
+        for _ in 0..length {
+            let value = self.lift_value(inner_ty, current_addr, resource_table, memory_bytes)?;
+            values.push(Box::new(value));
+            current_addr += element_size;
+        }
+
+        // Update metrics
+        {
+            let mut metrics = self.metrics.lock().unwrap();
+            metrics.lift_bytes += 8 + total_size as u64;
+            metrics.max_lift_bytes = metrics.max_lift_bytes.max(8 + total_size as u64);
+        }
+
+        Ok(Value::List(values))
     }
 
     fn lift_record(
         &self,
-        _fields: &Vec<(String, ValType)>,
-        _addr: u32,
-        _resource_table: &ResourceTable,
-        _memory_bytes: &[u8],
+        fields: &Vec<(String, ValType)>,
+        addr: u32,
+        resource_table: &ResourceTable,
+        memory_bytes: &[u8],
     ) -> Result<Value> {
-        // Placeholder implementation
-        Err(Error::new(
-            ErrorCategory::Runtime,
-            codes::NOT_IMPLEMENTED,
-            NotImplementedError("Record lifting not yet implemented".to_string()),
-        ))
+        // Records are stored as a sequence of field values
+        let mut current_addr = addr;
+        let mut record_map = HashMap::new();
+
+        for (field_name, field_type) in fields {
+            // Lift the field value
+            let field_value =
+                self.lift_value(field_type, current_addr, resource_table, memory_bytes)?;
+            record_map.insert(field_name.clone(), Box::new(field_value));
+
+            // Advance address by the size of the field
+            let layout = calculate_layout(field_type);
+            current_addr += layout.size as u32;
+        }
+
+        Ok(Value::Record(record_map))
     }
 
     fn lift_variant(
@@ -563,44 +636,114 @@ impl CanonicalABI {
         }
     }
 
-    fn lift_enum(&self, _cases: &Vec<String>, _addr: u32, _memory_bytes: &[u8]) -> Result<Value> {
-        // Placeholder implementation
-        Err(Error::new(
-            ErrorCategory::Runtime,
-            codes::NOT_IMPLEMENTED,
-            NotImplementedError("Enum lifting not yet implemented".to_string()),
-        ))
+    fn lift_enum(&self, cases: &Vec<String>, addr: u32, memory_bytes: &[u8]) -> Result<Value> {
+        // Enum format in canonical ABI:
+        // - Discriminant size depends on the number of cases:
+        //   - 1-256 cases: 1 byte
+        //   - 257-65536 cases: 2 bytes
+        //   - More: 4 bytes
+        let discriminant = if cases.len() <= 256 {
+            self.check_bounds(addr, 1, memory_bytes)?;
+            memory_bytes[addr as usize] as u32
+        } else if cases.len() <= 65536 {
+            self.check_bounds(addr, 2, memory_bytes)?;
+            u16::from_le_bytes([memory_bytes[addr as usize], memory_bytes[addr as usize + 1]])
+                as u32
+        } else {
+            self.check_bounds(addr, 4, memory_bytes)?;
+            u32::from_le_bytes([
+                memory_bytes[addr as usize],
+                memory_bytes[addr as usize + 1],
+                memory_bytes[addr as usize + 2],
+                memory_bytes[addr as usize + 3],
+            ])
+        };
+
+        // Validate discriminant
+        if discriminant as usize >= cases.len() {
+            return Err(Error::new(
+                ErrorCategory::Runtime,
+                codes::INVALID_TYPE,
+                format!("Invalid enum discriminant: {} (max: {})", discriminant, cases.len() - 1),
+            ));
+        }
+
+        Ok(Value::Enum(discriminant))
     }
 
     fn lift_option(
         &self,
-        _inner_ty: &Box<ValType>,
-        _addr: u32,
-        _resource_table: &ResourceTable,
-        _memory_bytes: &[u8],
+        inner_ty: &Box<ValType>,
+        addr: u32,
+        resource_table: &ResourceTable,
+        memory_bytes: &[u8],
     ) -> Result<Value> {
-        // Placeholder implementation
-        Err(Error::new(
-            ErrorCategory::Runtime,
-            codes::NOT_IMPLEMENTED,
-            NotImplementedError("Option lifting not yet implemented".to_string()),
-        ))
+        // Option format in canonical ABI:
+        // - 1 byte discriminant (0 = none, 1 = some)
+        // - If some, payload follows
+        self.check_bounds(addr, 1, memory_bytes)?;
+        let discriminant = memory_bytes[addr as usize];
+
+        match discriminant {
+            0 => Ok(Value::Option(None)),
+            1 => {
+                // Lift the payload
+                let payload_addr = addr + 1;
+                let payload =
+                    self.lift_value(inner_ty, payload_addr, resource_table, memory_bytes)?;
+                Ok(Value::Option(Some(Box::new(payload))))
+            }
+            _ => Err(Error::new(
+                ErrorCategory::Runtime,
+                codes::INVALID_TYPE,
+                format!("Invalid option discriminant: {}", discriminant),
+            )),
+        }
     }
 
     fn lift_result(
         &self,
-        _ok_ty: Option<&Box<ValType>>,
-        _err_ty: Option<&Box<ValType>>,
-        _addr: u32,
-        _resource_table: &ResourceTable,
-        _memory_bytes: &[u8],
+        ok_ty: Option<&Box<ValType>>,
+        err_ty: Option<&Box<ValType>>,
+        addr: u32,
+        resource_table: &ResourceTable,
+        memory_bytes: &[u8],
     ) -> Result<Value> {
-        // Placeholder implementation
-        Err(Error::new(
-            ErrorCategory::Runtime,
-            codes::NOT_IMPLEMENTED,
-            NotImplementedError("Result lifting not yet implemented".to_string()),
-        ))
+        // Result format in canonical ABI:
+        // - 1 byte discriminant (0 = ok, 1 = err)
+        // - If ok/err has a type, payload follows
+        self.check_bounds(addr, 1, memory_bytes)?;
+        let discriminant = memory_bytes[addr as usize];
+
+        match discriminant {
+            0 => {
+                // Ok variant
+                if let Some(ty) = ok_ty {
+                    let payload_addr = addr + 1;
+                    let payload =
+                        self.lift_value(ty, payload_addr, resource_table, memory_bytes)?;
+                    Ok(Value::Result(Ok(Some(Box::new(payload)))))
+                } else {
+                    Ok(Value::Result(Ok(None)))
+                }
+            }
+            1 => {
+                // Err variant
+                if let Some(ty) = err_ty {
+                    let payload_addr = addr + 1;
+                    let payload =
+                        self.lift_value(ty, payload_addr, resource_table, memory_bytes)?;
+                    Ok(Value::Result(Err(Some(Box::new(payload)))))
+                } else {
+                    Ok(Value::Result(Err(None)))
+                }
+            }
+            _ => Err(Error::new(
+                ErrorCategory::Runtime,
+                codes::INVALID_TYPE,
+                format!("Invalid result discriminant: {}", discriminant),
+            )),
+        }
     }
 
     // Primitive lowering operations
@@ -725,51 +868,258 @@ impl CanonicalABI {
     }
 
     fn lower_string(&self, value: &str, addr: u32, memory_bytes: &mut [u8]) -> Result<()> {
-        let len = value.len();
-        self.check_bounds(addr, 4 + len as u32, memory_bytes)?;
+        // Use the string encoding support
+        lower_string_with_options(value, addr, memory_bytes, &self.string_options)
+    }
 
-        // Write length prefix
-        let len_bytes = (len as u32).to_le_bytes();
+    fn lower_list(
+        &self,
+        values: &[Box<wrt_foundation::values::Value>],
+        inner_ty: &ValType,
+        addr: u32,
+        resource_table: &ResourceTable,
+        memory_bytes: &mut [u8],
+    ) -> Result<()> {
+        // List format in canonical ABI:
+        // - 4 bytes pointer to data (we'll use addr + 8 for simplicity)
+        // - 4 bytes length
+        self.check_bounds(addr, 8, memory_bytes)?;
+
+        let length = values.len() as u32;
+        let data_ptr = addr + 8; // Data follows the list header
+
+        // Write pointer
+        let ptr_bytes = data_ptr.to_le_bytes();
         for i in 0..4 {
-            memory_bytes[addr as usize + i] = len_bytes[i];
+            memory_bytes[addr as usize + i] = ptr_bytes[i];
         }
 
-        // Write string content
-        for (i, byte) in value.as_bytes().iter().enumerate() {
-            memory_bytes[addr as usize + 4 + i] = *byte;
+        // Write length
+        let len_bytes = length.to_le_bytes();
+        for i in 0..4 {
+            memory_bytes[addr as usize + 4 + i] = len_bytes[i];
+        }
+
+        // Calculate element size
+        let element_size = calculate_layout(inner_ty).size as u32;
+        let total_size = element_size * length;
+
+        // Check bounds for the list data
+        self.check_bounds(data_ptr, total_size, memory_bytes)?;
+
+        // Lower each element
+        let mut current_addr = data_ptr;
+        for value in values {
+            self.lower_value(value, inner_ty, current_addr, resource_table, memory_bytes)?;
+            current_addr += element_size;
+        }
+
+        // Update metrics
+        {
+            let mut metrics = self.metrics.lock().unwrap();
+            metrics.lower_bytes += 8 + total_size as u64;
+            metrics.max_lower_bytes = metrics.max_lower_bytes.max(8 + total_size as u64);
         }
 
         Ok(())
     }
 
-    fn lower_list(
+    fn lower_value(
         &self,
-        _values: &[Value],
-        _addr: u32,
-        _resource_table: &ResourceTable,
-        _memory_bytes: &mut [u8],
+        value: &wrt_foundation::values::Value,
+        ty: &ValType,
+        addr: u32,
+        resource_table: &ResourceTable,
+        memory_bytes: &mut [u8],
     ) -> Result<()> {
-        // Implementation details
-        Err(Error::new(
-            ErrorCategory::Runtime,
-            codes::NOT_IMPLEMENTED,
-            NotImplementedError("Lower list not implemented".to_string()),
-        ))
+        match ty {
+            ValType::Bool => {
+                if let Some(b) = value.as_bool() {
+                    self.lower_bool(b, addr, memory_bytes)
+                } else if let Some(i) = value.as_i32() {
+                    self.lower_bool(i != 0, addr, memory_bytes)
+                } else {
+                    Err(Error::new(
+                        ErrorCategory::Runtime,
+                        codes::TYPE_MISMATCH,
+                        "Expected boolean value".to_string(),
+                    ))
+                }
+            }
+            ValType::S8 => {
+                if let Some(v) = value.as_i8() {
+                    self.lower_s8(v, addr, memory_bytes)
+                } else if let Some(i) = value.as_i32() {
+                    self.lower_s8(i as i8, addr, memory_bytes)
+                } else {
+                    Err(Error::new(
+                        ErrorCategory::Runtime,
+                        codes::TYPE_MISMATCH,
+                        "Expected i8 value".to_string(),
+                    ))
+                }
+            }
+            ValType::U8 => {
+                if let Some(v) = value.as_u8() {
+                    self.lower_u8(v, addr, memory_bytes)
+                } else if let Some(i) = value.as_i32() {
+                    self.lower_u8(i as u8, addr, memory_bytes)
+                } else {
+                    Err(Error::new(
+                        ErrorCategory::Runtime,
+                        codes::TYPE_MISMATCH,
+                        "Expected u8 value".to_string(),
+                    ))
+                }
+            }
+            ValType::S16 => {
+                if let Some(v) = value.as_i16() {
+                    self.lower_s16(v, addr, memory_bytes)
+                } else if let Some(i) = value.as_i32() {
+                    self.lower_s16(i as i16, addr, memory_bytes)
+                } else {
+                    Err(Error::new(
+                        ErrorCategory::Runtime,
+                        codes::TYPE_MISMATCH,
+                        "Expected i16 value".to_string(),
+                    ))
+                }
+            }
+            ValType::U16 => {
+                if let Some(v) = value.as_u16() {
+                    self.lower_u16(v, addr, memory_bytes)
+                } else if let Some(i) = value.as_i32() {
+                    self.lower_u16(i as u16, addr, memory_bytes)
+                } else {
+                    Err(Error::new(
+                        ErrorCategory::Runtime,
+                        codes::TYPE_MISMATCH,
+                        "Expected u16 value".to_string(),
+                    ))
+                }
+            }
+            ValType::S32 | ValType::U32 => {
+                if let Some(v) = value.as_i32() {
+                    self.lower_s32(v, addr, memory_bytes)
+                } else if let Some(v) = value.as_u32() {
+                    self.lower_u32(v, addr, memory_bytes)
+                } else {
+                    Err(Error::new(
+                        ErrorCategory::Runtime,
+                        codes::TYPE_MISMATCH,
+                        "Expected i32/u32 value".to_string(),
+                    ))
+                }
+            }
+            ValType::S64 | ValType::U64 => {
+                if let Some(v) = value.as_i64() {
+                    self.lower_s64(v, addr, memory_bytes)
+                } else if let Some(v) = value.as_u64() {
+                    self.lower_u64(v, addr, memory_bytes)
+                } else {
+                    Err(Error::new(
+                        ErrorCategory::Runtime,
+                        codes::TYPE_MISMATCH,
+                        "Expected i64/u64 value".to_string(),
+                    ))
+                }
+            }
+            ValType::F32 => {
+                if let Some(v) = value.as_f32() {
+                    self.lower_f32(v, addr, memory_bytes)
+                } else {
+                    Err(Error::new(
+                        ErrorCategory::Runtime,
+                        codes::TYPE_MISMATCH,
+                        "Expected f32 value".to_string(),
+                    ))
+                }
+            }
+            ValType::F64 => {
+                if let Some(v) = value.as_f64() {
+                    self.lower_f64(v, addr, memory_bytes)
+                } else {
+                    Err(Error::new(
+                        ErrorCategory::Runtime,
+                        codes::TYPE_MISMATCH,
+                        "Expected f64 value".to_string(),
+                    ))
+                }
+            }
+            ValType::Char => {
+                if let Some(c) = value.as_char() {
+                    self.lower_char(c, addr, memory_bytes)
+                } else {
+                    Err(Error::new(
+                        ErrorCategory::Runtime,
+                        codes::TYPE_MISMATCH,
+                        "Expected char value".to_string(),
+                    ))
+                }
+            }
+            ValType::String => {
+                if let Some(s) = value.as_str() {
+                    self.lower_string(s, addr, memory_bytes)
+                } else {
+                    Err(Error::new(
+                        ErrorCategory::Runtime,
+                        codes::TYPE_MISMATCH,
+                        "Expected string value".to_string(),
+                    ))
+                }
+            }
+            ValType::List(inner_ty) => {
+                if let Some(list) = value.as_list() {
+                    self.lower_list(list, inner_ty, addr, resource_table, memory_bytes)
+                } else {
+                    Err(Error::new(
+                        ErrorCategory::Runtime,
+                        codes::TYPE_MISMATCH,
+                        "Expected list value".to_string(),
+                    ))
+                }
+            }
+            _ => Err(Error::new(
+                ErrorCategory::Runtime,
+                codes::NOT_IMPLEMENTED,
+                NotImplementedError(format!("Lowering type {:?} not implemented", ty)),
+            )),
+        }
     }
 
     fn lower_record(
         &self,
-        _fields: &HashMap<String, Value>,
-        _addr: u32,
-        _resource_table: &ResourceTable,
-        _memory_bytes: &mut [u8],
+        record_fields: &HashMap<String, Box<wrt_foundation::values::Value>>,
+        field_types: &[(String, ValType)],
+        addr: u32,
+        resource_table: &ResourceTable,
+        memory_bytes: &mut [u8],
     ) -> Result<()> {
-        // Placeholder implementation
-        Err(Error::new(
-            ErrorCategory::Runtime,
-            codes::NOT_IMPLEMENTED,
-            NotImplementedError("Record lowering not yet implemented".to_string()),
-        ))
+        // Records are stored as a sequence of field values in the order specified by
+        // field_types
+        let mut current_addr = addr;
+
+        for (field_name, field_type) in field_types {
+            if let Some(field_value) = record_fields.get(field_name) {
+                self.lower_value(
+                    field_value,
+                    field_type,
+                    current_addr,
+                    resource_table,
+                    memory_bytes,
+                )?;
+                let layout = calculate_layout(field_type);
+                current_addr += layout.size as u32;
+            } else {
+                return Err(Error::new(
+                    ErrorCategory::Runtime,
+                    codes::TYPE_MISMATCH,
+                    format!("Missing required field '{}' in record", field_name),
+                ));
+            }
+        }
+
+        Ok(())
     }
 
     fn lower_variant(
