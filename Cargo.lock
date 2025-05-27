@@ -4102,7 +4102,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "walkdir",
- "wast 230.0.0",
+ "wast 231.0.0",
  "wrt-component",
  "wrt-decoder",
  "wrt-error",
