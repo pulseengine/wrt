@@ -83,6 +83,9 @@ pub use wrt_format::{
     // Format-specific types
     types::{FormatBlockType, Limits, MemoryIndexType},
 };
+// Component model types (require alloc)
+#[cfg(feature = "alloc")]
+pub use wrt_foundation::component_value::{ComponentValue, ValType};
 // Conversion utilities from wrt-foundation
 #[cfg(feature = "conversion")]
 pub use wrt_foundation::conversion::{ref_type_to_val_type, val_type_to_ref_type};
@@ -94,9 +97,6 @@ pub use wrt_foundation::{
     types::{BlockType, FuncType, GlobalType, MemoryType, RefType, TableType, ValueType},
     values::Value,
 };
-// Component model types (require alloc)
-#[cfg(feature = "alloc")]
-pub use wrt_foundation::component_value::{ComponentValue, ValType};
 
 // Re-export from this crate
 pub use crate::{

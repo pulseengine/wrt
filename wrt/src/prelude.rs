@@ -6,6 +6,17 @@
 //! individual modules.
 
 // Core imports for both std and no_std environments
+// Re-export from alloc when no_std but alloc is available
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+pub use alloc::{
+    boxed::Box,
+    collections::{BTreeMap as HashMap, BTreeSet as HashSet},
+    format,
+    string::{String, ToString},
+    sync::Arc,
+    vec,
+    vec::Vec,
+};
 pub use core::{
     any::Any,
     cmp::{Eq, Ord, PartialEq, PartialOrd},
@@ -18,7 +29,6 @@ pub use core::{
     slice, str,
     sync::atomic::{AtomicUsize, Ordering},
 };
-
 // Re-export from std when the std feature is enabled
 #[cfg(feature = "std")]
 pub use std::{
@@ -31,21 +41,11 @@ pub use std::{
     vec::Vec,
 };
 
-// Re-export from alloc when no_std but alloc is available
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-pub use alloc::{
-    boxed::Box,
-    collections::{BTreeMap as HashMap, BTreeSet as HashSet},
-    format,
-    string::{String, ToString},
-    sync::Arc,
-    vec,
-    vec::Vec,
-};
-
-// For no_std without alloc, use bounded collections  
+// For no_std without alloc, use bounded collections
 #[cfg(not(any(feature = "std", feature = "alloc")))]
-pub use wrt_foundation::bounded::{BoundedVec as Vec, BoundedMap as HashMap, BoundedSet as HashSet, BoundedString as String};
+pub use wrt_foundation::bounded::{
+    BoundedMap as HashMap, BoundedSet as HashSet, BoundedString as String, BoundedVec as Vec,
+};
 
 // Re-export the vec! macro for no_std without alloc
 #[cfg(not(any(feature = "std", feature = "alloc")))]
@@ -116,6 +116,9 @@ pub use wrt_format::{
 pub use wrt_foundation::bounded::{BoundedString as String, BoundedVec as Vec};
 #[cfg(not(any(feature = "std", feature = "alloc")))]
 pub use wrt_foundation::bounded_collections::BoundedSet as HashSet;
+// For no_std/no_alloc environments, use bounded collections from wrt-foundation
+#[cfg(not(any(feature = "std", feature = "alloc")))]
+pub use wrt_foundation::no_std_hashmap::BoundedHashMap as HashMap;
 // Re-export from wrt-foundation (core foundation library)
 pub use wrt_foundation::{
     // Bounded collections (safety-first alternatives to standard collections)
@@ -211,6 +214,3 @@ pub use crate::cfi_integration::{
     CfiExecutionResult as CfiIntegrationResult, CfiHardwareFeatures, CfiProtectedEngine,
     CfiProtectedModule,
 };
-// For no_std/no_alloc environments, use bounded collections from wrt-foundation
-#[cfg(not(any(feature = "std", feature = "alloc")))]
-pub use wrt_foundation::no_std_hashmap::BoundedHashMap as HashMap;

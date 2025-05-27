@@ -62,7 +62,7 @@ pub enum ControlOp {
         #[cfg(feature = "alloc")]
         table: Vec<u32>,
         #[cfg(not(feature = "alloc"))]
-        table: BoundedVec<u32, 256, wrt_foundation::DefaultNoStdProvider>,
+        table: BoundedVec<u32, 256, wrt_foundation::NoStdProvider<8192>>,
         /// Default label to branch to if the index is out of bounds
         default: u32,
     },
@@ -125,7 +125,7 @@ impl<T: ControlContext> PureInstruction<T, Error> for ControlOp {
             Self::Block(block_type) => context.enter_block(Block::Block(block_type.clone())),
             Self::Loop(block_type) => context.enter_block(Block::Loop(block_type.clone())),
             Self::If(block_type) => {
-                let condition = context.pop_control_value()?.as_i32().ok_or_else(|| {
+                let condition = context.pop_control_value()?.into_i32().map_err(|_| {
                     Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected I32 for if condition")
                 })?;
 
@@ -156,7 +156,7 @@ impl<T: ControlContext> PureInstruction<T, Error> for ControlOp {
                 context.branch(target)
             }
             Self::BrIf(label_idx) => {
-                let condition = context.pop_control_value()?.as_i32().ok_or_else(|| {
+                let condition = context.pop_control_value()?.into_i32().map_err(|_| {
                     Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected I32 for br_if condition")
                 })?;
 
@@ -172,13 +172,13 @@ impl<T: ControlContext> PureInstruction<T, Error> for ControlOp {
                 }
             }
             Self::BrTable { table, default } => {
-                let index = context.pop_control_value()?.as_i32().ok_or_else(|| {
+                let index = context.pop_control_value()?.into_i32().map_err(|_| {
                     Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected I32 for br_table index")
                 })?;
 
                 // Determine which label to branch to
                 let label_idx = if index >= 0 && (index as usize) < table.len() {
-                    table[index as usize]
+                    table.get(index as usize).unwrap().clone()
                 } else {
                     *default
                 };

@@ -23,14 +23,12 @@ pub enum CanonicalErrorContext {
 #[cfg(feature = "alloc")]
 pub fn format_error(category: ErrorCategory, code: u32, context: CanonicalErrorContext) -> Error {
     use alloc::format;
-    
+
     let message = match context {
         CanonicalErrorContext::OutOfBounds { addr, size } => {
             format!("Address {} out of bounds for memory of size {}", addr, size)
         }
-        CanonicalErrorContext::InvalidUtf8 => {
-            "Invalid UTF-8 string".to_string()
-        }
+        CanonicalErrorContext::InvalidUtf8 => "Invalid UTF-8 string".to_string(),
         CanonicalErrorContext::InvalidCodePoint { code_point } => {
             format!("Invalid UTF-8 code point: {}", code_point)
         }
@@ -40,9 +38,7 @@ pub fn format_error(category: ErrorCategory, code: u32, context: CanonicalErrorC
         CanonicalErrorContext::NotImplemented(feature) => {
             format!("{} not yet implemented", feature)
         }
-        CanonicalErrorContext::TypeMismatch => {
-            "Type mismatch".to_string()
-        }
+        CanonicalErrorContext::TypeMismatch => "Type mismatch".to_string(),
         CanonicalErrorContext::ResourceNotFound { handle } => {
             format!("Resource not found: {}", handle)
         }
@@ -53,7 +49,7 @@ pub fn format_error(category: ErrorCategory, code: u32, context: CanonicalErrorC
             format!("Invalid size: expected {}, got {}", expected, actual)
         }
     };
-    
+
     Error::new(category, code, message)
 }
 
@@ -61,35 +57,17 @@ pub fn format_error(category: ErrorCategory, code: u32, context: CanonicalErrorC
 #[cfg(not(feature = "alloc"))]
 pub fn format_error(category: ErrorCategory, code: u32, context: CanonicalErrorContext) -> Error {
     let message = match context {
-        CanonicalErrorContext::OutOfBounds { .. } => {
-            "Address out of bounds"
-        }
-        CanonicalErrorContext::InvalidUtf8 => {
-            "Invalid UTF-8 string"
-        }
-        CanonicalErrorContext::InvalidCodePoint { .. } => {
-            "Invalid UTF-8 code point"
-        }
-        CanonicalErrorContext::InvalidDiscriminant { .. } => {
-            "Invalid variant discriminant"
-        }
-        CanonicalErrorContext::NotImplemented(feature) => {
-            feature
-        }
-        CanonicalErrorContext::TypeMismatch => {
-            "Type mismatch"
-        }
-        CanonicalErrorContext::ResourceNotFound { .. } => {
-            "Resource not found"
-        }
-        CanonicalErrorContext::InvalidAlignment { .. } => {
-            "Invalid alignment"
-        }
-        CanonicalErrorContext::InvalidSize { .. } => {
-            "Invalid size"
-        }
+        CanonicalErrorContext::OutOfBounds { .. } => "Address out of bounds",
+        CanonicalErrorContext::InvalidUtf8 => "Invalid UTF-8 string",
+        CanonicalErrorContext::InvalidCodePoint { .. } => "Invalid UTF-8 code point",
+        CanonicalErrorContext::InvalidDiscriminant { .. } => "Invalid variant discriminant",
+        CanonicalErrorContext::NotImplemented(feature) => feature,
+        CanonicalErrorContext::TypeMismatch => "Type mismatch",
+        CanonicalErrorContext::ResourceNotFound { .. } => "Resource not found",
+        CanonicalErrorContext::InvalidAlignment { .. } => "Invalid alignment",
+        CanonicalErrorContext::InvalidSize { .. } => "Invalid size",
     };
-    
+
     Error::new(category, code, message)
 }
 
@@ -106,9 +84,13 @@ pub enum ComponentErrorContext {
 
 /// Format a component error
 #[cfg(feature = "alloc")]
-pub fn format_component_error(category: ErrorCategory, code: u32, context: ComponentErrorContext) -> Error {
+pub fn format_component_error(
+    category: ErrorCategory,
+    code: u32,
+    context: ComponentErrorContext,
+) -> Error {
     use alloc::format;
-    
+
     let message = match context {
         ComponentErrorContext::ImportNotFound(name) => {
             format!("Import not found: {}", name)
@@ -116,26 +98,22 @@ pub fn format_component_error(category: ErrorCategory, code: u32, context: Compo
         ComponentErrorContext::ExportNotFound(name) => {
             format!("Export not found: {}", name)
         }
-        ComponentErrorContext::InvalidComponentType => {
-            "Invalid component type".to_string()
-        }
-        ComponentErrorContext::LinkingFailed => {
-            "Component linking failed".to_string()
-        }
-        ComponentErrorContext::InstantiationFailed => {
-            "Component instantiation failed".to_string()
-        }
-        ComponentErrorContext::ResourceLimitExceeded => {
-            "Resource limit exceeded".to_string()
-        }
+        ComponentErrorContext::InvalidComponentType => "Invalid component type".to_string(),
+        ComponentErrorContext::LinkingFailed => "Component linking failed".to_string(),
+        ComponentErrorContext::InstantiationFailed => "Component instantiation failed".to_string(),
+        ComponentErrorContext::ResourceLimitExceeded => "Resource limit exceeded".to_string(),
     };
-    
+
     Error::new(category, code, message)
 }
 
 /// Format a component error (no_std version)
 #[cfg(not(feature = "alloc"))]
-pub fn format_component_error(category: ErrorCategory, code: u32, context: ComponentErrorContext) -> Error {
+pub fn format_component_error(
+    category: ErrorCategory,
+    code: u32,
+    context: ComponentErrorContext,
+) -> Error {
     let message = match context {
         ComponentErrorContext::ImportNotFound(name) => name,
         ComponentErrorContext::ExportNotFound(name) => name,
@@ -144,7 +122,7 @@ pub fn format_component_error(category: ErrorCategory, code: u32, context: Compo
         ComponentErrorContext::InstantiationFailed => "Component instantiation failed",
         ComponentErrorContext::ResourceLimitExceeded => "Resource limit exceeded",
     };
-    
+
     Error::new(category, code, message)
 }
 

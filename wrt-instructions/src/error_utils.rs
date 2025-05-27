@@ -32,7 +32,7 @@ pub enum InstructionErrorContext {
 pub fn format_error(category: ErrorCategory, code: u32, context: InstructionErrorContext) -> Error {
     use alloc::format;
     
-    let message = match context {
+    let _message = match context {
         InstructionErrorContext::TypeMismatch { expected, actual } => {
             format!("Expected {}, got {}", expected, actual)
         }
@@ -43,10 +43,10 @@ pub fn format_error(category: ErrorCategory, code: u32, context: InstructionErro
             format!("Invalid memory access at offset {} with size {}", offset, size)
         }
         InstructionErrorContext::DivisionByZero => {
-            "Division by zero".to_string()
+            "Division by zero".into()
         }
         InstructionErrorContext::IntegerOverflow => {
-            "Integer overflow".to_string()
+            "Integer overflow".into()
         }
         InstructionErrorContext::InvalidConversion { from, to } => {
             format!("Invalid conversion from {} to {}", from, to)
@@ -55,7 +55,7 @@ pub fn format_error(category: ErrorCategory, code: u32, context: InstructionErro
             format!("Table index {} out of bounds (size: {})", index, size)
         }
         InstructionErrorContext::InvalidReference => {
-            "Invalid reference".to_string()
+            "Invalid reference".into()
         }
         InstructionErrorContext::FunctionNotFound { index } => {
             format!("Function {} not found", index)
@@ -65,7 +65,20 @@ pub fn format_error(category: ErrorCategory, code: u32, context: InstructionErro
         }
     };
     
-    Error::new(category, code, message)
+    // Use a static message since Error::new requires &'static str
+    let static_message = match context {
+        InstructionErrorContext::TypeMismatch { .. } => "Type mismatch",
+        InstructionErrorContext::StackUnderflow { .. } => "Stack underflow", 
+        InstructionErrorContext::InvalidMemoryAccess { .. } => "Invalid memory access",
+        InstructionErrorContext::DivisionByZero => "Division by zero",
+        InstructionErrorContext::IntegerOverflow => "Integer overflow",
+        InstructionErrorContext::InvalidConversion { .. } => "Invalid conversion",
+        InstructionErrorContext::TableOutOfBounds { .. } => "Table index out of bounds",
+        InstructionErrorContext::InvalidReference => "Invalid reference",
+        InstructionErrorContext::FunctionNotFound { .. } => "Function not found",
+        InstructionErrorContext::InvalidBranchTarget { .. } => "Invalid branch target depth",
+    };
+    Error::new(category, code as u16, static_message)
 }
 
 /// Format an error with context (no alloc)
@@ -84,7 +97,20 @@ pub fn format_error(category: ErrorCategory, code: u32, context: InstructionErro
         InstructionErrorContext::InvalidBranchTarget { .. } => "Invalid branch target",
     };
     
-    Error::new(category, code, message)
+    // Use a static message since Error::new requires &'static str
+    let static_message = match context {
+        InstructionErrorContext::TypeMismatch { .. } => "Type mismatch",
+        InstructionErrorContext::StackUnderflow { .. } => "Stack underflow", 
+        InstructionErrorContext::InvalidMemoryAccess { .. } => "Invalid memory access",
+        InstructionErrorContext::DivisionByZero => "Division by zero",
+        InstructionErrorContext::IntegerOverflow => "Integer overflow",
+        InstructionErrorContext::InvalidConversion { .. } => "Invalid conversion",
+        InstructionErrorContext::TableOutOfBounds { .. } => "Table index out of bounds",
+        InstructionErrorContext::InvalidReference => "Invalid reference",
+        InstructionErrorContext::FunctionNotFound { .. } => "Function not found",
+        InstructionErrorContext::InvalidBranchTarget { .. } => "Invalid branch target depth",
+    };
+    Error::new(category, code as u16, static_message)
 }
 
 /// Helper macro for creating instruction errors
@@ -104,6 +130,9 @@ pub fn type_name(value: &crate::prelude::Value) -> &'static str {
         crate::prelude::Value::F64(_) => "F64",
         crate::prelude::Value::FuncRef(_) => "FuncRef",
         crate::prelude::Value::ExternRef(_) => "ExternRef",
-        crate::prelude::Value::Void => "Void",
+        crate::prelude::Value::V128(_) => "V128",
+        crate::prelude::Value::Ref(_) => "Ref",
+        crate::prelude::Value::I16x8(_) => "I16x8",
+        // Note: Void type removed from Value enum
     }
 }

@@ -3,9 +3,9 @@
 //! This module provides types for handling logs from WebAssembly components.
 
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::{boxed::Box, string::String};
+use alloc::boxed::Box;
 #[cfg(feature = "std")]
-use std::{boxed::Box, string::String};
+use std::boxed::Box;
 
 use wrt_host::{callback::CallbackType, CallbackRegistry};
 

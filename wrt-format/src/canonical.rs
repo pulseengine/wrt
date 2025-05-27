@@ -10,8 +10,7 @@ use alloc::{boxed::Box, string::String, string::ToString, vec, vec::Vec};
 #[cfg(feature = "std")]
 use std::{boxed::Box, string::String, vec, vec::Vec};
 
-use wrt_foundation::component_value::ValType;
-use wrt_foundation::traits::BoundedCapacity;
+use wrt_foundation::{component_value::ValType, traits::BoundedCapacity};
 #[cfg(not(any(feature = "alloc", feature = "std")))]
 use wrt_foundation::{BoundedString, BoundedVec, MemoryProvider, NoStdProvider};
 

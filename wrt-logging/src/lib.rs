@@ -64,10 +64,8 @@
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 extern crate alloc;
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::{boxed::Box, string::String, vec::Vec};
-#[cfg(feature = "std")]
-use std::{boxed::Box, string::String, vec::Vec};
+// Conditional imports based on feature flags
+// Currently not needed at crate level - specific modules import as needed
 
 // Reexports for convenience
 pub use wrt_error::{Error, Result};

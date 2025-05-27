@@ -1,8 +1,8 @@
-use crate::prelude::*;
 use wrt_error::{codes, kinds, Error, ErrorCategory, Result};
 use wrt_foundation::types::{BlockType, FuncType, ValueType};
 use wrt_instructions::Instruction;
-use crate::module::Module;
+
+use crate::{module::Module, prelude::*};
 
 /// Validates a WebAssembly module
 pub fn validate_module(module: &Module) -> Result<()> {
@@ -65,10 +65,7 @@ fn validate_types(module: &Module) -> Result<()> {
                 return Err(Error::new(
                     ErrorCategory::Validation,
                     codes::VALIDATION_ERROR,
-                    format!(
-                        "Invalid result type at index {} in function type {}",
-                        result_idx, idx
-                    ),
+                    format!("Invalid result type at index {} in function type {}", result_idx, idx),
                 ));
             }
         }
@@ -84,10 +81,7 @@ fn validate_functions(module: &Module) -> Result<()> {
             return Err(Error::new(
                 ErrorCategory::Validation,
                 codes::VALIDATION_ERROR,
-                format!(
-                    "Function {} references invalid type index {}",
-                    idx, func.type_idx
-                ),
+                format!("Function {} references invalid type index {}", idx, func.type_idx),
             ));
         }
 
@@ -112,10 +106,7 @@ fn validate_functions(module: &Module) -> Result<()> {
 fn validate_tables(module: &Module) -> Result<()> {
     for (idx, table) in module.tables.iter().enumerate() {
         // Validate element type
-        if !matches!(
-            table.ty.element_type,
-            ValueType::FuncRef | ValueType::ExternRef
-        ) {
+        if !matches!(table.ty.element_type, ValueType::FuncRef | ValueType::ExternRef) {
             return Err(Error::new(
                 ErrorCategory::Validation,
                 codes::VALIDATION_ERROR,
@@ -168,7 +159,8 @@ fn validate_globals(module: &Module) -> Result<()> {
     for (idx, _global) in module.globals.iter().enumerate() {
         // Validate global type - since we can't directly access the global's type
         // We'll skip detailed validation until we have proper global type access
-        if false {  // Bypassing this validation for now
+        if false {
+            // Bypassing this validation for now
             return Err(Error::new(
                 ErrorCategory::Validation,
                 codes::VALIDATION_ERROR,
@@ -219,10 +211,7 @@ fn validate_data_segments(module: &Module) -> Result<()> {
             return Err(Error::new(
                 ErrorCategory::Validation,
                 codes::VALIDATION_ERROR,
-                format!(
-                    "Data segment {} references invalid memory index {}",
-                    idx, data.memory_idx
-                ),
+                format!("Data segment {} references invalid memory index {}", idx, data.memory_idx),
             ));
         }
     }
@@ -283,18 +272,12 @@ mod tests {
         let mut module = Module::new();
 
         // Add a function type
-        let func_type = FuncType {
-            params: vec![ValueType::I32],
-            results: vec![ValueType::I32],
-        };
+        let func_type = FuncType { params: vec![ValueType::I32], results: vec![ValueType::I32] };
         module.types.push(func_type);
 
         // Add a valid function
-        let valid_function = crate::module::Function {
-            type_idx: 0,
-            locals: vec![ValueType::I32],
-            code: vec![],
-        };
+        let valid_function =
+            crate::module::Function { type_idx: 0, locals: vec![ValueType::I32], code: vec![] };
         module.functions.push(valid_function);
         assert!(validate_module(&module).is_ok());
 
@@ -315,10 +298,7 @@ mod tests {
         // Add a valid table
         let valid_table = crate::table::Table::new(TableType {
             element_type: ValueType::FuncRef,
-            limits: Limits {
-                min: 1,
-                max: Some(10),
-            },
+            limits: Limits { min: 1, max: Some(10) },
         })
         .unwrap();
         module.tables.push(std::sync::Arc::new(valid_table));
@@ -327,10 +307,7 @@ mod tests {
         // Add a table with invalid element type
         let invalid_table = crate::table::Table::new(TableType {
             element_type: ValueType::I32, // Invalid element type
-            limits: Limits {
-                min: 1,
-                max: Some(10),
-            },
+            limits: Limits { min: 1, max: Some(10) },
         })
         .unwrap();
         module.tables.push(std::sync::Arc::new(invalid_table));
@@ -345,9 +322,7 @@ mod tests {
             },
         })
         .unwrap();
-        module
-            .tables
-            .push(std::sync::Arc::new(invalid_limits_table));
+        module.tables.push(std::sync::Arc::new(invalid_limits_table));
         assert!(validate_module(&module).is_err());
     }
 
@@ -357,10 +332,7 @@ mod tests {
 
         // Add a valid memory
         let valid_memory = crate::memory::Memory::new(MemoryType {
-            limits: Limits {
-                min: 1,
-                max: Some(10),
-            },
+            limits: Limits { min: 1, max: Some(10) },
             shared: false,
         })
         .unwrap();
@@ -369,10 +341,7 @@ mod tests {
 
         // Add a second memory (invalid)
         let second_memory = crate::memory::Memory::new(MemoryType {
-            limits: Limits {
-                min: 1,
-                max: Some(10),
-            },
+            limits: Limits { min: 1, max: Some(10) },
             shared: false,
         })
         .unwrap();
@@ -389,9 +358,7 @@ mod tests {
             shared: false,
         })
         .unwrap();
-        module
-            .memories
-            .push(std::sync::Arc::new(invalid_limits_memory));
+        module.memories.push(std::sync::Arc::new(invalid_limits_memory));
         assert!(validate_module(&module).is_err());
     }
 
@@ -400,10 +367,7 @@ mod tests {
         let mut module = Module::new();
 
         // Add a valid global
-        let valid_global = GlobalType {
-            content_type: ValueType::I32,
-            mutable: true,
-        };
+        let valid_global = GlobalType { content_type: ValueType::I32, mutable: true };
         module.globals.push(valid_global);
         assert!(validate_module(&module).is_ok());
     }
@@ -415,24 +379,14 @@ mod tests {
         // Add necessary table
         let table = TableType {
             element_type: ValueType::FuncRef,
-            limits: Limits {
-                min: 1,
-                max: Some(10),
-            },
+            limits: Limits { min: 1, max: Some(10) },
         };
         module.tables.push(table);
 
         // Add necessary function and type
-        let func_type = FuncType {
-            params: vec![],
-            results: vec![],
-        };
+        let func_type = FuncType { params: vec![], results: vec![] };
         module.types.push(func_type);
-        let function = crate::module::Function {
-            type_idx: 0,
-            locals: vec![],
-            code: vec![],
-        };
+        let function = crate::module::Function { type_idx: 0, locals: vec![], code: vec![] };
         module.functions.push(function);
 
         // Add a valid element segment
@@ -468,13 +422,7 @@ mod tests {
         let mut module = Module::new();
 
         // Add necessary memory
-        let memory = MemoryType {
-            limits: Limits {
-                min: 1,
-                max: Some(10),
-            },
-            shared: false,
-        };
+        let memory = MemoryType { limits: Limits { min: 1, max: Some(10) }, shared: false };
         module.memories.push(memory);
 
         // Add a valid data segment
@@ -501,18 +449,11 @@ mod tests {
         let mut module = Module::new();
 
         // Add a valid function type (no params, no results)
-        let valid_type = FuncType {
-            params: vec![],
-            results: vec![],
-        };
+        let valid_type = FuncType { params: vec![], results: vec![] };
         module.types.push(valid_type);
 
         // Add a valid function
-        let valid_function = crate::module::Function {
-            type_idx: 0,
-            locals: vec![],
-            code: vec![],
-        };
+        let valid_function = crate::module::Function { type_idx: 0, locals: vec![], code: vec![] };
         module.functions.push(valid_function);
 
         // Set valid start function
@@ -520,18 +461,12 @@ mod tests {
         assert!(validate_module(&module).is_ok());
 
         // Add an invalid function type (with params)
-        let invalid_type = FuncType {
-            params: vec![ValueType::I32],
-            results: vec![],
-        };
+        let invalid_type = FuncType { params: vec![ValueType::I32], results: vec![] };
         module.types.push(invalid_type);
 
         // Add an invalid function
-        let invalid_function = crate::module::Function {
-            type_idx: 1,
-            locals: vec![],
-            code: vec![],
-        };
+        let invalid_function =
+            crate::module::Function { type_idx: 1, locals: vec![], code: vec![] };
         module.functions.push(invalid_function);
 
         // Set invalid start function

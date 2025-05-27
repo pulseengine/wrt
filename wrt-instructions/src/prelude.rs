@@ -61,6 +61,29 @@ macro_rules! format {
     }};
 }
 
+// Define vec! macro for no_std without alloc
+#[cfg(not(any(feature = "std", feature = "alloc")))]
+#[macro_export]
+macro_rules! vec {
+    () => {
+        {
+            $crate::types::InstructionVec::new(wrt_foundation::NoStdProvider::<1024>::default())
+                .unwrap_or_else(|_| panic!("Failed to create BoundedVec"))
+        }
+    };
+    ($($x:expr),+ $(,)?) => {
+        {
+            let provider = wrt_foundation::NoStdProvider::<1024>::default();
+            let mut temp_vec = $crate::types::InstructionVec::new(provider)
+                .unwrap_or_else(|_| panic!("Failed to create BoundedVec"));
+            $(
+                temp_vec.push($x).unwrap_or_else(|_| panic!("Failed to push to BoundedVec"));
+            )*
+            temp_vec
+        }
+    };
+}
+
 // Re-export from wrt-error
 pub use wrt_error::{codes, kinds, Error, ErrorCategory, Result};
 // Re-export from wrt-foundation
@@ -70,7 +93,7 @@ pub use wrt_foundation::{
     safe_memory::{SafeMemoryHandler, SafeSlice, SafeStack},
     // Common types
     types::{BlockType, FuncType, GlobalType, MemoryType, RefType, TableType, ValueType},
-    values::Value,
+    values::{Value, FloatBits32, FloatBits64},
     // Verification types
     verification::VerificationLevel,
     // Result type

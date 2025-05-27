@@ -11,7 +11,7 @@ use alloc::vec::Vec;
 #[cfg(feature = "std")]
 use std::vec::Vec;
 
-use wrt_foundation::{MemoryProvider, NoStdProvider};
+use wrt_foundation::{MemoryProvider, NoStdProvider, traits::BoundedCapacity};
 use core::marker::PhantomData;
 
 use crate::{binary::{WASM_MAGIC, WASM_VERSION, read_leb128_u32, read_string}, WasmVec, WasmString};

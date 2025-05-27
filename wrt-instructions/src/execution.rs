@@ -69,31 +69,38 @@ pub trait PureExecutionContext {
 /// let value = context.pop_value().unwrap();
 /// assert_eq!(value, Value::I32(42));
 /// ```
-#[derive(Default)]
 pub struct ExecutionContext {
     #[cfg(feature = "safety")]
-    stack: BoundedVec<Value, 1024, wrt_foundation::DefaultNoStdProvider>, // Using a reasonably large size for WASM stack
+    stack: BoundedVec<Value, 1024, wrt_foundation::safe_memory::DefaultNoStdProvider>, // Using a reasonably large size for WASM stack
     #[cfg(not(feature = "safety"))]
-    stack: Vec<Value>,
+    stack: crate::types::ValueStack,
 }
 
 impl ExecutionContext {
     /// Creates a new ExecutionContext with an empty stack
-    pub fn new() -> Self {
-        Self {
+    pub fn new() -> Result<Self> {
+        Ok(Self {
             #[cfg(feature = "safety")]
             stack: BoundedVec::new(),
             #[cfg(not(feature = "safety"))]
-            stack: Vec::new(),
-        }
+            stack: crate::types::ValueStack::new(),
+        })
     }
+}
 
+impl Default for ExecutionContext {
+    fn default() -> Self {
+        Self::new().unwrap_or_else(|_| panic!("Failed to create ExecutionContext"))
+    }
+}
+
+impl ExecutionContext {
     /// Returns the current stack as a slice
     pub fn stack(&self) -> &[Value] {
         #[cfg(feature = "safety")]
-        return self.stack.as_ref();
+        return self.stack.as_slice();
         #[cfg(not(feature = "safety"))]
-        return &self.stack;
+        return self.stack.as_slice();
     }
 }
 
@@ -101,13 +108,7 @@ impl PureExecutionContext for ExecutionContext {
     fn push_value(&mut self, value: Value) -> Result<()> {
         #[cfg(feature = "safety")]
         {
-            self.stack.push(value).map_err(|_| {
-                Error::new(
-                    ErrorCategory::Core,
-                    codes::STACK_OVERFLOW,
-                    "Stack overflow: bounded capacity exceeded",
-                )
-            })?;
+            self.stack.push(value);
         }
 
         #[cfg(not(feature = "safety"))]
@@ -174,9 +175,9 @@ impl ComparisonContext for ExecutionContext {
 #[cfg(test)]
 pub struct TestExecutionContext {
     #[cfg(feature = "safety")]
-    stack: BoundedVec<Value, 1024, wrt_foundation::DefaultNoStdProvider>,
+    stack: BoundedVec<Value, 1024, wrt_foundation::safe_memory::DefaultNoStdProvider>,
     #[cfg(not(feature = "safety"))]
-    stack: Vec<Value>,
+    stack: crate::types::ValueStack,
 }
 
 #[cfg(test)]
@@ -194,16 +195,16 @@ impl TestExecutionContext {
             #[cfg(feature = "safety")]
             stack: BoundedVec::new(),
             #[cfg(not(feature = "safety"))]
-            stack: Vec::new(),
+            stack: crate::types::ValueStack::new(),
         }
     }
 
     /// Returns a reference to the current stack as a slice.
     pub fn stack(&self) -> &[Value] {
         #[cfg(feature = "safety")]
-        return self.stack.as_ref();
+        return self.stack.as_slice();
         #[cfg(not(feature = "safety"))]
-        return &self.stack;
+        return self.stack.as_slice();
     }
 }
 
@@ -212,13 +213,7 @@ impl PureExecutionContext for TestExecutionContext {
     fn push_value(&mut self, value: Value) -> Result<()> {
         #[cfg(feature = "safety")]
         {
-            self.stack.push(value).map_err(|_| {
-                Error::new(
-                    ErrorCategory::Core,
-                    codes::STACK_OVERFLOW,
-                    "Stack overflow: bounded capacity exceeded",
-                )
-            })?;
+            self.stack.push(value);
         }
 
         #[cfg(not(feature = "safety"))]

@@ -14,10 +14,10 @@ use std::vec::Vec;
 use wrt_error::{
     codes, errors::codes::UNIMPLEMENTED_PARSING_FEATURE, Error, ErrorCategory, Result,
 };
+use wrt_foundation::{traits::BoundedCapacity, RefType, ValueType};
 // For pure no_std mode, use bounded collections directly where needed
 #[cfg(not(any(feature = "alloc", feature = "std")))]
 use wrt_foundation::{BoundedString, BoundedVec};
-use wrt_foundation::{RefType, ValueType, traits::BoundedCapacity};
 
 #[cfg(any(feature = "alloc", feature = "std"))]
 use crate::{
@@ -1356,7 +1356,7 @@ pub mod with_alloc {
                     match case_type {
                         Some(_ty) => {
                             result.push(1); // Has type flag
-                            // ty is now ValTypeRef, need type store to resolve
+                                            // ty is now ValTypeRef, need type store to resolve
                             result.extend_from_slice(&[0, 0, 0, 0]); // Placeholder
                         }
                         None => {
@@ -1986,8 +1986,7 @@ pub mod with_alloc {
                     )
                 })?;
                 offset += 1;
-                let value_type = ValueType::from_binary(rt_byte)
-                    .map_err(to_wrt_error)?;
+                let value_type = ValueType::from_binary(rt_byte).map_err(to_wrt_error)?;
                 element_type = match value_type {
                     ValueType::FuncRef => RefType::Funcref,
                     ValueType::ExternRef => RefType::Externref,
@@ -2063,8 +2062,7 @@ pub mod with_alloc {
                     )
                 })?;
                 offset += 1;
-                let value_type = ValueType::from_binary(rt_byte)
-                    .map_err(to_wrt_error)?;
+                let value_type = ValueType::from_binary(rt_byte).map_err(to_wrt_error)?;
                 element_type = match value_type {
                     ValueType::FuncRef => RefType::Funcref,
                     ValueType::ExternRef => RefType::Externref,
@@ -2115,8 +2113,7 @@ pub mod with_alloc {
                     )
                 })?;
                 offset += 1;
-                let value_type = ValueType::from_binary(rt_byte)
-                    .map_err(to_wrt_error)?;
+                let value_type = ValueType::from_binary(rt_byte).map_err(to_wrt_error)?;
                 element_type = match value_type {
                     ValueType::FuncRef => RefType::Funcref,
                     ValueType::ExternRef => RefType::Externref,

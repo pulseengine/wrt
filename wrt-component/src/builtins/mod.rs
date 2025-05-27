@@ -34,6 +34,10 @@ pub mod error;
 #[cfg(feature = "component-model-threading")]
 pub mod threading;
 
+/// Safe threading built-ins implementation using platform-aware architecture
+#[cfg(feature = "component-model-threading")]
+pub mod safe_threading;
+
 /// Trait for built-in function handlers
 ///
 /// This trait defines the interface for handlers that implement built-in

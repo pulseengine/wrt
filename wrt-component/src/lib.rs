@@ -34,7 +34,6 @@ pub mod prelude;
 // Export modules - some are conditionally compiled
 pub mod builtins;
 pub mod canonical;
-pub mod error_format;
 #[cfg(feature = "std")]
 pub mod component;
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
@@ -45,6 +44,11 @@ pub mod component_registry;
 pub mod component_registry_no_std;
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 pub mod component_value_no_std;
+pub mod error_format;
+pub mod execution_engine;
+pub mod memory_layout;
+pub mod resource_lifecycle;
+pub mod string_encoding;
 // No-alloc module for pure no_std environments
 pub mod execution;
 pub mod export;
@@ -102,6 +106,7 @@ pub use component_value_no_std::deserialize_component_value_no_std as deserializ
 pub use component_value_no_std::{
     convert_format_to_valtype, convert_valtype_to_format, serialize_component_value_no_std,
 };
+pub use execution_engine::{ComponentExecutionEngine, ExecutionContext, ExecutionState};
 pub use export::Export;
 pub use factory::ComponentFactory;
 pub use host::Host;
