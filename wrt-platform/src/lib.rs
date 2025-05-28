@@ -64,6 +64,12 @@ extern crate std;
 #[cfg(feature = "alloc")]
 extern crate alloc;
 
+// Add extern crate for modules that need it
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+mod lib_prelude {
+    pub use alloc::{boxed::Box, collections::BTreeMap, string::String, sync::Arc, vec::Vec};
+}
+
 // For no_std + alloc builds, we need a global allocator
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::alloc::{GlobalAlloc, Layout};

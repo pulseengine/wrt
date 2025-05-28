@@ -2,19 +2,45 @@
 //!
 //! This module provides component model type definitions.
 
-use wrt_error::kinds::InvalidState;
+#[cfg(not(feature = "std"))]
+use core::fmt;
+#[cfg(feature = "std")]
+use std::fmt;
 
-use crate::{component::Component, prelude::*};
+#[cfg(any(feature = "std", feature = "alloc"))]
+use alloc::{string::String, vec::Vec};
+
+use wrt_foundation::{bounded::BoundedVec, prelude::*};
+
+use crate::{component::Component, instantiation::{ResolvedImport, ResolvedExport, ResourceTable, ModuleInstance}};
 
 /// Represents an instantiated component
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ComponentInstance {
-    /// Reference to the component
-    component: Arc<Component>,
-    /// Instance ID
-    id: String,
-    /// Instance state
-    state: ComponentInstanceState,
+    /// Unique instance ID
+    pub id: u32,
+    /// Reference to the component definition
+    pub component: Component,
+    /// Resolved imports for this instance
+    #[cfg(any(feature = "std", feature = "alloc"))]
+    pub imports: Vec<ResolvedImport>,
+    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    pub imports: BoundedVec<ResolvedImport, 256>,
+    /// Resolved exports from this instance
+    #[cfg(any(feature = "std", feature = "alloc"))]
+    pub exports: Vec<ResolvedExport>,
+    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    pub exports: BoundedVec<ResolvedExport, 256>,
+    /// Resource tables for this instance
+    #[cfg(any(feature = "std", feature = "alloc"))]
+    pub resource_tables: Vec<ResourceTable>,
+    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    pub resource_tables: BoundedVec<ResourceTable, 16>,
+    /// Module instances embedded in this component
+    #[cfg(any(feature = "std", feature = "alloc"))]
+    pub module_instances: Vec<ModuleInstance>,
+    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    pub module_instances: BoundedVec<ModuleInstance, 64>,
 }
 
 /// State of a component instance

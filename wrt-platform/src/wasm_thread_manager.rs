@@ -116,7 +116,7 @@ impl ExecutionMonitor for SimpleExecutionMonitor {
         let info = threads.get(&id).ok_or_else(|| {
             Error::new(
                 ErrorCategory::InvalidInput,
-                codes::INVALID_PARAMETER,
+                ErrorCategory::InvalidParameter,
                 "Thread not found in monitor",
             )
         })?;
@@ -219,7 +219,7 @@ impl WasmThreadManager {
         if *self.shutdown.lock() {
             return Err(Error::new(
                 ErrorCategory::InvalidState,
-                codes::INVALID_STATE,
+                ErrorCategory::InvalidState,
                 "Thread manager is shutting down",
             ));
         }
@@ -230,7 +230,7 @@ impl WasmThreadManager {
             modules.get(&request.module_id).cloned().ok_or_else(|| {
                 Error::new(
                     ErrorCategory::InvalidInput,
-                    codes::INVALID_PARAMETER,
+                    ErrorCategory::InvalidParameter,
                     "Module not registered",
                 )
             })?
@@ -240,7 +240,7 @@ impl WasmThreadManager {
         if !self.resource_tracker.can_allocate_thread(&request)? {
             return Err(Error::new(
                 ErrorCategory::Resource,
-                codes::RESOURCE_EXHAUSTED,
+                ErrorCategory::ResourceExhausted,
                 "Cannot allocate thread: resource limits exceeded",
             ));
         }
@@ -313,7 +313,7 @@ impl WasmThreadManager {
             threads.remove(&thread_id).ok_or_else(|| {
                 Error::new(
                     ErrorCategory::InvalidInput,
-                    codes::INVALID_PARAMETER,
+                    ErrorCategory::InvalidParameter,
                     "Thread not found",
                 )
             })?
@@ -343,7 +343,7 @@ impl WasmThreadManager {
         let thread_info = threads.get(&thread_id).ok_or_else(|| {
             Error::new(
                 ErrorCategory::InvalidInput,
-                codes::INVALID_PARAMETER,
+                ErrorCategory::InvalidParameter,
                 "Thread not found",
             )
         })?;
