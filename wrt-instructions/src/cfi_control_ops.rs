@@ -922,7 +922,7 @@ impl CfiControlFlowOps for DefaultCfiControlFlowOps {
         let validation_requirements = {
             // For no_std environments, create minimal validation
             use wrt_foundation::BoundedVec;
-            let mut reqs = BoundedVec::<CfiValidationRequirement, 2, wrt_foundation::NoStdMemoryProvider<1024>>::new();
+            let mut reqs = BoundedVec::<CfiValidationRequirement, 2, wrt_foundation::safe_memory::NoStdMemoryProvider<1024>>::new();
             reqs.push(CfiValidationRequirement::TypeSignatureCheck {
                 expected_type_index: type_idx,
                 signature_hash: self.compute_signature_hash(type_idx),

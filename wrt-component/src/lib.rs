@@ -61,6 +61,7 @@ pub mod import_map;
 pub mod instance;
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 pub mod instance_no_std;
+pub mod instantiation;
 pub mod modules;
 pub mod namespace;
 pub mod no_alloc;
@@ -107,6 +108,10 @@ pub use component_value_no_std::{
     convert_format_to_valtype, convert_valtype_to_format, serialize_component_value_no_std,
 };
 pub use execution_engine::{ComponentExecutionEngine, ExecutionContext, ExecutionState};
+pub use instantiation::{
+    InstantiationContext, ImportValues, ImportValue, FunctionImport, InstanceImport, 
+    ExportValue, FunctionExport, ResolvedImport, ResolvedExport
+};
 pub use export::Export;
 pub use factory::ComponentFactory;
 pub use host::Host;

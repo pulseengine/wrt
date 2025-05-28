@@ -23,7 +23,12 @@ pub struct HostBuilder {
     registry: CallbackRegistry,
 
     /// Built-in types that are required by the component
+    #[cfg(any(feature = "std", feature = "alloc"))]
     required_builtins: HashSet<BuiltinType>,
+    
+    /// Built-in types that are required by the component (no_std version)
+    #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+    required_builtins: HashSet<BuiltinType, 32, wrt_foundation::NoStdProvider<1024>>,
 
     /// Built-in interceptor
     #[cfg(any(feature = "std", feature = "alloc"))]
