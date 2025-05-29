@@ -21,7 +21,8 @@ What's Platform Abstraction? 🌍
 Picture this: You're writing a WebAssembly runtime that needs to work on:
 
 - **Linux servers** with gigabytes of RAM
-- **QNX systems** in cars with strict real-time requirements  
+- **QNX systems** in cars with strict real-time requirements
+- **VxWorks** in industrial automation and aerospace systems
 - **Zephyr RTOS** on a microcontroller with 256KB of memory
 - **macOS** development machines with funky VM subsystems
 - **Tock OS** with hardware-enforced security boundaries
@@ -94,6 +95,12 @@ Platform Feature Matrix 📊
      - Full POSIX RT
      - ASIL certified
      - Adaptive partitioning
+   * - VxWorks
+     - Memory partitions
+     - Semaphores/MQ
+     - Hard real-time
+     - IEC 61508
+     - LKM/RTP contexts
    * - Zephyr
      - k_mem_domain
      - k_sem/k_mutex
@@ -197,7 +204,8 @@ Pick Your Platform Adventure 🗺️
 Where are you deploying?
 
 - **Building for Linux?** → :doc:`linux_features`
-- **Targeting automotive QNX?** → :doc:`qnx_features`  
+- **Targeting automotive QNX?** → :doc:`qnx_features`
+- **Industrial VxWorks deployment?** → :doc:`../platform_guides/vxworks`
 - **Developing on macOS?** → :doc:`macos_features`
 - **Embedded with Zephyr/Tock?** → :doc:`embedded_platforms`
 - **Need memory tricks?** → :doc:`memory_management`

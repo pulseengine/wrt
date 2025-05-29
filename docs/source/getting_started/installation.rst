@@ -111,7 +111,7 @@ Source Installation
 
    .. code-block:: bash
 
-      git clone https://github.com/your-org/wrt.git
+      git clone https://github.com/pulseengine/wrt.git
       cd wrt
 
 2. Build from source:

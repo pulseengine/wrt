@@ -45,7 +45,7 @@ For most development scenarios, follow these steps:
 
    .. code-block:: bash
 
-      git clone https://github.com/your-org/wrt.git
+      git clone https://github.com/pulseengine/wrt.git
       cd wrt
 
 4. **Build and test**:
@@ -63,7 +63,7 @@ WRT supports a wide range of platforms, from development machines to embedded sy
 .. grid:: 2
 
    .. grid-item-card:: Desktop Development
-      :link: linux
+      :link: ../platform_guides/linux
       :link-type: doc
 
       * Linux (x86_64, ARM64)
@@ -71,7 +71,7 @@ WRT supports a wide range of platforms, from development machines to embedded sy
       * Complete toolchain and debugging support
 
    .. grid-item-card:: Real-Time Systems
-      :link: qnx
+      :link: ../platform_guides/qnx
       :link-type: doc
 
       * QNX Neutrino
@@ -79,7 +79,7 @@ WRT supports a wide range of platforms, from development machines to embedded sy
       * POSIX compliance with RT extensions
 
    .. grid-item-card:: Embedded RTOS
-      :link: zephyr
+      :link: ../platform_guides/zephyr
       :link-type: doc
 
       * Zephyr RTOS
@@ -87,7 +87,7 @@ WRT supports a wide range of platforms, from development machines to embedded sy
       * Minimal resource footprint
 
    .. grid-item-card:: Bare Metal
-      :link: bare_metal
+      :link: ../platform_guides/bare_metal
       :link-type: doc
 
       * No operating system
@@ -164,7 +164,7 @@ Next Steps
       Understand WRT's design, safety features, and performance characteristics.
 
    .. grid-item-card:: 🔧 Development
-      :link: ../development/index
+      :link: ../developer/index
       :link-type: doc
 
       Contributing guidelines, testing, and advanced development topics.

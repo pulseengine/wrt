@@ -21,7 +21,7 @@ Pulseengine (WRT Edition) is a WebAssembly runtime designed for safety-critical 
 
 - WebAssembly Core specification execution
 - Component Model support
-- Multi-platform deployment (Linux, macOS, QNX, Zephyr, bare-metal)
+- Multi-platform deployment (Linux, macOS, QNX, VxWorks, Zephyr, bare-metal)
 - Configurable memory allocation strategies
 - Formal safety verification
 
@@ -87,14 +87,21 @@ Pulseengine can be deployed across various platforms with platform-specific opti
    - Real-time scheduling
    - ASIL-D compliance support
 
-4. **Zephyr RTOS** (IoT, Embedded)
+4. **VxWorks** (Industrial, Aerospace)
+   
+   - LKM (kernel space) and RTP (user space) contexts
+   - Memory partition management
+   - Real-time priority scheduling
+   - Industrial-grade reliability
+
+5. **Zephyr RTOS** (IoT, Embedded)
    
    - ``no_std``, no heap allocation
    - Static memory pools
    - Minimal footprint
    - Direct hardware access
 
-5. **Bare Metal** (Safety-critical)
+6. **Bare Metal** (Safety-critical)
    
    - No OS dependencies
    - Compile-time memory allocation

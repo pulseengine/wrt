@@ -15,32 +15,44 @@ WebAssembly Runtime (WRT) Documentation
 User Documentation
 ------------------
 
-.. grid:: 2
+.. grid:: 3
    :gutter: 3
+
+   .. grid-item-card:: Overview
+      :link: overview/index
+      :link-type: doc
+
+      Product introduction, features, and status
 
    .. grid-item-card:: Getting Started
       :link: getting_started/index
       :link-type: doc
 
-      Installation guides for supported platforms including Linux, macOS, QNX, Zephyr, and bare-metal environments
+      Quick start guide and installation
 
-   .. grid-item-card:: Architecture Guide
+   .. grid-item-card:: User Guide
+      :link: user_guide/index
+      :link-type: doc
+
+      How to use WRT in your applications
+
+   .. grid-item-card:: Examples
+      :link: examples/index
+      :link-type: doc
+
+      Code examples and practical tutorials
+
+   .. grid-item-card:: Platform Guides
+      :link: platform_guides/index
+      :link-type: doc
+
+      Platform-specific usage guides
+
+   .. grid-item-card:: Architecture
       :link: architecture/index
       :link-type: doc
 
-      System design, component model, and runtime architecture
-
-   .. grid-item-card:: Safety Guidelines
-      :link: safety/index
-      :link-type: doc
-
-      Safety constraints, mechanisms, and best practices
-
-   .. grid-item-card:: Binary Format
-      :link: binary
-      :link-type: doc
-
-      WebAssembly binary format specifications
+      System design and component model
 
 API Reference
 -------------
@@ -102,26 +114,68 @@ Qualification Material
 
       FMEA, FTA, and safety assessments
 
-Developer Resources
--------------------
+Developer Documentation
+------------------------
+
+.. grid:: 3
+   :gutter: 3
+
+   .. grid-item-card:: Development Setup
+      :link: developer/setup/index
+      :link-type: doc
+
+      Environment setup and toolchain installation
+
+   .. grid-item-card:: Contributing
+      :link: developer/contributing/index
+      :link-type: doc
+
+      Guidelines for contributing to WRT
+
+   .. grid-item-card:: Build System
+      :link: developer/build_system/index
+      :link-type: doc
+
+      Cargo workspace and build configuration
+
+   .. grid-item-card:: Testing
+      :link: developer/testing/index
+      :link-type: doc
+
+      Test strategies and coverage requirements
+
+   .. grid-item-card:: Internals
+      :link: developer/internals/index
+      :link-type: doc
+
+      Technical deep-dives and implementation details
+
+   .. grid-item-card:: Tooling
+      :link: developer/tooling/index
+      :link-type: doc
+
+      xtask commands and development tools
+
+Reference Documentation
+-----------------------
 
 .. grid:: 2
    :gutter: 3
 
-   .. grid-item-card:: Development Guide
-      :link: development/index
+   .. grid-item-card:: Safety Guidelines
+      :link: safety/index
       :link-type: doc
 
-      Contributing guidelines and development setup
+      Safety constraints, mechanisms, and best practices
 
-   .. grid-item-card:: Examples
-      :link: examples/index
+   .. grid-item-card:: Binary Format
+      :link: binary
       :link-type: doc
 
-      Code examples and tutorials
+      WebAssembly binary format specifications
 
    .. grid-item-card:: Changelog
-      :link: changelog
+      :link: changelog.md
       :link-type: doc
 
       Release notes and version history
@@ -130,11 +184,12 @@ Developer Resources
    :hidden:
    :caption: User Documentation
 
-   getting_started/index
    overview/index
+   getting_started/index
+   user_guide/index
+   examples/index
+   platform_guides/index
    architecture/index
-   safety/index
-   binary
 
 .. toctree::
    :hidden:
@@ -160,11 +215,22 @@ Developer Resources
 
 .. toctree::
    :hidden:
-   :caption: Resources
+   :caption: Developer Documentation
 
-   examples/index
-   development/index
-   changelog
+   developer/setup/index
+   developer/contributing/index
+   developer/build_system/index
+   developer/testing/index
+   developer/internals/index
+   developer/tooling/index
+
+.. toctree::
+   :hidden:
+   :caption: Reference
+
+   safety/index
+   binary
+   changelog.md
    
 .. include:: _generated_symbols.rst
 
