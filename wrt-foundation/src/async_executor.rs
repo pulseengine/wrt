@@ -11,8 +11,15 @@ use core::pin::Pin;
 use core::task::{Context, Poll, RawWaker, RawWakerVTable, Waker};
 use core::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
-use crate::bounded_collections::BoundedVec;
-use crate::sync::Mutex;
+#[cfg(any(feature = "std", feature = "alloc"))]
+extern crate alloc;
+
+#[cfg(any(feature = "std", feature = "alloc"))]
+use alloc::boxed::Box;
+
+use crate::bounded::BoundedVec;
+use crate::NoStdProvider;
+use wrt_sync::Mutex;
 
 /// Maximum number of concurrent tasks in fallback executor
 pub const MAX_TASKS: usize = 32;
@@ -21,9 +28,6 @@ pub const MAX_TASKS: usize = 32;
 pub trait WrtExecutor: Send + Sync {
     /// Spawn a future onto the executor
     fn spawn(&self, future: BoxedFuture<'_, ()>) -> Result<TaskHandle, ExecutorError>;
-    
-    /// Block on a future until completion
-    fn block_on<F: Future>(&self, future: F) -> Result<F::Output, ExecutorError>;
     
     /// Poll all ready tasks once (for cooperative executors)
     fn poll_once(&self) -> Result<(), ExecutorError> {
@@ -46,8 +50,13 @@ pub struct TaskHandle {
     pub waker: Option<Waker>,
 }
 
-/// Boxed future type for no_std environments
+/// Boxed future type for environments with allocation
+#[cfg(any(feature = "std", feature = "alloc"))]
 pub type BoxedFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
+
+/// For pure no_std environments, we use a simpler approach
+#[cfg(not(any(feature = "std", feature = "alloc")))]
+pub type BoxedFuture<'a, T> = Pin<&'a mut dyn Future<Output = T>>;
 
 /// Executor errors
 #[derive(Debug, Clone, PartialEq)]
@@ -61,20 +70,23 @@ pub enum ExecutorError {
 
 /// Global executor registry
 pub struct ExecutorRegistry {
+    #[cfg(any(feature = "std", feature = "alloc"))]
     executor: Mutex<Option<Box<dyn WrtExecutor>>>,
     fallback: FallbackExecutor,
 }
 
 impl ExecutorRegistry {
     /// Create new registry with fallback executor
-    pub const fn new() -> Self {
+    pub fn new() -> Self {
         Self {
+            #[cfg(any(feature = "std", feature = "alloc"))]
             executor: Mutex::new(None),
             fallback: FallbackExecutor::new(),
         }
     }
     
     /// Register an external executor
+    #[cfg(any(feature = "std", feature = "alloc"))]
     pub fn register_executor(&self, executor: Box<dyn WrtExecutor>) -> Result<(), ExecutorError> {
         let mut guard = self.executor.lock();
         if guard.is_some() {
@@ -84,45 +96,114 @@ impl ExecutorRegistry {
         Ok(())
     }
     
+    /// Register an external executor (no-op in pure no_std)
+    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    pub fn register_executor(&self, _executor: ()) -> Result<(), ExecutorError> {
+        Err(ExecutorError::Custom("External executors require alloc feature"))
+    }
+    
     /// Get the active executor (external or fallback)
     pub fn get_executor(&self) -> &dyn WrtExecutor {
-        let guard = self.executor.lock();
-        match guard.as_ref() {
-            Some(executor) => unsafe {
-                // SAFETY: We ensure the executor lifetime is valid through the registry
-                &**(executor as *const Box<dyn WrtExecutor>)
-            },
-            None => &self.fallback,
+        #[cfg(any(feature = "std", feature = "alloc"))]
+        {
+            let guard = self.executor.lock();
+            match guard.as_ref() {
+                Some(executor) => unsafe {
+                    // SAFETY: We ensure the executor lifetime is valid through the registry
+                    &**(executor as *const Box<dyn WrtExecutor>)
+                },
+                None => &self.fallback,
+            }
+        }
+        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        {
+            &self.fallback
         }
     }
     
     /// Remove registered executor (revert to fallback)
+    #[cfg(any(feature = "std", feature = "alloc"))]
     pub fn unregister_executor(&self) -> Option<Box<dyn WrtExecutor>> {
         self.executor.lock().take()
     }
     
+    /// Remove registered executor (no-op in pure no_std)
+    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    pub fn unregister_executor(&self) -> Option<()> {
+        None
+    }
+    
     /// Check if using fallback executor
     pub fn is_using_fallback(&self) -> bool {
-        self.executor.lock().is_none()
+        #[cfg(any(feature = "std", feature = "alloc"))]
+        {
+            self.executor.lock().is_none()
+        }
+        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        {
+            true
+        }
     }
 }
 
-// Global registry instance
-static EXECUTOR_REGISTRY: ExecutorRegistry = ExecutorRegistry::new();
+use core::sync::atomic::{AtomicPtr, Ordering as AtomicOrdering};
+use core::ptr;
+
+// Global registry instance using atomic pointer for thread safety
+static EXECUTOR_REGISTRY_PTR: AtomicPtr<ExecutorRegistry> = AtomicPtr::new(ptr::null_mut());
+
+fn get_or_init_registry() -> &'static ExecutorRegistry {
+    let ptr = EXECUTOR_REGISTRY_PTR.load(AtomicOrdering::Acquire);
+    if ptr.is_null() {
+        // Initialize registry - this is safe for single-threaded and no_std environments
+        let registry = Box::leak(Box::new(ExecutorRegistry::new()));
+        let expected = ptr::null_mut();
+        match EXECUTOR_REGISTRY_PTR.compare_exchange_weak(
+            expected,
+            registry as *mut ExecutorRegistry,
+            AtomicOrdering::Release,
+            AtomicOrdering::Relaxed,
+        ) {
+            Ok(_) => registry,
+            Err(_) => {
+                // Another thread beat us, use their registry
+                unsafe { &*EXECUTOR_REGISTRY_PTR.load(AtomicOrdering::Acquire) }
+            }
+        }
+    } else {
+        unsafe { &*ptr }
+    }
+}
 
 /// Register a custom executor
+#[cfg(any(feature = "std", feature = "alloc"))]
 pub fn register_executor(executor: Box<dyn WrtExecutor>) -> Result<(), ExecutorError> {
-    EXECUTOR_REGISTRY.register_executor(executor)
+    get_or_init_registry().register_executor(executor)
+}
+
+/// Register a custom executor (no-op in pure no_std)
+#[cfg(not(any(feature = "std", feature = "alloc")))]
+pub fn register_executor(_executor: ()) -> Result<(), ExecutorError> {
+    get_or_init_registry().register_executor(())
 }
 
 /// Get the current executor
 pub fn current_executor() -> &'static dyn WrtExecutor {
-    EXECUTOR_REGISTRY.get_executor()
+    get_or_init_registry().get_executor()
 }
 
 /// Check if using fallback executor
 pub fn is_using_fallback() -> bool {
-    EXECUTOR_REGISTRY.is_using_fallback()
+    get_or_init_registry().is_using_fallback()
+}
+
+/// Block on a future using the current executor
+pub fn block_on<F: Future>(future: F) -> Result<F::Output, ExecutorError> {
+    let registry = get_or_init_registry();
+    // For now, we'll implement this using the fallback executor directly
+    // In a real implementation, this would be more sophisticated
+    let fallback = &registry.fallback;
+    fallback.block_on_impl(future)
 }
 
 /// Task structure for fallback executor
@@ -134,17 +215,45 @@ struct Task {
 
 /// Minimal fallback executor for no_std environments
 pub struct FallbackExecutor {
-    tasks: Mutex<BoundedVec<Task, MAX_TASKS>>,
+    tasks: Mutex<BoundedVec<Task, MAX_TASKS, NoStdProvider>>,
     running: AtomicBool,
     next_id: AtomicU64,
 }
 
 impl FallbackExecutor {
-    pub const fn new() -> Self {
+    pub fn new() -> Self {
         Self {
-            tasks: Mutex::new(BoundedVec::new()),
+            tasks: Mutex::new(BoundedVec::new(NoStdProvider).unwrap()),
             running: AtomicBool::new(true),
             next_id: AtomicU64::new(0),
+        }
+    }
+    
+    /// Block on a future until completion (internal implementation)
+    pub fn block_on_impl<F: Future>(&self, mut future: F) -> Result<F::Output, ExecutorError> {
+        if !self.is_running() {
+            return Err(ExecutorError::NotRunning);
+        }
+        
+        // Pin the future
+        let mut future = unsafe { Pin::new_unchecked(&mut future) };
+        
+        // Create waker
+        let waker = create_waker(u64::MAX); // Special ID for block_on
+        let mut cx = Context::from_waker(&waker);
+        
+        // Poll until ready
+        loop {
+            match future.as_mut().poll(&mut cx) {
+                Poll::Ready(output) => return Ok(output),
+                Poll::Pending => {
+                    // Poll other tasks while waiting
+                    self.poll_all();
+                    
+                    // In a real implementation, we'd yield to the OS
+                    // For no_std, we just busy-wait with task polling
+                }
+            }
         }
     }
     
@@ -203,33 +312,6 @@ impl WrtExecutor for FallbackExecutor {
             id, 
             waker: Some(create_waker(id))
         })
-    }
-    
-    fn block_on<F: Future>(&self, mut future: F) -> Result<F::Output, ExecutorError> {
-        if !self.is_running() {
-            return Err(ExecutorError::NotRunning);
-        }
-        
-        // Pin the future
-        let mut future = unsafe { Pin::new_unchecked(&mut future) };
-        
-        // Create waker
-        let waker = create_waker(u64::MAX); // Special ID for block_on
-        let mut cx = Context::from_waker(&waker);
-        
-        // Poll until ready
-        loop {
-            match future.as_mut().poll(&mut cx) {
-                Poll::Ready(output) => return Ok(output),
-                Poll::Pending => {
-                    // Poll other tasks while waiting
-                    self.poll_all();
-                    
-                    // In a real implementation, we'd yield to the OS
-                    // For no_std, we just busy-wait with task polling
-                }
-            }
-        }
     }
     
     fn poll_once(&self) -> Result<(), ExecutorError> {
