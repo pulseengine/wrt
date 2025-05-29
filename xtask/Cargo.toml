@@ -4,6 +4,7 @@ version.workspace = true
 edition.workspace = true
 publish = false
 repository = "https://github.com/pulseengine/wrt"
+license = "MIT"
 
 [features]
 default = []
