@@ -347,76 +347,7 @@ async fn run_docs_version_pipeline(
         }
     }
 
-    // Generate changelog using git cliff
-    {
-        let docs_path = Path::new(&docs_src_host_path_str);
-        let changelog_path = docs_path.join("source/changelog.md");
-
-        info!("Generating changelog for version: {}", version);
-
-        // Generate changelog in the main repository, not in the worktree
-        let temp_changelog = base_path.join(format!("changelog_{}.md", version.replace("/", "_")));
-
-        // Determine git cliff arguments based on version
-        let cliff_args = if version == "local" {
-            // For local builds, generate unreleased changes
-            vec!["cliff", "--unreleased", "--output", temp_changelog.to_str().unwrap()]
-        } else {
-            // For any other version, generate the full changelog
-            // Git cliff will include all commits up to HEAD in the main repo
-            vec!["cliff", "--output", temp_changelog.to_str().unwrap()]
-        };
-
-        // Run git cliff in the main repository
-        let cliff_output =
-            std::process::Command::new("git").args(&cliff_args).current_dir(base_path).output();
-
-        match cliff_output {
-            Ok(output) => {
-                if !output.status.success() {
-                    warn!("git cliff failed: {}", String::from_utf8_lossy(&output.stderr));
-                    // Create a minimal changelog if git cliff fails
-                    let fallback_content = format!(
-                        "# Changelog\n\n## Version: {}\n\nChangelog generation failed. Please \
-                         check git cliff configuration.\n",
-                        version
-                    );
-                    if let Err(e) = fs::write(&changelog_path, fallback_content) {
-                        warn!("Failed to write fallback changelog: {}", e);
-                    }
-                } else {
-                    info!("Successfully generated changelog for version {}", version);
-                    // Copy the generated changelog to the docs directory
-                    if temp_changelog.exists() {
-                        if let Err(e) = fs::copy(&temp_changelog, &changelog_path) {
-                            warn!("Failed to copy changelog to docs: {}", e);
-                        } else {
-                            // Clean up temp file
-                            let _ = fs::remove_file(&temp_changelog);
-                        }
-                    }
-                }
-            }
-            Err(e) => {
-                warn!("Failed to run git cliff: {}", e);
-                // Create a minimal changelog if git cliff is not available
-                let fallback_content = format!(
-                    "# Changelog\n\n## Version: {}\n\ngit cliff not available. Install with: \
-                     `cargo install git-cliff`\n",
-                    version
-                );
-                if let Err(e) = fs::write(&temp_changelog, fallback_content) {
-                    warn!("Failed to write fallback changelog: {}", e);
-                } else {
-                    // Copy to docs directory
-                    if let Err(e) = fs::copy(&temp_changelog, &changelog_path) {
-                        warn!("Failed to copy fallback changelog to docs: {}", e);
-                    }
-                    let _ = fs::remove_file(&temp_changelog);
-                }
-            }
-        }
-    }
+    // The changelog generation will now happen inside the container where git-cliff is installed
 
     // Dagger directory for WORKTREE/docs or local/docs
     let docs_dagger_dir = client.host().directory_opts(
@@ -425,24 +356,35 @@ async fn run_docs_version_pipeline(
                                   * and 'requirements.txt' */
     );
 
+    // Mount the git repository for changelog generation
+    let repo_dagger_dir = client.host().directory_opts(
+        base_path.to_str().ok_or_else(|| anyhow!("Base path is not valid UTF-8"))?,
+        HostDirectoryOpts { 
+            exclude: Some(vec!["./target", "./docs_output"]), 
+            include: Some(vec!["./.git", "./cliff.toml"]) 
+        }
+    );
+
     let docs_container = client
         .container()
         .from("sphinxdoc/sphinx:latest")
         // Mount WORKTREE/docs to /mounted_docs first, then set workdir
         .with_mounted_directory("/mounted_docs", docs_dagger_dir)
+        // Mount the git repository for changelog generation
+        .with_mounted_directory("/mounted_repo", repo_dagger_dir)
         .with_workdir("/mounted_docs/source")
         // Pass the current version to Sphinx so it can set version_match correctly
         .with_env_variable("DOCS_VERSION", version)
         // Set prefix to / for local serving from docs_artifact_final root. Adjust if serving from a
         // subpath like /wrt/.
         .with_env_variable("DOCS_VERSION_PATH_PREFIX", "/")
-        // Install build-essential (for linker cc), curl, then rustup, source its env, and then run
+        // Install build-essential (for linker cc), curl, git, then rustup, source its env, and then run
         // pip install.
         .with_exec(vec![
             "sh",
             "-c",
             "\
-            apt-get update && apt-get install -y build-essential curl default-jre graphviz && \
+            apt-get update && apt-get install -y build-essential curl default-jre graphviz git && \
             curl -L -o /usr/local/bin/plantuml.jar https://github.com/plantuml/plantuml/releases/download/v1.2024.0/plantuml-1.2024.0.jar && \
             echo '#!/bin/sh\njava -jar /usr/local/bin/plantuml.jar \"$@\"' > /usr/local/bin/plantuml && \
             chmod +x /usr/local/bin/plantuml && \
@@ -451,7 +393,22 @@ async fn run_docs_version_pipeline(
             curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && \
             . $CARGO_HOME/env && \
             pip install -r ../requirements.txt && \
-            cargo install git-cliff,
+            cargo install git-cliff",
+        ])
+        // Generate changelog using git-cliff
+        .with_exec(vec![
+            "sh",
+            "-c", 
+            &format!("\
+            export CARGO_HOME=/root/.cargo && \
+            export RUSTUP_HOME=/root/.rustup && \
+            . $CARGO_HOME/env && \
+            cd /mounted_repo && \
+            if [ '{}' = 'local' ]; then \
+                git-cliff --unreleased --output /mounted_docs/source/changelog.md || echo '# Changelog\n\nChangelog generation failed. Please check git cliff configuration.' > /mounted_docs/source/changelog.md; \
+            else \
+                git-cliff --output /mounted_docs/source/changelog.md || echo '# Changelog\n\nChangelog generation failed. Please check git cliff configuration.' > /mounted_docs/source/changelog.md; \
+            fi", version)
         ])
         // Similarly, ensure PlantUML is available and run sphinx-build.
         .with_exec(vec![
