@@ -8,6 +8,8 @@ allow = [
     "ISC",
     "MPL-2.0",
     "Unlicense",
+    "Zlib",
+    "Unicode-3.0",
 ]
 # unlicensed = "deny" # Behavior is now deny by default with version = 2
 # copyleft = "warn"   # Behavior is now deny by default unless allowed, with version = 2
@@ -33,7 +35,12 @@ db-urls = ["https://github.com/rustsec/advisory-db"]
 # unsound = "deny"       # Behavior is now deny by default with version = 2
 yanked = "warn"
 # notice = "warn"         # Behavior is now deny by default with version = 2
-ignore = []
+ignore = [
+    # RUSTSEC-2024-0384: instant crate is unmaintained, comes from wasm-tools transitive dependency
+    # wasm-tools -> wasm-mutate -> egg -> instant
+    # TODO: Monitor wasm-tools updates for fix or consider alternative tools
+    "RUSTSEC-2024-0384",
+]
 # severity-threshold = "medium" # Removed with version = 2
 
 # Note: cargo-deny 0.18.2 re-added `advisories.unmaintained` as an option.
@@ -45,4 +52,4 @@ ignore = []
 unknown-registry = "deny"
 unknown-git = "deny"
 allow-git = []
-allow-registry = ["https://crates.io"] 
+allow-registry = ["https://github.com/rust-lang/crates.io-index"] 
