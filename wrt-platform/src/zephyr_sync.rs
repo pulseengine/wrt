@@ -153,7 +153,7 @@ impl ZephyrFutex {
         match result {
             0 => Ok(()), // Success - woken up
             ETIMEDOUT => {
-                Err(Error::new(ErrorCategory::System, codes::SYSTEM_ERROR, "Futex wait timed out"))
+                Err(Error::new(ErrorCategory::System, 1, "Timeout expired"))
             }
             EAGAIN => {
                 // Value changed before we could wait - this is success
@@ -165,7 +165,7 @@ impl ZephyrFutex {
             }
             _ => Err(Error::new(
                 ErrorCategory::System,
-                codes::CONCURRENCY_ERROR,
+                1,
                 "Futex wait operation failed",
             )),
         }
@@ -188,7 +188,7 @@ impl ZephyrFutex {
                 if elapsed >= timeout_ticks {
                     return Err(Error::new(
                         ErrorCategory::System,
-                        codes::SYSTEM_ERROR,
+                        1,
                         "Futex wait timed out",
                     ));
                 }
@@ -216,7 +216,7 @@ impl ZephyrFutex {
         } else {
             Err(Error::new(
                 ErrorCategory::System,
-                codes::CONCURRENCY_ERROR,
+                1,
                 "Futex wake operation failed",
             ))
         }
@@ -329,7 +329,7 @@ impl FutexLike for ZephyrSemaphoreFutex {
                 if elapsed >= timeout_ticks {
                     return Err(Error::new(
                         ErrorCategory::System,
-                        codes::SYSTEM_ERROR,
+                        1,
                         "Semaphore wait timed out",
                     ));
                 }

@@ -10,9 +10,6 @@
 // Use the proper imports from wrt_format instead of local sections
 use wrt_error::{codes, kinds, Error, ErrorCategory, Result};
 use wrt_format::types::CoreWasmVersion;
-// REMOVED: use wrt_format::module::{DataMode, ExportKind, Global, ImportDesc, Memory, Table};
-// REMOVED: use wrt_format::types::{FuncType, Limits};
-
 // Explicitly use types from wrt_foundation for clarity in this validation context
 use wrt_foundation::types::{
     DataMode as TypesDataMode,       // For DataSegment validation later
@@ -30,6 +27,9 @@ use wrt_foundation::types::{
     ValueType as TypesValueType, // Already in prelude, but good for explicitness if needed below
 };
 
+// REMOVED: use wrt_format::module::{DataMode, ExportKind, Global, ImportDesc, Memory, Table};
+// REMOVED: use wrt_format::types::{FuncType, Limits};
+use crate::types::*;
 use crate::{module::Module, prelude::*};
 // For types that are only defined in wrt_format and are used as arguments to
 // validation helpers that specifically operate on format-level details (if any,
@@ -110,16 +110,45 @@ pub fn validate_module(module: &Module) -> Result<()> {
 /// Validate a WebAssembly module with custom configuration
 pub fn validate_module_with_config(module: &Module, config: &ValidationConfig) -> Result<()> {
     // Check for unique export names
+    #[cfg(feature = "alloc")]
     let mut export_names = Vec::new();
+    #[cfg(not(feature = "alloc"))]
+    let mut export_names =
+        BoundedVec::<DecoderString, 512, wrt_foundation::NoStdProvider<8192>>::new(
+            wrt_foundation::NoStdProvider::default(),
+        )
+        .map_err(|_| Error::memory_error("Failed to allocate export names vector"))?;
     for export in &module.exports {
-        if export_names.contains(&export.name) {
-            return Err(Error::new(
-                ErrorCategory::Validation,
-                codes::VALIDATION_ERROR,
-                format!("Duplicate export name: {}", export.name),
-            ));
+        #[cfg(feature = "alloc")]
+        {
+            if export_names.contains(&export.name) {
+                return Err(Error::new(
+                    ErrorCategory::Validation,
+                    codes::VALIDATION_ERROR,
+                    format!("Duplicate export name: {}", export.name),
+                ));
+            }
+            export_names.push(export.name.clone());
         }
-        export_names.push(export.name.clone());
+
+        #[cfg(not(feature = "alloc"))]
+        {
+            // Convert string to bounded string for comparison
+            let bounded_name =
+                DecoderString::from_str(&export.name, wrt_foundation::NoStdProvider::default())
+                    .map_err(|_| Error::memory_error("Export name too long"))?;
+
+            if export_names.iter().any(|name| name == &bounded_name) {
+                return Err(Error::new(
+                    ErrorCategory::Validation,
+                    codes::VALIDATION_ERROR,
+                    format!("Duplicate export name: {}", export.name),
+                ));
+            }
+            export_names
+                .push(bounded_name)
+                .map_err(|_| Error::memory_error("Too many export names"))?;
+        }
     }
 
     // Skip further validation if we're in relaxed mode
@@ -259,6 +288,17 @@ fn validate_types(module: &Module) -> Result<()> {
 }
 
 /// Validate a value type
+fn validate_ref_type(ref_type: &wrt_foundation::RefType, context: &str) -> Result<()> {
+    match ref_type {
+        wrt_foundation::RefType::FuncRef | wrt_foundation::RefType::ExternRef => Ok(()),
+        _ => Err(Error::new(
+            ErrorCategory::Validation,
+            codes::TYPE_MISMATCH_ERROR,
+            format!("Invalid reference type in {}: {:?}", context, ref_type),
+        )),
+    }
+}
+
 fn validate_value_type(value_type: &TypesValueType, context: &str) -> Result<()> {
     // In MVPv1, only i32, i64, f32, and f64 are valid
     match value_type {
@@ -845,6 +885,39 @@ fn validate_tables(module: &Module) -> Result<()> {
         validate_table_type(table)?;
     }
 
+    Ok(())
+}
+
+/// Validate memory type
+fn validate_memory_type(memory: &MemoryType) -> Result<()> {
+    // Validate that min <= max if max is specified
+    if let Some(max) = memory.limits.max {
+        if memory.limits.min > max {
+            return Err(Error::new(
+                ErrorCategory::Validation,
+                codes::LIMITS_EXCEED_MAX,
+                format!("Memory limits invalid: min {} > max {}", memory.limits.min, max),
+            ));
+        }
+    }
+    // Additional checks could include maximum memory size validation
+    Ok(())
+}
+
+/// Validate table type
+fn validate_table_type(table: &TableType) -> Result<()> {
+    // Validate that min <= max if max is specified
+    if let Some(max) = table.limits.max {
+        if table.limits.min > max {
+            return Err(Error::new(
+                ErrorCategory::Validation,
+                codes::LIMITS_EXCEED_MAX,
+                format!("Table limits invalid: min {} > max {}", table.limits.min, max),
+            ));
+        }
+    }
+    // Validate element type (RefType)
+    validate_ref_type(&table.element_type, "table")?;
     Ok(())
 }
 

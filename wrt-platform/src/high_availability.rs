@@ -9,10 +9,13 @@ use core::{
     time::Duration,
 };
 
-use alloc::{boxed::Box, string::String, vec::Vec};
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use alloc::{boxed::Box, string::String, vec::Vec, sync::Arc};
+#[cfg(feature = "std")]
+use std::{boxed::Box, string::String, vec::Vec, sync::Arc};
 use wrt_sync::{WrtMutex, WrtRwLock};
 
-use wrt_error::{codes, Error, ErrorCategory, Result};
+use wrt_error::{Error, ErrorCategory, Result};
 
 /// Entity health status
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -28,7 +31,7 @@ pub enum HealthStatus {
 }
 
 /// Recovery action to take on failure
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum RecoveryAction {
     /// Do nothing
     None,
@@ -42,33 +45,76 @@ pub enum RecoveryAction {
     Execute(String),
     /// Restart with escalation policy
     RestartWithEscalation {
+        /// Maximum number of restarts allowed
         max_restarts: u32,
+        /// Time window for restart counting
         window: Duration,
+        /// Action to take when max restarts exceeded
         escalation: Box<RecoveryAction>,
     },
     /// Reboot the system (extreme action)
     Reboot,
-    /// Custom action
-    Custom(Box<dyn FnOnce() + Send>),
+}
+
+impl Clone for RecoveryAction {
+    fn clone(&self) -> Self {
+        match self {
+            RecoveryAction::None => RecoveryAction::None,
+            RecoveryAction::Log(s) => RecoveryAction::Log(s.clone()),
+            RecoveryAction::Notify(s) => RecoveryAction::Notify(s.clone()),
+            RecoveryAction::Restart => RecoveryAction::Restart,
+            RecoveryAction::Execute(s) => RecoveryAction::Execute(s.clone()),
+            RecoveryAction::RestartWithEscalation { max_restarts, window, escalation } => {
+                RecoveryAction::RestartWithEscalation {
+                    max_restarts: *max_restarts,
+                    window: *window,
+                    escalation: escalation.clone(),
+                }
+            }
+            RecoveryAction::Reboot => RecoveryAction::Reboot,
+        }
+    }
 }
 
 /// Condition that triggers recovery actions
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum MonitorCondition {
     /// Heartbeat monitoring
     Heartbeat {
+        /// Heartbeat interval
         interval: Duration,
+        /// Number of missed heartbeats before triggering
         tolerance: u32,
     },
     /// Process death detection
     Death,
     /// Resource threshold
     ResourceThreshold {
+        /// Type of resource to monitor
         resource: ResourceType,
+        /// Threshold value that triggers action
         threshold: u64,
     },
-    /// Custom condition
-    Custom(Box<dyn Fn() -> bool + Send + Sync>),
+}
+
+impl Clone for MonitorCondition {
+    fn clone(&self) -> Self {
+        match self {
+            MonitorCondition::Heartbeat { interval, tolerance } => {
+                MonitorCondition::Heartbeat {
+                    interval: *interval,
+                    tolerance: *tolerance,
+                }
+            }
+            MonitorCondition::Death => MonitorCondition::Death,
+            MonitorCondition::ResourceThreshold { resource, threshold } => {
+                MonitorCondition::ResourceThreshold {
+                    resource: *resource,
+                    threshold: *threshold,
+                }
+            }
+        }
+    }
 }
 
 /// Resource types to monitor
@@ -190,7 +236,7 @@ impl HighAvailabilityManager for GenericHaMonitor {
             name: name.to_string(),
             conditions: Vec::new(),
             last_heartbeat: WrtMutex::new(0), // Timestamp in milliseconds
-            status: parking_lot::Mutex::new(HealthStatus::Healthy),
+            status: WrtMutex::new(HealthStatus::Healthy),
             restart_count: AtomicU64::new(0),
             monitoring: AtomicBool::new(false),
         };
@@ -211,8 +257,8 @@ impl HighAvailabilityManager for GenericHaMonitor {
             .find(|e| e.id == entity)
             .ok_or_else(|| {
                 Error::new(
-                    ErrorCategory::InvalidParameter,
-                    codes::INVALID_PARAMETER,
+                    ErrorCategory::Validation,
+                    1,
                     "Entity not found",
                 )
             })?;
@@ -225,8 +271,8 @@ impl HighAvailabilityManager for GenericHaMonitor {
         let entities = self.entities.read();
         let entity = entities.iter().find(|e| e.id == entity).ok_or_else(|| {
             Error::new(
-                ErrorCategory::InvalidInput,
-                codes::INVALID_PARAMETER,
+                ErrorCategory::Validation,
+                1,
                 "Entity not found",
             )
         })?;
@@ -239,8 +285,8 @@ impl HighAvailabilityManager for GenericHaMonitor {
         let entities = self.entities.read();
         let entity = entities.iter().find(|e| e.id == entity).ok_or_else(|| {
             Error::new(
-                ErrorCategory::InvalidInput,
-                codes::INVALID_PARAMETER,
+                ErrorCategory::Validation,
+                1,
                 "Entity not found",
             )
         })?;
@@ -253,8 +299,8 @@ impl HighAvailabilityManager for GenericHaMonitor {
         let entities = self.entities.read();
         let entity = entities.iter().find(|e| e.id == entity).ok_or_else(|| {
             Error::new(
-                ErrorCategory::InvalidInput,
-                codes::INVALID_PARAMETER,
+                ErrorCategory::Validation,
+                1,
                 "Entity not found",
             )
         })?;
@@ -268,16 +314,17 @@ impl HighAvailabilityManager for GenericHaMonitor {
         let entities = self.entities.read();
         let entity = entities.iter().find(|e| e.id == entity).ok_or_else(|| {
             Error::new(
-                ErrorCategory::InvalidInput,
-                codes::INVALID_PARAMETER,
+                ErrorCategory::Validation,
+                1,
                 "Entity not found",
             )
         })?;
 
-        Ok(*entity.status.lock())
+        let status = *entity.status.lock();
+        Ok(status)
     }
 
-    fn trigger_recovery(&mut self, entity: EntityId) -> Result<()> {
+    fn trigger_recovery(&mut self, _entity: EntityId) -> Result<()> {
         // Execute recovery actions for the entity
         Ok(())
     }
@@ -308,8 +355,11 @@ pub struct HaBuilder {
 /// Restart policy configuration
 #[derive(Debug, Clone)]
 pub struct RestartPolicy {
+    /// Maximum number of restarts allowed
     pub max_restarts: u32,
+    /// Time window for restart counting
     pub window: Duration,
+    /// Backoff strategy between restarts
     pub backoff: BackoffStrategy,
 }
 
@@ -379,7 +429,6 @@ impl HaBuilder {
     }
 }
 
-use alloc::sync::Arc;
 
 #[cfg(test)]
 mod tests {

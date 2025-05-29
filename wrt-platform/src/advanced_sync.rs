@@ -194,8 +194,7 @@ impl LockFreeAllocator {
     pub unsafe fn new(pool: *mut u8, pool_size: usize, block_size: usize) -> Result<Self, Error> {
         if block_size < core::mem::size_of::<FreeBlock>() {
             return Err(Error::new(
-                wrt_error::ErrorCategory::Validation,
-                wrt_error::codes::VALIDATION_ERROR,
+                wrt_error::ErrorCategory::Validation, 1,
                 "Invalid operation",
             ));
         }
@@ -203,8 +202,7 @@ impl LockFreeAllocator {
         let total_blocks = pool_size / block_size;
         if total_blocks == 0 {
             return Err(Error::new(
-                wrt_error::ErrorCategory::Validation,
-                wrt_error::codes::VALIDATION_ERROR,
+                wrt_error::ErrorCategory::Validation, 1,
                 "Invalid operation",
             ));
         }

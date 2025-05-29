@@ -6,14 +6,19 @@
 use alloc::boxed::Box;
 #[cfg(feature = "std")]
 use std::boxed::Box;
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+use wrt_host::Box;
 
 use wrt_host::{callback::CallbackType, CallbackRegistry};
 
 use crate::operation::LogOperation;
 
+// For alloc/std configurations
+#[cfg(any(feature = "std", feature = "alloc"))]
 /// Function type for handling log operations
 pub type LogHandler = Box<dyn Fn(LogOperation) + Send + Sync>;
 
+#[cfg(any(feature = "std", feature = "alloc"))]
 /// Extension trait for CallbackRegistry to add logging-specific methods
 pub trait LoggingExt {
     /// Register a log handler
@@ -28,6 +33,30 @@ pub trait LoggingExt {
     fn has_log_handler(&self) -> bool;
 }
 
+// For pure no_std configuration
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+/// Function type for handling log operations (no dynamic dispatch in no_std)
+pub type LogHandler<P> = fn(LogOperation<P>);
+
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+/// Extension trait for CallbackRegistry to add logging-specific methods (no_std)
+pub trait LoggingExt {
+    /// Register a simple log handler function (no_std only supports function pointers)
+    fn register_log_handler<P>(&mut self, handler: LogHandler<P>)
+    where
+        P: wrt_foundation::MemoryProvider + Default + Clone + PartialEq + Eq;
+
+    /// Handle a log operation
+    fn handle_log<P>(&self, operation: LogOperation<P>) -> wrt_foundation::Result<()>
+    where
+        P: wrt_foundation::MemoryProvider + Default + Clone + PartialEq + Eq;
+
+    /// Check if a log handler is registered
+    fn has_log_handler(&self) -> bool;
+}
+
+// Implementation for alloc/std configurations
+#[cfg(any(feature = "std", feature = "alloc"))]
 impl LoggingExt for CallbackRegistry {
     fn register_log_handler<F>(&mut self, handler: F)
     where
@@ -44,6 +73,35 @@ impl LoggingExt for CallbackRegistry {
 
     fn has_log_handler(&self) -> bool {
         self.get_callback::<LogHandler>(&CallbackType::Logging).is_some()
+    }
+}
+
+// Implementation for pure no_std configuration
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+impl LoggingExt for CallbackRegistry {
+    fn register_log_handler<P>(&mut self, handler: LogHandler<P>)
+    where
+        P: wrt_foundation::MemoryProvider + Default + Clone + PartialEq + Eq,
+    {
+        // In no_std mode, we can't store dynamic handlers
+        // This is a limitation - only one handler per type can be stored
+        let _ = handler; // Acknowledge the parameter
+        // Note: Actual registration would require a more complex design
+    }
+
+    fn handle_log<P>(&self, operation: LogOperation<P>) -> wrt_foundation::Result<()>
+    where
+        P: wrt_foundation::MemoryProvider + Default + Clone + PartialEq + Eq,
+    {
+        // In no_std mode, we can't dynamically dispatch to handlers
+        let _ = operation; // Acknowledge the parameter
+        // Default no-op implementation for no_std
+        Ok(())
+    }
+
+    fn has_log_handler(&self) -> bool {
+        // In no_std mode, we can't track handlers dynamically
+        false
     }
 }
 

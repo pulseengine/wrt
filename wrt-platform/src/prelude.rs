@@ -14,14 +14,10 @@
 pub use wrt_error::{Error, ErrorCategory, Result};
 
 // Platform-specific re-exports based on features and targets
-#[cfg(all(feature = "platform-macos", feature = "use-libc", target_os = "macos"))]
+#[cfg(all(feature = "platform-macos", target_os = "macos"))]
 pub use crate::macos_memory::{MacOsAllocator, MacOsAllocatorBuilder};
-#[cfg(all(feature = "platform-macos", not(feature = "use-libc"), target_os = "macos"))]
-pub use crate::macos_memory_no_libc::{MacOsAllocator, MacOsAllocatorBuilder};
-#[cfg(all(feature = "platform-macos", feature = "use-libc", target_os = "macos"))]
+#[cfg(all(feature = "platform-macos", target_os = "macos"))]
 pub use crate::macos_sync::{MacOsFutex, MacOsFutexBuilder};
-#[cfg(all(feature = "platform-macos", not(feature = "use-libc"), target_os = "macos"))]
-pub use crate::macos_sync_no_libc::{MacOsFutex, MacOsFutexBuilder};
 // Re-export memory allocator trait and Wasm page size constant
 // Re-export sync trait
 pub use crate::{

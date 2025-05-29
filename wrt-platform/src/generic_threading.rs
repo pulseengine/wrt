@@ -40,14 +40,14 @@ impl PlatformThreadHandle for GenericThreadHandle {
                 Ok(result) => result,
                 Err(_) => Err(Error::new(
                     ErrorCategory::Platform,
-                    codes::PLATFORM_ERROR,
+                    1,
                     "Thread panicked during execution",
                 )),
             }
         } else {
             Err(Error::new(
-                ErrorCategory::InvalidState,
-                codes::INVALID_STATE,
+                ErrorCategory::Runtime,
+                1,
                 "Thread handle already consumed",
             ))
         }
@@ -116,8 +116,8 @@ impl PlatformThreadPool for GenericThreadPool {
         // Check if shutting down
         if self.shutdown.load(Ordering::Acquire) {
             return Err(Error::new(
-                ErrorCategory::Platform,
-                codes::PLATFORM_ERROR,
+                ErrorCategory::Platform, 1,
+                
                 "Thread pool is shutting down",
             ));
         }
@@ -126,8 +126,8 @@ impl PlatformThreadPool for GenericThreadPool {
         let active_count = self.active_threads.read().len();
         if active_count >= self.config.max_threads {
             return Err(Error::new(
-                ErrorCategory::Resource,
-                codes::RESOURCE_EXHAUSTED,
+                ErrorCategory::Resource, 1,
+                
                 "Thread pool limit reached",
             ));
         }
@@ -169,8 +169,8 @@ impl PlatformThreadPool for GenericThreadPool {
             })
             .map_err(|_| {
                 Error::new(
-                    ErrorCategory::Platform,
-                    codes::PLATFORM_ERROR,
+                    ErrorCategory::Platform, 1,
+                    
                     "Failed to spawn thread",
                 )
             })?;

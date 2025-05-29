@@ -51,8 +51,11 @@ pub mod error_utils;
 // pub mod execution; // Temporarily disabled due to compilation issues
 pub mod instruction_traits;
 pub mod memory_ops;
+pub mod multi_memory;
+pub mod reference_ops;
 pub mod table_ops;
 pub mod types;
+pub mod validation;
 pub mod variable_ops;
 
 // CFI-enhanced control flow operations

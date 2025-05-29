@@ -3,11 +3,24 @@
 //! This module provides the Import type for component imports.
 
 use wrt_format::component::ExternType;
-use wrt_foundation::ExternType as RuntimeExternType;
+use wrt_foundation::{ExternType as RuntimeExternType, component::ComponentType};
 
 use crate::{
     component::ExternValue, namespace::Namespace, prelude::*, type_conversion::bidirectional,
 };
+
+/// Type of import in the component model
+#[derive(Debug, Clone)]
+pub enum ImportType {
+    /// Function import
+    Function(ComponentType),
+    /// Value import (global, memory, table)
+    Value(ComponentType),
+    /// Instance import
+    Instance(ComponentType),
+    /// Type import
+    Type(ComponentType),
+}
 
 /// Import to a component
 #[derive(Debug, Clone)]
@@ -17,6 +30,8 @@ pub struct Import {
     /// Import name
     pub name: String,
     /// Import type
+    pub import_type: ImportType,
+    /// Legacy extern type for compatibility
     pub ty: ExternType,
     /// Import value (runtime representation)
     pub value: ExternValue,
@@ -25,7 +40,20 @@ pub struct Import {
 impl Import {
     /// Creates a new import
     pub fn new(namespace: Namespace, name: String, ty: ExternType, value: ExternValue) -> Self {
-        Self { namespace, name, ty, value }
+        // Default import type based on ExternType - this is a simplified mapping
+        let import_type = ImportType::Function(ComponentType::Unit);
+        Self { namespace, name, import_type, ty, value }
+    }
+
+    /// Creates a new import with explicit import type
+    pub fn new_with_type(
+        namespace: Namespace, 
+        name: String, 
+        import_type: ImportType,
+        ty: ExternType, 
+        value: ExternValue
+    ) -> Self {
+        Self { namespace, name, import_type, ty, value }
     }
 
     /// Creates an import identifier by combining namespace and name

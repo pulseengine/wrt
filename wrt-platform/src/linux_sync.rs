@@ -138,7 +138,7 @@ impl LinuxFutex {
         } else {
             Err(Error::new(
                 ErrorCategory::System,
-                codes::CONCURRENCY_ERROR,
+                1,
                 "Futex wake operation failed",
             ))
         }
@@ -198,7 +198,7 @@ impl FutexLike for LinuxFutex {
             0 => Ok(()), // Woken up by notify
             -110 => {
                 // ETIMEDOUT - convert to system error as per trait contract
-                Err(Error::new(ErrorCategory::System, codes::SYSTEM_ERROR, "Futex wait timed out"))
+                Err(Error::new(ErrorCategory::System, 1, "Timeout expired"))
             }
             -11 => {
                 // EAGAIN - value changed before we could wait, this is success
@@ -210,7 +210,7 @@ impl FutexLike for LinuxFutex {
             }
             _ => Err(Error::new(
                 ErrorCategory::System,
-                codes::CONCURRENCY_ERROR,
+                1,
                 "Futex wait operation failed",
             )),
         }

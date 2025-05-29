@@ -23,13 +23,12 @@ wrt-sync = { workspace = true, default-features = false }
 
 # Optional dependencies
 log = { version = "0.4", optional = true }
-futures = { version = "0.3", optional = true }
 
 [dev-dependencies]
 
 [features]
-# By default, use alloc (component model needs dynamic allocation)
-default = ["alloc"]
+# By default, no features for pure no_std compatibility
+default = []
 
 # Standard library support
 std = [
@@ -99,7 +98,7 @@ safe-memory = [
 component-model-core = ["wrt-format/component-model-core"]
 component-model-values = ["wrt-format/component-model-values"]
 component-model-resources = ["wrt-format/component-model-resources"]
-component-model-async = ["wrt-foundation/component-model-async", "futures"]
+component-model-async = ["wrt-foundation/component-model-async"]
 component-model-error-context = ["wrt-foundation/component-model-error-context"]
 component-model-threading = ["wrt-foundation/component-model-threading"]
 component-model-all = [

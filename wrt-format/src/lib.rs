@@ -193,6 +193,9 @@ pub mod validation;
 pub mod valtype_builder;
 pub mod verify;
 pub mod version;
+// WIT (WebAssembly Interface Types) parser (requires alloc for component model)
+#[cfg(any(feature = "alloc", feature = "std"))]
+pub mod wit_parser;
 
 // Re-export binary constants (always available)
 // Re-export write functions (only with alloc)
@@ -236,6 +239,12 @@ pub use types::{FormatBlockType, Limits, MemoryIndexType};
 pub use validation::Validatable;
 pub use version::{
     ComponentModelFeature, ComponentModelVersion, FeatureStatus, VersionInfo, STATE_VERSION,
+};
+// Re-export WIT parser (requires alloc for component model)
+#[cfg(any(feature = "alloc", feature = "std"))]
+pub use wit_parser::{
+    WitEnum, WitExport, WitFlags, WitFunction, WitImport, WitInterface, WitItem, WitParam,
+    WitParseError, WitParser, WitRecord, WitResult, WitType, WitTypeDef, WitVariant, WitWorld,
 };
 
 // Public functions for feature detection

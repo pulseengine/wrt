@@ -210,8 +210,7 @@ impl PlatformMemoryOptimizer for MacOSOptimizedProvider {
         // Ensure alignment is a power of 2
         if !alignment.is_power_of_two() {
             return Err(Error::new(
-                wrt_error::ErrorCategory::Memory,
-                wrt_error::codes::INVALID_MEMORY_ACCESS,
+                wrt_error::ErrorCategory::Memory, 1,
                 "Alignment must be a power of 2",
             ));
         }
@@ -370,8 +369,7 @@ impl PlatformMemoryOptimizer for LinuxOptimizedProvider {
         // Similar to macOS implementation
         if !alignment.is_power_of_two() {
             return Err(Error::new(
-                wrt_error::ErrorCategory::Memory,
-                wrt_error::codes::INVALID_MEMORY_ACCESS,
+                wrt_error::ErrorCategory::Memory, 1,
                 "Alignment must be a power of 2",
             ));
         }

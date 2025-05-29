@@ -1696,11 +1696,10 @@ pub mod with_alloc {
     #[cfg(any(feature = "alloc", feature = "std"))]
     pub fn parse_element_segment(bytes: &[u8], mut offset: usize) -> Result<(Element, usize)> {
         let (prefix_val, next_offset) = read_leb128_u32(bytes, offset).map_err(|e| {
-            Error::new(
-                ErrorCategory::Parse,
-                wrt_error::codes::PARSE_ERROR,
-                format!("Failed to read element segment prefix at offset {}: {}", offset, e),
-            )
+            crate::error::parse_error_dynamic(format!(
+                "Failed to read element segment prefix at offset {}: {}",
+                offset, e
+            ))
         })?;
         offset = next_offset;
 
@@ -1711,41 +1710,27 @@ pub mod with_alloc {
                 // MVP Active: expr vec(funcidx) end; tableidx is 0, elemkind is funcref
                 let table_idx = 0;
                 let (offset_expr, next_offset) = parse_init_expr(bytes, offset).map_err(|e| {
-                    Error::new(
-                        ErrorCategory::Parse,
-                        wrt_error::codes::PARSE_ERROR,
-                        format!(
-                            "(offset {}): Failed to parse offset_expr for element segment (type \
-                             0): {}",
-                            offset, e
-                        ),
-                    )
+                    crate::error::parse_error_dynamic(format!(
+                        "(offset {}): Failed to parse offset_expr for element segment (type 0): {}",
+                        offset, e
+                    ))
                 })?;
                 offset = next_offset;
                 let (func_indices, next_offset) = read_vector(bytes, offset, read_leb128_u32)
                     .map_err(|e| {
-                        Error::new(
-                            ErrorCategory::Parse,
-                            wrt_error::codes::PARSE_ERROR,
-                            format!(
-                                "(offset {}): Failed to read func_indices for element segment \
-                                 (type 0): {}",
-                                offset, e
-                            ),
-                        )
+                        crate::error::parse_error_dynamic(format!(
+                            "(offset {}): Failed to read func_indices for element segment (type \
+                             0): {}",
+                            offset, e
+                        ))
                     })?;
                 offset = next_offset;
 
                 if bytes.get(offset).copied() != Some(END) {
-                    return Err(Error::new(
-                        ErrorCategory::Parse,
-                        wrt_error::codes::PARSE_ERROR,
-                        format!(
-                            "(offset {}): Expected END opcode after active element segment (type \
-                             0)",
-                            offset
-                        ),
-                    ));
+                    return Err(crate::error::parse_error_dynamic(format!(
+                        "(offset {}): Expected END opcode after active element segment (type 0)",
+                        offset
+                    )));
                 }
                 offset += 1; // Consume END
 

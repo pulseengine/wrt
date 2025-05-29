@@ -233,7 +233,7 @@ impl QnxFutex {
         if chid == -1 {
             return Err(Error::new(
                 ErrorCategory::Platform,
-                codes::PLATFORM_ERROR,
+                1,
                 "Failed to create QNX channel",
             ));
         }
@@ -248,7 +248,7 @@ impl QnxFutex {
 
             return Err(Error::new(
                 ErrorCategory::Platform,
-                codes::PLATFORM_ERROR,
+                1,
                 "Failed to create QNX connection",
             ));
         }
@@ -270,7 +270,7 @@ impl QnxFutex {
         if result == -1 {
             return Err(Error::new(
                 ErrorCategory::Platform,
-                codes::PLATFORM_ERROR,
+                1,
                 "Failed to send pulse",
             ));
         }
@@ -306,7 +306,7 @@ impl QnxFutex {
 
             return Err(Error::new(
                 ErrorCategory::Platform,
-                codes::PLATFORM_ERROR,
+                1,
                 "Failed to receive pulse",
             ));
         }
@@ -315,7 +315,7 @@ impl QnxFutex {
         if pulse.code as u32 != self.config.pulse_code as u32 {
             return Err(Error::new(
                 ErrorCategory::Platform,
-                codes::PLATFORM_ERROR,
+                1,
                 "Received unexpected pulse code",
             ));
         }

@@ -227,8 +227,8 @@ impl QnxAllocator {
             let result = unsafe { ffi::mem_partition_setcurrent(id) };
             if result != 0 {
                 return Err(Error::new(
-                    ErrorCategory::Platform,
-                    codes::PLATFORM_ERROR,
+                    ErrorCategory::Platform, 1,
+                    
                     "Failed to set memory partition",
                 ));
             }
@@ -244,8 +244,8 @@ impl QnxAllocator {
             let result = unsafe { ffi::mem_partition_setcurrent(parent_id) };
             if result != 0 {
                 return Err(Error::new(
-                    ErrorCategory::Platform,
-                    codes::PLATFORM_ERROR,
+                    ErrorCategory::Platform, 1,
+                    
                     "Failed to restore memory partition",
                 ));
             }
@@ -257,8 +257,8 @@ impl QnxAllocator {
     fn calculate_total_size(&self, pages: u32) -> Result<usize> {
         let data_size = (pages as usize).checked_mul(WASM_PAGE_SIZE).ok_or_else(|| {
             Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_ALLOCATION_ERROR,
+                ErrorCategory::Memory, 1,
+                
                 "Memory size calculation overflow",
             )
         })?;
@@ -266,16 +266,16 @@ impl QnxAllocator {
         let guard_pages = if self.config.use_guard_pages { 2 } else { 0 };
         let guard_size = guard_pages.checked_mul(WASM_PAGE_SIZE).ok_or_else(|| {
             Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_ALLOCATION_ERROR,
+                ErrorCategory::Memory, 1,
+                
                 "Guard page size calculation overflow",
             )
         })?;
 
         data_size.checked_add(guard_size).ok_or_else(|| {
             Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_ALLOCATION_ERROR,
+                ErrorCategory::Memory, 1,
+                
                 "Total memory size calculation overflow",
             )
         })
@@ -290,8 +290,8 @@ impl QnxAllocator {
 
             if result != 0 {
                 return Err(Error::new(
-                    ErrorCategory::Memory,
-                    codes::MEMORY_DEALLOCATION_ERROR,
+                    ErrorCategory::Memory, 1,
+                    
                     "Failed to unmap memory",
                 ));
             }
@@ -354,8 +354,8 @@ impl PageAllocator for QnxAllocator {
         // Check for allocation failure
         if addr == core::ptr::null_mut() || addr == usize::MAX as *mut _ {
             return Err(Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_ALLOCATION_ERROR,
+                ErrorCategory::Memory, 1,
+                
                 "Failed to allocate memory",
             ));
         }
@@ -391,8 +391,8 @@ impl PageAllocator for QnxAllocator {
                 }
 
                 return Err(Error::new(
-                    ErrorCategory::Memory,
-                    codes::MEMORY_PROTECTION_ERROR,
+                    ErrorCategory::Memory, 1,
+                    
                     "Failed to set up guard pages",
                 ));
             }
@@ -408,8 +408,8 @@ impl PageAllocator for QnxAllocator {
         // Store allocation information
         let data_ptr_nonnull = NonNull::new(data_ptr).ok_or_else(|| {
             Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_ALLOCATION_ERROR,
+                ErrorCategory::Memory, 1,
+                
                 "Failed to allocate memory (null pointer)",
             )
         })?;
@@ -421,8 +421,8 @@ impl PageAllocator for QnxAllocator {
         // Return data pointer and size
         let data_size = (initial_pages as usize).checked_mul(WASM_PAGE_SIZE).ok_or_else(|| {
             Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_ALLOCATION_ERROR,
+                ErrorCategory::Memory, 1,
+                
                 "Memory size calculation overflow",
             )
         })?;
@@ -434,8 +434,8 @@ impl PageAllocator for QnxAllocator {
         // Check if we have an existing allocation
         if self.current_allocation.is_none() {
             return Err(Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_ALLOCATION_ERROR,
+                ErrorCategory::Memory, 1,
+                
                 "No current allocation to grow",
             ));
         }
@@ -443,8 +443,8 @@ impl PageAllocator for QnxAllocator {
         // Calculate new size
         let new_pages = current_pages.checked_add(additional_pages).ok_or_else(|| {
             Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_ALLOCATION_ERROR,
+                ErrorCategory::Memory, 1,
+                
                 "Page count overflow when growing memory",
             )
         })?;
@@ -453,8 +453,8 @@ impl PageAllocator for QnxAllocator {
         if let Some(max) = self.maximum_pages {
             if new_pages > max {
                 return Err(Error::new(
-                    ErrorCategory::Memory,
-                    codes::MEMORY_ALLOCATION_ERROR,
+                    ErrorCategory::Memory, 1,
+                    
                     "Cannot grow memory beyond maximum pages",
                 ));
             }
@@ -485,8 +485,8 @@ impl PageAllocator for QnxAllocator {
         // Check for allocation failure
         if new_addr == core::ptr::null_mut() || new_addr == usize::MAX as *mut _ {
             return Err(Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_ALLOCATION_ERROR,
+                ErrorCategory::Memory, 1,
+                
                 "Failed to allocate memory for growth",
             ));
         }
@@ -502,8 +502,8 @@ impl PageAllocator for QnxAllocator {
         let current_ptr = self.current_allocation.unwrap().as_ptr();
         let copy_size = (current_pages as usize).checked_mul(WASM_PAGE_SIZE).ok_or_else(|| {
             Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_ALLOCATION_ERROR,
+                ErrorCategory::Memory, 1,
+                
                 "Memory size calculation overflow",
             )
         })?;
@@ -544,8 +544,8 @@ impl PageAllocator for QnxAllocator {
                 }
 
                 return Err(Error::new(
-                    ErrorCategory::Memory,
-                    codes::MEMORY_PROTECTION_ERROR,
+                    ErrorCategory::Memory, 1,
+                    
                     "Failed to set up guard pages",
                 ));
             }
@@ -566,8 +566,8 @@ impl PageAllocator for QnxAllocator {
         // Update allocation information
         let new_data_ptr_nonnull = NonNull::new(new_data_ptr).ok_or_else(|| {
             Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_ALLOCATION_ERROR,
+                ErrorCategory::Memory, 1,
+                
                 "Failed to allocate memory for growth (null pointer)",
             )
         })?;
@@ -579,8 +579,8 @@ impl PageAllocator for QnxAllocator {
         // Return data pointer and size
         let data_size = (new_pages as usize).checked_mul(WASM_PAGE_SIZE).ok_or_else(|| {
             Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_ALLOCATION_ERROR,
+                ErrorCategory::Memory, 1,
+                
                 "Memory size calculation overflow",
             )
         })?;
@@ -620,23 +620,23 @@ impl PageAllocator for QnxAllocator {
 
             if addr_val < current_addr || addr_val >= current_addr + data_size {
                 return Err(Error::new(
-                    ErrorCategory::Memory,
-                    codes::MEMORY_OUT_OF_BOUNDS,
+                    ErrorCategory::Memory, 1,
+                    
                     "Address to protect is outside allocated memory",
                 ));
             }
 
             if addr_val + size > current_addr + data_size {
                 return Err(Error::new(
-                    ErrorCategory::Memory,
-                    codes::MEMORY_OUT_OF_BOUNDS,
+                    ErrorCategory::Memory, 1,
+                    
                     "Protection region extends beyond allocated memory",
                 ));
             }
         } else {
             return Err(Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_ACCESS_ERROR,
+                ErrorCategory::Memory, 1,
+                
                 "No current allocation to protect",
             ));
         }
@@ -664,8 +664,8 @@ impl PageAllocator for QnxAllocator {
 
         if result != 0 {
             return Err(Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_PROTECTION_ERROR,
+                ErrorCategory::Memory, 1,
+                
                 "Failed to apply memory protection",
             ));
         }

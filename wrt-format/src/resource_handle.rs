@@ -66,7 +66,7 @@ impl wrt_foundation::traits::FromBytes for ResourceOwnership {
         match reader.read_u8()? {
             0 => Ok(ResourceOwnership::Owned),
             1 => Ok(ResourceOwnership::Borrowed),
-            _ => Err(Error::new(ErrorCategory::InvalidInput, codes::INVALID_STATE, "Invalid ResourceOwnership discriminant")),
+            _ => Err(Error::new(ErrorCategory::Validation, codes::INVALID_STATE, "Invalid ResourceOwnership discriminant")),
         }
     }
 }

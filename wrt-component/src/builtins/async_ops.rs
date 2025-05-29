@@ -12,10 +12,7 @@ use alloc::{boxed::Box, collections::HashMap, sync::Arc, vec::Vec};
 use std::{
     boxed::Box,
     collections::HashMap,
-    future::Future,
-    pin::Pin,
     sync::{Arc, Mutex},
-    task::{Context, Poll, Waker},
     vec::Vec,
 };
 
@@ -59,9 +56,6 @@ pub struct AsyncValue {
     result: Option<Vec<ComponentValue>>,
     /// Error message (if failed)
     error: Option<String>,
-    /// Waker for task management (if available)
-    #[cfg(feature = "std")]
-    waker: Option<Waker>,
 }
 
 #[cfg(feature = "component-model-async")]
@@ -90,8 +84,6 @@ impl AsyncValueStore {
                 status,
                 result: None,
                 error: None,
-                #[cfg(feature = "std")]
-                waker: None,
             },
         );
         id
@@ -104,10 +96,6 @@ impl AsyncValueStore {
                 async_value.status = AsyncStatus::Ready;
                 async_value.result = Some(result);
 
-                #[cfg(feature = "std")]
-                if let Some(waker) = async_value.waker.take() {
-                    waker.wake();
-                }
 
                 Ok(())
             }
@@ -122,10 +110,6 @@ impl AsyncValueStore {
                 async_value.status = AsyncStatus::Failed;
                 async_value.error = Some(error);
 
-                #[cfg(feature = "std")]
-                if let Some(waker) = async_value.waker.take() {
-                    waker.wake();
-                }
 
                 Ok(())
             }
@@ -164,17 +148,6 @@ impl AsyncValueStore {
         }
     }
 
-    /// Set the waker for an async computation
-    #[cfg(feature = "std")]
-    pub fn set_waker(&mut self, id: u32, waker: Waker) -> Result<()> {
-        match self.values.get_mut(&id) {
-            Some(async_value) => {
-                async_value.waker = Some(waker);
-                Ok(())
-            }
-            None => Err(Error::new(AsyncError(format!("Async ID not found: {}", id)))),
-        }
-    }
 
     /// Check if an async value exists
     pub fn has_async(&self, id: u32) -> bool {
@@ -191,38 +164,6 @@ impl AsyncValueStore {
     }
 }
 
-#[cfg(feature = "component-model-async")]
-#[cfg(feature = "std")]
-/// Future implementation for waiting on async values
-pub struct AsyncValueFuture {
-    /// Store containing the async value
-    store: Arc<Mutex<AsyncValueStore>>,
-    /// ID of the async value
-    id: u32,
-}
-
-#[cfg(feature = "component-model-async")]
-#[cfg(feature = "std")]
-impl Future for AsyncValueFuture {
-    type Output = Result<Vec<ComponentValue>>;
-
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let id = self.id;
-        let mut store = self.store.lock().unwrap();
-
-        match store.get_status(id) {
-            Ok(AsyncStatus::Ready) => Poll::Ready(store.get_result(id)),
-            Ok(AsyncStatus::Failed) => Poll::Ready(store.get_result(id)), // This will return
-            // the error
-            Ok(AsyncStatus::Pending) => {
-                // Register the waker and return Pending
-                let _ = store.set_waker(id, cx.waker().clone());
-                Poll::Pending
-            }
-            Err(e) => Poll::Ready(Err(e)),
-        }
-    }
-}
 
 #[cfg(feature = "component-model-async")]
 /// Handler for the async.new built-in function
@@ -394,8 +335,6 @@ impl BuiltinHandler for AsyncWaitHandler {
     }
 
     fn execute(&self, args: &[ComponentValue]) -> Result<Vec<ComponentValue>> {
-        use futures::executor::block_on;
-
         // Validate args
         if args.len() != 1 {
             return Err(Error::new(format!("async.wait: Expected 1 argument, got {}", args.len())));
@@ -412,11 +351,30 @@ impl BuiltinHandler for AsyncWaitHandler {
             }
         };
 
-        // Wait for the async computation to complete
-        let future = AsyncValueFuture { store: self.async_store.clone(), id: async_id };
-
-        // Block on the future
-        block_on(future)
+        // Use Component Model polling instead of Rust futures
+        loop {
+            let store = self.async_store.lock().unwrap();
+            
+            match store.get_status(async_id) {
+                Ok(AsyncStatus::Ready) => {
+                    return store.get_result(async_id);
+                }
+                Ok(AsyncStatus::Failed) => {
+                    return store.get_result(async_id); // Will return the error
+                }
+                Ok(AsyncStatus::Pending) => {
+                    // Drop the lock and yield/sleep briefly
+                    drop(store);
+                    
+                    #[cfg(feature = "std")]
+                    std::thread::sleep(std::time::Duration::from_millis(1));
+                    
+                    // Continue polling
+                    continue;
+                }
+                Err(e) => return Err(e),
+            }
+        }
     }
 
     fn clone_handler(&self) -> Box<dyn BuiltinHandler> {

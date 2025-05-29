@@ -47,6 +47,13 @@ pub use alloc::{
     vec::Vec,
 };
 
+// For pure no_std (no alloc), provide minimal types or placeholders
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+pub type Arc<T> = core::marker::PhantomData<T>;
+
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+pub type Box<T> = core::marker::PhantomData<T>;
+
 // Re-export from wrt-error if enabled
 #[cfg(feature = "error")]
 pub use wrt_error::{codes, kinds, Error, ErrorCategory, Result};

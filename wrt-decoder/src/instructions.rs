@@ -27,7 +27,7 @@ use wrt_foundation::types::{
     TableIdx, TypeIdx, ValueType as CoreValueType,
 };
 
-use crate::prelude::*;
+use crate::{prelude::*, types::*};
 
 // Helper to read MemArg. Note: Wasm spec MemArg has align (power of 2), offset.
 // Our CoreMemArg has align_exponent, offset, memory_index.
@@ -73,11 +73,46 @@ fn parse_mem_arg_atomic(bytes: &[u8]) -> Result<(CoreMemArg, usize)> {
 /// Parse a sequence of WebAssembly instructions until an 'end' or 'else'
 /// opcode. The 'end' or 'else' opcode itself is not consumed from the stream.
 /// Used for parsing the bodies of blocks, loops, and if statements.
+#[cfg(feature = "alloc")]
 fn parse_instructions_internal(
     bytes: &[u8],
     stop_on_else: bool,
 ) -> Result<(Vec<CoreTypes::Instruction>, usize)> {
     let mut instructions = Vec::new();
+    let mut current_offset = 0;
+
+    while current_offset < bytes.len() {
+        // Peek at the next opcode
+        let opcode = bytes[current_offset];
+
+        if opcode == 0x0B {
+            // END instruction
+            let (end_instr, bytes_read) = parse_single_instruction(bytes, current_offset)?;
+            instructions.push(end_instr);
+            current_offset += bytes_read;
+            break;
+        }
+
+        if stop_on_else && opcode == 0x05 {
+            // ELSE instruction - stop parsing here but don't consume it
+            break;
+        }
+
+        let (instruction, bytes_read) = parse_single_instruction(bytes, current_offset)?;
+        instructions.push(instruction);
+        current_offset += bytes_read;
+    }
+
+    Ok((instructions, current_offset))
+}
+
+#[cfg(not(feature = "alloc"))]
+fn parse_instructions_internal(
+    bytes: &[u8],
+    stop_on_else: bool,
+) -> Result<(InstructionVec, usize)> {
+    let mut instructions = InstructionVec::new(wrt_foundation::NoStdProvider::default())
+        .map_err(|_| Error::memory_error("Failed to allocate instruction vector"))?;
     let mut current_offset = 0;
 
     while current_offset < bytes.len() {
@@ -95,7 +130,44 @@ fn parse_instructions_internal(
         }
 
         let (instr, bytes_read) = parse_instruction(&bytes[current_offset..])?;
-        instructions.push(instr);
+        instructions
+            .push(instr)
+            .map_err(|_| Error::memory_error("Instruction vector capacity exceeded"))?;
+        current_offset += bytes_read;
+    }
+    Ok((instructions, current_offset))
+}
+
+#[cfg(not(feature = "alloc"))]
+fn parse_instructions_internal_no_std(
+    bytes: &[u8],
+    stop_on_else: bool,
+) -> Result<(InstructionVec, usize)> {
+    let mut instructions = InstructionVec::new(wrt_foundation::NoStdProvider::default())
+        .map_err(|_| Error::memory_error("Failed to allocate instruction vector"))?;
+    let mut current_offset = 0;
+
+    while current_offset < bytes.len() {
+        // Peek at the next opcode
+        let opcode = bytes[current_offset];
+
+        if opcode == 0x0B {
+            // END instruction
+            let (end_instr, bytes_read) = parse_single_instruction(bytes, current_offset)?;
+            instructions
+                .push(end_instr)
+                .map_err(|_| Error::memory_error("Instruction vector capacity exceeded"))?;
+            current_offset += bytes_read;
+            break; // Found END, stop parsing
+        } else if opcode == 0x05 && stop_on_else {
+            // ELSE instruction and we're supposed to stop on it
+            break;
+        }
+
+        let (instr, bytes_read) = parse_single_instruction(bytes, current_offset)?;
+        instructions
+            .push(instr)
+            .map_err(|_| Error::memory_error("Instruction vector capacity exceeded"))?;
         current_offset += bytes_read;
     }
     Ok((instructions, current_offset))
@@ -104,6 +176,7 @@ fn parse_instructions_internal(
 /// Parse a sequence of WebAssembly instructions from a byte slice.
 /// This is typically used for a function body or an init_expr.
 /// Instructions are parsed until an "end" opcode terminates the sequence.
+#[cfg(feature = "alloc")]
 pub fn parse_instructions(bytes: &[u8]) -> Result<(Vec<CoreTypes::Instruction>, usize)> {
     let mut all_instructions = Vec::new();
     let mut total_bytes_read = 0;
@@ -157,6 +230,27 @@ pub fn parse_instructions(bytes: &[u8]) -> Result<(Vec<CoreTypes::Instruction>, 
         }
     }
     total_bytes_read = temp_offset;
+
+    Ok((all_instructions, total_bytes_read))
+}
+
+#[cfg(not(feature = "alloc"))]
+pub fn parse_instructions(bytes: &[u8]) -> Result<(InstructionVec, usize)> {
+    let mut all_instructions = InstructionVec::new(wrt_foundation::NoStdProvider::default())
+        .map_err(|_| Error::memory_error("Failed to allocate instruction vector"))?;
+    let mut total_bytes_read = 0;
+
+    let (initial_block_instructions, initial_block_len) =
+        parse_instructions_internal_no_std(bytes, false)?;
+
+    // Copy instructions from the initial block
+    for instr in initial_block_instructions.iter() {
+        all_instructions
+            .push(instr.clone())
+            .map_err(|_| Error::memory_error("Instruction capacity exceeded"))?;
+    }
+
+    total_bytes_read += initial_block_len;
 
     Ok((all_instructions, total_bytes_read))
 }
@@ -737,6 +831,7 @@ pub fn parse_instruction(bytes: &[u8]) -> Result<(CoreTypes::Instruction, usize)
 /// Returns a vector of (count, value_type_byte) pairs and the number of bytes
 /// read. The caller will need to convert value_type_byte to
 /// CoreTypes::ValueType.
+#[cfg(feature = "alloc")]
 pub fn parse_locals(bytes: &[u8]) -> Result<(Vec<CoreTypes::LocalEntry>, usize)> {
     let (mut count, mut s) = read_leb_u32(bytes)?;
     let mut total_size = s;
@@ -751,6 +846,29 @@ pub fn parse_locals(bytes: &[u8]) -> Result<(Vec<CoreTypes::LocalEntry>, usize)>
         })?;
 
         locals_vec.push(CoreTypes::LocalEntry { count: num_locals_of_type, value_type });
+        total_size += s1 + s2;
+    }
+    Ok((locals_vec, total_size))
+}
+
+#[cfg(not(feature = "alloc"))]
+pub fn parse_locals(bytes: &[u8]) -> Result<(LocalsVec, usize)> {
+    let (mut count, mut s) = read_leb_u32(bytes)?;
+    let mut total_size = s;
+    let mut locals_vec = LocalsVec::new(wrt_foundation::NoStdProvider::default())
+        .map_err(|_| Error::memory_error("Failed to allocate locals vector"))?;
+
+    for _ in 0..count {
+        let (num_locals_of_type, s1) = read_leb_u32(&bytes[total_size..])?;
+        let (val_type_byte, s2) = read_u8(&bytes[total_size + s1..])?;
+
+        let value_type = CoreValueType::from_binary(val_type_byte).map_err(|e| {
+            e.add_context(codes::DECODE_ERROR, "Failed to parse local entry value type")
+        })?;
+
+        locals_vec
+            .push(CoreTypes::LocalEntry { count: num_locals_of_type, value_type })
+            .map_err(|_| Error::memory_error("Locals vector capacity exceeded"))?;
         total_size += s1 + s2;
     }
     Ok((locals_vec, total_size))

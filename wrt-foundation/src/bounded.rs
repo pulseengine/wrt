@@ -77,6 +77,9 @@ pub const MAX_COMPONENT_FIXED_LIST_ITEMS: usize = 256;
 /// Maximum number of fields in a component record.
 pub const MAX_COMPONENT_RECORD_FIELDS: usize = 64;
 
+/// Maximum number of generative types per component instance.
+pub const MAX_GENERATIVE_TYPES: usize = 128;
+
 /// Maximum number of elements in a component tuple.
 pub const MAX_COMPONENT_TUPLE_ITEMS: usize = 64;
 

@@ -269,8 +269,7 @@ pub mod constant_time {
     pub fn constant_time_copy(dst: &mut [u8], src: &[u8]) -> Result<(), wrt_error::Error> {
         if dst.len() != src.len() {
             return Err(wrt_error::Error::new(
-                wrt_error::ErrorCategory::Memory,
-                wrt_error::codes::INVALID_MEMORY_ACCESS,
+                wrt_error::ErrorCategory::Memory, 1,
                 "Source and destination buffers must have the same length",
             ));
         }

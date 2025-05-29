@@ -163,7 +163,7 @@ impl CgroupController {
         if fd < 0 {
             return Err(Error::new(
                 ErrorCategory::Platform,
-                codes::PLATFORM_ERROR,
+                1,
                 "Failed to open cgroup file",
             ));
         }
@@ -177,7 +177,7 @@ impl CgroupController {
         if written < 0 {
             return Err(Error::new(
                 ErrorCategory::Platform,
-                codes::PLATFORM_ERROR,
+                1,
                 "Failed to write to cgroup file",
             ));
         }
@@ -236,7 +236,7 @@ impl PlatformThreadHandle for LinuxThreadHandle {
         if result != 0 {
             return Err(Error::new(
                 ErrorCategory::Platform,
-                codes::PLATFORM_ERROR,
+                1,
                 "Failed to join thread",
             ));
         }
@@ -248,7 +248,7 @@ impl PlatformThreadHandle for LinuxThreadHandle {
             Some(Err(e)) => Err(e.clone()),
             None => Err(Error::new(
                 ErrorCategory::Platform,
-                codes::PLATFORM_ERROR,
+                1,
                 "Thread completed without result",
             )),
         }
@@ -369,7 +369,7 @@ impl LinuxThreadPool {
         if result != 0 {
             return Err(Error::new(
                 ErrorCategory::Platform,
-                codes::PLATFORM_ERROR,
+                1,
                 "Failed to set CPU affinity",
             ));
         }
@@ -452,7 +452,7 @@ impl PlatformThreadPool for LinuxThreadPool {
         if self.shutdown.load(Ordering::Acquire) {
             return Err(Error::new(
                 ErrorCategory::Platform,
-                codes::PLATFORM_ERROR,
+                1,
                 "Thread pool is shutting down",
             ));
         }
@@ -462,7 +462,7 @@ impl PlatformThreadPool for LinuxThreadPool {
         if active_count >= self.config.max_threads {
             return Err(Error::new(
                 ErrorCategory::Resource,
-                codes::RESOURCE_EXHAUSTED,
+                1,
                 "Thread pool limit reached",
             ));
         }
@@ -528,7 +528,7 @@ impl PlatformThreadPool for LinuxThreadPool {
             }
             return Err(Error::new(
                 ErrorCategory::Platform,
-                codes::PLATFORM_ERROR,
+                1,
                 "Failed to create thread",
             ));
         }

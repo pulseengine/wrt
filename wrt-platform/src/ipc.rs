@@ -6,10 +6,13 @@
 
 use core::{fmt::Debug, time::Duration};
 
+#[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::{boxed::Box, string::String, vec::Vec};
+#[cfg(feature = "std")]
+use std::{boxed::Box, string::String, vec::Vec};
 use wrt_sync::WrtMutex;
 
-use wrt_error::{codes, Error, ErrorCategory, Result};
+use wrt_error::{Error, ErrorCategory, Result};
 
 /// IPC message types
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -120,7 +123,7 @@ impl IpcServerBuilder {
 }
 
 /// Create platform-specific IPC channel
-pub fn create_platform_channel(name: &str) -> Result<Box<dyn IpcChannel>> {
+pub fn create_platform_channel(_name: &str) -> Result<Box<dyn IpcChannel>> {
     #[cfg(target_os = "nto")]
     {
         super::qnx_ipc::QnxChannel::create_server(name)
@@ -141,8 +144,12 @@ pub fn create_platform_channel(name: &str) -> Result<Box<dyn IpcChannel>> {
 
     #[cfg(not(any(target_os = "nto", target_os = "linux", target_os = "windows")))]
     {
-        super::generic_ipc::GenericChannel::create_server(name)
-            .map(|ch| Box::new(ch) as Box<dyn IpcChannel>)
+        // Generic IPC implementation for platforms without native IPC
+        Err(Error::new(
+            ErrorCategory::System,
+            1,
+            "IPC not supported on this platform",
+        ))
     }
 }
 
@@ -173,12 +180,12 @@ pub trait IpcHandler: Send + Sync {
     fn handle_message(&self, msg: Message, client: ClientId) -> Result<Option<Message>>;
 
     /// Called when client connects
-    fn on_connect(&self, client: ClientId) -> Result<()> {
+    fn on_connect(&self, _client: ClientId) -> Result<()> {
         Ok(())
     }
 
     /// Called when client disconnects
-    fn on_disconnect(&self, client: ClientId) {
+    fn on_disconnect(&self, _client: ClientId) {
         // Default: do nothing
     }
 }
