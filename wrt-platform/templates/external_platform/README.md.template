@@ -1,0 +1,186 @@
+# WRT Platform Support for {{ PLATFORM_NAME }}
+
+[![Crates.io](https://img.shields.io/crates/v/wrt-platform-{{ platform_name }}.svg)](https://crates.io/crates/wrt-platform-{{ platform_name }})
+[![Documentation](https://docs.rs/wrt-platform-{{ platform_name }}/badge.svg)](https://docs.rs/wrt-platform-{{ platform_name }})
+[![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue.svg)](LICENSE)
+
+This crate provides {{ PLATFORM_NAME }}-specific implementations of WRT's core traits, enabling high-performance WebAssembly runtime support on {{ PLATFORM_NAME }} systems.
+
+## Features
+
+- **Native Memory Management**: Uses {{ PLATFORM_NAME }}'s optimal memory allocation APIs
+- **Efficient Synchronization**: Leverages {{ PLATFORM_NAME }}'s synchronization primitives
+- **Zero-Cost Abstractions**: Compile-time optimizations for maximum performance
+- **No-Std Support**: Works in embedded and resource-constrained environments
+- **Safety**: Memory-safe implementations with comprehensive error handling
+
+## Quick Start
+
+Add this to your `Cargo.toml`:
+
+```toml
+[dependencies]
+wrt = "0.2"
+wrt-platform-{{ platform_name }} = "0.1"
+```
+
+Basic usage:
+
+```rust
+use wrt_platform_{{ platform_name }}::{{ PlatformName }}Platform;
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Detect platform capabilities
+    let platform = {{ PlatformName }}Platform::detect()?;
+    
+    // Create platform-optimized components
+    let allocator = platform.create_allocator_boxed()?;
+    let futex = platform.create_futex_boxed()?;
+    
+    // Use with WRT runtime
+    let runtime = wrt::Runtime::builder()
+        .with_allocator(allocator)
+        .with_futex(futex)
+        .build()?;
+    
+    // Your WebAssembly code here...
+    
+    Ok(())
+}
+```
+
+## Platform-Specific Features
+
+### Memory Management
+
+- **{{ PLATFORM_NAME }} Heap**: Direct integration with {{ PLATFORM_NAME }}'s memory management
+- **Aligned Allocation**: Automatic 64KB alignment for WebAssembly pages
+- **Guard Pages**: Optional memory protection for enhanced safety
+- **Growth Support**: Efficient memory region expansion
+
+### Synchronization
+
+- **Native Primitives**: Uses {{ PLATFORM_NAME }}'s synchronization APIs
+- **Priority Inheritance**: Optional support for real-time systems
+- **Timeout Support**: Configurable wait timeouts
+- **Low Latency**: Optimized for high-performance applications
+
+## Configuration
+
+The platform can be configured for different use cases:
+
+```rust
+use wrt_platform_{{ platform_name }}::*;
+
+// High-performance configuration
+let allocator = {{ PlatformName }}AllocatorBuilder::new()
+    .max_pages(2048)
+    .enable_guard_pages(false)
+    .enable_memory_protection(true)
+    .build()?;
+
+// Real-time configuration
+let futex = {{ PlatformName }}FutexBuilder::new()
+    .enable_priority_inheritance(true)
+    .enable_realtime_scheduling(true)
+    .build()?;
+```
+
+## Requirements
+
+- {{ PLATFORM_NAME }} {{ MIN_VERSION }} or later
+- Rust 1.70+ (for MSRV compatibility with WRT)
+
+### Optional Dependencies
+
+- `{{ platform_name }}-dev`: Development headers (if building from source)
+- `{{ platform_name }}-rt`: Real-time extensions (for real-time features)
+
+## Examples
+
+See the [`examples/`](examples/) directory for comprehensive usage examples:
+
+- [`basic_usage.rs`](examples/basic_usage.rs): Simple setup and usage
+- [`no_std_usage.rs`](examples/no_std_usage.rs): Embedded/no-std environment
+- [`realtime_config.rs`](examples/realtime_config.rs): Real-time system configuration
+- [`benchmarks.rs`](examples/benchmarks.rs): Performance benchmarking
+
+## Platform Support
+
+This crate supports {{ PLATFORM_NAME }} on the following architectures:
+
+- ✅ x86_64
+- ✅ aarch64
+- ⚠️  x86 (limited testing)
+- ❌ Other architectures (contributions welcome)
+
+## Performance
+
+Benchmark results on {{ PLATFORM_NAME }} ({{ BENCHMARK_SYSTEM }}):
+
+| Operation | wrt-platform-{{ platform_name }} | Generic Implementation | Improvement |
+|-----------|----------------------------------|-----------------------|-------------|
+| Page Allocation | {{ ALLOC_TIME }}μs | {{ GENERIC_ALLOC_TIME }}μs | {{ ALLOC_IMPROVEMENT }}x |
+| Futex Wait/Wake | {{ FUTEX_TIME }}ns | {{ GENERIC_FUTEX_TIME }}ns | {{ FUTEX_IMPROVEMENT }}x |
+| Memory Growth | {{ GROWTH_TIME }}μs | {{ GENERIC_GROWTH_TIME }}μs | {{ GROWTH_IMPROVEMENT }}x |
+
+*Benchmarks run on {{ BENCHMARK_SYSTEM }} with {{ BENCHMARK_CONFIG }}*
+
+## Contributing
+
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+### Development Setup
+
+1. Install {{ PLATFORM_NAME }} development environment
+2. Clone the repository
+3. Run tests: `cargo test`
+4. Run benchmarks: `cargo bench`
+
+### Testing
+
+The crate includes comprehensive tests:
+
+```bash
+# Unit tests
+cargo test
+
+# Integration tests (requires {{ PLATFORM_NAME }})
+cargo test --test integration
+
+# Platform-specific tests
+cargo test --features {{ platform_name }}-extensions
+```
+
+## Troubleshooting
+
+### Common Issues
+
+**Build fails with "{{ platform_name }}_sys not found"**
+- Install {{ PLATFORM_NAME }} development packages
+- Ensure {{ PLATFORM_NAME }} is in your system PATH
+
+**Runtime panics with memory allocation errors**
+- Check system memory limits
+- Verify {{ PLATFORM_NAME }} permissions for memory allocation
+- Try reducing `max_pages` configuration
+
+**Performance not as expected**
+- Enable hardware-specific optimizations: `.enable_hardware_opts(true)`
+- Check {{ PLATFORM_NAME }} system configuration
+- Profile with {{ PLATFORM_NAME }}'s profiling tools
+
+## License
+
+Licensed under either of:
+
+- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
+- MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
+
+at your option.
+
+## Related Projects
+
+- [WRT](https://github.com/wrt-org/wrt) - The core WebAssembly runtime
+- [wrt-platform](https://github.com/wrt-org/wrt/tree/main/wrt-platform) - Platform abstraction layer
+- [{{ platform_name }}-sys](https://github.com/{{ platform_name }}/{{ platform_name }}-sys) - Low-level {{ PLATFORM_NAME }} bindings

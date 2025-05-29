@@ -1,0 +1,323 @@
+//! {{ PLATFORM_NAME }} Memory Allocator Implementation
+//!
+//! This module implements the `PageAllocator` trait for {{ PLATFORM_NAME }}.
+
+use core::ptr::NonNull;
+use wrt_platform::{PageAllocator, WASM_PAGE_SIZE};
+use wrt_error::{Error, Result};
+
+#[cfg(feature = "alloc")]
+use alloc::vec::Vec;
+
+/// {{ PLATFORM_NAME }} memory allocator
+#[derive(Debug)]
+pub struct {{ PlatformName }}Allocator {
+    max_pages: u32,
+    allocated_regions: Vec<(NonNull<u8>, usize)>,
+    // TODO: Add your platform-specific allocator state
+    // Example:
+    // heap_handle: {{ platform_name }}_sys::HeapHandle,
+    // memory_pool: {{ platform_name }}_sys::MemoryPool,
+}
+
+/// Builder for configuring {{ PLATFORM_NAME }} allocator
+#[derive(Debug)]
+pub struct {{ PlatformName }}AllocatorBuilder {
+    max_pages: u32,
+    enable_guard_pages: bool,
+    enable_memory_protection: bool,
+    // TODO: Add your platform-specific builder options
+}
+
+impl Default for {{ PlatformName }}AllocatorBuilder {
+    fn default() -> Self {
+        Self {
+            max_pages: 1024,
+            enable_guard_pages: true,
+            enable_memory_protection: true,
+        }
+    }
+}
+
+impl {{ PlatformName }}AllocatorBuilder {
+    /// Create a new builder with default settings
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Set the maximum number of WASM pages
+    pub fn max_pages(mut self, max_pages: u32) -> Self {
+        self.max_pages = max_pages;
+        self
+    }
+
+    /// Enable or disable guard pages
+    pub fn enable_guard_pages(mut self, enable: bool) -> Self {
+        self.enable_guard_pages = enable;
+        self
+    }
+
+    /// Enable or disable memory protection
+    pub fn enable_memory_protection(mut self, enable: bool) -> Self {
+        self.enable_memory_protection = enable;
+        self
+    }
+
+    /// Build the allocator
+    pub fn build(self) -> Result<{{ PlatformName }}Allocator> {
+        {{ PlatformName }}Allocator::new(self)
+    }
+}
+
+impl {{ PlatformName }}Allocator {
+    /// Create a new {{ PLATFORM_NAME }} allocator
+    pub fn new(builder: {{ PlatformName }}AllocatorBuilder) -> Result<Self> {
+        // TODO: Initialize your platform-specific allocator
+        #[cfg(target_os = "{{ platform_name }}")]
+        {
+            // Example implementation:
+            // let heap_handle = {{ platform_name }}_sys::create_heap(
+            //     builder.max_pages as usize * WASM_PAGE_SIZE
+            // )?;
+            
+            Ok(Self {
+                max_pages: builder.max_pages,
+                allocated_regions: Vec::new(),
+                // heap_handle,
+            })
+        }
+
+        #[cfg(not(target_os = "{{ platform_name }}"))]
+        {
+            // Fallback implementation for development/testing
+            Ok(Self {
+                max_pages: builder.max_pages,
+                allocated_regions: Vec::new(),
+            })
+        }
+    }
+
+    /// Get the maximum number of pages supported
+    pub fn max_pages(&self) -> u32 {
+        self.max_pages
+    }
+
+    /// Get the number of currently allocated pages
+    pub fn allocated_pages(&self) -> u32 {
+        self.allocated_regions
+            .iter()
+            .map(|(_, size)| *size / WASM_PAGE_SIZE)
+            .sum::<usize>() as u32
+    }
+}
+
+impl PageAllocator for {{ PlatformName }}Allocator {
+    fn allocate(&mut self, initial_pages: u32, max_pages: Option<u32>) -> Result<(NonNull<u8>, usize)> {
+        // Validate parameters
+        if initial_pages == 0 {
+            return Err(Error::new(
+                wrt_error::ErrorCategory::Memory,
+                1,
+                "Cannot allocate zero pages",
+            ));
+        }
+
+        let max = max_pages.unwrap_or(self.max_pages);
+        if initial_pages > max {
+            return Err(Error::new(
+                wrt_error::ErrorCategory::Memory,
+                2,
+                "Initial pages exceeds maximum",
+            ));
+        }
+
+        let size = initial_pages as usize * WASM_PAGE_SIZE;
+
+        #[cfg(target_os = "{{ platform_name }}")]
+        {
+            // TODO: Implement platform-specific allocation
+            // Example:
+            // let ptr = {{ platform_name }}_sys::alloc_aligned(
+            //     self.heap_handle,
+            //     size,
+            //     WASM_PAGE_SIZE
+            // )?;
+            
+            // For now, use a placeholder implementation
+            let ptr = self.allocate_fallback(size)?;
+            self.allocated_regions.push((ptr, size));
+            Ok((ptr, size))
+        }
+
+        #[cfg(not(target_os = "{{ platform_name }}"))]
+        {
+            // Fallback implementation for development/testing
+            let ptr = self.allocate_fallback(size)?;
+            self.allocated_regions.push((ptr, size));
+            Ok((ptr, size))
+        }
+    }
+
+    fn grow(&mut self, current_pages: u32, additional_pages: u32) -> Result<()> {
+        let total_pages = current_pages + additional_pages;
+        
+        if total_pages > self.max_pages {
+            return Err(Error::new(
+                wrt_error::ErrorCategory::Memory,
+                3,
+                "Growth would exceed maximum pages",
+            ));
+        }
+
+        #[cfg(target_os = "{{ platform_name }}")]
+        {
+            // TODO: Implement platform-specific memory growth
+            // Example:
+            // {{ platform_name }}_sys::grow_allocation(
+            //     self.heap_handle,
+            //     additional_pages as usize * WASM_PAGE_SIZE
+            // )?;
+        }
+
+        #[cfg(not(target_os = "{{ platform_name }}"))]
+        {
+            // Fallback: growth is a no-op in development mode
+        }
+
+        Ok(())
+    }
+
+    unsafe fn deallocate(&mut self, ptr: NonNull<u8>, size: usize) -> Result<()> {
+        // Find and remove the allocation record
+        let index = self.allocated_regions
+            .iter()
+            .position(|(p, s)| *p == ptr && *s == size)
+            .ok_or_else(|| Error::new(
+                wrt_error::ErrorCategory::Memory,
+                4,
+                "Deallocating unknown memory region",
+            ))?;
+
+        self.allocated_regions.remove(index);
+
+        #[cfg(target_os = "{{ platform_name }}")]
+        {
+            // TODO: Implement platform-specific deallocation
+            // Example:
+            // {{ platform_name }}_sys::free_aligned(
+            //     self.heap_handle,
+            //     ptr.as_ptr(),
+            //     size
+            // )?;
+        }
+
+        #[cfg(not(target_os = "{{ platform_name }}"))]
+        {
+            // Fallback deallocation for development/testing
+            self.deallocate_fallback(ptr, size);
+        }
+
+        Ok(())
+    }
+}
+
+impl {{ PlatformName }}Allocator {
+    /// Fallback allocation for development/testing
+    fn allocate_fallback(&self, size: usize) -> Result<NonNull<u8>> {
+        #[cfg(feature = "std")]
+        {
+            use std::alloc::{alloc, Layout};
+            
+            let layout = Layout::from_size_align(size, WASM_PAGE_SIZE)
+                .map_err(|_| Error::new(
+                    wrt_error::ErrorCategory::Memory,
+                    5,
+                    "Invalid layout for fallback allocation",
+                ))?;
+            
+            let ptr = unsafe { alloc(layout) };
+            NonNull::new(ptr).ok_or_else(|| Error::new(
+                wrt_error::ErrorCategory::Memory,
+                6,
+                "Fallback allocation failed",
+            ))
+        }
+
+        #[cfg(not(feature = "std"))]
+        {
+            // In no_std mode, we can't do fallback allocation
+            Err(Error::new(
+                wrt_error::ErrorCategory::Memory,
+                7,
+                "Platform not supported and no std available for fallback",
+            ))
+        }
+    }
+
+    /// Fallback deallocation for development/testing
+    #[cfg(feature = "std")]
+    fn deallocate_fallback(&self, ptr: NonNull<u8>, size: usize) {
+        use std::alloc::{dealloc, Layout};
+        
+        if let Ok(layout) = Layout::from_size_align(size, WASM_PAGE_SIZE) {
+            unsafe {
+                dealloc(ptr.as_ptr(), layout);
+            }
+        }
+    }
+
+    #[cfg(not(feature = "std"))]
+    fn deallocate_fallback(&self, _ptr: NonNull<u8>, _size: usize) {
+        // No-op in no_std mode
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_allocator_builder() {
+        let allocator = {{ PlatformName }}AllocatorBuilder::new()
+            .max_pages(512)
+            .enable_guard_pages(false)
+            .build()
+            .unwrap();
+
+        assert_eq!(allocator.max_pages(), 512);
+        assert_eq!(allocator.allocated_pages(), 0);
+    }
+
+    #[test]
+    fn test_allocation() {
+        let mut allocator = {{ PlatformName }}AllocatorBuilder::new()
+            .max_pages(100)
+            .build()
+            .unwrap();
+
+        let result = allocator.allocate(10, Some(50));
+        assert!(result.is_ok());
+
+        let (ptr, size) = result.unwrap();
+        assert_eq!(size, 10 * WASM_PAGE_SIZE);
+        assert_eq!(allocator.allocated_pages(), 10);
+
+        // Clean up
+        unsafe {
+            allocator.deallocate(ptr, size).unwrap();
+        }
+        assert_eq!(allocator.allocated_pages(), 0);
+    }
+
+    #[test]
+    fn test_allocation_limits() {
+        let mut allocator = {{ PlatformName }}AllocatorBuilder::new()
+            .max_pages(10)
+            .build()
+            .unwrap();
+
+        // Should fail to allocate more than max_pages
+        let result = allocator.allocate(20, None);
+        assert!(result.is_err());
+    }
+}

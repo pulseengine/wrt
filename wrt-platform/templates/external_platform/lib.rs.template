@@ -1,0 +1,145 @@
+//! WRT Platform Support for {{ PLATFORM_NAME }}
+//!
+//! This crate provides platform-specific implementations of WRT's core traits
+//! for the {{ PLATFORM_NAME }} operating system/platform.
+//!
+//! # Features
+//!
+//! - Memory allocation using {{ PLATFORM_NAME }}'s native APIs
+//! - Synchronization primitives optimized for {{ PLATFORM_NAME }}
+//! - Zero-cost abstractions with compile-time optimization
+//! - Support for both `std` and `no_std` environments
+//!
+//! # Quick Start
+//!
+//! ```rust
+//! use wrt_platform_{{ platform_name }}::{{ PlatformName }}Platform;
+//!
+//! fn main() -> Result<(), Box<dyn std::error::Error>> {
+//!     let platform = {{ PlatformName }}Platform::detect()?;
+//!     let allocator = platform.create_allocator_boxed()?;
+//!     let futex = platform.create_futex_boxed()?;
+//!     
+//!     // Use with WRT runtime
+//!     let runtime = wrt::Runtime::builder()
+//!         .with_allocator(allocator)
+//!         .with_futex(futex)
+//!         .build()?;
+//!     
+//!     Ok(())
+//! }
+//! ```
+
+#![cfg_attr(not(feature = "std"), no_std)]
+#![deny(missing_docs)]
+#![deny(clippy::panic)]
+#![deny(clippy::unwrap_used)]
+#![deny(clippy::expect_used)]
+#![warn(clippy::pedantic)]
+
+#[cfg(feature = "std")]
+extern crate std;
+
+#[cfg(feature = "alloc")]
+extern crate alloc;
+
+// Re-export core traits for convenience
+pub use wrt_platform::{PageAllocator, FutexLike, WASM_PAGE_SIZE};
+pub use wrt_error::{Error, Result};
+
+// Platform-specific modules
+mod allocator;
+mod sync;
+mod platform;
+
+// Platform system interface
+// TODO: Replace with your platform's system interface
+#[cfg(target_os = "{{ platform_name }}")]
+mod sys;
+
+// Export main types
+pub use allocator::{{{ PlatformName }}Allocator, {{ PlatformName }}AllocatorBuilder};
+pub use sync::{{{ PlatformName }}Futex, {{ PlatformName }}FutexBuilder};
+pub use platform::{{{ PlatformName }}Platform, {{ PlatformName }}Config};
+
+/// Platform-specific configuration options
+#[derive(Debug, Clone)]
+pub struct Config {
+    /// Maximum number of WASM pages to support
+    pub max_pages: u32,
+    /// Enable hardware-specific optimizations
+    pub enable_hardware_opts: bool,
+    /// Enable debug mode features
+    pub debug_mode: bool,
+    // TODO: Add your platform-specific configuration options
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            max_pages: 1024,
+            enable_hardware_opts: true,
+            debug_mode: false,
+        }
+    }
+}
+
+/// Platform capabilities detection result
+#[derive(Debug, Clone)]
+pub struct Capabilities {
+    /// Platform supports memory protection
+    pub memory_protection: bool,
+    /// Platform supports priority inheritance
+    pub priority_inheritance: bool,
+    /// Platform supports real-time scheduling
+    pub realtime_scheduling: bool,
+    /// Platform supports hardware acceleration
+    pub hardware_acceleration: bool,
+    // TODO: Add your platform-specific capabilities
+}
+
+/// Detect platform capabilities at runtime
+pub fn detect_capabilities() -> Result<Capabilities> {
+    // TODO: Implement platform-specific capability detection
+    Ok(Capabilities {
+        memory_protection: true,
+        priority_inheritance: true,
+        realtime_scheduling: true,
+        hardware_acceleration: false,
+    })
+}
+
+/// Check if we're running on the target platform
+pub fn is_supported() -> bool {
+    cfg!(target_os = "{{ platform_name }}")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_config_default() {
+        let config = Config::default();
+        assert_eq!(config.max_pages, 1024);
+        assert!(config.enable_hardware_opts);
+        assert!(!config.debug_mode);
+    }
+
+    #[test]
+    fn test_capability_detection() {
+        let capabilities = detect_capabilities().unwrap();
+        // Add your platform-specific capability tests
+        assert!(capabilities.memory_protection);
+    }
+
+    #[test]
+    fn test_platform_support() {
+        // This test will pass/fail based on the target platform
+        #[cfg(target_os = "{{ platform_name }}")]
+        assert!(is_supported());
+        
+        #[cfg(not(target_os = "{{ platform_name }}"))]
+        assert!(!is_supported());
+    }
+}

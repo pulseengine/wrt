@@ -1,7 +1,10 @@
-//! Portable VxWorks platform usage example
+//! Portable VxWorks Platform Usage Example
 //!
 //! This example demonstrates VxWorks platform usage and compiles on all platforms,
 //! showing conditional compilation patterns for platform-specific code.
+//! 
+//! This is part of the platform-specific examples that show how external developers
+//! can implement and use platform extensions with WRT.
 
 #[cfg(all(feature = "platform-vxworks", target_os = "vxworks"))]
 use wrt_platform::{
