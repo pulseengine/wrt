@@ -267,7 +267,16 @@ pub fn extract_state_section(section: &CustomSection) -> Result<(StateHeader, Ve
 ///
 /// `true` if the module contains at least one state section
 pub fn has_state_sections(custom_sections: &[CustomSection]) -> bool {
-    custom_sections.iter().any(|section| section.name.starts_with(STATE_SECTION_PREFIX).unwrap_or(false))
+    custom_sections.iter().any(|section| {
+        #[cfg(any(feature = "alloc", feature = "std"))]
+        {
+            section.name.starts_with(STATE_SECTION_PREFIX)
+        }
+        #[cfg(not(any(feature = "alloc", feature = "std")))]
+        {
+            section.name.starts_with(STATE_SECTION_PREFIX).unwrap_or(false)
+        }
+    })
 }
 
 /// Checks if a given section name corresponds to a known `StateSection`.

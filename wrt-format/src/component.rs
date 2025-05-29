@@ -124,7 +124,7 @@ impl Validatable for CoreInstance {
                 // Basic validation: module_idx should be reasonable
                 if *module_idx > 10000 {
                     // Arbitrary reasonable limit
-                    return Err(Error::validation_error(format!(
+                    return Err(crate::error::validation_error_dynamic(format!(
                         "Module index {} seems unreasonably large",
                         module_idx
                     )));
@@ -149,7 +149,7 @@ impl Validatable for CoreInstance {
                     }
                     // Reasonable index limit
                     if export.idx > 100000 {
-                        return Err(Error::validation_error(format!(
+                        return Err(crate::error::validation_error_dynamic(format!(
                             "Export index {} seems unreasonably large",
                             export.idx
                         )));
@@ -228,14 +228,14 @@ impl Validatable for CoreType {
             CoreTypeDefinition::Function { params, results } => {
                 // Basic validation: reasonable limits on params and results
                 if params.len() > 1000 {
-                    return Err(Error::validation_error(format!(
+                    return Err(crate::error::validation_error_dynamic(format!(
                         "Function has too many parameters ({})",
                         params.len()
                     )));
                 }
 
                 if results.len() > 1000 {
-                    return Err(Error::validation_error(format!(
+                    return Err(crate::error::validation_error_dynamic(format!(
                         "Function has too many results ({})",
                         results.len()
                     )));
@@ -994,7 +994,7 @@ impl Validatable for Instance {
                 // Basic validation: component_idx should be reasonable
                 if *component_idx > 10000 {
                     // Arbitrary reasonable limit
-                    return Err(Error::validation_error(format!(
+                    return Err(crate::error::validation_error_dynamic(format!(
                         "Component index {} seems unreasonably large",
                         component_idx
                     )));
@@ -1030,7 +1030,7 @@ impl Validatable for Alias {
         match &self.target {
             AliasTarget::CoreInstanceExport { instance_idx, name, .. } => {
                 if *instance_idx > 10000 {
-                    return Err(Error::validation_error(format!(
+                    return Err(crate::error::validation_error_dynamic(format!(
                         "Instance index {} seems unreasonably large",
                         instance_idx
                     )));
@@ -1044,7 +1044,7 @@ impl Validatable for Alias {
             }
             AliasTarget::InstanceExport { instance_idx, name, .. } => {
                 if *instance_idx > 10000 {
-                    return Err(Error::validation_error(format!(
+                    return Err(crate::error::validation_error_dynamic(format!(
                         "Instance index {} seems unreasonably large",
                         instance_idx
                     )));
@@ -1058,14 +1058,14 @@ impl Validatable for Alias {
             }
             AliasTarget::Outer { count, idx, .. } => {
                 if *count > 10 {
-                    return Err(Error::validation_error(format!(
+                    return Err(crate::error::validation_error_dynamic(format!(
                         "Outer count {} seems unreasonably large",
                         count
                     )));
                 }
 
                 if *idx > 10000 {
-                    return Err(Error::validation_error(format!(
+                    return Err(crate::error::validation_error_dynamic(format!(
                         "Index {} seems unreasonably large",
                         idx
                     )));
@@ -1113,7 +1113,7 @@ impl Validatable for ComponentType {
             ComponentTypeDefinition::Function { params, results } => {
                 // Basic validation: reasonable limits on params and results
                 if params.len() > 1000 {
-                    return Err(Error::validation_error(format!(
+                    return Err(crate::error::validation_error_dynamic(format!(
                         "Function has too many parameters ({})",
                         params.len()
                     )));
@@ -1127,7 +1127,7 @@ impl Validatable for ComponentType {
                 }
 
                 if results.len() > 1000 {
-                    return Err(Error::validation_error(format!(
+                    return Err(crate::error::validation_error_dynamic(format!(
                         "Function has too many results ({})",
                         results.len()
                     )));
@@ -1152,14 +1152,14 @@ impl Validatable for Canon {
         match &self.operation {
             CanonOperation::Lift { func_idx, type_idx, .. } => {
                 if *func_idx > 10000 {
-                    return Err(Error::validation_error(format!(
+                    return Err(crate::error::validation_error_dynamic(format!(
                         "Function index {} seems unreasonably large",
                         func_idx
                     )));
                 }
 
                 if *type_idx > 10000 {
-                    return Err(Error::validation_error(format!(
+                    return Err(crate::error::validation_error_dynamic(format!(
                         "Type index {} seems unreasonably large",
                         type_idx
                     )));
@@ -1169,7 +1169,7 @@ impl Validatable for Canon {
             }
             CanonOperation::Lower { func_idx, .. } => {
                 if *func_idx > 10000 {
-                    return Err(Error::validation_error(format!(
+                    return Err(crate::error::validation_error_dynamic(format!(
                         "Function index {} seems unreasonably large",
                         func_idx
                     )));
@@ -1186,21 +1186,21 @@ impl Validatable for Canon {
 impl Validatable for Start {
     fn validate(&self) -> Result<()> {
         if self.func_idx > 10000 {
-            return Err(Error::validation_error(format!(
+            return Err(crate::error::validation_error_dynamic(format!(
                 "Function index {} seems unreasonably large",
                 self.func_idx
             )));
         }
 
         if self.args.len() > 1000 {
-            return Err(Error::validation_error(format!(
+            return Err(crate::error::validation_error_dynamic(format!(
                 "Start function has too many arguments ({})",
                 self.args.len()
             )));
         }
 
         if self.results > 1000 {
-            return Err(Error::validation_error(format!(
+            return Err(crate::error::validation_error_dynamic(format!(
                 "Start function has too many results ({})",
                 self.results
             )));
@@ -1255,7 +1255,7 @@ impl Validatable for Export {
 
         // Index should be reasonable
         if self.idx > 10000 {
-            return Err(Error::validation_error(format!(
+            return Err(crate::error::validation_error_dynamic(format!(
                 "Export index {} seems unreasonably large",
                 self.idx
             )));
@@ -1269,7 +1269,7 @@ impl Validatable for Value {
     fn validate(&self) -> Result<()> {
         // Validate data size (should be reasonable)
         if self.data.len() > 1000000 {
-            return Err(Error::validation_error(format!(
+            return Err(crate::error::validation_error_dynamic(format!(
                 "Value data size {} seems unreasonably large",
                 self.data.len()
             )));
@@ -1280,7 +1280,7 @@ impl Validatable for Value {
             match expr {
                 ValueExpression::ItemRef { idx, .. } => {
                     if *idx > 10000 {
-                        return Err(Error::validation_error(format!(
+                        return Err(crate::error::validation_error_dynamic(format!(
                             "Item reference index {} seems unreasonably large",
                             idx
                         )));
@@ -1288,7 +1288,7 @@ impl Validatable for Value {
                 }
                 ValueExpression::GlobalInit { global_idx } => {
                     if *global_idx > 10000 {
-                        return Err(Error::validation_error(format!(
+                        return Err(crate::error::validation_error_dynamic(format!(
                             "Global index {} seems unreasonably large",
                             global_idx
                         )));
@@ -1296,14 +1296,14 @@ impl Validatable for Value {
                 }
                 ValueExpression::FunctionCall { func_idx, args } => {
                     if *func_idx > 10000 {
-                        return Err(Error::validation_error(format!(
+                        return Err(crate::error::validation_error_dynamic(format!(
                             "Function index {} seems unreasonably large",
                             func_idx
                         )));
                     }
 
                     if args.len() > 1000 {
-                        return Err(Error::validation_error(format!(
+                        return Err(crate::error::validation_error_dynamic(format!(
                             "Function call has too many arguments ({})",
                             args.len()
                         )));

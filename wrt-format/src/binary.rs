@@ -1744,10 +1744,7 @@ pub mod with_alloc {
                 offset = next_offset;
                 if elemkind_byte != 0x00 {
                     // Only funcref is supported for now
-                    return Err(Error::new(
-                        ErrorCategory::Parse,
-                        wrt_error::codes::NOT_IMPLEMENTED,
-                        format!(
+                    return Err(crate::error::parse_error_dynamic(format!(
                             "(offset {}): Unsupported elemkind 0x{:02X} for element segment (type \
                              1), only funcref (0x00) supported here.",
                             offset - 1,
@@ -1759,28 +1756,20 @@ pub mod with_alloc {
 
                 let (exprs_vec, next_offset) = read_vector(bytes, offset, parse_init_expr)
                     .map_err(|e| {
-                        Error::new(
-                            ErrorCategory::Parse,
-                            wrt_error::codes::PARSE_ERROR,
-                            format!(
+                        crate::error::parse_error_dynamic(format!(
                                 "(offset {}): Failed to read expressions for element segment \
                                  (type 1): {}",
                                 offset, e
-                            ),
-                        )
+                            ))
                     })?;
                 offset = next_offset;
 
                 if bytes.get(offset).copied() != Some(END) {
-                    return Err(Error::new(
-                        ErrorCategory::Parse,
-                        wrt_error::codes::PARSE_ERROR,
-                        format!(
+                    return Err(crate::error::parse_error_dynamic(format!(
                             "(offset {}): Expected END opcode after passive element segment (type \
                              1)",
                             offset
-                        ),
-                    ));
+                        )));
                 }
                 offset += 1; // Consume END
 
@@ -1790,27 +1779,19 @@ pub mod with_alloc {
             0x02 => {
                 // Active with tableidx: tableidx expr elemkind vec(expr) end
                 let (table_idx, next_offset) = read_leb128_u32(bytes, offset).map_err(|e| {
-                    Error::new(
-                        ErrorCategory::Parse,
-                        wrt_error::codes::PARSE_ERROR,
-                        format!(
+                    crate::error::parse_error_dynamic(format!(
                             "(offset {}): Failed to read table_idx for element segment (type 2): \
                              {}",
                             offset, e
-                        ),
-                    )
+                        ))
                 })?;
                 offset = next_offset;
                 let (offset_expr, next_offset) = parse_init_expr(bytes, offset).map_err(|e| {
-                    Error::new(
-                        ErrorCategory::Parse,
-                        wrt_error::codes::PARSE_ERROR,
-                        format!(
+                    crate::error::parse_error_dynamic(format!(
                             "(offset {}): Failed to parse offset_expr for element segment (type \
                              2): {}",
                             offset, e
-                        ),
-                    )
+                        ))
                 })?;
                 offset = next_offset;
 
@@ -1818,43 +1799,31 @@ pub mod with_alloc {
                 offset = next_offset;
                 if elemkind_byte != 0x00 {
                     // Only funcref is supported for now
-                    return Err(Error::new(
-                        ErrorCategory::Parse,
-                        wrt_error::codes::NOT_IMPLEMENTED,
-                        format!(
+                    return Err(crate::error::parse_error_dynamic(format!(
                             "(offset {}): Unsupported elemkind 0x{:02X} for element segment (type \
                              2), only funcref (0x00) supported here.",
                             offset - 1,
                             elemkind_byte
-                        ),
-                    ));
+                        )));
                 }
                 element_type = RefType::Funcref; // funcref
 
                 let (exprs_vec, next_offset) = read_vector(bytes, offset, parse_init_expr)
                     .map_err(|e| {
-                        Error::new(
-                            ErrorCategory::Parse,
-                            wrt_error::codes::PARSE_ERROR,
-                            format!(
+                        crate::error::parse_error_dynamic(format!(
                                 "(offset {}): Failed to read expressions for element segment \
                                  (type 2): {}",
                                 offset, e
-                            ),
-                        )
+                            ))
                     })?;
                 offset = next_offset;
 
                 if bytes.get(offset).copied() != Some(END) {
-                    return Err(Error::new(
-                        ErrorCategory::Parse,
-                        wrt_error::codes::PARSE_ERROR,
-                        format!(
+                    return Err(crate::error::parse_error_dynamic(format!(
                             "(offset {}): Expected END opcode after active element segment (type \
                              2)",
                             offset
-                        ),
-                    ));
+                        )));
                 }
                 offset += 1; // Consume END
 
@@ -1867,43 +1836,31 @@ pub mod with_alloc {
                 offset = next_offset;
                 if elemkind_byte != 0x00 {
                     // Only funcref is supported for now
-                    return Err(Error::new(
-                        ErrorCategory::Parse,
-                        wrt_error::codes::NOT_IMPLEMENTED,
-                        format!(
+                    return Err(crate::error::parse_error_dynamic(format!(
                             "(offset {}): Unsupported elemkind 0x{:02X} for element segment (type \
                              3), only funcref (0x00) supported here.",
                             offset - 1,
                             elemkind_byte
-                        ),
-                    ));
+                        )));
                 }
                 element_type = RefType::Funcref; // funcref
 
                 let (exprs_vec, next_offset) = read_vector(bytes, offset, parse_init_expr)
                     .map_err(|e| {
-                        Error::new(
-                            ErrorCategory::Parse,
-                            wrt_error::codes::PARSE_ERROR,
-                            format!(
+                        crate::error::parse_error_dynamic(format!(
                                 "(offset {}): Failed to read expressions for element segment \
                                  (type 3): {}",
                                 offset, e
-                            ),
-                        )
+                            ))
                     })?;
                 offset = next_offset;
 
                 if bytes.get(offset).copied() != Some(END) {
-                    return Err(Error::new(
-                        ErrorCategory::Parse,
-                        wrt_error::codes::PARSE_ERROR,
-                        format!(
+                    return Err(crate::error::parse_error_dynamic(format!(
                             "(offset {}): Expected END opcode after declared element segment \
                              (type 3)",
                             offset
-                        ),
-                    ));
+                        )));
                 }
                 offset += 1; // Consume END
 
@@ -1915,41 +1872,29 @@ pub mod with_alloc {
                 let table_idx = 0; // Implicitly table 0 due to prefix for some interpretations, though spec shows
                                    // tableidx field
                 let (offset_expr, next_offset) = parse_init_expr(bytes, offset).map_err(|e| {
-                    Error::new(
-                        ErrorCategory::Parse,
-                        wrt_error::codes::PARSE_ERROR,
-                        format!(
+                    crate::error::parse_error_dynamic(format!(
                             "(offset {}): Failed to parse offset_expr for element segment (type \
                              4): {}",
                             offset, e
-                        ),
-                    )
+                        ))
                 })?;
                 offset = next_offset;
                 let (func_indices, next_offset) = read_vector(bytes, offset, read_leb128_u32)
                     .map_err(|e| {
-                        Error::new(
-                            ErrorCategory::Parse,
-                            wrt_error::codes::PARSE_ERROR,
-                            format!(
+                        crate::error::parse_error_dynamic(format!(
                                 "(offset {}): Failed to read func_indices for element segment \
                                  (type 4): {}",
                                 offset, e
-                            ),
-                        )
+                            ))
                     })?;
                 offset = next_offset;
 
                 if bytes.get(offset).copied() != Some(END) {
-                    return Err(Error::new(
-                        ErrorCategory::Parse,
-                        wrt_error::codes::PARSE_ERROR,
-                        format!(
+                    return Err(crate::error::parse_error_dynamic(format!(
                             "(offset {}): Expected END opcode after active element segment (type \
                              4)",
                             offset
-                        ),
-                    ));
+                        )));
                 }
                 offset += 1; // Consume END
 
@@ -1960,18 +1905,14 @@ pub mod with_alloc {
             0x05 => {
                 // Passive: reftype vec(expr) end
                 let rt_byte = bytes.get(offset).copied().ok_or_else(|| {
-                    Error::new(
-                        ErrorCategory::Parse,
-                        wrt_error::codes::PARSE_ERROR,
-                        format!(
+                    crate::error::parse_error_dynamic(format!(
                             "(offset {}): Unexpected EOF reading reftype for element segment \
                              (type 5)",
                             offset
-                        ),
-                    )
+                        ))
                 })?;
                 offset += 1;
-                let value_type = ValueType::from_binary(rt_byte).map_err(to_wrt_error)?;
+                let value_type = ValueType::from_binary(rt_byte)?;
                 element_type = match value_type {
                     ValueType::FuncRef => RefType::Funcref,
                     ValueType::ExternRef => RefType::Externref,
@@ -1980,28 +1921,20 @@ pub mod with_alloc {
 
                 let (exprs_vec, next_offset) = read_vector(bytes, offset, parse_init_expr)
                     .map_err(|e| {
-                        Error::new(
-                            ErrorCategory::Parse,
-                            wrt_error::codes::PARSE_ERROR,
-                            format!(
+                        crate::error::parse_error_dynamic(format!(
                                 "(offset {}): Failed to read expressions for element segment \
                                  (type 5): {}",
                                 offset, e
-                            ),
-                        )
+                            ))
                     })?;
                 offset = next_offset;
 
                 if bytes.get(offset).copied() != Some(END) {
-                    return Err(Error::new(
-                        ErrorCategory::Parse,
-                        wrt_error::codes::PARSE_ERROR,
-                        format!(
+                    return Err(crate::error::parse_error_dynamic(format!(
                             "(offset {}): Expected END opcode after passive element segment (type \
                              5)",
                             offset
-                        ),
-                    ));
+                        )));
                 }
                 offset += 1; // Consume END
 
@@ -2011,43 +1944,31 @@ pub mod with_alloc {
             0x06 => {
                 // Active with tableidx: tableidx expr reftype vec(expr) end
                 let (table_idx, next_offset) = read_leb128_u32(bytes, offset).map_err(|e| {
-                    Error::new(
-                        ErrorCategory::Parse,
-                        wrt_error::codes::PARSE_ERROR,
-                        format!(
+                    crate::error::parse_error_dynamic(format!(
                             "(offset {}): Failed to read table_idx for element segment (type 6): \
                              {}",
                             offset, e
-                        ),
-                    )
+                        ))
                 })?;
                 offset = next_offset;
                 let (offset_expr, next_offset) = parse_init_expr(bytes, offset).map_err(|e| {
-                    Error::new(
-                        ErrorCategory::Parse,
-                        wrt_error::codes::PARSE_ERROR,
-                        format!(
+                    crate::error::parse_error_dynamic(format!(
                             "(offset {}): Failed to parse offset_expr for element segment (type \
                              6): {}",
                             offset, e
-                        ),
-                    )
+                        ))
                 })?;
                 offset = next_offset;
 
                 let rt_byte = bytes.get(offset).copied().ok_or_else(|| {
-                    Error::new(
-                        ErrorCategory::Parse,
-                        wrt_error::codes::PARSE_ERROR,
-                        format!(
+                    crate::error::parse_error_dynamic(format!(
                             "(offset {}): Unexpected EOF reading reftype for element segment \
                              (type 6)",
                             offset
-                        ),
-                    )
+                        ))
                 })?;
                 offset += 1;
-                let value_type = ValueType::from_binary(rt_byte).map_err(to_wrt_error)?;
+                let value_type = ValueType::from_binary(rt_byte)?;
                 element_type = match value_type {
                     ValueType::FuncRef => RefType::Funcref,
                     ValueType::ExternRef => RefType::Externref,
@@ -2056,28 +1977,20 @@ pub mod with_alloc {
 
                 let (exprs_vec, next_offset) = read_vector(bytes, offset, parse_init_expr)
                     .map_err(|e| {
-                        Error::new(
-                            ErrorCategory::Parse,
-                            wrt_error::codes::PARSE_ERROR,
-                            format!(
+                        crate::error::parse_error_dynamic(format!(
                                 "(offset {}): Failed to read expressions for element segment \
                                  (type 6): {}",
                                 offset, e
-                            ),
-                        )
+                            ))
                     })?;
                 offset = next_offset;
 
                 if bytes.get(offset).copied() != Some(END) {
-                    return Err(Error::new(
-                        ErrorCategory::Parse,
-                        wrt_error::codes::PARSE_ERROR,
-                        format!(
+                    return Err(crate::error::parse_error_dynamic(format!(
                             "(offset {}): Expected END opcode after active element segment (type \
                              6)",
                             offset
-                        ),
-                    ));
+                        )));
                 }
                 offset += 1; // Consume END
 
@@ -2087,18 +2000,14 @@ pub mod with_alloc {
             0x07 => {
                 // Declared: reftype vec(expr) end
                 let rt_byte = bytes.get(offset).copied().ok_or_else(|| {
-                    Error::new(
-                        ErrorCategory::Parse,
-                        wrt_error::codes::PARSE_ERROR,
-                        format!(
+                    crate::error::parse_error_dynamic(format!(
                             "(offset {}): Unexpected EOF reading reftype for element segment \
                              (type 7)",
                             offset
-                        ),
-                    )
+                        ))
                 })?;
                 offset += 1;
-                let value_type = ValueType::from_binary(rt_byte).map_err(to_wrt_error)?;
+                let value_type = ValueType::from_binary(rt_byte)?;
                 element_type = match value_type {
                     ValueType::FuncRef => RefType::Funcref,
                     ValueType::ExternRef => RefType::Externref,
@@ -2107,28 +2016,20 @@ pub mod with_alloc {
 
                 let (exprs_vec, next_offset) = read_vector(bytes, offset, parse_init_expr)
                     .map_err(|e| {
-                        Error::new(
-                            ErrorCategory::Parse,
-                            wrt_error::codes::PARSE_ERROR,
-                            format!(
+                        crate::error::parse_error_dynamic(format!(
                                 "(offset {}): Failed to read expressions for element segment \
                                  (type 7): {}",
                                 offset, e
-                            ),
-                        )
+                            ))
                     })?;
                 offset = next_offset;
 
                 if bytes.get(offset).copied() != Some(END) {
-                    return Err(Error::new(
-                        ErrorCategory::Parse,
-                        wrt_error::codes::PARSE_ERROR,
-                        format!(
+                    return Err(crate::error::parse_error_dynamic(format!(
                             "(offset {}): Expected END opcode after declared element segment \
                              (type 7)",
                             offset
-                        ),
-                    ));
+                        )));
                 }
                 offset += 1; // Consume END
 
@@ -2136,15 +2037,11 @@ pub mod with_alloc {
                 mode = crate::module::ElementMode::Declared;
             }
             _ => {
-                return Err(Error::new(
-                    ErrorCategory::Parse,
-                    wrt_error::codes::NOT_IMPLEMENTED,
-                    format!(
+                return Err(crate::error::parse_error_dynamic(format!(
                         "(offset {}): Invalid element segment prefix: 0x{:02X}",
                         offset.saturating_sub(1),
                         prefix_val
-                    ),
-                ))
+                    )))
             }
         }
 
@@ -2251,11 +2148,7 @@ pub mod with_alloc {
                     offset,
                 ))
             }
-            _ => Err(Error::new(
-                ErrorCategory::Parse,
-                UNIMPLEMENTED_PARSING_FEATURE,
-                format!("Unsupported data segment prefix: 0x{:02X}", prefix),
-            )),
+            _ => Err(crate::error::parse_error_dynamic(format!("Unsupported data segment prefix: 0x{:02X}", prefix))),
         }
     }
 } // End of with_alloc module

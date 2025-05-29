@@ -48,6 +48,9 @@ component-model-async = []  # 🚝 Async value types and operations
 component-model-error-context = []  # 📝 Error context types and operations
 component-model-threading = []  # 🧵 Threading operations
 
+# Pluggable async executor support
+async-api = []  # Enable async/await API with pluggable executor
+
 [dependencies]
 wrt-error = { workspace = true, default-features = false }
 wrt-sync = { workspace = true, default-features = false } # Make alloc conditional via features

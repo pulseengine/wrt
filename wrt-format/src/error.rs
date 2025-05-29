@@ -45,6 +45,14 @@ pub fn validation_error(message: &'static str) -> Error {
     Error::validation_error(message)
 }
 
+/// Create a validation error from a String (for dynamic messages)
+/// Note: This leaks the string memory, so use sparingly
+#[cfg(any(feature = "alloc", feature = "std"))]
+pub fn validation_error_dynamic(message: String) -> Error {
+    let leaked: &'static str = Box::leak(message.into_boxed_str());
+    Error::validation_error(leaked)
+}
+
 /// Create a new type error with the given message
 pub fn type_error(message: &'static str) -> Error {
     Error::type_error(message)

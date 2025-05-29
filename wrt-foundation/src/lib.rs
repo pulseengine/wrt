@@ -220,6 +220,36 @@ pub const WASM_VERSION: u32 = 2;
 #[cfg(feature = "component-model-values")]
 pub use component_value::ValType;
 
+// Component Model async types (always available when component-model-async is enabled)
+#[cfg(feature = "component-model-async")]
+/// Component Model async types (future, stream, error-context)
+pub mod async_types;
+
+// Async support modules
+#[cfg(feature = "async-api")]
+/// Pluggable async executor support
+pub mod async_executor;
+#[cfg(feature = "async-api")]
+/// Bridge between Component Model async and Rust async
+pub mod async_bridge;
+
+// Component Model async re-exports
+#[cfg(feature = "component-model-async")]
+pub use async_types::{
+    ComponentFuture, ComponentFutureStatus, ComponentStream, ErrorContext, FutureHandle,
+    StreamHandle, StreamState,
+};
+
+// Async API re-exports
+#[cfg(feature = "async-api")]
+pub use async_executor::{
+    current_executor, is_using_fallback, register_executor, ExecutorError, TaskHandle, WrtExecutor,
+};
+#[cfg(feature = "async-api")]
+pub use async_bridge::{AsyncRuntime, with_async};
+#[cfg(all(feature = "async-api", feature = "component-model-async"))]
+pub use async_bridge::{ComponentAsyncExt, ComponentFutureBridge, ComponentStreamBridge};
+
 #[cfg(test)]
 mod tests {
     // TODO: Add comprehensive tests for all public functionality in

@@ -56,19 +56,15 @@ pub fn format_limits_to_wrt_limits(
     }
 
     let min_u32 = limits.min.try_into().map_err(|_| {
-        Error::new(
-            wrt_error::ErrorCategory::Validation,
-            wrt_error::codes::VALIDATION_LIMIT_MIN_EXCEEDS_U32,
-            format!("Minimum limit ({}) exceeds u32::MAX for non-memory64.", limits.min),
+        crate::error::validation_error_dynamic(
+            format!("Minimum limit ({}) exceeds u32::MAX for non-memory64.", limits.min)
         )
     })?;
 
     let max_u32 = match limits.max {
         Some(val_u64) => Some(val_u64.try_into().map_err(|_| {
-            Error::new(
-                wrt_error::ErrorCategory::Validation,
-                wrt_error::codes::VALIDATION_LIMIT_MAX_EXCEEDS_U32,
-                format!("Maximum limit ({}) exceeds u32::MAX for non-memory64.", val_u64),
+            crate::error::validation_error_dynamic(
+                format!("Maximum limit ({}) exceeds u32::MAX for non-memory64.", val_u64)
             )
         })?),
         None => None,
@@ -76,13 +72,11 @@ pub fn format_limits_to_wrt_limits(
 
     if let Some(max_val) = max_u32 {
         if max_val < min_u32 {
-            return Err(Error::new(
-                wrt_error::ErrorCategory::Validation,
-                wrt_error::codes::VALIDATION_LIMIT_MAX_LESS_THAN_MIN,
+            return Err(crate::error::validation_error_dynamic(
                 format!(
                     "Maximum limit ({}) cannot be less than minimum limit ({}).",
                     max_val, min_u32
-                ),
+                )
             ));
         }
     }
@@ -145,7 +139,7 @@ pub fn parse_value_type(byte: u8) -> Result<ValueType> {
         if e.category == wrt_error::ErrorCategory::Parse {
             e
         } else {
-            parse_error(format!("Invalid value type byte: 0x{:02x}. Internal error: {}", byte, e))
+            crate::error::parse_error_dynamic(format!("Invalid value type byte: 0x{:02x}. Internal error: {}", byte, e))
         }
     })
 }
@@ -195,14 +189,14 @@ where
     T: PartialOrd<U>,
 {
     if value < min {
-        return Err(wrt_validation_error(format!(
+        return Err(crate::error::validation_error_dynamic(format!(
             "Value {} is too small, minimum is {}",
             value, min
         )));
     }
 
     if value > max {
-        return Err(wrt_validation_error(format!(
+        return Err(crate::error::validation_error_dynamic(format!(
             "Value {} is too large, maximum is {}",
             value, max
         )));

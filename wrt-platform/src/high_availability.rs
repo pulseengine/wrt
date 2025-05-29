@@ -174,11 +174,11 @@ pub struct GenericHaMonitor {
 
 struct MonitoredEntity {
     id: EntityId,
-    name: String,
+    _name: String,
     conditions: Vec<(MonitorCondition, Vec<RecoveryAction>)>,
     last_heartbeat: WrtMutex<u64>, // Timestamp in milliseconds
     status: WrtMutex<HealthStatus>,
-    restart_count: AtomicU64,
+    _restart_count: AtomicU64,
     monitoring: AtomicBool,
 }
 
@@ -233,11 +233,11 @@ impl HighAvailabilityManager for GenericHaMonitor {
         
         let entity = MonitoredEntity {
             id,
-            name: name.to_string(),
+            _name: name.to_string(),
             conditions: Vec::new(),
             last_heartbeat: WrtMutex::new(0), // Timestamp in milliseconds
             status: WrtMutex::new(HealthStatus::Healthy),
-            restart_count: AtomicU64::new(0),
+            _restart_count: AtomicU64::new(0),
             monitoring: AtomicBool::new(false),
         };
 

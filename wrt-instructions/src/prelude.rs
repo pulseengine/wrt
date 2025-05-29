@@ -115,8 +115,8 @@ pub use crate::{
     conversion_ops::ConversionOp,
     instruction_traits::PureInstruction,
     memory_ops::{MemoryLoad, MemoryStore, MemoryFill, MemoryCopy, MemoryInit, DataDrop, MemoryOperations, DataSegmentOperations},
-    multi_memory::{MultiMemoryManager, MultiMemoryLoad, MultiMemoryStore, MultiMemoryBulk, 
-                   MultiMemorySize, MultiMemoryGrow, MemoryGrowOperations, MAX_MEMORIES},
+    multi_memory::{MultiMemoryLoad, MultiMemoryStore, MultiMemoryBulk, MultiMemoryCrossCopy,
+                   MultiMemorySize, MultiMemoryGrow, MultiMemoryValidation, MAX_MEMORIES},
     reference_ops::{RefNull, RefIsNull, RefFunc, RefAsNonNull, ReferenceOp, ReferenceOperations},
     table_ops::TableOp,
     validation::{ValidationContext, ControlFrame, ControlKind, Validate, 
@@ -125,3 +125,6 @@ pub use crate::{
                   validate_comparison_op, validate_conversion_op, validate_ref_op},
     variable_ops::VariableOp,
 };
+
+// Re-export constant expression types
+pub use crate::const_expr::{ConstExpr, ConstExprContext, ConstExprSequence};

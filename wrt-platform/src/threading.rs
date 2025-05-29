@@ -301,8 +301,7 @@ impl ResourceTracker {
             let modules = self.threads_per_module.read();
             modules
                 .get(&request.module_id)
-                .map(|count| count.load(Ordering::Acquire))
-                .unwrap_or(0)
+                .map_or(0, |count| count.load(Ordering::Acquire))
         };
 
         if module_threads >= self.limits.max_threads_per_module {
@@ -314,8 +313,7 @@ impl ResourceTracker {
             let memory = self.memory_per_module.read();
             memory
                 .get(&request.module_id)
-                .map(|usage| usage.load(Ordering::Acquire))
-                .unwrap_or(0)
+                .map_or(0, |usage| usage.load(Ordering::Acquire))
         };
 
         let stack_size = request.stack_size.unwrap_or(2 * 1024 * 1024);
@@ -376,22 +374,22 @@ impl ResourceTracker {
 }
 
 /// Create platform-specific thread pool
-pub fn create_thread_pool(config: ThreadPoolConfig) -> Result<Box<dyn PlatformThreadPool>> {
+pub fn create_thread_pool(_config: &ThreadPoolConfig) -> Result<Box<dyn PlatformThreadPool>> {
     #[cfg(target_os = "nto")]
     {
-        super::qnx_threading::QnxThreadPool::new(config)
+        super::qnx_threading::QnxThreadPool::new(_config)
             .map(|pool| Box::new(pool) as Box<dyn PlatformThreadPool>)
     }
     
     #[cfg(target_os = "linux")]
     {
-        super::linux_threading::LinuxThreadPool::new(config)
+        super::linux_threading::LinuxThreadPool::new(_config)
             .map(|pool| Box::new(pool) as Box<dyn PlatformThreadPool>)
     }
     
     #[cfg(all(feature = "threading", not(target_os = "nto"), not(target_os = "linux")))]
     {
-        super::generic_threading::GenericThreadPool::new(config)
+        super::generic_threading::GenericThreadPool::new(_config)
             .map(|pool| Box::new(pool) as Box<dyn PlatformThreadPool>)
     }
     
