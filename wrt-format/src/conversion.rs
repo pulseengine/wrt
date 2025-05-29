@@ -6,12 +6,14 @@
 
 use core::fmt;
 
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use alloc::format;
+
 use wrt_error::{Error, Result};
 use wrt_foundation::{BlockType, ValueType};
 
 use crate::{
-    error::{parse_error, wrt_validation_error},
-    format,
+    error::parse_error,
     types::{FormatBlockType, Limits},
 };
 
@@ -56,28 +58,51 @@ pub fn format_limits_to_wrt_limits(
     }
 
     let min_u32 = limits.min.try_into().map_err(|_| {
-        crate::error::validation_error_dynamic(
-            format!("Minimum limit ({}) exceeds u32::MAX for non-memory64.", limits.min)
-        )
+        #[cfg(any(feature = "alloc", feature = "std"))]
+        {
+            crate::error::validation_error_dynamic(
+                format!("Minimum limit ({}) exceeds u32::MAX for non-memory64.", limits.min)
+            )
+        }
+        #[cfg(not(any(feature = "alloc", feature = "std")))]
+        {
+            crate::error::validation_error("Minimum limit exceeds u32::MAX for non-memory64.")
+        }
     })?;
 
     let max_u32 = match limits.max {
         Some(val_u64) => Some(val_u64.try_into().map_err(|_| {
-            crate::error::validation_error_dynamic(
-                format!("Maximum limit ({}) exceeds u32::MAX for non-memory64.", val_u64)
-            )
+            #[cfg(any(feature = "alloc", feature = "std"))]
+            {
+                crate::error::validation_error_dynamic(
+                    format!("Maximum limit ({}) exceeds u32::MAX for non-memory64.", val_u64)
+                )
+            }
+            #[cfg(not(any(feature = "alloc", feature = "std")))]
+            {
+                crate::error::validation_error("Maximum limit exceeds u32::MAX for non-memory64.")
+            }
         })?),
         None => None,
     };
 
     if let Some(max_val) = max_u32 {
         if max_val < min_u32 {
-            return Err(crate::error::validation_error_dynamic(
-                format!(
-                    "Maximum limit ({}) cannot be less than minimum limit ({}).",
-                    max_val, min_u32
-                )
-            ));
+            #[cfg(any(feature = "alloc", feature = "std"))]
+            {
+                return Err(crate::error::validation_error_dynamic(
+                    format!(
+                        "Maximum limit ({}) cannot be less than minimum limit ({}).",
+                        max_val, min_u32
+                    )
+                ));
+            }
+            #[cfg(not(any(feature = "alloc", feature = "std")))]
+            {
+                return Err(crate::error::validation_error(
+                    "Maximum limit cannot be less than minimum limit."
+                ));
+            }
         }
     }
 
@@ -139,7 +164,14 @@ pub fn parse_value_type(byte: u8) -> Result<ValueType> {
         if e.category == wrt_error::ErrorCategory::Parse {
             e
         } else {
-            crate::error::parse_error_dynamic(format!("Invalid value type byte: 0x{:02x}. Internal error: {}", byte, e))
+            #[cfg(any(feature = "alloc", feature = "std"))]
+            {
+                crate::error::parse_error_dynamic(format!("Invalid value type byte: 0x{:02x}. Internal error: {}", byte, e))
+            }
+            #[cfg(not(any(feature = "alloc", feature = "std")))]
+            {
+                crate::error::parse_error("Invalid value type byte")
+            }
         }
     })
 }
@@ -189,17 +221,31 @@ where
     T: PartialOrd<U>,
 {
     if value < min {
-        return Err(crate::error::validation_error_dynamic(format!(
-            "Value {} is too small, minimum is {}",
-            value, min
-        )));
+        #[cfg(any(feature = "alloc", feature = "std"))]
+        {
+            return Err(crate::error::validation_error_dynamic(format!(
+                "Value {} is too small, minimum is {}",
+                value, min
+            )));
+        }
+        #[cfg(not(any(feature = "alloc", feature = "std")))]
+        {
+            return Err(crate::error::validation_error("Value is too small"));
+        }
     }
 
     if value > max {
-        return Err(crate::error::validation_error_dynamic(format!(
-            "Value {} is too large, maximum is {}",
-            value, max
-        )));
+        #[cfg(any(feature = "alloc", feature = "std"))]
+        {
+            return Err(crate::error::validation_error_dynamic(format!(
+                "Value {} is too large, maximum is {}",
+                value, max
+            )));
+        }
+        #[cfg(not(any(feature = "alloc", feature = "std")))]
+        {
+            return Err(crate::error::validation_error("Value is too large"));
+        }
     }
 
     Ok(value)

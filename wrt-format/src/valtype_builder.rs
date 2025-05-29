@@ -11,7 +11,6 @@ use std::{string::String, vec::Vec};
 use wrt_foundation::{
     bounded::{BoundedVec, WasmName},
     component_value::{ValType, ValTypeRef},
-    traits::{BoundedCapacity, DefaultMemoryProvider},
     MemoryProvider,
 };
 use wrt_error::{Error, ErrorCategory, codes};

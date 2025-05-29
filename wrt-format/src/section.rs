@@ -10,9 +10,11 @@ use alloc::{string::String, vec::Vec};
 use std::{string::String, vec::Vec};
 
 // Use wrt_foundation error handling
+#[cfg(any(feature = "alloc", feature = "std"))]
 use wrt_foundation::Result;
+
 #[cfg(not(any(feature = "alloc", feature = "std")))]
-use wrt_foundation::{BoundedCapacity, MemoryProvider, NoStdProvider};
+use wrt_foundation::{BoundedCapacity, MemoryProvider, NoStdProvider, Result};
 
 #[cfg(not(any(feature = "alloc", feature = "std")))]
 use crate::{WasmString, WasmVec};

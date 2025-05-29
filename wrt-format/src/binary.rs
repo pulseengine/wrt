@@ -11,21 +11,36 @@ use core::str;
 #[cfg(feature = "std")]
 use std::vec::Vec;
 
+#[cfg(any(feature = "alloc", feature = "std"))]
 use wrt_error::{
-    codes, errors::codes::UNIMPLEMENTED_PARSING_FEATURE, Error, ErrorCategory, Result,
+    codes, Error, ErrorCategory, Result,
 };
+
+#[cfg(not(any(feature = "alloc", feature = "std")))]
+use wrt_error::{
+    codes, Error, ErrorCategory, Result,
+};
+
+#[cfg(any(feature = "alloc", feature = "std"))]
 use wrt_foundation::{traits::BoundedCapacity, RefType, ValueType};
+
 // For pure no_std mode, use bounded collections directly where needed
 #[cfg(not(any(feature = "alloc", feature = "std")))]
-use wrt_foundation::{BoundedString, BoundedVec};
+use wrt_foundation::{BoundedString, BoundedVec, RefType, ValueType};
 
 #[cfg(any(feature = "alloc", feature = "std"))]
 use crate::{
     component::ValType,
     module::{Data, DataMode, Element, ElementInit, Module},
 };
+
+#[cfg(not(any(feature = "alloc", feature = "std")))]
 use crate::{
-    error::{parse_error, to_wrt_error},
+    module::{Data, DataMode, Element, ElementInit, Module},
+};
+
+use crate::{
+    error::parse_error,
     types::FormatBlockType,
 };
 
@@ -1207,7 +1222,7 @@ pub mod with_alloc {
                 Err(parse_error("Variant type parsing not yet implemented"))
             }
             COMPONENT_VALTYPE_LIST => {
-                let (_, next_pos) = read_component_valtype(bytes, new_pos)?;
+                let (_, _next_pos) = read_component_valtype(bytes, new_pos)?;
                 // List now uses ValTypeRef, not Box<ValType>
                 // Return a placeholder - proper implementation needs type store
                 Err(parse_error("List type parsing not yet implemented"))
@@ -1216,7 +1231,7 @@ pub mod with_alloc {
                 let (_, next_pos) = read_component_valtype(bytes, new_pos)?;
                 new_pos = next_pos;
 
-                let (_, next_pos) = read_leb128_u32(bytes, new_pos)?;
+                let (_, _next_pos) = read_leb128_u32(bytes, new_pos)?;
                 // FixedList now uses ValTypeRef, not Box<ValType>
                 // Return a placeholder - proper implementation needs type store
                 Err(parse_error("FixedList type parsing not yet implemented"))
@@ -1264,20 +1279,20 @@ pub mod with_alloc {
                 Err(parse_error("Enum type parsing not yet implemented"))
             }
             COMPONENT_VALTYPE_OPTION => {
-                let (_, next_pos) = read_component_valtype(bytes, new_pos)?;
+                let (_, _next_pos) = read_component_valtype(bytes, new_pos)?;
                 // Option now uses ValTypeRef
                 // Return a placeholder - proper implementation needs type store
                 Err(parse_error("Option type parsing not yet implemented"))
             }
             COMPONENT_VALTYPE_RESULT => {
-                let (_, next_pos) = read_component_valtype(bytes, new_pos)?;
+                let (_, _next_pos) = read_component_valtype(bytes, new_pos)?;
                 // Result now uses Option<ValTypeRef>, not Box<ValType>
                 // Return a placeholder - proper implementation needs type store
                 Err(parse_error("Result type parsing not yet implemented"))
             }
             COMPONENT_VALTYPE_RESULT_ERR => {
                 // Convert to regular Result for backward compatibility
-                let (_, next_pos) = read_component_valtype(bytes, new_pos)?;
+                let (_, _next_pos) = read_component_valtype(bytes, new_pos)?;
                 // Result now uses Option<ValTypeRef>, not Box<ValType>
                 // Return a placeholder - proper implementation needs type store
                 Err(parse_error("Result (err) type parsing not yet implemented"))
@@ -1288,7 +1303,7 @@ pub mod with_alloc {
                 new_pos = next_pos;
 
                 // Read the error type
-                let (_, next_pos) = read_component_valtype(bytes, new_pos)?;
+                let (_, _next_pos) = read_component_valtype(bytes, new_pos)?;
                 // Result now uses Option<ValTypeRef>, not Box<ValType>
                 // Return a placeholder - proper implementation needs type store
                 Err(parse_error("Result (both) type parsing not yet implemented"))
