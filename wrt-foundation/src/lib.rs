@@ -227,8 +227,8 @@ pub mod async_types;
 
 // Async support modules
 #[cfg(feature = "async-api")]
-/// Pluggable async executor support
-pub mod async_executor;
+/// Simple async executor support
+pub mod async_executor_simple;
 #[cfg(feature = "async-api")]
 /// Bridge between Component Model async and Rust async
 pub mod async_bridge;
@@ -242,11 +242,11 @@ pub use async_types::{
 
 // Async API re-exports
 #[cfg(feature = "async-api")]
-pub use async_executor::{
-    current_executor, is_using_fallback, register_executor, ExecutorError, TaskHandle, WrtExecutor,
+pub use async_executor_simple::{
+    is_using_fallback, AsyncRuntime, ExecutorError, with_async,
 };
 #[cfg(feature = "async-api")]
-pub use async_bridge::{AsyncRuntime, with_async};
+pub use async_bridge::{with_async as with_async_bridge};
 #[cfg(all(feature = "async-api", feature = "component-model-async"))]
 pub use async_bridge::{ComponentAsyncExt, ComponentFutureBridge, ComponentStreamBridge};
 
