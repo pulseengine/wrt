@@ -3,6 +3,10 @@ name = "wrt-tests"
 version = "0.2.0"
 edition = "2021"
 
+[lib]
+name = "wrt_tests"
+path = "integration/lib.rs"
+
 [dependencies]
 # Core WRT dependencies for testing
 wrt = { path = "../wrt", features = ["std"] }
