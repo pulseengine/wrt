@@ -65,7 +65,7 @@ This is a multi-crate workspace:
 
 ## Documentation
 
-- **[API Documentation](docs/_build/html)** - Complete API reference and specifications
+- **[API Documentation](docs/source/)** - Complete API reference and specifications
 - **[Architecture Guide](docs/source/architecture/)** - System design and components
 - **[Developer Guide](docs/source/development/)** - Contributing and development setup
 

@@ -1,16 +1,31 @@
 # Contributing
 
-Thank you for your interest in contributing to this project!
+Thank you for your interest in contributing to WRT!
 
-Please refer to the `README.md` and existing issues before submitting a new one or a pull request.
+## Quick Start
 
-## Development Process
+For complete contribution guidelines, please see our comprehensive documentation:
 
-<!-- TODO: Describe the development process, coding standards, and how to run tests. -->
-Details on the development process, coding standards, and how to run tests can be found in the following documents:
+**📚 [Developer Documentation](./docs/source/developer/index.rst)**
 
-- [Development Overview](./docs/source/development/index.rst)
-- [Developer Tooling](./docs/source/development/developer_tooling.rst)
+### Essential Links
+
+- **[Development Setup](./docs/source/developer/setup/index.rst)** - Environment setup and toolchain installation
+- **[Contributing Guide](./docs/source/developer/contributing/index.rst)** - Complete contribution process
+- **[Build System](./docs/source/developer/build_system/index.rst)** - Build commands and configuration
+- **[Testing](./docs/source/developer/testing/index.rst)** - Test requirements and procedures
+
+### Quick Commands
+
+```bash
+# Setup development environment
+just build
+just ci-test
+
+# Before submitting PR
+just fmt
+just ci-main
+```
 
 ## Code of Conduct
 
