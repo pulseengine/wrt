@@ -10,6 +10,7 @@ pub mod runtime;
 pub mod platform;
 pub mod no_std;
 pub mod security;
+pub mod parser;
 
 /// Run all integration tests
 pub fn run_all_integration_tests() -> TestResult {
@@ -21,6 +22,7 @@ pub fn run_all_integration_tests() -> TestResult {
     runner.add_test_suite("Platform", platform::run_tests)?;
     runner.add_test_suite("No-std", no_std::run_tests)?;
     runner.add_test_suite("Security", security::run_tests)?;
+    runner.add_test_suite("Parser", parser::run_tests)?;
     
     runner.run_all()
 }
@@ -63,5 +65,11 @@ mod tests {
     fn security_suite() {
         let result = security::run_tests();
         assert!(result.is_success(), "Security tests failed: {:?}", result);
+    }
+    
+    #[test]
+    fn parser_suite() {
+        let result = parser::run_tests();
+        assert!(result.is_success(), "Parser tests failed: {:?}", result);
     }
 }

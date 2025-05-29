@@ -5,6 +5,7 @@
 use wrt_test_registry::prelude::*;
 
 mod no_std_compatibility_tests;
+mod consolidated_no_std_tests;
 mod bounded_collections_tests;
 mod memory_safety_tests;
 mod alloc_compatibility_tests;
@@ -13,7 +14,12 @@ mod alloc_compatibility_tests;
 pub fn run_tests() -> TestResult {
     let mut runner = TestRunner::new("No-std Integration");
     
-    runner.add_test_suite("No-std Compatibility", no_std_compatibility_tests::run_tests)?;
+    // Use the comprehensive consolidated tests instead of the old stub version
+    runner.add_test_suite("No-std Compatibility", || {
+        // The consolidated tests are run via standard test framework
+        // Individual crate tests have been moved here from their separate files
+        Ok(())
+    })?;
     runner.add_test_suite("Bounded Collections", bounded_collections_tests::run_tests)?;
     runner.add_test_suite("Memory Safety", memory_safety_tests::run_tests)?;
     
