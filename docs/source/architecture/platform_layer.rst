@@ -89,6 +89,28 @@ QNX 7.1 (aarch64)
        .with_flags(QnxPartitionFlags::LOCKED)
        .build()?;
 
+VxWorks (x86_64, aarch64)
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* **Memory**: Memory partitions with both LKM and RTP context support
+* **Sync**: VxWorks semaphores and message queues
+* **Features**:
+  
+  - Loadable Kernel Module (LKM) execution
+  - Real-Time Process (RTP) user space
+  - Memory partition management
+  - Real-time priority scheduling
+  - Industrial-grade reliability
+
+.. code-block:: rust
+
+   // VxWorks with memory partitions
+   let allocator = VxWorksAllocatorBuilder::new()
+       .with_context(VxWorksContext::Rtp)
+       .with_maximum_pages(128)
+       .with_memory_partition("wasm_heap")
+       .build()?;
+
 Zephyr RTOS
 ^^^^^^^^^^^^
 
