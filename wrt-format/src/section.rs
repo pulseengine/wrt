@@ -166,8 +166,8 @@ pub struct CustomSection<
 impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> Default for CustomSection<P> {
     fn default() -> Self {
         Self {
-            name: crate::WasmString::new_with_provider(P::default()),
-            data: crate::WasmVec::new_with_provider(P::default()),
+            name: crate::WasmString::from_str("", P::default()).unwrap_or_default(),
+            data: crate::WasmVec::new(P::default()).unwrap_or_default(),
         }
     }
 }

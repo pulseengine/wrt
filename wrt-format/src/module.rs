@@ -892,7 +892,7 @@ pub struct Element<
 }
 
 #[cfg(not(any(feature = "alloc", feature = "std")))]
-impl Default for Element {
+impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> Default for Element<P> {
     fn default() -> Self {
         Self {
             element_type: RefType::Funcref,
@@ -902,34 +902,22 @@ impl Default for Element {
     }
 }
 
-// Implement Checksummable for Element - no_std version
-#[cfg(not(any(feature = "alloc", feature = "std")))]
-impl wrt_foundation::traits::Checksummable for Element {
-    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        self.element_type.update_checksum(checksum);
-        self.init.update_checksum(checksum);
-        self.mode.update_checksum(checksum);
-    }
-}
-
 // Implement ToBytes for Element - no_std version
 #[cfg(not(any(feature = "alloc", feature = "std")))]
 impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> wrt_foundation::traits::ToBytes for Element<P> {
     fn serialized_size(&self) -> usize {
-        self.element_type.serialized_size() + 
-        self.init.serialized_size() + 
-        self.mode.serialized_size()
+        1 + self.element_type.serialized_size() + self.init.serialized_size() + self.mode.serialized_size()
     }
 
-    fn to_bytes_with_provider<PStream: wrt_foundation::MemoryProvider>(
+    fn to_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
         &self,
-        stream: &mut wrt_foundation::traits::WriteStream,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
         provider: &PStream,
     ) -> wrt_foundation::Result<()> {
-        self.element_type.to_bytes_with_provider(stream, provider)?;
-        self.init.to_bytes_with_provider(stream, provider)?;
-        self.mode.to_bytes_with_provider(stream, provider)?;
-        Ok(())
+        writer.write_u8(0x00)?; // Element section marker
+        self.element_type.to_bytes_with_provider(writer, provider)?;
+        self.init.to_bytes_with_provider(writer, provider)?;
+        self.mode.to_bytes_with_provider(writer, provider)
     }
 }
 
@@ -940,16 +928,38 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> wrt_f
         reader: &mut wrt_foundation::traits::ReadStream<'a>,
         provider: &PStream,
     ) -> wrt_foundation::Result<Self> {
+        let _marker = reader.read_u8()?; // Element section marker
         let element_type = RefType::from_bytes_with_provider(reader, provider)?;
         let init = ElementInit::from_bytes_with_provider(reader, provider)?;
-        let mode = ElementMode::from_bytes_with_provider(reader, provider)?;
-        Ok(Self {
-            element_type,
-            init,
-            mode,
-        })
+        let mode_raw = ElementMode::from_bytes_with_provider(reader, provider)?;
+        // Convert from default provider to P provider
+        let mode: ElementMode<P> = match mode_raw {
+            ElementMode::Passive => ElementMode::Passive,
+            ElementMode::Active { table_index, offset_expr } => {
+                // Convert Vec<u8> to WasmVec<u8, P>
+                let mut wasm_vec = crate::WasmVec::new(P::default())?;
+                for byte in offset_expr.iter() {
+                    wasm_vec.push(byte)?;
+                }
+                ElementMode::Active { table_index, offset_expr: wasm_vec }
+            },
+            ElementMode::Declared => ElementMode::Declared,
+        };
+        Ok(Self { element_type, init, mode })
     }
 }
+
+// Implement Checksummable for Element - no_std version
+#[cfg(not(any(feature = "alloc", feature = "std")))]
+impl<P: wrt_foundation::MemoryProvider + Clone + Default + PartialEq + Eq> wrt_foundation::traits::Checksummable for Element<P> {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        self.element_type.update_checksum(checksum);
+        self.init.update_checksum(checksum);
+        self.mode.update_checksum(checksum);
+    }
+}
+
+
 
 /// WebAssembly element segment (Wasm 2.0 compatible) - With Allocation
 #[cfg(any(feature = "alloc", feature = "std"))]
@@ -1610,7 +1620,7 @@ impl Validatable for Module {
         }
 
         // Check for empty exports
-        for export in &self.exports {
+        for export in self.exports.iter() {
             if export.name.is_empty() {
                 return Err(Error::new(
                     ErrorCategory::Validation,
@@ -1621,7 +1631,7 @@ impl Validatable for Module {
         }
 
         // Check for empty imports
-        for import in &self.imports {
+        for import in self.imports.iter() {
             if import.module.is_empty() {
                 return Err(Error::new(
                     ErrorCategory::Validation,
@@ -1664,7 +1674,7 @@ impl Table {
             ));
         }
 
-        let element_type = ValueType::from_binary(bytes[0]).ok_or(wrt_error::Error::new(
+        let element_type = ValueType::from_binary(bytes[0]).map_err(|_| wrt_error::Error::new(
             wrt_error::ErrorCategory::Validation,
             wrt_error::codes::PARSE_ERROR,
             "Invalid element type",

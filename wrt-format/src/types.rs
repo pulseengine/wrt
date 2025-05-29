@@ -335,3 +335,58 @@ impl wrt_foundation::traits::Checksummable for Limits {
         checksum.update_slice(&[self.memory64 as u8]);
     }
 }
+
+// Implement FromBytes trait for Limits
+impl wrt_foundation::traits::FromBytes for Limits {
+    fn from_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        _provider: &PStream,
+    ) -> wrt_foundation::Result<Self> {
+        // Read the minimum size (8 bytes)
+        let min = reader.read_u64_le()?;
+        
+        // Read max flag (1 byte)
+        let has_max = reader.read_u8()? != 0;
+        let max = if has_max {
+            Some(reader.read_u64_le()?)
+        } else {
+            None
+        };
+        
+        // Read flags (2 bytes)
+        let shared = reader.read_u8()? != 0;
+        let memory64 = reader.read_u8()? != 0;
+        
+        Ok(Self { min, max, shared, memory64 })
+    }
+}
+
+// Implement ToBytes trait for Limits
+impl wrt_foundation::traits::ToBytes for Limits {
+    fn serialized_size(&self) -> usize {
+        8 + if self.max.is_some() { 1 + 8 } else { 1 } + 2 // min + max_flag + max + shared + memory64
+    }
+
+    fn to_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        _provider: &PStream,
+    ) -> wrt_foundation::Result<()> {
+        // Write the minimum size (8 bytes)
+        writer.write_all(&self.min.to_le_bytes())?;
+        
+        // Write max flag and value
+        if let Some(max) = self.max {
+            writer.write_u8(1)?;
+            writer.write_all(&max.to_le_bytes())?;
+        } else {
+            writer.write_u8(0)?;
+        }
+        
+        // Write flags
+        writer.write_u8(self.shared as u8)?;
+        writer.write_u8(self.memory64 as u8)?;
+        
+        Ok(())
+    }
+}

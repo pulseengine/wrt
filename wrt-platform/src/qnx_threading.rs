@@ -153,7 +153,7 @@ impl PlatformThreadHandle for QnxThreadHandle {
         if result != 0 {
             return Err(Error::new(
                 ErrorCategory::Platform,
-                codes::PLATFORM_ERROR,
+                1,
                 "Failed to join thread",
             ));
         }
@@ -165,7 +165,7 @@ impl PlatformThreadHandle for QnxThreadHandle {
             Some(Err(e)) => Err(e.clone()),
             None => Err(Error::new(
                 ErrorCategory::Platform,
-                codes::PLATFORM_ERROR,
+                1,
                 "Thread completed without result",
             )),
         }
@@ -285,7 +285,7 @@ impl QnxThreadPool {
         if unsafe { ffi::pthread_attr_init(&mut attr) } != 0 {
             return Err(Error::new(
                 ErrorCategory::Platform,
-                codes::PLATFORM_ERROR,
+                1,
                 "Failed to initialize thread attributes",
             ));
         }
@@ -295,7 +295,7 @@ impl QnxThreadPool {
             unsafe { ffi::pthread_attr_destroy(&mut attr) };
             return Err(Error::new(
                 ErrorCategory::Platform,
-                codes::PLATFORM_ERROR,
+                1,
                 "Failed to set scheduling policy",
             ));
         }
@@ -312,7 +312,7 @@ impl QnxThreadPool {
             unsafe { ffi::pthread_attr_destroy(&mut attr) };
             return Err(Error::new(
                 ErrorCategory::Platform,
-                codes::PLATFORM_ERROR,
+                1,
                 "Failed to set thread priority",
             ));
         }
@@ -327,7 +327,7 @@ impl QnxThreadPool {
             unsafe { ffi::pthread_attr_destroy(&mut attr) };
             return Err(Error::new(
                 ErrorCategory::Platform,
-                codes::PLATFORM_ERROR,
+                1,
                 "Failed to set stack size",
             ));
         }
@@ -338,7 +338,7 @@ impl QnxThreadPool {
             unsafe { ffi::pthread_attr_destroy(&mut attr) };
             return Err(Error::new(
                 ErrorCategory::Platform,
-                codes::PLATFORM_ERROR,
+                1,
                 "Failed to set scheduling inheritance",
             ));
         }
@@ -384,7 +384,7 @@ impl PlatformThreadPool for QnxThreadPool {
         if self.shutdown.load(Ordering::Acquire) {
             return Err(Error::new(
                 ErrorCategory::Platform,
-                codes::PLATFORM_ERROR,
+                1,
                 "Thread pool is shutting down",
             ));
         }
@@ -394,7 +394,7 @@ impl PlatformThreadPool for QnxThreadPool {
         if active_count >= self.config.max_threads {
             return Err(Error::new(
                 ErrorCategory::Resource,
-                codes::RESOURCE_EXHAUSTED,
+                1,
                 "Thread pool limit reached",
             ));
         }
@@ -453,7 +453,7 @@ impl PlatformThreadPool for QnxThreadPool {
             }
             return Err(Error::new(
                 ErrorCategory::Platform,
-                codes::PLATFORM_ERROR,
+                1,
                 "Failed to create thread",
             ));
         }

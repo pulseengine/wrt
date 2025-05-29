@@ -67,14 +67,21 @@ impl FromStr for LogLevel {
     type Err = ParseLogLevelError;
 
     fn from_str(s: &str) -> core::result::Result<Self, Self::Err> {
-        match s.to_lowercase().as_str() {
-            "trace" => Ok(Self::Trace),
-            "debug" => Ok(Self::Debug),
-            "info" => Ok(Self::Info),
-            "warn" | "warning" => Ok(Self::Warn),
-            "error" | "err" => Ok(Self::Error),
-            "critical" | "fatal" => Ok(Self::Critical),
-            _ => Err(ParseLogLevelError { message: "Invalid log level" }),
+        // Manual case-insensitive matching for no_std
+        if s.eq_ignore_ascii_case("trace") {
+            Ok(Self::Trace)
+        } else if s.eq_ignore_ascii_case("debug") {
+            Ok(Self::Debug)
+        } else if s.eq_ignore_ascii_case("info") {
+            Ok(Self::Info)
+        } else if s.eq_ignore_ascii_case("warn") || s.eq_ignore_ascii_case("warning") {
+            Ok(Self::Warn)
+        } else if s.eq_ignore_ascii_case("error") || s.eq_ignore_ascii_case("err") {
+            Ok(Self::Error)
+        } else if s.eq_ignore_ascii_case("critical") || s.eq_ignore_ascii_case("fatal") {
+            Ok(Self::Critical)
+        } else {
+            Err(ParseLogLevelError { message: "Invalid log level" })
         }
     }
 }

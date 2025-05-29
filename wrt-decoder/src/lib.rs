@@ -53,6 +53,7 @@ extern crate alloc;
 
 // Module exports
 pub mod component;
+#[cfg(feature = "alloc")]
 pub mod conversion;
 pub mod custom_section_utils;
 pub mod decoder_core;
@@ -66,6 +67,7 @@ pub mod runtime_adapter;
 pub mod section_error;
 pub mod section_reader;
 pub mod sections;
+pub mod types;
 pub mod utils;
 pub mod validation;
 pub mod wasm;
@@ -95,6 +97,7 @@ pub use component::section::{
     ComponentExport, ComponentImport, ComponentInstance, ComponentSection, ComponentType,
     ComponentValueType,
 };
+#[cfg(feature = "alloc")]
 pub use conversion::{
     byte_to_value_type, component_limits_to_format_limits, convert_to_wrt_error,
     format_error_to_wrt_error, format_func_type_to_types_func_type, format_global_to_types_global,

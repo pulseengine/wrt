@@ -10,6 +10,8 @@ use std::string::String;
 
 use crate::level::LogLevel;
 
+// For alloc/std configurations, use String
+#[cfg(any(feature = "std", feature = "alloc"))]
 /// Log operation from a WebAssembly component
 #[derive(Debug, Clone)]
 pub struct LogOperation {
@@ -21,10 +23,25 @@ pub struct LogOperation {
     pub component_id: Option<String>,
 }
 
+// For pure no_std configuration, use bounded strings
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+/// Log operation from a WebAssembly component
+#[derive(Debug, Clone)]
+pub struct LogOperation<P: wrt_foundation::MemoryProvider + Default + Clone + PartialEq + Eq = wrt_foundation::NoStdProvider<512>> {
+    /// Log level
+    pub level: LogLevel,
+    /// Log message
+    pub message: wrt_foundation::BoundedString<256, P>,
+    /// Component ID (optional)
+    pub component_id: Option<wrt_foundation::BoundedString<64, P>>,
+}
+
+// Implementation for alloc/std configurations
+#[cfg(any(feature = "std", feature = "alloc"))]
 impl LogOperation {
     /// Create a new log operation
     #[must_use]
-    pub const fn new(level: LogLevel, message: String) -> Self {
+    pub fn new(level: LogLevel, message: String) -> Self {
         Self { level, message, component_id: None }
     }
 
@@ -35,6 +52,28 @@ impl LogOperation {
         component_id: S2,
     ) -> Self {
         Self { level, message: message.into(), component_id: Some(component_id.into()) }
+    }
+}
+
+// Implementation for pure no_std configuration
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+impl<P: wrt_foundation::MemoryProvider + Default + Clone + PartialEq + Eq> LogOperation<P> {
+    /// Create a new log operation
+    pub fn new(level: LogLevel, message: &str, provider: P) -> wrt_foundation::Result<Self> {
+        let bounded_message = wrt_foundation::BoundedString::from_str(message, provider)?;
+        Ok(Self { level, message: bounded_message, component_id: None })
+    }
+
+    /// Create a new log operation with a component ID
+    pub fn with_component(
+        level: LogLevel,
+        message: &str,
+        component_id: &str,
+        provider: P,
+    ) -> wrt_foundation::Result<Self> {
+        let bounded_message = wrt_foundation::BoundedString::from_str(message, provider.clone())?;
+        let bounded_component_id = wrt_foundation::BoundedString::from_str(component_id, provider)?;
+        Ok(Self { level, message: bounded_message, component_id: Some(bounded_component_id) })
     }
 }
 

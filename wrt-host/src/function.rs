@@ -10,12 +10,19 @@
 // Use the prelude for consistent imports
 use crate::prelude::*;
 
-/// A trait for functions that can be cloned and operate on `Vec<Value>`.
+// Value vectors for function parameters/returns
+#[cfg(any(feature = "std", feature = "alloc"))]
+type ValueVec = Vec<Value>;
+
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+type ValueVec = wrt_foundation::BoundedVec<Value, 16, wrt_foundation::NoStdProvider<512>>;
+
+/// A trait for functions that can be cloned and operate on value vectors.
 /// This is used for storing host functions that can be called by the Wasm
 /// engine.
 pub trait FnWithVecValue: Send + Sync {
     /// Calls the function with the given target and arguments.
-    fn call(&self, target: &mut dyn Any, args: Vec<Value>) -> Result<Vec<Value>>;
+    fn call(&self, target: &mut dyn Any, args: ValueVec) -> Result<ValueVec>;
 
     /// Clones the function into a `Box`.
     fn clone_box(&self) -> Box<dyn FnWithVecValue>;
@@ -23,16 +30,25 @@ pub trait FnWithVecValue: Send + Sync {
 
 impl<F> FnWithVecValue for F
 where
-    F: Fn(&mut dyn Any) -> Result<Vec<Value>> + Send + Sync + Clone + 'static,
+    F: Fn(&mut dyn Any) -> Result<ValueVec> + Send + Sync + Clone + 'static,
 {
-    fn call(&self, target: &mut dyn Any, _args: Vec<Value>) -> Result<Vec<Value>> {
+    fn call(&self, target: &mut dyn Any, _args: ValueVec) -> Result<ValueVec> {
         // Using target but ignoring args since the function only takes target
         // This could be extended in the future to support functions that take args
         self(target)
     }
 
     fn clone_box(&self) -> Box<dyn FnWithVecValue> {
-        Box::new(self.clone())
+        #[cfg(any(feature = "std", feature = "alloc"))]
+        {
+            Box::new(self.clone())
+        }
+        
+        #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+        {
+            // In no_std mode, Box is PhantomData, so we return default
+            core::marker::PhantomData
+        }
     }
 }
 
@@ -46,25 +62,120 @@ impl CloneableFn {
     /// The closure must be `Send`, `Sync`, `Clone`, and `'static`.
     pub fn new<F>(f: F) -> Self
     where
-        F: Fn(&mut dyn Any) -> Result<Vec<Value>> + Send + Sync + Clone + 'static,
+        F: Fn(&mut dyn Any) -> Result<ValueVec> + Send + Sync + Clone + 'static,
     {
-        Self(Box::new(f))
+        #[cfg(any(feature = "std", feature = "alloc"))]
+        {
+            Self(Box::new(f))
+        }
+        
+        #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+        {
+            // In no_std mode, we can't box dynamic functions
+            // This is a limitation of pure no_std environments
+            let _ = f;
+            Self(core::marker::PhantomData)
+        }
     }
 
     /// Calls the wrapped function.
-    pub fn call(&self, target: &mut dyn Any, args: Vec<Value>) -> Result<Vec<Value>> {
-        self.0.call(target, args)
+    pub fn call(&self, target: &mut dyn Any, args: ValueVec) -> Result<ValueVec> {
+        #[cfg(any(feature = "std", feature = "alloc"))]
+        {
+            self.0.call(target, args)
+        }
+        
+        #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+        {
+            // In no_std mode, we can't call dynamic functions
+            let _ = (target, args);
+            Err(Error::new(
+                ErrorCategory::Runtime,
+                wrt_error::codes::NOT_IMPLEMENTED,
+                "Dynamic function calls not supported in pure no_std mode"
+            ))
+        }
     }
 }
 
 impl Clone for CloneableFn {
     fn clone(&self) -> Self {
-        Self(self.0.clone_box())
+        #[cfg(any(feature = "std", feature = "alloc"))]
+        {
+            Self(self.0.clone_box())
+        }
+        
+        #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+        {
+            // In no_std mode, create a default function
+            CloneableFn::default()
+        }
     }
 }
 
+impl PartialEq for CloneableFn {
+    fn eq(&self, _other: &Self) -> bool {
+        // Function pointers can't be meaningfully compared
+        false
+    }
+}
+
+impl Eq for CloneableFn {}
+
 /// Host function handler type for implementing WebAssembly imports
 pub type HostFunctionHandler = CloneableFn;
+
+// Implement required traits for CloneableFn to work with BoundedMap in no_std mode
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+impl wrt_foundation::traits::Checksummable for CloneableFn {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        // Function pointers can't be meaningfully checksummed, use a placeholder
+        checksum.update_slice(b"cloneable_fn");
+    }
+}
+
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+impl wrt_foundation::traits::ToBytes for CloneableFn {
+    fn serialized_size(&self) -> usize {
+        // Function pointers can't be serialized, return 0
+        0
+    }
+
+    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        &self,
+        _writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        _provider: &P,
+    ) -> wrt_foundation::Result<()> {
+        // Function pointers can't be serialized
+        Ok(())
+    }
+}
+
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+impl wrt_foundation::traits::FromBytes for CloneableFn {
+    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        _reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        _provider: &P,
+    ) -> wrt_foundation::Result<Self> {
+        // Function pointers can't be deserialized, return a dummy function
+        Ok(CloneableFn::new(|_| Err(wrt_foundation::Error::new(
+            wrt_error::ErrorCategory::Runtime,
+            wrt_error::codes::RUNTIME_ERROR,
+            "Deserialized function not implemented",
+        ))))
+    }
+}
+
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+impl Default for CloneableFn {
+    fn default() -> Self {
+        CloneableFn::new(|_| Err(wrt_foundation::Error::new(
+            wrt_error::ErrorCategory::Runtime,
+            wrt_error::codes::RUNTIME_ERROR,
+            "Default function not implemented",
+        )))
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -72,28 +183,74 @@ mod tests {
 
     #[test]
     fn test_cloneable_fn() {
-        let f = CloneableFn::new(|_| Ok(vec![Value::I32(42)]));
+        let f = CloneableFn::new(|_| {
+            #[cfg(any(feature = "std", feature = "alloc"))]
+            return Ok(vec![Value::I32(42)]);
+            
+            #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+            {
+                let provider = wrt_foundation::NoStdProvider::default();
+                let mut vec = ValueVec::new(provider).unwrap();
+                vec.push(Value::I32(42)).unwrap();
+                Ok(vec)
+            }
+        });
         let f2 = f.clone();
 
         let mut target = ();
-        let result = f.call(&mut target, vec![]);
-        let result2 = f2.call(&mut target, vec![]);
+        
+        #[cfg(any(feature = "std", feature = "alloc"))]
+        let empty_args = vec![];
+        #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+        let empty_args = {
+            let provider = wrt_foundation::NoStdProvider::default();
+            ValueVec::new(provider).unwrap()
+        };
+        
+        let result = f.call(&mut target, empty_args.clone());
+        let result2 = f2.call(&mut target, empty_args);
 
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), vec![Value::I32(42)]);
+        let result_vec = result.unwrap();
+        assert_eq!(result_vec.len(), 1);
+        assert!(matches!(result_vec[0], Value::I32(42)));
 
         assert!(result2.is_ok());
-        assert_eq!(result2.unwrap(), vec![Value::I32(42)]);
+        let result2_vec = result2.unwrap();
+        assert_eq!(result2_vec.len(), 1);
+        assert!(matches!(result2_vec[0], Value::I32(42)));
     }
 
     #[test]
     fn test_host_function_handler() {
-        let handler = HostFunctionHandler::new(|_| Ok(vec![Value::I32(42)]));
+        let handler = HostFunctionHandler::new(|_| {
+            #[cfg(any(feature = "std", feature = "alloc"))]
+            return Ok(vec![Value::I32(42)]);
+            
+            #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+            {
+                let provider = wrt_foundation::NoStdProvider::default();
+                let mut vec = ValueVec::new(provider).unwrap();
+                vec.push(Value::I32(42)).unwrap();
+                Ok(vec)
+            }
+        });
 
         let mut target = ();
-        let result = handler.call(&mut target, vec![]);
+        
+        #[cfg(any(feature = "std", feature = "alloc"))]
+        let empty_args = vec![];
+        #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+        let empty_args = {
+            let provider = wrt_foundation::NoStdProvider::default();
+            ValueVec::new(provider).unwrap()
+        };
+        
+        let result = handler.call(&mut target, empty_args);
 
         assert!(result.is_ok());
-        assert_eq!(result.unwrap(), vec![Value::I32(42)]);
+        let result_vec = result.unwrap();
+        assert_eq!(result_vec.len(), 1);
+        assert!(matches!(result_vec[0], Value::I32(42)));
     }
 }

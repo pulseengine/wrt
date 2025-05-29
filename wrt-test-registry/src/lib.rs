@@ -53,6 +53,12 @@ pub mod compatibility;
 #[cfg(feature = "runner")]
 pub mod runner;
 
+// New unified test coordination modules
+pub mod test_suite;
+pub mod test_runner;
+pub mod test_discovery;
+pub mod test_reporting;
+
 // Use prelude for all standard imports
 use prelude::*;
 

@@ -382,7 +382,7 @@ impl QnxArenaAllocator {
         if result != 0 {
             return Err(Error::new(
                 ErrorCategory::Platform,
-                codes::PLATFORM_ERROR,
+                1,
                 "Failed to configure arena size",
             ));
         }
@@ -397,7 +397,7 @@ impl QnxArenaAllocator {
         if result != 0 {
             return Err(Error::new(
                 ErrorCategory::Platform,
-                codes::PLATFORM_ERROR,
+                1,
                 "Failed to configure arena cache max blocks",
             ));
         }
@@ -412,7 +412,7 @@ impl QnxArenaAllocator {
         if result != 0 {
             return Err(Error::new(
                 ErrorCategory::Platform,
-                codes::PLATFORM_ERROR,
+                1,
                 "Failed to configure arena cache max size",
             ));
         }
@@ -428,7 +428,7 @@ impl QnxArenaAllocator {
             if result != 0 {
                 return Err(Error::new(
                     ErrorCategory::Platform,
-                    codes::PLATFORM_ERROR,
+                    1,
                     "Failed to configure LIFO free strategy",
                 ));
             }
@@ -445,7 +445,7 @@ impl QnxArenaAllocator {
             if result != 0 {
                 return Err(Error::new(
                     ErrorCategory::Platform,
-                    codes::PLATFORM_ERROR,
+                    1,
                     "Failed to configure memory hold",
                 ));
             }
@@ -459,7 +459,7 @@ impl QnxArenaAllocator {
         let data_size = (pages as usize).checked_mul(WASM_PAGE_SIZE).ok_or_else(|| {
             Error::new(
                 ErrorCategory::Memory,
-                codes::MEMORY_ALLOCATION_ERROR,
+                1,
                 "Memory size calculation overflow",
             )
         })?;
@@ -468,7 +468,7 @@ impl QnxArenaAllocator {
         let guard_size = guard_pages.checked_mul(WASM_PAGE_SIZE).ok_or_else(|| {
             Error::new(
                 ErrorCategory::Memory,
-                codes::MEMORY_ALLOCATION_ERROR,
+                1,
                 "Guard page size calculation overflow",
             )
         })?;
@@ -476,7 +476,7 @@ impl QnxArenaAllocator {
         data_size.checked_add(guard_size).ok_or_else(|| {
             Error::new(
                 ErrorCategory::Memory,
-                codes::MEMORY_ALLOCATION_ERROR,
+                1,
                 "Total memory size calculation overflow",
             )
         })
@@ -572,7 +572,7 @@ impl PageAllocator for QnxArenaAllocator {
 
             return Err(Error::new(
                 ErrorCategory::Memory,
-                codes::MEMORY_ALLOCATION_ERROR,
+                1,
                 "Failed to allocate memory using arena allocator",
             ));
         }
@@ -613,7 +613,7 @@ impl PageAllocator for QnxArenaAllocator {
 
                 return Err(Error::new(
                     ErrorCategory::Memory,
-                    codes::MEMORY_PROTECTION_ERROR,
+                    1,
                     "Failed to set up guard pages",
                 ));
             }
@@ -630,7 +630,7 @@ impl PageAllocator for QnxArenaAllocator {
         let data_ptr_nonnull = NonNull::new(data_ptr).ok_or_else(|| {
             Error::new(
                 ErrorCategory::Memory,
-                codes::MEMORY_ALLOCATION_ERROR,
+                1,
                 "Failed to allocate memory (null pointer)",
             )
         })?;
@@ -643,7 +643,7 @@ impl PageAllocator for QnxArenaAllocator {
         let data_size = (initial_pages as usize).checked_mul(WASM_PAGE_SIZE).ok_or_else(|| {
             Error::new(
                 ErrorCategory::Memory,
-                codes::MEMORY_ALLOCATION_ERROR,
+                1,
                 "Memory size calculation overflow",
             )
         })?;
@@ -656,7 +656,7 @@ impl PageAllocator for QnxArenaAllocator {
         if self.current_allocation.is_none() {
             return Err(Error::new(
                 ErrorCategory::Memory,
-                codes::MEMORY_ALLOCATION_ERROR,
+                1,
                 "No current allocation to grow",
             ));
         }
@@ -665,7 +665,7 @@ impl PageAllocator for QnxArenaAllocator {
         let new_pages = current_pages.checked_add(additional_pages).ok_or_else(|| {
             Error::new(
                 ErrorCategory::Memory,
-                codes::MEMORY_ALLOCATION_ERROR,
+                1,
                 "Page count overflow when growing memory",
             )
         })?;
@@ -675,7 +675,7 @@ impl PageAllocator for QnxArenaAllocator {
             if new_pages > max {
                 return Err(Error::new(
                     ErrorCategory::Memory,
-                    codes::MEMORY_ALLOCATION_ERROR,
+                    1,
                     "Cannot grow memory beyond maximum pages",
                 ));
             }
@@ -767,7 +767,7 @@ impl PageAllocator for QnxArenaAllocator {
         if new_ptr.is_null() {
             return Err(Error::new(
                 ErrorCategory::Memory,
-                codes::MEMORY_ALLOCATION_ERROR,
+                1,
                 "Failed to grow memory using arena allocator",
             ));
         }
@@ -818,7 +818,7 @@ impl PageAllocator for QnxArenaAllocator {
 
                 return Err(Error::new(
                     ErrorCategory::Memory,
-                    codes::MEMORY_PROTECTION_ERROR,
+                    1,
                     "Failed to set up guard pages after growth",
                 ));
             }
@@ -828,7 +828,7 @@ impl PageAllocator for QnxArenaAllocator {
         let new_data_ptr_nonnull = NonNull::new(new_data_ptr).ok_or_else(|| {
             Error::new(
                 ErrorCategory::Memory,
-                codes::MEMORY_ALLOCATION_ERROR,
+                1,
                 "Failed to grow memory (null pointer)",
             )
         })?;
@@ -841,7 +841,7 @@ impl PageAllocator for QnxArenaAllocator {
         let data_size = (new_pages as usize).checked_mul(WASM_PAGE_SIZE).ok_or_else(|| {
             Error::new(
                 ErrorCategory::Memory,
-                codes::MEMORY_ALLOCATION_ERROR,
+                1,
                 "Memory size calculation overflow",
             )
         })?;
@@ -882,7 +882,7 @@ impl PageAllocator for QnxArenaAllocator {
             if addr_val < current_addr || addr_val >= current_addr + data_size {
                 return Err(Error::new(
                     ErrorCategory::Memory,
-                    codes::MEMORY_OUT_OF_BOUNDS,
+                    1,
                     "Address to protect is outside allocated memory",
                 ));
             }
@@ -890,14 +890,14 @@ impl PageAllocator for QnxArenaAllocator {
             if addr_val + size > current_addr + data_size {
                 return Err(Error::new(
                     ErrorCategory::Memory,
-                    codes::MEMORY_OUT_OF_BOUNDS,
+                    1,
                     "Protection region extends beyond allocated memory",
                 ));
             }
         } else {
             return Err(Error::new(
                 ErrorCategory::Memory,
-                codes::MEMORY_ACCESS_ERROR,
+                1,
                 "No current allocation to protect",
             ));
         }
@@ -920,7 +920,7 @@ impl PageAllocator for QnxArenaAllocator {
         if result != 0 {
             return Err(Error::new(
                 ErrorCategory::Memory,
-                codes::MEMORY_PROTECTION_ERROR,
+                1,
                 "Failed to apply memory protection",
             ));
         }

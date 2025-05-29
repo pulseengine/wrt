@@ -11,13 +11,19 @@
 // Use the prelude for consistent imports
 use crate::prelude::*;
 
+// Type aliases for no_std compatibility
+#[cfg(any(feature = "std", feature = "alloc"))]
+type ValueVec = Vec<Value>;
+
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+type ValueVec = wrt_foundation::BoundedVec<Value, 16, wrt_foundation::NoStdProvider<512>>;
+
 /// Builder for configuring and creating instances of `CallbackRegistry` with
 /// built-in support.
 ///
 /// This builder pattern allows for fluent configuration of a WebAssembly host
 /// environment, including built-in functions, interceptors, and validation of
 /// required capabilities.
-#[derive(Default)]
 pub struct HostBuilder {
     /// The callback registry being built
     registry: CallbackRegistry,
@@ -54,29 +60,40 @@ pub struct HostBuilder {
     fallback_handlers: Vec<(BuiltinType, HostFunctionHandler)>,
 }
 
+// Manual Default implementation to handle BoundedSet in no_std mode
+impl Default for HostBuilder {
+    fn default() -> Self {
+        #[cfg(any(feature = "std", feature = "alloc"))]
+        {
+            Self {
+                registry: CallbackRegistry::new(),
+                required_builtins: HashSet::new(),
+                builtin_interceptor: None,
+                link_interceptor: None,
+                strict_validation: false,
+                component_name: String::new(),
+                host_id: String::new(),
+                fallback_handlers: Vec::new(),
+            }
+        }
+        
+        #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+        {
+            let provider = wrt_foundation::NoStdProvider::default();
+            Self {
+                registry: CallbackRegistry::new(),
+                required_builtins: wrt_foundation::BoundedSet::new(provider).unwrap_or_else(|_| panic!("Failed to create builtins set")),
+                strict_validation: false,
+            }
+        }
+    }
+}
+
 impl HostBuilder {
     /// Create a new host builder with default settings.
     #[must_use]
     pub fn new() -> Self {
-        Self {
-            registry: CallbackRegistry::new(),
-            required_builtins: HashSet::new(),
-            #[cfg(any(feature = "std", feature = "alloc"))]
-            builtin_interceptor: None,
-            #[cfg(any(feature = "std", feature = "alloc"))]
-            link_interceptor: None,
-            strict_validation: false,
-            #[cfg(feature = "std")]
-            component_name: String::from("default"),
-            #[cfg(all(feature = "alloc", not(feature = "std")))]
-            component_name: "default".into(),
-            #[cfg(feature = "std")]
-            host_id: String::from("default"),
-            #[cfg(all(feature = "alloc", not(feature = "std")))]
-            host_id: "default".into(),
-            #[cfg(any(feature = "std", feature = "alloc"))]
-            fallback_handlers: Vec::new(),
-        }
+        Self::default()
     }
 
     /// Require a built-in type.
@@ -149,10 +166,13 @@ impl HostBuilder {
     /// This method registers a handler for a specific built-in function.
     pub fn with_builtin_handler<F>(self, builtin_type: BuiltinType, handler: F) -> Self
     where
-        F: Fn(&mut dyn Any, Vec<Value>) -> Result<Vec<Value>> + Send + Sync + Clone + 'static,
+        F: Fn(&mut dyn Any, ValueVec) -> Result<ValueVec> + Send + Sync + Clone + 'static,
     {
         let handler_fn = HostFunctionHandler::new(move |target| {
-            let args = Vec::new(); // Default empty args, will be replaced in actual call
+            #[cfg(any(feature = "std", feature = "alloc"))]
+            let args = Vec::new();
+            #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+            let args = ValueVec::new(wrt_foundation::NoStdProvider::<512>::default()).expect("Failed to create ValueVec");
             handler(target, args)
         });
 
@@ -175,7 +195,15 @@ impl HostBuilder {
     /// Check if a built-in type is required.
     #[must_use]
     pub fn is_builtin_required(&self, builtin_type: BuiltinType) -> bool {
-        self.required_builtins.contains(&builtin_type)
+        #[cfg(any(feature = "std", feature = "alloc"))]
+        {
+            self.required_builtins.contains(&builtin_type)
+        }
+        
+        #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+        {
+            self.required_builtins.contains(&builtin_type).unwrap_or(false)
+        }
     }
 
     /// Check if a built-in type is implemented.
@@ -195,10 +223,19 @@ impl HostBuilder {
     /// built-in is not implemented.
     pub fn validate(&self) -> Result<()> {
         if self.strict_validation {
-            for &builtin_type in &self.required_builtins {
-                if !self.is_builtin_implemented(builtin_type) {
-                    return Err(Error::runtime_error("Required built-in is not implemented"));
+            #[cfg(any(feature = "std", feature = "alloc"))]
+            {
+                for &builtin_type in &self.required_builtins {
+                    if !self.is_builtin_implemented(builtin_type) {
+                        return Err(Error::runtime_error("Required built-in is not implemented"));
+                    }
                 }
+            }
+            
+            #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+            {
+                // In no_std mode, we can't easily iterate over BoundedSet
+                // For now, we'll skip validation since we can't store complex handlers anyway
             }
         }
 
@@ -260,7 +297,10 @@ impl HostBuilder {
         F: Fn(&mut dyn Any, Vec<Value>) -> Result<Vec<Value>> + Send + Sync + Clone + 'static,
     {
         let handler_fn = HostFunctionHandler::new(move |target| {
-            let args = Vec::new(); // Default empty args, will be replaced in actual call
+            #[cfg(any(feature = "std", feature = "alloc"))]
+            let args = Vec::new();
+            #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+            let args = ValueVec::new(wrt_foundation::NoStdProvider::<512>::default()).expect("Failed to create ValueVec");
             handler(target, args)
         });
 

@@ -291,7 +291,7 @@ impl QnxMemoryPartition {
         if partition_id == 0 {
             return Err(Error::new(
                 ErrorCategory::Platform,
-                codes::PLATFORM_ERROR,
+                1,
                 "Failed to create QNX memory partition",
             ));
         }
@@ -315,7 +315,7 @@ impl QnxMemoryPartition {
 
                 return Err(Error::new(
                     ErrorCategory::Platform,
-                    codes::PLATFORM_ERROR,
+                    1,
                     "Failed to configure QNX memory partition size",
                 ));
             }
@@ -334,7 +334,7 @@ impl QnxMemoryPartition {
         if !self.created {
             return Err(Error::new(
                 ErrorCategory::Platform,
-                codes::PLATFORM_ERROR,
+                1,
                 "Cannot activate destroyed partition",
             ));
         }
@@ -345,7 +345,7 @@ impl QnxMemoryPartition {
         if result != 0 {
             return Err(Error::new(
                 ErrorCategory::Platform,
-                codes::PLATFORM_ERROR,
+                1,
                 "Failed to activate QNX memory partition",
             ));
         }
@@ -360,7 +360,7 @@ impl QnxMemoryPartition {
         if result != 0 {
             return Err(Error::new(
                 ErrorCategory::Platform,
-                codes::PLATFORM_ERROR,
+                1,
                 "Failed to restore parent partition",
             ));
         }
@@ -373,7 +373,7 @@ impl QnxMemoryPartition {
         if !self.created {
             return Err(Error::new(
                 ErrorCategory::Platform,
-                codes::PLATFORM_ERROR,
+                1,
                 "Cannot attach to destroyed partition",
             ));
         }
@@ -385,7 +385,7 @@ impl QnxMemoryPartition {
         if result != 0 {
             return Err(Error::new(
                 ErrorCategory::Platform,
-                codes::PLATFORM_ERROR,
+                1,
                 "Failed to attach process to QNX memory partition",
             ));
         }
@@ -398,7 +398,7 @@ impl QnxMemoryPartition {
         if !self.created {
             return Err(Error::new(
                 ErrorCategory::Platform,
-                codes::PLATFORM_ERROR,
+                1,
                 "Cannot detach from destroyed partition",
             ));
         }
@@ -410,7 +410,7 @@ impl QnxMemoryPartition {
         if result != 0 {
             return Err(Error::new(
                 ErrorCategory::Platform,
-                codes::PLATFORM_ERROR,
+                1,
                 "Failed to detach process from QNX memory partition",
             ));
         }
@@ -444,7 +444,7 @@ impl QnxMemoryPartition {
             if result != 0 {
                 return Err(Error::new(
                     ErrorCategory::Platform,
-                    codes::PLATFORM_ERROR,
+                    1,
                     "Failed to destroy QNX memory partition",
                 ));
             }
@@ -585,7 +585,7 @@ mod tests {
             if ptr.is_null() {
                 return Err(Error::new(
                     ErrorCategory::Memory,
-                    codes::MEMORY_ALLOCATION_ERROR,
+                    1,
                     "Allocation failed within partition",
                 ));
             }

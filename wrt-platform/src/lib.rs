@@ -67,7 +67,7 @@ extern crate alloc;
 // Add extern crate for modules that need it
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 mod lib_prelude {
-    pub use alloc::{boxed::Box, collections::BTreeMap, string::String, sync::Arc, vec::Vec};
+    // Alloc types are re-exported by individual modules as needed
 }
 
 // For no_std + alloc builds, we need a global allocator
@@ -137,14 +137,16 @@ pub mod ipc;
 pub mod high_availability;
 
 // Platform-specific modules
-#[cfg(all(feature = "platform-macos", feature = "use-libc", target_os = "macos"))]
-pub mod macos_memory;
-#[cfg(all(feature = "platform-macos", not(feature = "use-libc"), target_os = "macos"))]
+// macOS modules - using direct syscalls (no libc)
+#[cfg(all(feature = "platform-macos", target_os = "macos"))]
 pub mod macos_memory_no_libc;
-#[cfg(all(feature = "platform-macos", feature = "use-libc", target_os = "macos"))]
-pub mod macos_sync;
-#[cfg(all(feature = "platform-macos", not(feature = "use-libc"), target_os = "macos"))]
+#[cfg(all(feature = "platform-macos", target_os = "macos"))]
 pub mod macos_sync_no_libc;
+// Rename modules to standard names
+#[cfg(all(feature = "platform-macos", target_os = "macos"))]
+pub use macos_memory_no_libc as macos_memory;
+#[cfg(all(feature = "platform-macos", target_os = "macos"))]
+pub use macos_sync_no_libc as macos_sync;
 
 // QNX-specific modules
 #[cfg(all(feature = "platform-qnx", target_os = "nto"))]
@@ -180,6 +182,14 @@ pub mod zephyr_sync;
 pub mod tock_memory;
 #[cfg(feature = "platform-tock")]
 pub mod tock_sync;
+
+// VxWorks-specific modules
+#[cfg(all(feature = "platform-vxworks", target_os = "vxworks"))]
+pub mod vxworks_memory;
+#[cfg(all(feature = "platform-vxworks", target_os = "vxworks"))]
+pub mod vxworks_sync;
+#[cfg(all(feature = "platform-vxworks", target_os = "vxworks"))]
+pub mod vxworks_threading;
 
 // Publicly export items via the prelude
 // Publicly export the core traits and the fallback implementations
@@ -217,15 +227,11 @@ pub use linux_memory::{LinuxAllocator, LinuxAllocatorBuilder};
 pub use linux_memory_arm64_mte::{LinuxArm64MteAllocator, LinuxArm64MteAllocatorBuilder, MteMode};
 #[cfg(all(feature = "platform-linux", target_os = "linux"))]
 pub use linux_sync::{LinuxFutex, LinuxFutexBuilder};
-#[cfg(all(feature = "platform-macos", feature = "use-libc", target_os = "macos"))]
+// Export macOS specific implementations (using direct syscalls)
+#[cfg(all(feature = "platform-macos", target_os = "macos"))]
 pub use macos_memory::{MacOsAllocator, MacOsAllocatorBuilder};
-#[cfg(all(feature = "platform-macos", not(feature = "use-libc"), target_os = "macos"))]
-pub use macos_memory_no_libc::{MacOsAllocator, MacOsAllocatorBuilder};
-// Export macOS specific implementations if enabled and on macOS
-#[cfg(all(feature = "platform-macos", feature = "use-libc", target_os = "macos"))]
+#[cfg(all(feature = "platform-macos", target_os = "macos"))]
 pub use macos_sync::{MacOsFutex, MacOsFutexBuilder};
-#[cfg(all(feature = "platform-macos", not(feature = "use-libc"), target_os = "macos"))]
-pub use macos_sync_no_libc::{MacOsFutex, MacOsFutexBuilder};
 pub use memory::{
     NoStdProvider, NoStdProviderBuilder, PageAllocator, VerificationLevel, WASM_PAGE_SIZE,
 }; // WASM_PAGE_SIZE is always available
@@ -273,6 +279,14 @@ pub use wrt_error::Error;
 pub use zephyr_memory::{ZephyrAllocator, ZephyrAllocatorBuilder, ZephyrMemoryFlags};
 #[cfg(feature = "platform-zephyr")]
 pub use zephyr_sync::{ZephyrFutex, ZephyrFutexBuilder, ZephyrSemaphoreFutex};
+
+// Export VxWorks specific implementations if enabled and on VxWorks
+#[cfg(all(feature = "platform-vxworks", target_os = "vxworks"))]
+pub use vxworks_memory::{VxWorksAllocator, VxWorksAllocatorBuilder, VxWorksContext, VxWorksMemoryConfig};
+#[cfg(all(feature = "platform-vxworks", target_os = "vxworks"))]
+pub use vxworks_sync::{VxWorksFutex, VxWorksFutexBuilder};
+#[cfg(all(feature = "platform-vxworks", target_os = "vxworks"))]
+pub use vxworks_threading::{VxWorksThread, VxWorksThreadBuilder, VxWorksThreadConfig};
 
 #[cfg(test)]
 #[allow(clippy::panic)] // Allow panics in the test module
@@ -456,6 +470,47 @@ mod tests {
             capabilities.memory.allocation_granularity,
             capabilities2.memory.allocation_granularity
         );
+    }
+
+    #[cfg(all(feature = "platform-vxworks", target_os = "vxworks"))]
+    #[test]
+    fn test_vxworks_allocator_builder() {
+        let allocator = VxWorksAllocatorBuilder::new()
+            .context(VxWorksContext::Rtp)
+            .max_pages(512)
+            .use_dedicated_partition(true)
+            .enable_guard_pages(true)
+            .build();
+
+        assert!(allocator.is_ok());
+    }
+
+    #[cfg(all(feature = "platform-vxworks", target_os = "vxworks"))]
+    #[test]
+    fn test_vxworks_futex_builder() {
+        let futex = VxWorksFutexBuilder::new(VxWorksContext::Rtp)
+            .initial_value(42)
+            .build();
+
+        assert!(futex.is_ok());
+    }
+
+    #[cfg(all(feature = "platform-vxworks", target_os = "vxworks"))]
+    #[test]
+    fn test_vxworks_thread_builder() {
+        let thread_config = VxWorksThreadConfig {
+            context: VxWorksContext::Rtp,
+            stack_size: 16384,
+            name: Some("test_thread".to_string()),
+            floating_point: true,
+            detached: true,
+            ..Default::default()
+        };
+
+        assert_eq!(thread_config.stack_size, 16384);
+        assert_eq!(thread_config.name.as_ref().unwrap(), "test_thread");
+        assert!(thread_config.floating_point);
+        assert!(thread_config.detached);
     }
 }
 

@@ -389,17 +389,18 @@ pub fn create_thread_pool(config: ThreadPoolConfig) -> Result<Box<dyn PlatformTh
             .map(|pool| Box::new(pool) as Box<dyn PlatformThreadPool>)
     }
     
-    #[cfg(all(feature = "std", not(target_os = "nto"), not(target_os = "linux")))]
+    #[cfg(all(feature = "threading", not(target_os = "nto"), not(target_os = "linux")))]
     {
         super::generic_threading::GenericThreadPool::new(config)
             .map(|pool| Box::new(pool) as Box<dyn PlatformThreadPool>)
     }
     
-    #[cfg(all(not(feature = "std"), not(target_os = "nto"), not(target_os = "linux")))]   
+    #[cfg(not(any(target_os = "nto", target_os = "linux", feature = "threading")))]   
     {
         Err(wrt_error::Error::new(
-            wrt_error::ErrorCategory::Unsupported,
-            "Thread pool creation requires std feature for generic platforms",
+            wrt_error::ErrorCategory::System,
+            1,
+            "Thread pool creation requires threading feature",
         ))
     }
 }

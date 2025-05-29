@@ -25,7 +25,7 @@ categories = ["wasm", "os"]
 wrt-error = { workspace = true } # Assuming wrt-error is in workspace.dependencies
 wrt-sync = { workspace = true } # Add wrt-sync for synchronization primitives
 # wrt-foundation = { workspace = true, optional = true } # Temporarily disabled to fix cyclic dependency
-libc = { version = "0.2", optional = true }
+# libc dependency removed - using direct syscalls instead
 
 [dev-dependencies]
 criterion = { version = "0.6", features = ["html_reports"] }
@@ -41,8 +41,7 @@ no_std = []
 # Feature for threading support (requires std)
 threading = ["std"] # , "wrt-foundation"]
 
-# Use libc for system calls (optional)
-use-libc = ["dep:libc"]
+# libc dependency removed - using direct syscalls instead
 
 # Platform-specific features
 platform-macos = [] # platform-macos no longer activates alloc by default
@@ -51,6 +50,7 @@ linux-mte = [] # Enhanced ARM64 MTE support for Linux
 platform-qnx = [] # QNX Neutrino RTOS support
 platform-zephyr = [] # Zephyr RTOS support
 platform-tock = [] # Tock OS support
+platform-vxworks = [] # VxWorks RTOS support (LKM and RTP)
 # platform-baremetal = []
 # arm-hardening = [] # If any platform code depends on this
 helper-mode = [] # Added for C-ABI runtime

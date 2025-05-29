@@ -60,14 +60,16 @@
 //! ```
 
 use crate::prelude::*;
+use crate::validation::{Validate, ValidationContext, validate_memory_op};
+
 
 /// Memory trait defining the requirements for memory operations
 pub trait MemoryOperations {
     /// Read bytes from memory
-    #[cfg(feature = "alloc")]
+    #[cfg(any(feature = "std", feature = "alloc"))]
     fn read_bytes(&self, offset: u32, len: u32) -> Result<Vec<u8>>;
     
-    #[cfg(not(feature = "alloc"))]
+    #[cfg(not(any(feature = "std", feature = "alloc")))]
     fn read_bytes(&self, offset: u32, len: u32) -> Result<wrt_foundation::BoundedVec<u8, 65536, wrt_foundation::NoStdProvider<65536>>>;
 
     /// Write bytes to memory
@@ -78,11 +80,19 @@ pub trait MemoryOperations {
 
     /// Grow memory by the specified number of pages
     fn grow(&mut self, pages: u32) -> Result<u32>;
+
+    /// Fill memory region with a byte value (bulk memory operation)
+    fn fill(&mut self, offset: u32, value: u8, size: u32) -> Result<()>;
+
+    /// Copy memory region within the same memory (bulk memory operation)
+    fn copy(&mut self, dest: u32, src: u32, size: u32) -> Result<()>;
 }
 
 /// Memory load operation
 #[derive(Debug, Clone)]
 pub struct MemoryLoad {
+    /// Memory index (for multi-memory support)
+    pub memory_index: u32,
     /// Memory offset
     pub offset: u32,
     /// Required alignment
@@ -98,6 +108,8 @@ pub struct MemoryLoad {
 /// Memory store operation
 #[derive(Debug, Clone)]
 pub struct MemoryStore {
+    /// Memory index (for multi-memory support)
+    pub memory_index: u32,
     /// Memory offset
     pub offset: u32,
     /// Required alignment
@@ -113,14 +125,29 @@ impl MemoryLoad {
     ///
     /// # Arguments
     ///
+    /// * `memory_index` - Memory index (for multi-memory support)
     /// * `offset` - Memory offset
     /// * `align` - Required alignment
     ///
     /// # Returns
     ///
     /// A new MemoryLoad for i32 values
-    pub fn i32(offset: u32, align: u32) -> Self {
-        Self { offset, align, value_type: ValueType::I32, signed: false, width: 32 }
+    pub fn i32(memory_index: u32, offset: u32, align: u32) -> Self {
+        Self { memory_index, offset, align, value_type: ValueType::I32, signed: false, width: 32 }
+    }
+
+    /// Creates a new i32 load operation (legacy - assumes memory 0)
+    ///
+    /// # Arguments
+    ///
+    /// * `offset` - Memory offset
+    /// * `align` - Required alignment
+    ///
+    /// # Returns
+    ///
+    /// A new MemoryLoad for i32 values from memory 0
+    pub fn i32_legacy(offset: u32, align: u32) -> Self {
+        Self::i32(0, offset, align)
     }
 
     /// Creates a new i64 load operation
@@ -284,7 +311,16 @@ impl MemoryLoad {
                 if bytes.len() < 4 {
                     return Err(Error::memory_error("Insufficient bytes read for i32 value"));
                 }
+                #[cfg(any(feature = "std", feature = "alloc"))]
                 let value = i32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]);
+                #[cfg(not(any(feature = "std", feature = "alloc")))]
+                let value = {
+                    let mut arr = [0u8; 4];
+                    for i in 0..4 {
+                        arr[i] = bytes.get(i).map_err(|_| Error::memory_error("Index out of bounds"))?;
+                    }
+                    i32::from_le_bytes(arr)
+                };
                 Ok(Value::I32(value))
             }
             (ValueType::I64, 64) => {
@@ -292,9 +328,19 @@ impl MemoryLoad {
                 if bytes.len() < 8 {
                     return Err(Error::memory_error("Insufficient bytes read for i64 value"));
                 }
+                #[cfg(any(feature = "std", feature = "alloc"))]
                 let value = i64::from_le_bytes([
-                    bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],
+                    bytes[0], bytes[1], bytes[2], bytes[3],
+                    bytes[4], bytes[5], bytes[6], bytes[7],
                 ]);
+                #[cfg(not(any(feature = "std", feature = "alloc")))]
+                let value = {
+                    let mut arr = [0u8; 8];
+                    for i in 0..8 {
+                        arr[i] = bytes.get(i).map_err(|_| Error::memory_error("Index out of bounds"))?;
+                    }
+                    i64::from_le_bytes(arr)
+                };
                 Ok(Value::I64(value))
             }
             (ValueType::F32, 32) => {
@@ -302,7 +348,16 @@ impl MemoryLoad {
                 if bytes.len() < 4 {
                     return Err(Error::memory_error("Insufficient bytes read for f32 value"));
                 }
+                #[cfg(any(feature = "std", feature = "alloc"))]
                 let value = f32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]);
+                #[cfg(not(any(feature = "std", feature = "alloc")))]
+                let value = {
+                    let mut arr = [0u8; 4];
+                    for i in 0..4 {
+                        arr[i] = bytes.get(i).map_err(|_| Error::memory_error("Index out of bounds"))?;
+                    }
+                    f32::from_le_bytes(arr)
+                };
                 Ok(Value::F32(wrt_foundation::FloatBits32::from_float(value)))
             }
             (ValueType::F64, 64) => {
@@ -310,9 +365,19 @@ impl MemoryLoad {
                 if bytes.len() < 8 {
                     return Err(Error::memory_error("Insufficient bytes read for f64 value"));
                 }
+                #[cfg(any(feature = "std", feature = "alloc"))]
                 let value = f64::from_le_bytes([
-                    bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],
+                    bytes[0], bytes[1], bytes[2], bytes[3],
+                    bytes[4], bytes[5], bytes[6], bytes[7],
                 ]);
+                #[cfg(not(any(feature = "std", feature = "alloc")))]
+                let value = {
+                    let mut arr = [0u8; 8];
+                    for i in 0..8 {
+                        arr[i] = bytes.get(i).map_err(|_| Error::memory_error("Index out of bounds"))?;
+                    }
+                    f64::from_le_bytes(arr)
+                };
                 Ok(Value::F64(wrt_foundation::FloatBits64::from_float(value)))
             }
             (ValueType::I32, 8) => {
@@ -320,7 +385,10 @@ impl MemoryLoad {
                 if bytes.is_empty() {
                     return Err(Error::memory_error("Insufficient bytes read for i8 value"));
                 }
-                let byte = bytes[0];
+                #[cfg(any(feature = "std", feature = "alloc"))]
+                let byte = bytes.get(0).copied().ok_or_else(|| Error::memory_error("Index out of bounds"))?;
+                #[cfg(not(any(feature = "std", feature = "alloc")))]
+                let byte = bytes.get(0).map_err(|_| Error::memory_error("Index out of bounds"))?;
                 let value = if self.signed { (byte as i8) as i32 } else { byte as i32 };
                 Ok(Value::I32(value))
             }
@@ -329,7 +397,10 @@ impl MemoryLoad {
                 if bytes.is_empty() {
                     return Err(Error::memory_error("Insufficient bytes read for i8 value"));
                 }
-                let byte = bytes[0];
+                #[cfg(any(feature = "std", feature = "alloc"))]
+                let byte = bytes.get(0).copied().ok_or_else(|| Error::memory_error("Index out of bounds"))?;
+                #[cfg(not(any(feature = "std", feature = "alloc")))]
+                let byte = bytes.get(0).map_err(|_| Error::memory_error("Index out of bounds"))?;
                 let value = if self.signed { (byte as i8) as i64 } else { byte as i64 };
                 Ok(Value::I64(value))
             }
@@ -338,10 +409,25 @@ impl MemoryLoad {
                 if bytes.len() < 2 {
                     return Err(Error::memory_error("Insufficient bytes read for i16 value"));
                 }
+                #[cfg(any(feature = "std", feature = "alloc"))]
                 let value = if self.signed {
                     (i16::from_le_bytes([bytes[0], bytes[1]])) as i32
                 } else {
                     (u16::from_le_bytes([bytes[0], bytes[1]])) as i32
+                };
+                #[cfg(not(any(feature = "std", feature = "alloc")))]
+                let value = if self.signed {
+                    let mut arr = [0u8; 2];
+                    for i in 0..2 {
+                        arr[i] = bytes.get(i).map_err(|_| Error::memory_error("Index out of bounds"))?;
+                    }
+                    (i16::from_le_bytes(arr)) as i32
+                } else {
+                    let mut arr = [0u8; 2];
+                    for i in 0..2 {
+                        arr[i] = bytes.get(i).map_err(|_| Error::memory_error("Index out of bounds"))?;
+                    }
+                    (u16::from_le_bytes(arr)) as i32
                 };
                 Ok(Value::I32(value))
             }
@@ -350,10 +436,25 @@ impl MemoryLoad {
                 if bytes.len() < 2 {
                     return Err(Error::memory_error("Insufficient bytes read for i16 value"));
                 }
+                #[cfg(any(feature = "std", feature = "alloc"))]
                 let value = if self.signed {
                     (i16::from_le_bytes([bytes[0], bytes[1]])) as i64
                 } else {
                     (u16::from_le_bytes([bytes[0], bytes[1]])) as i64
+                };
+                #[cfg(not(any(feature = "std", feature = "alloc")))]
+                let value = if self.signed {
+                    let mut arr = [0u8; 2];
+                    for i in 0..2 {
+                        arr[i] = bytes.get(i).map_err(|_| Error::memory_error("Index out of bounds"))?;
+                    }
+                    (i16::from_le_bytes(arr)) as i64
+                } else {
+                    let mut arr = [0u8; 2];
+                    for i in 0..2 {
+                        arr[i] = bytes.get(i).map_err(|_| Error::memory_error("Index out of bounds"))?;
+                    }
+                    (u16::from_le_bytes(arr)) as i64
                 };
                 Ok(Value::I64(value))
             }
@@ -362,10 +463,25 @@ impl MemoryLoad {
                 if bytes.len() < 4 {
                     return Err(Error::memory_error("Insufficient bytes read for i32 value"));
                 }
+                #[cfg(any(feature = "std", feature = "alloc"))]
                 let value = if self.signed {
                     (i32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]])) as i64
                 } else {
                     (u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]])) as i64
+                };
+                #[cfg(not(any(feature = "std", feature = "alloc")))]
+                let value = if self.signed {
+                    let mut arr = [0u8; 4];
+                    for i in 0..4 {
+                        arr[i] = bytes.get(i).map_err(|_| Error::memory_error("Index out of bounds"))?;
+                    }
+                    (i32::from_le_bytes(arr)) as i64
+                } else {
+                    let mut arr = [0u8; 4];
+                    for i in 0..4 {
+                        arr[i] = bytes.get(i).map_err(|_| Error::memory_error("Index out of bounds"))?;
+                    }
+                    (u32::from_le_bytes(arr)) as i64
                 };
                 Ok(Value::I64(value))
             }
@@ -592,6 +708,277 @@ impl MemoryStore {
     }
 }
 
+/// Memory fill operation (WebAssembly bulk memory proposal)
+#[derive(Debug, Clone)]
+pub struct MemoryFill {
+    /// Memory index (for multi-memory support)
+    pub memory_index: u32,
+}
+
+/// Memory copy operation (WebAssembly bulk memory proposal)
+#[derive(Debug, Clone)]
+pub struct MemoryCopy {
+    /// Destination memory index
+    pub dest_memory_index: u32,
+    /// Source memory index
+    pub src_memory_index: u32,
+}
+
+/// Memory init operation (WebAssembly bulk memory proposal)
+#[derive(Debug, Clone)]
+pub struct MemoryInit {
+    /// Memory index
+    pub memory_index: u32,
+    /// Data segment index
+    pub data_index: u32,
+}
+
+/// Data drop operation (WebAssembly bulk memory proposal)
+#[derive(Debug, Clone)]
+pub struct DataDrop {
+    /// Data segment index
+    pub data_index: u32,
+}
+
+/// Trait for data segment operations (needed for memory.init and data.drop)
+pub trait DataSegmentOperations {
+    /// Get data segment bytes
+    #[cfg(any(feature = "std", feature = "alloc"))]
+    fn get_data_segment(&self, data_index: u32) -> Result<Option<Vec<u8>>>;
+    
+    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    fn get_data_segment(&self, data_index: u32) -> Result<Option<wrt_foundation::BoundedVec<u8, 65536, wrt_foundation::NoStdProvider<65536>>>>;
+    
+    /// Drop (mark as unavailable) a data segment
+    fn drop_data_segment(&mut self, data_index: u32) -> Result<()>;
+}
+
+impl MemoryFill {
+    /// Create a new memory fill operation
+    pub fn new(memory_index: u32) -> Self {
+        Self { memory_index }
+    }
+
+    /// Execute memory.fill operation
+    ///
+    /// # Arguments
+    ///
+    /// * `memory` - The memory to operate on
+    /// * `dest` - Destination address (i32)
+    /// * `value` - Fill byte value (i32, only low 8 bits used)
+    /// * `size` - Number of bytes to fill (i32)
+    ///
+    /// # Returns
+    ///
+    /// Success or an error
+    pub fn execute(
+        &self,
+        memory: &mut impl MemoryOperations,
+        dest: &Value,
+        value: &Value,
+        size: &Value,
+    ) -> Result<()> {
+        // Extract arguments
+        let dest_addr = match dest {
+            Value::I32(addr) => *addr as u32,
+            _ => return Err(Error::type_error("memory.fill dest must be i32")),
+        };
+
+        let fill_byte = match value {
+            Value::I32(val) => (*val & 0xFF) as u8,
+            _ => return Err(Error::type_error("memory.fill value must be i32")),
+        };
+
+        let fill_size = match size {
+            Value::I32(sz) => *sz as u32,
+            _ => return Err(Error::type_error("memory.fill size must be i32")),
+        };
+
+        // Check for overflow
+        let end_addr = dest_addr.checked_add(fill_size).ok_or_else(|| {
+            Error::memory_error("memory.fill address overflow")
+        })?;
+
+        // Check bounds
+        let memory_size = memory.size_in_bytes()? as u32;
+        if end_addr > memory_size {
+            return Err(Error::memory_error("memory.fill out of bounds"));
+        }
+
+        // Perform fill operation
+        memory.fill(dest_addr, fill_byte, fill_size)
+    }
+}
+
+impl MemoryCopy {
+    /// Create a new memory copy operation
+    pub fn new(dest_memory_index: u32, src_memory_index: u32) -> Self {
+        Self { dest_memory_index, src_memory_index }
+    }
+
+    /// Execute memory.copy operation
+    ///
+    /// # Arguments
+    ///
+    /// * `memory` - The memory to operate on (currently assumes same memory for src/dest)
+    /// * `dest` - Destination address (i32)
+    /// * `src` - Source address (i32)
+    /// * `size` - Number of bytes to copy (i32)
+    ///
+    /// # Returns
+    ///
+    /// Success or an error
+    pub fn execute(
+        &self,
+        memory: &mut impl MemoryOperations,
+        dest: &Value,
+        src: &Value,
+        size: &Value,
+    ) -> Result<()> {
+        // Extract arguments
+        let dest_addr = match dest {
+            Value::I32(addr) => *addr as u32,
+            _ => return Err(Error::type_error("memory.copy dest must be i32")),
+        };
+
+        let src_addr = match src {
+            Value::I32(addr) => *addr as u32,
+            _ => return Err(Error::type_error("memory.copy src must be i32")),
+        };
+
+        let copy_size = match size {
+            Value::I32(sz) => *sz as u32,
+            _ => return Err(Error::type_error("memory.copy size must be i32")),
+        };
+
+        // Check for overflow
+        let dest_end = dest_addr.checked_add(copy_size).ok_or_else(|| {
+            Error::memory_error("memory.copy dest address overflow")
+        })?;
+
+        let src_end = src_addr.checked_add(copy_size).ok_or_else(|| {
+            Error::memory_error("memory.copy src address overflow")
+        })?;
+
+        // Check bounds
+        let memory_size = memory.size_in_bytes()? as u32;
+        if dest_end > memory_size || src_end > memory_size {
+            return Err(Error::memory_error("memory.copy out of bounds"));
+        }
+
+        // Perform copy operation (handles overlapping regions correctly)
+        memory.copy(dest_addr, src_addr, copy_size)
+    }
+}
+
+impl MemoryInit {
+    /// Create a new memory init operation
+    pub fn new(memory_index: u32, data_index: u32) -> Self {
+        Self { memory_index, data_index }
+    }
+
+    /// Execute memory.init operation
+    ///
+    /// # Arguments
+    ///
+    /// * `memory` - The memory to operate on
+    /// * `data_segments` - Access to data segments
+    /// * `dest` - Destination address in memory (i32)
+    /// * `src` - Source offset in data segment (i32)
+    /// * `size` - Number of bytes to copy (i32)
+    ///
+    /// # Returns
+    ///
+    /// Success or an error
+    pub fn execute(
+        &self,
+        memory: &mut impl MemoryOperations,
+        data_segments: &impl DataSegmentOperations,
+        dest: &Value,
+        src: &Value,
+        size: &Value,
+    ) -> Result<()> {
+        // Extract arguments
+        let dest_addr = match dest {
+            Value::I32(addr) => *addr as u32,
+            _ => return Err(Error::type_error("memory.init dest must be i32")),
+        };
+
+        let src_offset = match src {
+            Value::I32(offset) => *offset as u32,
+            _ => return Err(Error::type_error("memory.init src must be i32")),
+        };
+
+        let copy_size = match size {
+            Value::I32(sz) => *sz as u32,
+            _ => return Err(Error::type_error("memory.init size must be i32")),
+        };
+
+        // Get data segment
+        let data = data_segments.get_data_segment(self.data_index)?
+            .ok_or_else(|| Error::memory_error("Data segment has been dropped"))?;
+
+        // Check bounds in data segment
+        let data_len = data.len() as u32;
+        let src_end = src_offset.checked_add(copy_size).ok_or_else(|| {
+            Error::memory_error("memory.init src offset overflow")
+        })?;
+
+        if src_end > data_len {
+            return Err(Error::memory_error("memory.init src out of bounds"));
+        }
+
+        // Check bounds in memory
+        let dest_end = dest_addr.checked_add(copy_size).ok_or_else(|| {
+            Error::memory_error("memory.init dest address overflow")
+        })?;
+
+        let memory_size = memory.size_in_bytes()? as u32;
+        if dest_end > memory_size {
+            return Err(Error::memory_error("memory.init dest out of bounds"));
+        }
+
+        // Copy data from segment to memory
+        #[cfg(any(feature = "std", feature = "alloc"))]
+        {
+            let src_slice = &data[src_offset as usize..src_end as usize];
+            memory.write_bytes(dest_addr, src_slice)
+        }
+        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        {
+            // For no_std, copy bytes one by one to avoid slice allocation
+            for (i, offset) in (src_offset..src_end).enumerate() {
+                let byte = data.get(offset as usize).map_err(|_| Error::memory_error("Data segment index out of bounds"))?;
+                memory.write_bytes(dest_addr + i as u32, &[byte])?;
+            }
+            Ok(())
+        }
+    }
+}
+
+impl DataDrop {
+    /// Create a new data drop operation
+    pub fn new(data_index: u32) -> Self {
+        Self { data_index }
+    }
+
+    /// Execute data.drop operation
+    ///
+    /// # Arguments
+    ///
+    /// * `data_segments` - Access to data segments
+    ///
+    /// # Returns
+    ///
+    /// Success or an error
+    pub fn execute(
+        &self,
+        data_segments: &mut impl DataSegmentOperations,
+    ) -> Result<()> {
+        data_segments.drop_data_segment(self.data_index)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use wrt_foundation::types::Limits;
@@ -611,17 +998,32 @@ mod tests {
     }
 
     impl MemoryOperations for MockMemory {
+        #[cfg(any(feature = "std", feature = "alloc"))]
         fn read_bytes(&self, offset: u32, len: u32) -> Result<Vec<u8>> {
             let start = offset as usize;
             let end = start + len as usize;
 
             if end > self.data.len() {
-                return Err(Error::from(kinds::MemoryAccessOutOfBoundsError(
-                    "Memory access out of bounds"
-                )));
+                return Err(Error::memory_error("Memory access out of bounds"));
             }
 
             Ok(self.data[start..end].to_vec())
+        }
+
+        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        fn read_bytes(&self, offset: u32, len: u32) -> Result<wrt_foundation::BoundedVec<u8, 65536, wrt_foundation::NoStdProvider<65536>>> {
+            let start = offset as usize;
+            let end = start + len as usize;
+
+            if end > self.data.len() {
+                return Err(Error::memory_error("Memory access out of bounds"));
+            }
+
+            let mut result = wrt_foundation::BoundedVec::new();
+            for &byte in &self.data[start..end] {
+                result.push(byte).map_err(|_| Error::memory_error("BoundedVec capacity exceeded"))?;
+            }
+            Ok(result)
         }
 
         fn write_bytes(&mut self, offset: u32, bytes: &[u8]) -> Result<()> {
@@ -629,9 +1031,7 @@ mod tests {
             let end = start + bytes.len();
 
             if end > self.data.len() {
-                return Err(Error::from(kinds::MemoryAccessOutOfBoundsError(
-                    "Memory access out of bounds"
-                )));
+                return Err(Error::memory_error("Memory access out of bounds"));
             }
 
             self.data[start..end].copy_from_slice(bytes);
@@ -647,6 +1047,38 @@ mod tests {
             let new_size = self.data.len() + (pages as usize * 65536);
             self.data.resize(new_size, 0);
             Ok(old_pages)
+        }
+
+        fn fill(&mut self, offset: u32, value: u8, size: u32) -> Result<()> {
+            let start = offset as usize;
+            let end = start + size as usize;
+
+            if end > self.data.len() {
+                return Err(Error::memory_error("Memory fill out of bounds"));
+            }
+
+            for i in start..end {
+                self.data[i] = value;
+            }
+            Ok(())
+        }
+
+        fn copy(&mut self, dest: u32, src: u32, size: u32) -> Result<()> {
+            let dest_start = dest as usize;
+            let dest_end = dest_start + size as usize;
+            let src_start = src as usize;
+            let src_end = src_start + size as usize;
+
+            if dest_end > self.data.len() || src_end > self.data.len() {
+                return Err(Error::memory_error("Memory copy out of bounds"));
+            }
+
+            // Handle overlapping regions correctly by copying to a temporary buffer
+            if size > 0 {
+                let temp: Vec<u8> = self.data[src_start..src_end].to_vec();
+                self.data[dest_start..dest_end].copy_from_slice(&temp);
+            }
+            Ok(())
         }
     }
 
@@ -787,5 +1219,315 @@ mod tests {
         let store = MemoryStore::i32(100, 4);
         let result = store.execute(&mut memory, &Value::I32(0), &Value::I32(42));
         assert!(result.is_err());
+    }
+
+    /// Mock data segment operations for testing
+    struct MockDataSegments {
+        #[cfg(any(feature = "std", feature = "alloc"))]
+        segments: Vec<Option<Vec<u8>>>,
+        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        segments: wrt_foundation::BoundedVec<Option<wrt_foundation::BoundedVec<u8, 65536, wrt_foundation::NoStdProvider<65536>>>, 16, wrt_foundation::NoStdProvider<1024>>,
+    }
+
+    impl MockDataSegments {
+        fn new() -> Self {
+            #[cfg(any(feature = "std", feature = "alloc"))]
+            {
+                Self {
+                    segments: vec![
+                        Some(vec![1, 2, 3, 4, 5]),
+                        Some(vec![0xAA, 0xBB, 0xCC, 0xDD]),
+                        None, // Dropped segment
+                    ],
+                }
+            }
+            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            {
+                let mut segments = wrt_foundation::BoundedVec::new();
+                
+                let mut seg1 = wrt_foundation::BoundedVec::new();
+                for &b in &[1, 2, 3, 4, 5] {
+                    seg1.push(b).unwrap();
+                }
+                segments.push(Some(seg1)).unwrap();
+                
+                let mut seg2 = wrt_foundation::BoundedVec::new();
+                for &b in &[0xAA, 0xBB, 0xCC, 0xDD] {
+                    seg2.push(b).unwrap();
+                }
+                segments.push(Some(seg2)).unwrap();
+                
+                segments.push(None).unwrap(); // Dropped segment
+                
+                Self { segments }
+            }
+        }
+    }
+
+    impl DataSegmentOperations for MockDataSegments {
+        #[cfg(any(feature = "std", feature = "alloc"))]
+        fn get_data_segment(&self, data_index: u32) -> Result<Option<Vec<u8>>> {
+            if (data_index as usize) < self.segments.len() {
+                Ok(self.segments[data_index as usize].clone())
+            } else {
+                Err(Error::validation_error("Invalid data segment index"))
+            }
+        }
+
+        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        fn get_data_segment(&self, data_index: u32) -> Result<Option<wrt_foundation::BoundedVec<u8, 65536, wrt_foundation::NoStdProvider<65536>>>> {
+            if (data_index as usize) < self.segments.len() {
+                Ok(self.segments.get(data_index as usize).unwrap().clone())
+            } else {
+                Err(Error::validation_error("Invalid data segment index"))
+            }
+        }
+
+        fn drop_data_segment(&mut self, data_index: u32) -> Result<()> {
+            if (data_index as usize) < self.segments.len() {
+                #[cfg(any(feature = "std", feature = "alloc"))]
+                {
+                    self.segments[data_index as usize] = None;
+                }
+                #[cfg(not(any(feature = "std", feature = "alloc")))]
+                {
+                    *self.segments.get_mut(data_index as usize).unwrap() = None;
+                }
+                Ok(())
+            } else {
+                Err(Error::validation_error("Invalid data segment index"))
+            }
+        }
+    }
+
+    #[test]
+    fn test_memory_fill() {
+        let mut memory = MockMemory::new(1024);
+        let fill_op = MemoryFill::new(0);
+
+        // Fill 10 bytes with value 0x42 starting at offset 100
+        fill_op
+            .execute(&mut memory, &Value::I32(100), &Value::I32(0x42), &Value::I32(10))
+            .unwrap();
+
+        // Verify the fill worked
+        let data = memory.read_bytes(100, 10).unwrap();
+        assert_eq!(data.len(), 10);
+        #[cfg(feature = "alloc")]
+        assert!(data.iter().all(|&b| b == 0x42));
+        #[cfg(not(feature = "alloc"))]
+        for i in 0..10 {
+            assert_eq!(data.get(i).unwrap(), 0x42);
+        }
+    }
+
+    #[test]
+    fn test_memory_copy() {
+        let mut memory = MockMemory::new(1024);
+        
+        // Set up source data
+        memory.write_bytes(0, &[1, 2, 3, 4, 5]).unwrap();
+        
+        let copy_op = MemoryCopy::new(0, 0);
+
+        // Copy 5 bytes from offset 0 to offset 100
+        copy_op
+            .execute(&mut memory, &Value::I32(100), &Value::I32(0), &Value::I32(5))
+            .unwrap();
+
+        // Verify the copy worked
+        let data = memory.read_bytes(100, 5).unwrap();
+        #[cfg(feature = "alloc")]
+        assert_eq!(data, vec![1, 2, 3, 4, 5]);
+        #[cfg(not(feature = "alloc"))]
+        {
+            assert_eq!(data.len(), 5);
+            for i in 0..5 {
+                assert_eq!(data.get(i).unwrap(), (i + 1) as u8);
+            }
+        }
+    }
+
+    #[test]
+    fn test_memory_copy_overlapping() {
+        let mut memory = MockMemory::new(1024);
+        
+        // Set up source data
+        memory.write_bytes(0, &[1, 2, 3, 4, 5, 6, 7, 8]).unwrap();
+        
+        let copy_op = MemoryCopy::new(0, 0);
+
+        // Copy overlapping: copy 5 bytes from offset 0 to offset 2
+        copy_op
+            .execute(&mut memory, &Value::I32(2), &Value::I32(0), &Value::I32(5))
+            .unwrap();
+
+        // Verify overlapping copy worked correctly
+        let data = memory.read_bytes(0, 8).unwrap();
+        #[cfg(feature = "alloc")]
+        assert_eq!(data, vec![1, 2, 1, 2, 3, 4, 5, 8]);
+        #[cfg(not(feature = "alloc"))]
+        {
+            let expected = [1, 2, 1, 2, 3, 4, 5, 8];
+            for i in 0..8 {
+                assert_eq!(data.get(i).unwrap(), expected[i]);
+            }
+        }
+    }
+
+    #[test]
+    fn test_memory_init() {
+        let mut memory = MockMemory::new(1024);
+        let data_segments = MockDataSegments::new();
+        let init_op = MemoryInit::new(0, 0);
+
+        // Copy 3 bytes from data segment 0 (starting at offset 1) to memory at offset 100
+        init_op
+            .execute(
+                &mut memory,
+                &data_segments,
+                &Value::I32(100),
+                &Value::I32(1),
+                &Value::I32(3),
+            )
+            .unwrap();
+
+        // Verify the init worked (should copy bytes [2, 3, 4] from segment [1, 2, 3, 4, 5])
+        let data = memory.read_bytes(100, 3).unwrap();
+        #[cfg(feature = "alloc")]
+        assert_eq!(data, vec![2, 3, 4]);
+        #[cfg(not(feature = "alloc"))]
+        {
+            assert_eq!(data.len(), 3);
+            for i in 0..3 {
+                assert_eq!(data.get(i).unwrap(), (i + 2) as u8);
+            }
+        }
+    }
+
+    #[test]
+    fn test_data_drop() {
+        let mut data_segments = MockDataSegments::new();
+        let drop_op = DataDrop::new(0);
+
+        // Verify segment 0 exists initially
+        assert!(data_segments.get_data_segment(0).unwrap().is_some());
+
+        // Drop segment 0
+        drop_op.execute(&mut data_segments).unwrap();
+
+        // Verify segment 0 is now dropped
+        assert!(data_segments.get_data_segment(0).unwrap().is_none());
+    }
+
+    #[test]
+    fn test_memory_init_dropped_segment() {
+        let mut memory = MockMemory::new(1024);
+        let mut data_segments = MockDataSegments::new();
+        
+        // Drop segment 0 first
+        data_segments.drop_data_segment(0).unwrap();
+        
+        let init_op = MemoryInit::new(0, 0);
+
+        // Try to init from dropped segment - should fail
+        let result = init_op.execute(
+            &mut memory,
+            &data_segments,
+            &Value::I32(100),
+            &Value::I32(0),
+            &Value::I32(3),
+        );
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_bulk_memory_bounds_checking() {
+        let mut memory = MockMemory::new(100);
+        
+        // Test memory.fill out of bounds
+        let fill_op = MemoryFill::new(0);
+        let result = fill_op.execute(&mut memory, &Value::I32(95), &Value::I32(0x42), &Value::I32(10));
+        assert!(result.is_err());
+
+        // Test memory.copy out of bounds
+        let copy_op = MemoryCopy::new(0, 0);
+        let result = copy_op.execute(&mut memory, &Value::I32(95), &Value::I32(0), &Value::I32(10));
+        assert!(result.is_err());
+    }
+}
+
+// Validation implementations
+
+impl Validate for MemoryLoad {
+    fn validate(&self, ctx: &mut ValidationContext) -> Result<()> {
+        validate_memory_op(
+            "memory.load",
+            0, // memory index - always 0 for now
+            self.align,
+            self.value_type,
+            true, // is_load
+            ctx
+        )
+    }
+}
+
+impl Validate for MemoryStore {
+    fn validate(&self, ctx: &mut ValidationContext) -> Result<()> {
+        validate_memory_op(
+            "memory.store",
+            0, // memory index - always 0 for now
+            self.align,
+            self.value_type,
+            false, // is_load
+            ctx
+        )
+    }
+}
+
+impl Validate for MemoryFill {
+    fn validate(&self, ctx: &mut ValidationContext) -> Result<()> {
+        // memory.fill: [i32, i32, i32] -> []
+        // Stack: [dest_addr, value, size]
+        if !ctx.is_unreachable() {
+            ctx.pop_expect(ValueType::I32)?; // size
+            ctx.pop_expect(ValueType::I32)?; // value
+            ctx.pop_expect(ValueType::I32)?; // dest_addr
+        }
+        Ok(())
+    }
+}
+
+impl Validate for MemoryCopy {
+    fn validate(&self, ctx: &mut ValidationContext) -> Result<()> {
+        // memory.copy: [i32, i32, i32] -> []
+        // Stack: [dest_addr, src_addr, size]
+        if !ctx.is_unreachable() {
+            ctx.pop_expect(ValueType::I32)?; // size
+            ctx.pop_expect(ValueType::I32)?; // src_addr
+            ctx.pop_expect(ValueType::I32)?; // dest_addr
+        }
+        Ok(())
+    }
+}
+
+impl Validate for MemoryInit {
+    fn validate(&self, ctx: &mut ValidationContext) -> Result<()> {
+        // memory.init: [i32, i32, i32] -> []
+        // Stack: [dest_addr, src_offset, size]
+        if !ctx.is_unreachable() {
+            ctx.pop_expect(ValueType::I32)?; // size
+            ctx.pop_expect(ValueType::I32)?; // src_offset
+            ctx.pop_expect(ValueType::I32)?; // dest_addr
+        }
+        Ok(())
+    }
+}
+
+impl Validate for DataDrop {
+    fn validate(&self, ctx: &mut ValidationContext) -> Result<()> {
+        // data.drop: [] -> []
+        // No stack operations required
+        Ok(())
     }
 }

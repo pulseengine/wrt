@@ -4063,7 +4063,6 @@ dependencies = [
 name = "wrt-component"
 version = "0.2.0"
 dependencies = [
- "futures",
  "log",
  "wrt-decoder",
  "wrt-error",
@@ -4193,7 +4192,6 @@ name = "wrt-platform"
 version = "0.2.0"
 dependencies = [
  "criterion",
- "libc",
  "wrt-error",
  "wrt-sync",
 ]

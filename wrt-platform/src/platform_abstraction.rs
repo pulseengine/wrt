@@ -150,11 +150,12 @@ impl<P> UnifiedPlatform<P> {
     }
 }
 
-// POSIX Platform Implementations (Linux, macOS, QNX)
+// POSIX Platform Implementations (Linux, macOS, QNX, VxWorks RTP)
 #[cfg(any(
     all(feature = "platform-linux", target_os = "linux"),
     all(feature = "platform-macos", target_os = "macos"),
-    all(feature = "platform-qnx", target_os = "nto")
+    all(feature = "platform-qnx", target_os = "nto"),
+    all(feature = "platform-vxworks", target_os = "vxworks")
 ))]
 mod posix_impl {
     use super::*;
@@ -221,13 +222,42 @@ mod posix_impl {
             crate::QnxFutexBuilder::new().build()
         }
     }
+
+    // VxWorks POSIX implementation (RTP user-space applications)
+    #[cfg(all(feature = "platform-vxworks", target_os = "vxworks"))]
+    impl PlatformAbstraction<paradigm::Posix> for UnifiedPlatform<paradigm::Posix> {
+        type Allocator = crate::VxWorksAllocator;
+        type Synchronizer = crate::VxWorksFutex;
+        type Config = PlatformConfig<paradigm::Posix>;
+
+        #[inline(always)]
+        fn create_allocator(config: &Self::Config) -> Result<Self::Allocator, Error> {
+            crate::VxWorksAllocatorBuilder::new()
+                .context(crate::vxworks_memory::VxWorksContext::Rtp) // RTP for POSIX-like usage
+                .max_pages(config.max_pages as usize)
+                .enable_guard_pages(config.guard_pages)
+                .use_dedicated_partition(false) // Use system heap for RTP
+                .build()
+        }
+
+        #[inline(always)]
+        fn create_synchronizer(_config: &Self::Config) -> Result<Self::Synchronizer, Error> {
+            crate::VxWorksFutexBuilder::new(crate::vxworks_memory::VxWorksContext::Rtp)
+                .build()
+        }
+    }
 }
 
-// Real-Time Platform Implementation (Zephyr)
-#[cfg(feature = "platform-zephyr")]
+// Real-Time Platform Implementation (Zephyr, VxWorks LKM)
+#[cfg(any(
+    feature = "platform-zephyr",
+    all(feature = "platform-vxworks", target_os = "vxworks")
+))]
 mod realtime_impl {
     use super::*;
 
+    // Zephyr Real-Time implementation
+    #[cfg(feature = "platform-zephyr")]
     impl PlatformAbstraction<paradigm::RealTime> for UnifiedPlatform<paradigm::RealTime> {
         type Allocator = crate::ZephyrAllocator;
         type Synchronizer = crate::ZephyrFutex;
@@ -252,6 +282,37 @@ mod realtime_impl {
         #[inline(always)]
         fn create_synchronizer(_config: &Self::Config) -> Result<Self::Synchronizer, Error> {
             Ok(crate::ZephyrFutexBuilder::new().build())
+        }
+    }
+
+    // VxWorks Real-Time implementation (LKM kernel modules)
+    #[cfg(all(feature = "platform-vxworks", target_os = "vxworks"))]
+    impl PlatformAbstraction<paradigm::RealTime> for UnifiedPlatform<paradigm::RealTime> {
+        type Allocator = crate::VxWorksAllocator;
+        type Synchronizer = crate::VxWorksFutex;
+        type Config = PlatformConfig<paradigm::RealTime>;
+
+        #[inline(always)] // Zero-cost: compiles to direct VxWorks calls
+        fn create_allocator(config: &Self::Config) -> Result<Self::Allocator, Error> {
+            let mut builder = crate::VxWorksAllocatorBuilder::new()
+                .context(crate::vxworks_memory::VxWorksContext::Lkm) // LKM for real-time usage
+                .max_pages(config.max_pages as usize)
+                .enable_guard_pages(config.guard_pages)
+                .use_dedicated_partition(true); // Use dedicated partition for deterministic allocation
+
+            // Apply real-time specific configuration
+            if config.rt_priority.is_some() {
+                // Configure memory partition for real-time use
+                builder = builder.partition_size(config.max_pages as usize * crate::WASM_PAGE_SIZE);
+            }
+
+            builder.build()
+        }
+
+        #[inline(always)]
+        fn create_synchronizer(_config: &Self::Config) -> Result<Self::Synchronizer, Error> {
+            crate::VxWorksFutexBuilder::new(crate::vxworks_memory::VxWorksContext::Lkm)
+                .build()
         }
     }
 }
@@ -314,7 +375,8 @@ pub mod platform_select {
         any(
             all(feature = "platform-linux", target_os = "linux"),
             all(feature = "platform-macos", target_os = "macos"),
-            all(feature = "platform-qnx", target_os = "nto")
+            all(feature = "platform-qnx", target_os = "nto"),
+            all(feature = "platform-vxworks", target_os = "vxworks")
         ),
         not(feature = "platform-tock"),
         not(feature = "platform-zephyr")
@@ -327,7 +389,8 @@ pub mod platform_select {
         feature = "platform-zephyr",
         all(feature = "platform-linux", target_os = "linux"),
         all(feature = "platform-macos", target_os = "macos"),
-        all(feature = "platform-qnx", target_os = "nto")
+        all(feature = "platform-qnx", target_os = "nto"),
+        all(feature = "platform-vxworks", target_os = "vxworks")
     )))]
     pub type Auto = paradigm::Posix;
 

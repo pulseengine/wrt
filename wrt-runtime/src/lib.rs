@@ -46,6 +46,7 @@ pub mod module_instance;
 pub mod prelude;
 pub mod stackless;
 pub mod table;
+pub mod types;
 
 // Re-export commonly used types
 pub use cfi_engine::{

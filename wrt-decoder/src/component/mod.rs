@@ -21,12 +21,15 @@ pub mod utils;
 pub mod val_type;
 pub mod validation;
 
+#[cfg(feature = "alloc")]
 pub use analysis::{
     analyze_component, analyze_component_extended, extract_embedded_modules, extract_inline_module,
     extract_module_info, is_valid_module, AliasInfo, ComponentSummary, CoreInstanceInfo,
     CoreModuleInfo, ExtendedExportInfo, ExtendedImportInfo, ModuleExportInfo, ModuleImportInfo,
 };
+#[cfg(feature = "alloc")]
 pub use decode::decode_component as decode_component_internal;
+#[cfg(feature = "alloc")]
 pub use encode::encode_component;
 pub use name_section::{
     generate_component_name_section, parse_component_name_section, ComponentNameSection, NameMap,

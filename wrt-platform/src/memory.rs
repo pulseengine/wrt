@@ -247,8 +247,8 @@ impl MemoryProvider for NoStdProvider {
     fn write_data(&mut self, offset: usize, data: &[u8]) -> wrt_error::Result<usize> {
         if offset >= self.buffer.len() {
             return Err(wrt_error::Error::new(
-                wrt_error::ErrorCategory::Memory,
-                wrt_error::codes::OUT_OF_BOUNDS_ERROR,
+                wrt_error::ErrorCategory::Memory, 
+                1,
                 "Write offset out of bounds",
             ));
         }
@@ -265,7 +265,7 @@ impl MemoryProvider for NoStdProvider {
         if offset >= self.buffer.len() {
             return Err(wrt_error::Error::new(
                 wrt_error::ErrorCategory::Memory,
-                wrt_error::codes::OUT_OF_BOUNDS_ERROR,
+                1,
                 "Read offset out of bounds",
             ));
         }
@@ -321,7 +321,7 @@ mod tests {
             if self.allocated_ptr.is_some() {
                 return Err(wrt_error::Error::new(
                     wrt_error::ErrorCategory::System,
-                    wrt_error::codes::INVALID_STATE,
+                    1,
                     "Already allocated",
                 ));
             }
@@ -346,7 +346,7 @@ mod tests {
             if self.allocated_ptr.is_none() {
                 return Err(wrt_error::Error::new(
                     wrt_error::ErrorCategory::System,
-                    wrt_error::codes::INVALID_STATE,
+                    1,
                     "Not allocated",
                 ));
             }
@@ -355,7 +355,7 @@ mod tests {
                 if new_total_pages > max {
                     return Err(wrt_error::Error::new(
                         wrt_error::ErrorCategory::Memory,
-                        wrt_error::codes::CAPACITY_EXCEEDED,
+                        1,
                         "Exceeds max",
                     ));
                 }
@@ -366,7 +366,7 @@ mod tests {
             if new_size > 5 * WASM_PAGE_SIZE {
                 return Err(wrt_error::Error::new(
                     wrt_error::ErrorCategory::Memory,
-                    wrt_error::codes::MEMORY_GROW_ERROR,
+                    1,
                     "Mock OOM on grow",
                 ));
             }
@@ -384,7 +384,7 @@ mod tests {
             {
                 return Err(wrt_error::Error::new(
                     wrt_error::ErrorCategory::System,
-                    wrt_error::codes::INVALID_FUNCTION_INDEX,
+                    1,
                     "Deallocation mismatch",
                 ));
             }

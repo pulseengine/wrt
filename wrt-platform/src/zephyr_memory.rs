@@ -185,8 +185,8 @@ impl ZephyrAllocator {
     fn pages_to_bytes(pages: u32) -> Result<usize> {
         pages.checked_mul(WASM_PAGE_SIZE as u32).map(|b| b as usize).ok_or_else(|| {
             Error::new(
-                ErrorCategory::Memory,
-                codes::CAPACITY_EXCEEDED,
+                ErrorCategory::Memory, 1,
+                
                 "Page count results in byte overflow",
             )
         })
@@ -224,8 +224,8 @@ impl ZephyrAllocator {
             let result = k_mem_domain_init(domain, 1, &partition as *const _ as *mut _);
             if result != 0 {
                 return Err(Error::new(
-                    ErrorCategory::System,
-                    codes::INITIALIZATION_ERROR,
+                    ErrorCategory::System, 1,
+                    
                     "Failed to initialize memory domain",
                 ));
             }
@@ -327,16 +327,16 @@ impl PageAllocator for ZephyrAllocator {
     ) -> Result<(NonNull<u8>, usize)> {
         if self.base_ptr.is_some() {
             return Err(Error::new(
-                ErrorCategory::System,
-                codes::INITIALIZATION_ERROR,
+                ErrorCategory::System, 1,
+                
                 "Allocator has already allocated memory",
             ));
         }
 
         if initial_pages == 0 {
             return Err(Error::new(
-                ErrorCategory::Memory,
-                codes::RUNTIME_INVALID_ARGUMENT_ERROR,
+                ErrorCategory::Memory, 1,
+                
                 "Initial pages cannot be zero",
             ));
         }
@@ -354,8 +354,8 @@ impl PageAllocator for ZephyrAllocator {
 
         if reserve_bytes > self.max_capacity_bytes {
             return Err(Error::new(
-                ErrorCategory::Memory,
-                codes::CAPACITY_EXCEEDED,
+                ErrorCategory::Memory, 1,
+                
                 "Requested reservation size exceeds allocator's maximum capacity",
             ));
         }
@@ -373,8 +373,8 @@ impl PageAllocator for ZephyrAllocator {
 
         if ptr.is_null() {
             return Err(Error::new(
-                ErrorCategory::System,
-                codes::MEMORY_ALLOCATION_ERROR,
+                ErrorCategory::System, 1,
+                
                 "Zephyr heap allocation failed",
             ));
         }
@@ -382,8 +382,8 @@ impl PageAllocator for ZephyrAllocator {
         // Convert raw pointer to NonNull
         let base_ptr = NonNull::new(ptr).ok_or_else(|| {
             Error::new(
-                ErrorCategory::System,
-                codes::MEMORY_ALLOCATION_ERROR,
+                ErrorCategory::System, 1,
+                
                 "Allocation returned null pointer",
             )
         })?;
@@ -417,8 +417,8 @@ impl PageAllocator for ZephyrAllocator {
     fn grow(&mut self, current_pages: u32, additional_pages: u32) -> Result<()> {
         let Some(_base_ptr) = self.base_ptr else {
             return Err(Error::new(
-                ErrorCategory::System,
-                codes::MEMORY_ACCESS_ERROR,
+                ErrorCategory::System, 1,
+                
                 "No memory allocated to grow",
             ));
         };
@@ -430,8 +430,8 @@ impl PageAllocator for ZephyrAllocator {
         let current_bytes_from_arg = Self::pages_to_bytes(current_pages)?;
         if current_bytes_from_arg != self.current_committed_bytes {
             return Err(Error::new(
-                ErrorCategory::Memory,
-                codes::RUNTIME_INVALID_ARGUMENT_ERROR,
+                ErrorCategory::Memory, 1,
+                
                 "Inconsistent current_pages argument for grow operation",
             ));
         }
@@ -451,8 +451,8 @@ impl PageAllocator for ZephyrAllocator {
 
         if new_committed_bytes > available_space {
             return Err(Error::new(
-                ErrorCategory::Memory,
-                codes::CAPACITY_EXCEEDED,
+                ErrorCategory::Memory, 1,
+                
                 "Grow request exceeds total reserved memory space",
             ));
         }
@@ -466,8 +466,8 @@ impl PageAllocator for ZephyrAllocator {
         // Validate that ptr matches our base_ptr
         let Some(base_ptr) = self.base_ptr.take() else {
             return Err(Error::new(
-                ErrorCategory::Memory,
-                codes::MEMORY_ACCESS_ERROR,
+                ErrorCategory::Memory, 1,
+                
                 "No memory allocated to deallocate",
             ));
         };
@@ -475,8 +475,8 @@ impl PageAllocator for ZephyrAllocator {
         if ptr.as_ptr() != base_ptr.as_ptr() {
             self.base_ptr = Some(base_ptr); // Restore base_ptr
             return Err(Error::new(
-                ErrorCategory::Memory,
-                codes::VALIDATION_ERROR,
+                ErrorCategory::Memory, 1,
+                
                 "Attempted to deallocate with mismatched pointer",
             ));
         }

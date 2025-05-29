@@ -37,7 +37,7 @@ use wrt_foundation::{
     values::Value,
 };
 
-use crate::{instructions, prelude::*, Parser}; // Import instructions module
+use crate::{instructions, prelude::*, types::*, Parser}; // Import instructions module
 
 // Import DataMode directly to avoid reimport issues
 // pub use wrt_format::module::DataMode as FormatDataMode; // This might be
@@ -65,6 +65,9 @@ use crate::{instructions, prelude::*, Parser}; // Import instructions module
 // on fields that have changed structure (e.g., accessing function code).
 // For now, focus on the parsing logic in `parse_module_internal_logic` (renamed from
 // `parse_module`).
+
+/// Type alias for Module - now uses wrt_foundation's Module type
+pub type Module = WrtModule;
 
 /// Decode a WebAssembly module from binary format
 ///
@@ -333,23 +336,82 @@ pub struct CustomSectionWrapper {
 fn parse_module_internal_logic(
     mut parser: crate::parser::Parser<'_>,
 ) -> Result<(WrtModule, Vec<u8>)> {
-    // TODO: These Vecs are temporary. The final WrtModule should use BoundedVecs
-    // initialized from a SafeMemoryHandler.
+    // Initialize collections based on feature flags
+    #[cfg(feature = "alloc")]
     let mut mod_types = Vec::new();
-    let mut mod_imports = Vec::new();
-    let mut mod_funcs = Vec::new(); // Type indices for functions
-    let mut mod_tables = Vec::new();
-    let mut mod_memories = Vec::new();
-    let mut mod_globals = Vec::new();
-    let mut mod_exports = Vec::new();
-    let mut mod_start = None;
-    let mut mod_elements = Vec::new();
-    let mut mod_code_entries = Vec::new(); // Will hold WrtCode
-    let mut mod_data_segments = Vec::new();
-    let mut mod_data_count = None;
-    let mut mod_custom_sections = Vec::new();
+    #[cfg(not(feature = "alloc"))]
+    let mut mod_types = TypesVec::new(wrt_foundation::NoStdProvider::default())
+        .map_err(|_| Error::memory_error("Failed to allocate module types"))?;
 
+    #[cfg(feature = "alloc")]
+    let mut mod_imports = Vec::new();
+    #[cfg(not(feature = "alloc"))]
+    let mut mod_imports = ImportsVec::new(wrt_foundation::NoStdProvider::default())
+        .map_err(|_| Error::memory_error("Failed to allocate module imports"))?;
+
+    #[cfg(feature = "alloc")]
+    let mut mod_funcs = Vec::new(); // Type indices for functions
+    #[cfg(not(feature = "alloc"))]
+    let mut mod_funcs = FunctionsVec::new(wrt_foundation::NoStdProvider::default())
+        .map_err(|_| Error::memory_error("Failed to allocate module functions"))?;
+
+    #[cfg(feature = "alloc")]
+    let mut mod_tables = Vec::new();
+    #[cfg(not(feature = "alloc"))]
+    let mut mod_tables = TablesVec::new(wrt_foundation::NoStdProvider::default())
+        .map_err(|_| Error::memory_error("Failed to allocate module tables"))?;
+
+    #[cfg(feature = "alloc")]
+    let mut mod_memories = Vec::new();
+    #[cfg(not(feature = "alloc"))]
+    let mut mod_memories = MemoriesVec::new(wrt_foundation::NoStdProvider::default())
+        .map_err(|_| Error::memory_error("Failed to allocate module memories"))?;
+
+    #[cfg(feature = "alloc")]
+    let mut mod_globals = Vec::new();
+    #[cfg(not(feature = "alloc"))]
+    let mut mod_globals = GlobalsVec::new(wrt_foundation::NoStdProvider::default())
+        .map_err(|_| Error::memory_error("Failed to allocate module globals"))?;
+
+    #[cfg(feature = "alloc")]
+    let mut mod_exports = Vec::new();
+    #[cfg(not(feature = "alloc"))]
+    let mut mod_exports = ExportsVec::new(wrt_foundation::NoStdProvider::default())
+        .map_err(|_| Error::memory_error("Failed to allocate module exports"))?;
+
+    let mut mod_start = None;
+
+    #[cfg(feature = "alloc")]
+    let mut mod_elements = Vec::new();
+    #[cfg(not(feature = "alloc"))]
+    let mut mod_elements = ElementsVec::new(wrt_foundation::NoStdProvider::default())
+        .map_err(|_| Error::memory_error("Failed to allocate module elements"))?;
+
+    #[cfg(feature = "alloc")]
+    let mut mod_code_entries = Vec::new(); // Will hold WrtCode
+    #[cfg(not(feature = "alloc"))]
+    let mut mod_code_entries = FunctionsVec::new(wrt_foundation::NoStdProvider::default())
+        .map_err(|_| Error::memory_error("Failed to allocate module code entries"))?;
+
+    #[cfg(feature = "alloc")]
+    let mut mod_data_segments = Vec::new();
+    #[cfg(not(feature = "alloc"))]
+    let mut mod_data_segments = DataVec::new(wrt_foundation::NoStdProvider::default())
+        .map_err(|_| Error::memory_error("Failed to allocate module data segments"))?;
+
+    let mut mod_data_count = None;
+
+    #[cfg(feature = "alloc")]
+    let mut mod_custom_sections = Vec::new();
+    #[cfg(not(feature = "alloc"))]
+    let mut mod_custom_sections = CustomSectionsVec::new(wrt_foundation::NoStdProvider::default())
+        .map_err(|_| Error::memory_error("Failed to allocate module custom sections"))?;
+
+    #[cfg(feature = "alloc")]
     let mut remaining_bytes = Vec::new();
+    #[cfg(not(feature = "alloc"))]
+    let mut remaining_bytes = ByteVec::new(wrt_foundation::NoStdProvider::default())
+        .map_err(|_| Error::memory_error("Failed to allocate remaining bytes buffer"))?;
 
     loop {
         match parser.read() {

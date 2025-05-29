@@ -38,7 +38,7 @@ proptest = "1.4.0"
 unexpected_cfgs = { level = "allow", check-cfg = ['cfg(test)'] }
 unsafe_code = "forbid"
 missing_docs = "deny"
-pointer_cast = "deny"
+# pointer_cast is not a valid Rust lint
 
 [lints.clippy]
 inline_asm_x86_att_syntax = "warn"

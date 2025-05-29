@@ -22,20 +22,58 @@
 
 use wrt_format::types::{FuncType, ValueType};
 
-use crate::prelude::*;
+use crate::{prelude::*, types::*};
 
 /// Control Flow Integrity metadata for a WebAssembly module
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct CfiMetadata {
     /// Function-level CFI information
+    #[cfg(feature = "alloc")]
     pub functions: Vec<FunctionCfiInfo>,
+    #[cfg(not(feature = "alloc"))]
+    pub functions: FunctionCfiVec,
     /// Global CFI requirements
     pub global_requirements: GlobalCfiRequirements,
     /// Import/export CFI validation requirements
+    #[cfg(feature = "alloc")]
     pub imports: Vec<ImportCfiRequirement>,
+    #[cfg(not(feature = "alloc"))]
+    pub imports: ImportCfiVec,
+    #[cfg(feature = "alloc")]
     pub exports: Vec<ExportCfiRequirement>,
+    #[cfg(not(feature = "alloc"))]
+    pub exports: ExportCfiVec,
     /// Control flow graph for the entire module
     pub control_flow_graph: ControlFlowGraph,
+}
+
+#[cfg(feature = "alloc")]
+impl Default for CfiMetadata {
+    fn default() -> Self {
+        Self {
+            functions: Vec::new(),
+            global_requirements: GlobalCfiRequirements::default(),
+            imports: Vec::new(),
+            exports: Vec::new(),
+            control_flow_graph: ControlFlowGraph::default(),
+        }
+    }
+}
+
+#[cfg(not(feature = "alloc"))]
+impl Default for CfiMetadata {
+    fn default() -> Self {
+        Self {
+            functions: FunctionCfiVec::new(wrt_foundation::NoStdProvider::default())
+                .unwrap_or_default(),
+            global_requirements: GlobalCfiRequirements::default(),
+            imports: ImportCfiVec::new(wrt_foundation::NoStdProvider::default())
+                .unwrap_or_default(),
+            exports: ExportCfiVec::new(wrt_foundation::NoStdProvider::default())
+                .unwrap_or_default(),
+            control_flow_graph: ControlFlowGraph::default(),
+        }
+    }
 }
 
 /// CFI information for a single function
@@ -46,13 +84,27 @@ pub struct FunctionCfiInfo {
     /// Function type signature
     pub function_type: FuncType,
     /// All indirect call sites in this function
+    #[cfg(feature = "alloc")]
     pub indirect_calls: Vec<IndirectCallSite>,
+    #[cfg(not(feature = "alloc"))]
+    pub indirect_calls: IndirectCallVec,
+
     /// All return sites in this function
+    #[cfg(feature = "alloc")]
     pub return_sites: Vec<ReturnSite>,
+    #[cfg(not(feature = "alloc"))]
+    pub return_sites: ReturnSiteVec,
+
     /// Landing pad requirements
+    #[cfg(feature = "alloc")]
     pub landing_pads: Vec<LandingPadRequirement>,
+    #[cfg(not(feature = "alloc"))]
+    pub landing_pads: LandingPadVec,
     /// Internal control flow (branches, blocks, loops)
+    #[cfg(feature = "alloc")]
     pub internal_control_flow: Vec<InternalControlFlow>,
+    #[cfg(not(feature = "alloc"))]
+    pub internal_control_flow: ControlFlowVec,
 }
 
 /// Information about an indirect call site
@@ -80,7 +132,10 @@ pub struct ReturnSite {
     /// Function index containing this return
     pub function_index: u32,
     /// Expected return values
+    #[cfg(feature = "alloc")]
     pub return_values: Vec<ValueType>,
+    #[cfg(not(feature = "alloc"))]
+    pub return_values: ValueTypeVec,
     /// Shadow stack validation requirement
     pub requires_shadow_stack_check: bool,
 }
@@ -95,7 +150,10 @@ pub struct LandingPadRequirement {
     /// Hardware-specific protection instruction
     pub protection_instruction: Option<ProtectionInstruction>,
     /// Validation requirements
+    #[cfg(feature = "alloc")]
     pub validation_requirements: Vec<ValidationRequirement>,
+    #[cfg(not(feature = "alloc"))]
+    pub validation_requirements: ValidationRequirementVec,
 }
 
 /// Location of a landing pad
@@ -167,7 +225,10 @@ pub enum ValidationRequirement {
     /// Validate return address matches shadow stack
     ShadowStackCheck,
     /// Validate control flow target is valid
+    #[cfg(feature = "alloc")]
     ControlFlowTargetCheck { valid_targets: Vec<u32> },
+    #[cfg(not(feature = "alloc"))]
+    ControlFlowTargetCheck { valid_targets: BoundedVec<u32, 16, wrt_foundation::NoStdProvider<64>> },
     /// Validate calling convention
     CallingConventionCheck,
 }
@@ -205,7 +266,10 @@ pub struct InternalControlFlow {
     /// Type of control flow
     pub flow_type: InternalFlowType,
     /// Validation requirements
+    #[cfg(feature = "alloc")]
     pub validation: Vec<ValidationRequirement>,
+    #[cfg(not(feature = "alloc"))]
+    pub validation: ValidationRequirementVec,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -520,6 +584,7 @@ impl CfiMetadataGenerator {
     }
 
     /// Determine required hardware features based on protection level
+    #[cfg(feature = "alloc")]
     fn determine_required_features(&self) -> Vec<RequiredHardwareFeature> {
         let mut features = Vec::new();
 
@@ -556,6 +621,46 @@ impl CfiMetadataGenerator {
         features
     }
 
+    #[cfg(not(feature = "alloc"))]
+    fn determine_required_features(
+        &self,
+    ) -> BoundedVec<RequiredHardwareFeature, 8, wrt_foundation::NoStdProvider<32>> {
+        let mut features =
+            BoundedVec::new(wrt_foundation::NoStdProvider::default()).unwrap_or_default();
+
+        match self.protection_config.target_level {
+            CfiProtectionLevel::None => {
+                // No features required
+            }
+            CfiProtectionLevel::Basic => {
+                // Basic landing pad support
+                if self.hardware_features.arm_bti {
+                    let _ = features.push(RequiredHardwareFeature::ArmBti);
+                }
+                if self.hardware_features.riscv_cfi {
+                    let _ = features.push(RequiredHardwareFeature::RiscVCfi);
+                }
+            }
+            CfiProtectionLevel::Enhanced | CfiProtectionLevel::Maximum => {
+                // All available features for maximum protection
+                if self.hardware_features.arm_bti {
+                    let _ = features.push(RequiredHardwareFeature::ArmBti);
+                }
+                if self.hardware_features.arm_mte {
+                    let _ = features.push(RequiredHardwareFeature::ArmMte);
+                }
+                if self.hardware_features.riscv_cfi {
+                    let _ = features.push(RequiredHardwareFeature::RiscVCfi);
+                }
+                if self.hardware_features.riscv_pmp {
+                    let _ = features.push(RequiredHardwareFeature::RiscVPmp);
+                }
+            }
+        }
+
+        features
+    }
+
     /// Analyze a single function for CFI requirements
     fn analyze_function(
         &mut self,
@@ -565,10 +670,29 @@ impl CfiMetadataGenerator {
         let mut function_cfi = FunctionCfiInfo {
             function_index: func_index,
             function_type: function.func_type.clone(),
+            #[cfg(feature = "alloc")]
             indirect_calls: Vec::new(),
+            #[cfg(not(feature = "alloc"))]
+            indirect_calls: IndirectCallVec::new(wrt_foundation::NoStdProvider::default())
+                .map_err(|_| Error::memory_error("Failed to allocate indirect calls"))?,
+
+            #[cfg(feature = "alloc")]
             return_sites: Vec::new(),
+            #[cfg(not(feature = "alloc"))]
+            return_sites: ReturnSiteVec::new(wrt_foundation::NoStdProvider::default())
+                .map_err(|_| Error::memory_error("Failed to allocate return sites"))?,
+
+            #[cfg(feature = "alloc")]
             landing_pads: Vec::new(),
+            #[cfg(not(feature = "alloc"))]
+            landing_pads: LandingPadVec::new(wrt_foundation::NoStdProvider::default())
+                .map_err(|_| Error::memory_error("Failed to allocate landing pads"))?,
+
+            #[cfg(feature = "alloc")]
             internal_control_flow: Vec::new(),
+            #[cfg(not(feature = "alloc"))]
+            internal_control_flow: ControlFlowVec::new(wrt_foundation::NoStdProvider::default())
+                .map_err(|_| Error::memory_error("Failed to allocate control flow"))?,
         };
 
         // Analyze each instruction in the function
@@ -691,6 +815,7 @@ impl CfiMetadataGenerator {
     }
 
     /// Generate landing pad requirements for a function
+    #[cfg(feature = "alloc")]
     fn generate_landing_pad_requirements(
         &self,
         function_cfi: &FunctionCfiInfo,
@@ -729,6 +854,87 @@ impl CfiMetadataGenerator {
                 protection_instruction,
                 validation_requirements: vec![ValidationRequirement::CallingConventionCheck],
             });
+        }
+
+        Ok(requirements)
+    }
+
+    #[cfg(not(feature = "alloc"))]
+    fn generate_landing_pad_requirements(
+        &self,
+        function_cfi: &FunctionCfiInfo,
+    ) -> Result<LandingPadVec> {
+        let mut requirements = LandingPadVec::new(wrt_foundation::NoStdProvider::default())
+            .map_err(|_| Error::memory_error("Failed to allocate landing pad requirements"))?;
+
+        // Landing pads for indirect call returns
+        for call_site in &function_cfi.indirect_calls {
+            let protection_instruction =
+                self.create_protection_instruction(ControlFlowTargetType::IndirectCall);
+
+            let validation_reqs = {
+                let mut reqs =
+                    ValidationRequirementVec::new(wrt_foundation::NoStdProvider::default())
+                        .map_err(|_| {
+                            Error::memory_error("Failed to allocate validation requirements")
+                        })?;
+                let _ = reqs.push(ValidationRequirement::TypeSignatureCheck {
+                    expected_type: call_site.type_index,
+                });
+                reqs
+            };
+
+            let requirement = LandingPadRequirement {
+                location: call_site.return_landing_pad.clone(),
+                target_type: ControlFlowTargetType::IndirectCall,
+                protection_instruction,
+                #[cfg(feature = "alloc")]
+                validation_requirements: vec![ValidationRequirement::TypeSignatureCheck {
+                    expected_type: call_site.type_index,
+                }],
+                #[cfg(not(feature = "alloc"))]
+                validation_requirements: validation_reqs,
+            };
+
+            requirements
+                .push(requirement)
+                .map_err(|_| Error::memory_error("Landing pad requirements capacity exceeded"))?;
+        }
+
+        // Landing pads for function entries (if needed)
+        if matches!(
+            self.protection_config.target_level,
+            CfiProtectionLevel::Enhanced | CfiProtectionLevel::Maximum
+        ) {
+            let protection_instruction =
+                self.create_protection_instruction(ControlFlowTargetType::FunctionEntry);
+
+            let validation_reqs = {
+                let mut reqs =
+                    ValidationRequirementVec::new(wrt_foundation::NoStdProvider::default())
+                        .map_err(|_| {
+                            Error::memory_error("Failed to allocate validation requirements")
+                        })?;
+                let _ = reqs.push(ValidationRequirement::CallingConventionCheck);
+                reqs
+            };
+
+            let requirement = LandingPadRequirement {
+                location: LandingPadLocation {
+                    function_index: function_cfi.function_index,
+                    instruction_offset: 0, // Function start
+                },
+                target_type: ControlFlowTargetType::FunctionEntry,
+                protection_instruction,
+                #[cfg(feature = "alloc")]
+                validation_requirements: vec![ValidationRequirement::CallingConventionCheck],
+                #[cfg(not(feature = "alloc"))]
+                validation_requirements: validation_reqs,
+            };
+
+            requirements
+                .push(requirement)
+                .map_err(|_| Error::memory_error("Landing pad requirements capacity exceeded"))?;
         }
 
         Ok(requirements)

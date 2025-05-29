@@ -2,6 +2,11 @@
 //!
 //! This module contains functions to convert between format types and runtime
 //! types.
+//!
+//! Most functions in this module require the alloc feature as they work with
+//! wrt_format types that need dynamic allocation.
+
+#![cfg(feature = "alloc")]
 
 use wrt_error::{errors::codes, Error, ErrorCategory, Result};
 // Import RefType directly from wrt-format
@@ -15,6 +20,7 @@ use wrt_foundation::{
 
 // Import common types from prelude
 use crate::prelude::*;
+use crate::types::*;
 
 /// Convert a format binary value type to runtime value type
 ///
@@ -65,6 +71,7 @@ pub fn convert_to_wrt_error(error: WrtFormatError) -> Error {
 }
 
 /// Convert a section code into a section type
+#[cfg(feature = "alloc")]
 pub fn section_code_to_section_type(section_code: u8) -> wrt_format::section::Section {
     // Simple conversion to section enum
     match section_code {

@@ -32,7 +32,7 @@ kani = ["wrt-intercept/kani"]
 [lints.rust]
 unexpected_cfgs = { level = "allow", check-cfg = ['cfg(test)', 'cfg(kani)', 'cfg(coverage)', 'cfg(doc)'] }
 # Rule 1
-pointer_cast = "deny"
+# pointer_cast is not a valid Rust lint
 # Rule 9
 missing_docs = "deny"
 unsafe_code = "forbid"

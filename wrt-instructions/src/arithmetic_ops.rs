@@ -9,6 +9,7 @@
 //! operations for various numeric types.
 
 use crate::prelude::*;
+use crate::validation::{Validate, ValidationContext, validate_arithmetic_op};
 
 /// Represents a pure arithmetic operation for WebAssembly.
 #[derive(Debug, Clone)]
@@ -418,6 +419,100 @@ impl<T: ArithmeticContext> PureInstruction<T, Error> for ArithmeticOp {
 
             // Return Ok for unimplemented operations (to be completed)
             _ => Ok(()),
+        }
+    }
+}
+
+impl Validate for ArithmeticOp {
+    fn validate(&self, ctx: &mut ValidationContext) -> Result<()> {
+        match self {
+            // I32 operations
+            Self::I32Add | Self::I32Sub | Self::I32Mul | 
+            Self::I32DivS | Self::I32DivU | Self::I32RemS | Self::I32RemU |
+            Self::I32And | Self::I32Or | Self::I32Xor |
+            Self::I32Shl | Self::I32ShrS | Self::I32ShrU |
+            Self::I32Rotl | Self::I32Rotr => {
+                validate_arithmetic_op(
+                    "i32 binary op",
+                    &[ValueType::I32, ValueType::I32],
+                    ValueType::I32,
+                    ctx
+                )
+            }
+            
+            Self::I32Clz | Self::I32Ctz | Self::I32Popcnt => {
+                validate_arithmetic_op(
+                    "i32 unary op",
+                    &[ValueType::I32],
+                    ValueType::I32,
+                    ctx
+                )
+            }
+            
+            // I64 operations
+            Self::I64Add | Self::I64Sub | Self::I64Mul |
+            Self::I64DivS | Self::I64DivU | Self::I64RemS | Self::I64RemU |
+            Self::I64And | Self::I64Or | Self::I64Xor |
+            Self::I64Shl | Self::I64ShrS | Self::I64ShrU |
+            Self::I64Rotl | Self::I64Rotr => {
+                validate_arithmetic_op(
+                    "i64 binary op",
+                    &[ValueType::I64, ValueType::I64],
+                    ValueType::I64,
+                    ctx
+                )
+            }
+            
+            Self::I64Clz | Self::I64Ctz | Self::I64Popcnt => {
+                validate_arithmetic_op(
+                    "i64 unary op",
+                    &[ValueType::I64],
+                    ValueType::I64,
+                    ctx
+                )
+            }
+            
+            // F32 operations
+            Self::F32Add | Self::F32Sub | Self::F32Mul | Self::F32Div |
+            Self::F32Min | Self::F32Max | Self::F32Copysign => {
+                validate_arithmetic_op(
+                    "f32 binary op",
+                    &[ValueType::F32, ValueType::F32],
+                    ValueType::F32,
+                    ctx
+                )
+            }
+            
+            Self::F32Abs | Self::F32Neg | Self::F32Ceil | Self::F32Floor |
+            Self::F32Trunc | Self::F32Nearest | Self::F32Sqrt => {
+                validate_arithmetic_op(
+                    "f32 unary op",
+                    &[ValueType::F32],
+                    ValueType::F32,
+                    ctx
+                )
+            }
+            
+            // F64 operations
+            Self::F64Add | Self::F64Sub | Self::F64Mul | Self::F64Div |
+            Self::F64Min | Self::F64Max | Self::F64Copysign => {
+                validate_arithmetic_op(
+                    "f64 binary op",
+                    &[ValueType::F64, ValueType::F64],
+                    ValueType::F64,
+                    ctx
+                )
+            }
+            
+            Self::F64Abs | Self::F64Neg | Self::F64Ceil | Self::F64Floor |
+            Self::F64Trunc | Self::F64Nearest | Self::F64Sqrt => {
+                validate_arithmetic_op(
+                    "f64 unary op",
+                    &[ValueType::F64],
+                    ValueType::F64,
+                    ctx
+                )
+            }
         }
     }
 }

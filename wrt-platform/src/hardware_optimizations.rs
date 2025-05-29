@@ -124,8 +124,7 @@ pub mod arm {
         fn enable() -> Result<Self, Error> {
             if !Self::is_available() {
                 return Err(Error::new(
-                    wrt_error::ErrorCategory::System,
-                    wrt_error::codes::UNSUPPORTED_OPERATION,
+                    wrt_error::ErrorCategory::System, 1,
                     "Hardware feature not available",
                 ));
             }
@@ -197,8 +196,7 @@ pub mod arm {
         fn enable() -> Result<Self, Error> {
             if !Self::is_available() {
                 return Err(Error::new(
-                    wrt_error::ErrorCategory::System,
-                    wrt_error::codes::UNSUPPORTED_OPERATION,
+                    wrt_error::ErrorCategory::System, 1,
                     "Hardware feature not available",
                 ));
             }
@@ -285,8 +283,7 @@ pub mod arm {
         fn enable() -> Result<Self, Error> {
             if !Self::is_available() {
                 return Err(Error::new(
-                    wrt_error::ErrorCategory::System,
-                    wrt_error::codes::UNSUPPORTED_OPERATION,
+                    wrt_error::ErrorCategory::System, 1,
                     "Hardware feature not available",
                 ));
             }
@@ -342,8 +339,7 @@ pub mod arm {
         fn enable() -> Result<Self, Error> {
             if !Self::is_available() {
                 return Err(Error::new(
-                    wrt_error::ErrorCategory::System,
-                    wrt_error::codes::UNSUPPORTED_OPERATION,
+                    wrt_error::ErrorCategory::System, 1,
                     "Hardware feature not available",
                 ));
             }
@@ -396,8 +392,7 @@ pub mod intel {
         fn enable() -> Result<Self, Error> {
             if !Self::is_available() {
                 return Err(Error::new(
-                    wrt_error::ErrorCategory::System,
-                    wrt_error::codes::UNSUPPORTED_OPERATION,
+                    wrt_error::ErrorCategory::System, 1,
                     "Hardware feature not available",
                 ));
             }
@@ -459,8 +454,7 @@ pub mod intel {
         fn enable() -> Result<Self, Error> {
             if !Self::is_available() {
                 return Err(Error::new(
-                    wrt_error::ErrorCategory::System,
-                    wrt_error::codes::UNSUPPORTED_OPERATION,
+                    wrt_error::ErrorCategory::System, 1,
                     "Hardware feature not available",
                 ));
             }
@@ -559,8 +553,7 @@ pub mod riscv {
         fn enable() -> Result<Self, Error> {
             if !Self::is_available() {
                 return Err(Error::new(
-                    wrt_error::ErrorCategory::System,
-                    wrt_error::codes::UNSUPPORTED_OPERATION,
+                    wrt_error::ErrorCategory::System, 1,
                     "Hardware feature not available",
                 ));
             }
@@ -631,8 +624,7 @@ pub mod riscv {
         fn enable() -> Result<Self, Error> {
             if !Self::is_available() {
                 return Err(Error::new(
-                    wrt_error::ErrorCategory::System,
-                    wrt_error::codes::UNSUPPORTED_OPERATION,
+                    wrt_error::ErrorCategory::System, 1,
                     "Hardware feature not available",
                 ));
             }

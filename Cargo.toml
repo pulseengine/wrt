@@ -18,7 +18,7 @@ members = [
     "wrt-runtime",
     "wrt-instructions",
     "wrt-intercept",
-    "test-control-instructions",
+    "test-control-instructions",  # TODO: Remove after migration
     "wrt-verification-tool",
     "wrt-test-registry",
     "wrt-platform",

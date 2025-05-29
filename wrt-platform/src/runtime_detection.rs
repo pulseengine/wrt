@@ -189,8 +189,7 @@ impl PlatformDetector {
         // Unreachable but needed for exhaustiveness
         #[allow(unreachable_code)]
         Err(Error::new(
-            wrt_error::ErrorCategory::System,
-            wrt_error::codes::UNSUPPORTED_OPERATION,
+            wrt_error::ErrorCategory::System, 1,
             "Platform not configured",
         ))
     }
@@ -259,8 +258,7 @@ impl PlatformDetector {
         // Unreachable but needed for exhaustiveness
         #[allow(unreachable_code)]
         Err(Error::new(
-            wrt_error::ErrorCategory::System,
-            wrt_error::codes::UNSUPPORTED_OPERATION,
+            wrt_error::ErrorCategory::System, 1,
             "Platform not configured",
         ))
     }

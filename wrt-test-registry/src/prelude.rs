@@ -146,7 +146,11 @@ pub use wrt_sync::{
 
 // Do not import from wrt directly to avoid circular dependencies
 // Instead, re-export only what's needed from this crate
-pub use crate::{TestCase, TestCaseImpl, TestConfig, TestRegistry, TestResult, TestStats};
+pub use crate::{TestCase, TestCaseImpl, TestConfig, TestRegistry, TestResult as RegistryTestResult, TestStats};
+
+// Re-export new unified test coordination types
+pub use crate::test_suite::TestSuite;
+pub use crate::test_runner::{TestResult, TestRunner};
 
 // Define custom assert macros for test results
 #[macro_export]

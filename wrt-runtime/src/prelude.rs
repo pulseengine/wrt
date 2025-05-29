@@ -17,6 +17,22 @@ pub use alloc::{
     vec,
     vec::Vec,
 };
+
+// For pure no_std (no alloc), use bounded collections
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+pub use wrt_foundation::{
+    bounded::{BoundedVec as Vec, BoundedString as String},
+    BoundedMap as HashMap,
+    BoundedSet as HashSet,
+    NoStdProvider,
+};
+
+// Arc is not available in pure no_std, use a placeholder
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+pub type Arc<T> = core::marker::PhantomData<T>;
+
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+pub type Box<T> = core::marker::PhantomData<T>;
 pub use core::{
     any::Any,
     cmp::{Eq, Ord, PartialEq, PartialOrd},
@@ -42,6 +58,7 @@ pub use std::{
 };
 
 // Re-export from wrt-decoder (aliased to avoid name clashes)
+#[cfg(feature = "alloc")]
 pub use wrt_decoder::component::Component as DecoderComponentDefinition;
 // Re-export from wrt-instructions for instruction types
 pub use wrt_decoder::instructions::Instruction;
@@ -57,7 +74,9 @@ pub use wrt_error::prelude::{
     Error, ErrorCategory, Result,
 };
 // Re-export from wrt-format for format specifications (aliased to avoid name clashes)
+#[cfg(feature = "alloc")]
 pub use wrt_format::component::Component as FormatComponent;
+#[cfg(feature = "alloc")]
 pub use wrt_format::{
     module::{
         Data as FormatData, Element as FormatElement, Export as FormatExport,
@@ -68,6 +87,7 @@ pub use wrt_format::{
     section::CustomSection as FormatCustomSection,
 };
 // Re-export from wrt-foundation for core types
+#[cfg(feature = "alloc")]
 pub use wrt_foundation::component::{ComponentType, ExternType};
 // Re-export core types from wrt_foundation instead of wrt_format
 pub use wrt_foundation::types::{

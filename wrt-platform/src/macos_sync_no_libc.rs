@@ -155,15 +155,15 @@ impl FutexLike for MacOsFutex {
                 } else {
                     // Other error
                     Err(Error::new(
-                        ErrorCategory::System,
-                        codes::FUTEX_ERROR,
+                        ErrorCategory::System, 1,
+                        
                         "Failed to wait on futex",
                     ))
                 }
             }
             _ => Err(Error::new(
-                ErrorCategory::System,
-                codes::FUTEX_ERROR,
+                ErrorCategory::System, 1,
+                
                 "Unexpected error waiting on futex",
             )),
         }
@@ -186,7 +186,7 @@ impl FutexLike for MacOsFutex {
             Ok(())
         } else {
             // Error
-            Err(Error::new(ErrorCategory::System, codes::FUTEX_ERROR, "Failed to wake waiters"))
+            Err(Error::new(ErrorCategory::System, 1, "Failed to notify one"))
         }
     }
 
@@ -207,7 +207,7 @@ impl FutexLike for MacOsFutex {
             Ok(())
         } else {
             // Error
-            Err(Error::new(ErrorCategory::System, codes::FUTEX_ERROR, "Failed to wake all waiters"))
+            Err(Error::new(ErrorCategory::System, 1, "Failed to notify all"))
         }
     }
 }
