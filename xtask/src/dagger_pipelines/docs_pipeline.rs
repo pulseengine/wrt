@@ -450,7 +450,8 @@ async fn run_docs_version_pipeline(
             export RUSTUP_HOME=/root/.rustup && \
             curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && \
             . $CARGO_HOME/env && \
-            pip install -r ../requirements.txt",
+            pip install -r ../requirements.txt && \
+            cargo install git-cliff,
         ])
         // Similarly, ensure PlantUML is available and run sphinx-build.
         .with_exec(vec![

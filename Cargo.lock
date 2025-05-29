@@ -4154,6 +4154,7 @@ dependencies = [
  "rustc-std-workspace-alloc",
  "wrt-error",
  "wrt-foundation",
+ "wrt-math",
  "wrt-sync",
 ]
 

@@ -156,7 +156,7 @@ pub fn create_platform_channel(_name: &str) -> Result<Box<dyn IpcChannel>> {
 /// Zero-copy buffer for efficient data transfer
 pub struct ZeroCopyBuffer {
     /// Shared memory region (platform-specific)
-    inner: Box<dyn SharedMemory>,
+    _inner: Box<dyn SharedMemory>,
 }
 
 /// Trait for platform-specific shared memory
@@ -236,7 +236,7 @@ impl IpcServer {
                 Err(e) => {
                     if *self.running.lock() {
                         // Only log error if we're still running
-                        eprintln!("IPC receive error: {}", e);
+                        eprintln!("IPC receive error: {e}");
                     }
                 }
             }

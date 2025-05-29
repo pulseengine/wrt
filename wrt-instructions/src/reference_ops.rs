@@ -13,7 +13,7 @@ use crate::prelude::*;
 use wrt_error::{Error, Result};
 use wrt_foundation::{
     types::{RefType, ValueType},
-    values::{Value, FuncRef, ExternRef},
+    values::{Value, FuncRef},
 };
 use crate::validation::{Validate, ValidationContext, validate_ref_op};
 

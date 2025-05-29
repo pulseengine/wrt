@@ -10,6 +10,7 @@
 
 use crate::prelude::*;
 use crate::validation::{Validate, ValidationContext, validate_arithmetic_op};
+use wrt_math;
 
 /// Represents a pure arithmetic operation for WebAssembly.
 #[derive(Debug, Clone)]
@@ -171,7 +172,8 @@ impl<T: ArithmeticContext> PureInstruction<T, Error> for ArithmeticOp {
                 let a = context.pop_arithmetic_value()?.into_i32().map_err(|_| {
                     Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected I32 for i32.add operand")
                 })?;
-                context.push_arithmetic_value(Value::I32(a.wrapping_add(b)))
+                let result = wrt_math::i32_add(a, b)?;
+                context.push_arithmetic_value(Value::I32(result))
             }
             Self::I32Sub => {
                 let b = context.pop_arithmetic_value()?.into_i32().map_err(|_| {
@@ -180,7 +182,8 @@ impl<T: ArithmeticContext> PureInstruction<T, Error> for ArithmeticOp {
                 let a = context.pop_arithmetic_value()?.into_i32().map_err(|_| {
                     Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected I32 for i32.sub operand")
                 })?;
-                context.push_arithmetic_value(Value::I32(a.wrapping_sub(b)))
+                let result = wrt_math::i32_sub(a, b)?;
+                context.push_arithmetic_value(Value::I32(result))
             }
             Self::I32Mul => {
                 let b = context.pop_arithmetic_value()?.into_i32().map_err(|_| {
@@ -189,7 +192,8 @@ impl<T: ArithmeticContext> PureInstruction<T, Error> for ArithmeticOp {
                 let a = context.pop_arithmetic_value()?.into_i32().map_err(|_| {
                     Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected I32 for i32.mul operand")
                 })?;
-                context.push_arithmetic_value(Value::I32(a.wrapping_mul(b)))
+                let result = wrt_math::i32_mul(a, b)?;
+                context.push_arithmetic_value(Value::I32(result))
             }
             Self::I32DivS => {
                 let b = context.pop_arithmetic_value()?.into_i32().map_err(|_| {
@@ -198,23 +202,8 @@ impl<T: ArithmeticContext> PureInstruction<T, Error> for ArithmeticOp {
                 let a = context.pop_arithmetic_value()?.into_i32().map_err(|_| {
                     Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected I32 for i32.div_s operand")
                 })?;
-
-                if b == 0 {
-                    return Err(wrt_error::Error::new(
-                        wrt_error::ErrorCategory::Runtime,
-                        wrt_error::codes::RUNTIME_ERROR,
-                        "Division by zero",
-                    ));
-                }
-                if a == i32::MIN && b == -1 {
-                    return Err(wrt_error::Error::new(
-                        wrt_error::ErrorCategory::Runtime,
-                        wrt_error::codes::CONVERSION_ERROR,
-                        "Integer overflow",
-                    ));
-                }
-
-                context.push_arithmetic_value(Value::I32(a.wrapping_div(b)))
+                let result = wrt_math::i32_div_s(a, b)?;
+                context.push_arithmetic_value(Value::I32(result))
             }
             Self::I32DivU => {
                 let b = context.pop_arithmetic_value()?.as_u32().ok_or_else(|| {
@@ -223,16 +212,8 @@ impl<T: ArithmeticContext> PureInstruction<T, Error> for ArithmeticOp {
                 let a = context.pop_arithmetic_value()?.as_u32().ok_or_else(|| {
                     Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Expected I32 for i32.div_u operand")
                 })?;
-
-                if b == 0 {
-                    return Err(wrt_error::Error::new(
-                        wrt_error::ErrorCategory::Runtime,
-                        wrt_error::codes::RUNTIME_ERROR,
-                        "Division by zero",
-                    ));
-                }
-
-                context.push_arithmetic_value(Value::I32(a.wrapping_div(b) as i32))
+                let result = wrt_math::i32_div_u(a, b)?;
+                context.push_arithmetic_value(Value::I32(result as i32))
             }
             Self::I32RemS => {
                 let b = context.pop_arithmetic_value()?.into_i32().map_err(|_| {

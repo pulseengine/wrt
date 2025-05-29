@@ -45,6 +45,7 @@ pub mod prelude;
 
 pub mod arithmetic_ops;
 pub mod comparison_ops;
+pub mod const_expr;
 pub mod control_ops;
 pub mod conversion_ops;
 pub mod error_utils;

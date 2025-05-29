@@ -161,7 +161,7 @@ impl MemoryLoad {
     ///
     /// A new MemoryLoad for i64 values
     pub fn i64(offset: u32, align: u32) -> Self {
-        Self { offset, align, value_type: ValueType::I64, signed: false, width: 64 }
+        Self { memory_index: 0, offset, align, value_type: ValueType::I64, signed: false, width: 64 }
     }
 
     /// Creates a new f32 load operation
@@ -175,7 +175,7 @@ impl MemoryLoad {
     ///
     /// A new MemoryLoad for f32 values
     pub fn f32(offset: u32, align: u32) -> Self {
-        Self { offset, align, value_type: ValueType::F32, signed: false, width: 32 }
+        Self { memory_index: 0, offset, align, value_type: ValueType::F32, signed: false, width: 32 }
     }
 
     /// Creates a new f64 load operation
@@ -189,7 +189,7 @@ impl MemoryLoad {
     ///
     /// A new MemoryLoad for f64 values
     pub fn f64(offset: u32, align: u32) -> Self {
-        Self { offset, align, value_type: ValueType::F64, signed: false, width: 64 }
+        Self { memory_index: 0, offset, align, value_type: ValueType::F64, signed: false, width: 64 }
     }
 
     /// Creates a new i32 load8 operation
@@ -204,7 +204,7 @@ impl MemoryLoad {
     ///
     /// A new MemoryLoad for i32 values loading from 8-bit memory
     pub fn i32_load8(offset: u32, align: u32, signed: bool) -> Self {
-        Self { offset, align, value_type: ValueType::I32, signed, width: 8 }
+        Self { memory_index: 0, offset, align, value_type: ValueType::I32, signed, width: 8 }
     }
 
     /// Creates a new i32 load16 operation
@@ -219,7 +219,7 @@ impl MemoryLoad {
     ///
     /// A new MemoryLoad for i32 values loading from 16-bit memory
     pub fn i32_load16(offset: u32, align: u32, signed: bool) -> Self {
-        Self { offset, align, value_type: ValueType::I32, signed, width: 16 }
+        Self { memory_index: 0, offset, align, value_type: ValueType::I32, signed, width: 16 }
     }
 
     /// Creates a new i64 load8 operation
@@ -234,7 +234,7 @@ impl MemoryLoad {
     ///
     /// A new MemoryLoad for i64 values loading from 8-bit memory
     pub fn i64_load8(offset: u32, align: u32, signed: bool) -> Self {
-        Self { offset, align, value_type: ValueType::I64, signed, width: 8 }
+        Self { memory_index: 0, offset, align, value_type: ValueType::I64, signed, width: 8 }
     }
 
     /// Creates a new i64 load16 operation
@@ -249,7 +249,7 @@ impl MemoryLoad {
     ///
     /// A new MemoryLoad for i64 values loading from 16-bit memory
     pub fn i64_load16(offset: u32, align: u32, signed: bool) -> Self {
-        Self { offset, align, value_type: ValueType::I64, signed, width: 16 }
+        Self { memory_index: 0, offset, align, value_type: ValueType::I64, signed, width: 16 }
     }
 
     /// Creates a new i64 load32 operation
@@ -264,7 +264,7 @@ impl MemoryLoad {
     ///
     /// A new MemoryLoad for i64 values loading from 32-bit memory
     pub fn i64_load32(offset: u32, align: u32, signed: bool) -> Self {
-        Self { offset, align, value_type: ValueType::I64, signed, width: 32 }
+        Self { memory_index: 0, offset, align, value_type: ValueType::I64, signed, width: 32 }
     }
 
     /// Execute the memory load operation
@@ -504,7 +504,7 @@ impl MemoryStore {
     ///
     /// A new MemoryStore for i32 values
     pub fn i32(offset: u32, align: u32) -> Self {
-        Self { offset, align, value_type: ValueType::I32, width: 32 }
+        Self { memory_index: 0, offset, align, value_type: ValueType::I32, width: 32 }
     }
 
     /// Creates a new i64 store operation
@@ -518,7 +518,7 @@ impl MemoryStore {
     ///
     /// A new MemoryStore for i64 values
     pub fn i64(offset: u32, align: u32) -> Self {
-        Self { offset, align, value_type: ValueType::I64, width: 64 }
+        Self { memory_index: 0, offset, align, value_type: ValueType::I64, width: 64 }
     }
 
     /// Creates a new f32 store operation
@@ -532,7 +532,7 @@ impl MemoryStore {
     ///
     /// A new MemoryStore for f32 values
     pub fn f32(offset: u32, align: u32) -> Self {
-        Self { offset, align, value_type: ValueType::F32, width: 32 }
+        Self { memory_index: 0, offset, align, value_type: ValueType::F32, width: 32 }
     }
 
     /// Creates a new f64 store operation
@@ -546,7 +546,7 @@ impl MemoryStore {
     ///
     /// A new MemoryStore for f64 values
     pub fn f64(offset: u32, align: u32) -> Self {
-        Self { offset, align, value_type: ValueType::F64, width: 64 }
+        Self { memory_index: 0, offset, align, value_type: ValueType::F64, width: 64 }
     }
 
     /// Creates a new i32 store8 operation
@@ -560,7 +560,7 @@ impl MemoryStore {
     ///
     /// A new MemoryStore for storing an i32 value as 8 bits
     pub fn i32_store8(offset: u32, align: u32) -> Self {
-        Self { offset, align, value_type: ValueType::I32, width: 8 }
+        Self { memory_index: 0, offset, align, value_type: ValueType::I32, width: 8 }
     }
 
     /// Creates a new i32 store16 operation
@@ -574,7 +574,7 @@ impl MemoryStore {
     ///
     /// A new MemoryStore for storing an i32 value as 16 bits
     pub fn i32_store16(offset: u32, align: u32) -> Self {
-        Self { offset, align, value_type: ValueType::I32, width: 16 }
+        Self { memory_index: 0, offset, align, value_type: ValueType::I32, width: 16 }
     }
 
     /// Creates a new i64 store8 operation
@@ -588,7 +588,7 @@ impl MemoryStore {
     ///
     /// A new MemoryStore for storing an i64 value as 8 bits
     pub fn i64_store8(offset: u32, align: u32) -> Self {
-        Self { offset, align, value_type: ValueType::I64, width: 8 }
+        Self { memory_index: 0, offset, align, value_type: ValueType::I64, width: 8 }
     }
 
     /// Creates a new i64 store16 operation
@@ -602,7 +602,7 @@ impl MemoryStore {
     ///
     /// A new MemoryStore for storing an i64 value as 16 bits
     pub fn i64_store16(offset: u32, align: u32) -> Self {
-        Self { offset, align, value_type: ValueType::I64, width: 16 }
+        Self { memory_index: 0, offset, align, value_type: ValueType::I64, width: 16 }
     }
 
     /// Creates a new i64 store32 operation
@@ -616,7 +616,7 @@ impl MemoryStore {
     ///
     /// A new MemoryStore for storing an i64 value as 32 bits
     pub fn i64_store32(offset: u32, align: u32) -> Self {
-        Self { offset, align, value_type: ValueType::I64, width: 32 }
+        Self { memory_index: 0, offset, align, value_type: ValueType::I64, width: 32 }
     }
 
     /// Execute the memory store operation

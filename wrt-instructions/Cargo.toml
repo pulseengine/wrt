@@ -14,11 +14,12 @@ default = []
 std = [
     "wrt-foundation/std",
     "wrt-sync/std",
+    "wrt-math/std",
     "dep:log",
 ]
 # This crate is no_std by default, this feature is a no-op for compatibility
 no_std = []
-alloc = ["wrt-foundation/alloc", "wrt-sync/alloc", "dep:alloc"]
+alloc = ["wrt-foundation/alloc", "wrt-sync/alloc", "wrt-math/alloc", "dep:alloc"]
 optimize = ["wrt-foundation/optimize"]
 safety = ["wrt-foundation/safety"]
 
@@ -26,6 +27,7 @@ safety = ["wrt-foundation/safety"]
 wrt-error = { workspace = true }
 wrt-foundation = { workspace = true }
 wrt-sync = { workspace = true }
+wrt-math = { workspace = true }
 log = { version = "0.4", optional = true }
 
 # No-std support

@@ -514,10 +514,5 @@ mod tests {
     }
 }
 
-#[cfg(all(not(feature = "std"), not(test)))] // Apply panic handler for no_std builds, excluding test context
-#[panic_handler]
-fn panic(_info: &core::panic::PanicInfo) -> ! {
-    // For no_std builds, simply loop indefinitely on panic.
-    // A more sophisticated handler might print to a debug console if available.
-    loop {}
-}
+// Note: Panic handler removed to avoid conflicts with examples and tests
+// In no_std environments, applications should provide their own panic handler

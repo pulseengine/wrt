@@ -11,9 +11,9 @@ use core::{
 };
 
 #[cfg(all(feature = "alloc", not(feature = "std")))]
-use alloc::{boxed::Box, collections::BTreeMap, string::String, sync::Arc};
+use alloc::{collections::BTreeMap, string::String, sync::Arc};
 #[cfg(feature = "std")]
-use std::{boxed::Box, collections::BTreeMap, string::String, sync::Arc};
+use std::{collections::BTreeMap, string::String, sync::Arc};
 
 use wrt_sync::{WrtMutex, WrtRwLock};
 
@@ -70,7 +70,7 @@ pub struct WatchedTaskId(pub u64);
 struct WatchedTask {
     id: WatchedTaskId,
     name: String,
-    start_time: u64, // Timestamp in milliseconds
+    _start_time: u64, // Timestamp in milliseconds
     timeout: Duration,
     last_heartbeat: WrtMutex<u64>, // Timestamp in milliseconds
     action: WatchdogAction,
@@ -127,7 +127,7 @@ impl SoftwareWatchdog {
                     .as_millis() as u64;
                 let tasks_snapshot = tasks.read().clone();
 
-                for (_, task) in tasks_snapshot.iter() {
+                for task in tasks_snapshot.values() {
                     if !task.active.load(Ordering::Acquire) {
                         continue;
                     }
@@ -197,7 +197,7 @@ impl SoftwareWatchdog {
         let task = Arc::new(WatchedTask {
             id: task_id,
             name: name.into(),
-            start_time: now,
+            _start_time: now,
             timeout: timeout.unwrap_or(self.config.default_timeout),
             last_heartbeat: WrtMutex::new(now),
             action,
@@ -332,7 +332,7 @@ impl WatchdogIntegration for SoftwareWatchdog {
         timeout: Duration,
     ) -> Result<WatchdogHandle> {
         self.watch_task(
-            format!("wasm:{}", module_name),
+            format!("wasm:{module_name}"),
             Some(timeout),
             WatchdogAction::Log,
         )
