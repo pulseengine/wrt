@@ -4,18 +4,30 @@
 //! binaries in bounded memory without requiring heap allocation. It's designed
 //! for pure no_std environments where memory usage must be deterministic.
 
-#![cfg_attr(not(feature = "std"), no_std)]
 
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::vec::Vec;
 #[cfg(feature = "std")]
 use std::vec::Vec;
 
-use wrt_foundation::{MemoryProvider, NoStdProvider, traits::BoundedCapacity};
+#[cfg(not(any(feature = "alloc", feature = "std")))]
 use core::marker::PhantomData;
 
-use crate::{binary::{WASM_MAGIC, WASM_VERSION, read_leb128_u32, read_string}, WasmVec, WasmString};
-use wrt_error::{Error, ErrorCategory, codes};
+#[cfg(not(any(feature = "alloc", feature = "std")))]
+use wrt_foundation::{MemoryProvider, NoStdProvider, traits::BoundedCapacity};
+
+#[cfg(any(feature = "alloc", feature = "std"))]
+use wrt_foundation::{MemoryProvider, NoStdProvider};
+
+#[cfg(not(any(feature = "alloc", feature = "std")))]
+use wrt_error::{codes, Error, ErrorCategory};
+
+#[cfg(not(any(feature = "alloc", feature = "std")))]
+use crate::{WasmVec, WasmString};
+
+#[cfg(not(any(feature = "alloc", feature = "std")))]
+use crate::binary::{WASM_MAGIC, WASM_VERSION, read_leb128_u32, read_string};
+
 
 /// Maximum size of a section that can be processed in memory
 pub const MAX_SECTION_SIZE: usize = 64 * 1024; // 64KB
@@ -72,6 +84,7 @@ pub struct StreamingParser<P: MemoryProvider + Clone + Default + Eq = NoStdProvi
 /// Streaming WebAssembly parser for allocation-enabled environments
 #[cfg(any(feature = "alloc", feature = "std"))]
 #[derive(Debug)]
+#[allow(dead_code)] // Stub implementation for future streaming functionality
 pub struct StreamingParser {
     /// Current parser state
     state: ParserState,
@@ -289,7 +302,14 @@ impl<P: MemoryProvider + Clone + Default + Eq> StreamingParser<P> {
 
     /// Get current section buffer length
     pub fn section_buffer_len(&self) -> core::result::Result<usize, Error> {
-        Ok(self.section_buffer.len())
+        #[cfg(any(feature = "alloc", feature = "std"))]
+        {
+            Ok(self.section_buffer.len())
+        }
+        #[cfg(not(any(feature = "alloc", feature = "std")))]
+        {
+            Ok(self.section_buffer.capacity())
+        }
     }
 
     /// Copy section buffer to a slice
@@ -381,7 +401,8 @@ impl<P: MemoryProvider + Clone + Default + Eq> SectionParser<P> {
 
     /// Parse a byte from current position
     pub fn parse_byte(&mut self) -> core::result::Result<u8, Error> {
-        if self.position >= self.buffer.len() {
+        let buffer_len = self.buffer.capacity(); // BoundedVec uses capacity() instead of len()
+        if self.position >= buffer_len {
             return Err(Error::new(
                 ErrorCategory::Validation,
                 codes::PARSE_ERROR,
@@ -398,7 +419,7 @@ impl<P: MemoryProvider + Clone + Default + Eq> SectionParser<P> {
 
     /// Check if more data is available
     pub fn has_more(&self) -> bool {
-        self.position < self.buffer.len()
+        self.position < self.buffer.capacity()
     }
 
     /// Get current position
@@ -408,7 +429,7 @@ impl<P: MemoryProvider + Clone + Default + Eq> SectionParser<P> {
 
     /// Get remaining bytes
     pub fn remaining(&self) -> usize {
-        self.buffer.len() - self.position
+        self.buffer.capacity() - self.position
     }
 }
 

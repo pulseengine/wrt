@@ -237,7 +237,7 @@ where
     }
     
     /// Get a resource by handle
-    pub fn get(&self, handle: ResourceHandle) -> Option<&T> {
+    pub fn get(&self, _handle: ResourceHandle) -> Option<&T> {
         // BoundedVec's get returns Result<T, _>, not Option<&T>
         // We can't return a reference, so this needs a different API
         None

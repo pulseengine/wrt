@@ -6,16 +6,26 @@
 // Import collection types
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::{
-    string::{String, ToString},
+    string::String,
     vec,
     vec::Vec,
 };
 #[cfg(feature = "std")]
 use std::{string::String, vec, vec::Vec};
 
+#[cfg(any(feature = "alloc", feature = "std"))]
 use wrt_error::{codes, Error, ErrorCategory, Result};
+
+#[cfg(not(any(feature = "alloc", feature = "std")))]
+use wrt_error::{codes, Error, ErrorCategory, Result};
+
 #[cfg(not(any(feature = "alloc", feature = "std")))]
 use wrt_foundation::{BoundedString, BoundedVec, MemoryProvider, NoStdProvider, traits::BoundedCapacity};
+
+#[cfg(any(feature = "alloc", feature = "std"))]
+use wrt_foundation::{RefType, ValueType};
+
+#[cfg(not(any(feature = "alloc", feature = "std")))]
 use wrt_foundation::{RefType, ValueType};
 
 use crate::{

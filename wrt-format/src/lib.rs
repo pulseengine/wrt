@@ -8,6 +8,7 @@
 // SPDX-License-Identifier: MIT
 
 #![forbid(unsafe_code)] // Rule 2
+#![allow(missing_docs)] // Allow missing documentation for internal constants and utilities
 
 //! WebAssembly format handling for WRT
 //!
@@ -29,12 +30,11 @@ extern crate std;
 extern crate alloc;
 
 #[cfg(all(feature = "alloc", not(feature = "std")))]
-use alloc::boxed::Box;
 // Import types for internal use
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 use alloc::{
     format,
-    string::{String, ToString},
+    string::String,
     vec::Vec,
 };
 #[cfg(feature = "std")]

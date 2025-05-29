@@ -4,14 +4,17 @@
 //! focusing on run-length encoding (RLE) which is efficient for memory
 //! sections.
 
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-use alloc::string::ToString;
 #[cfg(not(feature = "std"))]
 use core::cmp;
 #[cfg(feature = "std")]
 use std::cmp;
 
+#[cfg(any(feature = "alloc", feature = "std"))]
 use wrt_error::{codes, Error, ErrorCategory, Result};
+
+#[cfg(not(any(feature = "alloc", feature = "std")))]
+use wrt_error::{codes, Error, ErrorCategory, Result};
+
 #[cfg(not(any(feature = "alloc", feature = "std")))]
 use wrt_foundation::{MemoryProvider, NoStdProvider};
 

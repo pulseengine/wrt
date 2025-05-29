@@ -54,7 +54,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> TypeStore<P> {
     }
     
     /// Get a type by its reference
-    pub fn get(&self, type_ref: ValTypeRef) -> Option<&ValType<P>> {
+    pub fn get(&self, _type_ref: ValTypeRef) -> Option<&ValType<P>> {
         // BoundedVec's get returns Result<T, Error>, not Option<&T>
         // We can't return a reference to the value since it's returned by value
         // This needs a different API design - for now return None
@@ -85,11 +85,12 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> TypeStore<P> {
     
     /// Clear all stored types
     pub fn clear(&mut self) {
-        self.types.clear();
+        let _ = self.types.clear();
     }
 }
 
 /// Builder for constructing types with automatic interning
+#[allow(dead_code)] // Stub implementation for future type building functionality
 pub struct TypeBuilder<'a, P: MemoryProvider + Default + Clone + PartialEq + Eq> {
     store: &'a mut TypeStore<P>,
     provider: P,
