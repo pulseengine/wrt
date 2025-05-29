@@ -13,6 +13,13 @@ on:
         default: false # Boolean false, not string
         type: boolean
 
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+  actions: read
+  checks: write
+
 env:
   CARGO_TERM_COLOR: always
   # RUST_LOG: "info,xtask=debug,dagger_sdk=debug" # Optional: for more detailed Dagger logs
