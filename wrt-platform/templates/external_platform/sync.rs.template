@@ -1,0 +1,275 @@
+//! {{ PLATFORM_NAME }} Synchronization Primitives
+//!
+//! This module implements the `FutexLike` trait for {{ PLATFORM_NAME }}.
+
+use core::sync::atomic::{AtomicU32, Ordering};
+use core::time::Duration;
+use wrt_platform::FutexLike;
+use wrt_error::{Error, Result};
+
+/// {{ PLATFORM_NAME }} futex implementation
+#[derive(Debug)]
+pub struct {{ PlatformName }}Futex {
+    value: AtomicU32,
+    // TODO: Add your platform-specific synchronization state
+    // Example:
+    // semaphore: {{ platform_name }}_sys::Semaphore,
+    // event: {{ platform_name }}_sys::Event,
+}
+
+/// Builder for configuring {{ PLATFORM_NAME }} futex
+#[derive(Debug)]
+pub struct {{ PlatformName }}FutexBuilder {
+    initial_value: u32,
+    enable_priority_inheritance: bool,
+    enable_realtime_scheduling: bool,
+    // TODO: Add your platform-specific builder options
+}
+
+impl Default for {{ PlatformName }}FutexBuilder {
+    fn default() -> Self {
+        Self {
+            initial_value: 0,
+            enable_priority_inheritance: true,
+            enable_realtime_scheduling: false,
+        }
+    }
+}
+
+impl {{ PlatformName }}FutexBuilder {
+    /// Create a new builder with default settings
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Set the initial value of the futex
+    pub fn initial_value(mut self, value: u32) -> Self {
+        self.initial_value = value;
+        self
+    }
+
+    /// Enable or disable priority inheritance
+    pub fn enable_priority_inheritance(mut self, enable: bool) -> Self {
+        self.enable_priority_inheritance = enable;
+        self
+    }
+
+    /// Enable or disable real-time scheduling
+    pub fn enable_realtime_scheduling(mut self, enable: bool) -> Self {
+        self.enable_realtime_scheduling = enable;
+        self
+    }
+
+    /// Build the futex
+    pub fn build(self) -> Result<{{ PlatformName }}Futex> {
+        {{ PlatformName }}Futex::new(self)
+    }
+}
+
+impl {{ PlatformName }}Futex {
+    /// Create a new {{ PLATFORM_NAME }} futex
+    pub fn new(builder: {{ PlatformName }}FutexBuilder) -> Result<Self> {
+        #[cfg(target_os = "{{ platform_name }}")]
+        {
+            // TODO: Initialize your platform-specific synchronization primitives
+            // Example:
+            // let semaphore = {{ platform_name }}_sys::create_semaphore(
+            //     builder.initial_value,
+            //     builder.enable_priority_inheritance
+            // )?;
+            
+            Ok(Self {
+                value: AtomicU32::new(builder.initial_value),
+                // semaphore,
+            })
+        }
+
+        #[cfg(not(target_os = "{{ platform_name }}"))]
+        {
+            // Fallback implementation for development/testing
+            Ok(Self {
+                value: AtomicU32::new(builder.initial_value),
+            })
+        }
+    }
+
+    /// Load the current value
+    pub fn load(&self, ordering: Ordering) -> u32 {
+        self.value.load(ordering)
+    }
+
+    /// Store a new value
+    pub fn store(&self, value: u32, ordering: Ordering) {
+        self.value.store(value, ordering);
+    }
+
+    /// Compare and exchange operation
+    pub fn compare_exchange_weak(
+        &self,
+        current: u32,
+        new: u32,
+        success: Ordering,
+        failure: Ordering,
+    ) -> core::result::Result<u32, u32> {
+        self.value.compare_exchange_weak(current, new, success, failure)
+    }
+}
+
+impl FutexLike for {{ PlatformName }}Futex {
+    fn wait(&self, expected: u32, timeout: Option<Duration>) -> Result<()> {
+        // Check if the current value matches the expected value
+        if self.value.load(Ordering::Acquire) != expected {
+            // Value has changed, no need to wait
+            return Ok(());
+        }
+
+        #[cfg(target_os = "{{ platform_name }}")]
+        {
+            // TODO: Implement platform-specific wait operation
+            // Example:
+            // let timeout_ms = timeout.map(|d| d.as_millis() as u32).unwrap_or(u32::MAX);
+            // {{ platform_name }}_sys::wait_for_change(
+            //     &self.semaphore,
+            //     expected,
+            //     timeout_ms
+            // )?;
+            
+            // For now, use fallback implementation
+            self.wait_fallback(expected, timeout)
+        }
+
+        #[cfg(not(target_os = "{{ platform_name }}"))]
+        {
+            // Fallback implementation for development/testing
+            self.wait_fallback(expected, timeout)
+        }
+    }
+
+    fn wake(&self, count: u32) -> Result<()> {
+        #[cfg(target_os = "{{ platform_name }}")]
+        {
+            // TODO: Implement platform-specific wake operation
+            // Example:
+            // {{ platform_name }}_sys::signal_waiters(&self.semaphore, count)?;
+            
+            // For now, use fallback implementation
+            self.wake_fallback(count)
+        }
+
+        #[cfg(not(target_os = "{{ platform_name }}"))]
+        {
+            // Fallback implementation for development/testing
+            self.wake_fallback(count)
+        }
+    }
+}
+
+impl {{ PlatformName }}Futex {
+    /// Fallback wait implementation for development/testing
+    fn wait_fallback(&self, expected: u32, timeout: Option<Duration>) -> Result<()> {
+        // Simple spin-wait implementation for fallback
+        let start = std::time::Instant::now();
+        let timeout_duration = timeout.unwrap_or(Duration::from_secs(1));
+
+        loop {
+            // Check if value has changed
+            if self.value.load(Ordering::Acquire) != expected {
+                return Ok(());
+            }
+
+            // Check timeout
+            if start.elapsed() >= timeout_duration {
+                return Err(Error::new(
+                    wrt_error::ErrorCategory::System,
+                    1,
+                    "Wait operation timed out",
+                ));
+            }
+
+            // Small delay to avoid busy waiting
+            std::thread::sleep(Duration::from_micros(100));
+        }
+    }
+
+    /// Fallback wake implementation for development/testing
+    fn wake_fallback(&self, _count: u32) -> Result<()> {
+        // In fallback mode, wake is essentially a no-op
+        // since we're using spin-wait in wait_fallback
+        Ok(())
+    }
+}
+
+// Ensure the futex is Send and Sync
+unsafe impl Send for {{ PlatformName }}Futex {}
+unsafe impl Sync for {{ PlatformName }}Futex {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_futex_builder() {
+        let futex = {{ PlatformName }}FutexBuilder::new()
+            .initial_value(42)
+            .enable_priority_inheritance(false)
+            .build()
+            .unwrap();
+
+        assert_eq!(futex.load(Ordering::Relaxed), 42);
+    }
+
+    #[test]
+    fn test_atomic_operations() {
+        let futex = {{ PlatformName }}FutexBuilder::new()
+            .initial_value(0)
+            .build()
+            .unwrap();
+
+        // Test store and load
+        futex.store(123, Ordering::SeqCst);
+        assert_eq!(futex.load(Ordering::SeqCst), 123);
+
+        // Test compare_exchange_weak
+        let result = futex.compare_exchange_weak(
+            123,
+            456,
+            Ordering::SeqCst,
+            Ordering::SeqCst,
+        );
+        assert_eq!(result, Ok(123));
+        assert_eq!(futex.load(Ordering::SeqCst), 456);
+    }
+
+    #[test]
+    fn test_wait_and_wake() {
+        let futex = {{ PlatformName }}FutexBuilder::new()
+            .initial_value(0)
+            .build()
+            .unwrap();
+
+        // Wait should return immediately if value doesn't match
+        let result = futex.wait(999, Some(Duration::from_millis(1)));
+        assert!(result.is_ok());
+
+        // Wake should succeed
+        let result = futex.wake(1);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_wait_timeout() {
+        let futex = {{ PlatformName }}FutexBuilder::new()
+            .initial_value(42)
+            .build()
+            .unwrap();
+
+        // Wait with matching value should timeout
+        let start = std::time::Instant::now();
+        let result = futex.wait(42, Some(Duration::from_millis(10)));
+        let elapsed = start.elapsed();
+
+        assert!(result.is_err());
+        assert!(elapsed >= Duration::from_millis(10));
+        assert!(elapsed < Duration::from_millis(100)); // Should not take too long
+    }
+}

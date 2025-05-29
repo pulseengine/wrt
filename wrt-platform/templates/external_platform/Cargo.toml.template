@@ -1,0 +1,43 @@
+[package]
+name = "wrt-platform-{{ PLATFORM_NAME }}"
+version = "0.1.0"
+edition = "2021"
+description = "WRT platform support for {{ PLATFORM_NAME }}"
+keywords = ["wasm", "runtime", "{{ platform_name }}", "platform"]
+categories = ["wasm", "os"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/{{ YOUR_USERNAME }}/wrt-platform-{{ platform_name }}"
+readme = "README.md"
+
+[dependencies]
+wrt-platform = { version = "0.2", default-features = false }
+wrt-error = { version = "0.2", default-features = false }
+
+# Add your platform-specific dependencies here
+# {{ platform_name }}-sys = "1.0"  # Example: platform system bindings
+
+[dev-dependencies]
+# Testing dependencies
+# criterion = "0.5"  # For benchmarks
+
+[features]
+default = ["std"]
+std = ["wrt-platform/std", "wrt-error/std"]
+alloc = ["wrt-platform/alloc", "wrt-error/alloc"]
+
+# Platform-specific feature flags
+# hardware-acceleration = []
+# debug-mode = []
+
+[[example]]
+name = "basic_usage"
+required-features = ["std"]
+
+[[example]]
+name = "no_std_usage"
+required-features = ["alloc"]
+
+[package.metadata.docs.rs]
+# Documentation builds
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
