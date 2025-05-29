@@ -1,131 +1,106 @@
-//! Example demonstrating how to use the pluggable async executor system
+//! Example demonstrating how to use the simple async executor system
 //!
 //! This example shows:
-//! 1. Using the fallback executor (default)
-//! 2. Plugging in a custom executor
-//! 3. Integrating with Component Model async
+//! 1. Using the simple async executor
+//! 2. Working with basic async/await patterns
+//! 3. Integration patterns for async code
 
 #![cfg(feature = "async-api")]
 
 use wrt_foundation::{
-    async_executor::{register_executor, current_executor, is_using_fallback, WrtExecutor, ExecutorError, TaskHandle, BoxedFuture},
-    async_bridge::{AsyncRuntime, with_async},
+    AsyncRuntime, ExecutorError, is_using_fallback, with_async
 };
 use core::future::Future;
 use core::pin::Pin;
 use core::task::{Context, Poll};
+use core::marker::Unpin;
 
-/// Example custom executor that just prints what it's doing
-struct CustomExecutor {
-    name: &'static str,
-}
-
-impl WrtExecutor for CustomExecutor {
-    fn spawn(&self, future: BoxedFuture<'_, ()>) -> Result<TaskHandle, ExecutorError> {
-        println!("[{}] Spawning a future", self.name);
-        // In a real implementation, you'd actually spawn the future
-        Ok(TaskHandle { id: 42, waker: None })
-    }
-    
-    fn block_on<F: Future>(&self, future: F) -> Result<F::Output, ExecutorError> {
-        println!("[{}] Blocking on a future", self.name);
-        // In a real implementation, you'd run the future to completion
-        // For this example, we'll return an error
-        Err(ExecutorError::NotSupported)
-    }
-    
-    fn is_running(&self) -> bool {
-        true
-    }
-    
-    fn shutdown(&self) -> Result<(), ExecutorError> {
-        println!("[{}] Shutting down", self.name);
-        Ok(())
-    }
-}
+#[cfg(any(feature = "std", feature = "alloc"))]
+extern crate alloc;
+#[cfg(any(feature = "std", feature = "alloc"))]
+use alloc::boxed::Box;
 
 /// Simple async function for testing
 async fn hello_async() -> &'static str {
-    "Hello from async!"
+    "Hello from simple async!"
 }
 
-/// Example future that yields a few times before completing
-struct CountdownFuture {
-    count: u32,
+/// Example future that is immediately ready
+#[derive(Debug)]
+struct ReadyFuture {
+    value: &'static str,
 }
 
-impl Future for CountdownFuture {
+impl Future for ReadyFuture {
     type Output = &'static str;
     
-    fn poll(mut self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Self::Output> {
-        if self.count == 0 {
-            Poll::Ready("Countdown complete!")
-        } else {
-            self.count -= 1;
-            Poll::Pending
-        }
+    fn poll(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Self::Output> {
+        Poll::Ready(self.value)
     }
 }
 
+impl Unpin for ReadyFuture {}
+
 fn main() {
-    println!("=== Pluggable Async Executor Example ===\n");
+    println!("=== Simple Async Executor Example ===\n");
     
     // 1. Check initial state - should be using fallback
     println!("1. Initial state:");
     println!("   Using fallback executor: {}", is_using_fallback());
     
-    // 2. Use the fallback executor
-    println!("\n2. Using fallback executor:");
-    let executor = current_executor();
-    
-    // Block on a simple future
-    match executor.block_on(hello_async()) {
-        Ok(result) => println!("   Result: {}", result),
-        Err(e) => println!("   Error: {:?}", e),
-    }
-    
-    // Block on a countdown future
-    let countdown = CountdownFuture { count: 3 };
-    match executor.block_on(countdown) {
-        Ok(result) => println!("   Countdown result: {}", result),
-        Err(e) => println!("   Countdown error: {:?}", e),
-    }
-    
-    // 3. Register a custom executor
-    println!("\n3. Registering custom executor:");
-    let custom = Box::new(CustomExecutor { name: "MyExecutor" });
-    match register_executor(custom) {
-        Ok(()) => println!("   Successfully registered custom executor"),
-        Err(e) => println!("   Failed to register: {:?}", e),
-    }
-    
-    println!("   Using fallback executor: {}", is_using_fallback());
-    
-    // 4. Try using the custom executor
-    println!("\n4. Using custom executor:");
-    let executor = current_executor();
-    
-    match executor.block_on(hello_async()) {
-        Ok(result) => println!("   Result: {}", result),
-        Err(e) => println!("   Error: {:?}", e),
-    }
-    
-    // 5. Using the AsyncRuntime helper
-    println!("\n5. Using AsyncRuntime:");
+    // 2. Use the simple async runtime
+    println!("\n2. Using AsyncRuntime:");
     let runtime = AsyncRuntime::new();
-    println!("   Created AsyncRuntime with current executor");
     
-    // 6. Using the with_async helper
-    println!("\n6. Using with_async helper:");
-    match with_async(async {
-        println!("   Inside async block!");
-        "Async block result"
-    }) {
-        Ok(result) => println!("   Result: {}", result),
-        Err(e) => println!("   Error: {:?}", e),
+    // Test with a simple ready future
+    let ready_future = ReadyFuture { value: "Ready immediately!" };
+    match runtime.block_on(ready_future) {
+        Ok(result) => println!("   Ready future result: {}", result),
+        Err(e) => println!("   Ready future error: {:?}", e),
+    }
+    
+    // 3. Using the with_async helper with ready futures
+    println!("\n3. Using with_async helper:");
+    
+    #[cfg(any(feature = "std", feature = "alloc"))]
+    {
+        // Create an async block that's immediately ready
+        let async_block = async {
+            "Async block result"
+        };
+        
+        // Note: This requires the future to be Unpin, so we'll pin it
+        let pinned_future = Box::pin(async_block);
+        match with_async(pinned_future) {
+            Ok(result) => println!("   Result: {}", result),
+            Err(e) => println!("   Error: {:?}", e),
+        }
+        
+        // 4. Example of what happens with pending futures
+        println!("\n4. Pending futures (expected to fail):");
+        let pending_future = core::future::pending::<()>();
+        let pinned_pending = Box::pin(pending_future);
+        match with_async(pinned_pending) {
+            Ok(_) => println!("   Unexpected success"),
+            Err(e) => println!("   Expected error: {:?}", e),
+        }
+    }
+    
+    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    {
+        println!("   Skipping Box::pin examples (requires alloc feature)");
+        
+        // Use stack-allocated ready future instead
+        let ready_future2 = ReadyFuture { value: "Stack allocated result" };
+        match with_async(ready_future2) {
+            Ok(result) => println!("   Stack result: {}", result),
+            Err(e) => println!("   Stack error: {:?}", e),
+        }
     }
     
     println!("\n=== Example Complete ===");
+    println!("Note: This simple executor only handles immediately ready futures.");
+    println!("For real async execution, integrate with Embassy, tokio, or other runtimes.");
 }
 
 #[cfg(not(feature = "async-api"))]

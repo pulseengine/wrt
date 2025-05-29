@@ -5,11 +5,8 @@
 //! - `stream<T>`: Multi-value async sequence
 //! - `error-context`: Error propagation for async operations
 
-#![cfg_attr(not(feature = "std"), no_std)]
-
 use core::task::Waker;
-use crate::bounded_collections::BoundedVec;
-use crate::types::ValType;
+use crate::types::ValueType as ValType;
 use crate::values::Value;
 
 /// Maximum number of buffered values in a stream
@@ -90,12 +87,13 @@ pub enum StreamState {
     Closed,
 }
 
-/// Component Model stream type
+/// Component Model stream type (simplified for basic functionality)
 pub struct ComponentStream<T> {
     handle: StreamHandle,
     element_type: ValType,
     state: StreamState,
-    buffer: BoundedVec<T, MAX_STREAM_BUFFER>,
+    // Simplified: single item buffer for basic functionality
+    buffer_item: Option<T>,
     read_waker: Option<Waker>,
     write_waker: Option<Waker>,
 }
@@ -107,7 +105,7 @@ impl<T> ComponentStream<T> {
             handle,
             element_type,
             state: StreamState::Open,
-            buffer: BoundedVec::new(),
+            buffer_item: None,
             read_waker: None,
             write_waker: None,
         }
@@ -115,14 +113,12 @@ impl<T> ComponentStream<T> {
     
     /// Try to read a value from the stream
     pub fn try_read(&mut self) -> Result<Option<T>, &'static str> {
-        if self.buffer.is_empty() {
-            if self.state == StreamState::Closed {
-                Ok(None)
-            } else {
-                Err("No values available")
-            }
+        if let Some(value) = self.buffer_item.take() {
+            Ok(Some(value))
+        } else if self.state == StreamState::Closed {
+            Ok(None)
         } else {
-            Ok(self.buffer.pop_front())
+            Err("No values available")
         }
     }
     
@@ -132,7 +128,11 @@ impl<T> ComponentStream<T> {
             return Err("Stream closed for writing");
         }
         
-        self.buffer.push(value).map_err(|_| "Stream buffer full")?;
+        if self.buffer_item.is_some() {
+            return Err("Stream buffer full");
+        }
+        
+        self.buffer_item = Some(value);
         
         if let Some(waker) = self.read_waker.take() {
             waker.wake();
@@ -143,7 +143,7 @@ impl<T> ComponentStream<T> {
     
     /// Check if the stream is closed
     pub fn is_closed(&self) -> bool {
-        self.state == StreamState::Closed && self.buffer.is_empty()
+        self.state == StreamState::Closed && self.buffer_item.is_none()
     }
     
     /// Close the stream for writing
@@ -204,13 +204,15 @@ impl Value {
     /// Create a future value
     pub fn future(handle: u32) -> Self {
         // In a real implementation, this would be a new Value variant
-        Value::U32(handle)
+        // For now, we use I32 as a placeholder
+        Value::I32(handle as i32)
     }
     
     /// Create a stream value
     pub fn stream(handle: u32) -> Self {
         // In a real implementation, this would be a new Value variant
-        Value::U32(handle)
+        // For now, we use I32 as a placeholder
+        Value::I32(handle as i32)
     }
 }
 

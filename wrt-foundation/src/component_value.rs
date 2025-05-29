@@ -24,7 +24,7 @@ use crate::{
     ComponentValueStore, FloatBits32, FloatBits64, MemoryProvider, Value,
 }; // Added import for ValueRef
 
-#[cfg_attr(not(feature = "std"), no_std)] // no_std if "std" feature is not enabled
+// no_std is configured at the crate level
 #[forbid(clippy::unwrap_used, clippy::expect_used)]
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 extern crate alloc; // Use alloc crate if "alloc" feature is on and "std" is off

@@ -41,6 +41,7 @@ Think of ``wrt-foundation`` as your Swiss Army knife for safety-critical WebAsse
    no_std_hashmap
    component_values
    resources
+   async_examples
 
 Why These Matter 🎯
 -------------------
@@ -120,5 +121,6 @@ Where do you want to start?
 - **Working without std?** → :doc:`no_std_hashmap`
 - **Handling component data?** → :doc:`component_values`
 - **Managing resources?** → :doc:`resources`
+- **Writing async code?** → :doc:`async_examples`
 
 Remember: These aren't just examples - they're patterns you'll use in every WRT application!
