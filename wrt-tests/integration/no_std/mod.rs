@@ -4,11 +4,13 @@
 
 use wrt_test_registry::prelude::*;
 
-mod no_std_compatibility_tests;
-mod consolidated_no_std_tests;
-mod bounded_collections_tests;
-mod memory_safety_tests;
-mod alloc_compatibility_tests;
+pub mod no_std_compatibility_tests;
+pub mod consolidated_no_std_tests;
+pub mod bounded_collections_tests;
+pub mod memory_safety_tests;
+pub mod alloc_compatibility_tests;
+pub mod alloc_verification_tests;
+pub mod bare_verification_tests;
 
 /// Run all no_std integration tests
 pub fn run_tests() -> TestResult {

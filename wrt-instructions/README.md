@@ -1,40 +1,45 @@
 # wrt-instructions
 
-WebAssembly instruction implementations for the WebAssembly Runtime (WRT).
+> WebAssembly instruction encoding, decoding, and execution
 
-This crate provides the core instruction set implementation for WebAssembly, including arithmetic operations, control flow, memory operations, and more.
+## Overview
+
+Provides comprehensive support for WebAssembly instructions including encoding, decoding, validation, and execution semantics. Supports both Core WebAssembly and SIMD instructions.
 
 ## Features
 
-- Complete WebAssembly instruction set implementation
-- Type-safe instruction execution
-- Support for both `std` and `no_std` environments
-- Efficient instruction dispatch
-- Control Flow Integrity (CFI) support
+- **Complete instruction set** - All WebAssembly Core and SIMD instructions
+- **Encoding/decoding** - Binary format support
+- **Validation** - Instruction validation and type checking
+- **Execution traits** - Abstract execution interfaces
+- **no_std support** - Works in embedded environments
 
-## Instruction Categories
+## Quick Start
 
-- **Arithmetic Operations**: Addition, subtraction, multiplication, division for all numeric types
-- **Comparison Operations**: Equality, ordering, and relational comparisons
-- **Control Operations**: Branching, loops, function calls, returns
-- **Memory Operations**: Load, store, memory growth
-- **Variable Operations**: Local and global variable access
-- **Conversion Operations**: Type conversions between numeric types
-- **Table Operations**: Table access and manipulation
-
-## no_std Support
-
-This crate fully supports `no_std` environments without requiring `alloc`, using bounded collections from `wrt-foundation` for all dynamic data structures.
-
-## Usage
-
-```rust
-use wrt_instructions::prelude::*;
-
-// Instructions are typically executed within the context of a WRT runtime
-// See wrt-runtime for execution examples
+```toml
+[dependencies]
+wrt-instructions = "0.1"
 ```
 
-## License
+```rust
+use wrt_instructions::{Instruction, InstructionDecoder};
 
-Licensed under the MIT license. See LICENSE file in the project root for details.
+// Decode instruction from bytes
+let decoder = InstructionDecoder::new(bytes);
+let instruction = decoder.next_instruction()?;
+
+match instruction {
+    Instruction::I32Add => {
+        // Handle i32.add instruction
+    }
+    Instruction::LocalGet(index) => {
+        // Handle local.get instruction  
+    }
+    // ... other instructions
+}
+```
+
+## See Also
+
+- [API Documentation](https://docs.rs/wrt-instructions)
+- [WebAssembly Instruction Reference](https://webassembly.github.io/spec/core/syntax/instructions.html)

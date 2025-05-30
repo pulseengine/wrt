@@ -198,16 +198,28 @@ pub mod version;
 pub mod wit_parser;
 
 // Re-export binary constants (always available)
-// Re-export write functions (only with alloc)
-#[cfg(any(feature = "alloc", feature = "std"))]
-pub use binary::with_alloc::{write_leb128_u32, write_string};
 pub use binary::{
-    read_leb128_u32, read_string, COMPONENT_CORE_SORT_FUNC, COMPONENT_CORE_SORT_GLOBAL,
+    COMPONENT_CORE_SORT_FUNC, COMPONENT_CORE_SORT_GLOBAL,
     COMPONENT_CORE_SORT_INSTANCE, COMPONENT_CORE_SORT_MEMORY, COMPONENT_CORE_SORT_MODULE,
     COMPONENT_CORE_SORT_TABLE, COMPONENT_CORE_SORT_TYPE, COMPONENT_MAGIC, COMPONENT_SORT_COMPONENT,
     COMPONENT_SORT_CORE, COMPONENT_SORT_FUNC, COMPONENT_SORT_INSTANCE, COMPONENT_SORT_TYPE,
-    COMPONENT_SORT_VALUE, COMPONENT_VERSION,
+    COMPONENT_SORT_VALUE, COMPONENT_VERSION, WASM_MAGIC, WASM_VERSION,
 };
+
+// Re-export binary parsing functions
+#[cfg(any(feature = "alloc", feature = "std"))]
+pub use binary::{
+    is_valid_wasm_header, parse_block_type, parse_vec, read_f32, read_f64, read_leb128_i32,
+    read_leb128_i64, read_leb128_u32, read_leb128_u64, read_name, read_string, read_u32, read_u8,
+    read_vector, validate_utf8, BinaryFormat,
+};
+
+// Re-export write functions (only with alloc)
+#[cfg(any(feature = "alloc", feature = "std"))]
+pub use binary::{
+    write_leb128_i32, write_leb128_i64, write_leb128_u32, write_leb128_u64, write_string,
+};
+
 // Re-export no_std write functions
 #[cfg(not(any(feature = "alloc", feature = "std")))]
 pub use binary::{
@@ -228,7 +240,11 @@ pub use error::{
     parse_error, wrt_runtime_error as runtime_error, wrt_type_error as type_error,
     wrt_validation_error as validation_error,
 };
-pub use module::Module;
+pub use module::{Data, DataMode, Element, ElementInit, ElementMode, Module};
+
+// Type aliases for compatibility
+pub type DataSegment = module::Data;
+pub type ElementSegment = module::Element;
 // Re-export safe memory utilities
 pub use safe_memory::safe_slice;
 pub use section::{CustomSection, Section};

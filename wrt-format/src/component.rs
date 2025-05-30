@@ -9,9 +9,44 @@ use alloc::{boxed::Box, format};
 #[cfg(feature = "std")]
 use std::{boxed::Box, format};
 
+// Helper macro for creating validation errors that works in both alloc and no_std modes
+#[cfg(any(feature = "alloc", feature = "std"))]
+macro_rules! validation_error {
+    ($($arg:tt)*) => {
+        crate::error::validation_error_dynamic(format!($($arg)*))
+    };
+}
+
+#[cfg(not(any(feature = "alloc", feature = "std")))]
+macro_rules! validation_error {
+    ($($arg:tt)*) => {
+        crate::error::validation_error("validation error (details unavailable in no_std)")
+    };
+}
+
 use wrt_error::{Error, Result};
-// Re-export ValType from wrt-foundation
+// Re-export ValType from wrt-foundation (conditional based on alloc feature)
+#[cfg(feature = "alloc")]
 pub use wrt_foundation::component_value::ValType;
+
+// Provide a simple stub for ValType in no_std mode
+#[cfg(not(feature = "alloc"))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ValType {
+    Bool,
+    S8,
+    U8,
+    S16,
+    U16,
+    S32,
+    U32,
+    S64,
+    U64,
+    F32,
+    F64,
+    Char,
+    String,
+}
 use wrt_foundation::resource::{ResourceDrop, ResourceNew, ResourceRep, ResourceRepresentation};
 #[cfg(not(any(feature = "alloc", feature = "std")))]
 use wrt_foundation::NoStdProvider;
@@ -22,37 +57,48 @@ use crate::{String, Vec};
 #[cfg(not(any(feature = "alloc", feature = "std")))]
 use crate::{WasmString, WasmVec, MAX_TYPE_RECURSION_DEPTH};
 
+// Conditional type aliases for collection types
+#[cfg(any(feature = "alloc", feature = "std"))]
+type ComponentString = String;
+#[cfg(not(any(feature = "alloc", feature = "std")))]
+type ComponentString = WasmString<NoStdProvider<512>>;
+
+#[cfg(any(feature = "alloc", feature = "std"))]
+type ComponentVec<T> = Vec<T>;
+#[cfg(not(any(feature = "alloc", feature = "std")))]
+type ComponentVec<T> = WasmVec<T, NoStdProvider<1024>>;
+
 /// WebAssembly Component Model component definition
 #[derive(Debug, Clone)]
 pub struct Component {
     /// Component name (if available from name section)
-    pub name: Option<String>,
+    pub name: Option<ComponentString>,
     /// Core modules included in this component
-    pub modules: Vec<Module>,
+    pub modules: ComponentVec<Module>,
     /// Core instances defined in this component
-    pub core_instances: Vec<CoreInstance>,
+    pub core_instances: ComponentVec<CoreInstance>,
     /// Core types defined in this component
-    pub core_types: Vec<CoreType>,
+    pub core_types: ComponentVec<CoreType>,
     /// Nested components
-    pub components: Vec<Component>,
+    pub components: ComponentVec<Component>,
     /// Component instances
-    pub instances: Vec<Instance>,
+    pub instances: ComponentVec<Instance>,
     /// Component aliases
-    pub aliases: Vec<Alias>,
+    pub aliases: ComponentVec<Alias>,
     /// Component types
-    pub types: Vec<ComponentType>,
+    pub types: ComponentVec<ComponentType>,
     /// Canonical function conversions
-    pub canonicals: Vec<Canon>,
+    pub canonicals: ComponentVec<Canon>,
     /// Component start function
     pub start: Option<Start>,
     /// Component imports
-    pub imports: Vec<Import>,
+    pub imports: ComponentVec<Import>,
     /// Component exports
-    pub exports: Vec<Export>,
+    pub exports: ComponentVec<Export>,
     /// Component values
-    pub values: Vec<Value>,
+    pub values: ComponentVec<Value>,
     /// Original binary (if available)
-    pub binary: Option<Vec<u8>>,
+    pub binary: Option<ComponentVec<u8>>,
 }
 
 impl Default for Component {
@@ -66,20 +112,32 @@ impl Component {
     pub fn new() -> Self {
         Self {
             name: None,
-            modules: Vec::new(),
-            core_instances: Vec::new(),
-            core_types: Vec::new(),
-            components: Vec::new(),
-            instances: Vec::new(),
-            aliases: Vec::new(),
-            types: Vec::new(),
-            canonicals: Vec::new(),
+            modules: Self::new_vec(),
+            core_instances: Self::new_vec(),
+            core_types: Self::new_vec(),
+            components: Self::new_vec(),
+            instances: Self::new_vec(),
+            aliases: Self::new_vec(),
+            types: Self::new_vec(),
+            canonicals: Self::new_vec(),
             start: None,
-            imports: Vec::new(),
-            exports: Vec::new(),
-            values: Vec::new(),
+            imports: Self::new_vec(),
+            exports: Self::new_vec(),
+            values: Self::new_vec(),
             binary: None,
         }
+    }
+
+    /// Helper to create a new ComponentVec
+    #[cfg(any(feature = "alloc", feature = "std"))]
+    fn new_vec<T>() -> ComponentVec<T> {
+        Vec::new()
+    }
+
+    /// Helper to create a new ComponentVec for no_std
+    #[cfg(not(any(feature = "alloc", feature = "std")))]
+    fn new_vec<T>() -> ComponentVec<T> {
+        WasmVec::new(NoStdProvider::<1024>::default()).unwrap_or_else(|_| panic!("Failed to create WasmVec"))
     }
 }
 
@@ -124,10 +182,10 @@ impl Validatable for CoreInstance {
                 // Basic validation: module_idx should be reasonable
                 if *module_idx > 10000 {
                     // Arbitrary reasonable limit
-                    return Err(crate::error::validation_error_dynamic(format!(
+                    return Err(validation_error!(
                         "Module index {} seems unreasonably large",
                         module_idx
-                    )));
+                    ));
                 }
 
                 // Validate args
@@ -149,10 +207,10 @@ impl Validatable for CoreInstance {
                     }
                     // Reasonable index limit
                     if export.idx > 100000 {
-                        return Err(crate::error::validation_error_dynamic(format!(
+                        return Err(validation_error!(
                             "Export index {} seems unreasonably large",
                             export.idx
-                        )));
+                        ));
                     }
                 }
 
@@ -228,17 +286,17 @@ impl Validatable for CoreType {
             CoreTypeDefinition::Function { params, results } => {
                 // Basic validation: reasonable limits on params and results
                 if params.len() > 1000 {
-                    return Err(crate::error::validation_error_dynamic(format!(
+                    return Err(validation_error!(
                         "Function has too many parameters ({})",
                         params.len()
-                    )));
+                    ));
                 }
 
                 if results.len() > 1000 {
-                    return Err(crate::error::validation_error_dynamic(format!(
+                    return Err(validation_error!(
                         "Function has too many results ({})",
                         results.len()
-                    )));
+                    ));
                 }
 
                 Ok(())
@@ -851,22 +909,26 @@ pub struct ExportName {
 
 impl ImportName {
     /// Create a new import name with just namespace and name
+    #[cfg(any(feature = "alloc", feature = "std"))]
     pub fn new(namespace: String, name: String) -> Self {
         Self { namespace, name, nested: Vec::new(), package: None }
     }
 
     /// Create a new import name with nested namespaces
+    #[cfg(any(feature = "alloc", feature = "std"))]
     pub fn with_nested(namespace: String, name: String, nested: Vec<String>) -> Self {
         Self { namespace, name, nested, package: None }
     }
 
     /// Add package reference to an import name
+    #[cfg(any(feature = "alloc", feature = "std"))]
     pub fn with_package(mut self, package: PackageReference) -> Self {
         self.package = Some(package);
         self
     }
 
     /// Get the full import path as a string
+    #[cfg(any(feature = "alloc", feature = "std"))]
     pub fn full_path(&self) -> String {
         let mut path = format!("{}.{}", self.namespace, self.name);
         for nested in &self.nested {
@@ -994,10 +1056,10 @@ impl Validatable for Instance {
                 // Basic validation: component_idx should be reasonable
                 if *component_idx > 10000 {
                     // Arbitrary reasonable limit
-                    return Err(crate::error::validation_error_dynamic(format!(
+                    return Err(validation_error!(
                         "Component index {} seems unreasonably large",
                         component_idx
-                    )));
+                    ));
                 }
 
                 // Validate args
@@ -1030,10 +1092,10 @@ impl Validatable for Alias {
         match &self.target {
             AliasTarget::CoreInstanceExport { instance_idx, name, .. } => {
                 if *instance_idx > 10000 {
-                    return Err(crate::error::validation_error_dynamic(format!(
+                    return Err(validation_error!(
                         "Instance index {} seems unreasonably large",
                         instance_idx
-                    )));
+                    ));
                 }
 
                 if name.is_empty() {
@@ -1044,10 +1106,10 @@ impl Validatable for Alias {
             }
             AliasTarget::InstanceExport { instance_idx, name, .. } => {
                 if *instance_idx > 10000 {
-                    return Err(crate::error::validation_error_dynamic(format!(
+                    return Err(validation_error!(
                         "Instance index {} seems unreasonably large",
                         instance_idx
-                    )));
+                    ));
                 }
 
                 if name.is_empty() {
@@ -1058,17 +1120,17 @@ impl Validatable for Alias {
             }
             AliasTarget::Outer { count, idx, .. } => {
                 if *count > 10 {
-                    return Err(crate::error::validation_error_dynamic(format!(
+                    return Err(validation_error!(
                         "Outer count {} seems unreasonably large",
                         count
-                    )));
+                    ));
                 }
 
                 if *idx > 10000 {
-                    return Err(crate::error::validation_error_dynamic(format!(
+                    return Err(validation_error!(
                         "Index {} seems unreasonably large",
                         idx
-                    )));
+                    ));
                 }
 
                 Ok(())
@@ -1113,10 +1175,10 @@ impl Validatable for ComponentType {
             ComponentTypeDefinition::Function { params, results } => {
                 // Basic validation: reasonable limits on params and results
                 if params.len() > 1000 {
-                    return Err(crate::error::validation_error_dynamic(format!(
+                    return Err(validation_error!(
                         "Function has too many parameters ({})",
                         params.len()
-                    )));
+                    ));
                 }
 
                 // Check param names
@@ -1127,10 +1189,10 @@ impl Validatable for ComponentType {
                 }
 
                 if results.len() > 1000 {
-                    return Err(crate::error::validation_error_dynamic(format!(
+                    return Err(validation_error!(
                         "Function has too many results ({})",
                         results.len()
-                    )));
+                    ));
                 }
 
                 Ok(())
@@ -1152,27 +1214,27 @@ impl Validatable for Canon {
         match &self.operation {
             CanonOperation::Lift { func_idx, type_idx, .. } => {
                 if *func_idx > 10000 {
-                    return Err(crate::error::validation_error_dynamic(format!(
+                    return Err(validation_error!(
                         "Function index {} seems unreasonably large",
                         func_idx
-                    )));
+                    ));
                 }
 
                 if *type_idx > 10000 {
-                    return Err(crate::error::validation_error_dynamic(format!(
+                    return Err(validation_error!(
                         "Type index {} seems unreasonably large",
                         type_idx
-                    )));
+                    ));
                 }
 
                 Ok(())
             }
             CanonOperation::Lower { func_idx, .. } => {
                 if *func_idx > 10000 {
-                    return Err(crate::error::validation_error_dynamic(format!(
+                    return Err(validation_error!(
                         "Function index {} seems unreasonably large",
                         func_idx
-                    )));
+                    ));
                 }
 
                 Ok(())
@@ -1186,24 +1248,24 @@ impl Validatable for Canon {
 impl Validatable for Start {
     fn validate(&self) -> Result<()> {
         if self.func_idx > 10000 {
-            return Err(crate::error::validation_error_dynamic(format!(
+            return Err(validation_error!(
                 "Function index {} seems unreasonably large",
                 self.func_idx
-            )));
+            ));
         }
 
         if self.args.len() > 1000 {
-            return Err(crate::error::validation_error_dynamic(format!(
+            return Err(validation_error!(
                 "Start function has too many arguments ({})",
                 self.args.len()
-            )));
+            ));
         }
 
         if self.results > 1000 {
-            return Err(crate::error::validation_error_dynamic(format!(
+            return Err(validation_error!(
                 "Start function has too many results ({})",
                 self.results
-            )));
+            ));
         }
 
         Ok(())
@@ -1255,10 +1317,10 @@ impl Validatable for Export {
 
         // Index should be reasonable
         if self.idx > 10000 {
-            return Err(crate::error::validation_error_dynamic(format!(
+            return Err(validation_error!(
                 "Export index {} seems unreasonably large",
                 self.idx
-            )));
+            ));
         }
 
         Ok(())
@@ -1269,10 +1331,10 @@ impl Validatable for Value {
     fn validate(&self) -> Result<()> {
         // Validate data size (should be reasonable)
         if self.data.len() > 1000000 {
-            return Err(crate::error::validation_error_dynamic(format!(
+            return Err(validation_error!(
                 "Value data size {} seems unreasonably large",
                 self.data.len()
-            )));
+            ));
         }
 
         // Check value expression if present
@@ -1280,33 +1342,33 @@ impl Validatable for Value {
             match expr {
                 ValueExpression::ItemRef { idx, .. } => {
                     if *idx > 10000 {
-                        return Err(crate::error::validation_error_dynamic(format!(
+                        return Err(validation_error!(
                             "Item reference index {} seems unreasonably large",
                             idx
-                        )));
+                        ));
                     }
                 }
                 ValueExpression::GlobalInit { global_idx } => {
                     if *global_idx > 10000 {
-                        return Err(crate::error::validation_error_dynamic(format!(
+                        return Err(validation_error!(
                             "Global index {} seems unreasonably large",
                             global_idx
-                        )));
+                        ));
                     }
                 }
                 ValueExpression::FunctionCall { func_idx, args } => {
                     if *func_idx > 10000 {
-                        return Err(crate::error::validation_error_dynamic(format!(
+                        return Err(validation_error!(
                             "Function index {} seems unreasonably large",
                             func_idx
-                        )));
+                        ));
                     }
 
                     if args.len() > 1000 {
-                        return Err(crate::error::validation_error_dynamic(format!(
+                        return Err(validation_error!(
                             "Function call has too many arguments ({})",
                             args.len()
-                        )));
+                        ));
                     }
                 }
                 ValueExpression::Const(_) => {

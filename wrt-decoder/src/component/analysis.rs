@@ -252,6 +252,7 @@ fn kind_to_string(kind: &CoreSort) -> String {
 
 /// Helper to convert Sort to string (debug helper)
 #[allow(dead_code)]
+#[cfg(any(feature = "alloc", feature = "std"))]
 fn sort_to_string(sort: &wrt_format::component::Sort) -> String {
     match sort {
         Sort::Function => "Func".to_string(),

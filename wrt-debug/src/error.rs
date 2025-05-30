@@ -20,6 +20,14 @@ pub enum DebugError {
 /// Result type for debug operations
 pub type DebugResult<T> = Result<T, DebugError>;
 
+impl From<wrt_error::Error> for DebugError {
+    fn from(_err: wrt_error::Error) -> Self {
+        // For simplicity, map all WRT errors to InvalidData
+        // A more sophisticated implementation could map specific error categories
+        DebugError::InvalidData
+    }
+}
+
 impl From<DebugError> for wrt_error::Error {
     fn from(err: DebugError) -> Self {
         match err {
@@ -33,12 +41,12 @@ impl From<DebugError> for wrt_error::Error {
                 codes::PARSE_ERROR,
                 "Unexpected end of DWARF data",
             ),
-            DebugError::UnsupportedVersion(version) => Error::new(
+            DebugError::UnsupportedVersion(_version) => Error::new(
                 ErrorCategory::Parse,
-                codes::UNSUPPORTED_FEATURE,
+                codes::VALIDATION_UNSUPPORTED_FEATURE,
                 "Unsupported DWARF version",
             ),
-            DebugError::InvalidAbbreviation(code) => Error::new(
+            DebugError::InvalidAbbreviation(_code) => Error::new(
                 ErrorCategory::Parse,
                 codes::PARSE_ERROR,
                 "Invalid abbreviation code",

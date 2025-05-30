@@ -18,7 +18,6 @@ wrt/wrt/
 
 wrt/testsuite
 wast_failed.md
-bazel-*
 wrt/target
 wrtd/target
 docs/source/_generated_symbols.rst
@@ -33,3 +32,5 @@ decoder.agent.prompt.md decoder.plan.md
 docs/source/implementation/source_requirements.rst
 docs_artifact_final/
 docs_output/
+
+*.bak*

@@ -250,37 +250,37 @@ pub fn decode_component(bytes: &[u8]) -> Result<Component> {
 }
 
 /// Helper function to create a decode error
-pub fn decode_error(message: &str) -> Error {
-    Error::new(ErrorCategory::Parse, codes::DECODING_ERROR, message)
+pub fn decode_error(_message: &str) -> Error {
+    Error::new(ErrorCategory::Parse, codes::DECODING_ERROR, "Component decode error")
 }
 
 /// Helper function to create a decode error with context
-pub fn decode_error_with_context(message: &str, context: &str) -> Error {
-    Error::new(ErrorCategory::Parse, codes::DECODING_ERROR, format!("{}: {}", message, context))
+pub fn decode_error_with_context(_message: &str, _context: &str) -> Error {
+    Error::new(ErrorCategory::Parse, codes::DECODING_ERROR, "Component decode error with context")
 }
 
 /// Helper function to create a decode error with position
-pub fn decode_error_with_position(message: &str, position: usize) -> Error {
+pub fn decode_error_with_position(_message: &str, _position: usize) -> Error {
     Error::new(
         ErrorCategory::Parse,
         codes::DECODING_ERROR,
-        format!("{} at position {}", message, position),
+        "Component decode error at position",
     )
 }
 
 /// Helper function to create a decode error with type
-pub fn decode_error_with_type(message: &str, type_name: &str) -> Error {
-    Error::new(ErrorCategory::Parse, codes::DECODING_ERROR, format!("{}: {}", message, type_name))
+pub fn decode_error_with_type(_message: &str, _type_name: &str) -> Error {
+    Error::new(ErrorCategory::Parse, codes::DECODING_ERROR, "Component decode error with type")
 }
 
 /// Helper function to create a decode error with value
-pub fn decode_error_with_value(message: &str, value: &str) -> Error {
-    Error::new(ErrorCategory::Parse, codes::DECODING_ERROR, format!("{}: {}", message, value))
+pub fn decode_error_with_value(_message: &str, _value: &str) -> Error {
+    Error::new(ErrorCategory::Parse, codes::DECODING_ERROR, "Component decode error with value")
 }
 
 /// Helper function to create a parse error
-pub fn parse_error(message: &str) -> Error {
-    Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, message)
+pub fn parse_error(_message: &str) -> Error {
+    Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, "Component parse error")
 }
 
 /// Helper function to create a parse error with context

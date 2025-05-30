@@ -52,6 +52,7 @@ extern crate std;
 extern crate alloc;
 
 // Module exports
+#[cfg(any(feature = "alloc", feature = "std"))]
 pub mod component;
 #[cfg(feature = "alloc")]
 pub mod conversion;
@@ -87,12 +88,14 @@ pub use cfi_metadata::{
     ControlFlowTargetType, FunctionCfiInfo, IndirectCallSite, LandingPadRequirement,
     ProtectionInstruction, ReturnSite, ValidationRequirement,
 };
+#[cfg(any(feature = "alloc", feature = "std"))]
 pub use component::decode_no_alloc::{
     decode_component_header, extract_component_section_info, validate_component_no_alloc,
     verify_component_header, ComponentHeader, ComponentSectionId, ComponentSectionInfo,
     ComponentValidatorType, COMPONENT_MAGIC, MAX_COMPONENT_SIZE,
 };
 // Re-export simplified component types for no_alloc use
+#[cfg(any(feature = "alloc", feature = "std"))]
 pub use component::section::{
     ComponentExport, ComponentImport, ComponentInstance, ComponentSection, ComponentType,
     ComponentValueType,
@@ -116,20 +119,27 @@ pub use decoder_no_alloc::{
 };
 // Re-export important module types and functions
 pub use module::{
-    decode_module_with_binary as decode_module, decode_module_with_binary, encode_module, Module,
+    decode_module_with_binary as decode_module, decode_module_with_binary, Module,
 };
+
+// Re-export encode_module only with alloc
+#[cfg(feature = "alloc")]
+pub use module::encode_module;
 // Re-export parser types and functions
 pub use parser::{Parser, Payload};
 // Re-export runtime adapter
 pub use runtime_adapter::{convert_to_runtime_module, RuntimeModuleBuilder};
 // Re-export section types
 pub use sections::parsers;
-pub use validation::{validate_module, validate_module_with_config};
+pub use validation::validate_module;
+pub use decoder_core::validate::validate_module_with_config;
 pub use wrt_error::{codes, kinds, Error, Result};
 // Re-export binary constants and functions from wrt-format
+pub use wrt_format::binary::{WASM_MAGIC, WASM_VERSION};
+#[cfg(any(feature = "alloc", feature = "std"))]
 pub use wrt_format::binary::{
     read_leb128_i32, read_leb128_i64, read_leb128_u32, read_leb128_u64, write_leb128_i32,
-    write_leb128_i64, write_leb128_u32, write_leb128_u64, WASM_MAGIC, WASM_VERSION,
+    write_leb128_i64, write_leb128_u32, write_leb128_u64,
 };
 // Re-export format types for easy access to section types
 pub use wrt_format::module::{Data, DataMode, Element, Export, Import, ImportDesc};
@@ -139,7 +149,9 @@ pub use wrt_format::section::{CustomSection, Section};
 // Re-export safe_memory for backward compatibility
 pub use wrt_foundation::safe_memory;
 // Re-export the SafeSlice type and other memory safety types
-pub use wrt_foundation::safe_memory::{MemoryProvider, SafeSlice, StdMemoryProvider};
+pub use wrt_foundation::safe_memory::{MemoryProvider, SafeSlice};
+#[cfg(feature = "std")]
+pub use wrt_foundation::safe_memory::StdProvider as StdMemoryProvider;
 // Re-export core types for easier access
 pub use wrt_foundation::types::{FuncType, GlobalType, Limits, MemoryType, RefType, TableType};
 // Re-exports from wrt_foundation
@@ -160,7 +172,20 @@ pub use crate::decoder_core::validate::ValidationConfig;
 ///
 /// * `Result<Module>` - Parsed module or error
 pub fn from_binary(bytes: &[u8]) -> Result<Module> {
-    module::decode_module_with_binary(bytes)
+    #[cfg(feature = "std")]
+    {
+        use wrt_foundation::{StdMemoryProvider, safe_memory::SafeMemoryHandler};
+        let provider = StdMemoryProvider::default();
+        let mut handler = SafeMemoryHandler::new(provider);
+        module::decode_module_with_binary(bytes, &mut handler)
+    }
+    #[cfg(not(feature = "std"))]
+    {
+        use wrt_foundation::{NoStdProvider, safe_memory::SafeMemoryHandler};
+        let provider = NoStdProvider::<65536>::default();
+        let mut handler = SafeMemoryHandler::new(provider);
+        module::decode_module_with_binary(bytes, &mut handler)
+    }
 }
 
 /// Validate a WebAssembly module

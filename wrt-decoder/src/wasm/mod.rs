@@ -17,7 +17,10 @@ pub use crate::{
     decoder_core::validate::validate_module,
     module::{
         decode_module, decode_module_with_binary as decode, decode_module_with_binary,
-        encode_module, encode_module as encode,
     },
     name_section::*,
 };
+
+// Re-export encode functions only with alloc
+#[cfg(feature = "alloc")]
+pub use crate::module::{encode_module, encode_module as encode};

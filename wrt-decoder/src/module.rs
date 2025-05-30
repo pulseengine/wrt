@@ -9,24 +9,18 @@
 use wrt_error::{codes, Error, ErrorCategory, Result};
 use wrt_format::binary::{WASM_MAGIC, WASM_VERSION};
 use wrt_foundation::{
-    safe_memory::SafeSlice,
-    // Add MemoryProvider and SafeMemoryHandler for the new signature
-    safe_memory::{MemoryProvider, SafeMemoryHandler},
+    safe_memory::{SafeSlice, MemoryProvider, SafeMemoryHandler},
     types::{
-        Code as WrtCode,
+        // Code as WrtCode,  // TODO: Need to define or import from appropriate module
         CustomSection as WrtCustomSection,
-        DataMode as TypesDataMode,
-        DataSegment,
-        ElementMode as TypesElementMode,
-        ElementSegment,
         Export,
         ExportDesc as TypesExportDesc,
-        Expr as WrtExpr,
+        // Expr as WrtExpr,  // TODO: Need to define or import from appropriate module
         FuncType,
         GlobalType,
         Import,
         ImportDesc as TypesImportDesc,
-        LocalEntry as WrtLocalEntry,
+        // LocalEntry as WrtLocalEntry,  // TODO: Need to define or import from appropriate module
         MemoryType,
         // Import the canonical Module, Code, Expr, LocalEntry from wrt_foundation
         Module as WrtModule,
@@ -35,6 +29,14 @@ use wrt_foundation::{
         ValueType, // For LocalEntry
     },
     values::Value,
+};
+
+// Import DataMode, ElementMode, and segment types from wrt-format
+use wrt_format::{
+    DataMode as TypesDataMode,
+    DataSegment,
+    ElementMode as TypesElementMode,
+    ElementSegment,
 };
 
 use crate::{instructions, prelude::*, types::*, Parser}; // Import instructions module
@@ -226,10 +228,10 @@ pub fn encode_module(module: &WrtModule) -> Result<Vec<u8>> {
 /// # Returns
 ///
 /// * `Error` - Parse error
-pub fn parse_error(message: &str) -> Error {
+pub fn parse_error(_message: &str) -> Error {
     // TODO: If this needs to work without alloc, ensure Error::new doesn't rely on
     // formatted strings or use a version that takes pre-formatted parts.
-    Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, message)
+    Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, "Module parse error")
 }
 
 /// Create a parse error with the given message and context
@@ -249,9 +251,9 @@ pub fn parse_error_with_context(message: &str, context: &str) -> Error {
 }
 
 #[cfg(not(feature = "alloc"))]
-pub fn parse_error_with_context(message: &str, _context: &str) -> Error {
+pub fn parse_error_with_context(_message: &str, _context: &str) -> Error {
     // Basic error if no alloc for formatting. Context is lost.
-    Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, message)
+    Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, "Module parse error with context")
 }
 
 /// Create a parse error with the given message and position
@@ -275,9 +277,9 @@ pub fn parse_error_with_position(message: &str, position: usize) -> Error {
 }
 
 #[cfg(not(feature = "alloc"))]
-pub fn parse_error_with_position(message: &str, _position: usize) -> Error {
+pub fn parse_error_with_position(_message: &str, _position: usize) -> Error {
     // Basic error if no alloc for formatting. Position is lost.
-    Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, message)
+    Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, "Module parse error at position")
 }
 
 /// Create a runtime error with the given message
@@ -289,8 +291,8 @@ pub fn parse_error_with_position(message: &str, _position: usize) -> Error {
 /// # Returns
 ///
 /// * `Error` - Runtime error
-pub fn runtime_error(message: &str) -> Error {
-    Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, message)
+pub fn runtime_error(_message: &str) -> Error {
+    Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, "Module runtime error")
 }
 
 /// Create a runtime error with the given message and context
@@ -310,8 +312,8 @@ pub fn runtime_error_with_context(message: &str, context: &str) -> Error {
 }
 
 #[cfg(not(feature = "alloc"))]
-pub fn runtime_error_with_context(message: &str, _context: &str) -> Error {
-    Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, message)
+pub fn runtime_error_with_context(_message: &str, _context: &str) -> Error {
+    Error::new(ErrorCategory::Runtime, codes::RUNTIME_ERROR, "Module runtime error with context")
 }
 
 /// Wrapper for custom sections with additional functionality
@@ -424,7 +426,7 @@ fn parse_module_internal_logic(
                         } else {
                             return Err(Error::new(
                                 ErrorCategory::Parse,
-                                codes::DECODE_ERROR,
+                                codes::PARSE_ERROR,
                                 "Failed to get data from TypeSection SafeSlice",
                             ));
                         }
@@ -435,7 +437,7 @@ fn parse_module_internal_logic(
                         } else {
                             return Err(Error::new(
                                 ErrorCategory::Parse,
-                                codes::DECODE_ERROR,
+                                codes::PARSE_ERROR,
                                 "Failed to get data from ImportSection SafeSlice",
                             ));
                         }
@@ -447,7 +449,7 @@ fn parse_module_internal_logic(
                         } else {
                             return Err(Error::new(
                                 ErrorCategory::Parse,
-                                codes::DECODE_ERROR,
+                                codes::PARSE_ERROR,
                                 "Failed to get data from FunctionSection SafeSlice",
                             ));
                         }
@@ -458,7 +460,7 @@ fn parse_module_internal_logic(
                         } else {
                             return Err(Error::new(
                                 ErrorCategory::Parse,
-                                codes::DECODE_ERROR,
+                                codes::PARSE_ERROR,
                                 "Failed to get data from TableSection SafeSlice",
                             ));
                         }
@@ -469,7 +471,7 @@ fn parse_module_internal_logic(
                         } else {
                             return Err(Error::new(
                                 ErrorCategory::Parse,
-                                codes::DECODE_ERROR,
+                                codes::PARSE_ERROR,
                                 "Failed to get data from MemorySection SafeSlice",
                             ));
                         }
@@ -480,7 +482,7 @@ fn parse_module_internal_logic(
                         } else {
                             return Err(Error::new(
                                 ErrorCategory::Parse,
-                                codes::DECODE_ERROR,
+                                codes::PARSE_ERROR,
                                 "Failed to get data from GlobalSection SafeSlice",
                             ));
                         }
@@ -491,7 +493,7 @@ fn parse_module_internal_logic(
                         } else {
                             return Err(Error::new(
                                 ErrorCategory::Parse,
-                                codes::DECODE_ERROR,
+                                codes::PARSE_ERROR,
                                 "Failed to get data from ExportSection SafeSlice",
                             ));
                         }
@@ -505,15 +507,15 @@ fn parse_module_internal_logic(
                         } else {
                             return Err(Error::new(
                                 ErrorCategory::Parse,
-                                codes::DECODE_ERROR,
+                                codes::PARSE_ERROR,
                                 "Failed to get data from ElementSection SafeSlice",
                             ));
                         }
                     }
                     crate::parser::Payload::CodeSection(slice, _size) => {
                         if let Ok(mut code_section_data) = slice.data() {
-                            let (num_functions, mut bytes_read_for_count) =
-                                wrt_format::binary::read_leb_u32(code_section_data)?;
+                            let (num_functions, bytes_read_for_count) =
+                                read_leb128_u32(code_section_data, 0)?;
                             code_section_data = &code_section_data[bytes_read_for_count..];
 
                             if num_functions as usize != mod_funcs.len() {
@@ -531,7 +533,7 @@ fn parse_module_internal_logic(
 
                             for _ in 0..num_functions {
                                 let (func_size, size_len) =
-                                    wrt_format::binary::read_leb_u32(code_section_data)?;
+                                    read_leb128_u32(code_section_data, 0)?;
                                 code_section_data = &code_section_data[size_len..];
                                 // bytes_read_for_count += size_len; // This counter is not total
                                 // for section, but per-func
@@ -539,7 +541,7 @@ fn parse_module_internal_logic(
                                 if code_section_data.len() < func_size as usize {
                                     return Err(Error::new(
                                         ErrorCategory::Parse,
-                                        codes::DECODE_UNEXPECTED_EOF,
+                                        codes::PARSE_ERROR,
                                         "EOF in code section entry",
                                     ));
                                 }
@@ -563,7 +565,7 @@ fn parse_module_internal_logic(
                         } else {
                             return Err(Error::new(
                                 ErrorCategory::Parse,
-                                codes::DECODE_ERROR,
+                                codes::PARSE_ERROR,
                                 "Failed to get data from CodeSection SafeSlice",
                             ));
                         }
@@ -574,7 +576,7 @@ fn parse_module_internal_logic(
                         } else {
                             return Err(Error::new(
                                 ErrorCategory::Parse,
-                                codes::DECODE_ERROR,
+                                codes::PARSE_ERROR,
                                 "Failed to get data from DataSection SafeSlice",
                             ));
                         }
@@ -592,7 +594,7 @@ fn parse_module_internal_logic(
                         } else {
                             return Err(Error::new(
                                 ErrorCategory::Parse,
-                                codes::DECODE_ERROR,
+                                codes::PARSE_ERROR,
                                 "Failed to get data from CustomSection SafeSlice",
                             ));
                         }
@@ -600,7 +602,7 @@ fn parse_module_internal_logic(
                     crate::parser::Payload::ComponentSection { .. } => {
                         return Err(Error::new(
                             ErrorCategory::Parse,
-                            codes::UNSUPPORTED_FEATURE,
+                            codes::VALIDATION_UNSUPPORTED_FEATURE,
                             "Component sections not supported in core module parsing",
                         ));
                     }
@@ -614,7 +616,7 @@ fn parse_module_internal_logic(
             }
             Err(e) => {
                 return Err(
-                    e.add_context(codes::DECODE_ERROR, "Failed to read payload from parser")
+                    e.add_context(codes::PARSE_ERROR, "Failed to read payload from parser")
                 );
             }
         }

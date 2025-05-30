@@ -15,7 +15,6 @@ use wrt_format::{
         IMPORT_ID, MEMORY_ID, START_ID, TABLE_ID, TYPE_ID,
     },
 };
-use wrt_foundation::ToString;
 
 // Deprecated, use From trait implementation instead
 // use wrt_foundation::error_convert::convert_to_wrt_error;

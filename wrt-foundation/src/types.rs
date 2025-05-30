@@ -520,6 +520,150 @@ impl<PFunc: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq
 
 // Display and Debug impls follow...
 
+/// Memory argument for load/store instructions
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct MemArg {
+    /// The alignment exponent (2^align_exponent bytes)
+    pub align_exponent: u32,
+    /// The offset to add to the address
+    pub offset: u32,
+    /// The memory index (0 for single memory)
+    pub memory_index: u32,
+}
+
+impl Default for MemArg {
+    fn default() -> Self {
+        Self {
+            align_exponent: 0,
+            offset: 0,
+            memory_index: 0,
+        }
+    }
+}
+
+impl ToBytes for MemArg {
+    fn to_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        _provider: &PStream,
+    ) -> WrtResult<()> {
+        writer.write_u32_le(self.align_exponent)?;
+        writer.write_u32_le(self.offset)?;
+        writer.write_u32_le(self.memory_index)
+    }
+
+    #[cfg(feature = "default-provider")]
+    fn to_bytes<'a>(&self, writer: &mut WriteStream<'a>) -> WrtResult<()> {
+        let default_provider = DefaultMemoryProvider::default();
+        self.to_bytes_with_provider(writer, &default_provider)
+    }
+}
+
+impl FromBytes for MemArg {
+    fn from_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        _provider: &PStream,
+    ) -> WrtResult<Self> {
+        let align_exponent = reader.read_u32_le()?;
+        let offset = reader.read_u32_le()?;
+        let memory_index = reader.read_u32_le()?;
+        Ok(Self {
+            align_exponent,
+            offset,
+            memory_index,
+        })
+    }
+
+    #[cfg(feature = "default-provider")]
+    fn from_bytes<'a>(reader: &mut ReadStream<'a>) -> WrtResult<Self> {
+        let default_provider = DefaultMemoryProvider::default();
+        Self::from_bytes_with_provider(reader, &default_provider)
+    }
+}
+
+impl Checksummable for MemArg {
+    fn update_checksum(&self, checksum: &mut Checksum) {
+        self.align_exponent.update_checksum(checksum);
+        self.offset.update_checksum(checksum);
+        self.memory_index.update_checksum(checksum);
+    }
+}
+
+/// Data segment mode for WebAssembly modules
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum DataMode {
+    /// Active data segment - loaded at module instantiation
+    Active {
+        /// Memory index where data is loaded
+        memory_index: u32,
+        /// Offset expression where data is loaded
+        offset: u32,
+    },
+    /// Passive data segment - loaded explicitly via memory.init
+    Passive,
+}
+
+impl Default for DataMode {
+    fn default() -> Self {
+        Self::Passive
+    }
+}
+
+impl Checksummable for DataMode {
+    fn update_checksum(&self, checksum: &mut Checksum) {
+        match self {
+            Self::Active { memory_index, offset } => {
+                checksum.update_slice(&[0u8]);
+                memory_index.update_checksum(checksum);
+                offset.update_checksum(checksum);
+            }
+            Self::Passive => {
+                checksum.update_slice(&[1u8]);
+            }
+        }
+    }
+}
+
+/// Element segment mode for WebAssembly modules
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum ElementMode {
+    /// Active element segment - loaded at module instantiation
+    Active {
+        /// Table index where elements are loaded
+        table_index: u32,
+        /// Offset expression where elements are loaded
+        offset: u32,
+    },
+    /// Passive element segment - loaded explicitly via table.init
+    Passive,
+    /// Declarative element segment - used for validation only
+    Declarative,
+}
+
+impl Default for ElementMode {
+    fn default() -> Self {
+        Self::Passive
+    }
+}
+
+impl Checksummable for ElementMode {
+    fn update_checksum(&self, checksum: &mut Checksum) {
+        match self {
+            Self::Active { table_index, offset } => {
+                checksum.update_slice(&[0u8]);
+                table_index.update_checksum(checksum);
+                offset.update_checksum(checksum);
+            }
+            Self::Passive => {
+                checksum.update_slice(&[1u8]);
+            }
+            Self::Declarative => {
+                checksum.update_slice(&[2u8]);
+            }
+        }
+    }
+}
+
 /// A WebAssembly instruction (basic placeholder).
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Instruction<P: MemoryProvider + Clone + core::fmt::Debug + PartialEq + Eq + Default> {

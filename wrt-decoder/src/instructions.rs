@@ -16,10 +16,6 @@ use alloc::{vec, vec::Vec}; // Ensure Vec is available
 use std::{vec, vec::Vec}; // Ensure Vec is available
 
 use wrt_error::{codes, Error, ErrorCategory, Result};
-use wrt_format::binary::{
-    self, parse_block_type as parse_format_block_type, parse_vec, read_f32, read_f64, read_leb_i32,
-    read_leb_i64, read_leb_u32, read_u32, read_u8,
-};
 // Use the canonical types from wrt_foundation
 use wrt_foundation::types::{
     self as CoreTypes, BlockType as CoreBlockType, DataIdx, ElemIdx, FuncIdx, GlobalIdx,
@@ -34,8 +30,8 @@ use crate::{prelude::*, types::*};
 // Decoder typically assumes memory_index 0 unless multi-memory is being
 // explicitly parsed.
 fn parse_mem_arg(bytes: &[u8]) -> Result<(CoreMemArg, usize)> {
-    let (align_exponent, s1) = read_leb_u32(bytes)?;
-    let (offset, s2) = read_leb_u32(&bytes[s1..])?;
+    let (align_exponent, s1) = read_leb128_u32(bytes, 0)?;
+    let (offset, s2) = read_leb128_u32(bytes, s1)?;
     Ok((
         CoreMemArg {
             align_exponent,
@@ -47,8 +43,8 @@ fn parse_mem_arg(bytes: &[u8]) -> Result<(CoreMemArg, usize)> {
 }
 
 fn parse_mem_arg_atomic(bytes: &[u8]) -> Result<(CoreMemArg, usize)> {
-    let (align_exponent, s1) = read_leb_u32(bytes)?;
-    let (offset, s2) = read_leb_u32(&bytes[s1..])?; // Atomic instructions have offset 0 according to spec, but it's encoded.
+    let (align_exponent, s1) = read_leb128_u32(bytes, 0)?;
+    let (offset, s2) = read_leb128_u32(bytes, s1)?; // Atomic instructions have offset 0 according to spec, but it's encoded.
     if offset != 0 {
         // This might be too strict; some tools might encode a zero offset.
         // For now, let's be flexible if it's zero, but the spec says reserved for
@@ -261,7 +257,7 @@ pub fn parse_instruction(bytes: &[u8]) -> Result<(CoreTypes::Instruction, usize)
     if bytes.is_empty() {
         return Err(Error::new(
             ErrorCategory::Parse,
-            codes::DECODE_UNEXPECTED_EOF,
+            codes::PARSE_ERROR,
             "Unexpected EOF while parsing instruction",
         ));
     }
@@ -323,7 +319,7 @@ pub fn parse_instruction(bytes: &[u8]) -> Result<(CoreTypes::Instruction, usize)
                 _ => {
                     return Err(Error::new(
                         ErrorCategory::Parse,
-                        codes::PARSE_INVALID_REF_TYPE,
+                        codes::INVALID_VALUE_TYPE,
                         format!("Invalid reftype byte: {:#02x}", val_type_byte),
                     ))
                 }
@@ -360,7 +356,8 @@ pub fn parse_instruction(bytes: &[u8]) -> Result<(CoreTypes::Instruction, usize)
         0x0C => CoreTypes::Instruction::Br(read_operand!(read_leb_u32)),
         0x0D => CoreTypes::Instruction::BrIf(read_operand!(read_leb_u32)),
         0x0E => {
-            let targets = read_operand!(|b| parse_vec(b, read_leb_u32));
+            let (targets, targets_len) = parse_vec(&bytes[current_offset..], read_leb_u32)?;
+            current_offset += targets_len;
             let default_target = read_operand!(read_leb_u32);
             CoreTypes::Instruction::BrTable(targets, default_target)
         }
@@ -382,10 +379,11 @@ pub fn parse_instruction(bytes: &[u8]) -> Result<(CoreTypes::Instruction, usize)
         0x1B => CoreTypes::Instruction::Select, // Untyped select
         0x1C => {
             // Select (Typed)
-            let types_vec = read_operand!(|b| parse_vec(b, |s| {
+            let (types_vec, types_len) = parse_vec(&bytes[current_offset..], |s| {
                 let (val_type_byte, len) = read_u8(s)?;
                 Ok((CoreValueType::from_binary(val_type_byte)?, len))
-            }));
+            })?;
+            current_offset += types_len;
             if types_vec.len() != 1 {
                 return Err(Error::new(
                     ErrorCategory::Parse,
@@ -670,7 +668,7 @@ pub fn parse_instruction(bytes: &[u8]) -> Result<(CoreTypes::Instruction, usize)
                 _ => {
                     return Err(Error::new(
                         ErrorCategory::Parse,
-                        codes::DECODE_UNKNOWN_OPCODE,
+                        codes::PARSE_ERROR,
                         format!("Unknown 0xFC sub-opcode: {}", sub_opcode),
                     ))
                 }
@@ -745,7 +743,7 @@ pub fn parse_instruction(bytes: &[u8]) -> Result<(CoreTypes::Instruction, usize)
                     if bytes.len() < current_offset + 16 {
                         return Err(Error::new(
                             ErrorCategory::Parse,
-                            codes::DECODE_UNEXPECTED_EOF,
+                            codes::PARSE_ERROR,
                             "EOF for V128Const",
                         ));
                     }
@@ -759,7 +757,7 @@ pub fn parse_instruction(bytes: &[u8]) -> Result<(CoreTypes::Instruction, usize)
                     if bytes.len() < current_offset + 16 {
                         return Err(Error::new(
                             ErrorCategory::Parse,
-                            codes::DECODE_UNEXPECTED_EOF,
+                            codes::PARSE_ERROR,
                             "EOF for I8x16Shuffle",
                         ));
                     }
@@ -780,7 +778,7 @@ pub fn parse_instruction(bytes: &[u8]) -> Result<(CoreTypes::Instruction, usize)
                 _ => {
                     return Err(Error::new(
                         ErrorCategory::Parse,
-                        codes::DECODE_UNKNOWN_OPCODE,
+                        codes::PARSE_ERROR,
                         format!("Unknown 0xFD SIMD sub-opcode: {}", sub_opcode),
                     ))
                 }
@@ -802,7 +800,7 @@ pub fn parse_instruction(bytes: &[u8]) -> Result<(CoreTypes::Instruction, usize)
                 _ => {
                     return Err(Error::new(
                         ErrorCategory::Parse,
-                        codes::DECODE_UNKNOWN_OPCODE,
+                        codes::PARSE_ERROR,
                         format!("Unknown 0xFE Atomic sub-opcode: {}", sub_opcode),
                     ))
                 }
@@ -818,7 +816,7 @@ pub fn parse_instruction(bytes: &[u8]) -> Result<(CoreTypes::Instruction, usize)
         _ => {
             return Err(Error::new(
                 ErrorCategory::Parse,
-                codes::DECODE_UNKNOWN_OPCODE,
+                codes::PARSE_ERROR,
                 format!("Unknown opcode: {:#02x}", opcode),
             ))
         }
@@ -842,7 +840,7 @@ pub fn parse_locals(bytes: &[u8]) -> Result<(Vec<CoreTypes::LocalEntry>, usize)>
         let (val_type_byte, s2) = read_u8(&bytes[total_size + s1..])?;
 
         let value_type = CoreValueType::from_binary(val_type_byte).map_err(|e| {
-            e.add_context(codes::DECODE_ERROR, "Failed to parse local entry value type")
+            e.add_context(codes::PARSE_ERROR, "Failed to parse local entry value type")
         })?;
 
         locals_vec.push(CoreTypes::LocalEntry { count: num_locals_of_type, value_type });
@@ -863,7 +861,7 @@ pub fn parse_locals(bytes: &[u8]) -> Result<(LocalsVec, usize)> {
         let (val_type_byte, s2) = read_u8(&bytes[total_size + s1..])?;
 
         let value_type = CoreValueType::from_binary(val_type_byte).map_err(|e| {
-            e.add_context(codes::DECODE_ERROR, "Failed to parse local entry value type")
+            e.add_context(codes::PARSE_ERROR, "Failed to parse local entry value type")
         })?;
 
         locals_vec

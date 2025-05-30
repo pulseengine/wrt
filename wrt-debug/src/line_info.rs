@@ -26,7 +26,7 @@ pub struct LineInfo {
 impl LineInfo {
     /// Format as "filename:line:column" for display
     /// Uses the provided file table to resolve the file index
-    pub fn format_location<'a>(&self, file_table: &'a crate::FileTable<'a>) -> LocationDisplay<'a> {
+    pub fn format_location<'a>(&'a self, file_table: &'a crate::FileTable<'a>) -> LocationDisplay<'a> {
         LocationDisplay { line_info: self, file_table }
     }
 }

@@ -11,18 +11,24 @@ pub mod platform;
 pub mod no_std;
 pub mod security;
 pub mod parser;
+pub mod memory;
+pub mod core;
+pub mod documentation;
 
 /// Run all integration tests
 pub fn run_all_integration_tests() -> TestResult {
     let mut runner = TestRunner::new("WRT Integration Tests");
     
     // Add all test suites
-    runner.add_test_suite("Component Model", component_model::run_tests)?;
-    runner.add_test_suite("Runtime", runtime::run_tests)?;
-    runner.add_test_suite("Platform", platform::run_tests)?;
-    runner.add_test_suite("No-std", no_std::run_tests)?;
-    runner.add_test_suite("Security", security::run_tests)?;
-    runner.add_test_suite("Parser", parser::run_tests)?;
+    runner.add_test_suite("Component Model", || component_model::run_tests())?;
+    runner.add_test_suite("Runtime", || runtime::run_tests())?;
+    runner.add_test_suite("Platform", || platform::run_tests())?;
+    runner.add_test_suite("No-std", || no_std::run_tests())?;
+    runner.add_test_suite("Security", || security::run_tests())?;
+    runner.add_test_suite("Parser", || parser::run_tests())?;
+    runner.add_test_suite("Memory", || memory::run_tests())?;
+    runner.add_test_suite("Core", || core::run_tests())?;
+    runner.add_test_suite("Documentation", || documentation::run_tests())?;
     
     runner.run_all()
 }
@@ -71,5 +77,23 @@ mod tests {
     fn parser_suite() {
         let result = parser::run_tests();
         assert!(result.is_success(), "Parser tests failed: {:?}", result);
+    }
+    
+    #[test]
+    fn memory_suite() {
+        let result = memory::run_tests();
+        assert!(result.is_success(), "Memory tests failed: {:?}", result);
+    }
+    
+    #[test]
+    fn core_suite() {
+        let result = core::run_tests();
+        assert!(result.is_success(), "Core tests failed: {:?}", result);
+    }
+    
+    #[test]
+    fn documentation_suite() {
+        let result = documentation::run_tests();
+        assert!(result.is_success(), "Documentation tests failed: {:?}", result);
     }
 }

@@ -1,16 +1,16 @@
 /// Basic stack trace support for debugging
 /// Provides the missing 3% for stack trace generation
-use wrt_foundation::{
-    bounded::{BoundedVec, MAX_DWARF_FILE_TABLE},
-    NoStdProvider,
-};
+
+/// Maximum number of stack frames to capture
+pub const MAX_STACK_FRAMES: usize = 256;
 
 /// A single frame in a stack trace
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct StackFrame<'a> {
     /// Program counter for this frame
     pub pc: u32,
     /// Function information (if available)
+    #[cfg(feature = "debug-info")]
     pub function: Option<&'a crate::FunctionInfo<'a>>,
     /// Line information (if available)
     pub line_info: Option<crate::LineInfo>,
@@ -18,36 +18,50 @@ pub struct StackFrame<'a> {
     pub depth: u16,
 }
 
-/// Stack trace builder
+/// Stack trace builder using fixed-size array for no_std compatibility
 pub struct StackTrace<'a> {
     /// Collection of stack frames
-    frames: BoundedVec<StackFrame<'a>, MAX_DWARF_FILE_TABLE, NoStdProvider>,
+    frames: [Option<StackFrame<'a>>; MAX_STACK_FRAMES],
+    /// Number of valid frames
+    frame_count: usize,
 }
 
 impl<'a> StackTrace<'a> {
     /// Create a new empty stack trace
     pub fn new() -> Self {
-        Self { frames: BoundedVec::new(NoStdProvider) }
+        Self { 
+            frames: [None; MAX_STACK_FRAMES],
+            frame_count: 0,
+        }
     }
 
     /// Add a frame to the stack trace
     pub fn push_frame(&mut self, frame: StackFrame<'a>) -> Result<(), ()> {
-        self.frames.push(frame).map_err(|_| ())
+        if self.frame_count >= MAX_STACK_FRAMES {
+            return Err(());
+        }
+        self.frames[self.frame_count] = Some(frame);
+        self.frame_count += 1;
+        Ok(())
     }
 
     /// Get the frames in the trace
-    pub fn frames(&self) -> &[StackFrame<'a>] {
-        self.frames.as_slice()
+    pub fn frames(&self) -> impl Iterator<Item = &StackFrame<'a>> {
+        self.frames[..self.frame_count].iter().filter_map(|f| f.as_ref())
     }
 
     /// Get the current frame (depth 0)
     pub fn current_frame(&self) -> Option<&StackFrame<'a>> {
-        self.frames.first()
+        if self.frame_count > 0 {
+            self.frames[0].as_ref()
+        } else {
+            None
+        }
     }
 
     /// Get the number of frames
     pub fn depth(&self) -> usize {
-        self.frames.len()
+        self.frame_count
     }
 
     /// Format the stack trace for display
@@ -59,7 +73,7 @@ impl<'a> StackTrace<'a> {
     where
         F: FnMut(&str) -> Result<(), core::fmt::Error>,
     {
-        for frame in self.frames.iter() {
+        for frame in self.frames() {
             // Frame number
             writer("#")?;
             let mut buf = [0u8; 5];
@@ -67,6 +81,7 @@ impl<'a> StackTrace<'a> {
             writer(" ")?;
 
             // Function name or address
+            #[cfg(feature = "debug-info")]
             if let Some(func) = frame.function {
                 if let Some(ref name) = func.name {
                     writer(name.as_str())?;
@@ -74,6 +89,12 @@ impl<'a> StackTrace<'a> {
                     writer("<unknown>")?;
                 }
             } else {
+                writer("0x")?;
+                let mut hex_buf = [0u8; 8];
+                writer(format_hex_u32(frame.pc, &mut hex_buf))?;
+            }
+            #[cfg(not(feature = "debug-info"))]
+            {
                 writer("0x")?;
                 let mut hex_buf = [0u8; 8];
                 writer(format_hex_u32(frame.pc, &mut hex_buf))?;
@@ -116,7 +137,13 @@ impl<'a> StackTraceBuilder<'a> {
         let line_info = self.debug_info.find_line_info(pc).ok().flatten();
 
         // Add current frame
-        let frame = StackFrame { pc, function, line_info, depth: 0 };
+        let frame = StackFrame { 
+            pc, 
+            #[cfg(feature = "debug-info")]
+            function, 
+            line_info, 
+            depth: 0 
+        };
 
         trace.push_frame(frame)?;
 
@@ -135,7 +162,13 @@ impl<'a> StackTraceBuilder<'a> {
         let mut trace = StackTrace::new();
 
         for (i, &pc) in pcs.iter().enumerate() {
-            let frame = StackFrame { pc, function: None, line_info: None, depth: i as u16 };
+            let frame = StackFrame { 
+                pc, 
+                #[cfg(feature = "debug-info")]
+                function: None, 
+                line_info: None, 
+                depth: i as u16 
+            };
             trace.push_frame(frame)?;
         }
 

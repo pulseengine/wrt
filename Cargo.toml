@@ -18,11 +18,11 @@ members = [
     "wrt-runtime",
     "wrt-instructions",
     "wrt-intercept",
-    "test-control-instructions",  # TODO: Remove after migration
+    # "test-control-instructions",  # TODO: Remove after migration
     "wrt-verification-tool",
     "wrt-test-registry",
     "wrt-platform",
-    "wrt-tests",
+    "wrt-tests/integration",
 ]
 resolver = "2"  # Use edition 2021 resolver
 
@@ -88,3 +88,50 @@ codegen-units = 1 # Maximize optimization opportunities
 [profile.bench]
 # Inherits from release profile by default
 # panic setting is not specified - let Rust handle this appropriately for benchmarks
+
+# Workspace-level Kani verification configuration
+[workspace.metadata.kani]
+# Global Kani settings for safety-critical verification
+default-unwind = 5
+stubbing-enabled = true
+concrete-playbook = "off"
+output-format = "terse"
+
+# Memory safety verification suite
+[[workspace.metadata.kani.package]]
+name = "wrt-foundation"
+verification-enabled = true
+harnesses = [
+    "verify_bounded_collections_memory_safety",
+    "verify_safe_memory_bounds", 
+    "verify_atomic_memory_operations"
+]
+
+# Concurrency safety verification suite  
+[[workspace.metadata.kani.package]]
+name = "wrt-sync"
+verification-enabled = true
+harnesses = [
+    "verify_mutex_no_data_races",
+    "verify_rwlock_concurrent_access",
+    "verify_atomic_operations_safety"
+]
+
+# Type safety verification suite
+[[workspace.metadata.kani.package]]
+name = "wrt-component"
+verification-enabled = true
+harnesses = [
+    "verify_component_type_safety",
+    "verify_namespace_operations",
+    "verify_import_export_consistency"
+]
+
+# Error handling verification
+[[workspace.metadata.kani.package]]
+name = "wrt-error"
+verification-enabled = true
+harnesses = [
+    "verify_error_creation_safety",
+    "verify_error_propagation"
+]

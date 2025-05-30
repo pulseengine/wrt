@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: MIT
 
 // Re-export the main component types from wrt-format for convenience
+#[cfg(any(feature = "alloc", feature = "std"))]
 pub use wrt_format::component::{
     Component, ComponentType, CoreExternType, CoreInstance, CoreType, Export, ExternType, Import,
     Instance, Start, ValType,

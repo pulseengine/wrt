@@ -32,6 +32,10 @@ pathdiff = "0.2"
 # For documentation HTTP server
 tiny_http = "0.12"
 
+# For Netcup SFTP deployment (alternative approach with ssh2)
+ssh2 = "0.9"
+base64 = "0.22"
+
 # Check for the latest compatible version
 toml = "0.8.22"
 syn = { version = "2.0.34", features = ["parsing", "full", "extra-traits"] }

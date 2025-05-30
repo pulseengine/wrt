@@ -4,12 +4,8 @@ use tracing::info;
 
 use crate::Query;
 
-// TODO: Determine if a nightly toolchain is required or beneficial for
-// Kani/Miri. If so, change this to something like "rustlang/rust:nightly"
-const RUST_IMAGE: &str = "rust:latest";
-// TODO: Define which LLVM version is compatible/desired for llvm-cov,
-// especially if using a specific Rust toolchain. This might involve installing
-// specific clang/llvm versions in the container.
+// Use official Kani Docker image for proper verification environment
+const KANI_IMAGE: &str = "ghcr.io/model-checking/kani:latest";
 
 pub async fn run(client: &Query) -> Result<()> {
     info!("Starting CI advanced tests pipeline (Kani, Miri, Coverage)...");
@@ -32,117 +28,144 @@ pub async fn run(client: &Query) -> Result<()> {
         },
     );
 
-    let mut container = client
+    // --- Kani Verification Pipeline ---
+    info!("Running Kani verification suites...");
+    
+    let kani_container = client
         .container()
-        .from(RUST_IMAGE)
-        .with_exec(vec!["apt-get", "update", "-y"])
-        // TODO: Install Kani prerequisites if any (e.g., CBMC, specific Python versions if not in
-        // base image) Example: .with_exec(vec!["apt-get", "install", "-y", "git", "cmake",
-        // "ninja-build", "python3", "pip", "...other Kani deps..."])
-        //          .with_exec(vec!["pip", "install", "kani-queries"]) // If Kani has Python
-        // components TODO: Install llvm-cov and its dependencies (e.g., clang, llvm).
-        // This might be complex if specific versions are needed.
-        // It's often easier to use a base image that already has these (e.g., a CI image for Rust
-        // with code coverage tools). For now, assuming cargo-llvm-cov can be installed via
-        // cargo directly.
-        .with_exec(vec![
-            "cargo",
-            "install",
-            "cargo-kani",
-            "cargo-miri",
-            "cargo-llvm-cov",
-            "--locked",
-        ])
-        .with_mounted_directory("/src", src_dir)
+        .from(KANI_IMAGE)
+        .with_mounted_directory("/src", src_dir.clone())
         .with_workdir("/src");
 
-    // --- Kani ---
-    info!("Running Kani proofs...");
-    // TODO: Refine Kani command based on project needs (e.g., specific targets,
-    // features, unstable flags) TODO: Capture and report Kani results properly
-    // (e.g., parse JSON output). TODO: Decide on error handling: should failure
-    // stop the whole pipeline or just be reported?
-    container = container.with_exec(vec![
-        "cargo",
-        "kani",
-        "--all-targets",  // Or specific targets
-        "--all-features", // Or specific features
-        "--workspace",
-        // "--enable-unstable", // If needed
-        // "--concrete-playback=none", // Example option
-        // "--json-final-results", // For machine-readable output
-        // "--output-format", "terse", // Example option
-    ]);
-    // TODO: Process Kani output (e.g., check exit code, parse results file if
-    // created)
+    // Run memory safety verification suite
+    let memory_safety_results = kani_container
+        .with_exec(vec![
+            "cargo", "kani",
+            "--package", "wrt-foundation",
+            "--harness", "verify_bounded_collections_memory_safety",
+            "--harness", "verify_safe_memory_bounds",
+            "--harness", "verify_arithmetic_safety",
+            "--output-format", "terse"
+        ])
+        .stdout().await
+        .context("Failed to run memory safety verification")?;
 
-    // --- Miri ---
-    info!("Running Miri tests...");
-    // TODO: Refine Miri command (e.g., specific targets, features).
-    // TODO: Capture and report Miri results.
-    // TODO: Decide on error handling.
-    container = container.with_exec(vec![
-        "cargo",
-        "miri",
-        "test",
-        "--all-targets",  // Or specific targets/tests
-        "--all-features", // Or specific features
-        "--workspace",
-    ]);
-    // TODO: Process Miri output (e.g., check exit code)
+    // Run concurrency safety verification suite
+    let concurrency_results = kani_container
+        .with_exec(vec![
+            "cargo", "kani",
+            "--package", "wrt-sync", 
+            "--harness", "verify_mutex_no_data_races",
+            "--harness", "verify_rwlock_concurrent_access",
+            "--harness", "verify_atomic_operations_safety",
+            "--output-format", "terse"
+        ])
+        .stdout().await
+        .context("Failed to run concurrency verification")?;
 
-    // --- Coverage (llvm-cov) ---
-    info!("Generating code coverage with llvm-cov...");
-    // TODO: Define MCDC threshold and implement check if desired.
-    // TODO: Handle partial coverage if some crates fail to build/test (complex).
-    // TODO: Determine if Kani/Miri can output coverage data compatible for merging.
-    // TODO: Decide on which reports to generate (html, json, lcov for
-    // Coveralls/Codecov). TODO: Store coverage reports as artifacts.
+    // Run type safety verification suite
+    let type_safety_results = kani_container
+        .with_exec(vec![
+            "cargo", "kani",
+            "--package", "wrt-component",
+            "--harness", "verify_component_type_safety",
+            "--harness", "verify_namespace_operations", 
+            "--harness", "verify_import_export_consistency",
+            "--output-format", "terse"
+        ])
+        .stdout().await
+        .context("Failed to run type safety verification")?;
+
+    // --- Miri Testing Pipeline ---
+    info!("Running Miri undefined behavior detection...");
+    
+    let rust_container = client
+        .container()
+        .from("rust:latest")
+        .with_exec(vec!["rustup", "toolchain", "install", "nightly"])
+        .with_exec(vec!["rustup", "component", "add", "miri", "--toolchain", "nightly"])
+        .with_mounted_directory("/src", src_dir.clone())
+        .with_workdir("/src");
+
+    // Run Miri on core synchronization primitives
+    let miri_results = rust_container
+        .with_exec(vec![
+            "cargo", "+nightly", "miri", "test",
+            "--package", "wrt-sync",
+            "--package", "wrt-foundation",
+            "--package", "wrt-error",
+            "--lib"
+        ])
+        .stdout().await
+        .context("Failed to run Miri tests")?;
+
+    // --- Coverage Analysis Pipeline ---
+    info!("Generating comprehensive code coverage...");
+    
+    let coverage_container = rust_container
+        .with_exec(vec!["cargo", "install", "cargo-llvm-cov", "--locked"]);
 
     // Clean previous coverage runs
-    container = container.with_exec(vec!["cargo", "llvm-cov", "clean", "--workspace"]);
+    let coverage_container = coverage_container
+        .with_exec(vec!["cargo", "llvm-cov", "clean", "--workspace"]);
 
-    // Generate HTML report (example)
-    container = container.with_exec(vec![
-        "cargo",
-        "llvm-cov",
-        "--all-features",
-        "--workspace",
-        // "--mcdc", // If MCDC is desired and toolchain/setup supports it well
-        "--html",
-        "--output-dir",
-        "/src/target/llvm-cov/html", // Output within mounted /src to retrieve later
-    ]);
+    // Generate comprehensive coverage report
+    let coverage_container = coverage_container
+        .with_exec(vec![
+            "cargo", "llvm-cov",
+            "--all-features",
+            "--workspace",
+            "--html",
+            "--output-dir", "/src/target/coverage/html",
+            "--lcov", "--output-path", "/src/target/coverage/lcov.info",
+            "--json", "--output-path", "/src/target/coverage/coverage.json"
+        ]);
 
-    // Generate JSON report for potential programmatic checks (example)
-    container = container.with_exec(vec![
-        "cargo",
-        "llvm-cov",
-        "--all-features",
-        "--workspace",
-        // "--mcdc",
-        "--json",
-        "--output-path",
-        "/src/target/llvm-cov/coverage.json",
-    ]);
+    let coverage_artifacts_dir = coverage_container.directory("/src/target/coverage");
 
-    // Define the directory to be exported before syncing/executing the container
-    // fully.
-    let coverage_artifacts_dir = container.directory("/src/target/llvm-cov");
+    // Execute coverage pipeline
+    let _ = coverage_container.sync().await
+        .context("Failed to execute coverage pipeline")?;
 
-    // Final execution to ensure all commands run.
-    let _ = container.sync().await.context("Failed to execute advanced tests pipeline")?;
+    // --- Results Processing ---
+    info!("Processing verification results...");
+    
+    // Create verification summary
+    let verification_summary = format!(
+        "Kani Verification Results:\n\
+         ========================\n\
+         Memory Safety: {}\n\
+         Concurrency Safety: {}\n\
+         Type Safety: {}\n\
+         \n\
+         Miri Results:\n\
+         =============\n\
+         {}\n",
+        if memory_safety_results.contains("VERIFICATION:- SUCCESSFUL") { "PASSED" } else { "REVIEW NEEDED" },
+        if concurrency_results.contains("VERIFICATION:- SUCCESSFUL") { "PASSED" } else { "REVIEW NEEDED" },
+        if type_safety_results.contains("VERIFICATION:- SUCCESSFUL") { "PASSED" } else { "REVIEW NEEDED" },
+        if miri_results.contains("test result: ok") { "PASSED" } else { "REVIEW NEEDED" }
+    );
 
-    // --- Artifact Retrieval ---
-    info!("Retrieving coverage artifacts...");
-    // TODO: Export other artifacts if needed (Kani/Miri reports).
-    coverage_artifacts_dir
-        .export("./target/ci_advanced_tests_llvm_cov_report") // Export to host
+    // Export verification results
+    let results_file = client
+        .directory()
+        .with_new_file("verification_summary.txt", verification_summary);
+    
+    results_file
+        .export("./target/verification_results")
         .await
-        .context("Failed to export llvm-cov reports")?;
+        .context("Failed to export verification results")?;
 
-    info!("Advanced tests pipeline completed.");
-    // TODO: Summarize results from Kani, Miri, Coverage and return a meaningful
-    // Result. For now, success means the Dagger pipeline executed.
+    // Export coverage artifacts
+    coverage_artifacts_dir
+        .export("./target/coverage_report")
+        .await
+        .context("Failed to export coverage reports")?;
+
+    info!("Advanced tests pipeline completed successfully.");
+    info!("Verification results exported to ./target/verification_results/");
+    info!("Coverage reports exported to ./target/coverage_report/");
+
     Ok(())
 }

@@ -9,7 +9,6 @@
 //! provides debug information for components.
 
 use wrt_format::binary;
-use wrt_foundation::ToString;
 
 use crate::{prelude::*, Error, Result};
 

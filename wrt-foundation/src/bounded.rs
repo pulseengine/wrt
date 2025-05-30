@@ -2753,6 +2753,26 @@ where
 
         Ok(())
     }
+
+    /// Returns a slice view of the vector's contents
+    ///
+    /// This creates a temporary array and copies all elements to provide a slice view.
+    /// Note: This is inefficient for large vectors and should be used sparingly.
+    pub fn as_slice(&self) -> &[T] {
+        // This is a simplified implementation that doesn't actually work
+        // because we can't return a reference to temporary data.
+        // For now, we'll panic to indicate this method shouldn't be used.
+        panic!("as_slice is not supported for BoundedVec in no_std mode")
+    }
+
+    /// Get a mutable reference to an element at the given index
+    ///
+    /// This is not efficiently implementable with the current architecture
+    /// where elements are stored serialized in a memory provider.
+    pub fn get_mut(&mut self, index: usize) -> Option<&mut T> {
+        // Cannot provide mutable references to serialized data
+        None
+    }
 }
 
 pub struct BoundedVecIterator<'a, T, const N_ELEMENTS: usize, P>

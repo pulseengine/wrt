@@ -499,9 +499,20 @@ impl wrt_foundation::traits::ToBytes for CfiValidationRequirement {
             Self::ControlFlowTargetCheck { valid_targets } => {
                 writer.write_u8(2u8)?;
                 // Serialize Vec<u32> manually
-                writer.write_u32_le(valid_targets.len() as u32)?;
-                for target in valid_targets.iter() {
-                    writer.write_u32_le(target)?;
+                #[cfg(feature = "alloc")]
+                {
+                    writer.write_u32_le(valid_targets.len() as u32)?;
+                    for target in valid_targets.iter() {
+                        writer.write_u32_le(*target)?;
+                    }
+                }
+                #[cfg(not(feature = "alloc"))]
+                {
+                    writer.write_u32_le(valid_targets.len() as u32)?;
+                    for i in 0..valid_targets.len() {
+                        let target = valid_targets.get(i)?;
+                        writer.write_u32_le(target)?;
+                    }
                 }
                 Ok(())
             }
@@ -534,13 +545,20 @@ impl wrt_foundation::traits::FromBytes for CfiValidationRequirement {
             }
             1 => Ok(Self::ShadowStackCheck),
             2 => {
-                // Deserialize Vec<u32> manually  
+                // Deserialize CfiTargetVec manually  
                 let len = reader.read_u32_le()? as usize;
+                #[cfg(feature = "alloc")]
+                let mut valid_targets = Vec::with_capacity(len);
+                #[cfg(not(feature = "alloc"))]
                 let mut valid_targets = BoundedVec::new(NoStdProvider::default())?;
+                
                 for _ in 0..len {
+                    #[cfg(feature = "alloc")]
                     valid_targets.push(reader.read_u32_le()?);
+                    #[cfg(not(feature = "alloc"))]
+                    valid_targets.push(reader.read_u32_le()?)
+                        .map_err(|_| wrt_error::Error::validation_error("Failed to push to bounded vec"))?;
                 }
-                let valid_targets = valid_targets;
                 Ok(Self::ControlFlowTargetCheck { valid_targets })
             }
             3 => Ok(Self::CallingConventionCheck),
@@ -898,7 +916,7 @@ impl CfiControlFlowOps for DefaultCfiControlFlowOps {
             };
 
         // Create validation requirements
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "alloc")]
         let validation_requirements = vec![
             CfiValidationRequirement::TypeSignatureCheck {
                 expected_type_index: type_idx,
@@ -919,7 +937,7 @@ impl CfiControlFlowOps for DefaultCfiControlFlowOps {
             },
         ];
         
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(feature = "alloc"))]
         let validation_requirements = {
             // For no_std environments, create minimal validation
             use crate::types::CfiRequirementVec;
@@ -1130,7 +1148,12 @@ impl DefaultCfiControlFlowOps {
     }
 
     fn validate_shadow_stack_return(&self, context: &mut CfiExecutionContext) -> Result<()> {
-        if let Ok(Some(shadow_entry)) = context.shadow_stack.pop() {
+        #[cfg(feature = "alloc")]
+        let shadow_entry_opt = context.shadow_stack.pop();
+        #[cfg(not(feature = "alloc"))]
+        let shadow_entry_opt = context.shadow_stack.pop().ok().flatten();
+        
+        if let Some(shadow_entry) = shadow_entry_opt {
             let expected_return = (context.current_function, context.current_instruction);
             if shadow_entry.return_address != expected_return {
                 context.violation_count += 1;

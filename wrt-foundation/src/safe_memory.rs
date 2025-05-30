@@ -1660,7 +1660,10 @@ impl<P: Provider> SafeMemoryHandler<P> {
 }
 
 // Re-export SafeStack as an alias for BoundedStack
-// Re-export NoStdMemoryProvider as an alias for NoStdProvider
+// Re-export memory providers with consistent naming
 pub use NoStdProvider as NoStdMemoryProvider;
+#[cfg(feature = "std")]
+pub use StdProvider as StdMemoryProvider;
+pub use Provider as MemoryProvider;
 
 pub use crate::bounded::BoundedStack as SafeStack;

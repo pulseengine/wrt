@@ -8,16 +8,21 @@
 //! This module provides type definitions for WebAssembly Component Model
 //! sections and common structures used in component binary parsing.
 
-use wrt_foundation::bounded::{BoundedString, MAX_WASM_NAME_LENGTH};
+use wrt_foundation::{
+    bounded::{BoundedString, MAX_WASM_NAME_LENGTH},
+    traits::{Checksummable, ToBytes, FromBytes, WriteStream, ReadStream},
+    verification::Checksum,
+    MemoryProvider, WrtResult, NoStdProvider,
+};
 
 /// Represents a Component export for no_alloc decoding
 ///
 /// A simplified version of the wrt-foundation component::Export for
 /// use in memory-constrained environments.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ComponentExport {
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct ComponentExport<P: MemoryProvider + Clone + PartialEq + Eq + Default = NoStdProvider<1024>> {
     /// Export name
-    pub name: BoundedString<MAX_WASM_NAME_LENGTH>,
+    pub name: BoundedString<MAX_WASM_NAME_LENGTH, P>,
     /// Export type index
     pub type_index: u32,
     /// Export kind
@@ -28,10 +33,10 @@ pub struct ComponentExport {
 ///
 /// A simplified version of the wrt-foundation component::Import for
 /// use in memory-constrained environments.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ComponentImport {
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct ComponentImport<P: MemoryProvider + Clone + PartialEq + Eq + Default = NoStdProvider<1024>> {
     /// Import name
-    pub name: BoundedString<MAX_WASM_NAME_LENGTH>,
+    pub name: BoundedString<MAX_WASM_NAME_LENGTH, P>,
     /// Import type index
     pub type_index: u32,
 }
@@ -49,12 +54,6 @@ pub struct ComponentSection {
     pub offset: usize,
 }
 
-/// Simplified Component type for no_alloc decoding
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ComponentType {
-    /// The type form byte
-    pub form: u8,
-}
 
 /// Component value types
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -79,8 +78,206 @@ impl From<u8> for ComponentValueType {
 }
 
 /// Component instance for no_alloc decoding
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ComponentInstance {
     /// Instance type
     pub type_index: u32,
+}
+
+/// Simplified Component type for no_alloc decoding
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct ComponentType {
+    /// The type form byte
+    pub form: u8,
+}
+
+// Implement required traits for ComponentExport
+impl<P: MemoryProvider + Clone + PartialEq + Eq + Default> Checksummable for ComponentExport<P> {
+    fn update_checksum(&self, checksum: &mut Checksum) {
+        self.name.update_checksum(checksum);
+        self.type_index.update_checksum(checksum);
+        self.kind.update_checksum(checksum);
+    }
+}
+
+impl<P: MemoryProvider + Clone + PartialEq + Eq + Default> ToBytes for ComponentExport<P> {
+    fn to_bytes_with_provider<'a, PStream: MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        provider: &PStream,
+    ) -> WrtResult<()> {
+        self.name.to_bytes_with_provider(writer, provider)?;
+        self.type_index.to_bytes_with_provider(writer, provider)?;
+        self.kind.to_bytes_with_provider(writer, provider)?;
+        Ok(())
+    }
+}
+
+impl<P: MemoryProvider + Clone + PartialEq + Eq + Default> FromBytes for ComponentExport<P> {
+    fn from_bytes_with_provider<'a, PStream: MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        provider: &PStream,
+    ) -> WrtResult<Self> {
+        Ok(Self {
+            name: BoundedString::from_bytes_with_provider(reader, provider)?,
+            type_index: u32::from_bytes_with_provider(reader, provider)?,
+            kind: u8::from_bytes_with_provider(reader, provider)?,
+        })
+    }
+}
+
+// Implement required traits for ComponentImport
+impl<P: MemoryProvider + Clone + PartialEq + Eq + Default> Checksummable for ComponentImport<P> {
+    fn update_checksum(&self, checksum: &mut Checksum) {
+        self.name.update_checksum(checksum);
+        self.type_index.update_checksum(checksum);
+    }
+}
+
+impl<P: MemoryProvider + Clone + PartialEq + Eq + Default> ToBytes for ComponentImport<P> {
+    fn to_bytes_with_provider<'a, PStream: MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        provider: &PStream,
+    ) -> WrtResult<()> {
+        self.name.to_bytes_with_provider(writer, provider)?;
+        self.type_index.to_bytes_with_provider(writer, provider)?;
+        Ok(())
+    }
+}
+
+impl<P: MemoryProvider + Clone + PartialEq + Eq + Default> FromBytes for ComponentImport<P> {
+    fn from_bytes_with_provider<'a, PStream: MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        provider: &PStream,
+    ) -> WrtResult<Self> {
+        Ok(Self {
+            name: BoundedString::from_bytes_with_provider(reader, provider)?,
+            type_index: u32::from_bytes_with_provider(reader, provider)?,
+        })
+    }
+}
+
+// Implement required traits for ComponentSection
+impl Checksummable for ComponentSection {
+    fn update_checksum(&self, checksum: &mut Checksum) {
+        self.id.update_checksum(checksum);
+        self.size.update_checksum(checksum);
+        (self.offset as u32).update_checksum(checksum);
+    }
+}
+
+impl ToBytes for ComponentSection {
+    fn to_bytes_with_provider<'a, PStream: MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        provider: &PStream,
+    ) -> WrtResult<()> {
+        self.id.to_bytes_with_provider(writer, provider)?;
+        self.size.to_bytes_with_provider(writer, provider)?;
+        (self.offset as u32).to_bytes_with_provider(writer, provider)?;
+        Ok(())
+    }
+}
+
+impl FromBytes for ComponentSection {
+    fn from_bytes_with_provider<'a, PStream: MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        provider: &PStream,
+    ) -> WrtResult<Self> {
+        Ok(Self {
+            id: u8::from_bytes_with_provider(reader, provider)?,
+            size: u32::from_bytes_with_provider(reader, provider)?,
+            offset: u32::from_bytes_with_provider(reader, provider)? as usize,
+        })
+    }
+}
+
+// Implement required traits for ComponentType
+impl Checksummable for ComponentType {
+    fn update_checksum(&self, checksum: &mut Checksum) {
+        self.form.update_checksum(checksum);
+    }
+}
+
+impl ToBytes for ComponentType {
+    fn to_bytes_with_provider<'a, PStream: MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        provider: &PStream,
+    ) -> WrtResult<()> {
+        self.form.to_bytes_with_provider(writer, provider)
+    }
+}
+
+impl FromBytes for ComponentType {
+    fn from_bytes_with_provider<'a, PStream: MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        provider: &PStream,
+    ) -> WrtResult<Self> {
+        Ok(Self {
+            form: u8::from_bytes_with_provider(reader, provider)?,
+        })
+    }
+}
+
+// Implement required traits for ComponentInstance
+impl Checksummable for ComponentInstance {
+    fn update_checksum(&self, checksum: &mut Checksum) {
+        self.type_index.update_checksum(checksum);
+    }
+}
+
+impl ToBytes for ComponentInstance {
+    fn to_bytes_with_provider<'a, PStream: MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        provider: &PStream,
+    ) -> WrtResult<()> {
+        self.type_index.to_bytes_with_provider(writer, provider)
+    }
+}
+
+impl FromBytes for ComponentInstance {
+    fn from_bytes_with_provider<'a, PStream: MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        provider: &PStream,
+    ) -> WrtResult<Self> {
+        Ok(Self {
+            type_index: u32::from_bytes_with_provider(reader, provider)?,
+        })
+    }
+}
+
+// Implement required traits for ComponentValueType
+impl Default for ComponentValueType {
+    fn default() -> Self {
+        Self::Primitive
+    }
+}
+
+impl Checksummable for ComponentValueType {
+    fn update_checksum(&self, checksum: &mut Checksum) {
+        (*self as u8).update_checksum(checksum);
+    }
+}
+
+impl ToBytes for ComponentValueType {
+    fn to_bytes_with_provider<'a, PStream: MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        provider: &PStream,
+    ) -> WrtResult<()> {
+        (*self as u8).to_bytes_with_provider(writer, provider)
+    }
+}
+
+impl FromBytes for ComponentValueType {
+    fn from_bytes_with_provider<'a, PStream: MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        provider: &PStream,
+    ) -> WrtResult<Self> {
+        let byte = u8::from_bytes_with_provider(reader, provider)?;
+        Ok(Self::from(byte))
+    }
 }

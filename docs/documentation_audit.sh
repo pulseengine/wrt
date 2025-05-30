@@ -191,4 +191,4 @@ echo "3. Improve crate-level documentation in lib.rs files"
 echo "4. Add usage examples to all public APIs"
 echo -e "5. Run clippy with ${GREEN}cargo clippy --all-targets --all-features -- -W clippy::missing_docs_in_private_items${NC}"
 
-echo -e "\nSee docs/crate_documentation_template.md for documentation standards and templates" 
+echo -e "\nSee templates/crate_template/README.md.template for documentation standards and templates" 

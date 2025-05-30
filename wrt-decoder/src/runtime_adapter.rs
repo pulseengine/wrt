@@ -17,8 +17,6 @@ use wrt_error::{codes, Error, ErrorCategory, Result};
 // These are already wrt_foundation::types due to the `use` below
 use wrt_foundation::types::{
     CustomSection as WrtCustomSection,   // Alias for clarity
-    DataSegment as WrtDataSegment,       // Alias for clarity
-    ElementSegment as WrtElementSegment, // Alias for clarity
     Export as WrtExport,                 // Alias for clarity
     FuncType,                            // Already wrt_foundation::types::FuncType
     GlobalType as WrtGlobalType,         // Alias for clarity
@@ -27,10 +25,17 @@ use wrt_foundation::types::{
     TableType,                           // Already wrt_foundation::types::TableType
 };
 
+// Import segment types from wrt-format
+use wrt_format::{
+    DataSegment as WrtDataSegment,
+    ElementSegment as WrtElementSegment,
+};
+
 // use alloc::string::String; // Should come from prelude
 // use alloc::vec::Vec; // Should come from prelude
 // use alloc::sync::Arc; // Should come from prelude
-use crate::module::{CodeSection, Module as DecoderModule};
+use crate::module::Module as DecoderModule;
+// TODO: CodeSection needs to be defined or imported properly
 use crate::prelude::*; // Ensure prelude is used
 
 /// Convert a decoder module to a runtime module structure

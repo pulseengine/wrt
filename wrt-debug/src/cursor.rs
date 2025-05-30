@@ -172,4 +172,14 @@ impl<'a> DwarfCursor<'a> {
         }
         Ok(self.data[self.pos])
     }
+    
+    /// Get remaining data as a slice
+    pub fn remaining_slice(&self) -> &'a [u8] {
+        &self.data[self.pos..]
+    }
+    
+    /// Advance the cursor position
+    pub fn advance(&mut self, count: usize) -> Result<()> {
+        self.skip(count)
+    }
 }

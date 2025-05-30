@@ -2,7 +2,7 @@
 Build System
 ============
 
-This section documents the WRT build system, including the migration from Justfile to Bazel and xtasks.
+This section documents the WRT build system and xtask automation.
 
 .. contents:: Table of Contents
    :local:
@@ -15,8 +15,7 @@ WRT uses a hybrid build system combining:
 
 1. **Cargo**: Primary Rust build tool for compilation and testing
 2. **xtasks**: Rust-based task runner for complex build operations
-3. **Bazel** (planned): For advanced build orchestration and caching
-4. **Justfile** (legacy): Being phased out in favor of xtasks
+3. **Justfile** (legacy): Being phased out in favor of xtasks
 
 Current Build System (xtasks)
 -----------------------------
@@ -90,44 +89,6 @@ Most Justfile commands have been migrated to xtasks:
 - ✅ ``just test`` → ``cargo test`` or ``cargo xtask test-runner``
 - ✅ ``just fmt`` → ``cargo fmt`` or ``cargo xtask fmt-check``
 - ✅ ``just ci-*`` → ``cargo xtask ci-*``
-
-Planned Bazel Integration
--------------------------
-
-Benefits
-~~~~~~~~
-
-1. **Incremental Builds**: Fine-grained caching for faster rebuilds
-2. **Reproducible Builds**: Hermetic build environment
-3. **Remote Caching**: Share build artifacts across team
-4. **Multi-language Support**: Build C/C++ dependencies alongside Rust
-
-Migration Plan
-~~~~~~~~~~~~~~
-
-**Phase 1: Analysis**
-
-- Identify build dependencies and relationships
-- Map Cargo workspace to Bazel targets
-- Design BUILD file structure
-
-**Phase 2: Implementation**
-
-- Create WORKSPACE file with Rust rules
-- Generate BUILD files for each crate
-- Implement custom build rules for WRT-specific needs
-
-**Phase 3: Integration**
-
-- Parallel builds with Cargo and Bazel
-- Migrate CI/CD to use Bazel
-- Performance comparison and optimization
-
-**Phase 4: Deprecation**
-
-- Remove Justfile completely
-- Update all documentation
-- Train team on Bazel usage
 
 Build Configuration
 -------------------
@@ -334,8 +295,8 @@ Common Issues
 Future Improvements
 -------------------
 
-1. **Complete Bazel migration** for improved build performance
-2. **Distributed builds** using remote execution
-3. **Build metrics** and performance tracking
-4. **Automated dependency updates** with security scanning
-5. **Custom lint rules** for WRT-specific patterns
+1. **Enhanced xtask capabilities** for improved build performance
+2. **Build metrics** and performance tracking
+3. **Automated dependency updates** with security scanning
+4. **Custom lint rules** for WRT-specific patterns
+5. **Distributed testing** across multiple platforms

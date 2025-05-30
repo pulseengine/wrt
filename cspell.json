@@ -31,7 +31,6 @@
     ".git/**",
     "*.lock",
     "Cargo.lock",
-    "bazel-*/**",
     ".zephyrproject/**",
     ".zephyr-venv/**",
     "external/**",
