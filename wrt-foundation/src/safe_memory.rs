@@ -1349,11 +1349,8 @@ impl<const N: usize> Provider for NoStdProvider<N> {
         );
         debug_assert!(
             offset.checked_add(len).map_or(false, |end| end <= N),
-            "NoStdProvider::borrow_slice: offset+len must be <= N (capacity). Offset: {}, Len: \
-             {}, Capacity: {}",
-            offset,
-            len,
-            N
+            "NoStdProvider::borrow_slice: offset+len must be <= N (capacity). Offset: {offset}, Len: \
+             {len}, Capacity: {N}"
         );
         Slice::with_verification_level(&self.data[offset..offset + len], self.verification_level)
     }

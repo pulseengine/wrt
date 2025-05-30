@@ -148,20 +148,20 @@ pub type LocalNamesVec = BoundedVec<
 
 // Producer section types
 #[cfg(feature = "alloc")]
-pub type ProducerFieldVec = Vec<crate::producers_section::ProducerField>;
+pub type ProducerFieldVec = Vec<crate::producers_section::ProducerInfo>;
 #[cfg(not(feature = "alloc"))]
 pub type ProducerFieldVec = BoundedVec<
-    crate::producers_section::ProducerField,
+    crate::producers_section::ProducerInfo,
     MAX_PRODUCER_FIELDS,
     NoStdProvider<{ MAX_PRODUCER_FIELDS * 512 }>,
 >;
 
 // CFI metadata types
 #[cfg(feature = "alloc")]
-pub type CfiFeatureVec = Vec<crate::cfi_metadata::CfiFeature>;
+pub type CfiFeatureVec = Vec<crate::cfi_metadata::ValidationRequirement>;
 #[cfg(not(feature = "alloc"))]
 pub type CfiFeatureVec = BoundedVec<
-    crate::cfi_metadata::CfiFeature,
+    crate::cfi_metadata::ValidationRequirement,
     MAX_CFI_FEATURES,
     NoStdProvider<{ MAX_CFI_FEATURES * 32 }>,
 >;

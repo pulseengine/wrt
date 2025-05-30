@@ -51,6 +51,13 @@ extern crate std;
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 extern crate alloc;
 
+// Panic handler for no_std builds
+#[cfg(not(feature = "std"))]
+#[panic_handler]
+fn panic(_info: &core::panic::PanicInfo) -> ! {
+    loop {}
+}
+
 // Module exports
 #[cfg(any(feature = "alloc", feature = "std"))]
 pub mod component;
@@ -118,9 +125,7 @@ pub use decoder_no_alloc::{
     verify_wasm_header, SectionId, SectionInfo, ValidatorType, WasmModuleHeader, MAX_MODULE_SIZE,
 };
 // Re-export important module types and functions
-pub use module::{
-    decode_module_with_binary as decode_module, decode_module_with_binary, Module,
-};
+pub use module::{decode_module_with_binary as decode_module, decode_module_with_binary, Module};
 
 // Re-export encode_module only with alloc
 #[cfg(feature = "alloc")]
@@ -130,17 +135,11 @@ pub use parser::{Parser, Payload};
 // Re-export runtime adapter
 pub use runtime_adapter::{convert_to_runtime_module, RuntimeModuleBuilder};
 // Re-export section types
+pub use decoder_core::validate::validate_module_with_config;
 pub use sections::parsers;
 pub use validation::validate_module;
-pub use decoder_core::validate::validate_module_with_config;
 pub use wrt_error::{codes, kinds, Error, Result};
-// Re-export binary constants and functions from wrt-format
-pub use wrt_format::binary::{WASM_MAGIC, WASM_VERSION};
-#[cfg(any(feature = "alloc", feature = "std"))]
-pub use wrt_format::binary::{
-    read_leb128_i32, read_leb128_i64, read_leb128_u32, read_leb128_u64, write_leb128_i32,
-    write_leb128_i64, write_leb128_u32, write_leb128_u64,
-};
+// Binary functions are now exported directly by wrt_format
 // Re-export format types for easy access to section types
 pub use wrt_format::module::{Data, DataMode, Element, Export, Import, ImportDesc};
 // Additional re-exports from wrt_format
@@ -149,9 +148,9 @@ pub use wrt_format::section::{CustomSection, Section};
 // Re-export safe_memory for backward compatibility
 pub use wrt_foundation::safe_memory;
 // Re-export the SafeSlice type and other memory safety types
-pub use wrt_foundation::safe_memory::{MemoryProvider, SafeSlice};
 #[cfg(feature = "std")]
 pub use wrt_foundation::safe_memory::StdProvider as StdMemoryProvider;
+pub use wrt_foundation::safe_memory::{MemoryProvider, SafeSlice};
 // Re-export core types for easier access
 pub use wrt_foundation::types::{FuncType, GlobalType, Limits, MemoryType, RefType, TableType};
 // Re-exports from wrt_foundation
@@ -174,14 +173,14 @@ pub use crate::decoder_core::validate::ValidationConfig;
 pub fn from_binary(bytes: &[u8]) -> Result<Module> {
     #[cfg(feature = "std")]
     {
-        use wrt_foundation::{StdMemoryProvider, safe_memory::SafeMemoryHandler};
+        use wrt_foundation::{safe_memory::SafeMemoryHandler, StdMemoryProvider};
         let provider = StdMemoryProvider::default();
         let mut handler = SafeMemoryHandler::new(provider);
         module::decode_module_with_binary(bytes, &mut handler)
     }
     #[cfg(not(feature = "std"))]
     {
-        use wrt_foundation::{NoStdProvider, safe_memory::SafeMemoryHandler};
+        use wrt_foundation::{safe_memory::SafeMemoryHandler, NoStdProvider};
         let provider = NoStdProvider::<65536>::default();
         let mut handler = SafeMemoryHandler::new(provider);
         module::decode_module_with_binary(bytes, &mut handler)

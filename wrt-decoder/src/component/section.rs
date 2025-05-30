@@ -10,9 +10,9 @@
 
 use wrt_foundation::{
     bounded::{BoundedString, MAX_WASM_NAME_LENGTH},
-    traits::{Checksummable, ToBytes, FromBytes, WriteStream, ReadStream},
+    traits::{Checksummable, FromBytes, ReadStream, ToBytes, WriteStream},
     verification::Checksum,
-    MemoryProvider, WrtResult, NoStdProvider,
+    MemoryProvider, NoStdProvider, WrtResult,
 };
 
 /// Represents a Component export for no_alloc decoding
@@ -20,7 +20,9 @@ use wrt_foundation::{
 /// A simplified version of the wrt-foundation component::Export for
 /// use in memory-constrained environments.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub struct ComponentExport<P: MemoryProvider + Clone + PartialEq + Eq + Default = NoStdProvider<1024>> {
+pub struct ComponentExport<
+    P: MemoryProvider + Clone + PartialEq + Eq + Default = NoStdProvider<1024>,
+> {
     /// Export name
     pub name: BoundedString<MAX_WASM_NAME_LENGTH, P>,
     /// Export type index
@@ -34,7 +36,9 @@ pub struct ComponentExport<P: MemoryProvider + Clone + PartialEq + Eq + Default 
 /// A simplified version of the wrt-foundation component::Import for
 /// use in memory-constrained environments.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub struct ComponentImport<P: MemoryProvider + Clone + PartialEq + Eq + Default = NoStdProvider<1024>> {
+pub struct ComponentImport<
+    P: MemoryProvider + Clone + PartialEq + Eq + Default = NoStdProvider<1024>,
+> {
     /// Import name
     pub name: BoundedString<MAX_WASM_NAME_LENGTH, P>,
     /// Import type index
@@ -53,7 +57,6 @@ pub struct ComponentSection {
     /// Section payload offset
     pub offset: usize,
 }
-
 
 /// Component value types
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -215,9 +218,7 @@ impl FromBytes for ComponentType {
         reader: &mut ReadStream<'a>,
         provider: &PStream,
     ) -> WrtResult<Self> {
-        Ok(Self {
-            form: u8::from_bytes_with_provider(reader, provider)?,
-        })
+        Ok(Self { form: u8::from_bytes_with_provider(reader, provider)? })
     }
 }
 
@@ -243,9 +244,7 @@ impl FromBytes for ComponentInstance {
         reader: &mut ReadStream<'a>,
         provider: &PStream,
     ) -> WrtResult<Self> {
-        Ok(Self {
-            type_index: u32::from_bytes_with_provider(reader, provider)?,
-        })
+        Ok(Self { type_index: u32::from_bytes_with_provider(reader, provider)? })
     }
 }
 

@@ -1,6 +1,6 @@
 use wrt_foundation::{
     bounded::{BoundedVec, MAX_DWARF_ABBREV_CACHE},
-    NoStdProvider,
+    BoundedCapacity, NoStdProvider,
 };
 
 /// Parameter and type information support
@@ -8,7 +8,7 @@ use wrt_foundation::{
 use crate::strings::DebugString;
 
 /// Basic type information
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BasicType {
     /// Void type
     Void,
@@ -70,6 +70,22 @@ impl BasicType {
             _ => "unknown",
         }
     }
+
+    /// Convert to a u8 representation for serialization
+    pub fn to_u8(&self) -> u8 {
+        match self {
+            Self::Void => 0,
+            Self::Bool => 1,
+            Self::SignedInt(size) => 2 + (*size as u8),
+            Self::UnsignedInt(size) => 10 + (*size as u8),
+            Self::Float(size) => 18 + (*size as u8),
+            Self::Pointer => 26,
+            Self::Reference => 27,
+            Self::Array => 28,
+            Self::Struct => 29,
+            Self::Unknown => 30,
+        }
+    }
 }
 
 /// Function parameter information
@@ -89,19 +105,115 @@ pub struct Parameter<'a> {
     pub is_variadic: bool,
 }
 
+// Implement required traits for BoundedVec compatibility
+impl<'a> Default for Parameter<'a> {
+    fn default() -> Self {
+        Self {
+            name: None,
+            param_type: BasicType::Unknown,
+            file_index: 0,
+            line: 0,
+            position: 0,
+            is_variadic: false,
+        }
+    }
+}
+
+impl<'a> PartialEq for Parameter<'a> {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name
+            && self.param_type == other.param_type
+            && self.file_index == other.file_index
+            && self.line == other.line
+            && self.position == other.position
+            && self.is_variadic == other.is_variadic
+    }
+}
+
+impl<'a> Eq for Parameter<'a> {}
+
+impl<'a> wrt_foundation::traits::Checksummable for Parameter<'a> {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        if let Some(ref name) = self.name {
+            checksum.update(1);
+            name.update_checksum(checksum);
+        } else {
+            checksum.update(0);
+        }
+        checksum.update(self.param_type.to_u8());
+        checksum.update_slice(&self.file_index.to_le_bytes());
+        checksum.update_slice(&self.line.to_le_bytes());
+        checksum.update_slice(&self.position.to_le_bytes());
+        checksum.update(self.is_variadic as u8);
+    }
+}
+
+impl<'a> wrt_foundation::traits::ToBytes for Parameter<'a> {
+    fn to_bytes_with_provider<'b, P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'b>,
+        provider: &P,
+    ) -> wrt_foundation::Result<()> {
+        // Write name option
+        match &self.name {
+            Some(name) => {
+                writer.write_u8(1)?;
+                name.to_bytes_with_provider(writer, provider)?;
+            }
+            None => {
+                writer.write_u8(0)?;
+            }
+        }
+        writer.write_u8(self.param_type.to_u8())?;
+        writer.write_u16_le(self.file_index)?;
+        writer.write_u32_le(self.line)?;
+        writer.write_u16_le(self.position)?;
+        writer.write_u8(self.is_variadic as u8)?;
+        Ok(())
+    }
+}
+
+impl<'a> wrt_foundation::traits::FromBytes for Parameter<'a> {
+    fn from_bytes_with_provider<'b, P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'b>,
+        provider: &P,
+    ) -> wrt_foundation::Result<Self> {
+        let has_name = reader.read_u8()? != 0;
+        let name = if has_name {
+            Some(DebugString::from_bytes_with_provider(reader, provider)?)
+        } else {
+            None
+        };
+
+        Ok(Self {
+            name,
+            param_type: BasicType::Unknown, // We'll just use Unknown for deserialization
+            file_index: reader.read_u16_le()?,
+            line: reader.read_u32_le()?,
+            position: reader.read_u16_le()?,
+            is_variadic: reader.read_u8()? != 0,
+        })
+    }
+}
+
 /// Collection of parameters for a function
 #[derive(Debug)]
 pub struct ParameterList<'a> {
     /// Parameters in order
-    parameters: BoundedVec<Parameter<'a>, MAX_DWARF_ABBREV_CACHE, NoStdProvider<{ MAX_DWARF_ABBREV_CACHE * 64 }>>,
+    parameters: BoundedVec<
+        Parameter<'a>,
+        MAX_DWARF_ABBREV_CACHE,
+        NoStdProvider<{ MAX_DWARF_ABBREV_CACHE * 64 }>,
+    >,
 }
 
 impl<'a> ParameterList<'a> {
     /// Create a new empty parameter list
     pub fn new() -> Self {
-        Self { 
-            parameters: BoundedVec::new(NoStdProvider::<{ MAX_DWARF_ABBREV_CACHE * 64 }>::default())
-                .expect("Failed to create parameters BoundedVec") 
+        Self {
+            parameters:
+                BoundedVec::new(NoStdProvider::<{ MAX_DWARF_ABBREV_CACHE * 64 }>::default())
+                    .expect("Failed to create parameters BoundedVec"),
         }
     }
 
@@ -126,14 +238,14 @@ impl<'a> ParameterList<'a> {
     }
 
     /// Get parameter by position
-    pub fn get_by_position(&self, position: u16) -> Option<&Parameter<'a>> {
+    pub fn get_by_position(&self, position: u16) -> Option<Parameter<'a>> {
         self.parameters.iter().find(|p| p.position == position)
     }
 
     /// Format parameter list for display
-    pub fn display<F>(&self, mut writer: F) -> Result<(), core::fmt::Error>
+    pub fn display<F>(&self, mut writer: F) -> core::result::Result<(), core::fmt::Error>
     where
-        F: FnMut(&str) -> Result<(), core::fmt::Error>,
+        F: FnMut(&str) -> core::result::Result<(), core::fmt::Error>,
     {
         writer("(")?;
 
@@ -182,19 +294,124 @@ pub struct InlinedFunction<'a> {
     pub depth: u8,
 }
 
+// Implement required traits for BoundedVec compatibility
+impl<'a> Default for InlinedFunction<'a> {
+    fn default() -> Self {
+        Self {
+            name: None,
+            abstract_origin: 0,
+            low_pc: 0,
+            high_pc: 0,
+            call_file: 0,
+            call_line: 0,
+            call_column: 0,
+            depth: 0,
+        }
+    }
+}
+
+impl<'a> PartialEq for InlinedFunction<'a> {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name
+            && self.abstract_origin == other.abstract_origin
+            && self.low_pc == other.low_pc
+            && self.high_pc == other.high_pc
+            && self.call_file == other.call_file
+            && self.call_line == other.call_line
+            && self.call_column == other.call_column
+            && self.depth == other.depth
+    }
+}
+
+impl<'a> Eq for InlinedFunction<'a> {}
+
+impl<'a> wrt_foundation::traits::Checksummable for InlinedFunction<'a> {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        if let Some(ref name) = self.name {
+            checksum.update(1);
+            name.update_checksum(checksum);
+        } else {
+            checksum.update(0);
+        }
+        checksum.update_slice(&self.abstract_origin.to_le_bytes());
+        checksum.update_slice(&self.low_pc.to_le_bytes());
+        checksum.update_slice(&self.high_pc.to_le_bytes());
+        checksum.update_slice(&self.call_file.to_le_bytes());
+        checksum.update_slice(&self.call_line.to_le_bytes());
+        checksum.update_slice(&self.call_column.to_le_bytes());
+        checksum.update(self.depth);
+    }
+}
+
+impl<'a> wrt_foundation::traits::ToBytes for InlinedFunction<'a> {
+    fn to_bytes_with_provider<'b, P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'b>,
+        provider: &P,
+    ) -> wrt_foundation::Result<()> {
+        // Write name option
+        match &self.name {
+            Some(name) => {
+                writer.write_u8(1)?;
+                name.to_bytes_with_provider(writer, provider)?;
+            }
+            None => {
+                writer.write_u8(0)?;
+            }
+        }
+        writer.write_u32_le(self.abstract_origin)?;
+        writer.write_u32_le(self.low_pc)?;
+        writer.write_u32_le(self.high_pc)?;
+        writer.write_u16_le(self.call_file)?;
+        writer.write_u32_le(self.call_line)?;
+        writer.write_u16_le(self.call_column)?;
+        writer.write_u8(self.depth)?;
+        Ok(())
+    }
+}
+
+impl<'a> wrt_foundation::traits::FromBytes for InlinedFunction<'a> {
+    fn from_bytes_with_provider<'b, P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'b>,
+        provider: &P,
+    ) -> wrt_foundation::Result<Self> {
+        let has_name = reader.read_u8()? != 0;
+        let name = if has_name {
+            Some(DebugString::from_bytes_with_provider(reader, provider)?)
+        } else {
+            None
+        };
+
+        Ok(Self {
+            name,
+            abstract_origin: reader.read_u32_le()?,
+            low_pc: reader.read_u32_le()?,
+            high_pc: reader.read_u32_le()?,
+            call_file: reader.read_u16_le()?,
+            call_line: reader.read_u32_le()?,
+            call_column: reader.read_u16_le()?,
+            depth: reader.read_u8()?,
+        })
+    }
+}
+
 /// Collection of inlined functions
 #[derive(Debug)]
 pub struct InlinedFunctions<'a> {
     /// Inlined function entries
-    entries: BoundedVec<InlinedFunction<'a>, MAX_DWARF_ABBREV_CACHE, NoStdProvider<{ MAX_DWARF_ABBREV_CACHE * 128 }>>,
+    entries: BoundedVec<
+        InlinedFunction<'a>,
+        MAX_DWARF_ABBREV_CACHE,
+        NoStdProvider<{ MAX_DWARF_ABBREV_CACHE * 128 }>,
+    >,
 }
 
 impl<'a> InlinedFunctions<'a> {
     /// Create new inlined functions collection
     pub fn new() -> Self {
-        Self { 
+        Self {
             entries: BoundedVec::new(NoStdProvider::<{ MAX_DWARF_ABBREV_CACHE * 128 }>::default())
-                .expect("Failed to create entries BoundedVec") 
+                .expect("Failed to create entries BoundedVec"),
         }
     }
 
@@ -204,13 +421,13 @@ impl<'a> InlinedFunctions<'a> {
     }
 
     /// Find all inlined functions containing the given PC
-    pub fn find_at_pc(&self, pc: u32) -> impl Iterator<Item = &InlinedFunction<'a>> {
+    pub fn find_at_pc(&self, pc: u32) -> impl Iterator<Item = InlinedFunction<'a>> + '_ {
         self.entries.iter().filter(move |f| pc >= f.low_pc && pc < f.high_pc)
     }
 
     /// Get all inlined functions
-    pub fn all(&self) -> &[InlinedFunction<'a>] {
-        self.entries.as_slice()
+    pub fn all(&self) -> impl Iterator<Item = InlinedFunction<'a>> + '_ {
+        self.entries.iter()
     }
 
     /// Check if any functions are inlined at this PC

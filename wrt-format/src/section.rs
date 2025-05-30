@@ -9,16 +9,11 @@ use alloc::{string::String, vec::Vec};
 #[cfg(feature = "std")]
 use std::{string::String, vec::Vec};
 
-// Use wrt_foundation error handling
-#[cfg(any(feature = "alloc", feature = "std"))]
-use wrt_foundation::Result;
-
 #[cfg(not(any(feature = "alloc", feature = "std")))]
-use wrt_foundation::{BoundedCapacity, MemoryProvider, NoStdProvider, Result};
-
-#[cfg(not(any(feature = "alloc", feature = "std")))]
-use crate::{WasmString, WasmVec};
+use crate::WasmVec;
 // Import the prelude for conditional imports
+#[cfg(not(any(feature = "alloc", feature = "std")))]
+use wrt_foundation::{MemoryProvider, NoStdProvider, traits::BoundedCapacity};
 
 /// WebAssembly section ID constants
 pub const CUSTOM_ID: u8 = 0;
@@ -247,7 +242,8 @@ impl CustomSection {
     }
 
     /// Serialize the custom section to binary
-    pub fn to_binary(&self) -> Result<Vec<u8>> {
+    #[cfg(any(feature = "alloc", feature = "std"))]
+    pub fn to_binary(&self) -> core::result::Result<Vec<u8>, wrt_error::Error> {
         let mut section_data = Vec::new();
 
         // Add name as encoded string (name length + name bytes)
@@ -263,7 +259,8 @@ impl CustomSection {
     }
 
     /// Get access to the section data as a safe slice
-    pub fn get_data(&self) -> Result<&[u8]> {
+    #[cfg(any(feature = "alloc", feature = "std"))]
+    pub fn get_data(&self) -> core::result::Result<&[u8], wrt_error::Error> {
         Ok(&self.data)
     }
 }

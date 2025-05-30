@@ -26,7 +26,10 @@ pub struct LineInfo {
 impl LineInfo {
     /// Format as "filename:line:column" for display
     /// Uses the provided file table to resolve the file index
-    pub fn format_location<'a>(&'a self, file_table: &'a crate::FileTable<'a>) -> LocationDisplay<'a> {
+    pub fn format_location<'a>(
+        &'a self,
+        file_table: &'a crate::FileTable<'a>,
+    ) -> LocationDisplay<'a> {
         LocationDisplay { line_info: self, file_table }
     }
 }
@@ -39,9 +42,9 @@ pub struct LocationDisplay<'a> {
 
 impl<'a> LocationDisplay<'a> {
     /// Write the location in "file:line:column" format
-    pub fn display<F>(&self, mut writer: F) -> Result<(), core::fmt::Error>
+    pub fn display<F>(&self, mut writer: F) -> core::result::Result<(), core::fmt::Error>
     where
-        F: FnMut(&str) -> Result<(), core::fmt::Error>,
+        F: FnMut(&str) -> core::result::Result<(), core::fmt::Error>,
     {
         // Get the file path
         if let Some(file_path) = self.file_table.get_full_path(self.line_info.file_index) {

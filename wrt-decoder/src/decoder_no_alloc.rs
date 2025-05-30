@@ -194,7 +194,7 @@ pub fn create_memory_provider(bytes: &[u8], level: VerificationLevel) -> Result<
     // Create a no_std provider with the maximum module size
     let mut provider = NoStdProvider::<MAX_MODULE_SIZE>::default();
 
-    // Write the bytes to the provider 
+    // Write the bytes to the provider
     use wrt_foundation::safe_memory::Provider;
     provider.write_data(0, bytes).map_err(|_| {
         create_error(NoAllocErrorCode::MemoryProviderError, "Failed to initialize memory provider")

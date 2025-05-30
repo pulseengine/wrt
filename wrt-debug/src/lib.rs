@@ -19,6 +19,13 @@ extern crate std;
 #[cfg(feature = "alloc")]
 extern crate alloc;
 
+// Panic handler for no_std builds
+#[cfg(not(feature = "std"))]
+#[panic_handler]
+fn panic(_info: &core::panic::PanicInfo) -> ! {
+    loop {}
+}
+
 // Re-export commonly used types based on features
 #[cfg(feature = "abbrev")]
 pub use abbrev::{Abbreviation, AbbreviationTable, AttributeForm, AttributeSpec};
@@ -97,7 +104,11 @@ pub struct DwarfDebugInfo<'a> {
 
     /// Abbreviation cache for performance
     #[cfg(feature = "abbrev")]
-    abbrev_cache: BoundedVec<Abbreviation, MAX_DWARF_ABBREV_CACHE, NoStdProvider<{ MAX_DWARF_ABBREV_CACHE * 128 }>>,
+    abbrev_cache: BoundedVec<
+        Abbreviation,
+        MAX_DWARF_ABBREV_CACHE,
+        NoStdProvider<{ MAX_DWARF_ABBREV_CACHE * 128 }>,
+    >,
 
     /// Line number state machine
     #[cfg(feature = "line-info")]

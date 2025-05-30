@@ -13,30 +13,17 @@ use alloc::{
 #[cfg(feature = "std")]
 use std::{string::String, vec, vec::Vec};
 
-#[cfg(any(feature = "alloc", feature = "std"))]
 use wrt_error::{codes, Error, ErrorCategory, Result};
 
-#[cfg(not(any(feature = "alloc", feature = "std")))]
-use wrt_error::{codes, Error, ErrorCategory, Result};
-
-#[cfg(not(any(feature = "alloc", feature = "std")))]
-use wrt_foundation::{BoundedString, BoundedVec, MemoryProvider, NoStdProvider, traits::BoundedCapacity};
-
-#[cfg(any(feature = "alloc", feature = "std"))]
 use wrt_foundation::{RefType, ValueType};
 
 #[cfg(not(any(feature = "alloc", feature = "std")))]
-use wrt_foundation::{RefType, ValueType};
+use wrt_foundation::traits::BoundedCapacity;
 
 use crate::{
     section::CustomSection,
     types::{CoreWasmVersion, FormatGlobalType, Limits},
     validation::Validatable,
-};
-#[cfg(not(any(feature = "alloc", feature = "std")))]
-use crate::{
-    ModuleCustomSections, ModuleData, ModuleElements, ModuleExports, ModuleFunctions,
-    ModuleGlobals, ModuleImports, WasmString, WasmVec,
 };
 
 /// WebAssembly function definition - Pure No_std Version

@@ -1,7 +1,7 @@
+use super::error::{DebugError, DebugResult};
 /// String extraction from DWARF .debug_str section
 /// Provides zero-allocation string access within no_std constraints
 use crate::cursor::DwarfCursor;
-use super::error::{DebugError, DebugResult};
 
 /// String table providing access to .debug_str section data
 #[derive(Debug, Clone)]
@@ -14,6 +14,45 @@ pub struct StringTable<'a> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DebugString<'a> {
     data: &'a str,
+}
+
+// Implement required traits for BoundedVec compatibility
+impl<'a> Default for DebugString<'a> {
+    fn default() -> Self {
+        Self { data: "" }
+    }
+}
+
+impl<'a> wrt_foundation::traits::Checksummable for DebugString<'a> {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        checksum.update_slice(self.data.as_bytes());
+    }
+}
+
+impl<'a> wrt_foundation::traits::ToBytes for DebugString<'a> {
+    fn to_bytes_with_provider<'b, P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'b>,
+        _provider: &P,
+    ) -> wrt_foundation::Result<()> {
+        // Write length followed by string data
+        writer.write_u32_le(self.data.len() as u32)?;
+        writer.write_all(self.data.as_bytes())?;
+        Ok(())
+    }
+}
+
+impl<'a> wrt_foundation::traits::FromBytes for DebugString<'a> {
+    fn from_bytes_with_provider<'b, P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'b>,
+        _provider: &P,
+    ) -> wrt_foundation::Result<Self> {
+        // This is tricky because we need to return a reference with lifetime 'a
+        // In practice, this should not be called for DebugString as it's a zero-copy type
+        // We'll return a default value for now
+        let _ = reader.read_u32_le()?; // Read and ignore length
+        Ok(Self::default())
+    }
 }
 
 impl<'a> StringTable<'a> {
@@ -140,12 +179,10 @@ pub fn read_string_ref(cursor: &mut DwarfCursor) -> DebugResult<u32> {
 pub fn read_inline_string<'a>(cursor: &mut DwarfCursor<'a>) -> DebugResult<DebugString<'a>> {
     let remaining = cursor.remaining_slice();
 
-    let end =
-        remaining.iter().position(|&b| b == 0).ok_or(DebugError::InvalidData)?;
+    let end = remaining.iter().position(|&b| b == 0).ok_or(DebugError::InvalidData)?;
 
     let string_bytes = &remaining[..end];
-    let string_str =
-        core::str::from_utf8(string_bytes).map_err(|_| DebugError::InvalidData)?;
+    let string_str = core::str::from_utf8(string_bytes).map_err(|_| DebugError::InvalidData)?;
 
     cursor.advance(end + 1)?; // Skip string + null terminator
     Ok(DebugString { data: string_str })

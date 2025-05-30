@@ -92,6 +92,13 @@ unsafe impl GlobalAlloc for DummyAllocator {
 #[global_allocator]
 static GLOBAL: DummyAllocator = DummyAllocator;
 
+// Panic handler for no_std builds
+#[cfg(not(feature = "std"))]
+#[panic_handler]
+fn panic(_info: &core::panic::PanicInfo) -> ! {
+    loop {}
+}
+
 // Module declarations
 pub mod memory;
 pub mod memory_optimizations;

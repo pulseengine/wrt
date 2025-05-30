@@ -9,13 +9,10 @@
 use wrt_error::{codes, Error, ErrorCategory, Result};
 use wrt_format::binary::{WASM_MAGIC, WASM_VERSION};
 use wrt_foundation::{
-    safe_memory::{SafeSlice, MemoryProvider, SafeMemoryHandler},
+    safe_memory::{MemoryProvider, SafeMemoryHandler, SafeSlice},
     types::{
-        // Code as WrtCode,  // TODO: Need to define or import from appropriate module
         CustomSection as WrtCustomSection,
-        Export,
         ExportDesc as TypesExportDesc,
-        // Expr as WrtExpr,  // TODO: Need to define or import from appropriate module
         FuncType,
         GlobalType,
         Import,
@@ -33,13 +30,23 @@ use wrt_foundation::{
 
 // Import DataMode, ElementMode, and segment types from wrt-format
 use wrt_format::{
-    DataMode as TypesDataMode,
-    DataSegment,
-    ElementMode as TypesElementMode,
-    ElementSegment,
+    module::Export as WrtExport, DataMode as TypesDataMode, DataSegment,
+    ElementMode as TypesElementMode, ElementSegment,
 };
 
 use crate::{instructions, prelude::*, types::*, Parser}; // Import instructions module
+
+// Temporary type definitions until proper imports are established
+#[derive(Debug, Clone)]
+pub struct WrtExpr {
+    pub instructions: Vec<wrt_foundation::types::Instruction>,
+}
+
+#[derive(Debug, Clone)]
+pub struct WrtCode {
+    pub locals: Vec<wrt_foundation::types::LocalEntry>,
+    pub body: WrtExpr,
+}
 
 // Import DataMode directly to avoid reimport issues
 // pub use wrt_format::module::DataMode as FormatDataMode; // This might be
@@ -532,8 +539,7 @@ fn parse_module_internal_logic(
                             }
 
                             for _ in 0..num_functions {
-                                let (func_size, size_len) =
-                                    read_leb128_u32(code_section_data, 0)?;
+                                let (func_size, size_len) = read_leb128_u32(code_section_data, 0)?;
                                 code_section_data = &code_section_data[size_len..];
                                 // bytes_read_for_count += size_len; // This counter is not total
                                 // for section, but per-func
@@ -615,9 +621,7 @@ fn parse_module_internal_logic(
                 break;
             }
             Err(e) => {
-                return Err(
-                    e.add_context(codes::PARSE_ERROR, "Failed to read payload from parser")
-                );
+                return Err(e.add_context(codes::PARSE_ERROR, "Failed to read payload from parser"));
             }
         }
     }

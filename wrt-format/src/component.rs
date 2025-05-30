@@ -137,7 +137,8 @@ impl Component {
     /// Helper to create a new ComponentVec for no_std
     #[cfg(not(any(feature = "alloc", feature = "std")))]
     fn new_vec<T>() -> ComponentVec<T> {
-        WasmVec::new(NoStdProvider::<1024>::default()).unwrap_or_else(|_| panic!("Failed to create WasmVec"))
+        WasmVec::new(NoStdProvider::<1024>::default())
+            .unwrap_or_else(|_| panic!("Failed to create WasmVec"))
     }
 }
 
@@ -1127,10 +1128,7 @@ impl Validatable for Alias {
                 }
 
                 if *idx > 10000 {
-                    return Err(validation_error!(
-                        "Index {} seems unreasonably large",
-                        idx
-                    ));
+                    return Err(validation_error!("Index {} seems unreasonably large", idx));
                 }
 
                 Ok(())
@@ -1317,10 +1315,7 @@ impl Validatable for Export {
 
         // Index should be reasonable
         if self.idx > 10000 {
-            return Err(validation_error!(
-                "Export index {} seems unreasonably large",
-                self.idx
-            ));
+            return Err(validation_error!("Export index {} seems unreasonably large", self.idx));
         }
 
         Ok(())
