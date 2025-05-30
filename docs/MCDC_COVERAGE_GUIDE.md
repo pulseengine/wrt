@@ -175,6 +175,21 @@ Function: validate_operation
 
 ## Integration with CI/CD
 
+### Using Xtask
+
+The WRT project provides xtask commands for coverage:
+
+```bash
+# Generate comprehensive coverage including MC/DC
+cargo xtask coverage-comprehensive
+
+# Quick coverage check
+cargo xtask coverage
+
+# Simple coverage without Dagger
+cargo xtask coverage-simple
+```
+
 ### GitHub Actions Example
 
 ```yaml
@@ -182,11 +197,11 @@ Function: validate_operation
   run: |
     rustup install nightly
     rustup component add llvm-tools-preview --toolchain nightly
-    cargo install cargo-llvm-cov
-    cargo +nightly llvm-cov --workspace --mcdc --lcov --output-path mcdc.info
+    cargo xtask coverage-comprehensive
     
 - name: Validate MC/DC Thresholds
   run: |
+    # The xtask coverage commands will generate reports in target/coverage/
     # Extract MC/DC percentage and validate
     MCDC_PERCENT=$(cargo +nightly llvm-cov --workspace --mcdc --summary-only | grep "MCDC" | awk '{print $3}')
     if (( $(echo "$MCDC_PERCENT < 100.0" | bc -l) )); then

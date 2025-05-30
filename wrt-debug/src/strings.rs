@@ -1,7 +1,7 @@
 /// String extraction from DWARF .debug_str section
 /// Provides zero-allocation string access within no_std constraints
 use crate::cursor::DwarfCursor;
-use crate::error::DebugResult;
+use super::error::{DebugError, DebugResult};
 
 /// String table providing access to .debug_str section data
 #[derive(Debug, Clone)]
@@ -132,21 +132,20 @@ impl<'a> Iterator for StringTableIterator<'a> {
 /// Helper function to read a string reference from DWARF data
 /// Used for DW_FORM_strp attributes
 pub fn read_string_ref(cursor: &mut DwarfCursor) -> DebugResult<u32> {
-    cursor.read_u32()
+    Ok(cursor.read_u32()?)
 }
 
 /// Helper function to read an inline string from DWARF data
 /// Used for DW_FORM_string attributes
 pub fn read_inline_string<'a>(cursor: &mut DwarfCursor<'a>) -> DebugResult<DebugString<'a>> {
-    let start = cursor.position();
-    let remaining = cursor.remaining();
+    let remaining = cursor.remaining_slice();
 
     let end =
-        remaining.iter().position(|&b| b == 0).ok_or(crate::error::DebugError::InvalidData)?;
+        remaining.iter().position(|&b| b == 0).ok_or(DebugError::InvalidData)?;
 
     let string_bytes = &remaining[..end];
     let string_str =
-        core::str::from_utf8(string_bytes).map_err(|_| crate::error::DebugError::InvalidData)?;
+        core::str::from_utf8(string_bytes).map_err(|_| DebugError::InvalidData)?;
 
     cursor.advance(end + 1)?; // Skip string + null terminator
     Ok(DebugString { data: string_str })

@@ -4,38 +4,43 @@ This workspace provides a unified testing infrastructure for the WebAssembly Run
 
 ## Structure
 
-- `integration/` - Cross-crate integration tests
+- `integration/` - Consolidated cross-crate integration tests
   - `component_model/` - Component model functionality tests
-  - `runtime/` - Runtime system tests
+  - `runtime/` - Runtime system tests  
   - `platform/` - Platform-specific tests
   - `no_std/` - No-std compatibility tests
   - `security/` - Security and CFI tests
-- `benchmarks/` - Performance benchmarks
 - `fixtures/` - Test assets (WAT, WASM files)
-- `scripts/` - Test automation scripts
+  - `components/` - Component model test files
+  - `wasm/` - WebAssembly binary test files
+  - `wat/` - WebAssembly text format test files
+  - `configs/` - Test configuration files
 
 ## Running Tests
 
-### All Tests
+### Using xtask (Recommended)
 ```bash
-cargo test --manifest-path wrt-tests/Cargo.toml
+# Run all tests via xtask
+cargo xtask run-tests
+
+# Verify no_std compatibility across all crates
+cargo xtask verify-no-std
+
+# Quick partial verification
+cargo xtask verify-no-std --partial --verbose
 ```
 
-### Specific Test Suite
+### Direct Cargo Commands
 ```bash
-cargo test --manifest-path wrt-tests/integration/Cargo.toml component_model_tests
-```
+# All integration tests
+cargo test -p wrt-tests-integration
 
-### Individual Test Categories
-```bash
-# Component model tests
-cargo test --manifest-path wrt-tests/integration/Cargo.toml component_model
-
-# Runtime tests
-cargo test --manifest-path wrt-tests/integration/Cargo.toml runtime
-
-# Platform-specific tests
-cargo test --manifest-path wrt-tests/integration/Cargo.toml platform
+# Specific test categories
+cargo test -p wrt-tests-integration component_model
+cargo test -p wrt-tests-integration runtime
+cargo test -p wrt-tests-integration platform
+cargo test -p wrt-tests-integration no_std
+cargo test -p wrt-tests-integration security
 ```
 
 ## Test Registry
@@ -46,13 +51,21 @@ The unified test registry (`wrt-test-registry`) provides:
 - Standardized test reporting
 - Feature-based test filtering
 
-## Migration Status
+## Test Consolidation Status
 
-- ✅ Enhanced test registry with unified coordination
-- ✅ Created integration test structure
-- ✅ Migrated control instructions tests
-- ✅ Migrated CFI security tests
-- 🔄 Individual crate test standardization (in progress)
+- ✅ Unified test consolidation completed
+- ✅ Migrated 55 test files from across the workspace
+- ✅ Eliminated ~9,600 lines of duplicate test code
+- ✅ Consolidated 7 test directories into unified structure
+- ✅ Integrated all tests with xtask automation
+- ✅ Created comprehensive test categorization:
+  - No-std compatibility tests (15 files consolidated)
+  - Parser tests (9 files consolidated)
+  - Memory safety tests (18 files consolidated)
+  - Component model tests
+  - Runtime and execution tests
+  - Platform-specific tests
+  - Security and CFI tests
 
 ## Contributing
 

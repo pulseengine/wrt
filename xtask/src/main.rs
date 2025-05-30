@@ -9,8 +9,6 @@ use tracing_subscriber::FmtSubscriber;
 use xshell::Shell;
 
 // Valid module declarations based on list_dir output
-// mod bazel_ops; // This line should already be commented or removed. Ensuring
-// it is.
 mod ci_advanced_tests;
 mod ci_integrity_checks;
 mod ci_static_analysis;
@@ -26,8 +24,13 @@ mod wasm_ops;
 mod check_imports;
 mod check_panics;
 mod docs; // Assuming docs.rs is a module
+mod docs_preview;
+mod docs_validation;
+mod generate_changelog;
 mod generate_coverage_summary;
 mod generate_source_needs;
+mod sftp_deploy;
+mod no_std_verification;
 mod qualification; // Assuming qualification.rs is a module, distinct from directory
 mod update_panic_registry; // Added new module
 
@@ -54,10 +57,6 @@ pub struct Args {
 #[derive(Debug, Parser)]
 pub enum Command {
     // Keep commands that have corresponding existing modules
-    // Bazel {
-    //     #[clap(subcommand)]
-    //     command: BazelCommands,
-    // },
     Fs(FsArgs),
     Wasm(WasmArgs),
     PublishDocsDagger(PublishDocsDaggerArgs),
@@ -71,7 +70,13 @@ pub enum Command {
     CheckDocsStrict,
     FmtCheck,
     RunTests,
-    GenerateSourceNeeds(generate_source_needs::GenerateSourceNeedsArgs), /* Added new command
+    GenerateSourceNeeds(generate_source_needs::GenerateSourceNeedsArgs),
+    VerifyNoStd(VerifyNoStdArgs),
+    PreviewDocs(PreviewDocsArgs),
+    ValidateDocs,
+    ValidateDocsComprehensive,
+    GenerateChangelog(GenerateChangelogArgs),
+    DeployDocsSftp(DeployDocsSftpArgs), /* Added new command
                                                                           * Comment out
                                                                           * commands whose
                                                                           * modules are missing
@@ -104,6 +109,60 @@ pub struct PublishDocsDaggerArgs {
                                       // Consider clap(default_values_t = vec!["main".to_string()]) if that's desired.
     )]
     pub versions: Vec<String>, // Changed to Vec<String>
+}
+
+#[derive(Debug, Parser)]
+pub struct VerifyNoStdArgs {
+    #[clap(long, help = "Continue on error instead of stopping")]
+    pub continue_on_error: bool,
+    #[clap(long, help = "Show verbose output")]
+    pub verbose: bool,
+    #[clap(long, help = "Show detailed summary table")]
+    pub detailed: bool,
+    #[clap(long, help = "Run partial verification")]
+    pub partial: bool,
+}
+
+#[derive(Debug, Parser)]
+pub struct PreviewDocsArgs {
+    #[clap(long, default_value = "8000", help = "Port for the preview server")]
+    pub port: u16,
+    #[clap(long, default_value = "docs_output/local", help = "Documentation directory to serve")]
+    pub docs_dir: String,
+    #[clap(long, help = "Open browser automatically")]
+    pub open_browser: bool,
+}
+
+#[derive(Debug, Parser)]
+pub struct GenerateChangelogArgs {
+    #[clap(long, default_value = "docs/source/changelog.md", help = "Output file path for the changelog")]
+    pub output: String,
+    #[clap(long, help = "Generate only unreleased changes")]
+    pub unreleased: bool,
+    #[clap(long, help = "Install git-cliff if not found")]
+    pub install_if_missing: bool,
+}
+
+#[derive(Debug, Parser)]
+pub struct DeployDocsSftpArgs {
+    #[clap(long, help = "SFTP server hostname or IP address")]
+    pub host: Option<String>,
+    #[clap(long, help = "SSH username for SFTP hosting")]
+    pub username: Option<String>,
+    #[clap(long, default_value = "/htdocs", help = "Target directory on remote server")]
+    pub target_dir: String,
+    #[clap(long, default_value = "docs_output", help = "Local documentation directory")]
+    pub docs_dir: String,
+    #[clap(long, help = "Path to SSH private key file")]
+    pub ssh_key_path: Option<String>,
+    #[clap(long, help = "Build documentation before deployment")]
+    pub build_docs: bool,
+    #[clap(long, help = "Show what would be deployed without making changes")]
+    pub dry_run: bool,
+    #[clap(long, help = "Delete remote files not present locally")]
+    pub delete_remote: bool,
+    #[clap(long, default_value = "22", help = "SSH port")]
+    pub port: u16,
 }
 
 #[derive(Debug, Parser)]
@@ -186,6 +245,61 @@ async fn main() -> Result<()> {
         Command::CoverageSimple => {
             // Generate simple coverage without Dagger
             coverage_simple::generate_simple_coverage()?;
+            return Ok(());
+        }
+        Command::VerifyNoStd(args) => {
+            let config = no_std_verification::NoStdConfig {
+                continue_on_error: args.continue_on_error,
+                verbose: args.verbose,
+                detailed: args.detailed,
+                partial: args.partial,
+            };
+            no_std_verification::run_no_std_verification(config)?;
+            return Ok(());
+        }
+        Command::PreviewDocs(args) => {
+            let config = docs_preview::DocsPreviewConfig {
+                port: args.port,
+                docs_dir: args.docs_dir.clone(),
+                open_browser: args.open_browser,
+                ..Default::default()
+            };
+            docs_preview::run_docs_preview(config)?;
+            return Ok(());
+        }
+        Command::ValidateDocs => {
+            docs_validation::validate_docs()?;
+            return Ok(());
+        }
+        Command::ValidateDocsComprehensive => {
+            docs_validation::check_docs_comprehensive()?;
+            return Ok(());
+        }
+        Command::GenerateChangelog(args) => {
+            let config = generate_changelog::ChangelogConfig {
+                output_file: std::path::PathBuf::from(&args.output),
+                unreleased_only: args.unreleased,
+                install_if_missing: args.install_if_missing,
+            };
+            generate_changelog::generate_changelog(config)?;
+            return Ok(());
+        }
+        Command::DeployDocsSftp(args) => {
+            let config = sftp_deploy::SftpDeployConfig::from_env_and_args(
+                args.host.clone(),
+                args.username.clone(),
+                Some(args.target_dir.clone()),
+                Some(args.docs_dir.clone()),
+                args.ssh_key_path.clone(),
+                args.build_docs,
+                args.dry_run,
+                args.delete_remote,
+                Some(args.port),
+            )?;
+            
+            // Run async deployment
+            let rt = tokio::runtime::Runtime::new()?;
+            rt.block_on(sftp_deploy::deploy_docs_sftp(config))?;
             return Ok(());
         }
         _ => {

@@ -36,13 +36,15 @@ pub enum VerificationLevel {
     Off = 0,
     /// Basic verification checks (e.g., length checks).
     Basic = 1,
-    /// Full verification including checksums on every relevant operation.
-    Full = 2,
-    /// Perform verification checks based on sampling.
+    /// Standard verification checks (reasonable default).
     #[default]
-    Sampling = 3,
+    Standard = 2,
+    /// Full verification including checksums on every relevant operation.
+    Full = 3,
+    /// Perform verification checks based on sampling.
+    Sampling = 4,
     /// Perform redundant checks in addition to sampling or full checks.
-    Redundant = 4,
+    Redundant = 5,
 }
 
 impl VerificationLevel {
@@ -60,6 +62,7 @@ impl VerificationLevel {
         match self {
             Self::Off => false,
             Self::Basic => operation_importance > 0, // Basic verifies if there's any importance
+            Self::Standard => operation_importance >= 50, // Standard verifies important operations
             Self::Sampling => {
                 // Simple sampling strategy: verify based on importance
                 // Higher importance = higher chance of being verified
@@ -119,9 +122,10 @@ impl FromBytes for VerificationLevel {
         match byte {
             0 => Ok(VerificationLevel::Off),
             1 => Ok(VerificationLevel::Basic),
-            2 => Ok(VerificationLevel::Full),
-            3 => Ok(VerificationLevel::Sampling),
-            4 => Ok(VerificationLevel::Redundant),
+            2 => Ok(VerificationLevel::Standard),
+            3 => Ok(VerificationLevel::Full),
+            4 => Ok(VerificationLevel::Sampling),
+            5 => Ok(VerificationLevel::Redundant),
             _ => Err(SerializationError::InvalidEnumValue.into()),
         }
     }

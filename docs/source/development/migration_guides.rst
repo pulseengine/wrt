@@ -250,10 +250,10 @@ Immediate Action Items
 
 This incremental approach will help manage the complexity of the migration and ensure a stable transition to the new naming.
 
-Build System Migration (Justfile to Bazel)
+Build System Migration (Justfile to xtasks)
 -------------------------------------------
 
-The project is migrating from Justfile to a combination of Bazel and xtasks for improved build management. See the build system migration documentation for details.
+The project has migrated from Justfile to xtasks for improved build management and cross-platform compatibility. See the build system documentation for details.
 
 Memory Subsystem Rework
 -----------------------

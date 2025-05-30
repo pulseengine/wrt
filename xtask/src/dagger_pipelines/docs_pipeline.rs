@@ -360,8 +360,8 @@ async fn run_docs_version_pipeline(
     let repo_dagger_dir = client.host().directory_opts(
         base_path.to_str().ok_or_else(|| anyhow!("Base path is not valid UTF-8"))?,
         HostDirectoryOpts { 
-            exclude: Some(vec!["./target", "./docs_output"]), 
-            include: Some(vec!["./.git", "./cliff.toml"]) 
+            exclude: Some(vec!["./target", "./docs_output", "./docs_test*"]), 
+            include: Some(vec!["./.git", "./cliff.toml", "./Cargo.toml", "./README.md"]) 
         }
     );
 
@@ -395,7 +395,7 @@ async fn run_docs_version_pipeline(
             pip install -r ../requirements.txt && \
             cargo install git-cliff",
         ])
-        // Generate changelog using git-cliff
+        // Generate changelog using git-cliff with enhanced error handling
         .with_exec(vec![
             "sh",
             "-c", 
@@ -404,11 +404,31 @@ async fn run_docs_version_pipeline(
             export RUSTUP_HOME=/root/.rustup && \
             . $CARGO_HOME/env && \
             cd /mounted_repo && \
+            echo 'Git-cliff changelog generation for version: {}' && \
+            echo 'Repository status:' && \
+            git status --porcelain || echo 'Git status failed' && \
+            echo 'Available tags:' && \
+            git tag --list | head -10 || echo 'No tags found' && \
+            echo 'Recent commits:' && \
+            git log --oneline -10 || echo 'Git log failed' && \
+            echo 'Generating changelog...' && \
             if [ '{}' = 'local' ]; then \
-                git-cliff --unreleased --output /mounted_docs/source/changelog.md || echo '# Changelog\n\nChangelog generation failed. Please check git cliff configuration.' > /mounted_docs/source/changelog.md; \
+                echo 'Generating unreleased changelog for local version' && \
+                git-cliff --unreleased --output /mounted_docs/source/changelog.md && \
+                echo 'Changelog generated successfully for local version' || \
+                (echo 'Git-cliff failed for local version, creating fallback changelog' && \
+                 echo -e '# Changelog\n\nAll notable changes to this project will be documented in this file.\n\n## [unreleased]\n\nChangelog generation failed. This may be due to:\n- Missing git history in container\n- Git-cliff configuration issues\n- Network connectivity problems\n\nTo generate changelog manually, run: `git-cliff --unreleased --output docs/source/changelog.md`' > /mounted_docs/source/changelog.md); \
             else \
-                git-cliff --output /mounted_docs/source/changelog.md || echo '# Changelog\n\nChangelog generation failed. Please check git cliff configuration.' > /mounted_docs/source/changelog.md; \
-            fi", version)
+                echo 'Generating full changelog for version: {}' && \
+                git-cliff --output /mounted_docs/source/changelog.md && \
+                echo 'Changelog generated successfully for version: {}' || \
+                (echo 'Git-cliff failed for version: {}, creating fallback changelog' && \
+                 echo -e '# Changelog\n\nAll notable changes to this project will be documented in this file.\n\nChangelog generation failed. This may be due to:\n- Missing git history in container\n- Git-cliff configuration issues\n- Network connectivity problems\n\nTo generate changelog manually, run: `git-cliff --output docs/source/changelog.md`' > /mounted_docs/source/changelog.md); \
+            fi && \
+            echo 'Changelog file status:' && \
+            ls -la /mounted_docs/source/changelog.md && \
+            echo 'Changelog preview (first 20 lines):' && \
+            head -20 /mounted_docs/source/changelog.md", version, version, version, version, version)
         ])
         // Similarly, ensure PlantUML is available and run sphinx-build.
         .with_exec(vec![

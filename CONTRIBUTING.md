@@ -20,11 +20,17 @@ For complete contribution guidelines, please see our comprehensive documentation
 ```bash
 # Setup development environment
 just build
-just ci-test
+cargo xtask run-tests
 
 # Before submitting PR
 just fmt
 just ci-main
+
+# Additional xtask commands
+cargo xtask verify-no-std          # Verify no_std compatibility
+cargo xtask fmt-check              # Check code formatting
+cargo xtask coverage               # Generate test coverage
+cargo xtask validate-docs          # Validate documentation
 ```
 
 ## Code of Conduct

@@ -4,9 +4,10 @@
 
 use wrt_test_registry::prelude::*;
 
-mod memory_platform_tests;
-mod sync_platform_tests;
-mod threading_tests;
+pub mod memory_platform_tests;
+pub mod sync_platform_tests;
+pub mod threading_tests;
+pub mod platform_optimizations_tests;
 
 /// Run all platform integration tests
 pub fn run_tests() -> TestResult {

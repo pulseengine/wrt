@@ -1,4 +1,0 @@
-langgraph==0.4.0
-ghapi
-markdown
-tomli==2.0 

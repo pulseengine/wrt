@@ -24,15 +24,20 @@ pub struct FileEntry<'a> {
 #[derive(Debug)]
 pub struct FileTable<'a> {
     /// Directory entries
-    directories: BoundedVec<DebugString<'a>, MAX_DWARF_FILE_TABLE, NoStdProvider>,
+    directories: BoundedVec<DebugString<'a>, MAX_DWARF_FILE_TABLE, NoStdProvider<{ MAX_DWARF_FILE_TABLE * 32 }>>,
     /// File entries
-    files: BoundedVec<FileEntry<'a>, MAX_DWARF_FILE_TABLE, NoStdProvider>,
+    files: BoundedVec<FileEntry<'a>, MAX_DWARF_FILE_TABLE, NoStdProvider<{ MAX_DWARF_FILE_TABLE * 64 }>>,
 }
 
 impl<'a> FileTable<'a> {
     /// Create a new empty file table
     pub fn new() -> Self {
-        Self { directories: BoundedVec::new(NoStdProvider), files: BoundedVec::new(NoStdProvider) }
+        // BoundedVec::new returns a Result, so we need to handle it
+        let directories = BoundedVec::new(NoStdProvider::<{ MAX_DWARF_FILE_TABLE * 32 }>::default())
+            .expect("Failed to create directories BoundedVec");
+        let files = BoundedVec::new(NoStdProvider::<{ MAX_DWARF_FILE_TABLE * 64 }>::default())
+            .expect("Failed to create files BoundedVec");
+        Self { directories, files }
     }
 
     /// Add a directory entry

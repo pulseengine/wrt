@@ -1,6 +1,5 @@
 use wrt_error::{codes, kinds, Error, ErrorCategory, Result};
-use wrt_foundation::types::{BlockType, FuncType, ValueType};
-use wrt_instructions::Instruction;
+use wrt_foundation::types::{BlockType, FuncType, ValueType, Instruction};
 
 use crate::{module::Module, prelude::*};
 

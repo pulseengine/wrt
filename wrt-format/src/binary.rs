@@ -2372,3 +2372,33 @@ mod tests {
         assert_eq!(content_size, decoded_size);
     }
 }
+
+// Additional exports and aliases for compatibility
+
+// Re-export functions from with_alloc that don't require allocation
+#[cfg(any(feature = "alloc", feature = "std"))]
+pub use with_alloc::{
+    is_valid_wasm_header, parse_block_type, read_f32, read_f64, read_leb128_i32, read_leb128_i64,
+    read_leb128_u64, read_name, read_u8, read_vector, validate_utf8, BinaryFormat,
+    // Write functions
+    write_leb128_i32, write_leb128_i64, write_leb128_u32, write_leb128_u64, write_f32, write_f64,
+    write_string,
+};
+
+// Alias for read_vector to match expected name in decoder
+#[cfg(any(feature = "alloc", feature = "std"))]
+pub use read_vector as parse_vec;
+
+// Helper function to read a u32 (4 bytes, little-endian) from a byte array
+pub fn read_u32(bytes: &[u8], pos: usize) -> Result<(u32, usize)> {
+    if pos + 4 > bytes.len() {
+        return Err(parse_error("Truncated u32"));
+    }
+    let value = u32::from_le_bytes([
+        bytes[pos],
+        bytes[pos + 1],
+        bytes[pos + 2],
+        bytes[pos + 3],
+    ]);
+    Ok((value, 4))
+}

@@ -192,7 +192,7 @@ Verification Script
 
 Use the verification script to check all crates::
 
-    ./scripts/verify_no_std.sh
+    cargo xtask verify-no-std
 
 This script:
 

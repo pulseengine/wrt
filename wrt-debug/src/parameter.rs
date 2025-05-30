@@ -93,13 +93,16 @@ pub struct Parameter<'a> {
 #[derive(Debug)]
 pub struct ParameterList<'a> {
     /// Parameters in order
-    parameters: BoundedVec<Parameter<'a>, MAX_DWARF_ABBREV_CACHE, NoStdProvider>,
+    parameters: BoundedVec<Parameter<'a>, MAX_DWARF_ABBREV_CACHE, NoStdProvider<{ MAX_DWARF_ABBREV_CACHE * 64 }>>,
 }
 
 impl<'a> ParameterList<'a> {
     /// Create a new empty parameter list
     pub fn new() -> Self {
-        Self { parameters: BoundedVec::new(NoStdProvider) }
+        Self { 
+            parameters: BoundedVec::new(NoStdProvider::<{ MAX_DWARF_ABBREV_CACHE * 64 }>::default())
+                .expect("Failed to create parameters BoundedVec") 
+        }
     }
 
     /// Add a parameter to the list
@@ -183,13 +186,16 @@ pub struct InlinedFunction<'a> {
 #[derive(Debug)]
 pub struct InlinedFunctions<'a> {
     /// Inlined function entries
-    entries: BoundedVec<InlinedFunction<'a>, MAX_DWARF_ABBREV_CACHE, NoStdProvider>,
+    entries: BoundedVec<InlinedFunction<'a>, MAX_DWARF_ABBREV_CACHE, NoStdProvider<{ MAX_DWARF_ABBREV_CACHE * 128 }>>,
 }
 
 impl<'a> InlinedFunctions<'a> {
     /// Create new inlined functions collection
     pub fn new() -> Self {
-        Self { entries: BoundedVec::new(NoStdProvider) }
+        Self { 
+            entries: BoundedVec::new(NoStdProvider::<{ MAX_DWARF_ABBREV_CACHE * 128 }>::default())
+                .expect("Failed to create entries BoundedVec") 
+        }
     }
 
     /// Add an inlined function

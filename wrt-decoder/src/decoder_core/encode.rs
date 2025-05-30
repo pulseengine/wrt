@@ -3,6 +3,7 @@
 //! This module provides functionality for encoding WebAssembly modules.
 
 /// Re-export the encode_module function from the module module
+#[cfg(feature = "alloc")]
 pub use crate::module::encode_module;
 
 /// Encode a WebAssembly module to binary format
@@ -17,6 +18,7 @@ pub use crate::module::encode_module;
 /// # Returns
 ///
 /// * `Result<Vec<u8>>` - The encoded module or an error
+#[cfg(feature = "alloc")]
 pub fn encode(module: &crate::module::Module) -> crate::prelude::Result<crate::prelude::Vec<u8>> {
     crate::module::encode_module(module)
 }

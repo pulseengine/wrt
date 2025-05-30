@@ -23,9 +23,11 @@ A pure Rust implementation of a WebAssembly runtime supporting both the core Web
 ```bash
 # Build everything
 just build
+# Or directly: cargo build --workspace
 
 # Run tests
-just ci-test
+cargo xtask run-tests
+# Or via just: just ci-test
 
 # Run example
 just test-wrtd-example
@@ -73,10 +75,22 @@ Generate documentation:
 
 ```bash
 # Build comprehensive documentation
-just docs
+cargo xtask publish-docs-dagger --output-dir docs_output
+
+# Preview documentation locally
+cargo xtask preview-docs --open-browser
 
 # API documentation only  
 cargo doc --workspace --open
+
+# Generate changelog (requires git-cliff)
+cargo xtask generate-changelog
+
+# Deploy to SFTP hosting (shared hosting, VPS, etc.)
+cargo xtask deploy-docs-sftp --build-docs
+
+# Validate documentation structure
+cargo xtask validate-docs-comprehensive
 ```
 
 ## Development
@@ -90,6 +104,12 @@ just --list          # Show all available commands
 just fmt            # Format code
 just ci-main        # Run main CI checks
 just ci-full        # Run complete CI suite
+
+# Xtask commands for development
+cargo xtask --help                # Show all xtask commands
+cargo xtask verify-no-std         # Verify no_std compatibility
+cargo xtask fmt-check             # Check code formatting
+cargo xtask coverage              # Generate code coverage
 ```
 
 ## License

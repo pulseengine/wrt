@@ -38,10 +38,11 @@ use wrt_error::{codes, Error, ErrorCategory, Result};
 use wrt_format::binary;
 use wrt_foundation::{
     bounded::{
-        BoundedString, BoundedVec, MAX_BUFFER_SIZE, MAX_COMPONENT_EXPORTS, MAX_COMPONENT_IMPORTS,
+        BoundedString, BoundedVec, MAX_BUFFER_SIZE,
         MAX_COMPONENT_LIST_ITEMS, MAX_COMPONENT_RECORD_FIELDS, MAX_COMPONENT_TYPES,
         MAX_WASM_NAME_LENGTH,
     },
+    component::{MAX_COMPONENT_EXPORTS, MAX_COMPONENT_IMPORTS},
     safe_memory::{NoStdProvider, SafeSlice},
     verification::VerificationLevel,
 };

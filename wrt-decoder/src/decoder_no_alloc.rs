@@ -99,11 +99,11 @@ pub enum NoAllocErrorCode {
 
 impl NoAllocErrorCode {
     /// Converts a NoAllocErrorCode to a wrt_error code
-    pub fn to_error_code(&self) -> u32 {
+    pub fn to_error_code(&self) -> u16 {
         match self {
             NoAllocErrorCode::ModuleTooLarge => codes::CAPACITY_EXCEEDED,
             NoAllocErrorCode::InvalidHeader => codes::DECODING_ERROR,
-            NoAllocErrorCode::UnsupportedFeature => codes::UNSUPPORTED_FEATURE,
+            NoAllocErrorCode::UnsupportedFeature => codes::VALIDATION_UNSUPPORTED_FEATURE,
             NoAllocErrorCode::BoundsCheckFailed => codes::VALIDATION_ERROR,
             NoAllocErrorCode::MemoryProviderError => codes::MEMORY_ERROR,
             NoAllocErrorCode::ValidationError => codes::VALIDATION_ERROR,
@@ -115,7 +115,7 @@ impl NoAllocErrorCode {
         match self {
             NoAllocErrorCode::ModuleTooLarge => ErrorCategory::Capacity,
             NoAllocErrorCode::InvalidHeader => ErrorCategory::Parse,
-            NoAllocErrorCode::UnsupportedFeature => ErrorCategory::Unsupported,
+            NoAllocErrorCode::UnsupportedFeature => ErrorCategory::Validation,
             NoAllocErrorCode::BoundsCheckFailed => ErrorCategory::Validation,
             NoAllocErrorCode::MemoryProviderError => ErrorCategory::Memory,
             NoAllocErrorCode::ValidationError => ErrorCategory::Validation,
@@ -159,8 +159,8 @@ pub fn verify_wasm_header(bytes: &[u8]) -> Result<()> {
     }
 
     // Check version
-    let version = u32::from_le_bytes([bytes[4], bytes[5], bytes[6], bytes[7]]);
-    if version != binary::WASM_VERSION {
+    let version_bytes = [bytes[4], bytes[5], bytes[6], bytes[7]];
+    if version_bytes != binary::WASM_VERSION {
         return Err(create_error(
             NoAllocErrorCode::UnsupportedFeature,
             "Unsupported WebAssembly version",
@@ -192,9 +192,10 @@ pub fn create_memory_provider(bytes: &[u8], level: VerificationLevel) -> Result<
     }
 
     // Create a no_std provider with the maximum module size
-    let mut provider = NoStdProvider::new(MAX_MODULE_SIZE, level);
+    let mut provider = NoStdProvider::<MAX_MODULE_SIZE>::default();
 
-    // Write the bytes to the provider
+    // Write the bytes to the provider 
+    use wrt_foundation::safe_memory::Provider;
     provider.write_data(0, bytes).map_err(|_| {
         create_error(NoAllocErrorCode::MemoryProviderError, "Failed to initialize memory provider")
     })?;
@@ -258,7 +259,7 @@ impl From<u8> for SectionId {
 }
 
 /// A minimal representation of a WebAssembly section
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SectionInfo {
     /// Section ID
     pub id: SectionId,
@@ -358,7 +359,7 @@ impl WasmModuleHeader {
                     let section_data = &bytes
                         [section_info.offset..section_info.offset + section_info.size as usize];
                     if let Ok((section_name, name_size)) = binary::read_name(section_data, 0) {
-                        if section_name == name {
+                        if section_name == name.as_bytes() {
                             return Some((
                                 section_info.offset + name_size,
                                 section_info.size - name_size as u32,
@@ -514,7 +515,7 @@ fn is_name_section(section_data: &[u8]) -> bool {
 
     // Try to read the name
     if let Ok((name, _)) = binary::read_name(section_data, 0) {
-        name == "name"
+        name == b"name"
     } else {
         false
     }

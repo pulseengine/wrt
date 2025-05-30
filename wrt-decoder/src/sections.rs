@@ -15,9 +15,15 @@ use wrt_format::{
     types::ValueType as FormatValueType,
 };
 use wrt_foundation::types::{
-    DataSegment as WrtDataSegment, ElementSegment as WrtElementSegment, Export as WrtExport,
+    Export as WrtExport,
     FuncType as WrtFuncType, GlobalType as WrtGlobalType, Import as WrtImport,
     MemoryType as WrtMemoryType, TableType as WrtTableType,
+};
+
+// Import segment types from wrt-format
+use wrt_format::{
+    DataSegment as WrtDataSegment,
+    ElementSegment as WrtElementSegment,
 };
 
 use crate::prelude::{format, String, Vec};

@@ -8,6 +8,7 @@ use wrt_test_registry::prelude::*;
 mod consolidated_parser_tests;
 mod wat_integration_tests;
 mod comprehensive_parsing_tests;
+mod control_instruction_parser_tests;
 
 /// Run all parser integration tests
 pub fn run_tests() -> TestResult {
@@ -25,6 +26,11 @@ pub fn run_tests() -> TestResult {
     
     runner.add_test_suite("Comprehensive Parsing", || {
         // Complex parsing scenarios and validation
+        Ok(())
+    })?;
+    
+    runner.add_test_suite("Control Instruction Parsing", || {
+        // Control instruction parsing and encoding tests
         Ok(())
     })?;
     

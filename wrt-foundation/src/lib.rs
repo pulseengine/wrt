@@ -118,6 +118,9 @@ pub mod validation;
 pub mod values;
 /// Verification and integrity checking
 pub mod verification;
+/// Formal verification using Kani
+#[cfg(any(doc, kani))]
+pub mod verify;
 
 // Modules that require allocation
 #[cfg(feature = "alloc")]
@@ -190,9 +193,11 @@ pub use safe_memory::{
     NoStdProvider, Provider as MemoryProvider, SafeMemoryHandler, Slice as SafeSlice,
     SliceMut as SafeSliceMut, Stats as MemoryStats,
 };
+#[cfg(feature = "std")]
+pub use safe_memory::StdMemoryProvider;
 pub use traits::{BoundedCapacity, Checksummed, FromFormat, ToFormat, Validatable};
 pub use types::{
-    BlockType, // DataSegment, ElementSegment // Uncommented BlockType
+    BlockType, DataMode, ElementMode, MemArg,
     FuncType,
     GlobalType,
     Limits,
@@ -201,6 +206,9 @@ pub use types::{
     TableType,
     ValueType,
 };
+
+// Data and element segment types are defined in the types module
+// DataSegment and ElementSegment types are provided by wrt-format module when needed
 // Temporarily disabled validation exports due to circular dependency
 // pub use validation::{
 //     BoundedCapacity, Checksummed, Validatable, ValidationError, ValidationResult,

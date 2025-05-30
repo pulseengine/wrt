@@ -10,10 +10,9 @@
 // Use the proper imports from wrt_format instead of local sections
 use wrt_error::{codes, kinds, Error, ErrorCategory, Result};
 use wrt_format::types::CoreWasmVersion;
+use wrt_foundation::bounded::BoundedVec;
 // Explicitly use types from wrt_foundation for clarity in this validation context
 use wrt_foundation::types::{
-    DataMode as TypesDataMode,       // For DataSegment validation later
-    ElementMode as TypesElementMode, // Added for validate_elements
     ExportDesc as TypesExportDesc,
     FuncType as TypesFuncType,
     GlobalType as TypesGlobalType,
@@ -25,6 +24,12 @@ use wrt_foundation::types::{
                               * functions */
     TableType as TypesTableType,
     ValueType as TypesValueType, // Already in prelude, but good for explicitness if needed below
+};
+
+// Import DataMode and ElementMode from wrt-format
+use wrt_format::{
+    DataMode as TypesDataMode,
+    ElementMode as TypesElementMode,
 };
 
 // REMOVED: use wrt_format::module::{DataMode, ExportKind, Global, ImportDesc, Memory, Table};
@@ -895,7 +900,7 @@ fn validate_memory_type(memory: &MemoryType) -> Result<()> {
         if memory.limits.min > max {
             return Err(Error::new(
                 ErrorCategory::Validation,
-                codes::LIMITS_EXCEED_MAX,
+                codes::CAPACITY_EXCEEDED,
                 format!("Memory limits invalid: min {} > max {}", memory.limits.min, max),
             ));
         }
@@ -911,7 +916,7 @@ fn validate_table_type(table: &TableType) -> Result<()> {
         if table.limits.min > max {
             return Err(Error::new(
                 ErrorCategory::Validation,
-                codes::LIMITS_EXCEED_MAX,
+                codes::CAPACITY_EXCEEDED,
                 format!("Table limits invalid: min {} > max {}", table.limits.min, max),
             ));
         }
@@ -1025,13 +1030,13 @@ pub fn validation_error_with_type(message: &str, type_name: &str) -> Error {
     )
 }
 
-/// New helper for wrt_foundation::types::ImportGlobalType
+/// New helper for imported global types
 fn validate_import_global_type(
-    global_type: &wrt_foundation::types::ImportGlobalType,
+    global_type: &TypesGlobalType,
 ) -> Result<()> {
     validate_value_type(&global_type.value_type, "imported global")?;
     // Mutability of imported globals is allowed by spec, though MVP had
-    // restrictions. wrt_foundation::types::ImportGlobalType allows mutable.
+    // restrictions. Global types allow mutable.
     Ok(())
 }
 
@@ -1043,7 +1048,7 @@ fn validate_type_information_section(module: &Module) -> Result<()> {
             if entry.type_index as usize >= module.types.len() {
                 return Err(Error::new(
                     ErrorCategory::Validation,
-                    codes::INVALID_TYPE_INDEX, // Using a more specific code
+                    codes::INVALID_INSTANCE_INDEX, // Using a more specific code
                     format!(
                         "TypeInformationSection: entry refers to type_index {} which is out of \
                          bounds (max types {}).",

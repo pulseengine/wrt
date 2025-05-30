@@ -60,6 +60,7 @@ use wrt_foundation::{
 #[cfg(feature = "abbrev")]
 mod abbrev;
 mod cursor;
+mod error;
 mod file_table;
 #[cfg(feature = "debug-info")]
 mod info;
@@ -96,7 +97,7 @@ pub struct DwarfDebugInfo<'a> {
 
     /// Abbreviation cache for performance
     #[cfg(feature = "abbrev")]
-    abbrev_cache: BoundedVec<Abbreviation, MAX_DWARF_ABBREV_CACHE, NoStdProvider>,
+    abbrev_cache: BoundedVec<Abbreviation, MAX_DWARF_ABBREV_CACHE, NoStdProvider<{ MAX_DWARF_ABBREV_CACHE * 128 }>>,
 
     /// Line number state machine
     #[cfg(feature = "line-info")]
@@ -114,7 +115,7 @@ impl<'a> DwarfDebugInfo<'a> {
             module_bytes,
             sections: DwarfSections::default(),
             #[cfg(feature = "abbrev")]
-            abbrev_cache: BoundedVec::new(NoStdProvider),
+            abbrev_cache: BoundedVec::new(NoStdProvider::<{ MAX_DWARF_ABBREV_CACHE * 128 }>::new()),
             #[cfg(feature = "line-info")]
             line_state: LineNumberState::new(),
             #[cfg(feature = "debug-info")]

@@ -8,11 +8,12 @@
 //! module parser and the Component Model parser.
 
 use wrt_error::{codes, Error, ErrorCategory, Result};
-use wrt_format::binary::{is_valid_wasm_header, read_name, WASM_MAGIC, WASM_VERSION};
+use wrt_format::binary::{WASM_MAGIC, WASM_VERSION};
 
-use crate::prelude::String;
+use crate::prelude::{String, read_name, is_valid_wasm_header};
 
 /// Read a WebAssembly name string from binary data
+#[cfg(any(feature = "alloc", feature = "std"))]
 pub fn read_name_as_string(data: &[u8], offset: usize) -> Result<(String, usize)> {
     // There's no decode_string in wrt-format, so we use read_name and convert to a
     // String We could use read_string directly, but keeping this function for

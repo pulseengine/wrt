@@ -545,6 +545,7 @@ fn verification_cost_multiplier_scaled(level: &VerificationLevel) -> u64 {
     match level {
         VerificationLevel::Off => 100,       // 1.00 * 100
         VerificationLevel::Basic => 110,     // 1.10 * 100
+        VerificationLevel::Standard => 150,  // 1.50 * 100
         VerificationLevel::Sampling => 125,  // 1.25 * 100
         VerificationLevel::Full => 200,      // 2.00 * 100
         VerificationLevel::Redundant => 250, // 2.50 * 100

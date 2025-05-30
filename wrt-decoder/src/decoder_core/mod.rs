@@ -16,6 +16,7 @@ pub use validate::{validate_module, validate_module_with_config, ValidationConfi
 
 pub use crate::module::decode_module_with_binary as decode_module;
 // Re-export encode functionality
+#[cfg(feature = "alloc")]
 pub use crate::module::encode_module;
 
 /// Configuration types for the decoder

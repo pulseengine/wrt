@@ -7,11 +7,7 @@
 // Ensure wrt_error items are in scope, typically via crate::prelude or direct
 // use
 use wrt_error::{codes, Error, ErrorCategory, Result};
-use wrt_format::{
-    create_state_section as format_create_state_section,
-    extract_state_section as format_extract_state_section, CompressionType, CustomSection,
-    StateSection,
-};
+use wrt_format::{CompressionType, CustomSection};
 use wrt_foundation::bounded::BoundedVec;
 
 use crate::prelude::*;
@@ -41,7 +37,7 @@ pub fn create_engine_state_section(
     use_compression: bool,
 ) -> Result<CustomSection> {
     let compression = if use_compression { CompressionType::RLE } else { CompressionType::None };
-    format_create_state_section(section_type, data, compression)
+    create_state_section(section_type, data, compression)
 }
 
 /// Extracts and validates data from a state-related custom section.
@@ -75,7 +71,7 @@ pub fn get_data_from_state_section(
         ));
     }
 
-    let (_compression_type, raw_data) = format_extract_state_section(custom_section)?;
+    let (_compression_type, raw_data) = extract_state_section(custom_section)?;
 
     // Check if raw_data exceeds MAX_STATE_SECTION_SIZE before attempting to create
     // BoundedVec

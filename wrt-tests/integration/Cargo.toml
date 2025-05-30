@@ -23,11 +23,7 @@ wrt-sync = { workspace = true }
 wrt-test-registry = { workspace = true }
 
 # Testing utilities
-criterion = { workspace = true }
-proptest = { workspace = true }
-tempfile = { workspace = true }
-wasmparser = { workspace = true }
-wat = { workspace = true }
+tempfile = "3.0"
 
 [[test]]
 name = "component_model_tests"
