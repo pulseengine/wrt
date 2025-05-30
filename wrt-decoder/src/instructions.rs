@@ -16,6 +16,24 @@ use alloc::{vec, vec::Vec}; // Ensure Vec is available
 use std::{vec, vec::Vec}; // Ensure Vec is available
 
 use wrt_error::{codes, Error, ErrorCategory, Result};
+use wrt_format::binary::{read_u8, read_leb128_u32, read_f32, read_f64};
+
+/// Parse a vector of items using a reader function
+fn parse_vec<T, F>(bytes: &[u8], reader: F) -> Result<(Vec<T>, usize)>
+where
+    F: Fn(&[u8]) -> Result<(T, usize)>,
+{
+    let (count, mut offset) = read_leb128_u32(bytes, 0)?;
+    let mut items = Vec::with_capacity(count as usize);
+    
+    for _ in 0..count {
+        let (item, new_offset) = reader(&bytes[offset..])?;
+        items.push(item);
+        offset += new_offset;
+    }
+    
+    Ok((items, offset))
+}
 // Use the canonical types from wrt_foundation
 use wrt_foundation::types::{
     self as CoreTypes, BlockType as CoreBlockType, DataIdx, ElemIdx, FuncIdx, GlobalIdx,

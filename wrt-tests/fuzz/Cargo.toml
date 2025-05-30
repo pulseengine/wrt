@@ -1,0 +1,59 @@
+[package]
+name = "wrt-fuzz"
+version.workspace = true
+edition.workspace = true
+description = "Consolidated fuzz testing for WRT components"
+license.workspace = true
+repository = "https://github.com/pulseengine/wrt"
+keywords = ["wasm", "webassembly", "fuzz", "testing", "safety"]
+categories = ["wasm", "development-tools::testing"]
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+# Fuzzing dependencies
+libfuzzer-sys = "0.4"
+arbitrary = { version = "1", features = ["derive"] }
+
+# WRT dependencies
+wrt = { workspace = true, default-features = false }
+wrt-foundation = { workspace = true, default-features = false }
+wrt-runtime = { workspace = true, default-features = false }
+wrt-error = { workspace = true, default-features = false }
+wrt-test-registry = { workspace = true, default-features = false }
+
+[features]
+default = ["std"]
+std = [
+    "wrt/std",
+    "wrt-foundation/std",
+    "wrt-runtime/std",
+    "wrt-error/std",
+    "wrt-test-registry/std",
+]
+
+# Fuzz targets
+[[bin]]
+name = "fuzz_bounded_vec"
+path = "fuzz_targets/fuzz_bounded_vec.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "fuzz_bounded_stack"
+path = "fuzz_targets/fuzz_bounded_stack.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "fuzz_memory_adapter"
+path = "fuzz_targets/fuzz_memory_adapter.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "fuzz_safe_slice"
+path = "fuzz_targets/fuzz_safe_slice.rs"
+test = false
+doc = false

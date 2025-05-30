@@ -35,10 +35,8 @@
 //! ```
 
 use wrt_error::{codes, Error, ErrorCategory, Result};
-use wrt_format::binary;
 use wrt_foundation::{
-    bounded::{BoundedVec, MAX_BUFFER_SIZE, MAX_WASM_NAME_LENGTH},
-    safe_memory::{NoStdProvider, SafeSlice},
+    safe_memory::NoStdProvider,
     verification::VerificationLevel,
 };
 
@@ -151,7 +149,7 @@ pub fn verify_wasm_header(bytes: &[u8]) -> Result<()> {
     }
 
     // Check magic number
-    if bytes[0..4] != binary::WASM_MAGIC {
+    if &bytes[0..4] != &[0x00, 0x61, 0x73, 0x6D] {
         return Err(create_error(
             NoAllocErrorCode::InvalidHeader,
             "Invalid WebAssembly magic number",
@@ -160,7 +158,7 @@ pub fn verify_wasm_header(bytes: &[u8]) -> Result<()> {
 
     // Check version
     let version_bytes = [bytes[4], bytes[5], bytes[6], bytes[7]];
-    if version_bytes != binary::WASM_VERSION {
+    if version_bytes != [0x01, 0x00, 0x00, 0x00] {
         return Err(create_error(
             NoAllocErrorCode::UnsupportedFeature,
             "Unsupported WebAssembly version",
@@ -183,7 +181,7 @@ pub fn verify_wasm_header(bytes: &[u8]) -> Result<()> {
 /// # Returns
 ///
 /// * `Result<NoStdProvider>` - Memory provider initialized with the bytes
-pub fn create_memory_provider(bytes: &[u8], level: VerificationLevel) -> Result<NoStdProvider> {
+pub fn create_memory_provider(bytes: &[u8], _level: VerificationLevel) -> Result<NoStdProvider<MAX_MODULE_SIZE>> {
     if bytes.len() > MAX_MODULE_SIZE {
         return Err(create_error(
             NoAllocErrorCode::ModuleTooLarge,
@@ -358,7 +356,7 @@ impl WasmModuleHeader {
                 if section_info.id == SectionId::Custom {
                     let section_data = &bytes
                         [section_info.offset..section_info.offset + section_info.size as usize];
-                    if let Ok((section_name, name_size)) = binary::read_name(section_data, 0) {
+                    if let Ok((section_name, name_size)) = read_name(section_data, 0) {
                         if section_name == name.as_bytes() {
                             return Some((
                                 section_info.offset + name_size,
@@ -438,7 +436,7 @@ pub fn decode_module_header(
             break;
         }
 
-        let (section_size, size_len) = match binary::read_leb128_u32(bytes, offset) {
+        let (section_size, size_len) = match read_leb128_u32(bytes, offset) {
             Ok((size, len)) => (size, len),
             Err(_) => break, // Invalid section size, stop scanning
         };
@@ -514,7 +512,7 @@ fn is_name_section(section_data: &[u8]) -> bool {
     }
 
     // Try to read the name
-    if let Ok((name, _)) = binary::read_name(section_data, 0) {
+    if let Ok((name, _)) = read_name(section_data, 0) {
         name == b"name"
     } else {
         false
