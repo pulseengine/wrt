@@ -27,10 +27,7 @@ use wrt_foundation::types::{
 };
 
 // Import DataMode and ElementMode from wrt-format
-use wrt_format::{
-    DataMode as TypesDataMode,
-    ElementMode as TypesElementMode,
-};
+use wrt_format::{DataMode as TypesDataMode, ElementMode as TypesElementMode};
 
 // REMOVED: use wrt_format::module::{DataMode, ExportKind, Global, ImportDesc, Memory, Table};
 // REMOVED: use wrt_format::types::{FuncType, Limits};
@@ -1031,9 +1028,7 @@ pub fn validation_error_with_type(message: &str, type_name: &str) -> Error {
 }
 
 /// New helper for imported global types
-fn validate_import_global_type(
-    global_type: &TypesGlobalType,
-) -> Result<()> {
+fn validate_import_global_type(global_type: &TypesGlobalType) -> Result<()> {
     validate_value_type(&global_type.value_type, "imported global")?;
     // Mutability of imported globals is allowed by spec, though MVP had
     // restrictions. Global types allow mutable.

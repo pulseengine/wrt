@@ -1,6 +1,6 @@
 use wrt_foundation::{
     bounded::{BoundedVec, MAX_DWARF_FILE_TABLE},
-    NoStdProvider,
+    BoundedCapacity, NoStdProvider,
 };
 
 /// File table support for resolving file indices to paths
@@ -20,21 +20,85 @@ pub struct FileEntry<'a> {
     pub size: u64,
 }
 
+// Implement required traits for BoundedVec compatibility
+impl<'a> Default for FileEntry<'a> {
+    fn default() -> Self {
+        Self { path: DebugString::default(), dir_index: 0, mod_time: 0, size: 0 }
+    }
+}
+
+impl<'a> PartialEq for FileEntry<'a> {
+    fn eq(&self, other: &Self) -> bool {
+        self.path == other.path
+            && self.dir_index == other.dir_index
+            && self.mod_time == other.mod_time
+            && self.size == other.size
+    }
+}
+
+impl<'a> Eq for FileEntry<'a> {}
+
+impl<'a> wrt_foundation::traits::Checksummable for FileEntry<'a> {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        self.path.update_checksum(checksum);
+        checksum.update_slice(&self.dir_index.to_le_bytes());
+        checksum.update_slice(&self.mod_time.to_le_bytes());
+        checksum.update_slice(&self.size.to_le_bytes());
+    }
+}
+
+impl<'a> wrt_foundation::traits::ToBytes for FileEntry<'a> {
+    fn to_bytes_with_provider<'b, P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'b>,
+        provider: &P,
+    ) -> wrt_foundation::Result<()> {
+        self.path.to_bytes_with_provider(writer, provider)?;
+        writer.write_u32_le(self.dir_index)?;
+        writer.write_u64_le(self.mod_time)?;
+        writer.write_u64_le(self.size)?;
+        Ok(())
+    }
+}
+
+impl<'a> wrt_foundation::traits::FromBytes for FileEntry<'a> {
+    fn from_bytes_with_provider<'b, P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'b>,
+        provider: &P,
+    ) -> wrt_foundation::Result<Self> {
+        Ok(Self {
+            path: DebugString::from_bytes_with_provider(reader, provider)?,
+            dir_index: reader.read_u32_le()?,
+            mod_time: reader.read_u64_le()?,
+            size: reader.read_u64_le()?,
+        })
+    }
+}
+
 /// File table for resolving file indices to paths
 #[derive(Debug)]
 pub struct FileTable<'a> {
     /// Directory entries
-    directories: BoundedVec<DebugString<'a>, MAX_DWARF_FILE_TABLE, NoStdProvider<{ MAX_DWARF_FILE_TABLE * 32 }>>,
+    directories: BoundedVec<
+        DebugString<'a>,
+        MAX_DWARF_FILE_TABLE,
+        NoStdProvider<{ MAX_DWARF_FILE_TABLE * 32 }>,
+    >,
     /// File entries
-    files: BoundedVec<FileEntry<'a>, MAX_DWARF_FILE_TABLE, NoStdProvider<{ MAX_DWARF_FILE_TABLE * 64 }>>,
+    files: BoundedVec<
+        FileEntry<'a>,
+        MAX_DWARF_FILE_TABLE,
+        NoStdProvider<{ MAX_DWARF_FILE_TABLE * 64 }>,
+    >,
 }
 
 impl<'a> FileTable<'a> {
     /// Create a new empty file table
     pub fn new() -> Self {
         // BoundedVec::new returns a Result, so we need to handle it
-        let directories = BoundedVec::new(NoStdProvider::<{ MAX_DWARF_FILE_TABLE * 32 }>::default())
-            .expect("Failed to create directories BoundedVec");
+        let directories =
+            BoundedVec::new(NoStdProvider::<{ MAX_DWARF_FILE_TABLE * 32 }>::default())
+                .expect("Failed to create directories BoundedVec");
         let files = BoundedVec::new(NoStdProvider::<{ MAX_DWARF_FILE_TABLE * 64 }>::default())
             .expect("Failed to create files BoundedVec");
         Self { directories, files }
@@ -55,19 +119,19 @@ impl<'a> FileTable<'a> {
     }
 
     /// Get a file entry by index (1-based as per DWARF spec)
-    pub fn get_file(&self, index: u16) -> Option<&FileEntry<'a>> {
+    pub fn get_file(&self, index: u16) -> Option<FileEntry<'a>> {
         if index == 0 {
             return None; // 0 means no file in DWARF
         }
-        self.files.get((index - 1) as usize)
+        self.files.get((index - 1) as usize).ok()
     }
 
     /// Get a directory by index (0 = compilation directory)
-    pub fn get_directory(&self, index: u32) -> Option<&DebugString<'a>> {
+    pub fn get_directory(&self, index: u32) -> Option<DebugString<'a>> {
         if index == 0 {
             return None; // 0 = compilation directory (not stored here)
         }
-        self.directories.get((index - 1) as usize)
+        self.directories.get((index - 1) as usize).ok()
     }
 
     /// Get the full path for a file
@@ -77,11 +141,11 @@ impl<'a> FileTable<'a> {
 
         if file.dir_index == 0 {
             // File is relative to compilation directory
-            Some(FilePath { directory: None, filename: file.path.clone() })
+            Some(FilePath { directory: None, filename: file.path })
         } else {
             // File has explicit directory
             let directory = self.get_directory(file.dir_index)?;
-            Some(FilePath { directory: Some(directory.clone()), filename: file.path.clone() })
+            Some(FilePath { directory: Some(directory), filename: file.path })
         }
     }
 
@@ -119,9 +183,9 @@ impl<'a> FilePath<'a> {
     /// Format as a path string (directory/filename)
     /// Note: In no_alloc environment, we can't allocate a new string,
     /// so this is primarily for display purposes
-    pub fn display<F>(&self, mut writer: F) -> Result<(), core::fmt::Error>
+    pub fn display<F>(&self, mut writer: F) -> core::result::Result<(), core::fmt::Error>
     where
-        F: FnMut(&str) -> Result<(), core::fmt::Error>,
+        F: FnMut(&str) -> core::result::Result<(), core::fmt::Error>,
     {
         if let Some(ref dir) = self.directory {
             writer(dir.as_str())?;

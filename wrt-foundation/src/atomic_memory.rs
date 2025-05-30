@@ -15,10 +15,13 @@ use wrt_sync::mutex::WrtMutex;
 
 use crate::{
     operations::{record_global_operation, Type as OperationType},
-    prelude::*,
+    prelude::{Clone, Debug, Eq, PartialEq, Result, Sized},
     safe_memory::{Provider, SafeMemoryHandler},
     verification::VerificationLevel,
 };
+
+#[cfg(any(feature = "alloc", feature = "std"))]
+use crate::prelude::Vec;
 
 /// An atomic memory operation handler that ensures write operations and
 /// checksum calculations are performed atomically.

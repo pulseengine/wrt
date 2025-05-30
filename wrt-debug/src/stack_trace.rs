@@ -16,6 +16,9 @@ pub struct StackFrame<'a> {
     pub line_info: Option<crate::LineInfo>,
     /// Frame depth (0 = current frame)
     pub depth: u16,
+    /// Phantom data to ensure lifetime is used
+    #[cfg(not(feature = "debug-info"))]
+    _phantom: core::marker::PhantomData<&'a ()>,
 }
 
 /// Stack trace builder using fixed-size array for no_std compatibility
@@ -29,10 +32,7 @@ pub struct StackTrace<'a> {
 impl<'a> StackTrace<'a> {
     /// Create a new empty stack trace
     pub fn new() -> Self {
-        Self { 
-            frames: [None; MAX_STACK_FRAMES],
-            frame_count: 0,
-        }
+        Self { frames: [None; MAX_STACK_FRAMES], frame_count: 0 }
     }
 
     /// Add a frame to the stack trace
@@ -69,9 +69,9 @@ impl<'a> StackTrace<'a> {
         &self,
         file_table: &'a crate::FileTable<'a>,
         mut writer: F,
-    ) -> Result<(), core::fmt::Error>
+    ) -> core::result::Result<(), core::fmt::Error>
     where
-        F: FnMut(&str) -> Result<(), core::fmt::Error>,
+        F: FnMut(&str) -> core::result::Result<(), core::fmt::Error>,
     {
         for frame in self.frames() {
             // Frame number
@@ -137,12 +137,14 @@ impl<'a> StackTraceBuilder<'a> {
         let line_info = self.debug_info.find_line_info(pc).ok().flatten();
 
         // Add current frame
-        let frame = StackFrame { 
-            pc, 
+        let frame = StackFrame {
+            pc,
             #[cfg(feature = "debug-info")]
-            function, 
-            line_info, 
-            depth: 0 
+            function,
+            line_info,
+            depth: 0,
+            #[cfg(not(feature = "debug-info"))]
+            _phantom: core::marker::PhantomData,
         };
 
         trace.push_frame(frame)?;
@@ -162,12 +164,14 @@ impl<'a> StackTraceBuilder<'a> {
         let mut trace = StackTrace::new();
 
         for (i, &pc) in pcs.iter().enumerate() {
-            let frame = StackFrame { 
-                pc, 
+            let frame = StackFrame {
+                pc,
                 #[cfg(feature = "debug-info")]
-                function: None, 
-                line_info: None, 
-                depth: i as u16 
+                function: None,
+                line_info: None,
+                depth: i as u16,
+                #[cfg(not(feature = "debug-info"))]
+                _phantom: core::marker::PhantomData,
             };
             trace.push_frame(frame)?;
         }

@@ -33,6 +33,7 @@ mod sftp_deploy;
 mod no_std_verification;
 mod qualification; // Assuming qualification.rs is a module, distinct from directory
 mod update_panic_registry; // Added new module
+mod wrtd_build;
 
 // Comment out install_ops and its usage due to missing file
 // mod install_ops;
@@ -76,25 +77,27 @@ pub enum Command {
     ValidateDocs,
     ValidateDocsComprehensive,
     GenerateChangelog(GenerateChangelogArgs),
-    DeployDocsSftp(DeployDocsSftpArgs), /* Added new command
-                                                                          * Comment out
-                                                                          * commands whose
-                                                                          * modules are missing
-                                                                          * or commented out
-                                                                          * Install(InstallArgs),
-                                                                          * Lint(rust_ops::LintOpts), // rust_ops missing
-                                                                          * Test(rust_ops::TestOpts),  // rust_ops missing
-                                                                          * Build(rust_ops::BuildOpts), // rust_ops missing
-                                                                          * Ci(ci_ops::CiArgs),
-                                                                          * // ci_ops missing
-                                                                          * UpdateManifest(manifest_ops::UpdateManifestArgs), // manifest_ops missing
-                                                                          * Coverage(cobertura_ops::CoverageArgs), // cobertura_ops missing
-                                                                          * CoverageClean(cobertura_ops::CoverageCleanArgs), // cobertura_ops missing
-                                                                          * LicheDown(lichedown_ops::LicheDownArgs), // lichedown_ops missing
-                                                                          * Apps(apps_ops::AppsArgs), // apps_ops missing */
+    DeployDocsSftp(DeployDocsSftpArgs),
+    WrtdBuild(WrtdBuildArgs),
+    WrtdBuildAll,
+    WrtdTest,
 }
 
 // Args structs for existing commands
+#[derive(Debug, Parser)]
+pub struct WrtdBuildArgs {
+    #[clap(long, help = "Build specific binary (wrtd-std, wrtd-alloc, wrtd-nostd)")]
+    pub binary: Option<String>,
+    #[clap(long, help = "Build in release mode")]
+    pub release: bool,
+    #[clap(long, help = "Show build summary")]
+    pub show_summary: bool,
+    #[clap(long, help = "Test binaries after building")]
+    pub test_binaries: bool,
+    #[clap(long, help = "Enable cross-compilation for embedded targets")]
+    pub cross_compile: bool,
+}
+
 #[derive(Debug, Parser)]
 pub struct PublishDocsDaggerArgs {
     #[clap(long, help = "Directory to output the generated documentation.")]
@@ -300,6 +303,72 @@ async fn main() -> Result<()> {
             // Run async deployment
             let rt = tokio::runtime::Runtime::new()?;
             rt.block_on(sftp_deploy::deploy_docs_sftp(config))?;
+            return Ok(());
+        }
+        Command::WrtdBuild(args) => {
+            let config = wrtd_build::WrtdBuildConfig {
+                release: args.release,
+                show_summary: args.show_summary,
+                test_binaries: args.test_binaries,
+                cross_compile: args.cross_compile,
+            };
+            
+            if let Some(binary) = &args.binary {
+                // Build specific binary
+                match binary.as_str() {
+                    "wrtd-std" => {
+                        println!("📦 Building Standard Library Runtime (servers/desktop)...");
+                        let result = wrtd_build::build_wrtd_binary(
+                            "wrtd-std",
+                            "std-runtime",
+                            config.release,
+                            None,
+                        );
+                        if let Err(e) = result {
+                            return Err(e);
+                        }
+                    }
+                    "wrtd-alloc" => {
+                        println!("📦 Building Allocation Runtime (embedded with heap)...");
+                        let result = wrtd_build::build_wrtd_binary(
+                            "wrtd-alloc",
+                            "alloc-runtime",
+                            config.release,
+                            None,
+                        );
+                        if let Err(e) = result {
+                            return Err(e);
+                        }
+                    }
+                    "wrtd-nostd" => {
+                        println!("📦 Building No Standard Library Runtime (bare metal)...");
+                        let result = wrtd_build::build_wrtd_binary(
+                            "wrtd-nostd",
+                            "nostd-runtime",
+                            config.release,
+                            None,
+                        );
+                        if let Err(e) = result {
+                            return Err(e);
+                        }
+                    }
+                    _ => {
+                        return Err(anyhow::anyhow!("Unknown binary: {}. Valid options: wrtd-std, wrtd-alloc, wrtd-nostd", binary));
+                    }
+                }
+            } else {
+                // Build all binaries
+                wrtd_build::build_all_wrtd(config)?;
+            }
+            return Ok(());
+        }
+        Command::WrtdBuildAll => {
+            let config = wrtd_build::WrtdBuildConfig::default();
+            wrtd_build::build_all_wrtd(config)?;
+            return Ok(());
+        }
+        Command::WrtdTest => {
+            wrtd_build::test_wrtd_modes(true)?;
             return Ok(());
         }
         _ => {

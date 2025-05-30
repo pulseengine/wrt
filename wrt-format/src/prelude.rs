@@ -78,7 +78,7 @@ pub use crate::{WasmString, WasmVec};
 
 /// Create a SafeSlice from a byte slice
 #[cfg(feature = "safety")]
-pub fn safe_slice(data: &[u8]) -> wrt_foundation::safe_memory::SafeSlice<'_> {
+pub fn safe_slice(data: &[u8]) -> wrt_foundation::Result<wrt_foundation::safe_memory::SafeSlice<'_>> {
     wrt_foundation::safe_memory::SafeSlice::new(data)
 }
 
@@ -87,7 +87,7 @@ pub fn safe_slice(data: &[u8]) -> wrt_foundation::safe_memory::SafeSlice<'_> {
 pub fn safe_slice_with_verification(
     data: &[u8],
     level: wrt_foundation::verification::VerificationLevel,
-) -> wrt_foundation::safe_memory::SafeSlice<'_> {
+) -> wrt_foundation::Result<wrt_foundation::safe_memory::SafeSlice<'_>> {
     wrt_foundation::safe_memory::SafeSlice::with_verification_level(data, level)
 }
 

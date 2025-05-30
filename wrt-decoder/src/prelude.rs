@@ -62,8 +62,6 @@ pub use wrt_error::{codes, kinds, Error, ErrorCategory, Result};
 pub use wrt_format as format;
 // Re-export from wrt-format
 pub use wrt_format::{
-    // Constants (always available)
-    binary::{WASM_MAGIC, WASM_VERSION},
     // Conversion utilities
     conversion::{
         block_type_to_format_block_type, format_block_type_to_block_type,
@@ -80,16 +78,9 @@ pub use wrt_format::{
     types::{FormatBlockType, Limits, MemoryIndexType},
 };
 
-// Import binary functions that require alloc
+// Import additional functions that require alloc (beyond what wrt_format exports)
 #[cfg(any(feature = "alloc", feature = "std"))]
-pub use wrt_format::{
-    binary::{
-        is_valid_wasm_header, parse_block_type, read_f32, read_f64, read_leb128_i32, read_leb128_i64,
-        read_leb128_u64, read_name, read_u8, read_vector as parse_vec, validate_utf8, write_leb128_i32,
-        write_leb128_i64, write_leb128_u32, write_leb128_u64, write_string, BinaryFormat,
-    },
-    state::{create_state_section, extract_state_section, StateSection},
-};
+pub use wrt_format::state::{create_state_section, extract_state_section, StateSection};
 // Component model types (require alloc)
 #[cfg(feature = "alloc")]
 pub use wrt_foundation::component_value::{ComponentValue, ValType};
@@ -148,51 +139,50 @@ impl ToString for &str {
 // Binary function aliases for different feature configurations
 #[cfg(any(feature = "alloc", feature = "std"))]
 pub mod binary {
-    pub use wrt_format::binary::{write_leb128_u32, write_string};
     // Alias for read_leb_u32
     pub fn read_leb_u32(data: &[u8]) -> wrt_error::Result<(u32, usize)> {
-        wrt_format::binary::read_leb128_u32(data, 0)
+        wrt_format::read_leb128_u32(data, 0)
     }
 }
 
 #[cfg(not(any(feature = "alloc", feature = "std")))]
 pub mod binary {
     use wrt_foundation::{BoundedVec, NoStdProvider};
-    
+
     // Alias for write_leb128_u32 in no_std mode
     pub fn write_leb128_u32(value: u32) -> BoundedVec<u8, 10, NoStdProvider<64>> {
         let mut result = BoundedVec::new(NoStdProvider::default())
             .expect("Failed to create bounded vec for LEB128");
         let mut buffer = [0u8; 10];
-        if let Ok(bytes_written) = wrt_format::binary::write_leb128_u32_to_slice(value, &mut buffer) {
+        if let Ok(bytes_written) = wrt_format::binary::write_leb128_u32_to_slice(value, &mut buffer)
+        {
             for i in 0..bytes_written {
                 let _ = result.push(buffer[i]);
             }
         }
         result
     }
-    
-    // Alias for write_string in no_std mode  
+
+    // Alias for write_string in no_std mode
     pub fn write_string(_s: &str) -> BoundedVec<u8, 256, NoStdProvider<512>> {
         // Simplified no_std implementation
-        BoundedVec::new(NoStdProvider::default())
-            .expect("Failed to create bounded vec for string")
+        BoundedVec::new(NoStdProvider::default()).expect("Failed to create bounded vec for string")
     }
-    
+
     // Alias for read_leb_u32
     pub fn read_leb_u32(data: &[u8], offset: usize) -> wrt_error::Result<(u32, usize)> {
         wrt_format::binary::read_leb128_u32(data, offset)
     }
 }
 
-// Make commonly used binary functions available at top level
-pub use wrt_format::binary::{read_leb128_u32, read_string, read_u32};
+// Make commonly used binary functions available at top level (now exported by wrt_format directly)
+// pub use wrt_format::binary::{read_leb128_u32, read_string, read_u32};
 
 // For compatibility, add some aliases that the code expects
 pub fn read_leb_u32(data: &[u8]) -> wrt_error::Result<(u32, usize)> {
     read_leb128_u32(data, 0)
 }
 
-// Feature-gated function aliases (no duplicates since they're already imported above)
+// Feature-gated function aliases - bring in functions from wrt_format that aren't already exported
 #[cfg(any(feature = "alloc", feature = "std"))]
-pub use parse_block_type as parse_format_block_type;
+pub use wrt_format::parse_block_type as parse_format_block_type;

@@ -1082,14 +1082,15 @@ impl wrt_foundation::traits::Checksummable for LandingPadRequirement {
         // Simple checksum implementation
         use core::hash::{Hash, Hasher};
         use wrt_foundation::verification::Checksum;
-        
+
         // Hash the location
         let location_bytes = [
             self.location.function_index.to_le_bytes(),
             self.location.instruction_offset.to_le_bytes(),
-        ].concat();
+        ]
+        .concat();
         checksum.update_slice(&location_bytes);
-        
+
         // Hash the target type
         let target_type_byte = self.target_type as u8;
         checksum.update_slice(&[target_type_byte]);
@@ -1105,10 +1106,10 @@ impl wrt_foundation::traits::ToBytes for LandingPadRequirement {
         // Serialize location
         self.location.function_index.to_bytes_with_provider(writer, provider)?;
         self.location.instruction_offset.to_bytes_with_provider(writer, provider)?;
-        
+
         // Serialize target type
         (self.target_type as u8).to_bytes_with_provider(writer, provider)?;
-        
+
         Ok(())
     }
 }
@@ -1121,7 +1122,7 @@ impl wrt_foundation::traits::FromBytes for LandingPadRequirement {
         let function_index = u32::from_bytes_with_provider(reader, provider)?;
         let instruction_offset = u32::from_bytes_with_provider(reader, provider)?;
         let target_type_byte = u8::from_bytes_with_provider(reader, provider)?;
-        
+
         let target_type = match target_type_byte {
             0 => ControlFlowTargetType::DirectCall,
             1 => ControlFlowTargetType::IndirectCall,
@@ -1131,19 +1132,18 @@ impl wrt_foundation::traits::FromBytes for LandingPadRequirement {
             5 => ControlFlowTargetType::FunctionEntry,
             _ => ControlFlowTargetType::DirectCall, // Default fallback
         };
-        
+
         Ok(Self {
-            location: LandingPadLocation {
-                function_index,
-                instruction_offset,
-            },
+            location: LandingPadLocation { function_index, instruction_offset },
             target_type,
             protection_instruction: None, // Simplified - not serialized
             #[cfg(feature = "alloc")]
             validation_requirements: Vec::new(),
             #[cfg(not(feature = "alloc"))]
-            validation_requirements: wrt_foundation::BoundedVec::new(wrt_foundation::NoStdProvider::default())
-                .expect("Failed to create validation requirements vec"),
+            validation_requirements: wrt_foundation::BoundedVec::new(
+                wrt_foundation::NoStdProvider::default(),
+            )
+            .expect("Failed to create validation requirements vec"),
         })
     }
 }
@@ -1156,10 +1156,10 @@ impl wrt_foundation::traits::Checksummable for ValidationRequirement {
             ValidationRequirement::TypeSignatureCheck { expected_type } => {
                 checksum.update_slice(&[0u8]); // Variant discriminant
                 expected_type.update_checksum(checksum);
-            },
+            }
             ValidationRequirement::ShadowStackCheck => {
                 checksum.update_slice(&[1u8]);
-            },
+            }
             #[cfg(feature = "alloc")]
             ValidationRequirement::ControlFlowTargetCheck { valid_targets } => {
                 checksum.update_slice(&[2u8]);
@@ -1167,7 +1167,7 @@ impl wrt_foundation::traits::Checksummable for ValidationRequirement {
                 for target in valid_targets {
                     target.update_checksum(checksum);
                 }
-            },
+            }
             #[cfg(not(feature = "alloc"))]
             ValidationRequirement::ControlFlowTargetCheck { valid_targets } => {
                 checksum.update_slice(&[2u8]);
@@ -1177,10 +1177,10 @@ impl wrt_foundation::traits::Checksummable for ValidationRequirement {
                         target.update_checksum(checksum);
                     }
                 }
-            },
+            }
             ValidationRequirement::CallingConventionCheck => {
                 checksum.update_slice(&[3u8]);
-            },
+            }
         }
     }
 }
@@ -1195,10 +1195,10 @@ impl wrt_foundation::traits::ToBytes for ValidationRequirement {
             ValidationRequirement::TypeSignatureCheck { expected_type } => {
                 0u8.to_bytes_with_provider(writer, provider)?;
                 expected_type.to_bytes_with_provider(writer, provider)?;
-            },
+            }
             ValidationRequirement::ShadowStackCheck => {
                 1u8.to_bytes_with_provider(writer, provider)?;
-            },
+            }
             #[cfg(feature = "alloc")]
             ValidationRequirement::ControlFlowTargetCheck { valid_targets } => {
                 2u8.to_bytes_with_provider(writer, provider)?;
@@ -1206,7 +1206,7 @@ impl wrt_foundation::traits::ToBytes for ValidationRequirement {
                 for target in valid_targets {
                     target.to_bytes_with_provider(writer, provider)?;
                 }
-            },
+            }
             #[cfg(not(feature = "alloc"))]
             ValidationRequirement::ControlFlowTargetCheck { valid_targets } => {
                 2u8.to_bytes_with_provider(writer, provider)?;
@@ -1216,10 +1216,10 @@ impl wrt_foundation::traits::ToBytes for ValidationRequirement {
                         target.to_bytes_with_provider(writer, provider)?;
                     }
                 }
-            },
+            }
             ValidationRequirement::CallingConventionCheck => {
                 3u8.to_bytes_with_provider(writer, provider)?;
-            },
+            }
         }
         Ok(())
     }
@@ -1235,7 +1235,7 @@ impl wrt_foundation::traits::FromBytes for ValidationRequirement {
             0 => {
                 let expected_type = u32::from_bytes_with_provider(reader, provider)?;
                 Ok(ValidationRequirement::TypeSignatureCheck { expected_type })
-            },
+            }
             1 => Ok(ValidationRequirement::ShadowStackCheck),
             2 => {
                 let count = u32::from_bytes_with_provider(reader, provider)? as usize;
@@ -1250,15 +1250,17 @@ impl wrt_foundation::traits::FromBytes for ValidationRequirement {
                 }
                 #[cfg(not(feature = "alloc"))]
                 {
-                    let mut valid_targets = wrt_foundation::BoundedVec::new(wrt_foundation::NoStdProvider::default())
-                        .expect("Failed to create valid targets vec");
-                    for _ in 0..count.min(16) { // Limited to 16 for BoundedVec
+                    let mut valid_targets =
+                        wrt_foundation::BoundedVec::new(wrt_foundation::NoStdProvider::default())
+                            .expect("Failed to create valid targets vec");
+                    for _ in 0..count.min(16) {
+                        // Limited to 16 for BoundedVec
                         let target = u32::from_bytes_with_provider(reader, provider)?;
                         let _ = valid_targets.push(target);
                     }
                     Ok(ValidationRequirement::ControlFlowTargetCheck { valid_targets })
                 }
-            },
+            }
             3 => Ok(ValidationRequirement::CallingConventionCheck),
             _ => Ok(ValidationRequirement::ShadowStackCheck), // Default fallback
         }

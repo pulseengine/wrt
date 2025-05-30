@@ -15,9 +15,7 @@
 // Additional alias for backwards compatibility
 pub use crate::{
     decoder_core::validate::validate_module,
-    module::{
-        decode_module, decode_module_with_binary as decode, decode_module_with_binary,
-    },
+    module::{decode_module, decode_module_with_binary as decode, decode_module_with_binary},
     name_section::*,
 };
 

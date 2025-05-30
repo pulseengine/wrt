@@ -271,7 +271,7 @@ impl BoundedError {
         #[cfg(any(feature = "alloc", feature = "std"))]
         {
             // Assuming prelude brings in `format` correctly
-            Self::new(BoundedErrorKind::InvalidCapacity, format!("Invalid capacity: {:?}", value))
+            Self::new(BoundedErrorKind::InvalidCapacity, format!("Invalid capacity: {value:?}"))
         }
         #[cfg(not(any(feature = "alloc", feature = "std")))]
         {
@@ -288,7 +288,7 @@ impl BoundedError {
         #[cfg(any(feature = "alloc", feature = "std"))]
         {
             // Assuming prelude brings in `format` correctly
-            Self::new(BoundedErrorKind::ConversionError, format!("Conversion error: {}", msg_part))
+            Self::new(BoundedErrorKind::ConversionError, format!("Conversion error: {msg_part}"))
         }
         #[cfg(not(any(feature = "alloc", feature = "std")))]
         {
@@ -304,7 +304,7 @@ impl BoundedError {
     pub fn deserialization_error(msg: &'static str) -> Self {
         #[cfg(any(feature = "alloc", feature = "std"))]
         {
-            Self::new(BoundedErrorKind::ConversionError, format!("Deserialization error: {}", msg))
+            Self::new(BoundedErrorKind::ConversionError, format!("Deserialization error: {msg}"))
         }
         #[cfg(not(any(feature = "alloc", feature = "std")))]
         {
@@ -318,7 +318,7 @@ impl BoundedError {
     pub fn memory_error(msg: &'static str) -> Self {
         #[cfg(any(feature = "alloc", feature = "std"))]
         {
-            Self::new(BoundedErrorKind::SliceError, format!("Memory error: {}", msg))
+            Self::new(BoundedErrorKind::SliceError, format!("Memory error: {msg}"))
         }
         #[cfg(not(any(feature = "alloc", feature = "std")))]
         {
@@ -333,7 +333,7 @@ impl BoundedError {
         {
             Self::new(
                 BoundedErrorKind::SliceError,
-                format!("Index {} out of bounds for length {}", index, length),
+                format!("Index {index} out of bounds for length {length}"),
             )
         }
         #[cfg(not(any(feature = "alloc", feature = "std")))]
@@ -348,7 +348,7 @@ impl BoundedError {
     pub fn validation_error(msg: &'static str) -> Self {
         #[cfg(any(feature = "alloc", feature = "std"))]
         {
-            Self::new(BoundedErrorKind::VerificationError, format!("Validation error: {}", msg))
+            Self::new(BoundedErrorKind::VerificationError, format!("Validation error: {msg}"))
         }
         #[cfg(not(any(feature = "alloc", feature = "std")))]
         {
@@ -588,6 +588,7 @@ where
     /// Returns `BoundedError::CapacityExceeded` if the stack is full.
     /// Returns `BoundedError` if writing the item to memory fails or if
     /// checksum verification fails.
+    #[allow(clippy::needless_pass_by_value)] // False positive: item IS consumed in this function
     pub fn push(&mut self, item: T) -> core::result::Result<(), BoundedError> {
         if self.is_full() {
             return Err(BoundedError::capacity_exceeded());
@@ -1033,6 +1034,7 @@ where
     ///
     /// Returns `BoundedError::CapacityExceeded` if the vector is full.
     /// Returns `BoundedError` if writing the item to memory fails.
+    #[allow(clippy::needless_pass_by_value)] // False positive: item IS consumed in this function
     pub fn push(&mut self, item: T) -> core::result::Result<(), BoundedError> {
         if self.is_full() {
             return Err(BoundedError::capacity_exceeded());
@@ -2813,6 +2815,20 @@ where
         } else {
             None
         }
+    }
+}
+
+// Implement IntoIterator for &BoundedVec to satisfy clippy::iter_without_into_iter
+impl<'a, T, const N_ELEMENTS: usize, P> IntoIterator for &'a BoundedVec<T, N_ELEMENTS, P>
+where
+    T: Sized + Checksummable + ToBytes + FromBytes + Default + Clone + PartialEq + Eq,
+    P: MemoryProvider + Clone + PartialEq + Eq,
+{
+    type Item = T;
+    type IntoIter = BoundedVecIterator<'a, T, N_ELEMENTS, P>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
     }
 }
 

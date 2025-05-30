@@ -11,16 +11,11 @@ use alloc::{
 #[cfg(feature = "std")]
 use std::{string::String, vec::Vec};
 
-#[cfg(any(feature = "alloc", feature = "std"))]
-use wrt_error::{codes, Error, ErrorCategory, Result};
-
-#[cfg(not(any(feature = "alloc", feature = "std")))]
 use wrt_error::{codes, Error, ErrorCategory, Result};
 
 #[cfg(not(any(feature = "alloc", feature = "std")))]
 use wrt_foundation::{MemoryProvider, NoStdProvider};
 
-#[cfg(any(feature = "alloc", feature = "std"))]
 use crate::{
     compression::{rle_decode, rle_encode, CompressionType},
     format,
@@ -28,13 +23,6 @@ use crate::{
     version::{STATE_MAGIC, STATE_VERSION},
 };
 
-#[cfg(not(any(feature = "alloc", feature = "std")))]
-use crate::{
-    compression::{rle_decode, rle_encode, CompressionType},
-    format,
-    section::CustomSection,
-    version::{STATE_MAGIC, STATE_VERSION},
-};
 #[cfg(not(any(feature = "alloc", feature = "std")))]
 use crate::{WasmString, WasmVec};
 

@@ -32,11 +32,7 @@ extern crate alloc;
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 // Import types for internal use
 #[cfg(all(feature = "alloc", not(feature = "std")))]
-use alloc::{
-    format,
-    string::String,
-    vec::Vec,
-};
+use alloc::{format, string::String, vec::Vec};
 #[cfg(feature = "std")]
 use std::{format, string::String, vec::Vec};
 
@@ -199,18 +195,23 @@ pub mod wit_parser;
 
 // Re-export binary constants (always available)
 pub use binary::{
-    COMPONENT_CORE_SORT_FUNC, COMPONENT_CORE_SORT_GLOBAL,
-    COMPONENT_CORE_SORT_INSTANCE, COMPONENT_CORE_SORT_MEMORY, COMPONENT_CORE_SORT_MODULE,
-    COMPONENT_CORE_SORT_TABLE, COMPONENT_CORE_SORT_TYPE, COMPONENT_MAGIC, COMPONENT_SORT_COMPONENT,
-    COMPONENT_SORT_CORE, COMPONENT_SORT_FUNC, COMPONENT_SORT_INSTANCE, COMPONENT_SORT_TYPE,
-    COMPONENT_SORT_VALUE, COMPONENT_VERSION, WASM_MAGIC, WASM_VERSION,
+    COMPONENT_CORE_SORT_FUNC, COMPONENT_CORE_SORT_GLOBAL, COMPONENT_CORE_SORT_INSTANCE,
+    COMPONENT_CORE_SORT_MEMORY, COMPONENT_CORE_SORT_MODULE, COMPONENT_CORE_SORT_TABLE,
+    COMPONENT_CORE_SORT_TYPE, COMPONENT_MAGIC, COMPONENT_SORT_COMPONENT, COMPONENT_SORT_CORE,
+    COMPONENT_SORT_FUNC, COMPONENT_SORT_INSTANCE, COMPONENT_SORT_TYPE, COMPONENT_SORT_VALUE,
+    COMPONENT_VERSION, WASM_MAGIC, WASM_VERSION,
 };
 
 // Re-export binary parsing functions
+// Core parsing functions available in all configurations
+pub use binary::{
+    read_leb128_i32, read_leb128_i64, read_leb128_u32, read_leb128_u64, read_u32, read_u8,
+};
+
+// Additional parsing functions requiring allocation
 #[cfg(any(feature = "alloc", feature = "std"))]
 pub use binary::{
-    is_valid_wasm_header, parse_block_type, parse_vec, read_f32, read_f64, read_leb128_i32,
-    read_leb128_i64, read_leb128_u32, read_leb128_u64, read_name, read_string, read_u32, read_u8,
+    is_valid_wasm_header, parse_block_type, parse_vec, read_f32, read_f64, read_name, read_string,
     read_vector, validate_utf8, BinaryFormat,
 };
 
@@ -346,7 +347,7 @@ pub mod no_std_demo {
 
     /// Example showing bounded string working
     pub fn demo_bounded_string() -> wrt_error::Result<()> {
-        let mut wasm_str =
+        let wasm_str =
             WasmString::<NoStdProvider<1024>>::from_str("hello", NoStdProvider::<1024>::default())
                 .map_err(|_| wrt_foundation::bounded::CapacityError)?;
         assert_eq!(wasm_str.as_str().unwrap(), "hello");

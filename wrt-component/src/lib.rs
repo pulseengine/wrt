@@ -23,6 +23,13 @@
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 extern crate alloc;
 
+// Panic handler for no_std builds
+#[cfg(not(feature = "std"))]
+#[panic_handler]
+fn panic(_info: &core::panic::PanicInfo) -> ! {
+    loop {}
+}
+
 // Note about functionality with different features
 // - std: Full functionality
 // - no_std + alloc: Full no_std functionality

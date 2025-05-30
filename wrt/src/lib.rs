@@ -61,6 +61,13 @@ extern crate std;
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 extern crate alloc;
 
+// Panic handler for no_std builds
+#[cfg(not(feature = "std"))]
+#[panic_handler]
+fn panic(_info: &core::panic::PanicInfo) -> ! {
+    loop {}
+}
+
 // Define debug_println macro for conditional debug printing
 #[cfg(feature = "std")]
 #[macro_export]

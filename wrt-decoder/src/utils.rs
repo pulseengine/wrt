@@ -10,7 +10,7 @@
 use wrt_error::{codes, Error, ErrorCategory, Result};
 use wrt_format::binary::{WASM_MAGIC, WASM_VERSION};
 
-use crate::prelude::{String, read_name, is_valid_wasm_header};
+use crate::prelude::{is_valid_wasm_header, read_name, String};
 
 /// Read a WebAssembly name string from binary data
 #[cfg(any(feature = "alloc", feature = "std"))]

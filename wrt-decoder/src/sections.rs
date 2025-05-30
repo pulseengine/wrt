@@ -14,16 +14,17 @@ use wrt_format::{
     },
     types::ValueType as FormatValueType,
 };
+
+// Note: These functions should be available if they're exported by wrt_format
+// If not, we'll need to implement alternatives or define them locally
 use wrt_foundation::types::{
-    Export as WrtExport,
     FuncType as WrtFuncType, GlobalType as WrtGlobalType, Import as WrtImport,
     MemoryType as WrtMemoryType, TableType as WrtTableType,
 };
 
 // Import segment types from wrt-format
 use wrt_format::{
-    DataSegment as WrtDataSegment,
-    ElementSegment as WrtElementSegment,
+    module::Export as WrtExport, DataSegment as WrtDataSegment, ElementSegment as WrtElementSegment,
 };
 
 use crate::prelude::{format, String, Vec};
@@ -110,7 +111,11 @@ pub mod parsers {
                 offset += 1;
             }
 
-            format_func_types.push(wrt_format::FuncType::new(params, results)?);
+            format_func_types.push(wrt_format::types::FuncType::new(
+                wrt_foundation::NoStdProvider::<1024>::default(),
+                params,
+                results,
+            )?);
         }
 
         format_func_types
@@ -275,7 +280,7 @@ pub mod parsers {
             ));
         }
 
-        let (limits, new_offset) = binary::parse_limits(bytes, offset)?;
+        let (limits, new_offset) = parse_limits(bytes, offset)?;
         offset = new_offset;
 
         Ok((wrt_format::module::Table { element_type, limits }, offset))
@@ -301,7 +306,7 @@ pub mod parsers {
         bytes: &[u8],
         offset: usize,
     ) -> Result<(wrt_format::module::Memory, usize)> {
-        let (limits, new_offset) = binary::parse_limits(bytes, offset)?;
+        let (limits, new_offset) = parse_limits(bytes, offset)?;
         Ok((
             wrt_format::module::Memory {
                 limits: limits.clone(),
@@ -488,7 +493,7 @@ pub mod parsers {
         for _ in 0..count {
             // binary::parse_element is expected to parse a wrt_format::module::Element
             let (format_element, new_offset) =
-                binary::parse_element(bytes, offset).map_err(|e| {
+                parse_element_segment(bytes, offset).map_err(|e| {
                     Error::new(
                         e.category(),
                         e.code(),
@@ -541,14 +546,13 @@ pub mod parsers {
             // binary::parse_data_segment is expected to parse a wrt_format::module::Data
             // Note: The name in wrt_format::binary might be parse_data, not
             // parse_data_segment
-            let (format_data_segment, new_offset) =
-                binary::parse_data(bytes, offset).map_err(|e| {
-                    Error::new(
-                        e.category(),
-                        e.code(),
-                        format!("Failed to parse data segment entry: {}", e.message()),
-                    )
-                })?;
+            let (format_data_segment, new_offset) = parse_data(bytes, offset).map_err(|e| {
+                Error::new(
+                    e.category(),
+                    e.code(),
+                    format!("Failed to parse data segment entry: {}", e.message()),
+                )
+            })?;
             offset = new_offset;
 
             let types_data_segment =

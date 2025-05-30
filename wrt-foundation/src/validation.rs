@@ -53,7 +53,7 @@ impl core::fmt::Display for ValidationError {
                 // For now, just basic info.
                 write!(f, "Checksum mismatch in ")?;
                 f.write_str(description)?;
-                write!(f, ": expected {}, actual {}", expected, actual)
+                write!(f, ": expected {expected}, actual {actual}")
             }
         }
     }

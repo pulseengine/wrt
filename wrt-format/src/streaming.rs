@@ -16,9 +16,6 @@ use core::marker::PhantomData;
 #[cfg(not(any(feature = "alloc", feature = "std")))]
 use wrt_foundation::{MemoryProvider, NoStdProvider, traits::BoundedCapacity};
 
-#[cfg(any(feature = "alloc", feature = "std"))]
-use wrt_foundation::{MemoryProvider, NoStdProvider};
-
 #[cfg(not(any(feature = "alloc", feature = "std")))]
 use wrt_error::{codes, Error, ErrorCategory};
 
@@ -291,7 +288,7 @@ impl<P: MemoryProvider + Clone + Default + Eq> StreamingParser<P> {
             };
 
             // Clear section buffer for next section
-            self.section_buffer.clear();
+            let _ = self.section_buffer.clear();
         } else {
             // Update remaining bytes
             self.state = ParserState::SectionContent { section_id, remaining_bytes: new_remaining };
@@ -361,7 +358,7 @@ impl<P: MemoryProvider + Clone + Default + Eq> SectionParser<P> {
 
     /// Load section data for parsing
     pub fn load_section(&mut self, data: &[u8]) -> core::result::Result<(), Error> {
-        self.buffer.clear();
+        let _ = self.buffer.clear();
         self.position = 0;
 
         for &byte in data {

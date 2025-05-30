@@ -16,19 +16,17 @@ use wrt_error::{codes, Error, ErrorCategory, Result};
 
 // These are already wrt_foundation::types due to the `use` below
 use wrt_foundation::types::{
-    CustomSection as WrtCustomSection,   // Alias for clarity
-    Export as WrtExport,                 // Alias for clarity
-    FuncType,                            // Already wrt_foundation::types::FuncType
-    GlobalType as WrtGlobalType,         // Alias for clarity
-    Import as WrtImport,                 // Alias for clarity
-    MemoryType,                          // Already wrt_foundation::types::MemoryType
-    TableType,                           // Already wrt_foundation::types::TableType
+    CustomSection as WrtCustomSection, // Alias for clarity
+    FuncType,                          // Already wrt_foundation::types::FuncType
+    GlobalType as WrtGlobalType,       // Alias for clarity
+    Import as WrtImport,               // Alias for clarity
+    MemoryType,                        // Already wrt_foundation::types::MemoryType
+    TableType,                         // Already wrt_foundation::types::TableType
 };
 
 // Import segment types from wrt-format
 use wrt_format::{
-    DataSegment as WrtDataSegment,
-    ElementSegment as WrtElementSegment,
+    module::Export as WrtExport, DataSegment as WrtDataSegment, ElementSegment as WrtElementSegment,
 };
 
 // use alloc::string::String; // Should come from prelude
@@ -181,7 +179,12 @@ pub trait RuntimeModuleBuilder {
     fn add_element(&mut self, element: WrtElementSegment) -> Result<()>;
 
     /// Add a function body
-    fn add_function_body(&mut self, func_idx: u32, type_idx: u32, body: CodeSection) -> Result<()>;
+    fn add_function_body(
+        &mut self,
+        func_idx: u32,
+        type_idx: u32,
+        body: crate::module::WrtCode,
+    ) -> Result<()>;
 
     /// Add a data segment
     fn add_data(&mut self, data: WrtDataSegment) -> Result<()>;

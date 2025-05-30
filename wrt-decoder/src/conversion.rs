@@ -19,14 +19,14 @@ use wrt_format::types::{RefType as FormatRefType, ValueType as FormatValueType};
 
 // Import types from wrt-foundation
 use wrt_foundation::{
-    types::{FuncType, GlobalType, Limits, MemoryType, RefType, TableType, DataMode, ElementMode},
-    ValueType, MemoryProvider, NoStdProvider,
+    types::{DataMode, ElementMode, FuncType, GlobalType, Limits, MemoryType, RefType, TableType},
+    MemoryProvider, NoStdProvider, ValueType,
 };
 
 #[cfg(feature = "std")]
 use wrt_foundation::StdMemoryProvider;
 
-// Import common types from prelude  
+// Import common types from prelude
 use crate::prelude::*;
 use crate::types::*;
 
@@ -35,7 +35,7 @@ const MAX_FUNC_PARAMS: usize = 16;
 const MAX_FUNC_RESULTS: usize = 8;
 const MAX_IMPORTS: usize = 64;
 const MAX_EXPORTS: usize = 64;
-const MAX_DATA_SIZE: usize = 8192;   // 8KB per data segment
+const MAX_DATA_SIZE: usize = 8192; // 8KB per data segment
 const MAX_ELEMENT_SIZE: usize = 1024; // 1K elements per segment
 
 /// Memory-efficient conversion context that can be reused
@@ -219,8 +219,8 @@ pub fn types_limits_to_format_limits(types_limits: &Limits) -> wrt_format::types
 /// Convert format limits to component limits
 pub fn format_limits_to_component_limits(
     format_limits: &wrt_format::types::Limits,
-) -> wrt_foundation::component::Limits {
-    wrt_foundation::component::Limits {
+) -> wrt_format::types::Limits {
+    wrt_format::types::Limits {
         min: format_limits.min as u32,
         max: format_limits.max.map(|m| m as u32),
     }
@@ -228,7 +228,7 @@ pub fn format_limits_to_component_limits(
 
 /// Convert component limits to format limits
 pub fn component_limits_to_format_limits(
-    comp_limits: &wrt_foundation::component::Limits,
+    comp_limits: &wrt_format::types::Limits,
 ) -> wrt_format::types::Limits {
     wrt_format::types::Limits {
         min: comp_limits.min as u64,
@@ -255,11 +255,13 @@ pub fn types_ref_type_to_format_ref_type(types_type: &RefType) -> FormatRefType 
 }
 
 /// Convert a format function type to a runtime function type with memory efficiency
-/// 
+///
 /// Uses different strategies based on feature configuration:
 /// - std/alloc: Uses iterators to avoid intermediate allocations
 /// - no_std: Uses bounded vectors with size validation
-pub fn format_func_type_to_types_func_type(format_type: &wrt_format::types::FuncType) -> Result<FuncType> {
+pub fn format_func_type_to_types_func_type(
+    format_type: &wrt_format::types::FuncType,
+) -> Result<FuncType> {
     // Validate size limits for no_std mode
     #[cfg(not(feature = "alloc"))]
     {
@@ -287,7 +289,7 @@ pub fn format_func_type_to_types_func_type(format_type: &wrt_format::types::Func
             format_type.results.iter().map(|r| format_value_type_to_value_type(r)),
         )
     }
-    
+
     #[cfg(not(feature = "alloc"))]
     {
         let provider = NoStdProvider::<1024>::default();

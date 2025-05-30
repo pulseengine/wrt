@@ -302,7 +302,7 @@ impl<'a> Parser<'a> {
                 if let Some(custom_section) = module.custom_sections.first() {
                     Ok(Payload::CustomSection {
                         name: custom_section.name.clone(),
-                        data: SafeSlice::new(data),
+                        data: SafeSlice::new(data)?,
                         size: section_size,
                     })
                 } else {
@@ -313,13 +313,13 @@ impl<'a> Parser<'a> {
                     ))
                 }
             }
-            0x01 => Ok(Payload::TypeSection(SafeSlice::new(data), section_size)),
-            0x02 => Ok(Payload::ImportSection(SafeSlice::new(data), section_size)),
-            0x03 => Ok(Payload::FunctionSection(SafeSlice::new(data), section_size)),
-            0x04 => Ok(Payload::TableSection(SafeSlice::new(data), section_size)),
-            0x05 => Ok(Payload::MemorySection(SafeSlice::new(data), section_size)),
-            0x06 => Ok(Payload::GlobalSection(SafeSlice::new(data), section_size)),
-            0x07 => Ok(Payload::ExportSection(SafeSlice::new(data), section_size)),
+            0x01 => Ok(Payload::TypeSection(SafeSlice::new(data)?, section_size)),
+            0x02 => Ok(Payload::ImportSection(SafeSlice::new(data)?, section_size)),
+            0x03 => Ok(Payload::FunctionSection(SafeSlice::new(data)?, section_size)),
+            0x04 => Ok(Payload::TableSection(SafeSlice::new(data)?, section_size)),
+            0x05 => Ok(Payload::MemorySection(SafeSlice::new(data)?, section_size)),
+            0x06 => Ok(Payload::GlobalSection(SafeSlice::new(data)?, section_size)),
+            0x07 => Ok(Payload::ExportSection(SafeSlice::new(data)?, section_size)),
             0x08 => {
                 // Start section - parse directly
                 if section_size == 0 {
@@ -333,9 +333,9 @@ impl<'a> Parser<'a> {
                 let (start_index, _) = wrt_format::binary::read_leb128_u32(data, 0)?;
                 Ok(Payload::StartSection(start_index))
             }
-            0x09 => Ok(Payload::ElementSection(SafeSlice::new(data), section_size)),
-            0x0A => Ok(Payload::CodeSection(SafeSlice::new(data), section_size)),
-            0x0B => Ok(Payload::DataSection(SafeSlice::new(data), section_size)),
+            0x09 => Ok(Payload::ElementSection(SafeSlice::new(data)?, section_size)),
+            0x0A => Ok(Payload::CodeSection(SafeSlice::new(data)?, section_size)),
+            0x0B => Ok(Payload::DataSection(SafeSlice::new(data)?, section_size)),
             0x0C => {
                 // Data count section
                 if section_size == 0 {
@@ -362,7 +362,7 @@ impl<'a> Parser<'a> {
                 } else {
                     Ok(Payload::CustomSection {
                         name: format!("unknown_{}", section_id),
-                        data: SafeSlice::new(data),
+                        data: SafeSlice::new(data)?,
                         size: section_size,
                     })
                 }
@@ -395,7 +395,7 @@ impl<'a> Parser<'a> {
             _ => {
                 // For all other component sections, package them as ComponentSection
                 // The component parser will handle them later
-                Ok(Payload::ComponentSection { data: SafeSlice::new(data), size: section_size })
+                Ok(Payload::ComponentSection { data: SafeSlice::new(data)?, size: section_size })
             }
         }
     }

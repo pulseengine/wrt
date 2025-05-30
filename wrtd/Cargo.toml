@@ -3,22 +3,90 @@ name = "wrtd"
 version.workspace = true
 edition.workspace = true
 license = { workspace = true }
-description = "WebAssembly Runtime Daemon (std-only host implementation)"
+description = "WebAssembly Runtime Daemon - multiple optimized binaries for different environments"
 repository = "https://github.com/pulseengine/wrt"
 readme = "README.md"
 keywords = ["wasm", "webassembly", "daemon", "runtime", "host"]
 categories = ["wasm", "command-line-utilities", "network-programming"]
 
+# Multiple binary targets for different runtime modes
+[[bin]]
+name = "wrtd-std"
+path = "src/main.rs"
+required-features = ["std-runtime"]
+
+[[bin]]
+name = "wrtd-alloc" 
+path = "src/main.rs"
+required-features = ["alloc-runtime"]
+
+[[bin]]
+name = "wrtd-nostd"
+path = "src/main.rs"
+required-features = ["nostd-runtime"]
+
+# Default binary (std mode)
+[[bin]]
+name = "wrtd"
+path = "src/main.rs"
+required-features = ["std-runtime"]
+
 [dependencies]
-wrt = { workspace = true, features = ["std"] }
-wrt-component = { workspace = true, features = ["std"] }
-wrt-intercept = { workspace = true, features = ["std"] }
-# Standard library dependencies
-clap = { version = "4.5.37", features = ["derive"] }
-tracing = "0.1"
-tracing-subscriber = { version= "0.3", features = ["json"] }
-anyhow = { workspace = true }
-once_cell = "1.18"
+# Core WRT dependencies (conditionally included)
+wrt = { workspace = true, default-features = false, optional = true }
+wrt-component = { workspace = true, default-features = false, optional = true }
+wrt-intercept = { workspace = true, default-features = false, optional = true }
+
+# Standard library dependencies (std-runtime only)
+clap = { version = "4.5.37", features = ["derive"], optional = true }
+tracing = { version = "0.1", optional = true }
+tracing-subscriber = { version = "0.3", features = ["json"], optional = true }
+anyhow = { workspace = true, optional = true }
+once_cell = { version = "1.18", optional = true }
+
+# No-std dependencies
+heapless = { version = "0.8", optional = true }
+nb = { version = "1.0", optional = true }
+
+[features]
+default = []
+
+# Mutually exclusive runtime modes
+std-runtime = [
+    "dep:wrt",
+    "dep:wrt-component", 
+    "dep:wrt-intercept",
+    "wrt/std",
+    "wrt-component/std", 
+    "wrt-intercept/std",
+    "dep:clap",
+    "dep:tracing",
+    "dep:tracing-subscriber", 
+    "dep:anyhow",
+    "dep:once_cell"
+]
+
+alloc-runtime = [
+    "dep:wrt",
+    "dep:wrt-component",
+    "dep:wrt-intercept", 
+    "wrt/alloc",
+    "wrt-component/alloc",
+    "wrt-intercept/alloc",
+    "dep:heapless",
+    "dep:anyhow"
+]
+
+nostd-runtime = [
+    "dep:wrt",
+    "dep:wrt-component",
+    "dep:wrt-intercept",
+    "wrt/no_std",
+    "wrt-component/no_std", 
+    "wrt-intercept/no_std",
+    "dep:heapless",
+    "dep:nb"
+]
 
 [lints.rust]
 unexpected_cfgs = { level = "allow", check-cfg = ['cfg(test)'] }

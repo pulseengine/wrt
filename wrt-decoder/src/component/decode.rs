@@ -261,11 +261,7 @@ pub fn decode_error_with_context(_message: &str, _context: &str) -> Error {
 
 /// Helper function to create a decode error with position
 pub fn decode_error_with_position(_message: &str, _position: usize) -> Error {
-    Error::new(
-        ErrorCategory::Parse,
-        codes::DECODING_ERROR,
-        "Component decode error at position",
-    )
+    Error::new(ErrorCategory::Parse, codes::DECODING_ERROR, "Component decode error at position")
 }
 
 /// Helper function to create a decode error with type

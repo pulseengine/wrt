@@ -60,9 +60,10 @@ pub fn format_limits_to_wrt_limits(
     let min_u32 = limits.min.try_into().map_err(|_| {
         #[cfg(any(feature = "alloc", feature = "std"))]
         {
-            crate::error::validation_error_dynamic(
-                format!("Minimum limit ({}) exceeds u32::MAX for non-memory64.", limits.min)
-            )
+            crate::error::validation_error_dynamic(format!(
+                "Minimum limit ({}) exceeds u32::MAX for non-memory64.",
+                limits.min
+            ))
         }
         #[cfg(not(any(feature = "alloc", feature = "std")))]
         {
@@ -74,9 +75,10 @@ pub fn format_limits_to_wrt_limits(
         Some(val_u64) => Some(val_u64.try_into().map_err(|_| {
             #[cfg(any(feature = "alloc", feature = "std"))]
             {
-                crate::error::validation_error_dynamic(
-                    format!("Maximum limit ({}) exceeds u32::MAX for non-memory64.", val_u64)
-                )
+                crate::error::validation_error_dynamic(format!(
+                    "Maximum limit ({}) exceeds u32::MAX for non-memory64.",
+                    val_u64
+                ))
             }
             #[cfg(not(any(feature = "alloc", feature = "std")))]
             {
@@ -90,17 +92,15 @@ pub fn format_limits_to_wrt_limits(
         if max_val < min_u32 {
             #[cfg(any(feature = "alloc", feature = "std"))]
             {
-                return Err(crate::error::validation_error_dynamic(
-                    format!(
-                        "Maximum limit ({}) cannot be less than minimum limit ({}).",
-                        max_val, min_u32
-                    )
-                ));
+                return Err(crate::error::validation_error_dynamic(format!(
+                    "Maximum limit ({}) cannot be less than minimum limit ({}).",
+                    max_val, min_u32
+                )));
             }
             #[cfg(not(any(feature = "alloc", feature = "std")))]
             {
                 return Err(crate::error::validation_error(
-                    "Maximum limit cannot be less than minimum limit."
+                    "Maximum limit cannot be less than minimum limit.",
                 ));
             }
         }
@@ -166,7 +166,10 @@ pub fn parse_value_type(byte: u8) -> Result<ValueType> {
         } else {
             #[cfg(any(feature = "alloc", feature = "std"))]
             {
-                crate::error::parse_error_dynamic(format!("Invalid value type byte: 0x{:02x}. Internal error: {}", byte, e))
+                crate::error::parse_error_dynamic(format!(
+                    "Invalid value type byte: 0x{:02x}. Internal error: {}",
+                    byte, e
+                ))
             }
             #[cfg(not(any(feature = "alloc", feature = "std")))]
             {

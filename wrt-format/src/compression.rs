@@ -16,12 +16,12 @@ use wrt_error::{codes, Error, ErrorCategory, Result};
 use wrt_error::{codes, Error, ErrorCategory, Result};
 
 #[cfg(not(any(feature = "alloc", feature = "std")))]
-use wrt_foundation::{MemoryProvider, NoStdProvider};
+use wrt_foundation::MemoryProvider;
 
 #[cfg(any(feature = "alloc", feature = "std"))]
 use crate::Vec;
 #[cfg(not(any(feature = "alloc", feature = "std")))]
-use crate::{BoundedVec, WasmVec};
+use crate::WasmVec;
 
 /// Supported compression types
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
