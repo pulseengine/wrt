@@ -1,0 +1,307 @@
+// WRT - wrt-decoder
+// Module: Memory-Optimized Parsing Utilities
+// Copyright (c) 2025 Ralf Anton Beier
+// Licensed under the MIT license.
+// SPDX-License-Identifier: MIT
+
+//! Memory-optimized parsing utilities for WebAssembly binary format
+//!
+//! This module provides zero-allocation and minimal-allocation parsing
+//! functions that work across std, no_std+alloc, and pure no_std environments.
+
+use core::str;
+use wrt_error::{codes, errors::codes as error_codes, Error, ErrorCategory, Result};
+use wrt_foundation::safe_memory::{SafeSlice, MemoryProvider};
+use crate::prelude::read_leb128_u32;
+
+/// Memory pool for reusing vectors during parsing
+pub struct MemoryPool<P: MemoryProvider> {
+    /// Pool of instruction vectors for reuse
+    #[cfg(any(feature = "alloc", feature = "std"))]
+    instruction_pools: crate::prelude::Vec<crate::prelude::Vec<u8>>,
+    /// Pool of string buffers for reuse
+    #[cfg(any(feature = "alloc", feature = "std"))]
+    string_pools: crate::prelude::Vec<crate::prelude::Vec<u8>>,
+    /// Memory provider for no_std environments
+    #[allow(dead_code)]
+    provider: P,
+}
+
+impl<P: MemoryProvider + Default> Default for MemoryPool<P> {
+    fn default() -> Self {
+        Self::new(P::default())
+    }
+}
+
+impl<P: MemoryProvider> MemoryPool<P> {
+    /// Create a new memory pool
+    pub fn new(provider: P) -> Self {
+        Self {
+            #[cfg(any(feature = "alloc", feature = "std"))]
+            instruction_pools: crate::prelude::Vec::new(),
+            #[cfg(any(feature = "alloc", feature = "std"))]
+            string_pools: crate::prelude::Vec::new(),
+            provider,
+        }
+    }
+
+    /// Get a reusable vector for instructions
+    #[cfg(any(feature = "alloc", feature = "std"))]
+    pub fn get_instruction_vector(&mut self) -> crate::prelude::Vec<u8> {
+        self.instruction_pools.pop().unwrap_or_else(crate::prelude::Vec::new)
+    }
+
+    /// Return a vector to the instruction pool
+    #[cfg(any(feature = "alloc", feature = "std"))]
+    pub fn return_instruction_vector(&mut self, mut vec: crate::prelude::Vec<u8>) {
+        vec.clear();
+        if vec.capacity() <= 1024 { // Don't pool overly large vectors
+            self.instruction_pools.push(vec);
+        }
+    }
+
+    /// Get a reusable vector for string operations
+    #[cfg(any(feature = "alloc", feature = "std"))]
+    pub fn get_string_buffer(&mut self) -> crate::prelude::Vec<u8> {
+        self.string_pools.pop().unwrap_or_else(crate::prelude::Vec::new)
+    }
+
+    /// Return a vector to the string pool
+    #[cfg(any(feature = "alloc", feature = "std"))]
+    pub fn return_string_buffer(&mut self, mut vec: crate::prelude::Vec<u8>) {
+        vec.clear();
+        if vec.capacity() <= 256 { // Don't pool overly large vectors
+            self.string_pools.push(vec);
+        }
+    }
+}
+
+/// Zero-allocation UTF-8 validation and string extraction
+pub fn validate_utf8_slice(slice: &SafeSlice) -> Result<()> {
+    let data = slice.data().map_err(|_| {
+        Error::new(
+            ErrorCategory::Parse,
+            error_codes::INVALID_UTF8_ENCODING,
+            "Failed to access slice data",
+        )
+    })?;
+    
+    str::from_utf8(data).map_err(|_| {
+        Error::new(
+            ErrorCategory::Parse,
+            error_codes::INVALID_UTF8_ENCODING,
+            "Invalid UTF-8 encoding",
+        )
+    })?;
+    Ok(())
+}
+
+/// Memory-efficient string parsing without allocation
+pub fn parse_string_inplace<'a>(slice: &'a SafeSlice<'a>, offset: usize) -> Result<(&'a str, usize)> {
+    let data = slice.data().map_err(|_| {
+        Error::new(
+            ErrorCategory::Parse,
+            codes::PARSE_ERROR,
+            "Failed to access slice data",
+        )
+    })?;
+
+    if offset >= data.len() {
+        return Err(Error::new(
+            ErrorCategory::Parse,
+            codes::PARSE_ERROR,
+            "Offset beyond slice boundary",
+        ));
+    }
+
+    let (length, new_offset) = read_leb128_u32(data, offset)?;
+    
+    if new_offset + length as usize > data.len() {
+        return Err(Error::new(
+            ErrorCategory::Parse,
+            codes::PARSE_ERROR,
+            "String length exceeds available data",
+        ));
+    }
+
+    let string_bytes = &data[new_offset..new_offset + length as usize];
+    let string_str = str::from_utf8(string_bytes).map_err(|_| {
+        Error::new(
+            ErrorCategory::Parse,
+            error_codes::INVALID_UTF8_ENCODING,
+            "Invalid UTF-8 in string",
+        )
+    })?;
+
+    Ok((string_str, new_offset + length as usize))
+}
+
+/// Copy string to target buffer only when necessary
+pub fn copy_string_to_buffer(source: &str, buffer: &mut [u8]) -> Result<usize> {
+    let bytes = source.as_bytes();
+    if bytes.len() > buffer.len() {
+        return Err(Error::new(
+            ErrorCategory::Parse,
+            codes::PARSE_ERROR,
+            "String too long for buffer",
+        ));
+    }
+    
+    buffer[..bytes.len()].copy_from_slice(bytes);
+    Ok(bytes.len())
+}
+
+/// Streaming parser for collections without pre-allocation
+pub struct StreamingCollectionParser<'a> {
+    #[allow(dead_code)]
+    slice: &'a SafeSlice<'a>,
+    offset: usize,
+    count: u32,
+    processed: u32,
+}
+
+impl<'a> StreamingCollectionParser<'a> {
+    /// Create a new streaming parser for a collection
+    pub fn new(slice: &'a SafeSlice<'a>, offset: usize) -> Result<Self> {
+        let data = slice.data().map_err(|_| {
+            Error::new(
+                ErrorCategory::Parse,
+                codes::PARSE_ERROR,
+                "Failed to access slice data",
+            )
+        })?;
+
+        let (count, new_offset) = read_leb128_u32(data, offset)?;
+        
+        Ok(Self {
+            slice,
+            offset: new_offset,
+            count,
+            processed: 0,
+        })
+    }
+
+    /// Get the total count of items
+    pub fn count(&self) -> u32 {
+        self.count
+    }
+
+    /// Get the current offset
+    pub fn offset(&self) -> usize {
+        self.offset
+    }
+
+    /// Advance the offset
+    pub fn advance_offset(&mut self, new_offset: usize) {
+        self.offset = new_offset;
+        self.processed += 1;
+    }
+
+    /// Check if there are more items to process
+    pub fn has_more(&self) -> bool {
+        self.processed < self.count
+    }
+
+    /// Get the remaining item count
+    pub fn remaining(&self) -> u32 {
+        self.count - self.processed
+    }
+}
+
+/// Arena allocator for module data
+#[cfg(any(feature = "alloc", feature = "std"))]
+pub struct ModuleArena {
+    buffer: crate::prelude::Vec<u8>,
+    offset: usize,
+}
+
+#[cfg(any(feature = "alloc", feature = "std"))]
+impl ModuleArena {
+    /// Create a new arena with the given capacity
+    pub fn new(capacity: usize) -> Self {
+        Self {
+            buffer: crate::prelude::Vec::with_capacity(capacity),
+            offset: 0,
+        }
+    }
+
+    /// Allocate space in the arena
+    pub fn allocate(&mut self, size: usize) -> Option<&mut [u8]> {
+        if self.offset + size > self.buffer.capacity() {
+            return None;
+        }
+
+        // Ensure buffer has enough actual length
+        if self.buffer.len() < self.offset + size {
+            self.buffer.resize(self.offset + size, 0);
+        }
+
+        let slice = &mut self.buffer[self.offset..self.offset + size];
+        self.offset += size;
+        Some(slice)
+    }
+
+    /// Reset the arena for reuse
+    pub fn reset(&mut self) {
+        self.offset = 0;
+        self.buffer.clear();
+    }
+}
+
+/// Bounded iterator for safe collection processing
+pub struct BoundedIterator<'a, T> {
+    items: &'a [T],
+    index: usize,
+    max_items: usize,
+}
+
+impl<'a, T> BoundedIterator<'a, T> {
+    /// Create a new bounded iterator
+    pub fn new(items: &'a [T], max_items: usize) -> Self {
+        Self {
+            items,
+            index: 0,
+            max_items,
+        }
+    }
+}
+
+impl<'a, T> Iterator for BoundedIterator<'a, T> {
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.index >= self.items.len() || self.index >= self.max_items {
+            None
+        } else {
+            let item = &self.items[self.index];
+            self.index += 1;
+            Some(item)
+        }
+    }
+}
+
+/// Memory-efficient bounds checking
+pub fn check_bounds_u32(value: u32, max_value: u32, _context: &str) -> Result<()> {
+    if value > max_value {
+        Err(Error::new(
+            ErrorCategory::Parse,
+            codes::PARSE_ERROR,
+            "Bounds check failed",
+        ))
+    } else {
+        Ok(())
+    }
+}
+
+/// Safe usize conversion with bounds checking
+pub fn safe_usize_conversion(value: u32, _context: &str) -> Result<usize> {
+    if value as usize as u32 != value {
+        Err(Error::new(
+            ErrorCategory::Parse,
+            codes::PARSE_ERROR,
+            "Integer overflow in usize conversion",
+        ))
+    } else {
+        Ok(value as usize)
+    }
+}

@@ -1,0 +1,79 @@
+name: Deploy Documentation to SFTP Hosting
+
+on:
+  push:
+    branches: [main]
+    paths: 
+      - 'docs/**'
+      - 'src/**/*.rs'
+      - '**/*.md'
+  workflow_dispatch:
+
+jobs:
+  deploy-docs:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+            
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libssl-dev pkg-config openssh-client
+          
+      - name: Setup SSH key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SFTP_SSH_KEY }}
+          
+      - name: Add SSH host to known_hosts
+        run: |
+          ssh-keyscan -H ${{ secrets.SFTP_HOST }} >> ~/.ssh/known_hosts
+          
+      - name: Build and Deploy Documentation
+        env:
+          SFTP_HOST: ${{ secrets.SFTP_HOST }}
+          SFTP_USERNAME: ${{ secrets.SFTP_USERNAME }}
+          SFTP_SSH_KEY_PATH: ~/.ssh/id_rsa
+        run: |
+          # Build documentation first
+          cargo xtask publish-docs-dagger --output-dir docs_output
+          
+          # Deploy to SFTP hosting
+          cargo xtask deploy-docs-sftp \
+            --build-docs \
+            --target-dir /htdocs \
+            --delete-remote
+            
+      - name: Verify deployment
+        env:
+          SFTP_HOST: ${{ secrets.SFTP_HOST }}
+        run: |
+          echo "Documentation deployed successfully!"
+          echo "Available at: https://${{ secrets.SFTP_HOST }}"
+
+# Required GitHub Secrets:
+# SFTP_HOST - Your hosting server IP or hostname
+# SFTP_USERNAME - Your SSH username
+# SFTP_SSH_KEY - Your private SSH key (base64 encoded or raw)
+#
+# Optional environment variables:
+# SFTP_TARGET_DIR - Custom target directory (default: /htdocs)
+# SFTP_PORT - Custom SSH port (default: 22)

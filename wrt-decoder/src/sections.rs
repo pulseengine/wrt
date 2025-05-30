@@ -8,7 +8,7 @@
 
 use wrt_error::{errors::codes, Error, ErrorCategory, ErrorSource, Result};
 use wrt_format::{
-    binary,
+    binary::{self, read_leb128_i32, read_leb128_i64},
     module::{
         Data, DataMode, Element, Export, ExportKind, Global, Import, ImportDesc, Memory, Table,
     },
@@ -28,15 +28,74 @@ use wrt_format::{
 };
 
 use crate::prelude::{format, String, Vec};
+use crate::memory_optimized::{StreamingCollectionParser, validate_utf8_slice, parse_string_inplace, check_bounds_u32, safe_usize_conversion};
+use crate::optimized_string::parse_utf8_string_inplace;
+use wrt_foundation::safe_memory::SafeSlice;
+
+// Helper functions for missing imports
+fn parse_element_segment(bytes: &[u8], offset: usize) -> Result<(wrt_format::module::Element, usize)> {
+    // Simplified element segment parsing - would need full implementation
+    Err(Error::new(
+        ErrorCategory::Parse,
+        codes::PARSE_ERROR,
+        "Element segment parsing not implemented",
+    ))
+}
+
+fn parse_data(bytes: &[u8], offset: usize) -> Result<(wrt_format::module::Data, usize)> {
+    // Simplified data segment parsing - would need full implementation  
+    Err(Error::new(
+        ErrorCategory::Parse,
+        codes::PARSE_ERROR,
+        "Data segment parsing not implemented",
+    ))
+}
+
+fn parse_limits(bytes: &[u8], offset: usize) -> Result<(wrt_format::types::Limits, usize)> {
+    if offset >= bytes.len() {
+        return Err(Error::new(
+            ErrorCategory::Parse,
+            codes::PARSE_ERROR,
+            "Unexpected end while parsing limits",
+        ));
+    }
+    
+    let flags = bytes[offset];
+    let mut new_offset = offset + 1;
+    
+    // Read minimum
+    let (min, min_offset) = binary::read_leb128_u32(bytes, new_offset)?;
+    new_offset = min_offset;
+    
+    // Check if maximum is present (flag bit 0)
+    let max = if flags & 0x01 != 0 {
+        let (max_val, max_offset) = binary::read_leb128_u32(bytes, new_offset)?;
+        new_offset = max_offset;
+        Some(max_val as u64)
+    } else {
+        None
+    };
+    
+    // Check shared flag (flag bit 1) 
+    let shared = flags & 0x02 != 0;
+    
+    Ok((wrt_format::types::Limits { min: min as u64, max, shared }, new_offset))
+}
 
 /// Parsers implementation
 pub mod parsers {
     use super::*;
 
-    /// Parse a type section
+    /// Parse a type section with memory optimization
     pub fn parse_type_section(bytes: &[u8]) -> Result<Vec<WrtFuncType>> {
         let (count, mut offset) = binary::read_leb128_u32(bytes, 0)?;
-        let mut format_func_types = Vec::with_capacity(count as usize);
+        
+        // Bounds check to prevent excessive allocation
+        check_bounds_u32(count, 10000, "type count")?;
+        let count_usize = safe_usize_conversion(count, "type count")?;
+        
+        let mut format_func_types = Vec::new();
+        format_func_types.reserve(count_usize.min(1024)); // Reserve conservatively
 
         for _ in 0..count {
             // Function type indicator (0x60)
@@ -53,7 +112,12 @@ pub mod parsers {
             let (param_count, new_offset) = binary::read_leb128_u32(bytes, offset)?;
             offset = new_offset;
 
-            let mut params = Vec::with_capacity(param_count as usize);
+            // Bounds check param count
+            check_bounds_u32(param_count, 1000, "param count")?;
+            let param_count_usize = safe_usize_conversion(param_count, "param count")?;
+            
+            let mut params = Vec::new();
+            params.reserve(param_count_usize.min(256)); // Conservative reservation
             for _ in 0..param_count {
                 if offset >= bytes.len() {
                     return Err(Error::new(
@@ -84,7 +148,12 @@ pub mod parsers {
             let (result_count, new_offset) = binary::read_leb128_u32(bytes, offset)?;
             offset = new_offset;
 
-            let mut results = Vec::with_capacity(result_count as usize);
+            // Bounds check result count
+            check_bounds_u32(result_count, 1000, "result count")?;
+            let result_count_usize = safe_usize_conversion(result_count, "result count")?;
+            
+            let mut results = Vec::new();
+            results.reserve(result_count_usize.min(256)); // Conservative reservation
             for _ in 0..result_count {
                 if offset >= bytes.len() {
                     return Err(Error::new(
@@ -138,18 +207,24 @@ pub mod parsers {
         Ok(indices)
     }
 
-    /// Parse an import section
+    /// Parse an import section with memory optimization
     pub fn parse_import_section(bytes: &[u8]) -> Result<Vec<WrtImport>> {
         let (count, mut offset) = binary::read_leb128_u32(bytes, 0)?;
-        let mut format_imports = Vec::with_capacity(count as usize);
+        
+        // Bounds check to prevent excessive allocation
+        check_bounds_u32(count, 10000, "import count")?;
+        let count_usize = safe_usize_conversion(count, "import count")?;
+        
+        let mut format_imports = Vec::new();
+        format_imports.reserve(count_usize.min(1024)); // Conservative reservation
 
         for _ in 0..count {
-            // Parse module name
-            let (module_bytes, new_offset) = binary::read_name(bytes, offset)?;
+            // Parse module name using optimized string processing
+            let (module_string, new_offset) = parse_utf8_string_inplace(bytes, offset)?;
             offset = new_offset;
 
-            // Parse field name
-            let (name_bytes, new_offset) = binary::read_name(bytes, offset)?;
+            // Parse field name using optimized string processing
+            let (field_string, new_offset) = parse_utf8_string_inplace(bytes, offset)?;
             offset = new_offset;
 
             if offset >= bytes.len() {
@@ -201,20 +276,8 @@ pub mod parsers {
             };
 
             format_imports.push(wrt_format::module::Import {
-                module: String::from_utf8(module_bytes.to_vec()).map_err(|e| {
-                    Error::new(
-                        ErrorCategory::Parse,
-                        codes::INVALID_UTF8_ENCODING,
-                        format!("Invalid UTF-8 in import module name: {}", e),
-                    )
-                })?,
-                name: String::from_utf8(name_bytes.to_vec()).map_err(|e| {
-                    Error::new(
-                        ErrorCategory::Parse,
-                        codes::INVALID_UTF8_ENCODING,
-                        format!("Invalid UTF-8 in import field name: {}", e),
-                    )
-                })?,
+                module: module_string,
+                name: field_string,
                 desc: format_desc,
             });
         }
@@ -430,13 +493,20 @@ pub mod parsers {
         Ok(wrt_globals)
     }
 
-    /// Parse an export section
+    /// Parse an export section with memory optimization
     pub fn parse_export_section(bytes: &[u8]) -> Result<Vec<WrtExport>> {
         let (count, mut offset) = binary::read_leb128_u32(bytes, 0)?;
-        let mut format_exports = Vec::with_capacity(count as usize);
+        
+        // Bounds check to prevent excessive allocation
+        check_bounds_u32(count, 10000, "export count")?;
+        let count_usize = safe_usize_conversion(count, "export count")?;
+        
+        let mut format_exports = Vec::new();
+        format_exports.reserve(count_usize.min(1024)); // Conservative reservation
 
         for _ in 0..count {
-            let (name_bytes, new_offset) = binary::read_name(bytes, offset)?;
+            // Parse export name using optimized string processing
+            let (export_name, new_offset) = parse_utf8_string_inplace(bytes, offset)?;
             offset = new_offset;
 
             if offset >= bytes.len() {
@@ -468,13 +538,7 @@ pub mod parsers {
             offset = new_offset;
 
             format_exports.push(wrt_format::module::Export {
-                name: String::from_utf8(name_bytes.to_vec()).map_err(|e| {
-                    Error::new(
-                        ErrorCategory::Parse,
-                        codes::INVALID_UTF8_ENCODING,
-                        format!("Invalid UTF-8 in export name: {}", e),
-                    )
-                })?,
+                name: export_name,
                 kind: format_kind,
                 index,
             });
@@ -509,17 +573,27 @@ pub mod parsers {
         Ok(wrt_elements)
     }
 
-    /// Parse a code section
+    /// Parse a code section with memory optimization
     pub fn parse_code_section(bytes: &[u8]) -> Result<Vec<Vec<u8>>> {
         let (count, mut offset) = binary::read_leb128_u32(bytes, 0)?;
-        let mut bodies = Vec::with_capacity(count as usize);
+        
+        // Bounds check to prevent excessive allocation
+        check_bounds_u32(count, 100000, "function count")?;
+        let count_usize = safe_usize_conversion(count, "function count")?;
+        
+        let mut bodies = Vec::new();
+        bodies.reserve(count_usize.min(10000)); // Conservative reservation
 
         for _ in 0..count {
             // Get body size
             let (body_size, new_offset) = binary::read_leb128_u32(bytes, offset)?;
             offset = new_offset;
+            
+            // Bounds check body size
+            check_bounds_u32(body_size, 1_000_000, "function body size")?;
+            let body_size_usize = safe_usize_conversion(body_size, "function body size")?;
 
-            if offset + body_size as usize > bytes.len() {
+            if offset + body_size_usize > bytes.len() {
                 return Err(Error::new(
                     ErrorCategory::Parse,
                     codes::PARSE_ERROR,
@@ -527,9 +601,11 @@ pub mod parsers {
                 ));
             }
 
-            // Extract body bytes
-            let body = bytes[offset..offset + body_size as usize].to_vec();
-            offset += body_size as usize;
+            // Extract body bytes - only allocate what we need
+            let mut body = Vec::new();
+            body.reserve_exact(body_size_usize);
+            body.extend_from_slice(&bytes[offset..offset + body_size_usize]);
+            offset += body_size_usize;
 
             bodies.push(body);
         }

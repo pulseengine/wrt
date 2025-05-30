@@ -1,0 +1,148 @@
+# Advanced Cargo.toml configuration for multi-mode builds
+# This demonstrates how to set up different build targets
+
+[package]
+name = "wrtd"
+version.workspace = true
+edition.workspace = true
+license = { workspace = true }
+description = "WebAssembly Runtime Daemon with multi-mode support (std, alloc, no_std)"
+repository = "https://github.com/pulseengine/wrt"
+readme = "README.md"
+keywords = ["wasm", "webassembly", "daemon", "runtime", "host"]
+categories = ["wasm", "command-line-utilities", "network-programming"]
+
+# Multiple binary targets for different modes
+[[bin]]
+name = "wrtd"
+path = "src/main.rs"
+
+[[bin]]
+name = "wrtd-std"
+path = "src/main.rs"
+required-features = ["runtime-std"]
+
+[[bin]]
+name = "wrtd-alloc"
+path = "src/main.rs"
+required-features = ["runtime-alloc"]
+
+[[bin]]
+name = "wrtd-nostd"
+path = "src/main.rs"
+required-features = ["runtime-nostd"]
+
+[[bin]]
+name = "wrtd-universal"
+path = "src/main.rs"
+required-features = ["test-all-modes"]
+
+[dependencies]
+# WRT dependencies with conditional features
+wrt = { workspace = true, default-features = false }
+wrt-component = { workspace = true, default-features = false }
+wrt-intercept = { workspace = true, default-features = false }
+
+# Standard library dependencies (always available)
+clap = { version = "4.5.37", features = ["derive"] }
+anyhow = { workspace = true }
+
+# Conditional dependencies based on features
+tracing = { version = "0.1", optional = true }
+tracing-subscriber = { version = "0.3", features = ["json"], optional = true }
+once_cell = { version = "1.18", optional = true }
+
+[features]
+# Default feature set
+default = ["runtime-std"]
+
+# Core runtime mode features
+runtime-std = [
+    "wrt/std", 
+    "wrt-component/std", 
+    "wrt-intercept/std",
+    "dep:tracing",
+    "dep:tracing-subscriber",
+    "dep:once_cell"
+]
+
+runtime-alloc = [
+    "wrt/alloc", 
+    "wrt-component/alloc", 
+    "wrt-intercept/alloc",
+    "dep:once_cell"
+]
+
+runtime-nostd = [
+    "wrt/no_std", 
+    "wrt-component/no_std", 
+    "wrt-intercept/no_std"
+]
+
+# Combination features
+std-alloc = ["runtime-std", "runtime-alloc"]
+alloc-nostd = ["runtime-alloc", "runtime-nostd"]
+all-modes = ["runtime-std", "runtime-alloc", "runtime-nostd"]
+
+# Test and development features
+test-all-modes = ["all-modes"]
+dev-features = ["all-modes", "tracing/max_level_trace"]
+
+# Platform-specific optimizations
+embedded = ["runtime-nostd", "wrt/safety"]
+server = ["runtime-std", "wrt/optimize"]
+iot = ["runtime-alloc", "wrt/optimize"]
+
+# Build profiles for different use cases
+[profile.embedded]
+inherits = "release"
+opt-level = "s"      # Optimize for size
+lto = true          # Link-time optimization
+codegen-units = 1   # Single codegen unit for smaller binaries
+panic = "abort"     # Abort on panic (no unwinding)
+strip = true        # Strip symbols
+
+[profile.server]
+inherits = "release"
+opt-level = 3       # Maximum optimization
+lto = "fat"        # Full LTO
+codegen-units = 1
+
+[profile.dev-fast]
+inherits = "dev"
+opt-level = 1       # Some optimization for faster dev builds
+
+# Metadata for cargo install
+[package.metadata.cargo-install]
+# Install different binaries for different use cases
+[[package.metadata.cargo-install.bin]]
+name = "wrtd"
+features = ["runtime-std"]
+
+[[package.metadata.cargo-install.bin]]  
+name = "wrtd-embedded"
+features = ["embedded"]
+
+[[package.metadata.cargo-install.bin]]
+name = "wrtd-server"
+features = ["server"]
+
+# Example usage in comments:
+#
+# Build mode-specific binaries:
+# cargo build --bin wrtd-std --features runtime-std
+# cargo build --bin wrtd-alloc --features runtime-alloc
+# cargo build --bin wrtd-nostd --features runtime-nostd
+#
+# Build universal binary:
+# cargo build --bin wrtd-universal --features test-all-modes
+#
+# Build for embedded (optimized for size):
+# cargo build --profile embedded --features embedded
+#
+# Build for server (optimized for performance):
+# cargo build --profile server --features server
+#
+# Install mode-specific binaries:
+# cargo install --path . --bin wrtd-std --features runtime-std
+# cargo install --path . --bin wrtd-embedded --features embedded
