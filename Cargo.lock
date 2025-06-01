@@ -4288,6 +4288,7 @@ name = "wrt-math"
 version = "0.2.0"
 dependencies = [
  "wrt-error",
+ "wrt-platform",
 ]
 
 [[package]]
@@ -4307,6 +4308,7 @@ dependencies = [
  "wrt-debug",
  "wrt-decoder",
  "wrt-error",
+ "wrt-format",
  "wrt-foundation",
  "wrt-host",
  "wrt-instructions",
