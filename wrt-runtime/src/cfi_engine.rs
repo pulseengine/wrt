@@ -125,7 +125,7 @@ impl CfiExecutionEngine {
     /// Execute WebAssembly instruction with CFI protection
     pub fn execute_instruction_with_cfi(
         &mut self,
-        instruction: &wrt_foundation::types::Instruction,
+        instruction: &wrt_foundation::types::Instruction<wrt_foundation::safe_memory::NoStdProvider<1024>>,
         execution_context: &mut ExecutionContext,
     ) -> Result<CfiExecutionResult> {
         let start_time = self.get_timestamp();
@@ -238,7 +238,7 @@ impl CfiExecutionEngine {
     /// Execute regular instruction without special CFI handling
     fn execute_regular_instruction(
         &mut self,
-        instruction: &wrt_foundation::types::Instruction,
+        instruction: &wrt_foundation::types::Instruction<wrt_foundation::safe_memory::NoStdProvider<1024>>,
         execution_context: &mut ExecutionContext,
     ) -> Result<CfiExecutionResult> {
         // For regular instructions, just execute normally
@@ -250,7 +250,7 @@ impl CfiExecutionEngine {
     /// Pre-execution CFI validation
     fn validate_pre_execution(
         &mut self,
-        instruction: &wrt_foundation::types::Instruction,
+        instruction: &wrt_foundation::types::Instruction<wrt_foundation::safe_memory::NoStdProvider<1024>>,
     ) -> Result<()> {
         // Check for expected landing pads
         self.check_landing_pad_expectations()?;
@@ -267,7 +267,7 @@ impl CfiExecutionEngine {
     /// Post-execution CFI validation
     fn validate_post_execution(
         &mut self,
-        instruction: &wrt_foundation::types::Instruction,
+        instruction: &wrt_foundation::types::Instruction<wrt_foundation::safe_memory::NoStdProvider<1024>>,
         result: &Result<CfiExecutionResult>,
     ) -> Result<()> {
         // Update CFI state based on execution result
@@ -524,19 +524,19 @@ impl CfiExecutionEngine {
         // Platform-specific timestamp implementation
         #[cfg(target_arch = "aarch64")]
         {
-            let mut cntvct: u64;
-            unsafe {
-                core::arch::asm!("mrs {}, cntvct_el0", out(reg) cntvct);
-            }
-            cntvct
+            // TODO: Replace with safe hardware timer access
+            // For now, use a simple fallback based on atomic counter
+            use core::sync::atomic::{AtomicU64, Ordering};
+            static COUNTER: AtomicU64 = AtomicU64::new(0);
+            COUNTER.fetch_add(1, Ordering::Relaxed)
         }
         #[cfg(target_arch = "riscv64")]
         {
-            let mut time: u64;
-            unsafe {
-                core::arch::asm!("rdtime {}", out(reg) time);
-            }
-            time
+            // TODO: Replace with safe hardware timer access  
+            // For now, use a simple fallback based on atomic counter
+            use core::sync::atomic::{AtomicU64, Ordering};
+            static COUNTER: AtomicU64 = AtomicU64::new(0);
+            COUNTER.fetch_add(1, Ordering::Relaxed)
         }
         #[cfg(not(any(target_arch = "aarch64", target_arch = "riscv64")))]
         {
@@ -621,7 +621,7 @@ impl CfiExecutionEngine {
 
     fn perform_regular_instruction(
         &mut self,
-        instruction: &wrt_foundation::types::Instruction,
+        instruction: &wrt_foundation::types::Instruction<wrt_foundation::safe_memory::NoStdProvider<1024>>,
         execution_context: &mut ExecutionContext,
     ) -> Result<ExecutionResult> {
         execution_context.stats.increment_instructions(1);

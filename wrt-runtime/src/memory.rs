@@ -90,25 +90,27 @@ use core::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, AtomicUsize, Ordering
 #[cfg(feature = "std")]
 use std::borrow::BorrowMut;
 
-use wrt_foundation::linear_memory::PalMemoryProvider; /* FallbackAllocator is always
-                                                        * available
-                                                        * if std feature of wrt-platform is
-                                                        * on */
+// Memory providers are imported as needed within conditional compilation blocks
+
 use wrt_foundation::safe_memory::{
-    MemoryProvider, MemorySafety, MemoryStats, SafeMemoryHandler, SafeSlice,
+    MemoryProvider, SafeMemoryHandler, SafeSlice,
 };
-#[cfg(all(feature = "platform-macos", target_os = "macos"))]
-// This cfg checks feature of wrt-platform
-use wrt_platform::macos_memory::MacOsAllocator;
-// Add imports for PAL
-use wrt_platform::memory::{FallbackAllocator, PageAllocator};
+use wrt_foundation::MemoryStats;
 // Import RwLock from appropriate location in no_std
 #[cfg(not(feature = "std"))]
 use wrt_sync::WrtRwLock as RwLock;
 
 // If other platform features (e.g. "platform-linux") were added to wrt-platform,
 // they would be conditionally imported here too.
+
+// Format macro is available through prelude
+
 use crate::prelude::*;
+
+// Import the MemoryOperations trait from wrt-instructions
+use wrt_instructions::memory_ops::MemoryOperations;
+// Import atomic operations trait
+use wrt_instructions::atomic_ops::AtomicOperations;
 
 /// WebAssembly page size (64KB)
 pub const PAGE_SIZE: usize = 65536;
@@ -229,7 +231,7 @@ pub struct Memory {
     /// Current number of pages
     pub current_pages: core::sync::atomic::AtomicU32,
     /// Optional name for debugging
-    pub debug_name: Option<String>,
+    pub debug_name: Option<wrt_foundation::bounded::BoundedString<128, wrt_foundation::safe_memory::NoStdProvider<1024>>>,
     /// Memory metrics for tracking access
     #[cfg(feature = "std")]
     pub metrics: MemoryMetrics,
@@ -327,45 +329,24 @@ impl Memory {
         // but leads to more complex cfg blocks.
         // Let's try to instantiate the provider directly.
 
-        #[cfg(all(feature = "platform-macos", target_os = "macos"))]
-        let allocator = MacOsAllocator::new(maximum_pages_opt);
-
-        #[cfg(not(all(feature = "platform-macos", target_os = "macos")))]
+        // Create memory provider based on available features
         #[cfg(feature = "std")]
-        // FallbackAllocator is available if wrt-platform's std feature is on
-        let allocator = FallbackAllocator::new(maximum_pages_opt);
+        let data_handler = {
+            use wrt_foundation::safe_memory::StdProvider;
+            let initial_size = initial_pages as usize * PAGE_SIZE;
+            let provider = StdProvider::with_capacity(initial_size);
+            SafeMemoryHandler::new(provider, verification_level)
+        };
 
-        // Handle the case where no allocator is available (e.g., no_std and not a
-        // specific platform) This requires a PageAllocator implementation for
-        // no_std generic targets, or the build should fail if no suitable
-        // allocator is found. For now, this code will fail to compile if
-        // neither of the above cfgs match and 'allocator' is not defined. This
-        // is a point to improve with more platform supports. To make it compile
-        // for other targets for now, if no platform allocator and no std,
-        // we can't proceed. The user's plan implies more backends are coming.
-        // A temporary panic or error for unsupported targets might be needed if we
-        // can't feature gate everything. However, the PalMemoryProvider is
-        // generic over A: PageAllocator, so the caller needs to supply one.
-        // Memory::new must provide a concrete allocator.
-
-        // This conditional compilation for `allocator` might lead to "use of possibly
-        // uninitialized variable" if no condition matches. A robust solution
-        // would involve a helper function in wrt-platform to get the "default"
-        // allocator for the current target, or Memory::new needs to be generic
-        // over PageAllocator, or we use Box<dyn PageAllocator>.
-
-        // Let's assume for now that either platform-macos is active on macos, or std is
-        // active for fallback. If neither, this will be a compile error, which
-        // is acceptable until more backends exist.
-
-        let pal_provider = PalMemoryProvider::new(
-            allocator, // This needs to be available
-            initial_pages,
-            maximum_pages_opt,
-            verification_level,
-        )?;
-
-        let data_handler = SafeMemoryHandler::new(pal_provider, verification_level);
+        #[cfg(not(feature = "std"))]
+        let data_handler = {
+            use wrt_foundation::safe_memory::NoStdProvider;
+            // For no_std, we need to use a const generic size
+            // This is a limitation - we can't dynamically size in no_std
+            const MAX_MEMORY_SIZE: usize = 64 * 1024 * 1024; // 64MB max
+            let provider = NoStdProvider::<MAX_MEMORY_SIZE>::new();
+            SafeMemoryHandler::new(provider, verification_level)
+        };
 
         // The PalMemoryProvider's `new` method already handles allocation of
         // initial_pages. Wasm spec implies memory is zero-initialized. mmap
@@ -471,7 +452,7 @@ impl Memory {
         let result = memory_data.to_vec();
 
         #[cfg(all(not(feature = "std"), feature = "alloc"))]
-        let result = alloc::slice::SliceExt::to_vec(memory_data);
+        let result = memory_data.to_vec();
 
         Ok(result)
     }
@@ -1946,6 +1927,469 @@ impl MemorySafety for Memory {
 
     fn memory_stats(&self) -> MemoryStats {
         self.memory_stats()
+    }
+}
+
+impl MemoryOperations for Memory {
+    #[cfg(any(feature = "std", feature = "alloc"))]
+    fn read_bytes(&self, offset: u32, len: u32) -> Result<Vec<u8>> {
+        // Handle zero-length reads
+        if len == 0 {
+            return Ok(Vec::new());
+        }
+
+        // Convert to usize and check for overflow
+        let offset_usize = offset as usize;
+        let len_usize = len as usize;
+        
+        // Verify bounds
+        let end = offset_usize.checked_add(len_usize).ok_or_else(|| {
+            Error::new(
+                ErrorCategory::Memory,
+                codes::MEMORY_OUT_OF_BOUNDS,
+                "Memory read would overflow",
+            )
+        })?;
+
+        if end > self.size_in_bytes() {
+            return Err(Error::new(
+                ErrorCategory::Memory,
+                codes::MEMORY_OUT_OF_BOUNDS,
+                format!(
+                    "Memory read out of bounds: offset={}, len={}, size={}",
+                    offset, len, self.size_in_bytes()
+                ),
+            ));
+        }
+
+        // Read the data using the existing read method
+        let mut buffer = vec![0u8; len_usize];
+        self.read(offset, &mut buffer)?;
+        Ok(buffer)
+    }
+    
+    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    fn read_bytes(&self, offset: u32, len: u32) -> Result<wrt_foundation::BoundedVec<u8, 65536, wrt_foundation::NoStdProvider<65536>>> {
+        // Handle zero-length reads
+        if len == 0 {
+            let provider = wrt_foundation::NoStdProvider::<65536>::default();
+            return wrt_foundation::BoundedVec::new(provider);
+        }
+
+        // Convert to usize and check for overflow
+        let offset_usize = offset as usize;
+        let len_usize = len as usize;
+        
+        // Verify bounds
+        let end = offset_usize.checked_add(len_usize).ok_or_else(|| {
+            Error::new(
+                ErrorCategory::Memory,
+                codes::MEMORY_OUT_OF_BOUNDS,
+                "Memory read would overflow",
+            )
+        })?;
+
+        if end > self.size_in_bytes() {
+            return Err(Error::new(
+                ErrorCategory::Memory,
+                codes::MEMORY_OUT_OF_BOUNDS,
+                format!(
+                    "Memory read out of bounds: offset={}, len={}, size={}",
+                    offset, len, self.size_in_bytes()
+                ),
+            ));
+        }
+
+        // Create a bounded vector and fill it
+        let provider = wrt_foundation::NoStdProvider::<65536>::default();
+        let mut result = wrt_foundation::BoundedVec::new(provider)?;
+        
+        // Read data byte by byte to populate the bounded vector
+        for i in 0..len_usize {
+            let byte = self.get_byte((offset + i as u32) as u32)?;
+            result.push(byte).map_err(|_| {
+                Error::new(
+                    ErrorCategory::Memory,
+                    codes::CAPACITY_EXCEEDED,
+                    "BoundedVec capacity exceeded during read",
+                )
+            })?;
+        }
+        
+        Ok(result)
+    }
+
+    fn write_bytes(&mut self, offset: u32, bytes: &[u8]) -> Result<()> {
+        // Delegate to the existing write method
+        self.write(offset, bytes)
+    }
+
+    fn size_in_bytes(&self) -> Result<usize> {
+        // Delegate to the existing method (but wrap in Result)
+        Ok(self.size_in_bytes())
+    }
+
+    fn grow(&mut self, bytes: usize) -> Result<()> {
+        // Convert bytes to pages (WebAssembly page size is 64KB)
+        let pages = (bytes + PAGE_SIZE - 1) / PAGE_SIZE; // Ceiling division
+        
+        // Delegate to the existing grow method (which returns old page count)
+        self.grow(pages as u32)?;
+        Ok(())
+    }
+
+    fn fill(&mut self, offset: u32, value: u8, size: u32) -> Result<()> {
+        // Delegate to the existing fill method
+        self.fill(offset as usize, value, size as usize)
+    }
+
+    fn copy(&mut self, dest: u32, src: u32, size: u32) -> Result<()> {
+        // For same-memory copy, we can use a simplified version of copy_within_or_between
+        if size == 0 {
+            return Ok(());
+        }
+        
+        let dest_usize = dest as usize;
+        let src_usize = src as usize;
+        let size_usize = size as usize;
+        
+        // Bounds checks
+        let src_end = src_usize.checked_add(size_usize).ok_or_else(|| {
+            Error::new(
+                ErrorCategory::Memory,
+                codes::MEMORY_OUT_OF_BOUNDS,
+                "Source address overflow in memory copy",
+            )
+        })?;
+        
+        let dest_end = dest_usize.checked_add(size_usize).ok_or_else(|| {
+            Error::new(
+                ErrorCategory::Memory,
+                codes::MEMORY_OUT_OF_BOUNDS,
+                "Destination address overflow in memory copy",
+            )
+        })?;
+        
+        let memory_size = self.size_in_bytes();
+        if src_end > memory_size || dest_end > memory_size {
+            return Err(Error::new(
+                ErrorCategory::Memory,
+                codes::MEMORY_OUT_OF_BOUNDS,
+                format!(
+                    "Memory copy out of bounds: src_end={}, dest_end={}, size={}",
+                    src_end, dest_end, memory_size
+                ),
+            ));
+        }
+        
+        // Track access for both source and destination
+        self.increment_access_count(src_usize, size_usize);
+        self.increment_access_count(dest_usize, size_usize);
+        
+        // Handle overlapping regions by using a temporary buffer
+        // Read source data first
+        #[cfg(any(feature = "std", feature = "alloc"))]
+        let temp_data = {
+            let mut buffer = vec![0u8; size_usize];
+            self.read(src, &mut buffer)?;
+            buffer
+        };
+        
+        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        let temp_data = {
+            // For no_std, read byte by byte into a temporary array
+            // This is less efficient but works in constrained environments
+            let mut temp_data = [0u8; 4096]; // Fixed-size buffer for no_std
+            if size_usize > 4096 {
+                return Err(Error::new(
+                    ErrorCategory::Memory,
+                    codes::CAPACITY_EXCEEDED,
+                    "Copy size exceeds no_std buffer limit",
+                ));
+            }
+            
+            for i in 0..size_usize {
+                temp_data[i] = self.get_byte(src + i as u32)?;
+            }
+            &temp_data[..size_usize]
+        };
+        
+        // Write to destination
+        #[cfg(any(feature = "std", feature = "alloc"))]
+        self.write(dest, &temp_data)?;
+        
+        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        {
+            for i in 0..size_usize {
+                self.set_byte(dest + i as u32, temp_data[i])?;
+            }
+        }
+        
+        Ok(())
+    }
+}
+
+impl AtomicOperations for Memory {
+    fn atomic_wait32(&mut self, addr: u32, expected: i32, timeout_ns: Option<u64>) -> Result<i32> {
+        // Check alignment (atomic operations require proper alignment)
+        self.check_alignment(addr, 4, 4)?;
+        
+        // Read current value atomically
+        let current = self.read_i32(addr)?;
+        if current != expected {
+            return Ok(1); // Value mismatch, return immediately
+        }
+        
+        // Convert timeout to Duration if provided
+        let timeout = timeout_ns.map(|ns| Duration::from_nanos(ns));
+        
+        // Use platform-specific futex implementation for std builds
+        #[cfg(all(target_os = "linux", feature = "std"))]
+        {
+            // Note: For now we use a simplified fallback since the futex integration
+            // requires more complex lifetime management
+            match timeout {
+                Some(duration) => {
+                    std::thread::sleep(duration);
+                    Ok(2) // Timeout
+                }
+                None => {
+                    // Infinite wait - just spin until value changes
+                    loop {
+                        let current = self.read_i32(addr)?;
+                        if current != expected {
+                            return Ok(0); // Value changed
+                        }
+                        std::thread::yield_now();
+                    }
+                }
+            }
+        }
+        
+        #[cfg(not(all(target_os = "linux", feature = "std")))]
+        {
+            // Fallback implementation using basic timeout
+            match timeout {
+                Some(duration) => {
+                    // Simple timeout implementation - for no_std we use a different approach
+                    #[cfg(feature = "std")]
+                    {
+                        std::thread::sleep(duration);
+                    }
+                    #[cfg(not(feature = "std"))]
+                    {
+                        // Simple busy wait for no_std
+                        let start = core::time::Duration::from_nanos(0); // Placeholder
+                        let _end = start + duration;
+                        // In real implementation, would need platform-specific timer
+                    }
+                    Ok(2) // Timeout
+                }
+                None => {
+                    // Infinite wait - just spin until value changes
+                    loop {
+                        let current = self.read_i32(addr)?;
+                        if current != expected {
+                            return Ok(0); // Value changed
+                        }
+                        #[cfg(feature = "std")]
+                        std::thread::yield_now();
+                        #[cfg(not(feature = "std"))]
+                        core::hint::spin_loop(); // CPU hint for busy waiting
+                    }
+                }
+            }
+        }
+    }
+    
+    fn atomic_wait64(&mut self, addr: u32, expected: i64, timeout_ns: Option<u64>) -> Result<i32> {
+        // Check alignment (64-bit atomics require 8-byte alignment)
+        self.check_alignment(addr, 8, 8)?;
+        
+        // Read current value atomically
+        let current = self.read_i64(addr)?;
+        if current != expected {
+            return Ok(1); // Value mismatch, return immediately
+        }
+        
+        // Convert timeout to Duration if provided
+        let timeout = timeout_ns.map(|ns| Duration::from_nanos(ns));
+        
+        // Similar implementation to atomic_wait32 but for 64-bit values
+        // For now, use the same fallback approach as 32-bit operations
+        match timeout {
+            Some(duration) => {
+                #[cfg(feature = "std")]
+                {
+                    std::thread::sleep(duration);
+                }
+                #[cfg(not(feature = "std"))]
+                {
+                    // Simple busy wait for no_std
+                    let start = core::time::Duration::from_nanos(0); // Placeholder
+                    let _end = start + duration;
+                    // In real implementation, would need platform-specific timer
+                }
+                Ok(2) // Timeout
+            }
+            None => {
+                loop {
+                    let current = self.read_i64(addr)?;
+                    if current != expected {
+                        return Ok(0); // Value changed
+                    }
+                    #[cfg(feature = "std")]
+                    std::thread::yield_now();
+                    #[cfg(not(feature = "std"))]
+                    core::hint::spin_loop();
+                }
+            }
+        }
+    }
+    
+    fn atomic_notify(&mut self, addr: u32, count: u32) -> Result<u32> {
+        // Check alignment
+        self.check_alignment(addr, 4, 4)?;
+        
+        // Use platform-specific futex implementation to wake waiters
+        // For now, use simplified fallback since we don't track actual waiters
+        let _current = self.read_i32(addr)?; // Validate address is accessible
+        
+        // In a real implementation, this would wake actual waiting threads
+        // For now, return 0 indicating no waiters were woken
+        Ok(0)
+    }
+    
+    fn atomic_load_i32(&self, addr: u32) -> Result<i32> {
+        self.check_alignment(addr, 4, 4)?;
+        self.read_i32(addr)
+    }
+    
+    fn atomic_load_i64(&self, addr: u32) -> Result<i64> {
+        self.check_alignment(addr, 8, 8)?;
+        self.read_i64(addr)
+    }
+    
+    fn atomic_store_i32(&mut self, addr: u32, value: i32) -> Result<()> {
+        self.check_alignment(addr, 4, 4)?;
+        self.write_i32(addr, value)
+    }
+    
+    fn atomic_store_i64(&mut self, addr: u32, value: i64) -> Result<()> {
+        self.check_alignment(addr, 8, 8)?;
+        self.write_i64(addr, value)
+    }
+    
+    fn atomic_rmw_add_i32(&mut self, addr: u32, value: i32) -> Result<i32> {
+        self.check_alignment(addr, 4, 4)?;
+        let old_value = self.read_i32(addr)?;
+        let new_value = old_value.wrapping_add(value);
+        self.write_i32(addr, new_value)?;
+        Ok(old_value)
+    }
+    
+    fn atomic_rmw_add_i64(&mut self, addr: u32, value: i64) -> Result<i64> {
+        self.check_alignment(addr, 8, 8)?;
+        let old_value = self.read_i64(addr)?;
+        let new_value = old_value.wrapping_add(value);
+        self.write_i64(addr, new_value)?;
+        Ok(old_value)
+    }
+    
+    fn atomic_rmw_sub_i32(&mut self, addr: u32, value: i32) -> Result<i32> {
+        self.check_alignment(addr, 4, 4)?;
+        let old_value = self.read_i32(addr)?;
+        let new_value = old_value.wrapping_sub(value);
+        self.write_i32(addr, new_value)?;
+        Ok(old_value)
+    }
+    
+    fn atomic_rmw_sub_i64(&mut self, addr: u32, value: i64) -> Result<i64> {
+        self.check_alignment(addr, 8, 8)?;
+        let old_value = self.read_i64(addr)?;
+        let new_value = old_value.wrapping_sub(value);
+        self.write_i64(addr, new_value)?;
+        Ok(old_value)
+    }
+    
+    fn atomic_rmw_and_i32(&mut self, addr: u32, value: i32) -> Result<i32> {
+        self.check_alignment(addr, 4, 4)?;
+        let old_value = self.read_i32(addr)?;
+        let new_value = old_value & value;
+        self.write_i32(addr, new_value)?;
+        Ok(old_value)
+    }
+    
+    fn atomic_rmw_and_i64(&mut self, addr: u32, value: i64) -> Result<i64> {
+        self.check_alignment(addr, 8, 8)?;
+        let old_value = self.read_i64(addr)?;
+        let new_value = old_value & value;
+        self.write_i64(addr, new_value)?;
+        Ok(old_value)
+    }
+    
+    fn atomic_rmw_or_i32(&mut self, addr: u32, value: i32) -> Result<i32> {
+        self.check_alignment(addr, 4, 4)?;
+        let old_value = self.read_i32(addr)?;
+        let new_value = old_value | value;
+        self.write_i32(addr, new_value)?;
+        Ok(old_value)
+    }
+    
+    fn atomic_rmw_or_i64(&mut self, addr: u32, value: i64) -> Result<i64> {
+        self.check_alignment(addr, 8, 8)?;
+        let old_value = self.read_i64(addr)?;
+        let new_value = old_value | value;
+        self.write_i64(addr, new_value)?;
+        Ok(old_value)
+    }
+    
+    fn atomic_rmw_xor_i32(&mut self, addr: u32, value: i32) -> Result<i32> {
+        self.check_alignment(addr, 4, 4)?;
+        let old_value = self.read_i32(addr)?;
+        let new_value = old_value ^ value;
+        self.write_i32(addr, new_value)?;
+        Ok(old_value)
+    }
+    
+    fn atomic_rmw_xor_i64(&mut self, addr: u32, value: i64) -> Result<i64> {
+        self.check_alignment(addr, 8, 8)?;
+        let old_value = self.read_i64(addr)?;
+        let new_value = old_value ^ value;
+        self.write_i64(addr, new_value)?;
+        Ok(old_value)
+    }
+    
+    fn atomic_rmw_xchg_i32(&mut self, addr: u32, value: i32) -> Result<i32> {
+        self.check_alignment(addr, 4, 4)?;
+        let old_value = self.read_i32(addr)?;
+        self.write_i32(addr, value)?;
+        Ok(old_value)
+    }
+    
+    fn atomic_rmw_xchg_i64(&mut self, addr: u32, value: i64) -> Result<i64> {
+        self.check_alignment(addr, 8, 8)?;
+        let old_value = self.read_i64(addr)?;
+        self.write_i64(addr, value)?;
+        Ok(old_value)
+    }
+    
+    fn atomic_rmw_cmpxchg_i32(&mut self, addr: u32, expected: i32, replacement: i32) -> Result<i32> {
+        self.check_alignment(addr, 4, 4)?;
+        let old_value = self.read_i32(addr)?;
+        if old_value == expected {
+            self.write_i32(addr, replacement)?;
+        }
+        Ok(old_value)
+    }
+    
+    fn atomic_rmw_cmpxchg_i64(&mut self, addr: u32, expected: i64, replacement: i64) -> Result<i64> {
+        self.check_alignment(addr, 8, 8)?;
+        let old_value = self.read_i64(addr)?;
+        if old_value == expected {
+            self.write_i64(addr, replacement)?;
+        }
+        Ok(old_value)
     }
 }
 

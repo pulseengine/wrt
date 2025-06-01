@@ -12,10 +12,7 @@ use std::{fmt, mem};
 use alloc::{boxed::Box, string::String, vec::Vec};
 
 use wrt_foundation::{
-    bounded::BoundedVec,
-    component::ComponentType,
-    component_value::ComponentValue,
-    prelude::*,
+    bounded::BoundedVec, component::ComponentType, component_value::ComponentValue, prelude::*,
 };
 
 use crate::{
@@ -37,25 +34,25 @@ pub struct CoreModuleAdapter {
     pub name: String,
     #[cfg(not(any(feature = "std", feature = "alloc")))]
     pub name: BoundedString<64>,
-    
+
     /// Function adapters
     #[cfg(any(feature = "std", feature = "alloc"))]
     pub functions: Vec<FunctionAdapter>,
     #[cfg(not(any(feature = "std", feature = "alloc")))]
     pub functions: BoundedVec<FunctionAdapter, MAX_ADAPTED_FUNCTIONS>,
-    
+
     /// Memory adapters
     #[cfg(any(feature = "std", feature = "alloc"))]
     pub memories: Vec<MemoryAdapter>,
     #[cfg(not(any(feature = "std", feature = "alloc")))]
     pub memories: BoundedVec<MemoryAdapter, 16>,
-    
+
     /// Table adapters
     #[cfg(any(feature = "std", feature = "alloc"))]
     pub tables: Vec<TableAdapter>,
     #[cfg(not(any(feature = "std", feature = "alloc")))]
     pub tables: BoundedVec<TableAdapter, 16>,
-    
+
     /// Global adapters
     #[cfg(any(feature = "std", feature = "alloc"))]
     pub globals: Vec<GlobalAdapter>,
@@ -347,18 +344,21 @@ impl CoreModuleAdapter {
             AdaptationMode::Lift => {
                 // Lower component args to core args, call, then lift result
                 let core_args = self.lower_args_to_core(args, &adapter.core_signature)?;
-                let core_result = self.call_core_function_direct(adapter.core_index, &core_args, engine)?;
+                let core_result =
+                    self.call_core_function_direct(adapter.core_index, &core_args, engine)?;
                 self.lift_result_to_component(core_result, &adapter.component_signature)
             }
             AdaptationMode::Lower => {
                 // Already have core args, call directly
-                let core_result = self.call_core_function_direct(adapter.core_index, args, engine)?;
+                let core_result =
+                    self.call_core_function_direct(adapter.core_index, args, engine)?;
                 self.lift_result_to_component(core_result, &adapter.component_signature)
             }
             AdaptationMode::Bidirectional => {
                 // Full bidirectional adaptation
                 let core_args = self.lower_args_to_core(args, &adapter.core_signature)?;
-                let core_result = self.call_core_function_direct(adapter.core_index, &core_args, engine)?;
+                let core_result =
+                    self.call_core_function_direct(adapter.core_index, &core_args, engine)?;
                 self.lift_result_to_component(core_result, &adapter.component_signature)
             }
         }
@@ -419,12 +419,7 @@ impl FunctionAdapter {
         core_signature: CoreFunctionSignature,
         mode: AdaptationMode,
     ) -> Self {
-        Self {
-            core_index,
-            component_signature,
-            core_signature,
-            mode,
-        }
+        Self { core_index, component_signature, core_signature, mode }
     }
 
     /// Check if this adapter needs canonical ABI processing
@@ -475,9 +470,9 @@ impl CoreFunctionSignature {
         }
         #[cfg(not(any(feature = "std", feature = "alloc")))]
         {
-            self.results.push(result_type).map_err(|_| {
-                wrt_foundation::WrtError::ResourceExhausted("Too many results".into())
-            })
+            self.results
+                .push(result_type)
+                .map_err(|_| wrt_foundation::WrtError::ResourceExhausted("Too many results".into()))
         }
     }
 }
@@ -491,33 +486,21 @@ impl Default for CoreFunctionSignature {
 impl MemoryAdapter {
     /// Create a new memory adapter
     pub fn new(core_index: u32, min: u32, max: Option<u32>, shared: bool) -> Self {
-        Self {
-            core_index,
-            limits: MemoryLimits { min, max },
-            shared,
-        }
+        Self { core_index, limits: MemoryLimits { min, max }, shared }
     }
 }
 
 impl TableAdapter {
     /// Create a new table adapter
     pub fn new(core_index: u32, element_type: CoreValType, min: u32, max: Option<u32>) -> Self {
-        Self {
-            core_index,
-            element_type,
-            limits: TableLimits { min, max },
-        }
+        Self { core_index, element_type, limits: TableLimits { min, max } }
     }
 }
 
 impl GlobalAdapter {
     /// Create a new global adapter
     pub fn new(core_index: u32, global_type: CoreValType, mutable: bool) -> Self {
-        Self {
-            core_index,
-            global_type,
-            mutable,
-        }
+        Self { core_index, global_type, mutable }
     }
 }
 
@@ -573,12 +556,8 @@ mod tests {
         core_sig.add_param(CoreValType::I32).unwrap();
         core_sig.add_result(CoreValType::I32).unwrap();
 
-        let adapter = FunctionAdapter::new(
-            0,
-            ComponentType::Unit,
-            core_sig,
-            AdaptationMode::Direct,
-        );
+        let adapter =
+            FunctionAdapter::new(0, ComponentType::Unit, core_sig, AdaptationMode::Direct);
 
         assert_eq!(adapter.core_index, 0);
         assert_eq!(adapter.mode, AdaptationMode::Direct);

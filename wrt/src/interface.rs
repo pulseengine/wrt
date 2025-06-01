@@ -5,6 +5,7 @@
 //! core and component types.
 
 use wrt_instructions::behavior::FrameBehavior;
+use wrt_foundation::{FloatBits32, FloatBits64};
 use crate::{
     error::kinds,
     error::{Error, Result},
@@ -365,7 +366,7 @@ mod tests {
         assert!(matches!(result, InterfaceValue::S64(0x1234_5678_9ABC_DEF0)));
 
         // Test lifting f32
-        let f32_val = Value::F32(3.14);
+        let f32_val = Value::F32(FloatBits32::from_float(3.14));
         let f32_type = ComponentType::Primitive(ValueType::F32);
         let result = CanonicalABI::lift(f32_val, &f32_type, None, None)?;
         let InterfaceValue::Float32(f) = result else {
@@ -374,7 +375,7 @@ mod tests {
         assert_eq!(f, 3.14);
 
         // Test lifting f64
-        let f64_val = Value::F64(2.71828);
+        let f64_val = Value::F64(FloatBits64::from_float(2.71828));
         let f64_type = ComponentType::Primitive(ValueType::F64);
         let result = CanonicalABI::lift(f64_val, &f64_type, None, None)?;
         let InterfaceValue::Float64(f) = result else {
@@ -403,7 +404,7 @@ mod tests {
         assert!(matches!(result, Value::I64(-12345)));
 
         // Test lowering float32
-        let f32_val = InterfaceValue::Float32(3.14);
+        let f32_val = InterfaceValue::Float32(FloatBits32::from_float(3.14));
         let result = CanonicalABI::lower(f32_val, None, None)?;
         let Value::F32(f) = result else {
             return Err(Error::new(kinds::ExecutionError("Expected F32".into())));

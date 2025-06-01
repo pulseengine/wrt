@@ -142,8 +142,8 @@ pub mod kani_verification {
         let capacity: usize = kani::any();
         kani::assume(capacity > 0 && capacity <= 64); // Smaller bounds for Kani verification
         
-        let mut bounded_vec: BoundedVec<u32, DefaultNoStdProvider> = 
-            BoundedVec::new(capacity, handler);
+        let mut bounded_vec: BoundedVec<u32, 64, DefaultNoStdProvider> = 
+            BoundedVec::new(handler);
         
         // Verify push operations never overflow capacity
         let push_count: usize = kani::any();

@@ -403,8 +403,9 @@ impl MultiMemoryGrow {
         let old_size_bytes = memory.size_in_bytes()?;
         let old_size_pages = (old_size_bytes / 65536) as u32;
         
-        // Try to grow - use the grow method from MemoryOperations
-        match memory.grow(page_count) {
+        // Try to grow - convert pages to bytes
+        let delta_bytes = (page_count as usize) * 65536;
+        match memory.grow(delta_bytes) {
             Ok(_) => Ok(Value::I32(old_size_pages as i32)),
             Err(_) => Ok(Value::I32(-1)), // WebAssembly convention for grow failure
         }
@@ -515,7 +516,7 @@ impl Validate for MultiMemoryGrow {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, any(feature = "std", feature = "alloc")))]
 mod tests {
     use super::*;
     use crate::memory_ops::MemoryOperations;

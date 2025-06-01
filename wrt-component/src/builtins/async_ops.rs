@@ -78,14 +78,7 @@ impl AsyncValueStore {
     /// Create a new async value with the given status
     pub fn create_async(&mut self, status: AsyncStatus) -> u32 {
         let id = self.generate_id();
-        self.values.insert(
-            id,
-            AsyncValue {
-                status,
-                result: None,
-                error: None,
-            },
-        );
+        self.values.insert(id, AsyncValue { status, result: None, error: None });
         id
     }
 
@@ -95,7 +88,6 @@ impl AsyncValueStore {
             Some(async_value) => {
                 async_value.status = AsyncStatus::Ready;
                 async_value.result = Some(result);
-
 
                 Ok(())
             }
@@ -109,7 +101,6 @@ impl AsyncValueStore {
             Some(async_value) => {
                 async_value.status = AsyncStatus::Failed;
                 async_value.error = Some(error);
-
 
                 Ok(())
             }
@@ -148,7 +139,6 @@ impl AsyncValueStore {
         }
     }
 
-
     /// Check if an async value exists
     pub fn has_async(&self, id: u32) -> bool {
         self.values.contains_key(&id)
@@ -163,7 +153,6 @@ impl AsyncValueStore {
         }
     }
 }
-
 
 #[cfg(feature = "component-model-async")]
 /// Handler for the async.new built-in function
@@ -354,7 +343,7 @@ impl BuiltinHandler for AsyncWaitHandler {
         // Use Component Model polling instead of Rust futures
         loop {
             let store = self.async_store.lock().unwrap();
-            
+
             match store.get_status(async_id) {
                 Ok(AsyncStatus::Ready) => {
                     return store.get_result(async_id);
@@ -365,10 +354,10 @@ impl BuiltinHandler for AsyncWaitHandler {
                 Ok(AsyncStatus::Pending) => {
                     // Drop the lock and yield/sleep briefly
                     drop(store);
-                    
+
                     #[cfg(feature = "std")]
                     std::thread::sleep(std::time::Duration::from_millis(1));
-                    
+
                     // Continue polling
                     continue;
                 }

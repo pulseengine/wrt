@@ -1,20 +1,20 @@
 use crate::{
-    ComponentInstanceId, ResourceHandle, TypeId,
-    handle_representation::{HandleRepresentationManager, AccessRights, HandleOperation},
-    generative_types::{GenerativeTypeRegistry, GenerativeResourceType},
+    generative_types::{GenerativeResourceType, GenerativeTypeRegistry},
+    handle_representation::{AccessRights, HandleOperation, HandleRepresentationManager},
+    post_return::{CleanupTask, CleanupTaskType, PostReturnRegistry},
     type_bounds::{TypeBoundsChecker, TypeRelation},
-    virtualization::{VirtualizationManager, Capability},
-    post_return::{PostReturnRegistry, CleanupTask, CleanupTaskType},
-};
-use wrt_foundation::{
-    bounded_collections::{BoundedVec, BoundedHashMap},
-    component_value::ComponentValue,
-    safe_memory::SafeMemory,
+    virtualization::{Capability, VirtualizationManager},
+    ComponentInstanceId, ResourceHandle, TypeId,
 };
 use core::{
-    sync::atomic::{AtomicU32, AtomicBool, Ordering},
     fmt,
+    sync::atomic::{AtomicBool, AtomicU32, Ordering},
     time::Duration,
+};
+use wrt_foundation::{
+    bounded_collections::{BoundedHashMap, BoundedVec},
+    component_value::ComponentValue,
+    safe_memory::SafeMemory,
 };
 
 const MAX_SHARING_AGREEMENTS: usize = 512;
@@ -72,11 +72,11 @@ pub struct SharingAgreement {
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum TransferPolicy {
-    Copy,           // Resource can be copied
-    Move,           // Resource ownership is transferred
-    Borrow,         // Temporary access granted
+    Copy,            // Resource can be copied
+    Move,            // Resource ownership is transferred
+    Borrow,          // Temporary access granted
     SharedOwnership, // Both components own the resource
-    Delegate,       // Target can further share the resource
+    Delegate,        // Target can further share the resource
 }
 
 #[derive(Debug, Clone)]
@@ -182,7 +182,8 @@ pub enum PolicyRule {
     TimeRestriction { allowed_hours: (u8, u8) },
 }
 
-pub type SharingCallback = Box<dyn Fn(&SharedResource, &SharingAgreement) -> ResourceSharingResult<()> + Send + Sync>;
+pub type SharingCallback =
+    Box<dyn Fn(&SharedResource, &SharingAgreement) -> ResourceSharingResult<()> + Send + Sync>;
 
 pub struct CrossComponentResourceSharingManager {
     handle_manager: HandleRepresentationManager,
@@ -190,14 +191,14 @@ pub struct CrossComponentResourceSharingManager {
     bounds_checker: TypeBoundsChecker,
     virt_manager: Option<VirtualizationManager>,
     post_return_registry: PostReturnRegistry,
-    
+
     sharing_agreements: BoundedHashMap<u32, SharingAgreement, MAX_SHARING_AGREEMENTS>,
     shared_resources: BoundedHashMap<ResourceHandle, SharedResource, MAX_SHARED_RESOURCES>,
     sharing_policies: BoundedVec<SharingPolicy, MAX_SHARING_POLICIES>,
     transfer_queue: BoundedVec<ResourceTransferRequest, MAX_TRANSFER_QUEUE>,
-    
+
     callbacks: BoundedHashMap<String, SharingCallback, MAX_SHARING_CALLBACKS>,
-    
+
     next_agreement_id: AtomicU32,
     next_policy_id: AtomicU32,
     enforce_policies: AtomicBool,
@@ -211,14 +212,14 @@ impl CrossComponentResourceSharingManager {
             bounds_checker: TypeBoundsChecker::new(),
             virt_manager: None,
             post_return_registry: PostReturnRegistry::new(),
-            
+
             sharing_agreements: BoundedHashMap::new(),
             shared_resources: BoundedHashMap::new(),
             sharing_policies: BoundedVec::new(),
             transfer_queue: BoundedVec::new(),
-            
+
             callbacks: BoundedHashMap::new(),
-            
+
             next_agreement_id: AtomicU32::new(1),
             next_policy_id: AtomicU32::new(1),
             enforce_policies: AtomicBool::new(true),
@@ -253,7 +254,7 @@ impl CrossComponentResourceSharingManager {
         }
 
         let agreement_id = self.next_agreement_id.fetch_add(1, Ordering::SeqCst);
-        
+
         let agreement = SharingAgreement {
             id: agreement_id,
             source_component,
@@ -264,7 +265,11 @@ impl CrossComponentResourceSharingManager {
             lifetime,
             established_at: self.get_current_time(),
             metadata: SharingMetadata {
-                description: format!("Agreement between {} and {}", source_component.id(), target_component.id()),
+                description: format!(
+                    "Agreement between {} and {}",
+                    source_component.id(),
+                    target_component.id()
+                ),
                 tags: BoundedVec::new(),
                 restrictions: BoundedVec::new(),
                 audit_log: BoundedVec::new(),
@@ -299,16 +304,19 @@ impl CrossComponentResourceSharingManager {
         resource_handle: ResourceHandle,
     ) -> ResourceSharingResult<ResourceHandle> {
         let agreement = self.get_agreement(agreement_id)?;
-        
+
         // Verify resource type matches agreement
-        let resource_type = self.handle_manager.get_representation(resource_handle)
+        let resource_type = self
+            .handle_manager
+            .get_representation(resource_handle)
             .map_err(|e| ResourceSharingError {
                 kind: ResourceSharingErrorKind::ResourceNotFound,
                 message: format!("Handle not found: {}", e),
                 source_component: Some(agreement.source_component),
                 target_component: Some(agreement.target_component),
                 resource: Some(resource_handle),
-            })?.type_id;
+            })?
+            .type_id;
 
         if !agreement.resource_types.contains(&resource_type) {
             return Err(ResourceSharingError {
@@ -321,18 +329,21 @@ impl CrossComponentResourceSharingManager {
         }
 
         // Create shared handle
-        let shared_handle = self.handle_manager.share_handle(
-            agreement.source_component,
-            agreement.target_component,
-            resource_handle,
-            agreement.access_rights,
-        ).map_err(|e| ResourceSharingError {
-            kind: ResourceSharingErrorKind::TransferFailed,
-            message: format!("Failed to share handle: {}", e),
-            source_component: Some(agreement.source_component),
-            target_component: Some(agreement.target_component),
-            resource: Some(resource_handle),
-        })?;
+        let shared_handle = self
+            .handle_manager
+            .share_handle(
+                agreement.source_component,
+                agreement.target_component,
+                resource_handle,
+                agreement.access_rights,
+            )
+            .map_err(|e| ResourceSharingError {
+                kind: ResourceSharingErrorKind::TransferFailed,
+                message: format!("Failed to share handle: {}", e),
+                source_component: Some(agreement.source_component),
+                target_component: Some(agreement.target_component),
+                resource: Some(resource_handle),
+            })?;
 
         // Track shared resource
         self.track_shared_resource(
@@ -383,14 +394,15 @@ impl CrossComponentResourceSharingManager {
 
         // Add cleanup task for source component
         let cleanup_task = CleanupTask::resource_cleanup(resource_handle);
-        self.post_return_registry.add_cleanup_task(source_component, cleanup_task)
-            .map_err(|e| ResourceSharingError {
+        self.post_return_registry.add_cleanup_task(source_component, cleanup_task).map_err(
+            |e| ResourceSharingError {
                 kind: ResourceSharingErrorKind::TransferFailed,
                 message: format!("Failed to add cleanup task: {}", e),
                 source_component: Some(source_component),
                 target_component: Some(target_component),
                 resource: Some(resource_handle),
-            })?;
+            },
+        )?;
 
         Ok(())
     }
@@ -402,19 +414,19 @@ impl CrossComponentResourceSharingManager {
         operation: HandleOperation,
     ) -> ResourceSharingResult<Option<ComponentValue>> {
         // Check if resource is shared
-        let shared_resource = self.shared_resources.get(&resource_handle).ok_or_else(|| {
-            ResourceSharingError {
+        let shared_resource =
+            self.shared_resources.get(&resource_handle).ok_or_else(|| ResourceSharingError {
                 kind: ResourceSharingErrorKind::ResourceNotFound,
                 message: "Resource not shared".to_string(),
                 source_component: Some(component_id),
                 target_component: None,
                 resource: Some(resource_handle),
-            }
-        })?;
+            })?;
 
         // Check if component has access
-        if !shared_resource.shared_with.contains(&component_id) && 
-           shared_resource.owner_component != component_id {
+        if !shared_resource.shared_with.contains(&component_id)
+            && shared_resource.owner_component != component_id
+        {
             return Err(ResourceSharingError {
                 kind: ResourceSharingErrorKind::PermissionDenied,
                 message: "Component does not have access to shared resource".to_string(),
@@ -439,7 +451,9 @@ impl CrossComponentResourceSharingManager {
         shared_resource.access_count.fetch_add(1, Ordering::SeqCst);
 
         // Perform operation through handle manager
-        let result = self.handle_manager.perform_operation(component_id, resource_handle, operation)
+        let result = self
+            .handle_manager
+            .perform_operation(component_id, resource_handle, operation)
             .map_err(|e| ResourceSharingError {
                 kind: ResourceSharingErrorKind::TransferFailed,
                 message: format!("Operation failed: {}", e),
@@ -483,14 +497,15 @@ impl CrossComponentResourceSharingManager {
         }
 
         // Drop the handle for this component
-        self.handle_manager.drop_handle(component_id, resource_handle)
-            .map_err(|e| ResourceSharingError {
+        self.handle_manager.drop_handle(component_id, resource_handle).map_err(|e| {
+            ResourceSharingError {
                 kind: ResourceSharingErrorKind::TransferFailed,
                 message: format!("Failed to drop handle: {}", e),
                 source_component: Some(component_id),
                 target_component: None,
                 resource: Some(resource_handle),
-            })?;
+            }
+        })?;
 
         // Audit return
         for agreement_id in shared_resource.sharing_agreements.iter() {
@@ -508,15 +523,13 @@ impl CrossComponentResourceSharingManager {
 
     pub fn add_sharing_policy(&mut self, policy: SharingPolicy) -> ResourceSharingResult<u32> {
         let policy_id = policy.id;
-        
-        self.sharing_policies.push(policy).map_err(|_| {
-            ResourceSharingError {
-                kind: ResourceSharingErrorKind::ResourceLimitExceeded,
-                message: "Too many sharing policies".to_string(),
-                source_component: None,
-                target_component: None,
-                resource: None,
-            }
+
+        self.sharing_policies.push(policy).map_err(|_| ResourceSharingError {
+            kind: ResourceSharingErrorKind::ResourceLimitExceeded,
+            message: "Too many sharing policies".to_string(),
+            source_component: None,
+            target_component: None,
+            resource: None,
         })?;
 
         Ok(policy_id)
@@ -527,14 +540,12 @@ impl CrossComponentResourceSharingManager {
         name: String,
         callback: SharingCallback,
     ) -> ResourceSharingResult<()> {
-        self.callbacks.insert(name, callback).map_err(|_| {
-            ResourceSharingError {
-                kind: ResourceSharingErrorKind::ResourceLimitExceeded,
-                message: "Too many callbacks".to_string(),
-                source_component: None,
-                target_component: None,
-                resource: None,
-            }
+        self.callbacks.insert(name, callback).map_err(|_| ResourceSharingError {
+            kind: ResourceSharingErrorKind::ResourceLimitExceeded,
+            message: "Too many callbacks".to_string(),
+            source_component: None,
+            target_component: None,
+            resource: None,
         })?;
 
         Ok(())
@@ -547,8 +558,7 @@ impl CrossComponentResourceSharingManager {
         self.shared_resources
             .iter()
             .filter(|(_, shared)| {
-                shared.owner_component == component_id || 
-                shared.shared_with.contains(&component_id)
+                shared.owner_component == component_id || shared.shared_with.contains(&component_id)
             })
             .map(|(handle, _)| *handle)
             .collect()
@@ -621,12 +631,8 @@ impl CrossComponentResourceSharingManager {
     ) -> bool {
         match &policy.applies_to {
             PolicyScope::Global => true,
-            PolicyScope::ComponentPair { source: s, target: t } => {
-                *s == source && *t == target
-            }
-            PolicyScope::ResourceType { type_id } => {
-                resource_types.contains(type_id)
-            }
+            PolicyScope::ComponentPair { source: s, target: t } => *s == source && *t == target,
+            PolicyScope::ResourceType { type_id } => resource_types.contains(type_id),
             PolicyScope::Component { component_id } => {
                 *component_id == source || *component_id == target
             }
@@ -673,7 +679,10 @@ impl CrossComponentResourceSharingManager {
                         if !virt_manager.check_capability(target, capability) {
                             return Err(ResourceSharingError {
                                 kind: ResourceSharingErrorKind::CapabilityRequired,
-                                message: format!("Target missing required capability: {:?}", capability),
+                                message: format!(
+                                    "Target missing required capability: {:?}",
+                                    capability
+                                ),
                                 source_component: Some(source),
                                 target_component: Some(target),
                                 resource: None,
@@ -719,7 +728,7 @@ impl CrossComponentResourceSharingManager {
                     }
                 })?;
             }
-            
+
             if !shared_resource.sharing_agreements.contains(&agreement_id) {
                 shared_resource.sharing_agreements.push(agreement_id).map_err(|_| {
                     ResourceSharingError {
@@ -733,8 +742,8 @@ impl CrossComponentResourceSharingManager {
             }
         } else {
             // Create new shared resource entry
-            let resource_type = self.type_registry.get_resource_type(handle)
-                .map_err(|e| ResourceSharingError {
+            let resource_type =
+                self.type_registry.get_resource_type(handle).map_err(|e| ResourceSharingError {
                     kind: ResourceSharingErrorKind::ResourceNotFound,
                     message: format!("Resource type not found: {}", e),
                     source_component: Some(owner),
@@ -743,25 +752,21 @@ impl CrossComponentResourceSharingManager {
                 })?;
 
             let mut shared_with_vec = BoundedVec::new();
-            shared_with_vec.push(shared_with).map_err(|_| {
-                ResourceSharingError {
-                    kind: ResourceSharingErrorKind::ResourceLimitExceeded,
-                    message: "Failed to create shared_with list".to_string(),
-                    source_component: Some(owner),
-                    target_component: Some(shared_with),
-                    resource: Some(handle),
-                }
+            shared_with_vec.push(shared_with).map_err(|_| ResourceSharingError {
+                kind: ResourceSharingErrorKind::ResourceLimitExceeded,
+                message: "Failed to create shared_with list".to_string(),
+                source_component: Some(owner),
+                target_component: Some(shared_with),
+                resource: Some(handle),
             })?;
 
             let mut agreements_vec = BoundedVec::new();
-            agreements_vec.push(agreement_id).map_err(|_| {
-                ResourceSharingError {
-                    kind: ResourceSharingErrorKind::ResourceLimitExceeded,
-                    message: "Failed to create agreements list".to_string(),
-                    source_component: Some(owner),
-                    target_component: Some(shared_with),
-                    resource: Some(handle),
-                }
+            agreements_vec.push(agreement_id).map_err(|_| ResourceSharingError {
+                kind: ResourceSharingErrorKind::ResourceLimitExceeded,
+                message: "Failed to create agreements list".to_string(),
+                source_component: Some(owner),
+                target_component: Some(shared_with),
+                resource: Some(handle),
             })?;
 
             let shared_resource = SharedResource {
@@ -794,14 +799,12 @@ impl CrossComponentResourceSharingManager {
     ) -> ResourceSharingResult<()> {
         // This would handle the actual transfer logic
         // For now, we'll add it to the queue
-        self.transfer_queue.push(request).map_err(|_| {
-            ResourceSharingError {
-                kind: ResourceSharingErrorKind::ResourceLimitExceeded,
-                message: "Transfer queue full".to_string(),
-                source_component: None,
-                target_component: None,
-                resource: None,
-            }
+        self.transfer_queue.push(request).map_err(|_| ResourceSharingError {
+            kind: ResourceSharingErrorKind::ResourceLimitExceeded,
+            message: "Transfer queue full".to_string(),
+            source_component: None,
+            target_component: None,
+            resource: None,
         })?;
 
         Ok(())
@@ -821,14 +824,12 @@ impl CrossComponentResourceSharingManager {
     }
 
     fn get_agreement(&self, agreement_id: u32) -> ResourceSharingResult<&SharingAgreement> {
-        self.sharing_agreements.get(&agreement_id).ok_or_else(|| {
-            ResourceSharingError {
-                kind: ResourceSharingErrorKind::InvalidSharingAgreement,
-                message: format!("Agreement {} not found", agreement_id),
-                source_component: None,
-                target_component: None,
-                resource: None,
-            }
+        self.sharing_agreements.get(&agreement_id).ok_or_else(|| ResourceSharingError {
+            kind: ResourceSharingErrorKind::InvalidSharingAgreement,
+            message: format!("Agreement {} not found", agreement_id),
+            source_component: None,
+            target_component: None,
+            resource: None,
         })
     }
 
@@ -849,14 +850,12 @@ impl CrossComponentResourceSharingManager {
                 details: details.to_string(),
             };
 
-            agreement.metadata.audit_log.push(entry).map_err(|_| {
-                ResourceSharingError {
-                    kind: ResourceSharingErrorKind::ResourceLimitExceeded,
-                    message: "Audit log full".to_string(),
-                    source_component: Some(agreement.source_component),
-                    target_component: Some(agreement.target_component),
-                    resource: None,
-                }
+            agreement.metadata.audit_log.push(entry).map_err(|_| ResourceSharingError {
+                kind: ResourceSharingErrorKind::ResourceLimitExceeded,
+                message: "Audit log full".to_string(),
+                source_component: Some(agreement.source_component),
+                target_component: Some(agreement.target_component),
+                resource: None,
             })?;
         }
 
@@ -865,24 +864,24 @@ impl CrossComponentResourceSharingManager {
 
     fn count_active_agreements(&self) -> usize {
         let current_time = self.get_current_time();
-        
-        self.sharing_agreements.values().filter(|agreement| {
-            match &agreement.lifetime {
-                SharingLifetime::Permanent => true,
-                SharingLifetime::Temporary { expires_at } => current_time < *expires_at,
-                _ => true, // Other lifetimes require more complex checks
-            }
-        }).count()
+
+        self.sharing_agreements
+            .values()
+            .filter(|agreement| {
+                match &agreement.lifetime {
+                    SharingLifetime::Permanent => true,
+                    SharingLifetime::Temporary { expires_at } => current_time < *expires_at,
+                    _ => true, // Other lifetimes require more complex checks
+                }
+            })
+            .count()
     }
 
     fn get_current_time(&self) -> u64 {
         #[cfg(feature = "std")]
         {
             use std::time::{SystemTime, UNIX_EPOCH};
-            SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_secs()
+            SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs()
         }
         #[cfg(not(feature = "std"))]
         {

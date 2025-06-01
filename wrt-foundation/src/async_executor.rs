@@ -215,7 +215,7 @@ struct Task {
 
 /// Minimal fallback executor for no_std environments
 pub struct FallbackExecutor {
-    tasks: Mutex<BoundedVec<Task, MAX_TASKS, NoStdProvider>>,
+    tasks: Mutex<BoundedVec<Task, MAX_TASKS, NoStdProvider<1024>>>,
     running: AtomicBool,
     next_id: AtomicU64,
 }

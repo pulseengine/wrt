@@ -391,6 +391,12 @@ pub fn parse_instruction(bytes: &[u8]) -> Result<(CoreTypes::Instruction, usize)
 
             CoreTypes::Instruction::CallIndirect(type_idx, table_idx_u32)
         }
+        0x12 => CoreTypes::Instruction::ReturnCall(read_operand!(read_leb_u32)),
+        0x13 => {
+            let type_idx = read_operand!(read_leb_u32);
+            let table_idx = read_operand!(read_leb_u32);
+            CoreTypes::Instruction::ReturnCallIndirect(type_idx, table_idx)
+        }
 
         // Parametric Instructions (0x1A - 0x1C)
         0x1A => CoreTypes::Instruction::Drop,
@@ -588,7 +594,11 @@ pub fn parse_instruction(bytes: &[u8]) -> Result<(CoreTypes::Instruction, usize)
         // Reference Types Instructions (part of Wasm 2.0 proposals, often enabled by default)
         0xD0 => CoreTypes::Instruction::RefNull(read_ref_type!()),
         0xD1 => CoreTypes::Instruction::RefIsNull,
-        0xD2 => CoreTypes::Instruction::RefFunc(read_operand!(read_leb_u32)),
+        0xD2 => CoreTypes::Instruction::RefEq,
+        0xD3 => CoreTypes::Instruction::RefAsNonNull,
+        // 0xD4 reserved  
+        0xD5 => CoreTypes::Instruction::BrOnNull(read_operand!(read_leb_u32)),
+        0xD6 => CoreTypes::Instruction::BrOnNonNull(read_operand!(read_leb_u32)),
 
         // Prefixed Opcodes (0xFC, 0xFD, 0xFE)
         0xFC => {

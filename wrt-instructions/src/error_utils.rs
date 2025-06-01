@@ -6,25 +6,56 @@ use wrt_error::{Error, ErrorCategory};
 #[derive(Debug, Clone, Copy)]
 pub enum InstructionErrorContext {
     /// Type mismatch in operation
-    TypeMismatch { expected: &'static str, actual: &'static str },
+    TypeMismatch { 
+        /// Expected type
+        expected: &'static str, 
+        /// Actual type found
+        actual: &'static str 
+    },
     /// Stack underflow
-    StackUnderflow { required: usize, available: usize },
+    StackUnderflow { 
+        /// Required stack items
+        required: usize, 
+        /// Available stack items
+        available: usize 
+    },
     /// Invalid memory access
-    InvalidMemoryAccess { offset: u32, size: u32 },
+    InvalidMemoryAccess { 
+        /// Memory offset
+        offset: u32, 
+        /// Access size
+        size: u32 
+    },
     /// Division by zero
     DivisionByZero,
     /// Integer overflow
     IntegerOverflow,
     /// Invalid conversion
-    InvalidConversion { from: &'static str, to: &'static str },
+    InvalidConversion { 
+        /// Source type
+        from: &'static str, 
+        /// Target type
+        to: &'static str 
+    },
     /// Table out of bounds
-    TableOutOfBounds { index: u32, size: u32 },
+    TableOutOfBounds { 
+        /// Table index
+        index: u32, 
+        /// Table size
+        size: u32 
+    },
     /// Invalid reference
     InvalidReference,
     /// Function not found
-    FunctionNotFound { index: u32 },
+    FunctionNotFound { 
+        /// Function index
+        index: u32 
+    },
     /// Invalid branch target
-    InvalidBranchTarget { depth: u32 },
+    InvalidBranchTarget { 
+        /// Branch depth
+        depth: u32 
+    },
 }
 
 /// Format an error with context (with alloc)
@@ -84,7 +115,7 @@ pub fn format_error(category: ErrorCategory, code: u32, context: InstructionErro
 /// Format an error with context (no alloc)
 #[cfg(not(feature = "alloc"))]
 pub fn format_error(category: ErrorCategory, code: u32, context: InstructionErrorContext) -> Error {
-    let message = match context {
+    let _message = match context {
         InstructionErrorContext::TypeMismatch { expected, .. } => expected,
         InstructionErrorContext::StackUnderflow { .. } => "Stack underflow",
         InstructionErrorContext::InvalidMemoryAccess { .. } => "Invalid memory access",
@@ -133,6 +164,8 @@ pub fn type_name(value: &crate::prelude::Value) -> &'static str {
         crate::prelude::Value::V128(_) => "V128",
         crate::prelude::Value::Ref(_) => "Ref",
         crate::prelude::Value::I16x8(_) => "I16x8",
+        crate::prelude::Value::StructRef(_) => "StructRef",
+        crate::prelude::Value::ArrayRef(_) => "ArrayRef",
         // Note: Void type removed from Value enum
     }
 }

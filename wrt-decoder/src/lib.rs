@@ -51,12 +51,7 @@ extern crate std;
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 extern crate alloc;
 
-// Panic handler for no_std builds without alloc
-#[cfg(not(any(feature = "std", feature = "alloc")))]
-#[panic_handler]
-fn panic(_info: &core::panic::PanicInfo) -> ! {
-    loop {}
-}
+// Note: Panic handler removed to avoid conflicts with std library
 
 // Module exports
 // Core memory optimization modules (always available)
@@ -64,9 +59,9 @@ pub mod memory_optimized;
 pub mod optimized_string;
 pub mod prelude;
 
-// Conditionally include other modules - temporarily disabled for demo
-// #[cfg(any(feature = "alloc", feature = "std"))]
-// pub mod component;
+// Conditionally include other modules
+#[cfg(any(feature = "alloc", feature = "std"))]
+pub mod component;
 // Temporarily disabled due to type issues
 // #[cfg(feature = "alloc")]
 // pub mod conversion;
@@ -95,8 +90,8 @@ pub mod prelude;
 // pub mod section_reader;
 // #[cfg(feature = "alloc")]
 // pub mod types;
-// #[cfg(feature = "alloc")]
-// pub mod utils;
+#[cfg(any(feature = "alloc", feature = "std"))]
+pub mod utils;
 // #[cfg(feature = "alloc")]
 // pub mod validation;
 // #[cfg(feature = "alloc")]
@@ -108,6 +103,12 @@ pub mod prelude;
 // Dedicated module for no_alloc decoding
 pub mod decoder_no_alloc;
 
+// Branch hint custom section support (requires alloc)
+#[cfg(feature = "alloc")]
+pub mod branch_hint_section;
+#[cfg(feature = "alloc")]
+pub mod custom_section_handler;
+
 // Most re-exports temporarily disabled for demo - keep only essential ones
 pub use decoder_no_alloc::{
     create_memory_provider, decode_module_header, extract_section_info, validate_module_no_alloc,
@@ -115,9 +116,9 @@ pub use decoder_no_alloc::{
 };
 pub use wrt_error::{codes, kinds, Error, Result};
 // Essential re-exports only
-pub use wrt_foundation::safe_memory::{MemoryProvider, SafeSlice};
 #[cfg(feature = "std")]
 pub use wrt_foundation::safe_memory::StdProvider as StdMemoryProvider;
+pub use wrt_foundation::safe_memory::{MemoryProvider, SafeSlice};
 
 /// Validate WebAssembly header
 ///

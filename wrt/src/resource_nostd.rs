@@ -176,8 +176,8 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> BoundedResourceTable<
 }
 
 /// Creates a default resource table using NoStdProvider
-pub fn create_default_resource_table() -> Result<BoundedResourceTable<NoStdProvider>> {
-    let provider = NoStdProvider::default();
+pub fn create_default_resource_table() -> Result<BoundedResourceTable<NoStdProvider<1024>>> {
+    let provider = NoStdProvider::<1024>::default();
     BoundedResourceTable::new(provider, VerificationLevel::Standard)
 }
 
@@ -187,7 +187,7 @@ mod tests {
 
     #[test]
     fn test_bounded_resource_table() {
-        let provider = NoStdProvider::default();
+        let provider = NoStdProvider::<1024>::default();
         let mut table = BoundedResourceTable::new(provider.clone(), VerificationLevel::Standard)
             .expect("Failed to create resource table");
 

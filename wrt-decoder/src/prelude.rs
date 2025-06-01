@@ -128,7 +128,7 @@ pub trait ToString {
 #[cfg(not(any(feature = "alloc", feature = "std")))]
 impl ToString for &str {
     fn to_string(&self) -> String {
-        String::from_str(self, NoStdProvider::default()).unwrap_or_default()
+        String::from_str(self, NoStdProvider::<1024>::default()).unwrap_or_default()
     }
 }
 
@@ -141,9 +141,10 @@ macro_rules! format {
         // In pure no_std, return a simple bounded string
         use wrt_foundation::{BoundedString, NoStdProvider};
         BoundedString::<256, NoStdProvider<512>>::from_str(
-            "formatted_string", 
-            NoStdProvider::default()
-        ).unwrap_or_default()
+            "formatted_string",
+            NoStdProvider::<512>::default(),
+        )
+        .unwrap_or_default()
     }};
 }
 
@@ -167,7 +168,7 @@ pub mod binary {
 
     /// Write LEB128 u32 in no_std mode
     pub fn write_leb128_u32(value: u32) -> BoundedVec<u8, 10, NoStdProvider<64>> {
-        let mut result = BoundedVec::new(NoStdProvider::default())
+        let mut result = BoundedVec::new(NoStdProvider::<64>::default())
             .expect("Failed to create bounded vec for LEB128");
         let mut buffer = [0u8; 10];
         // Simple LEB128 encoding for no_std
@@ -183,11 +184,12 @@ pub mod binary {
                 buffer[bytes_written] = byte;
                 bytes_written += 1;
             }
-            if val == 0 { break; }
+            if val == 0 {
+                break;
+            }
         }
-        
-        if bytes_written > 0
-        {
+
+        if bytes_written > 0 {
             for i in 0..bytes_written {
                 let _ = result.push(buffer[i]);
             }
@@ -198,7 +200,7 @@ pub mod binary {
     /// Write string in no_std mode
     pub fn write_string(_s: &str) -> BoundedVec<u8, 256, NoStdProvider<512>> {
         // Simplified no_std implementation
-        BoundedVec::new(NoStdProvider::default()).expect("Failed to create bounded vec for string")
+        BoundedVec::new(NoStdProvider::<512>::default()).expect("Failed to create bounded vec for string")
     }
 
     /// Read LEB128 u32 from data with offset
@@ -208,62 +210,62 @@ pub mod binary {
             return Err(wrt_error::Error::new(
                 wrt_error::ErrorCategory::Parse,
                 wrt_error::codes::PARSE_ERROR,
-                "Offset out of bounds"
+                "Offset out of bounds",
             ));
         }
         // For simplicity, just parse from the offset
         let mut value = 0u32;
         let mut shift = 0;
         let mut bytes_read = 0;
-        
+
         for &byte in &data[offset..] {
             if bytes_read >= 5 {
                 return Err(wrt_error::Error::new(
                     wrt_error::ErrorCategory::Parse,
                     wrt_error::codes::PARSE_ERROR,
-                    "LEB128 too long"
+                    "LEB128 too long",
                 ));
             }
-            
+
             value |= ((byte & 0x7F) as u32) << shift;
             bytes_read += 1;
-            
+
             if (byte & 0x80) == 0 {
                 return Ok((value, bytes_read));
             }
-            
+
             shift += 7;
         }
-        
+
         Err(wrt_error::Error::new(
             wrt_error::ErrorCategory::Parse,
             wrt_error::codes::PARSE_ERROR,
-            "Incomplete LEB128"
+            "Incomplete LEB128",
         ))
     }
-    
+
     /// Read name from binary data in no_std mode
     pub fn read_name(data: &[u8], offset: usize) -> wrt_error::Result<(&[u8], usize)> {
         if offset >= data.len() {
             return Err(wrt_error::Error::new(
                 wrt_error::ErrorCategory::Parse,
                 wrt_error::codes::PARSE_ERROR,
-                "Offset out of bounds"
+                "Offset out of bounds",
             ));
         }
-        
+
         // Read length as LEB128
         let (length, new_offset) = read_leb_u32(data, offset)?;
         let name_start = offset + new_offset;
-        
+
         if name_start + length as usize > data.len() {
             return Err(wrt_error::Error::new(
                 wrt_error::ErrorCategory::Parse,
                 wrt_error::codes::PARSE_ERROR,
-                "Name extends beyond data"
+                "Name extends beyond data",
             ));
         }
-        
+
         Ok((&data[name_start..name_start + length as usize], name_start + length as usize))
     }
 }
@@ -287,9 +289,9 @@ pub fn read_leb_u32(data: &[u8]) -> wrt_error::Result<(u32, usize)> {
 // Missing utility functions
 /// Validate WebAssembly header
 pub fn is_valid_wasm_header(data: &[u8]) -> bool {
-    data.len() >= 8 &&
-    &data[0..4] == wrt_format::binary::WASM_MAGIC &&
-    &data[4..8] == wrt_format::binary::WASM_VERSION
+    data.len() >= 8
+        && &data[0..4] == wrt_format::binary::WASM_MAGIC
+        && &data[4..8] == wrt_format::binary::WASM_VERSION
 }
 
 /// Read name from binary data

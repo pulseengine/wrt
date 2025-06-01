@@ -4,10 +4,10 @@
 //! Component Model's Canonical ABI, enabling dynamic memory allocation
 //! during lifting and lowering operations.
 
-#[cfg(feature = "std")]
-use std::sync::{Arc, Mutex};
 #[cfg(not(feature = "std"))]
 use alloc::sync::{Arc, Mutex};
+#[cfg(feature = "std")]
+use std::sync::{Arc, Mutex};
 
 use wrt_foundation::{
     bounded_collections::{BoundedVec, MAX_GENERATIVE_TYPES},
@@ -15,8 +15,8 @@ use wrt_foundation::{
 };
 
 use crate::{
-    types::{ComponentError, ComponentInstanceId},
     memory_layout::{Alignment, MemoryLayout},
+    types::{ComponentError, ComponentInstanceId},
 };
 
 /// Realloc function signature: (old_ptr: i32, old_size: i32, align: i32, new_size: i32) -> i32
@@ -121,18 +121,11 @@ impl ReallocManager {
         instance_id: ComponentInstanceId,
         func_index: u32,
     ) -> Result<(), ComponentError> {
-        let instance_allocs = self.allocations
-            .entry(instance_id)
-            .or_insert_with(|| InstanceAllocations {
-                allocations: BoundedVec::new(),
-                total_bytes: 0,
-                realloc_fn: None,
-            });
-
-        instance_allocs.realloc_fn = Some(ReallocFunction {
-            func_index,
-            func_ref: None,
+        let instance_allocs = self.allocations.entry(instance_id).or_insert_with(|| {
+            InstanceAllocations { allocations: BoundedVec::new(), total_bytes: 0, realloc_fn: None }
         });
+
+        instance_allocs.realloc_fn = Some(ReallocFunction { func_index, func_ref: None });
 
         Ok(())
     }
@@ -147,7 +140,8 @@ impl ReallocManager {
         // Validate allocation parameters
         self.validate_allocation(size, align)?;
 
-        let instance_allocs = self.allocations
+        let instance_allocs = self
+            .allocations
             .get_mut(&instance_id)
             .ok_or(ComponentError::ResourceNotFound(instance_id.0))?;
 
@@ -161,18 +155,15 @@ impl ReallocManager {
         let ptr = self.call_realloc(instance_allocs, 0, 0, align, size)?;
 
         // Track the allocation
-        let allocation = Allocation {
-            ptr,
-            size,
-            align,
-            active: true,
-        };
+        let allocation = Allocation { ptr, size, align, active: true };
 
-        instance_allocs.allocations.push(allocation)
+        instance_allocs
+            .allocations
+            .push(allocation)
             .map_err(|_| ComponentError::TooManyGenerativeTypes)?;
 
         instance_allocs.total_bytes += size as usize;
-        
+
         // Update metrics
         self.metrics.total_allocations += 1;
         self.metrics.total_bytes_allocated += size as u64;
@@ -193,12 +184,14 @@ impl ReallocManager {
         // Validate reallocation parameters
         self.validate_allocation(new_size, align)?;
 
-        let instance_allocs = self.allocations
+        let instance_allocs = self
+            .allocations
             .get_mut(&instance_id)
             .ok_or(ComponentError::ResourceNotFound(instance_id.0))?;
 
         // Find the existing allocation
-        let alloc_index = instance_allocs.allocations
+        let alloc_index = instance_allocs
+            .allocations
             .iter()
             .position(|a| a.ptr == old_ptr && a.size == old_size && a.active)
             .ok_or(ComponentError::ResourceNotFound(old_ptr as u32))?;
@@ -217,7 +210,8 @@ impl ReallocManager {
             // Reallocation
             instance_allocs.allocations[alloc_index].ptr = new_ptr;
             instance_allocs.allocations[alloc_index].size = new_size;
-            instance_allocs.total_bytes = instance_allocs.total_bytes - (old_size as usize) + (new_size as usize);
+            instance_allocs.total_bytes =
+                instance_allocs.total_bytes - (old_size as usize) + (new_size as usize);
             self.metrics.total_bytes_allocated += (new_size - old_size).max(0) as u64;
         }
 
@@ -246,9 +240,8 @@ impl ReallocManager {
         align: i32,
         new_size: i32,
     ) -> Result<i32, ComponentError> {
-        let realloc_fn = instance_allocs.realloc_fn
-            .as_ref()
-            .ok_or(ComponentError::ResourceNotFound(0))?;
+        let realloc_fn =
+            instance_allocs.realloc_fn.as_ref().ok_or(ComponentError::ResourceNotFound(0))?;
 
         // In a real implementation, this would call the actual wasm function
         // For now, we'll simulate the allocation
@@ -283,10 +276,7 @@ impl ReallocManager {
 
     /// Update peak memory usage
     fn update_peak_memory(&mut self) {
-        let current_usage: u64 = self.allocations
-            .values()
-            .map(|a| a.total_bytes as u64)
-            .sum();
+        let current_usage: u64 = self.allocations.values().map(|a| a.total_bytes as u64).sum();
 
         if current_usage > self.metrics.peak_memory_usage {
             self.metrics.peak_memory_usage = current_usage;
@@ -294,7 +284,10 @@ impl ReallocManager {
     }
 
     /// Clean up allocations for an instance
-    pub fn cleanup_instance(&mut self, instance_id: ComponentInstanceId) -> Result<(), ComponentError> {
+    pub fn cleanup_instance(
+        &mut self,
+        instance_id: ComponentInstanceId,
+    ) -> Result<(), ComponentError> {
         if let Some(instance_allocs) = self.allocations.remove(&instance_id) {
             // Update metrics for cleanup
             for alloc in instance_allocs.allocations.iter() {
@@ -341,9 +334,7 @@ pub mod helpers {
         let align = layout.align;
 
         // Check for overflow
-        let total_size = item_size
-            .checked_mul(count)
-            .ok_or(ComponentError::TypeMismatch)?;
+        let total_size = item_size.checked_mul(count).ok_or(ComponentError::TypeMismatch)?;
 
         // Add alignment padding
         let aligned_size = align_size(total_size, align);
@@ -356,7 +347,7 @@ impl Default for ReallocManager {
     fn default() -> Self {
         Self::new(
             10 * 1024 * 1024, // 10MB max allocation
-            1024,              // Max 1024 allocations per instance
+            1024,             // Max 1024 allocations per instance
         )
     }
 }

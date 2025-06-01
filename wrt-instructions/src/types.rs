@@ -1,34 +1,46 @@
 //! Type aliases for no_std compatibility
 
 use crate::prelude::*;
+#[cfg(not(feature = "alloc"))]
 use wrt_foundation::NoStdProvider;
 
 // CFI-specific types
+/// Maximum number of CFI targets
 pub const MAX_CFI_TARGETS: usize = 16;
+/// Maximum number of CFI requirements
 pub const MAX_CFI_REQUIREMENTS: usize = 16;
+/// Maximum number of CFI target types
 pub const MAX_CFI_TARGET_TYPES: usize = 8;
 
+/// CFI target vector type
 #[cfg(feature = "alloc")]
 pub type CfiTargetVec = Vec<u32>;
 
+/// CFI target vector type (no_std)
 #[cfg(not(feature = "alloc"))]
 pub type CfiTargetVec = BoundedVec<u32, MAX_CFI_TARGETS, NoStdProvider<1024>>;
 
+/// CFI requirement vector type
 #[cfg(feature = "alloc")]
 pub type CfiRequirementVec = Vec<crate::cfi_control_ops::CfiValidationRequirement>;
 
 #[cfg(not(feature = "alloc"))]
 pub type CfiRequirementVec = BoundedVec<crate::cfi_control_ops::CfiValidationRequirement, MAX_CFI_REQUIREMENTS, NoStdProvider<1024>>;
 
+/// CFI target type vector
 #[cfg(feature = "alloc")]
 pub type CfiTargetTypeVec = Vec<crate::cfi_control_ops::CfiTargetType>;
 
+/// CFI target type vector (no_std)
 #[cfg(not(feature = "alloc"))]
 pub type CfiTargetTypeVec = BoundedVec<crate::cfi_control_ops::CfiTargetType, MAX_CFI_TARGET_TYPES, NoStdProvider<1024>>;
 
 // Additional CFI collection types
+/// Maximum shadow stack size
 pub const MAX_SHADOW_STACK: usize = 1024;
+/// Maximum landing pad expectations
 pub const MAX_LANDING_PAD_EXPECTATIONS: usize = 64;
+/// Maximum CFI expected values
 pub const MAX_CFI_EXPECTED_VALUES: usize = 16;
 
 #[cfg(feature = "alloc")]
@@ -92,12 +104,80 @@ pub type GlobalsVec = Vec<Value>;
 pub type GlobalsVec = BoundedVec<Value, MAX_GLOBALS, NoStdProvider<{ MAX_GLOBALS * 16 }>>;
 
 // Reference value type (for tables)
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum RefValue {
+    /// Null reference (default)
+    #[default]
+    Null,
     /// Function reference
-    FuncRef(Option<u32>),
+    FuncRef(u32),
     /// External reference  
-    ExternRef(Option<u32>),
+    ExternRef(u32),
+}
+
+impl wrt_foundation::traits::Checksummable for RefValue {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        match self {
+            Self::Null => checksum.update_slice(&[0u8]),
+            Self::FuncRef(id) => {
+                checksum.update_slice(&[1u8]);
+                checksum.update_slice(&id.to_le_bytes());
+            },
+            Self::ExternRef(id) => {
+                checksum.update_slice(&[2u8]);
+                checksum.update_slice(&id.to_le_bytes());
+            },
+        }
+    }
+}
+
+impl wrt_foundation::traits::ToBytes for RefValue {
+    fn to_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        _provider: &PStream,
+    ) -> wrt_foundation::Result<()> {
+        match self {
+            Self::Null => writer.write_u8(0u8),
+            Self::FuncRef(id) => {
+                writer.write_u8(1u8)?;
+                writer.write_all(&id.to_le_bytes())
+            },
+            Self::ExternRef(id) => {
+                writer.write_u8(2u8)?;
+                writer.write_all(&id.to_le_bytes())
+            },
+        }
+    }
+}
+
+impl wrt_foundation::traits::FromBytes for RefValue {
+    fn from_bytes_with_provider<PStream: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream,
+        _provider: &PStream,
+    ) -> wrt_foundation::Result<Self> {
+        let discriminant = reader.read_u8()?;
+        match discriminant {
+            0 => Ok(Self::Null),
+            1 => {
+                let mut id_bytes = [0u8; 4];
+                reader.read_exact(&mut id_bytes)?;
+                let id = u32::from_le_bytes(id_bytes);
+                Ok(Self::FuncRef(id))
+            },
+            2 => {
+                let mut id_bytes = [0u8; 4];
+                reader.read_exact(&mut id_bytes)?;
+                let id = u32::from_le_bytes(id_bytes);
+                Ok(Self::ExternRef(id))
+            },
+            _ => Err(wrt_foundation::Error::new(
+                wrt_foundation::ErrorCategory::Validation,
+                wrt_foundation::codes::VALIDATION_ERROR,
+                "Invalid discriminant for RefValue",
+            )),
+        }
+    }
 }
 
 // Helper to create vectors in both modes

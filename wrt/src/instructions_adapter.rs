@@ -16,11 +16,19 @@ pub use wrt_instructions::{
     execution::{ExecutionContext, ExecutionResult},
     memory_ops::{MemoryArg, MemoryLoad, MemoryStore},
     numeric::NumericInstruction,
+    simd_ops::{SimdContext, SimdExecutionContext, SimdInstruction, SimdOp},
+    aggregate_ops::{AggregateOperations, AggregateOp},
     Instruction, InstructionExecutable,
 };
 use wrt_runtime::stackless::{StacklessEngine, StacklessFrame};
 
 use crate::prelude::*;
+
+#[cfg(feature = "platform")]
+mod simd_runtime_impl;
+
+#[cfg(feature = "platform")]
+use wrt_platform::simd::SimdRuntime;
 
 /// Execution context adapter for instructions
 ///
@@ -34,6 +42,9 @@ pub struct WrtExecutionContextAdapter<'a> {
     frame: &'a mut StacklessFrame,
     /// The engine
     engine: &'a mut StacklessEngine,
+    /// SIMD runtime for SIMD operations
+    #[cfg(feature = "platform")]
+    simd_runtime: SimdRuntime,
 }
 
 impl<'a> WrtExecutionContextAdapter<'a> {
@@ -53,7 +64,13 @@ impl<'a> WrtExecutionContextAdapter<'a> {
         frame: &'a mut StacklessFrame,
         engine: &'a mut StacklessEngine,
     ) -> Self {
-        Self { stack, frame, engine }
+        Self {
+            stack,
+            frame,
+            engine,
+            #[cfg(feature = "platform")]
+            simd_runtime: SimdRuntime::new(),
+        }
     }
 }
 
@@ -137,6 +154,92 @@ impl<'a> wrt_instructions::execution::ExecutionContext for WrtExecutionContextAd
             .map_err(|e| wrt_error::Error::from(e))?;
 
         memory.write(offset, bytes).map_err(|e| wrt_error::Error::from(e))
+    }
+}
+
+#[cfg(feature = "platform")]
+impl<'a> SimdContext for WrtExecutionContextAdapter<'a> {
+    fn execute_simd_op(&mut self, op: SimdOp, inputs: &[Value]) -> wrt_error::Result<Value> {
+        // Use the comprehensive SIMD implementation
+        let provider = self.simd_runtime.provider();
+        simd_runtime_impl::execute_simd_operation(op, inputs, provider.as_ref())
+    }
+}
+
+/// Extract v128 bytes from a Value
+#[cfg(feature = "platform")]
+fn extract_v128_bytes(value: &Value) -> wrt_error::Result<[u8; 16]> {
+    match value {
+        Value::V128(bytes) => Ok(*bytes),
+        _ => Err(wrt_error::Error::new(
+            wrt_error::ErrorCategory::Type,
+            wrt_error::codes::TYPE_MISMATCH,
+            format!("Expected v128 value, got {:?}", value.value_type())
+        ))
+    }
+}
+
+#[cfg(feature = "platform")]
+impl<'a> SimdExecutionContext for WrtExecutionContextAdapter<'a> {
+    fn pop_value(&mut self) -> wrt_error::Result<Value> {
+        self.stack.pop().map_err(|e| wrt_error::Error::from(e))
+    }
+    
+    fn push_value(&mut self, value: Value) -> wrt_error::Result<()> {
+        self.stack.push(value).map_err(|e| wrt_error::Error::from(e))
+    }
+    
+    fn simd_context(&mut self) -> &mut dyn SimdContext {
+        self as &mut dyn SimdContext
+    }
+}
+
+/// Implementation of AggregateOperations for WrtExecutionContextAdapter
+impl<'a> AggregateOperations for WrtExecutionContextAdapter<'a> {
+    fn get_struct_type(&self, type_index: u32) -> wrt_error::Result<Option<u32>> {
+        // In a full implementation, this would query the module's type section
+        // For now, we'll assume types 0-99 exist (mock implementation)
+        if type_index < 100 {
+            Ok(Some(type_index))
+        } else {
+            Ok(None)
+        }
+    }
+    
+    fn get_array_type(&self, type_index: u32) -> wrt_error::Result<Option<u32>> {
+        // In a full implementation, this would query the module's type section
+        // For now, we'll assume types 0-99 exist (mock implementation)
+        if type_index < 100 {
+            Ok(Some(type_index))
+        } else {
+            Ok(None)
+        }
+    }
+    
+    fn validate_struct_type(&self, type_index: u32) -> wrt_error::Result<()> {
+        // In a full implementation, this would validate against the module's type section
+        if type_index < 100 {
+            Ok(())
+        } else {
+            Err(wrt_error::Error::new(
+                wrt_error::ErrorCategory::Validation,
+                wrt_error::codes::TYPE_MISMATCH,
+                format!("Invalid struct type index: {}", type_index)
+            ))
+        }
+    }
+    
+    fn validate_array_type(&self, type_index: u32) -> wrt_error::Result<()> {
+        // In a full implementation, this would validate against the module's type section
+        if type_index < 100 {
+            Ok(())
+        } else {
+            Err(wrt_error::Error::new(
+                wrt_error::ErrorCategory::Validation,
+                wrt_error::codes::TYPE_MISMATCH,
+                format!("Invalid array type index: {}", type_index)
+            ))
+        }
     }
 }
 

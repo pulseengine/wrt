@@ -150,7 +150,7 @@ fn test_bounded_map_operations() {
 #[test]
 fn test_bounded_set_operations() {
     let provider = NoStdProvider::new(1024, VerificationLevel::Critical);
-    let mut set = BoundedSet::<String, 5, NoStdProvider>::new(provider).unwrap();
+    let mut set = BoundedSet::<String, 5, NoStdProvider<1024>>::new(provider).unwrap();
 
     // Check empty set properties
     assert_eq!(set.len(), 0);
@@ -207,7 +207,7 @@ fn test_bounded_set_operations() {
 #[test]
 fn test_bounded_deque_operations() {
     let provider = NoStdProvider::new(1024, VerificationLevel::Critical);
-    let mut deque = BoundedDeque::<u32, 5, NoStdProvider>::new(provider).unwrap();
+    let mut deque = BoundedDeque::<u32, 5, NoStdProvider<1024>>::new(provider).unwrap();
 
     // Check empty deque properties
     assert_eq!(deque.len(), 0);
@@ -384,7 +384,7 @@ fn test_bounded_bitset_operations() {
 #[test]
 fn test_bounded_builder_pattern() {
     // Test BoundedBuilder for BoundedVec
-    let vec_builder = BoundedBuilder::<u32, 10, NoStdProvider>::new()
+    let vec_builder = BoundedBuilder::<u32, 10, NoStdProvider<1024>>::new()
         .with_verification_level(VerificationLevel::Critical);
 
     let mut vec = vec_builder.build_vec().unwrap();
@@ -392,7 +392,7 @@ fn test_bounded_builder_pattern() {
     assert_eq!(vec.verification_level(), VerificationLevel::Critical);
 
     // Test BoundedBuilder for BoundedStack
-    let stack_builder = BoundedBuilder::<u32, 20, NoStdProvider>::new()
+    let stack_builder = BoundedBuilder::<u32, 20, NoStdProvider<1024>>::new()
         .with_verification_level(VerificationLevel::Full);
 
     let stack = stack_builder.build_stack().unwrap();
@@ -400,7 +400,7 @@ fn test_bounded_builder_pattern() {
     assert_eq!(stack.verification_level(), VerificationLevel::Full);
 
     // Test StringBuilder for BoundedString
-    let string_builder = StringBuilder::<128, NoStdProvider>::new()
+    let string_builder = StringBuilder::<128, NoStdProvider<1024>>::new()
         .with_content("Hello, world!")
         .with_truncation(true);
 
@@ -408,7 +408,7 @@ fn test_bounded_builder_pattern() {
     assert_eq!(string.as_str().unwrap(), "Hello, world!");
 
     // Test StringBuilder for WasmName
-    let name_builder = StringBuilder::<64, NoStdProvider>::new()
+    let name_builder = StringBuilder::<64, NoStdProvider<1024>>::new()
         .with_content("function_name")
         .with_truncation(false);
 
@@ -425,7 +425,7 @@ fn test_bounded_builder_pattern() {
     assert_eq!(provider.verification_level(), VerificationLevel::Critical);
 
     // Test MemoryBuilder
-    let memory_builder = MemoryBuilder::<NoStdProvider>::new()
+    let memory_builder = MemoryBuilder::<NoStdProvider<1024>>::new()
         .with_size(2048)
         .with_verification_level(VerificationLevel::Full);
 
@@ -444,11 +444,11 @@ fn test_interoperability() {
 
     let provider = provider_builder.build().unwrap();
 
-    let mut map = BoundedMap::<u32, String, 5, NoStdProvider>::new(provider).unwrap();
+    let mut map = BoundedMap::<u32, String, 5, NoStdProvider<1024>>::new(provider).unwrap();
 
     // Populate map with values from StringBuilder
     for i in 0..5 {
-        let string_builder = StringBuilder::<64, NoStdProvider>::new()
+        let string_builder = StringBuilder::<64, NoStdProvider<1024>>::new()
             .with_content(match i {
                 0 => "zero",
                 1 => "one",
@@ -479,8 +479,8 @@ fn test_interoperability() {
     }
 
     // Test using BoundedSet with BoundedQueue
-    let mut set = BoundedSet::<u32, 10, NoStdProvider>::new(provider).unwrap();
-    let mut queue = BoundedQueue::<u32, 10, NoStdProvider>::new(provider).unwrap();
+    let mut set = BoundedSet::<u32, 10, NoStdProvider<1024>>::new(provider).unwrap();
+    let mut queue = BoundedQueue::<u32, 10, NoStdProvider<1024>>::new(provider).unwrap();
 
     // Add values to queue
     for i in 0..8 {
@@ -507,7 +507,7 @@ fn test_bounded_collections_performance() {
     use std::time::{Duration, Instant};
 
     // Create large collections
-    let mut deque = BoundedDeque::<u32, 10000, NoStdProvider>::new(
+    let mut deque = BoundedDeque::<u32, 10000, NoStdProvider<4194304>>::new(
         NoStdProvider::new(4 * 1024 * 1024, VerificationLevel::Critical), // 4MB buffer
     )
     .unwrap();

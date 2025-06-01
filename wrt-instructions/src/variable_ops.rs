@@ -76,13 +76,11 @@ impl<T: VariableContext> PureInstruction<T, Error> for VariableOp {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, any(feature = "std", feature = "alloc")))]
 mod tests {
-    #[cfg(all(not(feature = "std"), feature = "alloc"))]
-    use alloc::vec;
-    #[cfg(all(not(feature = "std"), feature = "alloc"))]
-    use alloc::vec::Vec;
     // Import Vec and vec! based on feature flags
+    #[cfg(all(not(feature = "std"), feature = "alloc"))]
+    use alloc::{vec, vec::Vec};
     #[cfg(feature = "std")]
     use std::vec::Vec;
 
@@ -98,8 +96,16 @@ mod tests {
     impl MockVariableContext {
         fn new() -> Self {
             Self {
-                locals: vec![Value::I32(0); 10],
-                globals: vec![Value::I32(0); 5],
+                locals: {
+                    let mut v = Vec::with_capacity(10);
+                    for _ in 0..10 { v.push(Value::I32(0)); }
+                    v
+                },
+                globals: {
+                    let mut v = Vec::with_capacity(5);
+                    for _ in 0..5 { v.push(Value::I32(0)); }
+                    v
+                },
                 stack: Vec::new(),
             }
         }

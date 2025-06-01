@@ -11,6 +11,9 @@ mod engine;
 pub mod extensions;
 mod frame;
 
+#[cfg(feature = "alloc")]
+pub mod tail_call;
+
 pub use engine::{
     StacklessCallbackRegistry, StacklessEngine, StacklessExecutionState, StacklessStack,
 };

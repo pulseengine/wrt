@@ -10,6 +10,12 @@ use wrt_foundation::{
 
 use crate::prelude::*;
 
+// Import format! macro for string formatting
+#[cfg(feature = "std")]
+use std::format;
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+use alloc::format;
+
 /// Represents a WebAssembly global variable in the runtime
 #[derive(Debug, Clone, PartialEq)]
 pub struct Global {
@@ -52,7 +58,7 @@ impl Global {
         if !self.ty.mutable {
             return Err(Error::new(
                 ErrorCategory::Validation,
-                codes::IMMUTABLE_GLOBAL, // More specific error code
+                codes::VALIDATION_GLOBAL_TYPE_MISMATCH, // Attempting to modify immutable global
                 "Cannot modify immutable global",
             ));
         }

@@ -402,8 +402,14 @@ impl Default for ConstExprSequence {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, any(feature = "std", feature = "alloc")))]
 mod tests {
+    // Import Vec and vec! based on feature flags
+    #[cfg(all(not(feature = "std"), feature = "alloc"))]
+    use alloc::{vec, vec::Vec};
+    #[cfg(feature = "std")]
+    use std::{vec, vec::Vec};
+    
     use super::*;
     
     struct TestConstExprContext {
@@ -434,7 +440,7 @@ mod tests {
         expr.push(ConstExpr::End).unwrap();
         
         let context = TestConstExprContext {
-            globals: vec![],
+            globals: Vec::new(),
             func_count: 0,
         };
         
@@ -451,7 +457,7 @@ mod tests {
         expr.push(ConstExpr::End).unwrap();
         
         let context = TestConstExprContext {
-            globals: vec![],
+            globals: Vec::new(),
             func_count: 0,
         };
         
@@ -466,7 +472,11 @@ mod tests {
         expr.push(ConstExpr::End).unwrap();
         
         let context = TestConstExprContext {
-            globals: vec![Value::I32(100)],
+            globals: {
+                let mut v = Vec::new();
+                v.push(Value::I32(100));
+                v
+            },
             func_count: 0,
         };
         

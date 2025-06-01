@@ -1,17 +1,14 @@
 use crate::{
-    ComponentInstanceId, ValType, ResourceHandle,
-    execution_engine::{ComponentExecutionEngine, ExecutionContext, ExecutionState},
     canonical_options::CanonicalOptions,
-    post_return::{PostReturnRegistry, CleanupTask, CleanupTaskType},
+    execution_engine::{ComponentExecutionEngine, ExecutionContext, ExecutionState},
+    post_return::{CleanupTask, CleanupTaskType, PostReturnRegistry},
+    ComponentInstanceId, ResourceHandle, ValType,
 };
+use core::{fmt, time::Duration};
 use wrt_foundation::{
-    bounded_collections::{BoundedVec, BoundedHashMap},
+    bounded_collections::{BoundedHashMap, BoundedVec},
     component_value::ComponentValue,
     safe_memory::SafeMemory,
-};
-use core::{
-    fmt,
-    time::Duration,
 };
 
 const MAX_START_FUNCTION_VALIDATIONS: usize = 256;
@@ -133,7 +130,11 @@ pub enum SideEffectSeverity {
 }
 
 pub struct StartFunctionValidator {
-    validations: BoundedHashMap<ComponentInstanceId, StartFunctionValidation, MAX_START_FUNCTION_VALIDATIONS>,
+    validations: BoundedHashMap<
+        ComponentInstanceId,
+        StartFunctionValidation,
+        MAX_START_FUNCTION_VALIDATIONS,
+    >,
     execution_engine: ComponentExecutionEngine,
     post_return_registry: PostReturnRegistry,
     default_timeout_ms: u64,
@@ -184,12 +185,10 @@ impl StartFunctionValidator {
             validation_duration_ms: 0,
         };
 
-        self.validations.insert(component_id, validation).map_err(|_| {
-            StartFunctionError {
-                kind: StartFunctionErrorKind::ResourceLimitExceeded,
-                message: "Too many start function validations".to_string(),
-                component_id: Some(component_id),
-            }
+        self.validations.insert(component_id, validation).map_err(|_| StartFunctionError {
+            kind: StartFunctionErrorKind::ResourceLimitExceeded,
+            message: "Too many start function validations".to_string(),
+            component_id: Some(component_id),
         })?;
 
         Ok(())
@@ -199,13 +198,12 @@ impl StartFunctionValidator {
         &mut self,
         component_id: ComponentInstanceId,
     ) -> StartFunctionResult<ValidationState> {
-        let validation = self.validations.get_mut(&component_id).ok_or_else(|| {
-            StartFunctionError {
+        let validation =
+            self.validations.get_mut(&component_id).ok_or_else(|| StartFunctionError {
                 kind: StartFunctionErrorKind::StartFunctionNotFound,
                 message: "No start function registered for component".to_string(),
                 component_id: Some(component_id),
-            }
-        })?;
+            })?;
 
         if validation.validation_state != ValidationState::Pending {
             return Ok(validation.validation_state);
@@ -215,7 +213,7 @@ impl StartFunctionValidator {
         let start_time = self.get_current_time();
 
         let result = self.perform_validation(component_id, &validation.descriptor);
-        
+
         let end_time = self.get_current_time();
         let duration = end_time.saturating_sub(start_time);
 
@@ -239,10 +237,15 @@ impl StartFunctionValidator {
         Ok(validation.validation_state)
     }
 
-    pub fn validate_all_pending(&mut self) -> StartFunctionResult<BoundedVec<(ComponentInstanceId, ValidationState), MAX_START_FUNCTION_VALIDATIONS>> {
+    pub fn validate_all_pending(
+        &mut self,
+    ) -> StartFunctionResult<
+        BoundedVec<(ComponentInstanceId, ValidationState), MAX_START_FUNCTION_VALIDATIONS>,
+    > {
         let mut results = BoundedVec::new();
 
-        let pending_components: Vec<ComponentInstanceId> = self.validations
+        let pending_components: Vec<ComponentInstanceId> = self
+            .validations
             .iter()
             .filter(|(_, v)| v.validation_state == ValidationState::Pending)
             .map(|(id, _)| *id)
@@ -250,19 +253,20 @@ impl StartFunctionValidator {
 
         for component_id in pending_components {
             let state = self.validate_start_function(component_id)?;
-            results.push((component_id, state)).map_err(|_| {
-                StartFunctionError {
-                    kind: StartFunctionErrorKind::ResourceLimitExceeded,
-                    message: "Too many validation results".to_string(),
-                    component_id: Some(component_id),
-                }
+            results.push((component_id, state)).map_err(|_| StartFunctionError {
+                kind: StartFunctionErrorKind::ResourceLimitExceeded,
+                message: "Too many validation results".to_string(),
+                component_id: Some(component_id),
             })?;
         }
 
         Ok(results)
     }
 
-    pub fn get_validation_result(&self, component_id: ComponentInstanceId) -> Option<&StartFunctionValidation> {
+    pub fn get_validation_result(
+        &self,
+        component_id: ComponentInstanceId,
+    ) -> Option<&StartFunctionValidation> {
         self.validations.get(&component_id)
     }
 
@@ -288,7 +292,10 @@ impl StartFunctionValidator {
         summary
     }
 
-    pub fn reset_validation(&mut self, component_id: ComponentInstanceId) -> StartFunctionResult<()> {
+    pub fn reset_validation(
+        &mut self,
+        component_id: ComponentInstanceId,
+    ) -> StartFunctionResult<()> {
         if let Some(validation) = self.validations.get_mut(&component_id) {
             validation.validation_state = ValidationState::Pending;
             validation.execution_result = None;
@@ -304,7 +311,10 @@ impl StartFunctionValidator {
         }
     }
 
-    pub fn remove_validation(&mut self, component_id: ComponentInstanceId) -> StartFunctionResult<()> {
+    pub fn remove_validation(
+        &mut self,
+        component_id: ComponentInstanceId,
+    ) -> StartFunctionResult<()> {
         self.validations.remove(&component_id);
         Ok(())
     }
@@ -431,12 +441,10 @@ impl StartFunctionValidator {
                 self.get_default_value_for_type(&param.param_type)
             };
 
-            arguments.push(value).map_err(|_| {
-                StartFunctionError {
-                    kind: StartFunctionErrorKind::ResourceLimitExceeded,
-                    message: "Too many start function parameters".to_string(),
-                    component_id: None,
-                }
+            arguments.push(value).map_err(|_| StartFunctionError {
+                kind: StartFunctionErrorKind::ResourceLimitExceeded,
+                message: "Too many start function parameters".to_string(),
+                component_id: None,
             })?;
         }
 
@@ -487,12 +495,10 @@ impl StartFunctionValidator {
                     SideEffectSeverity::Info
                 },
             };
-            side_effects.push(effect).map_err(|_| {
-                StartFunctionError {
-                    kind: StartFunctionErrorKind::ResourceLimitExceeded,
-                    message: "Too many side effects".to_string(),
-                    component_id: None,
-                }
+            side_effects.push(effect).map_err(|_| StartFunctionError {
+                kind: StartFunctionErrorKind::ResourceLimitExceeded,
+                message: "Too many side effects".to_string(),
+                component_id: None,
             })?;
         }
 
@@ -503,12 +509,10 @@ impl StartFunctionValidator {
                 description: format!("Created {} resources", execution_context.resources_created()),
                 severity: SideEffectSeverity::Info,
             };
-            side_effects.push(effect).map_err(|_| {
-                StartFunctionError {
-                    kind: StartFunctionErrorKind::ResourceLimitExceeded,
-                    message: "Too many side effects".to_string(),
-                    component_id: None,
-                }
+            side_effects.push(effect).map_err(|_| StartFunctionError {
+                kind: StartFunctionErrorKind::ResourceLimitExceeded,
+                message: "Too many side effects".to_string(),
+                component_id: None,
             })?;
         }
 
@@ -529,26 +533,32 @@ impl StartFunctionValidator {
             }
             ValidationLevel::Standard => {
                 // Check for critical side effects
-                let has_critical = side_effects.iter()
+                let has_critical = side_effects
+                    .iter()
                     .any(|effect| effect.severity == SideEffectSeverity::Critical);
                 Ok(!has_critical)
             }
             ValidationLevel::Strict => {
                 // Check for any error-level side effects
-                let has_errors = side_effects.iter()
-                    .any(|effect| effect.severity >= SideEffectSeverity::Error);
+                let has_errors =
+                    side_effects.iter().any(|effect| effect.severity >= SideEffectSeverity::Error);
                 Ok(!has_errors)
             }
             ValidationLevel::Complete => {
                 // Check for any warnings or above
-                let has_warnings = side_effects.iter()
+                let has_warnings = side_effects
+                    .iter()
                     .any(|effect| effect.severity >= SideEffectSeverity::Warning);
                 Ok(!has_warnings && result.is_some())
             }
         }
     }
 
-    fn check_dependency_available(&self, _component_id: ComponentInstanceId, _dependency: &str) -> bool {
+    fn check_dependency_available(
+        &self,
+        _component_id: ComponentInstanceId,
+        _dependency: &str,
+    ) -> bool {
         // For now, assume all dependencies are available
         // In a real implementation, this would check if the dependency is actually available
         true
@@ -570,10 +580,7 @@ impl StartFunctionValidator {
         #[cfg(feature = "std")]
         {
             use std::time::{SystemTime, UNIX_EPOCH};
-            SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_millis() as u64
+            SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_millis() as u64
         }
         #[cfg(not(feature = "std"))]
         {
@@ -613,12 +620,7 @@ pub fn create_start_function_descriptor(name: &str) -> StartFunctionDescriptor {
 }
 
 pub fn create_start_function_param(name: &str, param_type: ValType) -> StartFunctionParam {
-    StartFunctionParam {
-        name: name.to_string(),
-        param_type,
-        required: false,
-        default_value: None,
-    }
+    StartFunctionParam { name: name.to_string(), param_type, required: false, default_value: None }
 }
 
 #[cfg(test)]
@@ -652,11 +654,11 @@ mod tests {
     #[test]
     fn test_descriptor_validation() {
         let validator = StartFunctionValidator::new();
-        
+
         // Valid descriptor
         let valid_descriptor = create_start_function_descriptor("_start");
         assert!(validator.validate_descriptor(&valid_descriptor).is_ok());
-        
+
         // Invalid descriptor (empty name)
         let invalid_descriptor = StartFunctionDescriptor {
             name: String::new(),

@@ -13,17 +13,14 @@ use std::{fmt, mem};
 use alloc::{boxed::Box, string::String, vec::Vec};
 
 use wrt_foundation::{
-    bounded::BoundedVec,
-    component::ComponentType,
-    component_value::ComponentValue,
-    prelude::*,
+    bounded::BoundedVec, component::ComponentType, component_value::ComponentValue, prelude::*,
 };
 
 use crate::{
     canonical::CanonicalAbi,
     execution_engine::{ComponentExecutionEngine, HostFunction},
     resource_lifecycle::ResourceLifecycleManager,
-    types::{ComponentInstance, Value, ValType},
+    types::{ComponentInstance, ValType, Value},
     WrtResult,
 };
 
@@ -40,19 +37,19 @@ pub struct HostIntegrationManager {
     host_functions: Vec<HostFunctionRegistry>,
     #[cfg(not(any(feature = "std", feature = "alloc")))]
     host_functions: BoundedVec<HostFunctionRegistry, MAX_HOST_FUNCTIONS>,
-    
+
     /// Event handlers
     #[cfg(any(feature = "std", feature = "alloc"))]
     event_handlers: Vec<EventHandler>,
     #[cfg(not(any(feature = "std", feature = "alloc")))]
     event_handlers: BoundedVec<EventHandler, MAX_EVENT_HANDLERS>,
-    
+
     /// Host resource manager
     host_resources: HostResourceManager,
-    
+
     /// Canonical ABI for host/component interaction
     canonical_abi: CanonicalAbi,
-    
+
     /// Security policy
     security_policy: SecurityPolicy,
 }
@@ -145,20 +142,11 @@ pub enum EventData {
     /// No additional data
     None,
     /// Function call data
-    FunctionCall {
-        function_index: u32,
-        arg_count: u32,
-    },
+    FunctionCall { function_index: u32, arg_count: u32 },
     /// Resource data
-    Resource {
-        resource_handle: u32,
-        resource_type: u32,
-    },
+    Resource { resource_handle: u32, resource_type: u32 },
     /// Memory data
-    Memory {
-        memory_id: u32,
-        size_bytes: u64,
-    },
+    Memory { memory_id: u32, size_bytes: u64 },
     /// Error data
     Error {
         #[cfg(any(feature = "std", feature = "alloc"))]
@@ -177,7 +165,7 @@ pub struct HostResourceManager {
     resources: Vec<HostResource>,
     #[cfg(not(any(feature = "std", feature = "alloc")))]
     resources: BoundedVec<HostResource, 256>,
-    
+
     /// Resource sharing policies
     #[cfg(any(feature = "std", feature = "alloc"))]
     sharing_policies: Vec<HostResourceSharingPolicy>,
@@ -297,14 +285,9 @@ impl HostIntegrationManager {
         permissions: HostFunctionPermissions,
     ) -> WrtResult<u32> {
         let function_id = self.host_functions.len() as u32;
-        
-        let registry_entry = HostFunctionRegistry {
-            name,
-            signature,
-            implementation,
-            permissions,
-        };
-        
+
+        let registry_entry = HostFunctionRegistry { name, signature, implementation, permissions };
+
         self.host_functions.push(registry_entry);
         Ok(function_id)
     }
@@ -319,18 +302,13 @@ impl HostIntegrationManager {
         permissions: HostFunctionPermissions,
     ) -> WrtResult<u32> {
         let function_id = self.host_functions.len() as u32;
-        
-        let registry_entry = HostFunctionRegistry {
-            name,
-            signature,
-            implementation,
-            permissions,
-        };
-        
+
+        let registry_entry = HostFunctionRegistry { name, signature, implementation, permissions };
+
         self.host_functions.push(registry_entry).map_err(|_| {
             wrt_foundation::WrtError::ResourceExhausted("Too many host functions".into())
         })?;
-        
+
         Ok(function_id)
     }
 
@@ -342,20 +320,21 @@ impl HostIntegrationManager {
         caller_instance: u32,
         engine: &mut ComponentExecutionEngine,
     ) -> WrtResult<Value> {
-        let function = self.host_functions.get(function_id as usize)
-            .ok_or_else(|| wrt_foundation::WrtError::InvalidInput("Host function not found".into()))?;
+        let function = self.host_functions.get(function_id as usize).ok_or_else(|| {
+            wrt_foundation::WrtError::InvalidInput("Host function not found".into())
+        })?;
 
         // Check security policy
         if !self.security_policy.allow_arbitrary_host_calls {
             return Err(wrt_foundation::WrtError::PermissionDenied(
-                "Arbitrary host calls not allowed".into()
+                "Arbitrary host calls not allowed".into(),
             ));
         }
 
         // Check function permissions
         if !self.check_function_permissions(&function.permissions, caller_instance) {
             return Err(wrt_foundation::WrtError::PermissionDenied(
-                "Host function call not permitted".into()
+                "Host function call not permitted".into(),
             ));
         }
 
@@ -398,17 +377,13 @@ impl HostIntegrationManager {
         handler: Box<dyn Fn(&ComponentEvent) -> WrtResult<()>>,
         priority: u32,
     ) -> WrtResult<()> {
-        let event_handler = EventHandler {
-            event_type,
-            handler,
-            priority,
-        };
-        
+        let event_handler = EventHandler { event_type, handler, priority };
+
         self.event_handlers.push(event_handler);
-        
+
         // Sort by priority (higher priority first)
         self.event_handlers.sort_by(|a, b| b.priority.cmp(&a.priority));
-        
+
         Ok(())
     }
 
@@ -420,16 +395,12 @@ impl HostIntegrationManager {
         handler: fn(&ComponentEvent) -> WrtResult<()>,
         priority: u32,
     ) -> WrtResult<()> {
-        let event_handler = EventHandler {
-            event_type,
-            handler,
-            priority,
-        };
-        
+        let event_handler = EventHandler { event_type, handler, priority };
+
         self.event_handlers.push(event_handler).map_err(|_| {
             wrt_foundation::WrtError::ResourceExhausted("Too many event handlers".into())
         })?;
-        
+
         Ok(())
     }
 
@@ -441,7 +412,7 @@ impl HostIntegrationManager {
                 let result = (handler.handler)(&event);
                 #[cfg(not(any(feature = "std", feature = "alloc")))]
                 let result = (handler.handler)(&event);
-                
+
                 if let Err(e) = result {
                     // Log error but continue with other handlers
                     // In a real implementation, would use proper logging
@@ -462,18 +433,13 @@ impl HostIntegrationManager {
         // Check security policy
         if !self.security_policy.allowed_resource_types.contains(&resource_type) {
             return Err(wrt_foundation::WrtError::PermissionDenied(
-                "Host resource type not allowed".into()
+                "Host resource type not allowed".into(),
             ));
         }
 
         let resource_id = self.host_resources.resources.len() as u32;
-        
-        let resource = HostResource {
-            id: resource_id,
-            resource_type,
-            data,
-            permissions,
-        };
+
+        let resource = HostResource { id: resource_id, resource_type, data, permissions };
 
         #[cfg(any(feature = "std", feature = "alloc"))]
         {
@@ -496,12 +462,14 @@ impl HostIntegrationManager {
         instance_id: u32,
         sharing_mode: ResourceSharingMode,
     ) -> WrtResult<()> {
-        let resource = self.host_resources.resources.get(resource_id as usize)
-            .ok_or_else(|| wrt_foundation::WrtError::InvalidInput("Host resource not found".into()))?;
+        let resource =
+            self.host_resources.resources.get(resource_id as usize).ok_or_else(|| {
+                wrt_foundation::WrtError::InvalidInput("Host resource not found".into())
+            })?;
 
         if !resource.permissions.shareable {
             return Err(wrt_foundation::WrtError::PermissionDenied(
-                "Host resource is not shareable".into()
+                "Host resource is not shareable".into(),
             ));
         }
 
@@ -521,11 +489,7 @@ impl HostIntegrationManager {
             })?;
         }
 
-        let policy = HostResourceSharingPolicy {
-            resource_id,
-            allowed_instances,
-            sharing_mode,
-        };
+        let policy = HostResourceSharingPolicy { resource_id, allowed_instances, sharing_mode };
 
         #[cfg(any(feature = "std", feature = "alloc"))]
         {
@@ -634,12 +598,7 @@ impl Default for HostFunctionPermissions {
 
 impl Default for HostResourcePermissions {
     fn default() -> Self {
-        Self {
-            read: true,
-            write: false,
-            execute: false,
-            shareable: false,
-        }
+        Self { read: true, write: false, execute: false, shareable: false }
     }
 }
 
@@ -648,7 +607,7 @@ impl Default for SecurityPolicy {
         Self {
             allow_arbitrary_host_calls: false,
             max_memory_per_component: 64 * 1024 * 1024, // 64MB
-            max_execution_time_ms: 5000, // 5 seconds
+            max_execution_time_ms: 5000,                // 5 seconds
             enable_resource_isolation: true,
             #[cfg(any(feature = "std", feature = "alloc"))]
             allowed_resource_types: vec![HostResourceType::Buffer],

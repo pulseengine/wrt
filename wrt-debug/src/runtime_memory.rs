@@ -57,9 +57,9 @@ pub struct HeapAllocation {
 /// Memory inspector for runtime debugging
 pub struct MemoryInspector<'a> {
     /// Memory regions
-    regions: BoundedVec<MemoryRegion, 16, NoStdProvider>,
+    regions: BoundedVec<MemoryRegion, 16, NoStdProvider<1024>>,
     /// Known heap allocations
-    allocations: BoundedVec<HeapAllocation, MAX_DWARF_FILE_TABLE, NoStdProvider>,
+    allocations: BoundedVec<HeapAllocation, MAX_DWARF_FILE_TABLE, NoStdProvider<1024>>,
     /// Reference to debug memory interface
     memory: Option<&'a dyn DebugMemory>,
 }

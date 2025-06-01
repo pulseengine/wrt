@@ -12,10 +12,7 @@ use std::{fmt, mem};
 use alloc::{boxed::Box, collections::BTreeMap, string::String, vec::Vec};
 
 use wrt_foundation::{
-    bounded::BoundedVec,
-    component::ComponentType,
-    component_value::ComponentValue,
-    prelude::*,
+    bounded::BoundedVec, component::ComponentType, component_value::ComponentValue, prelude::*,
 };
 
 use crate::{
@@ -25,7 +22,7 @@ use crate::{
     export::Export,
     import::Import,
     resource_lifecycle::ResourceLifecycleManager,
-    types::{Value, ValType},
+    types::{ValType, Value},
     WrtResult,
 };
 
@@ -123,9 +120,9 @@ impl ImportValues {
     /// Add an import value (no_std version)
     #[cfg(not(any(feature = "std", feature = "alloc")))]
     pub fn add(&mut self, name: BoundedString<64>, value: ImportValue) -> WrtResult<()> {
-        self.imports.push((name, value)).map_err(|_| {
-            wrt_foundation::WrtError::ResourceExhausted("Too many imports".into())
-        })
+        self.imports
+            .push((name, value))
+            .map_err(|_| wrt_foundation::WrtError::ResourceExhausted("Too many imports".into()))
     }
 
     /// Get an import value by name
@@ -137,10 +134,7 @@ impl ImportValues {
     /// Get an import value by name (no_std version)
     #[cfg(not(any(feature = "std", feature = "alloc")))]
     pub fn get(&self, name: &str) -> Option<&ImportValue> {
-        self.imports
-            .iter()
-            .find(|(n, _)| n.as_str() == name)
-            .map(|(_, v)| v)
+        self.imports.iter().find(|(n, _)| n.as_str() == name).map(|(_, v)| v)
     }
 }
 
@@ -250,7 +244,7 @@ impl Component {
                     }
                     None => {
                         return Err(wrt_foundation::WrtError::InvalidInput(
-                            format!("Missing required import: {}", import.name).into()
+                            format!("Missing required import: {}", import.name).into(),
                         ));
                     }
                 }
@@ -262,7 +256,7 @@ impl Component {
             // Just check that we have some imports if required
             if self.imports.len() > 0 && imports.imports.len() == 0 {
                 return Err(wrt_foundation::WrtError::InvalidInput(
-                    "Missing required imports".into()
+                    "Missing required imports".into(),
                 ));
             }
         }
@@ -277,7 +271,7 @@ impl Component {
                 // Check function signature compatibility
                 if !self.is_function_compatible(expected, &actual.signature) {
                     return Err(wrt_foundation::WrtError::TypeError(
-                        "Function import type mismatch".into()
+                        "Function import type mismatch".into(),
                     ));
                 }
             }
@@ -285,7 +279,7 @@ impl Component {
                 // Check value type compatibility
                 if !self.is_value_compatible(expected, actual) {
                     return Err(wrt_foundation::WrtError::TypeError(
-                        "Value import type mismatch".into()
+                        "Value import type mismatch".into(),
                     ));
                 }
             }
@@ -298,9 +292,7 @@ impl Component {
                 // TODO: Implement type equality checking
             }
             _ => {
-                return Err(wrt_foundation::WrtError::TypeError(
-                    "Import kind mismatch".into()
-                ));
+                return Err(wrt_foundation::WrtError::TypeError("Import kind mismatch".into()));
             }
         }
         Ok(())
@@ -331,34 +323,30 @@ impl Component {
     #[cfg(any(feature = "std", feature = "alloc"))]
     fn create_resource_tables(&self) -> WrtResult<Vec<ResourceTable>> {
         let mut tables = Vec::new();
-        
+
         // Create resource tables based on component types
         // For each resource type in the component, create a table
         for (type_id, _) in self.types.iter().enumerate() {
             // Create a table for this resource type
-            let table = ResourceTable {
-                type_id: type_id as u32,
-            };
+            let table = ResourceTable { type_id: type_id as u32 };
             tables.push(table);
         }
-        
+
         Ok(tables)
     }
 
     #[cfg(not(any(feature = "std", feature = "alloc")))]
     fn create_resource_tables(&self) -> WrtResult<BoundedVec<ResourceTable, 16>> {
         let mut tables = BoundedVec::new();
-        
+
         // Create resource tables based on component types
         for (type_id, _) in self.types.iter().enumerate() {
-            let table = ResourceTable {
-                type_id: type_id as u32,
-            };
+            let table = ResourceTable { type_id: type_id as u32 };
             tables.push(table).map_err(|_| {
                 wrt_foundation::WrtError::ResourceExhausted("Too many resource tables".into())
             })?;
         }
-        
+
         Ok(tables)
     }
 
@@ -395,7 +383,9 @@ impl Component {
                 if name.as_str() == import.name.as_str() {
                     let resolved_import = self.resolve_import(import, value, context)?;
                     resolved.push(resolved_import).map_err(|_| {
-                        wrt_foundation::WrtError::ResourceExhausted("Too many resolved imports".into())
+                        wrt_foundation::WrtError::ResourceExhausted(
+                            "Too many resolved imports".into(),
+                        )
                     })?;
                     break;
                 }
@@ -419,27 +409,19 @@ impl Component {
                 let func_index = {
                     // Create a host function wrapper
                     let implementation = func.implementation.clone();
-                    context.execution_engine.register_host_function(
-                        Box::new(HostFunctionWrapper {
-                            signature: func.signature.clone(),
-                            implementation,
-                        })
-                    )?
+                    context.execution_engine.register_host_function(Box::new(
+                        HostFunctionWrapper { signature: func.signature.clone(), implementation },
+                    ))?
                 };
                 #[cfg(not(any(feature = "std", feature = "alloc")))]
-                let func_index = context.execution_engine.register_host_function(func.implementation)?;
+                let func_index =
+                    context.execution_engine.register_host_function(func.implementation)?;
 
                 Ok(ResolvedImport::Function(func_index))
             }
-            ImportValue::Value(val) => {
-                Ok(ResolvedImport::Value(val.clone()))
-            }
-            ImportValue::Instance(inst) => {
-                Ok(ResolvedImport::Instance(inst.clone()))
-            }
-            ImportValue::Type(ty) => {
-                Ok(ResolvedImport::Type(ty.clone()))
-            }
+            ImportValue::Value(val) => Ok(ResolvedImport::Value(val.clone())),
+            ImportValue::Instance(inst) => Ok(ResolvedImport::Instance(inst.clone())),
+            ImportValue::Type(ty) => Ok(ResolvedImport::Type(ty.clone())),
         }
     }
 
@@ -451,16 +433,14 @@ impl Component {
         context: &mut InstantiationContext,
     ) -> WrtResult<Vec<ModuleInstance>> {
         let mut instances = Vec::new();
-        
+
         // Initialize each embedded module
         for (module_index, _module) in self.modules.iter().enumerate() {
             // Create module instance
-            let instance = ModuleInstance {
-                module_index: module_index as u32,
-            };
+            let instance = ModuleInstance { module_index: module_index as u32 };
             instances.push(instance);
         }
-        
+
         Ok(instances)
     }
 
@@ -471,17 +451,15 @@ impl Component {
         context: &mut InstantiationContext,
     ) -> WrtResult<BoundedVec<ModuleInstance, MAX_INSTANCES>> {
         let mut instances = BoundedVec::new();
-        
+
         // Initialize each embedded module
         for (module_index, _module) in self.modules.iter().enumerate() {
-            let instance = ModuleInstance {
-                module_index: module_index as u32,
-            };
+            let instance = ModuleInstance { module_index: module_index as u32 };
             instances.push(instance).map_err(|_| {
                 wrt_foundation::WrtError::ResourceExhausted("Too many module instances".into())
             })?;
         }
-        
+
         Ok(instances)
     }
 
@@ -547,33 +525,25 @@ impl Component {
         for export in &self.exports {
             let resolved = match &export.kind {
                 crate::export::ExportKind::Func(func_idx) => {
-                    let func_export = FunctionExport {
-                        signature: ComponentType::Unit,
-                        index: *func_idx,
-                    };
+                    let func_export =
+                        FunctionExport { signature: ComponentType::Unit, index: *func_idx };
                     ResolvedExport {
                         name: export.name.clone(),
                         value: ExportValue::Function(func_export),
                     }
                 }
-                crate::export::ExportKind::Value(_) => {
-                    ResolvedExport {
-                        name: export.name.clone(),
-                        value: ExportValue::Value(ComponentValue::Unit),
-                    }
-                }
-                crate::export::ExportKind::Type(_) => {
-                    ResolvedExport {
-                        name: export.name.clone(),
-                        value: ExportValue::Type(ComponentType::Unit),
-                    }
-                }
-                crate::export::ExportKind::Instance(_) => {
-                    ResolvedExport {
-                        name: export.name.clone(),
-                        value: ExportValue::Value(ComponentValue::Unit),
-                    }
-                }
+                crate::export::ExportKind::Value(_) => ResolvedExport {
+                    name: export.name.clone(),
+                    value: ExportValue::Value(ComponentValue::Unit),
+                },
+                crate::export::ExportKind::Type(_) => ResolvedExport {
+                    name: export.name.clone(),
+                    value: ExportValue::Type(ComponentType::Unit),
+                },
+                crate::export::ExportKind::Instance(_) => ResolvedExport {
+                    name: export.name.clone(),
+                    value: ExportValue::Value(ComponentValue::Unit),
+                },
             };
             exports.push(resolved).map_err(|_| {
                 wrt_foundation::WrtError::ResourceExhausted("Too many exports".into())
@@ -642,7 +612,7 @@ mod tests {
     #[test]
     fn test_import_values() {
         let mut imports = ImportValues::new();
-        
+
         #[cfg(any(feature = "std", feature = "alloc"))]
         {
             let func = FunctionImport {
@@ -653,7 +623,7 @@ mod tests {
             assert!(imports.get("test_func").is_some());
             assert!(imports.get("unknown").is_none());
         }
-        
+
         #[cfg(not(any(feature = "std", feature = "alloc")))]
         {
             let func = FunctionImport {

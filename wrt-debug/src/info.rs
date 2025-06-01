@@ -64,7 +64,7 @@ pub struct DebugInfoParser<'a> {
     /// String table for name resolution
     string_table: Option<StringTable<'a>>,
     /// Function cache
-    functions: BoundedVec<FunctionInfo<'a>, MAX_DWARF_FILE_TABLE, NoStdProvider>,
+    functions: BoundedVec<FunctionInfo<'a>, MAX_DWARF_FILE_TABLE, NoStdProvider<1024>>,
     /// Inlined functions
     inlined_functions: InlinedFunctions<'a>,
     /// Current compilation unit index

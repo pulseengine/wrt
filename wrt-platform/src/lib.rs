@@ -92,8 +92,8 @@ unsafe impl GlobalAlloc for DummyAllocator {
 #[global_allocator]
 static GLOBAL: DummyAllocator = DummyAllocator;
 
-// Panic handler for no_std builds
-#[cfg(not(feature = "std"))]
+// Panic handler for no_std builds (but not during tests)
+#[cfg(all(not(feature = "std"), not(test)))]
 #[panic_handler]
 fn panic(_info: &core::panic::PanicInfo) -> ! {
     loop {}
@@ -106,6 +106,7 @@ pub mod performance_validation;
 pub mod platform_abstraction;
 pub mod prelude;
 pub mod runtime_detection;
+pub mod simd;
 pub mod sync;
 
 // Enhanced platform features
@@ -121,6 +122,10 @@ pub mod threading;
 // Threading with wasm support (requires both std and wrt-foundation)
 #[cfg(feature = "threading")]
 pub mod wasm_thread_manager;
+
+// Atomic operations integration with threading
+#[cfg(feature = "threading")]
+pub mod atomic_thread_manager;
 
 // Platform-specific threading implementations
 #[cfg(all(feature = "threading", target_os = "nto"))]
@@ -269,6 +274,13 @@ pub use runtime_detection::{
     MemoryCapabilities, PlatformCapabilities, PlatformDetector, RealtimeCapabilities,
     SecurityCapabilities, SyncCapabilities,
 };
+pub use simd::{
+    ScalarSimdProvider, SimdCapabilities, SimdLevel, SimdProvider,
+};
+#[cfg(any(feature = "std", feature = "alloc"))]
+pub use simd::SimdRuntime;
+#[cfg(target_arch = "x86_64")]
+pub use simd::{x86_64::X86SimdProvider};
 pub use side_channel_resistance::{
     access_obfuscation, cache_aware_allocation, constant_time, platform_integration, AttackVector,
     ResistanceLevel,

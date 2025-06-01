@@ -58,15 +58,16 @@ pub use std::{
 };
 
 // Re-export from wrt-decoder (aliased to avoid name clashes)
-#[cfg(feature = "alloc")]
-pub use wrt_decoder::component::Component as DecoderComponentDefinition;
+// Component module is temporarily disabled in wrt-decoder
+// #[cfg(feature = "alloc")]
+// pub use wrt_decoder::component::Component as DecoderComponentDefinition;
 // Re-export from wrt-instructions for instruction types
-pub use wrt_decoder::instructions::Instruction;
-pub use wrt_decoder::prelude::Module as DecoderModule;
+// Decoder imports are optional and may not be available
+// pub use wrt_decoder::instructions::Instruction;
+// pub use wrt_decoder::prelude::Module as DecoderModule;
 // Re-export from wrt-error for error handling
 pub use wrt_error::prelude::{
-    codes, create_simple_component_error, create_simple_memory_error, create_simple_resource_error,
-    create_simple_runtime_error, create_simple_type_error, create_simple_validation_error,
+    codes,
     kinds::{
         self, ComponentError, InvalidType, OutOfBoundsError, ParseError, ResourceError,
         RuntimeError, ValidationError,
@@ -100,15 +101,18 @@ pub use wrt_foundation::types::{
 };
 pub use wrt_foundation::{
     prelude::{
-        BlockType, BoundedStack, BoundedVec, ComponentValue, FuncType,
+        BoundedStack, BoundedVec, FuncType,
         GlobalType as CoreGlobalType, MemoryType as CoreMemoryType, ResourceType,
-        SafeMemoryHandler, SafeSlice, SafeStack, TableType as CoreTableType,
-        ValType as ComponentValType, Value, ValueType, VerificationLevel,
+        SafeMemoryHandler, SafeSlice, TableType as CoreTableType,
+        Value, ValueType, VerificationLevel,
     },
-    safe_memory::{MemorySafety, MemoryStats},
     types::Limits,
-    values::V128,
+    MemoryStats,
 };
+
+// Conditionally import alloc-dependent types
+#[cfg(feature = "alloc")]
+pub use wrt_foundation::prelude::{ComponentValue, ValType as ComponentValType};
 // Re-export from wrt-host (for runtime host interaction items)
 pub use wrt_host::prelude::CallbackRegistry as HostFunctionRegistry;
 pub use wrt_host::prelude::HostFunctionHandler as HostFunction;
@@ -120,7 +124,10 @@ pub use wrt_intercept::prelude::LinkInterceptor as InterceptorRegistry;
 pub use wrt_intercept::prelude::LinkInterceptorStrategy as InterceptStrategy;
 // Synchronization primitives for no_std (if alloc is enabled but not std)
 #[cfg(all(feature = "alloc", not(feature = "std")))]
-pub use wrt_sync::prelude::{Mutex, MutexGuard, RwLock, RwLockReadGuard, RwLockWriteGuard};
+pub use wrt_sync::{
+    WrtMutex as Mutex, WrtMutexGuard as MutexGuard, WrtRwLock as RwLock,
+    WrtRwLockReadGuard as RwLockReadGuard, WrtRwLockWriteGuard as RwLockWriteGuard,
+};
 
 // Execution related types defined in wrt-runtime
 pub use crate::execution::{ExecutionContext, ExecutionStats}; /* Removed ExecutionResult as

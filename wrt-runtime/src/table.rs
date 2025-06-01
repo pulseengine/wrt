@@ -10,6 +10,9 @@ use wrt_foundation::{
 
 use crate::prelude::*;
 
+// Import the TableOperations trait from wrt-instructions
+use wrt_instructions::table_ops::TableOperations;
+
 /// A WebAssembly table is a vector of opaque values of a single type.
 #[derive(Debug)]
 pub struct Table {
@@ -244,7 +247,7 @@ impl Table {
 
         let old_size = self.size();
         let new_size = old_size.checked_add(delta).ok_or_else(|| {
-            Error::new(ErrorCategory::Runtime, codes::TABLE_TOO_LARGE, "Table size overflow")
+            Error::new(ErrorCategory::Runtime, codes::CAPACITY_EXCEEDED, "Table size overflow")
         })?;
 
         if let Some(max) = self.ty.limits.max {
@@ -253,7 +256,7 @@ impl Table {
                 // For now, let's return an error. The runtime execution might interpret this.
                 return Err(Error::new(
                     ErrorCategory::Runtime,
-                    codes::TABLE_TOO_LARGE,
+                    codes::CAPACITY_EXCEEDED,
                     "Table grow exceeds maximum limit",
                 ));
             }
@@ -314,7 +317,7 @@ impl Table {
         if offset as usize + init_data.len() > self.elements.len() {
             return Err(Error::new(
                 ErrorCategory::Runtime,
-                codes::TABLE_ACCESS_OOB,
+                codes::OUT_OF_BOUNDS_ERROR,
                 "Table init out of bounds",
             ));
         }
@@ -577,6 +580,420 @@ impl ArcTableExt for Arc<Table> {
 
         // Return the result from the mutation
         table_clone.fill_elements(offset as usize, value, len as usize)
+    }
+}
+
+/// Table manager to handle multiple tables for TableOperations trait
+#[derive(Debug)]
+pub struct TableManager {
+    tables: Vec<Table>,
+}
+
+impl TableManager {
+    /// Create a new table manager
+    pub fn new() -> Self {
+        Self {
+            tables: Vec::new(),
+        }
+    }
+    
+    /// Add a table to the manager
+    pub fn add_table(&mut self, table: Table) -> u32 {
+        let index = self.tables.len() as u32;
+        self.tables.push(table);
+        index
+    }
+    
+    /// Get a table by index
+    pub fn get_table(&self, index: u32) -> Result<&Table> {
+        self.tables.get(index as usize)
+            .ok_or_else(|| Error::new(
+                ErrorCategory::Runtime,
+                codes::INVALID_FUNCTION_INDEX,
+                format!("Invalid table index: {}", index),
+            ))
+    }
+    
+    /// Get a mutable table by index
+    pub fn get_table_mut(&mut self, index: u32) -> Result<&mut Table> {
+        self.tables.get_mut(index as usize)
+            .ok_or_else(|| Error::new(
+                ErrorCategory::Runtime,
+                codes::INVALID_FUNCTION_INDEX,
+                format!("Invalid table index: {}", index),
+            ))
+    }
+    
+    /// Get the number of tables
+    pub fn table_count(&self) -> u32 {
+        self.tables.len() as u32
+    }
+}
+
+impl Default for TableManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Clone for TableManager {
+    fn clone(&self) -> Self {
+        Self {
+            tables: self.tables.clone(),
+        }
+    }
+}
+
+impl TableOperations for TableManager {
+    fn get_table_element(&self, table_index: u32, elem_index: u32) -> Result<Value> {
+        let table = self.get_table(table_index)?;
+        
+        // Get element from table
+        let element = table.get(elem_index)?;
+        
+        // Convert from wrt-foundation Value to wrt-instructions Value
+        match element {
+            Some(wrt_value) => {
+                match wrt_value {
+                    WrtValue::FuncRef(func_ref) => {
+                        use wrt_foundation::values::FuncRef;
+                        match func_ref {
+                            Some(func_idx) => Ok(Value::FuncRef(Some(FuncRef::from_index(func_idx)))),
+                            None => Ok(Value::FuncRef(None)),
+                        }
+                    }
+                    WrtValue::ExternRef(extern_ref) => {
+                        use wrt_foundation::values::ExternRef;
+                        match extern_ref {
+                            Some(ext_idx) => Ok(Value::ExternRef(Some(ExternRef { index: ext_idx }))),
+                            None => Ok(Value::ExternRef(None)),
+                        }
+                    }
+                    // Convert other value types as needed
+                    _ => Err(Error::new(
+                        ErrorCategory::Type,
+                        codes::INVALID_TYPE,
+                        "Table element is not a reference type",
+                    )),
+                }
+            }
+            None => {
+                // Return appropriate null reference based on table element type
+                match table.ty.element_type {
+                    WrtValueType::FuncRef => Ok(Value::FuncRef(None)),
+                    WrtValueType::ExternRef => Ok(Value::ExternRef(None)),
+                    _ => Err(Error::new(
+                        ErrorCategory::Type,
+                        codes::INVALID_TYPE,
+                        format!("Unsupported table element type: {:?}", table.ty.element_type),
+                    )),
+                }
+            }
+        }
+    }
+    
+    fn set_table_element(&mut self, table_index: u32, elem_index: u32, value: Value) -> Result<()> {
+        let table = self.get_table_mut(table_index)?;
+        
+        // Convert from wrt-instructions Value to wrt-foundation Value
+        let wrt_value = match value {
+            Value::FuncRef(func_ref) => {
+                match func_ref {
+                    Some(fr) => Some(WrtValue::FuncRef(Some(fr.index()))),
+                    None => Some(WrtValue::FuncRef(None)),
+                }
+            }
+            Value::ExternRef(extern_ref) => {
+                match extern_ref {
+                    Some(er) => Some(WrtValue::ExternRef(Some(er.index))),
+                    None => Some(WrtValue::ExternRef(None)),
+                }
+            }
+            _ => return Err(Error::new(
+                ErrorCategory::Type,
+                codes::INVALID_TYPE,
+                "Only reference types can be stored in tables",
+            )),
+        };
+        
+        table.set(elem_index, wrt_value)
+    }
+    
+    fn get_table_size(&self, table_index: u32) -> Result<u32> {
+        let table = self.get_table(table_index)?;
+        Ok(table.size())
+    }
+    
+    fn grow_table(&mut self, table_index: u32, delta: u32, init_value: Value) -> Result<i32> {
+        let table = self.get_table_mut(table_index)?;
+        
+        // Convert init_value to wrt-foundation Value
+        let wrt_init_value = match init_value {
+            Value::FuncRef(func_ref) => {
+                match func_ref {
+                    Some(fr) => WrtValue::FuncRef(Some(fr.index())),
+                    None => WrtValue::FuncRef(None),
+                }
+            }
+            Value::ExternRef(extern_ref) => {
+                match extern_ref {
+                    Some(er) => WrtValue::ExternRef(Some(er.index)),
+                    None => WrtValue::ExternRef(None),
+                }
+            }
+            _ => return Err(Error::new(
+                ErrorCategory::Type,
+                codes::INVALID_TYPE,
+                "Table grow init value must be a reference type",
+            )),
+        };
+        
+        // Try to grow the table
+        match table.grow(delta, wrt_init_value) {
+            Ok(old_size) => Ok(old_size as i32),
+            Err(_) => Ok(-1), // WebAssembly convention: return -1 on growth failure
+        }
+    }
+    
+    fn fill_table(&mut self, table_index: u32, dst: u32, val: Value, len: u32) -> Result<()> {
+        let table = self.get_table_mut(table_index)?;
+        
+        // Convert value to wrt-foundation Value
+        let wrt_value = match val {
+            Value::FuncRef(func_ref) => {
+                match func_ref {
+                    Some(fr) => Some(WrtValue::FuncRef(Some(fr.index()))),
+                    None => Some(WrtValue::FuncRef(None)),
+                }
+            }
+            Value::ExternRef(extern_ref) => {
+                match extern_ref {
+                    Some(er) => Some(WrtValue::ExternRef(Some(er.index))),
+                    None => Some(WrtValue::ExternRef(None)),
+                }
+            }
+            _ => return Err(Error::new(
+                ErrorCategory::Type,
+                codes::INVALID_TYPE,
+                "Table fill value must be a reference type",
+            )),
+        };
+        
+        table.fill_elements(dst as usize, wrt_value, len as usize)
+    }
+    
+    fn copy_table(&mut self, dst_table: u32, dst_index: u32, src_table: u32, src_index: u32, len: u32) -> Result<()> {
+        // Handle same-table copy
+        if dst_table == src_table {
+            let table = self.get_table_mut(dst_table)?;
+            table.copy_elements(dst_index as usize, src_index as usize, len as usize)
+        } else {
+            // Cross-table copy - need to read from source and write to destination
+            // This is more complex due to borrowing rules, so we'll implement it step by step
+            
+            // First, read the source elements
+            let src_elements = {
+                let src_table = self.get_table(src_table)?;
+                let mut elements = Vec::new();
+                for i in 0..len {
+                    let elem = src_table.get(src_index + i)?;
+                    elements.push(elem);
+                }
+                elements
+            };
+            
+            // Then write to destination table
+            let dst_table_ref = self.get_table_mut(dst_table)?;
+            for (i, elem) in src_elements.into_iter().enumerate() {
+                dst_table_ref.set(dst_index + i as u32, elem)?;
+            }
+            
+            Ok(())
+        }
+    }
+}
+
+// Also implement TableOperations for a single Table (assumes table index 0)
+impl TableOperations for Table {
+    fn get_table_element(&self, table_index: u32, elem_index: u32) -> Result<Value> {
+        if table_index != 0 {
+            return Err(Error::new(
+                ErrorCategory::Runtime,
+                codes::INVALID_FUNCTION_INDEX,
+                "Single table only supports index 0",
+            ));
+        }
+        
+        // Get element from table
+        let element = self.get(elem_index)?;
+        
+        // Convert from wrt-foundation Value to wrt-instructions Value
+        match element {
+            Some(wrt_value) => {
+                match wrt_value {
+                    WrtValue::FuncRef(func_ref) => {
+                        use wrt_foundation::values::FuncRef;
+                        match func_ref {
+                            Some(func_idx) => Ok(Value::FuncRef(Some(FuncRef::from_index(func_idx)))),
+                            None => Ok(Value::FuncRef(None)),
+                        }
+                    }
+                    WrtValue::ExternRef(extern_ref) => {
+                        use wrt_foundation::values::ExternRef;
+                        match extern_ref {
+                            Some(ext_idx) => Ok(Value::ExternRef(Some(ExternRef { index: ext_idx }))),
+                            None => Ok(Value::ExternRef(None)),
+                        }
+                    }
+                    // Convert other value types as needed
+                    _ => Err(Error::new(
+                        ErrorCategory::Type,
+                        codes::INVALID_TYPE,
+                        "Table element is not a reference type",
+                    )),
+                }
+            }
+            None => {
+                // Return appropriate null reference based on table element type
+                match self.ty.element_type {
+                    WrtValueType::FuncRef => Ok(Value::FuncRef(None)),
+                    WrtValueType::ExternRef => Ok(Value::ExternRef(None)),
+                    _ => Err(Error::new(
+                        ErrorCategory::Type,
+                        codes::INVALID_TYPE,
+                        format!("Unsupported table element type: {:?}", self.ty.element_type),
+                    )),
+                }
+            }
+        }
+    }
+    
+    fn set_table_element(&mut self, table_index: u32, elem_index: u32, value: Value) -> Result<()> {
+        if table_index != 0 {
+            return Err(Error::new(
+                ErrorCategory::Runtime,
+                codes::INVALID_FUNCTION_INDEX,
+                "Single table only supports index 0",
+            ));
+        }
+        
+        // Convert from wrt-instructions Value to wrt-foundation Value
+        let wrt_value = match value {
+            Value::FuncRef(func_ref) => {
+                match func_ref {
+                    Some(fr) => Some(WrtValue::FuncRef(Some(fr.index()))),
+                    None => Some(WrtValue::FuncRef(None)),
+                }
+            }
+            Value::ExternRef(extern_ref) => {
+                match extern_ref {
+                    Some(er) => Some(WrtValue::ExternRef(Some(er.index))),
+                    None => Some(WrtValue::ExternRef(None)),
+                }
+            }
+            _ => return Err(Error::new(
+                ErrorCategory::Type,
+                codes::INVALID_TYPE,
+                "Only reference types can be stored in tables",
+            )),
+        };
+        
+        self.set(elem_index, wrt_value)
+    }
+    
+    fn get_table_size(&self, table_index: u32) -> Result<u32> {
+        if table_index != 0 {
+            return Err(Error::new(
+                ErrorCategory::Runtime,
+                codes::INVALID_FUNCTION_INDEX,
+                "Single table only supports index 0",
+            ));
+        }
+        
+        Ok(self.size())
+    }
+    
+    fn grow_table(&mut self, table_index: u32, delta: u32, init_value: Value) -> Result<i32> {
+        if table_index != 0 {
+            return Err(Error::new(
+                ErrorCategory::Runtime,
+                codes::INVALID_FUNCTION_INDEX,
+                "Single table only supports index 0",
+            ));
+        }
+        
+        // Convert init_value to wrt-foundation Value
+        let wrt_init_value = match init_value {
+            Value::FuncRef(func_ref) => {
+                match func_ref {
+                    Some(fr) => WrtValue::FuncRef(Some(fr.index())),
+                    None => WrtValue::FuncRef(None),
+                }
+            }
+            Value::ExternRef(extern_ref) => {
+                match extern_ref {
+                    Some(er) => WrtValue::ExternRef(Some(er.index)),
+                    None => WrtValue::ExternRef(None),
+                }
+            }
+            _ => return Err(Error::new(
+                ErrorCategory::Type,
+                codes::INVALID_TYPE,
+                "Table grow init value must be a reference type",
+            )),
+        };
+        
+        // Try to grow the table
+        match self.grow(delta, wrt_init_value) {
+            Ok(old_size) => Ok(old_size as i32),
+            Err(_) => Ok(-1), // WebAssembly convention: return -1 on growth failure
+        }
+    }
+    
+    fn fill_table(&mut self, table_index: u32, dst: u32, val: Value, len: u32) -> Result<()> {
+        if table_index != 0 {
+            return Err(Error::new(
+                ErrorCategory::Runtime,
+                codes::INVALID_FUNCTION_INDEX,
+                "Single table only supports index 0",
+            ));
+        }
+        
+        // Convert value to wrt-foundation Value
+        let wrt_value = match val {
+            Value::FuncRef(func_ref) => {
+                match func_ref {
+                    Some(fr) => Some(WrtValue::FuncRef(Some(fr.index()))),
+                    None => Some(WrtValue::FuncRef(None)),
+                }
+            }
+            Value::ExternRef(extern_ref) => {
+                match extern_ref {
+                    Some(er) => Some(WrtValue::ExternRef(Some(er.index))),
+                    None => Some(WrtValue::ExternRef(None)),
+                }
+            }
+            _ => return Err(Error::new(
+                ErrorCategory::Type,
+                codes::INVALID_TYPE,
+                "Table fill value must be a reference type",
+            )),
+        };
+        
+        self.fill_elements(dst as usize, wrt_value, len as usize)
+    }
+    
+    fn copy_table(&mut self, dst_table: u32, dst_index: u32, src_table: u32, src_index: u32, len: u32) -> Result<()> {
+        // For single table, both src and dst must be 0
+        if dst_table != 0 || src_table != 0 {
+            return Err(Error::new(
+                ErrorCategory::Runtime,
+                codes::INVALID_FUNCTION_INDEX,
+                "Single table only supports index 0",
+            ));
+        }
+        
+        self.copy_elements(dst_index as usize, src_index as usize, len as usize)
     }
 }
 

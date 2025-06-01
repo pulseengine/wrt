@@ -4,16 +4,27 @@
 //! from wrt-decoder, allowing the conversion of decoder modules to runtime
 //! modules.
 
-use wrt_decoder::{module::CodeSection, runtime_adapter::RuntimeModuleBuilder};
+// Decoder imports are optional during development
+// use wrt_decoder::{module::CodeSection, runtime_adapter::RuntimeModuleBuilder};
 use wrt_foundation::types::{
-    CustomSection as WrtCustomSection, DataSegment as WrtDataSegment,
-    ElementSegment as WrtElementSegment, Export as WrtExport, FuncType,
+    CustomSection as WrtCustomSection, Export as WrtExport, FuncType,
     GlobalType as WrtGlobalType, Import as WrtImport, ImportDesc as WrtImportDesc,
-    Limits as WrtLimits, MemoryType as WrtMemoryType, TableType as WrtTableType, Value as WrtValue,
+    Limits as WrtLimits, MemoryType as WrtMemoryType, TableType as WrtTableType,
     ValueType as WrtValueType,
+};
+use wrt_foundation::values::Value as WrtValue;
+use wrt_format::{
+    DataSegment as WrtDataSegment,
+    ElementSegment as WrtElementSegment,
 };
 
 use crate::{module::Module, prelude::*};
+
+// Import format! macro for string formatting
+#[cfg(feature = "std")]
+use std::format;
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+use alloc::format;
 
 /// Builder for runtime modules
 pub struct ModuleBuilder {
@@ -108,7 +119,10 @@ impl RuntimeModuleBuilder for ModuleBuilder {
         let runtime_func_idx = self.imported_func_count + func_idx;
 
         let (parsed_locals, _locals_bytes_len) =
-            wrt_decoder::instructions::parse_locals(&body.body).map_err(|e| {
+            // Instructions module is temporarily disabled in wrt-decoder
+            // For now, return empty locals
+            // wrt_decoder::instructions::parse_locals(&body.body).map_err(|e| {
+            Ok((Vec::new(), 0)).map_err(|_e: core::convert::Infallible| {
                 Error::new(
                     ErrorCategory::Parse,
                     codes::PARSE_ERROR,
@@ -119,7 +133,10 @@ impl RuntimeModuleBuilder for ModuleBuilder {
         let instruction_bytes = &body.body[_locals_bytes_len..];
 
         let (instructions_vec, _instr_len) =
-            wrt_decoder::instructions::parse_instructions(instruction_bytes).map_err(|e| {
+            // Instructions module is temporarily disabled in wrt-decoder
+            // For now, return empty instructions
+            // wrt_decoder::instructions::parse_instructions(instruction_bytes).map_err(|e| {
+            Ok((Vec::new(), instruction_bytes.len())).map_err(|_e: core::convert::Infallible| {
                 Error::new(
                     ErrorCategory::Parse,
                     codes::PARSE_ERROR,

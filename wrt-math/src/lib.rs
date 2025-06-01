@@ -37,6 +37,10 @@ pub mod ops;
 pub mod prelude;
 pub mod traits;
 
+// SIMD operations module (requires platform feature)
+#[cfg(feature = "platform")]
+pub mod simd;
+
 // Re-export key types and potentially functions for easier access
 pub use float_bits::{FloatBits32, FloatBits64};
 // Re-export all operations from the ops module
@@ -44,3 +48,7 @@ pub use ops::*; // Consider selectively exporting if API needs to be controlled
 // Re-export error type from wrt-error for convenience
 pub use wrt_error::Error as WrtMathError; // Alias specific to this crate context
 pub use wrt_error::Result as WrtMathResult; // Alias specific to this crate context
+
+// Re-export SIMD operations when platform feature is enabled
+#[cfg(feature = "platform")]
+pub use simd::SimdOperations;

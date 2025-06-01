@@ -50,7 +50,7 @@
 // Remove unused imports
 
 use crate::prelude::*;
-// use crate::validation::{Validate, ValidationContext}; // Currently unused
+use crate::validation::{Validate, ValidationContext};
 
 
 /// Branch target information
@@ -117,23 +117,10 @@ pub enum ControlOp {
         /// Type index for the function signature
         type_idx: u32,
     },
-    /// Tail call a function by index (return_call)
-    ReturnCall(u32),
-    /// Tail call a function through table indirection (return_call_indirect)
-    ReturnCallIndirect {
-        /// Index of the table to use for the call
-        table_idx: u32,
-        /// Type index for the function signature
-        type_idx: u32,
-    },
     /// Execute a nop instruction (no operation)
     Nop,
     /// Execute an unreachable instruction (causes trap)
     Unreachable,
-    /// Branch if reference is null (br_on_null)
-    BrOnNull(u32),
-    /// Branch if reference is not null (br_on_non_null)
-    BrOnNonNull(u32),
 }
 
 /// Return operation (return)
@@ -206,52 +193,6 @@ impl CallIndirect {
     }
 }
 
-/// Return call indirect operation (return_call_indirect)
-#[derive(Debug, Clone, PartialEq)]
-pub struct ReturnCallIndirect {
-    /// Table index to use for the indirect call
-    pub table_idx: u32,
-    /// Expected function type index
-    pub type_idx: u32,
-}
-
-impl ReturnCallIndirect {
-    /// Create a new return_call_indirect operation
-    pub fn new(table_idx: u32, type_idx: u32) -> Self {
-        Self { table_idx, type_idx }
-    }
-    
-    /// Execute return_call_indirect operation
-    ///
-    /// This performs a tail call through a table. It's equivalent to:
-    /// 1. Performing call_indirect
-    /// 2. Immediately returning the result
-    /// 
-    /// But optimized to reuse the current call frame.
-    ///
-    /// # Arguments
-    ///
-    /// * `context` - The execution context
-    ///
-    /// # Returns
-    ///
-    /// Success or an error
-    pub fn execute(&self, context: &mut impl ControlContext) -> Result<()> {
-        // Pop the function index from the stack
-        let func_idx = context.pop_control_value()?.into_i32().map_err(|_| {
-            Error::type_error("return_call_indirect expects i32 function index")
-        })?;
-        
-        // Validate function index is not negative
-        if func_idx < 0 {
-            return Err(Error::runtime_error("Invalid function index for return_call_indirect"));
-        }
-        
-        // Execute the tail call indirect
-        context.return_call_indirect(self.table_idx, self.type_idx)
-    }
-}
-
 /// Branch table operation (br_table)
 #[derive(Debug, Clone, PartialEq)]
 pub struct BrTable {
@@ -293,10 +234,7 @@ impl BrTable {
         }
         #[cfg(not(any(feature = "std", feature = "alloc")))]
         {
-            let provider = wrt_foundation::NoStdProvider::<8192>::new();
-            let mut table = wrt_foundation::BoundedVec::new(provider).map_err(|_| {
-                Error::memory_error("Could not create BoundedVec")
-            })?;
+            let provider = wrt_foundation::NoStdProvider::<8192>::new();\n            let mut table = wrt_foundation::BoundedVec::new(provider).map_err(|_| {\n                Error::memory_error(\"Could not create BoundedVec\")\n            })?;
             for &label in table_slice {
                 table.push(label).map_err(|_| {
                     Error::memory_error("Branch table exceeds maximum size")
@@ -321,14 +259,11 @@ impl BrTable {
             Error::type_error("br_table expects i32 index")
         })?;
         
-        // Execute the branch table operation with different approaches per feature
+        // Convert to slice for unified execution
         #[cfg(any(feature = "std", feature = "alloc"))]
-        {
-            context.execute_br_table(self.table.as_slice(), self.default, index)
-        }
+        let table_slice = self.table.as_slice();
         #[cfg(not(any(feature = "std", feature = "alloc")))]
-        {
-            // For no_std, we create a temporary slice on the stack
+        let table_slice = {
             let mut slice_vec = [0u32; 256]; // Static array for no_std
             let len = core::cmp::min(self.table.len(), 256);
             for i in 0..len {
@@ -336,8 +271,11 @@ impl BrTable {
                     Error::runtime_error("Branch table index out of bounds")
                 })?;
             }
-            context.execute_br_table(&slice_vec[..len], self.default, index)
-        }
+            &slice_vec[..len]
+        };
+        
+        // Execute the branch table operation
+        context.execute_br_table(table_slice, self.default, index)
     }
 }
 
@@ -384,12 +322,6 @@ pub trait ControlContext {
 
     /// Call a function indirectly through a table
     fn call_indirect(&mut self, table_idx: u32, type_idx: u32) -> Result<()>;
-    
-    /// Tail call a function by index (return_call)
-    fn return_call(&mut self, func_idx: u32) -> Result<()>;
-    
-    /// Tail call a function indirectly through a table (return_call_indirect)
-    fn return_call_indirect(&mut self, table_idx: u32, type_idx: u32) -> Result<()>;
 
     /// Trap the execution (unreachable)
     fn trap(&mut self, message: &str) -> Result<()>;
@@ -408,12 +340,6 @@ pub trait ControlContext {
     
     /// Execute branch table operation
     fn execute_br_table(&mut self, table: &[u32], default: u32, index: i32) -> Result<()>;
-    
-    /// Execute branch on null - branch if reference is null
-    fn execute_br_on_null(&mut self, label: u32) -> Result<()>;
-    
-    /// Execute branch on non-null - branch if reference is not null  
-    fn execute_br_on_non_null(&mut self, label: u32) -> Result<()>;
 }
 
 impl<T: ControlContext> PureInstruction<T, Error> for ControlOp {
@@ -469,9 +395,18 @@ impl<T: ControlContext> PureInstruction<T, Error> for ControlOp {
                 }
             }
             Self::BrTable { table, default } => {
-                // Use from_slice for unified interface across all feature configurations
-                let slice: &[u32] = table.as_slice();
-                let br_table = BrTable::from_slice(slice, *default)?;
+                #[cfg(feature = "alloc")]
+                let br_table = BrTable::new(table.clone(), *default);
+                #[cfg(not(feature = "alloc"))]
+                let br_table = {
+                    let provider = wrt_foundation::NoStdProvider::<8192>::new();\n                    let mut bounded_table = wrt_foundation::BoundedVec::new(provider).map_err(|_| {\n                        Error::new(ErrorCategory::Runtime, codes::MEMORY_ERROR, \"Could not create BoundedVec\")\n                    })?;
+                    for &label in table.iter() {
+                        bounded_table.push(label).map_err(|_| {
+                            Error::new(ErrorCategory::Runtime, codes::MEMORY_ERROR, "Branch table too large")
+                        })?;
+                    }
+                    BrTable::new_bounded(bounded_table, *default)
+                };
                 br_table.execute(context)
             }
             Self::Return => {
@@ -483,11 +418,6 @@ impl<T: ControlContext> PureInstruction<T, Error> for ControlOp {
                 let call_op = CallIndirect::new(*table_idx, *type_idx);
                 call_op.execute(context)
             }
-            Self::ReturnCall(func_idx) => context.return_call(*func_idx),
-            Self::ReturnCallIndirect { table_idx, type_idx } => {
-                let call_op = ReturnCallIndirect::new(*table_idx, *type_idx);
-                call_op.execute(context)
-            }
             Self::Nop => {
                 // No operation, just return Ok
                 Ok(())
@@ -495,52 +425,6 @@ impl<T: ControlContext> PureInstruction<T, Error> for ControlOp {
             Self::Unreachable => {
                 // The unreachable instruction unconditionally traps
                 context.trap("unreachable instruction executed")
-            }
-            Self::BrOnNull(label) => {
-                // Pop reference from stack
-                let reference = context.pop_control_value()?;
-                
-                // Check if reference is null and branch accordingly
-                let should_branch = match reference {
-                    Value::FuncRef(None) | Value::ExternRef(None) => true,
-                    Value::FuncRef(Some(_)) | Value::ExternRef(Some(_)) => {
-                        // Reference is not null, put it back on stack
-                        context.push_control_value(reference)?;
-                        false
-                    }
-                    _ => {
-                        return Err(Error::type_error("br_on_null requires a reference type"));
-                    }
-                };
-                
-                if should_branch {
-                    context.execute_br_on_null(*label)
-                } else {
-                    Ok(())
-                }
-            }
-            Self::BrOnNonNull(label) => {
-                // Pop reference from stack
-                let reference = context.pop_control_value()?;
-                
-                // Check if reference is not null and branch accordingly
-                let should_branch = match reference {
-                    Value::FuncRef(None) | Value::ExternRef(None) => false,
-                    Value::FuncRef(Some(_)) | Value::ExternRef(Some(_)) => {
-                        // Reference is not null, keep it on stack for the branch target
-                        context.push_control_value(reference)?;
-                        true
-                    }
-                    _ => {
-                        return Err(Error::type_error("br_on_non_null requires a reference type"));
-                    }
-                };
-                
-                if should_branch {
-                    context.execute_br_on_non_null(*label)
-                } else {
-                    Ok(())
-                }
             }
         }
     }
@@ -643,90 +527,6 @@ mod tests {
 
         fn get_current_block(&self) -> Option<&Block> {
             self.blocks.last()
-        }
-        
-        fn get_function_operations(&mut self) -> Result<&mut dyn FunctionOperations> {
-            Ok(self as &mut dyn FunctionOperations)
-        }
-        
-        fn execute_return(&mut self) -> Result<()> {
-            self.returned = true;
-            Ok(())
-        }
-        
-        fn execute_call_indirect(&mut self, table_idx: u32, type_idx: u32, func_idx: i32) -> Result<()> {
-            if func_idx < 0 {
-                return Err(Error::runtime_error("Invalid function index"));
-            }
-            self.indirect_call = Some((table_idx, type_idx));
-            Ok(())
-        }
-        
-        fn execute_br_table(&mut self, table: &[u32], default: u32, index: i32) -> Result<()> {
-            let label_idx = if index >= 0 && (index as usize) < table.len() {
-                table[index as usize]
-            } else {
-                default
-            };
-            
-            let target = BranchTarget {
-                label_idx,
-                keep_values: 0,
-            };
-            self.branched = Some(target);
-            Ok(())
-        }
-        
-        fn execute_br_on_null(&mut self, label: u32) -> Result<()> {
-            let target = BranchTarget {
-                label_idx: label,
-                keep_values: 0,
-            };
-            self.branched = Some(target);
-            Ok(())
-        }
-        
-        fn execute_br_on_non_null(&mut self, label: u32) -> Result<()> {
-            let target = BranchTarget {
-                label_idx: label,
-                keep_values: 0,
-            };
-            self.branched = Some(target);
-            Ok(())
-        }
-        
-        fn return_call(&mut self, func_idx: u32) -> Result<()> {
-            self.func_called = Some(func_idx);
-            Ok(())
-        }
-        
-        fn return_call_indirect(&mut self, table_idx: u32, type_idx: u32) -> Result<()> {
-            self.indirect_call = Some((table_idx, type_idx));
-            Ok(())
-        }
-    }
-    
-    impl FunctionOperations for MockControlContext {
-        fn get_function_type(&self, func_idx: u32) -> Result<u32> {
-            Ok(func_idx % 5) // Mock: 5 different function types
-        }
-        
-        fn get_table_function(&self, table_idx: u32, elem_idx: u32) -> Result<u32> {
-            Ok(table_idx * 100 + elem_idx) // Mock calculation
-        }
-        
-        fn validate_function_signature(&self, func_idx: u32, expected_type: u32) -> Result<()> {
-            let actual_type = self.get_function_type(func_idx)?;
-            if actual_type == expected_type {
-                Ok(())
-            } else {
-                Err(Error::type_error("Function signature mismatch"))
-            }
-        }
-        
-        fn execute_function_call(&mut self, func_idx: u32) -> Result<()> {
-            self.func_called = Some(func_idx);
-            Ok(())
         }
     }
 

@@ -44,7 +44,7 @@ pub struct VariableDefinition<'a> {
 /// Runtime variable inspector
 pub struct VariableInspector<'a> {
     /// Variable definitions from DWARF
-    variables: BoundedVec<VariableDefinition<'a>, MAX_DWARF_FILE_TABLE, NoStdProvider>,
+    variables: BoundedVec<VariableDefinition<'a>, MAX_DWARF_FILE_TABLE, NoStdProvider<1024>>,
 }
 
 impl<'a> VariableInspector<'a> {
@@ -132,8 +132,8 @@ impl<'a> VariableInspector<'a> {
         pc: u32,
         state: &dyn RuntimeState,
         memory: &dyn DebugMemory,
-    ) -> BoundedVec<LiveVariable<'a>, MAX_DWARF_FILE_TABLE, NoStdProvider> {
-        let mut live_vars = BoundedVec::new(NoStdProvider);
+    ) -> BoundedVec<LiveVariable<'a>, MAX_DWARF_FILE_TABLE, NoStdProvider<1024>> {
+        let mut live_vars = BoundedVec::new(NoStdProvider::<1024>::default());
 
         for var_def in self.find_variables_at_pc(pc) {
             let value = self.read_variable(var_def, state, memory);

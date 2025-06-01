@@ -12,10 +12,7 @@ use std::{fmt, mem};
 use alloc::{boxed::Box, string::String, vec::Vec};
 
 use wrt_foundation::{
-    bounded::BoundedVec,
-    component::ComponentType,
-    component_value::ComponentValue,
-    prelude::*,
+    bounded::BoundedVec, component::ComponentType, component_value::ComponentValue, prelude::*,
 };
 
 use crate::{
@@ -23,7 +20,7 @@ use crate::{
     canonical::CanonicalAbi,
     component::Component,
     execution_engine::ComponentExecutionEngine,
-    instantiation::{InstantiationContext, ImportValues},
+    instantiation::{ImportValues, InstantiationContext},
     types::{ComponentInstance, ValType, Value},
     WrtResult,
 };
@@ -60,31 +57,31 @@ pub struct ParsedComponent {
     pub types: Vec<ComponentType>,
     #[cfg(not(any(feature = "std", feature = "alloc")))]
     pub types: BoundedVec<ComponentType, MAX_PARSED_SECTIONS>,
-    
+
     /// Component imports
     #[cfg(any(feature = "std", feature = "alloc"))]
     pub imports: Vec<ParsedImport>,
     #[cfg(not(any(feature = "std", feature = "alloc")))]
     pub imports: BoundedVec<ParsedImport, MAX_PARSED_SECTIONS>,
-    
+
     /// Component exports
     #[cfg(any(feature = "std", feature = "alloc"))]
     pub exports: Vec<ParsedExport>,
     #[cfg(not(any(feature = "std", feature = "alloc")))]
     pub exports: BoundedVec<ParsedExport, MAX_PARSED_SECTIONS>,
-    
+
     /// Embedded core modules
     #[cfg(any(feature = "std", feature = "alloc"))]
     pub modules: Vec<ParsedModule>,
     #[cfg(not(any(feature = "std", feature = "alloc")))]
     pub modules: BoundedVec<ParsedModule, 16>,
-    
+
     /// Component instances
     #[cfg(any(feature = "std", feature = "alloc"))]
     pub instances: Vec<ParsedInstance>,
     #[cfg(not(any(feature = "std", feature = "alloc")))]
     pub instances: BoundedVec<ParsedInstance, 16>,
-    
+
     /// Canonical function adapters
     #[cfg(any(feature = "std", feature = "alloc"))]
     pub canonicals: Vec<ParsedCanonical>,
@@ -108,21 +105,13 @@ pub struct ParsedImport {
 #[derive(Debug, Clone)]
 pub enum ImportKind {
     /// Function import
-    Function {
-        type_index: u32,
-    },
+    Function { type_index: u32 },
     /// Value import
-    Value {
-        type_index: u32,
-    },
+    Value { type_index: u32 },
     /// Instance import
-    Instance {
-        type_index: u32,
-    },
+    Instance { type_index: u32 },
     /// Type import
-    Type {
-        bounds: TypeBounds,
-    },
+    Type { bounds: TypeBounds },
 }
 
 /// Type bounds for type imports
@@ -150,21 +139,13 @@ pub struct ParsedExport {
 #[derive(Debug, Clone)]
 pub enum ExportKind {
     /// Function export
-    Function {
-        function_index: u32,
-    },
+    Function { function_index: u32 },
     /// Value export
-    Value {
-        value_index: u32,
-    },
+    Value { value_index: u32 },
     /// Instance export
-    Instance {
-        instance_index: u32,
-    },
+    Instance { instance_index: u32 },
     /// Type export
-    Type {
-        type_index: u32,
-    },
+    Type { type_index: u32 },
 }
 
 /// Parsed core module
@@ -216,28 +197,15 @@ pub struct ParsedCanonical {
 #[derive(Debug, Clone)]
 pub enum CanonicalOperation {
     /// Lift operation (core to component)
-    Lift {
-        core_func_index: u32,
-        type_index: u32,
-        options: CanonicalOptions,
-    },
+    Lift { core_func_index: u32, type_index: u32, options: CanonicalOptions },
     /// Lower operation (component to core)
-    Lower {
-        func_index: u32,
-        options: CanonicalOptions,
-    },
+    Lower { func_index: u32, options: CanonicalOptions },
     /// Resource new operation
-    ResourceNew {
-        resource_type: u32,
-    },
+    ResourceNew { resource_type: u32 },
     /// Resource drop operation
-    ResourceDrop {
-        resource_type: u32,
-    },
+    ResourceDrop { resource_type: u32 },
     /// Resource rep operation
-    ResourceRep {
-        resource_type: u32,
-    },
+    ResourceRep { resource_type: u32 },
 }
 
 /// Canonical ABI options
@@ -293,21 +261,21 @@ impl ComponentLoader {
         // Validate size
         if binary_data.len() > self.max_component_size {
             return Err(wrt_foundation::WrtError::InvalidInput(
-                "Component binary too large".into()
+                "Component binary too large".into(),
             ));
         }
 
         // Validate basic structure
         if binary_data.len() < 8 {
             return Err(wrt_foundation::WrtError::InvalidInput(
-                "Component binary too small".into()
+                "Component binary too small".into(),
             ));
         }
 
         // Check magic bytes (simplified - would check actual WASM component magic)
         if &binary_data[0..4] != b"\x00asm" {
             return Err(wrt_foundation::WrtError::InvalidInput(
-                "Invalid component magic bytes".into()
+                "Invalid component magic bytes".into(),
             ));
         }
 
@@ -329,31 +297,29 @@ impl ComponentLoader {
     /// Parse component sections from binary data
     fn parse_sections(&self, _binary_data: &[u8], parsed: &mut ParsedComponent) -> WrtResult<()> {
         // Simplified section parsing - in reality would parse actual WASM component format
-        
+
         // Add a default type
         parsed.add_type(ComponentType::Unit)?;
-        
+
         // Add a default import
         #[cfg(any(feature = "std", feature = "alloc"))]
         let import_name = "default".to_string();
         #[cfg(not(any(feature = "std", feature = "alloc")))]
-        let import_name = BoundedString::from_str("default").map_err(|_| {
-            wrt_foundation::WrtError::InvalidInput("Import name too long".into())
-        })?;
-        
+        let import_name = BoundedString::from_str("default")
+            .map_err(|_| wrt_foundation::WrtError::InvalidInput("Import name too long".into()))?;
+
         parsed.add_import(ParsedImport {
             name: import_name,
             import_type: ImportKind::Function { type_index: 0 },
         })?;
-        
+
         // Add a default export
         #[cfg(any(feature = "std", feature = "alloc"))]
         let export_name = "main".to_string();
         #[cfg(not(any(feature = "std", feature = "alloc")))]
-        let export_name = BoundedString::from_str("main").map_err(|_| {
-            wrt_foundation::WrtError::InvalidInput("Export name too long".into())
-        })?;
-        
+        let export_name = BoundedString::from_str("main")
+            .map_err(|_| wrt_foundation::WrtError::InvalidInput("Export name too long".into()))?;
+
         parsed.add_export(ParsedExport {
             name: export_name,
             export_kind: ExportKind::Function { function_index: 0 },
@@ -368,7 +334,7 @@ impl ComponentLoader {
             // Basic validation - check we have at least some content
             if parsed.types.len() == 0 {
                 return Err(wrt_foundation::WrtError::ValidationError(
-                    "Component must have at least one type".into()
+                    "Component must have at least one type".into(),
                 ));
             }
         } else if self.validation_level == ValidationLevel::Full {
@@ -469,15 +435,14 @@ impl ComponentLoader {
         #[cfg(any(feature = "std", feature = "alloc"))]
         let name = format!("module_{}", module.index);
         #[cfg(not(any(feature = "std", feature = "alloc")))]
-        let name = BoundedString::from_str("module").map_err(|_| {
-            wrt_foundation::WrtError::InvalidInput("Module name too long".into())
-        })?;
+        let name = BoundedString::from_str("module")
+            .map_err(|_| wrt_foundation::WrtError::InvalidInput("Module name too long".into()))?;
 
         let adapter = CoreModuleAdapter::new(name);
-        
+
         // In a real implementation, would parse the module binary
         // and create appropriate function/memory/table/global adapters
-        
+
         Ok(adapter)
     }
 
@@ -490,10 +455,10 @@ impl ComponentLoader {
     ) -> WrtResult<ComponentInstance> {
         // Parse the component
         let parsed = self.parse_component(binary_data)?;
-        
+
         // Convert to runtime component
         let component = self.to_runtime_component(&parsed)?;
-        
+
         // Instantiate the component
         component.instantiate(imports, context)
     }
@@ -539,9 +504,9 @@ impl ParsedComponent {
         }
         #[cfg(not(any(feature = "std", feature = "alloc")))]
         {
-            self.types.push(component_type).map_err(|_| {
-                wrt_foundation::WrtError::ResourceExhausted("Too many types".into())
-            })
+            self.types
+                .push(component_type)
+                .map_err(|_| wrt_foundation::WrtError::ResourceExhausted("Too many types".into()))
         }
     }
 
@@ -554,9 +519,9 @@ impl ParsedComponent {
         }
         #[cfg(not(any(feature = "std", feature = "alloc")))]
         {
-            self.imports.push(import).map_err(|_| {
-                wrt_foundation::WrtError::ResourceExhausted("Too many imports".into())
-            })
+            self.imports
+                .push(import)
+                .map_err(|_| wrt_foundation::WrtError::ResourceExhausted("Too many imports".into()))
         }
     }
 
@@ -569,9 +534,9 @@ impl ParsedComponent {
         }
         #[cfg(not(any(feature = "std", feature = "alloc")))]
         {
-            self.exports.push(export).map_err(|_| {
-                wrt_foundation::WrtError::ResourceExhausted("Too many exports".into())
-            })
+            self.exports
+                .push(export)
+                .map_err(|_| wrt_foundation::WrtError::ResourceExhausted("Too many exports".into()))
         }
     }
 }
@@ -636,7 +601,7 @@ mod tests {
         let loader = ComponentLoader::new()
             .with_max_size(1024)
             .with_validation_level(ValidationLevel::Basic);
-        
+
         assert_eq!(loader.max_component_size, 1024);
         assert_eq!(loader.validation_level, ValidationLevel::Basic);
     }
@@ -679,11 +644,11 @@ mod tests {
     #[test]
     fn test_parse_invalid_component() {
         let loader = ComponentLoader::new();
-        
+
         // Test empty binary
         let result = loader.parse_component(&[]);
         assert!(result.is_err());
-        
+
         // Test invalid magic
         let result = loader.parse_component(b"invalid_magic_bytes");
         assert!(result.is_err());
@@ -692,12 +657,12 @@ mod tests {
     #[test]
     fn test_parse_minimal_component() {
         let loader = ComponentLoader::new();
-        
+
         // Create minimal valid component binary (simplified)
         let binary = b"\x00asm\x0d\x00\x01\x00"; // Magic + version
         let result = loader.parse_component(binary);
         assert!(result.is_ok());
-        
+
         let parsed = result.unwrap();
         assert!(parsed.types.len() > 0);
     }

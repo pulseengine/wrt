@@ -4,18 +4,18 @@
 //! for the WebAssembly Component Model, including realloc support,
 //! post-return functions, and memory management.
 
-#[cfg(feature = "std")]
-use std::sync::{Arc, RwLock};
 #[cfg(not(feature = "std"))]
 use alloc::sync::{Arc, RwLock};
+#[cfg(feature = "std")]
+use std::sync::{Arc, RwLock};
 
 use wrt_foundation::prelude::*;
-use wrt_runtime::{Memory, Instance};
+use wrt_runtime::{Instance, Memory};
 
 use crate::{
-    types::{ComponentError, ComponentInstanceId},
     canonical_realloc::{ReallocManager, StringEncoding},
     memory_layout::MemoryLayout,
+    types::{ComponentError, ComponentInstanceId},
 };
 
 /// Complete canonical options for lift/lower operations
@@ -83,12 +83,12 @@ impl CanonicalOptions {
     pub fn with_realloc(mut self, func_index: u32, manager: Arc<RwLock<ReallocManager>>) -> Self {
         self.realloc = Some(func_index);
         self.realloc_manager = Some(manager);
-        
+
         // Register with the manager
         if let Ok(mut mgr) = manager.write() {
             let _ = mgr.register_realloc(self.instance_id, func_index);
         }
-        
+
         self
     }
 
@@ -117,17 +117,8 @@ impl CanonicalOptions {
 
 impl<'a> CanonicalLiftContext<'a> {
     /// Create a new lift context
-    pub fn new(
-        instance: &'a Instance,
-        memory: &'a Memory,
-        options: &'a CanonicalOptions,
-    ) -> Self {
-        Self {
-            instance,
-            memory,
-            options,
-            allocations: Vec::new(),
-        }
+    pub fn new(instance: &'a Instance, memory: &'a Memory, options: &'a CanonicalOptions) -> Self {
+        Self { instance, memory, options, allocations: Vec::new() }
     }
 
     /// Allocate memory for lifting using realloc if available
@@ -138,9 +129,8 @@ impl<'a> CanonicalLiftContext<'a> {
 
         let ptr = if let Some(manager) = &self.options.realloc_manager {
             // Use realloc manager
-            let mut mgr = manager.write()
-                .map_err(|_| ComponentError::ResourceNotFound(0))?;
-            
+            let mut mgr = manager.write().map_err(|_| ComponentError::ResourceNotFound(0))?;
+
             mgr.allocate(self.options.instance_id, size as i32, align as i32)?
         } else {
             // Fallback to static allocation
@@ -148,11 +138,7 @@ impl<'a> CanonicalLiftContext<'a> {
         };
 
         // Track allocation for cleanup
-        self.allocations.push(TempAllocation {
-            ptr,
-            size: size as i32,
-            align: align as i32,
-        });
+        self.allocations.push(TempAllocation { ptr, size: size as i32, align: align as i32 });
 
         Ok(ptr)
     }
@@ -164,40 +150,34 @@ impl<'a> CanonicalLiftContext<'a> {
         }
 
         let offset = ptr as usize;
-        self.memory.read_slice(offset, len)
+        self.memory
+            .read_slice(offset, len)
             .map_err(|_| ComponentError::ResourceNotFound(ptr as u32))
     }
 
     /// Read a string from memory with the configured encoding
     pub fn read_string(&self, ptr: i32, len: usize) -> Result<String, ComponentError> {
         let bytes = self.read_bytes(ptr, len)?;
-        
+
         match self.options.string_encoding {
             StringEncoding::Utf8 => {
-                String::from_utf8(bytes)
-                    .map_err(|_| ComponentError::TypeMismatch)
+                String::from_utf8(bytes).map_err(|_| ComponentError::TypeMismatch)
             }
             StringEncoding::Utf16Le => {
                 let u16_values: Vec<u16> = bytes
                     .chunks_exact(2)
                     .map(|chunk| u16::from_le_bytes([chunk[0], chunk[1]]))
                     .collect();
-                String::from_utf16(&u16_values)
-                    .map_err(|_| ComponentError::TypeMismatch)
+                String::from_utf16(&u16_values).map_err(|_| ComponentError::TypeMismatch)
             }
             StringEncoding::Utf16Be => {
                 let u16_values: Vec<u16> = bytes
                     .chunks_exact(2)
                     .map(|chunk| u16::from_be_bytes([chunk[0], chunk[1]]))
                     .collect();
-                String::from_utf16(&u16_values)
-                    .map_err(|_| ComponentError::TypeMismatch)
+                String::from_utf16(&u16_values).map_err(|_| ComponentError::TypeMismatch)
             }
-            StringEncoding::Latin1 => {
-                Ok(bytes.into_iter()
-                    .map(|b| b as char)
-                    .collect())
-            }
+            StringEncoding::Latin1 => Ok(bytes.into_iter().map(|b| b as char).collect()),
         }
     }
 
@@ -205,16 +185,10 @@ impl<'a> CanonicalLiftContext<'a> {
     pub fn cleanup(mut self) -> Result<(), ComponentError> {
         // First, deallocate all temporary allocations
         if let Some(manager) = &self.options.realloc_manager {
-            let mut mgr = manager.write()
-                .map_err(|_| ComponentError::ResourceNotFound(0))?;
-            
+            let mut mgr = manager.write().map_err(|_| ComponentError::ResourceNotFound(0))?;
+
             for alloc in self.allocations.drain(..) {
-                mgr.deallocate(
-                    self.options.instance_id,
-                    alloc.ptr,
-                    alloc.size,
-                    alloc.align,
-                )?;
+                mgr.deallocate(self.options.instance_id, alloc.ptr, alloc.size, alloc.align)?;
             }
         }
 
@@ -235,12 +209,7 @@ impl<'a> CanonicalLowerContext<'a> {
         memory: &'a mut Memory,
         options: &'a CanonicalOptions,
     ) -> Self {
-        Self {
-            instance,
-            memory,
-            options,
-            allocations: Vec::new(),
-        }
+        Self { instance, memory, options, allocations: Vec::new() }
     }
 
     /// Allocate memory for lowering using realloc if available
@@ -251,9 +220,8 @@ impl<'a> CanonicalLowerContext<'a> {
 
         let ptr = if let Some(manager) = &self.options.realloc_manager {
             // Use realloc manager
-            let mut mgr = manager.write()
-                .map_err(|_| ComponentError::ResourceNotFound(0))?;
-            
+            let mut mgr = manager.write().map_err(|_| ComponentError::ResourceNotFound(0))?;
+
             mgr.allocate(self.options.instance_id, size as i32, align as i32)?
         } else {
             // Fallback - would need static allocation strategy
@@ -261,11 +229,7 @@ impl<'a> CanonicalLowerContext<'a> {
         };
 
         // Track allocation
-        self.allocations.push(TempAllocation {
-            ptr,
-            size: size as i32,
-            align: align as i32,
-        });
+        self.allocations.push(TempAllocation { ptr, size: size as i32, align: align as i32 });
 
         Ok(ptr)
     }
@@ -277,7 +241,8 @@ impl<'a> CanonicalLowerContext<'a> {
         }
 
         let offset = ptr as usize;
-        self.memory.write_slice(offset, data)
+        self.memory
+            .write_slice(offset, data)
             .map_err(|_| ComponentError::ResourceNotFound(ptr as u32))
     }
 
@@ -285,16 +250,8 @@ impl<'a> CanonicalLowerContext<'a> {
     pub fn write_string(&mut self, s: &str) -> Result<(i32, usize), ComponentError> {
         let encoded = match self.options.string_encoding {
             StringEncoding::Utf8 => s.as_bytes().to_vec(),
-            StringEncoding::Utf16Le => {
-                s.encode_utf16()
-                    .flat_map(|c| c.to_le_bytes())
-                    .collect()
-            }
-            StringEncoding::Utf16Be => {
-                s.encode_utf16()
-                    .flat_map(|c| c.to_be_bytes())
-                    .collect()
-            }
+            StringEncoding::Utf16Le => s.encode_utf16().flat_map(|c| c.to_le_bytes()).collect(),
+            StringEncoding::Utf16Be => s.encode_utf16().flat_map(|c| c.to_be_bytes()).collect(),
             StringEncoding::Latin1 => {
                 s.chars()
                     .map(|c| {
@@ -367,15 +324,15 @@ impl CanonicalOptionsBuilder {
 
     pub fn build(self) -> CanonicalOptions {
         let mut options = CanonicalOptions::new(self.memory, self.instance_id);
-        
+
         if let (Some(func_index), Some(manager)) = (self.realloc, self.realloc_manager) {
             options = options.with_realloc(func_index, manager);
         }
-        
+
         if let Some(func_index) = self.post_return {
             options = options.with_post_return(func_index);
         }
-        
+
         options.with_string_encoding(self.string_encoding)
     }
 }
@@ -389,7 +346,7 @@ mod tests {
     fn test_canonical_options_creation() {
         let instance_id = ComponentInstanceId(1);
         let options = CanonicalOptions::new(0, instance_id);
-        
+
         assert_eq!(options.memory, 0);
         assert_eq!(options.instance_id, instance_id);
         assert!(!options.has_realloc());
@@ -400,10 +357,9 @@ mod tests {
     fn test_canonical_options_with_realloc() {
         let instance_id = ComponentInstanceId(1);
         let manager = Arc::new(RwLock::new(ReallocManager::default()));
-        
-        let options = CanonicalOptions::new(0, instance_id)
-            .with_realloc(42, manager);
-        
+
+        let options = CanonicalOptions::new(0, instance_id).with_realloc(42, manager);
+
         assert!(options.has_realloc());
         assert_eq!(options.realloc, Some(42));
     }
@@ -412,13 +368,13 @@ mod tests {
     fn test_canonical_options_builder() {
         let instance_id = ComponentInstanceId(1);
         let manager = Arc::new(RwLock::new(ReallocManager::default()));
-        
+
         let options = CanonicalOptionsBuilder::new(0, instance_id)
             .with_realloc(42, manager)
             .with_post_return(43)
             .with_string_encoding(StringEncoding::Utf16Le)
             .build();
-        
+
         assert_eq!(options.memory, 0);
         assert_eq!(options.realloc, Some(42));
         assert_eq!(options.post_return, Some(43));
@@ -434,15 +390,11 @@ mod tests {
         assert_eq!(utf8_bytes.len(), 5);
 
         // Test UTF-16 LE
-        let utf16_le: Vec<u8> = "Hello".encode_utf16()
-            .flat_map(|c| c.to_le_bytes())
-            .collect();
+        let utf16_le: Vec<u8> = "Hello".encode_utf16().flat_map(|c| c.to_le_bytes()).collect();
         assert_eq!(utf16_le.len(), 10); // 5 chars * 2 bytes
 
         // Test Latin-1
-        let latin1: Vec<u8> = "Hello".chars()
-            .map(|c| c as u8)
-            .collect();
+        let latin1: Vec<u8> = "Hello".chars().map(|c| c as u8).collect();
         assert_eq!(latin1.len(), 5);
     }
 }

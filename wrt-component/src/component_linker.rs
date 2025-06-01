@@ -1,430 +1,578 @@
-//! Component composition and linking
-//!
-//! This module provides functionality for linking multiple components together,
-//! resolving imports/exports, and creating composite components at runtime.
+//! Component Linker and Import/Export Resolution System
 
+#![cfg_attr(not(feature = "std"), no_std)]
+
+// Cross-environment imports
 #[cfg(feature = "std")]
-use std::collections::BTreeMap;
-#[cfg(not(feature = "std"))]
-use alloc::{collections::BTreeMap, vec::Vec};
+use std::{boxed::Box, collections::HashMap, format, string::String, vec::Vec};
 
-use wrt_foundation::{
-    bounded_collections::{BoundedVec, BoundedString, MAX_GENERATIVE_TYPES},
-    prelude::*,
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use alloc::{boxed::Box, collections::BTreeMap as HashMap, format, string::String, vec::Vec};
+
+#[cfg(not(any(feature = "std", feature = "alloc")))]
+use wrt_foundation::{BoundedString as String, BoundedVec as Vec, NoStdHashMap as HashMap};
+
+use crate::component_instantiation::{
+    create_component_export, create_component_import, ComponentExport, ComponentImport,
+    ComponentInstance, ExportType, FunctionSignature, ImportType, InstanceConfig, InstanceId,
+    ResolvedImport,
 };
+use wrt_error::{codes, Error, ErrorCategory, Result};
 
-use crate::{
-    types::{ComponentError, ComponentInstance, ComponentInstanceId, TypeId},
-    component::Component,
-    import::{Import, ImportType},
-    export::Export,
-    instance::{InstanceValue},
-    generative_types::GenerativeTypeRegistry,
-    type_bounds::TypeBoundsChecker,
-    instantiation::{ImportValues, ExportValue},
-};
+/// Maximum number of components in linker
+const MAX_LINKED_COMPONENTS: usize = 256;
 
-/// Component linker for composing multiple components
-#[derive(Debug, Clone)]
+/// Component identifier in the linker
+pub type ComponentId = String;
+
+/// Component linker for managing multiple components and their dependencies
+#[derive(Debug)]
 pub struct ComponentLinker {
-    /// Registry of available components
-    components: BTreeMap<BoundedString<64>, Component>,
-    /// Instantiated component instances
-    instances: BTreeMap<ComponentInstanceId, ComponentInstance>,
-    /// Export registry for resolution
-    export_registry: BTreeMap<BoundedString<128>, ExportEntry>,
-    /// Type registry for generative types
-    type_registry: GenerativeTypeRegistry,
-    /// Type bounds checker
-    bounds_checker: TypeBoundsChecker,
-    /// Next instance ID
-    next_instance_id: u32,
+    /// Registered components
+    components: HashMap<ComponentId, ComponentDefinition>,
+    /// Active component instances
+    instances: HashMap<InstanceId, ComponentInstance>,
+    /// Dependency graph
+    link_graph: LinkGraph,
+    /// Next available instance ID
+    next_instance_id: InstanceId,
+    /// Linker configuration
+    config: LinkerConfig,
+    /// Resolution statistics
+    stats: LinkingStats,
 }
 
+/// Component definition in the linker
 #[derive(Debug, Clone)]
-struct ExportEntry {
-    instance_id: ComponentInstanceId,
-    export_name: BoundedString<64>,
-    export_value: ExportValue,
-    type_id: Option<TypeId>,
+pub struct ComponentDefinition {
+    /// Component ID
+    pub id: ComponentId,
+    /// Component binary (simplified as bytes)
+    pub binary: Vec<u8>,
+    /// Parsed exports
+    pub exports: Vec<ComponentExport>,
+    /// Parsed imports
+    pub imports: Vec<ComponentImport>,
+    /// Component metadata
+    pub metadata: ComponentMetadata,
 }
 
+/// Component metadata for introspection
 #[derive(Debug, Clone)]
-pub struct LinkageDescriptor {
-    /// Source component name
-    pub source: BoundedString<64>,
-    /// Target component name  
-    pub target: BoundedString<64>,
-    /// Import/export mappings
-    pub bindings: BoundedVec<Binding, MAX_GENERATIVE_TYPES>,
+pub struct ComponentMetadata {
+    /// Component name
+    pub name: String,
+    /// Component version
+    pub version: String,
+    /// Component description
+    pub description: String,
+    /// Component author
+    pub author: String,
+    /// Compilation timestamp
+    pub compiled_at: u64,
 }
 
+/// Dependency graph for component linking
 #[derive(Debug, Clone)]
-pub struct Binding {
-    /// Import name in target component
-    pub import_name: BoundedString<64>,
-    /// Export name in source component
-    pub export_name: BoundedString<64>,
-    /// Optional type constraints
-    pub type_constraint: Option<TypeConstraint>,
+pub struct LinkGraph {
+    /// Nodes (components)
+    nodes: Vec<GraphNode>,
+    /// Edges (dependencies)
+    edges: Vec<GraphEdge>,
 }
 
+/// Graph node representing a component
 #[derive(Debug, Clone)]
-pub enum TypeConstraint {
-    /// Types must be equal
-    Equal,
-    /// Import type must be subtype of export type
-    Subtype,
+pub struct GraphNode {
+    /// Component ID
+    pub component_id: ComponentId,
+    /// Node index in graph
+    pub index: usize,
+    /// Dependencies (outgoing edges)
+    pub dependencies: Vec<usize>,
+    /// Dependents (incoming edges)
+    pub dependents: Vec<usize>,
 }
 
+/// Graph edge representing a dependency relationship
 #[derive(Debug, Clone)]
-pub struct CompositeComponent {
-    /// Name of the composite
-    pub name: BoundedString<64>,
-    /// Component instances in the composite
-    pub instances: BoundedVec<ComponentInstanceId, MAX_GENERATIVE_TYPES>,
-    /// External imports (not satisfied internally)
-    pub external_imports: BoundedVec<ExternalImport, MAX_GENERATIVE_TYPES>,
-    /// External exports (exposed from internal components)
-    pub external_exports: BoundedVec<ExternalExport, MAX_GENERATIVE_TYPES>,
+pub struct GraphEdge {
+    /// Source node index
+    pub from: usize,
+    /// Target node index
+    pub to: usize,
+    /// Import that creates this dependency
+    pub import: ComponentImport,
+    /// Export that satisfies this dependency
+    pub export: ComponentExport,
+    /// Edge weight (for optimization)
+    pub weight: u32,
 }
 
+/// Linker configuration
 #[derive(Debug, Clone)]
-pub struct ExternalImport {
-    pub name: BoundedString<64>,
-    pub import_type: ImportType,
-    pub target_instance: ComponentInstanceId,
+pub struct LinkerConfig {
+    /// Enable strict type checking
+    pub strict_typing: bool,
+    /// Allow hot swapping of components
+    pub allow_hot_swap: bool,
+    /// Maximum memory per instance
+    pub max_instance_memory: u32,
+    /// Enable dependency validation
+    pub validate_dependencies: bool,
+    /// Circular dependency handling
+    pub circular_dependency_mode: CircularDependencyMode,
 }
 
-#[derive(Debug, Clone)]
-pub struct ExternalExport {
-    pub name: BoundedString<64>,
-    pub source_instance: ComponentInstanceId,
-    pub source_export: BoundedString<64>,
+/// Circular dependency handling modes
+#[derive(Debug, Clone, PartialEq)]
+pub enum CircularDependencyMode {
+    /// Reject circular dependencies
+    Reject,
+    /// Allow circular dependencies (with limitations)
+    Allow,
+    /// Warn about circular dependencies but allow them
+    Warn,
+}
+
+/// Linking statistics
+#[derive(Debug, Clone, Default)]
+pub struct LinkingStats {
+    /// Total components registered
+    pub components_registered: u32,
+    /// Total instances created
+    pub instances_created: u32,
+    /// Total links resolved
+    pub links_resolved: u32,
+    /// Resolution failures
+    pub resolution_failures: u32,
+    /// Last resolution time (microseconds)
+    pub last_resolution_time: u64,
+}
+
+impl Default for LinkerConfig {
+    fn default() -> Self {
+        Self {
+            strict_typing: true,
+            allow_hot_swap: false,
+            max_instance_memory: 64 * 1024 * 1024, // 64MB
+            validate_dependencies: true,
+            circular_dependency_mode: CircularDependencyMode::Reject,
+        }
+    }
+}
+
+impl Default for ComponentMetadata {
+    fn default() -> Self {
+        Self {
+            name: String::new(),
+            version: "1.0.0".to_string(),
+            description: String::new(),
+            author: String::new(),
+            compiled_at: 0,
+        }
+    }
 }
 
 impl ComponentLinker {
+    /// Create a new component linker
     pub fn new() -> Self {
+        Self::with_config(LinkerConfig::default())
+    }
+
+    /// Create a new component linker with custom configuration
+    pub fn with_config(config: LinkerConfig) -> Self {
         Self {
-            components: BTreeMap::new(),
-            instances: BTreeMap::new(),
-            export_registry: BTreeMap::new(),
-            type_registry: GenerativeTypeRegistry::new(),
-            bounds_checker: TypeBoundsChecker::new(),
+            components: HashMap::new(),
+            instances: HashMap::new(),
+            link_graph: LinkGraph::new(),
             next_instance_id: 1,
+            config,
+            stats: LinkingStats::default(),
         }
     }
 
-    /// Register a component for linking
-    pub fn register_component(
-        &mut self,
-        name: BoundedString<64>,
-        component: Component,
-    ) -> Result<(), ComponentError> {
-        if self.components.contains_key(&name) {
-            return Err(ComponentError::ExportResolutionFailed);
+    /// Add a component to the linker
+    pub fn add_component(&mut self, id: ComponentId, binary: &[u8]) -> Result<()> {
+        if self.components.len() >= MAX_LINKED_COMPONENTS {
+            return Err(Error::new(
+                ErrorCategory::Resource,
+                codes::RESOURCE_EXHAUSTED,
+                "Maximum number of components reached",
+            ));
         }
-        
-        self.components.insert(name, component);
-        Ok(())
-    }
 
-    /// Create a composite component from a linkage descriptor
-    pub fn create_composite(
-        &mut self,
-        name: BoundedString<64>,
-        descriptors: Vec<LinkageDescriptor>,
-    ) -> Result<CompositeComponent, ComponentError> {
-        let mut composite = CompositeComponent {
-            name,
-            instances: BoundedVec::new(),
-            external_imports: BoundedVec::new(),
-            external_exports: BoundedVec::new(),
+        // Parse component binary (simplified)
+        let (exports, imports, metadata) = self.parse_component_binary(binary)?;
+
+        let definition = ComponentDefinition {
+            id: id.clone(),
+            binary: binary.to_vec(),
+            exports,
+            imports,
+            metadata,
         };
 
-        // Phase 1: Instantiate all components
-        let mut instance_map = BTreeMap::new();
-        for descriptor in &descriptors {
-            let source_id = self.instantiate_component(&descriptor.source)?;
-            let target_id = self.instantiate_component(&descriptor.target)?;
-            
-            instance_map.insert(descriptor.source.clone(), source_id);
-            instance_map.insert(descriptor.target.clone(), target_id);
-            
-            composite.instances.push(source_id)
-                .map_err(|_| ComponentError::TooManyGenerativeTypes)?;
-            composite.instances.push(target_id)
-                .map_err(|_| ComponentError::TooManyGenerativeTypes)?;
-        }
+        // Add to components map
+        self.components.insert(id.clone(), definition);
 
-        // Phase 2: Resolve bindings
-        for descriptor in &descriptors {
-            let source_id = instance_map[&descriptor.source];
-            let target_id = instance_map[&descriptor.target];
-            
-            self.resolve_bindings(source_id, target_id, &descriptor.bindings)?;
-        }
+        // Update dependency graph
+        self.link_graph.add_component(id)?;
 
-        // Phase 3: Collect external imports/exports
-        self.collect_external_interfaces(&mut composite)?;
-
-        Ok(composite)
-    }
-
-    /// Link two components together
-    pub fn link_components(
-        &mut self,
-        source_name: &str,
-        target_name: &str,
-        bindings: Vec<Binding>,
-    ) -> Result<(), ComponentError> {
-        let source_component = self.components.get(&BoundedString::from_str(source_name)
-            .map_err(|_| ComponentError::TypeMismatch)?)
-            .ok_or(ComponentError::ImportResolutionFailed)?
-            .clone();
-            
-        let target_component = self.components.get(&BoundedString::from_str(target_name)
-            .map_err(|_| ComponentError::TypeMismatch)?)
-            .ok_or(ComponentError::ImportResolutionFailed)?
-            .clone();
-
-        // Instantiate components
-        let source_id = self.create_instance(source_component)?;
-        let target_id = self.create_instance(target_component)?;
-
-        // Resolve each binding
-        for binding in bindings {
-            self.resolve_single_binding(source_id, target_id, &binding)?;
-        }
+        // Update statistics
+        self.stats.components_registered += 1;
 
         Ok(())
     }
 
-    /// Instantiate a component by name
-    fn instantiate_component(
-        &mut self,
-        name: &BoundedString<64>,
-    ) -> Result<ComponentInstanceId, ComponentError> {
-        let component = self.components.get(name)
-            .ok_or(ComponentError::ImportResolutionFailed)?
-            .clone();
-            
-        self.create_instance(component)
+    /// Remove a component from the linker
+    pub fn remove_component(&mut self, id: &ComponentId) -> Result<()> {
+        // Check if component exists
+        if !self.components.contains_key(id) {
+            return Err(Error::new(
+                ErrorCategory::Runtime,
+                codes::COMPONENT_NOT_FOUND,
+                format!("Component '{}' not found", id),
+            ));
+        }
+
+        // Check if any instances are using this component
+        let dependent_instances: Vec<_> = self
+            .instances
+            .values()
+            .filter(|instance| &instance.name == id)
+            .map(|instance| instance.id)
+            .collect();
+
+        if !dependent_instances.is_empty() {
+            return Err(Error::new(
+                ErrorCategory::Runtime,
+                codes::RESOURCE_IN_USE,
+                "Component is in use by active instances",
+            ));
+        }
+
+        // Remove from components and graph
+        self.components.remove(id);
+        self.link_graph.remove_component(id)?;
+
+        Ok(())
     }
 
-    /// Create a new component instance
-    fn create_instance(
+    /// Instantiate a component with dependency resolution
+    pub fn instantiate(
         &mut self,
-        component: Component,
-    ) -> Result<ComponentInstanceId, ComponentError> {
-        let instance_id = ComponentInstanceId(self.next_instance_id);
+        component_id: &ComponentId,
+        config: Option<InstanceConfig>,
+    ) -> Result<InstanceId> {
+        // Find component definition
+        let component = self.components.get(component_id).ok_or_else(|| {
+            Error::new(
+                ErrorCategory::Runtime,
+                codes::COMPONENT_NOT_FOUND,
+                format!("Component '{}' not found", component_id),
+            )
+        })?;
+
+        // Resolve dependencies
+        let resolved_imports = self.resolve_imports(component_id, &component.imports)?;
+
+        // Create instance
+        let instance_id = self.next_instance_id;
         self.next_instance_id += 1;
 
-        // Create generative types for this instance
-        for _ in 0..component.types.len() {
-            let base_type = wrt_foundation::resource::ResourceType::Handle(
-                wrt_foundation::resource::ResourceHandle::new(0)
-            );
-            self.type_registry.create_generative_type(base_type, instance_id)?;
+        let instance_config = config.unwrap_or_else(InstanceConfig::default);
+
+        let mut instance = ComponentInstance::new(
+            instance_id,
+            component_id.clone(),
+            instance_config,
+            component.exports.clone(),
+            component.imports.clone(),
+        )?;
+
+        // Add resolved imports
+        for resolved in resolved_imports {
+            instance.add_resolved_import(resolved)?;
         }
 
-        let instance = ComponentInstance {
-            id: instance_id.0,
-            component,
-            imports: Vec::new(),
-            exports: Vec::new(),
-            resource_tables: Vec::new(),
-            module_instances: Vec::new(),
-        };
+        // Initialize instance
+        instance.initialize()?;
 
+        // Add to instances map
         self.instances.insert(instance_id, instance);
-        self.register_instance_exports(instance_id)?;
+
+        // Update statistics
+        self.stats.instances_created += 1;
 
         Ok(instance_id)
     }
 
-    /// Register all exports from an instance
-    fn register_instance_exports(
-        &mut self,
-        instance_id: ComponentInstanceId,
-    ) -> Result<(), ComponentError> {
-        let instance = self.instances.get(&instance_id)
-            .ok_or(ComponentError::ResourceNotFound(instance_id.0))?;
+    /// Link all components and create instances
+    pub fn link_all(&mut self) -> Result<Vec<InstanceId>> {
+        let mut instance_ids = Vec::new();
 
-        for export in &instance.component.exports {
-            let full_name = self.create_qualified_name(instance_id, &export.name);
-            
-            let export_value = self.create_export_value(export)?;
-            
-            let entry = ExportEntry {
-                instance_id,
-                export_name: export.name.clone(),
-                export_value,
-                type_id: None, // Would be set based on export type
-            };
+        // Topological sort to determine instantiation order
+        let sorted_components = self.link_graph.topological_sort()?;
 
-            self.export_registry.insert(full_name, entry);
+        // Instantiate components in dependency order
+        for component_id in sorted_components {
+            let instance_id = self.instantiate(&component_id, None)?;
+            instance_ids.push(instance_id);
         }
 
-        Ok(())
+        Ok(instance_ids)
     }
 
-    /// Resolve bindings between two instances
-    fn resolve_bindings(
-        &mut self,
-        source_id: ComponentInstanceId,
-        target_id: ComponentInstanceId,
-        bindings: &BoundedVec<Binding, MAX_GENERATIVE_TYPES>,
-    ) -> Result<(), ComponentError> {
-        for binding in bindings.iter() {
-            self.resolve_single_binding(source_id, target_id, binding)?;
-        }
-        Ok(())
+    /// Get a component instance by ID
+    pub fn get_instance(&self, instance_id: InstanceId) -> Option<&ComponentInstance> {
+        self.instances.get(&instance_id)
     }
 
-    /// Resolve a single binding
-    fn resolve_single_binding(
-        &mut self,
-        source_id: ComponentInstanceId,
-        target_id: ComponentInstanceId,
-        binding: &Binding,
-    ) -> Result<(), ComponentError> {
-        // Get the export from source
-        let source_export = self.lookup_export(source_id, &binding.export_name)?;
-        
-        // Verify type constraints if specified
-        if let Some(constraint) = &binding.type_constraint {
-            self.verify_type_constraint(&source_export, constraint)?;
-        }
-
-        // Satisfy the import in target
-        self.satisfy_import(target_id, &binding.import_name, source_export)?;
-
-        Ok(())
+    /// Get a mutable component instance by ID
+    pub fn get_instance_mut(&mut self, instance_id: InstanceId) -> Option<&mut ComponentInstance> {
+        self.instances.get_mut(&instance_id)
     }
 
-    /// Look up an export from an instance
-    fn lookup_export(
+    /// Get linking statistics
+    pub fn get_stats(&self) -> &LinkingStats {
+        &self.stats
+    }
+
+    // Private helper methods
+
+    fn parse_component_binary(
         &self,
-        instance_id: ComponentInstanceId,
-        export_name: &BoundedString<64>,
-    ) -> Result<ExportValue, ComponentError> {
-        let qualified_name = self.create_qualified_name(instance_id, export_name);
-        
-        self.export_registry.get(&qualified_name)
-            .map(|entry| entry.export_value.clone())
-            .ok_or(ComponentError::ExportResolutionFailed)
+        binary: &[u8],
+    ) -> Result<(Vec<ComponentExport>, Vec<ComponentImport>, ComponentMetadata)> {
+        // Simplified component parsing
+        if binary.is_empty() {
+            return Err(Error::new(
+                ErrorCategory::Validation,
+                codes::INVALID_BINARY,
+                "Empty component binary",
+            ));
+        }
+
+        // Create some example exports and imports based on binary content
+        let exports = vec![create_component_export(
+            "main".to_string(),
+            ExportType::Function(crate::component_instantiation::create_function_signature(
+                "main".to_string(),
+                vec![],
+                vec![crate::canonical_abi::ComponentType::S32],
+            )),
+        )];
+
+        let imports = vec![create_component_import(
+            "log".to_string(),
+            "env".to_string(),
+            ImportType::Function(crate::component_instantiation::create_function_signature(
+                "log".to_string(),
+                vec![crate::canonical_abi::ComponentType::String],
+                vec![],
+            )),
+        )];
+
+        let metadata = ComponentMetadata::default();
+
+        Ok((exports, imports, metadata))
     }
 
-    /// Satisfy an import with an export value
-    fn satisfy_import(
+    fn resolve_imports(
         &mut self,
-        instance_id: ComponentInstanceId,
-        import_name: &BoundedString<64>,
-        export_value: ExportValue,
-    ) -> Result<(), ComponentError> {
-        // This would update the instance's import resolution table
-        // For now, we'll just validate that the import exists
-        let instance = self.instances.get(&instance_id)
-            .ok_or(ComponentError::ResourceNotFound(instance_id.0))?;
+        component_id: &ComponentId,
+        imports: &[ComponentImport],
+    ) -> Result<Vec<ResolvedImport>> {
+        let mut resolved = Vec::new();
 
-        let has_import = instance.component.imports.iter()
-            .any(|import| import.name == *import_name);
-
-        if !has_import {
-            return Err(ComponentError::ImportResolutionFailed);
+        for import in imports {
+            let resolution = self.resolve_single_import(component_id, import)?;
+            resolved.push(resolution);
         }
 
-        Ok(())
+        self.stats.links_resolved += resolved.len() as u32;
+        Ok(resolved)
     }
 
-    /// Verify type constraints between import and export
-    fn verify_type_constraint(
+    fn resolve_single_import(
         &self,
-        _export: &ExportValue,
-        constraint: &TypeConstraint,
-    ) -> Result<(), ComponentError> {
-        match constraint {
-            TypeConstraint::Equal => {
-                // Check exact type equality
-                Ok(())
-            }
-            TypeConstraint::Subtype => {
-                // Check subtype relationship
-                Ok(())
-            }
-        }
-    }
-
-    /// Create a qualified name for exports
-    fn create_qualified_name(
-        &self,
-        instance_id: ComponentInstanceId,
-        name: &BoundedString<64>,
-    ) -> BoundedString<128> {
-        let instance_str = format!("instance_{}", instance_id.0);
-        let qualified = format!("{}/{}", instance_str, name.as_str());
-        BoundedString::from_str(&qualified).unwrap_or_default()
-    }
-
-    /// Create an export value from an export definition
-    fn create_export_value(&self, _export: &Export) -> Result<ExportValue, ComponentError> {
-        // This would create the appropriate ExportValue based on export type
-        // For now, return a placeholder
-        Ok(ExportValue::FunctionExport(crate::instantiation::FunctionExport {
-            type_index: 0,
-            code_offset: 0,
-        }))
-    }
-
-    /// Collect external interfaces for a composite
-    fn collect_external_interfaces(
-        &self,
-        composite: &mut CompositeComponent,
-    ) -> Result<(), ComponentError> {
-        // Collect all unresolved imports as external imports
-        for &instance_id in composite.instances.iter() {
-            let instance = self.instances.get(&instance_id)
-                .ok_or(ComponentError::ResourceNotFound(instance_id.0))?;
-
-            for import in &instance.component.imports {
-                // Check if this import is satisfied internally
-                let is_internal = self.is_import_satisfied_internally(instance_id, &import.name);
-                
-                if !is_internal {
-                    let external_import = ExternalImport {
-                        name: import.name.clone(),
-                        import_type: import.import_type.clone(),
-                        target_instance: instance_id,
-                    };
-                    
-                    composite.external_imports.push(external_import)
-                        .map_err(|_| ComponentError::TooManyGenerativeTypes)?;
+        _component_id: &ComponentId,
+        import: &ComponentImport,
+    ) -> Result<ResolvedImport> {
+        // Find a component that exports what we need
+        for (provider_id, component) in &self.components {
+            for export in &component.exports {
+                if self.is_compatible_import_export(import, export)? {
+                    return Ok(ResolvedImport {
+                        import: import.clone(),
+                        provider_id: 1, // Simplified - would map component ID to instance ID
+                        provider_export: export.name.clone(),
+                    });
                 }
             }
         }
 
+        Err(Error::new(
+            ErrorCategory::Runtime,
+            codes::IMPORT_NOT_SATISFIED,
+            format!("Import '{}' from module '{}' not satisfied", import.name, import.module),
+        ))
+    }
+
+    fn is_compatible_import_export(
+        &self,
+        import: &ComponentImport,
+        export: &ComponentExport,
+    ) -> Result<bool> {
+        // Check name compatibility
+        if import.name != export.name {
+            return Ok(false);
+        }
+
+        // Check type compatibility
+        match (&import.import_type, &export.export_type) {
+            (ImportType::Function(import_sig), ExportType::Function(export_sig)) => {
+                Ok(self.is_compatible_function_signature(import_sig, export_sig))
+            }
+            (ImportType::Memory(import_mem), ExportType::Memory(export_mem)) => {
+                Ok(self.is_compatible_memory_config(import_mem, export_mem))
+            }
+            _ => Ok(false), // Other type combinations
+        }
+    }
+
+    fn is_compatible_function_signature(
+        &self,
+        import_sig: &FunctionSignature,
+        export_sig: &FunctionSignature,
+    ) -> bool {
+        // Simplified compatibility check
+        import_sig.params == export_sig.params && import_sig.returns == export_sig.returns
+    }
+
+    fn is_compatible_memory_config(
+        &self,
+        _import_mem: &crate::component_instantiation::MemoryConfig,
+        _export_mem: &crate::component_instantiation::MemoryConfig,
+    ) -> bool {
+        // Simplified compatibility check
+        true
+    }
+}
+
+impl LinkGraph {
+    /// Create a new empty link graph
+    pub fn new() -> Self {
+        Self { nodes: Vec::new(), edges: Vec::new() }
+    }
+
+    /// Add a component to the graph
+    pub fn add_component(&mut self, component_id: ComponentId) -> Result<()> {
+        // Check if component already exists
+        if self.find_node_index(&component_id).is_some() {
+            return Err(Error::new(
+                ErrorCategory::Validation,
+                codes::DUPLICATE_COMPONENT,
+                "Component already exists in graph",
+            ));
+        }
+
+        let node = GraphNode {
+            component_id,
+            index: self.nodes.len(),
+            dependencies: Vec::new(),
+            dependents: Vec::new(),
+        };
+
+        self.nodes.push(node);
         Ok(())
     }
 
-    /// Check if an import is satisfied internally within the composite
-    fn is_import_satisfied_internally(
+    /// Remove a component from the graph
+    pub fn remove_component(&mut self, component_id: &ComponentId) -> Result<()> {
+        let node_index = self.find_node_index(component_id).ok_or_else(|| {
+            Error::new(
+                ErrorCategory::Runtime,
+                codes::COMPONENT_NOT_FOUND,
+                "Component not found in graph",
+            )
+        })?;
+
+        // Remove all edges involving this node
+        self.edges.retain(|edge| edge.from != node_index && edge.to != node_index);
+
+        // Remove the node
+        self.nodes.remove(node_index);
+
+        // Update indices in remaining nodes and edges
+        for node in &mut self.nodes[node_index..] {
+            node.index -= 1;
+        }
+
+        for edge in &mut self.edges {
+            if edge.from > node_index {
+                edge.from -= 1;
+            }
+            if edge.to > node_index {
+                edge.to -= 1;
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Perform topological sort to determine instantiation order
+    pub fn topological_sort(&self) -> Result<Vec<ComponentId>> {
+        let mut visited = vec![false; self.nodes.len()];
+        let mut temp_visited = vec![false; self.nodes.len()];
+        let mut result = Vec::new();
+
+        for i in 0..self.nodes.len() {
+            if !visited[i] {
+                self.topological_sort_visit(i, &mut visited, &mut temp_visited, &mut result)?;
+            }
+        }
+
+        result.reverse();
+        Ok(result)
+    }
+
+    fn topological_sort_visit(
         &self,
-        _instance_id: ComponentInstanceId,
-        _import_name: &BoundedString<64>,
-    ) -> bool {
-        // This would check if the import is resolved by another component in the composite
-        false
+        node_index: usize,
+        visited: &mut Vec<bool>,
+        temp_visited: &mut Vec<bool>,
+        result: &mut Vec<ComponentId>,
+    ) -> Result<()> {
+        if temp_visited[node_index] {
+            return Err(Error::new(
+                ErrorCategory::Validation,
+                codes::CIRCULAR_DEPENDENCY,
+                "Circular dependency detected",
+            ));
+        }
+
+        if visited[node_index] {
+            return Ok(());
+        }
+
+        temp_visited[node_index] = true;
+
+        // Visit dependencies first
+        for &dep_index in &self.nodes[node_index].dependencies {
+            self.topological_sort_visit(dep_index, visited, temp_visited, result)?;
+        }
+
+        temp_visited[node_index] = false;
+        visited[node_index] = true;
+        result.push(self.nodes[node_index].component_id.clone());
+
+        Ok(())
     }
 
-    /// Get the type registry
-    pub fn type_registry(&self) -> &GenerativeTypeRegistry {
-        &self.type_registry
-    }
-
-    /// Get the type registry mutably
-    pub fn type_registry_mut(&mut self) -> &mut GenerativeTypeRegistry {
-        &mut self.type_registry
+    fn find_node_index(&self, component_id: &ComponentId) -> Option<usize> {
+        self.nodes.iter().find(|node| &node.component_id == component_id).map(|node| node.index)
     }
 }
 
@@ -439,101 +587,87 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_component_linker_creation() {
+    fn test_linker_creation() {
         let linker = ComponentLinker::new();
         assert_eq!(linker.components.len(), 0);
         assert_eq!(linker.instances.len(), 0);
-        assert_eq!(linker.export_registry.len(), 0);
+        assert_eq!(linker.next_instance_id, 1);
     }
 
     #[test]
-    fn test_register_component() {
+    fn test_add_component() {
         let mut linker = ComponentLinker::new();
-        let name = BoundedString::from_str("test-component").unwrap();
-        let component = Component {
-            name: Some(String::from("test")),
-            modules: Vec::new(),
-            core_instances: Vec::new(),
-            core_types: Vec::new(),
-            components: Vec::new(),
-            instances: Vec::new(),
-            aliases: Vec::new(),
-            types: Vec::new(),
-            canonicals: Vec::new(),
-            start: None,
-            imports: Vec::new(),
-            exports: Vec::new(),
-        };
+        let binary = vec![0x00, 0x61, 0x73, 0x6d]; // "wasm" magic
 
-        assert!(linker.register_component(name.clone(), component.clone()).is_ok());
-        
-        // Registering again should fail
-        assert!(linker.register_component(name, component).is_err());
+        let result = linker.add_component("test_component".to_string(), &binary);
+        assert!(result.is_ok());
+        assert_eq!(linker.components.len(), 1);
+        assert_eq!(linker.stats.components_registered, 1);
     }
 
     #[test]
-    fn test_create_composite() {
+    fn test_remove_component() {
         let mut linker = ComponentLinker::new();
-        
-        // Register two components
-        let comp1 = Component {
-            name: Some(String::from("producer")),
-            exports: vec![],
-            ..Default::default()
-        };
-        
-        let comp2 = Component {
-            name: Some(String::from("consumer")),
-            imports: vec![Import {
-                name: BoundedString::from_str("consume").unwrap(),
-                import_type: ImportType::Func,
-            }],
-            ..Default::default()
-        };
+        let binary = vec![0x00, 0x61, 0x73, 0x6d];
 
-        linker.register_component(BoundedString::from_str("producer").unwrap(), comp1).unwrap();
-        linker.register_component(BoundedString::from_str("consumer").unwrap(), comp2).unwrap();
+        linker.add_component("test_component".to_string(), &binary).unwrap();
+        assert_eq!(linker.components.len(), 1);
 
-        // Create linkage descriptor
-        let binding = Binding {
-            import_name: BoundedString::from_str("consume").unwrap(),
-            export_name: BoundedString::from_str("produce").unwrap(),
-            type_constraint: Some(TypeConstraint::Equal),
-        };
-
-        let mut bindings = BoundedVec::new();
-        bindings.push(binding).unwrap();
-
-        let descriptor = LinkageDescriptor {
-            source: BoundedString::from_str("producer").unwrap(),
-            target: BoundedString::from_str("consumer").unwrap(),
-            bindings,
-        };
-
-        // Create composite
-        let composite = linker.create_composite(
-            BoundedString::from_str("composite").unwrap(),
-            vec![descriptor],
-        );
-
-        assert!(composite.is_ok());
-        let composite = composite.unwrap();
-        assert_eq!(composite.name.as_str(), "composite");
-        assert_eq!(composite.instances.len(), 2);
+        let result = linker.remove_component(&"test_component".to_string());
+        assert!(result.is_ok());
+        assert_eq!(linker.components.len(), 0);
     }
 
     #[test]
-    fn test_type_constraints() {
-        let linker = ComponentLinker::new();
-        let export_value = ExportValue::FunctionExport(crate::instantiation::FunctionExport {
-            type_index: 0,
-            code_offset: 0,
-        });
+    fn test_link_graph_operations() {
+        let mut graph = LinkGraph::new();
 
-        // Test equal constraint
-        assert!(linker.verify_type_constraint(&export_value, &TypeConstraint::Equal).is_ok());
-        
-        // Test subtype constraint
-        assert!(linker.verify_type_constraint(&export_value, &TypeConstraint::Subtype).is_ok());
+        // Add components
+        graph.add_component("comp1".to_string()).unwrap();
+        graph.add_component("comp2".to_string()).unwrap();
+        assert_eq!(graph.nodes.len(), 2);
+
+        // Remove component
+        graph.remove_component(&"comp1".to_string()).unwrap();
+        assert_eq!(graph.nodes.len(), 1);
+        assert_eq!(graph.nodes[0].component_id, "comp2");
+    }
+
+    #[test]
+    fn test_topological_sort_empty() {
+        let graph = LinkGraph::new();
+        let result = graph.topological_sort().unwrap();
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn test_topological_sort_single() {
+        let mut graph = LinkGraph::new();
+        graph.add_component("comp1".to_string()).unwrap();
+
+        let result = graph.topological_sort().unwrap();
+        assert_eq!(result, vec!["comp1".to_string()]);
+    }
+
+    #[test]
+    fn test_linker_config_default() {
+        let config = LinkerConfig::default();
+        assert!(config.strict_typing);
+        assert!(!config.allow_hot_swap);
+        assert_eq!(config.max_instance_memory, 64 * 1024 * 1024);
+        assert!(config.validate_dependencies);
+        assert_eq!(config.circular_dependency_mode, CircularDependencyMode::Reject);
+    }
+
+    #[test]
+    fn test_linking_stats() {
+        let mut linker = ComponentLinker::new();
+        let binary = vec![0x00, 0x61, 0x73, 0x6d];
+
+        linker.add_component("test".to_string(), &binary).unwrap();
+
+        let stats = linker.get_stats();
+        assert_eq!(stats.components_registered, 1);
+        assert_eq!(stats.instances_created, 0);
     }
 }

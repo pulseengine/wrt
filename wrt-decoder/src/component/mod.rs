@@ -8,6 +8,9 @@
 //! components from binary format.
 
 pub mod analysis;
+pub mod binary_parser;
+#[cfg(test)]
+pub mod binary_parser_tests;
 pub mod component_name_section;
 pub mod decode;
 // Add no_alloc module for no-std, no-alloc support
@@ -26,6 +29,10 @@ pub use analysis::{
     analyze_component, analyze_component_extended, extract_embedded_modules, extract_inline_module,
     extract_module_info, is_valid_module, AliasInfo, ComponentSummary, CoreInstanceInfo,
     CoreModuleInfo, ExtendedExportInfo, ExtendedImportInfo, ModuleExportInfo, ModuleImportInfo,
+};
+pub use binary_parser::{
+    parse_component_binary, parse_component_binary_with_validation, ComponentBinaryParser,
+    ComponentHeader, ComponentSectionId, ValidationLevel,
 };
 #[cfg(feature = "alloc")]
 pub use decode::decode_component as decode_component_internal;
@@ -145,11 +152,7 @@ fn parse_component_sections(data: &[u8], component: &mut Component) -> Result<()
             return Err(Error::new(
                 ErrorCategory::Parse,
                 codes::PARSE_ERROR,
-                format!(
-                    "Section size {} exceeds remaining data size {}",
-                    section_size,
-                    data.len() - offset
-                ),
+"Section size exceeds remaining data size",
             ));
         }
 
