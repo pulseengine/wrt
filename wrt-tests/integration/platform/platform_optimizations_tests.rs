@@ -194,7 +194,7 @@ fn test_performance_comparison() {
     let opt_provider = create_platform_provider();
     
     // Create standard and optimized collections
-    let mut std_vec = BoundedVec::<u32, 1000, NoStdProvider>::new(std_provider.clone()).unwrap();
+    let mut std_vec = BoundedVec::<u32, 1000, NoStdProvider<1024>>::new(std_provider.clone()).unwrap();
     let mut opt_vec = OptimizedVec::<u32, 1000>::new(opt_provider.clone()).unwrap();
     
     // Benchmark standard collection

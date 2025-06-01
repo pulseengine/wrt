@@ -29,21 +29,20 @@ extern crate std;
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 extern crate alloc;
 
-// Panic handler for no_std builds
-#[cfg(not(feature = "std"))]
-#[panic_handler]
-fn panic(_info: &core::panic::PanicInfo) -> ! {
-    loop {}
-}
+// Panic handler is provided by wrt-platform when needed
 
 // Re-export prelude module publicly
 pub use prelude::*;
 
 // Core modules
+pub mod atomic_execution;
+pub mod atomic_memory_model;
+pub mod branch_prediction;
 pub mod cfi_engine;
 pub mod execution;
 pub mod func;
 pub mod global;
+pub mod interpreter_optimization;
 pub mod memory;
 pub mod memory_adapter;
 pub mod memory_helpers;
@@ -53,14 +52,32 @@ pub mod module_instance;
 pub mod prelude;
 pub mod stackless;
 pub mod table;
+pub mod thread_manager;
 pub mod types;
 
 // Re-export commonly used types
+pub use atomic_execution::{AtomicMemoryContext, AtomicExecutionStats};
+pub use atomic_memory_model::{
+    AtomicMemoryModel, MemoryOrderingPolicy, ConsistencyValidationResult,
+    MemoryModelPerformanceMetrics, DataRaceReport, OrderingViolationReport,
+};
+pub use branch_prediction::{
+    BranchLikelihood, BranchPrediction, FunctionBranchPredictor, ModuleBranchPredictor,
+    PredictiveExecutionContext, PredictionStats,
+};
 pub use cfi_engine::{
     CfiEngineStatistics, CfiExecutionEngine, CfiExecutionResult, CfiViolationPolicy,
     CfiViolationType, ExecutionResult,
 };
 pub use execution::{ExecutionContext, ExecutionStats};
+pub use interpreter_optimization::{
+    OptimizedInterpreter, OptimizationStrategy, OptimizationMetrics, 
+    BranchOptimizationResult, ExecutionPath,
+};
+pub use thread_manager::{
+    ThreadManager, ThreadConfig, ThreadInfo, ThreadState, ThreadExecutionContext,
+    ThreadExecutionStats, ThreadManagerStats, ThreadId,
+};
 pub use func::FuncType;
 pub use global::Global;
 pub use memory::Memory;

@@ -11,15 +11,11 @@ use std::{fmt, mem, slice};
 #[cfg(any(feature = "std", feature = "alloc"))]
 use alloc::{boxed::Box, vec::Vec};
 
-use wrt_foundation::{
-    bounded::BoundedVec,
-    component_value::ComponentValue,
-    prelude::*,
-};
+use wrt_foundation::{bounded::BoundedVec, component_value::ComponentValue, prelude::*};
 
 use crate::{
     adapter::CoreValType,
-    types::{Value, ValType},
+    types::{ValType, Value},
     WrtResult,
 };
 
@@ -42,13 +38,13 @@ pub struct ComponentMemoryManager {
     memories: Vec<ComponentMemory>,
     #[cfg(not(any(feature = "std", feature = "alloc")))]
     memories: BoundedVec<ComponentMemory, MAX_MEMORIES>,
-    
+
     /// Memory sharing policies
     #[cfg(any(feature = "std", feature = "alloc"))]
     sharing_policies: Vec<MemorySharingPolicy>,
     #[cfg(not(any(feature = "std", feature = "alloc")))]
     sharing_policies: BoundedVec<MemorySharingPolicy, MAX_MEMORIES>,
-    
+
     /// Total allocated memory in bytes
     total_allocated: usize,
     /// Maximum allowed memory
@@ -62,7 +58,7 @@ pub struct ComponentTableManager {
     tables: Vec<ComponentTable>,
     #[cfg(not(any(feature = "std", feature = "alloc")))]
     tables: BoundedVec<ComponentTable, MAX_TABLES>,
-    
+
     /// Table sharing policies
     #[cfg(any(feature = "std", feature = "alloc"))]
     sharing_policies: Vec<TableSharingPolicy>,
@@ -230,12 +226,12 @@ impl ComponentMemoryManager {
         owner: Option<u32>,
     ) -> WrtResult<u32> {
         let memory_id = self.memories.len() as u32;
-        
+
         // Check memory limits
         let initial_size = limits.min as usize * WASM_PAGE_SIZE;
         if self.total_allocated + initial_size > self.max_memory {
             return Err(wrt_foundation::WrtError::ResourceExhausted(
-                "Memory limit exceeded".into()
+                "Memory limit exceeded".into(),
             ));
         }
 
@@ -295,13 +291,14 @@ impl ComponentMemoryManager {
         size: u32,
         instance_id: Option<u32>,
     ) -> WrtResult<Vec<u8>> {
-        let memory = self.get_memory(memory_id)
+        let memory = self
+            .get_memory(memory_id)
             .ok_or_else(|| wrt_foundation::WrtError::InvalidInput("Memory not found".into()))?;
 
         // Check permissions
         if !self.check_read_permission(memory_id, instance_id)? {
             return Err(wrt_foundation::WrtError::PermissionDenied(
-                "Read permission denied".into()
+                "Read permission denied".into(),
             ));
         }
 
@@ -309,7 +306,7 @@ impl ComponentMemoryManager {
         let end_offset = offset as usize + size as usize;
         if end_offset > memory.data.len() {
             return Err(wrt_foundation::WrtError::InvalidInput(
-                "Memory access out of bounds".into()
+                "Memory access out of bounds".into(),
             ));
         }
 
@@ -345,7 +342,8 @@ impl ComponentMemoryManager {
             });
         }
 
-        let memory = self.get_memory_mut(memory_id)
+        let memory = self
+            .get_memory_mut(memory_id)
             .ok_or_else(|| wrt_foundation::WrtError::InvalidInput("Memory not found".into()))?;
 
         // Check bounds
@@ -354,7 +352,9 @@ impl ComponentMemoryManager {
             return Ok(MemoryAccess {
                 success: false,
                 bytes_accessed: 0,
-                error: Some(BoundedString::from_str("Memory access out of bounds").unwrap_or_default()),
+                error: Some(
+                    BoundedString::from_str("Memory access out of bounds").unwrap_or_default(),
+                ),
             });
         }
 
@@ -363,11 +363,7 @@ impl ComponentMemoryManager {
             memory.data[offset as usize + i] = byte;
         }
 
-        Ok(MemoryAccess {
-            success: true,
-            bytes_accessed: data.len(),
-            error: None,
-        })
+        Ok(MemoryAccess { success: true, bytes_accessed: data.len(), error: None })
     }
 
     /// Grow memory
@@ -377,13 +373,14 @@ impl ComponentMemoryManager {
         pages: u32,
         instance_id: Option<u32>,
     ) -> WrtResult<u32> {
-        let memory = self.get_memory_mut(memory_id)
+        let memory = self
+            .get_memory_mut(memory_id)
             .ok_or_else(|| wrt_foundation::WrtError::InvalidInput("Memory not found".into()))?;
 
         // Check permissions
         if !self.check_write_permission(memory_id, instance_id)? {
             return Err(wrt_foundation::WrtError::PermissionDenied(
-                "Write permission denied".into()
+                "Write permission denied".into(),
             ));
         }
 
@@ -394,7 +391,7 @@ impl ComponentMemoryManager {
         if let Some(max) = memory.limits.max {
             if new_pages > max as usize {
                 return Err(wrt_foundation::WrtError::InvalidInput(
-                    "Memory growth exceeds maximum".into()
+                    "Memory growth exceeds maximum".into(),
                 ));
             }
         }
@@ -403,7 +400,7 @@ impl ComponentMemoryManager {
         let additional_size = pages as usize * WASM_PAGE_SIZE;
         if self.total_allocated + additional_size > self.max_memory {
             return Err(wrt_foundation::WrtError::ResourceExhausted(
-                "Memory limit exceeded".into()
+                "Memory limit exceeded".into(),
             ));
         }
 
@@ -428,7 +425,8 @@ impl ComponentMemoryManager {
 
     /// Check read permission
     fn check_read_permission(&self, memory_id: u32, instance_id: Option<u32>) -> WrtResult<bool> {
-        let memory = self.get_memory(memory_id)
+        let memory = self
+            .get_memory(memory_id)
             .ok_or_else(|| wrt_foundation::WrtError::InvalidInput("Memory not found".into()))?;
 
         if !memory.permissions.read {
@@ -445,14 +443,15 @@ impl ComponentMemoryManager {
         // If no policy, check ownership
         match (memory.owner, instance_id) {
             (Some(owner), Some(instance)) => Ok(owner == instance),
-            (None, _) => Ok(true), // Unowned memory is accessible
+            (None, _) => Ok(true),        // Unowned memory is accessible
             (Some(_), None) => Ok(false), // Owned memory needs instance
         }
     }
 
     /// Check write permission
     fn check_write_permission(&self, memory_id: u32, instance_id: Option<u32>) -> WrtResult<bool> {
-        let memory = self.get_memory(memory_id)
+        let memory = self
+            .get_memory(memory_id)
             .ok_or_else(|| wrt_foundation::WrtError::InvalidInput("Memory not found".into()))?;
 
         if !memory.permissions.write {
@@ -485,7 +484,11 @@ impl ComponentMemoryManager {
     }
 
     /// Check if instance is allowed
-    fn check_instance_allowed(&self, allowed_instances: &[u32], instance_id: Option<u32>) -> WrtResult<bool> {
+    fn check_instance_allowed(
+        &self,
+        allowed_instances: &[u32],
+        instance_id: Option<u32>,
+    ) -> WrtResult<bool> {
         match instance_id {
             Some(id) => Ok(allowed_instances.contains(&id)),
             None => Ok(false),
@@ -556,13 +559,7 @@ impl ComponentTableManager {
             }
         }
 
-        let table = ComponentTable {
-            id: table_id,
-            elements,
-            element_type,
-            limits,
-            owner,
-        };
+        let table = ComponentTable { id: table_id, elements, element_type, limits, owner };
 
         #[cfg(any(feature = "std", feature = "alloc"))]
         {
@@ -590,11 +587,13 @@ impl ComponentTableManager {
 
     /// Get table element
     pub fn get_element(&self, table_id: u32, index: u32) -> WrtResult<&TableElement> {
-        let table = self.get_table(table_id)
+        let table = self
+            .get_table(table_id)
             .ok_or_else(|| wrt_foundation::WrtError::InvalidInput("Table not found".into()))?;
 
-        table.elements.get(index as usize)
-            .ok_or_else(|| wrt_foundation::WrtError::InvalidInput("Table index out of bounds".into()))
+        table.elements.get(index as usize).ok_or_else(|| {
+            wrt_foundation::WrtError::InvalidInput("Table index out of bounds".into())
+        })
     }
 
     /// Set table element
@@ -604,13 +603,12 @@ impl ComponentTableManager {
         index: u32,
         element: TableElement,
     ) -> WrtResult<()> {
-        let table = self.get_table_mut(table_id)
+        let table = self
+            .get_table_mut(table_id)
             .ok_or_else(|| wrt_foundation::WrtError::InvalidInput("Table not found".into()))?;
 
         if index as usize >= table.elements.len() {
-            return Err(wrt_foundation::WrtError::InvalidInput(
-                "Table index out of bounds".into()
-            ));
+            return Err(wrt_foundation::WrtError::InvalidInput("Table index out of bounds".into()));
         }
 
         table.elements[index as usize] = element;
@@ -619,7 +617,8 @@ impl ComponentTableManager {
 
     /// Grow table
     pub fn grow_table(&mut self, table_id: u32, size: u32, init: TableElement) -> WrtResult<u32> {
-        let table = self.get_table_mut(table_id)
+        let table = self
+            .get_table_mut(table_id)
             .ok_or_else(|| wrt_foundation::WrtError::InvalidInput("Table not found".into()))?;
 
         let current_size = table.elements.len();
@@ -629,7 +628,7 @@ impl ComponentTableManager {
         if let Some(max) = table.limits.max {
             if new_size > max as usize {
                 return Err(wrt_foundation::WrtError::InvalidInput(
-                    "Table growth exceeds maximum".into()
+                    "Table growth exceeds maximum".into(),
                 ));
             }
         }
@@ -686,11 +685,7 @@ impl Default for ComponentTableManager {
 
 impl Default for MemoryPermissions {
     fn default() -> Self {
-        Self {
-            read: true,
-            write: true,
-            execute: false,
-        }
+        Self { read: true, write: true, execute: false }
     }
 }
 
@@ -720,7 +715,7 @@ mod tests {
     fn test_create_memory() {
         let mut manager = ComponentMemoryManager::new();
         let limits = MemoryLimits { min: 1, max: Some(10) };
-        
+
         let memory_id = manager.create_memory(limits, false, Some(1)).unwrap();
         assert_eq!(memory_id, 0);
         assert_eq!(manager.memory_count(), 1);
@@ -731,15 +726,15 @@ mod tests {
     fn test_memory_access() {
         let mut manager = ComponentMemoryManager::new();
         let limits = MemoryLimits { min: 1, max: None };
-        
+
         let memory_id = manager.create_memory(limits, false, Some(1)).unwrap();
-        
+
         // Write data
         let data = vec![1, 2, 3, 4];
         let access = manager.write_memory(memory_id, 0, &data, Some(1)).unwrap();
         assert!(access.success);
         assert_eq!(access.bytes_accessed, 4);
-        
+
         // Read data back
         let read_data = manager.read_memory(memory_id, 0, 4, Some(1)).unwrap();
         assert_eq!(read_data, data);
@@ -755,7 +750,7 @@ mod tests {
     fn test_create_table() {
         let mut manager = ComponentTableManager::new();
         let limits = TableLimits { min: 10, max: Some(100) };
-        
+
         let table_id = manager.create_table(CoreValType::FuncRef, limits, Some(1)).unwrap();
         assert_eq!(table_id, 0);
         assert_eq!(manager.table_count(), 1);
@@ -765,13 +760,13 @@ mod tests {
     fn test_table_access() {
         let mut manager = ComponentTableManager::new();
         let limits = TableLimits { min: 10, max: None };
-        
+
         let table_id = manager.create_table(CoreValType::FuncRef, limits, Some(1)).unwrap();
-        
+
         // Set element
         let element = TableElement::FuncRef(42);
         manager.set_element(table_id, 0, element.clone()).unwrap();
-        
+
         // Get element back
         let retrieved = manager.get_element(table_id, 0).unwrap();
         match (retrieved, &element) {

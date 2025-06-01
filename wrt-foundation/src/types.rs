@@ -161,6 +161,10 @@ pub enum ValueType {
     FuncRef,
     /// External reference
     ExternRef,
+    /// Struct reference (WebAssembly 3.0 GC)
+    StructRef(u32),  // type index
+    /// Array reference (WebAssembly 3.0 GC)
+    ArrayRef(u32),   // type index
 }
 
 impl core::fmt::Debug for ValueType {
@@ -175,6 +179,12 @@ impl core::fmt::Debug for ValueType {
             Self::I16x8 => write!(f, "I16x8"),
             Self::FuncRef => write!(f, "FuncRef"),
             Self::ExternRef => write!(f, "ExternRef"),
+            Self::StructRef(idx) => {
+                f.debug_tuple("StructRef").field(idx).finish()
+            }
+            Self::ArrayRef(idx) => {
+                f.debug_tuple("ArrayRef").field(idx).finish()
+            }
         }
     }
 }
@@ -184,6 +194,9 @@ impl ValueType {
     ///
     /// Uses the standardized conversion utility for consistency
     /// across all crates.
+    /// 
+    /// Note: StructRef and ArrayRef require additional type index data
+    /// and should be parsed with `from_binary_with_index`.
     pub fn from_binary(byte: u8) -> Result<Self> {
         match byte {
             0x7F => Ok(ValueType::I32),
@@ -204,6 +217,27 @@ impl ValueType {
         }
     }
 
+    /// Create a value type from binary representation with type index for aggregate types
+    pub fn from_binary_with_index(byte: u8, type_index: u32) -> Result<Self> {
+        match byte {
+            0x7F => Ok(ValueType::I32),
+            0x7E => Ok(ValueType::I64),
+            0x7D => Ok(ValueType::F32),
+            0x7C => Ok(ValueType::F64),
+            0x7B => Ok(ValueType::V128),
+            0x79 => Ok(ValueType::I16x8),
+            0x70 => Ok(ValueType::FuncRef),
+            0x6F => Ok(ValueType::ExternRef),
+            0x6E => Ok(ValueType::StructRef(type_index)), // New: struct reference
+            0x6D => Ok(ValueType::ArrayRef(type_index)),  // New: array reference
+            _ => Err(Error::new(
+                ErrorCategory::Parse,
+                wrt_error::codes::PARSE_INVALID_VALTYPE_BYTE,
+                "Invalid value type byte",
+            )),
+        }
+    }
+
     /// Convert to the WebAssembly binary format value
     ///
     /// Uses the standardized conversion utility for consistency
@@ -219,6 +253,17 @@ impl ValueType {
             ValueType::I16x8 => 0x79,
             ValueType::FuncRef => 0x70,
             ValueType::ExternRef => 0x6F,
+            ValueType::StructRef(_) => 0x6E,
+            ValueType::ArrayRef(_) => 0x6D,
+        }
+    }
+
+    /// Get the type index for aggregate types (struct/array references)
+    #[must_use]
+    pub fn type_index(self) -> Option<u32> {
+        match self {
+            ValueType::StructRef(idx) | ValueType::ArrayRef(idx) => Some(idx),
+            _ => None,
         }
     }
 
@@ -229,7 +274,7 @@ impl ValueType {
             Self::I32 | Self::F32 => 4,
             Self::I64 | Self::F64 => 8,
             Self::V128 | Self::I16x8 => 16, // COMBINED ARMS
-            Self::FuncRef | Self::ExternRef => {
+            Self::FuncRef | Self::ExternRef | Self::StructRef(_) | Self::ArrayRef(_) => {
                 // Size of a reference can vary. Using usize for simplicity.
                 // In a real scenario, this might depend on target architecture (32/64 bit).
                 core::mem::size_of::<usize>()
@@ -683,6 +728,19 @@ pub enum Instruction<P: MemoryProvider + Clone + core::fmt::Debug + PartialEq + 
     Return,
     Call(FuncIdx),
     CallIndirect(TypeIdx, TableIdx),
+    
+    // Tail call instructions (0x12 and 0x13 opcodes)
+    ReturnCall(FuncIdx),
+    ReturnCallIndirect(TypeIdx, TableIdx),
+    
+    // Branch hinting instructions (0xD5 and 0xD6 opcodes)
+    BrOnNull(LabelIdx),
+    BrOnNonNull(LabelIdx),
+    
+    // Type reflection instructions
+    RefIsNull,
+    RefAsNonNull,
+    RefEq,
 
     // Placeholder for more instructions
     LocalGet(LocalIdx),
@@ -694,6 +752,91 @@ pub enum Instruction<P: MemoryProvider + Clone + core::fmt::Debug + PartialEq + 
     I32Const(i32),
     I64Const(i64),
     // ... other consts, loads, stores, numeric ops ...
+    
+    // Atomic memory operations (0xFE prefix in WebAssembly)
+    MemoryAtomicNotify { memarg: MemArg },
+    MemoryAtomicWait32 { memarg: MemArg },
+    MemoryAtomicWait64 { memarg: MemArg },
+    
+    // Atomic loads
+    I32AtomicLoad { memarg: MemArg },
+    I64AtomicLoad { memarg: MemArg },
+    I32AtomicLoad8U { memarg: MemArg },
+    I32AtomicLoad16U { memarg: MemArg },
+    I64AtomicLoad8U { memarg: MemArg },
+    I64AtomicLoad16U { memarg: MemArg },
+    I64AtomicLoad32U { memarg: MemArg },
+    
+    // Atomic stores
+    I32AtomicStore { memarg: MemArg },
+    I64AtomicStore { memarg: MemArg },
+    I32AtomicStore8 { memarg: MemArg },
+    I32AtomicStore16 { memarg: MemArg },
+    I64AtomicStore8 { memarg: MemArg },
+    I64AtomicStore16 { memarg: MemArg },
+    I64AtomicStore32 { memarg: MemArg },
+    
+    // Atomic read-modify-write operations
+    I32AtomicRmwAdd { memarg: MemArg },
+    I64AtomicRmwAdd { memarg: MemArg },
+    I32AtomicRmw8AddU { memarg: MemArg },
+    I32AtomicRmw16AddU { memarg: MemArg },
+    I64AtomicRmw8AddU { memarg: MemArg },
+    I64AtomicRmw16AddU { memarg: MemArg },
+    I64AtomicRmw32AddU { memarg: MemArg },
+    
+    I32AtomicRmwSub { memarg: MemArg },
+    I64AtomicRmwSub { memarg: MemArg },
+    I32AtomicRmw8SubU { memarg: MemArg },
+    I32AtomicRmw16SubU { memarg: MemArg },
+    I64AtomicRmw8SubU { memarg: MemArg },
+    I64AtomicRmw16SubU { memarg: MemArg },
+    I64AtomicRmw32SubU { memarg: MemArg },
+    
+    I32AtomicRmwAnd { memarg: MemArg },
+    I64AtomicRmwAnd { memarg: MemArg },
+    I32AtomicRmw8AndU { memarg: MemArg },
+    I32AtomicRmw16AndU { memarg: MemArg },
+    I64AtomicRmw8AndU { memarg: MemArg },
+    I64AtomicRmw16AndU { memarg: MemArg },
+    I64AtomicRmw32AndU { memarg: MemArg },
+    
+    I32AtomicRmwOr { memarg: MemArg },
+    I64AtomicRmwOr { memarg: MemArg },
+    I32AtomicRmw8OrU { memarg: MemArg },
+    I32AtomicRmw16OrU { memarg: MemArg },
+    I64AtomicRmw8OrU { memarg: MemArg },
+    I64AtomicRmw16OrU { memarg: MemArg },
+    I64AtomicRmw32OrU { memarg: MemArg },
+    
+    I32AtomicRmwXor { memarg: MemArg },
+    I64AtomicRmwXor { memarg: MemArg },
+    I32AtomicRmw8XorU { memarg: MemArg },
+    I32AtomicRmw16XorU { memarg: MemArg },
+    I64AtomicRmw8XorU { memarg: MemArg },
+    I64AtomicRmw16XorU { memarg: MemArg },
+    I64AtomicRmw32XorU { memarg: MemArg },
+    
+    I32AtomicRmwXchg { memarg: MemArg },
+    I64AtomicRmwXchg { memarg: MemArg },
+    I32AtomicRmw8XchgU { memarg: MemArg },
+    I32AtomicRmw16XchgU { memarg: MemArg },
+    I64AtomicRmw8XchgU { memarg: MemArg },
+    I64AtomicRmw16XchgU { memarg: MemArg },
+    I64AtomicRmw32XchgU { memarg: MemArg },
+    
+    // Atomic compare-exchange operations
+    I32AtomicRmwCmpxchg { memarg: MemArg },
+    I64AtomicRmwCmpxchg { memarg: MemArg },
+    I32AtomicRmw8CmpxchgU { memarg: MemArg },
+    I32AtomicRmw16CmpxchgU { memarg: MemArg },
+    I64AtomicRmw8CmpxchgU { memarg: MemArg },
+    I64AtomicRmw16CmpxchgU { memarg: MemArg },
+    I64AtomicRmw32CmpxchgU { memarg: MemArg },
+    
+    // Atomic fence
+    AtomicFence,
+    
     #[doc(hidden)]
     _Phantom(core::marker::PhantomData<P>),
 }
@@ -745,6 +888,32 @@ impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq + D
                 type_idx.update_checksum(checksum);
                 table_idx.update_checksum(checksum);
             }
+            Instruction::ReturnCall(func_idx) => {
+                checksum.update_slice(&[0x12]); // Tail call opcode
+                func_idx.update_checksum(checksum);
+            }
+            Instruction::ReturnCallIndirect(type_idx, table_idx) => {
+                checksum.update_slice(&[0x13]); // Tail call indirect opcode
+                type_idx.update_checksum(checksum);
+                table_idx.update_checksum(checksum);
+            }
+            Instruction::BrOnNull(label_idx) => {
+                checksum.update_slice(&[0xD5]); // br_on_null opcode
+                label_idx.update_checksum(checksum);
+            }
+            Instruction::BrOnNonNull(label_idx) => {
+                checksum.update_slice(&[0xD6]); // br_on_non_null opcode
+                label_idx.update_checksum(checksum);
+            }
+            Instruction::RefIsNull => {
+                checksum.update_slice(&[0xD1]); // ref.is_null opcode
+            }
+            Instruction::RefAsNonNull => {
+                checksum.update_slice(&[0xD3]); // ref.as_non_null opcode
+            }
+            Instruction::RefEq => {
+                checksum.update_slice(&[0xD2]); // ref.eq opcode
+            }
             Instruction::LocalGet(idx)
             | Instruction::LocalSet(idx)
             | Instruction::LocalTee(idx) => {
@@ -773,6 +942,290 @@ impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq + D
                 checksum.update_slice(&[0x42]);
                 val.update_checksum(checksum);
             }
+            // Atomic memory operations (0xFE prefix in WebAssembly)
+            Instruction::MemoryAtomicNotify { memarg } => {
+                checksum.update_slice(&[0xFE, 0x00]);
+                memarg.update_checksum(checksum);
+            }
+            Instruction::MemoryAtomicWait32 { memarg } => {
+                checksum.update_slice(&[0xFE, 0x01]);
+                memarg.update_checksum(checksum);
+            }
+            Instruction::MemoryAtomicWait64 { memarg } => {
+                checksum.update_slice(&[0xFE, 0x02]);
+                memarg.update_checksum(checksum);
+            }
+            
+            // Atomic loads
+            Instruction::I32AtomicLoad { memarg } => {
+                checksum.update_slice(&[0xFE, 0x10]);
+                memarg.update_checksum(checksum);
+            }
+            Instruction::I64AtomicLoad { memarg } => {
+                checksum.update_slice(&[0xFE, 0x11]);
+                memarg.update_checksum(checksum);
+            }
+            Instruction::I32AtomicLoad8U { memarg } => {
+                checksum.update_slice(&[0xFE, 0x12]);
+                memarg.update_checksum(checksum);
+            }
+            Instruction::I32AtomicLoad16U { memarg } => {
+                checksum.update_slice(&[0xFE, 0x13]);
+                memarg.update_checksum(checksum);
+            }
+            Instruction::I64AtomicLoad8U { memarg } => {
+                checksum.update_slice(&[0xFE, 0x14]);
+                memarg.update_checksum(checksum);
+            }
+            Instruction::I64AtomicLoad16U { memarg } => {
+                checksum.update_slice(&[0xFE, 0x15]);
+                memarg.update_checksum(checksum);
+            }
+            Instruction::I64AtomicLoad32U { memarg } => {
+                checksum.update_slice(&[0xFE, 0x16]);
+                memarg.update_checksum(checksum);
+            }
+            
+            // Atomic stores
+            Instruction::I32AtomicStore { memarg } => {
+                checksum.update_slice(&[0xFE, 0x17]);
+                memarg.update_checksum(checksum);
+            }
+            Instruction::I64AtomicStore { memarg } => {
+                checksum.update_slice(&[0xFE, 0x18]);
+                memarg.update_checksum(checksum);
+            }
+            Instruction::I32AtomicStore8 { memarg } => {
+                checksum.update_slice(&[0xFE, 0x19]);
+                memarg.update_checksum(checksum);
+            }
+            Instruction::I32AtomicStore16 { memarg } => {
+                checksum.update_slice(&[0xFE, 0x1a]);
+                memarg.update_checksum(checksum);
+            }
+            Instruction::I64AtomicStore8 { memarg } => {
+                checksum.update_slice(&[0xFE, 0x1b]);
+                memarg.update_checksum(checksum);
+            }
+            Instruction::I64AtomicStore16 { memarg } => {
+                checksum.update_slice(&[0xFE, 0x1c]);
+                memarg.update_checksum(checksum);
+            }
+            Instruction::I64AtomicStore32 { memarg } => {
+                checksum.update_slice(&[0xFE, 0x1d]);
+                memarg.update_checksum(checksum);
+            }
+            
+            // Atomic read-modify-write operations
+            Instruction::I32AtomicRmwAdd { memarg } => {
+                checksum.update_slice(&[0xFE, 0x1e]);
+                memarg.update_checksum(checksum);
+            }
+            Instruction::I64AtomicRmwAdd { memarg } => {
+                checksum.update_slice(&[0xFE, 0x1f]);
+                memarg.update_checksum(checksum);
+            }
+            Instruction::I32AtomicRmw8AddU { memarg } => {
+                checksum.update_slice(&[0xFE, 0x20]);
+                memarg.update_checksum(checksum);
+            }
+            Instruction::I32AtomicRmw16AddU { memarg } => {
+                checksum.update_slice(&[0xFE, 0x21]);
+                memarg.update_checksum(checksum);
+            }
+            Instruction::I64AtomicRmw8AddU { memarg } => {
+                checksum.update_slice(&[0xFE, 0x22]);
+                memarg.update_checksum(checksum);
+            }
+            Instruction::I64AtomicRmw16AddU { memarg } => {
+                checksum.update_slice(&[0xFE, 0x23]);
+                memarg.update_checksum(checksum);
+            }
+            Instruction::I64AtomicRmw32AddU { memarg } => {
+                checksum.update_slice(&[0xFE, 0x24]);
+                memarg.update_checksum(checksum);
+            }
+            
+            Instruction::I32AtomicRmwSub { memarg } => {
+                checksum.update_slice(&[0xFE, 0x25]);
+                memarg.update_checksum(checksum);
+            }
+            Instruction::I64AtomicRmwSub { memarg } => {
+                checksum.update_slice(&[0xFE, 0x26]);
+                memarg.update_checksum(checksum);
+            }
+            Instruction::I32AtomicRmw8SubU { memarg } => {
+                checksum.update_slice(&[0xFE, 0x27]);
+                memarg.update_checksum(checksum);
+            }
+            Instruction::I32AtomicRmw16SubU { memarg } => {
+                checksum.update_slice(&[0xFE, 0x28]);
+                memarg.update_checksum(checksum);
+            }
+            Instruction::I64AtomicRmw8SubU { memarg } => {
+                checksum.update_slice(&[0xFE, 0x29]);
+                memarg.update_checksum(checksum);
+            }
+            Instruction::I64AtomicRmw16SubU { memarg } => {
+                checksum.update_slice(&[0xFE, 0x2a]);
+                memarg.update_checksum(checksum);
+            }
+            Instruction::I64AtomicRmw32SubU { memarg } => {
+                checksum.update_slice(&[0xFE, 0x2b]);
+                memarg.update_checksum(checksum);
+            }
+            
+            Instruction::I32AtomicRmwAnd { memarg } => {
+                checksum.update_slice(&[0xFE, 0x2c]);
+                memarg.update_checksum(checksum);
+            }
+            Instruction::I64AtomicRmwAnd { memarg } => {
+                checksum.update_slice(&[0xFE, 0x2d]);
+                memarg.update_checksum(checksum);
+            }
+            Instruction::I32AtomicRmw8AndU { memarg } => {
+                checksum.update_slice(&[0xFE, 0x2e]);
+                memarg.update_checksum(checksum);
+            }
+            Instruction::I32AtomicRmw16AndU { memarg } => {
+                checksum.update_slice(&[0xFE, 0x2f]);
+                memarg.update_checksum(checksum);
+            }
+            Instruction::I64AtomicRmw8AndU { memarg } => {
+                checksum.update_slice(&[0xFE, 0x30]);
+                memarg.update_checksum(checksum);
+            }
+            Instruction::I64AtomicRmw16AndU { memarg } => {
+                checksum.update_slice(&[0xFE, 0x31]);
+                memarg.update_checksum(checksum);
+            }
+            Instruction::I64AtomicRmw32AndU { memarg } => {
+                checksum.update_slice(&[0xFE, 0x32]);
+                memarg.update_checksum(checksum);
+            }
+            
+            Instruction::I32AtomicRmwOr { memarg } => {
+                checksum.update_slice(&[0xFE, 0x33]);
+                memarg.update_checksum(checksum);
+            }
+            Instruction::I64AtomicRmwOr { memarg } => {
+                checksum.update_slice(&[0xFE, 0x34]);
+                memarg.update_checksum(checksum);
+            }
+            Instruction::I32AtomicRmw8OrU { memarg } => {
+                checksum.update_slice(&[0xFE, 0x35]);
+                memarg.update_checksum(checksum);
+            }
+            Instruction::I32AtomicRmw16OrU { memarg } => {
+                checksum.update_slice(&[0xFE, 0x36]);
+                memarg.update_checksum(checksum);
+            }
+            Instruction::I64AtomicRmw8OrU { memarg } => {
+                checksum.update_slice(&[0xFE, 0x37]);
+                memarg.update_checksum(checksum);
+            }
+            Instruction::I64AtomicRmw16OrU { memarg } => {
+                checksum.update_slice(&[0xFE, 0x38]);
+                memarg.update_checksum(checksum);
+            }
+            Instruction::I64AtomicRmw32OrU { memarg } => {
+                checksum.update_slice(&[0xFE, 0x39]);
+                memarg.update_checksum(checksum);
+            }
+            
+            Instruction::I32AtomicRmwXor { memarg } => {
+                checksum.update_slice(&[0xFE, 0x3a]);
+                memarg.update_checksum(checksum);
+            }
+            Instruction::I64AtomicRmwXor { memarg } => {
+                checksum.update_slice(&[0xFE, 0x3b]);
+                memarg.update_checksum(checksum);
+            }
+            Instruction::I32AtomicRmw8XorU { memarg } => {
+                checksum.update_slice(&[0xFE, 0x3c]);
+                memarg.update_checksum(checksum);
+            }
+            Instruction::I32AtomicRmw16XorU { memarg } => {
+                checksum.update_slice(&[0xFE, 0x3d]);
+                memarg.update_checksum(checksum);
+            }
+            Instruction::I64AtomicRmw8XorU { memarg } => {
+                checksum.update_slice(&[0xFE, 0x3e]);
+                memarg.update_checksum(checksum);
+            }
+            Instruction::I64AtomicRmw16XorU { memarg } => {
+                checksum.update_slice(&[0xFE, 0x3f]);
+                memarg.update_checksum(checksum);
+            }
+            Instruction::I64AtomicRmw32XorU { memarg } => {
+                checksum.update_slice(&[0xFE, 0x40]);
+                memarg.update_checksum(checksum);
+            }
+            
+            Instruction::I32AtomicRmwXchg { memarg } => {
+                checksum.update_slice(&[0xFE, 0x41]);
+                memarg.update_checksum(checksum);
+            }
+            Instruction::I64AtomicRmwXchg { memarg } => {
+                checksum.update_slice(&[0xFE, 0x42]);
+                memarg.update_checksum(checksum);
+            }
+            Instruction::I32AtomicRmw8XchgU { memarg } => {
+                checksum.update_slice(&[0xFE, 0x43]);
+                memarg.update_checksum(checksum);
+            }
+            Instruction::I32AtomicRmw16XchgU { memarg } => {
+                checksum.update_slice(&[0xFE, 0x44]);
+                memarg.update_checksum(checksum);
+            }
+            Instruction::I64AtomicRmw8XchgU { memarg } => {
+                checksum.update_slice(&[0xFE, 0x45]);
+                memarg.update_checksum(checksum);
+            }
+            Instruction::I64AtomicRmw16XchgU { memarg } => {
+                checksum.update_slice(&[0xFE, 0x46]);
+                memarg.update_checksum(checksum);
+            }
+            Instruction::I64AtomicRmw32XchgU { memarg } => {
+                checksum.update_slice(&[0xFE, 0x47]);
+                memarg.update_checksum(checksum);
+            }
+            
+            // Atomic compare-exchange operations
+            Instruction::I32AtomicRmwCmpxchg { memarg } => {
+                checksum.update_slice(&[0xFE, 0x48]);
+                memarg.update_checksum(checksum);
+            }
+            Instruction::I64AtomicRmwCmpxchg { memarg } => {
+                checksum.update_slice(&[0xFE, 0x49]);
+                memarg.update_checksum(checksum);
+            }
+            Instruction::I32AtomicRmw8CmpxchgU { memarg } => {
+                checksum.update_slice(&[0xFE, 0x4a]);
+                memarg.update_checksum(checksum);
+            }
+            Instruction::I32AtomicRmw16CmpxchgU { memarg } => {
+                checksum.update_slice(&[0xFE, 0x4b]);
+                memarg.update_checksum(checksum);
+            }
+            Instruction::I64AtomicRmw8CmpxchgU { memarg } => {
+                checksum.update_slice(&[0xFE, 0x4c]);
+                memarg.update_checksum(checksum);
+            }
+            Instruction::I64AtomicRmw16CmpxchgU { memarg } => {
+                checksum.update_slice(&[0xFE, 0x4d]);
+                memarg.update_checksum(checksum);
+            }
+            Instruction::I64AtomicRmw32CmpxchgU { memarg } => {
+                checksum.update_slice(&[0xFE, 0x4e]);
+                memarg.update_checksum(checksum);
+            }
+            
+            // Atomic fence
+            Instruction::AtomicFence => {
+                checksum.update_slice(&[0xFE, 0x03]);
+            }
+            
             // Add other instruction checksum logic here
             Instruction::_Phantom(_) => { /* No data to checksum for PhantomData */ }
         }
@@ -821,6 +1274,26 @@ impl<PInstr: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + E
                 writer.write_u32_le(*type_idx)?;
                 writer.write_u32_le(*table_idx)?;
             }
+            Instruction::ReturnCall(idx) => {
+                writer.write_u8(0x12)?; // Tail call opcode
+                writer.write_u32_le(*idx)?;
+            }
+            Instruction::ReturnCallIndirect(type_idx, table_idx) => {
+                writer.write_u8(0x13)?; // Tail call indirect opcode
+                writer.write_u32_le(*type_idx)?;
+                writer.write_u32_le(*table_idx)?;
+            }
+            Instruction::BrOnNull(label_idx) => {
+                writer.write_u8(0xD5)?; // br_on_null opcode
+                writer.write_u32_le(*label_idx)?;
+            }
+            Instruction::BrOnNonNull(label_idx) => {
+                writer.write_u8(0xD6)?; // br_on_non_null opcode
+                writer.write_u32_le(*label_idx)?;
+            }
+            Instruction::RefIsNull => writer.write_u8(0xD1)?, // ref.is_null opcode
+            Instruction::RefAsNonNull => writer.write_u8(0xD3)?, // ref.as_non_null opcode
+            Instruction::RefEq => writer.write_u8(0xD2)?, // ref.eq opcode
             Instruction::LocalGet(idx) => {
                 writer.write_u8(0x20)?;
                 writer.write_u32_le(*idx)?;
@@ -849,6 +1322,357 @@ impl<PInstr: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + E
                 writer.write_u8(0x42)?;
                 writer.write_i64_le(*val)?;
             }
+            // Atomic memory operations (0xFE prefix in WebAssembly)
+            Instruction::MemoryAtomicNotify { memarg } => {
+                writer.write_u8(0xFE)?;
+                writer.write_u8(0x00)?;
+                memarg.to_bytes_with_provider(writer, stream_provider)?;
+            }
+            Instruction::MemoryAtomicWait32 { memarg } => {
+                writer.write_u8(0xFE)?;
+                writer.write_u8(0x01)?;
+                memarg.to_bytes_with_provider(writer, stream_provider)?;
+            }
+            Instruction::MemoryAtomicWait64 { memarg } => {
+                writer.write_u8(0xFE)?;
+                writer.write_u8(0x02)?;
+                memarg.to_bytes_with_provider(writer, stream_provider)?;
+            }
+            
+            // Atomic loads
+            Instruction::I32AtomicLoad { memarg } => {
+                writer.write_u8(0xFE)?;
+                writer.write_u8(0x10)?;
+                memarg.to_bytes_with_provider(writer, stream_provider)?;
+            }
+            Instruction::I64AtomicLoad { memarg } => {
+                writer.write_u8(0xFE)?;
+                writer.write_u8(0x11)?;
+                memarg.to_bytes_with_provider(writer, stream_provider)?;
+            }
+            Instruction::I32AtomicLoad8U { memarg } => {
+                writer.write_u8(0xFE)?;
+                writer.write_u8(0x12)?;
+                memarg.to_bytes_with_provider(writer, stream_provider)?;
+            }
+            Instruction::I32AtomicLoad16U { memarg } => {
+                writer.write_u8(0xFE)?;
+                writer.write_u8(0x13)?;
+                memarg.to_bytes_with_provider(writer, stream_provider)?;
+            }
+            Instruction::I64AtomicLoad8U { memarg } => {
+                writer.write_u8(0xFE)?;
+                writer.write_u8(0x14)?;
+                memarg.to_bytes_with_provider(writer, stream_provider)?;
+            }
+            Instruction::I64AtomicLoad16U { memarg } => {
+                writer.write_u8(0xFE)?;
+                writer.write_u8(0x15)?;
+                memarg.to_bytes_with_provider(writer, stream_provider)?;
+            }
+            Instruction::I64AtomicLoad32U { memarg } => {
+                writer.write_u8(0xFE)?;
+                writer.write_u8(0x16)?;
+                memarg.to_bytes_with_provider(writer, stream_provider)?;
+            }
+            
+            // Atomic stores
+            Instruction::I32AtomicStore { memarg } => {
+                writer.write_u8(0xFE)?;
+                writer.write_u8(0x17)?;
+                memarg.to_bytes_with_provider(writer, stream_provider)?;
+            }
+            Instruction::I64AtomicStore { memarg } => {
+                writer.write_u8(0xFE)?;
+                writer.write_u8(0x18)?;
+                memarg.to_bytes_with_provider(writer, stream_provider)?;
+            }
+            Instruction::I32AtomicStore8 { memarg } => {
+                writer.write_u8(0xFE)?;
+                writer.write_u8(0x19)?;
+                memarg.to_bytes_with_provider(writer, stream_provider)?;
+            }
+            Instruction::I32AtomicStore16 { memarg } => {
+                writer.write_u8(0xFE)?;
+                writer.write_u8(0x1a)?;
+                memarg.to_bytes_with_provider(writer, stream_provider)?;
+            }
+            Instruction::I64AtomicStore8 { memarg } => {
+                writer.write_u8(0xFE)?;
+                writer.write_u8(0x1b)?;
+                memarg.to_bytes_with_provider(writer, stream_provider)?;
+            }
+            Instruction::I64AtomicStore16 { memarg } => {
+                writer.write_u8(0xFE)?;
+                writer.write_u8(0x1c)?;
+                memarg.to_bytes_with_provider(writer, stream_provider)?;
+            }
+            Instruction::I64AtomicStore32 { memarg } => {
+                writer.write_u8(0xFE)?;
+                writer.write_u8(0x1d)?;
+                memarg.to_bytes_with_provider(writer, stream_provider)?;
+            }
+            
+            // Atomic read-modify-write operations
+            Instruction::I32AtomicRmwAdd { memarg } => {
+                writer.write_u8(0xFE)?;
+                writer.write_u8(0x1e)?;
+                memarg.to_bytes_with_provider(writer, stream_provider)?;
+            }
+            Instruction::I64AtomicRmwAdd { memarg } => {
+                writer.write_u8(0xFE)?;
+                writer.write_u8(0x1f)?;
+                memarg.to_bytes_with_provider(writer, stream_provider)?;
+            }
+            Instruction::I32AtomicRmw8AddU { memarg } => {
+                writer.write_u8(0xFE)?;
+                writer.write_u8(0x20)?;
+                memarg.to_bytes_with_provider(writer, stream_provider)?;
+            }
+            Instruction::I32AtomicRmw16AddU { memarg } => {
+                writer.write_u8(0xFE)?;
+                writer.write_u8(0x21)?;
+                memarg.to_bytes_with_provider(writer, stream_provider)?;
+            }
+            Instruction::I64AtomicRmw8AddU { memarg } => {
+                writer.write_u8(0xFE)?;
+                writer.write_u8(0x22)?;
+                memarg.to_bytes_with_provider(writer, stream_provider)?;
+            }
+            Instruction::I64AtomicRmw16AddU { memarg } => {
+                writer.write_u8(0xFE)?;
+                writer.write_u8(0x23)?;
+                memarg.to_bytes_with_provider(writer, stream_provider)?;
+            }
+            Instruction::I64AtomicRmw32AddU { memarg } => {
+                writer.write_u8(0xFE)?;
+                writer.write_u8(0x24)?;
+                memarg.to_bytes_with_provider(writer, stream_provider)?;
+            }
+            
+            Instruction::I32AtomicRmwSub { memarg } => {
+                writer.write_u8(0xFE)?;
+                writer.write_u8(0x25)?;
+                memarg.to_bytes_with_provider(writer, stream_provider)?;
+            }
+            Instruction::I64AtomicRmwSub { memarg } => {
+                writer.write_u8(0xFE)?;
+                writer.write_u8(0x26)?;
+                memarg.to_bytes_with_provider(writer, stream_provider)?;
+            }
+            Instruction::I32AtomicRmw8SubU { memarg } => {
+                writer.write_u8(0xFE)?;
+                writer.write_u8(0x27)?;
+                memarg.to_bytes_with_provider(writer, stream_provider)?;
+            }
+            Instruction::I32AtomicRmw16SubU { memarg } => {
+                writer.write_u8(0xFE)?;
+                writer.write_u8(0x28)?;
+                memarg.to_bytes_with_provider(writer, stream_provider)?;
+            }
+            Instruction::I64AtomicRmw8SubU { memarg } => {
+                writer.write_u8(0xFE)?;
+                writer.write_u8(0x29)?;
+                memarg.to_bytes_with_provider(writer, stream_provider)?;
+            }
+            Instruction::I64AtomicRmw16SubU { memarg } => {
+                writer.write_u8(0xFE)?;
+                writer.write_u8(0x2a)?;
+                memarg.to_bytes_with_provider(writer, stream_provider)?;
+            }
+            Instruction::I64AtomicRmw32SubU { memarg } => {
+                writer.write_u8(0xFE)?;
+                writer.write_u8(0x2b)?;
+                memarg.to_bytes_with_provider(writer, stream_provider)?;
+            }
+            
+            Instruction::I32AtomicRmwAnd { memarg } => {
+                writer.write_u8(0xFE)?;
+                writer.write_u8(0x2c)?;
+                memarg.to_bytes_with_provider(writer, stream_provider)?;
+            }
+            Instruction::I64AtomicRmwAnd { memarg } => {
+                writer.write_u8(0xFE)?;
+                writer.write_u8(0x2d)?;
+                memarg.to_bytes_with_provider(writer, stream_provider)?;
+            }
+            Instruction::I32AtomicRmw8AndU { memarg } => {
+                writer.write_u8(0xFE)?;
+                writer.write_u8(0x2e)?;
+                memarg.to_bytes_with_provider(writer, stream_provider)?;
+            }
+            Instruction::I32AtomicRmw16AndU { memarg } => {
+                writer.write_u8(0xFE)?;
+                writer.write_u8(0x2f)?;
+                memarg.to_bytes_with_provider(writer, stream_provider)?;
+            }
+            Instruction::I64AtomicRmw8AndU { memarg } => {
+                writer.write_u8(0xFE)?;
+                writer.write_u8(0x30)?;
+                memarg.to_bytes_with_provider(writer, stream_provider)?;
+            }
+            Instruction::I64AtomicRmw16AndU { memarg } => {
+                writer.write_u8(0xFE)?;
+                writer.write_u8(0x31)?;
+                memarg.to_bytes_with_provider(writer, stream_provider)?;
+            }
+            Instruction::I64AtomicRmw32AndU { memarg } => {
+                writer.write_u8(0xFE)?;
+                writer.write_u8(0x32)?;
+                memarg.to_bytes_with_provider(writer, stream_provider)?;
+            }
+            
+            Instruction::I32AtomicRmwOr { memarg } => {
+                writer.write_u8(0xFE)?;
+                writer.write_u8(0x33)?;
+                memarg.to_bytes_with_provider(writer, stream_provider)?;
+            }
+            Instruction::I64AtomicRmwOr { memarg } => {
+                writer.write_u8(0xFE)?;
+                writer.write_u8(0x34)?;
+                memarg.to_bytes_with_provider(writer, stream_provider)?;
+            }
+            Instruction::I32AtomicRmw8OrU { memarg } => {
+                writer.write_u8(0xFE)?;
+                writer.write_u8(0x35)?;
+                memarg.to_bytes_with_provider(writer, stream_provider)?;
+            }
+            Instruction::I32AtomicRmw16OrU { memarg } => {
+                writer.write_u8(0xFE)?;
+                writer.write_u8(0x36)?;
+                memarg.to_bytes_with_provider(writer, stream_provider)?;
+            }
+            Instruction::I64AtomicRmw8OrU { memarg } => {
+                writer.write_u8(0xFE)?;
+                writer.write_u8(0x37)?;
+                memarg.to_bytes_with_provider(writer, stream_provider)?;
+            }
+            Instruction::I64AtomicRmw16OrU { memarg } => {
+                writer.write_u8(0xFE)?;
+                writer.write_u8(0x38)?;
+                memarg.to_bytes_with_provider(writer, stream_provider)?;
+            }
+            Instruction::I64AtomicRmw32OrU { memarg } => {
+                writer.write_u8(0xFE)?;
+                writer.write_u8(0x39)?;
+                memarg.to_bytes_with_provider(writer, stream_provider)?;
+            }
+            
+            Instruction::I32AtomicRmwXor { memarg } => {
+                writer.write_u8(0xFE)?;
+                writer.write_u8(0x3a)?;
+                memarg.to_bytes_with_provider(writer, stream_provider)?;
+            }
+            Instruction::I64AtomicRmwXor { memarg } => {
+                writer.write_u8(0xFE)?;
+                writer.write_u8(0x3b)?;
+                memarg.to_bytes_with_provider(writer, stream_provider)?;
+            }
+            Instruction::I32AtomicRmw8XorU { memarg } => {
+                writer.write_u8(0xFE)?;
+                writer.write_u8(0x3c)?;
+                memarg.to_bytes_with_provider(writer, stream_provider)?;
+            }
+            Instruction::I32AtomicRmw16XorU { memarg } => {
+                writer.write_u8(0xFE)?;
+                writer.write_u8(0x3d)?;
+                memarg.to_bytes_with_provider(writer, stream_provider)?;
+            }
+            Instruction::I64AtomicRmw8XorU { memarg } => {
+                writer.write_u8(0xFE)?;
+                writer.write_u8(0x3e)?;
+                memarg.to_bytes_with_provider(writer, stream_provider)?;
+            }
+            Instruction::I64AtomicRmw16XorU { memarg } => {
+                writer.write_u8(0xFE)?;
+                writer.write_u8(0x3f)?;
+                memarg.to_bytes_with_provider(writer, stream_provider)?;
+            }
+            Instruction::I64AtomicRmw32XorU { memarg } => {
+                writer.write_u8(0xFE)?;
+                writer.write_u8(0x40)?;
+                memarg.to_bytes_with_provider(writer, stream_provider)?;
+            }
+            
+            Instruction::I32AtomicRmwXchg { memarg } => {
+                writer.write_u8(0xFE)?;
+                writer.write_u8(0x41)?;
+                memarg.to_bytes_with_provider(writer, stream_provider)?;
+            }
+            Instruction::I64AtomicRmwXchg { memarg } => {
+                writer.write_u8(0xFE)?;
+                writer.write_u8(0x42)?;
+                memarg.to_bytes_with_provider(writer, stream_provider)?;
+            }
+            Instruction::I32AtomicRmw8XchgU { memarg } => {
+                writer.write_u8(0xFE)?;
+                writer.write_u8(0x43)?;
+                memarg.to_bytes_with_provider(writer, stream_provider)?;
+            }
+            Instruction::I32AtomicRmw16XchgU { memarg } => {
+                writer.write_u8(0xFE)?;
+                writer.write_u8(0x44)?;
+                memarg.to_bytes_with_provider(writer, stream_provider)?;
+            }
+            Instruction::I64AtomicRmw8XchgU { memarg } => {
+                writer.write_u8(0xFE)?;
+                writer.write_u8(0x45)?;
+                memarg.to_bytes_with_provider(writer, stream_provider)?;
+            }
+            Instruction::I64AtomicRmw16XchgU { memarg } => {
+                writer.write_u8(0xFE)?;
+                writer.write_u8(0x46)?;
+                memarg.to_bytes_with_provider(writer, stream_provider)?;
+            }
+            Instruction::I64AtomicRmw32XchgU { memarg } => {
+                writer.write_u8(0xFE)?;
+                writer.write_u8(0x47)?;
+                memarg.to_bytes_with_provider(writer, stream_provider)?;
+            }
+            
+            // Atomic compare-exchange operations
+            Instruction::I32AtomicRmwCmpxchg { memarg } => {
+                writer.write_u8(0xFE)?;
+                writer.write_u8(0x48)?;
+                memarg.to_bytes_with_provider(writer, stream_provider)?;
+            }
+            Instruction::I64AtomicRmwCmpxchg { memarg } => {
+                writer.write_u8(0xFE)?;
+                writer.write_u8(0x49)?;
+                memarg.to_bytes_with_provider(writer, stream_provider)?;
+            }
+            Instruction::I32AtomicRmw8CmpxchgU { memarg } => {
+                writer.write_u8(0xFE)?;
+                writer.write_u8(0x4a)?;
+                memarg.to_bytes_with_provider(writer, stream_provider)?;
+            }
+            Instruction::I32AtomicRmw16CmpxchgU { memarg } => {
+                writer.write_u8(0xFE)?;
+                writer.write_u8(0x4b)?;
+                memarg.to_bytes_with_provider(writer, stream_provider)?;
+            }
+            Instruction::I64AtomicRmw8CmpxchgU { memarg } => {
+                writer.write_u8(0xFE)?;
+                writer.write_u8(0x4c)?;
+                memarg.to_bytes_with_provider(writer, stream_provider)?;
+            }
+            Instruction::I64AtomicRmw16CmpxchgU { memarg } => {
+                writer.write_u8(0xFE)?;
+                writer.write_u8(0x4d)?;
+                memarg.to_bytes_with_provider(writer, stream_provider)?;
+            }
+            Instruction::I64AtomicRmw32CmpxchgU { memarg } => {
+                writer.write_u8(0xFE)?;
+                writer.write_u8(0x4e)?;
+                memarg.to_bytes_with_provider(writer, stream_provider)?;
+            }
+            
+            // Atomic fence
+            Instruction::AtomicFence => {
+                writer.write_u8(0xFE)?;
+                writer.write_u8(0x03)?;
+            }
+            
             // ... many more instructions
             Instruction::_Phantom(_) => {
                 // This variant should not be serialized
@@ -2055,3 +2879,400 @@ impl Default for BlockType {
 }
 
 // Duplicate implementation removed completely
+
+// Constants for aggregate types
+pub const MAX_STRUCT_FIELDS: usize = 64;
+pub const MAX_ARRAY_ELEMENTS: usize = 1024;
+
+/// WebAssembly 3.0 aggregate types for struct and array operations
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum AggregateType<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> {
+    /// Struct type definition
+    Struct(StructType<P>),
+    /// Array type definition
+    Array(ArrayType),
+}
+
+impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> Default for AggregateType<P> {
+    fn default() -> Self {
+        Self::Array(ArrayType::default())
+    }
+}
+
+/// Struct type definition for WebAssembly 3.0 GC
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct StructType<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> {
+    /// Fields in the struct
+    pub fields: BoundedVec<FieldType, MAX_STRUCT_FIELDS, P>,
+    /// Whether this type can be subtyped
+    pub final_type: bool,
+}
+
+impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> StructType<P> {
+    /// Create a new struct type
+    pub fn new(provider: P, final_type: bool) -> Result<Self> {
+        let fields = BoundedVec::new(provider).map_err(Error::from)?;
+        Ok(Self { fields, final_type })
+    }
+
+    /// Add a field to the struct
+    pub fn add_field(&mut self, field: FieldType) -> Result<()> {
+        self.fields.push(field).map_err(Error::from)
+    }
+
+    /// Get field count
+    pub fn field_count(&self) -> usize {
+        self.fields.len()
+    }
+
+    /// Get field by index
+    pub fn get_field(&self, index: usize) -> Result<FieldType> {
+        self.fields.get(index).map_err(Error::from)
+    }
+}
+
+impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> Default for StructType<P> {
+    fn default() -> Self {
+        let provider = P::default();
+        Self::new(provider, false).expect("Default StructType creation failed")
+    }
+}
+
+/// Array type definition for WebAssembly 3.0 GC
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
+pub struct ArrayType {
+    /// Element type of the array
+    pub element_type: FieldType,
+    /// Whether this type can be subtyped
+    pub final_type: bool,
+}
+
+impl ArrayType {
+    /// Create a new array type
+    pub const fn new(element_type: FieldType, final_type: bool) -> Self {
+        Self { element_type, final_type }
+    }
+}
+
+/// Field type for struct fields and array elements
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct FieldType {
+    /// Storage type of the field
+    pub storage_type: StorageType,
+    /// Whether the field is mutable
+    pub mutable: bool,
+}
+
+impl FieldType {
+    /// Create a new field type
+    pub const fn new(storage_type: StorageType, mutable: bool) -> Self {
+        Self { storage_type, mutable }
+    }
+
+    /// Convert to value type for type checking
+    pub fn to_value_type(&self) -> ValueType {
+        self.storage_type.to_value_type()
+    }
+}
+
+impl Default for FieldType {
+    fn default() -> Self {
+        Self {
+            storage_type: StorageType::default(),
+            mutable: false,
+        }
+    }
+}
+
+/// Storage type for field values
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum StorageType {
+    /// Full value type
+    Value(ValueType),
+    /// Packed storage type
+    Packed(PackedType),
+}
+
+impl StorageType {
+    /// Convert to value type for type checking
+    pub fn to_value_type(&self) -> ValueType {
+        match self {
+            StorageType::Value(vt) => *vt,
+            StorageType::Packed(PackedType::I8) => ValueType::I32, // Packed types extend to I32
+            StorageType::Packed(PackedType::I16) => ValueType::I32,
+        }
+    }
+}
+
+impl Default for StorageType {
+    fn default() -> Self {
+        Self::Value(ValueType::I32)
+    }
+}
+
+/// Packed storage types for space-efficient fields
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum PackedType {
+    /// 8-bit signed integer
+    I8,
+    /// 16-bit signed integer  
+    I16,
+}
+
+impl PackedType {
+    /// Get the size in bytes
+    pub fn size_in_bytes(self) -> usize {
+        match self {
+            PackedType::I8 => 1,
+            PackedType::I16 => 2,
+        }
+    }
+
+    /// Convert to binary representation
+    pub fn to_binary(self) -> u8 {
+        match self {
+            PackedType::I8 => 0x78,
+            PackedType::I16 => 0x77,
+        }
+    }
+
+    /// Create from binary representation
+    pub fn from_binary(byte: u8) -> Result<Self> {
+        match byte {
+            0x78 => Ok(PackedType::I8),
+            0x77 => Ok(PackedType::I16),
+            _ => Err(Error::new(
+                ErrorCategory::Parse,
+                wrt_error::codes::PARSE_INVALID_VALTYPE_BYTE,
+                "Invalid packed type byte",
+            )),
+        }
+    }
+}
+
+// Implement serialization traits for the new types
+impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> Checksummable for StructType<P> {
+    fn update_checksum(&self, checksum: &mut Checksum) {
+        self.fields.update_checksum(checksum);
+        checksum.update(self.final_type as u8);
+    }
+}
+
+impl Checksummable for ArrayType {
+    fn update_checksum(&self, checksum: &mut Checksum) {
+        self.element_type.update_checksum(checksum);
+        checksum.update(self.final_type as u8);
+    }
+}
+
+impl Checksummable for FieldType {
+    fn update_checksum(&self, checksum: &mut Checksum) {
+        self.storage_type.update_checksum(checksum);
+        checksum.update(self.mutable as u8);
+    }
+}
+
+impl Checksummable for StorageType {
+    fn update_checksum(&self, checksum: &mut Checksum) {
+        match self {
+            StorageType::Value(vt) => {
+                checksum.update(0);
+                vt.update_checksum(checksum);
+            }
+            StorageType::Packed(pt) => {
+                checksum.update(1);
+                checksum.update(pt.to_binary());
+            }
+        }
+    }
+}
+
+// Implement ToBytes/FromBytes for the new types
+impl ToBytes for FieldType {
+    fn to_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        provider: &PStream,
+    ) -> WrtResult<()> {
+        self.storage_type.to_bytes_with_provider(writer, provider)?;
+        writer.write_u8(self.mutable as u8)?;
+        Ok(())
+    }
+
+    #[cfg(feature = "default-provider")]
+    fn to_bytes<'a>(&self, writer: &mut WriteStream<'a>) -> WrtResult<()> {
+        let default_provider = DefaultMemoryProvider::default();
+        self.to_bytes_with_provider(writer, &default_provider)
+    }
+}
+
+impl FromBytes for FieldType {
+    fn from_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        provider: &PStream,
+    ) -> WrtResult<Self> {
+        let storage_type = StorageType::from_bytes_with_provider(reader, provider)?;
+        let mutable_byte = reader.read_u8()?;
+        let mutable = match mutable_byte {
+            0 => false,
+            1 => true,
+            _ => return Err(Error::new(
+                ErrorCategory::Parse,
+                codes::INVALID_VALUE,
+                "Invalid boolean flag for FieldType.mutable",
+            )),
+        };
+        Ok(FieldType { storage_type, mutable })
+    }
+
+    #[cfg(feature = "default-provider")]
+    fn from_bytes<'a>(reader: &mut ReadStream<'a>) -> WrtResult<Self> {
+        let default_provider = DefaultMemoryProvider::default();
+        Self::from_bytes_with_provider(reader, &default_provider)
+    }
+}
+
+impl ToBytes for StorageType {
+    fn to_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        provider: &PStream,
+    ) -> WrtResult<()> {
+        match self {
+            StorageType::Value(vt) => {
+                writer.write_u8(0)?;
+                vt.to_bytes_with_provider(writer, provider)?;
+            }
+            StorageType::Packed(pt) => {
+                writer.write_u8(1)?;
+                writer.write_u8(pt.to_binary())?;
+            }
+        }
+        Ok(())
+    }
+
+    #[cfg(feature = "default-provider")]
+    fn to_bytes<'a>(&self, writer: &mut WriteStream<'a>) -> WrtResult<()> {
+        let default_provider = DefaultMemoryProvider::default();
+        self.to_bytes_with_provider(writer, &default_provider)
+    }
+}
+
+impl FromBytes for StorageType {
+    fn from_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        provider: &PStream,
+    ) -> WrtResult<Self> {
+        let tag = reader.read_u8()?;
+        match tag {
+            0 => {
+                let vt = ValueType::from_bytes_with_provider(reader, provider)?;
+                Ok(StorageType::Value(vt))
+            }
+            1 => {
+                let packed_byte = reader.read_u8()?;
+                let pt = PackedType::from_binary(packed_byte)?;
+                Ok(StorageType::Packed(pt))
+            }
+            _ => Err(Error::new(
+                ErrorCategory::Parse,
+                codes::INVALID_VALUE,
+                "Invalid tag for StorageType",
+            )),
+        }
+    }
+
+    #[cfg(feature = "default-provider")]
+    fn from_bytes<'a>(reader: &mut ReadStream<'a>) -> WrtResult<Self> {
+        let default_provider = DefaultMemoryProvider::default();
+        Self::from_bytes_with_provider(reader, &default_provider)
+    }
+}
+
+impl ToBytes for ArrayType {
+    fn to_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        provider: &PStream,
+    ) -> WrtResult<()> {
+        self.element_type.to_bytes_with_provider(writer, provider)?;
+        writer.write_u8(self.final_type as u8)?;
+        Ok(())
+    }
+
+    #[cfg(feature = "default-provider")]
+    fn to_bytes<'a>(&self, writer: &mut WriteStream<'a>) -> WrtResult<()> {
+        let default_provider = DefaultMemoryProvider::default();
+        self.to_bytes_with_provider(writer, &default_provider)
+    }
+}
+
+impl FromBytes for ArrayType {
+    fn from_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        provider: &PStream,
+    ) -> WrtResult<Self> {
+        let element_type = FieldType::from_bytes_with_provider(reader, provider)?;
+        let final_byte = reader.read_u8()?;
+        let final_type = match final_byte {
+            0 => false,
+            1 => true,
+            _ => return Err(Error::new(
+                ErrorCategory::Parse,
+                codes::INVALID_VALUE,
+                "Invalid boolean flag for ArrayType.final_type",
+            )),
+        };
+        Ok(ArrayType { element_type, final_type })
+    }
+
+    #[cfg(feature = "default-provider")]
+    fn from_bytes<'a>(reader: &mut ReadStream<'a>) -> WrtResult<Self> {
+        let default_provider = DefaultMemoryProvider::default();
+        Self::from_bytes_with_provider(reader, &default_provider)
+    }
+}
+
+impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> ToBytes for StructType<P> {
+    fn to_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        provider: &PStream,
+    ) -> WrtResult<()> {
+        self.fields.to_bytes_with_provider(writer, provider)?;
+        writer.write_u8(self.final_type as u8)?;
+        Ok(())
+    }
+
+    #[cfg(feature = "default-provider")]
+    fn to_bytes<'a>(&self, writer: &mut WriteStream<'a>) -> WrtResult<()> {
+        let default_provider = DefaultMemoryProvider::default();
+        self.to_bytes_with_provider(writer, &default_provider)
+    }
+}
+
+impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> FromBytes for StructType<P> {
+    fn from_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        provider: &PStream,
+    ) -> WrtResult<Self> {
+        let fields = BoundedVec::<FieldType, MAX_STRUCT_FIELDS, P>::from_bytes_with_provider(reader, provider)?;
+        let final_byte = reader.read_u8()?;
+        let final_type = match final_byte {
+            0 => false,
+            1 => true,
+            _ => return Err(Error::new(
+                ErrorCategory::Parse,
+                codes::INVALID_VALUE,
+                "Invalid boolean flag for StructType.final_type",
+            )),
+        };
+        Ok(StructType { fields, final_type })
+    }
+
+    #[cfg(feature = "default-provider")]
+    fn from_bytes<'a>(reader: &mut ReadStream<'a>) -> WrtResult<Self> {
+        let default_provider = DefaultMemoryProvider::default();
+        Self::from_bytes_with_provider(reader, &default_provider)
+    }
+}

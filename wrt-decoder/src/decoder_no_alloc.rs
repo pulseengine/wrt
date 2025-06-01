@@ -35,10 +35,7 @@
 //! ```
 
 use wrt_error::{codes, Error, ErrorCategory, Result};
-use wrt_foundation::{
-    safe_memory::NoStdProvider,
-    verification::VerificationLevel,
-};
+use wrt_foundation::{safe_memory::NoStdProvider, verification::VerificationLevel};
 
 use crate::prelude::*;
 
@@ -180,8 +177,11 @@ pub fn verify_wasm_header(bytes: &[u8]) -> Result<()> {
 ///
 /// # Returns
 ///
-/// * `Result<NoStdProvider>` - Memory provider initialized with the bytes
-pub fn create_memory_provider(bytes: &[u8], _level: VerificationLevel) -> Result<NoStdProvider<MAX_MODULE_SIZE>> {
+/// * `Result<NoStdProvider<MAX_MODULE_SIZE>>` - Memory provider initialized with the bytes
+pub fn create_memory_provider(
+    bytes: &[u8],
+    _level: VerificationLevel,
+) -> Result<NoStdProvider<MAX_MODULE_SIZE>> {
     if bytes.len() > MAX_MODULE_SIZE {
         return Err(create_error(
             NoAllocErrorCode::ModuleTooLarge,

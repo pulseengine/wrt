@@ -14,14 +14,17 @@ categories = ["wasm", "no-std"]
 [features]
 default = []
 # Standard library support - enables use of std::f32/f64 math functions
-std = ["alloc"]
+std = ["alloc", "wrt-platform/std"]
 # Allocator support (implicitly enabled by std)
-alloc = []
+alloc = ["wrt-platform/alloc"]
 # This crate is no_std by default, this feature is a no-op for compatibility
 no_std = []
+# Platform feature enables SIMD operations
+platform = ["wrt-platform", "alloc"]
 
 [dependencies]
 wrt-error = { workspace = true, default-features = false }
+wrt-platform = { workspace = true, default-features = false, optional = true }
 
 # Note: alloc support is provided through cfg(feature = "alloc") in source code
 

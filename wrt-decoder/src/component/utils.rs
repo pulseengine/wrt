@@ -2,7 +2,7 @@
 // Licensed under the MIT license.
 // SPDX-License-Identifier: MIT
 
-use wrt_format::{binary, component::ValType};
+use wrt_format::{binary, component::FormatValType};
 
 use crate::{prelude::*, Error, Result};
 
@@ -52,7 +52,7 @@ pub fn is_component(bytes: &[u8]) -> Result<bool> {
 }
 
 /// Parse a ValType from binary format
-pub fn parse_val_type(bytes: &[u8], offset: usize) -> Result<(ValType, usize)> {
+pub fn parse_val_type(bytes: &[u8], offset: usize) -> Result<(FormatValType, usize)> {
     if offset >= bytes.len() {
         return Err(Error::parse_error(
             "Unexpected end of binary when parsing ValType".to_string(),
@@ -61,19 +61,19 @@ pub fn parse_val_type(bytes: &[u8], offset: usize) -> Result<(ValType, usize)> {
 
     let val_type_byte = bytes[offset];
     let val_type = match val_type_byte {
-        0x00 => ValType::Bool,
-        0x01 => ValType::S8,
-        0x02 => ValType::U8,
-        0x03 => ValType::S16,
-        0x04 => ValType::U16,
-        0x05 => ValType::S32,
-        0x06 => ValType::U32,
-        0x07 => ValType::S64,
-        0x08 => ValType::U64,
-        0x09 => ValType::F32,
-        0x0A => ValType::F64,
-        0x0B => ValType::Char,
-        0x0C => ValType::String,
+        0x00 => FormatValType::Bool,
+        0x01 => FormatValType::S8,
+        0x02 => FormatValType::U8,
+        0x03 => FormatValType::S16,
+        0x04 => FormatValType::U16,
+        0x05 => FormatValType::S32,
+        0x06 => FormatValType::U32,
+        0x07 => FormatValType::S64,
+        0x08 => FormatValType::U64,
+        0x09 => FormatValType::F32,
+        0x0A => FormatValType::F64,
+        0x0B => FormatValType::Char,
+        0x0C => FormatValType::String,
         _ => {
             return Err(Error::parse_error(format!("Unknown ValType byte: {:#x}", val_type_byte)));
         }

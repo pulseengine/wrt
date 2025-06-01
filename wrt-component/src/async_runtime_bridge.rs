@@ -4,22 +4,21 @@
 //! that are different from Rust's async/await. This module provides optional bridges between them.
 
 use crate::{
-    async_types::{Future as WasmFuture, FutureHandle, FutureState, Stream as WasmStream, StreamHandle},
-    task_manager::{TaskManager, TaskId, TaskState},
+    async_types::{
+        Future as WasmFuture, FutureHandle, FutureState, Stream as WasmStream, StreamHandle,
+    },
+    task_manager::{TaskId, TaskManager, TaskState},
     ComponentInstanceId, ValType,
-};
-use wrt_foundation::{
-    bounded_collections::BoundedVec,
-    component_value::ComponentValue,
 };
 use core::{
     pin::Pin,
     task::{Context, Poll, Waker},
 };
+use wrt_foundation::{bounded_collections::BoundedVec, component_value::ComponentValue};
 
 /// The Component Model async primitives DO NOT require Rust's Future trait.
 /// They work through their own polling/waiting mechanisms via the task manager.
-/// 
+///
 /// However, if you want to integrate with Rust async runtimes (tokio, async-std),
 /// this module provides adapters.
 
@@ -44,7 +43,7 @@ pub mod rust_async_bridge {
 
         fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
             let future = self.wasm_future.lock().unwrap();
-            
+
             match future.state {
                 FutureState::Ready => {
                     if let Some(ref value) = future.value {
@@ -53,12 +52,8 @@ pub mod rust_async_bridge {
                         Poll::Ready(Err("Future ready but no value".to_string()))
                     }
                 }
-                FutureState::Failed => {
-                    Poll::Ready(Err("Future failed".to_string()))
-                }
-                FutureState::Cancelled => {
-                    Poll::Ready(Err("Future cancelled".to_string()))
-                }
+                FutureState::Failed => Poll::Ready(Err("Future failed".to_string())),
+                FutureState::Cancelled => Poll::Ready(Err("Future cancelled".to_string())),
                 FutureState::Pending => {
                     // Register waker with task manager
                     // In a real implementation, this would notify the task manager
@@ -97,14 +92,12 @@ pub mod component_async {
         operation: AsyncOperation,
     ) -> Result<TaskId, String> {
         // Create a task for the async operation
-        let task_id = task_manager.create_task(
-            operation.component_id,
-            &operation.name,
-        ).map_err(|e| format!("Failed to create task: {:?}", e))?;
+        let task_id = task_manager
+            .create_task(operation.component_id, &operation.name)
+            .map_err(|e| format!("Failed to create task: {:?}", e))?;
 
         // Start the task
-        task_manager.start_task(task_id)
-            .map_err(|e| format!("Failed to start task: {:?}", e))?;
+        task_manager.start_task(task_id).map_err(|e| format!("Failed to start task: {:?}", e))?;
 
         Ok(task_id)
     }
@@ -187,8 +180,8 @@ pub mod component_async {
 /// Example of using Component Model async WITHOUT Rust futures
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::component_async::*;
+    use super::*;
 
     #[test]
     fn test_component_model_async_without_rust_futures() {
@@ -211,10 +204,10 @@ mod tests {
         assert!(matches!(result, PollResult::Ready(42)));
     }
 
-    #[test] 
+    #[test]
     fn test_component_model_stream_without_rust_futures() {
         let mut task_manager = TaskManager::new();
-        
+
         // Create a Component Model stream - no Rust Stream trait needed!
         let stream_handle = StreamHandle(1);
         let mut wasm_stream = WasmStream::<String>::new(stream_handle, ValType::String);
@@ -241,15 +234,16 @@ mod tests {
 
 /// Summary: The WebAssembly Component Model async does NOT require the futures crate
 /// or Rust's async/await. It has its own async primitives:
-/// 
+///
 /// 1. `stream<T>` - for incremental value passing
 /// 2. `future<T>` - for deferred single values  
 /// 3. `error-context` - for detailed error information
-/// 
+///
 /// These are polled/waited on through the task manager and canonical built-ins like:
 /// - `task.wait` - wait for async operations
 /// - `stream.read` / `stream.write` - stream operations
 /// - `future.read` / `future.write` - future operations
-/// 
+///
 /// The Rust Future trait is only needed if you want to integrate with Rust async
 /// runtimes like tokio or async-std, which is optional.
+pub struct ComponentModelAsyncSummary;

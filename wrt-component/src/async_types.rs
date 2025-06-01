@@ -11,14 +11,10 @@ use std::{fmt, mem};
 #[cfg(any(feature = "std", feature = "alloc"))]
 use alloc::{boxed::Box, string::String, vec::Vec};
 
-use wrt_foundation::{
-    bounded::BoundedVec,
-    component_value::ComponentValue,
-    prelude::*,
-};
+use wrt_foundation::{bounded::BoundedVec, component_value::ComponentValue, prelude::*};
 
 use crate::{
-    types::{Value, ValType},
+    types::{ValType, Value},
     WrtResult,
 };
 
@@ -258,7 +254,7 @@ impl<T> Future<T> {
     pub fn set_value(&mut self, value: T) -> WrtResult<()> {
         if self.state != FutureState::Pending {
             return Err(wrt_foundation::WrtError::InvalidState(
-                "Future already has a value or was cancelled".into()
+                "Future already has a value or was cancelled".into(),
             ));
         }
         self.value = Some(value);
@@ -278,23 +274,13 @@ impl ErrorContext {
     /// Create a new error context
     #[cfg(any(feature = "std", feature = "alloc"))]
     pub fn new(handle: ErrorContextHandle, message: String) -> Self {
-        Self {
-            handle,
-            message,
-            stack_trace: None,
-            debug_info: DebugInfo::new(),
-        }
+        Self { handle, message, stack_trace: None, debug_info: DebugInfo::new() }
     }
 
     /// Create a new error context (no_std)
     #[cfg(not(any(feature = "std", feature = "alloc")))]
     pub fn new(handle: ErrorContextHandle, message: BoundedString<1024>) -> Self {
-        Self {
-            handle,
-            message,
-            stack_trace: None,
-            debug_info: DebugInfo::new(),
-        }
+        Self { handle, message, stack_trace: None, debug_info: DebugInfo::new() }
     }
 
     /// Get debug string representation
@@ -363,7 +349,7 @@ impl WaitableSet {
         let index = self.waitables.len();
         if index >= 64 {
             return Err(wrt_foundation::WrtError::ResourceExhausted(
-                "Too many waitables in set".into()
+                "Too many waitables in set".into(),
             ));
         }
 
@@ -474,16 +460,16 @@ mod tests {
     #[test]
     fn test_stream_lifecycle() {
         let mut stream: Stream<Value> = Stream::new(StreamHandle(1), ValType::U32);
-        
+
         assert!(stream.is_writable());
         assert!(!stream.is_readable()); // Empty buffer
-        
+
         stream.buffer.push(Value::U32(42));
         assert!(stream.is_readable());
-        
+
         stream.close_writable();
         assert!(!stream.is_writable());
-        
+
         stream.close_readable();
         assert_eq!(stream.state, StreamState::Closed);
     }
@@ -491,10 +477,10 @@ mod tests {
     #[test]
     fn test_future_lifecycle() {
         let mut future: Future<Value> = Future::new(FutureHandle(1), ValType::String);
-        
+
         assert!(future.is_writable());
         assert!(!future.is_readable());
-        
+
         future.set_value(Value::String(BoundedString::from_str("hello").unwrap())).unwrap();
         assert!(future.is_readable());
         assert!(!future.is_writable());
@@ -504,7 +490,7 @@ mod tests {
     #[test]
     fn test_future_cancel() {
         let mut future: Future<Value> = Future::new(FutureHandle(2), ValType::Bool);
-        
+
         future.cancel();
         assert_eq!(future.state, FutureState::Cancelled);
         assert!(future.set_value(Value::Bool(true)).is_err());
@@ -516,10 +502,10 @@ mod tests {
         let error = ErrorContext::new(ErrorContextHandle(1), "Test error".to_string());
         #[cfg(not(any(feature = "std", feature = "alloc")))]
         let error = ErrorContext::new(
-            ErrorContextHandle(1), 
-            BoundedString::from_str("Test error").unwrap()
+            ErrorContextHandle(1),
+            BoundedString::from_str("Test error").unwrap(),
         );
-        
+
         let debug_str = error.debug_string();
         assert!(debug_str.as_str().contains("Test error"));
     }
@@ -527,19 +513,19 @@ mod tests {
     #[test]
     fn test_waitable_set() {
         let mut set = WaitableSet::new();
-        
+
         let idx1 = set.add(Waitable::StreamReadable(StreamHandle(1))).unwrap();
         let idx2 = set.add(Waitable::FutureReadable(FutureHandle(1))).unwrap();
-        
+
         assert!(!set.has_ready());
-        
+
         set.mark_ready(idx1);
         assert!(set.has_ready());
         assert_eq!(set.first_ready(), Some(idx1));
-        
+
         set.mark_ready(idx2);
         assert_eq!(set.first_ready(), Some(idx1)); // First ready
-        
+
         set.clear_ready(idx1);
         assert_eq!(set.first_ready(), Some(idx2));
     }
@@ -548,9 +534,6 @@ mod tests {
     fn test_state_display() {
         assert_eq!(StreamState::Open.to_string(), "open");
         assert_eq!(FutureState::Pending.to_string(), "pending");
-        assert_eq!(
-            Waitable::StreamReadable(StreamHandle(42)).to_string(), 
-            "stream-readable(42)"
-        );
+        assert_eq!(Waitable::StreamReadable(StreamHandle(42)).to_string(), "stream-readable(42)");
     }
 }

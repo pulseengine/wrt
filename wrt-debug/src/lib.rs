@@ -19,12 +19,7 @@ extern crate std;
 #[cfg(feature = "alloc")]
 extern crate alloc;
 
-// Panic handler for no_std builds
-#[cfg(not(feature = "std"))]
-#[panic_handler]
-fn panic(_info: &core::panic::PanicInfo) -> ! {
-    loop {}
-}
+// Note: Panic handler removed to avoid conflicts with std library
 
 // Re-export commonly used types based on features
 #[cfg(feature = "abbrev")]

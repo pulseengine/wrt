@@ -748,7 +748,10 @@ mod tests {
         const POOL_SIZE: usize = 1024;
         const BLOCK_SIZE: usize = 64;
 
+        #[cfg(feature = "std")]
         let mut pool = vec![0u8; POOL_SIZE];
+        #[cfg(not(feature = "std"))]
+        let mut pool = [0u8; POOL_SIZE];
         let allocator =
             unsafe { LockFreeAllocator::new(pool.as_mut_ptr(), POOL_SIZE, BLOCK_SIZE).unwrap() };
 

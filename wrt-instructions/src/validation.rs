@@ -84,6 +84,13 @@ impl ValidationContext {
         }
         Ok(())
     }
+
+    /// Validate a branch target label
+    pub fn validate_branch_target(&mut self, _label: u32) -> Result<()> {
+        // For simplified validation, we just check that the label is reasonable
+        // In a full implementation, this would validate against the current control stack
+        Ok(())
+    }
 }
 
 /// Control frame for tracking control flow

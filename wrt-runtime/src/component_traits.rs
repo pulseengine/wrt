@@ -70,7 +70,7 @@ pub trait ComponentRuntime {
     /// Register a specific host function
     fn register_host_function<F>(&mut self, name: &str, ty: FuncType, function: F) -> Result<()>
     where
-        F: Fn(&[Value]) -> Result<Vec<Value>> + 'static + Send + Sync;
+        F: Fn(&[Value]) -> Result<wrt_foundation::bounded::BoundedVec<Value, 16, wrt_foundation::safe_memory::NoStdProvider<1024>>> + 'static + Send + Sync;
 
     /// Set the verification level for memory operations
     fn set_verification_level(&mut self, level: VerificationLevel) -> Result<()>;

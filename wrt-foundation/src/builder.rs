@@ -651,7 +651,7 @@ mod tests {
 
     #[test]
     fn test_bounded_builder() {
-        let builder = BoundedBuilder::<u32, 10, NoStdProvider>::new()
+        let builder = BoundedBuilder::<u32, 10, NoStdProvider<1024>>::new()
             .with_verification_level(VerificationLevel::Critical);
 
         let stack = builder.build_stack().unwrap();
@@ -662,7 +662,7 @@ mod tests {
     #[test]
     fn test_string_builder() {
         let builder =
-            StringBuilder::<256, NoStdProvider>::new().with_content("test").with_truncation(true);
+            StringBuilder::<256, NoStdProvider<1024>>::new().with_content("test").with_truncation(true);
 
         let string = builder.build_string().unwrap();
         assert_eq!(string.as_str().unwrap(), "test");
@@ -672,7 +672,7 @@ mod tests {
     #[cfg(feature = "alloc")]
     fn test_resource_type_builder() {
         // Test Record type
-        let builder = ResourceTypeBuilder::<NoStdProvider>::new();
+        let builder = ResourceTypeBuilder::<NoStdProvider<1024>>::new();
         let resource_type = builder.as_record(vec!["field1", "field2"]).unwrap().build().unwrap();
 
         match resource_type {
@@ -685,7 +685,7 @@ mod tests {
         }
 
         // Test Aggregate type
-        let builder = ResourceTypeBuilder::<NoStdProvider>::new();
+        let builder = ResourceTypeBuilder::<NoStdProvider<1024>>::new();
         let resource_type = builder.as_aggregate(vec![1, 2, 3]).build().unwrap();
 
         match resource_type {
@@ -703,14 +703,14 @@ mod tests {
     #[cfg(feature = "alloc")]
     fn test_resource_item_builder() {
         // First create a resource type
-        let resource_type = ResourceTypeBuilder::<NoStdProvider>::new()
+        let resource_type = ResourceTypeBuilder::<NoStdProvider<1024>>::new()
             .as_record(vec!["field1", "field2"])
             .unwrap()
             .build()
             .unwrap();
 
         // Now create a resource item
-        let builder = ResourceItemBuilder::<NoStdProvider>::new()
+        let builder = ResourceItemBuilder::<NoStdProvider<1024>>::new()
             .with_id(42)
             .with_type(resource_type)
             .with_name("test_resource");

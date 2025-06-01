@@ -1,23 +1,23 @@
 use crate::{
-    ComponentInstanceId, ValType, ResourceHandle,
-    task_manager::{TaskManager, TaskId, TaskState, TaskType},
     canonical_options::CanonicalOptions,
-    virtualization::{VirtualizationManager, Capability, ResourceUsage},
-    post_return::{PostReturnRegistry, CleanupTask, CleanupTaskType},
+    post_return::{CleanupTask, CleanupTaskType, PostReturnRegistry},
+    task_manager::{TaskId, TaskManager, TaskState, TaskType},
+    virtualization::{Capability, ResourceUsage, VirtualizationManager},
+    ComponentInstanceId, ResourceHandle, ValType,
+};
+use core::{
+    fmt,
+    sync::atomic::{AtomicBool, AtomicU32, Ordering},
+    time::Duration,
 };
 use wrt_foundation::{
-    bounded_collections::{BoundedVec, BoundedHashMap},
+    bounded_collections::{BoundedHashMap, BoundedVec},
     component_value::ComponentValue,
     safe_memory::SafeMemory,
 };
 use wrt_platform::{
-    advanced_sync::{PriorityInheritanceMutex, Priority},
+    advanced_sync::{Priority, PriorityInheritanceMutex},
     sync::{FutexLike, SpinFutex},
-};
-use core::{
-    sync::atomic::{AtomicU32, AtomicBool, Ordering},
-    fmt,
-    time::Duration,
 };
 
 #[cfg(feature = "std")]
@@ -63,7 +63,7 @@ impl ThreadId {
     pub fn new(id: u32) -> Self {
         Self(id)
     }
-    
+
     pub fn as_u32(&self) -> u32 {
         self.0
     }
@@ -120,7 +120,8 @@ pub struct ThreadSpawnRequest {
 
 pub struct ComponentThreadManager {
     threads: BoundedHashMap<ThreadId, ThreadHandle, MAX_THREAD_JOIN_HANDLES>,
-    component_threads: BoundedHashMap<ComponentInstanceId, BoundedVec<ThreadId, MAX_THREADS_PER_COMPONENT>, 64>,
+    component_threads:
+        BoundedHashMap<ComponentInstanceId, BoundedVec<ThreadId, MAX_THREADS_PER_COMPONENT>, 64>,
     spawn_requests: BoundedVec<ThreadSpawnRequest, MAX_THREAD_SPAWN_REQUESTS>,
     next_thread_id: AtomicU32,
     task_manager: TaskManager,
@@ -156,41 +157,36 @@ impl ComponentThreadManager {
         self.max_threads_per_component = limit.min(MAX_THREADS_PER_COMPONENT);
     }
 
-    pub fn spawn_thread(
-        &mut self,
-        request: ThreadSpawnRequest,
-    ) -> ThreadSpawnResult<ThreadHandle> {
+    pub fn spawn_thread(&mut self, request: ThreadSpawnRequest) -> ThreadSpawnResult<ThreadHandle> {
         self.validate_spawn_request(&request)?;
-        
+
         if let Some(ref virt_manager) = self.virt_manager {
             self.check_threading_capability(&request, virt_manager)?;
         }
 
         let thread_id = ThreadId::new(self.next_thread_id.fetch_add(1, Ordering::SeqCst));
-        
+
         let handle = self.create_thread_handle(thread_id, &request)?;
-        
+
         #[cfg(feature = "std")]
         {
             self.spawn_std_thread(&request, thread_id)?;
         }
-        
+
         #[cfg(not(feature = "std"))]
         {
             self.spawn_task_thread(&request, thread_id)?;
         }
 
         self.register_thread(thread_id, handle.clone(), request.component_id)?;
-        
+
         Ok(handle)
     }
 
     pub fn join_thread(&mut self, thread_id: ThreadId) -> ThreadSpawnResult<ThreadResult> {
-        let handle = self.threads.get(&thread_id).ok_or_else(|| {
-            ThreadSpawnError {
-                kind: ThreadSpawnErrorKind::ThreadNotFound,
-                message: format!("Thread {} not found", thread_id.as_u32()),
-            }
+        let handle = self.threads.get(&thread_id).ok_or_else(|| ThreadSpawnError {
+            kind: ThreadSpawnErrorKind::ThreadNotFound,
+            message: format!("Thread {} not found", thread_id.as_u32()),
         })?;
 
         if handle.detached {
@@ -204,7 +200,7 @@ impl ComponentThreadManager {
         {
             self.join_std_thread(thread_id)
         }
-        
+
         #[cfg(not(feature = "std"))]
         {
             self.join_task_thread(thread_id)
@@ -219,7 +215,7 @@ impl ComponentThreadManager {
                     message: "Cannot detach completed thread".to_string(),
                 });
             }
-            
+
             // Mark as detached - this prevents joining
             let detached = true;
             // We can't modify the handle directly due to borrowing rules
@@ -242,7 +238,10 @@ impl ComponentThreadManager {
         }
     }
 
-    pub fn cleanup_component_threads(&mut self, component_id: ComponentInstanceId) -> ThreadSpawnResult<()> {
+    pub fn cleanup_component_threads(
+        &mut self,
+        component_id: ComponentInstanceId,
+    ) -> ThreadSpawnResult<()> {
         if let Some(thread_ids) = self.component_threads.get(&component_id).cloned() {
             for thread_id in thread_ids.iter() {
                 self.cleanup_thread(*thread_id);
@@ -265,9 +264,7 @@ impl ComponentThreadManager {
     }
 
     pub fn get_component_thread_count(&self, component_id: ComponentInstanceId) -> usize {
-        self.component_threads.get(&component_id)
-            .map(|threads| threads.len())
-            .unwrap_or(0)
+        self.component_threads.get(&component_id).map(|threads| threads.len()).unwrap_or(0)
     }
 
     fn validate_spawn_request(&self, request: &ThreadSpawnRequest) -> ThreadSpawnResult<()> {
@@ -303,10 +300,8 @@ impl ComponentThreadManager {
     ) -> ThreadSpawnResult<()> {
         let component_thread_count = self.get_component_thread_count(request.component_id);
         let required_threads = component_thread_count + 1;
-        
-        let threading_capability = Capability::Threading { 
-            max_threads: required_threads as u32 
-        };
+
+        let threading_capability = Capability::Threading { max_threads: required_threads as u32 };
 
         if !virt_manager.check_capability(request.component_id, &threading_capability) {
             return Err(ThreadSpawnError {
@@ -324,7 +319,7 @@ impl ComponentThreadManager {
         request: &ThreadSpawnRequest,
     ) -> ThreadSpawnResult<ThreadHandle> {
         let join_futex = SpinFutex::new(0);
-        
+
         Ok(ThreadHandle {
             thread_id,
             component_id: request.component_id,
@@ -347,43 +342,41 @@ impl ComponentThreadManager {
         let return_type = request.return_type.clone();
 
         let mut builder = thread::Builder::new();
-        
+
         if let Some(ref name) = request.configuration.name {
             builder = builder.name(name.clone());
         }
-        
+
         builder = builder.stack_size(request.configuration.stack_size);
 
-        let handle = self.threads.get(&thread_id).cloned().ok_or_else(|| {
-            ThreadSpawnError {
-                kind: ThreadSpawnErrorKind::ThreadNotFound,
-                message: "Thread handle not found".to_string(),
-            }
+        let handle = self.threads.get(&thread_id).cloned().ok_or_else(|| ThreadSpawnError {
+            kind: ThreadSpawnErrorKind::ThreadNotFound,
+            message: "Thread handle not found".to_string(),
         })?;
 
-        builder.spawn(move || {
-            let result = Self::execute_thread_function(
-                component_id,
-                &function_name,
-                &arguments,
-                &return_type,
-            );
+        builder
+            .spawn(move || {
+                let result = Self::execute_thread_function(
+                    component_id,
+                    &function_name,
+                    &arguments,
+                    &return_type,
+                );
 
-            handle.completed.store(true, Ordering::Release);
-            
-            // Store result
-            if let Ok(mut guard) = handle.result.lock() {
-                *guard = Some(result);
-            }
-            
-            // Wake up any joiners
-            handle.join_futex.wake_one();
-        }).map_err(|e| {
-            ThreadSpawnError {
+                handle.completed.store(true, Ordering::Release);
+
+                // Store result
+                if let Ok(mut guard) = handle.result.lock() {
+                    *guard = Some(result);
+                }
+
+                // Wake up any joiners
+                handle.join_futex.wake_one();
+            })
+            .map_err(|e| ThreadSpawnError {
                 kind: ThreadSpawnErrorKind::SpawnFailed,
                 message: format!("Failed to spawn thread: {}", e),
-            }
-        })?;
+            })?;
 
         self.active_thread_count.fetch_add(1, Ordering::SeqCst);
         Ok(())
@@ -395,21 +388,17 @@ impl ComponentThreadManager {
         request: &ThreadSpawnRequest,
         thread_id: ThreadId,
     ) -> ThreadSpawnResult<()> {
-        let task_id = self.task_manager.create_task(
-            request.component_id,
-            &format!("thread-{}", thread_id.as_u32()),
-        ).map_err(|e| {
-            ThreadSpawnError {
+        let task_id = self
+            .task_manager
+            .create_task(request.component_id, &format!("thread-{}", thread_id.as_u32()))
+            .map_err(|e| ThreadSpawnError {
                 kind: ThreadSpawnErrorKind::SpawnFailed,
                 message: format!("Failed to create task: {}", e),
-            }
-        })?;
+            })?;
 
-        self.task_manager.start_task(task_id).map_err(|e| {
-            ThreadSpawnError {
-                kind: ThreadSpawnErrorKind::SpawnFailed,
-                message: format!("Failed to start task: {}", e),
-            }
+        self.task_manager.start_task(task_id).map_err(|e| ThreadSpawnError {
+            kind: ThreadSpawnErrorKind::SpawnFailed,
+            message: format!("Failed to start task: {}", e),
         })?;
 
         self.active_thread_count.fetch_add(1, Ordering::SeqCst);
@@ -418,11 +407,9 @@ impl ComponentThreadManager {
 
     #[cfg(feature = "std")]
     fn join_std_thread(&mut self, thread_id: ThreadId) -> ThreadSpawnResult<ThreadResult> {
-        let handle = self.threads.get(&thread_id).ok_or_else(|| {
-            ThreadSpawnError {
-                kind: ThreadSpawnErrorKind::ThreadNotFound,
-                message: format!("Thread {} not found", thread_id.as_u32()),
-            }
+        let handle = self.threads.get(&thread_id).ok_or_else(|| ThreadSpawnError {
+            kind: ThreadSpawnErrorKind::ThreadNotFound,
+            message: format!("Thread {} not found", thread_id.as_u32()),
         })?;
 
         // Wait for completion using futex
@@ -431,16 +418,14 @@ impl ComponentThreadManager {
         }
 
         // Retrieve result
-        let result = handle.result.lock().map_err(|_| {
-            ThreadSpawnError {
-                kind: ThreadSpawnErrorKind::JoinFailed,
-                message: "Failed to lock result mutex".to_string(),
-            }
+        let result = handle.result.lock().map_err(|_| ThreadSpawnError {
+            kind: ThreadSpawnErrorKind::JoinFailed,
+            message: "Failed to lock result mutex".to_string(),
         })?;
 
-        let thread_result = result.clone().unwrap_or(ThreadResult::Error(
-            "Thread completed without result".to_string()
-        ));
+        let thread_result = result
+            .clone()
+            .unwrap_or(ThreadResult::Error("Thread completed without result".to_string()));
 
         self.cleanup_thread(thread_id);
         Ok(thread_result)
@@ -458,21 +443,17 @@ impl ComponentThreadManager {
         handle: ThreadHandle,
         component_id: ComponentInstanceId,
     ) -> ThreadSpawnResult<()> {
-        self.threads.insert(thread_id, handle).map_err(|_| {
-            ThreadSpawnError {
-                kind: ThreadSpawnErrorKind::ResourceLimitExceeded,
-                message: "Too many thread handles".to_string(),
-            }
+        self.threads.insert(thread_id, handle).map_err(|_| ThreadSpawnError {
+            kind: ThreadSpawnErrorKind::ResourceLimitExceeded,
+            message: "Too many thread handles".to_string(),
         })?;
 
-        let component_threads = self.component_threads.entry(component_id)
-            .or_insert_with(BoundedVec::new);
-        
-        component_threads.push(thread_id).map_err(|_| {
-            ThreadSpawnError {
-                kind: ThreadSpawnErrorKind::ResourceLimitExceeded,
-                message: "Component has too many threads".to_string(),
-            }
+        let component_threads =
+            self.component_threads.entry(component_id).or_insert_with(BoundedVec::new);
+
+        component_threads.push(thread_id).map_err(|_| ThreadSpawnError {
+            kind: ThreadSpawnErrorKind::ResourceLimitExceeded,
+            message: "Component has too many threads".to_string(),
         })?;
 
         Ok(())
@@ -564,13 +545,12 @@ impl ThreadSpawnBuiltins {
         thread_id: ThreadId,
     ) -> ThreadSpawnResult<Option<ComponentValue>> {
         let result = self.thread_manager.join_thread(thread_id)?;
-        
+
         match result {
             ThreadResult::Success(value) => Ok(value),
-            ThreadResult::Error(msg) => Err(ThreadSpawnError {
-                kind: ThreadSpawnErrorKind::JoinFailed,
-                message: msg,
-            }),
+            ThreadResult::Error(msg) => {
+                Err(ThreadSpawnError { kind: ThreadSpawnErrorKind::JoinFailed, message: msg })
+            }
             ThreadResult::Panic(msg) => Err(ThreadSpawnError {
                 kind: ThreadSpawnErrorKind::JoinFailed,
                 message: format!("Thread panicked: {}", msg),
@@ -604,17 +584,11 @@ pub fn create_default_thread_config() -> ThreadConfiguration {
 }
 
 pub fn create_thread_config_with_stack_size(stack_size: usize) -> ThreadConfiguration {
-    ThreadConfiguration {
-        stack_size,
-        ..Default::default()
-    }
+    ThreadConfiguration { stack_size, ..Default::default() }
 }
 
 pub fn create_thread_config_with_priority(priority: Priority) -> ThreadConfiguration {
-    ThreadConfiguration {
-        priority: Some(priority),
-        ..Default::default()
-    }
+    ThreadConfiguration { priority: Some(priority), ..Default::default() }
 }
 
 #[cfg(test)]
@@ -657,10 +631,10 @@ mod tests {
 
         let handle = manager.spawn_thread(request).unwrap();
         assert_eq!(handle.component_id, component_id);
-        
+
         let result = manager.join_thread(handle.thread_id).unwrap();
         match result {
-            ThreadResult::Success(_) => {},
+            ThreadResult::Success(_) => {}
             _ => panic!("Expected successful result"),
         }
     }
@@ -669,7 +643,7 @@ mod tests {
     fn test_thread_limits() {
         let manager = ComponentThreadManager::new();
         let component_id = ComponentInstanceId::new(1);
-        
+
         assert_eq!(manager.get_component_thread_count(component_id), 0);
         assert!(manager.get_component_threads(component_id).is_empty());
     }

@@ -3040,7 +3040,7 @@ mod tests {
     #[test]
     fn test_bounded_queue() {
         let provider = NoStdProvider::new(1024, VerificationLevel::Critical);
-        let mut queue = BoundedQueue::<u32, 5, NoStdProvider>::new(provider).unwrap();
+        let mut queue = BoundedQueue::<u32, 5, NoStdProvider<1024>>::new(provider).unwrap();
 
         // Test enqueue
         for i in 0..5 {
@@ -3083,7 +3083,7 @@ mod tests {
     #[test]
     fn test_bounded_map() {
         let provider = NoStdProvider::new(1024, VerificationLevel::Critical);
-        let mut map = BoundedMap::<u32, u32, 3, NoStdProvider>::new(provider).unwrap();
+        let mut map = BoundedMap::<u32, u32, 3, NoStdProvider<1024>>::new(provider).unwrap();
 
         // Test insert
         assert_eq!(map.insert(1, 10).unwrap(), None);
@@ -3121,7 +3121,7 @@ mod tests {
     #[test]
     fn test_bounded_set() {
         let provider = NoStdProvider::new(1024, VerificationLevel::Critical);
-        let mut set = BoundedSet::<u32, 3, NoStdProvider>::new(provider).unwrap();
+        let mut set = BoundedSet::<u32, 3, NoStdProvider<1024>>::new(provider).unwrap();
 
         // Test insert
         assert!(set.insert(1).unwrap());
@@ -3154,7 +3154,7 @@ mod tests {
     #[test]
     fn test_bounded_deque() {
         let provider = NoStdProvider::new(1024, VerificationLevel::Critical);
-        let mut deque = BoundedDeque::<u32, 5, NoStdProvider>::new(provider).unwrap();
+        let mut deque = BoundedDeque::<u32, 5, NoStdProvider<1024>>::new(provider).unwrap();
 
         // Test push_back
         for i in 0..3 {

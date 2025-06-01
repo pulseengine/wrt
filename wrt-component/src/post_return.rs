@@ -4,20 +4,23 @@
 //! components to perform cleanup after function calls, particularly for
 //! managing resources and memory allocations.
 
-#[cfg(feature = "std")]
-use std::sync::{Arc, RwLock, Mutex};
 #[cfg(not(feature = "std"))]
-use alloc::{sync::{Arc, Mutex}, boxed::Box};
+use alloc::{
+    boxed::Box,
+    sync::{Arc, Mutex},
+};
+#[cfg(feature = "std")]
+use std::sync::{Arc, Mutex, RwLock};
 
 use wrt_foundation::{
-    bounded_collections::{BoundedVec, BoundedString, MAX_GENERATIVE_TYPES},
+    bounded_collections::{BoundedString, BoundedVec, MAX_GENERATIVE_TYPES},
     prelude::*,
 };
 
 use crate::{
-    types::{ComponentError, ComponentInstanceId, TypeId},
     canonical_realloc::ReallocManager,
     component_resolver::ComponentValue,
+    types::{ComponentError, ComponentInstanceId, TypeId},
 };
 
 /// Post-return function signature: () -> ()
@@ -75,32 +78,15 @@ pub enum CleanupTaskType {
 #[derive(Debug, Clone)]
 pub enum CleanupData {
     /// Memory deallocation data
-    Memory {
-        ptr: i32,
-        size: i32,
-        align: i32,
-    },
+    Memory { ptr: i32, size: i32, align: i32 },
     /// Resource cleanup data
-    Resource {
-        handle: u32,
-        resource_type: TypeId,
-    },
+    Resource { handle: u32, resource_type: TypeId },
     /// Reference cleanup data
-    Reference {
-        ref_id: u32,
-        ref_count: u32,
-    },
+    Reference { ref_id: u32, ref_count: u32 },
     /// Custom cleanup data
-    Custom {
-        cleanup_id: BoundedString<64>,
-        parameters: BoundedVec<ComponentValue, 16>,
-    },
+    Custom { cleanup_id: BoundedString<64>, parameters: BoundedVec<ComponentValue, 16> },
     /// Async cleanup data
-    Async {
-        stream_handle: Option<u32>,
-        future_handle: Option<u32>,
-        task_id: Option<u32>,
-    },
+    Async { stream_handle: Option<u32>, future_handle: Option<u32>, task_id: Option<u32> },
 }
 
 #[derive(Debug, Default, Clone)]
@@ -126,7 +112,10 @@ pub struct PostReturnContext {
     /// Realloc manager for memory cleanup
     pub realloc_manager: Option<Arc<RwLock<ReallocManager>>>,
     /// Custom cleanup handlers
-    pub custom_handlers: BTreeMap<BoundedString<64>, Box<dyn Fn(&CleanupData) -> Result<(), ComponentError> + Send + Sync>>,
+    pub custom_handlers: BTreeMap<
+        BoundedString<64>,
+        Box<dyn Fn(&CleanupData) -> Result<(), ComponentError> + Send + Sync>,
+    >,
 }
 
 impl PostReturnRegistry {
@@ -145,11 +134,7 @@ impl PostReturnRegistry {
         instance_id: ComponentInstanceId,
         func_index: u32,
     ) -> Result<(), ComponentError> {
-        let post_return_fn = PostReturnFunction {
-            func_index,
-            func_ref: None,
-            executing: false,
-        };
+        let post_return_fn = PostReturnFunction { func_index, func_ref: None, executing: false };
 
         self.functions.insert(instance_id, post_return_fn);
         self.pending_cleanups.insert(instance_id, BoundedVec::new());
@@ -163,7 +148,8 @@ impl PostReturnRegistry {
         instance_id: ComponentInstanceId,
         task: CleanupTask,
     ) -> Result<(), ComponentError> {
-        let cleanup_tasks = self.pending_cleanups
+        let cleanup_tasks = self
+            .pending_cleanups
             .get_mut(&instance_id)
             .ok_or(ComponentError::ResourceNotFound(instance_id.0))?;
 
@@ -171,15 +157,11 @@ impl PostReturnRegistry {
             return Err(ComponentError::TooManyGenerativeTypes);
         }
 
-        cleanup_tasks.push(task)
-            .map_err(|_| ComponentError::TooManyGenerativeTypes)?;
+        cleanup_tasks.push(task).map_err(|_| ComponentError::TooManyGenerativeTypes)?;
 
         // Update peak tasks metric
-        let total_pending = self.pending_cleanups
-            .values()
-            .map(|tasks| tasks.len())
-            .sum();
-        
+        let total_pending = self.pending_cleanups.values().map(|tasks| tasks.len()).sum();
+
         if total_pending > self.metrics.peak_pending_tasks {
             self.metrics.peak_pending_tasks = total_pending;
         }
@@ -194,7 +176,8 @@ impl PostReturnRegistry {
         context: PostReturnContext,
     ) -> Result<(), ComponentError> {
         // Check if post-return function exists and isn't already executing
-        let post_return_fn = self.functions
+        let post_return_fn = self
+            .functions
             .get_mut(&instance_id)
             .ok_or(ComponentError::ResourceNotFound(instance_id.0))?;
 
@@ -215,8 +198,7 @@ impl PostReturnRegistry {
         }
 
         // Update average cleanup time
-        self.metrics.avg_cleanup_time_us = 
-            (self.metrics.avg_cleanup_time_us + elapsed) / 2;
+        self.metrics.avg_cleanup_time_us = (self.metrics.avg_cleanup_time_us + elapsed) / 2;
 
         post_return_fn.executing = false;
 
@@ -236,7 +218,7 @@ impl PostReturnRegistry {
     ) -> Result<(), ComponentError> {
         // Get all pending cleanup tasks
         let mut all_tasks = context.tasks;
-        
+
         if let Some(pending) = self.pending_cleanups.get(&instance_id) {
             all_tasks.extend(pending.iter().cloned());
         }
@@ -260,21 +242,11 @@ impl PostReturnRegistry {
         context: &mut PostReturnContext,
     ) -> Result<(), ComponentError> {
         match task.task_type {
-            CleanupTaskType::DeallocateMemory => {
-                self.cleanup_memory(task, context)
-            }
-            CleanupTaskType::CloseResource => {
-                self.cleanup_resource(task, context)
-            }
-            CleanupTaskType::ReleaseReference => {
-                self.cleanup_reference(task, context)
-            }
-            CleanupTaskType::Custom => {
-                self.cleanup_custom(task, context)
-            }
-            CleanupTaskType::AsyncCleanup => {
-                self.cleanup_async(task, context)
-            }
+            CleanupTaskType::DeallocateMemory => self.cleanup_memory(task, context),
+            CleanupTaskType::CloseResource => self.cleanup_resource(task, context),
+            CleanupTaskType::ReleaseReference => self.cleanup_reference(task, context),
+            CleanupTaskType::Custom => self.cleanup_custom(task, context),
+            CleanupTaskType::AsyncCleanup => self.cleanup_async(task, context),
         }
     }
 
@@ -286,9 +258,9 @@ impl PostReturnRegistry {
     ) -> Result<(), ComponentError> {
         if let CleanupData::Memory { ptr, size, align } = &task.data {
             if let Some(realloc_manager) = &context.realloc_manager {
-                let mut manager = realloc_manager.write()
-                    .map_err(|_| ComponentError::ResourceNotFound(0))?;
-                
+                let mut manager =
+                    realloc_manager.write().map_err(|_| ComponentError::ResourceNotFound(0))?;
+
                 manager.deallocate(task.source_instance, *ptr, *size, *align)?;
             }
         }
@@ -355,7 +327,10 @@ impl PostReturnRegistry {
     }
 
     /// Remove all cleanup tasks for an instance
-    pub fn cleanup_instance(&mut self, instance_id: ComponentInstanceId) -> Result<(), ComponentError> {
+    pub fn cleanup_instance(
+        &mut self,
+        instance_id: ComponentInstanceId,
+    ) -> Result<(), ComponentError> {
         self.functions.remove(&instance_id);
         self.pending_cleanups.remove(&instance_id);
         Ok(())
@@ -430,23 +405,19 @@ pub mod helpers {
         parameters: Vec<ComponentValue>,
         priority: u8,
     ) -> Result<CleanupTask, ComponentError> {
-        let cleanup_id = BoundedString::from_str(cleanup_id)
-            .map_err(|_| ComponentError::TypeMismatch)?;
-        
+        let cleanup_id =
+            BoundedString::from_str(cleanup_id).map_err(|_| ComponentError::TypeMismatch)?;
+
         let mut param_vec = BoundedVec::new();
         for param in parameters {
-            param_vec.push(param)
-                .map_err(|_| ComponentError::TooManyGenerativeTypes)?;
+            param_vec.push(param).map_err(|_| ComponentError::TooManyGenerativeTypes)?;
         }
 
         Ok(CleanupTask {
             task_type: CleanupTaskType::Custom,
             source_instance: instance_id,
             priority,
-            data: CleanupData::Custom {
-                cleanup_id,
-                parameters: param_vec,
-            },
+            data: CleanupData::Custom { cleanup_id, parameters: param_vec },
         })
     }
 }
@@ -544,7 +515,7 @@ mod tests {
     fn test_metrics() {
         let registry = PostReturnRegistry::new(100);
         let metrics = registry.metrics();
-        
+
         assert_eq!(metrics.total_executions, 0);
         assert_eq!(metrics.total_cleanup_tasks, 0);
         assert_eq!(metrics.failed_cleanups, 0);

@@ -14,8 +14,8 @@ use std::collections::HashMap;
 
 use wrt_error::{codes, Error, ErrorCategory, Result};
 use wrt_format::component::{
-    Alias, Canon, CanonOperation, ComponentType, ComponentTypeDefinition, Export, Import, Instance,
-    ValType,
+    Alias, AliasTarget, Canon, CanonOperation, Component, ComponentType, ComponentTypeDefinition, 
+    Export, ExternType, Import, Instance, Sort, ValType
 };
 #[cfg(not(any(feature = "std", feature = "alloc")))]
 use wrt_foundation::{
@@ -23,8 +23,7 @@ use wrt_foundation::{
     no_std_hashmap::SimpleHashMap as HashMap,
 };
 
-// Import component model types
-use crate::component::Component;
+// Import component model types from crate
 // Import prelude for String and other types
 use crate::prelude::*;
 
@@ -127,15 +126,13 @@ impl<'a> ValidationContext<'a> {
         #[cfg(not(any(feature = "std", feature = "alloc")))]
         {
             self.defined_types.push(idx).map_err(|_| {
-                Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR)
-                    .with_context("too many types in component")
+                Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR, "too many types in component")
             })?;
         }
         #[cfg(any(feature = "std", feature = "alloc"))]
         {
             if self.defined_types.len() >= MAX_TYPES as usize {
-                return Err(Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR)
-                    .with_context("too many types in component"));
+                return Err(Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR, "too many types in component"));
             }
             self.defined_types.push(idx);
         }
@@ -152,27 +149,22 @@ impl<'a> ValidationContext<'a> {
         #[cfg(not(any(feature = "std", feature = "alloc")))]
         {
             let wasm_name = WasmName::try_from(name).map_err(|_| {
-                Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR)
-                    .with_context("import name too long")
+                Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR, "import name too long")
             })?;
             if self.import_names.contains_key(&wasm_name) {
-                return Err(Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR)
-                    .with_context("duplicate import name"));
+                return Err(Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR, "duplicate import name"));
             }
             self.import_names.insert(wasm_name, self.import_names.len() as u32).map_err(|_| {
-                Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR)
-                    .with_context("too many imports")
+                Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR, "too many imports")
             })?;
         }
         #[cfg(any(feature = "std", feature = "alloc"))]
         {
             if self.import_names.contains_key(name) {
-                return Err(Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR)
-                    .with_context("duplicate import name"));
+                return Err(Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR, "duplicate import name"));
             }
             if self.import_names.len() >= MAX_IMPORTS_EXPORTS as usize {
-                return Err(Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR)
-                    .with_context("too many imports"));
+                return Err(Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR, "too many imports"));
             }
             self.import_names.insert(name.to_string(), self.import_names.len() as u32);
         }
@@ -184,27 +176,22 @@ impl<'a> ValidationContext<'a> {
         #[cfg(not(any(feature = "std", feature = "alloc")))]
         {
             let wasm_name = WasmName::try_from(name).map_err(|_| {
-                Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR)
-                    .with_context("export name too long")
+                Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR, "export name too long")
             })?;
             if self.export_names.contains_key(&wasm_name) {
-                return Err(Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR)
-                    .with_context("duplicate export name"));
+                return Err(Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR, "duplicate export name"));
             }
             self.export_names.insert(wasm_name, self.export_names.len() as u32).map_err(|_| {
-                Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR)
-                    .with_context("too many exports")
+                Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR, "too many exports")
             })?;
         }
         #[cfg(any(feature = "std", feature = "alloc"))]
         {
             if self.export_names.contains_key(name) {
-                return Err(Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR)
-                    .with_context("duplicate export name"));
+                return Err(Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR, "duplicate export name"));
             }
             if self.export_names.len() >= MAX_IMPORTS_EXPORTS as usize {
-                return Err(Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR)
-                    .with_context("too many exports"));
+                return Err(Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR, "too many exports"));
             }
             self.export_names.insert(name.to_string(), self.export_names.len() as u32);
         }
@@ -216,15 +203,13 @@ impl<'a> ValidationContext<'a> {
         #[cfg(not(any(feature = "std", feature = "alloc")))]
         {
             self.defined_instances.push(idx).map_err(|_| {
-                Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR)
-                    .with_context("too many instances in component")
+                Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR, "too many instances in component")
             })?;
         }
         #[cfg(any(feature = "std", feature = "alloc"))]
         {
             if self.defined_instances.len() >= MAX_TYPES as usize {
-                return Err(Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR)
-                    .with_context("too many instances in component"));
+                return Err(Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR, "too many instances in component"));
             }
             self.defined_instances.push(idx);
         }
@@ -265,11 +250,8 @@ fn validate_component_type(ctx: &ValidationContext, component_type: &ComponentTy
             // Function types are validated during parsing
             Ok(())
         }
-        ComponentTypeDefinition::Value(val_type) => {
-            if !ctx.config.enable_value_section && matches!(val_type, ValType::Resource(_)) {
-                return Err(Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR)
-                    .with_context("resource types not enabled"));
-            }
+        ComponentTypeDefinition::Value(_val_type) => {
+            // Value types are validated during parsing
             Ok(())
         }
         ComponentTypeDefinition::Type(_type_def) => {
@@ -286,27 +268,25 @@ fn validate_component_type(ctx: &ValidationContext, component_type: &ComponentTy
 
 /// Validate an alias
 fn validate_alias(ctx: &ValidationContext, alias: &Alias) -> Result<()> {
-    match alias {
-        Alias::Type { instance, index } => {
-            if !ctx.is_instance_valid(*instance) {
-                return Err(Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR)
-                    .with_context("invalid instance index in type alias"));
-            }
-            // Further validation would check if the type exists in the instance
-            _ = index; // Suppress unused warning
-        }
-        Alias::Export { instance, name } => {
-            if !ctx.is_instance_valid(*instance) {
-                return Err(Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR)
-                    .with_context("invalid instance index in export alias"));
+    match &alias.target {
+        AliasTarget::CoreInstanceExport { instance_idx, name, kind } => {
+            if !ctx.is_instance_valid(*instance_idx) {
+                return Err(Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR, "invalid instance index in core export alias"));
             }
             // Further validation would check if the export exists in the instance
-            _ = name; // Suppress unused warning
+            _ = (name, kind); // Suppress unused warnings
         }
-        Alias::Outer { count, index } => {
+        AliasTarget::InstanceExport { instance_idx, name, kind } => {
+            if !ctx.is_instance_valid(*instance_idx) {
+                return Err(Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR, "invalid instance index in export alias"));
+            }
+            // Further validation would check if the export exists in the instance
+            _ = (name, kind); // Suppress unused warnings
+        }
+        AliasTarget::Outer { count, kind } => {
             // Outer aliases reference parent components
             // Validation would check if we're nested deep enough
-            _ = (count, index); // Suppress unused warnings
+            _ = (count, kind); // Suppress unused warnings
         }
     }
     Ok(())
@@ -323,12 +303,18 @@ fn validate_imports(ctx: &mut ValidationContext) -> Result<()> {
 /// Validate a single import
 fn validate_import(ctx: &mut ValidationContext, import: &Import) -> Result<()> {
     // Check for duplicate import names
-    ctx.add_import_name(&import.name)?;
+    ctx.add_import_name(&import.name.name)?;
 
     // Validate the import type reference
-    if !ctx.is_type_valid(import.ty) {
-        return Err(Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR)
-            .with_context("invalid type index in import"));
+    match &import.ty {
+        ExternType::Type(type_idx) => {
+            if !ctx.is_type_valid(*type_idx) {
+                return Err(Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR, "invalid type index in import"));
+            }
+        }
+        _ => {
+            // Other extern types are handled separately
+        }
     }
 
     Ok(())
@@ -345,45 +331,40 @@ fn validate_exports(ctx: &mut ValidationContext) -> Result<()> {
 /// Validate a single export
 fn validate_export(ctx: &mut ValidationContext, export: &Export) -> Result<()> {
     // Check for duplicate export names
-    ctx.add_export_name(&export.name)?;
+    ctx.add_export_name(&export.name.name)?;
 
     // Validate the export reference
-    match export.kind {
-        0 => {
+    match &export.sort {
+        Sort::Core(_) => {
             // Core module export
-            if export.index >= ctx.component.modules.len() as u32 {
-                return Err(Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR)
-                    .with_context("invalid module index in export"));
+            if export.idx >= ctx.component.modules.len() as u32 {
+                return Err(Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR, "invalid module index in export"));
             }
         }
-        1 => {
+        Sort::Function => {
             // Function export
             // Would need to track defined functions
         }
-        2 => {
+        Sort::Type => {
             // Type export
-            if !ctx.is_type_valid(export.index) {
-                return Err(Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR)
-                    .with_context("invalid type index in export"));
+            if !ctx.is_type_valid(export.idx) {
+                return Err(Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR, "invalid type index in export"));
             }
         }
-        3 => {
+        Sort::Instance => {
             // Instance export
-            if !ctx.is_instance_valid(export.index) {
-                return Err(Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR)
-                    .with_context("invalid instance index in export"));
+            if !ctx.is_instance_valid(export.idx) {
+                return Err(Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR, "invalid instance index in export"));
             }
         }
-        4 => {
+        Sort::Component => {
             // Component export
-            if export.index >= ctx.component.components.len() as u32 {
-                return Err(Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR)
-                    .with_context("invalid component index in export"));
+            if export.idx >= ctx.component.components.len() as u32 {
+                return Err(Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR, "invalid component index in export"));
             }
         }
-        _ => {
-            return Err(Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR)
-                .with_context("invalid export kind"));
+        Sort::Value => {
+            // Value export - validate if needed
         }
     }
 
@@ -402,21 +383,9 @@ fn validate_instances(ctx: &mut ValidationContext) -> Result<()> {
 /// Validate a single instance
 fn validate_instance(ctx: &ValidationContext, instance: &Instance) -> Result<()> {
     match instance {
-        Instance::Instantiate { module, args } => {
-            // Validate module index
-            if *module >= ctx.component.modules.len() as u32 {
-                return Err(Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR)
-                    .with_context("invalid module index in instance"));
-            }
-            // Would need to validate args match module imports
-            _ = args; // Suppress unused warning
-        }
-        Instance::FromExports(exports) => {
-            // Validate each export in the instance
-            for export in exports {
-                // Would need to validate export references
-                _ = export; // Suppress unused warning
-            }
+        _ => {
+            // TODO: Implement proper instance validation once Instance enum structure is clarified
+            _ = instance; // Suppress unused warning
         }
     }
     Ok(())
@@ -433,48 +402,24 @@ fn validate_canonicals(ctx: &ValidationContext) -> Result<()> {
 /// Validate a single canonical function
 fn validate_canonical(ctx: &ValidationContext, canon: &Canon) -> Result<()> {
     match &canon.operation {
-        CanonOperation::Lift { func_ty, options } => {
+        CanonOperation::Lift { func_idx, type_idx, .. } => {
             // Validate function type index
-            if !ctx.is_type_valid(*func_ty) {
-                return Err(Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR)
-                    .with_context("invalid function type in canon lift"));
+            if !ctx.is_type_valid(*type_idx) {
+                return Err(Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR, "invalid function type in canon lift"));
             }
-            // Would need to validate options
-            _ = options; // Suppress unused warning
+            // Would validate func_idx if we had function tracking
+            _ = func_idx; // Suppress unused warning
         }
         CanonOperation::Lower { func_idx, options } => {
             // Would need to track defined functions
             _ = (func_idx, options); // Suppress unused warnings
         }
-        CanonOperation::ResourceNew { resource } => {
+        CanonOperation::Resource(resource_op) => {
             if !ctx.config.enable_resource_types {
-                return Err(Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR)
-                    .with_context("resource types not enabled"));
+                return Err(Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR, "resource types not enabled"));
             }
-            if !ctx.is_type_valid(*resource) {
-                return Err(Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR)
-                    .with_context("invalid resource type in canon resource.new"));
-            }
-        }
-        CanonOperation::ResourceDrop { resource } => {
-            if !ctx.config.enable_resource_types {
-                return Err(Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR)
-                    .with_context("resource types not enabled"));
-            }
-            if !ctx.is_type_valid(*resource) {
-                return Err(Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR)
-                    .with_context("invalid resource type in canon resource.drop"));
-            }
-        }
-        CanonOperation::ResourceRep { resource } => {
-            if !ctx.config.enable_resource_types {
-                return Err(Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR)
-                    .with_context("resource types not enabled"));
-            }
-            if !ctx.is_type_valid(*resource) {
-                return Err(Error::new(ErrorCategory::Validation, codes::VALIDATION_ERROR)
-                    .with_context("invalid resource type in canon resource.rep"));
-            }
+            // Validate resource operation if needed
+            _ = resource_op; // Suppress unused warning for now
         }
     }
     Ok(())

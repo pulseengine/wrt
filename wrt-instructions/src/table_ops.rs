@@ -4,698 +4,1159 @@
 
 //! Table operations for WebAssembly instructions.
 //!
-//! This module provides pure implementations for WebAssembly table access
-//! instructions, including get, set, grow, and size operations.
-
-use wrt_error::{codes, ErrorCategory};
-use wrt_foundation::values::{ExternRef, FuncRef};
+//! This module provides implementations for WebAssembly table access
+//! instructions, including get, set, grow, size, fill, copy, and initialization operations.
+//!
+//! # Table Operation Architecture
+//!
+//! This module separates table operations from the underlying table
+//! implementation, allowing different execution engines to share the same
+//! table access code. The key components are:
+//!
+//! - Individual operation structs: `TableGet`, `TableSet`, `TableSize`, etc.
+//! - `TableOp` unified enum for instruction dispatching
+//! - `TableOperations` trait defining the interface to table implementations
+//! - `TableContext` trait for execution context integration
+//!
+//! # Features
+//!
+//! - Support for all WebAssembly table operations
+//! - Function and external reference handling
+//! - Multi-table support
+//! - Element segment operations
+//! - Bounds checking and validation
+//!
+//! # Usage
+//!
+//! ```no_run
+//! use wrt_instructions::table_ops::{TableGet, TableSet};
+//! use wrt_instructions::Value;
+//! use wrt_foundation::values::FuncRef;
+//!
+//! // Get element from table
+//! let get_op = TableGet::new(0); // table index 0
+//! // Execute with appropriate context
+//!
+//! // Set element in table  
+//! let set_op = TableSet::new(0); // table index 0
+//! // Execute with appropriate context
+//! ```
 
 use crate::prelude::*;
+use crate::validation::{Validate, ValidationContext};
 
-/// Represents a reference value in WebAssembly
-#[derive(Debug, Clone, PartialEq)]
-pub enum RefValue {
-    /// A function reference
-    FuncRef(u32),
-    /// An external reference
-    ExternRef(u32),
-    /// Null reference
-    Null,
-}
-
-/// Represents a pure table operation for WebAssembly.
-#[derive(Debug, Clone)]
-pub enum TableOp {
-    /// Get an element from a table
-    TableGet(u32),
-    /// Set an element in a table
-    TableSet(u32),
-    /// Get the size of a table
-    TableSize(u32),
-    /// Grow a table by a given number of elements
-    TableGrow(u32),
-    /// Fill a table with a value
-    TableFill(u32),
-    /// Copy elements from one table to another
-    TableCopy {
-        /// Destination table index
-        dst_table: u32,
-        /// Source table index
-        src_table: u32,
-    },
-    /// Initialize a table from an element segment
-    TableInit {
-        /// Table index to initialize
-        table_index: u32,
-        /// Element segment index to use
-        elem_index: u32,
-    },
-    /// Drop an element segment
-    ElemDrop(u32),
-}
-
-/// Execution context for table operations
-pub trait TableContext {
+/// Table operations trait defining the interface to table implementations
+pub trait TableOperations {
     /// Get a reference from a table
-    fn get_table_element(&self, table_index: u32, elem_index: u32) -> Result<RefValue>;
-
+    fn get_table_element(&self, table_index: u32, elem_index: u32) -> Result<Value>;
+    
     /// Set a reference in a table
-    fn set_table_element(
-        &mut self,
-        table_index: u32,
-        elem_index: u32,
-        value: RefValue,
-    ) -> Result<()>;
-
+    fn set_table_element(&mut self, table_index: u32, elem_index: u32, value: Value) -> Result<()>;
+    
     /// Get the size of a table
     fn get_table_size(&self, table_index: u32) -> Result<u32>;
-
-    /// Grow a table by a given number of elements
-    fn grow_table(&mut self, table_index: u32, delta: u32, init_value: RefValue) -> Result<i32>;
-
-    /// Fill a table with a value
-    fn fill_table(&mut self, table_index: u32, dst: u32, val: RefValue, len: u32) -> Result<()>;
-
+    
+    /// Grow a table by a given number of elements, returning previous size or -1 on failure
+    fn grow_table(&mut self, table_index: u32, delta: u32, init_value: Value) -> Result<i32>;
+    
+    /// Fill a table range with a value
+    fn fill_table(&mut self, table_index: u32, dst: u32, val: Value, len: u32) -> Result<()>;
+    
     /// Copy elements from one table to another
-    fn copy_table(
-        &mut self,
-        dst_table: u32,
-        dst_index: u32,
-        src_table: u32,
-        src_index: u32,
-        len: u32,
-    ) -> Result<()>;
+    fn copy_table(&mut self, dst_table: u32, dst_index: u32, src_table: u32, src_index: u32, len: u32) -> Result<()>;
+}
 
-    /// Initialize a table from an element segment
-    fn init_table_from_elem(
+/// Element segment operations trait for table.init and elem.drop
+pub trait ElementSegmentOperations {
+    /// Get element from segment
+    #[cfg(any(feature = "std", feature = "alloc"))]
+    fn get_element_segment(&self, elem_index: u32) -> Result<Option<Vec<Value>>>;
+    
+    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    fn get_element_segment(&self, elem_index: u32) -> Result<Option<wrt_foundation::BoundedVec<Value, 65536, wrt_foundation::NoStdProvider<65536>>>>;
+    
+    /// Drop (mark as unavailable) an element segment
+    fn drop_element_segment(&mut self, elem_index: u32) -> Result<()>;
+}
+
+/// Table get operation (table.get)
+#[derive(Debug, Clone, PartialEq)]
+pub struct TableGet {
+    /// Table index to get from
+    pub table_index: u32,
+}
+
+impl TableGet {
+    /// Create a new table.get operation
+    pub fn new(table_index: u32) -> Self {
+        Self { table_index }
+    }
+    
+    /// Execute table.get operation
+    ///
+    /// # Arguments
+    ///
+    /// * `table` - The table to operate on
+    /// * `index` - Index to get (i32 value)
+    ///
+    /// # Returns
+    ///
+    /// The reference value at the index
+    pub fn execute(&self, table: &(impl TableOperations + ?Sized), index: &Value) -> Result<Value> {
+        let idx = match index {
+            Value::I32(i) => {
+                if *i < 0 {
+                    return Err(Error::runtime_error("Table index cannot be negative"));
+                }
+                *i as u32
+            }
+            _ => return Err(Error::type_error("table.get index must be i32")),
+        };
+        
+        table.get_table_element(self.table_index, idx)
+    }
+}
+
+/// Table set operation (table.set)
+#[derive(Debug, Clone, PartialEq)]
+pub struct TableSet {
+    /// Table index to set in
+    pub table_index: u32,
+}
+
+impl TableSet {
+    /// Create a new table.set operation
+    pub fn new(table_index: u32) -> Self {
+        Self { table_index }
+    }
+    
+    /// Execute table.set operation
+    ///
+    /// # Arguments
+    ///
+    /// * `table` - The table to operate on
+    /// * `index` - Index to set (i32 value)
+    /// * `value` - Reference value to set
+    ///
+    /// # Returns
+    ///
+    /// Success or an error
+    pub fn execute(&self, table: &mut (impl TableOperations + ?Sized), index: &Value, value: &Value) -> Result<()> {
+        let idx = match index {
+            Value::I32(i) => {
+                if *i < 0 {
+                    return Err(Error::runtime_error("Table index cannot be negative"));
+                }
+                *i as u32
+            }
+            _ => return Err(Error::type_error("table.set index must be i32")),
+        };
+        
+        // Validate that value is a reference type
+        match value {
+            Value::FuncRef(_) | Value::ExternRef(_) => {},
+            _ => return Err(Error::type_error("table.set value must be a reference type")),
+        }
+        
+        table.set_table_element(self.table_index, idx, value.clone())
+    }
+}
+
+/// Table size operation (table.size)
+#[derive(Debug, Clone, PartialEq)]
+pub struct TableSize {
+    /// Table index to get size of
+    pub table_index: u32,
+}
+
+impl TableSize {
+    /// Create a new table.size operation
+    pub fn new(table_index: u32) -> Self {
+        Self { table_index }
+    }
+    
+    /// Execute table.size operation
+    ///
+    /// # Arguments
+    ///
+    /// * `table` - The table to query
+    ///
+    /// # Returns
+    ///
+    /// The size of the table as an i32 Value
+    pub fn execute(&self, table: &(impl TableOperations + ?Sized)) -> Result<Value> {
+        let size = table.get_table_size(self.table_index)?;
+        Ok(Value::I32(size as i32))
+    }
+}
+
+/// Table grow operation (table.grow)
+#[derive(Debug, Clone, PartialEq)]
+pub struct TableGrow {
+    /// Table index to grow
+    pub table_index: u32,
+}
+
+impl TableGrow {
+    /// Create a new table.grow operation
+    pub fn new(table_index: u32) -> Self {
+        Self { table_index }
+    }
+    
+    /// Execute table.grow operation
+    ///
+    /// # Arguments
+    ///
+    /// * `table` - The table to grow
+    /// * `init_value` - Initial value for new elements
+    /// * `delta` - Number of elements to grow by (i32 value)
+    ///
+    /// # Returns
+    ///
+    /// The previous size, or -1 if the operation failed (as i32 Value)
+    pub fn execute(&self, table: &mut (impl TableOperations + ?Sized), init_value: &Value, delta: &Value) -> Result<Value> {
+        let delta_elems = match delta {
+            Value::I32(d) => {
+                if *d < 0 {
+                    return Ok(Value::I32(-1)); // Negative delta fails
+                }
+                *d as u32
+            }
+            _ => return Err(Error::type_error("table.grow delta must be i32")),
+        };
+        
+        // Validate that init_value is a reference type
+        match init_value {
+            Value::FuncRef(_) | Value::ExternRef(_) => {},
+            _ => return Err(Error::type_error("table.grow init value must be a reference type")),
+        }
+        
+        let prev_size = table.grow_table(self.table_index, delta_elems, init_value.clone())?;
+        Ok(Value::I32(prev_size))
+    }
+}
+
+/// Table fill operation (table.fill)
+#[derive(Debug, Clone, PartialEq)]
+pub struct TableFill {
+    /// Table index to fill
+    pub table_index: u32,
+}
+
+impl TableFill {
+    /// Create a new table.fill operation
+    pub fn new(table_index: u32) -> Self {
+        Self { table_index }
+    }
+    
+    /// Execute table.fill operation
+    ///
+    /// # Arguments
+    ///
+    /// * `table` - The table to fill
+    /// * `dest` - Destination index (i32)
+    /// * `value` - Fill value (reference)
+    /// * `size` - Number of elements to fill (i32)
+    ///
+    /// # Returns
+    ///
+    /// Success or an error
+    pub fn execute(&self, table: &mut (impl TableOperations + ?Sized), dest: &Value, value: &Value, size: &Value) -> Result<()> {
+        let dest_idx = match dest {
+            Value::I32(d) => {
+                if *d < 0 {
+                    return Err(Error::runtime_error("Table destination index cannot be negative"));
+                }
+                *d as u32
+            }
+            _ => return Err(Error::type_error("table.fill dest must be i32")),
+        };
+        
+        let fill_size = match size {
+            Value::I32(s) => {
+                if *s < 0 {
+                    return Err(Error::runtime_error("Table fill size cannot be negative"));
+                }
+                *s as u32
+            }
+            _ => return Err(Error::type_error("table.fill size must be i32")),
+        };
+        
+        // Validate that value is a reference type
+        match value {
+            Value::FuncRef(_) | Value::ExternRef(_) => {},
+            _ => return Err(Error::type_error("table.fill value must be a reference type")),
+        }
+        
+        table.fill_table(self.table_index, dest_idx, value.clone(), fill_size)
+    }
+}
+
+/// Table copy operation (table.copy)
+#[derive(Debug, Clone, PartialEq)]
+pub struct TableCopy {
+    /// Destination table index
+    pub dest_table_index: u32,
+    /// Source table index  
+    pub src_table_index: u32,
+}
+
+impl TableCopy {
+    /// Create a new table.copy operation
+    pub fn new(dest_table_index: u32, src_table_index: u32) -> Self {
+        Self { dest_table_index, src_table_index }
+    }
+    
+    /// Execute table.copy operation
+    ///
+    /// # Arguments
+    ///
+    /// * `table` - The table operations interface
+    /// * `dest` - Destination index (i32)
+    /// * `src` - Source index (i32)
+    /// * `size` - Number of elements to copy (i32)
+    ///
+    /// # Returns
+    ///
+    /// Success or an error
+    pub fn execute(&self, table: &mut (impl TableOperations + ?Sized), dest: &Value, src: &Value, size: &Value) -> Result<()> {
+        let dest_idx = match dest {
+            Value::I32(d) => {
+                if *d < 0 {
+                    return Err(Error::runtime_error("Table destination index cannot be negative"));
+                }
+                *d as u32
+            }
+            _ => return Err(Error::type_error("table.copy dest must be i32")),
+        };
+        
+        let src_idx = match src {
+            Value::I32(s) => {
+                if *s < 0 {
+                    return Err(Error::runtime_error("Table source index cannot be negative"));
+                }
+                *s as u32
+            }
+            _ => return Err(Error::type_error("table.copy src must be i32")),
+        };
+        
+        let copy_size = match size {
+            Value::I32(s) => {
+                if *s < 0 {
+                    return Err(Error::runtime_error("Table copy size cannot be negative"));
+                }
+                *s as u32
+            }
+            _ => return Err(Error::type_error("table.copy size must be i32")),
+        };
+        
+        table.copy_table(self.dest_table_index, dest_idx, self.src_table_index, src_idx, copy_size)
+    }
+}
+
+/// Table init operation (table.init)
+#[derive(Debug, Clone, PartialEq)]
+pub struct TableInit {
+    /// Table index to initialize
+    pub table_index: u32,
+    /// Element segment index to use
+    pub elem_index: u32,
+}
+
+impl TableInit {
+    /// Create a new table.init operation
+    pub fn new(table_index: u32, elem_index: u32) -> Self {
+        Self { table_index, elem_index }
+    }
+    
+    /// Execute table.init operation
+    ///
+    /// # Arguments
+    ///
+    /// * `table` - The table to initialize
+    /// * `elem_segments` - Access to element segments
+    /// * `dest` - Destination index in table (i32)
+    /// * `src` - Source index in element segment (i32)
+    /// * `size` - Number of elements to copy (i32)
+    ///
+    /// # Returns
+    ///
+    /// Success or an error
+    pub fn execute(
+        &self, 
+        table: &mut (impl TableOperations + ?Sized),
+        elem_segments: &(impl ElementSegmentOperations + ?Sized),
+        dest: &Value, 
+        src: &Value, 
+        size: &Value
+    ) -> Result<()> {
+        let dest_idx = match dest {
+            Value::I32(d) => {
+                if *d < 0 {
+                    return Err(Error::runtime_error("Table destination index cannot be negative"));
+                }
+                *d as u32
+            }
+            _ => return Err(Error::type_error("table.init dest must be i32")),
+        };
+        
+        let src_idx = match src {
+            Value::I32(s) => {
+                if *s < 0 {
+                    return Err(Error::runtime_error("Element segment source index cannot be negative"));
+                }
+                *s as u32
+            }
+            _ => return Err(Error::type_error("table.init src must be i32")),
+        };
+        
+        let copy_size = match size {
+            Value::I32(s) => {
+                if *s < 0 {
+                    return Err(Error::runtime_error("Table init size cannot be negative"));
+                }
+                *s as u32
+            }
+            _ => return Err(Error::type_error("table.init size must be i32")),
+        };
+        
+        // Get element segment
+        let elements = elem_segments.get_element_segment(self.elem_index)?
+            .ok_or_else(|| Error::runtime_error("Element segment has been dropped"))?;
+        
+        // Check bounds in element segment
+        let elements_len = elements.len() as u32;
+        let src_end = src_idx.checked_add(copy_size).ok_or_else(|| {
+            Error::runtime_error("table.init src index overflow")
+        })?;
+        
+        if src_end > elements_len {
+            return Err(Error::runtime_error("table.init src out of bounds"));
+        }
+        
+        // Check table bounds
+        let table_size = table.get_table_size(self.table_index)?;
+        let dest_end = dest_idx.checked_add(copy_size).ok_or_else(|| {
+            Error::runtime_error("table.init dest index overflow")
+        })?;
+        
+        if dest_end > table_size {
+            return Err(Error::runtime_error("table.init dest out of bounds"));
+        }
+        
+        // Copy elements from segment to table
+        #[cfg(any(feature = "std", feature = "alloc"))]
+        {
+            for i in 0..copy_size {
+                let elem_value = &elements[(src_idx + i) as usize];
+                table.set_table_element(self.table_index, dest_idx + i, elem_value.clone())?;
+            }
+        }
+        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        {
+            for i in 0..copy_size {
+                let elem_value = elements.get((src_idx + i) as usize)
+                    .map_err(|_| Error::runtime_error("Element segment index out of bounds"))?;
+                table.set_table_element(self.table_index, dest_idx + i, elem_value.clone())?;
+            }
+        }
+        
+        Ok(())
+    }
+}
+
+/// Element drop operation (elem.drop)
+#[derive(Debug, Clone, PartialEq)]
+pub struct ElemDrop {
+    /// Element segment index to drop
+    pub elem_index: u32,
+}
+
+impl ElemDrop {
+    /// Create a new elem.drop operation
+    pub fn new(elem_index: u32) -> Self {
+        Self { elem_index }
+    }
+    
+    /// Execute elem.drop operation
+    ///
+    /// # Arguments
+    ///
+    /// * `elem_segments` - Access to element segments
+    ///
+    /// # Returns
+    ///
+    /// Success or an error
+    pub fn execute(&self, elem_segments: &mut (impl ElementSegmentOperations + ?Sized)) -> Result<()> {
+        elem_segments.drop_element_segment(self.elem_index)
+    }
+}
+
+/// Unified table operation enum combining all table instructions
+#[derive(Debug, Clone, PartialEq)]
+pub enum TableOp {
+    /// Get operation (table.get)
+    Get(TableGet),
+    /// Set operation (table.set)
+    Set(TableSet),
+    /// Size operation (table.size)
+    Size(TableSize),
+    /// Grow operation (table.grow)
+    Grow(TableGrow),
+    /// Fill operation (table.fill)
+    Fill(TableFill),
+    /// Copy operation (table.copy)
+    Copy(TableCopy),
+    /// Init operation (table.init)
+    Init(TableInit),
+    /// Element drop operation (elem.drop)
+    ElemDrop(ElemDrop),
+}
+
+/// Execution context for unified table operations
+pub trait TableContext {
+    /// Pop a value from the stack
+    fn pop_value(&mut self) -> Result<Value>;
+    
+    /// Push a value to the stack
+    fn push_value(&mut self, value: Value) -> Result<()>;
+    
+    /// Get table operations interface
+    fn get_tables(&mut self) -> Result<&mut dyn TableOperations>;
+    
+    /// Get element segment operations interface
+    fn get_element_segments(&mut self) -> Result<&mut dyn ElementSegmentOperations>;
+    
+    /// Execute table.init operation (helper to avoid borrowing issues)
+    fn execute_table_init(
         &mut self,
         table_index: u32,
-        dst: u32,
         elem_index: u32,
-        src: u32,
-        len: u32,
+        dest: i32,
+        src: i32,
+        size: i32,
     ) -> Result<()>;
+}
 
-    /// Drop an element segment
-    fn drop_elem(&mut self, elem_index: u32) -> Result<()>;
-
-    /// Push a value to the context
-    fn push_table_value(&mut self, value: Value) -> Result<()>;
-
-    /// Pop a value from the context
-    fn pop_table_value(&mut self) -> Result<Value>;
+impl TableOp {
+    /// Helper to extract 3 i32 arguments from stack
+    fn pop_three_i32s(ctx: &mut impl TableContext) -> Result<(i32, i32, i32)> {
+        let arg3 = ctx.pop_value()?.into_i32().map_err(|_| {
+            Error::type_error("Expected i32 for table operation")
+        })?;
+        let arg2 = ctx.pop_value()?.into_i32().map_err(|_| {
+            Error::type_error("Expected i32 for table operation")
+        })?;
+        let arg1 = ctx.pop_value()?.into_i32().map_err(|_| {
+            Error::type_error("Expected i32 for table operation")
+        })?;
+        Ok((arg1, arg2, arg3))
+    }
 }
 
 impl<T: TableContext> PureInstruction<T, Error> for TableOp {
     fn execute(&self, context: &mut T) -> Result<()> {
         match self {
-            Self::TableGet(table_index) => {
-                let index = context.pop_table_value()?.into_i32().map_err(|_| {
-                    Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Invalid table type")
-                })?;
-
-                if index < 0 {
-                    return Err(Error::new(
-                        ErrorCategory::Resource,
-                        codes::RESOURCE_ERROR,
-                        "Invalid table index",
-                    ));
-                }
-
-                let ref_val = context.get_table_element(*table_index, index as u32)?;
-
-                let value = match ref_val {
-                    RefValue::FuncRef(idx) => Value::FuncRef(Some(FuncRef::from_index(idx))),
-                    RefValue::ExternRef(idx) => Value::ExternRef(Some(ExternRef { index: idx })),
-                    RefValue::Null => Value::FuncRef(None), // Using FuncRef(None) to represent Null
-                };
-
-                context.push_table_value(value)
+            Self::Get(get) => {
+                let index = context.pop_value()?;
+                let tables = context.get_tables()?;
+                let result = get.execute(tables, &index)?;
+                context.push_value(result)
             }
-            Self::TableSet(table_index) => {
-                let value = context.pop_table_value()?;
-                let index = context.pop_table_value()?.into_i32().map_err(|_| {
-                    Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Invalid table type")
-                })?;
-
-                if index < 0 {
-                    return Err(Error::new(
-                        ErrorCategory::Resource,
-                        codes::RESOURCE_ERROR,
-                        "Invalid table index",
-                    ));
-                }
-
-                let ref_val = match value {
-                    Value::FuncRef(Some(func_ref)) => RefValue::FuncRef(func_ref.index),
-                    Value::FuncRef(None) => RefValue::Null,
-                    Value::ExternRef(Some(extern_ref)) => RefValue::ExternRef(extern_ref.index),
-                    Value::ExternRef(None) => RefValue::Null,
-                    _ => {
-                        return Err(Error::new(
-                            ErrorCategory::Type,
-                            codes::INVALID_TYPE,
-                            "Invalid table type",
-                        ));
-                    }
-                };
-
-                context.set_table_element(*table_index, index as u32, ref_val)
+            Self::Set(set) => {
+                let value = context.pop_value()?;
+                let index = context.pop_value()?;
+                let tables = context.get_tables()?;
+                set.execute(tables, &index, &value)
             }
-            Self::TableSize(table_index) => {
-                let size = context.get_table_size(*table_index)?;
-                context.push_table_value(Value::I32(size as i32))
+            Self::Size(size) => {
+                let tables = context.get_tables()?;
+                let result = size.execute(tables)?;
+                context.push_value(result)
             }
-            Self::TableGrow(table_index) => {
-                let delta = context.pop_table_value()?.into_i32().map_err(|_| {
-                    Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Invalid table type")
-                })?;
-                let init_value = context.pop_table_value()?;
-
-                if delta < 0 {
-                    return Err(Error::new(
-                        ErrorCategory::Type,
-                        codes::INVALID_TYPE,
-                        "Invalid table type",
-                    ));
-                }
-
-                let ref_val = match init_value {
-                    Value::FuncRef(Some(func_ref)) => RefValue::FuncRef(func_ref.index),
-                    Value::FuncRef(None) => RefValue::Null,
-                    Value::ExternRef(Some(extern_ref)) => RefValue::ExternRef(extern_ref.index),
-                    Value::ExternRef(None) => RefValue::Null,
-                    _ => {
-                        return Err(Error::new(
-                            ErrorCategory::Type,
-                            codes::INVALID_TYPE,
-                            "Invalid table type",
-                        ));
-                    }
-                };
-
-                let prev_size = context.grow_table(*table_index, delta as u32, ref_val)?;
-                context.push_table_value(Value::I32(prev_size))
+            Self::Grow(grow) => {
+                let delta = context.pop_value()?;
+                let init_value = context.pop_value()?;
+                let tables = context.get_tables()?;
+                let result = grow.execute(tables, &init_value, &delta)?;
+                context.push_value(result)
             }
-            Self::TableFill(table_index) => {
-                let len = context.pop_table_value()?.into_i32().map_err(|_| {
-                    Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Invalid table type")
-                })?;
-                let val = context.pop_table_value()?;
-                let dst = context.pop_table_value()?.into_i32().map_err(|_| {
-                    Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Invalid table type")
-                })?;
-
-                if dst < 0 || len < 0 {
-                    return Err(Error::new(
-                        ErrorCategory::Resource,
-                        codes::RESOURCE_ERROR,
-                        "Invalid table index: negative value",
-                    ));
-                }
-
-                let ref_val = match val {
-                    Value::FuncRef(Some(func_ref)) => RefValue::FuncRef(func_ref.index),
-                    Value::FuncRef(None) => RefValue::Null,
-                    Value::ExternRef(Some(extern_ref)) => RefValue::ExternRef(extern_ref.index),
-                    Value::ExternRef(None) => RefValue::Null,
-                    _ => {
-                        return Err(Error::new(
-                            ErrorCategory::Type,
-                            codes::INVALID_TYPE,
-                            "Invalid table type",
-                        ));
-                    }
-                };
-
-                context.fill_table(*table_index, dst as u32, ref_val, len as u32)
-            }
-            Self::TableCopy { dst_table, src_table } => {
-                let len = context.pop_table_value()?.into_i32().map_err(|_| {
-                    Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Invalid table type")
-                })?;
-                let src = context.pop_table_value()?.into_i32().map_err(|_| {
-                    Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Invalid table type")
-                })?;
-                let dst = context.pop_table_value()?.into_i32().map_err(|_| {
-                    Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Invalid table type")
-                })?;
-
-                if dst < 0 || src < 0 || len < 0 {
-                    return Err(Error::new(
-                        ErrorCategory::Resource,
-                        codes::RESOURCE_ERROR,
-                        "Invalid table index: negative value",
-                    ));
-                }
-
-                context.copy_table(*dst_table, dst as u32, *src_table, src as u32, len as u32)
-            }
-            Self::TableInit { table_index, elem_index } => {
-                let len = context.pop_table_value()?.into_i32().map_err(|_| {
-                    Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Invalid table type")
-                })?;
-                let src = context.pop_table_value()?.into_i32().map_err(|_| {
-                    Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Invalid table type")
-                })?;
-                let dst = context.pop_table_value()?.into_i32().map_err(|_| {
-                    Error::new(ErrorCategory::Type, codes::INVALID_TYPE, "Invalid table type")
-                })?;
-
-                if dst < 0 || src < 0 || len < 0 {
-                    return Err(Error::new(
-                        ErrorCategory::Resource,
-                        codes::RESOURCE_ERROR,
-                        "Invalid table index: negative value",
-                    ));
-                }
-
-                context.init_table_from_elem(
-                    *table_index,
-                    dst as u32,
-                    *elem_index,
-                    src as u32,
-                    len as u32,
+            Self::Fill(fill) => {
+                let (dest, value, size) = Self::pop_three_i32s(context)?;
+                let tables = context.get_tables()?;
+                fill.execute(
+                    tables,
+                    &Value::I32(dest),
+                    &Value::I32(value), // This should be a reference, will be validated in execute
+                    &Value::I32(size),
                 )
             }
-            Self::ElemDrop(elem_index) => context.drop_elem(*elem_index),
+            Self::Copy(copy) => {
+                let (dest, src, size) = Self::pop_three_i32s(context)?;
+                let tables = context.get_tables()?;
+                copy.execute(
+                    tables,
+                    &Value::I32(dest),
+                    &Value::I32(src),
+                    &Value::I32(size),
+                )
+            }
+            Self::Init(init) => {
+                let (dest, src, size) = Self::pop_three_i32s(context)?;
+                context.execute_table_init(
+                    init.table_index,
+                    init.elem_index,
+                    dest,
+                    src,
+                    size,
+                )
+            }
+            Self::ElemDrop(drop) => {
+                let elem_segments = context.get_element_segments()?;
+                drop.execute(elem_segments)
+            }
         }
     }
 }
 
-#[cfg(test)]
+// Validation implementations
+
+impl Validate for TableGet {
+    fn validate(&self, ctx: &mut ValidationContext) -> Result<()> {
+        // table.get: [i32] -> [ref]
+        if !ctx.is_unreachable() {
+            ctx.pop_expect(ValueType::I32)?; // index
+            // Push appropriate reference type based on table type
+            // For simplicity, assume funcref for now
+            ctx.push_type(ValueType::FuncRef)?;
+        }
+        Ok(())
+    }
+}
+
+impl Validate for TableSet {
+    fn validate(&self, ctx: &mut ValidationContext) -> Result<()> {
+        // table.set: [i32 ref] -> []
+        if !ctx.is_unreachable() {
+            ctx.pop_type()?; // reference value (type depends on table)
+            ctx.pop_expect(ValueType::I32)?; // index
+        }
+        Ok(())
+    }
+}
+
+impl Validate for TableSize {
+    fn validate(&self, ctx: &mut ValidationContext) -> Result<()> {
+        // table.size: [] -> [i32]
+        if !ctx.is_unreachable() {
+            ctx.push_type(ValueType::I32)?;
+        }
+        Ok(())
+    }
+}
+
+impl Validate for TableGrow {
+    fn validate(&self, ctx: &mut ValidationContext) -> Result<()> {
+        // table.grow: [ref i32] -> [i32]
+        if !ctx.is_unreachable() {
+            ctx.pop_expect(ValueType::I32)?; // delta
+            ctx.pop_type()?; // init value (reference type)
+            ctx.push_type(ValueType::I32)?; // previous size or -1
+        }
+        Ok(())
+    }
+}
+
+impl Validate for TableFill {
+    fn validate(&self, ctx: &mut ValidationContext) -> Result<()> {
+        // table.fill: [i32 ref i32] -> []
+        if !ctx.is_unreachable() {
+            ctx.pop_expect(ValueType::I32)?; // size
+            ctx.pop_type()?; // value (reference type)
+            ctx.pop_expect(ValueType::I32)?; // dest
+        }
+        Ok(())
+    }
+}
+
+impl Validate for TableCopy {
+    fn validate(&self, ctx: &mut ValidationContext) -> Result<()> {
+        // table.copy: [i32 i32 i32] -> []
+        if !ctx.is_unreachable() {
+            ctx.pop_expect(ValueType::I32)?; // size
+            ctx.pop_expect(ValueType::I32)?; // src
+            ctx.pop_expect(ValueType::I32)?; // dest
+        }
+        Ok(())
+    }
+}
+
+impl Validate for TableInit {
+    fn validate(&self, ctx: &mut ValidationContext) -> Result<()> {
+        // table.init: [i32 i32 i32] -> []
+        if !ctx.is_unreachable() {
+            ctx.pop_expect(ValueType::I32)?; // size
+            ctx.pop_expect(ValueType::I32)?; // src
+            ctx.pop_expect(ValueType::I32)?; // dest
+        }
+        Ok(())
+    }
+}
+
+impl Validate for ElemDrop {
+    fn validate(&self, _ctx: &mut ValidationContext) -> Result<()> {
+        // elem.drop: [] -> []
+        // No stack operations required
+        Ok(())
+    }
+}
+
+impl Validate for TableOp {
+    fn validate(&self, ctx: &mut ValidationContext) -> Result<()> {
+        match self {
+            Self::Get(op) => op.validate(ctx),
+            Self::Set(op) => op.validate(ctx),
+            Self::Size(op) => op.validate(ctx),
+            Self::Grow(op) => op.validate(ctx),
+            Self::Fill(op) => op.validate(ctx),
+            Self::Copy(op) => op.validate(ctx),
+            Self::Init(op) => op.validate(ctx),
+            Self::ElemDrop(op) => op.validate(ctx),
+        }
+    }
+}
+
+#[cfg(all(test, any(feature = "std", feature = "alloc")))]
 mod tests {
-    #[cfg(all(not(feature = "std"), feature = "alloc"))]
-    use alloc::vec;
-    #[cfg(all(not(feature = "std"), feature = "alloc"))]
-    use alloc::vec::Vec;
-    // Import Vec and vec! based on feature flags
-    #[cfg(feature = "std")]
-    use std::vec::Vec;
-
     use super::*;
+    use wrt_foundation::values::{FuncRef, ExternRef};
+    
+    // Import Vec based on feature flags
+    #[cfg(all(not(feature = "std"), feature = "alloc"))]
+    use alloc::{vec, vec::Vec};
+    #[cfg(feature = "std")]
+    use std::{vec, vec::Vec};
 
-    // Mock table context for testing
+    /// Mock table implementation for testing
+    struct MockTable {
+        elements: Vec<Value>,
+        max_size: Option<u32>,
+    }
+
+    impl MockTable {
+        fn new(initial_size: u32, max_size: Option<u32>) -> Self {
+            let mut elements = Vec::with_capacity(initial_size as usize);
+            for _ in 0..initial_size {
+                elements.push(Value::FuncRef(None)); // Initialize with null references
+            }
+            Self { elements, max_size }
+        }
+    }
+
+    /// Mock table operations implementation
+    struct MockTableOperations {
+        tables: Vec<MockTable>,
+    }
+
+    impl MockTableOperations {
+        fn new() -> Self {
+            let mut tables = Vec::new();
+            tables.push(MockTable::new(10, Some(20))); // Table 0: size 10, max 20
+            tables.push(MockTable::new(5, None));       // Table 1: size 5, no max
+            Self { tables }
+        }
+    }
+
+    impl TableOperations for MockTableOperations {
+        fn get_table_element(&self, table_index: u32, elem_index: u32) -> Result<Value> {
+            let table = self.tables.get(table_index as usize)
+                .ok_or_else(|| Error::runtime_error("Invalid table index"))?;
+            
+            let element = table.elements.get(elem_index as usize)
+                .ok_or_else(|| Error::runtime_error("Table access out of bounds"))?;
+            
+            Ok(element.clone())
+        }
+
+        fn set_table_element(&mut self, table_index: u32, elem_index: u32, value: Value) -> Result<()> {
+            let table = self.tables.get_mut(table_index as usize)
+                .ok_or_else(|| Error::runtime_error("Invalid table index"))?;
+            
+            let element = table.elements.get_mut(elem_index as usize)
+                .ok_or_else(|| Error::runtime_error("Table access out of bounds"))?;
+            
+            *element = value;
+            Ok(())
+        }
+
+        fn get_table_size(&self, table_index: u32) -> Result<u32> {
+            let table = self.tables.get(table_index as usize)
+                .ok_or_else(|| Error::runtime_error("Invalid table index"))?;
+            
+            Ok(table.elements.len() as u32)
+        }
+
+        fn grow_table(&mut self, table_index: u32, delta: u32, init_value: Value) -> Result<i32> {
+            let table = self.tables.get_mut(table_index as usize)
+                .ok_or_else(|| Error::runtime_error("Invalid table index"))?;
+            
+            let old_size = table.elements.len() as i32;
+            let new_size = old_size as u32 + delta;
+            
+            // Check max size limit
+            if let Some(max) = table.max_size {
+                if new_size > max {
+                    return Ok(-1); // Growth failed
+                }
+            }
+            
+            // Grow the table
+            for _ in 0..delta {
+                table.elements.push(init_value.clone());
+            }
+            
+            Ok(old_size)
+        }
+
+        fn fill_table(&mut self, table_index: u32, dst: u32, val: Value, len: u32) -> Result<()> {
+            let table = self.tables.get_mut(table_index as usize)
+                .ok_or_else(|| Error::runtime_error("Invalid table index"))?;
+            
+            let end_idx = dst as usize + len as usize;
+            if end_idx > table.elements.len() {
+                return Err(Error::runtime_error("Table fill out of bounds"));
+            }
+            
+            for i in 0..len {
+                table.elements[dst as usize + i as usize] = val.clone();
+            }
+            
+            Ok(())
+        }
+
+        fn copy_table(&mut self, dst_table: u32, dst_index: u32, src_table: u32, src_index: u32, len: u32) -> Result<()> {
+            // For simplicity, handle same-table copy only in this test
+            if dst_table != src_table {
+                return Err(Error::runtime_error("Cross-table copy not implemented in test"));
+            }
+            
+            let table = self.tables.get_mut(dst_table as usize)
+                .ok_or_else(|| Error::runtime_error("Invalid table index"))?;
+            
+            let src_end = src_index as usize + len as usize;
+            let dst_end = dst_index as usize + len as usize;
+            
+            if src_end > table.elements.len() || dst_end > table.elements.len() {
+                return Err(Error::runtime_error("Table copy out of bounds"));
+            }
+            
+            // Copy elements (handle overlapping regions correctly)
+            if len > 0 {
+                let temp: Vec<Value> = table.elements[src_index as usize..src_end].to_vec();
+                for (i, value) in temp.into_iter().enumerate() {
+                    table.elements[dst_index as usize + i] = value;
+                }
+            }
+            
+            Ok(())
+        }
+    }
+
+    /// Mock element segment operations
+    struct MockElementSegments {
+        segments: Vec<Option<Vec<Value>>>,
+    }
+
+    impl MockElementSegments {
+        fn new() -> Self {
+            let mut segments = Vec::new();
+            
+            // Segment 0: [FuncRef(1), FuncRef(2), FuncRef(3)]
+            let mut seg0 = Vec::new();
+            seg0.push(Value::FuncRef(Some(FuncRef::from_index(1))));
+            seg0.push(Value::FuncRef(Some(FuncRef::from_index(2))));
+            seg0.push(Value::FuncRef(Some(FuncRef::from_index(3))));
+            segments.push(Some(seg0));
+            
+            // Segment 1: [ExternRef(4), ExternRef(5)]
+            let mut seg1 = Vec::new();
+            seg1.push(Value::ExternRef(Some(ExternRef { index: 4 })));
+            seg1.push(Value::ExternRef(Some(ExternRef { index: 5 })));
+            segments.push(Some(seg1));
+            
+            Self { segments }
+        }
+    }
+
+    impl ElementSegmentOperations for MockElementSegments {
+        #[cfg(any(feature = "std", feature = "alloc"))]
+        fn get_element_segment(&self, elem_index: u32) -> Result<Option<Vec<Value>>> {
+            if let Some(seg) = self.segments.get(elem_index as usize) {
+                Ok(seg.clone())
+            } else {
+                Err(Error::runtime_error("Invalid element segment index"))
+            }
+        }
+
+        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        fn get_element_segment(&self, elem_index: u32) -> Result<Option<wrt_foundation::BoundedVec<Value, 65536, wrt_foundation::NoStdProvider<65536>>>> {
+            if let Some(Some(seg)) = self.segments.get(elem_index as usize) {
+                let mut bounded = wrt_foundation::BoundedVec::new();
+                for value in seg {
+                    bounded.push(value.clone()).map_err(|_| Error::runtime_error("BoundedVec capacity exceeded"))?;
+                }
+                Ok(Some(bounded))
+            } else if self.segments.get(elem_index as usize).is_some() {
+                Ok(None) // Dropped segment
+            } else {
+                Err(Error::runtime_error("Invalid element segment index"))
+            }
+        }
+
+        fn drop_element_segment(&mut self, elem_index: u32) -> Result<()> {
+            if let Some(seg) = self.segments.get_mut(elem_index as usize) {
+                *seg = None; // Drop the segment
+                Ok(())
+            } else {
+                Err(Error::runtime_error("Invalid element segment index"))
+            }
+        }
+    }
+
+    /// Mock table context for testing unified operations
     struct MockTableContext {
-        tables: Vec<Vec<RefValue>>,
         stack: Vec<Value>,
-        elem_segments: Vec<Vec<RefValue>>,
+        tables: MockTableOperations,
+        elements: MockElementSegments,
     }
 
     impl MockTableContext {
         fn new() -> Self {
-            let tables = vec![
-                vec![RefValue::Null; 10], // Table 0
-                vec![RefValue::Null; 5],  // Table 1
-            ];
-
-            let elem_segments = vec![
-                vec![RefValue::FuncRef(1), RefValue::FuncRef(2), RefValue::FuncRef(3)], // Elem 0
-                vec![RefValue::FuncRef(4), RefValue::FuncRef(5)],                       // Elem 1
-            ];
-
-            Self { tables, stack: Vec::new(), elem_segments }
+            Self {
+                stack: Vec::new(),
+                tables: MockTableOperations::new(),
+                elements: MockElementSegments::new(),
+            }
         }
     }
 
     impl TableContext for MockTableContext {
-        fn get_table_element(&self, table_index: u32, elem_index: u32) -> Result<RefValue> {
-            if let Some(table) = self.tables.get(table_index as usize) {
-                if let Some(elem) = table.get(elem_index as usize) {
-                    Ok(elem.clone())
-                } else {
-                    Err(Error::new(
-                        ErrorCategory::Resource,
-                        codes::RESOURCE_ERROR,
-                        "Invalid table index",
-                    ))
-                }
-            } else {
-                Err(Error::new(
-                    ErrorCategory::Resource,
-                    codes::RESOURCE_ERROR,
-                    "Invalid table index",
-                ))
-            }
+        fn pop_value(&mut self) -> Result<Value> {
+            self.stack.pop()
+                .ok_or_else(|| Error::runtime_error("Stack underflow"))
         }
 
-        fn set_table_element(
-            &mut self,
-            table_index: u32,
-            elem_index: u32,
-            value: RefValue,
-        ) -> Result<()> {
-            if let Some(table) = self.tables.get_mut(table_index as usize) {
-                if let Some(elem) = table.get_mut(elem_index as usize) {
-                    *elem = value;
-                    Ok(())
-                } else {
-                    Err(Error::new(
-                        ErrorCategory::Resource,
-                        codes::RESOURCE_ERROR,
-                        "Invalid table index",
-                    ))
-                }
-            } else {
-                Err(Error::new(
-                    ErrorCategory::Resource,
-                    codes::RESOURCE_ERROR,
-                    "Invalid table index",
-                ))
-            }
-        }
-
-        fn get_table_size(&self, table_index: u32) -> Result<u32> {
-            if let Some(table) = self.tables.get(table_index as usize) {
-                Ok(table.len() as u32)
-            } else {
-                Err(Error::new(
-                    ErrorCategory::Resource,
-                    codes::RESOURCE_ERROR,
-                    "Invalid table index",
-                ))
-            }
-        }
-
-        fn grow_table(
-            &mut self,
-            table_index: u32,
-            delta: u32,
-            init_value: RefValue,
-        ) -> Result<i32> {
-            if let Some(table) = self.tables.get_mut(table_index as usize) {
-                let old_size = table.len() as i32;
-
-                for _ in 0..delta {
-                    table.push(init_value.clone());
-                }
-
-                Ok(old_size)
-            } else {
-                Err(Error::new(
-                    ErrorCategory::Resource,
-                    codes::RESOURCE_ERROR,
-                    "Invalid table index",
-                ))
-            }
-        }
-
-        fn fill_table(
-            &mut self,
-            table_index: u32,
-            dst: u32,
-            val: RefValue,
-            len: u32,
-        ) -> Result<()> {
-            if let Some(table) = self.tables.get_mut(table_index as usize) {
-                if dst as usize + len as usize > table.len() {
-                    return Err(Error::new(
-                        ErrorCategory::Resource,
-                        codes::RESOURCE_ERROR,
-                        "Invalid table index",
-                    ));
-                }
-
-                for i in 0..len {
-                    table[dst as usize + i as usize] = val.clone();
-                }
-
-                Ok(())
-            } else {
-                Err(Error::new(
-                    ErrorCategory::Resource,
-                    codes::RESOURCE_ERROR,
-                    "Invalid table index",
-                ))
-            }
-        }
-
-        fn copy_table(
-            &mut self,
-            dst_table: u32,
-            dst_index: u32,
-            src_table: u32,
-            src_index: u32,
-            len: u32,
-        ) -> Result<()> {
-            // First, check if indexes are valid
-            if dst_table as usize >= self.tables.len() || src_table as usize >= self.tables.len() {
-                return Err(Error::new(
-                    ErrorCategory::Resource,
-                    codes::RESOURCE_ERROR,
-                    "Invalid table index",
-                ));
-            }
-
-            // Get the needed information from source table
-            let src_elements: Vec<RefValue> = {
-                let src_table = &self.tables[src_table as usize];
-
-                if src_index as usize + len as usize > src_table.len() {
-                    return Err(Error::new(
-                        ErrorCategory::Resource,
-                        codes::RESOURCE_ERROR,
-                        "Invalid table index",
-                    ));
-                }
-
-                src_table[src_index as usize..(src_index as usize + len as usize)].to_vec()
-            };
-
-            // Now modify destination table
-            let dst_table = &mut self.tables[dst_table as usize];
-            if dst_index as usize + len as usize > dst_table.len() {
-                return Err(Error::new(
-                    ErrorCategory::Resource,
-                    codes::RESOURCE_ERROR,
-                    "Invalid table index",
-                ));
-            }
-
-            for i in 0..len as usize {
-                dst_table[dst_index as usize + i] = src_elements[i].clone();
-            }
-
-            Ok(())
-        }
-
-        fn init_table_from_elem(
-            &mut self,
-            table_index: u32,
-            dst: u32,
-            elem_index: u32,
-            src: u32,
-            len: u32,
-        ) -> Result<()> {
-            if elem_index as usize >= self.elem_segments.len() {
-                return Err(Error::new(
-                    ErrorCategory::Resource,
-                    codes::RESOURCE_ERROR,
-                    "Invalid element index",
-                ));
-            }
-
-            let elem_segment = &self.elem_segments[elem_index as usize];
-
-            if src as usize + len as usize > elem_segment.len() {
-                return Err(Error::new(
-                    ErrorCategory::Resource,
-                    codes::RESOURCE_ERROR,
-                    "Invalid table index",
-                ));
-            }
-
-            if let Some(table) = self.tables.get_mut(table_index as usize) {
-                if dst as usize + len as usize > table.len() {
-                    return Err(Error::new(
-                        ErrorCategory::Resource,
-                        codes::RESOURCE_ERROR,
-                        "Invalid table index",
-                    ));
-                }
-
-                for i in 0..len {
-                    table[dst as usize + i as usize] =
-                        elem_segment[src as usize + i as usize].clone();
-                }
-
-                Ok(())
-            } else {
-                Err(Error::new(
-                    ErrorCategory::Resource,
-                    codes::RESOURCE_ERROR,
-                    "Invalid table index",
-                ))
-            }
-        }
-
-        fn drop_elem(&mut self, elem_index: u32) -> Result<()> {
-            if elem_index as usize >= self.elem_segments.len() {
-                return Err(Error::new(
-                    ErrorCategory::Resource,
-                    codes::RESOURCE_ERROR,
-                    "Invalid element index",
-                ));
-            }
-
-            // Just clear the element segment, but keep the entry in the vec for simplicity
-            self.elem_segments[elem_index as usize].clear();
-            Ok(())
-        }
-
-        fn push_table_value(&mut self, value: Value) -> Result<()> {
+        fn push_value(&mut self, value: Value) -> Result<()> {
             self.stack.push(value);
             Ok(())
         }
 
-        fn pop_table_value(&mut self) -> Result<Value> {
-            self.stack.pop().ok_or_else(|| {
-                Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow")
-            })
+        fn get_tables(&mut self) -> Result<&mut dyn TableOperations> {
+            Ok(&mut self.tables)
+        }
+
+        fn get_element_segments(&mut self) -> Result<&mut dyn ElementSegmentOperations> {
+            Ok(&mut self.elements)
+        }
+
+        fn execute_table_init(
+            &mut self,
+            table_index: u32,
+            elem_index: u32,
+            dest: i32,
+            src: i32,
+            size: i32,
+        ) -> Result<()> {
+            let init_op = TableInit::new(table_index, elem_index);
+            init_op.execute(
+                &mut self.tables,
+                &self.elements,
+                &Value::I32(dest),
+                &Value::I32(src),
+                &Value::I32(size),
+            )
         }
     }
 
     #[test]
     fn test_table_get_set() {
-        let mut context = MockTableContext::new();
-
-        // Set table[0][2] to FuncRef(42)
-        context.push_table_value(Value::I32(2)).unwrap();
-        context.push_table_value(Value::FuncRef(Some(FuncRef::from_index(42)))).unwrap();
-        TableOp::TableSet(0).execute(&mut context).unwrap();
-
-        // Get table[0][2]
-        context.push_table_value(Value::I32(2)).unwrap();
-        TableOp::TableGet(0).execute(&mut context).unwrap();
-        assert_eq!(
-            context.pop_table_value().unwrap(),
-            Value::FuncRef(Some(FuncRef::from_index(42)))
-        );
+        let mut tables = MockTableOperations::new();
+        
+        // Test set operation
+        let set_op = TableSet::new(0);
+        let func_ref = Value::FuncRef(Some(FuncRef::from_index(42)));
+        set_op.execute(&mut tables, &Value::I32(5), &func_ref).unwrap();
+        
+        // Test get operation
+        let get_op = TableGet::new(0);
+        let result = get_op.execute(&tables, &Value::I32(5)).unwrap();
+        assert_eq!(result, func_ref);
     }
 
     #[test]
     fn test_table_size_grow() {
-        let mut context = MockTableContext::new();
-
-        // Get table size
-        TableOp::TableSize(0).execute(&mut context).unwrap();
-        assert_eq!(context.pop_table_value().unwrap(), Value::I32(10));
-
-        // Grow table by 5 elements
-        context.push_table_value(Value::FuncRef(None)).unwrap();
-        context.push_table_value(Value::I32(5)).unwrap();
-        TableOp::TableGrow(0).execute(&mut context).unwrap();
-        assert_eq!(context.pop_table_value().unwrap(), Value::I32(10)); // Previous size
-
+        let mut tables = MockTableOperations::new();
+        
+        // Test size operation
+        let size_op = TableSize::new(0);
+        let size = size_op.execute(&tables).unwrap();
+        assert_eq!(size, Value::I32(10));
+        
+        // Test grow operation
+        let grow_op = TableGrow::new(0);
+        let prev_size = grow_op.execute(
+            &mut tables,
+            &Value::FuncRef(None),
+            &Value::I32(3)
+        ).unwrap();
+        assert_eq!(prev_size, Value::I32(10));
+        
         // Check new size
-        TableOp::TableSize(0).execute(&mut context).unwrap();
-        assert_eq!(context.pop_table_value().unwrap(), Value::I32(15));
+        let new_size = size_op.execute(&tables).unwrap();
+        assert_eq!(new_size, Value::I32(13));
     }
 
     #[test]
     fn test_table_fill() {
-        let mut context = MockTableContext::new();
-
-        // Fill table[0][3..6] with FuncRef(99)
-        context.push_table_value(Value::I32(3)).unwrap(); // dst
-        context.push_table_value(Value::FuncRef(Some(FuncRef::from_index(99)))).unwrap(); // val
-        context.push_table_value(Value::I32(3)).unwrap(); // len
-        TableOp::TableFill(0).execute(&mut context).unwrap();
-
-        // Check filled values
-        context.push_table_value(Value::I32(3)).unwrap();
-        TableOp::TableGet(0).execute(&mut context).unwrap();
-        assert_eq!(
-            context.pop_table_value().unwrap(),
-            Value::FuncRef(Some(FuncRef::from_index(99)))
-        );
-
-        context.push_table_value(Value::I32(4)).unwrap();
-        TableOp::TableGet(0).execute(&mut context).unwrap();
-        assert_eq!(
-            context.pop_table_value().unwrap(),
-            Value::FuncRef(Some(FuncRef::from_index(99)))
-        );
-
-        context.push_table_value(Value::I32(5)).unwrap();
-        TableOp::TableGet(0).execute(&mut context).unwrap();
-        assert_eq!(
-            context.pop_table_value().unwrap(),
-            Value::FuncRef(Some(FuncRef::from_index(99)))
-        );
+        let mut tables = MockTableOperations::new();
+        
+        let fill_op = TableFill::new(0);
+        let func_ref = Value::FuncRef(Some(FuncRef::from_index(99)));
+        
+        // Fill table[0][2..5] with FuncRef(99)
+        fill_op.execute(
+            &mut tables,
+            &Value::I32(2),      // dest
+            &func_ref,           // value
+            &Value::I32(3)       // size
+        ).unwrap();
+        
+        // Verify fill worked
+        let get_op = TableGet::new(0);
+        for i in 2..5 {
+            let result = get_op.execute(&tables, &Value::I32(i)).unwrap();
+            assert_eq!(result, func_ref);
+        }
     }
 
     #[test]
     fn test_table_copy() {
-        let mut context = MockTableContext::new();
-
+        let mut tables = MockTableOperations::new();
+        
         // Set up source values
-        context.set_table_element(0, 1, RefValue::FuncRef(101)).unwrap();
-        context.set_table_element(0, 2, RefValue::FuncRef(102)).unwrap();
-        context.set_table_element(0, 3, RefValue::FuncRef(103)).unwrap();
-
-        // Copy table[0][1..4] to table[1][0..3]
-        context.push_table_value(Value::I32(0)).unwrap(); // dst
-        context.push_table_value(Value::I32(1)).unwrap(); // src
-        context.push_table_value(Value::I32(3)).unwrap(); // len
-        TableOp::TableCopy { dst_table: 1, src_table: 0 }.execute(&mut context).unwrap();
-
-        // Check copied values
-        context.push_table_value(Value::I32(0)).unwrap();
-        TableOp::TableGet(1).execute(&mut context).unwrap();
-        assert_eq!(
-            context.pop_table_value().unwrap(),
-            Value::FuncRef(Some(FuncRef::from_index(101)))
-        );
-
-        context.push_table_value(Value::I32(1)).unwrap();
-        TableOp::TableGet(1).execute(&mut context).unwrap();
-        assert_eq!(
-            context.pop_table_value().unwrap(),
-            Value::FuncRef(Some(FuncRef::from_index(102)))
-        );
-
-        context.push_table_value(Value::I32(2)).unwrap();
-        TableOp::TableGet(1).execute(&mut context).unwrap();
-        assert_eq!(
-            context.pop_table_value().unwrap(),
-            Value::FuncRef(Some(FuncRef::from_index(103)))
-        );
+        let set_op = TableSet::new(0);
+        set_op.execute(&mut tables, &Value::I32(1), &Value::FuncRef(Some(FuncRef::from_index(101)))).unwrap();
+        set_op.execute(&mut tables, &Value::I32(2), &Value::FuncRef(Some(FuncRef::from_index(102)))).unwrap();
+        set_op.execute(&mut tables, &Value::I32(3), &Value::FuncRef(Some(FuncRef::from_index(103)))).unwrap();
+        
+        // Copy table[0][1..4] to table[0][6..9]
+        let copy_op = TableCopy::new(0, 0);
+        copy_op.execute(
+            &mut tables,
+            &Value::I32(6),      // dest
+            &Value::I32(1),      // src
+            &Value::I32(3)       // size
+        ).unwrap();
+        
+        // Verify copy worked
+        let get_op = TableGet::new(0);
+        let expected = [
+            Value::FuncRef(Some(FuncRef::from_index(101))),
+            Value::FuncRef(Some(FuncRef::from_index(102))),
+            Value::FuncRef(Some(FuncRef::from_index(103))),
+        ];
+        
+        for (i, expected_val) in expected.iter().enumerate() {
+            let result = get_op.execute(&tables, &Value::I32(6 + i as i32)).unwrap();
+            assert_eq!(result, *expected_val);
+        }
     }
 
     #[test]
     fn test_table_init_elem_drop() {
-        let mut context = MockTableContext::new();
-
-        // Initialize table[0][4..6] from elem_segment[0][1..3]
-        context.push_table_value(Value::I32(4)).unwrap(); // dst
-        context.push_table_value(Value::I32(1)).unwrap(); // src
-        context.push_table_value(Value::I32(2)).unwrap(); // len
-        TableOp::TableInit { table_index: 0, elem_index: 0 }.execute(&mut context).unwrap();
-
-        // Check initialized values (should be FuncRef(2) and FuncRef(3))
-        context.push_table_value(Value::I32(4)).unwrap();
-        TableOp::TableGet(0).execute(&mut context).unwrap();
-        assert_eq!(
-            context.pop_table_value().unwrap(),
-            Value::FuncRef(Some(FuncRef::from_index(2)))
-        );
-
-        context.push_table_value(Value::I32(5)).unwrap();
-        TableOp::TableGet(0).execute(&mut context).unwrap();
-        assert_eq!(
-            context.pop_table_value().unwrap(),
-            Value::FuncRef(Some(FuncRef::from_index(3)))
-        );
-
+        let mut tables = MockTableOperations::new();
+        let mut elements = MockElementSegments::new();
+        
+        // Initialize table[0][4..6] from element segment 0[1..3]
+        let init_op = TableInit::new(0, 0);
+        init_op.execute(
+            &mut tables,
+            &elements,
+            &Value::I32(4),      // dest
+            &Value::I32(1),      // src
+            &Value::I32(2)       // size
+        ).unwrap();
+        
+        // Verify initialization (should copy FuncRef(2) and FuncRef(3))
+        let get_op = TableGet::new(0);
+        let result1 = get_op.execute(&tables, &Value::I32(4)).unwrap();
+        assert_eq!(result1, Value::FuncRef(Some(FuncRef::from_index(2))));
+        
+        let result2 = get_op.execute(&tables, &Value::I32(5)).unwrap();
+        assert_eq!(result2, Value::FuncRef(Some(FuncRef::from_index(3))));
+        
         // Drop element segment
-        TableOp::ElemDrop(0).execute(&mut context).unwrap();
-
-        // Check that element segment is now empty (operation should fail)
-        context.push_table_value(Value::I32(7)).unwrap(); // dst
-        context.push_table_value(Value::I32(0)).unwrap(); // src
-        context.push_table_value(Value::I32(1)).unwrap(); // len
-        let result = TableOp::TableInit { table_index: 0, elem_index: 0 }.execute(&mut context);
+        let drop_op = ElemDrop::new(0);
+        drop_op.execute(&mut elements).unwrap();
+        
+        // Try to init from dropped segment - should fail
+        let result = init_op.execute(
+            &mut tables,
+            &elements,
+            &Value::I32(7),
+            &Value::I32(0),
+            &Value::I32(1)
+        );
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_unified_table_operations() {
+        let mut ctx = MockTableContext::new();
+        
+        // Test unified table.size
+        let size_op = TableOp::Size(TableSize::new(0));
+        size_op.execute(&mut ctx).unwrap();
+        assert_eq!(ctx.pop_value().unwrap(), Value::I32(10));
+        
+        // Test unified table.set
+        ctx.push_value(Value::I32(3)).unwrap();    // index
+        ctx.push_value(Value::FuncRef(Some(FuncRef::from_index(77)))).unwrap(); // value
+        let set_op = TableOp::Set(TableSet::new(0));
+        set_op.execute(&mut ctx).unwrap();
+        
+        // Test unified table.get
+        ctx.push_value(Value::I32(3)).unwrap();    // index
+        let get_op = TableOp::Get(TableGet::new(0));
+        get_op.execute(&mut ctx).unwrap();
+        assert_eq!(ctx.pop_value().unwrap(), Value::FuncRef(Some(FuncRef::from_index(77))));
+    }
+
+    #[test] 
+    fn test_error_handling() {
+        let mut tables = MockTableOperations::new();
+        
+        // Test negative index
+        let get_op = TableGet::new(0);
+        let result = get_op.execute(&tables, &Value::I32(-1));
+        assert!(result.is_err());
+        
+        // Test out of bounds
+        let result = get_op.execute(&tables, &Value::I32(100));
+        assert!(result.is_err());
+        
+        // Test invalid table index
+        let invalid_get_op = TableGet::new(99);
+        let result = invalid_get_op.execute(&tables, &Value::I32(0));
+        assert!(result.is_err());
+        
+        // Test grow beyond max size
+        let grow_op = TableGrow::new(0);
+        let result = grow_op.execute(
+            &mut tables,
+            &Value::FuncRef(None),
+            &Value::I32(50) // Would exceed max size of 20
+        ).unwrap();
+        assert_eq!(result, Value::I32(-1)); // Growth failed
     }
 }

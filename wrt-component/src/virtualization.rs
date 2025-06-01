@@ -1,16 +1,15 @@
 use crate::{
-    ComponentInstance, ComponentInstanceId, ValType, ResourceHandle,
-    canonical_options::CanonicalOptions,
-    post_return::PostReturnRegistry,
-};
-use wrt_foundation::{
-    bounded_collections::{BoundedVec, BoundedHashMap},
-    safe_memory::SafeMemory,
-    component_value::ComponentValue,
+    canonical_options::CanonicalOptions, post_return::PostReturnRegistry, ComponentInstance,
+    ComponentInstanceId, ResourceHandle, ValType,
 };
 use core::{
-    sync::atomic::{AtomicU32, AtomicBool, Ordering},
     fmt,
+    sync::atomic::{AtomicBool, AtomicU32, Ordering},
+};
+use wrt_foundation::{
+    bounded_collections::{BoundedHashMap, BoundedVec},
+    component_value::ComponentValue,
+    safe_memory::SafeMemory,
 };
 
 const MAX_VIRTUAL_COMPONENTS: usize = 256;
@@ -174,7 +173,8 @@ impl Default for ResourceLimits {
 }
 
 pub struct VirtualizationManager {
-    virtual_components: BoundedHashMap<ComponentInstanceId, VirtualComponent, MAX_VIRTUAL_COMPONENTS>,
+    virtual_components:
+        BoundedHashMap<ComponentInstanceId, VirtualComponent, MAX_VIRTUAL_COMPONENTS>,
     capability_grants: BoundedVec<CapabilityGrant, MAX_CAPABILITY_GRANTS>,
     host_exports: BoundedHashMap<String, HostExport, MAX_VIRTUAL_EXPORTS>,
     sandbox_registry: BoundedHashMap<ComponentInstanceId, SandboxState, MAX_VIRTUAL_COMPONENTS>,
@@ -257,9 +257,8 @@ impl VirtualizationManager {
             });
         }
 
-        let instance_id = ComponentInstanceId::new(
-            self.next_virtual_id.fetch_add(1, Ordering::SeqCst)
-        );
+        let instance_id =
+            ComponentInstanceId::new(self.next_virtual_id.fetch_add(1, Ordering::SeqCst));
 
         let virtual_component = VirtualComponent {
             instance_id,
@@ -277,11 +276,9 @@ impl VirtualizationManager {
 
         if let Some(parent_id) = parent {
             if let Some(parent_component) = self.virtual_components.get_mut(&parent_id) {
-                parent_component.children.push(instance_id).map_err(|_| {
-                    VirtualizationError {
-                        kind: VirtualizationErrorKind::ResourceExhaustion,
-                        message: "Parent component has too many children".to_string(),
-                    }
+                parent_component.children.push(instance_id).map_err(|_| VirtualizationError {
+                    kind: VirtualizationErrorKind::ResourceExhaustion,
+                    message: "Parent component has too many children".to_string(),
                 })?;
             }
         }
@@ -334,30 +331,28 @@ impl VirtualizationManager {
             revocable,
         };
 
-        self.capability_grants.push(grant).map_err(|_| {
-            VirtualizationError {
-                kind: VirtualizationErrorKind::ResourceExhaustion,
-                message: "Too many capability grants".to_string(),
-            }
+        self.capability_grants.push(grant).map_err(|_| VirtualizationError {
+            kind: VirtualizationErrorKind::ResourceExhaustion,
+            message: "Too many capability grants".to_string(),
         })?;
 
         if let Some(component) = self.virtual_components.get_mut(&instance_id) {
-            component.capabilities.push(capability).map_err(|_| {
-                VirtualizationError {
-                    kind: VirtualizationErrorKind::ResourceExhaustion,
-                    message: "Component has too many capabilities".to_string(),
-                }
+            component.capabilities.push(capability).map_err(|_| VirtualizationError {
+                kind: VirtualizationErrorKind::ResourceExhaustion,
+                message: "Component has too many capabilities".to_string(),
             })?;
         }
 
         Ok(())
     }
 
-    pub fn check_capability(&self, instance_id: ComponentInstanceId, capability: &Capability) -> bool {
+    pub fn check_capability(
+        &self,
+        instance_id: ComponentInstanceId,
+        capability: &Capability,
+    ) -> bool {
         if let Some(component) = self.virtual_components.get(&instance_id) {
-            component.capabilities.iter().any(|cap| {
-                self.capability_matches(cap, capability)
-            })
+            component.capabilities.iter().any(|cap| self.capability_matches(cap, capability))
         } else {
             false
         }
@@ -368,19 +363,16 @@ impl VirtualizationManager {
         instance_id: ComponentInstanceId,
         import: VirtualImport,
     ) -> VirtualizationResult<()> {
-        let component = self.virtual_components.get_mut(&instance_id).ok_or_else(|| {
-            VirtualizationError {
+        let component =
+            self.virtual_components.get_mut(&instance_id).ok_or_else(|| VirtualizationError {
                 kind: VirtualizationErrorKind::InvalidVirtualComponent,
                 message: "Component not found".to_string(),
-            }
-        })?;
+            })?;
 
         let import_name = import.name.clone();
-        component.virtual_imports.insert(import_name, import).map_err(|_| {
-            VirtualizationError {
-                kind: VirtualizationErrorKind::ResourceExhaustion,
-                message: "Too many virtual imports".to_string(),
-            }
+        component.virtual_imports.insert(import_name, import).map_err(|_| VirtualizationError {
+            kind: VirtualizationErrorKind::ResourceExhaustion,
+            message: "Too many virtual imports".to_string(),
         })?;
 
         Ok(())
@@ -391,19 +383,16 @@ impl VirtualizationManager {
         instance_id: ComponentInstanceId,
         export: VirtualExport,
     ) -> VirtualizationResult<()> {
-        let component = self.virtual_components.get_mut(&instance_id).ok_or_else(|| {
-            VirtualizationError {
+        let component =
+            self.virtual_components.get_mut(&instance_id).ok_or_else(|| VirtualizationError {
                 kind: VirtualizationErrorKind::InvalidVirtualComponent,
                 message: "Component not found".to_string(),
-            }
-        })?;
+            })?;
 
         let export_name = export.name.clone();
-        component.virtual_exports.insert(export_name, export).map_err(|_| {
-            VirtualizationError {
-                kind: VirtualizationErrorKind::ExportConflict,
-                message: "Export already exists or too many exports".to_string(),
-            }
+        component.virtual_exports.insert(export_name, export).map_err(|_| VirtualizationError {
+            kind: VirtualizationErrorKind::ExportConflict,
+            message: "Export already exists or too many exports".to_string(),
         })?;
 
         Ok(())
@@ -415,12 +404,11 @@ impl VirtualizationManager {
         size: usize,
         permissions: MemoryPermissions,
     ) -> VirtualizationResult<usize> {
-        let component = self.virtual_components.get_mut(&instance_id).ok_or_else(|| {
-            VirtualizationError {
+        let component =
+            self.virtual_components.get_mut(&instance_id).ok_or_else(|| VirtualizationError {
                 kind: VirtualizationErrorKind::InvalidVirtualComponent,
                 message: "Component not found".to_string(),
-            }
-        })?;
+            })?;
 
         if component.isolation_level == IsolationLevel::None {
             return Err(VirtualizationError {
@@ -436,9 +424,8 @@ impl VirtualizationManager {
             });
         }
 
-        let current_usage = component.memory_regions.iter()
-            .map(|region| region.size)
-            .sum::<usize>();
+        let current_usage =
+            component.memory_regions.iter().map(|region| region.size).sum::<usize>();
 
         if current_usage + size > component.resource_limits.max_memory {
             return Err(VirtualizationError {
@@ -448,20 +435,13 @@ impl VirtualizationManager {
         }
 
         let start_addr = self.find_virtual_address_space(size)?;
-        
-        let memory_region = VirtualMemoryRegion {
-            start_addr,
-            size,
-            permissions,
-            shared: false,
-            mapped_to: None,
-        };
 
-        component.memory_regions.push(memory_region).map_err(|_| {
-            VirtualizationError {
-                kind: VirtualizationErrorKind::ResourceExhaustion,
-                message: "Too many memory regions".to_string(),
-            }
+        let memory_region =
+            VirtualMemoryRegion { start_addr, size, permissions, shared: false, mapped_to: None };
+
+        component.memory_regions.push(memory_region).map_err(|_| VirtualizationError {
+            kind: VirtualizationErrorKind::ResourceExhaustion,
+            message: "Too many memory regions".to_string(),
         })?;
 
         Ok(start_addr)
@@ -472,19 +452,17 @@ impl VirtualizationManager {
         instance_id: ComponentInstanceId,
         import_name: &str,
     ) -> VirtualizationResult<Option<ComponentValue>> {
-        let component = self.virtual_components.get(&instance_id).ok_or_else(|| {
-            VirtualizationError {
+        let component =
+            self.virtual_components.get(&instance_id).ok_or_else(|| VirtualizationError {
                 kind: VirtualizationErrorKind::InvalidVirtualComponent,
                 message: "Component not found".to_string(),
-            }
-        })?;
+            })?;
 
-        let import = component.virtual_imports.get(import_name).ok_or_else(|| {
-            VirtualizationError {
+        let import =
+            component.virtual_imports.get(import_name).ok_or_else(|| VirtualizationError {
                 kind: VirtualizationErrorKind::ImportNotFound,
                 message: format!("Import '{}' not found", import_name),
-            }
-        })?;
+            })?;
 
         if let Some(ref capability) = import.capability_required {
             if !self.check_capability(instance_id, capability) {
@@ -496,9 +474,7 @@ impl VirtualizationManager {
         }
 
         match &import.virtual_source {
-            Some(VirtualSource::HostFunction { name }) => {
-                self.resolve_host_function(name)
-            }
+            Some(VirtualSource::HostFunction { name }) => self.resolve_host_function(name),
             Some(VirtualSource::ParentComponent { export_name }) => {
                 if let Some(parent_id) = component.parent {
                     self.resolve_parent_export(parent_id, export_name)
@@ -523,7 +499,7 @@ impl VirtualizationManager {
     ) -> VirtualizationResult<()> {
         if let Some(sandbox_state) = self.sandbox_registry.get_mut(&instance_id) {
             sandbox_state.resource_usage = usage_update;
-            
+
             if let Some(component) = self.virtual_components.get(&instance_id) {
                 self.check_resource_limits(component, &sandbox_state.resource_usage)?;
             }
@@ -533,12 +509,14 @@ impl VirtualizationManager {
 
     fn capability_matches(&self, granted: &Capability, requested: &Capability) -> bool {
         match (granted, requested) {
-            (Capability::Memory { max_size: granted_size }, Capability::Memory { max_size: requested_size }) => {
-                granted_size >= requested_size
-            }
-            (Capability::Threading { max_threads: granted }, Capability::Threading { max_threads: requested }) => {
-                granted >= requested
-            }
+            (
+                Capability::Memory { max_size: granted_size },
+                Capability::Memory { max_size: requested_size },
+            ) => granted_size >= requested_size,
+            (
+                Capability::Threading { max_threads: granted },
+                Capability::Threading { max_threads: requested },
+            ) => granted >= requested,
             (Capability::Random, Capability::Random) => true,
             (Capability::Time { .. }, Capability::Time { .. }) => true,
             (a, b) => a == b,
@@ -549,10 +527,7 @@ impl VirtualizationManager {
         #[cfg(feature = "std")]
         {
             use std::time::{SystemTime, UNIX_EPOCH};
-            SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_secs()
+            SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs()
         }
         #[cfg(not(feature = "std"))]
         {
@@ -568,15 +543,9 @@ impl VirtualizationManager {
     fn resolve_host_function(&self, name: &str) -> VirtualizationResult<Option<ComponentValue>> {
         if let Some(export) = self.host_exports.get(name) {
             match &export.handler {
-                HostExportHandler::Memory { .. } => {
-                    Ok(Some(ComponentValue::U32(0)))
-                }
-                HostExportHandler::Time => {
-                    Ok(Some(ComponentValue::U64(self.get_current_time())))
-                }
-                HostExportHandler::Random => {
-                    Ok(Some(ComponentValue::U32(42)))
-                }
+                HostExportHandler::Memory { .. } => Ok(Some(ComponentValue::U32(0))),
+                HostExportHandler::Time => Ok(Some(ComponentValue::U64(self.get_current_time()))),
+                HostExportHandler::Random => Ok(Some(ComponentValue::U32(42))),
                 _ => Ok(None),
             }
         } else {
@@ -628,7 +597,10 @@ impl VirtualizationManager {
         }
     }
 
-    fn resolve_virtual_provider(&self, provider_id: &str) -> VirtualizationResult<Option<ComponentValue>> {
+    fn resolve_virtual_provider(
+        &self,
+        provider_id: &str,
+    ) -> VirtualizationResult<Option<ComponentValue>> {
         Ok(None)
     }
 
@@ -706,22 +678,17 @@ mod tests {
     #[test]
     fn test_virtual_component_creation() {
         let mut manager = VirtualizationManager::new();
-        let result = manager.create_virtual_component(
-            "test-component",
-            None,
-            IsolationLevel::Basic,
-        );
+        let result =
+            manager.create_virtual_component("test-component", None, IsolationLevel::Basic);
         assert!(result.is_ok());
     }
 
     #[test]
     fn test_capability_granting() {
         let mut manager = VirtualizationManager::new();
-        let instance_id = manager.create_virtual_component(
-            "test-component",
-            None,
-            IsolationLevel::Basic,
-        ).unwrap();
+        let instance_id = manager
+            .create_virtual_component("test-component", None, IsolationLevel::Basic)
+            .unwrap();
 
         let capability = create_memory_capability(1024);
         let result = manager.grant_capability(instance_id, capability.clone(), None, true);
@@ -732,20 +699,14 @@ mod tests {
     #[test]
     fn test_virtual_memory_allocation() {
         let mut manager = VirtualizationManager::new();
-        let instance_id = manager.create_virtual_component(
-            "test-component",
-            None,
-            IsolationLevel::Strong,
-        ).unwrap();
+        let instance_id = manager
+            .create_virtual_component("test-component", None, IsolationLevel::Strong)
+            .unwrap();
 
         let capability = create_memory_capability(2048);
         manager.grant_capability(instance_id, capability, None, true).unwrap();
 
-        let permissions = MemoryPermissions {
-            read: true,
-            write: true,
-            execute: false,
-        };
+        let permissions = MemoryPermissions { read: true, write: true, execute: false };
 
         let result = manager.allocate_virtual_memory(instance_id, 1024, permissions);
         assert!(result.is_ok());

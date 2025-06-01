@@ -49,7 +49,7 @@ pub struct StepController {
     /// Target file for line stepping
     target_file: Option<u16>,
     /// Call stack for step-over/out
-    call_stack: BoundedStack<StepFrame, 64, NoStdProvider>,
+    call_stack: BoundedStack<StepFrame, 64, NoStdProvider<1024>>,
     /// Depth for step-over
     step_over_depth: u32,
     /// Previous PC for detecting loops
@@ -254,7 +254,7 @@ pub struct SteppingDebugger {
     /// Step controller
     controller: StepController,
     /// Line number cache
-    line_cache: BoundedVec<LineCacheEntry, MAX_DWARF_FILE_TABLE, NoStdProvider>,
+    line_cache: BoundedVec<LineCacheEntry, MAX_DWARF_FILE_TABLE, NoStdProvider<1024>>,
 }
 
 #[derive(Debug, Clone)]

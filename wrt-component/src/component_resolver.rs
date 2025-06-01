@@ -3,20 +3,20 @@
 //! This module provides functionality for resolving imports and exports
 //! during component instantiation and linking.
 
-#[cfg(feature = "std")]
-use std::collections::BTreeMap;
 #[cfg(not(feature = "std"))]
 use alloc::{collections::BTreeMap, vec::Vec};
+#[cfg(feature = "std")]
+use std::collections::BTreeMap;
 
 use wrt_foundation::{
-    bounded_collections::{BoundedVec, BoundedString, MAX_GENERATIVE_TYPES},
+    bounded_collections::{BoundedString, BoundedVec, MAX_GENERATIVE_TYPES},
     prelude::*,
 };
 
 use crate::{
-    types::{ComponentError, ComponentInstanceId, TypeId, ValType},
     generative_types::GenerativeTypeRegistry,
-    type_bounds::{TypeBoundsChecker, RelationKind},
+    type_bounds::{RelationKind, TypeBoundsChecker},
+    types::{ComponentError, ComponentInstanceId, TypeId, ValType},
 };
 
 /// Import resolution result
@@ -45,66 +45,34 @@ pub struct ResolvedExport {
 #[derive(Debug, Clone)]
 pub enum ImportValue {
     /// Function import
-    Function {
-        type_id: TypeId,
-        func_ref: u32,
-    },
+    Function { type_id: TypeId, func_ref: u32 },
     /// Global import
-    Global {
-        type_id: TypeId,
-        global_ref: u32,
-    },
+    Global { type_id: TypeId, global_ref: u32 },
     /// Memory import
-    Memory {
-        min_pages: u32,
-        max_pages: Option<u32>,
-    },
+    Memory { min_pages: u32, max_pages: Option<u32> },
     /// Table import
-    Table {
-        min_size: u32,
-        max_size: Option<u32>,
-    },
+    Table { min_size: u32, max_size: Option<u32> },
     /// Instance import
-    Instance {
-        instance_id: ComponentInstanceId,
-    },
+    Instance { instance_id: ComponentInstanceId },
     /// Value import
-    Value {
-        val_type: ValType,
-        value: ComponentValue,
-    },
+    Value { val_type: ValType, value: ComponentValue },
 }
 
 /// Export value types
 #[derive(Debug, Clone)]
 pub enum ExportValue {
     /// Function export
-    Function {
-        type_id: TypeId,
-        func_ref: u32,
-    },
+    Function { type_id: TypeId, func_ref: u32 },
     /// Global export
-    Global {
-        type_id: TypeId,
-        global_ref: u32,
-    },
+    Global { type_id: TypeId, global_ref: u32 },
     /// Memory export
-    Memory {
-        memory_ref: u32,
-    },
+    Memory { memory_ref: u32 },
     /// Table export
-    Table {
-        table_ref: u32,
-    },
+    Table { table_ref: u32 },
     /// Instance export
-    Instance {
-        instance_id: ComponentInstanceId,
-    },
+    Instance { instance_id: ComponentInstanceId },
     /// Value export
-    Value {
-        val_type: ValType,
-        value: ComponentValue,
-    },
+    Value { val_type: ValType, value: ComponentValue },
 }
 
 /// Component value for imports/exports
@@ -180,11 +148,7 @@ impl ComponentResolver {
         // Validate import type compatibility
         let val_type = self.get_import_type(&provided_value)?;
 
-        let resolved = ResolvedImport {
-            name: import_name,
-            value: provided_value,
-            val_type,
-        };
+        let resolved = ResolvedImport { name: import_name, value: provided_value, val_type };
 
         self.import_cache.insert(cache_key, resolved.clone());
         Ok(resolved)
@@ -206,11 +170,7 @@ impl ComponentResolver {
         // Validate export type
         let val_type = self.get_export_type(&export_value)?;
 
-        let resolved = ResolvedExport {
-            name: export_name,
-            value: export_value,
-            val_type,
-        };
+        let resolved = ResolvedExport { name: export_name, value: export_value, val_type };
 
         self.export_cache.insert(cache_key, resolved.clone());
         Ok(resolved)
@@ -223,21 +183,25 @@ impl ComponentResolver {
         export: &ResolvedExport,
     ) -> Result<bool, ComponentError> {
         match (&import.value, &export.value) {
-            (ImportValue::Function { type_id: import_type, .. }, 
-             ExportValue::Function { type_id: export_type, .. }) => {
-                self.check_type_compatibility(*import_type, *export_type)
-            }
-            (ImportValue::Global { type_id: import_type, .. },
-             ExportValue::Global { type_id: export_type, .. }) => {
-                self.check_type_compatibility(*import_type, *export_type)
-            }
-            (ImportValue::Memory { min_pages: import_min, max_pages: import_max },
-             ExportValue::Memory { .. }) => {
+            (
+                ImportValue::Function { type_id: import_type, .. },
+                ExportValue::Function { type_id: export_type, .. },
+            ) => self.check_type_compatibility(*import_type, *export_type),
+            (
+                ImportValue::Global { type_id: import_type, .. },
+                ExportValue::Global { type_id: export_type, .. },
+            ) => self.check_type_compatibility(*import_type, *export_type),
+            (
+                ImportValue::Memory { min_pages: import_min, max_pages: import_max },
+                ExportValue::Memory { .. },
+            ) => {
                 // Memory compatibility checks would go here
                 Ok(true)
             }
-            (ImportValue::Table { min_size: import_min, max_size: import_max },
-             ExportValue::Table { .. }) => {
+            (
+                ImportValue::Table { min_size: import_min, max_size: import_max },
+                ExportValue::Table { .. },
+            ) => {
                 // Table compatibility checks would go here
                 Ok(true)
             }
@@ -245,10 +209,10 @@ impl ComponentResolver {
                 // Instance compatibility would check all nested imports/exports
                 Ok(true)
             }
-            (ImportValue::Value { val_type: import_type, .. },
-             ExportValue::Value { val_type: export_type, .. }) => {
-                Ok(self.are_types_compatible(import_type, export_type))
-            }
+            (
+                ImportValue::Value { val_type: import_type, .. },
+                ExportValue::Value { val_type: export_type, .. },
+            ) => Ok(self.are_types_compatible(import_type, export_type)),
             _ => Ok(false), // Different kinds of imports/exports
         }
     }
@@ -286,15 +250,11 @@ impl ComponentResolver {
             (ValType::F64, ValType::F64) => true,
             (ValType::Char, ValType::Char) => true,
             (ValType::String, ValType::String) => true,
-            
+
             // Structural types need deep comparison
-            (ValType::List(t1), ValType::List(t2)) => {
-                self.are_types_compatible(t1, t2)
-            }
-            (ValType::Option(t1), ValType::Option(t2)) => {
-                self.are_types_compatible(t1, t2)
-            }
-            
+            (ValType::List(t1), ValType::List(t2)) => self.are_types_compatible(t1, t2),
+            (ValType::Option(t1), ValType::Option(t2)) => self.are_types_compatible(t1, t2),
+
             // TODO: Add more structural type comparisons
             _ => false,
         }
@@ -304,7 +264,7 @@ impl ComponentResolver {
     fn get_import_type(&self, import: &ImportValue) -> Result<Option<ValType>, ComponentError> {
         match import {
             ImportValue::Function { .. } => Ok(None), // Function types are handled separately
-            ImportValue::Global { .. } => Ok(None), // Global types are handled separately
+            ImportValue::Global { .. } => Ok(None),   // Global types are handled separately
             ImportValue::Memory { .. } => Ok(None),
             ImportValue::Table { .. } => Ok(None),
             ImportValue::Instance { .. } => Ok(None),
@@ -316,7 +276,7 @@ impl ComponentResolver {
     fn get_export_type(&self, export: &ExportValue) -> Result<Option<ValType>, ComponentError> {
         match export {
             ExportValue::Function { .. } => Ok(None), // Function types are handled separately
-            ExportValue::Global { .. } => Ok(None), // Global types are handled separately
+            ExportValue::Global { .. } => Ok(None),   // Global types are handled separately
             ExportValue::Memory { .. } => Ok(None),
             ExportValue::Table { .. } => Ok(None),
             ExportValue::Instance { .. } => Ok(None),
@@ -373,15 +333,13 @@ mod tests {
         let mut resolver = ComponentResolver::new();
         let instance_id = ComponentInstanceId(1);
         let import_name = BoundedString::from_str("test_import").unwrap();
-        
-        let import_value = ImportValue::Value {
-            val_type: ValType::U32,
-            value: ComponentValue::U32(42),
-        };
+
+        let import_value =
+            ImportValue::Value { val_type: ValType::U32, value: ComponentValue::U32(42) };
 
         let result = resolver.resolve_import(instance_id, import_name.clone(), import_value);
         assert!(result.is_ok());
-        
+
         let resolved = result.unwrap();
         assert_eq!(resolved.name, import_name);
     }
@@ -391,7 +349,7 @@ mod tests {
         let mut resolver = ComponentResolver::new();
         let instance_id = ComponentInstanceId(1);
         let export_name = BoundedString::from_str("test_export").unwrap();
-        
+
         let export_value = ExportValue::Value {
             val_type: ValType::String,
             value: ComponentValue::String(BoundedString::from_str("hello").unwrap()),
@@ -399,7 +357,7 @@ mod tests {
 
         let result = resolver.resolve_export(instance_id, export_name.clone(), export_value);
         assert!(result.is_ok());
-        
+
         let resolved = result.unwrap();
         assert_eq!(resolved.name, export_name);
     }
@@ -407,23 +365,17 @@ mod tests {
     #[test]
     fn test_import_export_compatibility() {
         let mut resolver = ComponentResolver::new();
-        
+
         // Create matching import and export
         let import = ResolvedImport {
             name: BoundedString::from_str("test").unwrap(),
-            value: ImportValue::Value {
-                val_type: ValType::U32,
-                value: ComponentValue::U32(0),
-            },
+            value: ImportValue::Value { val_type: ValType::U32, value: ComponentValue::U32(0) },
             val_type: Some(ValType::U32),
         };
 
         let export = ResolvedExport {
             name: BoundedString::from_str("test").unwrap(),
-            value: ExportValue::Value {
-                val_type: ValType::U32,
-                value: ComponentValue::U32(42),
-            },
+            value: ExportValue::Value { val_type: ValType::U32, value: ComponentValue::U32(42) },
             val_type: Some(ValType::U32),
         };
 
@@ -435,12 +387,12 @@ mod tests {
     #[test]
     fn test_type_compatibility() {
         let resolver = ComponentResolver::new();
-        
+
         // Test primitive type compatibility
         assert!(resolver.are_types_compatible(&ValType::Bool, &ValType::Bool));
         assert!(resolver.are_types_compatible(&ValType::U32, &ValType::U32));
         assert!(!resolver.are_types_compatible(&ValType::U32, &ValType::U64));
-        
+
         // Test structural type compatibility
         let list_u32 = ValType::List(Box::new(ValType::U32));
         let list_u64 = ValType::List(Box::new(ValType::U64));

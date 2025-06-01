@@ -14,6 +14,12 @@ use wrt_foundation::{safe_memory::SafeStack, values::Value};
 
 use crate::{prelude::*, Memory};
 
+// Import format! macro for string formatting
+#[cfg(feature = "std")]
+use std::format;
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+use alloc::format;
+
 /// Extension trait for `Arc<Memory>` to simplify access to memory operations
 pub trait ArcMemoryExt {
     /// Get the size of memory in pages

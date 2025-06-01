@@ -1,20 +1,22 @@
-#[cfg(feature = "std")]
-use std::collections::BTreeMap;
 #[cfg(not(feature = "std"))]
 use alloc::{collections::BTreeMap, vec::Vec};
+#[cfg(feature = "std")]
+use std::collections::BTreeMap;
 
 use wrt_foundation::{
-    bounded_collections::{BoundedVec, BoundedString, MAX_GENERATIVE_TYPES},
+    bounded_collections::{BoundedString, BoundedVec, MAX_GENERATIVE_TYPES},
     prelude::*,
 };
 
 use crate::{
-    types::{ComponentError, TypeId, ValType, ComponentInstanceId},
-    generative_types::{GenerativeTypeRegistry, GenerativeResourceType, TypeBound, BoundKind},
-    async_types::{Stream, Future, StreamHandle, FutureHandle},
+    async_types::{Future, FutureHandle, Stream, StreamHandle},
+    generative_types::{BoundKind, GenerativeResourceType, GenerativeTypeRegistry, TypeBound},
+    types::{ComponentError, ComponentInstanceId, TypeId, ValType},
 };
 
-use wrt_format::wit_parser::{WitParser, WitWorld, WitInterface, WitType, WitFunction, WitParseError};
+use wrt_format::wit_parser::{
+    WitFunction, WitInterface, WitParseError, WitParser, WitType, WitWorld,
+};
 
 #[derive(Debug, Clone)]
 pub struct WitComponentBuilder {
@@ -85,8 +87,7 @@ impl WitComponentBuilder {
         source: &str,
         instance_id: ComponentInstanceId,
     ) -> Result<ComponentInterface, ComponentError> {
-        let wit_world = self.parser.parse_world(source)
-            .map_err(|e| self.convert_parse_error(e))?;
+        let wit_world = self.parser.parse_world(source).map_err(|e| self.convert_parse_error(e))?;
 
         self.convert_world_to_interface(wit_world, instance_id)
     }
@@ -96,8 +97,8 @@ impl WitComponentBuilder {
         source: &str,
         instance_id: ComponentInstanceId,
     ) -> Result<ComponentInterface, ComponentError> {
-        let wit_interface = self.parser.parse_interface(source)
-            .map_err(|e| self.convert_parse_error(e))?;
+        let wit_interface =
+            self.parser.parse_interface(source).map_err(|e| self.convert_parse_error(e))?;
 
         self.convert_interface_to_component(wit_interface, instance_id)
     }
@@ -107,9 +108,9 @@ impl WitComponentBuilder {
         wit_type_name: &str,
         component_type_id: TypeId,
     ) -> Result<(), ComponentError> {
-        let name = BoundedString::from_str(wit_type_name)
-            .map_err(|_| ComponentError::TypeMismatch)?;
-        
+        let name =
+            BoundedString::from_str(wit_type_name).map_err(|_| ComponentError::TypeMismatch)?;
+
         self.wit_type_mappings.insert(name, component_type_id);
         Ok(())
     }
@@ -120,11 +121,11 @@ impl WitComponentBuilder {
         instance_id: ComponentInstanceId,
     ) -> Result<GenerativeResourceType, ComponentError> {
         let val_type = self.parser.convert_to_valtype(wit_type)?;
-        
+
         let base_resource_type = wrt_foundation::resource::ResourceType::Handle(
-            wrt_foundation::resource::ResourceHandle::new(0)
+            wrt_foundation::resource::ResourceHandle::new(0),
         );
-        
+
         self.type_registry.create_generative_type(base_resource_type, instance_id)
     }
 
@@ -134,11 +135,7 @@ impl WitComponentBuilder {
         type2: TypeId,
         constraint: BoundKind,
     ) -> Result<(), ComponentError> {
-        let bound = TypeBound {
-            type_id: type1,
-            bound_kind: constraint,
-            target_type: type2,
-        };
+        let bound = TypeBound { type_id: type1, bound_kind: constraint, target_type: type2 };
 
         self.type_registry.add_type_bound(type1, bound)
     }
@@ -160,12 +157,18 @@ impl WitComponentBuilder {
             match &import.item {
                 crate::wit_parser::WitItem::Function(func) => {
                     if func.is_async {
-                        let async_func = self.convert_to_async_interface_function(func, instance_id)?;
-                        interface.async_imports.push(async_func)
+                        let async_func =
+                            self.convert_to_async_interface_function(func, instance_id)?;
+                        interface
+                            .async_imports
+                            .push(async_func)
                             .map_err(|_| ComponentError::TooManyGenerativeTypes)?;
                     } else {
-                        let interface_func = self.convert_to_interface_function(func, instance_id)?;
-                        interface.imports.push(interface_func)
+                        let interface_func =
+                            self.convert_to_interface_function(func, instance_id)?;
+                        interface
+                            .imports
+                            .push(interface_func)
                             .map_err(|_| ComponentError::TooManyGenerativeTypes)?;
                     }
                 }
@@ -177,12 +180,18 @@ impl WitComponentBuilder {
             match &export.item {
                 crate::wit_parser::WitItem::Function(func) => {
                     if func.is_async {
-                        let async_func = self.convert_to_async_interface_function(func, instance_id)?;
-                        interface.async_exports.push(async_func)
+                        let async_func =
+                            self.convert_to_async_interface_function(func, instance_id)?;
+                        interface
+                            .async_exports
+                            .push(async_func)
                             .map_err(|_| ComponentError::TooManyGenerativeTypes)?;
                     } else {
-                        let interface_func = self.convert_to_interface_function(func, instance_id)?;
-                        interface.exports.push(interface_func)
+                        let interface_func =
+                            self.convert_to_interface_function(func, instance_id)?;
+                        interface
+                            .exports
+                            .push(interface_func)
                             .map_err(|_| ComponentError::TooManyGenerativeTypes)?;
                     }
                 }
@@ -209,11 +218,15 @@ impl WitComponentBuilder {
         for func in wit_interface.functions.iter() {
             if func.is_async {
                 let async_func = self.convert_to_async_interface_function(func, instance_id)?;
-                interface.async_exports.push(async_func)
+                interface
+                    .async_exports
+                    .push(async_func)
                     .map_err(|_| ComponentError::TooManyGenerativeTypes)?;
             } else {
                 let interface_func = self.convert_to_interface_function(func, instance_id)?;
-                interface.exports.push(interface_func)
+                interface
+                    .exports
+                    .push(interface_func)
                     .map_err(|_| ComponentError::TooManyGenerativeTypes)?;
             }
         }
@@ -235,23 +248,21 @@ impl WitComponentBuilder {
 
         for param in wit_func.params.iter() {
             let val_type = self.parser.convert_to_valtype(&param.ty)?;
-            let typed_param = TypedParam {
-                name: param.name.clone(),
-                val_type,
-                wit_type: param.ty.clone(),
-            };
-            interface_func.params.push(typed_param)
+            let typed_param =
+                TypedParam { name: param.name.clone(), val_type, wit_type: param.ty.clone() };
+            interface_func
+                .params
+                .push(typed_param)
                 .map_err(|_| ComponentError::TooManyGenerativeTypes)?;
         }
 
         for result in wit_func.results.iter() {
             let val_type = self.parser.convert_to_valtype(&result.ty)?;
-            let typed_result = TypedResult {
-                name: result.name.clone(),
-                val_type,
-                wit_type: result.ty.clone(),
-            };
-            interface_func.results.push(typed_result)
+            let typed_result =
+                TypedResult { name: result.name.clone(), val_type, wit_type: result.ty.clone() };
+            interface_func
+                .results
+                .push(typed_result)
                 .map_err(|_| ComponentError::TooManyGenerativeTypes)?;
         }
 
@@ -272,12 +283,11 @@ impl WitComponentBuilder {
 
         for param in wit_func.params.iter() {
             let val_type = self.parser.convert_to_valtype(&param.ty)?;
-            let typed_param = TypedParam {
-                name: param.name.clone(),
-                val_type,
-                wit_type: param.ty.clone(),
-            };
-            async_func.params.push(typed_param)
+            let typed_param =
+                TypedParam { name: param.name.clone(), val_type, wit_type: param.ty.clone() };
+            async_func
+                .params
+                .push(typed_param)
                 .map_err(|_| ComponentError::TooManyGenerativeTypes)?;
         }
 
@@ -285,7 +295,7 @@ impl WitComponentBuilder {
             let val_type = self.parser.convert_to_valtype(&result.ty)?;
             let is_stream = matches!(result.ty, WitType::Stream(_));
             let is_future = matches!(result.ty, WitType::Future(_));
-            
+
             let async_result = AsyncTypedResult {
                 name: result.name.clone(),
                 val_type,
@@ -293,7 +303,9 @@ impl WitComponentBuilder {
                 is_stream,
                 is_future,
             };
-            async_func.results.push(async_result)
+            async_func
+                .results
+                .push(async_result)
                 .map_err(|_| ComponentError::TooManyGenerativeTypes)?;
         }
 
@@ -339,16 +351,18 @@ mod tests {
     fn test_register_wit_type() {
         let mut builder = WitComponentBuilder::new();
         let type_id = TypeId(1);
-        
+
         assert!(builder.register_wit_type("my-type", type_id).is_ok());
-        assert!(builder.wit_type_mappings.contains_key(&BoundedString::from_str("my-type").unwrap()));
+        assert!(builder
+            .wit_type_mappings
+            .contains_key(&BoundedString::from_str("my-type").unwrap()));
     }
 
     #[test]
     fn test_parse_simple_world() {
         let mut builder = WitComponentBuilder::new();
         let instance_id = ComponentInstanceId(1);
-        
+
         let source = r#"
             world test-world {
                 import test-func: func() -> u32
@@ -358,7 +372,7 @@ mod tests {
 
         let result = builder.parse_world_from_source(source, instance_id);
         assert!(result.is_ok());
-        
+
         let interface = result.unwrap();
         assert_eq!(interface.name.as_str(), "test-world");
         assert_eq!(interface.imports.len(), 1);
@@ -369,7 +383,7 @@ mod tests {
     fn test_parse_async_interface() {
         let mut builder = WitComponentBuilder::new();
         let instance_id = ComponentInstanceId(1);
-        
+
         let source = r#"
             interface async-test {
                 async-stream: async func() -> stream<u8>
@@ -379,14 +393,14 @@ mod tests {
 
         let result = builder.parse_interface_from_source(source, instance_id);
         assert!(result.is_ok());
-        
+
         let interface = result.unwrap();
         assert_eq!(interface.name.as_str(), "async-test");
         assert_eq!(interface.async_exports.len(), 2);
-        
+
         let stream_func = &interface.async_exports[0];
         assert!(stream_func.results[0].is_stream);
-        
+
         let future_func = &interface.async_exports[1];
         assert!(future_func.results[0].is_future);
     }
@@ -396,9 +410,9 @@ mod tests {
         let mut builder = WitComponentBuilder::new();
         let type1 = TypeId(1);
         let type2 = TypeId(2);
-        
+
         assert!(builder.add_type_constraint(type1, type2, BoundKind::Sub).is_ok());
-        
+
         let result = builder.type_registry.check_type_bound_simple(type1, type2, BoundKind::Sub);
         assert!(result);
     }

@@ -21,10 +21,8 @@ pub use alloc::{
 // For pure no_std (no alloc), use bounded collections
 #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
 pub use wrt_foundation::{
-    bounded::{BoundedVec as Vec, BoundedString as String},
-    BoundedMap as HashMap,
-    BoundedSet as HashSet,
-    NoStdProvider,
+    bounded::{BoundedString as String, BoundedVec as Vec},
+    BoundedMap as HashMap, BoundedSet as HashSet, NoStdProvider,
 };
 
 // Arc and Box are not available in pure no_std, use placeholders

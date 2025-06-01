@@ -78,8 +78,8 @@ pub trait MemoryOperations {
     /// Get the size of memory in bytes
     fn size_in_bytes(&self) -> Result<usize>;
 
-    /// Grow memory by the specified number of pages
-    fn grow(&mut self, pages: u32) -> Result<u32>;
+    /// Grow memory by the specified number of bytes
+    fn grow(&mut self, bytes: usize) -> Result<()>;
 
     /// Fill memory region with a byte value (bulk memory operation)
     fn fill(&mut self, offset: u32, value: u8, size: u32) -> Result<()>;
@@ -89,7 +89,7 @@ pub trait MemoryOperations {
 }
 
 /// Memory load operation
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct MemoryLoad {
     /// Memory index (for multi-memory support)
     pub memory_index: u32,
@@ -106,7 +106,7 @@ pub struct MemoryLoad {
 }
 
 /// Memory store operation
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct MemoryStore {
     /// Memory index (for multi-memory support)
     pub memory_index: u32,
@@ -279,7 +279,7 @@ impl MemoryLoad {
     /// The loaded value or an error
     ///
     /// Returns an error if the memory access is invalid
-    pub fn execute(&self, memory: &impl MemoryOperations, addr_arg: &Value) -> Result<Value> {
+    pub fn execute(&self, memory: &(impl MemoryOperations + ?Sized), addr_arg: &Value) -> Result<Value> {
         // Extract address from argument
         let addr = match addr_arg {
             Value::I32(a) => *a as u32,
@@ -634,7 +634,7 @@ impl MemoryStore {
     /// Returns an error if the memory access is invalid
     pub fn execute(
         &self,
-        memory: &mut impl MemoryOperations,
+        memory: &mut (impl MemoryOperations + ?Sized),
         addr_arg: &Value,
         value: &Value,
     ) -> Result<()> {
@@ -709,14 +709,14 @@ impl MemoryStore {
 }
 
 /// Memory fill operation (WebAssembly bulk memory proposal)
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct MemoryFill {
     /// Memory index (for multi-memory support)
     pub memory_index: u32,
 }
 
 /// Memory copy operation (WebAssembly bulk memory proposal)
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct MemoryCopy {
     /// Destination memory index
     pub dest_memory_index: u32,
@@ -725,7 +725,7 @@ pub struct MemoryCopy {
 }
 
 /// Memory init operation (WebAssembly bulk memory proposal)
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct MemoryInit {
     /// Memory index
     pub memory_index: u32,
@@ -734,7 +734,7 @@ pub struct MemoryInit {
 }
 
 /// Data drop operation (WebAssembly bulk memory proposal)
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct DataDrop {
     /// Data segment index
     pub data_index: u32,
@@ -773,7 +773,7 @@ impl MemoryFill {
     /// Success or an error
     pub fn execute(
         &self,
-        memory: &mut impl MemoryOperations,
+        memory: &mut (impl MemoryOperations + ?Sized),
         dest: &Value,
         value: &Value,
         size: &Value,
@@ -830,7 +830,7 @@ impl MemoryCopy {
     /// Success or an error
     pub fn execute(
         &self,
-        memory: &mut impl MemoryOperations,
+        memory: &mut (impl MemoryOperations + ?Sized),
         dest: &Value,
         src: &Value,
         size: &Value,
@@ -892,8 +892,8 @@ impl MemoryInit {
     /// Success or an error
     pub fn execute(
         &self,
-        memory: &mut impl MemoryOperations,
-        data_segments: &impl DataSegmentOperations,
+        memory: &mut (impl MemoryOperations + ?Sized),
+        data_segments: &(impl DataSegmentOperations + ?Sized),
         dest: &Value,
         src: &Value,
         size: &Value,
@@ -973,16 +973,244 @@ impl DataDrop {
     /// Success or an error
     pub fn execute(
         &self,
-        data_segments: &mut impl DataSegmentOperations,
+        data_segments: &mut (impl DataSegmentOperations + ?Sized),
     ) -> Result<()> {
         data_segments.drop_data_segment(self.data_index)
     }
 }
 
-#[cfg(test)]
+/// Unified memory operation enum combining all memory instructions
+#[derive(Debug, Clone, PartialEq)]
+pub enum MemoryOp {
+    /// Load operation
+    Load(MemoryLoad),
+    /// Store operation
+    Store(MemoryStore),
+    /// Size operation (memory.size)
+    Size(MemorySize),
+    /// Grow operation (memory.grow)
+    Grow(MemoryGrow),
+    /// Fill operation (memory.fill)
+    Fill(MemoryFill),
+    /// Copy operation (memory.copy)
+    Copy(MemoryCopy),
+    /// Init operation (memory.init)
+    Init(MemoryInit),
+    /// Data drop operation (data.drop)
+    DataDrop(DataDrop),
+}
+
+/// Memory size operation (memory.size)
+#[derive(Debug, Clone, PartialEq)]
+pub struct MemorySize {
+    /// Memory index (0 for MVP, but allows for multi-memory proposal)
+    pub memory_index: u32,
+}
+
+impl MemorySize {
+    /// Create a new memory size operation
+    pub fn new(memory_index: u32) -> Self {
+        Self { memory_index }
+    }
+
+    /// Execute memory.size operation
+    ///
+    /// # Arguments
+    ///
+    /// * `memory` - The memory to query
+    ///
+    /// # Returns
+    ///
+    /// The size of memory in pages (64KiB pages) as an i32 Value
+    pub fn execute(&self, memory: &(impl MemoryOperations + ?Sized)) -> Result<Value> {
+        let size_in_bytes = memory.size_in_bytes()?;
+        let size_in_pages = (size_in_bytes / 65536) as i32;
+        Ok(Value::I32(size_in_pages))
+    }
+}
+
+/// Memory grow operation (memory.grow)
+#[derive(Debug, Clone, PartialEq)]
+pub struct MemoryGrow {
+    /// Memory index (0 for MVP, but allows for multi-memory proposal)
+    pub memory_index: u32,
+}
+
+impl MemoryGrow {
+    /// Create a new memory grow operation
+    pub fn new(memory_index: u32) -> Self {
+        Self { memory_index }
+    }
+
+    /// Execute memory.grow operation
+    ///
+    /// # Arguments
+    ///
+    /// * `memory` - The memory to grow
+    /// * `delta` - Number of pages to grow by (i32 value)
+    ///
+    /// # Returns
+    ///
+    /// The previous size in pages, or -1 if the operation failed (as i32 Value)
+    pub fn execute(&self, memory: &mut (impl MemoryOperations + ?Sized), delta: &Value) -> Result<Value> {
+        // Extract delta pages
+        let delta_pages = match delta {
+            Value::I32(pages) => *pages,
+            _ => return Err(Error::type_error("memory.grow delta must be i32")),
+        };
+
+        // Negative delta is not allowed
+        if delta_pages < 0 {
+            return Ok(Value::I32(-1));
+        }
+
+        // Get current size in pages
+        let current_size_bytes = memory.size_in_bytes()?;
+        let current_size_pages = (current_size_bytes / 65536) as i32;
+
+        // Try to grow the memory
+        let delta_bytes = (delta_pages as usize) * 65536;
+        
+        // Check if growth would exceed limits
+        let _new_size_bytes = current_size_bytes.saturating_add(delta_bytes);
+        
+        // Attempt to grow - this will fail if it exceeds max size
+        match memory.grow(delta_bytes) {
+            Ok(()) => Ok(Value::I32(current_size_pages)),
+            Err(_) => Ok(Value::I32(-1)), // Growth failed, return -1
+        }
+    }
+}
+
+/// Execution context for unified memory operations
+pub trait MemoryContext {
+    /// Pop a value from the stack
+    fn pop_value(&mut self) -> Result<Value>;
+    
+    /// Push a value to the stack
+    fn push_value(&mut self, value: Value) -> Result<()>;
+    
+    /// Get memory instance by index
+    fn get_memory(&mut self, index: u32) -> Result<&mut dyn MemoryOperations>;
+    
+    /// Get data segment operations
+    fn get_data_segments(&mut self) -> Result<&mut dyn DataSegmentOperations>;
+    
+    /// Execute memory.init operation (helper to avoid borrowing issues)
+    fn execute_memory_init(
+        &mut self,
+        memory_index: u32,
+        data_index: u32,
+        dest: i32,
+        src: i32,
+        size: i32,
+    ) -> Result<()>;
+}
+
+impl MemoryOp {
+    /// Helper to extract 3 i32 arguments from stack
+    fn pop_three_i32s(ctx: &mut impl MemoryContext) -> Result<(i32, i32, i32)> {
+        let arg3 = ctx.pop_value()?.into_i32().map_err(|_| {
+            Error::type_error("Expected i32 for memory operation")
+        })?;
+        let arg2 = ctx.pop_value()?.into_i32().map_err(|_| {
+            Error::type_error("Expected i32 for memory operation")
+        })?;
+        let arg1 = ctx.pop_value()?.into_i32().map_err(|_| {
+            Error::type_error("Expected i32 for memory operation")
+        })?;
+        Ok((arg1, arg2, arg3))
+    }
+}
+
+impl<T: MemoryContext> PureInstruction<T, Error> for MemoryOp {
+    fn execute(&self, context: &mut T) -> Result<()> {
+        match self {
+            Self::Load(load) => {
+                let addr = context.pop_value()?;
+                let memory = context.get_memory(load.memory_index)?;
+                let result = load.execute(memory, &addr)?;
+                context.push_value(result)
+            }
+            Self::Store(store) => {
+                let value = context.pop_value()?;
+                let addr = context.pop_value()?;
+                let memory = context.get_memory(store.memory_index)?;
+                store.execute(memory, &addr, &value)
+            }
+            Self::Size(size) => {
+                let memory = context.get_memory(size.memory_index)?;
+                let result = size.execute(memory)?;
+                context.push_value(result)
+            }
+            Self::Grow(grow) => {
+                let delta = context.pop_value()?;
+                let memory = context.get_memory(grow.memory_index)?;
+                let result = grow.execute(memory, &delta)?;
+                context.push_value(result)
+            }
+            Self::Fill(fill) => {
+                let (dest, value, size) = Self::pop_three_i32s(context)?;
+                let memory = context.get_memory(fill.memory_index)?;
+                fill.execute(
+                    memory,
+                    &Value::I32(dest),
+                    &Value::I32(value),
+                    &Value::I32(size),
+                )
+            }
+            Self::Copy(copy) => {
+                let (dest, src, size) = Self::pop_three_i32s(context)?;
+                let memory = context.get_memory(copy.dest_memory_index)?;
+                // Note: For multi-memory, would need to handle src_memory_index
+                copy.execute(
+                    memory,
+                    &Value::I32(dest),
+                    &Value::I32(src),
+                    &Value::I32(size),
+                )
+            }
+            Self::Init(init) => {
+                let (dest, src, size) = Self::pop_three_i32s(context)?;
+                // Work around borrowing by calling a helper method on context
+                context.execute_memory_init(
+                    init.memory_index,
+                    init.data_index,
+                    dest,
+                    src,
+                    size,
+                )
+            }
+            Self::DataDrop(drop) => {
+                let data_segments = context.get_data_segments()?;
+                drop.execute(data_segments)
+            }
+        }
+    }
+}
+
+impl Validate for MemoryOp {
+    fn validate(&self, ctx: &mut ValidationContext) -> Result<()> {
+        match self {
+            Self::Load(load) => load.validate(ctx),
+            Self::Store(store) => store.validate(ctx),
+            Self::Size(size) => size.validate(ctx),
+            Self::Grow(grow) => grow.validate(ctx),
+            Self::Fill(fill) => fill.validate(ctx),
+            Self::Copy(copy) => copy.validate(ctx),
+            Self::Init(init) => init.validate(ctx),
+            Self::DataDrop(drop) => drop.validate(ctx),
+        }
+    }
+}
+
+#[cfg(all(test, any(feature = "std", feature = "alloc")))]
 mod tests {
-    use wrt_foundation::types::Limits;
-    use wrt_runtime::MemoryType;
+    // Import Vec and vec! based on feature flags
+    #[cfg(all(not(feature = "std"), feature = "alloc"))]
+    use alloc::{vec, vec::Vec};
+    #[cfg(feature = "std")]
+    use std::vec::Vec;
 
     use super::*;
 
@@ -993,7 +1221,9 @@ mod tests {
 
     impl MockMemory {
         fn new(size: usize) -> Self {
-            Self { data: vec![0; size] }
+            let mut data = Vec::with_capacity(size);
+            for _ in 0..size { data.push(0); }
+            Self { data }
         }
     }
 
@@ -1042,11 +1272,10 @@ mod tests {
             Ok(self.data.len())
         }
 
-        fn grow(&mut self, pages: u32) -> Result<u32> {
-            let old_pages = (self.data.len() / 65536) as u32;
-            let new_size = self.data.len() + (pages as usize * 65536);
+        fn grow(&mut self, bytes: usize) -> Result<()> {
+            let new_size = self.data.len() + bytes;
             self.data.resize(new_size, 0);
-            Ok(old_pages)
+            Ok(())
         }
 
         fn fill(&mut self, offset: u32, value: u8, size: u32) -> Result<()> {
@@ -1233,13 +1462,15 @@ mod tests {
         fn new() -> Self {
             #[cfg(any(feature = "std", feature = "alloc"))]
             {
-                Self {
-                    segments: vec![
-                        Some(vec![1, 2, 3, 4, 5]),
-                        Some(vec![0xAA, 0xBB, 0xCC, 0xDD]),
-                        None, // Dropped segment
-                    ],
-                }
+                let mut segments = Vec::new();
+                let mut seg1 = Vec::new();
+                for val in [1, 2, 3, 4, 5] { seg1.push(val); }
+                let mut seg2 = Vec::new();
+                for val in [0xAA, 0xBB, 0xCC, 0xDD] { seg2.push(val); }
+                segments.push(Some(seg1));
+                segments.push(Some(seg2));
+                segments.push(None); // Dropped segment
+                Self { segments }
             }
             #[cfg(not(any(feature = "std", feature = "alloc")))]
             {
@@ -1338,7 +1569,10 @@ mod tests {
         // Verify the copy worked
         let data = memory.read_bytes(100, 5).unwrap();
         #[cfg(feature = "alloc")]
-        assert_eq!(data, vec![1, 2, 3, 4, 5]);
+        {
+            let expected = [1, 2, 3, 4, 5];
+            assert_eq!(data, expected);
+        }
         #[cfg(not(feature = "alloc"))]
         {
             assert_eq!(data.len(), 5);
@@ -1365,7 +1599,10 @@ mod tests {
         // Verify overlapping copy worked correctly
         let data = memory.read_bytes(0, 8).unwrap();
         #[cfg(feature = "alloc")]
-        assert_eq!(data, vec![1, 2, 1, 2, 3, 4, 5, 8]);
+        {
+            let expected = [1, 2, 1, 2, 3, 4, 5, 8];
+            assert_eq!(data, expected);
+        }
         #[cfg(not(feature = "alloc"))]
         {
             let expected = [1, 2, 1, 2, 3, 4, 5, 8];
@@ -1395,7 +1632,10 @@ mod tests {
         // Verify the init worked (should copy bytes [2, 3, 4] from segment [1, 2, 3, 4, 5])
         let data = memory.read_bytes(100, 3).unwrap();
         #[cfg(feature = "alloc")]
-        assert_eq!(data, vec![2, 3, 4]);
+        {
+            let expected = [2, 3, 4];
+            assert_eq!(data, expected);
+        }
         #[cfg(not(feature = "alloc"))]
         {
             assert_eq!(data.len(), 3);
@@ -1454,6 +1694,178 @@ mod tests {
         let copy_op = MemoryCopy::new(0, 0);
         let result = copy_op.execute(&mut memory, &Value::I32(95), &Value::I32(0), &Value::I32(10));
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_memory_size() {
+        // Create memory with 2 pages (128 KiB)
+        let memory = MockMemory::new(2 * 65536);
+        let size_op = MemorySize::new(0);
+        
+        let result = size_op.execute(&memory).unwrap();
+        assert_eq!(result, Value::I32(2));
+        
+        // Test with partial page
+        let memory = MockMemory::new(65536 + 100); // 1 page + 100 bytes
+        let result = size_op.execute(&memory).unwrap();
+        assert_eq!(result, Value::I32(1)); // Should return 1 (partial pages are truncated)
+    }
+
+    #[test]
+    fn test_memory_grow() {
+        // Create memory with 1 page (64 KiB)
+        let mut memory = MockMemory::new(65536);
+        let grow_op = MemoryGrow::new(0);
+        
+        // Grow by 2 pages
+        let result = grow_op.execute(&mut memory, &Value::I32(2)).unwrap();
+        assert_eq!(result, Value::I32(1)); // Previous size was 1 page
+        
+        // Check new size
+        assert_eq!(memory.size_in_bytes().unwrap(), 3 * 65536);
+        
+        // Test grow with 0 pages (should succeed)
+        let result = grow_op.execute(&mut memory, &Value::I32(0)).unwrap();
+        assert_eq!(result, Value::I32(3)); // Previous size was 3 pages
+        
+        // Test grow with negative pages (should fail)
+        let result = grow_op.execute(&mut memory, &Value::I32(-1)).unwrap();
+        assert_eq!(result, Value::I32(-1)); // Growth failed
+    }
+
+    // Tests for unified MemoryOp
+    struct MockMemoryContext {
+        stack: Vec<Value>,
+        memory: MockMemory,
+        data_segments: MockDataSegments,
+    }
+
+    impl MockMemoryContext {
+        fn new(memory_size: usize) -> Self {
+            Self {
+                stack: Vec::new(),
+                memory: MockMemory::new(memory_size),
+                data_segments: MockDataSegments::new(),
+            }
+        }
+    }
+
+    impl MemoryContext for MockMemoryContext {
+        fn pop_value(&mut self) -> Result<Value> {
+            self.stack.pop().ok_or_else(|| {
+                Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack underflow")
+            })
+        }
+
+        fn push_value(&mut self, value: Value) -> Result<()> {
+            self.stack.push(value);
+            Ok(())
+        }
+
+        fn get_memory(&mut self, _index: u32) -> Result<&mut dyn MemoryOperations> {
+            Ok(&mut self.memory)
+        }
+
+        fn get_data_segments(&mut self) -> Result<&mut dyn DataSegmentOperations> {
+            Ok(&mut self.data_segments)
+        }
+        
+        fn execute_memory_init(
+            &mut self,
+            memory_index: u32,
+            data_index: u32,
+            dest: i32,
+            src: i32,
+            size: i32,
+        ) -> Result<()> {
+            let init_op = MemoryInit::new(memory_index, data_index);
+            init_op.execute(
+                &mut self.memory,
+                &self.data_segments,
+                &Value::I32(dest),
+                &Value::I32(src),
+                &Value::I32(size),
+            )
+        }
+    }
+
+    #[test]
+    fn test_unified_memory_size() {
+        let mut ctx = MockMemoryContext::new(2 * 65536); // 2 pages
+        
+        // Execute memory.size
+        let op = MemoryOp::Size(MemorySize::new(0));
+        op.execute(&mut ctx).unwrap();
+        
+        // Should push 2 (pages) onto stack
+        assert_eq!(ctx.pop_value().unwrap(), Value::I32(2));
+    }
+
+    #[test]
+    fn test_unified_memory_grow() {
+        let mut ctx = MockMemoryContext::new(65536); // 1 page
+        
+        // Push delta (2 pages)
+        ctx.push_value(Value::I32(2)).unwrap();
+        
+        // Execute memory.grow
+        let op = MemoryOp::Grow(MemoryGrow::new(0));
+        op.execute(&mut ctx).unwrap();
+        
+        // Should push previous size (1 page) onto stack
+        assert_eq!(ctx.pop_value().unwrap(), Value::I32(1));
+        
+        // Verify memory actually grew
+        assert_eq!(ctx.memory.size_in_bytes().unwrap(), 3 * 65536);
+    }
+
+    #[test]
+    fn test_unified_memory_fill() {
+        let mut ctx = MockMemoryContext::new(1024);
+        
+        // Push arguments: dest=100, value=0x42, size=10
+        ctx.push_value(Value::I32(100)).unwrap(); // dest
+        ctx.push_value(Value::I32(0x42)).unwrap(); // value
+        ctx.push_value(Value::I32(10)).unwrap(); // size
+        
+        // Execute memory.fill
+        let op = MemoryOp::Fill(MemoryFill::new(0));
+        op.execute(&mut ctx).unwrap();
+        
+        // Verify memory was filled
+        let data = ctx.memory.read_bytes(100, 10).unwrap();
+        #[cfg(feature = "alloc")]
+        assert!(data.iter().all(|&b| b == 0x42));
+        #[cfg(not(feature = "alloc"))]
+        for i in 0..10 {
+            assert_eq!(*data.get(i).unwrap(), 0x42);
+        }
+    }
+
+    #[test]
+    fn test_unified_memory_copy() {
+        let mut ctx = MockMemoryContext::new(1024);
+        
+        // Initialize source data
+        ctx.memory.write_bytes(200, &[1, 2, 3, 4, 5]).unwrap();
+        
+        // Push arguments: dest=100, src=200, size=5
+        ctx.push_value(Value::I32(100)).unwrap(); // dest
+        ctx.push_value(Value::I32(200)).unwrap(); // src
+        ctx.push_value(Value::I32(5)).unwrap(); // size
+        
+        // Execute memory.copy
+        let op = MemoryOp::Copy(MemoryCopy::new(0, 0));
+        op.execute(&mut ctx).unwrap();
+        
+        // Verify memory was copied
+        let data = ctx.memory.read_bytes(100, 5).unwrap();
+        #[cfg(feature = "alloc")]
+        assert_eq!(data, vec![1, 2, 3, 4, 5]);
+        #[cfg(not(feature = "alloc"))]
+        for i in 0..5 {
+            assert_eq!(*data.get(i).unwrap(), (i + 1) as u8);
+        }
     }
 }
 
@@ -1525,9 +1937,32 @@ impl Validate for MemoryInit {
 }
 
 impl Validate for DataDrop {
-    fn validate(&self, ctx: &mut ValidationContext) -> Result<()> {
+    fn validate(&self, _ctx: &mut ValidationContext) -> Result<()> {
         // data.drop: [] -> []
         // No stack operations required
+        Ok(())
+    }
+}
+
+impl Validate for MemorySize {
+    fn validate(&self, ctx: &mut ValidationContext) -> Result<()> {
+        // memory.size: [] -> [i32]
+        // Pushes current memory size in pages
+        if !ctx.is_unreachable() {
+            ctx.push_type(ValueType::I32)?;
+        }
+        Ok(())
+    }
+}
+
+impl Validate for MemoryGrow {
+    fn validate(&self, ctx: &mut ValidationContext) -> Result<()> {
+        // memory.grow: [i32] -> [i32]
+        // Pops delta pages, pushes previous size (or -1 on failure)
+        if !ctx.is_unreachable() {
+            ctx.pop_expect(ValueType::I32)?; // delta pages
+            ctx.push_type(ValueType::I32)?; // previous size or -1
+        }
         Ok(())
     }
 }

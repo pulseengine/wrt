@@ -5,6 +5,12 @@
 
 use crate::prelude::*;
 
+// Import format! macro for string formatting
+#[cfg(feature = "std")]
+use std::format;
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+use alloc::format;
+
 /// Structure to track execution statistics
 #[derive(Debug, Default, Clone)]
 pub struct ExecutionStats {

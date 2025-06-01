@@ -12,7 +12,10 @@ use alloc::{string::String, vec::Vec};
 
 use wrt_foundation::{bounded::BoundedVec, prelude::*};
 
-use crate::{component::Component, instantiation::{ResolvedImport, ResolvedExport, ResourceTable, ModuleInstance}};
+use crate::{
+    component::Component,
+    instantiation::{ModuleInstance, ResolvedExport, ResolvedImport, ResourceTable},
+};
 
 /// Represents an instantiated component
 #[derive(Debug, Clone)]
@@ -233,10 +236,7 @@ pub enum Value {
     #[cfg(not(any(feature = "std", feature = "alloc")))]
     Tuple(BoundedVec<Value, 32>),
     /// Variant value
-    Variant {
-        discriminant: u32,
-        value: Option<Box<Value>>,
-    },
+    Variant { discriminant: u32, value: Option<Box<Value>> },
     /// Enum value
     Enum(u32),
     /// Option value
@@ -293,7 +293,9 @@ impl fmt::Display for ComponentError {
         match self {
             ComponentError::TooManyGenerativeTypes => write!(f, "Too many generative types"),
             ComponentError::TooManyTypeBounds => write!(f, "Too many type bounds"),
-            ComponentError::ResourceHandleAlreadyExists => write!(f, "Resource handle already exists"),
+            ComponentError::ResourceHandleAlreadyExists => {
+                write!(f, "Resource handle already exists")
+            }
             ComponentError::InvalidTypeReference(type_id, target_type) => {
                 write!(f, "Invalid type reference from {:?} to {:?}", type_id, target_type)
             }

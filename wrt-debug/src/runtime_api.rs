@@ -112,7 +112,7 @@ pub enum DwarfLocation {
     /// On stack at offset from frame pointer
     FrameOffset(i32),
     /// Complex expression (not yet supported)
-    Expression(BoundedVec<u8, 64, NoStdProvider>),
+    Expression(BoundedVec<u8, 64, NoStdProvider<1024>>),
 }
 
 /// Variable information with runtime value

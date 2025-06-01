@@ -1,24 +1,26 @@
 use crate::{
-    ComponentInstanceId, ValType, ResourceHandle,
-    task_manager::{TaskManager, TaskId, TaskState},
-    thread_spawn::{ComponentThreadManager, ThreadSpawnRequest, ThreadConfiguration, 
-        ThreadHandle, ThreadResult, ThreadId, ThreadSpawnError, ThreadSpawnErrorKind, ThreadSpawnResult},
-    execution::{TimeBoundedConfig, TimeBoundedContext, TimeBoundedOutcome},
     canonical_options::CanonicalOptions,
-    post_return::{PostReturnRegistry, CleanupTask, CleanupTaskType},
+    execution::{TimeBoundedConfig, TimeBoundedContext, TimeBoundedOutcome},
+    post_return::{CleanupTask, CleanupTaskType, PostReturnRegistry},
+    task_manager::{TaskId, TaskManager, TaskState},
+    thread_spawn::{
+        ComponentThreadManager, ThreadConfiguration, ThreadHandle, ThreadId, ThreadResult,
+        ThreadSpawnError, ThreadSpawnErrorKind, ThreadSpawnRequest, ThreadSpawnResult,
+    },
+    ComponentInstanceId, ResourceHandle, ValType,
+};
+use core::{
+    fmt,
+    sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering},
+    time::Duration,
 };
 use wrt_foundation::{
-    bounded_collections::{BoundedVec, BoundedHashMap},
+    bounded_collections::{BoundedHashMap, BoundedVec},
     component_value::ComponentValue,
 };
 use wrt_platform::{
-    advanced_sync::{PriorityInheritanceMutex, Priority},
+    advanced_sync::{Priority, PriorityInheritanceMutex},
     sync::{FutexLike, SpinFutex},
-};
-use core::{
-    sync::atomic::{AtomicU32, AtomicU64, AtomicBool, Ordering},
-    fmt,
-    time::Duration,
 };
 
 #[cfg(feature = "std")]
@@ -57,7 +59,7 @@ impl FuelTrackedThreadContext {
 
     pub fn consume_fuel(&self, amount: u64) -> Result<(), ThreadSpawnError> {
         let current_fuel = self.remaining_fuel.load(Ordering::Acquire);
-        
+
         if current_fuel < amount {
             self.fuel_exhausted.store(true, Ordering::Release);
             return Err(ThreadSpawnError {
@@ -68,11 +70,11 @@ impl FuelTrackedThreadContext {
 
         self.remaining_fuel.fetch_sub(amount, Ordering::AcqRel);
         self.consumed_fuel.fetch_add(amount, Ordering::AcqRel);
-        
+
         // Check if we should perform a fuel check
         let consumed = self.consumed_fuel.load(Ordering::Acquire);
         let last_check = self.last_check.load(Ordering::Acquire);
-        
+
         if consumed - last_check >= self.check_interval {
             self.last_check.store(consumed, Ordering::Release);
             self.check_fuel_status()?;
@@ -176,7 +178,7 @@ impl FuelTrackedThreadManager {
             let initial_fuel = fuel_config.initial_fuel.unwrap_or(MAX_FUEL_PER_THREAD);
             let global_consumed = self.global_fuel_consumed.load(Ordering::Acquire);
             let global_limit = self.global_fuel_limit.load(Ordering::Acquire);
-            
+
             if global_consumed + initial_fuel > global_limit {
                 return Err(ThreadSpawnError {
                     kind: ThreadSpawnErrorKind::ResourceLimitExceeded,
@@ -194,7 +196,7 @@ impl FuelTrackedThreadManager {
 
         // Spawn the thread
         let handle = self.base_manager.spawn_thread(request.clone())?;
-        
+
         // Create fuel context
         let fuel_context = FuelTrackedThreadContext::new(
             handle.thread_id,
@@ -213,11 +215,9 @@ impl FuelTrackedThreadManager {
             }
         })?;
 
-        self.time_bounds.insert(handle.thread_id, time_context).map_err(|_| {
-            ThreadSpawnError {
-                kind: ThreadSpawnErrorKind::ResourceLimitExceeded,
-                message: "Too many time bound contexts".to_string(),
-            }
+        self.time_bounds.insert(handle.thread_id, time_context).map_err(|_| ThreadSpawnError {
+            kind: ThreadSpawnErrorKind::ResourceLimitExceeded,
+            message: "Too many time bound contexts".to_string(),
         })?;
 
         // Update global fuel consumed
@@ -234,22 +234,18 @@ impl FuelTrackedThreadManager {
             return Ok(());
         }
 
-        let context = self.thread_contexts.get(&thread_id).ok_or_else(|| {
-            ThreadSpawnError {
-                kind: ThreadSpawnErrorKind::ThreadNotFound,
-                message: format!("Thread {} not found", thread_id.as_u32()),
-            }
+        let context = self.thread_contexts.get(&thread_id).ok_or_else(|| ThreadSpawnError {
+            kind: ThreadSpawnErrorKind::ThreadNotFound,
+            message: format!("Thread {} not found", thread_id.as_u32()),
         })?;
 
         context.consume_fuel(amount)?;
 
         // Also check time bounds
         if let Some(time_context) = self.time_bounds.get(&thread_id) {
-            time_context.check_time_bounds().map_err(|e| {
-                ThreadSpawnError {
-                    kind: ThreadSpawnErrorKind::ResourceLimitExceeded,
-                    message: format!("Time bounds exceeded: {}", e),
-                }
+            time_context.check_time_bounds().map_err(|e| ThreadSpawnError {
+                kind: ThreadSpawnErrorKind::ResourceLimitExceeded,
+                message: format!("Time bounds exceeded: {}", e),
             })?;
         }
 
@@ -257,23 +253,22 @@ impl FuelTrackedThreadManager {
     }
 
     pub fn add_thread_fuel(&mut self, thread_id: ThreadId, amount: u64) -> ThreadSpawnResult<u64> {
-        let context = self.thread_contexts.get(&thread_id).ok_or_else(|| {
-            ThreadSpawnError {
-                kind: ThreadSpawnErrorKind::ThreadNotFound,
-                message: format!("Thread {} not found", thread_id.as_u32()),
-            }
+        let context = self.thread_contexts.get(&thread_id).ok_or_else(|| ThreadSpawnError {
+            kind: ThreadSpawnErrorKind::ThreadNotFound,
+            message: format!("Thread {} not found", thread_id.as_u32()),
         })?;
 
         let new_fuel = context.add_fuel(amount);
         Ok(new_fuel)
     }
 
-    pub fn get_thread_fuel_status(&self, thread_id: ThreadId) -> ThreadSpawnResult<ThreadFuelStatus> {
-        let context = self.thread_contexts.get(&thread_id).ok_or_else(|| {
-            ThreadSpawnError {
-                kind: ThreadSpawnErrorKind::ThreadNotFound,
-                message: format!("Thread {} not found", thread_id.as_u32()),
-            }
+    pub fn get_thread_fuel_status(
+        &self,
+        thread_id: ThreadId,
+    ) -> ThreadSpawnResult<ThreadFuelStatus> {
+        let context = self.thread_contexts.get(&thread_id).ok_or_else(|| ThreadSpawnError {
+            kind: ThreadSpawnErrorKind::ThreadNotFound,
+            message: format!("Thread {} not found", thread_id.as_u32()),
         })?;
 
         Ok(ThreadFuelStatus {
@@ -285,11 +280,14 @@ impl FuelTrackedThreadManager {
         })
     }
 
-    pub fn join_thread_with_fuel(&mut self, thread_id: ThreadId) -> ThreadSpawnResult<FuelTrackedThreadResult> {
+    pub fn join_thread_with_fuel(
+        &mut self,
+        thread_id: ThreadId,
+    ) -> ThreadSpawnResult<FuelTrackedThreadResult> {
         let result = self.base_manager.join_thread(thread_id)?;
-        
+
         let fuel_status = self.get_thread_fuel_status(thread_id).ok();
-        
+
         // Clean up contexts
         self.thread_contexts.remove(&thread_id);
         self.time_bounds.remove(&thread_id);
@@ -301,10 +299,7 @@ impl FuelTrackedThreadManager {
             }
         }
 
-        Ok(FuelTrackedThreadResult {
-            result,
-            fuel_status,
-        })
+        Ok(FuelTrackedThreadResult { result, fuel_status })
     }
 
     pub fn get_global_fuel_status(&self) -> GlobalFuelStatus {
@@ -326,10 +321,10 @@ impl FuelTrackedThreadManager {
     {
         // Consume fuel before operation
         self.consume_thread_fuel(thread_id, fuel_per_operation)?;
-        
+
         // Execute the operation
         let result = operation();
-        
+
         Ok(result)
     }
 }
@@ -402,7 +397,7 @@ pub trait FuelAwareExecution {
     fn execute_with_fuel<F, R>(&self, fuel: u64, f: F) -> Result<R, ThreadSpawnError>
     where
         F: FnOnce() -> R;
-        
+
     fn check_fuel_before_operation(&self, required_fuel: u64) -> Result<(), ThreadSpawnError>;
 }
 
@@ -412,12 +407,9 @@ mod tests {
 
     #[test]
     fn test_fuel_context_creation() {
-        let context = FuelTrackedThreadContext::new(
-            ThreadId::new(1),
-            ComponentInstanceId::new(1),
-            1000,
-        );
-        
+        let context =
+            FuelTrackedThreadContext::new(ThreadId::new(1), ComponentInstanceId::new(1), 1000);
+
         assert_eq!(context.get_remaining_fuel(), 1000);
         assert_eq!(context.get_consumed_fuel(), 0);
         assert!(!context.fuel_exhausted.load(Ordering::Acquire));
@@ -425,31 +417,24 @@ mod tests {
 
     #[test]
     fn test_fuel_consumption() {
-        let context = FuelTrackedThreadContext::new(
-            ThreadId::new(1),
-            ComponentInstanceId::new(1),
-            1000,
-        );
-        
+        let context =
+            FuelTrackedThreadContext::new(ThreadId::new(1), ComponentInstanceId::new(1), 1000);
+
         assert!(context.consume_fuel(100).is_ok());
         assert_eq!(context.get_remaining_fuel(), 900);
         assert_eq!(context.get_consumed_fuel(), 100);
-        
+
         assert!(context.consume_fuel(900).is_ok());
         assert_eq!(context.get_remaining_fuel(), 0);
-        
+
         assert!(context.consume_fuel(1).is_err());
         assert!(context.fuel_exhausted.load(Ordering::Acquire));
     }
 
     #[test]
     fn test_global_fuel_status() {
-        let status = GlobalFuelStatus {
-            limit: 1000,
-            consumed: 250,
-            enforcement_enabled: true,
-        };
-        
+        let status = GlobalFuelStatus { limit: 1000, consumed: 250, enforcement_enabled: true };
+
         assert_eq!(status.remaining(), 750);
         assert_eq!(status.usage_percentage(), 25.0);
     }
@@ -460,7 +445,7 @@ mod tests {
         assert_eq!(config.initial_fuel, Some(5000));
         assert_eq!(config.fuel_per_ms, FUEL_PER_MS);
         assert!(!config.allow_fuel_extension);
-        
+
         let unlimited = create_unlimited_fuel_thread_config();
         assert_eq!(unlimited.initial_fuel, None);
         assert!(unlimited.allow_fuel_extension);

@@ -96,7 +96,7 @@ fn test_zephyr_platform_compilation() {
         use wrt_platform::*;
 
         // Basic verification that types exist
-        let _ = core::mem::size_of::<NoStdProvider>();
+        let _ = core::mem::size_of::<NoStdProvider<1024>>();
 
         // Zephyr-specific types should be available
         let _ = core::mem::size_of::<ZephyrAllocatorBuilder>();

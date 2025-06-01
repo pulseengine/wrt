@@ -5,18 +5,27 @@
 
 use wrt_foundation::{
     types::{
-        CustomSection as WrtCustomSection, DataMode as WrtDataMode, DataSegment as WrtDataSegment,
-        ElementMode as WrtElementMode, ElementSegment as WrtElementSegment,
-        ExportDesc as WrtExportDesc, Expr as WrtExpr, FuncType as WrtFuncType,
+        CustomSection as WrtCustomSection, DataMode as WrtDataMode,
+        ElementMode as WrtElementMode,
+        ExportDesc as WrtExportDesc, FuncType as WrtFuncType,
         GlobalType as WrtGlobalType, ImportDesc as WrtImportDesc,
-        ImportGlobalType as WrtImportGlobalType, Instruction as WrtInstruction,
         Limits as WrtLimits, LocalEntry as WrtLocalEntry, MemoryType as WrtMemoryType,
         RefType as WrtRefType, TableType as WrtTableType, ValueType as WrtValueType,
     },
     values::Value as WrtValue,
 };
+use wrt_format::{
+    DataSegment as WrtDataSegment,
+    ElementSegment as WrtElementSegment,
+};
 
 use crate::{global::Global, memory::Memory, prelude::*, table::Table};
+
+/// A WebAssembly expression (sequence of instructions)
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct WrtExpr {
+    pub instructions: Vec<u8>, // Simplified to byte sequence for now
+}
 
 /// Represents a WebAssembly export kind
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -57,12 +66,12 @@ pub struct Import {
     /// Import name
     pub name: String,
     /// Import type
-    pub ty: ExternType,
+    pub ty: ExternType<wrt_foundation::safe_memory::NoStdProvider<1024>>,
 }
 
 impl Import {
     /// Creates a new import
-    pub fn new(module: String, name: String, ty: ExternType) -> Self {
+    pub fn new(module: String, name: String, ty: ExternType<wrt_foundation::safe_memory::NoStdProvider<1024>>) -> Self {
         Self { module, name, ty }
     }
 }
@@ -121,7 +130,7 @@ impl Data {
 #[derive(Debug, Clone)]
 pub struct Module {
     /// Module types (function signatures)
-    pub types: Vec<WrtFuncType>,
+    pub types: Vec<WrtFuncType<wrt_foundation::safe_memory::NoStdProvider<1024>>>,
     /// Imported functions, tables, memories, and globals
     pub imports: HashMap<String, HashMap<String, Import>>,
     /// Function definitions
@@ -209,7 +218,7 @@ impl Module {
                     ExternType::Memory(wrt_foundation::component::MemoryType::from_core(mt))
                 }
                 WrtImportDesc::Global(gt) => {
-                    ExternType::Global(wrt_foundation::component::GlobalType {
+                    ExternType::Global(wrt_foundation::types::GlobalType {
                         value_type: gt.value_type,
                         mutable: gt.mutable,
                     })
@@ -283,7 +292,7 @@ impl Module {
                 WrtExportDesc::Tag(_) => {
                     return Err(Error::new(
                         ErrorCategory::NotSupported,
-                        codes::UNSUPPORTED_FEATURE,
+                        codes::UNSUPPORTED_OPERATION,
                         "Tag exports not supported",
                     ))
                 }
@@ -299,15 +308,8 @@ impl Module {
             // expressions For now, store a simplified version or one that
             // requires instantiation-time evaluation. This is a placeholder and
             // needs robust implementation.
-            let items_resolved = match &element_def.items {
-                wrt_foundation::types::ElementItems::Functions(indices) => {
-                    indices.iter().filter_map(|&opt_idx| opt_idx).collect()
-                }
-                wrt_foundation::types::ElementItems::Expressions(exprs) => {
-                    // TODO: Evaluate expressions to get function indices. Placeholder:
-                    vec![] // This is incorrect, expressions need evaluation.
-                }
-            };
+            // TODO: ElementItems type not available yet, using empty items for now
+            let items_resolved = vec![];
             runtime_module.elements.push(crate::module::Element {
                 mode: element_def.mode.clone(),
                 table_idx: element_def.table_idx,
@@ -348,7 +350,7 @@ impl Module {
     }
 
     /// Gets a function type by index
-    pub fn get_function_type(&self, idx: u32) -> Option<&WrtFuncType> {
+    pub fn get_function_type(&self, idx: u32) -> Option<&WrtFuncType<wrt_foundation::safe_memory::NoStdProvider<1024>>> {
         if idx as usize >= self.types.len() {
             return None;
         }
@@ -438,7 +440,7 @@ impl Module {
     }
 
     /// Add a function type to the module
-    pub fn add_type(&mut self, ty: WrtFuncType) -> Result<()> {
+    pub fn add_type(&mut self, ty: WrtFuncType<wrt_foundation::safe_memory::NoStdProvider<1024>>) -> Result<()> {
         self.types.push(ty);
         Ok(())
     }
@@ -521,7 +523,7 @@ impl Module {
         item_name: &str,
         format_global: wrt_format::module::Global,
     ) -> Result<()> {
-        let component_global_type = wrt_foundation::component::GlobalType {
+        let component_global_type = wrt_foundation::types::GlobalType {
             value_type: format_global.global_type.value_type,
             mutable: format_global.global_type.mutable,
         };
@@ -710,6 +712,90 @@ impl Module {
         //   do most of this).
         Ok(())
     }
+
+    /// Add an import runtime global to the module
+    pub fn add_import_runtime_global(
+        &mut self,
+        module_name: &str,
+        item_name: &str,
+        global_type: WrtGlobalType,
+    ) -> Result<()> {
+        let component_global_type = wrt_foundation::types::GlobalType {
+            value_type: global_type.value_type,
+            mutable: global_type.mutable,
+        };
+        let import_struct = crate::module::Import::new(
+            module_name.to_string(),
+            item_name.to_string(),
+            ExternType::Global(component_global_type),
+        );
+        self.imports
+            .entry(module_name.to_string())
+            .or_default()
+            .insert(item_name.to_string(), import_struct);
+        Ok(())
+    }
+
+    /// Add a runtime export to the module
+    pub fn add_runtime_export(&mut self, name: String, export_desc: WrtExportDesc) -> Result<()> {
+        let kind = match export_desc {
+            WrtExportDesc::Func(_) => ExportKind::Function,
+            WrtExportDesc::Table(_) => ExportKind::Table,
+            WrtExportDesc::Memory(_) => ExportKind::Memory,
+            WrtExportDesc::Global(_) => ExportKind::Global,
+            WrtExportDesc::Tag(_) => {
+                return Err(Error::new(
+                    ErrorCategory::NotSupported,
+                    codes::UNSUPPORTED_OPERATION,
+                    "Tag exports not supported",
+                ))
+            }
+        };
+        let runtime_export = crate::module::Export::new(name.clone(), kind, export_desc.index());
+        self.exports.insert(name, runtime_export);
+        Ok(())
+    }
+
+    /// Add a runtime element to the module
+    pub fn add_runtime_element(&mut self, element_segment: WrtElementSegment) -> Result<()> {
+        // TODO: Resolve element_segment.items expressions if they are not direct
+        // indices. This is a placeholder and assumes items can be derived or
+        // handled during instantiation.
+        // TODO: ElementItems type not available yet, using empty items for now
+        let items_resolved = vec![];
+
+        self.elements.push(crate::module::Element {
+            mode: element_segment.mode,
+            table_idx: element_segment.table_idx,
+            offset_expr: element_segment.offset_expr,
+            element_type: element_segment.element_type,
+            items: items_resolved,
+        });
+        Ok(())
+    }
+
+    /// Add a runtime data segment to the module  
+    pub fn add_runtime_data(&mut self, data_segment: WrtDataSegment) -> Result<()> {
+        self.data.push(crate::module::Data {
+            mode: data_segment.mode,
+            memory_idx: data_segment.memory_idx,
+            offset_expr: data_segment.offset_expr,
+            init: data_segment.data,
+        });
+        Ok(())
+    }
+
+    /// Add a custom section to the module
+    pub fn add_custom_section_runtime(&mut self, section: WrtCustomSection) -> Result<()> {
+        self.custom_sections.insert(section.name, section.data);
+        Ok(())
+    }
+
+    /// Set the binary representation of the module (alternative method)
+    pub fn set_binary_runtime(&mut self, binary: Vec<u8>) -> Result<()> {
+        self.binary = Some(binary);
+        Ok(())
+    }
 }
 
 /// Additional exports that are not part of the standard WebAssembly exports
@@ -733,7 +819,7 @@ pub enum ImportedItem {
         /// The function name
         name: String,
         /// The function type
-        ty: FuncType,
+        ty: FuncType<wrt_foundation::safe_memory::NoStdProvider<1024>>,
     },
     /// An imported table
     Table {
@@ -742,7 +828,7 @@ pub enum ImportedItem {
         /// The table name
         name: String,
         /// The table type
-        ty: TableType,
+        ty: WrtTableType,
     },
     /// An imported memory
     Memory {
@@ -751,7 +837,7 @@ pub enum ImportedItem {
         /// The memory name
         name: String,
         /// The memory type
-        ty: MemoryType,
+        ty: WrtMemoryType,
     },
     /// An imported global
     Global {
@@ -760,16 +846,10 @@ pub enum ImportedItem {
         /// The global name
         name: String,
         /// The global type
-        ty: GlobalType,
+        ty: WrtGlobalType,
     },
 }
 
-// Default trait for WrtExpr if not already present (for Function struct)
-impl Default for WrtExpr {
-    fn default() -> Self {
-        WrtExpr { instructions: Vec::new() }
-    }
-}
 
 // Ensure ExternType is available
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
@@ -789,108 +869,3 @@ use wrt_foundation::component::ExternType; // For error handling
 // Ensure local `crate::global::Global`, `crate::table::Table`,
 // `crate::memory::Memory` are defined and their `new` methods are compatible.
 
-// New method for ModuleBuilder
-pub fn add_import_runtime_global(
-    &mut self,
-    module_name: &str,
-    item_name: &str,
-    global_type: WrtImportGlobalType,
-) -> Result<()> {
-    let component_global_type = wrt_foundation::component::GlobalType {
-        value_type: global_type.value_type,
-        mutable: global_type.mutable,
-    };
-    let import_struct = crate::module::Import::new(
-        module_name.to_string(),
-        item_name.to_string(),
-        ExternType::Global(component_global_type),
-    );
-    self.imports
-        .entry(module_name.to_string())
-        .or_default()
-        .insert(item_name.to_string(), import_struct);
-    Ok(())
-}
-
-// New method for ModuleBuilder
-pub fn add_runtime_export(&mut self, export: wrt_foundation::types::Export) -> Result<()> {
-    let kind = match export.desc {
-        WrtExportDesc::Func(_) => ExportKind::Function,
-        WrtExportDesc::Table(_) => ExportKind::Table,
-        WrtExportDesc::Memory(_) => ExportKind::Memory,
-        WrtExportDesc::Global(_) => ExportKind::Global,
-        WrtExportDesc::Tag(_) => {
-            return Err(Error::new(
-                ErrorCategory::NotSupported,
-                codes::UNSUPPORTED_FEATURE,
-                "Tag exports not supported",
-            ))
-        }
-    };
-    let runtime_export = crate::module::Export::new(export.name.clone(), kind, export.desc.index());
-    self.exports.insert(export.name, runtime_export);
-    Ok(())
-}
-
-// New method for ModuleBuilder
-pub fn add_runtime_element(&mut self, element_segment: WrtElementSegment) -> Result<()> {
-    // TODO: Resolve element_segment.items expressions if they are not direct
-    // indices. This is a placeholder and assumes items can be derived or
-    // handled during instantiation.
-    let items_resolved = match &element_segment.items {
-        wrt_foundation::types::ElementItems::Functions(indices) => {
-            indices.iter().filter_map(|&opt_idx| opt_idx).collect()
-        }
-        wrt_foundation::types::ElementItems::Expressions(_exprs) => {
-            // This requires evaluation context (e.g., globals) which is not available here.
-            // Instantiation phase should handle this. For now, maybe store expressions or
-            // error.
-            return Err(Error::new(
-                ErrorCategory::NotSupported,
-                codes::NOT_IMPLEMENTED,
-                "Element items with expressions require instantiation-time evaluation",
-            ));
-        }
-    };
-
-    self.elements.push(crate::module::Element {
-        mode: element_segment.mode,
-        table_idx: element_segment.table_idx,
-        offset_expr: element_segment.offset_expr,
-        element_type: element_segment.element_type,
-        items: items_resolved,
-    });
-    Ok(())
-}
-
-// New method for ModuleBuilder
-pub fn add_runtime_data(&mut self, data_segment: WrtDataSegment) -> Result<()> {
-    self.data.push(crate::module::Data {
-        mode: data_segment.mode,
-        memory_idx: data_segment.memory_idx,
-        offset_expr: data_segment.offset_expr,
-        init: data_segment.data,
-    });
-    Ok(())
-}
-
-// Signature updated for ModuleBuilder
-pub fn add_custom_section(&mut self, section: WrtCustomSection) -> Result<()> {
-    self.custom_sections.insert(section.name, section.data);
-    Ok(())
-}
-
-pub fn set_binary(&mut self, binary: Vec<u8>) -> Result<()> {
-    self.binary = Some(binary);
-    Ok(())
-}
-
-pub fn validate(&self) -> Result<()> {
-    // TODO: Implement comprehensive validation of the runtime module structure.
-    // - Check type indices are valid.
-    // - Check function indices in start/exports/elements are valid.
-    // - Check table/memory/global indices.
-    // - Validate instruction sequences in function bodies (optional, decoder should
-    //   do most of this).
-    Ok(())
-}

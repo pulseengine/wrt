@@ -109,6 +109,8 @@ pub fn value_type_to_format_val_type(value_type: &ValueType) -> Result<FormatVal
         ValueType::I16x8 => unimplemented!("I16x8 to FormatValType mapping is not yet defined"),
         ValueType::FuncRef => Ok(FormatValType::Own(0)), // Map to handle
         ValueType::ExternRef => Ok(FormatValType::Own(0)), // Map to handle
+        ValueType::StructRef(_) => Ok(FormatValType::Own(0)), // Map struct reference to handle
+        ValueType::ArrayRef(_) => Ok(FormatValType::Own(0)), // Map array reference to handle
     }
 }
 
@@ -127,6 +129,8 @@ pub fn value_type_to_format_val_type<
         ValueType::I16x8 => unimplemented!("I16x8 to FormatValType mapping is not yet defined"),
         ValueType::FuncRef => Ok(FormatValType::Own(0)), // Map to handle
         ValueType::ExternRef => Ok(FormatValType::Own(0)), // Map to handle
+        ValueType::StructRef(_) => Ok(FormatValType::Own(0)), // Map struct reference to handle
+        ValueType::ArrayRef(_) => Ok(FormatValType::Own(0)), // Map array reference to handle
     }
 }
 
@@ -142,6 +146,8 @@ pub fn map_wasm_type_to_component(ty: ValueType) -> FormatValType {
         ValueType::I16x8 => unimplemented!("I16x8 to FormatValType mapping is not yet defined"),
         ValueType::FuncRef => FormatValType::Own(0), // Map to handle
         ValueType::ExternRef => FormatValType::Own(0), // Map to handle
+        ValueType::StructRef(_) => FormatValType::Own(0), // Map struct reference to handle
+        ValueType::ArrayRef(_) => FormatValType::Own(0), // Map array reference to handle
     }
 }
 
@@ -160,6 +166,8 @@ pub fn map_wasm_type_to_component<
         ValueType::I16x8 => unimplemented!("I16x8 to FormatValType mapping is not yet defined"),
         ValueType::FuncRef => FormatValType::Own(0), // Map to handle
         ValueType::ExternRef => FormatValType::Own(0), // Map to handle
+        ValueType::StructRef(_) => FormatValType::Own(0), // Map struct reference to handle
+        ValueType::ArrayRef(_) => FormatValType::Own(0), // Map array reference to handle
     }
 }
 

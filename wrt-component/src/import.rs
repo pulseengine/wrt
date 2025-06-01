@@ -3,7 +3,7 @@
 //! This module provides the Import type for component imports.
 
 use wrt_format::component::ExternType;
-use wrt_foundation::{ExternType as RuntimeExternType, component::ComponentType};
+use wrt_foundation::{component::ComponentType, ExternType as RuntimeExternType};
 
 use crate::{
     component::ExternValue, namespace::Namespace, prelude::*, type_conversion::bidirectional,
@@ -47,11 +47,11 @@ impl Import {
 
     /// Creates a new import with explicit import type
     pub fn new_with_type(
-        namespace: Namespace, 
-        name: String, 
+        namespace: Namespace,
+        name: String,
         import_type: ImportType,
-        ty: ExternType, 
-        value: ExternValue
+        ty: ExternType,
+        value: ExternValue,
     ) -> Self {
         Self { namespace, name, import_type, ty, value }
     }

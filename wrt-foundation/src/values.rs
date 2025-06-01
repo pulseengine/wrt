@@ -39,12 +39,128 @@ use crate::traits::LittleEndian as TraitLittleEndian; // Alias trait
 // Use the canonical LittleEndian trait and BytesWriter from crate::traits
 use crate::traits::{
     BytesWriter, Checksummable, FromBytes, LittleEndian, ReadStream, ToBytes, WriteStream,
+    DefaultMemoryProvider, BoundedCapacity,
 };
-use crate::types::ValueType; // Import ValueType and RefType
+use crate::types::{ValueType, MAX_STRUCT_FIELDS, MAX_ARRAY_ELEMENTS}; // Import ValueType and RefType
 use crate::{
     prelude::{Debug, Eq, PartialEq},
     verification::Checksum,
+    bounded::BoundedVec,
+    MemoryProvider,
 }; // Added for Checksummable
+
+/// GC-managed struct reference for WebAssembly 3.0
+#[derive(Debug, Clone, PartialEq, Eq, core::hash::Hash)]
+pub struct StructRef<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq = DefaultMemoryProvider> {
+    /// Type index of the struct
+    pub type_index: u32,
+    /// Field values
+    pub fields: BoundedVec<Value, MAX_STRUCT_FIELDS, P>,
+}
+
+impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> StructRef<P> {
+    /// Create a new struct reference
+    pub fn new(type_index: u32, provider: P) -> WrtResult<Self> {
+        let fields = BoundedVec::new(provider).map_err(Error::from)?;
+        Ok(Self { type_index, fields })
+    }
+
+    /// Set a field value
+    pub fn set_field(&mut self, index: usize, value: Value) -> WrtResult<()> {
+        if index < self.fields.len() {
+            self.fields.set(index, value).map_err(Error::from).map(|_| ())
+        } else {
+            Err(Error::new(
+                ErrorCategory::Validation,
+                codes::MEMORY_OUT_OF_BOUNDS,
+                "Field index out of bounds",
+            ))
+        }
+    }
+
+    /// Get a field value
+    pub fn get_field(&self, index: usize) -> WrtResult<Value> {
+        self.fields.get(index).map_err(Error::from)
+    }
+
+    /// Add a field value
+    pub fn add_field(&mut self, value: Value) -> WrtResult<()> {
+        self.fields.push(value).map_err(Error::from)
+    }
+}
+
+impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> Default for StructRef<P> {
+    fn default() -> Self {
+        let provider = P::default();
+        Self::new(0, provider).expect("Default StructRef creation failed")
+    }
+}
+
+/// GC-managed array reference for WebAssembly 3.0
+#[derive(Debug, Clone, PartialEq, Eq, core::hash::Hash)]
+pub struct ArrayRef<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq = DefaultMemoryProvider> {
+    /// Type index of the array
+    pub type_index: u32,
+    /// Array elements
+    pub elements: BoundedVec<Value, MAX_ARRAY_ELEMENTS, P>,
+}
+
+impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> ArrayRef<P> {
+    /// Create a new array reference
+    pub fn new(type_index: u32, provider: P) -> WrtResult<Self> {
+        let elements = BoundedVec::new(provider).map_err(Error::from)?;
+        Ok(Self { type_index, elements })
+    }
+
+    /// Create an array with initial size and value
+    pub fn with_size(type_index: u32, size: usize, init_value: Value, provider: P) -> WrtResult<Self> {
+        let mut elements = BoundedVec::new(provider).map_err(Error::from)?;
+        for _ in 0..size {
+            elements.push(init_value.clone()).map_err(Error::from)?;
+        }
+        Ok(Self { type_index, elements })
+    }
+
+    /// Get array length
+    pub fn len(&self) -> usize {
+        self.elements.len()
+    }
+
+    /// Check if array is empty
+    pub fn is_empty(&self) -> bool {
+        self.elements.is_empty()
+    }
+
+    /// Get element at index
+    pub fn get(&self, index: usize) -> WrtResult<Value> {
+        self.elements.get(index).map_err(Error::from)
+    }
+
+    /// Set element at index
+    pub fn set(&mut self, index: usize, value: Value) -> WrtResult<()> {
+        if index < self.elements.len() {
+            self.elements.set(index, value).map_err(Error::from).map(|_| ())
+        } else {
+            Err(Error::new(
+                ErrorCategory::Validation,
+                codes::MEMORY_OUT_OF_BOUNDS,
+                "Array index out of bounds",
+            ))
+        }
+    }
+
+    /// Push element to array
+    pub fn push(&mut self, value: Value) -> WrtResult<()> {
+        self.elements.push(value).map_err(Error::from)
+    }
+}
+
+impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> Default for ArrayRef<P> {
+    fn default() -> Self {
+        let provider = P::default();
+        Self::new(0, provider).expect("Default ArrayRef creation failed")
+    }
+}
 
 /// Represents a WebAssembly runtime value
 #[derive(Debug, Clone, core::hash::Hash)]
@@ -68,6 +184,10 @@ pub enum Value {
     Ref(u32),
     /// 16-bit vector (represented internally as V128)
     I16x8(V128),
+    /// Struct reference (WebAssembly 3.0 GC)
+    StructRef(Option<StructRef<DefaultMemoryProvider>>),
+    /// Array reference (WebAssembly 3.0 GC)
+    ArrayRef(Option<ArrayRef<DefaultMemoryProvider>>),
 }
 
 // Manual PartialEq implementation for Value
@@ -88,6 +208,8 @@ impl PartialEq for Value {
             (Value::ExternRef(a), Value::ExternRef(b)) => a == b,
             (Value::Ref(a), Value::Ref(b)) => a == b,
             (Value::I16x8(a), Value::I16x8(b)) => a == b,
+            (Value::StructRef(a), Value::StructRef(b)) => a == b,
+            (Value::ArrayRef(a), Value::ArrayRef(b)) => a == b,
             _ => false, // Different types are not equal
         }
     }
@@ -175,6 +297,8 @@ impl Value {
             ValueType::I16x8 => Value::I16x8(V128::zero()),
             ValueType::FuncRef => Value::FuncRef(None),
             ValueType::ExternRef => Value::ExternRef(None),
+            ValueType::StructRef(_) => Value::StructRef(None),
+            ValueType::ArrayRef(_) => Value::ArrayRef(None),
         }
     }
 
@@ -191,6 +315,10 @@ impl Value {
             Self::FuncRef(_) => ValueType::FuncRef,
             Self::ExternRef(_) => ValueType::ExternRef,
             Self::Ref(_) => ValueType::I32,
+            Self::StructRef(Some(s)) => ValueType::StructRef(s.type_index),
+            Self::StructRef(None) => ValueType::StructRef(0), // Default type index for null
+            Self::ArrayRef(Some(a)) => ValueType::ArrayRef(a.type_index),
+            Self::ArrayRef(None) => ValueType::ArrayRef(0), // Default type index for null
         }
     }
 
@@ -207,6 +335,10 @@ impl Value {
             (Self::FuncRef(_), ValueType::FuncRef) => true,
             (Self::ExternRef(_), ValueType::ExternRef) => true,
             (Self::Ref(_), ValueType::I32) => true,
+            (Self::StructRef(Some(s)), ValueType::StructRef(idx)) => s.type_index == *idx,
+            (Self::StructRef(None), ValueType::StructRef(_)) => true, // Null matches any struct type
+            (Self::ArrayRef(Some(a)), ValueType::ArrayRef(idx)) => a.type_index == *idx,
+            (Self::ArrayRef(None), ValueType::ArrayRef(_)) => true, // Null matches any array type
             _ => false,
         }
     }
@@ -431,6 +563,10 @@ impl Value {
                 // runtime expectations.
                 writer.write_all(&0u32.to_le_bytes())
             }
+            Value::StructRef(Some(s)) => writer.write_all(&s.type_index.to_le_bytes()),
+            Value::StructRef(None) => writer.write_all(&0u32.to_le_bytes()),
+            Value::ArrayRef(Some(a)) => writer.write_all(&a.type_index.to_le_bytes()),
+            Value::ArrayRef(None) => writer.write_all(&0u32.to_le_bytes()),
         }
     }
 
@@ -557,6 +693,16 @@ impl Value {
                 })?);
                 Ok(Value::ExternRef(Some(ExternRef { index: idx })))
             }
+            ValueType::StructRef(_) => {
+                // For aggregate types, we don't support direct byte deserialization yet
+                // These require more complex GC-aware deserialization
+                Ok(Value::StructRef(None))
+            }
+            ValueType::ArrayRef(_) => {
+                // For aggregate types, we don't support direct byte deserialization yet
+                // These require more complex GC-aware deserialization
+                Ok(Value::ArrayRef(None))
+            }
         }
     }
 }
@@ -575,6 +721,10 @@ impl fmt::Display for Value {
             Value::ExternRef(None) => write!(f, "externref:null"),
             Value::Ref(v) => write!(f, "ref:{v}"),
             Value::I16x8(v) => write!(f, "i16x8:{v:?}"),
+            Value::StructRef(Some(v)) => write!(f, "structref:type{}", v.type_index),
+            Value::StructRef(None) => write!(f, "structref:null"),
+            Value::ArrayRef(Some(v)) => write!(f, "arrayref:type{}[{}]", v.type_index, v.len()),
+            Value::ArrayRef(None) => write!(f, "arrayref:null"),
         }
     }
 }
@@ -722,6 +872,8 @@ impl Checksummable for Value {
             Value::ExternRef(_) => 6u8,
             Value::Ref(_) => 7u8,   // Generic Ref
             Value::I16x8(_) => 8u8, // I16x8, distinct from V128 for checksum
+            Value::StructRef(_) => 9u8, // Struct reference
+            Value::ArrayRef(_) => 10u8, // Array reference
         };
         checksum.update(discriminant_byte);
 
@@ -734,6 +886,8 @@ impl Checksummable for Value {
             Value::FuncRef(v) => v.update_checksum(checksum),
             Value::ExternRef(v) => v.update_checksum(checksum),
             Value::Ref(v) => v.update_checksum(checksum),
+            Value::StructRef(v) => v.update_checksum(checksum),
+            Value::ArrayRef(v) => v.update_checksum(checksum),
         }
     }
 }
@@ -755,6 +909,8 @@ impl ToBytes for Value {
             Value::ExternRef(_) => 6u8,
             Value::Ref(_) => 7u8,   // Generic Ref, serialized as u32
             Value::I16x8(_) => 8u8, // I16x8, serialized as V128
+            Value::StructRef(_) => 9u8, // Struct reference
+            Value::ArrayRef(_) => 10u8, // Array reference
         };
         writer.write_u8(discriminant)?;
 
@@ -780,6 +936,20 @@ impl ToBytes for Value {
                 }
             }
             Value::Ref(v) => v.to_bytes_with_provider(writer, provider)?,
+            Value::StructRef(opt_v) => {
+                // Write Some/None flag
+                writer.write_u8(if opt_v.is_some() { 1 } else { 0 })?;
+                if let Some(v) = opt_v {
+                    v.to_bytes_with_provider(writer, provider)?
+                }
+            }
+            Value::ArrayRef(opt_v) => {
+                // Write Some/None flag
+                writer.write_u8(if opt_v.is_some() { 1 } else { 0 })?;
+                if let Some(v) = opt_v {
+                    v.to_bytes_with_provider(writer, provider)?
+                }
+            }
         }
         Ok(())
     }
@@ -845,12 +1015,122 @@ impl FromBytes for Value {
                 let v = V128::from_bytes_with_provider(reader, provider)?;
                 Ok(Value::I16x8(v))
             }
+            9 => {
+                // StructRef
+                let is_some = reader.read_u8()? == 1;
+                if is_some {
+                    let v = StructRef::from_bytes_with_provider(reader, provider)?;
+                    Ok(Value::StructRef(Some(v)))
+                } else {
+                    Ok(Value::StructRef(None))
+                }
+            }
+            10 => {
+                // ArrayRef
+                let is_some = reader.read_u8()? == 1;
+                if is_some {
+                    let v = ArrayRef::from_bytes_with_provider(reader, provider)?;
+                    Ok(Value::ArrayRef(Some(v)))
+                } else {
+                    Ok(Value::ArrayRef(None))
+                }
+            }
             _ => Err(Error::new(
                 ErrorCategory::Parse,
                 codes::INVALID_VALUE,
                 "Invalid Value discriminant",
             )),
         }
+    }
+}
+
+impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> Checksummable for StructRef<P> {
+    fn update_checksum(&self, checksum: &mut Checksum) {
+        self.type_index.update_checksum(checksum);
+        self.fields.update_checksum(checksum);
+    }
+}
+
+impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> ToBytes for StructRef<P> {
+    fn to_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        provider: &PStream,
+    ) -> WrtResult<()> {
+        // Write type index
+        self.type_index.to_bytes_with_provider(writer, provider)?;
+        // Write field count
+        writer.write_u32_le(self.fields.len() as u32)?;
+        // Write fields
+        for field in self.fields.iter() {
+            field.to_bytes_with_provider(writer, provider)?;
+        }
+        Ok(())
+    }
+}
+
+impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> FromBytes for StructRef<P> {
+    fn from_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        provider: &PStream,
+    ) -> WrtResult<Self> {
+        // Read type index
+        let type_index = u32::from_bytes_with_provider(reader, provider)?;
+        // Read field count
+        let field_count = reader.read_u32_le()?;
+        // Create struct with default provider
+        let mut struct_ref = StructRef::new(type_index, P::default())?;
+        // Read fields
+        for _ in 0..field_count {
+            let field = Value::from_bytes_with_provider(reader, provider)?;
+            struct_ref.add_field(field)?;
+        }
+        Ok(struct_ref)
+    }
+}
+
+impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> Checksummable for ArrayRef<P> {
+    fn update_checksum(&self, checksum: &mut Checksum) {
+        self.type_index.update_checksum(checksum);
+        self.elements.update_checksum(checksum);
+    }
+}
+
+impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> ToBytes for ArrayRef<P> {
+    fn to_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        &self,
+        writer: &mut WriteStream<'a>,
+        provider: &PStream,
+    ) -> WrtResult<()> {
+        // Write type index
+        self.type_index.to_bytes_with_provider(writer, provider)?;
+        // Write element count
+        writer.write_u32_le(self.elements.len() as u32)?;
+        // Write elements
+        for element in self.elements.iter() {
+            element.to_bytes_with_provider(writer, provider)?;
+        }
+        Ok(())
+    }
+}
+
+impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> FromBytes for ArrayRef<P> {
+    fn from_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        provider: &PStream,
+    ) -> WrtResult<Self> {
+        // Read type index
+        let type_index = u32::from_bytes_with_provider(reader, provider)?;
+        // Read element count
+        let element_count = reader.read_u32_le()?;
+        // Create array with default provider
+        let mut array_ref = ArrayRef::new(type_index, P::default())?;
+        // Read elements
+        for _ in 0..element_count {
+            let element = Value::from_bytes_with_provider(reader, provider)?;
+            array_ref.push(element)?;
+        }
+        Ok(array_ref)
     }
 }
 

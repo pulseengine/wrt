@@ -96,13 +96,13 @@ pub struct Abbreviation {
     /// Has children flag
     pub has_children: bool,
     /// Attribute specifications
-    pub attributes: BoundedVec<AttributeSpec, 32, NoStdProvider>,
+    pub attributes: BoundedVec<AttributeSpec, 32, NoStdProvider<1024>>,
 }
 
 /// DWARF abbreviation table
 pub struct AbbreviationTable {
     /// Cached abbreviations
-    entries: BoundedVec<Abbreviation, MAX_DWARF_ABBREV_CACHE, NoStdProvider>,
+    entries: BoundedVec<Abbreviation, MAX_DWARF_ABBREV_CACHE, NoStdProvider<1024>>,
 }
 
 impl AbbreviationTable {

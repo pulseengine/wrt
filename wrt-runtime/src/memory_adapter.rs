@@ -6,6 +6,12 @@
 // Use our prelude for consistent imports
 use crate::{memory::Memory, memory_helpers::ArcMemoryExt, prelude::*};
 
+// Import format! macro for string formatting
+#[cfg(feature = "std")]
+use std::format;
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+use alloc::format;
+
 /// Memory adapter interface for working with memory
 pub trait MemoryAdapter: Debug + Send + Sync {
     /// Get the memory backing this adapter

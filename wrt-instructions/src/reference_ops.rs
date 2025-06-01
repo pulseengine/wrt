@@ -124,6 +124,60 @@ pub trait ReferenceOperations {
     fn validate_function_index(&self, function_index: u32) -> Result<()>;
 }
 
+/// Reference equality operation - compares two references for equality
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RefEq;
+
+impl RefEq {
+    /// Create a new ref.eq instruction
+    pub fn new() -> Self {
+        Self
+    }
+
+    /// Execute the ref.eq instruction
+    /// Returns 1 if references are equal, 0 otherwise
+    pub fn execute(&self, ref1: Value, ref2: Value) -> Result<Value> {
+        let equal = match (ref1, ref2) {
+            // Both null references of same type are equal
+            (Value::FuncRef(None), Value::FuncRef(None)) => true,
+            (Value::ExternRef(None), Value::ExternRef(None)) => true,
+            
+            // Non-null funcref comparison
+            (Value::FuncRef(Some(f1)), Value::FuncRef(Some(f2))) => f1.index == f2.index,
+            
+            // Non-null externref comparison 
+            (Value::ExternRef(Some(e1)), Value::ExternRef(Some(e2))) => {
+                // In a real implementation, this would compare the actual external references
+                // For now, we compare the indices
+                e1.index == e2.index
+            }
+            
+            // Mixed null/non-null or different types are not equal
+            (Value::FuncRef(_), Value::ExternRef(_)) |
+            (Value::ExternRef(_), Value::FuncRef(_)) => false,
+            (Value::FuncRef(None), Value::FuncRef(Some(_))) |
+            (Value::FuncRef(Some(_)), Value::FuncRef(None)) => false,
+            (Value::ExternRef(None), Value::ExternRef(Some(_))) |
+            (Value::ExternRef(Some(_)), Value::ExternRef(None)) => false,
+            
+            // Non-reference types are an error
+            _ => {
+                return Err(Error::type_error(
+                    "ref.eq requires two reference type values"
+                ));
+            }
+        };
+        
+        Ok(Value::I32(if equal { 1 } else { 0 }))
+    }
+}
+
+impl Default for RefEq {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// Reference operation enum for unified handling
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ReferenceOp {
@@ -135,6 +189,8 @@ pub enum ReferenceOp {
     RefFunc(RefFunc),
     /// ref.as_non_null operation
     RefAsNonNull(RefAsNonNull),
+    /// ref.eq operation
+    RefEq(RefEq),
 }
 
 impl ReferenceOp {
@@ -163,13 +219,20 @@ impl ReferenceOp {
                 }
                 op.execute(operands[0].clone())
             }
+            ReferenceOp::RefEq(op) => {
+                if operands.len() < 2 {
+                    return Err(Error::runtime_error("ref.eq requires two operands"));
+                }
+                op.execute(operands[0].clone(), operands[1].clone())
+            }
         }
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, any(feature = "std", feature = "alloc")))]
 mod tests {
     use super::*;
+    use wrt_foundation::values::ExternRef;
 
     struct MockReferenceContext;
 
@@ -187,7 +250,7 @@ mod tests {
             if function_index < 10 {
                 Ok(())
             } else {
-                Err(Error::function_error("Function index out of bounds"))
+                Err(Error::runtime_error("Function index out of bounds"))
             }
         }
     }
@@ -230,7 +293,7 @@ mod tests {
     #[test]
     fn test_ref_is_null_with_non_null_externref() {
         let op = RefIsNull::new();
-        let result = op.execute(Value::ExternRef(Some(ExternRef { handle: 123 }))).unwrap();
+        let result = op.execute(Value::ExternRef(Some(ExternRef { index: 123 }))).unwrap();
         assert_eq!(result, Value::I32(0));
     }
 
@@ -266,7 +329,7 @@ mod tests {
     #[test]
     fn test_ref_as_non_null_with_valid_externref() {
         let op = RefAsNonNull::new();
-        let input = Value::ExternRef(Some(ExternRef { handle: 123 }));
+        let input = Value::ExternRef(Some(ExternRef { index: 123 }));
         let result = op.execute(input.clone()).unwrap();
         assert_eq!(result, input);
     }
@@ -314,6 +377,79 @@ mod tests {
         let result = ref_as_non_null_op.execute(&context, &[Value::FuncRef(Some(FuncRef { index: 5 }))]).unwrap();
         assert_eq!(result, Value::FuncRef(Some(FuncRef { index: 5 })));
     }
+
+    #[test]
+    fn test_ref_eq_null_funcrefs() {
+        let op = RefEq::new();
+        let result = op.execute(Value::FuncRef(None), Value::FuncRef(None)).unwrap();
+        assert_eq!(result, Value::I32(1)); // null == null
+    }
+
+    #[test]
+    fn test_ref_eq_null_externrefs() {
+        let op = RefEq::new();
+        let result = op.execute(Value::ExternRef(None), Value::ExternRef(None)).unwrap();
+        assert_eq!(result, Value::I32(1)); // null == null
+    }
+
+    #[test]
+    fn test_ref_eq_same_funcref() {
+        let op = RefEq::new();
+        let ref1 = Value::FuncRef(Some(FuncRef { index: 42 }));
+        let ref2 = Value::FuncRef(Some(FuncRef { index: 42 }));
+        let result = op.execute(ref1, ref2).unwrap();
+        assert_eq!(result, Value::I32(1)); // same index == equal
+    }
+
+    #[test]
+    fn test_ref_eq_different_funcrefs() {
+        let op = RefEq::new();
+        let ref1 = Value::FuncRef(Some(FuncRef { index: 42 }));
+        let ref2 = Value::FuncRef(Some(FuncRef { index: 43 }));
+        let result = op.execute(ref1, ref2).unwrap();
+        assert_eq!(result, Value::I32(0)); // different indices == not equal
+    }
+
+    #[test]
+    fn test_ref_eq_null_vs_non_null() {
+        let op = RefEq::new();
+        let ref1 = Value::FuncRef(None);
+        let ref2 = Value::FuncRef(Some(FuncRef { index: 42 }));
+        let result = op.execute(ref1, ref2).unwrap();
+        assert_eq!(result, Value::I32(0)); // null != non-null
+    }
+
+    #[test]
+    fn test_ref_eq_different_types() {
+        let op = RefEq::new();
+        let ref1 = Value::FuncRef(None);
+        let ref2 = Value::ExternRef(None);
+        let result = op.execute(ref1, ref2).unwrap();
+        assert_eq!(result, Value::I32(0)); // funcref != externref even if both null
+    }
+
+    #[test]
+    fn test_ref_eq_non_reference_types() {
+        let op = RefEq::new();
+        let result = op.execute(Value::I32(42), Value::I32(42));
+        assert!(result.is_err()); // Non-reference types should error
+    }
+
+    #[test]
+    fn test_ref_eq_in_enum() {
+        let context = MockReferenceContext;
+        let ref_eq_op = ReferenceOp::RefEq(RefEq::new());
+        
+        // Test equal null refs
+        let result = ref_eq_op.execute(&context, &[Value::FuncRef(None), Value::FuncRef(None)]).unwrap();
+        assert_eq!(result, Value::I32(1));
+        
+        // Test different refs
+        let ref1 = Value::FuncRef(Some(FuncRef { index: 1 }));
+        let ref2 = Value::FuncRef(Some(FuncRef { index: 2 }));
+        let result = ref_eq_op.execute(&context, &[ref1, ref2]).unwrap();
+        assert_eq!(result, Value::I32(0));
+    }
 }
 
 // Validation implementations
@@ -356,6 +492,25 @@ impl Validate for RefAsNonNull {
     }
 }
 
+impl Validate for RefEq {
+    fn validate(&self, ctx: &mut ValidationContext) -> Result<()> {
+        // ref.eq: [ref ref] -> [i32]
+        if !ctx.is_unreachable() {
+            let ref2_type = ctx.pop_type()?;
+            let ref1_type = ctx.pop_type()?;
+            // Verify both are reference types
+            match (ref1_type, ref2_type) {
+                (ValueType::FuncRef, ValueType::FuncRef) |
+                (ValueType::ExternRef, ValueType::ExternRef) => {
+                    ctx.push_type(ValueType::I32)?;
+                }
+                _ => return Err(Error::type_error("ref.eq requires two references of same type")),
+            }
+        }
+        Ok(())
+    }
+}
+
 impl Validate for ReferenceOp {
     fn validate(&self, ctx: &mut ValidationContext) -> Result<()> {
         match self {
@@ -363,6 +518,7 @@ impl Validate for ReferenceOp {
             ReferenceOp::RefIsNull(op) => op.validate(ctx),
             ReferenceOp::RefFunc(op) => op.validate(ctx),
             ReferenceOp::RefAsNonNull(op) => op.validate(ctx),
+            ReferenceOp::RefEq(op) => op.validate(ctx),
         }
     }
 }

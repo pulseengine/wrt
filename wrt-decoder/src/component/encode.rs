@@ -319,52 +319,52 @@ fn encode_extern_type(ty: &wrt_format::component::ExternType, data: &mut Vec<u8>
     Ok(())
 }
 
-fn encode_val_type(ty: &wrt_format::component::ValType, data: &mut Vec<u8>) -> Result<()> {
+fn encode_val_type(ty: &wrt_format::component::FormatValType, data: &mut Vec<u8>) -> Result<()> {
     match ty {
-        wrt_format::component::ValType::Bool => {
+        wrt_format::component::FormatValType::Bool => {
             data.push(binary::VAL_TYPE_BOOL_TAG);
         }
-        wrt_format::component::ValType::S8 => {
+        wrt_format::component::FormatValType::S8 => {
             data.push(binary::VAL_TYPE_S8_TAG);
         }
-        wrt_format::component::ValType::U8 => {
+        wrt_format::component::FormatValType::U8 => {
             data.push(binary::VAL_TYPE_U8_TAG);
         }
-        wrt_format::component::ValType::S16 => {
+        wrt_format::component::FormatValType::S16 => {
             data.push(binary::VAL_TYPE_S16_TAG);
         }
-        wrt_format::component::ValType::U16 => {
+        wrt_format::component::FormatValType::U16 => {
             data.push(binary::VAL_TYPE_U16_TAG);
         }
-        wrt_format::component::ValType::S32 => {
+        wrt_format::component::FormatValType::S32 => {
             data.push(binary::VAL_TYPE_S32_TAG);
         }
-        wrt_format::component::ValType::U32 => {
+        wrt_format::component::FormatValType::U32 => {
             data.push(binary::VAL_TYPE_U32_TAG);
         }
-        wrt_format::component::ValType::S64 => {
+        wrt_format::component::FormatValType::S64 => {
             data.push(binary::VAL_TYPE_S64_TAG);
         }
-        wrt_format::component::ValType::U64 => {
+        wrt_format::component::FormatValType::U64 => {
             data.push(binary::VAL_TYPE_U64_TAG);
         }
-        wrt_format::component::ValType::F32 => {
+        wrt_format::component::FormatValType::F32 => {
             data.push(binary::VAL_TYPE_F32_TAG);
         }
-        wrt_format::component::ValType::F64 => {
+        wrt_format::component::FormatValType::F64 => {
             data.push(binary::VAL_TYPE_F64_TAG);
         }
-        wrt_format::component::ValType::Char => {
+        wrt_format::component::FormatValType::Char => {
             data.push(binary::VAL_TYPE_CHAR_TAG);
         }
-        wrt_format::component::ValType::String => {
+        wrt_format::component::FormatValType::String => {
             data.push(binary::VAL_TYPE_STRING_TAG);
         }
-        wrt_format::component::ValType::Ref(type_idx) => {
+        wrt_format::component::FormatValType::Ref(type_idx) => {
             data.push(binary::VAL_TYPE_REF_TAG);
             data.extend_from_slice(&binary::write_leb128_u32(*type_idx));
         }
-        wrt_format::component::ValType::Record(fields) => {
+        wrt_format::component::FormatValType::Record(fields) => {
             data.push(binary::VAL_TYPE_RECORD_TAG);
             data.extend_from_slice(&binary::write_leb128_u32(fields.len() as u32));
             for (name, field_ty) in fields {
@@ -372,7 +372,7 @@ fn encode_val_type(ty: &wrt_format::component::ValType, data: &mut Vec<u8>) -> R
                 encode_val_type(field_ty, data)?;
             }
         }
-        wrt_format::component::ValType::Variant(cases) => {
+        wrt_format::component::FormatValType::Variant(cases) => {
             data.push(binary::VAL_TYPE_VARIANT_TAG);
             data.extend_from_slice(&binary::write_leb128_u32(cases.len() as u32));
             for (name, case_ty) in cases {
@@ -388,67 +388,67 @@ fn encode_val_type(ty: &wrt_format::component::ValType, data: &mut Vec<u8>) -> R
                 }
             }
         }
-        wrt_format::component::ValType::List(element_ty) => {
+        wrt_format::component::FormatValType::List(element_ty) => {
             data.push(binary::VAL_TYPE_LIST_TAG);
             encode_val_type(element_ty, data)?;
         }
-        wrt_format::component::ValType::FixedList(element_ty, length) => {
+        wrt_format::component::FormatValType::FixedList(element_ty, length) => {
             data.push(binary::VAL_TYPE_FIXED_LIST_TAG);
             encode_val_type(element_ty, data)?;
             data.extend_from_slice(&binary::write_leb128_u32(*length));
         }
-        wrt_format::component::ValType::Tuple(types) => {
+        wrt_format::component::FormatValType::Tuple(types) => {
             data.push(binary::VAL_TYPE_TUPLE_TAG);
             data.extend_from_slice(&binary::write_leb128_u32(types.len() as u32));
             for ty in types {
                 encode_val_type(ty, data)?;
             }
         }
-        wrt_format::component::ValType::Flags(names) => {
+        wrt_format::component::FormatValType::Flags(names) => {
             data.push(binary::VAL_TYPE_FLAGS_TAG);
             data.extend_from_slice(&binary::write_leb128_u32(names.len() as u32));
             for name in names {
                 data.extend_from_slice(&binary::write_string(name));
             }
         }
-        wrt_format::component::ValType::Enum(names) => {
+        wrt_format::component::FormatValType::Enum(names) => {
             data.push(binary::VAL_TYPE_ENUM_TAG);
             data.extend_from_slice(&binary::write_leb128_u32(names.len() as u32));
             for name in names {
                 data.extend_from_slice(&binary::write_string(name));
             }
         }
-        wrt_format::component::ValType::Option(element_ty) => {
+        wrt_format::component::FormatValType::Option(element_ty) => {
             data.push(binary::VAL_TYPE_OPTION_TAG);
             encode_val_type(element_ty, data)?;
         }
-        wrt_format::component::ValType::Result(ok_ty) => {
+        wrt_format::component::FormatValType::Result(ok_ty) => {
             data.push(binary::VAL_TYPE_RESULT_TAG);
             encode_val_type(ok_ty, data)?;
         }
-        wrt_format::component::ValType::ResultErr(err_ty) => {
+        wrt_format::component::FormatValType::ResultErr(err_ty) => {
             data.push(binary::VAL_TYPE_RESULT_ERR_TAG);
             encode_val_type(err_ty, data)?;
         }
-        wrt_format::component::ValType::ResultBoth(ok_ty, err_ty) => {
+        wrt_format::component::FormatValType::ResultBoth(ok_ty, err_ty) => {
             data.push(binary::VAL_TYPE_RESULT_BOTH_TAG);
             encode_val_type(ok_ty, data)?;
             encode_val_type(err_ty, data)?;
         }
-        wrt_format::component::ValType::Own(type_idx) => {
+        wrt_format::component::FormatValType::Own(type_idx) => {
             data.push(binary::VAL_TYPE_OWN_TAG);
             data.extend_from_slice(&binary::write_leb128_u32(*type_idx));
         }
-        wrt_format::component::ValType::Borrow(type_idx) => {
+        wrt_format::component::FormatValType::Borrow(type_idx) => {
             data.push(binary::VAL_TYPE_BORROW_TAG);
             data.extend_from_slice(&binary::write_leb128_u32(*type_idx));
         }
-        wrt_format::component::ValType::Void => {
+        wrt_format::component::FormatValType::Void => {
             // There doesn't seem to be a Void tag in the binary constants
             // We'll need to add this or map it to the appropriate value
             return Err(Error::validation_error("Void type encoding not yet implemented"));
         }
-        wrt_format::component::ValType::ErrorContext => {
+        wrt_format::component::FormatValType::ErrorContext => {
             data.push(binary::VAL_TYPE_ERROR_CONTEXT_TAG);
         }
     }
@@ -549,36 +549,36 @@ fn encode_export_section(exports: &[wrt_format::component::Export]) -> Result<Ve
 /// representations without creating references to temporary values.
 fn format_val_type_to_val_type(
     val_type: &wrt_format::component::FormatValType,
-) -> wrt_format::component::ValType {
+) -> wrt_format::component::FormatValType {
     match val_type {
-        wrt_format::component::FormatValType::Bool => wrt_format::component::ValType::Bool,
-        wrt_format::component::FormatValType::S8 => wrt_format::component::ValType::S8,
-        wrt_format::component::FormatValType::U8 => wrt_format::component::ValType::U8,
-        wrt_format::component::FormatValType::S16 => wrt_format::component::ValType::S16,
-        wrt_format::component::FormatValType::U16 => wrt_format::component::ValType::U16,
-        wrt_format::component::FormatValType::S32 => wrt_format::component::ValType::S32,
-        wrt_format::component::FormatValType::U32 => wrt_format::component::ValType::U32,
-        wrt_format::component::FormatValType::S64 => wrt_format::component::ValType::S64,
-        wrt_format::component::FormatValType::U64 => wrt_format::component::ValType::U64,
-        wrt_format::component::FormatValType::F32 => wrt_format::component::ValType::F32,
-        wrt_format::component::FormatValType::F64 => wrt_format::component::ValType::F64,
-        wrt_format::component::FormatValType::Char => wrt_format::component::ValType::Char,
-        wrt_format::component::FormatValType::String => wrt_format::component::ValType::String,
+        wrt_format::component::FormatValType::Bool => wrt_format::component::FormatValType::Bool,
+        wrt_format::component::FormatValType::S8 => wrt_format::component::FormatValType::S8,
+        wrt_format::component::FormatValType::U8 => wrt_format::component::FormatValType::U8,
+        wrt_format::component::FormatValType::S16 => wrt_format::component::FormatValType::S16,
+        wrt_format::component::FormatValType::U16 => wrt_format::component::FormatValType::U16,
+        wrt_format::component::FormatValType::S32 => wrt_format::component::FormatValType::S32,
+        wrt_format::component::FormatValType::U32 => wrt_format::component::FormatValType::U32,
+        wrt_format::component::FormatValType::S64 => wrt_format::component::FormatValType::S64,
+        wrt_format::component::FormatValType::U64 => wrt_format::component::FormatValType::U64,
+        wrt_format::component::FormatValType::F32 => wrt_format::component::FormatValType::F32,
+        wrt_format::component::FormatValType::F64 => wrt_format::component::FormatValType::F64,
+        wrt_format::component::FormatValType::Char => wrt_format::component::FormatValType::Char,
+        wrt_format::component::FormatValType::String => wrt_format::component::FormatValType::String,
         wrt_format::component::FormatValType::Ref(idx) => {
             // Clone the value to avoid reference to temporary
             let idx_value = *idx;
-            wrt_format::component::ValType::Ref(idx_value)
+            wrt_format::component::FormatValType::Ref(idx_value)
         }
         wrt_format::component::FormatValType::List(inner) => {
             // Create a new boxed value instead of referencing the inner value
             let inner_val_type = format_val_type_to_val_type(inner);
-            wrt_format::component::ValType::List(Box::new(inner_val_type))
+            wrt_format::component::FormatValType::List(Box::new(inner_val_type))
         }
         wrt_format::component::FormatValType::FixedList(inner, len) => {
             // Clone the values to avoid references to temporaries
             let inner_val_type = format_val_type_to_val_type(inner);
             let len_value = *len;
-            wrt_format::component::ValType::FixedList(Box::new(inner_val_type), len_value)
+            wrt_format::component::FormatValType::FixedList(Box::new(inner_val_type), len_value)
         }
         wrt_format::component::FormatValType::Record(fields) => {
             // Create new vectors of fields to avoid references to temporaries
@@ -588,7 +588,7 @@ fn format_val_type_to_val_type(
                 let new_field_type = format_val_type_to_val_type(field_type);
                 new_fields.push((new_name, new_field_type));
             }
-            wrt_format::component::ValType::Record(new_fields)
+            wrt_format::component::FormatValType::Record(new_fields)
         }
         wrt_format::component::FormatValType::Variant(cases) => {
             // Create new vectors of cases to avoid references to temporaries
@@ -598,48 +598,48 @@ fn format_val_type_to_val_type(
                 let new_case_type = case_type.as_ref().map(format_val_type_to_val_type);
                 new_cases.push((new_name, new_case_type));
             }
-            wrt_format::component::ValType::Variant(new_cases)
+            wrt_format::component::FormatValType::Variant(new_cases)
         }
         wrt_format::component::FormatValType::Tuple(types) => {
             // Create new vectors of types to avoid references to temporaries
             let new_types = types.iter().map(format_val_type_to_val_type).collect();
-            wrt_format::component::ValType::Tuple(new_types)
+            wrt_format::component::FormatValType::Tuple(new_types)
         }
         wrt_format::component::FormatValType::Flags(names) => {
             // Clone the names to avoid references to temporaries
             let new_names = names.clone();
-            wrt_format::component::ValType::Flags(new_names)
+            wrt_format::component::FormatValType::Flags(new_names)
         }
         wrt_format::component::FormatValType::Enum(names) => {
             // Clone the names to avoid references to temporaries
             let new_names = names.clone();
-            wrt_format::component::ValType::Enum(new_names)
+            wrt_format::component::FormatValType::Enum(new_names)
         }
         wrt_format::component::FormatValType::Option(inner) => {
             // Create a new boxed value instead of referencing the inner value
             let inner_val_type = format_val_type_to_val_type(inner);
-            wrt_format::component::ValType::Option(Box::new(inner_val_type))
+            wrt_format::component::FormatValType::Option(Box::new(inner_val_type))
         }
         wrt_format::component::FormatValType::Result(inner) => {
             // Handle Result with either Ok or Err value
             // We assume inner is not None for this implementation
             // since we're dealing with boxed values
             let inner_val_type = format_val_type_to_val_type(inner);
-            wrt_format::component::ValType::Result(Box::new(inner_val_type))
+            wrt_format::component::FormatValType::Result(Box::new(inner_val_type))
         }
         wrt_format::component::FormatValType::Own(resource_idx) => {
             // Clone the resource index to avoid reference to temporary
             let idx_value = *resource_idx;
-            wrt_format::component::ValType::Own(idx_value)
+            wrt_format::component::FormatValType::Own(idx_value)
         }
         wrt_format::component::FormatValType::Borrow(resource_idx) => {
             // Clone the resource index to avoid reference to temporary
             let idx_value = *resource_idx;
-            wrt_format::component::ValType::Borrow(idx_value)
+            wrt_format::component::FormatValType::Borrow(idx_value)
         }
-        wrt_format::component::FormatValType::Void => wrt_format::component::ValType::Void,
+        wrt_format::component::FormatValType::Void => wrt_format::component::FormatValType::Void,
         wrt_format::component::FormatValType::ErrorContext => {
-            wrt_format::component::ValType::ErrorContext
+            wrt_format::component::FormatValType::ErrorContext
         }
     }
 }

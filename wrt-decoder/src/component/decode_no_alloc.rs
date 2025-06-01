@@ -187,11 +187,11 @@ pub struct ComponentHeader {
     /// Number of sections detected in the component
     pub section_count: u8,
     /// Component types
-    pub types: BoundedVec<ComponentType, MAX_COMPONENT_TYPES, NoStdProvider>,
+    pub types: BoundedVec<ComponentType, MAX_COMPONENT_TYPES, NoStdProvider<1024>>,
     /// Component exports
-    pub exports: BoundedVec<ComponentExport, MAX_COMPONENT_EXPORTS, NoStdProvider>,
+    pub exports: BoundedVec<ComponentExport, MAX_COMPONENT_EXPORTS, NoStdProvider<1024>>,
     /// Component imports
-    pub imports: BoundedVec<ComponentImport, MAX_COMPONENT_IMPORTS, NoStdProvider>,
+    pub imports: BoundedVec<ComponentImport, MAX_COMPONENT_IMPORTS, NoStdProvider<1024>>,
     /// Whether the component contains a start function
     pub has_start: bool,
     /// Whether the component contains core modules
@@ -437,7 +437,7 @@ fn check_for_resource_types(bytes: &[u8], offset: usize, size: u32) -> bool {
 /// * `Result<()>` - Ok if successful
 fn scan_component_imports(
     section_data: &[u8],
-    imports: &mut BoundedVec<ComponentImport, MAX_COMPONENT_IMPORTS, NoStdProvider>,
+    imports: &mut BoundedVec<ComponentImport, MAX_COMPONENT_IMPORTS, NoStdProvider<1024>>,
 ) -> Result<()> {
     if section_data.is_empty() {
         return Ok(());
@@ -495,7 +495,7 @@ fn scan_component_imports(
 /// * `Result<()>` - Ok if successful
 fn scan_component_exports(
     section_data: &[u8],
-    exports: &mut BoundedVec<ComponentExport, MAX_COMPONENT_EXPORTS, NoStdProvider>,
+    exports: &mut BoundedVec<ComponentExport, MAX_COMPONENT_EXPORTS, NoStdProvider<1024>>,
 ) -> Result<()> {
     if section_data.is_empty() {
         return Ok(());
@@ -554,7 +554,7 @@ fn scan_component_exports(
 /// * `Result<()>` - Ok if successful
 fn scan_component_types(
     section_data: &[u8],
-    types: &mut BoundedVec<ComponentType, MAX_COMPONENT_TYPES, NoStdProvider>,
+    types: &mut BoundedVec<ComponentType, MAX_COMPONENT_TYPES, NoStdProvider<1024>>,
 ) -> Result<()> {
     if section_data.is_empty() {
         return Ok(());

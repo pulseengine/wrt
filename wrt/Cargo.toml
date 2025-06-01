@@ -178,6 +178,8 @@ safety = ["wrt-foundation/safety",
 # Platform and Helper Mode Features
 helper-mode = ["wrt-platform/helper-mode", "alloc"]
 platform-macos = ["wrt-platform/platform-macos", "alloc"]
+# Platform feature enables SIMD operations
+platform = ["wrt-math/platform", "alloc"]
 # Serialization support
 serialization = ["dep:serde", "dep:serde_json", "dep:bincode"]
 # Proposal features (mostly placeholders/unused for now)

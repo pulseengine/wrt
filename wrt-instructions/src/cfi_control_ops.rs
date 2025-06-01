@@ -24,6 +24,7 @@
 // Remove unused imports
 
 use crate::prelude::*;
+#[cfg(not(feature = "alloc"))]
 use wrt_foundation::NoStdProvider;
 use crate::control_ops::BranchTarget;
 use crate::types::CfiTargetVec;
@@ -487,7 +488,7 @@ impl wrt_foundation::traits::ToBytes for CfiValidationRequirement {
     fn to_bytes_with_provider<'a, PStream: wrt_foundation::MemoryProvider>(
         &self,
         writer: &mut wrt_foundation::traits::WriteStream<'a>,
-        provider: &PStream,
+        _provider: &PStream,
     ) -> wrt_foundation::Result<()> {
         match self {
             Self::TypeSignatureCheck { expected_type_index, signature_hash } => {
@@ -528,7 +529,7 @@ impl wrt_foundation::traits::ToBytes for CfiValidationRequirement {
 impl wrt_foundation::traits::FromBytes for CfiValidationRequirement {
     fn from_bytes_with_provider<PStream: wrt_foundation::MemoryProvider>(
         reader: &mut wrt_foundation::traits::ReadStream,
-        provider: &PStream,
+        _provider: &PStream,
     ) -> wrt_foundation::Result<Self> {
         let discriminant = reader.read_u8()?;
         match discriminant {
@@ -994,7 +995,7 @@ impl CfiControlFlowOps for DefaultCfiControlFlowOps {
     fn branch_with_cfi(
         &self,
         label_idx: u32,
-        conditional: bool,
+        _conditional: bool,
         cfi_protection: &CfiControlFlowProtection,
         context: &mut CfiExecutionContext,
     ) -> Result<CfiProtectedBranchTarget> {
@@ -1102,7 +1103,7 @@ impl CfiControlFlowOps for DefaultCfiControlFlowOps {
                 CfiValidationRequirement::ShadowStackCheck => {
                     self.validate_shadow_stack(context)?;
                 }
-                CfiValidationRequirement::ControlFlowTargetCheck { valid_targets } => {
+                CfiValidationRequirement::ControlFlowTargetCheck { valid_targets: _ } => {
                     // Convert BoundedVec to slice - for validation, we can iterate 
                     let targets: &[u32] = &[];  // Empty slice for now, proper implementation would iterate
                     self.validate_control_flow_target(targets, context)?;
@@ -1124,7 +1125,7 @@ impl DefaultCfiControlFlowOps {
 
     fn create_landing_pad_for_indirect_call(
         &self,
-        type_idx: u32,
+        _type_idx: u32,
         cfi_protection: &CfiControlFlowProtection,
         context: &mut CfiExecutionContext,
     ) -> Result<CfiLandingPad> {
@@ -1366,7 +1367,7 @@ impl DefaultCfiControlFlowOps {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, any(feature = "std", feature = "alloc")))]
 mod tests {
     use super::*;
 

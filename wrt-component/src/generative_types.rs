@@ -1,19 +1,19 @@
-#[cfg(feature = "std")]
-use std::collections::BTreeMap;
 #[cfg(not(feature = "std"))]
 use alloc::{collections::BTreeMap, vec::Vec};
+#[cfg(feature = "std")]
+use std::collections::BTreeMap;
 
 use core::sync::atomic::{AtomicU32, Ordering};
 
 use wrt_foundation::{
     bounded_collections::{BoundedVec, MAX_GENERATIVE_TYPES},
     component_value::ComponentValue,
-    resource::{ResourceType, ResourceHandle},
+    resource::{ResourceHandle, ResourceType},
 };
 
 use crate::{
-    types::{ComponentInstanceId, ResourceId, TypeId, ComponentError},
-    type_bounds::{TypeBoundsChecker, RelationResult},
+    type_bounds::{RelationResult, TypeBoundsChecker},
+    types::{ComponentError, ComponentInstanceId, ResourceId, TypeId},
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -39,7 +39,8 @@ pub enum BoundKind {
 
 pub struct GenerativeTypeRegistry {
     next_type_id: AtomicU32,
-    instance_types: BTreeMap<ComponentInstanceId, BoundedVec<GenerativeResourceType, MAX_GENERATIVE_TYPES>>,
+    instance_types:
+        BTreeMap<ComponentInstanceId, BoundedVec<GenerativeResourceType, MAX_GENERATIVE_TYPES>>,
     type_bounds: BTreeMap<TypeId, BoundedVec<TypeBound, MAX_GENERATIVE_TYPES>>,
     resource_mappings: BTreeMap<ResourceHandle, GenerativeResourceType>,
     bounds_checker: TypeBoundsChecker,
@@ -62,19 +63,15 @@ impl GenerativeTypeRegistry {
         instance_id: ComponentInstanceId,
     ) -> Result<GenerativeResourceType, ComponentError> {
         let unique_type_id = TypeId(self.next_type_id.fetch_add(1, Ordering::SeqCst));
-        
-        let generative_type = GenerativeResourceType {
-            base_type,
-            instance_id,
-            unique_type_id,
-            generation: 0,
-        };
 
-        let instance_types = self.instance_types
-            .entry(instance_id)
-            .or_insert_with(|| BoundedVec::new());
+        let generative_type =
+            GenerativeResourceType { base_type, instance_id, unique_type_id, generation: 0 };
 
-        instance_types.push(generative_type.clone())
+        let instance_types =
+            self.instance_types.entry(instance_id).or_insert_with(|| BoundedVec::new());
+
+        instance_types
+            .push(generative_type.clone())
             .map_err(|_| ComponentError::TooManyGenerativeTypes)?;
 
         Ok(generative_type)
@@ -85,9 +82,7 @@ impl GenerativeTypeRegistry {
         type_id: TypeId,
         instance_id: ComponentInstanceId,
     ) -> Option<&GenerativeResourceType> {
-        self.instance_types.get(&instance_id)?
-            .iter()
-            .find(|t| t.unique_type_id == type_id)
+        self.instance_types.get(&instance_id)?.iter().find(|t| t.unique_type_id == type_id)
     }
 
     pub fn add_type_bound(
@@ -95,12 +90,9 @@ impl GenerativeTypeRegistry {
         type_id: TypeId,
         bound: TypeBound,
     ) -> Result<(), ComponentError> {
-        let bounds = self.type_bounds
-            .entry(type_id)
-            .or_insert_with(|| BoundedVec::new());
+        let bounds = self.type_bounds.entry(type_id).or_insert_with(|| BoundedVec::new());
 
-        bounds.push(bound.clone())
-            .map_err(|_| ComponentError::TooManyTypeBounds)?;
+        bounds.push(bound.clone()).map_err(|_| ComponentError::TooManyTypeBounds)?;
 
         self.bounds_checker.add_type_bound(bound)?;
 
@@ -123,9 +115,9 @@ impl GenerativeTypeRegistry {
         bound_kind: BoundKind,
     ) -> bool {
         if let Some(bounds) = self.type_bounds.get(&type_id) {
-            bounds.iter().any(|bound| {
-                bound.target_type == target_type && bound.bound_kind == bound_kind
-            })
+            bounds
+                .iter()
+                .any(|bound| bound.target_type == target_type && bound.bound_kind == bound_kind)
         } else {
             false
         }
@@ -157,11 +149,9 @@ impl GenerativeTypeRegistry {
         if let Some(instance_types) = self.instance_types.get(&instance_id) {
             let t1 = instance_types.iter().find(|t| t.unique_type_id == type1);
             let t2 = instance_types.iter().find(|t| t.unique_type_id == type2);
-            
+
             match (t1, t2) {
-                (Some(type1), Some(type2)) => {
-                    type1.base_type == type2.base_type
-                },
+                (Some(type1), Some(type2)) => type1.base_type == type2.base_type,
                 _ => false,
             }
         } else {
@@ -181,10 +171,9 @@ impl GenerativeTypeRegistry {
         if let Some(types) = self.instance_types.remove(&instance_id) {
             for generative_type in types.iter() {
                 self.type_bounds.remove(&generative_type.unique_type_id);
-                
-                self.resource_mappings.retain(|_, mapped_type| {
-                    mapped_type.instance_id != instance_id
-                });
+
+                self.resource_mappings
+                    .retain(|_, mapped_type| mapped_type.instance_id != instance_id);
             }
         }
     }
@@ -209,17 +198,20 @@ impl GenerativeTypeRegistry {
     pub fn validate_type_system(&mut self) -> Result<(), ComponentError> {
         self.infer_type_relations()?;
         self.validate_type_consistency()?;
-        
+
         for (type_id, bounds) in &self.type_bounds {
             for bound in bounds.iter() {
                 if !self.is_valid_type_reference(bound.target_type) {
                     return Err(ComponentError::InvalidTypeReference(*type_id, bound.target_type));
                 }
-                
+
                 if let BoundKind::Sub = bound.bound_kind {
                     let result = self.bounds_checker.check_subtype(*type_id, bound.target_type);
                     if result != RelationResult::Satisfied {
-                        return Err(ComponentError::InvalidSubtypeRelation(*type_id, bound.target_type));
+                        return Err(ComponentError::InvalidSubtypeRelation(
+                            *type_id,
+                            bound.target_type,
+                        ));
                     }
                 }
             }
@@ -228,16 +220,14 @@ impl GenerativeTypeRegistry {
     }
 
     fn is_valid_type_reference(&self, type_id: TypeId) -> bool {
-        self.instance_types.values().any(|types| {
-            types.iter().any(|t| t.unique_type_id == type_id)
-        })
+        self.instance_types.values().any(|types| types.iter().any(|t| t.unique_type_id == type_id))
     }
 
     fn check_subtype_relation(&self, sub_type: TypeId, super_type: TypeId) -> bool {
         for instance_types in self.instance_types.values() {
             let sub = instance_types.iter().find(|t| t.unique_type_id == sub_type);
             let sup = instance_types.iter().find(|t| t.unique_type_id == super_type);
-            
+
             if let (Some(sub_t), Some(sup_t)) = (sub, sup) {
                 return self.is_resource_subtype(&sub_t.base_type, &sup_t.base_type);
             }
@@ -249,7 +239,7 @@ impl GenerativeTypeRegistry {
         match (sub_type, super_type) {
             (ResourceType::Handle(sub_h), ResourceType::Handle(super_h)) => {
                 sub_h.type_name() == super_h.type_name()
-            },
+            }
             _ => false,
         }
     }
@@ -274,7 +264,7 @@ mod tests {
 
         let result = registry.create_generative_type(base_type.clone(), instance_id);
         assert!(result.is_ok());
-        
+
         let gen_type = result.unwrap();
         assert_eq!(gen_type.base_type, base_type);
         assert_eq!(gen_type.instance_id, instance_id);
@@ -300,17 +290,13 @@ mod tests {
         let mut registry = GenerativeTypeRegistry::new();
         let type_id = TypeId(1);
         let target_type = TypeId(2);
-        
-        let bound = TypeBound {
-            type_id,
-            bound_kind: BoundKind::Eq,
-            target_type,
-        };
+
+        let bound = TypeBound { type_id, bound_kind: BoundKind::Eq, target_type };
 
         assert!(registry.add_type_bound(type_id, bound).is_ok());
         assert!(registry.check_type_bound_simple(type_id, target_type, BoundKind::Eq));
         assert!(!registry.check_type_bound_simple(type_id, target_type, BoundKind::Sub));
-        
+
         let result = registry.check_type_bound(type_id, target_type, BoundKind::Eq);
         assert_eq!(result, RelationResult::Satisfied);
     }
@@ -323,7 +309,7 @@ mod tests {
         let handle = ResourceHandle::new(100);
 
         let gen_type = registry.create_generative_type(base_type, instance_id).unwrap();
-        
+
         assert!(registry.register_resource_handle(handle, gen_type.clone()).is_ok());
         assert_eq!(registry.get_resource_type(handle), Some(&gen_type));
     }
@@ -347,26 +333,18 @@ mod tests {
         let type_a = TypeId(1);
         let type_b = TypeId(2);
         let type_c = TypeId(3);
-        
-        let bound1 = TypeBound {
-            type_id: type_a,
-            bound_kind: BoundKind::Sub,
-            target_type: type_b,
-        };
-        let bound2 = TypeBound {
-            type_id: type_b,
-            bound_kind: BoundKind::Sub,
-            target_type: type_c,
-        };
+
+        let bound1 = TypeBound { type_id: type_a, bound_kind: BoundKind::Sub, target_type: type_b };
+        let bound2 = TypeBound { type_id: type_b, bound_kind: BoundKind::Sub, target_type: type_c };
 
         assert!(registry.add_type_bound(type_a, bound1).is_ok());
         assert!(registry.add_type_bound(type_b, bound2).is_ok());
-        
+
         assert!(registry.infer_type_relations().is_ok());
-        
+
         let result = registry.check_type_bound(type_a, type_c, BoundKind::Sub);
         assert_eq!(result, RelationResult::Satisfied);
-        
+
         let supertypes = registry.get_all_supertypes(type_a);
         assert!(supertypes.contains(&type_b));
         assert!(supertypes.contains(&type_c));
@@ -376,14 +354,10 @@ mod tests {
     fn test_type_consistency_validation() {
         let mut registry = GenerativeTypeRegistry::new();
         assert!(registry.validate_type_consistency().is_ok());
-        
+
         let type_a = TypeId(1);
-        let bound = TypeBound {
-            type_id: type_a,
-            bound_kind: BoundKind::Sub,
-            target_type: type_a,
-        };
-        
+        let bound = TypeBound { type_id: type_a, bound_kind: BoundKind::Sub, target_type: type_a };
+
         assert!(registry.add_type_bound(type_a, bound).is_ok());
         assert!(registry.validate_type_consistency().is_err());
     }

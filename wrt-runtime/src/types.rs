@@ -89,9 +89,11 @@ pub type DataVec = BoundedVec<wrt_foundation::types::DataSegment, MAX_DATA, NoSt
 
 // Instruction vectors
 #[cfg(feature = "alloc")]
-pub type InstructionVec = Vec<wrt_decoder::instructions::Instruction>;
+// Instructions module is temporarily disabled in wrt-decoder
+// pub type InstructionVec = Vec<wrt_decoder::instructions::Instruction>;
+pub type InstructionVec = Vec<wrt_instructions::Instruction>;
 #[cfg(not(feature = "alloc"))]
-pub type InstructionVec = BoundedVec<wrt_decoder::instructions::Instruction, 65536, NoStdProvider<{ 65536 * 8 }>>;
+pub type InstructionVec = BoundedVec<wrt_instructions::Instruction, 65536, NoStdProvider<{ 65536 * 8 }>>;
 
 #[cfg(feature = "alloc")]
 pub type BranchTargetsVec = Vec<u32>;
@@ -128,22 +130,22 @@ pub type RuntimeString = wrt_foundation::BoundedString<MAX_STRING_LENGTH, NoStdP
 
 // Maps for runtime state
 #[cfg(feature = "alloc")]
-pub type FunctionMap = std::collections::HashMap<u32, crate::func::Function>;
+pub type FunctionMap = HashMap<u32, crate::func::Function>;
 #[cfg(not(feature = "alloc"))]
 pub type FunctionMap = BoundedMap<u32, crate::func::Function, MAX_FUNCTIONS, NoStdProvider<{ MAX_FUNCTIONS * 256 }>>;
 
 #[cfg(feature = "alloc")]
-pub type GlobalMap = std::collections::HashMap<u32, crate::global::Global>;
+pub type GlobalMap = HashMap<u32, crate::global::Global>;
 #[cfg(not(feature = "alloc"))]
 pub type GlobalMap = BoundedMap<u32, crate::global::Global, MAX_GLOBALS, NoStdProvider<{ MAX_GLOBALS * 64 }>>;
 
 #[cfg(feature = "alloc")]
-pub type MemoryMap = std::collections::HashMap<u32, crate::memory::Memory>;
+pub type MemoryMap = HashMap<u32, crate::memory::Memory>;
 #[cfg(not(feature = "alloc"))]
 pub type MemoryMap = BoundedMap<u32, crate::memory::Memory, MAX_MEMORIES, NoStdProvider<{ MAX_MEMORIES * 1024 }>>;
 
 #[cfg(feature = "alloc")]
-pub type TableMap = std::collections::HashMap<u32, crate::table::Table>;
+pub type TableMap = HashMap<u32, crate::table::Table>;
 #[cfg(not(feature = "alloc"))]
 pub type TableMap = BoundedMap<u32, crate::table::Table, MAX_TABLES, NoStdProvider<{ MAX_TABLES * 1024 }>>;
 

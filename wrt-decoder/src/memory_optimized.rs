@@ -9,10 +9,10 @@
 //! This module provides zero-allocation and minimal-allocation parsing
 //! functions that work across std, no_std+alloc, and pure no_std environments.
 
+use crate::prelude::read_leb128_u32;
 use core::str;
 use wrt_error::{codes, errors::codes as error_codes, Error, ErrorCategory, Result};
-use wrt_foundation::safe_memory::{SafeSlice, MemoryProvider};
-use crate::prelude::read_leb128_u32;
+use wrt_foundation::safe_memory::{MemoryProvider, SafeSlice};
 
 /// Memory pool for reusing vectors during parsing
 pub struct MemoryPool<P: MemoryProvider> {
@@ -55,7 +55,8 @@ impl<P: MemoryProvider> MemoryPool<P> {
     #[cfg(any(feature = "alloc", feature = "std"))]
     pub fn return_instruction_vector(&mut self, mut vec: crate::prelude::Vec<u8>) {
         vec.clear();
-        if vec.capacity() <= 1024 { // Don't pool overly large vectors
+        if vec.capacity() <= 1024 {
+            // Don't pool overly large vectors
             self.instruction_pools.push(vec);
         }
     }
@@ -70,7 +71,8 @@ impl<P: MemoryProvider> MemoryPool<P> {
     #[cfg(any(feature = "alloc", feature = "std"))]
     pub fn return_string_buffer(&mut self, mut vec: crate::prelude::Vec<u8>) {
         vec.clear();
-        if vec.capacity() <= 256 { // Don't pool overly large vectors
+        if vec.capacity() <= 256 {
+            // Don't pool overly large vectors
             self.string_pools.push(vec);
         }
     }
@@ -85,7 +87,7 @@ pub fn validate_utf8_slice(slice: &SafeSlice) -> Result<()> {
             "Failed to access slice data",
         )
     })?;
-    
+
     str::from_utf8(data).map_err(|_| {
         Error::new(
             ErrorCategory::Parse,
@@ -97,13 +99,12 @@ pub fn validate_utf8_slice(slice: &SafeSlice) -> Result<()> {
 }
 
 /// Memory-efficient string parsing without allocation
-pub fn parse_string_inplace<'a>(slice: &'a SafeSlice<'a>, offset: usize) -> Result<(&'a str, usize)> {
+pub fn parse_string_inplace<'a>(
+    slice: &'a SafeSlice<'a>,
+    offset: usize,
+) -> Result<(&'a str, usize)> {
     let data = slice.data().map_err(|_| {
-        Error::new(
-            ErrorCategory::Parse,
-            codes::PARSE_ERROR,
-            "Failed to access slice data",
-        )
+        Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, "Failed to access slice data")
     })?;
 
     if offset >= data.len() {
@@ -115,7 +116,7 @@ pub fn parse_string_inplace<'a>(slice: &'a SafeSlice<'a>, offset: usize) -> Resu
     }
 
     let (length, new_offset) = read_leb128_u32(data, offset)?;
-    
+
     if new_offset + length as usize > data.len() {
         return Err(Error::new(
             ErrorCategory::Parse,
@@ -146,7 +147,7 @@ pub fn copy_string_to_buffer(source: &str, buffer: &mut [u8]) -> Result<usize> {
             "String too long for buffer",
         ));
     }
-    
+
     buffer[..bytes.len()].copy_from_slice(bytes);
     Ok(bytes.len())
 }
@@ -164,21 +165,12 @@ impl<'a> StreamingCollectionParser<'a> {
     /// Create a new streaming parser for a collection
     pub fn new(slice: &'a SafeSlice<'a>, offset: usize) -> Result<Self> {
         let data = slice.data().map_err(|_| {
-            Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                "Failed to access slice data",
-            )
+            Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, "Failed to access slice data")
         })?;
 
         let (count, new_offset) = read_leb128_u32(data, offset)?;
-        
-        Ok(Self {
-            slice,
-            offset: new_offset,
-            count,
-            processed: 0,
-        })
+
+        Ok(Self { slice, offset: new_offset, count, processed: 0 })
     }
 
     /// Get the total count of items
@@ -219,10 +211,7 @@ pub struct ModuleArena {
 impl ModuleArena {
     /// Create a new arena with the given capacity
     pub fn new(capacity: usize) -> Self {
-        Self {
-            buffer: crate::prelude::Vec::with_capacity(capacity),
-            offset: 0,
-        }
+        Self { buffer: crate::prelude::Vec::with_capacity(capacity), offset: 0 }
     }
 
     /// Allocate space in the arena
@@ -258,11 +247,7 @@ pub struct BoundedIterator<'a, T> {
 impl<'a, T> BoundedIterator<'a, T> {
     /// Create a new bounded iterator
     pub fn new(items: &'a [T], max_items: usize) -> Self {
-        Self {
-            items,
-            index: 0,
-            max_items,
-        }
+        Self { items, index: 0, max_items }
     }
 }
 
@@ -283,11 +268,7 @@ impl<'a, T> Iterator for BoundedIterator<'a, T> {
 /// Memory-efficient bounds checking
 pub fn check_bounds_u32(value: u32, max_value: u32, _context: &str) -> Result<()> {
     if value > max_value {
-        Err(Error::new(
-            ErrorCategory::Parse,
-            codes::PARSE_ERROR,
-            "Bounds check failed",
-        ))
+        Err(Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, "Bounds check failed"))
     } else {
         Ok(())
     }

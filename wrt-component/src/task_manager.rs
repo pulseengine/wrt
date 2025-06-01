@@ -12,19 +12,16 @@ use std::{fmt, mem};
 use alloc::{boxed::Box, collections::BTreeMap, vec::Vec};
 
 use wrt_foundation::{
-    bounded::BoundedVec,
-    component_value::ComponentValue,
-    prelude::*,
-    resource::ResourceHandle,
+    bounded::BoundedVec, component_value::ComponentValue, prelude::*, resource::ResourceHandle,
 };
 
 use crate::{
     async_types::{
-        ErrorContext, ErrorContextHandle, Future, FutureHandle, Stream, StreamHandle, 
-        Waitable, WaitableSet, AsyncReadResult
+        AsyncReadResult, ErrorContext, ErrorContextHandle, Future, FutureHandle, Stream,
+        StreamHandle, Waitable, WaitableSet,
     },
     resource_lifecycle::ResourceLifecycleManager,
-    types::{Value, ValType},
+    types::{ValType, Value},
     WrtResult,
 };
 
@@ -48,22 +45,22 @@ pub struct TaskManager {
     tasks: BTreeMap<TaskId, Task>,
     #[cfg(not(any(feature = "std", feature = "alloc")))]
     tasks: BoundedVec<(TaskId, Task), MAX_TASKS>,
-    
+
     /// Ready queue for runnable tasks
     #[cfg(any(feature = "std", feature = "alloc"))]
     ready_queue: Vec<TaskId>,
     #[cfg(not(any(feature = "std", feature = "alloc")))]
     ready_queue: BoundedVec<TaskId, MAX_TASKS>,
-    
+
     /// Currently executing task
     current_task: Option<TaskId>,
-    
+
     /// Next task ID
     next_task_id: u32,
-    
+
     /// Resource manager for task-owned resources
     resource_manager: ResourceLifecycleManager,
-    
+
     /// Maximum number of concurrent tasks
     max_concurrent_tasks: usize,
 }
@@ -222,7 +219,7 @@ impl TaskManager {
         // Check task limit
         if self.tasks.len() >= self.max_concurrent_tasks {
             return Err(wrt_foundation::WrtError::ResourceExhausted(
-                "Maximum concurrent tasks reached".into()
+                "Maximum concurrent tasks reached".into(),
             ));
         }
 
@@ -322,7 +319,7 @@ impl TaskManager {
         if let Some(task) = self.get_task_mut(task_id) {
             if task.state == TaskState::Starting || task.state == TaskState::Waiting {
                 task.state = TaskState::Ready;
-                
+
                 #[cfg(any(feature = "std", feature = "alloc"))]
                 {
                     self.ready_queue.push(task_id);
@@ -372,9 +369,7 @@ impl TaskManager {
                 self.current_task = Some(task_id);
                 Ok(())
             } else {
-                Err(wrt_foundation::WrtError::InvalidState(
-                    "Task is not ready to run".into()
-                ))
+                Err(wrt_foundation::WrtError::InvalidState("Task is not ready to run".into()))
             }
         } else {
             Err(wrt_foundation::WrtError::InvalidInput("Task not found".into()))
@@ -395,15 +390,17 @@ impl TaskManager {
                     let mut bounded_values = BoundedVec::new();
                     for value in values {
                         bounded_values.push(value).map_err(|_| {
-                            wrt_foundation::WrtError::ResourceExhausted("Too many return values".into())
+                            wrt_foundation::WrtError::ResourceExhausted(
+                                "Too many return values".into(),
+                            )
                         })?;
                     }
                     task.return_values = Some(bounded_values);
                 }
-                
+
                 // Clean up borrowed resources
                 self.cleanup_task_resources(task_id)?;
-                
+
                 self.current_task = task.parent;
                 Ok(())
             } else {
@@ -427,7 +424,7 @@ impl TaskManager {
                 task.state = TaskState::Waiting;
                 task.waiting_on = Some(waitables);
                 self.current_task = task.parent;
-                
+
                 // Return special value indicating we're waiting
                 Ok(u32::MAX) // Convention: MAX means "blocking"
             } else {
@@ -448,7 +445,7 @@ impl TaskManager {
         if let Some(task_id) = self.current_task {
             if let Some(task) = self.get_task_mut(task_id) {
                 task.state = TaskState::Ready;
-                
+
                 // Add back to ready queue
                 #[cfg(any(feature = "std", feature = "alloc"))]
                 {
@@ -458,7 +455,7 @@ impl TaskManager {
                 {
                     let _ = self.ready_queue.push(task_id);
                 }
-                
+
                 self.current_task = task.parent;
                 Ok(())
             } else {
@@ -474,16 +471,16 @@ impl TaskManager {
         if let Some(task) = self.get_task_mut(task_id) {
             if task.state != TaskState::Completed && task.state != TaskState::Failed {
                 task.state = TaskState::Cancelled;
-                
+
                 // Cancel all subtasks
                 let subtasks = task.subtasks.clone();
                 for subtask_id in subtasks {
                     self.task_cancel(subtask_id)?;
                 }
-                
+
                 // Clean up resources
                 self.cleanup_task_resources(task_id)?;
-                
+
                 // If this was the current task, switch to parent
                 if self.current_task == Some(task_id) {
                     self.current_task = task.parent;
@@ -502,7 +499,7 @@ impl TaskManager {
     /// Update waitable states and wake waiting tasks
     pub fn update_waitables(&mut self) -> WrtResult<()> {
         let mut tasks_to_wake = Vec::new();
-        
+
         // Check all waiting tasks
         #[cfg(any(feature = "std", feature = "alloc"))]
         {
@@ -623,13 +620,9 @@ mod tests {
     #[test]
     fn test_spawn_task() {
         let mut manager = TaskManager::new();
-        
-        let task_id = manager.spawn_task(
-            TaskType::ComponentFunction,
-            1,
-            Some(0)
-        ).unwrap();
-        
+
+        let task_id = manager.spawn_task(TaskType::ComponentFunction, 1, Some(0)).unwrap();
+
         assert_eq!(task_id, TaskId(0));
         assert_eq!(manager.task_count(), 1);
         assert_eq!(manager.ready_task_count(), 1);
@@ -639,23 +632,19 @@ mod tests {
     #[test]
     fn test_task_execution_cycle() {
         let mut manager = TaskManager::new();
-        
+
         // Spawn task
-        let task_id = manager.spawn_task(
-            TaskType::ComponentFunction,
-            1,
-            Some(0)
-        ).unwrap();
-        
+        let task_id = manager.spawn_task(TaskType::ComponentFunction, 1, Some(0)).unwrap();
+
         // Get next ready task
         let next_task = manager.next_ready_task().unwrap();
         assert_eq!(next_task, task_id);
         assert_eq!(manager.ready_task_count(), 0);
-        
+
         // Switch to task
         manager.switch_to_task(task_id).unwrap();
         assert_eq!(manager.current_task_id(), Some(task_id));
-        
+
         let task = manager.get_task(task_id).unwrap();
         assert_eq!(task.state, TaskState::Running);
     }
@@ -663,19 +652,15 @@ mod tests {
     #[test]
     fn test_task_return() {
         let mut manager = TaskManager::new();
-        
-        let task_id = manager.spawn_task(
-            TaskType::ComponentFunction,
-            1,
-            Some(0)
-        ).unwrap();
-        
+
+        let task_id = manager.spawn_task(TaskType::ComponentFunction, 1, Some(0)).unwrap();
+
         manager.switch_to_task(task_id).unwrap();
-        
+
         // Return from task
         let return_values = vec![Value::U32(42)];
         manager.task_return(return_values).unwrap();
-        
+
         let task = manager.get_task(task_id).unwrap();
         assert_eq!(task.state, TaskState::Completed);
         assert!(task.return_values.is_some());
@@ -684,16 +669,12 @@ mod tests {
     #[test]
     fn test_task_yield() {
         let mut manager = TaskManager::new();
-        
-        let task_id = manager.spawn_task(
-            TaskType::ComponentFunction,
-            1,
-            Some(0)
-        ).unwrap();
-        
+
+        let task_id = manager.spawn_task(TaskType::ComponentFunction, 1, Some(0)).unwrap();
+
         manager.switch_to_task(task_id).unwrap();
         manager.task_yield().unwrap();
-        
+
         let task = manager.get_task(task_id).unwrap();
         assert_eq!(task.state, TaskState::Ready);
         assert_eq!(manager.ready_task_count(), 1);
@@ -702,15 +683,11 @@ mod tests {
     #[test]
     fn test_task_cancel() {
         let mut manager = TaskManager::new();
-        
-        let task_id = manager.spawn_task(
-            TaskType::ComponentFunction,
-            1,
-            Some(0)
-        ).unwrap();
-        
+
+        let task_id = manager.spawn_task(TaskType::ComponentFunction, 1, Some(0)).unwrap();
+
         manager.task_cancel(task_id).unwrap();
-        
+
         let task = manager.get_task(task_id).unwrap();
         assert_eq!(task.state, TaskState::Cancelled);
     }
@@ -718,26 +695,18 @@ mod tests {
     #[test]
     fn test_subtask_tracking() {
         let mut manager = TaskManager::new();
-        
+
         // Spawn parent task
-        let parent_id = manager.spawn_task(
-            TaskType::ComponentFunction,
-            1,
-            Some(0)
-        ).unwrap();
-        
+        let parent_id = manager.spawn_task(TaskType::ComponentFunction, 1, Some(0)).unwrap();
+
         manager.switch_to_task(parent_id).unwrap();
-        
+
         // Spawn subtask
-        let child_id = manager.spawn_task(
-            TaskType::AsyncOperation,
-            1,
-            Some(1)
-        ).unwrap();
-        
+        let child_id = manager.spawn_task(TaskType::AsyncOperation, 1, Some(1)).unwrap();
+
         let parent = manager.get_task(parent_id).unwrap();
         assert!(parent.subtasks.contains(&child_id));
-        
+
         let child = manager.get_task(child_id).unwrap();
         assert_eq!(child.parent, Some(parent_id));
     }

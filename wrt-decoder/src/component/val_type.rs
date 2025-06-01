@@ -7,30 +7,30 @@
 //! This module provides helpers for encoding component value types.
 
 use wrt_error::{codes, Error, ErrorCategory, Result};
-use wrt_format::{binary, component::ValType};
+use wrt_format::{binary, component::FormatValType};
 
 use crate::prelude::*;
 
 /// Helper function to encode a value type to binary format
-pub fn encode_val_type(result: &mut Vec<u8>, val_type: &ValType) -> Result<()> {
+pub fn encode_val_type(result: &mut Vec<u8>, val_type: &FormatValType) -> Result<()> {
     match val_type {
-        ValType::Bool => result.push(0x07),
-        ValType::S8 => result.push(0x08),
-        ValType::U8 => result.push(0x09),
-        ValType::S16 => result.push(0x0A),
-        ValType::U16 => result.push(0x0B),
-        ValType::String => result.push(0x0C),
-        ValType::List(inner) => {
+        FormatValType::Bool => result.push(0x07),
+        FormatValType::S8 => result.push(0x08),
+        FormatValType::U8 => result.push(0x09),
+        FormatValType::S16 => result.push(0x0A),
+        FormatValType::U16 => result.push(0x0B),
+        FormatValType::String => result.push(0x0C),
+        FormatValType::List(inner) => {
             result.push(0x0D);
             encode_val_type(result, inner)?;
         }
-        ValType::S32 => result.push(0x01),
-        ValType::U32 => result.push(0x02),
-        ValType::S64 => result.push(0x03),
-        ValType::U64 => result.push(0x04),
-        ValType::F32 => result.push(0x05),
-        ValType::F64 => result.push(0x06),
-        ValType::Record(fields) => {
+        FormatValType::S32 => result.push(0x01),
+        FormatValType::U32 => result.push(0x02),
+        FormatValType::S64 => result.push(0x03),
+        FormatValType::U64 => result.push(0x04),
+        FormatValType::F32 => result.push(0x05),
+        FormatValType::F64 => result.push(0x06),
+        FormatValType::Record(fields) => {
             result.push(0x0E);
             result.extend_from_slice(&binary::write_leb128_u32(fields.len() as u32));
             for (name, field_type) in fields {
@@ -38,7 +38,7 @@ pub fn encode_val_type(result: &mut Vec<u8>, val_type: &ValType) -> Result<()> {
                 encode_val_type(result, field_type)?;
             }
         }
-        ValType::Variant(cases) => {
+        FormatValType::Variant(cases) => {
             result.push(0x0F);
             result.extend_from_slice(&binary::write_leb128_u32(cases.len() as u32));
             for (case_name, case_type) in cases {
@@ -51,51 +51,51 @@ pub fn encode_val_type(result: &mut Vec<u8>, val_type: &ValType) -> Result<()> {
                 }
             }
         }
-        ValType::Tuple(types) => {
+        FormatValType::Tuple(types) => {
             result.push(0x10);
             result.extend_from_slice(&binary::write_leb128_u32(types.len() as u32));
             for ty in types {
                 encode_val_type(result, ty)?;
             }
         }
-        ValType::Option(inner) => {
+        FormatValType::Option(inner) => {
             result.push(0x11);
             encode_val_type(result, inner)?;
         }
         // Handle Result type - assuming it's a tuple with optional ok and err values
-        ValType::Result(inner) => {
+        FormatValType::Result(inner) => {
             // For now, assume it's an ok-only type by default
             result.push(0x12);
             result.push(0x01); // ok only
             encode_val_type(result, inner)?;
         }
-        ValType::Enum(cases) => {
+        FormatValType::Enum(cases) => {
             result.push(0x13);
             result.extend_from_slice(&binary::write_leb128_u32(cases.len() as u32));
             for case_name in cases {
                 result.extend_from_slice(&binary::write_string(case_name));
             }
         }
-        ValType::Flags(names) => {
+        FormatValType::Flags(names) => {
             result.push(0x14);
             result.extend_from_slice(&binary::write_leb128_u32(names.len() as u32));
             for name in names {
                 result.extend_from_slice(&binary::write_string(name));
             }
         }
-        ValType::Ref(idx) => {
+        FormatValType::Ref(idx) => {
             result.push(0x15);
             result.extend_from_slice(&binary::write_leb128_u32(*idx));
         }
-        ValType::Own(_) | ValType::Borrow(_) => {
+        FormatValType::Own(_) | FormatValType::Borrow(_) => {
             return Err(Error::new(
                 ErrorCategory::Parse,
                 codes::PARSE_ERROR,
                 "Resource types are not supported for encoding yet".to_string(),
             ));
         }
-        ValType::Char => result.push(0x16),
-        ValType::FixedList(inner, size) => {
+        FormatValType::Char => result.push(0x16),
+        FormatValType::FixedList(inner, size) => {
             // Fixed-length lists are encoded as a list tag followed by the element type and
             // size
             result.push(0x17); // Example tag for fixed list
@@ -104,11 +104,11 @@ pub fn encode_val_type(result: &mut Vec<u8>, val_type: &ValType) -> Result<()> {
             // Encode size
             result.extend_from_slice(&binary::write_leb128_u32(*size));
         }
-        ValType::ErrorContext => {
+        FormatValType::ErrorContext => {
             // Error context is a simple type
             result.push(0x18); // Example tag for error context
         }
-        ValType::Void => {
+        FormatValType::Void => {
             // Void is a simple type
             result.push(0x19); // Example tag for void
         }

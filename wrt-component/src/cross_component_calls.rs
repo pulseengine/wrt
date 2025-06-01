@@ -12,17 +12,14 @@ use std::{fmt, mem};
 use alloc::{boxed::Box, vec::Vec};
 
 use wrt_foundation::{
-    bounded::BoundedVec,
-    component::ComponentType,
-    component_value::ComponentValue,
-    prelude::*,
+    bounded::BoundedVec, component::ComponentType, component_value::ComponentValue, prelude::*,
 };
 
 use crate::{
     canonical::CanonicalAbi,
     execution_engine::ComponentExecutionEngine,
     resource_lifecycle::ResourceLifecycleManager,
-    types::{ComponentInstance, Value, ValType},
+    types::{ComponentInstance, ValType, Value},
     WrtResult,
 };
 
@@ -39,19 +36,19 @@ pub struct CrossComponentCallManager {
     targets: Vec<CallTarget>,
     #[cfg(not(any(feature = "std", feature = "alloc")))]
     targets: BoundedVec<CallTarget, MAX_CALL_TARGETS>,
-    
+
     /// Call stack for tracking cross-component calls
     #[cfg(any(feature = "std", feature = "alloc"))]
     call_stack: Vec<CrossCallFrame>,
     #[cfg(not(any(feature = "std", feature = "alloc")))]
     call_stack: BoundedVec<CrossCallFrame, MAX_CROSS_CALL_DEPTH>,
-    
+
     /// Canonical ABI processor
     canonical_abi: CanonicalAbi,
-    
+
     /// Resource manager for cross-component resource transfer
     resource_manager: ResourceLifecycleManager,
-    
+
     /// Maximum call depth
     max_call_depth: usize,
 }
@@ -179,7 +176,7 @@ impl CrossComponentCallManager {
     /// Register a call target
     pub fn register_target(&mut self, target: CallTarget) -> WrtResult<u32> {
         let target_id = self.targets.len() as u32;
-        
+
         #[cfg(any(feature = "std", feature = "alloc"))]
         {
             self.targets.push(target);
@@ -190,7 +187,7 @@ impl CrossComponentCallManager {
                 wrt_foundation::WrtError::ResourceExhausted("Too many call targets".into())
             })?;
         }
-        
+
         Ok(target_id)
     }
 
@@ -205,19 +202,21 @@ impl CrossComponentCallManager {
         // Check call depth
         if self.call_stack.len() >= self.max_call_depth {
             return Err(wrt_foundation::WrtError::ResourceExhausted(
-                "Maximum call depth exceeded".into()
+                "Maximum call depth exceeded".into(),
             ));
         }
 
         // Get target
-        let target = self.targets.get(target_id as usize)
+        let target = self
+            .targets
+            .get(target_id as usize)
             .ok_or_else(|| wrt_foundation::WrtError::InvalidInput("Call target not found".into()))?
             .clone();
 
         // Check permissions
         if !target.permissions.allowed {
             return Err(wrt_foundation::WrtError::PermissionDenied(
-                "Cross-component call not allowed".into()
+                "Cross-component call not allowed".into(),
             ));
         }
 
@@ -247,11 +246,8 @@ impl CrossComponentCallManager {
         }
 
         // Prepare arguments with resource transfer
-        let (prepared_args, transferred_resources) = self.prepare_arguments(
-            args,
-            &target,
-            caller_instance,
-        )?;
+        let (prepared_args, transferred_resources) =
+            self.prepare_arguments(args, &target, caller_instance)?;
 
         // Update call frame with transferred resources
         if let Some(frame) = self.call_stack.last_mut() {
@@ -259,11 +255,8 @@ impl CrossComponentCallManager {
         }
 
         // Make the actual call
-        let call_result = engine.call_function(
-            target.target_instance,
-            target.function_index,
-            &prepared_args,
-        );
+        let call_result =
+            engine.call_function(target.target_instance, target.function_index, &prepared_args);
 
         // Calculate statistics
         let end_time = self.get_current_time();
@@ -279,11 +272,7 @@ impl CrossComponentCallManager {
             Ok(value) => {
                 // Call succeeded - finalize resource transfers
                 self.finalize_resource_transfers(&transferred_resources)?;
-                CrossCallResult {
-                    result: Ok(value),
-                    transferred_resources,
-                    stats,
-                }
+                CrossCallResult { result: Ok(value), transferred_resources, stats }
             }
             Err(error) => {
                 // Call failed - restore resources
@@ -323,7 +312,7 @@ impl CrossComponentCallManager {
         let mut prepared_args = Vec::new();
         #[cfg(not(any(feature = "std", feature = "alloc")))]
         let mut prepared_args = Vec::new();
-        
+
         #[cfg(any(feature = "std", feature = "alloc"))]
         let mut transferred_resources = Vec::new();
         #[cfg(not(any(feature = "std", feature = "alloc")))]
@@ -345,7 +334,7 @@ impl CrossComponentCallManager {
                         prepared_args.push(arg.clone());
                     } else {
                         return Err(wrt_foundation::WrtError::PermissionDenied(
-                            "Resource transfer not allowed".into()
+                            "Resource transfer not allowed".into(),
                         ));
                     }
                 }
@@ -368,30 +357,20 @@ impl CrossComponentCallManager {
         transfer_type: ResourceTransferPolicy,
     ) -> WrtResult<TransferredResource> {
         match transfer_type {
-            ResourceTransferPolicy::None => {
-                Err(wrt_foundation::WrtError::PermissionDenied(
-                    "Resource transfer not allowed".into()
-                ))
-            }
+            ResourceTransferPolicy::None => Err(wrt_foundation::WrtError::PermissionDenied(
+                "Resource transfer not allowed".into(),
+            )),
             ResourceTransferPolicy::Transfer => {
                 // Transfer ownership
                 self.resource_manager.transfer_ownership(
                     wrt_foundation::resource::ResourceHandle(handle),
                     to_instance,
                 )?;
-                Ok(TransferredResource {
-                    handle,
-                    transfer_type,
-                    original_owner: from_instance,
-                })
+                Ok(TransferredResource { handle, transfer_type, original_owner: from_instance })
             }
             ResourceTransferPolicy::Borrow => {
                 // Borrow resource (no ownership change)
-                Ok(TransferredResource {
-                    handle,
-                    transfer_type,
-                    original_owner: from_instance,
-                })
+                Ok(TransferredResource { handle, transfer_type, original_owner: from_instance })
             }
             ResourceTransferPolicy::Copy => {
                 // Copy resource (if possible)
@@ -494,13 +473,7 @@ impl CallTarget {
         permissions: CallPermissions,
         resource_policy: ResourceTransferPolicy,
     ) -> Self {
-        Self {
-            target_instance,
-            function_index,
-            signature,
-            permissions,
-            resource_policy,
-        }
+        Self { target_instance, function_index, signature, permissions, resource_policy }
     }
 }
 
@@ -546,7 +519,7 @@ mod tests {
     #[test]
     fn test_register_target() {
         let mut manager = CrossComponentCallManager::new();
-        
+
         let target = CallTarget::new(
             1,
             0,
@@ -554,7 +527,7 @@ mod tests {
             CallPermissions::default(),
             ResourceTransferPolicy::None,
         );
-        
+
         let target_id = manager.register_target(target).unwrap();
         assert_eq!(target_id, 0);
         assert_eq!(manager.targets.len(), 1);
@@ -586,7 +559,7 @@ mod tests {
             CallPermissions::default(),
             ResourceTransferPolicy::Borrow,
         );
-        
+
         assert_eq!(target.target_instance, 1);
         assert_eq!(target.function_index, 0);
         assert_eq!(target.resource_policy, ResourceTransferPolicy::Borrow);
@@ -595,10 +568,10 @@ mod tests {
     #[test]
     fn test_is_call_allowed() {
         let mut manager = CrossComponentCallManager::new();
-        
+
         // No targets registered - should not be allowed
         assert!(!manager.is_call_allowed(0, 1));
-        
+
         // Register a target
         let target = CallTarget::new(
             1,
@@ -608,7 +581,7 @@ mod tests {
             ResourceTransferPolicy::None,
         );
         manager.register_target(target).unwrap();
-        
+
         // Now should be allowed
         assert!(manager.is_call_allowed(0, 1));
     }

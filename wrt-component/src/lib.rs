@@ -41,43 +41,55 @@ pub mod prelude;
 // Export modules - some are conditionally compiled
 pub mod adapter;
 pub mod async_canonical;
-pub mod async_types;
 pub mod async_runtime_bridge;
+pub mod async_types;
 pub mod builtins;
 pub mod canonical;
-pub mod cross_component_calls;
-pub mod host_integration;
-pub mod task_manager;
-pub mod generative_types;
-pub mod type_bounds;
-pub mod wit_integration;
-pub mod component_linker;
-pub mod component_resolver;
-pub mod canonical_realloc;
+pub mod canonical_abi;
+#[cfg(test)]
+pub mod canonical_abi_tests;
 pub mod canonical_options;
-pub mod post_return;
-pub mod virtualization;
-pub mod thread_spawn;
-pub mod thread_spawn_fuel;
-pub mod start_function_validation;
-pub mod handle_representation;
-pub mod cross_component_resource_sharing;
+pub mod canonical_realloc;
 #[cfg(feature = "std")]
 pub mod component;
+pub mod component_instantiation;
+#[cfg(test)]
+pub mod component_instantiation_tests;
+pub mod component_linker;
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 pub mod component_no_std;
 #[cfg(feature = "std")]
 pub mod component_registry;
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 pub mod component_registry_no_std;
+pub mod component_resolver;
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 pub mod component_value_no_std;
+pub mod cross_component_calls;
+pub mod cross_component_resource_sharing;
+pub mod component_communication;
+pub mod call_context;
+pub mod cross_component_communication;
 pub mod error_format;
 pub mod execution_engine;
+pub mod generative_types;
+pub mod handle_representation;
+pub mod host_integration;
 pub mod memory_layout;
 pub mod memory_table_management;
+pub mod post_return;
 pub mod resource_lifecycle;
+pub mod resource_management;
+#[cfg(test)]
+pub mod resource_management_tests;
+pub mod start_function_validation;
 pub mod string_encoding;
+pub mod task_manager;
+pub mod thread_spawn;
+pub mod thread_spawn_fuel;
+pub mod type_bounds;
+pub mod virtualization;
+pub mod wit_integration;
 // No-alloc module for pure no_std environments
 pub mod execution;
 pub mod export;
@@ -110,6 +122,17 @@ pub mod verify;
 // Re-export core types and functionality for convenience
 pub use builtins::{BuiltinHandler, BuiltinRegistry};
 pub use canonical::CanonicalABI;
+// Re-export component instantiation and linking
+pub use component_instantiation::{
+    create_component_export, create_component_import, create_function_signature, ComponentExport,
+    ComponentFunction, ComponentImport, ComponentInstance, ComponentMemory, ExportType,
+    FunctionHandle, FunctionImplementation, FunctionSignature, ImportType, InstanceConfig,
+    InstanceId, InstanceMetadata, InstanceState, MemoryConfig, ResolvedImport,
+};
+pub use component_linker::{
+    CircularDependencyMode, ComponentDefinition, ComponentId, ComponentLinker, ComponentMetadata,
+    GraphEdge, GraphNode, LinkGraph, LinkerConfig, LinkingStats,
+};
 // Re-export component types based on feature flags
 #[cfg(feature = "std")]
 pub use component::{Component, ExternValue, FunctionValue, GlobalValue, MemoryValue, TableValue};
@@ -133,122 +156,155 @@ pub use component_registry_no_std::ComponentRegistry;
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 pub use component_value_no_std::deserialize_component_value_no_std as deserialize_component_value;
 // Re-export component value utilities for no_std
+pub use adapter::{
+    AdaptationMode, CoreFunctionSignature, CoreModuleAdapter, CoreValType, FunctionAdapter,
+    GlobalAdapter, MemoryAdapter, MemoryLimits, TableAdapter, TableLimits,
+};
+pub use async_canonical::AsyncCanonicalAbi;
+pub use async_types::{
+    AsyncReadResult, ErrorContext, ErrorContextHandle, Future, FutureHandle, FutureState, Stream,
+    StreamHandle, StreamState, Waitable, WaitableSet,
+};
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 pub use component_value_no_std::{
     convert_format_to_valtype, convert_valtype_to_format, serialize_component_value_no_std,
 };
 pub use execution_engine::{ComponentExecutionEngine, ExecutionContext, ExecutionState};
-pub use adapter::{
-    CoreModuleAdapter, FunctionAdapter, MemoryAdapter, TableAdapter, GlobalAdapter,
-    CoreFunctionSignature, CoreValType, AdaptationMode, MemoryLimits, TableLimits
+pub use generative_types::{BoundKind, GenerativeResourceType, GenerativeTypeRegistry, TypeBound};
+pub use task_manager::{Task, TaskContext, TaskId, TaskManager, TaskState, TaskType};
+pub use type_bounds::{
+    RelationConfidence, RelationKind, RelationResult, TypeBoundsChecker, TypeRelation,
 };
-pub use async_types::{
-    Stream, Future, ErrorContext, StreamHandle, FutureHandle, ErrorContextHandle,
-    StreamState, FutureState, AsyncReadResult, Waitable, WaitableSet
-};
-pub use async_canonical::AsyncCanonicalAbi;
-pub use task_manager::{TaskManager, TaskId, Task, TaskState, TaskType, TaskContext};
-pub use generative_types::{GenerativeTypeRegistry, GenerativeResourceType, TypeBound, BoundKind};
-pub use type_bounds::{TypeBoundsChecker, TypeRelation, RelationKind, RelationConfidence, RelationResult};
 // Re-export WIT parser types from wrt-format
-pub use wrt_format::wit_parser::{
-    WitParser, WitWorld, WitInterface, WitFunction, WitType, WitTypeDef, WitImport, WitExport,
-    WitItem, WitParam, WitResult, WitRecord, WitVariant, WitEnum, WitFlags, WitParseError
-};
-pub use wit_integration::{
-    WitComponentBuilder, ComponentInterface, InterfaceFunction, AsyncInterfaceFunction,
-    TypedParam, TypedResult, AsyncTypedResult
-};
-pub use component_linker::{
-    ComponentLinker, LinkageDescriptor, Binding, TypeConstraint, CompositeComponent,
-    ExternalImport, ExternalExport
-};
-pub use component_resolver::{
-    ComponentResolver, ImportValue as ResolverImportValue, ExportValue as ResolverExportValue, ComponentValue
+pub use canonical_options::{
+    CanonicalLiftContext, CanonicalLowerContext, CanonicalOptions, CanonicalOptionsBuilder,
 };
 pub use canonical_realloc::{
-    ReallocManager, CanonicalOptionsWithRealloc, StringEncoding as ReallocStringEncoding,
-    helpers as realloc_helpers
+    helpers as realloc_helpers, CanonicalOptionsWithRealloc, ReallocManager,
+    StringEncoding as ReallocStringEncoding,
 };
-pub use canonical_options::{
-    CanonicalOptions, CanonicalLiftContext, CanonicalLowerContext, CanonicalOptionsBuilder
+pub use component_linker::{
+    Binding, ComponentLinker, CompositeComponent, ExternalExport, ExternalImport,
+    LinkageDescriptor, TypeConstraint,
 };
-pub use post_return::{
-    PostReturnRegistry, PostReturnFunction, CleanupTask, CleanupTaskType, PostReturnMetrics
-};
-pub use virtualization::{
-    VirtualizationManager, VirtualComponent, VirtualImport, VirtualExport, VirtualSource,
-    Capability, CapabilityGrant, IsolationLevel, ResourceLimits, ResourceUsage, MemoryPermissions,
-    ExportVisibility, VirtualMemoryRegion, SandboxState, LogLevel, VirtualizationError, VirtualizationResult
-};
-pub use thread_spawn::{
-    ComponentThreadManager, ThreadSpawnBuiltins, ThreadHandle, ThreadConfiguration, ThreadSpawnRequest,
-    ThreadResult, ThreadId, ThreadSpawnError, ThreadSpawnResult, create_default_thread_config,
-    create_thread_config_with_stack_size, create_thread_config_with_priority
-};
-pub use thread_spawn_fuel::{
-    FuelTrackedThreadManager, FuelTrackedThreadContext, FuelThreadConfiguration, ThreadFuelStatus,
-    FuelTrackedThreadResult, GlobalFuelStatus, FuelAwareExecution, create_fuel_thread_config,
-    create_unlimited_fuel_thread_config
-};
-pub use start_function_validation::{
-    StartFunctionValidator, StartFunctionDescriptor, StartFunctionParam, StartFunctionValidation,
-    StartFunctionExecutionResult, ValidationLevel, ValidationState, ValidationSummary,
-    SideEffect, SideEffectType, SideEffectSeverity, StartFunctionError, StartFunctionResult,
-    create_start_function_descriptor, create_start_function_param
-};
-pub use handle_representation::{
-    HandleRepresentationManager, HandleRepresentation, AccessRights, HandleMetadata,
-    HandleOperation, HandleAccessPolicy, TypedHandle, HandleRepresentationError,
-    HandleRepresentationResult, create_access_rights
-};
-pub use cross_component_resource_sharing::{
-    CrossComponentResourceSharingManager, SharingAgreement, TransferPolicy, SharingLifetime,
-    SharingMetadata, SharingRestriction, SharedResource, ResourceTransferRequest, TransferType,
-    SharingPolicy, PolicyScope, PolicyRule, AuditEntry, AuditAction, SharingStatistics,
-    ResourceSharingError, ResourceSharingResult, create_basic_sharing_policy, create_component_pair_policy
-};
-pub use instantiation::{
-    InstantiationContext, ImportValues, ImportValue, FunctionImport, InstanceImport, 
-    ExportValue, FunctionExport, ResolvedImport, ResolvedExport
-};
-pub use parser_integration::{
-    ComponentLoader, ParsedComponent, ParsedImport, ParsedExport, ValidationLevel,
-    ImportKind, ExportKind, CanonicalOptions, StringEncoding
-};
-pub use memory_table_management::{
-    ComponentMemoryManager, ComponentTableManager, ComponentMemory, ComponentTable,
-    MemoryLimits, TableLimits, MemoryPermissions, SharingMode, TableElement
+pub use component_resolver::{
+    ComponentResolver, ComponentValue, ExportValue as ResolverExportValue,
+    ImportValue as ResolverImportValue,
 };
 pub use cross_component_calls::{
-    CrossComponentCallManager, CallTarget, CallPermissions, ResourceTransferPolicy,
-    CrossCallResult, CallStatistics
+    CallPermissions, CallStatistics, CallTarget, CrossCallResult, CrossComponentCallManager,
+    ResourceTransferPolicy,
 };
-pub use host_integration::{
-    HostIntegrationManager, HostFunctionRegistry, HostFunctionPermissions, EventHandler,
-    EventType, ComponentEvent, HostResourceManager, HostResource, HostResourceType,
-    SecurityPolicy
+pub use cross_component_resource_sharing::{
+    create_basic_sharing_policy, create_component_pair_policy, AuditAction, AuditEntry,
+    CrossComponentResourceSharingManager, PolicyRule, PolicyScope, ResourceSharingError,
+    ResourceSharingResult, ResourceTransferRequest, SharedResource, SharingAgreement,
+    SharingLifetime, SharingMetadata, SharingPolicy, SharingRestriction, SharingStatistics,
+    TransferPolicy, TransferType,
 };
 pub use export::Export;
 pub use factory::ComponentFactory;
+pub use handle_representation::{
+    create_access_rights, AccessRights, HandleAccessPolicy, HandleMetadata, HandleOperation,
+    HandleRepresentation, HandleRepresentationError, HandleRepresentationManager,
+    HandleRepresentationResult, TypedHandle,
+};
 pub use host::Host;
+pub use host_integration::{
+    ComponentEvent, EventHandler, EventType, HostFunctionPermissions, HostFunctionRegistry,
+    HostIntegrationManager, HostResource, HostResourceManager, HostResourceType, SecurityPolicy,
+};
 pub use import::{Import, ImportType};
 #[cfg(feature = "std")]
 pub use instance::InstanceValue;
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 pub use instance_no_std::{InstanceCollection, InstanceValue, InstanceValueBuilder};
+pub use instantiation::{
+    ExportValue, FunctionExport, FunctionImport, ImportValue, ImportValues, InstanceImport,
+    InstantiationContext, ResolvedExport, ResolvedImport,
+};
+pub use memory_table_management::{
+    ComponentMemory, ComponentMemoryManager, ComponentTable, ComponentTableManager, MemoryLimits,
+    MemoryPermissions, SharingMode, TableElement, TableLimits,
+};
 pub use namespace::Namespace;
 pub use parser::get_required_builtins;
+pub use parser_integration::{
+    CanonicalOptions, ComponentLoader, ExportKind, ImportKind, ParsedComponent, ParsedExport,
+    ParsedImport, StringEncoding, ValidationLevel,
+};
+pub use post_return::{
+    CleanupTask, CleanupTaskType, PostReturnFunction, PostReturnMetrics, PostReturnRegistry,
+};
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 pub use resources::{
     BoundedBufferPool, MemoryStrategy, Resource, ResourceArena, ResourceManager,
     ResourceOperationNoStd, ResourceStrategyNoStd, ResourceTable, VerificationLevel,
+};
+pub use start_function_validation::{
+    create_start_function_descriptor, create_start_function_param, SideEffect, SideEffectSeverity,
+    SideEffectType, StartFunctionDescriptor, StartFunctionError, StartFunctionExecutionResult,
+    StartFunctionParam, StartFunctionResult, StartFunctionValidation, StartFunctionValidator,
+    ValidationLevel, ValidationState, ValidationSummary,
+};
+pub use thread_spawn::{
+    create_default_thread_config, create_thread_config_with_priority,
+    create_thread_config_with_stack_size, ComponentThreadManager, ThreadConfiguration,
+    ThreadHandle, ThreadId, ThreadResult, ThreadSpawnBuiltins, ThreadSpawnError,
+    ThreadSpawnRequest, ThreadSpawnResult,
+};
+pub use thread_spawn_fuel::{
+    create_fuel_thread_config, create_unlimited_fuel_thread_config, FuelAwareExecution,
+    FuelThreadConfiguration, FuelTrackedThreadContext, FuelTrackedThreadManager,
+    FuelTrackedThreadResult, GlobalFuelStatus, ThreadFuelStatus,
+};
+pub use virtualization::{
+    Capability, CapabilityGrant, ExportVisibility, IsolationLevel, LogLevel, MemoryPermissions,
+    ResourceLimits, ResourceUsage, SandboxState, VirtualComponent, VirtualExport, VirtualImport,
+    VirtualMemoryRegion, VirtualSource, VirtualizationError, VirtualizationManager,
+    VirtualizationResult,
+};
+pub use wit_integration::{
+    AsyncInterfaceFunction, AsyncTypedResult, ComponentInterface, InterfaceFunction, TypedParam,
+    TypedResult, WitComponentBuilder,
+};
+pub use wrt_format::wit_parser::{
+    WitEnum, WitExport, WitFlags, WitFunction, WitImport, WitInterface, WitItem, WitParam,
+    WitParseError, WitParser, WitRecord, WitResult, WitType, WitTypeDef, WitVariant, WitWorld,
 };
 // Re-export resource types based on feature flags
 #[cfg(feature = "std")]
 pub use resources::{
     BufferPool, MemoryStrategy, Resource, ResourceArena, ResourceManager, ResourceTable,
     VerificationLevel,
+};
+// Re-export resource management system
+pub use resource_management::{
+    create_resource_data_bytes, create_resource_data_custom, create_resource_data_external,
+    create_resource_type, Resource as ComponentResource, ResourceData, ResourceError,
+    ResourceHandle, ResourceManager as ComponentResourceManager, ResourceManagerConfig,
+    ResourceManagerStats, ResourceOwnership, ResourceState,
+    ResourceTable as ComponentResourceTable, ResourceTableStats, ResourceType, ResourceTypeId,
+    ResourceTypeMetadata, ResourceValidationLevel, INVALID_HANDLE,
+};
+// Re-export component communication system
+pub use component_communication::{
+    CallContext, CallFrame, CallId, CallMetadata, CallRouter, CallRouterConfig, CallStack,
+    CallState, CallStatistics, CommunicationError, MemoryContext, MemoryIsolationLevel,
+    MemoryProtectionFlags, ParameterBridge, ParameterCopyStrategy, ResourceBridge,
+    ResourceTransfer, ResourceTransferPolicy, ResourceTransferType,
+};
+pub use call_context::{
+    CallContextConfig, CallContextManager, CallMetrics, CallValidator, ManagedCallContext,
+    MarshalingConfig as CallMarshalingConfig, MarshalingMetadata, MarshalingState,
+    ParameterMarshaler, PerformanceMonitor, ResourceCoordinator, ResourceState as CallResourceState,
+    ValidationResults, ValidationStatus,
+};
+// Re-export cross-component communication integration
+pub use cross_component_communication::{
+    ComponentCommunicationConfig, ComponentCommunicationStrategy, ComponentSecurityPolicy,
+    CommunicationStats, create_communication_strategy, create_communication_strategy_with_config,
+    create_default_security_policy, create_permissive_security_policy,
 };
 pub use strategies::memory::{
     BoundedCopyStrategy, FullIsolationStrategy, MemoryOptimizationStrategy, ZeroCopyStrategy,

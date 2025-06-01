@@ -5,6 +5,7 @@
 use wrt_test_registry::prelude::*;
 
 // Include all test modules
+pub mod atomic;
 pub mod component_model;
 pub mod runtime;
 pub mod platform;
@@ -20,6 +21,7 @@ pub fn run_all_integration_tests() -> TestResult {
     let mut runner = TestRunner::new("WRT Integration Tests");
     
     // Add all test suites
+    runner.add_test_suite("Atomic Operations", || atomic::run_tests())?;
     runner.add_test_suite("Component Model", || component_model::run_tests())?;
     runner.add_test_suite("Runtime", || runtime::run_tests())?;
     runner.add_test_suite("Platform", || platform::run_tests())?;

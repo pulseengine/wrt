@@ -9,9 +9,9 @@
 
 #[cfg(any(doc, kani))]
 pub mod kani_verification {
-    use kani;
     use super::*;
-    
+    use kani;
+
     // --- Component Type Safety ---
 
     /// Verify component type system maintains invariants
@@ -22,30 +22,30 @@ pub mod kani_verification {
         let import_count: usize = kani::any();
         let export_count: usize = kani::any();
         kani::assume(import_count <= 8 && export_count <= 8); // Reasonable bounds
-        
+
         #[cfg(feature = "alloc")]
         {
             use alloc::vec::Vec;
-            
+
             let mut imports = Vec::new();
             let mut exports = Vec::new();
-            
+
             // Add imports with type constraints
             for i in 0..import_count {
                 let import_name = if i % 2 == 0 { "func_import" } else { "memory_import" };
                 imports.push(import_name.to_string());
             }
-            
-            // Add exports with type constraints  
+
+            // Add exports with type constraints
             for i in 0..export_count {
                 let export_name = if i % 2 == 0 { "func_export" } else { "memory_export" };
                 exports.push(export_name.to_string());
             }
-            
+
             // Verify type consistency
             assert_eq!(imports.len(), import_count);
             assert_eq!(exports.len(), export_count);
-            
+
             // Verify no duplicate names within imports
             for (i, import1) in imports.iter().enumerate() {
                 for (j, import2) in imports.iter().enumerate() {
@@ -64,7 +64,7 @@ pub mod kani_verification {
     pub fn verify_namespace_operations() {
         // Test various namespace patterns
         let namespace_type: u8 = kani::any();
-        
+
         match namespace_type % 4 {
             0 => {
                 // Simple namespace
@@ -103,7 +103,7 @@ pub mod kani_verification {
                     let ns1 = Namespace::from_string("wasi.fs");
                     let ns2 = Namespace::from_string("wasi.fs");
                     let ns3 = Namespace::from_string("wasi.http");
-                    
+
                     assert!(ns1.matches(&ns2), "Identical namespaces should match");
                     assert!(!ns1.matches(&ns3), "Different namespaces should not match");
                 }
@@ -117,37 +117,34 @@ pub mod kani_verification {
     pub fn verify_import_export_consistency() {
         // Test that imports and exports maintain type safety
         let operation: u8 = kani::any();
-        
+
         match operation % 3 {
             0 => {
                 // Function import/export consistency
                 #[cfg(feature = "alloc")]
                 {
                     use alloc::vec::Vec;
-                    
+
                     // Create function type
                     let param_count: usize = kani::any();
                     kani::assume(param_count <= 4);
-                    
+
                     let mut params = Vec::new();
                     for _ in 0..param_count {
                         params.push(ValueType::I32); // Simplified for verification
                     }
-                    
-                    let func_type = FuncType {
-                        params,
-                        results: Vec::new(),
-                    };
-                    
+
+                    let func_type = FuncType { params, results: Vec::new() };
+
                     // Verify type properties
                     assert_eq!(func_type.params.len(), param_count);
-                    
+
                     // Type signature should be consistent
                     let same_func_type = FuncType {
                         params: func_type.params.clone(),
                         results: func_type.results.clone(),
                     };
-                    
+
                     assert_eq!(func_type.params.len(), same_func_type.params.len());
                 }
             }
@@ -161,14 +158,11 @@ pub mod kani_verification {
                 } else {
                     None
                 };
-                
+
                 kani::assume(min_pages <= 65536); // WebAssembly limits
-                
-                let limits = Limits {
-                    min: min_pages,
-                    max: max_pages,
-                };
-                
+
+                let limits = Limits { min: min_pages, max: max_pages };
+
                 // Verify limits consistency
                 if let Some(max) = limits.max {
                     assert!(max >= limits.min, "Max should be >= min");
@@ -184,14 +178,11 @@ pub mod kani_verification {
                 } else {
                     None
                 };
-                
+
                 kani::assume(table_min <= 0xFFFF_FFFF);
-                
-                let table_limits = Limits {
-                    min: table_min,
-                    max: table_max,
-                };
-                
+
+                let table_limits = Limits { min: table_min, max: table_max };
+
                 // Verify table limits
                 if let Some(max) = table_limits.max {
                     assert!(max >= table_limits.min, "Table max should be >= min");
@@ -207,7 +198,7 @@ pub mod kani_verification {
     #[cfg_attr(kani, kani::unwind(3))]
     pub fn verify_value_type_safety() {
         let value_type: ValueType = kani::any();
-        
+
         // Verify type properties are consistent
         match value_type {
             ValueType::I32 => {
@@ -245,11 +236,11 @@ pub mod kani_verification {
         // Test component instantiation with type checking
         let has_imports: bool = kani::any();
         let has_exports: bool = kani::any();
-        
+
         #[cfg(feature = "alloc")]
         {
             use alloc::vec::Vec;
-            
+
             // Create a minimal component
             let imports = if has_imports {
                 let mut imp = Vec::new();
@@ -258,7 +249,7 @@ pub mod kani_verification {
             } else {
                 Vec::new()
             };
-            
+
             let exports = if has_exports {
                 let mut exp = Vec::new();
                 exp.push("exported_func".to_string());
@@ -266,14 +257,14 @@ pub mod kani_verification {
             } else {
                 Vec::new()
             };
-            
+
             // Verify component structure
             if has_imports {
                 assert!(!imports.is_empty());
             } else {
                 assert!(imports.is_empty());
             }
-            
+
             if has_exports {
                 assert!(!exports.is_empty());
             } else {

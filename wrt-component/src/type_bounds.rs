@@ -1,7 +1,7 @@
-#[cfg(feature = "std")]
-use std::collections::BTreeMap;
 #[cfg(not(feature = "std"))]
 use alloc::{collections::BTreeMap, vec::Vec};
+#[cfg(feature = "std")]
+use std::collections::BTreeMap;
 
 use core::fmt;
 
@@ -11,8 +11,8 @@ use wrt_foundation::{
 };
 
 use crate::{
-    types::{TypeId, ComponentError, ValType},
     generative_types::{BoundKind, TypeBound},
+    types::{ComponentError, TypeId, ValType},
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -61,16 +61,10 @@ pub enum RelationResult {
 
 impl TypeBoundsChecker {
     pub fn new() -> Self {
-        Self {
-            type_hierarchy: BTreeMap::new(),
-            cached_relations: BTreeMap::new(),
-        }
+        Self { type_hierarchy: BTreeMap::new(), cached_relations: BTreeMap::new() }
     }
 
-    pub fn add_type_bound(
-        &mut self,
-        bound: TypeBound,
-    ) -> Result<(), ComponentError> {
+    pub fn add_type_bound(&mut self, bound: TypeBound) -> Result<(), ComponentError> {
         let relation = TypeRelation {
             sub_type: bound.type_id,
             super_type: bound.target_type,
@@ -93,7 +87,7 @@ impl TypeBoundsChecker {
         bound_kind: BoundKind,
     ) -> RelationResult {
         let cache_key = (type1, type2);
-        
+
         if let Some(cached) = self.cached_relations.get(&cache_key) {
             return cached.clone();
         }
@@ -143,7 +137,7 @@ impl TypeBoundsChecker {
                         if relation.super_type == super_type {
                             return RelationResult::Satisfied;
                         }
-                        
+
                         let transitive_result = self.check_subtype(relation.super_type, super_type);
                         if transitive_result == RelationResult::Satisfied {
                             return RelationResult::Satisfied;
@@ -160,10 +154,10 @@ impl TypeBoundsChecker {
     pub fn infer_relations(&mut self) -> Result<usize, ComponentError> {
         let mut inferred_count = 0;
         let max_iterations = 10;
-        
+
         for _ in 0..max_iterations {
             let mut new_relations = Vec::new();
-            
+
             for (type_id, relations) in &self.type_hierarchy {
                 for relation in relations.iter() {
                     if let Some(super_relations) = self.type_hierarchy.get(&relation.super_type) {
@@ -177,7 +171,7 @@ impl TypeBoundsChecker {
                                 ),
                                 confidence: RelationConfidence::Inferred,
                             };
-                            
+
                             if !self.relation_exists(&new_relation) {
                                 new_relations.push(new_relation);
                             }
@@ -185,17 +179,17 @@ impl TypeBoundsChecker {
                     }
                 }
             }
-            
+
             if new_relations.is_empty() {
                 break;
             }
-            
+
             for relation in new_relations {
                 self.add_relation(relation)?;
                 inferred_count += 1;
             }
         }
-        
+
         self.invalidate_cache();
         Ok(inferred_count)
     }
@@ -204,11 +198,17 @@ impl TypeBoundsChecker {
         for (type_id, relations) in &self.type_hierarchy {
             for relation in relations.iter() {
                 if *type_id == relation.super_type && relation.relation_kind == RelationKind::Sub {
-                    return Err(ComponentError::InvalidSubtypeRelation(*type_id, relation.super_type));
+                    return Err(ComponentError::InvalidSubtypeRelation(
+                        *type_id,
+                        relation.super_type,
+                    ));
                 }
-                
+
                 if self.creates_cycle(*type_id, relation.super_type) {
-                    return Err(ComponentError::InvalidSubtypeRelation(*type_id, relation.super_type));
+                    return Err(ComponentError::InvalidSubtypeRelation(
+                        *type_id,
+                        relation.super_type,
+                    ));
                 }
             }
         }
@@ -223,26 +223,26 @@ impl TypeBoundsChecker {
 
     pub fn get_all_subtypes(&self, type_id: TypeId) -> Vec<TypeId> {
         let mut subtypes = Vec::new();
-        
+
         for (sub_type_id, relations) in &self.type_hierarchy {
             for relation in relations.iter() {
-                if relation.super_type == type_id && 
-                   (relation.relation_kind == RelationKind::Sub || relation.relation_kind == RelationKind::Eq) {
+                if relation.super_type == type_id
+                    && (relation.relation_kind == RelationKind::Sub
+                        || relation.relation_kind == RelationKind::Eq)
+                {
                     subtypes.push(*sub_type_id);
                 }
             }
         }
-        
+
         subtypes
     }
 
     fn add_relation(&mut self, relation: TypeRelation) -> Result<(), ComponentError> {
-        let relations = self.type_hierarchy
-            .entry(relation.sub_type)
-            .or_insert_with(|| BoundedVec::new());
+        let relations =
+            self.type_hierarchy.entry(relation.sub_type).or_insert_with(|| BoundedVec::new());
 
-        relations.push(relation)
-            .map_err(|_| ComponentError::TooManyTypeBounds)?;
+        relations.push(relation).map_err(|_| ComponentError::TooManyTypeBounds)?;
 
         Ok(())
     }
@@ -260,7 +260,9 @@ impl TypeBoundsChecker {
     fn combine_relations(&self, rel1: &RelationKind, rel2: &RelationKind) -> RelationKind {
         match (rel1, rel2) {
             (RelationKind::Eq, RelationKind::Eq) => RelationKind::Eq,
-            (RelationKind::Eq, RelationKind::Sub) | (RelationKind::Sub, RelationKind::Eq) => RelationKind::Sub,
+            (RelationKind::Eq, RelationKind::Sub) | (RelationKind::Sub, RelationKind::Eq) => {
+                RelationKind::Sub
+            }
             (RelationKind::Sub, RelationKind::Sub) => RelationKind::Sub,
             _ => RelationKind::None,
         }
@@ -270,25 +272,30 @@ impl TypeBoundsChecker {
         self.creates_cycle_helper(start, target, &mut Vec::new())
     }
 
-    fn creates_cycle_helper(&self, current: TypeId, target: TypeId, visited: &mut Vec<TypeId>) -> bool {
+    fn creates_cycle_helper(
+        &self,
+        current: TypeId,
+        target: TypeId,
+        visited: &mut Vec<TypeId>,
+    ) -> bool {
         if visited.contains(&current) {
             return current == target;
         }
-        
+
         visited.push(current);
-        
+
         if let Some(relations) = self.type_hierarchy.get(&target) {
             for relation in relations.iter() {
                 if relation.super_type == current {
                     return true;
                 }
-                
+
                 if self.creates_cycle_helper(current, relation.super_type, visited) {
                     return true;
                 }
             }
         }
-        
+
         visited.pop();
         false
     }
@@ -353,17 +360,13 @@ mod tests {
         let type1 = TypeId(1);
         let type2 = TypeId(2);
 
-        let bound = TypeBound {
-            type_id: type1,
-            bound_kind: BoundKind::Eq,
-            target_type: type2,
-        };
+        let bound = TypeBound { type_id: type1, bound_kind: BoundKind::Eq, target_type: type2 };
 
         assert!(checker.add_type_bound(bound).is_ok());
-        
+
         let result = checker.check_type_bound(type1, type2, BoundKind::Eq);
         assert_eq!(result, RelationResult::Satisfied);
-        
+
         let reverse_result = checker.check_type_bound(type2, type1, BoundKind::Eq);
         assert_eq!(reverse_result, RelationResult::Satisfied);
     }
@@ -374,17 +377,14 @@ mod tests {
         let sub_type = TypeId(1);
         let super_type = TypeId(2);
 
-        let bound = TypeBound {
-            type_id: sub_type,
-            bound_kind: BoundKind::Sub,
-            target_type: super_type,
-        };
+        let bound =
+            TypeBound { type_id: sub_type, bound_kind: BoundKind::Sub, target_type: super_type };
 
         assert!(checker.add_type_bound(bound).is_ok());
-        
+
         let result = checker.check_type_bound(sub_type, super_type, BoundKind::Sub);
         assert_eq!(result, RelationResult::Satisfied);
-        
+
         let reverse_result = checker.check_type_bound(super_type, sub_type, BoundKind::Sub);
         assert_eq!(result, RelationResult::Satisfied);
     }
@@ -396,20 +396,12 @@ mod tests {
         let type_b = TypeId(2);
         let type_c = TypeId(3);
 
-        let bound1 = TypeBound {
-            type_id: type_a,
-            bound_kind: BoundKind::Sub,
-            target_type: type_b,
-        };
-        let bound2 = TypeBound {
-            type_id: type_b,
-            bound_kind: BoundKind::Sub,
-            target_type: type_c,
-        };
+        let bound1 = TypeBound { type_id: type_a, bound_kind: BoundKind::Sub, target_type: type_b };
+        let bound2 = TypeBound { type_id: type_b, bound_kind: BoundKind::Sub, target_type: type_c };
 
         assert!(checker.add_type_bound(bound1).is_ok());
         assert!(checker.add_type_bound(bound2).is_ok());
-        
+
         let result = checker.check_type_bound(type_a, type_c, BoundKind::Sub);
         assert_eq!(result, RelationResult::Satisfied);
     }
@@ -421,23 +413,15 @@ mod tests {
         let type_b = TypeId(2);
         let type_c = TypeId(3);
 
-        let bound1 = TypeBound {
-            type_id: type_a,
-            bound_kind: BoundKind::Sub,
-            target_type: type_b,
-        };
-        let bound2 = TypeBound {
-            type_id: type_b,
-            bound_kind: BoundKind::Sub,
-            target_type: type_c,
-        };
+        let bound1 = TypeBound { type_id: type_a, bound_kind: BoundKind::Sub, target_type: type_b };
+        let bound2 = TypeBound { type_id: type_b, bound_kind: BoundKind::Sub, target_type: type_c };
 
         assert!(checker.add_type_bound(bound1).is_ok());
         assert!(checker.add_type_bound(bound2).is_ok());
-        
+
         let inferred = checker.infer_relations().unwrap();
         assert!(inferred > 0);
-        
+
         let result = checker.check_type_bound(type_a, type_c, BoundKind::Sub);
         assert_eq!(result, RelationResult::Satisfied);
     }
@@ -447,11 +431,7 @@ mod tests {
         let mut checker = TypeBoundsChecker::new();
         let type1 = TypeId(1);
 
-        let bound = TypeBound {
-            type_id: type1,
-            bound_kind: BoundKind::Sub,
-            target_type: type1,
-        };
+        let bound = TypeBound { type_id: type1, bound_kind: BoundKind::Sub, target_type: type1 };
 
         assert!(checker.add_type_bound(bound).is_ok());
         assert!(checker.validate_consistency().is_err());
@@ -464,24 +444,16 @@ mod tests {
         let type_b = TypeId(2);
         let type_c = TypeId(3);
 
-        let bound1 = TypeBound {
-            type_id: type_a,
-            bound_kind: BoundKind::Sub,
-            target_type: type_b,
-        };
-        let bound2 = TypeBound {
-            type_id: type_b,
-            bound_kind: BoundKind::Sub,
-            target_type: type_c,
-        };
+        let bound1 = TypeBound { type_id: type_a, bound_kind: BoundKind::Sub, target_type: type_b };
+        let bound2 = TypeBound { type_id: type_b, bound_kind: BoundKind::Sub, target_type: type_c };
 
         assert!(checker.add_type_bound(bound1).is_ok());
         assert!(checker.add_type_bound(bound2).is_ok());
-        
+
         let supertypes = checker.get_all_supertypes(type_a);
         assert!(supertypes.contains(&type_b));
         assert!(supertypes.contains(&type_c));
-        
+
         let subtypes = checker.get_all_subtypes(type_c);
         assert!(subtypes.contains(&type_b));
         assert!(subtypes.contains(&type_a));
