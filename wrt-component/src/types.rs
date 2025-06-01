@@ -13,6 +13,7 @@ use alloc::{string::String, vec::Vec};
 use wrt_foundation::{bounded::BoundedVec, prelude::*};
 
 use crate::{
+    async_types::{StreamHandle, FutureHandle},
     component::Component,
     instantiation::{ModuleInstance, ResolvedExport, ResolvedImport, ResourceTable},
 };
@@ -116,6 +117,10 @@ pub enum ValType {
     Own(u32),
     /// Borrowed resource
     Borrow(u32),
+    /// Stream type with element type
+    Stream(Box<ValType>),
+    /// Future type with value type
+    Future(Box<ValType>),
 }
 
 /// Record type definition
@@ -249,6 +254,10 @@ pub enum Value {
     Own(u32),
     /// Borrowed resource
     Borrow(u32),
+    /// Stream handle
+    Stream(StreamHandle),
+    /// Future handle
+    Future(FutureHandle),
 }
 
 /// Component instance identifier

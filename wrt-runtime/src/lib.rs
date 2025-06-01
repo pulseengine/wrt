@@ -54,6 +54,7 @@ pub mod stackless;
 pub mod table;
 pub mod thread_manager;
 pub mod types;
+pub mod wait_queue;
 
 // Re-export commonly used types
 pub use atomic_execution::{AtomicMemoryContext, AtomicExecutionStats};
@@ -77,6 +78,10 @@ pub use interpreter_optimization::{
 pub use thread_manager::{
     ThreadManager, ThreadConfig, ThreadInfo, ThreadState, ThreadExecutionContext,
     ThreadExecutionStats, ThreadManagerStats, ThreadId,
+};
+pub use wait_queue::{
+    WaitQueueManager, WaitQueue, WaitQueueId, WaitResult, WaitQueueStats,
+    WaitQueueGlobalStats, pause,
 };
 pub use func::FuncType;
 pub use global::Global;

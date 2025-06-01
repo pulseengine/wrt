@@ -4,6 +4,11 @@
 
 //! DWARF .debug_info section parsing
 
+#[cfg(feature = "std")]
+use std::vec::Vec;
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use alloc::vec::Vec;
+
 use wrt_error::{codes, Error, ErrorCategory, Result};
 use wrt_foundation::{
     bounded::{BoundedVec, MAX_DWARF_FILE_TABLE},

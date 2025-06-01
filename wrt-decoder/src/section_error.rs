@@ -278,21 +278,17 @@ pub fn invalid_mutability(mutability_byte: u8, offset: usize) -> Error {
 
 /// Create an invalid section ID error
 pub fn invalid_section_id(id: u8) -> Error {
-    Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, format!("Invalid section ID: {}", id))
+    Error::parse_error("Invalid section ID")
 }
 
 /// Create an invalid section size error
 pub fn invalid_section_size(size: u32) -> Error {
-    Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, format!("Invalid section size: {}", size))
+    Error::parse_error("Invalid section size")
 }
 
 /// Create an invalid section order error
-pub fn invalid_section_order(expected: u8, got: u8) -> Error {
-    Error::new(
-        ErrorCategory::Parse,
-        codes::PARSE_ERROR,
-        format!("Invalid section order: expected section ID {} but got {}", expected, got),
-    )
+pub fn invalid_section_order(_expected: u8, _got: u8) -> Error {
+    Error::parse_error("Invalid section order")
 }
 
 /// Create an invalid section content error
@@ -302,7 +298,7 @@ pub fn invalid_section_content(message: &str) -> Error {
 
 /// Create an invalid section name error
 pub fn invalid_section_name(name: &str) -> Error {
-    Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, format!("Invalid section name: {}", name))
+    Error::parse_error("Invalid section name")
 }
 
 /// Create an invalid section data error
@@ -322,16 +318,12 @@ pub fn parse_error(message: &str) -> Error {
 
 /// Create a parse error with context
 pub fn parse_error_with_context(message: &str, context: &str) -> Error {
-    Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, format!("{}: {}", message, context))
+    Error::parse_error("Parse error with context")
 }
 
 /// Create a parse error with position
-pub fn parse_error_with_position(message: &str, position: usize) -> Error {
-    Error::new(
-        ErrorCategory::Parse,
-        codes::PARSE_ERROR,
-        format!("{} at position {}", message, position),
-    )
+pub fn parse_error_with_position(_message: &str, _position: usize) -> Error {
+    Error::parse_error("Parse error at position")
 }
 
 /// Create a "binary required" error

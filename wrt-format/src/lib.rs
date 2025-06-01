@@ -148,6 +148,11 @@ macro_rules! format {
     };
 }
 
+/// Abstract Syntax Tree types for WIT parsing (simplified version)
+#[cfg(any(feature = "alloc", feature = "std"))]
+pub mod ast_simple;
+#[cfg(any(feature = "alloc", feature = "std"))]
+pub use ast_simple as ast;
 /// WebAssembly binary format parsing and access
 pub mod binary;
 /// WebAssembly canonical format
@@ -192,6 +197,16 @@ pub mod version;
 // WIT (WebAssembly Interface Types) parser (requires alloc for component model)
 #[cfg(any(feature = "alloc", feature = "std"))]
 pub mod wit_parser;
+// Temporarily disable enhanced parser until compilation issues fixed
+// #[cfg(any(feature = "alloc", feature = "std"))]
+// pub mod wit_parser_enhanced;
+// Temporarily disable problematic parsers
+// #[cfg(any(feature = "alloc", feature = "std"))]
+// pub mod wit_parser_complex;
+// #[cfg(any(feature = "alloc", feature = "std"))]
+// pub mod wit_parser_old;
+// #[cfg(any(feature = "alloc", feature = "std"))]
+// pub mod wit_parser_traits;
 
 // Re-export binary constants (always available)
 pub use binary::{

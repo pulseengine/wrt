@@ -108,6 +108,8 @@ pub mod resource;
 pub mod safe_memory;
 /// WebAssembly section definitions
 pub mod sections;
+/// Shared memory support for multi-threading
+pub mod shared_memory;
 /// Common traits for type conversions
 pub mod traits;
 /// Core WebAssembly types

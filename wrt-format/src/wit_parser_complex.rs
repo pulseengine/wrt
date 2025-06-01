@@ -332,7 +332,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> WitParser<P> {
         };
 
         #[cfg(any(feature = "std", feature = "alloc"))]
-        Ok(WitImport { name, item })
+        return Ok(WitImport { name, item });
         
         #[cfg(not(any(feature = "std", feature = "alloc")))]
         Err(WitParseError::InvalidSyntax(
@@ -372,7 +372,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> WitParser<P> {
         };
 
         #[cfg(any(feature = "std", feature = "alloc"))]
-        Ok(WitExport { name, item })
+        return Ok(WitExport { name, item });
         
         #[cfg(not(any(feature = "std", feature = "alloc")))]
         Err(WitParseError::InvalidSyntax(
@@ -429,11 +429,11 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> WitParser<P> {
         let ty = self.parse_type(type_str)?;
 
         #[cfg(any(feature = "std", feature = "alloc"))]
-        Ok(WitTypeDef {
+        return Ok(WitTypeDef {
             name: name.clone(),
             ty: ty.clone(),
             is_resource,
-        })
+        });
         
         #[cfg(not(any(feature = "std", feature = "alloc")))]
         Err(WitParseError::InvalidSyntax(

@@ -1,5 +1,10 @@
 #![cfg(feature = "runtime-debug")]
 
+#[cfg(feature = "std")]
+use std::boxed::Box;
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use alloc::boxed::Box;
+
 use wrt_foundation::{
     bounded::{BoundedVec, MAX_DWARF_FILE_TABLE},
     NoStdProvider,

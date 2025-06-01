@@ -1,7 +1,8 @@
-//! Async canonical built-ins for WebAssembly Component Model
+//! Async Canonical ABI implementation for WebAssembly Component Model
 //!
-//! This module implements the async canonical built-ins required by the
-//! Component Model MVP specification for stream, future, and task operations.
+//! This module implements async lifting and lowering operations for the
+//! Component Model's canonical ABI, enabling asynchronous component calls
+//! with streams, futures, and error contexts.
 
 #[cfg(not(feature = "std"))]
 use core::{fmt, mem};
@@ -21,13 +22,104 @@ use crate::{
         Stream, StreamHandle, StreamState, Waitable, WaitableSet,
     },
     canonical::CanonicalAbi,
+    canonical_options::{CanonicalOptions, CanonicalLiftContext, CanonicalLowerContext},
     task_manager::{TaskId, TaskManager, TaskType},
     types::{ValType, Value},
     WrtResult,
 };
 
+use wrt_error::{Error, ErrorCategory, Result};
+
 /// Maximum number of streams/futures in no_std environments
 const MAX_ASYNC_RESOURCES: usize = 256;
+
+/// Maximum number of async operations in flight for no_std environments
+const MAX_ASYNC_OPS: usize = 256;
+
+/// Maximum size for async call contexts in no_std environments
+const MAX_ASYNC_CONTEXT_SIZE: usize = 64;
+
+/// Async operation tracking
+#[derive(Debug, Clone)]
+pub struct AsyncOperation {
+    /// Operation ID
+    pub id: u32,
+    /// Operation type
+    pub op_type: AsyncOperationType,
+    /// Current state
+    pub state: AsyncOperationState,
+    /// Associated context
+    #[cfg(any(feature = "std", feature = "alloc"))]
+    pub context: Vec<u8>,
+    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    pub context: BoundedVec<u8, MAX_ASYNC_CONTEXT_SIZE>,
+    /// Task handle for cancellation
+    pub task_handle: Option<u32>,
+}
+
+/// Type of async operation
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AsyncOperationType {
+    /// Async call to a component function
+    AsyncCall,
+    /// Stream read operation
+    StreamRead,
+    /// Stream write operation
+    StreamWrite,
+    /// Future get operation
+    FutureGet,
+    /// Future set operation
+    FutureSet,
+    /// Waitable poll operation
+    WaitablePoll,
+}
+
+/// State of an async operation
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AsyncOperationState {
+    /// Operation is starting
+    Starting,
+    /// Operation is in progress
+    InProgress,
+    /// Operation is waiting for resources
+    Waiting,
+    /// Operation has completed successfully
+    Completed,
+    /// Operation was cancelled
+    Cancelled,
+    /// Operation failed with error
+    Failed,
+}
+
+/// Results of async lifting operations
+#[derive(Debug, Clone)]
+pub enum AsyncLiftResult {
+    /// Values are immediately available
+    Immediate(Vec<Value>),
+    /// Operation needs to wait for async completion
+    Pending(AsyncOperation),
+    /// Stream for incremental reading
+    Stream(StreamHandle),
+    /// Future for deferred value
+    Future(FutureHandle),
+    /// Error occurred during lifting
+    Error(ErrorContextHandle),
+}
+
+/// Results of async lowering operations
+#[derive(Debug, Clone)]
+pub enum AsyncLowerResult {
+    /// Values were immediately lowered
+    Immediate(Vec<u8>),
+    /// Operation needs async completion
+    Pending(AsyncOperation),
+    /// Stream for incremental writing
+    Stream(StreamHandle),
+    /// Future for deferred lowering
+    Future(FutureHandle),
+    /// Error occurred during lowering
+    Error(ErrorContextHandle),
+}
 
 /// Async canonical ABI implementation
 pub struct AsyncCanonicalAbi {
@@ -532,6 +624,127 @@ impl AsyncCanonicalAbi {
     pub fn canonical_abi_mut(&mut self) -> &mut CanonicalAbi {
         &mut self.canonical_abi
     }
+
+    /// Perform async lifting of values from core representation
+    pub fn async_lift(
+        &mut self,
+        values: &[u8],
+        target_types: &[ValType],
+        context: &CanonicalLiftContext,
+    ) -> Result<AsyncLiftResult> {
+        // Check for immediate values first
+        if self.can_lift_immediately(values, target_types)? {
+            let lifted_values = self.lift_immediate(values, target_types, &context.options)?;
+            return Ok(AsyncLiftResult::Immediate(lifted_values));
+        }
+
+        // Check for stream types
+        if target_types.len() == 1 {
+            if let ValType::Stream(_) = &target_types[0] {
+                let stream_handle = self.stream_new(&target_types[0])?;
+                return Ok(AsyncLiftResult::Stream(stream_handle));
+            }
+            if let ValType::Future(_) = &target_types[0] {
+                let future_handle = self.future_new(&target_types[0])?;
+                return Ok(AsyncLiftResult::Future(future_handle));
+            }
+        }
+
+        // Create pending async operation for complex lifting
+        let operation = AsyncOperation {
+            id: self.next_error_context_handle, // Reuse counter
+            op_type: AsyncOperationType::AsyncCall,
+            state: AsyncOperationState::Starting,
+            #[cfg(any(feature = "std", feature = "alloc"))]
+            context: values.to_vec(),
+            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            context: BoundedVec::from_slice(values).map_err(|_| {
+                Error::new(
+                    ErrorCategory::Resource,
+                    wrt_error::codes::RESOURCE_EXHAUSTED,
+                    "Async context too large"
+                )
+            })?,
+            task_handle: None,
+        };
+
+        self.next_error_context_handle += 1;
+        Ok(AsyncLiftResult::Pending(operation))
+    }
+
+    /// Perform async lowering of values to core representation
+    pub fn async_lower(
+        &mut self,
+        values: &[Value],
+        context: &CanonicalLowerContext,
+    ) -> Result<AsyncLowerResult> {
+        // Check for immediate lowering
+        if self.can_lower_immediately(values)? {
+            let lowered_bytes = self.lower_immediate(values, &context.options)?;
+            return Ok(AsyncLowerResult::Immediate(lowered_bytes));
+        }
+
+        // Check for stream/future values
+        if values.len() == 1 {
+            match &values[0] {
+                Value::Stream(handle) => {
+                    return Ok(AsyncLowerResult::Stream(*handle));
+                }
+                Value::Future(handle) => {
+                    return Ok(AsyncLowerResult::Future(*handle));
+                }
+                _ => {}
+            }
+        }
+
+        // Create pending async operation for complex lowering
+        let operation = AsyncOperation {
+            id: self.next_error_context_handle,
+            op_type: AsyncOperationType::AsyncCall,
+            state: AsyncOperationState::Starting,
+            #[cfg(any(feature = "std", feature = "alloc"))]
+            context: Vec::new(), // Values will be serialized separately
+            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            context: BoundedVec::new(),
+            task_handle: None,
+        };
+
+        self.next_error_context_handle += 1;
+        Ok(AsyncLowerResult::Pending(operation))
+    }
+
+    // Private helper methods for async operations
+    fn can_lift_immediately(&self, _values: &[u8], target_types: &[ValType]) -> Result<bool> {
+        // Check if all target types are immediately liftable (not async types)
+        for ty in target_types {
+            match ty {
+                ValType::Stream(_) | ValType::Future(_) => return Ok(false),
+                _ => {}
+            }
+        }
+        Ok(true)
+    }
+
+    fn can_lower_immediately(&self, values: &[Value]) -> Result<bool> {
+        // Check if all values are immediately lowerable (not async values)
+        for value in values {
+            match value {
+                Value::Stream(_) | Value::Future(_) => return Ok(false),
+                _ => {}
+            }
+        }
+        Ok(true)
+    }
+
+    fn lift_immediate(&self, values: &[u8], target_types: &[ValType], options: &CanonicalOptions) -> Result<Vec<Value>> {
+        // Use the proper canonical ABI lifting
+        crate::async_canonical_lifting::async_canonical_lift(values, target_types, options)
+    }
+
+    fn lower_immediate(&self, values: &[Value], options: &CanonicalOptions) -> Result<Vec<u8>> {
+        // Use the proper canonical ABI lowering
+        crate::async_canonical_lifting::async_canonical_lower(values, options)
+    }
 }
 
 // Trait implementations for std environment
@@ -674,6 +887,32 @@ impl Default for AsyncCanonicalAbi {
     }
 }
 
+impl fmt::Display for AsyncOperationType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            AsyncOperationType::AsyncCall => write!(f, "async-call"),
+            AsyncOperationType::StreamRead => write!(f, "stream-read"),
+            AsyncOperationType::StreamWrite => write!(f, "stream-write"),
+            AsyncOperationType::FutureGet => write!(f, "future-get"),
+            AsyncOperationType::FutureSet => write!(f, "future-set"),
+            AsyncOperationType::WaitablePoll => write!(f, "waitable-poll"),
+        }
+    }
+}
+
+impl fmt::Display for AsyncOperationState {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            AsyncOperationState::Starting => write!(f, "starting"),
+            AsyncOperationState::InProgress => write!(f, "in-progress"),
+            AsyncOperationState::Waiting => write!(f, "waiting"),
+            AsyncOperationState::Completed => write!(f, "completed"),
+            AsyncOperationState::Cancelled => write!(f, "cancelled"),
+            AsyncOperationState::Failed => write!(f, "failed"),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -761,5 +1000,73 @@ mod tests {
 
         // Test backpressure
         assert!(abi.task_backpressure().is_err()); // No current task
+    }
+
+    #[test]
+    fn test_async_lift_immediate() {
+        let mut abi = AsyncCanonicalAbi::new();
+        let context = CanonicalLiftContext::default();
+        let values = vec![42u8, 0, 0, 0];
+        let types = vec![ValType::U32];
+
+        match abi.async_lift(&values, &types, &context).unwrap() {
+            AsyncLiftResult::Immediate(vals) => {
+                assert_eq!(vals.len(), 1);
+                assert_eq!(vals[0], Value::U32(42));
+            }
+            _ => panic!("Expected immediate result"),
+        }
+    }
+
+    #[test]
+    fn test_async_lift_stream() {
+        let mut abi = AsyncCanonicalAbi::new();
+        let context = CanonicalLiftContext::default();
+        let values = vec![];
+        let types = vec![ValType::Stream(Box::new(ValType::U32))];
+
+        match abi.async_lift(&values, &types, &context).unwrap() {
+            AsyncLiftResult::Stream(handle) => {
+                assert_eq!(handle.0, 0);
+            }
+            _ => panic!("Expected stream result"),
+        }
+    }
+
+    #[test]
+    fn test_async_lower_immediate() {
+        let mut abi = AsyncCanonicalAbi::new();
+        let context = CanonicalLowerContext::default();
+        let values = vec![Value::U32(42)];
+
+        match abi.async_lower(&values, &context).unwrap() {
+            AsyncLowerResult::Immediate(bytes) => {
+                assert_eq!(bytes, vec![42, 0, 0, 0]);
+            }
+            _ => panic!("Expected immediate result"),
+        }
+    }
+
+    #[test]
+    fn test_async_lower_stream() {
+        let mut abi = AsyncCanonicalAbi::new();
+        let context = CanonicalLowerContext::default();
+        let stream_handle = StreamHandle(42);
+        let values = vec![Value::Stream(stream_handle)];
+
+        match abi.async_lower(&values, &context).unwrap() {
+            AsyncLowerResult::Stream(handle) => {
+                assert_eq!(handle, stream_handle);
+            }
+            _ => panic!("Expected stream result"),
+        }
+    }
+
+    #[test]
+    fn test_operation_state_display() {
+        assert_eq!(AsyncOperationState::Starting.to_string(), "starting");
+        assert_eq!(AsyncOperationType::AsyncCall.to_string(), "async-call");
+        assert_eq!(AsyncOperationState::Completed.to_string(), "completed");
+        assert_eq!(AsyncOperationType::StreamRead.to_string(), "stream-read");
     }
 }
