@@ -43,11 +43,7 @@ pub fn decode_component(bytes: &[u8]) -> Result<Component> {
     while offset < bytes.len() {
         // Read section ID and size
         if offset + 1 > bytes.len() {
-            return Err(Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                format!("Unexpected end of component binary at offset {:#x}", offset),
-            ));
+            return Err(Error::parse_error("Unexpected end of component binary"));
         }
 
         let section_id = bytes[offset];
@@ -280,15 +276,11 @@ pub fn parse_error(_message: &str) -> Error {
 }
 
 /// Helper function to create a parse error with context
-pub fn parse_error_with_context(message: &str, context: &str) -> Error {
-    Error::new(ErrorCategory::Parse, codes::PARSE_ERROR, format!("{}: {}", message, context))
+pub fn parse_error_with_context(_message: &str, _context: &str) -> Error {
+    Error::parse_error("Parse error")
 }
 
 /// Helper function to create a parse error with position
-pub fn parse_error_with_position(message: &str, position: usize) -> Error {
-    Error::new(
-        ErrorCategory::Parse,
-        codes::PARSE_ERROR,
-        format!("{} at position {}", message, position),
-    )
+pub fn parse_error_with_position(_message: &str, _position: usize) -> Error {
+    Error::parse_error("Parse error at position")
 }

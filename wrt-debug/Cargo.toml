@@ -35,11 +35,14 @@ runtime-breakpoints = ["runtime-control"]  # Breakpoint support
 runtime-stepping = ["runtime-control"]  # Step execution
 runtime-debug = ["runtime-variables", "runtime-memory", "runtime-breakpoints", "runtime-stepping"]  # All runtime features
 
+# WIT integration features
+wit-integration = ["runtime-debug", "alloc"]  # WIT source mapping and debugging
+
 # Feature presets
 minimal = ["line-info"]  # Just crash locations
 development = ["runtime-debug"]  # Full debugging
 production = ["static-debug"]  # Error reporting only
-full-debug = ["static-debug", "runtime-debug"]  # Everything
+full-debug = ["static-debug", "runtime-debug", "wit-integration"]  # Everything
 
 [lib]
 name = "wrt_debug"

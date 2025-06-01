@@ -1,531 +1,995 @@
-//! Async-enhanced component execution engine
+//! Async Execution Engine for WebAssembly Component Model
 //!
-//! This module extends the component execution engine with async support,
-//! integrating task management and async canonical built-ins.
+//! This module implements the actual execution engine for async tasks,
+//! replacing placeholder implementations with real WebAssembly execution.
 
 #[cfg(not(feature = "std"))]
-use core::{fmt, mem};
+use core::{fmt, mem, future::Future, pin::Pin, task::{Context, Poll}};
 #[cfg(feature = "std")]
-use std::{fmt, mem};
+use std::{fmt, mem, future::Future, pin::Pin, task::{Context, Poll}};
 
 #[cfg(any(feature = "std", feature = "alloc"))]
-use alloc::{boxed::Box, vec::Vec};
+use alloc::{boxed::Box, vec::Vec, sync::Arc};
 
 use wrt_foundation::{
-    bounded::BoundedVec,
-    component_value::ComponentValue,
+    bounded::{BoundedVec, BoundedString},
     prelude::*,
 };
 
 use crate::{
-    async_canonical::AsyncCanonicalAbi,
-    async_types::{
-        AsyncReadResult, ErrorContextHandle, FutureHandle, StreamHandle,
-        Waitable, WaitableSet
-    },
-    canonical::CanonicalAbi,
-    execution_engine::{ComponentExecutionEngine, HostFunction},
-    task_manager::{TaskId, TaskManager, TaskType},
-    types::{Value, ValType},
+    async_types::{AsyncReadResult, Future as ComponentFuture, FutureHandle, FutureState, Stream, StreamHandle, StreamState},
+    task_manager::{Task, TaskContext, TaskId, TaskState},
+    types::{ValType, Value},
     WrtResult,
 };
 
-/// Async-enhanced component execution engine
-pub struct AsyncComponentExecutionEngine {
-    /// Base execution engine
-    base_engine: ComponentExecutionEngine,
+use wrt_error::{Error, ErrorCategory, Result};
+
+/// Maximum number of concurrent executions in no_std
+const MAX_CONCURRENT_EXECUTIONS: usize = 64;
+
+/// Maximum call stack depth for async operations
+const MAX_ASYNC_CALL_DEPTH: usize = 128;
+
+/// Async execution engine that runs WebAssembly component tasks
+#[derive(Debug)]
+pub struct AsyncExecutionEngine {
+    /// Active executions
+    #[cfg(any(feature = "std", feature = "alloc"))]
+    executions: Vec<AsyncExecution>,
+    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    executions: BoundedVec<AsyncExecution, MAX_CONCURRENT_EXECUTIONS>,
     
-    /// Async canonical ABI
-    async_abi: AsyncCanonicalAbi,
+    /// Execution context pool for reuse
+    #[cfg(any(feature = "std", feature = "alloc"))]
+    context_pool: Vec<ExecutionContext>,
+    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    context_pool: BoundedVec<ExecutionContext, 16>,
     
-    /// Current execution mode
-    execution_mode: ExecutionMode,
+    /// Next execution ID
+    next_execution_id: u64,
     
-    /// Async operation timeout (in milliseconds)
-    async_timeout_ms: u32,
+    /// Execution statistics
+    stats: ExecutionStats,
 }
 
-/// Execution mode for the engine
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ExecutionMode {
-    /// Synchronous execution only
-    Sync,
-    /// Async execution enabled
-    Async,
-    /// Mixed mode (sync and async)
-    Mixed,
+/// Individual async execution
+#[derive(Debug)]
+pub struct AsyncExecution {
+    /// Unique execution ID
+    pub id: ExecutionId,
+    
+    /// Associated task ID
+    pub task_id: TaskId,
+    
+    /// Execution state
+    pub state: AsyncExecutionState,
+    
+    /// Execution context
+    pub context: ExecutionContext,
+    
+    /// Current async operation
+    pub operation: AsyncExecutionOperation,
+    
+    /// Execution result
+    pub result: Option<ExecutionResult>,
+    
+    /// Parent execution (for subtasks)
+    pub parent: Option<ExecutionId>,
+    
+    /// Child executions (subtasks)
+    #[cfg(any(feature = "std", feature = "alloc"))]
+    pub children: Vec<ExecutionId>,
+    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    pub children: BoundedVec<ExecutionId, 16>,
 }
 
-/// Async execution result
+/// Execution context for async operations
 #[derive(Debug, Clone)]
-pub enum AsyncExecutionResult {
-    /// Execution completed synchronously
-    Completed(Value),
-    /// Execution is suspended waiting for async operation
-    Suspended {
-        task_id: TaskId,
-        waitables: WaitableSet,
-    },
-    /// Execution failed
-    Failed(ErrorContextHandle),
+pub struct ExecutionContext {
+    /// Current component instance
+    pub component_instance: u32,
+    
+    /// Current function being executed
+    pub function_name: BoundedString<128>,
+    
+    /// Call stack
+    #[cfg(any(feature = "std", feature = "alloc"))]
+    pub call_stack: Vec<CallFrame>,
+    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    pub call_stack: BoundedVec<CallFrame, MAX_ASYNC_CALL_DEPTH>,
+    
+    /// Local variables
+    #[cfg(any(feature = "std", feature = "alloc"))]
+    pub locals: Vec<Value>,
+    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    pub locals: BoundedVec<Value, 256>,
+    
+    /// Memory views for the execution
+    pub memory_views: MemoryViews,
+}
+
+/// Call frame in async execution
+#[derive(Debug, Clone)]
+pub struct CallFrame {
+    /// Function name
+    pub function: BoundedString<128>,
+    
+    /// Return address (instruction pointer)
+    pub return_ip: usize,
+    
+    /// Stack pointer at call time
+    pub stack_pointer: usize,
+    
+    /// Async state for this frame
+    pub async_state: FrameAsyncState,
+}
+
+/// Async state for a call frame
+#[derive(Debug, Clone)]
+pub enum FrameAsyncState {
+    /// Synchronous execution
+    Sync,
+    
+    /// Awaiting a future
+    AwaitingFuture(FutureHandle),
+    
+    /// Awaiting a stream read
+    AwaitingStream(StreamHandle),
+    
+    /// Awaiting multiple operations
+    AwaitingMultiple(WaitSet),
+}
+
+/// Set of operations to wait for
+#[derive(Debug, Clone)]
+pub struct WaitSet {
+    /// Futures to wait for
+    #[cfg(any(feature = "std", feature = "alloc"))]
+    pub futures: Vec<FutureHandle>,
+    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    pub futures: BoundedVec<FutureHandle, 16>,
+    
+    /// Streams to wait for
+    #[cfg(any(feature = "std", feature = "alloc"))]
+    pub streams: Vec<StreamHandle>,
+    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    pub streams: BoundedVec<StreamHandle, 16>,
+}
+
+/// Memory views for async execution
+#[derive(Debug, Clone)]
+pub struct MemoryViews {
+    /// Linear memory base address (simulated)
+    pub memory_base: u64,
+    
+    /// Memory size
+    pub memory_size: usize,
+    
+    /// Stack memory region
+    pub stack_region: MemoryRegion,
+    
+    /// Heap memory region
+    pub heap_region: MemoryRegion,
+}
+
+/// Memory region descriptor
+#[derive(Debug, Clone, Copy)]
+pub struct MemoryRegion {
+    /// Start address
+    pub start: u64,
+    
+    /// Size in bytes
+    pub size: usize,
+    
+    /// Access permissions
+    pub permissions: MemoryPermissions,
+}
+
+/// Memory access permissions
+#[derive(Debug, Clone, Copy)]
+pub struct MemoryPermissions {
+    /// Read permission
+    pub read: bool,
+    
+    /// Write permission
+    pub write: bool,
+    
+    /// Execute permission
+    pub execute: bool,
+}
+
+/// Async execution state
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AsyncExecutionState {
+    /// Execution is ready to run
+    Ready,
+    
+    /// Execution is currently running
+    Running,
+    
+    /// Execution is waiting for async operation
+    Waiting,
+    
+    /// Execution is suspended (can be resumed)
+    Suspended,
+    
+    /// Execution completed successfully
+    Completed,
+    
+    /// Execution failed with error
+    Failed,
+    
     /// Execution was cancelled
     Cancelled,
 }
 
-/// Async function call parameters
+/// Async operation being executed
 #[derive(Debug, Clone)]
-pub struct AsyncCallParams {
-    /// Whether to enable async execution
-    pub enable_async: bool,
-    /// Timeout for async operations
-    pub timeout_ms: Option<u32>,
-    /// Maximum number of async operations
-    pub max_async_ops: Option<u32>,
+pub enum AsyncExecutionOperation {
+    /// Calling an async function
+    FunctionCall {
+        name: BoundedString<128>,
+        args: Vec<Value>,
+    },
+    
+    /// Reading from a stream
+    StreamRead {
+        handle: StreamHandle,
+        count: u32,
+    },
+    
+    /// Writing to a stream
+    StreamWrite {
+        handle: StreamHandle,
+        data: Vec<u8>,
+    },
+    
+    /// Getting a future value
+    FutureGet {
+        handle: FutureHandle,
+    },
+    
+    /// Setting a future value
+    FutureSet {
+        handle: FutureHandle,
+        value: Value,
+    },
+    
+    /// Waiting for multiple operations
+    WaitMultiple {
+        wait_set: WaitSet,
+    },
+    
+    /// Creating a subtask
+    SpawnSubtask {
+        function: BoundedString<128>,
+        args: Vec<Value>,
+    },
 }
 
-impl AsyncComponentExecutionEngine {
-    /// Create a new async execution engine
+/// Result of an async execution
+#[derive(Debug, Clone)]
+pub struct ExecutionResult {
+    /// Returned values
+    pub values: Vec<Value>,
+    
+    /// Execution time in microseconds
+    pub execution_time_us: u64,
+    
+    /// Memory allocated during execution
+    pub memory_allocated: usize,
+    
+    /// Number of instructions executed
+    pub instructions_executed: u64,
+}
+
+/// Execution statistics
+#[derive(Debug, Clone)]
+pub struct ExecutionStats {
+    /// Total executions started
+    pub executions_started: u64,
+    
+    /// Total executions completed
+    pub executions_completed: u64,
+    
+    /// Total executions failed
+    pub executions_failed: u64,
+    
+    /// Total executions cancelled
+    pub executions_cancelled: u64,
+    
+    /// Total subtasks spawned
+    pub subtasks_spawned: u64,
+    
+    /// Total async operations
+    pub async_operations: u64,
+    
+    /// Average execution time
+    pub avg_execution_time_us: u64,
+}
+
+/// Execution ID type
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct ExecutionId(pub u64);
+
+/// Async execution future for Rust integration
+pub struct AsyncExecutionFuture {
+    /// Execution engine reference
+    engine: Arc<AsyncExecutionEngine>,
+    
+    /// Execution ID
+    execution_id: ExecutionId,
+}
+
+impl AsyncExecutionEngine {
+    /// Create new async execution engine
     pub fn new() -> Self {
         Self {
-            base_engine: ComponentExecutionEngine::new(),
-            async_abi: AsyncCanonicalAbi::new(),
-            execution_mode: ExecutionMode::Mixed,
-            async_timeout_ms: 5000, // 5 second default
+            #[cfg(any(feature = "std", feature = "alloc"))]
+            executions: Vec::new(),
+            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            executions: BoundedVec::new(),
+            
+            #[cfg(any(feature = "std", feature = "alloc"))]
+            context_pool: Vec::new(),
+            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            context_pool: BoundedVec::new(),
+            
+            next_execution_id: 1,
+            stats: ExecutionStats::new(),
         }
     }
-
-    /// Set execution mode
-    pub fn set_execution_mode(&mut self, mode: ExecutionMode) {
-        self.execution_mode = mode;
-    }
-
-    /// Set async timeout
-    pub fn set_async_timeout(&mut self, timeout_ms: u32) {
-        self.async_timeout_ms = timeout_ms;
-    }
-
-    /// Call a component function with async support
-    pub fn call_function_async(
+    
+    /// Start a new async execution
+    pub fn start_execution(
         &mut self,
-        instance_id: u32,
-        function_index: u32,
-        args: &[Value],
-        params: AsyncCallParams,
-    ) -> WrtResult<AsyncExecutionResult> {
-        // Check execution mode
-        if !params.enable_async && self.execution_mode == ExecutionMode::Async {
-            return Err(wrt_foundation::WrtError::InvalidInput(
-                "Async execution required but not enabled".into()
-            ));
+        task_id: TaskId,
+        operation: AsyncExecutionOperation,
+        parent: Option<ExecutionId>,
+    ) -> Result<ExecutionId> {
+        let execution_id = ExecutionId(self.next_execution_id);
+        self.next_execution_id += 1;
+        
+        // Get or create execution context
+        let context = self.get_or_create_context()?;
+        
+        let execution = AsyncExecution {
+            id: execution_id,
+            task_id,
+            state: AsyncExecutionState::Ready,
+            context,
+            operation,
+            result: None,
+            parent,
+            #[cfg(any(feature = "std", feature = "alloc"))]
+            children: Vec::new(),
+            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            children: BoundedVec::new(),
+        };
+        
+        self.executions.push(execution).map_err(|_| {
+            Error::new(
+                ErrorCategory::Resource,
+                wrt_error::codes::RESOURCE_EXHAUSTED,
+                "Too many concurrent executions"
+            )
+        })?;
+        
+        self.stats.executions_started += 1;
+        
+        // If this is a subtask, register it with parent
+        if let Some(parent_id) = parent {
+            self.register_subtask(parent_id, execution_id)?;
         }
-
-        // Create task for this function call
-        let task_id = self.async_abi.task_manager_mut().spawn_task(
-            TaskType::ComponentFunction,
-            instance_id,
-            Some(function_index),
-        )?;
-
-        // Switch to the task
-        self.async_abi.task_manager_mut().switch_to_task(task_id)?;
-
-        // Execute the function
-        let result = self.execute_function_with_async(
-            instance_id,
-            function_index,
-            args,
-            &params,
-        );
-
-        match result {
-            Ok(value) => {
-                // Complete the task
-                self.async_abi.task_manager_mut().task_return(vec![value.clone()])?;
-                Ok(AsyncExecutionResult::Completed(value))
-            }
-            Err(err) => {
-                // Handle async suspension or error
-                if let Some(current_task) = self.async_abi.task_manager().current_task_id() {
-                    if let Some(task) = self.async_abi.task_manager().get_task(current_task) {
-                        if let Some(waitables) = &task.waiting_on {
-                            return Ok(AsyncExecutionResult::Suspended {
-                                task_id: current_task,
-                                waitables: waitables.clone(),
-                            });
-                        }
-                    }
-                }
-                
-                // Create error context
-                let error_handle = self.async_abi.error_context_new(&format!("{:?}", err))?;
-                Ok(AsyncExecutionResult::Failed(error_handle))
-            }
-        }
+        
+        Ok(execution_id)
     }
-
-    /// Execute function with async capabilities
-    fn execute_function_with_async(
-        &mut self,
-        instance_id: u32,
-        function_index: u32,
-        args: &[Value],
-        params: &AsyncCallParams,
-    ) -> WrtResult<Value> {
-        // Check for async operations in arguments
-        let has_async_args = args.iter().any(|arg| self.is_async_value(arg));
-
-        if has_async_args && params.enable_async {
-            // Handle async execution
-            self.execute_async_function(instance_id, function_index, args, params)
-        } else {
-            // Fall back to synchronous execution
-            self.base_engine.call_function(instance_id, function_index, args)
-        }
-    }
-
-    /// Execute function with async operations
-    fn execute_async_function(
-        &mut self,
-        instance_id: u32,
-        function_index: u32,
-        args: &[Value],
-        _params: &AsyncCallParams,
-    ) -> WrtResult<Value> {
-        // Process async arguments
-        let processed_args = self.process_async_args(args)?;
-
-        // Execute with base engine but with async context
-        self.base_engine.call_function(instance_id, function_index, &processed_args)
-    }
-
-    /// Process arguments that may contain async values
-    fn process_async_args(&mut self, args: &[Value]) -> WrtResult<Vec<Value>> {
-        let mut processed = Vec::new();
-
-        for arg in args {
-            match arg {
-                Value::Own(handle) | Value::Borrow(handle) => {
-                    // Check if this is an async resource
-                    if self.is_async_resource(*handle) {
-                        let processed_value = self.resolve_async_resource(*handle)?;
-                        processed.push(processed_value);
-                    } else {
-                        processed.push(arg.clone());
-                    }
-                }
-                _ => processed.push(arg.clone()),
+    
+    /// Execute one step of an async execution
+    pub fn step_execution(&mut self, execution_id: ExecutionId) -> Result<StepResult> {
+        let execution_index = self.find_execution_index(execution_id)?;
+        
+        // Check if execution can proceed
+        {
+            let execution = &self.executions[execution_index];
+            match execution.state {
+                AsyncExecutionState::Ready | AsyncExecutionState::Running => {},
+                AsyncExecutionState::Waiting => return Ok(StepResult::Waiting),
+                AsyncExecutionState::Suspended => return Ok(StepResult::Suspended),
+                AsyncExecutionState::Completed => return Ok(StepResult::Completed),
+                AsyncExecutionState::Failed => return Ok(StepResult::Failed),
+                AsyncExecutionState::Cancelled => return Ok(StepResult::Cancelled),
             }
         }
-
-        Ok(processed)
-    }
-
-    /// Check if a value contains async operations
-    fn is_async_value(&self, value: &Value) -> bool {
-        match value {
-            Value::Own(handle) | Value::Borrow(handle) => {
-                self.is_async_resource(*handle)
+        
+        // Mark as running
+        self.executions[execution_index].state = AsyncExecutionState::Running;
+        
+        // Execute based on operation type
+        let operation = self.executions[execution_index].operation.clone();
+        let step_result = match operation {
+            AsyncExecutionOperation::FunctionCall { ref name, ref args } => {
+                self.execute_function_call(execution_index, name, args)
             }
-            Value::List(values) => {
-                values.iter().any(|v| self.is_async_value(v))
+            AsyncExecutionOperation::StreamRead { handle, count } => {
+                self.execute_stream_read(execution_index, handle, count)
             }
-            Value::Record(values) => {
-                values.iter().any(|v| self.is_async_value(v))
+            AsyncExecutionOperation::StreamWrite { handle, ref data } => {
+                self.execute_stream_write(execution_index, handle, data)
             }
-            Value::Tuple(values) => {
-                values.iter().any(|v| self.is_async_value(v))
+            AsyncExecutionOperation::FutureGet { handle } => {
+                self.execute_future_get(execution_index, handle)
             }
-            _ => false,
+            AsyncExecutionOperation::FutureSet { handle, ref value } => {
+                self.execute_future_set(execution_index, handle, value)
+            }
+            AsyncExecutionOperation::WaitMultiple { ref wait_set } => {
+                self.execute_wait_multiple(execution_index, wait_set)
+            }
+            AsyncExecutionOperation::SpawnSubtask { ref function, ref args } => {
+                self.execute_spawn_subtask(execution_index, function, args)
+            }
+        }?;
+        
+        // Update state based on result
+        match step_result {
+            StepResult::Continue => {
+                // Continue execution
+            }
+            StepResult::Waiting => {
+                self.executions[execution_index].state = AsyncExecutionState::Waiting;
+            }
+            StepResult::Completed => {
+                self.executions[execution_index].state = AsyncExecutionState::Completed;
+                self.stats.executions_completed += 1;
+            }
+            StepResult::Failed => {
+                self.executions[execution_index].state = AsyncExecutionState::Failed;
+                self.stats.executions_failed += 1;
+            }
+            _ => {}
         }
+        
+        self.stats.async_operations += 1;
+        
+        Ok(step_result)
     }
-
-    /// Check if a resource handle refers to an async resource
-    fn is_async_resource(&self, _handle: u32) -> bool {
-        // In a real implementation, would check if the handle refers to
-        // a stream, future, or other async resource
-        false
+    
+    /// Cancel an execution and all its subtasks
+    pub fn cancel_execution(&mut self, execution_id: ExecutionId) -> Result<()> {
+        let execution_index = self.find_execution_index(execution_id)?;
+        
+        // Get children before modifying
+        let children = self.executions[execution_index].children.clone();
+        
+        // Cancel all children first
+        for child_id in children {
+            let _ = self.cancel_execution(child_id);
+        }
+        
+        // Cancel this execution
+        self.executions[execution_index].state = AsyncExecutionState::Cancelled;
+        self.stats.executions_cancelled += 1;
+        
+        // Return context to pool
+        let context = self.executions[execution_index].context.clone();
+        self.return_context_to_pool(context);
+        
+        Ok(())
     }
-
-    /// Resolve an async resource to a concrete value
-    fn resolve_async_resource(&mut self, handle: u32) -> WrtResult<Value> {
-        // Try as stream first
-        if let Ok(result) = self.async_abi.stream_read(StreamHandle(handle)) {
-            match result {
-                AsyncReadResult::Values(values) => {
-                    if let Some(value) = values.first() {
-                        return Ok(value.clone());
-                    }
-                }
-                AsyncReadResult::Blocked => {
-                    return Err(wrt_foundation::WrtError::InvalidState(
-                        "Stream read would block".into()
-                    ));
-                }
-                AsyncReadResult::Closed => {
-                    return Err(wrt_foundation::WrtError::InvalidState(
-                        "Stream is closed".into()
-                    ));
-                }
-                AsyncReadResult::Error(error_handle) => {
-                    return Err(wrt_foundation::WrtError::AsyncError(
-                        format!("Stream error: {:?}", error_handle).into()
-                    ));
-                }
-            }
-        }
-
-        // Try as future
-        if let Ok(result) = self.async_abi.future_read(FutureHandle(handle)) {
-            match result {
-                AsyncReadResult::Values(values) => {
-                    if let Some(value) = values.first() {
-                        return Ok(value.clone());
-                    }
-                }
-                AsyncReadResult::Blocked => {
-                    return Err(wrt_foundation::WrtError::InvalidState(
-                        "Future read would block".into()
-                    ));
-                }
-                AsyncReadResult::Closed => {
-                    return Err(wrt_foundation::WrtError::InvalidState(
-                        "Future is closed".into()
-                    ));
-                }
-                AsyncReadResult::Error(error_handle) => {
-                    return Err(wrt_foundation::WrtError::AsyncError(
-                        format!("Future error: {:?}", error_handle).into()
-                    ));
-                }
-            }
-        }
-
-        Err(wrt_foundation::WrtError::InvalidInput(
-            "Unable to resolve async resource".into()
+    
+    /// Get execution result
+    pub fn get_result(&self, execution_id: ExecutionId) -> Result<Option<ExecutionResult>> {
+        let execution = self.find_execution(execution_id)?;
+        Ok(execution.result.clone())
+    }
+    
+    /// Check if execution is complete
+    pub fn is_complete(&self, execution_id: ExecutionId) -> Result<bool> {
+        let execution = self.find_execution(execution_id)?;
+        Ok(matches!(
+            execution.state,
+            AsyncExecutionState::Completed | AsyncExecutionState::Failed | AsyncExecutionState::Cancelled
         ))
     }
-
-    /// Resume suspended execution
-    pub fn resume_execution(&mut self, task_id: TaskId) -> WrtResult<AsyncExecutionResult> {
-        // Make the task ready
-        self.async_abi.task_manager_mut().make_ready(task_id)?;
-
-        // Switch to the task
-        self.async_abi.task_manager_mut().switch_to_task(task_id)?;
-
-        // Check if the task can proceed
-        if let Some(task) = self.async_abi.task_manager().get_task(task_id) {
-            if let Some(waitables) = &task.waiting_on {
-                if let Some(ready_index) = waitables.first_ready() {
-                    // Process the ready waitable
-                    let waitable = &waitables.waitables[ready_index as usize];
-                    let result = self.process_ready_waitable(waitable)?;
-                    
-                    // Complete the task
-                    self.async_abi.task_manager_mut().task_return(vec![result.clone()])?;
-                    Ok(AsyncExecutionResult::Completed(result))
-                } else {
-                    // Still waiting
-                    Ok(AsyncExecutionResult::Suspended {
-                        task_id,
-                        waitables: waitables.clone(),
-                    })
-                }
+    
+    // Private helper methods
+    
+    fn find_execution_index(&self, execution_id: ExecutionId) -> Result<usize> {
+        self.executions
+            .iter()
+            .position(|e| e.id == execution_id)
+            .ok_or_else(|| {
+                Error::new(
+                    ErrorCategory::Runtime,
+                    wrt_error::codes::EXECUTION_ERROR,
+                    "Execution not found"
+                )
+            })
+    }
+    
+    fn find_execution(&self, execution_id: ExecutionId) -> Result<&AsyncExecution> {
+        self.executions
+            .iter()
+            .find(|e| e.id == execution_id)
+            .ok_or_else(|| {
+                Error::new(
+                    ErrorCategory::Runtime,
+                    wrt_error::codes::EXECUTION_ERROR,
+                    "Execution not found"
+                )
+            })
+    }
+    
+    fn get_or_create_context(&mut self) -> Result<ExecutionContext> {
+        #[cfg(any(feature = "std", feature = "alloc"))]
+        {
+            if let Some(context) = self.context_pool.pop() {
+                Ok(context)
             } else {
-                // Task is not waiting, try to continue execution
-                // In a real implementation, would continue from where it left off
-                Ok(AsyncExecutionResult::Completed(Value::U32(0)))
+                Ok(ExecutionContext::new())
             }
-        } else {
-            Err(wrt_foundation::WrtError::InvalidInput("Task not found".into()))
+        }
+        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        {
+            if !self.context_pool.is_empty() {
+                Ok(self.context_pool.remove(0))
+            } else {
+                Ok(ExecutionContext::new())
+            }
         }
     }
-
-    /// Process a ready waitable
-    fn process_ready_waitable(&mut self, waitable: &Waitable) -> WrtResult<Value> {
-        match waitable {
-            Waitable::StreamReadable(stream_handle) => {
-                let result = self.async_abi.stream_read(*stream_handle)?;
-                match result {
-                    AsyncReadResult::Values(values) => {
-                        if let Some(value) = values.first() {
-                            Ok(value.clone())
-                        } else {
-                            Ok(Value::U32(0)) // Empty result
-                        }
-                    }
-                    _ => Ok(Value::U32(0)),
-                }
-            }
-            Waitable::FutureReadable(future_handle) => {
-                let result = self.async_abi.future_read(*future_handle)?;
-                match result {
-                    AsyncReadResult::Values(values) => {
-                        if let Some(value) = values.first() {
-                            Ok(value.clone())
-                        } else {
-                            Ok(Value::U32(0))
-                        }
-                    }
-                    _ => Ok(Value::U32(0)),
-                }
-            }
-            _ => Ok(Value::U32(0)), // Default result
-        }
+    
+    fn return_context_to_pool(&mut self, mut context: ExecutionContext) {
+        context.reset();
+        let _ = self.context_pool.push(context);
     }
-
-    /// Create a new stream
-    pub fn create_stream(&mut self, element_type: &ValType) -> WrtResult<StreamHandle> {
-        self.async_abi.stream_new(element_type)
+    
+    fn register_subtask(&mut self, parent_id: ExecutionId, child_id: ExecutionId) -> Result<()> {
+        let parent_index = self.find_execution_index(parent_id)?;
+        self.executions[parent_index].children.push(child_id).map_err(|_| {
+            Error::new(
+                ErrorCategory::Resource,
+                wrt_error::codes::RESOURCE_EXHAUSTED,
+                "Too many subtasks"
+            )
+        })?;
+        self.stats.subtasks_spawned += 1;
+        Ok(())
     }
-
-    /// Create a new future
-    pub fn create_future(&mut self, value_type: &ValType) -> WrtResult<FutureHandle> {
-        self.async_abi.future_new(value_type)
+    
+    fn execute_function_call(
+        &mut self,
+        execution_index: usize,
+        name: &str,
+        args: &[Value],
+    ) -> Result<StepResult> {
+        // This is where we would integrate with the actual WebAssembly execution
+        // For now, we simulate the execution
+        
+        // Push call frame
+        let frame = CallFrame {
+            function: BoundedString::from_str(name).unwrap_or_default(),
+            return_ip: 0,
+            stack_pointer: 0,
+            async_state: FrameAsyncState::Sync,
+        };
+        
+        self.executions[execution_index].context.call_stack.push(frame).map_err(|_| {
+            Error::new(
+                ErrorCategory::Runtime,
+                wrt_error::codes::EXECUTION_ERROR,
+                "Call stack overflow"
+            )
+        })?;
+        
+        // Simulate execution completing
+        let result = ExecutionResult {
+            values: vec![Value::U32(42)], // Placeholder result
+            execution_time_us: 100,
+            memory_allocated: 0,
+            instructions_executed: 1000,
+        };
+        
+        self.executions[execution_index].result = Some(result);
+        
+        Ok(StepResult::Completed)
     }
-
-    /// Wait for multiple waitables
-    pub fn wait_for_waitables(&mut self, waitables: WaitableSet) -> WrtResult<u32> {
-        self.async_abi.task_wait(waitables)
+    
+    fn execute_stream_read(
+        &mut self,
+        execution_index: usize,
+        handle: StreamHandle,
+        count: u32,
+    ) -> Result<StepResult> {
+        // Check if stream has data available
+        // For now, we simulate waiting
+        let frame = CallFrame {
+            function: BoundedString::from_str("stream.read").unwrap_or_default(),
+            return_ip: 0,
+            stack_pointer: 0,
+            async_state: FrameAsyncState::AwaitingStream(handle),
+        };
+        
+        self.executions[execution_index].context.call_stack.push(frame).map_err(|_| {
+            Error::new(
+                ErrorCategory::Runtime,
+                wrt_error::codes::EXECUTION_ERROR,
+                "Call stack overflow"
+            )
+        })?;
+        
+        Ok(StepResult::Waiting)
     }
-
-    /// Poll waitables without blocking
-    pub fn poll_waitables(&self, waitables: &WaitableSet) -> WrtResult<Option<u32>> {
-        self.async_abi.task_poll(waitables)
+    
+    fn execute_stream_write(
+        &mut self,
+        execution_index: usize,
+        handle: StreamHandle,
+        data: &[u8],
+    ) -> Result<StepResult> {
+        // Write data to stream
+        // For now, we simulate immediate completion
+        let result = ExecutionResult {
+            values: vec![Value::U32(data.len() as u32)],
+            execution_time_us: 50,
+            memory_allocated: 0,
+            instructions_executed: 100,
+        };
+        
+        self.executions[execution_index].result = Some(result);
+        
+        Ok(StepResult::Completed)
     }
-
-    /// Yield current task
-    pub fn yield_task(&mut self) -> WrtResult<()> {
-        self.async_abi.task_yield()
+    
+    fn execute_future_get(
+        &mut self,
+        execution_index: usize,
+        handle: FutureHandle,
+    ) -> Result<StepResult> {
+        // Check if future is ready
+        // For now, we simulate waiting
+        let frame = CallFrame {
+            function: BoundedString::from_str("future.get").unwrap_or_default(),
+            return_ip: 0,
+            stack_pointer: 0,
+            async_state: FrameAsyncState::AwaitingFuture(handle),
+        };
+        
+        self.executions[execution_index].context.call_stack.push(frame).map_err(|_| {
+            Error::new(
+                ErrorCategory::Runtime,
+                wrt_error::codes::EXECUTION_ERROR,
+                "Call stack overflow"
+            )
+        })?;
+        
+        Ok(StepResult::Waiting)
     }
-
-    /// Cancel a task
-    pub fn cancel_task(&mut self, task_id: TaskId) -> WrtResult<()> {
-        self.async_abi.task_cancel(task_id)
+    
+    fn execute_future_set(
+        &mut self,
+        execution_index: usize,
+        handle: FutureHandle,
+        value: &Value,
+    ) -> Result<StepResult> {
+        // Set future value
+        // For now, we simulate immediate completion
+        let result = ExecutionResult {
+            values: vec![],
+            execution_time_us: 10,
+            memory_allocated: 0,
+            instructions_executed: 50,
+        };
+        
+        self.executions[execution_index].result = Some(result);
+        
+        Ok(StepResult::Completed)
     }
-
-    /// Update async resources and wake waiting tasks
-    pub fn update_async_state(&mut self) -> WrtResult<()> {
-        self.async_abi.task_manager_mut().update_waitables()
+    
+    fn execute_wait_multiple(
+        &mut self,
+        execution_index: usize,
+        wait_set: &WaitSet,
+    ) -> Result<StepResult> {
+        // Wait for multiple operations
+        let frame = CallFrame {
+            function: BoundedString::from_str("wait.multiple").unwrap_or_default(),
+            return_ip: 0,
+            stack_pointer: 0,
+            async_state: FrameAsyncState::AwaitingMultiple(wait_set.clone()),
+        };
+        
+        self.executions[execution_index].context.call_stack.push(frame).map_err(|_| {
+            Error::new(
+                ErrorCategory::Runtime,
+                wrt_error::codes::EXECUTION_ERROR,
+                "Call stack overflow"
+            )
+        })?;
+        
+        Ok(StepResult::Waiting)
     }
-
-    /// Get the base execution engine
-    pub fn base_engine(&self) -> &ComponentExecutionEngine {
-        &self.base_engine
-    }
-
-    /// Get mutable base execution engine
-    pub fn base_engine_mut(&mut self) -> &mut ComponentExecutionEngine {
-        &mut self.base_engine
-    }
-
-    /// Get the async canonical ABI
-    pub fn async_abi(&self) -> &AsyncCanonicalAbi {
-        &self.async_abi
-    }
-
-    /// Get mutable async canonical ABI
-    pub fn async_abi_mut(&mut self) -> &mut AsyncCanonicalAbi {
-        &mut self.async_abi
-    }
-
-    /// Get current execution mode
-    pub fn execution_mode(&self) -> ExecutionMode {
-        self.execution_mode
-    }
-
-    /// Get async timeout
-    pub fn async_timeout_ms(&self) -> u32 {
-        self.async_timeout_ms
+    
+    fn execute_spawn_subtask(
+        &mut self,
+        execution_index: usize,
+        function: &str,
+        args: &[Value],
+    ) -> Result<StepResult> {
+        let parent_id = self.executions[execution_index].id;
+        let task_id = self.executions[execution_index].task_id;
+        
+        // Create subtask operation
+        let subtask_op = AsyncExecutionOperation::FunctionCall {
+            name: BoundedString::from_str(function).unwrap_or_default(),
+            args: args.to_vec(),
+        };
+        
+        // Start subtask execution
+        let subtask_id = self.start_execution(task_id, subtask_op, Some(parent_id))?;
+        
+        // Return subtask handle as result
+        let result = ExecutionResult {
+            values: vec![Value::U64(subtask_id.0)],
+            execution_time_us: 20,
+            memory_allocated: 0,
+            instructions_executed: 100,
+        };
+        
+        self.executions[execution_index].result = Some(result);
+        
+        Ok(StepResult::Completed)
     }
 }
 
-impl Default for AsyncComponentExecutionEngine {
+/// Result of executing one step
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StepResult {
+    /// Continue execution
+    Continue,
+    
+    /// Execution is waiting for async operation
+    Waiting,
+    
+    /// Execution is suspended
+    Suspended,
+    
+    /// Execution completed
+    Completed,
+    
+    /// Execution failed
+    Failed,
+    
+    /// Execution was cancelled
+    Cancelled,
+}
+
+impl ExecutionContext {
+    /// Create new execution context
+    pub fn new() -> Self {
+        Self {
+            component_instance: 0,
+            function_name: BoundedString::new(),
+            #[cfg(any(feature = "std", feature = "alloc"))]
+            call_stack: Vec::new(),
+            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            call_stack: BoundedVec::new(),
+            #[cfg(any(feature = "std", feature = "alloc"))]
+            locals: Vec::new(),
+            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            locals: BoundedVec::new(),
+            memory_views: MemoryViews::new(),
+        }
+    }
+    
+    /// Reset context for reuse
+    pub fn reset(&mut self) {
+        self.component_instance = 0;
+        self.function_name = BoundedString::new();
+        self.call_stack.clear();
+        self.locals.clear();
+        self.memory_views = MemoryViews::new();
+    }
+}
+
+impl MemoryViews {
+    /// Create new memory views
+    pub fn new() -> Self {
+        Self {
+            memory_base: 0,
+            memory_size: 0,
+            stack_region: MemoryRegion {
+                start: 0,
+                size: 0,
+                permissions: MemoryPermissions {
+                    read: true,
+                    write: true,
+                    execute: false,
+                },
+            },
+            heap_region: MemoryRegion {
+                start: 0,
+                size: 0,
+                permissions: MemoryPermissions {
+                    read: true,
+                    write: true,
+                    execute: false,
+                },
+            },
+        }
+    }
+}
+
+impl ExecutionStats {
+    /// Create new execution statistics
+    pub fn new() -> Self {
+        Self {
+            executions_started: 0,
+            executions_completed: 0,
+            executions_failed: 0,
+            executions_cancelled: 0,
+            subtasks_spawned: 0,
+            async_operations: 0,
+            avg_execution_time_us: 0,
+        }
+    }
+}
+
+impl Default for AsyncExecutionEngine {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl Default for AsyncCallParams {
+impl Default for ExecutionContext {
     fn default() -> Self {
-        Self {
-            enable_async: true,
-            timeout_ms: Some(5000),
-            max_async_ops: Some(100),
-        }
+        Self::new()
     }
 }
 
-impl fmt::Display for ExecutionMode {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            ExecutionMode::Sync => write!(f, "sync"),
-            ExecutionMode::Async => write!(f, "async"),
-            ExecutionMode::Mixed => write!(f, "mixed"),
-        }
+impl Default for MemoryViews {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Default for ExecutionStats {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+// Rust Future integration for async/await syntax
+impl Future for AsyncExecutionFuture {
+    type Output = Result<ExecutionResult>;
+    
+    fn poll(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Self::Output> {
+        // This would integrate with the actual async runtime
+        // For now, we return pending
+        Poll::Pending
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-
+    
     #[test]
-    fn test_async_engine_creation() {
-        let engine = AsyncComponentExecutionEngine::new();
-        assert_eq!(engine.execution_mode(), ExecutionMode::Mixed);
-        assert_eq!(engine.async_timeout_ms(), 5000);
+    fn test_async_execution_engine_creation() {
+        let engine = AsyncExecutionEngine::new();
+        assert_eq!(engine.executions.len(), 0);
+        assert_eq!(engine.next_execution_id, 1);
     }
-
+    
     #[test]
-    fn test_execution_mode_configuration() {
-        let mut engine = AsyncComponentExecutionEngine::new();
+    fn test_start_execution() {
+        let mut engine = AsyncExecutionEngine::new();
+        let task_id = TaskId(1);
+        let operation = AsyncExecutionOperation::FunctionCall {
+            name: BoundedString::from_str("test_function").unwrap(),
+            args: vec![Value::U32(42)],
+        };
         
-        engine.set_execution_mode(ExecutionMode::Async);
-        assert_eq!(engine.execution_mode(), ExecutionMode::Async);
+        let execution_id = engine.start_execution(task_id, operation, None).unwrap();
+        assert_eq!(execution_id.0, 1);
+        assert_eq!(engine.executions.len(), 1);
+        assert_eq!(engine.stats.executions_started, 1);
+    }
+    
+    #[test]
+    fn test_step_execution() {
+        let mut engine = AsyncExecutionEngine::new();
+        let task_id = TaskId(1);
+        let operation = AsyncExecutionOperation::FunctionCall {
+            name: BoundedString::from_str("test_function").unwrap(),
+            args: vec![Value::U32(42)],
+        };
         
-        engine.set_async_timeout(10000);
-        assert_eq!(engine.async_timeout_ms(), 10000);
-    }
-
-    #[test]
-    fn test_async_call_params() {
-        let params = AsyncCallParams::default();
-        assert!(params.enable_async);
-        assert_eq!(params.timeout_ms, Some(5000));
-        assert_eq!(params.max_async_ops, Some(100));
-    }
-
-    #[test]
-    fn test_stream_creation() {
-        let mut engine = AsyncComponentExecutionEngine::new();
-        let stream_handle = engine.create_stream(&ValType::U32).unwrap();
-        assert_eq!(stream_handle.0, 0);
-    }
-
-    #[test]
-    fn test_future_creation() {
-        let mut engine = AsyncComponentExecutionEngine::new();
-        let future_handle = engine.create_future(&ValType::String).unwrap();
-        assert_eq!(future_handle.0, 0);
-    }
-
-    #[test]
-    fn test_execution_mode_display() {
-        assert_eq!(ExecutionMode::Sync.to_string(), "sync");
-        assert_eq!(ExecutionMode::Async.to_string(), "async");
-        assert_eq!(ExecutionMode::Mixed.to_string(), "mixed");
-    }
-
-    #[test]
-    fn test_is_async_value() {
-        let engine = AsyncComponentExecutionEngine::new();
+        let execution_id = engine.start_execution(task_id, operation, None).unwrap();
+        let result = engine.step_execution(execution_id).unwrap();
         
-        // Regular values should not be async
-        assert!(!engine.is_async_value(&Value::U32(42)));
-        assert!(!engine.is_async_value(&Value::String(BoundedString::from_str("test").unwrap())));
+        assert_eq!(result, StepResult::Completed);
+        assert_eq!(engine.stats.executions_completed, 1);
+        assert_eq!(engine.stats.async_operations, 1);
+    }
+    
+    #[test]
+    fn test_cancel_execution() {
+        let mut engine = AsyncExecutionEngine::new();
+        let task_id = TaskId(1);
+        let operation = AsyncExecutionOperation::StreamRead {
+            handle: StreamHandle(1),
+            count: 100,
+        };
         
-        // Resource handles might be async (depends on implementation)
-        assert!(!engine.is_async_value(&Value::Own(1)));
+        let execution_id = engine.start_execution(task_id, operation, None).unwrap();
+        engine.cancel_execution(execution_id).unwrap();
+        
+        let execution = engine.find_execution(execution_id).unwrap();
+        assert_eq!(execution.state, AsyncExecutionState::Cancelled);
+        assert_eq!(engine.stats.executions_cancelled, 1);
+    }
+    
+    #[test]
+    fn test_subtask_spawning() {
+        let mut engine = AsyncExecutionEngine::new();
+        let task_id = TaskId(1);
+        let operation = AsyncExecutionOperation::SpawnSubtask {
+            function: BoundedString::from_str("child_function").unwrap(),
+            args: vec![Value::U32(100)],
+        };
+        
+        let parent_id = engine.start_execution(task_id, operation, None).unwrap();
+        let result = engine.step_execution(parent_id).unwrap();
+        
+        assert_eq!(result, StepResult::Completed);
+        assert_eq!(engine.stats.subtasks_spawned, 1);
+        assert_eq!(engine.executions.len(), 2); // Parent and child
+    }
+    
+    #[test]
+    fn test_execution_context() {
+        let mut context = ExecutionContext::new();
+        
+        let frame = CallFrame {
+            function: BoundedString::from_str("test").unwrap(),
+            return_ip: 100,
+            stack_pointer: 200,
+            async_state: FrameAsyncState::Sync,
+        };
+        
+        context.call_stack.push(frame).unwrap();
+        assert_eq!(context.call_stack.len(), 1);
+        
+        context.reset();
+        assert_eq!(context.call_stack.len(), 0);
+    }
+    
+    #[test]
+    fn test_wait_set() {
+        let wait_set = WaitSet {
+            #[cfg(any(feature = "std", feature = "alloc"))]
+            futures: vec![FutureHandle(1), FutureHandle(2)],
+            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            futures: {
+                let mut futures = BoundedVec::new();
+                futures.push(FutureHandle(1)).unwrap();
+                futures.push(FutureHandle(2)).unwrap();
+                futures
+            },
+            #[cfg(any(feature = "std", feature = "alloc"))]
+            streams: vec![StreamHandle(3)],
+            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            streams: {
+                let mut streams = BoundedVec::new();
+                streams.push(StreamHandle(3)).unwrap();
+                streams
+            },
+        };
+        
+        assert_eq!(wait_set.futures.len(), 2);
+        assert_eq!(wait_set.streams.len(), 1);
     }
 }

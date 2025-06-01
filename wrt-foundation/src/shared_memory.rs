@@ -7,8 +7,9 @@
 use crate::prelude::*;
 use crate::traits::{ToBytes, FromBytes, Checksummable, Validatable};
 use wrt_error::{Error, ErrorCategory, Result, codes};
+use crate::WrtResult;
 
-#[cfg(feature = "alloc")]
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
 use alloc::sync::Arc;
 #[cfg(feature = "std")]
 use std::sync::{Arc, RwLock};
@@ -107,96 +108,94 @@ impl MemoryType {
 }
 
 impl ToBytes for MemoryType {
-    fn to_bytes(&self) -> crate::Result<Vec<u8>> {
-        let mut bytes = Vec::new();
+    fn serialized_size(&self) -> usize {
+        // Basic size calculation: 1 byte for type flag, 4 bytes for min, potentially 4 bytes for max
+        match self {
+            MemoryType::Linear { max: Some(_), .. } => 1 + 4 + 1 + 4, // flag + min + has_max + max
+            MemoryType::Linear { max: None, .. } => 1 + 4 + 1, // flag + min + has_max
+            MemoryType::Shared { .. } => 1 + 4 + 4, // flag + min + max
+        }
+    }
+
+    fn to_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        &self,
+        writer: &mut crate::traits::WriteStream<'a>,
+        _provider: &PStream,
+    ) -> WrtResult<()> {
         match self {
             MemoryType::Linear { min, max } => {
-                bytes.push(0x00); // Linear memory flag
-                bytes.extend_from_slice(&min.to_le_bytes());
-                match max {
-                    Some(max_val) => {
-                        bytes.push(0x01); // Has maximum
-                        bytes.extend_from_slice(&max_val.to_le_bytes());
-                    },
-                    None => {
-                        bytes.push(0x00); // No maximum
-                    }
+                writer.write_u8(0x00)?; // Linear memory flag
+                writer.write_u32_le(*min)?;
+                if let Some(max_val) = max {
+                    writer.write_u8(0x01)?; // Has max
+                    writer.write_u32_le(*max_val)?;
+                } else {
+                    writer.write_u8(0x00)?; // No max
                 }
-            },
+            }
             MemoryType::Shared { min, max } => {
-                bytes.push(0x01); // Shared memory flag
-                bytes.extend_from_slice(&min.to_le_bytes());
-                bytes.extend_from_slice(&max.to_le_bytes());
+                writer.write_u8(0x01)?; // Shared memory flag
+                writer.write_u32_le(*min)?;
+                writer.write_u32_le(*max)?;
             }
         }
-        Ok(bytes)
+        Ok(())
     }
 }
 
 impl FromBytes for MemoryType {
-    fn from_bytes(bytes: &[u8]) -> crate::Result<(Self, usize)> {
-        if bytes.is_empty() {
-            return Err(crate::Error::InvalidFormat("Empty memory type data".to_string()));
-        }
-        
-        let mut offset = 0;
-        let memory_flag = bytes[offset];
-        offset += 1;
-        
-        if offset + 4 > bytes.len() {
-            return Err(crate::Error::InvalidFormat("Insufficient data for memory minimum".to_string()));
-        }
-        
-        let min = u32::from_le_bytes([bytes[offset], bytes[offset+1], bytes[offset+2], bytes[offset+3]]);
-        offset += 4;
+    fn from_bytes_with_provider<'a, PStream: crate::MemoryProvider>(
+        reader: &mut crate::traits::ReadStream<'a>,
+        _provider: &PStream,
+    ) -> WrtResult<Self> {
+        let memory_flag = reader.read_u8()?;
+        let min = reader.read_u32_le()?;
         
         match memory_flag {
             0x00 => {
                 // Linear memory
-                if offset >= bytes.len() {
-                    return Err(crate::Error::InvalidFormat("Missing maximum flag for linear memory".to_string()));
-                }
-                
-                let has_max = bytes[offset];
-                offset += 1;
-                
+                let has_max = reader.read_u8()?;
                 let max = if has_max == 0x01 {
-                    if offset + 4 > bytes.len() {
-                        return Err(crate::Error::InvalidFormat("Insufficient data for memory maximum".to_string()));
-                    }
-                    let max_val = u32::from_le_bytes([bytes[offset], bytes[offset+1], bytes[offset+2], bytes[offset+3]]);
-                    offset += 4;
-                    Some(max_val)
+                    Some(reader.read_u32_le()?)
                 } else {
                     None
                 };
-                
-                Ok((MemoryType::Linear { min, max }, offset))
-            },
+                Ok(MemoryType::Linear { min, max })
+            }
             0x01 => {
                 // Shared memory
-                if offset + 4 > bytes.len() {
-                    return Err(crate::Error::InvalidFormat("Insufficient data for shared memory maximum".to_string()));
-                }
-                
-                let max = u32::from_le_bytes([bytes[offset], bytes[offset+1], bytes[offset+2], bytes[offset+3]]);
-                offset += 4;
-                
-                Ok((MemoryType::Shared { min, max }, offset))
-            },
-            _ => Err(crate::Error::InvalidFormat(format!("Invalid memory type flag: {:#x}", memory_flag)))
+                let max = reader.read_u32_le()?;
+                Ok(MemoryType::Shared { min, max })
+            }
+            _ => Err(Error::new(
+                ErrorCategory::Parse,
+                codes::PARSE_ERROR,
+                "Invalid memory type flag"
+            ))
         }
     }
 }
 
 impl Checksummable for MemoryType {
-    fn checksum(&self) -> u32 {
-        use core::hash::{Hash, Hasher};
-        use crate::checksum::SimpleHasher;
-        
-        let mut hasher = SimpleHasher::new();
-        self.hash(&mut hasher);
-        hasher.finish() as u32
+    fn update_checksum(&self, checksum: &mut crate::verification::Checksum) {
+        // Update checksum based on memory type
+        match self {
+            MemoryType::Linear { min, max } => {
+                checksum.update(0); // Linear type indicator
+                checksum.update_slice(&min.to_le_bytes());
+                if let Some(max_val) = max {
+                    checksum.update(1); // Has max indicator
+                    checksum.update_slice(&max_val.to_le_bytes());
+                } else {
+                    checksum.update(0); // No max indicator
+                }
+            }
+            MemoryType::Shared { min, max } => {
+                checksum.update(1); // Shared type indicator
+                checksum.update_slice(&min.to_le_bytes());
+                checksum.update_slice(&max.to_le_bytes());
+            }
+        }
     }
 }
 
@@ -218,8 +217,55 @@ impl core::hash::Hash for MemoryType {
 }
 
 impl Validatable for MemoryType {
-    fn validate(&self) -> crate::Result<()> {
-        self.validate().map_err(|e| crate::Error::ValidationError(format!("Memory type validation failed: {}", e)))
+    type Error = Error;
+
+    fn validate(&self) -> core::result::Result<(), Self::Error> {
+        match self {
+            MemoryType::Linear { min, max } => {
+                if let Some(max_val) = max {
+                    if min > max_val {
+                        return Err(Error::new(
+                            ErrorCategory::Validation,
+                            codes::VALIDATION_ERROR,
+                            "Linear memory minimum exceeds maximum"
+                        ));
+                    }
+                    if *max_val > (1 << 16) {
+                        return Err(Error::new(
+                            ErrorCategory::Validation,
+                            codes::VALIDATION_ERROR,
+                            "Linear memory maximum exceeds 64K pages"
+                        ));
+                    }
+                }
+                Ok(())
+            },
+            MemoryType::Shared { min, max } => {
+                if min > max {
+                    return Err(Error::new(
+                        ErrorCategory::Validation,
+                        codes::VALIDATION_ERROR,
+                        "Shared memory minimum exceeds maximum"
+                    ));
+                }
+                if *max > (1 << 16) {
+                    return Err(Error::new(
+                        ErrorCategory::Validation,
+                        codes::VALIDATION_ERROR,
+                        "Shared memory maximum exceeds 64K pages"
+                    ));
+                }
+                Ok(())
+            }
+        }
+    }
+
+    fn validation_level(&self) -> crate::verification::VerificationLevel {
+        crate::verification::VerificationLevel::Standard
+    }
+
+    fn set_validation_level(&mut self, _level: crate::verification::VerificationLevel) {
+        // MemoryType doesn't store validation level, so this is a no-op
     }
 }
 
@@ -372,7 +418,7 @@ impl SharedMemoryManager {
             
             Err(Error::new(
                 ErrorCategory::Resource,
-                codes::RESOURCE_EXHAUSTED,
+                codes::MEMORY_ERROR,
                 "Maximum number of memory segments reached"
             ))
         }

@@ -198,11 +198,7 @@ pub fn parse_component_name_section(data: &[u8]) -> Result<ComponentNameSection>
                         sort_type::COMPONENT => Sort::Component,
                         sort_type::INSTANCE => Sort::Instance,
                         _ => {
-                            return Err(Error::new(
-                                ErrorCategory::Parse,
-                                codes::PARSE_ERROR,
-                                format!("Unknown sort ID: {}", sort_id),
-                            ));
+                            return Err(Error::parse_error("Unknown sort ID"));
                         }
                     };
 

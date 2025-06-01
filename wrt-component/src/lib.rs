@@ -41,8 +41,13 @@ pub mod prelude;
 // Export modules - some are conditionally compiled
 pub mod adapter;
 pub mod async_canonical;
+pub mod async_runtime;
+pub mod streaming_canonical;
 pub mod async_runtime_bridge;
+pub mod async_execution_engine;
+pub mod async_canonical_lifting;
 pub mod async_types;
+pub mod borrowed_handles;
 pub mod builtins;
 pub mod canonical;
 pub mod canonical_abi;
@@ -85,6 +90,8 @@ pub mod resource_management_tests;
 pub mod start_function_validation;
 pub mod string_encoding;
 pub mod task_manager;
+pub mod task_cancellation;
+pub mod thread_builtins;
 pub mod thread_spawn;
 pub mod thread_spawn_fuel;
 pub mod type_bounds;
@@ -98,6 +105,8 @@ pub mod factory;
 pub mod host;
 pub mod import;
 pub mod import_map;
+pub mod resource_lifecycle_management;
+pub mod resource_representation;
 #[cfg(feature = "std")]
 pub mod instance;
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
@@ -160,7 +169,40 @@ pub use adapter::{
     AdaptationMode, CoreFunctionSignature, CoreModuleAdapter, CoreValType, FunctionAdapter,
     GlobalAdapter, MemoryAdapter, MemoryLimits, TableAdapter, TableLimits,
 };
-pub use async_canonical::AsyncCanonicalAbi;
+pub use async_canonical::{
+    AsyncCanonicalAbi, AsyncLiftResult, AsyncLowerResult, AsyncOperation, AsyncOperationState,
+    AsyncOperationType,
+};
+pub use async_runtime::{
+    AsyncRuntime, EventHandler, FutureEntry, FutureOperation, ReactorEvent, ReactorEventType,
+    RuntimeConfig, RuntimeStats, ScheduledTask, StreamEntry, StreamOperation, TaskExecutionResult,
+    TaskFunction, TaskScheduler, WaitCondition, WaitingTask,
+};
+pub use async_execution_engine::{
+    AsyncExecution, AsyncExecutionEngine, AsyncExecutionState, AsyncExecutionOperation, CallFrame,
+    ExecutionContext, ExecutionId, ExecutionResult, ExecutionStats as AsyncExecutionStats,
+    FrameAsyncState, MemoryPermissions, MemoryRegion, MemoryViews, StepResult, WaitSet,
+};
+pub use streaming_canonical::{
+    BackpressureConfig, BackpressureState, StreamDirection, StreamStats, StreamingCanonicalAbi,
+    StreamingContext, StreamingLiftResult, StreamingLowerResult, StreamingResult,
+};
+pub use resource_lifecycle_management::{
+    ComponentId, DropHandler, DropHandlerId, DropHandlerFunction, DropResult, GarbageCollectionState,
+    GcResult, LifecyclePolicies, LifecycleStats, ResourceCreateRequest, ResourceEntry, ResourceId,
+    ResourceLifecycleManager, ResourceMetadata, ResourceState, ResourceType,
+};
+pub use resource_representation::{
+    ResourceRepresentationManager, ResourceRepresentation, RepresentationValue, ResourceEntry as ResourceRepresentationEntry,
+    ResourceMetadata as ResourceRepresentationMetadata, RepresentationStats, FileHandleRepresentation,
+    MemoryBufferRepresentation, NetworkConnectionRepresentation, NetworkConnection, ConnectionState,
+    FileHandle, MemoryBuffer, NetworkHandle, canon_resource_rep, canon_resource_new, canon_resource_drop,
+};
+pub use borrowed_handles::{
+    BorrowHandle, BorrowId, BorrowValidation, HandleConversionError, HandleLifetimeTracker,
+    LifetimeScope, LifetimeStats, OwnHandle, OwnedHandleEntry, BorrowedHandleEntry,
+    LifetimeScopeEntry, with_lifetime_scope,
+};
 pub use async_types::{
     AsyncReadResult, ErrorContext, ErrorContextHandle, Future, FutureHandle, FutureState, Stream,
     StreamHandle, StreamState, Waitable, WaitableSet,
@@ -172,6 +214,11 @@ pub use component_value_no_std::{
 pub use execution_engine::{ComponentExecutionEngine, ExecutionContext, ExecutionState};
 pub use generative_types::{BoundKind, GenerativeResourceType, GenerativeTypeRegistry, TypeBound};
 pub use task_manager::{Task, TaskContext, TaskId, TaskManager, TaskState, TaskType};
+pub use task_cancellation::{
+    CancellationHandler, CancellationHandlerFn, CancellationScope, CancellationToken,
+    CompletionHandler, CompletionHandlerFn, HandlerId, ScopeId, SubtaskEntry, SubtaskManager,
+    SubtaskResult, SubtaskState, SubtaskStats, with_cancellation_scope,
+};
 pub use type_bounds::{
     RelationConfidence, RelationKind, RelationResult, TypeBoundsChecker, TypeRelation,
 };
@@ -234,7 +281,8 @@ pub use parser_integration::{
     ParsedImport, StringEncoding, ValidationLevel,
 };
 pub use post_return::{
-    CleanupTask, CleanupTaskType, PostReturnFunction, PostReturnMetrics, PostReturnRegistry,
+    CleanupTask, CleanupTaskType, CleanupData, PostReturnFunction, PostReturnMetrics, 
+    PostReturnRegistry, PostReturnContext, helpers as post_return_helpers,
 };
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 pub use resources::{
@@ -257,6 +305,10 @@ pub use thread_spawn_fuel::{
     create_fuel_thread_config, create_unlimited_fuel_thread_config, FuelAwareExecution,
     FuelThreadConfiguration, FuelTrackedThreadContext, FuelTrackedThreadManager,
     FuelTrackedThreadResult, GlobalFuelStatus, ThreadFuelStatus,
+};
+pub use thread_builtins::{
+    ThreadBuiltins, ParallelismInfo, ThreadSpawnConfig, ComponentFunction,
+    FunctionSignature, ValueType, ThreadJoinResult, ThreadError,
 };
 pub use virtualization::{
     Capability, CapabilityGrant, ExportVisibility, IsolationLevel, LogLevel, MemoryPermissions,

@@ -317,15 +317,7 @@ impl ComponentBinaryParser {
         
         // Validate section size
         if self.offset + section_size as usize > self.size {
-            return Err(Error::new(
-                ErrorCategory::Parse,
-                codes::PARSE_ERROR,
-                format!(
-                    "Section '{}' size {} exceeds remaining binary size",
-                    section_id.name(),
-                    section_size
-                ),
-            ));
+            return Err(Error::parse_error("Section size exceeds remaining binary size"));
         }
 
         // Extract section data

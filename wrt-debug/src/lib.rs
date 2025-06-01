@@ -52,6 +52,19 @@ pub use runtime_vars::{ValueDisplay, VariableDefinition, VariableInspector, Vari
 pub use stack_trace::{StackFrame, StackTrace, StackTraceBuilder};
 pub use strings::{DebugString, StringTable};
 pub use types::{DebugSection, DebugSectionRef, DwarfSections};
+// WIT integration exports
+#[cfg(feature = "wit-integration")]
+pub use wit_source_map::{
+    WitSourceMap, WitSourceFile, WitTypeInfo, WitTypeKind, ComponentBoundary, WitDiagnostic,
+    DiagnosticSeverity, SourceContext, ContextLine, 
+    MemoryRegion as WitMemoryRegion, MemoryRegionType as WitMemoryRegionType,
+    TypeId, FunctionId, ComponentId, SourceSpan,
+};
+#[cfg(feature = "wit-integration")]
+pub use wit_aware_debugger::{
+    WitAwareDebugger, WitDebugger, ComponentError, ComponentMetadata, FunctionMetadata,
+    TypeMetadata, WitStepMode, WitTypeKind as DebugWitTypeKind,
+};
 use wrt_error::{codes, Error, ErrorCategory, Result};
 use wrt_foundation::{
     bounded::{BoundedVec, MAX_DWARF_ABBREV_CACHE},
@@ -85,6 +98,12 @@ mod runtime_memory;
 mod runtime_step;
 #[cfg(feature = "runtime-variables")]
 mod runtime_vars;
+
+// WIT integration module
+#[cfg(feature = "wit-integration")]
+pub mod wit_source_map;
+#[cfg(feature = "wit-integration")]
+pub mod wit_aware_debugger;
 
 #[cfg(test)]
 mod test;
@@ -266,4 +285,10 @@ pub mod prelude {
     pub use crate::FunctionInfo;
     #[cfg(feature = "line-info")]
     pub use crate::LineInfo;
+    // WIT debugging prelude
+    #[cfg(feature = "wit-integration")]
+    pub use crate::{
+        WitAwareDebugger, WitDebugger, WitSourceMap, ComponentError,
+        TypeId, FunctionId, ComponentId, SourceSpan,
+    };
 }

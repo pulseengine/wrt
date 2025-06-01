@@ -875,6 +875,9 @@ version = "0.2.0"
 dependencies = [
  "anyhow",
  "wit-bindgen",
+ "wrt-debug",
+ "wrt-format",
+ "wrt-foundation",
 ]
 
 [[package]]
