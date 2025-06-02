@@ -29,38 +29,38 @@ This document tracks the Component Model features that still need to be implemen
 - ✅ `future.cancel` - Cancel future
 
 ### Context Management
-- ❌ `context.get` - Get current async context
-- ❌ `context.set` - Set async context
-- ❌ Context switching for async operations
+- ✅ `context.get` - Get current async context
+- ✅ `context.set` - Set async context
+- ✅ Context switching for async operations
 
 ### Task Management
-- ❌ `task.return` - Return from async task
-- 🚧 `task.cancel` - Cancel task (have tokens, need built-in)
-- ❌ `task.status` - Get task status
-- ❌ `task.start` - Start new task
-- ❌ `task.wait` - Wait for task completion
+- ✅ `task.return` - Return from async task
+- ✅ `task.cancel` - Cancel task (complete with built-ins)
+- ✅ `task.status` - Get task status
+- ✅ `task.start` - Start new task
+- ✅ `task.wait` - Wait for task completion
 
 ### Waitable Operations
-- 🚧 `waitable-set.new` - Create waitable set (have type, need built-in)
-- ❌ `waitable-set.wait` - Wait on set
-- ❌ `waitable-set.add` - Add to set
-- ❌ `waitable-set.remove` - Remove from set
+- ✅ `waitable-set.new` - Create waitable set (complete with built-ins)
+- ✅ `waitable-set.wait` - Wait on set
+- ✅ `waitable-set.add` - Add to set
+- ✅ `waitable-set.remove` - Remove from set
 
 ### Error Context
-- 🚧 `error-context.new` - Create error context (have type, need built-in)
-- ❌ `error-context.debug-message` - Get debug message
-- ❌ `error-context.drop` - Drop error context
+- ✅ `error-context.new` - Create error context (complete with built-ins)
+- ✅ `error-context.debug-message` - Get debug message
+- ✅ `error-context.drop` - Drop error context
 
 ### Threading Built-ins
 - ✅ `thread.available_parallelism` - Get parallelism info
 - 🚧 `thread.spawn` - Basic thread spawn
-- ❌ `thread.spawn_ref` - Spawn with function reference
-- ❌ `thread.spawn_indirect` - Spawn with indirect call
-- ❌ `thread.join` - Join thread
-- ❌ Thread-local storage
+- ✅ `thread.spawn_ref` - Spawn with function reference
+- ✅ `thread.spawn_indirect` - Spawn with indirect call
+- ✅ `thread.join` - Join thread
+- ✅ Thread-local storage
 
 ### Type System Features
-- ❌ Fixed-length lists
+- ✅ Fixed-length lists
 - ❌ Nested namespaces
 - ❌ Package management
 - 🚧 Generative types (partial)
@@ -82,22 +82,22 @@ This document tracks the Component Model features that still need to be implemen
 
 ## Implementation Priority
 
-### Phase 1: Complete Async Foundation (High Priority)
-1. Implement context management built-ins
-2. Complete task management built-ins
-3. Implement waitable-set operations
-4. Complete error-context built-ins
+### Phase 1: Complete Async Foundation (High Priority) ✅ COMPLETED
+1. ✅ Implement context management built-ins
+2. ✅ Complete task management built-ins
+3. ✅ Implement waitable-set operations
+4. ✅ Complete error-context built-ins
 
-### Phase 2: Advanced Threading (Medium Priority)
-1. Implement thread.spawn_ref
-2. Implement thread.spawn_indirect
-3. Add thread join operations
-4. Add thread-local storage
+### Phase 2: Advanced Threading (Medium Priority) ✅ COMPLETED
+1. ✅ Implement thread.spawn_ref
+2. ✅ Implement thread.spawn_indirect
+3. ✅ Add thread join operations
+4. ✅ Add thread-local storage
 
-### Phase 3: Type System Enhancements (Medium Priority)
-1. Add fixed-length list support
-2. Implement nested namespaces
-3. Add package management
+### Phase 3: Type System Enhancements (Medium Priority) ✅ PARTIALLY COMPLETED
+1. ✅ Add fixed-length list support
+2. ❌ Implement nested namespaces
+3. ❌ Add package management
 
 ### Phase 4: Future Features (Low Priority)
 1. Shared memory support (when spec is ready)
