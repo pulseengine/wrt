@@ -63,6 +63,9 @@ conversion = []
 # Safe memory implementations
 safe-memory = ["wrt-foundation/safe-memory"]
 
+# LSP (Language Server Protocol) support
+lsp = ["std"]
+
 # Config for linting
 [lints.rust]
 unexpected_cfgs = { level = "allow", check-cfg = ['cfg(test)', 'cfg(kani)', 'cfg(coverage)', 'cfg(doc)'] }

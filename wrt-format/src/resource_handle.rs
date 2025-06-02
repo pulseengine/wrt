@@ -335,6 +335,11 @@ mod tests {
     use super::*;
     use wrt_foundation::traits::DefaultMemoryProvider;
     
+    #[cfg(feature = "std")]
+    use std::string::String;
+    #[cfg(all(feature = "alloc", not(feature = "std")))]
+    use alloc::string::String;
+    
     #[test]
     fn test_resource_table_basic() {
         let provider = DefaultMemoryProvider::default();

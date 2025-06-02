@@ -12,6 +12,46 @@ use core::{fmt::Debug, time::Duration};
 
 use crate::prelude::Result;
 
+// Re-export atomic types for platform use
+pub use core::sync::atomic::{AtomicU32, AtomicU64, AtomicUsize, Ordering};
+
+// For std builds, re-export standard synchronization primitives
+#[cfg(feature = "std")]
+pub use std::sync::{Mutex, Condvar, RwLock, Arc};
+
+// For alloc builds without std, provide alternatives
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+pub use alloc::sync::Arc;
+
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+pub use wrt_sync::{WrtMutex as Mutex, WrtRwLock as RwLock, WrtMutexGuard as MutexGuard};
+
+// For no_std builds, use wrt-sync primitives
+#[cfg(not(any(feature = "std", feature = "alloc")))]
+pub use wrt_sync::{WrtMutex as Mutex, WrtRwLock as RwLock, WrtMutexGuard as MutexGuard};
+
+// Provide a simple Condvar alternative for non-std builds
+#[cfg(not(feature = "std"))]
+pub struct Condvar;
+
+#[cfg(not(feature = "std"))]
+impl Condvar {
+    pub fn new() -> Self {
+        Self
+    }
+    
+    pub fn wait<'a, T>(&self, _guard: MutexGuard<'a, T>) -> Result<MutexGuard<'a, T>> {
+        Err(wrt_error::Error::new(
+            wrt_error::ErrorCategory::Runtime,
+            wrt_error::codes::NOT_IMPLEMENTED,
+            "Condvar not supported in no_std"
+        ))
+    }
+    
+    pub fn notify_one(&self) {}
+    pub fn notify_all(&self) {}
+}
+
 /// A trait abstracting futex-like operations.
 ///
 /// This trait provides a minimal set of operations similar to those offered by

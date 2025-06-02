@@ -291,13 +291,13 @@ impl SteppingDebugger {
 
     /// Start stepping
     pub fn step(&mut self, mode: StepMode, pc: u32) {
-        let current_line = self.find_line(pc);
+        let current_line = self.find_line(pc).copied();
         self.controller.start_step(mode, current_line);
     }
 
     /// Check if we should break
     pub fn should_break(&mut self, pc: u32, state: &dyn RuntimeState) -> DebugAction {
-        let current_line = self.find_line(pc);
+        let current_line = self.find_line(pc).copied();
         self.controller.should_break(pc, state, current_line)
     }
 

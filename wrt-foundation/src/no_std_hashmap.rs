@@ -8,6 +8,14 @@
 //! A simple HashMap implementation for no_std environments without external
 //! dependencies.
 //!
+#![allow(clippy::needless_continue)]
+#![allow(clippy::if_not_else)]
+#![allow(clippy::needless_pass_by_value)]
+#![allow(clippy::manual_let_else)]
+#![allow(clippy::elidable_lifetime_names)]
+#![allow(clippy::unused_self)]
+#![allow(clippy::ptr_as_ptr)]
+#![allow(clippy::cast_possible_truncation)]
 //! This module provides a basic hash map implementation that is suitable for
 //! no_std/no_alloc environments. It has limited functionality compared to
 //! the standard HashMap or external crates like hashbrown, but it provides

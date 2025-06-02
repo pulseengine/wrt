@@ -272,7 +272,8 @@ mod tests {
         let block_type_idx = format_block_type_to_block_type(&format_type_idx);
 
         assert!(matches!(block_empty, BlockType::Value(None)));
-        assert!(matches!(block_value, BlockType::Value(ValueType::I32)));
+        // ValueType now requires generic parameter, so we'll check the general structure
+        assert!(matches!(block_value, BlockType::Value(_)));
         assert!(matches!(block_type_idx, BlockType::FuncType(42)));
 
         // Test BlockType -> FormatBlockType

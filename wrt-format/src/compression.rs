@@ -289,6 +289,7 @@ mod tests {
     use super::*;
 
     #[test]
+    #[cfg(any(feature = "alloc", feature = "std"))]
     fn test_rle_encode_decode() {
         let empty: Vec<u8> = vec![];
         assert_eq!(rle_encode(&empty), empty);
@@ -319,6 +320,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(any(feature = "alloc", feature = "std"))]
     fn test_rle_decode_errors() {
         // Test truncated input
         let truncated = vec![0]; // RLE marker without count and value

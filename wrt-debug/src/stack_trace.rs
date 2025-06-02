@@ -114,12 +114,12 @@ impl<'a> StackTrace<'a> {
 
 /// Helper to build a stack trace from runtime information
 pub struct StackTraceBuilder<'a> {
-    debug_info: &'a crate::DwarfDebugInfo<'a>,
+    debug_info: &'a mut crate::DwarfDebugInfo<'a>,
 }
 
 impl<'a> StackTraceBuilder<'a> {
     /// Create a new stack trace builder
-    pub fn new(debug_info: &'a crate::DwarfDebugInfo<'a>) -> Self {
+    pub fn new(debug_info: &'a mut crate::DwarfDebugInfo<'a>) -> Self {
         Self { debug_info }
     }
 
@@ -133,7 +133,7 @@ impl<'a> StackTraceBuilder<'a> {
         // Get function info
         let function = self.debug_info.find_function_info(pc);
 
-        // Get line info
+        // Get line info (using immutable reference)
         let line_info = self.debug_info.find_line_info(pc).ok().flatten();
 
         // Add current frame

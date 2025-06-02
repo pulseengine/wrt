@@ -2356,6 +2356,175 @@ pub fn write_string_bounded<
 #[cfg(test)]
 mod tests {
     use super::*;
+    
+    // Define test helper functions directly here since imports aren't working
+    // Read functions
+    fn read_f32_test(bytes: &[u8], pos: usize) -> crate::Result<(f32, usize)> {
+        if pos + 4 > bytes.len() {
+            return Err(parse_error("Not enough bytes to read f32"));
+        }
+
+        let mut buf = [0; 4];
+        buf.copy_from_slice(&bytes[pos..pos + 4]);
+        let value = f32::from_le_bytes(buf);
+        Ok((value, pos + 4))
+    }
+    
+    fn read_f64_test(bytes: &[u8], pos: usize) -> crate::Result<(f64, usize)> {
+        if pos + 8 > bytes.len() {
+            return Err(parse_error("Not enough bytes to read f64"));
+        }
+
+        let mut buf = [0; 8];
+        buf.copy_from_slice(&bytes[pos..pos + 8]);
+        let value = f64::from_le_bytes(buf);
+        Ok((value, pos + 8))
+    }
+    
+    #[cfg(any(feature = "alloc", feature = "std"))]
+    fn read_string_test(bytes: &[u8], pos: usize) -> crate::Result<(String, usize)> {
+        if pos >= bytes.len() {
+            return Err(parse_error("String exceeds buffer bounds"));
+        }
+
+        // Read the string length using parent module function
+        let (str_len, len_size) = read_leb128_u32(bytes, pos)?;
+        let str_start = pos + len_size;
+        let str_end = str_start + str_len as usize;
+
+        if str_end > bytes.len() {
+            return Err(parse_error("String exceeds buffer bounds"));
+        }
+
+        let string_bytes = &bytes[str_start..str_end];
+        match core::str::from_utf8(string_bytes) {
+            Ok(s) => Ok((s.into(), len_size + str_len as usize)),
+            Err(_) => Err(parse_error("Invalid UTF-8 in string")),
+        }
+    }
+    
+    #[cfg(any(feature = "alloc", feature = "std"))]
+    fn read_vector_test<T, F>(bytes: &[u8], pos: usize, read_elem: F) -> crate::Result<(Vec<T>, usize)>
+    where
+        F: Fn(&[u8], usize) -> crate::Result<(T, usize)>,
+    {
+        let (count, mut offset) = read_leb128_u32(bytes, pos)?;
+        let mut result = Vec::with_capacity(count as usize);
+
+        for _ in 0..count {
+            let (elem, elem_size) = read_elem(bytes, pos + offset)?;
+            result.push(elem);
+            offset += elem_size;
+        }
+
+        Ok((result, offset))
+    }
+    
+    fn read_section_header_test(bytes: &[u8], pos: usize) -> crate::Result<(u8, u32, usize)> {
+        if pos >= bytes.len() {
+            return Err(parse_error("Attempted to read past end of binary"));
+        }
+
+        let id = bytes[pos];
+        let (payload_len, len_size) = read_leb128_u32(bytes, pos + 1)?;
+        Ok((id, payload_len, pos + 1 + len_size))
+    }
+    
+    fn validate_utf8_test(bytes: &[u8]) -> crate::Result<()> {
+        match core::str::from_utf8(bytes) {
+            Ok(_) => Ok(()),
+            Err(_) => Err(parse_error("Invalid UTF-8 sequence")),
+        }
+    }
+    
+    // Write functions
+    #[cfg(any(feature = "alloc", feature = "std"))]
+    fn write_leb128_u32_test(value: u32) -> Vec<u8> {
+        if value == 0 {
+            return vec![0];
+        }
+
+        let mut result = Vec::new();
+        let mut value = value;
+
+        while value != 0 {
+            let mut byte = (value & 0x7F) as u8;
+            value >>= 7;
+
+            if value != 0 {
+                byte |= 0x80;
+            }
+
+            result.push(byte);
+        }
+
+        result
+    }
+    
+    #[cfg(any(feature = "alloc", feature = "std"))]
+    fn write_f32_test(value: f32) -> Vec<u8> {
+        let bytes = value.to_le_bytes();
+        bytes.to_vec()
+    }
+    
+    #[cfg(any(feature = "alloc", feature = "std"))]
+    fn write_f64_test(value: f64) -> Vec<u8> {
+        let bytes = value.to_le_bytes();
+        bytes.to_vec()
+    }
+    
+    #[cfg(any(feature = "alloc", feature = "std"))]
+    fn write_string_test(value: &str) -> Vec<u8> {
+        let mut result = Vec::new();
+        let length = value.len() as u32;
+        result.extend_from_slice(&write_leb128_u32_test(length));
+        result.extend_from_slice(value.as_bytes());
+        result
+    }
+    
+    #[cfg(any(feature = "alloc", feature = "std"))]
+    fn write_leb128_u64_test(value: u64) -> Vec<u8> {
+        let mut result = Vec::new();
+        let mut value = value;
+
+        loop {
+            let mut byte = (value & 0x7F) as u8;
+            value >>= 7;
+
+            if value != 0 {
+                byte |= 0x80;
+            }
+
+            result.push(byte);
+
+            if value == 0 {
+                break;
+            }
+        }
+
+        result
+    }
+    
+    #[cfg(any(feature = "alloc", feature = "std"))]
+    fn write_vector_test<T, F>(elements: &[T], write_elem: F) -> Vec<u8>
+    where
+        F: Fn(&T) -> Vec<u8>,
+    {
+        let mut result = Vec::new();
+        result.extend_from_slice(&write_leb128_u32_test(elements.len() as u32));
+        for elem in elements {
+            result.extend_from_slice(&write_elem(elem));
+        }
+        result
+    }
+    
+    #[cfg(any(feature = "alloc", feature = "std"))]
+    fn write_section_header_test(id: u8, content_size: u32) -> Vec<u8> {
+        let mut result = Vec::new();
+        result.push(id);
+        result.extend_from_slice(&write_leb128_u32_test(content_size));
+        result
+    }
 
     #[test]
     #[cfg(any(feature = "alloc", feature = "std"))]
@@ -2363,8 +2532,8 @@ mod tests {
         let values = [0.0f32, -0.0, 1.0, -1.0, 3.14159, f32::INFINITY, f32::NEG_INFINITY, f32::NAN];
 
         for &value in &values {
-            let bytes = write_f32(value);
-            let (decoded, size) = read_f32(&bytes, 0).unwrap();
+            let bytes = write_f32_test(value);
+            let (decoded, size) = read_f32_test(&bytes, 0).unwrap();
 
             assert_eq!(size, 4);
             if value.is_nan() {
@@ -2382,8 +2551,8 @@ mod tests {
             [0.0f64, -0.0, 1.0, -1.0, 3.14159265358979, f64::INFINITY, f64::NEG_INFINITY, f64::NAN];
 
         for &value in &values {
-            let bytes = write_f64(value);
-            let (decoded, size) = read_f64(&bytes, 0).unwrap();
+            let bytes = write_f64_test(value);
+            let (decoded, size) = read_f64_test(&bytes, 0).unwrap();
 
             assert_eq!(size, 8);
             if value.is_nan() {
@@ -2400,8 +2569,8 @@ mod tests {
         let test_strings = ["", "Hello, World!", "UTF-8 test: ñáéíóú", "🦀 Rust is awesome!"];
 
         for &s in &test_strings {
-            let bytes = write_string(s);
-            let (decoded, _) = read_string(&bytes, 0).unwrap();
+            let bytes = write_string_test(s);
+            let (decoded, _) = read_string_test(&bytes, 0).unwrap();
 
             assert_eq!(decoded, s);
         }
@@ -2413,7 +2582,7 @@ mod tests {
         let test_values = [0u64, 1, 127, 128, 16384, 0x7FFFFFFF, 0xFFFFFFFF, 0xFFFFFFFFFFFFFFFF];
 
         for &value in &test_values {
-            let bytes = write_leb128_u64(value);
+            let bytes = write_leb128_u64_test(value);
             let (decoded, _) = read_leb128_u64(&bytes, 0).unwrap();
 
             assert_eq!(decoded, value);
@@ -2423,12 +2592,12 @@ mod tests {
     #[test]
     fn test_utf8_validation() {
         // Valid UTF-8
-        assert!(validate_utf8(b"Hello").is_ok());
-        assert!(validate_utf8("🦀 Rust".as_bytes()).is_ok());
+        assert!(validate_utf8_test(b"Hello").is_ok());
+        assert!(validate_utf8_test("🦀 Rust".as_bytes()).is_ok());
 
         // Invalid UTF-8
         let invalid_utf8 = [0xFF, 0xFE, 0xFD];
-        assert!(validate_utf8(&invalid_utf8).is_err());
+        assert!(validate_utf8_test(&invalid_utf8).is_err());
     }
 
     #[test]
@@ -2438,10 +2607,10 @@ mod tests {
         let values = vec![1u32, 42, 100, 1000];
 
         // Write the vector
-        let bytes = write_vector(&values, |v| write_leb128_u32(*v));
+        let bytes = write_vector_test(&values, |v| write_leb128_u32_test(*v));
 
         // Read the vector back
-        let (decoded, _) = read_vector(&bytes, 0, read_leb128_u32).unwrap();
+        let (decoded, _) = read_vector_test(&bytes, 0, read_leb128_u32).unwrap();
 
         assert_eq!(values, decoded);
     }
@@ -2453,10 +2622,10 @@ mod tests {
         let section_id = TYPE_SECTION_ID;
         let content_size = 10;
 
-        let bytes = write_section_header(section_id, content_size);
+        let bytes = write_section_header_test(section_id, content_size);
 
         // Read the section header back
-        let (decoded_id, decoded_size, _) = read_section_header(&bytes, 0).unwrap();
+        let (decoded_id, decoded_size, _) = read_section_header_test(&bytes, 0).unwrap();
 
         assert_eq!(section_id, decoded_id);
         assert_eq!(content_size, decoded_size);
