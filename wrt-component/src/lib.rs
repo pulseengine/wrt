@@ -47,6 +47,7 @@ pub mod async_runtime_bridge;
 pub mod async_execution_engine;
 pub mod async_canonical_lifting;
 pub mod async_types;
+pub mod async_context_builtins;
 pub mod borrowed_handles;
 pub mod builtins;
 pub mod canonical;
@@ -76,6 +77,7 @@ pub mod component_communication;
 pub mod call_context;
 pub mod cross_component_communication;
 pub mod error_format;
+pub mod error_context_builtins;
 pub mod execution_engine;
 pub mod generative_types;
 pub mod handle_representation;
@@ -91,12 +93,17 @@ pub mod start_function_validation;
 pub mod string_encoding;
 pub mod task_manager;
 pub mod task_cancellation;
+pub mod task_builtins;
+pub mod waitable_set_builtins;
 pub mod thread_builtins;
 pub mod thread_spawn;
 pub mod thread_spawn_fuel;
 pub mod type_bounds;
 pub mod virtualization;
 pub mod wit_integration;
+// Enhanced WIT component integration for lowering/lifting
+#[cfg(any(feature = "std", feature = "alloc"))]
+pub mod wit_component_integration;
 // No-alloc module for pure no_std environments
 pub mod execution;
 pub mod export;
@@ -207,6 +214,10 @@ pub use async_types::{
     AsyncReadResult, ErrorContext, ErrorContextHandle, Future, FutureHandle, FutureState, Stream,
     StreamHandle, StreamState, Waitable, WaitableSet,
 };
+pub use async_context_builtins::{
+    AsyncContext, AsyncContextManager, AsyncContextScope, ContextKey, ContextValue,
+    canonical_builtins as async_context_canonical_builtins,
+};
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 pub use component_value_no_std::{
     convert_format_to_valtype, convert_valtype_to_format, serialize_component_value_no_std,
@@ -218,6 +229,18 @@ pub use task_cancellation::{
     CancellationHandler, CancellationHandlerFn, CancellationScope, CancellationToken,
     CompletionHandler, CompletionHandlerFn, HandlerId, ScopeId, SubtaskEntry, SubtaskManager,
     SubtaskResult, SubtaskState, SubtaskStats, with_cancellation_scope,
+};
+pub use task_builtins::{
+    Task as TaskBuiltinTask, TaskBuiltins, TaskId as TaskBuiltinId, TaskRegistry, TaskReturn,
+    TaskStatus, task_helpers,
+};
+pub use waitable_set_builtins::{
+    WaitableSetBuiltins, WaitableSetId, WaitableSetImpl, WaitableSetRegistry, WaitResult,
+    WaitableEntry, WaitableId, waitable_set_helpers,
+};
+pub use error_context_builtins::{
+    ErrorContextBuiltins, ErrorContextId, ErrorContextImpl, ErrorContextRegistry, ErrorSeverity,
+    StackFrame, error_context_helpers,
 };
 pub use type_bounds::{
     RelationConfidence, RelationKind, RelationResult, TypeBoundsChecker, TypeRelation,
@@ -319,6 +342,12 @@ pub use virtualization::{
 pub use wit_integration::{
     AsyncInterfaceFunction, AsyncTypedResult, ComponentInterface, InterfaceFunction, TypedParam,
     TypedResult, WitComponentBuilder,
+};
+#[cfg(any(feature = "std", feature = "alloc"))]
+pub use wit_component_integration::{
+    ComponentConfig, ComponentLowering, ComponentType, WitComponentContext,
+    InterfaceMapping, TypeMapping, FunctionMapping, RecordType, VariantType,
+    EnumType, FlagsType, ResourceType, FunctionType, FieldType, CaseType,
 };
 pub use wrt_format::wit_parser::{
     WitEnum, WitExport, WitFlags, WitFunction, WitImport, WitInterface, WitItem, WitParam,
