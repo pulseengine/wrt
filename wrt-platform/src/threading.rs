@@ -165,6 +165,15 @@ pub struct ThreadHandle {
     platform_handle: Box<dyn PlatformThreadHandle>,
 }
 
+impl core::fmt::Debug for ThreadHandle {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("ThreadHandle")
+            .field("id", &self.id)
+            .field("platform_handle", &"<platform handle>")
+            .finish()
+    }
+}
+
 impl ThreadHandle {
     /// Get thread ID
     pub fn id(&self) -> u64 {
@@ -567,6 +576,9 @@ where
         }
         fn is_running(&self) -> bool {
             true
+        }
+        fn get_stats(&self) -> Result<ThreadStats> {
+            Ok(ThreadStats::default())
         }
     }
     

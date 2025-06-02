@@ -50,10 +50,10 @@ pub trait FrameBehavior {
 
     /// Returns a slice of the local variables for the current frame.
     /// This includes function arguments followed by declared local variables.
-    fn locals(&self) -> &SafeSlice<Value>;
+    fn locals(&self) -> &[Value];
 
     /// Returns a mutable slice of the local variables.
-    fn locals_mut(&mut self) -> &mut SafeSlice<Value>;
+    fn locals_mut(&mut self) -> &mut [Value];
 
     /// Returns a reference to the module instance this frame belongs to.
     fn module_instance(&self) -> &Arc<ModuleInstance>;
@@ -103,7 +103,7 @@ pub struct StacklessFrame {
     /// Program counter: offset into the function's instruction stream.
     pc: usize,
     /// Local variables (includes arguments).
-    locals: SafeSlice<Value>, // Max 65536 locals as per Wasm spec, adjust SafeSlice capacity
+    locals: Vec<Value>, // Simplified from SafeSlice to avoid lifetime issues
     /// Reference to the module instance.
     module_instance: Arc<ModuleInstance>,
     /// Index of the function in the module.
@@ -174,16 +174,9 @@ impl StacklessFrame {
             ));
         }
 
-        let locals = SafeSlice::new(&locals_vec, VerificationLevel::High).map_err(|e| {
-            Error::new(
-                codes::INVALID_STATE,
-                format!("Failed to create SafeSlice for locals: {}", e),
-            )
-        })?;
+        let locals = locals_vec;
 
         if locals.len() > max_locals {
-            // This check is more for sizing SafeSlice correctly if it had a fixed capacity.
-            // If SafeSlice dynamically grows or `new` takes a capacity, adjust this.
             return Err(Error::new(
                 codes::INVALID_STATE,
                 "Too many locals for configured max_locals",
@@ -221,11 +214,11 @@ impl FrameBehavior for StacklessFrame {
         &mut self.pc
     }
 
-    fn locals(&self) -> &SafeSlice<Value> {
+    fn locals(&self) -> &[Value] {
         &self.locals
     }
 
-    fn locals_mut(&mut self) -> &mut SafeSlice<Value> {
+    fn locals_mut(&mut self) -> &mut [Value] {
         &mut self.locals
     }
 

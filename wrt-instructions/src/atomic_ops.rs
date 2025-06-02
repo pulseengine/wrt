@@ -272,6 +272,10 @@ pub trait AtomicOperations {
     /// Atomic compare and exchange operations
     fn atomic_cmpxchg_i32(&mut self, addr: u32, expected: i32, replacement: i32) -> Result<i32>;
     fn atomic_cmpxchg_i64(&mut self, addr: u32, expected: i64, replacement: i64) -> Result<i64>;
+    
+    /// Atomic read-modify-write compare and exchange operations (additional variants)
+    fn atomic_rmw_cmpxchg_i32(&mut self, addr: u32, expected: i32, replacement: i32) -> Result<i32>;
+    fn atomic_rmw_cmpxchg_i64(&mut self, addr: u32, expected: i64, replacement: i64) -> Result<i64>;
 }
 
 /// WebAssembly opcodes for atomic operations

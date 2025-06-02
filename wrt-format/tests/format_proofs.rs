@@ -2,13 +2,14 @@
 //!
 //! This module contains tests for the format module functionality.
 
-use wrt_format::{
-    create_state_section, extract_state_section, CompressionType, CustomSection, Module,
-    StateSection,
-};
+use wrt_format::{CompressionType, CustomSection, Module};
+
+#[cfg(any(feature = "alloc", feature = "std"))]
+use wrt_format::{create_state_section, extract_state_section, StateSection};
 
 /// Test basic serialization properties of the format module
 #[test]
+#[cfg(any(feature = "alloc", feature = "std"))]
 fn test_basic_serialization() {
     // Create a simple module
     let mut module = Module::new();
@@ -49,6 +50,7 @@ fn test_basic_serialization() {
 
 /// Test that multiple state sections can be created and extracted
 #[test]
+#[cfg(any(feature = "alloc", feature = "std"))]
 fn test_state_section_format() {
     // Create state sections - only use None compression to avoid RLE issues
     let test_data = vec![1, 2, 3, 4, 5];

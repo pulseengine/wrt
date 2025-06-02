@@ -509,7 +509,7 @@ mod tests {
         let section = CustomSection::new("test-section".to_string(), test_data);
 
         // Create a safe slice
-        let safe_slice = SafeSlice::new(&section.data);
+        let safe_slice = SafeSlice::new(&section.data).unwrap();
 
         // Get the data
         let data = safe_slice.data().unwrap();
