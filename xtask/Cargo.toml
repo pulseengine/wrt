@@ -46,7 +46,7 @@ semver = "1.0"
 # Add tokio for async runtime needed by dagger-sdk
 tokio = { version = "1.45.1", features = ["full"] }
 # Add dagger-sdk
-dagger-sdk = { version = "^0.18.6", features = ["gen"] }
+dagger-sdk = { version = "^0.18.9", features = ["gen"] }
 eyre = "0.6.12"
 
 # Add dagger dependencies for docs pipeline
