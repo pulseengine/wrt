@@ -681,7 +681,10 @@ mod tests {
         assert!(world.is_ok());
         
         let world = world.unwrap();
-        assert_eq!(world.name.as_str(), "test-world");
+        assert_eq!(world.name.as_str().unwrap(), "test-world");
+        
+        // Import BoundedCapacity trait for len() method
+        use wrt_foundation::traits::BoundedCapacity;
         assert_eq!(world.imports.len(), 1);
         assert_eq!(world.exports.len(), 1);
     }

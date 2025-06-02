@@ -4,9 +4,9 @@
 //! allowing debugging at the WIT source level rather than just binary level.
 
 #[cfg(feature = "std")]
-use std::{collections::BTreeMap, vec::Vec, boxed::Box};
+use std::{collections::BTreeMap, vec::Vec, boxed::Box, format};
 #[cfg(all(feature = "alloc", not(feature = "std")))]
-use alloc::{collections::BTreeMap, vec::Vec, boxed::Box};
+use alloc::{collections::BTreeMap, vec::Vec, boxed::Box, format};
 
 use wrt_foundation::{
     BoundedString, NoStdProvider,
@@ -440,9 +440,17 @@ impl WitAwareDebugger for WitDebugger {
     }
     
     fn map_to_wit_diagnostic(&self, error: &ComponentError) -> Option<WitDiagnostic> {
-        let error_str = error.message.as_str().unwrap_or("Unknown error");
-        let runtime_error = Error::runtime_error(error_str);
-        self.source_map.map_error_to_diagnostic(&runtime_error, error.binary_offset)
+        #[cfg(any(feature = "std", feature = "alloc"))]
+        {
+            let error_str = error.message.as_str().unwrap_or("Unknown error");
+            let runtime_error = Error::runtime_error(&format!("{}", error_str));
+            self.source_map.map_error_to_diagnostic(&runtime_error, error.binary_offset)
+        }
+        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        {
+            // For no_std without alloc, we can't format strings
+            None
+        }
     }
     
     fn wit_function_name(&self, function_id: FunctionId) -> Option<BoundedString<64, NoStdProvider<1024>>> {

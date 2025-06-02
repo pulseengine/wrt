@@ -6,7 +6,27 @@
 
 use crate::prelude::*;
 use wrt_error::{Error, ErrorCategory, Result, codes};
+
+#[cfg(feature = "alloc")]
 use wrt_platform::threading::{Thread, ThreadHandle, ThreadSpawnOptions};
+
+// For no_std builds, provide dummy types  
+#[cfg(not(feature = "alloc"))]
+pub struct Thread {
+    pub id: ThreadId,
+}
+
+#[cfg(not(feature = "alloc"))]
+pub struct ThreadHandle {
+    pub id: ThreadId,
+}
+
+#[cfg(not(feature = "alloc"))]
+pub struct ThreadSpawnOptions {
+    pub stack_size: Option<usize>,
+    pub priority: Option<i32>,
+    pub name: Option<&'static str>,
+}
 
 #[cfg(feature = "alloc")]
 use alloc::{vec::Vec, sync::Arc};

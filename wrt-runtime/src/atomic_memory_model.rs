@@ -14,8 +14,8 @@ use wrt_platform::sync::Ordering as PlatformOrdering;
 use alloc::vec::Vec;
 #[cfg(feature = "std")]
 use std::{vec::Vec, sync::Arc, time::Instant};
-#[cfg(not(feature = "alloc"))]
-use wrt_foundation::Vec;
+#[cfg(not(any(feature = "alloc", feature = "std")))]
+use wrt_instructions::Vec;
 
 /// WebAssembly atomic memory model implementation
 #[derive(Debug)]

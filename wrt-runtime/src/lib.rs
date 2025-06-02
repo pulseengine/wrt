@@ -55,6 +55,7 @@ pub mod table;
 pub mod thread_manager;
 pub mod types;
 pub mod wait_queue;
+pub mod wit_debugger_integration;
 
 // Re-export commonly used types
 pub use atomic_execution::{AtomicMemoryContext, AtomicExecutionStats};
@@ -82,6 +83,14 @@ pub use thread_manager::{
 pub use wait_queue::{
     WaitQueueManager, WaitQueue, WaitQueueId, WaitResult, WaitQueueStats,
     WaitQueueGlobalStats, pause,
+};
+#[cfg(feature = "wit-debug-integration")]
+pub use wit_debugger_integration::{
+    WrtRuntimeState, WrtDebugMemory, DebuggableWrtRuntime,
+    create_wit_enabled_runtime, create_component_metadata, 
+    create_function_metadata, create_type_metadata,
+    ComponentMetadata, FunctionMetadata, TypeMetadata, WitTypeKind,
+    Breakpoint, BreakpointCondition,
 };
 pub use func::FuncType;
 pub use global::Global;

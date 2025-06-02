@@ -469,6 +469,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(any(feature = "alloc", feature = "std"))]
     fn test_custom_section_serialization() {
         let test_data = vec![1, 2, 3, 4];
         let section = CustomSection::new("test-section".to_string(), test_data.clone());
@@ -502,6 +503,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(any(feature = "alloc", feature = "std"))]
     fn test_custom_section_data_access() {
         let test_data = vec![1, 2, 3, 4];
         let section = CustomSection::new("test-section".to_string(), test_data);
@@ -517,6 +519,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(any(feature = "alloc", feature = "std"))]
     fn test_component_section_header() {
         // Create a binary section header
         let header_bytes = write_component_section_header(ComponentSectionType::CoreModule, 42);
@@ -533,6 +536,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(any(feature = "alloc", feature = "std"))]
     fn test_format_component_section() {
         // Create a section with some content
         let section_content = vec![1, 2, 3, 4, 5];
@@ -557,11 +561,13 @@ mod tests {
     }
 
     #[test]
+    #[cfg(any(feature = "alloc", feature = "std"))]
     fn test_invalid_component_section_id() {
         // Create an invalid section ID
         let mut header_bytes = Vec::new();
         header_bytes.push(255); // Invalid section ID
-        header_bytes.extend_from_slice(&crate::binary::write_leb128_u32(42));
+        // Use a manual LEB128 encoding for 42
+        header_bytes.push(42); // 42 fits in one byte for LEB128
 
         // Parse should fail
         let result = parse_component_section_header(&header_bytes, 0);
