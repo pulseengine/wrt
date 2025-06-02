@@ -36,7 +36,7 @@ version = "0.2.0" # Updated to 0.2.0 for consistency
 [workspace.dependencies]
 anyhow = "1.0"
 wit-bindgen = "0.41.0"
-dagger-sdk = { version = "0.18.6", features = ["codegen"] }
+dagger-sdk = { version = "0.18.9", features = ["codegen"] }
 
 # Internal crate versions
 # wrt-safety = { path = "wrt-safety", version = "0.2.0", default-features = false }
