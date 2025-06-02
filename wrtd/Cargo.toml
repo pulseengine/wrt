@@ -38,7 +38,7 @@ wrt-component = { workspace = true, default-features = false, optional = true }
 wrt-intercept = { workspace = true, default-features = false, optional = true }
 
 # Standard library dependencies (std-runtime only)
-clap = { version = "4.5.37", features = ["derive"], optional = true }
+clap = { version = "4.5.39", features = ["derive"], optional = true }
 tracing = { version = "0.1", optional = true }
 tracing-subscriber = { version = "0.3", features = ["json"], optional = true }
 anyhow = { workspace = true, optional = true }
