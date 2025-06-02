@@ -78,6 +78,7 @@ pub mod call_context;
 pub mod cross_component_communication;
 pub mod error_format;
 pub mod error_context_builtins;
+pub mod fixed_length_lists;
 pub mod execution_engine;
 pub mod generative_types;
 pub mod handle_representation;
@@ -95,6 +96,7 @@ pub mod task_manager;
 pub mod task_cancellation;
 pub mod task_builtins;
 pub mod waitable_set_builtins;
+pub mod advanced_threading_builtins;
 pub mod thread_builtins;
 pub mod thread_spawn;
 pub mod thread_spawn_fuel;
@@ -241,6 +243,15 @@ pub use waitable_set_builtins::{
 pub use error_context_builtins::{
     ErrorContextBuiltins, ErrorContextId, ErrorContextImpl, ErrorContextRegistry, ErrorSeverity,
     StackFrame, error_context_helpers,
+};
+pub use advanced_threading_builtins::{
+    AdvancedThreadingBuiltins, AdvancedThreadId, AdvancedThread, AdvancedThreadRegistry,
+    AdvancedThreadState, FunctionReference, IndirectCall, ThreadLocalEntry,
+    advanced_threading_helpers,
+};
+pub use fixed_length_lists::{
+    FixedLengthList, FixedLengthListType, FixedLengthListTypeRegistry,
+    component_integration::{ExtendedValueType}, fixed_list_utils,
 };
 pub use type_bounds::{
     RelationConfidence, RelationKind, RelationResult, TypeBoundsChecker, TypeRelation,
