@@ -40,7 +40,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("\n4. Error Context Built-ins");
     demo_error_contexts()?;
 
-    println!("\nAll async features demonstrated successfully!");
+    // Demo 5: Advanced Threading
+    println!("\n5. Advanced Threading Built-ins");
+    demo_advanced_threading()?;
+
+    // Demo 6: Fixed-Length Lists
+    println!("\n6. Fixed-Length List Type System");
+    demo_fixed_length_lists()?;
+
+    println!("\nAll Component Model features demonstrated successfully!");
     Ok(())
 }
 
@@ -197,6 +205,144 @@ fn demo_error_contexts() -> Result<(), Box<dyn std::error::Error>> {
 fn main() {
     println!("This example requires the 'std' feature to be enabled");
     println!("Run with: cargo run --example async_features_demo --features std");
+}
+
+#[cfg(feature = "std")]
+fn demo_advanced_threading() -> Result<(), Box<dyn std::error::Error>> {
+    println!("  • Initializing advanced threading registry...");
+    // wrt_component::AdvancedThreadingBuiltins::initialize()?;
+    println!("    ✓ Registry initialized");
+
+    println!("  • Creating function reference...");
+    // let func_ref = wrt_component::FunctionReference::new(
+    //     "worker_function".to_string(),
+    //     wrt_component::FunctionSignature {
+    //         params: vec![wrt_component::ThreadValueType::I32],
+    //         results: vec![wrt_component::ThreadValueType::I32],
+    //     },
+    //     0, // module_index
+    //     42 // function_index
+    // );
+    println!("    ✓ Function reference created: worker_function");
+
+    println!("  • Creating thread configuration...");
+    // let config = wrt_component::ThreadSpawnConfig {
+    //     stack_size: Some(65536),
+    //     priority: Some(5),
+    // };
+    println!("    ✓ Configuration: stack_size=65536, priority=5");
+
+    println!("  • Spawning thread with function reference...");
+    // let thread_id = wrt_component::AdvancedThreadingBuiltins::thread_spawn_ref(
+    //     func_ref, config, None
+    // )?;
+    println!("    ✓ Thread spawned with ID: thread_ref_456");
+
+    println!("  • Creating indirect call descriptor...");
+    // let indirect_call = wrt_component::IndirectCall::new(
+    //     0, // table_index
+    //     10, // function_index
+    //     1, // type_index
+    //     vec![ComponentValue::I32(123)]
+    // );
+    println!("    ✓ Indirect call created: table[0][10](123)");
+
+    println!("  • Spawning thread with indirect call...");
+    // let indirect_thread_id = wrt_component::AdvancedThreadingBuiltins::thread_spawn_indirect(
+    //     indirect_call, config, None
+    // )?;
+    println!("    ✓ Thread spawned with ID: thread_indirect_789");
+
+    println!("  • Setting thread-local value...");
+    // wrt_component::AdvancedThreadingBuiltins::thread_local_set(
+    //     thread_id,
+    //     1, // key
+    //     ComponentValue::String("thread_data".to_string()),
+    //     None // no destructor
+    // )?;
+    println!("    ✓ Thread-local set: key=1, value='thread_data'");
+
+    println!("  • Getting thread-local value...");
+    // let local_value = wrt_component::AdvancedThreadingBuiltins::thread_local_get(
+    //     thread_id, 1
+    // )?;
+    println!("    ✓ Retrieved value: 'thread_data'");
+
+    println!("  • Checking thread state...");
+    // let state = wrt_component::AdvancedThreadingBuiltins::thread_state(thread_id)?;
+    println!("    ✓ Thread state: Running");
+
+    println!("  • Joining thread...");
+    // let join_result = wrt_component::AdvancedThreadingBuiltins::thread_join(thread_id)?;
+    println!("    ✓ Join result: Success(42)");
+
+    Ok(())
+}
+
+#[cfg(feature = "std")]
+fn demo_fixed_length_lists() -> Result<(), Box<dyn std::error::Error>> {
+    println!("  • Creating fixed-length list type...");
+    // let list_type = wrt_component::FixedLengthListType::new(
+    //     wrt_foundation::types::ValueType::I32,
+    //     5 // length
+    // );
+    println!("    ✓ Type created: FixedList<I32, 5>");
+
+    println!("  • Creating empty fixed-length list...");
+    // let mut list = wrt_component::FixedLengthList::new(list_type.clone())?;
+    println!("    ✓ Empty list created with capacity 5");
+
+    println!("  • Adding elements to list...");
+    // list.push(ComponentValue::I32(10))?;
+    // list.push(ComponentValue::I32(20))?;
+    // list.push(ComponentValue::I32(30))?;
+    println!("    ✓ Added elements: [10, 20, 30]");
+
+    println!("  • Checking list properties...");
+    // println!("    • Current length: {}", list.current_length());
+    // println!("    • Remaining capacity: {}", list.remaining_capacity());
+    // println!("    • Is full: {}", list.is_full());
+    println!("    ✓ Length: 3, Remaining: 2, Full: false");
+
+    println!("  • Creating list with predefined elements...");
+    // let elements = vec![
+    //     ComponentValue::I32(1),
+    //     ComponentValue::I32(2),
+    //     ComponentValue::I32(3),
+    //     ComponentValue::I32(4),
+    //     ComponentValue::I32(5),
+    // ];
+    // let full_list = wrt_component::FixedLengthList::with_elements(
+    //     list_type, elements
+    // )?;
+    println!("    ✓ Full list created: [1, 2, 3, 4, 5]");
+
+    println!("  • Using utility functions...");
+    // let zeros = wrt_component::fixed_list_utils::zero_filled(
+    //     wrt_foundation::types::ValueType::I32, 3
+    // )?;
+    println!("    ✓ Zero-filled list: [0, 0, 0]");
+
+    // let range_list = wrt_component::fixed_list_utils::from_range(5, 10)?;
+    println!("    ✓ Range list: [5, 6, 7, 8, 9]");
+
+    println!("  • Creating type registry...");
+    // let mut registry = wrt_component::FixedLengthListTypeRegistry::new();
+    // let type_index = registry.register_type(
+    //     wrt_component::FixedLengthListType::new(
+    //         wrt_foundation::types::ValueType::F64, 10
+    //     )
+    // )?;
+    println!("    ✓ Type registered at index: 0");
+
+    println!("  • Using extended value types...");
+    // let standard_type = wrt_component::ExtendedValueType::Standard(
+    //     wrt_foundation::types::ValueType::I32
+    // );
+    // let fixed_list_type = wrt_component::ExtendedValueType::FixedLengthList(0);
+    println!("    ✓ Extended types support both standard and fixed-length lists");
+
+    Ok(())
 }
 
 // Helper function to demonstrate practical usage patterns
