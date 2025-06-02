@@ -108,6 +108,7 @@ pub mod prelude;
 pub mod runtime_detection;
 pub mod simd;
 pub mod sync;
+pub mod time;
 
 // Enhanced platform features
 pub mod advanced_sync;

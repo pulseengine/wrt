@@ -30,16 +30,21 @@ pub use wrt_sync::{WrtMutex as Mutex, WrtRwLock as RwLock, WrtMutexGuard as Mute
 #[cfg(not(any(feature = "std", feature = "alloc")))]
 pub use wrt_sync::{WrtMutex as Mutex, WrtRwLock as RwLock, WrtMutexGuard as MutexGuard};
 
-// Provide a simple Condvar alternative for non-std builds
+/// Provide a simple Condvar alternative for non-std builds
+/// 
+/// This is a minimal implementation that provides the Condvar API
+/// but returns errors for operations that require std functionality.
 #[cfg(not(feature = "std"))]
 pub struct Condvar;
 
 #[cfg(not(feature = "std"))]
 impl Condvar {
+    /// Create a new condition variable
     pub fn new() -> Self {
         Self
     }
     
+    /// Wait on the condition variable (not supported in no_std)
     pub fn wait<'a, T>(&self, _guard: MutexGuard<'a, T>) -> Result<MutexGuard<'a, T>> {
         Err(wrt_error::Error::new(
             wrt_error::ErrorCategory::Runtime,
@@ -48,7 +53,10 @@ impl Condvar {
         ))
     }
     
+    /// Notify one waiting thread (no-op in no_std)
     pub fn notify_one(&self) {}
+    
+    /// Notify all waiting threads (no-op in no_std)
     pub fn notify_all(&self) {}
 }
 
