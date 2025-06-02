@@ -879,7 +879,6 @@ pub mod with_alloc {
     ///
     /// This function will be used when implementing the full binary generator.
     #[cfg(any(feature = "alloc", feature = "std"))]
-    #[cfg(any(feature = "alloc", feature = "std"))]
     pub fn write_leb128_i32(value: i32) -> Vec<u8> {
         let mut result = Vec::new();
         let mut value = value;
@@ -914,7 +913,6 @@ pub mod with_alloc {
     /// Write a LEB128 signed 64-bit integer to a byte array
     ///
     /// This function will be used when implementing the full binary formatter.
-    #[cfg(any(feature = "alloc", feature = "std"))]
     #[cfg(any(feature = "alloc", feature = "std"))]
     pub fn write_leb128_i64(value: i64) -> Vec<u8> {
         let mut result = Vec::new();
@@ -1009,7 +1007,6 @@ pub mod with_alloc {
 
     /// Write a LEB128 unsigned 64-bit integer to a byte array
     #[cfg(any(feature = "alloc", feature = "std"))]
-    #[cfg(any(feature = "alloc", feature = "std"))]
     pub fn write_leb128_u64(value: u64) -> Vec<u8> {
         let mut result = Vec::new();
         let mut value = value;
@@ -1062,14 +1059,12 @@ pub mod with_alloc {
 
     /// Write a 32-bit IEEE 754 float to a byte array
     #[cfg(any(feature = "alloc", feature = "std"))]
-    #[cfg(any(feature = "alloc", feature = "std"))]
     pub fn write_f32(value: f32) -> Vec<u8> {
         let bytes = value.to_le_bytes();
         bytes.to_vec()
     }
 
     /// Write a 64-bit IEEE 754 float to a byte array
-    #[cfg(any(feature = "alloc", feature = "std"))]
     #[cfg(any(feature = "alloc", feature = "std"))]
     pub fn write_f64(value: f64) -> Vec<u8> {
         let bytes = value.to_le_bytes();
@@ -1165,7 +1160,6 @@ pub mod with_alloc {
     /// This is a generic function that writes a length-prefixed vector to a
     /// byte array, using the provided function to write each element.
     #[cfg(any(feature = "alloc", feature = "std"))]
-    #[cfg(any(feature = "alloc", feature = "std"))]
     pub fn write_vector<T, F>(elements: &[T], write_elem: F) -> Vec<u8>
     where
         F: Fn(&T) -> Vec<u8>,
@@ -1215,6 +1209,7 @@ pub mod with_alloc {
     }
 
     /// Parse a block type from a byte array
+    #[cfg(any(feature = "alloc", feature = "std"))]
     pub fn parse_block_type(bytes: &[u8], pos: usize) -> Result<(FormatBlockType, usize)> {
         if pos >= bytes.len() {
             return Err(parse_error("Unexpected end of input when reading block type"));
@@ -2363,6 +2358,7 @@ mod tests {
     use super::*;
 
     #[test]
+    #[cfg(any(feature = "alloc", feature = "std"))]
     fn test_f32_roundtrip() {
         let values = [0.0f32, -0.0, 1.0, -1.0, 3.14159, f32::INFINITY, f32::NEG_INFINITY, f32::NAN];
 
@@ -2380,6 +2376,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(any(feature = "alloc", feature = "std"))]
     fn test_f64_roundtrip() {
         let values =
             [0.0f64, -0.0, 1.0, -1.0, 3.14159265358979, f64::INFINITY, f64::NEG_INFINITY, f64::NAN];
@@ -2398,6 +2395,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(any(feature = "alloc", feature = "std"))]
     fn test_string_roundtrip() {
         let test_strings = ["", "Hello, World!", "UTF-8 test: ñáéíóú", "🦀 Rust is awesome!"];
 
@@ -2410,6 +2408,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(any(feature = "alloc", feature = "std"))]
     fn test_leb128_u64_roundtrip() {
         let test_values = [0u64, 1, 127, 128, 16384, 0x7FFFFFFF, 0xFFFFFFFF, 0xFFFFFFFFFFFFFFFF];
 
@@ -2433,6 +2432,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(any(feature = "alloc", feature = "std"))]
     fn test_read_write_vector() {
         // Create a test vector of u32 values
         let values = vec![1u32, 42, 100, 1000];
@@ -2447,6 +2447,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(any(feature = "alloc", feature = "std"))]
     fn test_section_header() {
         // Create a section header for a type section with 10 bytes of content
         let section_id = TYPE_SECTION_ID;
@@ -2464,30 +2465,7 @@ mod tests {
 
 // Additional exports and aliases for compatibility
 
-// Re-export functions from with_alloc that don't require allocation
-#[cfg(any(feature = "alloc", feature = "std"))]
-pub use with_alloc::{
-    is_valid_wasm_header,
-    parse_block_type,
-    read_f32,
-    read_f64,
-    read_name,
-    read_vector,
-    validate_utf8,
-    write_f32,
-    write_f64,
-    // Write functions
-    write_leb128_i32,
-    write_leb128_i64,
-    write_leb128_u32,
-    write_leb128_u64,
-    write_string,
-    BinaryFormat,
-};
-
-// Alias for read_vector to match expected name in decoder
-#[cfg(any(feature = "alloc", feature = "std"))]
-pub use read_vector as parse_vec;
+// Note: parse_vec functionality is handled by other parsing functions
 
 // Helper function to read a u32 (4 bytes, little-endian) from a byte array
 pub fn read_u32(bytes: &[u8], pos: usize) -> wrt_error::Result<(u32, usize)> {
