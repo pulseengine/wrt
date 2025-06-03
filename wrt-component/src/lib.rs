@@ -38,37 +38,17 @@ fn panic(_info: &core::panic::PanicInfo) -> ! {
 // Export our prelude module for consistent imports
 pub mod prelude;
 
-// Export modules - some are conditionally compiled
+// Export modules - organized in subdirectories
 pub mod adapter;
-pub mod async_canonical;
-pub mod async_runtime;
-pub mod streaming_canonical;
-pub mod async_runtime_bridge;
-pub mod async_execution_engine;
-pub mod async_canonical_lifting;
-pub mod async_types;
-pub mod async_context_builtins;
+pub mod async_;
+pub mod canonical_abi;
+pub mod components;
+pub mod threading;
 pub mod borrowed_handles;
 pub mod builtins;
-pub mod canonical;
-pub mod canonical_abi;
+pub mod streaming_canonical;
 #[cfg(test)]
 pub mod canonical_abi_tests;
-pub mod canonical_options;
-pub mod canonical_realloc;
-#[cfg(feature = "std")]
-pub mod component;
-pub mod component_instantiation;
-#[cfg(test)]
-pub mod component_instantiation_tests;
-pub mod component_linker;
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-pub mod component_no_std;
-#[cfg(feature = "std")]
-pub mod component_registry;
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-pub mod component_registry_no_std;
-pub mod component_resolver;
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 pub mod component_value_no_std;
 pub mod cross_component_calls;
@@ -86,20 +66,10 @@ pub mod host_integration;
 pub mod memory_layout;
 pub mod memory_table_management;
 pub mod post_return;
-pub mod resource_lifecycle;
-pub mod resource_management;
 #[cfg(test)]
 pub mod resource_management_tests;
 pub mod start_function_validation;
 pub mod string_encoding;
-pub mod task_manager;
-pub mod task_cancellation;
-pub mod task_builtins;
-pub mod waitable_set_builtins;
-pub mod advanced_threading_builtins;
-pub mod thread_builtins;
-pub mod thread_spawn;
-pub mod thread_spawn_fuel;
 pub mod type_bounds;
 pub mod virtualization;
 pub mod wit_integration;
@@ -114,8 +84,6 @@ pub mod factory;
 pub mod host;
 pub mod import;
 pub mod import_map;
-pub mod resource_lifecycle_management;
-pub mod resource_representation;
 #[cfg(feature = "std")]
 pub mod instance;
 #[cfg(all(not(feature = "std"), feature = "alloc"))]

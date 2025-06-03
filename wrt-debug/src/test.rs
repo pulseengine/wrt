@@ -6,9 +6,15 @@
 
 #[cfg(test)]
 mod tests {
-    use crate::{AbbreviationTable, DwarfDebugInfo, LineInfo};
+    #[cfg(feature = "abbrev")]
+    use crate::AbbreviationTable;
+    #[cfg(feature = "debug-info")]
+    use crate::DwarfDebugInfo;
+    #[cfg(feature = "line-info")]
+    use crate::LineInfo;
 
     #[test]
+    #[cfg(feature = "debug-info")]
     fn test_create_debug_info() {
         let module_bytes = &[0u8; 100];
         let debug_info = DwarfDebugInfo::new(module_bytes);
@@ -16,6 +22,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "debug-info")]
     fn test_add_section() {
         let module_bytes = &[0u8; 100];
         let mut debug_info = DwarfDebugInfo::new(module_bytes);
@@ -25,6 +32,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "debug-info")]
     fn test_add_multiple_sections() {
         let module_bytes = &[0u8; 1000];
         let mut debug_info = DwarfDebugInfo::new(module_bytes);

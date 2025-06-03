@@ -3,11 +3,19 @@
 //! This module implements the wait queue primitives from the WebAssembly
 //! shared-everything-threads proposal, providing flexible synchronization
 //! mechanisms beyond basic atomic wait/notify operations.
+//!
+//! # Safety
+//!
+//! This module uses unsafe code for CPU-specific pause instructions to optimize
+//! busy-wait loops. All unsafe blocks are documented and platform-specific.
+
+#![allow(unsafe_code)]
 
 use crate::prelude::*;
 use crate::thread_manager::{ThreadId, ThreadState};
 use wrt_error::{Error, ErrorCategory, Result, codes};
 use wrt_platform::sync::{Mutex, Condvar};
+use core::time::Duration;
 
 #[cfg(feature = "alloc")]
 use alloc::{vec::Vec, collections::BTreeMap, sync::Arc};
@@ -551,10 +559,12 @@ pub fn pause() {
     {
         // Use CPU pause instruction if available
         #[cfg(target_arch = "x86_64")]
+        // SAFETY: _mm_pause is a safe CPU instruction with no side effects
         unsafe {
             core::arch::x86_64::_mm_pause();
         }
         #[cfg(target_arch = "aarch64")]
+        // SAFETY: __yield is a safe CPU instruction with no side effects
         unsafe {
             core::arch::aarch64::__yield();
         }

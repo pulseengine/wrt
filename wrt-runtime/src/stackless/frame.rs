@@ -24,6 +24,7 @@ pub use wrt_instructions::control_ops::BranchTarget as Label;
 // Internal imports
 use super::engine::StacklessEngine;
 use crate::prelude::*;
+use crate::memory_adapter::StdMemoryProvider;
 use crate::{
     global::Global,
     memory::Memory,
@@ -62,7 +63,7 @@ pub trait FrameBehavior {
     fn function_index(&self) -> u32;
 
     /// Returns the type (signature) of the function this frame represents.
-    fn function_type(&self) -> &FuncType;
+    fn function_type(&self) -> &FuncType<StdMemoryProvider>;
 
     /// Returns the arity (number of return values) of the function.
     fn arity(&self) -> usize;
@@ -109,15 +110,18 @@ pub struct StacklessFrame {
     /// Index of the function in the module.
     func_idx: u32,
     /// Type of the function.
-    func_type: FuncType,
+    func_type: FuncType<StdMemoryProvider>,
     /// Arity of the function (number of result values).
     arity: usize,
     /// Block depths for control flow.
-    block_depths: Vec<BlockContext>, // Manages block context (pc, stack depth)
+    #[cfg(any(feature = "std", feature = "alloc"))]
+    block_depths: alloc::vec::Vec<BlockContext>, // Use standard Vec for internal state
+    #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+    block_depths: [Option<BlockContext>; 16], // Fixed array for no_std
 }
 
 /// Context for a control flow block (block, loop, if).
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct BlockContext {
     /// The type of the block.
     block_type: BlockType,
@@ -190,7 +194,10 @@ impl StacklessFrame {
             func_idx,
             arity: func_type.results.len(),
             func_type,
-            block_depths: Vec::new(),
+            #[cfg(any(feature = "std", feature = "alloc"))]
+            block_depths: alloc::vec::Vec::new(),
+            #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+            block_depths: [None; 16],
         })
     }
 
@@ -230,7 +237,7 @@ impl FrameBehavior for StacklessFrame {
         self.func_idx
     }
 
-    fn function_type(&self) -> &FuncType {
+    fn function_type(&self) -> &FuncType<StdMemoryProvider> {
         &self.func_type
     }
 
@@ -269,7 +276,7 @@ impl FrameBehavior for StacklessFrame {
                 "Unreachable instruction executed",
             ))),
             Instruction::Nop => Ok(ControlFlow::Next),
-            Instruction::Block(_block_type_idx) => {
+            Instruction::Block { block_type_idx: _ } => {
                 // TODO: Resolve block_type_idx to BlockType from module
                 // TODO: Push BlockContext to self.block_depths
                 // Placeholder:
@@ -278,11 +285,11 @@ impl FrameBehavior for StacklessFrame {
                 // end_pc */, None); Ok(ControlFlow::Next)
                 todo!("Block instruction")
             }
-            Instruction::Loop(_block_type_idx) => {
+            Instruction::Loop { block_type_idx: _ } => {
                 // TODO: Similar to Block, but branches go to start of loop
                 todo!("Loop instruction")
             }
-            Instruction::If(_block_type_idx) => {
+            Instruction::If { block_type_idx: _ } => {
                 // TODO: Pop condition. If true, proceed. If false, jump to else or end.
                 // let condition = engine.value_stack.pop()?.as_i32()? != 0;
                 // if condition { ... } else { self.pc = else_pc_or_end_pc; }
@@ -1077,7 +1084,17 @@ impl StacklessFrame {
 // Validatable might not be applicable directly to StacklessFrame in the same
 // way as Module. If it's for ensuring internal consistency, it might be useful.
 impl Validatable for StacklessFrame {
-    fn validate(&self, _level: VerificationLevel) -> Result<()> {
+    type Error = Error;
+    
+    fn validation_level(&self) -> VerificationLevel {
+        VerificationLevel::Basic
+    }
+    
+    fn set_validation_level(&mut self, _level: VerificationLevel) {
+        // Validation level is fixed for frames
+    }
+    
+    fn validate(&self) -> Result<()> {
         // Example validations:
         // - self.pc should be within bounds of function code
         // - self.locals should match arity + declared locals of self.func_type

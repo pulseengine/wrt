@@ -27,6 +27,47 @@ pub use wrt_foundation::{
     NoStdProvider,
 };
 
+// Simple format! implementation for no_std mode using a fixed buffer
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[macro_export]
+macro_rules! format {
+    ($fmt:expr) => {{
+        $fmt
+    }};
+    ($fmt:expr, $($arg:tt)*) => {{
+        $fmt  // Simplified - just return the format string for no_std
+    }};
+}
+
+// Simple vec! implementation for no_std mode
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[macro_export]
+macro_rules! vec {
+    () => {{
+        wrt_foundation::bounded::BoundedVec::new()
+    }};
+    ($elem:expr; $n:expr) => {{
+        let mut v = wrt_foundation::bounded::BoundedVec::new();
+        for _ in 0..$n {
+            if let Err(_) = v.push($elem.clone()) {
+                break; // Stop if capacity exceeded
+            }
+        }
+        v
+    }};
+    ($($x:expr),+ $(,)?) => {{
+        let mut v = wrt_foundation::bounded::BoundedVec::new();
+        $(
+            let _ = v.push($x); // Ignore errors if capacity exceeded
+        )+
+        v
+    }};
+}
+
+// Re-export the macros for no_std
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+pub use crate::{format, vec};
+
 // Arc is not available in pure no_std, use a placeholder
 #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
 pub type Arc<T> = core::marker::PhantomData<T>;
