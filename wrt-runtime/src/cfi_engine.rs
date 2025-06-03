@@ -24,6 +24,49 @@ use wrt_instructions::{
     CfiControlFlowOps, CfiControlFlowProtection, CfiExecutionContext, CfiProtectedBranchTarget,
     DefaultCfiControlFlowOps,
 };
+// CFI types - define locally if not available in wrt_instructions
+#[cfg(not(feature = "alloc"))]
+mod cfi_types {
+    #[derive(Debug, Clone, PartialEq)]
+    pub enum CfiHardwareInstruction {
+        ArmBti { mode: ArmBtiMode },
+    }
+    
+    #[derive(Debug, Clone, Copy, PartialEq)]
+    pub enum ArmBtiMode {
+        Call,
+        Jump,
+        CallOrJump,
+    }
+    
+    #[derive(Debug, Clone)]
+    pub struct CfiSoftwareValidation {
+        pub shadow_stack_requirement: Option<ShadowStackRequirement>,
+    }
+    
+    #[derive(Debug, Clone, PartialEq)]
+    pub enum ShadowStackRequirement {
+        Push { return_address: u32, stack_pointer: u32 },
+        Pop { expected_return: u32 },
+        Validate,
+    }
+    
+    #[derive(Debug, Clone)]
+    pub struct ShadowStackEntry {
+        pub return_address: u32,
+        pub stack_pointer: u32,
+        pub function_index: u32,
+    }
+}
+
+#[cfg(not(feature = "alloc"))]
+use cfi_types::{CfiHardwareInstruction, ArmBtiMode, CfiSoftwareValidation, ShadowStackRequirement, ShadowStackEntry};
+
+#[cfg(feature = "alloc")]
+use wrt_instructions::cfi_control_ops::{
+    CfiHardwareInstruction, ArmBtiMode, CfiSoftwareValidation,
+    ShadowStackRequirement, ShadowStackEntry
+};
 
 use crate::{execution::ExecutionContext, prelude::*, stackless::StacklessEngine};
 
@@ -388,11 +431,11 @@ impl CfiExecutionEngine {
     /// Validate hardware CFI instruction
     fn validate_hardware_instruction(
         &self,
-        hw_instruction: &wrt_instructions::CfiHardwareInstruction,
+        hw_instruction: &CfiHardwareInstruction,
     ) -> Result<()> {
         match hw_instruction {
             #[cfg(target_arch = "aarch64")]
-            wrt_instructions::CfiHardwareInstruction::ArmBti { mode } => {
+            CfiHardwareInstruction::ArmBti { mode } => {
                 self.validate_arm_bti_instruction(*mode)
             }
 
@@ -407,7 +450,7 @@ impl CfiExecutionEngine {
     }
 
     #[cfg(target_arch = "aarch64")]
-    fn validate_arm_bti_instruction(&self, _mode: wrt_instructions::ArmBtiMode) -> Result<()> {
+    fn validate_arm_bti_instruction(&self, _mode: ArmBtiMode) -> Result<()> {
         // Insert ARM BTI instruction and validate it executed correctly
         // This would involve architecture-specific validation
         Ok(())
@@ -430,7 +473,7 @@ impl CfiExecutionEngine {
     /// Validate software CFI validation
     fn validate_software_validation(
         &self,
-        _sw_validation: &wrt_instructions::CfiSoftwareValidation,
+        _sw_validation: &CfiSoftwareValidation,
     ) -> Result<()> {
         // TODO: Implement software validation logic
         Ok(())
@@ -441,12 +484,12 @@ impl CfiExecutionEngine {
         &mut self,
         protected_target: &CfiProtectedBranchTarget,
     ) -> Result<()> {
-        if let wrt_instructions::ShadowStackRequirement::Push {
+        if let ShadowStackRequirement::Push {
             return_address,
             function_signature,
         } = &protected_target.protection.shadow_stack_requirement
         {
-            let shadow_entry = wrt_instructions::ShadowStackEntry {
+            let shadow_entry = ShadowStackEntry {
                 return_address: (
                     self.cfi_context.current_function,
                     self.cfi_context.current_instruction + 1,

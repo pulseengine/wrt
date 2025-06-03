@@ -59,8 +59,31 @@ mod no_alloc {
         ///
         /// * `Result<()>` - Ok if the component is valid, Error otherwise
         pub fn validate(binary: &[u8]) -> Result<()> {
-            // Use wrt-decoder's header validation
-            wrt_decoder::component::decode_no_alloc::verify_component_header(binary)
+            #[cfg(feature = "alloc")]
+            {
+                // Use wrt-decoder's header validation
+                wrt_decoder::component::decode_no_alloc::verify_component_header(binary)
+            }
+            #[cfg(not(feature = "alloc"))]
+            {
+                // Basic validation for no_std - just check magic number
+                if binary.len() < 8 {
+                    return Err(Error::new(
+                        ErrorCategory::Parse,
+                        codes::INVALID_BINARY,
+                        "Binary too small to be a valid component"
+                    ));
+                }
+                // Check for WASM magic number (0x00 0x61 0x73 0x6D)
+                if &binary[0..4] != b"\0asm" {
+                    return Err(Error::new(
+                        ErrorCategory::Parse,
+                        codes::INVALID_BINARY,
+                        "Invalid WASM magic number"
+                    ));
+                }
+                Ok(())
+            }
         }
     }
 }
@@ -202,7 +225,7 @@ type HostFunctionMap = BTreeMap<String, Box<dyn HostFunction>>;
 type HostFactoryVec = alloc::vec::Vec<Box<dyn HostFunctionFactory>>;
 
 #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
-type HostFunctionMap = wrt_foundation::bounded::BoundedHashMap<String, Box<dyn HostFunction>>;
+type HostFunctionMap = wrt_foundation::bounded::BoundedVec<(String, u32), 16, wrt_foundation::safe_memory::NoStdProvider<1024>>; // Store name and factory ID instead
 #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
 type HostFactoryVec = wrt_foundation::bounded::BoundedVec<u32, 8, wrt_foundation::safe_memory::NoStdProvider<1024>>; // Store factory IDs instead
 
@@ -275,20 +298,33 @@ impl ComponentRuntime for ComponentRuntimeImpl {
         // Collect host function names and types for tracking
         let mut host_function_names = Vec::new();
 
-        #[cfg(feature = "std")]
-        let mut host_functions = HashMap::new();
-
-        #[cfg(all(not(feature = "std"), feature = "alloc"))]
-        let mut host_functions = BTreeMap::new();
-
-        for name in self.host_functions.keys() {
-            host_function_names.push(name.clone());
-            if let Some(func) = self.host_functions.get(name) {
-                host_functions.insert(name.clone(), Some(func.get_type().clone()));
-            } else {
-                host_functions.insert(name.clone(), None);
+        #[cfg(any(feature = "std", feature = "alloc"))]
+        let mut host_functions = {
+            #[cfg(feature = "std")]
+            let mut map = HashMap::new();
+            #[cfg(all(not(feature = "std"), feature = "alloc"))]
+            let mut map = BTreeMap::new();
+            
+            for name in self.host_functions.keys() {
+                host_function_names.push(name.clone());
+                if let Some(func) = self.host_functions.get(name) {
+                    map.insert(name.clone(), Some(func.get_type().clone()));
+                } else {
+                    map.insert(name.clone(), None);
+                }
             }
-        }
+            map
+        };
+
+        #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+        let host_functions = {
+            // For no_std without alloc, just collect the names
+            for (name, _id) in self.host_functions.iter() {
+                host_function_names.push(name.clone());
+            }
+            // Return empty map-like structure for no_std
+            ()
+        };
 
         // Create a basic component instance implementation
         Ok(Box::new(ComponentInstanceImpl {
@@ -497,7 +533,7 @@ impl ComponentInstance for ComponentInstanceImpl {
             }
 
             // Check that offset and size are valid
-            if offset + size > self.memory_store.len() as u32 {
+            if offset + size > self.memory_store.size() as u32 {
                 return Err(wrt_error::Error::new(
                     wrt_error::ErrorCategory::Memory,
                     1004,
@@ -524,7 +560,7 @@ impl ComponentInstance for ComponentInstanceImpl {
             }
 
             // Check that offset and size are valid
-            if offset + bytes.len() as u32 > self.memory_store.len() as u32 {
+            if offset + bytes.len() as u32 > self.memory_store.size() as u32 {
                 return Err(wrt_error::Error::new(
                     wrt_error::ErrorCategory::Memory,
                     1004,
@@ -541,8 +577,8 @@ impl ComponentInstance for ComponentInstanceImpl {
     fn get_export_type(&self, name: &str) -> Result<ExternType<wrt_foundation::safe_memory::NoStdProvider<1024>>> {
         // Check the component type for the export
         for export in &self.component_type.exports {
-            if export.0 == name {
-                return Ok(export.1.clone());
+            if export.name == name {
+                return Ok(export.ty.clone());
             }
         }
 

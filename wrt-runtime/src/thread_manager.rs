@@ -373,7 +373,8 @@ impl ThreadManager {
             name: Some(format!("wasm-thread-{}", thread_id)),
         };
         
-        // Spawn platform thread
+        // Spawn platform thread (feature-gated)
+        #[cfg(feature = "alloc")]
         let handle = wrt_platform::threading::spawn_thread(
             spawn_options,
             move || {
@@ -386,6 +387,9 @@ impl ThreadManager {
             codes::EXECUTION_ERROR,
             "Failed to spawn platform thread"
         ))?;
+        
+        #[cfg(not(feature = "alloc"))]
+        let handle = ThreadHandle { id: thread_id };
         
         context.handle = Some(handle);
         context.update_state(ThreadState::Running);

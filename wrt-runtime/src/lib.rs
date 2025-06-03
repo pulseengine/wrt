@@ -8,16 +8,20 @@
 // Licensed under the MIT license.
 // SPDX-License-Identifier: MIT
 
-#![forbid(unsafe_code)] // Rule 2
-
 //! WebAssembly Runtime (WRT) - Runtime Implementation
 //!
 //! This crate provides the core runtime types and implementations for
 //! WebAssembly, shared between both the core WebAssembly and Component Model
 //! implementations.
+//!
+//! # Safety
+//!
+//! Most modules forbid unsafe code. Only specific modules that require direct
+//! memory access (atomic operations, wait queues) allow unsafe code with
+//! documented safety invariants.
 
 #![cfg_attr(not(feature = "std"), no_std)]
-#![deny(unsafe_code)]
+// Note: unsafe_code is allowed selectively in specific modules that need it
 #![warn(missing_docs)]
 #![warn(clippy::missing_panics_doc)]
 

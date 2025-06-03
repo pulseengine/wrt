@@ -82,7 +82,7 @@ unexpected_cfgs = { level = "allow", check-cfg = ['cfg(test)'] }
 unused_imports = "allow"
 unused_variables = "allow"
 unused_mut = "allow"
-unsafe_code = "forbid"
+unsafe_code = "deny"  # Changed from forbid to deny to allow module-level overrides
 # Rule 1
 pointer_cast = "deny"
 # Rule 9

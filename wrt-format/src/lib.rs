@@ -165,26 +165,33 @@ macro_rules! collection_type {
 }
 
 // Compile-time capacity constants for bounded collections
-pub const MAX_MODULE_TYPES: usize = 256;
-pub const MAX_MODULE_FUNCTIONS: usize = 1024;
-pub const MAX_MODULE_IMPORTS: usize = 256;
-pub const MAX_MODULE_EXPORTS: usize = 256;
-pub const MAX_MODULE_GLOBALS: usize = 256;
-pub const MAX_MODULE_TABLES: usize = 64;
-pub const MAX_MODULE_MEMORIES: usize = 64;
-pub const MAX_MODULE_ELEMENTS: usize = 256;
-pub const MAX_MODULE_DATA: usize = 256;
-pub const MAX_WASM_STRING_SIZE: usize = 256;
-pub const MAX_BINARY_SIZE: usize = 1024 * 1024; // 1MB max module size
+// Increased limits for better no_std usability
+pub const MAX_MODULE_TYPES: usize = 512;        // was 256
+pub const MAX_MODULE_FUNCTIONS: usize = 4096;   // was 1024
+pub const MAX_MODULE_IMPORTS: usize = 512;      // was 256
+pub const MAX_MODULE_EXPORTS: usize = 512;      // was 256
+pub const MAX_MODULE_GLOBALS: usize = 512;      // was 256
+pub const MAX_MODULE_TABLES: usize = 128;       // was 64
+pub const MAX_MODULE_MEMORIES: usize = 128;     // was 64
+pub const MAX_MODULE_ELEMENTS: usize = 512;     // was 256
+pub const MAX_MODULE_DATA: usize = 512;         // was 256
+pub const MAX_WASM_STRING_SIZE: usize = 1024;   // was 256
+pub const MAX_BINARY_SIZE: usize = 4 * 1024 * 1024; // 4MB max module size, was 1MB
 pub const MAX_LEB128_BUFFER: usize = 10; // Max bytes for LEB128 u64
-pub const MAX_INSTRUCTION_OPERANDS: usize = 16;
-pub const MAX_STACK_DEPTH: usize = 1024;
+pub const MAX_INSTRUCTION_OPERANDS: usize = 32; // was 16
+pub const MAX_STACK_DEPTH: usize = 2048;        // was 1024
 
-// Component model constants
-pub const MAX_COMPONENT_INSTANCES: usize = 128;
-pub const MAX_COMPONENT_TYPES: usize = 256;
-pub const MAX_COMPONENT_IMPORTS: usize = 256;
-pub const MAX_COMPONENT_EXPORTS: usize = 256;
+// Component model constants (increased for better support)
+pub const MAX_COMPONENT_INSTANCES: usize = 256; // was 128
+pub const MAX_COMPONENT_TYPES: usize = 512;     // was 256
+pub const MAX_COMPONENT_IMPORTS: usize = 512;   // was 256
+pub const MAX_COMPONENT_EXPORTS: usize = 512;   // was 256
+
+// Additional no_std specific constants
+pub const MAX_SECTION_SIZE_NO_STD: usize = 256 * 1024; // 256KB, was 64KB
+pub const MAX_BOUNDED_AST_NODES: usize = 256;
+pub const MAX_BOUNDED_TOKENS: usize = 512;
+pub const MAX_STATIC_TYPES: usize = 64;
 
 // For no_std mode, provide format! macro replacement using static strings
 #[cfg(not(any(feature = "alloc", feature = "std")))]
@@ -255,6 +262,8 @@ pub mod version;
 // WIT (WebAssembly Interface Types) parser (requires alloc for component model)
 #[cfg(any(feature = "alloc", feature = "std"))]
 pub mod wit_parser;
+// Bounded WIT parser for no_std environments
+pub mod wit_parser_bounded;
 // Temporarily disable enhanced parser until compilation issues fixed
 // #[cfg(any(feature = "alloc", feature = "std"))]
 // pub mod wit_parser_enhanced;
@@ -345,6 +354,12 @@ pub use version::{
 pub use wit_parser::{
     WitEnum, WitExport, WitFlags, WitFunction, WitImport, WitInterface, WitItem, WitParam,
     WitParseError, WitParser, WitRecord, WitResult, WitType, WitTypeDef, WitVariant, WitWorld,
+};
+// Re-export bounded WIT parser (for no_std environments)
+pub use wit_parser_bounded::{
+    BoundedWitParser, BoundedWitWorld, BoundedWitInterface, BoundedWitFunction, 
+    BoundedWitType, BoundedWitImport, BoundedWitExport, parse_wit_bounded,
+    HAS_BOUNDED_WIT_PARSING_NO_STD,
 };
 
 // Public functions for feature detection

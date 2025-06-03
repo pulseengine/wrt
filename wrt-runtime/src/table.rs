@@ -6,6 +6,7 @@
 use wrt_foundation::{
     types::{Limits as WrtLimits, TableType as WrtTableType, ValueType as WrtValueType},
     values::Value as WrtValue,
+    safe_memory::SafeStack,
 };
 
 use crate::prelude::*;

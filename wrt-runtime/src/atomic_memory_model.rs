@@ -79,7 +79,7 @@ impl AtomicMemoryModel {
                 if operands.is_empty() {
                     return Err(Error::new(
                         ErrorCategory::Runtime,
-                        codes::INVALID_ARGUMENT,
+                        codes::RUNTIME_INVALID_ARGUMENT_ERROR,
                         "Store operation missing value operand"
                     ));
                 }
@@ -90,7 +90,7 @@ impl AtomicMemoryModel {
                 if operands.is_empty() {
                     return Err(Error::new(
                         ErrorCategory::Runtime,
-                        codes::INVALID_ARGUMENT,
+                        codes::RUNTIME_INVALID_ARGUMENT_ERROR,
                         "RMW operation missing value operand"
                     ));
                 }
@@ -101,7 +101,7 @@ impl AtomicMemoryModel {
                 if operands.len() < 2 {
                     return Err(Error::new(
                         ErrorCategory::Runtime,
-                        codes::INVALID_ARGUMENT,
+                        codes::RUNTIME_INVALID_ARGUMENT_ERROR,
                         "Compare-exchange operation missing operands"
                     ));
                 }

@@ -18,7 +18,7 @@ pub trait MemoryAdapter: Debug + Send + Sync {
     fn memory(&self) -> Arc<Memory>;
 
     /// Read bytes from memory at the given offset
-    fn read_bytes(&self, offset: u32, len: u32) -> Result<BoundedVec<u8, 65536>>;
+    fn read_bytes(&self, offset: u32, len: u32) -> Result<BoundedVec<u8, 65536, StdMemoryProvider>>;
 
     /// Write bytes to memory at the given offset
     fn write_bytes(&self, offset: u32, bytes: &[u8]) -> Result<()>;
@@ -36,7 +36,7 @@ pub trait MemoryAdapter: Debug + Send + Sync {
     fn check_range(&self, offset: u32, size: u32) -> Result<()>;
 
     /// Borrow a slice of memory with integrity verification
-    fn borrow_slice(&self, offset: usize, len: usize) -> Result<BoundedVec<u8, 65536>>;
+    fn borrow_slice(&self, offset: usize, len: usize) -> Result<BoundedVec<u8, 65536, StdMemoryProvider>>;
 }
 
 /// Safe memory adapter implementation
@@ -67,7 +67,7 @@ impl StdMemoryProvider {
         buffer: &'a [u8],
         offset: usize,
         len: usize,
-    ) -> Result<BoundedVec<u8, 65536>> {
+    ) -> Result<BoundedVec<u8, 65536, StdMemoryProvider>> {
         if offset + len > buffer.len() {
             return Err(Error::from(kinds::OutOfBoundsError(format!(
                 "Memory access out of bounds: offset={}, len={}, buffer_len={}",
@@ -127,30 +127,7 @@ impl SafeMemoryAdapter {
 }
 
 // Implement the MemorySafety trait for SafeMemoryAdapter
-impl MemorySafety for SafeMemoryAdapter {
-    fn verify_integrity(&self) -> Result<()> {
-        // Basic implementation - in a real system would check checksums, canaries, etc.
-        Ok(())
-    }
-
-    fn set_verification_level(&mut self, level: VerificationLevel) {
-        self.provider.set_verification_level(level);
-    }
-
-    fn verification_level(&self) -> VerificationLevel {
-        self.provider.verification_level()
-    }
-
-    fn memory_stats(&self) -> MemoryStats {
-        let size_value = self.memory.size(); // u32 doesn't have unwrap_or
-        MemoryStats {
-            total_size: size_value as usize * 65536,
-            unique_regions: 1,
-            max_access_size: 0,
-            access_count: 0, // Added missing field
-        }
-    }
-}
+// MemorySafety trait implementation removed as it doesn't exist in wrt-foundation
 
 // Implement the MemoryAdapter trait for SafeMemoryAdapter
 impl MemoryAdapter for SafeMemoryAdapter {
@@ -158,7 +135,7 @@ impl MemoryAdapter for SafeMemoryAdapter {
         self.memory.clone()
     }
 
-    fn read_bytes(&self, offset: u32, len: u32) -> Result<BoundedVec<u8, 65536>> {
+    fn read_bytes(&self, offset: u32, len: u32) -> Result<BoundedVec<u8, 65536, StdMemoryProvider>> {
         // Check that the range is valid
         self.check_range(offset, len)?;
 
@@ -237,7 +214,7 @@ impl MemoryAdapter for SafeMemoryAdapter {
 
     // Change the return type to BoundedVec instead of SafeSlice to avoid lifetime
     // issues
-    fn borrow_slice(&self, offset: usize, len: usize) -> Result<BoundedVec<u8, 65536>> {
+    fn borrow_slice(&self, offset: usize, len: usize) -> Result<BoundedVec<u8, 65536, StdMemoryProvider>> {
         // Check that the range is valid
         self.check_range(offset as u32, len as u32)?;
 
