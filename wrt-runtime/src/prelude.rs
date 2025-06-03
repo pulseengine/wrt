@@ -39,34 +39,18 @@ macro_rules! format {
     }};
 }
 
-// Simple vec! implementation for no_std mode
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
-#[macro_export]
-macro_rules! vec {
-    () => {{
-        wrt_foundation::bounded::BoundedVec::new()
-    }};
-    ($elem:expr; $n:expr) => {{
-        let mut v = wrt_foundation::bounded::BoundedVec::new();
-        for _ in 0..$n {
-            if let Err(_) = v.push($elem.clone()) {
-                break; // Stop if capacity exceeded
-            }
-        }
-        v
-    }};
-    ($($x:expr),+ $(,)?) => {{
-        let mut v = wrt_foundation::bounded::BoundedVec::new();
-        $(
-            let _ = v.push($x); // Ignore errors if capacity exceeded
-        )+
-        v
-    }};
-}
+// Simple vec! implementation for no_std mode - disabled for now
+// #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+// #[macro_export]
+// macro_rules! vec {
+//     () => {{
+//         wrt_foundation::bounded::BoundedVec::new()
+//     }};
+// }
 
 // Re-export the macros for no_std
 #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
-pub use crate::{format, vec};
+pub use crate::format;
 
 // Arc is not available in pure no_std, use a placeholder
 #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
