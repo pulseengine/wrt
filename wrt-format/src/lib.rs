@@ -263,6 +263,7 @@ pub mod version;
 #[cfg(any(feature = "alloc", feature = "std"))]
 pub mod wit_parser;
 // Bounded WIT parser for no_std environments
+#[cfg(feature = "wit-parsing")]
 pub mod wit_parser_bounded;
 // Temporarily disable enhanced parser until compilation issues fixed
 // #[cfg(any(feature = "alloc", feature = "std"))]
@@ -356,6 +357,7 @@ pub use wit_parser::{
     WitParseError, WitParser, WitRecord, WitResult, WitType, WitTypeDef, WitVariant, WitWorld,
 };
 // Re-export bounded WIT parser (for no_std environments)
+#[cfg(feature = "wit-parsing")]
 pub use wit_parser_bounded::{
     BoundedWitParser, BoundedWitWorld, BoundedWitInterface, BoundedWitFunction, 
     BoundedWitType, BoundedWitImport, BoundedWitExport, parse_wit_bounded,
