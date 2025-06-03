@@ -49,10 +49,35 @@ pub struct SafeMemoryAdapter {
 }
 
 /// Standard memory provider implementation
-#[derive(Debug)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct StdMemoryProvider {
     /// Verification level for memory safety checks
     verification_level: VerificationLevel,
+}
+
+impl wrt_foundation::MemoryProvider for StdMemoryProvider {
+    fn capacity(&self) -> usize {
+        // For std mode, we can use large capacities
+        1024 * 1024 // 1MB
+    }
+
+    fn verification_level(&self) -> VerificationLevel {
+        self.verification_level
+    }
+
+    fn set_verification_level(&mut self, level: VerificationLevel) {
+        self.verification_level = level;
+    }
+
+    fn write_data(&mut self, _offset: usize, _data: &[u8]) -> wrt_error::Result<usize> {
+        // For StdMemoryProvider, this is a placeholder
+        Ok(0)
+    }
+
+    fn read_data(&self, _offset: usize, _buffer: &mut [u8]) -> wrt_error::Result<usize> {
+        // For StdMemoryProvider, this is a placeholder
+        Ok(0)
+    }
 }
 
 impl StdMemoryProvider {

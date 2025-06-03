@@ -230,7 +230,7 @@ pub struct Memory {
     /// The memory type
     pub ty: CoreMemoryType,
     /// The memory data
-    pub data: SafeMemoryHandler,
+    pub data: SafeMemoryHandler<StdMemoryProvider>,
     /// Current number of pages
     pub current_pages: core::sync::atomic::AtomicU32,
     /// Optional name for debugging
@@ -391,13 +391,29 @@ impl Memory {
     /// Returns an error if the memory cannot be created
     pub fn new_with_name(ty: CoreMemoryType, name: &str) -> Result<Self> {
         let mut memory = Self::new(ty)?;
-        memory.debug_name = Some(name.to_string());
+        memory.debug_name = Some(wrt_foundation::bounded::BoundedString::from_str(
+            name, 
+            wrt_foundation::safe_memory::NoStdProvider::<1024>::default()
+        ).map_err(|_| Error::new(
+            ErrorCategory::Memory,
+            codes::MEMORY_ERROR,
+            "Debug name too long"
+        ))?);
         Ok(memory)
     }
 
     /// Sets a debug name for this memory instance
     pub fn set_debug_name(&mut self, name: &str) {
-        self.debug_name = Some(name.to_string());
+        self.debug_name = Some(wrt_foundation::bounded::BoundedString::from_str(
+            name, 
+            wrt_foundation::safe_memory::NoStdProvider::<1024>::default()
+        ).unwrap_or_else(|_| {
+            // If name is too long, truncate it
+            wrt_foundation::bounded::BoundedString::from_str_truncate(
+                name,
+                wrt_foundation::safe_memory::NoStdProvider::<1024>::default()
+            ).unwrap()
+        }));
     }
 
     /// Returns the debug name of this memory instance, if any

@@ -134,7 +134,7 @@ struct BlockContext {
     /// pop/truncate.
     stack_depth_before: usize,
     /// Value stack depth before parameters were pushed (for block/loop results)
-    value_stack_depth_before_params: usize,
+    exec_stack_values_depth_before_params: usize,
     /// Arity of the block (number of result values it's expected to push).
     arity: usize,
 }
@@ -281,7 +281,7 @@ impl FrameBehavior for StacklessFrame {
                 // TODO: Push BlockContext to self.block_depths
                 // Placeholder:
                 // let block_type = self.module_instance.get_block_type(block_type_idx)?;
-                // self.enter_block(block_type, engine.value_stack.len(), self.pc + ??? /*
+                // self.enter_block(block_type, engine.exec_stack.values.len(), self.pc + ??? /*
                 // end_pc */, None); Ok(ControlFlow::Next)
                 todo!("Block instruction")
             }
@@ -291,7 +291,7 @@ impl FrameBehavior for StacklessFrame {
             }
             Instruction::If { block_type_idx: _ } => {
                 // TODO: Pop condition. If true, proceed. If false, jump to else or end.
-                // let condition = engine.value_stack.pop()?.as_i32()? != 0;
+                // let condition = engine.exec_stack.values.pop()?.as_i32()? != 0;
                 // if condition { ... } else { self.pc = else_pc_or_end_pc; }
                 todo!("If instruction")
             }
@@ -310,7 +310,7 @@ impl FrameBehavior for StacklessFrame {
                     // Values for return should be on the stack matching self.arity.
                     let mut return_values = Vec::with_capacity(self.arity);
                     for _ in 0..self.arity {
-                        return_values.push(engine.value_stack.pop().map_err(|e| {
+                        return_values.push(engine.exec_stack.values.pop().map_err(|e| {
                             Error::new(
                                 codes::STACK_UNDERFLOW,
                                 format!("Stack underflow on function return: {}", e),
@@ -336,7 +336,7 @@ impl FrameBehavior for StacklessFrame {
             Instruction::Return => {
                 let mut return_values = Vec::with_capacity(self.arity);
                 for _ in 0..self.arity {
-                    return_values.push(engine.value_stack.pop().map_err(|e| {
+                    return_values.push(engine.exec_stack.values.pop().map_err(|e| {
                         Error::new(
                             codes::STACK_UNDERFLOW,
                             format!("Stack underflow on explicit return: {}", e),
@@ -351,7 +351,7 @@ impl FrameBehavior for StacklessFrame {
                 // let target_func_type = self.module_instance.function_type(*func_idx_val)?;
                 // let mut args = Vec::with_capacity(target_func_type.params.len());
                 // for _ in 0..target_func_type.params.len() {
-                // args.push(engine.value_stack.pop()?); } args.reverse();
+                // args.push(engine.exec_stack.values.pop()?); } args.reverse();
                 // Ok(ControlFlow::Call { func_idx: *func_idx_val, inputs: args })
                 todo!("Call instruction: func_idx={}", func_idx_val)
             }
@@ -378,7 +378,7 @@ impl FrameBehavior for StacklessFrame {
                         format!("Invalid local index {} for get", local_idx),
                     )
                 })?;
-                engine.value_stack.push(value).map_err(|e| {
+                engine.exec_stack.values.push(value).map_err(|e| {
                     Error::new(
                         codes::STACK_OVERFLOW,
                         format!("Stack overflow on local.get: {}", e),
@@ -387,7 +387,7 @@ impl FrameBehavior for StacklessFrame {
                 Ok(ControlFlow::Next)
             }
             Instruction::LocalSet(local_idx) => {
-                let value = engine.value_stack.pop().map_err(|e| {
+                let value = engine.exec_stack.values.pop().map_err(|e| {
                     Error::new(
                         codes::STACK_UNDERFLOW,
                         format!("Stack underflow on local.set: {}", e),
@@ -403,7 +403,8 @@ impl FrameBehavior for StacklessFrame {
             }
             Instruction::LocalTee(local_idx) => {
                 let value = engine
-                    .value_stack
+                    .exec_stack
+                    .values
                     .peek()
                     .map_err(|e| {
                         Error::new(
@@ -424,7 +425,7 @@ impl FrameBehavior for StacklessFrame {
             // Global variable instructions
             Instruction::GlobalGet(global_idx) => {
                 let global = self.module_instance.global(*global_idx)?;
-                engine.value_stack.push(global.get_value()).map_err(|e| {
+                engine.exec_stack.values.push(global.get_value()).map_err(|e| {
                     Error::new(
                         codes::STACK_OVERFLOW,
                         format!("Stack overflow on global.get: {}", e),
@@ -440,7 +441,7 @@ impl FrameBehavior for StacklessFrame {
                         "Cannot set immutable global",
                     ));
                 }
-                let value = engine.value_stack.pop().map_err(|e| {
+                let value = engine.exec_stack.values.pop().map_err(|e| {
                     Error::new(
                         codes::STACK_UNDERFLOW,
                         format!("Stack underflow on global.set: {}", e),
@@ -453,7 +454,7 @@ impl FrameBehavior for StacklessFrame {
             // Table instructions
             Instruction::TableGet(table_idx) => {
                 let table = self.module_instance.table(*table_idx)?;
-                let elem_idx_val = engine.value_stack.pop().map_err(|e| {
+                let elem_idx_val = engine.exec_stack.values.pop().map_err(|e| {
                     Error::new(
                         codes::STACK_UNDERFLOW,
                         format!("Stack underflow for TableGet index: {}", e),
@@ -464,7 +465,7 @@ impl FrameBehavior for StacklessFrame {
                 })? as u32;
 
                 match table.get(elem_idx)? {
-                    Some(val) => engine.value_stack.push(val).map_err(|e| {
+                    Some(val) => engine.exec_stack.values.push(val).map_err(|e| {
                         Error::new(
                             codes::STACK_OVERFLOW,
                             format!("Stack overflow on TableGet: {}", e),
@@ -481,13 +482,13 @@ impl FrameBehavior for StacklessFrame {
             }
             Instruction::TableSet(table_idx) => {
                 let table = self.module_instance.table(*table_idx)?;
-                let val_to_set = engine.value_stack.pop().map_err(|e| {
+                let val_to_set = engine.exec_stack.values.pop().map_err(|e| {
                     Error::new(
                         codes::STACK_UNDERFLOW,
                         format!("Stack underflow for TableSet value: {}", e),
                     )
                 })?;
-                let elem_idx_val = engine.value_stack.pop().map_err(|e| {
+                let elem_idx_val = engine.exec_stack.values.pop().map_err(|e| {
                     Error::new(
                         codes::STACK_UNDERFLOW,
                         format!("Stack underflow for TableSet index: {}", e),
@@ -503,7 +504,7 @@ impl FrameBehavior for StacklessFrame {
             }
             Instruction::TableSize(table_idx) => {
                 let table = self.module_instance.table(*table_idx)?;
-                engine.value_stack.push(Value::I32(table.size() as i32)).map_err(|e| {
+                engine.exec_stack.values.push(Value::I32(table.size() as i32)).map_err(|e| {
                     Error::new(
                         codes::STACK_OVERFLOW,
                         format!("Stack overflow on TableSize: {}", e),
@@ -513,13 +514,13 @@ impl FrameBehavior for StacklessFrame {
             }
             Instruction::TableGrow(table_idx) => {
                 let table = self.module_instance.table(*table_idx)?;
-                let init_val = engine.value_stack.pop().map_err(|e| {
+                let init_val = engine.exec_stack.values.pop().map_err(|e| {
                     Error::new(
                         codes::STACK_UNDERFLOW,
                         format!("Stack underflow for TableGrow init value: {}", e),
                     )
                 })?;
-                let delta_val = engine.value_stack.pop().map_err(|e| {
+                let delta_val = engine.exec_stack.values.pop().map_err(|e| {
                     Error::new(
                         codes::STACK_UNDERFLOW,
                         format!("Stack underflow for TableGrow delta: {}", e),
@@ -530,7 +531,7 @@ impl FrameBehavior for StacklessFrame {
                 })? as u32;
 
                 let old_size = table.grow(delta, init_val)?;
-                engine.value_stack.push(Value::I32(old_size as i32)).map_err(|e| {
+                engine.exec_stack.values.push(Value::I32(old_size as i32)).map_err(|e| {
                     Error::new(
                         codes::STACK_OVERFLOW,
                         format!("Stack overflow on TableGrow result: {}", e),
@@ -589,7 +590,7 @@ impl FrameBehavior for StacklessFrame {
             Instruction::MemorySize(_mem_idx) => {
                 // mem_idx is always 0 in Wasm MVP
                 let mem = self.module_instance.memory(0)?; // Assuming memory index 0
-                engine.value_stack.push(Value::I32(mem.size_pages() as i32)).map_err(|e| {
+                engine.exec_stack.values.push(Value::I32(mem.size_pages() as i32)).map_err(|e| {
                     Error::new(
                         codes::STACK_OVERFLOW,
                         format!("Stack overflow on MemorySize: {}", e),
@@ -600,7 +601,7 @@ impl FrameBehavior for StacklessFrame {
             Instruction::MemoryGrow(_mem_idx) => {
                 // mem_idx is always 0 in Wasm MVP
                 let mem = self.module_instance.memory(0)?;
-                let delta_pages_val = engine.value_stack.pop().map_err(|e| {
+                let delta_pages_val = engine.exec_stack.values.pop().map_err(|e| {
                     Error::new(
                         codes::STACK_UNDERFLOW,
                         format!("Stack underflow for MemoryGrow delta: {}", e),
@@ -611,7 +612,7 @@ impl FrameBehavior for StacklessFrame {
                 })? as u32;
 
                 let old_size_pages = mem.grow(delta_pages)?;
-                engine.value_stack.push(Value::I32(old_size_pages as i32)).map_err(|e| {
+                engine.exec_stack.values.push(Value::I32(old_size_pages as i32)).map_err(|e| {
                     Error::new(
                         codes::STACK_OVERFLOW,
                         format!("Stack overflow on MemoryGrow result: {}", e),
@@ -640,7 +641,7 @@ impl FrameBehavior for StacklessFrame {
 
             // Numeric Const instructions
             Instruction::I32Const(val) => {
-                engine.value_stack.push(Value::I32(*val)).map_err(|e| {
+                engine.exec_stack.values.push(Value::I32(*val)).map_err(|e| {
                     Error::new(
                         codes::STACK_OVERFLOW,
                         format!("Stack overflow on I32Const: {}", e),
@@ -648,7 +649,7 @@ impl FrameBehavior for StacklessFrame {
                 })?
             }
             Instruction::I64Const(val) => {
-                engine.value_stack.push(Value::I64(*val)).map_err(|e| {
+                engine.exec_stack.values.push(Value::I64(*val)).map_err(|e| {
                     Error::new(
                         codes::STACK_OVERFLOW,
                         format!("Stack overflow on I64Const: {}", e),
@@ -656,7 +657,8 @@ impl FrameBehavior for StacklessFrame {
                 })?
             }
             Instruction::F32Const(val) => engine
-                .value_stack
+                .exec_stack
+                .values
                 .push(Value::F32(f32::from_bits(*val))) // Assuming val is u32 bits
                 .map_err(|e| {
                     Error::new(
@@ -665,7 +667,8 @@ impl FrameBehavior for StacklessFrame {
                     )
                 })?,
             Instruction::F64Const(val) => engine
-                .value_stack
+                .exec_stack
+                .values
                 .push(Value::F64(f64::from_bits(*val))) // Assuming val is u64 bits
                 .map_err(|e| {
                     Error::new(
@@ -677,11 +680,11 @@ impl FrameBehavior for StacklessFrame {
             // TODO: Implement all other numeric, reference, parametric, vector instructions
             // For example:
             // Instruction::I32Add => {
-            //     let b = engine.value_stack.pop()?.as_i32()?;
-            //     let a = engine.value_stack.pop()?.as_i32()?;
-            //     engine.value_stack.push(Value::I32(a.wrapping_add(b)))?;
+            //     let b = engine.exec_stack.values.pop()?.as_i32()?;
+            //     let a = engine.exec_stack.values.pop()?.as_i32()?;
+            //     engine.exec_stack.values.push(Value::I32(a.wrapping_add(b)))?;
             // }
-            // Instruction::Drop => { engine.value_stack.pop()?; }
+            // Instruction::Drop => { engine.exec_stack.values.pop()?; }
             // Instruction::Select => { ... }
             // Instruction::RefNull(heap_type) => { ... }
             // Instruction::RefIsNull => { ... }
@@ -726,19 +729,19 @@ impl StacklessFrame {
             )
         })?;
 
-        let len_val = engine.value_stack.pop().map_err(|e| {
+        let len_val = engine.exec_stack.values.pop().map_err(|e| {
             Error::new(
                 codes::STACK_UNDERFLOW,
                 format!("Stack underflow for table.init len: {}", e),
             )
         })?;
-        let src_offset_val = engine.value_stack.pop().map_err(|e| {
+        let src_offset_val = engine.exec_stack.values.pop().map_err(|e| {
             Error::new(
                 codes::STACK_UNDERFLOW,
                 format!("Stack underflow for table.init src_offset: {}", e),
             )
         })?;
-        let dst_offset_val = engine.value_stack.pop().map_err(|e| {
+        let dst_offset_val = engine.exec_stack.values.pop().map_err(|e| {
             Error::new(
                 codes::STACK_UNDERFLOW,
                 format!("Stack underflow for table.init dst_offset: {}", e),
@@ -800,19 +803,19 @@ impl StacklessFrame {
         src_table_idx: u32,
         engine: &mut StacklessEngine,
     ) -> Result<()> {
-        let len_val = engine.value_stack.pop().map_err(|e| {
+        let len_val = engine.exec_stack.values.pop().map_err(|e| {
             Error::new(
                 codes::STACK_UNDERFLOW,
                 format!("Stack underflow for table.copy len: {}", e),
             )
         })?;
-        let src_offset_val = engine.value_stack.pop().map_err(|e| {
+        let src_offset_val = engine.exec_stack.values.pop().map_err(|e| {
             Error::new(
                 codes::STACK_UNDERFLOW,
                 format!("Stack underflow for table.copy src_offset: {}", e),
             )
         })?;
-        let dst_offset_val = engine.value_stack.pop().map_err(|e| {
+        let dst_offset_val = engine.exec_stack.values.pop().map_err(|e| {
             Error::new(
                 codes::STACK_UNDERFLOW,
                 format!("Stack underflow for table.copy dst_offset: {}", e),
@@ -879,13 +882,13 @@ impl StacklessFrame {
     }
 
     fn table_fill(&mut self, table_idx: u32, engine: &mut StacklessEngine) -> Result<()> {
-        let n_val = engine.value_stack.pop().map_err(|e| {
+        let n_val = engine.exec_stack.values.pop().map_err(|e| {
             Error::new(codes::STACK_UNDERFLOW, format!("table.fill count: {}", e))
         })?;
-        let val_to_fill = engine.value_stack.pop().map_err(|e| {
+        let val_to_fill = engine.exec_stack.values.pop().map_err(|e| {
             Error::new(codes::STACK_UNDERFLOW, format!("table.fill value: {}", e))
         })?;
-        let offset_val = engine.value_stack.pop().map_err(|e| {
+        let offset_val = engine.exec_stack.values.pop().map_err(|e| {
             Error::new(codes::STACK_UNDERFLOW, format!("table.fill offset: {}", e))
         })?;
 
@@ -923,13 +926,13 @@ impl StacklessFrame {
         mem_idx: u32,
         engine: &mut StacklessEngine,
     ) -> Result<()> {
-        let n_val = engine.value_stack.pop().map_err(|e| {
+        let n_val = engine.exec_stack.values.pop().map_err(|e| {
             Error::new(codes::STACK_UNDERFLOW, format!("memory.init len: {}", e))
         })?;
-        let src_offset_val = engine.value_stack.pop().map_err(|e| {
+        let src_offset_val = engine.exec_stack.values.pop().map_err(|e| {
             Error::new(codes::STACK_UNDERFLOW, format!("memory.init src_offset: {}", e))
         })?;
-        let dst_offset_val = engine.value_stack.pop().map_err(|e| {
+        let dst_offset_val = engine.exec_stack.values.pop().map_err(|e| {
             Error::new(codes::STACK_UNDERFLOW, format!("memory.init dst_offset: {}", e))
         })?;
 
@@ -985,13 +988,13 @@ impl StacklessFrame {
         engine: &mut StacklessEngine,
     ) -> Result<()> {
         // In Wasm MVP, src_mem_idx and dst_mem_idx are always 0.
-        let n_val = engine.value_stack.pop().map_err(|e| {
+        let n_val = engine.exec_stack.values.pop().map_err(|e| {
             Error::new(codes::STACK_UNDERFLOW, format!("memory.copy len: {}", e))
         })?;
-        let src_offset_val = engine.value_stack.pop().map_err(|e| {
+        let src_offset_val = engine.exec_stack.values.pop().map_err(|e| {
             Error::new(codes::STACK_UNDERFLOW, format!("memory.copy src_offset: {}", e))
         })?;
-        let dst_offset_val = engine.value_stack.pop().map_err(|e| {
+        let dst_offset_val = engine.exec_stack.values.pop().map_err(|e| {
             Error::new(codes::STACK_UNDERFLOW, format!("memory.copy dst_offset: {}", e))
         })?;
 
@@ -1040,13 +1043,13 @@ impl StacklessFrame {
     }
 
     fn memory_fill(&mut self, mem_idx: u32, engine: &mut StacklessEngine) -> Result<()> {
-        let n_val = engine.value_stack.pop().map_err(|e| {
+        let n_val = engine.exec_stack.values.pop().map_err(|e| {
             Error::new(codes::STACK_UNDERFLOW, format!("memory.fill len: {}", e))
         })?;
-        let val_to_fill_val = engine.value_stack.pop().map_err(|e| {
+        let val_to_fill_val = engine.exec_stack.values.pop().map_err(|e| {
             Error::new(codes::STACK_UNDERFLOW, format!("memory.fill value: {}", e))
         })?;
-        let dst_offset_val = engine.value_stack.pop().map_err(|e| {
+        let dst_offset_val = engine.exec_stack.values.pop().map_err(|e| {
             Error::new(codes::STACK_UNDERFLOW, format!("memory.fill dst_offset: {}", e))
         })?;
 
@@ -1078,7 +1081,7 @@ impl StacklessFrame {
 
     // TODO: Add methods for enter_block, exit_block, branch_to_label, etc.
     // These will manipulate self.block_depths and self.pc, and interact with
-    // engine.value_stack.
+    // engine.exec_stack.values.
 }
 
 // Validatable might not be applicable directly to StacklessFrame in the same
