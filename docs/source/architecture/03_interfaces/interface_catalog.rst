@@ -7,83 +7,279 @@ Interface Catalog
 Core Runtime Interfaces
 -----------------------
 
-Engine Behavior Interface
+Stackless Engine Interface
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. arch_interface:: Engine Behavior
+.. arch_interface:: Stackless Engine
    :id: ARCH_IF_001
    :component: ARCH_COMP_001
-   :file: wrt/src/behavior.rs
+   :file: wrt-runtime/src/stackless/engine.rs
    :type: provided
    :stability: stable
 
-**Purpose**: Defines how execution engines behave.
+**Purpose**: Defines the stackless WebAssembly execution engine that doesn't rely on host call stack.
 
 **Actual Implementation**:
 
 .. code-block:: rust
 
-   pub trait EngineBehavior: StackBehavior + FrameBehavior {
-       type ModuleInstanceType: ModuleBehavior;
-       
-       fn new_module(&mut self, module: Module) -> WrtResult<ModuleInstanceIndex>;
-       fn get_module_instance(&self, instance_idx: ModuleInstanceIndex) -> Option<&Self::ModuleInstanceType>;
-       fn get_module_instance_mut(&mut self, instance_idx: ModuleInstanceIndex) -> Option<&mut Self::ModuleInstanceType>;
-       fn instantiate(&mut self, module_idx: ModuleInstanceIndex) -> WrtResult<ModuleInstanceIndex>;
-       fn execute(&mut self, instance_idx: ModuleInstanceIndex, func_idx: FuncIdx, args: Vec<Value>) -> WrtResult<Vec<Value>>;
+   pub struct StacklessEngine {
+       pub(crate) exec_stack: StacklessStack,
+       fuel: Option<u64>,
+       stats: ExecutionStats,
+       callbacks: Arc<Mutex<StacklessCallbackRegistry>>,
+       max_call_depth: Option<usize>,
+       pub(crate) instance_count: usize,
+       verification_level: VerificationLevel,
+   }
+
+   impl ControlContext for StacklessEngine {
+       fn push_control_value(&mut self, value: Value) -> Result<()>;
+       fn pop_control_value(&mut self) -> Result<Value>;
+       fn get_block_depth(&self) -> usize;
+       fn enter_block(&mut self, block_type: Block) -> Result<()>;
+       fn exit_block(&mut self) -> Result<Block>;
+       fn branch(&mut self, target: BranchTarget) -> Result<()>;
+       fn return_function(&mut self) -> Result<()>;
+       fn call_function(&mut self, func_idx: u32) -> Result<()>;
+       fn call_indirect(&mut self, table_idx: u32, type_idx: u32) -> Result<()>;
    }
 
 **Environment Variations**:
 
-- **std**: Thread-safe with `Arc<Mutex<T>>`
-- **no_std + alloc**: Single-threaded with `RefCell`
-- **no_std + no_alloc**: Static dispatch with bounded instance pool
+- **std**: Full async support with `Arc<Mutex<T>>`
+- **no_std + alloc**: Bounded collections with `RefCell`
+- **no_std + no_alloc**: Static execution with compile-time bounds
 
-Memory Provider Interface
+Platform Memory Interface
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. arch_interface:: Memory Provider
+.. arch_interface:: Platform Memory
    :id: ARCH_IF_020
    :component: ARCH_COMP_002
-   :file: wrt-foundation/src/traits.rs
+   :file: wrt-platform/src/memory.rs
    :type: provided
    :stability: stable
 
-**Purpose**: Abstracts memory allocation across environments.
+**Purpose**: Provides platform-specific memory allocation and management.
 
-**Actual Trait Definition**:
+**PageAllocator Trait**:
 
 .. code-block:: rust
 
-   pub trait MemoryProvider: Clone + PartialEq + Eq {
-       type Allocator: Allocator;
+   pub trait PageAllocator: Debug + Send + Sync {
+       fn allocate(
+           &mut self,
+           initial_pages: u32,
+           maximum_pages: Option<u32>,
+       ) -> Result<(NonNull<u8>, usize)>;
        
-       fn len(&self) -> usize;
-       fn read_bytes(&self, offset: usize, length: usize) -> Result<&[u8]>;
-       fn write_bytes(&mut self, offset: usize, data: &[u8]) -> Result<()>;
-       fn read_slice(&self, offset: usize, length: usize) -> Result<Slice<Self>>;
-       fn write_slice(&mut self, offset: usize, length: usize) -> Result<SliceMut<Self>>;
-       fn resize(&mut self, new_len: usize) -> Result<()>;
-       fn copy_within(&mut self, src_offset: usize, dst_offset: usize, len: usize) -> Result<()>;
+       fn grow(&mut self, current_pages: u32, additional_pages: u32) -> Result<()>;
+       
+       unsafe fn deallocate(&mut self, ptr: NonNull<u8>, size: usize) -> Result<()>;
    }
 
-**Implementations**:
+**MemoryProvider Trait**:
 
-.. list-table:: Memory Provider Implementations
+.. code-block:: rust
+
+   pub trait MemoryProvider: Send + Sync {
+       fn capacity(&self) -> usize;
+       fn verification_level(&self) -> VerificationLevel;
+       fn with_verification_level(level: VerificationLevel) -> Self;
+   }
+
+**Safe Memory Abstractions**:
+
+.. code-block:: rust
+
+   pub struct SafeMemoryHandler<P: MemoryProvider> {
+       provider: P,
+       verification_level: VerificationLevel,
+   }
+   
+   pub struct Slice<'a> {
+       data: &'a [u8],
+       checksum: Checksum,
+       verification_level: VerificationLevel,
+   }
+   
+   pub struct SliceMut<'a> {
+       data: &'a mut [u8],
+       checksum: Checksum,
+       verification_level: VerificationLevel,
+   }
+
+**Platform Implementations**:
+
+.. list-table:: Platform Memory Implementations
    :header-rows: 1
 
-   * - Environment
+   * - Platform
      - Implementation
-     - Characteristics
-   * - std
-     - ``StdProvider``
-     - Dynamic sizing with ``Vec<u8>``
-   * - no_std + alloc
-     - ``AllocProvider``
-     - Uses global allocator
-   * - no_std + no_alloc
-     - ``NoStdProvider<const N: usize>``
-     - Fixed size ``[u8; N]``
+     - Features
+   * - Linux
+     - ``LinuxAllocator``
+     - mmap, guard pages, MTE support
+   * - macOS  
+     - ``MacOsAllocator``
+     - vm_allocate, direct syscalls
+   * - QNX
+     - ``QnxAllocator``
+     - shm_open, partition support
+   * - No-std
+     - ``NoStdProvider<N>``
+     - Static arrays, compile-time bounds
+
+Security and Control Flow Interfaces
+-----------------------------------
+
+CFI Control Flow Operations Interface
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. arch_interface:: CFI Control Flow Operations
+   :id: ARCH_IF_101
+   :component: ARCH_COMP_101
+   :file: wrt-instructions/src/cfi_control_ops.rs
+   :type: provided
+   :stability: stable
+
+**Purpose**: Provides Control Flow Integrity protection for WebAssembly execution.
+
+**Actual Implementation**:
+
+.. code-block:: rust
+
+   pub trait CfiControlFlowOps {
+       fn call_indirect_with_cfi(
+           &mut self,
+           type_idx: u32,
+           table_idx: u32,
+           protection: &CfiControlFlowProtection,
+           context: &mut CfiExecutionContext,
+       ) -> Result<CfiProtectedBranchTarget>;
+       
+       fn return_with_cfi(
+           &mut self,
+           protection: &CfiControlFlowProtection,
+           context: &mut CfiExecutionContext,
+       ) -> Result<()>;
+       
+       fn branch_with_cfi(
+           &mut self,
+           label_idx: u32,
+           conditional: bool,
+           protection: &CfiControlFlowProtection,
+           context: &mut CfiExecutionContext,
+       ) -> Result<CfiProtectedBranchTarget>;
+   }
+
+   pub struct CfiExecutionEngine {
+       cfi_ops: DefaultCfiControlFlowOps,
+       cfi_protection: CfiControlFlowProtection,
+       cfi_context: CfiExecutionContext,
+       violation_policy: CfiViolationPolicy,
+       statistics: CfiEngineStatistics,
+   }
+
+Async Runtime Interface
+~~~~~~~~~~~~~~~~~~~~~~
+
+.. arch_interface:: Async Runtime
+   :id: ARCH_IF_102
+   :component: ARCH_COMP_102
+   :file: wrt-component/src/async_/async_runtime.rs
+   :type: provided
+   :stability: stable
+
+**Purpose**: Provides async/await capabilities for WebAssembly Component Model.
+
+**Actual Implementation**:
+
+.. code-block:: rust
+
+   pub struct AsyncExecutionEngine {
+       scheduler: TaskScheduler,
+       runtime_bridge: AsyncRuntimeBridge,
+       resource_cleanup: AsyncResourceCleanup,
+       context_manager: AsyncContextManager,
+   }
+
+   pub trait AsyncCanonicalLift<T> {
+       async fn async_lift(&self, bytes: &[u8]) -> Result<T>;
+       fn can_lift_sync(&self, bytes: &[u8]) -> bool;
+   }
+
+   pub trait AsyncCanonicalLower<T> {
+       async fn async_lower(&self, value: T) -> Result<Vec<u8>>;
+       fn can_lower_sync(&self, value: &T) -> bool;
+   }
+
+Threading Management Interface
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. arch_interface:: Threading Management
+   :id: ARCH_IF_103
+   :component: ARCH_COMP_103
+   :file: wrt-component/src/threading/task_manager.rs
+   :type: provided
+   :stability: stable
+
+**Purpose**: Comprehensive task and thread management for WebAssembly components.
+
+**Actual Implementation**:
+
+.. code-block:: rust
+
+   pub struct TaskManager {
+       task_registry: BoundedHashMap<TaskId, TaskInfo, 2048>,
+       scheduler: PriorityTaskScheduler,
+       resource_limits: TaskResourceLimits,
+       cancellation: TaskCancellation,
+   }
+
+   pub struct ThreadSpawnFuel {
+       fuel_pool: FuelPool,
+       thread_limits: ThreadLimits,
+       platform_config: PlatformThreadConfig,
+       thread_tracker: ThreadTracker,
+   }
+
+Debug Infrastructure Interface
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. arch_interface:: Debug Infrastructure
+   :id: ARCH_IF_104
+   :component: ARCH_COMP_104
+   :file: wrt-debug/src/lib.rs
+   :type: provided
+   :stability: stable
+
+**Purpose**: Comprehensive debugging support with DWARF and WIT integration.
+
+**Actual Implementation**:
+
+.. code-block:: rust
+
+   pub trait RuntimeDebugger {
+       fn attach(&mut self, instance: &mut ModuleInstance) -> Result<DebugSession>;
+       fn set_breakpoint(&mut self, address: Address) -> Result<BreakpointId>;
+       fn remove_breakpoint(&mut self, id: BreakpointId) -> Result<()>;
+       fn step(&mut self, mode: StepMode) -> Result<ExecutionState>;
+       fn continue_execution(&mut self) -> Result<ExecutionState>;
+       fn get_stack_trace(&self) -> Result<StackTrace>;
+       fn inspect_variable(&self, name: &str) -> Result<VariableValue>;
+       fn read_memory(&self, address: Address, size: usize) -> Result<Vec<u8>>;
+   }
+
+   pub struct DwarfDebugInfo {
+       debug_info: DebugInfo,
+       debug_line: DebugLine,
+       debug_str: DebugStr,
+       debug_abbrev: DebugAbbrev,
+       debug_loc: DebugLoc,
+       debug_frame: DebugFrame,
+   }
 
 Component Model Interfaces
 --------------------------
