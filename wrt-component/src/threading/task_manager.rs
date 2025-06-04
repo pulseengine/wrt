@@ -1,4 +1,5 @@
 //! Task management for WebAssembly Component Model async operations
+//! SW-REQ-ID: REQ_FUNC_031
 //!
 //! This module implements the task management system required for async support
 //! in the Component Model MVP specification.
