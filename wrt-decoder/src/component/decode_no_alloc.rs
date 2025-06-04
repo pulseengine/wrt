@@ -35,7 +35,8 @@
 //! ```
 
 use wrt_error::{codes, Error, ErrorCategory, Result};
-use wrt_format::binary;
+use crate::prelude::BoundedVecExt;
+use wrt_format::{binary, read_name};
 use wrt_foundation::{
     bounded::{
         BoundedString, BoundedVec, MAX_BUFFER_SIZE, MAX_COMPONENT_LIST_ITEMS,
@@ -133,7 +134,7 @@ impl From<u8> for ComponentSectionId {
 }
 
 /// A minimal representation of a component section
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ComponentSectionInfo {
     /// Section ID
     pub id: ComponentSectionId,
@@ -262,7 +263,7 @@ impl ComponentHeader {
                 if section_info.id == ComponentSectionId::Custom {
                     let section_data = &bytes
                         [section_info.offset..section_info.offset + section_info.size as usize];
-                    if let Ok((section_name, name_size)) = binary::read_name(section_data, 0) {
+                    if let Ok((section_name, name_size)) = read_name(section_data, 0) {
                         if section_name == name {
                             return Some((
                                 section_info.offset + name_size,
@@ -458,7 +459,7 @@ fn scan_component_imports(
         }
 
         // Read import name
-        if let Ok((name, name_len)) = binary::read_name(section_data, offset) {
+        if let Ok((name, name_len)) = read_name(section_data, offset) {
             offset += name_len;
 
             // In a real implementation, we would read the import type here
@@ -516,7 +517,7 @@ fn scan_component_exports(
         }
 
         // Read export name
-        if let Ok((name, name_len)) = binary::read_name(section_data, offset) {
+        if let Ok((name, name_len)) = read_name(section_data, offset) {
             offset += name_len;
 
             // In a real implementation, we would read the export type here

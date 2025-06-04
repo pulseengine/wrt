@@ -32,17 +32,17 @@ pub fn encode_val_type(result: &mut Vec<u8>, val_type: &FormatValType) -> Result
         FormatValType::F64 => result.push(0x06),
         FormatValType::Record(fields) => {
             result.push(0x0E);
-            result.extend_from_slice(&binary::write_leb128_u32(fields.len() as u32));
+            result.extend_from_slice(&write_leb128_u32(fields.len() as u32));
             for (name, field_type) in fields {
-                result.extend_from_slice(&binary::write_string(name));
+                result.extend_from_slice(&write_string(name));
                 encode_val_type(result, field_type)?;
             }
         }
         FormatValType::Variant(cases) => {
             result.push(0x0F);
-            result.extend_from_slice(&binary::write_leb128_u32(cases.len() as u32));
+            result.extend_from_slice(&write_leb128_u32(cases.len() as u32));
             for (case_name, case_type) in cases {
-                result.extend_from_slice(&binary::write_string(case_name));
+                result.extend_from_slice(&write_string(case_name));
                 if let Some(ty) = case_type {
                     result.push(0x01); // has type
                     encode_val_type(result, ty)?;
@@ -53,7 +53,7 @@ pub fn encode_val_type(result: &mut Vec<u8>, val_type: &FormatValType) -> Result
         }
         FormatValType::Tuple(types) => {
             result.push(0x10);
-            result.extend_from_slice(&binary::write_leb128_u32(types.len() as u32));
+            result.extend_from_slice(&write_leb128_u32(types.len() as u32));
             for ty in types {
                 encode_val_type(result, ty)?;
             }
@@ -71,21 +71,21 @@ pub fn encode_val_type(result: &mut Vec<u8>, val_type: &FormatValType) -> Result
         }
         FormatValType::Enum(cases) => {
             result.push(0x13);
-            result.extend_from_slice(&binary::write_leb128_u32(cases.len() as u32));
+            result.extend_from_slice(&write_leb128_u32(cases.len() as u32));
             for case_name in cases {
-                result.extend_from_slice(&binary::write_string(case_name));
+                result.extend_from_slice(&write_string(case_name));
             }
         }
         FormatValType::Flags(names) => {
             result.push(0x14);
-            result.extend_from_slice(&binary::write_leb128_u32(names.len() as u32));
+            result.extend_from_slice(&write_leb128_u32(names.len() as u32));
             for name in names {
-                result.extend_from_slice(&binary::write_string(name));
+                result.extend_from_slice(&write_string(name));
             }
         }
         FormatValType::Ref(idx) => {
             result.push(0x15);
-            result.extend_from_slice(&binary::write_leb128_u32(*idx));
+            result.extend_from_slice(&write_leb128_u32(*idx));
         }
         FormatValType::Own(_) | FormatValType::Borrow(_) => {
             return Err(Error::new(
@@ -102,7 +102,7 @@ pub fn encode_val_type(result: &mut Vec<u8>, val_type: &FormatValType) -> Result
             encode_val_type(result, inner)?;
 
             // Encode size
-            result.extend_from_slice(&binary::write_leb128_u32(*size));
+            result.extend_from_slice(&write_leb128_u32(*size));
         }
         FormatValType::ErrorContext => {
             // Error context is a simple type

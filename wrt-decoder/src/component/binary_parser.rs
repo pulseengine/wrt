@@ -28,7 +28,7 @@ pub use wrt_foundation::VerificationLevel as ValidationLevel;
 pub enum ValidationLevel {
     Minimal,
     Standard,
-    Strict,
+    Full,
 }
 
 #[cfg(not(feature = "alloc"))]
@@ -241,7 +241,7 @@ impl ComponentBinaryParser {
         }
 
         // Validate the complete component
-        if self.validation_level == ValidationLevel::Strict {
+        if self.validation_level == ValidationLevel::Full {
             self.validate_component(&component)?;
         }
 
@@ -608,8 +608,8 @@ mod tests {
         let parser = ComponentBinaryParser::new();
         assert_eq!(parser.validation_level, ValidationLevel::Standard);
 
-        let strict_parser = ComponentBinaryParser::with_validation_level(ValidationLevel::Strict);
-        assert_eq!(strict_parser.validation_level, ValidationLevel::Strict);
+        let strict_parser = ComponentBinaryParser::with_validation_level(ValidationLevel::Full);
+        assert_eq!(strict_parser.validation_level, ValidationLevel::Full);
     }
 
     #[test]
@@ -658,7 +658,7 @@ mod tests {
         let result2 = parse_component_binary_with_validation(&binary, ValidationLevel::Minimal);
         assert!(result2.is_ok());
 
-        let result3 = parse_component_binary_with_validation(&binary, ValidationLevel::Strict);
+        let result3 = parse_component_binary_with_validation(&binary, ValidationLevel::Full);
         assert!(result3.is_ok());
     }
 }

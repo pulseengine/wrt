@@ -9,7 +9,7 @@ use crate::{prelude::*, Error, Result};
 /// Add a section to the binary with the given ID and content
 pub fn add_section(binary: &mut Vec<u8>, section_id: u8, content: &[u8]) {
     binary.push(section_id);
-    binary.extend(binary::write_leb128_u32(content.len() as u32));
+    binary.extend(write_leb128_u32(content.len() as u32));
     binary.extend_from_slice(content);
 }
 
