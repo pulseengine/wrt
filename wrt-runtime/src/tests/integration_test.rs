@@ -9,12 +9,12 @@ mod tests {
     fn test_basic_component_instantiation() -> Result<()> {
         // Create a simple component type with a function export
         let component_type = ComponentType {
-            imports: Vec::new(),
+            imports: Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap(),
             exports: vec![(
                 "hello".to_string(),
-                ExternType::Function(FuncType::new(Vec::new(), vec![ValueType::I32])?),
+                ExternType::Function(FuncType::new(Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap(), vec![ValueType::I32])?),
             )],
-            instances: Vec::new(),
+            instances: Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap(),
         };
 
         // Create a runtime
@@ -23,7 +23,7 @@ mod tests {
         // Register the hello function implementation
         runtime.register_host_function(
             "hello",
-            FuncType::new(Vec::new(), vec![ValueType::I32])?,
+            FuncType::new(Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap(), vec![ValueType::I32])?,
             |_args| {
                 // Return a simple value
                 Ok(vec![Value::I32(42)])
@@ -53,7 +53,7 @@ mod tests {
     fn test_host_function_registration() -> Result<()> {
         // Create a component type with a function export
         let component_type = ComponentType {
-            imports: Vec::new(),
+            imports: Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap(),
             exports: vec![(
                 "add".to_string(),
                 ExternType::Function(FuncType::new(
@@ -61,7 +61,7 @@ mod tests {
                     vec![ValueType::I32],
                 )?),
             )],
-            instances: Vec::new(),
+            instances: Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap(),
         };
 
         // Create a runtime
@@ -123,7 +123,7 @@ mod tests {
     fn test_memory_operations() -> Result<()> {
         // Create a component type with a memory export
         let component_type = ComponentType {
-            imports: Vec::new(),
+            imports: Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap(),
             exports: vec![(
                 "memory".to_string(),
                 ExternType::Memory(wrt_foundation::MemoryType {
@@ -131,7 +131,7 @@ mod tests {
                     shared: false,
                 }),
             )],
-            instances: Vec::new(),
+            instances: Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap(),
         };
 
         // Create a runtime

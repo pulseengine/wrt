@@ -39,7 +39,7 @@ impl Default for OptimizationStrategy {
 #[derive(Debug, Clone)]
 pub struct ExecutionPath {
     /// Sequence of instruction offsets in execution order
-    pub instruction_sequence: Vec<u32>,
+    pub instruction_sequence: wrt_foundation::bounded::BoundedVec<u32, 256, wrt_foundation::safe_memory::NoStdProvider<1024>>,
     /// Predicted probability of this path being taken
     pub probability: f64,
     /// Whether this path should be optimized for speed
@@ -76,9 +76,9 @@ impl ExecutionPath {
 pub struct InstructionPrefetchCache {
     /// Cached instructions for quick access
     #[cfg(feature = "alloc")]
-    cache: std::collections::HashMap<u32, Instruction>,
+    cache: alloc::collections::BTreeMap<u32, crate::prelude::Instruction>,
     #[cfg(not(feature = "alloc"))]
-    cache: wrt_foundation::BoundedVec<(u32, Instruction), 64, wrt_foundation::NoStdProvider<1024>>,
+    cache: wrt_foundation::BoundedVec<(u32, crate::prelude::Instruction), 64, wrt_foundation::NoStdProvider<1024>>,
     /// Cache hit statistics
     pub cache_hits: u64,
     /// Cache miss statistics
@@ -90,7 +90,7 @@ impl InstructionPrefetchCache {
     pub fn new() -> Self {
         Self {
             #[cfg(feature = "alloc")]
-            cache: std::collections::HashMap::new(),
+            cache: alloc::collections::BTreeMap::new(),
             #[cfg(not(feature = "alloc"))]
             cache: wrt_foundation::BoundedVec::new(wrt_foundation::NoStdProvider::<1024>::default()).unwrap(),
             cache_hits: 0,
@@ -99,7 +99,7 @@ impl InstructionPrefetchCache {
     }
     
     /// Prefetch instruction at offset
-    pub fn prefetch(&mut self, offset: u32, instruction: Instruction) -> Result<()> {
+    pub fn prefetch(&mut self, offset: u32, instruction: crate::prelude::Instruction) -> Result<()> {
         #[cfg(feature = "alloc")]
         {
             self.cache.insert(offset, instruction);
@@ -118,7 +118,7 @@ impl InstructionPrefetchCache {
     }
     
     /// Get cached instruction if available
-    pub fn get_cached(&mut self, offset: u32) -> Option<&Instruction> {
+    pub fn get_cached(&mut self, offset: u32) -> Option<&crate::prelude::Instruction> {
         #[cfg(feature = "alloc")]
         {
             if let Some(instruction) = self.cache.get(&offset) {
@@ -200,7 +200,8 @@ impl OptimizedInterpreter {
         self.execution_stats.function_calls += 1;
         
         // Analyze function for optimization opportunities
-        if let Some(func_predictor) = self.predictor.get_function_predictor(function_index) {
+        let has_predictor = self.predictor.get_function_predictor(function_index).is_some();
+        if has_predictor {
             match self.strategy {
                 OptimizationStrategy::None => {
                     // No optimization
@@ -210,13 +211,17 @@ impl OptimizedInterpreter {
                     self.execution_stats.predicted_functions += 1;
                 }
                 OptimizationStrategy::PredictionWithPrefetch => {
-                    // Prefetch likely execution paths
-                    self.prefetch_likely_paths(func_predictor)?;
+                    // Clone the predictor to avoid borrowing issues
+                    if let Some(func_predictor) = self.predictor.get_function_predictor(function_index).cloned() {
+                        self.prefetch_likely_paths(&func_predictor)?;
+                    }
                 }
                 OptimizationStrategy::Aggressive => {
-                    // All optimizations
-                    self.prefetch_likely_paths(func_predictor)?;
-                    self.optimize_execution_paths(func_predictor)?;
+                    // Clone the predictor to avoid borrowing issues  
+                    if let Some(func_predictor) = self.predictor.get_function_predictor(function_index).cloned() {
+                        self.prefetch_likely_paths(&func_predictor)?;
+                        self.optimize_execution_paths(&func_predictor)?;
+                    }
                 }
             }
         }
@@ -270,7 +275,7 @@ impl OptimizedInterpreter {
     }
     
     /// Check if instruction is available in prefetch cache
-    pub fn get_prefetched_instruction(&mut self, offset: u32) -> Option<&Instruction> {
+    pub fn get_prefetched_instruction(&mut self, offset: u32) -> Option<&crate::prelude::Instruction> {
         if matches!(self.strategy, OptimizationStrategy::PredictionWithPrefetch | OptimizationStrategy::Aggressive) {
             self.prefetch_cache.get_cached(offset)
         } else {
@@ -279,7 +284,7 @@ impl OptimizedInterpreter {
     }
     
     /// Prefetch instruction for future execution
-    pub fn prefetch_instruction(&mut self, offset: u32, instruction: Instruction) -> Result<()> {
+    pub fn prefetch_instruction(&mut self, offset: u32, instruction: crate::prelude::Instruction) -> Result<()> {
         if matches!(self.strategy, OptimizationStrategy::PredictionWithPrefetch | OptimizationStrategy::Aggressive) {
             self.prefetch_cache.prefetch(offset, instruction)?;
             self.execution_stats.instructions_prefetched += 1;

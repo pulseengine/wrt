@@ -8,7 +8,7 @@ use alloc::{collections::BTreeMap, sync::Arc};
 use std::{collections::HashMap, sync::Arc};
 
 #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
-mod no_alloc {
+pub mod no_alloc {
     use wrt_error::{codes, Error, ErrorCategory, Result};
     use wrt_foundation::{
         bounded::{BoundedVec, MAX_COMPONENT_TYPES},
@@ -59,10 +59,30 @@ mod no_alloc {
         ///
         /// * `Result<()>` - Ok if the component is valid, Error otherwise
         pub fn validate(binary: &[u8]) -> Result<()> {
-            #[cfg(feature = "alloc")]
+            #[cfg(all(feature = "alloc", feature = "decoder"))]
             {
                 // Use wrt-decoder's header validation
                 wrt_decoder::component::decode_no_alloc::verify_component_header(binary)
+            }
+            #[cfg(all(feature = "alloc", not(feature = "decoder")))]
+            {
+                // Basic validation for alloc mode without decoder - check magic number
+                if binary.len() < 8 {
+                    return Err(Error::new(
+                        ErrorCategory::Parse,
+                        codes::INVALID_BINARY,
+                        "Binary too short",
+                    ));
+                }
+                // Check WebAssembly magic number
+                if &binary[0..4] != b"\0asm" {
+                    return Err(Error::new(
+                        ErrorCategory::Parse,
+                        codes::INVALID_BINARY,
+                        "Invalid magic number",
+                    ));
+                }
+                Ok(())
             }
             #[cfg(not(feature = "alloc"))]
             {
@@ -92,8 +112,12 @@ use wrt_foundation::{
     component::{ComponentType, ExternType},
     safe_memory::{SafeMemoryHandler, SafeSlice, SafeStack},
     types::FuncType,
+    traits::BoundedCapacity,
     Value, VerificationLevel,
 };
+
+#[cfg(feature = "alloc")]
+use alloc::vec;
 
 use crate::{
     component_traits::{ComponentInstance, ComponentRuntime, HostFunction, HostFunctionFactory},
@@ -163,13 +187,13 @@ impl<
         let vec_result = (self.implementation)(args)?;
 
         // Convert to SafeStack
-        let mut safe_stack =
-            wrt_foundation::safe_memory::SafeStack::with_capacity(vec_result.len());
+        let provider = wrt_foundation::safe_memory::NoStdProvider::default();
+        let mut safe_stack = wrt_foundation::safe_memory::SafeStack::new(provider)?;
         safe_stack.set_verification_level(self.verification_level);
 
         // Add all values to the safe stack
-        for value in vec_result {
-            safe_stack.push(value)?;
+        for value in vec_result.iter() {
+            safe_stack.push(value.clone())?;
         }
 
         Ok(safe_stack)
@@ -196,6 +220,7 @@ impl DefaultHostFunctionFactory {
     }
 }
 
+#[cfg(any(feature = "std", feature = "alloc"))]
 impl HostFunctionFactory for DefaultHostFunctionFactory {
     /// Create a function with the given name and type
     fn create_function(&self, _name: &str, ty: &FuncType<wrt_foundation::safe_memory::NoStdProvider<1024>>) -> Result<Box<dyn HostFunction>> {
@@ -204,13 +229,22 @@ impl HostFunctionFactory for DefaultHostFunctionFactory {
         let func_impl = HostFunctionImpl {
             func_type: ty.clone(),
             implementation: Arc::new(move |_args: &[wrt_foundation::Value]| {
-                let mut result = wrt_foundation::safe_memory::SafeStack::new();
+                let provider = wrt_foundation::safe_memory::NoStdProvider::default();
+                let mut result = wrt_foundation::safe_memory::SafeStack::new(provider)?;
                 result.set_verification_level(verification_level);
                 Ok(result)
             }),
         };
 
-        Ok(Box::new(func_impl))
+        #[cfg(any(feature = "std", feature = "alloc"))]
+        {
+            Ok(Box::new(func_impl))
+        }
+        #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+        {
+            // In no_std mode without alloc, we can't allocate Box
+            Err(Error::new(ErrorCategory::Runtime, codes::UNSUPPORTED_OPERATION, "Host functions not supported in no_std mode without alloc"))
+        }
     }
 }
 
@@ -244,18 +278,19 @@ impl ComponentRuntime for ComponentRuntimeImpl {
     fn new() -> Self {
         Self {
             #[cfg(any(feature = "std", feature = "alloc"))]
-            host_factories: HostFactoryVec::with_capacity(8),
+            host_factories: Vec::with_capacity(8),
             #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
-            host_factories: HostFactoryVec::new_with_provider(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).expect("Failed to create host_factories"),
+            host_factories: HostFactoryVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).expect("Failed to create host_factories"),
             verification_level: VerificationLevel::default(),
             #[cfg(any(feature = "std", feature = "alloc"))]
             host_functions: HostFunctionMap::new(),
             #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
-            host_functions: HostFunctionMap::new_with_provider(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).expect("Failed to create host_functions"),
+            host_functions: HostFunctionMap::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).expect("Failed to create host_functions"),
         }
     }
 
     /// Register a host function factory
+    #[cfg(any(feature = "std", feature = "alloc"))]
     fn register_host_factory(&mut self, factory: Box<dyn HostFunctionFactory>) {
         // Safety-enhanced push operation with verification
         if self.verification_level.should_verify(128) {
@@ -273,7 +308,7 @@ impl ComponentRuntime for ComponentRuntimeImpl {
         {
             // In no_std without alloc, just count registered factories
             let _factory_id = self.host_factories.len() as u32;
-            let _ = self.host_factories.try_push(_factory_id);
+            let _ = self.host_factories.push(_factory_id);
             // We don't actually store the factory in no_std mode for simplicity
             core::mem::drop(factory);
         }
@@ -284,7 +319,15 @@ impl ComponentRuntime for ComponentRuntimeImpl {
         }
     }
 
+    /// Register a host function factory (no_std stub)
+    #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+    fn register_host_factory(&mut self, _factory: core::marker::PhantomData<Box<dyn HostFunctionFactory>>) {
+        // In no_std mode without alloc, we can't store factory objects
+        // This is a stub implementation
+    }
+
     /// Instantiate a component
+    #[cfg(any(feature = "std", feature = "alloc"))]
     fn instantiate(&self, component_type: &ComponentType<wrt_foundation::safe_memory::NoStdProvider<1024>>) -> Result<Box<dyn ComponentInstance>> {
         // Verify integrity before instantiation if high verification level
         if self.verification_level.should_verify(200) {
@@ -293,10 +336,22 @@ impl ComponentRuntime for ComponentRuntimeImpl {
 
         // Initialize memory with enough space (1 page = 64KB)
         let memory_size = 65536;
+        #[cfg(any(feature = "std", feature = "alloc"))]
         let memory_data = vec![0; memory_size];
+        #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+        let memory_data = {
+            let mut data = wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<65536>::default()).unwrap();
+            for _ in 0..memory_size.min(65536) {
+                data.push(0u8).unwrap();
+            }
+            data
+        };
 
         // Collect host function names and types for tracking
-        let mut host_function_names = Vec::new();
+        #[cfg(any(feature = "std", feature = "alloc"))]
+        let mut host_function_names = Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap();
+        #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+        let mut host_function_names = wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap();
 
         #[cfg(any(feature = "std", feature = "alloc"))]
         let mut host_functions = {
@@ -327,13 +382,28 @@ impl ComponentRuntime for ComponentRuntimeImpl {
         };
 
         // Create a basic component instance implementation
-        Ok(Box::new(ComponentInstanceImpl {
-            component_type: component_type.clone(),
-            verification_level: self.verification_level,
-            memory_store: wrt_foundation::safe_memory::SafeMemoryHandler::<wrt_foundation::safe_memory::NoStdProvider<1024>>::new(memory_data),
-            host_function_names,
-            host_functions,
-        }))
+        #[cfg(any(feature = "std", feature = "alloc"))]
+        {
+            Ok(Box::new(ComponentInstanceImpl {
+                component_type: component_type.clone(),
+                verification_level: self.verification_level,
+                memory_store: wrt_foundation::safe_memory::SafeMemoryHandler::<wrt_foundation::safe_memory::NoStdProvider<1024>>::new(memory_data),
+                host_function_names,
+                host_functions,
+            }))
+        }
+        #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+        {
+            // In no_std mode without alloc, we can't allocate Box
+            Err(Error::new(ErrorCategory::Runtime, codes::UNSUPPORTED_OPERATION, "Component instances not supported in no_std mode without alloc"))
+        }
+    }
+
+    /// Instantiate a component (no_std stub)
+    #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+    fn instantiate(&self, _component_type: &ComponentType<wrt_foundation::safe_memory::NoStdProvider<1024>>) -> Result<core::marker::PhantomData<Box<dyn ComponentInstance>>> {
+        // In no_std mode without alloc, we can't create component instances
+        Err(Error::new(ErrorCategory::Runtime, codes::UNSUPPORTED_OPERATION, "Component instances not supported in no_std mode without alloc"))
     }
 
     /// Register a host function
@@ -344,15 +414,28 @@ impl ComponentRuntime for ComponentRuntimeImpl {
             + Send
             + Sync,
     {
-        // Create a legacy host function implementation
-        let func_impl = LegacyHostFunctionImpl {
-            func_type: ty,
-            implementation: Arc::new(function),
-            verification_level: self.verification_level,
-        };
+        #[cfg(any(feature = "std", feature = "alloc"))]
+        {
+            // Create a legacy host function implementation
+            let func_impl = LegacyHostFunctionImpl {
+                func_type: ty,
+                implementation: Arc::new(function),
+                verification_level: self.verification_level,
+            };
 
-        // Insert the function into the host functions map
-        self.host_functions.insert(name.to_string(), Box::new(func_impl));
+            // Insert the function into the host functions map
+            #[cfg(feature = "std")]
+            let name_string = name.to_string();
+            #[cfg(all(not(feature = "std"), feature = "alloc"))]
+            let name_string = alloc::string::String::from(name);
+            
+            self.host_functions.insert(name_string, Box::new(func_impl));
+        }
+        #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+        {
+            // In no_std mode without alloc, just ignore the registration
+            let _ = (name, ty, function);
+        }
 
         Ok(())
     }
@@ -400,10 +483,13 @@ impl ComponentRuntimeImpl {
 }
 
 #[cfg(feature = "std")]
-type HostFunctionTypeMap = HashMap<String, Option<FuncType>>;
+type HostFunctionTypeMap = HashMap<String, Option<FuncType<wrt_foundation::safe_memory::NoStdProvider<1024>>>>;
 
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
-type HostFunctionTypeMap = BTreeMap<String, Option<FuncType>>;
+type HostFunctionTypeMap = BTreeMap<wrt_foundation::bounded::BoundedString<128, wrt_foundation::safe_memory::NoStdProvider<1024>>, Option<FuncType<wrt_foundation::safe_memory::NoStdProvider<1024>>>>;
+
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+type HostFunctionTypeMap = wrt_foundation::bounded::BoundedVec<(wrt_foundation::bounded::BoundedString<128, wrt_foundation::safe_memory::NoStdProvider<1024>>, Option<FuncType<wrt_foundation::safe_memory::NoStdProvider<1024>>>), 16, wrt_foundation::safe_memory::NoStdProvider<1024>>;
 
 /// Basic implementation of ComponentInstance for testing
 struct ComponentInstanceImpl {
@@ -433,15 +519,32 @@ impl ComponentInstance for ComponentInstanceImpl {
                 return Err(wrt_error::Error::new(
                     wrt_error::ErrorCategory::Resource,
                     1000,
-                    format!("Function not found: {}", name),
+                    "Function not found",
                 ));
             }
         }
 
         // Check if this is a function that's known to the runtime
-        if self.host_function_names.contains(&name.to_string()) {
+        #[cfg(feature = "std")]
+        let name_check = self.host_function_names.contains(&name.to_string());
+        #[cfg(all(not(feature = "std"), feature = "alloc"))]
+        let name_check = self.host_function_names.contains(&alloc::string::String::from(name));
+        #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+        let name_check = {
+            let mut found = false;
+            for stored_name in self.host_function_names.iter() {
+                if stored_name.as_str().map_or(false, |s| s == name) {
+                    found = true;
+                    break;
+                }
+            }
+            found
+        };
+        
+        if name_check {
             // Create an empty SafeStack for the result
-            let mut result = wrt_foundation::safe_memory::SafeStack::with_capacity(1);
+            let provider = wrt_foundation::safe_memory::NoStdProvider::default();
+            let mut result = wrt_foundation::safe_memory::SafeStack::new(provider)?;
             result.set_verification_level(self.verification_level);
 
             // For testing purposes, just return a constant value
@@ -468,7 +571,8 @@ impl ComponentInstance for ComponentInstanceImpl {
         }
 
         // Create an empty SafeStack for the result
-        let mut result = wrt_foundation::safe_memory::SafeStack::with_capacity(1);
+        let provider = wrt_foundation::safe_memory::NoStdProvider::default();
+        let mut result = wrt_foundation::safe_memory::SafeStack::new(provider)?;
         result.set_verification_level(self.verification_level);
 
         // Simulate function execution based on the function name
@@ -506,7 +610,7 @@ impl ComponentInstance for ComponentInstanceImpl {
                 return Err(wrt_error::Error::new(
                     wrt_error::ErrorCategory::Resource,
                     1000,
-                    format!("Function not found: {}", name),
+                    "Function not found",
                 ));
             }
         }
@@ -528,7 +632,7 @@ impl ComponentInstance for ComponentInstanceImpl {
                 return Err(wrt_error::Error::new(
                     wrt_error::ErrorCategory::Resource,
                     1003,
-                    format!("Memory not found: {}", name),
+                    "Memory not found",
                 ));
             }
 
@@ -537,7 +641,7 @@ impl ComponentInstance for ComponentInstanceImpl {
                 return Err(wrt_error::Error::new(
                     wrt_error::ErrorCategory::Memory,
                     1004,
-                    format!("Memory access out of bounds: {} + {}", offset, size),
+                    "Memory access out of bounds",
                 ));
             }
         }
@@ -555,7 +659,7 @@ impl ComponentInstance for ComponentInstanceImpl {
                 return Err(wrt_error::Error::new(
                     wrt_error::ErrorCategory::Resource,
                     1003,
-                    format!("Memory not found: {}", name),
+                    "Memory not found",
                 ));
             }
 
@@ -564,7 +668,7 @@ impl ComponentInstance for ComponentInstanceImpl {
                 return Err(wrt_error::Error::new(
                     wrt_error::ErrorCategory::Memory,
                     1004,
-                    format!("Memory access out of bounds: {} + {}", offset, bytes.len()),
+                    "Memory access out of bounds",
                 ));
             }
         }
@@ -577,7 +681,7 @@ impl ComponentInstance for ComponentInstanceImpl {
     fn get_export_type(&self, name: &str) -> Result<ExternType<wrt_foundation::safe_memory::NoStdProvider<1024>>> {
         // Check the component type for the export
         for export in &self.component_type.exports {
-            if export.name == name {
+            if export.name.as_str().map_or(false, |s| s == name) {
                 return Ok(export.ty.clone());
             }
         }
@@ -586,7 +690,7 @@ impl ComponentInstance for ComponentInstanceImpl {
         Err(wrt_error::Error::new(
             wrt_error::ErrorCategory::Resource,
             1005,
-            format!("Export not found: {}", name),
+            "Export not found",
         ))
     }
 }
@@ -610,6 +714,7 @@ mod tests {
         }
     }
 
+    #[cfg(any(feature = "std", feature = "alloc"))]
     impl HostFunctionFactory for TestHostFunctionFactory {
         fn create_function(
             &self,
@@ -617,7 +722,7 @@ mod tests {
             _ty: &crate::func::FuncType,
         ) -> Result<Box<dyn HostFunction>> {
             // Create a simple echo function
-            let func_type = match FuncType::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default(), Vec::new(), Vec::new()) {
+            let func_type = match FuncType::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default(), Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap(), Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap()) {
                 Ok(ty) => ty,
                 Err(e) => return Err(e.into()),
             };
@@ -627,7 +732,8 @@ mod tests {
                 func_type,
                 implementation: Arc::new(move |args: &[Value]| {
                     // Create a new SafeStack with the right verification level
-                    let mut result = SafeStack::with_capacity(args.len());
+                    let provider = wrt_foundation::safe_memory::NoStdProvider::default();
+                    let mut result = SafeStack::new(provider)?;
                     result.set_verification_level(verification_level);
 
                     // Add all arguments to the stack
@@ -644,6 +750,7 @@ mod tests {
     // A legacy host function for testing - returns Vec
     struct LegacyTestHostFunctionFactory;
 
+    #[cfg(any(feature = "std", feature = "alloc"))]
     impl HostFunctionFactory for LegacyTestHostFunctionFactory {
         fn create_function(
             &self,
@@ -651,7 +758,7 @@ mod tests {
             _ty: &crate::func::FuncType,
         ) -> Result<Box<dyn HostFunction>> {
             // Create a simple legacy echo function
-            let func_type = FuncType::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default(), Vec::new(), Vec::new())?;
+            let func_type = FuncType::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default(), Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap(), Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap())?;
 
             Ok(Box::new(LegacyHostFunctionImpl {
                 func_type,
@@ -703,7 +810,7 @@ mod tests {
     fn test_component_instance_memory() -> Result<()> {
         // Create a component type for testing
         let component_type =
-            ComponentType { imports: Vec::new(), exports: Vec::new(), instances: Vec::new() };
+            ComponentType { imports: Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap(), exports: Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap(), instances: Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap() };
 
         // Create a component instance with enough memory
         let mut data = vec![0; 100]; // Initialize with 100 bytes
@@ -711,7 +818,7 @@ mod tests {
             component_type,
             verification_level: VerificationLevel::Standard,
             memory_store: wrt_foundation::safe_memory::SafeMemoryHandler::<wrt_foundation::safe_memory::NoStdProvider<1024>>::new(data),
-            host_function_names: Vec::new(),
+            host_function_names: Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap(),
             #[cfg(feature = "std")]
             host_functions: HashMap::new(),
             #[cfg(all(not(feature = "std"), feature = "alloc"))]

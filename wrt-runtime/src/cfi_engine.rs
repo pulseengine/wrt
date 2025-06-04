@@ -350,21 +350,24 @@ impl CfiExecutionEngine {
         let current_location =
             (self.cfi_context.current_function, self.cfi_context.current_instruction);
 
-        // Remove any satisfied expectations
+        // Check for timed out expectations first
+        let mut violations_detected = false;
+        let mut metrics_landing_pads_validated = 0;
+        
         self.cfi_context.landing_pad_expectations.retain(|expectation| {
             let matches_location = expectation.function_index == current_location.0
                 && expectation.instruction_offset == current_location.1;
 
             if matches_location {
                 // Landing pad expectation satisfied
-                self.cfi_context.metrics.landing_pads_validated += 1;
+                metrics_landing_pads_validated += 1;
                 false // Remove from expectations
             } else {
                 // Check for timeout
                 if let Some(deadline) = expectation.deadline {
                     if current_time > deadline {
                         // Landing pad expectation timed out - potential CFI violation
-                        self.handle_cfi_violation(CfiViolationType::LandingPadTimeout);
+                        violations_detected = true;
                         false // Remove expired expectation
                     } else {
                         true // Keep expectation
@@ -374,6 +377,12 @@ impl CfiExecutionEngine {
                 }
             }
         });
+        
+        // Update metrics and handle violations after borrowing is done
+        self.cfi_context.metrics.landing_pads_validated += metrics_landing_pads_validated;
+        if violations_detected {
+            self.handle_cfi_violation(CfiViolationType::LandingPadTimeout);
+        }
 
         Ok(())
     }
@@ -381,7 +390,7 @@ impl CfiExecutionEngine {
     /// Validate instruction is allowed at current location
     fn validate_instruction_allowed(
         &self,
-        _instruction: &wrt_foundation::types::Instruction,
+        _instruction: &crate::prelude::Instruction,
     ) -> Result<()> {
         // TODO: Implement instruction validation based on CFI policy
         // For example, indirect calls might only be allowed from certain locations
@@ -545,7 +554,7 @@ impl CfiExecutionEngine {
     /// Update CFI state after instruction execution
     fn update_cfi_state_post_execution(
         &mut self,
-        _instruction: &wrt_foundation::types::Instruction,
+        _instruction: &crate::prelude::Instruction,
         _result: &Result<CfiExecutionResult>,
     ) -> Result<()> {
         // TODO: Update CFI state based on instruction execution result
@@ -555,7 +564,7 @@ impl CfiExecutionEngine {
     /// Handle potential CFI violation from execution error
     fn handle_potential_cfi_violation(
         &mut self,
-        _instruction: &wrt_foundation::types::Instruction,
+        _instruction: &crate::prelude::Instruction,
         _result: &Result<CfiExecutionResult>,
     ) -> Result<()> {
         // TODO: Analyze execution error for CFI violation indicators
@@ -612,7 +621,7 @@ impl CfiExecutionEngine {
             engine.exec_stack.state = StacklessExecutionState::Calling {
                 instance_idx: 0, // Default instance
                 func_idx: type_idx,
-                args: Vec::new(), // Args would be popped from stack in real implementation
+                args: Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap(), // Args would be popped from stack in real implementation
                 return_pc: engine.exec_stack.pc + 1,
             };
             engine.exec_stack.pc += 1;
@@ -633,7 +642,7 @@ impl CfiExecutionEngine {
         // Update stackless engine state for return
         if let Some(engine) = &mut self.stackless_engine {
             engine.exec_stack.state = StacklessExecutionState::Returning {
-                values: Vec::new(), // Return values would be determined by actual execution
+                values: Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap(), // Return values would be determined by actual execution
             };
         }
 
@@ -654,7 +663,7 @@ impl CfiExecutionEngine {
         if let Some(engine) = &mut self.stackless_engine {
             engine.exec_stack.state = StacklessExecutionState::Branching {
                 depth: label_idx,
-                values: Vec::new(), // Values would be managed by actual execution
+                values: Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap(), // Values would be managed by actual execution
             };
             engine.exec_stack.pc = label_idx as usize;
         }
@@ -714,6 +723,25 @@ pub enum CfiExecutionResult {
     Branch { result: ExecutionResult, protected_target: CfiProtectedBranchTarget },
     /// Regular instruction execution
     Regular { result: ExecutionResult },
+}
+
+/// Placeholder for CFI check information
+#[derive(Debug, Clone)]
+pub struct CfiCheck {
+    /// Check type
+    pub check_type: wrt_foundation::bounded::BoundedString<64, wrt_foundation::safe_memory::NoStdProvider<1024>>,
+    /// Location of check
+    pub location: usize,
+}
+
+impl CfiCheck {
+    /// Create a new CFI check
+    pub fn new(check_type: String, location: usize) -> Self {
+        Self {
+            check_type,
+            location,
+        }
+    }
 }
 
 /// Types of CFI violations that can be detected

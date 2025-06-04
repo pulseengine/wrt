@@ -15,12 +15,14 @@ use crate::prelude::*;
 use crate::thread_manager::{ThreadId, ThreadState};
 use wrt_error::{Error, ErrorCategory, Result, codes};
 use wrt_platform::sync::{Mutex, Condvar};
-use core::time::Duration;
-
-#[cfg(feature = "alloc")]
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
 use alloc::{vec::Vec, collections::BTreeMap, sync::Arc};
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+use wrt_foundation::{bounded::BoundedVec, traits::BoundedCapacity};
 #[cfg(feature = "std")]
 use std::{vec::Vec, collections::BTreeMap, sync::Arc, time::{Duration, Instant}};
+#[cfg(not(feature = "std"))]
+use wrt_platform::sync::Duration;
 
 /// Wait queue identifier
 pub type WaitQueueId = u64;
@@ -77,7 +79,7 @@ impl WaitQueue {
         Self {
             id,
             #[cfg(feature = "alloc")]
-            waiters: Vec::new(),
+            waiters: Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap(),
             #[cfg(not(feature = "alloc"))]
             waiters: [const { None }; 64],
             stats: WaitQueueStats::new(),
@@ -208,7 +210,10 @@ impl WaitQueue {
     
     /// Check for expired timeouts and remove them
     pub fn process_timeouts(&mut self) -> Vec<ThreadId> {
-        let mut timed_out = Vec::new();
+        #[cfg(any(feature = "std", feature = "alloc"))]
+        let mut timed_out = Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap();
+        #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+        let mut timed_out = wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap();
         
         #[cfg(feature = "std")]
         {
@@ -282,7 +287,7 @@ impl WaitQueueManager {
             #[cfg(feature = "alloc")]
             queues: BTreeMap::new(),
             #[cfg(not(feature = "alloc"))]
-            queues: [(0, const { None }); 256],
+            queues: core::array::from_fn(|_| (0, None)),
             next_queue_id: 1,
             global_stats: WaitQueueGlobalStats::new(),
         }
@@ -563,12 +568,12 @@ pub fn pause() {
         unsafe {
             core::arch::x86_64::_mm_pause();
         }
-        #[cfg(target_arch = "aarch64")]
-        // SAFETY: __yield is a safe CPU instruction with no side effects
-        unsafe {
-            core::arch::aarch64::__yield();
-        }
-        #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
+        // ARM yield instruction requires unstable features, disabled for now
+        // #[cfg(target_arch = "aarch64")]
+        // unsafe {
+        //     core::arch::aarch64::__yield();
+        // }
+        #[cfg(not(target_arch = "x86_64"))]
         {
             std::thread::yield_now();
         }
