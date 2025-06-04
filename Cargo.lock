@@ -4310,7 +4310,6 @@ version = "0.2.0"
 dependencies = [
  "proptest",
  "wrt-debug",
- "wrt-decoder",
  "wrt-error",
  "wrt-format",
  "wrt-foundation",

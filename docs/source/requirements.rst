@@ -8,7 +8,7 @@ Functional Requirements
 
 .. req:: Platform Abstraction Layer
    :id: REQ_PLATFORM_001
-   :status: new
+   :status: implemented
 
    The runtime shall provide a platform abstraction layer (PAL) with distinct backends 
    for target operating systems (macOS, Linux, QNX, Zephyr) and bare-metal environments, 
@@ -23,7 +23,7 @@ Functional Requirements
 
 .. req:: Baremetal Support
    :id: REQ_FUNC_002
-   :status: partial
+   :status: implemented
    
    The interpreter shall be executable on bare-metal environments with no reliance on any specific functionality from the provided execution environment, as it shall be ready for embedding to any environment that Rust can compile for.
 
@@ -74,7 +74,7 @@ Functional Requirements
 
 .. req:: WASI Logging Support
    :id: REQ_FUNC_015
-   :status: partial
+   :status: implemented
    
    The interpreter shall implement the WASI logging API as specified in the wasi-logging proposal, providing:
    - Support for all defined log levels (Error, Warn, Info, Debug, Trace)
@@ -237,6 +237,87 @@ Observability Requirements
    - Statement coverage (DO-178C DAL-C)
    - Decision coverage (DO-178C DAL-B)
    - Modified condition/decision coverage (DO-178C DAL-A)
+
+Advanced Runtime Requirements
+-----------------------------
+
+.. req:: Async/Await Runtime Support
+   :id: REQ_FUNC_030
+   :status: implemented
+   
+   The interpreter shall provide comprehensive async/await runtime support for WebAssembly Component Model, including:
+   - Async canonical lifting and lowering
+   - Async execution engine with future-based task management
+   - Async resource cleanup and lifecycle management
+   - Runtime bridge for async-to-sync interoperability
+   - Context preservation across async boundaries
+
+.. req:: Advanced Threading Support
+   :id: REQ_FUNC_031
+   :status: implemented
+   
+   The interpreter shall implement advanced threading capabilities including:
+   - Task manager with cancellation support
+   - Thread spawning with fuel-based resource control
+   - Waitable set primitives for thread synchronization
+   - Thread-safe builtin operations
+   - Integration with platform-specific threading backends
+
+.. req:: Debug Infrastructure
+   :id: REQ_FUNC_032
+   :status: implemented
+   
+   The interpreter shall provide comprehensive debugging capabilities including:
+   - DWARF debug information parsing and processing
+   - WIT-aware debugging with source mapping
+   - Runtime breakpoint management
+   - Stack trace generation with source information
+   - Memory inspection and variable examination
+   - Step-by-step execution control
+
+.. req:: Fuzzing Infrastructure
+   :id: REQ_QA_010
+   :status: implemented
+   
+   The interpreter shall include comprehensive fuzzing infrastructure covering:
+   - Bounded collections fuzzing (stack, vec, queue)
+   - Memory adapter and safe memory fuzzing
+   - Component model parser fuzzing
+   - Type bounds and canonical options fuzzing
+   - WIT parser fuzzing
+   - Continuous fuzzing integration
+
+.. req:: Multiple Runtime Modes
+   :id: REQ_FUNC_033
+   :status: implemented
+   
+   The interpreter shall support multiple runtime deployment modes through the wrtd daemon:
+   - Standard mode (wrtd-std) with full standard library support
+   - Allocation mode (wrtd-alloc) for embedded systems with heap
+   - No-std mode (wrtd-nostd) for pure bare-metal deployment
+   - Each mode with appropriate resource limits and safety constraints
+
+.. req:: Hardware Optimization Support
+   :id: REQ_PERF_010
+   :status: implemented
+   
+   The interpreter shall support platform-specific hardware optimizations including:
+   - SIMD acceleration for supported architectures (x86_64, aarch64)
+   - ARM Memory Tagging Extension (MTE) for spatial memory safety
+   - Intel Control-flow Enforcement Technology (CET) integration
+   - Hardware-accelerated atomic operations
+   - CPU-specific instruction scheduling optimizations
+
+.. req:: Formal Verification Support
+   :id: REQ_VERIFY_010
+   :status: implemented
+   
+   The interpreter shall include support for formal verification through:
+   - Kani proof harness integration
+   - Model checking annotations
+   - Invariant specifications
+   - Bounded verification for critical paths
+   - Integration with verification registry
 
 Implementation Status
 ---------------------
