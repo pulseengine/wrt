@@ -10,7 +10,7 @@ use core::{
 };
 
 #[cfg(feature = "alloc")]
-use alloc::{boxed::Box, collections::BTreeMap, sync::Arc, vec::Vec};
+use alloc::{boxed::Box, collections::BTreeMap, string::String, sync::Arc, vec::Vec};
 
 use wrt_error::Result;
 use wrt_sync::WrtRwLock;
@@ -607,6 +607,9 @@ where
         }
         fn is_running(&self) -> bool {
             false
+        }
+        fn get_stats(&self) -> Result<ThreadStats> {
+            Ok(ThreadStats::default())
         }
     }
     
