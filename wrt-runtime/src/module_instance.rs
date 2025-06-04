@@ -17,7 +17,7 @@ use wrt_platform::sync::Mutex;
 #[cfg(feature = "alloc")]
 use alloc::sync::Arc;
 #[cfg(feature = "std")]
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 // Import format! macro for string formatting
 #[cfg(feature = "std")]
@@ -31,15 +31,15 @@ pub struct ModuleInstance {
     /// The module this instance was instantiated from
     module: Arc<Module>,
     /// The instance's memory
-    memories: Arc<Mutex<Vec<Arc<Memory>>>>,
+    memories: Arc<Mutex<wrt_foundation::bounded::BoundedVec<Arc<Memory>, 64, wrt_foundation::safe_memory::NoStdProvider<1024>>>>,
     /// The instance's tables
-    tables: Arc<Mutex<Vec<Arc<Table>>>>,
+    tables: Arc<Mutex<wrt_foundation::bounded::BoundedVec<Arc<Table>, 64, wrt_foundation::safe_memory::NoStdProvider<1024>>>>,
     /// The instance's globals
-    globals: Arc<Mutex<Vec<Arc<Global>>>>,
+    globals: Arc<Mutex<wrt_foundation::bounded::BoundedVec<Arc<Global>, 256, wrt_foundation::safe_memory::NoStdProvider<1024>>>>,
     /// Instance ID for debugging
     instance_id: usize,
     /// Imported instance indices to resolve imports
-    imports: HashMap<String, HashMap<String, (usize, usize)>>,
+    imports: wrt_format::HashMap<wrt_foundation::bounded::BoundedString<128, wrt_foundation::safe_memory::NoStdProvider<1024>>, wrt_format::HashMap<wrt_foundation::bounded::BoundedString<128, wrt_foundation::safe_memory::NoStdProvider<1024>>, (usize, usize)>>,
     /// Debug information (optional)
     #[cfg(feature = "debug")]
     debug_info: Option<DwarfDebugInfo<'static>>,
@@ -50,9 +50,9 @@ impl ModuleInstance {
     pub fn new(module: Module, instance_id: usize) -> Self {
         Self {
             module: Arc::new(module),
-            memories: Arc::new(Mutex::new(Vec::new())),
-            tables: Arc::new(Mutex::new(Vec::new())),
-            globals: Arc::new(Mutex::new(Vec::new())),
+            memories: Arc::new(Mutex::new(Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap())),
+            tables: Arc::new(Mutex::new(Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap())),
+            globals: Arc::new(Mutex::new(Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap())),
             instance_id,
             imports: HashMap::new(),
             #[cfg(feature = "debug")]

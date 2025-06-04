@@ -42,7 +42,7 @@ pub trait ArcMemoryExt {
         &self,
         offset: u32,
         len: u32,
-    ) -> Result<wrt_foundation::safe_memory::SafeStack<u8>>;
+    ) -> Result<wrt_foundation::safe_memory::SafeStack<u8, 1024, wrt_foundation::safe_memory::NoStdProvider<1024>>>;
 
     /// Read bytes from memory (legacy method, prefer read_bytes_safe)
     #[deprecated(since = "0.2.0", note = "Use read_bytes_safe instead for enhanced memory safety")]
@@ -134,7 +134,7 @@ pub trait ArcMemoryExt {
 
     /// Read multiple WebAssembly values into a SafeStack
     ///
-    /// This method provides a safer alternative to reading values into a Vec
+    /// This method provides a safer alternative to reading values into a `Vec`
     /// by using SafeStack, which includes memory verification.
     ///
     /// # Arguments
@@ -155,7 +155,7 @@ pub trait ArcMemoryExt {
         addr: u32,
         value_type: wrt_foundation::types::ValueType,
         count: usize,
-    ) -> Result<wrt_foundation::safe_memory::SafeStack<Value>>;
+    ) -> Result<wrt_foundation::safe_memory::SafeStack<Value, 256, wrt_foundation::safe_memory::NoStdProvider<1024>>>;
 
     /// Write bytes to memory at the given offset
     fn write_via_callback(&self, offset: u32, buffer: &[u8]) -> Result<()>;
@@ -189,10 +189,10 @@ impl ArcMemoryExt for Arc<Memory> {
         &self,
         offset: u32,
         len: u32,
-    ) -> Result<wrt_foundation::safe_memory::SafeStack<u8>> {
+    ) -> Result<wrt_foundation::safe_memory::SafeStack<u8, 1024, wrt_foundation::safe_memory::NoStdProvider<1024>>> {
         // Early return for zero-length reads
         if len == 0 {
-            return Ok(wrt_foundation::safe_memory::SafeStack::new());
+            return Ok(wrt_foundation::safe_memory::SafeStack::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default())?);
         }
 
         // Get a memory-safe slice directly instead of creating a temporary buffer
@@ -238,7 +238,7 @@ impl ArcMemoryExt for Arc<Memory> {
     fn read_bytes(&self, offset: u32, len: u32) -> Result<Vec<u8>> {
         // Early return for zero-length reads
         if len == 0 {
-            return Ok(Vec::new());
+            return Ok(Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap());
         }
 
         // Get a memory-safe slice directly instead of creating a temporary buffer
@@ -438,7 +438,7 @@ impl ArcMemoryExt for Arc<Memory> {
 
     /// Read multiple WebAssembly values into a SafeStack
     ///
-    /// This method provides a safer alternative to reading values into a Vec
+    /// This method provides a safer alternative to reading values into a `Vec`
     /// by using SafeStack, which includes memory verification.
     ///
     /// # Arguments
@@ -459,9 +459,9 @@ impl ArcMemoryExt for Arc<Memory> {
         addr: u32,
         value_type: wrt_foundation::types::ValueType,
         count: usize,
-    ) -> Result<wrt_foundation::safe_memory::SafeStack<Value>> {
+    ) -> Result<wrt_foundation::safe_memory::SafeStack<Value, 256, wrt_foundation::safe_memory::NoStdProvider<1024>>> {
         // Create a SafeStack to store the values
-        let mut result = wrt_foundation::safe_memory::SafeStack::with_capacity(count);
+        let mut result = wrt_foundation::safe_memory::SafeStack::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default())?;
 
         // Set verification level to match memory's level
         let verification_level = self.as_ref().verification_level();

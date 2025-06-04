@@ -18,7 +18,7 @@ pub trait MemoryAdapter: Debug + Send + Sync {
     fn memory(&self) -> Arc<Memory>;
 
     /// Read bytes from memory at the given offset
-    fn read_bytes(&self, offset: u32, len: u32) -> Result<BoundedVec<u8, 65536, StdMemoryProvider>>;
+    fn read_bytes(&self, offset: u32, len: u32) -> Result<BoundedVec<u8, 65_536, StdMemoryProvider>>;
 
     /// Write bytes to memory at the given offset
     fn write_bytes(&self, offset: u32, bytes: &[u8]) -> Result<()>;
@@ -36,7 +36,7 @@ pub trait MemoryAdapter: Debug + Send + Sync {
     fn check_range(&self, offset: u32, size: u32) -> Result<()>;
 
     /// Borrow a slice of memory with integrity verification
-    fn borrow_slice(&self, offset: usize, len: usize) -> Result<BoundedVec<u8, 65536, StdMemoryProvider>>;
+    fn borrow_slice(&self, offset: usize, len: usize) -> Result<BoundedVec<u8, 65_536, StdMemoryProvider>>;
 }
 
 /// Safe memory adapter implementation
@@ -56,34 +56,120 @@ pub struct StdMemoryProvider {
 }
 
 impl wrt_foundation::MemoryProvider for StdMemoryProvider {
+    type Allocator = Self;
+
+    fn borrow_slice(&self, _offset: usize, _len: usize) -> wrt_foundation::WrtResult<wrt_foundation::safe_memory::Slice<'_>> {
+        // For StdMemoryProvider, this is a placeholder
+        Err(wrt_error::Error::new(
+            wrt_error::ErrorCategory::Memory,
+            wrt_error::codes::NOT_IMPLEMENTED,
+            "borrow_slice not implemented for StdMemoryProvider"
+        ))
+    }
+
+    fn write_data(&mut self, _offset: usize, _data: &[u8]) -> wrt_foundation::WrtResult<()> {
+        // For StdMemoryProvider, this is a placeholder
+        Ok(())
+    }
+
+    fn verify_access(&self, _offset: usize, _len: usize) -> wrt_foundation::WrtResult<()> {
+        // For StdMemoryProvider, this is a placeholder
+        Ok(())
+    }
+
+    fn size(&self) -> usize {
+        0
+    }
+
     fn capacity(&self) -> usize {
         // For std mode, we can use large capacities
         1024 * 1024 // 1MB
     }
 
-    fn verification_level(&self) -> VerificationLevel {
-        self.verification_level
+    fn verify_integrity(&self) -> wrt_foundation::WrtResult<()> {
+        Ok(())
     }
 
-    fn set_verification_level(&mut self, level: VerificationLevel) {
+    fn set_verification_level(&mut self, level: wrt_foundation::verification::VerificationLevel) {
         self.verification_level = level;
     }
 
-    fn write_data(&mut self, _offset: usize, _data: &[u8]) -> wrt_error::Result<usize> {
-        // For StdMemoryProvider, this is a placeholder
-        Ok(0)
+    fn verification_level(&self) -> wrt_foundation::verification::VerificationLevel {
+        self.verification_level
     }
 
-    fn read_data(&self, _offset: usize, _buffer: &mut [u8]) -> wrt_error::Result<usize> {
-        // For StdMemoryProvider, this is a placeholder
-        Ok(0)
+    fn memory_stats(&self) -> wrt_foundation::MemoryStats {
+        wrt_foundation::MemoryStats::default()
+    }
+
+    fn get_slice_mut(&mut self, _offset: usize, _len: usize) -> wrt_foundation::WrtResult<wrt_foundation::safe_memory::SliceMut<'_>> {
+        Err(wrt_error::Error::new(
+            wrt_error::ErrorCategory::Memory,
+            wrt_error::codes::NOT_IMPLEMENTED,
+            "get_slice_mut not implemented for StdMemoryProvider"
+        ))
+    }
+
+    fn copy_within(&mut self, _src: usize, _dst: usize, _len: usize) -> wrt_foundation::WrtResult<()> {
+        Ok(())
+    }
+
+    fn ensure_used_up_to(&mut self, _offset: usize) -> wrt_foundation::WrtResult<()> {
+        Ok(())
+    }
+
+    fn acquire_memory(&self, _layout: core::alloc::Layout) -> wrt_foundation::WrtResult<*mut u8> {
+        Err(wrt_error::Error::new(
+            wrt_error::ErrorCategory::Memory,
+            wrt_error::codes::NOT_IMPLEMENTED,
+            "acquire_memory not implemented for StdMemoryProvider"
+        ))
+    }
+
+    fn release_memory(&self, _ptr: *mut u8, _layout: core::alloc::Layout) -> wrt_foundation::WrtResult<()> {
+        Ok(())
+    }
+
+    fn get_allocator(&self) -> &Self::Allocator {
+        self
+    }
+
+    fn new_handler(&self) -> wrt_foundation::WrtResult<wrt_foundation::safe_memory::SafeMemoryHandler<Self>>
+    where
+        Self: Clone,
+    {
+        wrt_foundation::safe_memory::SafeMemoryHandler::new(self.clone())
+    }
+}
+
+impl wrt_foundation::safe_memory::Allocator for StdMemoryProvider {
+    fn allocate(&self, _layout: core::alloc::Layout) -> wrt_foundation::WrtResult<*mut u8> {
+        Err(wrt_error::Error::new(
+            wrt_error::ErrorCategory::Memory,
+            wrt_error::codes::NOT_IMPLEMENTED,
+            "allocate not implemented for StdMemoryProvider"
+        ))
+    }
+
+    fn deallocate(&self, _ptr: *mut u8, _layout: core::alloc::Layout) -> wrt_foundation::WrtResult<()> {
+        Ok(())
     }
 }
 
 impl StdMemoryProvider {
     /// Create a new standard memory provider
-    pub fn new(data: &[u8]) -> Self {
+    pub fn new(_data: &[u8]) -> Self {
         Self { verification_level: VerificationLevel::Standard }
+    }
+
+    /// Get the current verification level
+    pub fn verification_level(&self) -> VerificationLevel {
+        self.verification_level
+    }
+
+    /// Set the verification level
+    pub fn set_verification_level(&mut self, level: VerificationLevel) {
+        self.verification_level = level;
     }
 
     /// Create a safe slice of memory with verification
@@ -92,7 +178,7 @@ impl StdMemoryProvider {
         buffer: &'a [u8],
         offset: usize,
         len: usize,
-    ) -> Result<BoundedVec<u8, 65536, StdMemoryProvider>> {
+    ) -> Result<BoundedVec<u8, 65_536, StdMemoryProvider>> {
         if offset + len > buffer.len() {
             return Err(Error::from(kinds::OutOfBoundsError(format!(
                 "Memory access out of bounds: offset={}, len={}, buffer_len={}",
@@ -118,15 +204,6 @@ impl StdMemoryProvider {
         Ok(bounded_vec)
     }
 
-    /// Set the verification level
-    pub fn set_verification_level(&mut self, level: VerificationLevel) {
-        self.verification_level = level;
-    }
-
-    /// Get the current verification level
-    pub fn verification_level(&self) -> VerificationLevel {
-        self.verification_level
-    }
 }
 
 impl SafeMemoryAdapter {
@@ -160,7 +237,7 @@ impl MemoryAdapter for SafeMemoryAdapter {
         self.memory.clone()
     }
 
-    fn read_bytes(&self, offset: u32, len: u32) -> Result<BoundedVec<u8, 65536, StdMemoryProvider>> {
+    fn read_bytes(&self, offset: u32, len: u32) -> Result<BoundedVec<u8, 65_536, StdMemoryProvider>> {
         // Check that the range is valid
         self.check_range(offset, len)?;
 
@@ -216,7 +293,7 @@ impl MemoryAdapter for SafeMemoryAdapter {
 
     fn byte_size(&self) -> Result<usize> {
         // Removed the ? operator since size() returns u32 directly
-        Ok(self.memory.size() as usize * 65536)
+        Ok(self.memory.size() as usize * 65_536)
     }
 
     fn check_range(&self, offset: u32, size: u32) -> Result<()> {
@@ -239,7 +316,7 @@ impl MemoryAdapter for SafeMemoryAdapter {
 
     // Change the return type to BoundedVec instead of SafeSlice to avoid lifetime
     // issues
-    fn borrow_slice(&self, offset: usize, len: usize) -> Result<BoundedVec<u8, 65536, StdMemoryProvider>> {
+    fn borrow_slice(&self, offset: usize, len: usize) -> Result<BoundedVec<u8, 65_536, StdMemoryProvider>> {
         // Check that the range is valid
         self.check_range(offset as u32, len as u32)?;
 

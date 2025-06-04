@@ -17,7 +17,7 @@ use std::format;
 use alloc::format;
 
 /// Represents a WebAssembly global variable in the runtime
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Global {
     /// The global type (value_type and mutability).
     /// The initial_value from WrtGlobalType is used to set the runtime `value`

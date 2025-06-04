@@ -86,11 +86,15 @@
 // Import BorrowMut for SafeMemoryHandler
 #[cfg(not(feature = "std"))]
 use core::borrow::BorrowMut;
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+use alloc::vec;
 use core::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, AtomicUsize, Ordering};
 use core::alloc::Layout;
 use core::time::Duration;
 #[cfg(feature = "std")]
 use std::borrow::BorrowMut;
+#[cfg(feature = "std")]
+use std::vec;
 
 // Memory providers are imported as needed within conditional compilation blocks
 
@@ -297,6 +301,8 @@ impl PartialEq for Memory {
     }
 }
 
+impl Eq for Memory {}
+
 impl Memory {
     /// Creates a new memory instance from a type
     ///
@@ -457,7 +463,7 @@ impl Memory {
         // memory integrity is verified during the operation
         let data_size = self.data.size();
         if data_size == 0 {
-            return Ok(Vec::new());
+            return Ok(Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap());
         }
 
         // Get a safe slice over the entire memory
@@ -473,7 +479,7 @@ impl Memory {
         #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
         let result = {
             // For no_std, return an empty vec since we can't allocate
-            let mut bounded_vec = wrt_foundation::bounded::BoundedVec::new();
+            let mut bounded_vec = wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap();
             for &byte in memory_data.iter().take(bounded_vec.capacity()) {
                 if bounded_vec.try_push(byte).is_err() {
                     break;
@@ -1180,7 +1186,16 @@ impl Memory {
             let chunk_size = remaining.min(MAX_CHUNK_SIZE);
 
             // For each chunk, create a properly sized fill buffer
+            #[cfg(any(feature = "std", feature = "alloc"))]
             let fill_buffer = vec![val; chunk_size];
+            #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+            let fill_buffer = {
+                let mut buffer = wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<4096>::default()).unwrap();
+                for _ in 0..chunk_size {
+                    buffer.push(val).unwrap();
+                }
+                buffer
+            };
 
             // Write directly to the data handler with safety verification
             // Get a safe slice of the appropriate size and location
@@ -2028,7 +2043,7 @@ impl MemoryOperations for Memory {
     fn read_bytes(&self, offset: u32, len: u32) -> Result<Vec<u8>> {
         // Handle zero-length reads
         if len == 0 {
-            return Ok(Vec::new());
+            return Ok(Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap());
         }
 
         // Convert to usize and check for overflow
@@ -2056,7 +2071,16 @@ impl MemoryOperations for Memory {
         }
 
         // Read the data using the existing read method
+        #[cfg(any(feature = "std", feature = "alloc"))]
         let mut buffer = vec![0u8; len_usize];
+        #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+        let mut buffer = {
+            let mut buf = wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<4096>::default()).unwrap();
+            for _ in 0..len_usize {
+                buf.push(0u8).unwrap();
+            }
+            buf
+        };
         self.read(offset, &mut buffer)?;
         Ok(buffer)
     }
@@ -2188,10 +2212,9 @@ impl MemoryOperations for Memory {
         };
         
         #[cfg(not(any(feature = "std", feature = "alloc")))]
-        let temp_data = {
-            // For no_std, read byte by byte into a temporary array
+        {
+            // For no_std, copy byte by byte
             // This is less efficient but works in constrained environments
-            let mut temp_data = [0u8; 4096]; // Fixed-size buffer for no_std
             if size_usize > 4096 {
                 return Err(Error::new(
                     ErrorCategory::Memory,
@@ -2201,21 +2224,15 @@ impl MemoryOperations for Memory {
             }
             
             for i in 0..size_usize {
-                temp_data[i] = self.get_byte(src + i as u32)?;
+                let byte = self.get_byte(src + i as u32)?;
+                self.set_byte(dest + i as u32, byte)?;
             }
-            &temp_data[..size_usize]
-        };
+            return Ok(());
+        }
         
         // Write to destination
         #[cfg(any(feature = "std", feature = "alloc"))]
         self.write(dest, &temp_data)?;
-        
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
-        {
-            for i in 0..size_usize {
-                self.set_byte(dest + i as u32, temp_data[i])?;
-            }
-        }
         
         Ok(())
     }

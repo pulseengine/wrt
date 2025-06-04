@@ -67,7 +67,7 @@ impl Default for BranchLikelihood {
 }
 
 /// Branch prediction information for a specific instruction
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct BranchPrediction {
     /// Instruction offset within function
     pub instruction_offset: u32,
@@ -114,14 +114,72 @@ impl BranchPrediction {
     }
 }
 
+impl wrt_foundation::traits::Checksummable for BranchPrediction {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        checksum.update_slice(&self.instruction_offset.to_le_bytes());
+        checksum.update_slice(&[self.likelihood as u8]);
+    }
+}
+
+impl wrt_foundation::traits::ToBytes for BranchPrediction {
+    fn serialized_size(&self) -> usize {
+        12 // instruction_offset(4) + likelihood(1) + taken_target(4) + fallthrough_target(4) - simplified
+    }
+
+    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        _provider: &P,
+    ) -> wrt_foundation::Result<()> {
+        writer.write_bytes(&self.instruction_offset.to_le_bytes())?;
+        writer.write_bytes(&[self.likelihood as u8])?;
+        writer.write_bytes(&self.taken_target.unwrap_or(0).to_le_bytes())?;
+        writer.write_bytes(&self.fallthrough_target.unwrap_or(0).to_le_bytes())
+    }
+}
+
+impl wrt_foundation::traits::FromBytes for BranchPrediction {
+    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        _provider: &P,
+    ) -> wrt_foundation::Result<Self> {
+        let mut bytes = [0u8; 4];
+        reader.read_bytes(&mut bytes)?;
+        let instruction_offset = u32::from_le_bytes(bytes);
+        
+        let mut likelihood_byte = [0u8; 1];
+        reader.read_bytes(&mut likelihood_byte)?;
+        let likelihood = match likelihood_byte[0] {
+            0 => BranchLikelihood::VeryUnlikely,
+            1 => BranchLikelihood::Unlikely,
+            2 => BranchLikelihood::Unknown,
+            3 => BranchLikelihood::Likely,
+            _ => BranchLikelihood::VeryLikely,
+        };
+        
+        reader.read_bytes(&mut bytes)?;
+        let taken_target = Some(u32::from_le_bytes(bytes));
+        
+        reader.read_bytes(&mut bytes)?;
+        let fallthrough_target = Some(u32::from_le_bytes(bytes));
+        
+        Ok(Self {
+            instruction_offset,
+            likelihood,
+            taken_target,
+            fallthrough_target,
+        })
+    }
+}
+
 /// Function-level branch prediction table
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct FunctionBranchPredictor {
     /// Function index
     pub function_index: u32,
     /// Branch predictions indexed by instruction offset
     #[cfg(feature = "std")]
-    predictions: std::collections::HashMap<u32, BranchPrediction>,
+    predictions: std::collections::BTreeMap<u32, BranchPrediction>,
     #[cfg(all(feature = "alloc", not(feature = "std")))]
     predictions: alloc::collections::BTreeMap<u32, BranchPrediction>,
     #[cfg(not(any(feature = "std", feature = "alloc")))]
@@ -134,7 +192,7 @@ impl FunctionBranchPredictor {
         Self {
             function_index,
             #[cfg(feature = "std")]
-            predictions: std::collections::HashMap::new(),
+            predictions: std::collections::BTreeMap::new(),
             #[cfg(all(feature = "alloc", not(feature = "std")))]
             predictions: alloc::collections::BTreeMap::new(),
             #[cfg(not(any(feature = "std", feature = "alloc")))]
@@ -214,12 +272,47 @@ impl FunctionBranchPredictor {
     }
 }
 
+impl wrt_foundation::traits::Checksummable for FunctionBranchPredictor {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        checksum.update_slice(&self.function_index.to_le_bytes());
+    }
+}
+
+impl wrt_foundation::traits::ToBytes for FunctionBranchPredictor {
+    fn serialized_size(&self) -> usize {
+        8 // Just function_index for simplicity
+    }
+
+    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        _provider: &P,
+    ) -> wrt_foundation::Result<()> {
+        writer.write_bytes(&self.function_index.to_le_bytes())
+    }
+}
+
+impl wrt_foundation::traits::FromBytes for FunctionBranchPredictor {
+    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        _provider: &P,
+    ) -> wrt_foundation::Result<Self> {
+        let mut bytes = [0u8; 4];
+        reader.read_bytes(&mut bytes)?;
+        let function_index = u32::from_le_bytes(bytes);
+        Ok(Self {
+            function_index,
+            ..Default::default()
+        })
+    }
+}
+
 /// Module-level branch prediction system
 #[derive(Debug, Clone)]
 pub struct ModuleBranchPredictor {
     /// Function predictors indexed by function index
     #[cfg(feature = "std")]
-    function_predictors: std::collections::HashMap<u32, FunctionBranchPredictor>,
+    function_predictors: std::collections::BTreeMap<u32, FunctionBranchPredictor>,
     #[cfg(all(feature = "alloc", not(feature = "std")))]
     function_predictors: alloc::collections::BTreeMap<u32, FunctionBranchPredictor>,
     #[cfg(not(any(feature = "std", feature = "alloc")))]
@@ -231,7 +324,7 @@ impl ModuleBranchPredictor {
     pub fn new() -> Self {
         Self {
             #[cfg(feature = "std")]
-            function_predictors: std::collections::HashMap::new(),
+            function_predictors: std::collections::BTreeMap::new(),
             #[cfg(all(feature = "alloc", not(feature = "std")))]
             function_predictors: alloc::collections::BTreeMap::new(),
             #[cfg(not(any(feature = "std", feature = "alloc")))]
@@ -320,7 +413,7 @@ impl ModuleBranchPredictor {
     }
     
     /// Create predictor from WebAssembly branch hint custom section
-    #[cfg(feature = "alloc")]
+    #[cfg(all(feature = "alloc", feature = "decoder"))]
     pub fn from_branch_hints(
         branch_hints: &wrt_decoder::branch_hint_section::BranchHintSection,
         code_section: &[u8], // For analyzing branch targets

@@ -91,9 +91,9 @@ pub type DataVec = BoundedVec<wrt_foundation::types::DataSegment, MAX_DATA, NoSt
 #[cfg(feature = "alloc")]
 // Instructions module is temporarily disabled in wrt-decoder
 // pub type InstructionVec = Vec<wrt_decoder::instructions::Instruction>;
-pub type InstructionVec = Vec<wrt_instructions::Instruction>;
+pub type InstructionVec = Vec<crate::prelude::Instruction>;
 #[cfg(not(feature = "alloc"))]
-pub type InstructionVec = BoundedVec<wrt_instructions::Instruction, 65536, NoStdProvider<{ 65536 * 8 }>>;
+pub type InstructionVec = BoundedVec<crate::prelude::Instruction, 65536, NoStdProvider<{ 65536 * 8 }>>;
 
 #[cfg(feature = "alloc")]
 pub type BranchTargetsVec = Vec<u32>;
@@ -118,9 +118,9 @@ pub type MemoryDataVec = Vec<u8>;
 pub type MemoryDataVec = BoundedVec<u8, { 64 * 1024 * 1024 }, NoStdProvider<{ 64 * 1024 * 1024 }>>; // 64MB max
 
 #[cfg(feature = "alloc")]
-pub type TableDataVec = Vec<Option<wrt_foundation::RefValue>>;
+pub type TableDataVec = Vec<Option<crate::prelude::RefValue>>;
 #[cfg(not(feature = "alloc"))]
-pub type TableDataVec = BoundedVec<Option<wrt_foundation::RefValue>, MAX_TABLE_ENTRIES, NoStdProvider<{ MAX_TABLE_ENTRIES * 32 }>>;
+pub type TableDataVec = BoundedVec<Option<crate::prelude::RefValue>, MAX_TABLE_ENTRIES, NoStdProvider<{ MAX_TABLE_ENTRIES * 32 }>>;
 
 // String type for runtime
 #[cfg(feature = "alloc")]

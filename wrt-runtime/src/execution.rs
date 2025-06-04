@@ -170,3 +170,44 @@ impl ExecutionContext {
         self.trapped = trapped;
     }
 }
+
+/// Placeholder for call frame information
+#[derive(Debug, Clone)]
+pub struct CallFrame {
+    /// Function index
+    pub function_index: u32,
+    /// Program counter
+    pub pc: usize,
+    /// Local variables count
+    pub locals_count: u32,
+}
+
+impl CallFrame {
+    /// Create a new call frame
+    pub fn new(function_index: u32, pc: usize, locals_count: u32) -> Self {
+        Self {
+            function_index,
+            pc,
+            locals_count,
+        }
+    }
+}
+
+/// Placeholder for instrumentation point
+#[derive(Debug, Clone)]
+pub struct InstrumentationPoint {
+    /// Location in code
+    pub location: usize,
+    /// Type of instrumentation
+    pub point_type: wrt_foundation::bounded::BoundedString<64, wrt_foundation::safe_memory::NoStdProvider<1024>>,
+}
+
+impl InstrumentationPoint {
+    /// Create a new instrumentation point
+    pub fn new(location: usize, point_type: String) -> Self {
+        Self {
+            location,
+            point_type,
+        }
+    }
+}

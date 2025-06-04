@@ -20,7 +20,7 @@ pub struct Table {
     /// The table type, using the canonical WrtTableType
     pub ty: WrtTableType,
     /// The table elements
-    elements: SafeStack<Option<WrtValue>>,
+    elements: SafeStack<Option<WrtValue>, 1024, wrt_foundation::safe_memory::NoStdProvider<1024>>,
     /// A debug name for the table (optional)
     pub debug_name: Option<String>,
     /// Verification level for table operations
@@ -63,6 +63,8 @@ impl PartialEq for Table {
         self_elements == other_elements
     }
 }
+
+impl Eq for Table {}
 
 impl Table {
     /// Creates a new table with the specified type.
@@ -592,10 +594,10 @@ pub struct TableManager {
 
 impl TableManager {
     /// Create a new table manager
-    pub fn new() -> Self {
-        Self {
-            tables: Vec::new(),
-        }
+    pub fn new() -> Result<Self> {
+        Ok(Self {
+            tables: Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default())?,
+        })
     }
     
     /// Add a table to the manager
@@ -700,7 +702,7 @@ impl TableOperations for TableManager {
         let wrt_value = match value {
             Value::FuncRef(func_ref) => {
                 match func_ref {
-                    Some(fr) => Some(WrtValue::FuncRef(Some(fr.index()))),
+                    Some(fr) => Some(WrtValue::FuncRef(Some(fr.index))),
                     None => Some(WrtValue::FuncRef(None)),
                 }
             }
@@ -732,7 +734,7 @@ impl TableOperations for TableManager {
         let wrt_init_value = match init_value {
             Value::FuncRef(func_ref) => {
                 match func_ref {
-                    Some(fr) => WrtValue::FuncRef(Some(fr.index())),
+                    Some(fr) => WrtValue::FuncRef(Some(fr.index)),
                     None => WrtValue::FuncRef(None),
                 }
             }
@@ -763,7 +765,7 @@ impl TableOperations for TableManager {
         let wrt_value = match val {
             Value::FuncRef(func_ref) => {
                 match func_ref {
-                    Some(fr) => Some(WrtValue::FuncRef(Some(fr.index()))),
+                    Some(fr) => Some(WrtValue::FuncRef(Some(fr.index))),
                     None => Some(WrtValue::FuncRef(None)),
                 }
             }
@@ -795,10 +797,10 @@ impl TableOperations for TableManager {
             // First, read the source elements
             let src_elements = {
                 let src_table = self.get_table(src_table)?;
-                let mut elements = Vec::new();
+                let mut elements = Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default())?;
                 for i in 0..len {
                     let elem = src_table.get(src_index + i)?;
-                    elements.push(elem);
+                    elements.push(elem).map_err(|_| Error::new(ErrorCategory::Memory, codes::MEMORY_ERROR, "Failed to push table element"))?;
                 }
                 elements
             };
@@ -882,7 +884,7 @@ impl TableOperations for Table {
         let wrt_value = match value {
             Value::FuncRef(func_ref) => {
                 match func_ref {
-                    Some(fr) => Some(WrtValue::FuncRef(Some(fr.index()))),
+                    Some(fr) => Some(WrtValue::FuncRef(Some(fr.index))),
                     None => Some(WrtValue::FuncRef(None)),
                 }
             }
@@ -927,7 +929,7 @@ impl TableOperations for Table {
         let wrt_init_value = match init_value {
             Value::FuncRef(func_ref) => {
                 match func_ref {
-                    Some(fr) => WrtValue::FuncRef(Some(fr.index())),
+                    Some(fr) => WrtValue::FuncRef(Some(fr.index)),
                     None => WrtValue::FuncRef(None),
                 }
             }
@@ -964,7 +966,7 @@ impl TableOperations for Table {
         let wrt_value = match val {
             Value::FuncRef(func_ref) => {
                 match func_ref {
-                    Some(fr) => Some(WrtValue::FuncRef(Some(fr.index()))),
+                    Some(fr) => Some(WrtValue::FuncRef(Some(fr.index))),
                     None => Some(WrtValue::FuncRef(None)),
                 }
             }

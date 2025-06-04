@@ -7,11 +7,14 @@
 // Decoder imports are optional during development
 // use wrt_decoder::{module::CodeSection, runtime_adapter::RuntimeModuleBuilder};
 use wrt_foundation::types::{
-    CustomSection as WrtCustomSection, Export as WrtExport, FuncType,
-    GlobalType as WrtGlobalType, Import as WrtImport, ImportDesc as WrtImportDesc,
+    FuncType,
+    GlobalType as WrtGlobalType,
     Limits as WrtLimits, MemoryType as WrtMemoryType, TableType as WrtTableType,
     ValueType as WrtValueType,
 };
+// Add placeholder aliases for missing types
+use crate::module::{Export as WrtExport, Import as WrtImport};
+use wrt_foundation::types::CustomSection as WrtCustomSection;
 use wrt_foundation::values::Value as WrtValue;
 use wrt_format::{
     DataSegment as WrtDataSegment,
@@ -128,10 +131,19 @@ impl ModuleBuilder {
 
 /// Load a module from binary data using the module builder
 pub fn load_module_from_binary(binary: &[u8]) -> Result<Module> {
-    #[cfg(feature = "alloc")]
+    #[cfg(all(feature = "alloc", feature = "decoder"))]
     {
         let decoder_module = wrt_decoder::decode_module(binary)?;
         Module::from_wrt_module(&decoder_module)
+    }
+    #[cfg(all(feature = "alloc", not(feature = "decoder")))]
+    {
+        // Decoder not available - create an empty module
+        Err(Error::new(
+            ErrorCategory::Parse,
+            codes::INVALID_BINARY,
+            "Decoder not available",
+        ))
     }
     #[cfg(not(feature = "alloc"))]
     {

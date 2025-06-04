@@ -1,9 +1,18 @@
 use crate::{func::FuncType, prelude::*};
+use wrt_foundation::{
+    safe_memory::{SafeStack, SafeSlice},
+    Value, VerificationLevel,
+};
+
+// Type aliases with proper memory provider
+pub type ComponentType = wrt_foundation::component::ComponentType<wrt_foundation::safe_memory::NoStdProvider<1024>>;
+pub type ExternType = wrt_foundation::component::ExternType<wrt_foundation::safe_memory::NoStdProvider<1024>>;
+pub type SafeStackValue = wrt_foundation::safe_memory::SafeStack<Value, 64, wrt_foundation::safe_memory::NoStdProvider<1024>>;
 
 /// Represents a runtime component instance
 pub trait ComponentInstance {
     /// Execute a function by name with the given arguments
-    fn execute_function(&self, name: &str, args: &[Value]) -> Result<SafeStack<Value>>;
+    fn execute_function(&self, name: &str, args: &[Value]) -> Result<SafeStackValue>;
 
     /// Read from exported memory
     fn read_memory(&self, name: &str, offset: u32, size: u32) -> Result<SafeSlice<'_>>;
@@ -14,37 +23,75 @@ pub trait ComponentInstance {
     /// Get the type of an export
     fn get_export_type(&self, name: &str) -> Result<ExternType>;
 
-    /// Execute a function by name with the given arguments (legacy Vec API)
+    /// Execute a function by name with the given arguments (legacy `Vec` API)
     #[deprecated(since = "0.2.0", note = "Use execute_function with SafeStack instead")]
     fn execute_function_vec(&self, name: &str, args: &[Value]) -> Result<Vec<Value>> {
         // Convert from the new SafeStack API to the legacy Vec API
         let safe_stack = self.execute_function(name, args)?;
-        safe_stack.to_vec()
+        #[cfg(any(feature = "std", feature = "alloc"))]
+        {
+            let mut vec = Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap();
+            while let Ok(Some(value)) = safe_stack.pop() {
+                vec.push(value);
+            }
+            vec.reverse(); // SafeStack pops in reverse order
+            Ok(vec)
+        }
+        #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+        {
+            // In no_std mode without alloc, we can't create Vec
+            Err(Error::new(ErrorCategory::Runtime, codes::UNSUPPORTED_OPERATION, "Vector operations not supported in no_std mode without alloc"))
+        }
     }
 
-    /// Read from exported memory (legacy Vec API)
+    /// Read from exported memory (legacy `Vec` API)
+    #[cfg(any(feature = "std", feature = "alloc"))]
     #[deprecated(since = "0.2.0", note = "Use read_memory with SafeSlice instead")]
     fn read_memory_vec(&self, name: &str, offset: u32, size: u32) -> Result<Vec<u8>> {
         // Convert from the new SafeSlice API to the legacy Vec API
         let safe_slice = self.read_memory(name, offset, size)?;
-        Ok(safe_slice.data()?.to_vec())
+        let data = safe_slice.data()?;
+        #[cfg(any(feature = "std", feature = "alloc"))]
+        {
+            Ok(data.to_vec())
+        }
+        #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+        {
+            // In no_std mode without alloc, we can't create Vec
+            Err(Error::new(ErrorCategory::Runtime, codes::UNSUPPORTED_OPERATION, "Vector operations not supported in no_std mode without alloc"))
+        }
     }
 }
 
 /// Represents a host function implementation
 pub trait HostFunction {
     /// Call the host function with the given arguments
-    fn call(&self, args: &[Value]) -> Result<SafeStack<Value>>;
+    fn call(&self, args: &[Value]) -> Result<SafeStackValue>;
 
     /// Get the function's type
     fn get_type(&self) -> FuncType;
 
-    /// Call the host function with the given arguments (legacy Vec API)
+    /// Call the host function with the given arguments (legacy `Vec` API)
     #[deprecated(since = "0.2.0", note = "Use call with SafeStack instead")]
     fn call_vec(&self, args: &[Value]) -> Result<Vec<Value>> {
         // Convert from the new SafeStack API to the legacy Vec API
         let safe_stack = self.call(args)?;
-        safe_stack.to_vec()
+        #[cfg(any(feature = "std", feature = "alloc"))]
+        {
+            let mut vec = Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap();
+            // Convert SafeStack to Vec by popping all values
+            let mut stack_copy = safe_stack;
+            while let Ok(Some(value)) = stack_copy.pop() {
+                vec.push(value);
+            }
+            vec.reverse(); // SafeStack pops in reverse order
+            Ok(vec)
+        }
+        #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+        {
+            // In no_std mode without alloc, we can't create Vec
+            Err(Error::new(ErrorCategory::Runtime, codes::UNSUPPORTED_OPERATION, "Vector operations not supported in no_std mode without alloc"))
+        }
     }
 }
 

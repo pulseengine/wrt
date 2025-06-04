@@ -1,4 +1,7 @@
 //! Stackless WebAssembly execution engine
+//! SW-REQ-ID: REQ_LFUNC_005
+//! SW-REQ-ID: REQ_FUNC_001
+//! SW-REQ-ID: REQ_LFUNC_007
 //!
 //! This module implements a stackless version of the WebAssembly execution
 //! engine that doesn't rely on the host language's call stack, making it
@@ -15,12 +18,12 @@ use wrt_instructions::control_ops::{ControlContext, FunctionOperations, BranchTa
 use wrt_instructions::control_ops::Block;
 
 // Imports for no_std compatibility
-#[cfg(not(feature = "std"))]
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
 extern crate alloc;
-#[cfg(not(feature = "std"))]
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
 use alloc::vec;
 #[cfg(feature = "std")] 
-use std::{sync::Mutex, vec};
+use std::{sync::Mutex, vec, collections::BTreeMap as HashMap};
 
 // Import memory provider
 use wrt_foundation::traits::DefaultMemoryProvider;
@@ -286,9 +289,11 @@ impl ControlContext for StacklessEngine {
 
     /// Pop a value from the operand stack
     fn pop_control_value(&mut self) -> Result<Value> {
-        self.exec_stack.values.pop().ok_or_else(|| {
-            Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Operand stack underflow")
-        })
+        match self.exec_stack.values.pop() {
+            Ok(Some(value)) => Ok(value),
+            Ok(None) => Err(Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Operand stack underflow")),
+            Err(_) => Err(Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "Stack operation error")),
+        }
     }
 
     /// Get the current block depth (number of labels)
@@ -403,11 +408,10 @@ impl ControlContext for StacklessEngine {
     }
 
     /// Trap the execution (unreachable)
-    fn trap(&mut self, message: &str) -> Result<()> {
-        self.exec_stack.state = StacklessExecutionState::Error(
-            Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, message)
-        );
-        Err(Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, message))
+    fn trap(&mut self, _message: &str) -> Result<()> {
+        let error = Error::new(ErrorCategory::Runtime, codes::EXECUTION_ERROR, "Execution trapped");
+        self.exec_stack.state = StacklessExecutionState::Error(error.clone());
+        Err(error)
     }
 
     /// Get the current block

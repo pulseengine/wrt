@@ -29,9 +29,9 @@ pub struct ThreadSpawnOptions {
 }
 
 #[cfg(feature = "alloc")]
-use alloc::{vec::Vec, sync::Arc};
+use alloc::{vec::Vec, sync::Arc, collections::BTreeMap};
 #[cfg(feature = "std")]
-use std::{vec::Vec, sync::Arc, thread};
+use std::{vec::Vec, sync::Arc, thread, collections::BTreeMap};
 
 /// Thread identifier for WebAssembly threads
 pub type ThreadId = u32;
@@ -171,7 +171,7 @@ impl ThreadExecutionContext {
             handle: None,
             local_memory: None,
             #[cfg(feature = "alloc")]
-            local_globals: Vec::new(),
+            local_globals: Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap(),
             #[cfg(not(feature = "alloc"))]
             local_globals: [const { None }; 8],  // Fixed size array for no_std
             stats: ThreadExecutionStats::new(),
@@ -268,7 +268,7 @@ pub struct ThreadManager {
     pub config: ThreadConfig,
     /// Active thread contexts
     #[cfg(feature = "alloc")]
-    threads: std::collections::HashMap<ThreadId, ThreadExecutionContext>,
+    threads: BTreeMap<ThreadId, ThreadExecutionContext>,
     #[cfg(not(feature = "alloc"))]
     threads: [Option<ThreadExecutionContext>; 16],  // Fixed size array for no_std
     /// Next thread ID to assign
@@ -283,7 +283,7 @@ impl ThreadManager {
         Ok(Self {
             config,
             #[cfg(feature = "alloc")]
-            threads: std::collections::HashMap::new(),
+            threads: BTreeMap::new(),
             #[cfg(not(feature = "alloc"))]
             threads: [const { None }; 16],  // Fixed size array for no_std
             next_thread_id: 1, // Thread ID 0 is reserved for main thread

@@ -14,9 +14,6 @@ use wrt_platform::sync::Ordering as PlatformOrdering;
 use alloc::vec::Vec;
 #[cfg(feature = "std")]
 use std::{vec::Vec, sync::Arc, time::Instant};
-#[cfg(not(any(feature = "alloc", feature = "std")))]
-use wrt_instructions::Vec;
-
 /// WebAssembly atomic memory model implementation
 #[derive(Debug)]
 pub struct AtomicMemoryModel {
@@ -54,7 +51,7 @@ impl AtomicMemoryModel {
         thread_id: ThreadId,
         operation: AtomicOp,
         operands: &[u64],
-    ) -> Result<Vec<u32>> {
+    ) -> Result<wrt_foundation::bounded::BoundedVec<u32, 256, wrt_foundation::safe_memory::NoStdProvider<1024>>> {
         self.model_stats.total_operations += 1;
         
         // Validate thread can perform atomic operations
@@ -68,10 +65,10 @@ impl AtomicMemoryModel {
         let start_time = Instant::now();
         
         // Execute the atomic operation
-        let result = match operation {
+        let result = match &operation {
             AtomicOp::Load(_) => {
                 self.model_stats.load_operations += 1;
-                self.atomic_context.execute_atomic(thread_id, operation)
+                self.atomic_context.execute_atomic(thread_id, operation.clone())
             },
             AtomicOp::Store(_) => {
                 self.model_stats.store_operations += 1;
@@ -83,7 +80,7 @@ impl AtomicMemoryModel {
                         "Store operation missing value operand"
                     ));
                 }
-                self.execute_store_with_value(thread_id, operation, operands[0])
+                self.execute_store_with_value(thread_id, operation.clone(), operands[0])
             },
             AtomicOp::RMW(_) => {
                 self.model_stats.rmw_operations += 1;
@@ -94,7 +91,7 @@ impl AtomicMemoryModel {
                         "RMW operation missing value operand"
                     ));
                 }
-                self.execute_rmw_with_value(thread_id, operation, operands[0])
+                self.execute_rmw_with_value(thread_id, operation.clone(), operands[0])
             },
             AtomicOp::Cmpxchg(_) => {
                 self.model_stats.cmpxchg_operations += 1;
@@ -105,15 +102,15 @@ impl AtomicMemoryModel {
                         "Compare-exchange operation missing operands"
                     ));
                 }
-                self.execute_cmpxchg_with_values(thread_id, operation, operands[0], operands[1])
+                self.execute_cmpxchg_with_values(thread_id, operation.clone(), operands[0], operands[1])
             },
             AtomicOp::WaitNotify(_) => {
                 self.model_stats.wait_notify_operations += 1;
-                self.atomic_context.execute_atomic(thread_id, operation)
+                self.atomic_context.execute_atomic(thread_id, operation.clone())
             },
             AtomicOp::Fence(_) => {
                 self.model_stats.fence_operations += 1;
-                self.atomic_context.execute_atomic(thread_id, operation)
+                self.atomic_context.execute_atomic(thread_id, operation.clone())
             },
         };
         
@@ -229,7 +226,7 @@ impl AtomicMemoryModel {
             },
             MemoryOrderingPolicy::Adaptive => {
                 // Apply ordering based on operation type
-                match operation {
+                match &operation {
                     AtomicOp::Load(_) => {
                         core::sync::atomic::fence(PlatformOrdering::Acquire);
                     },
@@ -254,21 +251,21 @@ impl AtomicMemoryModel {
         self.apply_pre_operation_ordering(operation)
     }
     
-    fn execute_store_with_value(&mut self, thread_id: ThreadId, operation: AtomicOp, value: u64) -> Result<Vec<u32>> {
+    fn execute_store_with_value(&mut self, thread_id: ThreadId, operation: AtomicOp, value: u64) -> Result<wrt_foundation::bounded::BoundedVec<u32, 256, wrt_foundation::safe_memory::NoStdProvider<1024>>> {
         // This is a simplified approach - full implementation would integrate with atomic_context
-        self.atomic_context.execute_atomic(thread_id, operation)
+        self.atomic_context.execute_atomic(thread_id, operation.clone())
     }
     
-    fn execute_rmw_with_value(&mut self, thread_id: ThreadId, operation: AtomicOp, value: u64) -> Result<Vec<u32>> {
-        self.atomic_context.execute_atomic(thread_id, operation)
+    fn execute_rmw_with_value(&mut self, thread_id: ThreadId, operation: AtomicOp, value: u64) -> Result<wrt_foundation::bounded::BoundedVec<u32, 256, wrt_foundation::safe_memory::NoStdProvider<1024>>> {
+        self.atomic_context.execute_atomic(thread_id, operation.clone())
     }
     
-    fn execute_cmpxchg_with_values(&mut self, thread_id: ThreadId, operation: AtomicOp, expected: u64, replacement: u64) -> Result<Vec<u32>> {
-        self.atomic_context.execute_atomic(thread_id, operation)
+    fn execute_cmpxchg_with_values(&mut self, thread_id: ThreadId, operation: AtomicOp, expected: u64, replacement: u64) -> Result<wrt_foundation::bounded::BoundedVec<u32, 256, wrt_foundation::safe_memory::NoStdProvider<1024>>> {
+        self.atomic_context.execute_atomic(thread_id, operation.clone())
     }
     
     fn update_thread_sync_state(&mut self, thread_id: ThreadId, operation: &AtomicOp) -> Result<()> {
-        match operation {
+        match &operation {
             AtomicOp::WaitNotify(_) => {
                 self.sync_state.record_sync_operation(thread_id)?;
             },
@@ -283,21 +280,21 @@ impl AtomicMemoryModel {
         Ok(())
     }
     
-    fn detect_data_races(&self) -> Result<Vec<DataRaceReport>> {
+    fn detect_data_races(&self) -> Result<wrt_foundation::bounded::BoundedVec<DataRaceReport, 64, wrt_foundation::safe_memory::NoStdProvider<1024>>> {
         // Simplified data race detection - real implementation would be more sophisticated
-        Ok(Vec::new())
+        Ok(wrt_foundation::bounded::BoundedVec::new_with_provider(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap())
     }
     
-    fn detect_ordering_violations(&self) -> Result<Vec<OrderingViolationReport>> {
-        Ok(Vec::new())
+    fn detect_ordering_violations(&self) -> Result<wrt_foundation::bounded::BoundedVec<OrderingViolationReport, 64, wrt_foundation::safe_memory::NoStdProvider<1024>>> {
+        Ok(wrt_foundation::bounded::BoundedVec::new_with_provider(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap())
     }
     
-    fn detect_potential_deadlocks(&self) -> Result<Vec<DeadlockReport>> {
-        Ok(Vec::new())
+    fn detect_potential_deadlocks(&self) -> Result<wrt_foundation::bounded::BoundedVec<DeadlockReport, 32, wrt_foundation::safe_memory::NoStdProvider<1024>>> {
+        Ok(wrt_foundation::bounded::BoundedVec::new_with_provider(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap())
     }
     
-    fn validate_sync_state(&self) -> Result<Vec<SyncViolationReport>> {
-        Ok(Vec::new())
+    fn validate_sync_state(&self) -> Result<wrt_foundation::bounded::BoundedVec<SyncViolationReport, 64, wrt_foundation::safe_memory::NoStdProvider<1024>>> {
+        Ok(wrt_foundation::bounded::BoundedVec::new_with_provider(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap())
     }
     
     fn calculate_operations_per_second(&self) -> f64 {
@@ -379,18 +376,18 @@ impl Default for MemoryOrderingPolicy {
 pub struct ThreadSyncState {
     /// Active synchronization operations per thread
     #[cfg(feature = "alloc")]
-    sync_operations: std::collections::HashMap<ThreadId, u32>,
+    sync_operations: alloc::collections::BTreeMap<ThreadId, u32>,
     #[cfg(not(feature = "alloc"))]
-    sync_operations: Vec<(ThreadId, u32)>,  // Simplified for no_std
+    sync_operations: wrt_foundation::bounded::BoundedVec<(ThreadId, u32), 32, wrt_foundation::safe_memory::NoStdProvider<1024>>,  // Simplified for no_std
 }
 
 impl ThreadSyncState {
     fn new() -> Result<Self> {
         Ok(Self {
             #[cfg(feature = "alloc")]
-            sync_operations: std::collections::HashMap::new(),
+            sync_operations: alloc::collections::BTreeMap::new(),
             #[cfg(not(feature = "alloc"))]
-            sync_operations: Vec::new(),  // Simplified for no_std
+            sync_operations: wrt_foundation::bounded::BoundedVec::new_with_provider(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap(),
         })
     }
     
@@ -410,7 +407,7 @@ impl ThreadSyncState {
                 }
             }
             if !found {
-                self.sync_operations.push((thread_id, 1));
+                let _ = self.sync_operations.push((thread_id, 1));
             }
         }
         Ok(())
@@ -467,23 +464,23 @@ pub struct ConsistencyValidationResult {
     /// Whether memory is consistent
     pub is_consistent: bool,
     /// Detected data races
-    pub data_races: Vec<DataRaceReport>,
+    pub data_races: wrt_foundation::bounded::BoundedVec<DataRaceReport, 64, wrt_foundation::safe_memory::NoStdProvider<1024>>,
     /// Memory ordering violations
-    pub ordering_violations: Vec<OrderingViolationReport>,
+    pub ordering_violations: wrt_foundation::bounded::BoundedVec<OrderingViolationReport, 64, wrt_foundation::safe_memory::NoStdProvider<1024>>,
     /// Potential deadlocks
-    pub potential_deadlocks: Vec<DeadlockReport>,
+    pub potential_deadlocks: wrt_foundation::bounded::BoundedVec<DeadlockReport, 32, wrt_foundation::safe_memory::NoStdProvider<1024>>,
     /// Synchronization violations
-    pub sync_violations: Vec<SyncViolationReport>,
+    pub sync_violations: wrt_foundation::bounded::BoundedVec<SyncViolationReport, 64, wrt_foundation::safe_memory::NoStdProvider<1024>>,
 }
 
 impl ConsistencyValidationResult {
     fn new() -> Self {
         Self {
             is_consistent: true,
-            data_races: Vec::new(),
-            ordering_violations: Vec::new(),
-            potential_deadlocks: Vec::new(),
-            sync_violations: Vec::new(),
+            data_races: wrt_foundation::bounded::BoundedVec::new_with_provider(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap(),
+            ordering_violations: wrt_foundation::bounded::BoundedVec::new_with_provider(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap(),
+            potential_deadlocks: wrt_foundation::bounded::BoundedVec::new_with_provider(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap(),
+            sync_violations: wrt_foundation::bounded::BoundedVec::new_with_provider(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap(),
         }
     }
 }
@@ -536,18 +533,53 @@ struct OperationPatterns {
 }
 
 /// Data race report
-#[derive(Debug)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct DataRaceReport {
     /// Threads involved in the race
-    pub thread_ids: Vec<ThreadId>,
+    pub thread_ids: wrt_foundation::bounded::BoundedVec<ThreadId, 16, wrt_foundation::safe_memory::NoStdProvider<1024>>,
     /// Memory address of the race
     pub memory_address: usize,
     /// Type of operations that raced
-    pub operation_types: Vec<String>,
+    pub operation_types: wrt_foundation::bounded::BoundedVec<wrt_foundation::bounded::BoundedString<64, wrt_foundation::safe_memory::NoStdProvider<1024>>, 16, wrt_foundation::safe_memory::NoStdProvider<1024>>,
+}
+
+impl wrt_foundation::traits::Checksummable for DataRaceReport {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        checksum.update_slice(&self.memory_address.to_le_bytes());
+    }
+}
+
+impl wrt_foundation::traits::ToBytes for DataRaceReport {
+    fn serialized_size(&self) -> usize {
+        8 // Just the memory address for simplicity
+    }
+
+    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        _provider: &P,
+    ) -> wrt_foundation::Result<()> {
+        writer.write_bytes(&self.memory_address.to_le_bytes())
+    }
+}
+
+impl wrt_foundation::traits::FromBytes for DataRaceReport {
+    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        _provider: &P,
+    ) -> wrt_foundation::Result<Self> {
+        let mut bytes = [0u8; 8];
+        reader.read_bytes(&mut bytes)?;
+        let memory_address = usize::from_le_bytes(bytes);
+        Ok(Self {
+            memory_address,
+            ..Default::default()
+        })
+    }
 }
 
 /// Memory ordering violation report
-#[derive(Debug)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct OrderingViolationReport {
     /// Thread that caused the violation
     pub thread_id: ThreadId,
@@ -557,22 +589,105 @@ pub struct OrderingViolationReport {
     pub actual_ordering: MemoryOrdering,
 }
 
+impl wrt_foundation::traits::Checksummable for OrderingViolationReport {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        checksum.update_slice(&[self.thread_id as u8]);
+    }
+}
+
+impl wrt_foundation::traits::ToBytes for OrderingViolationReport {
+    fn serialized_size(&self) -> usize {
+        4 // Just the thread_id for simplicity
+    }
+
+    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        _provider: &P,
+    ) -> wrt_foundation::Result<()> {
+        writer.write_bytes(&(self.thread_id as u32).to_le_bytes())
+    }
+}
+
+impl wrt_foundation::traits::FromBytes for OrderingViolationReport {
+    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        _provider: &P,
+    ) -> wrt_foundation::Result<Self> {
+        let mut bytes = [0u8; 4];
+        reader.read_bytes(&mut bytes)?;
+        let thread_id = u32::from_le_bytes(bytes) as ThreadId;
+        Ok(Self {
+            thread_id,
+            ..Default::default()
+        })
+    }
+}
+
 /// Deadlock detection report
-#[derive(Debug)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct DeadlockReport {
     /// Threads involved in potential deadlock
-    pub thread_ids: Vec<ThreadId>,
+    pub thread_ids: wrt_foundation::bounded::BoundedVec<ThreadId, 16, wrt_foundation::safe_memory::NoStdProvider<1024>>,
     /// Resources being waited on
-    pub resources: Vec<usize>,
+    pub resources: wrt_foundation::bounded::BoundedVec<usize, 16, wrt_foundation::safe_memory::NoStdProvider<1024>>,
+}
+
+impl wrt_foundation::traits::Checksummable for DeadlockReport {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        checksum.update_slice(b"deadlock");
+    }
+}
+
+impl wrt_foundation::traits::ToBytes for DeadlockReport {
+    fn serialized_size(&self) -> usize { 4 }
+    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        &self, writer: &mut wrt_foundation::traits::WriteStream<'a>, _provider: &P,
+    ) -> wrt_foundation::Result<()> {
+        writer.write_bytes(&[0u8; 4])
+    }
+}
+
+impl wrt_foundation::traits::FromBytes for DeadlockReport {
+    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        _reader: &mut wrt_foundation::traits::ReadStream<'a>, _provider: &P,
+    ) -> wrt_foundation::Result<Self> {
+        Ok(Self::default())
+    }
 }
 
 /// Synchronization violation report
-#[derive(Debug)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct SyncViolationReport {
     /// Thread that violated synchronization
     pub thread_id: ThreadId,
     /// Type of violation
-    pub violation_type: String,
+    pub violation_type: wrt_foundation::bounded::BoundedString<64, wrt_foundation::safe_memory::NoStdProvider<1024>>,
+}
+
+impl wrt_foundation::traits::Checksummable for SyncViolationReport {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        checksum.update_slice(&[self.thread_id as u8]);
+    }
+}
+
+impl wrt_foundation::traits::ToBytes for SyncViolationReport {
+    fn serialized_size(&self) -> usize { 4 }
+    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        &self, writer: &mut wrt_foundation::traits::WriteStream<'a>, _provider: &P,
+    ) -> wrt_foundation::Result<()> {
+        writer.write_bytes(&(self.thread_id as u32).to_le_bytes())
+    }
+}
+
+impl wrt_foundation::traits::FromBytes for SyncViolationReport {
+    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>, _provider: &P,
+    ) -> wrt_foundation::Result<Self> {
+        let mut bytes = [0u8; 4];
+        reader.read_bytes(&mut bytes)?;
+        Ok(Self { thread_id: u32::from_le_bytes(bytes) as ThreadId, ..Default::default() })
+    }
 }
 
 #[cfg(test)]
