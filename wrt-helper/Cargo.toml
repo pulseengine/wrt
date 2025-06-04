@@ -38,6 +38,9 @@ platform-baremetal = []
 # Optional Arm Hardening features (passed via PAL or compiler flags)
 arm-hardening = []
 
+# Disable panic handler for library builds to avoid conflicts
+disable-panic-handler = []
+
 [dependencies]
 wrt-foundation = { workspace = true, default-features = false }
 # libc = { version = "0.2", default-features = false, optional = true } # For C types if needed

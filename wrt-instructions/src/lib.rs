@@ -141,3 +141,11 @@ pub use crate::branch_hinting::{
 // If there's a combined Instruction enum, export it here. Otherwise, runtime
 // will use the Ops. pub enum Instruction { Arithmetic(ArithmeticOp),
 // Control(ControlOp), ... }
+
+// Panic handler disabled to avoid conflicts with other crates
+// // Provide a panic handler only when wrt-instructions is being tested in isolation
+// #[cfg(all(not(feature = "std"), not(test), not(feature = "disable-panic-handler")))]
+// #[panic_handler]
+// fn panic(_info: &core::panic::PanicInfo) -> ! {
+//     loop {}
+// }

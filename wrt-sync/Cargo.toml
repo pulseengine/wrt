@@ -39,6 +39,8 @@ alloc = ["dep:alloc"]
 std = ["alloc", "dep:parking_lot"] # "std" implies "alloc"
 # This crate is no_std by default, this feature is a no-op for compatibility
 no_std = []
+# Disable panic handler for library builds to avoid conflicts
+disable-panic-handler = []
 
 # Feature for Kani verification (optional)
 kani = ["dep:kani-verifier"]

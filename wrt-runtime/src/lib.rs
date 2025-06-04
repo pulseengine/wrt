@@ -132,3 +132,5 @@ pub use component_impl::{ComponentRuntimeImpl, DefaultHostFunctionFactory};
 pub use component_traits::{
     ComponentInstance, ComponentRuntime, HostFunction, HostFunctionFactory,
 };
+
+// Panic handler is provided by the main binary crate to avoid conflicts

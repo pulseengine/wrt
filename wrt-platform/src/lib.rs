@@ -70,34 +70,15 @@ mod lib_prelude {
     // Alloc types are re-exported by individual modules as needed
 }
 
+// Note: Panic handler should be provided by the final binary/application,
+// not by library crates to avoid conflicts
+
 // For no_std + alloc builds, we need a global allocator
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-use alloc::alloc::{GlobalAlloc, Layout};
+// Note: Global allocator should be provided by the final binary/application,
+// not by library crates to avoid conflicts
 
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-struct DummyAllocator;
-
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-unsafe impl GlobalAlloc for DummyAllocator {
-    unsafe fn alloc(&self, _layout: Layout) -> *mut u8 {
-        core::ptr::null_mut()
-    }
-
-    unsafe fn dealloc(&self, _ptr: *mut u8, _layout: Layout) {
-        // Do nothing - this is just to satisfy the linker
-    }
-}
-
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-#[global_allocator]
-static GLOBAL: DummyAllocator = DummyAllocator;
-
-// Panic handler for no_std builds (but not during tests)
-#[cfg(all(not(feature = "std"), not(test)))]
-#[panic_handler]
-fn panic(_info: &core::panic::PanicInfo) -> ! {
-    loop {}
-}
+// Note: Panic handler should be defined by the final binary, not library crates
+// Removed panic handler to avoid conflicts - applications must provide their own
 
 // Module declarations
 pub mod memory;
@@ -534,5 +515,8 @@ mod tests {
     }
 }
 
-// Note: Panic handler removed to avoid conflicts with examples and tests
-// In no_std environments, applications should provide their own panic handler
+// Note: Panic handler should be provided by the final binary, not library crates
+// The main wrt crate provides the panic handler to avoid conflicts
+
+// wrt-platform provides the panic handler for the entire WRT ecosystem
+// Panic handler is provided by the main binary crate or another library crate

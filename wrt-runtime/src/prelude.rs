@@ -21,11 +21,36 @@ pub use alloc::{
 // For pure no_std (no alloc), use bounded collections
 #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
 pub use wrt_foundation::{
-    bounded::{BoundedVec as Vec, BoundedString as String},
     BoundedMap as HashMap,
     BoundedSet as HashSet,
     NoStdProvider,
 };
+
+// For pure no_std, we'll rely on explicit BoundedVec usage instead of Vec alias
+// to avoid conflicts with other crates' Vec definitions
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+pub use wrt_foundation::bounded::BoundedString;
+
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+pub type String = wrt_foundation::bounded::BoundedString<256, wrt_foundation::safe_memory::NoStdProvider<1024>>;
+
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+pub type Vec<T> = wrt_foundation::bounded::BoundedVec<T, 256, wrt_foundation::safe_memory::NoStdProvider<1024>>;
+
+// Helper macro to create BoundedVec with standard parameters
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[macro_export]
+macro_rules! vec_new {
+    () => {
+        wrt_foundation::bounded::BoundedVec::<_, 256, wrt_foundation::safe_memory::NoStdProvider<1024>>::new_with_provider(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap()
+    };
+}
+
+// Helper function to create BoundedVec with capacity (capacity is ignored in bounded collections)
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+pub fn vec_with_capacity<T>(_capacity: usize) -> wrt_foundation::bounded::BoundedVec<T, 256, wrt_foundation::safe_memory::NoStdProvider<1024>> {
+    wrt_foundation::bounded::BoundedVec::new_with_provider(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap()
+}
 
 // Simple format! implementation for no_std mode using a fixed buffer
 #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
@@ -39,25 +64,149 @@ macro_rules! format {
     }};
 }
 
-// Simple vec! implementation for no_std mode - disabled for now
-// #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
-// #[macro_export]
-// macro_rules! vec {
-//     () => {{
-//         wrt_foundation::bounded::BoundedVec::new()
-//     }};
-// }
 
 // Re-export the macros for no_std
 #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
 pub use crate::format;
 
-// Arc is not available in pure no_std, use a placeholder
+// Add missing Option methods for Value enum matching
 #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
-pub type Arc<T> = core::marker::PhantomData<T>;
+pub trait OptionValueExt {
+    fn as_i32(&self) -> Option<i32>;
+    fn as_i64(&self) -> Option<i64>;
+    fn as_f32(&self) -> Option<f32>;
+    fn as_f64(&self) -> Option<f64>;
+}
 
 #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
-pub type Box<T> = core::marker::PhantomData<T>;
+impl OptionValueExt for Option<wrt_foundation::Value> {
+    fn as_i32(&self) -> Option<i32> {
+        match self {
+            Some(wrt_foundation::Value::I32(val)) => Some(*val),
+            _ => None,
+        }
+    }
+    
+    fn as_i64(&self) -> Option<i64> {
+        match self {
+            Some(wrt_foundation::Value::I64(val)) => Some(*val),
+            _ => None,
+        }
+    }
+    
+    fn as_f32(&self) -> Option<f32> {
+        match self {
+            Some(wrt_foundation::Value::F32(val)) => Some(val.to_f32()),
+            _ => None,
+        }
+    }
+    
+    fn as_f64(&self) -> Option<f64> {
+        match self {
+            Some(wrt_foundation::Value::F64(val)) => Some(val.to_f64()),
+            _ => None,
+        }
+    }
+}
+
+// Add ToString trait for no_std
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+pub trait ToString {
+    fn to_string(&self) -> String;
+}
+
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+impl ToString for &str {
+    fn to_string(&self) -> String {
+        let mut bounded_string = String::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap();
+        // Copy characters up to the capacity limit
+        for ch in self.chars().take(256) {
+            if bounded_string.push(ch).is_err() {
+                break;
+            }
+        }
+        bounded_string
+    }
+}
+
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+impl ToString for str {
+    fn to_string(&self) -> String {
+        let mut bounded_string = String::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap();
+        // Copy characters up to the capacity limit
+        for ch in self.chars().take(256) {
+            if bounded_string.push(ch).is_err() {
+                break;
+            }
+        }
+        bounded_string
+    }
+}
+
+// Arc is not available in pure no_std, use a reference wrapper
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[derive(Debug, Clone)]
+pub struct Arc<T> {
+    inner: T,
+}
+
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+impl<T> Arc<T> {
+    pub fn new(value: T) -> Self {
+        Self { inner: value }
+    }
+    
+    pub fn ptr_eq(_this: &Self, _other: &Self) -> bool {
+        // In no_std mode, we can't do pointer comparison, so just return false
+        false
+    }
+}
+
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+impl<T: PartialEq> PartialEq for Arc<T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.inner == other.inner
+    }
+}
+
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+impl<T: Eq> Eq for Arc<T> {}
+
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+impl<T> core::ops::Deref for Arc<T> {
+    type Target = T;
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[derive(Debug)]
+pub struct Box<T> {
+    inner: T,
+}
+
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+impl<T> Box<T> {
+    pub fn new(value: T) -> Self {
+        Self { inner: value }
+    }
+}
+
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+impl<T> core::ops::Deref for Box<T> {
+    type Target = T;
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+impl<T> core::ops::DerefMut for Box<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.inner
+    }
+}
 pub use core::{
     any::Any,
     cmp::{Eq, Ord, PartialEq, PartialOrd},
@@ -115,6 +264,9 @@ pub use wrt_format::{
 // Re-export from wrt-foundation for core types
 #[cfg(feature = "alloc")]
 pub use wrt_foundation::component::{ComponentType, ExternType};
+// Also export for std feature
+#[cfg(feature = "std")]
+pub use wrt_foundation::component::{ComponentType, ExternType};
 // Re-export core types from wrt_foundation instead of wrt_format
 pub use wrt_foundation::types::{
     CustomSection, /* Assuming this is the intended replacement for FormatCustomSection
@@ -131,9 +283,13 @@ pub use wrt_foundation::{
         SafeMemoryHandler, SafeSlice, TableType as CoreTableType,
         Value, ValueType, VerificationLevel,
     },
-    types::Limits,
+    safe_memory::SafeStack,
+    types::{Limits, RefValue, ElementSegment, DataSegment},
     MemoryStats,
 };
+
+// Type alias for Instruction with default memory provider
+pub type Instruction = wrt_foundation::types::Instruction<wrt_foundation::NoStdProvider<1024>>;
 
 // Conditionally import alloc-dependent types
 #[cfg(feature = "alloc")]

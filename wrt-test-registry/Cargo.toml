@@ -48,6 +48,9 @@ alloc = [
 runner = ["std"]
 no_std = []
 
+# Disable panic handler for library builds to avoid conflicts
+disable-panic-handler = []
+
 [dependencies]
 # Core crates
 wrt-error = { default-features = false, workspace = true }

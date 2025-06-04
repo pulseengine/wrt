@@ -54,6 +54,7 @@ platform-vxworks = [] # VxWorks RTOS support (LKM and RTP)
 # platform-baremetal = []
 # arm-hardening = [] # If any platform code depends on this
 helper-mode = [] # Added for C-ABI runtime
+disable-panic-handler = ["wrt-error/disable-panic-handler", "wrt-sync/disable-panic-handler"] # Disable panic handler for library builds
 
 [lib]
 crate-type = ["rlib", "staticlib"] # staticlib for C ABI helper if needed later

@@ -23,6 +23,9 @@ std = ["wrt-decoder/std", "log", "wrt-test-registry/std"]
 no_std = ["wrt-decoder/no_std", "alloc", "wrt-decoder/alloc", "wrt-test-registry/no_std"]
 alloc = ["dep:alloc", "wrt-decoder/alloc", "wrt-test-registry/alloc"]
 
+# Disable panic handler for library builds to avoid conflicts
+disable-panic-handler = []
+
 [lints.rust]
 unexpected_cfgs = { level = "allow", check-cfg = ['cfg(test)'] }
 pointer_cast = "deny"

@@ -959,3 +959,11 @@ mod tests {
         assert_eq!(result.unwrap(), vec![Value::I32(99)]);
     }
 }
+
+// Panic handler disabled to avoid conflicts with other crates
+// The main wrt crate should provide the panic handler
+// #[cfg(all(not(feature = "std"), not(test), not(feature = "disable-panic-handler")))]
+// #[panic_handler]
+// fn panic(_info: &core::panic::PanicInfo) -> ! {
+//     loop {}
+// }

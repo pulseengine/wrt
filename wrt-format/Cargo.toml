@@ -69,6 +69,9 @@ lsp = ["std"]
 # WIT parsing support for no_std environments
 wit-parsing = []
 
+# Disable panic handler for library builds to avoid conflicts
+disable-panic-handler = ["wrt-foundation/disable-panic-handler"]
+
 # Config for linting
 [lints.rust]
 unexpected_cfgs = { level = "allow", check-cfg = ['cfg(test)', 'cfg(kani)', 'cfg(coverage)', 'cfg(doc)'] }

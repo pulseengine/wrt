@@ -22,6 +22,9 @@ no_std = []
 # Platform feature enables SIMD operations
 platform = ["wrt-platform", "alloc"]
 
+# Disable panic handler for library builds to avoid conflicts
+disable-panic-handler = []
+
 [dependencies]
 wrt-error = { workspace = true, default-features = false }
 wrt-platform = { workspace = true, default-features = false, optional = true }

@@ -57,6 +57,9 @@ component-model-all = [
 # Type conversion feature
 conversion = ["wrt-format/conversion"]
 
+# Disable panic handler for library builds to avoid conflicts
+disable-panic-handler = []
+
 [lints.rust]
 unexpected_cfgs = { level = "allow", check-cfg = ['cfg(test)', 'cfg(kani)', 'cfg(coverage)', 'cfg(doc)'] }
 # Rule 1

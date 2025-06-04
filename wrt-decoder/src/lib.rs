@@ -62,43 +62,8 @@ pub mod prelude;
 // Conditionally include other modules
 #[cfg(any(feature = "alloc", feature = "std"))]
 pub mod component;
-// Temporarily disabled due to type issues
-// #[cfg(feature = "alloc")]
-// pub mod conversion;
-// Most modules temporarily disabled for demo
-// #[cfg(feature = "alloc")]
-// pub mod custom_section_utils;
-// #[cfg(feature = "alloc")]
-// pub mod decoder_core;
-// #[cfg(feature = "alloc")]
-// pub mod instructions;
-// #[cfg(feature = "alloc")]
-// pub mod module;
-// #[cfg(feature = "alloc")]
-// pub mod optimized_module;
-// #[cfg(feature = "alloc")]
-// pub mod name_section;
-// #[cfg(feature = "alloc")]
-// pub mod parser;
-// #[cfg(feature = "alloc")]
-// pub mod producers_section;
-// #[cfg(feature = "alloc")]
-// pub mod runtime_adapter;
-// #[cfg(feature = "alloc")]
-// pub mod section_error;
-// #[cfg(feature = "alloc")]
-// pub mod section_reader;
-// #[cfg(feature = "alloc")]
-// pub mod types;
 #[cfg(any(feature = "alloc", feature = "std"))]
 pub mod utils;
-// #[cfg(feature = "alloc")]
-// pub mod validation;
-// #[cfg(feature = "alloc")]
-// pub mod wasm;
-
-// CFI metadata generation - temporarily disabled due to type issues
-// pub mod cfi_metadata;
 
 // Dedicated module for no_alloc decoding
 pub mod decoder_no_alloc;
@@ -132,3 +97,11 @@ pub use wrt_foundation::safe_memory::{MemoryProvider, SafeSlice};
 pub fn validate_header(bytes: &[u8]) -> Result<()> {
     verify_wasm_header(bytes)
 }
+
+// Panic handler disabled to avoid conflicts with other crates
+// // Provide a panic handler only when wrt-decoder is being tested in isolation
+// #[cfg(all(not(feature = "std"), not(test), not(feature = "disable-panic-handler")))]
+// #[panic_handler]
+// fn panic(_info: &core::panic::PanicInfo) -> ! {
+//     loop {}
+// }
