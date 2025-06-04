@@ -2,6 +2,7 @@
 // Module: WebAssembly Runtime Daemon
 // SW-REQ-ID: REQ_008
 // SW-REQ-ID: REQ_007
+// SW-REQ-ID: REQ_FUNC_033
 //
 // Copyright (c) 2024 Ralf Anton Beier
 // Licensed under the MIT license.

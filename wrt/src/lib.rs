@@ -61,8 +61,8 @@ extern crate std;
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 extern crate alloc;
 
-// Panic handler for no_std builds
-#[cfg(not(feature = "std"))]
+// Panic handler for no_std builds - only when not building as a dependency
+#[cfg(all(not(feature = "std"), not(test)))]
 #[panic_handler]
 fn panic(_info: &core::panic::PanicInfo) -> ! {
     loop {}
