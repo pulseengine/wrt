@@ -27,6 +27,9 @@ alloc = ["wrt-host/alloc", "wrt-foundation/alloc"]
 no_std = []
 kani = ["wrt-host/kani"]
 
+# Disable panic handler for library builds to avoid conflicts
+disable-panic-handler = []
+
 [lints.rust]
 unexpected_cfgs = { level = "allow", check-cfg = ['cfg(test)'] }
 # Rule 1

@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: MIT
 
 //! DWARF debug information support for WebAssembly Runtime (WRT)
+//! SW-REQ-ID: REQ_FUNC_032
 //!
 //! This crate provides zero-allocation DWARF debug information parsing
 //! for WebAssembly modules in no_std environments.
@@ -292,3 +293,11 @@ pub mod prelude {
         TypeId, FunctionId, ComponentId, SourceSpan,
     };
 }
+
+// Panic handler disabled to avoid conflicts with other crates
+// // Provide a panic handler only when wrt-debug is being tested in isolation
+// #[cfg(all(not(feature = "std"), not(test), not(feature = "disable-panic-handler")))]
+// #[panic_handler]
+// fn panic(_info: &core::panic::PanicInfo) -> ! {
+//     loop {}
+// }

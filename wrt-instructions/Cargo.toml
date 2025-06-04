@@ -23,6 +23,14 @@ alloc = ["wrt-foundation/alloc", "wrt-sync/alloc", "wrt-math/alloc", "dep:alloc"
 optimize = ["wrt-foundation/optimize"]
 safety = ["wrt-foundation/safety"]
 
+# Disable panic handler for library builds to avoid conflicts
+disable-panic-handler = [
+    "wrt-error/disable-panic-handler",
+    "wrt-foundation/disable-panic-handler", 
+    "wrt-sync/disable-panic-handler",
+    "wrt-math/disable-panic-handler"
+]
+
 [dependencies]
 wrt-error = { workspace = true }
 wrt-foundation = { workspace = true }

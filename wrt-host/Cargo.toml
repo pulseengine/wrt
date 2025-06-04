@@ -28,6 +28,12 @@ alloc = ["wrt-foundation/alloc", "wrt-intercept/alloc", "wrt-sync/alloc"]
 optimize = ["wrt-foundation/optimize", "wrt-intercept/optimize"]
 safety = ["wrt-foundation/safety", "wrt-intercept/safety", "alloc"]
 kani = ["wrt-intercept/kani"]
+disable-panic-handler = [
+    "wrt-error/disable-panic-handler",
+    "wrt-foundation/disable-panic-handler",
+    "wrt-intercept/disable-panic-handler", 
+    "wrt-sync/disable-panic-handler"
+]
 
 [lints.rust]
 unexpected_cfgs = { level = "allow", check-cfg = ['cfg(test)', 'cfg(kani)', 'cfg(coverage)', 'cfg(doc)'] }

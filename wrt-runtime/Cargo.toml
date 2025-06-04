@@ -15,7 +15,7 @@ wrt-error = { workspace = true, default-features = false }
 wrt-foundation = { workspace = true, default-features = false }
 wrt-format = { workspace = true, default-features = false }
 wrt-sync = { workspace = true, default-features = false }
-wrt-decoder = { workspace = true, default-features = false }
+# wrt-decoder = { workspace = true, default-features = false }
 wrt-instructions = { workspace = true, default-features = false }
 wrt-host = { workspace = true, default-features = false }
 wrt-intercept = { workspace = true, default-features = false }
@@ -29,7 +29,8 @@ wrt-debug = { workspace = true, default-features = false, optional = true }
 [features]
 default = []
 std = [
-    "wrt-decoder/std",
+    # "wrt-decoder/std",
+    "wrt-format/std",
     "wrt-host/std",
     "wrt-instructions/std",
     "wrt-intercept/std",
@@ -45,7 +46,8 @@ wit-debug-integration = ["dep:wrt-debug", "wrt-debug/wit-integration", "alloc"]
 # This is a no-op since the crate is no_std by default
 no_std = []
 alloc = [
-    "wrt-decoder/alloc",
+    # "wrt-decoder/alloc",
+    "wrt-format/alloc",
     "wrt-host/alloc",
     "wrt-instructions/alloc",
     "wrt-intercept/alloc",
@@ -55,10 +57,20 @@ alloc = [
 ]
 optimize = [
     "wrt-foundation/optimize",
-    "wrt-decoder/optimize",
+    # "wrt-decoder/optimize",
     "wrt-instructions/optimize",
     "wrt-host/optimize",
     "wrt-intercept/optimize",
+]
+disable-panic-handler = [
+    "wrt-error/disable-panic-handler",
+    "wrt-foundation/disable-panic-handler", 
+    "wrt-format/disable-panic-handler",
+    "wrt-sync/disable-panic-handler",
+    "wrt-instructions/disable-panic-handler",
+    "wrt-host/disable-panic-handler",
+    "wrt-intercept/disable-panic-handler",
+    "wrt-platform/disable-panic-handler"
 ]
 
 # Safe memory implementations
@@ -67,7 +79,7 @@ safe-memory = [
 ]
 safety = [
     "wrt-foundation/safety",
-    "wrt-decoder/safety",
+    # "wrt-decoder/safety",
     "wrt-instructions/safety",
     "wrt-host/safety",
     "wrt-intercept/safety",
@@ -77,6 +89,9 @@ kani-verifier = []
 platform-macos = ["wrt-platform/platform-macos"]
 helper-mode = ["wrt-platform/helper-mode"]
 
+# Additional features
+# Disable panic handler for library builds to avoid conflicts
+
 [lints.rust]
 unexpected_cfgs = { level = "allow", check-cfg = ['cfg(test)'] }
 unused_imports = "allow"
@@ -84,7 +99,7 @@ unused_variables = "allow"
 unused_mut = "allow"
 unsafe_code = "deny"  # Changed from forbid to deny to allow module-level overrides
 # Rule 1
-pointer_cast = "deny"
+# pointer_cast is not a valid Rust lint - removed
 # Rule 9
 missing_docs = "deny"
 

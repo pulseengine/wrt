@@ -67,3 +67,11 @@ pub use function::{CloneableFn, HostFunctionHandler};
 pub use host::BuiltinHost;
 // Re-export prelude for convenience
 pub use prelude::*;
+
+// Panic handler disabled to avoid conflicts with other crates
+// The main wrt crate should provide the panic handler
+// #[cfg(all(not(feature = "std"), not(test), not(feature = "disable-panic-handler")))]
+// #[panic_handler]
+// fn panic(_info: &core::panic::PanicInfo) -> ! {
+//     loop {}
+// }

@@ -130,3 +130,11 @@ pub use rwlock::{WrtRwLock, WrtRwLockReadGuard, WrtRwLockWriteGuard};
 pub type Mutex<T> = WrtMutex<T>;
 /// Type alias for WrtRwLock to provide a familiar interface
 pub type RwLock<T> = WrtRwLock<T>;
+
+// Panic handler disabled to avoid conflicts with other crates
+// The main wrt crate should provide the panic handler
+// #[cfg(all(not(feature = "std"), not(test), not(feature = "disable-panic-handler")))]
+// #[panic_handler]
+// fn panic(_info: &core::panic::PanicInfo) -> ! {
+//     loop {}
+// }

@@ -23,24 +23,66 @@ use wrt_instructions::atomic_ops::{
 };
 use wrt_foundation::MemArg;
 use wrt_platform::sync::{AtomicU32, AtomicU64, AtomicUsize, Ordering as PlatformOrdering};
-use core::time::Duration;
-
-#[cfg(feature = "alloc")]
-use alloc::vec::Vec;
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+use alloc::{vec::Vec, collections::BTreeMap};
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+use wrt_foundation::bounded::BoundedVec;
 #[cfg(feature = "std")]
-use std::{vec::Vec, sync::Arc, time::Duration};
+use std::{vec::Vec, sync::Arc, time::Duration, collections::BTreeMap};
+#[cfg(not(feature = "std"))]
+use wrt_platform::sync::Duration;
+
+// Type alias for return results
+#[cfg(any(feature = "std", feature = "alloc"))]
+type ResultVec = Vec<u32>;
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+type ResultVec = wrt_foundation::bounded::BoundedVec<u32, 256, wrt_foundation::safe_memory::NoStdProvider<1024>>;
+
+// Type alias for thread ID vectors  
+#[cfg(feature = "alloc")]
+type ThreadIdVec = Vec<ThreadId>;
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+type ThreadIdVec = wrt_foundation::bounded::BoundedVec<ThreadId, 64, wrt_foundation::safe_memory::NoStdProvider<1024>>;
+
+// Helper macro for creating Vec compatible with no_std
+macro_rules! result_vec {
+    () => {
+        {
+            #[cfg(any(feature = "std", feature = "alloc"))]
+            {
+                Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap()
+            }
+            #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+            {
+                wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap()
+            }
+        }
+    };
+    ($($item:expr),+) => {
+        {
+            #[cfg(any(feature = "std", feature = "alloc"))]
+            {
+                vec![$($item),+]
+            }
+            #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+            {
+                let mut v = wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap();
+                $(v.push($item).unwrap();)+
+                v
+            }
+        }
+    };
+}
 
 /// Conversion from WebAssembly memory ordering to platform ordering
-impl From<MemoryOrdering> for PlatformOrdering {
-    fn from(ordering: MemoryOrdering) -> Self {
-        match ordering {
-            MemoryOrdering::Unordered => PlatformOrdering::Relaxed,
-            MemoryOrdering::SeqCst => PlatformOrdering::SeqCst,
-            MemoryOrdering::Release => PlatformOrdering::Release,
-            MemoryOrdering::Acquire => PlatformOrdering::Acquire,
-            MemoryOrdering::AcqRel => PlatformOrdering::AcqRel,
-            MemoryOrdering::Relaxed => PlatformOrdering::Relaxed,
-        }
+fn convert_memory_ordering(ordering: MemoryOrdering) -> PlatformOrdering {
+    match ordering {
+        MemoryOrdering::Unordered => PlatformOrdering::Relaxed,
+        MemoryOrdering::SeqCst => PlatformOrdering::SeqCst,
+        MemoryOrdering::Release => PlatformOrdering::Release,
+        MemoryOrdering::Acquire => PlatformOrdering::Acquire,
+        MemoryOrdering::AcqRel => PlatformOrdering::AcqRel,
+        MemoryOrdering::Relaxed => PlatformOrdering::Relaxed,
     }
 }
 
@@ -55,7 +97,7 @@ pub struct AtomicMemoryContext {
     pub thread_manager: ThreadManager,
     /// Wait/notify coordination data structures
     #[cfg(feature = "alloc")]
-    wait_queues: std::collections::HashMap<u32, Vec<ThreadId>>,
+    wait_queues: BTreeMap<u32, ThreadIdVec>,
     #[cfg(not(feature = "alloc"))]
     wait_queues: [(u32, [Option<ThreadId>; 8]); 16],  // Fixed arrays for no_std
     /// Atomic operation statistics
@@ -70,7 +112,7 @@ impl AtomicMemoryContext {
             memory_size: AtomicUsize::new(memory_size),
             thread_manager,
             #[cfg(feature = "alloc")]
-            wait_queues: std::collections::HashMap::new(),
+            wait_queues: BTreeMap::new(),
             #[cfg(not(feature = "alloc"))]
             wait_queues: [(0, [const { None }; 8]); 16],  // Fixed arrays for no_std
             stats: AtomicExecutionStats::new(),
@@ -78,7 +120,7 @@ impl AtomicMemoryContext {
     }
     
     /// Execute atomic operation
-    pub fn execute_atomic(&mut self, thread_id: ThreadId, op: AtomicOp) -> Result<Vec<u32>> {
+    pub fn execute_atomic(&mut self, thread_id: ThreadId, op: AtomicOp) -> Result<ResultVec> {
         self.stats.total_operations += 1;
         
         // Update thread statistics
@@ -90,57 +132,57 @@ impl AtomicMemoryContext {
             AtomicOp::Load(load_op) => self.execute_atomic_load(load_op),
             AtomicOp::Store(store_op) => {
                 self.execute_atomic_store(store_op)?;
-                Ok(vec![])
+                Ok(result_vec![])
             },
             AtomicOp::RMW(rmw_op) => self.execute_atomic_rmw(rmw_op),
             AtomicOp::Cmpxchg(cmpxchg_op) => self.execute_atomic_cmpxchg(cmpxchg_op),
             AtomicOp::WaitNotify(wait_notify_op) => self.execute_wait_notify(thread_id, wait_notify_op),
             AtomicOp::Fence(fence) => {
                 self.execute_atomic_fence(fence)?;
-                Ok(vec![])
+                Ok(result_vec![])
             },
         }
     }
     
     /// Execute atomic load operation
-    fn execute_atomic_load(&mut self, load_op: AtomicLoadOp) -> Result<Vec<u32>> {
+    fn execute_atomic_load(&mut self, load_op: AtomicLoadOp) -> Result<ResultVec> {
         self.stats.load_operations += 1;
         
         match load_op {
             AtomicLoadOp::I32AtomicLoad { memarg } => {
                 let addr = self.calculate_address(memarg)?;
                 let value = self.atomic_load_u32(addr, MemoryOrdering::SeqCst)?;
-                Ok(vec![value])
+                Ok(result_vec![value])
             },
             AtomicLoadOp::I64AtomicLoad { memarg } => {
                 let addr = self.calculate_address(memarg)?;
                 let value = self.atomic_load_u64(addr, MemoryOrdering::SeqCst)?;
-                Ok(vec![value as u32, (value >> 32) as u32])
+                Ok(result_vec![value as u32, (value >> 32) as u32])
             },
             AtomicLoadOp::I32AtomicLoad8U { memarg } => {
                 let addr = self.calculate_address(memarg)?;
                 let value = self.atomic_load_u8(addr, MemoryOrdering::SeqCst)? as u32;
-                Ok(vec![value])
+                Ok(result_vec![value])
             },
             AtomicLoadOp::I32AtomicLoad16U { memarg } => {
                 let addr = self.calculate_address(memarg)?;
                 let value = self.atomic_load_u16(addr, MemoryOrdering::SeqCst)? as u32;
-                Ok(vec![value])
+                Ok(result_vec![value])
             },
             AtomicLoadOp::I64AtomicLoad8U { memarg } => {
                 let addr = self.calculate_address(memarg)?;
                 let value = self.atomic_load_u8(addr, MemoryOrdering::SeqCst)? as u64;
-                Ok(vec![value as u32, (value >> 32) as u32])
+                Ok(result_vec![value as u32, (value >> 32) as u32])
             },
             AtomicLoadOp::I64AtomicLoad16U { memarg } => {
                 let addr = self.calculate_address(memarg)?;
                 let value = self.atomic_load_u16(addr, MemoryOrdering::SeqCst)? as u64;
-                Ok(vec![value as u32, (value >> 32) as u32])
+                Ok(result_vec![value as u32, (value >> 32) as u32])
             },
             AtomicLoadOp::I64AtomicLoad32U { memarg } => {
                 let addr = self.calculate_address(memarg)?;
                 let value = self.atomic_load_u32(addr, MemoryOrdering::SeqCst)? as u64;
-                Ok(vec![value as u32, (value >> 32) as u32])
+                Ok(result_vec![value as u32, (value >> 32) as u32])
             },
         }
     }
@@ -182,69 +224,69 @@ impl AtomicMemoryContext {
     }
     
     /// Execute atomic read-modify-write operation
-    fn execute_atomic_rmw(&mut self, rmw_op: AtomicRMWInstr, value: u64) -> Result<Vec<u32>> {
+    fn execute_atomic_rmw(&mut self, rmw_op: AtomicRMWInstr, value: u64) -> Result<ResultVec> {
         self.stats.rmw_operations += 1;
         
         match rmw_op {
             AtomicRMWInstr::I32AtomicRmwAdd { memarg } => {
                 let addr = self.calculate_address(memarg)?;
                 let old_value = self.atomic_rmw_u32(addr, value as u32, AtomicRMWOp::Add, MemoryOrdering::SeqCst)?;
-                Ok(vec![old_value])
+                Ok(result_vec![old_value])
             },
             AtomicRMWInstr::I64AtomicRmwAdd { memarg } => {
                 let addr = self.calculate_address(memarg)?;
                 let old_value = self.atomic_rmw_u64(addr, value, AtomicRMWOp::Add, MemoryOrdering::SeqCst)?;
-                Ok(vec![old_value as u32, (old_value >> 32) as u32])
+                Ok(result_vec![old_value as u32, (old_value >> 32) as u32])
             },
             AtomicRMWInstr::I32AtomicRmwSub { memarg } => {
                 let addr = self.calculate_address(memarg)?;
                 let old_value = self.atomic_rmw_u32(addr, value as u32, AtomicRMWOp::Sub, MemoryOrdering::SeqCst)?;
-                Ok(vec![old_value])
+                Ok(result_vec![old_value])
             },
             AtomicRMWInstr::I64AtomicRmwSub { memarg } => {
                 let addr = self.calculate_address(memarg)?;
                 let old_value = self.atomic_rmw_u64(addr, value, AtomicRMWOp::Sub, MemoryOrdering::SeqCst)?;
-                Ok(vec![old_value as u32, (old_value >> 32) as u32])
+                Ok(result_vec![old_value as u32, (old_value >> 32) as u32])
             },
             AtomicRMWInstr::I32AtomicRmwAnd { memarg } => {
                 let addr = self.calculate_address(memarg)?;
                 let old_value = self.atomic_rmw_u32(addr, value as u32, AtomicRMWOp::And, MemoryOrdering::SeqCst)?;
-                Ok(vec![old_value])
+                Ok(result_vec![old_value])
             },
             AtomicRMWInstr::I64AtomicRmwAnd { memarg } => {
                 let addr = self.calculate_address(memarg)?;
                 let old_value = self.atomic_rmw_u64(addr, value, AtomicRMWOp::And, MemoryOrdering::SeqCst)?;
-                Ok(vec![old_value as u32, (old_value >> 32) as u32])
+                Ok(result_vec![old_value as u32, (old_value >> 32) as u32])
             },
             AtomicRMWInstr::I32AtomicRmwOr { memarg } => {
                 let addr = self.calculate_address(memarg)?;
                 let old_value = self.atomic_rmw_u32(addr, value as u32, AtomicRMWOp::Or, MemoryOrdering::SeqCst)?;
-                Ok(vec![old_value])
+                Ok(result_vec![old_value])
             },
             AtomicRMWInstr::I64AtomicRmwOr { memarg } => {
                 let addr = self.calculate_address(memarg)?;
                 let old_value = self.atomic_rmw_u64(addr, value, AtomicRMWOp::Or, MemoryOrdering::SeqCst)?;
-                Ok(vec![old_value as u32, (old_value >> 32) as u32])
+                Ok(result_vec![old_value as u32, (old_value >> 32) as u32])
             },
             AtomicRMWInstr::I32AtomicRmwXor { memarg } => {
                 let addr = self.calculate_address(memarg)?;
                 let old_value = self.atomic_rmw_u32(addr, value as u32, AtomicRMWOp::Xor, MemoryOrdering::SeqCst)?;
-                Ok(vec![old_value])
+                Ok(result_vec![old_value])
             },
             AtomicRMWInstr::I64AtomicRmwXor { memarg } => {
                 let addr = self.calculate_address(memarg)?;
                 let old_value = self.atomic_rmw_u64(addr, value, AtomicRMWOp::Xor, MemoryOrdering::SeqCst)?;
-                Ok(vec![old_value as u32, (old_value >> 32) as u32])
+                Ok(result_vec![old_value as u32, (old_value >> 32) as u32])
             },
             AtomicRMWInstr::I32AtomicRmwXchg { memarg } => {
                 let addr = self.calculate_address(memarg)?;
                 let old_value = self.atomic_rmw_u32(addr, value as u32, AtomicRMWOp::Xchg, MemoryOrdering::SeqCst)?;
-                Ok(vec![old_value])
+                Ok(result_vec![old_value])
             },
             AtomicRMWInstr::I64AtomicRmwXchg { memarg } => {
                 let addr = self.calculate_address(memarg)?;
                 let old_value = self.atomic_rmw_u64(addr, value, AtomicRMWOp::Xchg, MemoryOrdering::SeqCst)?;
-                Ok(vec![old_value as u32, (old_value >> 32) as u32])
+                Ok(result_vec![old_value as u32, (old_value >> 32) as u32])
             },
             _ => {
                 // Handle narrower RMW operations (8-bit, 16-bit, 32-bit variants)
@@ -259,19 +301,19 @@ impl AtomicMemoryContext {
     }
     
     /// Execute atomic compare-and-exchange operation
-    fn execute_atomic_cmpxchg(&mut self, cmpxchg_op: AtomicCmpxchgInstr, expected: u64, replacement: u64) -> Result<Vec<u32>> {
+    fn execute_atomic_cmpxchg(&mut self, cmpxchg_op: AtomicCmpxchgInstr, expected: u64, replacement: u64) -> Result<ResultVec> {
         self.stats.cmpxchg_operations += 1;
         
         match cmpxchg_op {
             AtomicCmpxchgInstr::I32AtomicRmwCmpxchg { memarg } => {
                 let addr = self.calculate_address(memarg)?;
                 let old_value = self.atomic_cmpxchg_u32(addr, expected as u32, replacement as u32, MemoryOrdering::SeqCst)?;
-                Ok(vec![old_value])
+                Ok(result_vec![old_value])
             },
             AtomicCmpxchgInstr::I64AtomicRmwCmpxchg { memarg } => {
                 let addr = self.calculate_address(memarg)?;
                 let old_value = self.atomic_cmpxchg_u64(addr, expected, replacement, MemoryOrdering::SeqCst)?;
-                Ok(vec![old_value as u32, (old_value >> 32) as u32])
+                Ok(result_vec![old_value as u32, (old_value >> 32) as u32])
             },
             _ => {
                 // Handle narrower compare-exchange operations
@@ -285,7 +327,7 @@ impl AtomicMemoryContext {
     }
     
     /// Execute wait/notify operations
-    fn execute_wait_notify(&mut self, thread_id: ThreadId, wait_notify_op: AtomicWaitNotifyOp) -> Result<Vec<u32>> {
+    fn execute_wait_notify(&mut self, thread_id: ThreadId, wait_notify_op: AtomicWaitNotifyOp) -> Result<ResultVec> {
         match wait_notify_op {
             AtomicWaitNotifyOp::MemoryAtomicWait32 { memarg } => {
                 let addr = self.calculate_address(memarg)?;
@@ -298,7 +340,7 @@ impl AtomicMemoryContext {
             AtomicWaitNotifyOp::MemoryAtomicNotify { memarg } => {
                 let addr = self.calculate_address(memarg)?;
                 let count = self.atomic_notify(addr, u32::MAX)?;
-                Ok(vec![count])
+                Ok(result_vec![count])
             },
         }
     }
@@ -528,7 +570,7 @@ impl AtomicMemoryContext {
         }
     }
     
-    fn atomic_wait_u32(&mut self, thread_id: ThreadId, addr: usize, timeout: Duration) -> Result<Vec<u32>> {
+    fn atomic_wait_u32(&mut self, thread_id: ThreadId, addr: usize, timeout: Duration) -> Result<ResultVec> {
         self.stats.wait_operations += 1;
         
         // Add thread to wait queue for this address
@@ -567,16 +609,14 @@ impl AtomicMemoryContext {
         
         // Return 0 for successful wait (simplified - real implementation would suspend thread)
         #[cfg(feature = "alloc")]
-        return Ok(vec![0]);
+        return Ok(result_vec![0]);
         #[cfg(not(feature = "alloc"))]
         {
-            let mut result = [0u32; 1];
-            result[0] = 0;
-            Ok(result.to_vec())
+            Ok(result_vec![0])
         }
     }
     
-    fn atomic_wait_u64(&mut self, thread_id: ThreadId, addr: usize, timeout: Duration) -> Result<Vec<u32>> {
+    fn atomic_wait_u64(&mut self, thread_id: ThreadId, addr: usize, timeout: Duration) -> Result<ResultVec> {
         // Same implementation as u32 wait but for 64-bit values
         self.atomic_wait_u32(thread_id, addr, timeout)
     }
@@ -702,7 +742,7 @@ mod tests {
     #[test]
     fn test_atomic_context_creation() {
         let thread_manager = ThreadManager::new(ThreadConfig::default()).unwrap();
-        let mut memory = vec![0u8; 1024];
+        let mut memory = result_vec![0u8; 1024];
         let context = AtomicMemoryContext::new(memory.as_mut_ptr(), memory.len(), thread_manager);
         assert!(context.is_ok());
     }

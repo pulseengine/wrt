@@ -111,3 +111,11 @@ pub use operation::LogOperation;
 #[cfg(feature = "kani")]
 #[cfg_attr(docsrs, doc(cfg(feature = "kani")))]
 pub mod verify;
+
+// Panic handler disabled to avoid conflicts with other crates
+// // Provide a panic handler only when wrt-logging is being tested in isolation
+// #[cfg(all(not(feature = "std"), not(test), not(feature = "disable-panic-handler")))]
+// #[panic_handler]
+// fn panic(_info: &core::panic::PanicInfo) -> ! {
+//     loop {}
+// }

@@ -120,7 +120,7 @@ pub use prelude::*;
 // Re-export error related types for convenience
 pub use wrt_error::{codes, kinds, Error, ErrorCategory};
 
-/// Result type alias for WRT operations using `wrt_error::Error`
+/// `Result` type alias for WRT operations using `wrt_error::Error`
 pub type WrtResult<T> = core::result::Result<T, Error>;
 
 // Core modules - always available in all configurations
@@ -193,7 +193,7 @@ pub mod runtime_memory;
 
 // Custom HashMap for pure no_std/no_alloc
 #[cfg(not(any(feature = "std", feature = "alloc")))]
-/// Custom HashMap implementation for no_std/no_alloc environments
+/// Custom `HashMap` implementation for no_std/no_alloc environments
 pub mod no_std_hashmap;
 // pub mod no_std_compat;
 
@@ -299,6 +299,14 @@ pub use async_executor_simple::{
 pub use async_bridge::{with_async as with_async_bridge};
 #[cfg(all(feature = "async-api", feature = "component-model-async"))]
 pub use async_bridge::{ComponentAsyncExt, ComponentFutureBridge, ComponentStreamBridge};
+
+// Panic handler disabled to avoid conflicts with other crates
+// // Provide a panic handler only when wrt-foundation is being tested in isolation
+// #[cfg(all(not(feature = "std"), not(test), not(feature = "disable-panic-handler")))]
+// #[panic_handler]
+// fn panic(_info: &core::panic::PanicInfo) -> ! {
+//     loop {}
+// }
 
 #[cfg(test)]
 mod tests {

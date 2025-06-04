@@ -133,7 +133,7 @@ pub type HashMap<K, V> = wrt_foundation::BoundedMap<K, V, 256, wrt_foundation::N
 pub type HashMap<K, V> = alloc::collections::BTreeMap<K, V>; // Use BTreeMap in no_std+alloc
 
 #[cfg(feature = "std")]
-pub type HashMap<K, V> = std::collections::HashMap<K, V>;
+pub type HashMap<K, V> = std::collections::BTreeMap<K, V>;
 
 // Maximum recursion depth for recursive types to replace Box<T>
 pub const MAX_TYPE_RECURSION_DEPTH: usize = 32;
@@ -297,8 +297,8 @@ pub use binary::{
 
 // Additional parsing functions requiring allocation
 #[cfg(any(feature = "alloc", feature = "std"))]
-pub use binary::{
-    read_string,
+pub use binary::with_alloc::{
+    read_name, read_string,
     // is_valid_wasm_header, parse_block_type,
     // read_vector, validate_utf8, BinaryFormat,
 };
@@ -309,10 +309,10 @@ pub use binary::{
 // };
 
 // Re-export write functions (only with alloc)
-// #[cfg(any(feature = "alloc", feature = "std"))]
-// pub use binary::{
-//     write_leb128_i32, write_leb128_i64, write_leb128_u32, write_leb128_u64, write_string,
-// };
+#[cfg(any(feature = "alloc", feature = "std"))]
+pub use binary::with_alloc::{
+    write_leb128_i32, write_leb128_i64, write_leb128_u32, write_leb128_u64, write_string,
+};
 
 // Re-export no_std write functions
 #[cfg(not(any(feature = "alloc", feature = "std")))]
@@ -513,3 +513,11 @@ pub mod no_std_demo {
         Ok(())
     }
 }
+
+// Panic handler disabled to avoid conflicts with other crates
+// // Provide a panic handler only when wrt-format is being tested in isolation
+// #[cfg(all(not(feature = "std"), not(test), not(feature = "disable-panic-handler")))]
+// #[panic_handler]
+// fn panic(_info: &core::panic::PanicInfo) -> ! {
+//     loop {}
+// }
