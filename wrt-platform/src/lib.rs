@@ -515,8 +515,11 @@ mod tests {
     }
 }
 
-// Note: Panic handler should be provided by the final binary, not library crates
-// The main wrt crate provides the panic handler to avoid conflicts
-
-// wrt-platform provides the panic handler for the entire WRT ecosystem
-// Panic handler is provided by the main binary crate or another library crate
+// Panic handler for no_std builds - only when building wrt-platform independently
+// This is needed for `cargo check -p wrt-platform` to work in no_std mode
+// When used as a dependency, the main binary should provide the panic handler
+#[cfg(all(not(feature = "std"), not(test), not(feature = "wrt-platform-as-dependency")))]
+#[panic_handler]
+fn panic(_info: &core::panic::PanicInfo) -> ! {
+    loop {}
+}

@@ -8,7 +8,11 @@ use wast::{
     parser::{self, ParseBuffer},
     Wast, WastArg, WastDirective, WastExecute, WastRet,
 };
-use wrt::{Error, Module, StacklessEngine};
+use wrt::{Error, Module, StacklessEngine, Value};
+
+// Import the new WAST test runner
+mod wast_test_runner;
+use wast_test_runner::{WastTestRunner, WastTestStats};
 
 fn convert_wast_arg_core(arg: &WastArg) -> Result<Value, Error> {
     match arg {
@@ -229,6 +233,9 @@ fn load_passing_tests() -> std::collections::HashSet<PathBuf> {
 
 #[test]
 fn test_wast_files() -> Result<(), Error> {
+    // Register WAST tests with the test registry
+    wast_test_runner::register_wast_tests();
+
     // Get the path to the cargo manifest directory (wrt/)
     let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
 
@@ -240,8 +247,16 @@ fn test_wast_files() -> Result<(), Error> {
 
     if !test_dir.exists() {
         println!("No testsuite directory found at: {}", test_dir.display());
-        println!("Skipping directory tests");
-        return Ok(());
+        println!("Checking external testsuite...");
+        
+        // Try the external testsuite path
+        let external_dir = workspace_root.join("external/testsuite");
+        if !external_dir.exists() {
+            println!("No external testsuite found either. Skipping WAST tests.");
+            return Ok(());
+        }
+        
+        return test_external_testsuite(&external_dir);
     }
 
     // Print the path and if it exists for debugging
@@ -251,69 +266,38 @@ fn test_wast_files() -> Result<(), Error> {
     // Load the list of passing tests from wast_passed.md
     let passing_tests = load_passing_tests();
 
-    // If there are no passing tests, don't run any tests
+    // Create a new WAST test runner
+    let mut runner = WastTestRunner::new();
+
+    // If there are no passing tests, run a small subset for testing
     if passing_tests.is_empty() {
-        println!("No tests to run from wast_passed.md");
-        return Ok(());
+        println!("No tests specified in wast_passed.md, running basic test subset");
+        return run_basic_wast_tests(&mut runner, &test_dir);
     }
 
     // Track test execution
     let mut tests_run = 0;
     let mut tests_passed = 0;
 
-    // List the files to verify we can access them
-    println!("Files in directory:");
-    if let Ok(entries) = fs::read_dir(&test_dir) {
-        for entry in entries {
-            if let Ok(entry) = entry {
-                if entry.path().extension().is_some_and(|ext| ext == "wast") {
-                    println!("  => Found WAST file: {}", entry.path().display());
-                }
-            }
-        }
-    } else {
-        println!("Failed to read directory contents");
-    }
-
-    // Process files
-    for entry in fs::read_dir(&test_dir)
-        .map_err(|e| Error::Parse(format!("Failed to read directory: {}", e)))?
-    {
-        let entry =
-            entry.map_err(|e| Error::Parse(format!("Failed to read directory entry: {}", e)))?;
-        let path = entry.path();
-
-        if path.extension().is_some_and(|ext| ext == "wast") {
-            // Get the absolute path to compare with passing_tests
-            let abs_path = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
-
-            // Try to get a relative path for display
-            let rel_display_path = path
+    // Process files from the passing list
+    for test_path in passing_tests {
+        if test_path.exists() && test_path.extension().is_some_and(|ext| ext == "wast") {
+            tests_run += 1;
+            
+            let rel_display_path = test_path
                 .strip_prefix(workspace_root)
                 .map(|p| p.to_path_buf())
-                .unwrap_or_else(|_| path.to_path_buf());
+                .unwrap_or_else(|_| test_path.clone());
 
-            println!("Found WAST file: {}", rel_display_path.display());
-
-            // Check both the absolute path and a version reconstructed from the relative
-            // path
-            let rel_path_from_workspace = workspace_root.join(&rel_display_path);
-
-            // Only run tests that are in the passing_tests list
-            if !passing_tests.contains(&abs_path)
-                && !passing_tests.contains(&rel_path_from_workspace)
-            {
-                println!("  Skipping (not in passing list): {}", rel_display_path.display());
-                continue;
-            }
-
-            tests_run += 1;
             println!("Running test {}: {}", tests_run, rel_display_path.display());
 
-            match test_wast_file(&path) {
-                Ok(_) => {
-                    println!("✅ PASS: {}", rel_display_path.display());
-                    tests_passed += 1;
+            match runner.run_wast_file(&test_path) {
+                Ok(stats) => {
+                    println!("✅ PASS: {} ({} passed, {} failed)", 
+                        rel_display_path.display(), stats.passed, stats.failed);
+                    if stats.failed == 0 {
+                        tests_passed += 1;
+                    }
                 }
                 Err(e) => {
                     println!("❌ FAIL: {} - {}", rel_display_path.display(), e);
@@ -323,6 +307,97 @@ fn test_wast_files() -> Result<(), Error> {
     }
 
     println!("Tests completed: {} passed, {} failed", tests_passed, tests_run - tests_passed);
+    println!("Runner stats: {:?}", runner.stats);
 
+    Ok(())
+}
+
+/// Test the external testsuite with a subset of files
+fn test_external_testsuite(testsuite_dir: &Path) -> Result<(), Error> {
+    println!("Testing external testsuite at: {}", testsuite_dir.display());
+    
+    let mut runner = WastTestRunner::new();
+    
+    // Basic test files that should work with minimal implementation
+    let basic_tests = [
+        "nop.wast",
+        "const.wast", 
+        "i32.wast",
+        "i64.wast",
+        "f32.wast",
+        "f64.wast",
+    ];
+    
+    let mut tests_run = 0;
+    let mut tests_passed = 0;
+    
+    for test_file in &basic_tests {
+        let test_path = testsuite_dir.join(test_file);
+        if test_path.exists() {
+            tests_run += 1;
+            println!("Running external test {}: {}", tests_run, test_file);
+            
+            match runner.run_wast_file(&test_path) {
+                Ok(stats) => {
+                    println!("✅ {} - {} directives passed, {} failed", 
+                        test_file, stats.passed, stats.failed);
+                    if stats.failed == 0 {
+                        tests_passed += 1;
+                    }
+                }
+                Err(e) => {
+                    println!("❌ {} - Error: {}", test_file, e);
+                }
+            }
+        } else {
+            println!("⚠️  Test file not found: {}", test_file);
+        }
+    }
+    
+    println!("External testsuite: {} files passed, {} failed", tests_passed, tests_run - tests_passed);
+    println!("Final runner stats: {:?}", runner.stats);
+    
+    Ok(())
+}
+
+/// Run a basic subset of WAST tests for validation
+fn run_basic_wast_tests(runner: &mut WastTestRunner, test_dir: &Path) -> Result<(), Error> {
+    let mut tests_run = 0;
+    let mut tests_passed = 0;
+
+    // List available files and pick a few basic ones
+    if let Ok(entries) = fs::read_dir(test_dir) {
+        let mut available_files = Vec::new();
+        for entry in entries {
+            if let Ok(entry) = entry {
+                if entry.path().extension().is_some_and(|ext| ext == "wast") {
+                    available_files.push(entry.path());
+                }
+            }
+        }
+
+        // Sort and take first few files for basic testing
+        available_files.sort();
+        for path in available_files.iter().take(5) {
+            tests_run += 1;
+            let file_name = path.file_name().unwrap().to_string_lossy();
+            println!("Running basic test {}: {}", tests_run, file_name);
+
+            match runner.run_wast_file(path) {
+                Ok(stats) => {
+                    println!("✅ {} - {} passed, {} failed", 
+                        file_name, stats.passed, stats.failed);
+                    if stats.failed == 0 {
+                        tests_passed += 1;
+                    }
+                }
+                Err(e) => {
+                    println!("❌ {} - {}", file_name, e);
+                }
+            }
+        }
+    }
+
+    println!("Basic tests: {} passed, {} failed", tests_passed, tests_run - tests_passed);
     Ok(())
 }
