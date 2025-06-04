@@ -70,7 +70,7 @@ pub trait MemoryOperations {
     fn read_bytes(&self, offset: u32, len: u32) -> Result<Vec<u8>>;
     
     #[cfg(not(any(feature = "std", feature = "alloc")))]
-    fn read_bytes(&self, offset: u32, len: u32) -> Result<wrt_foundation::BoundedVec<u8, 65536, wrt_foundation::NoStdProvider<65536>>>;
+    fn read_bytes(&self, offset: u32, len: u32) -> Result<wrt_foundation::BoundedVec<u8, 65_536, wrt_foundation::NoStdProvider<65_536>>>;
 
     /// Write bytes to memory
     fn write_bytes(&mut self, offset: u32, bytes: &[u8]) -> Result<()>;
@@ -747,7 +747,7 @@ pub trait DataSegmentOperations {
     fn get_data_segment(&self, data_index: u32) -> Result<Option<Vec<u8>>>;
     
     #[cfg(not(any(feature = "std", feature = "alloc")))]
-    fn get_data_segment(&self, data_index: u32) -> Result<Option<wrt_foundation::BoundedVec<u8, 65536, wrt_foundation::NoStdProvider<65536>>>>;
+    fn get_data_segment(&self, data_index: u32) -> Result<Option<wrt_foundation::BoundedVec<u8, 65_536, wrt_foundation::NoStdProvider<65_536>>>>;
     
     /// Drop (mark as unavailable) a data segment
     fn drop_data_segment(&mut self, data_index: u32) -> Result<()>;
@@ -1024,7 +1024,7 @@ impl MemorySize {
     /// The size of memory in pages (64KiB pages) as an i32 Value
     pub fn execute(&self, memory: &(impl MemoryOperations + ?Sized)) -> Result<Value> {
         let size_in_bytes = memory.size_in_bytes()?;
-        let size_in_pages = (size_in_bytes / 65536) as i32;
+        let size_in_pages = (size_in_bytes / 65_536) as i32;
         Ok(Value::I32(size_in_pages))
     }
 }
@@ -1066,10 +1066,10 @@ impl MemoryGrow {
 
         // Get current size in pages
         let current_size_bytes = memory.size_in_bytes()?;
-        let current_size_pages = (current_size_bytes / 65536) as i32;
+        let current_size_pages = (current_size_bytes / 65_536) as i32;
 
         // Try to grow the memory
-        let delta_bytes = (delta_pages as usize) * 65536;
+        let delta_bytes = (delta_pages as usize) * 65_536;
         
         // Check if growth would exceed limits
         let _new_size_bytes = current_size_bytes.saturating_add(delta_bytes);
@@ -1241,7 +1241,7 @@ mod tests {
         }
 
         #[cfg(not(any(feature = "std", feature = "alloc")))]
-        fn read_bytes(&self, offset: u32, len: u32) -> Result<wrt_foundation::BoundedVec<u8, 65536, wrt_foundation::NoStdProvider<65536>>> {
+        fn read_bytes(&self, offset: u32, len: u32) -> Result<wrt_foundation::BoundedVec<u8, 65_536, wrt_foundation::NoStdProvider<65_536>>> {
             let start = offset as usize;
             let end = start + len as usize;
 
@@ -1313,7 +1313,7 @@ mod tests {
 
     #[test]
     fn test_memory_load() {
-        let mut memory = MockMemory::new(65536);
+        let mut memory = MockMemory::new(65_536);
 
         // Store some test values
         memory.write_bytes(0, &[42, 0, 0, 0]).unwrap(); // i32 = 42
@@ -1361,7 +1361,7 @@ mod tests {
         // Test i32.load16_u
         let load = MemoryLoad::i32_load16(25, 2, false);
         let result = load.execute(&memory, &Value::I32(0)).unwrap();
-        assert_eq!(result, Value::I32(65535));
+        assert_eq!(result, Value::I32(65_535));
 
         // Test effective address calculation with offset
         let load = MemoryLoad::i32(4, 4);
@@ -1371,7 +1371,7 @@ mod tests {
 
     #[test]
     fn test_memory_store() {
-        let mut memory = MockMemory::new(65536);
+        let mut memory = MockMemory::new(65_536);
 
         // Test i32.store
         let store = MemoryStore::i32(0, 4);
@@ -1455,7 +1455,7 @@ mod tests {
         #[cfg(any(feature = "std", feature = "alloc"))]
         segments: Vec<Option<Vec<u8>>>,
         #[cfg(not(any(feature = "std", feature = "alloc")))]
-        segments: wrt_foundation::BoundedVec<Option<wrt_foundation::BoundedVec<u8, 65536, wrt_foundation::NoStdProvider<65536>>>, 16, wrt_foundation::NoStdProvider<1024>>,
+        segments: wrt_foundation::BoundedVec<Option<wrt_foundation::BoundedVec<u8, 65_536, wrt_foundation::NoStdProvider<65_536>>>, 16, wrt_foundation::NoStdProvider<1024>>,
     }
 
     impl MockDataSegments {
@@ -1506,7 +1506,7 @@ mod tests {
         }
 
         #[cfg(not(any(feature = "std", feature = "alloc")))]
-        fn get_data_segment(&self, data_index: u32) -> Result<Option<wrt_foundation::BoundedVec<u8, 65536, wrt_foundation::NoStdProvider<65536>>>> {
+        fn get_data_segment(&self, data_index: u32) -> Result<Option<wrt_foundation::BoundedVec<u8, 65_536, wrt_foundation::NoStdProvider<65_536>>>> {
             if (data_index as usize) < self.segments.len() {
                 Ok(self.segments.get(data_index as usize).unwrap().clone())
             } else {
@@ -1699,14 +1699,14 @@ mod tests {
     #[test]
     fn test_memory_size() {
         // Create memory with 2 pages (128 KiB)
-        let memory = MockMemory::new(2 * 65536);
+        let memory = MockMemory::new(2 * 65_536);
         let size_op = MemorySize::new(0);
         
         let result = size_op.execute(&memory).unwrap();
         assert_eq!(result, Value::I32(2));
         
         // Test with partial page
-        let memory = MockMemory::new(65536 + 100); // 1 page + 100 bytes
+        let memory = MockMemory::new(65_536 + 100); // 1 page + 100 bytes
         let result = size_op.execute(&memory).unwrap();
         assert_eq!(result, Value::I32(1)); // Should return 1 (partial pages are truncated)
     }
@@ -1714,7 +1714,7 @@ mod tests {
     #[test]
     fn test_memory_grow() {
         // Create memory with 1 page (64 KiB)
-        let mut memory = MockMemory::new(65536);
+        let mut memory = MockMemory::new(65_536);
         let grow_op = MemoryGrow::new(0);
         
         // Grow by 2 pages
@@ -1722,7 +1722,7 @@ mod tests {
         assert_eq!(result, Value::I32(1)); // Previous size was 1 page
         
         // Check new size
-        assert_eq!(memory.size_in_bytes().unwrap(), 3 * 65536);
+        assert_eq!(memory.size_in_bytes().unwrap(), 3 * 65_536);
         
         // Test grow with 0 pages (should succeed)
         let result = grow_op.execute(&mut memory, &Value::I32(0)).unwrap();
@@ -1791,7 +1791,7 @@ mod tests {
 
     #[test]
     fn test_unified_memory_size() {
-        let mut ctx = MockMemoryContext::new(2 * 65536); // 2 pages
+        let mut ctx = MockMemoryContext::new(2 * 65_536); // 2 pages
         
         // Execute memory.size
         let op = MemoryOp::Size(MemorySize::new(0));
@@ -1803,7 +1803,7 @@ mod tests {
 
     #[test]
     fn test_unified_memory_grow() {
-        let mut ctx = MockMemoryContext::new(65536); // 1 page
+        let mut ctx = MockMemoryContext::new(65_536); // 1 page
         
         // Push delta (2 pages)
         ctx.push_value(Value::I32(2)).unwrap();
@@ -1816,7 +1816,7 @@ mod tests {
         assert_eq!(ctx.pop_value().unwrap(), Value::I32(1));
         
         // Verify memory actually grew
-        assert_eq!(ctx.memory.size_in_bytes().unwrap(), 3 * 65536);
+        assert_eq!(ctx.memory.size_in_bytes().unwrap(), 3 * 65_536);
     }
 
     #[test]
