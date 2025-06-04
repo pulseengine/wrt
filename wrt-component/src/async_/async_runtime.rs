@@ -1,4 +1,5 @@
 //! Async Runtime for WebAssembly Component Model
+//! SW-REQ-ID: REQ_FUNC_030
 //!
 //! This module implements a complete async runtime with task scheduling,
 //! stream operations, and future management for the Component Model.

@@ -10,15 +10,6 @@ use wrt_decoder::component::decode::Component as DecodedComponent;
 // Additional imports that aren't in the prelude
 use wrt_format::component::ExternType as FormatExternType;
 use wrt_foundation::resource::ResourceOperation as FormatResourceOperation;
-// These imports are temporarily commented out until we fix them
-// ComponentSection, ComponentTypeDefinition as FormatComponentTypeDefinition,
-// ComponentTypeSection, ExportSection, ImportSection, InstanceSection,
-
-// Import conversion functions
-// Commenting out due to missing functions
-// use wrt_format::component_conversion::{
-//     component_type_to_format_type_def, format_type_def_to_component_type,
-// };
 
 // Runtime types with explicit namespacing
 use wrt_runtime::types::{MemoryType, TableType};
