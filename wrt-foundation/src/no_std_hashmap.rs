@@ -122,7 +122,7 @@ where
     K: Hash + Eq + Clone + Default + Checksummable + ToBytes + FromBytes,
     V: Clone + Default + PartialEq + Eq + Checksummable + ToBytes + FromBytes,
 {
-    /// Creates a new empty SimpleHashMap with the given memory provider.
+    /// Creates a new empty `SimpleHashMap` with the given memory provider.
     pub fn new(provider: P) -> crate::WrtResult<Self> {
         let mut entries = BoundedVec::new(provider)?;
 

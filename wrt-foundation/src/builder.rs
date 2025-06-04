@@ -48,7 +48,7 @@ use crate::{
 /// Generic builder for bounded collections.
 ///
 /// This builder simplifies the creation and configuration of bounded
-/// collections like BoundedVec, BoundedStack, etc. with proper resource
+/// collections like `BoundedVec`, `BoundedStack`, etc. with proper resource
 /// management for no_std/no_alloc environments.
 pub struct BoundedBuilder<T, const N: usize, P: MemoryProvider + Default + Clone> {
     provider: P,
@@ -98,7 +98,7 @@ where
         self
     }
 
-    /// Builds a BoundedVec with the configured settings.
+    /// Builds a `BoundedVec` with the configured settings.
     pub fn build_vec(self) -> WrtResult<BoundedVec<T, N, P>>
     where
         T: Clone + PartialEq + Eq,
@@ -115,7 +115,7 @@ where
     }
 }
 
-/// Builder for BoundedString and WasmName types.
+/// Builder for `BoundedString` and `WasmName` types.
 pub struct StringBuilder<const N: usize, P: MemoryProvider + Default + Clone> {
     provider: P,
     initial_content: Option<&'static str>,
@@ -152,7 +152,7 @@ impl<const N: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq> Strin
         self
     }
 
-    /// Builds a BoundedString with the configured settings.
+    /// Builds a `BoundedString` with the configured settings.
     pub fn build_string(self) -> WrtResult<BoundedString<N, P>> {
         match (self.initial_content, self.truncate_if_needed) {
             (Some(content), true) => {
@@ -643,7 +643,7 @@ impl NoStdProviderBuilder1 {
 /// Convenience type aliases for common NoStdProvider sizes
 pub type SmallNoStdProviderBuilder = NoStdProviderBuilder<512>;
 pub type MediumNoStdProviderBuilder = NoStdProviderBuilder<4096>;
-pub type LargeNoStdProviderBuilder = NoStdProviderBuilder<16384>;
+pub type LargeNoStdProviderBuilder = NoStdProviderBuilder<16_384>;
 
 #[cfg(test)]
 mod tests {

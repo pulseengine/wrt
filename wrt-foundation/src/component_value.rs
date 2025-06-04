@@ -142,9 +142,9 @@ pub enum ValType<P: MemoryProvider + Default + Clone + PartialEq + Eq> {
     Flags(BoundedVec<WasmName<MAX_WASM_NAME_LENGTH, P>, MAX_TYPE_FLAGS_NAMES, P>),
     /// Enumeration of variants
     Enum(BoundedVec<WasmName<MAX_WASM_NAME_LENGTH, P>, MAX_TYPE_ENUM_NAMES, P>),
-    /// Option type
+    /// `Option` type
     Option(ValTypeRef), // Replaced Box<ValType>
-    /// Result type with both Ok and Err types (both optional for void)
+    /// `Result` type with both `Ok` and `Err` types (both optional for void)
     Result { ok: Option<ValTypeRef>, err: Option<ValTypeRef> }, /* Replaced Result/ResultErr/
                                                                  * ResultBoth */
     /// Resource handle (owned)
@@ -473,13 +473,13 @@ pub enum ComponentValue<P: MemoryProvider + Default + Clone + PartialEq + Eq> {
     Flags(BoundedVec<(WasmName<MAX_WASM_NAME_LENGTH, P>, bool), MAX_COMPONENT_FLAGS, P>),
     /// Enumeration with case name
     Enum(WasmName<MAX_WASM_NAME_LENGTH, P>),
-    /// Optional value (Some/None)
+    /// Optional value (`Some`/`None`)
     Option(Option<ValueRef>),
-    /// Result value (Ok/Err)
+    /// `Result` value (`Ok`/`Err`)
     Result(core::result::Result<ValueRef, ValueRef>),
-    /// Handle to a resource (u32 representation)
+    /// Handle to a resource (`u32` representation)
     Own(u32),
-    /// Reference to a borrowed resource (u32 representation)
+    /// Reference to a borrowed resource (`u32` representation)
     Borrow(u32),
     /// Error context information
     ErrorContext(BoundedVec<ValueRef, MAX_COMPONENT_ERROR_CONTEXT_ITEMS, P>),

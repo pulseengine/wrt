@@ -54,9 +54,9 @@ pub enum CanonicalLayoutDetails {
         /// Whether it's a fixed-length list
         fixed_length: Option<u32>,
     },
-    /// String type layout
+    /// `String` type layout
     String {
-        /// String encoding
+        /// `String` encoding
         encoding: StringEncoding,
     },
     /// Resource handle layout
@@ -66,7 +66,7 @@ pub enum CanonicalLayoutDetails {
     },
 }
 
-/// String encoding options for canonical ABI
+/// `String` encoding options for canonical ABI
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StringEncoding {
     /// UTF-8 encoding
@@ -427,12 +427,12 @@ pub enum TransformOperation {
     ConvertPrimitive,
     /// Unpack string data
     UnpackString {
-        /// String encoding to use
+        /// `String` encoding to use
         encoding: StringEncoding,
     },
     /// Pack string data
     PackString {
-        /// String encoding to use
+        /// `String` encoding to use
         encoding: StringEncoding,
         /// Allocator to use
         allocator: Option<u32>,

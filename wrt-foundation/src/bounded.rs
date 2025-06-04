@@ -107,11 +107,11 @@ pub const MAX_TYPE_FLAGS_NAMES: usize = 64;
 /// Maximum size for memory buffers in no_std environment
 pub const MAX_BUFFER_SIZE: usize = 4096;
 
-/// Maximum number of names in a component type enum.
+/// Maximum number of names in a component type `enum`.
 pub const MAX_TYPE_ENUM_NAMES: usize = 64;
 
 /// Default maximum size for an item to be serialized onto a stack buffer within
-/// BoundedVec/BoundedStack.
+/// `BoundedVec`/`BoundedStack`.
 const MAX_ITEM_SERIALIZED_SIZE: usize = 256;
 
 /// Size of the checksum in bytes, typically the size of a u32.
@@ -3640,7 +3640,7 @@ impl<
         ))
     }
 
-    /// Returns the raw binary data of this collection as a Vec<u8>.
+    /// Returns the raw binary data of this collection as a `Vec<u8>`.
     /// This is useful when you need to get a copy of the data, not just a
     /// reference.
     ///

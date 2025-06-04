@@ -277,14 +277,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ComponentValueStore<P
         P: Clone, // Needed for WasmName::from_str
     {
         // TODO: Convert case_name_str to WasmName
-        // let wasm_case_name = WasmName::<MAX_WASM_NAME_LENGTH,
-        // P>::from_str(case_name_str.as_ref(),
-        // self.provider.clone()).map_err(Error::from)?;
-        // let component_value_payload = value.cloned(); // This would require
-        // ComponentValue to be Clone let variant_cv =
-        // ComponentValue::Variant(wasm_case_name, component_value_payload.map(|cv| /*
-        // add cv to store, get ValueRef */ todo!() ));
-        // self.add_value(variant_cv).map(|vr| vr.0)
+        // Implementation pending - requires ComponentValue to be Clone
         Ok(2) // Dummy handle
     }
 
@@ -373,7 +366,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ComponentValueStore<P
         Ok(new_ref.0 as u32)
     }
 
-    /// Adds an enum case to the store and returns its handle.
+    /// Adds an `enum` case to the store and returns its handle.
     /// Changed to take AsRef<str> for no_alloc compatibility.
     pub fn add_enum<S: AsRef<str> + Debug>(&mut self, case: S) -> Result<u32>
     where
@@ -460,7 +453,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ComponentValueStore<P
 
     /// Returns a clone of the provider used by this store.
     /// Useful if external code needs to create P-dependent types like WasmName
-    /// or BoundedVec that are compatible with this store's memory
+    /// or `BoundedVec` that are compatible with this store's memory
     /// management.
     pub fn provider_clone(&self) -> P {
         self.provider.clone() // P: Clone is required by the struct bound

@@ -175,8 +175,8 @@ impl Checksum {
 
     /// Update the checksum with a single byte
     pub fn update(&mut self, byte: u8) {
-        self.a = (self.a + u32::from(byte)) % 65521;
-        self.b = (self.b + self.a) % 65521;
+        self.a = (self.a + u32::from(byte)) % 65_521;
+        self.b = (self.b + self.a) % 65_521;
     }
 
     /// Update the checksum with multiple bytes

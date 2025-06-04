@@ -165,6 +165,6 @@ mod tests {
 
         let memory = builder.build().unwrap();
         // LinearMemory delegates to the provider, so we know these will match
-        assert_eq!(memory.size(), 2 * 65536);
+        assert_eq!(memory.size(), 2 * 65_536);
     }
 }

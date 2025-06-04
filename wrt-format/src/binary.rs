@@ -2579,7 +2579,7 @@ mod tests {
     #[test]
     #[cfg(any(feature = "alloc", feature = "std"))]
     fn test_leb128_u64_roundtrip() {
-        let test_values = [0u64, 1, 127, 128, 16384, 0x7FFFFFFF, 0xFFFFFFFF, 0xFFFFFFFFFFFFFFFF];
+        let test_values = [0u64, 1, 127, 128, 16_384, 0x7FFF_FFFF, 0xFFFF_FFFF, 0xFFFF_FFFF_FFFF_FFFF];
 
         for &value in &test_values {
             let bytes = write_leb128_u64_test(value);

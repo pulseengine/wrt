@@ -79,7 +79,7 @@ pub const MAX_DATA_SEGMENTS_IN_MODULE: usize = 1024;
 pub const MAX_LOCALS_PER_FUNCTION: usize = 512; // Max local entries per function
 pub const MAX_INSTRUCTIONS_PER_FUNCTION: usize = 8192; // Max instructions in a function body/expr
 pub const MAX_ELEMENT_INDICES_PER_SEGMENT: usize = 8192; // Max func indices in an element segment
-pub const MAX_DATA_SEGMENT_LENGTH: usize = 65536; // Max bytes in a data segment (active/passive)
+pub const MAX_DATA_SEGMENT_LENGTH: usize = 65_536; // Max bytes in a data segment (active/passive)
 pub const MAX_TAGS_IN_MODULE: usize = 1024;
 pub const MAX_CUSTOM_SECTIONS_IN_MODULE: usize = 64;
 // MAX_CUSTOM_SECTION_DATA_SIZE, MAX_MODULE_NAME_LEN, and MAX_ITEM_NAME_LEN are
@@ -714,9 +714,9 @@ impl Checksummable for ElementMode {
 pub enum Instruction<P: MemoryProvider + Clone + core::fmt::Debug + PartialEq + Eq + Default> {
     Unreachable,
     Nop,
-    Block, // Represents the start of a block, type is on stack or from validation
-    Loop,  // Represents the start of a loop, type is on stack or from validation
-    If,    // Represents an if, type is on stack or from validation
+    Block { block_type_idx: u32 }, // Block with type index
+    Loop { block_type_idx: u32 },  // Loop with type index
+    If { block_type_idx: u32 },    // If with type index
     Else,
     End,
     Br(LabelIdx),
@@ -751,7 +751,207 @@ pub enum Instruction<P: MemoryProvider + Clone + core::fmt::Debug + PartialEq + 
 
     I32Const(i32),
     I64Const(i64),
-    // ... other consts, loads, stores, numeric ops ...
+    F32Const(u32), // bits representation
+    F64Const(u64), // bits representation
+    
+    // Memory operations
+    I32Load(MemArg),
+    I64Load(MemArg),
+    F32Load(MemArg),
+    F64Load(MemArg),
+    I32Load8S(MemArg),
+    I32Load8U(MemArg),
+    I32Load16S(MemArg),
+    I32Load16U(MemArg),
+    I64Load8S(MemArg),
+    I64Load8U(MemArg),
+    I64Load16S(MemArg),
+    I64Load16U(MemArg),
+    I64Load32S(MemArg),
+    I64Load32U(MemArg),
+    
+    I32Store(MemArg),
+    I64Store(MemArg),
+    F32Store(MemArg),
+    F64Store(MemArg),
+    I32Store8(MemArg),
+    I32Store16(MemArg),
+    I64Store8(MemArg),
+    I64Store16(MemArg),
+    I64Store32(MemArg),
+    
+    // Memory size and grow
+    MemorySize(u32), // memory index
+    MemoryGrow(u32), // memory index
+    MemoryFill(u32), // memory index
+    MemoryCopy(u32, u32), // dst_mem, src_mem
+    MemoryInit(u32, u32), // data_seg_idx, mem_idx
+    DataDrop(u32), // data segment index
+    
+    // Table operations
+    TableGet(u32), // table index
+    TableSet(u32), // table index
+    TableSize(u32), // table index
+    TableGrow(u32), // table index
+    TableFill(u32), // table index
+    TableCopy(u32, u32), // dst_table, src_table
+    TableInit(u32, u32), // elem_seg_idx, table_idx
+    ElemDrop(u32), // element segment index
+    
+    // Stack operations
+    Drop,
+    Select,
+    SelectWithType(BoundedVec<ValueType, 1, P>), // typed select
+    
+    // Arithmetic operations
+    I32Add,
+    I32Sub,
+    I32Mul,
+    I32DivS,
+    I32DivU,
+    I32RemS,
+    I32RemU,
+    I32And,
+    I32Or,
+    I32Xor,
+    I32Shl,
+    I32ShrS,
+    I32ShrU,
+    I32Rotl,
+    I32Rotr,
+    
+    I64Add,
+    I64Sub,
+    I64Mul,
+    I64DivS,
+    I64DivU,
+    I64RemS,
+    I64RemU,
+    I64And,
+    I64Or,
+    I64Xor,
+    I64Shl,
+    I64ShrS,
+    I64ShrU,
+    I64Rotl,
+    I64Rotr,
+    
+    F32Add,
+    F32Sub,
+    F32Mul,
+    F32Div,
+    F32Min,
+    F32Max,
+    F32Copysign,
+    F32Abs,
+    F32Neg,
+    F32Ceil,
+    F32Floor,
+    F32Trunc,
+    F32Nearest,
+    F32Sqrt,
+    
+    F64Add,
+    F64Sub,
+    F64Mul,
+    F64Div,
+    F64Min,
+    F64Max,
+    F64Copysign,
+    F64Abs,
+    F64Neg,
+    F64Ceil,
+    F64Floor,
+    F64Trunc,
+    F64Nearest,
+    F64Sqrt,
+    
+    // Comparison operations
+    I32Eq,
+    I32Ne,
+    I32LtS,
+    I32LtU,
+    I32GtS,
+    I32GtU,
+    I32LeS,
+    I32LeU,
+    I32GeS,
+    I32GeU,
+    
+    I64Eq,
+    I64Ne,
+    I64LtS,
+    I64LtU,
+    I64GtS,
+    I64GtU,
+    I64LeS,
+    I64LeU,
+    I64GeS,
+    I64GeU,
+    
+    F32Eq,
+    F32Ne,
+    F32Lt,
+    F32Gt,
+    F32Le,
+    F32Ge,
+    
+    F64Eq,
+    F64Ne,
+    F64Lt,
+    F64Gt,
+    F64Le,
+    F64Ge,
+    
+    // Unary test operations
+    I32Eqz,
+    I64Eqz,
+    
+    // Conversion operations
+    I32WrapI64,
+    I32TruncF32S,
+    I32TruncF32U,
+    I32TruncF64S,
+    I32TruncF64U,
+    I64ExtendI32S,
+    I64ExtendI32U,
+    I64TruncF32S,
+    I64TruncF32U,
+    I64TruncF64S,
+    I64TruncF64U,
+    F32ConvertI32S,
+    F32ConvertI32U,
+    F32ConvertI64S,
+    F32ConvertI64U,
+    F32DemoteF64,
+    F64ConvertI32S,
+    F64ConvertI32U,
+    F64ConvertI64S,
+    F64ConvertI64U,
+    F64PromoteF32,
+    I32ReinterpretF32,
+    I64ReinterpretF64,
+    F32ReinterpretI32,
+    F64ReinterpretI64,
+    
+    // Sign extension operations
+    I32Extend8S,
+    I32Extend16S,
+    I64Extend8S,
+    I64Extend16S,
+    I64Extend32S,
+    
+    // Reference operations
+    RefNull(RefType),
+    RefFunc(FuncIdx),
+    
+    // Other operations
+    I32Clz,
+    I32Ctz,
+    I32Popcnt,
+    I64Clz,
+    I64Ctz,
+    I64Popcnt,
     
     // Atomic memory operations (0xFE prefix in WebAssembly)
     MemoryAtomicNotify { memarg: MemArg },
@@ -860,9 +1060,18 @@ impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq + D
         match self {
             Instruction::Unreachable => checksum.update_slice(&[0x00]),
             Instruction::Nop => checksum.update_slice(&[0x01]),
-            Instruction::Block => checksum.update_slice(&[0x02]), // Type info is external
-            Instruction::Loop => checksum.update_slice(&[0x03]),  // Type info is external
-            Instruction::If => checksum.update_slice(&[0x04]),    // Type info is external
+            Instruction::Block { block_type_idx } => {
+                checksum.update_slice(&[0x02]);
+                block_type_idx.update_checksum(checksum);
+            }
+            Instruction::Loop { block_type_idx } => {
+                checksum.update_slice(&[0x03]);
+                block_type_idx.update_checksum(checksum);
+            }
+            Instruction::If { block_type_idx } => {
+                checksum.update_slice(&[0x04]);
+                block_type_idx.update_checksum(checksum);
+            }
             Instruction::Else => checksum.update_slice(&[0x05]),
             Instruction::End => checksum.update_slice(&[0x0B]),
             Instruction::Br(idx) => {
@@ -942,6 +1151,75 @@ impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq + D
                 checksum.update_slice(&[0x42]);
                 val.update_checksum(checksum);
             }
+            Instruction::F32Const(val) => {
+                checksum.update_slice(&[0x43]);
+                val.update_checksum(checksum);
+            }
+            Instruction::F64Const(val) => {
+                checksum.update_slice(&[0x44]);
+                val.update_checksum(checksum);
+            }
+            
+            // Memory operations
+            Instruction::I32Load(memarg) => {
+                checksum.update_slice(&[0x28]);
+                memarg.update_checksum(checksum);
+            }
+            Instruction::I64Load(memarg) => {
+                checksum.update_slice(&[0x29]);
+                memarg.update_checksum(checksum);
+            }
+            Instruction::F32Load(memarg) => {
+                checksum.update_slice(&[0x2A]);
+                memarg.update_checksum(checksum);
+            }
+            Instruction::F64Load(memarg) => {
+                checksum.update_slice(&[0x2B]);
+                memarg.update_checksum(checksum);
+            }
+            Instruction::I32Store(memarg) => {
+                checksum.update_slice(&[0x36]);
+                memarg.update_checksum(checksum);
+            }
+            Instruction::I64Store(memarg) => {
+                checksum.update_slice(&[0x37]);
+                memarg.update_checksum(checksum);
+            }
+            Instruction::F32Store(memarg) => {
+                checksum.update_slice(&[0x38]);
+                memarg.update_checksum(checksum);
+            }
+            Instruction::F64Store(memarg) => {
+                checksum.update_slice(&[0x39]);
+                memarg.update_checksum(checksum);
+            }
+            Instruction::MemorySize(mem_idx) => {
+                checksum.update_slice(&[0x3F]);
+                mem_idx.update_checksum(checksum);
+            }
+            Instruction::MemoryGrow(mem_idx) => {
+                checksum.update_slice(&[0x40]);
+                mem_idx.update_checksum(checksum);
+            }
+            
+            // Arithmetic operations
+            Instruction::I32Add => checksum.update_slice(&[0x6A]),
+            Instruction::I32Sub => checksum.update_slice(&[0x6B]),
+            Instruction::I32Mul => checksum.update_slice(&[0x6C]),
+            Instruction::I32DivS => checksum.update_slice(&[0x6D]),
+            Instruction::I32DivU => checksum.update_slice(&[0x6E]),
+            Instruction::I64Add => checksum.update_slice(&[0x7C]),
+            Instruction::I64Sub => checksum.update_slice(&[0x7D]),
+            
+            // Comparison operations
+            Instruction::I32Eq => checksum.update_slice(&[0x46]),
+            Instruction::I32Ne => checksum.update_slice(&[0x47]),
+            Instruction::I32LtS => checksum.update_slice(&[0x48]),
+            
+            // Stack operations
+            Instruction::Drop => checksum.update_slice(&[0x1A]),
+            Instruction::Select => checksum.update_slice(&[0x1B]),
+            
             // Atomic memory operations (0xFE prefix in WebAssembly)
             Instruction::MemoryAtomicNotify { memarg } => {
                 checksum.update_slice(&[0xFE, 0x00]);
@@ -1226,8 +1504,12 @@ impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq + D
                 checksum.update_slice(&[0xFE, 0x03]);
             }
             
-            // Add other instruction checksum logic here
-            Instruction::_Phantom(_) => { /* No data to checksum for PhantomData */ }
+            // All other instructions - use a placeholder checksum for now
+            _ => {
+                // For now, just use a simple placeholder
+                // This is a placeholder until all instructions are properly implemented
+                checksum.update_slice(&[0xFF, 0x00]);
+            }
         }
     }
 }
@@ -1246,9 +1528,18 @@ impl<PInstr: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + E
         match self {
             Instruction::Unreachable => writer.write_u8(0x00)?,
             Instruction::Nop => writer.write_u8(0x01)?,
-            Instruction::Block => writer.write_u8(0x02)?, // Placeholder, needs blocktype
-            Instruction::Loop => writer.write_u8(0x03)?,  // Placeholder, needs blocktype
-            Instruction::If => writer.write_u8(0x04)?,    // Placeholder, needs blocktype
+            Instruction::Block { block_type_idx } => {
+                writer.write_u8(0x02)?;
+                writer.write_u32_le(*block_type_idx)?;
+            }
+            Instruction::Loop { block_type_idx } => {
+                writer.write_u8(0x03)?;
+                writer.write_u32_le(*block_type_idx)?;
+            }
+            Instruction::If { block_type_idx } => {
+                writer.write_u8(0x04)?;
+                writer.write_u32_le(*block_type_idx)?;
+            }
             Instruction::Else => writer.write_u8(0x05)?,
             Instruction::End => writer.write_u8(0x0B)?,
             Instruction::Br(idx) => {
@@ -1681,6 +1972,16 @@ impl<PInstr: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + E
                 )
                 .into());
             }
+            
+            // Catch-all for all other instruction variants
+            _ => {
+                // For now, return an error for unimplemented instructions
+                // This is a placeholder - a complete implementation would handle all variants
+                return Err(SerializationError::Custom(
+                    "Instruction variant not yet implemented for serialization",
+                )
+                .into());
+            }
         }
         Ok(())
     }
@@ -1705,9 +2006,18 @@ impl<PInstr: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + E
         match opcode {
             0x00 => Ok(Instruction::Unreachable),
             0x01 => Ok(Instruction::Nop),
-            0x02 => Ok(Instruction::Block), // Placeholder
-            0x03 => Ok(Instruction::Loop),  // Placeholder
-            0x04 => Ok(Instruction::If),    // Placeholder
+            0x02 => {
+                let block_type_idx = reader.read_u32_le()?;
+                Ok(Instruction::Block { block_type_idx })
+            }
+            0x03 => {
+                let block_type_idx = reader.read_u32_le()?;
+                Ok(Instruction::Loop { block_type_idx })
+            }
+            0x04 => {
+                let block_type_idx = reader.read_u32_le()?;
+                Ok(Instruction::If { block_type_idx })
+            }
             0x05 => Ok(Instruction::Else),
             0x0B => Ok(Instruction::End),
             0x0C => Ok(Instruction::Br(reader.read_u32_le()?)),
@@ -3276,3 +3586,64 @@ impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> Fr
         Self::from_bytes_with_provider(reader, &default_provider)
     }
 }
+
+/// Placeholder for element segment
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ElementSegment<P: MemoryProvider + Default + Clone + PartialEq + Eq = DefaultMemoryProvider> {
+    /// Table index
+    pub table_index: u32,
+    /// Offset expression
+    pub offset: BoundedVec<u8, 1024, P>,
+    /// Elements
+    pub elements: BoundedVec<u32, 1024, P>,
+}
+
+impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> Default for ElementSegment<P> {
+    fn default() -> Self {
+        Self {
+            table_index: 0,
+            offset: BoundedVec::new(P::default()).unwrap_or_default(),
+            elements: BoundedVec::new(P::default()).unwrap_or_default(),
+        }
+    }
+}
+
+/// Placeholder for data segment
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DataSegment<P: MemoryProvider + Default + Clone + PartialEq + Eq = DefaultMemoryProvider> {
+    /// Memory index
+    pub memory_index: u32,
+    /// Offset expression
+    pub offset: BoundedVec<u8, 1024, P>,
+    /// Data bytes
+    pub data: BoundedVec<u8, 1024, P>,
+}
+
+impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> Default for DataSegment<P> {
+    fn default() -> Self {
+        Self {
+            memory_index: 0,
+            offset: BoundedVec::new(P::default()).unwrap_or_default(),
+            data: BoundedVec::new(P::default()).unwrap_or_default(),
+        }
+    }
+}
+
+/// Placeholder for reference value
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RefValue {
+    /// Null reference
+    Null,
+    /// Function reference
+    FuncRef(u32),
+    /// External reference
+    ExternRef(u32),
+}
+
+impl Default for RefValue {
+    fn default() -> Self {
+        Self::Null
+    }
+}
+
+// Removed duplicate Instruction enum - using the generic one above
