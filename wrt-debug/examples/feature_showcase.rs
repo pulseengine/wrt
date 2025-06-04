@@ -166,7 +166,4 @@ pub extern "C" fn graceful_degradation_example() -> u32 {
     0 // No debug info
 }
 
-#[panic_handler]
-fn panic(_info: &core::panic::PanicInfo) -> ! {
-    loop {}
-}
+// Panic handler removed - provided by wrt-platform crate

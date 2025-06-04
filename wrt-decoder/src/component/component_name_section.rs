@@ -8,7 +8,7 @@
 //! sections in WebAssembly Component Model binaries.
 
 use wrt_error::{codes, Error, ErrorCategory, Result};
-use wrt_format::{binary, component::Sort};
+use wrt_format::{binary, component::Sort, read_name, write_string, write_leb128_u32};
 
 use crate::prelude::*;
 
@@ -67,8 +67,8 @@ pub fn generate_component_name_section(section: &ComponentNameSection) -> Result
     if let Some(name) = &section.component_name {
         result.push(subsection::COMPONENT_NAME);
         let mut name_data = Vec::new();
-        name_data.extend_from_slice(&binary::write_string(name));
-        result.extend_from_slice(&binary::write_leb128_u32(name_data.len() as u32));
+        name_data.extend_from_slice(&write_string(name));
+        result.extend_from_slice(&write_leb128_u32(name_data.len() as u32));
         result.extend_from_slice(&name_data);
     }
 
@@ -78,7 +78,7 @@ pub fn generate_component_name_section(section: &ComponentNameSection) -> Result
         let mut sort_data = Vec::new();
 
         // Write number of sorts
-        sort_data.extend_from_slice(&binary::write_leb128_u32(section.sort_names.len() as u32));
+        sort_data.extend_from_slice(&write_leb128_u32(section.sort_names.len() as u32));
 
         for (sort, names) in &section.sort_names {
             // Write sort ID
@@ -96,17 +96,17 @@ pub fn generate_component_name_section(section: &ComponentNameSection) -> Result
             sort_data.push(sort_id);
 
             // Write number of names
-            sort_data.extend_from_slice(&binary::write_leb128_u32(names.len() as u32));
+            sort_data.extend_from_slice(&write_leb128_u32(names.len() as u32));
 
             // Write each name
             for (idx, name) in names {
-                sort_data.extend_from_slice(&binary::write_leb128_u32(*idx));
-                sort_data.extend_from_slice(&binary::write_string(name));
+                sort_data.extend_from_slice(&write_leb128_u32(*idx));
+                sort_data.extend_from_slice(&write_string(name));
             }
         }
 
         // Write the size of the sort data
-        result.extend_from_slice(&binary::write_leb128_u32(sort_data.len() as u32));
+        result.extend_from_slice(&write_leb128_u32(sort_data.len() as u32));
         result.extend_from_slice(&sort_data);
     }
 
@@ -255,16 +255,16 @@ fn write_name_map(result: &mut Vec<u8>, subsection_id: u8, names: &[(u32, String
     let mut map_data = Vec::new();
 
     // Write number of entries
-    map_data.extend_from_slice(&binary::write_leb128_u32(names.len() as u32));
+    map_data.extend_from_slice(&write_leb128_u32(names.len() as u32));
 
     // Write each name
     for (idx, name) in names {
-        map_data.extend_from_slice(&binary::write_leb128_u32(*idx));
-        map_data.extend_from_slice(&binary::write_string(name));
+        map_data.extend_from_slice(&write_leb128_u32(*idx));
+        map_data.extend_from_slice(&write_string(name));
     }
 
     // Write the size of the map data
-    result.extend_from_slice(&binary::write_leb128_u32(map_data.len() as u32));
+    result.extend_from_slice(&write_leb128_u32(map_data.len() as u32));
     result.extend_from_slice(&map_data);
 }
 

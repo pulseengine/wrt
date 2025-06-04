@@ -29,7 +29,7 @@ use wrt_foundation::{WrtResult, verification::Checksum};
 #[cfg(feature = "alloc")]
 use alloc::{vec::Vec, collections::BTreeMap};
 #[cfg(feature = "std")]
-use std::{vec::Vec, collections::HashMap};
+use std::{vec::Vec, collections::BTreeMap as HashMap};
 
 /// Branch hint value indicating the likelihood of a branch being taken
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]

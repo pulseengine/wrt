@@ -137,7 +137,4 @@ pub extern "C" fn list_all_functions() -> usize {
     0
 }
 
-#[panic_handler]
-fn panic(_info: &core::panic::PanicInfo) -> ! {
-    loop {}
-}
+// Panic handler removed - provided by wrt-platform crate

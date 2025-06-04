@@ -59,7 +59,4 @@ pub extern "C" fn conditional_debug_features() -> u32 {
     feature_count
 }
 
-#[panic_handler]
-fn panic(_info: &core::panic::PanicInfo) -> ! {
-    loop {}
-}
+// Panic handler removed - provided by wrt-platform crate

@@ -266,11 +266,11 @@ pub fn generate_component_name_section(name_section: &ComponentNameSection) -> R
 
         // Generate data for name
         let mut subsection_data = Vec::new();
-        let name_bytes = binary::write_string(name);
+        let name_bytes = write_string(name);
         subsection_data.extend_from_slice(&name_bytes);
 
         // Add subsection size and data
-        data.extend_from_slice(&binary::write_leb128_u32(subsection_data.len() as u32));
+        data.extend_from_slice(&write_leb128_u32(subsection_data.len() as u32));
         data.extend_from_slice(&subsection_data);
     }
 
@@ -290,7 +290,7 @@ pub fn generate_component_name_section(name_section: &ComponentNameSection) -> R
         }
 
         // Add subsection size and data
-        data.extend_from_slice(&binary::write_leb128_u32(subsection_data.len() as u32));
+        data.extend_from_slice(&write_leb128_u32(subsection_data.len() as u32));
         data.extend_from_slice(&subsection_data);
     }
 
@@ -303,7 +303,7 @@ pub fn generate_component_name_section(name_section: &ComponentNameSection) -> R
         let subsection_data = generate_name_map(&name_section.import_names)?;
 
         // Add subsection size and data
-        data.extend_from_slice(&binary::write_leb128_u32(subsection_data.len() as u32));
+        data.extend_from_slice(&write_leb128_u32(subsection_data.len() as u32));
         data.extend_from_slice(&subsection_data);
     }
 
@@ -316,7 +316,7 @@ pub fn generate_component_name_section(name_section: &ComponentNameSection) -> R
         let subsection_data = generate_name_map(&name_section.export_names)?;
 
         // Add subsection size and data
-        data.extend_from_slice(&binary::write_leb128_u32(subsection_data.len() as u32));
+        data.extend_from_slice(&write_leb128_u32(subsection_data.len() as u32));
         data.extend_from_slice(&subsection_data);
     }
 
@@ -329,7 +329,7 @@ pub fn generate_component_name_section(name_section: &ComponentNameSection) -> R
         let subsection_data = generate_name_map(&name_section.canonical_names)?;
 
         // Add subsection size and data
-        data.extend_from_slice(&binary::write_leb128_u32(subsection_data.len() as u32));
+        data.extend_from_slice(&write_leb128_u32(subsection_data.len() as u32));
         data.extend_from_slice(&subsection_data);
     }
 
@@ -342,7 +342,7 @@ pub fn generate_component_name_section(name_section: &ComponentNameSection) -> R
         let subsection_data = generate_name_map(&name_section.type_names)?;
 
         // Add subsection size and data
-        data.extend_from_slice(&binary::write_leb128_u32(subsection_data.len() as u32));
+        data.extend_from_slice(&write_leb128_u32(subsection_data.len() as u32));
         data.extend_from_slice(&subsection_data);
     }
 
@@ -372,15 +372,15 @@ fn generate_name_map(names: &NameMap) -> Result<Vec<u8>> {
     let mut data = Vec::new();
 
     // Number of entries
-    data.extend_from_slice(&binary::write_leb128_u32(names.entries.len() as u32));
+    data.extend_from_slice(&write_leb128_u32(names.entries.len() as u32));
 
     // Each entry
     for entry in &names.entries {
         // Index
-        data.extend_from_slice(&binary::write_leb128_u32(entry.index));
+        data.extend_from_slice(&write_leb128_u32(entry.index));
 
         // Name
-        data.extend_from_slice(&binary::write_string(&entry.name));
+        data.extend_from_slice(&write_string(&entry.name));
     }
 
     Ok(data)
