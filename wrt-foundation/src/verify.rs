@@ -130,7 +130,7 @@ pub mod kani_verification {
 
     // --- Memory Safety Verification ---
 
-    /// Verify that BoundedVec operations never cause memory safety violations
+    /// Verify that `BoundedVec` operations never cause memory safety violations
     #[cfg_attr(kani, kani::proof)]
     #[cfg_attr(kani, kani::unwind(10))]
     pub fn verify_bounded_collections_memory_safety() {

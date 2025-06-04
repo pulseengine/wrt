@@ -70,7 +70,7 @@ pub mod block_type {
     /// Trait for types that can be converted to `BlockType`
     ///
     /// This trait allows for standardized conversion from different
-    /// representations of block types to the core `BlockType` enum.
+    /// representations of block types to the core `BlockType` `enum`.
     pub trait ConvertToBlockType {
         /// Convert to `BlockType`
         fn to_block_type(&self) -> BlockType;

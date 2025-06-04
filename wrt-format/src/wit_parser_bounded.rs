@@ -7,23 +7,64 @@ use wrt_foundation::{BoundedString, MemoryProvider, NoStdProvider};
 use wrt_error::{Error, Result};
 use crate::MAX_WASM_STRING_SIZE;
 
-// For debug output in tests
-#[cfg(all(test, feature = "std"))]
-use std::eprintln;
+// Debug output was used during development - can be re-enabled if needed
+// #[cfg(all(test, feature = "std"))]
+// use std::eprintln;
 
-/// Bounded WIT name for no_std environments
-pub type BoundedWitName<P> = BoundedString<MAX_WASM_STRING_SIZE, P>;
+/// Simple bounded string for no_std environments
+/// This works around BoundedString issues by using a fixed array
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SimpleBoundedString {
+    data: [u8; 64], // 64 bytes should be enough for WIT identifiers
+    len: usize,
+}
+
+impl SimpleBoundedString {
+    pub fn new() -> Self {
+        Self {
+            data: [0; 64],
+            len: 0,
+        }
+    }
+    
+    pub fn from_str(s: &str) -> Option<Self> {
+        if s.len() > 64 {
+            return None;
+        }
+        
+        let mut result = Self::new();
+        let bytes = s.as_bytes();
+        result.data[..bytes.len()].copy_from_slice(bytes);
+        result.len = bytes.len();
+        Some(result)
+    }
+    
+    pub fn as_str(&self) -> core::result::Result<&str, core::str::Utf8Error> {
+        core::str::from_utf8(&self.data[..self.len])
+    }
+    
+    pub fn len(&self) -> usize {
+        self.len
+    }
+    
+    pub fn is_empty(&self) -> bool {
+        self.len == 0
+    }
+}
+
+/// Bounded WIT name for no_std environments - using simple array-based approach
+pub type BoundedWitName = SimpleBoundedString;
 
 /// Simple bounded WIT parser for no_std environments
 #[derive(Debug, Clone)]
-pub struct BoundedWitParser<P: MemoryProvider + Default + Clone + PartialEq + Eq = NoStdProvider<4096>> {
+pub struct BoundedWitParser<P: MemoryProvider + Default + Clone + PartialEq + Eq = NoStdProvider<8192>> {
     /// Input text being parsed (stored as bytes for processing)
     input_buffer: [u8; 8192], // 8KB fixed buffer
     input_len: usize,
     /// Parsed worlds (simplified)
-    worlds: [Option<BoundedWitWorld<P>>; 4], // Maximum 4 worlds
+    worlds: [Option<BoundedWitWorld>; 4], // Maximum 4 worlds
     /// Parsed interfaces (simplified)
-    interfaces: [Option<BoundedWitInterface<P>>; 8], // Maximum 8 interfaces
+    interfaces: [Option<BoundedWitInterface>; 8], // Maximum 8 interfaces
     /// Number of parsed worlds
     world_count: usize,
     /// Number of parsed interfaces
@@ -34,9 +75,9 @@ pub struct BoundedWitParser<P: MemoryProvider + Default + Clone + PartialEq + Eq
 
 /// Simple bounded WIT world definition
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct BoundedWitWorld<P: MemoryProvider + Default + Clone + PartialEq + Eq> {
+pub struct BoundedWitWorld {
     /// World name
-    pub name: BoundedWitName<P>,
+    pub name: BoundedWitName,
     /// Simple import/export counters for basic functionality
     pub import_count: u32,
     pub export_count: u32,
@@ -44,18 +85,18 @@ pub struct BoundedWitWorld<P: MemoryProvider + Default + Clone + PartialEq + Eq>
 
 /// Simple bounded WIT interface definition
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct BoundedWitInterface<P: MemoryProvider + Default + Clone + PartialEq + Eq> {
+pub struct BoundedWitInterface {
     /// Interface name
-    pub name: BoundedWitName<P>,
+    pub name: BoundedWitName,
     /// Simple function counter for basic functionality
     pub function_count: u32,
 }
 
 /// Simple bounded WIT function definition
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct BoundedWitFunction<P: MemoryProvider + Default + Clone + PartialEq + Eq> {
+pub struct BoundedWitFunction {
     /// Function name
-    pub name: BoundedWitName<P>,
+    pub name: BoundedWitName,
     /// Parameter count (simplified)
     pub param_count: u32,
     /// Result count (simplified)
@@ -64,7 +105,7 @@ pub struct BoundedWitFunction<P: MemoryProvider + Default + Clone + PartialEq + 
 
 /// Simple bounded WIT type definition
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum BoundedWitType<P: MemoryProvider + Default + Clone + PartialEq + Eq> {
+pub enum BoundedWitType {
     /// Primitive types
     Bool,
     U8, U16, U32, U64,
@@ -75,7 +116,7 @@ pub enum BoundedWitType<P: MemoryProvider + Default + Clone + PartialEq + Eq> {
     
     /// Named type reference
     Named {
-        name: BoundedWitName<P>,
+        name: BoundedWitName,
     },
     
     /// Unknown/unsupported type
@@ -84,18 +125,18 @@ pub enum BoundedWitType<P: MemoryProvider + Default + Clone + PartialEq + Eq> {
 
 /// Simple bounded import definition
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct BoundedWitImport<P: MemoryProvider + Default + Clone + PartialEq + Eq> {
+pub struct BoundedWitImport {
     /// Import name
-    pub name: BoundedWitName<P>,
+    pub name: BoundedWitName,
     /// Import is a function (simplified)
     pub is_function: bool,
 }
 
 /// Simple bounded export definition
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct BoundedWitExport<P: MemoryProvider + Default + Clone + PartialEq + Eq> {
+pub struct BoundedWitExport {
     /// Export name
-    pub name: BoundedWitName<P>,
+    pub name: BoundedWitName,
     /// Export is a function (simplified)
     pub is_function: bool,
 }
@@ -139,13 +180,13 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> BoundedWitParser<P> {
         let mut position = 0;
         
         // Debug: Print the input we're parsing
-        #[cfg(all(test, feature = "std"))]
-        {
-            if let Ok(input_str) = core::str::from_utf8(&self.input_buffer[..self.input_len]) {
-                eprintln!("[DEBUG] Parsing input: '{}'", input_str);
-                eprintln!("[DEBUG] Input length: {}", self.input_len);
-            }
-        }
+        // #[cfg(all(test, feature = "std"))]
+        // {
+        //     if let Ok(input_str) = core::str::from_utf8(&self.input_buffer[..self.input_len]) {
+        //         eprintln!("[DEBUG] Parsing input: '{}'", input_str);
+        //         eprintln!("[DEBUG] Input length: {}", self.input_len);
+        //     }
+        // }
         
         while position < self.input_len {
             // Skip whitespace
@@ -168,17 +209,17 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> BoundedWitParser<P> {
             let word_start = position;
             if let Some(word) = self.read_word(&mut position) {
                 if let Ok(word_str) = word.as_str() {
-                    #[cfg(test)]
+                    #[cfg(all(test, feature = "std"))]
                     eprintln!("[DEBUG] Read word '{}' at position {}", word_str, word_start);
                     
                     match word_str {
                         "world" => {
-                            #[cfg(test)]
+                            #[cfg(all(test, feature = "std"))]
                             eprintln!("[DEBUG] Found 'world' keyword!");
                             
                             // Found world keyword, read the world name
                             if let Some(name) = self.read_word(&mut position) {
-                                #[cfg(test)]
+                                #[cfg(all(test, feature = "std"))]
                                 if let Ok(name_str) = name.as_str() {
                                     eprintln!("[DEBUG] World name: '{}'", name_str);
                                 }
@@ -189,12 +230,12 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> BoundedWitParser<P> {
                             }
                         }
                         "interface" => {
-                            #[cfg(test)]
+                            #[cfg(all(test, feature = "std"))]
                             eprintln!("[DEBUG] Found 'interface' keyword!");
                             
                             // Found interface keyword, read the interface name
                             if let Some(name) = self.read_word(&mut position) {
-                                #[cfg(test)]
+                                #[cfg(all(test, feature = "std"))]
                                 if let Ok(name_str) = name.as_str() {
                                     eprintln!("[DEBUG] Interface name: '{}'", name_str);
                                 }
@@ -206,24 +247,24 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> BoundedWitParser<P> {
                         }
                         _ => {
                             // Not a keyword we care about, continue
-                            #[cfg(test)]
+                            #[cfg(all(test, feature = "std"))]
                             eprintln!("[DEBUG] Ignoring word: '{}'", word_str);
                         }
                     }
                 } else {
                     // Couldn't get string from bounded string, skip
-                    #[cfg(test)]
+                    #[cfg(all(test, feature = "std"))]
                     eprintln!("[DEBUG] Couldn't convert bounded string to str");
                 }
             } else {
                 // Couldn't read a word, advance by 1 to avoid infinite loop
-                #[cfg(test)]
+                #[cfg(all(test, feature = "std"))]
                 eprintln!("[DEBUG] Couldn't read word at position {}", word_start);
                 position = word_start + 1;
             }
         }
         
-        #[cfg(test)]
+        #[cfg(all(test, feature = "std"))]
         eprintln!("[DEBUG] Parsing complete. Worlds: {}, Interfaces: {}", self.world_count, self.interface_count);
         
         Ok(())
@@ -242,31 +283,31 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> BoundedWitParser<P> {
     }
 
     /// Read a word from the input buffer
-    fn read_word(&self, position: &mut usize) -> Option<BoundedWitName<P>> {
-        #[cfg(test)]
+    fn read_word(&self, position: &mut usize) -> Option<BoundedWitName> {
+        #[cfg(all(test, feature = "std"))]
         eprintln!("[DEBUG] read_word called at position {}", *position);
         
         // Skip whitespace
-        #[cfg(test)]
+        #[cfg(all(test, feature = "std"))]
         let ws_start = *position;
         while *position < self.input_len && self.input_buffer[*position].is_ascii_whitespace() {
             *position += 1;
         }
         
-        #[cfg(test)]
+        #[cfg(all(test, feature = "std"))]
         if *position > ws_start {
             eprintln!("[DEBUG] read_word skipped {} whitespace chars", *position - ws_start);
         }
         
         if *position >= self.input_len {
-            #[cfg(test)]
+            #[cfg(all(test, feature = "std"))]
             eprintln!("[DEBUG] read_word: reached end of input");
             return None;
         }
         
         let start = *position;
         
-        #[cfg(test)]
+        #[cfg(all(test, feature = "std"))]
         eprintln!("[DEBUG] read_word: starting to read word at position {}", start);
         
         // Read alphanumeric characters, hyphens, and underscores
@@ -279,44 +320,48 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> BoundedWitParser<P> {
             }
         }
         
-        #[cfg(test)]
+        #[cfg(all(test, feature = "std"))]
         eprintln!("[DEBUG] read_word: read from {} to {} (length {})", start, *position, *position - start);
         
         if *position > start {
             // Convert bytes to bounded string (ASCII safe)
             let word_bytes = &self.input_buffer[start..*position];
             if let Ok(word_str) = core::str::from_utf8(word_bytes) {
-                #[cfg(test)]
+                #[cfg(all(test, feature = "std"))]
                 eprintln!("[DEBUG] read_word: extracted word '{}'", word_str);
                 
-                match BoundedWitName::from_str(word_str, self.provider.clone()) {
-                    Ok(bounded_name) => {
-                        #[cfg(test)]
-                        eprintln!("[DEBUG] read_word: successfully created BoundedString");
+                // Use the simple array-based approach
+                match SimpleBoundedString::from_str(word_str) {
+                    Some(bounded_name) => {
+                        #[cfg(all(test, feature = "std"))]
+                        eprintln!("[DEBUG] read_word: successfully created SimpleBoundedString");
                         Some(bounded_name)
                     }
-                    Err(_e) => {
-                        #[cfg(test)]
-                        eprintln!("[DEBUG] read_word: failed to create BoundedString: {:?}", _e);
+                    None => {
+                        #[cfg(all(test, feature = "std"))]
+                        eprintln!("[DEBUG] read_word: failed to create SimpleBoundedString (too long?)");
                         None
                     }
                 }
             } else {
-                #[cfg(test)]
+                #[cfg(all(test, feature = "std"))]
                 eprintln!("[DEBUG] read_word: invalid UTF-8 in word bytes");
                 None
             }
         } else {
-            #[cfg(test)]
+            #[cfg(all(test, feature = "std"))]
             eprintln!("[DEBUG] read_word: no characters read");
             None
         }
     }
 
     /// Add a world to the parser
-    fn add_world(&mut self, name: BoundedWitName<P>) -> Result<()> {
+    fn add_world(&mut self, name: BoundedWitName) -> Result<()> {
         if self.world_count >= self.worlds.len() {
-            return Err(Error::new(crate::ErrorCategory::Parse, wrt_error::codes::PARSE_ERROR, "Too many worlds"));
+            // Gracefully handle capacity limit by ignoring additional worlds
+            #[cfg(all(test, feature = "std"))]
+            eprintln!("[DEBUG] World capacity limit reached, ignoring additional world");
+            return Ok(()); // Don't error, just ignore
         }
         
         let world = BoundedWitWorld {
@@ -332,9 +377,12 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> BoundedWitParser<P> {
     }
 
     /// Add an interface to the parser
-    fn add_interface(&mut self, name: BoundedWitName<P>) -> Result<()> {
+    fn add_interface(&mut self, name: BoundedWitName) -> Result<()> {
         if self.interface_count >= self.interfaces.len() {
-            return Err(Error::new(crate::ErrorCategory::Parse, wrt_error::codes::PARSE_ERROR, "Too many interfaces"));
+            // Gracefully handle capacity limit by ignoring additional interfaces
+            #[cfg(all(test, feature = "std"))]
+            eprintln!("[DEBUG] Interface capacity limit reached, ignoring additional interface");
+            return Ok(()); // Don't error, just ignore
         }
         
         let interface = BoundedWitInterface {
@@ -349,12 +397,12 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> BoundedWitParser<P> {
     }
 
     /// Get parsed worlds
-    pub fn worlds(&self) -> impl Iterator<Item = &BoundedWitWorld<P>> {
+    pub fn worlds(&self) -> impl Iterator<Item = &BoundedWitWorld> {
         self.worlds.iter().filter_map(|w| w.as_ref())
     }
 
     /// Get parsed interfaces
-    pub fn interfaces(&self) -> impl Iterator<Item = &BoundedWitInterface<P>> {
+    pub fn interfaces(&self) -> impl Iterator<Item = &BoundedWitInterface> {
         self.interfaces.iter().filter_map(|i| i.as_ref())
     }
 
@@ -390,8 +438,9 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> Default for BoundedWi
 pub const HAS_BOUNDED_WIT_PARSING_NO_STD: bool = true;
 
 /// Convenience function to parse WIT text with default provider
-pub fn parse_wit_bounded(input: &str) -> Result<BoundedWitParser<NoStdProvider<4096>>> {
-    let mut parser = BoundedWitParser::new(NoStdProvider::<4096>::default())?;
+pub fn parse_wit_bounded(input: &str) -> Result<BoundedWitParser<NoStdProvider<8192>>> {
+    // Use larger memory provider to avoid capacity issues
+    let mut parser = BoundedWitParser::new(NoStdProvider::<8192>::default())?;
     parser.parse(input)?;
     Ok(parser)
 }
@@ -401,7 +450,7 @@ mod tests {
     use super::*;
     use wrt_foundation::NoStdProvider;
 
-    type TestProvider = NoStdProvider<4096>;
+    type TestProvider = NoStdProvider<8192>;
 
     #[test]
     fn test_bounded_wit_parser_creation() {

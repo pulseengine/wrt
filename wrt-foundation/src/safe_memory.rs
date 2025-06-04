@@ -94,7 +94,7 @@ impl<'a> Slice<'a> {
     /// # Panics
     ///
     /// This function previously panicked if initial verification failed.
-    /// It now returns a Result to indicate failure.
+    /// It now returns a `Result` to indicate failure.
     /// Safety impact: [LOW|MEDIUM|HIGH] - [Brief explanation of the safety
     /// implication] Tracking: WRTQ-XXX (qualification requirement tracking
     /// ID).
@@ -295,7 +295,7 @@ impl<'a> SliceMut<'a> {
     ///
     /// # Panics
     /// This function previously panicked if initial verification failed.
-    /// It now returns a Result to indicate failure.
+    /// It now returns a `Result` to indicate failure.
     pub fn with_verification_level(data: &'a mut [u8], level: VerificationLevel) -> Result<Self> {
         record_global_operation(OperationType::ChecksumCalculation, level);
         let checksum = Checksum::compute(data);

@@ -10,7 +10,7 @@ use crate::HashMap;
 use alloc::collections::BTreeMap as HashMap;
 
 #[cfg(feature = "std")]
-use std::collections::HashMap;
+use std::collections::BTreeMap as HashMap;
 
 /// Current state serialization format version
 pub const STATE_VERSION: u32 = 1;

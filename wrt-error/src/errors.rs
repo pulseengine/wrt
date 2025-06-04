@@ -20,7 +20,7 @@ use crate::{
     FromError, ToErrorCategory,
 };
 
-/// Error categories for WRT operations
+/// `Error` categories for WRT operations
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ErrorCategory {
     /// Core WebAssembly errors
@@ -65,17 +65,17 @@ pub trait ErrorSource: fmt::Debug + Send + Sync {
     fn category(&self) -> ErrorCategory;
 }
 
-/// WRT Error type
+/// WRT `Error` type
 ///
 /// This is the main error type for the WebAssembly Runtime.
 /// It provides categorized errors with error codes and optional messages.
 #[derive(Debug, Copy, Clone)]
 pub struct Error {
-    /// Error category
+    /// `Error` category
     pub category: ErrorCategory,
-    /// Error code
+    /// `Error` code
     pub code: u16,
-    /// Error message
+    /// `Error` message
     pub message: &'static str,
 }
 
@@ -270,7 +270,7 @@ impl ErrorSource for Error {
     }
 }
 
-/// Error codes for different categories
+/// `Error` codes for different categories
 pub mod codes {
     // Core WebAssembly errors (1000-1999)
     /// Error code for stack underflow.

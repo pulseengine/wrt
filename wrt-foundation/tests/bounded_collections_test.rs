@@ -507,12 +507,12 @@ fn test_bounded_collections_performance() {
     use std::time::{Duration, Instant};
 
     // Create large collections
-    let mut deque = BoundedDeque::<u32, 10000, NoStdProvider<4194304>>::new(
+    let mut deque = BoundedDeque::<u32, 10_000, NoStdProvider<4_194_304>>::new(
         NoStdProvider::new(4 * 1024 * 1024, VerificationLevel::Critical), // 4MB buffer
     )
     .unwrap();
 
-    let mut bitset = BoundedBitSet::<100000>::new();
+    let mut bitset = BoundedBitSet::<100_000>::new();
 
     // Measure deque performance
     let start = Instant::now();
@@ -534,16 +534,16 @@ fn test_bounded_collections_performance() {
     // Measure bitset performance
     let start = Instant::now();
 
-    for i in 0..50000 {
-        bitset.set(i % 100000).unwrap();
+    for i in 0..50_000 {
+        bitset.set(i % 100_000).unwrap();
     }
 
-    for i in 0..25000 {
-        bitset.clear(i % 100000).unwrap();
+    for i in 0..25_000 {
+        bitset.clear(i % 100_000).unwrap();
     }
 
-    for i in 0..10000 {
-        bitset.toggle(i % 100000).unwrap();
+    for i in 0..10_000 {
+        bitset.toggle(i % 100_000).unwrap();
     }
 
     let bitset_duration = start.elapsed();

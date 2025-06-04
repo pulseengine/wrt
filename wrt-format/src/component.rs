@@ -207,7 +207,7 @@ impl Validatable for CoreInstance {
                         return Err(Error::validation_error("Inline export name cannot be empty"));
                     }
                     // Reasonable index limit
-                    if export.idx > 100000 {
+                    if export.idx > 100_000 {
                         return Err(validation_error!(
                             "Export index {} seems unreasonably large",
                             export.idx
@@ -647,7 +647,7 @@ pub enum FormatValType<P: wrt_foundation::MemoryProvider = NoStdProvider<1024>> 
     Borrow(u32),
     /// Void/empty type
     Void,
-    /// Error context type
+    /// `Error` context type
     ErrorContext,
 }
 
@@ -707,7 +707,7 @@ pub enum FormatValType {
     Borrow(u32),
     /// Void/empty type
     Void,
-    /// Error context type
+    /// `Error` context type
     ErrorContext,
 }
 
@@ -797,7 +797,7 @@ pub struct LowerOptions {
     pub realloc_func_idx: Option<u32>,
     /// Whether this is an async lower
     pub is_async: bool,
-    /// Error handling mode
+    /// `Error` handling mode
     pub error_mode: Option<ErrorMode>,
 }
 
@@ -825,7 +825,7 @@ pub enum StringEncoding {
     ASCII,
 }
 
-/// Error handling modes
+/// `Error` handling modes
 #[derive(Debug, Clone)]
 pub enum ErrorMode {
     /// Convert errors to exceptions
@@ -1325,7 +1325,7 @@ impl Validatable for Export {
 impl Validatable for Value {
     fn validate(&self) -> Result<()> {
         // Validate data size (should be reasonable)
-        if self.data.len() > 1000000 {
+        if self.data.len() > 1_000_000 {
             return Err(validation_error!(
                 "Value data size {} seems unreasonably large",
                 self.data.len()

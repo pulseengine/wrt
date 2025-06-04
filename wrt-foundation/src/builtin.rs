@@ -19,7 +19,7 @@ use crate::{
     WrtResult,
 };
 
-/// Maximum number of BuiltinType variants, used for BoundedVec capacity.
+/// Maximum number of `BuiltinType` variants, used for `BoundedVec` capacity.
 const MAX_BUILTIN_TYPES: usize = 13;
 
 // Calculate a suitable capacity for the NoStdProvider.

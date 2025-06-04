@@ -316,8 +316,16 @@ pub const RUNTIME_UNIMPLEMENTED_INSTRUCTION_ERROR: u16 = 8603;
 pub const RUNTIME_INVALID_CONVERSION_ERROR: u16 = 8604;
 /// Runtime division by zero error
 pub const RUNTIME_DIVISION_BY_ZERO_ERROR: u16 = 8605;
+/// Division by zero error alias
+pub const DIVISION_BY_ZERO: u16 = RUNTIME_DIVISION_BY_ZERO_ERROR;
+/// Invalid memory index alias
+pub const INVALID_MEMORY_INDEX: u16 = VALIDATION_INVALID_MEMORY_INDEX;
+/// Invalid data segment index alias
+pub const INVALID_DATA_SEGMENT_INDEX: u16 = VALIDATION_INVALID_DATA_SEGMENT_INDEX;
 /// Runtime integer overflow error
 pub const RUNTIME_INTEGER_OVERFLOW_ERROR: u16 = 8606;
+/// Integer overflow error alias
+pub const INTEGER_OVERFLOW: u16 = RUNTIME_INTEGER_OVERFLOW_ERROR;
 /// Runtime function not found error
 pub const RUNTIME_FUNCTION_NOT_FOUND_ERROR: u16 = 8607;
 /// Runtime import not found error

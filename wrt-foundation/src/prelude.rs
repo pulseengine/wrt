@@ -15,7 +15,7 @@
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 pub use alloc::{
     boxed::Box,
-    collections::{BTreeMap, BTreeSet},
+    collections::{BTreeMap, BTreeSet, BTreeMap as HashMap},
     format,
     string::{String, ToString},
     sync::Arc,
@@ -43,7 +43,7 @@ pub use core::{
 #[cfg(feature = "std")]
 pub use std::{
     boxed::Box,
-    collections::{BTreeMap, BTreeSet, HashMap, HashSet},
+    collections::{BTreeMap, BTreeSet, HashSet, BTreeMap as HashMap},
     format,
     string::{String, ToString},
     sync::{Arc, Mutex, RwLock},

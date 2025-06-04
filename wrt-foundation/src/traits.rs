@@ -202,7 +202,7 @@ pub enum SerializationError {
     IoError,
     /// An unexpected end of file/buffer was reached during deserialization.
     UnexpectedEof,
-    /// An invalid enum value was encountered during deserialization.
+    /// An invalid `enum` value was encountered during deserialization.
     InvalidEnumValue,
 }
 
@@ -352,7 +352,7 @@ impl FromBytes for () {
 /// fixed size. This trait is intended for types where
 /// `core::mem::size_of::<Self>()` is a valid compile-time constant.
 trait LeBytesArray: Sized {
-    /// The byte array type, e.g., [u8; 4] for u32.
+    /// The byte array type, e.g., `[u8; 4]` for `u32`.
     type ByteArray: AsRef<[u8]> + AsMut<[u8]> + Default + Copy + IntoIterator<Item = u8>;
 
     /// Converts the value to a little-endian byte array.
@@ -1140,7 +1140,7 @@ pub trait Validatable {
 
     /// Performs validation on this object
     ///
-    /// Returns Ok(()) if validation passes, or an error describing
+    /// Returns `Ok(())` if validation passes, or an error describing
     /// what validation check failed.
     ///
     /// # Errors
@@ -1162,7 +1162,7 @@ pub trait Checksummed {
 
     /// Force recalculation of the object's checksum
     ///
-    /// This is useful when verification level changes from None
+    /// This is useful when verification level changes from `None`
     /// or after operations that bypass normal checksum updates.
     fn recalculate_checksum(&mut self);
 
