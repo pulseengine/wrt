@@ -137,7 +137,7 @@ fn main() -> Result<()> {
     
     // Count trailing zeros
     context.push_arithmetic_value(Value::I32(0b00001000_00000000_00000000_00000000))?;  
-    println!("   Input: 134217728 (bit 27 set)");
+    println!("   Input: 134_217_728 (bit 27 set)");
     ArithmeticOp::I32Ctz.execute(&mut context)?;
     if let Some(Value::I32(result)) = context.peek() {
         println!("   Count trailing zeros: {}", result);

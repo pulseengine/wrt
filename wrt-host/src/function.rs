@@ -20,6 +20,7 @@ type ValueVec = wrt_foundation::BoundedVec<Value, 16, wrt_foundation::NoStdProvi
 /// A trait for functions that can be cloned and operate on value vectors.
 /// This is used for storing host functions that can be called by the Wasm
 /// engine.
+#[cfg(any(feature = "std", feature = "alloc"))]
 pub trait FnWithVecValue: Send + Sync {
     /// Calls the function with the given target and arguments.
     fn call(&self, target: &mut dyn Any, args: ValueVec) -> Result<ValueVec>;
@@ -28,6 +29,14 @@ pub trait FnWithVecValue: Send + Sync {
     fn clone_box(&self) -> Box<dyn FnWithVecValue>;
 }
 
+/// Simplified trait for no_std environments without dynamic dispatch
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+pub trait FnWithVecValue: Send + Sync {
+    /// Calls the function with the given target and arguments.
+    fn call(&self, target: &mut dyn Any, args: ValueVec) -> Result<ValueVec>;
+}
+
+#[cfg(any(feature = "std", feature = "alloc"))]
 impl<F> FnWithVecValue for F
 where
     F: Fn(&mut dyn Any) -> Result<ValueVec> + Send + Sync + Clone + 'static,
@@ -39,23 +48,32 @@ where
     }
 
     fn clone_box(&self) -> Box<dyn FnWithVecValue> {
-        #[cfg(any(feature = "std", feature = "alloc"))]
-        {
-            Box::new(self.clone())
-        }
-        
-        #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
-        {
-            // In no_std mode, Box is PhantomData, so we return default
-            core::marker::PhantomData
-        }
+        Box::new(self.clone())
+    }
+}
+
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+impl<F> FnWithVecValue for F
+where
+    F: Fn(&mut dyn Any) -> Result<ValueVec> + Send + Sync + Clone + 'static,
+{
+    fn call(&self, target: &mut dyn Any, _args: ValueVec) -> Result<ValueVec> {
+        // Using target but ignoring args since the function only takes target
+        // This could be extended in the future to support functions that take args
+        self(target)
     }
 }
 
 /// A wrapper struct that makes a closure implementing `Fn` cloneable
 /// by boxing it and handling the cloning via the `FnWithVecValue` trait.
+#[cfg(any(feature = "std", feature = "alloc"))]
 pub struct CloneableFn(Box<dyn FnWithVecValue>);
 
+/// Simplified function wrapper for no_std environments
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+pub struct CloneableFn;
+
+#[cfg(any(feature = "std", feature = "alloc"))]
 impl CloneableFn {
     /// Creates a new `CloneableFn` from a closure.
     ///
@@ -64,37 +82,36 @@ impl CloneableFn {
     where
         F: Fn(&mut dyn Any) -> Result<ValueVec> + Send + Sync + Clone + 'static,
     {
-        #[cfg(any(feature = "std", feature = "alloc"))]
-        {
-            Self(Box::new(f))
-        }
-        
-        #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
-        {
-            // In no_std mode, we can't box dynamic functions
-            // This is a limitation of pure no_std environments
-            let _ = f;
-            Self(core::marker::PhantomData)
-        }
+        Self(Box::new(f))
     }
 
     /// Calls the wrapped function.
     pub fn call(&self, target: &mut dyn Any, args: ValueVec) -> Result<ValueVec> {
-        #[cfg(any(feature = "std", feature = "alloc"))]
-        {
-            self.0.call(target, args)
-        }
-        
-        #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
-        {
-            // In no_std mode, we can't call dynamic functions
-            let _ = (target, args);
-            Err(Error::new(
-                ErrorCategory::Runtime,
-                wrt_error::codes::NOT_IMPLEMENTED,
-                "Dynamic function calls not supported in pure no_std mode"
-            ))
-        }
+        self.0.call(target, args)
+    }
+}
+
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+impl CloneableFn {
+    /// Creates a new `CloneableFn` from a closure.
+    ///
+    /// In no_std mode, this is a no-op since we can't store dynamic functions.
+    pub fn new<F>(_f: F) -> Self
+    where
+        F: Fn(&mut dyn Any) -> Result<ValueVec> + Send + Sync + Clone + 'static,
+    {
+        Self
+    }
+
+    /// Calls the wrapped function.
+    ///
+    /// In no_std mode, this always returns an error since we can't store dynamic functions.
+    pub fn call(&self, _target: &mut dyn Any, _args: ValueVec) -> Result<ValueVec> {
+        Err(Error::new(
+            ErrorCategory::Runtime,
+            wrt_error::codes::NOT_IMPLEMENTED,
+            "Dynamic function calls not supported in pure no_std mode"
+        ))
     }
 }
 

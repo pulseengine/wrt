@@ -153,7 +153,7 @@ impl Default for SoftwareCfiConfig {
             max_shadow_stack_depth: 1024,
             landing_pad_simulation: true,
             temporal_validation: false, // Expensive, off by default
-            max_function_execution_time: 1000000, // 1M cycles
+            max_function_execution_time: 1_000_000, // 1M cycles
         }
     }
 }

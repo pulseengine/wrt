@@ -31,7 +31,7 @@ pub struct InterceptContext {
     pub host_id: &'static str,
     /// Additional context data (if any)
     #[cfg(feature = "std")]
-    pub context_data: std::collections::HashMap<String, Value>,
+    pub context_data: std::collections::BTreeMap<String, Value>,
 }
 
 impl InterceptContext {
@@ -58,7 +58,7 @@ impl InterceptContext {
             #[cfg(not(feature = "alloc"))]
             host_id: "default",
             #[cfg(feature = "std")]
-            context_data: std::collections::HashMap::new(),
+            context_data: std::collections::BTreeMap::new(),
         }
     }
 

@@ -32,11 +32,61 @@ pub use wrt_foundation::{
 
 // Additional imports for pure no_std
 #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
-pub use core::{fmt::Write as FmtWrite, marker::PhantomData as Box};
+pub use core::fmt::Write as FmtWrite;
 
-// Arc is not available in pure no_std, use a placeholder
+// Arc is not available in pure no_std, use a reference wrapper
 #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
-pub type Arc<T> = core::marker::PhantomData<T>;
+#[derive(Debug, Clone)]
+pub struct Arc<T> {
+    inner: T,
+}
+
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+impl<T> Arc<T> {
+    pub fn new(value: T) -> Self {
+        Self { inner: value }
+    }
+}
+
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+impl<T> core::ops::Deref for Arc<T> {
+    type Target = T;
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+// In pure no_std mode, we need a minimal Box implementation for trait objects
+// Simple Box implementation for no_std environments
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[derive(Debug)]
+pub struct Box<T> {
+    inner: T,
+}
+
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+impl<T> Box<T> {
+    pub fn new(value: T) -> Self {
+        Self { inner: value }
+    }
+}
+
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+impl<T> core::ops::Deref for Box<T> {
+    type Target = T;
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+impl<T> core::ops::DerefMut for Box<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.inner
+    }
+}
+
+// Drop and Debug are automatically derived for our simple Box implementation
 pub use core::{
     any::Any,
     cmp::{Eq, Ord, PartialEq, PartialOrd},
