@@ -26,5 +26,5 @@ pub fn current_time_ns() -> u64 {
     use core::sync::atomic::{AtomicU64, Ordering};
     
     static COUNTER: AtomicU64 = AtomicU64::new(0);
-    COUNTER.fetch_add(1000000, Ordering::Relaxed) // Increment by 1ms equivalent
+    COUNTER.fetch_add(1_000_000, Ordering::Relaxed) // Increment by 1ms equivalent
 }

@@ -217,7 +217,7 @@ struct LinuxThreadHandle {
     tid: ffi::pthread_t,
     /// Task being executed
     task: Arc<WrtMutex<Option<WasmTask>>>,
-    /// Result storage
+    /// `Result` storage
     result: Arc<WrtMutex<Option<Result<Vec<u8>>>>>,
     /// Running flag
     running: Arc<AtomicBool>,
@@ -267,7 +267,7 @@ impl PlatformThreadHandle for LinuxThreadHandle {
 struct ThreadContext {
     /// Task to execute
     task: WasmTask,
-    /// Result storage
+    /// `Result` storage
     result: Arc<WrtMutex<Option<Result<Vec<u8>>>>>,
     /// Running flag
     running: Arc<AtomicBool>,

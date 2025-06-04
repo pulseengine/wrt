@@ -8,7 +8,10 @@
 
 //! Provides traits and implementations for platform-specific synchronization.
 
-use core::{fmt::Debug, time::Duration};
+use core::fmt::Debug;
+
+// Re-export Duration for platform use
+pub use core::time::Duration;
 
 use crate::prelude::Result;
 
@@ -103,7 +106,7 @@ pub trait FutexLike: Send + Sync + Debug {
     fn wake(&self, count: u32) -> Result<()>;
 }
 
-/// Result type for timeout-based operations.
+/// `Result` type for timeout-based operations.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TimeoutResult {
     /// The operation completed before the timeout expired.
