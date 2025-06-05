@@ -15,7 +15,7 @@ pub use wrt_decoder::{
     validate,
 };
 // Re-export the module loading functionality from wrt-runtime
-pub use wrt_runtime::module_builder::load_module_from_binary;
+// pub use wrt_runtime::module_builder::load_module_from_binary; // Temporarily disabled
 
 use crate::prelude::*;
 

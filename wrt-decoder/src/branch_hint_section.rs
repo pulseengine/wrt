@@ -19,17 +19,41 @@
 //! - 0x00: likely_false (branch is unlikely to be taken)
 //! - 0x01: likely_true (branch is likely to be taken)
 
-use crate::prelude::*;
+// Core/std library imports
+#[cfg(feature = "alloc")]
+extern crate alloc;
+
+#[cfg(feature = "alloc")]
+use alloc::{vec::Vec, collections::BTreeMap};
+#[cfg(feature = "std")]
+use std::{vec::Vec, collections::BTreeMap as HashMap};
+
+// External crates
 use wrt_error::{Error, ErrorCategory, Result, codes};
 use wrt_format::binary::{read_leb128_u32, read_u8};
 use wrt_foundation::NoStdProvider;
 use wrt_foundation::traits::{Checksummable, ToBytes, FromBytes, ReadStream, WriteStream, SerializationError};
 use wrt_foundation::{WrtResult, verification::Checksum};
 
-#[cfg(feature = "alloc")]
-use alloc::{vec::Vec, collections::BTreeMap};
-#[cfg(feature = "std")]
-use std::{vec::Vec, collections::BTreeMap as HashMap};
+// Internal modules
+use crate::prelude::*;
+
+/// Safe conversion from Rust usize to WebAssembly u32 for LEB128 encoding
+/// 
+/// # Arguments
+/// 
+/// * `size` - Rust size as usize
+/// 
+/// # Returns
+/// 
+/// Ok(u32) if conversion is safe, error otherwise  
+fn usize_to_wasm_u32(size: usize) -> Result<u32> {
+    u32::try_from(size).map_err(|_| Error::new(
+        ErrorCategory::Parse, 
+        codes::PARSE_ERROR, 
+        "Size exceeds u32 limit for LEB128 encoding"
+    ))
+}
 
 /// Branch hint value indicating the likelihood of a branch being taken
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
@@ -285,14 +309,14 @@ pub fn encode_branch_hint_section(section: &BranchHintSection) -> Result<Vec<u8>
     let mut data = Vec::new();
 
     // Write function count
-    write_leb128_u32(&mut data, section.function_count() as u32);
+    write_leb128_u32(&mut data, usize_to_wasm_u32(section.function_count())?);
 
     // Write each function's hints
     #[cfg(feature = "std")]
     {
         for (func_idx, hints) in &section.function_hints {
             write_leb128_u32(&mut data, *func_idx);
-            write_leb128_u32(&mut data, hints.len() as u32);
+            write_leb128_u32(&mut data, usize_to_wasm_u32(hints.len())?);
 
             for (offset, hint) in hints.iter() {
                 write_leb128_u32(&mut data, *offset);
@@ -304,7 +328,7 @@ pub fn encode_branch_hint_section(section: &BranchHintSection) -> Result<Vec<u8>
     {
         for (func_idx, hints) in &section.function_hints {
             write_leb128_u32(&mut data, *func_idx);
-            write_leb128_u32(&mut data, hints.len() as u32);
+            write_leb128_u32(&mut data, usize_to_wasm_u32(hints.len())?);
 
             for (offset, hint) in hints.iter() {
                 write_leb128_u32(&mut data, *offset);

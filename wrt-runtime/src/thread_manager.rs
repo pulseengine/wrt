@@ -4,6 +4,9 @@
 //! providing safe, efficient multi-threaded execution of WebAssembly modules
 //! with proper isolation and resource management.
 
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+extern crate alloc;
+
 use crate::prelude::*;
 use wrt_error::{Error, ErrorCategory, Result, codes};
 
@@ -12,11 +15,13 @@ use wrt_platform::threading::{Thread, ThreadHandle, ThreadSpawnOptions};
 
 // For no_std builds, provide dummy types  
 #[cfg(not(feature = "alloc"))]
+#[derive(Debug)]
 pub struct Thread {
     pub id: ThreadId,
 }
 
 #[cfg(not(feature = "alloc"))]
+#[derive(Debug)]
 pub struct ThreadHandle {
     pub id: ThreadId,
 }
@@ -26,6 +31,33 @@ pub struct ThreadSpawnOptions {
     pub stack_size: Option<usize>,
     pub priority: Option<i32>,
     pub name: Option<&'static str>,
+}
+
+#[cfg(not(feature = "alloc"))]
+impl ThreadHandle {
+    pub fn terminate(&self) -> Result<()> {
+        Err(Error::new(
+            ErrorCategory::NotSupported,
+            codes::UNSUPPORTED_OPERATION,
+            "Thread termination not supported in no_std mode"
+        ))
+    }
+    
+    pub fn join_timeout(&self, _timeout: core::time::Duration) -> Result<()> {
+        Err(Error::new(
+            ErrorCategory::NotSupported,
+            codes::UNSUPPORTED_OPERATION,
+            "Thread join with timeout not supported in no_std mode"
+        ))
+    }
+    
+    pub fn join(&self) -> Result<()> {
+        Err(Error::new(
+            ErrorCategory::NotSupported,
+            codes::UNSUPPORTED_OPERATION,
+            "Thread join not supported in no_std mode"
+        ))
+    }
 }
 
 #[cfg(feature = "alloc")]
@@ -171,7 +203,7 @@ impl ThreadExecutionContext {
             handle: None,
             local_memory: None,
             #[cfg(feature = "alloc")]
-            local_globals: Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap(),
+            local_globals: Vec::new(),
             #[cfg(not(feature = "alloc"))]
             local_globals: [const { None }; 8],  // Fixed size array for no_std
             stats: ThreadExecutionStats::new(),
@@ -368,9 +400,9 @@ impl ThreadManager {
         
         // Create thread spawn options
         let spawn_options = ThreadSpawnOptions {
-            stack_size: context.info.stack_size,
-            priority: context.info.priority,
-            name: Some(format!("wasm-thread-{}", thread_id)),
+            stack_size: Some(context.info.stack_size),
+            priority: Some(context.info.priority as i32),
+            name: Some("wasm-thread"),
         };
         
         // Spawn platform thread (feature-gated)
@@ -425,7 +457,8 @@ impl ThreadManager {
         if let Some(handle) = &context.handle {
             // Wait for thread completion
             let result = if let Some(timeout) = timeout_ms {
-                handle.join_timeout(timeout)
+                let duration = core::time::Duration::from_millis(timeout);
+                handle.join_timeout(duration)
             } else {
                 handle.join()
             };
@@ -500,12 +533,14 @@ impl ThreadManager {
             // For no_alloc, we need to manually remove completed threads
             let mut write_idx = 0;
             for read_idx in 0..self.threads.len() {
-                if self.threads[read_idx].info.is_active() {
-                    if write_idx != read_idx {
-                        // Move active thread to write position
-                        // This is a simplified approach - in practice might need more sophisticated cleanup
+                if let Some(context) = &self.threads[read_idx] {
+                    if context.info.is_active() {
+                        if write_idx != read_idx {
+                            // Move active thread to write position
+                            // This is a simplified approach - in practice might need more sophisticated cleanup
+                        }
+                        write_idx += 1;
                     }
-                    write_idx += 1;
                 }
             }
             // Truncate to remove completed threads (simplified)

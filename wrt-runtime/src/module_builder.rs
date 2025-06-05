@@ -6,6 +6,9 @@
 
 // Decoder imports are optional during development
 // use wrt_decoder::{module::CodeSection, runtime_adapter::RuntimeModuleBuilder};
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+extern crate alloc;
+
 use wrt_foundation::types::{
     FuncType,
     GlobalType as WrtGlobalType,
@@ -41,14 +44,14 @@ pub trait RuntimeModuleBuilder {
     fn add_function_type(&mut self, func_type: FuncType<StdMemoryProvider>) -> Result<u32>;
     fn add_import(&mut self, import: WrtImport) -> Result<u32>;
     fn add_function(&mut self, type_idx: u32) -> Result<u32>;
-    fn add_function_body(&mut self, func_idx: u32, type_idx: u32, body: Vec<u8>) -> Result<()>;
+    fn add_function_body(&mut self, func_idx: u32, type_idx: u32, body: wrt_foundation::bounded::BoundedVec<u8, 4096, wrt_foundation::safe_memory::NoStdProvider<1024>>) -> Result<()>;
     fn add_memory(&mut self, memory_type: WrtMemoryType) -> Result<u32>;
     fn add_table(&mut self, table_type: WrtTableType) -> Result<u32>;
     fn add_global(&mut self, global_type: WrtGlobalType) -> Result<u32>;
     fn add_export(&mut self, export: WrtExport) -> Result<()>;
     fn add_element(&mut self, element: WrtElementSegment) -> Result<u32>;
     fn add_data(&mut self, data: WrtDataSegment) -> Result<u32>;
-    fn add_custom_section(&mut self, section: WrtCustomSection) -> Result<()>;
+    fn add_custom_section(&mut self, section: WrtCustomSection<wrt_foundation::safe_memory::NoStdProvider<1024>>) -> Result<()>;
     fn build(self) -> Result<Self::Module>;
 }
 
@@ -109,9 +112,39 @@ impl RuntimeModuleBuilder for ModuleBuilder {
         Ok(0)
     }
     
-    fn add_custom_section(&mut self, _section: WrtCustomSection) -> Result<()> {
+    fn add_custom_section(&mut self, _section: WrtCustomSection<wrt_foundation::safe_memory::NoStdProvider<1024>>) -> Result<()> {
         // Custom section handling not implemented
         Ok(())
+    }
+    
+    fn add_function_type(&mut self, _func_type: FuncType<StdMemoryProvider>) -> Result<u32> {
+        // Function type addition not implemented
+        Ok(0)
+    }
+    
+    fn add_function_body(&mut self, _func_idx: u32, _type_idx: u32, _body: wrt_foundation::bounded::BoundedVec<u8, 4096, wrt_foundation::safe_memory::NoStdProvider<1024>>) -> Result<()> {
+        // Function body addition not implemented
+        Ok(())
+    }
+    
+    fn add_memory(&mut self, _memory_type: WrtMemoryType) -> Result<u32> {
+        // Memory addition not implemented
+        Ok(0)
+    }
+    
+    fn add_table(&mut self, _table_type: WrtTableType) -> Result<u32> {
+        // Table addition not implemented
+        Ok(0)
+    }
+    
+    fn add_global(&mut self, _global_type: WrtGlobalType) -> Result<u32> {
+        // Global addition not implemented
+        Ok(0)
+    }
+    
+    fn build(self) -> Result<Self::Module> {
+        // Return the built module
+        Ok(self.module)
     }
 
     // All trait methods implemented above with stub implementations

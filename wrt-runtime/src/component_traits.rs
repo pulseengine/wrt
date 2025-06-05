@@ -1,4 +1,4 @@
-use crate::{func::FuncType, prelude::*};
+use crate::prelude::*;
 use wrt_foundation::{
     safe_memory::{SafeStack, SafeSlice},
     Value, VerificationLevel,
@@ -8,8 +8,10 @@ use wrt_foundation::{
 pub type ComponentType = wrt_foundation::component::ComponentType<wrt_foundation::safe_memory::NoStdProvider<1024>>;
 pub type ExternType = wrt_foundation::component::ExternType<wrt_foundation::safe_memory::NoStdProvider<1024>>;
 pub type SafeStackValue = wrt_foundation::safe_memory::SafeStack<Value, 64, wrt_foundation::safe_memory::NoStdProvider<1024>>;
+pub type FuncType = wrt_foundation::types::FuncType<wrt_foundation::safe_memory::NoStdProvider<1024>>;
 
 /// Represents a runtime component instance
+#[cfg(any(feature = "std", feature = "alloc"))]
 pub trait ComponentInstance {
     /// Execute a function by name with the given arguments
     fn execute_function(&self, name: &str, args: &[Value]) -> Result<SafeStackValue>;
@@ -27,10 +29,10 @@ pub trait ComponentInstance {
     #[deprecated(since = "0.2.0", note = "Use execute_function with SafeStack instead")]
     fn execute_function_vec(&self, name: &str, args: &[Value]) -> Result<Vec<Value>> {
         // Convert from the new SafeStack API to the legacy Vec API
-        let safe_stack = self.execute_function(name, args)?;
+        let mut safe_stack = self.execute_function(name, args)?;
         #[cfg(any(feature = "std", feature = "alloc"))]
         {
-            let mut vec = Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap();
+            let mut vec = Vec::new();
             while let Ok(Some(value)) = safe_stack.pop() {
                 vec.push(value);
             }
@@ -64,6 +66,7 @@ pub trait ComponentInstance {
 }
 
 /// Represents a host function implementation
+#[cfg(any(feature = "std", feature = "alloc"))]
 pub trait HostFunction {
     /// Call the host function with the given arguments
     fn call(&self, args: &[Value]) -> Result<SafeStackValue>;
@@ -75,10 +78,10 @@ pub trait HostFunction {
     #[deprecated(since = "0.2.0", note = "Use call with SafeStack instead")]
     fn call_vec(&self, args: &[Value]) -> Result<Vec<Value>> {
         // Convert from the new SafeStack API to the legacy Vec API
-        let safe_stack = self.call(args)?;
+        let mut safe_stack = self.call(args)?;
         #[cfg(any(feature = "std", feature = "alloc"))]
         {
-            let mut vec = Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap();
+            let mut vec = Vec::new();
             // Convert SafeStack to Vec by popping all values
             let mut stack_copy = safe_stack;
             while let Ok(Some(value)) = stack_copy.pop() {
@@ -96,12 +99,14 @@ pub trait HostFunction {
 }
 
 /// Represents a host function factory
+#[cfg(any(feature = "std", feature = "alloc"))]
 pub trait HostFunctionFactory {
     /// Create a host function implementation
     fn create_function(&self, name: &str, ty: &FuncType) -> Result<Box<dyn HostFunction>>;
 }
 
 /// Represents a component runtime environment
+#[cfg(any(feature = "std", feature = "alloc"))]
 pub trait ComponentRuntime {
     /// Create a new runtime instance
     fn new() -> Self

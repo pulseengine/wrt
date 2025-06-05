@@ -79,7 +79,6 @@ mod lib_prelude {
 
 // Note: Panic handler should be defined by the final binary, not library crates
 // Removed panic handler to avoid conflicts - applications must provide their own
-
 // Module declarations
 pub mod memory;
 pub mod memory_optimizations;
@@ -118,6 +117,9 @@ pub mod linux_threading;
 
 #[cfg(all(feature = "threading", not(target_os = "nto"), not(target_os = "linux")))]
 pub mod generic_threading;
+
+// Memory management uses NoStdProvider pattern from wrt-foundation
+
 
 // Watchdog (requires std)
 #[cfg(feature = "std")]
@@ -518,7 +520,7 @@ mod tests {
 // Panic handler for no_std builds - only when building wrt-platform independently
 // This is needed for `cargo check -p wrt-platform` to work in no_std mode
 // When used as a dependency, the main binary should provide the panic handler
-#[cfg(all(not(feature = "std"), not(test), not(feature = "wrt-platform-as-dependency")))]
+#[cfg(all(not(feature = "std"), not(test), not(feature = "disable-panic-handler")))]
 #[panic_handler]
 fn panic(_info: &core::panic::PanicInfo) -> ! {
     loop {}

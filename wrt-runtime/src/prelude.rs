@@ -7,6 +7,9 @@
 
 // Core imports for both std and no_std environments
 // Re-export from alloc when the alloc feature is enabled and std is not
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+extern crate alloc;
+
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 pub use alloc::{
     boxed::Box,
@@ -42,14 +45,14 @@ pub type Vec<T> = wrt_foundation::bounded::BoundedVec<T, 256, wrt_foundation::sa
 #[macro_export]
 macro_rules! vec_new {
     () => {
-        wrt_foundation::bounded::BoundedVec::<_, 256, wrt_foundation::safe_memory::NoStdProvider<1024>>::new_with_provider(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap()
+        wrt_foundation::bounded::BoundedVec::<_, 256, wrt_foundation::safe_memory::NoStdProvider<1024>>::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap()
     };
 }
 
 // Helper function to create BoundedVec with capacity (capacity is ignored in bounded collections)
 #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
-pub fn vec_with_capacity<T>(_capacity: usize) -> wrt_foundation::bounded::BoundedVec<T, 256, wrt_foundation::safe_memory::NoStdProvider<1024>> {
-    wrt_foundation::bounded::BoundedVec::new_with_provider(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap()
+pub fn vec_with_capacity<T: wrt_foundation::traits::Checksummable + wrt_foundation::traits::ToBytes + wrt_foundation::traits::FromBytes + Default + Clone + core::fmt::Debug + PartialEq + Eq>(_capacity: usize) -> wrt_foundation::bounded::BoundedVec<T, 256, wrt_foundation::safe_memory::NoStdProvider<1024>> {
+    wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap()
 }
 
 // Simple format! implementation for no_std mode using a fixed buffer
@@ -182,7 +185,7 @@ impl<T> core::ops::Deref for Arc<T> {
 
 #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
 #[derive(Debug)]
-pub struct Box<T> {
+pub struct Box<T: ?Sized> {
     inner: T,
 }
 
@@ -262,10 +265,7 @@ pub use wrt_format::{
     section::CustomSection as FormatCustomSection,
 };
 // Re-export from wrt-foundation for core types
-#[cfg(feature = "alloc")]
-pub use wrt_foundation::component::{ComponentType, ExternType};
-// Also export for std feature
-#[cfg(feature = "std")]
+#[cfg(any(feature = "alloc", feature = "std"))]
 pub use wrt_foundation::component::{ComponentType, ExternType};
 // Re-export core types from wrt_foundation instead of wrt_format
 pub use wrt_foundation::types::{

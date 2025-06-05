@@ -11,6 +11,9 @@
 
 #![allow(unsafe_code)]
 
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+extern crate alloc;
+
 use crate::prelude::*;
 use crate::thread_manager::{ThreadId, ThreadState};
 use wrt_error::{Error, ErrorCategory, Result, codes};
@@ -79,7 +82,7 @@ impl WaitQueue {
         Self {
             id,
             #[cfg(feature = "alloc")]
-            waiters: Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap(),
+            waiters: Vec::new(),
             #[cfg(not(feature = "alloc"))]
             waiters: [const { None }; 64],
             stats: WaitQueueStats::new(),
@@ -211,9 +214,12 @@ impl WaitQueue {
     /// Check for expired timeouts and remove them
     pub fn process_timeouts(&mut self) -> Vec<ThreadId> {
         #[cfg(any(feature = "std", feature = "alloc"))]
-        let mut timed_out = Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap();
+        let mut timed_out = std::vec::Vec::new();
         #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
-        let mut timed_out = wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap();
+        let mut timed_out = match wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()) {
+            Ok(vec) => vec,
+            Err(_) => return Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap_or_default(), // Return empty Vec on failure
+        };
         
         #[cfg(feature = "std")]
         {
@@ -221,7 +227,7 @@ impl WaitQueue {
             self.waiters.retain(|entry| {
                 if let Some(timeout) = entry.timeout {
                     if now.duration_since(entry.enqueue_time) >= timeout {
-                        timed_out.push(entry.thread_id);
+                        let _ = timed_out.push(entry.thread_id);
                         false
                     } else {
                         true
@@ -242,7 +248,7 @@ impl WaitQueue {
                         let timeout_ns = timeout.as_nanos() as u64;
                         
                         if elapsed_ns >= timeout_ns {
-                            timed_out.push(entry.thread_id);
+                            let _ = timed_out.push(entry.thread_id);
                             *slot = None;
                             self.stats.current_waiters -= 1;
                         }
@@ -252,7 +258,19 @@ impl WaitQueue {
         }
         
         self.stats.timeouts += timed_out.len() as u64;
-        timed_out
+        
+        // Convert the result to the expected return type
+        #[cfg(any(feature = "std", feature = "alloc"))]
+        return timed_out;
+        #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+        {
+            // Convert BoundedVec to Vec (our type alias)
+            let mut result = Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap_or_default();
+            for item in timed_out.iter() {
+                let _ = result.push(*item);
+            }
+            result
+        }
     }
     
     /// Get number of waiting threads

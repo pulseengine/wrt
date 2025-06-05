@@ -81,6 +81,10 @@ pub const GLOBAL_NOT_FOUND: u16 = 3005;
 pub const MEMORY_NOT_FOUND: u16 = 3006;
 /// Table not found
 pub const TABLE_NOT_FOUND: u16 = 3007;
+/// Resource exhausted error
+pub const RESOURCE_EXHAUSTED: u16 = 3008;
+/// Allocation failed error
+pub const ALLOCATION_FAILED: u16 = 3009;
 
 // Memory error codes (4000-4999)
 /// Memory out of bounds error
@@ -97,14 +101,18 @@ pub const MEMORY_ACCESS_UNALIGNED: u16 = 4003;
 pub const VALIDATION_ERROR: u16 = 5000;
 /// Validation failure
 pub const VALIDATION_FAILURE: u16 = 5001;
+/// Invalid argument error
+pub const INVALID_ARGUMENT: u16 = 5002;
+/// Invalid state error
+pub const INVALID_STATE: u16 = 5003;
 /// Checksum mismatch error
-pub const CHECKSUM_MISMATCH: u16 = 5002;
+pub const CHECKSUM_MISMATCH: u16 = 5004;
 /// Integrity violation error
-pub const INTEGRITY_VIOLATION: u16 = 5003;
+pub const INTEGRITY_VIOLATION: u16 = 5005;
 /// Verification level violation error
-pub const VERIFICATION_LEVEL_VIOLATION: u16 = 5004;
+pub const VERIFICATION_LEVEL_VIOLATION: u16 = 5006;
 /// Validation global type mismatch error
-pub const VALIDATION_GLOBAL_TYPE_MISMATCH: u16 = 5005;
+pub const VALIDATION_GLOBAL_TYPE_MISMATCH: u16 = 5007;
 /// Validation invalid memory index error
 pub const VALIDATION_INVALID_MEMORY_INDEX: u16 = 5006;
 /// Validation invalid global index error
@@ -371,18 +379,15 @@ pub const MUTEX_ERROR: u16 = 7010;
 /// Function not found error
 pub const FUNCTION_NOT_FOUND: u16 = 2010;
 
-/// Invalid state error
-pub const INVALID_STATE: u16 = 7020;
+// INVALID_STATE already defined above as 5003
 
 // Additional missing error codes
 /// Invalid binary format error
 pub const INVALID_BINARY: u16 = 8200;
 
-/// Resource exhausted error
-pub const RESOURCE_EXHAUSTED: u16 = 3100;
+// RESOURCE_EXHAUSTED already defined above as 3008
 
-/// Invalid argument error
-pub const INVALID_ARGUMENT: u16 = 8300;
+// INVALID_ARGUMENT already defined above as 5002
 
 /// Codes representing WebAssembly runtime trap conditions.
 /// These are used when an operation cannot complete normally due to a runtime

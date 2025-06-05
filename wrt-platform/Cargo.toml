@@ -24,7 +24,8 @@ categories = ["wasm", "os"]
 [dependencies]
 wrt-error = { workspace = true } # Assuming wrt-error is in workspace.dependencies
 wrt-sync = { workspace = true } # Add wrt-sync for synchronization primitives
-# wrt-foundation = { workspace = true, optional = true } # Temporarily disabled to fix cyclic dependency
+# wrt-format = { workspace = true, optional = true } # For AST allocator - temporarily disabled to fix cyclic dependency
+# wrt-foundation = { workspace = true, optional = true } # For bounded collections - temporarily disabled to fix cyclic dependency
 # libc dependency removed - using direct syscalls instead
 
 [dev-dependencies]
@@ -34,9 +35,11 @@ criterion = { version = "0.6", features = ["html_reports"] }
 default = [] # No std/alloc by default
 
 # Standard features for cross-crate compatibility
-std = ["wrt-error/std", "wrt-sync/std"] # , "wrt-foundation?/std"]
-alloc = ["wrt-error/alloc", "wrt-sync/alloc"] # , "wrt-foundation?/alloc"]
+std = ["wrt-error/std", "wrt-sync/std"] # , "wrt-format?/std", "wrt-foundation?/std"]
+alloc = ["wrt-error/alloc", "wrt-sync/alloc"] # , "wrt-format?/alloc", "wrt-foundation?/alloc"]
 no_std = []
+
+# All memory allocation uses NoStdProvider pattern
 
 # Feature for threading support (requires std)
 threading = ["std"] # , "wrt-foundation"]

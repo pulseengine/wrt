@@ -3,9 +3,12 @@
 //! This module provides an implementation of WebAssembly tables,
 //! which store function references or externref values.
 
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+extern crate alloc;
+
 use wrt_foundation::{
     types::{Limits as WrtLimits, TableType as WrtTableType, ValueType as WrtValueType},
-    values::Value as WrtValue,
+    values::{Value as WrtValue, FuncRef as WrtFuncRef, ExternRef as WrtExternRef},
     safe_memory::SafeStack,
 };
 
@@ -13,6 +16,45 @@ use crate::prelude::*;
 
 // Import the TableOperations trait from wrt-instructions
 use wrt_instructions::table_ops::TableOperations;
+
+/// Invalid index error code
+const INVALID_INDEX: u16 = 4004;
+/// Index too large error code  
+const INDEX_TOO_LARGE: u16 = 4005;
+
+/// Safe conversion from WebAssembly u32 index to Rust usize
+/// 
+/// # Arguments
+/// 
+/// * `index` - WebAssembly index as u32
+/// 
+/// # Returns
+/// 
+/// Ok(usize) if conversion is safe, error otherwise
+fn wasm_index_to_usize(index: u32) -> Result<usize> {
+    usize::try_from(index).map_err(|_| Error::new(
+        ErrorCategory::Runtime, 
+        INVALID_INDEX, 
+        "Index exceeds usize limit"
+    ))
+}
+
+/// Safe conversion from Rust usize to WebAssembly u32
+/// 
+/// # Arguments
+/// 
+/// * `size` - Rust size as usize
+/// 
+/// # Returns
+/// 
+/// Ok(u32) if conversion is safe, error otherwise  
+fn usize_to_wasm_u32(size: usize) -> Result<u32> {
+    u32::try_from(size).map_err(|_| Error::new(
+        ErrorCategory::Runtime, 
+        INDEX_TOO_LARGE, 
+        "Size exceeds u32 limit"
+    ))
+}
 
 /// A WebAssembly table is a vector of opaque values of a single type.
 #[derive(Debug)]
@@ -66,6 +108,67 @@ impl PartialEq for Table {
 
 impl Eq for Table {}
 
+impl Default for Table {
+    fn default() -> Self {
+        use wrt_foundation::types::{Limits, TableType, ValueType};
+        let table_type = TableType {
+            element_type: ValueType::FuncRef,
+            limits: Limits { min: 0, max: Some(1) },
+        };
+        Self::new(table_type).unwrap()
+    }
+}
+
+impl wrt_foundation::traits::Checksummable for Table {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        checksum.update_slice(&(self.ty.element_type as u8).to_le_bytes());
+        checksum.update_slice(&self.ty.limits.min.to_le_bytes());
+        if let Some(max) = self.ty.limits.max {
+            checksum.update_slice(&max.to_le_bytes());
+        }
+    }
+}
+
+impl wrt_foundation::traits::ToBytes for Table {
+    fn serialized_size(&self) -> usize {
+        16 // simplified
+    }
+
+    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        _provider: &P,
+    ) -> wrt_foundation::Result<()> {
+        writer.write_all(&(self.ty.element_type as u8).to_le_bytes())?;
+        writer.write_all(&self.ty.limits.min.to_le_bytes())
+    }
+}
+
+impl wrt_foundation::traits::FromBytes for Table {
+    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        _provider: &P,
+    ) -> wrt_foundation::Result<Self> {
+        let mut bytes = [0u8; 1];
+        reader.read_exact(&mut bytes)?;
+        let element_type = match bytes[0] {
+            0 => wrt_foundation::types::ValueType::FuncRef,
+            _ => wrt_foundation::types::ValueType::ExternRef,
+        };
+        
+        let mut min_bytes = [0u8; 4];
+        reader.read_exact(&mut min_bytes)?;
+        let min = u32::from_le_bytes(min_bytes);
+        
+        use wrt_foundation::types::{Limits, TableType};
+        let table_type = TableType {
+            element_type,
+            limits: Limits { min, max: Some(min + 1) },
+        };
+        Self::new(table_type)
+    }
+}
+
 impl Table {
     /// Creates a new table with the specified type.
     /// Elements are initialized to a type-appropriate null value.
@@ -84,7 +187,7 @@ impl Table {
             }
         };
 
-        let initial_size = ty.limits.min as usize;
+        let initial_size = wasm_index_to_usize(ty.limits.min)?;
         let mut elements = SafeStack::with_capacity(initial_size);
         elements.set_verification_level(VerificationLevel::default());
 
@@ -129,7 +232,7 @@ impl Table {
     /// The current size of the table
     #[must_use]
     pub fn size(&self) -> u32 {
-        self.elements.len() as u32
+        usize_to_wasm_u32(self.elements.len()).unwrap_or(0)
     }
 
     /// Gets an element from the table
@@ -146,7 +249,7 @@ impl Table {
     ///
     /// Returns an error if the index is out of bounds
     pub fn get(&self, idx: u32) -> Result<Option<WrtValue>> {
-        let idx = idx as usize;
+        let idx = wasm_index_to_usize(idx)?;
         if idx >= self.elements.len() {
             return Err(Error::new(
                 ErrorCategory::Runtime,
@@ -195,7 +298,7 @@ impl Table {
     /// Returns an error if the index is out of bounds or if the value type
     /// doesn't match the table element type
     pub fn set(&mut self, idx: u32, value: Option<WrtValue>) -> Result<()> {
-        let idx = idx as usize;
+        let idx = wasm_index_to_usize(idx)?;
         if idx >= self.elements.len() {
             return Err(Error::new(
                 ErrorCategory::Runtime,
@@ -596,7 +699,7 @@ impl TableManager {
     /// Create a new table manager
     pub fn new() -> Result<Self> {
         Ok(Self {
-            tables: Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default())?,
+            tables: Vec::new()?,
         })
     }
     
@@ -702,13 +805,13 @@ impl TableOperations for TableManager {
         let wrt_value = match value {
             Value::FuncRef(func_ref) => {
                 match func_ref {
-                    Some(fr) => Some(WrtValue::FuncRef(Some(fr.index))),
+                    Some(fr) => Some(WrtValue::FuncRef(Some(WrtFuncRef::from_index(fr.index)))),
                     None => Some(WrtValue::FuncRef(None)),
                 }
             }
             Value::ExternRef(extern_ref) => {
                 match extern_ref {
-                    Some(er) => Some(WrtValue::ExternRef(Some(er.index))),
+                    Some(er) => Some(WrtValue::ExternRef(Some(WrtExternRef::from_index(er.index)))),
                     None => Some(WrtValue::ExternRef(None)),
                 }
             }
@@ -734,13 +837,13 @@ impl TableOperations for TableManager {
         let wrt_init_value = match init_value {
             Value::FuncRef(func_ref) => {
                 match func_ref {
-                    Some(fr) => WrtValue::FuncRef(Some(fr.index)),
+                    Some(fr) => WrtValue::FuncRef(Some(WrtFuncRef::from_index(fr.index))),
                     None => WrtValue::FuncRef(None),
                 }
             }
             Value::ExternRef(extern_ref) => {
                 match extern_ref {
-                    Some(er) => WrtValue::ExternRef(Some(er.index)),
+                    Some(er) => WrtValue::ExternRef(Some(WrtExternRef::from_index(er.index))),
                     None => WrtValue::ExternRef(None),
                 }
             }
@@ -765,13 +868,13 @@ impl TableOperations for TableManager {
         let wrt_value = match val {
             Value::FuncRef(func_ref) => {
                 match func_ref {
-                    Some(fr) => Some(WrtValue::FuncRef(Some(fr.index))),
+                    Some(fr) => Some(WrtValue::FuncRef(Some(WrtFuncRef::from_index(fr.index)))),
                     None => Some(WrtValue::FuncRef(None)),
                 }
             }
             Value::ExternRef(extern_ref) => {
                 match extern_ref {
-                    Some(er) => Some(WrtValue::ExternRef(Some(er.index))),
+                    Some(er) => Some(WrtValue::ExternRef(Some(WrtExternRef::from_index(er.index)))),
                     None => Some(WrtValue::ExternRef(None)),
                 }
             }
@@ -797,7 +900,7 @@ impl TableOperations for TableManager {
             // First, read the source elements
             let src_elements = {
                 let src_table = self.get_table(src_table)?;
-                let mut elements = Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default())?;
+                let mut elements = Vec::new()?;
                 for i in 0..len {
                     let elem = src_table.get(src_index + i)?;
                     elements.push(elem).map_err(|_| Error::new(ErrorCategory::Memory, codes::MEMORY_ERROR, "Failed to push table element"))?;
@@ -884,13 +987,13 @@ impl TableOperations for Table {
         let wrt_value = match value {
             Value::FuncRef(func_ref) => {
                 match func_ref {
-                    Some(fr) => Some(WrtValue::FuncRef(Some(fr.index))),
+                    Some(fr) => Some(WrtValue::FuncRef(Some(WrtFuncRef::from_index(fr.index)))),
                     None => Some(WrtValue::FuncRef(None)),
                 }
             }
             Value::ExternRef(extern_ref) => {
                 match extern_ref {
-                    Some(er) => Some(WrtValue::ExternRef(Some(er.index))),
+                    Some(er) => Some(WrtValue::ExternRef(Some(WrtExternRef::from_index(er.index)))),
                     None => Some(WrtValue::ExternRef(None)),
                 }
             }
@@ -929,13 +1032,13 @@ impl TableOperations for Table {
         let wrt_init_value = match init_value {
             Value::FuncRef(func_ref) => {
                 match func_ref {
-                    Some(fr) => WrtValue::FuncRef(Some(fr.index)),
+                    Some(fr) => WrtValue::FuncRef(Some(WrtFuncRef::from_index(fr.index))),
                     None => WrtValue::FuncRef(None),
                 }
             }
             Value::ExternRef(extern_ref) => {
                 match extern_ref {
-                    Some(er) => WrtValue::ExternRef(Some(er.index)),
+                    Some(er) => WrtValue::ExternRef(Some(WrtExternRef::from_index(er.index))),
                     None => WrtValue::ExternRef(None),
                 }
             }
@@ -966,13 +1069,13 @@ impl TableOperations for Table {
         let wrt_value = match val {
             Value::FuncRef(func_ref) => {
                 match func_ref {
-                    Some(fr) => Some(WrtValue::FuncRef(Some(fr.index))),
+                    Some(fr) => Some(WrtValue::FuncRef(Some(WrtFuncRef::from_index(fr.index)))),
                     None => Some(WrtValue::FuncRef(None)),
                 }
             }
             Value::ExternRef(extern_ref) => {
                 match extern_ref {
-                    Some(er) => Some(WrtValue::ExternRef(Some(er.index))),
+                    Some(er) => Some(WrtValue::ExternRef(Some(WrtExternRef::from_index(er.index)))),
                     None => Some(WrtValue::ExternRef(None)),
                 }
             }

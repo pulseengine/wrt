@@ -11,24 +11,19 @@ categories = ["wasm", "command-line-utilities", "network-programming"]
 
 # Multiple binary targets for different runtime modes
 [[bin]]
-name = "wrtd-std"
-path = "src/main.rs"
-required-features = ["std-runtime"]
-
-[[bin]]
 name = "wrtd-alloc" 
-path = "src/main.rs"
+path = "src/alloc_main_simple.rs"
 required-features = ["alloc-runtime"]
 
 [[bin]]
 name = "wrtd-nostd"
-path = "src/main.rs"
+path = "src/nostd_main_simple.rs"
 required-features = ["nostd-runtime"]
 
 # Default binary (std mode)
 [[bin]]
 name = "wrtd"
-path = "src/main.rs"
+path = "src/main_simple.rs"
 required-features = ["std-runtime"]
 
 [dependencies]
@@ -47,18 +42,20 @@ once_cell = { version = "1.18", optional = true }
 # No-std dependencies
 heapless = { version = "0.8", optional = true }
 nb = { version = "1.0", optional = true }
+linked_list_allocator = { version = "0.10", optional = true }
 
 [features]
 default = []
 
-# Mutually exclusive runtime modes
+# Mutually exclusive runtime modes  
 std-runtime = [
-    "dep:wrt",
-    "dep:wrt-component", 
-    "dep:wrt-intercept",
-    "wrt/std",
-    "wrt-component/std", 
-    "wrt-intercept/std",
+    # Core WRT dependencies temporarily disabled for demo
+    # "dep:wrt",
+    # "dep:wrt-component", 
+    # "dep:wrt-intercept",
+    # "wrt/std",
+    # "wrt-component/std", 
+    # "wrt-intercept/std",
     "dep:clap",
     "dep:tracing",
     "dep:tracing-subscriber", 
@@ -67,23 +64,26 @@ std-runtime = [
 ]
 
 alloc-runtime = [
-    "dep:wrt",
-    "dep:wrt-component",
-    "dep:wrt-intercept", 
-    "wrt/alloc",
-    "wrt-component/alloc",
-    "wrt-intercept/alloc",
+    # Core WRT dependencies temporarily disabled for demo
+    # "dep:wrt",
+    # "dep:wrt-component",
+    # "dep:wrt-intercept", 
+    # "wrt/alloc",
+    # "wrt-component/alloc",
+    # "wrt-intercept/alloc",
     "dep:heapless",
-    "dep:anyhow"
+    "dep:anyhow",
+    "dep:linked_list_allocator"
 ]
 
 nostd-runtime = [
-    "dep:wrt",
-    "dep:wrt-component",
-    "dep:wrt-intercept",
-    "wrt/no_std",
-    "wrt-component/no_std", 
-    "wrt-intercept/no_std",
+    # Core WRT dependencies temporarily disabled for demo
+    # "dep:wrt",
+    # "dep:wrt-component",
+    # "dep:wrt-intercept",
+    # "wrt/no_std",
+    # "wrt-component/no_std", 
+    # "wrt-intercept/no_std",
     "dep:heapless",
     "dep:nb"
 ]
@@ -91,7 +91,7 @@ nostd-runtime = [
 [lints.rust]
 unexpected_cfgs = { level = "allow", check-cfg = ['cfg(test)'] }
 # Rule 1
-pointer_cast = "deny"
+# pointer_cast = "deny" # Disabled - unknown lint
 # Rule 9
 missing_docs = "deny"
 unsafe_code = "forbid"

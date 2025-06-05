@@ -4,6 +4,9 @@
 //! with integrated memory safety features for WebAssembly memory instances.
 
 // Use our prelude for consistent imports
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+extern crate alloc;
+
 use crate::{memory::Memory, memory_helpers::ArcMemoryExt, prelude::*};
 
 // Import format! macro for string formatting
@@ -12,16 +15,55 @@ use std::format;
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
 use alloc::format;
 
+/// Invalid offset error code
+const INVALID_OFFSET: u16 = 4006;
+/// Size too large error code  
+const SIZE_TOO_LARGE: u16 = 4007;
+
+/// Safe conversion from WebAssembly u32 offset to Rust usize
+/// 
+/// # Arguments
+/// 
+/// * `offset` - WebAssembly offset as u32
+/// 
+/// # Returns
+/// 
+/// Ok(usize) if conversion is safe, error otherwise
+fn wasm_offset_to_usize(offset: u32) -> Result<usize> {
+    usize::try_from(offset).map_err(|_| Error::new(
+        ErrorCategory::Memory, 
+        INVALID_OFFSET, 
+        "Offset exceeds usize limit"
+    ))
+}
+
+/// Safe conversion from Rust usize to WebAssembly u32
+/// 
+/// # Arguments
+/// 
+/// * `size` - Rust size as usize
+/// 
+/// # Returns
+/// 
+/// Ok(u32) if conversion is safe, error otherwise  
+fn usize_to_wasm_u32(size: usize) -> Result<u32> {
+    u32::try_from(size).map_err(|_| Error::new(
+        ErrorCategory::Memory, 
+        SIZE_TOO_LARGE, 
+        "Size exceeds u32 limit"
+    ))
+}
+
 /// Memory adapter interface for working with memory
 pub trait MemoryAdapter: Debug + Send + Sync {
     /// Get the memory backing this adapter
     fn memory(&self) -> Arc<Memory>;
 
     /// Read bytes from memory at the given offset
-    fn read_bytes(&self, offset: u32, len: u32) -> Result<BoundedVec<u8, 65_536, StdMemoryProvider>>;
+    fn read_exact(&self, offset: u32, len: u32) -> Result<BoundedVec<u8, 65_536, StdMemoryProvider>>;
 
     /// Write bytes to memory at the given offset
-    fn write_bytes(&self, offset: u32, bytes: &[u8]) -> Result<()>;
+    fn write_all(&self, offset: u32, bytes: &[u8]) -> Result<()>;
 
     /// Get the size of the memory in pages
     fn size(&self) -> Result<u32>;
@@ -36,7 +78,7 @@ pub trait MemoryAdapter: Debug + Send + Sync {
     fn check_range(&self, offset: u32, size: u32) -> Result<()>;
 
     /// Borrow a slice of memory with integrity verification
-    fn borrow_slice(&self, offset: usize, len: usize) -> Result<BoundedVec<u8, 65_536, StdMemoryProvider>>;
+    fn borrow_slice(&self, offset: u32, len: u32) -> Result<BoundedVec<u8, 65_536, StdMemoryProvider>>;
 }
 
 /// Safe memory adapter implementation
@@ -208,7 +250,7 @@ impl StdMemoryProvider {
 
 impl SafeMemoryAdapter {
     /// Create a new memory adapter with the given memory type
-    pub fn new(memory_type: CoreMemoryType) -> Result<Arc<dyn MemoryAdapter>> {
+    pub fn new(memory_type: CoreMemoryType) -> Result<Arc<SafeMemoryAdapter>> {
         let memory = Memory::new(memory_type)?;
 
         // Create a new adapter with the memory
@@ -237,14 +279,14 @@ impl MemoryAdapter for SafeMemoryAdapter {
         self.memory.clone()
     }
 
-    fn read_bytes(&self, offset: u32, len: u32) -> Result<BoundedVec<u8, 65_536, StdMemoryProvider>> {
+    fn read_exact(&self, offset: u32, len: u32) -> Result<BoundedVec<u8, 65_536, StdMemoryProvider>> {
         // Check that the range is valid
         self.check_range(offset, len)?;
 
         // Read the bytes directly from the buffer
         let buffer = self.memory.buffer()?;
-        let start = offset as usize;
-        let end = start + len as usize;
+        let start = wasm_offset_to_usize(offset)?;
+        let end = start + wasm_offset_to_usize(len)?;
 
         // Create a new BoundedVec with the data
         let mut bounded_vec =
@@ -264,7 +306,7 @@ impl MemoryAdapter for SafeMemoryAdapter {
         Ok(bounded_vec)
     }
 
-    fn write_bytes(&self, offset: u32, bytes: &[u8]) -> Result<()> {
+    fn write_all(&self, offset: u32, bytes: &[u8]) -> Result<()> {
         // Check that the range is valid
         self.check_range(offset, bytes.len() as u32)?;
 
@@ -292,13 +334,15 @@ impl MemoryAdapter for SafeMemoryAdapter {
     }
 
     fn byte_size(&self) -> Result<usize> {
-        // Removed the ? operator since size() returns u32 directly
-        Ok(self.memory.size() as usize * 65_536)
+        // Convert WebAssembly page count to byte size safely
+        let pages = self.memory.size();
+        let page_size_bytes = wasm_offset_to_usize(pages)? * 65_536;
+        Ok(page_size_bytes)
     }
 
     fn check_range(&self, offset: u32, size: u32) -> Result<()> {
         let mem_size = self.byte_size()?;
-        let end_offset = offset as usize + size as usize;
+        let end_offset = wasm_offset_to_usize(offset)? + wasm_offset_to_usize(size)?;
 
         if end_offset > mem_size {
             Err(Error::new(
@@ -316,14 +360,18 @@ impl MemoryAdapter for SafeMemoryAdapter {
 
     // Change the return type to BoundedVec instead of SafeSlice to avoid lifetime
     // issues
-    fn borrow_slice(&self, offset: usize, len: usize) -> Result<BoundedVec<u8, 65_536, StdMemoryProvider>> {
+    fn borrow_slice(&self, offset: u32, len: u32) -> Result<BoundedVec<u8, 65_536, StdMemoryProvider>> {
         // Check that the range is valid
-        self.check_range(offset as u32, len as u32)?;
+        self.check_range(offset, len)?;
 
         // Get the buffer
         let buffer = self.memory.buffer()?;
+        
+        // Convert to usize for internal use
+        let offset_usize = wasm_offset_to_usize(offset)?;
+        let len_usize = wasm_offset_to_usize(len)?;
 
         // Create a new BoundedVec with the copied data
-        self.provider.create_safe_slice(&buffer, offset, len)
+        self.provider.create_safe_slice(&buffer, offset_usize, len_usize)
     }
 }

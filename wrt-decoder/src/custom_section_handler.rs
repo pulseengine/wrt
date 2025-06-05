@@ -9,6 +9,8 @@ use crate::branch_hint_section::{BranchHintSection, parse_branch_hint_section, B
 use wrt_error::{Error, ErrorCategory, Result, codes};
 
 #[cfg(feature = "alloc")]
+extern crate alloc;
+#[cfg(feature = "alloc")]
 use alloc::{vec::Vec, string::String, collections::BTreeMap};
 #[cfg(feature = "std")]
 use std::{vec::Vec, string::String, collections::HashMap};

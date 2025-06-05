@@ -21,7 +21,7 @@ impl Function {
     pub fn new(func_type: FuncType<wrt_foundation::NoStdProvider<1024>>) -> Self {
         Self {
             func_type,
-            body: wrt_foundation::bounded::BoundedVec::new_with_provider(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap(),
+            body: wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap(),
         }
     }
 }
