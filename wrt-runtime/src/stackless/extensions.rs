@@ -21,7 +21,7 @@ pub trait ModuleInstance: Debug {
     fn global(&self, idx: u32) -> Result<Arc<Global>>;
 
     /// Get the function type for a function in this instance
-    fn function_type(&self, idx: u32) -> Result<FuncType>;
+    fn function_type(&self, idx: u32) -> Result<FuncType<wrt_foundation::safe_memory::NoStdProvider<1024>>>;
 }
 
 // Further implementations will be added in subsequent updates

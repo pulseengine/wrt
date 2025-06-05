@@ -3,6 +3,9 @@
 //! This module provides the implementation for WebAssembly globals.
 
 // Use WrtGlobalType directly from wrt_foundation, and WrtValueType, WrtValue
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+extern crate alloc;
+
 use wrt_foundation::{
     types::{GlobalType as WrtGlobalType, ValueType as WrtValueType},
     values::Value as WrtValue,
@@ -83,6 +86,67 @@ impl Global {
     /// initial_value).
     pub fn global_type_descriptor(&self) -> &WrtGlobalType {
         &self.ty
+    }
+}
+
+impl Default for Global {
+    fn default() -> Self {
+        use wrt_foundation::types::{GlobalType, ValueType};
+        use wrt_foundation::values::Value;
+        Self::new(ValueType::I32, false, Value::I32(0)).unwrap()
+    }
+}
+
+impl wrt_foundation::traits::Checksummable for Global {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        checksum.update_slice(&(self.ty.value_type as u8).to_le_bytes());
+        checksum.update_slice(&[self.ty.mutable as u8]);
+    }
+}
+
+impl wrt_foundation::traits::ToBytes for Global {
+    fn serialized_size(&self) -> usize {
+        16 // simplified
+    }
+
+    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        _provider: &P,
+    ) -> wrt_foundation::Result<()> {
+        writer.write_all(&(self.ty.value_type as u8).to_le_bytes())?;
+        writer.write_all(&[self.ty.mutable as u8])
+    }
+}
+
+impl wrt_foundation::traits::FromBytes for Global {
+    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        _provider: &P,
+    ) -> wrt_foundation::Result<Self> {
+        let mut bytes = [0u8; 1];
+        reader.read_exact(&mut bytes)?;
+        let value_type = match bytes[0] {
+            0 => wrt_foundation::types::ValueType::I32,
+            1 => wrt_foundation::types::ValueType::I64,
+            2 => wrt_foundation::types::ValueType::F32,
+            3 => wrt_foundation::types::ValueType::F64,
+            _ => wrt_foundation::types::ValueType::I32,
+        };
+        
+        reader.read_exact(&mut bytes)?;
+        let mutable = bytes[0] != 0;
+        
+        use wrt_foundation::values::Value;
+        let initial_value = match value_type {
+            wrt_foundation::types::ValueType::I32 => Value::I32(0),
+            wrt_foundation::types::ValueType::I64 => Value::I64(0),
+            wrt_foundation::types::ValueType::F32 => Value::F32(0.0),
+            wrt_foundation::types::ValueType::F64 => Value::F64(0.0),
+            _ => Value::I32(0),
+        };
+        
+        Self::new(value_type, mutable, initial_value)
     }
 }
 

@@ -4,6 +4,9 @@
 //! make tail calls without growing the call stack. This is essential for
 //! functional programming patterns and recursive algorithms.
 
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+extern crate alloc;
+
 use crate::prelude::*;
 use crate::stackless::frame::StacklessFrame;
 use crate::stackless::engine::StacklessEngine;

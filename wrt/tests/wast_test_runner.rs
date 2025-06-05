@@ -5,12 +5,17 @@
 //! types and provides proper categorization, error handling, and resource management.
 
 #![cfg(test)]
+#![cfg_attr(not(feature = "std"), no_std)]
 
+#[cfg(feature = "std")]
 use std::{
     collections::HashMap,
     fs,
     path::{Path, PathBuf},
 };
+
+#[cfg(not(feature = "std"))]
+use wrt_foundation::bounded::{BoundedHashMap as HashMap, BoundedVec};
 
 use wast::{
     core::{NanPattern, WastArgCore, WastRetCore},
@@ -23,7 +28,8 @@ use wrt_test_registry::{TestCase, TestConfig, TestRegistry, TestResult, TestSuit
 
 /// WAST Test Runner that integrates with the existing test infrastructure
 pub struct WastTestRunner {
-    /// Module registry for linking tests
+    /// Module registry for linking tests (std only)
+    #[cfg(feature = "std")]
     module_registry: HashMap<String, Module>,
     /// Current active module for testing
     current_module: Option<Module>,
@@ -107,6 +113,7 @@ impl WastTestRunner {
     /// Create a new WAST test runner
     pub fn new() -> Self {
         Self {
+            #[cfg(feature = "std")]
             module_registry: HashMap::new(),
             current_module: None,
             stats: WastTestStats::default(),
@@ -558,20 +565,35 @@ impl WastTestRunner {
     ) -> Result<WastDirectiveInfo> {
         self.stats.register_count += 1;
 
-        // Register the current module if available
+        // Register the current module if available (std only)
+        #[cfg(feature = "std")]
         if let Some(ref module) = self.current_module {
             self.module_registry.insert(name.to_string(), module.clone());
             self.stats.passed += 1;
-            Ok(WastDirectiveInfo {
+            return Ok(WastDirectiveInfo {
                 test_type: WastTestType::Integration,
                 directive_name: "register".to_string(),
                 requires_module_state: true,
                 modifies_engine_state: true,
-            })
-        } else {
-            self.stats.failed += 1;
-            Err(Error::Validation("No module available for registration".into()))
+            });
         }
+
+        #[cfg(not(feature = "std"))]
+        {
+            // In no_std mode, we can't maintain a registry, but we can still track the directive
+            if self.current_module.is_some() {
+                self.stats.passed += 1;
+                return Ok(WastDirectiveInfo {
+                    test_type: WastTestType::Integration,
+                    directive_name: "register".to_string(),
+                    requires_module_state: true,
+                    modifies_engine_state: true,
+                });
+            }
+        }
+
+        self.stats.failed += 1;
+        Err(Error::Validation("No module available for registration".into()))
     }
 
     /// Handle invoke directive (standalone function call)
@@ -604,7 +626,8 @@ impl WastTestRunner {
         }
     }
 
-    /// Run a complete WAST file
+    /// Run a complete WAST file (std only)
+    #[cfg(feature = "std")]
     pub fn run_wast_file(&mut self, path: &Path) -> Result<WastTestStats> {
         let contents = fs::read_to_string(path)
             .map_err(|e| Error::Parse(format!("Failed to read file: {}", e)))?;
@@ -624,6 +647,34 @@ impl WastTestRunner {
                     // Test passed, stats already updated in execute_directive
                 }
                 Err(e) => {
+                    eprintln!("WAST directive failed: {}", e);
+                    // Error stats already updated in execute_directive
+                }
+            }
+        }
+
+        Ok(self.stats.clone())
+    }
+
+    /// Run WAST content from a string (works in both std and no_std)
+    pub fn run_wast_content(&mut self, content: &str) -> Result<WastTestStats> {
+        let buf = ParseBuffer::new(content)
+            .map_err(|e| Error::Parse(format!("Failed to create parse buffer: {}", e)))?;
+
+        let wast: Wast =
+            parser::parse(&buf).map_err(|e| Error::Parse(format!("Failed to parse WAST: {}", e)))?;
+
+        let module = Module::new()?;
+        let mut engine = StacklessEngine::new();
+
+        for mut directive in wast.directives {
+            match self.execute_directive(&mut engine, &mut directive) {
+                Ok(_) => {
+                    // Test passed, stats already updated in execute_directive
+                }
+                Err(e) => {
+                    // In no_std mode, we can't use eprintln!, so we just continue
+                    #[cfg(feature = "std")]
                     eprintln!("WAST directive failed: {}", e);
                     // Error stats already updated in execute_directive
                 }
@@ -760,7 +811,8 @@ impl Default for WastTestRunner {
     }
 }
 
-/// Register WAST tests from the external testsuite
+/// Register WAST tests from the external testsuite (std only)
+#[cfg(feature = "std")]
 pub fn register_wast_tests() {
     let registry = TestRegistry::global();
     
@@ -781,7 +833,8 @@ pub fn register_wast_tests() {
     }
 }
 
-/// Run WAST testsuite tests and return results
+/// Run WAST testsuite tests and return results (std only)
+#[cfg(feature = "std")]
 fn run_wast_testsuite_tests() -> wrt_test_registry::TestResult {
     let testsuite_path = match get_testsuite_path() {
         Some(path) => path,
@@ -836,7 +889,8 @@ fn run_wast_testsuite_tests() -> wrt_test_registry::TestResult {
     }
 }
 
-/// Utility function to get the test suite path from environment variables
+/// Utility function to get the test suite path from environment variables (std only)
+#[cfg(feature = "std")]
 fn get_testsuite_path() -> Option<String> {
     std::env::var("WASM_TESTSUITE").ok()
 }

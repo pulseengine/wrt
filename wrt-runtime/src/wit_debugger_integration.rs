@@ -3,6 +3,9 @@
 //! This module provides integration between the WRT runtime and the WIT-aware
 //! debugger from wrt-debug, enabling source-level debugging of WIT components.
 
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+extern crate alloc;
+
 #[cfg(feature = "std")]
 use std::{collections::BTreeMap, vec::Vec, boxed::Box};
 #[cfg(all(feature = "alloc", not(feature = "std")))]
@@ -328,7 +331,7 @@ impl Default for WrtDebugMemory {
 
 #[cfg(feature = "wit-debug-integration")]
 impl DebugMemory for WrtDebugMemory {
-    fn read_bytes(&self, addr: u32, len: usize) -> Option<&[u8]> {
+    fn read_exact(&self, addr: u32, len: usize) -> Option<&[u8]> {
         let offset = addr.saturating_sub(self.base_address) as usize;
         if offset + len <= self.memory_data.len() {
             Some(&self.memory_data.as_slice()[offset..offset + len])
@@ -670,7 +673,7 @@ mod tests {
         assert!(memory.is_valid_address(1007));
         assert!(!memory.is_valid_address(1008));
         
-        let bytes = memory.read_bytes(1002, 4);
+        let bytes = memory.read_exact(1002, 4);
         assert_eq!(bytes, Some(&[3, 4, 5, 6][..]));
         
         assert_eq!(memory.read_u32(1000), Some(0x04030201));

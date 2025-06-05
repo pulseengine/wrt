@@ -58,8 +58,8 @@
 #[cfg(feature = "std")]
 extern crate std;
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-extern crate alloc;
+// Pure no_std - no external allocation needed
+// All memory management uses bounded collections with NoStdProvider
 
 // Panic handler for no_std builds - only when not building as a dependency
 #[cfg(all(not(feature = "std"), not(test)))]
@@ -94,20 +94,20 @@ pub mod prelude;
 // Module adapters for integration between specialized crates
 #[cfg(feature = "std")] // CFI integration requires std features currently
 pub mod cfi_integration;
-pub mod decoder_integration;
-pub mod instructions_adapter;
-pub mod memory_adapter;
+// pub mod decoder_integration; // Temporarily disabled
+// pub mod instructions_adapter; // Temporarily disabled 
+// pub mod memory_adapter; // Temporarily disabled due to trait object size issues
 
 // No_std implementation modules are now handled by wrt-foundation
 
 // Resources implementation - std vs no_std
-#[cfg(any(feature = "std", feature = "alloc"))]
-pub mod resource; // WebAssembly component model resource types with std/alloc
+#[cfg(feature = "std")]
+pub mod resource; // WebAssembly component model resource types with std
 
-#[cfg(not(any(feature = "std", feature = "alloc")))]
-pub mod resource_nostd; // No_std/no_alloc compatible resource implementation
-#[cfg(not(any(feature = "std", feature = "alloc")))]
-pub use resource_nostd as resource; // Use resource_nostd as resource when no_std/no_alloc
+#[cfg(not(feature = "std"))]
+pub mod resource_nostd; // No_std compatible resource implementation
+#[cfg(not(feature = "std"))]
+pub use resource_nostd as resource; // Use resource_nostd as resource when no_std
 
 // Re-export all public types and functionality through the prelude
 pub use crate::prelude::*;
@@ -153,18 +153,18 @@ pub fn new_memory(mem_type: ComponentMemoryType) -> Memory {
     Memory::new(mem_type).unwrap()
 }
 
-/// Create a new WebAssembly memory adapter with the given type.
-///
-/// # Arguments
-///
-/// * `mem_type` - The type of memory to create.
-///
-/// # Returns
-///
-/// A new memory adapter instance.
-pub fn new_memory_adapter(mem_type: ComponentMemoryType) -> Memory {
-    memory_adapter::new_memory_adapter(mem_type).unwrap()
-}
+// /// Create a new WebAssembly memory adapter with the given type.
+// ///
+// /// # Arguments
+// ///
+// /// * `mem_type` - The type of memory to create.
+// ///
+// /// # Returns
+// ///
+// /// A new memory adapter instance.
+// pub fn new_memory_adapter(mem_type: ComponentMemoryType) -> Memory {
+//     memory_adapter::new_memory_adapter(mem_type).unwrap()
+// }
 
 /// Create a new WebAssembly table with the given type.
 ///

@@ -4,6 +4,9 @@
 //! based on branch prediction hints. These optimizations improve execution speed
 //! even without JIT compilation by making the interpreter more efficient.
 
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+extern crate alloc;
+
 use crate::prelude::*;
 use crate::branch_prediction::{
     BranchLikelihood, ModuleBranchPredictor, PredictiveExecutionContext,
@@ -132,7 +135,7 @@ impl InstructionPrefetchCache {
         #[cfg(not(feature = "alloc"))]
         {
             for (cached_offset, instruction) in self.cache.iter() {
-                if *cached_offset == offset {
+                if cached_offset == &offset {
                     self.cache_hits += 1;
                     return Some(instruction);
                 }

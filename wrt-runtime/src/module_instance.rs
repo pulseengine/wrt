@@ -4,6 +4,9 @@
 //! which represents a runtime instance of a WebAssembly module with its own
 //! memory, tables, globals, and functions.
 
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+extern crate alloc;
+
 #[cfg(feature = "debug-full")]
 use wrt_debug::FunctionInfo;
 #[cfg(feature = "debug")]
@@ -105,7 +108,7 @@ impl ModuleInstance {
     }
 
     /// Get the function type for a function
-    pub fn function_type(&self, idx: u32) -> Result<FuncType> {
+    pub fn function_type(&self, idx: u32) -> Result<FuncType<wrt_foundation::safe_memory::NoStdProvider<1024>>> {
         let function = self.module.functions.get(idx as usize).ok_or_else(|| {
             Error::new(ErrorCategory::Runtime, codes::FUNCTION_NOT_FOUND, format!("Function index {} not found", idx))
         })?;
@@ -169,7 +172,7 @@ impl crate::stackless::extensions::ModuleInstance for ModuleInstance {
         self.global(idx)
     }
 
-    fn function_type(&self, idx: u32) -> Result<FuncType> {
+    fn function_type(&self, idx: u32) -> Result<FuncType<wrt_foundation::safe_memory::NoStdProvider<1024>>> {
         self.function_type(idx)
     }
 

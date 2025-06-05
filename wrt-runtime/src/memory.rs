@@ -84,34 +84,35 @@
 //! ```
 
 // Import BorrowMut for SafeMemoryHandler
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+extern crate alloc;
+
+// Core/std library imports
+use core::alloc::Layout;
+use core::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, AtomicUsize, Ordering};
+use core::time::Duration;
+
 #[cfg(not(feature = "std"))]
 use core::borrow::BorrowMut;
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::vec;
-use core::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, AtomicUsize, Ordering};
-use core::alloc::Layout;
-use core::time::Duration;
 #[cfg(feature = "std")]
 use std::borrow::BorrowMut;
+
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+use alloc::vec;
 #[cfg(feature = "std")]
 use std::vec;
 
-// Memory providers are imported as needed within conditional compilation blocks
-
+// External crates
 use wrt_foundation::safe_memory::{
     MemoryProvider, SafeMemoryHandler, SafeSlice, SliceMut as SafeSliceMut,
 };
 use wrt_foundation::MemoryStats;
-use crate::memory_adapter::StdMemoryProvider;
-// Import RwLock from appropriate location in no_std
+
 #[cfg(not(feature = "std"))]
 use wrt_sync::WrtRwLock as RwLock;
 
-// If other platform features (e.g. "platform-linux") were added to wrt-platform,
-// they would be conditionally imported here too.
-
-// Format macro is available through prelude
-
+// Internal modules
+use crate::memory_adapter::StdMemoryProvider;
 use crate::prelude::*;
 
 // Import the MemoryOperations trait from wrt-instructions
@@ -130,6 +131,44 @@ const MAX_MEMORY_BYTES: usize = 4 * 1024 * 1024 * 1024;
 
 /// Memory size error code (must be u16 to match Error::new)
 const MEMORY_SIZE_TOO_LARGE: u16 = 4001;
+/// Invalid offset error code
+const INVALID_OFFSET: u16 = 4002;
+/// Size too large error code  
+const SIZE_TOO_LARGE: u16 = 4003;
+
+/// Safe conversion from WebAssembly u32 offset to Rust usize
+/// 
+/// # Arguments
+/// 
+/// * `offset` - WebAssembly offset as u32
+/// 
+/// # Returns
+/// 
+/// Ok(usize) if conversion is safe, error otherwise
+fn wasm_offset_to_usize(offset: u32) -> Result<usize> {
+    usize::try_from(offset).map_err(|_| Error::new(
+        ErrorCategory::Memory, 
+        INVALID_OFFSET, 
+        "Offset exceeds usize limit"
+    ))
+}
+
+/// Safe conversion from Rust usize to WebAssembly u32
+/// 
+/// # Arguments
+/// 
+/// * `size` - Rust size as usize
+/// 
+/// # Returns
+/// 
+/// Ok(u32) if conversion is safe, error otherwise  
+fn usize_to_wasm_u32(size: usize) -> Result<u32> {
+    u32::try_from(size).map_err(|_| Error::new(
+        ErrorCategory::Memory, 
+        SIZE_TOO_LARGE, 
+        "Size exceeds u32 limit"
+    ))
+}
 
 /// Memory metrics for tracking usage and safety
 #[derive(Debug)]
@@ -303,6 +342,61 @@ impl PartialEq for Memory {
 
 impl Eq for Memory {}
 
+impl Default for Memory {
+    fn default() -> Self {
+        use wrt_foundation::types::{Limits, MemoryType};
+        let memory_type = MemoryType {
+            limits: Limits { min: 1, max: Some(1) },
+        };
+        Self::new(memory_type).unwrap()
+    }
+}
+
+impl wrt_foundation::traits::Checksummable for Memory {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        checksum.update_slice(&self.ty.limits.min.to_le_bytes());
+        if let Some(max) = self.ty.limits.max {
+            checksum.update_slice(&max.to_le_bytes());
+        }
+    }
+}
+
+impl wrt_foundation::traits::ToBytes for Memory {
+    fn serialized_size(&self) -> usize {
+        16 // simplified
+    }
+
+    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        _provider: &P,
+    ) -> wrt_foundation::Result<()> {
+        writer.write_all(&self.ty.limits.min.to_le_bytes())?;
+        writer.write_all(&self.ty.limits.max.unwrap_or(0).to_le_bytes())
+    }
+}
+
+impl wrt_foundation::traits::FromBytes for Memory {
+    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        _provider: &P,
+    ) -> wrt_foundation::Result<Self> {
+        let mut min_bytes = [0u8; 4];
+        reader.read_exact(&mut min_bytes)?;
+        let min = u32::from_le_bytes(min_bytes);
+        
+        let mut max_bytes = [0u8; 4];
+        reader.read_exact(&mut max_bytes)?;
+        let max = u32::from_le_bytes(max_bytes);
+        
+        use wrt_foundation::types::{Limits, MemoryType};
+        let memory_type = MemoryType {
+            limits: Limits { min, max: if max == 0 { None } else { Some(max) } },
+        };
+        Self::new(memory_type)
+    }
+}
+
 impl Memory {
     /// Creates a new memory instance from a type
     ///
@@ -342,7 +436,7 @@ impl Memory {
         #[cfg(feature = "std")]
         let data_handler = {
             use wrt_foundation::safe_memory::StdProvider;
-            let initial_size = initial_pages as usize * PAGE_SIZE;
+            let initial_size = wasm_offset_to_usize(initial_pages)? * PAGE_SIZE;
             let provider = StdProvider::with_capacity(initial_size);
             SafeMemoryHandler::new(provider, verification_level)
         };
@@ -366,7 +460,7 @@ impl Memory {
         // PalMemoryProvider's underlying PageAllocator's `allocate`
         // should provide zeroed memory for the initial pages.
 
-        let current_size_bytes = initial_pages as usize * PAGE_SIZE;
+        let current_size_bytes = wasm_offset_to_usize(initial_pages)? * PAGE_SIZE;
 
         Ok(Self {
             ty,
@@ -445,7 +539,8 @@ impl Memory {
     /// The current size in bytes
     #[must_use]
     pub fn size_in_bytes(&self) -> usize {
-        self.current_pages.load(Ordering::Relaxed) as usize * PAGE_SIZE
+        let pages = self.current_pages.load(Ordering::Relaxed);
+        wasm_offset_to_usize(pages).unwrap_or(0) * PAGE_SIZE
     }
 
     /// A reference to the memory data as a `Vec<u8>`
@@ -463,7 +558,7 @@ impl Memory {
         // memory integrity is verified during the operation
         let data_size = self.data.size();
         if data_size == 0 {
-            return Ok(Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap());
+            return Ok(Vec::new());
         }
 
         // Get a safe slice over the entire memory
@@ -479,7 +574,7 @@ impl Memory {
         #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
         let result = {
             // For no_std, return an empty vec since we can't allocate
-            let mut bounded_vec = wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap();
+            let mut bounded_vec = wrt_foundation::bounded::BoundedVec::new();
             for &byte in memory_data.iter().take(bounded_vec.capacity()) {
                 if bounded_vec.try_push(byte).is_err() {
                     break;
@@ -681,7 +776,7 @@ impl Memory {
 
         // Calculate the new size in bytes
         let old_size = self.data.size();
-        let new_size = new_page_count as usize * PAGE_SIZE;
+        let new_size = wasm_offset_to_usize(new_page_count)? * PAGE_SIZE;
 
         // Resize the underlying data
         self.data.resize(new_size, 0);
@@ -716,7 +811,7 @@ impl Memory {
         }
 
         // Calculate total size and verify bounds
-        let offset_usize = offset as usize;
+        let offset_usize = wasm_offset_to_usize(offset)?;
         let size = buffer.len();
 
         // Track this access for profiling
@@ -752,7 +847,7 @@ impl Memory {
         }
 
         // Calculate total size and verify bounds
-        let offset_usize = offset as usize;
+        let offset_usize = wasm_offset_to_usize(offset)?;
         let size = buffer.len();
         let end = offset_usize.checked_add(size).ok_or_else(|| {
             Error::new(
@@ -805,11 +900,11 @@ impl Memory {
             ));
         }
 
-        self.increment_access_count(offset as usize, 1);
+        let offset_usize = wasm_offset_to_usize(offset)?;
+        self.increment_access_count(offset_usize, 1);
 
         // Use SafeMemoryHandler to get a safe slice
-        let offset = offset as usize;
-        let slice = self.data.get_slice(offset, 1)?;
+        let slice = self.data.get_slice(offset_usize, 1)?;
         let data = slice.data()?;
         Ok(data[0])
     }
@@ -837,7 +932,8 @@ impl Memory {
             ));
         }
 
-        self.increment_access_count(offset as usize, 1);
+        let offset_usize = wasm_offset_to_usize(offset)?;
+        self.increment_access_count(offset_usize, 1);
 
         // This is a simpler case - just write a single byte
         // using the write method which handles all the safety checks
@@ -864,7 +960,10 @@ impl Memory {
 
         // Get the last byte that would be accessed
         let end_offset = match offset.checked_add(len) {
-            Some(end) => end as usize,
+            Some(end) => match wasm_offset_to_usize(end) {
+                Ok(end_usize) => end_usize,
+                Err(_) => return false, // Conversion error
+            },
             None => return false, // Overflow
         };
 
@@ -882,8 +981,8 @@ impl Memory {
             ));
         }
 
-        let addr = addr as usize;
-        let access_size = access_size as usize;
+        let addr = wasm_offset_to_usize(addr)?;
+        let access_size = wasm_offset_to_usize(access_size)?;
         if addr + access_size > self.data.size() {
             return Err(Error::new(
                 ErrorCategory::Validation,
@@ -950,10 +1049,11 @@ impl Memory {
             ));
         }
 
-        self.increment_access_count(addr as usize, len);
+        let addr_usize = wasm_offset_to_usize(addr)?;
+        self.increment_access_count(addr_usize, len);
 
         // Get the slice first
-        let mut slice = self.data.get_slice(addr as usize, len)?;
+        let mut slice = self.data.get_slice(addr_usize, len)?;
 
         // Explicitly set the verification level to match the memory's level
         // This ensures consistent verification behavior
@@ -1027,7 +1127,8 @@ impl Memory {
     /// Verify data integrity
     pub fn verify_integrity(&self) -> Result<()> {
         // Get the expected size
-        let expected_size = self.current_pages.load(Ordering::Relaxed) as usize * PAGE_SIZE;
+        let pages = self.current_pages.load(Ordering::Relaxed);
+        let expected_size = wasm_offset_to_usize(pages).unwrap_or(0) * PAGE_SIZE;
 
         // Verify memory size is consistent
         if self.data.size() != expected_size {
@@ -1190,7 +1291,7 @@ impl Memory {
             let fill_buffer = vec![val; chunk_size];
             #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
             let fill_buffer = {
-                let mut buffer = wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<4096>::default()).unwrap();
+                let mut buffer = wrt_foundation::bounded::BoundedVec::new();
                 for _ in 0..chunk_size {
                     buffer.push(val).unwrap();
                 }
@@ -1903,7 +2004,7 @@ impl Memory {
             ));
         }
 
-        let new_byte_size = new_size_pages as usize * PAGE_SIZE;
+        let new_byte_size = wasm_offset_to_usize(new_size_pages)? * PAGE_SIZE;
         // Placeholder: Assumes SafeMemoryHandler has a method like `resize`
         // that takes &self and handles locking internally.
         self.data.resize(new_byte_size, 0)?;
@@ -2043,12 +2144,12 @@ impl MemoryOperations for Memory {
     fn read_bytes(&self, offset: u32, len: u32) -> Result<Vec<u8>> {
         // Handle zero-length reads
         if len == 0 {
-            return Ok(Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap());
+            return Ok(Vec::new());
         }
 
         // Convert to usize and check for overflow
-        let offset_usize = offset as usize;
-        let len_usize = len as usize;
+        let offset_usize = wasm_offset_to_usize(offset)?;
+        let len_usize = wasm_offset_to_usize(len)?;
         
         // Verify bounds
         let end = offset_usize.checked_add(len_usize).ok_or_else(|| {
@@ -2075,7 +2176,7 @@ impl MemoryOperations for Memory {
         let mut buffer = vec![0u8; len_usize];
         #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
         let mut buffer = {
-            let mut buf = wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<4096>::default()).unwrap();
+            let mut buf = wrt_foundation::bounded::BoundedVec::new();
             for _ in 0..len_usize {
                 buf.push(0u8).unwrap();
             }
@@ -2094,8 +2195,8 @@ impl MemoryOperations for Memory {
         }
 
         // Convert to usize and check for overflow
-        let offset_usize = offset as usize;
-        let len_usize = len as usize;
+        let offset_usize = wasm_offset_to_usize(offset)?;
+        let len_usize = wasm_offset_to_usize(len)?;
         
         // Verify bounds
         let end = offset_usize.checked_add(len_usize).ok_or_else(|| {
@@ -2141,8 +2242,8 @@ impl MemoryOperations for Memory {
     }
 
     fn size_in_bytes(&self) -> Result<usize> {
-        // Delegate to the existing method (but wrap in Result)
-        Ok(self.size_in_bytes())
+        // Delegate to the existing method
+        Ok(Memory::size_in_bytes(self))
     }
 
     fn grow(&mut self, bytes: usize) -> Result<()> {
@@ -2156,7 +2257,9 @@ impl MemoryOperations for Memory {
 
     fn fill(&mut self, offset: u32, value: u8, size: u32) -> Result<()> {
         // Delegate to the existing fill method
-        self.fill(offset as usize, value, size as usize)
+        let offset_usize = wasm_offset_to_usize(offset)?;
+        let size_usize = wasm_offset_to_usize(size)?;
+        self.fill(offset_usize, value, size_usize)
     }
 
     fn copy(&mut self, dest: u32, src: u32, size: u32) -> Result<()> {
@@ -2165,9 +2268,9 @@ impl MemoryOperations for Memory {
             return Ok(());
         }
         
-        let dest_usize = dest as usize;
-        let src_usize = src as usize;
-        let size_usize = size as usize;
+        let dest_usize = wasm_offset_to_usize(dest)?;
+        let src_usize = wasm_offset_to_usize(src)?;
+        let size_usize = wasm_offset_to_usize(size)?;
         
         // Bounds checks
         let src_end = src_usize.checked_add(size_usize).ok_or_else(|| {

@@ -3,6 +3,9 @@
 //! This module provides types and utilities for tracking execution statistics
 //! and managing WebAssembly execution.
 
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+extern crate alloc;
+
 use crate::prelude::*;
 
 // Import format! macro for string formatting

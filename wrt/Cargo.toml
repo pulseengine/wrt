@@ -11,7 +11,6 @@ categories = ["wasm", "no-std", "embedded", "web-programming"]
 
 [dependencies]
 # Core allowed/necessary dependencies
-log = { version = "0.4", optional = true }
 alloc = { version = "1.0.0", optional = true, package = "rustc-std-workspace-alloc" }
 # Error handling
 wrt-error = { workspace = true }
@@ -39,10 +38,6 @@ wrt-logging = { workspace = true }
 wrt-platform = { workspace = true }
 # Math operations
 wrt-math = { workspace = true }
-# Serialization support (optional)
-serde = { version = "1.0", features = ["derive"], optional = true }
-serde_json = { version = "1.0", optional = true }
-bincode = { version = "2.0", optional = true }
 
 [lib]
 name = "wrt"
@@ -60,9 +55,6 @@ anyhow = { workspace = true }
 hex = "0.4"
 rayon = "1.5"
 walkdir = "2.4"
-# Add serialization crates for potential test usage
-serde = { version = "1.0", features = ["derive"] }
-# serde_json and bincode moved to [dependencies]
 
 [[bench]]
 name = "engine_benchmarks"
@@ -108,10 +100,10 @@ pedantic = "warn"
 debug_assert_with_mut_call = "warn"
 
 [features]
-# Core features
-default = []
+# Core features - default to no_std
+default = ["no_std"]
 # Minimal feature set
-minimal = ["dep:log", "wrt-decoder/no_std"]
+minimal = ["wrt-decoder/no_std"]
 # Full std feature
 std = [
     "wrt-error/std",
@@ -127,24 +119,6 @@ std = [
     "wrt-instructions/std",
     "wrt-intercept/std",
     "wrt-platform/std",
-    "log/std",
-]
-# alloc feature for heap allocation
-alloc = [
-    "wrt-error/alloc",
-    "wrt-runtime/alloc",
-    "wrt-host/alloc",
-    "wrt-logging/alloc",
-    "wrt-foundation/alloc",
-    "wrt-sync/alloc",
-    "wrt-format/alloc",
-    "wrt-decoder/alloc",
-    "wrt-math/alloc",
-    "wrt-component/alloc",
-    "wrt-instructions/alloc",
-    "wrt-intercept/alloc",
-    "wrt-platform/alloc",
-    "dep:alloc",
 ]
 # no_std support
 no_std = ["wrt-format/no_std", 
@@ -174,14 +148,12 @@ safety = ["wrt-foundation/safety",
           "wrt-intercept/safety",
           "wrt-host/safety",
           "wrt-component/safety",
-          "alloc"]
+          ]
 # Platform and Helper Mode Features
-helper-mode = ["wrt-platform/helper-mode", "alloc"]
-platform-macos = ["wrt-platform/platform-macos", "alloc"]
+helper-mode = ["wrt-platform/helper-mode"]
+platform-macos = ["wrt-platform/platform-macos"]
 # Platform feature enables SIMD operations
-platform = ["wrt-math/platform", "alloc"]
-# Serialization support
-serialization = ["dep:serde", "dep:serde_json", "dep:bincode"]
+platform = ["wrt-math/platform"]
 # Proposal features (mostly placeholders/unused for now)
 relaxed_simd = []
 gc = []

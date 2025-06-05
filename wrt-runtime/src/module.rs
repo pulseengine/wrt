@@ -3,6 +3,9 @@
 // This module provides the core runtime implementation of WebAssembly modules
 // used by the runtime execution engine.
 
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+extern crate alloc;
+
 use wrt_foundation::{
     types::{
         CustomSection as WrtCustomSection, DataMode as WrtDataMode,
@@ -28,9 +31,10 @@ pub struct WrtExpr {
 }
 
 /// Represents a WebAssembly export kind
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum ExportKind {
     /// Function export
+    #[default]
     Function,
     /// Table export
     Table,
@@ -41,7 +45,7 @@ pub enum ExportKind {
 }
 
 /// Represents an export in a WebAssembly module
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Export {
     /// Export name
     pub name: wrt_foundation::bounded::BoundedString<128, wrt_foundation::safe_memory::NoStdProvider<1024>>,
@@ -55,6 +59,55 @@ impl Export {
     /// Creates a new export
     pub fn new(name: String, kind: ExportKind, index: u32) -> Self {
         Self { name, kind, index }
+    }
+}
+
+impl wrt_foundation::traits::Checksummable for Export {
+    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
+        self.name.update_checksum(checksum);
+        checksum.update_slice(&(self.kind.clone() as u8).to_le_bytes());
+        checksum.update_slice(&self.index.to_le_bytes());
+    }
+}
+
+impl wrt_foundation::traits::ToBytes for Export {
+    fn serialized_size(&self) -> usize {
+        self.name.serialized_size() + 1 + 4 // name + kind (1 byte) + index (4 bytes)
+    }
+
+    fn to_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut wrt_foundation::traits::WriteStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::Result<()> {
+        self.name.to_bytes_with_provider(writer, provider)?;
+        writer.write_all(&(self.kind as u8).to_le_bytes())?;
+        writer.write_all(&self.index.to_le_bytes())
+    }
+}
+
+impl wrt_foundation::traits::FromBytes for Export {
+    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        reader: &mut wrt_foundation::traits::ReadStream<'a>,
+        provider: &P,
+    ) -> wrt_foundation::Result<Self> {
+        let name = wrt_foundation::bounded::BoundedString::from_bytes_with_provider(reader, provider)?;
+        
+        let mut kind_bytes = [0u8; 1];
+        reader.read_exact(&mut kind_bytes)?;
+        let kind = match kind_bytes[0] {
+            0 => ExportKind::Function,
+            1 => ExportKind::Table,
+            2 => ExportKind::Memory,
+            3 => ExportKind::Global,
+            _ => ExportKind::Function, // Default fallback
+        };
+        
+        let mut index_bytes = [0u8; 4];
+        reader.read_exact(&mut index_bytes)?;
+        let index = u32::from_le_bytes(index_bytes);
+        
+        Ok(Self { name, kind, index })
     }
 }
 
@@ -146,7 +199,7 @@ impl Default for Function {
     fn default() -> Self {
         Self {
             type_idx: 0,
-            locals: wrt_foundation::bounded::BoundedVec::new_with_provider(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap(),
+            locals: wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap(),
             body: WrtExpr::default(),
         }
     }
@@ -176,7 +229,7 @@ impl wrt_foundation::traits::ToBytes for Function {
         writer: &mut wrt_foundation::traits::WriteStream<'a>,
         _provider: &P,
     ) -> wrt_foundation::Result<()> {
-        writer.write_bytes(&self.type_idx.to_le_bytes())
+        writer.write_all(&self.type_idx.to_le_bytes())
     }
 }
 
@@ -186,11 +239,11 @@ impl wrt_foundation::traits::FromBytes for Function {
         _provider: &P,
     ) -> wrt_foundation::Result<Self> {
         let mut bytes = [0u8; 4];
-        reader.read_bytes(&mut bytes)?;
+        reader.read_exact(&mut bytes)?;
         let type_idx = u32::from_le_bytes(bytes);
         Ok(Self {
             type_idx,
-            locals: wrt_foundation::bounded::BoundedVec::new_with_provider(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap(),
+            locals: wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap(),
             body: WrtExpr::default(),
         })
     }
@@ -238,8 +291,8 @@ impl wrt_foundation::traits::ToBytes for Element {
         writer: &mut wrt_foundation::traits::WriteStream<'a>,
         _provider: &P,
     ) -> wrt_foundation::Result<()> {
-        writer.write_bytes(&(self.mode as u8).to_le_bytes())?;
-        writer.write_bytes(&self.table_idx.unwrap_or(0).to_le_bytes())
+        writer.write_all(&(self.mode as u8).to_le_bytes())?;
+        writer.write_all(&self.table_idx.unwrap_or(0).to_le_bytes())
     }
 }
 
@@ -249,7 +302,7 @@ impl wrt_foundation::traits::FromBytes for Element {
         _provider: &P,
     ) -> wrt_foundation::Result<Self> {
         let mut bytes = [0u8; 1];
-        reader.read_bytes(&mut bytes)?;
+        reader.read_exact(&mut bytes)?;
         let mode = match bytes[0] {
             0 => WrtElementMode::Active,
             1 => WrtElementMode::Passive,
@@ -257,7 +310,7 @@ impl wrt_foundation::traits::FromBytes for Element {
         };
         
         let mut idx_bytes = [0u8; 4];
-        reader.read_bytes(&mut idx_bytes)?;
+        reader.read_exact(&mut idx_bytes)?;
         let table_idx = Some(u32::from_le_bytes(idx_bytes));
         
         Ok(Self {
@@ -265,7 +318,7 @@ impl wrt_foundation::traits::FromBytes for Element {
             table_idx,
             offset_expr: None,
             element_type: WrtRefType::FuncRef,
-            items: wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap(),
+            items: wrt_foundation::bounded::BoundedVec::new(),
         })
     }
 }
@@ -299,9 +352,9 @@ impl wrt_foundation::traits::ToBytes for Data {
         writer: &mut wrt_foundation::traits::WriteStream<'a>,
         _provider: &P,
     ) -> wrt_foundation::Result<()> {
-        writer.write_bytes(&(self.mode as u8).to_le_bytes())?;
-        writer.write_bytes(&self.memory_idx.unwrap_or(0).to_le_bytes())?;
-        writer.write_bytes(&(self.init.len() as u32).to_le_bytes())
+        writer.write_all(&(self.mode as u8).to_le_bytes())?;
+        writer.write_all(&self.memory_idx.unwrap_or(0).to_le_bytes())?;
+        writer.write_all(&(self.init.len() as u32).to_le_bytes())
     }
 }
 
@@ -311,24 +364,24 @@ impl wrt_foundation::traits::FromBytes for Data {
         _provider: &P,
     ) -> wrt_foundation::Result<Self> {
         let mut bytes = [0u8; 1];
-        reader.read_bytes(&mut bytes)?;
+        reader.read_exact(&mut bytes)?;
         let mode = match bytes[0] {
             0 => WrtDataMode::Active,
             _ => WrtDataMode::Passive,
         };
         
         let mut idx_bytes = [0u8; 4];
-        reader.read_bytes(&mut idx_bytes)?;
+        reader.read_exact(&mut idx_bytes)?;
         let memory_idx = Some(u32::from_le_bytes(idx_bytes));
         
-        reader.read_bytes(&mut idx_bytes)?;
+        reader.read_exact(&mut idx_bytes)?;
         let _len = u32::from_le_bytes(idx_bytes);
         
         Ok(Self {
             mode,
             memory_idx,
             offset_expr: None,
-            init: wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap(),
+            init: wrt_foundation::bounded::BoundedVec::new(),
         })
     }
 }
@@ -377,14 +430,14 @@ impl Module {
     /// Creates a new empty module
     pub fn new() -> Result<Self> {
         Ok(Self {
-            types: Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap(),
+            types: Vec::new(),
             imports: HashMap::new(),
-            functions: Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap(),
-            tables: Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap(),
-            memories: Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap(),
-            globals: Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap(),
-            elements: Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap(),
-            data: Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap(),
+            functions: Vec::new(),
+            tables: Vec::new(),
+            memories: Vec::new(),
+            globals: Vec::new(),
+            elements: Vec::new(),
+            data: Vec::new(),
             start: None,
             custom_sections: HashMap::new(),
             exports: HashMap::new(),
@@ -526,7 +579,7 @@ impl Module {
             #[cfg(any(feature = "std", feature = "alloc"))]
             let items_resolved = vec![];
             #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
-            let items_resolved = wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap();
+            let items_resolved = wrt_foundation::bounded::BoundedVec::new();
             runtime_module.elements.push(crate::module::Element {
                 mode: element_def.mode.clone(),
                 table_idx: element_def.table_idx,
@@ -766,7 +819,7 @@ impl Module {
             ))));
         }
 
-        let function = Function { type_idx, locals: Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap(), body: WrtExpr::default() };
+        let function = Function { type_idx, locals: Vec::new(), body: WrtExpr::default() };
 
         self.functions.push(function);
         Ok(())
@@ -857,11 +910,11 @@ impl Module {
         let items = match &element.init {
             wrt_format::module::ElementInit::Passive => {
                 // For passive elements, create empty items list
-                wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default())?
+                wrt_foundation::bounded::BoundedVec::new()?
             }
             wrt_format::module::ElementInit::Active { func_indices, .. } => {
                 // For active elements, copy the function indices
-                let mut bounded_items = wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default())?;
+                let mut bounded_items = wrt_foundation::bounded::BoundedVec::new()?;
                 for &idx in func_indices {
                     bounded_items.push(idx)?;
                 }
@@ -869,7 +922,7 @@ impl Module {
             }
             wrt_format::module::ElementInit::Declarative => {
                 // For declarative elements, create empty items list
-                wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default())?
+                wrt_foundation::bounded::BoundedVec::new()?
             }
         };
         
@@ -913,7 +966,7 @@ impl Module {
     /// Add a data segment to the module
     pub fn add_data(&mut self, data: wrt_format::module::Data) -> Result<()> {
         // Convert format data to runtime data
-        let mut init_4096 = wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default())?;
+        let mut init_4096 = wrt_foundation::bounded::BoundedVec::new()?;
         
         // Copy data from the format's init (1024 capacity) to runtime's init (4096 capacity)
         for byte in data.init.iter() {
@@ -1006,7 +1059,7 @@ impl Module {
         #[cfg(any(feature = "std", feature = "alloc"))]
         let items_resolved = vec![];
         #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
-        let items_resolved = wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap();
+        let items_resolved = wrt_foundation::bounded::BoundedVec::new();
 
         self.elements.push(crate::module::Element {
             mode: element_segment.mode,
@@ -1063,7 +1116,7 @@ pub enum ImportedItem {
         /// The function name
         name: wrt_foundation::bounded::BoundedString<128, wrt_foundation::safe_memory::NoStdProvider<1024>>,
         /// The function type
-        ty: FuncType<wrt_foundation::safe_memory::NoStdProvider<1024>>,
+        ty: WrtFuncType<wrt_foundation::safe_memory::NoStdProvider<1024>>,
     },
     /// An imported table
     Table {
@@ -1108,24 +1161,218 @@ use std::sync::Arc; // For Arc<Table/Memory/Global>
 use wrt_error::{codes, Error, ErrorCategory, Result};
 use wrt_foundation::component::ExternType; // For error handling
 
-// Trait implementations for Arc<T> wrappers needed by bounded collections
+// Newtype wrappers to solve orphan rules issue
+// These allow us to implement external traits on types containing Arc<T>
 
-impl Default for Arc<Table> {
-    fn default() -> Self {
+/// Wrapper for Arc<Table> to enable trait implementations
+#[derive(Debug, Clone)]
+pub struct TableWrapper(pub Arc<Table>);
+
+impl TableWrapper {
+    /// Create a new table wrapper
+    pub fn new(table: Table) -> Self {
+        Self(Arc::new(table))
+    }
+    
+    /// Get a reference to the inner table
+    pub fn inner(&self) -> &Arc<Table> {
+        &self.0
+    }
+    
+    /// Unwrap to get the Arc<Table>
+    pub fn into_inner(self) -> Arc<Table> {
+        self.0
+    }
+}
+
+/// Wrapper for Arc<Memory> to enable trait implementations  
+#[derive(Debug, Clone)]
+pub struct MemoryWrapper(pub Arc<Memory>);
+
+impl MemoryWrapper {
+    /// Create a new memory wrapper
+    pub fn new(memory: Memory) -> Self {
+        Self(Arc::new(memory))
+    }
+    
+    /// Get a reference to the inner memory
+    pub fn inner(&self) -> &Arc<Memory> {
+        &self.0
+    }
+    
+    /// Unwrap to get the Arc<Memory>
+    pub fn into_inner(self) -> Arc<Memory> {
+        self.0
+    }
+}
+
+/// Wrapper for Arc<Global> to enable trait implementations
+#[derive(Debug, Clone)]  
+pub struct GlobalWrapper(pub Arc<Global>);
+
+impl GlobalWrapper {
+    /// Create a new global wrapper
+    pub fn new(global: Global) -> Self {
+        Self(Arc::new(global))
+    }
+    
+    /// Get a reference to the inner global
+    pub fn inner(&self) -> &Arc<Global> {
+        &self.0
+    }
+    
+    /// Unwrap to get the Arc<Global>
+    pub fn into_inner(self) -> Arc<Global> {
+        self.0
+    }
+}
+
+// Implement foundation traits for wrapper types
+use wrt_foundation::traits::{Checksummable, ToBytes, FromBytes, ReadStream, WriteStream};
+use wrt_foundation::verification::Checksum;
+
+// TableWrapper trait implementations
+impl Checksummable for TableWrapper {
+    fn update_checksum(&self, checksum: &mut Checksum) {
+        // Use table size and element type for checksum
+        checksum.update_slice(&self.0.size().to_le_bytes());
+        checksum.update_slice(&(self.0.ty.element_type as u8).to_le_bytes());
+    }
+}
+
+impl ToBytes for TableWrapper {
+    fn serialized_size(&self) -> usize {
+        12 // table type (4) + size (4) + limits (4)
+    }
+    
+    fn to_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut WriteStream,
+        _provider: &P,
+    ) -> wrt_foundation::Result<()> {
+        writer.write_all(&self.0.size().to_le_bytes())?;
+        writer.write_all(&(self.0.ty.element_type as u8).to_le_bytes())?;
+        writer.write_all(&self.0.ty.limits.min.to_le_bytes())?;
+        Ok(())
+    }
+}
+
+impl FromBytes for TableWrapper {
+    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        _provider: &P,
+    ) -> wrt_foundation::Result<Self> {
+        let mut bytes = [0u8; 12];
+        reader.read_exact(&mut bytes)?;
+        
+        // Create a default table (simplified implementation)
         use wrt_foundation::types::{Limits, TableType, ValueType};
         let table_type = TableType {
             element_type: ValueType::FuncRef,
             limits: Limits { min: 0, max: Some(1) },
         };
-        Arc::new(Table::new(table_type).unwrap())
+        
+        let table = Table::new(table_type).map_err(|_| {
+            wrt_foundation::Error::new("Failed to create table from bytes")
+        })?;
+        
+        Ok(TableWrapper::new(table))
     }
 }
 
+// MemoryWrapper trait implementations  
+impl Checksummable for MemoryWrapper {
+    fn update_checksum(&self, checksum: &mut Checksum) {
+        // Use memory size for checksum
+        checksum.update_slice(&self.0.size().to_le_bytes());
+        checksum.update_slice(&self.0.size_in_bytes().to_le_bytes());
+    }
+}
 
-impl wrt_foundation::traits::Checksummable for Arc<Table> {
-    fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        // Use table ID or size for checksum
-        checksum.update_slice(&0u32.to_le_bytes()); // simplified
+impl ToBytes for MemoryWrapper {
+    fn serialized_size(&self) -> usize {
+        12 // size (4) + limits min (4) + limits max (4)
+    }
+    
+    fn to_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut WriteStream,
+        _provider: &P,
+    ) -> wrt_foundation::Result<()> {
+        writer.write_all(&self.0.size().to_le_bytes())?;
+        writer.write_all(&self.0.ty.limits.min.to_le_bytes())?;
+        let max = self.0.ty.limits.max.unwrap_or(u32::MAX);
+        writer.write_all(&max.to_le_bytes())?;
+        Ok(())
+    }
+}
+
+impl FromBytes for MemoryWrapper {
+    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        _provider: &P,
+    ) -> wrt_foundation::Result<Self> {
+        let mut bytes = [0u8; 12];
+        reader.read_exact(&mut bytes)?;
+        
+        // Create a default memory (simplified implementation)
+        use wrt_foundation::types::{Limits, MemoryType};
+        let memory_type = MemoryType {
+            limits: Limits { min: 1, max: Some(1) },
+        };
+        
+        let memory = Memory::new(memory_type).map_err(|_| {
+            wrt_foundation::Error::new("Failed to create memory from bytes")
+        })?;
+        
+        Ok(MemoryWrapper::new(memory))
+    }
+}
+
+// GlobalWrapper trait implementations
+impl Checksummable for GlobalWrapper {
+    fn update_checksum(&self, checksum: &mut Checksum) {
+        // Use global value type for checksum
+        checksum.update_slice(&(self.0.value_type() as u8).to_le_bytes());
+        checksum.update_slice(&(self.0.is_mutable() as u8).to_le_bytes());
+    }
+}
+
+impl ToBytes for GlobalWrapper {
+    fn serialized_size(&self) -> usize {
+        12 // value type (4) + mutable flag (4) + value (4)
+    }
+    
+    fn to_bytes_with_provider<P: wrt_foundation::MemoryProvider>(
+        &self,
+        writer: &mut WriteStream,
+        _provider: &P,
+    ) -> wrt_foundation::Result<()> {
+        writer.write_all(&(self.0.value_type() as u8).to_le_bytes())?;
+        writer.write_all(&(self.0.is_mutable() as u8).to_le_bytes())?;
+        // Simplified value serialization
+        writer.write_all(&0u32.to_le_bytes())?;
+        Ok(())
+    }
+}
+
+impl FromBytes for GlobalWrapper {
+    fn from_bytes_with_provider<'a, P: wrt_foundation::MemoryProvider>(
+        reader: &mut ReadStream<'a>,
+        _provider: &P,
+    ) -> wrt_foundation::Result<Self> {
+        let mut bytes = [0u8; 12];
+        reader.read_exact(&mut bytes)?;
+        
+        // Create a default global (simplified implementation)
+        use wrt_foundation::types::ValueType;
+        use wrt_foundation::values::Value;
+        
+        let global = Global::new(ValueType::I32, false, Value::I32(0)).map_err(|_| {
+            wrt_foundation::Error::new("Failed to create global from bytes") 
+        })?;
+        
+        Ok(GlobalWrapper::new(global))
     }
 }
 
@@ -1139,7 +1386,7 @@ impl wrt_foundation::traits::ToBytes for Arc<Table> {
         writer: &mut wrt_foundation::traits::WriteStream<'a>,
         _provider: &P,
     ) -> wrt_foundation::Result<()> {
-        writer.write_bytes(&0u32.to_le_bytes()) // simplified
+        writer.write_all(&0u32.to_le_bytes()) // simplified
     }
 }
 
@@ -1149,22 +1396,16 @@ impl wrt_foundation::traits::FromBytes for Arc<Table> {
         _provider: &P,
     ) -> wrt_foundation::Result<Self> {
         let mut bytes = [0u8; 4];
-        reader.read_bytes(&mut bytes)?;
+        reader.read_exact(&mut bytes)?;
         Ok(Self::default()) // simplified
     }
 }
 
 // Trait implementations for Arc<Memory>
 
-impl Default for Arc<Memory> {
-    fn default() -> Self {
-        use wrt_foundation::types::{Limits, MemoryType};
-        let memory_type = MemoryType {
-            limits: Limits { min: 1, max: Some(1) },
-        };
-        Arc::new(Memory::new(memory_type).unwrap())
-    }
-}
+// Default for Arc<Memory> removed due to orphan rules - use explicit creation instead
+/*
+*/
 
 
 impl wrt_foundation::traits::Checksummable for Arc<Memory> {
@@ -1183,7 +1424,7 @@ impl wrt_foundation::traits::ToBytes for Arc<Memory> {
         writer: &mut wrt_foundation::traits::WriteStream<'a>,
         _provider: &P,
     ) -> wrt_foundation::Result<()> {
-        writer.write_bytes(&0u32.to_le_bytes()) // simplified
+        writer.write_all(&0u32.to_le_bytes()) // simplified
     }
 }
 
@@ -1193,24 +1434,14 @@ impl wrt_foundation::traits::FromBytes for Arc<Memory> {
         _provider: &P,
     ) -> wrt_foundation::Result<Self> {
         let mut bytes = [0u8; 4];
-        reader.read_bytes(&mut bytes)?;
+        reader.read_exact(&mut bytes)?;
         Ok(Self::default()) // simplified
     }
 }
 
 // Trait implementations for Arc<Global>
 
-impl Default for Arc<Global> {
-    fn default() -> Self {
-        use wrt_foundation::types::{GlobalType, ValueType};
-        use wrt_foundation::values::Value;
-        let global_type = GlobalType {
-            value_type: ValueType::I32,
-            mutable: false,
-        };
-        Arc::new(Global::new(global_type.value_type, global_type.mutable, Value::I32(0)).unwrap())
-    }
-}
+// Default for Arc<Global> removed due to orphan rules - use explicit creation instead
 
 
 impl wrt_foundation::traits::Checksummable for Arc<Global> {
@@ -1229,7 +1460,7 @@ impl wrt_foundation::traits::ToBytes for Arc<Global> {
         writer: &mut wrt_foundation::traits::WriteStream<'a>,
         _provider: &P,
     ) -> wrt_foundation::Result<()> {
-        writer.write_bytes(&0u32.to_le_bytes()) // simplified
+        writer.write_all(&0u32.to_le_bytes()) // simplified
     }
 }
 
@@ -1239,10 +1470,11 @@ impl wrt_foundation::traits::FromBytes for Arc<Global> {
         _provider: &P,
     ) -> wrt_foundation::Result<Self> {
         let mut bytes = [0u8; 4];
-        reader.read_bytes(&mut bytes)?;
+        reader.read_exact(&mut bytes)?;
         Ok(Self::default()) // simplified
     }
 }
+*/
 
 // Ensure local `crate::module::Import` struct is defined
 // Ensure local `crate::module::Export` struct is defined

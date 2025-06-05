@@ -1,6 +1,9 @@
 // Stackless frame implementation without unsafe code
 //! Stackless function activation frame
 
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+extern crate alloc;
+
 use core::fmt::Debug;
 #[cfg(feature = "alloc")]
 use alloc::vec;
@@ -261,6 +264,7 @@ impl StacklessFrame {
 
         if locals.len() > max_locals {
             return Err(Error::new(
+                ErrorCategory::Validation,
                 codes::INVALID_STATE,
                 "Too many locals for configured max_locals",
             ));
@@ -284,6 +288,7 @@ impl StacklessFrame {
     fn function_body(&self) -> Result<&crate::module::Function> {
         self.module_instance.module().functions.get(self.func_idx as usize).ok_or_else(|| {
             Error::new(
+                ErrorCategory::Runtime,
                 codes::FUNCTION_NOT_FOUND,
                 format!("Function body not found for index {}", self.func_idx),
             )
@@ -650,7 +655,7 @@ impl FrameBehavior for StacklessFrame {
 
             // Local variable instructions
             Instruction::LocalGet(local_idx) => {
-                let value = self.locals.get(*local_idx as usize).cloned().ok_or_else(|| {
+                let value = self.locals.get(local_idx as usize).cloned().ok_or_else(|| {
                     Error::new(
                         codes::INVALID_VALUE,
                         format!("Invalid local index {} for get", local_idx),
@@ -671,7 +676,7 @@ impl FrameBehavior for StacklessFrame {
                         format!("Stack underflow on local.set: {}", e),
                     )
                 })?;
-                self.locals.set(*local_idx as usize, value).map_err(|e| {
+                self.locals.set(local_idx as usize, value).map_err(|e| {
                     Error::new(
                         codes::INVALID_VALUE,
                         format!("Invalid local index {} for set: {}", local_idx, e),
@@ -691,7 +696,7 @@ impl FrameBehavior for StacklessFrame {
                         )
                     })?
                     .clone();
-                self.locals.set(*local_idx as usize, value).map_err(|e| {
+                self.locals.set(local_idx as usize, value).map_err(|e| {
                     Error::new(
                         codes::INVALID_VALUE,
                         format!("Invalid local index {} for tee: {}", local_idx, e),
@@ -4867,7 +4872,7 @@ impl StacklessFrame {
         let mut temp_buffer = vec![0u8; n];
         #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
         let mut temp_buffer = {
-            let mut buf = wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<4096>::default()).unwrap();
+            let mut buf = wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap();
             for _ in 0..n.min(4096) {
                 buf.push(0u8).unwrap();
             }

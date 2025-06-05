@@ -14,6 +14,9 @@
 #![allow(clippy::unsafe_block)]
 #![allow(clippy::unsafe_derive_deserialize)]
 
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+extern crate alloc;
+
 use crate::prelude::*;
 use crate::thread_manager::{ThreadManager, ThreadId, ThreadExecutionStats};
 use wrt_error::{Error, ErrorCategory, Result, codes};

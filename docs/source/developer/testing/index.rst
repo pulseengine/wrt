@@ -10,6 +10,7 @@ Comprehensive testing strategies and requirements for WRT development.
    unit_tests
    integration_tests
    wasm_test_suite
+   wast_quick_reference
    coverage_reports
 
 Testing Strategy

@@ -51,6 +51,8 @@ pub enum ErrorCategory {
     RuntimeTrap = 13,
     /// Initialization errors
     Initialization = 14,
+    /// Not supported operation errors
+    NotSupported = 15,
 }
 
 /// Base trait for all error types - `no_std` version

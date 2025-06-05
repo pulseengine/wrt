@@ -5,6 +5,9 @@
 
 // Import Arc from appropriate source based on feature flags
 #[cfg(all(not(feature = "std"), feature = "alloc"))]
+extern crate alloc;
+
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
 use alloc::sync::Arc;
 #[cfg(feature = "std")]
 use std::sync::Arc;
@@ -46,10 +49,10 @@ pub trait ArcMemoryExt {
 
     /// Read bytes from memory (legacy method, prefer read_bytes_safe)
     #[deprecated(since = "0.2.0", note = "Use read_bytes_safe instead for enhanced memory safety")]
-    fn read_bytes(&self, offset: u32, len: u32) -> Result<Vec<u8>>;
+    fn read_exact(&self, offset: u32, len: u32) -> Result<Vec<u8>>;
 
     /// Write bytes to memory
-    fn write_bytes(&self, offset: u32, bytes: &[u8]) -> Result<()>;
+    fn write_all(&self, offset: u32, bytes: &[u8]) -> Result<()>;
 
     /// Grow memory by a number of pages
     fn grow(&self, pages: u32) -> Result<u32>;
@@ -200,7 +203,8 @@ impl ArcMemoryExt for Arc<Memory> {
 
         // Create a SafeStack from the verified slice data with appropriate verification
         // level
-        let mut safe_stack = wrt_foundation::safe_memory::SafeStack::with_capacity(len as usize);
+        let provider = wrt_foundation::safe_memory::NoStdProvider::<1024>::default();
+        let mut safe_stack = wrt_foundation::safe_memory::SafeStack::with_capacity_and_provider(len as usize, provider)?;
 
         // Set verification level to match memory's level
         let verification_level = self.as_ref().verification_level();
@@ -235,7 +239,7 @@ impl ArcMemoryExt for Arc<Memory> {
         Ok(safe_stack)
     }
 
-    fn read_bytes(&self, offset: u32, len: u32) -> Result<Vec<u8>> {
+    fn read_exact(&self, offset: u32, len: u32) -> Result<Vec<u8>> {
         // Early return for zero-length reads
         if len == 0 {
             return Ok(Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap());
@@ -254,7 +258,7 @@ impl ArcMemoryExt for Arc<Memory> {
         Ok(buffer)
     }
 
-    fn write_bytes(&self, offset: u32, bytes: &[u8]) -> Result<()> {
+    fn write_all(&self, offset: u32, bytes: &[u8]) -> Result<()> {
         // Use clone_and_mutate pattern to simplify thread-safe operations
         self.as_ref().clone_and_mutate(|mem| mem.write(offset, bytes))
     }
@@ -573,7 +577,7 @@ mod tests {
 
         // Calling write_bytes should return Ok result even though it doesn't modify
         // original
-        assert!(arc_memory.write_bytes(0, &[1, 2, 3]).is_ok());
+        assert!(arc_memory.write_all(0, &[1, 2, 3]).is_ok());
 
         // Test memory growth also returns success
         let old_size = arc_memory.grow(1)?;

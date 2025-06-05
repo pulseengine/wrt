@@ -29,12 +29,18 @@ For detailed test coverage information and quality assurance processes, see :doc
    :status: implemented
    :links: REQ_022, REQ_WASM_001
    
-   The WAST test runner tool is a specialized binary for executing WebAssembly specification tests:
+   The WAST test runner provides comprehensive WebAssembly specification compliance testing:
    
-   1. Parses and executes WAST test files
-   2. Validates interpreter behavior against the WebAssembly specification
-   3. Tracks test results for conformance reporting
-   4. Supports blacklisting of tests that are known to fail
+   1. **Complete Directive Support**: All WAST directive types (assert_return, assert_trap, assert_invalid, etc.)
+   2. **Multi-Environment Compatibility**: Support for std, no_std+alloc, and no_std environments
+   3. **Intelligent Test Categorization**: Automatic grouping by test type for optimal execution
+   4. **Integration with Test Registry**: Built on wrt-test-registry framework
+   5. **Performance Optimization**: Parallel execution for independent tests
+   6. **Comprehensive Error Handling**: Intelligent error classification and reporting
+   7. **Resource Limit Testing**: Support for assert_exhaustion and resource constraints
+   8. **Module Registry**: Multi-module linking tests with register directive support
+   
+   For detailed documentation, see :doc:`../developer/testing/wasm_test_suite`.
 
 .. impl:: Safety Testing
    :id: IMPL_SAFETY_TESTING_001

@@ -4,6 +4,9 @@
 //! WebAssembly custom sections to improve interpreter performance through
 //! better branch prediction and execution path optimization.
 
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+extern crate alloc;
+
 use crate::prelude::*;
 use wrt_error::{Error, ErrorCategory, Result, codes};
 use wrt_foundation::traits::*;
@@ -131,10 +134,10 @@ impl wrt_foundation::traits::ToBytes for BranchPrediction {
         writer: &mut wrt_foundation::traits::WriteStream<'a>,
         _provider: &P,
     ) -> wrt_foundation::Result<()> {
-        writer.write_bytes(&self.instruction_offset.to_le_bytes())?;
-        writer.write_bytes(&[self.likelihood as u8])?;
-        writer.write_bytes(&self.taken_target.unwrap_or(0).to_le_bytes())?;
-        writer.write_bytes(&self.fallthrough_target.unwrap_or(0).to_le_bytes())
+        writer.write_all(&self.instruction_offset.to_le_bytes())?;
+        writer.write_all(&[self.likelihood as u8])?;
+        writer.write_all(&self.taken_target.unwrap_or(0).to_le_bytes())?;
+        writer.write_all(&self.fallthrough_target.unwrap_or(0).to_le_bytes())
     }
 }
 
@@ -144,11 +147,11 @@ impl wrt_foundation::traits::FromBytes for BranchPrediction {
         _provider: &P,
     ) -> wrt_foundation::Result<Self> {
         let mut bytes = [0u8; 4];
-        reader.read_bytes(&mut bytes)?;
+        reader.read_exact(&mut bytes)?;
         let instruction_offset = u32::from_le_bytes(bytes);
         
         let mut likelihood_byte = [0u8; 1];
-        reader.read_bytes(&mut likelihood_byte)?;
+        reader.read_exact(&mut likelihood_byte)?;
         let likelihood = match likelihood_byte[0] {
             0 => BranchLikelihood::VeryUnlikely,
             1 => BranchLikelihood::Unlikely,
@@ -157,10 +160,10 @@ impl wrt_foundation::traits::FromBytes for BranchPrediction {
             _ => BranchLikelihood::VeryLikely,
         };
         
-        reader.read_bytes(&mut bytes)?;
+        reader.read_exact(&mut bytes)?;
         let taken_target = Some(u32::from_le_bytes(bytes));
         
-        reader.read_bytes(&mut bytes)?;
+        reader.read_exact(&mut bytes)?;
         let fallthrough_target = Some(u32::from_le_bytes(bytes));
         
         Ok(Self {
@@ -288,7 +291,7 @@ impl wrt_foundation::traits::ToBytes for FunctionBranchPredictor {
         writer: &mut wrt_foundation::traits::WriteStream<'a>,
         _provider: &P,
     ) -> wrt_foundation::Result<()> {
-        writer.write_bytes(&self.function_index.to_le_bytes())
+        writer.write_all(&self.function_index.to_le_bytes())
     }
 }
 
@@ -298,7 +301,7 @@ impl wrt_foundation::traits::FromBytes for FunctionBranchPredictor {
         _provider: &P,
     ) -> wrt_foundation::Result<Self> {
         let mut bytes = [0u8; 4];
-        reader.read_bytes(&mut bytes)?;
+        reader.read_exact(&mut bytes)?;
         let function_index = u32::from_le_bytes(bytes);
         Ok(Self {
             function_index,
