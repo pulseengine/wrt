@@ -31,9 +31,9 @@ static GLOBAL_COUNTER: WrtOnce<Counter> = WrtOnce::new();
 /// Enum representing different types of operations that can be tracked
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Type {
-    /// Memory allocation operation
+    /// Binary std/no_std choice
     MemoryAllocation,
-    /// Memory deallocation operation
+    /// Binary std/no_std choice
     MemoryDeallocation,
     /// Memory read operation
     MemoryRead,
@@ -184,9 +184,9 @@ pub struct Counter {
     memory_writes: AtomicU64,
     /// Counter for memory grow operations
     memory_grows: AtomicU64,
-    /// Counter for memory allocation operations
+    /// Binary std/no_std choice
     memory_allocations: AtomicU64,
-    /// Counter for memory deallocation operations
+    /// Binary std/no_std choice
     memory_deallocations: AtomicU64,
     /// Counter for collection push operations
     collection_pushes: AtomicU64,
@@ -456,9 +456,9 @@ pub struct Summary {
     pub memory_writes: u64,
     /// Number of memory grow operations
     pub memory_grows: u64,
-    /// Number of memory allocation operations
+    /// Binary std/no_std choice
     pub memory_allocations: u64,
-    /// Number of memory deallocation operations
+    /// Binary std/no_std choice
     pub memory_deallocations: u64,
     /// Number of collection push operations
     pub collection_pushes: u64,

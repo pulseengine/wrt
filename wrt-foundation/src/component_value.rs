@@ -26,18 +26,15 @@ use crate::{
 
 // no_std is configured at the crate level
 #[forbid(clippy::unwrap_used, clippy::expect_used)]
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-extern crate alloc; // Use alloc crate if "alloc" feature is on and "std" is off
+extern crate alloc; // Binary std/no_std choice
 
-// Imports from prelude (which handles alloc/std gating internally)
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::borrow::ToOwned;
+// Binary std/no_std choice
+#[cfg(feature = "std")]
+use std::borrow::ToOwned;
 use core::{
     fmt,
     hash::{Hash, Hasher as CoreHasher},
 };
-#[cfg(feature = "std")]
-use std::borrow::ToOwned;
 
 // Use constants from bounded.rs
 use crate::bounded::{
@@ -45,7 +42,7 @@ use crate::bounded::{
     MAX_COMPONENT_LIST_ITEMS, MAX_COMPONENT_RECORD_FIELDS, MAX_COMPONENT_TUPLE_ITEMS,
     MAX_DESERIALIZED_VALUES, MAX_WASM_STRING_LENGTH as MAX_COMPONENT_STRING_LENGTH,
 };
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 use crate::prelude::{format, vec, BTreeMap, ToString as _}; // Removed String, Vec
 
 // Define any component-value specific constants not in bounded.rs
@@ -453,9 +450,9 @@ pub enum ComponentValue<P: MemoryProvider + Default + Clone + PartialEq + Eq> {
     /// Unicode character
     Char(char),
     /// UTF-8 string
-    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(feature = "std")]
     String(crate::prelude::String),
-    #[cfg(not(any(feature = "alloc", feature = "std")))]
+    #[cfg(not(any(feature = "std")))]
     String(BoundedString<MAX_COMPONENT_STRING_LENGTH, P>),
     /// List of component values
     List(BoundedVec<ValueRef, MAX_COMPONENT_LIST_ITEMS, P>),
@@ -544,12 +541,12 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> Checksummable for Com
                 checksum.update_slice(&[12]);
                 (*v as u32).update_checksum(checksum);
             } // Checksum char as u32
-            #[cfg(any(feature = "alloc", feature = "std"))]
+            #[cfg(feature = "std")]
             ComponentValue::String(s) => {
                 checksum.update_slice(&[13]);
                 s.update_checksum(checksum);
             }
-            #[cfg(not(any(feature = "alloc", feature = "std")))]
+            #[cfg(not(any(feature = "std")))]
             ComponentValue::String(s) => {
                 checksum.update_slice(&[13]);
                 s.update_checksum(checksum);
@@ -837,8 +834,8 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> FromBytes for Compone
                 })?))
             }
             13 => {
-                // String handling depends on features alloc/std
-                #[cfg(any(feature = "alloc", feature = "std"))]
+                // Binary std/no_std choice
+                #[cfg(feature = "std")]
                 {
                     let len = u32::from_bytes_with_provider(reader, provider)? as usize;
                     let mut bytes = vec![0u8; len];
@@ -858,7 +855,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> FromBytes for Compone
                     })?;
                     Ok(ComponentValue::String(s))
                 }
-                #[cfg(not(any(feature = "alloc", feature = "std")))]
+                #[cfg(not(any(feature = "std")))]
                 {
                     let s =
                         BoundedString::<MAX_COMPONENT_STRING_LENGTH, P>::from_bytes_with_provider(
@@ -988,10 +985,10 @@ pub fn serialize_component_values<
     Ok(())
 }
 
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 pub fn deserialize_component_values<P: MemoryProvider>(
     data: &[u8],
-    types: &[ValType<P>], // Assuming ValType<P> can be constructed without alloc
+    types: &[ValType<P>], // Binary std/no_std choice
 ) -> Result<BoundedVec<ComponentValue<P>, MAX_DESERIALIZED_VALUES, P>>
 // Changed Vec to BoundedVec
 where

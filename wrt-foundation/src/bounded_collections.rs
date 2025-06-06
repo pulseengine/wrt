@@ -20,12 +20,12 @@
 use core::fmt;
 use core::marker::PhantomData;
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 extern crate alloc;
-#[cfg(feature = "alloc")]
-use alloc::string::String;
-#[cfg(feature = "alloc")]
-use alloc::vec::Vec;
+#[cfg(feature = "std")]
+use std::string::String;
+#[cfg(feature = "std")]
+use std::vec::Vec;
 
 // Crate-level imports
 use crate::traits::DefaultMemoryProvider;
@@ -1176,7 +1176,7 @@ where
 /// absence (0) of an element with the corresponding index. It ensures it never
 /// exceeds the specified capacity N_BITS.
 #[derive(Debug, Clone)]
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 pub struct BoundedBitSet<const N_BITS: usize> {
     /// The underlying storage, using `u32` for efficient bit operations
     /// Each `u32` holds 32 bits, so we need N_BITS/32 (rounded up) elements
@@ -1187,7 +1187,7 @@ pub struct BoundedBitSet<const N_BITS: usize> {
     verification_level: VerificationLevel,
 }
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 impl<const N_BITS: usize> Default for BoundedBitSet<N_BITS> {
     fn default() -> Self {
         // Calculate storage size (N_BITS/32 rounded up)
@@ -1203,7 +1203,7 @@ impl<const N_BITS: usize> Default for BoundedBitSet<N_BITS> {
     }
 }
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
     /// Creates a new empty `BoundedBitSet`.
     pub fn new() -> Self {
@@ -1658,7 +1658,7 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
     /// bitset.set(1).unwrap();
     /// bitset.set(3).unwrap();
     ///
-    /// bitset.bitnot();
+    /// bitset.bitnot(feature = "std");
     ///
     /// assert!(bitset.contains(0).unwrap());
     /// assert!(!bitset.contains(1).unwrap());
@@ -2448,7 +2448,7 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
     /// // Bits 1, 3, and 5 are set (indexed from 0)
     /// assert_eq!(bitset.to_binary_string(), "00101010");
     /// ```
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fn to_binary_string(&self) -> String {
         let mut result = String::with_capacity(N_BITS);
 
@@ -2688,7 +2688,7 @@ impl<const N_BITS: usize> BoundedBitSet<N_BITS> {
 
 // Implement standard traits for the new collections
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 impl<const N_BITS: usize> BoundedCapacity for BoundedBitSet<N_BITS> {
     fn capacity(&self) -> usize {
         N_BITS
@@ -2798,13 +2798,13 @@ where
 }
 
 /// Iterator over the set bits (1s) in a `BoundedBitSet`.
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 pub struct BitSetOnesIterator<'a, const N_BITS: usize> {
     bitset: &'a BoundedBitSet<N_BITS>,
     next_index: usize,
 }
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 impl<'a, const N_BITS: usize> Iterator for BitSetOnesIterator<'a, N_BITS> {
     type Item = usize;
 
@@ -2827,13 +2827,13 @@ impl<'a, const N_BITS: usize> Iterator for BitSetOnesIterator<'a, N_BITS> {
 }
 
 /// Iterator over the clear bits (0s) in a `BoundedBitSet`.
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 pub struct BitSetZerosIterator<'a, const N_BITS: usize> {
     bitset: &'a BoundedBitSet<N_BITS>,
     next_index: usize,
 }
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 impl<'a, const N_BITS: usize> Iterator for BitSetZerosIterator<'a, N_BITS> {
     type Item = usize;
 
@@ -2858,7 +2858,7 @@ impl<'a, const N_BITS: usize> Iterator for BitSetZerosIterator<'a, N_BITS> {
 }
 
 /// Implement PartialEq for BoundedBitSet
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 impl<const N_BITS: usize> PartialEq for BoundedBitSet<N_BITS> {
     fn eq(&self, other: &Self) -> bool {
         // Quick check for count
@@ -2890,11 +2890,11 @@ impl<const N_BITS: usize> PartialEq for BoundedBitSet<N_BITS> {
 }
 
 /// Implement Eq for BoundedBitSet
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 impl<const N_BITS: usize> Eq for BoundedBitSet<N_BITS> {}
 
 /// Implement Hash for BoundedBitSet
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 impl<const N_BITS: usize> core::hash::Hash for BoundedBitSet<N_BITS> {
     fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
         N_BITS.hash(state);
@@ -2908,7 +2908,7 @@ impl<const N_BITS: usize> core::hash::Hash for BoundedBitSet<N_BITS> {
 }
 
 /// Implement Checksummable for BoundedBitSet
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 impl<const N_BITS: usize> Checksummable for BoundedBitSet<N_BITS> {
     fn update_checksum(&self, checksum: &mut Checksum) {
         // Update with capacity and count
@@ -2923,7 +2923,7 @@ impl<const N_BITS: usize> Checksummable for BoundedBitSet<N_BITS> {
 }
 
 /// Implement ToBytes for BoundedBitSet
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 impl<const N_BITS: usize> ToBytes for BoundedBitSet<N_BITS> {
     fn to_bytes_with_provider<'a, P: crate::MemoryProvider>(
         &self,
@@ -2955,7 +2955,7 @@ impl<const N_BITS: usize> ToBytes for BoundedBitSet<N_BITS> {
 }
 
 /// Implement FromBytes for BoundedBitSet
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 impl<const N_BITS: usize> FromBytes for BoundedBitSet<N_BITS> {
     fn from_bytes_with_provider<'a, P: crate::MemoryProvider>(
         reader: &mut ReadStream<'a>,
@@ -3197,7 +3197,7 @@ mod tests {
 
     // Test BoundedBitSet
     #[test]
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     fn test_bounded_bit_set() {
         let mut bit_set = BoundedBitSet::<100>::new();
 

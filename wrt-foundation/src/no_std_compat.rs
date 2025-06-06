@@ -59,7 +59,7 @@ macro_rules! bounded_format {
     
     // For now, more complex formatting returns a static error message
     ($provider:expr, $fmt:literal, $($arg:expr),*) => {{
-        // In no_std mode without alloc, we can't do dynamic formatting
+        // Binary std/no_std choice
         // Return a placeholder message
         $crate::bounded::BoundedString::from_str(
             "[formatting not available in no_std]", 

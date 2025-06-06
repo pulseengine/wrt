@@ -1,5 +1,5 @@
 // WRT - wrt-foundation
-// Module: Builder pattern for no_std/no_alloc types
+// Binary std/no_std choice
 //
 // Copyright (c) 2025 Ralf Anton Beier
 // Licensed under the MIT license.
@@ -14,10 +14,10 @@
 #![cfg_attr(not(feature = "std"), allow(unused_imports))]
 
 // Standard imports
-#[cfg(all(feature = "alloc", not(feature = "std")))]
+#[cfg(all(not(feature = "std")))]
 extern crate alloc;
 
-#[cfg(all(feature = "alloc", not(feature = "std")))]
+#[cfg(all(not(feature = "std")))]
 use alloc::vec::Vec;
 #[cfg(not(feature = "std"))]
 use core::fmt;
@@ -31,7 +31,7 @@ use wrt_error::Result;
 
 // Import error codes
 use crate::codes;
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 use crate::prelude::{String, ToString};
 // Crate-level imports
 use crate::{
@@ -49,7 +49,7 @@ use crate::{
 ///
 /// This builder simplifies the creation and configuration of bounded
 /// collections like `BoundedVec`, `BoundedStack`, etc. with proper resource
-/// management for no_std/no_alloc environments.
+/// Binary std/no_std choice
 pub struct BoundedBuilder<T, const N: usize, P: MemoryProvider + Default + Clone> {
     provider: P,
     verification_level: VerificationLevel,
@@ -266,7 +266,7 @@ pub struct ResourceTypeBuilder<P: MemoryProvider + Default + Clone + Eq + fmt::D
     provider: P,
 }
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 /// Enum to represent the possible variants of ResourceType
 enum ResourceTypeVariant<P: MemoryProvider + Default + Clone + Eq> {
     /// Record type with field names
@@ -275,7 +275,7 @@ enum ResourceTypeVariant<P: MemoryProvider + Default + Clone + Eq> {
     Aggregate(Vec<u32>),
 }
 
-#[cfg(not(feature = "alloc"))]
+#[cfg(not(feature = "std"))]
 /// Enum to represent the possible variants of ResourceType
 enum ResourceTypeVariant<P: MemoryProvider + Default + Clone + Eq> {
     /// Record type with field names
@@ -302,7 +302,7 @@ impl<P: MemoryProvider + Default + Clone + Eq + fmt::Debug> ResourceTypeBuilder<
         self
     }
 
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     /// Configures this as a Record resource type with the given field names.
     pub fn as_record<S: AsRef<str>>(mut self, field_names: Vec<S>) -> Result<Self> {
         let fields = field_names
@@ -314,7 +314,7 @@ impl<P: MemoryProvider + Default + Clone + Eq + fmt::Debug> ResourceTypeBuilder<
         Ok(self)
     }
 
-    #[cfg(not(feature = "alloc"))]
+    #[cfg(not(feature = "std"))]
     /// Configures this as a Record resource type with the given field name.
     pub fn as_record<S: AsRef<str>>(mut self, field_name: S) -> Result<Self> {
         let field = BoundedString::from_str(field_name.as_ref(), self.provider.clone())?;
@@ -322,7 +322,7 @@ impl<P: MemoryProvider + Default + Clone + Eq + fmt::Debug> ResourceTypeBuilder<
         Ok(self)
     }
 
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     /// Configures this as an Aggregate resource type with the given resource
     /// IDs.
     pub fn as_aggregate(mut self, resource_ids: Vec<u32>) -> Self {
@@ -330,7 +330,7 @@ impl<P: MemoryProvider + Default + Clone + Eq + fmt::Debug> ResourceTypeBuilder<
         self
     }
 
-    #[cfg(not(feature = "alloc"))]
+    #[cfg(not(feature = "std"))]
     /// Configures this as an Aggregate resource type with the given resource
     /// ID.
     pub fn as_aggregate(mut self, resource_id: u32) -> Self {
@@ -338,7 +338,7 @@ impl<P: MemoryProvider + Default + Clone + Eq + fmt::Debug> ResourceTypeBuilder<
         self
     }
 
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     /// Builds a ResourceType with the configured settings.
     pub fn build(self) -> Result<ResourceType<P>> {
         let variant = self.variant.ok_or_else(|| {
@@ -368,7 +368,7 @@ impl<P: MemoryProvider + Default + Clone + Eq + fmt::Debug> ResourceTypeBuilder<
         }
     }
 
-    #[cfg(not(feature = "alloc"))]
+    #[cfg(not(feature = "std"))]
     /// Builds a ResourceType with the configured settings.
     pub fn build(self) -> Result<ResourceType<P>> {
         let variant = self.variant.ok_or_else(|| {
@@ -669,7 +669,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     fn test_resource_type_builder() {
         // Test Record type
         let builder = ResourceTypeBuilder::<NoStdProvider<1024>>::new();
@@ -700,7 +700,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     fn test_resource_item_builder() {
         // First create a resource type
         let resource_type = ResourceTypeBuilder::<NoStdProvider<1024>>::new()

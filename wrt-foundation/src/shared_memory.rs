@@ -9,8 +9,6 @@ use crate::traits::{ToBytes, FromBytes, Checksummable, Validatable};
 use wrt_error::{Error, ErrorCategory, Result, codes};
 use crate::WrtResult;
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::sync::Arc;
 #[cfg(feature = "std")]
 use std::sync::{Arc, RwLock};
 
@@ -352,9 +350,9 @@ impl SharedMemorySegment {
 #[derive(Debug)]
 pub struct SharedMemoryManager {
     /// Registered memory segments
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     segments: Vec<SharedMemorySegment>,
-    #[cfg(not(feature = "alloc"))]
+    #[cfg(not(feature = "std"))]
     segments: [Option<SharedMemorySegment>; 64],
     
     /// Access statistics
@@ -365,9 +363,9 @@ impl SharedMemoryManager {
     /// Create new shared memory manager
     pub fn new() -> Self {
         Self {
-            #[cfg(feature = "alloc")]
+            #[cfg(feature = "std")]
             segments: Vec::new(),
-            #[cfg(not(feature = "alloc"))]
+            #[cfg(not(feature = "std"))]
             segments: [const { None }; 64],
             stats: SharedMemoryStats::new(),
         }
@@ -376,7 +374,7 @@ impl SharedMemoryManager {
     /// Register a shared memory segment
     pub fn register_segment(&mut self, segment: SharedMemorySegment) -> Result<usize> {
         // Check for overlaps with existing segments
-        #[cfg(feature = "alloc")]
+        #[cfg(feature = "std")]
         {
             for existing in &self.segments {
                 if segment.overlaps_with(existing) {
@@ -393,7 +391,7 @@ impl SharedMemoryManager {
             self.stats.registered_segments += 1;
             Ok(id)
         }
-        #[cfg(not(feature = "alloc"))]
+        #[cfg(not(feature = "std"))]
         {
             for existing_slot in &self.segments {
                 if let Some(existing) = existing_slot {
@@ -426,11 +424,11 @@ impl SharedMemoryManager {
     
     /// Check if atomic operations are allowed at the given address
     pub fn allows_atomic_at(&self, address: u64) -> bool {
-        #[cfg(feature = "alloc")]
+        #[cfg(feature = "std")]
         {
             self.segments.iter().any(|seg| seg.allows_atomic_at(address))
         }
-        #[cfg(not(feature = "alloc"))]
+        #[cfg(not(feature = "std"))]
         {
             self.segments.iter()
                 .filter_map(|slot| slot.as_ref())
@@ -440,11 +438,11 @@ impl SharedMemoryManager {
     
     /// Get segment containing the given address
     pub fn get_segment_for_address(&self, address: u64) -> Option<&SharedMemorySegment> {
-        #[cfg(feature = "alloc")]
+        #[cfg(feature = "std")]
         {
             self.segments.iter().find(|seg| seg.contains_address(address))
         }
-        #[cfg(not(feature = "alloc"))]
+        #[cfg(not(feature = "std"))]
         {
             self.segments.iter()
                 .filter_map(|slot| slot.as_ref())

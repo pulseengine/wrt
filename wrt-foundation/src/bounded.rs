@@ -12,8 +12,8 @@
 //! contributing to memory safety and predictability, especially in `no_std`
 //! environments.
 
-#[cfg(feature = "alloc")]
-use alloc::string::ToString;
+#[cfg(feature = "std")]
+use std::string::ToString;
 
 /// Bounded collections with functional safety verification
 ///
@@ -117,21 +117,21 @@ const MAX_ITEM_SERIALIZED_SIZE: usize = 256;
 /// Size of the checksum in bytes, typically the size of a u32.
 pub const CHECKSUM_SIZE: usize = core::mem::size_of::<u32>();
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 extern crate alloc;
 
 // For std environment
-// For no_std with alloc
-// #[cfg(all(feature = "alloc", not(feature = "std")))] // This line was
-// importing `alloc::{};` use alloc::{}; // Removed empty import
+// Binary std/no_std choice
+// #[cfg(all(not(feature = "std")))] // This line was
+// Binary std/no_std choice
 
 // For no_std environment
-#[cfg(feature = "alloc")]
-use alloc::format;
-#[cfg(feature = "alloc")]
-use alloc::string::String;
-#[cfg(feature = "alloc")]
-use alloc::vec::Vec;
+#[cfg(feature = "std")]
+use std::format;
+#[cfg(feature = "std")]
+use std::string::String;
+#[cfg(feature = "std")]
+use std::vec::Vec;
 #[cfg(not(feature = "std"))]
 use core::fmt; // Removed hash, mem
 use core::{
@@ -146,7 +146,7 @@ use std::fmt;
 use wrt_error::ErrorCategory as WrtErrorCategory; /* And added here as a top-level import -
                                                    * Keep ErrorCategory qualified */
 
-// Format is used via the prelude when std or alloc is enabled
+// Binary std/no_std choice
 
 // Use the HashMap that's re-exported in lib.rs - works for both std and no_std
 #[allow(unused_imports)]
@@ -232,15 +232,15 @@ impl Display for BoundedErrorKind {
 #[derive(Debug, PartialEq, Eq)]
 pub struct BoundedError {
     pub kind: BoundedErrorKind,
-    #[cfg(any(feature = "alloc", feature = "std"))]
-    pub description: String, // This will be alloc::string::String or std::string::String
-    #[cfg(not(any(feature = "alloc", feature = "std")))]
-    pub description_static: &'static str, // For no-alloc scenarios
+    #[cfg(feature = "std")]
+    pub description: String, // Binary std/no_std choice
+    #[cfg(not(any(feature = "std")))]
+    pub description_static: &'static str, // Binary std/no_std choice
 }
 
 impl BoundedError {
     /// Creates a new `BoundedError`.
-    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(feature = "std")]
     pub fn new<S>(kind: BoundedErrorKind, description: S) -> Self
     where
         S: Into<String>,
@@ -248,19 +248,19 @@ impl BoundedError {
         Self { kind, description: description.into() }
     }
 
-    /// Creates a new `BoundedError` for `no_std` (no alloc) environments.
-    #[cfg(not(any(feature = "alloc", feature = "std")))]
+    /// Binary std/no_std choice
+    #[cfg(not(any(feature = "std")))]
     pub fn new(kind: BoundedErrorKind, description: &'static str) -> Self {
         Self { kind, description_static: description }
     }
 
     /// Creates a new `BoundedError` indicating capacity was exceeded.
     pub fn capacity_exceeded() -> Self {
-        #[cfg(any(feature = "alloc", feature = "std"))]
+        #[cfg(feature = "std")]
         {
             Self::new(BoundedErrorKind::CapacityExceeded, "Capacity exceeded".to_string())
         }
-        #[cfg(not(any(feature = "alloc", feature = "std")))]
+        #[cfg(not(any(feature = "std")))]
         {
             Self::new(BoundedErrorKind::CapacityExceeded, "Capacity exceeded")
         }
@@ -268,14 +268,14 @@ impl BoundedError {
 
     /// Creates a new `BoundedError` indicating invalid capacity.
     pub fn invalid_capacity<T: Debug>(value: T) -> Self {
-        #[cfg(any(feature = "alloc", feature = "std"))]
+        #[cfg(feature = "std")]
         {
             // Assuming prelude brings in `format` correctly
             Self::new(BoundedErrorKind::InvalidCapacity, format!("Invalid capacity: {value:?}"))
         }
-        #[cfg(not(any(feature = "alloc", feature = "std")))]
+        #[cfg(not(any(feature = "std")))]
         {
-            // In no_std without alloc, we cannot format `value`.
+            // Binary std/no_std choice
             // Provide a generic static message.
             drop(value); // Suppress unused warning
             Self::new(BoundedErrorKind::InvalidCapacity, "Invalid capacity provided")
@@ -285,14 +285,14 @@ impl BoundedError {
     /// Creates a new `BoundedError` for conversion errors.
     pub fn conversion_error(msg_part: &str) -> Self {
         // Changed S: AsRef<str> to &str for simplicity with format!
-        #[cfg(any(feature = "alloc", feature = "std"))]
+        #[cfg(feature = "std")]
         {
             // Assuming prelude brings in `format` correctly
             Self::new(BoundedErrorKind::ConversionError, format!("Conversion error: {msg_part}"))
         }
-        #[cfg(not(any(feature = "alloc", feature = "std")))]
+        #[cfg(not(any(feature = "std")))]
         {
-            // In no_std without alloc, we cannot use msg_part dynamically.
+            // Binary std/no_std choice
             // Provide a generic static message.
             Self::new(BoundedErrorKind::ConversionError, "Conversion error")
         }
@@ -302,11 +302,11 @@ impl BoundedError {
     /// TODO: Define properly if this is distinct from general conversion/parse
     /// errors.
     pub fn deserialization_error(msg: &'static str) -> Self {
-        #[cfg(any(feature = "alloc", feature = "std"))]
+        #[cfg(feature = "std")]
         {
             Self::new(BoundedErrorKind::ConversionError, format!("Deserialization error: {msg}"))
         }
-        #[cfg(not(any(feature = "alloc", feature = "std")))]
+        #[cfg(not(any(feature = "std")))]
         {
             Self::new(BoundedErrorKind::ConversionError, msg) // Use the static
                                                               // msg directly
@@ -316,11 +316,11 @@ impl BoundedError {
     /// Creates a new `BoundedError` for memory-related errors (placeholder).
     /// TODO: Define properly.
     pub fn memory_error(msg: &'static str) -> Self {
-        #[cfg(any(feature = "alloc", feature = "std"))]
+        #[cfg(feature = "std")]
         {
             Self::new(BoundedErrorKind::SliceError, format!("Memory error: {msg}"))
         }
-        #[cfg(not(any(feature = "alloc", feature = "std")))]
+        #[cfg(not(any(feature = "std")))]
         {
             Self::new(BoundedErrorKind::SliceError, msg)
         }
@@ -329,14 +329,14 @@ impl BoundedError {
     /// Creates a new `BoundedError` for index out of bounds (placeholder).
     /// TODO: Define properly.
     pub fn index_out_of_bounds(index: usize, length: usize) -> Self {
-        #[cfg(any(feature = "alloc", feature = "std"))]
+        #[cfg(feature = "std")]
         {
             Self::new(
                 BoundedErrorKind::SliceError,
                 format!("Index {index} out of bounds for length {length}"),
             )
         }
-        #[cfg(not(any(feature = "alloc", feature = "std")))]
+        #[cfg(not(any(feature = "std")))]
         {
             // Cannot format the index/length here, so a generic message
             Self::new(BoundedErrorKind::SliceError, "Index out of bounds")
@@ -346,11 +346,11 @@ impl BoundedError {
     /// Creates a new `BoundedError` for validation errors (placeholder).
     /// TODO: Define properly.
     pub fn validation_error(msg: &'static str) -> Self {
-        #[cfg(any(feature = "alloc", feature = "std"))]
+        #[cfg(feature = "std")]
         {
             Self::new(BoundedErrorKind::VerificationError, format!("Validation error: {msg}"))
         }
-        #[cfg(not(any(feature = "alloc", feature = "std")))]
+        #[cfg(not(any(feature = "std")))]
         {
             Self::new(BoundedErrorKind::VerificationError, msg)
         }
@@ -362,12 +362,12 @@ impl BoundedError {
     }
 
     /// Returns the description of the error.
-    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(feature = "std")]
     pub fn message(&self) -> &str {
         &self.description
     }
 
-    #[cfg(not(any(feature = "alloc", feature = "std")))]
+    #[cfg(not(any(feature = "std")))]
     pub fn message(&self) -> &str {
         self.description_static
     }
@@ -427,12 +427,12 @@ impl From<BoundedError> for crate::Error {
 
         // wrt_error::Error expects a &'static str.
         // We use the static prefix determined by the kind.
-        // If err.description_static is available (no_std no_alloc) and different,
+        // Binary std/no_std choice
         // it might offer more specifics, but we must choose one &'static str.
         // For simplicity, we'll use the matched static_message_prefix.
         // More complex message construction would require changes to wrt_error::Error
         // or careful management of static strings.
-        #[cfg(not(any(feature = "alloc", feature = "std")))]
+        #[cfg(not(any(feature = "std")))]
         let message = if err.description_static != static_message_prefix {
             // This branch is tricky if we want to combine them and still return &'static
             // str. For now, let's prioritize the more specific static message
@@ -444,8 +444,8 @@ impl From<BoundedError> for crate::Error {
             static_message_prefix
         };
 
-        #[cfg(any(feature = "alloc", feature = "std"))]
-        // With alloc/std, err.description is a String. We can't directly use it
+        #[cfg(feature = "std")]
+        // Binary std/no_std choice
         // for WrtError's &'static str message. So we must use static_message_prefix.
         let message = static_message_prefix;
 
@@ -466,13 +466,13 @@ impl From<crate::Error> for BoundedError {
             }
             _ => BoundedErrorKind::VerificationError, // Default or a more generic kind
         };
-        #[cfg(any(feature = "alloc", feature = "std"))]
+        #[cfg(feature = "std")]
         {
-            BoundedError::new(kind, err.to_string()) // Uses alloc::string::ToString
+            BoundedError::new(kind, err.to_string()) // Binary std/no_std choice
         }
-        #[cfg(not(any(feature = "alloc", feature = "std")))]
+        #[cfg(not(any(feature = "std")))]
         {
-            // No alloc, so we can't use err.to_string(). Use a static description based on
+            // Binary std/no_std choice
             // kind.
             let static_desc = match kind {
                 BoundedErrorKind::CapacityExceeded => "Capacity exceeded (from WrtError)",
@@ -536,7 +536,7 @@ where
     /// Creates a new `BoundedStack` with a specific verification level.
     ///
     /// Initializes the stack with the provided memory provider and verification
-    /// settings. The actual memory allocation behavior depends on the
+    /// Binary std/no_std choice
     /// `MemoryProvider`.
     ///
     /// # Errors
@@ -1340,6 +1340,59 @@ where
                 "Failed to read item for checksum verification in BoundedVec",
             )),
         }
+    }
+
+    /// Converts the BoundedVec to a standard Vec, collecting all elements.
+    ///
+    /// This method deserializes all elements and returns them in a new Vec.
+    /// This is useful for compatibility with APIs that expect a standard Vec.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use wrt_foundation::bounded::BoundedVec;
+    /// # use wrt_foundation::NoStdProvider;
+    /// # use wrt_foundation::VerificationLevel;
+    /// #
+    /// # let provider = NoStdProvider::new(1024, VerificationLevel::default());
+    /// # let mut vec = BoundedVec::<u32, 10, _>::new(provider).unwrap();
+    /// # vec.push(1).unwrap();
+    /// # vec.push(2).unwrap();
+    /// # vec.push(3).unwrap();
+    /// let standard_vec = vec.to_vec().unwrap();
+    /// assert_eq!(standard_vec, vec![1, 2, 3]);
+    /// ```
+    #[cfg(feature = "std")]
+    pub fn to_vec(&self) -> WrtResult<std::vec::Vec<T>> {
+        let mut result = std::vec::Vec::with_capacity(self.length);
+        for i in 0..self.length {
+            let item = self.get(i)?;
+            result.push(item);
+        }
+        Ok(result)
+    }
+
+    /// Converts the BoundedVec to a BoundedVec (clone-like operation for no_std).
+    ///
+    /// In no_std environments, this returns a clone of the current BoundedVec
+    /// as a standard Vec type isn't available.
+    #[cfg(not(feature = "std"))]
+    pub fn to_vec(&self) -> WrtResult<Self> 
+    where
+        P: Default,
+    {
+        let mut result = Self::new(P::default())?;
+        result.verification_level = self.verification_level;
+        
+        for i in 0..self.length {
+            let item = self.get(i)?;
+            result.push(item).map_err(|e| crate::Error::new(
+                crate::ErrorCategory::Memory,
+                crate::codes::INVALID_VALUE,
+                "Failed to push item during to_vec conversion",
+            ))?;
+        }
+        Ok(result)
     }
 
     /// Clears the vector, removing all elements.
@@ -2300,7 +2353,7 @@ where
     /// assert_eq!(vec.get(3).unwrap(), 4);
     /// assert_eq!(vec.get(4).unwrap(), 5);
     /// ```
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     pub fn sort(&mut self) -> core::result::Result<(), BoundedError>
     where
         T: Ord,
@@ -2335,7 +2388,7 @@ where
     /// assert_eq!(vec.get(3).unwrap(), 2);
     /// assert_eq!(vec.get(4).unwrap(), 1);
     /// ```
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     pub fn sort_by<F>(&mut self, mut compare: F) -> core::result::Result<(), BoundedError>
     where
         F: FnMut(&T, &T) -> core::cmp::Ordering,
@@ -2410,7 +2463,7 @@ where
     /// assert_eq!(vec.get(3).unwrap().0, 4);
     /// assert_eq!(vec.get(4).unwrap().0, 5);
     /// ```
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     pub fn sort_by_key<K, F>(&mut self, mut f: F) -> core::result::Result<(), BoundedError>
     where
         K: Ord,
@@ -2448,7 +2501,7 @@ where
     /// assert_eq!(vec.get(2).unwrap(), 3);
     /// assert_eq!(vec.get(3).unwrap(), 4);
     /// ```
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     pub fn dedup(&mut self) -> core::result::Result<(), BoundedError>
     where
         T: PartialEq,
@@ -2487,7 +2540,7 @@ where
     /// assert_eq!(vec.get(2).unwrap(), 30);
     /// assert_eq!(vec.get(3).unwrap(), 40);
     /// ```
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     pub fn dedup_by<F>(&mut self, mut same_bucket: F) -> core::result::Result<(), BoundedError>
     where
         F: FnMut(&T, &T) -> bool,
@@ -2576,7 +2629,7 @@ where
     /// assert_eq!(vec.get(2).unwrap().0, 3);
     /// assert_eq!(vec.get(3).unwrap().0, 4);
     /// ```
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     pub fn dedup_by_key<K, F>(&mut self, mut key: F) -> core::result::Result<(), BoundedError>
     where
         K: PartialEq,
@@ -2613,7 +2666,7 @@ where
     /// assert_eq!(vec.get(2).unwrap(), 20);
     /// assert_eq!(vec.get(3).unwrap(), 30);
     /// ```
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     pub fn replace_range<R>(
         &mut self,
         range: R,
@@ -3090,6 +3143,24 @@ pub struct BoundedString<const N_BYTES: usize, P: MemoryProvider + Default + Clo
     bytes: BoundedVec<u8, N_BYTES, P>,
 }
 
+// Implement Ord specifically for BoundedString to support HashMap keys in no_std (BTreeMap)
+impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq + PartialOrd + Ord> PartialOrd for BoundedString<N_BYTES, P> {
+    fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq + PartialOrd + Ord> Ord for BoundedString<N_BYTES, P> {
+    fn cmp(&self, other: &Self) -> core::cmp::Ordering {
+        // Compare strings lexicographically by comparing their byte sequences
+        // If as_str() fails, fall back to comparing the raw bytes
+        match (self.as_str(), other.as_str()) {
+            (Ok(self_str), Ok(other_str)) => self_str.cmp(other_str),
+            _ => self.bytes.as_slice().cmp(other.bytes.as_slice()),
+        }
+    }
+}
+
 impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq> ToBytes
     for BoundedString<N_BYTES, P>
 {
@@ -3543,14 +3614,14 @@ impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq>
     /// let lowercase = s.to_lowercase().unwrap();
     /// assert_eq!(lowercase.as_str().unwrap(), "hello world");
     /// ```
-    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(feature = "std")]
     pub fn to_lowercase(&self) -> Result<Self, BoundedError>
     where
         P: Clone,
     {
         let s = self.as_str()?;
         // Allocate a String to perform the lowercase conversion
-        // since str doesn't have a method to do this without allocation
+        // Binary std/no_std choice
         let lowercase = s.to_lowercase();
 
         Self::from_str_truncate(&lowercase, self.bytes.provider.clone())
@@ -3572,7 +3643,7 @@ impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq>
     /// let uppercase = s.to_uppercase().unwrap();
     /// assert_eq!(uppercase.as_str().unwrap(), "HELLO WORLD");
     /// ```
-    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(feature = "std")]
     pub fn to_uppercase(&self) -> Result<Self, BoundedError>
     where
         P: Clone,
@@ -3644,9 +3715,9 @@ impl<
     /// This is useful when you need to get a copy of the data, not just a
     /// reference.
     ///
-    /// Note: This is only available when the `alloc` or `std` feature is
+    /// Binary std/no_std choice
     /// enabled.
-    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(feature = "std")]
     pub fn to_bytes_vec(&self) -> core::result::Result<Vec<u8>, BoundedError> {
         let mut result = Vec::with_capacity(self.length * self.item_serialized_size);
 
@@ -3861,7 +3932,7 @@ where
 }
 
 // Alloc-dependent methods for BoundedString
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 impl<const N_BYTES: usize, P: MemoryProvider + Default + Clone + PartialEq + Eq>
     BoundedString<N_BYTES, P>
 {

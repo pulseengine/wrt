@@ -38,7 +38,7 @@ pub struct PalMemoryProviderBuilder<A: PageAllocator + Send + Sync + Clone + 'st
 
 #[cfg(feature = "platform-memory")]
 impl<A: PageAllocator + Send + Sync + Clone + 'static> PalMemoryProviderBuilder<A> {
-    /// Creates a new builder with the given page allocator.
+    /// Binary std/no_std choice
     pub fn new(allocator: A) -> Self {
         Self {
             allocator,
@@ -80,7 +80,7 @@ impl<A: PageAllocator + Send + Sync + Clone + 'static> PalMemoryProviderBuilder<
 /// Builder for `LinearMemory` instances.
 ///
 /// This builder provides a fluent API for configuring WebAssembly linear memory
-/// instances backed by a platform allocator.
+/// Binary std/no_std choice
 #[cfg(feature = "platform-memory")]
 #[derive(Debug)]
 pub struct LinearMemoryBuilder<A: PageAllocator + Send + Sync + Clone + 'static> {
@@ -92,7 +92,7 @@ pub struct LinearMemoryBuilder<A: PageAllocator + Send + Sync + Clone + 'static>
 
 #[cfg(feature = "platform-memory")]
 impl<A: PageAllocator + Send + Sync + Clone + 'static> LinearMemoryBuilder<A> {
-    /// Creates a new builder with the given page allocator.
+    /// Binary std/no_std choice
     pub fn new(allocator: A) -> Self {
         Self {
             allocator,

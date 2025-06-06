@@ -20,7 +20,7 @@ use crate::{
     verification::VerificationLevel,
 };
 
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 use crate::prelude::Vec;
 
 /// An atomic memory operation handler that ensures write operations and
@@ -89,7 +89,7 @@ impl<P: Provider> AtomicMemoryOps<P> {
     ///
     /// Returns an error if the memory access is invalid or if the
     /// integrity verification fails.
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fn read_data(&self, offset: usize, len: usize) -> Result<Vec<u8>> {
         // Lock the handler for atomic access
         let handler = self.handler.lock();
