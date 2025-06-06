@@ -18,7 +18,7 @@ crate-type = ["cdylib"]
 # Use wit-bindgen from workspace with realloc feature
 wit-bindgen = { workspace = true, features = ["realloc"] }
 # Add wrt-format for AST example
-wrt-format = { path = "../wrt-format", features = ["alloc"] }
+wrt-format = { path = "../wrt-format", features = ["std"] }
 wrt-foundation = { path = "../wrt-foundation" }
 # Add wrt-debug for debugging integration example
 wrt-debug = { path = "../wrt-debug", features = ["wit-integration"], optional = true }
@@ -28,7 +28,6 @@ wrt-runtime = { path = "../wrt-runtime", features = ["wit-debug-integration"], o
 [features]
 default = ["std"]
 std = ["wrt-format/std", "wrt-foundation/std"]
-alloc = ["wrt-format/alloc", "wrt-foundation/alloc"]
 wrt-debug = ["dep:wrt-debug"]
 wit-debug-integration = ["dep:wrt-runtime", "dep:wrt-debug", "std"]
 lsp = ["wrt-format/lsp", "std"]

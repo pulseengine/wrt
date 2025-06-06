@@ -24,10 +24,10 @@ optional = true
 
 [features]
 default = []
+# Binary choice: std OR no_std (no alloc middle ground)
 std = ["wrt-foundation/std"]
 # This crate is no_std by default, this feature is a no-op for compatibility
 no_std = []
-alloc = ["wrt-foundation/alloc"]
 optimize = ["wrt-foundation/optimize"]
 safety = ["wrt-foundation/safety"]
 # The 'kani' feature enables formal verification with the Kani verifier

@@ -28,6 +28,7 @@ wrt-debug = { workspace = true, default-features = false, optional = true }
 
 [features]
 default = []
+# Binary choice: std OR no_std (no alloc middle ground)
 std = [
     # "wrt-decoder/std",
     "wrt-format/std",
@@ -36,32 +37,20 @@ std = [
     "wrt-intercept/std",
     "wrt-platform/std",
     "wrt-sync/std",
-    "wrt-foundation/std",
-]
+    "wrt-foundation/std"]
 # Debug support features
 debug = ["dep:wrt-debug", "wrt-debug/line-info"]
 debug-full = ["dep:wrt-debug", "wrt-debug/full-debug"]
-wit-debug-integration = ["dep:wrt-debug", "wrt-debug/wit-integration", "alloc"]
+wit-debug-integration = ["dep:wrt-debug", "wrt-debug/wit-integration", "std"]
 # For compatibility with verification script
 # This is a no-op since the crate is no_std by default
 no_std = []
-alloc = [
-    # "wrt-decoder/alloc",
-    "wrt-format/alloc",
-    "wrt-host/alloc",
-    "wrt-instructions/alloc",
-    "wrt-intercept/alloc",
-    "wrt-platform/alloc",
-    "wrt-sync/alloc",
-    "wrt-foundation/alloc",
-]
 optimize = [
     "wrt-foundation/optimize",
     # "wrt-decoder/optimize",
     "wrt-instructions/optimize",
     "wrt-host/optimize",
-    "wrt-intercept/optimize",
-]
+    "wrt-intercept/optimize"]
 disable-panic-handler = [
     "wrt-error/disable-panic-handler",
     "wrt-foundation/disable-panic-handler", 
@@ -75,15 +64,13 @@ disable-panic-handler = [
 
 # Safe memory implementations
 safe-memory = [
-    "wrt-foundation/safe-memory",
-]
+    "wrt-foundation/safe-memory"]
 safety = [
     "wrt-foundation/safety",
     # "wrt-decoder/safety",
     "wrt-instructions/safety",
     "wrt-host/safety",
-    "wrt-intercept/safety",
-]
+    "wrt-intercept/safety"]
 kani = []
 kani-verifier = []
 platform-macos = ["wrt-platform/platform-macos"]

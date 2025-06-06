@@ -11,24 +11,22 @@ categories = ["wasm", "no-std", "embedded"]
 
 [features]
 # Default features for standard environments
+# Binary choice: std OR no_std (no alloc middle ground)
 default = [] # Now strictly no_std, no alloc by default; component model features opt-in
 
-# Standard library support (optional)
-std = ["alloc", "wrt-sync/std"] # Also enable std for wrt-sync
-# Allocation support (optional, distinct from std for no_std + alloc scenarios)
-alloc = ["wrt-sync/alloc"]    # Also enable alloc for wrt-sync
+# Binary choice: std OR no_std (no alloc middle ground)
+std = ["wrt-sync/std"]
+no_std = []
 
 # Optional external dependencies - not enabled by default
-use-hashbrown = ["dep:hashbrown", "alloc"] # Requires alloc
-# This crate is no_std by default, this feature is a no-op for compatibility
-no_std = []
+use-hashbrown = ["dep:hashbrown", "std"] # Requires std
 
 # Optional feature to bypass some safety checks in performance-critical paths
 optimize = []
 # Additional safety features for ASIL-B compliance
 safety = []
 # Enable default memory provider functionality
-default-provider = ["alloc"]
+default-provider = ["std"]
 # Feature for formal verification, requires nightly for full functionality
 kani = ["dep:kani-verifier"]
 
@@ -73,7 +71,7 @@ kani-verifier = { version = "0.62.0", optional = true }
 # serde_bytes = { version = "0.11", optional = true }
 
 [dev-dependencies]
-proptest = { version = "1.4.0", default-features = false, features = ["alloc"] }
+proptest = { version = "1.4.0", default-features = false, features = ["std"] }
 proptest-derive = "0.5.1"
 criterion = { version = "0.6", features = ["html_reports"] }
 
