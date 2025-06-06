@@ -1,11 +1,11 @@
 // Use BTreeMap for all cases to ensure deterministic ordering and no_std compatibility
 #[cfg(feature = "std")]
 use std::{collections::BTreeMap, vec::Vec};
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-use alloc::{collections::BTreeMap, vec::Vec};
+#[cfg(all(not(feature = "std")))]
+use std::{collections::BTreeMap, vec::Vec};
 
-/// A buffer pool for reusing memory allocations
-#[cfg(any(feature = "std", feature = "alloc"))]
+/// Binary std/no_std choice
+#[cfg(feature = "std")]
 pub struct BufferPool {
     /// Map of buffer sizes to pools of buffers
     pools: BTreeMap<usize, Vec<Vec<u8>>>,
@@ -16,14 +16,14 @@ pub struct BufferPool {
 }
 
 /// A simplified buffer pool for no_std environments
-#[cfg(not(any(feature = "std", feature = "alloc")))]
+#[cfg(not(any(feature = "std", )))]
 pub struct BufferPool {
     /// Simplified buffer management for no_std
     max_buffer_size: usize,
     max_buffers_per_size: usize,
 }
 
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 impl BufferPool {
     /// Create a new buffer pool with default settings
     pub fn new() -> Self {
@@ -88,7 +88,7 @@ impl BufferPool {
     }
 }
 
-#[cfg(not(any(feature = "std", feature = "alloc")))]
+#[cfg(not(any(feature = "std", )))]
 impl BufferPool {
     /// Create a new buffer pool with default settings
     pub fn new() -> Self {

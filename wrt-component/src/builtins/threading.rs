@@ -5,8 +5,7 @@
 // - threading.join: Join a thread (wait for its completion)
 // - threading.sync: Create a synchronization primitive
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::{boxed::Box, collections::HashMap, string::String, sync::Arc, vec::Vec};
+use std::{boxed::Box, collections::HashMap, string::String, sync::Arc, vec::Vec};
 #[cfg(feature = "std")]
 use std::{
     boxed::Box,

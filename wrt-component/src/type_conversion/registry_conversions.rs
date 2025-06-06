@@ -1,5 +1,4 @@
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::{string::String, vec, vec::Vec};
+use std::{string::String, vec, vec::Vec};
 /// Registry-based type conversions
 ///
 /// This module implements conversions between format and runtime types using

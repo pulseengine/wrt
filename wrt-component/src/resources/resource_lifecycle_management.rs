@@ -8,8 +8,8 @@ use core::{fmt, mem, ptr};
 #[cfg(feature = "std")]
 use std::{fmt, mem, ptr};
 
-#[cfg(any(feature = "std", feature = "alloc"))]
-use alloc::{boxed::Box, vec::Vec};
+#[cfg(feature = "std")]
+use std::{boxed::Box, vec::Vec};
 
 use wrt_foundation::{
     bounded::{BoundedVec, BoundedString},
@@ -37,15 +37,15 @@ const MAX_DROP_STACK_DEPTH: usize = 32;
 #[derive(Debug)]
 pub struct ResourceLifecycleManager {
     /// Active resources
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     resources: Vec<ResourceEntry>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     resources: BoundedVec<ResourceEntry, MAX_RESOURCES>,
     
     /// Drop handlers registry
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     drop_handlers: Vec<DropHandler>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     drop_handlers: BoundedVec<DropHandler, MAX_RESOURCES>,
     
     /// Lifecycle policies
@@ -75,9 +75,9 @@ pub struct ResourceEntry {
     /// Owning component
     pub owner: ComponentId,
     /// Associated handlers
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub handlers: Vec<DropHandlerId>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub handlers: BoundedVec<DropHandlerId, MAX_DROP_HANDLERS>,
     /// Creation time (for debugging)
     pub created_at: u64,
@@ -189,14 +189,14 @@ pub struct ResourceMetadata {
     /// Resource size in bytes
     pub size_bytes: usize,
     /// Tags for categorization
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub tags: Vec<BoundedString<32>>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub tags: BoundedVec<BoundedString<32>, 8>,
     /// Additional properties
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub properties: Vec<(BoundedString<32>, Value)>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub properties: BoundedVec<(BoundedString<32>, Value), 16>,
 }
 
@@ -227,9 +227,9 @@ pub struct ResourceCreateRequest {
     /// Owning component
     pub owner: ComponentId,
     /// Custom drop handlers
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub custom_handlers: Vec<DropHandlerFunction>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub custom_handlers: BoundedVec<DropHandlerFunction, MAX_DROP_HANDLERS>,
 }
 
@@ -275,13 +275,13 @@ impl ResourceLifecycleManager {
     /// Create new resource lifecycle manager
     pub fn new() -> Self {
         Self {
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             resources: Vec::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             resources: BoundedVec::new(),
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             drop_handlers: Vec::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             drop_handlers: BoundedVec::new(),
             policies: LifecyclePolicies::default(),
             stats: LifecycleStats::new(),
@@ -303,9 +303,9 @@ impl ResourceLifecycleManager {
         self.next_resource_id += 1;
 
         // Register drop handlers for this resource
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         let mut handler_ids = Vec::new();
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         let mut handler_ids = BoundedVec::<DropHandlerId, MAX_DROP_HANDLERS>::new();
         
         for handler_fn in request.custom_handlers.iter() {
@@ -315,9 +315,9 @@ impl ResourceLifecycleManager {
                 0, // Default priority
                 false, // Not required
             )?;
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             handler_ids.push(handler_id);
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             handler_ids.push(handler_id).map_err(|_| {
                 Error::new(
                     ErrorCategory::Resource,
@@ -413,9 +413,9 @@ impl ResourceLifecycleManager {
         resource.state = ResourceState::Destroying;
 
         // Execute drop handlers
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         let handler_ids: Vec<DropHandlerId> = resource.handlers.iter().cloned().collect();
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         let handler_ids = resource.handlers.clone();
         
         for handler_id in handler_ids {
@@ -486,9 +486,9 @@ impl ResourceLifecycleManager {
         let mut memory_freed = 0;
 
         // Find resources to collect
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         let mut resources_to_drop = Vec::new();
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         let mut resources_to_drop = BoundedVec::<ResourceId, 64>::new();
         
         for resource in &self.resources {
@@ -515,11 +515,11 @@ impl ResourceLifecycleManager {
         }
 
         // Remove destroyed resources from list
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.resources.retain(|r| r.state != ResourceState::Destroyed);
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             let mut i = 0;
             while i < self.resources.len() {
@@ -590,7 +590,7 @@ impl ResourceLifecycleManager {
     }
 
     /// Check for resource leaks
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fn check_for_leaks(&mut self) -> Result<Vec<ResourceId>> {
         if !self.policies.leak_detection {
             return Ok(Vec::new());
@@ -613,7 +613,7 @@ impl ResourceLifecycleManager {
     }
     
     /// Check for resource leaks (no_std version)
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub fn check_for_leaks(&mut self) -> Result<BoundedVec<ResourceId, 64>> {
         if !self.policies.leak_detection {
             return Ok(BoundedVec::new());
@@ -726,13 +726,13 @@ impl ResourceMetadata {
         Self {
             name: BoundedString::from_str(name).unwrap_or_default(),
             size_bytes: 0,
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             tags: Vec::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             tags: BoundedVec::new(),
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             properties: Vec::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             properties: BoundedVec::new(),
         }
     }
@@ -866,9 +866,9 @@ mod tests {
             resource_type: ResourceType::Stream,
             metadata: ResourceMetadata::new("test-stream"),
             owner: ComponentId(1),
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             custom_handlers: Vec::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             custom_handlers: BoundedVec::new(),
         };
         
@@ -886,9 +886,9 @@ mod tests {
             resource_type: ResourceType::Future,
             metadata: ResourceMetadata::new("test-future"),
             owner: ComponentId(1),
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             custom_handlers: Vec::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             custom_handlers: BoundedVec::new(),
         };
         
@@ -934,9 +934,9 @@ mod tests {
             resource_type: ResourceType::MemoryBuffer,
             metadata: ResourceMetadata::new("gc-test"),
             owner: ComponentId(1),
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             custom_handlers: Vec::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             custom_handlers: BoundedVec::new(),
         };
         

@@ -19,13 +19,13 @@ use crate::{
     },
 };
 
-// Maximum allowed allocation size for safety
+// Binary std/no_std choice
 const MAX_BUFFER_SIZE: usize = 10 * 1024 * 1024; // 10MB
 
 /// Canonical ABI implementation for the WebAssembly Component Model
 #[derive(Debug)]
 pub struct CanonicalABI {
-    /// Buffer pool for temporary allocations
+    /// Binary std/no_std choice
     buffer_pool: Arc<RwLock<BufferPool>>,
     /// Memory strategy for canonical operations
     memory_strategy: MemoryStrategy,

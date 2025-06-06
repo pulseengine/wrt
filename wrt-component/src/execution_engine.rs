@@ -3,8 +3,8 @@
 //! This module provides the execution environment for WebAssembly components,
 //! handling function calls, resource management, and interface interactions.
 
-#[cfg(any(feature = "std", feature = "alloc"))]
-use alloc::{boxed::Box, format, string::String, vec, vec::Vec};
+#[cfg(feature = "std")]
+use std::{boxed::Box, format, string::String, vec, vec::Vec};
 #[cfg(not(feature = "std"))]
 use core::{fmt, mem};
 #[cfg(feature = "std")]
@@ -37,9 +37,9 @@ pub struct CallFrame {
     /// The function being called
     pub function_index: u32,
     /// Local variables for this frame
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub locals: Vec<Value>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub locals: BoundedVec<Value, 64>,
     /// Return address information
     pub return_address: Option<u32>,
@@ -51,9 +51,9 @@ impl CallFrame {
         Self {
             instance_id,
             function_index,
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             locals: Vec::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             locals: BoundedVec::new(),
             return_address: None,
         }
@@ -61,12 +61,12 @@ impl CallFrame {
 
     /// Push a local variable
     pub fn push_local(&mut self, value: Value) -> WrtResult<()> {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.locals.push(value);
             Ok(())
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             self.locals.push(value).map_err(|_| {
                 wrt_foundation::WrtError::ResourceExhausted("Too many local variables".into())
@@ -104,9 +104,9 @@ pub trait HostFunction {
 /// Component execution engine
 pub struct ComponentExecutionEngine {
     /// Call stack
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     call_stack: Vec<CallFrame>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     call_stack: BoundedVec<CallFrame, MAX_CALL_FRAMES>,
 
     /// Canonical ABI processor
@@ -119,9 +119,9 @@ pub struct ComponentExecutionEngine {
     runtime_bridge: ComponentRuntimeBridge,
 
     /// Host function registry (legacy - now handled by runtime bridge)
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     host_functions: Vec<Box<dyn HostFunction>>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     host_functions: BoundedVec<fn(&[Value]) -> WrtResult<Value>, MAX_IMPORTS>,
 
     /// Current component instance
@@ -162,16 +162,16 @@ impl ComponentExecutionEngine {
     /// Create a new component execution engine
     pub fn new() -> Self {
         Self {
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             call_stack: Vec::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             call_stack: BoundedVec::new(),
             canonical_abi: CanonicalAbi::new(),
             resource_manager: ResourceLifecycleManager::new(),
             runtime_bridge: ComponentRuntimeBridge::new(),
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             host_functions: Vec::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             host_functions: BoundedVec::new(),
             current_instance: None,
             state: ExecutionState::Ready,
@@ -181,16 +181,16 @@ impl ComponentExecutionEngine {
     /// Create a new component execution engine with custom runtime bridge configuration
     pub fn with_runtime_config(bridge_config: RuntimeBridgeConfig) -> Self {
         Self {
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             call_stack: Vec::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             call_stack: BoundedVec::new(),
             canonical_abi: CanonicalAbi::new(),
             resource_manager: ResourceLifecycleManager::new(),
             runtime_bridge: ComponentRuntimeBridge::with_config(bridge_config),
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             host_functions: Vec::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             host_functions: BoundedVec::new(),
             current_instance: None,
             state: ExecutionState::Ready,
@@ -198,7 +198,7 @@ impl ComponentExecutionEngine {
     }
 
     /// Register a host function
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fn register_host_function(&mut self, func: Box<dyn HostFunction>) -> WrtResult<u32> {
         let index = self.host_functions.len() as u32;
         self.host_functions.push(func);
@@ -206,7 +206,7 @@ impl ComponentExecutionEngine {
     }
 
     /// Register a host function (no_std version)
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub fn register_host_function(
         &mut self,
         func: fn(&[Value]) -> WrtResult<Value>,
@@ -237,11 +237,11 @@ impl ComponentExecutionEngine {
         }
 
         // Push frame to call stack
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.call_stack.push(frame);
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             self.call_stack.push(frame).map_err(|_| {
                 wrt_foundation::WrtError::ResourceExhausted("Call stack overflow".into())
@@ -252,11 +252,11 @@ impl ComponentExecutionEngine {
         let result = self.execute_function_internal(function_index, args);
 
         // Pop the frame
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.call_stack.pop();
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             let _ = self.call_stack.pop();
         }
@@ -287,11 +287,11 @@ impl ComponentExecutionEngine {
 
         // Delegate to runtime bridge for execution
         let function_name = {
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             {
                 alloc::format!("func_{}", function_index)
             }
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             {
                 let mut name = wrt_foundation::bounded::BoundedString::new();
                 let _ = name.push_str("func_");
@@ -308,7 +308,7 @@ impl ComponentExecutionEngine {
 
     /// Call a host function
     pub fn call_host_function(&mut self, index: u32, args: &[Value]) -> WrtResult<Value> {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             if let Some(func) = self.host_functions.get_mut(index as usize) {
                 func.call(args)
@@ -316,7 +316,7 @@ impl ComponentExecutionEngine {
                 Err(wrt_foundation::WrtError::InvalidInput("Invalid host function index".into()))
             }
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             if let Some(func) = self.host_functions.get(index as usize) {
                 func(args)
@@ -367,11 +367,11 @@ impl ComponentExecutionEngine {
 
     /// Reset the execution engine
     pub fn reset(&mut self) {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.call_stack.clear();
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             self.call_stack.clear();
         }
@@ -412,7 +412,7 @@ impl ComponentExecutionEngine {
     }
 
     /// Convert engine values to component values
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     fn convert_values_to_component(&self, values: &[Value]) -> WrtResult<Vec<crate::canonical_abi::ComponentValue>> {
         let mut component_values = Vec::new();
         for value in values {
@@ -423,7 +423,7 @@ impl ComponentExecutionEngine {
     }
 
     /// Convert engine values to component values (no_std version)
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     fn convert_values_to_component(&self, values: &[Value]) -> WrtResult<BoundedVec<crate::canonical_abi::ComponentValue, 16>> {
         let mut component_values = BoundedVec::new();
         for value in values {
@@ -486,11 +486,11 @@ impl ComponentExecutionEngine {
         memory_size: u32,
     ) -> WrtResult<u32> {
         let module_name_string = {
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             {
                 alloc::string::String::from(module_name)
             }
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             {
                 wrt_foundation::bounded::BoundedString::from_str(module_name).map_err(|_| {
                     wrt_foundation::WrtError::InvalidInput("Module name too long".into())
@@ -503,7 +503,7 @@ impl ComponentExecutionEngine {
     }
 
     /// Register a host function with the runtime bridge
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fn register_runtime_host_function<F>(
         &mut self,
         name: &str,
@@ -527,7 +527,7 @@ impl ComponentExecutionEngine {
     }
 
     /// Register a host function with the runtime bridge (no_std version)
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub fn register_runtime_host_function(
         &mut self,
         name: &str,
@@ -686,7 +686,7 @@ mod tests {
         assert_eq!(ExecutionState::Suspended.to_string(), "Suspended");
     }
 
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     #[test]
     fn test_host_function_registration_nostd() {
         let mut engine = ComponentExecutionEngine::new();

@@ -41,10 +41,10 @@
 #[cfg(feature = "std")]
 use std::{boxed::Box, collections::HashMap, format, string::String, vec::Vec};
 
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-use alloc::{boxed::Box, collections::BTreeMap as HashMap, format, string::String, vec::Vec};
+#[cfg(all(not(feature = "std")))]
+use std::{boxed::Box, collections::BTreeMap as HashMap, format, string::String, vec::Vec};
 
-#[cfg(not(any(feature = "std", feature = "alloc")))]
+#[cfg(not(any(feature = "std", )))]
 use wrt_foundation::{BoundedString as String, BoundedVec as Vec, NoStdHashMap as HashMap};
 
 use crate::canonical_abi::{CanonicalABI, CanonicalMemory, ComponentType, ComponentValue};
@@ -98,7 +98,7 @@ pub struct InstanceConfig {
     pub max_table_size: u32,
     /// Enable debug mode
     pub debug_mode: bool,
-    /// Custom memory allocator configuration
+    /// Binary std/no_std choice
     pub memory_config: MemoryConfig,
 }
 
@@ -269,7 +269,7 @@ pub struct InstanceMetadata {
     pub created_at: u64,
     /// Total function calls
     pub function_calls: u64,
-    /// Total memory allocations
+    /// Binary std/no_std choice
     pub memory_allocations: u64,
     /// Current memory usage
     pub memory_usage: u32,

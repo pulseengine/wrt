@@ -7,8 +7,8 @@ use core::fmt;
 #[cfg(feature = "std")]
 use std::fmt;
 
-#[cfg(any(feature = "std", feature = "alloc"))]
-use alloc::{string::String, vec::Vec};
+#[cfg(feature = "std")]
+use std::{string::String, vec::Vec};
 
 use wrt_foundation::{bounded::BoundedVec, prelude::*};
 
@@ -26,24 +26,24 @@ pub struct ComponentInstance {
     /// Reference to the component definition
     pub component: Component,
     /// Resolved imports for this instance
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub imports: Vec<ResolvedImport>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub imports: BoundedVec<ResolvedImport, 256>,
     /// Resolved exports from this instance
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub exports: Vec<ResolvedExport>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub exports: BoundedVec<ResolvedExport, 256>,
     /// Resource tables for this instance
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub resource_tables: Vec<ResourceTable>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub resource_tables: BoundedVec<ResourceTable, 16>,
     /// Module instances embedded in this component
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub module_instances: Vec<ModuleInstance>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub module_instances: BoundedVec<ModuleInstance, 64>,
 }
 
@@ -126,18 +126,18 @@ pub enum ValType {
 /// Record type definition
 #[derive(Debug, Clone, PartialEq)]
 pub struct Record {
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fields: Vec<Field>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub fields: BoundedVec<Field, 64>,
 }
 
 /// Field in a record
 #[derive(Debug, Clone, PartialEq)]
 pub struct Field {
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub name: String,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub name: BoundedString<64>,
     pub ty: ValType,
 }
@@ -145,27 +145,27 @@ pub struct Field {
 /// Tuple type definition
 #[derive(Debug, Clone, PartialEq)]
 pub struct Tuple {
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub types: Vec<ValType>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub types: BoundedVec<ValType, 32>,
 }
 
 /// Variant type definition
 #[derive(Debug, Clone, PartialEq)]
 pub struct Variant {
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub cases: Vec<Case>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub cases: BoundedVec<Case, 64>,
 }
 
 /// Case in a variant
 #[derive(Debug, Clone, PartialEq)]
 pub struct Case {
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub name: String,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub name: BoundedString<64>,
     pub ty: Option<ValType>,
     pub refines: Option<u32>,
@@ -174,9 +174,9 @@ pub struct Case {
 /// Enum type definition
 #[derive(Debug, Clone, PartialEq)]
 pub struct Enum {
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub cases: Vec<String>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub cases: BoundedVec<BoundedString<64>, 64>,
 }
 
@@ -190,9 +190,9 @@ pub struct Result_ {
 /// Flags type definition
 #[derive(Debug, Clone, PartialEq)]
 pub struct Flags {
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub labels: Vec<String>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub labels: BoundedVec<BoundedString<64>, 64>,
 }
 
@@ -226,19 +226,19 @@ pub enum Value {
     /// String value
     String(BoundedString<1024>),
     /// List value
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     List(Vec<Value>),
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     List(BoundedVec<Value, 256>),
     /// Record value
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     Record(Vec<Value>),
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     Record(BoundedVec<Value, 64>),
     /// Tuple value
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     Tuple(Vec<Value>),
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     Tuple(BoundedVec<Value, 32>),
     /// Variant value
     Variant { discriminant: u32, value: Option<Box<Value>> },

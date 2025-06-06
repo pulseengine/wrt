@@ -9,8 +9,8 @@ use wrt_error::{Error, ErrorCategory, Result, codes};
 use wrt_foundation::types::Value;
 use wrt_runtime::{ThreadManager, ThreadId, ThreadConfig};
 
-#[cfg(feature = "alloc")]
-use alloc::{vec::Vec, sync::Arc};
+#[cfg(feature = "std")]
+use std::{vec::Vec, sync::Arc};
 #[cfg(feature = "std")]
 use std::{thread, sync::Arc};
 
@@ -22,9 +22,9 @@ pub struct ThreadBuiltins {
     /// System parallelism information
     pub parallelism_info: ParallelismInfo,
     /// Function table for indirect thread spawning
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     pub function_table: Vec<ComponentFunction>,
-    #[cfg(not(feature = "alloc"))]
+    #[cfg(not(feature = "std"))]
     pub function_table: [Option<ComponentFunction>; 256],
 }
 
@@ -38,9 +38,9 @@ impl ThreadBuiltins {
         Ok(Self {
             thread_manager,
             parallelism_info,
-            #[cfg(feature = "alloc")]
+            #[cfg(feature = "std")]
             function_table: Vec::new(),
-            #[cfg(not(feature = "alloc"))]
+            #[cfg(not(feature = "std"))]
             function_table: [const { None }; 256],
         })
     }
@@ -228,7 +228,7 @@ impl ThreadBuiltins {
     
     fn resolve_table_function(&self, table_index: u32, function_index: u32) -> Result<u32> {
         // Validate table bounds
-        #[cfg(feature = "alloc")]
+        #[cfg(feature = "std")]
         {
             if table_index as usize >= self.function_table.len() {
                 return Err(Error::new(
@@ -249,7 +249,7 @@ impl ThreadBuiltins {
             
             Ok(component_func.base_index + function_index)
         }
-        #[cfg(not(feature = "alloc"))]
+        #[cfg(not(feature = "std"))]
         {
             if table_index as usize >= self.function_table.len() {
                 return Err(Error::new(
@@ -287,13 +287,13 @@ impl ThreadBuiltins {
     
     /// Register a function table for indirect thread spawning
     pub fn register_function_table(&mut self, table: ComponentFunction) -> Result<u32> {
-        #[cfg(feature = "alloc")]
+        #[cfg(feature = "std")]
         {
             let index = self.function_table.len() as u32;
             self.function_table.push(table);
             Ok(index)
         }
-        #[cfg(not(feature = "alloc"))]
+        #[cfg(not(feature = "std"))]
         {
             for (index, slot) in self.function_table.iter_mut().enumerate() {
                 if slot.is_none() {
@@ -484,7 +484,7 @@ mod tests {
         assert!(config.stack_size.is_none());
     }
     
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     #[test]
     fn test_function_table_registration() {
         let mut builtins = ThreadBuiltins::new().unwrap();

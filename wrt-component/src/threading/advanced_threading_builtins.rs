@@ -16,11 +16,9 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
 extern crate alloc;
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::{boxed::Box, collections::BTreeMap, vec::Vec};
+use std::{boxed::Box, collections::BTreeMap, vec::Vec};
 #[cfg(feature = "std")]
 use std::{boxed::Box, collections::HashMap, vec::Vec};
 
@@ -32,18 +30,18 @@ use wrt_foundation::{
     types::ValueType,
 };
 
-#[cfg(not(any(feature = "std", feature = "alloc")))]
+#[cfg(not(any(feature = "std", )))]
 use wrt_foundation::{BoundedString, BoundedVec};
 
 use crate::thread_builtins::{ComponentFunction, FunctionSignature, ParallelismInfo, ThreadBuiltins, ThreadError, ThreadJoinResult, ThreadSpawnConfig, ValueType as ThreadValueType};
 use crate::task_cancellation::{CancellationToken, with_cancellation_scope};
 
 // Constants for no_std environments
-#[cfg(not(any(feature = "std", feature = "alloc")))]
+#[cfg(not(any(feature = "std", )))]
 const MAX_THREADS: usize = 32;
-#[cfg(not(any(feature = "std", feature = "alloc")))]
+#[cfg(not(any(feature = "std", )))]
 const MAX_THREAD_LOCALS: usize = 16;
-#[cfg(not(any(feature = "std", feature = "alloc")))]
+#[cfg(not(any(feature = "std", )))]
 const MAX_FUNCTION_NAME_SIZE: usize = 128;
 
 /// Thread identifier for advanced threading operations
@@ -71,9 +69,9 @@ impl Default for AdvancedThreadId {
 /// Function reference for thread.spawn_ref
 #[derive(Debug, Clone)]
 pub struct FunctionReference {
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub name: String,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub name: BoundedString<MAX_FUNCTION_NAME_SIZE>,
     
     pub signature: FunctionSignature,
@@ -82,7 +80,7 @@ pub struct FunctionReference {
 }
 
 impl FunctionReference {
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fn new(name: String, signature: FunctionSignature, module_index: u32, function_index: u32) -> Self {
         Self {
             name,
@@ -92,7 +90,7 @@ impl FunctionReference {
         }
     }
 
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub fn new(name: &str, signature: FunctionSignature, module_index: u32, function_index: u32) -> Result<Self> {
         let bounded_name = BoundedString::new_from_str(name)
             .map_err(|_| Error::new(
@@ -109,9 +107,9 @@ impl FunctionReference {
     }
 
     pub fn name(&self) -> &str {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         return &self.name;
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         return self.name.as_str();
     }
 }
@@ -122,14 +120,14 @@ pub struct IndirectCall {
     pub table_index: u32,
     pub function_index: u32,
     pub type_index: u32,
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub arguments: Vec<ComponentValue>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub arguments: BoundedVec<ComponentValue, 16>,
 }
 
 impl IndirectCall {
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fn new(table_index: u32, function_index: u32, type_index: u32, arguments: Vec<ComponentValue>) -> Self {
         Self {
             table_index,
@@ -139,7 +137,7 @@ impl IndirectCall {
         }
     }
 
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub fn new(table_index: u32, function_index: u32, type_index: u32, arguments: &[ComponentValue]) -> Result<Self> {
         let bounded_args = BoundedVec::new_from_slice(arguments)
             .map_err(|_| Error::new(
@@ -211,18 +209,18 @@ pub struct AdvancedThread {
     pub config: ThreadSpawnConfig,
     pub cancellation_token: CancellationToken,
     
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub thread_locals: HashMap<u32, ThreadLocalEntry>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub thread_locals: BoundedMap<u32, ThreadLocalEntry, MAX_THREAD_LOCALS>,
     
     pub result: Option<ComponentValue>,
     pub error: Option<ThreadError>,
     pub parent_thread: Option<AdvancedThreadId>,
     
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub child_threads: Vec<AdvancedThreadId>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub child_threads: BoundedVec<AdvancedThreadId, MAX_THREADS>,
 }
 
@@ -233,16 +231,16 @@ impl AdvancedThread {
             state: AdvancedThreadState::Starting,
             config,
             cancellation_token: CancellationToken::new(),
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             thread_locals: HashMap::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             thread_locals: BoundedMap::new(),
             result: None,
             error: None,
             parent_thread: None,
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             child_threads: Vec::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             child_threads: BoundedVec::new(),
         }
     }
@@ -253,12 +251,12 @@ impl AdvancedThread {
         thread
     }
 
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fn add_child(&mut self, child_id: AdvancedThreadId) {
         self.child_threads.push(child_id);
     }
 
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub fn add_child(&mut self, child_id: AdvancedThreadId) -> Result<()> {
         self.child_threads.push(child_id)
             .map_err(|_| Error::new(
@@ -303,12 +301,12 @@ impl AdvancedThread {
             destructor,
         };
         
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.thread_locals.insert(key, entry);
             Ok(())
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             self.thread_locals.insert(key, entry)
                 .map_err(|_| Error::new(
@@ -344,30 +342,30 @@ static ADVANCED_THREAD_REGISTRY: AtomicRefCell<Option<AdvancedThreadRegistry>> =
 /// Registry for managing advanced threading operations
 #[derive(Debug)]
 pub struct AdvancedThreadRegistry {
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     threads: HashMap<AdvancedThreadId, AdvancedThread>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     threads: BoundedMap<AdvancedThreadId, AdvancedThread, MAX_THREADS>,
 }
 
 impl AdvancedThreadRegistry {
     pub fn new() -> Self {
         Self {
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             threads: HashMap::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             threads: BoundedMap::new(),
         }
     }
 
     pub fn register_thread(&mut self, thread: AdvancedThread) -> Result<AdvancedThreadId> {
         let id = thread.id;
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.threads.insert(id, thread);
             Ok(id)
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             self.threads.insert(id, thread)
                 .map_err(|_| Error::new(
@@ -396,11 +394,11 @@ impl AdvancedThreadRegistry {
     }
 
     pub fn cleanup_finished_threads(&mut self) {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.threads.retain(|_, thread| !thread.state.is_finished());
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             let mut finished_ids = BoundedVec::<AdvancedThreadId, MAX_THREADS>::new();
             for (id, thread) in self.threads.iter() {
@@ -503,9 +501,9 @@ impl AdvancedThreadingBuiltins {
             // Add to parent's child list if applicable
             if let Some(parent) = parent_id {
                 if let Some(parent_thread) = registry.get_thread_mut(parent) {
-                    #[cfg(any(feature = "std", feature = "alloc"))]
+                    #[cfg(feature = "std")]
                     parent_thread.add_child(id);
-                    #[cfg(not(any(feature = "std", feature = "alloc")))]
+                    #[cfg(not(any(feature = "std", )))]
                     parent_thread.add_child(id)?;
                 }
             }
@@ -540,9 +538,9 @@ impl AdvancedThreadingBuiltins {
             // Add to parent's child list if applicable
             if let Some(parent) = parent_id {
                 if let Some(parent_thread) = registry.get_thread_mut(parent) {
-                    #[cfg(any(feature = "std", feature = "alloc"))]
+                    #[cfg(feature = "std")]
                     parent_thread.add_child(id);
-                    #[cfg(not(any(feature = "std", feature = "alloc")))]
+                    #[cfg(not(any(feature = "std", )))]
                     parent_thread.add_child(id)?;
                 }
             }
@@ -697,7 +695,7 @@ pub mod advanced_threading_helpers {
     }
 
     /// Cancel all child threads of a parent
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fn cancel_child_threads(parent_id: AdvancedThreadId) -> Result<Vec<AdvancedThreadId>> {
         let mut cancelled = Vec::new();
         
@@ -716,7 +714,7 @@ pub mod advanced_threading_helpers {
         Ok(cancelled)
     }
 
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub fn cancel_child_threads(parent_id: AdvancedThreadId) -> Result<BoundedVec<AdvancedThreadId, MAX_THREADS>> {
         let mut cancelled = BoundedVec::new();
         
@@ -770,7 +768,7 @@ mod tests {
             results: vec![ThreadValueType::I32],
         };
 
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             let func_ref = FunctionReference::new(
                 "test_function".to_string(),
@@ -783,7 +781,7 @@ mod tests {
             assert_eq!(func_ref.function_index, 42);
         }
 
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             let func_ref = FunctionReference::new(
                 "test_function",
@@ -801,7 +799,7 @@ mod tests {
     fn test_indirect_call_creation() {
         let args = vec![ComponentValue::I32(42), ComponentValue::Bool(true)];
 
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             let indirect_call = IndirectCall::new(0, 10, 1, args);
             assert_eq!(indirect_call.table_index, 0);
@@ -811,7 +809,7 @@ mod tests {
             assert_eq!(indirect_call.get_argument(0), Some(&ComponentValue::I32(42)));
         }
 
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             let indirect_call = IndirectCall::new(0, 10, 1, &args).unwrap();
             assert_eq!(indirect_call.table_index, 0);
@@ -906,9 +904,9 @@ mod tests {
         
         assert_eq!(child.parent_thread, Some(parent_id));
         
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         parent.add_child(child_id);
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         parent.add_child(child_id).unwrap();
         
         assert_eq!(parent.child_count(), 1);
@@ -949,9 +947,9 @@ mod tests {
             results: vec![ThreadValueType::I32],
         };
         
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         let func_ref = FunctionReference::new("test_func".to_string(), signature, 0, 42);
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         let func_ref = FunctionReference::new("test_func", signature, 0, 42).unwrap();
 
         let config = ThreadSpawnConfig {
@@ -985,10 +983,10 @@ mod tests {
             priority: Some(5),
         };
         
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         let func_ref = FunctionReference::new("test_func".to_string(), 
             FunctionSignature { params: vec![], results: vec![] }, 0, 0);
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         let func_ref = FunctionReference::new("test_func", 
             FunctionSignature { params: vec![], results: vec![] }, 0, 0).unwrap();
 

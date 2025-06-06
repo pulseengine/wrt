@@ -15,11 +15,9 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
 extern crate alloc;
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::{boxed::Box, collections::BTreeMap, vec::Vec};
+use std::{boxed::Box, collections::BTreeMap, vec::Vec};
 #[cfg(feature = "std")]
 use std::{boxed::Box, collections::HashMap, vec::Vec};
 
@@ -31,15 +29,15 @@ use wrt_foundation::{
     types::ValueType,
 };
 
-#[cfg(not(any(feature = "std", feature = "alloc")))]
+#[cfg(not(any(feature = "std", )))]
 use wrt_foundation::{BoundedString, BoundedVec};
 
 use crate::task_cancellation::{CancellationToken, with_cancellation_scope};
 
 // Constants for no_std environments
-#[cfg(not(any(feature = "std", feature = "alloc")))]
+#[cfg(not(any(feature = "std", )))]
 const MAX_TASKS: usize = 64;
-#[cfg(not(any(feature = "std", feature = "alloc")))]
+#[cfg(not(any(feature = "std", )))]
 const MAX_TASK_RESULT_SIZE: usize = 512;
 
 /// Task identifier
@@ -95,9 +93,9 @@ pub enum TaskReturn {
     /// Task returned a component value
     Value(ComponentValue),
     /// Task returned binary data
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     Binary(Vec<u8>),
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     Binary(BoundedVec<u8, MAX_TASK_RESULT_SIZE>),
     /// Task returned nothing (void)
     Void,
@@ -108,12 +106,12 @@ impl TaskReturn {
         Self::Value(value)
     }
 
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fn from_binary(data: Vec<u8>) -> Self {
         Self::Binary(data)
     }
 
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub fn from_binary(data: &[u8]) -> Result<Self> {
         let bounded_data = BoundedVec::new_from_slice(data)
             .map_err(|_| Error::new(
@@ -137,9 +135,9 @@ impl TaskReturn {
 
     pub fn as_binary(&self) -> Option<&[u8]> {
         match self {
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             Self::Binary(data) => Some(data),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             Self::Binary(data) => Some(data.as_slice()),
             _ => None,
         }
@@ -157,9 +155,9 @@ pub struct Task {
     pub status: TaskStatus,
     pub return_value: Option<TaskReturn>,
     pub cancellation_token: CancellationToken,
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub metadata: HashMap<String, ComponentValue>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub metadata: BoundedMap<BoundedString<32>, ComponentValue, 8>,
 }
 
@@ -170,9 +168,9 @@ impl Task {
             status: TaskStatus::Pending,
             return_value: None,
             cancellation_token: CancellationToken::new(),
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             metadata: HashMap::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             metadata: BoundedMap::new(),
         }
     }
@@ -183,9 +181,9 @@ impl Task {
             status: TaskStatus::Pending,
             return_value: None,
             cancellation_token: token,
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             metadata: HashMap::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             metadata: BoundedMap::new(),
         }
     }
@@ -216,12 +214,12 @@ impl Task {
         }
     }
 
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fn set_metadata(&mut self, key: String, value: ComponentValue) {
         self.metadata.insert(key, value);
     }
 
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub fn set_metadata(&mut self, key: &str, value: ComponentValue) -> Result<()> {
         let bounded_key = BoundedString::new_from_str(key)
             .map_err(|_| Error::new(
@@ -238,12 +236,12 @@ impl Task {
         Ok(())
     }
 
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fn get_metadata(&self, key: &str) -> Option<&ComponentValue> {
         self.metadata.get(key)
     }
 
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub fn get_metadata(&self, key: &str) -> Option<&ComponentValue> {
         if let Ok(bounded_key) = BoundedString::new_from_str(key) {
             self.metadata.get(&bounded_key)
@@ -270,30 +268,30 @@ static TASK_REGISTRY: AtomicRefCell<Option<TaskRegistry>> =
 /// Task registry that manages all active tasks
 #[derive(Debug)]
 pub struct TaskRegistry {
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     tasks: HashMap<TaskId, Task>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     tasks: BoundedMap<TaskId, Task, MAX_TASKS>,
 }
 
 impl TaskRegistry {
     pub fn new() -> Self {
         Self {
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             tasks: HashMap::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             tasks: BoundedMap::new(),
         }
     }
 
     pub fn register_task(&mut self, task: Task) -> Result<TaskId> {
         let id = task.id;
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.tasks.insert(id, task);
             Ok(id)
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             self.tasks.insert(id, task)
                 .map_err(|_| Error::new(
@@ -322,11 +320,11 @@ impl TaskRegistry {
     }
 
     pub fn cleanup_finished_tasks(&mut self) {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.tasks.retain(|_, task| !task.status.is_finished());
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             // For no_std, we need to collect keys first
             let mut finished_keys = BoundedVec::<TaskId, MAX_TASKS>::new();
@@ -497,12 +495,12 @@ impl TaskBuiltins {
     pub fn set_task_metadata(task_id: TaskId, key: &str, value: ComponentValue) -> Result<()> {
         Self::with_registry_mut(|registry| {
             if let Some(task) = registry.get_task_mut(task_id) {
-                #[cfg(any(feature = "std", feature = "alloc"))]
+                #[cfg(feature = "std")]
                 {
                     task.set_metadata(key.to_string(), value);
                     Ok(())
                 }
-                #[cfg(not(any(feature = "std", feature = "alloc")))]
+                #[cfg(not(any(feature = "std", )))]
                 {
                     task.set_metadata(key, value)
                 }
@@ -579,7 +577,7 @@ pub mod task_helpers {
     }
 
     /// Wait for multiple tasks to complete
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fn wait_for_tasks(task_ids: Vec<TaskId>) -> Result<Vec<Option<TaskReturn>>> {
         let mut results = Vec::new();
         for task_id in task_ids {
@@ -589,7 +587,7 @@ pub mod task_helpers {
         Ok(results)
     }
 
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub fn wait_for_tasks(task_ids: &[TaskId]) -> Result<BoundedVec<Option<TaskReturn>, MAX_TASKS>> {
         let mut results = BoundedVec::new();
         for &task_id in task_ids {

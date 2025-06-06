@@ -6,10 +6,10 @@
 #[cfg(feature = "std")]
 use std::{boxed::Box, collections::HashMap, format, string::String, vec::Vec};
 
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-use alloc::{boxed::Box, collections::BTreeMap as HashMap, format, string::String, vec::Vec};
+#[cfg(all(not(feature = "std")))]
+use std::{boxed::Box, collections::BTreeMap as HashMap, format, string::String, vec::Vec};
 
-#[cfg(not(any(feature = "std", feature = "alloc")))]
+#[cfg(not(any(feature = "std", )))]
 use wrt_foundation::{BoundedString as String, BoundedVec as Vec, NoStdHashMap as HashMap};
 
 use crate::component_instantiation::{

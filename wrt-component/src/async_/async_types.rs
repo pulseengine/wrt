@@ -8,8 +8,8 @@ use core::{fmt, mem};
 #[cfg(feature = "std")]
 use std::{fmt, mem};
 
-#[cfg(any(feature = "std", feature = "alloc"))]
-use alloc::{boxed::Box, string::String, vec::Vec};
+#[cfg(feature = "std")]
+use std::{boxed::Box, string::String, vec::Vec};
 
 use wrt_foundation::{bounded::BoundedVec, component_value::ComponentValue, prelude::*};
 
@@ -46,9 +46,9 @@ pub struct Stream<T> {
     /// Stream state
     pub state: StreamState,
     /// Buffered values
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub buffer: Vec<T>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub buffer: BoundedVec<T, MAX_STREAM_BUFFER>,
     /// Readable end closed
     pub readable_closed: bool,
@@ -79,14 +79,14 @@ pub struct ErrorContext {
     /// Error context handle
     pub handle: ErrorContextHandle,
     /// Error message
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub message: String,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub message: BoundedString<1024>,
     /// Stack trace if available
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub stack_trace: Option<Vec<StackFrame>>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub stack_trace: Option<BoundedVec<StackFrame, 32>>,
     /// Additional debug information
     pub debug_info: DebugInfo,
@@ -122,9 +122,9 @@ pub enum FutureState {
 #[derive(Debug, Clone)]
 pub struct StackFrame {
     /// Function name
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub function: String,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub function: BoundedString<128>,
     /// Component instance
     pub component_instance: Option<u32>,
@@ -140,9 +140,9 @@ pub struct DebugInfo {
     /// Error code if available
     pub error_code: Option<u32>,
     /// Additional properties
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub properties: Vec<(String, ComponentValue)>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub properties: BoundedVec<(BoundedString<64>, ComponentValue), 16>,
 }
 
@@ -176,9 +176,9 @@ pub enum Waitable {
 #[derive(Debug, Clone)]
 pub struct WaitableSet {
     /// Waitables in the set
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub waitables: Vec<Waitable>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub waitables: BoundedVec<Waitable, MAX_WAITABLES>,
     /// Ready mask (bit per waitable)
     pub ready_mask: u64,
@@ -191,9 +191,9 @@ impl<T> Stream<T> {
             handle,
             element_type,
             state: StreamState::Open,
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             buffer: Vec::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             buffer: BoundedVec::new(),
             readable_closed: false,
             writable_closed: false,
@@ -272,20 +272,20 @@ impl<T> Future<T> {
 
 impl ErrorContext {
     /// Create a new error context
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fn new(handle: ErrorContextHandle, message: String) -> Self {
         Self { handle, message, stack_trace: None, debug_info: DebugInfo::new() }
     }
 
     /// Create a new error context (no_std)
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub fn new(handle: ErrorContextHandle, message: BoundedString<1024>) -> Self {
         Self { handle, message, stack_trace: None, debug_info: DebugInfo::new() }
     }
 
     /// Get debug string representation
     pub fn debug_string(&self) -> BoundedString<2048> {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             let mut result = self.message.clone();
             if let Some(trace) = &self.stack_trace {
@@ -296,7 +296,7 @@ impl ErrorContext {
             }
             BoundedString::from_str(&result).unwrap_or_default()
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             // In no_std, just return the message
             self.message.clone()
@@ -310,21 +310,21 @@ impl DebugInfo {
         Self {
             source_component: None,
             error_code: None,
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             properties: Vec::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             properties: BoundedVec::new(),
         }
     }
 
     /// Add a property
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fn add_property(&mut self, key: String, value: ComponentValue) {
         self.properties.push((key, value));
     }
 
     /// Add a property (no_std)
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub fn add_property(&mut self, key: BoundedString<64>, value: ComponentValue) -> WrtResult<()> {
         self.properties.push((key, value)).map_err(|_| {
             wrt_foundation::WrtError::ResourceExhausted("Too many debug properties".into())
@@ -336,9 +336,9 @@ impl WaitableSet {
     /// Create a new waitable set
     pub fn new() -> Self {
         Self {
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             waitables: Vec::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             waitables: BoundedVec::new(),
             ready_mask: 0,
         }
@@ -353,11 +353,11 @@ impl WaitableSet {
             ));
         }
 
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.waitables.push(waitable);
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             self.waitables.push(waitable).map_err(|_| {
                 wrt_foundation::WrtError::ResourceExhausted("Waitable set full".into())
@@ -498,9 +498,9 @@ mod tests {
 
     #[test]
     fn test_error_context() {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         let error = ErrorContext::new(ErrorContextHandle(1), "Test error".to_string());
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         let error = ErrorContext::new(
             ErrorContextHandle(1),
             BoundedString::from_str("Test error").unwrap(),

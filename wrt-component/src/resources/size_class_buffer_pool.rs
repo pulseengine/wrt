@@ -15,7 +15,7 @@ pub struct BufferPoolStats {
     pub size_count: usize,
 }
 
-/// Size-class based buffer pool for reusing memory allocations
+/// Binary std/no_std choice
 ///
 /// This implementation uses power-of-two size classes for better memory reuse
 /// and reduced fragmentation compared to the basic buffer pool.

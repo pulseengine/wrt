@@ -18,7 +18,7 @@ pub const MAX_COMPONENTS: usize = 32;
 /// No-std registry for WebAssembly components
 ///
 /// This registry uses fixed-size bounded collections to manage component
-/// registrations in a memory-safe manner without dynamic allocation.
+/// Binary std/no_std choice
 #[derive(Debug)]
 pub struct ComponentRegistry {
     /// Component names

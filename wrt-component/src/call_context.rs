@@ -27,10 +27,10 @@
 #[cfg(feature = "std")]
 use std::{vec::Vec, string::String, collections::HashMap, format};
 
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-use alloc::{vec::Vec, string::String, collections::BTreeMap as HashMap, format};
+#[cfg(all(not(feature = "std")))]
+use std::{vec::Vec, string::String, collections::BTreeMap as HashMap, format};
 
-#[cfg(not(any(feature = "std", feature = "alloc")))]
+#[cfg(not(any(feature = "std", )))]
 use wrt_foundation::{BoundedVec as Vec, BoundedString as String, NoStdHashMap as HashMap};
 
 use wrt_error::{Error, ErrorCategory, Result, codes};

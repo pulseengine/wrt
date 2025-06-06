@@ -9,8 +9,8 @@ use core::{fmt, mem};
 #[cfg(feature = "std")]
 use std::{fmt, mem};
 
-#[cfg(any(feature = "std", feature = "alloc"))]
-use alloc::{boxed::Box, collections::BTreeMap, vec::Vec};
+#[cfg(feature = "std")]
+use std::{boxed::Box, collections::BTreeMap, vec::Vec};
 
 use wrt_foundation::{
     bounded::BoundedVec, component_value::ComponentValue, prelude::*, resource::ResourceHandle,
@@ -42,15 +42,15 @@ pub struct TaskId(pub u32);
 /// Task management system
 pub struct TaskManager {
     /// All tasks in the system
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     tasks: BTreeMap<TaskId, Task>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     tasks: BoundedVec<(TaskId, Task), MAX_TASKS>,
 
     /// Ready queue for runnable tasks
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     ready_queue: Vec<TaskId>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     ready_queue: BoundedVec<TaskId, MAX_TASKS>,
 
     /// Currently executing task
@@ -78,23 +78,23 @@ pub struct Task {
     /// Parent task (if this is a subtask)
     pub parent: Option<TaskId>,
     /// Subtasks spawned by this task
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub subtasks: Vec<TaskId>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub subtasks: BoundedVec<TaskId, MAX_SUBTASKS>,
     /// Borrowed resource handles
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub borrowed_handles: Vec<ResourceHandle>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub borrowed_handles: BoundedVec<ResourceHandle, 64>,
     /// Task-local storage
     pub context: TaskContext,
     /// Waiting on waitables
     pub waiting_on: Option<WaitableSet>,
     /// Return values (when completed)
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub return_values: Option<Vec<Value>>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub return_values: Option<BoundedVec<Value, 16>>,
     /// Error context (if failed)
     pub error_context: Option<ErrorContextHandle>,
@@ -140,14 +140,14 @@ pub struct TaskContext {
     /// Function being executed
     pub function_index: Option<u32>,
     /// Call stack for this task
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub call_stack: Vec<CallFrame>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub call_stack: BoundedVec<CallFrame, MAX_TASK_CALL_DEPTH>,
     /// Task-local storage
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub storage: BTreeMap<String, ComponentValue>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub storage: BoundedVec<(BoundedString<64>, ComponentValue), 32>,
     /// Task creation time (simplified)
     pub created_at: u64,
@@ -163,9 +163,9 @@ pub struct CallFrame {
     /// Component instance
     pub component_instance: u32,
     /// Local variables
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub locals: Vec<Value>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub locals: BoundedVec<Value, 32>,
     /// Return address
     pub return_address: Option<u32>,
@@ -190,13 +190,13 @@ impl TaskManager {
     /// Create a new task manager
     pub fn new() -> Self {
         Self {
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             tasks: BTreeMap::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             tasks: BoundedVec::new(),
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             ready_queue: Vec::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             ready_queue: BoundedVec::new(),
             current_task: None,
             next_task_id: 0,
@@ -232,24 +232,24 @@ impl TaskManager {
             state: TaskState::Starting,
             task_type,
             parent: self.current_task,
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             subtasks: Vec::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             subtasks: BoundedVec::new(),
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             borrowed_handles: Vec::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             borrowed_handles: BoundedVec::new(),
             context: TaskContext {
                 component_instance,
                 function_index,
-                #[cfg(any(feature = "std", feature = "alloc"))]
+                #[cfg(feature = "std")]
                 call_stack: Vec::new(),
-                #[cfg(not(any(feature = "std", feature = "alloc")))]
+                #[cfg(not(any(feature = "std", )))]
                 call_stack: BoundedVec::new(),
-                #[cfg(any(feature = "std", feature = "alloc"))]
+                #[cfg(feature = "std")]
                 storage: BTreeMap::new(),
-                #[cfg(not(any(feature = "std", feature = "alloc")))]
+                #[cfg(not(any(feature = "std", )))]
                 storage: BoundedVec::new(),
                 created_at: self.get_current_time(),
                 deadline: None,
@@ -262,11 +262,11 @@ impl TaskManager {
         // Add to parent's subtasks
         if let Some(parent_id) = self.current_task {
             if let Some(parent_task) = self.get_task_mut(parent_id) {
-                #[cfg(any(feature = "std", feature = "alloc"))]
+                #[cfg(feature = "std")]
                 {
                     parent_task.subtasks.push(task_id);
                 }
-                #[cfg(not(any(feature = "std", feature = "alloc")))]
+                #[cfg(not(any(feature = "std", )))]
                 {
                     let _ = parent_task.subtasks.push(task_id);
                 }
@@ -274,11 +274,11 @@ impl TaskManager {
         }
 
         // Insert task
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.tasks.insert(task_id, task);
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             self.tasks.push((task_id, task)).map_err(|_| {
                 wrt_foundation::WrtError::ResourceExhausted("Task storage full".into())
@@ -293,11 +293,11 @@ impl TaskManager {
 
     /// Get task by ID
     pub fn get_task(&self, task_id: TaskId) -> Option<&Task> {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.tasks.get(&task_id)
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             self.tasks.iter().find(|(id, _)| *id == task_id).map(|(_, task)| task)
         }
@@ -305,11 +305,11 @@ impl TaskManager {
 
     /// Get mutable task by ID
     pub fn get_task_mut(&mut self, task_id: TaskId) -> Option<&mut Task> {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.tasks.get_mut(&task_id)
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             self.tasks.iter_mut().find(|(id, _)| *id == task_id).map(|(_, task)| task)
         }
@@ -321,11 +321,11 @@ impl TaskManager {
             if task.state == TaskState::Starting || task.state == TaskState::Waiting {
                 task.state = TaskState::Ready;
 
-                #[cfg(any(feature = "std", feature = "alloc"))]
+                #[cfg(feature = "std")]
                 {
                     self.ready_queue.push(task_id);
                 }
-                #[cfg(not(any(feature = "std", feature = "alloc")))]
+                #[cfg(not(any(feature = "std", )))]
                 {
                     self.ready_queue.push(task_id).map_err(|_| {
                         wrt_foundation::WrtError::ResourceExhausted("Ready queue full".into())
@@ -338,7 +338,7 @@ impl TaskManager {
 
     /// Get next ready task
     pub fn next_ready_task(&mut self) -> Option<TaskId> {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             if self.ready_queue.is_empty() {
                 None
@@ -346,7 +346,7 @@ impl TaskManager {
                 Some(self.ready_queue.remove(0))
             }
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             if self.ready_queue.is_empty() {
                 None
@@ -382,11 +382,11 @@ impl TaskManager {
         if let Some(task_id) = self.current_task {
             if let Some(task) = self.get_task_mut(task_id) {
                 task.state = TaskState::Completed;
-                #[cfg(any(feature = "std", feature = "alloc"))]
+                #[cfg(feature = "std")]
                 {
                     task.return_values = Some(values);
                 }
-                #[cfg(not(any(feature = "std", feature = "alloc")))]
+                #[cfg(not(any(feature = "std", )))]
                 {
                     let mut bounded_values = BoundedVec::new();
                     for value in values {
@@ -448,11 +448,11 @@ impl TaskManager {
                 task.state = TaskState::Ready;
 
                 // Add back to ready queue
-                #[cfg(any(feature = "std", feature = "alloc"))]
+                #[cfg(feature = "std")]
                 {
                     self.ready_queue.push(task_id);
                 }
-                #[cfg(not(any(feature = "std", feature = "alloc")))]
+                #[cfg(not(any(feature = "std", )))]
                 {
                     let _ = self.ready_queue.push(task_id);
                 }
@@ -502,7 +502,7 @@ impl TaskManager {
         let mut tasks_to_wake = Vec::new();
 
         // Check all waiting tasks
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             for (task_id, task) in &mut self.tasks {
                 if task.state == TaskState::Waiting {
@@ -514,7 +514,7 @@ impl TaskManager {
                 }
             }
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             for (task_id, task) in &mut self.tasks {
                 if task.state == TaskState::Waiting {

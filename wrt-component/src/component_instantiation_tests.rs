@@ -480,19 +480,19 @@ mod tests {
         assert!(linker.get_instance(instance_id).is_some());
     }
 
-    #[cfg(all(feature = "alloc", not(feature = "std")))]
+    #[cfg(all(not(feature = "std")))]
     #[test]
     fn test_alloc_environment_compatibility() {
         let mut linker = ComponentLinker::new();
         let binary = create_test_component_binary();
 
-        // Should work in alloc environment
+        // Binary std/no_std choice
         linker.add_component("alloc_test".to_string(), &binary).unwrap();
         let instance_id = linker.instantiate(&"alloc_test".to_string(), None).unwrap();
         assert!(linker.get_instance(instance_id).is_some());
     }
 
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     #[test]
     fn test_no_std_environment_compatibility() {
         // In pure no_std, we can at least create configurations and validate types

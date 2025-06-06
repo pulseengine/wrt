@@ -11,7 +11,7 @@
 //! These tests verify that all async features work correctly
 //! in no_std environments with bounded collections.
 
-#![cfg(all(test, not(feature = "std"), not(feature = "alloc")))]
+#![cfg(all(test, not(feature = "std"), not(feature = "std")))]
 #![no_std]
 
 extern crate wrt_component;
@@ -261,16 +261,16 @@ fn test_memory_efficiency_no_std() {
     let set_id = WaitableSetBuiltins::waitable_set_new().unwrap();
     // Set uses bounded collections for waitables
     
-    // All should succeed without dynamic allocation
+    // Binary std/no_std choice
     assert!(true); // If we got here, bounded collections work
 }
 
-// Helper to verify no heap allocation patterns
+// Binary std/no_std choice
 #[test]
 fn test_stack_based_operations() {
-    // All these operations should work with stack allocation only
+    // Binary std/no_std choice
     
-    // Stack-allocated component values
+    // Binary std/no_std choice
     let values = [
         ComponentValue::Bool(true),
         ComponentValue::I32(42),
@@ -285,6 +285,6 @@ fn test_stack_based_operations() {
         ComponentValue::I32(3),
     ]).unwrap();
     
-    // All operations complete without heap allocation
+    // Binary std/no_std choice
     assert_eq!(list.current_length(), 3);
 }

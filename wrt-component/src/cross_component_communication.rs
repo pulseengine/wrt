@@ -42,10 +42,10 @@
 #[cfg(feature = "std")]
 use std::{vec::Vec, string::String, collections::HashMap, boxed::Box, format, sync::Arc};
 
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-use alloc::{vec::Vec, string::String, collections::BTreeMap as HashMap, boxed::Box, format, sync::Arc};
+#[cfg(all(not(feature = "std")))]
+use std::{vec::Vec, string::String, collections::BTreeMap as HashMap, boxed::Box, format, sync::Arc};
 
-#[cfg(not(any(feature = "std", feature = "alloc")))]
+#[cfg(not(any(feature = "std", )))]
 use wrt_foundation::{BoundedVec as Vec, BoundedString as String, NoStdHashMap as HashMap};
 
 use wrt_error::{Error, ErrorCategory, Result, codes};
@@ -429,7 +429,7 @@ impl ComponentCommunicationStrategy {
 }
 
 // Implementation of LinkInterceptorStrategy for the communication strategy
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 impl LinkInterceptorStrategy for ComponentCommunicationStrategy {
     /// Called before a function call is made
     fn before_call(
@@ -644,7 +644,7 @@ impl LinkInterceptorStrategy for ComponentCommunicationStrategy {
 }
 
 // Simplified no_std implementation
-#[cfg(not(feature = "alloc"))]
+#[cfg(not(feature = "std"))]
 impl LinkInterceptorStrategy for ComponentCommunicationStrategy {
     fn before_call(
         &self,

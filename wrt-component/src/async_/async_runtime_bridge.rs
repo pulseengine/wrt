@@ -128,11 +128,11 @@ pub mod component_async {
     ) -> StreamPollResult<T> {
         if !stream.buffer.is_empty() {
             // Return first item from buffer
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             {
                 StreamPollResult::Item(stream.buffer.remove(0))
             }
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             {
                 if let Some(item) = stream.buffer.pop_front() {
                     StreamPollResult::Item(item)
@@ -213,7 +213,7 @@ mod tests {
         let mut wasm_stream = WasmStream::<String>::new(stream_handle, ValType::String);
 
         // Add some values
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             wasm_stream.buffer.push("Hello".to_string());
             wasm_stream.buffer.push("World".to_string());

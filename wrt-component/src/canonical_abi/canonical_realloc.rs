@@ -5,7 +5,7 @@
 //! during lifting and lowering operations.
 
 #[cfg(not(feature = "std"))]
-use alloc::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex};
 #[cfg(feature = "std")]
 use std::sync::{Arc, Mutex};
 
@@ -19,15 +19,15 @@ use crate::{
     types::{ComponentError, ComponentInstanceId},
 };
 
-/// Realloc function signature: (old_ptr: i32, old_size: i32, align: i32, new_size: i32) -> i32
+/// Binary std/no_std choice
 pub type ReallocFn = fn(i32, i32, i32, i32) -> i32;
 
-/// Enhanced canonical options with realloc support
+/// Binary std/no_std choice
 #[derive(Debug, Clone)]
 pub struct CanonicalOptionsWithRealloc {
     /// Memory for canonical operations
     pub memory: u32,
-    /// Realloc function index
+    /// Binary std/no_std choice
     pub realloc: Option<u32>,
     /// Post-return function index
     pub post_return: Option<u32>,
@@ -46,38 +46,38 @@ pub enum StringEncoding {
     Latin1,
 }
 
-/// Realloc manager for handling dynamic allocations
+/// Binary std/no_std choice
 #[derive(Debug)]
 pub struct ReallocManager {
-    /// Active allocations per instance
+    /// Binary std/no_std choice
     allocations: BTreeMap<ComponentInstanceId, InstanceAllocations>,
-    /// Global allocation metrics
+    /// Binary std/no_std choice
     metrics: AllocationMetrics,
-    /// Maximum allocation size per operation
+    /// Binary std/no_std choice
     max_allocation_size: usize,
-    /// Maximum total allocations per instance
+    /// Binary std/no_std choice
     max_instance_allocations: usize,
 }
 
 #[derive(Debug)]
 struct InstanceAllocations {
-    /// Current allocations
+    /// Binary std/no_std choice
     allocations: BoundedVec<Allocation, MAX_GENERATIVE_TYPES>,
-    /// Total allocated bytes
+    /// Binary std/no_std choice
     total_bytes: usize,
-    /// Realloc function reference
+    /// Binary std/no_std choice
     realloc_fn: Option<ReallocFunction>,
 }
 
 #[derive(Debug, Clone)]
 struct Allocation {
-    /// Pointer to allocated memory
+    /// Binary std/no_std choice
     ptr: i32,
-    /// Size of allocation
+    /// Binary std/no_std choice
     size: i32,
     /// Alignment requirement
     align: i32,
-    /// Whether this allocation is active
+    /// Binary std/no_std choice
     active: bool,
 }
 
@@ -91,17 +91,17 @@ struct ReallocFunction {
 
 #[derive(Debug, Default, Clone)]
 struct AllocationMetrics {
-    /// Total allocations performed
+    /// Binary std/no_std choice
     total_allocations: u64,
-    /// Total deallocations performed
+    /// Binary std/no_std choice
     total_deallocations: u64,
-    /// Total bytes allocated
+    /// Binary std/no_std choice
     total_bytes_allocated: u64,
-    /// Total bytes deallocated
+    /// Binary std/no_std choice
     total_bytes_deallocated: u64,
     /// Peak memory usage
     peak_memory_usage: u64,
-    /// Failed allocations
+    /// Binary std/no_std choice
     failed_allocations: u64,
 }
 
@@ -115,7 +115,7 @@ impl ReallocManager {
         }
     }
 
-    /// Register a realloc function for an instance
+    /// Binary std/no_std choice
     pub fn register_realloc(
         &mut self,
         instance_id: ComponentInstanceId,
@@ -130,14 +130,14 @@ impl ReallocManager {
         Ok(())
     }
 
-    /// Allocate memory using realloc
+    /// Binary std/no_std choice
     pub fn allocate(
         &mut self,
         instance_id: ComponentInstanceId,
         size: i32,
         align: i32,
     ) -> Result<i32, ComponentError> {
-        // Validate allocation parameters
+        // Binary std/no_std choice
         self.validate_allocation(size, align)?;
 
         let instance_allocs = self
@@ -145,16 +145,16 @@ impl ReallocManager {
             .get_mut(&instance_id)
             .ok_or(ComponentError::ResourceNotFound(instance_id.0))?;
 
-        // Check instance allocation limits
+        // Binary std/no_std choice
         if instance_allocs.allocations.len() >= self.max_instance_allocations {
             self.metrics.failed_allocations += 1;
             return Err(ComponentError::TooManyGenerativeTypes);
         }
 
-        // Call realloc(0, 0, align, size) for new allocation
+        // Binary std/no_std choice
         let ptr = self.call_realloc(instance_allocs, 0, 0, align, size)?;
 
-        // Track the allocation
+        // Binary std/no_std choice
         let allocation = Allocation { ptr, size, align, active: true };
 
         instance_allocs
@@ -172,7 +172,7 @@ impl ReallocManager {
         Ok(ptr)
     }
 
-    /// Reallocate memory
+    /// Binary std/no_std choice
     pub fn reallocate(
         &mut self,
         instance_id: ComponentInstanceId,
@@ -181,7 +181,7 @@ impl ReallocManager {
         align: i32,
         new_size: i32,
     ) -> Result<i32, ComponentError> {
-        // Validate reallocation parameters
+        // Binary std/no_std choice
         self.validate_allocation(new_size, align)?;
 
         let instance_allocs = self
@@ -189,25 +189,25 @@ impl ReallocManager {
             .get_mut(&instance_id)
             .ok_or(ComponentError::ResourceNotFound(instance_id.0))?;
 
-        // Find the existing allocation
+        // Binary std/no_std choice
         let alloc_index = instance_allocs
             .allocations
             .iter()
             .position(|a| a.ptr == old_ptr && a.size == old_size && a.active)
             .ok_or(ComponentError::ResourceNotFound(old_ptr as u32))?;
 
-        // Call realloc
+        // Binary std/no_std choice
         let new_ptr = self.call_realloc(instance_allocs, old_ptr, old_size, align, new_size)?;
 
-        // Update allocation tracking
+        // Binary std/no_std choice
         if new_size == 0 {
-            // Deallocation
+            // Binary std/no_std choice
             instance_allocs.allocations[alloc_index].active = false;
             instance_allocs.total_bytes -= old_size as usize;
             self.metrics.total_deallocations += 1;
             self.metrics.total_bytes_deallocated += old_size as u64;
         } else {
-            // Reallocation
+            // Binary std/no_std choice
             instance_allocs.allocations[alloc_index].ptr = new_ptr;
             instance_allocs.allocations[alloc_index].size = new_size;
             instance_allocs.total_bytes =
@@ -219,7 +219,7 @@ impl ReallocManager {
         Ok(new_ptr)
     }
 
-    /// Deallocate memory
+    /// Binary std/no_std choice
     pub fn deallocate(
         &mut self,
         instance_id: ComponentInstanceId,
@@ -231,7 +231,7 @@ impl ReallocManager {
         Ok(())
     }
 
-    /// Call the actual realloc function
+    /// Binary std/no_std choice
     fn call_realloc(
         &self,
         instance_allocs: &InstanceAllocations,
@@ -244,19 +244,19 @@ impl ReallocManager {
             instance_allocs.realloc_fn.as_ref().ok_or(ComponentError::ResourceNotFound(0))?;
 
         // In a real implementation, this would call the actual wasm function
-        // For now, we'll simulate the allocation
+        // Binary std/no_std choice
         if new_size == 0 {
-            Ok(0) // Deallocation returns null
+            Ok(0) // Binary std/no_std choice
         } else if old_ptr == 0 {
-            // New allocation - simulate by returning a pointer
+            // Binary std/no_std choice
             Ok(0x1000 + new_size) // Dummy pointer calculation
         } else {
-            // Reallocation - return same or new pointer
+            // Binary std/no_std choice
             Ok(old_ptr) // In real impl, might return different pointer
         }
     }
 
-    /// Validate allocation parameters
+    /// Binary std/no_std choice
     fn validate_allocation(&self, size: i32, align: i32) -> Result<(), ComponentError> {
         if size < 0 {
             return Err(ComponentError::TypeMismatch);
@@ -283,7 +283,7 @@ impl ReallocManager {
         }
     }
 
-    /// Clean up allocations for an instance
+    /// Binary std/no_std choice
     pub fn cleanup_instance(
         &mut self,
         instance_id: ComponentInstanceId,
@@ -300,7 +300,7 @@ impl ReallocManager {
         Ok(())
     }
 
-    /// Get allocation metrics
+    /// Binary std/no_std choice
     pub fn metrics(&self) -> &AllocationMetrics {
         &self.metrics
     }
@@ -311,11 +311,11 @@ impl ReallocManager {
     }
 }
 
-/// Helper functions for canonical ABI realloc operations
+/// Binary std/no_std choice
 pub mod helpers {
     use super::*;
 
-    /// Calculate aligned size for allocation
+    /// Binary std/no_std choice
     pub fn align_size(size: usize, align: usize) -> usize {
         (size + align - 1) & !(align - 1)
     }
@@ -325,7 +325,7 @@ pub mod helpers {
         (ptr & (align - 1)) == 0
     }
 
-    /// Calculate total allocation size including alignment padding
+    /// Binary std/no_std choice
     pub fn calculate_allocation_size(
         layout: &MemoryLayout,
         count: usize,
@@ -346,8 +346,8 @@ pub mod helpers {
 impl Default for ReallocManager {
     fn default() -> Self {
         Self::new(
-            10 * 1024 * 1024, // 10MB max allocation
-            1024,             // Max 1024 allocations per instance
+            10 * 1024 * 1024, // Binary std/no_std choice
+            1024,             // Binary std/no_std choice
         )
     }
 }
@@ -376,7 +376,7 @@ mod tests {
         let mut manager = ReallocManager::new(1024, 10);
         let instance_id = ComponentInstanceId(1);
 
-        // Register realloc function
+        // Binary std/no_std choice
         manager.register_realloc(instance_id, 42).unwrap();
 
         // Allocate memory
@@ -396,10 +396,10 @@ mod tests {
 
         manager.register_realloc(instance_id, 42).unwrap();
 
-        // Initial allocation
+        // Binary std/no_std choice
         let ptr = manager.allocate(instance_id, 64, 8).unwrap();
 
-        // Reallocate to larger size
+        // Binary std/no_std choice
         let new_ptr = manager.reallocate(instance_id, ptr, 64, 8, 128);
         assert!(new_ptr.is_ok());
     }
@@ -411,7 +411,7 @@ mod tests {
 
         manager.register_realloc(instance_id, 42).unwrap();
 
-        // Allocate and then deallocate
+        // Binary std/no_std choice
         let ptr = manager.allocate(instance_id, 64, 8).unwrap();
         assert!(manager.deallocate(instance_id, ptr, 64, 8).is_ok());
 
@@ -433,7 +433,7 @@ mod tests {
         // Test count limit
         assert!(manager.allocate(instance_id, 10, 8).is_ok());
         assert!(manager.allocate(instance_id, 10, 8).is_ok());
-        assert!(manager.allocate(instance_id, 10, 8).is_err()); // Should fail - too many allocations
+        assert!(manager.allocate(instance_id, 10, 8).is_err()); // Binary std/no_std choice
     }
 
     #[test]
@@ -450,7 +450,7 @@ mod tests {
         assert!(!is_aligned(17, 8));
         assert!(is_aligned(0, 1));
 
-        // Test calculate_allocation_size
+        // Binary std/no_std choice
         let layout = MemoryLayout { size: 10, align: 8 };
         assert_eq!(calculate_allocation_size(&layout, 3).unwrap(), 32); // 30 rounded up to 32
     }

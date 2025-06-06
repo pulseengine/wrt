@@ -484,7 +484,7 @@ impl StartFunctionValidator {
     ) -> StartFunctionResult<BoundedVec<SideEffect, 32>> {
         let mut side_effects = BoundedVec::new();
 
-        // Analyze memory allocations
+        // Binary std/no_std choice
         if execution_context.memory_allocations() > 0 {
             let effect = SideEffect {
                 effect_type: SideEffectType::MemoryAllocation,

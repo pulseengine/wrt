@@ -9,8 +9,8 @@ use core::{fmt, mem};
 #[cfg(feature = "std")]
 use std::{fmt, mem};
 
-#[cfg(any(feature = "std", feature = "alloc"))]
-use alloc::{
+#[cfg(feature = "std")]
+use std::{
     boxed::Box,
     vec::Vec,
     collections::BTreeMap,
@@ -40,9 +40,9 @@ const MAX_ASYNC_RESOURCES_PER_INSTANCE: usize = 128;
 #[derive(Debug)]
 pub struct AsyncResourceCleanupManager {
     /// Cleanup entries by instance
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     cleanup_entries: BTreeMap<ComponentInstanceId, Vec<AsyncCleanupEntry>>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     cleanup_entries: BoundedVec<(ComponentInstanceId, BoundedVec<AsyncCleanupEntry, MAX_ASYNC_RESOURCES_PER_INSTANCE>), MAX_CLEANUP_ENTRIES>,
     
     /// Global cleanup statistics
@@ -155,9 +155,9 @@ pub enum AsyncCleanupData {
     
     /// Custom cleanup data
     Custom {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         cleanup_id: String,
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         cleanup_id: BoundedString<64>,
         data: u64, // Generic data field
     },
@@ -210,9 +210,9 @@ impl AsyncResourceCleanupManager {
     /// Create a new async resource cleanup manager
     pub fn new() -> Self {
         Self {
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             cleanup_entries: BTreeMap::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             cleanup_entries: BoundedVec::new(),
             stats: AsyncCleanupStats::default(),
             next_cleanup_id: 1,
@@ -250,10 +250,10 @@ impl AsyncResourceCleanupManager {
     pub fn execute_cleanups(&mut self, instance_id: ComponentInstanceId) -> Result<Vec<CleanupResult>> {
         let mut results = Vec::new();
         
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         let entries = self.cleanup_entries.remove(&instance_id).unwrap_or_default();
         
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         let entries = {
             let mut found_entries = BoundedVec::new();
             let mut index_to_remove = None;
@@ -274,14 +274,14 @@ impl AsyncResourceCleanupManager {
         };
 
         // Sort by priority (highest first)
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         let mut sorted_entries = entries;
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         sorted_entries.sort_by(|a, b| b.priority.cmp(&a.priority));
 
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         let mut sorted_entries = entries;
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         self.sort_entries_by_priority(&mut sorted_entries);
 
         // Execute each cleanup
@@ -301,9 +301,9 @@ impl AsyncResourceCleanupManager {
                 }
             }
             
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             results.push(result);
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             {
                 if results.len() < MAX_ASYNC_RESOURCES_PER_INSTANCE {
                     let _ = results.push(result);
@@ -311,9 +311,9 @@ impl AsyncResourceCleanupManager {
             }
         }
 
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         Ok(results)
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         Ok(results.into_vec())
     }
 
@@ -362,11 +362,11 @@ impl AsyncResourceCleanupManager {
 
     /// Remove all cleanup entries for an instance
     pub fn clear_instance(&mut self, instance_id: ComponentInstanceId) -> Result<()> {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.cleanup_entries.remove(&instance_id);
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             let mut index_to_remove = None;
             for (i, (id, _)) in self.cleanup_entries.iter().enumerate() {
@@ -385,14 +385,14 @@ impl AsyncResourceCleanupManager {
     // Private helper methods
 
     fn add_cleanup_entry(&mut self, instance_id: ComponentInstanceId, entry: AsyncCleanupEntry) -> Result<()> {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.cleanup_entries
                 .entry(instance_id)
                 .or_insert_with(Vec::new)
                 .push(entry);
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             // Find existing entry or create new one
             let mut found = false;
@@ -439,7 +439,7 @@ impl AsyncResourceCleanupManager {
         Ok(())
     }
 
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     fn sort_entries_by_priority(&self, entries: &mut BoundedVec<AsyncCleanupEntry, MAX_ASYNC_RESOURCES_PER_INSTANCE>) {
         // Simple bubble sort for no_std
         for i in 0..entries.len() {
@@ -454,11 +454,11 @@ impl AsyncResourceCleanupManager {
     }
 
     fn count_total_entries(&self) -> u32 {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.cleanup_entries.values().map(|v| v.len()).sum::<usize>() as u32
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             self.cleanup_entries.iter().map(|(_, v)| v.len()).sum::<usize>() as u32
         }

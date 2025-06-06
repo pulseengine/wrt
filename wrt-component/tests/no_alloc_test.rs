@@ -6,11 +6,11 @@
 // For testing in a no_std environment
 #![cfg_attr(not(feature = "std"), no_std)]
 
-// Test the no_alloc module specifically
+// Binary std/no_std choice
 #[cfg(test)]
 mod no_alloc_tests {
     // Import from wrt-foundation that is available in all environments
-    // Import from wrt-component's no_alloc module (available in all environments)
+    // Binary std/no_std choice
     use wrt_component::no_alloc::{
         validate_component_no_alloc, validate_component_with_level, ComponentHeader,
         ComponentSectionId, ComponentSectionInfo, MinimalComponent, ValidationLevel,

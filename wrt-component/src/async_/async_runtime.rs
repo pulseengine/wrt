@@ -9,8 +9,8 @@ use core::{fmt, mem, time::Duration};
 #[cfg(feature = "std")]
 use std::{fmt, mem, time::Duration};
 
-#[cfg(any(feature = "std", feature = "alloc"))]
-use alloc::{boxed::Box, collections::VecDeque, vec::Vec};
+#[cfg(feature = "std")]
+use std::{boxed::Box, collections::VecDeque, vec::Vec};
 
 use wrt_foundation::{
     bounded::{BoundedVec, BoundedString},
@@ -48,15 +48,15 @@ pub struct AsyncRuntime {
     reactor: Reactor,
     
     /// Stream registry
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     streams: Vec<StreamEntry>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     streams: BoundedVec<StreamEntry, MAX_CONCURRENT_TASKS>,
     
     /// Future registry
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     futures: Vec<FutureEntry>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     futures: BoundedVec<FutureEntry, MAX_CONCURRENT_TASKS>,
     
     /// Runtime configuration
@@ -73,15 +73,15 @@ pub struct AsyncRuntime {
 #[derive(Debug)]
 pub struct TaskScheduler {
     /// Ready queue for immediately runnable tasks
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     ready_queue: VecDeque<ScheduledTask>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     ready_queue: BoundedVec<ScheduledTask, MAX_CONCURRENT_TASKS>,
     
     /// Waiting tasks (blocked on I/O or timers)
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     waiting_tasks: Vec<WaitingTask>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     waiting_tasks: BoundedVec<WaitingTask, MAX_CONCURRENT_TASKS>,
     
     /// Current time for scheduling
@@ -95,15 +95,15 @@ pub struct TaskScheduler {
 #[derive(Debug)]
 pub struct Reactor {
     /// Pending events
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pending_events: VecDeque<ReactorEvent>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pending_events: BoundedVec<ReactorEvent, MAX_REACTOR_EVENTS>,
     
     /// Event handlers
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     event_handlers: Vec<EventHandler>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     event_handlers: BoundedVec<EventHandler, MAX_REACTOR_EVENTS>,
 }
 
@@ -147,9 +147,9 @@ pub struct StreamEntry {
     /// Stream instance
     pub stream: Stream<Value>,
     /// Associated tasks
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub tasks: Vec<TaskId>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub tasks: BoundedVec<TaskId, 16>,
 }
 
@@ -161,9 +161,9 @@ pub struct FutureEntry {
     /// Future instance
     pub future: Future<Value>,
     /// Associated tasks
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub tasks: Vec<TaskId>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub tasks: BoundedVec<TaskId, 16>,
 }
 
@@ -304,13 +304,13 @@ impl AsyncRuntime {
         Self {
             scheduler: TaskScheduler::new(),
             reactor: Reactor::new(),
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             streams: Vec::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             streams: BoundedVec::new(),
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             futures: Vec::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             futures: BoundedVec::new(),
             config: RuntimeConfig::default(),
             stats: RuntimeStats::new(),
@@ -430,9 +430,9 @@ impl AsyncRuntime {
         let entry = StreamEntry {
             handle,
             stream,
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             tasks: Vec::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             tasks: BoundedVec::new(),
         };
         
@@ -454,9 +454,9 @@ impl AsyncRuntime {
         let entry = FutureEntry {
             handle,
             future,
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             tasks: Vec::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             tasks: BoundedVec::new(),
         };
         
@@ -506,13 +506,13 @@ impl TaskScheduler {
     /// Create new task scheduler
     pub fn new() -> Self {
         Self {
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             ready_queue: VecDeque::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             ready_queue: BoundedVec::new(),
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             waiting_tasks: Vec::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             waiting_tasks: BoundedVec::new(),
             current_time: 0,
             task_manager: TaskManager::new(),
@@ -521,7 +521,7 @@ impl TaskScheduler {
 
     /// Schedule a task for execution
     pub fn schedule_task(&mut self, task: ScheduledTask) -> Result<()> {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             // Insert task in priority order (lower number = higher priority)
             let insert_pos = self.ready_queue
@@ -531,7 +531,7 @@ impl TaskScheduler {
             
             self.ready_queue.insert(insert_pos, task);
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             self.ready_queue.push(task).map_err(|_| {
                 Error::new(
@@ -618,11 +618,11 @@ impl TaskScheduler {
     // Private helper methods
 
     fn get_next_ready_task(&mut self) -> Option<ScheduledTask> {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.ready_queue.pop_front()
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             if !self.ready_queue.is_empty() {
                 Some(self.ready_queue.remove(0))
@@ -723,26 +723,26 @@ impl Reactor {
     /// Create new reactor
     pub fn new() -> Self {
         Self {
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             pending_events: VecDeque::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             pending_events: BoundedVec::new(),
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             event_handlers: Vec::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             event_handlers: BoundedVec::new(),
         }
     }
 
     /// Process pending events
     pub fn process_events(&mut self, scheduler: &mut TaskScheduler) -> Result<()> {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             while let Some(event) = self.pending_events.pop_front() {
                 self.handle_event(event, scheduler)?;
             }
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             while !self.pending_events.is_empty() {
                 let event = self.pending_events.remove(0);

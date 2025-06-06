@@ -41,10 +41,10 @@
 #[cfg(feature = "std")]
 use std::{collections::HashMap, string::String, vec::Vec};
 
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-use alloc::{collections::BTreeMap as HashMap, string::String, vec::Vec};
+#[cfg(all(not(feature = "std")))]
+use std::{collections::BTreeMap as HashMap, string::String, vec::Vec};
 
-#[cfg(not(any(feature = "std", feature = "alloc")))]
+#[cfg(not(any(feature = "std", )))]
 use wrt_foundation::{BoundedString, BoundedVec, NoStdHashMap as HashMap};
 
 use wrt_error::{codes, Error, ErrorCategory, Result};
@@ -214,13 +214,13 @@ pub trait CanonicalMemory {
 }
 
 /// Simple memory implementation for testing
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 #[derive(Debug, Clone)]
 pub struct SimpleMemory {
     data: Vec<u8>,
 }
 
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 impl SimpleMemory {
     /// Create a new memory with the given size
     pub fn new(size: usize) -> Self {
@@ -238,7 +238,7 @@ impl SimpleMemory {
     }
 }
 
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 impl CanonicalMemory for SimpleMemory {
     fn read_bytes(&self, offset: u32, len: u32) -> Result<Vec<u8>> {
         let start = offset as usize;
@@ -281,7 +281,7 @@ impl CanonicalMemory for SimpleMemory {
 pub struct CanonicalABI {
     /// String encoding (always UTF-8 for now)
     string_encoding: StringEncoding,
-    /// Memory allocation alignment
+    /// Binary std/no_std choice
     alignment: u32,
 }
 
@@ -937,8 +937,8 @@ impl CanonicalABI {
         offset: u32,
     ) -> Result<()> {
         // This is a simplified implementation that assumes string data
-        // is already allocated somewhere in memory. In a full implementation,
-        // this would need to call the canonical realloc function.
+        // Binary std/no_std choice
+        // Binary std/no_std choice
 
         let bytes = value.as_bytes();
         let len = bytes.len() as u32;
@@ -1182,7 +1182,7 @@ mod tests {
             let _memory = SimpleMemory::new(1024);
         }
 
-        #[cfg(all(feature = "alloc", not(feature = "std")))]
+        #[cfg(all(not(feature = "std")))]
         {
             let _memory = SimpleMemory::new(1024);
         }

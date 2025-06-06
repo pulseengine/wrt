@@ -5,7 +5,7 @@
 //! post-return functions, and memory management.
 
 #[cfg(not(feature = "std"))]
-use alloc::sync::{Arc, RwLock};
+use std::sync::{Arc, RwLock};
 #[cfg(feature = "std")]
 use std::sync::{Arc, RwLock};
 
@@ -23,7 +23,7 @@ use crate::{
 pub struct CanonicalOptions {
     /// Memory index for canonical operations
     pub memory: u32,
-    /// Realloc function index (optional)
+    /// Binary std/no_std choice
     pub realloc: Option<u32>,
     /// Post-return function index (optional)
     pub post_return: Option<u32>,
@@ -31,7 +31,7 @@ pub struct CanonicalOptions {
     pub string_encoding: StringEncoding,
     /// Instance ID for this set of options
     pub instance_id: ComponentInstanceId,
-    /// Realloc manager reference
+    /// Binary std/no_std choice
     pub realloc_manager: Option<Arc<RwLock<ReallocManager>>>,
 }
 
@@ -43,7 +43,7 @@ pub struct CanonicalLiftContext<'a> {
     pub memory: &'a Memory,
     /// Canonical options
     pub options: &'a CanonicalOptions,
-    /// Temporary allocations made during lift
+    /// Binary std/no_std choice
     allocations: Vec<TempAllocation>,
 }
 
@@ -79,7 +79,7 @@ impl CanonicalOptions {
         }
     }
 
-    /// Set realloc function
+    /// Binary std/no_std choice
     pub fn with_realloc(mut self, func_index: u32, manager: Arc<RwLock<ReallocManager>>) -> Self {
         self.realloc = Some(func_index);
         self.realloc_manager = Some(manager);
@@ -104,7 +104,7 @@ impl CanonicalOptions {
         self
     }
 
-    /// Check if realloc is available
+    /// Binary std/no_std choice
     pub fn has_realloc(&self) -> bool {
         self.realloc.is_some() && self.realloc_manager.is_some()
     }
@@ -121,23 +121,23 @@ impl<'a> CanonicalLiftContext<'a> {
         Self { instance, memory, options, allocations: Vec::new() }
     }
 
-    /// Allocate memory for lifting using realloc if available
+    /// Binary std/no_std choice
     pub fn allocate(&mut self, size: usize, align: usize) -> Result<i32, ComponentError> {
         if size == 0 {
             return Ok(0);
         }
 
         let ptr = if let Some(manager) = &self.options.realloc_manager {
-            // Use realloc manager
+            // Binary std/no_std choice
             let mut mgr = manager.write().map_err(|_| ComponentError::ResourceNotFound(0))?;
 
             mgr.allocate(self.options.instance_id, size as i32, align as i32)?
         } else {
-            // Fallback to static allocation
+            // Binary std/no_std choice
             return Err(ComponentError::ResourceNotFound(0));
         };
 
-        // Track allocation for cleanup
+        // Binary std/no_std choice
         self.allocations.push(TempAllocation { ptr, size: size as i32, align: align as i32 });
 
         Ok(ptr)
@@ -181,9 +181,9 @@ impl<'a> CanonicalLiftContext<'a> {
         }
     }
 
-    /// Clean up allocations, calling post-return if configured
+    /// Binary std/no_std choice
     pub fn cleanup(mut self) -> Result<(), ComponentError> {
-        // First, deallocate all temporary allocations
+        // Binary std/no_std choice
         if let Some(manager) = &self.options.realloc_manager {
             let mut mgr = manager.write().map_err(|_| ComponentError::ResourceNotFound(0))?;
 
@@ -212,23 +212,23 @@ impl<'a> CanonicalLowerContext<'a> {
         Self { instance, memory, options, allocations: Vec::new() }
     }
 
-    /// Allocate memory for lowering using realloc if available
+    /// Binary std/no_std choice
     pub fn allocate(&mut self, size: usize, align: usize) -> Result<i32, ComponentError> {
         if size == 0 {
             return Ok(0);
         }
 
         let ptr = if let Some(manager) = &self.options.realloc_manager {
-            // Use realloc manager
+            // Binary std/no_std choice
             let mut mgr = manager.write().map_err(|_| ComponentError::ResourceNotFound(0))?;
 
             mgr.allocate(self.options.instance_id, size as i32, align as i32)?
         } else {
-            // Fallback - would need static allocation strategy
+            // Binary std/no_std choice
             return Err(ComponentError::ResourceNotFound(0));
         };
 
-        // Track allocation
+        // Binary std/no_std choice
         self.allocations.push(TempAllocation { ptr, size: size as i32, align: align as i32 });
 
         Ok(ptr)
@@ -277,9 +277,9 @@ impl<'a> CanonicalLowerContext<'a> {
         Ok((ptr, len))
     }
 
-    /// Clean up allocations (lower contexts typically don't deallocate)
+    /// Binary std/no_std choice
     pub fn finish(self) -> Result<Vec<TempAllocation>, ComponentError> {
-        // Return allocations for the caller to manage
+        // Binary std/no_std choice
         Ok(self.allocations)
     }
 }

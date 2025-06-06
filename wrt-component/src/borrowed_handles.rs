@@ -8,8 +8,8 @@ use core::{fmt, mem, marker::PhantomData, sync::atomic::{AtomicU32, AtomicU64, O
 #[cfg(feature = "std")]
 use std::{fmt, mem, marker::PhantomData, sync::atomic::{AtomicU32, AtomicU64, Ordering}};
 
-#[cfg(any(feature = "std", feature = "alloc"))]
-use alloc::{boxed::Box, vec::Vec, sync::Arc};
+#[cfg(feature = "std")]
+use std::{boxed::Box, vec::Vec, sync::Arc};
 
 use wrt_foundation::{
     bounded::{BoundedVec, BoundedString},
@@ -72,21 +72,21 @@ pub struct LifetimeScope(pub u32);
 #[derive(Debug)]
 pub struct HandleLifetimeTracker {
     /// Active owned handles
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     owned_handles: Vec<OwnedHandleEntry>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     owned_handles: BoundedVec<OwnedHandleEntry, MAX_BORROWED_HANDLES>,
     
     /// Active borrowed handles
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     borrowed_handles: Vec<BorrowedHandleEntry>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     borrowed_handles: BoundedVec<BorrowedHandleEntry, MAX_BORROWED_HANDLES>,
     
     /// Lifetime scope stack
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     scope_stack: Vec<LifetimeScopeEntry>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     scope_stack: BoundedVec<LifetimeScopeEntry, MAX_LIFETIME_DEPTH>,
     
     /// Next handle ID
@@ -177,9 +177,9 @@ pub struct LifetimeScopeEntry {
     pub task: TaskId,
     
     /// Borrows created in this scope
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub borrows: Vec<BorrowId>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub borrows: BoundedVec<BorrowId, MAX_BORROWED_HANDLES>,
     
     /// Creation timestamp
@@ -333,19 +333,19 @@ impl HandleLifetimeTracker {
     /// Create new handle lifetime tracker
     pub fn new() -> Self {
         Self {
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             owned_handles: Vec::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             owned_handles: BoundedVec::new(),
             
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             borrowed_handles: Vec::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             borrowed_handles: BoundedVec::new(),
             
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             scope_stack: Vec::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             scope_stack: BoundedVec::new(),
             
             next_handle_id: AtomicU32::new(1),
@@ -544,9 +544,9 @@ impl HandleLifetimeTracker {
             parent,
             component,
             task,
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             borrows: Vec::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             borrows: BoundedVec::new(),
             created_at: self.get_current_time(),
             active: true,
@@ -619,11 +619,11 @@ impl HandleLifetimeTracker {
     /// Clean up invalid handles and scopes
     pub fn cleanup(&mut self) -> Result<()> {
         // Remove invalid borrowed handles
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.borrowed_handles.retain(|entry| entry.valid);
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             let mut i = 0;
             while i < self.borrowed_handles.len() {
@@ -636,11 +636,11 @@ impl HandleLifetimeTracker {
         }
         
         // Remove inactive scopes
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.scope_stack.retain(|entry| entry.active);
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             let mut i = 0;
             while i < self.scope_stack.len() {

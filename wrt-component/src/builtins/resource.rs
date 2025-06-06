@@ -6,8 +6,7 @@
 // - resource.rep: Get the representation of a resource
 // - resource.get: Get a resource handle
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::{boxed::Box, sync::Arc, vec::Vec};
+use std::{boxed::Box, sync::Arc, vec::Vec};
 #[cfg(feature = "std")]
 use std::{
     boxed::Box,

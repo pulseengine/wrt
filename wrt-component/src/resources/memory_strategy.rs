@@ -4,12 +4,10 @@
 // SPDX-License-Identifier: MIT
 
 use wrt_error::{Error, Result};
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
 use wrt_foundation::bounded::{BoundedCollection, BoundedVec, MAX_BUFFER_SIZE};
 
 #[cfg(feature = "std")]
 use super::resource_table::MemoryStrategy;
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
 use super::resource_table_no_std::MemoryStrategy;
 use crate::resources::{ResourceOperation, ResourceStrategy};
 
@@ -56,7 +54,6 @@ impl ResourceStrategy for MemoryStrategy {
     }
 }
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
 impl ResourceStrategy for MemoryStrategy {
     fn memory_strategy_type(&self) -> MemoryStrategy {
         *self
@@ -193,8 +190,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(all(not(feature = "std"), feature = "alloc"))]
-    fn test_no_std_copy_strategy() {
+        fn test_no_std_copy_strategy() {
         let strategy = MemoryStrategy::Copy;
         let data = &[1, 2, 3, 4, 5];
 
@@ -203,8 +199,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(all(not(feature = "std"), feature = "alloc"))]
-    fn test_no_std_reference_strategy() {
+        fn test_no_std_reference_strategy() {
         let strategy = MemoryStrategy::Reference;
         let data = &[1, 2, 3, 4, 5];
 

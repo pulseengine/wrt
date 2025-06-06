@@ -90,7 +90,7 @@ pub struct ComponentHeader {
 /// Validates a WebAssembly Component Model binary
 ///
 /// This function performs basic validation of a Component Model binary without
-/// requiring allocation. It checks the header and basic structure.
+/// Binary std/no_std choice
 ///
 /// # Arguments
 ///
@@ -203,7 +203,7 @@ fn validate_component_imports_exports(bytes: &[u8]) -> Result<()> {
 /// A minimal compatibility layer for pure no_std environments
 ///
 /// This is a very limited subset of component model functionality
-/// that works without heap allocation. It provides basic
+/// Binary std/no_std choice
 /// validation and introspection capabilities.
 pub struct MinimalComponent {
     /// Header information

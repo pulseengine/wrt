@@ -450,7 +450,7 @@ impl ResourceTable {
             }
             FormatResourceOperation::New(new) => {
                 // New operation - creates a resource from its representation
-                // This would normally allocate a new handle, but here we're
+                // Binary std/no_std choice
                 // working with an existing handle
                 Ok(ComponentValue::U32(handle))
             }

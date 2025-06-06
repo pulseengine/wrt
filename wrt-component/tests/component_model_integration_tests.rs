@@ -54,7 +54,7 @@ fn test_complete_component_model_workflow() {
     // Test 2: Async operations with task management
     test_async_workflow(&mut task_manager, instance_id);
 
-    // Test 3: Memory management with realloc
+    // Binary std/no_std choice
     test_memory_management(&mut realloc_manager, instance_id);
 
     // Test 4: Post-return cleanup integration
@@ -151,12 +151,12 @@ fn test_async_workflow(task_manager: &mut TaskManager, instance_id: ComponentIns
 }
 
 fn test_memory_management(realloc_manager: &mut ReallocManager, instance_id: ComponentInstanceId) {
-    // Test allocation
+    // Binary std/no_std choice
     let size = 1024;
     let align = 8;
     let ptr = realloc_manager.allocate(instance_id, size, align).unwrap();
 
-    // Verify allocation tracking
+    // Binary std/no_std choice
     let allocations = realloc_manager.get_instance_allocations(instance_id).unwrap();
     assert!(allocations.contains_key(&ptr));
 
@@ -164,7 +164,7 @@ fn test_memory_management(realloc_manager: &mut ReallocManager, instance_id: Com
     assert_eq!(alloc_info.size, size);
     assert_eq!(alloc_info.alignment, align);
 
-    // Test reallocation
+    // Binary std/no_std choice
     let new_size = 2048;
     let new_ptr = realloc_manager.reallocate(instance_id, ptr, size, align, new_size).unwrap();
 
@@ -174,7 +174,7 @@ fn test_memory_management(realloc_manager: &mut ReallocManager, instance_id: Com
     assert!(updated_allocations.contains_key(&new_ptr));
     assert_eq!(updated_allocations[&new_ptr].size, new_size);
 
-    // Test deallocation
+    // Binary std/no_std choice
     realloc_manager.deallocate(instance_id, new_ptr, new_size, align).unwrap();
 
     let final_allocations = realloc_manager.get_instance_allocations(instance_id).unwrap();
@@ -596,7 +596,7 @@ fn test_canonical_options_integration() {
     let mut realloc_manager = ReallocManager::new();
     let mut post_return_registry = PostReturnRegistry::new();
 
-    // Create canonical options with realloc and post-return
+    // Binary std/no_std choice
     let options = CanonicalOptions::builder()
         .with_memory(true)
         .with_realloc(true)
@@ -698,7 +698,7 @@ fn test_no_std_compatibility() {
     assert!(mem::size_of::<CleanupTask>() < 256);
     assert!(mem::size_of::<AsyncType>() < 512);
 
-    // Test that we can create instances without heap allocation
+    // Binary std/no_std choice
     let instance_id = ComponentInstanceId::new(500);
     let _stream = Stream::new(42.into(), ValType::I32);
     let _future = Future::new(43.into(), ValType::String);

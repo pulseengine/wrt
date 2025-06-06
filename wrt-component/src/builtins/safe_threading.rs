@@ -3,7 +3,7 @@
 //! This module provides WebAssembly threading built-ins that leverage the
 //! platform-specific thread pools and safety mechanisms from wrt-platform.
 
-use alloc::{boxed::Box, string::ToString, sync::Arc, vec::Vec};
+use std::{boxed::Box, string::ToString, sync::Arc, vec::Vec};
 
 use wrt_error::{kinds::ThreadingError, Error, Result};
 use wrt_foundation::{builtin::BuiltinType, component_value::ComponentValue};

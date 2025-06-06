@@ -23,7 +23,7 @@ use wrt_runtime::{
 // Import RwLock from prelude (it will be std::sync::RwLock or a no_std equivalent from the
 // prelude)
 use crate::execution::{run_with_time_bounds, TimeBoundedConfig, TimeBoundedOutcome};
-// VecDeque comes from prelude (std::collections or alloc::collections based on features)
+// Binary std/no_std choice
 
 // core::str is already imported via prelude
 
