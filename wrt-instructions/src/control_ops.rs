@@ -98,10 +98,10 @@ pub enum ControlOp {
     /// Branch to a label in a table
     BrTable {
         /// Table of branch target labels
-        #[cfg(feature = "alloc")]
+        #[cfg(feature = "std")]
         table: Vec<u32>,
         /// Table of branch target labels (no_std)
-        #[cfg(not(feature = "alloc"))]
+        #[cfg(not(feature = "std"))]
         table: BoundedVec<u32, 256, wrt_foundation::NoStdProvider<8192>>,
         /// Default label to branch to if the index is out of bounds
         default: u32,
@@ -256,10 +256,10 @@ impl ReturnCallIndirect {
 #[derive(Debug, Clone, PartialEq)]
 pub struct BrTable {
     /// Table of branch target labels
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub table: Vec<u32>,
     
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub table: wrt_foundation::BoundedVec<u32, 256, wrt_foundation::NoStdProvider<8192>>,
     
     /// Default label to branch to if the index is out of bounds
@@ -267,14 +267,14 @@ pub struct BrTable {
 }
 
 impl BrTable {
-    /// Create a new br_table operation with Vec (requires alloc)
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    /// Binary std/no_std choice
+    #[cfg(feature = "std")]
     pub fn new(table: Vec<u32>, default: u32) -> Self {
         Self { table, default }
     }
     
     /// Create a new br_table operation with BoundedVec (no_std)
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub fn new_bounded(
         table: wrt_foundation::BoundedVec<u32, 256, wrt_foundation::NoStdProvider<8192>>, 
         default: u32
@@ -284,14 +284,14 @@ impl BrTable {
     
     /// Create a br_table from a slice (works in all environments)
     pub fn from_slice(table_slice: &[u32], default: u32) -> Result<Self> {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             Ok(Self {
                 table: table_slice.to_vec(),
                 default,
             })
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             let provider = wrt_foundation::NoStdProvider::<8192>::new();
             let mut table = wrt_foundation::BoundedVec::new(provider).map_err(|_| {
@@ -322,11 +322,11 @@ impl BrTable {
         })?;
         
         // Execute the branch table operation with different approaches per feature
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             context.execute_br_table(self.table.as_slice(), self.default, index)
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             // For no_std, we create a temporary slice on the stack
             let mut slice_vec = [0u32; 256]; // Static array for no_std
@@ -546,12 +546,10 @@ impl<T: ControlContext> PureInstruction<T, Error> for ControlOp {
     }
 }
 
-#[cfg(all(test, any(feature = "std", feature = "alloc")))]
+#[cfg(all(test, any(feature = "std", )))]
 mod tests {
-    #[cfg(all(not(feature = "std"), feature = "alloc"))]
-    use alloc::vec;
-    #[cfg(all(not(feature = "std"), feature = "alloc"))]
-    use alloc::vec::Vec;
+        use std::vec;
+        use std::vec::Vec;
     // Import Vec and vec! based on feature flags
     #[cfg(feature = "std")]
     use std::vec::Vec;

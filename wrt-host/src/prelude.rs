@@ -9,21 +9,10 @@
 //! consistency across all crates in the WRT project and simplify imports in
 //! individual modules.
 
-// Core imports for both std and no_std environments
-// Re-export from alloc when no_std but alloc is available
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-pub use alloc::{
-    boxed::Box,
-    collections::{BTreeMap as HashMap, BTreeSet as HashSet},
-    format,
-    string::{String, ToString},
-    sync::Arc,
-    vec,
-    vec::Vec,
-};
+// Binary std/no_std choice - conditional imports only
 
-// For pure no_std (no alloc), use bounded collections
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+// Binary std/no_std choice
+#[cfg(not(feature = "std"))]
 pub use wrt_foundation::{
     bounded::{BoundedVec as Vec, BoundedString as String},
     BoundedMap as HashMap,
@@ -31,24 +20,24 @@ pub use wrt_foundation::{
 };
 
 // Additional imports for pure no_std
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[cfg(not(feature = "std"))]
 pub use core::fmt::Write as FmtWrite;
 
 // Arc is not available in pure no_std, use a reference wrapper
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[cfg(not(feature = "std"))]
 #[derive(Debug, Clone)]
 pub struct Arc<T> {
     inner: T,
 }
 
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[cfg(not(feature = "std"))]
 impl<T> Arc<T> {
     pub fn new(value: T) -> Self {
         Self { inner: value }
     }
 }
 
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[cfg(not(feature = "std"))]
 impl<T> core::ops::Deref for Arc<T> {
     type Target = T;
     fn deref(&self) -> &Self::Target {
@@ -58,20 +47,20 @@ impl<T> core::ops::Deref for Arc<T> {
 
 // In pure no_std mode, we need a minimal Box implementation for trait objects
 // Simple Box implementation for no_std environments
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[cfg(not(feature = "std"))]
 #[derive(Debug)]
 pub struct Box<T> {
     inner: T,
 }
 
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[cfg(not(feature = "std"))]
 impl<T> Box<T> {
     pub fn new(value: T) -> Self {
         Self { inner: value }
     }
 }
 
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[cfg(not(feature = "std"))]
 impl<T> core::ops::Deref for Box<T> {
     type Target = T;
     fn deref(&self) -> &Self::Target {
@@ -79,7 +68,7 @@ impl<T> core::ops::Deref for Box<T> {
     }
 }
 
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[cfg(not(feature = "std"))]
 impl<T> core::ops::DerefMut for Box<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.inner
@@ -125,11 +114,11 @@ pub use wrt_foundation::{
     verification::VerificationLevel,
 };
 
-// Component model types (only available with alloc)
-#[cfg(any(feature = "std", feature = "alloc"))]
+// Binary std/no_std choice
+#[cfg(feature = "std")]
 pub use wrt_foundation::component_value::ComponentValue;
-// Re-export from wrt-intercept (only available with alloc)
-#[cfg(any(feature = "std", feature = "alloc"))]
+// Binary std/no_std choice
+#[cfg(feature = "std")]
 pub use wrt_intercept::{
     BeforeBuiltinResult, BuiltinInterceptor, InterceptContext, LinkInterceptor,
     LinkInterceptorStrategy,

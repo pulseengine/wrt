@@ -9,8 +9,8 @@
 #[cfg(feature = "std")]
 extern crate std;
 
-// Import alloc when the feature is enabled
-#[cfg(feature = "alloc")]
+// Binary std/no_std choice
+#[cfg(feature = "std")]
 extern crate alloc;
 
 /// Version of the helper crate

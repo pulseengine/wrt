@@ -40,7 +40,6 @@
 #![warn(clippy::missing_panics_doc)]
 #![warn(missing_docs)]
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
 extern crate alloc;
 
 // Create the prelude module for consistent imports

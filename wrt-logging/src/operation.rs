@@ -3,15 +3,13 @@
 //! This module provides types for representing log operations in component
 //! logging.
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::string::String;
 #[cfg(feature = "std")]
 use std::string::String;
 
 use crate::level::LogLevel;
 
-// For alloc/std configurations, use String
-#[cfg(any(feature = "std", feature = "alloc"))]
+// Binary std/no_std choice
+#[cfg(feature = "std")]
 /// Log operation from a WebAssembly component
 #[derive(Debug, Clone)]
 pub struct LogOperation {
@@ -24,7 +22,7 @@ pub struct LogOperation {
 }
 
 // For pure no_std configuration, use bounded strings
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[cfg(all(not(feature = "std"), not(feature = "std")))]
 /// Log operation from a WebAssembly component
 #[derive(Debug, Clone)]
 pub struct LogOperation<P: wrt_foundation::MemoryProvider + Default + Clone + PartialEq + Eq = wrt_foundation::NoStdProvider<512>> {
@@ -36,8 +34,8 @@ pub struct LogOperation<P: wrt_foundation::MemoryProvider + Default + Clone + Pa
     pub component_id: Option<wrt_foundation::BoundedString<64, P>>,
 }
 
-// Implementation for alloc/std configurations
-#[cfg(any(feature = "std", feature = "alloc"))]
+// Binary std/no_std choice
+#[cfg(feature = "std")]
 impl LogOperation {
     /// Create a new log operation
     #[must_use]
@@ -56,7 +54,7 @@ impl LogOperation {
 }
 
 // Implementation for pure no_std configuration
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[cfg(all(not(feature = "std"), not(feature = "std")))]
 impl<P: wrt_foundation::MemoryProvider + Default + Clone + PartialEq + Eq> LogOperation<P> {
     /// Create a new log operation
     pub fn new(level: LogLevel, message: &str, provider: P) -> wrt_foundation::Result<Self> {

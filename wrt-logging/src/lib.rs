@@ -60,8 +60,7 @@
 #![warn(missing_docs)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
-// When no_std but alloc is available
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
+// Binary std/no_std choice
 extern crate alloc;
 
 // Conditional imports based on feature flags
@@ -92,18 +91,18 @@ pub mod operation;
 /// Minimal logging handler for pure no_std environments.
 ///
 /// This module provides a minimal implementation of logging functionality
-/// that works in pure no_std environments without allocation.
+/// Binary std/no_std choice
 pub mod minimal_handler;
 
 // Reexport types
 pub use handler::{LogHandler, LoggingExt};
 pub use level::LogLevel;
 // Reexport minimal_handler types for pure no_std environments
-#[cfg(not(any(feature = "std", feature = "alloc")))]
+#[cfg(not(any(feature = "std", )))]
 pub use minimal_handler::{MinimalLogHandler, MinimalLogMessage};
-// For convenience, we also reexport when alloc or std is available
-#[cfg(any(feature = "std", feature = "alloc"))]
-#[cfg_attr(docsrs, doc(cfg(any(feature = "std", feature = "alloc"))))]
+// Binary std/no_std choice
+#[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(any(feature = "std", ))))]
 pub use minimal_handler::{MinimalLogHandler, MinimalLogMessage};
 pub use operation::LogOperation;
 

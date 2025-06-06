@@ -42,7 +42,7 @@ const WRT_CRATES: &[&str] = &[
     "wrt",
 ];
 
-/// Test configurations: std, alloc, pure no_std
+/// Binary std/no_std choice
 const TEST_CONFIGS: &[&str] = &["std", "alloc", ""];
 
 /// Run no_std verification for all crates

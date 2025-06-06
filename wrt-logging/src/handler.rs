@@ -2,23 +2,21 @@
 //!
 //! This module provides types for handling logs from WebAssembly components.
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::boxed::Box;
 #[cfg(feature = "std")]
 use std::boxed::Box;
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[cfg(not(feature = "std"))]
 use wrt_host::Box;
 
 use wrt_host::{callback::CallbackType, CallbackRegistry};
 
 use crate::operation::LogOperation;
 
-// For alloc/std configurations
-#[cfg(any(feature = "std", feature = "alloc"))]
+// Binary std/no_std choice
+#[cfg(feature = "std")]
 /// Function type for handling log operations
 pub type LogHandler = Box<dyn Fn(LogOperation) + Send + Sync>;
 
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 /// Extension trait for CallbackRegistry to add logging-specific methods
 pub trait LoggingExt {
     /// Register a log handler
@@ -34,11 +32,11 @@ pub trait LoggingExt {
 }
 
 // For pure no_std configuration
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[cfg(all(not(feature = "std"), not(feature = "std")))]
 /// Function type for handling log operations (no dynamic dispatch in no_std)
 pub type LogHandler<P> = fn(LogOperation<P>);
 
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[cfg(all(not(feature = "std"), not(feature = "std")))]
 /// Extension trait for CallbackRegistry to add logging-specific methods (no_std)
 pub trait LoggingExt {
     /// Register a simple log handler function (no_std only supports function pointers)
@@ -55,8 +53,8 @@ pub trait LoggingExt {
     fn has_log_handler(&self) -> bool;
 }
 
-// Implementation for alloc/std configurations
-#[cfg(any(feature = "std", feature = "alloc"))]
+// Binary std/no_std choice
+#[cfg(feature = "std")]
 impl LoggingExt for CallbackRegistry {
     fn register_log_handler<F>(&mut self, handler: F)
     where
@@ -77,7 +75,7 @@ impl LoggingExt for CallbackRegistry {
 }
 
 // Implementation for pure no_std configuration
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[cfg(all(not(feature = "std"), not(feature = "std")))]
 impl LoggingExt for CallbackRegistry {
     fn register_log_handler<P>(&mut self, handler: LogHandler<P>)
     where
@@ -148,11 +146,10 @@ mod tests {
     }
 }
 
-// Test module for no_std environments with alloc
+// Binary std/no_std choice
 #[cfg(test)]
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
 mod no_std_alloc_tests {
-    use alloc::vec::Vec;
+    use std::vec::Vec;
     use core::cell::RefCell;
 
     use super::*;

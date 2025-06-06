@@ -206,7 +206,7 @@ mod overflow_prevention_tests {
     fn test_memory_handler_overflow_protection() -> Result<()> {
         let mut handler = SafeMemoryHandler::new(VerificationLevel::Full)?;
         
-        // Test allocation size overflow protection
+        // Binary std/no_std choice
         let large_alloc_result = handler.allocate(usize::MAX);
         assert!(large_alloc_result.is_err());
         

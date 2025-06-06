@@ -192,7 +192,7 @@ impl Validate for BranchHintOp {
     }
 }
 
-#[cfg(all(test, any(feature = "std", feature = "alloc")))]
+#[cfg(all(test, any(feature = "std", )))]
 mod tests {
     use super::*;
     use wrt_foundation::values::{FuncRef, ExternRef};

@@ -69,10 +69,10 @@ pub trait TableOperations {
 /// Element segment operations trait for table.init and elem.drop
 pub trait ElementSegmentOperations {
     /// Get element from segment
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     fn get_element_segment(&self, elem_index: u32) -> Result<Option<Vec<Value>>>;
     
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     fn get_element_segment(&self, elem_index: u32) -> Result<Option<wrt_foundation::BoundedVec<Value, 65536, wrt_foundation::NoStdProvider<65536>>>>;
     
     /// Drop (mark as unavailable) an element segment
@@ -445,14 +445,14 @@ impl TableInit {
         }
         
         // Copy elements from segment to table
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             for i in 0..copy_size {
                 let elem_value = &elements[(src_idx + i) as usize];
                 table.set_table_element(self.table_index, dest_idx + i, elem_value.clone())?;
             }
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             for i in 0..copy_size {
                 let elem_value = elements.get((src_idx + i) as usize)
@@ -726,14 +726,13 @@ impl Validate for TableOp {
     }
 }
 
-#[cfg(all(test, any(feature = "std", feature = "alloc")))]
+#[cfg(all(test, any(feature = "std", )))]
 mod tests {
     use super::*;
     use wrt_foundation::values::{FuncRef, ExternRef};
     
     // Import Vec based on feature flags
-    #[cfg(all(not(feature = "std"), feature = "alloc"))]
-    use alloc::{vec, vec::Vec};
+        use std::{vec, vec::Vec};
     #[cfg(feature = "std")]
     use std::{vec, vec::Vec};
 
@@ -889,7 +888,7 @@ mod tests {
     }
 
     impl ElementSegmentOperations for MockElementSegments {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         fn get_element_segment(&self, elem_index: u32) -> Result<Option<Vec<Value>>> {
             if let Some(seg) = self.segments.get(elem_index as usize) {
                 Ok(seg.clone())
@@ -898,7 +897,7 @@ mod tests {
             }
         }
 
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         fn get_element_segment(&self, elem_index: u32) -> Result<Option<wrt_foundation::BoundedVec<Value, 65536, wrt_foundation::NoStdProvider<65536>>>> {
             if let Some(Some(seg)) = self.segments.get(elem_index as usize) {
                 let mut bounded = wrt_foundation::BoundedVec::new();

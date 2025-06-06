@@ -6,14 +6,12 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 // External crate imports for no_std environment
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
 extern crate alloc;
 
 #[cfg(test)]
 mod tests {
     // Import necessary types for no_std environment
-    #[cfg(all(not(feature = "std"), feature = "alloc"))]
-    use alloc::{format, string::String, vec};
+        use std::{format, string::String, vec};
     
     #[cfg(feature = "std")]
     use std::{format, string::String, vec};
@@ -192,7 +190,7 @@ mod tests {
             assert!(matches!(level, VerificationLevel::Off));
         }
 
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         #[test]
         fn test_simple_hashmap_no_alloc() {
             use wrt_foundation::no_std_hashmap::SimpleHashMap;
@@ -524,7 +522,7 @@ mod tests {
         #[test]
         fn test_component_no_std_basic() {
             // Basic test for component model in no_std (if supported)
-            // The component model may require std/alloc features
+            // Binary std/no_std choice
         }
     }
 

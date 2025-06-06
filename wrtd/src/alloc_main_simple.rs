@@ -7,17 +7,17 @@
 
 extern crate alloc;
 
-use alloc::{
+use std::{
     collections::BTreeMap,
     format,
     string::{String, ToString},
     vec::Vec,
 };
 
-// For this demo, we'll avoid the allocator complexity by not actually allocating
-// In a real implementation, this would use a proper allocator
+// Binary std/no_std choice
+// Binary std/no_std choice
 
-/// Configuration for alloc runtime
+/// Binary std/no_std choice
 #[derive(Debug, Clone)]
 pub struct AllocConfig {
     /// Maximum fuel allowed
@@ -35,7 +35,7 @@ impl Default for AllocConfig {
     }
 }
 
-/// Statistics for alloc runtime
+/// Binary std/no_std choice
 #[derive(Debug, Clone, Default)]
 pub struct AllocStats {
     /// Modules executed
@@ -54,7 +54,7 @@ pub struct AllocRuntime {
 }
 
 impl AllocRuntime {
-    /// Create new alloc runtime
+    /// Binary std/no_std choice
     pub fn new(config: AllocConfig) -> Self {
         Self {
             config,
@@ -89,13 +89,13 @@ impl AllocRuntime {
     }
 }
 
-/// Panic handler for alloc mode
+/// Binary std/no_std choice
 #[panic_handler]
 fn panic(_info: &core::panic::PanicInfo) -> ! {
     loop {}
 }
 
-/// Main function for alloc runtime
+/// Binary std/no_std choice
 fn main() {
     let config = AllocConfig::default();
     let mut runtime = AllocRuntime::new(config);

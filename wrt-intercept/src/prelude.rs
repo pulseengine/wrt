@@ -5,18 +5,7 @@
 //! consistency across all crates in the WRT project and simplify imports in
 //! individual modules.
 
-// Core imports for both std and no_std environments
-// Re-export from alloc when no_std but alloc is available
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-pub use alloc::{
-    boxed::Box,
-    collections::{BTreeMap as HashMap, BTreeSet as HashSet},
-    format,
-    string::{String, ToString},
-    sync::Arc,
-    vec,
-    vec::Vec,
-};
+// Binary std/no_std choice
 pub use core::{
     any::Any,
     cmp::{Eq, Ord, PartialEq, PartialOrd},
@@ -28,6 +17,7 @@ pub use core::{
     ops::{Deref, DerefMut},
     slice, str,
 };
+
 // Re-export from std when the std feature is enabled
 #[cfg(feature = "std")]
 pub use std::{
@@ -40,10 +30,14 @@ pub use std::{
     vec::Vec,
 };
 
+// no_std alternatives using bounded collections
+#[cfg(not(feature = "std"))]
+pub use wrt_foundation::{BoundedVec, BoundedString};
+
 // Re-export from wrt-error
 pub use wrt_error::{codes, kinds, Error, ErrorCategory, Result};
 // Re-export from wrt-foundation (for component model)
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 pub use wrt_foundation::component_value::ValType;
 // Re-export from wrt-foundation
 pub use wrt_foundation::{
@@ -55,12 +49,11 @@ pub use wrt_foundation::{
     values::Value,
 };
 
-// When no alloc, we need some basic types
-#[cfg(not(feature = "alloc"))]
-pub use wrt_foundation::bounded::BoundedVec;
-#[cfg(not(feature = "alloc"))]
+// Binary std/no_std choice
+// BoundedVec already imported above
+#[cfg(not(feature = "std"))]
 pub use wrt_foundation::BoundedMap as BoundedHashMap;
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 pub use wrt_foundation::component_value::ComponentValue;
 // Import synchronization primitives for no_std
 #[cfg(not(feature = "std"))]
@@ -83,6 +76,6 @@ pub use crate::{
     Modification,
 };
 
-// Re-export builtin types when alloc is available
-#[cfg(feature = "alloc")]
+// Binary std/no_std choice
+#[cfg(feature = "std")]
 pub use crate::builtins::{BeforeBuiltinResult, BuiltinInterceptor, BuiltinSerialization};

@@ -37,7 +37,7 @@ impl fmt::Display for ProofResult {
 /// Categories of verification performed
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum VerificationCategory {
-    /// Memory safety verification (bounds checking, allocation safety)
+    /// Binary std/no_std choice
     MemorySafety,
     /// Concurrency safety verification (data races, deadlocks)
     ConcurrencySafety,

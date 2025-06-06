@@ -5,7 +5,7 @@
 //! reference counting.
 
 #[cfg(not(feature = "std"))]
-use alloc::sync::Arc;
+use std::sync::Arc;
 #[cfg(feature = "std")]
 use std::sync::Arc;
 use std::{

@@ -9,15 +9,13 @@
 //! Wrapper types for f32 and f64 ensuring bit-pattern based equality and
 //! hashing.
 
-// Conditionally import alloc based on features
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-use alloc::vec::Vec;
+// Binary std/no_std choice
+#[cfg(feature = "std")]
+use std::vec::Vec;
 use core::{
     // cmp::Ordering, // Unused import
     hash::{Hash, Hasher},
 };
-#[cfg(feature = "std")]
-use std::vec::Vec;
 
 use wrt_error::{codes, Error, ErrorCategory, Result as WrtResult}; /* Changed ErrorKind to
                                                                     * ErrorCategory, Added
@@ -130,7 +128,7 @@ impl LittleEndian for FloatBits32 {
         Ok(FloatBits32(u32::from_le_bytes(arr)))
     }
 
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     fn to_le_bytes(&self) -> WrtResult<Vec<u8>> {
         Ok(self.0.to_le_bytes().to_vec())
     }
@@ -155,7 +153,7 @@ impl LittleEndian for FloatBits64 {
         Ok(FloatBits64(u64::from_le_bytes(arr)))
     }
 
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     fn to_le_bytes(&self) -> WrtResult<Vec<u8>> {
         Ok(self.0.to_le_bytes().to_vec())
     }

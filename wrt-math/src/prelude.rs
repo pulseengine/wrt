@@ -9,15 +9,19 @@
 //! Crate prelude for `wrt-math`
 
 // Re-export commonly used items from this crate
-// Re-export from alloc when no_std but alloc is available
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-pub use alloc::{
+// Binary std/no_std choice
+#[cfg(feature = "std")]
+pub use std::{
     boxed::Box,
     format,
     string::{String, ToString},
     vec,
     vec::Vec,
-    // Add any other alloc-specific imports needed by this crate
+};
+
+#[cfg(not(feature = "std"))]
+pub use core::{
+    format_args,
 };
 // No specific core-only imports needed here for #[cfg(not(feature = "std"))]
 // Project: WRT
@@ -25,7 +29,7 @@ pub use alloc::{
 // Prelude module for wrt-math
 //
 // This module provides a unified set of imports for both std and no_std environments.
-// It re-exports commonly used types and traits from core, alloc (if enabled),
+// Binary std/no_std choice
 /// wrt-error, and this crate's own modules.
 // Core imports for both std and no_std environments
 pub use core::{
@@ -53,16 +57,7 @@ pub use core::{
 // #[cfg(feature = "std")]  // This empty import was causing a warning
 // pub use std::{};
 
-// Re-export from std when the std feature is enabled
-#[cfg(feature = "std")]
-pub use std::{
-    boxed::Box,
-    format,
-    string::{String, ToString},
-    vec,
-    vec::Vec,
-    // Add any other std-specific imports needed by this crate
-};
+// No duplicate std imports needed - already defined above
 
 // Re-export from wrt-error using its prelude
 pub use wrt_error::prelude::*;

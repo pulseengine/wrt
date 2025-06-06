@@ -42,11 +42,11 @@
 #[cfg(feature = "std")]
 extern crate std;
 
-// Import alloc when available
-#[cfg(feature = "alloc")]
+// Binary std/no_std choice
+#[cfg(feature = "std")]
 extern crate alloc;
 
-// Note: This crate supports no_std without alloc, using bounded collections
+// Binary std/no_std choice
 // from wrt-foundation
 
 // Export modules

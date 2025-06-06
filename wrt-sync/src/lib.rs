@@ -13,11 +13,10 @@
 #![warn(missing_docs)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
-// Allow `alloc` crate usage when no_std AND "alloc" feature is enabled
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
+// Binary std/no_std choice
 extern crate alloc;
 
-// Conditionally use `std` for tests or specific features (std implies alloc)
+// Binary std/no_std choice
 #[cfg(feature = "std")]
 extern crate std;
 
@@ -66,10 +65,7 @@ pub mod once;
 ///
 /// This module re-exports commonly used items for convenience.
 pub mod prelude {
-    // Exports for no_std + alloc environment
-    #[cfg(all(not(feature = "std"), feature = "alloc"))]
-    pub use alloc::{boxed::Box, sync::Arc, vec::Vec};
-    // Common core items for no_std (with or without alloc)
+    // Binary std/no_std choice
     #[cfg(not(feature = "std"))]
     pub use core::{
         cell::UnsafeCell,
@@ -77,7 +73,7 @@ pub mod prelude {
         ops::{Deref, DerefMut},
         sync::atomic::{AtomicBool, AtomicUsize, Ordering},
     };
-    // Exports for std environment (which implies alloc and provides its own versions)
+    
     #[cfg(feature = "std")]
     pub use std::{
         boxed::Box,

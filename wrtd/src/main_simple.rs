@@ -22,7 +22,7 @@ use std::{
 extern crate alloc;
 
 #[cfg(feature = "alloc-runtime")]
-use alloc::{
+use std::{
     collections::BTreeMap,
     string::{String, ToString},
     vec::Vec,
@@ -186,12 +186,12 @@ pub mod std_runtime {
     }
 }
 
-/// Alloc runtime implementation with heap allocation but no std
+/// Binary std/no_std choice
 #[cfg(feature = "alloc-runtime")]
 pub mod alloc_runtime {
     use super::*;
     
-    /// Alloc runtime with heap allocation
+    /// Binary std/no_std choice
     pub struct AllocRuntime {
         config: WrtdConfig,
         stats: RuntimeStats,
@@ -199,7 +199,7 @@ pub mod alloc_runtime {
     }
     
     impl AllocRuntime {
-        /// Create a new alloc runtime
+        /// Binary std/no_std choice
         pub fn new(config: WrtdConfig) -> Self {
             Self {
                 config,
@@ -211,7 +211,7 @@ pub mod alloc_runtime {
         /// Execute a WebAssembly module (placeholder implementation)
         pub fn execute_module(&mut self, module_data: &[u8], function: &str) -> Result<String, String> {
             if self.config.verbose {
-                // In alloc mode, we can't use println! but could use a logger
+                // Binary std/no_std choice
                 // For now, just proceed silently
             }
             
@@ -240,9 +240,9 @@ pub mod alloc_runtime {
         }
     }
     
-    /// Main function for alloc runtime
+    /// Binary std/no_std choice
     pub fn main() -> Result<(), &'static str> {
-        // In alloc mode, we have limited I/O capabilities
+        // Binary std/no_std choice
         // This would typically be called with pre-loaded module data
         
         let config = WrtdConfig {

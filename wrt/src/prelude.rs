@@ -6,9 +6,8 @@
 //! individual modules.
 
 // Core imports for both std and no_std environments
-// Re-export from alloc when no_std but alloc is available
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-pub use alloc::{
+// Binary std/no_std choice
+pub use std::{
     boxed::Box,
     collections::{BTreeMap as HashMap, BTreeSet as HashSet},
     format,
@@ -41,35 +40,35 @@ pub use std::{
     vec::Vec,
 };
 
-// For no_std without alloc, use bounded collections
-#[cfg(not(any(feature = "std", feature = "alloc")))]
+// Binary std/no_std choice
+#[cfg(not(any(feature = "std", )))]
 pub use wrt_foundation::bounded::{
     BoundedMap as HashMap, BoundedSet as HashSet, BoundedString as String, BoundedVec as Vec,
 };
 
-// Re-export the vec! macro for no_std without alloc
-#[cfg(not(any(feature = "std", feature = "alloc")))]
+// Binary std/no_std choice
+#[cfg(not(any(feature = "std", )))]
 pub use crate::vec;
 
-// No Arc/Box in no_std without alloc - use static references
-#[cfg(not(any(feature = "std", feature = "alloc")))]
+// Binary std/no_std choice
+#[cfg(not(any(feature = "std", )))]
 pub type Arc<T> = &'static T;
-#[cfg(not(any(feature = "std", feature = "alloc")))]
+#[cfg(not(any(feature = "std", )))]
 pub type Box<T> = &'static T;
 
-// Define format! macro for no_std without alloc
-#[cfg(not(any(feature = "std", feature = "alloc")))]
+// Binary std/no_std choice
+#[cfg(not(any(feature = "std", )))]
 #[macro_export]
 macro_rules! format {
     ($($arg:tt)*) => {{
-        // In no_std without alloc, we can't allocate strings
+        // Binary std/no_std choice
         // Return a static string or use write! to a fixed buffer
         "formatted string not available in no_std without alloc"
     }};
 }
 
-// Define vec! macro for no_std without alloc
-#[cfg(not(any(feature = "std", feature = "alloc")))]
+// Binary std/no_std choice
+#[cfg(not(any(feature = "std", )))]
 #[macro_export]
 macro_rules! vec {
     () => {
@@ -112,12 +111,12 @@ pub use wrt_format::{
     binary, component::Component as FormatComponent, is_state_section_name,
     module::Module as FormatModule, validation::Validatable as FormatValidatable, StateSection,
 };
-#[cfg(not(any(feature = "std", feature = "alloc")))]
+#[cfg(not(any(feature = "std", )))]
 pub use wrt_foundation::bounded::{BoundedString as String, BoundedVec as Vec};
-#[cfg(not(any(feature = "std", feature = "alloc")))]
+#[cfg(not(any(feature = "std", )))]
 pub use wrt_foundation::bounded_collections::BoundedSet as HashSet;
-// For no_std/no_alloc environments, use bounded collections from wrt-foundation
-#[cfg(not(any(feature = "std", feature = "alloc")))]
+// Binary std/no_std choice
+#[cfg(not(any(feature = "std", )))]
 pub use wrt_foundation::no_std_hashmap::BoundedHashMap as HashMap;
 // Re-export from wrt-foundation (core foundation library)
 pub use wrt_foundation::{

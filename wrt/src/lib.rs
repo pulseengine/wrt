@@ -58,7 +58,7 @@
 #[cfg(feature = "std")]
 extern crate std;
 
-// Pure no_std - no external allocation needed
+// Binary std/no_std choice
 // All memory management uses bounded collections with NoStdProvider
 
 // Panic handler for no_std builds - only when not building as a dependency
