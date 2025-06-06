@@ -6,7 +6,6 @@
 
 // Decoder imports are optional during development
 // use wrt_decoder::{module::CodeSection, runtime_adapter::RuntimeModuleBuilder};
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
 extern crate alloc;
 
 use wrt_foundation::types::{
@@ -30,7 +29,7 @@ use crate::memory_adapter::StdMemoryProvider;
 // Import format! macro for string formatting
 #[cfg(feature = "std")]
 use std::format;
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
+#[cfg(not(feature = "std"))]
 use alloc::format;
 
 // Define trait locally if not available from wrt_decoder
@@ -164,12 +163,12 @@ impl ModuleBuilder {
 
 /// Load a module from binary data using the module builder
 pub fn load_module_from_binary(binary: &[u8]) -> Result<Module> {
-    #[cfg(all(feature = "alloc", feature = "decoder"))]
+    #[cfg(all(feature = "decoder"))]
     {
         let decoder_module = wrt_decoder::decode_module(binary)?;
         Module::from_wrt_module(&decoder_module)
     }
-    #[cfg(all(feature = "alloc", not(feature = "decoder")))]
+    #[cfg(all(not(feature = "decoder")))]
     {
         // Decoder not available - create an empty module
         Err(Error::new(
@@ -178,7 +177,7 @@ pub fn load_module_from_binary(binary: &[u8]) -> Result<Module> {
             "Decoder not available",
         ))
     }
-    #[cfg(not(feature = "alloc"))]
+    #[cfg(not(feature = "std"))]
     {
         // Basic fallback for no_std - create an empty module
         Err(Error::new(

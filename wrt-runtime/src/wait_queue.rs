@@ -11,19 +11,18 @@
 
 #![allow(unsafe_code)]
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
 extern crate alloc;
 
 use crate::prelude::*;
 use crate::thread_manager::{ThreadId, ThreadState};
 use wrt_error::{Error, ErrorCategory, Result, codes};
 use wrt_platform::sync::{Mutex, Condvar};
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::{vec::Vec, collections::BTreeMap, sync::Arc};
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
-use wrt_foundation::{bounded::BoundedVec, traits::BoundedCapacity};
 #[cfg(feature = "std")]
 use std::{vec::Vec, collections::BTreeMap, sync::Arc, time::{Duration, Instant}};
+#[cfg(not(feature = "std"))]
+use alloc::{vec::Vec, collections::BTreeMap, sync::Arc};
+#[cfg(all(not(feature = "std"), not(feature = "std")))]
+use wrt_foundation::{bounded::BoundedVec, traits::BoundedCapacity};
 #[cfg(not(feature = "std"))]
 use wrt_platform::sync::Duration;
 
@@ -63,9 +62,9 @@ pub struct WaitQueue {
     /// Queue identifier
     id: WaitQueueId,
     /// Threads waiting in this queue
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     waiters: Vec<WaitQueueEntry>,
-    #[cfg(not(feature = "alloc"))]
+    #[cfg(not(feature = "std"))]
     waiters: [Option<WaitQueueEntry>; 64], // Fixed size for no_std
     /// Queue statistics
     stats: WaitQueueStats,
@@ -81,9 +80,9 @@ impl WaitQueue {
     pub fn new(id: WaitQueueId) -> Self {
         Self {
             id,
-            #[cfg(feature = "alloc")]
+            #[cfg(feature = "std")]
             waiters: Vec::new(),
-            #[cfg(not(feature = "alloc"))]
+            #[cfg(not(feature = "std"))]
             waiters: [const { None }; 64],
             stats: WaitQueueStats::new(),
             #[cfg(feature = "std")]
@@ -110,7 +109,7 @@ impl WaitQueue {
             priority,
         };
         
-        #[cfg(feature = "alloc")]
+        #[cfg(feature = "std")]
         {
             // Insert in priority order (higher priority first)
             let insert_pos = self.waiters
@@ -122,7 +121,7 @@ impl WaitQueue {
             self.stats.current_waiters = self.waiters.len() as u32;
             Ok(())
         }
-        #[cfg(not(feature = "alloc"))]
+        #[cfg(not(feature = "std"))]
         {
             // Find empty slot with priority consideration
             let mut insert_index = None;
@@ -150,7 +149,7 @@ impl WaitQueue {
     
     /// Remove and return the next waiter to wake up
     pub fn dequeue_waiter(&mut self) -> Option<ThreadId> {
-        #[cfg(feature = "alloc")]
+        #[cfg(feature = "std")]
         {
             if let Some(entry) = self.waiters.pop() {
                 self.stats.current_waiters = self.waiters.len() as u32;
@@ -159,7 +158,7 @@ impl WaitQueue {
                 None
             }
         }
-        #[cfg(not(feature = "alloc"))]
+        #[cfg(not(feature = "std"))]
         {
             // Find highest priority waiter
             let mut best_index = None;
@@ -186,7 +185,7 @@ impl WaitQueue {
     
     /// Remove specific thread from queue
     pub fn remove_waiter(&mut self, thread_id: ThreadId) -> bool {
-        #[cfg(feature = "alloc")]
+        #[cfg(feature = "std")]
         {
             if let Some(pos) = self.waiters.iter().position(|entry| entry.thread_id == thread_id) {
                 self.waiters.remove(pos);
@@ -196,7 +195,7 @@ impl WaitQueue {
                 false
             }
         }
-        #[cfg(not(feature = "alloc"))]
+        #[cfg(not(feature = "std"))]
         {
             for slot in self.waiters.iter_mut() {
                 if let Some(entry) = slot {
@@ -213,12 +212,12 @@ impl WaitQueue {
     
     /// Check for expired timeouts and remove them
     pub fn process_timeouts(&mut self) -> Vec<ThreadId> {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         let mut timed_out = std::vec::Vec::new();
-        #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
-        let mut timed_out = match wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()) {
+        #[cfg(all(not(feature = "std"), not(feature = "std")))]
+        let mut timed_out: wrt_foundation::bounded::BoundedVec<u32, 256, wrt_foundation::safe_memory::NoStdProvider<1024>> = match wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()) {
             Ok(vec) => vec,
-            Err(_) => return Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap_or_default(), // Return empty Vec on failure
+            Err(_) => return Vec::new(), // Return empty Vec on failure
         };
         
         #[cfg(feature = "std")]
@@ -260,14 +259,14 @@ impl WaitQueue {
         self.stats.timeouts += timed_out.len() as u64;
         
         // Convert the result to the expected return type
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         return timed_out;
-        #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+        #[cfg(all(not(feature = "std"), not(feature = "std")))]
         {
             // Convert BoundedVec to Vec (our type alias)
-            let mut result = Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap_or_default();
+            let mut result = Vec::new();
             for item in timed_out.iter() {
-                let _ = result.push(*item);
+                let _ = result.push(item);
             }
             result
         }
@@ -288,9 +287,9 @@ impl WaitQueue {
 #[derive(Debug)]
 pub struct WaitQueueManager {
     /// All active wait queues
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     queues: BTreeMap<WaitQueueId, WaitQueue>,
-    #[cfg(not(feature = "alloc"))]
+    #[cfg(not(feature = "std"))]
     queues: [(WaitQueueId, Option<WaitQueue>); 256], // Fixed size for no_std
     /// Next queue ID to assign
     next_queue_id: WaitQueueId,
@@ -302,9 +301,9 @@ impl WaitQueueManager {
     /// Create new wait queue manager
     pub fn new() -> Self {
         Self {
-            #[cfg(feature = "alloc")]
+            #[cfg(feature = "std")]
             queues: BTreeMap::new(),
-            #[cfg(not(feature = "alloc"))]
+            #[cfg(not(feature = "std"))]
             queues: core::array::from_fn(|_| (0, None)),
             next_queue_id: 1,
             global_stats: WaitQueueGlobalStats::new(),
@@ -318,11 +317,11 @@ impl WaitQueueManager {
         
         let queue = WaitQueue::new(queue_id);
         
-        #[cfg(feature = "alloc")]
+        #[cfg(feature = "std")]
         {
             self.queues.insert(queue_id, queue);
         }
-        #[cfg(not(feature = "alloc"))]
+        #[cfg(not(feature = "std"))]
         {
             // Find empty slot
             for (id, slot) in self.queues.iter_mut() {
@@ -427,7 +426,7 @@ impl WaitQueueManager {
     
     /// Destroy a wait queue
     pub fn destroy_queue(&mut self, queue_id: WaitQueueId) -> Result<()> {
-        #[cfg(feature = "alloc")]
+        #[cfg(feature = "std")]
         {
             if self.queues.remove(&queue_id).is_some() {
                 self.global_stats.active_queues -= 1;
@@ -440,7 +439,7 @@ impl WaitQueueManager {
                 ))
             }
         }
-        #[cfg(not(feature = "alloc"))]
+        #[cfg(not(feature = "std"))]
         {
             for (id, slot) in self.queues.iter_mut() {
                 if *id == queue_id && slot.is_some() {
@@ -463,14 +462,14 @@ impl WaitQueueManager {
     pub fn process_all_timeouts(&mut self) -> u64 {
         let mut total_timeouts = 0u64;
         
-        #[cfg(feature = "alloc")]
+        #[cfg(feature = "std")]
         {
             for queue in self.queues.values_mut() {
                 let timed_out = queue.process_timeouts();
                 total_timeouts += timed_out.len() as u64;
             }
         }
-        #[cfg(not(feature = "alloc"))]
+        #[cfg(not(feature = "std"))]
         {
             for (_id, slot) in self.queues.iter_mut() {
                 if let Some(queue) = slot {
@@ -487,13 +486,13 @@ impl WaitQueueManager {
     // Private helper methods
     
     fn get_queue_mut(&mut self, queue_id: WaitQueueId) -> Result<&mut WaitQueue> {
-        #[cfg(feature = "alloc")]
+        #[cfg(feature = "std")]
         {
             self.queues.get_mut(&queue_id).ok_or_else(|| {
                 Error::new(ErrorCategory::Validation, codes::INVALID_ARGUMENT, "Wait queue not found")
             })
         }
-        #[cfg(not(feature = "alloc"))]
+        #[cfg(not(feature = "std"))]
         {
             for (id, slot) in self.queues.iter_mut() {
                 if *id == queue_id {
@@ -640,7 +639,7 @@ mod tests {
         queue.enqueue_waiter(3, None, 50).unwrap(); // Medium priority
         
         // Higher priority should come out first
-        #[cfg(feature = "alloc")]
+        #[cfg(feature = "std")]
         {
             assert_eq!(queue.dequeue_waiter(), Some(2)); // Highest priority (80)
             assert_eq!(queue.dequeue_waiter(), Some(3)); // Medium priority (50)
@@ -661,7 +660,7 @@ mod tests {
         pause();
     }
     
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     #[test]
     fn test_wait_queue_manager_operations() {
         let mut manager = WaitQueueManager::new();

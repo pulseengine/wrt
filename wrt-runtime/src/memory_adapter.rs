@@ -4,15 +4,21 @@
 //! with integrated memory safety features for WebAssembly memory instances.
 
 // Use our prelude for consistent imports
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
 extern crate alloc;
 
-use crate::{memory::Memory, memory_helpers::ArcMemoryExt, prelude::*};
+// Import Arc from the correct location to match ArcMemoryExt
+#[cfg(feature = "std")]
+use std::sync::Arc;
+#[cfg(not(feature = "std"))]
+use alloc::sync::Arc;
+
+use crate::{memory::Memory, prelude::*};
+use crate::memory_helpers::*;
 
 // Import format! macro for string formatting
 #[cfg(feature = "std")]
 use std::format;
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
+#[cfg(not(feature = "std"))]
 use alloc::format;
 
 /// Invalid offset error code
@@ -180,7 +186,7 @@ impl wrt_foundation::MemoryProvider for StdMemoryProvider {
     where
         Self: Clone,
     {
-        wrt_foundation::safe_memory::SafeMemoryHandler::new(self.clone())
+        Ok(wrt_foundation::safe_memory::SafeMemoryHandler::new(self.clone()))
     }
 }
 
@@ -222,16 +228,20 @@ impl StdMemoryProvider {
         len: usize,
     ) -> Result<BoundedVec<u8, 65_536, StdMemoryProvider>> {
         if offset + len > buffer.len() {
-            return Err(Error::from(kinds::OutOfBoundsError(format!(
-                "Memory access out of bounds: offset={}, len={}, buffer_len={}",
-                offset,
-                len,
-                buffer.len()
-            ))));
+            return Err(Error::new(
+                ErrorCategory::Memory,
+                codes::MEMORY_ACCESS_OUT_OF_BOUNDS,
+                &format!(
+                    "Memory access out of bounds: offset={}, len={}, buffer_len={}",
+                    offset,
+                    len,
+                    buffer.len()
+                ),
+            ));
         }
 
         // Instead of returning a reference, copy the data into a BoundedVec
-        let mut bounded_vec = BoundedVec::with_verification_level(self.verification_level);
+        let mut bounded_vec = BoundedVec::with_verification_level(self.clone(), self.verification_level())?;
 
         for i in offset..(offset + len) {
             bounded_vec.push(buffer[i]).map_err(|_| {
@@ -256,7 +266,7 @@ impl SafeMemoryAdapter {
         // Create a new adapter with the memory
         let arc_memory = Arc::new(memory);
         let data = arc_memory.buffer()?;
-        let provider = StdMemoryProvider::new(&data);
+        let provider = StdMemoryProvider::new(data.as_slice());
 
         // Return a Memory adapter
         let adapter = SafeMemoryAdapter { memory: arc_memory, provider };
@@ -290,11 +300,14 @@ impl MemoryAdapter for SafeMemoryAdapter {
 
         // Create a new BoundedVec with the data
         let mut bounded_vec =
-            BoundedVec::with_verification_level(self.provider.verification_level());
+            BoundedVec::with_verification_level(self.provider.clone(), self.provider.verification_level())?;
 
         // Copy the data from the buffer into the bounded vector
         for i in start..end {
-            bounded_vec.push(buffer[i]).map_err(|_| {
+            let byte = buffer.get(i).map_err(|_| {
+                Error::new(ErrorCategory::Memory, codes::MEMORY_ACCESS_OUT_OF_BOUNDS, "Buffer access out of bounds")
+            })?;
+            bounded_vec.push(byte).map_err(|_| {
                 Error::new(
                     ErrorCategory::Memory,
                     codes::MEMORY_ACCESS_OUT_OF_BOUNDS,
@@ -312,7 +325,7 @@ impl MemoryAdapter for SafeMemoryAdapter {
 
         // We can't modify buffer directly through Arc, so use a special method to write
         // to memory without dereferencing Arc<Memory> as mutable
-        self.memory.write_via_callback(offset, bytes)?;
+        ArcMemoryExt::write_via_callback(&self.memory, offset, bytes)?;
 
         Ok(())
     }
@@ -327,7 +340,7 @@ impl MemoryAdapter for SafeMemoryAdapter {
         let result = self.memory.size();
 
         // Grow the memory - this should handle interior mutability internally
-        self.memory.grow_via_callback(pages)?;
+        ArcMemoryExt::grow_via_callback(&self.memory, pages)?;
 
         // Return the previous size
         Ok(result)
@@ -348,7 +361,7 @@ impl MemoryAdapter for SafeMemoryAdapter {
             Err(Error::new(
                 ErrorCategory::Memory,
                 codes::MEMORY_ACCESS_OUT_OF_BOUNDS,
-                format!(
+                &format!(
                     "Memory access out of bounds: offset={}, size={}, memory_size={}",
                     offset, size, mem_size
                 ),
@@ -372,6 +385,6 @@ impl MemoryAdapter for SafeMemoryAdapter {
         let len_usize = wasm_offset_to_usize(len)?;
 
         // Create a new BoundedVec with the copied data
-        self.provider.create_safe_slice(&buffer, offset_usize, len_usize)
+        self.provider.create_safe_slice(buffer.as_slice(), offset_usize, len_usize)
     }
 }

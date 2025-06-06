@@ -11,7 +11,7 @@ pub type SafeStackValue = wrt_foundation::safe_memory::SafeStack<Value, 64, wrt_
 pub type FuncType = wrt_foundation::types::FuncType<wrt_foundation::safe_memory::NoStdProvider<1024>>;
 
 /// Represents a runtime component instance
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 pub trait ComponentInstance {
     /// Execute a function by name with the given arguments
     fn execute_function(&self, name: &str, args: &[Value]) -> Result<SafeStackValue>;
@@ -30,7 +30,7 @@ pub trait ComponentInstance {
     fn execute_function_vec(&self, name: &str, args: &[Value]) -> Result<Vec<Value>> {
         // Convert from the new SafeStack API to the legacy Vec API
         let mut safe_stack = self.execute_function(name, args)?;
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             let mut vec = Vec::new();
             while let Ok(Some(value)) = safe_stack.pop() {
@@ -39,34 +39,34 @@ pub trait ComponentInstance {
             vec.reverse(); // SafeStack pops in reverse order
             Ok(vec)
         }
-        #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+        #[cfg(all(not(feature = "std"), not(feature = "std")))]
         {
-            // In no_std mode without alloc, we can't create Vec
+            // Binary std/no_std choice
             Err(Error::new(ErrorCategory::Runtime, codes::UNSUPPORTED_OPERATION, "Vector operations not supported in no_std mode without alloc"))
         }
     }
 
     /// Read from exported memory (legacy `Vec` API)
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     #[deprecated(since = "0.2.0", note = "Use read_memory with SafeSlice instead")]
     fn read_memory_vec(&self, name: &str, offset: u32, size: u32) -> Result<Vec<u8>> {
         // Convert from the new SafeSlice API to the legacy Vec API
         let safe_slice = self.read_memory(name, offset, size)?;
         let data = safe_slice.data()?;
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             Ok(data.to_vec())
         }
-        #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+        #[cfg(all(not(feature = "std"), not(feature = "std")))]
         {
-            // In no_std mode without alloc, we can't create Vec
+            // Binary std/no_std choice
             Err(Error::new(ErrorCategory::Runtime, codes::UNSUPPORTED_OPERATION, "Vector operations not supported in no_std mode without alloc"))
         }
     }
 }
 
 /// Represents a host function implementation
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 pub trait HostFunction {
     /// Call the host function with the given arguments
     fn call(&self, args: &[Value]) -> Result<SafeStackValue>;
@@ -79,7 +79,7 @@ pub trait HostFunction {
     fn call_vec(&self, args: &[Value]) -> Result<Vec<Value>> {
         // Convert from the new SafeStack API to the legacy Vec API
         let mut safe_stack = self.call(args)?;
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             let mut vec = Vec::new();
             // Convert SafeStack to Vec by popping all values
@@ -90,23 +90,23 @@ pub trait HostFunction {
             vec.reverse(); // SafeStack pops in reverse order
             Ok(vec)
         }
-        #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+        #[cfg(all(not(feature = "std"), not(feature = "std")))]
         {
-            // In no_std mode without alloc, we can't create Vec
+            // Binary std/no_std choice
             Err(Error::new(ErrorCategory::Runtime, codes::UNSUPPORTED_OPERATION, "Vector operations not supported in no_std mode without alloc"))
         }
     }
 }
 
 /// Represents a host function factory
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 pub trait HostFunctionFactory {
     /// Create a host function implementation
     fn create_function(&self, name: &str, ty: &FuncType) -> Result<Box<dyn HostFunction>>;
 }
 
 /// Represents a component runtime environment
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 pub trait ComponentRuntime {
     /// Create a new runtime instance
     fn new() -> Self

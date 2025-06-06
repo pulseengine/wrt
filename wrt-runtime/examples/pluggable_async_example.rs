@@ -15,10 +15,10 @@ use core::pin::Pin;
 use core::task::{Context, Poll};
 use core::marker::Unpin;
 
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 extern crate alloc;
-#[cfg(any(feature = "std", feature = "alloc"))]
-use alloc::boxed::Box;
+#[cfg(feature = "std")]
+use std::boxed::Box;
 
 /// Simple async function for testing
 async fn hello_async() -> &'static str {
@@ -62,7 +62,7 @@ fn main() {
     // 3. Using the with_async helper with ready futures
     println!("\n3. Using with_async helper:");
     
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     {
         // Create an async block that's immediately ready
         let async_block = async {
@@ -86,11 +86,11 @@ fn main() {
         }
     }
     
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     {
         println!("   Skipping Box::pin examples (requires alloc feature)");
         
-        // Use stack-allocated ready future instead
+        // Binary std/no_std choice
         let ready_future2 = ReadyFuture { value: "Stack allocated result" };
         match with_async(ready_future2) {
             Ok(result) => println!("   Stack result: {}", result),

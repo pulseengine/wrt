@@ -4,7 +4,6 @@
 //! which represents a runtime instance of a WebAssembly module with its own
 //! memory, tables, globals, and functions.
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
 extern crate alloc;
 
 #[cfg(feature = "debug-full")]
@@ -12,20 +11,20 @@ use wrt_debug::FunctionInfo;
 #[cfg(feature = "debug")]
 use wrt_debug::{DwarfDebugInfo, LineInfo};
 
-use crate::{global::Global, memory::Memory, module::Module, prelude::*, table::Table};
+use crate::{global::Global, memory::Memory, module::{Module, MemoryWrapper, TableWrapper, GlobalWrapper}, prelude::*, table::Table};
 
 // Platform sync primitives
-#[cfg(not(feature = "alloc"))]
+#[cfg(not(feature = "std"))]
 use wrt_platform::sync::Mutex;
-#[cfg(feature = "alloc")]
-use alloc::sync::Arc;
 #[cfg(feature = "std")]
 use std::sync::Arc;
+#[cfg(not(feature = "std"))]
+use alloc::sync::Arc;
 
 // Import format! macro for string formatting
 #[cfg(feature = "std")]
 use std::format;
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
+#[cfg(not(feature = "std"))]
 use alloc::format;
 
 /// Represents a runtime instance of a WebAssembly module
@@ -33,12 +32,12 @@ use alloc::format;
 pub struct ModuleInstance {
     /// The module this instance was instantiated from
     module: Arc<Module>,
-    /// The instance's memory
-    memories: Arc<Mutex<wrt_foundation::bounded::BoundedVec<Arc<Memory>, 64, wrt_foundation::safe_memory::NoStdProvider<1024>>>>,
-    /// The instance's tables
-    tables: Arc<Mutex<wrt_foundation::bounded::BoundedVec<Arc<Table>, 64, wrt_foundation::safe_memory::NoStdProvider<1024>>>>,
-    /// The instance's globals
-    globals: Arc<Mutex<wrt_foundation::bounded::BoundedVec<Arc<Global>, 256, wrt_foundation::safe_memory::NoStdProvider<1024>>>>,
+    /// The instance's memory (using safety-critical wrapper types)
+    memories: Arc<Mutex<wrt_foundation::bounded::BoundedVec<MemoryWrapper, 64, wrt_foundation::safe_memory::NoStdProvider<1024>>>>,
+    /// The instance's tables (using safety-critical wrapper types)
+    tables: Arc<Mutex<wrt_foundation::bounded::BoundedVec<TableWrapper, 64, wrt_foundation::safe_memory::NoStdProvider<1024>>>>,
+    /// The instance's globals (using safety-critical wrapper types)
+    globals: Arc<Mutex<wrt_foundation::bounded::BoundedVec<GlobalWrapper, 256, wrt_foundation::safe_memory::NoStdProvider<1024>>>>,
     /// Instance ID for debugging
     instance_id: usize,
     /// Imported instance indices to resolve imports
@@ -53,11 +52,11 @@ impl ModuleInstance {
     pub fn new(module: Module, instance_id: usize) -> Self {
         Self {
             module: Arc::new(module),
-            memories: Arc::new(Mutex::new(Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap())),
-            tables: Arc::new(Mutex::new(Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap())),
-            globals: Arc::new(Mutex::new(Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap())),
+            memories: Arc::new(Mutex::new(wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap())),
+            tables: Arc::new(Mutex::new(wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap())),
+            globals: Arc::new(Mutex::new(wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap())),
             instance_id,
-            imports: HashMap::new(),
+            imports: Default::default(),
             #[cfg(feature = "debug")]
             debug_info: None,
         }
@@ -69,7 +68,7 @@ impl ModuleInstance {
     }
 
     /// Get a memory from this instance
-    pub fn memory(&self, idx: u32) -> Result<Arc<Memory>> {
+    pub fn memory(&self, idx: u32) -> Result<MemoryWrapper> {
         let memories = self
             .memories
             .lock()
@@ -77,12 +76,12 @@ impl ModuleInstance {
 
         memories
             .get(idx as usize)
-            .cloned()
-            .ok_or_else(|| Error::new(ErrorCategory::Resource, codes::MEMORY_NOT_FOUND, format!("Memory index {} not found", idx)))
+            .map(|memory| memory.clone())
+            .map_err(|_| Error::new(ErrorCategory::Resource, codes::MEMORY_NOT_FOUND, &format!("Memory index {} not found", idx)))
     }
 
     /// Get a table from this instance
-    pub fn table(&self, idx: u32) -> Result<Arc<Table>> {
+    pub fn table(&self, idx: u32) -> Result<TableWrapper> {
         let tables = self
             .tables
             .lock()
@@ -90,12 +89,12 @@ impl ModuleInstance {
 
         tables
             .get(idx as usize)
-            .cloned()
-            .ok_or_else(|| Error::new(ErrorCategory::Resource, codes::TABLE_NOT_FOUND, format!("Table index {} not found", idx)))
+            .map(|table| table.clone())
+            .map_err(|_| Error::new(ErrorCategory::Resource, codes::TABLE_NOT_FOUND, &format!("Table index {} not found", idx)))
     }
 
     /// Get a global from this instance
-    pub fn global(&self, idx: u32) -> Result<Arc<Global>> {
+    pub fn global(&self, idx: u32) -> Result<GlobalWrapper> {
         let globals = self
             .globals
             .lock()
@@ -103,18 +102,18 @@ impl ModuleInstance {
 
         globals
             .get(idx as usize)
-            .cloned()
-            .ok_or_else(|| Error::new(ErrorCategory::Resource, codes::GLOBAL_NOT_FOUND, format!("Global index {} not found", idx)))
+            .map(|global| global.clone())
+            .map_err(|_| Error::new(ErrorCategory::Resource, codes::GLOBAL_NOT_FOUND, &format!("Global index {} not found", idx)))
     }
 
     /// Get the function type for a function
-    pub fn function_type(&self, idx: u32) -> Result<FuncType<wrt_foundation::safe_memory::NoStdProvider<1024>>> {
-        let function = self.module.functions.get(idx as usize).ok_or_else(|| {
-            Error::new(ErrorCategory::Runtime, codes::FUNCTION_NOT_FOUND, format!("Function index {} not found", idx))
+    pub fn function_type(&self, idx: u32) -> Result<FuncType> {
+        let function = self.module.functions.get(idx as usize).map_err(|e| {
+            Error::new(ErrorCategory::Runtime, codes::FUNCTION_NOT_FOUND, &format!("Function index {} not found: {}", idx, e))
         })?;
 
-        let ty = self.module.types.get(function.type_idx as usize).cloned().ok_or_else(|| {
-            Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH, format!("Type index {} not found", function.type_idx))
+        let ty = self.module.types.get(function.type_idx as usize).map_err(|e| {
+            Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH, &format!("Type index {} not found: {}", function.type_idx, e))
         })?;
 
         Ok(ty)
@@ -127,7 +126,7 @@ impl ModuleInstance {
             .lock()
             .map_err(|_| Error::new(ErrorCategory::Runtime, codes::POISONED_LOCK, "Mutex poisoned when adding memory"))?;
 
-        memories.push(Arc::new(memory));
+        memories.push(MemoryWrapper::new(memory));
         Ok(())
     }
 
@@ -138,7 +137,7 @@ impl ModuleInstance {
             .lock()
             .map_err(|_| Error::new(ErrorCategory::Runtime, codes::POISONED_LOCK, "Mutex poisoned when adding table"))?;
 
-        tables.push(Arc::new(table));
+        tables.push(TableWrapper::new(table));
         Ok(())
     }
 
@@ -149,7 +148,7 @@ impl ModuleInstance {
             .lock()
             .map_err(|_| Error::new(ErrorCategory::Runtime, codes::POISONED_LOCK, "Mutex poisoned when adding global"))?;
 
-        globals.push(Arc::new(global));
+        globals.push(GlobalWrapper::new(global));
         Ok(())
     }
 }
@@ -160,19 +159,19 @@ impl crate::stackless::extensions::ModuleInstance for ModuleInstance {
         &self.module
     }
 
-    fn memory(&self, idx: u32) -> Result<Arc<Memory>> {
+    fn memory(&self, idx: u32) -> Result<MemoryWrapper> {
         self.memory(idx)
     }
 
-    fn table(&self, idx: u32) -> Result<Arc<Table>> {
+    fn table(&self, idx: u32) -> Result<TableWrapper> {
         self.table(idx)
     }
 
-    fn global(&self, idx: u32) -> Result<Arc<Global>> {
+    fn global(&self, idx: u32) -> Result<GlobalWrapper> {
         self.global(idx)
     }
 
-    fn function_type(&self, idx: u32) -> Result<FuncType<wrt_foundation::safe_memory::NoStdProvider<1024>>> {
+    fn function_type(&self, idx: u32) -> Result<FuncType> {
         self.function_type(idx)
     }
 
@@ -194,7 +193,7 @@ impl crate::stackless::extensions::ModuleInstance for ModuleInstance {
         if let Some(ref mut debug_info) = self.debug_info {
             debug_info
                 .find_line_info(pc)
-                .map_err(|e| Error::new(ErrorCategory::Runtime, codes::DEBUG_INFO_ERROR, format!("Debug info error: {}", e)))
+                .map_err(|e| Error::new(ErrorCategory::Runtime, codes::DEBUG_INFO_ERROR, &format!("Debug info error: {}", e)))
         } else {
             Ok(None)
         }

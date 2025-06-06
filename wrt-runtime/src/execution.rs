@@ -3,7 +3,6 @@
 //! This module provides types and utilities for tracking execution statistics
 //! and managing WebAssembly execution.
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
 extern crate alloc;
 
 use crate::prelude::*;
@@ -11,7 +10,7 @@ use crate::prelude::*;
 // Import format! macro for string formatting
 #[cfg(feature = "std")]
 use std::format;
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
+#[cfg(not(feature = "std"))]
 use alloc::format;
 
 /// Structure to track execution statistics
@@ -97,7 +96,7 @@ impl ExecutionStats {
             return Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::GAS_LIMIT_EXCEEDED,
-                format!("Gas limit of {} exceeded (used {})", self.gas_limit, self.gas_used),
+"Gas limit exceeded",
             ));
         }
 
@@ -143,10 +142,7 @@ impl ExecutionContext {
             return Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::CALL_STACK_EXHAUSTED,
-                format!(
-                    "Call stack exhausted: depth {} exceeds maximum {}",
-                    self.function_depth, self.max_function_depth
-                ),
+"Call stack exhausted",
             ));
         }
 
@@ -207,10 +203,14 @@ pub struct InstrumentationPoint {
 
 impl InstrumentationPoint {
     /// Create a new instrumentation point
-    pub fn new(location: usize, point_type: String) -> Self {
+    pub fn new(location: usize, point_type: &str) -> Self {
+        let bounded_point_type: wrt_foundation::bounded::BoundedString<64, wrt_foundation::safe_memory::NoStdProvider<1024>> = wrt_foundation::bounded::BoundedString::from_str_truncate(
+            point_type,
+            wrt_foundation::safe_memory::NoStdProvider::<1024>::default()
+        ).unwrap_or_else(|_| wrt_foundation::bounded::BoundedString::from_str_truncate("", wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap());
         Self {
             location,
-            point_type,
+            point_type: bounded_point_type,
         }
     }
 }

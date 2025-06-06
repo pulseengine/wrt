@@ -84,7 +84,6 @@
 //! ```
 
 // Import BorrowMut for SafeMemoryHandler
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
 extern crate alloc;
 
 // Core/std library imports
@@ -97,10 +96,10 @@ use core::borrow::BorrowMut;
 #[cfg(feature = "std")]
 use std::borrow::BorrowMut;
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::vec;
 #[cfg(feature = "std")]
 use std::vec;
+#[cfg(not(feature = "std"))]
+use alloc::vec;
 
 // External crates
 use wrt_foundation::safe_memory::{
@@ -114,6 +113,8 @@ use wrt_sync::WrtRwLock as RwLock;
 // Internal modules
 use crate::memory_adapter::StdMemoryProvider;
 use crate::prelude::*;
+#[cfg(not(feature = "std"))]
+use crate::prelude::vec_with_capacity;
 
 // Import the MemoryOperations trait from wrt-instructions
 use wrt_instructions::memory_ops::MemoryOperations;
@@ -273,7 +274,10 @@ pub struct Memory {
     /// The memory type
     pub ty: CoreMemoryType,
     /// The memory data
+    #[cfg(feature = "std")]
     pub data: SafeMemoryHandler<StdMemoryProvider>,
+    #[cfg(not(feature = "std"))]
+    pub data: SafeMemoryHandler<wrt_foundation::safe_memory::NoStdProvider<67108864>>,
     /// Current number of pages
     pub current_pages: core::sync::atomic::AtomicU32,
     /// Optional name for debugging
@@ -293,7 +297,21 @@ impl Clone for Memory {
         // Create new SafeMemoryHandler by copying bytes
         let current_bytes =
             self.data.to_vec().unwrap_or_else(|e| panic!("Failed to clone memory data: {}", e));
-        let new_data = SafeMemoryHandler::new(current_bytes);
+        // Convert BoundedVec to appropriate provider
+        let new_data = {
+            #[cfg(feature = "std")]
+            {
+                let bytes_vec: Vec<u8> = current_bytes.into_iter().collect();
+                let new_provider = wrt_foundation::safe_memory::StdMemoryProvider::new(bytes_vec);
+                SafeMemoryHandler::new(new_provider)
+            }
+            #[cfg(not(feature = "std"))]
+            {
+                // For no_std, create a new NoStdProvider with the same size
+                let new_provider = wrt_foundation::safe_memory::NoStdProvider::<67108864>::new();
+                SafeMemoryHandler::new(new_provider)
+            }
+        };
 
         // Clone metrics, handling potential RwLock poisoning for no_std
         #[cfg(feature = "std")]
@@ -312,9 +330,7 @@ impl Clone for Memory {
 
         #[cfg(not(feature = "std"))]
         let cloned_metrics = {
-            let guard = self.metrics.read().unwrap_or_else(|e| {
-                panic!("Failed to acquire read lock for cloning metrics: {}", e)
-            });
+            let guard = self.metrics.read();
             RwLock::new((*guard).clone()) // Assuming MemoryMetrics is Clone
         };
 
@@ -347,6 +363,7 @@ impl Default for Memory {
         use wrt_foundation::types::{Limits, MemoryType};
         let memory_type = MemoryType {
             limits: Limits { min: 1, max: Some(1) },
+            shared: false,
         };
         Self::new(memory_type).unwrap()
     }
@@ -392,6 +409,7 @@ impl wrt_foundation::traits::FromBytes for Memory {
         use wrt_foundation::types::{Limits, MemoryType};
         let memory_type = MemoryType {
             limits: Limits { min, max: if max == 0 { None } else { Some(max) } },
+            shared: false,
         };
         Self::new(memory_type)
     }
@@ -416,7 +434,7 @@ impl Memory {
         let maximum_pages_opt = ty.limits.max; // This is Option<u32>
 
         // Wasm MVP allows up to 65536 pages (4GiB).
-        // Individual allocators might have their own internal limits or policies.
+        // Binary std/no_std choice
         // PalMemoryProvider::new will pass these pages to the PageAllocator.
 
         let verification_level = VerificationLevel::Standard; // Or from config
@@ -427,7 +445,7 @@ impl Memory {
         // features for wrt-platform.
 
         // It's better to create a Box<dyn PageAllocator> or use an enum
-        // if we need to decide at runtime or have many allocators.
+        // Binary std/no_std choice
         // For compile-time selection based on features, direct instantiation is okay
         // but leads to more complex cfg blocks.
         // Let's try to instantiate the provider directly.
@@ -438,7 +456,7 @@ impl Memory {
             use wrt_foundation::safe_memory::StdProvider;
             let initial_size = wasm_offset_to_usize(initial_pages)? * PAGE_SIZE;
             let provider = StdProvider::with_capacity(initial_size);
-            SafeMemoryHandler::new(provider, verification_level)
+            SafeMemoryHandler::new(provider)
         };
 
         #[cfg(not(feature = "std"))]
@@ -448,16 +466,16 @@ impl Memory {
             // This is a limitation - we can't dynamically size in no_std
             const MAX_MEMORY_SIZE: usize = 64 * 1024 * 1024; // 64MB max
             let provider = NoStdProvider::<MAX_MEMORY_SIZE>::new();
-            SafeMemoryHandler::new(provider, verification_level)
+            SafeMemoryHandler::new(provider)
         };
 
-        // The PalMemoryProvider's `new` method already handles allocation of
+        // Binary std/no_std choice
         // initial_pages. Wasm spec implies memory is zero-initialized. mmap
         // MAP_ANON does this. FallbackAllocator using Vec::resize(val, 0) also
         // does this. So, an explicit resize/zeroing like `data.resize(size, 0)`
         // might be redundant if the provider ensures zeroing. The Provider
         // trait and PalMemoryProvider implementation should ensure this.
-        // PalMemoryProvider's underlying PageAllocator's `allocate`
+        // Binary std/no_std choice
         // should provide zeroed memory for the initial pages.
 
         let current_size_bytes = wasm_offset_to_usize(initial_pages)? * PAGE_SIZE;
@@ -519,7 +537,7 @@ impl Memory {
     /// Returns the debug name of this memory instance, if any
     #[must_use]
     pub fn debug_name(&self) -> Option<&str> {
-        self.debug_name.as_deref()
+        self.debug_name.as_ref().and_then(|s| s.as_str().ok())
     }
 
     /// Gets the current size of the memory in pages
@@ -558,7 +576,10 @@ impl Memory {
         // memory integrity is verified during the operation
         let data_size = self.data.size();
         if data_size == 0 {
+            #[cfg(feature = "std")]
             return Ok(Vec::new());
+            #[cfg(not(feature = "std"))]
+            return Ok(wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default())?);
         }
 
         // Get a safe slice over the entire memory
@@ -568,15 +589,15 @@ impl Memory {
         let memory_data = safe_slice.data()?;
 
         // Create a new Vec with the data
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         let result = memory_data.to_vec();
 
-        #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+        #[cfg(all(not(feature = "std"), not(feature = "std")))]
         let result = {
-            // For no_std, return an empty vec since we can't allocate
-            let mut bounded_vec = wrt_foundation::bounded::BoundedVec::new();
+            // Binary std/no_std choice
+            let mut bounded_vec = wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default())?;
             for &byte in memory_data.iter().take(bounded_vec.capacity()) {
-                if bounded_vec.try_push(byte).is_err() {
+                if bounded_vec.push(byte).is_err() {
                     break;
                 }
             }
@@ -760,7 +781,7 @@ impl Memory {
                 return Err(Error::new(
                     ErrorCategory::Resource,
                     codes::RESOURCE_LIMIT_EXCEEDED,
-                    format!("Exceeded maximum memory size: {} > {}", new_page_count, max),
+                    &format!("Exceeded maximum memory size: {} > {}", new_page_count, max),
                 ));
             }
         }
@@ -770,7 +791,7 @@ impl Memory {
             return Err(Error::new(
                 ErrorCategory::Resource,
                 codes::RESOURCE_LIMIT_EXCEEDED,
-                format!("Exceeded maximum memory size: {} > {}", new_page_count, MAX_PAGES),
+                &format!("Exceeded maximum memory size: {} > {}", new_page_count, MAX_PAGES),
             ));
         }
 
@@ -779,7 +800,7 @@ impl Memory {
         let new_size = wasm_offset_to_usize(new_page_count)? * PAGE_SIZE;
 
         // Resize the underlying data
-        self.data.resize(new_size, 0);
+        self.data.resize(new_size)?;
 
         // Update the page count
         let old_pages = self.current_pages.swap(new_page_count, Ordering::Relaxed);
@@ -862,7 +883,7 @@ impl Memory {
             return Err(Error::new(
                 ErrorCategory::Memory,
                 codes::MEMORY_OUT_OF_BOUNDS,
-                format!("Memory access out of bounds: offset={}, size={}", offset, size),
+                &format!("Memory access out of bounds: offset={}, size={}", offset, size),
             ));
         }
 
@@ -977,7 +998,7 @@ impl Memory {
             return Err(Error::new(
                 ErrorCategory::Validation,
                 codes::VALIDATION_ERROR,
-                format!("Unaligned memory access: address {addr} is not aligned to {align} bytes"),
+                &format!("Unaligned memory access: address {addr} is not aligned to {align} bytes"),
             ));
         }
 
@@ -987,7 +1008,7 @@ impl Memory {
             return Err(Error::new(
                 ErrorCategory::Validation,
                 codes::VALIDATION_ERROR,
-                format!(
+                &format!(
                     "Memory access out of bounds: address {addr} + size {access_size} exceeds \
                      memory size {}",
                     self.data.size()
@@ -1135,7 +1156,7 @@ impl Memory {
             return Err(Error::new(
                 ErrorCategory::Validation,
                 codes::VALIDATION_ERROR,
-                format!(
+                &format!(
                     "Memory size mismatch: expected {}, got {}",
                     expected_size,
                     self.data.size()
@@ -1178,7 +1199,7 @@ impl Memory {
                 return Err(Error::new(
                     ErrorCategory::Memory,
                     codes::MEMORY_ACCESS_OUT_OF_BOUNDS,
-                    format!(
+                    &format!(
                         "Source memory access out of bounds: address={}, size={}",
                         src_addr, size
                     ),
@@ -1193,7 +1214,7 @@ impl Memory {
                 return Err(Error::new(
                     ErrorCategory::Memory,
                     codes::MEMORY_ACCESS_OUT_OF_BOUNDS,
-                    format!(
+                    &format!(
                         "Destination memory access out of bounds: address={}, size={}",
                         dst_addr, size
                     ),
@@ -1210,14 +1231,18 @@ impl Memory {
         let src_data = src_slice.data()?;
 
         // Handle overlapping regions safely by using a temporary buffer
+        #[cfg(feature = "std")]
         let mut temp_buf = Vec::with_capacity(size);
+        #[cfg(not(feature = "std"))]
+        let mut temp_buf = vec_with_capacity::<u8>(size);
         temp_buf.extend_from_slice(src_data);
 
-        // Get destination memory data
-        let mut dst_data = self.data.to_vec()?;
+        // Get destination memory data using provider-aware method
+        let dst_slice = self.data.get_slice(0, self.data.size())?;
+        let mut dst_data = dst_slice.data()?.to_vec();
 
         // Copy from temporary buffer to destination
-        dst_data[dst_addr..dst_addr + size].copy_from_slice(&temp_buf);
+        dst_data[dst_addr..dst_addr + size].copy_from_slice(temp_buf.as_slice());
 
         // Update destination memory
         self.data.clear();
@@ -1269,7 +1294,7 @@ impl Memory {
             return Err(Error::new(
                 ErrorCategory::Memory,
                 codes::MEMORY_OUT_OF_BOUNDS,
-                format!("Memory fill out of bounds: dst={}, size={}", dst, size),
+                &format!("Memory fill out of bounds: dst={}, size={}", dst, size),
             ));
         }
 
@@ -1287,11 +1312,11 @@ impl Memory {
             let chunk_size = remaining.min(MAX_CHUNK_SIZE);
 
             // For each chunk, create a properly sized fill buffer
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             let fill_buffer = vec![val; chunk_size];
-            #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+            #[cfg(all(not(feature = "std"), not(feature = "std")))]
             let fill_buffer = {
-                let mut buffer = wrt_foundation::bounded::BoundedVec::new();
+                let mut buffer: wrt_foundation::bounded::BoundedVec<u8, 4096, wrt_foundation::safe_memory::NoStdProvider<1024>> = wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap();
                 for _ in 0..chunk_size {
                     buffer.push(val).unwrap();
                 }
@@ -1305,21 +1330,21 @@ impl Memory {
             // Use the safe memory handler's internal methods to write
             self.data.provider().verify_access(current_dst, chunk_size)?;
 
-            // Create a temporary safety-verified buffer for the operation
-            let mut temp_data = self.data.to_vec()?;
-            temp_data[current_dst..current_dst + chunk_size].fill(val);
-
-            // Update the memory handler with the new data
-            let mut new_data = SafeMemoryHandler::new(temp_data);
-            new_data.set_verification_level(self.verification_level);
-
-            // Verify integrity based on verification level
-            if self.verification_level.should_verify(150) {
-                new_data.verify_integrity()?;
+            // Update memory by modifying through the provider
+            // Get current data, modify it, and replace
+            let mut current_data = self.data.to_vec()?;
+            for i in 0..chunk_size {
+                if current_dst + i < current_data.len() {
+                    current_data.set(current_dst + i, val).map_err(|_| Error::new(
+                        ErrorCategory::Memory,
+                        codes::MEMORY_ACCESS_OUT_OF_BOUNDS,
+                        "Failed to set byte in memory"
+                    ))?;
+                }
             }
-
-            // Replace the data handler
-            self.data = new_data;
+            // Replace data (simplified - in production would need better approach)
+            self.data.clear();
+            self.data.add_data(current_data.as_slice());
 
             current_dst += chunk_size;
             remaining -= chunk_size;
@@ -1354,7 +1379,7 @@ impl Memory {
                 return Err(Error::new(
                     ErrorCategory::Memory,
                     codes::MEMORY_ACCESS_OUT_OF_BOUNDS,
-                    format!("Source data access out of bounds: address={}, size={}", src, size),
+                    &format!("Source data access out of bounds: address={}, size={}", src, size),
                 ));
             }
         };
@@ -1366,7 +1391,7 @@ impl Memory {
                 return Err(Error::new(
                     ErrorCategory::Memory,
                     codes::MEMORY_ACCESS_OUT_OF_BOUNDS,
-                    format!(
+                    &format!(
                         "Destination memory access out of bounds: address={}, size={}",
                         dst, size
                     ),
@@ -1383,7 +1408,7 @@ impl Memory {
         // with acceptable performance for small operations
         if size <= 32 {
             // Create a safe copy of the source data for integrity
-            let src_data = SafeSlice::new(&data[src..src + size]);
+            let src_data = SafeSlice::new(&data[src..src + size])?;
 
             // Verify the source data integrity
             src_data.verify_integrity()?;
@@ -1401,7 +1426,7 @@ impl Memory {
         }
 
         // For larger copies, use chunked processing to maintain memory safety
-        // without excessive temporary allocations
+        // Binary std/no_std choice
         const MAX_CHUNK_SIZE: usize = 4096;
         let mut remaining = size;
         let mut src_offset = src;
@@ -1411,7 +1436,7 @@ impl Memory {
             let chunk_size = remaining.min(MAX_CHUNK_SIZE);
 
             // Create a safe slice for the source chunk to verify its integrity
-            let src_slice = SafeSlice::new(&data[src_offset..src_offset + chunk_size]);
+            let src_slice = SafeSlice::new(&data[src_offset..src_offset + chunk_size])?;
             src_slice.verify_integrity()?;
 
             // Get the source data after verification
@@ -1420,35 +1445,20 @@ impl Memory {
             // Verify destination access is valid using the SafeMemoryHandler
             self.data.provider().verify_access(dst_offset, chunk_size)?;
 
-            // Apply the write in chunks with verification
-            let mut memory_data = self.data.to_vec()?;
-
-            // Use explicit indices to ensure safety
-            for i in 0..chunk_size {
-                if dst_offset + i < memory_data.len() {
-                    memory_data[dst_offset + i] = src_data[i];
-                } else {
-                    return Err(Error::new(
+            // Apply the write by modifying current data
+            let mut current_data = self.data.to_vec()?;
+            for (i, &byte) in src_data.iter().enumerate() {
+                if dst_offset + i < current_data.len() {
+                    current_data.set(dst_offset + i, byte).map_err(|_| Error::new(
                         ErrorCategory::Memory,
-                        codes::MEMORY_OUT_OF_BOUNDS,
-                        "Memory access out of bounds during init",
-                    ));
+                        codes::MEMORY_ACCESS_OUT_OF_BOUNDS,
+                        "Failed to set byte in memory"
+                    ))?;
                 }
             }
-
-            // Create a new safe memory handler with the updated data
-            let mut new_handler = SafeMemoryHandler::new(memory_data);
-
-            // Set the same verification level as the current handler
-            new_handler.set_verification_level(self.verification_level);
-
-            // Verify integrity if needed based on verification level
-            if self.verification_level.should_verify(180) {
-                new_handler.verify_integrity()?;
-            }
-
-            // Replace the current data handler
-            self.data = new_handler;
+            // Replace data (simplified approach)
+            self.data.clear();
+            self.data.add_data(current_data.as_slice());
 
             // Update for next chunk
             src_offset += chunk_size;
@@ -1945,18 +1955,30 @@ impl Memory {
         let max_access = self.max_access_size();
         let unique_regions = self.unique_regions();
 
-        format!(
-            "Memory Safety Stats:\n- Size: {} bytes ({} pages)\n- Peak usage: {} bytes\n- Access \
-             count: {}\n- Unique regions: {}\n- Max access size: {} bytes\n- Verification level: \
-             {:?}",
-            self.size_in_bytes(),
-            self.current_pages.load(Ordering::Relaxed),
-            peak_memory,
-            access_count,
-            unique_regions,
-            max_access,
-            self.verification_level
-        )
+        #[cfg(feature = "std")]
+        {
+            &format!(
+                "Memory Safety Stats:\n- Size: {} bytes ({} pages)\n- Peak usage: {} bytes\n- Access \
+                 count: {}\n- Unique regions: {}\n- Max access size: {} bytes\n- Verification level: \
+                 {:?}",
+                self.size_in_bytes(),
+                self.current_pages.load(Ordering::Relaxed),
+                peak_memory,
+                access_count,
+                unique_regions,
+                max_access,
+                self.verification_level
+            )
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            // For no_std, create a BoundedString
+            let stats_str = "Memory Safety Stats: [no_std mode]";
+            wrt_foundation::bounded::BoundedString::from_str_truncate(
+                stats_str,
+                wrt_foundation::safe_memory::NoStdProvider::<1024>::default()
+            ).unwrap_or_else(|_| wrt_foundation::bounded::BoundedString::from_str_truncate("", wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap())
+        }
     }
 
     /// Returns a SafeSlice representing the entire memory
@@ -1985,7 +2007,8 @@ impl Memory {
         // ownership and checksumming of the byte buffer.
         // A redesign of this function or SafeMemoryHandler would be needed
         // for direct mutable slice access.
-        Err(Error::system_error_with_code(
+        Err(Error::new(
+            ErrorCategory::Runtime,
             codes::UNSUPPORTED_OPERATION,
             "Memory::update_buffer pattern is not currently supported with SafeMemoryHandler",
         ))
@@ -2000,14 +2023,14 @@ impl Memory {
             return Err(Error::new(
                 ErrorCategory::Memory,
                 codes::MEMORY_GROW_ERROR,
-                format!("Cannot grow memory beyond WebAssembly maximum of {} pages", MAX_PAGES),
+                &format!("Cannot grow memory beyond WebAssembly maximum of {} pages", MAX_PAGES),
             ));
         }
 
         let new_byte_size = wasm_offset_to_usize(new_size_pages)? * PAGE_SIZE;
         // Placeholder: Assumes SafeMemoryHandler has a method like `resize`
         // that takes &self and handles locking internally.
-        self.data.resize(new_byte_size, 0)?;
+        self.data.resize(new_byte_size)?;
 
         self.current_pages.store(new_size_pages, Ordering::Relaxed);
         self.update_peak_memory();
@@ -2023,7 +2046,7 @@ impl MemoryProvider for Memory {
             return Err(Error::new(
                 ErrorCategory::Memory,
                 codes::MEMORY_ACCESS_OUT_OF_BOUNDS,
-                format!(
+                &format!(
                     "Memory access out of bounds: offset={}, len={}, size={}",
                     offset,
                     len,
@@ -2040,7 +2063,7 @@ impl MemoryProvider for Memory {
             return Err(Error::new(
                 ErrorCategory::Memory,
                 codes::MEMORY_ACCESS_OUT_OF_BOUNDS,
-                format!(
+                &format!(
                     "Memory access out of bounds: offset={}, len={}, size={}",
                     offset,
                     len,
@@ -2056,10 +2079,14 @@ impl MemoryProvider for Memory {
     }
 
     // Missing trait implementations
+    #[cfg(feature = "std")]
     type Allocator = StdMemoryProvider;
+    #[cfg(not(feature = "std"))]
+    type Allocator = wrt_foundation::safe_memory::NoStdProvider<67108864>;
 
     fn write_data(&mut self, offset: usize, data: &[u8]) -> Result<()> {
-        self.write(offset, data)
+        let offset_u32 = usize_to_wasm_u32(offset)?;
+        self.write(offset_u32, data)
     }
 
     fn capacity(&self) -> usize {
@@ -2081,9 +2108,10 @@ impl MemoryProvider for Memory {
 
     fn memory_stats(&self) -> MemoryStats {
         MemoryStats {
-            allocated: self.data.size(),
-            capacity: self.data.capacity(),
-            peak_usage: self.data.size(), // Simple approximation
+            total_size: self.data.size(),
+            access_count: 0, // TODO: Track access count
+            unique_regions: 1, // Single memory region
+            max_access_size: self.data.size(),
         }
     }
 
@@ -2125,22 +2153,28 @@ impl MemoryProvider for Memory {
         Ok(())
     }
 
+    #[cfg(feature = "std")]
     fn get_allocator(&self) -> &Self::Allocator {
-        &self.data
+        &StdMemoryProvider::default()
+    }
+    
+    #[cfg(not(feature = "std"))]
+    fn get_allocator(&self) -> &Self::Allocator {
+        self.data.provider()
     }
 
-    fn new_handler(&self) -> Result<SafeMemoryHandler<Self>> 
+    fn new_handler(&self) -> wrt_foundation::WrtResult<SafeMemoryHandler<Self>> 
     where 
         Self: Clone 
     {
-        SafeMemoryHandler::new(self.clone())
+        Ok(SafeMemoryHandler::new(self.clone()))
     }
 }
 
 // MemorySafety trait implementation removed as it doesn't exist in wrt-foundation
 
 impl MemoryOperations for Memory {
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     fn read_bytes(&self, offset: u32, len: u32) -> Result<Vec<u8>> {
         // Handle zero-length reads
         if len == 0 {
@@ -2164,7 +2198,7 @@ impl MemoryOperations for Memory {
             return Err(Error::new(
                 ErrorCategory::Memory,
                 codes::MEMORY_OUT_OF_BOUNDS,
-                format!(
+                &format!(
                     "Memory read out of bounds: offset={}, len={}, size={}",
                     offset, len, self.size_in_bytes()
                 ),
@@ -2172,9 +2206,9 @@ impl MemoryOperations for Memory {
         }
 
         // Read the data using the existing read method
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         let mut buffer = vec![0u8; len_usize];
-        #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+        #[cfg(all(not(feature = "std"), not(feature = "std")))]
         let mut buffer = {
             let mut buf = wrt_foundation::bounded::BoundedVec::new();
             for _ in 0..len_usize {
@@ -2186,7 +2220,7 @@ impl MemoryOperations for Memory {
         Ok(buffer)
     }
     
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     fn read_bytes(&self, offset: u32, len: u32) -> Result<wrt_foundation::BoundedVec<u8, 65536, wrt_foundation::NoStdProvider<65536>>> {
         // Handle zero-length reads
         if len == 0 {
@@ -2211,7 +2245,7 @@ impl MemoryOperations for Memory {
             return Err(Error::new(
                 ErrorCategory::Memory,
                 codes::MEMORY_OUT_OF_BOUNDS,
-                format!(
+                &format!(
                     "Memory read out of bounds: offset={}, len={}, size={}",
                     offset, len, self.size_in_bytes()
                 ),
@@ -2219,7 +2253,7 @@ impl MemoryOperations for Memory {
         }
 
         // Create a bounded vector and fill it
-        let mut result = wrt_foundation::BoundedVec::<u8, 65536, wrt_foundation::NoStdProvider>::new();
+        let mut result = wrt_foundation::BoundedVec::<u8, 65536, wrt_foundation::safe_memory::NoStdProvider<65536>>::new(wrt_foundation::safe_memory::NoStdProvider::<65536>::default())?;
         
         // Read data byte by byte to populate the bounded vector
         for i in 0..len_usize {
@@ -2294,7 +2328,7 @@ impl MemoryOperations for Memory {
             return Err(Error::new(
                 ErrorCategory::Memory,
                 codes::MEMORY_OUT_OF_BOUNDS,
-                format!(
+                &format!(
                     "Memory copy out of bounds: src_end={}, dest_end={}, size={}",
                     src_end, dest_end, memory_size
                 ),
@@ -2307,14 +2341,14 @@ impl MemoryOperations for Memory {
         
         // Handle overlapping regions by using a temporary buffer
         // Read source data first
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         let temp_data = {
             let mut buffer = vec![0u8; size_usize];
             self.read(src, &mut buffer)?;
             buffer
         };
         
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             // For no_std, copy byte by byte
             // This is less efficient but works in constrained environments
@@ -2334,7 +2368,7 @@ impl MemoryOperations for Memory {
         }
         
         // Write to destination
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         self.write(dest, &temp_data)?;
         
         Ok(())

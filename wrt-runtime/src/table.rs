@@ -3,13 +3,11 @@
 //! This module provides an implementation of WebAssembly tables,
 //! which store function references or externref values.
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
 extern crate alloc;
 
 use wrt_foundation::{
     types::{Limits as WrtLimits, TableType as WrtTableType, ValueType as WrtValueType},
     values::{Value as WrtValue, FuncRef as WrtFuncRef, ExternRef as WrtExternRef},
-    safe_memory::SafeStack,
 };
 
 use crate::prelude::*;
@@ -62,7 +60,7 @@ pub struct Table {
     /// The table type, using the canonical WrtTableType
     pub ty: WrtTableType,
     /// The table elements
-    elements: SafeStack<Option<WrtValue>, 1024, wrt_foundation::safe_memory::NoStdProvider<1024>>,
+    elements: wrt_foundation::bounded::BoundedVec<Option<WrtValue>, 1024, wrt_foundation::safe_memory::NoStdProvider<1024>>,
     /// A debug name for the table (optional)
     pub debug_name: Option<String>,
     /// Verification level for table operations
@@ -71,16 +69,14 @@ pub struct Table {
 
 impl Clone for Table {
     fn clone(&self) -> Self {
-        let elements_vec = self.elements.to_vec().unwrap_or_default();
-        let mut new_elements = SafeStack::with_capacity(elements_vec.len());
+        let mut new_elements: wrt_foundation::bounded::BoundedVec<Option<WrtValue>, 1024, wrt_foundation::safe_memory::NoStdProvider<1024>> = wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap();
         new_elements.set_verification_level(self.verification_level);
-        for elem in elements_vec {
-            // If push fails, we've already allocated the capacity so this should not fail
-            // unless we're out of memory, in which case panicking is appropriate
-            if new_elements.push(elem).is_err() {
-                // In Clone implementation, we can't return an error, so panic is appropriate
-                // for an out-of-memory condition
-                panic!("Failed to clone table: out of memory");
+        for i in 0..self.elements.len() {
+            // Use BoundedVec get method for safe access
+            if let Ok(elem) = self.elements.get(i) {
+                if new_elements.push(elem.clone()).is_err() {
+                    panic!("Failed to clone table: out of memory");
+                }
             }
         }
         Self {
@@ -100,9 +96,17 @@ impl PartialEq for Table {
         {
             return false;
         }
-        let self_elements = self.elements.to_vec().unwrap_or_default();
-        let other_elements = other.elements.to_vec().unwrap_or_default();
-        self_elements == other_elements
+        // Compare elements manually since BoundedStack doesn't have to_vec()
+        if self.elements.len() != other.elements.len() {
+            return false;
+        }
+        for i in 0..self.elements.len() {
+            // Since we're iterating within bounds and both have same len, indexing should be safe
+            if self.elements[i] != other.elements[i] {
+                return false;
+            }
+        }
+        true
     }
 }
 
@@ -110,9 +114,9 @@ impl Eq for Table {}
 
 impl Default for Table {
     fn default() -> Self {
-        use wrt_foundation::types::{Limits, TableType, ValueType};
+        use wrt_foundation::types::{Limits, TableType, RefType};
         let table_type = TableType {
-            element_type: ValueType::FuncRef,
+            element_type: RefType::Funcref,
             limits: Limits { min: 0, max: Some(1) },
         };
         Self::new(table_type).unwrap()
@@ -182,13 +186,13 @@ impl Table {
                 return Err(Error::new(
                     ErrorCategory::Validation,
                     codes::INVALID_TYPE,
-                    format!("Invalid element type for table: {:?}", ty.element_type),
+                    &format!("Invalid element type for table: {:?}", ty.element_type),
                 ))
             }
         };
 
         let initial_size = wasm_index_to_usize(ty.limits.min)?;
-        let mut elements = SafeStack::with_capacity(initial_size);
+        let mut elements: wrt_foundation::bounded::BoundedVec<Option<WrtValue>, 1024, wrt_foundation::safe_memory::NoStdProvider<1024>> = wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default())?;
         elements.set_verification_level(VerificationLevel::default());
 
         for _ in 0..initial_size {
@@ -271,15 +275,14 @@ impl Table {
             }
         }
 
-        // Use SafeStack's get method instead of direct indexing
-        match self.elements.get(idx) {
-            Ok(val) => Ok(val.clone()),
-            Err(_) => Err(Error::new(
+        // Use BoundedVec's get method for direct access
+        self.elements.get(idx as usize)
+            .map(|val| val.clone())
+            .map_err(|_| Error::new(
                 ErrorCategory::Runtime,
                 codes::INVALID_FUNCTION_INDEX,
-                "Table access failed during safe memory operation",
-            )),
-        }
+                "Table index out of bounds",
+            ))
     }
 
     /// Sets an element at the specified index
@@ -312,7 +315,7 @@ impl Table {
                 return Err(Error::new(
                     ErrorCategory::Validation,
                     codes::VALIDATION_ERROR,
-                    format!(
+                    &format!(
                         "Element value type {:?} doesn't match table element type {:?}",
                         val.value_type(),
                         self.ty.element_type
@@ -343,7 +346,7 @@ impl Table {
             return Err(Error::new(
                 ErrorCategory::Validation,
                 codes::VALIDATION_ERROR,
-                format!(
+                &format!(
                     "Grow operation init value type {:?} doesn't match table element type {:?}",
                     init_value_from_arg.value_type(),
                     self.ty.element_type
@@ -449,7 +452,7 @@ impl Table {
             return Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::RUNTIME_ERROR,
-                format!("table element copy out of bounds: src={}, dst={}, len={}", src, dst, len),
+                &format!("table element copy out of bounds: src={}, dst={}, len={}", src, dst, len),
             ));
         }
 
@@ -459,31 +462,31 @@ impl Table {
         }
 
         // Create temporary stack to store elements during copy
-        let mut temp_stack = SafeStack::with_capacity(len);
-        temp_stack.set_verification_level(self.verification_level);
+        let mut temp_vec = wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap();
+        temp_vec.set_verification_level(self.verification_level);
 
         // Read source elements into temporary stack
         for i in 0..len {
-            temp_stack.push(self.elements.get(src + i)?)?;
+            temp_vec.push(self.elements.get((src + i) as usize)?)?;
         }
 
         // Create a new stack for the full result
-        let mut result_stack = SafeStack::with_capacity(self.elements.len());
-        result_stack.set_verification_level(self.verification_level);
+        let mut result_vec = wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap();
+        result_vec.set_verification_level(self.verification_level);
 
         // Copy elements with the updated values
         for i in 0..self.elements.len() {
             if i >= dst && i < dst + len {
-                // This is in the destination range, use value from temp_stack
-                result_stack.push(temp_stack.get(i - dst)?)?;
+                // This is in the destination range, use value from temp_vec
+                result_vec.push(temp_vec.get(i - dst)?)?;
             } else {
                 // Outside destination range, use original value
-                result_stack.push(self.elements.get(i)?)?;
+                result_vec.push(self.elements.get(i)?)?;
             }
         }
 
         // Replace the elements stack
-        self.elements = result_stack;
+        self.elements = result_vec;
 
         Ok(())
     }
@@ -500,7 +503,7 @@ impl Table {
             return Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::RUNTIME_ERROR,
-                format!("table fill out of bounds: offset={}, len={}", offset, len),
+                &format!("table fill out of bounds: offset={}, len={}", offset, len),
             ));
         }
 
@@ -510,22 +513,22 @@ impl Table {
         }
 
         // Create a new stack with the filled elements
-        let mut result_stack = SafeStack::with_capacity(self.elements.len());
-        result_stack.set_verification_level(self.verification_level);
+        let mut result_vec = wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap();
+        result_vec.set_verification_level(self.verification_level);
 
         // Copy elements with fill applied
         for i in 0..self.elements.len() {
             if i >= offset && i < offset + len {
                 // This is in the fill range
-                result_stack.push(value.clone())?;
+                result_vec.push(value.clone())?;
             } else {
                 // Outside fill range, use original value
-                result_stack.push(self.elements.get(i)?)?;
+                result_vec.push(self.elements.get(i)?)?;
             }
         }
 
         // Replace the elements stack
-        self.elements = result_stack;
+        self.elements = result_vec;
 
         Ok(())
     }
@@ -558,7 +561,7 @@ impl Table {
             return Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::INVALID_FUNCTION_INDEX,
-                format!("table element index out of bounds: {}", idx),
+                &format!("table element index out of bounds: {}", idx),
             ));
         }
 
@@ -566,20 +569,20 @@ impl Table {
         self.elements.get(idx)?; // Verify access is valid
 
         // Create temporary stack to hold all elements
-        let mut temp_stack = SafeStack::with_capacity(self.elements.len());
-        temp_stack.set_verification_level(self.verification_level);
+        let mut temp_vec = wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap();
+        temp_vec.set_verification_level(self.verification_level);
 
         // Copy elements, replacing the one at idx
         for i in 0..self.elements.len() {
             if i == idx {
-                temp_stack.push(value.clone())?;
+                temp_vec.push(value.clone())?;
             } else {
-                temp_stack.push(self.elements.get(i)?)?;
+                temp_vec.push(self.elements.get(i)?)?;
             }
         }
 
         // Replace the old stack with the new one
-        self.elements = temp_stack;
+        self.elements = temp_vec;
 
         Ok(())
     }
@@ -592,7 +595,7 @@ impl Table {
     ///
     /// A string containing the statistics
     pub fn safety_stats(&self) -> String {
-        format!(
+        &format!(
             "Table Safety Stats:\n- Size: {} elements\n- Element type: {:?}\n- Verification \
              level: {:?}",
             self.elements.len(),
@@ -713,10 +716,10 @@ impl TableManager {
     /// Get a table by index
     pub fn get_table(&self, index: u32) -> Result<&Table> {
         self.tables.get(index as usize)
-            .ok_or_else(|| Error::new(
+            .map_err(|_| Error::new(
                 ErrorCategory::Runtime,
                 codes::INVALID_FUNCTION_INDEX,
-                format!("Invalid table index: {}", index),
+                &format!("Invalid table index: {}", index),
             ))
     }
     
@@ -726,7 +729,7 @@ impl TableManager {
             .ok_or_else(|| Error::new(
                 ErrorCategory::Runtime,
                 codes::INVALID_FUNCTION_INDEX,
-                format!("Invalid table index: {}", index),
+                &format!("Invalid table index: {}", index),
             ))
     }
     
@@ -764,7 +767,7 @@ impl TableOperations for TableManager {
                     WrtValue::FuncRef(func_ref) => {
                         use wrt_foundation::values::FuncRef;
                         match func_ref {
-                            Some(func_idx) => Ok(Value::FuncRef(Some(FuncRef::from_index(func_idx)))),
+                            Some(func_idx) => Ok(Value::FuncRef(Some(FuncRef { index: func_idx }))),
                             None => Ok(Value::FuncRef(None)),
                         }
                     }
@@ -791,7 +794,7 @@ impl TableOperations for TableManager {
                     _ => Err(Error::new(
                         ErrorCategory::Type,
                         codes::INVALID_TYPE,
-                        format!("Unsupported table element type: {:?}", table.ty.element_type),
+                        &format!("Unsupported table element type: {:?}", table.ty.element_type),
                     )),
                 }
             }
@@ -805,13 +808,13 @@ impl TableOperations for TableManager {
         let wrt_value = match value {
             Value::FuncRef(func_ref) => {
                 match func_ref {
-                    Some(fr) => Some(WrtValue::FuncRef(Some(WrtFuncRef::from_index(fr.index)))),
+                    Some(fr) => Some(WrtValue::FuncRef(Some(WrtFuncRef { index: fr.index }))),
                     None => Some(WrtValue::FuncRef(None)),
                 }
             }
             Value::ExternRef(extern_ref) => {
                 match extern_ref {
-                    Some(er) => Some(WrtValue::ExternRef(Some(WrtExternRef::from_index(er.index)))),
+                    Some(er) => Some(WrtValue::ExternRef(Some(WrtExternRef { index: er.index }))),
                     None => Some(WrtValue::ExternRef(None)),
                 }
             }
@@ -837,13 +840,13 @@ impl TableOperations for TableManager {
         let wrt_init_value = match init_value {
             Value::FuncRef(func_ref) => {
                 match func_ref {
-                    Some(fr) => WrtValue::FuncRef(Some(WrtFuncRef::from_index(fr.index))),
+                    Some(fr) => WrtValue::FuncRef(Some(WrtFuncRef { index: fr.index })),
                     None => WrtValue::FuncRef(None),
                 }
             }
             Value::ExternRef(extern_ref) => {
                 match extern_ref {
-                    Some(er) => WrtValue::ExternRef(Some(WrtExternRef::from_index(er.index))),
+                    Some(er) => WrtValue::ExternRef(Some(WrtExternRef { index: er.index })),
                     None => WrtValue::ExternRef(None),
                 }
             }
@@ -868,13 +871,13 @@ impl TableOperations for TableManager {
         let wrt_value = match val {
             Value::FuncRef(func_ref) => {
                 match func_ref {
-                    Some(fr) => Some(WrtValue::FuncRef(Some(WrtFuncRef::from_index(fr.index)))),
+                    Some(fr) => Some(WrtValue::FuncRef(Some(WrtFuncRef { index: fr.index }))),
                     None => Some(WrtValue::FuncRef(None)),
                 }
             }
             Value::ExternRef(extern_ref) => {
                 match extern_ref {
-                    Some(er) => Some(WrtValue::ExternRef(Some(WrtExternRef::from_index(er.index)))),
+                    Some(er) => Some(WrtValue::ExternRef(Some(WrtExternRef { index: er.index }))),
                     None => Some(WrtValue::ExternRef(None)),
                 }
             }
@@ -940,7 +943,7 @@ impl TableOperations for Table {
                     WrtValue::FuncRef(func_ref) => {
                         use wrt_foundation::values::FuncRef;
                         match func_ref {
-                            Some(func_idx) => Ok(Value::FuncRef(Some(FuncRef::from_index(func_idx)))),
+                            Some(func_idx) => Ok(Value::FuncRef(Some(FuncRef { index: func_idx }))),
                             None => Ok(Value::FuncRef(None)),
                         }
                     }
@@ -967,7 +970,7 @@ impl TableOperations for Table {
                     _ => Err(Error::new(
                         ErrorCategory::Type,
                         codes::INVALID_TYPE,
-                        format!("Unsupported table element type: {:?}", self.ty.element_type),
+                        &format!("Unsupported table element type: {:?}", self.ty.element_type),
                     )),
                 }
             }
@@ -987,13 +990,13 @@ impl TableOperations for Table {
         let wrt_value = match value {
             Value::FuncRef(func_ref) => {
                 match func_ref {
-                    Some(fr) => Some(WrtValue::FuncRef(Some(WrtFuncRef::from_index(fr.index)))),
+                    Some(fr) => Some(WrtValue::FuncRef(Some(WrtFuncRef { index: fr.index }))),
                     None => Some(WrtValue::FuncRef(None)),
                 }
             }
             Value::ExternRef(extern_ref) => {
                 match extern_ref {
-                    Some(er) => Some(WrtValue::ExternRef(Some(WrtExternRef::from_index(er.index)))),
+                    Some(er) => Some(WrtValue::ExternRef(Some(WrtExternRef { index: er.index }))),
                     None => Some(WrtValue::ExternRef(None)),
                 }
             }
@@ -1032,13 +1035,13 @@ impl TableOperations for Table {
         let wrt_init_value = match init_value {
             Value::FuncRef(func_ref) => {
                 match func_ref {
-                    Some(fr) => WrtValue::FuncRef(Some(WrtFuncRef::from_index(fr.index))),
+                    Some(fr) => WrtValue::FuncRef(Some(WrtFuncRef { index: fr.index })),
                     None => WrtValue::FuncRef(None),
                 }
             }
             Value::ExternRef(extern_ref) => {
                 match extern_ref {
-                    Some(er) => WrtValue::ExternRef(Some(WrtExternRef::from_index(er.index))),
+                    Some(er) => WrtValue::ExternRef(Some(WrtExternRef { index: er.index })),
                     None => WrtValue::ExternRef(None),
                 }
             }
@@ -1069,13 +1072,13 @@ impl TableOperations for Table {
         let wrt_value = match val {
             Value::FuncRef(func_ref) => {
                 match func_ref {
-                    Some(fr) => Some(WrtValue::FuncRef(Some(WrtFuncRef::from_index(fr.index)))),
+                    Some(fr) => Some(WrtValue::FuncRef(Some(WrtFuncRef { index: fr.index }))),
                     None => Some(WrtValue::FuncRef(None)),
                 }
             }
             Value::ExternRef(extern_ref) => {
                 match extern_ref {
-                    Some(er) => Some(WrtValue::ExternRef(Some(WrtExternRef::from_index(er.index)))),
+                    Some(er) => Some(WrtValue::ExternRef(Some(WrtExternRef { index: er.index }))),
                     None => Some(WrtValue::ExternRef(None)),
                 }
             }
@@ -1106,17 +1109,17 @@ impl TableOperations for Table {
 #[cfg(test)]
 mod tests {
     #[cfg(not(feature = "std"))]
-    use alloc::vec;
+    use std::vec;
 
     use wrt_foundation::{
-        types::{Limits, ValueType},
+        types::{Limits, ValueType, RefType},
         verification::VerificationLevel,
     };
 
     use super::*;
 
     fn create_test_table_type(min: u32, max: Option<u32>) -> TableType {
-        TableType { element_type: ValueType::FuncRef, limits: Limits { min, max } }
+        TableType { element_type: RefType::Funcref, limits: Limits { min, max } }
     }
 
     #[test]
@@ -1294,7 +1297,7 @@ mod tests {
     fn test_table_safe_operations() -> Result<()> {
         // Create a table type
         let table_type = TableType {
-            element_type: ValueType::FuncRef,
+            element_type: RefType::Funcref,
             limits: Limits { min: 5, max: Some(10) },
         };
 
