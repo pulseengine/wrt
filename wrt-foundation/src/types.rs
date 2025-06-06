@@ -15,16 +15,19 @@ use core::{
     str::FromStr,
 };
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 extern crate alloc;
 
-#[cfg(all(feature = "alloc", not(feature = "std")))]
+#[cfg(not(feature = "std"))]
+extern crate alloc;
+
+#[cfg(all(not(feature = "std")))]
 use alloc::collections::{BTreeMap, BTreeSet};
-#[cfg(all(feature = "alloc", not(feature = "std")))]
+#[cfg(all(not(feature = "std")))]
 use alloc::string::{String as AllocString, ToString as AllocToString};
-#[cfg(all(feature = "alloc", not(feature = "std")))]
+#[cfg(all(not(feature = "std")))]
 use alloc::vec::Vec as AllocVec;
-#[cfg(all(feature = "alloc", not(feature = "std")))]
+#[cfg(all(not(feature = "std")))]
 use alloc::{format, vec};
 #[cfg(feature = "std")]
 use std::collections::{HashMap, HashSet};
@@ -168,7 +171,7 @@ pub enum ValueType {
 }
 
 impl core::fmt::Debug for ValueType {
-    // Manual debug to avoid depending on alloc::format! in derived Debug
+    // Binary std/no_std choice
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::I32 => write!(f, "I32"),
@@ -432,7 +435,7 @@ pub const MAX_FUNC_TYPE_RESULTS: usize = MAX_RESULTS_IN_FUNC_TYPE; // Use the ne
 /// Represents the type of a WebAssembly function.
 ///
 /// It defines the parameter types and result types of a function.
-/// This version is adapted for alloc-free operation by using fixed-size arrays.
+/// Binary std/no_std choice
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FuncType<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> {
     pub params: BoundedVec<ValueType, MAX_PARAMS_IN_FUNC_TYPE, P>,
@@ -2167,7 +2170,7 @@ impl<P: MemoryProvider + Default + Clone + core::fmt::Debug + PartialEq + Eq> Cu
     ///
     /// Returns an error if the name or data cannot be stored due to capacity
     /// limits.
-    #[cfg(any(feature = "std", feature = "alloc", test))]
+    #[cfg(any(feature = "std", test))]
     pub fn from_name_and_data(name_str: &str, data_slice: &[u8]) -> Result<Self>
     where
         P: Default, // Ensure P can be defaulted for this convenience function

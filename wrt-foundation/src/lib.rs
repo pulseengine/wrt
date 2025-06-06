@@ -76,7 +76,6 @@ extern crate core;
 #[cfg(feature = "std")]
 extern crate std;
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
 extern crate alloc;
 
 // WRT - wrt-foundation
@@ -107,7 +106,7 @@ extern crate alloc;
 #[allow(clippy::return_self_not_must_use)]
 #[allow(clippy::doc_markdown)]
 // #![deny(pointer_cast)] // Removed, as it's not a standard lint
-// #![deny(alloc_instead_of_core)] // TODO: Verify this lint or implement if
+// Binary std/no_std choice
 // custom
 // Conditionally import log if std feature is enabled
 // #[cfg(feature = "std")] // Removed
@@ -128,9 +127,9 @@ pub type WrtResult<T> = core::result::Result<T, Error>;
 pub mod atomic_memory;
 /// Bounded collections for memory safety
 pub mod bounded;
-/// Additional bounded collections for no_std/no_alloc environments
+/// Binary std/no_std choice
 pub mod bounded_collections;
-/// Builder patterns for no_std/no_alloc types
+/// Binary std/no_std choice
 pub mod builder;
 /// WebAssembly Component Model built-in types
 pub mod builtin;
@@ -164,19 +163,19 @@ pub mod verification;
 #[cfg(any(doc, kani))]
 pub mod verify;
 
-// Modules that require allocation
-#[cfg(feature = "alloc")]
+// Binary std/no_std choice
+#[cfg(feature = "std")]
 /// Builder patterns for Component Model types
 pub mod component_builder;
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 /// Store for component model types
 pub mod component_type_store;
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 /// WebAssembly Component Model value types
 pub mod component_value;
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 pub mod component_value_store;
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 /// Builder pattern for component value store
 pub mod component_value_store_builder;
 
@@ -191,9 +190,9 @@ pub mod memory_builder;
 /// Runtime memory module
 pub mod runtime_memory;
 
-// Custom HashMap for pure no_std/no_alloc
-#[cfg(not(any(feature = "std", feature = "alloc")))]
-/// Custom `HashMap` implementation for no_std/no_alloc environments
+// Binary std/no_std choice
+#[cfg(not(any(feature = "std", )))]
+/// Binary std/no_std choice
 pub mod no_std_hashmap;
 // pub mod no_std_compat;
 
@@ -201,7 +200,7 @@ pub mod no_std_hashmap;
 pub use atomic_memory::{AtomicMemoryExt, AtomicMemoryOps};
 pub use bounded::{BoundedStack, BoundedString, BoundedVec, CapacityError, WasmName};
 // Alloc-dependent re-exports
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 pub use bounded_collections::BoundedBitSet;
 pub use bounded_collections::{BoundedDeque, BoundedMap, BoundedQueue, BoundedSet};
 pub use builder::{
@@ -210,17 +209,17 @@ pub use builder::{
 };
 pub use builtin::BuiltinType;
 pub use component::{ComponentType, ExternType, InstanceType, Namespace, ResourceType};
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 pub use component_builder::{ComponentTypeBuilder, ExportBuilder, ImportBuilder, NamespaceBuilder};
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 pub use component_type_store::{ComponentTypeStore, TypeRef};
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 pub use component_value::ComponentValue;
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 pub use component_value_store::{ComponentValueStore, ValueRef};
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 pub use component_value_store_builder::ComponentValueStoreBuilder;
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 pub use conversion::{ref_type_to_val_type, val_type_to_ref_type};
 pub use float_repr::{FloatBits32, FloatBits64};
 pub use operations::{
@@ -310,6 +309,77 @@ pub use async_bridge::{ComponentAsyncExt, ComponentFutureBridge, ComponentStream
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use crate::bounded::BoundedVec;
+    use crate::safe_memory::{SafeMemoryHandler, NoStdProvider};
+    use crate::traits::BoundedCapacity;
+
+    #[test]
+    fn test_boundedvec_is_empty() {
+        let provider = NoStdProvider::new();
+        let mut vec = BoundedVec::<u32, 10, _>::new(provider).unwrap();
+        
+        // Test is_empty
+        assert!(vec.is_empty());
+        
+        // Add an item
+        vec.push(42).unwrap();
+        
+        // Test not empty
+        assert!(!vec.is_empty());
+        assert_eq!(vec.len(), 1);
+    }
+
+    #[test]
+    #[cfg(feature = "std")]
+    fn test_boundedvec_to_vec_std() {
+        let provider = NoStdProvider::new();
+        let mut vec = BoundedVec::<u32, 10, _>::new(provider).unwrap();
+        
+        vec.push(1).unwrap();
+        vec.push(2).unwrap();
+        vec.push(3).unwrap();
+        
+        let std_vec = vec.to_vec().unwrap();
+        assert_eq!(std_vec, vec![1, 2, 3]);
+    }
+
+    #[test]
+    #[cfg(not(feature = "std"))]
+    fn test_boundedvec_to_vec_no_std() {
+        let provider = NoStdProvider::new();
+        let mut vec = BoundedVec::<u32, 10, _>::new(provider).unwrap();
+        
+        vec.push(1).unwrap();
+        vec.push(2).unwrap();
+        vec.push(3).unwrap();
+        
+        let cloned_vec = vec.to_vec().unwrap();
+        assert_eq!(cloned_vec.len(), 3);
+        assert_eq!(cloned_vec.get(0).unwrap(), 1);
+        assert_eq!(cloned_vec.get(1).unwrap(), 2);
+        assert_eq!(cloned_vec.get(2).unwrap(), 3);
+    }
+
+    #[test]
+    fn test_safe_memory_handler_to_vec() {
+        let provider = NoStdProvider::new();
+        let handler = SafeMemoryHandler::new(provider);
+        
+        // Test to_vec on empty handler
+        let data = handler.to_vec().unwrap();
+        
+        #[cfg(feature = "std")]
+        {
+            assert!(data.is_empty());
+        }
+        
+        #[cfg(not(feature = "std"))]
+        {
+            assert!(data.is_empty());
+        }
+    }
+
     // TODO: Add comprehensive tests for all public functionality in
     // wrt-foundation, ensuring coverage for different VerificationLevels,
     // std/no_std features, and edge cases for component model types, value

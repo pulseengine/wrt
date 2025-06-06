@@ -3,10 +3,10 @@
 // Licensed under the MIT license.
 // SPDX-License-Identifier: MIT
 
-#[cfg(all(feature = "alloc", not(feature = "std")))]
+#[cfg(all(not(feature = "std")))]
 extern crate alloc;
 
-#[cfg(all(feature = "alloc", not(feature = "std")))]
+#[cfg(all(not(feature = "std")))]
 use alloc::format;
 use core::fmt;
 #[cfg(not(feature = "std"))]
@@ -159,7 +159,7 @@ pub enum ResourceRepresentation {
     /// 64-bit handle representation
     Handle64,
     /// Record representation with field names
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     Record(
         BoundedVec<
             BoundedString<MAX_RESOURCE_FIELD_NAME_LEN, NoStdProvider<0>>,
@@ -168,10 +168,10 @@ pub enum ResourceRepresentation {
         >,
     ),
     /// Aggregate representation with type indices
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     Aggregate(BoundedVec<u32, MAX_RESOURCE_AGGREGATE_IDS, NoStdProvider<0>>),
-    /// Record representation (no_alloc version)
-    #[cfg(not(feature = "alloc"))]
+    /// Binary std/no_std choice
+    #[cfg(not(feature = "std"))]
     Record,
 }
 
@@ -182,11 +182,11 @@ impl ResourceRepresentation {
         match self {
             ResourceRepresentation::Handle32 => "handle32",
             ResourceRepresentation::Handle64 => "handle64",
-            #[cfg(feature = "alloc")]
+            #[cfg(feature = "std")]
             ResourceRepresentation::Record(_) => "record",
-            #[cfg(feature = "alloc")]
+            #[cfg(feature = "std")]
             ResourceRepresentation::Aggregate(_) => "aggregate",
-            #[cfg(not(feature = "alloc"))]
+            #[cfg(not(feature = "std"))]
             ResourceRepresentation::Record => "record",
         }
     }
@@ -206,7 +206,7 @@ impl core::str::FromStr for ResourceRepresentation {
             "handle32" => Ok(ResourceRepresentation::Handle32),
             "handle64" => Ok(ResourceRepresentation::Handle64),
             "record" => {
-                #[cfg(feature = "alloc")]
+                #[cfg(feature = "std")]
                 {
                     Ok(ResourceRepresentation::Record(
                         BoundedVec::new(NoStdProvider::default()).map_err(|_e| {
@@ -218,13 +218,13 @@ impl core::str::FromStr for ResourceRepresentation {
                         })?,
                     ))
                 }
-                #[cfg(not(feature = "alloc"))]
+                #[cfg(not(feature = "std"))]
                 {
                     Ok(ResourceRepresentation::Record)
                 }
             }
             "aggregate" => {
-                #[cfg(feature = "alloc")]
+                #[cfg(feature = "std")]
                 {
                     Ok(ResourceRepresentation::Aggregate(
                         BoundedVec::new(NoStdProvider::default()).map_err(|_e| {
@@ -236,7 +236,7 @@ impl core::str::FromStr for ResourceRepresentation {
                         })?,
                     ))
                 }
-                #[cfg(not(feature = "alloc"))]
+                #[cfg(not(feature = "std"))]
                 {
                     Err(wrt_error::Error::new(
                         wrt_error::ErrorCategory::Parse,

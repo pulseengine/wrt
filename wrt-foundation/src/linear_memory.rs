@@ -30,12 +30,12 @@ use crate::{
 /// Adapter to convert `PageAllocator` to `Allocator` interface
 #[derive(Debug, Clone)]
 pub struct PageAllocatorAdapter<A> {
-    /// The underlying page allocator
+    /// Binary std/no_std choice
     allocator: A,
 }
 
 impl<A: PageAllocator + Send + Sync> PageAllocatorAdapter<A> {
-    /// Create a new adapter wrapping the page allocator
+    /// Binary std/no_std choice
     pub fn new(allocator: A) -> Self {
         Self { allocator }
     }
@@ -52,7 +52,7 @@ impl<A: PageAllocator + Send + Sync + Clone + 'static> Allocator for PageAllocat
     }
 
     fn deallocate(&self, ptr: *mut u8, _layout: core::alloc::Layout) -> WrtResult<()> {
-        // For simplicity, we don't implement individual deallocations for page allocators
+        // Binary std/no_std choice
         // as they typically manage entire memory regions
         Ok(())
     }
@@ -60,7 +60,7 @@ impl<A: PageAllocator + Send + Sync + Clone + 'static> Allocator for PageAllocat
 
 /// A WebAssembly linear memory implementation using a `PageAllocator`.
 ///
-/// This struct manages a region of memory allocated and potentially grown by
+/// Binary std/no_std choice
 /// a platform-specific `PageAllocator`.
 #[derive(Debug)]
 pub struct PalMemoryProvider<A: PageAllocator + Send + Sync + Clone + 'static> {
@@ -69,16 +69,16 @@ pub struct PalMemoryProvider<A: PageAllocator + Send + Sync + Clone + 'static> {
     base_ptr: Option<NonNull<u8>>,
     current_pages: u32,
     maximum_pages: Option<u32>,
-    initial_allocation_size: usize, // Size returned by the initial allocate call
+    initial_allocation_size: usize, // Binary std/no_std choice
     verification_level: VerificationLevel,
-    // For Provider trait stats, if not derived from allocator directly
+    // Binary std/no_std choice
     access_count: AtomicUsize,
     max_access_size: AtomicUsize,
 }
 
 // SAFETY: The PalMemoryProvider is Send if the PageAllocator A is Send.
 // The NonNull<u8> itself is not Send/Sync, but we are managing its lifecycle
-// and access. Thread-safety depends on the allocator and how this provider's
+// Binary std/no_std choice
 // methods are used externally (e.g., if &mut self methods are correctly
 // serialized). The raw pointer is only ever accessed through methods that take
 // &self or &mut self, and the underlying memory operations via the
@@ -112,16 +112,16 @@ impl<A: PageAllocator + Send + Sync + Clone + 'static> PalMemoryProvider<A> {
     ///
     /// # Arguments
     ///
-    /// * `allocator`: The `PageAllocator` instance to use for memory
+    /// Binary std/no_std choice
     ///   operations.
-    /// * `initial_pages`: The initial number of Wasm pages to allocate.
+    /// Binary std/no_std choice
     /// * `maximum_pages`: An optional maximum number of Wasm pages the memory
     ///   can grow to.
     /// * `verification_level`: The verification level for memory operations.
     ///
     /// # Errors
     ///
-    /// Returns an `Error` if the initial allocation fails.
+    /// Binary std/no_std choice
     pub fn new(
         mut allocator: A,
         initial_pages: u32,
@@ -130,11 +130,11 @@ impl<A: PageAllocator + Send + Sync + Clone + 'static> PalMemoryProvider<A> {
     ) -> Result<Self> {
         if initial_pages == 0 && maximum_pages.unwrap_or(0) == 0 {
             // Allow zero initial if max is also zero, effectively an empty
-            // non-growable memory. Or if allocator can handle
+            // Binary std/no_std choice
             // initial_pages = 0. For now, let's assume
-            // allocator.allocate handles initial_pages = 0 if needed.
+            // Binary std/no_std choice
             // Wasm spec: min size is required, max is optional.
-            // If initial_pages is 0, it will likely allocate 0 bytes as per
+            // Binary std/no_std choice
             // spec.
         }
 
@@ -148,7 +148,7 @@ impl<A: PageAllocator + Send + Sync + Clone + 'static> PalMemoryProvider<A> {
             base_ptr: Some(ptr),
             current_pages: initial_pages,
             maximum_pages,
-            initial_allocation_size: allocated_size, // Store the size from allocate
+            initial_allocation_size: allocated_size, // Binary std/no_std choice
             verification_level,
             access_count: AtomicUsize::new(0),
             max_access_size: AtomicUsize::new(0),
@@ -162,7 +162,7 @@ impl<A: PageAllocator + Send + Sync + Clone + 'static> PalMemoryProvider<A> {
     ///
     /// # Errors
     ///
-    /// Returns an `Error` if growing fails (e.g., exceeds maximum, allocator
+    /// Binary std/no_std choice
     /// error).
     pub fn grow(&mut self, additional_pages: u32) -> Result<u32> {
         if additional_pages == 0 {
@@ -207,7 +207,7 @@ impl<A: PageAllocator + Send + Sync + Clone + 'static> PalMemoryProvider<A> {
         // needed.
     }
 
-    /// Returns the current number of WebAssembly pages allocated.
+    /// Binary std/no_std choice
     pub fn pages(&self) -> u32 {
         self.current_pages
     }
@@ -230,10 +230,10 @@ impl<A: PageAllocator + Send + Sync + Clone + 'static> Provider for PalMemoryPro
         };
         self.track_access(offset, len);
         // SAFETY: `verify_access` ensures that `offset + len` is within the
-        // currently allocated and accessible memory bounds (current_pages *
+        // Binary std/no_std choice
         // WASM_PAGE_SIZE). `base_ptr` is guaranteed to be non-null and valid if
-        // Some by the module's invariants (it's set on successful allocation
-        // and cleared on deallocation). The lifetime of the returned slice is
+        // Binary std/no_std choice
+        // Binary std/no_std choice
         // tied to `&self`, ensuring the data remains valid as long as the
         // `PalMemoryProvider` is borrowed. The underlying memory pointed to by
         // `base_ptr.as_ptr().add(offset)` is valid for reads of `len` bytes
@@ -253,7 +253,7 @@ impl<A: PageAllocator + Send + Sync + Clone + 'static> Provider for PalMemoryPro
         };
         self.track_access(offset, data.len());
         // SAFETY: `verify_access` ensures that `offset + data.len()` is within the
-        // currently allocated and accessible memory bounds.
+        // Binary std/no_std choice
         // `base_ptr` is guaranteed to be non-null and valid if Some.
         // The method takes `&mut self`, ensuring exclusive access to the
         // `PalMemoryProvider`, and thus to the underlying memory region for the
@@ -292,13 +292,13 @@ impl<A: PageAllocator + Send + Sync + Clone + 'static> Provider for PalMemoryPro
 
     fn capacity(&self) -> usize {
         self.maximum_pages.map_or_else(
-            || self.size(), // If no max, capacity is current size (or could be allocator defined)
+            || self.size(), // Binary std/no_std choice
             |max_pages| max_pages as usize * WASM_PAGE_SIZE,
         )
     }
 
     fn verify_integrity(&self) -> Result<()> {
-        // Integrity for this provider primarily means the allocator itself is sound
+        // Binary std/no_std choice
         // and our view (pages, ptr) is consistent. Deeper integrity (checksums)
         // is handled by Slice/SliceMut.
         if self.base_ptr.is_none() && self.current_pages > 0 {
@@ -308,7 +308,7 @@ impl<A: PageAllocator + Send + Sync + Clone + 'static> Provider for PalMemoryPro
                 "Memory pointer is None but current_pages > 0",
             ));
         }
-        // Further checks could involve querying the allocator if it exposes health
+        // Binary std/no_std choice
         // checks.
         Ok(())
     }
@@ -341,7 +341,7 @@ impl<A: PageAllocator + Send + Sync + Clone + 'static> Provider for PalMemoryPro
         };
         self.track_access(offset, len);
         // SAFETY: `verify_access` ensures that `offset + len` is within the
-        // currently allocated and accessible memory bounds. `base_ptr` is
+        // Binary std/no_std choice
         // non-null and valid. `&mut self` ensures exclusive access. The
         // memory region is valid for mutable access.
         let data_slice =
@@ -457,17 +457,17 @@ impl<A: PageAllocator + Send + Sync + Clone + 'static> Provider for PalMemoryPro
 impl<A: PageAllocator + Send + Sync + Clone + 'static> Drop for PalMemoryProvider<A> {
     fn drop(&mut self) {
         if let Some(ptr) = self.base_ptr.take() {
-            // The `initial_allocation_size` stores the size returned by the
-            // `PageAllocator::allocate` call. This is the size that should be
-            // passed to `PageAllocator::deallocate`.
+            // Binary std/no_std choice
+            // Binary std/no_std choice
+            // Binary std/no_std choice
             let size_to_deallocate = self.initial_allocation_size;
 
             if size_to_deallocate > 0 {
-                // SAFETY: `ptr` was obtained from `self.allocator.allocate` and is
-                // valid. `size_to_deallocate` is the size of the region allocated
-                // by the allocator. This deallocation is performed when
+                // Binary std/no_std choice
+                // Binary std/no_std choice
+                // Binary std/no_std choice
                 // `PalMemoryProvider` goes out of scope, ensuring exclusive access
-                // for deallocation.
+                // Binary std/no_std choice
                 unsafe {
                     if let Err(_e) = self.allocator.deallocate(ptr, size_to_deallocate) {
                         // In a no_std environment, error reporting in drop is
@@ -475,7 +475,7 @@ impl<A: PageAllocator + Send + Sync + Clone + 'static> Drop for PalMemoryProvide
                         // highly discouraged.
                         // Logging might be done via a specific facade if
                         // available. For now, we
-                        // silently ignore deallocation errors here.
+                        // Binary std/no_std choice
                         // The error `_e` could potentially be logged if a
                         // mechanism exists.
                     }

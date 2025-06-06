@@ -10,17 +10,17 @@
 //! This module provides builders for complex types in the WebAssembly Component
 //! Model, ensuring proper initialization, validation, and resource management.
 
-#[cfg(all(feature = "alloc", not(feature = "std")))]
+#[cfg(all(not(feature = "std")))]
 extern crate alloc;
 
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-use alloc::vec::Vec;
-#[cfg(feature = "alloc")]
+#[cfg(all(not(feature = "std")))]
+use std::vec::Vec;
+#[cfg(feature = "std")]
 use core::fmt::Debug;
 #[cfg(feature = "std")]
 use std::vec::Vec;
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 use crate::{
     bounded::{BoundedString, BoundedVec, WasmName, MAX_WASM_NAME_LENGTH},
     component::{
@@ -35,7 +35,7 @@ use crate::{
     Error, MemoryProvider, WrtResult,
 };
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 /// Builder for `ComponentType` instances.
 ///
 /// Provides a fluent API for constructing Component Model types with
@@ -52,7 +52,7 @@ pub struct ComponentTypeBuilder<P: MemoryProvider + Default + Clone + PartialEq 
     core_types: Vec<CoreType<P>>,
 }
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> Default for ComponentTypeBuilder<P> {
     fn default() -> Self {
         Self {
@@ -68,7 +68,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> Default for Component
     }
 }
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ComponentTypeBuilder<P> {
     /// Creates a new builder with default settings.
     pub fn new() -> Self {
@@ -226,7 +226,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ComponentTypeBuilder<
     }
 }
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 /// Builder for `Import` instances.
 #[derive(Debug)]
 pub struct ImportBuilder<P: MemoryProvider + Default + Clone + PartialEq + Eq> {
@@ -236,14 +236,14 @@ pub struct ImportBuilder<P: MemoryProvider + Default + Clone + PartialEq + Eq> {
     ty: Option<ExternType<P>>,
 }
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> Default for ImportBuilder<P> {
     fn default() -> Self {
         Self { provider: P::default(), namespace: None, name: None, ty: None }
     }
 }
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ImportBuilder<P> {
     /// Creates a new builder with default settings.
     pub fn new() -> Self {
@@ -302,7 +302,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ImportBuilder<P> {
     }
 }
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 /// Builder for `Export` instances.
 #[derive(Debug)]
 pub struct ExportBuilder<P: MemoryProvider + Default + Clone + PartialEq + Eq> {
@@ -312,14 +312,14 @@ pub struct ExportBuilder<P: MemoryProvider + Default + Clone + PartialEq + Eq> {
     desc: Option<WasmName<MAX_NAME_LEN, P>>,
 }
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> Default for ExportBuilder<P> {
     fn default() -> Self {
         Self { provider: P::default(), name: None, ty: None, desc: None }
     }
 }
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ExportBuilder<P> {
     /// Creates a new builder with default settings.
     pub fn new() -> Self {
@@ -374,7 +374,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ExportBuilder<P> {
     }
 }
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 /// Builder for `Namespace` instances.
 #[derive(Debug)]
 pub struct NamespaceBuilder<P: MemoryProvider + Default + Clone + PartialEq + Eq> {
@@ -382,14 +382,14 @@ pub struct NamespaceBuilder<P: MemoryProvider + Default + Clone + PartialEq + Eq
     elements: Vec<WasmName<MAX_NAME_LEN, P>>,
 }
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> Default for NamespaceBuilder<P> {
     fn default() -> Self {
         Self { provider: P::default(), elements: Vec::new() }
     }
 }
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> NamespaceBuilder<P> {
     /// Creates a new builder with default settings.
     pub fn new() -> Self {
@@ -449,7 +449,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> NamespaceBuilder<P> {
     }
 }
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 /// Builder for `ResourceType` instances.
 #[derive(Debug)]
 pub struct ResourceTypeBuilder<P: MemoryProvider + Default + Clone + PartialEq + Eq> {
@@ -457,7 +457,7 @@ pub struct ResourceTypeBuilder<P: MemoryProvider + Default + Clone + PartialEq +
     variant: Option<ResourceTypeVariant<P>>,
 }
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 /// Enum to represent the variants of `ResourceType`.
 #[derive(Debug)]
 enum ResourceTypeVariant<P: MemoryProvider + Default + Clone + PartialEq + Eq> {
@@ -465,14 +465,14 @@ enum ResourceTypeVariant<P: MemoryProvider + Default + Clone + PartialEq + Eq> {
     Aggregate(Vec<u32>),
 }
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> Default for ResourceTypeBuilder<P> {
     fn default() -> Self {
         Self { provider: P::default(), variant: None }
     }
 }
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ResourceTypeBuilder<P> {
     /// Creates a new builder with default settings.
     pub fn new() -> Self {
@@ -532,7 +532,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> ResourceTypeBuilder<P
     }
 }
 
-#[cfg(all(test, feature = "alloc"))]
+#[cfg(all(test, ))]
 mod tests {
     use super::*;
     use crate::{safe_memory::NoStdProvider, traits::BoundedCapacity};

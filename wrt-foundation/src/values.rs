@@ -8,21 +8,20 @@
 //! This module provides datatypes for representing WebAssembly values at
 //! runtime.
 
-#[cfg(feature = "alloc")]
-// use alloc::format; // Removed
-#[cfg(all(feature = "alloc", not(feature = "std")))]
+#[cfg(feature = "std")]
+// use std::format; // Removed
+#[cfg(all(not(feature = "std")))]
 use alloc;
 #[cfg(not(feature = "std"))]
 use core::fmt;
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-// use alloc::boxed::Box; // Temporarily commented to find usages
-#[cfg(feature = "alloc")]
-// use alloc::vec::Vec; // Temporarily commented to find usages
+// use std::boxed::Box; // Temporarily commented to find usages
+#[cfg(feature = "std")]
+// use std::vec::Vec; // Temporarily commented to find usages
 
 // Conditional imports for different environments
 #[cfg(feature = "std")]
 use std;
-// Box for dynamic allocation
+// Binary std/no_std choice
 #[cfg(feature = "std")]
 // use std::boxed::Box; // Temporarily commented to find usages
 #[cfg(feature = "std")]
@@ -33,8 +32,7 @@ use wrt_error::{codes, Error, ErrorCategory, Result as WrtResult};
 
 // Publicly re-export FloatBits32 and FloatBits64 from the local float_repr module
 pub use crate::float_repr::{FloatBits32, FloatBits64};
-// #[cfg(all(not(feature = "std"), feature = "alloc"))]
-// use alloc::format; // Removed: format! should come from prelude
+// // use std::format; // Removed: format! should come from prelude
 use crate::traits::LittleEndian as TraitLittleEndian; // Alias trait
 // Use the canonical LittleEndian trait and BytesWriter from crate::traits
 use crate::traits::{
@@ -348,6 +346,15 @@ impl Value {
     pub const fn as_u32(&self) -> Option<u32> {
         match *self {
             Value::I32(val) => Some(val as u32),
+            _ => None,
+        }
+    }
+
+    /// Returns the underlying value as an `i32` if it's an `i32`.
+    #[must_use]
+    pub const fn as_i32(&self) -> Option<i32> {
+        match *self {
+            Value::I32(val) => Some(val),
             _ => None,
         }
     }
@@ -1164,7 +1171,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     fn test_little_endian_conversion() {
         let val_i32 = Value::I32(0x1234_5678);
         let bytes_i32 = val_i32.to_le_bytes().unwrap();
