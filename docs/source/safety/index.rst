@@ -19,13 +19,14 @@ Safety Documentation Overview
 This safety documentation is organized into the following major components:
 
 1. **Safety Guidelines**: General guidelines for using the runtime safely
-2. **Safety Constraints**: Specific constraints that must be followed
-3. **Verification Strategies**: Approaches for verifying safety properties
-4. **Safety Mechanisms**: Specific mechanisms implemented to ensure safety
-5. **Safety Implementations**: How safety requirements are implemented
-6. **Safety Test Cases**: Test cases that verify safety properties
-7. **Performance Tuning**: Guidelines for balancing safety and performance
-8. **Traceability Matrix**: Mapping from safety standards to implementations
+2. **Safety Classification**: Unified cross-standard safety integrity levels
+3. **Safety Constraints**: Specific constraints that must be followed
+4. **Verification Strategies**: Approaches for verifying safety properties
+5. **Safety Mechanisms**: Specific mechanisms implemented to ensure safety
+6. **Safety Implementations**: How safety requirements are implemented
+7. **Safety Test Cases**: Test cases that verify safety properties
+8. **Performance Tuning**: Guidelines for balancing safety and performance
+9. **Traceability Matrix**: Mapping from safety standards to implementations
 
 Safety Implementation Status
 ----------------------------
@@ -250,6 +251,7 @@ Detailed Safety Documentation
    :maxdepth: 2
 
    safety_guidelines
+   safety_classification
    constraints
    mechanisms
    implementations
