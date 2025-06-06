@@ -9,18 +9,18 @@ use core::cmp;
 #[cfg(feature = "std")]
 use std::cmp;
 
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 use wrt_error::{codes, Error, ErrorCategory, Result};
 
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 use wrt_error::{codes, Error, ErrorCategory, Result};
 
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 use wrt_foundation::MemoryProvider;
 
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 use crate::Vec;
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 use crate::WasmVec;
 
 /// Supported compression types
@@ -50,7 +50,7 @@ impl CompressionType {
 /// - For literal sequences: [count, byte1, byte2, ...]
 ///
 /// Where count is a single byte (0-255)
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 pub fn rle_encode(data: &[u8]) -> Vec<u8> {
     let mut result = Vec::new();
     let mut i = 0;
@@ -92,7 +92,7 @@ pub fn rle_encode(data: &[u8]) -> Vec<u8> {
 /// Format:
 /// - [0x00, count, value] for runs of repeated bytes
 /// - [count, byte1, byte2, ...] for literal sequences
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 pub fn rle_decode(input: &[u8]) -> Result<Vec<u8>> {
     if input.is_empty() {
         return Ok(Vec::new());
@@ -156,7 +156,7 @@ pub fn rle_decode(input: &[u8]) -> Result<Vec<u8>> {
 /// - For literal sequences: [count, byte1, byte2, ...]
 ///
 /// Where count is a single byte (0-255)
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 pub fn rle_encode<P: MemoryProvider + Clone + Default + Eq>(data: &[u8]) -> Result<WasmVec<u8, P>> {
     let mut result = WasmVec::new(P::default()).map_err(|_| {
         Error::new(ErrorCategory::Memory, codes::MEMORY_ERROR, "Failed to create result vector")
@@ -210,7 +210,7 @@ pub fn rle_encode<P: MemoryProvider + Clone + Default + Eq>(data: &[u8]) -> Resu
 /// Format:
 /// - [0x00, count, value] for runs of repeated bytes
 /// - [count, byte1, byte2, ...] for literal sequences
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 pub fn rle_decode<P: MemoryProvider + Clone + Default + Eq>(
     input: &[u8],
 ) -> Result<WasmVec<u8, P>> {
@@ -281,15 +281,15 @@ pub fn rle_decode<P: MemoryProvider + Clone + Default + Eq>(
 
 #[cfg(test)]
 mod tests {
-    #[cfg(all(feature = "alloc", not(feature = "std")))]
-    use alloc::vec;
+    #[cfg(all(not(feature = "std")))]
+    use std::vec;
     #[cfg(feature = "std")]
     use std::vec;
 
     use super::*;
 
     #[test]
-    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(feature = "std")]
     fn test_rle_encode_decode() {
         let empty: Vec<u8> = vec![];
         assert_eq!(rle_encode(&empty), empty);
@@ -320,7 +320,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(feature = "std")]
     fn test_rle_decode_errors() {
         // Test truncated input
         let truncated = vec![0]; // RLE marker without count and value

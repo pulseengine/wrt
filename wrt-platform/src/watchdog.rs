@@ -10,8 +10,8 @@ use core::{
     time::Duration,
 };
 
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-use alloc::{collections::BTreeMap, string::String, sync::Arc};
+#[cfg(all(not(feature = "std")))]
+use std::{collections::BTreeMap, string::String, sync::Arc};
 #[cfg(feature = "std")]
 use std::{collections::BTreeMap, string::String, sync::Arc};
 

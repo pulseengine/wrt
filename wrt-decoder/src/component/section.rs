@@ -15,7 +15,7 @@ use wrt_foundation::{
     MemoryProvider, NoStdProvider, WrtResult,
 };
 
-/// Represents a Component export for no_alloc decoding
+/// Binary std/no_std choice
 ///
 /// A simplified version of the wrt-foundation component::Export for
 /// use in memory-constrained environments.
@@ -31,7 +31,7 @@ pub struct ComponentExport<
     pub kind: u8,
 }
 
-/// Represents a Component import for no_alloc decoding
+/// Binary std/no_std choice
 ///
 /// A simplified version of the wrt-foundation component::Import for
 /// use in memory-constrained environments.
@@ -80,14 +80,14 @@ impl From<u8> for ComponentValueType {
     }
 }
 
-/// Component instance for no_alloc decoding
+/// Binary std/no_std choice
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ComponentInstance {
     /// Instance type
     pub type_index: u32,
 }
 
-/// Simplified Component type for no_alloc decoding
+/// Binary std/no_std choice
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ComponentType {
     /// The type form byte

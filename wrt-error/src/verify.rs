@@ -10,8 +10,8 @@
 #[cfg(any(doc, kani))]
 /// Kani verification proofs for error handling.
 pub mod kani_verification {
-    #[cfg(feature = "alloc")]
-    use alloc::format;
+    #[cfg(feature = "std")]
+    use std::format;
     use core::fmt::{self, Debug, Display};
 
     // Use crate::Error directly, remove ResultExt if it was here.
@@ -56,7 +56,7 @@ pub mod kani_verification {
     }
 
     /// Verify that creating and displaying an error works correctly
-    #[cfg(feature = "alloc")] // Retaining for format! usage
+    #[cfg(feature = "std")] // Retaining for format! usage
     #[cfg_attr(kani, kani::proof)]
     pub fn verify_error_creation_and_display() {
         // Renamed
@@ -68,7 +68,7 @@ pub mod kani_verification {
         assert_eq!(error.code, codes::UNKNOWN); // Or the specific code used
         assert_eq!(error.message, "verification test");
 
-        // Verify display formatting using alloc::format!
+        // Binary std/no_std choice
         let error_str = format!("{}", error);
         // Example: "[Validation][E270F] verification test" if UNKNOWN is 9999 (0x270F)
         // For now, check for essential parts.

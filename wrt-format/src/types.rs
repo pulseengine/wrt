@@ -3,7 +3,9 @@
 //! This module provides type definitions for WebAssembly types.
 //! Most core types are re-exported from wrt-foundation.
 
-#[cfg(all(feature = "alloc", not(feature = "std")))]
+#[cfg(not(feature = "std"))]
+extern crate alloc;
+#[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
 #[cfg(feature = "std")]
 use std::vec::Vec;
@@ -59,9 +61,9 @@ pub enum FormatBlockType {
     /// Function type reference
     TypeIndex(u32),
     /// Function type (used for complex block types)
-    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(feature = "std")]
     FuncType(wrt_foundation::FuncType<wrt_foundation::traits::DefaultMemoryProvider>),
-    #[cfg(not(any(feature = "alloc", feature = "std")))]
+    #[cfg(not(any(feature = "std")))]
     FuncType(wrt_foundation::FuncType<wrt_foundation::NoStdProvider<1024>>),
 }
 
@@ -171,9 +173,9 @@ impl CoreWasmVersion {
 // Serialization helpers for Limits
 impl Limits {
     /// Serialize to bytes
-    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(feature = "std")]
     pub fn to_bytes(&self) -> Result<Vec<u8>> {
-        #[cfg(any(feature = "alloc", feature = "std"))]
+        #[cfg(feature = "std")]
         {
             let mut bytes = Vec::new();
             // Encode min
@@ -191,7 +193,7 @@ impl Limits {
             bytes.push(self.memory64 as u8);
             Ok(bytes)
         }
-        #[cfg(not(any(feature = "alloc", feature = "std")))]
+        #[cfg(not(any(feature = "std")))]
         {
             use wrt_foundation::BoundedVec;
             let mut bytes = BoundedVec::<u8, 32, wrt_foundation::NoStdProvider<256>>::new(

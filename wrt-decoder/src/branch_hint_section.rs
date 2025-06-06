@@ -20,13 +20,9 @@
 //! - 0x01: likely_true (branch is likely to be taken)
 
 // Core/std library imports
-#[cfg(feature = "alloc")]
-extern crate alloc;
 
-#[cfg(feature = "alloc")]
-use alloc::{vec::Vec, collections::BTreeMap};
 #[cfg(feature = "std")]
-use std::{vec::Vec, collections::BTreeMap as HashMap};
+use std::{vec::Vec, collections::{BTreeMap, HashMap}};
 
 // External crates
 use wrt_error::{Error, ErrorCategory, Result, codes};
@@ -159,7 +155,7 @@ pub struct FunctionBranchHints {
     /// Map from instruction offset to branch hint
     #[cfg(feature = "std")]
     pub hints: HashMap<u32, BranchHintValue>,
-    #[cfg(all(feature = "alloc", not(feature = "std")))]
+    #[cfg(all(not(feature = "std")))]
     pub hints: BTreeMap<u32, BranchHintValue>,
 }
 
@@ -170,7 +166,7 @@ impl FunctionBranchHints {
             function_index,
             #[cfg(feature = "std")]
             hints: HashMap::new(),
-            #[cfg(all(feature = "alloc", not(feature = "std")))]
+            #[cfg(all(not(feature = "std")))]
             hints: BTreeMap::new(),
         }
     }
@@ -208,7 +204,7 @@ pub struct BranchHintSection {
     /// Map from function index to branch hints
     #[cfg(feature = "std")]
     pub function_hints: HashMap<u32, FunctionBranchHints>,
-    #[cfg(all(feature = "alloc", not(feature = "std")))]
+    #[cfg(all(not(feature = "std")))]
     pub function_hints: BTreeMap<u32, FunctionBranchHints>,
 }
 
@@ -218,7 +214,7 @@ impl BranchHintSection {
         Self {
             #[cfg(feature = "std")]
             function_hints: HashMap::new(),
-            #[cfg(all(feature = "alloc", not(feature = "std")))]
+            #[cfg(all(not(feature = "std")))]
             function_hints: BTreeMap::new(),
         }
     }
@@ -304,7 +300,7 @@ pub fn parse_branch_hint_section(data: &[u8]) -> Result<BranchHintSection> {
 }
 
 /// Encode branch hint section to binary data
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 pub fn encode_branch_hint_section(section: &BranchHintSection) -> Result<Vec<u8>> {
     let mut data = Vec::new();
 
@@ -324,7 +320,7 @@ pub fn encode_branch_hint_section(section: &BranchHintSection) -> Result<Vec<u8>
             }
         }
     }
-    #[cfg(all(feature = "alloc", not(feature = "std")))]
+    #[cfg(all(not(feature = "std")))]
     {
         for (func_idx, hints) in &section.function_hints {
             write_leb128_u32(&mut data, *func_idx);
@@ -341,7 +337,7 @@ pub fn encode_branch_hint_section(section: &BranchHintSection) -> Result<Vec<u8>
 }
 
 /// Helper function to write LEB128 u32
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 fn write_leb128_u32(data: &mut Vec<u8>, mut value: u32) {
     loop {
         let byte = (value & 0x7F) as u8;
@@ -386,7 +382,7 @@ mod tests {
         assert!(!hint.optimize_for_taken());
     }
 
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     #[test]
     fn test_function_branch_hints() {
         let mut hints = FunctionBranchHints::new(5);
@@ -404,7 +400,7 @@ mod tests {
         assert_eq!(hints.get_hint(30), None);
     }
 
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     #[test]
     fn test_branch_hint_section() {
         let mut section = BranchHintSection::new();
@@ -429,7 +425,7 @@ mod tests {
         assert_eq!(section.get_hint(0, 30), None);
     }
 
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     #[test]
     fn test_parse_encode_round_trip() {
         // Create a test section
@@ -469,7 +465,7 @@ mod tests {
         assert_eq!(section.total_hint_count(), 0);
     }
 
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     #[test]
     fn test_parse_malformed_data() {
         // Truncated data

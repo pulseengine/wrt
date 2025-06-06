@@ -85,6 +85,12 @@ pub const TABLE_NOT_FOUND: u16 = 3007;
 pub const RESOURCE_EXHAUSTED: u16 = 3008;
 /// Allocation failed error
 pub const ALLOCATION_FAILED: u16 = 3009;
+/// Memory access denied through wrapper
+pub const MEMORY_ACCESS_DENIED: u16 = 3010;
+/// Table access denied through wrapper
+pub const TABLE_ACCESS_DENIED: u16 = 3011;
+/// Global access denied through wrapper
+pub const GLOBAL_ACCESS_DENIED: u16 = 3012;
 
 // Memory error codes (4000-4999)
 /// Memory out of bounds error
@@ -302,7 +308,7 @@ pub const VALIDATION_START_FUNCTION_ERROR: u16 = 8215;
 // Memory errors (8400-8499)
 /// General memory error
 pub const MEMORY_ERROR: u16 = 8400;
-/// Memory allocation error
+/// Binary std/no_std choice
 pub const MEMORY_ALLOCATION_ERROR: u16 = 8403;
 /// Memory grow failure error
 pub const MEMORY_GROW_FAILURE: u16 = 8404;
@@ -310,7 +316,7 @@ pub const MEMORY_GROW_FAILURE: u16 = 8404;
 pub const MEMORY_ALIGNMENT_ERROR_CODE: u16 = 8405;
 /// Memory size limit error
 pub const MEMORY_SIZE_LIMIT_ERROR: u16 = 8406;
-/// Memory deallocation error
+/// Binary std/no_std choice
 pub const MEMORY_DEALLOCATION_ERROR: u16 = 8407;
 
 // Runtime trap errors (8600-8699)

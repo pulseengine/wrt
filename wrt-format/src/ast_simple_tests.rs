@@ -4,12 +4,12 @@
 //! BoundedString creation which has current implementation issues.
 
 #[cfg(test)]
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 mod tests {
     use crate::ast_simple::*;
     
-    #[cfg(feature = "alloc")]
-    use alloc::vec::Vec;
+    #[cfg(feature = "std")]
+    use std::vec::Vec;
 
     #[test]
     fn test_source_span_creation() {
@@ -121,9 +121,9 @@ mod tests {
         // Create a simple WIT document
         let document = WitDocument {
             package: None,
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             use_items: Vec::new(),
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             items: Vec::new(),
             span,
         };
@@ -132,7 +132,7 @@ mod tests {
         assert_eq!(document.span.end, 100);
         assert!(document.package.is_none());
         
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             assert!(document.use_items.is_empty());
             assert!(document.items.is_empty());
@@ -172,7 +172,7 @@ mod tests {
         
         // Create a simple function definition
         let function = Function {
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             params: Vec::new(),
             results: FunctionResults::None,
             is_async: false,
@@ -183,7 +183,7 @@ mod tests {
         assert_eq!(function.span.start, 0);
         assert_eq!(function.span.end, 50);
         
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         assert!(function.params.is_empty());
         
         match function.results {
@@ -192,7 +192,7 @@ mod tests {
         }
     }
     
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     #[test]
     fn test_ast_structure_without_strings() {
         // Test that we can work with the AST structure even without BoundedString creation

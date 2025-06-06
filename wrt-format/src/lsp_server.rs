@@ -5,8 +5,8 @@
 
 #[cfg(feature = "std")]
 use std::{collections::BTreeMap, vec::Vec, sync::{Arc, Mutex}};
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-use alloc::{collections::BTreeMap, vec::Vec, sync::Arc};
+#[cfg(all(not(feature = "std")))]
+use std::{collections::BTreeMap, vec::Vec, sync::Arc};
 
 use wrt_foundation::{
     BoundedString, NoStdProvider,
@@ -151,12 +151,12 @@ pub struct DocumentSymbol {
     /// Selection range
     pub selection_range: Range,
     /// Child symbols
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub children: Vec<DocumentSymbol>,
 }
 
 /// WIT Language Server
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 pub struct WitLanguageServer {
     /// Parser cache for incremental parsing
     parser_cache: Arc<Mutex<IncrementalParserCache>>,
@@ -201,7 +201,7 @@ impl Default for ServerCapabilities {
     }
 }
 
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 impl WitLanguageServer {
     /// Create a new language server
     pub fn new() -> Self {
@@ -484,14 +484,14 @@ impl WitLanguageServer {
                     kind: SymbolKind::Package,
                     range: self.span_to_range(package.span),
                     selection_range: self.span_to_range(package.span),
-                    #[cfg(any(feature = "std", feature = "alloc"))]
+                    #[cfg(feature = "std")]
                     children: Vec::new(),
                 });
             }
         }
         
         // Extract interface symbols
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         for item in &ast.items {
             match item {
                 TopLevelItem::Interface(interface) => {
@@ -557,7 +557,7 @@ enum NodeInfo {
     Interface(String),
 }
 
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 impl Default for WitLanguageServer {
     fn default() -> Self {
         Self::new()
@@ -565,7 +565,7 @@ impl Default for WitLanguageServer {
 }
 
 /// LSP request handler trait
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 pub trait LspRequestHandler {
     /// Handle hover request
     fn handle_hover(&self, uri: &str, position: Position) -> Result<Option<Hover>>;
@@ -577,7 +577,7 @@ pub trait LspRequestHandler {
     fn handle_document_symbols(&self, uri: &str) -> Result<Vec<DocumentSymbol>>;
 }
 
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 impl LspRequestHandler for WitLanguageServer {
     fn handle_hover(&self, uri: &str, position: Position) -> Result<Option<Hover>> {
         self.hover(uri, position)
@@ -609,7 +609,7 @@ mod tests {
         assert!(pos.character <= range.end.character);
     }
     
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     #[test]
     fn test_server_creation() {
         let server = WitLanguageServer::new();

@@ -13,7 +13,7 @@ mod linux_tests {
         let allocator =
             LinuxAllocatorBuilder::new().with_maximum_pages(100).with_guard_pages(true).build();
 
-        // Verify the allocator was created
+        // Binary std/no_std choice
         assert!(core::mem::size_of_val(&allocator) > 0);
     }
 
@@ -53,7 +53,7 @@ mod linux_mte_tests {
             .with_mte_mode(MteMode::Synchronous)
             .build();
 
-        // Verify the allocator was created
+        // Binary std/no_std choice
         assert!(core::mem::size_of_val(&allocator) > 0);
     }
 

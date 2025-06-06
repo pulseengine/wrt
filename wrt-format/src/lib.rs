@@ -77,14 +77,13 @@
 #[cfg(feature = "std")]
 extern crate std;
 
-// Import alloc for no_std environments with allocation
-#[cfg(all(feature = "alloc", not(feature = "std")))]
+// Binary std/no_std choice
+#[cfg(all(not(feature = "std")))]
 extern crate alloc;
 
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-// Import types for internal use
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-use alloc::{format, string::String, vec::Vec};
+#[cfg(all(not(feature = "std")))]
+// Import types for internal use from alloc (excluding format macro to avoid conflict)
+use alloc::{string::String, vec::Vec};
 #[cfg(feature = "std")]
 use std::{format, string::String, vec::Vec};
 
@@ -100,37 +99,34 @@ pub use wrt_foundation::Result;
 
 // Collection types are imported privately above and used internally
 
-// Import bounded collections for no_std without alloc
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+// Binary std/no_std choice
+#[cfg(not(any(feature = "std")))]
 pub use wrt_foundation::{BoundedMap, BoundedSet, BoundedString, BoundedVec};
 
 // Type aliases for pure no_std mode
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 pub type WasmString<P> = BoundedString<MAX_WASM_STRING_SIZE, P>;
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 pub type WasmVec<T, P> = BoundedVec<T, 1024, P>; // General purpose bounded vector
                                                  // Module type aliases for pure no_std mode
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 pub type ModuleFunctions<P> = BoundedVec<crate::module::Function<P>, MAX_MODULE_FUNCTIONS, P>;
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 pub type ModuleImports<P> = BoundedVec<crate::module::Import<P>, MAX_MODULE_IMPORTS, P>;
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 pub type ModuleExports<P> = BoundedVec<crate::module::Export<P>, MAX_MODULE_EXPORTS, P>;
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 pub type ModuleGlobals<P> = BoundedVec<crate::module::Global<P>, MAX_MODULE_GLOBALS, P>;
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 pub type ModuleElements<P> = BoundedVec<crate::module::Element<P>, MAX_MODULE_ELEMENTS, P>;
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 pub type ModuleData<P> = BoundedVec<crate::module::Data<P>, MAX_MODULE_DATA, P>;
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 pub type ModuleCustomSections<P> = BoundedVec<crate::section::CustomSection<P>, 64, P>;
 
 // Type aliases for HashMap
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(feature = "std"))]
 pub type HashMap<K, V> = wrt_foundation::BoundedMap<K, V, 256, wrt_foundation::NoStdProvider<1024>>; // Default capacity
-
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-pub type HashMap<K, V> = alloc::collections::BTreeMap<K, V>; // Use BTreeMap in no_std+alloc
 
 #[cfg(feature = "std")]
 pub type HashMap<K, V> = std::collections::BTreeMap<K, V>;
@@ -139,9 +135,9 @@ pub type HashMap<K, V> = std::collections::BTreeMap<K, V>;
 pub const MAX_TYPE_RECURSION_DEPTH: usize = 32;
 
 // Type aliases for WebAssembly-specific collections
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 pub type WasmString = String;
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 pub type WasmVec<T> = Vec<T>;
 
 // In pure no_std mode, we don't provide generic Vec/String aliases
@@ -151,15 +147,15 @@ pub type WasmVec<T> = Vec<T>;
 #[macro_export]
 macro_rules! collection_type {
     (Vec<$t:ty>) => {
-        #[cfg(any(feature = "alloc", feature = "std"))]
+        #[cfg(feature = "std")]
         type VecType = Vec<$t>;
-        #[cfg(not(any(feature = "alloc", feature = "std")))]
+        #[cfg(not(any(feature = "std")))]
         type VecType = $crate::WasmVec<$t, $crate::NoStdProvider<1024>>;
     };
     (String) => {
-        #[cfg(any(feature = "alloc", feature = "std"))]
+        #[cfg(feature = "std")]
         type StringType = String;
-        #[cfg(not(any(feature = "alloc", feature = "std")))]
+        #[cfg(not(any(feature = "std")))]
         type StringType = $crate::WasmString<$crate::NoStdProvider<1024>>;
     };
 }
@@ -194,7 +190,7 @@ pub const MAX_BOUNDED_TOKENS: usize = 512;
 pub const MAX_STATIC_TYPES: usize = 64;
 
 // For no_std mode, provide format! macro replacement using static strings
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 #[macro_export]
 macro_rules! format {
     ($lit:literal) => {
@@ -208,26 +204,26 @@ macro_rules! format {
 }
 
 /// Abstract Syntax Tree types for WIT parsing (simplified version)
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 pub mod ast_simple;
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 pub use ast_simple as ast;
 /// Incremental parser for efficient WIT re-parsing
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 pub mod incremental_parser;
 /// Basic LSP (Language Server Protocol) infrastructure
-#[cfg(all(any(feature = "alloc", feature = "std"), feature = "lsp"))]
+#[cfg(all(any(feature = "std"), feature = "lsp"))]
 pub mod lsp_server;
 /// WebAssembly binary format parsing and access
 pub mod binary;
 /// WebAssembly canonical format
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 pub mod canonical;
 /// WebAssembly component model format
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 pub mod component;
 /// Conversion utilities for component model types
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 pub mod component_conversion;
 /// Compression utilities for WebAssembly modules
 pub mod compression;
@@ -240,7 +236,7 @@ pub mod module;
 /// Common imports for convenience
 pub mod prelude;
 /// Resource handle management for Component Model
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 pub mod resource_handle;
 /// Safe memory operations
 pub mod safe_memory;
@@ -249,31 +245,31 @@ pub mod state;
 /// Streaming parser for no_std environments
 pub mod streaming;
 /// Type storage system for Component Model
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 pub mod type_store;
 pub mod types;
 /// Validation utilities
 pub mod validation;
 /// ValType builder utilities
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 pub mod valtype_builder;
 pub mod verify;
 pub mod version;
-// WIT (WebAssembly Interface Types) parser (requires alloc for component model)
-#[cfg(any(feature = "alloc", feature = "std"))]
+// Binary std/no_std choice
+#[cfg(feature = "std")]
 pub mod wit_parser;
 // Bounded WIT parser for no_std environments
 #[cfg(feature = "wit-parsing")]
 pub mod wit_parser_bounded;
 // Temporarily disable enhanced parser until compilation issues fixed
-// #[cfg(any(feature = "alloc", feature = "std"))]
+// #[cfg(feature = "std")]
 // pub mod wit_parser_enhanced;
 // Temporarily disable problematic parsers
-// #[cfg(any(feature = "alloc", feature = "std"))]
+// #[cfg(feature = "std")]
 // pub mod wit_parser_complex;
-// #[cfg(any(feature = "alloc", feature = "std"))]
+// #[cfg(feature = "std")]
 // pub mod wit_parser_old;
-// #[cfg(any(feature = "alloc", feature = "std"))]
+// #[cfg(feature = "std")]
 // pub mod wit_parser_traits;
 
 // Test modules
@@ -295,8 +291,8 @@ pub use binary::{
     read_leb128_i32, read_leb128_i64, read_leb128_u32, read_leb128_u64, read_u32, read_u8,
 };
 
-// Additional parsing functions requiring allocation
-#[cfg(any(feature = "alloc", feature = "std"))]
+// Binary std/no_std choice
+#[cfg(feature = "std")]
 pub use binary::with_alloc::{
     read_name, read_string,
     // is_valid_wasm_header, parse_block_type,
@@ -308,22 +304,22 @@ pub use binary::with_alloc::{
 //     read_f32, read_f64, read_name,
 // };
 
-// Re-export write functions (only with alloc)
-#[cfg(any(feature = "alloc", feature = "std"))]
+// Binary std/no_std choice
+#[cfg(feature = "std")]
 pub use binary::with_alloc::{
     write_leb128_i32, write_leb128_i64, write_leb128_u32, write_leb128_u64, write_string,
 };
 
 // Re-export no_std write functions
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 pub use binary::{
     write_leb128_u32_bounded, write_leb128_u32_to_slice, write_string_bounded,
     write_string_to_slice,
 };
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 pub use component::Component;
 pub use compression::CompressionType;
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 pub use compression::{rle_decode, rle_encode};
 // Re-export conversion utilities
 pub use conversion::{
@@ -342,7 +338,7 @@ pub type ElementSegment = module::Element;
 // Re-export safe memory utilities
 pub use safe_memory::safe_slice;
 pub use section::{CustomSection, Section};
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 pub use state::{create_state_section, extract_state_section, is_state_section_name, StateSection};
 // Use the conversion module versions for consistency
 pub use types::{FormatBlockType, Limits, MemoryIndexType};
@@ -350,8 +346,8 @@ pub use validation::Validatable;
 pub use version::{
     ComponentModelFeature, ComponentModelVersion, FeatureStatus, VersionInfo, STATE_VERSION,
 };
-// Re-export WIT parser (requires alloc for component model)
-#[cfg(any(feature = "alloc", feature = "std"))]
+// Binary std/no_std choice
+#[cfg(feature = "std")]
 pub use wit_parser::{
     WitEnum, WitExport, WitFlags, WitFunction, WitImport, WitInterface, WitItem, WitParam,
     WitParseError, WitParser, WitRecord, WitResult, WitType, WitTypeDef, WitVariant, WitWorld,
@@ -403,7 +399,7 @@ pub use types::value_type_to_byte;
 #[cfg(feature = "kani")]
 pub mod verification {
     /// Verify LEB128 encoding and decoding
-    #[cfg(all(kani, any(feature = "alloc", feature = "std")))]
+    #[cfg(all(kani, any(feature = "std")))]
     #[kani::proof]
     fn verify_leb128_roundtrip() {
         let value: u32 = kani::any();
@@ -418,14 +414,14 @@ pub mod verification {
 }
 
 /// Demonstration of pure no_std WebAssembly format handling
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 pub mod no_std_demo {
     use wrt_foundation::NoStdProvider;
 
     use super::*;
 
     /// Example showing TypeRef system working
-    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(feature = "std")]
     pub fn demo_type_system() -> wrt_error::Result<()> {
         use crate::component::{FormatValType, TypeRegistry};
 
@@ -454,7 +450,7 @@ pub mod no_std_demo {
         Ok(())
     }
 
-    /// Example showing LEB128 parsing (no allocation)
+    /// Binary std/no_std choice
     pub fn demo_leb128_parsing() -> crate::Result<()> {
         let data = [0x80, 0x01]; // LEB128 encoding of 128
         let (value, consumed) = crate::binary::read_leb128_u32(&data, 0)?;
@@ -469,7 +465,7 @@ pub mod no_std_demo {
 
         use crate::streaming::StreamingParser;
 
-        // Create a minimal valid WebAssembly module (static array, no allocation)
+        // Binary std/no_std choice
         let wasm_data = [
             // Magic bytes: \0asm
             0x00, 0x61, 0x73, 0x6D, // Version: 1.0.0.0
@@ -499,7 +495,7 @@ pub mod no_std_demo {
     }
 
     /// Example showing module creation in pure no_std mode
-    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(feature = "std")]
     pub fn demo_module_creation() -> Result<(), wrt_foundation::bounded::CapacityError> {
         use wrt_foundation::NoStdProvider;
 
@@ -509,7 +505,7 @@ pub mod no_std_demo {
         let provider = NoStdProvider::<1024>::default();
         let _module = Module::<NoStdProvider<1024>>::default();
 
-        // The module can be created and used without any heap allocation
+        // Binary std/no_std choice
         Ok(())
     }
 }

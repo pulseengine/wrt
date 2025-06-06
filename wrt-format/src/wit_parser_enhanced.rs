@@ -7,10 +7,10 @@
 
 #[cfg(feature = "std")]
 use std::{collections::BTreeMap, vec::Vec, boxed::Box, format, vec, string::String};
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-use alloc::{collections::BTreeMap, vec::Vec, boxed::Box, format, vec, string::String};
+#[cfg(all(not(feature = "std")))]
+use std::{collections::BTreeMap, vec::Vec, boxed::Box, format, vec, string::String};
 
-#[cfg(not(any(feature = "std", feature = "alloc")))]
+#[cfg(not(any(feature = "std", )))]
 compile_error!("Enhanced WIT parser requires std or alloc feature");
 
 use core::fmt;
@@ -466,7 +466,7 @@ impl EnhancedWitParser {
         } else {
             // Note: In a real implementation, we'd convert the strings to bounded strings
             Some(Documentation {
-                #[cfg(any(feature = "std", feature = "alloc"))]
+                #[cfg(feature = "std")]
                 lines: Vec::new(), // For now, just return empty vec
                 span: SourceSpan::empty(),
             });

@@ -3,7 +3,7 @@
 //! This module provides error handling functionality for the format
 //! specification.
 
-#[cfg(all(feature = "alloc", not(feature = "std")))]
+#[cfg(all(not(feature = "std")))]
 use alloc::{boxed::Box, string::String};
 #[cfg(feature = "std")]
 use std::{boxed::Box, string::String};
@@ -29,7 +29,7 @@ pub fn parse_error(message: &'static str) -> Error {
 
 /// Create a parse error from a String (for dynamic messages)
 /// Note: This leaks the string memory, so use sparingly
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 pub fn parse_error_dynamic(message: String) -> Error {
     let leaked: &'static str = Box::leak(message.into_boxed_str());
     Error::parse_error(leaked)
@@ -47,7 +47,7 @@ pub fn validation_error(message: &'static str) -> Error {
 
 /// Create a validation error from a String (for dynamic messages)
 /// Note: This leaks the string memory, so use sparingly
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 pub fn validation_error_dynamic(message: String) -> Error {
     let leaked: &'static str = Box::leak(message.into_boxed_str());
     Error::validation_error(leaked)

@@ -101,7 +101,7 @@ extern "C" {
 pub struct ZephyrFutex {
     /// The atomic value used for synchronization
     value: AtomicU32,
-    /// Zephyr futex kernel object (would be statically allocated in real usage)
+    /// Binary std/no_std choice
     futex_obj: *mut ZephyrFutexHandle,
     /// Padding to ensure cache line alignment
     _padding: [u8; 56], // Adjust for embedded cache line sizes
@@ -115,7 +115,7 @@ unsafe impl Sync for ZephyrFutex {}
 impl ZephyrFutex {
     /// Creates a new `ZephyrFutex` with the given initial value.
     pub fn new(initial_value: u32) -> Self {
-        // In a real implementation, this would use static allocation or a memory pool
+        // Binary std/no_std choice
         // For demonstration, we'll simulate with null pointer (would need actual kernel
         // object)
         let futex_obj = core::ptr::null_mut();
@@ -286,7 +286,7 @@ impl Drop for ZephyrFutex {
 pub struct ZephyrSemaphoreFutex {
     /// The atomic value used for synchronization
     value: AtomicU32,
-    /// Zephyr semaphore for signaling (would be statically allocated)
+    /// Binary std/no_std choice
     semaphore: *mut u8, // Placeholder for k_sem structure
     /// Padding for alignment
     _padding: [u8; 60],

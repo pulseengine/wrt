@@ -19,7 +19,7 @@ mod zephyr_tests {
             .with_guard_regions(true)
             .build();
 
-        // Verify the allocator was created
+        // Binary std/no_std choice
         assert!(core::mem::size_of_val(&allocator) > 0);
     }
 
@@ -68,7 +68,7 @@ mod zephyr_tests {
         let allocator =
             ZephyrAllocatorBuilder::new().with_custom_heap(true).with_maximum_pages(50).build();
 
-        // Verify the allocator was created with custom heap configuration
+        // Binary std/no_std choice
         assert!(core::mem::size_of_val(&allocator) > 0);
     }
 
@@ -79,7 +79,7 @@ mod zephyr_tests {
             .with_guard_regions(false)
             .build();
 
-        // Verify the allocator works without memory domains and guard regions
+        // Binary std/no_std choice
         assert!(core::mem::size_of_val(&allocator) > 0);
     }
 }

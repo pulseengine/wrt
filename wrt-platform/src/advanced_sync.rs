@@ -30,11 +30,11 @@
 
 #![allow(dead_code)] // Allow during development
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 extern crate alloc;
 
-#[cfg(feature = "alloc")]
-use alloc::{boxed::Box, vec::Vec};
+#[cfg(feature = "std")]
+use std::{boxed::Box, vec::Vec};
 use core::{
     cell::UnsafeCell,
     ptr::NonNull,
@@ -56,7 +56,7 @@ pub const MIN_PRIORITY: Priority = 0;
 ///
 /// Provides wait-free enqueue and lock-free dequeue operations
 /// suitable for real-time systems with bounded execution time.
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 #[repr(align(64))] // Cache line alignment
 pub struct LockFreeMpscQueue<T> {
     /// Head pointer for dequeue operations
@@ -85,10 +85,10 @@ impl<T> Node<T> {
     }
 }
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 impl<T> LockFreeMpscQueue<T> {
     /// Create a new empty MPSC queue
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     pub fn new() -> Self {
         let stub = Box::new(Node::stub());
         let stub_ptr = Box::as_ref(&stub) as *const Node<T> as *mut Node<T>;
@@ -144,7 +144,7 @@ impl<T> LockFreeMpscQueue<T> {
             // Extract data from the old head
             let data = (*next).data.take();
 
-            // Deallocate the old head if it's not the stub
+            // Binary std/no_std choice
             if head != Box::as_ref(&self.stub) as *const Node<T> as *mut Node<T> {
                 let _ = Box::from_raw(head);
             }
@@ -160,14 +160,14 @@ impl<T> LockFreeMpscQueue<T> {
     }
 }
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 unsafe impl<T: Send> Send for LockFreeMpscQueue<T> {}
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 unsafe impl<T: Send> Sync for LockFreeMpscQueue<T> {}
 
-/// Lock-free memory allocator for fixed-size blocks
+/// Binary std/no_std choice
 ///
-/// Provides O(1) allocation and deallocation with no locks.
+/// Binary std/no_std choice
 /// Suitable for real-time systems requiring bounded execution time.
 pub struct LockFreeAllocator {
     /// Free list head
@@ -186,7 +186,7 @@ struct FreeBlock {
 }
 
 impl LockFreeAllocator {
-    /// Create allocator with pre-allocated memory pool
+    /// Binary std/no_std choice
     ///
     /// # Safety
     /// `pool` must be a valid memory region of size `pool_size`.
@@ -253,10 +253,10 @@ impl LockFreeAllocator {
         }
     }
 
-    /// Deallocate a block (lock-free)
+    /// Binary std/no_std choice
     ///
     /// # Safety
-    /// `ptr` must have been allocated by this allocator and not already freed.
+    /// Binary std/no_std choice
     pub unsafe fn deallocate(&self, ptr: NonNull<u8>) {
         let block = ptr.as_ptr() as *mut FreeBlock;
 
@@ -621,7 +621,7 @@ impl<'a, T> Drop for WriteGuard<'a, T> {
 ///
 /// Provides deterministic O(1) operations suitable for real-time systems.
 /// Uses a ring buffer with atomic head/tail pointers.
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 pub struct WaitFreeSpscQueue<T> {
     /// Ring buffer storage
     buffer: Box<[UnsafeCell<Option<T>>]>,
@@ -635,10 +635,10 @@ pub struct WaitFreeSpscQueue<T> {
     tail: AtomicUsize,
 }
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 impl<T> WaitFreeSpscQueue<T> {
     /// Create queue with specified capacity (rounded up to power of 2)
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     pub fn new(capacity: usize) -> Self {
         let capacity = capacity.next_power_of_two();
         let buffer =
@@ -721,7 +721,7 @@ impl<T> WaitFreeSpscQueue<T> {
     }
 }
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 unsafe impl<T: Send> Send for WaitFreeSpscQueue<T> {}
 
 #[cfg(test)]
@@ -755,19 +755,19 @@ mod tests {
         let allocator =
             unsafe { LockFreeAllocator::new(pool.as_mut_ptr(), POOL_SIZE, BLOCK_SIZE).unwrap() };
 
-        // Test allocation
+        // Binary std/no_std choice
         let ptr1 = allocator.allocate().unwrap();
         let ptr2 = allocator.allocate().unwrap();
 
         assert_ne!(ptr1.as_ptr(), ptr2.as_ptr());
 
-        // Test deallocation
+        // Binary std/no_std choice
         unsafe {
             allocator.deallocate(ptr1);
             allocator.deallocate(ptr2);
         }
 
-        // Should be able to allocate again
+        // Binary std/no_std choice
         let ptr3 = allocator.allocate().unwrap();
         assert!(!ptr3.as_ptr().is_null());
     }

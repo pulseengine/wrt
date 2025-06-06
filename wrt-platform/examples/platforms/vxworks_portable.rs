@@ -116,7 +116,7 @@ fn example_synchronization() {
 fn example_threading() {
     println!("\n=== Example 4: Threading ===");
     
-    // Note: This would require alloc feature for real implementation
+    // Binary std/no_std choice
     println!("Threading examples would work with VxWorks tasks and pthreads");
 }
 
@@ -204,7 +204,7 @@ fn show_vxworks_concepts() {
 fn demonstrate_trait_usage() {
     println!("\n=== Trait Usage Demonstration ===");
     
-    // Mock allocator for demonstration
+    // Binary std/no_std choice
     struct MockVxWorksAllocator {
         allocated_pages: usize,
         max_pages: usize,
@@ -225,7 +225,7 @@ fn demonstrate_trait_usage() {
                 ));
             }
             
-            // Mock allocation - just return a non-null pointer
+            // Binary std/no_std choice
             // In real implementation, this would call VxWorks APIs
             let ptr = Box::into_raw(vec![0u8; pages * WASM_PAGE_SIZE].into_boxed_slice()) as *mut u8;
             self.allocated_pages += pages;
@@ -235,7 +235,7 @@ fn demonstrate_trait_usage() {
         }
         
         fn deallocate_pages(&mut self, ptr: core::ptr::NonNull<u8>, pages: usize) -> Result<(), wrt_error::Error> {
-            // Mock deallocation
+            // Binary std/no_std choice
             let slice = unsafe {
                 Box::from_raw(core::slice::from_raw_parts_mut(ptr.as_ptr(), pages * WASM_PAGE_SIZE))
             };
@@ -327,7 +327,7 @@ fn demonstrate_trait_usage() {
     
     println!("Created mock VxWorks allocator and futex");
     
-    // Test allocator
+    // Binary std/no_std choice
     match allocator.allocate_pages(10) {
         Ok(ptr) => {
             println!("✓ Allocated 10 pages successfully");

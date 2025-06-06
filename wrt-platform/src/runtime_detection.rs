@@ -24,7 +24,7 @@ pub struct PlatformCapabilities {
 /// Memory management capabilities
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct MemoryCapabilities {
-    /// Supports dynamic memory allocation (mmap-style)
+    /// Binary std/no_std choice
     pub dynamic_allocation: bool,
     /// Supports memory protection (mprotect-style)
     pub memory_protection: bool,
@@ -32,9 +32,9 @@ pub struct MemoryCapabilities {
     pub guard_pages: bool,
     /// Has hardware memory tagging (ARM MTE, Intel MPX, etc.)
     pub hardware_tagging: bool,
-    /// Maximum allocatable memory in bytes
+    /// Binary std/no_std choice
     pub max_memory: Option<usize>,
-    /// Memory allocation granularity in bytes
+    /// Binary std/no_std choice
     pub allocation_granularity: usize,
 }
 
@@ -145,7 +145,7 @@ impl PlatformDetector {
         {
             // Real-time embedded platform
             return Ok(MemoryCapabilities {
-                dynamic_allocation: false,   // Zephyr uses heap, not dynamic allocation
+                dynamic_allocation: false,   // Binary std/no_std choice
                 memory_protection: true,     // Memory domains provide protection
                 guard_pages: true,           // Guard regions supported
                 hardware_tagging: false,     // Not typical in embedded
@@ -450,7 +450,7 @@ impl PlatformDetector {
         }
     }
 
-    /// Detect page size/allocation granularity
+    /// Binary std/no_std choice
     #[allow(dead_code)]
     fn detect_page_size(&self) -> usize {
         #[cfg(any(
@@ -511,7 +511,7 @@ impl PlatformCapabilities {
     /// Check if platform supports the minimum requirements for WebAssembly
     /// runtime
     pub fn supports_wasm_runtime(&self) -> bool {
-        // Minimum requirements: some form of memory allocation and basic
+        // Binary std/no_std choice
         // synchronization
         (self.memory.dynamic_allocation || self.memory.max_memory.is_some())
             && (self.sync.futex_support || self.sync.cross_process_sync)

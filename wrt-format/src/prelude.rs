@@ -43,10 +43,10 @@ pub use wrt_foundation::{
     SafeMemoryHandler,
     SafeSlice,
 };
-// Component model types (require alloc)
-#[cfg(feature = "alloc")]
+// Binary std/no_std choice
+#[cfg(feature = "std")]
 pub use wrt_foundation::component_value::{ComponentValue, ValType};
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 pub use wrt_foundation::{BoundedMap, BoundedString, BoundedVec};
 
 // Re-export from this crate's modules
@@ -71,7 +71,7 @@ pub use crate::{
     },
 };
 // Re-export collection types for no_std
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 pub use crate::{WasmString, WasmVec};
 
 // Helper functions for memory safety
@@ -131,8 +131,8 @@ pub mod std_prelude {
         // Verification
         verification::VerificationLevel,
     };
-    // Import valtype from component_value (requires alloc)
-    #[cfg(feature = "alloc")]
+    // Binary std/no_std choice
+    #[cfg(feature = "std")]
     pub use wrt_foundation::component_value::ValType;
 
     // Explicitly re-export conversion utilities
@@ -148,11 +148,11 @@ pub mod std_prelude {
     };
     // Format types - fix incorrect modules
     pub use crate::{binary, types::FormatBlockType, validation::Validatable};
-    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(feature = "std")]
     pub use crate::{component::Component, module::Module};
 }
 
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 impl Prelude for crate::component::Component {}
 
 /// No-std prelude for the format library
@@ -174,10 +174,10 @@ pub mod no_std_prelude {
         // Verification
         verification::VerificationLevel,
     };
-    // Import valtype from component_value (requires alloc)
-    #[cfg(feature = "alloc")]
+    // Binary std/no_std choice
+    #[cfg(feature = "std")]
     pub use wrt_foundation::component_value::ValType;
-    #[cfg(not(any(feature = "alloc", feature = "std")))]
+    #[cfg(not(any(feature = "std")))]
     pub use wrt_foundation::{BoundedMap, BoundedString, BoundedVec};
 
     // Explicitly re-export conversion utilities
@@ -193,8 +193,8 @@ pub mod no_std_prelude {
     };
     // Format types - fix incorrect modules
     pub use crate::{binary, types::FormatBlockType, validation::Validatable};
-    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(feature = "std")]
     pub use crate::{component::Component, module::Module};
-    #[cfg(not(any(feature = "alloc", feature = "std")))]
+    #[cfg(not(any(feature = "std")))]
     pub use crate::{WasmString, WasmVec};
 }

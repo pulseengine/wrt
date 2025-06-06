@@ -4,7 +4,7 @@ use wrt_error::{Error, ErrorKind};
 
 #[cfg(target_os = "vxworks")]
 extern "C" {
-    // Memory allocation functions for both LKM and RTP contexts
+    // Binary std/no_std choice
     fn memPartAlloc(mem_part_id: usize, size: usize) -> *mut u8;
     fn memPartAlignedAlloc(mem_part_id: usize, size: usize, alignment: usize) -> *mut u8;
     fn memPartFree(mem_part_id: usize, ptr: *mut u8) -> i32;
@@ -30,7 +30,7 @@ pub enum VxWorksContext {
     Rtp,
 }
 
-/// Configuration for VxWorks memory allocator
+/// Binary std/no_std choice
 #[derive(Debug, Clone)]
 pub struct VxWorksMemoryConfig {
     pub context: VxWorksContext,
@@ -52,7 +52,7 @@ impl Default for VxWorksMemoryConfig {
     }
 }
 
-/// VxWorks memory allocator supporting both LKM and RTP contexts
+/// Binary std/no_std choice
 pub struct VxWorksAllocator {
     config: VxWorksMemoryConfig,
     allocated_pages: usize,
@@ -61,7 +61,7 @@ pub struct VxWorksAllocator {
 }
 
 impl VxWorksAllocator {
-    /// Create a new VxWorks allocator with the given configuration
+    /// Binary std/no_std choice
     pub fn new(config: VxWorksMemoryConfig) -> Result<Self, Error> {
         let mut allocator = Self {
             config,
@@ -204,7 +204,7 @@ impl PageAllocator for VxWorksAllocator {
         
         let ptr = self.allocate_memory(size, alignment)?;
         
-        // Zero out the allocated memory for security
+        // Binary std/no_std choice
         unsafe {
             core::ptr::write_bytes(ptr, 0, size);
         }
@@ -243,7 +243,7 @@ impl PageAllocator for VxWorksAllocator {
             ));
         }
 
-        // VxWorks doesn't have realloc for memory partitions, so we need to allocate new and copy
+        // Binary std/no_std choice
         let new_ptr = self.allocate_pages(new_pages)?;
         
         // Copy old data
@@ -253,7 +253,7 @@ impl PageAllocator for VxWorksAllocator {
         }
 
         // Free old memory
-        self.allocated_pages -= old_pages; // Adjust for the deallocate call
+        self.allocated_pages -= old_pages; // Binary std/no_std choice
         self.deallocate_pages(old_ptr, old_pages)?;
 
         Ok(new_ptr)
@@ -281,7 +281,7 @@ impl Drop for VxWorksAllocator {
     }
 }
 
-/// Builder for VxWorks memory allocator
+/// Binary std/no_std choice
 pub struct VxWorksAllocatorBuilder {
     config: VxWorksMemoryConfig,
 }

@@ -1,6 +1,6 @@
 use super::error::{DebugError, DebugResult};
 /// String extraction from DWARF .debug_str section
-/// Provides zero-allocation string access within no_std constraints
+/// Binary std/no_std choice
 use crate::cursor::DwarfCursor;
 
 /// String table providing access to .debug_str section data

@@ -2,8 +2,8 @@
 
 #[cfg(feature = "std")]
 use std::boxed::Box;
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-use alloc::boxed::Box;
+#[cfg(all(not(feature = "std")))]
+use std::boxed::Box;
 
 use wrt_foundation::{
     bounded::{BoundedVec, MAX_DWARF_FILE_TABLE},

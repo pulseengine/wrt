@@ -11,8 +11,8 @@
 #[cfg(feature = "std")]
 use std::{format, vec::Vec};
 
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-use alloc::{format, vec::Vec};
+#[cfg(all(not(feature = "std")))]
+use std::{format, vec::Vec};
 
 use core::fmt;
 use wrt_error::{codes, Error, ErrorCategory, Result};
@@ -20,10 +20,10 @@ use wrt_format::{binary, component::Component};
 use wrt_foundation::traits::Validatable;
 
 // Import ValidationLevel from foundation if available, otherwise define locally
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 pub use wrt_foundation::VerificationLevel as ValidationLevel;
 
-#[cfg(not(feature = "alloc"))]
+#[cfg(not(feature = "std"))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ValidationLevel {
     Minimal,
@@ -31,7 +31,7 @@ pub enum ValidationLevel {
     Full,
 }
 
-#[cfg(not(feature = "alloc"))]
+#[cfg(not(feature = "std"))]
 impl Default for ValidationLevel {
     fn default() -> Self {
         Self::Standard

@@ -1,5 +1,5 @@
 #![allow(unsafe_code)]
-// Allow unsafe syscalls for memory allocation with MTE support
+// Binary std/no_std choice
 // WRT - wrt-platform
 // Module: Linux ARM64 Memory Management with MTE
 // SW-REQ-ID: REQ_PLATFORM_001, REQ_MEMORY_001, REQ_SAFETY_001
@@ -227,7 +227,7 @@ impl LinuxArm64MteAllocator {
         // ARM64 MTE uses the top 4 bits of the pointer for tagging
         let tagged_ptr = ((self.current_tag as usize) << 56) | (ptr as usize);
 
-        // Rotate tag for next allocation
+        // Binary std/no_std choice
         self.current_tag = (self.current_tag + 1) & 0xF;
         if self.current_tag == 0 {
             self.current_tag = 1; // Skip tag 0
@@ -249,7 +249,7 @@ impl LinuxArm64MteAllocator {
         for i in 0..num_granules {
             let granule_ptr = ptr.add(i * tag_granule_size);
 
-            // Use ST2G instruction to set allocation tags
+            // Binary std/no_std choice
             core::arch::asm!(
                 "st2g {ptr}, [{ptr}]",
                 ptr = in(reg) granule_ptr,
@@ -260,13 +260,13 @@ impl LinuxArm64MteAllocator {
         Ok(())
     }
 
-    /// Create guard pages around the allocated memory region
+    /// Binary std/no_std choice
     unsafe fn setup_guard_pages(&self, base_ptr: *mut u8, total_size: usize) -> Result<()> {
         if !self.use_guard_pages {
             return Ok(());
         }
 
-        // Create guard page at the end of the allocated region
+        // Binary std/no_std choice
         let guard_page_addr = base_ptr.add(total_size - WASM_PAGE_SIZE);
         let result = Self::mprotect(guard_page_addr, WASM_PAGE_SIZE, PROT_NONE);
 
@@ -303,7 +303,7 @@ impl LinuxArm64MteAllocatorBuilder {
     }
 
     /// Sets the maximum number of WebAssembly pages (64 KiB) that can be
-    /// allocated.
+    /// Binary std/no_std choice
     pub fn with_maximum_pages(mut self, pages: u32) -> Self {
         self.maximum_pages = Some(pages);
         self

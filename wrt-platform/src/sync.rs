@@ -18,19 +18,11 @@ use crate::prelude::Result;
 // Re-export atomic types for platform use
 pub use core::sync::atomic::{AtomicU32, AtomicU64, AtomicUsize, Ordering};
 
-// For std builds, re-export standard synchronization primitives
+// Binary std/no_std choice
 #[cfg(feature = "std")]
-pub use std::sync::{Mutex, Condvar, RwLock, Arc};
+pub use std::sync::{Arc, Mutex, RwLock, MutexGuard, Condvar};
 
-// For alloc builds without std, provide alternatives
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-pub use alloc::sync::Arc;
-
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-pub use wrt_sync::{WrtMutex as Mutex, WrtRwLock as RwLock, WrtMutexGuard as MutexGuard};
-
-// For no_std builds, use wrt-sync primitives
-#[cfg(not(any(feature = "std", feature = "alloc")))]
+#[cfg(not(feature = "std"))]
 pub use wrt_sync::{WrtMutex as Mutex, WrtRwLock as RwLock, WrtMutexGuard as MutexGuard};
 
 /// Provide a simple Condvar alternative for non-std builds

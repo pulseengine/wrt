@@ -16,8 +16,8 @@
 #[cfg(feature = "std")]
 extern crate std;
 
-// Import alloc when available
-#[cfg(feature = "alloc")]
+// Binary std/no_std choice
+#[cfg(feature = "std")]
 extern crate alloc;
 
 // Note: Panic handler removed to avoid conflicts with std library
@@ -109,7 +109,7 @@ pub mod wit_aware_debugger;
 #[cfg(test)]
 mod test;
 
-/// DWARF debug information without allocation
+/// Binary std/no_std choice
 pub struct DwarfDebugInfo<'a> {
     /// Reference to module bytes for zero-copy parsing
     module_bytes: &'a [u8],

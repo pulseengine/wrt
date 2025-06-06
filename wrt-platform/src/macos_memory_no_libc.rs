@@ -1,5 +1,5 @@
 #![allow(unsafe_code)]
-// Allow unsafe syscalls for memory allocation
+// Binary std/no_std choice
 // WRT - wrt-platform
 // Module: macOS Memory Management (No libc)
 // SW-REQ-ID: REQ_PLATFORM_001, REQ_MEMORY_001
@@ -130,7 +130,7 @@ impl MacOsAllocatorBuilder {
     }
 
     /// Sets the maximum number of WebAssembly pages (64 KiB) that can be
-    /// allocated.
+    /// Binary std/no_std choice
     pub fn with_maximum_pages(mut self, pages: u32) -> Self {
         self.maximum_pages = Some(pages);
         self

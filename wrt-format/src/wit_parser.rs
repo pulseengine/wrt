@@ -5,8 +5,8 @@ use std::collections::BTreeMap;
 #[cfg(feature = "std")]
 use std::boxed::Box;
 
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-use alloc::{boxed::Box, collections::BTreeMap, vec::Vec};
+#[cfg(all(not(feature = "std")))]
+use std::{boxed::Box, collections::BTreeMap, vec::Vec};
 
 use core::fmt;
 
@@ -277,7 +277,7 @@ impl WitParser {
             types: BoundedVec::new(self.provider.clone()).unwrap_or_default(),
         };
 
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             let lines: Vec<&str> = source.lines().collect();
             let mut i = 0;
@@ -322,7 +322,7 @@ impl WitParser {
             types: BoundedVec::new(self.provider.clone()).unwrap_or_default(),
         };
 
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             let lines: Vec<&str> = source.lines().collect();
             let mut i = 0;
@@ -356,7 +356,7 @@ impl WitParser {
     }
 
     fn parse_import(&mut self, line: &str) -> Result<WitImport, WitParseError> {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             let parts: Vec<&str> = line.split_whitespace().collect();
             if parts.len() < 3 {
@@ -386,14 +386,14 @@ impl WitParser {
             Ok(WitImport { name, item })
         }
         
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         Err(WitParseError::InvalidSyntax(
             BoundedString::from_str("Parsing not supported in no_std", self.provider.clone()).unwrap()
         ))
     }
 
     fn parse_export(&mut self, line: &str) -> Result<WitExport, WitParseError> {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             let parts: Vec<&str> = line.split_whitespace().collect();
             if parts.len() < 3 {
@@ -423,7 +423,7 @@ impl WitParser {
             Ok(WitExport { name, item })
         }
         
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         Err(WitParseError::InvalidSyntax(
             BoundedString::from_str("Parsing not supported in no_std", self.provider.clone()).unwrap()
         ))
@@ -437,7 +437,7 @@ impl WitParser {
             is_async: line.contains("async"),
         };
 
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         if let Some(colon_pos) = line.find(':') {
             let name_part = &line[..colon_pos].trim();
             let parts: Vec<&str> = name_part.split_whitespace().collect();
@@ -454,7 +454,7 @@ impl WitParser {
     }
 
     fn parse_type_def(&mut self, line: &str) -> Result<WitTypeDef, WitParseError> {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             let parts: Vec<&str> = line.splitn(3, ' ').collect();
             if parts.len() < 3 {
@@ -480,7 +480,7 @@ impl WitParser {
             })
         }
         
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         Err(WitParseError::InvalidSyntax(
             BoundedString::from_str("Parsing not supported in no_std", self.provider.clone()).unwrap()
         ))
@@ -504,7 +504,7 @@ impl WitParser {
             "char" => Ok(WitType::Char),
             "string" => Ok(WitType::String),
             _ => {
-                #[cfg(any(feature = "std", feature = "alloc"))]
+                #[cfg(feature = "std")]
                 {
                     if type_str.starts_with("list<") && type_str.ends_with(">") {
                         let inner = &type_str[5..type_str.len()-1];
@@ -531,7 +531,7 @@ impl WitParser {
                     }
                 }
                 
-                #[cfg(not(any(feature = "std", feature = "alloc")))]
+                #[cfg(not(any(feature = "std", )))]
                 {
                     let name = BoundedString::from_str(type_str, self.provider.clone())
                         .map_err(|_| WitParseError::InvalidIdentifier(
@@ -560,7 +560,7 @@ impl WitParser {
             ))
     }
 
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     /// Convert a WIT type to a WebAssembly value type
     pub fn convert_to_valtype(&self, wit_type: &WitType) -> Result<crate::types::ValueType, Error> {
         match wit_type {
@@ -630,7 +630,7 @@ mod tests {
         assert_eq!(parser.parse_type("f64").unwrap(), WitType::F64);
     }
 
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     #[test]
     fn test_parse_compound_types() {
         let mut parser = WitParser::new();
@@ -648,7 +648,7 @@ mod tests {
         }
     }
 
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     #[test]
     fn test_parse_async_types() {
         let mut parser = WitParser::new();
@@ -666,7 +666,7 @@ mod tests {
         }
     }
 
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     #[test]
     fn test_parse_simple_world() {
         let mut parser = WitParser::new();
@@ -689,7 +689,7 @@ mod tests {
         assert_eq!(world.exports.len(), 1);
     }
 
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     #[test]
     fn test_convert_to_valtype() {
         let parser = WitParser::new();

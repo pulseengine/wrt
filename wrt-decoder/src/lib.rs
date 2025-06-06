@@ -47,8 +47,7 @@ extern crate core;
 #[cfg(feature = "std")]
 extern crate std;
 
-// Import alloc for no_std
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
+// Binary std/no_std choice
 extern crate alloc;
 
 // Note: Panic handler removed to avoid conflicts with std library
@@ -60,18 +59,18 @@ pub mod optimized_string;
 pub mod prelude;
 
 // Conditionally include other modules
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 pub mod component;
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 pub mod utils;
 
-// Dedicated module for no_alloc decoding
+// Binary std/no_std choice
 pub mod decoder_no_alloc;
 
-// Branch hint custom section support (requires alloc)
-#[cfg(feature = "alloc")]
+// Binary std/no_std choice
+#[cfg(feature = "std")]
 pub mod branch_hint_section;
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 pub mod custom_section_handler;
 
 // Most re-exports temporarily disabled for demo - keep only essential ones

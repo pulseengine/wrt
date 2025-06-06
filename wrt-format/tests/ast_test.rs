@@ -1,9 +1,9 @@
 //! Basic tests for AST functionality
 
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 use wrt_format::ast::*;
 
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 #[test]
 fn test_source_span() {
     let span = SourceSpan::new(10, 20, 1);
@@ -16,7 +16,7 @@ fn test_source_span() {
     assert!(empty.is_empty());
 }
 
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 #[test]
 fn test_identifier() {
     use wrt_format::wit_parser::WitBoundedString;
@@ -31,7 +31,7 @@ fn test_identifier() {
     assert_eq!(ident.name.as_str().unwrap(), "test");
 }
 
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 #[test]
 fn test_wit_document() {
     let doc = WitDocument::default();
@@ -41,7 +41,7 @@ fn test_wit_document() {
     assert_eq!(doc.span, SourceSpan::empty());
 }
 
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 #[test]
 fn test_primitive_types() {
     let bool_type = PrimitiveType {
@@ -59,7 +59,7 @@ fn test_primitive_types() {
     assert_eq!(format!("{}", string_type.kind), "string");
 }
 
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 #[test]
 fn test_type_expr() {
     let primitive = TypeExpr::Primitive(PrimitiveType {

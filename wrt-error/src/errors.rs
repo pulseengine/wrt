@@ -242,7 +242,7 @@ impl Error {
 
     // Note: Methods like `with_message`, `new_legacy`, `*_with_code`,
     // and `parse_error_from_kind` have been removed as they were
-    // dependent on `alloc` or dynamic messages not suitable for `&'static str`.
+    // Binary std/no_std choice
     // They can be re-added if versions compatible with `&'static str` messages are
     // designed.
 }

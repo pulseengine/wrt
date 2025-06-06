@@ -163,7 +163,7 @@ pub mod arm {
     }
 
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-    /// Memory tag allocation strategy  
+    /// Binary std/no_std choice
     pub enum TagStrategy {
         /// Random tag generation
         Random,

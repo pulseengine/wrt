@@ -352,7 +352,7 @@ mod tests {
         assert!(result.is_ok());
     }
 
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     #[test]
     fn test_alloc_compatibility() {
         let binary = create_minimal_component_binary();
@@ -360,7 +360,7 @@ mod tests {
         assert!(result.is_ok());
     }
 
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     #[test]
     fn test_no_std_compatibility() {
         let binary = create_minimal_component_binary();

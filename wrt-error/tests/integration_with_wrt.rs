@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: MIT
 
 //! Integration tests for wrt-error with the main wrt crate.
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
 extern crate alloc;
 
 // Tests the integration of wrt-error with the main wrt crate.
@@ -22,8 +21,8 @@ extern crate alloc;
 mod tests {
     use wrt_error::{Error, Result};
 
-    // Note: `format!` macro resolves to `alloc::format!` or `std::format!` based on
-    // context if the respective crate (alloc or std) is linked.
+    // Binary std/no_std choice
+    // Binary std/no_std choice
     // The `Display` trait on `wrt_error::Error` handles this internally.
 
     #[test]
@@ -34,14 +33,13 @@ mod tests {
 
         let error_result: Result<()> = Err(Error::runtime_error("Test error"));
         assert!(error_result.is_err());
-        // To display, e.g., in a no_std,alloc test if direct formatting is
-        // needed: #[cfg(all(not(feature = "std"), feature = "alloc"))]
-        // let _ = alloc::format!("{}", error_result.as_ref().err().unwrap());
+        // Binary std/no_std choice
+        // Binary std/no_std choice
         // #[cfg(feature = "std")]
         // let _ = std::format!("{}", error_result.as_ref().err().unwrap());
     }
 
-    #[cfg(all(feature = "alloc", feature = "std"))]
+    #[cfg(all(feature = "std"))]
     mod std_alloc_tests {
         use wrt_error::{kinds, Error};
         // Re-import necessary items if not directly available or for clarity

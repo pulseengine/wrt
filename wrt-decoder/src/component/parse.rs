@@ -23,14 +23,14 @@ macro_rules! env_format {
     };
 }
 
-#[cfg(all(feature = "alloc", not(feature = "std")))]
+#[cfg(all(not(feature = "std")))]
 macro_rules! env_format {
     ($($arg:tt)*) => {
         alloc::format!($($arg)*)
     };
 }
 
-#[cfg(not(any(feature = "std", feature = "alloc")))]
+#[cfg(not(any(feature = "std", )))]
 macro_rules! env_format {
     ($($arg:tt)*) => {
         // For environments without formatting capabilities,
@@ -46,18 +46,18 @@ fn format_to_string(message: &str, value: impl core::fmt::Display) -> String {
         format!("{}: {}", message, value)
     }
 
-    #[cfg(all(feature = "alloc", not(feature = "std")))]
+    #[cfg(all(not(feature = "std")))]
     {
         alloc::format!("{}: {}", message, value)
     }
 
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     {
         let mut s = String::new();
         s.push_str(message);
         s.push_str(": ");
-        // For no_std without alloc, we'll just append a placeholder
-        // since we can't use the Display trait without allocation
+        // Binary std/no_std choice
+        // Binary std/no_std choice
         s.push_str("[value]");
         s
     }
@@ -1189,9 +1189,9 @@ fn parse_resource_representation(
             }
 
             Ok((
-                #[cfg(feature = "alloc")]
+                #[cfg(feature = "std")]
                 resource::ResourceRepresentation::Record(fields),
-                #[cfg(not(feature = "alloc"))]
+                #[cfg(not(feature = "std"))]
                 resource::ResourceRepresentation::Record,
                 offset,
             ))
@@ -1229,9 +1229,9 @@ fn parse_resource_representation(
                 indices.push(idx);
             }
 
-            #[cfg(feature = "alloc")]
+            #[cfg(feature = "std")]
             let repr = resource::ResourceRepresentation::Aggregate(indices);
-            #[cfg(not(feature = "alloc"))]
+            #[cfg(not(feature = "std"))]
             let repr = resource::ResourceRepresentation::Record;
 
             Ok((repr, offset))

@@ -6,8 +6,8 @@
 
 use core::{fmt::Debug, time::Duration};
 
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-use alloc::{boxed::Box, string::String, vec::Vec};
+#[cfg(all(not(feature = "std")))]
+use std::{boxed::Box, string::String, vec::Vec};
 #[cfg(feature = "std")]
 use std::{boxed::Box, string::String, vec::Vec};
 use wrt_sync::WrtMutex;

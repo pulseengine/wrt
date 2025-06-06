@@ -138,7 +138,7 @@ mod ffi {
         0 // Success
     }
 
-    // Mock for malloc used by the tests
+    // Binary std/no_std choice
     #[allow(unused)]
     pub unsafe fn malloc(_size: qnx_size_t) -> *mut c_void {
         core::ptr::null_mut()
@@ -580,7 +580,7 @@ mod tests {
 
         // Execute a closure within the partition
         let result = partition.with_partition(|| {
-            // Inside partition context - try to allocate memory
+            // Binary std/no_std choice
             let ptr = unsafe { ffi::malloc(1024 * 1024) };
             if ptr.is_null() {
                 return Err(Error::new(
