@@ -273,6 +273,12 @@ Ready to level up? These examples show advanced techniques and optimizations.
 
       Safety-critical patterns for mission-critical code.
 
+   .. grid-item-card:: Safety Classification
+      :link: safety/index
+      :link-type: doc
+
+      Cross-standard safety levels and compile-time verification.
+
    .. grid-item-card:: MC/DC Testing
       :link: advanced/mcdc_testing
       :link-type: doc
@@ -312,4 +318,5 @@ Put it all together with complete, production-ready applications.
    host/index
    advanced/index
    platform/index
+   safety/index
    full/application
