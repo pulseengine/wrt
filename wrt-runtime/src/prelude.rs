@@ -6,23 +6,9 @@
 //! individual modules.
 
 // Core imports for both std and no_std environments
-// Re-export from alloc when the alloc feature is enabled and std is not
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-extern crate alloc;
 
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-pub use alloc::{
-    boxed::Box,
-    collections::{BTreeMap as HashMap, BTreeSet as HashSet},
-    format,
-    string::{String, ToString},
-    sync::Arc,
-    vec,
-    vec::Vec,
-};
-
-// For pure no_std (no alloc), use bounded collections
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+// Binary std/no_std choice
+#[cfg(not(feature = "std"))]
 pub use wrt_foundation::{
     BoundedMap as HashMap,
     BoundedSet as HashSet,
@@ -31,17 +17,17 @@ pub use wrt_foundation::{
 
 // For pure no_std, we'll rely on explicit BoundedVec usage instead of Vec alias
 // to avoid conflicts with other crates' Vec definitions
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[cfg(not(feature = "std"))]
 pub use wrt_foundation::bounded::BoundedString;
 
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[cfg(not(feature = "std"))]
 pub type String = wrt_foundation::bounded::BoundedString<256, wrt_foundation::safe_memory::NoStdProvider<1024>>;
 
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[cfg(not(feature = "std"))]
 pub type Vec<T> = wrt_foundation::bounded::BoundedVec<T, 256, wrt_foundation::safe_memory::NoStdProvider<1024>>;
 
 // Helper macro to create BoundedVec with standard parameters
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[cfg(not(feature = "std"))]
 #[macro_export]
 macro_rules! vec_new {
     () => {
@@ -50,13 +36,13 @@ macro_rules! vec_new {
 }
 
 // Helper function to create BoundedVec with capacity (capacity is ignored in bounded collections)
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[cfg(not(feature = "std"))]
 pub fn vec_with_capacity<T: wrt_foundation::traits::Checksummable + wrt_foundation::traits::ToBytes + wrt_foundation::traits::FromBytes + Default + Clone + core::fmt::Debug + PartialEq + Eq>(_capacity: usize) -> wrt_foundation::bounded::BoundedVec<T, 256, wrt_foundation::safe_memory::NoStdProvider<1024>> {
     wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap()
 }
 
 // Simple format! implementation for no_std mode using a fixed buffer
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[cfg(not(feature = "std"))]
 #[macro_export]
 macro_rules! format {
     ($fmt:expr) => {{
@@ -69,56 +55,49 @@ macro_rules! format {
 
 
 // Re-export the macros for no_std
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[cfg(not(feature = "std"))]
 pub use crate::format;
 
-// Add missing Option methods for Value enum matching
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
-pub trait OptionValueExt {
-    fn as_i32(&self) -> Option<i32>;
-    fn as_i64(&self) -> Option<i64>;
-    fn as_f32(&self) -> Option<f32>;
-    fn as_f64(&self) -> Option<f64>;
+// Helper functions for Option<Value> conversion
+#[cfg(not(feature = "std"))]
+pub fn option_value_as_i32(value: &Option<wrt_foundation::Value>) -> Option<i32> {
+    match value {
+        Some(wrt_foundation::Value::I32(val)) => Some(*val),
+        _ => None,
+    }
 }
 
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
-impl OptionValueExt for Option<wrt_foundation::Value> {
-    fn as_i32(&self) -> Option<i32> {
-        match self {
-            Some(wrt_foundation::Value::I32(val)) => Some(*val),
-            _ => None,
-        }
+#[cfg(not(feature = "std"))]
+pub fn option_value_as_i64(value: &Option<wrt_foundation::Value>) -> Option<i64> {
+    match value {
+        Some(wrt_foundation::Value::I64(val)) => Some(*val),
+        _ => None,
     }
-    
-    fn as_i64(&self) -> Option<i64> {
-        match self {
-            Some(wrt_foundation::Value::I64(val)) => Some(*val),
-            _ => None,
-        }
+}
+
+#[cfg(not(feature = "std"))]
+pub fn option_value_as_f32(value: &Option<wrt_foundation::Value>) -> Option<f32> {
+    match value {
+        Some(wrt_foundation::Value::F32(val)) => Some(val.to_f32()),
+        _ => None,
     }
-    
-    fn as_f32(&self) -> Option<f32> {
-        match self {
-            Some(wrt_foundation::Value::F32(val)) => Some(val.to_f32()),
-            _ => None,
-        }
-    }
-    
-    fn as_f64(&self) -> Option<f64> {
-        match self {
-            Some(wrt_foundation::Value::F64(val)) => Some(val.to_f64()),
-            _ => None,
-        }
+}
+
+#[cfg(not(feature = "std"))]
+pub fn option_value_as_f64(value: &Option<wrt_foundation::Value>) -> Option<f64> {
+    match value {
+        Some(wrt_foundation::Value::F64(val)) => Some(val.to_f64()),
+        _ => None,
     }
 }
 
 // Add ToString trait for no_std
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[cfg(not(feature = "std"))]
 pub trait ToString {
     fn to_string(&self) -> String;
 }
 
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[cfg(not(feature = "std"))]
 impl ToString for &str {
     fn to_string(&self) -> String {
         let mut bounded_string = String::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap();
@@ -132,7 +111,7 @@ impl ToString for &str {
     }
 }
 
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[cfg(not(feature = "std"))]
 impl ToString for str {
     fn to_string(&self) -> String {
         let mut bounded_string = String::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap();
@@ -147,13 +126,13 @@ impl ToString for str {
 }
 
 // Arc is not available in pure no_std, use a reference wrapper
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[cfg(not(feature = "std"))]
 #[derive(Debug, Clone)]
 pub struct Arc<T> {
     inner: T,
 }
 
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[cfg(not(feature = "std"))]
 impl<T> Arc<T> {
     pub fn new(value: T) -> Self {
         Self { inner: value }
@@ -165,17 +144,17 @@ impl<T> Arc<T> {
     }
 }
 
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[cfg(not(feature = "std"))]
 impl<T: PartialEq> PartialEq for Arc<T> {
     fn eq(&self, other: &Self) -> bool {
         self.inner == other.inner
     }
 }
 
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[cfg(not(feature = "std"))]
 impl<T: Eq> Eq for Arc<T> {}
 
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[cfg(not(feature = "std"))]
 impl<T> core::ops::Deref for Arc<T> {
     type Target = T;
     fn deref(&self) -> &Self::Target {
@@ -183,20 +162,20 @@ impl<T> core::ops::Deref for Arc<T> {
     }
 }
 
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[cfg(not(feature = "std"))]
 #[derive(Debug)]
 pub struct Box<T: ?Sized> {
     inner: T,
 }
 
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[cfg(not(feature = "std"))]
 impl<T> Box<T> {
     pub fn new(value: T) -> Self {
         Self { inner: value }
     }
 }
 
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[cfg(not(feature = "std"))]
 impl<T> core::ops::Deref for Box<T> {
     type Target = T;
     fn deref(&self) -> &Self::Target {
@@ -204,7 +183,7 @@ impl<T> core::ops::Deref for Box<T> {
     }
 }
 
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[cfg(not(feature = "std"))]
 impl<T> core::ops::DerefMut for Box<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.inner
@@ -236,7 +215,7 @@ pub use std::{
 
 // Re-export from wrt-decoder (aliased to avoid name clashes)
 // Component module is temporarily disabled in wrt-decoder
-// #[cfg(feature = "alloc")]
+// #[cfg(feature = "std")]
 // pub use wrt_decoder::component::Component as DecoderComponentDefinition;
 // Re-export from wrt-instructions for instruction types
 // Decoder imports are optional and may not be available
@@ -252,9 +231,9 @@ pub use wrt_error::prelude::{
     Error, ErrorCategory, Result,
 };
 // Re-export from wrt-format for format specifications (aliased to avoid name clashes)
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 pub use wrt_format::component::Component as FormatComponent;
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 pub use wrt_format::{
     module::{
         Data as FormatData, Element as FormatElement, Export as FormatExport,
@@ -265,8 +244,8 @@ pub use wrt_format::{
     section::CustomSection as FormatCustomSection,
 };
 // Re-export from wrt-foundation for core types
-#[cfg(any(feature = "alloc", feature = "std"))]
-pub use wrt_foundation::component::{ComponentType, ExternType};
+#[cfg(feature = "std")]
+pub use wrt_foundation::component::ComponentType;
 // Re-export core types from wrt_foundation instead of wrt_format
 pub use wrt_foundation::types::{
     CustomSection, /* Assuming this is the intended replacement for FormatCustomSection
@@ -278,21 +257,32 @@ pub use wrt_foundation::types::{
 };
 pub use wrt_foundation::{
     prelude::{
-        BoundedStack, BoundedVec, FuncType,
+        BoundedStack, BoundedVec,
         GlobalType as CoreGlobalType, MemoryType as CoreMemoryType, ResourceType,
         SafeMemoryHandler, SafeSlice, TableType as CoreTableType,
         Value, ValueType, VerificationLevel,
     },
     safe_memory::SafeStack,
     types::{Limits, RefValue, ElementSegment, DataSegment},
+    traits::BoundedCapacity, // Add trait for len(), is_empty(), etc.
     MemoryStats,
 };
 
-// Type alias for Instruction with default memory provider
-pub type Instruction = wrt_foundation::types::Instruction<wrt_foundation::NoStdProvider<1024>>;
+// Type aliases with default memory provider for the runtime
+pub type DefaultProvider = wrt_foundation::safe_memory::NoStdProvider<1024>;
+pub type Instruction = wrt_foundation::types::Instruction<DefaultProvider>;
+pub type FuncType = wrt_foundation::types::FuncType<DefaultProvider>;
+pub type RuntimeFuncType = wrt_foundation::types::FuncType<DefaultProvider>;
+pub type GlobalType = wrt_foundation::types::GlobalType;
+pub type MemoryType = wrt_foundation::types::MemoryType;
+pub type TableType = wrt_foundation::types::TableType;
+pub type ExternType = wrt_foundation::component::ExternType<DefaultProvider>;
 
-// Conditionally import alloc-dependent types
-#[cfg(feature = "alloc")]
+// Safety-critical wrapper types for runtime (deterministic, verifiable)
+pub use crate::module::{TableWrapper as RuntimeTable, MemoryWrapper as RuntimeMemory, GlobalWrapper as RuntimeGlobal};
+
+// Binary std/no_std choice
+#[cfg(feature = "std")]
 pub use wrt_foundation::prelude::{ComponentValue, ValType as ComponentValType};
 // Re-export from wrt-host (for runtime host interaction items)
 pub use wrt_host::prelude::CallbackRegistry as HostFunctionRegistry;
@@ -303,8 +293,8 @@ pub use wrt_instructions::{
 // Re-export from wrt-intercept (for runtime interception items)
 pub use wrt_intercept::prelude::LinkInterceptor as InterceptorRegistry;
 pub use wrt_intercept::prelude::LinkInterceptorStrategy as InterceptStrategy;
-// Synchronization primitives for no_std (if alloc is enabled but not std)
-#[cfg(all(feature = "alloc", not(feature = "std")))]
+// Binary std/no_std choice
+#[cfg(not(feature = "std"))]
 pub use wrt_sync::{
     WrtMutex as Mutex, WrtMutexGuard as MutexGuard, WrtRwLock as RwLock,
     WrtRwLockReadGuard as RwLockReadGuard, WrtRwLockWriteGuard as RwLockWriteGuard,

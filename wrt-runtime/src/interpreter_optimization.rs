@@ -4,7 +4,6 @@
 //! based on branch prediction hints. These optimizations improve execution speed
 //! even without JIT compilation by making the interpreter more efficient.
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
 extern crate alloc;
 
 use crate::prelude::*;
@@ -14,10 +13,10 @@ use crate::branch_prediction::{
 use wrt_error::{Error, ErrorCategory, Result, codes};
 use wrt_foundation::types::Instruction;
 
-#[cfg(feature = "alloc")]
-use alloc::vec::Vec;
 #[cfg(feature = "std")]
 use std::vec::Vec;
+#[cfg(not(feature = "std"))]
+use alloc::vec::Vec;
 
 /// Optimization strategy for interpreter execution
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -51,12 +50,24 @@ pub struct ExecutionPath {
 
 impl ExecutionPath {
     /// Create new execution path
-    pub fn new(instruction_sequence: Vec<u32>, probability: f64) -> Self {
-        Self {
-            instruction_sequence,
+    pub fn new(instruction_sequence: Vec<u32>, probability: f64) -> Result<Self> {
+        let mut bounded_sequence = wrt_foundation::bounded::BoundedVec::new(
+            wrt_foundation::safe_memory::NoStdProvider::<1024>::default()
+        )?;
+        
+        for instruction in instruction_sequence {
+            bounded_sequence.push(instruction).map_err(|_| Error::new(
+                ErrorCategory::Memory,
+                codes::MEMORY_ERROR,
+                "Too many instructions in execution path"
+            ))?;
+        }
+        
+        Ok(Self {
+            instruction_sequence: bounded_sequence,
             probability,
             is_hot_path: probability > 0.7, // Hot if > 70% likely
-        }
+        })
     }
     
     /// Check if this path is likely to be executed
@@ -78,9 +89,9 @@ impl ExecutionPath {
 #[derive(Debug)]
 pub struct InstructionPrefetchCache {
     /// Cached instructions for quick access
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     cache: alloc::collections::BTreeMap<u32, crate::prelude::Instruction>,
-    #[cfg(not(feature = "alloc"))]
+    #[cfg(not(feature = "std"))]
     cache: wrt_foundation::BoundedVec<(u32, crate::prelude::Instruction), 64, wrt_foundation::NoStdProvider<1024>>,
     /// Cache hit statistics
     pub cache_hits: u64,
@@ -92,9 +103,9 @@ impl InstructionPrefetchCache {
     /// Create new prefetch cache
     pub fn new() -> Self {
         Self {
-            #[cfg(feature = "alloc")]
+            #[cfg(feature = "std")]
             cache: alloc::collections::BTreeMap::new(),
-            #[cfg(not(feature = "alloc"))]
+            #[cfg(not(feature = "std"))]
             cache: wrt_foundation::BoundedVec::new(wrt_foundation::NoStdProvider::<1024>::default()).unwrap(),
             cache_hits: 0,
             cache_misses: 0,
@@ -103,12 +114,12 @@ impl InstructionPrefetchCache {
     
     /// Prefetch instruction at offset
     pub fn prefetch(&mut self, offset: u32, instruction: crate::prelude::Instruction) -> Result<()> {
-        #[cfg(feature = "alloc")]
+        #[cfg(feature = "std")]
         {
             self.cache.insert(offset, instruction);
             Ok(())
         }
-        #[cfg(not(feature = "alloc"))]
+        #[cfg(not(feature = "std"))]
         {
             // Remove oldest entry if cache is full
             if self.cache.len() >= 64 {
@@ -121,23 +132,28 @@ impl InstructionPrefetchCache {
     }
     
     /// Get cached instruction if available
-    pub fn get_cached(&mut self, offset: u32) -> Option<&crate::prelude::Instruction> {
-        #[cfg(feature = "alloc")]
+    pub fn get_cached(&mut self, offset: u32) -> Option<crate::prelude::Instruction> {
+        #[cfg(feature = "std")]
         {
             if let Some(instruction) = self.cache.get(&offset) {
                 self.cache_hits += 1;
-                Some(instruction)
+                Some(instruction.clone())
             } else {
                 self.cache_misses += 1;
                 None
             }
         }
-        #[cfg(not(feature = "alloc"))]
+        #[cfg(not(feature = "std"))]
         {
-            for (cached_offset, instruction) in self.cache.iter() {
-                if cached_offset == &offset {
-                    self.cache_hits += 1;
-                    return Some(instruction);
+            for i in 0..self.cache.len() {
+                if let Ok((cached_offset, _)) = self.cache.get(i) {
+                    if cached_offset == offset {
+                        self.cache_hits += 1;
+                        if let Ok((_, instruction)) = self.cache.get(i) {
+                            // Return owned instruction
+                            return Some(instruction);
+                        }
+                    }
                 }
             }
             self.cache_misses += 1;
@@ -157,11 +173,11 @@ impl InstructionPrefetchCache {
     
     /// Clear the cache
     pub fn clear(&mut self) {
-        #[cfg(feature = "alloc")]
+        #[cfg(feature = "std")]
         {
             self.cache.clear();
         }
-        #[cfg(not(feature = "alloc"))]
+        #[cfg(not(feature = "std"))]
         {
             self.cache.clear();
         }
@@ -214,14 +230,14 @@ impl OptimizedInterpreter {
                     self.execution_stats.predicted_functions += 1;
                 }
                 OptimizationStrategy::PredictionWithPrefetch => {
-                    // Clone the predictor to avoid borrowing issues
-                    if let Some(func_predictor) = self.predictor.get_function_predictor(function_index).cloned() {
+                    // Get the predictor (now returns owned value)
+                    if let Some(func_predictor) = self.predictor.get_function_predictor(function_index) {
                         self.prefetch_likely_paths(&func_predictor)?;
                     }
                 }
                 OptimizationStrategy::Aggressive => {
-                    // Clone the predictor to avoid borrowing issues  
-                    if let Some(func_predictor) = self.predictor.get_function_predictor(function_index).cloned() {
+                    // Get the predictor (now returns owned value)
+                    if let Some(func_predictor) = self.predictor.get_function_predictor(function_index) {
                         self.prefetch_likely_paths(&func_predictor)?;
                         self.optimize_execution_paths(&func_predictor)?;
                     }
@@ -278,7 +294,7 @@ impl OptimizedInterpreter {
     }
     
     /// Check if instruction is available in prefetch cache
-    pub fn get_prefetched_instruction(&mut self, offset: u32) -> Option<&crate::prelude::Instruction> {
+    pub fn get_prefetched_instruction(&mut self, offset: u32) -> Option<crate::prelude::Instruction> {
         if matches!(self.strategy, OptimizationStrategy::PredictionWithPrefetch | OptimizationStrategy::Aggressive) {
             self.prefetch_cache.get_cached(offset)
         } else {
@@ -465,7 +481,7 @@ mod tests {
         assert_eq!(OptimizationStrategy::default(), OptimizationStrategy::BranchPrediction);
     }
     
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     #[test]
     fn test_instruction_prefetch_cache() {
         use wrt_foundation::types::Instruction;
@@ -482,7 +498,7 @@ mod tests {
         assert_eq!(cache.hit_ratio(), 0.5);
     }
     
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     #[test]
     fn test_optimized_interpreter() {
         let predictor = ModuleBranchPredictor::new();

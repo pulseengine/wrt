@@ -4,36 +4,35 @@
 //! providing safe, efficient multi-threaded execution of WebAssembly modules
 //! with proper isolation and resource management.
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
 extern crate alloc;
 
 use crate::prelude::*;
 use wrt_error::{Error, ErrorCategory, Result, codes};
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 use wrt_platform::threading::{Thread, ThreadHandle, ThreadSpawnOptions};
 
 // For no_std builds, provide dummy types  
-#[cfg(not(feature = "alloc"))]
+#[cfg(not(feature = "std"))]
 #[derive(Debug)]
 pub struct Thread {
     pub id: ThreadId,
 }
 
-#[cfg(not(feature = "alloc"))]
+#[cfg(not(feature = "std"))]
 #[derive(Debug)]
 pub struct ThreadHandle {
     pub id: ThreadId,
 }
 
-#[cfg(not(feature = "alloc"))]
+#[cfg(not(feature = "std"))]
 pub struct ThreadSpawnOptions {
     pub stack_size: Option<usize>,
     pub priority: Option<i32>,
     pub name: Option<&'static str>,
 }
 
-#[cfg(not(feature = "alloc"))]
+#[cfg(not(feature = "std"))]
 impl ThreadHandle {
     pub fn terminate(&self) -> Result<()> {
         Err(Error::new(
@@ -60,10 +59,10 @@ impl ThreadHandle {
     }
 }
 
-#[cfg(feature = "alloc")]
-use alloc::{vec::Vec, sync::Arc, collections::BTreeMap};
 #[cfg(feature = "std")]
 use std::{vec::Vec, sync::Arc, thread, collections::BTreeMap};
+#[cfg(not(feature = "std"))]
+use alloc::{vec::Vec, sync::Arc, collections::BTreeMap};
 
 /// Thread identifier for WebAssembly threads
 pub type ThreadId = u32;
@@ -187,9 +186,9 @@ pub struct ThreadExecutionContext {
     /// Thread-local memory state
     pub local_memory: Option<crate::Memory>,
     /// Thread-local global state
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     pub local_globals: Vec<crate::Global>,
-    #[cfg(not(feature = "alloc"))]
+    #[cfg(not(feature = "std"))]
     pub local_globals: [Option<crate::Global>; 8],  // Fixed size array for no_std
     /// Execution statistics
     pub stats: ThreadExecutionStats,
@@ -202,9 +201,9 @@ impl ThreadExecutionContext {
             info,
             handle: None,
             local_memory: None,
-            #[cfg(feature = "alloc")]
+            #[cfg(feature = "std")]
             local_globals: Vec::new(),
-            #[cfg(not(feature = "alloc"))]
+            #[cfg(not(feature = "std"))]
             local_globals: [const { None }; 8],  // Fixed size array for no_std
             stats: ThreadExecutionStats::new(),
         })
@@ -299,9 +298,9 @@ pub struct ThreadManager {
     /// Thread configuration
     pub config: ThreadConfig,
     /// Active thread contexts
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     threads: BTreeMap<ThreadId, ThreadExecutionContext>,
-    #[cfg(not(feature = "alloc"))]
+    #[cfg(not(feature = "std"))]
     threads: [Option<ThreadExecutionContext>; 16],  // Fixed size array for no_std
     /// Next thread ID to assign
     next_thread_id: ThreadId,
@@ -314,9 +313,9 @@ impl ThreadManager {
     pub fn new(config: ThreadConfig) -> Result<Self> {
         Ok(Self {
             config,
-            #[cfg(feature = "alloc")]
+            #[cfg(feature = "std")]
             threads: BTreeMap::new(),
-            #[cfg(not(feature = "alloc"))]
+            #[cfg(not(feature = "std"))]
             threads: [const { None }; 16],  // Fixed size array for no_std
             next_thread_id: 1, // Thread ID 0 is reserved for main thread
             stats: ThreadManagerStats::new(),
@@ -366,11 +365,11 @@ impl ThreadManager {
         let context = ThreadExecutionContext::new(thread_info)?;
         
         // Store thread context
-        #[cfg(feature = "alloc")]
+        #[cfg(feature = "std")]
         {
             self.threads.insert(thread_id, context);
         }
-        #[cfg(not(feature = "alloc"))]
+        #[cfg(not(feature = "std"))]
         {
             // Find empty slot in the fixed array
             for slot in self.threads.iter_mut() {
@@ -406,7 +405,7 @@ impl ThreadManager {
         };
         
         // Spawn platform thread (feature-gated)
-        #[cfg(feature = "alloc")]
+        #[cfg(feature = "std")]
         let handle = wrt_platform::threading::spawn_thread(
             spawn_options,
             move || {
@@ -420,7 +419,7 @@ impl ThreadManager {
             "Failed to spawn platform thread"
         ))?;
         
-        #[cfg(not(feature = "alloc"))]
+        #[cfg(not(feature = "std"))]
         let handle = ThreadHandle { id: thread_id };
         
         context.handle = Some(handle);
@@ -452,35 +451,40 @@ impl ThreadManager {
     
     /// Join a thread (wait for completion)
     pub fn join_thread(&mut self, thread_id: ThreadId, timeout_ms: Option<u64>) -> Result<ThreadExecutionStats> {
-        let context = self.get_thread_context_mut(thread_id)?;
-        
-        if let Some(handle) = &context.handle {
-            // Wait for thread completion
-            let result = if let Some(timeout) = timeout_ms {
-                let duration = core::time::Duration::from_millis(timeout);
-                handle.join_timeout(duration)
-            } else {
-                handle.join()
-            };
+        let stats_clone = {
+            let context = self.get_thread_context_mut(thread_id)?;
             
-            match result {
-                Ok(_) => {
-                    context.update_state(ThreadState::Completed);
-                    self.stats.threads_completed += 1;
-                }
-                Err(_) => {
-                    context.update_state(ThreadState::Failed);
-                    self.stats.threads_failed += 1;
-                    return Err(Error::new(
-                        ErrorCategory::Runtime,
-                        codes::EXECUTION_ERROR,
-                        "Thread join failed"
-                    ));
+            if let Some(handle) = &context.handle {
+                // Wait for thread completion
+                let result = if let Some(timeout) = timeout_ms {
+                    let duration = core::time::Duration::from_millis(timeout);
+                    handle.join_timeout(duration).map(|_| ())
+                } else {
+                    handle.join().map(|_| ())
+                };
+                
+                match result {
+                    Ok(_) => {
+                        context.update_state(ThreadState::Completed);
+                    }
+                    Err(_) => {
+                        context.update_state(ThreadState::Failed);
+                        return Err(Error::new(
+                            ErrorCategory::Runtime,
+                            codes::EXECUTION_ERROR,
+                            "Thread join failed"
+                        ));
+                    }
                 }
             }
-        }
+            
+            context.stats.clone()
+        };
         
-        Ok(context.stats.clone())
+        // Update stats after the borrow of context ends
+        self.stats.threads_completed += 1;
+        
+        Ok(stats_clone)
     }
     
     /// Get thread information
@@ -490,7 +494,7 @@ impl ThreadManager {
     }
     
     /// Get all active threads
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     pub fn get_active_threads(&self) -> Vec<ThreadId> {
         self.threads.iter()
             .filter_map(|(id, context)| {
@@ -505,13 +509,13 @@ impl ThreadManager {
     
     /// Get number of active threads
     pub fn active_thread_count(&self) -> usize {
-        #[cfg(feature = "alloc")]
+        #[cfg(feature = "std")]
         {
             self.threads.values()
                 .filter(|context| context.info.is_active())
                 .count()
         }
-        #[cfg(not(feature = "alloc"))]
+        #[cfg(not(feature = "std"))]
         {
             self.threads.iter()
                 .filter_map(|slot| slot.as_ref())
@@ -524,13 +528,13 @@ impl ThreadManager {
     pub fn cleanup_completed_threads(&mut self) -> usize {
         let initial_count = self.thread_count();
         
-        #[cfg(feature = "alloc")]
+        #[cfg(feature = "std")]
         {
             self.threads.retain(|_, context| context.info.is_active());
         }
-        #[cfg(not(feature = "alloc"))]
+        #[cfg(not(feature = "std"))]
         {
-            // For no_alloc, we need to manually remove completed threads
+            // Binary std/no_std choice
             let mut write_idx = 0;
             for read_idx in 0..self.threads.len() {
                 if let Some(context) = &self.threads[read_idx] {
@@ -551,11 +555,11 @@ impl ThreadManager {
     
     /// Get total thread count
     pub fn thread_count(&self) -> usize {
-        #[cfg(feature = "alloc")]
+        #[cfg(feature = "std")]
         {
             self.threads.len()
         }
-        #[cfg(not(feature = "alloc"))]
+        #[cfg(not(feature = "std"))]
         {
             self.threads.iter().filter(|slot| slot.is_some()).count()
         }
@@ -564,13 +568,13 @@ impl ThreadManager {
     // Private helper methods
     
     fn get_thread_context(&self, thread_id: ThreadId) -> Result<&ThreadExecutionContext> {
-        #[cfg(feature = "alloc")]
+        #[cfg(feature = "std")]
         {
             self.threads.get(&thread_id).ok_or_else(|| {
                 Error::new(ErrorCategory::Runtime, codes::INVALID_ARGUMENT, "Thread not found")
             })
         }
-        #[cfg(not(feature = "alloc"))]
+        #[cfg(not(feature = "std"))]
         {
             for slot in self.threads.iter() {
                 if let Some(context) = slot {
@@ -583,14 +587,14 @@ impl ThreadManager {
         }
     }
     
-    fn get_thread_context_mut(&mut self, thread_id: ThreadId) -> Result<&mut ThreadExecutionContext> {
-        #[cfg(feature = "alloc")]
+    pub fn get_thread_context_mut(&mut self, thread_id: ThreadId) -> Result<&mut ThreadExecutionContext> {
+        #[cfg(feature = "std")]
         {
             self.threads.get_mut(&thread_id).ok_or_else(|| {
                 Error::new(ErrorCategory::Runtime, codes::INVALID_ARGUMENT, "Thread not found")
             })
         }
-        #[cfg(not(feature = "alloc"))]
+        #[cfg(not(feature = "std"))]
         {
             for slot in self.threads.iter_mut() {
                 if let Some(context) = slot {
@@ -685,7 +689,7 @@ mod tests {
         assert_eq!(manager.active_thread_count(), 0);
     }
     
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     #[test]
     fn test_thread_spawning() {
         let mut manager = ThreadManager::default();

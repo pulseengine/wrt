@@ -29,8 +29,7 @@
 #[cfg(feature = "std")]
 extern crate std;
 
-// Import alloc for no_std
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
+// Binary std/no_std choice
 extern crate alloc;
 
 // Panic handler is provided by wrt-platform when needed
@@ -96,7 +95,8 @@ pub use wit_debugger_integration::{
     ComponentMetadata, FunctionMetadata, TypeMetadata, WitTypeKind,
     Breakpoint, BreakpointCondition,
 };
-pub use func::FuncType;
+pub use func::Function as RuntimeFunction;
+pub use prelude::FuncType;
 pub use global::Global;
 pub use memory::Memory;
 pub use memory_adapter::{MemoryAdapter, SafeMemoryAdapter, StdMemoryProvider};
@@ -125,12 +125,14 @@ mod tests;
 
 // Re-export trait definitions
 // Re-export implementations
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[cfg(all(not(feature = "std"), not(feature = "std")))]
 pub use component_impl::no_alloc::MinimalComponent;
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 pub use component_impl::{ComponentRuntimeImpl, DefaultHostFunctionFactory};
+#[cfg(feature = "std")]
 pub use component_traits::{
-    ComponentInstance, ComponentRuntime, HostFunction, HostFunctionFactory,
+    ComponentInstance, ComponentRuntime, HostFunctionFactory,
+    HostFunction as ComponentHostFunction,
 };
 
 // Panic handler is provided by the main binary crate to avoid conflicts

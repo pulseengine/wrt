@@ -2,15 +2,17 @@
 //!
 //! This file provides a concrete implementation of the component runtime.
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
 extern crate alloc;
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::{collections::BTreeMap, sync::Arc};
 #[cfg(feature = "std")]
 use std::{collections::HashMap, sync::Arc};
+#[cfg(not(feature = "std"))]
+use alloc::{collections::BTreeMap, sync::Arc};
 
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[cfg(feature = "std")]
+use crate::component_traits::{ComponentHostFunction, ComponentInstance, ComponentRuntime, HostFunctionFactory};
+
+#[cfg(all(not(feature = "std"), not(feature = "std")))]
 pub mod no_alloc {
     use wrt_error::{codes, Error, ErrorCategory, Result};
     use wrt_foundation::{
@@ -62,39 +64,19 @@ pub mod no_alloc {
         ///
         /// * `Result<()>` - Ok if the component is valid, Error otherwise
         pub fn validate(binary: &[u8]) -> Result<()> {
-            #[cfg(all(feature = "alloc", feature = "decoder"))]
+            #[cfg(feature = "decoder")]
             {
                 // Use wrt-decoder's header validation
                 wrt_decoder::component::decode_no_alloc::verify_component_header(binary)
             }
-            #[cfg(all(feature = "alloc", not(feature = "decoder")))]
+            #[cfg(not(feature = "decoder"))]
             {
-                // Basic validation for alloc mode without decoder - check magic number
+                // Basic validation - just check magic number
                 if binary.len() < 8 {
                     return Err(Error::new(
                         ErrorCategory::Parse,
                         codes::INVALID_BINARY,
-                        "Binary too short",
-                    ));
-                }
-                // Check WebAssembly magic number
-                if &binary[0..4] != b"\0asm" {
-                    return Err(Error::new(
-                        ErrorCategory::Parse,
-                        codes::INVALID_BINARY,
-                        "Invalid magic number",
-                    ));
-                }
-                Ok(())
-            }
-            #[cfg(not(feature = "alloc"))]
-            {
-                // Basic validation for no_std - just check magic number
-                if binary.len() < 8 {
-                    return Err(Error::new(
-                        ErrorCategory::Parse,
-                        codes::INVALID_BINARY,
-                        "Binary too small to be a valid component"
+                        "Binary too small to be a valid component",
                     ));
                 }
                 // Check for WASM magic number (0x00 0x61 0x73 0x6D)
@@ -102,7 +84,7 @@ pub mod no_alloc {
                     return Err(Error::new(
                         ErrorCategory::Parse,
                         codes::INVALID_BINARY,
-                        "Invalid WASM magic number"
+                        "Invalid WASM magic number",
                     ));
                 }
                 Ok(())
@@ -117,23 +99,23 @@ use wrt_foundation::{
     Value, VerificationLevel,
 };
 
-#[cfg(feature = "alloc")]
-use alloc::vec;
+#[cfg(feature = "std")]
+use std::vec;
 
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 use crate::{
     component_traits::{ComponentInstance, ComponentRuntime, HostFunction, HostFunctionFactory, ComponentType, ExternType, FuncType},
     prelude::*,
 };
 
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[cfg(all(not(feature = "std"), not(feature = "std")))]
 use crate::{
     component_traits::{ComponentType, ExternType, FuncType},
     prelude::*,
 };
 
 /// Host function implementation
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 struct HostFunctionImpl<
     F: Fn(
             &[wrt_foundation::Value],
@@ -148,6 +130,7 @@ struct HostFunctionImpl<
     implementation: Arc<F>,
 }
 
+#[cfg(feature = "std")]
 impl<
         F: Fn(
                 &[wrt_foundation::Value],
@@ -155,7 +138,7 @@ impl<
             + 'static
             + Send
             + Sync,
-    > HostFunction for HostFunctionImpl<F>
+    > ComponentHostFunction for HostFunctionImpl<F>
 {
     /// Call the function with the given arguments
     fn call(
@@ -183,9 +166,10 @@ struct LegacyHostFunctionImpl<
     verification_level: VerificationLevel,
 }
 
+#[cfg(feature = "std")]
 impl<
         F: Fn(&[wrt_foundation::Value]) -> Result<wrt_foundation::bounded::BoundedVec<wrt_foundation::Value, 16, wrt_foundation::safe_memory::NoStdProvider<1024>>> + 'static + Send + Sync,
-    > HostFunction for LegacyHostFunctionImpl<F>
+    > ComponentHostFunction for LegacyHostFunctionImpl<F>
 {
     /// Call the function with the given arguments
     fn call(
@@ -229,7 +213,7 @@ impl DefaultHostFunctionFactory {
     }
 }
 
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 impl HostFunctionFactory for DefaultHostFunctionFactory {
     /// Create a function with the given name and type
     fn create_function(&self, _name: &str, ty: &FuncType) -> Result<Box<dyn HostFunction>> {
@@ -245,34 +229,25 @@ impl HostFunctionFactory for DefaultHostFunctionFactory {
             }),
         };
 
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             Ok(Box::new(func_impl))
         }
-        #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+        #[cfg(all(not(feature = "std"), not(feature = "std")))]
         {
-            // In no_std mode without alloc, we can't allocate Box
+            // Binary std/no_std choice
             Err(Error::new(ErrorCategory::Runtime, codes::UNSUPPORTED_OPERATION, "Host functions not supported in no_std mode without alloc"))
         }
     }
 }
 
 #[cfg(feature = "std")]
-type HostFunctionMap = HashMap<String, Box<dyn HostFunction>>;
+type HostFunctionMap = HashMap<String, Box<dyn ComponentHostFunction>>;
 #[cfg(feature = "std")]
 type HostFactoryVec = Vec<Box<dyn HostFunctionFactory>>;
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-type HostFunctionMap = BTreeMap<String, Box<dyn HostFunction>>;
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-type HostFactoryVec = alloc::vec::Vec<Box<dyn HostFunctionFactory>>;
-
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
-type HostFunctionMap = wrt_foundation::bounded::BoundedVec<(String, u32), 16, wrt_foundation::safe_memory::NoStdProvider<1024>>; // Store name and factory ID instead
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
-type HostFactoryVec = wrt_foundation::bounded::BoundedVec<u32, 8, wrt_foundation::safe_memory::NoStdProvider<1024>>; // Store factory IDs instead
-
 /// An implementation of the ComponentRuntime interface
+#[cfg(feature = "std")]
 pub struct ComponentRuntimeImpl {
     /// Host function factories for creating host functions
     host_factories: HostFactoryVec,
@@ -282,25 +257,25 @@ pub struct ComponentRuntimeImpl {
     host_functions: HostFunctionMap,
 }
 
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 impl ComponentRuntime for ComponentRuntimeImpl {
     /// Create a new ComponentRuntimeImpl
     fn new() -> Self {
         Self {
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             host_factories: Vec::with_capacity(8),
-            #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+            #[cfg(all(not(feature = "std"), not(feature = "std")))]
             host_factories: HostFactoryVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).expect("Failed to create host_factories"),
             verification_level: VerificationLevel::default(),
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             host_functions: HostFunctionMap::new(),
-            #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+            #[cfg(all(not(feature = "std"), not(feature = "std")))]
             host_functions: HostFunctionMap::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).expect("Failed to create host_functions"),
         }
     }
 
     /// Register a host function factory
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     fn register_host_factory(&mut self, factory: Box<dyn HostFunctionFactory>) {
         // Safety-enhanced push operation with verification
         if self.verification_level.should_verify(128) {
@@ -308,15 +283,15 @@ impl ComponentRuntime for ComponentRuntimeImpl {
             self.verify_integrity().expect("ComponentRuntime integrity check failed");
         }
 
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             // Push to Vec (can't use SafeStack since HostFunctionFactory doesn't implement Clone)
             self.host_factories.push(factory);
         }
 
-        #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+        #[cfg(all(not(feature = "std"), not(feature = "std")))]
         {
-            // In no_std without alloc, just count registered factories
+            // Binary std/no_std choice
             let _factory_id = self.host_factories.len() as u32;
             let _ = self.host_factories.push(_factory_id);
             // We don't actually store the factory in no_std mode for simplicity
@@ -331,7 +306,7 @@ impl ComponentRuntime for ComponentRuntimeImpl {
 
 
     /// Instantiate a component
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     fn instantiate(&self, component_type: &ComponentType) -> Result<Box<dyn ComponentInstance>> {
         // Verify integrity before instantiation if high verification level
         if self.verification_level.should_verify(200) {
@@ -340,9 +315,9 @@ impl ComponentRuntime for ComponentRuntimeImpl {
 
         // Initialize memory with enough space (1 page = 64KB)
         let memory_size = 65536;
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         let memory_data = vec![0; memory_size];
-        #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+        #[cfg(all(not(feature = "std"), not(feature = "std")))]
         let memory_data = {
             let mut data = wrt_foundation::bounded::BoundedVec::new();
             for _ in 0..memory_size.min(65536) {
@@ -352,16 +327,16 @@ impl ComponentRuntime for ComponentRuntimeImpl {
         };
 
         // Collect host function names and types for tracking
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         let mut host_function_names = Vec::new();
-        #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+        #[cfg(all(not(feature = "std"), not(feature = "std")))]
         let mut host_function_names = wrt_foundation::bounded::BoundedVec::new();
 
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         let mut host_functions = {
             #[cfg(feature = "std")]
             let mut map = HashMap::new();
-            #[cfg(all(not(feature = "std"), feature = "alloc"))]
+            #[cfg(not(feature = "std"))]
             let mut map = BTreeMap::new();
             
             for name in self.host_functions.keys() {
@@ -375,9 +350,9 @@ impl ComponentRuntime for ComponentRuntimeImpl {
             map
         };
 
-        #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+        #[cfg(all(not(feature = "std"), not(feature = "std")))]
         let host_functions = {
-            // For no_std without alloc, just collect the names
+            // Binary std/no_std choice
             for (name, _id) in self.host_functions.iter() {
                 host_function_names.push(name.clone());
             }
@@ -386,7 +361,7 @@ impl ComponentRuntime for ComponentRuntimeImpl {
         };
 
         // Create a basic component instance implementation
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             Ok(Box::new(ComponentInstanceImpl {
                 component_type: component_type.clone(),
@@ -396,9 +371,9 @@ impl ComponentRuntime for ComponentRuntimeImpl {
                 host_functions,
             }))
         }
-        #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+        #[cfg(all(not(feature = "std"), not(feature = "std")))]
         {
-            // In no_std mode without alloc, we can't allocate Box
+            // Binary std/no_std choice
             Err(Error::new(ErrorCategory::Runtime, codes::UNSUPPORTED_OPERATION, "Component instances not supported in no_std mode without alloc"))
         }
     }
@@ -412,7 +387,7 @@ impl ComponentRuntime for ComponentRuntimeImpl {
             + Send
             + Sync,
     {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             // Create a legacy host function implementation
             let func_impl = LegacyHostFunctionImpl {
@@ -424,14 +399,14 @@ impl ComponentRuntime for ComponentRuntimeImpl {
             // Insert the function into the host functions map
             #[cfg(feature = "std")]
             let name_string = name.to_string();
-            #[cfg(all(not(feature = "std"), feature = "alloc"))]
+            #[cfg(not(feature = "std"))]
             let name_string = alloc::string::String::from(name);
             
             self.host_functions.insert(name_string, Box::new(func_impl));
         }
-        #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+        #[cfg(all(not(feature = "std"), not(feature = "std")))]
         {
-            // In no_std mode without alloc, just ignore the registration
+            // Binary std/no_std choice
             let _ = (name, ty, function);
         }
 
@@ -450,6 +425,7 @@ impl ComponentRuntime for ComponentRuntimeImpl {
     }
 }
 
+#[cfg(feature = "std")]
 impl ComponentRuntimeImpl {
     /// Create a new ComponentRuntimeImpl with a specific verification level
     ///
@@ -483,11 +459,8 @@ impl ComponentRuntimeImpl {
 #[cfg(feature = "std")]
 type HostFunctionTypeMap = HashMap<String, Option<FuncType>>;
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-type HostFunctionTypeMap = BTreeMap<wrt_foundation::bounded::BoundedString<128, wrt_foundation::safe_memory::NoStdProvider<1024>>, Option<FuncType>>;
-
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
-type HostFunctionTypeMap = wrt_foundation::bounded::BoundedVec<(wrt_foundation::bounded::BoundedString<128, wrt_foundation::safe_memory::NoStdProvider<1024>>, Option<FuncType>), 16, wrt_foundation::safe_memory::NoStdProvider<1024>>;
+#[cfg(not(feature = "std"))]
+type HostFunctionTypeMap = BTreeMap<String, Option<FuncType>>;
 
 /// Basic implementation of ComponentInstance for testing
 struct ComponentInstanceImpl {
@@ -503,6 +476,7 @@ struct ComponentInstanceImpl {
     host_functions: HostFunctionTypeMap,
 }
 
+#[cfg(feature = "std")]
 impl ComponentInstance for ComponentInstanceImpl {
     /// Execute a function by name
     fn execute_function(
@@ -525,9 +499,9 @@ impl ComponentInstance for ComponentInstanceImpl {
         // Check if this is a function that's known to the runtime
         #[cfg(feature = "std")]
         let name_check = self.host_function_names.contains(&name.to_string());
-        #[cfg(all(not(feature = "std"), feature = "alloc"))]
+        #[cfg(not(feature = "std"))]
         let name_check = self.host_function_names.contains(&alloc::string::String::from(name));
-        #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+        #[cfg(all(not(feature = "std"), not(feature = "std")))]
         let name_check = {
             let mut found = false;
             for stored_name in self.host_function_names.iter() {
@@ -712,7 +686,7 @@ mod tests {
         }
     }
 
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     impl HostFunctionFactory for TestHostFunctionFactory {
         fn create_function(
             &self,
@@ -748,7 +722,7 @@ mod tests {
     // A legacy host function for testing - returns Vec
     struct LegacyTestHostFunctionFactory;
 
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     impl HostFunctionFactory for LegacyTestHostFunctionFactory {
         fn create_function(
             &self,
@@ -819,7 +793,7 @@ mod tests {
             host_function_names: Vec::new(),
             #[cfg(feature = "std")]
             host_functions: HashMap::new(),
-            #[cfg(all(not(feature = "std"), feature = "alloc"))]
+            #[cfg(not(feature = "std"))]
             host_functions: BTreeMap::new(),
         };
 

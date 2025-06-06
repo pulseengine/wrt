@@ -14,7 +14,6 @@
 #![allow(clippy::unsafe_block)]
 #![allow(clippy::unsafe_derive_deserialize)]
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
 extern crate alloc;
 
 use crate::prelude::*;
@@ -26,36 +25,36 @@ use wrt_instructions::atomic_ops::{
 };
 use wrt_foundation::MemArg;
 use wrt_platform::sync::{AtomicU32, AtomicU64, AtomicUsize, Ordering as PlatformOrdering};
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::{vec::Vec, collections::BTreeMap};
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
-use wrt_foundation::bounded::BoundedVec;
 #[cfg(feature = "std")]
 use std::{vec::Vec, sync::Arc, time::Duration, collections::BTreeMap};
+#[cfg(not(feature = "std"))]
+use alloc::{vec::Vec, sync::Arc, collections::BTreeMap};
+#[cfg(all(not(feature = "std"), not(feature = "std")))]
+use wrt_foundation::bounded::BoundedVec;
 #[cfg(not(feature = "std"))]
 use wrt_platform::sync::Duration;
 
 // Type alias for return results
-#[cfg(any(feature = "std", feature = "alloc"))]
-type ResultVec = Vec<u32>;
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
-type ResultVec = wrt_foundation::bounded::BoundedVec<u32, 256, wrt_foundation::safe_memory::NoStdProvider<1024>>;
+#[cfg(feature = "std")]
+pub type ResultVec = Vec<u32>;
+#[cfg(all(not(feature = "std"), not(feature = "std")))]
+pub type ResultVec = wrt_foundation::bounded::BoundedVec<u32, 256, wrt_foundation::safe_memory::NoStdProvider<1024>>;
 
 // Type alias for thread ID vectors  
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 type ThreadIdVec = Vec<ThreadId>;
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[cfg(all(not(feature = "std"), not(feature = "std")))]
 type ThreadIdVec = wrt_foundation::bounded::BoundedVec<ThreadId, 64, wrt_foundation::safe_memory::NoStdProvider<1024>>;
 
 // Helper macro for creating Vec compatible with no_std
 macro_rules! result_vec {
     () => {
         {
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             {
-                Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap()
+                Vec::new()
             }
-            #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+            #[cfg(all(not(feature = "std"), not(feature = "std")))]
             {
                 wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap()
             }
@@ -63,11 +62,11 @@ macro_rules! result_vec {
     };
     ($($item:expr),+) => {
         {
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             {
                 vec![$($item),+]
             }
-            #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+            #[cfg(all(not(feature = "std"), not(feature = "std")))]
             {
                 let mut v = wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap();
                 $(v.push($item).unwrap();)+
@@ -99,9 +98,9 @@ pub struct AtomicMemoryContext {
     /// Thread manager for coordination
     pub thread_manager: ThreadManager,
     /// Wait/notify coordination data structures
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     wait_queues: BTreeMap<u32, ThreadIdVec>,
-    #[cfg(not(feature = "alloc"))]
+    #[cfg(not(feature = "std"))]
     wait_queues: [(u32, [Option<ThreadId>; 8]); 16],  // Fixed arrays for no_std
     /// Atomic operation statistics
     pub stats: AtomicExecutionStats,
@@ -114,9 +113,9 @@ impl AtomicMemoryContext {
             memory_base,
             memory_size: AtomicUsize::new(memory_size),
             thread_manager,
-            #[cfg(feature = "alloc")]
+            #[cfg(feature = "std")]
             wait_queues: BTreeMap::new(),
-            #[cfg(not(feature = "alloc"))]
+            #[cfg(not(feature = "std"))]
             wait_queues: [(0, [const { None }; 8]); 16],  // Fixed arrays for no_std
             stats: AtomicExecutionStats::new(),
         })
@@ -134,11 +133,22 @@ impl AtomicMemoryContext {
         match op {
             AtomicOp::Load(load_op) => self.execute_atomic_load(load_op),
             AtomicOp::Store(store_op) => {
-                self.execute_atomic_store(store_op)?;
+                // Pop value from stack for store operation
+                let value = 0u64; // TODO: Should be popped from execution stack
+                self.execute_atomic_store(store_op, value)?;
                 Ok(result_vec![])
             },
-            AtomicOp::RMW(rmw_op) => self.execute_atomic_rmw(rmw_op),
-            AtomicOp::Cmpxchg(cmpxchg_op) => self.execute_atomic_cmpxchg(cmpxchg_op),
+            AtomicOp::RMW(rmw_op) => {
+                // Pop value from stack for RMW operation
+                let value = 0u64; // TODO: Should be popped from execution stack
+                self.execute_atomic_rmw(rmw_op, value)
+            },
+            AtomicOp::Cmpxchg(cmpxchg_op) => {
+                // Pop expected and replacement values from stack for compare-exchange operation
+                let expected = 0u64; // TODO: Should be popped from execution stack
+                let replacement = 0u64; // TODO: Should be popped from execution stack
+                self.execute_atomic_cmpxchg(cmpxchg_op, expected, replacement)
+            },
             AtomicOp::WaitNotify(wait_notify_op) => self.execute_wait_notify(thread_id, wait_notify_op),
             AtomicOp::Fence(fence) => {
                 self.execute_atomic_fence(fence)?;
@@ -353,7 +363,7 @@ impl AtomicMemoryContext {
         self.stats.fence_operations += 1;
         
         // Execute memory fence with specified ordering
-        let ordering: PlatformOrdering = fence.ordering.into();
+        let ordering: PlatformOrdering = convert_memory_ordering(fence.ordering);
         
         // Platform-specific fence implementation
         match ordering {
@@ -404,7 +414,7 @@ impl AtomicMemoryContext {
     fn atomic_load_u8(&self, addr: usize, ordering: MemoryOrdering) -> Result<u8> {
         // SAFETY: Bounds checked, using helper function
         let atomic_ref: &AtomicU8 = unsafe { self.get_atomic_ref(addr) };
-        Ok(atomic_ref.load(ordering.into()))
+        Ok(atomic_ref.load(convert_memory_ordering(ordering)))
     }
     
     fn atomic_load_u16(&self, addr: usize, ordering: MemoryOrdering) -> Result<u16> {
@@ -417,7 +427,7 @@ impl AtomicMemoryContext {
         }
         // SAFETY: Bounds and alignment checked, using helper function
         let atomic_ref: &AtomicU16 = unsafe { self.get_atomic_ref(addr) };
-        Ok(atomic_ref.load(ordering.into()))
+        Ok(atomic_ref.load(convert_memory_ordering(ordering)))
     }
     
     fn atomic_load_u32(&self, addr: usize, ordering: MemoryOrdering) -> Result<u32> {
@@ -430,7 +440,7 @@ impl AtomicMemoryContext {
         }
         let ptr = unsafe { self.memory_base.add(addr) as *const AtomicU32 };
         let atomic_ref = unsafe { &*ptr };
-        Ok(atomic_ref.load(ordering.into()))
+        Ok(atomic_ref.load(convert_memory_ordering(ordering)))
     }
     
     fn atomic_load_u64(&self, addr: usize, ordering: MemoryOrdering) -> Result<u64> {
@@ -443,13 +453,13 @@ impl AtomicMemoryContext {
         }
         let ptr = unsafe { self.memory_base.add(addr) as *const AtomicU64 };
         let atomic_ref = unsafe { &*ptr };
-        Ok(atomic_ref.load(ordering.into()))
+        Ok(atomic_ref.load(convert_memory_ordering(ordering)))
     }
     
     fn atomic_store_u8(&self, addr: usize, value: u8, ordering: MemoryOrdering) -> Result<()> {
         let ptr = unsafe { self.memory_base.add(addr) as *const AtomicU8 };
         let atomic_ref = unsafe { &*ptr };
-        atomic_ref.store(value, ordering.into());
+        atomic_ref.store(value, convert_memory_ordering(ordering));
         Ok(())
     }
     
@@ -463,7 +473,7 @@ impl AtomicMemoryContext {
         }
         let ptr = unsafe { self.memory_base.add(addr) as *const AtomicU16 };
         let atomic_ref = unsafe { &*ptr };
-        atomic_ref.store(value, ordering.into());
+        atomic_ref.store(value, convert_memory_ordering(ordering));
         Ok(())
     }
     
@@ -477,7 +487,7 @@ impl AtomicMemoryContext {
         }
         let ptr = unsafe { self.memory_base.add(addr) as *const AtomicU32 };
         let atomic_ref = unsafe { &*ptr };
-        atomic_ref.store(value, ordering.into());
+        atomic_ref.store(value, convert_memory_ordering(ordering));
         Ok(())
     }
     
@@ -491,7 +501,7 @@ impl AtomicMemoryContext {
         }
         let ptr = unsafe { self.memory_base.add(addr) as *const AtomicU64 };
         let atomic_ref = unsafe { &*ptr };
-        atomic_ref.store(value, ordering.into());
+        atomic_ref.store(value, convert_memory_ordering(ordering));
         Ok(())
     }
     
@@ -505,7 +515,7 @@ impl AtomicMemoryContext {
         }
         let ptr = unsafe { self.memory_base.add(addr) as *const AtomicU32 };
         let atomic_ref = unsafe { &*ptr };
-        let ordering = ordering.into();
+        let ordering = convert_memory_ordering(ordering);
         
         Ok(match op {
             AtomicRMWOp::Add => atomic_ref.fetch_add(value, ordering),
@@ -527,7 +537,7 @@ impl AtomicMemoryContext {
         }
         let ptr = unsafe { self.memory_base.add(addr) as *const AtomicU64 };
         let atomic_ref = unsafe { &*ptr };
-        let ordering = ordering.into();
+        let ordering = convert_memory_ordering(ordering);
         
         Ok(match op {
             AtomicRMWOp::Add => atomic_ref.fetch_add(value, ordering),
@@ -550,7 +560,7 @@ impl AtomicMemoryContext {
         let ptr = unsafe { self.memory_base.add(addr) as *const AtomicU32 };
         let atomic_ref = unsafe { &*ptr };
         
-        match atomic_ref.compare_exchange(expected, replacement, ordering.into(), ordering.into()) {
+        match atomic_ref.compare_exchange(expected, replacement, convert_memory_ordering(ordering), convert_memory_ordering(ordering)) {
             Ok(old_value) => Ok(old_value),
             Err(old_value) => Ok(old_value),
         }
@@ -567,7 +577,7 @@ impl AtomicMemoryContext {
         let ptr = unsafe { self.memory_base.add(addr) as *const AtomicU64 };
         let atomic_ref = unsafe { &*ptr };
         
-        match atomic_ref.compare_exchange(expected, replacement, ordering.into(), ordering.into()) {
+        match atomic_ref.compare_exchange(expected, replacement, convert_memory_ordering(ordering), convert_memory_ordering(ordering)) {
             Ok(old_value) => Ok(old_value),
             Err(old_value) => Ok(old_value),
         }
@@ -577,13 +587,13 @@ impl AtomicMemoryContext {
         self.stats.wait_operations += 1;
         
         // Add thread to wait queue for this address
-        #[cfg(feature = "alloc")]
+        #[cfg(feature = "std")]
         {
             self.wait_queues.entry(addr as u32).or_insert_with(Vec::new).push(thread_id);
         }
-        #[cfg(not(feature = "alloc"))]
+        #[cfg(not(feature = "std"))]
         {
-            // Simplified implementation for no_alloc using fixed arrays
+            // Binary std/no_std choice
             let mut found = false;
             for (wait_addr, queue) in self.wait_queues.iter_mut() {
                 if *wait_addr == addr as u32 {
@@ -611,9 +621,9 @@ impl AtomicMemoryContext {
         }
         
         // Return 0 for successful wait (simplified - real implementation would suspend thread)
-        #[cfg(feature = "alloc")]
+        #[cfg(feature = "std")]
         return Ok(result_vec![0]);
-        #[cfg(not(feature = "alloc"))]
+        #[cfg(not(feature = "std"))]
         {
             Ok(result_vec![0])
         }
@@ -629,7 +639,7 @@ impl AtomicMemoryContext {
         
         let mut notified = 0u32;
         
-        #[cfg(feature = "alloc")]
+        #[cfg(feature = "std")]
         {
             if let Some(queue) = self.wait_queues.get_mut(&(addr as u32)) {
                 let to_notify = core::cmp::min(count as usize, queue.len());
@@ -644,15 +654,20 @@ impl AtomicMemoryContext {
                 }
             }
         }
-        #[cfg(not(feature = "alloc"))]
+        #[cfg(not(feature = "std"))]
         {
-            // Simplified implementation for no_alloc
+            // Binary std/no_std choice
             for (wait_addr, queue) in self.wait_queues.iter_mut() {
                 if *wait_addr == addr as u32 {
-                    let to_notify = core::cmp::min(count as usize, queue.len());
-                    for _ in 0..to_notify {
-                        if queue.len() > 0 {
-                            queue.remove(queue.len() - 1);
+                    let mut removed = 0;
+                    // For arrays, we remove by setting elements to None from the end
+                    for slot in queue.iter_mut().rev() {
+                        if removed >= count as usize {
+                            break;
+                        }
+                        if slot.is_some() {
+                            *slot = None;
+                            removed += 1;
                             notified += 1;
                         }
                     }
@@ -741,7 +756,7 @@ mod tests {
         assert_eq!(PlatformOrdering::from(MemoryOrdering::SeqCst), PlatformOrdering::SeqCst);
     }
     
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     #[test]
     fn test_atomic_context_creation() {
         let thread_manager = ThreadManager::new(ThreadConfig::default()).unwrap();

@@ -18,12 +18,11 @@ use wrt_instructions::control_ops::{ControlContext, FunctionOperations, BranchTa
 use wrt_instructions::control_ops::Block;
 
 // Imports for no_std compatibility
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
 extern crate alloc;
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::vec;
 #[cfg(feature = "std")] 
 use std::{sync::Mutex, vec, collections::BTreeMap as HashMap};
+#[cfg(not(feature = "std"))]
+use alloc::{vec, collections::BTreeMap as HashMap};
 
 // Import memory provider
 use wrt_foundation::traits::DefaultMemoryProvider;
@@ -323,15 +322,15 @@ impl ControlContext for StacklessEngine {
 
     /// Exit the current block
     fn exit_block(&mut self) -> Result<Block> {
-        let label = self.exec_stack.labels.pop().ok_or_else(|| {
+        let label = self.exec_stack.labels.pop().map_err(|_| {
             Error::new(ErrorCategory::Runtime, codes::STACK_UNDERFLOW, "No block to exit")
         })?;
         
         // Convert label back to block type (simplified)
         let block = match label.kind {
-            LabelKind::Block => Block::Block(wrt_foundation::BlockType::Empty),
-            LabelKind::Loop => Block::Loop(wrt_foundation::BlockType::Empty),
-            LabelKind::If => Block::If(wrt_foundation::BlockType::Empty),
+            LabelKind::Block => Block::Block(wrt_foundation::BlockType::Value(None)),
+            LabelKind::Loop => Block::Loop(wrt_foundation::BlockType::Value(None)),
+            LabelKind::If => Block::If(wrt_foundation::BlockType::Value(None)),
             LabelKind::Function => Block::Function,
         };
         

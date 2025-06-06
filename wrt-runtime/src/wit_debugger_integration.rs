@@ -3,12 +3,11 @@
 //! This module provides integration between the WRT runtime and the WIT-aware
 //! debugger from wrt-debug, enabling source-level debugging of WIT components.
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
 extern crate alloc;
 
 #[cfg(feature = "std")]
 use std::{collections::BTreeMap, vec::Vec, boxed::Box};
-#[cfg(all(feature = "alloc", not(feature = "std")))]
+#[cfg(not(feature = "std"))]
 use alloc::{collections::BTreeMap, vec::Vec, boxed::Box};
 
 use wrt_foundation::{
@@ -580,8 +579,8 @@ pub fn create_component_metadata(
         source_span,
         binary_start,
         binary_end,
-        exports: Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap(),
-        imports: Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap(),
+        exports: Vec::new(),
+        imports: Vec::new(),
     })
 }
 
@@ -600,8 +599,8 @@ pub fn create_function_metadata(
             .map_err(|_| Error::runtime_error("Function name too long"))?,
         source_span,
         binary_offset,
-        param_types: Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap(),
-        return_types: Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap(),
+        param_types: Vec::new(),
+        return_types: Vec::new(),
         is_async,
     })
 }

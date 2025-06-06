@@ -3,7 +3,6 @@
 //! This module provides the implementation for WebAssembly globals.
 
 // Use WrtGlobalType directly from wrt_foundation, and WrtValueType, WrtValue
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
 extern crate alloc;
 
 use wrt_foundation::{
@@ -16,7 +15,7 @@ use crate::prelude::*;
 // Import format! macro for string formatting
 #[cfg(feature = "std")]
 use std::format;
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
+#[cfg(not(feature = "std"))]
 use alloc::format;
 
 /// Represents a WebAssembly global variable in the runtime
@@ -41,8 +40,6 @@ impl Global {
         let global_ty_descriptor = WrtGlobalType {
             value_type,
             mutable,
-            initial_value: initial_value.clone(), /* Store the original initial value as part of
-                                                   * the type descriptor. */
         };
 
         // The runtime `value` starts as the provided `initial_value`.
@@ -70,11 +67,7 @@ impl Global {
             return Err(Error::new(
                 ErrorCategory::Type,
                 codes::TYPE_MISMATCH,
-                format!(
-                    "Value type {:?} doesn't match global type {:?}",
-                    new_value.value_type(),
-                    self.ty.value_type
-                ),
+                "Value type doesn't match global type",
             ));
         }
 
@@ -97,9 +90,24 @@ impl Default for Global {
     }
 }
 
+fn value_type_to_u8(value_type: &WrtValueType) -> u8 {
+    match value_type {
+        WrtValueType::I32 => 0,
+        WrtValueType::I64 => 1,
+        WrtValueType::F32 => 2,
+        WrtValueType::F64 => 3,
+        WrtValueType::V128 => 4,
+        WrtValueType::FuncRef => 5,
+        WrtValueType::ExternRef => 6,
+        WrtValueType::I16x8 => 7,
+        WrtValueType::StructRef(_) => 8,
+        WrtValueType::ArrayRef(_) => 9,
+    }
+}
+
 impl wrt_foundation::traits::Checksummable for Global {
     fn update_checksum(&self, checksum: &mut wrt_foundation::verification::Checksum) {
-        checksum.update_slice(&(self.ty.value_type as u8).to_le_bytes());
+        checksum.update_slice(&value_type_to_u8(&self.ty.value_type).to_le_bytes());
         checksum.update_slice(&[self.ty.mutable as u8]);
     }
 }
@@ -114,7 +122,7 @@ impl wrt_foundation::traits::ToBytes for Global {
         writer: &mut wrt_foundation::traits::WriteStream<'a>,
         _provider: &P,
     ) -> wrt_foundation::Result<()> {
-        writer.write_all(&(self.ty.value_type as u8).to_le_bytes())?;
+        writer.write_all(&value_type_to_u8(&self.ty.value_type).to_le_bytes())?;
         writer.write_all(&[self.ty.mutable as u8])
     }
 }
@@ -141,8 +149,8 @@ impl wrt_foundation::traits::FromBytes for Global {
         let initial_value = match value_type {
             wrt_foundation::types::ValueType::I32 => Value::I32(0),
             wrt_foundation::types::ValueType::I64 => Value::I64(0),
-            wrt_foundation::types::ValueType::F32 => Value::F32(0.0),
-            wrt_foundation::types::ValueType::F64 => Value::F64(0.0),
+            wrt_foundation::types::ValueType::F32 => Value::F32(wrt_foundation::float_repr::FloatBits32::from_float(0.0)),
+            wrt_foundation::types::ValueType::F64 => Value::F64(wrt_foundation::float_repr::FloatBits64::from_float(0.0)),
             _ => Value::I32(0),
         };
         

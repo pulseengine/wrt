@@ -4,13 +4,12 @@
 //! instances, reducing the need for explicit dereferencing and borrowing.
 
 // Import Arc from appropriate source based on feature flags
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
 extern crate alloc;
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::sync::Arc;
 #[cfg(feature = "std")]
 use std::sync::Arc;
+#[cfg(not(feature = "std"))]
+use alloc::sync::Arc;
 
 use wrt_error::{Error, Result};
 use wrt_foundation::{safe_memory::SafeStack, values::Value};
@@ -20,7 +19,7 @@ use crate::{prelude::*, Memory};
 // Import format! macro for string formatting
 #[cfg(feature = "std")]
 use std::format;
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
+#[cfg(not(feature = "std"))]
 use alloc::format;
 
 /// Extension trait for `Arc<Memory>` to simplify access to memory operations
@@ -204,7 +203,7 @@ impl ArcMemoryExt for Arc<Memory> {
         // Create a SafeStack from the verified slice data with appropriate verification
         // level
         let provider = wrt_foundation::safe_memory::NoStdProvider::<1024>::default();
-        let mut safe_stack = wrt_foundation::safe_memory::SafeStack::with_capacity_and_provider(len as usize, provider)?;
+        let mut safe_stack = wrt_foundation::safe_memory::SafeStack::new(provider)?;
 
         // Set verification level to match memory's level
         let verification_level = self.as_ref().verification_level();
@@ -242,7 +241,10 @@ impl ArcMemoryExt for Arc<Memory> {
     fn read_exact(&self, offset: u32, len: u32) -> Result<Vec<u8>> {
         // Early return for zero-length reads
         if len == 0 {
-            return Ok(Vec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap());
+            #[cfg(feature = "std")]
+            return Ok(Vec::new());
+            #[cfg(not(feature = "std"))]
+            return Ok(wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default())?);
         }
 
         // Get a memory-safe slice directly instead of creating a temporary buffer
@@ -251,8 +253,11 @@ impl ArcMemoryExt for Arc<Memory> {
         // Get data from the safe slice with integrity verification built in
         let data = safe_slice.data()?;
 
-        // Create a Vec from the verified slice data
-        let buffer = data.to_vec();
+        // Create a BoundedVec from the verified slice data
+        let mut buffer = wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default())?;
+        for &byte in data {
+            buffer.push(byte)?;
+        }
 
         // Return the verified buffer
         Ok(buffer)
@@ -375,13 +380,13 @@ impl ArcMemoryExt for Arc<Memory> {
         match value_type {
             wrt_foundation::types::ValueType::I32 => self.read_i32(addr).map(Value::I32),
             wrt_foundation::types::ValueType::I64 => self.read_i64(addr).map(Value::I64),
-            wrt_foundation::types::ValueType::F32 => self.read_f32(addr).map(Value::F32),
-            wrt_foundation::types::ValueType::F64 => self.read_f64(addr).map(Value::F64),
+            wrt_foundation::types::ValueType::F32 => self.read_f32(addr).map(|f| Value::F32(wrt_foundation::values::FloatBits32::from_float(f))),
+            wrt_foundation::types::ValueType::F64 => self.read_f64(addr).map(|f| Value::F64(wrt_foundation::values::FloatBits64::from_float(f))),
             // V128 doesn't exist in ValueType enum, so we'll handle it separately
             _ => Err(wrt_error::Error::new(
                 wrt_error::ErrorCategory::Type,
                 wrt_error::errors::codes::TYPE_MISMATCH_ERROR,
-                format!("Cannot read value of type {:?} from memory", value_type),
+                &format!("Cannot read value of type {:?} from memory", value_type),
             )),
         }
     }
@@ -391,13 +396,13 @@ impl ArcMemoryExt for Arc<Memory> {
         self.as_ref().clone_and_mutate(|mem| match value {
             Value::I32(v) => mem.write_i32(addr, v),
             Value::I64(v) => mem.write_i64(addr, v),
-            Value::F32(v) => mem.write_f32(addr, v),
-            Value::F64(v) => mem.write_f64(addr, v),
-            Value::V128(v) => mem.write_v128(addr, v),
+            Value::F32(v) => mem.write_f32(addr, f32::from_bits(v.to_bits())),
+            Value::F64(v) => mem.write_f64(addr, f64::from_bits(v.to_bits())),
+            Value::V128(v) => mem.write_v128(addr, v.into()),
             _ => Err(wrt_error::Error::new(
                 wrt_error::ErrorCategory::Type,
                 wrt_error::errors::codes::TYPE_MISMATCH_ERROR,
-                format!("Cannot write value {:?} to memory", value),
+                &format!("Cannot write value {:?} to memory", value),
             )),
         })
     }
@@ -481,7 +486,7 @@ impl ArcMemoryExt for Arc<Memory> {
                 return Err(wrt_error::Error::new(
                     wrt_error::ErrorCategory::Type,
                     wrt_error::errors::codes::TYPE_MISMATCH_ERROR,
-                    format!("Unsupported value type for reading from memory: {:?}", value_type),
+                    &format!("Unsupported value type for reading from memory: {:?}", value_type),
                 ))
             }
         };
@@ -517,10 +522,11 @@ impl ArcMemoryExt for Arc<Memory> {
         let end = start + buffer.len();
 
         if end > current_buffer.len() {
-            return Err(Error::from(kinds::MemoryAccessOutOfBoundsError {
-                address: start as u64,
-                length: buffer.len() as u64,
-            }));
+            return Err(Error::new(
+                ErrorCategory::Memory,
+                codes::MEMORY_ACCESS_OUT_OF_BOUNDS,
+                &format!("Memory access out of bounds: address={}, length={}", start, buffer.len()),
+            ));
         }
 
         // Update the memory through the mutex/lock mechanism in the Memory
@@ -537,10 +543,10 @@ impl ArcMemoryExt for Arc<Memory> {
         // Memory::grow_memory requires &mut self.
         // Arc<Memory> cannot provide &mut Memory without interior mutability
         // or Arc::get_mut, which this trait signature doesn't allow.
-        Err(Error::system_error_with_code(
+        Err(Error::new(
+            ErrorCategory::Runtime,
             codes::UNSUPPORTED_OPERATION,
-            "grow_via_callback on Arc<Memory> is not supported without interior mutability in \
-             Memory for its data.",
+            "grow_via_callback on Arc<Memory> is not supported without interior mutability in Memory for its data.",
         ))
     }
 }
@@ -654,7 +660,7 @@ mod tests {
 
     #[test]
     fn test_write_via_callback() -> Result<()> {
-        let memory_type = MemoryType { minimum: 1, maximum: Some(2), shared: false };
+        let memory_type = MemoryType { limits: Limits { min: 1, max: Some(2) } };
 
         let memory = Arc::new(Memory::new(memory_type).unwrap());
         let test_data = [1, 2, 3, 4, 5];
@@ -672,7 +678,7 @@ mod tests {
 
     #[test]
     fn test_grow_via_callback() -> Result<()> {
-        let memory_type = MemoryType { minimum: 1, maximum: Some(2), shared: false };
+        let memory_type = MemoryType { limits: Limits { min: 1, max: Some(2) } };
 
         let memory = Arc::new(Memory::new(memory_type).unwrap());
         let initial_size = memory.size();
