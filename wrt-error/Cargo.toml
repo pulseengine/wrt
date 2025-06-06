@@ -18,15 +18,13 @@ path = "src/lib.rs"
 
 [features]
 default = []
+# Binary choice: std OR no_std (no alloc middle ground)
 # Performance optimization
 optimize = []
 # Safety features
 safety = []
-# Standard library support
+# Binary choice: std OR no_std (no alloc middle ground)
 std = []
-# Allocation support
-alloc = []
-# This crate is no_std by default, this feature is a no-op for compatibility
 no_std = []
 # Disable panic handler for library builds to avoid conflicts
 disable-panic-handler = []

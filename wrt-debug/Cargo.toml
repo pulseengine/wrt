@@ -14,8 +14,8 @@ wrt-foundation = { workspace = true, default-features = false }
 
 [features]
 default = ["line-info"]
+# Binary choice: std OR no_std (no alloc middle ground)
 std = ["wrt-error/std", "wrt-format/std", "wrt-foundation/std"]
-alloc = ["wrt-error/alloc", "wrt-format/alloc", "wrt-foundation/alloc"]
 # This crate is no_std by default, this feature is a no-op for compatibility
 no_std = []
 
@@ -36,7 +36,7 @@ runtime-stepping = ["runtime-control"]  # Step execution
 runtime-debug = ["runtime-variables", "runtime-memory", "runtime-breakpoints", "runtime-stepping"]  # All runtime features
 
 # WIT integration features
-wit-integration = ["runtime-debug", "alloc"]  # WIT source mapping and debugging
+wit-integration = ["runtime-debug", "std"]  # WIT source mapping and debugging
 
 # Feature presets
 minimal = ["line-info"]  # Just crash locations

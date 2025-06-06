@@ -12,6 +12,7 @@ categories = ["wasm", "no-std", "development-tools::testing"]
 
 [features]
 default = []
+# Binary choice: std OR no_std (no alloc middle ground)
 std = [
     "wrt/std",
     "wrt-component/std",
@@ -28,23 +29,7 @@ std = [
     "dep:serde_json",
     "once_cell/std",
     "clap",
-    "colored",
-]
-alloc = [
-    "wrt/alloc",
-    "wrt-component/alloc",
-    "wrt-decoder/alloc",
-    "wrt-format/alloc",
-    "wrt-host/alloc",
-    "wrt-instructions/alloc",
-    "wrt-intercept/alloc",
-    "wrt-runtime/alloc",
-    "wrt-sync/alloc",
-    "wrt-foundation/alloc",
-    "dep:ctor",
-    "dep:inventory",
-    "dep:serde_json",
-]
+    "colored"]
 runner = ["std"]
 no_std = []
 

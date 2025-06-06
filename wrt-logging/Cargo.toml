@@ -20,8 +20,8 @@ log = { version = "0.4", optional = true }
 
 [features]
 default = []
+# Binary choice: std OR no_std (no alloc middle ground)
 std = ["wrt-host/std", "wrt-foundation/std", "log"]
-alloc = ["wrt-host/alloc", "wrt-foundation/alloc"]
 # For compatibility with verification script
 # This is a no-op since the crate is no_std by default
 no_std = []

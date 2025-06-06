@@ -31,8 +31,8 @@ wat = "1.231.0"
 
 [features]
 default = []
+# Binary choice: std OR no_std (no alloc middle ground)
 std = ["wrt-format/std", "wrt-foundation/std"]
-alloc = ["wrt-format/alloc", "wrt-foundation/alloc"]
 # For compatibility with verification script
 # This is a no-op since the crate is no_std by default
 no_std = []

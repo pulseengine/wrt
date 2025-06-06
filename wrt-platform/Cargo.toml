@@ -33,10 +33,10 @@ criterion = { version = "0.6", features = ["html_reports"] }
 
 [features]
 default = [] # No std/alloc by default
+# Binary choice: std OR no_std (no alloc middle ground)
 
-# Standard features for cross-crate compatibility
-std = ["wrt-error/std", "wrt-sync/std"] # , "wrt-format?/std", "wrt-foundation?/std"]
-alloc = ["wrt-error/alloc", "wrt-sync/alloc"] # , "wrt-format?/alloc", "wrt-foundation?/alloc"]
+# Binary choice: std OR no_std (no alloc middle ground)
+std = ["wrt-error/std", "wrt-sync/std"]
 no_std = []
 
 # All memory allocation uses NoStdProvider pattern
@@ -58,6 +58,7 @@ platform-vxworks = [] # VxWorks RTOS support (LKM and RTP)
 # arm-hardening = [] # If any platform code depends on this
 helper-mode = [] # Added for C-ABI runtime
 disable-panic-handler = ["wrt-error/disable-panic-handler", "wrt-sync/disable-panic-handler"] # Disable panic handler for library builds
+enable-panic-handler = [] # Enable panic handler for standalone no_std builds
 
 [lib]
 crate-type = ["rlib", "staticlib"] # staticlib for C ABI helper if needed later

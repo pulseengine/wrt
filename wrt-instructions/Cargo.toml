@@ -11,15 +11,14 @@ categories = ["wasm", "emulators", "no-std", "embedded"]
 
 [features]
 default = []
+# Binary choice: std OR no_std (no alloc middle ground)
 std = [
     "wrt-foundation/std",
     "wrt-sync/std",
     "wrt-math/std",
-    "dep:log",
-]
+    "dep:log"]
 # This crate is no_std by default, this feature is a no-op for compatibility
 no_std = []
-alloc = ["wrt-foundation/alloc", "wrt-sync/alloc", "wrt-math/alloc", "dep:alloc"]
 optimize = ["wrt-foundation/optimize"]
 safety = ["wrt-foundation/safety"]
 
@@ -39,7 +38,6 @@ wrt-math = { workspace = true }
 log = { version = "0.4", optional = true }
 
 # No-std support
-alloc = { version = "1.0.0", optional = true, package = "rustc-std-workspace-alloc" }
 
 [dev-dependencies]
 proptest = "1.4.0"
