@@ -1,5 +1,5 @@
-// Only run arithmetic tests when alloc is available
-#[cfg(any(feature = "std", feature = "alloc"))]
+// Binary std/no_std choice
+#[cfg(feature = "std")]
 mod arithmetic_tests {
     use crate::prelude::*;
     use wrt_error::{codes, ErrorCategory};

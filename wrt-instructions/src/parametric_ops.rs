@@ -105,13 +105,12 @@ impl<T: ParametricContext> PureInstruction<T, Error> for ParametricOp {
     }
 }
 
-#[cfg(all(test, any(feature = "std", feature = "alloc")))]
+#[cfg(all(test, any(feature = "std", )))]
 mod tests {
     use super::*;
     
     // Import Vec based on feature flags
-    #[cfg(all(not(feature = "std"), feature = "alloc"))]
-    use alloc::vec::Vec;
+        use std::vec::Vec;
     #[cfg(feature = "std")]
     use std::vec::Vec;
     

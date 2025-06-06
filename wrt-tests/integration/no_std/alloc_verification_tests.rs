@@ -6,18 +6,16 @@
 //! to ensure consistent behavior across std and no_std with alloc environments.
 //! It's specifically designed to catch regressions in the alloc feature set.
 
-// For testing in a no_std environment with alloc support
+// Binary std/no_std choice
 #![cfg_attr(not(feature = "std"), no_std)]
 
 // External crate imports
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
 extern crate alloc;
 
 #[cfg(test)]
 mod tests {
-    // Import necessary types for no_std with alloc environment
-    #[cfg(all(not(feature = "std"), feature = "alloc"))]
-    use alloc::{boxed::Box, format, string::String, vec, vec::Vec};
+    // Binary std/no_std choice
+        use std::{boxed::Box, format, string::String, vec, vec::Vec};
     
     #[cfg(feature = "std")]
     use std::{boxed::Box, string::String, vec, vec::Vec};
@@ -47,7 +45,7 @@ mod tests {
     
     #[test]
     fn test_alloc_string_handling() {
-        // Create strings in no_std with alloc environment
+        // Binary std/no_std choice
         let string1 = String::from("Hello");
         let string2 = String::from(" World");
         
@@ -65,7 +63,7 @@ mod tests {
     
     #[test]
     fn test_alloc_vec_operations() {
-        // Create a vector in no_std with alloc environment
+        // Binary std/no_std choice
         let mut vec = Vec::<u32>::with_capacity(10);
         
         // Test vector operations
@@ -76,18 +74,18 @@ mod tests {
         assert_eq!(vec.len(), 10);
         assert_eq!(vec[5], 5);
         
-        // Test filtering (requires heap allocation)
+        // Binary std/no_std choice
         let evens: Vec<u32> = vec.iter().filter(|&&x| x % 2 == 0).cloned().collect();
         assert_eq!(evens, vec![0, 2, 4, 6, 8]);
         
-        // Test mapping (requires heap allocation)
+        // Binary std/no_std choice
         let doubled: Vec<u32> = vec.iter().map(|&x| x * 2).collect();
         assert_eq!(doubled[5], 10);
     }
     
     #[test]
     fn test_boxed_values() {
-        // Test Box<T> in no_std with alloc
+        // Binary std/no_std choice
         let boxed_value = Box::new(42);
         assert_eq!(*boxed_value, 42);
         
@@ -104,7 +102,7 @@ mod tests {
         // Create a component value store builder
         let mut builder = ComponentValueStoreBuilder::new();
         
-        // Add some string values (requires alloc)
+        // Binary std/no_std choice
         let string_id = builder.add_string("hello world");
         
         // Build the store
@@ -117,7 +115,7 @@ mod tests {
     
     #[test]
     fn test_error_with_context() {
-        // Create an error with a context string (requires alloc)
+        // Binary std/no_std choice
         let error = Error::new(
             ErrorCategory::Resource,
             42,
@@ -132,7 +130,7 @@ mod tests {
     
     #[test]
     fn test_resource_management() {
-        // Create a resource manager (uses alloc internally)
+        // Binary std/no_std choice
         let mut resource_manager = ResourceManager::new();
         
         // Test resource creation
@@ -150,7 +148,7 @@ mod tests {
     
     #[test]
     fn test_bounded_vec_with_complex_type() {
-        // Create a bounded vec with a complex type that requires alloc
+        // Binary std/no_std choice
         let mut vec = BoundedVec::<String, 5>::new();
         
         // Add strings to it
@@ -164,10 +162,10 @@ mod tests {
     
     #[test]
     fn test_component_builder() {
-        // Create a component builder (requires alloc)
+        // Binary std/no_std choice
         let mut builder = ComponentBuilder::new();
         
-        // Add a type (requires alloc internally)
+        // Binary std/no_std choice
         let type_id = ComponentTypeId::Func(0);
         builder.add_type(type_id);
         

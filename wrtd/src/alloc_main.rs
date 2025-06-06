@@ -14,12 +14,12 @@ mod main;
 
 use main::alloc_runtime;
 
-/// Main entry point for alloc runtime mode
+/// Binary std/no_std choice
 fn main() -> ! {
     alloc_runtime::main()
 }
 
-// Panic handler for alloc mode
+// Binary std/no_std choice
 #[panic_handler]
 fn panic(_info: &core::panic::PanicInfo) -> ! {
     // In real implementation, would handle panic appropriately

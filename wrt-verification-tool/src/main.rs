@@ -13,15 +13,13 @@
 #[cfg(feature = "std")]
 extern crate std;
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
 extern crate alloc;
 
 // Tests module
 mod tests;
 
 // Import appropriate types based on environment
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::{format, string::String, vec::Vec};
+use std::{format, string::String, vec::Vec};
 #[cfg(feature = "std")]
 use std::{format, process, string::String, time::Instant, vec::Vec};
 

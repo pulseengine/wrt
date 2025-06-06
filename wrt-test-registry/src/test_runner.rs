@@ -72,9 +72,9 @@ pub struct TestRunner {
     /// Name of the test runner
     pub name: String,
     /// Test suites to run
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub suites: Vec<(String, Box<dyn Fn() -> TestResult + Send + Sync>)>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub suites: BoundedVec<(String, Box<dyn Fn() -> TestResult + Send + Sync>), 32>,
     /// Configuration for test execution
     pub config: TestConfig,
@@ -86,9 +86,9 @@ impl TestRunner {
         let features = BoundedVec::new();
         Self {
             name: name.to_string(),
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             suites: Vec::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             suites: BoundedVec::new(),
             config: TestConfig::new(cfg!(feature = "std"), features),
         }
@@ -98,12 +98,12 @@ impl TestRunner {
     pub fn add_test_suite(&mut self, name: &str, suite_fn: impl Fn() -> TestResult + Send + Sync + 'static) -> Result<()> {
         let suite_entry = (name.to_string(), Box::new(suite_fn) as Box<dyn Fn() -> TestResult + Send + Sync>);
         
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.suites.push(suite_entry);
             Ok(())
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             self.suites.try_push(suite_entry).map_err(|e| {
                 Error::new(

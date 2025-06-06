@@ -74,7 +74,7 @@ mod tests {
         assert!(stdout.contains("Runtime mode: Std"));
     }
 
-    /// Test alloc runtime mode capabilities and limits
+    /// Binary std/no_std choice
     #[test]
     #[ignore = "Requires compilation fixes in core WRT crates"]
     fn test_alloc_runtime_mode() {
@@ -84,7 +84,7 @@ mod tests {
             .unwrap()
             .to_string();
 
-        // Test dynamic allocation functionality
+        // Binary std/no_std choice
         let (success, stdout, stderr) = run_wrtd_with_mode(
             &test_wasm,
             "alloc",
@@ -301,7 +301,7 @@ mod tests {
             .unwrap()
             .to_string();
 
-        // Test different memory strategies with alloc mode
+        // Binary std/no_std choice
         let strategies = ["zero-copy", "bounded-copy", "full-isolation"];
 
         for strategy in &strategies {

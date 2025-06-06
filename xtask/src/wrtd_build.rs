@@ -45,7 +45,7 @@ pub fn build_all_wrtd(config: WrtdBuildConfig) -> Result<()> {
     );
     build_results.push(("wrtd-std", std_result));
 
-    // Build alloc binary (for embedded with heap)
+    // Binary std/no_std choice
     println!("\n📦 Building Allocation Runtime (embedded with heap)...");
     let alloc_result = build_wrtd_binary(
         "wrtd-alloc",
@@ -235,7 +235,7 @@ fn test_wrtd_binaries(release: bool) -> Result<()> {
         }
     }
 
-    // Note about alloc and nostd binaries
+    // Binary std/no_std choice
     println!("   ℹ️  wrtd-alloc uses embedded configuration (no CLI)");
     println!("   ℹ️  wrtd-nostd is for embedded firmware (no CLI)");
 

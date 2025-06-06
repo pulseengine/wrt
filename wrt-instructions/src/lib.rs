@@ -33,11 +33,10 @@
 //#![warn(missing_docs)] // Temporarily disabled - docs will be added systematically
 #![warn(clippy::missing_panics_doc)]
 
-// Required for alloc types in no_std
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
+// Binary std/no_std choice
 extern crate alloc;
 
-// Note: This crate supports no_std without alloc, using bounded collections
+// Binary std/no_std choice
 // from wrt-foundation
 
 // Import prelude for common type access

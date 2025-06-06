@@ -25,7 +25,7 @@ pub fn run_tests() -> TestResult {
     runner.add_test_suite("Bounded Collections", bounded_collections_tests::run_tests)?;
     runner.add_test_suite("Memory Safety", memory_safety_tests::run_tests)?;
     
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     runner.add_test_suite("Alloc Compatibility", alloc_compatibility_tests::run_tests)?;
     
     runner.run_all()

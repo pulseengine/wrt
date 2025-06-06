@@ -12,10 +12,10 @@
 use crate::prelude::*;
 
 // Type aliases for no_std compatibility
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 type ValueVec = Vec<Value>;
 
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[cfg(all(not(feature = "std"), not(feature = "std")))]
 type ValueVec = wrt_foundation::BoundedVec<Value, 16, wrt_foundation::NoStdProvider<512>>;
 
 /// Builder for configuring and creating instances of `CallbackRegistry` with
@@ -29,41 +29,41 @@ pub struct HostBuilder {
     registry: CallbackRegistry,
 
     /// Built-in types that are required by the component
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     required_builtins: HashSet<BuiltinType>,
     
     /// Built-in types that are required by the component (no_std version)
-    #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+    #[cfg(all(not(feature = "std"), not(feature = "std")))]
     required_builtins: HashSet<BuiltinType, 32, wrt_foundation::NoStdProvider<1024>>,
 
     /// Built-in interceptor
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     builtin_interceptor: Option<Arc<dyn BuiltinInterceptor>>,
 
     /// Link interceptor
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     link_interceptor: Option<Arc<LinkInterceptor>>,
 
     /// Whether strict validation is enabled
     strict_validation: bool,
 
     /// Component name for the built-in host
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     component_name: String,
 
     /// Host ID for the built-in host
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     host_id: String,
 
     /// Fallback handlers for critical built-ins
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     fallback_handlers: Vec<(BuiltinType, HostFunctionHandler)>,
 }
 
 // Manual Default implementation to handle BoundedSet in no_std mode
 impl Default for HostBuilder {
     fn default() -> Self {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             Self {
                 registry: CallbackRegistry::new(),
@@ -77,7 +77,7 @@ impl Default for HostBuilder {
             }
         }
         
-        #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+        #[cfg(all(not(feature = "std"), not(feature = "std")))]
         {
             let provider = wrt_foundation::NoStdProvider::default();
             Self {
@@ -135,7 +135,7 @@ impl HostBuilder {
     /// Set the built-in interceptor.
     ///
     /// This method sets an interceptor for built-in functions.
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fn with_builtin_interceptor(mut self, interceptor: Arc<dyn BuiltinInterceptor>) -> Self {
         self.builtin_interceptor = Some(interceptor);
         self
@@ -144,7 +144,7 @@ impl HostBuilder {
     /// Set the link interceptor.
     ///
     /// This method sets an interceptor for link-time function resolution.
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fn with_link_interceptor(mut self, interceptor: Arc<LinkInterceptor>) -> Self {
         self.link_interceptor = Some(interceptor.clone());
         self.registry = self.registry.with_interceptor(interceptor);
@@ -169,9 +169,9 @@ impl HostBuilder {
         F: Fn(&mut dyn Any, ValueVec) -> Result<ValueVec> + Send + Sync + Clone + 'static,
     {
         let handler_fn = HostFunctionHandler::new(move |target| {
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             let args = Vec::new();
-            #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+            #[cfg(all(not(feature = "std"), not(feature = "std")))]
             let args = ValueVec::new(wrt_foundation::NoStdProvider::<512>::default()).expect("Failed to create ValueVec");
             handler(target, args)
         });
@@ -195,12 +195,12 @@ impl HostBuilder {
     /// Check if a built-in type is required.
     #[must_use]
     pub fn is_builtin_required(&self, builtin_type: BuiltinType) -> bool {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.required_builtins.contains(&builtin_type)
         }
         
-        #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+        #[cfg(all(not(feature = "std"), not(feature = "std")))]
         {
             self.required_builtins.contains(&builtin_type).unwrap_or(false)
         }
@@ -223,7 +223,7 @@ impl HostBuilder {
     /// built-in is not implemented.
     pub fn validate(&self) -> Result<()> {
         if self.strict_validation {
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             {
                 for &builtin_type in &self.required_builtins {
                     if !self.is_builtin_implemented(builtin_type) {
@@ -232,7 +232,7 @@ impl HostBuilder {
                 }
             }
             
-            #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+            #[cfg(all(not(feature = "std"), not(feature = "std")))]
             {
                 // In no_std mode, we can't easily iterate over BoundedSet
                 // For now, we'll skip validation since we can't store complex handlers anyway
@@ -258,13 +258,13 @@ impl HostBuilder {
     /// Set the component name
     ///
     /// This is used for context in built-in interception
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fn with_component_name(mut self, name: &str) -> Self {
         #[cfg(feature = "std")]
         {
             self.component_name = String::from(name);
         }
-        #[cfg(all(feature = "alloc", not(feature = "std")))]
+        #[cfg(all(not(feature = "std")))]
         {
             self.component_name = name.into();
         }
@@ -274,13 +274,13 @@ impl HostBuilder {
     /// Set the host ID
     ///
     /// This is used for context in built-in interception
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fn with_host_id(mut self, id: &str) -> Self {
         #[cfg(feature = "std")]
         {
             self.host_id = String::from(id);
         }
-        #[cfg(all(feature = "alloc", not(feature = "std")))]
+        #[cfg(all(not(feature = "std")))]
         {
             self.host_id = id.into();
         }
@@ -291,15 +291,15 @@ impl HostBuilder {
     ///
     /// Fallbacks are used when a built-in is required but not explicitly
     /// implemented through a regular handler.
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fn with_fallback_handler<F>(mut self, builtin_type: BuiltinType, handler: F) -> Self
     where
         F: Fn(&mut dyn Any, Vec<Value>) -> Result<Vec<Value>> + Send + Sync + Clone + 'static,
     {
         let handler_fn = HostFunctionHandler::new(move |target| {
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             let args = Vec::new();
-            #[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+            #[cfg(all(not(feature = "std"), not(feature = "std")))]
             let args = ValueVec::new(wrt_foundation::NoStdProvider::<512>::default()).expect("Failed to create ValueVec");
             handler(target, args)
         });
@@ -316,7 +316,7 @@ impl HostBuilder {
     /// # Returns
     ///
     /// A `BuiltinHost` instance ready for use
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fn build_builtin_host(&self) -> BuiltinHost {
         let mut host = BuiltinHost::new(&self.component_name, &self.host_id);
 
@@ -480,7 +480,7 @@ mod tests {
         assert!(registry.get_interceptor().is_some());
     }
 
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     #[test]
     fn test_builtin_host_creation() {
         let builder = HostBuilder::new()
@@ -500,7 +500,7 @@ mod tests {
         assert_eq!(result.unwrap(), vec![Value::I32(42)]);
     }
 
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     #[test]
     fn test_fallback_registration() {
         let builder = HostBuilder::new()
@@ -518,15 +518,15 @@ mod tests {
         assert_eq!(result.unwrap(), vec![Value::I32(99)]);
     }
 
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     #[test]
     fn test_builder_with_interceptor() {
         use wrt_foundation::component_value::ComponentValue;
         use wrt_intercept::{BeforeBuiltinResult, BuiltinInterceptor, InterceptContext};
         #[cfg(feature = "std")]
         use std::sync::Arc;
-        #[cfg(all(feature = "alloc", not(feature = "std")))]
-        use alloc::sync::Arc;
+        #[cfg(all(not(feature = "std")))]
+        use std::sync::Arc;
 
         struct TestInterceptor;
 

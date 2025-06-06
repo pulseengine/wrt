@@ -27,8 +27,8 @@
 #[cfg(feature = "std")]
 extern crate std;
 
-// Import alloc for no_std with allocation
-#[cfg(feature = "alloc")]
+// Binary std/no_std choice
+#[cfg(feature = "std")]
 extern crate alloc;
 
 // Modules

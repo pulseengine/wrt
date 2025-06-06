@@ -10,13 +10,13 @@ use core::{
     ops::{Deref, DerefMut},
     sync::atomic::{AtomicUsize, Ordering},
 };
-// REMOVED: #[cfg(feature = "alloc")]
-// REMOVED: use alloc::borrow::Cow; // Unused import
-// REMOVED: #[cfg(all(not(feature = "alloc"), feature = "std"))]
+// REMOVED: #[cfg(feature = "std")]
+// REMOVED: use std::borrow::Cow; // Unused import
+// REMOVED: #[cfg(all(not(feature = "std"), feature = "std"))]
 // REMOVED: use std::borrow::Cow; // Unused, as Cow was only for error messages which are now
 // static.
 
-// These are used by parking_impl which is feature-gated by std (which implies alloc)
+// Binary std/no_std choice
 #[cfg(feature = "std")]
 use std::sync::Arc;
 #[cfg(feature = "std")]

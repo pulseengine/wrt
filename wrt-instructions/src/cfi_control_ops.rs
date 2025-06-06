@@ -24,7 +24,7 @@
 // Remove unused imports
 
 use crate::prelude::*;
-#[cfg(not(feature = "alloc"))]
+#[cfg(not(feature = "std"))]
 use wrt_foundation::NoStdProvider;
 use crate::control_ops::BranchTarget;
 use crate::types::CfiTargetVec;
@@ -166,9 +166,9 @@ pub struct CfiProtectedBranchTarget {
     /// CFI protection requirements
     pub protection: CfiTargetProtection,
     /// Validation requirements
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     pub validation: Vec<CfiValidationRequirement>,
-    #[cfg(not(feature = "alloc"))]
+    #[cfg(not(feature = "std"))]
     pub validation: crate::types::CfiRequirementVec,
 }
 
@@ -266,9 +266,9 @@ pub struct CfiLandingPad {
     /// Software validation code
     pub software_validation: Option<CfiSoftwareValidation>,
     /// Expected predecessor types
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     pub valid_predecessors: Vec<CfiTargetType>,
-    #[cfg(not(feature = "alloc"))]
+    #[cfg(not(feature = "std"))]
     pub valid_predecessors: crate::types::CfiTargetTypeVec,
 }
 
@@ -279,9 +279,9 @@ impl Default for CfiLandingPad {
             hardware_instruction: None,
             software_validation: None,
             valid_predecessors: {
-                #[cfg(feature = "alloc")]
+                #[cfg(feature = "std")]
                 { Vec::new() }
-                #[cfg(not(feature = "alloc"))]
+                #[cfg(not(feature = "std"))]
                 { crate::types::CfiTargetTypeVec::new(wrt_foundation::NoStdProvider::default()).unwrap_or_else(|_| panic!("Failed to create CfiTargetTypeVec")) }
             },
         }
@@ -308,9 +308,9 @@ pub struct CfiSoftwareValidation {
     /// Validation check ID
     pub check_id: u32,
     /// Expected values to validate
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     pub expected_values: Vec<CfiExpectedValue>,
-    #[cfg(not(feature = "alloc"))]
+    #[cfg(not(feature = "std"))]
     pub expected_values: crate::types::CfiExpectedValueVec,
     /// Validation function
     pub validation_function: SoftwareCfiFunction,
@@ -500,14 +500,14 @@ impl wrt_foundation::traits::ToBytes for CfiValidationRequirement {
             Self::ControlFlowTargetCheck { valid_targets } => {
                 writer.write_u8(2u8)?;
                 // Serialize Vec<u32> manually
-                #[cfg(feature = "alloc")]
+                #[cfg(feature = "std")]
                 {
                     writer.write_u32_le(valid_targets.len() as u32)?;
                     for target in valid_targets.iter() {
                         writer.write_u32_le(*target)?;
                     }
                 }
-                #[cfg(not(feature = "alloc"))]
+                #[cfg(not(feature = "std"))]
                 {
                     writer.write_u32_le(valid_targets.len() as u32)?;
                     for i in 0..valid_targets.len() {
@@ -548,15 +548,15 @@ impl wrt_foundation::traits::FromBytes for CfiValidationRequirement {
             2 => {
                 // Deserialize CfiTargetVec manually  
                 let len = reader.read_u32_le()? as usize;
-                #[cfg(feature = "alloc")]
+                #[cfg(feature = "std")]
                 let mut valid_targets = Vec::with_capacity(len);
-                #[cfg(not(feature = "alloc"))]
+                #[cfg(not(feature = "std"))]
                 let mut valid_targets = BoundedVec::new(NoStdProvider::default())?;
                 
                 for _ in 0..len {
-                    #[cfg(feature = "alloc")]
+                    #[cfg(feature = "std")]
                     valid_targets.push(reader.read_u32_le()?);
-                    #[cfg(not(feature = "alloc"))]
+                    #[cfg(not(feature = "std"))]
                     valid_targets.push(reader.read_u32_le()?)
                         .map_err(|_| wrt_error::Error::validation_error("Failed to push to bounded vec"))?;
                 }
@@ -629,14 +629,14 @@ pub struct CfiExecutionContext {
     /// Current instruction offset
     pub current_instruction: u32,
     /// Software shadow stack
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     pub shadow_stack: Vec<ShadowStackEntry>,
-    #[cfg(not(feature = "alloc"))]
+    #[cfg(not(feature = "std"))]
     pub shadow_stack: crate::types::ShadowStackVec,
     /// Active landing pad expectations
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     pub landing_pad_expectations: Vec<LandingPadExpectation>,
-    #[cfg(not(feature = "alloc"))]
+    #[cfg(not(feature = "std"))]
     pub landing_pad_expectations: crate::types::LandingPadExpectationVec,
     /// CFI violation count
     pub violation_count: u32,
@@ -650,15 +650,15 @@ impl Default for CfiExecutionContext {
             current_function: 0,
             current_instruction: 0,
             shadow_stack: {
-                #[cfg(feature = "alloc")]
+                #[cfg(feature = "std")]
                 { Vec::new() }
-                #[cfg(not(feature = "alloc"))]
+                #[cfg(not(feature = "std"))]
                 { crate::types::ShadowStackVec::new(wrt_foundation::NoStdProvider::default()).unwrap_or_else(|_| panic!("Failed to create ShadowStackVec")) }
             },
             landing_pad_expectations: {
-                #[cfg(feature = "alloc")]
+                #[cfg(feature = "std")]
                 { Vec::new() }
-                #[cfg(not(feature = "alloc"))]
+                #[cfg(not(feature = "std"))]
                 { crate::types::LandingPadExpectationVec::new(wrt_foundation::NoStdProvider::default()).unwrap_or_else(|_| panic!("Failed to create LandingPadExpectationVec")) }
             },
             violation_count: 0,
@@ -878,9 +878,9 @@ impl CfiControlFlowOps for DefaultCfiControlFlowOps {
                     temporal_validation: None,
                 },
                 validation: {
-                    #[cfg(feature = "alloc")]
+                    #[cfg(feature = "std")]
                     { Vec::new() }
-                    #[cfg(not(feature = "alloc"))]
+                    #[cfg(not(feature = "std"))]
                     { crate::types::CfiRequirementVec::new(wrt_foundation::NoStdProvider::default()).unwrap_or_else(|_| panic!("Failed to create CfiRequirementVec")) }
                 },
             });
@@ -917,7 +917,7 @@ impl CfiControlFlowOps for DefaultCfiControlFlowOps {
             };
 
         // Create validation requirements
-        #[cfg(feature = "alloc")]
+        #[cfg(feature = "std")]
         let validation_requirements = vec![
             CfiValidationRequirement::TypeSignatureCheck {
                 expected_type_index: type_idx,
@@ -925,9 +925,9 @@ impl CfiControlFlowOps for DefaultCfiControlFlowOps {
             },
             CfiValidationRequirement::ControlFlowTargetCheck {
                 valid_targets: {
-                    #[cfg(feature = "alloc")]
+                    #[cfg(feature = "std")]
                     { vec![table_idx] }
-                    #[cfg(not(feature = "alloc"))]
+                    #[cfg(not(feature = "std"))]
                     {
                         let mut targets = CfiTargetVec::new(wrt_foundation::NoStdProvider::<1024>::default())
                             .unwrap_or_else(|_| panic!("Failed to create CfiTargetVec"));
@@ -938,7 +938,7 @@ impl CfiControlFlowOps for DefaultCfiControlFlowOps {
             },
         ];
         
-        #[cfg(not(feature = "alloc"))]
+        #[cfg(not(feature = "std"))]
         let validation_requirements = {
             // For no_std environments, create minimal validation
             use crate::types::CfiRequirementVec;
@@ -1009,9 +1009,9 @@ impl CfiControlFlowOps for DefaultCfiControlFlowOps {
                     temporal_validation: None,
                 },
                 validation: {
-                    #[cfg(feature = "alloc")]
+                    #[cfg(feature = "std")]
                     { Vec::new() }
-                    #[cfg(not(feature = "alloc"))]
+                    #[cfg(not(feature = "std"))]
                     { crate::types::CfiRequirementVec::new(wrt_foundation::NoStdProvider::default()).unwrap_or_else(|_| panic!("Failed to create CfiRequirementVec")) }
                 },
             });
@@ -1021,13 +1021,13 @@ impl CfiControlFlowOps for DefaultCfiControlFlowOps {
         let target_offset = self.resolve_label_to_offset(label_idx, context)?;
 
         let validation_requirements = {
-            #[cfg(feature = "alloc")]
+            #[cfg(feature = "std")]
             {
                 vec![CfiValidationRequirement::ControlFlowTargetCheck {
                     valid_targets: vec![target_offset],
                 }]
             }
-            #[cfg(not(feature = "alloc"))]
+            #[cfg(not(feature = "std"))]
             {
                 let mut reqs = crate::types::CfiRequirementVec::new(wrt_foundation::NoStdProvider::<1024>::default())
                     .unwrap_or_else(|_| panic!("Failed to create CfiRequirementVec"));
@@ -1149,9 +1149,9 @@ impl DefaultCfiControlFlowOps {
     }
 
     fn validate_shadow_stack_return(&self, context: &mut CfiExecutionContext) -> Result<()> {
-        #[cfg(feature = "alloc")]
+        #[cfg(feature = "std")]
         let shadow_entry_opt = context.shadow_stack.pop();
-        #[cfg(not(feature = "alloc"))]
+        #[cfg(not(feature = "std"))]
         let shadow_entry_opt = context.shadow_stack.pop().ok().flatten();
         
         if let Some(shadow_entry) = shadow_entry_opt {
@@ -1233,9 +1233,9 @@ impl DefaultCfiControlFlowOps {
         Ok(CfiSoftwareValidation {
             check_id: self.generate_cfi_check_id(context),
             expected_values: {
-                #[cfg(feature = "alloc")]
+                #[cfg(feature = "std")]
                 { Vec::new() }
-                #[cfg(not(feature = "alloc"))]
+                #[cfg(not(feature = "std"))]
                 { crate::types::CfiExpectedValueVec::new(wrt_foundation::NoStdProvider::default()).unwrap_or_else(|_| panic!("Failed to create CfiExpectedValueVec")) }
             }, // Would be populated based on context
             validation_function,
@@ -1261,9 +1261,9 @@ impl DefaultCfiControlFlowOps {
     fn determine_valid_predecessors(&self, target_type: CfiTargetType) -> crate::types::CfiTargetTypeVec {
         match target_type {
             CfiTargetType::IndirectCall => {
-                #[cfg(feature = "alloc")]
+                #[cfg(feature = "std")]
                 { vec![CfiTargetType::IndirectCall] }
-                #[cfg(not(feature = "alloc"))]
+                #[cfg(not(feature = "std"))]
                 {
                     let mut types = crate::types::CfiTargetTypeVec::new(wrt_foundation::NoStdProvider::<1024>::default())
                         .unwrap_or_else(|_| panic!("Failed to create CfiTargetTypeVec"));
@@ -1272,9 +1272,9 @@ impl DefaultCfiControlFlowOps {
                 }
             },
             CfiTargetType::Return => {
-                #[cfg(feature = "alloc")]
+                #[cfg(feature = "std")]
                 { vec![CfiTargetType::DirectCall, CfiTargetType::IndirectCall] }
-                #[cfg(not(feature = "alloc"))]
+                #[cfg(not(feature = "std"))]
                 {
                     let mut types = crate::types::CfiTargetTypeVec::new(wrt_foundation::NoStdProvider::<1024>::default())
                         .unwrap_or_else(|_| panic!("Failed to create CfiTargetTypeVec"));
@@ -1284,9 +1284,9 @@ impl DefaultCfiControlFlowOps {
                 }
             },
             CfiTargetType::Branch => {
-                #[cfg(feature = "alloc")]
+                #[cfg(feature = "std")]
                 { vec![CfiTargetType::Branch] }
-                #[cfg(not(feature = "alloc"))]
+                #[cfg(not(feature = "std"))]
                 {
                     let mut types = crate::types::CfiTargetTypeVec::new(wrt_foundation::NoStdProvider::<1024>::default())
                         .unwrap_or_else(|_| panic!("Failed to create CfiTargetTypeVec"));
@@ -1295,9 +1295,9 @@ impl DefaultCfiControlFlowOps {
                 }
             },
             CfiTargetType::BlockEntry => {
-                #[cfg(feature = "alloc")]
+                #[cfg(feature = "std")]
                 { vec![CfiTargetType::Branch] }
-                #[cfg(not(feature = "alloc"))]
+                #[cfg(not(feature = "std"))]
                 {
                     let mut types = crate::types::CfiTargetTypeVec::new(wrt_foundation::NoStdProvider::<1024>::default())
                         .unwrap_or_else(|_| panic!("Failed to create CfiTargetTypeVec"));
@@ -1306,9 +1306,9 @@ impl DefaultCfiControlFlowOps {
                 }
             },
             CfiTargetType::FunctionEntry => {
-                #[cfg(feature = "alloc")]
+                #[cfg(feature = "std")]
                 { vec![CfiTargetType::DirectCall, CfiTargetType::IndirectCall] }
-                #[cfg(not(feature = "alloc"))]
+                #[cfg(not(feature = "std"))]
                 {
                     let mut types = crate::types::CfiTargetTypeVec::new(wrt_foundation::NoStdProvider::<1024>::default())
                         .unwrap_or_else(|_| panic!("Failed to create CfiTargetTypeVec"));
@@ -1318,9 +1318,9 @@ impl DefaultCfiControlFlowOps {
                 }
             }
             _ => {
-                #[cfg(feature = "alloc")]
+                #[cfg(feature = "std")]
                 { Vec::new() }
-                #[cfg(not(feature = "alloc"))]
+                #[cfg(not(feature = "std"))]
                 { crate::types::CfiTargetTypeVec::new(wrt_foundation::NoStdProvider::default()).unwrap_or_else(|_| panic!("Failed to create CfiTargetTypeVec")) }
             },
         }
@@ -1367,7 +1367,7 @@ impl DefaultCfiControlFlowOps {
     }
 }
 
-#[cfg(all(test, any(feature = "std", feature = "alloc")))]
+#[cfg(all(test, any(feature = "std", )))]
 mod tests {
     use super::*;
 

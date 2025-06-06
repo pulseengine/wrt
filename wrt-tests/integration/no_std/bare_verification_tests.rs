@@ -6,7 +6,7 @@
 //! in the most restrictive no_std without alloc environment. This ensures
 //! that core WRT features work correctly on embedded and bare-metal systems.
 
-// For testing in a no_std environment without alloc
+// Binary std/no_std choice
 #![cfg_attr(not(feature = "std"), no_std)]
 
 #[cfg(test)]
@@ -37,7 +37,7 @@ mod tests {
     
     #[test]
     fn test_bounded_vec_without_alloc() {
-        // Create a bounded vec without allocations
+        // Binary std/no_std choice
         let mut vec = BoundedVec::<u32, 10>::new();
         
         // Fill it with values
@@ -63,7 +63,7 @@ mod tests {
     
     #[test]
     fn test_bounded_stack_without_alloc() {
-        // Create a bounded stack without allocations
+        // Binary std/no_std choice
         let mut stack = BoundedStack::<u32, 5>::new();
         
         // Push values
@@ -85,7 +85,7 @@ mod tests {
     
     #[test]
     fn test_resource_id_without_alloc() {
-        // Test resource ID creation and manipulation without allocations
+        // Binary std/no_std choice
         let id1 = ResourceId::new(42);
         let id2 = ResourceId::new(43);
         
@@ -98,7 +98,7 @@ mod tests {
         // Create a static array
         let data = [1, 2, 3, 4, 5];
         
-        // Create a safe slice (no allocations)
+        // Binary std/no_std choice
         let slice = SafeSlice::new(&data);
         
         // Test operations
@@ -112,7 +112,7 @@ mod tests {
     
     #[test]
     fn test_value_operations_without_alloc() {
-        // Test Value operations without allocations
+        // Binary std/no_std choice
         let i32_val = Value::I32(42);
         let i64_val = Value::I64(84);
         let f32_val = Value::F32(3.14);
@@ -134,7 +134,7 @@ mod tests {
     
     #[test]
     fn test_math_operations_without_alloc() {
-        // Test math operations without allocations
+        // Binary std/no_std choice
         let bits: u32 = transmute_f32_to_u32(3.14);
         let float: f32 = transmute_u32_to_f32(bits);
         
@@ -144,7 +144,7 @@ mod tests {
     
     #[test]
     fn test_mutex_without_alloc() {
-        // Create a raw mutex (no allocations)
+        // Binary std/no_std choice
         let mutex = RawMutex::new();
         
         // Test lock/unlock
@@ -161,7 +161,7 @@ mod tests {
     
     #[test]
     fn test_rwlock_without_alloc() {
-        // Create a raw rwlock (no allocations)
+        // Binary std/no_std choice
         let rwlock = RawRwLock::new();
         
         // Test read lock
@@ -190,7 +190,7 @@ mod tests {
     
     #[test]
     fn test_platform_page_size() {
-        // Get system page size (no allocations)
+        // Binary std/no_std choice
         let size = page_size();
         
         // Page size should be a power of 2 and greater than 0
@@ -200,7 +200,7 @@ mod tests {
     
     #[test]
     fn test_safe_stack_operations() {
-        // Create a safe stack with fixed capacity (no allocations)
+        // Binary std/no_std choice
         let mut stack = SafeStack::<u32, 5>::new();
         
         // Test stack operations

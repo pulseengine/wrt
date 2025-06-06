@@ -516,7 +516,7 @@ impl Validate for MultiMemoryGrow {
     }
 }
 
-#[cfg(all(test, any(feature = "std", feature = "alloc")))]
+#[cfg(all(test, any(feature = "std", )))]
 mod tests {
     use super::*;
     use crate::memory_ops::MemoryOperations;
@@ -534,7 +534,7 @@ mod tests {
     }
 
     impl MemoryOperations for MockMemory {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         fn read_bytes(&self, offset: u32, len: u32) -> Result<Vec<u8>> {
             let start = offset as usize;
             let end = start + len as usize;
@@ -544,7 +544,7 @@ mod tests {
             Ok(self.data[start..end].to_vec())
         }
         
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         fn read_bytes(&self, offset: u32, len: u32) -> Result<wrt_foundation::BoundedVec<u8, 65536, wrt_foundation::NoStdProvider<65536>>> {
             let start = offset as usize;
             let end = start + len as usize;
@@ -656,7 +656,7 @@ mod tests {
         
         // Verify stored data
         let data = memory.read_bytes(0, 4).unwrap();
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         assert_eq!(data, vec![0x78, 0x56, 0x34, 0x12]); // little-endian
     }
 
@@ -682,7 +682,7 @@ mod tests {
     #[test]
     fn test_multi_memory_bulk_operations() {
         let mut memory = MockMemory::new();
-        memory.data.resize(100, 0); // Pre-allocate some space
+        memory.data.resize(100, 0); // Binary std/no_std choice
         
         let bulk_ops = MultiMemoryBulk::new(0);
         
@@ -691,7 +691,7 @@ mod tests {
         
         // Verify fill
         let data = memory.read_bytes(10, 5).unwrap();
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         assert_eq!(data, vec![0xAB; 5]);
         
         // Test copy
@@ -699,7 +699,7 @@ mod tests {
         
         // Verify copy
         let copied_data = memory.read_bytes(20, 5).unwrap();
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         assert_eq!(copied_data, vec![0xAB; 5]);
     }
 

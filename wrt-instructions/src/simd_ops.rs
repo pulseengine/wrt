@@ -16,11 +16,11 @@ use crate::prelude::*;
 use wrt_error::Result;
 use wrt_foundation::values::Value;
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 extern crate alloc;
 
-#[cfg(feature = "alloc")]
-use alloc::vec::Vec;
+#[cfg(feature = "std")]
+use std::vec::Vec;
 
 /// SIMD operation context trait for accessing SIMD functionality
 pub trait SimdContext {
@@ -474,7 +474,7 @@ pub trait SimdExecutionContext {
     fn simd_context(&mut self) -> &mut dyn SimdContext;
 }
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 impl<T: SimdExecutionContext> PureInstruction<T, wrt_error::Error> for SimdInstruction {
     fn execute(&self, context: &mut T) -> Result<()> {
         // Get the required inputs from the execution stack
@@ -499,10 +499,10 @@ impl<T: SimdExecutionContext> PureInstruction<T, wrt_error::Error> for SimdInstr
     }
 }
 
-#[cfg(not(feature = "alloc"))]
+#[cfg(not(feature = "std"))]
 impl<T: SimdExecutionContext> PureInstruction<T, wrt_error::Error> for SimdInstruction {
     fn execute(&self, _context: &mut T) -> Result<()> {
-        // For no_alloc builds, SIMD operations are not supported
+        // Binary std/no_std choice
         Err(wrt_error::Error::new(
             wrt_error::ErrorCategory::Validation,
             1,

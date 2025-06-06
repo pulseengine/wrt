@@ -9,7 +9,7 @@
 //!
 //! This example requires std/alloc features.
 
-#![cfg(any(feature = "std", feature = "alloc"))]
+#![cfg(any(feature = "std", ))]
 
 use wrt_error::Result;
 use wrt_instructions::{

@@ -8,22 +8,22 @@ use std::time::Instant;
 
 // Import the prelude for unified access to standard types
 use crate::prelude::*;
-#[cfg(not(feature = "alloc"))]
+#[cfg(not(feature = "std"))]
 use crate::LinkInterceptorStrategy;
 
 /// Trait for formatting values in logging output
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 pub trait ValueFormatter: Clone + Send + Sync {
     /// Format a value for logging
     fn format_value(&self, value: &Value) -> String;
 }
 
 /// Default formatter for values
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 #[derive(Clone)]
 pub struct DefaultValueFormatter;
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 impl ValueFormatter for DefaultValueFormatter {
     fn format_value(&self, value: &Value) -> String {
         match value {
@@ -38,7 +38,7 @@ impl ValueFormatter for DefaultValueFormatter {
 }
 
 /// A trait for receiving log entries
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 pub trait LogSink: Send + Sync {
     /// Write a log entry
     fn write_log(&self, entry: &str);
@@ -66,7 +66,7 @@ impl Default for LoggingConfig {
 }
 
 /// A strategy that logs function calls
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 pub struct LoggingStrategy<S: LogSink, F: ValueFormatter = DefaultValueFormatter> {
     /// Log sink to write logs to
     sink: Arc<S>,
@@ -80,13 +80,13 @@ pub struct LoggingStrategy<S: LogSink, F: ValueFormatter = DefaultValueFormatter
 }
 
 /// A simple logging strategy for no_std environments
-#[cfg(not(feature = "alloc"))]
+#[cfg(not(feature = "std"))]
 pub struct LoggingStrategy {
     /// Configuration
     config: LoggingConfig,
 }
 
-#[cfg(all(feature = "std", feature = "alloc"))]
+#[cfg(all(feature = "std", ))]
 impl<S: LogSink> LoggingStrategy<S> {
     /// Create a new logging strategy with default formatter
     pub fn new(sink: Arc<S>) -> Self {
@@ -99,7 +99,7 @@ impl<S: LogSink> LoggingStrategy<S> {
     }
 }
 
-#[cfg(all(feature = "std", feature = "alloc"))]
+#[cfg(all(feature = "std", ))]
 impl<S: LogSink, F: ValueFormatter> LoggingStrategy<S, F> {
     /// Create a new logging strategy with custom formatter
     pub fn with_formatter(sink: Arc<S>, formatter: F) -> Self {
@@ -118,7 +118,7 @@ impl<S: LogSink, F: ValueFormatter> LoggingStrategy<S, F> {
     }
 }
 
-#[cfg(all(feature = "std", feature = "alloc"))]
+#[cfg(all(feature = "std", ))]
 impl<S: LogSink + 'static, F: ValueFormatter + 'static> LinkInterceptorStrategy
     for LoggingStrategy<S, F>
 {
@@ -242,7 +242,7 @@ impl<S: LogSink + 'static, F: ValueFormatter + 'static> LinkInterceptorStrategy
 }
 
 // Helper implementation for using a closure as a LogSink
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 impl<F> LogSink for F
 where
     F: Fn(&str) + Send + Sync,
@@ -252,8 +252,8 @@ where
     }
 }
 
-// No-alloc implementation of LoggingStrategy
-#[cfg(not(feature = "alloc"))]
+// Binary std/no_std choice
+#[cfg(not(feature = "std"))]
 impl LoggingStrategy {
     /// Create a new logging strategy for no_std environments
     pub fn new() -> Self {
@@ -269,7 +269,7 @@ impl LoggingStrategy {
     }
 }
 
-#[cfg(not(feature = "alloc"))]
+#[cfg(not(feature = "std"))]
 impl LinkInterceptorStrategy for LoggingStrategy {
     fn before_call(
         &self,

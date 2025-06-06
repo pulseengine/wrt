@@ -33,7 +33,7 @@ pub struct BoundedResource<P: MemoryProvider + Default + Clone + PartialEq + Eq>
     pub is_dropped: bool,
 }
 
-/// A no_std/no_alloc compatible resource table implementation
+/// Binary std/no_std choice
 #[derive(Debug)]
 pub struct BoundedResourceTable<P: MemoryProvider + Default + Clone + PartialEq + Eq> {
     /// Resources stored in this table
