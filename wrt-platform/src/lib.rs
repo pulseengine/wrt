@@ -61,20 +61,13 @@
 #[cfg(feature = "std")]
 extern crate std;
 
-#[cfg(feature = "alloc")]
-extern crate alloc;
-
-// Add extern crate for modules that need it
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-mod lib_prelude {
-    // Alloc types are re-exported by individual modules as needed
-}
+// Binary std/no_std choice
 
 // Note: Panic handler should be provided by the final binary/application,
 // not by library crates to avoid conflicts
 
-// For no_std + alloc builds, we need a global allocator
-// Note: Global allocator should be provided by the final binary/application,
+// Binary std/no_std choice
+// Binary std/no_std choice
 // not by library crates to avoid conflicts
 
 // Note: Panic handler should be defined by the final binary, not library crates
@@ -96,8 +89,8 @@ pub mod formal_verification;
 pub mod hardware_optimizations;
 pub mod side_channel_resistance;
 
-// Platform-agnostic threading (requires alloc at minimum)
-#[cfg(feature = "alloc")]
+// Platform-agnostic threading (requires std)
+#[cfg(feature = "std")]
 pub mod threading;
 
 // Threading with wasm support (requires both std and wrt-foundation)
@@ -195,7 +188,7 @@ pub use advanced_sync::{
     AdvancedRwLock, LockFreeAllocator, Priority, PriorityInheritanceMutex, MAX_PRIORITY,
     MIN_PRIORITY,
 };
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 pub use advanced_sync::{LockFreeMpscQueue, WaitFreeSpscQueue};
 pub use formal_verification::{
     annotations, concurrency_verification, integration_verification, memory_verification,
@@ -261,7 +254,7 @@ pub use runtime_detection::{
 pub use simd::{
     ScalarSimdProvider, SimdCapabilities, SimdLevel, SimdProvider,
 };
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 pub use simd::SimdRuntime;
 #[cfg(target_arch = "x86_64")]
 pub use simd::{x86_64::X86SimdProvider};
@@ -324,7 +317,7 @@ mod tests {
             .with_memory_tagging(true)
             .build();
 
-        // Just making sure the builder returns an allocator
+        // Binary std/no_std choice
         // We can't test its settings without accessing private fields
         assert_eq!(core::mem::size_of_val(&allocator) > 0, true);
     }
@@ -335,7 +328,7 @@ mod tests {
         let allocator =
             LinuxAllocatorBuilder::new().with_maximum_pages(100).with_guard_pages(true).build();
 
-        // Just making sure the builder returns an allocator
+        // Binary std/no_std choice
         // We can't test its settings without accessing private fields
         assert_eq!(core::mem::size_of_val(&allocator) > 0, true);
     }
@@ -354,7 +347,7 @@ mod tests {
             .with_mte_mode(MteMode::Synchronous)
             .build();
 
-        // Just making sure the builder returns an allocator
+        // Binary std/no_std choice
         // We can't test its settings without accessing private fields
         assert_eq!(core::mem::size_of_val(&allocator) > 0, true);
     }
@@ -377,7 +370,7 @@ mod tests {
             .with_guard_regions(true)
             .build();
 
-        // Test that the allocator was created successfully
+        // Binary std/no_std choice
         assert_eq!(core::mem::size_of_val(&allocator) > 0, true);
     }
 
@@ -517,11 +510,32 @@ mod tests {
     }
 }
 
-// Panic handler for no_std builds - only when building wrt-platform independently
-// This is needed for `cargo check -p wrt-platform` to work in no_std mode
-// When used as a dependency, the main binary should provide the panic handler
-#[cfg(all(not(feature = "std"), not(test), not(feature = "disable-panic-handler")))]
-#[panic_handler]
-fn panic(_info: &core::panic::PanicInfo) -> ! {
-    loop {}
+// Global allocator for no_std builds - panic on allocation attempts
+// This catches inadvertent allocation attempts in no_std mode
+#[cfg(all(not(feature = "std"), not(test)))]
+#[global_allocator]
+static GLOBAL: PanicAllocator = PanicAllocator;
+
+#[cfg(all(not(feature = "std"), not(test)))]
+struct PanicAllocator;
+
+#[cfg(all(not(feature = "std"), not(test)))]
+unsafe impl core::alloc::GlobalAlloc for PanicAllocator {
+    unsafe fn alloc(&self, _layout: core::alloc::Layout) -> *mut u8 {
+        panic!("Attempted allocation in no_std mode")
+    }
+    unsafe fn dealloc(&self, _ptr: *mut u8, _layout: core::alloc::Layout) {
+        panic!("Attempted deallocation in no_std mode")
+    }
 }
+
+// Panic handler for no_std builds
+// This provides a default panic handler to avoid compilation issues
+// Applications can override this by providing their own panic handler
+// Note: Disabled by default to avoid conflicts with std builds
+// Commented out to prevent duplicate panic handler errors in workspace builds
+// #[cfg(all(not(feature = "std"), not(test)))]
+// #[panic_handler]
+// fn panic(_info: &core::panic::PanicInfo) -> ! {
+//     loop {}
+// }
