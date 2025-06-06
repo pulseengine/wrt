@@ -5,8 +5,8 @@ use std::collections::BTreeMap;
 #[cfg(feature = "std")]
 use std::boxed::Box;
 
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-use alloc::{boxed::Box, collections::BTreeMap, vec::Vec, string::String};
+#[cfg(all(not(feature = "std")))]
+use std::{boxed::Box, collections::BTreeMap, vec::Vec, string::String};
 
 use core::fmt;
 
@@ -223,12 +223,12 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> WitParser<P> {
             types: BoundedVec::new(self.provider.clone()).unwrap_or_default(),
         };
 
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         let lines: Vec<&str> = source.lines().collect();
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         let mut i = 0;
 
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         while i < lines.len() {
             let line = lines[i].trim();
             
@@ -267,12 +267,12 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> WitParser<P> {
             types: BoundedVec::new(self.provider.clone()).unwrap_or_default(),
         };
 
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         let lines: Vec<&str> = source.lines().collect();
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         let mut i = 0;
 
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         while i < lines.len() {
             let line = lines[i].trim();
             
@@ -301,24 +301,24 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> WitParser<P> {
     }
 
     fn parse_import(&mut self, line: &str) -> Result<WitImport<P>, WitParseError<P>> {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         let parts: Vec<&str> = line.split_whitespace().collect();
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         if parts.len() < 3 {
             return Err(WitParseError::InvalidSyntax(
                 BoundedString::from_str("Invalid import syntax", self.provider.clone()).unwrap()
             ));
         }
 
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         let name = BoundedString::from_str(parts[1], self.provider.clone())
             .map_err(|_| WitParseError::InvalidIdentifier(
                 BoundedString::from_str(parts[1], self.provider.clone()).unwrap_or_default()
             ))?;
 
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         let item_type = parts[2];
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         let item = match item_type {
             "func" => {
                 let func = self.parse_function(line)?;
@@ -331,34 +331,34 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> WitParser<P> {
             }
         };
 
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         return Ok(WitImport { name, item });
         
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         Err(WitParseError::InvalidSyntax(
             BoundedString::from_str("Parsing not supported in no_std", self.provider.clone()).unwrap()
         ))
     }
 
     fn parse_export(&mut self, line: &str) -> Result<WitExport<P>, WitParseError<P>> {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         let parts: Vec<&str> = line.split_whitespace().collect();
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         if parts.len() < 3 {
             return Err(WitParseError::InvalidSyntax(
                 BoundedString::from_str("Invalid export syntax", self.provider.clone()).unwrap()
             ));
         }
 
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         let name = BoundedString::from_str(parts[1], self.provider.clone())
             .map_err(|_| WitParseError::InvalidIdentifier(
                 BoundedString::from_str(parts[1], self.provider.clone()).unwrap_or_default()
             ))?;
 
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         let item_type = parts[2];
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         let item = match item_type {
             "func" => {
                 let func = self.parse_function(line)?;
@@ -371,10 +371,10 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> WitParser<P> {
             }
         };
 
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         return Ok(WitExport { name, item });
         
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         Err(WitParseError::InvalidSyntax(
             BoundedString::from_str("Parsing not supported in no_std", self.provider.clone()).unwrap()
         ))
@@ -388,7 +388,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> WitParser<P> {
             is_async: line.contains("async"),
         };
 
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         if let Some(colon_pos) = line.find(':') {
             let name_part = &line[..colon_pos].trim();
             let parts: Vec<&str> = name_part.split_whitespace().collect();
@@ -405,37 +405,37 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> WitParser<P> {
     }
 
     fn parse_type_def(&mut self, line: &str) -> Result<WitTypeDef<P>, WitParseError<P>> {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         let parts: Vec<&str> = line.splitn(3, ' ').collect();
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         if parts.len() < 3 {
             return Err(WitParseError::InvalidSyntax(
                 BoundedString::from_str("Invalid type definition", self.provider.clone()).unwrap()
             ));
         }
 
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         let name = BoundedString::from_str(parts[1], self.provider.clone())
             .map_err(|_| WitParseError::InvalidIdentifier(
                 BoundedString::from_str(parts[1], self.provider.clone()).unwrap_or_default()
             ))?;
 
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         let type_str = parts[2];
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         let is_resource = type_str.starts_with("resource");
         
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         let ty = self.parse_type(type_str)?;
 
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         return Ok(WitTypeDef {
             name: name.clone(),
             ty: ty.clone(),
             is_resource,
         });
         
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         Err(WitParseError::InvalidSyntax(
             BoundedString::from_str("Parsing not supported in no_std", self.provider.clone()).unwrap()
         ))
@@ -459,7 +459,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> WitParser<P> {
             "char" => Ok(WitType::Char),
             "string" => Ok(WitType::String),
             _ => {
-                #[cfg(any(feature = "std", feature = "alloc"))]
+                #[cfg(feature = "std")]
                 {
                     if type_str.starts_with("list<") && type_str.ends_with(">") {
                         let inner = &type_str[5..type_str.len()-1];
@@ -486,7 +486,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> WitParser<P> {
                     }
                 }
                 
-                #[cfg(not(any(feature = "std", feature = "alloc")))]
+                #[cfg(not(any(feature = "std", )))]
                 {
                     let name = BoundedString::from_str(type_str, self.provider.clone())
                         .map_err(|_| WitParseError::InvalidIdentifier(
@@ -515,7 +515,7 @@ impl<P: MemoryProvider + Default + Clone + PartialEq + Eq> WitParser<P> {
             ))
     }
 
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fn convert_to_valtype(&self, wit_type: &WitType<P>) -> Result<crate::types::ValueType, Error> {
         match wit_type {
             WitType::Bool | WitType::U8 | WitType::U16 | WitType::U32 | WitType::U64 |
@@ -576,7 +576,7 @@ mod tests {
         assert_eq!(parser.parse_type("f64").unwrap(), WitType::F64);
     }
 
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     #[test]
     fn test_parse_compound_types() {
         let mut parser = WitParser::new(DefaultWitProvider::default());
@@ -594,7 +594,7 @@ mod tests {
         }
     }
 
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     #[test]
     fn test_parse_async_types() {
         let mut parser = WitParser::new(DefaultWitProvider::default());
@@ -612,7 +612,7 @@ mod tests {
         }
     }
 
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     #[test]
     fn test_parse_simple_world() {
         let mut parser = WitParser::new(DefaultWitProvider::default());
@@ -632,7 +632,7 @@ mod tests {
         assert_eq!(world.exports.len(), 1);
     }
 
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     #[test]
     fn test_convert_to_valtype() {
         let parser = WitParser::new(DefaultWitProvider::default());

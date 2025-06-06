@@ -181,7 +181,7 @@ impl<'a> FilePath<'a> {
     }
 
     /// Format as a path string (directory/filename)
-    /// Note: In no_alloc environment, we can't allocate a new string,
+    /// Binary std/no_std choice
     /// so this is primarily for display purposes
     pub fn display<F>(&self, mut writer: F) -> core::result::Result<(), core::fmt::Error>
     where

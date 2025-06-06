@@ -60,7 +60,7 @@ use crate::{
     prelude::*,
 };
 
-/// Maximum size of a WebAssembly component that can be decoded in no_alloc mode
+/// Binary std/no_std choice
 pub const MAX_COMPONENT_SIZE: usize = MAX_MODULE_SIZE;
 
 /// Maximum number of instances in a WebAssembly component
@@ -148,7 +148,7 @@ pub struct ComponentSectionInfo {
 ///
 /// This function checks if the provided bytes start with a valid WebAssembly
 /// Component Model magic number and version. It's a lightweight validation that
-/// doesn't require allocation.
+/// Binary std/no_std choice
 ///
 /// # Arguments
 ///
@@ -177,10 +177,10 @@ pub fn verify_component_header(bytes: &[u8]) -> Result<()> {
     Ok(())
 }
 
-/// A minimal WebAssembly Component header for no_alloc decoding
+/// Binary std/no_std choice
 ///
 /// This struct contains basic information from a WebAssembly Component
-/// for use in no_alloc environments.
+/// Binary std/no_std choice
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ComponentHeader {
     /// Component size in bytes
@@ -278,10 +278,10 @@ impl ComponentHeader {
     }
 }
 
-/// Decodes a WebAssembly Component header in a no_alloc environment
+/// Binary std/no_std choice
 ///
 /// This function decodes the header and basic structure of a WebAssembly
-/// Component without requiring heap allocation.
+/// Binary std/no_std choice
 ///
 /// # Arguments
 ///
@@ -611,12 +611,12 @@ fn scan_component_types(
 /// # Returns
 ///
 /// * `Result<String>` - A description of the component structure or an error
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 pub fn describe_component_structure(bytes: &[u8]) -> Result<String> {
     let header = decode_component_header_simple(bytes)?;
 
     // Format the component structure description
-    // This requires either std or alloc feature for string formatting
+    // Binary std/no_std choice
     let mut description = format!(
         "Component structure:\n- Size: {} bytes\n- Sections: {}\n- Types: {}\n- Exports: {}\n- \
          Imports: {}\n",
@@ -673,10 +673,10 @@ pub enum ComponentValidatorType {
     Full,
 }
 
-/// Validates a WebAssembly Component in a no_alloc environment
+/// Binary std/no_std choice
 ///
 /// This function performs validation of a WebAssembly Component
-/// without requiring heap allocation.
+/// Binary std/no_std choice
 ///
 /// # Arguments
 ///

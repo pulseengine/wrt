@@ -4,20 +4,19 @@
 //! Component Model binary format.
 
 // Use crate-level type aliases for collection types
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-use alloc::{boxed::Box, format};
+#[cfg(all(not(feature = "std")))]
 #[cfg(feature = "std")]
 use std::{boxed::Box, format};
 
-// Helper macro for creating validation errors that works in both alloc and no_std modes
-#[cfg(any(feature = "alloc", feature = "std"))]
+// Binary std/no_std choice
+#[cfg(feature = "std")]
 macro_rules! validation_error {
     ($($arg:tt)*) => {
         crate::error::validation_error_dynamic(format!($($arg)*))
     };
 }
 
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 macro_rules! validation_error {
     ($($arg:tt)*) => {
         crate::error::validation_error("validation error (details unavailable in no_std)")
@@ -25,12 +24,12 @@ macro_rules! validation_error {
 }
 
 use wrt_error::{Error, Result};
-// Re-export ValType from wrt-foundation (conditional based on alloc feature)
-#[cfg(feature = "alloc")]
+// Binary std/no_std choice
+#[cfg(feature = "std")]
 pub use wrt_foundation::component_value::ValType;
 
 // Provide a simple stub for ValType in no_std mode
-#[cfg(not(feature = "alloc"))]
+#[cfg(not(feature = "std"))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ValType {
     Bool,
@@ -48,24 +47,24 @@ pub enum ValType {
     String,
 }
 use wrt_foundation::resource::{ResourceDrop, ResourceNew, ResourceRep, ResourceRepresentation};
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 use wrt_foundation::NoStdProvider;
 
 use crate::{module::Module, types::ValueType, validation::Validatable};
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 use crate::{String, Vec};
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 use crate::{WasmString, WasmVec, MAX_TYPE_RECURSION_DEPTH};
 
 // Conditional type aliases for collection types
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 type ComponentString = String;
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 type ComponentString = WasmString<NoStdProvider<512>>;
 
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 type ComponentVec<T> = Vec<T>;
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 type ComponentVec<T> = WasmVec<T, NoStdProvider<1024>>;
 
 /// WebAssembly Component Model component definition
@@ -129,13 +128,13 @@ impl Component {
     }
 
     /// Helper to create a new ComponentVec
-    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(feature = "std")]
     fn new_vec<T>() -> ComponentVec<T> {
         Vec::new()
     }
 
     /// Helper to create a new ComponentVec for no_std
-    #[cfg(not(any(feature = "alloc", feature = "std")))]
+    #[cfg(not(any(feature = "std")))]
     fn new_vec<T>() -> ComponentVec<T> {
         WasmVec::new(NoStdProvider::<1024>::default())
             .unwrap_or_else(|_| panic!("Failed to create WasmVec"))
@@ -552,8 +551,8 @@ pub enum ExternType {
 /// Type reference index for recursive types (replaces Box<T>)
 pub type TypeRef = u32;
 
-/// Type registry for managing recursive types without allocation
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+/// Binary std/no_std choice
+#[cfg(not(any(feature = "std")))]
 #[derive(Debug, Clone)]
 pub struct TypeRegistry<P: wrt_foundation::MemoryProvider = NoStdProvider<1024>> {
     /// Type definitions stored in a bounded vector
@@ -562,7 +561,7 @@ pub struct TypeRegistry<P: wrt_foundation::MemoryProvider = NoStdProvider<1024>>
     next_ref: TypeRef,
 }
 
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 impl<P: wrt_foundation::MemoryProvider + Clone + Default> TypeRegistry<P> {
     /// Create a new type registry
     pub fn new() -> Result<Self, wrt_foundation::bounded::CapacityError> {
@@ -592,7 +591,7 @@ impl<P: wrt_foundation::MemoryProvider + Clone + Default> TypeRegistry<P> {
 }
 
 /// Component Model value types - Pure No_std Version
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FormatValType<P: wrt_foundation::MemoryProvider = NoStdProvider<1024>> {
     /// Boolean type
@@ -652,7 +651,7 @@ pub enum FormatValType<P: wrt_foundation::MemoryProvider = NoStdProvider<1024>> 
 }
 
 /// Component Model value types - With Allocation
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FormatValType {
     /// Boolean type
@@ -739,9 +738,9 @@ pub enum CanonOperation {
     },
     /// Resource operations
     Resource(FormatResourceOperation),
-    /// Reallocation operation
+    /// Binary std/no_std choice
     Realloc {
-        /// Function index for memory allocation
+        /// Binary std/no_std choice
         alloc_func_idx: u32,
         /// Memory index to use
         memory_idx: u32,
@@ -778,7 +777,7 @@ pub struct LiftOptions {
     pub memory_idx: Option<u32>,
     /// String encoding to use
     pub string_encoding: Option<StringEncoding>,
-    /// Realloc function index (optional)
+    /// Binary std/no_std choice
     pub realloc_func_idx: Option<u32>,
     /// Post-return function index (optional)
     pub post_return_func_idx: Option<u32>,
@@ -793,7 +792,7 @@ pub struct LowerOptions {
     pub memory_idx: Option<u32>,
     /// String encoding to use
     pub string_encoding: Option<StringEncoding>,
-    /// Realloc function index (optional)
+    /// Binary std/no_std choice
     pub realloc_func_idx: Option<u32>,
     /// Whether this is an async lower
     pub is_async: bool,
@@ -806,7 +805,7 @@ pub struct LowerOptions {
 pub struct AsyncOptions {
     /// Memory index to use
     pub memory_idx: u32,
-    /// Realloc function index
+    /// Binary std/no_std choice
     pub realloc_func_idx: Option<u32>,
     /// String encoding to use
     pub string_encoding: Option<StringEncoding>,
@@ -910,26 +909,26 @@ pub struct ExportName {
 
 impl ImportName {
     /// Create a new import name with just namespace and name
-    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(feature = "std")]
     pub fn new(namespace: String, name: String) -> Self {
         Self { namespace, name, nested: Vec::new(), package: None }
     }
 
     /// Create a new import name with nested namespaces
-    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(feature = "std")]
     pub fn with_nested(namespace: String, name: String, nested: Vec<String>) -> Self {
         Self { namespace, name, nested, package: None }
     }
 
     /// Add package reference to an import name
-    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(feature = "std")]
     pub fn with_package(mut self, package: PackageReference) -> Self {
         self.package = Some(package);
         self
     }
 
     /// Get the full import path as a string
-    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(feature = "std")]
     pub fn full_path(&self) -> String {
         let mut path = format!("{}.{}", self.namespace, self.name);
         for nested in &self.nested {

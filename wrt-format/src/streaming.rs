@@ -5,30 +5,32 @@
 //! for pure no_std environments where memory usage must be deterministic.
 
 
-#[cfg(all(feature = "alloc", not(feature = "std")))]
+#[cfg(not(feature = "std"))]
+extern crate alloc;
+#[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
 #[cfg(feature = "std")]
 use std::vec::Vec;
 
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 use core::marker::PhantomData;
 
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 use wrt_foundation::{MemoryProvider, NoStdProvider, traits::BoundedCapacity};
 
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 use wrt_error::{codes, Error, ErrorCategory};
 
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 use crate::{WasmVec, WasmString};
 
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 use crate::binary::{WASM_MAGIC, WASM_VERSION, read_leb128_u32, read_string};
 
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 use crate::binary::WASM_MAGIC;
 
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 use wrt_error::{codes, Error, ErrorCategory};
 
 
@@ -67,7 +69,7 @@ pub struct SectionInfo {
 }
 
 /// Streaming WebAssembly parser for bounded memory environments
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 #[derive(Debug)]
 pub struct StreamingParser<P: MemoryProvider + Clone + Default + Eq = NoStdProvider<1024>> {
     /// Current parser state
@@ -84,8 +86,8 @@ pub struct StreamingParser<P: MemoryProvider + Clone + Default + Eq = NoStdProvi
     _phantom: PhantomData<P>,
 }
 
-/// Streaming WebAssembly parser for allocation-enabled environments
-#[cfg(any(feature = "alloc", feature = "std"))]
+/// Binary std/no_std choice
+#[cfg(feature = "std")]
 #[derive(Debug)]
 #[allow(dead_code)] // Stub implementation for future streaming functionality
 pub struct StreamingParser {
@@ -110,7 +112,7 @@ pub enum ParseResult<T> {
     SectionReady { section_id: u8, data: T },
 }
 
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 impl<P: MemoryProvider + Clone + Default + Eq> StreamingParser<P> {
     /// Create a new streaming parser
     pub fn new(provider: P) -> core::result::Result<Self, Error> {
@@ -305,11 +307,11 @@ impl<P: MemoryProvider + Clone + Default + Eq> StreamingParser<P> {
 
     /// Get current section buffer length
     pub fn section_buffer_len(&self) -> core::result::Result<usize, Error> {
-        #[cfg(any(feature = "alloc", feature = "std"))]
+        #[cfg(feature = "std")]
         {
             Ok(self.section_buffer.len())
         }
-        #[cfg(not(any(feature = "alloc", feature = "std")))]
+        #[cfg(not(any(feature = "std")))]
         {
             Ok(self.section_buffer.capacity())
         }
@@ -331,7 +333,7 @@ impl<P: MemoryProvider + Clone + Default + Eq> StreamingParser<P> {
     }
 }
 
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 impl<P: MemoryProvider + Clone + Default + Eq> Default for StreamingParser<P> {
     fn default() -> Self {
         let provider = P::default();
@@ -339,7 +341,7 @@ impl<P: MemoryProvider + Clone + Default + Eq> Default for StreamingParser<P> {
     }
 }
 
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 impl StreamingParser {
     /// Create a new streaming parser
     pub fn new<P: wrt_foundation::MemoryProvider + Clone + Default + Eq>(_provider: P) -> core::result::Result<Self, Error> {
@@ -372,7 +374,7 @@ impl StreamingParser {
     }
 }
 
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 pub struct SectionParser {
     /// Section data buffer
     buffer: Vec<u8>,
@@ -380,7 +382,7 @@ pub struct SectionParser {
     position: usize,
 }
 
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 impl SectionParser {
     /// Create a new section parser
     pub fn new<P: wrt_foundation::MemoryProvider + Clone + Default + Eq>(_provider: P) -> core::result::Result<Self, Error> {
@@ -392,7 +394,7 @@ impl SectionParser {
 }
 
 /// Streaming section parser for individual section processing
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 #[derive(Debug)]
 pub struct SectionParser<P: MemoryProvider + Clone + Default + Eq = NoStdProvider<1024>> {
     /// Memory provider
@@ -403,7 +405,7 @@ pub struct SectionParser<P: MemoryProvider + Clone + Default + Eq = NoStdProvide
     position: usize,
 }
 
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 impl<P: MemoryProvider + Clone + Default + Eq> SectionParser<P> {
     /// Create a new section parser
     pub fn new(provider: P) -> core::result::Result<Self, Error> {

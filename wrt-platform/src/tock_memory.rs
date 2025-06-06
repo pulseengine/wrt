@@ -118,7 +118,7 @@ struct GrantRegion {
     ptr: NonNull<u8>,
     /// Size of the granted region in bytes
     size: usize,
-    /// Whether this region is currently allocated
+    /// Binary std/no_std choice
     allocated: bool,
     /// Protection flags for this region
     #[allow(dead_code)]
@@ -131,7 +131,7 @@ impl GrantRegion {
         Self { ptr, size, allocated: false, protection }
     }
 
-    /// Check if this region can satisfy an allocation request
+    /// Binary std/no_std choice
     fn can_satisfy(&self, size: usize) -> bool {
         !self.allocated && self.size >= size
     }
@@ -146,7 +146,7 @@ impl GrantRegion {
         }
     }
 
-    /// Deallocate this region
+    /// Binary std/no_std choice
     fn deallocate(&mut self) {
         self.allocated = false;
     }
@@ -155,22 +155,22 @@ impl GrantRegion {
 /// Maximum number of grant regions supported
 const MAX_GRANT_REGIONS: usize = 8;
 
-/// Tock OS page allocator using grant system
+/// Binary std/no_std choice
 #[derive(Debug)]
 pub struct TockAllocator {
     /// Available grant regions (using array instead of heapless::Vec)
     grant_regions: [Option<GrantRegion>; MAX_GRANT_REGIONS],
     /// Number of active grant regions
     grant_regions_count: usize,
-    /// Current allocation pointer
+    /// Binary std/no_std choice
     current_allocation: AtomicPtr<u8>,
-    /// Current allocation size
+    /// Binary std/no_std choice
     current_size: AtomicUsize,
     /// Maximum pages allowed
     maximum_pages: u32,
     /// Verification level
     verification_level: VerificationLevel,
-    /// Static pre-allocation buffer (security-first paradigm)
+    /// Binary std/no_std choice
     static_buffer: Option<&'static mut [u8]>,
 }
 
@@ -178,7 +178,7 @@ unsafe impl Send for TockAllocator {}
 unsafe impl Sync for TockAllocator {}
 
 impl TockAllocator {
-    /// Create new Tock allocator with pre-allocated grant regions
+    /// Binary std/no_std choice
     pub fn new(
         maximum_pages: u32,
         verification_level: VerificationLevel,
@@ -221,7 +221,7 @@ impl TockAllocator {
             return Ok(());
         }
 
-        // Request grant region from kernel for maximum possible allocation
+        // Binary std/no_std choice
         let max_size = (self.maximum_pages as usize) * WASM_PAGE_SIZE;
 
         // Use allow system call to request grant region
@@ -265,7 +265,7 @@ impl TockAllocator {
         }
     }
 
-    /// Find suitable grant region for allocation
+    /// Binary std/no_std choice
     fn find_grant_region(&mut self, size: usize) -> Option<NonNull<u8>> {
         for i in 0..self.grant_regions_count {
             if let Some(region) = &mut self.grant_regions[i] {
@@ -301,14 +301,14 @@ impl PageAllocator for TockAllocator {
             .find_grant_region(allocation_size)
             .ok_or_else(|| Error::resource_error("No suitable grant region available"))?;
 
-        // Set MPU protection for the allocated region
+        // Binary std/no_std choice
         self.set_mpu_protection(
             ptr.as_ptr(),
             allocation_size,
             syscall::PROT_READ | syscall::PROT_WRITE,
         )?;
 
-        // Store current allocation
+        // Binary std/no_std choice
         self.current_allocation.store(ptr.as_ptr(), Ordering::SeqCst);
         self.current_size.store(allocation_size, Ordering::SeqCst);
 
@@ -342,7 +342,7 @@ impl PageAllocator for TockAllocator {
     }
 
     unsafe fn deallocate(&mut self, ptr: NonNull<u8>, size: usize) -> Result<(), Error> {
-        // Verify this is our current allocation
+        // Binary std/no_std choice
         let current_ptr = self.current_allocation.load(Ordering::SeqCst);
         let current_size = self.current_size.load(Ordering::SeqCst);
 
@@ -367,7 +367,7 @@ impl PageAllocator for TockAllocator {
             }
         }
 
-        // Clear current allocation
+        // Binary std/no_std choice
         self.current_allocation.store(core::ptr::null_mut(), Ordering::SeqCst);
         self.current_size.store(0, Ordering::SeqCst);
 
@@ -410,13 +410,13 @@ impl TockAllocatorBuilder {
         self
     }
 
-    /// Set static buffer for security-first allocation
+    /// Binary std/no_std choice
     pub fn with_static_buffer(mut self, buffer: &'static mut [u8]) -> Self {
         self.static_buffer = Some(buffer);
         self
     }
 
-    /// Build the allocator
+    /// Binary std/no_std choice
     pub fn build(self) -> Result<TockAllocator, Error> {
         TockAllocator::new(self.maximum_pages, self.verification_level, self.static_buffer)
     }
@@ -452,7 +452,7 @@ mod tests {
         let allocated_ptr = region.allocate(1024);
         assert!(allocated_ptr.is_some());
         assert!(region.allocated);
-        assert!(!region.can_satisfy(1024)); // Already allocated
+        assert!(!region.can_satisfy(1024)); // Binary std/no_std choice
 
         region.deallocate();
         assert!(!region.allocated);

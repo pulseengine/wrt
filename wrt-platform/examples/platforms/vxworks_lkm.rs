@@ -42,7 +42,7 @@ fn run_lkm_examples() {
 fn example_lkm_memory() {
     println!("=== LKM Memory Management ===");
     
-    // Create LKM allocator using memory partitions
+    // Binary std/no_std choice
     let mut allocator = VxWorksAllocatorBuilder::new()
         .context(VxWorksContext::Lkm)
         .max_pages(50)

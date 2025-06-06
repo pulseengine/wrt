@@ -6,8 +6,8 @@
 
 #[cfg(feature = "std")]
 use std::vec::Vec;
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-use alloc::vec::Vec;
+#[cfg(all(not(feature = "std")))]
+use std::vec::Vec;
 
 use wrt_error::{codes, Error, ErrorCategory, Result};
 use wrt_foundation::{

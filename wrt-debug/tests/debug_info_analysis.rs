@@ -1,6 +1,6 @@
 /// Analysis of complete debug information capabilities
 /// This test demonstrates what DWARF information we can extract
-/// with our no_std/no_alloc implementation.
+/// Binary std/no_std choice
 
 #[cfg(test)]
 mod debug_info_analysis {

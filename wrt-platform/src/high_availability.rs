@@ -9,8 +9,8 @@ use core::{
     time::Duration,
 };
 
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-use alloc::{boxed::Box, string::String, vec::Vec, sync::Arc};
+#[cfg(all(not(feature = "std")))]
+use std::{boxed::Box, string::String, vec::Vec, sync::Arc};
 #[cfg(feature = "std")]
 use std::{boxed::Box, string::String, vec::Vec, sync::Arc};
 use wrt_sync::{WrtMutex, WrtRwLock};

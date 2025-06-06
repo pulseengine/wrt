@@ -23,8 +23,6 @@
 
 #![allow(missing_docs)]
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::boxed::Box;
 #[cfg(feature = "std")]
 use std::boxed::Box;
 
@@ -466,7 +464,7 @@ pub trait SimdProvider: Send + Sync {
 }
 
 /// SIMD runtime that manages provider selection
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 pub struct SimdRuntime {
     provider: Box<dyn SimdProvider>,
     capabilities: SimdCapabilities,
@@ -475,10 +473,10 @@ pub struct SimdRuntime {
 // Global initialization flag
 static SIMD_INITIALIZED: AtomicBool = AtomicBool::new(false);
 
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 impl SimdRuntime {
     /// Create a new SIMD runtime with automatic provider selection
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fn new() -> Self {
         let capabilities = SimdCapabilities::detect();
         let provider = Self::select_provider(&capabilities);
@@ -493,13 +491,13 @@ impl SimdRuntime {
     }
     
     /// Select the best available provider based on capabilities
-    #[cfg(any(feature = "std", feature = "alloc"))]
-    fn select_provider(capabilities: &SimdCapabilities) -> Box<dyn SimdProvider> {
+    #[cfg(feature = "std")]
+    fn select_provider(_capabilities: &SimdCapabilities) -> Box<dyn SimdProvider> {
         #[cfg(target_arch = "x86_64")]
         {
-            if capabilities.has_avx2 {
+            if _capabilities.has_avx2 {
                 return Box::new(x86_64::X86SimdProvider::new_avx2());
-            } else if capabilities.has_sse2 {
+            } else if _capabilities.has_sse2 {
                 return Box::new(x86_64::X86SimdProvider::new_sse2());
             }
         }
@@ -532,7 +530,7 @@ impl SimdRuntime {
     }
 }
 
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 impl Default for SimdRuntime {
     fn default() -> Self {
         Self::new()
@@ -566,7 +564,7 @@ mod tests {
     }
     
     #[test]
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     fn test_simd_runtime_creation() {
         let runtime = SimdRuntime::new();
         

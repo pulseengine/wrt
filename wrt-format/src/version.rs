@@ -3,10 +3,9 @@
 //! This module provides utilities for handling versioning and feature detection
 //! in WebAssembly Component Model binaries.
 
-#[cfg(not(any(feature = "std", feature = "alloc")))]
-use crate::HashMap;
-
-#[cfg(all(feature = "alloc", not(feature = "std")))]
+#[cfg(not(feature = "std"))]
+extern crate alloc;
+#[cfg(not(feature = "std"))]
 use alloc::collections::BTreeMap as HashMap;
 
 #[cfg(feature = "std")]
@@ -93,10 +92,10 @@ pub struct VersionInfo {
 
 impl Default for VersionInfo {
     fn default() -> Self {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         let features = HashMap::new();
 
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         let features = crate::HashMap::new(wrt_foundation::NoStdProvider::default())
             .expect("Failed to create feature map");
 
@@ -112,10 +111,10 @@ impl Default for VersionInfo {
 
 impl Clone for VersionInfo {
     fn clone(&self) -> Self {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         let features = self.features.clone();
 
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         let features = {
             let new_features = crate::HashMap::new(wrt_foundation::NoStdProvider::default())
                 .expect("Failed to create feature map");
@@ -200,14 +199,14 @@ impl VersionInfo {
 
     /// Check if a feature is available (either experimental or fully supported)
     pub fn is_feature_available(&self, feature: ComponentModelFeature) -> bool {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             match self.features.get(&feature) {
                 Some(status) => *status != FeatureStatus::Unavailable,
                 None => false,
             }
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             match self.features.get(&feature) {
                 Ok(Some(status)) => !matches!(status, FeatureStatus::Unavailable),
@@ -219,14 +218,14 @@ impl VersionInfo {
 
     /// Get the status of a feature
     pub fn get_feature_status(&self, feature: ComponentModelFeature) -> FeatureStatus {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             match self.features.get(&feature) {
                 Some(status) => *status,
                 None => FeatureStatus::Unavailable,
             }
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             match self.features.get(&feature) {
                 Ok(Some(status)) => status.clone(),
@@ -258,7 +257,7 @@ impl VersionInfo {
 }
 
 // Manual trait implementations for no_std compatibility with BoundedMap
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 mod no_std_traits {
     use wrt_foundation::traits::{
         Checksummable, FromBytes, ToBytes,

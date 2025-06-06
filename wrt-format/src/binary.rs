@@ -4,27 +4,27 @@
 // format.
 
 // Core modules
-#[cfg(all(feature = "alloc", not(feature = "std")))]
+#[cfg(all(not(feature = "std")))]
 use alloc::{format, string::String, vec, vec::Vec};
 use core::str;
 // Conditional imports for different environments
 #[cfg(feature = "std")]
 use std::vec::Vec;
 
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 use wrt_error::{codes, Error, ErrorCategory, Result};
 
 // wrt_error is imported above unconditionally
 
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 use wrt_foundation::{RefType, ValueType};
 
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 use crate::module::{Data, DataMode, Element, ElementInit, Module};
 
 use crate::error::parse_error;
 
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 use crate::types::FormatBlockType;
 
 /// Magic bytes for WebAssembly modules: \0asm
@@ -510,7 +510,7 @@ pub const VAL_TYPE_ERROR_CONTEXT_TAG: u8 = 0x64;
 /// Parse a WebAssembly binary into a module
 ///
 /// This is a placeholder that will be implemented fully in Phase 1.
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 pub fn parse_binary(bytes: &[u8]) -> Result<Module> {
     // Verify magic bytes
     if bytes.len() < 8 {
@@ -535,7 +535,7 @@ pub fn parse_binary(bytes: &[u8]) -> Result<Module> {
     Ok(module)
 }
 
-/// Read a LEB128 encoded unsigned 32-bit integer from bytes (no allocation
+/// Binary std/no_std choice
 /// needed)
 pub fn read_leb128_u32(bytes: &[u8], pos: usize) -> wrt_error::Result<(u32, usize)> {
     let mut result = 0u32;
@@ -684,7 +684,7 @@ pub fn read_u8(bytes: &[u8], pos: usize) -> wrt_error::Result<(u8, usize)> {
     Ok((bytes[pos], pos + 1))
 }
 
-/// Read a string from bytes (returns slice, no allocation)
+/// Binary std/no_std choice
 pub fn read_string(bytes: &[u8], pos: usize) -> wrt_error::Result<(&[u8], usize)> {
     if pos >= bytes.len() {
         return Err(parse_error("String exceeds buffer bounds"));
@@ -702,15 +702,15 @@ pub fn read_string(bytes: &[u8], pos: usize) -> wrt_error::Result<(&[u8], usize)
     Ok((&bytes[string_start..string_end], length_size + length as usize))
 }
 
-// Functions requiring Vec/String/Box are only available with allocation
-#[cfg(any(feature = "alloc", feature = "std"))]
+// Binary std/no_std choice
+#[cfg(feature = "std")]
 pub mod with_alloc {
     use super::*;
 
     /// Generate a WebAssembly binary from a module
     ///
     /// This is a placeholder that will be implemented fully in Phase 1.
-    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(feature = "std")]
     pub fn generate_binary(module: &Module) -> Result<Vec<u8>> {
         // If we have the original binary and haven't modified the module,
         // we can just return it
@@ -852,7 +852,7 @@ pub mod with_alloc {
     /// Write a LEB128 unsigned integer to a byte array
     ///
     /// This function will be used when implementing the full binary generator.
-    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(feature = "std")]
     pub fn write_leb128_u32(value: u32) -> Vec<u8> {
         if value == 0 {
             return vec![0];
@@ -878,7 +878,7 @@ pub mod with_alloc {
     /// Write a LEB128 signed integer to a byte array
     ///
     /// This function will be used when implementing the full binary generator.
-    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(feature = "std")]
     pub fn write_leb128_i32(value: i32) -> Vec<u8> {
         let mut result = Vec::new();
         let mut value = value;
@@ -913,7 +913,7 @@ pub mod with_alloc {
     /// Write a LEB128 signed 64-bit integer to a byte array
     ///
     /// This function will be used when implementing the full binary formatter.
-    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(feature = "std")]
     pub fn write_leb128_i64(value: i64) -> Vec<u8> {
         let mut result = Vec::new();
         let mut value = value;
@@ -1006,7 +1006,7 @@ pub mod with_alloc {
     }
 
     /// Write a LEB128 unsigned 64-bit integer to a byte array
-    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(feature = "std")]
     pub fn write_leb128_u64(value: u64) -> Vec<u8> {
         let mut result = Vec::new();
         let mut value = value;
@@ -1058,14 +1058,14 @@ pub mod with_alloc {
     }
 
     /// Write a 32-bit IEEE 754 float to a byte array
-    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(feature = "std")]
     pub fn write_f32(value: f32) -> Vec<u8> {
         let bytes = value.to_le_bytes();
         bytes.to_vec()
     }
 
     /// Write a 64-bit IEEE 754 float to a byte array
-    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(feature = "std")]
     pub fn write_f64(value: f64) -> Vec<u8> {
         let bytes = value.to_le_bytes();
         bytes.to_vec()
@@ -1118,7 +1118,7 @@ pub mod with_alloc {
     }
 
     /// Write a WebAssembly UTF-8 string (length prefixed)
-    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(feature = "std")]
     pub fn write_string(value: &str) -> Vec<u8> {
         let mut result = Vec::new();
 
@@ -1136,7 +1136,7 @@ pub mod with_alloc {
     ///
     /// This is a generic function that reads a length-prefixed vector from a
     /// byte array, using the provided function to read each element.
-    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(feature = "std")]
     pub fn read_vector<T, F>(bytes: &[u8], pos: usize, read_elem: F) -> Result<(Vec<T>, usize)>
     where
         F: Fn(&[u8], usize) -> Result<(T, usize)>,
@@ -1159,7 +1159,7 @@ pub mod with_alloc {
     ///
     /// This is a generic function that writes a length-prefixed vector to a
     /// byte array, using the provided function to write each element.
-    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(feature = "std")]
     pub fn write_vector<T, F>(elements: &[T], write_elem: F) -> Vec<u8>
     where
         F: Fn(&T) -> Vec<u8>,
@@ -1195,7 +1195,7 @@ pub mod with_alloc {
     /// Write a section header to a byte array
     ///
     /// Writes the section ID and content size as a LEB128 unsigned integer.
-    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(feature = "std")]
     pub fn write_section_header(id: u8, content_size: u32) -> Vec<u8> {
         let mut result = Vec::new();
 
@@ -1209,7 +1209,7 @@ pub mod with_alloc {
     }
 
     /// Parse a block type from a byte array
-    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(feature = "std")]
     pub fn parse_block_type(bytes: &[u8], pos: usize) -> Result<(FormatBlockType, usize)> {
         if pos >= bytes.len() {
             return Err(parse_error("Unexpected end of input when reading block type"));
@@ -1245,7 +1245,7 @@ pub mod with_alloc {
     }
 
     /// Read a Component Model value type from a byte array
-    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(feature = "std")]
     pub fn read_component_valtype(
         bytes: &[u8],
         pos: usize,
@@ -1415,7 +1415,7 @@ pub mod with_alloc {
     }
 
     /// Write a Component Model value type to a byte array
-    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(feature = "std")]
     pub fn write_component_valtype(val_type: &crate::component::FormatValType) -> Vec<u8> {
         use crate::component::FormatValType as ValType;
         match val_type {
@@ -1637,7 +1637,7 @@ pub mod with_alloc {
         }
     }
 
-    /// Read a WebAssembly string name without allocating a new String
+    /// Binary std/no_std choice
     /// Returns the byte slice containing the name and the total bytes read
     /// (including length)
     pub fn read_name(bytes: &[u8], pos: usize) -> Result<(&[u8], usize)> {
@@ -1704,7 +1704,7 @@ pub mod with_alloc {
     /// Parses an initialization expression (a sequence of instructions
     /// terminated by END). Returns the bytes of the expression (including
     /// END) and the number of bytes read.
-    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(feature = "std")]
     pub fn parse_init_expr(bytes: &[u8], mut offset: usize) -> Result<(Vec<u8>, usize)> {
         let start_offset = offset;
         let mut depth = 0;
@@ -1790,7 +1790,7 @@ pub mod with_alloc {
 
     /// Parses an element segment from the binary format.
     /// Reference: https://webassembly.github.io/spec/core/binary/modules.html#element-section
-    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(feature = "std")]
     pub fn parse_element_segment(bytes: &[u8], mut offset: usize) -> Result<(Element, usize)> {
         let (prefix_val, next_offset) = read_leb128_u32(bytes, offset).map_err(|e| {
             crate::error::parse_error_dynamic(format!(
@@ -2145,7 +2145,7 @@ pub mod with_alloc {
     }
 
     /// Parses a data segment from the binary format.
-    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(feature = "std")]
     pub fn parse_data(bytes: &[u8], mut offset: usize) -> Result<(Data, usize)> {
         if offset >= bytes.len() {
             return Err(Error::new(
@@ -2250,7 +2250,7 @@ pub mod with_alloc {
             ))),
         }
     }
-} // End of with_alloc module
+} // Binary std/no_std choice
 
 // No-std write functions
 
@@ -2258,7 +2258,7 @@ pub mod with_alloc {
 ///
 /// Returns the number of bytes written to the buffer.
 /// Buffer must be at least 5 bytes long (max size for u32 LEB128).
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 pub fn write_leb128_u32_to_slice(value: u32, buffer: &mut [u8]) -> wrt_error::Result<usize> {
     if buffer.len() < 5 {
         return Err(parse_error("Buffer too small for LEB128 encoding"));
@@ -2291,7 +2291,7 @@ pub fn write_leb128_u32_to_slice(value: u32, buffer: &mut [u8]) -> wrt_error::Re
 ///
 /// The format is: length (LEB128) followed by UTF-8 bytes
 /// Returns the number of bytes written.
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 pub fn write_string_to_slice(value: &str, buffer: &mut [u8]) -> wrt_error::Result<usize> {
     let str_bytes = value.as_bytes();
     let length = str_bytes.len() as u32;
@@ -2316,7 +2316,7 @@ pub fn write_string_to_slice(value: &str, buffer: &mut [u8]) -> wrt_error::Resul
 }
 
 /// Write a LEB128 u32 to a BoundedVec (no_std version)
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 pub fn write_leb128_u32_bounded<
     const N: usize,
     P: wrt_foundation::MemoryProvider + Clone + Default + Eq,
@@ -2335,7 +2335,7 @@ pub fn write_leb128_u32_bounded<
 }
 
 /// Write a string to a BoundedVec (no_std version)
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 pub fn write_string_bounded<
     const N: usize,
     P: wrt_foundation::MemoryProvider + Clone + Default + Eq,
@@ -2381,7 +2381,7 @@ mod tests {
         Ok((value, pos + 8))
     }
     
-    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(feature = "std")]
     fn read_string_test(bytes: &[u8], pos: usize) -> crate::Result<(String, usize)> {
         if pos >= bytes.len() {
             return Err(parse_error("String exceeds buffer bounds"));
@@ -2403,7 +2403,7 @@ mod tests {
         }
     }
     
-    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(feature = "std")]
     fn read_vector_test<T, F>(bytes: &[u8], pos: usize, read_elem: F) -> crate::Result<(Vec<T>, usize)>
     where
         F: Fn(&[u8], usize) -> crate::Result<(T, usize)>,
@@ -2438,7 +2438,7 @@ mod tests {
     }
     
     // Write functions
-    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(feature = "std")]
     fn write_leb128_u32_test(value: u32) -> Vec<u8> {
         if value == 0 {
             return vec![0];
@@ -2461,19 +2461,19 @@ mod tests {
         result
     }
     
-    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(feature = "std")]
     fn write_f32_test(value: f32) -> Vec<u8> {
         let bytes = value.to_le_bytes();
         bytes.to_vec()
     }
     
-    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(feature = "std")]
     fn write_f64_test(value: f64) -> Vec<u8> {
         let bytes = value.to_le_bytes();
         bytes.to_vec()
     }
     
-    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(feature = "std")]
     fn write_string_test(value: &str) -> Vec<u8> {
         let mut result = Vec::new();
         let length = value.len() as u32;
@@ -2482,7 +2482,7 @@ mod tests {
         result
     }
     
-    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(feature = "std")]
     fn write_leb128_u64_test(value: u64) -> Vec<u8> {
         let mut result = Vec::new();
         let mut value = value;
@@ -2505,7 +2505,7 @@ mod tests {
         result
     }
     
-    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(feature = "std")]
     fn write_vector_test<T, F>(elements: &[T], write_elem: F) -> Vec<u8>
     where
         F: Fn(&T) -> Vec<u8>,
@@ -2518,7 +2518,7 @@ mod tests {
         result
     }
     
-    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(feature = "std")]
     fn write_section_header_test(id: u8, content_size: u32) -> Vec<u8> {
         let mut result = Vec::new();
         result.push(id);
@@ -2527,7 +2527,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(feature = "std")]
     fn test_f32_roundtrip() {
         let values = [0.0f32, -0.0, 1.0, -1.0, 3.14159, f32::INFINITY, f32::NEG_INFINITY, f32::NAN];
 
@@ -2545,7 +2545,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(feature = "std")]
     fn test_f64_roundtrip() {
         let values =
             [0.0f64, -0.0, 1.0, -1.0, 3.14159265358979, f64::INFINITY, f64::NEG_INFINITY, f64::NAN];
@@ -2564,7 +2564,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(feature = "std")]
     fn test_string_roundtrip() {
         let test_strings = ["", "Hello, World!", "UTF-8 test: ñáéíóú", "🦀 Rust is awesome!"];
 
@@ -2577,7 +2577,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(feature = "std")]
     fn test_leb128_u64_roundtrip() {
         let test_values = [0u64, 1, 127, 128, 16_384, 0x7FFF_FFFF, 0xFFFF_FFFF, 0xFFFF_FFFF_FFFF_FFFF];
 
@@ -2601,7 +2601,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(feature = "std")]
     fn test_read_write_vector() {
         // Create a test vector of u32 values
         let values = vec![1u32, 42, 100, 1000];
@@ -2616,7 +2616,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(feature = "std")]
     fn test_section_header() {
         // Create a section header for a type section with 10 bytes of content
         let section_id = TYPE_SECTION_ID;

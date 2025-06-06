@@ -9,21 +9,6 @@
 //! consistency across all crates in the WRT project and simplify imports in
 //! individual modules.
 
-// Core imports for both std and no_std environments
-// Re-export from alloc when no_std but alloc is available
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-pub use alloc::{
-    borrow::Cow,
-    boxed::Box,
-    collections::{BTreeMap, BTreeSet},
-    format,
-    rc::Rc,
-    string::{String, ToString},
-    sync::Arc,
-    vec,
-    vec::Vec,
-};
-
 // Don't duplicate format import since it's already in the use block above
 #[cfg(not(feature = "std"))]
 pub use core::result::Result as StdResult;
@@ -82,11 +67,11 @@ pub use wrt_format::{
     types::{FormatBlockType, Limits, MemoryIndexType},
 };
 
-// Import additional functions that require alloc (beyond what wrt_format exports)
-#[cfg(any(feature = "alloc", feature = "std"))]
+// Binary std/no_std choice
+#[cfg(feature = "std")]
 pub use wrt_format::state::{create_state_section, extract_state_section, StateSection};
-// Component model types (require alloc)
-#[cfg(feature = "alloc")]
+// Binary std/no_std choice
+#[cfg(feature = "std")]
 pub use wrt_foundation::component_value::{ComponentValue, ValType};
 // Conversion utilities from wrt-foundation
 #[cfg(feature = "conversion")]
@@ -102,39 +87,39 @@ pub use wrt_foundation::{
 
 // Most re-exports temporarily disabled for demo
 
-// No-alloc support (always available)
+// Binary std/no_std choice
 pub use crate::decoder_no_alloc;
 
 // Type aliases for no_std mode
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(feature = "std"))]
 pub use wrt_foundation::{BoundedString, BoundedVec, NoStdProvider};
 
 // For no_std mode, provide bounded collection aliases
 /// Bounded vector for no_std environments
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(feature = "std"))]
 pub type Vec<T> = BoundedVec<T, 1024, NoStdProvider<2048>>;
 /// Bounded string for no_std environments
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(feature = "std"))]
 pub type String = BoundedString<512, NoStdProvider<1024>>;
 
 // For no_std mode, provide a minimal ToString trait
 /// Minimal ToString trait for no_std environments
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(feature = "std"))]
 pub trait ToString {
     /// Convert to string
     fn to_string(&self) -> String;
 }
 
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(feature = "std"))]
 impl ToString for &str {
     fn to_string(&self) -> String {
         String::from_str(self, NoStdProvider::<1024>::default()).unwrap_or_default()
     }
 }
 
-// For no_std without alloc, provide a minimal format macro implementation
+// Binary std/no_std choice
 /// Minimal format macro for no_std environments
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(feature = "std"))]
 #[macro_export]
 macro_rules! format {
     ($($arg:tt)*) => {{
@@ -149,11 +134,11 @@ macro_rules! format {
 }
 
 // Export our custom format macro for no_std
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(feature = "std"))]
 pub use crate::format;
 
 /// Binary format utilities
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 pub mod binary {
     /// Read LEB128 u32 from data
     pub fn read_leb_u32(data: &[u8]) -> wrt_error::Result<(u32, usize)> {
@@ -162,7 +147,7 @@ pub mod binary {
 }
 
 /// Binary utilities for no_std environments
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(feature = "std"))]
 pub mod binary {
     use wrt_foundation::{BoundedVec, NoStdProvider};
 
@@ -272,11 +257,11 @@ pub mod binary {
 
 // Make commonly used binary functions available at top level (now exported by wrt_format directly)
 pub use wrt_format::read_leb128_u32;
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 pub use wrt_format::{read_name, read_string, write_leb128_u32, write_string};
 
 // For no_std mode, provide the missing functions locally
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(feature = "std"))]
 pub use binary::{read_name, write_leb128_u32, write_string};
 
 /// Extension trait to add missing methods to BoundedVec
@@ -314,19 +299,19 @@ where
 
 // For compatibility, add some aliases that the code expects
 /// Read LEB128 u32 from data
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 pub fn read_leb_u32(data: &[u8]) -> wrt_error::Result<(u32, usize)> {
     read_leb128_u32(data, 0)
 }
 
 /// Read LEB128 u32 from data (no_std version)
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(feature = "std"))]
 pub fn read_leb_u32(data: &[u8]) -> wrt_error::Result<(u32, usize)> {
     read_leb128_u32(data, 0)
 }
 
 /// Read string from data (no_std version)
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(feature = "std"))]
 pub fn read_string(_data: &[u8], _offset: usize) -> wrt_error::Result<(&[u8], usize)> {
     // Simplified implementation for no_std
     Ok((&[], 0))
@@ -345,5 +330,5 @@ pub fn is_valid_wasm_header(data: &[u8]) -> bool {
 // read_leb128_u32 is now imported from wrt_format
 
 // Feature-gated function aliases - bring in functions from wrt_format that aren't already exported
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 pub use wrt_format::binary::with_alloc::parse_block_type as parse_format_block_type;

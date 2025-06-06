@@ -196,7 +196,7 @@ where
                 codes::RESOURCE_ERROR,
                 "Failed to set resource entry"
             ))?;
-        // old_entry should be None since we just allocated a new handle
+        // Binary std/no_std choice
         Ok(handle)
     }
     
@@ -337,11 +337,11 @@ mod tests {
     
     #[cfg(feature = "std")]
     use std::string::String as StdString;
-    #[cfg(all(feature = "alloc", not(feature = "std")))]
-    use alloc::string::String as StdString;
+    #[cfg(all(not(feature = "std")))]
+    use std::string::String as StdString;
     
     #[test]
-    #[cfg(any(feature = "alloc", feature = "std"))]
+    #[cfg(feature = "std")]
     fn test_resource_table_basic() {
         let provider = DefaultMemoryProvider::default();
         let mut table = ResourceTable::<u32, _>::new(provider).unwrap();

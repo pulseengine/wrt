@@ -15,9 +15,9 @@
 //! individual modules.
 
 // Core imports for both std and no_std environments
-// Re-export from alloc when no_std but alloc is available
-// #[cfg(all(not(feature = \"std\"), feature = \"alloc\"))]
-// pub use alloc::{
+// Binary std/no_std choice
+// Binary std/no_std choice
+// pub use std::{
 //     boxed::Box,
 //     collections::{BTreeMap as HashMap, BTreeSet as HashSet},
 //     format,

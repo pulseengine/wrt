@@ -10,7 +10,7 @@ use core::{
     time::Duration,
 };
 
-use alloc::{
+use std::{
     boxed::Box,
     collections::BTreeMap,
     string::{String, ToString},

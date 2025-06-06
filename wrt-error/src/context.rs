@@ -14,6 +14,6 @@
 //! dependencies on `alloc`. Future work may reintroduce `no_std` and `no_alloc`
 //! compatible context mechanisms here.
 
-// Context utilities for error handling were removed due to alloc dependencies.
-// This module may be revisited for no_std, no_alloc compliant context
+// Binary std/no_std choice
+// Binary std/no_std choice
 // mechanisms.

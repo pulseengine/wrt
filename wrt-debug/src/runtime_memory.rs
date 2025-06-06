@@ -41,14 +41,14 @@ pub enum MemoryRegionType {
     Code,
 }
 
-/// Heap allocation information
+/// Binary std/no_std choice
 #[derive(Debug, Clone)]
 pub struct HeapAllocation {
     /// Allocation address
     pub address: u32,
     /// Size in bytes
     pub size: u32,
-    /// Is currently allocated
+    /// Binary std/no_std choice
     pub allocated: bool,
     /// Allocation ID (if available)
     pub id: Option<u32>,
@@ -58,7 +58,7 @@ pub struct HeapAllocation {
 pub struct MemoryInspector<'a> {
     /// Memory regions
     regions: BoundedVec<MemoryRegion, 16, NoStdProvider<1024>>,
-    /// Known heap allocations
+    /// Binary std/no_std choice
     allocations: BoundedVec<HeapAllocation, MAX_DWARF_FILE_TABLE, NoStdProvider<1024>>,
     /// Reference to debug memory interface
     memory: Option<&'a dyn DebugMemory>,
@@ -84,7 +84,7 @@ impl<'a> MemoryInspector<'a> {
         self.regions.push(region).map_err(|_| ())
     }
 
-    /// Register a heap allocation
+    /// Binary std/no_std choice
     pub fn add_allocation(&mut self, alloc: HeapAllocation) -> Result<(), ()> {
         self.allocations.push(alloc).map_err(|_| ())
     }
@@ -163,7 +163,7 @@ impl<'a> MemoryInspector<'a> {
         stats
     }
 
-    /// Find allocation containing address
+    /// Binary std/no_std choice
     pub fn find_allocation(&self, addr: u32) -> Option<&HeapAllocation> {
         self.allocations.iter().find(|alloc| {
             alloc.allocated
@@ -233,15 +233,15 @@ impl<'a> CStringView<'a> {
 /// Heap statistics
 #[derive(Debug, Clone)]
 pub struct HeapStats {
-    /// Total number of allocations made
+    /// Binary std/no_std choice
     pub total_allocations: u32,
-    /// Currently active allocations
+    /// Binary std/no_std choice
     pub active_allocations: u32,
     /// Total heap size
     pub total_bytes: u32,
-    /// Currently allocated bytes
+    /// Binary std/no_std choice
     pub allocated_bytes: u32,
-    /// Largest single allocation
+    /// Binary std/no_std choice
     pub largest_allocation: u32,
     /// Fragmentation ratio (0.0 - 1.0)
     pub fragmentation: f32,
@@ -394,7 +394,7 @@ mod tests {
     fn test_heap_stats() {
         let mut inspector = MemoryInspector::new();
 
-        // Add allocations
+        // Binary std/no_std choice
         inspector
             .add_allocation(HeapAllocation {
                 address: 0x1000,

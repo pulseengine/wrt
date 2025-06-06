@@ -14,11 +14,9 @@
 
 use core::marker::PhantomData;
 
-// For Vec when alloc is available
-#[cfg(feature = "alloc")]
-extern crate alloc;
-#[cfg(feature = "alloc")]
-use alloc::vec::Vec;
+// For Vec when std is available
+#[cfg(feature = "std")]
+use std::vec::Vec;
 
 use wrt_error::Error;
 
@@ -416,7 +414,7 @@ impl PlatformMemoryOptimizer for LinuxOptimizedProvider {
 /// use wrt_platform::memory_optimizations::{PlatformOptimizedProviderBuilder, MacOSOptimizedProvider, MemoryOptimization};
 /// use wrt_platform::memory::VerificationLevel;
 ///
-/// #[cfg(all(target_os = "macos", feature = "alloc"))]
+/// #[cfg(all(target_os = "macos", feature = "std"))]
 /// let provider = PlatformOptimizedProviderBuilder::<MacOSOptimizedProvider>::new()
 ///     .with_size(8192)
 ///     .with_verification_level(VerificationLevel::Critical)
@@ -424,7 +422,7 @@ impl PlatformMemoryOptimizer for LinuxOptimizedProvider {
 ///     .with_optimization(MemoryOptimization::SecureZeroing)
 ///     .build();
 /// ```
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 pub struct PlatformOptimizedProviderBuilder<P: PlatformMemoryOptimizer> {
     /// The buffer size in bytes
     size: usize,
@@ -436,7 +434,7 @@ pub struct PlatformOptimizedProviderBuilder<P: PlatformMemoryOptimizer> {
     features: PhantomData<P>,
 }
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 impl<P: PlatformMemoryOptimizer> Default for PlatformOptimizedProviderBuilder<P> {
     fn default() -> Self {
         Self {
@@ -455,7 +453,7 @@ impl<P: PlatformMemoryOptimizer> Default for PlatformOptimizedProviderBuilder<P>
 /// This version of the builder uses fixed-size arrays instead of Vec for
 /// storing optimizations, making it suitable for environments without dynamic
 /// allocation.
-#[cfg(not(feature = "alloc"))]
+#[cfg(not(feature = "std"))]
 pub struct PlatformOptimizedProviderBuilder<P: PlatformMemoryOptimizer> {
     /// The buffer size in bytes
     size: usize,
@@ -469,7 +467,7 @@ pub struct PlatformOptimizedProviderBuilder<P: PlatformMemoryOptimizer> {
     features: PhantomData<P>,
 }
 
-#[cfg(not(feature = "alloc"))]
+#[cfg(not(feature = "std"))]
 impl<P: PlatformMemoryOptimizer> Default for PlatformOptimizedProviderBuilder<P> {
     fn default() -> Self {
         Self {
@@ -491,7 +489,7 @@ impl<P: PlatformMemoryOptimizer> Default for PlatformOptimizedProviderBuilder<P>
     }
 }
 
-#[cfg(all(target_os = "macos", feature = "alloc"))]
+#[cfg(all(target_os = "macos", feature = "std"))]
 impl PlatformOptimizedProviderBuilder<MacOSOptimizedProvider> {
     /// Create a new builder for macOS platforms.
     pub fn new() -> Self {
@@ -536,7 +534,7 @@ impl PlatformOptimizedProviderBuilder<MacOSOptimizedProvider> {
 }
 
 // No-alloc version for macOS
-#[cfg(all(target_os = "macos", not(feature = "alloc")))]
+#[cfg(all(target_os = "macos", not(feature = "std")))]
 impl PlatformOptimizedProviderBuilder<MacOSOptimizedProvider> {
     /// Create a new builder for macOS platforms.
     pub fn new() -> Self {
@@ -596,7 +594,7 @@ impl PlatformOptimizedProviderBuilder<MacOSOptimizedProvider> {
     }
 }
 
-#[cfg(all(target_os = "linux", feature = "alloc"))]
+#[cfg(all(target_os = "linux", feature = "std"))]
 impl PlatformOptimizedProviderBuilder<LinuxOptimizedProvider> {
     /// Create a new builder for Linux platforms.
     pub fn new() -> Self {
@@ -641,7 +639,7 @@ impl PlatformOptimizedProviderBuilder<LinuxOptimizedProvider> {
 }
 
 // No-alloc version for Linux
-#[cfg(all(target_os = "linux", not(feature = "alloc")))]
+#[cfg(all(target_os = "linux", not(feature = "std")))]
 impl PlatformOptimizedProviderBuilder<LinuxOptimizedProvider> {
     /// Create a new builder for Linux platforms.
     pub fn new() -> Self {
@@ -728,7 +726,7 @@ mod tests {
         assert_ne!(opt1, opt2);
     }
 
-    #[cfg(all(target_os = "macos", feature = "alloc"))]
+    #[cfg(all(target_os = "macos", feature = "std"))]
     #[test]
     fn test_platform_builder() {
         let builder = PlatformOptimizedProviderBuilder::<MacOSOptimizedProvider>::new()

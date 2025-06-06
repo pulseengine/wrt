@@ -124,16 +124,16 @@ fn demo_cross_environment_compatibility() -> Result<()> {
 
     let binary = create_demo_component_binary();
 
-    // This code works in all environments: std, no_std+alloc, pure no_std
+    // Binary std/no_std choice
     let component = parse_component_binary(&binary)?;
 
     #[cfg(feature = "std")]
     println!("✅ Running in std environment");
 
-    #[cfg(all(feature = "alloc", not(feature = "std")))]
+    #[cfg(all(not(feature = "std")))]
     println!("✅ Running in no_std+alloc environment");
 
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     println!("✅ Running in pure no_std environment");
 
     println!("   Component parsing successful in current environment");

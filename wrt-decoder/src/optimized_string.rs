@@ -8,11 +8,11 @@
 
 use crate::prelude::{read_name, String};
 use core::str;
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 use wrt_error::codes;
 use wrt_error::{errors::codes as error_codes, Error, ErrorCategory, Result};
 
-/// Parse and validate a UTF-8 string without intermediate allocation
+/// Binary std/no_std choice
 pub fn parse_utf8_string_inplace(bytes: &[u8], offset: usize) -> Result<(String, usize)> {
     let (name_bytes, new_offset) = read_name(bytes, offset)?;
 
@@ -25,12 +25,12 @@ pub fn parse_utf8_string_inplace(bytes: &[u8], offset: usize) -> Result<(String,
         )
     })?;
 
-    // Only allocate when we need to store the string
-    #[cfg(any(feature = "alloc", feature = "std"))]
+    // Binary std/no_std choice
+    #[cfg(feature = "std")]
     {
         Ok((String::from(string_str), new_offset))
     }
-    #[cfg(not(any(feature = "alloc", feature = "std")))]
+    #[cfg(not(any(feature = "std")))]
     {
         use wrt_foundation::NoStdProvider;
         let bounded_string =
@@ -45,7 +45,7 @@ pub fn parse_utf8_string_inplace(bytes: &[u8], offset: usize) -> Result<(String,
     }
 }
 
-/// Validate UTF-8 without allocation (returns borrowed str)
+/// Binary std/no_std choice
 pub fn validate_utf8_name(bytes: &[u8], offset: usize) -> Result<(&str, usize)> {
     let (name_bytes, new_offset) = read_name(bytes, offset)?;
 
@@ -61,7 +61,7 @@ pub fn validate_utf8_name(bytes: &[u8], offset: usize) -> Result<(&str, usize)> 
 }
 
 /// Copy validated UTF-8 to a bounded buffer in no_std environments
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 pub fn copy_utf8_to_bounded(
     bytes: &[u8],
     offset: usize,

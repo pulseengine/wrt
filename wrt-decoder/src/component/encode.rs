@@ -119,7 +119,7 @@ fn encode_core_module_section(modules: &[wrt_format::module::Module]) -> Result<
     Ok(data)
 }
 
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 fn encode_core_instance_section(
     instances: &[wrt_format::component::CoreInstance],
 ) -> Result<Vec<u8>> {

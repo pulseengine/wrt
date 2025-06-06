@@ -1,6 +1,6 @@
 //! Unit tests for memory optimization utilities
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 mod tests {
     #[test]
     fn test_bounds_checking() {
@@ -61,7 +61,7 @@ mod tests {
         let result = check_bounds_u32(malicious_count, reasonable_limit, "malicious count");
         assert!(result.is_err());
 
-        // This demonstrates our protection against allocation attacks
+        // Binary std/no_std choice
         println!("Successfully rejected malicious allocation of {} items", malicious_count);
     }
 }
@@ -102,7 +102,7 @@ mod string_optimization_tests {
     }
 }
 
-#[cfg(all(feature = "alloc", not(feature = "std")))]
+#[cfg(all(not(feature = "std")))]
 mod no_std_tests {
     use wrt_foundation::NoStdProvider;
 

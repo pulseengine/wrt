@@ -9,8 +9,8 @@ use core::{
     time::Duration,
 };
 
-#[cfg(feature = "alloc")]
-use alloc::{boxed::Box, collections::BTreeMap, string::String, sync::Arc, vec::Vec};
+#[cfg(feature = "std")]
+use std::{boxed::Box, collections::BTreeMap, string::String, sync::Arc, vec::Vec};
 
 use wrt_error::Result;
 use wrt_sync::WrtRwLock;
@@ -189,6 +189,16 @@ impl ThreadHandle {
     pub fn is_running(&self) -> bool {
         self.platform_handle.is_running()
     }
+
+    /// Terminate the thread
+    pub fn terminate(&self) -> Result<()> {
+        self.platform_handle.terminate()
+    }
+
+    /// Join thread with timeout
+    pub fn join_timeout(&self, timeout: Duration) -> Result<Option<Vec<u8>>> {
+        self.platform_handle.join_timeout(timeout)
+    }
 }
 
 /// Platform-specific thread handle trait
@@ -201,6 +211,12 @@ pub trait PlatformThreadHandle: Send + Sync {
     
     /// Get thread statistics
     fn get_stats(&self) -> Result<ThreadStats>;
+    
+    /// Terminate the thread
+    fn terminate(&self) -> Result<()>;
+    
+    /// Join thread with timeout
+    fn join_timeout(&self, timeout: Duration) -> Result<Option<Vec<u8>>>;
 }
 
 /// Per-thread statistics
@@ -208,7 +224,7 @@ pub trait PlatformThreadHandle: Send + Sync {
 pub struct ThreadStats {
     /// CPU time used
     pub cpu_time: Duration,
-    /// Memory currently allocated
+    /// Binary std/no_std choice
     pub memory_usage: usize,
     /// Peak memory usage
     pub peak_memory_usage: usize,
@@ -266,9 +282,9 @@ pub struct ThreadSpawnOptions {
     /// Thread priority
     pub priority: Option<ThreadPriority>,
     /// Thread name
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub name: Option<String>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub name: Option<&'static str>,
 }
 
@@ -338,7 +354,7 @@ impl ResourceTracker {
         }
     }
 
-    /// Check if thread can be allocated
+    /// Binary std/no_std choice
     pub fn can_allocate_thread(&self, request: &ThreadSpawnRequest) -> Result<bool> {
         // Check total thread limit
         let total = self.total_threads.load(Ordering::Acquire);
@@ -559,7 +575,7 @@ where
         builder
     };
     
-    let handle = builder.spawn(move || {
+    let _handle = builder.spawn(move || {
         let _ = task();
     }).map_err(|_e| wrt_error::Error::new(
         wrt_error::ErrorCategory::Runtime,
@@ -580,6 +596,14 @@ where
         fn get_stats(&self) -> Result<ThreadStats> {
             Ok(ThreadStats::default())
         }
+        
+        fn terminate(&self) -> Result<()> {
+            Ok(()) // No-op for simple implementation
+        }
+        
+        fn join_timeout(&self, _timeout: Duration) -> Result<Option<Vec<u8>>> {
+            Ok(Some(vec![])) // Return immediately for simple implementation
+        }
     }
     
     Ok(ThreadHandle {
@@ -589,46 +613,16 @@ where
 }
 
 /// Placeholder spawn function for non-std builds
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
+#[cfg(not(feature = "std"))]
 pub fn spawn_thread<F>(_options: ThreadSpawnOptions, _task: F) -> Result<ThreadHandle>
 where
     F: FnOnce() -> Result<()> + Send + 'static,
 {
-    use alloc::boxed::Box;
-    // Return a dummy handle for compilation purposes
-    struct NoStdThreadHandle;
-    impl PlatformThreadHandle for NoStdThreadHandle {
-        fn join(self: Box<Self>) -> Result<Vec<u8>> {
-            Err(wrt_error::Error::new(
-                wrt_error::ErrorCategory::Runtime,
-                wrt_error::codes::NOT_IMPLEMENTED,
-                "Thread joining not supported in no_std"
-            ))
-        }
-        fn is_running(&self) -> bool {
-            false
-        }
-        fn get_stats(&self) -> Result<ThreadStats> {
-            Ok(ThreadStats::default())
-        }
-    }
-    
-    Ok(ThreadHandle {
-        id: 0,
-        platform_handle: Box::new(NoStdThreadHandle),
-    })
-}
-
-/// Placeholder spawn function for pure no_std builds (no allocation)
-#[cfg(not(any(feature = "std", feature = "alloc")))]
-pub fn spawn_thread<F>(_options: ThreadSpawnOptions, _task: F) -> Result<ThreadHandle>
-where
-    F: FnOnce() -> Result<()> + Send + 'static,
-{
-    // Can't create ThreadHandle without Box in pure no_std
+    // For no_std, we can't create actual threads, so return an error immediately
     Err(wrt_error::Error::new(
         wrt_error::ErrorCategory::Runtime,
         wrt_error::codes::NOT_IMPLEMENTED,
-        "Thread spawning requires allocation support"
+        "Thread spawning not supported in no_std environment"
     ))
 }
+

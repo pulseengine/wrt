@@ -5,9 +5,9 @@
 
 #[cfg(feature = "std")]
 use std::fmt;
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-use alloc::fmt;
-#[cfg(not(feature = "alloc"))]
+#[cfg(all(not(feature = "std")))]
+use std::fmt;
+#[cfg(not(feature = "std"))]
 use core::fmt;
 
 use wrt_foundation::{

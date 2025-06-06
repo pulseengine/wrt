@@ -1,6 +1,6 @@
 // Simple test to verify memory optimizations work
 
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 #[test]
 fn test_memory_optimized_parsing() {
     use wrt_decoder::optimized_module::decode_module_with_provider;

@@ -5,8 +5,8 @@
 
 #[cfg(feature = "std")]
 use std::{collections::BTreeMap, vec::Vec};
-#[cfg(all(feature = "alloc", not(feature = "std")))]
-use alloc::{collections::BTreeMap, vec::Vec};
+#[cfg(all(not(feature = "std")))]
+use std::{collections::BTreeMap, vec::Vec};
 
 use wrt_foundation::{
     BoundedString, NoStdProvider,
@@ -48,7 +48,7 @@ pub struct SourceChange {
 }
 
 /// Parse tree node for incremental parsing
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 #[derive(Debug, Clone)]
 pub struct ParseNode {
     /// AST node at this position
@@ -62,7 +62,7 @@ pub struct ParseNode {
 }
 
 /// Kind of parse node
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 #[derive(Debug, Clone)]
 pub enum ParseNodeKind {
     /// Document root
@@ -86,7 +86,7 @@ pub enum ParseNodeKind {
 }
 
 /// Incremental parser state
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 #[derive(Debug)]
 pub struct IncrementalParser {
     /// Current parse tree
@@ -120,7 +120,7 @@ pub struct ParseStats {
     pub nodes_reparsed: u32,
 }
 
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 impl IncrementalParser {
     /// Create a new incremental parser
     pub fn new() -> Self {
@@ -212,9 +212,9 @@ impl IncrementalParser {
         let _provider = NoStdProvider::<1024>::new();
         let doc = WitDocument {
             package: None,
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             use_items: Vec::new(),
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             items: Vec::new(),
             span: SourceSpan::new(0, self.total_length, 0),
         };
@@ -332,7 +332,7 @@ impl IncrementalParser {
         }
         
         // Add use items
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         for use_item in &doc.use_items {
             children.push(ParseNode {
                 node: ParseNodeKind::UseItem,
@@ -343,7 +343,7 @@ impl IncrementalParser {
         }
         
         // Add top-level items
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         for item in &doc.items {
             let (kind, span) = match item {
                 TopLevelItem::Interface(i) => (ParseNodeKind::Interface, i.span),
@@ -389,7 +389,7 @@ impl IncrementalParser {
     }
 }
 
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 impl Default for IncrementalParser {
     fn default() -> Self {
         Self::new()
@@ -410,7 +410,7 @@ impl SourceSpan {
 }
 
 /// Incremental parsing cache for multiple files
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 #[derive(Debug)]
 pub struct IncrementalParserCache {
     /// Parsers for each file
@@ -420,7 +420,7 @@ pub struct IncrementalParserCache {
     global_stats: ParseStats,
 }
 
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 impl IncrementalParserCache {
     /// Create a new parser cache
     pub fn new() -> Self {
@@ -457,7 +457,7 @@ impl IncrementalParserCache {
     }
 }
 
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 impl Default for IncrementalParserCache {
     fn default() -> Self {
         Self::new()
@@ -468,7 +468,7 @@ impl Default for IncrementalParserCache {
 mod tests {
     use super::*;
     
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     #[test]
     fn test_incremental_parser_creation() {
         let parser = IncrementalParser::new();
@@ -476,7 +476,7 @@ mod tests {
         assert_eq!(parser.stats().total_parses, 0);
     }
     
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     #[test]
     fn test_source_change_types() {
         let insert = ChangeType::Insert { offset: 10, length: 5 };
@@ -492,7 +492,7 @@ mod tests {
         }
     }
     
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     #[test]
     fn test_span_operations() {
         let span1 = SourceSpan::new(10, 20, 0);
@@ -506,7 +506,7 @@ mod tests {
         assert!(!span1.contains_offset(25));
     }
     
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     #[test]
     fn test_parser_cache() {
         let mut cache = IncrementalParserCache::new();

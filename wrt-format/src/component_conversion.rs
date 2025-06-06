@@ -10,16 +10,16 @@ use wrt_foundation::ValueType;
 use crate::component::FormatValType;
 
 // Create a wrapper type to avoid orphan rule violations - fix generic parameter
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 pub struct ValTypeWrapper(pub FormatValType);
 
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 pub struct ValTypeWrapper<P: wrt_foundation::MemoryProvider + Default + Clone + PartialEq + Eq = wrt_foundation::NoStdProvider<1024>>(
     pub FormatValType<P>,
 );
 
 // Implement a conversion function from FormatValType to ValueType
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 pub fn format_val_type_to_value_type(format_type: &FormatValType) -> Result<ValueType> {
     match format_type {
         FormatValType::S8
@@ -56,7 +56,7 @@ pub fn format_val_type_to_value_type(format_type: &FormatValType) -> Result<Valu
     }
 }
 
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 pub fn format_val_type_to_value_type<
     P: wrt_foundation::MemoryProvider + Default + Clone + PartialEq + Eq,
 >(
@@ -98,7 +98,7 @@ pub fn format_val_type_to_value_type<
 }
 
 // Implement a conversion function from ValueType to FormatValType
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 pub fn value_type_to_format_val_type(value_type: &ValueType) -> Result<FormatValType> {
     match value_type {
         ValueType::I32 => Ok(FormatValType::S32),
@@ -114,7 +114,7 @@ pub fn value_type_to_format_val_type(value_type: &ValueType) -> Result<FormatVal
     }
 }
 
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 pub fn value_type_to_format_val_type<
     P: wrt_foundation::MemoryProvider + Default + Clone + PartialEq + Eq,
 >(
@@ -135,7 +135,7 @@ pub fn value_type_to_format_val_type<
 }
 
 // Map a core WebAssembly ValueType to a Component Model ValType
-#[cfg(any(feature = "alloc", feature = "std"))]
+#[cfg(feature = "std")]
 pub fn map_wasm_type_to_component(ty: ValueType) -> FormatValType {
     match ty {
         ValueType::I32 => FormatValType::S32,
@@ -151,7 +151,7 @@ pub fn map_wasm_type_to_component(ty: ValueType) -> FormatValType {
     }
 }
 
-#[cfg(not(any(feature = "alloc", feature = "std")))]
+#[cfg(not(any(feature = "std")))]
 pub fn map_wasm_type_to_component<
     P: wrt_foundation::MemoryProvider + Default + Clone + PartialEq + Eq,
 >(

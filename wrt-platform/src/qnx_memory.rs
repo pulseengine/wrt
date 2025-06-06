@@ -62,7 +62,7 @@ mod ffi {
     pub type mem_partition_id_t = u32;
 
     extern "C" {
-        // mmap for memory allocation
+        // Binary std/no_std choice
         pub fn mmap(
             addr: *mut c_void,
             len: qnx_size_t,
@@ -72,7 +72,7 @@ mod ffi {
             offset: qnx_off_t,
         ) -> *mut c_void;
 
-        // munmap for memory deallocation
+        // Binary std/no_std choice
         pub fn munmap(addr: *mut c_void, len: qnx_size_t) -> i32;
 
         // mprotect for changing memory protection
@@ -93,10 +93,10 @@ mod ffi {
     }
 }
 
-/// Configuration for QNX memory allocator
+/// Binary std/no_std choice
 #[derive(Debug, Clone)]
 pub struct QnxAllocatorConfig {
-    /// Whether to use guard pages around allocations
+    /// Binary std/no_std choice
     pub use_guard_pages: bool,
     /// Memory protection flags for guard pages
     pub guard_page_prot: QnxProtFlags,
@@ -135,7 +135,7 @@ impl QnxAllocatorBuilder {
         Self::default()
     }
 
-    /// Configure whether to use guard pages around allocations
+    /// Binary std/no_std choice
     pub fn with_guard_pages(mut self, use_guard_pages: bool) -> Self {
         self.config.use_guard_pages = use_guard_pages;
         self
@@ -171,20 +171,20 @@ impl QnxAllocatorBuilder {
     }
 }
 
-/// Memory allocation and management for QNX Neutrino
+/// Binary std/no_std choice
 #[derive(Debug)]
 pub struct QnxAllocator {
-    /// Configuration settings for the allocator
+    /// Binary std/no_std choice
     config: QnxAllocatorConfig,
     /// Memory partition ID if a dedicated partition was created
     partition_id: Option<u32>,
-    /// Currently allocated memory pointer (if any)
+    /// Binary std/no_std choice
     current_allocation: Option<NonNull<u8>>,
-    /// Size of current allocation in bytes
+    /// Binary std/no_std choice
     current_size: usize,
-    /// Number of WASM pages currently allocated
+    /// Binary std/no_std choice
     current_pages: u32,
-    /// Maximum number of pages this allocator can handle
+    /// Binary std/no_std choice
     maximum_pages: Option<u32>,
 }
 
@@ -253,7 +253,7 @@ impl QnxAllocator {
         Ok(())
     }
 
-    /// Calculate the total size needed for allocation, including guard pages
+    /// Binary std/no_std choice
     fn calculate_total_size(&self, pages: u32) -> Result<usize> {
         let data_size = (pages as usize).checked_mul(WASM_PAGE_SIZE).ok_or_else(|| {
             Error::new(
@@ -281,7 +281,7 @@ impl QnxAllocator {
         })
     }
 
-    /// Free the current allocation if it exists
+    /// Binary std/no_std choice
     fn free_current_allocation(&mut self) -> Result<()> {
         if let Some(ptr) = self.current_allocation.take() {
             self.activate_partition()?;
@@ -306,7 +306,7 @@ impl QnxAllocator {
 
 impl Drop for QnxAllocator {
     fn drop(&mut self) {
-        // Free current allocation if any
+        // Binary std/no_std choice
         let _ = self.free_current_allocation();
 
         // Destroy partition if created
@@ -324,7 +324,7 @@ impl PageAllocator for QnxAllocator {
         initial_pages: u32,
         maximum_pages: Option<u32>,
     ) -> Result<(NonNull<u8>, usize)> {
-        // Free any existing allocation first
+        // Binary std/no_std choice
         self.free_current_allocation()?;
 
         // Store maximum pages for future reference
@@ -351,7 +351,7 @@ impl PageAllocator for QnxAllocator {
         // Restore partition
         self.restore_partition()?;
 
-        // Check for allocation failure
+        // Binary std/no_std choice
         if addr == core::ptr::null_mut() || addr == usize::MAX as *mut _ {
             return Err(Error::new(
                 ErrorCategory::Memory, 1,
@@ -385,7 +385,7 @@ impl PageAllocator for QnxAllocator {
 
             // Check if protection succeeded
             if lower_result != 0 || upper_result != 0 {
-                // Free the allocation since guard page setup failed
+                // Binary std/no_std choice
                 unsafe {
                     ffi::munmap(addr, total_size);
                 }
@@ -405,7 +405,7 @@ impl PageAllocator for QnxAllocator {
             addr as *mut u8
         };
 
-        // Store allocation information
+        // Binary std/no_std choice
         let data_ptr_nonnull = NonNull::new(data_ptr).ok_or_else(|| {
             Error::new(
                 ErrorCategory::Memory, 1,
@@ -431,7 +431,7 @@ impl PageAllocator for QnxAllocator {
     }
 
     fn grow(&mut self, current_pages: u32, additional_pages: u32) -> Result<(NonNull<u8>, usize)> {
-        // Check if we have an existing allocation
+        // Binary std/no_std choice
         if self.current_allocation.is_none() {
             return Err(Error::new(
                 ErrorCategory::Memory, 1,
@@ -460,7 +460,7 @@ impl PageAllocator for QnxAllocator {
             }
         }
 
-        // QNX doesn't support in-place resize with mmap, so we need to allocate new
+        // Binary std/no_std choice
         // memory and copy the contents
         let new_total_size = self.calculate_total_size(new_pages)?;
 
@@ -482,7 +482,7 @@ impl PageAllocator for QnxAllocator {
         // Restore partition
         self.restore_partition()?;
 
-        // Check for allocation failure
+        // Binary std/no_std choice
         if new_addr == core::ptr::null_mut() || new_addr == usize::MAX as *mut _ {
             return Err(Error::new(
                 ErrorCategory::Memory, 1,
@@ -508,7 +508,7 @@ impl PageAllocator for QnxAllocator {
             )
         })?;
 
-        // Safety: we're copying from the old allocation to the new one
+        // Binary std/no_std choice
         unsafe {
             core::ptr::copy_nonoverlapping(current_ptr, new_data_ptr, copy_size);
         }
@@ -538,7 +538,7 @@ impl PageAllocator for QnxAllocator {
 
             // Check if protection succeeded
             if lower_result != 0 || upper_result != 0 {
-                // Free the new allocation since guard page setup failed
+                // Binary std/no_std choice
                 unsafe {
                     ffi::munmap(new_addr, new_total_size);
                 }
@@ -551,7 +551,7 @@ impl PageAllocator for QnxAllocator {
             }
         }
 
-        // Free the old allocation
+        // Binary std/no_std choice
         self.activate_partition()?;
         let old_addr = if self.config.use_guard_pages {
             unsafe { (self.current_allocation.unwrap().as_ptr()).sub(WASM_PAGE_SIZE) }
@@ -563,7 +563,7 @@ impl PageAllocator for QnxAllocator {
         }
         self.restore_partition()?;
 
-        // Update allocation information
+        // Binary std/no_std choice
         let new_data_ptr_nonnull = NonNull::new(new_data_ptr).ok_or_else(|| {
             Error::new(
                 ErrorCategory::Memory, 1,
@@ -612,7 +612,7 @@ impl PageAllocator for QnxAllocator {
         is_writable: bool,
         is_executable: bool,
     ) -> Result<()> {
-        // Verify that addr is within our allocation
+        // Binary std/no_std choice
         if let Some(current) = self.current_allocation {
             let current_addr = current.as_ptr() as usize;
             let addr_val = addr.as_ptr() as usize;
@@ -685,14 +685,14 @@ mod tests {
     #[test]
     #[ignore = "Requires QNX system to run"]
     fn test_qnx_allocator_basic() {
-        // Create a basic allocator
+        // Binary std/no_std choice
         let mut allocator = QnxAllocatorBuilder::new().with_guard_pages(true).build();
 
         // Allocate 2 pages
         let result = allocator.allocate(2, Some(4));
         assert!(result.is_ok());
 
-        // Verify allocation
+        // Binary std/no_std choice
         let (ptr, size) = result.unwrap();
         assert!(!ptr.as_ptr().is_null());
         assert_eq!(size, 2 * WASM_PAGE_SIZE);
@@ -705,7 +705,7 @@ mod tests {
     #[test]
     #[ignore = "Requires QNX system to run"]
     fn test_qnx_allocator_grow() {
-        // Create a basic allocator
+        // Binary std/no_std choice
         let mut allocator = QnxAllocatorBuilder::new()
             .with_guard_pages(false) // No guard pages for simpler testing
             .build();
@@ -744,7 +744,7 @@ mod tests {
     #[test]
     #[ignore = "Requires QNX system to run"]
     fn test_qnx_allocator_protection() {
-        // Create an allocator with guard pages
+        // Binary std/no_std choice
         let mut allocator = QnxAllocatorBuilder::new()
             .with_guard_pages(true)
             .with_data_protection(QnxProtFlags::ReadWrite)
