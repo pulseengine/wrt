@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "wrt-safety",    # Add as first member for foundational safety
     "wrt",
     "wrtd",
     "xtask",
@@ -22,8 +23,7 @@ members = [
     "wrt-verification-tool",
     "wrt-test-registry",
     "wrt-platform",
-    "wrt-tests/integration",
-]
+    "wrt-tests/integration"]
 resolver = "2"  # Use edition 2021 resolver
 
 [workspace.package]
@@ -39,8 +39,10 @@ wit-bindgen = "0.41.0"
 dagger-sdk = { version = "0.18.6", features = ["codegen"] }
 
 # Internal crate versions
+wrt-safety = { path = "wrt-safety", version = "0.2.0", default-features = false }
 wrt = { path = "wrt", version = "0.2.0", default-features = false }
 wrt-error = { path = "wrt-error", version = "0.2.0", default-features = false }
+wrt-error-ng = { path = "wrt-error-ng", version = "0.2.0", default-features = false }
 wrt-sync = { path = "wrt-sync", version = "0.2.0", default-features = false }
 wrt-format = { path = "wrt-format", version = "0.2.0", default-features = false }
 wrt-foundation = { path = "wrt-foundation", version = "0.2.0", default-features = false }
