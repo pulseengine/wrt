@@ -15,11 +15,9 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
 extern crate alloc;
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::{boxed::Box, collections::BTreeMap, collections::BTreeSet, vec::Vec};
+use std::{boxed::Box, collections::BTreeMap, collections::BTreeSet, vec::Vec};
 #[cfg(feature = "std")]
 use std::{boxed::Box, collections::HashMap, collections::HashSet, vec::Vec};
 
@@ -34,11 +32,11 @@ use crate::async_types::{Future, FutureHandle, Stream, StreamHandle, Waitable, W
 use crate::task_builtins::{TaskId as TaskBuiltinId, TaskStatus};
 
 // Constants for no_std environments
-#[cfg(not(any(feature = "std", feature = "alloc")))]
+#[cfg(not(any(feature = "std", )))]
 const MAX_WAITABLE_SETS: usize = 32;
-#[cfg(not(any(feature = "std", feature = "alloc")))]
+#[cfg(not(any(feature = "std", )))]
 const MAX_WAITABLES_PER_SET: usize = 64;
-#[cfg(not(any(feature = "std", feature = "alloc")))]
+#[cfg(not(any(feature = "std", )))]
 const MAX_WAIT_RESULTS: usize = 64;
 
 /// Waitable set identifier
@@ -182,9 +180,9 @@ impl Default for WaitableId {
 #[derive(Debug, Clone)]
 pub struct WaitableSetImpl {
     pub id: WaitableSetId,
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub waitables: BTreeMap<WaitableId, WaitableEntry>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub waitables: BoundedMap<WaitableId, WaitableEntry, MAX_WAITABLES_PER_SET>,
     pub closed: bool,
 }
@@ -193,9 +191,9 @@ impl WaitableSetImpl {
     pub fn new() -> Self {
         Self {
             id: WaitableSetId::new(),
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             waitables: BTreeMap::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             waitables: BoundedMap::new(),
             closed: false,
         }
@@ -213,12 +211,12 @@ impl WaitableSetImpl {
         let id = WaitableId::new();
         let entry = WaitableEntry::new(id, waitable);
 
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.waitables.insert(id, entry);
             Ok(id)
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             self.waitables.insert(id, entry)
                 .map_err(|_| Error::new(
@@ -255,7 +253,7 @@ impl WaitableSetImpl {
     }
 
     /// Check all waitables and return those that are ready
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fn check_ready(&mut self) -> Vec<WaitableEntry> {
         let mut ready = Vec::new();
         for (_, entry) in self.waitables.iter_mut() {
@@ -266,7 +264,7 @@ impl WaitableSetImpl {
         ready
     }
 
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub fn check_ready(&mut self) -> Result<BoundedVec<WaitableEntry, MAX_WAIT_RESULTS>> {
         let mut ready = BoundedVec::new();
         for (_, entry) in self.waitables.iter_mut() {
@@ -315,30 +313,30 @@ static WAITABLE_SET_REGISTRY: AtomicRefCell<Option<WaitableSetRegistry>> =
 /// Registry that manages all waitable sets
 #[derive(Debug)]
 pub struct WaitableSetRegistry {
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     sets: HashMap<WaitableSetId, WaitableSetImpl>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     sets: BoundedMap<WaitableSetId, WaitableSetImpl, MAX_WAITABLE_SETS>,
 }
 
 impl WaitableSetRegistry {
     pub fn new() -> Self {
         Self {
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             sets: HashMap::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             sets: BoundedMap::new(),
         }
     }
 
     pub fn register_set(&mut self, set: WaitableSetImpl) -> Result<WaitableSetId> {
         let id = set.id;
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.sets.insert(id, set);
             Ok(id)
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             self.sets.insert(id, set)
                 .map_err(|_| Error::new(
@@ -533,7 +531,7 @@ impl WaitableSetBuiltins {
     }
 
     /// Get all ready waitables from a set
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fn waitable_set_poll_all(set_id: WaitableSetId) -> Result<Vec<WaitableEntry>> {
         Self::with_registry_mut(|registry| {
             if let Some(set) = registry.get_set_mut(set_id) {
@@ -548,7 +546,7 @@ impl WaitableSetBuiltins {
         })?
     }
 
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub fn waitable_set_poll_all(set_id: WaitableSetId) -> Result<BoundedVec<WaitableEntry, MAX_WAIT_RESULTS>> {
         Self::with_registry_mut(|registry| {
             if let Some(set) = registry.get_set_mut(set_id) {
@@ -569,7 +567,7 @@ pub mod waitable_set_helpers {
     use super::*;
 
     /// Create a waitable set with initial waitables
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fn create_waitable_set_with(waitables: Vec<Waitable>) -> Result<WaitableSetId> {
         let set_id = WaitableSetBuiltins::waitable_set_new()?;
         for waitable in waitables {
@@ -578,7 +576,7 @@ pub mod waitable_set_helpers {
         Ok(set_id)
     }
 
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub fn create_waitable_set_with(waitables: &[Waitable]) -> Result<WaitableSetId> {
         let set_id = WaitableSetBuiltins::waitable_set_new()?;
         for waitable in waitables {
@@ -588,7 +586,7 @@ pub mod waitable_set_helpers {
     }
 
     /// Wait for any of multiple futures to complete
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fn wait_for_any_future(futures: Vec<Future>) -> Result<WaitResult> {
         let waitables: Vec<Waitable> = futures.into_iter()
             .map(Waitable::Future)
@@ -597,7 +595,7 @@ pub mod waitable_set_helpers {
         WaitableSetBuiltins::waitable_set_wait(set_id)
     }
 
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub fn wait_for_any_future(futures: &[Future]) -> Result<WaitResult> {
         let mut waitables = BoundedVec::<Waitable, MAX_WAITABLES_PER_SET>::new();
         for future in futures {
@@ -613,7 +611,7 @@ pub mod waitable_set_helpers {
     }
 
     /// Wait for any of multiple streams to have data available
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fn wait_for_any_stream(streams: Vec<Stream>) -> Result<WaitResult> {
         let waitables: Vec<Waitable> = streams.into_iter()
             .map(Waitable::Stream)
@@ -622,7 +620,7 @@ pub mod waitable_set_helpers {
         WaitableSetBuiltins::waitable_set_wait(set_id)
     }
 
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub fn wait_for_any_stream(streams: &[Stream]) -> Result<WaitResult> {
         let mut waitables = BoundedVec::<Waitable, MAX_WAITABLES_PER_SET>::new();
         for stream in streams {
@@ -789,12 +787,12 @@ mod tests {
         set.add_waitable(Waitable::Future(resolved_future)).unwrap();
 
         // Check for ready waitables
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             let ready = set.check_ready();
             assert_eq!(ready.len(), 1);
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             let ready = set.check_ready().unwrap();
             assert_eq!(ready.len(), 1);

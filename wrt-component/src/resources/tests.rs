@@ -18,7 +18,7 @@ fn test_size_class_buffer_pool() {
     // Create the pool
     let mut pool = SizeClassBufferPool::new();
 
-    // Test several allocations of different sizes
+    // Binary std/no_std choice
     let sizes = [15, 64, 200, 1024, 4096, 16385];
     let mut buffers = Vec::new();
 

@@ -16,11 +16,9 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
 extern crate alloc;
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::{boxed::Box, collections::BTreeMap, vec::Vec};
+use std::{boxed::Box, collections::BTreeMap, vec::Vec};
 #[cfg(feature = "std")]
 use std::{boxed::Box, collections::HashMap, vec::Vec};
 
@@ -32,33 +30,33 @@ use wrt_foundation::{
     types::ValueType,
 };
 
-#[cfg(not(any(feature = "std", feature = "alloc")))]
+#[cfg(not(any(feature = "std", )))]
 use wrt_foundation::{BoundedString, BoundedVec};
 
 // Constants for no_std environments
-#[cfg(not(any(feature = "std", feature = "alloc")))]
+#[cfg(not(any(feature = "std", )))]
 const MAX_CONTEXT_ENTRIES: usize = 32;
-#[cfg(not(any(feature = "std", feature = "alloc")))]
+#[cfg(not(any(feature = "std", )))]
 const MAX_CONTEXT_VALUE_SIZE: usize = 256;
-#[cfg(not(any(feature = "std", feature = "alloc")))]
+#[cfg(not(any(feature = "std", )))]
 const MAX_CONTEXT_KEY_SIZE: usize = 64;
 
 /// Context key identifier for async contexts
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 pub struct ContextKey(String);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-#[cfg(not(any(feature = "std", feature = "alloc")))]
+#[cfg(not(any(feature = "std", )))]
 pub struct ContextKey(BoundedString<MAX_CONTEXT_KEY_SIZE>);
 
 impl ContextKey {
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fn new(key: String) -> Self {
         Self(key)
     }
 
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub fn new(key: &str) -> Result<Self> {
         let bounded_key = BoundedString::new_from_str(key)
             .map_err(|_| Error::new(
@@ -70,9 +68,9 @@ impl ContextKey {
     }
 
     pub fn as_str(&self) -> &str {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         return &self.0;
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         return self.0.as_str();
     }
 }
@@ -83,9 +81,9 @@ pub enum ContextValue {
     /// Simple value types
     Simple(ComponentValue),
     /// Binary data (for serialized complex types)
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     Binary(Vec<u8>),
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     Binary(BoundedVec<u8, MAX_CONTEXT_VALUE_SIZE>),
 }
 
@@ -94,12 +92,12 @@ impl ContextValue {
         Self::Simple(value)
     }
 
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fn from_binary(data: Vec<u8>) -> Self {
         Self::Binary(data)
     }
 
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub fn from_binary(data: &[u8]) -> Result<Self> {
         let bounded_data = BoundedVec::new_from_slice(data)
             .map_err(|_| Error::new(
@@ -119,9 +117,9 @@ impl ContextValue {
 
     pub fn as_binary(&self) -> Option<&[u8]> {
         match self {
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             Self::Binary(data) => Some(data),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             Self::Binary(data) => Some(data.as_slice()),
             _ => None,
         }
@@ -131,18 +129,18 @@ impl ContextValue {
 /// Async execution context that stores key-value pairs
 #[derive(Debug, Clone)]
 pub struct AsyncContext {
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     data: BTreeMap<ContextKey, ContextValue>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     data: BoundedMap<ContextKey, ContextValue, MAX_CONTEXT_ENTRIES>,
 }
 
 impl AsyncContext {
     pub fn new() -> Self {
         Self {
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             data: BTreeMap::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             data: BoundedMap::new(),
         }
     }
@@ -152,12 +150,12 @@ impl AsyncContext {
     }
 
     pub fn set(&mut self, key: ContextKey, value: ContextValue) -> Result<()> {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.data.insert(key, value);
             Ok(())
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             self.data.insert(key, value)
                 .map_err(|_| Error::new(
@@ -382,9 +380,9 @@ pub mod canonical_builtins {
         T: TryFrom<ComponentValue>,
         T::Error: Into<Error>,
     {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         let context_key = ContextKey::new(key.to_string());
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         let context_key = ContextKey::new(key)?;
 
         if let Some(context_value) = AsyncContextManager::get_context_value(&context_key)? {
@@ -405,9 +403,9 @@ pub mod canonical_builtins {
     where
         T: Into<ComponentValue>,
     {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         let context_key = ContextKey::new(key.to_string());
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         let context_key = ContextKey::new(key)?;
 
         let component_value = value.into();
@@ -458,13 +456,13 @@ mod tests {
 
     #[test]
     fn test_context_key_creation() {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             let key = ContextKey::new("test-key".to_string());
             assert_eq!(key.as_str(), "test-key");
         }
 
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             let key = ContextKey::new("test-key").unwrap();
             assert_eq!(key.as_str(), "test-key");
@@ -483,9 +481,9 @@ mod tests {
         let mut context = AsyncContext::new();
         assert!(context.is_empty());
 
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         let key = ContextKey::new("test".to_string());
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         let key = ContextKey::new("test").unwrap();
 
         let value = ContextValue::from_component_value(ComponentValue::I32(42));

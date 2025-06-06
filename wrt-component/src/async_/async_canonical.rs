@@ -9,8 +9,8 @@ use core::{fmt, mem};
 #[cfg(feature = "std")]
 use std::{fmt, mem};
 
-#[cfg(any(feature = "std", feature = "alloc"))]
-use alloc::{boxed::Box, collections::BTreeMap, vec::Vec};
+#[cfg(feature = "std")]
+use std::{boxed::Box, collections::BTreeMap, vec::Vec};
 
 use wrt_foundation::{
     bounded::BoundedVec, component_value::ComponentValue, prelude::*, resource::ResourceHandle,
@@ -49,9 +49,9 @@ pub struct AsyncOperation {
     /// Current state
     pub state: AsyncOperationState,
     /// Associated context
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub context: Vec<u8>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub context: BoundedVec<u8, MAX_ASYNC_CONTEXT_SIZE>,
     /// Task handle for cancellation
     pub task_handle: Option<u32>,
@@ -130,21 +130,21 @@ pub struct AsyncCanonicalAbi {
     task_manager: TaskManager,
 
     /// Stream registry
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     streams: BTreeMap<StreamHandle, Box<dyn StreamValue>>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     streams: BoundedVec<(StreamHandle, StreamValueEnum), MAX_ASYNC_RESOURCES>,
 
     /// Future registry
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     futures: BTreeMap<FutureHandle, Box<dyn FutureValue>>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     futures: BoundedVec<(FutureHandle, FutureValueEnum), MAX_ASYNC_RESOURCES>,
 
     /// Error context registry
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     error_contexts: BTreeMap<ErrorContextHandle, ErrorContext>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     error_contexts: BoundedVec<(ErrorContextHandle, ErrorContext), MAX_ASYNC_RESOURCES>,
 
     /// Next handle IDs
@@ -154,7 +154,7 @@ pub struct AsyncCanonicalAbi {
 }
 
 /// Stream value trait for type erasure
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 pub trait StreamValue: fmt::Debug {
     fn read(&mut self) -> WrtResult<AsyncReadResult>;
     fn write(&mut self, values: &[Value]) -> WrtResult<()>;
@@ -168,7 +168,7 @@ pub trait StreamValue: fmt::Debug {
 }
 
 /// Future value trait for type erasure
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 pub trait FutureValue: fmt::Debug {
     fn read(&mut self) -> WrtResult<AsyncReadResult>;
     fn write(&mut self, value: &Value) -> WrtResult<()>;
@@ -182,7 +182,7 @@ pub trait FutureValue: fmt::Debug {
 }
 
 /// Enum for stream values in no_std environments
-#[cfg(not(any(feature = "std", feature = "alloc")))]
+#[cfg(not(any(feature = "std", )))]
 #[derive(Debug)]
 pub enum StreamValueEnum {
     Values(Stream<Value>),
@@ -190,7 +190,7 @@ pub enum StreamValueEnum {
 }
 
 /// Enum for future values in no_std environments
-#[cfg(not(any(feature = "std", feature = "alloc")))]
+#[cfg(not(any(feature = "std", )))]
 #[derive(Debug)]
 pub enum FutureValueEnum {
     Value(Future<Value>),
@@ -215,17 +215,17 @@ impl AsyncCanonicalAbi {
         Self {
             canonical_abi: CanonicalAbi::new(),
             task_manager: TaskManager::new(),
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             streams: BTreeMap::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             streams: BoundedVec::new(),
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             futures: BTreeMap::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             futures: BoundedVec::new(),
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             error_contexts: BTreeMap::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             error_contexts: BoundedVec::new(),
             next_stream_handle: 0,
             next_future_handle: 0,
@@ -240,12 +240,12 @@ impl AsyncCanonicalAbi {
 
         let stream = Stream::new(handle, element_type.clone());
 
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             let concrete = ConcreteStream { inner: stream };
             self.streams.insert(handle, Box::new(concrete));
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             let stream_enum = StreamValueEnum::Values(stream);
             self.streams.push((handle, stream_enum)).map_err(|_| {
@@ -258,7 +258,7 @@ impl AsyncCanonicalAbi {
 
     /// Read from a stream
     pub fn stream_read(&mut self, stream_handle: StreamHandle) -> WrtResult<AsyncReadResult> {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             if let Some(stream) = self.streams.get_mut(&stream_handle) {
                 stream.read()
@@ -266,7 +266,7 @@ impl AsyncCanonicalAbi {
                 Err(wrt_foundation::WrtError::InvalidInput("Stream not found".into()))
             }
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             for (handle, stream) in &mut self.streams {
                 if *handle == stream_handle {
@@ -293,7 +293,7 @@ impl AsyncCanonicalAbi {
 
     /// Write to a stream
     pub fn stream_write(&mut self, stream_handle: StreamHandle, values: &[Value]) -> WrtResult<()> {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             if let Some(stream) = self.streams.get_mut(&stream_handle) {
                 stream.write(values)
@@ -301,7 +301,7 @@ impl AsyncCanonicalAbi {
                 Err(wrt_foundation::WrtError::InvalidInput("Stream not found".into()))
             }
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             for (handle, stream) in &mut self.streams {
                 if *handle == stream_handle {
@@ -331,7 +331,7 @@ impl AsyncCanonicalAbi {
 
     /// Cancel read operation on a stream
     pub fn stream_cancel_read(&mut self, stream_handle: StreamHandle) -> WrtResult<()> {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             if let Some(stream) = self.streams.get_mut(&stream_handle) {
                 stream.cancel_read()
@@ -339,7 +339,7 @@ impl AsyncCanonicalAbi {
                 Err(wrt_foundation::WrtError::InvalidInput("Stream not found".into()))
             }
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             for (handle, stream) in &mut self.streams {
                 if *handle == stream_handle {
@@ -357,7 +357,7 @@ impl AsyncCanonicalAbi {
 
     /// Cancel write operation on a stream
     pub fn stream_cancel_write(&mut self, stream_handle: StreamHandle) -> WrtResult<()> {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             if let Some(stream) = self.streams.get_mut(&stream_handle) {
                 stream.cancel_write()
@@ -365,7 +365,7 @@ impl AsyncCanonicalAbi {
                 Err(wrt_foundation::WrtError::InvalidInput("Stream not found".into()))
             }
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             for (handle, stream) in &mut self.streams {
                 if *handle == stream_handle {
@@ -383,7 +383,7 @@ impl AsyncCanonicalAbi {
 
     /// Close readable end of a stream
     pub fn stream_close_readable(&mut self, stream_handle: StreamHandle) -> WrtResult<()> {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             if let Some(stream) = self.streams.get_mut(&stream_handle) {
                 stream.close_readable()
@@ -391,7 +391,7 @@ impl AsyncCanonicalAbi {
                 Err(wrt_foundation::WrtError::InvalidInput("Stream not found".into()))
             }
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             for (handle, stream) in &mut self.streams {
                 if *handle == stream_handle {
@@ -409,7 +409,7 @@ impl AsyncCanonicalAbi {
 
     /// Close writable end of a stream
     pub fn stream_close_writable(&mut self, stream_handle: StreamHandle) -> WrtResult<()> {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             if let Some(stream) = self.streams.get_mut(&stream_handle) {
                 stream.close_writable()
@@ -417,7 +417,7 @@ impl AsyncCanonicalAbi {
                 Err(wrt_foundation::WrtError::InvalidInput("Stream not found".into()))
             }
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             for (handle, stream) in &mut self.streams {
                 if *handle == stream_handle {
@@ -440,12 +440,12 @@ impl AsyncCanonicalAbi {
 
         let future = Future::new(handle, value_type.clone());
 
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             let concrete = ConcreteFuture { inner: future };
             self.futures.insert(handle, Box::new(concrete));
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             let future_enum = FutureValueEnum::Value(future);
             self.futures.push((handle, future_enum)).map_err(|_| {
@@ -458,7 +458,7 @@ impl AsyncCanonicalAbi {
 
     /// Read from a future
     pub fn future_read(&mut self, future_handle: FutureHandle) -> WrtResult<AsyncReadResult> {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             if let Some(future) = self.futures.get_mut(&future_handle) {
                 future.read()
@@ -466,7 +466,7 @@ impl AsyncCanonicalAbi {
                 Err(wrt_foundation::WrtError::InvalidInput("Future not found".into()))
             }
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             for (handle, future) in &mut self.futures {
                 if *handle == future_handle {
@@ -492,7 +492,7 @@ impl AsyncCanonicalAbi {
 
     /// Write to a future
     pub fn future_write(&mut self, future_handle: FutureHandle, value: &Value) -> WrtResult<()> {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             if let Some(future) = self.futures.get_mut(&future_handle) {
                 future.write(value)
@@ -500,7 +500,7 @@ impl AsyncCanonicalAbi {
                 Err(wrt_foundation::WrtError::InvalidInput("Future not found".into()))
             }
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             for (handle, future) in &mut self.futures {
                 if *handle == future_handle {
@@ -518,17 +518,17 @@ impl AsyncCanonicalAbi {
         let handle = ErrorContextHandle(self.next_error_context_handle);
         self.next_error_context_handle += 1;
 
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         let error_context = ErrorContext::new(handle, message.to_string());
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         let error_context =
             ErrorContext::new(handle, BoundedString::from_str(message).unwrap_or_default());
 
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.error_contexts.insert(handle, error_context);
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             self.error_contexts.push((handle, error_context)).map_err(|_| {
                 wrt_foundation::WrtError::ResourceExhausted("Too many error contexts".into())
@@ -543,7 +543,7 @@ impl AsyncCanonicalAbi {
         &self,
         handle: ErrorContextHandle,
     ) -> WrtResult<BoundedString<2048>> {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             if let Some(error_context) = self.error_contexts.get(&handle) {
                 Ok(error_context.debug_string())
@@ -551,7 +551,7 @@ impl AsyncCanonicalAbi {
                 Err(wrt_foundation::WrtError::InvalidInput("Error context not found".into()))
             }
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             for (ctx_handle, error_context) in &self.error_contexts {
                 if *ctx_handle == handle {
@@ -564,11 +564,11 @@ impl AsyncCanonicalAbi {
 
     /// Drop an error context
     pub fn error_context_drop(&mut self, handle: ErrorContextHandle) -> WrtResult<()> {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.error_contexts.remove(&handle);
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             self.error_contexts.retain(|(h, _)| *h != handle);
         }
@@ -655,9 +655,9 @@ impl AsyncCanonicalAbi {
             id: self.next_error_context_handle, // Reuse counter
             op_type: AsyncOperationType::AsyncCall,
             state: AsyncOperationState::Starting,
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             context: values.to_vec(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             context: BoundedVec::from_slice(values).map_err(|_| {
                 Error::new(
                     ErrorCategory::Resource,
@@ -702,9 +702,9 @@ impl AsyncCanonicalAbi {
             id: self.next_error_context_handle,
             op_type: AsyncOperationType::AsyncCall,
             state: AsyncOperationState::Starting,
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             context: Vec::new(), // Values will be serialized separately
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             context: BoundedVec::new(),
             task_handle: None,
         };
@@ -748,7 +748,7 @@ impl AsyncCanonicalAbi {
 }
 
 // Trait implementations for std environment
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 impl<T: Clone + fmt::Debug> StreamValue for ConcreteStream<T>
 where
     Value: From<T>,
@@ -820,7 +820,7 @@ where
     }
 }
 
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 impl<T: Clone + fmt::Debug> FutureValue for ConcreteFuture<T>
 where
     Value: From<T>,

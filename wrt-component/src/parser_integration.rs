@@ -8,8 +8,8 @@ use core::{fmt, mem};
 #[cfg(feature = "std")]
 use std::{fmt, mem};
 
-#[cfg(any(feature = "std", feature = "alloc"))]
-use alloc::{boxed::Box, string::String, vec::Vec};
+#[cfg(feature = "std")]
+use std::{boxed::Box, string::String, vec::Vec};
 
 use wrt_foundation::{
     bounded::BoundedVec, component::ComponentType, component_value::ComponentValue, prelude::*,
@@ -53,39 +53,39 @@ pub enum ValidationLevel {
 #[derive(Debug, Clone)]
 pub struct ParsedComponent {
     /// Component type definitions
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub types: Vec<ComponentType>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub types: BoundedVec<ComponentType, MAX_PARSED_SECTIONS>,
 
     /// Component imports
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub imports: Vec<ParsedImport>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub imports: BoundedVec<ParsedImport, MAX_PARSED_SECTIONS>,
 
     /// Component exports
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub exports: Vec<ParsedExport>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub exports: BoundedVec<ParsedExport, MAX_PARSED_SECTIONS>,
 
     /// Embedded core modules
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub modules: Vec<ParsedModule>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub modules: BoundedVec<ParsedModule, 16>,
 
     /// Component instances
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub instances: Vec<ParsedInstance>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub instances: BoundedVec<ParsedInstance, 16>,
 
     /// Canonical function adapters
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub canonicals: Vec<ParsedCanonical>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub canonicals: BoundedVec<ParsedCanonical, MAX_PARSED_SECTIONS>,
 }
 
@@ -93,9 +93,9 @@ pub struct ParsedComponent {
 #[derive(Debug, Clone)]
 pub struct ParsedImport {
     /// Import name
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub name: String,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub name: BoundedString<64>,
     /// Import type
     pub import_type: ImportKind,
@@ -127,9 +127,9 @@ pub struct TypeBounds {
 #[derive(Debug, Clone)]
 pub struct ParsedExport {
     /// Export name
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub name: String,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub name: BoundedString<64>,
     /// Export kind
     pub export_kind: ExportKind,
@@ -154,9 +154,9 @@ pub struct ParsedModule {
     /// Module index
     pub index: u32,
     /// Module binary data (simplified - would contain actual WASM bytes)
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub data: Vec<u8>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub data: BoundedVec<u8, 65536>, // 64KB max for no_std
 }
 
@@ -166,9 +166,9 @@ pub struct ParsedInstance {
     /// Instance index
     pub index: u32,
     /// Instantiation arguments
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub args: Vec<InstantiationArg>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub args: BoundedVec<InstantiationArg, 32>,
 }
 
@@ -176,9 +176,9 @@ pub struct ParsedInstance {
 #[derive(Debug, Clone)]
 pub struct InstantiationArg {
     /// Argument name
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub name: String,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub name: BoundedString<64>,
     /// Argument index/value
     pub index: u32,
@@ -215,7 +215,7 @@ pub struct CanonicalOptions {
     pub string_encoding: Option<StringEncoding>,
     /// Memory index
     pub memory: Option<u32>,
-    /// Realloc function
+    /// Binary std/no_std choice
     pub realloc: Option<u32>,
     /// Post-return function
     pub post_return: Option<u32>,
@@ -302,9 +302,9 @@ impl ComponentLoader {
         parsed.add_type(ComponentType::Unit)?;
 
         // Add a default import
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         let import_name = "default".to_string();
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         let import_name = BoundedString::from_str("default")
             .map_err(|_| wrt_foundation::WrtError::InvalidInput("Import name too long".into()))?;
 
@@ -314,9 +314,9 @@ impl ComponentLoader {
         })?;
 
         // Add a default export
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         let export_name = "main".to_string();
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         let export_name = BoundedString::from_str("main")
             .map_err(|_| wrt_foundation::WrtError::InvalidInput("Export name too long".into()))?;
 
@@ -432,9 +432,9 @@ impl ComponentLoader {
 
     /// Create module adapter from parsed module
     fn create_module_adapter(&self, module: &ParsedModule) -> WrtResult<CoreModuleAdapter> {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         let name = format!("module_{}", module.index);
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         let name = BoundedString::from_str("module")
             .map_err(|_| wrt_foundation::WrtError::InvalidInput("Module name too long".into()))?;
 
@@ -468,41 +468,41 @@ impl ParsedComponent {
     /// Create a new empty parsed component
     pub fn new() -> Self {
         Self {
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             types: Vec::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             types: BoundedVec::new(),
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             imports: Vec::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             imports: BoundedVec::new(),
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             exports: Vec::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             exports: BoundedVec::new(),
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             modules: Vec::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             modules: BoundedVec::new(),
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             instances: Vec::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             instances: BoundedVec::new(),
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             canonicals: Vec::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             canonicals: BoundedVec::new(),
         }
     }
 
     /// Add a type to the component
     pub fn add_type(&mut self, component_type: ComponentType) -> WrtResult<()> {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.types.push(component_type);
             Ok(())
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             self.types
                 .push(component_type)
@@ -512,12 +512,12 @@ impl ParsedComponent {
 
     /// Add an import to the component
     pub fn add_import(&mut self, import: ParsedImport) -> WrtResult<()> {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.imports.push(import);
             Ok(())
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             self.imports
                 .push(import)
@@ -527,12 +527,12 @@ impl ParsedComponent {
 
     /// Add an export to the component
     pub fn add_export(&mut self, export: ParsedExport) -> WrtResult<()> {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.exports.push(export);
             Ok(())
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             self.exports
                 .push(export)

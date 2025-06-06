@@ -8,8 +8,8 @@ use core::{fmt, mem, sync::atomic::{AtomicBool, AtomicU32, Ordering}};
 #[cfg(feature = "std")]
 use std::{fmt, mem, sync::atomic::{AtomicBool, AtomicU32, Ordering}};
 
-#[cfg(any(feature = "std", feature = "alloc"))]
-use alloc::{boxed::Box, vec::Vec, sync::{Arc, Weak}};
+#[cfg(feature = "std")]
+use std::{boxed::Box, vec::Vec, sync::{Arc, Weak}};
 
 use wrt_foundation::{
     bounded::{BoundedVec, BoundedString},
@@ -51,9 +51,9 @@ struct CancellationTokenInner {
     parent: Option<Weak<CancellationTokenInner>>,
     
     /// Cancellation handlers
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     handlers: Arc<std::sync::RwLock<Vec<CancellationHandler>>>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     handlers: BoundedVec<CancellationHandler, MAX_CANCELLATION_HANDLERS>,
 }
 
@@ -108,15 +108,15 @@ pub struct SubtaskManager {
     parent_task: TaskId,
     
     /// Active subtasks
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     subtasks: Vec<SubtaskEntry>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     subtasks: BoundedVec<SubtaskEntry, MAX_SUBTASK_DEPTH>,
     
     /// Subtask completion callbacks
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     completion_handlers: Vec<CompletionHandler>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     completion_handlers: BoundedVec<CompletionHandler, MAX_CANCELLATION_HANDLERS>,
     
     /// Next handler ID
@@ -250,9 +250,9 @@ pub struct CancellationScope {
     pub token: CancellationToken,
     
     /// Child scopes
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub children: Vec<ScopeId>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub children: BoundedVec<ScopeId, 16>,
     
     /// Whether this scope auto-cancels children
@@ -271,9 +271,9 @@ impl CancellationToken {
                 is_cancelled: AtomicBool::new(false),
                 generation: AtomicU32::new(0),
                 parent: None,
-                #[cfg(any(feature = "std", feature = "alloc"))]
+                #[cfg(feature = "std")]
                 handlers: Arc::new(std::sync::RwLock::new(Vec::new())),
-                #[cfg(not(any(feature = "std", feature = "alloc")))]
+                #[cfg(not(any(feature = "std", )))]
                 handlers: BoundedVec::new(),
             }),
         }
@@ -286,9 +286,9 @@ impl CancellationToken {
                 is_cancelled: AtomicBool::new(false),
                 generation: AtomicU32::new(0),
                 parent: Some(Arc::downgrade(&self.inner)),
-                #[cfg(any(feature = "std", feature = "alloc"))]
+                #[cfg(feature = "std")]
                 handlers: Arc::new(std::sync::RwLock::new(Vec::new())),
-                #[cfg(not(any(feature = "std", feature = "alloc")))]
+                #[cfg(not(any(feature = "std", )))]
                 handlers: BoundedVec::new(),
             }),
         }
@@ -337,12 +337,12 @@ impl CancellationToken {
             called: false,
         };
         
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             let mut handlers = self.inner.handlers.write().unwrap();
             handlers.push(handler_entry);
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             // For no_std, we need to implement atomic operations differently
             // This is a simplified implementation that isn't thread-safe
@@ -358,12 +358,12 @@ impl CancellationToken {
     
     /// Unregister a cancellation handler
     pub fn unregister_handler(&self, handler_id: HandlerId) -> Result<()> {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             let mut handlers = self.inner.handlers.write().unwrap();
             handlers.retain(|h| h.id != handler_id);
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             return Err(Error::new(
                 ErrorCategory::Runtime,
@@ -383,7 +383,7 @@ impl CancellationToken {
     // Private helper methods
     
     fn call_handlers(&self) -> Result<()> {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             let mut handlers = self.inner.handlers.write().unwrap();
             
@@ -414,7 +414,7 @@ impl CancellationToken {
             // Remove once handlers that have been called
             handlers.retain(|h| !(h.called && h.once));
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             // For no_std, we can't call handlers safely without proper synchronization
             // This would need a proper implementation with atomic operations
@@ -429,13 +429,13 @@ impl SubtaskManager {
     pub fn new(parent_task: TaskId) -> Self {
         Self {
             parent_task,
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             subtasks: Vec::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             subtasks: BoundedVec::new(),
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             completion_handlers: Vec::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             completion_handlers: BoundedVec::new(),
             next_handler_id: 1,
             stats: SubtaskStats::new(),

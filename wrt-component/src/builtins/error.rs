@@ -4,8 +4,7 @@
 // - error.new: Create a new error context
 // - error.trace: Get the trace from an error context
 
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::{boxed::Box, collections::HashMap, string::String, sync::Arc, vec::Vec};
+use std::{boxed::Box, collections::HashMap, string::String, sync::Arc, vec::Vec};
 #[cfg(feature = "std")]
 use std::{
     boxed::Box,

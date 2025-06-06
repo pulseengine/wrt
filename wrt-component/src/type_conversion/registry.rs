@@ -1,5 +1,4 @@
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-use alloc::{
+use std::{
     any::{Any, TypeId},
     boxed::Box,
     collections::BTreeMap as HashMap,
@@ -187,8 +186,7 @@ pub struct TypeConversionRegistry {
     #[cfg(feature = "std")]
     std_enabled: bool,
 
-    #[cfg(all(not(feature = "std"), feature = "alloc"))]
-    alloc_enabled: bool,
+        alloc_enabled: bool,
 }
 
 impl TypeConversionRegistry {
@@ -199,8 +197,7 @@ impl TypeConversionRegistry {
     }
 
     /// Create a new, empty type conversion registry (no_std version)
-    #[cfg(all(not(feature = "std"), feature = "alloc"))]
-    pub fn new() -> Self {
+        pub fn new() -> Self {
         Self { conversions: HashMap::new(), alloc_enabled: true }
     }
 
@@ -294,8 +291,7 @@ impl TypeConversionRegistry {
             Self { conversions: HashMap::new(), std_enabled: self.std_enabled }
         }
 
-        #[cfg(all(not(feature = "std"), feature = "alloc"))]
-        {
+                {
             Self { conversions: HashMap::new(), alloc_enabled: self.alloc_enabled }
         }
     }

@@ -32,7 +32,7 @@ fn test_import_values() {
     let mut imports = ImportValues::new();
     
     // Test function import
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     {
         let func_import = FunctionImport {
             signature: ComponentType::Unit,
@@ -60,7 +60,7 @@ fn test_import_values() {
         }
     }
     
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     {
         let func_import = FunctionImport {
             signature: ComponentType::Unit,
@@ -97,7 +97,7 @@ fn test_value_imports() {
     
     let value_import = ImportValue::Value(ComponentValue::U32(100));
     
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     {
         let result = imports.add("test_value".to_string(), value_import);
         assert!(result.is_ok());
@@ -113,7 +113,7 @@ fn test_value_imports() {
         }
     }
     
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     {
         let name = wrt_foundation::BoundedString::from_str("test_value").unwrap();
         let result = imports.add(name, value_import);
@@ -141,7 +141,7 @@ fn test_full_instantiation_context() {
     assert_eq!(context.execution_engine.state(), &crate::execution_engine::ExecutionState::Ready);
     
     // Test registering a host function
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     {
         fn test_host_func(_args: &[Value]) -> crate::WrtResult<Value> {
             Ok(Value::Bool(true))
@@ -152,7 +152,7 @@ fn test_full_instantiation_context() {
         assert_eq!(func_index.unwrap(), 0);
     }
     
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     {
         use crate::execution_engine::HostFunction;
         

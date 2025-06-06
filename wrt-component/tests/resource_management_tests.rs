@@ -151,7 +151,7 @@ fn test_resource_cleanup() {
     assert!(dropped_ids.contains(&3));
 }
 
-/// Test buffer pool allocation
+/// Binary std/no_std choice
 #[test]
 fn test_buffer_pool() {
     let mut buffer_pool = BufferPool::new();

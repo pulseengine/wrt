@@ -6,9 +6,8 @@
 //! individual modules.
 
 // Core imports for both std and no_std environments
-// Re-export from alloc when no_std but alloc is available
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
-pub use alloc::{
+// Binary std/no_std choice
+pub use std::{
     boxed::Box,
     collections::{BTreeMap as HashMap, BTreeSet as HashSet},
     format,
@@ -18,18 +17,18 @@ pub use alloc::{
     vec::Vec,
 };
 
-// For pure no_std (no alloc), use bounded collections
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+// Binary std/no_std choice
+#[cfg(all(not(feature = "std"), not(feature = "std")))]
 pub use wrt_foundation::{
     bounded::{BoundedString as String, BoundedVec as Vec},
     BoundedMap as HashMap, BoundedSet as HashSet, NoStdProvider,
 };
 
 // Arc and Box are not available in pure no_std, use placeholders
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[cfg(all(not(feature = "std"), not(feature = "std")))]
 pub type Arc<T> = core::marker::PhantomData<T>;
 
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+#[cfg(all(not(feature = "std"), not(feature = "std")))]
 pub type Box<T> = core::marker::PhantomData<T>;
 pub use core::{
     any::Any,
@@ -69,9 +68,9 @@ pub use wrt_error::{codes, kinds, Error, ErrorCategory, Result};
 // Re-export from wrt-format
 pub use wrt_format::component::ValType as FormatValType;
 // Import component builders and resource builders with proper feature gates
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 pub use wrt_foundation::builder::ResourceItemBuilder;
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 pub use wrt_foundation::component_builder::{
     ComponentTypeBuilder, ExportBuilder, ImportBuilder, NamespaceBuilder,
 };
@@ -120,7 +119,6 @@ pub use wrt_sync::{Mutex, RwLock};
 // Include debug logging macro
 pub use crate::debug_println;
 // Re-export Instant for no_std environments
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
 pub use crate::resources::Instant;
 // Re-export from this crate conditionally based on std/no_std
 #[cfg(feature = "std")]
@@ -145,7 +143,7 @@ pub use crate::{
     import_map::{ImportMap, SafeImportMap},
     instance::InstanceValue,
     namespace::Namespace,
-    // No_alloc module
+    // Binary std/no_std choice
     no_alloc,
     // Resources
     resources::{
@@ -171,7 +169,6 @@ pub use crate::{
     },
 };
 // Re-export from this crate for no_std environments
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
 pub use crate::{
     // Builtins
     builtins::{BuiltinHandler, BuiltinRegistry},
@@ -196,7 +193,7 @@ pub use crate::{
     import_map::{ImportMap, SafeImportMap},
     instance_no_std::{InstanceCollection, InstanceValue, InstanceValueBuilder},
     namespace::Namespace,
-    // No_alloc module
+    // Binary std/no_std choice
     no_alloc,
     // Resources
     resources::{
@@ -217,9 +214,9 @@ pub use crate::{
     // Types and values
     types::ComponentInstance,
 };
-// Re-export for pure no_std (no alloc) environments
-#[cfg(all(not(feature = "std"), not(feature = "alloc")))]
+// Binary std/no_std choice
+#[cfg(all(not(feature = "std"), not(feature = "std")))]
 pub use crate::{
-    // No_alloc module
+    // Binary std/no_std choice
     no_alloc,
 };

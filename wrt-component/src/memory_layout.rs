@@ -290,13 +290,13 @@ impl LayoutOptimizer {
     }
 }
 
-/// Memory pool for efficient allocation in canonical ABI operations
+/// Binary std/no_std choice
 #[derive(Debug)]
 pub struct CanonicalMemoryPool {
-    /// Pre-allocated buffers by size class
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    /// Binary std/no_std choice
+    #[cfg(not(any(feature = "std", )))]
     pools: [BoundedVec<MemoryBuffer, 16>; 4],
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pools: [Vec<MemoryBuffer>; 4],
     /// Size classes: 64B, 256B, 1KB, 4KB
     size_classes: [usize; 4],
@@ -312,9 +312,9 @@ impl CanonicalMemoryPool {
     /// Create a new memory pool
     pub fn new() -> Self {
         Self {
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             pools: [BoundedVec::new(), BoundedVec::new(), BoundedVec::new(), BoundedVec::new()],
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             pools: [Vec::new(), Vec::new(), Vec::new(), Vec::new()],
             size_classes: [64, 256, 1024, 4096],
         }
@@ -326,7 +326,7 @@ impl CanonicalMemoryPool {
         let class_idx = self.size_classes.iter().position(|&class_size| class_size >= size)?;
 
         // Look for available buffer in pool
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             for i in 0..self.pools[class_idx].len() {
                 if !self.pools[class_idx][i].in_use {
@@ -337,7 +337,7 @@ impl CanonicalMemoryPool {
             None // Pool is full in no_std
         }
 
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             // Find existing free buffer
             if let Some(buffer) = self.pools[class_idx].iter_mut().find(|b| !b.in_use) {

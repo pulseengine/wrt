@@ -8,8 +8,8 @@ use core::{fmt, mem};
 #[cfg(feature = "std")]
 use std::{fmt, mem};
 
-#[cfg(any(feature = "std", feature = "alloc"))]
-use alloc::{boxed::Box, string::String, vec::Vec};
+#[cfg(feature = "std")]
+use std::{boxed::Box, string::String, vec::Vec};
 
 use wrt_foundation::{
     bounded::BoundedVec, component::ComponentType, component_value::ComponentValue, prelude::*,
@@ -30,33 +30,33 @@ const MAX_ADAPTED_FUNCTIONS: usize = 256;
 #[derive(Debug, Clone)]
 pub struct CoreModuleAdapter {
     /// Module name/identifier
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub name: String,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub name: BoundedString<64>,
 
     /// Function adapters
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub functions: Vec<FunctionAdapter>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub functions: BoundedVec<FunctionAdapter, MAX_ADAPTED_FUNCTIONS>,
 
     /// Memory adapters
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub memories: Vec<MemoryAdapter>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub memories: BoundedVec<MemoryAdapter, 16>,
 
     /// Table adapters
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub tables: Vec<TableAdapter>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub tables: BoundedVec<TableAdapter, 16>,
 
     /// Global adapters
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub globals: Vec<GlobalAdapter>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub globals: BoundedVec<GlobalAdapter, 64>,
 }
 
@@ -77,14 +77,14 @@ pub struct FunctionAdapter {
 #[derive(Debug, Clone, PartialEq)]
 pub struct CoreFunctionSignature {
     /// Parameter types (WebAssembly core types)
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub params: Vec<CoreValType>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub params: BoundedVec<CoreValType, 32>,
     /// Result types (WebAssembly core types)
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub results: Vec<CoreValType>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub results: BoundedVec<CoreValType, 8>,
 }
 
@@ -173,7 +173,7 @@ pub struct GlobalAdapter {
 
 impl CoreModuleAdapter {
     /// Create a new core module adapter
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub fn new(name: String) -> Self {
         Self {
             name,
@@ -185,7 +185,7 @@ impl CoreModuleAdapter {
     }
 
     /// Create a new core module adapter (no_std version)
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub fn new(name: BoundedString<64>) -> Self {
         Self {
             name,
@@ -198,12 +198,12 @@ impl CoreModuleAdapter {
 
     /// Add a function adapter
     pub fn add_function(&mut self, adapter: FunctionAdapter) -> WrtResult<()> {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.functions.push(adapter);
             Ok(())
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             self.functions.push(adapter).map_err(|_| {
                 wrt_foundation::WrtError::ResourceExhausted("Too many function adapters".into())
@@ -213,12 +213,12 @@ impl CoreModuleAdapter {
 
     /// Add a memory adapter
     pub fn add_memory(&mut self, adapter: MemoryAdapter) -> WrtResult<()> {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.memories.push(adapter);
             Ok(())
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             self.memories.push(adapter).map_err(|_| {
                 wrt_foundation::WrtError::ResourceExhausted("Too many memory adapters".into())
@@ -228,12 +228,12 @@ impl CoreModuleAdapter {
 
     /// Add a table adapter
     pub fn add_table(&mut self, adapter: TableAdapter) -> WrtResult<()> {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.tables.push(adapter);
             Ok(())
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             self.tables.push(adapter).map_err(|_| {
                 wrt_foundation::WrtError::ResourceExhausted("Too many table adapters".into())
@@ -243,12 +243,12 @@ impl CoreModuleAdapter {
 
     /// Add a global adapter
     pub fn add_global(&mut self, adapter: GlobalAdapter) -> WrtResult<()> {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.globals.push(adapter);
             Ok(())
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             self.globals.push(adapter).map_err(|_| {
                 wrt_foundation::WrtError::ResourceExhausted("Too many global adapters".into())
@@ -386,11 +386,11 @@ impl CoreModuleAdapter {
         _core_signature: &CoreFunctionSignature,
     ) -> WrtResult<Vec<Value>> {
         // Simplified lowering - in reality would use canonical ABI
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             Ok(args.to_vec())
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             let mut result = Vec::new();
             for arg in args {
@@ -435,25 +435,25 @@ impl CoreFunctionSignature {
     /// Create a new core function signature
     pub fn new() -> Self {
         Self {
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             params: Vec::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             params: BoundedVec::new(),
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             results: Vec::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             results: BoundedVec::new(),
         }
     }
 
     /// Add a parameter type
     pub fn add_param(&mut self, param_type: CoreValType) -> WrtResult<()> {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.params.push(param_type);
             Ok(())
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             self.params.push(param_type).map_err(|_| {
                 wrt_foundation::WrtError::ResourceExhausted("Too many parameters".into())
@@ -463,12 +463,12 @@ impl CoreFunctionSignature {
 
     /// Add a result type
     pub fn add_result(&mut self, result_type: CoreValType) -> WrtResult<()> {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.results.push(result_type);
             Ok(())
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             self.results
                 .push(result_type)
@@ -535,13 +535,13 @@ mod tests {
 
     #[test]
     fn test_core_module_adapter_creation() {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             let adapter = CoreModuleAdapter::new("test_module".to_string());
             assert_eq!(adapter.name, "test_module");
             assert_eq!(adapter.functions.len(), 0);
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             let name = BoundedString::from_str("test_module").unwrap();
             let adapter = CoreModuleAdapter::new(name);

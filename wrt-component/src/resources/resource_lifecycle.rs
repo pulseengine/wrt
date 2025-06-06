@@ -4,17 +4,17 @@
 //! destruction, ownership transfer, and borrowing semantics as defined by
 //! the Component Model specification.
 
-#[cfg(not(any(feature = "std", feature = "alloc")))]
+#[cfg(not(any(feature = "std", )))]
 use wrt_foundation::bounded::{BoundedString, BoundedVec};
 
 use crate::prelude::*;
 
 /// Maximum number of active resources in pure no_std environments
-#[cfg(not(any(feature = "std", feature = "alloc")))]
+#[cfg(not(any(feature = "std", )))]
 const MAX_RESOURCES: usize = 1024;
 
 /// Maximum number of active borrows per resource in pure no_std
-#[cfg(not(any(feature = "std", feature = "alloc")))]
+#[cfg(not(any(feature = "std", )))]
 const MAX_BORROWS_PER_RESOURCE: usize = 16;
 
 /// Resource handle type
@@ -44,9 +44,9 @@ pub struct ResourceType {
     /// Type index in the component
     pub type_idx: u32,
     /// Resource type name
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub name: String,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub name: BoundedString<64>,
     /// Destructor function index (if any)
     pub destructor: Option<u32>,
@@ -77,9 +77,9 @@ pub struct ResourceMetadata {
     /// Current owner component instance
     pub owner: u32,
     /// Custom user data
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub user_data: Option<Vec<u8>>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub user_data: Option<BoundedVec<u8, 256>>,
 }
 
@@ -88,24 +88,24 @@ pub struct ResourceLifecycleManager {
     /// Next available handle
     next_handle: ResourceHandle,
     /// Active resources
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     resources: HashMap<ResourceHandle, Resource>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     resources:
         wrt_foundation::no_std_hashmap::SimpleHashMap<ResourceHandle, Resource, MAX_RESOURCES>,
     /// Borrow tracking
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     borrows: HashMap<ResourceHandle, Vec<BorrowInfo>>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     borrows: wrt_foundation::no_std_hashmap::SimpleHashMap<
         ResourceHandle,
         BoundedVec<BorrowInfo, MAX_BORROWS_PER_RESOURCE>,
         MAX_RESOURCES,
     >,
     /// Resource type registry
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     types: HashMap<u32, ResourceType>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     types: wrt_foundation::no_std_hashmap::SimpleHashMap<u32, ResourceType, 256>,
     /// Lifecycle hooks
     hooks: LifecycleHooks,
@@ -172,17 +172,17 @@ impl ResourceLifecycleManager {
     pub fn new() -> Self {
         Self {
             next_handle: 1, // 0 is reserved for invalid handle
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             resources: HashMap::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             resources: wrt_foundation::no_std_hashmap::SimpleHashMap::new(),
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             borrows: HashMap::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             borrows: wrt_foundation::no_std_hashmap::SimpleHashMap::new(),
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             types: HashMap::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             types: wrt_foundation::no_std_hashmap::SimpleHashMap::new(),
             hooks: LifecycleHooks::default(),
             metrics: ResourceMetrics::default(),
@@ -198,9 +198,9 @@ impl ResourceLifecycleManager {
     ) -> Result<()> {
         let resource_type = ResourceType {
             type_idx,
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             name: name.to_string(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             name: BoundedString::try_from(name).map_err(|_| {
                 Error::new(
                     ErrorCategory::Resource,
@@ -230,7 +230,7 @@ impl ResourceLifecycleManager {
         user_data: Option<&[u8]>,
     ) -> Result<ResourceHandle> {
         // Verify type exists
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         let resource_type = self
             .types
             .get(&type_idx)
@@ -243,7 +243,7 @@ impl ResourceLifecycleManager {
             })?
             .clone();
 
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         let resource_type = self
             .types
             .get(&type_idx)
@@ -277,9 +277,9 @@ impl ResourceLifecycleManager {
                 last_accessed: Some(self.get_timestamp()),
                 creator,
                 owner: creator,
-                #[cfg(any(feature = "std", feature = "alloc"))]
+                #[cfg(feature = "std")]
                 user_data: user_data.map(|d| d.to_vec()),
-                #[cfg(not(any(feature = "std", feature = "alloc")))]
+                #[cfg(not(any(feature = "std", )))]
                 user_data: user_data.and_then(|d| BoundedVec::try_from(d).ok()),
             },
         };
@@ -307,7 +307,7 @@ impl ResourceLifecycleManager {
     /// Drop (destroy) a resource
     pub fn drop_resource(&mut self, handle: ResourceHandle) -> Result<()> {
         // Get resource
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         let mut resource = self.resources.remove(&handle).ok_or_else(|| {
             Error::new(
                 ErrorCategory::Resource,
@@ -316,7 +316,7 @@ impl ResourceLifecycleManager {
             )
         })?;
 
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         let mut resource = self
             .resources
             .remove(&handle)
@@ -362,10 +362,10 @@ impl ResourceLifecycleManager {
         }
 
         // Remove any borrow info
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         self.borrows.remove(&handle);
 
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         let _ = self.borrows.remove(&handle);
 
         // Update metrics
@@ -383,7 +383,7 @@ impl ResourceLifecycleManager {
         is_mutable: bool,
     ) -> Result<()> {
         // Get resource
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         let resource = self.resources.get_mut(&handle).ok_or_else(|| {
             Error::new(
                 ErrorCategory::Resource,
@@ -392,7 +392,7 @@ impl ResourceLifecycleManager {
             )
         })?;
 
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         let resource = self
             .resources
             .get_mut(&handle)
@@ -443,12 +443,12 @@ impl ResourceLifecycleManager {
         resource.metadata.last_accessed = Some(self.get_timestamp());
 
         // Store borrow info
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.borrows.entry(handle).or_insert_with(Vec::new).push(borrow_info);
         }
 
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             let borrows =
                 self.borrows.get_mut_or_insert(handle, BoundedVec::new).map_err(|_| {
@@ -477,7 +477,7 @@ impl ResourceLifecycleManager {
     /// Release a borrow
     pub fn release_borrow(&mut self, handle: ResourceHandle, borrower: u32) -> Result<()> {
         // Get resource
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         let resource = self.resources.get_mut(&handle).ok_or_else(|| {
             Error::new(
                 ErrorCategory::Resource,
@@ -486,7 +486,7 @@ impl ResourceLifecycleManager {
             )
         })?;
 
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         let resource = self
             .resources
             .get_mut(&handle)
@@ -502,7 +502,7 @@ impl ResourceLifecycleManager {
             })?;
 
         // Find and remove borrow
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         let borrow_info = {
             let borrows = self.borrows.get_mut(&handle).ok_or_else(|| {
                 Error::new(
@@ -523,7 +523,7 @@ impl ResourceLifecycleManager {
             borrows.remove(pos)
         };
 
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         let borrow_info = {
             let borrows = self
                 .borrows
@@ -574,7 +574,7 @@ impl ResourceLifecycleManager {
     /// Transfer ownership of a resource
     pub fn transfer_ownership(&mut self, handle: ResourceHandle, from: u32, to: u32) -> Result<()> {
         // Get resource
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         let resource = self.resources.get_mut(&handle).ok_or_else(|| {
             Error::new(
                 ErrorCategory::Resource,
@@ -583,7 +583,7 @@ impl ResourceLifecycleManager {
             )
         })?;
 
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         let resource = self
             .resources
             .get_mut(&handle)
@@ -641,7 +641,7 @@ impl ResourceLifecycleManager {
 
     /// Get resource information
     pub fn get_resource(&self, handle: ResourceHandle) -> Result<&Resource> {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.resources.get(&handle).ok_or_else(|| {
                 Error::new(
@@ -652,7 +652,7 @@ impl ResourceLifecycleManager {
             })
         }
 
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             self.resources
                 .get(&handle)

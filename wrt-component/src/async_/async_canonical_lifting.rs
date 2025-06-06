@@ -8,8 +8,8 @@ use core::{fmt, mem};
 #[cfg(feature = "std")]
 use std::{fmt, mem};
 
-#[cfg(any(feature = "std", feature = "alloc"))]
-use alloc::{boxed::Box, vec::Vec};
+#[cfg(feature = "std")]
+use std::{boxed::Box, vec::Vec};
 
 use wrt_foundation::{
     bounded::{BoundedVec, BoundedString},
@@ -72,9 +72,9 @@ impl Alignment {
 /// Canonical ABI encoder for async operations
 pub struct AsyncCanonicalEncoder {
     /// Buffer for encoded data
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     buffer: Vec<u8>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     buffer: BoundedVec<u8, MAX_IMMEDIATE_SIZE>,
     
     /// Current write position
@@ -85,9 +85,9 @@ impl AsyncCanonicalEncoder {
     /// Create new encoder
     pub fn new() -> Self {
         Self {
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             buffer: Vec::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             buffer: BoundedVec::new(),
             position: 0,
         }
@@ -126,11 +126,11 @@ impl AsyncCanonicalEncoder {
     
     /// Get the encoded buffer
     pub fn finish(self) -> Vec<u8> {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.buffer
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             self.buffer.into_vec()
         }
@@ -198,7 +198,7 @@ impl AsyncCanonicalEncoder {
         // Encode as pointer and length
         let bytes = value.as_bytes();
         self.encode_u32(bytes.len() as u32)?;
-        self.encode_u32(0)?; // Placeholder pointer - would be allocated in linear memory
+        self.encode_u32(0)?; // Binary std/no_std choice
         Ok(())
     }
     

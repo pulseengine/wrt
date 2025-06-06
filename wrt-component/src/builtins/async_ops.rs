@@ -6,8 +6,8 @@
 // - async.poll: Poll an async value for completion
 // - async.wait: Wait for an async value to complete
 
-#[cfg(all(feature = "component-model-async", not(feature = "std"), feature = "alloc"))]
-use alloc::{boxed::Box, collections::HashMap, sync::Arc, vec::Vec};
+#[cfg(all(feature = "component-model-async", not(feature = "std"), ))]
+use std::{boxed::Box, collections::HashMap, sync::Arc, vec::Vec};
 #[cfg(all(feature = "component-model-async", feature = "std"))]
 use std::{
     boxed::Box,

@@ -71,8 +71,7 @@ where
     }
 
     /// Build the resource (no_std version)
-    #[cfg(all(not(feature = "std"), feature = "alloc"))]
-    pub fn build(self) -> (super::Resource, MemoryStrategy, VerificationLevel) {
+        pub fn build(self) -> (super::Resource, MemoryStrategy, VerificationLevel) {
         // Create the resource
         let resource = if let Some(name) = self.name {
             super::Resource::new_with_name(self.type_idx, Box::new(self.data), &name)
@@ -157,8 +156,7 @@ impl ResourceTableBuilder {
     }
 
     /// Build the ResourceTable (no_std version)
-    #[cfg(all(not(feature = "std"), feature = "alloc"))]
-    pub fn build(self) -> super::ResourceTable {
+        pub fn build(self) -> super::ResourceTable {
         // In no_std there's only one implementation
         super::ResourceTable::new()
     }
@@ -239,8 +237,7 @@ impl<'a> ResourceManagerBuilder<'a> {
     }
 
     /// Build the ResourceManager (no_std version)
-    #[cfg(all(not(feature = "std"), feature = "alloc"))]
-    pub fn build<'b>(self, table: &'b Mutex<super::ResourceTable>) -> super::ResourceManager<'b>
+        pub fn build<'b>(self, table: &'b Mutex<super::ResourceTable>) -> super::ResourceManager<'b>
     where
         'a: 'b,
     {
@@ -302,8 +299,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(all(not(feature = "std"), feature = "alloc"))]
-    fn test_resource_manager_builder_no_std() {
+        fn test_resource_manager_builder_no_std() {
         let table = Mutex::new(ResourceTable::new());
 
         let manager = ResourceManagerBuilder::new()

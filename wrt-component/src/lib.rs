@@ -19,16 +19,15 @@
 #![cfg_attr(feature = "kani", feature(kani))]
 #![warn(clippy::missing_panics_doc)]
 
-// When no_std but alloc is available
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
+// Binary std/no_std choice
 extern crate alloc;
 
 // Note: Panic handler should be defined by the final binary, not library crates
 
 // Note about functionality with different features
 // - std: Full functionality
-// - no_std + alloc: Full no_std functionality
-// - no_std without alloc: Limited to validation and introspection
+// Binary std/no_std choice
+// Binary std/no_std choice
 
 // Export our prelude module for consistent imports
 pub mod prelude;
@@ -44,7 +43,6 @@ pub mod builtins;
 pub mod streaming_canonical;
 #[cfg(test)]
 pub mod canonical_abi_tests;
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
 pub mod component_value_no_std;
 pub mod cross_component_calls;
 pub mod cross_component_resource_sharing;
@@ -69,9 +67,9 @@ pub mod type_bounds;
 pub mod virtualization;
 pub mod wit_integration;
 // Enhanced WIT component integration for lowering/lifting
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 pub mod wit_component_integration;
-// No-alloc module for pure no_std environments
+// Binary std/no_std choice
 pub mod execution;
 pub mod export;
 pub mod export_map;
@@ -81,7 +79,6 @@ pub mod import;
 pub mod import_map;
 #[cfg(feature = "std")]
 pub mod instance;
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
 pub mod instance_no_std;
 pub mod instantiation;
 pub mod modules;
@@ -117,14 +114,12 @@ pub use component_linker::{
 // Re-export component types based on feature flags
 #[cfg(feature = "std")]
 pub use component::{Component, ExternValue, FunctionValue, GlobalValue, MemoryValue, TableValue};
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
 pub use component_no_std::{
     BuiltinRequirements, Component, ComponentBuilder, ExternValue, FunctionValue, GlobalValue,
     MemoryValue, RuntimeInstance, TableValue, WrtComponentType, WrtComponentTypeBuilder,
     MAX_COMPONENT_EXPORTS, MAX_COMPONENT_IMPORTS, MAX_COMPONENT_INSTANCES,
 };
 // Re-export common constants
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
 pub use component_no_std::{
     MAX_BINARY_SIZE, MAX_COMPONENT_EXPORTS, MAX_COMPONENT_IMPORTS, MAX_COMPONENT_INSTANCES,
     MAX_FUNCTION_REF_SIZE, MAX_LINKED_COMPONENTS, MAX_MEMORY_SIZE, MAX_TABLE_SIZE,
@@ -132,9 +127,7 @@ pub use component_no_std::{
 // Re-export component registry based on feature flags
 #[cfg(feature = "std")]
 pub use component_registry::ComponentRegistry;
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
 pub use component_registry_no_std::ComponentRegistry;
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
 pub use component_value_no_std::deserialize_component_value_no_std as deserialize_component_value;
 // Re-export component value utilities for no_std
 pub use adapter::{
@@ -183,7 +176,6 @@ pub use async_context_builtins::{
     AsyncContext, AsyncContextManager, AsyncContextScope, ContextKey, ContextValue,
     canonical_builtins as async_context_canonical_builtins,
 };
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
 pub use component_value_no_std::{
     convert_format_to_valtype, convert_valtype_to_format, serialize_component_value_no_std,
 };
@@ -261,7 +253,6 @@ pub use host_integration::{
 pub use import::{Import, ImportType};
 #[cfg(feature = "std")]
 pub use instance::InstanceValue;
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
 pub use instance_no_std::{InstanceCollection, InstanceValue, InstanceValueBuilder};
 pub use instantiation::{
     ExportValue, FunctionExport, FunctionImport, ImportValue, ImportValues, InstanceImport,
@@ -281,7 +272,6 @@ pub use post_return::{
     CleanupTask, CleanupTaskType, CleanupData, PostReturnFunction, PostReturnMetrics, 
     PostReturnRegistry, PostReturnContext, helpers as post_return_helpers,
 };
-#[cfg(all(not(feature = "std"), feature = "alloc"))]
 pub use resources::{
     BoundedBufferPool, MemoryStrategy, Resource, ResourceArena, ResourceManager,
     ResourceOperationNoStd, ResourceStrategyNoStd, ResourceTable, VerificationLevel,
@@ -317,7 +307,7 @@ pub use wit_integration::{
     AsyncInterfaceFunction, AsyncTypedResult, ComponentInterface, InterfaceFunction, TypedParam,
     TypedResult, WitComponentBuilder,
 };
-#[cfg(any(feature = "std", feature = "alloc"))]
+#[cfg(feature = "std")]
 pub use wit_component_integration::{
     ComponentConfig, ComponentLowering, ComponentType, WitComponentContext,
     InterfaceMapping, TypeMapping, FunctionMapping, RecordType, VariantType,

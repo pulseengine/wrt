@@ -81,7 +81,7 @@ impl BufferSizeClass {
 /// Bounded buffer pool for no_std environment
 ///
 /// Uses a fixed array of size classes with bounded capacity
-/// for each class. This implementation avoids dynamic allocation
+/// Binary std/no_std choice
 /// and is suitable for no_std environments.
 #[derive(Clone)]
 pub struct BoundedBufferPool {

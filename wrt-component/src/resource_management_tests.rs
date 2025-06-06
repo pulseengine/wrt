@@ -706,12 +706,12 @@ mod tests {
         assert_eq!(manager.get_stats().global_resources, 1);
     }
 
-    #[cfg(all(feature = "alloc", not(feature = "std")))]
+    #[cfg(all(not(feature = "std")))]
     #[test]
     fn test_alloc_environment_compatibility() {
         let mut manager = ResourceManager::new();
 
-        // Should work in alloc environment
+        // Binary std/no_std choice
         let file_type = manager
             .register_resource_type(
                 "alloc_file".to_string(),
@@ -729,7 +729,7 @@ mod tests {
         assert_eq!(manager.get_stats().global_resources, 1);
     }
 
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     #[test]
     fn test_no_std_environment_compatibility() {
         // In pure no_std, we can at least create configurations and validate types

@@ -17,17 +17,17 @@ mod example {
         canonical::CanonicalABI,
     };
 
-    /// Example of lifting a string using realloc
+    /// Binary std/no_std choice
     fn example_lift_string() -> Result<()> {
         // Create instance and memory (simplified)
         let module = Module::default();
         let instance = Instance::new(&module)?;
         let memory = Memory::new(1, Some(10))?; // 1 initial page, max 10 pages
         
-        // Create realloc manager
+        // Binary std/no_std choice
         let realloc_manager = Arc::new(RwLock::new(ReallocManager::default()));
         
-        // Create canonical options with realloc
+        // Binary std/no_std choice
         let instance_id = ComponentInstanceId(1);
         let options = CanonicalOptions::new(0, instance_id)
             .with_realloc(42, realloc_manager.clone())
@@ -45,20 +45,20 @@ mod example {
         let lifted_string = lift_context.read_string(string_ptr, string_len)?;
         println!("Lifted string: {}", lifted_string);
         
-        // Clean up allocations
+        // Binary std/no_std choice
         lift_context.cleanup()?;
         
         Ok(())
     }
 
-    /// Example of lowering a string using realloc
+    /// Binary std/no_std choice
     fn example_lower_string() -> Result<()> {
         // Create instance and memory
         let module = Module::default();
         let mut instance = Instance::new(&module)?;
         let mut memory = Memory::new(1, Some(10))?;
         
-        // Create realloc manager
+        // Binary std/no_std choice
         let realloc_manager = Arc::new(RwLock::new(ReallocManager::default()));
         
         // Create canonical options
@@ -76,19 +76,19 @@ mod example {
         
         println!("Lowered string to ptr: {}, len: {}", ptr, len);
         
-        // Get allocations for caller to manage
+        // Binary std/no_std choice
         let allocations = lower_context.finish()?;
         println!("Made {} allocations during lowering", allocations.len());
         
         Ok(())
     }
 
-    /// Example of using realloc for dynamic list handling
+    /// Binary std/no_std choice
     fn example_dynamic_list() -> Result<()> {
         let realloc_manager = Arc::new(RwLock::new(ReallocManager::default()));
         let instance_id = ComponentInstanceId(1);
         
-        // Register realloc function
+        // Binary std/no_std choice
         {
             let mut manager = realloc_manager.write().unwrap();
             manager.register_realloc(instance_id, 42)?;
@@ -152,7 +152,7 @@ mod example {
         let realloc_manager = Arc::new(RwLock::new(ReallocManager::default()));
         let instance_id = ComponentInstanceId(1);
         
-        // Create options with both realloc and post-return
+        // Binary std/no_std choice
         let options = CanonicalOptions::new(0, instance_id)
             .with_realloc(42, realloc_manager.clone())
             .with_post_return(43); // post-return function index
@@ -160,13 +160,13 @@ mod example {
         // Create lift context
         let mut lift_context = CanonicalLiftContext::new(&instance, &memory, &options);
         
-        // Make some allocations during lifting
+        // Binary std/no_std choice
         let ptr1 = lift_context.allocate(100, 8)?;
         let ptr2 = lift_context.allocate(200, 16)?;
         
         println!("Made allocations: ptr1={}, ptr2={}", ptr1, ptr2);
         
-        // Cleanup will deallocate and call post-return
+        // Binary std/no_std choice
         lift_context.cleanup()?;
         
         println!("Cleanup complete - allocations freed and post-return called");
@@ -190,7 +190,7 @@ mod example {
         let realloc_manager = Arc::new(RwLock::new(ReallocManager::default()));
         let instance_id = ComponentInstanceId(1);
         
-        // Test basic allocation flow
+        // Binary std/no_std choice
         {
             let mut manager = realloc_manager.write().unwrap();
             manager.register_realloc(instance_id, 42).unwrap();

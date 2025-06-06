@@ -8,8 +8,8 @@ use core::{fmt, mem, slice};
 #[cfg(feature = "std")]
 use std::{fmt, mem, slice};
 
-#[cfg(any(feature = "std", feature = "alloc"))]
-use alloc::{boxed::Box, vec::Vec};
+#[cfg(feature = "std")]
+use std::{boxed::Box, vec::Vec};
 
 use wrt_foundation::{bounded::BoundedVec, component_value::ComponentValue, prelude::*};
 
@@ -34,18 +34,18 @@ const WASM_PAGE_SIZE: usize = 65536;
 /// Component memory manager
 pub struct ComponentMemoryManager {
     /// Managed memories
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     memories: Vec<ComponentMemory>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     memories: BoundedVec<ComponentMemory, MAX_MEMORIES>,
 
     /// Memory sharing policies
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     sharing_policies: Vec<MemorySharingPolicy>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     sharing_policies: BoundedVec<MemorySharingPolicy, MAX_MEMORIES>,
 
-    /// Total allocated memory in bytes
+    /// Binary std/no_std choice
     total_allocated: usize,
     /// Maximum allowed memory
     max_memory: usize,
@@ -54,15 +54,15 @@ pub struct ComponentMemoryManager {
 /// Component table manager
 pub struct ComponentTableManager {
     /// Managed tables
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     tables: Vec<ComponentTable>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     tables: BoundedVec<ComponentTable, MAX_TABLES>,
 
     /// Table sharing policies
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     sharing_policies: Vec<TableSharingPolicy>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     sharing_policies: BoundedVec<TableSharingPolicy, MAX_TABLES>,
 }
 
@@ -72,9 +72,9 @@ pub struct ComponentMemory {
     /// Memory ID
     pub id: u32,
     /// Memory data
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub data: Vec<u8>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub data: BoundedVec<u8, { MAX_MEMORY_PAGES * WASM_PAGE_SIZE }>,
     /// Memory limits
     pub limits: MemoryLimits,
@@ -114,9 +114,9 @@ pub struct MemorySharingPolicy {
     /// Sharing mode
     pub mode: SharingMode,
     /// Allowed component instances
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub allowed_instances: Vec<u32>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub allowed_instances: BoundedVec<u32, 32>,
 }
 
@@ -128,9 +128,9 @@ pub struct TableSharingPolicy {
     /// Sharing mode
     pub mode: SharingMode,
     /// Allowed component instances
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub allowed_instances: Vec<u32>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub allowed_instances: BoundedVec<u32, 32>,
 }
 
@@ -153,9 +153,9 @@ pub struct ComponentTable {
     /// Table ID
     pub id: u32,
     /// Table elements
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub elements: Vec<TableElement>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub elements: BoundedVec<TableElement, 65536>, // 64K elements max
     /// Element type
     pub element_type: CoreValType,
@@ -200,13 +200,13 @@ impl ComponentMemoryManager {
     /// Create a new memory manager
     pub fn new() -> Self {
         Self {
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             memories: Vec::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             memories: BoundedVec::new(),
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             sharing_policies: Vec::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             sharing_policies: BoundedVec::new(),
             total_allocated: 0,
             max_memory: 256 * 1024 * 1024, // 256MB default
@@ -236,11 +236,11 @@ impl ComponentMemoryManager {
         }
 
         // Create memory data
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         let data = vec![0u8; initial_size];
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         let mut data = BoundedVec::new();
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             for _ in 0..initial_size {
                 data.push(0u8).map_err(|_| {
@@ -258,11 +258,11 @@ impl ComponentMemoryManager {
             permissions: MemoryPermissions::default(),
         };
 
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.memories.push(memory);
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             self.memories.push(memory).map_err(|_| {
                 wrt_foundation::WrtError::ResourceExhausted("Too many memories".into())
@@ -311,11 +311,11 @@ impl ComponentMemoryManager {
         }
 
         // Read data
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             Ok(memory.data[offset as usize..end_offset].to_vec())
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             let mut result = Vec::new();
             for i in offset as usize..end_offset {
@@ -406,11 +406,11 @@ impl ComponentMemoryManager {
 
         // Grow memory
         let old_size = memory.data.len();
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             memory.data.resize(old_size + additional_size, 0);
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             for _ in 0..additional_size {
                 memory.data.push(0u8).map_err(|_| {
@@ -497,12 +497,12 @@ impl ComponentMemoryManager {
 
     /// Set memory sharing policy
     pub fn set_sharing_policy(&mut self, policy: MemorySharingPolicy) -> WrtResult<()> {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.sharing_policies.push(policy);
             Ok(())
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             self.sharing_policies.push(policy).map_err(|_| {
                 wrt_foundation::WrtError::ResourceExhausted("Too many sharing policies".into())
@@ -510,7 +510,7 @@ impl ComponentMemoryManager {
         }
     }
 
-    /// Get total allocated memory
+    /// Binary std/no_std choice
     pub fn total_allocated(&self) -> usize {
         self.total_allocated
     }
@@ -525,13 +525,13 @@ impl ComponentTableManager {
     /// Create a new table manager
     pub fn new() -> Self {
         Self {
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             tables: Vec::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             tables: BoundedVec::new(),
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             sharing_policies: Vec::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             sharing_policies: BoundedVec::new(),
         }
     }
@@ -546,11 +546,11 @@ impl ComponentTableManager {
         let table_id = self.tables.len() as u32;
 
         // Create table elements
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         let elements = vec![TableElement::Null; limits.min as usize];
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         let mut elements = BoundedVec::new();
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             for _ in 0..limits.min {
                 elements.push(TableElement::Null).map_err(|_| {
@@ -561,11 +561,11 @@ impl ComponentTableManager {
 
         let table = ComponentTable { id: table_id, elements, element_type, limits, owner };
 
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.tables.push(table);
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             self.tables.push(table).map_err(|_| {
                 wrt_foundation::WrtError::ResourceExhausted("Too many tables".into())
@@ -634,11 +634,11 @@ impl ComponentTableManager {
         }
 
         // Grow table
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             table.elements.resize(new_size, init);
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             for _ in 0..size {
                 table.elements.push(init.clone()).map_err(|_| {
@@ -652,12 +652,12 @@ impl ComponentTableManager {
 
     /// Set table sharing policy
     pub fn set_sharing_policy(&mut self, policy: TableSharingPolicy) -> WrtResult<()> {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.sharing_policies.push(policy);
             Ok(())
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             self.sharing_policies.push(policy).map_err(|_| {
                 wrt_foundation::WrtError::ResourceExhausted("Too many sharing policies".into())

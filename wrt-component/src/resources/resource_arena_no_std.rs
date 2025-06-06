@@ -15,7 +15,7 @@ pub const MAX_ARENA_RESOURCES: usize = 64;
 /// A resource arena for managing resource lifecycles as a group
 ///
 /// ResourceArena provides efficient group management of resources, allowing
-/// multiple resources to be allocated and then freed together. This is
+/// Binary std/no_std choice
 /// particularly useful for component instances and other scenarios where
 /// resources have a shared lifetime.
 #[derive(Clone)]

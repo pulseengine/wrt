@@ -8,8 +8,8 @@ use core::{fmt, mem, any::TypeId};
 #[cfg(feature = "std")]
 use std::{fmt, mem, any::TypeId};
 
-#[cfg(any(feature = "std", feature = "alloc"))]
-use alloc::{boxed::Box, vec::Vec, collections::HashMap};
+#[cfg(feature = "std")]
+use std::{boxed::Box, vec::Vec, collections::HashMap};
 
 use wrt_foundation::{
     bounded::{BoundedVec, BoundedString},
@@ -32,15 +32,15 @@ const MAX_RESOURCE_REPRESENTATIONS: usize = 256;
 #[derive(Debug)]
 pub struct ResourceRepresentationManager {
     /// Resource representations by type
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     representations: HashMap<TypeId, Box<dyn ResourceRepresentation>>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     representations: BoundedVec<(TypeId, ResourceRepresentationEntry), MAX_RESOURCE_REPRESENTATIONS>,
     
     /// Handle to resource mapping
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     handle_to_resource: HashMap<u32, ResourceEntry>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     handle_to_resource: BoundedVec<(u32, ResourceEntry), MAX_RESOURCE_REPRESENTATIONS>,
     
     /// Next representation ID
@@ -160,7 +160,7 @@ pub struct RepresentationStats {
 }
 
 /// No-std compatible representation entry
-#[cfg(not(any(feature = "std", feature = "alloc")))]
+#[cfg(not(any(feature = "std", )))]
 #[derive(Debug)]
 pub struct ResourceRepresentationEntry {
     /// Type ID
@@ -192,9 +192,9 @@ pub struct ConcreteResourceRepresentation {
 #[derive(Debug, Clone)]
 pub struct FileHandleRepresentation {
     /// Platform-specific file descriptors
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     file_descriptors: HashMap<u32, i32>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     file_descriptors: BoundedVec<(u32, i32), 64>,
 }
 
@@ -202,9 +202,9 @@ pub struct FileHandleRepresentation {
 #[derive(Debug, Clone)]
 pub struct MemoryBufferRepresentation {
     /// Buffer pointers and sizes
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     buffers: HashMap<u32, (usize, usize)>, // (pointer, size)
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     buffers: BoundedVec<(u32, (usize, usize)), 64>,
 }
 
@@ -212,9 +212,9 @@ pub struct MemoryBufferRepresentation {
 #[derive(Debug, Clone)]
 pub struct NetworkConnectionRepresentation {
     /// Connection details
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     connections: HashMap<u32, NetworkConnection>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     connections: BoundedVec<(u32, NetworkConnection), 32>,
 }
 
@@ -257,14 +257,14 @@ impl ResourceRepresentationManager {
     /// Create new resource representation manager
     pub fn new() -> Self {
         Self {
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             representations: HashMap::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             representations: BoundedVec::new(),
             
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             handle_to_resource: HashMap::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             handle_to_resource: BoundedVec::new(),
             
             next_representation_id: 1,
@@ -291,11 +291,11 @@ impl ResourceRepresentationManager {
     ) -> Result<()> {
         let type_id = TypeId::of::<T>();
         
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.representations.insert(type_id, representation);
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             // Convert to concrete representation for no_std
             let concrete = ConcreteResourceRepresentation {
@@ -330,7 +330,7 @@ impl ResourceRepresentationManager {
         let type_id = resource_entry.type_id;
         
         // Find the representation
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             let representation = self.representations.get(&type_id)
                 .ok_or_else(|| {
@@ -356,7 +356,7 @@ impl ResourceRepresentationManager {
             
             result
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             // Find representation entry
             let repr_entry = self.representations
@@ -408,7 +408,7 @@ impl ResourceRepresentationManager {
         }
         
         // Find the representation
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             let representation = self.representations.get_mut(&type_id)
                 .ok_or_else(|| {
@@ -434,7 +434,7 @@ impl ResourceRepresentationManager {
             
             result
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             // Find representation entry
             let repr_entry = self.representations
@@ -503,11 +503,11 @@ impl ResourceRepresentationManager {
             metadata,
         };
         
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.handle_to_resource.insert(handle, entry);
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             self.handle_to_resource.push((handle, entry)).map_err(|_| {
                 Error::new(
@@ -532,7 +532,7 @@ impl ResourceRepresentationManager {
         
         let type_id = resource_entry.type_id;
         
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             if let Some(representation) = self.representations.get(&type_id) {
                 Ok(representation.is_valid_handle(handle))
@@ -540,7 +540,7 @@ impl ResourceRepresentationManager {
                 Ok(false)
             }
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             if let Some((_, repr_entry)) = self.representations.iter().find(|(tid, _)| *tid == type_id) {
                 Ok(repr_entry.representation.valid_handles.iter().any(|&h| h == handle))
@@ -558,7 +558,7 @@ impl ResourceRepresentationManager {
     // Private helper methods
     
     fn find_resource_entry(&self, handle: u32) -> Result<&ResourceEntry> {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.handle_to_resource.get(&handle)
                 .ok_or_else(|| {
@@ -569,7 +569,7 @@ impl ResourceRepresentationManager {
                     )
                 })
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             self.handle_to_resource
                 .iter()
@@ -586,7 +586,7 @@ impl ResourceRepresentationManager {
     }
     
     fn find_resource_entry_mut(&mut self, handle: u32) -> Result<&mut ResourceEntry> {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.handle_to_resource.get_mut(&handle)
                 .ok_or_else(|| {
@@ -597,7 +597,7 @@ impl ResourceRepresentationManager {
                     )
                 })
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             self.handle_to_resource
                 .iter_mut()
@@ -625,9 +625,9 @@ impl FileHandleRepresentation {
     /// Create new file handle representation
     pub fn new() -> Self {
         Self {
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             file_descriptors: HashMap::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             file_descriptors: BoundedVec::new(),
         }
     }
@@ -635,7 +635,7 @@ impl FileHandleRepresentation {
 
 impl ResourceRepresentation for FileHandleRepresentation {
     fn get_representation(&self, handle: u32) -> Result<RepresentationValue> {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             let fd = self.file_descriptors.get(&handle)
                 .ok_or_else(|| {
@@ -648,7 +648,7 @@ impl ResourceRepresentation for FileHandleRepresentation {
             
             Ok(RepresentationValue::U32(*fd as u32))
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             let fd = self.file_descriptors
                 .iter()
@@ -676,11 +676,11 @@ impl ResourceRepresentation for FileHandleRepresentation {
             )),
         };
         
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.file_descriptors.insert(handle, fd);
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             if let Some((_, existing_fd)) = self.file_descriptors.iter_mut().find(|(h, _)| *h == handle) {
                 *existing_fd = fd;
@@ -707,11 +707,11 @@ impl ResourceRepresentation for FileHandleRepresentation {
     }
     
     fn is_valid_handle(&self, handle: u32) -> bool {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.file_descriptors.contains_key(&handle)
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             self.file_descriptors.iter().any(|(h, _)| *h == handle)
         }
@@ -726,9 +726,9 @@ impl MemoryBufferRepresentation {
     /// Create new memory buffer representation
     pub fn new() -> Self {
         Self {
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             buffers: HashMap::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             buffers: BoundedVec::new(),
         }
     }
@@ -736,7 +736,7 @@ impl MemoryBufferRepresentation {
 
 impl ResourceRepresentation for MemoryBufferRepresentation {
     fn get_representation(&self, handle: u32) -> Result<RepresentationValue> {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             let (ptr, size) = self.buffers.get(&handle)
                 .ok_or_else(|| {
@@ -752,7 +752,7 @@ impl ResourceRepresentation for MemoryBufferRepresentation {
                 ("size".to_string(), RepresentationValue::U64(*size as u64)),
             ]))
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             let (ptr, size) = self.buffers
                 .iter()
@@ -797,11 +797,11 @@ impl ResourceRepresentation for MemoryBufferRepresentation {
             )),
         };
         
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.buffers.insert(handle, (ptr, size));
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             if let Some((_, existing_buf)) = self.buffers.iter_mut().find(|(h, _)| *h == handle) {
                 *existing_buf = (ptr, size);
@@ -828,11 +828,11 @@ impl ResourceRepresentation for MemoryBufferRepresentation {
     }
     
     fn is_valid_handle(&self, handle: u32) -> bool {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.buffers.contains_key(&handle)
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             self.buffers.iter().any(|(h, _)| *h == handle)
         }
@@ -847,9 +847,9 @@ impl NetworkConnectionRepresentation {
     /// Create new network connection representation
     pub fn new() -> Self {
         Self {
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             connections: HashMap::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             connections: BoundedVec::new(),
         }
     }
@@ -857,7 +857,7 @@ impl NetworkConnectionRepresentation {
 
 impl ResourceRepresentation for NetworkConnectionRepresentation {
     fn get_representation(&self, handle: u32) -> Result<RepresentationValue> {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             let conn = self.connections.get(&handle)
                 .ok_or_else(|| {
@@ -875,7 +875,7 @@ impl ResourceRepresentation for NetworkConnectionRepresentation {
                 ("state".to_string(), RepresentationValue::U32(conn.state as u32)),
             ]))
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             let conn = self.connections
                 .iter()
@@ -917,11 +917,11 @@ impl ResourceRepresentation for NetworkConnectionRepresentation {
     }
     
     fn is_valid_handle(&self, handle: u32) -> bool {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             self.connections.contains_key(&handle)
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             self.connections.iter().any(|(h, _)| *h == handle)
         }
@@ -1021,11 +1021,11 @@ pub fn canon_resource_drop(
     }
     
     // Remove from handle mapping
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     {
         manager.handle_to_resource.remove(&handle);
     }
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     {
         let mut i = 0;
         while i < manager.handle_to_resource.len() {

@@ -1,6 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use alloc::boxed::Box;
+use std::boxed::Box;
 
 pub use wrt_error::{Error, ErrorCategory};
 pub use wrt_foundation::resource::ResourceRepresentation;

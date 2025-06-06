@@ -126,7 +126,7 @@ impl MemoryOptimizationStrategy for ZeroCopyStrategy {
 /// components with moderate trust levels.
 #[derive(Debug)]
 pub struct BoundedCopyStrategy {
-    /// Buffer pool for temporary allocations
+    /// Binary std/no_std choice
     buffer_pool: Arc<RwLock<BufferPool>>,
     /// Maximum copy size in bytes
     max_copy_size: usize,

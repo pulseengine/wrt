@@ -8,8 +8,8 @@ use core::{fmt, mem, future::Future, pin::Pin, task::{Context, Poll}};
 #[cfg(feature = "std")]
 use std::{fmt, mem, future::Future, pin::Pin, task::{Context, Poll}};
 
-#[cfg(any(feature = "std", feature = "alloc"))]
-use alloc::{boxed::Box, vec::Vec, sync::Arc};
+#[cfg(feature = "std")]
+use std::{boxed::Box, vec::Vec, sync::Arc};
 
 use wrt_foundation::{
     bounded::{BoundedVec, BoundedString},
@@ -35,15 +35,15 @@ const MAX_ASYNC_CALL_DEPTH: usize = 128;
 #[derive(Debug)]
 pub struct AsyncExecutionEngine {
     /// Active executions
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     executions: Vec<AsyncExecution>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     executions: BoundedVec<AsyncExecution, MAX_CONCURRENT_EXECUTIONS>,
     
     /// Execution context pool for reuse
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     context_pool: Vec<ExecutionContext>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     context_pool: BoundedVec<ExecutionContext, 16>,
     
     /// Next execution ID
@@ -78,9 +78,9 @@ pub struct AsyncExecution {
     pub parent: Option<ExecutionId>,
     
     /// Child executions (subtasks)
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub children: Vec<ExecutionId>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub children: BoundedVec<ExecutionId, 16>,
 }
 
@@ -94,15 +94,15 @@ pub struct ExecutionContext {
     pub function_name: BoundedString<128>,
     
     /// Call stack
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub call_stack: Vec<CallFrame>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub call_stack: BoundedVec<CallFrame, MAX_ASYNC_CALL_DEPTH>,
     
     /// Local variables
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub locals: Vec<Value>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub locals: BoundedVec<Value, 256>,
     
     /// Memory views for the execution
@@ -145,15 +145,15 @@ pub enum FrameAsyncState {
 #[derive(Debug, Clone)]
 pub struct WaitSet {
     /// Futures to wait for
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub futures: Vec<FutureHandle>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub futures: BoundedVec<FutureHandle, 16>,
     
     /// Streams to wait for
-    #[cfg(any(feature = "std", feature = "alloc"))]
+    #[cfg(feature = "std")]
     pub streams: Vec<StreamHandle>,
-    #[cfg(not(any(feature = "std", feature = "alloc")))]
+    #[cfg(not(any(feature = "std", )))]
     pub streams: BoundedVec<StreamHandle, 16>,
 }
 
@@ -277,7 +277,7 @@ pub struct ExecutionResult {
     /// Execution time in microseconds
     pub execution_time_us: u64,
     
-    /// Memory allocated during execution
+    /// Binary std/no_std choice
     pub memory_allocated: usize,
     
     /// Number of instructions executed
@@ -326,14 +326,14 @@ impl AsyncExecutionEngine {
     /// Create new async execution engine
     pub fn new() -> Self {
         Self {
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             executions: Vec::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             executions: BoundedVec::new(),
             
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             context_pool: Vec::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             context_pool: BoundedVec::new(),
             
             next_execution_id: 1,
@@ -362,9 +362,9 @@ impl AsyncExecutionEngine {
             operation,
             result: None,
             parent,
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             children: Vec::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             children: BoundedVec::new(),
         };
         
@@ -523,7 +523,7 @@ impl AsyncExecutionEngine {
     }
     
     fn get_or_create_context(&mut self) -> Result<ExecutionContext> {
-        #[cfg(any(feature = "std", feature = "alloc"))]
+        #[cfg(feature = "std")]
         {
             if let Some(context) = self.context_pool.pop() {
                 Ok(context)
@@ -531,7 +531,7 @@ impl AsyncExecutionEngine {
                 Ok(ExecutionContext::new())
             }
         }
-        #[cfg(not(any(feature = "std", feature = "alloc")))]
+        #[cfg(not(any(feature = "std", )))]
         {
             if !self.context_pool.is_empty() {
                 Ok(self.context_pool.remove(0))
@@ -772,13 +772,13 @@ impl ExecutionContext {
         Self {
             component_instance: 0,
             function_name: BoundedString::new(),
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             call_stack: Vec::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             call_stack: BoundedVec::new(),
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             locals: Vec::new(),
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             locals: BoundedVec::new(),
             memory_views: MemoryViews::new(),
         }
@@ -970,18 +970,18 @@ mod tests {
     #[test]
     fn test_wait_set() {
         let wait_set = WaitSet {
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             futures: vec![FutureHandle(1), FutureHandle(2)],
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             futures: {
                 let mut futures = BoundedVec::new();
                 futures.push(FutureHandle(1)).unwrap();
                 futures.push(FutureHandle(2)).unwrap();
                 futures
             },
-            #[cfg(any(feature = "std", feature = "alloc"))]
+            #[cfg(feature = "std")]
             streams: vec![StreamHandle(3)],
-            #[cfg(not(any(feature = "std", feature = "alloc")))]
+            #[cfg(not(any(feature = "std", )))]
             streams: {
                 let mut streams = BoundedVec::new();
                 streams.push(StreamHandle(3)).unwrap();

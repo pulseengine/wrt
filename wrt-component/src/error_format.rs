@@ -20,9 +20,9 @@ pub enum CanonicalErrorContext {
 }
 
 /// Format an error message for the given context
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 pub fn format_error(category: ErrorCategory, code: u32, context: CanonicalErrorContext) -> Error {
-    use alloc::format;
+    use std::format;
 
     let message = match context {
         CanonicalErrorContext::OutOfBounds { addr, size } => {
@@ -54,7 +54,7 @@ pub fn format_error(category: ErrorCategory, code: u32, context: CanonicalErrorC
 }
 
 /// Format an error message for the given context (no_std version)
-#[cfg(not(feature = "alloc"))]
+#[cfg(not(feature = "std"))]
 pub fn format_error(category: ErrorCategory, code: u32, context: CanonicalErrorContext) -> Error {
     let message = match context {
         CanonicalErrorContext::OutOfBounds { .. } => "Address out of bounds",
@@ -83,13 +83,13 @@ pub enum ComponentErrorContext {
 }
 
 /// Format a component error
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 pub fn format_component_error(
     category: ErrorCategory,
     code: u32,
     context: ComponentErrorContext,
 ) -> Error {
-    use alloc::format;
+    use std::format;
 
     let message = match context {
         ComponentErrorContext::ImportNotFound(name) => {
@@ -108,7 +108,7 @@ pub fn format_component_error(
 }
 
 /// Format a component error (no_std version)
-#[cfg(not(feature = "alloc"))]
+#[cfg(not(feature = "std"))]
 pub fn format_component_error(
     category: ErrorCategory,
     code: u32,
