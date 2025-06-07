@@ -27,7 +27,7 @@ disable-panic-handler = []
 
 [dependencies]
 wrt-error = { workspace = true, default-features = false }
-wrt-platform = { workspace = true, default-features = false, optional = true }
+wrt-platform = { workspace = true, default-features = false, optional = true, features = ["disable-panic-handler"] }
 
 # Note: alloc support is provided through cfg(feature = "std") in source code
 

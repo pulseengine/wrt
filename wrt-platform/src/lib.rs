@@ -126,7 +126,15 @@ pub mod ipc;
 #[cfg(feature = "std")]
 pub mod high_availability;
 
-// Note: Panic handler is provided by the main wrt crate to avoid conflicts
+// Conditional panic handler - only when not disabled and not in std mode
+#[cfg(all(not(feature = "std"), not(test), not(feature = "disable-panic-handler")))]
+#[panic_handler]
+fn panic(_info: &core::panic::PanicInfo) -> ! {
+    // For safety-critical systems, enter infinite loop to maintain known safe state
+    loop {
+        core::hint::spin_loop();
+    }
+}
 
 // Platform-specific modules
 // macOS modules - using direct syscalls (no libc)

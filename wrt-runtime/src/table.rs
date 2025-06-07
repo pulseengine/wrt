@@ -114,9 +114,9 @@ impl Eq for Table {}
 
 impl Default for Table {
     fn default() -> Self {
-        use wrt_foundation::types::{Limits, TableType, RefType};
+        use wrt_foundation::types::{Limits, TableType};
         let table_type = TableType {
-            element_type: RefType::Funcref,
+            element_type: WrtValueType::FuncRef,
             limits: Limits { min: 0, max: Some(1) },
         };
         Self::new(table_type).unwrap()
@@ -787,8 +787,13 @@ impl TableOperations for TableManager {
             None => {
                 // Return appropriate null reference based on table element type
                 match table.ty.element_type {
-                    RefType::Funcref => Ok(Value::FuncRef(None)),
-                    RefType::Externref => Ok(Value::ExternRef(None)),
+                    WrtValueType::FuncRef => Ok(Value::FuncRef(None)),
+                    WrtValueType::ExternRef => Ok(Value::ExternRef(None)),
+                    _ => Err(Error::new(
+                        ErrorCategory::Type,
+                        codes::INVALID_TYPE,
+                        "Table element type is not a reference type",
+                    )),
                 }
             }
         }
@@ -956,8 +961,13 @@ impl TableOperations for Table {
             None => {
                 // Return appropriate null reference based on table element type
                 match self.ty.element_type {
-                    RefType::Funcref => Ok(Value::FuncRef(None)),
-                    RefType::Externref => Ok(Value::ExternRef(None)),
+                    WrtValueType::FuncRef => Ok(Value::FuncRef(None)),
+                    WrtValueType::ExternRef => Ok(Value::ExternRef(None)),
+                    _ => Err(Error::new(
+                        ErrorCategory::Type,
+                        codes::INVALID_TYPE,
+                        "Table element type is not a reference type",
+                    )),
                 }
             }
         }
@@ -1105,7 +1115,7 @@ mod tests {
     use super::*;
 
     fn create_test_table_type(min: u32, max: Option<u32>) -> TableType {
-        TableType { element_type: RefType::Funcref, limits: Limits { min, max } }
+        TableType { element_type: ValueType::FuncRef, limits: Limits { min, max } }
     }
 
     #[test]
@@ -1283,7 +1293,7 @@ mod tests {
     fn test_table_safe_operations() -> Result<()> {
         // Create a table type
         let table_type = TableType {
-            element_type: RefType::Funcref,
+            element_type: ValueType::FuncRef,
             limits: Limits { min: 5, max: Some(10) },
         };
 
