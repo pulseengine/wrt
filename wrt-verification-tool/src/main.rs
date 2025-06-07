@@ -17,6 +17,7 @@ extern crate alloc;
 
 // Tests module
 mod tests;
+mod platform_verification;
 
 // Import appropriate types based on environment
 use std::{format, string::String, vec::Vec};
@@ -24,6 +25,10 @@ use std::{format, string::String, vec::Vec};
 use std::{format, process, string::String, time::Instant, vec::Vec};
 
 use wrt_decoder::{find_section, Parser, Payload};
+use platform_verification::{
+    PlatformVerificationEngine, PlatformVerificationConfigBuilder, 
+    ContainerRuntime, ExternalLimitSources
+};
 
 // Display implementation for no_std environments
 #[cfg(not(feature = "std"))]
@@ -371,6 +376,93 @@ fn test_larger_module() -> Result<(), String> {
     }
 
     println!("✅ Parser handles larger modules correctly");
+    Ok(())
+}
+
+// Test platform verification with external limits
+#[cfg(feature = "std")]
+fn test_platform_verification() -> Result<(), String> {
+    println!("Testing platform verification with external limits...");
+    
+    // Create configuration with CLI args and environment overrides
+    let cli_args = vec![
+        "--max-memory=512MB".to_string(),
+        "--max-components=128".to_string(),
+    ];
+    
+    let config = PlatformVerificationConfigBuilder::new()
+        .with_cli_args(cli_args)
+        .with_strict_validation(false)
+        .build();
+    
+    let mut engine = PlatformVerificationEngine::with_config(config);
+    
+    // Discover limits with external overrides
+    let limits = engine.discover_limits()
+        .map_err(|e| format!("Failed to discover limits: {:?}", e))?;
+    
+    // Verify that CLI overrides were applied
+    if limits.max_total_memory != 512 * 1024 * 1024 {
+        return Err(format!(
+            "Expected CLI memory override (512MB), got {} bytes", 
+            limits.max_total_memory
+        ));
+    }
+    
+    if limits.max_components != 128 {
+        return Err(format!(
+            "Expected CLI components override (128), got {}", 
+            limits.max_components
+        ));
+    }
+    
+    // Verify basic constraints
+    if limits.max_wasm_linear_memory > limits.max_total_memory {
+        return Err("WASM memory exceeds total memory".to_string());
+    }
+    
+    if limits.max_stack_bytes == 0 {
+        return Err("Stack memory cannot be zero".to_string());
+    }
+    
+    println!("✅ Platform verification with external limits works correctly");
+    Ok(())
+}
+
+// No-op platform verification test for no_std
+#[cfg(not(feature = "std"))]
+fn test_platform_verification() -> Result<(), String> {
+    // Skip platform verification testing in no_std environments
+    Ok(())
+}
+
+// Test container runtime detection
+#[cfg(feature = "std")]
+fn test_container_detection() -> Result<(), String> {
+    println!("Testing container runtime detection...");
+    
+    let config = PlatformVerificationConfigBuilder::new()
+        .build(); // This will auto-detect container runtime
+    
+    // Just verify that detection doesn't crash
+    let container_runtime = config.sources.container_runtime;
+    println!("Detected container runtime: {:?}", container_runtime);
+    
+    // Test with explicit Docker configuration
+    let docker_config = PlatformVerificationConfigBuilder::new()
+        .with_container_runtime(ContainerRuntime::Docker)
+        .build();
+    
+    assert_eq!(docker_config.sources.container_runtime, ContainerRuntime::Docker);
+    
+    println!("✅ Container runtime detection works correctly");
+    Ok(())
+}
+
+// No-op container detection test for no_std
+#[cfg(not(feature = "std"))]
+fn test_container_detection() -> Result<(), String> {
+    // Skip container detection testing in no_std environments
     Ok(())
 }
 

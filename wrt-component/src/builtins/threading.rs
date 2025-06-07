@@ -175,7 +175,7 @@ impl ThreadManager {
         // Find the thread
         let mut threads = self.threads.write().unwrap();
         let thread = threads.get_mut(&thread_id).ok_or_else(|| {
-            Error::new(ThreadingError(format!("Invalid thread ID: {}", thread_id)))
+            Error::new(ThreadingError(ComponentValue::String("Component operation result".into())))
         })?;
 
         // Check if thread is already joined
@@ -240,7 +240,7 @@ impl ThreadManager {
         // Find the thread
         let threads = self.threads.read().unwrap();
         let thread = threads.get(&thread_id).ok_or_else(|| {
-            Error::new(ThreadingError(format!("Invalid thread ID: {}", thread_id)))
+            Error::new(ThreadingError(ComponentValue::String("Component operation result".into())))
         })?;
 
         // Check the state
@@ -320,9 +320,9 @@ impl ThreadManager {
                 Ok(previous)
             }
             Some(_) => {
-                Err(Error::new(ThreadingError(format!("Sync ID {} is not a mutex", sync_id))))
+                Err(Error::new(ThreadingError(ComponentValue::String("Component operation result".into()))))
             }
-            None => Err(Error::new(ThreadingError(format!("Invalid sync ID: {}", sync_id)))),
+            None => Err(Error::new(ThreadingError(ComponentValue::String("Component operation result".into())))),
         }
     }
 
@@ -361,7 +361,7 @@ impl ThreadManager {
                 "Sync ID {} is not a condition variable",
                 sync_id
             )))),
-            None => Err(Error::new(ThreadingError(format!("Invalid sync ID: {}", sync_id)))),
+            None => Err(Error::new(ThreadingError(ComponentValue::String("Component operation result".into())))),
         }
     }
 
@@ -401,7 +401,7 @@ impl ThreadManager {
                 "Sync ID {} is not a condition variable",
                 sync_id
             )))),
-            None => Err(Error::new(ThreadingError(format!("Invalid sync ID: {}", sync_id)))),
+            None => Err(Error::new(ThreadingError(ComponentValue::String("Component operation result".into())))),
         }
     }
 
@@ -430,7 +430,7 @@ impl ThreadManager {
                 "Sync ID {} is not a read-write lock",
                 sync_id
             )))),
-            None => Err(Error::new(ThreadingError(format!("Invalid sync ID: {}", sync_id)))),
+            None => Err(Error::new(ThreadingError(ComponentValue::String("Component operation result".into())))),
         }
     }
 
@@ -467,7 +467,7 @@ impl ThreadManager {
                 "Sync ID {} is not a read-write lock",
                 sync_id
             )))),
-            None => Err(Error::new(ThreadingError(format!("Invalid sync ID: {}", sync_id)))),
+            None => Err(Error::new(ThreadingError(ComponentValue::String("Component operation result".into())))),
         }
     }
 }
@@ -846,7 +846,7 @@ mod tests {
             3 => Err(Error::new("Test error")),
 
             // Unknown function
-            _ => Err(Error::new(ThreadingError(format!("Unknown function ID: {}", function_id)))),
+            _ => Err(Error::new(ThreadingError(ComponentValue::String("Component operation result".into())))),
         }
     }
 

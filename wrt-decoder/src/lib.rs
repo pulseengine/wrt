@@ -48,6 +48,7 @@ extern crate core;
 extern crate std;
 
 // Binary std/no_std choice
+#[cfg(any(feature = "std", feature = "alloc"))]
 extern crate alloc;
 
 // Note: Panic handler removed to avoid conflicts with std library
@@ -57,6 +58,7 @@ extern crate alloc;
 pub mod memory_optimized;
 pub mod optimized_string;
 pub mod prelude;
+pub mod streaming_validator;
 
 // Conditionally include other modules
 #[cfg(feature = "std")]
@@ -77,6 +79,11 @@ pub mod custom_section_handler;
 pub use decoder_no_alloc::{
     create_memory_provider, decode_module_header, extract_section_info, validate_module_no_alloc,
     verify_wasm_header, SectionId, SectionInfo, ValidatorType, WasmModuleHeader, MAX_MODULE_SIZE,
+};
+// Streaming validator exports
+pub use streaming_validator::{
+    StreamingWasmValidator, PlatformWasmValidatorFactory, WasmRequirements, WasmConfiguration,
+    Section, MemorySection, CodeSection, ComprehensivePlatformLimits, PlatformId,
 };
 pub use wrt_error::{codes, kinds, Error, Result};
 // Essential re-exports only

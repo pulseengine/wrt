@@ -20,6 +20,7 @@
 #![warn(clippy::missing_panics_doc)]
 
 // Binary std/no_std choice
+#[cfg(any(feature = "std", feature = "alloc"))]
 extern crate alloc;
 
 // Note: Panic handler should be defined by the final binary, not library crates
@@ -31,6 +32,22 @@ extern crate alloc;
 
 // Export our prelude module for consistent imports
 pub mod prelude;
+
+// Temporary stubs for independent development (Agent C)
+pub mod foundation_stubs;
+pub mod platform_stubs;
+pub mod runtime_stubs;
+
+// Agent C deliverables - Component Model & Integration
+pub mod platform_component;
+pub mod bounded_resource_management;
+
+// Unified execution agent - consolidates all execution capabilities
+pub mod unified_execution_agent;
+pub mod unified_execution_agent_stubs;
+
+// Agent registry for managing execution agents
+pub mod agent_registry;
 
 // Export modules - organized in subdirectories
 pub mod adapter;
@@ -179,7 +196,20 @@ pub use async_context_builtins::{
 pub use component_value_no_std::{
     convert_format_to_valtype, convert_valtype_to_format, serialize_component_value_no_std,
 };
+// Legacy execution engines (deprecated - use UnifiedExecutionAgent instead)
 pub use execution_engine::{ComponentExecutionEngine, ExecutionContext, ExecutionState};
+
+// Unified execution agent - recommended for new development
+pub use unified_execution_agent::{
+    UnifiedExecutionAgent, AgentConfiguration, CoreExecutionState, UnifiedExecutionState, 
+    ExecutionMode, HybridModeFlags, UnifiedExecutionStatistics, UnifiedCallFrame,
+};
+
+// Agent registry for managing execution agents
+pub use agent_registry::{
+    AgentRegistry, AgentId, AgentCreationOptions, PreferredAgentType, AgentInfo, AgentType,
+    AgentMigrationStatus, RegistryStatistics, MigrationStatus, MigrationWarning, WarningType,
+};
 pub use generative_types::{BoundKind, GenerativeResourceType, GenerativeTypeRegistry, TypeBound};
 pub use task_manager::{Task, TaskContext, TaskId, TaskManager, TaskState, TaskType};
 pub use task_cancellation::{
@@ -373,6 +403,18 @@ pub use wrt_foundation::{
     builtin::BuiltinType, component::ComponentType, types::ValueType, values::Value,
 };
 pub use wrt_host::CallbackRegistry;
+
+// Re-export Agent C deliverables
+pub use platform_component::{
+    AllocationType, ComponentInstance, ComponentMemoryBudget, ComponentMetadata, ComponentRequirements,
+    ComponentResultExt, ComponentState, ExportKind, ExportRequirement, ImportKind, ImportRequirement,
+    MemoryAllocation, PlatformComponentRuntime, RuntimeStatistics,
+};
+pub use bounded_resource_management::{
+    BoundedResourceManager, BoundedResourceTable, Resource, ResourceDestructor, ResourceHandle,
+    ResourceId, ResourceLimits, ResourceManagerStatistics, ResourceOwnership, ResourceSharingEntry,
+    ResourceState, ResourceType, ResourceTypeId,
+};
 
 /// Debug logging macro - conditionally compiled
 #[macro_export]

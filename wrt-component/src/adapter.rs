@@ -334,7 +334,7 @@ impl CoreModuleAdapter {
     ) -> WrtResult<Value> {
         let adapter = self
             .get_function(func_index)
-            .ok_or_else(|| wrt_foundation::WrtError::InvalidInput("Function not found".into()))?;
+            .ok_or_else(|| wrt_foundation::WrtError::invalid_input("Invalid input")))?;
 
         match adapter.mode {
             AdaptationMode::Direct => {

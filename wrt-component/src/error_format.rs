@@ -26,27 +26,27 @@ pub fn format_error(category: ErrorCategory, code: u32, context: CanonicalErrorC
 
     let message = match context {
         CanonicalErrorContext::OutOfBounds { addr, size } => {
-            format!("Address {} out of bounds for memory of size {}", addr, size)
+            ComponentValue::String("Component operation result".into())
         }
         CanonicalErrorContext::InvalidUtf8 => "Invalid UTF-8 string".to_string(),
         CanonicalErrorContext::InvalidCodePoint { code_point } => {
-            format!("Invalid UTF-8 code point: {}", code_point)
+            ComponentValue::String("Component operation result".into())
         }
         CanonicalErrorContext::InvalidDiscriminant { discriminant } => {
-            format!("Invalid variant discriminant: {}", discriminant)
+            ComponentValue::String("Component operation result".into())
         }
         CanonicalErrorContext::NotImplemented(feature) => {
-            format!("{} not yet implemented", feature)
+            ComponentValue::String("Component operation result".into())
         }
         CanonicalErrorContext::TypeMismatch => "Type mismatch".to_string(),
         CanonicalErrorContext::ResourceNotFound { handle } => {
-            format!("Resource not found: {}", handle)
+            ComponentValue::String("Component operation result".into())
         }
         CanonicalErrorContext::InvalidAlignment { addr, align } => {
-            format!("Address {} not aligned to {}", addr, align)
+            ComponentValue::String("Component operation result".into())
         }
         CanonicalErrorContext::InvalidSize { expected, actual } => {
-            format!("Invalid size: expected {}, got {}", expected, actual)
+            ComponentValue::String("Component operation result".into())
         }
     };
 
@@ -93,10 +93,10 @@ pub fn format_component_error(
 
     let message = match context {
         ComponentErrorContext::ImportNotFound(name) => {
-            format!("Import not found: {}", name)
+            ComponentValue::String("Component operation result".into())
         }
         ComponentErrorContext::ExportNotFound(name) => {
-            format!("Export not found: {}", name)
+            ComponentValue::String("Component operation result".into())
         }
         ComponentErrorContext::InvalidComponentType => "Invalid component type".to_string(),
         ComponentErrorContext::LinkingFailed => "Component linking failed".to_string(),

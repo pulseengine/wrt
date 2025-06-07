@@ -486,7 +486,7 @@ impl ResourceRepresentationManager {
         mutable: bool,
     ) -> Result<()> {
         let metadata = ResourceMetadata {
-            type_name: BoundedString::from_str(&format!("{:?}", resource_type)).unwrap_or_default(),
+            type_name: BoundedString::from_str(&ComponentValue::String("Component operation result".into())).unwrap_or_default(),
             created_at: self.get_current_time(),
             last_accessed: self.get_current_time(),
             access_count: 0,

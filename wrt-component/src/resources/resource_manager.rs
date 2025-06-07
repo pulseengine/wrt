@@ -125,7 +125,7 @@ impl ResourceManager {
             Error::new(
                 ErrorCategory::Runtime,
                 codes::POISONED_LOCK,
-                PoisonedLockError(format!("Failed to acquire mutex lock: {}", e)),
+                PoisonedLockError(ComponentValue::String("Component operation result".into())),
             )
         })?;
         table.add_interceptor(interceptor);
@@ -138,7 +138,7 @@ impl ResourceManager {
             Error::new(
                 ErrorCategory::Runtime,
                 codes::POISONED_LOCK,
-                PoisonedLockError(format!("Failed to acquire mutex lock: {}", e)),
+                PoisonedLockError(ComponentValue::String("Component operation result".into())),
             )
         })?;
         table.create_resource(type_idx, data)
@@ -161,7 +161,7 @@ impl ResourceManager {
             Error::new(
                 ErrorCategory::Runtime,
                 codes::POISONED_LOCK,
-                PoisonedLockError(format!("Failed to acquire mutex lock: {}", e)),
+                PoisonedLockError(ComponentValue::String("Component operation result".into())),
             )
         })?;
 
@@ -184,7 +184,7 @@ impl ResourceManager {
             Error::new(
                 ErrorCategory::Runtime,
                 codes::POISONED_LOCK,
-                PoisonedLockError(format!("Failed to acquire mutex lock: {}", e)),
+                PoisonedLockError(ComponentValue::String("Component operation result".into())),
             )
         })?;
         table.borrow_resource(handle)
@@ -203,7 +203,7 @@ impl ResourceManager {
             Error::new(
                 ErrorCategory::Runtime,
                 codes::POISONED_LOCK,
-                PoisonedLockError(format!("Failed to acquire mutex lock: {}", e)),
+                PoisonedLockError(ComponentValue::String("Component operation result".into())),
             )
         })?;
 
@@ -216,7 +216,7 @@ impl ResourceManager {
             Err(Error::new(
                 ErrorCategory::Type,
                 codes::TYPE_MISMATCH_ERROR,
-                format!("Resource type mismatch for ID: {:?}", id).to_string(),
+                ComponentValue::String("Component operation result".into()).to_string(),
             ))
         }
     }
@@ -227,7 +227,7 @@ impl ResourceManager {
             Error::new(
                 ErrorCategory::Runtime,
                 codes::POISONED_LOCK,
-                PoisonedLockError(format!("Failed to acquire mutex lock: {}", e)),
+                PoisonedLockError(ComponentValue::String("Component operation result".into())),
             )
         })?;
         table.drop_resource(handle)
@@ -244,7 +244,7 @@ impl ResourceManager {
             Error::new(
                 ErrorCategory::Runtime,
                 codes::POISONED_LOCK,
-                PoisonedLockError(format!("Failed to acquire mutex lock: {}", e)),
+                PoisonedLockError(ComponentValue::String("Component operation result".into())),
             )
         })?;
         table.get_resource(handle)
@@ -268,7 +268,7 @@ impl ResourceManager {
             Error::new(
                 ErrorCategory::Runtime,
                 codes::POISONED_LOCK,
-                PoisonedLockError(format!("Failed to acquire mutex lock: {}", e)),
+                PoisonedLockError(ComponentValue::String("Component operation result".into())),
             )
         })?;
         table.apply_operation(handle, operation)
@@ -280,7 +280,7 @@ impl ResourceManager {
             Error::new(
                 ErrorCategory::Runtime,
                 codes::POISONED_LOCK,
-                PoisonedLockError(format!("Failed to acquire mutex lock: {}", e)),
+                PoisonedLockError(ComponentValue::String("Component operation result".into())),
             )
         })?;
         table.set_memory_strategy(handle, strategy)
@@ -292,7 +292,7 @@ impl ResourceManager {
             Error::new(
                 ErrorCategory::Runtime,
                 codes::POISONED_LOCK,
-                PoisonedLockError(format!("Failed to acquire mutex lock: {}", e)),
+                PoisonedLockError(ComponentValue::String("Component operation result".into())),
             )
         })?;
         table.set_verification_level(handle, level)
@@ -324,7 +324,7 @@ impl ResourceManager {
             Error::new(
                 ErrorCategory::Runtime,
                 codes::POISONED_LOCK,
-                PoisonedLockError(format!("Failed to acquire mutex lock: {}", e)),
+                PoisonedLockError(ComponentValue::String("Component operation result".into())),
             )
         })?;
         Ok(table.resource_count())
@@ -336,7 +336,7 @@ impl ResourceManager {
             Error::new(
                 ErrorCategory::Runtime,
                 codes::POISONED_LOCK,
-                PoisonedLockError(format!("Failed to acquire mutex lock: {}", e)),
+                PoisonedLockError(ComponentValue::String("Component operation result".into())),
             )
         })?;
         Ok(table.cleanup_unused_resources())
@@ -348,7 +348,7 @@ impl ResourceManager {
             Error::new(
                 ErrorCategory::Runtime,
                 codes::POISONED_LOCK,
-                PoisonedLockError(format!("Failed to acquire mutex lock: {}", e)),
+                PoisonedLockError(ComponentValue::String("Component operation result".into())),
             )
         })?;
         let _ = table.cleanup_unused_resources();

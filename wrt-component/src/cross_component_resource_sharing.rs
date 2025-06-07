@@ -311,7 +311,7 @@ impl CrossComponentResourceSharingManager {
             .get_representation(resource_handle)
             .map_err(|e| ResourceSharingError {
                 kind: ResourceSharingErrorKind::ResourceNotFound,
-                message: format!("Handle not found: {}", e),
+                message: ComponentValue::String("Component operation result".into()),
                 source_component: Some(agreement.source_component),
                 target_component: Some(agreement.target_component),
                 resource: Some(resource_handle),
@@ -339,7 +339,7 @@ impl CrossComponentResourceSharingManager {
             )
             .map_err(|e| ResourceSharingError {
                 kind: ResourceSharingErrorKind::TransferFailed,
-                message: format!("Failed to share handle: {}", e),
+                message: ComponentValue::String("Component operation result".into()),
                 source_component: Some(agreement.source_component),
                 target_component: Some(agreement.target_component),
                 resource: Some(resource_handle),
@@ -362,7 +362,7 @@ impl CrossComponentResourceSharingManager {
             AuditAction::ResourceShared,
             agreement.source_component,
             true,
-            &format!("Resource {} shared", resource_handle.id()),
+            &ComponentValue::String("Component operation result".into())),
         )?;
 
         Ok(shared_handle)
@@ -397,7 +397,7 @@ impl CrossComponentResourceSharingManager {
         self.post_return_registry.add_cleanup_task(source_component, cleanup_task).map_err(
             |e| ResourceSharingError {
                 kind: ResourceSharingErrorKind::TransferFailed,
-                message: format!("Failed to add cleanup task: {}", e),
+                message: ComponentValue::String("Component operation result".into()),
                 source_component: Some(source_component),
                 target_component: Some(target_component),
                 resource: Some(resource_handle),
@@ -456,7 +456,7 @@ impl CrossComponentResourceSharingManager {
             .perform_operation(component_id, resource_handle, operation)
             .map_err(|e| ResourceSharingError {
                 kind: ResourceSharingErrorKind::TransferFailed,
-                message: format!("Operation failed: {}", e),
+                message: ComponentValue::String("Component operation result".into()),
                 source_component: Some(component_id),
                 target_component: None,
                 resource: Some(resource_handle),
@@ -469,7 +469,7 @@ impl CrossComponentResourceSharingManager {
                 AuditAction::ResourceAccessed,
                 component_id,
                 true,
-                &format!("Resource {} accessed", resource_handle.id()),
+                &ComponentValue::String("Component operation result".into())),
             )?;
         }
 
@@ -500,7 +500,7 @@ impl CrossComponentResourceSharingManager {
         self.handle_manager.drop_handle(component_id, resource_handle).map_err(|e| {
             ResourceSharingError {
                 kind: ResourceSharingErrorKind::TransferFailed,
-                message: format!("Failed to drop handle: {}", e),
+                message: ComponentValue::String("Component operation result".into()),
                 source_component: Some(component_id),
                 target_component: None,
                 resource: Some(resource_handle),
@@ -514,7 +514,7 @@ impl CrossComponentResourceSharingManager {
                 AuditAction::ResourceReturned,
                 component_id,
                 true,
-                &format!("Resource {} returned", resource_handle.id()),
+                &ComponentValue::String("Component operation result".into())),
             )?;
         }
 
@@ -745,7 +745,7 @@ impl CrossComponentResourceSharingManager {
             let resource_type =
                 self.type_registry.get_resource_type(handle).map_err(|e| ResourceSharingError {
                     kind: ResourceSharingErrorKind::ResourceNotFound,
-                    message: format!("Resource type not found: {}", e),
+                    message: ComponentValue::String("Component operation result".into()),
                     source_component: Some(owner),
                     target_component: Some(shared_with),
                     resource: Some(handle),
@@ -826,7 +826,7 @@ impl CrossComponentResourceSharingManager {
     fn get_agreement(&self, agreement_id: u32) -> ResourceSharingResult<&SharingAgreement> {
         self.sharing_agreements.get(&agreement_id).ok_or_else(|| ResourceSharingError {
             kind: ResourceSharingErrorKind::InvalidSharingAgreement,
-            message: format!("Agreement {} not found", agreement_id),
+            message: ComponentValue::String("Component operation result".into()),
             source_component: None,
             target_component: None,
             resource: None,

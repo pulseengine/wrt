@@ -3,6 +3,8 @@
 // This module provides the core runtime implementation of WebAssembly modules
 // used by the runtime execution engine.
 
+// Binary std/no_std choice - use our own memory management
+#[cfg(feature = "std")]
 extern crate alloc;
 
 use wrt_foundation::{
@@ -428,7 +430,10 @@ pub struct Module {
     /// Module types (function signatures)
     pub types: wrt_foundation::bounded::BoundedVec<WrtFuncType<wrt_foundation::safe_memory::NoStdProvider<1024>>, 256, wrt_foundation::safe_memory::NoStdProvider<1024>>,
     /// Imported functions, tables, memories, and globals
+    #[cfg(feature = "std")]
     pub imports: HashMap<String, HashMap<String, Import>>,
+    #[cfg(not(feature = "std"))]
+    pub imports: wrt_foundation::no_std_hashmap::BoundedHashMap<wrt_foundation::bounded::BoundedString<128, wrt_foundation::safe_memory::NoStdProvider<1024>>, wrt_foundation::no_std_hashmap::BoundedHashMap<wrt_foundation::bounded::BoundedString<128, wrt_foundation::safe_memory::NoStdProvider<1024>>, Import, 256, wrt_foundation::safe_memory::NoStdProvider<1024>>, 256, wrt_foundation::safe_memory::NoStdProvider<1024>>,
     /// Function definitions
     pub functions: wrt_foundation::bounded::BoundedVec<Function, 1024, wrt_foundation::safe_memory::NoStdProvider<1024>>,
     /// Table instances
@@ -444,9 +449,15 @@ pub struct Module {
     /// Start function index
     pub start: Option<u32>,
     /// Custom sections
+    #[cfg(feature = "std")]
     pub custom_sections: HashMap<String, wrt_foundation::bounded::BoundedVec<u8, 4096, wrt_foundation::safe_memory::NoStdProvider<1024>>>,
+    #[cfg(not(feature = "std"))]
+    pub custom_sections: wrt_foundation::no_std_hashmap::BoundedHashMap<wrt_foundation::bounded::BoundedString<128, wrt_foundation::safe_memory::NoStdProvider<1024>>, wrt_foundation::bounded::BoundedVec<u8, 4096, wrt_foundation::safe_memory::NoStdProvider<1024>>, 256, wrt_foundation::safe_memory::NoStdProvider<1024>>,
     /// Exports (functions, tables, memories, and globals)
+    #[cfg(feature = "std")]
     pub exports: HashMap<String, Export>,
+    #[cfg(not(feature = "std"))]
+    pub exports: wrt_foundation::no_std_hashmap::BoundedHashMap<wrt_foundation::bounded::BoundedString<128, wrt_foundation::safe_memory::NoStdProvider<1024>>, Export, 256, wrt_foundation::safe_memory::NoStdProvider<1024>>,
     /// Optional name for the module
     pub name: Option<wrt_foundation::bounded::BoundedString<128, wrt_foundation::safe_memory::NoStdProvider<1024>>>,
     /// Original binary (if available)
@@ -461,7 +472,10 @@ impl Module {
         let provider = wrt_foundation::safe_memory::NoStdProvider::<1024>::default();
         Ok(Self {
             types: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
+            #[cfg(feature = "std")]
             imports: HashMap::new(),
+            #[cfg(not(feature = "std"))]
+            imports: wrt_foundation::no_std_hashmap::BoundedHashMap::new(provider.clone())?,
             functions: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
             tables: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
             memories: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
@@ -469,8 +483,14 @@ impl Module {
             elements: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
             data: wrt_foundation::bounded::BoundedVec::new(provider.clone())?,
             start: None,
+            #[cfg(feature = "std")]
             custom_sections: HashMap::new(),
+            #[cfg(not(feature = "std"))]
+            custom_sections: wrt_foundation::no_std_hashmap::BoundedHashMap::new(provider.clone())?,
+            #[cfg(feature = "std")]
             exports: HashMap::new(),
+            #[cfg(not(feature = "std"))]
+            exports: wrt_foundation::no_std_hashmap::BoundedHashMap::new(provider.clone())?,
             name: None,
             binary: None,
             validated: false,
@@ -527,12 +547,32 @@ impl Module {
                 import_def.item_name.as_str()?.to_string(),
                 extern_ty,
             )?;
-            let module_key = import_def.module_name.as_str()?.to_string();
-            let name_key = import_def.item_name.as_str()?.to_string();
-            runtime_module.imports.entry(module_key).or_default().insert(
-                name_key,
-                import,
-            );
+            #[cfg(feature = "std")]
+            {
+                let module_key = import_def.module_name.as_str()?.to_string();
+                let name_key = import_def.item_name.as_str()?.to_string();
+                runtime_module.imports.entry(module_key).or_default().insert(
+                    name_key,
+                    import,
+                );
+            }
+            #[cfg(not(feature = "std"))]
+            {
+                let module_key = wrt_foundation::bounded::BoundedString::from_str_truncate(
+                    import_def.module_name.as_str()?,
+                    wrt_foundation::safe_memory::NoStdProvider::<1024>::default()
+                )?;
+                let name_key = wrt_foundation::bounded::BoundedString::from_str_truncate(
+                    import_def.item_name.as_str()?,
+                    wrt_foundation::safe_memory::NoStdProvider::<1024>::default()
+                )?;
+                if !runtime_module.imports.contains_key(&module_key) {
+                    runtime_module.imports.insert(module_key.clone(), wrt_foundation::no_std_hashmap::BoundedHashMap::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default())?)?;
+                }
+                if let Some(module_map) = runtime_module.imports.get_mut(&module_key) {
+                    module_map.insert(name_key, import)?;
+                }
+            }
         }
 
         // Binary std/no_std choice
@@ -599,8 +639,19 @@ impl Module {
                 }
             };
             let export = crate::module::Export::new(export_def.name.as_str().to_string(), kind, index)?;
-            let name_key = export_def.name.as_str().to_string();
-            runtime_module.exports.insert(name_key, export);
+            #[cfg(feature = "std")]
+            {
+                let name_key = export_def.name.as_str().to_string();
+                runtime_module.exports.insert(name_key, export);
+            }
+            #[cfg(not(feature = "std"))]
+            {
+                let name_key = wrt_foundation::bounded::BoundedString::from_str_truncate(
+                    export_def.name.as_str(),
+                    wrt_foundation::safe_memory::NoStdProvider::<1024>::default()
+                )?;
+                runtime_module.exports.insert(name_key, export)?;
+            }
         }
 
         for element_def in &wrt_module.elements {
@@ -633,8 +684,19 @@ impl Module {
         }
 
         for custom_def in &wrt_module.custom_sections {
-            let name_key = custom_def.name.as_str().to_string();
-            runtime_module.custom_sections.insert(name_key, custom_def.data.clone());
+            #[cfg(feature = "std")]
+            {
+                let name_key = custom_def.name.as_str().to_string();
+                runtime_module.custom_sections.insert(name_key, custom_def.data.clone());
+            }
+            #[cfg(not(feature = "std"))]
+            {
+                let name_key = wrt_foundation::bounded::BoundedString::from_str_truncate(
+                    custom_def.name.as_str(),
+                    wrt_foundation::safe_memory::NoStdProvider::<1024>::default()
+                )?;
+                runtime_module.custom_sections.insert(name_key, custom_def.data.clone())?;
+            }
         }
 
         Ok(runtime_module)
@@ -648,7 +710,7 @@ impl Module {
         }
         #[cfg(not(feature = "std"))]
         {
-            // BTreeMap requires exact key type match - search manually
+            // BoundedHashMap requires exact key type match - search manually
             for (key, value) in self.exports.iter() {
                 if key.as_str() == name {
                     return Some(value);
@@ -671,7 +733,7 @@ impl Module {
         if idx as usize >= self.types.len() {
             return None;
         }
-        Some(&self.types[idx as usize])
+        self.types.get(idx as usize)
     }
 
     /// Gets a global by index
@@ -680,7 +742,7 @@ impl Module {
             Error::new(
                 ErrorCategory::Runtime,
                 codes::GLOBAL_NOT_FOUND,
-                &format!("Global at index {} not found", idx),
+                "Runtime operation error",
             )
         })
     }
@@ -691,7 +753,7 @@ impl Module {
             Error::new(
                 ErrorCategory::Runtime,
                 codes::MEMORY_NOT_FOUND,
-                &format!("Memory at index {} not found", idx),
+                "Runtime operation error",
             )
         })
     }
@@ -702,7 +764,7 @@ impl Module {
             Error::new(
                 ErrorCategory::Runtime,
                 codes::TABLE_NOT_FOUND,
-                &format!("Table at index {} not found", idx),
+                "Runtime operation error",
             )
         })
     }
@@ -710,28 +772,64 @@ impl Module {
     /// Adds a function export
     pub fn add_function_export(&mut self, name: String, index: u32) -> Result<()> {
         let export = Export::new(name.clone(), ExportKind::Function, index)?;
+        #[cfg(feature = "std")]
         self.exports.insert(name, export);
+        #[cfg(not(feature = "std"))]
+        {
+            let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(
+                name.as_str(),
+                wrt_foundation::safe_memory::NoStdProvider::<1024>::default()
+            )?;
+            self.exports.insert(bounded_name, export)?;
+        }
         Ok(())
     }
 
     /// Adds a table export
     pub fn add_table_export(&mut self, name: String, index: u32) -> Result<()> {
         let export = Export::new(name.clone(), ExportKind::Table, index)?;
+        #[cfg(feature = "std")]
         self.exports.insert(name, export);
+        #[cfg(not(feature = "std"))]
+        {
+            let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(
+                name.as_str(),
+                wrt_foundation::safe_memory::NoStdProvider::<1024>::default()
+            )?;
+            self.exports.insert(bounded_name, export)?;
+        }
         Ok(())
     }
 
     /// Adds a memory export
     pub fn add_memory_export(&mut self, name: String, index: u32) -> Result<()> {
         let export = Export::new(name.clone(), ExportKind::Memory, index)?;
+        #[cfg(feature = "std")]
         self.exports.insert(name, export);
+        #[cfg(not(feature = "std"))]
+        {
+            let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(
+                name.as_str(),
+                wrt_foundation::safe_memory::NoStdProvider::<1024>::default()
+            )?;
+            self.exports.insert(bounded_name, export)?;
+        }
         Ok(())
     }
 
     /// Adds a global export
     pub fn add_global_export(&mut self, name: String, index: u32) -> Result<()> {
         let export = Export::new(name.clone(), ExportKind::Global, index)?;
+        #[cfg(feature = "std")]
         self.exports.insert(name, export);
+        #[cfg(not(feature = "std"))]
+        {
+            let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(
+                name.as_str(),
+                wrt_foundation::safe_memory::NoStdProvider::<1024>::default()
+            )?;
+            self.exports.insert(bounded_name, export)?;
+        }
         Ok(())
     }
 
@@ -790,10 +888,30 @@ impl Module {
             item_name.to_string(),
             ExternType::Func(func_type),
         )?;
-        self.imports
-            .entry(module_name.to_string())
-            .or_default()
-            .insert(item_name.to_string(), import_struct);
+        #[cfg(feature = "std")]
+        {
+            self.imports
+                .entry(module_name.to_string())
+                .or_default()
+                .insert(item_name.to_string(), import_struct);
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            let bounded_module = wrt_foundation::bounded::BoundedString::from_str_truncate(
+                module_name,
+                wrt_foundation::safe_memory::NoStdProvider::<1024>::default()
+            )?;
+            let bounded_item = wrt_foundation::bounded::BoundedString::from_str_truncate(
+                item_name,
+                wrt_foundation::safe_memory::NoStdProvider::<1024>::default()
+            )?;
+            if !self.imports.contains_key(&bounded_module) {
+                self.imports.insert(bounded_module.clone(), wrt_foundation::no_std_hashmap::BoundedHashMap::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default())?)?;
+            }
+            if let Some(module_map) = self.imports.get_mut(&bounded_module) {
+                module_map.insert(bounded_item, import_struct)?;
+            }
+        }
         Ok(())
     }
 
@@ -809,10 +927,30 @@ impl Module {
             item_name.to_string(),
             ExternType::Table(table_type),
         )?;
-        self.imports
-            .entry(module_name.to_string())
-            .or_default()
-            .insert(item_name.to_string(), import_struct);
+        #[cfg(feature = "std")]
+        {
+            self.imports
+                .entry(module_name.to_string())
+                .or_default()
+                .insert(item_name.to_string(), import_struct);
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            let bounded_module = wrt_foundation::bounded::BoundedString::from_str_truncate(
+                module_name,
+                wrt_foundation::safe_memory::NoStdProvider::<1024>::default()
+            )?;
+            let bounded_item = wrt_foundation::bounded::BoundedString::from_str_truncate(
+                item_name,
+                wrt_foundation::safe_memory::NoStdProvider::<1024>::default()
+            )?;
+            if !self.imports.contains_key(&bounded_module) {
+                self.imports.insert(bounded_module.clone(), wrt_foundation::no_std_hashmap::BoundedHashMap::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default())?)?;
+            }
+            if let Some(module_map) = self.imports.get_mut(&bounded_module) {
+                module_map.insert(bounded_item, import_struct)?;
+            }
+        }
         Ok(())
     }
 
@@ -828,10 +966,30 @@ impl Module {
             item_name.to_string(),
             ExternType::Memory(memory_type),
         )?;
-        self.imports
-            .entry(module_name.to_string())
-            .or_default()
-            .insert(item_name.to_string(), import_struct);
+        #[cfg(feature = "std")]
+        {
+            self.imports
+                .entry(module_name.to_string())
+                .or_default()
+                .insert(item_name.to_string(), import_struct);
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            let bounded_module = wrt_foundation::bounded::BoundedString::from_str_truncate(
+                module_name,
+                wrt_foundation::safe_memory::NoStdProvider::<1024>::default()
+            )?;
+            let bounded_item = wrt_foundation::bounded::BoundedString::from_str_truncate(
+                item_name,
+                wrt_foundation::safe_memory::NoStdProvider::<1024>::default()
+            )?;
+            if !self.imports.contains_key(&bounded_module) {
+                self.imports.insert(bounded_module.clone(), wrt_foundation::no_std_hashmap::BoundedHashMap::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default())?)?;
+            }
+            if let Some(module_map) = self.imports.get_mut(&bounded_module) {
+                module_map.insert(bounded_item, import_struct)?;
+            }
+        }
         Ok(())
     }
 
@@ -914,7 +1072,16 @@ impl Module {
 
         let export = Export { name: name.to_string(), kind: ExportKind::Function, index };
 
+        #[cfg(feature = "std")]
         self.exports.insert(name.to_string(), export);
+        #[cfg(not(feature = "std"))]
+        {
+            let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(
+                name,
+                wrt_foundation::safe_memory::NoStdProvider::<1024>::default()
+            )?;
+            self.exports.insert(bounded_name, export)?;
+        }
         Ok(())
     }
 
@@ -929,7 +1096,16 @@ impl Module {
 
         let export = Export { name: name.to_string(), kind: ExportKind::Table, index };
 
+        #[cfg(feature = "std")]
         self.exports.insert(name.to_string(), export);
+        #[cfg(not(feature = "std"))]
+        {
+            let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(
+                name,
+                wrt_foundation::safe_memory::NoStdProvider::<1024>::default()
+            )?;
+            self.exports.insert(bounded_name, export)?;
+        }
         Ok(())
     }
 
@@ -944,7 +1120,16 @@ impl Module {
 
         let export = Export { name: name.to_string(), kind: ExportKind::Memory, index };
 
+        #[cfg(feature = "std")]
         self.exports.insert(name.to_string(), export);
+        #[cfg(not(feature = "std"))]
+        {
+            let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(
+                name,
+                wrt_foundation::safe_memory::NoStdProvider::<1024>::default()
+            )?;
+            self.exports.insert(bounded_name, export)?;
+        }
         Ok(())
     }
 
@@ -959,7 +1144,16 @@ impl Module {
 
         let export = Export { name: name.to_string(), kind: ExportKind::Global, index };
 
+        #[cfg(feature = "std")]
         self.exports.insert(name.to_string(), export);
+        #[cfg(not(feature = "std"))]
+        {
+            let bounded_name = wrt_foundation::bounded::BoundedString::from_str_truncate(
+                name,
+                wrt_foundation::safe_memory::NoStdProvider::<1024>::default()
+            )?;
+            self.exports.insert(bounded_name, export)?;
+        }
         Ok(())
     }
 
@@ -1017,7 +1211,11 @@ impl Module {
         if func_idx as usize == self.functions.len() {
             self.functions.push(func_entry);
         } else {
-            self.functions[func_idx as usize] = func_entry;
+            let _ = self.functions.set(func_idx as usize, func_entry).map_err(|_| Error::new(
+                ErrorCategory::Runtime,
+                codes::COMPONENT_LIMIT_EXCEEDED,
+                "Failed to set function entry"
+            ))?;
         }
         Ok(())
     }
@@ -1082,10 +1280,30 @@ impl Module {
             item_name.to_string(),
             ExternType::Global(component_global_type),
         )?;
-        self.imports
-            .entry(module_name.to_string())
-            .or_default()
-            .insert(item_name.to_string(), import_struct);
+        #[cfg(feature = "std")]
+        {
+            self.imports
+                .entry(module_name.to_string())
+                .or_default()
+                .insert(item_name.to_string(), import_struct);
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            let bounded_module = wrt_foundation::bounded::BoundedString::from_str_truncate(
+                module_name,
+                wrt_foundation::safe_memory::NoStdProvider::<1024>::default()
+            )?;
+            let bounded_item = wrt_foundation::bounded::BoundedString::from_str_truncate(
+                item_name,
+                wrt_foundation::safe_memory::NoStdProvider::<1024>::default()
+            )?;
+            if !self.imports.contains_key(&bounded_module) {
+                self.imports.insert(bounded_module.clone(), wrt_foundation::no_std_hashmap::BoundedHashMap::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default())?)?;
+            }
+            if let Some(module_map) = self.imports.get_mut(&bounded_module) {
+                module_map.insert(bounded_item, import_struct)?;
+            }
+        }
         Ok(())
     }
 
@@ -1211,7 +1429,7 @@ pub enum ImportedItem {
 #[cfg(feature = "std")]
 use std::{collections::HashMap, sync::Arc}; // For std types
 #[cfg(not(feature = "std"))]
-use alloc::{collections::BTreeMap as HashMap, sync::Arc}; // For no_std types
+use wrt_foundation::no_std_hashmap::BoundedHashMap as HashMap; // For no_std types
 
 use wrt_error::{codes, Error, ErrorCategory, Result};
 use wrt_foundation::component::ExternType; // For error handling

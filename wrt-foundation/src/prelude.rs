@@ -31,10 +31,21 @@ pub use core::{
 #[cfg(feature = "std")]
 pub use std::{
     boxed::Box,
-    collections::{BTreeMap, BTreeSet, HashSet, HashMap},
+    collections::{BTreeMap, BTreeSet, HashMap, HashSet},
     format,
     string::{String, ToString},
     sync::{Arc, Mutex, RwLock},
+    vec,
+    vec::Vec,
+};
+
+// alloc-only imports (when std is not available)
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+pub use alloc::{
+    boxed::Box,
+    collections::{BTreeMap, BTreeSet},
+    format,
+    string::{String, ToString},
     vec,
     vec::Vec,
 };
@@ -122,11 +133,34 @@ pub use crate::{
     // ResourceType, // Already covered by component::* above
     SafeMemoryHandler,
     SafeSlice,
+    // New unified types from Agent A deliverables (simplified)
+    unified_types_simple::{
+        DefaultTypes, EmbeddedTypes, DesktopTypes, SafetyCriticalTypes,
+        PlatformCapacities, UnifiedTypes,
+    },
+    // Memory system types
+    memory_system::{
+        UnifiedMemoryProvider, ConfigurableProvider, SmallProvider, MediumProvider, LargeProvider,
+        NoStdProviderWrapper, MemoryProviderFactory,
+    },
+    // Safety system types
+    safety_system::{
+        AsilLevel, SafetyContext, SafetyGuard, SafeMemoryAllocation,
+    },
+    // ASIL testing framework
+    asil_testing::{
+        AsilTestMetadata, TestCategory, TestStatistics,
+        register_asil_test, get_asil_tests, get_tests_by_asil, get_tests_by_category, get_test_statistics,
+    },
 };
 
 // Binary std/no_std choice
 #[cfg(feature = "std")]
 pub use crate::conversion::{ref_type_to_val_type, val_type_to_ref_type};
+
+// std-only memory provider
+#[cfg(feature = "std")]
+pub use crate::memory_system::UnifiedStdProvider;
 
 // Alloc-dependent re-exports
 #[cfg(feature = "std")]

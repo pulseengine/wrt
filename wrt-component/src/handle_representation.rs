@@ -206,7 +206,7 @@ impl HandleRepresentationManager {
         self.type_registry.map_resource_handle(handle, resource_type).map_err(|e| {
             HandleRepresentationError {
                 kind: HandleRepresentationErrorKind::ValidationFailed,
-                message: format!("Failed to map handle to type: {}", e),
+                message: "Handle operation failed".to_string(),
                 handle: Some(handle),
             }
         })?;
@@ -220,7 +220,7 @@ impl HandleRepresentationManager {
     ) -> HandleRepresentationResult<&HandleRepresentation> {
         self.representations.get(&handle).ok_or_else(|| HandleRepresentationError {
             kind: HandleRepresentationErrorKind::HandleNotFound,
-            message: format!("Handle {} not found", handle.id()),
+            message: "Component operation error".to_string(),
             handle: Some(handle),
         })
     }
@@ -313,7 +313,7 @@ impl HandleRepresentationManager {
         // Copy metadata with updated info
         if let Some(original_metadata) = self.metadata.get(&handle) {
             let mut shared_metadata = original_metadata.clone();
-            shared_metadata.tags.push(format!("shared_from:{}", source_component.id())).ok();
+            shared_metadata.tags.push("Component operation error".to_string()).ok();
 
             self.metadata.insert(new_handle, shared_metadata).map_err(|_| {
                 HandleRepresentationError {
@@ -345,7 +345,7 @@ impl HandleRepresentationManager {
         let representation =
             self.representations.get_mut(&handle).ok_or_else(|| HandleRepresentationError {
                 kind: HandleRepresentationErrorKind::HandleNotFound,
-                message: format!("Handle {} not found", handle.id()),
+                message: "Component operation error".to_string(),
                 handle: Some(handle),
             })?;
 
@@ -381,7 +381,7 @@ impl HandleRepresentationManager {
     {
         let metadata = self.metadata.get_mut(&handle).ok_or_else(|| HandleRepresentationError {
             kind: HandleRepresentationErrorKind::HandleNotFound,
-            message: format!("Metadata for handle {} not found", handle.id()),
+            message: "Component operation error".to_string(),
             handle: Some(handle),
         })?;
 
@@ -430,7 +430,7 @@ impl HandleRepresentationManager {
         {
             return Err(HandleRepresentationError {
                 kind: HandleRepresentationErrorKind::AccessDenied,
-                message: format!("Component {} does not have access to handle", component_id.id()),
+                message: "Component operation error".to_string(),
                 handle: Some(handle),
             });
         }
@@ -591,7 +591,7 @@ impl HandleRepresentationManager {
         args: &[ComponentValue],
     ) -> HandleRepresentationResult<Option<ComponentValue>> {
         // This is a placeholder - actual implementation would call the method
-        Ok(Some(ComponentValue::String(format!("Called {} on handle {}", method, handle.id()))))
+        Ok(Some(ComponentValue::String("Component operation error".to_string())))
     }
 
     fn handle_drop_operation(

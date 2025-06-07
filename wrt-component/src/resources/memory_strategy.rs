@@ -72,7 +72,7 @@ impl ResourceStrategy for MemoryStrategy {
                         Error::new(
                             wrt_error::ErrorCategory::Memory,
                             wrt_error::codes::MEMORY_ERROR,
-                            format!("Failed to create bounded vec for zero-copy: {}", e),
+                            ComponentValue::String("Component operation result".into()),
                         )
                     })?;
 
@@ -81,7 +81,7 @@ impl ResourceStrategy for MemoryStrategy {
                             Error::new(
                                 wrt_error::ErrorCategory::Memory,
                                 wrt_error::codes::MEMORY_ERROR,
-                                format!("Failed to push to bounded vec: {}", e),
+                                ComponentValue::String("Component operation result".into()),
                             )
                         })?;
                     }
@@ -92,7 +92,7 @@ impl ResourceStrategy for MemoryStrategy {
                         Error::new(
                             wrt_error::ErrorCategory::Memory,
                             wrt_error::codes::MEMORY_ERROR,
-                            format!("Failed to create bounded vec for zero-copy: {}", e),
+                            ComponentValue::String("Component operation result".into()),
                         )
                     })?;
 
@@ -101,7 +101,7 @@ impl ResourceStrategy for MemoryStrategy {
                             Error::new(
                                 wrt_error::ErrorCategory::Memory,
                                 wrt_error::codes::MEMORY_ERROR,
-                                format!("Failed to push to bounded vec: {}", e),
+                                ComponentValue::String("Component operation result".into()),
                             )
                         })?;
                     }
@@ -116,7 +116,7 @@ impl ResourceStrategy for MemoryStrategy {
                     Error::new(
                         wrt_error::ErrorCategory::Memory,
                         wrt_error::codes::MEMORY_ERROR,
-                        format!("Failed to create bounded vec for bounded-copy: {}", e),
+                        ComponentValue::String("Component operation result".into()),
                     )
                 })?;
 
@@ -125,7 +125,7 @@ impl ResourceStrategy for MemoryStrategy {
                         Error::new(
                             wrt_error::ErrorCategory::Memory,
                             wrt_error::codes::MEMORY_ERROR,
-                            format!("Failed to push to bounded vec: {}", e),
+                            ComponentValue::String("Component operation result".into()),
                         )
                     })?;
                 }
@@ -141,7 +141,7 @@ impl ResourceStrategy for MemoryStrategy {
                     Error::new(
                         wrt_error::ErrorCategory::Memory,
                         wrt_error::codes::MEMORY_ERROR,
-                        format!("Failed to create bounded vec: {}", e),
+                        ComponentValue::String("Component operation result".into()),
                     )
                 })?;
 
@@ -150,7 +150,7 @@ impl ResourceStrategy for MemoryStrategy {
                         Error::new(
                             wrt_error::ErrorCategory::Memory,
                             wrt_error::codes::MEMORY_ERROR,
-                            format!("Failed to push to bounded vec: {}", e),
+                            ComponentValue::String("Component operation result".into()),
                         )
                     })?;
                 }

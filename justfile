@@ -54,6 +54,10 @@ generate-coverage-summary:
     @echo "Generating coverage summary for documentation..."
     cargo xtask generate-coverage-summary
 
+generate-safety-summary:
+    @echo "Generating safety verification summary for documentation..."
+    cargo xtask generate-safety-summary
+
 # ----------------- Formatting Commands -----------------
 fmt:
     @echo "Formatting Rust code..."
@@ -156,3 +160,42 @@ zephyr-run APP_NAME="hello_world" BOARD="native_posix": # Added BOARD to run for
 
 # Add other Zephyr-specific tasks here as needed
 # Example: zephyr-flash, zephyr-debug, etc.
+
+# ----------------- SCORE-Inspired Safety Verification -----------------
+# All safety verification commands are implemented in xtask for proper integration
+
+# Run SCORE-inspired safety verification
+verify-safety:
+    @echo "🔍 Running SCORE-inspired safety verification..."
+    cargo xtask verify-safety
+
+# Check requirements traceability
+check-requirements:
+    @echo "📋 Checking requirements traceability..."
+    cargo xtask check-requirements
+
+# Initialize requirements file from template
+init-requirements:
+    @echo "📋 Creating sample requirements.toml..."
+    cargo xtask init-requirements
+
+# Generate safety verification report (supports --format json/html)
+safety-report:
+    @echo "📊 Generating safety verification report..."
+    cargo xtask safety-report
+
+# Run requirements verification with file checking (supports --detailed)
+verify-requirements:
+    @echo "🔍 Verifying requirements implementation..."
+    cargo xtask verify-requirements
+
+# Safety dashboard - comprehensive safety status
+safety-dashboard:
+    @echo "🛡️  WRT Safety Dashboard"
+    @echo "========================"
+    cargo xtask safety-dashboard
+
+# Safety verification examples with advanced options:
+# cargo xtask verify-safety --format json --output safety.json
+# cargo xtask verify-requirements --detailed --requirements-file custom.toml
+# cargo xtask safety-report --format html --output report.html

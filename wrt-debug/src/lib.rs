@@ -18,6 +18,7 @@ extern crate std;
 
 // Binary std/no_std choice
 #[cfg(feature = "std")]
+#[cfg(any(feature = "std", feature = "alloc"))]
 extern crate alloc;
 
 // Note: Panic handler removed to avoid conflicts with std library
@@ -27,6 +28,11 @@ extern crate alloc;
 pub use abbrev::{Abbreviation, AbbreviationTable, AttributeForm, AttributeSpec};
 pub use cursor::DwarfCursor;
 pub use file_table::{FileEntry, FilePath, FileTable};
+// Platform debug exports
+pub use platform_debug::{
+    PlatformDebugLimits, PlatformDebugManager, PlatformDebugConfigBuilder,
+    DebugLevel, PlatformId, ComprehensivePlatformLimits,
+};
 #[cfg(feature = "debug-info")]
 pub use info::{CompilationUnitHeader, DebugInfoParser, FunctionInfo};
 #[cfg(feature = "line-info")]
@@ -78,6 +84,7 @@ mod abbrev;
 mod cursor;
 mod error;
 mod file_table;
+pub mod platform_debug;
 #[cfg(feature = "debug-info")]
 mod info;
 #[cfg(feature = "line-info")]

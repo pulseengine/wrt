@@ -321,7 +321,7 @@ impl HostIntegrationManager {
         engine: &mut ComponentExecutionEngine,
     ) -> WrtResult<Value> {
         let function = self.host_functions.get(function_id as usize).ok_or_else(|| {
-            wrt_foundation::WrtError::InvalidInput("Host function not found".into())
+            wrt_foundation::WrtError::invalid_input("Invalid input"))
         })?;
 
         // Check security policy
@@ -464,7 +464,7 @@ impl HostIntegrationManager {
     ) -> WrtResult<()> {
         let resource =
             self.host_resources.resources.get(resource_id as usize).ok_or_else(|| {
-                wrt_foundation::WrtError::InvalidInput("Host resource not found".into())
+                wrt_foundation::WrtError::invalid_input("Invalid input"))
             })?;
 
         if !resource.permissions.shareable {

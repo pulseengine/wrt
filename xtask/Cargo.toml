@@ -27,6 +27,7 @@ fs_extra = "1.3.0" # For cross-platform rm -rf and mkdir -p equivalent
 wasm-tools = { version = "1.231.0" }
 wat = "1.231.0"
 wrt = { path = "../wrt", optional = true }
+wrt-verification-tool = { path = "../wrt-verification-tool" }
 pathdiff = "0.2"
 
 # For documentation HTTP server
@@ -42,6 +43,7 @@ syn = { version = "2.0.34", features = ["parsing", "full", "extra-traits"] }
 regex = "1.9.5"
 chrono = "0.4.24"
 semver = "1.0"
+scopeguard = "1.2"
 
 # Add tokio for async runtime needed by dagger-sdk
 tokio = { version = "1.45.1", features = ["full"] }

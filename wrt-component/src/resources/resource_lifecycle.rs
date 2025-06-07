@@ -238,7 +238,7 @@ impl ResourceLifecycleManager {
                 Error::new(
                     ErrorCategory::Resource,
                     codes::RESOURCE_ERROR,
-                    format!("Unknown resource type: {}", type_idx),
+                    ComponentValue::String("Component operation result".into()),
                 )
             })?
             .clone();
@@ -312,7 +312,7 @@ impl ResourceLifecycleManager {
             Error::new(
                 ErrorCategory::Resource,
                 codes::RESOURCE_INVALID_HANDLE,
-                format!("Invalid resource handle: {}", handle),
+                ComponentValue::String("Component operation result".into()),
             )
         })?;
 
@@ -388,7 +388,7 @@ impl ResourceLifecycleManager {
             Error::new(
                 ErrorCategory::Resource,
                 codes::RESOURCE_INVALID_HANDLE,
-                format!("Invalid resource handle: {}", handle),
+                ComponentValue::String("Component operation result".into()),
             )
         })?;
 
@@ -482,7 +482,7 @@ impl ResourceLifecycleManager {
             Error::new(
                 ErrorCategory::Resource,
                 codes::RESOURCE_INVALID_HANDLE,
-                format!("Invalid resource handle: {}", handle),
+                ComponentValue::String("Component operation result".into()),
             )
         })?;
 
@@ -579,7 +579,7 @@ impl ResourceLifecycleManager {
             Error::new(
                 ErrorCategory::Resource,
                 codes::RESOURCE_INVALID_HANDLE,
-                format!("Invalid resource handle: {}", handle),
+                ComponentValue::String("Component operation result".into()),
             )
         })?;
 
@@ -647,7 +647,7 @@ impl ResourceLifecycleManager {
                 Error::new(
                     ErrorCategory::Resource,
                     codes::RESOURCE_INVALID_HANDLE,
-                    format!("Invalid resource handle: {}", handle),
+                    ComponentValue::String("Component operation result".into()),
                 )
             })
         }

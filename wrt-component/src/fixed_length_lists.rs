@@ -159,7 +159,7 @@ impl FixedLengthList {
                 return Err(Error::new(
                     ErrorCategory::Type,
                     wrt_error::codes::TYPE_MISMATCH,
-                    &format!("Element at index {} has incorrect type", i)
+                    &ComponentValue::String("Component operation result".into())
                 ));
             }
         }

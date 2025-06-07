@@ -373,7 +373,7 @@ impl TaskManager {
                 Err(wrt_foundation::WrtError::InvalidState("Task is not ready to run".into()))
             }
         } else {
-            Err(wrt_foundation::WrtError::InvalidInput("Task not found".into()))
+            Err(wrt_foundation::WrtError::invalid_input("Invalid input")))
         }
     }
 
@@ -405,7 +405,7 @@ impl TaskManager {
                 self.current_task = task.parent;
                 Ok(())
             } else {
-                Err(wrt_foundation::WrtError::InvalidInput("Current task not found".into()))
+                Err(wrt_foundation::WrtError::invalid_input("Invalid input")))
             }
         } else {
             Err(wrt_foundation::WrtError::InvalidState("No current task".into()))
@@ -429,7 +429,7 @@ impl TaskManager {
                 // Return special value indicating we're waiting
                 Ok(u32::MAX) // Convention: MAX means "blocking"
             } else {
-                Err(wrt_foundation::WrtError::InvalidInput("Current task not found".into()))
+                Err(wrt_foundation::WrtError::invalid_input("Invalid input")))
             }
         } else {
             Err(wrt_foundation::WrtError::InvalidState("No current task".into()))
@@ -460,7 +460,7 @@ impl TaskManager {
                 self.current_task = task.parent;
                 Ok(())
             } else {
-                Err(wrt_foundation::WrtError::InvalidInput("Current task not found".into()))
+                Err(wrt_foundation::WrtError::invalid_input("Invalid input")))
             }
         } else {
             Err(wrt_foundation::WrtError::InvalidState("No current task".into()))

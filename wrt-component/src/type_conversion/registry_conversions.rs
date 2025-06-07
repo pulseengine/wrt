@@ -122,7 +122,7 @@ pub fn register_valtype_conversions(registry: &mut TypeConversionRegistry) {
                 kind: ConversionErrorKind::InvalidVariant,
                 source_type: "FormatValType",
                 target_type: "ValueType",
-                context: Some(format!("Cannot convert {:?} to core ValueType", format_val_type)),
+                context: Some(ComponentValue::String("Component operation result".into())),
                 source: None,
             }),
         }

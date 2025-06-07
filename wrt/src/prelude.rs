@@ -6,16 +6,6 @@
 //! individual modules.
 
 // Core imports for both std and no_std environments
-// Binary std/no_std choice
-pub use std::{
-    boxed::Box,
-    collections::{BTreeMap as HashMap, BTreeSet as HashSet},
-    format,
-    string::{String, ToString},
-    sync::Arc,
-    vec,
-    vec::Vec,
-};
 pub use core::{
     any::Any,
     cmp::{Eq, Ord, PartialEq, PartialOrd},
@@ -28,6 +18,7 @@ pub use core::{
     slice, str,
     sync::atomic::{AtomicUsize, Ordering},
 };
+
 // Re-export from std when the std feature is enabled
 #[cfg(feature = "std")]
 pub use std::{
@@ -40,42 +31,32 @@ pub use std::{
     vec::Vec,
 };
 
-// Binary std/no_std choice
-#[cfg(not(any(feature = "std", )))]
-pub use wrt_foundation::bounded::{
-    BoundedMap as HashMap, BoundedSet as HashSet, BoundedString as String, BoundedVec as Vec,
+// Binary std/no_std choice - use our own memory management
+#[cfg(not(feature = "std"))]
+pub use wrt_foundation::{
+    bounded::{BoundedString as String, BoundedVec as Vec},
+    no_std_hashmap::BoundedHashMap as HashMap,
+    bounded_collections::BoundedSet as HashSet,
 };
 
-// Binary std/no_std choice
-#[cfg(not(any(feature = "std", )))]
-pub use crate::vec;
-
-// Binary std/no_std choice
-#[cfg(not(any(feature = "std", )))]
-pub type Arc<T> = &'static T;
-#[cfg(not(any(feature = "std", )))]
-pub type Box<T> = &'static T;
-
-// Binary std/no_std choice
-#[cfg(not(any(feature = "std", )))]
+// Binary std/no_std choice - format macro not available without alloc
+#[cfg(not(feature = "std"))]
 #[macro_export]
 macro_rules! format {
     ($($arg:tt)*) => {{
-        // Binary std/no_std choice
-        // Return a static string or use write! to a fixed buffer
-        "formatted string not available in no_std without alloc"
+        "static string - format not available in no_std without alloc"
     }};
 }
 
-// Binary std/no_std choice
-#[cfg(not(any(feature = "std", )))]
+// Binary std/no_std choice - vec macro using bounded collections
+#[cfg(not(feature = "std"))]
 #[macro_export]
 macro_rules! vec {
     () => {
-        wrt_foundation::bounded::BoundedVec::new()
+        wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap()
     };
     ($($x:expr),*) => {{
-        let mut v = wrt_foundation::bounded::BoundedVec::new();
+        let mut v = wrt_foundation::bounded::BoundedVec::new(wrt_foundation::safe_memory::NoStdProvider::<1024>::default()).unwrap();
         $(v.push($x).unwrap();)*
         v
     }};
@@ -111,13 +92,7 @@ pub use wrt_format::{
     binary, component::Component as FormatComponent, is_state_section_name,
     module::Module as FormatModule, validation::Validatable as FormatValidatable, StateSection,
 };
-#[cfg(not(any(feature = "std", )))]
-pub use wrt_foundation::bounded::{BoundedString as String, BoundedVec as Vec};
-#[cfg(not(any(feature = "std", )))]
-pub use wrt_foundation::bounded_collections::BoundedSet as HashSet;
-// Binary std/no_std choice
-#[cfg(not(any(feature = "std", )))]
-pub use wrt_foundation::no_std_hashmap::BoundedHashMap as HashMap;
+// Remove duplicate imports - already handled above
 // Re-export from wrt-foundation (core foundation library)
 pub use wrt_foundation::{
     // Bounded collections (safety-first alternatives to standard collections)

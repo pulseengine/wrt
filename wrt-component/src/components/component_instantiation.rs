@@ -579,7 +579,7 @@ impl ComponentInstance {
             Error::new(
                 ErrorCategory::Runtime,
                 codes::FUNCTION_NOT_FOUND,
-                format!("Function '{}' not found", name),
+                ComponentValue::String("Component operation result".into()),
             )
         })
     }

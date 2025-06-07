@@ -781,7 +781,7 @@ impl Memory {
                 return Err(Error::new(
                     ErrorCategory::Resource,
                     codes::RESOURCE_LIMIT_EXCEEDED,
-                    &format!("Exceeded maximum memory size: {} > {}", new_page_count, max),
+                    "Runtime operation error",
                 ));
             }
         }
@@ -791,7 +791,7 @@ impl Memory {
             return Err(Error::new(
                 ErrorCategory::Resource,
                 codes::RESOURCE_LIMIT_EXCEEDED,
-                &format!("Exceeded maximum memory size: {} > {}", new_page_count, MAX_PAGES),
+                "Runtime operation error",
             ));
         }
 
@@ -883,7 +883,7 @@ impl Memory {
             return Err(Error::new(
                 ErrorCategory::Memory,
                 codes::MEMORY_OUT_OF_BOUNDS,
-                &format!("Memory access out of bounds: offset={}, size={}", offset, size),
+                "Runtime operation error",
             ));
         }
 
@@ -998,7 +998,7 @@ impl Memory {
             return Err(Error::new(
                 ErrorCategory::Validation,
                 codes::VALIDATION_ERROR,
-                &format!("Unaligned memory access: address {addr} is not aligned to {align} bytes"),
+                "Runtime operation error",
             ));
         }
 
@@ -1294,7 +1294,7 @@ impl Memory {
             return Err(Error::new(
                 ErrorCategory::Memory,
                 codes::MEMORY_OUT_OF_BOUNDS,
-                &format!("Memory fill out of bounds: dst={}, size={}", dst, size),
+                "Runtime operation error",
             ));
         }
 
@@ -1335,11 +1335,7 @@ impl Memory {
             let mut current_data = self.data.to_vec()?;
             for i in 0..chunk_size {
                 if current_dst + i < current_data.len() {
-                    current_data.set(current_dst + i, val).map_err(|_| Error::new(
-                        ErrorCategory::Memory,
-                        codes::MEMORY_ACCESS_OUT_OF_BOUNDS,
-                        "Failed to set byte in memory"
-                    ))?;
+                    current_data[current_dst + i] = val;
                 }
             }
             // Replace data (simplified - in production would need better approach)
@@ -1379,7 +1375,7 @@ impl Memory {
                 return Err(Error::new(
                     ErrorCategory::Memory,
                     codes::MEMORY_ACCESS_OUT_OF_BOUNDS,
-                    &format!("Source data access out of bounds: address={}, size={}", src, size),
+                    "Runtime operation error",
                 ));
             }
         };
@@ -1449,11 +1445,7 @@ impl Memory {
             let mut current_data = self.data.to_vec()?;
             for (i, &byte) in src_data.iter().enumerate() {
                 if dst_offset + i < current_data.len() {
-                    current_data.set(dst_offset + i, byte).map_err(|_| Error::new(
-                        ErrorCategory::Memory,
-                        codes::MEMORY_ACCESS_OUT_OF_BOUNDS,
-                        "Failed to set byte in memory"
-                    ))?;
+                    current_data[dst_offset + i] = byte;
                 }
             }
             // Replace data (simplified approach)
@@ -2023,7 +2015,7 @@ impl Memory {
             return Err(Error::new(
                 ErrorCategory::Memory,
                 codes::MEMORY_GROW_ERROR,
-                &format!("Cannot grow memory beyond WebAssembly maximum of {} pages", MAX_PAGES),
+                "Runtime operation error",
             ));
         }
 

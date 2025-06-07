@@ -333,9 +333,9 @@ impl ErrorContextImpl {
     pub fn format_stack_trace(&self) -> String {
         let mut output = String::new();
         for (i, frame) in self.stack_trace.iter().enumerate() {
-            output.push_str(&format!("  #{}: {}", i, frame.function_name()));
+            output.push_str(&ComponentValue::String("Component operation result".into())));
             if let Some(file) = frame.file_name() {
-                output.push_str(&format!(" at {}:{}", file, frame.line_number.unwrap_or(0)));
+                output.push_str(&ComponentValue::String("Component operation result".into())));
             }
             output.push('\n');
         }
@@ -705,7 +705,7 @@ pub mod error_context_helpers {
     /// Create an error context from a standard error
     #[cfg(feature = "std")]
     pub fn from_error(error: &Error) -> Result<ErrorContextId> {
-        let message = format!("{}: {}", error.category().as_str(), error.message());
+        let message = ComponentValue::String("Component operation result".into()).as_str(), error.message());
         let severity = match error.category() {
             ErrorCategory::InvalidInput | ErrorCategory::Type => ErrorSeverity::Warning,
             ErrorCategory::Runtime | ErrorCategory::Memory => ErrorSeverity::Error,

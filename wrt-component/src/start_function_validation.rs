@@ -414,7 +414,7 @@ impl StartFunctionValidator {
             if !self.check_dependency_available(component_id, dependency) {
                 return Err(StartFunctionError {
                     kind: StartFunctionErrorKind::DependencyNotMet,
-                    message: format!("Dependency '{}' not available", dependency),
+                    message: ComponentValue::String("Component operation result".into()),
                     component_id: Some(component_id),
                 });
             }
@@ -434,7 +434,7 @@ impl StartFunctionValidator {
             } else if param.required {
                 return Err(StartFunctionError {
                     kind: StartFunctionErrorKind::ValidationFailed,
-                    message: format!("Required parameter '{}' has no value", param.name),
+                    message: ComponentValue::String("Component operation result".into()),
                     component_id: None,
                 });
             } else {
@@ -472,7 +472,7 @@ impl StartFunctionValidator {
             Ok(result) => Ok(result),
             Err(e) => Err(StartFunctionError {
                 kind: StartFunctionErrorKind::ExecutionFailed,
-                message: format!("Execution failed: {}", e),
+                message: ComponentValue::String("Component operation result".into()),
                 component_id: Some(component_id),
             }),
         }
@@ -488,7 +488,7 @@ impl StartFunctionValidator {
         if execution_context.memory_allocations() > 0 {
             let effect = SideEffect {
                 effect_type: SideEffectType::MemoryAllocation,
-                description: format!("Allocated {} bytes", execution_context.memory_usage()),
+                description: ComponentValue::String("Component operation result".into())),
                 severity: if execution_context.memory_usage() > 1024 * 1024 {
                     SideEffectSeverity::Warning
                 } else {
@@ -506,7 +506,7 @@ impl StartFunctionValidator {
         if execution_context.resources_created() > 0 {
             let effect = SideEffect {
                 effect_type: SideEffectType::ResourceCreation,
-                description: format!("Created {} resources", execution_context.resources_created()),
+                description: ComponentValue::String("Component operation result".into())),
                 severity: SideEffectSeverity::Info,
             };
             side_effects.push(effect).map_err(|_| StartFunctionError {

@@ -260,22 +260,19 @@ impl ComponentLoader {
     pub fn parse_component(&self, binary_data: &[u8]) -> WrtResult<ParsedComponent> {
         // Validate size
         if binary_data.len() > self.max_component_size {
-            return Err(wrt_foundation::WrtError::InvalidInput(
-                "Component binary too large".into(),
+            return Err(wrt_foundation::WrtError::invalid_input("Invalid input"),
             ));
         }
 
         // Validate basic structure
         if binary_data.len() < 8 {
-            return Err(wrt_foundation::WrtError::InvalidInput(
-                "Component binary too small".into(),
+            return Err(wrt_foundation::WrtError::invalid_input("Invalid input"),
             ));
         }
 
         // Check magic bytes (simplified - would check actual WASM component magic)
         if &binary_data[0..4] != b"\x00asm" {
-            return Err(wrt_foundation::WrtError::InvalidInput(
-                "Invalid component magic bytes".into(),
+            return Err(wrt_foundation::WrtError::invalid_input("Invalid input"),
             ));
         }
 
@@ -306,7 +303,7 @@ impl ComponentLoader {
         let import_name = "default".to_string();
         #[cfg(not(any(feature = "std", )))]
         let import_name = BoundedString::from_str("default")
-            .map_err(|_| wrt_foundation::WrtError::InvalidInput("Import name too long".into()))?;
+            .map_err(|_| wrt_foundation::WrtError::invalid_input("Invalid input")))?;
 
         parsed.add_import(ParsedImport {
             name: import_name,
@@ -318,7 +315,7 @@ impl ComponentLoader {
         let export_name = "main".to_string();
         #[cfg(not(any(feature = "std", )))]
         let export_name = BoundedString::from_str("main")
-            .map_err(|_| wrt_foundation::WrtError::InvalidInput("Export name too long".into()))?;
+            .map_err(|_| wrt_foundation::WrtError::invalid_input("Invalid input")))?;
 
         parsed.add_export(ParsedExport {
             name: export_name,
@@ -433,10 +430,10 @@ impl ComponentLoader {
     /// Create module adapter from parsed module
     fn create_module_adapter(&self, module: &ParsedModule) -> WrtResult<CoreModuleAdapter> {
         #[cfg(feature = "std")]
-        let name = format!("module_{}", module.index);
+        let name = ComponentValue::String("Component operation result".into());
         #[cfg(not(any(feature = "std", )))]
         let name = BoundedString::from_str("module")
-            .map_err(|_| wrt_foundation::WrtError::InvalidInput("Module name too long".into()))?;
+            .map_err(|_| wrt_foundation::WrtError::invalid_input("Invalid input")))?;
 
         let adapter = CoreModuleAdapter::new(name);
 

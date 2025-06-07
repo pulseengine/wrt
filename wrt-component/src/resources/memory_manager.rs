@@ -28,7 +28,7 @@ impl MemoryManager {
     ) -> Result<()> {
         // Verify the resource exists
         if !resource_manager.has_resource(id) {
-            return Err(Error::new(format!("Cannot register non-existent resource: {:?}", id)));
+            return Err(Error::new(ComponentValue::String("Component operation result".into())));
         }
 
         // Register with the default strategy
@@ -46,7 +46,7 @@ impl MemoryManager {
     ) -> Result<()> {
         // Verify the resource exists
         if !resource_manager.has_resource(id) {
-            return Err(Error::new(format!("Cannot register non-existent resource: {:?}", id)));
+            return Err(Error::new(ComponentValue::String("Component operation result".into())));
         }
 
         // Register with the specified strategy

@@ -91,7 +91,7 @@ impl AsyncValueStore {
 
                 Ok(())
             }
-            None => Err(Error::new(AsyncError(format!("Async ID not found: {}", id)))),
+            None => Err(Error::new(AsyncError(ComponentValue::String("Component operation result".into())))),
         }
     }
 
@@ -104,7 +104,7 @@ impl AsyncValueStore {
 
                 Ok(())
             }
-            None => Err(Error::new(AsyncError(format!("Async ID not found: {}", id)))),
+            None => Err(Error::new(AsyncError(ComponentValue::String("Component operation result".into())))),
         }
     }
 
@@ -112,7 +112,7 @@ impl AsyncValueStore {
     pub fn get_status(&self, id: u32) -> Result<AsyncStatus> {
         match self.values.get(&id) {
             Some(async_value) => Ok(async_value.status.clone()),
-            None => Err(Error::new(AsyncError(format!("Async ID not found: {}", id)))),
+            None => Err(Error::new(AsyncError(ComponentValue::String("Component operation result".into())))),
         }
     }
 
@@ -135,7 +135,7 @@ impl AsyncValueStore {
                     Err(Error::new(AsyncError("Async operation still pending".to_string())))
                 }
             }
-            None => Err(Error::new(AsyncError(format!("Async ID not found: {}", id)))),
+            None => Err(Error::new(AsyncError(ComponentValue::String("Component operation result".into())))),
         }
     }
 
@@ -149,7 +149,7 @@ impl AsyncValueStore {
         if self.values.remove(&id).is_some() {
             Ok(())
         } else {
-            Err(Error::new(AsyncError(format!("Async ID not found: {}", id))))
+            Err(Error::new(AsyncError(ComponentValue::String("Component operation result".into()))))
         }
     }
 }
@@ -178,7 +178,7 @@ impl BuiltinHandler for AsyncNewHandler {
     fn execute(&self, args: &[ComponentValue]) -> Result<Vec<ComponentValue>> {
         // Validate args - async.new takes no arguments
         if !args.is_empty() {
-            return Err(Error::new(format!("async.new: Expected 0 arguments, got {}", args.len())));
+            return Err(Error::new(ComponentValue::String("Component operation result".into()))));
         }
 
         // Create a new async value
@@ -220,7 +220,7 @@ impl BuiltinHandler for AsyncGetHandler {
     fn execute(&self, args: &[ComponentValue]) -> Result<Vec<ComponentValue>> {
         // Validate args
         if args.len() != 1 {
-            return Err(Error::new(format!("async.get: Expected 1 argument, got {}", args.len())));
+            return Err(Error::new(ComponentValue::String("Component operation result".into()))));
         }
 
         // Extract the async ID from args
@@ -268,7 +268,7 @@ impl BuiltinHandler for AsyncPollHandler {
     fn execute(&self, args: &[ComponentValue]) -> Result<Vec<ComponentValue>> {
         // Validate args
         if args.len() != 1 {
-            return Err(Error::new(format!("async.poll: Expected 1 argument, got {}", args.len())));
+            return Err(Error::new(ComponentValue::String("Component operation result".into()))));
         }
 
         // Extract the async ID from args
@@ -326,7 +326,7 @@ impl BuiltinHandler for AsyncWaitHandler {
     fn execute(&self, args: &[ComponentValue]) -> Result<Vec<ComponentValue>> {
         // Validate args
         if args.len() != 1 {
-            return Err(Error::new(format!("async.wait: Expected 1 argument, got {}", args.len())));
+            return Err(Error::new(ComponentValue::String("Component operation result".into()))));
         }
 
         // Extract the async ID from args

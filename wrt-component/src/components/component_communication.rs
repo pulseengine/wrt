@@ -487,7 +487,7 @@ impl CallRouter {
                 self.stats.successful_calls += 1;
             }
             Err(e) => {
-                context.state = CallState::Failed(format!("{}", e));
+                context.state = CallState::Failed(ComponentValue::String("Component operation result".into()));
                 self.stats.failed_calls += 1;
             }
         }

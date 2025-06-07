@@ -461,14 +461,14 @@ impl VirtualizationManager {
         let import =
             component.virtual_imports.get(import_name).ok_or_else(|| VirtualizationError {
                 kind: VirtualizationErrorKind::ImportNotFound,
-                message: format!("Import '{}' not found", import_name),
+                message: ComponentValue::String("Component operation result".into()),
             })?;
 
         if let Some(ref capability) = import.capability_required {
             if !self.check_capability(instance_id, capability) {
                 return Err(VirtualizationError {
                     kind: VirtualizationErrorKind::CapabilityDenied,
-                    message: format!("Missing capability for import '{}'", import_name),
+                    message: ComponentValue::String("Component operation result".into()),
                 });
             }
         }

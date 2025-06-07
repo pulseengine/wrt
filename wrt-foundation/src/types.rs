@@ -15,26 +15,20 @@ use core::{
     str::FromStr,
 };
 
-#[cfg(feature = "std")]
+#[cfg(any(feature = "std", feature = "alloc"))]
 extern crate alloc;
 
-#[cfg(not(feature = "std"))]
-extern crate alloc;
+// Use HashMap/HashSet in std mode, BTreeMap/BTreeSet in no_std mode
+#[cfg(feature = "std")]
+use std::collections::{HashMap as Map, HashSet as Set};
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+use alloc::collections::{BTreeMap as Map, BTreeSet as Set};
 
-#[cfg(all(not(feature = "std")))]
-use alloc::collections::{BTreeMap, BTreeSet};
-#[cfg(all(not(feature = "std")))]
-use alloc::string::{String as AllocString, ToString as AllocToString};
-#[cfg(all(not(feature = "std")))]
-use alloc::vec::Vec as AllocVec;
-#[cfg(all(not(feature = "std")))]
-use alloc::{format, vec};
+// String and Vec handling
 #[cfg(feature = "std")]
-use std::collections::{HashMap, HashSet};
-#[cfg(feature = "std")]
-use std::string::{String, ToString};
-#[cfg(feature = "std")]
-use std::vec::Vec;
+use std::{string::{String, ToString}, vec::Vec};
+#[cfg(all(not(feature = "std"), feature = "alloc"))]
+use alloc::{string::{String, ToString}, vec::Vec, format, vec};
 
 // Import error types
 use wrt_error::{Error, ErrorCategory};

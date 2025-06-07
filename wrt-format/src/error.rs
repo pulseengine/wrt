@@ -3,10 +3,11 @@
 //! This module provides error handling functionality for the format
 //! specification.
 
-#[cfg(all(not(feature = "std")))]
-use alloc::{boxed::Box, string::String};
 #[cfg(feature = "std")]
 use std::{boxed::Box, string::String};
+
+#[cfg(not(feature = "std"))]
+use wrt_foundation::bounded::BoundedString;
 
 use wrt_error::Error;
 

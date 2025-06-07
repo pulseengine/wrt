@@ -77,7 +77,7 @@ impl CallFrame {
     /// Get a local variable by index
     pub fn get_local(&self, index: usize) -> WrtResult<&Value> {
         self.locals.get(index).ok_or_else(|| {
-            wrt_foundation::WrtError::InvalidInput("Invalid local variable index".into())
+            wrt_foundation::WrtError::invalid_input("Invalid input"))
         })
     }
 
@@ -87,7 +87,7 @@ impl CallFrame {
             self.locals[index] = value;
             Ok(())
         } else {
-            Err(wrt_foundation::WrtError::InvalidInput("Invalid local variable index".into()))
+            Err(wrt_foundation::WrtError::invalid_input("Invalid input")))
         }
     }
 }
@@ -289,7 +289,7 @@ impl ComponentExecutionEngine {
         let function_name = {
             #[cfg(feature = "std")]
             {
-                alloc::format!("func_{}", function_index)
+                alloc::ComponentValue::String("Component operation result".into())
             }
             #[cfg(not(any(feature = "std", )))]
             {
@@ -300,7 +300,7 @@ impl ComponentExecutionEngine {
         };
         let result = self.runtime_bridge
             .execute_component_function(instance_id, &function_name, &component_values)
-            .map_err(|e| wrt_foundation::WrtError::Runtime(alloc::format!("Runtime bridge error: {}", e)))?;
+            .map_err(|e| wrt_foundation::WrtError::Runtime(alloc::ComponentValue::String("Component operation result".into())))?;
 
         // Convert result back to engine value format
         self.convert_component_value_to_value(&result)
@@ -313,7 +313,7 @@ impl ComponentExecutionEngine {
             if let Some(func) = self.host_functions.get_mut(index as usize) {
                 func.call(args)
             } else {
-                Err(wrt_foundation::WrtError::InvalidInput("Invalid host function index".into()))
+                Err(wrt_foundation::WrtError::invalid_input("Invalid input")))
             }
         }
         #[cfg(not(any(feature = "std", )))]
@@ -321,7 +321,7 @@ impl ComponentExecutionEngine {
             if let Some(func) = self.host_functions.get(index as usize) {
                 func(args)
             } else {
-                Err(wrt_foundation::WrtError::InvalidInput("Invalid host function index".into()))
+                Err(wrt_foundation::WrtError::invalid_input("Invalid input")))
             }
         }
     }
@@ -452,7 +452,7 @@ impl ComponentExecutionEngine {
             Value::F64(v) => Ok(ComponentValue::F64(*v)),
             Value::Char(c) => Ok(ComponentValue::Char(*c)),
             Value::String(s) => Ok(ComponentValue::String(s.clone())),
-            _ => Err(wrt_foundation::WrtError::InvalidInput("Unsupported value type for conversion".into())),
+            _ => Err(wrt_foundation::WrtError::invalid_input("Invalid input"))),
         }
     }
 
@@ -473,7 +473,7 @@ impl ComponentExecutionEngine {
             ComponentValue::F64(v) => Ok(Value::F64(*v)),
             ComponentValue::Char(c) => Ok(Value::Char(*c)),
             ComponentValue::String(s) => Ok(Value::String(s.clone())),
-            _ => Err(wrt_foundation::WrtError::InvalidInput("Unsupported component value type for conversion".into())),
+            _ => Err(wrt_foundation::WrtError::invalid_input("Invalid input"))),
         }
     }
 
@@ -493,13 +493,13 @@ impl ComponentExecutionEngine {
             #[cfg(not(any(feature = "std", )))]
             {
                 wrt_foundation::bounded::BoundedString::from_str(module_name).map_err(|_| {
-                    wrt_foundation::WrtError::InvalidInput("Module name too long".into())
+                    wrt_foundation::WrtError::invalid_input("Invalid input"))
                 })?
             }
         };
         self.runtime_bridge
             .register_component_instance(component_id, module_name_string, function_count, memory_size)
-            .map_err(|e| wrt_foundation::WrtError::Runtime(alloc::format!("Failed to register component instance: {}", e)))
+            .map_err(|e| wrt_foundation::WrtError::Runtime(alloc::ComponentValue::String("Component operation result".into())))
     }
 
     /// Register a host function with the runtime bridge
@@ -523,7 +523,7 @@ impl ComponentExecutionEngine {
         
         self.runtime_bridge
             .register_host_function(name_string, signature, func)
-            .map_err(|e| wrt_foundation::WrtError::Runtime(alloc::format!("Failed to register host function: {}", e)))
+            .map_err(|e| wrt_foundation::WrtError::Runtime(alloc::ComponentValue::String("Component operation result".into())))
     }
 
     /// Register a host function with the runtime bridge (no_std version)
@@ -536,7 +536,7 @@ impl ComponentExecutionEngine {
         use crate::canonical_abi::ComponentType;
         
         let name_string = wrt_foundation::bounded::BoundedString::from_str(name).map_err(|_| {
-            wrt_foundation::WrtError::InvalidInput("Function name too long".into())
+            wrt_foundation::WrtError::invalid_input("Invalid input"))
         })?;
         
         let signature = crate::component_instantiation::FunctionSignature {
@@ -551,7 +551,7 @@ impl ComponentExecutionEngine {
         
         self.runtime_bridge
             .register_host_function(name_string, signature, func)
-            .map_err(|e| wrt_foundation::WrtError::Runtime(alloc::format!("Failed to register host function: {}", e)))
+            .map_err(|e| wrt_foundation::WrtError::Runtime(alloc::ComponentValue::String("Component operation result".into())))
     }
 }
 

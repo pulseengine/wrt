@@ -293,7 +293,7 @@ impl ComponentMemoryManager {
     ) -> WrtResult<Vec<u8>> {
         let memory = self
             .get_memory(memory_id)
-            .ok_or_else(|| wrt_foundation::WrtError::InvalidInput("Memory not found".into()))?;
+            .ok_or_else(|| wrt_foundation::WrtError::invalid_input("Invalid input")))?;
 
         // Check permissions
         if !self.check_read_permission(memory_id, instance_id)? {
@@ -305,8 +305,7 @@ impl ComponentMemoryManager {
         // Check bounds
         let end_offset = offset as usize + size as usize;
         if end_offset > memory.data.len() {
-            return Err(wrt_foundation::WrtError::InvalidInput(
-                "Memory access out of bounds".into(),
+            return Err(wrt_foundation::WrtError::invalid_input("Invalid input"),
             ));
         }
 
@@ -344,7 +343,7 @@ impl ComponentMemoryManager {
 
         let memory = self
             .get_memory_mut(memory_id)
-            .ok_or_else(|| wrt_foundation::WrtError::InvalidInput("Memory not found".into()))?;
+            .ok_or_else(|| wrt_foundation::WrtError::invalid_input("Invalid input")))?;
 
         // Check bounds
         let end_offset = offset as usize + data.len();
@@ -375,7 +374,7 @@ impl ComponentMemoryManager {
     ) -> WrtResult<u32> {
         let memory = self
             .get_memory_mut(memory_id)
-            .ok_or_else(|| wrt_foundation::WrtError::InvalidInput("Memory not found".into()))?;
+            .ok_or_else(|| wrt_foundation::WrtError::invalid_input("Invalid input")))?;
 
         // Check permissions
         if !self.check_write_permission(memory_id, instance_id)? {
@@ -390,8 +389,7 @@ impl ComponentMemoryManager {
         // Check limits
         if let Some(max) = memory.limits.max {
             if new_pages > max as usize {
-                return Err(wrt_foundation::WrtError::InvalidInput(
-                    "Memory growth exceeds maximum".into(),
+                return Err(wrt_foundation::WrtError::invalid_input("Invalid input"),
                 ));
             }
         }
@@ -427,7 +425,7 @@ impl ComponentMemoryManager {
     fn check_read_permission(&self, memory_id: u32, instance_id: Option<u32>) -> WrtResult<bool> {
         let memory = self
             .get_memory(memory_id)
-            .ok_or_else(|| wrt_foundation::WrtError::InvalidInput("Memory not found".into()))?;
+            .ok_or_else(|| wrt_foundation::WrtError::invalid_input("Invalid input")))?;
 
         if !memory.permissions.read {
             return Ok(false);
@@ -452,7 +450,7 @@ impl ComponentMemoryManager {
     fn check_write_permission(&self, memory_id: u32, instance_id: Option<u32>) -> WrtResult<bool> {
         let memory = self
             .get_memory(memory_id)
-            .ok_or_else(|| wrt_foundation::WrtError::InvalidInput("Memory not found".into()))?;
+            .ok_or_else(|| wrt_foundation::WrtError::invalid_input("Invalid input")))?;
 
         if !memory.permissions.write {
             return Ok(false);
@@ -589,10 +587,10 @@ impl ComponentTableManager {
     pub fn get_element(&self, table_id: u32, index: u32) -> WrtResult<&TableElement> {
         let table = self
             .get_table(table_id)
-            .ok_or_else(|| wrt_foundation::WrtError::InvalidInput("Table not found".into()))?;
+            .ok_or_else(|| wrt_foundation::WrtError::invalid_input("Invalid input")))?;
 
         table.elements.get(index as usize).ok_or_else(|| {
-            wrt_foundation::WrtError::InvalidInput("Table index out of bounds".into())
+            wrt_foundation::WrtError::invalid_input("Invalid input"))
         })
     }
 
@@ -605,10 +603,10 @@ impl ComponentTableManager {
     ) -> WrtResult<()> {
         let table = self
             .get_table_mut(table_id)
-            .ok_or_else(|| wrt_foundation::WrtError::InvalidInput("Table not found".into()))?;
+            .ok_or_else(|| wrt_foundation::WrtError::invalid_input("Invalid input")))?;
 
         if index as usize >= table.elements.len() {
-            return Err(wrt_foundation::WrtError::InvalidInput("Table index out of bounds".into()));
+            return Err(wrt_foundation::WrtError::invalid_input("Invalid input")));
         }
 
         table.elements[index as usize] = element;
@@ -619,7 +617,7 @@ impl ComponentTableManager {
     pub fn grow_table(&mut self, table_id: u32, size: u32, init: TableElement) -> WrtResult<u32> {
         let table = self
             .get_table_mut(table_id)
-            .ok_or_else(|| wrt_foundation::WrtError::InvalidInput("Table not found".into()))?;
+            .ok_or_else(|| wrt_foundation::WrtError::invalid_input("Invalid input")))?;
 
         let current_size = table.elements.len();
         let new_size = current_size + size as usize;
@@ -627,8 +625,7 @@ impl ComponentTableManager {
         // Check limits
         if let Some(max) = table.limits.max {
             if new_size > max as usize {
-                return Err(wrt_foundation::WrtError::InvalidInput(
-                    "Table growth exceeds maximum".into(),
+                return Err(wrt_foundation::WrtError::invalid_input("Invalid input"),
                 ));
             }
         }

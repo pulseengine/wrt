@@ -77,7 +77,7 @@ impl ModuleInstance {
         memories
             .get(idx as usize)
             .map(|memory| memory.clone())
-            .map_err(|_| Error::new(ErrorCategory::Resource, codes::MEMORY_NOT_FOUND, &format!("Memory index {} not found", idx)))
+            .map_err(|_| Error::new(ErrorCategory::Resource, codes::MEMORY_NOT_FOUND, "Runtime operation error"))
     }
 
     /// Get a table from this instance
@@ -90,7 +90,7 @@ impl ModuleInstance {
         tables
             .get(idx as usize)
             .map(|table| table.clone())
-            .map_err(|_| Error::new(ErrorCategory::Resource, codes::TABLE_NOT_FOUND, &format!("Table index {} not found", idx)))
+            .map_err(|_| Error::new(ErrorCategory::Resource, codes::TABLE_NOT_FOUND, "Runtime operation error"))
     }
 
     /// Get a global from this instance
@@ -103,17 +103,17 @@ impl ModuleInstance {
         globals
             .get(idx as usize)
             .map(|global| global.clone())
-            .map_err(|_| Error::new(ErrorCategory::Resource, codes::GLOBAL_NOT_FOUND, &format!("Global index {} not found", idx)))
+            .map_err(|_| Error::new(ErrorCategory::Resource, codes::GLOBAL_NOT_FOUND, "Runtime operation error"))
     }
 
     /// Get the function type for a function
     pub fn function_type(&self, idx: u32) -> Result<FuncType> {
-        let function = self.module.functions.get(idx as usize).map_err(|e| {
-            Error::new(ErrorCategory::Runtime, codes::FUNCTION_NOT_FOUND, &format!("Function index {} not found: {}", idx, e))
+        let function = self.module.functions.get(idx as usize).map_err(|_| {
+            Error::new(ErrorCategory::Runtime, codes::FUNCTION_NOT_FOUND, "Function index not found")
         })?;
 
-        let ty = self.module.types.get(function.type_idx as usize).map_err(|e| {
-            Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH, &format!("Type index {} not found: {}", function.type_idx, e))
+        let ty = self.module.types.get(function.type_idx as usize).map_err(|_| {
+            Error::new(ErrorCategory::Validation, codes::TYPE_MISMATCH, "Type index not found")
         })?;
 
         Ok(ty)
@@ -193,7 +193,7 @@ impl crate::stackless::extensions::ModuleInstance for ModuleInstance {
         if let Some(ref mut debug_info) = self.debug_info {
             debug_info
                 .find_line_info(pc)
-                .map_err(|e| Error::new(ErrorCategory::Runtime, codes::DEBUG_INFO_ERROR, &format!("Debug info error: {}", e)))
+                .map_err(|e| Error::new(ErrorCategory::Runtime, codes::DEBUG_INFO_ERROR, "Runtime operation error"))
         } else {
             Ok(None)
         }

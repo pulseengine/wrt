@@ -9,8 +9,7 @@ use std::{collections::HashMap, sync::Arc};
 #[cfg(not(feature = "std"))]
 use alloc::{collections::BTreeMap, sync::Arc};
 
-#[cfg(feature = "std")]
-use crate::component_traits::{ComponentHostFunction, ComponentInstance, ComponentRuntime, HostFunctionFactory};
+// Components traits imported below with full set
 
 #[cfg(all(not(feature = "std"), not(feature = "std")))]
 pub mod no_alloc {
@@ -104,7 +103,11 @@ use std::vec;
 
 #[cfg(feature = "std")]
 use crate::{
-    component_traits::{ComponentInstance, ComponentRuntime, HostFunction, HostFunctionFactory, ComponentType, ExternType, FuncType},
+    component_traits::{
+        ComponentInstance, ComponentRuntime, 
+        HostFunction, HostFunctionFactory, ComponentType, ExternType, FuncType
+    },
+    unified_types::{DefaultRuntimeTypes, UnifiedMemoryAdapter, PlatformMemoryAdapter},
     prelude::*,
 };
 
@@ -130,6 +133,8 @@ struct HostFunctionImpl<
     implementation: Arc<F>,
 }
 
+// TODO: ComponentHostFunction trait not yet defined - commented out temporarily
+/*
 #[cfg(feature = "std")]
 impl<
         F: Fn(
@@ -153,6 +158,7 @@ impl<
         self.func_type.clone()
     }
 }
+*/
 
 /// Legacy host function implementation for backward compatibility
 struct LegacyHostFunctionImpl<

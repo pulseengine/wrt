@@ -94,10 +94,10 @@ pub mod component_async {
         // Create a task for the async operation
         let task_id = task_manager
             .create_task(operation.component_id, &operation.name)
-            .map_err(|e| format!("Failed to create task: {:?}", e))?;
+            .map_err(|e| ComponentValue::String("Component operation result".into()))?;
 
         // Start the task
-        task_manager.start_task(task_id).map_err(|e| format!("Failed to start task: {:?}", e))?;
+        task_manager.start_task(task_id).map_err(|e| ComponentValue::String("Component operation result".into()))?;
 
         Ok(task_id)
     }

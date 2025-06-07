@@ -90,7 +90,7 @@ fn encode_latin1(s: &str) -> Result<Vec<u8>> {
             return Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::INVALID_TYPE,
-                format!("Character '{}' cannot be encoded in Latin-1", c),
+                ComponentValue::String("Component operation result".into()),
             ));
         }
         bytes.push(code_point as u8);
@@ -102,7 +102,7 @@ fn encode_latin1(s: &str) -> Result<Vec<u8>> {
 /// Decode from UTF-8
 fn decode_utf8(bytes: &[u8]) -> Result<String> {
     core::str::from_utf8(bytes).map(|s| s.to_string()).map_err(|e| {
-        Error::new(ErrorCategory::Runtime, codes::INVALID_TYPE, format!("Invalid UTF-8: {}", e))
+        Error::new(ErrorCategory::Runtime, codes::INVALID_TYPE, ComponentValue::String("Component operation result".into()))
     })
 }
 
@@ -123,7 +123,7 @@ fn decode_utf16_le(bytes: &[u8]) -> Result<String> {
     }
 
     String::from_utf16(&code_units).map_err(|e| {
-        Error::new(ErrorCategory::Runtime, codes::INVALID_TYPE, format!("Invalid UTF-16: {:?}", e))
+        Error::new(ErrorCategory::Runtime, codes::INVALID_TYPE, ComponentValue::String("Component operation result".into()))
     })
 }
 
@@ -144,7 +144,7 @@ fn decode_utf16_be(bytes: &[u8]) -> Result<String> {
     }
 
     String::from_utf16(&code_units).map_err(|e| {
-        Error::new(ErrorCategory::Runtime, codes::INVALID_TYPE, format!("Invalid UTF-16: {:?}", e))
+        Error::new(ErrorCategory::Runtime, codes::INVALID_TYPE, ComponentValue::String("Component operation result".into()))
     })
 }
 
@@ -258,7 +258,7 @@ pub fn lift_string_with_options(
             return Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::INVALID_TYPE,
-                format!("String length {} exceeds maximum {}", length, max_len),
+                ComponentValue::String("Component operation result".into()),
             ));
         }
     }
@@ -308,7 +308,7 @@ pub fn lower_string_with_options(
             return Err(Error::new(
                 ErrorCategory::Runtime,
                 codes::INVALID_TYPE,
-                format!("Encoded string length {} exceeds maximum {}", encoded.len(), max_len),
+                ComponentValue::String("Component operation result".into()), max_len),
             ));
         }
     }

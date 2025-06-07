@@ -76,6 +76,7 @@ extern crate core;
 #[cfg(feature = "std")]
 extern crate std;
 
+#[cfg(any(feature = "std", feature = "alloc"))]
 extern crate alloc;
 
 // WRT - wrt-foundation
@@ -162,6 +163,16 @@ pub mod verification;
 /// Formal verification using Kani
 #[cfg(any(doc, kani))]
 pub mod verify;
+
+// New foundation modules for Agent A deliverables
+/// Unified type system with platform-configurable bounded collections (simplified)
+pub mod unified_types_simple;
+/// Memory provider hierarchy for predictable allocation behavior
+pub mod memory_system;
+/// ASIL-aware safety primitives for safety-critical applications
+pub mod safety_system;
+/// ASIL-tagged testing framework for safety verification
+pub mod asil_testing;
 
 // Binary std/no_std choice
 #[cfg(feature = "std")]
@@ -256,6 +267,26 @@ pub use types::{
 // };
 pub use values::Value;
 pub use verification::{Checksum, VerificationLevel};
+
+// Re-export unified types for backward compatibility and new functionality
+pub use unified_types_simple::{
+    DefaultTypes, EmbeddedTypes, DesktopTypes, SafetyCriticalTypes,
+    PlatformCapacities, UnifiedTypes,
+};
+
+// Re-export memory system types
+pub use memory_system::{
+    UnifiedMemoryProvider, ConfigurableProvider, SmallProvider, MediumProvider, LargeProvider,
+    NoStdProviderWrapper, MemoryProviderFactory,
+};
+
+#[cfg(feature = "std")]
+pub use memory_system::UnifiedStdProvider;
+
+// Re-export safety system types
+pub use safety_system::{
+    AsilLevel, SafetyContext, SafetyGuard, SafeMemoryAllocation,
+};
 
 /// The WebAssembly binary format magic number: \0asm
 pub const WASM_MAGIC: [u8; 4] = [0x00, 0x61, 0x73, 0x6D];
